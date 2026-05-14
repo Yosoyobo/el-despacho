@@ -476,3 +476,135 @@ Setup: `tests/django_settings.py` (merge El Taller + SQLite in-memory), `tests/u
 ---
 
 **Cierre:** S1-final entrega CRM operativo (clientes + proyectos + tareas + comentarios) con permisos por rol, eventos tipados con DLQ, Tailwind compilado, PWA andamio, healthchecks y CI con auto-pin de digests. El próximo turno empieza leyendo este archivo + `CLAUDE.md` + `git log -1`.
+
+---
+
+# BITÁCORA — Sesión 1 (S1-deploy)
+
+> Cierre del **2026-05-14**, mismo día que S1a/S1-final. Esta sesión deja **El Despacho vivo en producción** con las 3 URLs HTTPS contestando 200 y el pipeline `git push → main → docker pull → up` corriendo solo en cada commit.
+
+## 1. Acción central: REBUILD del Droplet existente
+
+- **Droplet:** `learning-center` (ID `570849473`, IP `157.230.48.232`, nyc1, 1 vCPU / 1 GB RAM / 25 GB).
+- **Operación:** `doctl compute droplet-action rebuild --image ubuntu-24-04-x64`. **17 segundos.** IP preservado, disco reinstalado, código de El Corporativo borrado.
+- **DNS:** los 3 hosts (`gerencia/taller/recepcion.ninomeando.com`) seguían apuntando a `157.230.48.232` — no se tocó nada.
+- **OS resultante:** Ubuntu 24.04.3 LTS / kernel 6.8.0-71-generic.
+
+## 2. Camino del SSH key
+
+`doctl droplet-action rebuild` no acepta `--ssh-keys`. Para inyectar la llave dedicada (`~/.ssh/el-despacho-sede`, ed25519, ID DO `56324640`) usé el flujo:
+
+1. `doctl compute droplet-action password-reset` → DO envía email con password temporal de root.
+2. Como Ubuntu 24.04 fuerza cambio de password al primer login (PAM `pam_unix`/`administrator enforced`) y SSH no-TTY rechaza el flujo, usé `expect` con `ssh -tt` para responder los 3 prompts (`Current` / `New` / `Retype`). Costó 3 intentos: los 2 primeros se quemaron porque el primer `expect` mezcló patrones (`*urrent*?assword*` también matcheaba "New") y el segundo tiró timeout esperando el cierre que nunca llegó porque PAM había soltado el shell. El 3ro fue robusto: patrones literales con anclas (`-re "(C|c)urrent password:\\s*\$"`), step de cierre tolerante a `Connection to`, EOF y shell prompt; **además dejé toda la lógica de inyección en una sola invocación bash**, sin `unset` de la NEW_PW hasta confirmar key-login.
+3. Inyecté `el-despacho-sede.pub` a `/root/.ssh/authorized_keys`, validé `ssh -i` sin password, descarté la NEW_PW.
+
+Lección para futuros operadores: si DO obliga cambio de password al primer login, **siempre** usar `expect` con patrones anclados (`\\s*\$`) y poner el inject-key + validate-key en el **mismo proceso** que tiene la NEW_PW viva.
+
+## 3. Hardening
+
+```
+apt update && apt upgrade -y
+apt install -y docker.io docker-compose-v2 git curl ufw fail2ban htop ca-certificates
+systemctl enable --now docker fail2ban
+ufw default deny incoming / allow outgoing
+ufw allow 22/tcp 80/tcp 443/tcp
+ufw --force enable
+adduser despacho + groups docker,sudo + /etc/sudoers.d/despacho NOPASSWD
+cp ~/.ssh/authorized_keys → /home/despacho/.ssh/
+sed PermitRootLogin → no · PasswordAuthentication → no · KbdInteractive → no
+sshd_config.d/*.conf patcheados (cloud-init suele re-habilitar password en drop-ins)
+systemctl reload ssh
+```
+
+Validé `despacho@…` con `sudo whoami → root` y `docker ps` **antes** de deshabilitar root.
+
+> **Nota importante de Ubuntu 24.04:** el paquete del plugin compose v2 ya **no se llama** `docker-compose-plugin` (eso era de Docker oficial / Ubuntu 22.04 universe), sino **`docker-compose-v2`**. Si copias este flujo a otro Droplet, ajusta.
+
+## 4. Bootstrap del stack
+
+- `/opt/el-despacho` clonado como `despacho` (chown explícito).
+- `.env` de **producción** generado in-situ (todos los secretos vía `openssl rand`, **nunca pasaron por HAL ni por logs**):
+  - `BOVEDA_MASTER_KEY` 64 hex
+  - `DJANGO_SECRET_KEY` 64 hex
+  - `POSTGRES_PASSWORD` 40 chars
+  - `DESPACHO_SUPERADMIN_EMAIL=oscar@bautista.mx` (elección del usuario)
+  - `DESPACHO_SUPERADMIN_PASSWORD` 28 chars
+  - `CADDY_HTTP_PORT=80` / `CADDY_HTTPS_PORT=443`
+  - `DESPACHO_ENV=production`
+  - `*_ALLOWED_HOSTS=<host>.ninomeando.com,localhost,127.0.0.1` (el `localhost` es **obligatorio** para los healthchecks Django, ver §5).
+- `docker compose pull` desde GHCR. Imágenes **públicas** (gerencia/taller/recepcion) — fine-grained PAT no soporta GHCR, así que el usuario las marcó públicas vía UI. Sigue OK porque el `.env` no vive en la imagen.
+
+## 5. Bugs encontrados en el primer arranque (y fix)
+
+### Bug A: `el-taller` crashea con `LookupError: No installed app with label 'admin'`
+
+En S1b agregué `path("admin/", admin.site.urls)` a [el-taller/el_taller/urls.py](el-taller/el_taller/urls.py) pero el Django project de El Taller **no** tiene `django.contrib.admin` en INSTALLED_APPS (sí lo tiene La Gerencia). Los tests de S1b pasaron porque `tests/django_settings.py` es independiente y nunca instanció El Taller con sus URLs reales.
+
+**Fix** (commit `730e2ba`): quitar el `path("admin/", ...)` de `el_taller/urls.py`. CI verde, digest auto-pineado por bot, pull en La Sede.
+
+### Bug B: healthchecks rechazaron `localhost:8001/ping` con `DisallowedHost`
+
+Mi `.env` inicial puso `GERENCIA_ALLOWED_HOSTS=gerencia.ninomeando.com` (sin `localhost,127.0.0.1` que sí estaba en `.env.example`). El healthcheck del container Docker hace `urllib.request.urlopen('http://localhost:8001/ping')` desde dentro del propio container, y Django respondía 400.
+
+**Fix:** sed inline en el `.env` del Droplet agregando `,localhost,127.0.0.1` a los 3 hosts. `up -d --force-recreate --no-deps la-gerencia la-recepcion` → healthy en 27s.
+
+## 6. Endpoints públicos vivos
+
+| URL | HTTP | Cert |
+|---|---|---|
+| https://gerencia.ninomeando.com/ping | 200 `{"ok": true, "app": "la-gerencia"}` | Let's Encrypt válido |
+| https://taller.ninomeando.com/ping | 200 `{"ok": true, "app": "el-taller"}` | Let's Encrypt válido |
+| https://recepcion.ninomeando.com/ping | 200 `{"ok": true, "app": "la-recepcion", "estado": "stub"}` | Let's Encrypt válido |
+| https://gerencia.ninomeando.com/sign-in | 200 | — |
+| https://taller.ninomeando.com/sign-in | 200 | — |
+
+Caddy negoció los 3 certs en ~3s (HTTP-01 challenge, retries por todas las regiones de LE simultáneas — comportamiento normal).
+
+## 7. CI/CD: `🚚 La Mudanza`
+
+- Secrets configurados con `gh secret set` en `Yosoyobo/el-despacho`:
+  - `SEDE_HOST=157.230.48.232`
+  - `SEDE_USER=despacho`
+  - `SEDE_SSH_KEY` = contenido de `~/.ssh/el-despacho-sede` (privada ed25519)
+- Job nuevo en `.github/workflows/el-mensajero.yml`: `mudanza` corre tras `actualizar_digests`. Usa `appleboy/ssh-action@v1.2.0`. Ejecuta `git pull --ff-only && docker compose pull && up -d` + smoke `/ping` interno.
+- **Primer auto-deploy verde end-to-end en 1m24s** (run `25892349320`). Confirmado con `curl https://gerencia/...` post-mudanza.
+
+Pipeline completo ahora:
+```
+git push main
+  → pruebas (71 tests)
+  → ruff
+  → build matrix (gerencia/taller/recepcion → GHCR)
+  → actualizar_digests (sha256 → docker-compose.prod.yml, bot commit)
+  → 🚚 mudanza (SSH a La Sede → pull + up)
+```
+
+## 8. Backup
+
+- Cron de `despacho`: `0 3 * * 0 cd /opt/el-despacho && ./infra/scripts/archivo.sh >> /var/log/archivo.log 2>&1` (domingo 03:00).
+- Test manual ya generó `backups/db-20260514-235259.sql.gz` (5.5K) y `credenciales-20260514-235259.tar.gz`.
+
+## 9. Deuda al cierre de S1-deploy
+
+### Crítico para los próximos sprints (no para esta sesión)
+
+- **Droplet de 1 GB RAM es ajustado.** Postgres + 4 procesos gunicorn + Redis + Caddy + worker = ~70-80% mem en idle. Con 2-3 usuarios simultáneos funcionará; bajo carga real (10+) OOM es plausible. Resize a `s-1vcpu-2gb` ($12/mes, downtime ~5 min) cuando aprueben.
+- **Backups en disco local.** `./backups/` vive en el mismo disco del Droplet — si el Droplet muere, se pierden. S2 sería un buen momento para rclone/borg → DO Spaces.
+- **Job `mudanza` sin rollback automático.** Si el deploy nuevo levanta unhealthy, `up -d` deja containers en bad state. La salida actual es manual: SSH al Droplet y revisar logs. Considerar `healthcheck` post-deploy en el job que haga rollback si falla.
+
+### Bajo
+
+- **`docker-compose-plugin` → `docker-compose-v2`** en el README cuando documentemos deploy desde cero.
+- **`tests/conftest.py`** parcha emitir para tests Django (Redis fixture), pero **agregamos `apps.el_directorio.views` y `apps.los_ajustes.views`** a la lista de módulos a parchar — son de La Gerencia, no de El Taller. El parche `try/except ImportError` los salta silenciosamente, pero el día que escribamos tests de Gerencia hay que recordarlo.
+- **`SUPERADMIN_PASSWORD` solo vive en `/opt/el-despacho/.env`** (chmod 600, dueño `despacho`). El usuario debe cambiarlo en primer login si quiere algo memorable.
+
+## 10. Recomendaciones para S2
+
+1. **Antes de Stripe/MercadoPago en sandbox:** crear las credenciales en Los Ajustes (la-gerencia/ajustes/) — La Bóveda ya las cifra. Probar el flujo de webhooks vía n8n requiere primero levantar n8n en alguna parte (¿Droplet aparte, $4/mes? ¿VPN Tailscale al laptop?).
+2. **PDF de Cotizaciones vía Google Docs templates:** el usuario debe crear un Doc plantilla con placeholders `{{cliente}}`, `{{lineas}}`, etc. y compartirlo con un Service Account. Pedir el ID del Doc + el JSON del Service Account ANTES de empezar a codear.
+3. **Resize del Droplet a 2GB** justo antes de que Stripe webhooks empiecen a llegar de verdad — un timeout de webhook por OOM se convierte en pago no registrado.
+4. **Monitor de uptime externo** (UptimeRobot gratis): si Caddy o gunicorn se caen, el usuario quiere saberlo antes que el cliente.
+
+---
+
+**Cierre:** S1-deploy entrega El Despacho **vivo en producción** con HTTPS válido, auto-deploy de `git push` a Droplet en ~1.5 min, backup semanal, root SSH cerrado y password auth deshabilitado. El próximo turno (S2) empieza leyendo este archivo + `CLAUDE.md` + `git log -1`.
