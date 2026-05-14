@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .campo-form input[type="text"],
+  .campo-form input[type="email"],
+  .campo-form input[type="password"],
+  .campo-form input[type="url"],
+  .campo-form input[type="number"],
+  .campo-form input[type="date"],
+  .campo-form input[type="datetime-local"],
+  .campo-form input[type="tel"],
+  .campo-form textarea,
+  .campo-form select {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400;
+  }
+  .campo-form textarea {
+    @apply min-h-[80px];
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-slate  { @apply bg-slate-100  text-slate-700; }
+  .badge-blue   { @apply bg-blue-100   text-blue-700; }
+  .badge-amber  { @apply bg-amber-100  text-amber-800; }
+  .badge-emerald{ @apply bg-emerald-100 text-emerald-700; }
+  .badge-rose   { @apply bg-rose-100   text-rose-700; }
+  .badge-purple { @apply bg-purple-100 text-purple-700; }
+  .badge-orange { @apply bg-orange-100 text-orange-700; }
+}

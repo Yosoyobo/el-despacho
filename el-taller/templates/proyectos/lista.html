@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load proyectos_extras %}
+{% block title %}Los Proyectos — El Taller{% endblock %}
+{% block contenido %}
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <h1 class="text-2xl font-semibold">Los Proyectos</h1>
+    {% if puede_crear %}
+    <a href="{% url 'proyectos-nuevo' %}" class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-md text-sm">+ Nuevo proyecto</a>
+    {% endif %}
+</div>
+
+<form method="get" class="mb-4 flex gap-2 flex-wrap items-center">
+    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por código, nombre o cliente…"
+           class="px-3 py-2 border border-slate-300 rounded-md w-full sm:w-80">
+    <select name="estado" class="px-3 py-2 border border-slate-300 rounded-md">
+        <option value="">— todos los estados —</option>
+        {% for k, v in estados_disponibles %}
+        <option value="{{ k }}" {% if estado == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-md text-sm">Filtrar</button>
+</form>
+
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 text-slate-600 text-left">
+            <tr>
+                <th class="px-4 py-2">Código</th><th class="px-4 py-2">Nombre</th><th class="px-4 py-2">Cliente</th>
+                <th class="px-4 py-2">Estado</th><th class="px-4 py-2">Compromiso</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for p in proyectos %}
+            <tr>
+                <td class="px-4 py-2"><a class="text-amber-700 hover:underline" href="{% url 'proyectos-detalle' p.pk %}">{{ p.codigo }}</a></td>
+                <td class="px-4 py-2 font-medium">{{ p.nombre }}</td>
+                <td class="px-4 py-2 text-slate-600">{{ p.cliente.razon_social }}</td>
+                <td class="px-4 py-2"><span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
+                <td class="px-4 py-2 text-slate-600">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Sin proyectos visibles.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

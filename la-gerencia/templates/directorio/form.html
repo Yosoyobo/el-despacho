@@ -8,7 +8,7 @@
     {% for f in form %}
     <div>
         <label class="block text-sm font-medium mb-1">{{ f.label }}</label>
-        {{ f }}
+        <div class="campo-form">{{ f }}</div>
         {% if f.help_text %}<p class="text-xs text-slate-500 mt-1">{{ f.help_text }}</p>{% endif %}
         {% if f.errors %}<p class="text-xs text-red-600 mt-1">{{ f.errors|join:" / " }}</p>{% endif %}
     </div>
@@ -20,9 +20,4 @@
         </button>
     </div>
 </form>
-
-<style>
-form input[type=text], form input[type=email], form input[type=password],
-form select { @apply w-full px-3 py-2 border border-slate-300 rounded-md; }
-</style>
 {% endblock %}

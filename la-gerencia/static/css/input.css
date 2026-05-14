@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .campo-form input[type="text"],
+  .campo-form input[type="email"],
+  .campo-form input[type="password"],
+  .campo-form input[type="url"],
+  .campo-form input[type="number"],
+  .campo-form input[type="date"],
+  .campo-form input[type="datetime-local"],
+  .campo-form textarea,
+  .campo-form select {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400;
+  }
+  .campo-form textarea {
+    @apply min-h-[80px];
+  }
+}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ modo|capfirst }} proyecto — Los Proyectos{% endblock %}
+{% block contenido %}
+<h1 class="text-2xl font-semibold mb-6">{{ modo|capfirst }} proyecto</h1>
+
+<form method="post" class="max-w-2xl bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-4 campo-form">
+    {% csrf_token %}
+    {% for f in form %}
+    <div>
+        <label class="block text-sm font-medium mb-1">{{ f.label }}</label>
+        {{ f }}
+        {% if f.help_text %}<p class="text-xs text-slate-500 mt-1">{{ f.help_text }}</p>{% endif %}
+        {% if f.errors %}<p class="text-xs text-red-600 mt-1">{{ f.errors|join:" / " }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="flex justify-between pt-2">
+        <a href="{% if proyecto %}{% url 'proyectos-detalle' proyecto.pk %}{% else %}{% url 'proyectos-lista' %}{% endif %}" class="text-slate-500 hover:underline">Cancelar</a>
+        <button type="submit" class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-md text-sm">Guardar</button>
+    </div>
+</form>
+{% endblock %}

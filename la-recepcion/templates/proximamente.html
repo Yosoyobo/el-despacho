@@ -4,13 +4,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>La Recepción — Próximamente</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+               font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+               background: linear-gradient(135deg, #f0f9ff, #e0f2fe); color: #1e293b; }
+        .tarjeta { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem;
+                   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08); padding: 2.5rem; max-width: 32rem; text-align: center; }
+        h1 { font-size: 1.875rem; font-weight: 600; margin: 0 0 0.75rem; }
+        p { margin: 0 0 0.5rem; color: #475569; }
+        .nota { font-size: 0.875rem; color: #94a3b8; }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-sky-50 to-sky-100 min-h-screen flex items-center justify-center text-slate-800">
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-md p-10 max-w-lg text-center">
-        <h1 class="text-3xl font-semibold mb-3">La Recepción</h1>
-        <p class="text-slate-600 mb-2">Portal de clientes de Learning Center.</p>
-        <p class="text-sm text-slate-400">Próximamente. Andamio reservado — UI completa en S5.</p>
+<body>
+    <div class="tarjeta">
+        <h1>La Recepción</h1>
+        <p>Portal de clientes de Learning Center.</p>
+        <p class="nota">Próximamente. Andamio reservado — UI completa en S5.</p>
     </div>
 </body>
 </html>

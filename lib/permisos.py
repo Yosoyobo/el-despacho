@@ -40,9 +40,46 @@ def puede_ver_proyecto(user, proyecto) -> bool:
     if rol in ("super_admin", "dueno"):
         return True
     if rol == "contador":
-        return True  # ve proyectos para reconciliar pagos
+        return True  # ve proyectos para reconciliar pagos (read-only enforced en vistas)
     if rol == "disenador":
-        return proyecto.asignados.filter(pk=user.pk).exists()
+        return proyecto.asignaciones.filter(usuario_id=user.pk).exists()
+    return False
+
+
+def puede_editar_proyecto(user, proyecto) -> bool:
+    """Crear/editar/cambiar estado de proyectos: solo admins. Diseñadores
+    pueden actuar sobre tareas pero no mutar el proyecto mismo."""
+    return es_admin(user)
+
+
+def puede_ver_cartera(user) -> bool:
+    """Listar y ver clientes: admins + contador (read-only); diseñadores no."""
+    return getattr(user, "rol", None) in ("super_admin", "dueno", "contador")
+
+
+def puede_editar_cartera(user) -> bool:
+    """Crear/editar/archivar clientes: solo admins."""
+    return es_admin(user)
+
+
+def puede_ver_tarea(user, tarea) -> bool:
+    """Tareas: heredan la visibilidad del proyecto."""
+    return puede_ver_proyecto(user, tarea.proyecto)
+
+
+def puede_ver_comentario(user, comentario) -> bool:
+    """Comentario interno: oculto a `disenador` salvo que sea el autor.
+    Comentario público: visible si el usuario ve el proyecto/tarea padre."""
+    rol = getattr(user, "rol", None)
+    if rol in ("super_admin", "dueno", "contador"):
+        return True
+    if rol == "disenador":
+        if comentario.es_interno and comentario.autor_id != getattr(user, "pk", None):
+            return False
+        proyecto = comentario.proyecto or (comentario.tarea.proyecto if comentario.tarea else None)
+        if proyecto is None:
+            return False
+        return puede_ver_proyecto(user, proyecto)
     return False
 
 

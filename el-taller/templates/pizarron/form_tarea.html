@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ modo|capfirst }} tarea — El Pizarrón{% endblock %}
+{% block contenido %}
+<h1 class="text-2xl font-semibold mb-2">{{ modo|capfirst }} tarea</h1>
+<p class="text-sm text-slate-600 mb-6">Proyecto: <a class="text-amber-700 hover:underline" href="{% url 'proyectos-detalle' proyecto.pk %}">{{ proyecto.codigo }} · {{ proyecto.nombre }}</a></p>
+
+<form method="post" class="max-w-2xl bg-white border rounded-lg p-6 space-y-4 campo-form">
+    {% csrf_token %}
+    {% for f in form %}
+    <div>
+        <label class="block text-sm font-medium mb-1">{{ f.label }}</label>
+        {{ f }}
+        {% if f.errors %}<p class="text-xs text-red-600 mt-1">{{ f.errors|join:" / " }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="flex justify-between pt-2">
+        <a href="{% if tarea %}{% url 'pizarron-detalle-tarea' tarea.pk %}{% else %}{% url 'proyectos-detalle' proyecto.pk %}{% endif %}" class="text-slate-500 hover:underline">Cancelar</a>
+        <button type="submit" class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-md text-sm">Guardar</button>
+    </div>
+</form>
+{% endblock %}

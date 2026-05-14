@@ -12,7 +12,11 @@ echo "[el-taller] Aplicando migraciones..."
 python manage.py migrate --noinput
 
 echo "[el-taller] collectstatic..."
-python manage.py collectstatic --noinput --clear
+if [ "${DESPACHO_ENV:-development}" = "production" ]; then
+    python manage.py collectstatic --noinput
+else
+    python manage.py collectstatic --noinput --clear
+fi
 
 echo "[el-taller] Arrancando gunicorn (UvicornWorker)..."
 exec gunicorn el_taller.asgi:application \

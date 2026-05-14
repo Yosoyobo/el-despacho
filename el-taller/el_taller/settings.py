@@ -27,6 +27,9 @@ INSTALLED_APPS = [
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
     "apps.legal.apps.LegalConfig",
+    "apps.la_cartera.apps.LaCarteraConfig",
+    "apps.los_proyectos.apps.LosProyectosConfig",
+    "apps.el_pizarron.apps.ElPizarronConfig",
 ]
 
 MIDDLEWARE = [

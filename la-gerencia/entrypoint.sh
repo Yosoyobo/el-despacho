@@ -15,7 +15,11 @@ echo "[la-gerencia] Bootstrap super_admin..."
 python manage.py bootstrap_superadmin || true
 
 echo "[la-gerencia] collectstatic..."
-python manage.py collectstatic --noinput --clear
+if [ "${DESPACHO_ENV:-development}" = "production" ]; then
+    python manage.py collectstatic --noinput
+else
+    python manage.py collectstatic --noinput --clear
+fi
 
 echo "[la-gerencia] Arrancando gunicorn (UvicornWorker)..."
 exec gunicorn la_gerencia.asgi:application \

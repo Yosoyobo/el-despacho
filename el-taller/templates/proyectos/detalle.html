@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load proyectos_extras %}
+{% block title %}{{ proyecto.codigo }} — {{ proyecto.nombre }}{% endblock %}
+{% block contenido %}
+<div class="flex items-start justify-between mb-6 flex-wrap gap-3">
+    <div>
+        <p class="text-xs uppercase tracking-wider text-slate-500">{{ proyecto.codigo }}</p>
+        <h1 class="text-2xl font-semibold">{{ proyecto.nombre }}</h1>
+        <p class="text-sm text-slate-600">Cliente:
+            <a class="text-amber-700 hover:underline" href="{% url 'cartera-detalle' proyecto.cliente.pk %}">{{ proyecto.cliente.razon_social }}</a></p>
+        <span class="badge {{ proyecto.estado|color_estado }} mt-1">{{ proyecto.get_estado_display }}</span>
+    </div>
+    {% if puede_editar %}
+    <div class="flex gap-2 flex-wrap">
+        <a href="{% url 'proyectos-editar' proyecto.pk %}" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-md text-sm">Editar</a>
+        <a href="{% url 'proyectos-cambiar-estado' proyecto.pk %}" class="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded-md text-sm">Cambiar estado</a>
+        <a href="{% url 'proyectos-asignar' proyecto.pk %}" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-md text-sm">Asignar</a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="grid sm:grid-cols-3 gap-4 mb-8">
+    <div class="bg-white border rounded-lg p-4">
+        <h3 class="text-xs uppercase text-slate-500 mb-2">Fechas</h3>
+        <p class="text-sm">Inicio: <span class="font-medium">{{ proyecto.fecha_inicio|date:"d M Y"|default:"—" }}</span></p>
+        <p class="text-sm">Compromiso: <span class="font-medium">{{ proyecto.fecha_compromiso|date:"d M Y"|default:"—" }}</span></p>
+        <p class="text-sm">Entrega real: <span class="font-medium">{{ proyecto.fecha_real_entrega|date:"d M Y"|default:"—" }}</span></p>
+    </div>
+    <div class="bg-white border rounded-lg p-4">
+        <h3 class="text-xs uppercase text-slate-500 mb-2">Monto estimado</h3>
+        <p class="text-xl font-semibold">{% if proyecto.monto_estimado %}${{ proyecto.monto_estimado }}{% else %}<span class="text-slate-400">—</span>{% endif %}</p>
+    </div>
+    <div class="bg-white border rounded-lg p-4">
+        <h3 class="text-xs uppercase text-slate-500 mb-2">Equipo</h3>
+        {% if asignaciones %}
+        <ul class="text-sm space-y-1">
+            {% for a in asignaciones %}
+            <li>{{ a.usuario.nombre_completo|default:a.usuario.email }} <span class="text-slate-400">({{ a.get_rol_en_proyecto_display }})</span></li>
+            {% endfor %}
+        </ul>
+        {% else %}<p class="text-sm text-slate-400">Sin asignar.</p>{% endif %}
+    </div>
+</div>
+
+{% if proyecto.descripcion %}
+<div class="bg-white border rounded-lg p-4 mb-8">
+    <h3 class="text-xs uppercase text-slate-500 mb-2">Descripción</h3>
+    <p class="text-sm whitespace-pre-wrap">{{ proyecto.descripcion }}</p>
+</div>
+{% endif %}
+
+<div class="flex items-center justify-between mb-3">
+    <h2 class="font-semibold">El Pizarrón — Tareas</h2>
+    <a href="{% url 'pizarron-nueva-tarea' proyecto.pk %}" class="text-amber-700 hover:underline text-sm">+ Nueva tarea</a>
+</div>
+
+<div class="bg-white border rounded-lg overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 text-slate-600 text-left">
+            <tr><th class="px-4 py-2">Tarea</th><th class="px-4 py-2">Asignada a</th><th class="px-4 py-2">Estado</th><th class="px-4 py-2">Prioridad</th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for t in tareas %}
+            <tr>
+                <td class="px-4 py-2"><a class="text-amber-700 hover:underline" href="{% url 'pizarron-detalle-tarea' t.pk %}">{{ t.titulo }}</a></td>
+                <td class="px-4 py-2 text-slate-600">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
+                <td class="px-4 py-2"><span class="badge
+                    {% if t.estado == 'completada' %}badge-emerald
+                    {% elif t.estado == 'bloqueada' %}badge-rose
+                    {% elif t.estado == 'en_curso' %}badge-amber
+                    {% else %}badge-slate{% endif %}">{{ t.get_estado_display }}</span></td>
+                <td class="px-4 py-2"><span class="badge
+                    {% if t.prioridad == 'alta' %}badge-rose
+                    {% elif t.prioridad == 'media' %}badge-amber
+                    {% else %}badge-slate{% endif %}">{{ t.get_prioridad_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Sin tareas todavía.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
