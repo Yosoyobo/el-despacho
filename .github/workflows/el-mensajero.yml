@@ -55,8 +55,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - app: direccion
-            dockerfile: la-direccion/Dockerfile
+          - app: gerencia
+            dockerfile: la-gerencia/Dockerfile
           - app: taller
             dockerfile: el-taller/Dockerfile
           - app: recepcion

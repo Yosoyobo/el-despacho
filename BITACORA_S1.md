@@ -28,14 +28,14 @@
 | `cuentas/` (Usuario AUTH_USER_MODEL) | ✅ | Email como `USERNAME_FIELD`, roles `(super_admin, dueno, contador, disenador)`, migración inicial congelada. |
 | `ajustes/` (Credencial cifrada) | ✅ | KV con 14 slots predefinidos; `.obtener()` / `.guardar()` automáticos via Bóveda. |
 
-### La Dirección (puerto 8001) — ✅ completo para alcance S1a
+### La Gerencia (puerto 8001) — ✅ completo para alcance S1a
 
 | Módulo | Estado | Notas |
 |---|---|---|
-| `auth_direccion` (login email/pwd + Google SSO + rate-limit) | ✅ | Solo `super_admin` y `dueno`. |
+| `auth_gerencia` (login email/pwd + Google SSO + rate-limit) | ✅ | Solo `super_admin` y `dueno`. |
 | `el_directorio` (CRUD Usuario) | ✅ | Lista + crear + editar + bloquear; emite eventos `usuario.creado` / `usuario.bloqueado`. |
 | `los_ajustes` (UI credenciales cifradas) | ✅ | Solo super_admin; emite `ajuste.credencial_guardada`. "Probar" actualmente solo valida descifrado — pruebas reales contra APIs llegan en S2+. |
-| `direccion_home` (Sala de Juntas) | 🟡 placeholder | 4 tarjetas: salud Bóveda, conteo credenciales configuradas, conteo usuarios activos, "próximos módulos". KPIs reales en S3. |
+| `gerencia_home` (Sala de Juntas) | 🟡 placeholder | 4 tarjetas: salud Bóveda, conteo credenciales configuradas, conteo usuarios activos, "próximos módulos". KPIs reales en S3. |
 | `legal` (privacidad/términos LFPDPPP) | ✅ | Texto base; legal/contador puede refinar contenido en S2. |
 
 ### El Taller (puerto 8000) — ✅ andamio S1a
@@ -44,7 +44,7 @@
 |---|---|---|
 | `auth_taller` (login los 4 roles + Google SSO + rate-limit) | ✅ | |
 | `taller_home` | 🟡 placeholder | Sin CRUDs todavía. |
-| `legal` | ✅ | Mismo contenido que La Dirección. |
+| `legal` | ✅ | Mismo contenido que La Gerencia. |
 | **La Cartera, Los Proyectos, El Pizarrón** | ⏳ pendiente S1b | |
 
 ### La Recepción (puerto 8002) — 🟡 stub
@@ -110,12 +110,12 @@ Se aplicaron en el arranque inicial vía `migrate`. Las tablas Django built-in (
 
 ## 3. Endpoints expuestos por app
 
-### La Dirección (`direccion.ninomeando.com` · 8001)
+### La Gerencia (`gerencia.ninomeando.com` · 8001)
 
 | Método | Path | Vista | Auth |
 |---|---|---|---|
-| GET/POST | `/sign-in` | `auth_direccion.sign_in` | público |
-| GET | `/sign-out` | `auth_direccion.sign_out` | login |
+| GET/POST | `/sign-in` | `auth_gerencia.sign_in` | público |
+| GET | `/sign-out` | `auth_gerencia.sign_out` | login |
 | GET | `/auth/google/start` | inicia OAuth | público (503 si no configurado) |
 | GET | `/auth/google/callback` | callback OAuth | — |
 | GET | `/` | Sala de Juntas | login |
@@ -129,7 +129,7 @@ Se aplicaron en el arranque inicial vía `migrate`. Las tablas Django built-in (
 | POST | `/ajustes/<clave>/probar` | smoke test descifrado | super_admin |
 | GET | `/legal/privacidad`, `/legal/terminos` | legales | público |
 
-### El Taller (`oficina.ninomeando.com` · 8000)
+### El Taller (`taller.ninomeando.com` · 8000)
 
 | Método | Path | Vista | Auth |
 |---|---|---|---|
@@ -215,9 +215,9 @@ $ pytest -q tests/
 
 ### Naming y estructura
 
-- **Apps Django compartidas en la raíz del repo** (`cuentas/`, `ajustes/`) en lugar de `apps_compartidos/` con sub-paquetes. Justificación: imports limpios (`from cuentas.models.usuario import Usuario`) y ambos Django projects (La Dirección y El Taller) las incluyen en `INSTALLED_APPS` sin gimnasia de paths.
-- **Las apps de cada Django project viven bajo `apps/`** (ej. `la-direccion/apps/el_directorio/`) con `app_label` explícito (`label = "el_directorio"`). Esto permite tener dos apps `legal/` (una en cada project) con `label="legal_direccion"` y `label="legal_taller"` para que no choquen en la DB de `django_content_type` cuando ambos projects comparten Postgres.
-- **`container_name` con prefijo `despacho-*`** — para coexistir con El Corporativo que ya corre en HAL bajo `la-direccion`, `el-portero`, `la-oficina`. **No estaba en el prompt** pero era obligatorio para que `docker compose up` funcionara en HAL.
+- **Apps Django compartidas en la raíz del repo** (`cuentas/`, `ajustes/`) en lugar de `apps_compartidos/` con sub-paquetes. Justificación: imports limpios (`from cuentas.models.usuario import Usuario`) y ambos Django projects (La Gerencia y El Taller) las incluyen en `INSTALLED_APPS` sin gimnasia de paths.
+- **Las apps de cada Django project viven bajo `apps/`** (ej. `la-gerencia/apps/el_directorio/`) con `app_label` explícito (`label = "el_directorio"`). Esto permite tener dos apps `legal/` (una en cada project) con `label="legal_gerencia"` y `label="legal_taller"` para que no choquen en la DB de `django_content_type` cuando ambos projects comparten Postgres.
+- **`container_name` con prefijo `despacho-*`** — para coexistir con El Corporativo que ya corre en HAL bajo `la-gerencia`, `el-portero`, `la-oficina`. **No estaba en el prompt** pero era obligatorio para que `docker compose up` funcionara en HAL.
 - **Puertos de Caddy `19080/19443`** — El Corporativo ya usa `18080/18443`. Si esto va a producción en otro Droplet, el `.env` debería volver a `80/443` o `18080/18443`. Documentado en `.env.example` los defaults para HAL.
 
 ### Modelo Usuario
@@ -236,13 +236,13 @@ $ pytest -q tests/
 
 ### Auth
 
-- **La Dirección rechaza `contador` y `disenador`** en el sign-in (403). Ellos entran solo por El Taller. Esto **no estaba explícito en el prompt** — interpreté que La Dirección = "panel de mando" implica admin-only.
-- **Cookies nombradas distintas** (`direccion_session` vs `taller_session`) para permitir doble login simultáneo desde el mismo navegador en el mismo dominio raíz.
+- **La Gerencia rechaza `contador` y `disenador`** en el sign-in (403). Ellos entran solo por El Taller. Esto **no estaba explícito en el prompt** — interpreté que La Gerencia = "panel de mando" implica admin-only.
+- **Cookies nombradas distintas** (`gerencia_session` vs `taller_session`) para permitir doble login simultáneo desde el mismo navegador en el mismo dominio raíz.
 - **Bootstrap super_admin idempotente**: si el usuario existe, solo actualiza rol/is_active/is_staff/is_superuser. **No** sobreescribe el password — si ya lo cambiaste tras el primer login, sigue funcionando.
 
 ### Portavoz
 
-- **Worker como servicio Docker separado** (`despacho-portavoz-worker`). Comparte la imagen de La Dirección porque necesita Django setup para leer `Credencial`.
+- **Worker como servicio Docker separado** (`despacho-portavoz-worker`). Comparte la imagen de La Gerencia porque necesita Django setup para leer `Credencial`.
 - **Re-encolado al final de la cola** si n8n no responde. Backoff fijo de 10s tras fallo, 30s si faltan credenciales. **No hay dead-letter queue todavía** — un evento podría reciclar infinitamente. Marcado abajo como deuda.
 
 ### Infra
@@ -272,7 +272,7 @@ $ pytest -q tests/
 - **No hay healthcheck en los containers de Django** — solo postgres y redis lo tienen. Agregar `healthcheck: curl -f http://localhost:8001/ping` (requiere instalar curl en la imagen o usar python).
 - **Tailwind CDN** — bonito para iterar, pero en prod hay que compilar. La Cocina/El Corporativo ya tienen ese patrón resuelto, copiar config.
 - **Iconos PWA / manifest** — no se generaron (regla #12 los pide). Llegan con S1b cuando haya UI sustantiva.
-- **`la-direccion/templates/directorio/form.html` tiene un `<style>` inline con `@apply`** que NO se compila sin PostCSS — por ahora los inputs heredan estilos del browser. Visualmente funcional pero no pulido.
+- **`la-gerencia/templates/directorio/form.html` tiene un `<style>` inline con `@apply`** que NO se compila sin PostCSS — por ahora los inputs heredan estilos del browser. Visualmente funcional pero no pulido.
 
 ### Bajo / nice-to-have
 
@@ -309,7 +309,7 @@ $ pytest -q tests/
 ### Antes de prod (cuando deploy a DO)
 
 13. **Cambia `CADDY_HTTP_PORT/HTTPS_PORT` a 80/443** en el `.env` del Droplet.
-14. **DNS de los 3 hosts** (`oficina/direccion/recepcion.ninomeando.com`) apuntando al Droplet — sin eso Let's Encrypt no emite cert.
+14. **DNS de los 3 hosts** (`taller/gerencia/recepcion.ninomeando.com`) apuntando al Droplet — sin eso Let's Encrypt no emite cert.
 15. **Configura los secrets de GHA** para que El Mensajero pueda invocar La Mudanza vía SSH (`SEDE_HOST`, `SEDE_USER`, `SEDE_SSH_KEY`).
 16. **Revisa `ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS`** — están parametrizados por env var pero hay que poblarlos con los dominios reales.
 17. **Considera un `init` job que corra `bootstrap_superadmin` solo en La Sede** y no en cada arranque — idempotente está bien, pero un job dedicado deja un audit trail más claro.

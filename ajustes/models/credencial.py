@@ -17,7 +17,7 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     # (clave, etiqueta_humana, descripción)
     ("google_oauth_client_id", "Google OAuth — Client ID", "Cliente OAuth del Workspace."),
     ("google_oauth_client_secret", "Google OAuth — Client Secret", "Secret del cliente OAuth."),
-    ("google_oauth_redirect_uri", "Google OAuth — Redirect URI", "Ej. https://oficina.ninomeando.com/auth/google/callback"),
+    ("google_oauth_redirect_uri", "Google OAuth — Redirect URI", "Ej. https://taller.ninomeando.com/auth/google/callback"),
     ("google_workspace_dominio", "Google Workspace — Dominio", "Dominio @ que se aceptará (vacío = cualquiera)."),
     ("stripe_secret_key", "Stripe — Secret Key (sk_...)", "Llave secreta del modo correspondiente."),
     ("stripe_webhook_secret", "Stripe — Webhook Secret (whsec_...)", "Validación de webhooks entrantes."),

@@ -5,14 +5,14 @@
 	email oscar@bautista.mx
 }
 
-oficina.ninomeando.com {
+taller.ninomeando.com {
 	encode gzip
 	reverse_proxy el-taller:8000
 }
 
-direccion.ninomeando.com {
+gerencia.ninomeando.com {
 	encode gzip
-	reverse_proxy la-direccion:8001
+	reverse_proxy la-gerencia:8001
 }
 
 recepcion.ninomeando.com {

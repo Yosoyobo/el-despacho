@@ -1,6 +1,6 @@
-"""Login para La Dirección: email/password + Google SSO (si está configurado)
+"""Login para La Gerencia: email/password + Google SSO (si está configurado)
 con rate-limit 5/15min (regla #5). Solo entran usuarios con rol admin (super_admin/dueno);
-contador y diseñador se loguean en El Taller — La Dirección es exclusiva de mando.
+contador y diseñador se loguean en El Taller — La Gerencia es exclusiva de mando.
 """
 
 from __future__ import annotations
@@ -38,9 +38,9 @@ def sign_in(request):
         messages.error(request, "Email y contraseña requeridos.")
         return render(request, "auth/sign_in.html", {"google_listo": google_listo}, status=400)
 
-    ident = f"direccion:{email}:{request.META.get('REMOTE_ADDR', '?')}"
+    ident = f"gerencia:{email}:{request.META.get('REMOTE_ADDR', '?')}"
     try:
-        intentar("login_direccion", ident, limite=5, ventana_seg=900)
+        intentar("login_gerencia", ident, limite=5, ventana_seg=900)
     except RateLimitExcedido as exc:
         messages.error(request, str(exc))
         return render(request, "auth/sign_in.html", {"google_listo": google_listo}, status=429)
@@ -57,7 +57,7 @@ def sign_in(request):
     login(request, user)
     user.ultimo_acceso_en = timezone.now()
     user.save(update_fields=["ultimo_acceso_en"])
-    reset("login_direccion", ident)
+    reset("login_gerencia", ident)
     return redirect("/")
 
 

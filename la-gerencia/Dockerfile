@@ -23,7 +23,7 @@ RUN pip install -r requirements.txt
 COPY lib/ /app/lib/
 COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
-COPY la-direccion/ /app/
+COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config
 RUN if [ -f tailwind.config.js ]; then \

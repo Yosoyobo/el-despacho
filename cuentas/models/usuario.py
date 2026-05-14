@@ -12,7 +12,7 @@ ROLES = (
 
 
 class Usuario(AbstractBaseUser, PermissionsMixin):
-    """Usuario único de El Despacho. Compartido entre La Dirección, El Taller y La Recepción."""
+    """Usuario único de El Despacho. Compartido entre La Gerencia, El Taller y La Recepción."""
 
     email = models.EmailField(unique=True, db_index=True)
     nombre_completo = models.CharField(max_length=200)

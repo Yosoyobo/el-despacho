@@ -1,6 +1,6 @@
 # ROLES — El Despacho
 
-Cuatro roles. Se asignan desde **El Directorio** en La Dirección. El primer
+Cuatro roles. Se asignan desde **El Directorio** en La Gerencia. El primer
 `super_admin` se crea automáticamente desde la variable de entorno
 `DESPACHO_SUPERADMIN_EMAIL` al arrancar.
 
@@ -9,13 +9,13 @@ Cuatro roles. Se asignan desde **El Directorio** en La Dirección. El primer
 - Acceso total.
 - **Único** rol que puede ver y modificar **Los Ajustes** (regla #3).
 - Gestiona usuarios desde El Directorio.
-- Puede acceder a La Dirección **y** El Taller.
+- Puede acceder a La Gerencia **y** El Taller.
 
 ## dueno
 
 - Todo lo operativo del despacho + reportes ejecutivos.
 - **No** accede a Los Ajustes (no toca llaves del sistema).
-- Puede acceder a La Dirección y El Taller.
+- Puede acceder a La Gerencia y El Taller.
 
 ## contador
 

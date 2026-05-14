@@ -29,16 +29,16 @@ services:
       timeout: 3s
       retries: 10
 
-  la-direccion:
+  la-gerencia:
     build:
       context: .
-      dockerfile: la-direccion/Dockerfile
-    container_name: despacho-la-direccion
+      dockerfile: la-gerencia/Dockerfile
+    container_name: despacho-gerencia
     restart: unless-stopped
     env_file: .env
     environment:
-      DJANGO_APP: la_direccion
-      DJANGO_ALLOWED_HOSTS: ${DIRECCION_ALLOWED_HOSTS}
+      DJANGO_APP: la_gerencia
+      DJANGO_ALLOWED_HOSTS: ${GERENCIA_ALLOWED_HOSTS}
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,7 +46,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data/credenciales:/data/credenciales
-      - ./data/staticfiles-direccion:/app/staticfiles
+      - ./data/staticfiles-gerencia:/app/staticfiles
     expose:
       - "8001"
 
@@ -65,7 +65,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      la-direccion:
+      la-gerencia:
         condition: service_started
     volumes:
       - ./data/credenciales:/data/credenciales
@@ -92,12 +92,12 @@ services:
   portavoz-worker:
     build:
       context: .
-      dockerfile: la-direccion/Dockerfile
+      dockerfile: la-gerencia/Dockerfile
     container_name: despacho-portavoz-worker
     restart: unless-stopped
     env_file: .env
     environment:
-      DJANGO_APP: la_direccion
+      DJANGO_APP: la_gerencia
     depends_on:
       redis:
         condition: service_healthy
@@ -110,7 +110,7 @@ services:
     container_name: despacho-el-portero
     restart: unless-stopped
     depends_on:
-      - la-direccion
+      - la-gerencia
       - el-taller
       - la-recepcion
     ports:

@@ -1,4 +1,4 @@
-"""Settings de La Dirección — el panel admin de El Despacho."""
+"""Settings de La Gerencia — el panel admin de El Despacho."""
 
 import os
 import sys
@@ -29,11 +29,11 @@ INSTALLED_APPS = [
     # Compartidas
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
-    # De La Dirección
-    "apps.auth_direccion.apps.AuthDireccionConfig",
+    # De La Gerencia
+    "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
     "apps.los_ajustes.apps.LosAjustesConfig",
-    "apps.direccion_home.apps.DireccionHomeConfig",
+    "apps.gerencia_home.apps.GerenciaHomeConfig",
     "apps.legal.apps.LegalConfig",
 ]
 
@@ -48,7 +48,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "la_direccion.urls"
+ROOT_URLCONF = "la_gerencia.urls"
 
 TEMPLATES = [
     {
@@ -65,8 +65,8 @@ TEMPLATES = [
     },
 ]
 
-ASGI_APPLICATION = "la_direccion.asgi.application"
-WSGI_APPLICATION = "la_direccion.wsgi.application"
+ASGI_APPLICATION = "la_gerencia.asgi.application"
+WSGI_APPLICATION = "la_gerencia.wsgi.application"
 
 DATABASES = {
     "default": {
@@ -92,8 +92,8 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/sign-in"
 
 # Cookie de sesión nombrada para no chocar con El Taller si compartieran subdominio.
-SESSION_COOKIE_NAME = "direccion_session"
-CSRF_COOKIE_NAME = "direccion_csrftoken"
+SESSION_COOKIE_NAME = "gerencia_session"
+CSRF_COOKIE_NAME = "gerencia_csrftoken"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = not DEBUG

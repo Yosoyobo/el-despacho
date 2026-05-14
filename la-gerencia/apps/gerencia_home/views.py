@@ -19,10 +19,10 @@ def home(request):
         "usuarios_total": total_usuarios,
         "usuarios_activos": activos,
     }
-    return render(request, "direccion_home/home.html", ctx)
+    return render(request, "gerencia_home/home.html", ctx)
 
 
 def ping(request):
     """Liveness probe sin auth — para healthchecks de Caddy/CI."""
     from django.http import JsonResponse
-    return JsonResponse({"ok": True, "app": "la-direccion"})
+    return JsonResponse({"ok": True, "app": "la-gerencia"})

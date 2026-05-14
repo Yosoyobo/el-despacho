@@ -22,9 +22,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 
 def _init_django():
-    """El worker comparte la DB con La Dirección para leer Los Ajustes."""
+    """El worker comparte la DB con La Gerencia para leer Los Ajustes."""
     sys.path.insert(0, "/app")
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "la_direccion.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "la_gerencia.settings")
     django.setup()
 
 

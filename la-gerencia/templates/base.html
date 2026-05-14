@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>{% block title %}La Dirección — El Despacho{% endblock %}</title>
+    <title>{% block title %}La Gerencia — El Despacho{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
     <style>
@@ -14,7 +14,7 @@
 {% if request.user.is_authenticated %}
 <nav class="bg-slate-900 text-white">
     <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-        <a href="/" class="font-semibold tracking-tight">La Dirección</a>
+        <a href="/" class="font-semibold tracking-tight">La Gerencia</a>
         <div class="flex gap-4 text-sm">
             <a href="/" class="hover:text-amber-300">Sala de Juntas</a>
             <a href="/directorio/" class="hover:text-amber-300">El Directorio</a>

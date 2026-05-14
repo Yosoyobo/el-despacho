@@ -13,7 +13,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        package: [el-despacho-direccion, el-despacho-taller, el-despacho-recepcion]
+        package: [el-despacho-gerencia, el-despacho-taller, el-despacho-recepcion]
     steps:
       - name: Mantener solo las últimas 10 versiones
         uses: actions/delete-package-versions@v5

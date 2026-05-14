@@ -10,7 +10,7 @@ productos promocionales, arte e imagen corporativa.
 
 | App | Audiencia | Puerto local |
 |---|---|---|
-| **La Dirección** | super_admin / dueño — configuración del sistema, panel ejecutivo | 8001 |
+| **La Gerencia** | super_admin / dueño — configuración del sistema, panel ejecutivo | 8001 |
 | **El Taller** | staff (dueño, contador, diseñadores) — operación día a día | 8000 |
 | **La Recepción** | clientes B2B — portal externo *(andamio S1, UI completa en S5)* | 8002 |
 
@@ -41,8 +41,8 @@ python -c "import secrets;print('DJANGO_SECRET_KEY=' + secrets.token_hex(32))" >
 # Edita .env y completa POSTGRES_PASSWORD, DESPACHO_SUPERADMIN_PASSWORD, etc.
 
 docker compose up -d --build
-# La Dirección  → http://localhost:18080  (host: direccion.ninomeando.com)
-# El Taller     → http://localhost:18080  (host: oficina.ninomeando.com)
+# La Gerencia  → http://localhost:18080  (host: gerencia.ninomeando.com)
+# El Taller     → http://localhost:18080  (host: taller.ninomeando.com)
 # La Recepción  → http://localhost:18080  (host: recepcion.ninomeando.com)
 ```
 

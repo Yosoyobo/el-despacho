@@ -1,5 +1,5 @@
 """Login para El Taller — staff: super_admin, dueno, contador, disenador.
-Mismo patrón que La Dirección pero acepta los 4 roles."""
+Mismo patrón que La Gerencia pero acepta los 4 roles."""
 
 from __future__ import annotations
 

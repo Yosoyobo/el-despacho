@@ -1,8 +1,8 @@
 # Override de producción. El Mensajero parchea los `image:` con digest pinneado
 # (ghcr.io/yosoyobo/el-despacho-*@sha256:...). Hasta tener CI completa esto es placeholder.
 services:
-  la-direccion:
-    image: ghcr.io/yosoyobo/el-despacho-direccion:latest
+  la-gerencia:
+    image: ghcr.io/yosoyobo/el-despacho-gerencia:latest
     build: null
   el-taller:
     image: ghcr.io/yosoyobo/el-despacho-taller:latest
@@ -11,5 +11,5 @@ services:
     image: ghcr.io/yosoyobo/el-despacho-recepcion:latest
     build: null
   portavoz-worker:
-    image: ghcr.io/yosoyobo/el-despacho-direccion:latest
+    image: ghcr.io/yosoyobo/el-despacho-gerencia:latest
     build: null

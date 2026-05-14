@@ -38,7 +38,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 
 | Pieza | Función | Puerto |
 |---|---|---|
-| **La Dirección** | Panel admin (super_admin/dueño): Ajustes, Directorio, Sala de Juntas | 8001 |
+| **La Gerencia** | Panel admin (super_admin/dueño): Ajustes, Directorio, Sala de Juntas | 8001 |
 | **El Taller** | Staff (dueño/contador/diseñador): operación día a día | 8000 |
 | **La Recepción** | Portal de clientes B2B — andamio S1, UI completa en S5 | 8002 |
 | **El Portero** | Caddy 2 + auto-HTTPS | 80/443 |
@@ -57,9 +57,9 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 
 | Módulo | App | Función | Sesión |
 |---|---|---|---|
-| **El Directorio** | La Dirección | CRUD usuarios + roles | S1a ✅ |
-| **Los Ajustes** | La Dirección | UI credenciales cifradas | S1a ✅ |
-| **La Sala de Juntas** | La Dirección | Dashboard at-a-glance | S3 |
+| **El Directorio** | La Gerencia | CRUD usuarios + roles | S1a ✅ |
+| **Los Ajustes** | La Gerencia | UI credenciales cifradas | S1a ✅ |
+| **La Sala de Juntas** | La Gerencia | Dashboard at-a-glance | S3 |
 | **La Cartera** | El Taller | CRUD clientes B2B | S1b |
 | **Los Proyectos** | El Taller | Proyectos, estados, asignaciones | S1b |
 | **El Pizarrón** | El Taller | Tareas + comentarios públicos/internos | S1b |
@@ -94,7 +94,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 12. **PWA con iconos generados** — en El Taller (S2+ probablemente).
 13. **`sanear_contexto()`** en endpoints de input libre antes de IA / webhooks.
 14. **`getAuth(request) → ContextoUsuario | None`** consistente (`lib/sesion.py`).
-15. **Cookies de sesión nombradas:** `direccion_session` / `taller_session` para
+15. **Cookies de sesión nombradas:** `gerencia_session` / `taller_session` para
     evitar choque si comparten dominio raíz.
 16. **El Despacho NO emite CFDI ni integra PAC.** Flujo híbrido — el contador
     timbra externamente.
@@ -107,9 +107,9 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 ```
 ElDespacho/
 ├── .env(.example)              # solo BOVEDA + Django + Postgres + Redis + bootstrap
-├── docker-compose.yml          # 6 servicios: postgres, redis, la-direccion, el-taller, la-recepcion, portavoz-worker, el-portero
+├── docker-compose.yml          # 6 servicios: postgres, redis, la-gerencia, el-taller, la-recepcion, portavoz-worker, el-portero
 ├── docker-compose.prod.yml     # override con images GHCR
-├── Caddyfile                   # 3 hosts (oficina/direccion/recepcion .ninomeando.com)
+├── Caddyfile                   # 3 hosts (taller/gerencia/recepcion .ninomeando.com)
 ├── requirements.txt            # compartido entre las 3 apps
 ├── pyproject.toml              # ruff + pytest
 ├── README.md · ROLES.md · CLAUDE.md
@@ -130,14 +130,14 @@ ElDespacho/
 │   ├── apps.py
 │   ├── models/credencial.py    # SLOTS_CREDENCIAL + .obtener()/.guardar()
 │   └── migrations/0001_initial.py
-├── la-direccion/
+├── la-gerencia/
 │   ├── Dockerfile · entrypoint.sh · manage.py
-│   ├── la_direccion/           # Django project: settings, urls, asgi, wsgi
+│   ├── la_gerencia/           # Django project: settings, urls, asgi, wsgi
 │   ├── apps/
-│   │   ├── auth_direccion/     # login email/pwd + Google SSO, solo super_admin/dueno
+│   │   ├── auth_gerencia/     # login email/pwd + Google SSO, solo super_admin/dueno
 │   │   ├── el_directorio/      # CRUD Usuario
 │   │   ├── los_ajustes/        # UI credenciales cifradas
-│   │   ├── direccion_home/     # Sala de Juntas (placeholder)
+│   │   ├── gerencia_home/     # Sala de Juntas (placeholder)
 │   │   └── legal/              # privacidad + términos
 │   └── templates/
 ├── el-taller/
@@ -164,17 +164,17 @@ ElDespacho/
 
 ## 6. Decisiones de diseño explícitas (no las cuestiones sin razón)
 
-- **`cuentas/` y `ajustes/` viven en la raíz** (no dentro de la-direccion ni el-taller)
+- **`cuentas/` y `ajustes/` viven en la raíz** (no dentro de la-gerencia ni el-taller)
   porque son apps Django compartidas. Ambos Django projects las incluyen en
-  `INSTALLED_APPS`. La regla #5 del Corporativo ("La Dirección no importa de
+  `INSTALLED_APPS`. La regla #5 del Corporativo ("La Gerencia no importa de
   La Oficina") aquí se cumple a través del **modelo compartido**, no espejo.
 - **Postgres único** (no SQLite per-user como El Corporativo): regla #10 fija.
 - **El Portavoz encola en Redis** y un worker dedicado postea a n8n.
   Django nunca espera a n8n. Si las credenciales faltan, los eventos quedan
   encolados — no se pierden.
-- **Cookies de sesión nombradas** (`direccion_session`, `taller_session`) para
+- **Cookies de sesión nombradas** (`gerencia_session`, `taller_session`) para
   permitir login simultáneo en ambas apps desde el mismo navegador.
-- **El Taller acepta los 4 roles**; La Dirección solo `super_admin` y `dueno`.
+- **El Taller acepta los 4 roles**; La Gerencia solo `super_admin` y `dueno`.
 - **HTMX por encima de SPA** — regla #17.
 - **Tailwind CDN en dev, CLI standalone en build** — el Dockerfile baja el
   binario Go y compila si hay `tailwind.config.js`. En S1a usamos CDN; en S1b+
@@ -192,7 +192,7 @@ ElDespacho/
 | `DJANGO_SECRET_KEY` | 64 hex chars. |
 | `POSTGRES_DB/USER/PASSWORD/HOST/PORT` | Conexión Postgres. |
 | `REDIS_URL` | `redis://redis:6379/0` |
-| `DIRECCION_ALLOWED_HOSTS` · `TALLER_ALLOWED_HOSTS` · `RECEPCION_ALLOWED_HOSTS` | coma-separados |
+| `GERENCIA_ALLOWED_HOSTS` · `TALLER_ALLOWED_HOSTS` · `RECEPCION_ALLOWED_HOSTS` | coma-separados |
 | `DESPACHO_SUPERADMIN_EMAIL` · `DESPACHO_SUPERADMIN_PASSWORD` | Bootstrap idempotente |
 | `CADDY_HTTP_PORT` · `CADDY_HTTPS_PORT` | `18080/18443` en HAL (macOS reserva 80/443) |
 | `DESPACHO_ENV` | `development` | `production` |
@@ -245,9 +245,9 @@ historial de facturas y pagos, mensajería con el despacho.
 ## 9. Decisiones operativas tomadas
 
 - **Repo:** `Yosoyobo/el-despacho` (privado). Imágenes en GHCR
-  `ghcr.io/yosoyobo/el-despacho-{direccion,taller,recepcion}`.
-- **Dominios placeholder:** `oficina.ninomeando.com` (El Taller),
-  `direccion.ninomeando.com` (La Dirección). Se cambian cuando el usuario tenga
+  `ghcr.io/yosoyobo/el-despacho-{gerencia,taller,recepcion}`.
+- **Dominios placeholder:** `taller.ninomeando.com` (El Taller),
+  `gerencia.ninomeando.com` (La Gerencia). Se cambian cuando el usuario tenga
   acceso a las DNS finales del cliente.
 - **Bootstrap super_admin:** `oscar@bautista.mx` via ENV `DESPACHO_SUPERADMIN_*`
   + management command `bootstrap_superadmin` (idempotente cada arranque).
