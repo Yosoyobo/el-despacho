@@ -201,22 +201,40 @@ ElDespacho/
 
 ## 8. Plan de sesiones
 
-### S1a — Cimientos ✅ (esta sesión)
+### S1a — Cimientos ✅
 
 infra · `lib/` · auth · El Directorio · Los Ajustes · La Recepción stub ·
 Legales · GHA skeleton · tests de lib · README/ROLES/CLAUDE.
 
-### S1b — Núcleo operativo de El Taller
+### S1-final ✅ (rename + S1b + tests + CI verde)
 
-La Cartera (CRUD clientes B2B con razón social, RFC, contacto, email, teléfono,
-dirección, notas) · Los Proyectos (CRUD: nombre, cliente, estado enum cerrado,
-fechas, asignados) · El Pizarrón (tareas dentro de proyecto + comentarios
-público/interno, flag visibilidad cliente para S5) · tests pytest CRUDs ·
-MANUAL.md extenso · iconos PWA generados · pulir Tailwind (CLI standalone
-compilado en Docker).
+Rename completo La Dirección → La Gerencia y oficina → taller en todo el repo
+(directorios, app_labels, cookies, contenedores, imágenes GHCR, Caddyfile,
+docs). Tailwind compilado per-app (CDN eliminado). S1b completo:
 
-**Pendiente decidir en S1b:** confirmar enum de estados de proyecto
-(`prospecto/en_diseno/en_produccion/entregado/cancelado` es propuesta inicial).
+- **La Cartera** — CRUD clientes B2B con soft delete, búsqueda, lista de
+  archivados solo admin. Eventos `cliente.creado/actualizado`.
+- **Los Proyectos** — CRUD con código auto `PRY-NNNNNN`, enum extendido
+  (`prospecto/cotizado/en_diseno/revision_cliente/en_produccion/entregado/
+  en_pausa/cancelado`), asignaciones con rol enum
+  (`lider/disenador/produccion/revisor`). Eventos `proyecto.creado/status_cambiado`.
+- **El Pizarrón** — Tareas con estado+prioridad+asignación, comentarios
+  polimórficos (tarea XOR proyecto, `CheckConstraint(condition=…)`),
+  `es_interno` oculto a diseñador no-autor. Eventos `tarea.creada/completada`.
+- **Portavoz DLQ** — `_intentos` por evento, descarte a `portavoz:fallidos`
+  tras 5 fallos. Comando `python manage.py portavoz_fallidos`.
+- **PWA El Taller** — manifest + 4 iconos PNG (any + maskable), apple-touch.
+- **Healthchecks Django** + `.dockerignore` ampliado + `collectstatic --clear`
+  gated por `DESPACHO_ENV`.
+- **El Mensajero auto-pin digests** — job `actualizar_digests` reescribe
+  `docker-compose.prod.yml` con `@sha256:…` y empuja como bot.
+- **71 tests verdes** con Redis service en CI (62 sin Redis local).
+
+### S1-deploy — siguiente sesión
+
+Levantar producción en La Sede: DNS de `gerencia/taller/recepcion.ninomeando.com`,
+secrets `SEDE_*` en GHA, job `mudanza` que SSH-ee y corra `mudanza.sh`,
+backup `archivo.sh` cron, smoke test post-deploy.
 
 ### S2 — Comercial y pagos
 

@@ -317,3 +317,162 @@ $ pytest -q tests/
 ---
 
 **Cierre:** S1a deja un esqueleto operativo, probado en HAL, con CI verde local (`pytest -q tests/` → 28/28). El próximo turno empieza leyendo `CLAUDE.md` + `BITACORA_S1.md` + `git log -1`.
+
+---
+
+# BITÁCORA — Sesión 1 (S1-final)
+
+> Cierre del **2026-05-14**, mismo día que S1a. Comenzó con repo `Yosoyobo/el-despacho` no creado en GitHub y termina con CI verde pushando a GHCR.
+> Cubrió: rename masivo (La Dirección → La Gerencia + oficina → taller), Tailwind compilado, S1b completo (La Cartera + Los Proyectos + El Pizarrón), Portavoz DLQ, suite de tests Django, healthchecks, PWA, y auto-pin de digests en CI.
+
+## 1. Módulos entregados sobre S1a
+
+### Rename completo (decisión correctiva, no estaba "feature")
+
+| Token (antes) | Token (después) | Alcance |
+|---|---|---|
+| `la-direccion/` directorio | `la-gerencia/` | repo entero |
+| `la_direccion` módulo Py | `la_gerencia` | settings, asgi, wsgi, manage, urls |
+| `direccion_home` app | `gerencia_home` | label + templates |
+| `auth_direccion` app | `auth_gerencia` | label + views + URL |
+| `legal_direccion` label | `legal_gerencia` | apps.py |
+| `direccion_session` / `_csrftoken` | `gerencia_session` / `_csrftoken` | settings |
+| `direccion.ninomeando.com` | `gerencia.ninomeando.com` | Caddyfile, env |
+| `DIRECCION_ALLOWED_HOSTS` | `GERENCIA_ALLOWED_HOSTS` | env vars |
+| `despacho-la-direccion` container | `despacho-gerencia` | compose |
+| `ghcr.io/.../el-despacho-direccion` | `…/el-despacho-gerencia` | workflows + compose.prod |
+| `oficina.ninomeando.com` | `taller.ninomeando.com` | Caddyfile, env, refs en docs |
+
+Los apps renombrados no tenían modelos → 0 rows en `django_content_type` / `django_migrations` que migrar. No fue necesaria data migration.
+
+### S1b — núcleo operativo de El Taller
+
+| Módulo | Estado | Notas |
+|---|---|---|
+| `apps.la_cartera` | ✅ | CRUD clientes B2B + soft delete + búsqueda · vista de archivados solo admin. Eventos `cliente.creado/actualizado`. |
+| `apps.los_proyectos` | ✅ | Proyectos con código auto `PRY-NNNNNN`, enum expandido (prospecto/cotizado/en_diseno/revision_cliente/en_produccion/entregado/en_pausa/cancelado), asignaciones M2M con rol enum (líder/diseñador/producción/revisor). Eventos `proyecto.creado/status_cambiado`. |
+| `apps.el_pizarron` | ✅ | Tareas (estado+prioridad+asignación opcional) y comentarios polimórficos (tarea XOR proyecto) con CheckConstraint. Comentarios internos ocultos a diseñador no-autor. Eventos `tarea.creada/completada`. |
+| `taller_home` con KPIs reales | ✅ | Clientes activos + proyectos recientes filtrados por rol + tareas pendientes propias. |
+
+### Núcleo de seguridad y operación
+
+| Pieza | Estado |
+|---|---|
+| Portavoz DLQ + max_intentos=5 | ✅ `lib/portavoz_worker.py` con `_reencolar_con_intento()`. JSON corrupto → DLQ inmediato. Falta de creds NO consume intento. |
+| Comando `portavoz_fallidos` | ✅ `ajustes/management/commands/portavoz_fallidos.py` con `--listar/--reencolar/--descartar/--vaciar`. |
+| Tailwind compilado real | ✅ per-app: `la-gerencia/` y `el-taller/` con `tailwind.config.js` + `static/css/input.css` + `.campo-form` clase. CDN eliminado en ambas apps. La Recepción usa CSS inline mínimo. |
+| `cuentas/0001_initial.py` fix | ✅ `managers=[]`, ya no referencia UserManager de auth. |
+| Healthchecks Django | ✅ los 3 servicios con `/ping` via urllib (no curl). Caddy `depends_on: service_healthy`. |
+| `.dockerignore` ampliado | ✅ excluye `tests/`, `.github/`, `BITACORA_*`, `.env*`. |
+| `collectstatic --clear` gated | ✅ solo si `DESPACHO_ENV != production` en ambos entrypoints. |
+| PWA El Taller | ✅ `manifest.json` (any + maskable), 4 iconos PNG, apple-touch-icon, theme_color. Script `scripts/generar_iconos_pwa.py` (Pillow, idempotente). |
+| El Mensajero auto-pin digests | ✅ nuevo job `actualizar_digests` resuelve sha256 desde GHCR y reescribe `docker-compose.prod.yml`. Bot commit + paths-ignore para evitar loop. |
+
+## 2. Tablas Postgres creadas (S1b)
+
+| Tabla | Campos clave |
+|---|---|
+| `cartera_cliente` | razon_social, rfc (UNIQUE parcial ≠""), estado (prospecto/activo/inactivo), activo (soft delete), creado_por FK |
+| `proyectos_proyecto` | codigo UNIQUE, cliente FK PROTECT, estado (enum 8), fechas (inicio/compromiso/real_entrega), monto_estimado |
+| `proyectos_asignacion` | proyecto FK, usuario FK, rol_en_proyecto enum, UNIQUE(proyecto,usuario) |
+| `pizarron_tarea` | proyecto FK, asignada_a FK SET_NULL, estado, prioridad, fecha_compromiso, completada_en |
+| `pizarron_comentario` | tarea FK null / proyecto FK null + CHECK(uno xor otro), autor FK PROTECT, es_interno bool |
+
+## 3. Endpoints expuestos (El Taller — nuevos)
+
+| Método | Path | Vista | Auth |
+|---|---|---|---|
+| GET | `/cartera/` | lista (filtros, archivados solo admin) | login + (admin/dueno/contador) |
+| GET/POST | `/cartera/nuevo` | crear | admin only |
+| GET | `/cartera/<id>/` | detalle + lista de proyectos | login + ver_cartera |
+| GET/POST | `/cartera/<id>/editar` | editar | admin only |
+| POST | `/cartera/<id>/archivar` | toggle soft delete | admin only |
+| GET | `/proyectos/` | lista filtrada por rol | login |
+| GET/POST | `/proyectos/nuevo` | crear | admin only |
+| GET | `/proyectos/<id>/` | detalle + tareas | login + ver_proyecto |
+| GET/POST | `/proyectos/<id>/editar` | editar | admin only |
+| GET/POST | `/proyectos/<id>/cambiar-estado` | mutar estado + fecha_real_entrega | admin only |
+| GET/POST | `/proyectos/<id>/asignar` | agregar/quitar miembros del equipo | admin only |
+| GET/POST | `/proyectos/<id>/tareas/nueva` | crear tarea | ver_proyecto |
+| POST | `/proyectos/<id>/comentar` | comentario a nivel proyecto | ver_proyecto |
+| GET | `/tareas/<id>/` | detalle + comentarios visibles | ver_tarea |
+| GET/POST | `/tareas/<id>/editar` | editar tarea | ver_tarea |
+| POST | `/tareas/<id>/comentar` | comentario a nivel tarea + sanear_contexto | ver_tarea |
+| POST | `/tareas/<id>/completar` | marca completada + completada_en | ver_tarea |
+
+`/admin/` (Django admin) montado en El Taller.
+
+## 4. Eventos del Portavoz emitidos en S1b
+
+- `cliente.creado` (en `/cartera/nuevo`)
+- `cliente.actualizado` (en `/cartera/<id>/editar`) — **agregado al Literal**
+- `proyecto.creado` (en `/proyectos/nuevo`)
+- `proyecto.status_cambiado` (en `/proyectos/<id>/cambiar-estado`)
+- `tarea.creada` (en `/proyectos/<id>/tareas/nueva`)
+- `tarea.completada` (en `/tareas/<id>/completar`)
+
+Todos van por la cola Redis → worker con DLQ.
+
+## 5. Tests pasando
+
+```
+$ pytest -q tests/
+71 passed, 0 skipped en CI (con redis service)
+62 passed, 9 skipped en HAL (sin redis local)
+```
+
+| Suite | Tests | Cobertura |
+|---|---|---|
+| `tests/test_boveda.py` | 8 | (S1a) |
+| `tests/test_portavoz.py` | 6 | (S1a) |
+| `tests/test_sanear.py` | 8 | (S1a) |
+| `tests/test_permisos.py` | 6 | (S1a) |
+| `tests/test_ratelimit.py` ✨ | 5 | sliding window, aislamiento, ventana corta. Redis-marked. |
+| `tests/test_sesion.py` ✨ | 5 | getAuth con/sin user, anónimo, super_admin / dueno / disenador. |
+| `tests/test_google_oauth.py` ✨ | 4 | esta_configurado + url_autorizacion. |
+| `tests/test_portavoz_worker.py` ✨ | 4 | _reencolar_con_intento, descarte a DLQ, JSON corrupto. Redis-marked. |
+| `tests/taller/test_cartera.py` ✨ | 8 | roles, CRUD, RFC inválido, soft delete. |
+| `tests/taller/test_proyectos.py` ✨ | 9 | visibilidad por rol, asignar/quitar, cambiar_estado, crear. |
+| `tests/taller/test_pizarron.py` ✨ | 8 | CHECK polimórfico, comentarios internos por rol, diseñador asignado completa tarea. |
+
+Setup: `tests/django_settings.py` (merge El Taller + SQLite in-memory), `tests/urls_taller.py`, conftest con autouse-fixture que monkeypatcha `emitir` a noop cuando Redis ausente y marca skip a tests `@pytest.mark.redis`.
+
+## 6. Decisiones aprobadas por Oscar (decir antes de codear, sección 5 del prompt)
+
+1. **Estados de Proyecto expandidos** — 8 valores incluyendo `cotizado`, `revision_cliente`, `en_pausa`. No agregué `en_espera_de_pago` (queda en La Cobranza S2).
+2. **Comentarios polimórficos** — Tarea XOR Proyecto con `models.CheckConstraint(condition=...)`.
+3. **`rol_en_proyecto` enum** — líder / diseñador / producción / revisor.
+4. **Cliente soft delete** — `activo=False`. PROTECT sobre proyectos. Manager `Cliente.activos` vs `Cliente.objects`.
+
+## 7. CI — El Mensajero (cierre de sesión)
+
+- Jobs verdes en `main`: `pruebas` (71 verdes con Redis service) + `lint` (ruff 0.8.4 clean) + `build` (matrix 3 apps push a GHCR) + `actualizar_digests` (login GHCR, `imagetools inspect`, reescritura de `docker-compose.prod.yml`, auto-commit por bot).
+- Repo: `https://github.com/Yosoyobo/el-despacho` privado.
+- Imágenes publicadas: `ghcr.io/yosoyobo/el-despacho-{gerencia,taller,recepcion}:{latest,<sha>}` + manifest digests fijados en `docker-compose.prod.yml`.
+
+## 8. Deuda técnica / TODOs (al cierre de S1-final)
+
+### Mediano
+
+- **Tests de vistas de La Gerencia** (Directorio, Ajustes). Markers `@pytest.mark.gerencia` listo en pyproject, falta escribirlos. El setup actual (`tests/urls_taller.py`) está sesgado a El Taller; un `tests/urls_gerencia.py` paralelo sería trivial.
+- **Despacho a La Sede (deploy SSH)** — secrets `SEDE_HOST`, `SEDE_USER`, `SEDE_SSH_KEY` aún no configurados. El job `actualizar_digests` deja el repo listo, pero `mudanza.sh` se invoca manual. En S1-deploy se activa.
+- **`la-recepcion` sin Tailwind** — usa CSS inline. Cuando llegue S5 conviene agregarle `tailwind.config.js`.
+- **`bootstrap_superadmin` solo en La Gerencia** — falta documentar que el `entrypoint.sh` lo corre cada arranque (es idempotente, no pisa password si el usuario existe).
+
+### Bajo
+
+- **Iconos PWA con letra "D"** son placeholder; reemplazar cuando haya logo de Learning Center.
+- **Subdominios `direccion.*` y `oficina.*`** podrían quedar como redirects 301 → nuevos durante la transición DNS, pero como aún no hay deploy en producción no aplica.
+- **`apps/.../templatetags/proyectos_extras.py`** vive bajo `los_proyectos/`. Si más adelante se usan los mismos colores en otros módulos (Cotizaciones, Facturación), conviene moverlos a una app `template_helpers/` compartida.
+
+## 9. Recomendaciones para S1-deploy (próxima sesión)
+
+1. **Configurar secrets de GHA** (`SEDE_HOST`, `SEDE_USER`, `SEDE_SSH_KEY`) y agregar el job `mudanza` que SSH-ea a La Sede y corre `mudanza.sh`.
+2. **DNS** — antes de cualquier deploy: `gerencia.ninomeando.com`, `taller.ninomeando.com`, `recepcion.ninomeando.com` apuntando al Droplet. Sin eso Let's Encrypt no emite cert.
+3. **`.env` de producción** con `DESPACHO_ENV=production`, `CADDY_HTTP_PORT=80`, `CADDY_HTTPS_PORT=443`, llaves nuevas (no las de HAL), bootstrap superadmin.
+4. **Smoke test post-deploy** — pedir las 3 URLs HTTPS desde HAL y verificar `/ping` JSON y `/sign-in` 200.
+5. **Backup automático** — agendar `archivo.sh` en cron de La Sede o un job GHA programado.
+
+---
+
+**Cierre:** S1-final entrega CRM operativo (clientes + proyectos + tareas + comentarios) con permisos por rol, eventos tipados con DLQ, Tailwind compilado, PWA andamio, healthchecks y CI con auto-pin de digests. El próximo turno empieza leyendo este archivo + `CLAUDE.md` + `git log -1`.
