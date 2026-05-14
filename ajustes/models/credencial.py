@@ -61,7 +61,7 @@ class Credencial(models.Model):
             return None
 
     @classmethod
-    def guardar(cls, clave: str, valor: str, *, usuario=None) -> "Credencial":
+    def guardar(cls, clave: str, valor: str, *, usuario=None) -> Credencial:
         """Cifra y persiste. Si valor es vacío, elimina la entrada."""
         if not valor:
             cls.objects.filter(clave=clave).delete()

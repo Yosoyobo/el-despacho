@@ -3,7 +3,6 @@ import secrets
 from django.conf import settings
 from django.db import models
 
-
 # Enum expandido para giro diseño/maquila:
 # - cotizado: entre prospecto y arranque (ventana comercial S2).
 # - revision_cliente: bottleneck típico waiting-on-client.

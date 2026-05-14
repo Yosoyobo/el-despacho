@@ -9,8 +9,8 @@ Roles:
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from functools import wraps
-from typing import Callable, Iterable
 
 from django.http import HttpRequest, HttpResponseForbidden
 from django.shortcuts import redirect

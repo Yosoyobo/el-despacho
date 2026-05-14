@@ -6,7 +6,6 @@ import pytest
 
 from lib import portavoz_worker as pw
 
-
 pytestmark = pytest.mark.redis
 
 

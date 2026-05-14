@@ -8,7 +8,6 @@ se vea uniforme entre apps.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from django.http import HttpRequest
 
@@ -30,7 +29,7 @@ class ContextoUsuario:
         return self.rol == "super_admin"
 
 
-def getAuth(request: HttpRequest) -> Optional[ContextoUsuario]:
+def getAuth(request: HttpRequest) -> ContextoUsuario | None:
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated:
         return None

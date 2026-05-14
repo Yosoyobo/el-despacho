@@ -18,7 +18,7 @@ DEBUG = os.environ.get("DESPACHO_ENV", "development") != "production"
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",") if h.strip()]
 
 # Forzar import de lib.boveda al arrancar — falla rápido si falta BOVEDA_MASTER_KEY (regla #2).
-import lib.boveda  # noqa: F401
+import lib.boveda  # noqa: E402, F401
 
 INSTALLED_APPS = [
     "django.contrib.auth",

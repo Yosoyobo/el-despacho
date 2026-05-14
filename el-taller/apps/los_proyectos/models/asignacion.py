@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.db import models
 
-
 ROLES_PROYECTO = (
     ("lider", "Líder"),
     ("disenador", "Diseñador"),

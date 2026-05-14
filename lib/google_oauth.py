@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -50,7 +49,7 @@ def esta_configurado() -> bool:
         return False
 
 
-def url_autorizacion(state: Optional[str] = None) -> tuple[str, str]:
+def url_autorizacion(state: str | None = None) -> tuple[str, str]:
     cid, _, redir = _leer_credenciales()
     state = state or secrets.token_urlsafe(24)
     params = {

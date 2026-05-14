@@ -7,7 +7,6 @@ import pytest
 from lib.errors import RateLimitExcedido
 from lib.ratelimit import intentar, reset
 
-
 pytestmark = pytest.mark.redis
 
 

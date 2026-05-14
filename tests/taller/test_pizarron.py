@@ -52,7 +52,7 @@ def test_comentario_polimorfico_check_constraint(usuario_factory, proyecto_facto
     from apps.el_pizarron.models import Comentario
 
     autor = usuario_factory()
-    p = proyecto_factory()
+    proyecto_factory()  # asegura que hay al menos un proyecto en DB (no se referencia)
     # Ambos NULL → debe fallar el CHECK.
     with pytest.raises(IntegrityError):
         Comentario.objects.create(autor=autor, cuerpo="huérfano", es_interno=False)

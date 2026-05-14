@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.db import models
 
-
 ESTADOS_TAREA = (
     ("pendiente", "Pendiente"),
     ("en_curso", "En curso"),

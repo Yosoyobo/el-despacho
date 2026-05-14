@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.el_pizarron.forms import ComentarioForm, TareaForm
-from apps.el_pizarron.models import Comentario, Tarea
+from apps.el_pizarron.models import Tarea
 from apps.los_proyectos.models import Proyecto
 from lib.permisos import (
     es_admin,

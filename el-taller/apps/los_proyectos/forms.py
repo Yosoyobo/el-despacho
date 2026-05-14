@@ -1,7 +1,7 @@
 from django import forms
 
 from apps.la_cartera.models import Cliente
-from apps.los_proyectos.models import Proyecto, ProyectoAsignacion, ROLES_PROYECTO, ESTADOS_PROYECTO
+from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto, ProyectoAsignacion
 from cuentas.models.usuario import Usuario
 
 
