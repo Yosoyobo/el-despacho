@@ -7,9 +7,13 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["E501"]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "lib"]
+pythonpath = [".", "lib", "el-taller", "la-gerencia"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+DJANGO_SETTINGS_MODULE = "tests.django_settings"
 filterwarnings = ["ignore::DeprecationWarning"]
-# Tests de Django (CRUDs) llegan en S1b — entonces se agrega DJANGO_SETTINGS_MODULE
-# y pytest-django como dependencia de testing.
+markers = [
+    "taller: tests del proyecto El Taller (CRUDs S1b)",
+    "gerencia: tests del proyecto La Gerencia (Directorio, Ajustes)",
+    "redis: requiere Redis corriendo en REDIS_URL",
+]

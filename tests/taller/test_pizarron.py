@@ -1,0 +1,114 @@
+"""Tests de El Pizarrón: tareas, comentarios polimórficos, visibilidad por rol."""
+
+import pytest
+from django.db import IntegrityError
+
+pytestmark = [pytest.mark.django_db, pytest.mark.taller]
+
+
+def test_admin_crea_tarea(client, usuario_factory, proyecto_factory):
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    client.force_login(admin)
+    resp = client.post(
+        f"/proyectos/{p.pk}/tareas/nueva",
+        {"titulo": "Diseñar portada", "descripcion": "",
+         "estado": "pendiente", "prioridad": "alta", "fecha_compromiso": ""},
+        follow=True,
+    )
+    assert resp.status_code == 200
+    from apps.el_pizarron.models import Tarea
+    assert Tarea.objects.filter(titulo="Diseñar portada", proyecto=p).exists()
+
+
+def test_disenador_asignado_crea_y_completa_tarea(client, usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Tarea
+    from apps.los_proyectos.models import ProyectoAsignacion
+
+    d = usuario_factory(rol="disenador")
+    p = proyecto_factory()
+    ProyectoAsignacion.objects.create(proyecto=p, usuario=d, rol_en_proyecto="disenador")
+    client.force_login(d)
+    client.post(
+        f"/proyectos/{p.pk}/tareas/nueva",
+        {"titulo": "Render final", "descripcion": "",
+         "estado": "pendiente", "prioridad": "media", "fecha_compromiso": ""},
+    )
+    t = Tarea.objects.get(titulo="Render final")
+    client.post(f"/tareas/{t.pk}/completar")
+    t.refresh_from_db()
+    assert t.estado == "completada"
+    assert t.completada_en is not None
+
+
+def test_disenador_no_asignado_403(client, usuario_factory, proyecto_factory):
+    d = usuario_factory(rol="disenador")
+    p = proyecto_factory()
+    client.force_login(d)
+    assert client.get(f"/proyectos/{p.pk}/tareas/nueva").status_code == 403
+
+
+def test_comentario_polimorfico_check_constraint(usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Comentario
+
+    autor = usuario_factory()
+    p = proyecto_factory()
+    # Ambos NULL → debe fallar el CHECK.
+    with pytest.raises(IntegrityError):
+        Comentario.objects.create(autor=autor, cuerpo="huérfano", es_interno=False)
+
+
+def test_comentario_solo_a_tarea_o_proyecto(usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Comentario, Tarea
+
+    autor = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    t = Tarea.objects.create(proyecto=p, titulo="X", creado_por=autor)
+    c1 = Comentario.objects.create(autor=autor, tarea=t, cuerpo="sobre tarea")
+    c2 = Comentario.objects.create(autor=autor, proyecto=p, cuerpo="sobre proyecto")
+    assert c1.destino_proyecto == p
+    assert c2.destino_proyecto == p
+
+
+def test_comentario_ambos_llenos_falla(usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Comentario, Tarea
+
+    autor = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    t = Tarea.objects.create(proyecto=p, titulo="X", creado_por=autor)
+    with pytest.raises(IntegrityError):
+        Comentario.objects.create(autor=autor, tarea=t, proyecto=p, cuerpo="ambos")
+
+
+def test_disenador_no_ve_comentario_interno_ajeno(client, usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Comentario, Tarea
+    from apps.los_proyectos.models import ProyectoAsignacion
+
+    admin = usuario_factory(rol="super_admin")
+    d = usuario_factory(rol="disenador")
+    p = proyecto_factory()
+    t = Tarea.objects.create(proyecto=p, titulo="T", creado_por=admin)
+    ProyectoAsignacion.objects.create(proyecto=p, usuario=d, rol_en_proyecto="disenador")
+    Comentario.objects.create(autor=admin, tarea=t, cuerpo="SECRETO", es_interno=True)
+    Comentario.objects.create(autor=admin, tarea=t, cuerpo="PUBLICO", es_interno=False)
+    client.force_login(d)
+    resp = client.get(f"/tareas/{t.pk}/")
+    assert resp.status_code == 200
+    contenido = resp.content.decode()
+    assert "PUBLICO" in contenido
+    assert "SECRETO" not in contenido
+
+
+def test_comentario_de_disenador_no_puede_ser_interno(client, usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Comentario, Tarea
+    from apps.los_proyectos.models import ProyectoAsignacion
+
+    admin = usuario_factory(rol="super_admin")
+    d = usuario_factory(rol="disenador")
+    p = proyecto_factory()
+    t = Tarea.objects.create(proyecto=p, titulo="T", creado_por=admin)
+    ProyectoAsignacion.objects.create(proyecto=p, usuario=d, rol_en_proyecto="disenador")
+    client.force_login(d)
+    client.post(f"/tareas/{t.pk}/comentar", {"cuerpo": "hola", "es_interno": "on"})
+    c = Comentario.objects.get(tarea=t, autor=d)
+    assert c.es_interno is False  # diseñador no puede marcar interno

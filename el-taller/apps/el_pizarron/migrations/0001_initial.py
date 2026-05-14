@@ -124,7 +124,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="comentario",
             constraint=models.CheckConstraint(
-                check=(
+                condition=(
                     models.Q(tarea__isnull=False, proyecto__isnull=True)
                     | models.Q(tarea__isnull=True, proyecto__isnull=False)
                 ),

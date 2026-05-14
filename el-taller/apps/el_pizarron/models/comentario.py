@@ -28,7 +28,7 @@ class Comentario(models.Model):
         constraints = [
             models.CheckConstraint(
                 # Exactamente uno de los dos debe ser NOT NULL.
-                check=(
+                condition=(
                     models.Q(tarea__isnull=False, proyecto__isnull=True)
                     | models.Q(tarea__isnull=True, proyecto__isnull=False)
                 ),
