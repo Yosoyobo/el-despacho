@@ -1,15 +1,15 @@
-# Override de producción. El Mensajero parchea los `image:` con digest pinneado
-# (ghcr.io/yosoyobo/el-despacho-*@sha256:...). Hasta tener CI completa esto es placeholder.
+# Generado automáticamente por El Mensajero — NO editar a mano.
+# Cada push a main que cambie imágenes regenera este archivo.
 services:
   la-gerencia:
-    image: ghcr.io/yosoyobo/el-despacho-gerencia:latest
+    image: ghcr.io/yosoyobo/el-despacho-gerencia@sha256:4c58cb119c9a8e619fef31727986f785327ca1e2d90b73701f59a9af94734420
     build: null
   el-taller:
-    image: ghcr.io/yosoyobo/el-despacho-taller:latest
+    image: ghcr.io/yosoyobo/el-despacho-taller@sha256:ca0771c68b0a240ed495fe87fa6b7fdb95c6c342e8dc7829e84c01198698b738
     build: null
   la-recepcion:
-    image: ghcr.io/yosoyobo/el-despacho-recepcion:latest
+    image: ghcr.io/yosoyobo/el-despacho-recepcion@sha256:514b77f51d70f593d2537558a1e092ef3effa9c16766c703099881b4e18c32a4
     build: null
   portavoz-worker:
-    image: ghcr.io/yosoyobo/el-despacho-gerencia:latest
+    image: ghcr.io/yosoyobo/el-despacho-gerencia@sha256:4c58cb119c9a8e619fef31727986f785327ca1e2d90b73701f59a9af94734420
     build: null
