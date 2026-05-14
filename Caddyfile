@@ -1,0 +1,29 @@
+# El Portero — Caddy 2 con auto-HTTPS Let's Encrypt en producción.
+# En HAL local los puertos están remapeados (18080/18443) en docker-compose.
+
+{
+	email oscar@bautista.mx
+}
+
+oficina.ninomeando.com {
+	encode gzip
+	reverse_proxy el-taller:8000
+}
+
+direccion.ninomeando.com {
+	encode gzip
+	reverse_proxy la-direccion:8001
+}
+
+recepcion.ninomeando.com {
+	encode gzip
+	reverse_proxy la-recepcion:8002
+}
+
+# Acceso por IP / localhost (HAL dev): mismo routing por path-prefix de host header.
+:80 {
+	@taller host localhost 127.0.0.1
+	handle @taller {
+		reverse_proxy el-taller:8000
+	}
+}

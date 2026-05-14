@@ -1,0 +1,53 @@
+{% load static %}<!doctype html>
+<html lang="es-mx">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{% block title %}La Dirección — El Despacho{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+    <style>
+        body { font-family: ui-sans-serif, system-ui, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+{% if request.user.is_authenticated %}
+<nav class="bg-slate-900 text-white">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+        <a href="/" class="font-semibold tracking-tight">La Dirección</a>
+        <div class="flex gap-4 text-sm">
+            <a href="/" class="hover:text-amber-300">Sala de Juntas</a>
+            <a href="/directorio/" class="hover:text-amber-300">El Directorio</a>
+            {% if request.user.es_super_admin %}
+            <a href="/ajustes/" class="hover:text-amber-300">Los Ajustes</a>
+            {% endif %}
+            <span class="text-slate-400">|</span>
+            <span class="text-slate-300">{{ request.user.nombre_completo|default:request.user.email }} ({{ request.user.rol }})</span>
+            <a href="/sign-out" class="hover:text-red-300">Salir</a>
+        </div>
+    </div>
+</nav>
+{% endif %}
+
+<main class="max-w-6xl mx-auto px-6 py-8">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for m in messages %}
+        <div class="rounded-md border px-4 py-2 text-sm
+            {% if m.tags == 'error' %}border-red-300 bg-red-50 text-red-800
+            {% elif m.tags == 'success' %}border-emerald-300 bg-emerald-50 text-emerald-800
+            {% else %}border-slate-300 bg-white text-slate-700{% endif %}">
+            {{ m }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% block contenido %}{% endblock %}
+</main>
+
+<footer class="text-center text-xs text-slate-400 py-6">
+    El Despacho · Learning Center · <a href="/legal/privacidad" class="underline">Privacidad</a>
+    · <a href="/legal/terminos" class="underline">Términos</a>
+</footer>
+</body>
+</html>

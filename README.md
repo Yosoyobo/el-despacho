@@ -1,0 +1,80 @@
+# El Despacho
+
+CRM/ERP interno para **Learning Center**, despacho mexicano de diseño y maquila de
+productos promocionales, arte e imagen corporativa.
+
+> Esto **no es un SaaS**. Es uso interno. No hay tiers, no hay créditos, no se cobra
+> a usuarios internos.
+
+## Apps
+
+| App | Audiencia | Puerto local |
+|---|---|---|
+| **La Dirección** | super_admin / dueño — configuración del sistema, panel ejecutivo | 8001 |
+| **El Taller** | staff (dueño, contador, diseñadores) — operación día a día | 8000 |
+| **La Recepción** | clientes B2B — portal externo *(andamio S1, UI completa en S5)* | 8002 |
+
+Detrás de **El Portero** (Caddy 2 con auto-HTTPS).
+
+## Stack
+
+Python 3.12 · Django 5.1 (gunicorn + UvicornWorker) · PostgreSQL 16 · Redis 7
+· Tailwind CSS (CLI standalone, sin Node) · HTMX · Docker Compose · Caddy 2 ·
+GitHub Actions (**El Mensajero**) · GHCR.
+
+## Estado por sesión
+
+- **S1a** ✅ Cimientos: infra + `lib/` + auth + El Directorio + Los Ajustes
+- **S1b** ⏳ La Cartera + Los Proyectos + El Pizarrón + tests CRUDs + MANUAL.md
+- **S2** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google Workspace
+- **S3** Contaduría · Sala de Juntas
+- **S4** Los Analistas (IA — Anthropic primario + OpenAI fallback)
+- **S5** La Recepción (portal cliente)
+
+## Arranque local (HAL)
+
+```bash
+cp .env.example .env
+# Genera dos secrets de 64 hex chars:
+python -c "import secrets;print('BOVEDA_MASTER_KEY=' + secrets.token_hex(32))" >> .env
+python -c "import secrets;print('DJANGO_SECRET_KEY=' + secrets.token_hex(32))" >> .env
+# Edita .env y completa POSTGRES_PASSWORD, DESPACHO_SUPERADMIN_PASSWORD, etc.
+
+docker compose up -d --build
+# La Dirección  → http://localhost:18080  (host: direccion.ninomeando.com)
+# El Taller     → http://localhost:18080  (host: oficina.ninomeando.com)
+# La Recepción  → http://localhost:18080  (host: recepcion.ninomeando.com)
+```
+
+En HAL los puertos de Caddy están remapeados a `18080/18443` porque macOS reserva
+`80/443`. Para probar dominios reales sin DNS, agrega entries en `/etc/hosts` o
+golpea los contenedores directamente (`curl http://localhost:8001/ping`).
+
+## Tests
+
+```bash
+pip install -r requirements.txt
+pytest -q tests/
+```
+
+GitHub Actions corre los mismos tests + ruff en cada push/PR (**El Mensajero**).
+
+## Reglas inviolables
+
+Ver `CLAUDE.md` §3. Las más críticas:
+
+1. **Sin librerías de UI externas** — solo Tailwind.
+2. **`BOVEDA_MASTER_KEY` obligatoria** — la app no arranca sin ella.
+3. **TODAS las credenciales en Los Ajustes** (cifradas) — nunca en `.env` ni hardcodeadas.
+4. **El server prod nunca compila** — build en El Mensajero, deploy de imagen.
+5. **Rate-limit en login** — 5 intentos / 15 min en ambas apps.
+
+## Roles
+
+Ver [`ROLES.md`](./ROLES.md).
+
+## Operación
+
+- Backups: `./infra/scripts/archivo.sh`
+- Deploy en La Sede: `./infra/scripts/mudanza.sh` (invocado por SSH desde El Mensajero)
+- Limpieza semanal: workflow `la-limpieza.yml` (GHA cron) + `./infra/scripts/limpieza.sh` en el servidor.

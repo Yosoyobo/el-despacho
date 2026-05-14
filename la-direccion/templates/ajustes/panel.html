@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Los Ajustes{% endblock %}
+{% block contenido %}
+<h1 class="text-3xl font-semibold mb-2">Los Ajustes</h1>
+<p class="text-sm text-slate-500 mb-6">
+    Todas las credenciales del sistema. Se cifran con La Bóveda antes de tocar la DB.
+    Solo super_admin tiene acceso a este panel.
+</p>
+
+<div class="bg-white border border-slate-200 rounded-lg shadow-sm divide-y divide-slate-100">
+    {% for clave, etiqueta, descripcion, configurado in slots %}
+    <div class="p-5 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-start">
+        <div>
+            <div class="flex items-center gap-2">
+                <h3 class="font-medium">{{ etiqueta }}</h3>
+                {% if configurado %}
+                    <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">configurado</span>
+                {% else %}
+                    <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">vacío</span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-slate-500 mt-1">{{ descripcion }}</p>
+            <code class="text-[10px] text-slate-400">{{ clave }}</code>
+        </div>
+
+        <form method="post" action="{% url 'ajustes-guardar' %}" class="flex flex-col gap-2 min-w-[280px]">
+            {% csrf_token %}
+            <input type="hidden" name="clave" value="{{ clave }}">
+            <input type="password" name="valor" autocomplete="new-password"
+                   placeholder="{% if configurado %}•••• guardado — escribe para reemplazar{% else %}pega el valor{% endif %}"
+                   class="px-3 py-2 border border-slate-300 rounded-md text-sm">
+            <div class="flex gap-2">
+                <button class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs py-1.5 rounded-md">Guardar</button>
+                {% if configurado %}
+                <button formaction="{% url 'ajustes-probar' clave %}"
+                        class="flex-1 border border-slate-300 hover:bg-slate-50 text-xs py-1.5 rounded-md">Probar</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+<p class="text-xs text-slate-400 mt-6">
+    Los valores nunca se muestran en claro tras guardar. Si necesitas rotar un secret, escribe el nuevo y "Guardar".
+    Vaciar el campo y guardar elimina la entrada.
+</p>
+{% endblock %}

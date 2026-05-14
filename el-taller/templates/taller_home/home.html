@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}El Taller{% endblock %}
+{% block contenido %}
+<h1 class="text-3xl font-semibold mb-2">Bienvenido, {{ request.user.get_short_name }}</h1>
+<p class="text-stone-600 mb-8">Tu rol: <strong>{{ request.user.get_rol_display }}</strong></p>
+
+<div class="bg-white border border-stone-200 rounded-lg shadow-sm p-6">
+    <h2 class="text-lg font-semibold mb-3">Módulos próximos</h2>
+    <ul class="text-sm text-stone-700 space-y-1 list-disc list-inside">
+        <li><strong>La Cartera</strong> — clientes B2B <span class="text-stone-400">(S1b)</span></li>
+        <li><strong>Los Proyectos</strong> — proyectos, estados, asignaciones <span class="text-stone-400">(S1b)</span></li>
+        <li><strong>El Pizarrón</strong> — tareas y comentarios <span class="text-stone-400">(S1b)</span></li>
+        <li><strong>Las Cotizaciones · La Facturación · La Caja · La Cobranza</strong> <span class="text-stone-400">(S2)</span></li>
+        <li><strong>La Contaduría</strong> <span class="text-stone-400">(S3)</span></li>
+        <li><strong>Los Analistas</strong> (IA) <span class="text-stone-400">(S4)</span></li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+name: El Mensajero
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  pruebas:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: pytest
+        env:
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest -q tests/
+
+  lint:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.8.4
+      - run: ruff check .
+
+  build:
+    name: Build & push
+    needs: [pruebas, lint]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - app: direccion
+            dockerfile: la-direccion/Dockerfile
+          - app: taller
+            dockerfile: el-taller/Dockerfile
+          - app: recepcion
+            dockerfile: la-recepcion/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Owner en minúsculas (GHCR exige)
+        id: lc
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')" >> $GITHUB_OUTPUT
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.lc.outputs.owner }}/el-despacho-${{ matrix.app }}:latest
+            ${{ env.REGISTRY }}/${{ steps.lc.outputs.owner }}/el-despacho-${{ matrix.app }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+
+  # La Mudanza (deploy SSH a La Sede) se activa en S1b/S2 cuando estén los
+  # secrets SEDE_HOST, SEDE_USER, SEDE_SSH_KEY. Por ahora El Mensajero solo
+  # construye y publica imágenes; el deploy lo dispara el usuario manualmente.

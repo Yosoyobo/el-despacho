@@ -1,0 +1,42 @@
+{% load static %}<!doctype html>
+<html lang="es-mx">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{% block title %}El Taller — El Despacho{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+</head>
+<body class="bg-stone-50 text-stone-900 min-h-screen">
+{% if request.user.is_authenticated %}
+<nav class="bg-amber-700 text-white">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+        <a href="/" class="font-semibold tracking-tight">El Taller</a>
+        <div class="flex gap-4 text-sm">
+            <a href="/" class="hover:text-amber-100">Inicio</a>
+            <span class="text-amber-200">|</span>
+            <span class="text-amber-100">{{ request.user.nombre_completo|default:request.user.email }} ({{ request.user.rol }})</span>
+            <a href="/sign-out" class="hover:text-red-200">Salir</a>
+        </div>
+    </div>
+</nav>
+{% endif %}
+<main class="max-w-6xl mx-auto px-6 py-8">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for m in messages %}
+        <div class="rounded-md border px-4 py-2 text-sm
+            {% if m.tags == 'error' %}border-red-300 bg-red-50 text-red-800
+            {% elif m.tags == 'success' %}border-emerald-300 bg-emerald-50 text-emerald-800
+            {% else %}border-stone-300 bg-white text-stone-700{% endif %}">{{ m }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% block contenido %}{% endblock %}
+</main>
+<footer class="text-center text-xs text-stone-400 py-6">
+    El Despacho · Learning Center · <a href="/legal/privacidad" class="underline">Privacidad</a>
+    · <a href="/legal/terminos" class="underline">Términos</a>
+</footer>
+</body>
+</html>

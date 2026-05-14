@@ -1,0 +1,15 @@
+# Override de producción. El Mensajero parchea los `image:` con digest pinneado
+# (ghcr.io/yosoyobo/el-despacho-*@sha256:...). Hasta tener CI completa esto es placeholder.
+services:
+  la-direccion:
+    image: ghcr.io/yosoyobo/el-despacho-direccion:latest
+    build: null
+  el-taller:
+    image: ghcr.io/yosoyobo/el-despacho-taller:latest
+    build: null
+  la-recepcion:
+    image: ghcr.io/yosoyobo/el-despacho-recepcion:latest
+    build: null
+  portavoz-worker:
+    image: ghcr.io/yosoyobo/el-despacho-direccion:latest
+    build: null

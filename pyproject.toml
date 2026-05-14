@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "lib"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = ["ignore::DeprecationWarning"]
+# Tests de Django (CRUDs) llegan en S1b — entonces se agrega DJANGO_SETTINGS_MODULE
+# y pytest-django como dependencia de testing.
