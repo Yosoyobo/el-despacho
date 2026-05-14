@@ -152,6 +152,33 @@ jobs:
           git commit -m "ci(el-mensajero): pin digests $(echo '${{ github.sha }}' | cut -c1-7)"
           git push origin HEAD:main
 
-  # La Mudanza (deploy SSH a La Sede) se activa cuando estén los secrets
-  # SEDE_HOST, SEDE_USER, SEDE_SSH_KEY. Por ahora El Mensajero construye,
-  # publica imágenes y fija digests; el deploy lo dispara el usuario.
+  mudanza:
+    name: 🚚 La Mudanza (deploy a La Sede)
+    needs: [actualizar_digests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH a La Sede y deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SEDE_HOST }}
+          username: ${{ secrets.SEDE_USER }}
+          key: ${{ secrets.SEDE_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd /opt/el-despacho
+            echo "=== git pull ==="
+            git pull --ff-only origin main
+            echo "=== docker compose pull ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            echo "=== docker compose up -d ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            echo "=== ps ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            echo "=== smoke /ping internos ==="
+            for svc in la-gerencia:8001 el-taller:8000 la-recepcion:8002; do
+              host="${svc%:*}"; port="${svc##*:}"
+              code=$(docker exec "despacho-$([ "$host" = "la-gerencia" ] && echo gerencia || [ "$host" = "el-taller" ] && echo el-taller || echo la-recepcion)" python -c "import urllib.request,sys; print(urllib.request.urlopen('http://localhost:'+'${port}'+'/ping',timeout=5).status)" 2>/dev/null || echo "ERR")
+              echo "  $host: $code"
+            done
