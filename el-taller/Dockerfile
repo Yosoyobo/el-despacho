@@ -19,6 +19,8 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY lib/ /app/lib/
+COPY cuentas/ /app/cuentas/
+COPY ajustes/ /app/ajustes/
 COPY el-taller/ /app/
 
 RUN if [ -f tailwind.config.js ]; then \

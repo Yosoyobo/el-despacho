@@ -21,6 +21,8 @@ RUN pip install -r requirements.txt
 
 # Código compartido + app
 COPY lib/ /app/lib/
+COPY cuentas/ /app/cuentas/
+COPY ajustes/ /app/ajustes/
 COPY la-direccion/ /app/
 
 # Compilar Tailwind si hay config
