@@ -3,6 +3,10 @@ name: El Mensajero
 on:
   push:
     branches: [main]
+    paths-ignore:
+      # El job `actualizar_digests` empuja un commit al editar este archivo;
+      # ignorarlo evita un bucle de CI.
+      - "docker-compose.prod.yml"
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -84,6 +88,64 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,scope=${{ matrix.app }},mode=max
 
-  # La Mudanza (deploy SSH a La Sede) se activa en S1b/S2 cuando estén los
-  # secrets SEDE_HOST, SEDE_USER, SEDE_SSH_KEY. Por ahora El Mensajero solo
-  # construye y publica imágenes; el deploy lo dispara el usuario manualmente.
+  actualizar_digests:
+    name: Pin digests en docker-compose.prod.yml
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Necesario para que el commit posterior pueda hacer push.
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolver digests recién publicados
+        id: digests
+        run: |
+          owner=$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')
+          for app in gerencia taller recepcion; do
+            ref="ghcr.io/${owner}/el-despacho-${app}:${{ github.sha }}"
+            digest=$(docker buildx imagetools inspect "$ref" --format '{{.Manifest.Digest}}')
+            echo "digest_$app=$digest" >> $GITHUB_OUTPUT
+            echo "${app}: $digest"
+          done
+          echo "owner=$owner" >> $GITHUB_OUTPUT
+      - name: Reescribir docker-compose.prod.yml
+        run: |
+          owner='${{ steps.digests.outputs.owner }}'
+          dG='${{ steps.digests.outputs.digest_gerencia }}'
+          dT='${{ steps.digests.outputs.digest_taller }}'
+          dR='${{ steps.digests.outputs.digest_recepcion }}'
+          cat > docker-compose.prod.yml <<EOF
+          # Generado automáticamente por El Mensajero — NO editar a mano.
+          # Cada push a main que cambie imágenes regenera este archivo.
+          services:
+            la-gerencia:
+              image: ghcr.io/${owner}/el-despacho-gerencia@${dG}
+              build: null
+            el-taller:
+              image: ghcr.io/${owner}/el-despacho-taller@${dT}
+              build: null
+            la-recepcion:
+              image: ghcr.io/${owner}/el-despacho-recepcion@${dR}
+              build: null
+            portavoz-worker:
+              image: ghcr.io/${owner}/el-despacho-gerencia@${dG}
+              build: null
+          EOF
+      - name: Commit y push si hay cambios
+        run: |
+          git config user.name  "el-mensajero[bot]"
+          git config user.email "el-mensajero@users.noreply.github.com"
+          if git diff --quiet docker-compose.prod.yml; then
+            echo "Sin cambios de digest."
+            exit 0
+          fi
+          git add docker-compose.prod.yml
+          git commit -m "ci(el-mensajero): pin digests $(echo '${{ github.sha }}' | cut -c1-7)"
+          git push origin HEAD:main
+
+  # La Mudanza (deploy SSH a La Sede) se activa cuando estén los secrets
+  # SEDE_HOST, SEDE_USER, SEDE_SSH_KEY. Por ahora El Mensajero construye,
+  # publica imágenes y fija digests; el deploy lo dispara el usuario.
