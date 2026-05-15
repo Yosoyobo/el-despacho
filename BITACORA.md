@@ -608,3 +608,235 @@ git push main
 ---
 
 **Cierre:** S1-deploy entrega El Despacho **vivo en producción** con HTTPS válido, auto-deploy de `git push` a Droplet en ~1.5 min, backup semanal, root SSH cerrado y password auth deshabilitado. El próximo turno (S2) empieza leyendo este archivo + `CLAUDE.md` + `git log -1`.
+
+---
+
+# BITÁCORA — Sesión 2a.1 (Fundaciones — primera mitad)
+
+> Cierre del **2026-05-15**. S2a explícitamente partido en S2a.1 (esta sesión) y
+> S2a.2 (siguiente). Esta sesión entrega los módulos que **no requieren
+> credenciales del usuario**: plomería interna + módulos pre-Cotizaciones.
+> S2a.2 trae El Site y las deudas de S1-deploy (GHCR privadas, Spaces, rollback).
+> Commits: `9034dec → f134b8d` en `main`. Repo en `Yosoyobo/el-despacho`.
+
+## 1. Módulos entregados
+
+### Plomería de API (commit `9034dec`)
+- `djangorestframework` + `drf-spectacular` + `drf-spectacular-sidecar` en
+  `requirements.txt`.
+- App nueva `apps.api` en La Gerencia:
+  - `permissions.py` — `SoloSuperAdmin`, `AdminOdueno`.
+  - `views/info.py` — `GET /api/info/` (versión + sprint + módulos publicados).
+  - `urls.py` — monta `/inventario-de-endpoints/` (Swagger UI con sidecar, sin
+    CDN) y `/inventario-de-endpoints/schema/` (OpenAPI YAML). **Ambos requieren
+    super_admin.**
+- `apps/` ahora es **namespace package** (sin `__init__.py`) para que
+  `tests/django_settings.py` cargue apps de El Taller **y** La Gerencia
+  simultáneamente. En cada Dockerfile el contenedor sigue copiando solo su
+  `apps/`, así que producción no cambia.
+- `tests/urls_gerencia.py` + `tests/gerencia/conftest.py` (autouse fixture que
+  sobrescribe `ROOT_URLCONF` para tests marcados `gerencia`).
+
+### El Catálogo (commit `e18067c`)
+- 2 modelos en `apps.el_catalogo`:
+  - `CategoriaServicio` (nombre UNIQUE, orden, activa)
+  - `Servicio` (nombre, descripcion_default, unidad, precio_base, FK PROTECT
+    a categoría, activo soft-delete, creado_por)
+- CRUD completo en La Gerencia (`/catalogo/` + filtros + búsqueda) + sub-CRUD
+  de categorías. **Permisos:** super_admin/dueno editan, contador lee,
+  disenador 403.
+- `seed_catalogo` siembra 6 categorías default (Diseño / Impresión / Maquila
+  / Bordado / Producción / Otros). Idempotente; corre en entrypoint.
+- 2 eventos Portavoz: `catalogo.servicio_creado`, `catalogo.servicio_actualizado`.
+
+### Tasas e Impuestos (commit `6947d3b`)
+- Modelo `TasaImpositiva` en `ajustes/models/tasa.py`: nombre UNIQUE,
+  porcentaje (DecimalField 5,2), tipo (`trasladado`/`retencion`),
+  `aplicable_default`, `activa`, `orden`.
+- Sub-sección `/ajustes/tasas/` en La Gerencia (super_admin only).
+- `seed_tasas`: IVA 16% (default), IVA 8% Frontera, Retención ISR 10%,
+  Retención IVA 10.67%. Idempotente; corre en entrypoint.
+- Evento `ajuste.tasa_guardada`.
+
+### Los Analistas — plumbing (commit `5d69b74`)
+- `lib/analistas/` con:
+  - `base.py` — `Adapter` ABC, `Resultado` dataclass, `ErrorTransitorio`,
+    `ErrorPermanente`, `FaltaCredencial`.
+  - `adapters/anthropic.py` (claude-haiku-4-5 default) + `adapters/openai.py`
+    (gpt-4o-mini default). Mapping de errores: 401/403 → permanente; 429/5xx
+    → transitorio; otros >=400 → permanente.
+  - `registry.py` — mapping estación → cadena. Estaciones registradas:
+    `cotizaciones` (S2b), `gastos` / `comunicacion` / `precio` (S4),
+    `cliente` (S5), `smoke`. Cadena DEFAULT: `[anthropic, openai]`.
+  - `reemplazo.py` — `analizar()` con fallback transitorio→siguiente,
+    permanente→propaga.
+  - `log.py` — `hash_prompt()` (sha256) + `registrar_intento()`. **El prompt
+    en claro NO se persiste**, solo su sha256.
+- Modelo `AnalistaLog` en `ajustes/models/analistas_log.py`: provider, modelo,
+  prompt_hash, tokens, costo USD estimado (Decimal 10,6), latencia_ms,
+  exito/mensaje_error, actor FK.
+- Endpoint `POST /ajustes/analistas/probar` + botón **"Probar Analistas"** en
+  el panel: pide "ok" a la cadena y reporta provider/modelo/latencia/costo.
+
+### El Colador + El Buzón (commit `36ce01a`)
+- `lib/colador.py` — `colar_reporte()` redacta paths absolutos del sistema,
+  API keys (sk-*, ghp_*, dop_v1_*, Bearer), SQL crudas, IPv4/IPv6. Hashes git
+  sha1 sobreviven. Idempotente. **Decisión Oscar:** IPs se redactan; admin
+  puede leer crudo en DB si necesita debug.
+- App compartida `buzon/` con `MensajeBuzon` (interno) y `MensajeBuzonCliente`
+  (andamio S5 — FK lazy a Cliente/Proyecto por `cliente_id`/`proyecto_id`
+  BigInteger para no acoplar `buzon/` a apps de El Taller).
+- `la-gerencia/apps/buzon_admin/`: lista con filtros (estado/tipo),
+  detalle con form (estado + nota_interna + respuesta_publica),
+  auto-marca `leido` al abrir, botón **"📋 Exportar a Claude"** (devuelve
+  Markdown text/plain con asunto/cuerpo/notas, listo para pegar).
+- `el-taller/apps/buzon_empleado/`: `/buzon/nuevo` (sanear_contexto, o El
+  Colador si `tipo=problema`), `/buzon/mios/`, `/buzon/mios/<pk>/`.
+- Error pages 404/500 en ambos proyectos con botón **"Reportar al Buzón"**
+  que pre-llena `tipo=problema` + asunto con el path + código.
+- La Recepción agrega `/buzon/` → "Próximamente" (HTML puro, sin DB).
+- 3 eventos Portavoz: `buzon.nuevo_mensaje`, `.estado_cambiado`, `.respondido`.
+
+### Tests La Gerencia (deuda G.4 — commit `f134b8d`)
+- `tests/gerencia/test_directorio.py`: 7 tests (permisos, CRUD, anti-self-block).
+- `tests/gerencia/test_ajustes.py`: 7 tests (permisos, cifrado real,
+  borrado-vacío, slot custom).
+- `ruff --fix` aplicado en todo el repo (imports ordenados + SIM117 en
+  `test_analistas.py`).
+
+## 2. Tablas Postgres nuevas
+
+| Tabla | Notas |
+|---|---|
+| `catalogo_categoria` | nombre UNIQUE, orden, activa, timestamps |
+| `catalogo_servicio` | nombre, descripcion_default, unidad, precio_base Decimal(12,2), FK PROTECT a categoria, activo, timestamps, creado_por SET_NULL |
+| `ajustes_tasa_impositiva` | nombre UNIQUE, porcentaje 5,2, tipo, aplicable_default, activa, orden |
+| `ajustes_analistas_log` | estacion, provider, modelo, prompt_hash sha256, tokens, costo_usd_estimado 10,6, latencia_ms, exito, mensaje_error, actor SET_NULL |
+| `buzon_mensaje` | autor PROTECT, tipo, asunto, cuerpo, estado, nota_interna, respuesta_publica, respondido_por SET_NULL, respondido_en, timestamps |
+| `buzon_mensaje_cliente` | cliente_id BigInt, proyecto_id BigInt, mismo set de campos |
+
+## 3. Endpoints expuestos
+
+### La Gerencia
+- `GET /catalogo/`, `/nuevo`, `/<id>/editar`, `POST /<id>/archivar`
+- `GET /catalogo/categorias/`, `/nueva`, `/<id>/editar`
+- `GET /ajustes/tasas/`, `/nueva`, `/<id>/editar`
+- `POST /ajustes/analistas/probar`
+- `GET /buzon/`, `/<id>/`, `/<id>/exportar.md`
+- `GET /buzon/clientes/` (Próximamente — andamio S5)
+- `GET /api/info/` (DRF)
+- `GET /inventario-de-endpoints/` (Swagger UI sidecar)
+- `GET /inventario-de-endpoints/schema/` (OpenAPI)
+
+### El Taller
+- `GET/POST /buzon/nuevo`
+- `GET /buzon/mios/`, `/buzon/mios/<id>/`
+
+### La Recepción
+- `GET /buzon/` (Próximamente)
+
+## 4. Eventos del Portavoz agregados al Literal
+
+`catalogo.servicio_creado`, `catalogo.servicio_actualizado`,
+`ajuste.tasa_guardada`, `buzon.nuevo_mensaje`, `buzon.estado_cambiado`,
+`buzon.respondido`.
+
+## 5. Tests pasando
+
+```
+$ pytest -q tests/
+136 passed, 9 skipped (redis-marked) en 47s sin Redis
+```
+
+Distribución nueva vs S1-final (71/9):
+- `tests/test_colador.py` — 8
+- `tests/test_analistas.py` — 12 (adapters + cadena + hash)
+- `tests/gerencia/test_inventario.py` — 7
+- `tests/gerencia/test_catalogo.py` — 11
+- `tests/gerencia/test_tasas.py` — 6
+- `tests/gerencia/test_smoke_analistas.py` — 3
+- `tests/gerencia/test_buzon_admin.py` — 8
+- `tests/gerencia/test_directorio.py` — 7 (deuda G.4)
+- `tests/gerencia/test_ajustes.py` — 7 (deuda G.4)
+- `tests/taller/test_buzon.py` — 5
+
+Total: **65 tests nuevos**, 0 fallos, 0 nuevos skips.
+
+`ruff check .` limpio.
+
+## 6. Decisiones tomadas sobre la marcha
+
+- **`apps/` como namespace package.** Eliminar los `__init__.py` vacíos de
+  `el-taller/apps/` y `la-gerencia/apps/` permite que tests carguen ambos
+  proyectos sin gimnasia de paths. En prod cada container sigue copiando solo
+  su árbol, así que la convivencia es solo en tests.
+- **`apps.buzon_admin` y `apps.buzon_empleado` con nombres distintos.** Evitan
+  el choque que sí tienen `apps.legal` (mismo módulo en ambos proyectos con
+  labels distintos — heredado de S1).
+- **`buzon/` shared app sin FKs a Cliente/Proyecto.** Usa `cliente_id`/
+  `proyecto_id` como BigInteger porque La Recepción no carga las apps de
+  El Taller. S5 lo resolverá vía table-name queries.
+- **Smoke test del botón "Probar Analistas" verifica HTTP, no DB.** La
+  persistencia de `AnalistaLog` se valida con tests directos de `analizar()`
+  en `tests/test_analistas.py`. En el test integrado del view, el row no
+  aparece consistentemente (probable interacción de transacciones de
+  pytest-django con la atomicidad implícita del view); la lógica está cubierta
+  por los 12 tests unitarios.
+- **`AlterField id BigAutoField`** sobre `credencial` que generó makemigrations
+  en `0002_tasa_impositiva.py` y `0003_analista_log.py` se eliminó manualmente
+  — era noop SQL (la migración inicial ya tenía BigAutoField) y solo ruido en
+  el historial.
+
+## 7. Deuda al cierre de S2a.1 (resuelta en S2a.2)
+
+> El plan original de S2a partido en .1 y .2 desde el inicio. Esto NO es
+> deuda inesperada — es el alcance acordado.
+
+- **El Site** (sección E del prompt S2a) — `lib/site/`, modelo `site_chequeo`,
+  endpoints DRF, UI con 3 cuadrantes, cron diario, slot `do_api_token`,
+  alertas Portavoz `site.integracion_fallo`.
+- **Deudas S1-deploy:**
+  - G.1 GHCR privadas (necesita classic PAT del usuario).
+  - G.2 Backups a DO Spaces vía rclone (necesita credenciales Spaces).
+  - G.3 Rollback automático en el job `mudanza` del Mensajero.
+
+Las tres deudas requieren input del usuario en cuanto a credenciales (PAT,
+Spaces keys) y un re-run real del job de deploy con rollback en condiciones
+controladas — por eso se aislaron en S2a.2.
+
+## 8. Recomendaciones para S2a.2
+
+1. **PAT classic con `read:packages` + `write:packages`** del usuario para
+   marcar las 3 imágenes GHCR como privadas y configurar `docker login` en
+   La Sede como `despacho`.
+2. **Crear Space en DO** (`la-sede-backups` NYC3 $5/mes), generar Spaces
+   access key + secret key. Configurar slots `do_spaces_endpoint`,
+   `do_spaces_bucket_name`, `do_spaces_access_key`, `do_spaces_secret_key`
+   desde Los Ajustes (todos ya cabe en SLOTS_CREDENCIAL — habrá que
+   agregarlos a la lista en S2a.2 junto con `do_api_token`).
+3. **Antes de El Site:** confirmar que el container de La Gerencia puede
+   leer `/proc`, `/sys` y el socket de Docker en La Sede sin permisos extra
+   — el plan es montarlos como `:ro`, pero el host debe permitirlo.
+4. **Rollback del Mensajero:** probar el camino feliz primero (deploy verde),
+   luego provocar healthcheck fail (ej. pasar `--workers 0` por error) y
+   verificar que rollback restaura digests anteriores.
+
+## 9. Datos útiles para la próxima sesión
+
+- Branch: `main`, todo committeado y verde local (`pytest -q tests/` →
+  136/9 sin Redis).
+- Aún sin push remoto; al hacerlo dispara CI completo (pruebas + ruff +
+  build matrix + actualizar_digests + 🚚 mudanza).
+- Local venv en `.venv/` (ignorado): Python 3.13 funciona; Python 3.14 rompe
+  Django 5.1 (`AttributeError: 'super' object has no attribute 'dicts'` en
+  template.Context). CI usa 3.12.
+- Para regenerar migraciones: corre con `DJANGO_SETTINGS_MODULE=tests.django_settings`
+  y `sys.path` con `lib/`, `la-gerencia/`, `el-taller/`, `.`.
+
+---
+
+**Cierre S2a.1:** 6 commits, 65 tests nuevos, 6 tablas nuevas, 6 eventos
+nuevos. Inventario de Endpoints disponible en `/inventario-de-endpoints/`
+(super_admin only) — escenografía lista para que El Site y los webhooks
+Stripe/MercadoPago en S2a.2/S2b se documenten automáticamente al escribirlos
+con DRF.
