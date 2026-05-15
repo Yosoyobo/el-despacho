@@ -1131,7 +1131,25 @@ Total: **45 nuevos**, 0 fallos. `ruff check .` limpio.
   rompa el healthcheck (ej. `gunicorn --workers 0`), mergear con el
   usuario observando un loop `while; do curl ...; sleep 1; done` en
   otra terminal, validar que rollback restaura sin caída prolongada
-  visible. **No fue ejecutado en esta sesión** por seguridad operativa.
+  visible. **Diferido por decisión explícita del usuario al cierre de
+  S2a.2** — "lo más sencillo y sano sin intervención". La lógica del
+  rollback está implementada y se observó funcionando en healthy-path
+  durante los 2 deploys reales de esta sesión (3 retries × 8s curl
+  pasaron 200). Pero el camino de FALLO no está ejercitado en
+  condiciones reales. Retomar cuando: (a) un deploy genuino falle
+  healthcheck y se observe si el rollback dispara, o (b) se programe
+  una ventana de mantenimiento explícita para forzar el experimento.
+
+### Hallazgos post-deploy ya arreglados en commit `12357e7`
+
+- Docker API `v1.43` rechazada por daemon (mínimo `v1.44`). Bumpeado.
+- `if [ -f docker-compose.site.yml ]` se evaluaba ANTES de
+  `git reset --hard`. En primer deploy con site.yml nuevo, el archivo
+  aún no existía y los volumes no se aplicaban hasta un re-up manual.
+  Movido al post-reset.
+- Resultado: tras 12357e7, segundo deploy verde con volumes aplicados
+  y `site_chequeo_diario` retornando 3 OK (postgres, redis, docker)
+  + 5 no_configuradas. **Cero falsos positivos.**
 - **Validar archivo.sh + HAL end-to-end en prod**: tras el primer
   push verde de S2a.2, correr `archivo.sh` manual en La Sede y
   verificar que llega a HAL + se rota + se registra en `site_backup_remoto`.
