@@ -31,7 +31,7 @@ HAL_KEY="${HAL_KEY:-$HOME/.ssh/hal-backup}"
 HAL_RETENER="${HAL_RETENER:-30}"
 
 _registrar() {
-    docker compose ps la-gerencia 2>/dev/null | grep -q running || return 0
+    docker compose ps --status running --services 2>/dev/null | grep -qx la-gerencia || return 0
     docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T la-gerencia \
         python manage.py registrar_backup_remoto \
             --archivo "$1" --destino "HAL" --estado "$2" \
