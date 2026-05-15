@@ -2,36 +2,39 @@
 {% block title %}El Site — La Gerencia{% endblock %}
 
 {% block contenido %}
-<div class="flex items-center justify-between mb-6">
+<div class="mb-6 flex items-start justify-between gap-4">
     <div>
-        <h1 class="text-2xl font-bold tracking-tight">El Site</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Estado de infraestructura, integraciones y servicios internos.</p>
+        <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">El Site</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Estado de infraestructura, integraciones y servicios internos.</p>
     </div>
     <form method="post" action="{% url 'site-probar-todas' %}">
         {% csrf_token %}
-        <button class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-4 py-2 rounded-md text-sm shadow-sm">
-            ⚡ Probar todas las integraciones
+        <button class="btn-primario">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" stroke-linejoin="round"/></svg>
+            Probar todas
         </button>
     </form>
 </div>
 
 <section class="mb-8">
-    <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">🏗️ Infraestructura del Droplet
-        <span class="text-xs text-slate-400 dark:text-slate-500 font-normal">(auto-refresh 30s)</span>
+    <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        🏗️ Infraestructura del Droplet
+        <span class="text-xs font-normal normal-case text-gray-400 dark:text-gray-500">(auto-refresh 30s)</span>
     </h2>
     {% include "site/partials/infra.html" %}
 </section>
 
 <section class="mb-8">
-    <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">🔌 Integraciones externas</h2>
+    <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">🔌 Integraciones externas</h2>
     <div id="site-integraciones">
         {% include "site/partials/integraciones.html" %}
     </div>
 </section>
 
 <section class="mb-8">
-    <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">⚙️ Servicios internos
-        <span class="text-xs text-slate-400 dark:text-slate-500 font-normal">(auto-refresh 60s)</span>
+    <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        ⚙️ Servicios internos
+        <span class="text-xs font-normal normal-case text-gray-400 dark:text-gray-500">(auto-refresh 60s)</span>
     </h2>
     {% include "site/partials/internos.html" %}
 </section>

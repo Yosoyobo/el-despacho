@@ -2,63 +2,67 @@
 {% load proyectos_extras %}
 {% block title %}El Taller{% endblock %}
 {% block contenido %}
-<h1 class="text-3xl font-semibold mb-2">Bienvenido, {{ request.user.get_short_name }}</h1>
-<p class="text-stone-600 dark:text-slate-300 mb-8">Tu rol: <strong>{{ request.user.get_rol_display }}</strong></p>
+<div class="mb-6">
+    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">Bienvenido, {{ request.user.get_short_name }}</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tu rol: <span class="font-medium text-gray-700 dark:text-gray-300">{{ request.user.get_rol_display }}</span></p>
+</div>
 
-<div class="grid sm:grid-cols-3 gap-4 mb-8">
+<div class="mb-8 grid gap-5 sm:grid-cols-3">
     {% if puede_ver_cartera %}
-    <a href="{% url 'cartera-lista' %}" class="bg-white dark:bg-slate-900 border rounded-lg p-4 hover:shadow transition">
-        <p class="text-xs uppercase text-stone-500 dark:text-slate-400">La Cartera</p>
-        <p class="text-3xl font-semibold">{{ total_clientes_activos }}</p>
-        <p class="text-xs text-stone-500 dark:text-slate-400">clientes activos</p>
+    <a href="{% url 'cartera-lista' %}" class="ta-card transition hover:shadow-theme-md">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">La Cartera</p>
+        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ total_clientes_activos }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">clientes activos</p>
     </a>
     {% endif %}
-    <a href="{% url 'proyectos-lista' %}" class="bg-white dark:bg-slate-900 border rounded-lg p-4 hover:shadow transition">
-        <p class="text-xs uppercase text-stone-500 dark:text-slate-400">Los Proyectos</p>
-        <p class="text-3xl font-semibold">{{ proyectos_recientes|length }}</p>
-        <p class="text-xs text-stone-500 dark:text-slate-400">visibles para ti</p>
+    <a href="{% url 'proyectos-lista' %}" class="ta-card transition hover:shadow-theme-md">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Los Proyectos</p>
+        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ proyectos_recientes|length }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">visibles para ti</p>
     </a>
-    <div class="bg-white dark:bg-slate-900 border rounded-lg p-4">
-        <p class="text-xs uppercase text-stone-500 dark:text-slate-400">El Pizarrón</p>
-        <p class="text-3xl font-semibold">{{ tareas_pendientes|length }}</p>
-        <p class="text-xs text-stone-500 dark:text-slate-400">tareas pendientes asignadas</p>
+    <div class="ta-card">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">El Pizarrón</p>
+        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ tareas_pendientes|length }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">tareas pendientes asignadas</p>
     </div>
 </div>
 
-<div class="grid sm:grid-cols-2 gap-6">
+<div class="grid gap-6 lg:grid-cols-2">
     <div>
-        <h2 class="font-semibold mb-3">Proyectos recientes</h2>
-        <div class="bg-white dark:bg-slate-900 border rounded-lg overflow-hidden">
+        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos recientes</h2>
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             {% for p in proyectos_recientes %}
-            <a href="{% url 'proyectos-detalle' p.pk %}" class="block px-4 py-3 border-b last:border-b-0 hover:bg-stone-50 dark:hover:bg-slate-800">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="font-medium">{{ p.nombre }}</p>
-                        <p class="text-xs text-stone-500 dark:text-slate-400">{{ p.codigo }} · {{ p.cliente.razon_social }}</p>
+            <a href="{% url 'proyectos-detalle' p.pk %}"
+               class="block border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="truncate font-medium text-gray-800 dark:text-gray-100">{{ p.nombre }}</p>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ p.codigo }} · {{ p.cliente.razon_social }}</p>
                     </div>
                     <span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span>
                 </div>
             </a>
             {% empty %}
-            <p class="px-4 py-6 text-center text-stone-400 dark:text-slate-500 text-sm">Sin proyectos visibles.</p>
+            <p class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin proyectos visibles.</p>
             {% endfor %}
         </div>
     </div>
     <div>
-        <h2 class="font-semibold mb-3">Mis tareas pendientes</h2>
-        <div class="bg-white dark:bg-slate-900 border rounded-lg overflow-hidden">
+        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Mis tareas pendientes</h2>
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             {% for t in tareas_pendientes %}
-            <a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="block px-4 py-3 border-b last:border-b-0 hover:bg-stone-50 dark:hover:bg-slate-800">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="font-medium">{{ t.titulo }}</p>
-                        <p class="text-xs text-stone-500 dark:text-slate-400">{{ t.proyecto.codigo }}{% if t.fecha_compromiso %} · vence {{ t.fecha_compromiso|date:"d M" }}{% endif %}</p>
+            <a href="{% url 'pizarron-detalle-tarea' t.pk %}"
+               class="block border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="truncate font-medium text-gray-800 dark:text-gray-100">{{ t.titulo }}</p>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ t.proyecto.codigo }}{% if t.fecha_compromiso %} · vence {{ t.fecha_compromiso|date:"d M" }}{% endif %}</p>
                     </div>
-                    <span class="badge {% if t.prioridad == 'alta' %}badge-rose{% elif t.prioridad == 'media' %}badge-amber{% else %}badge-slate{% endif %}">{{ t.get_prioridad_display }}</span>
+                    <span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span>
                 </div>
             </a>
             {% empty %}
-            <p class="px-4 py-6 text-center text-stone-400 dark:text-slate-500 text-sm">Sin tareas pendientes 🎉</p>
+            <p class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin tareas pendientes 🎉</p>
             {% endfor %}
         </div>
     </div>

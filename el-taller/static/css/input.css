@@ -2,7 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply font-outfit;
+  }
+}
+
 @layer components {
+  /* Inputs de formulario — patrón TailAdmin */
   .campo-form input[type="text"],
   .campo-form input[type="email"],
   .campo-form input[type="password"],
@@ -13,19 +20,48 @@
   .campo-form input[type="tel"],
   .campo-form textarea,
   .campo-form select {
-    @apply w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400;
+    @apply w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-brand-800;
   }
-  .campo-form textarea {
-    @apply min-h-[80px];
+  .campo-form textarea { @apply min-h-[80px]; }
+  .campo-form label    { @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300; }
+
+  /* Botones */
+  .btn-primario {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50;
   }
+  .btn-secundario {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800;
+  }
+  .btn-destructivo {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-error-600;
+  }
+
+  /* Tarjetas */
+  .ta-card {
+    @apply rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900;
+  }
+
+  /* Badges */
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
-  .badge-slate  { @apply bg-slate-100  text-slate-700; }
-  .badge-blue   { @apply bg-blue-100   text-blue-700; }
-  .badge-amber  { @apply bg-amber-100  text-amber-800; }
-  .badge-emerald{ @apply bg-emerald-100 text-emerald-700; }
-  .badge-rose   { @apply bg-rose-100   text-rose-700; }
-  .badge-purple { @apply bg-purple-100 text-purple-700; }
-  .badge-orange { @apply bg-orange-100 text-orange-700; }
+  .badge-gray    { @apply bg-gray-100   text-gray-700  dark:bg-gray-800     dark:text-gray-300; }
+  .badge-brand   { @apply bg-brand-50   text-brand-700 dark:bg-brand-500/15 dark:text-brand-300; }
+  .badge-blue    { @apply bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/15 dark:text-blue-light-300; }
+  .badge-success { @apply bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400; }
+  .badge-error   { @apply bg-error-50   text-error-700  dark:bg-error-500/15  dark:text-error-400; }
+  .badge-warning { @apply bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400; }
+  .badge-orange  { @apply bg-orange-50  text-orange-700 dark:bg-orange-500/15  dark:text-orange-400; }
+
+  /* Alias de estados legacy (mantenemos compatibilidad con templates no convertidos en S-TailAdmin-1) */
+  .badge-slate   { @apply badge-gray; }
+  .badge-emerald { @apply badge-success; }
+  .badge-rose    { @apply badge-error; }
+  .badge-amber   { @apply badge-warning; }
+  .badge-purple  { @apply bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300; }
+
+  /* Sidebar / nav del shell — TailAdmin patrones */
+  .menu-item        { @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium; }
+  .menu-item-active   { @apply bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400; }
+  .menu-item-inactive { @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5; }
 }

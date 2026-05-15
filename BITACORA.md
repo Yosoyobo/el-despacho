@@ -2035,3 +2035,226 @@ externos), el límite arbitrario es deuda futura. `TextField` desde día
 interfono/0002), avatar_url y dos URLFields de Interfono convertidos a
 TextField, +1 test de regresión (1500 chars), suite **250/9 verdes**,
 ruff verde. SSO Google cerrado.
+
+---
+
+# BITÁCORA — Sprint S-TailAdmin-1 (Facelift Alcance A — Cimientos)
+
+Primer sub-sprint del facelift TailAdmin Pro 2.3.0. Alcance A estricto:
+solo estética, sin features nuevas. **Partición declarada al inicio**
+(regla S1-final): 3 sub-sprints, este cierra el shell + auth + dashboards.
+
+## 1. Lo entregado
+
+### Sistema visual (config + assets)
+
+- **`tailwind.config.js`** (Gerencia + Taller + Recepción): tokens portados
+  de TailAdmin v4 (`@theme {}` CSS-first) a Tailwind v3 JS config. Paletas
+  custom: `brand` (25–950, primario `#465fff`), `gray` (override del default
+  v3, paleta TailAdmin), `blue-light`, `success`, `error`, `warning`,
+  `orange`. Family `outfit`. Escala tipográfica `title-*` y `theme-*`.
+  Shadows `theme-xs/sm/md/lg/xl`. Tres copias sincronizadas (decisión D9).
+- **`static/css/input.css`** (Gerencia + Taller): utilities `@layer
+  components` con `campo-form` (inputs estilo TailAdmin con focus ring
+  brand), `btn-primario` / `btn-secundario` / `btn-destructivo`, `ta-card`
+  (rounded-2xl + shadow-theme-sm), badges (gray/brand/blue/success/error/
+  warning/orange/purple) + aliases legacy (slate/emerald/rose/amber) para
+  no romper templates aún no convertidos en S-TailAdmin-2/3, `menu-item*`
+  para el shell. `body { @apply font-outfit; }` en `@layer base`.
+- **`static/js/ui.js`** (Gerencia + Taller): vanilla micro-script (~50
+  líneas, sin Alpine). API por atributos: `data-ta-toggle="sidebar"`,
+  `data-ta-sidebar`, `data-ta-sidebar-backdrop`, `data-ta-dropdown="#id"`.
+  Click-outside y `Escape` cierran panels. Sidebar desktop siempre visible
+  (`xl:translate-x-0 xl:static`), móvil oculto por `-translate-x-full`.
+
+### Shell (sidebar + header + base)
+
+- **`_componentes_tailadmin/sidebar.html`** (Gerencia y Taller, una variante
+  por app con sus rutas/permisos):
+  - Gerencia: Sala de Juntas, El Site (gated super_admin/dueno, con badge
+    de integraciones rojas), El Directorio, El Catálogo, El Buzón, El
+    Interfono (gated), Los Ajustes + Tasas (gated super_admin).
+  - Taller: Inicio, La Cartera (gated `puede_ver_cartera`), Los Proyectos,
+    El Buzón, Notificaciones.
+  - Activo via `{% if "/path" in request.path %}` (no necesita
+    `resolver_match` ni templatetag custom).
+  - Footer de usuario (nombre + rol + salir).
+- **`_componentes_tailadmin/header.html`** (Gerencia y Taller): sticky,
+  con botón hamburguesa `data-ta-toggle="sidebar"` solo móvil, título
+  por bloque `{{ titulo|default }}`, atajo a notificaciones (🔔), toggle
+  de tema.
+- **`_componentes_tailadmin/alertas_mensajes.html`**: render del Django
+  `messages` framework con estilos TailAdmin (success/error/warning/info)
+  y variantes `dark:`.
+- **`tarjeta.html` + `tarjeta_kpi.html`**: partials reusables; usados por
+  Sala de Juntas e Inicio del Taller.
+- **`base.html`** (Gerencia + Taller): rewrite total. Layout:
+  - Si `request.user.is_authenticated` → grid `flex` con sidebar fijo +
+    header sticky + `<main class="flex-1 p-4 sm:p-6 lg:p-8">` con
+    `max-w-7xl` + footer. Override block `contenido`.
+  - Si no → centrado vertical para sign_in / errores / legales. Override
+    block `contenido_publico`. Templates duales (errores, legales) hacen
+    `{% include %}` de un `_*_body.html` en ambos blocks.
+  - **Anti-FOUC del sprint Interfono preservado byte-por-byte** (script
+    inline en `<head>` con `despacho-tema`).
+  - **Fuente Outfit** cargada vía Google Fonts (con `preconnect` y
+    `display=swap`).
+
+### Pantallas convertidas (S-TailAdmin-1)
+
+| Categoría | Templates |
+|---|---|
+| Auth | `la-gerencia/auth/sign_in.html`, `el-taller/auth/sign_in.html` |
+| Error pages | `{la-gerencia,el-taller}/errores/{404,500}.html` (+ 4 `_body.html` parciales) |
+| Legales | `{la-gerencia,el-taller}/legal/{privacidad,terminos}.html` (+ 4 `_body.html` parciales) |
+| auth_google | `auth_google/templates/auth_google/error.html` (+ `_error_body.html`); `no_disponible.html` (Recepción standalone, paleta gray TailAdmin) |
+| Sala de Juntas | `la-gerencia/gerencia_home/home.html` (4 KPI cards) |
+| El Site | `la-gerencia/site/tablero.html` + partials `infra.html`, `integraciones.html`, `internos.html` (HTMX `hx-get/hx-trigger/hx-swap` y IDs preservados; auto-refresh 30s/60s funcional) |
+| Inicio Taller | `el-taller/taller_home/home.html` (KPIs + listas proyectos/tareas con `color_estado` filter actualizado) |
+
+**Total convertido en S-TailAdmin-1:** ~18 templates de proyecto + 8
+partials nuevos del sistema + assets compartidos.
+
+### Unificación de paletas neutras (ampliación consciente del alcance)
+
+Decisión D6 aprobada por el dueño: aprovechamos el toque masivo de
+templates para cerrar la inconsistencia heredada del sprint Interfono
+(Gerencia con `slate`, Taller con `stone`, dark con `slate`). Sweep
+automático con `perl -pi -e` con word-boundary (`\b(slate|stone)-\d+ →
+gray-$1`, `prose-slate → prose-gray`) sobre **todos** los `*.html` de
+La Gerencia y El Taller. Verificado que `translate-x-*` quedó intacto
+(boundary atrapa la palabra `slate` aislada, no como sufijo de
+`translate`). Templatetag `proyectos_extras.color_estado` actualizado
+(badge-amber/emerald/rose/slate → badge-warning/success/error/gray).
+
+Esto **mancha el alcance A** y se declara explícitamente en bitácora.
+Razón: (a) ya tocábamos todos los templates por el facelift, (b) cierra
+deuda explícita del sprint Interfono §8, (c) hacerlo después implica
+otro sprint que toca todos los templates.
+
+## 2. Decisiones tomadas
+
+- **D1 — Tailwind v3 + tokens portados** (no migración a v4). TailAdmin
+  2.3.0 usa CSS-first `@theme {}` v4. Traducirlo a `theme.extend.colors`
+  v3 es zero-risk: las clases (`bg-brand-500`, `dark:bg-gray-800`) son
+  idénticas entre v3 y v4. Mantiene el binario standalone Go ya en uso
+  en los Dockerfiles.
+- **D2 — Sidebar layout-1** de TailAdmin como base, simplificado a items
+  planos (sin submenús — los módulos del despacho son flat). Sin
+  collapsible desktop (xl always-on); collapse móvil con vanilla JS.
+- **D3 — `layout-one.html`** patrón (sidebar fijo izquierda + header
+  sticky + main scrolleable + footer).
+- **D4 — Outfit** como font primaria (default TailAdmin, Google Fonts).
+  Preconnect + `display=swap` para no bloquear render.
+- **D5 — Brand azul `#465fff`** (default TailAdmin Pro). Theme-color del
+  manifest PWA actualizado a brand color en El Taller.
+- **D6 — Unificar `slate`/`stone` → `gray`** (ver §1, ampliación
+  consciente del alcance).
+- **D7 — Dark mode preservado 100%**. Toggle, `localStorage` con clave
+  `despacho-tema`, anti-FOUC inline en `<head>` — todo intacto. Solo se
+  agregaron variantes `dark:` con los tokens nuevos.
+- **D8 — JS vanilla (sin Alpine)**. `ui.js` de ~50 líneas reemplaza el
+  comportamiento de `x-data`/`x-show`/`@click.outside` de TailAdmin.
+  Decisión del prompt del sprint; si en S-TailAdmin-2/3 algún componente
+  se complica, se reabre Alpine como fallback (regla #17 de CLAUDE.md
+  lo permite, pero el prompt actual lo excluyó).
+- **D9 — Partials sincronizados** (dos copias Gerencia + Taller). Igual
+  patrón que `lib/` espejo y `_toggle_tema.html`.
+- **D10 — Recepción** mantiene templates standalone con CSS vars (no
+  adopta el shell). Vars `--bg/--fg/--card/--border/--muted/--note`
+  alineadas a paleta `gray` de TailAdmin para que en light/dark se vea
+  consistente con el resto del sistema.
+- **D11 — Sin charts ApexCharts** en este sprint (sería feature, fuera
+  de alcance A). El Site sigue con tablas/cards HTMX. Llegan en S2b si
+  hay necesidad real.
+- **D13 — Tests verdes sin regresión**. La suite no tenía assertions de
+  clases CSS específicas (verificado con grep antes de tocar templates);
+  por eso el rename masivo no rompió nada.
+
+## 3. Patrón nuevo: dual-block para templates accesibles auth + público
+
+Las páginas legales y de error son alcanzables tanto autenticado como
+no. Para que `base.html` les sirva el shell apropiado en cada caso,
+adoptamos el patrón:
+
+```django
+{% extends "base.html" %}
+{% block contenido %}{% include "errores/_404_body.html" %}{% endblock %}
+{% block contenido_publico %}{% include "errores/_404_body.html" %}{% endblock %}
+```
+
+Cero duplicación de contenido HTML — solo el `{% include %}` se repite.
+Esto permite que `base.html` tenga dos `{% block %}` distintos sin
+chocar con la regla de Django de "el mismo nombre de bloque no puede
+aparecer dos veces en una plantilla".
+
+## 4. HTMX preservado
+
+- `site/partials/infra.html` (`hx-get` + `hx-trigger="every 30s"` +
+  `hx-swap="outerHTML"`).
+- `site/partials/integraciones.html` (form `hx-post` que swappea
+  `#site-integraciones`).
+- `site/partials/internos.html` (`every 60s` + `outerHTML`).
+- IDs (`#site-infra`, `#site-integraciones`, `#site-integraciones-inner`,
+  `#site-internos`) **preservados byte-por-byte** — ningún `hx-target`
+  rompe.
+
+## 5. Tests + validaciones
+
+- `pytest -q` → **250 passed, 9 skipped** (Redis no local), 0 failed.
+  Mismo número exacto que tras el cierre del hotfix SSO round 2.
+- `ruff check .` → All checks passed.
+- **Tailwind compile validado localmente** vía Docker
+  (`alpine` + `tailwindcss-linux-x64 v3.4.17`):
+  - La Gerencia: `Done in 1500ms`, 0 errores.
+  - El Taller: `Done in 1721ms`, 0 errores.
+  - Captura de bug: el primer intento usó `focus:ring-3` (no existe en
+    Tailwind v3 — defaults son 0/1/2/`ring`(3px)/4/8). Fix: usar `ring`
+    (= 3px default). Atrapado antes de pushear.
+
+## 6. Cambios de configuración
+
+- 3 `tailwind.config.js` reescritos con tokens completos de TailAdmin.
+- 2 `input.css` con utilities `@layer components` para form, botones,
+  cards, badges, menu items.
+- 2 `static/js/ui.js` nuevos.
+- `el-taller/base.html`: `<meta name="theme-color">` cambiado de
+  `#b45309` (amber-700 legacy) a `#465fff` (brand-500).
+- Sin cambios en Dockerfiles, settings.py, requirements.txt, ni
+  `el-mensajero.yml`. El binario standalone de Tailwind v3.4.17
+  consume los tokens nuevos sin problemas.
+
+## 7. Deuda residual al cierre de S-TailAdmin-1
+
+- **Pendiente S-TailAdmin-2**: convertir todos los listados (Cartera ×3,
+  Proyectos ×5, Pizarrón ×2, Buzón ×6, Directorio ×2, Catálogo ×4) —
+  ~22 templates.
+- **Pendiente S-TailAdmin-3**: forms restantes, detalles, Ajustes
+  (panel + tasas + tasa_form), Interfono (×3 templates), perfil
+  notificaciones, partials internos — ~10 templates.
+- **Aliases legacy de badge** (`badge-slate`, `badge-emerald`, etc.) en
+  `input.css` siguen activos hasta que S-TailAdmin-2/3 conviertan los
+  templates que aún los usan (`cartera/{lista,detalle}.html`,
+  `proyectos/detalle.html`). Limpieza eventual.
+- **Charts ApexCharts** en El Site: si en S2b hace falta visualización
+  temporal, agregar como CDN. Hoy no son necesarios.
+- **Compile de Tailwind para La Recepción**: sigue sin CDN-less,
+  sin compilación, porque Recepción permanece como stub hasta S5.
+  El config tiene tokens listos para cuando se activen los templates.
+- **Validación visual del dueño en producción** post-deploy: confirmar
+  Sala de Juntas, El Site, sign_in (Gerencia + Taller), 404, dark mode.
+- **Experimento de rollback en vivo** (deuda S2a.2) — sigue diferido.
+- **GHCR privadas** (deuda S1-deploy G.1) — sigue abierta.
+
+---
+
+**Cierre S-TailAdmin-1:** sistema visual TailAdmin Pro 2.3.0 portado
+a Tailwind v3 (paletas `brand`/`gray`/`blue-light`/`success`/`error`/
+`warning`/`orange` + escala tipográfica + shadows + Outfit). Shell
+completo: sidebar + header + base con anti-FOUC preservado y vanilla
+JS sin Alpine. 18 templates convertidos (auth, errores, legales,
+auth_google, Sala de Juntas, El Site +3 partials, Inicio Taller).
+Unificación `slate`/`stone` → `gray` aplicada a TODOS los templates
+del repo (ampliación consciente del alcance A, declarada). HTMX
+preservado. **250/9 tests verdes**, ruff verde, Tailwind compila
+verde local. S-TailAdmin-2 y S-TailAdmin-3 esperando turno.

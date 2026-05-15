@@ -1,0 +1,17 @@
+{# KPI card. Params:
+   - etiqueta (string, requerido)        — texto pequeño arriba
+   - valor    (string/number, requerido) — número grande
+   - detalle  (opcional)                 — texto debajo
+   - delta    (opcional)                 — número/string (ej. +12%)
+   - delta_color (opcional: 'success' | 'error' | 'gray', default 'gray')
+#}
+<div class="ta-card">
+    <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ etiqueta }}</p>
+    <div class="mt-2 flex items-baseline gap-2">
+        <span class="text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ valor }}</span>
+        {% if delta %}
+        <span class="badge {% if delta_color == 'success' %}badge-success{% elif delta_color == 'error' %}badge-error{% else %}badge-gray{% endif %}">{{ delta }}</span>
+        {% endif %}
+    </div>
+    {% if detalle %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ detalle }}</p>{% endif %}
+</div>

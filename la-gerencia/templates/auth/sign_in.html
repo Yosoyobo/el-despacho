@@ -1,39 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Iniciar sesión — La Gerencia{% endblock %}
-{% block contenido %}
-<div class="max-w-md mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm p-8 mt-12">
-    <h1 class="text-2xl font-semibold mb-1">La Gerencia</h1>
-    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Solo super_admin y dueño.</p>
-
-    <form method="post" class="space-y-4">
-        {% csrf_token %}
-        <div>
-            <label class="block text-sm font-medium mb-1">Email</label>
-            <input type="email" name="email" required autofocus
-                   class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-amber-300 focus:border-amber-400 outline-none">
+{% block contenido_publico %}
+<div class="mx-auto max-w-md">
+    <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-6 flex items-center gap-3">
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500 text-white font-semibold">G</span>
+            <div>
+                <h1 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">La Gerencia</h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Solo super_admin y dueño.</p>
+            </div>
         </div>
-        <div>
-            <label class="block text-sm font-medium mb-1">Contraseña</label>
-            <input type="password" name="password" required
-                   class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-amber-300 focus:border-amber-400 outline-none">
-        </div>
-        <button type="submit"
-                class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 rounded-md">
-            Entrar
-        </button>
-    </form>
 
-    {% if google_oauth_configurado %}
-    <div class="my-4 flex items-center text-xs text-slate-400 dark:text-slate-500">
-        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-        <span class="px-3">o</span>
-        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+        <form method="post" class="campo-form space-y-5">
+            {% csrf_token %}
+            <div>
+                <label>Email</label>
+                <input type="email" name="email" required autofocus>
+            </div>
+            <div>
+                <label>Contraseña</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit" class="btn-primario w-full">Entrar</button>
+        </form>
+
+        {% if google_oauth_configurado %}
+        <div class="my-5 flex items-center text-xs text-gray-400 dark:text-gray-500">
+            <div class="flex-1 h-px bg-gray-200 dark:bg-gray-800"></div>
+            <span class="px-3">o</span>
+            <div class="flex-1 h-px bg-gray-200 dark:bg-gray-800"></div>
+        </div>
+        <a href="{% url 'google_oauth:iniciar' %}" class="btn-secundario w-full">
+            {% include "_google_logo.html" %}
+            Continuar con Google
+        </a>
+        {% endif %}
     </div>
-    <a href="{% url 'google_oauth:iniciar' %}"
-       class="w-full inline-flex justify-center items-center gap-2 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium py-2 rounded-md">
-        {% include "_google_logo.html" %}
-        Continuar con Google
-    </a>
-    {% endif %}
 </div>
 {% endblock %}

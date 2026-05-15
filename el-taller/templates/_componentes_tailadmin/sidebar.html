@@ -1,0 +1,48 @@
+{# Sidebar — El Taller. Items dependen del rol del usuario. #}
+{# Mobile: -translate-x-full por default; data-ta-toggle="sidebar" lo abre. #}
+{# Desktop (xl): siempre visible. #}
+<aside data-ta-sidebar
+       class="fixed left-0 top-0 z-40 flex h-screen w-72 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 py-6 transition-transform duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-gray-950">
+    <a href="/" class="mb-8 flex items-center gap-2">
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white font-semibold">T</span>
+        <span class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Taller</span>
+    </a>
+
+    <nav class="flex flex-col gap-1 text-sm">
+        <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú</h3>
+
+        <a href="/" class="menu-item {% if request.path == '/' %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12 12 3l9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Inicio
+        </a>
+
+        {% if puede_ver_cartera|default:True %}
+        <a href="/cartera/" class="menu-item {% if '/cartera' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 19v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            La Cartera
+        </a>
+        {% endif %}
+
+        <a href="/proyectos/" class="menu-item {% if '/proyectos' in request.path and '/pizarron' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Los Proyectos
+        </a>
+
+        <a href="/buzon/mios/" class="menu-item {% if '/buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16v14H4zM4 7l8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            El Buzón
+        </a>
+
+        <a href="/perfil/notificaciones/" class="menu-item {% if '/perfil' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.4-1.4A6 6 0 0 1 18 11V8a6 6 0 1 0-12 0v3a6 6 0 0 1-.6 4.6L4 17h5m6 0a3 3 0 1 1-6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Notificaciones
+        </a>
+    </nav>
+
+    <div class="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
+        <p class="font-medium text-gray-700 dark:text-gray-300">{{ request.user.nombre_completo|default:request.user.email }}</p>
+        <p class="text-gray-500 dark:text-gray-400">{{ request.user.rol }}</p>
+        <a href="/sign-out" class="mt-2 inline-flex items-center gap-1 text-error-600 hover:underline">Salir →</a>
+    </div>
+</aside>
+<div data-ta-sidebar-backdrop class="fixed inset-0 z-30 hidden bg-gray-900/50 xl:hidden"></div>

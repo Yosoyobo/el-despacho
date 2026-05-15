@@ -1,11 +1,4 @@
 {% extends "base.html" %}
 {% block title %}500 — El Taller{% endblock %}
-{% block contenido %}
-<div class="bg-white dark:bg-slate-900 border border-red-200 rounded-md p-8 text-center">
-    <h1 class="text-2xl font-semibold tracking-tight mb-2">Algo se rompió 😬</h1>
-    <p class="text-stone-600 dark:text-slate-300 mb-6">El servidor regresó error 500. El equipo ya fue notificado.</p>
-    <a href="{% url 'buzon-empleado-nuevo' %}?tipo=problema&asunto=Error+500+en+{{ request.path|urlencode }}"
-       class="inline-block rounded-md bg-amber-700 text-white px-4 py-2 text-sm hover:bg-amber-800">Reportar problema al Buzón</a>
-    <p class="mt-4 text-xs text-stone-400 dark:text-slate-500">o <a href="/" class="underline">volver al inicio</a></p>
-</div>
-{% endblock %}
+{% block contenido %}{% include "errores/_500_body.html" %}{% endblock %}
+{% block contenido_publico %}{% include "errores/_500_body.html" %}{% endblock %}

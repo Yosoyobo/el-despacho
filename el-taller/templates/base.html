@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{% block title %}El Taller — El Despacho{% endblock %}</title>
     <script>
+        // Anti-FOUC: aplicar tema antes del primer paint. NO TOCAR — sprint Interfono.
         (function() {
             try {
                 var g = localStorage.getItem('despacho-tema');
@@ -16,49 +17,51 @@
             } catch (e) {}
         })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="manifest" href="{% static 'manifest.json' %}">
-    <meta name="theme-color" content="#b45309">
+    <meta name="theme-color" content="#465fff">
     <link rel="icon" href="{% static 'icons/icon-192.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
     <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+    {% block head_extra %}{% endblock %}
 </head>
-<body class="bg-stone-50 text-stone-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
+<body class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100 min-h-screen">
 {% if request.user.is_authenticated %}
-<nav class="bg-amber-700 text-white shadow dark:bg-amber-800">
-    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between flex-wrap gap-2">
-        <a href="/" class="font-semibold tracking-tight">El Taller</a>
-        <div class="flex gap-4 text-sm flex-wrap items-center">
-            <a href="/" class="hover:text-amber-100">Inicio</a>
-            <a href="/cartera/" class="hover:text-amber-100">La Cartera</a>
-            <a href="/proyectos/" class="hover:text-amber-100">Los Proyectos</a>
-            <a href="/buzon/mios/" class="hover:text-amber-100">El Buzón</a>
-            <a href="/perfil/notificaciones/" class="hover:text-amber-100" title="Mis notificaciones">🔔</a>
-            {% include "_toggle_tema.html" %}
-            <span class="text-amber-200">|</span>
-            <span class="text-amber-100">{{ request.user.nombre_completo|default:request.user.email }} ({{ request.user.rol }})</span>
-            <a href="/sign-out" class="hover:text-red-200">Salir</a>
+<div class="flex min-h-screen">
+    {% include "_componentes_tailadmin/sidebar.html" %}
+    <div class="flex flex-1 flex-col">
+        {% include "_componentes_tailadmin/header.html" %}
+        <main class="flex-1 p-4 sm:p-6 lg:p-8">
+            <div class="mx-auto max-w-7xl">
+                {% include "_componentes_tailadmin/alertas_mensajes.html" %}
+                {% block contenido %}{% endblock %}
+            </div>
+        </main>
+        <footer class="border-t border-gray-200 px-4 py-4 text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            El Despacho · Learning Center · <a href="/legal/privacidad" class="underline hover:text-gray-700 dark:hover:text-gray-300">Privacidad</a>
+            · <a href="/legal/terminos" class="underline hover:text-gray-700 dark:hover:text-gray-300">Términos</a>
+        </footer>
+    </div>
+</div>
+{% else %}
+<div class="flex min-h-screen flex-col">
+    <main class="flex flex-1 items-start justify-center px-4 py-12 sm:py-16">
+        <div class="w-full max-w-3xl">
+            {% include "_componentes_tailadmin/alertas_mensajes.html" %}
+            {% block contenido_publico %}{% endblock %}
         </div>
-    </div>
-</nav>
+    </main>
+    <footer class="border-t border-gray-200 px-4 py-4 text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        El Despacho · Learning Center · <a href="/legal/privacidad" class="underline">Privacidad</a>
+        · <a href="/legal/terminos" class="underline">Términos</a>
+    </footer>
+</div>
 {% endif %}
-<main class="max-w-6xl mx-auto px-6 py-8">
-    {% if messages %}
-    <div class="mb-6 space-y-2">
-        {% for m in messages %}
-        <div class="rounded-md border px-4 py-2 text-sm
-            {% if m.tags == 'error' %}border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-200
-            {% elif m.tags == 'success' %}border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200
-            {% else %}border-stone-300 bg-white text-stone-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300{% endif %}">{{ m }}</div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% block contenido %}{% endblock %}
-</main>
-<footer class="text-center text-xs text-stone-400 dark:text-slate-500 py-6">
-    El Despacho · Learning Center · <a href="/legal/privacidad" class="underline">Privacidad</a>
-    · <a href="/legal/terminos" class="underline">Términos</a>
-</footer>
 <script src="{% static 'js/tema.js' %}" defer></script>
+<script src="{% static 'js/ui.js' %}" defer></script>
+{% block body_extra %}{% endblock %}
 </body>
 </html>

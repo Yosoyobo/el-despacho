@@ -4,23 +4,23 @@
 <div class="flex items-start justify-between mb-6 gap-4">
     <div>
         <h1 class="text-3xl font-semibold mb-2">Los Ajustes</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
             Todas las credenciales del sistema. Se cifran con La Bóveda antes de tocar la DB.
             Solo super_admin tiene acceso a este panel.
         </p>
     </div>
     <div class="flex gap-2 shrink-0">
-        <a href="{% url 'ajustes-tasas' %}" class="text-sm rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800">Tasas e Impuestos →</a>
+        <a href="{% url 'ajustes-tasas' %}" class="text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">Tasas e Impuestos →</a>
         <form method="post" action="{% url 'ajustes-probar-analistas' %}">{% csrf_token %}
             <button class="text-sm rounded-md bg-amber-600 text-white px-3 py-1.5 hover:bg-amber-700">Probar Analistas</button>
         </form>
         <form method="post" action="{% url 'ajustes-probar-google-oauth' %}">{% csrf_token %}
-            <button class="text-sm rounded-md bg-slate-700 text-white px-3 py-1.5 hover:bg-slate-800">Probar Google OAuth</button>
+            <button class="text-sm rounded-md bg-gray-700 text-white px-3 py-1.5 hover:bg-gray-800">Probar Google OAuth</button>
         </form>
     </div>
 </div>
 
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
+<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
     {% for clave, etiqueta, descripcion, configurado in slots %}
     <div class="p-5 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-start">
         <div>
@@ -29,11 +29,11 @@
                 {% if configurado %}
                     <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">configurado</span>
                 {% else %}
-                    <span class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">vacío</span>
+                    <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">vacío</span>
                 {% endif %}
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ descripcion }}</p>
-            <code class="text-[10px] text-slate-400 dark:text-slate-500">{{ clave }}</code>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ descripcion }}</p>
+            <code class="text-[10px] text-gray-400 dark:text-gray-500">{{ clave }}</code>
         </div>
 
         <form method="post" action="{% url 'ajustes-guardar' %}" class="flex flex-col gap-2 min-w-[280px]">
@@ -41,12 +41,12 @@
             <input type="hidden" name="clave" value="{{ clave }}">
             <input type="password" name="valor" autocomplete="new-password"
                    placeholder="{% if configurado %}•••• guardado — escribe para reemplazar{% else %}pega el valor{% endif %}"
-                   class="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm">
+                   class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm">
             <div class="flex gap-2">
-                <button class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs py-1.5 rounded-md">Guardar</button>
+                <button class="flex-1 bg-gray-900 hover:bg-gray-800 text-white text-xs py-1.5 rounded-md">Guardar</button>
                 {% if configurado %}
                 <button formaction="{% url 'ajustes-probar' clave %}"
-                        class="flex-1 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs py-1.5 rounded-md">Probar</button>
+                        class="flex-1 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs py-1.5 rounded-md">Probar</button>
                 {% endif %}
             </div>
         </form>
@@ -54,7 +54,7 @@
     {% endfor %}
 </div>
 
-<p class="text-xs text-slate-400 dark:text-slate-500 mt-6">
+<p class="text-xs text-gray-400 dark:text-gray-500 mt-6">
     Los valores nunca se muestran en claro tras guardar. Si necesitas rotar un secret, escribe el nuevo y "Guardar".
     Vaciar el campo y guardar elimina la entrada.
 </p>

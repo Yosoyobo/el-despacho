@@ -1,35 +1,52 @@
 {% extends "base.html" %}
 {% block title %}La Sala de Juntas{% endblock %}
 {% block contenido %}
-<h1 class="text-3xl font-semibold mb-6">La Sala de Juntas</h1>
+<div class="mb-6">
+    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">La Sala de Juntas</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">At-a-glance del despacho.</p>
+</div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Salud</h2>
-        <ul class="text-sm space-y-1">
-            <li>La Bóveda: <span class="font-medium {% if salud_boveda %}text-emerald-700{% else %}text-red-700{% endif %}">{% if salud_boveda %}OK{% else %}FALLA{% endif %}</span></li>
-            <li>Postgres: <span class="font-medium text-emerald-700">OK</span> <span class="text-slate-400 dark:text-slate-500">(estás logueado)</span></li>
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {# Salud #}
+    <div class="ta-card">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Salud</p>
+        <ul class="mt-3 space-y-1 text-sm">
+            <li class="flex items-center justify-between">
+                <span class="text-gray-600 dark:text-gray-300">La Bóveda</span>
+                <span class="badge {% if salud_boveda %}badge-success{% else %}badge-error{% endif %}">{% if salud_boveda %}OK{% else %}FALLA{% endif %}</span>
+            </li>
+            <li class="flex items-center justify-between">
+                <span class="text-gray-600 dark:text-gray-300">Postgres</span>
+                <span class="badge badge-success">OK</span>
+            </li>
         </ul>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Credenciales</h2>
-        <p class="text-2xl font-semibold">{{ credenciales_configuradas }} / {{ credenciales_total }}</p>
-        <p class="text-sm text-slate-500 dark:text-slate-400">slots configurados en Los Ajustes</p>
+    {# Credenciales #}
+    <div class="ta-card">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Credenciales</p>
+        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">
+            {{ credenciales_configuradas }}
+            <span class="text-base font-normal text-gray-400 dark:text-gray-500">/ {{ credenciales_total }}</span>
+        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">slots configurados</p>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Equipo</h2>
-        <p class="text-2xl font-semibold">{{ usuarios_activos }} <span class="text-base font-normal text-slate-400 dark:text-slate-500">/ {{ usuarios_total }}</span></p>
-        <p class="text-sm text-slate-500 dark:text-slate-400">activos en El Directorio</p>
+    {# Equipo #}
+    <div class="ta-card">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</p>
+        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">
+            {{ usuarios_activos }}
+            <span class="text-base font-normal text-gray-400 dark:text-gray-500">/ {{ usuarios_total }}</span>
+        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">activos en El Directorio</p>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Próximos módulos</h2>
-        <p class="text-sm text-slate-600 dark:text-slate-300">La Cartera, Los Proyectos, El Pizarrón llegan en <strong>S1b</strong>.</p>
-        <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Cotizaciones, Caja, Cobranza en S2. Contaduría en S3. IA en S4.</p>
+    {# Roadmap #}
+    <div class="ta-card">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Próximos módulos</p>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">La Cartera, Los Proyectos y El Pizarrón llegan en <strong>S1b</strong>.</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cotizaciones, Caja, Cobranza en S2 · Contaduría en S3 · IA en S4.</p>
     </div>
-
 </div>
 {% endblock %}

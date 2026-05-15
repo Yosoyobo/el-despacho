@@ -3,42 +3,42 @@
 
 {% load static %}
 
-<section class="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900 space-y-4">
+<section class="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900 space-y-4">
     {% if not configurado or not vapid_public_key %}
     <div class="rounded border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200 px-3 py-2 text-sm">
         Notificaciones no configuradas — contacta a un administrador.
     </div>
     {% endif %}
 
-    <div id="interfono-estado" class="text-sm text-slate-700 dark:text-slate-300">
+    <div id="interfono-estado" class="text-sm text-gray-700 dark:text-gray-300">
         <span data-cuando="cargando">Verificando estado...</span>
         <span data-cuando="suscrito" class="hidden text-emerald-700 dark:text-emerald-400">✓ Notificaciones activas en este navegador.</span>
         <span data-cuando="no_suscrito" class="hidden">Notificaciones desactivadas en este navegador.</span>
         <span data-cuando="bloqueado" class="hidden text-red-700 dark:text-red-400">El navegador bloqueó las notificaciones. Reactivarlas desde la configuración del sitio.</span>
-        <span data-cuando="no_soportado" class="hidden text-slate-500 dark:text-slate-400">Este navegador no soporta notificaciones push.</span>
+        <span data-cuando="no_soportado" class="hidden text-gray-500 dark:text-gray-400">Este navegador no soporta notificaciones push.</span>
     </div>
 
     <div class="flex gap-2 flex-wrap">
         <button type="button" id="interfono-activar"
                 {% if not vapid_public_key %}disabled{% endif %}
-                class="rounded bg-slate-900 text-white dark:bg-amber-500 dark:text-slate-900 px-4 py-2 text-sm font-medium hover:bg-slate-800 dark:hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="rounded bg-gray-900 text-white dark:bg-amber-500 dark:text-gray-900 px-4 py-2 text-sm font-medium hover:bg-gray-800 dark:hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed">
             Activar notificaciones
         </button>
         <button type="button" id="interfono-prueba"
-                class="rounded bg-slate-100 dark:bg-slate-800 dark:text-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hidden">
+                class="rounded bg-gray-100 dark:bg-gray-800 dark:text-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 hidden">
             Enviarme una prueba
         </button>
     </div>
 
     <div>
-        <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300 mt-4 mb-2">Dispositivos activos</h3>
+        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-4 mb-2">Dispositivos activos</h3>
         {% if suscripciones %}
-        <ul class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {% for s in suscripciones %}
             <li class="py-2 flex items-center justify-between gap-3">
                 <div>
-                    <div class="text-slate-900 dark:text-slate-100">{{ s.etiqueta_dispositivo }}</div>
-                    <div class="text-xs text-slate-500 dark:text-slate-400">Agregado {{ s.creada_en|date:"Y-m-d H:i" }}</div>
+                    <div class="text-gray-900 dark:text-gray-100">{{ s.etiqueta_dispositivo }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">Agregado {{ s.creada_en|date:"Y-m-d H:i" }}</div>
                 </div>
                 <form method="post" action="{% url 'interfono-desuscribir' s.pk %}">
                     {% csrf_token %}
@@ -49,7 +49,7 @@
             {% endfor %}
         </ul>
         {% else %}
-        <p class="text-sm text-slate-500 dark:text-slate-400">Aún no hay dispositivos suscritos.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Aún no hay dispositivos suscritos.</p>
         {% endif %}
     </div>
 </section>
