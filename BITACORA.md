@@ -1116,7 +1116,9 @@ Total: **45 nuevos**, 0 fallos. `ruff check .` limpio.
   hal en la misma tailnet.
 - ✅ `ping 100.107.38.26` desde el Droplet OK.
 - ✅ SSH despacho@la-sede → mediacenter@hal con `~/.ssh/hal-backup` OK.
-- ✅ `~/Backups/el-despacho/` creado en HAL.
+- ✅ `~/Backups/el-despacho/` → symlink al RAID
+  (`/Volumes/RAID/Backups/el-despacho`, 3.6 TB / 1.7 TB libres).
+  Sentinel `.target_ok` para detectar RAID desmontado en pre-flight.
 - ✅ Crontab `30 3 * * *` instalado para `site_chequeo_diario`.
 - ⏸️ `archivo.sh` con rsync→HAL no probado contra prod aún (espera al
   primer deploy via git para que el script nuevo esté en /opt). El

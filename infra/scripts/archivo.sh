@@ -53,6 +53,19 @@ _rsync_uno() {
 }
 
 if [ -f "$HAL_KEY" ]; then
+    # Pre-flight: ¿la symlink ~/Backups/el-despacho en HAL apunta a un
+    # filesystem montado? Comprueba el sentinel `.target_ok` (escrito por
+    # mediacenter cuando creó el destino). Si falta, el RAID está
+    # desmontado o se montó en otro path — abortamos el rsync limpio.
+    if ! ssh -i "$HAL_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
+            "${HAL_USER}@${HAL_HOST}" "test -f ~/${HAL_DEST}.target_ok" 2>/dev/null; then
+        echo "==> [Archivo] ABORTO rsync→HAL: sentinel ~/${HAL_DEST}.target_ok no encontrado." >&2
+        echo "    Probablemente /Volumes/RAID está desmontado en HAL o cambió de path." >&2
+        _registrar "$DB_FILE" error
+        _registrar "$CRED_FILE" error
+        exit 0
+    fi
+
     _rsync_uno "$DB_FILE"
     _rsync_uno "$CRED_FILE"
 

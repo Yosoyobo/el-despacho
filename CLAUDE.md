@@ -539,7 +539,27 @@ el backup local sigue válido — la replicación es best-effort.
 2. El Droplet tiene una llave SSH dedicada `~/.ssh/hal-backup`.
 3. La pub-key de esa llave está en HAL en
    `~/.ssh/authorized_keys` del usuario `mediacenter`.
-4. HAL tiene `~/Backups/el-despacho/` creado.
+4. HAL tiene `~/Backups/el-despacho/` como **symlink al RAID**:
+   ```
+   ~/Backups/el-despacho → /Volumes/RAID/Backups/el-despacho
+   ```
+   El SSD interno de HAL solo tiene ~14 GB libres; el RAID tiene 1.7 TB.
+
+**Sentinel anti-unmount:** `/Volumes/RAID/Backups/el-despacho/.target_ok`
+marca que el RAID está montado y es el destino legítimo.
+
+`archivo.sh` lo verifica como **pre-flight**: si el archivo no existe
+(porque el RAID se desmontó o se montó con otro path como
+`/Volumes/RAID 1`), aborta el rsync limpio, registra ambos archivos
+en `site_backup_remoto` con estado `error` y termina sin escribir
+archivos al SSD interno por accidente. El backup local sigue válido —
+solo se pierde la replicación de esa corrida.
+
+Cuando el RAID vuelve a montarse en `/Volumes/RAID`, la symlink ya
+apunta ahí; **no hay que tocar nada** y la siguiente corrida del cron
+funciona normal. Si macOS montara el RAID en un path distinto (raro,
+pero pasa cuando coexisten 2 volúmenes con el mismo nombre), expulsar
+el "intruso" y reconectar restaura el path canónico.
 
 **Rotación:** archivo.sh, tras cada rsync exitoso, hace SSH a HAL y
 borra los archivos `.tar.gz` más viejos que los 30 más recientes por
