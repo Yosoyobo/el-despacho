@@ -10,7 +10,7 @@ class InterfonoSuscripcion(models.Model):
         on_delete=models.CASCADE,
         related_name="suscripciones_push",
     )
-    endpoint = models.URLField(max_length=2000, unique=True)
+    endpoint = models.TextField(unique=True)
     p256dh = models.CharField(max_length=200)
     auth = models.CharField(max_length=200)
     user_agent = models.CharField(max_length=300, blank=True, default="")

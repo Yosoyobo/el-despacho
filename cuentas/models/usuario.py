@@ -23,7 +23,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True, db_index=True)
     google_email = models.EmailField(null=True, blank=True)
     google_vinculado_en = models.DateTimeField(null=True, blank=True)
-    avatar_url = models.URLField(max_length=500, blank=True, default="")
+    # URLs no se benefician de un max_length arbitrario; TextField evita crashes
+    # con URLs largas de Google Workspace que incluyen tokens/hashes (0004).
+    avatar_url = models.TextField(blank=True, default="")
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

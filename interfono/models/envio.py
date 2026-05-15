@@ -16,7 +16,7 @@ class InterfonoEnvio(models.Model):
     audiencia_label = models.CharField(max_length=120)
     titulo = models.CharField(max_length=80)
     cuerpo = models.CharField(max_length=300)
-    url_destino = models.URLField(blank=True, default="")
+    url_destino = models.TextField(blank=True, default="")
     entregadas = models.IntegerField(default=0)
     fallidas = models.IntegerField(default=0)
     suscripciones_invalidadas = models.IntegerField(default=0)

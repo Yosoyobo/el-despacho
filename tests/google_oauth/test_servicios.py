@@ -95,6 +95,19 @@ def test_register_acepta_avatar_url_larga(usuario_factory):
     assert out.avatar_url == url_larga
 
 
+def test_register_acepta_avatar_url_workspace(usuario_factory):
+    """Regresión hotfix 0004: URLs de Google Workspace rebasan 500 chars.
+    avatar_url ahora es TextField sin max_length — debe aceptar 1500+."""
+    u = usuario_factory(rol="dueno", email="oscar@bautista.mx")  # noqa: F841
+    from auth_google.servicios import register_or_link_google_user
+    url_workspace = "https://lh3.googleusercontent.com/a/ACg8oc" + ("Y" * 1500)
+    assert len(url_workspace) > 1500
+    out = register_or_link_google_user(_perfil(foto=url_workspace))
+    out.refresh_from_db()
+    assert out.avatar_url == url_workspace
+    assert len(out.avatar_url) > 1500
+
+
 def test_lookup_por_google_sub_es_case_insensitive_en_email(usuario_factory):
     """Si el usuario ya está vinculado, lookup por sub funciona aunque el email
     en Google venga con casing distinto."""

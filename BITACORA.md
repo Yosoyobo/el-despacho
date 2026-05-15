@@ -1960,3 +1960,78 @@ en Django.
 **Cierre hotfix SSO Google:** 2 commits independientes, migración
 0003 no-destructiva (`AlterField` x2), comentario template removido,
 +2 tests de regresión. Total **249/9 verdes**, ruff verde.
+
+---
+
+# BITÁCORA — Hotfix SSO Google (segundo round — cierre)
+
+El hotfix anterior subió `avatar_url` de 200 → 500. Insuficiente: las
+URLs de Google Workspace pasan 500 chars rutinariamente (segundo intento
+de login real volvió a tronar con `varchar(500)` saturado). Decisión
+operativa firme: dejar de bailar con `max_length` y eliminar el límite.
+
+## Cambio
+
+**`avatar_url` URLField(500) → TextField.** En Postgres `text` y `varchar`
+tienen el mismo storage y el mismo performance; el `max_length` arbitrario
+no aporta nada, solo causa crashes con URLs que rebasan el límite que
+sea que adivines.
+
+Audit de otros `URLField` en el modelo:
+
+- `interfono.InterfonoEnvio.url_destino` (URLField default 200) → **TextField**
+- `interfono.InterfonoSuscripcion.endpoint` (URLField(2000, unique)) →
+  **TextField(unique)**. Postgres soporta UNIQUE sobre TEXT sin overhead.
+- `interfono_admin/forms.py:url_destino` — es `forms.URLField` (widget),
+  no model; sin cambio necesario.
+
+Migraciones:
+- [cuentas/migrations/0004_avatar_url_text.py](cuentas/migrations/0004_avatar_url_text.py)
+- [interfono/migrations/0002_url_textfield.py](interfono/migrations/0002_url_textfield.py)
+
+Ambas: solo `AlterField`, cero `RunPython`, no-destructivas.
+
+## Test de regresión
+
+`test_register_acepta_avatar_url_workspace`: avatar_url de **1500 chars**
+persiste íntegro. **250/9 verdes en suite**, ruff verde.
+
+## Política nueva — documentada para CLAUDE.md
+
+> **`varchar(N)` con `max_length` arbitrario es anti-patrón para URLs.
+> Usar `TextField` siempre.** En Postgres `text` y `varchar` tienen
+> performance idéntico; el límite solo causa crashes futuros con URLs
+> que incluyen tokens/hashes. Aplica a:
+>
+> - URLs de avatares / fotos (Google, Microsoft, Apple)
+> - Endpoints de Web Push (FCM, Apple Push, Mozilla Push)
+> - Webhooks de proveedores (Stripe, n8n, etc.)
+> - URLs destino de notificaciones manuales
+>
+> Si necesitas validación de formato, usar `URLValidator` sobre `TextField`
+> en `forms.URLField`/clean methods — no cargar la responsabilidad al schema.
+
+## Cierre SSO Google
+
+Tras este round, SSO se da por **cerrado**:
+- ✅ Flow funcional end-to-end en El Taller + La Gerencia.
+- ✅ Andamiaje 404 con template informativo en La Recepción (S5).
+- ✅ Modelo Usuario con campos finales: `google_sub` varchar(255),
+  `avatar_url` text, `google_email` email, `google_vinculado_en` datetime.
+- ✅ 3 eventos Portavoz (`auth.google_vinculada/_error/_cuenta_no_registrada`).
+- ✅ Botón "Probar Google OAuth" en Los Ajustes para validación de
+  credenciales sin correr el flow.
+- ✅ 30 tests cubriendo lib + servicios + views + integración + 3 de
+  regresión por bugs encontrados en producción.
+
+**Lección recurrente del sprint**: para tipos de dato variables que no
+tienen límite natural (URLs, identificadores de proveedor, payloads
+externos), el límite arbitrario es deuda futura. `TextField` desde día
+1 cuando no hay razón explícita para limitar.
+
+---
+
+**Cierre hotfix round 2 SSO Google:** 2 migraciones (cuentas/0004 +
+interfono/0002), avatar_url y dos URLFields de Interfono convertidos a
+TextField, +1 test de regresión (1500 chars), suite **250/9 verdes**,
+ruff verde. SSO Google cerrado.
