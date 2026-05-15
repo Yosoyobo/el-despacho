@@ -1187,3 +1187,135 @@ operativos. CI con smoke test antes de GHCR. La Mudanza con rollback
 automático (sin probar en vivo todavía). 45 tests nuevos verdes,
 total 181/9. Tres tablas nuevas. Tres eventos nuevos. Dos slots
 nuevos en SLOTS_CREDENCIAL.
+
+---
+
+# BITÁCORA — Cierre operativo S2a.2 + terreno El Pipeline (sprint nocturno)
+
+Sprint acotado de cierre + preparación previo a S2b ("El Pipeline").
+NO es S2b — es plomería para no llegar mañana con deuda operativa.
+
+## 1. archivo.sh → HAL: validado contra prod
+
+Cierra la deuda ⏸️ §7 de S2a.2 ("archivo.sh con rsync→HAL no probado
+contra prod aún"). Resultado:
+
+- Pre-flight verde: HEAD `8881ca2` en prod incluye archivo.sh post-fix,
+  Tailscale ve a `hal` con tx/rx activos, ping 96 ms, SSH chain
+  Sede→HAL OK con `~despacho/.ssh/hal-backup`, sentinel `.target_ok`
+  presente.
+- 3 corridas de archivo.sh: cada una generó 2 `.tar.gz` locales (db
+  +credenciales) y replicó a HAL vía rsync. Última corrida verificada:
+  `db-20260515-062943.sql.gz` (11K) y `credenciales-20260515-062943.tar.gz`
+  (117B) presentes en `~/Backups/el-despacho/` en HAL.
+- Rotación corrió (con 2-3 archivos no borró nada — esperado, threshold
+  es 30 por serie).
+- Sentinel `.target_ok` actuando como contención RAID-desmontado verificado.
+
+### ⚠️ Bug encontrado en `_registrar()` de archivo.sh — registrar como deuda
+
+El guard del bloque `_registrar()` es:
+
+```bash
+docker compose ps la-gerencia 2>/dev/null | grep -q running || return 0
+```
+
+`docker compose ps` reporta STATUS como `Up 23 minutes (healthy)`, no
+literalmente `running`. El `grep -q running` siempre falla → la función
+hace `return 0` (early exit) y el management command
+`registrar_backup_remoto` jamás se ejecuta. Resultado: `site_backup_remoto`
+queda sin filas tras cada cron del archivo.sh.
+
+Verificado: una llamada manual idéntica al cmd interno funciona ("Registrado
+ok: db-...sql.gz → HAL", exit 0, 1 fila creada). El bug está SOLO en el
+guard, no en el management command.
+
+**Fix recomendado** (NO aplicado en este sprint por regla #2 del prompt):
+sustituir el guard por algo como `docker compose ps --status running
+--services | grep -qx la-gerencia`, o usar `docker inspect -f
+'{{.State.Running}}'`. Trivial cuando se retome.
+
+## 2. Reboot del Droplet
+
+- Pre-reboot: `*** System restart required ***` por `libc6` (paquete central),
+  uptime 7 h, load average **23.63 / 22.92 / 11.29** en un Droplet 1 vCPU
+  — saturación severa.
+- `sudo reboot` con confirmación textual del usuario.
+- Recuperación en ~3 min: 00:37 todas FAIL → 00:37:49 Recepción 200 +
+  Gerencia/Taller 502 → 00:38:30 Recepción/Taller 200 → 00:39:08 las 3 a 200.
+- Post-reboot: 7 servicios `Up`, 5 `healthy` (postgres, redis, gerencia,
+  taller, recepcion + el-portero/portavoz-worker sin healthcheck —
+  esperado). `reboot-required` desapareció. Uptime 2 min, load
+  **4.10 / 1.84 / 0.70** — el reboot eliminó la saturación.
+
+## 3. Terreno para El Pipeline: campos de monto en Proyecto
+
+Plomería pura, **sin UI, sin lógica de agregación, sin properties
+calculadas**. La razón de pre-existir estos campos: que S2b mañana pueda
+construir KPIs sin refactor del modelo.
+
+### Cambios
+
+- [el-taller/apps/los_proyectos/models/proyecto.py](el-taller/apps/los_proyectos/models/proyecto.py):
+  agregados 4 campos:
+  - `monto_cotizado` — `DecimalField(12,2)`, nullable. Monto formal
+    post-cotización.
+  - `monto_facturado` — `DecimalField(12,2)`, `default=0`. Suma facturado.
+  - `monto_cobrado` — `DecimalField(12,2)`, `default=0`. Suma cobrado.
+  - `fecha_ingreso_esperado` — `DateField`, nullable. Para proyecciones.
+  - `monto_estimado` **se mantiene intacto** (regla #5 del sprint).
+- [el-taller/apps/los_proyectos/migrations/0002_montos_pipeline.py](el-taller/apps/los_proyectos/migrations/0002_montos_pipeline.py):
+  solo 4 `AddField`, cero `AlterField`, cero `RunPython`. Django proponía
+  además 2 `AlterField` cosméticos en `id` (drift de `auto_created/verbose_name`
+  que también existe pre-existente en `pizarron`/`cuentas` y nunca se
+  congeló); los removí manualmente para cumplir la regla #5 estricta.
+- [el-taller/apps/los_proyectos/admin.py](el-taller/apps/los_proyectos/admin.py):
+  fieldset "Montos del ciclo comercial" agrupa los 5 montos +
+  `fecha_ingreso_esperado`. `list_display` ahora incluye `monto_estimado`
+  + `monto_facturado`. `list_filter` agrega `fecha_ingreso_esperado`.
+- [tests/taller/test_proyectos_montos.py](tests/taller/test_proyectos_montos.py):
+  5 tests verdes (defaults sin kwargs, defaults como Decimal tras `refresh_from_db`,
+  persistencia + readback, facturado>cotizado permitido, monto_estimado intacto).
+
+### Verificación local
+
+```
+$ pytest tests/taller/test_proyectos_montos.py tests/taller/test_proyectos.py -q
+14 passed in 13.99s
+$ ruff check el-taller/apps/los_proyectos/ tests/taller/test_proyectos_montos.py
+All checks passed!
+```
+
+## 4. Pendiente para S2b "El Pipeline" (llamada con dueño mañana)
+
+S2b se planea con scope acotado tras llamada. Preguntas a llevar:
+
+1. **Definición de "valor del pipeline":** ¿qué estados se incluyen?
+   (¿`prospecto` cuenta? ¿`cotizado` con su `monto_cotizado` o con
+   `monto_estimado`?) ¿Qué hace con `en_pausa`?
+2. **Proyección de ingreso:** ¿30/60/90 días, mes, o trimestre? ¿Granularidad
+   por semana o por mes?
+3. **Egresos también o solo ingresos?** ¿Quiere flujo neto o solo top-line?
+4. **Cortes:** ¿KPIs por cliente / categoría / diseñador asignado /
+   estado? ¿Cuál es el corte primario del dashboard?
+5. **Captura manual:** ¿quién captura `monto_cotizado` y `monto_facturado`
+   antes de que S2 traiga Cotizaciones/Facturación reales? ¿Solo super_admin/
+   dueño, o también contador?
+
+## 5. Deuda residual al cierre de este sprint
+
+- **Bug guard en `_registrar()` de archivo.sh** (sección 1 arriba):
+  trivial de arreglar, registrar entry sin parchear esta noche.
+- Las deudas ⏸️ §7 originales de S2a.2 que NO eran "archivo.sh→HAL":
+  rollback en vivo del deploy sigue diferido (decisión del usuario).
+- Drift cosmético `AlterField id` pre-existente en `pizarron`/`cuentas`:
+  no es deuda de este sprint, pero conviene congelar en alguna sesión
+  de housekeeping.
+
+---
+
+**Cierre sprint nocturno:** archivo.sh→HAL validado en prod (con bug
+secundario en telemetry registrado como deuda), Droplet rebootado limpio,
+4 campos de monto en Proyecto + migración 0002 + admin agrupado + 5 tests
+nuevos verdes. 186/9 tests totales. S2b "El Pipeline" sin plomería
+pendiente, listo para llamada con dueño mañana.

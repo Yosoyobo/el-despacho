@@ -40,6 +40,26 @@ class Proyecto(models.Model):
 
     monto_estimado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
+    # Montos del ciclo comercial (terreno para El Pipeline — S2b).
+    # monto_estimado arriba es la primera aproximación; los siguientes se llenan
+    # conforme avanza el ciclo. En S2b llegan flujos automáticos.
+    monto_cotizado = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Monto formal cotizado al cliente (puede diferir del estimado inicial).",
+    )
+    monto_facturado = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Suma de lo facturado al cliente para este proyecto.",
+    )
+    monto_cobrado = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Suma de lo efectivamente cobrado para este proyecto.",
+    )
+    fecha_ingreso_esperado = models.DateField(
+        null=True, blank=True,
+        help_text="Fecha en la que se espera cobrar el grueso del proyecto. Usada para proyecciones.",
+    )
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     creado_por = models.ForeignKey(
