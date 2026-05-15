@@ -1,0 +1,18 @@
+# Overlay para que El Site (en La Gerencia) lea host, containers y certs de Caddy.
+# Se stackea SOLO en producción:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml ...
+# El archivo `docker-compose.prod.yml` se regenera con digests; este NO.
+services:
+  la-gerencia:
+    environment:
+      SITE_PROC_ROOT: /host/proc
+      SITE_SYS_ROOT: /host/sys
+      SITE_DISCO_ROOT: /host
+      SITE_DOCKER_SOCK: /var/run/docker.sock
+      SITE_CADDY_DATA: /caddy/data/caddy/certificates
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/caddy/data:/caddy/data:ro

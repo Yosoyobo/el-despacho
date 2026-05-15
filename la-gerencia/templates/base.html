@@ -20,6 +20,11 @@
             <a href="/directorio/" class="hover:text-amber-300">El Directorio</a>
             <a href="/catalogo/" class="hover:text-amber-300">El Catálogo</a>
             <a href="/buzon/" class="hover:text-amber-300">El Buzón</a>
+            {% if request.user.rol == "super_admin" or request.user.rol == "dueno" %}
+            <a href="/site/" class="hover:text-amber-300 inline-flex items-center gap-1">El Site
+                {% if site_integraciones_rojas %}<span class="text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5" title="{{ site_integraciones_rojas }} integraciones en error">⚠️ {{ site_integraciones_rojas }}</span>{% endif %}
+            </a>
+            {% endif %}
             {% if request.user.es_super_admin %}
             <a href="/ajustes/" class="hover:text-amber-300">Los Ajustes</a>
             {% endif %}

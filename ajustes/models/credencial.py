@@ -29,6 +29,8 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("n8n_webhook_secret", "n8n — Webhook Secret", "Para firmar HMAC saliente."),
     ("vapid_public_key", "Web Push — VAPID Public", "Notificaciones PWA (opcional, S3+)."),
     ("vapid_private_key", "Web Push — VAPID Private", "Notificaciones PWA (opcional, S3+)."),
+    ("do_api_token", "DigitalOcean — API Token (dop_v1_...)", "Token para que El Site lea specs y bandwidth del Droplet."),
+    ("n8n_health_url", "n8n — Health URL (vía Tailscale)", "Ej. http://hal.tailedd04d.ts.net:5678/healthz. El Site lo pinguea."),
 ]
 
 

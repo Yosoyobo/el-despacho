@@ -369,3 +369,205 @@ El workflow termina rojo con el servicio caído nombrado. Recovery:
 3. Lo más probable: solo necesita reinicio →
    `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d <servicio>`
 4. Si no levanta, el último backup en `/opt/el-despacho/backups/` salva.
+
+---
+
+## §13. Smoke test del stack en Docker (CI)
+
+Antes de publicar imágenes a GHCR, el workflow **El Mensajero** corre un
+job `smoke_docker` que levanta el stack entero (postgres + redis +
+la-gerencia + el-taller + la-recepcion + portavoz-worker) localmente en
+el runner de GitHub Actions y verifica que las 3 apps Django responden
+`200` a `/ping` desde dentro de su container.
+
+Pipeline:
+
+```
+push main
+  → pruebas + lint
+  → smoke_docker            ← NUEVO (atrapa Bug A y Bug B de §14)
+  → build (push GHCR)
+  → actualizar_digests
+  → 🚚 mudanza
+```
+
+Este job atrapa:
+
+- **Apps `lib/` no copiadas en Dockerfile** — el container falla con
+  `ModuleNotFoundError` y el healthcheck nunca pasa a `healthy`. Antes
+  de S2a.2 esto se descubría hasta que la imagen ya estaba en GHCR y
+  La Mudanza la intentaba arrancar en La Sede.
+- **Race conditions de migrate** entre apps que comparten Postgres.
+  Si dos apps Django corren `migrate` simultáneo sobre la misma DB sin
+  `depends_on: service_healthy`, una crashea con `relation already
+  exists`. El smoke test lo detecta porque al menos un container queda
+  `unhealthy`.
+
+Si el smoke test rompe, mira logs del job en GHA → revisa Dockerfiles
+y el grafo `depends_on` del compose. **No** workarounds: arregla causa
+raíz antes de re-pushear.
+
+---
+
+## §14. Patrones aprendidos en S2a.1 (no repetir)
+
+### Bug A — apps `lib/` shared requieren COPY explícito en TODOS los Dockerfiles
+
+Cuando una app Django de raíz (`buzon/`, `cuentas/`, `ajustes/`) se
+importa desde varios services, debe aparecer una línea
+`COPY ./<app> /app/<app>` en CADA Dockerfile que la use. Olvidar el
+COPY produce un escenario engañoso:
+
+1. Los tests unitarios y de Django pasan (los settings de test cargan
+   todas las apps).
+2. El build de la imagen pasa (la línea faltante no es un error).
+3. El container falla a arrancar con `ModuleNotFoundError`.
+
+§13 (smoke test en CI) atrapa esto antes de publicar a GHCR. Pero la
+prevención sigue siendo: **revisar los 3 Dockerfiles cuando agregues
+una nueva app shared**.
+
+### Bug B — migrate paralelo sobre Postgres compartido = race condition
+
+La Gerencia, El Taller y el portavoz-worker comparten la misma
+Postgres lógica. Si dos services corren `python manage.py migrate` en
+su `entrypoint.sh` al arrancar simultáneamente:
+
+```
+relation "django_migrations" already exists
+```
+
+Patrón obligatorio: **solo `la-gerencia` corre migrate** (es la app
+con más modelos). El resto declara `depends_on:` con
+`condition: service_healthy` para esperar a que termine:
+
+```yaml
+el-taller:
+  depends_on:
+    la-gerencia:
+      condition: service_healthy
+```
+
+Aplica a cualquier compose con Postgres compartida.
+
+---
+
+## §15. El Site — monitoreo del Droplet (S2a.2)
+
+**Acceso:** `super_admin` y `dueno` en La Gerencia. Sub-app:
+`apps.el_site`. URL: `/site/`. Badge ⚠️ en navbar si hay integraciones
+en rojo.
+
+### Tres cuadrantes
+
+1. **🏗️ Infraestructura del Droplet** — host (CPU/mem/disco/load),
+   containers Docker (vía socket), Postgres (tamaño/conexiones),
+   Redis (memoria/cola Portavoz/DLQ), Caddy (certs y días a expirar),
+   Droplet remoto (specs vía DO API). Auto-refresh HTMX cada 30s.
+2. **🔌 Integraciones externas** — tabla con 8 plataformas
+   (Anthropic, OpenAI, DO API, Postgres, Redis, Docker, Tailscale,
+   n8n). Cada fila tiene botón "Probar ahora". Botón global
+   "Probar todas".
+3. **⚙️ Servicios internos** — último evento Portavoz pendiente,
+   items DLQ, último backup local, último backup remoto a HAL,
+   último deploy. Auto-refresh cada 60s.
+
+### Cron diario
+
+```
+30 3 * * * cd /opt/el-despacho && \
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  -f docker-compose.site.yml exec -T la-gerencia \
+  python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
+```
+
+Corre tras `archivo.sh` (3:00 AM dom). Cada falla emite
+`site.integracion_fallo` con payload `{plataforma, estado,
+mensaje_error, latencia_ms, origen, actor_email}`.
+
+### Plataformas extensibles
+
+Agregar una integración nueva = una entrada en `lib/site/registry.py`:
+
+```python
+def chequear_stripe() -> dict:
+    key = _credencial("stripe_secret_key")
+    if not key:
+        return {"estado": "no_configurada", "mensaje_error": "..."}
+    # ... HTTP call ...
+    return {"estado": "ok", "latencia_ms": 120}
+
+PLATAFORMAS["stripe"] = chequear_stripe
+```
+
+No requiere migración: la tabla `site_chequeo` acepta cualquier
+string en `plataforma`. La UI la pinta sola.
+
+### Volumes en producción
+
+El container de La Gerencia necesita ver el host para leer `/proc`,
+docker.sock y certs de Caddy. Eso se monta en
+`docker-compose.site.yml` (NO en `docker-compose.prod.yml` que se
+regenera por El Mensajero):
+
+```yaml
+la-gerencia:
+  environment:
+    SITE_PROC_ROOT: /host/proc
+    SITE_DOCKER_SOCK: /var/run/docker.sock
+    SITE_CADDY_DATA: /caddy/data/caddy/certificates
+  volumes:
+    - /proc:/host/proc:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ./data/caddy/data:/caddy/data:ro
+```
+
+La Mudanza stackea automáticamente este archivo si existe:
+`-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml`.
+
+---
+
+## §16. Backups remotos a HAL (S2a.2)
+
+Tras cada corrida de `archivo.sh` el script intenta replicar los dos
+`.tar.gz` (db + credenciales) a HAL vía Tailscale + rsync. Si falla,
+el backup local sigue válido — la replicación es best-effort.
+
+**Setup:**
+
+1. El Droplet tiene Tailscale (`tailscale status` lista `hal`).
+2. El Droplet tiene una llave SSH dedicada `~/.ssh/hal-backup`.
+3. La pub-key de esa llave está en HAL en
+   `~/.ssh/authorized_keys` del usuario `mediacenter`.
+4. HAL tiene `~/Backups/el-despacho/` creado.
+
+**Rotación:** archivo.sh, tras cada rsync exitoso, hace SSH a HAL y
+borra los archivos `.tar.gz` más viejos que los 30 más recientes por
+serie (`db-*` y `credenciales-*` por separado).
+
+**Trazabilidad:** El comando `registrar_backup_remoto` escribe en
+`site_backup_remoto` el resultado de cada rsync. El Site lo muestra
+en "Servicios internos → Backup remoto".
+
+---
+
+## §17. Rollback automático en La Mudanza (S2a.2)
+
+`appleboy/ssh-action` ejecuta el deploy con healthcheck post-arranque.
+3 intentos × 8s curl `https://{host}.ninomeando.com/ping` para los 3
+hosts. Si alguno no devuelve 200 tras los 3 intentos:
+
+1. Restaura `docker-compose.prod.yml.previo` (snapshot pre-deploy).
+2. `git reset --hard <commit_previo>`.
+3. `docker compose pull && up -d` con los digests viejos.
+4. Emite `deploy.rollback` por Portavoz.
+5. El job termina rojo (exit 1).
+
+Si los 3 hosts responden 200: emite `deploy.exitoso` y termina verde.
+
+**Para probar el rollback en vivo** sin riesgo prolongado: commit a
+una rama que rompa el healthcheck (ej. `gunicorn --workers 0` en
+`la-gerencia/entrypoint.sh`), mergear con el usuario observando, ver
+en GHA logs cómo el rollback se dispara y restaura. Las URLs no se
+caen porque el deploy nuevo no llega a `healthy` antes del retry +
+restore.

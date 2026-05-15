@@ -48,9 +48,79 @@ jobs:
       - run: pip install ruff==0.8.4
       - run: ruff check .
 
+  smoke_docker:
+    name: 🧪 Smoke test del stack en Docker
+    needs: [pruebas, lint]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar .env mínimo
+        run: |
+          cat > .env <<EOF
+          BOVEDA_MASTER_KEY=$(openssl rand -hex 32)
+          DJANGO_SECRET_KEY=$(openssl rand -hex 32)
+          POSTGRES_DB=el_despacho
+          POSTGRES_USER=despacho
+          POSTGRES_PASSWORD=$(openssl rand -hex 20)
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
+          REDIS_URL=redis://redis:6379/0
+          GERENCIA_ALLOWED_HOSTS=localhost,127.0.0.1
+          TALLER_ALLOWED_HOSTS=localhost,127.0.0.1
+          RECEPCION_ALLOWED_HOSTS=localhost,127.0.0.1
+          DESPACHO_SUPERADMIN_EMAIL=ci@example.com
+          DESPACHO_SUPERADMIN_PASSWORD=$(openssl rand -hex 16)
+          CADDY_HTTP_PORT=8080
+          CADDY_HTTPS_PORT=8443
+          DESPACHO_ENV=development
+          EOF
+          mkdir -p data/postgres data/redis data/caddy/data data/caddy/config data/credenciales
+      - name: Build local (sin push)
+        run: docker compose -f docker-compose.yml build la-gerencia el-taller la-recepcion
+      - name: Levantar stack
+        run: |
+          docker compose -f docker-compose.yml up -d postgres redis
+          for i in $(seq 1 30); do
+            if docker compose -f docker-compose.yml ps postgres | grep -q "healthy"; then break; fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml up -d la-gerencia el-taller la-recepcion portavoz-worker
+      - name: Esperar healthchecks (max 120s)
+        run: |
+          for i in $(seq 1 24); do
+            sleep 5
+            sg=$(docker inspect --format='{{.State.Health.Status}}' despacho-gerencia 2>/dev/null || echo "starting")
+            st=$(docker inspect --format='{{.State.Health.Status}}' despacho-el-taller 2>/dev/null || echo "starting")
+            sr=$(docker inspect --format='{{.State.Health.Status}}' despacho-la-recepcion 2>/dev/null || echo "starting")
+            echo "[$i] gerencia=$sg taller=$st recepcion=$sr"
+            if [ "$sg" = "healthy" ] && [ "$st" = "healthy" ] && [ "$sr" = "healthy" ]; then
+              echo "✅ Las 3 apps healthy"
+              exit 0
+            fi
+            if [ "$sg" = "unhealthy" ] || [ "$st" = "unhealthy" ] || [ "$sr" = "unhealthy" ]; then
+              echo "❌ Algún container unhealthy" && break
+            fi
+          done
+          echo "❌ Timeout esperando healthchecks"
+          docker compose -f docker-compose.yml logs --tail 80 la-gerencia el-taller la-recepcion
+          exit 1
+      - name: Probar /ping en cada app
+        run: |
+          for entry in "despacho-gerencia:8001" "despacho-el-taller:8000" "despacho-la-recepcion:8002"; do
+            name="${entry%:*}"; port="${entry##*:}"
+            code=$(docker exec "$name" python -c "import urllib.request,sys;print(urllib.request.urlopen('http://localhost:'+'${port}'+'/ping',timeout=5).status)" 2>/dev/null || echo FAIL)
+            echo "$name → $code"
+            [ "$code" = "200" ] || { docker logs "$name" --tail 80; exit 1; }
+          done
+      - name: Apagar
+        if: always()
+        run: docker compose -f docker-compose.yml down -v || true
+
   build:
     name: Build & push
-    needs: [pruebas, lint]
+    needs: [smoke_docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -99,7 +169,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Necesario para que el commit posterior pueda hacer push.
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/login-action@v3
         with:
@@ -153,7 +222,7 @@ jobs:
           git push origin HEAD:main
 
   mudanza:
-    name: 🚚 La Mudanza (deploy a La Sede)
+    name: 🚚 La Mudanza (deploy a La Sede con rollback automático)
     needs: [actualizar_digests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -164,21 +233,74 @@ jobs:
           host: ${{ secrets.SEDE_HOST }}
           username: ${{ secrets.SEDE_USER }}
           key: ${{ secrets.SEDE_SSH_KEY }}
-          command_timeout: 10m
+          command_timeout: 15m
           script: |
-            set -e
+            set -uo pipefail
             cd /opt/el-despacho
-            echo "=== git pull ==="
-            git pull --ff-only origin main
+
+            COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml"
+            if [ -f docker-compose.site.yml ]; then
+              COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.site.yml"
+            fi
+
+            echo "=== Capturando estado previo (rollback) ==="
+            cp docker-compose.prod.yml docker-compose.prod.yml.previo
+            COMMIT_PREVIO=$(git rev-parse HEAD)
+
+            echo "=== git fetch + reset main ==="
+            git fetch origin main
+            git reset --hard origin/main
+            COMMIT_NUEVO=$(git rev-parse HEAD)
+
             echo "=== docker compose pull ==="
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            docker compose $COMPOSE_FILES pull
+
             echo "=== docker compose up -d ==="
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-            echo "=== ps ==="
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
-            echo "=== smoke /ping internos ==="
-            for svc in la-gerencia:8001 el-taller:8000 la-recepcion:8002; do
-              host="${svc%:*}"; port="${svc##*:}"
-              code=$(docker exec "despacho-$([ "$host" = "la-gerencia" ] && echo gerencia || [ "$host" = "el-taller" ] && echo el-taller || echo la-recepcion)" python -c "import urllib.request,sys; print(urllib.request.urlopen('http://localhost:'+'${port}'+'/ping',timeout=5).status)" 2>/dev/null || echo "ERR")
-              echo "  $host: $code"
+            docker compose $COMPOSE_FILES up -d
+
+            echo "=== Esperando 45s para healthchecks ==="
+            sleep 45
+
+            echo "=== Validando healthchecks (3 intentos espaciados 10s) ==="
+            DEPLOY_OK=1
+            for intento in 1 2 3; do
+              FALLOS=""
+              for host in gerencia.ninomeando.com taller.ninomeando.com recepcion.ninomeando.com; do
+                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 8 \
+                    "https://${host}/ping" || echo "FAIL")
+                if [ "$CODE" != "200" ]; then
+                  FALLOS="${FALLOS} ${host}=${CODE}"
+                fi
+              done
+              if [ -z "$FALLOS" ]; then
+                echo "✅ Healthcheck OK en intento $intento"
+                DEPLOY_OK=0
+                break
+              fi
+              echo "⚠️  Intento $intento falló:$FALLOS"
+              if [ "$intento" -lt 3 ]; then sleep 10; fi
             done
+
+            if [ "$DEPLOY_OK" -ne 0 ]; then
+              echo "❌ Healthchecks fallaron tras 3 intentos. Iniciando rollback."
+              mv docker-compose.prod.yml.previo docker-compose.prod.yml
+              git reset --hard "$COMMIT_PREVIO"
+              docker compose $COMPOSE_FILES pull
+              docker compose $COMPOSE_FILES up -d
+              sleep 30
+              echo "=== Estado post-rollback ==="
+              docker compose $COMPOSE_FILES ps
+              docker compose $COMPOSE_FILES exec -T la-gerencia \
+                python manage.py notificar_deploy --estado rollback --commit "$COMMIT_NUEVO" \
+                --nota "Rollback automático tras fallo de healthcheck" \
+                2>/dev/null || true
+              exit 1
+            fi
+
+            rm -f docker-compose.prod.yml.previo
+            echo "=== Estado final ==="
+            docker compose $COMPOSE_FILES ps
+            docker compose $COMPOSE_FILES exec -T la-gerencia \
+              python manage.py notificar_deploy --estado ok --commit "$COMMIT_NUEVO" \
+              2>/dev/null || true
+            echo "✅ Deploy verde."

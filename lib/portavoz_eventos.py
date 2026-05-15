@@ -32,6 +32,9 @@ EventoTipo = Literal[
     "buzon.nuevo_mensaje",
     "buzon.estado_cambiado",
     "buzon.respondido",
+    "site.integracion_fallo",
+    "deploy.exitoso",
+    "deploy.rollback",
 ]
 
 

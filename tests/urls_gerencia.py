@@ -17,5 +17,6 @@ urlpatterns = [
     path("buzon/clientes/", TemplateView.as_view(template_name="buzon_admin/clientes_proximamente.html"),
          name="buzon-admin-clientes-proximamente"),
     path("buzon/", include("apps.buzon_admin.urls")),
+    path("site/", include("apps.el_site.urls")),
     path("", include("apps.api.urls")),
 ]

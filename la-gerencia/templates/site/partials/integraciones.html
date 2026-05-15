@@ -1,0 +1,41 @@
+<div id="site-integraciones-inner" class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+            <tr>
+                <th class="px-4 py-2 text-left">Plataforma</th>
+                <th class="px-4 py-2 text-left">Estado</th>
+                <th class="px-4 py-2 text-left">Latencia</th>
+                <th class="px-4 py-2 text-left">Origen</th>
+                <th class="px-4 py-2 text-left">Última prueba</th>
+                <th class="px-4 py-2 text-right">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in integraciones.filas %}
+            <tr class="border-t border-slate-100">
+                <td class="px-4 py-2 font-mono text-xs">{{ f.plataforma }}</td>
+                <td class="px-4 py-2">
+                    {% if f.estado == "ok" %}<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">✓ OK</span>
+                    {% elif f.estado == "error" %}<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">✗ Error</span>
+                    {% elif f.estado == "no_configurada" %}<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">— no configurada</span>
+                    {% else %}<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-400">sin datos</span>{% endif %}
+                </td>
+                <td class="px-4 py-2 font-mono text-xs">{{ f.latencia_ms|default:"—" }}{% if f.latencia_ms %}ms{% endif %}</td>
+                <td class="px-4 py-2 text-xs text-slate-500">{{ f.origen|default:"—" }}</td>
+                <td class="px-4 py-2 text-xs text-slate-500">{{ f.probado_en|default:"—"|truncatechars:19 }}</td>
+                <td class="px-4 py-2 text-right">
+                    <form method="post" action="{% url 'site-probar' f.plataforma %}" hx-post="{% url 'site-probar' f.plataforma %}" hx-target="#site-integraciones" hx-swap="innerHTML" class="inline">
+                        {% csrf_token %}
+                        <button class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3 py-1 rounded">Probar ahora</button>
+                    </form>
+                </td>
+            </tr>
+            {% if f.estado == "error" and f.mensaje_error %}
+            <tr class="border-t border-slate-50">
+                <td colspan="6" class="px-4 py-1 text-xs text-red-700 bg-red-50 font-mono">{{ f.mensaje_error|truncatechars:200 }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

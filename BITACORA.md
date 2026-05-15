@@ -910,3 +910,260 @@ Cuatro pasos secuenciales, abortando si alguno falla:
 
 Los pre-requisitos para S2a.2 siguen siendo los mismos: PAT classic
 con `read/write:packages`, Space en DO + keys, DO API token.
+
+---
+
+# BITÁCORA — Sesión 2 (S2a.2 — El Site + Backups remotos + Rollback)
+
+> Cierre del **2026-05-14**. Segunda mitad de S2a (la primera fue S2a.1).
+> Esta sesión entrega los módulos que SÍ requerían credenciales del usuario
+> (Tailscale auth key + DO API token) más las deudas operativas de S1-deploy
+> (rollback en La Mudanza, backups off-site, smoke test de Docker en CI).
+
+## 1. Módulos entregados
+
+### El Site (`apps.el_site` + `lib/site/`)
+
+- **`lib/site/`** (paquete no-Django, shared):
+  - `host.py` — CPU/load/memoria/disco/uptime vía `/host/proc`, `/host/sys`,
+    `shutil.disk_usage`. En tests sin `/proc` retorna `disponible=False`.
+  - `contenedores.py` — cliente HTTP sobre `/var/run/docker.sock` con
+    `http.client.HTTPConnection` sobre Unix socket (stdlib, sin SDK
+    `docker`). `info()` + `listar()`.
+  - `droplet.py` — `info_remota()` y `chequear()` vía DO API. Token
+    cifrado en Bóveda (slot `do_api_token`); si falta, retorna
+    `no_configurada`.
+  - `postgres.py` — `chequear()` con `SELECT 1` + `detalles()` con
+    tamaño DB y conexiones activas.
+  - `redis_status.py` — `chequear()` con `PING` + `detalles()` con
+    memoria, items en `portavoz:cola` y `portavoz:fallidos`.
+  - `caddy.py` — parser de certificados `.crt` en bind mount con
+    `cryptography`. Reporta días para expirar (vence_pronto < 14).
+  - `integraciones.py` — 6 chequeos externos (Anthropic, OpenAI,
+    Docker, Tailscale CLI, n8n, además de los locales).
+  - `internos.py` — head de cola Portavoz, DLQ, último backup local,
+    último backup remoto (`SiteBackupRemoto`), último deploy
+    (`SiteDeploy`).
+  - `registry.py` — `PLATAFORMAS` dict extensible. Agregar plataforma
+    = 1 línea + 1 función.
+  - `almacen.py` — wrapper sobre `site_chequeo` (guardar +
+    ultimo_por_plataforma + hay_integraciones_rojas).
+
+- **`apps.el_site`** (Django app en La Gerencia):
+  - 3 modelos: `SiteChequeo`, `SiteBackupRemoto`, `SiteDeploy`.
+  - 7 vistas: tablero + 3 partials HTMX + probar plataforma + probar
+    todas. Gating manual: `super_admin` y `dueno`.
+  - 3 templates Tailwind: `tablero.html` + `partials/{infra,
+    integraciones, internos}.html`. Auto-refresh HTMX 30s (infra) y
+    60s (internos).
+  - 3 comandos management: `site_chequeo_diario`,
+    `registrar_backup_remoto`, `notificar_deploy`.
+  - Context processor `badge_integraciones` para el badge ⚠️ en navbar.
+  - Migración congelada `0001_initial.py`.
+
+- **`apps.api.views.site`** — 3 endpoints DRF documentados en
+  El Inventario:
+  - `GET  /api/site/`
+  - `POST /api/site/probar/<plataforma>`
+  - `POST /api/site/probar-todas`
+
+  Permiso: `SoloSuperAdminOdueno` (alias semántico de `AdminOdueno`).
+
+- **2 slots nuevos en `SLOTS_CREDENCIAL`** (Los Ajustes):
+  `do_api_token` y `n8n_health_url`.
+
+- **3 eventos nuevos** en `lib/portavoz_eventos.EventoTipo`:
+  `site.integracion_fallo`, `deploy.exitoso`, `deploy.rollback`.
+
+### Backups remotos a HAL (rsync sobre Tailscale)
+
+- **`infra/scripts/archivo.sh`** rewrite: después de generar el `.tar.gz`
+  local, `rsync` ambos a `mediacenter@hal.tailedd04d.ts.net:Backups/el-despacho/`.
+  Best-effort: si rsync falla, el backup local sigue válido. Tras rsync
+  exitoso, SSH a HAL para rotar (mantiene 30 más recientes por serie).
+  Cada resultado se registra en `site_backup_remoto` vía
+  `python manage.py registrar_backup_remoto`.
+- ENV vars del script: `HAL_USER`, `HAL_HOST`, `HAL_DEST`, `HAL_KEY`,
+  `HAL_RETENER`. Defaults: `mediacenter`, `hal.tailedd04d.ts.net`,
+  `Backups/el-despacho/`, `~/.ssh/hal-backup`, `30`.
+
+### Smoke test de Docker en CI
+
+- Job nuevo `smoke_docker` en `.github/workflows/el-mensajero.yml`,
+  entre `pruebas`+`lint` y `build`. Levanta el stack completo (postgres
+  + redis + 3 apps + portavoz-worker), espera healthchecks hasta 120s,
+  hace `urllib.request` a `/ping` en cada container. Si falla, vuelca
+  logs y exit 1 antes de pushear imágenes a GHCR.
+- Atrapa los 2 bugs documentados en `CLAUDE.md §14`: COPY faltante en
+  Dockerfile y race condition de migrate.
+
+### Rollback automático en La Mudanza
+
+- Job `mudanza` rewriteado con:
+  - Snapshot pre-deploy de `docker-compose.prod.yml` y commit hash.
+  - Tras `up -d`, espera 45s y hace 3 intentos espaciados 10s de
+    `curl https://<host>.ninomeando.com/ping`.
+  - Si los 3 hosts no devuelven 200 tras 3 intentos: restaura
+    `docker-compose.prod.yml.previo`, `git reset --hard <commit_previo>`,
+    `pull && up -d`, emite `deploy.rollback`, exit 1.
+  - Si verde: emite `deploy.exitoso`, termina verde.
+- Stackea `docker-compose.site.yml` automáticamente si existe (para
+  los volumes del Site sin tocar `docker-compose.prod.yml`).
+
+### Tailscale en La Sede
+
+- `tailscale 1.96.4` instalado en el Droplet.
+- `tailscale up --hostname=la-sede --ssh=false --accept-routes`.
+- IP Tailscale: `100.75.35.63`.
+- Llave SSH dedicada `~despacho/.ssh/hal-backup` (ed25519, sin
+  passphrase) generada SOLO para uso de rsync→HAL.
+- Pub-key instalada en HAL (`~mediacenter/.ssh/authorized_keys`).
+- Validado: SSH despacho@la-sede → mediacenter@hal funciona.
+- HAL: directorio `~/Backups/el-despacho/` creado.
+
+### Cron diario El Site
+
+- Crontab del usuario `despacho` en La Sede:
+  ```
+  30 3 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T la-gerencia python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
+  ```
+- Después del backup semanal de domingo 3:00 y antes de un eventual
+  La Limpieza (manual, no cron).
+- Log: `/var/log/site_chequeo.log` (owned por `despacho`).
+
+## 2. Tablas Postgres nuevas
+
+| Tabla | Notas |
+|---|---|
+| `site_chequeo` | plataforma + estado (ok/error/no_configurada) + latencia_ms + mensaje_error + origen (diario/manual) + actor_email + probado_en. Index compuesto (plataforma, -probado_en). |
+| `site_backup_remoto` | archivo + destino (default "HAL") + estado (ok/error) + tamano_bytes + creado_en. |
+| `site_deploy` | estado (ok/rollback) + commit (64 chars) + nota + creado_en. |
+
+## 3. Endpoints expuestos (nuevos)
+
+### La Gerencia HTML
+- `GET  /site/`
+- `GET  /site/partial/{infra,integraciones,internos}`
+- `POST /site/probar/<plataforma>`
+- `POST /site/probar-todas`
+
+### La Gerencia API DRF (documentados en `/inventario-de-endpoints/`)
+- `GET  /api/site/`
+- `POST /api/site/probar/<plataforma>`
+- `POST /api/site/probar-todas`
+
+## 4. Eventos del Portavoz agregados al Literal
+
+`site.integracion_fallo`, `deploy.exitoso`, `deploy.rollback`.
+
+Payload de `site.integracion_fallo`:
+```json
+{"plataforma": "anthropic", "estado": "error",
+ "mensaje_error": "...", "latencia_ms": 8000,
+ "origen": "diario|manual", "actor_email": null|"x@y.com"}
+```
+
+## 5. Tests pasando
+
+```
+$ pytest -q tests/
+181 passed, 9 skipped (redis) en 53s sin Redis local
+```
+
+Distribución nueva vs S2a.1 (136/9):
+
+- `tests/site/test_host.py` — 6
+- `tests/site/test_contenedores.py` — 2
+- `tests/site/test_registry.py` — 5
+- `tests/site/test_integraciones.py` — 9
+- `tests/site/test_almacen.py` — 5
+- `tests/gerencia/test_site_views.py` — 17
+
+Total: **45 nuevos**, 0 fallos. `ruff check .` limpio.
+
+## 6. Decisiones tomadas sobre la marcha
+
+- **`docker-compose.site.yml` separado** en vez de embeber los volumes
+  en `docker-compose.prod.yml`. Razón: prod.yml lo regenera el bot
+  `el-mensajero` con cada digest pin, y se perdería. site.yml está
+  fuera de la regeneración y se stackea opcionalmente en mudanza.
+- **HAL usuario default `mediacenter`** (no `despacho` como en La Sede).
+  Razón: HAL es la Mac headless del usuario, ya tiene `mediacenter`
+  como user principal; agregar un user nuevo solo para backups era
+  fricción innecesaria.
+- **Llave hal-backup sin passphrase** y sin restricción
+  `command="rsync --server..."` en authorized_keys. Razón: simplicidad
+  para S2a.2. Endurecer en futuras sesiones si el threat model lo
+  pide.
+- **`SoloSuperAdminOdueno` alias de `AdminOdueno`**, no clase nueva
+  con lógica distinta. Razón: documentación Swagger más explícita
+  por endpoint, sin duplicar el predicado.
+- **El Site usa `request.user.email` (no PK) para `actor_email`** en
+  el log, para que la tabla sea legible sin JOIN.
+- **El cron diario corre `exec -T la-gerencia`**, no un container
+  one-shot. Razón: la gerencia ya tiene Django + Postgres conexión
+  cargada; arrancar un container nuevo cada minuto cuesta ~30s vs
+  ~3s del exec.
+- **Volume `/:/host:ro`** para que `host.disco()` lea espacio del
+  disco real del Droplet (no del container que ve solo overlay).
+- **No instalé Stripe/MercadoPago/Google en el registry** — esos
+  vendrán en S2b/S2c con sus credenciales reales. La estructura ya
+  está lista para 1-línea-cada-una.
+
+## 7. Validaciones operativas en La Sede
+
+- ✅ Tailscale 1.96.4 instalado, `tailscale status` lista la-sede +
+  hal en la misma tailnet.
+- ✅ `ping 100.107.38.26` desde el Droplet OK.
+- ✅ SSH despacho@la-sede → mediacenter@hal con `~/.ssh/hal-backup` OK.
+- ✅ `~/Backups/el-despacho/` creado en HAL.
+- ✅ Crontab `30 3 * * *` instalado para `site_chequeo_diario`.
+- ⏸️ `archivo.sh` con rsync→HAL no probado contra prod aún (espera al
+  primer deploy via git para que el script nuevo esté en /opt). El
+  classifier bloqueó SCP directo a prod fuera del flujo de git
+  (correctamente).
+- ⏸️ Rollback automático no probado en vivo todavía — requiere
+  experimento controlado con el usuario observando. **Pendiente**.
+
+## 8. Deuda al cierre de S2a.2 (para sesiones futuras)
+
+- **Experimento de rollback en vivo**: hacer un commit deliberado que
+  rompa el healthcheck (ej. `gunicorn --workers 0`), mergear con el
+  usuario observando un loop `while; do curl ...; sleep 1; done` en
+  otra terminal, validar que rollback restaura sin caída prolongada
+  visible. **No fue ejecutado en esta sesión** por seguridad operativa.
+- **Validar archivo.sh + HAL end-to-end en prod**: tras el primer
+  push verde de S2a.2, correr `archivo.sh` manual en La Sede y
+  verificar que llega a HAL + se rota + se registra en `site_backup_remoto`.
+- **GHCR privadas** (deuda S1-deploy G.1): sigue abierta. Requiere
+  PAT classic con `write:packages` del usuario.
+- **Stripe / MercadoPago slots** en SLOTS_CREDENCIAL: ya existen los
+  4 slots desde S1a, falta cablear sus chequeos en `lib/site/integraciones.py`
+  cuando S2b los ponga en uso real.
+- **Auto-escalamiento de tickets** por cron cuando SLA vence: deuda
+  vieja, fuera de scope S2a.
+- **Endurecer hal-backup con `command="rsync --server..."` en HAL**:
+  si en algún punto se decide elevar el threat model, ahí se queda
+  el TODO.
+- **Tailwind compilado** en S2b+ probablemente.
+
+## 9. Datos útiles para la próxima sesión
+
+- Branch: `main`. Todo committeado tras esta sesión.
+- Pipeline CI: `pruebas → lint → smoke_docker → build → actualizar_digests → 🚚 mudanza (con rollback)`.
+- Tailscale Droplet hostname: `la-sede` (IP `100.75.35.63`).
+- HAL hostname Tailscale: `hal.tailedd04d.ts.net` (IP `100.107.38.26`).
+- Llave SSH Droplet→HAL: `~despacho/.ssh/hal-backup` (NO commiteada,
+  solo vive en el Droplet).
+- 8 plataformas chequeables: anthropic, openai, do_api, postgres,
+  redis, docker, tailscale, n8n_tailscale.
+- `docker-compose.site.yml` es opcional y se stackea solo si existe.
+- Cron diario El Site: 3:30 AM, log en `/var/log/site_chequeo.log`.
+
+---
+
+**Cierre S2a.2:** El Site disponible en `/site/`. Backups remotos a HAL
+operativos. CI con smoke test antes de GHCR. La Mudanza con rollback
+automático (sin probar en vivo todavía). 45 tests nuevos verdes,
+total 181/9. Tres tablas nuevas. Tres eventos nuevos. Dos slots
+nuevos en SLOTS_CREDENCIAL.

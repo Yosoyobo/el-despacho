@@ -1,0 +1,143 @@
+<div id="site-infra" hx-get="{% url 'site-partial-infra' %}" hx-trigger="every 30s" hx-swap="outerHTML"
+     class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Host</h3>
+        {% if infra.host.cpu_load.disponible %}
+        <dl class="text-xs space-y-1">
+            <div class="flex justify-between"><dt class="text-slate-500">Load 1m/5m/15m</dt>
+                <dd class="font-mono">{{ infra.host.cpu_load.load_1 }} / {{ infra.host.cpu_load.load_5 }} / {{ infra.host.cpu_load.load_15 }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Cores</dt><dd class="font-mono">{{ infra.host.cpu_load.cores|default:"?" }}</dd></div>
+            {% if infra.host.uptime.disponible %}
+            <div class="flex justify-between"><dt class="text-slate-500">Uptime</dt><dd class="font-mono">{{ infra.host.uptime.humano }}</dd></div>
+            {% endif %}
+        </dl>
+        {% else %}
+        <p class="text-xs text-slate-400">/proc no montado — host no visible desde el container.</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Memoria</h3>
+        {% if infra.host.memoria.disponible %}
+        <dl class="text-xs space-y-1">
+            <div class="flex justify-between"><dt class="text-slate-500">Total</dt><dd class="font-mono">{{ infra.host.memoria.total_mb }} MB</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Usado</dt>
+                <dd class="font-mono {% if infra.host.memoria.pct_usado > 80 %}text-red-600{% elif infra.host.memoria.pct_usado > 60 %}text-amber-600{% endif %}">
+                {{ infra.host.memoria.usado_mb }} MB ({{ infra.host.memoria.pct_usado }}%)</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Libre</dt><dd class="font-mono">{{ infra.host.memoria.libre_mb }} MB</dd></div>
+        </dl>
+        {% else %}
+        <p class="text-xs text-slate-400">no disponible</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Disco</h3>
+        {% if infra.host.disco.disponible %}
+        <dl class="text-xs space-y-1">
+            <div class="flex justify-between"><dt class="text-slate-500">Path</dt><dd class="font-mono">{{ infra.host.disco.path }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Total</dt><dd class="font-mono">{{ infra.host.disco.total_gb }} GB</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Usado</dt>
+                <dd class="font-mono {% if infra.host.disco.pct_usado > 80 %}text-red-600{% elif infra.host.disco.pct_usado > 75 %}text-amber-600{% endif %}">
+                {{ infra.host.disco.usado_gb }} GB ({{ infra.host.disco.pct_usado }}%)</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Libre</dt><dd class="font-mono">{{ infra.host.disco.libre_gb }} GB</dd></div>
+        </dl>
+        {% if infra.host.disco.pct_usado > 75 %}
+        <p class="mt-2 text-xs text-amber-700">⚠️ Considera correr La Limpieza.</p>
+        {% endif %}
+        {% else %}
+        <p class="text-xs text-slate-400">no disponible</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Postgres</h3>
+        {% if infra.postgres.disponible %}
+        <dl class="text-xs space-y-1">
+            <div class="flex justify-between"><dt class="text-slate-500">DB</dt><dd class="font-mono">{{ infra.postgres.db }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Tamaño</dt><dd class="font-mono">{{ infra.postgres.tamano_mb }} MB</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Conexiones</dt><dd class="font-mono">{{ infra.postgres.conexiones_activas }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Versión</dt><dd class="font-mono">{{ infra.postgres.version|truncatechars:20 }}</dd></div>
+        </dl>
+        {% else %}
+        <p class="text-xs text-red-600">no disponible: {{ infra.postgres.error|default:"?" }}</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Redis (Portavoz)</h3>
+        {% if infra.redis.disponible %}
+        <dl class="text-xs space-y-1">
+            <div class="flex justify-between"><dt class="text-slate-500">Memoria</dt><dd class="font-mono">{{ infra.redis.memoria_mb }} MB</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Cola Portavoz</dt><dd class="font-mono">{{ infra.redis.portavoz_cola }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">DLQ</dt>
+                <dd class="font-mono {% if infra.redis.portavoz_dlq > 0 %}text-red-600{% endif %}">{{ infra.redis.portavoz_dlq }}</dd></div>
+        </dl>
+        {% else %}
+        <p class="text-xs text-red-600">no disponible: {{ infra.redis.error|default:"?" }}</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Containers</h3>
+        {% if infra.containers.info.disponible %}
+        <dl class="text-xs space-y-1">
+            <div class="flex justify-between"><dt class="text-slate-500">Total</dt><dd class="font-mono">{{ infra.containers.info.containers }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Running</dt><dd class="font-mono text-emerald-600">{{ infra.containers.info.running }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Stopped</dt>
+                <dd class="font-mono {% if infra.containers.info.stopped %}text-amber-600{% endif %}">{{ infra.containers.info.stopped }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Imágenes</dt><dd class="font-mono">{{ infra.containers.info.imagenes }}</dd></div>
+        </dl>
+        <details class="mt-2"><summary class="text-xs text-slate-500 cursor-pointer">Ver containers</summary>
+            <ul class="mt-1 text-xs font-mono space-y-0.5">
+                {% for c in infra.containers.containers %}
+                <li><span class="{% if c.estado == 'running' %}text-emerald-700{% else %}text-amber-700{% endif %}">●</span>
+                    {{ c.nombre }} — {{ c.estado_humano|truncatechars:32 }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% else %}
+        <p class="text-xs text-slate-400">docker.sock no disponible.</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Droplet (DO)</h3>
+        {% if infra.droplet_remoto.disponible %}
+        <dl class="text-xs space-y-1">
+            <div class="flex justify-between"><dt class="text-slate-500">Nombre</dt><dd class="font-mono">{{ infra.droplet_remoto.nombre }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Región</dt><dd class="font-mono">{{ infra.droplet_remoto.region }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Tamaño</dt><dd class="font-mono">{{ infra.droplet_remoto.tamano }}</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">vCPUs / RAM / Disco</dt>
+                <dd class="font-mono">{{ infra.droplet_remoto.vcpus }} / {{ infra.droplet_remoto.ram_mb }}MB / {{ infra.droplet_remoto.disco_gb }}GB</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">IP pública</dt><dd class="font-mono">{{ infra.droplet_remoto.ip_publica }}</dd></div>
+        </dl>
+        {% else %}
+        <p class="text-xs text-slate-400">{{ infra.droplet_remoto.motivo|default:"DO API no configurada (Los Ajustes → do_api_token)" }}</p>
+        <p class="text-xs text-slate-500 mt-1">Nombre lógico: <span class="font-mono">{{ infra.droplet_local.nombre_logico }}</span> · IP esperada: <span class="font-mono">{{ infra.droplet_local.ip_publica_esperada }}</span></p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm md:col-span-2">
+        <h3 class="font-semibold text-sm text-slate-700 mb-2">Caddy — Certificados</h3>
+        {% if infra.caddy.disponible %}
+        {% if infra.caddy.certs %}
+        <ul class="text-xs font-mono space-y-1">
+            {% for c in infra.caddy.certs %}
+            <li class="flex justify-between">
+                <span>{{ c.nombres|join:", "|truncatechars:42 }}</span>
+                <span class="{% if c.vence_pronto %}text-red-600{% elif c.dias_para_expirar < 30 %}text-amber-600{% endif %}">
+                    {{ c.dias_para_expirar|default:"?" }}d · {{ c.expira_en|default:"?"|truncatechars:19 }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-xs text-slate-400">Directorio Caddy presente pero sin certs todavía.</p>
+        {% endif %}
+        {% else %}
+        <p class="text-xs text-slate-400">Caddy bind mount no montado ({{ infra.caddy.motivo|default:"?" }}).</p>
+        {% endif %}
+    </div>
+</div>

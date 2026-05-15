@@ -26,3 +26,9 @@ class AdminOdueno(BasePermission):
         if not user or not user.is_authenticated:
             return False
         return getattr(user, "rol", None) in ("super_admin", "dueno")
+
+
+class SoloSuperAdminOdueno(AdminOdueno):
+    """Alias semántico — El Site documenta su acceso con este nombre explícito
+    en Swagger. Funcionalmente equivalente a AdminOdueno."""
+    message = "Acceso restringido a super_admin y dueño."

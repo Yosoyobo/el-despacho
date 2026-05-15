@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.api.apps.ApiConfig",
     "apps.el_catalogo.apps.ElCatalogoConfig",
     "apps.buzon_admin.apps.BuzonAdminConfig",
+    "apps.el_site.apps.ElSiteConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",
@@ -68,6 +69,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.el_site.context_processors.badge_integraciones",
             ],
         },
     },
