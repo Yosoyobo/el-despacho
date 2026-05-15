@@ -83,6 +83,21 @@ def tasas_lista(request):
 
 @requires_role("super_admin")
 @require_http_methods(["POST"])
+def probar_google_oauth(request):
+    """Valida credenciales Google OAuth haciendo un round-trip con code dummy
+    al endpoint de token. invalid_grant ⇒ credenciales OK; invalid_client ⇒
+    credenciales mal."""
+    from lib.google_oauth import probar_conexion
+    res = probar_conexion()
+    if res["ok"]:
+        messages.success(request, f"Google OAuth — {res['detalle']}")
+    else:
+        messages.error(request, f"Google OAuth — {res['detalle']}")
+    return redirect("ajustes-panel")
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
 def probar_analistas(request):
     """Smoke test: pide a la cadena DEFAULT (Anthropic → OpenAI) responder
     'ok' a un prompt mínimo. Útil para validar configuración tras editar

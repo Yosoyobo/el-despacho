@@ -25,6 +25,7 @@ COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
 COPY buzon/ /app/buzon/
 COPY interfono/ /app/interfono/
+COPY auth_google/ /app/auth_google/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config

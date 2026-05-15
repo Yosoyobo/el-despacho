@@ -35,6 +35,9 @@ EventoTipo = Literal[
     "site.integracion_fallo",
     "deploy.exitoso",
     "deploy.rollback",
+    "auth.google_vinculada",
+    "auth.google_error",
+    "auth.google_cuenta_no_registrada",
 ]
 
 

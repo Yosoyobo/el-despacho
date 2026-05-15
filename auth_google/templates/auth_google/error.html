@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Error al iniciar sesión con Google{% endblock %}
+
+{% block contenido %}
+<div class="max-w-md mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm p-8 mt-12">
+    <h1 class="text-xl font-semibold mb-4 text-slate-900 dark:text-slate-100">No fue posible iniciar sesión</h1>
+
+    {% if motivo == "cuenta_no_registrada" %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+            La cuenta de Google <strong>{{ email_google }}</strong> no está registrada en El Despacho.
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Contacta al administrador para que la agregue al Directorio antes de intentar de nuevo.
+        </p>
+    {% elif motivo == "ya_vinculado" %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+            Tu usuario en El Despacho ya está vinculado a otra cuenta de Google.
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Contacta al administrador si necesitas cambiar la cuenta vinculada.
+        </p>
+    {% elif motivo == "state_invalido" %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+            La sesión de login expiró o el origen no es válido.
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Vuelve a intentarlo desde el botón "Continuar con Google".
+        </p>
+    {% elif motivo == "acceso_denegado" %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+            No autorizaste el acceso en Google.
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Si fue accidental, puedes intentarlo de nuevo desde el botón "Continuar con Google".
+        </p>
+    {% elif motivo == "rol_no_permitido" %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+            La cuenta <strong>{{ email_google }}</strong> no tiene permisos para acceder a esta sección.
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Solo super_admin y dueño pueden entrar a La Gerencia. Si tu rol es contador o diseñador,
+            entra por El Taller.
+        </p>
+    {% elif motivo == "codigo_invalido" %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+            Google no aceptó las credenciales del flow de autenticación.
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Intenta de nuevo. Si persiste, reporta el incidente al administrador.
+        </p>
+    {% else %}
+        <p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+            Ocurrió un error inesperado al iniciar sesión con Google.
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Intenta de nuevo o usa email + contraseña.
+        </p>
+    {% endif %}
+
+    <a href="/sign-in"
+       class="inline-flex items-center text-sm font-medium text-slate-900 dark:text-slate-100 hover:underline">
+        ← Volver al inicio de sesión
+    </a>
+</div>
+{% endblock %}

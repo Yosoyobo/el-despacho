@@ -18,8 +18,11 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     nombre_completo = models.CharField(max_length=200)
     rol = models.CharField(max_length=20, choices=ROLES, default="disenador", db_index=True)
 
-    # Vínculo Google SSO opcional
-    google_sub = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    # Vínculo Google SSO opcional. `google_sub` es el ID inmutable que Google
+    # emite por usuario; sobrevive cambios de email del lado Google.
+    google_sub = models.CharField(max_length=50, unique=True, null=True, blank=True, db_index=True)
+    google_email = models.EmailField(null=True, blank=True)
+    google_vinculado_en = models.DateTimeField(null=True, blank=True)
     avatar_url = models.URLField(blank=True, default="")
 
     is_active = models.BooleanField(default=True)

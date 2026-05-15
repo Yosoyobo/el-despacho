@@ -7,6 +7,7 @@ urlpatterns = [
     path("guardar", views.guardar, name="ajustes-guardar"),
     path("<slug:clave>/probar", views.probar, name="ajustes-probar"),
     path("analistas/probar", views.probar_analistas, name="ajustes-probar-analistas"),
+    path("google_oauth/probar", views.probar_google_oauth, name="ajustes-probar-google-oauth"),
     path("tasas/", views.tasas_lista, name="ajustes-tasas"),
     path("tasas/nueva", views.tasa_nueva, name="ajustes-tasa-nueva"),
     path("tasas/<int:pk>/editar", views.tasa_editar, name="ajustes-tasa-editar"),

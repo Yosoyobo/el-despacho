@@ -13,6 +13,7 @@ from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
 urlpatterns = [
     *urlpatterns_sw,
     *urlpatterns_suscripcion,
+    path("", include("auth_google.urls", namespace="google_oauth")),
     path("interfono/", include("apps.interfono_admin.urls")),
     path("perfil/notificaciones/", _perfil_notif, name="interfono-perfil"),
     path("", include("apps.gerencia_home.urls")),

@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "ajustes.apps.AjustesConfig",
     "buzon.apps.BuzonConfig",
     "interfono.apps.InterfonoConfig",
+    "auth_google.apps.AuthGoogleConfig",
     # El Taller
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
@@ -79,6 +80,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.el_site.context_processors.badge_integraciones",
                 "interfono.context_processors.vapid_public_key",
+                "auth_google.context_processors.google_oauth_configurado",
             ],
         },
     },

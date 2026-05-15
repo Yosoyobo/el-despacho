@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "ajustes.apps.AjustesConfig",
     "buzon.apps.BuzonConfig",
     "interfono.apps.InterfonoConfig",
+    "auth_google.apps.AuthGoogleConfig",
     # De La Gerencia
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -73,6 +74,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.el_site.context_processors.badge_integraciones",
                 "interfono.context_processors.vapid_public_key",
+                "auth_google.context_processors.google_oauth_configurado",
             ],
         },
     },

@@ -15,10 +15,9 @@ from lib.boveda import cifrar, descifrar
 # la UI de Los Ajustes. Slots no listados se aceptan también (extensible).
 SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     # (clave, etiqueta_humana, descripción)
-    ("google_oauth_client_id", "Google OAuth — Client ID", "Cliente OAuth del Workspace."),
+    ("google_oauth_client_id", "Google OAuth — Client ID", "Cliente OAuth de Google Cloud Console."),
     ("google_oauth_client_secret", "Google OAuth — Client Secret", "Secret del cliente OAuth."),
-    ("google_oauth_redirect_uri", "Google OAuth — Redirect URI", "Ej. https://taller.ninomeando.com/auth/google/callback"),
-    ("google_workspace_dominio", "Google Workspace — Dominio", "Dominio @ que se aceptará (vacío = cualquiera)."),
+    ("google_oauth_project_id", "Google OAuth — Project ID", "Solo para logs / debug (ej. `el-despacho-496414`). Opcional."),
     ("stripe_secret_key", "Stripe — Secret Key (sk_...)", "Llave secreta del modo correspondiente."),
     ("stripe_webhook_secret", "Stripe — Webhook Secret (whsec_...)", "Validación de webhooks entrantes."),
     ("mercadopago_access_token", "MercadoPago — Access Token", "Token de la cuenta vendedor."),

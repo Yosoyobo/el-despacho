@@ -1593,3 +1593,292 @@ Dark mode con toggle persistente en localStorage + anti-FOUC + paleta
 slate aplicada a 38 templates principales (298 cambios automatizados).
 **+37 tests verdes; total 223/9, ruff verde.** Listo para llamada de
 S2b "El Pipeline" mañana sin deuda nueva.
+
+---
+
+# BITÁCORA — Sprint SSO Google
+
+Sprint chico, independiente, acotado. Despierta el SSO de Google que
+estaba dormido desde S1a (slots heredados + 90 líneas embrionarias en
+`lib/google_oauth.py`). Tras este sprint, los usuarios pueden entrar
+a El Taller y La Gerencia con "Continuar con Google" en lugar de
+teclear contraseña. La Recepción solo tiene andamiaje (404 con template
+informativo) — habilitará en S5.
+
+## 1. Lo entregado
+
+### App raíz nueva: `auth_google/`
+
+Patrón §14 (apps usadas por más de un Django project viven en raíz; los
+3 Dockerfiles añadieron `COPY auth_google/`). Estructura:
+
+- [auth_google/views.py](auth_google/views.py) — `iniciar()` + `callback()`.
+  Anti-CSRF con `state` + `nonce` en sesión. Soporta `?next=` validado con
+  `url_has_allowed_host_and_scheme` (descarta redirects externos).
+- [auth_google/servicios.py](auth_google/servicios.py) —
+  `register_or_link_google_user(perfil)` (regla #16). Lookup por
+  `google_sub` primero (caso común), luego por email `iexact`.
+  Lanza `GoogleOAuthCuentaNoRegistrada` si no existe o está inactivo (no
+  filtra info de cuentas baneadas). Lanza `GoogleOAuthYaVinculadoAOtra`
+  si el Usuario ya tiene `google_sub` distinto (no sobrescribe). Solo
+  copia el `avatar_url` desde Google si el Usuario no tiene avatar local.
+- [auth_google/urls.py](auth_google/urls.py) — namespace `google_oauth`,
+  paths `/auth/google/iniciar` y `/auth/google/callback`.
+- [auth_google/urls_recepcion.py](auth_google/urls_recepcion.py) —
+  andamiaje: ambas rutas responden 404 con template propio. Razón: La
+  Recepción no tiene `cuentas`/`ajustes`/`django.contrib.auth` (es stub
+  S1a), las views reales fallarían al importar. Confirmado con dueño
+  como opción (b) del prompt.
+- [auth_google/context_processors.py](auth_google/context_processors.py) —
+  inyecta `google_oauth_configurado` (bool) en todos los templates de
+  Gerencia + Taller (tests/django_settings también). El botón
+  "Continuar con Google" aparece solo si está True — nunca un botón
+  roto si las credenciales faltan.
+- [auth_google/templates/auth_google/error.html](auth_google/templates/auth_google/error.html) —
+  mensajes legibles según `motivo`: `cuenta_no_registrada` (con el email
+  Google que intentó entrar), `ya_vinculado`, `rol_no_permitido`,
+  `state_invalido`, `acceso_denegado`, `codigo_invalido`, `desconocido`.
+  Nada de stack traces al usuario.
+- [auth_google/templates/auth_google/no_disponible.html](auth_google/templates/auth_google/no_disponible.html) —
+  La Recepción: standalone (sin extender base.html porque Recepción no
+  tiene base.html). CSS vars + anti-FOUC respetando dark mode del sprint
+  anterior.
+
+### `lib/google_oauth.py` — refactor completo (90 → 230 líneas)
+
+- **Jerarquía de excepciones tipadas** en lugar del genérico
+  `CredencialFaltante`:
+  - `GoogleOAuthError` (base)
+  - `GoogleOAuthNoConfigurado`
+  - `GoogleOAuthCodigoInvalido`
+  - `GoogleOAuthCuentaNoRegistrada(email)`
+  - `GoogleOAuthYaVinculadoAOtra(email)`
+- **`PerfilGoogle` enriquecido**: ahora incluye `sub`, `email`,
+  `email_verified`, `nombre`, `apellido`, `foto_url`, `locale`, con
+  property `nombre_completo`.
+- **`GoogleOAuthConfig`** — class con `client_id()` / `client_secret()`
+  / `project_id()` / `esta_configurado()`. Lee siempre fresh de La
+  Bóveda (no caché — la UI cambia los slots en runtime).
+- **`construir_url_autorizacion(redirect_uri, state, nonce)`** —
+  acepta los 3 parámetros explícitos. Scope mínimo (`openid email
+  profile`) + `prompt=select_account` + `access_type=online` (sin
+  refresh token).
+- **`intercambiar_codigo_por_perfil(code, redirect_uri)`** — POST
+  token + GET userinfo en una `httpx.Client(timeout=5.0)`. Lanza
+  `GoogleOAuthCodigoInvalido` con el `error` que devuelve Google.
+- **`probar_conexion()`** — POST a `/token` con code dummy. Heurística
+  confirmada: `invalid_grant` ⇒ ok; `invalid_client` ⇒ creds mal.
+  Lo usa el botón "Probar Google OAuth" en Los Ajustes.
+- **`redirect_uri_desde_request(request)`** — construye
+  `{request.scheme}://{request.get_host()}/auth/google/callback`. Esto
+  permite usar el mismo OAuth Client para los 3 hosts (gerencia/taller/
+  recepción) — cada uno con su redirect URI registrada en Cloud Console.
+- **Timeout 5s** uniformizado.
+
+### Modelo Usuario — migración 0002
+
+[cuentas/migrations/0002_google_sub_unique.py](cuentas/migrations/0002_google_sub_unique.py)
+con 5 operations:
+
+1. `AlterField google_sub` → `max_length=50, null=True, blank=True` (sin
+   `default=""` ni `unique=True` aún)
+2. `RunPython _vacios_a_null` → convierte `""` a `NULL` en filas
+   existentes (con reverse: `NULL → ""`)
+3. `AlterField google_sub` → agrega `unique=True`
+4. `AddField google_email = EmailField(null=True, blank=True)`
+5. `AddField google_vinculado_en = DateTimeField(null=True, blank=True)`
+
+Cero pérdida de datos. Verificado con `showmigrations cuentas` en La
+Sede vía Tailscale antes de generar: solo `0001_initial` aplicada, sin
+sorpresas.
+
+### Slots de Los Ajustes
+
+- **Agregado**: `google_oauth_project_id` (solo para logs / debug, opcional).
+- **Eliminado del catálogo**: `google_oauth_redirect_uri` (obsoleto, ahora
+  dinámico desde request) y `google_workspace_dominio` (decisión "sin
+  restricción de dominio" firme).
+  - Decisión confirmada: no dejar deprecated. Si hay credenciales
+    guardadas con esas claves en La Bóveda de producción, quedan
+    huérfanas pero no generan bug (no se leen). Limpieza eventual con
+    un command futuro.
+- Las descripciones de los slots restantes apuntan ahora a Google Cloud
+  Console (no "Workspace").
+
+### UI
+
+- **Botón "Continuar con Google"** en sign_in de La Gerencia y El Taller
+  (no en Recepción). Detrás de `{% if google_oauth_configurado %}`.
+  Apunta a `{% url 'google_oauth:iniciar' %}` (namespace) — no hardcoded.
+- **Logo SVG oficial Google** multicolor en
+  [_google_logo.html](la-gerencia/templates/_google_logo.html) (4 paths:
+  amarillo/rojo/verde/azul). Cumple regla #1 (sin librerías). Proporciones
+  oficiales de developers.google.com/identity/branding-guidelines. Mismo
+  archivo replicado en El Taller.
+- Separador "— o —" entre form email/pwd y botón Google, con dark mode
+  consistente.
+- **Botón "Probar Google OAuth"** en panel de Los Ajustes (Gerencia,
+  super_admin). Usa `probar_conexion()`. Mensaje de éxito incluye el
+  detalle ("Credenciales válidas — Google rechazó el code dummy, lo
+  esperado").
+
+### Eventos Portavoz nuevos
+
+En `lib/portavoz_eventos.EventoTipo`:
+- `auth.google_vinculada` — `{usuario_id, email, google_email}`. Emitido
+  en `register_or_link_google_user` tras vincular.
+- `auth.google_error` — `{tipo_error, mensaje, ip_origen}`. Emitido en
+  la view callback ante `GoogleOAuthCodigoInvalido` o errores
+  desconocidos.
+- `auth.google_cuenta_no_registrada` — `{google_email, google_sub}`.
+  Emitido cuando una cuenta no autorizada intenta entrar (alerta de
+  seguridad menor para detectar intentos).
+
+### Restricción por host
+
+`auth_google/views.py::_host_permite_rol`: si el callback llega a un
+host con `"gerencia"` en el hostname, solo permite
+`super_admin`/`dueno`. Render error con motivo `rol_no_permitido` y
+mensaje que sugiere usar El Taller. Refleja la misma constraint que el
+login email/password en La Gerencia.
+
+### Limpieza de duplicación
+
+Antes: views `google_iniciar` + `google_callback` + `_register_or_link`
+duplicadas en `auth_taller/views.py` y `auth_gerencia/views.py`. Ahora:
+ambas apps tienen solo email/password + rate-limit. Todo el SSO vive
+en `auth_google/`. URLs heredadas `/auth/google/start` reemplazadas por
+`/auth/google/iniciar` (decisión: consistencia con código en español +
+matchea prompt; bookmarks viejos rompen, pero no son críticos —
+redirect manual).
+
+## 2. Endpoints nuevos / cambiados
+
+| Host | Path | Método | Cambio |
+|---|---|---|---|
+| Gerencia + Taller | `/auth/google/iniciar` | GET | **renombrado** (era `/start`) |
+| Gerencia + Taller | `/auth/google/callback` | GET | sin cambio de path; nuevo handler en `auth_google` |
+| Recepción | `/auth/google/iniciar` | GET | **NUEVO** stub 404 |
+| Recepción | `/auth/google/callback` | GET | **NUEVO** stub 404 |
+| Gerencia | `/ajustes/google_oauth/probar` | POST | **NUEVO** botón "Probar Google OAuth" |
+
+## 3. Esquema
+
+`cuentas_usuario`:
+- `google_sub` cambia de `CharField(64, blank, default="")` a
+  `CharField(50, null, blank, UNIQUE)`. Filas con `""` → `NULL`.
+- `google_email` (EmailField, null, blank) **nuevo**.
+- `google_vinculado_en` (DateTimeField, null, blank) **nuevo**.
+
+## 4. Decisiones tomadas
+
+- **Sin librerías OAuth externas** — implementación con `httpx` (ya
+  presente) + endpoints públicos de Google. `social-auth-app-django`,
+  `django-allauth`, `python-social-auth` descartados por
+  over-engineering para 1 provider.
+- **`redirect_uri` dinámico** desde `request.scheme + get_host()` —
+  permite usar el mismo OAuth Client para los 3 hosts. Slot literal
+  `google_oauth_redirect_uri` heredado de S1a queda obsoleto y se borra
+  del catálogo.
+- **Sin restricción de dominio** — cualquier cuenta Google puede iniciar
+  el flow. Filtrado pasa por matchear email contra `cuentas_usuario`
+  (regla #16). Slot `google_workspace_dominio` borrado del catálogo.
+- **Scopes mínimos** — `openid email profile`. NO Drive/Docs/Calendar/Gmail.
+  Esos llegan en S2b/S2c si se integran wrappers de Workspace.
+- **`access_type=online`** — sin refresh token. Re-autenticación normal
+  cada sesión. Suficiente para identidad.
+- **Validación de credenciales vía `/token` (no `/tokeninfo`)** —
+  `/tokeninfo` valida tokens emitidos, no credenciales de cliente. El
+  POST a `/token` con code dummy es la forma idiomática: `invalid_grant`
+  significa "credenciales OK, solo el code es inválido" (lo esperado);
+  `invalid_client` significa credenciales mal. Validado a mano con las
+  credenciales reales del usuario antes de tocar disco.
+- **App raíz `auth_google/`** (patrón §14, igual que `interfono`/`buzon`/
+  `cuentas`/`ajustes`).
+- **Recepción con stub 404** — opción (b) confirmada. Cuando S5 cree
+  el portal de clientes, La Recepción adquirirá `cuentas`+`ajustes`+
+  auth+sessions naturalmente; swap del stub a `auth_google.urls` real
+  será trivial.
+- **`google_sub` UNIQUE** — ningún Usuario puede compartir cuenta Google.
+- **No sobrescribir vinculación existente** — `GoogleOAuthYaVinculadoAOtra`.
+
+## 5. Tests
+
+**+24 tests nuevos verdes** (objetivo era ≥15). 0 rojos. Total **247
+verdes**, 9 skipped (Redis no local), 0 fallidas. Pasamos de 223 → 247.
+
+- [tests/google_oauth/test_lib.py](tests/google_oauth/test_lib.py) —
+  10 tests: `esta_configurado` con/sin credenciales, `construir_url_autorizacion`
+  incluye todos los params + scopes mínimos, intercambio ok con `httpx`
+  mockeado, intercambio rechazado (`invalid_grant`), `probar_conexion`
+  ok / invalid_client / sin credenciales, `redirect_uri_desde_request`.
+- [tests/google_oauth/test_servicios.py](tests/google_oauth/test_servicios.py) —
+  6 tests: vincula primer login (todos los campos), segunda vez no
+  reescribe avatar existente, email no registrado lanza
+  `CuentaNoRegistrada`, usuario inactivo lanza `CuentaNoRegistrada`,
+  google_sub ya asignado a otra cuenta lanza `YaVinculadoAOtra`, lookup
+  por sub funciona con casing distinto en email.
+- [tests/google_oauth/test_views.py](tests/google_oauth/test_views.py) —
+  9 tests: iniciar sin credenciales redirige login, iniciar con
+  credenciales redirige a Google + guarda state, callback con state
+  mismatch da 400, callback exitoso loguea + redirect home, email no
+  registrado renderiza error.html con email visible, acceso_denegado del
+  usuario, codigo_invalido renderiza error, callback respeta `?next=`
+  seguro, callback descarta `?next=` externo.
+- [tests/google_oauth/test_login_integracion.py](tests/google_oauth/test_login_integracion.py) —
+  3 tests: sign_in sin credenciales NO muestra botón, sign_in con
+  credenciales SÍ muestra botón, botón apunta a `/auth/google/iniciar`.
+
+**Borrado**: `tests/test_google_oauth.py` (10 tests heredados de S1a
+que probaban la API obsoleta `_leer_credenciales`/`url_autorizacion`/
+`intercambiar_code`, reemplazada por `tests/google_oauth/test_lib.py`).
+
+`ruff check .` — All checks passed.
+
+## 6. Configuración para deploy
+
+**Local (HAL)**: para probar el flow en `http://localhost:8000` (Taller)
+o `:8001` (Gerencia), el usuario debe agregar estas redirect URIs en
+Google Cloud Console → OAuth Client → "Authorized redirect URIs":
+- `http://localhost:8000/auth/google/callback`
+- `http://localhost:8001/auth/google/callback`
+
+**Producción** (las 3 ya dadas de alta antes del sprint):
+- `https://gerencia.ninomeando.com/auth/google/callback`
+- `https://taller.ninomeando.com/auth/google/callback`
+- `https://recepcion.ninomeando.com/auth/google/callback` (para S5 — sin
+  uso hoy, no estorba)
+
+Tras el deploy:
+1. Configurar las credenciales en `https://gerencia.ninomeando.com/ajustes/`
+   (slots `google_oauth_client_id`, `google_oauth_client_secret`,
+   `google_oauth_project_id` opcional).
+2. Click "Probar Google OAuth" — debe responder "Credenciales válidas".
+3. Logout y probar el flow real con `oscar@bautista.mx` (matched) y con
+   una cuenta personal sin relación (debe renderizar `error.html` con
+   mensaje claro).
+
+## 7. Deuda residual al cierre
+
+- **Experimento de rollback en vivo** (S2a.2) — sigue diferido.
+- **GHCR privadas** (S1-deploy G.1) — sigue abierta.
+- **Validación visual del botón Google en dark mode** — el SVG es
+  multicolor fijo (no respeta tema), pero el contenedor sí. Revisar
+  contraste visual en navegador tras deploy.
+- **Slots huérfanos en La Bóveda producción** (`google_oauth_redirect_uri`,
+  `google_workspace_dominio`) si llegaron a configurarse. No causan
+  bugs; quedan latentes hasta una limpieza eventual.
+- **Re-conexión Google si las credenciales rotan**: hoy el flujo es
+  "edita los slots en Los Ajustes". No hay invalidación automática de
+  sesiones existentes — los usuarios ya logueados siguen su sesión Django
+  hasta expirar.
+
+---
+
+**Cierre sprint SSO Google:** SSO funcional end-to-end en El Taller y
+La Gerencia con regla #16 (registerOrLinkGoogleUser); andamiaje 404 en
+La Recepción. Migración no-destructiva del modelo Usuario (+3 campos).
+Slots de Los Ajustes limpiados (+ project_id, − redirect_uri/dominio).
+3 eventos Portavoz nuevos. Logo SVG oficial Google inline. Botón
+"Probar Google OAuth" en Los Ajustes. **+24 tests verdes; total 247/9;
+ruff verde.**

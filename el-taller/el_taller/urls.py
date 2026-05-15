@@ -8,6 +8,7 @@ from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
 urlpatterns = [
     *urlpatterns_sw,
     *urlpatterns_suscripcion,
+    path("", include("auth_google.urls", namespace="google_oauth")),
     path("perfil/notificaciones/", include("apps.perfil_notificaciones.urls")),
     path("", include("apps.taller_home.urls")),
     path("", include("apps.auth_taller.urls")),

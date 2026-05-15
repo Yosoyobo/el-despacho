@@ -17,6 +17,7 @@ COPY lib/ /app/lib/
 COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
 COPY interfono/ /app/interfono/
+COPY auth_google/ /app/auth_google/
 COPY la-recepcion/ /app/
 
 EXPOSE 8002
