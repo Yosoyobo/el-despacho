@@ -86,7 +86,15 @@ jobs:
             if docker compose -f docker-compose.yml ps postgres | grep -q "healthy"; then break; fi
             sleep 2
           done
-          docker compose -f docker-compose.yml up -d la-gerencia el-taller la-recepcion portavoz-worker
+          if ! docker compose -f docker-compose.yml up -d la-gerencia el-taller la-recepcion portavoz-worker; then
+            echo "❌ compose up -d falló — volcando logs de los containers que arrancaron"
+            docker compose -f docker-compose.yml ps -a
+            for c in despacho-gerencia despacho-el-taller despacho-la-recepcion despacho-portavoz-worker; do
+              echo "===== $c ====="
+              docker logs "$c" --tail 200 2>&1 || echo "(no logs)"
+            done
+            exit 1
+          fi
       - name: Esperar healthchecks (max 120s)
         run: |
           for i in $(seq 1 24); do
