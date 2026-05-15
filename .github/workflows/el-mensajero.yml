@@ -238,11 +238,6 @@ jobs:
             set -uo pipefail
             cd /opt/el-despacho
 
-            COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml"
-            if [ -f docker-compose.site.yml ]; then
-              COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.site.yml"
-            fi
-
             echo "=== Capturando estado previo (rollback) ==="
             cp docker-compose.prod.yml docker-compose.prod.yml.previo
             COMMIT_PREVIO=$(git rev-parse HEAD)
@@ -251,6 +246,13 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             COMMIT_NUEVO=$(git rev-parse HEAD)
+
+            # Evaluar COMPOSE_FILES DESPUÉS del git reset — el site.yml puede
+            # haber sido agregado/removido en el commit nuevo.
+            COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml"
+            if [ -f docker-compose.site.yml ]; then
+              COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.site.yml"
+            fi
 
             echo "=== docker compose pull ==="
             docker compose $COMPOSE_FILES pull

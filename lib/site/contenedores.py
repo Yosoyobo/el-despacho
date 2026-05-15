@@ -47,7 +47,7 @@ def info() -> dict[str, Any]:
     if not disponible():
         return {"disponible": False}
     try:
-        d = _get("/v1.43/info")
+        d = _get("/v1.44/info")
     except Exception as exc:  # noqa: BLE001
         return {"disponible": False, "error": str(exc)[:200]}
     return {
@@ -66,7 +66,7 @@ def listar() -> list[dict[str, Any]]:
     if not disponible():
         return []
     try:
-        rows = _get("/v1.43/containers/json?all=1")
+        rows = _get("/v1.44/containers/json?all=1")
     except Exception:
         return []
     out = []
