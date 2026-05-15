@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}El Catálogo — La Gerencia{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex items-center justify-between gap-4 flex-wrap">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">El Catálogo</h1>
+        <p class="text-sm text-slate-500">Servicios frecuentes — precio base, unidad y categoría.</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'catalogo-categorias' %}" class="text-sm rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50">Categorías</a>
+        {% if puede_editar %}
+        <a href="{% url 'catalogo-nuevo' %}" class="text-sm rounded-md bg-slate-900 text-white px-3 py-1.5 hover:bg-slate-800">+ Nuevo servicio</a>
+        {% endif %}
+    </div>
+</header>
+
+<form method="get" class="mb-4 flex gap-2 items-center flex-wrap">
+    <input name="q" value="{{ q }}" placeholder="Buscar por nombre..." class="rounded-md border border-slate-300 px-3 py-1.5 text-sm">
+    <select name="categoria" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm">
+        <option value="">— Todas las categorías —</option>
+        {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria_filtro == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+    </select>
+    {% if puede_editar %}
+    <label class="text-sm flex items-center gap-1 text-slate-600">
+        <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %}> incluir archivados
+    </label>
+    {% endif %}
+    <button class="text-sm rounded-md bg-slate-900 text-white px-3 py-1.5">Filtrar</button>
+</form>
+
+<div class="overflow-x-auto rounded-md border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 text-slate-600">
+            <tr>
+                <th class="px-3 py-2 text-left">Nombre</th>
+                <th class="px-3 py-2 text-left">Categoría</th>
+                <th class="px-3 py-2 text-left">Unidad</th>
+                <th class="px-3 py-2 text-right">Precio base</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                {% if puede_editar %}<th class="px-3 py-2"></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in servicios %}
+            <tr class="border-t border-slate-100 {% if not s.activo %}text-slate-400{% endif %}">
+                <td class="px-3 py-2 font-medium">{{ s.nombre }}</td>
+                <td class="px-3 py-2">{{ s.categoria.nombre }}</td>
+                <td class="px-3 py-2">{{ s.unidad }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">$ {{ s.precio_base }}</td>
+                <td class="px-3 py-2">{% if s.activo %}<span class="text-emerald-700">Activo</span>{% else %}<span>Archivado</span>{% endif %}</td>
+                {% if puede_editar %}
+                <td class="px-3 py-2 text-right">
+                    <a href="{% url 'catalogo-editar' s.pk %}" class="text-slate-700 hover:underline">Editar</a>
+                    <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}
+                        <button class="ml-2 text-amber-700 hover:underline">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-3 py-6 text-center text-slate-400">Sin servicios — agrega el primero.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -51,6 +51,8 @@ def _emitir_noop(monkeypatch, request):
         "apps.el_pizarron.views",
         "apps.el_directorio.views",
         "apps.los_ajustes.views",
+        "apps.el_catalogo.views",
+        "apps.el_buzon.views",
     ):
         try:
             mod = __import__(nombre, fromlist=["emitir"])

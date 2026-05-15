@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Categorías — El Catálogo{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Categorías del Catálogo</h1>
+        <p class="text-sm text-slate-500">Agrupan los servicios y controlan el orden de despliegue.</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'catalogo-lista' %}" class="text-sm rounded-md border border-slate-300 bg-white px-3 py-1.5">← Servicios</a>
+        {% if puede_editar %}<a href="{% url 'catalogo-categoria-nueva' %}" class="text-sm rounded-md bg-slate-900 text-white px-3 py-1.5">+ Nueva</a>{% endif %}
+    </div>
+</header>
+
+<div class="overflow-x-auto rounded-md border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 text-slate-600">
+            <tr>
+                <th class="px-3 py-2 text-left">Nombre</th>
+                <th class="px-3 py-2 text-right">Orden</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                <th class="px-3 py-2 text-right">Servicios</th>
+                {% if puede_editar %}<th class="px-3 py-2"></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in categorias %}
+            <tr class="border-t border-slate-100">
+                <td class="px-3 py-2 font-medium">{{ c.nombre }}</td>
+                <td class="px-3 py-2 text-right">{{ c.orden }}</td>
+                <td class="px-3 py-2">{% if c.activa %}Activa{% else %}<span class="text-slate-400">Inactiva</span>{% endif %}</td>
+                <td class="px-3 py-2 text-right">{{ c.servicios.count }}</td>
+                {% if puede_editar %}<td class="px-3 py-2 text-right"><a href="{% url 'catalogo-categoria-editar' c.pk %}" class="text-slate-700 hover:underline">Editar</a></td>{% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">Sin categorías.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

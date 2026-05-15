@@ -14,6 +14,9 @@ python manage.py migrate --noinput
 echo "[la-gerencia] Bootstrap super_admin..."
 python manage.py bootstrap_superadmin || true
 
+echo "[la-gerencia] Sembrando El Catálogo (idempotente)..."
+python manage.py seed_catalogo || true
+
 echo "[la-gerencia] collectstatic..."
 if [ "${DESPACHO_ENV:-development}" = "production" ]; then
     python manage.py collectstatic --noinput

@@ -26,6 +26,12 @@ EventoTipo = Literal[
     "usuario.creado",
     "usuario.bloqueado",
     "ajuste.credencial_guardada",
+    "ajuste.tasa_guardada",
+    "catalogo.servicio_creado",
+    "catalogo.servicio_actualizado",
+    "buzon.nuevo_mensaje",
+    "buzon.estado_cambiado",
+    "buzon.respondido",
 ]
 
 

@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "apps.gerencia_home.apps.GerenciaHomeConfig",
     "apps.legal.apps.LegalConfig",
     "apps.api.apps.ApiConfig",
+    "apps.el_catalogo.apps.ElCatalogoConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",

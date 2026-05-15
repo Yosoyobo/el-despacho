@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.los_ajustes.apps.LosAjustesConfig",
     "apps.gerencia_home.apps.GerenciaHomeConfig",
     "apps.api.apps.ApiConfig",
+    "apps.el_catalogo.apps.ElCatalogoConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
