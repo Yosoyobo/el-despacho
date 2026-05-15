@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # Compartidas
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
+    "buzon.apps.BuzonConfig",
     # El Taller
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
@@ -34,6 +35,7 @@ INSTALLED_APPS = [
     "apps.la_cartera.apps.LaCarteraConfig",
     "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.el_pizarron.apps.ElPizarronConfig",
+    "apps.buzon_empleado.apps.BuzonEmpleadoConfig",
     # La Gerencia (apps es namespace pkg — convive con El Taller)
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
     "apps.gerencia_home.apps.GerenciaHomeConfig",
     "apps.api.apps.ApiConfig",
     "apps.el_catalogo.apps.ElCatalogoConfig",
+    "apps.buzon_admin.apps.BuzonAdminConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",

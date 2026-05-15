@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Mensaje #{{ mensaje.pk }} — El Buzón{% endblock %}
+{% block contenido %}
+<header class="mb-6"><a href="{% url 'buzon-empleado-mios' %}" class="text-sm text-stone-500 hover:underline">← Mis mensajes</a></header>
+<article class="bg-white border border-stone-200 rounded-md p-6 max-w-2xl space-y-4">
+    <div>
+        <h1 class="text-xl font-semibold">{{ mensaje.asunto }}</h1>
+        <p class="text-xs text-stone-500">{{ mensaje.get_tipo_display }} · {{ mensaje.creado_en|date:'Y-m-d H:i' }} · estado: {{ mensaje.get_estado_display }}</p>
+    </div>
+    <div>
+        <h2 class="text-sm font-semibold text-stone-700 mb-1">Tu mensaje</h2>
+        <p class="text-sm whitespace-pre-wrap text-stone-800">{{ mensaje.cuerpo }}</p>
+    </div>
+    {% if mensaje.respuesta_publica %}
+    <div class="bg-emerald-50 border border-emerald-200 rounded-md p-4">
+        <h2 class="text-sm font-semibold text-emerald-800 mb-1">Respuesta del admin</h2>
+        <p class="text-sm whitespace-pre-wrap text-emerald-900">{{ mensaje.respuesta_publica }}</p>
+        {% if mensaje.respondido_en %}<p class="text-xs text-emerald-700 mt-2">{{ mensaje.respondido_en|date:'Y-m-d H:i' }}</p>{% endif %}
+    </div>
+    {% else %}
+    <p class="text-xs text-stone-400">Pendiente de respuesta.</p>
+    {% endif %}
+</article>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Mis mensajes — El Buzón{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Mis mensajes al Buzón</h1>
+        <p class="text-sm text-stone-500">Sólo tú y el admin los ven.</p>
+    </div>
+    <a href="{% url 'buzon-empleado-nuevo' %}" class="text-sm rounded-md bg-amber-700 text-white px-3 py-1.5 hover:bg-amber-800">+ Nuevo mensaje</a>
+</header>
+
+<div class="overflow-x-auto rounded-md border border-stone-200 bg-white">
+    <table class="min-w-full text-sm">
+        <thead class="bg-stone-100 text-stone-600">
+            <tr>
+                <th class="px-3 py-2 text-left">Tipo</th>
+                <th class="px-3 py-2 text-left">Asunto</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                <th class="px-3 py-2 text-left">Recibido</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in mensajes %}
+            <tr class="border-t border-stone-100">
+                <td class="px-3 py-2">{{ m.get_tipo_display }}</td>
+                <td class="px-3 py-2"><a href="{% url 'buzon-empleado-mios-detalle' m.pk %}" class="text-stone-900 hover:underline">{{ m.asunto }}</a></td>
+                <td class="px-3 py-2">{{ m.get_estado_display }}</td>
+                <td class="px-3 py-2 text-stone-500">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="px-3 py-6 text-center text-stone-400">Aún no has enviado mensajes.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

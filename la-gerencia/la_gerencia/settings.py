@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     # Compartidas
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
+    "buzon.apps.BuzonConfig",
     # De La Gerencia
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     "apps.legal.apps.LegalConfig",
     "apps.api.apps.ApiConfig",
     "apps.el_catalogo.apps.ElCatalogoConfig",
+    "apps.buzon_admin.apps.BuzonAdminConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",

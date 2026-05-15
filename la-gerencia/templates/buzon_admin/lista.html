@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}El Buzón — admin{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex items-center justify-between flex-wrap gap-2">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">El Buzón</h1>
+        <p class="text-sm text-slate-500">Mensajes de empleados (sugerencias, problemas, otros).</p>
+    </div>
+    <a href="/buzon/clientes/" class="text-sm rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50">Buzón de Clientes →</a>
+</header>
+
+<form method="get" class="mb-4 flex gap-2 items-center flex-wrap text-sm">
+    <select name="estado" class="rounded-md border border-slate-300 px-3 py-1.5">
+        <option value="">— Todos los estados —</option>
+        <option value="nuevo" {% if estado_filtro == 'nuevo' %}selected{% endif %}>Nuevo</option>
+        <option value="leido" {% if estado_filtro == 'leido' %}selected{% endif %}>Leído</option>
+        <option value="respondido" {% if estado_filtro == 'respondido' %}selected{% endif %}>Respondido</option>
+        <option value="archivado" {% if estado_filtro == 'archivado' %}selected{% endif %}>Archivado</option>
+    </select>
+    <select name="tipo" class="rounded-md border border-slate-300 px-3 py-1.5">
+        <option value="">— Todos los tipos —</option>
+        <option value="sugerencia" {% if tipo_filtro == 'sugerencia' %}selected{% endif %}>Sugerencia</option>
+        <option value="problema" {% if tipo_filtro == 'problema' %}selected{% endif %}>Problema</option>
+        <option value="otro" {% if tipo_filtro == 'otro' %}selected{% endif %}>Otro</option>
+    </select>
+    <button class="rounded-md bg-slate-900 text-white px-3 py-1.5">Filtrar</button>
+</form>
+
+<div class="overflow-x-auto rounded-md border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 text-slate-600">
+            <tr>
+                <th class="px-3 py-2 text-left">#</th>
+                <th class="px-3 py-2 text-left">Autor</th>
+                <th class="px-3 py-2 text-left">Tipo</th>
+                <th class="px-3 py-2 text-left">Asunto</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                <th class="px-3 py-2 text-left">Recibido</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in mensajes %}
+            <tr class="border-t border-slate-100 {% if m.estado == 'nuevo' %}bg-amber-50{% endif %}">
+                <td class="px-3 py-2 font-mono text-slate-500">#{{ m.pk }}</td>
+                <td class="px-3 py-2">{{ m.autor.email }}</td>
+                <td class="px-3 py-2">{{ m.get_tipo_display }}</td>
+                <td class="px-3 py-2"><a href="{% url 'buzon-admin-detalle' m.pk %}" class="text-slate-900 hover:underline">{{ m.asunto }}</a></td>
+                <td class="px-3 py-2">{{ m.get_estado_display }}</td>
+                <td class="px-3 py-2 text-slate-500">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-3 py-6 text-center text-slate-400">Buzón vacío.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

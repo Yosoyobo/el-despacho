@@ -24,12 +24,14 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
+    "buzon.apps.BuzonConfig",
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
     "apps.legal.apps.LegalConfig",
     "apps.la_cartera.apps.LaCarteraConfig",
     "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.el_pizarron.apps.ElPizarronConfig",
+    "apps.buzon_empleado.apps.BuzonEmpleadoConfig",
 ]
 
 MIDDLEWARE = [
