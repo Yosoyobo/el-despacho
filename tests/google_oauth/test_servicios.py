@@ -70,6 +70,31 @@ def test_google_sub_ya_asignado_a_otra_cuenta(usuario_factory):
         register_or_link_google_user(_perfil(sub="g-distinto"))
 
 
+def test_register_acepta_google_sub_largo(usuario_factory):
+    """Regresión hotfix 0003: el `sub` de Google Workspace puede pasar 50 chars;
+    el modelo Usuario debe aceptar hasta 255."""
+    u = usuario_factory(rol="dueno", email="oscar@bautista.mx")  # noqa: F841
+    from auth_google.servicios import register_or_link_google_user
+    sub_largo = "x" * 200
+    out = register_or_link_google_user(_perfil(sub=sub_largo))
+    out.refresh_from_db()
+    assert out.google_sub == sub_largo
+    assert len(out.google_sub) == 200
+
+
+def test_register_acepta_avatar_url_larga(usuario_factory):
+    """Regresión hotfix 0003: las URLs de fotos de Google Workspace incluyen
+    tokens largos y rebasan el max_length=200 default de URLField. El
+    callback truenaba con StringDataRightTruncation."""
+    u = usuario_factory(rol="dueno", email="oscar@bautista.mx")  # noqa: F841
+    from auth_google.servicios import register_or_link_google_user
+    url_larga = "https://lh3.googleusercontent.com/a/ACg8oc" + ("X" * 300)  # 350+ chars
+    assert len(url_larga) > 200
+    out = register_or_link_google_user(_perfil(foto=url_larga))
+    out.refresh_from_db()
+    assert out.avatar_url == url_larga
+
+
 def test_lookup_por_google_sub_es_case_insensitive_en_email(usuario_factory):
     """Si el usuario ya está vinculado, lookup por sub funciona aunque el email
     en Google venga con casing distinto."""
