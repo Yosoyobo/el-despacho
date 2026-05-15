@@ -72,7 +72,7 @@ services:
       redis:
         condition: service_healthy
       la-gerencia:
-        condition: service_started
+        condition: service_healthy  # serializa migrate de apps compartidas (cuentas, ajustes, buzon)
     volumes:
       - ./data/credenciales:/data/credenciales
       - ./data/staticfiles-taller:/app/staticfiles
