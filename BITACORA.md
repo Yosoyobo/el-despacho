@@ -1882,3 +1882,81 @@ Slots de Los Ajustes limpiados (+ project_id, − redirect_uri/dominio).
 3 eventos Portavoz nuevos. Logo SVG oficial Google inline. Botón
 "Probar Google OAuth" en Los Ajustes. **+24 tests verdes; total 247/9;
 ruff verde.**
+
+---
+
+# BITÁCORA — Hotfix SSO Google
+
+Tras el deploy verde de SSO, dos bugs en producción al primer intento
+de login real con `oscar@bautista.mx`. Dos commits separados.
+
+## Bug 1 — Callback 500: `StringDataRightTruncation`
+
+```
+django.db.utils.DataError: value too long for type character varying(200)
+auth_google/servicios.py:66  user.save(update_fields=update_fields)
+```
+
+**Diagnóstico (importante)**: el error decía `varchar(200)`, no `(50)`.
+NO era `google_sub` el saturado (que estaba en 50 tras migración 0002).
+Inspección de `update_fields` reveló los 4 candidatos: `google_sub` (50),
+`google_email` (254), `google_vinculado_en` (n/a), `avatar_url` (URLField
+**sin `max_length` explícito → default Django 200**).
+
+Las URLs de foto de cuentas Google Workspace incluyen tokens/hashes y
+rebasan los 200 chars rutinariamente (`lh3.googleusercontent.com/a/ACg8oc...`
+con cola larga). Causa raíz: `avatar_url`.
+
+**Fix** (migración 0003, solo `AlterField`, cero `RunPython`):
+- `avatar_url`: 200 → **500** (cubre URLs Workspace típicas con margen).
+- `google_sub`: 50 → **255** (recomendación oficial Google; los 50 eran
+  riesgo latente para Workspace con sub largo). Subido aunque no era la
+  causa de este crash — defensa en profundidad para evitar un segundo
+  500 en otra cuenta.
+
+Tests de regresión:
+- `test_register_acepta_google_sub_largo` — sub de 200 chars persiste.
+- `test_register_acepta_avatar_url_larga` — URL de 350+ chars persiste.
+
+## Bug 2 — Comentario Django renderizado como texto
+
+En `_google_logo.html` (Gerencia + Taller) el comentario
+`{# Logo "G" oficial... #}` ocupaba **dos líneas**. Django `{# #}` solo
+soporta una; la segunda línea (`Mantén las proporciones intactas — Google
+es estricto con su branding. #}`) quedaba fuera del comentario y se
+renderizaba como texto visible junto al botón "Continuar con Google".
+
+**Fix**: eliminar el comentario del partial. El branding ya está
+asegurado por el viewBox y los paths exactos del SVG; el comentario
+no agregaba valor runtime.
+
+Aprendizaje: usar `{% comment %} ... {% endcomment %}` para multi-línea
+en Django.
+
+## Validación
+
+- `pytest tests/google_oauth/ -v` → **30/30 verdes** (+2 nuevos).
+- `pytest -q` (full) → **249/9** (de 247 + 2 nuevos).
+- `ruff check .` → All checks passed.
+
+## Decisión de tamaños finales
+
+| Campo | Antes (0002) | Después (0003) | Razón |
+|---|---|---|---|
+| `google_sub` | 50 (varchar) | 255 | Spec Google ≤255 chars |
+| `avatar_url` | 200 (URLField default) | 500 | URLs Workspace con tokens |
+| `google_email` | 254 (EmailField) | sin cambio | OK |
+
+## Pendientes
+
+- Aplicar `migrate cuentas` en La Sede tras el deploy automático.
+- Re-test del flow real con `oscar@bautista.mx` matched.
+- Verificar visual que el comentario ya no aparece en el HTML de sign_in.
+- Confirmar que `cuentas_usuario` muestra `google_sub`, `google_email`,
+  `google_vinculado_en` poblados tras login exitoso.
+
+---
+
+**Cierre hotfix SSO Google:** 2 commits independientes, migración
+0003 no-destructiva (`AlterField` x2), comentario template removido,
++2 tests de regresión. Total **249/9 verdes**, ruff verde.
