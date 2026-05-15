@@ -1,11 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Los Ajustes{% endblock %}
 {% block contenido %}
-<h1 class="text-3xl font-semibold mb-2">Los Ajustes</h1>
-<p class="text-sm text-slate-500 mb-6">
-    Todas las credenciales del sistema. Se cifran con La Bóveda antes de tocar la DB.
-    Solo super_admin tiene acceso a este panel.
-</p>
+<div class="flex items-start justify-between mb-6 gap-4">
+    <div>
+        <h1 class="text-3xl font-semibold mb-2">Los Ajustes</h1>
+        <p class="text-sm text-slate-500">
+            Todas las credenciales del sistema. Se cifran con La Bóveda antes de tocar la DB.
+            Solo super_admin tiene acceso a este panel.
+        </p>
+    </div>
+    <a href="{% url 'ajustes-tasas' %}" class="shrink-0 text-sm rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50">Tasas e Impuestos →</a>
+</div>
 
 <div class="bg-white border border-slate-200 rounded-lg shadow-sm divide-y divide-slate-100">
     {% for clave, etiqueta, descripcion, configurado in slots %}

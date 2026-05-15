@@ -6,10 +6,15 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from django.shortcuts import get_object_or_404
+
+from ajustes.models import TasaImpositiva
 from ajustes.models.credencial import SLOTS_CREDENCIAL, Credencial
 from lib.permisos import requires_role
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
+
+from .forms import TasaForm
 
 
 def _estado_slots():
@@ -66,3 +71,52 @@ def probar(request, clave: str):
     else:
         messages.success(request, f"'{clave}' es descifrable (longitud {len(val)} chars).")
     return redirect("ajustes-panel")
+
+
+# ── Tasas Impositivas ────────────────────────────────────────────────────────
+
+@requires_role("super_admin")
+def tasas_lista(request):
+    tasas = TasaImpositiva.objects.all()
+    return render(request, "ajustes/tasas.html", {"tasas": tasas})
+
+
+@requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def tasa_nueva(request):
+    if request.method == "POST":
+        form = TasaForm(request.POST)
+        if form.is_valid():
+            t = form.save()
+            emitir(EventoPortavoz(
+                tipo="ajuste.tasa_guardada",
+                actor_id=request.user.pk,
+                actor_email=request.user.email,
+                payload={"tasa_id": t.pk, "nombre": t.nombre, "modo": "crear"},
+            ))
+            messages.success(request, f"Tasa «{t.nombre}» creada.")
+            return redirect("ajustes-tasas")
+    else:
+        form = TasaForm()
+    return render(request, "ajustes/tasa_form.html", {"form": form, "modo": "nuevo"})
+
+
+@requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def tasa_editar(request, pk: int):
+    t = get_object_or_404(TasaImpositiva, pk=pk)
+    if request.method == "POST":
+        form = TasaForm(request.POST, instance=t)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="ajuste.tasa_guardada",
+                actor_id=request.user.pk,
+                actor_email=request.user.email,
+                payload={"tasa_id": t.pk, "nombre": t.nombre, "modo": "editar"},
+            ))
+            messages.success(request, "Tasa actualizada.")
+            return redirect("ajustes-tasas")
+    else:
+        form = TasaForm(instance=t)
+    return render(request, "ajustes/tasa_form.html", {"form": form, "modo": "editar", "tasa": t})

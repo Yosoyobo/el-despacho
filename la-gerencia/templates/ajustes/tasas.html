@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Tasas e Impuestos — Los Ajustes{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Tasas e Impuestos</h1>
+        <p class="text-sm text-slate-500">IVA trasladado y retenciones disponibles para Cotizaciones y Facturas.</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'ajustes-panel' %}" class="text-sm rounded-md border border-slate-300 bg-white px-3 py-1.5">← Credenciales</a>
+        <a href="{% url 'ajustes-tasa-nueva' %}" class="text-sm rounded-md bg-slate-900 text-white px-3 py-1.5">+ Nueva tasa</a>
+    </div>
+</header>
+
+<div class="overflow-x-auto rounded-md border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 text-slate-600">
+            <tr>
+                <th class="px-3 py-2 text-left">Nombre</th>
+                <th class="px-3 py-2 text-right">%</th>
+                <th class="px-3 py-2 text-left">Tipo</th>
+                <th class="px-3 py-2 text-center">Default</th>
+                <th class="px-3 py-2 text-center">Activa</th>
+                <th class="px-3 py-2 text-right">Orden</th>
+                <th class="px-3 py-2"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tasas %}
+            <tr class="border-t border-slate-100">
+                <td class="px-3 py-2 font-medium">{{ t.nombre }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ t.porcentaje }}%</td>
+                <td class="px-3 py-2">{{ t.get_tipo_display }}</td>
+                <td class="px-3 py-2 text-center">{% if t.aplicable_default %}✓{% endif %}</td>
+                <td class="px-3 py-2 text-center">{% if t.activa %}✓{% else %}<span class="text-slate-400">—</span>{% endif %}</td>
+                <td class="px-3 py-2 text-right">{{ t.orden }}</td>
+                <td class="px-3 py-2 text-right">
+                    <a href="{% url 'ajustes-tasa-editar' t.pk %}" class="text-slate-700 hover:underline">Editar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="px-3 py-6 text-center text-slate-400">Sin tasas — corre <code>seed_tasas</code> o crea la primera.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
