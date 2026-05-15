@@ -23,6 +23,7 @@ RUN pip install -r requirements.txt
 COPY lib/ /app/lib/
 COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
+COPY buzon/ /app/buzon/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config
