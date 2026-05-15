@@ -9,7 +9,12 @@
             Solo super_admin tiene acceso a este panel.
         </p>
     </div>
-    <a href="{% url 'ajustes-tasas' %}" class="shrink-0 text-sm rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50">Tasas e Impuestos →</a>
+    <div class="flex gap-2 shrink-0">
+        <a href="{% url 'ajustes-tasas' %}" class="text-sm rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50">Tasas e Impuestos →</a>
+        <form method="post" action="{% url 'ajustes-probar-analistas' %}">{% csrf_token %}
+            <button class="text-sm rounded-md bg-amber-600 text-white px-3 py-1.5 hover:bg-amber-700">Probar Analistas</button>
+        </form>
+    </div>
 </div>
 
 <div class="bg-white border border-slate-200 rounded-lg shadow-sm divide-y divide-slate-100">

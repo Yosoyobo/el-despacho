@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 
 from ajustes.models import TasaImpositiva
 from ajustes.models.credencial import SLOTS_CREDENCIAL, Credencial
+from lib.analistas import analizar as analistas_analizar
+from lib.analistas.reemplazo import TodosLosAnalistasFallaron
 from lib.permisos import requires_role
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -79,6 +81,28 @@ def probar(request, clave: str):
 def tasas_lista(request):
     tasas = TasaImpositiva.objects.all()
     return render(request, "ajustes/tasas.html", {"tasas": tasas})
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def probar_analistas(request):
+    """Smoke test: pide a la cadena DEFAULT (Anthropic → OpenAI) responder
+    'ok' a un prompt mínimo. Útil para validar configuración tras editar
+    las llaves IA. No revela el contenido — solo provider/modelo/latencia."""
+    prompt = "Responde la palabra 'ok' en minúsculas, nada más."
+    try:
+        res = analistas_analizar("smoke", prompt, max_tokens=10, temperatura=0.0, actor_id=request.user.pk)
+    except TodosLosAnalistasFallaron as exc:
+        messages.error(request, f"Los Analistas no respondieron: {exc}")
+        return redirect("ajustes-panel")
+    except Exception as exc:
+        messages.error(request, f"Error permanente: {exc}")
+        return redirect("ajustes-panel")
+    messages.success(
+        request,
+        f"OK — {res.provider}/{res.modelo} respondió en {res.latencia_ms} ms (≈ ${res.costo_usd}).",
+    )
+    return redirect("ajustes-panel")
 
 
 @requires_role("super_admin")
