@@ -1304,8 +1304,9 @@ S2b se planea con scope acotado tras llamada. Preguntas a llevar:
 
 ## 5. Deuda residual al cierre de este sprint
 
-- **Bug guard en `_registrar()` de archivo.sh** (sección 1 arriba):
-  trivial de arreglar, registrar entry sin parchear esta noche.
+- ~~**Bug guard en `_registrar()` de archivo.sh**~~ — **RESUELTO**
+  en commit `adc76f0` con fix de guard a nivel docker compose
+  (`ps --status running --services | grep -qx la-gerencia`).
 - Las deudas ⏸️ §7 originales de S2a.2 que NO eran "archivo.sh→HAL":
   rollback en vivo del deploy sigue diferido (decisión del usuario).
 - Drift cosmético `AlterField id` pre-existente en `pizarron`/`cuentas`:
