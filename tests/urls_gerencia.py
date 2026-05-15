@@ -1,3 +1,9 @@
+"""URLconf de pruebas: monta solo La Gerencia (Directorio, Ajustes, API/Inventario).
+
+Activar con `@override_settings(ROOT_URLCONF="tests.urls_gerencia")` en tests
+marcados con `@pytest.mark.gerencia`.
+"""
+
 from django.urls import include, path
 
 urlpatterns = [

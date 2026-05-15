@@ -34,6 +34,15 @@ INSTALLED_APPS = [
     "apps.la_cartera.apps.LaCarteraConfig",
     "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.el_pizarron.apps.ElPizarronConfig",
+    # La Gerencia (apps es namespace pkg — convive con El Taller)
+    "apps.auth_gerencia.apps.AuthGerenciaConfig",
+    "apps.el_directorio.apps.ElDirectorioConfig",
+    "apps.los_ajustes.apps.LosAjustesConfig",
+    "apps.gerencia_home.apps.GerenciaHomeConfig",
+    "apps.api.apps.ApiConfig",
+    "rest_framework",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
 ]
 
 MIDDLEWARE = [
@@ -52,6 +61,7 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
             os.path.join(os.path.dirname(__file__), "..", "el-taller", "templates"),
+            os.path.join(os.path.dirname(__file__), "..", "la-gerencia", "templates"),
         ],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -87,5 +97,17 @@ STATIC_URL = "/static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "El Despacho — Inventario de Endpoints",
+    "VERSION": "0.1.0-s2a",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_DIST": "SIDECAR",
+}
 
 LOGGING = {"version": 1, "disable_existing_loggers": True}

@@ -35,6 +35,11 @@ INSTALLED_APPS = [
     "apps.los_ajustes.apps.LosAjustesConfig",
     "apps.gerencia_home.apps.GerenciaHomeConfig",
     "apps.legal.apps.LegalConfig",
+    "apps.api.apps.ApiConfig",
+    # 3rd party
+    "rest_framework",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
 ]
 
 MIDDLEWARE = [
@@ -136,6 +141,29 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# DRF: SessionAuthentication (cookie gerencia_session) + permisos default
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "El Despacho — Inventario de Endpoints",
+    "DESCRIPTION": "Documentación interna de los endpoints JSON. Acceso restringido a super_admin.",
+    "VERSION": "0.1.0-s2a",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_PUBLIC": False,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+}
 
 LOGGING = {
     "version": 1,
