@@ -1,10 +1,10 @@
+from apps.la_cartera.forms import ClienteForm
+from apps.la_cartera.models import Cliente
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.la_cartera.forms import ClienteForm
-from apps.la_cartera.models import Cliente
 from lib.permisos import puede_editar_cartera, puede_ver_cartera
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz

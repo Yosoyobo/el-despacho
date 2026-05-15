@@ -3,10 +3,8 @@ Solo super_admin (regla #3). Los valores se cifran con La Bóveda antes de DB.
 """
 
 from django.contrib import messages
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
-
-from django.shortcuts import get_object_or_404
 
 from ajustes.models import TasaImpositiva
 from ajustes.models.credencial import SLOTS_CREDENCIAL, Credencial

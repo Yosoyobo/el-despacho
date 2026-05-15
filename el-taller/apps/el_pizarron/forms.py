@@ -1,6 +1,6 @@
+from apps.el_pizarron.models import Comentario, Tarea
 from django import forms
 
-from apps.el_pizarron.models import Comentario, Tarea
 from cuentas.models.usuario import Usuario
 
 

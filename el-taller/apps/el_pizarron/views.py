@@ -1,12 +1,12 @@
+from apps.el_pizarron.forms import ComentarioForm, TareaForm
+from apps.el_pizarron.models import Tarea
+from apps.los_proyectos.models import Proyecto
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.el_pizarron.forms import ComentarioForm, TareaForm
-from apps.el_pizarron.models import Tarea
-from apps.los_proyectos.models import Proyecto
 from lib.permisos import (
     es_admin,
     puede_ver_comentario,

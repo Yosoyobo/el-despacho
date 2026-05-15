@@ -1,11 +1,11 @@
+from apps.los_proyectos.forms import AsignacionForm, CambiarEstadoForm, ProyectoForm
+from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto, ProyectoAsignacion
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.los_proyectos.forms import AsignacionForm, CambiarEstadoForm, ProyectoForm
-from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto, ProyectoAsignacion
 from lib.permisos import (
     es_admin,
     puede_editar_proyecto,

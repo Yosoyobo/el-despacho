@@ -13,7 +13,6 @@ from lib.analistas.base import (
     ErrorPermanente,
     ErrorTransitorio,
     FaltaCredencial,
-    Resultado,
 )
 from lib.analistas.reemplazo import TodosLosAnalistasFallaron, analizar
 
@@ -72,22 +71,19 @@ class TestAdaptersUnitarios:
         assert res.costo_usd > 0
 
     def test_anthropic_401_es_permanente(self, credenciales_dummy):
-        with patch("httpx.post",
-                   return_value=_RespFalsa(401, text="bad key")):
-            with pytest.raises(ErrorPermanente):
-                AnthropicAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+        with patch("httpx.post", return_value=_RespFalsa(401, text="bad key")), \
+             pytest.raises(ErrorPermanente):
+            AnthropicAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
 
     def test_anthropic_429_es_transitorio(self, credenciales_dummy):
-        with patch("httpx.post",
-                   return_value=_RespFalsa(429, text="rate")):
-            with pytest.raises(ErrorTransitorio):
-                AnthropicAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+        with patch("httpx.post", return_value=_RespFalsa(429, text="rate")), \
+             pytest.raises(ErrorTransitorio):
+            AnthropicAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
 
     def test_anthropic_500_es_transitorio(self, credenciales_dummy):
-        with patch("httpx.post",
-                   return_value=_RespFalsa(503, text="upstream")):
-            with pytest.raises(ErrorTransitorio):
-                AnthropicAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+        with patch("httpx.post", return_value=_RespFalsa(503, text="upstream")), \
+             pytest.raises(ErrorTransitorio):
+            AnthropicAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
 
     def test_openai_200_devuelve_resultado(self, credenciales_dummy):
         with patch("httpx.post",
@@ -144,21 +140,23 @@ class TestCadenaReemplazo:
         assert logs[1].exito is True and logs[1].provider == "openai"
 
     def test_anthropic_permanente_NO_intenta_openai(self, credenciales_dummy):
-        with patch("httpx.post", side_effect=_post_routed(
+        post_mock = _post_routed(
             anthropic_resp=_RespFalsa(401),
             openai_resp=_RespFalsa(200, _openai_payload()),
-        )) as mock:
-            with pytest.raises(ErrorPermanente):
-                analizar("cotizaciones", "prompt")
+        )
+        with patch("httpx.post", side_effect=post_mock) as mock, \
+             pytest.raises(ErrorPermanente):
+            analizar("cotizaciones", "prompt")
         assert mock.call_count == 1  # Solo se intentó anthropic.
 
     def test_ambos_transitorios_falla_cadena(self, credenciales_dummy):
-        with patch("httpx.post", side_effect=_post_routed(
+        post_mock = _post_routed(
             anthropic_resp=_RespFalsa(503),
             openai_resp=_RespFalsa(503),
-        )):
-            with pytest.raises(TodosLosAnalistasFallaron):
-                analizar("cotizaciones", "prompt")
+        )
+        with patch("httpx.post", side_effect=post_mock), \
+             pytest.raises(TodosLosAnalistasFallaron):
+            analizar("cotizaciones", "prompt")
 
     def test_falta_credencial_anthropic_cae_a_openai(self, db):
         from ajustes.models.credencial import Credencial

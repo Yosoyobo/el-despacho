@@ -1,6 +1,5 @@
-from django.urls import include, path
-
 from apps.buzon_admin import handlers as _err
+from django.urls import include, path
 from django.views.generic import TemplateView
 
 urlpatterns = [

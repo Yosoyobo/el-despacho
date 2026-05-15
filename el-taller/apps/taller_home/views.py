@@ -1,10 +1,10 @@
+from apps.el_pizarron.models import Tarea
+from apps.la_cartera.models import Cliente
+from apps.los_proyectos.models import Proyecto
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 
-from apps.el_pizarron.models import Tarea
-from apps.la_cartera.models import Cliente
-from apps.los_proyectos.models import Proyecto
 from lib.permisos import puede_ver_cartera
 
 

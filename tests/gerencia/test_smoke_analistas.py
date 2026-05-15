@@ -32,7 +32,6 @@ def test_dueno_no_dispara_smoke(client, usuario_factory):
 
 
 def test_super_admin_smoke_ok(client, usuario_factory):
-    from ajustes.models import AnalistaLog
     from ajustes.models.credencial import Credencial
     Credencial.guardar("anthropic_api_key", "sk-ant-test")
     client.force_login(usuario_factory(rol="super_admin"))

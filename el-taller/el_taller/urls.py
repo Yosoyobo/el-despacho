@@ -1,6 +1,5 @@
-from django.urls import include, path
-
 from apps.buzon_empleado import handlers as _err
+from django.urls import include, path
 
 # El admin de Django vive solo en La Gerencia (Django project con `django.contrib.admin`
 # en INSTALLED_APPS). El Taller no lo necesita y no tiene la app instalada.

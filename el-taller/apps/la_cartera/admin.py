@@ -1,6 +1,5 @@
-from django.contrib import admin
-
 from apps.la_cartera.models import Cliente
+from django.contrib import admin
 
 
 @admin.register(Cliente)

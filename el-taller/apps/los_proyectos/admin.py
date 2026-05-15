@@ -1,6 +1,5 @@
-from django.contrib import admin
-
 from apps.los_proyectos.models import Proyecto, ProyectoAsignacion
+from django.contrib import admin
 
 
 class AsignacionInline(admin.TabularInline):

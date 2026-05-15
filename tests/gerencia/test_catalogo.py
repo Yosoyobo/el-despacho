@@ -101,9 +101,8 @@ class TestCategorias:
 
 
 def test_seed_idempotente(db):
-    from django.core.management import call_command
-
     from apps.el_catalogo.models import CategoriaServicio
+    from django.core.management import call_command
 
     call_command("seed_catalogo")
     n1 = CategoriaServicio.objects.count()

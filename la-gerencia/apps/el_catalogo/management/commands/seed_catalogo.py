@@ -4,9 +4,8 @@ Se invoca en el entrypoint de La Gerencia para que arrancando un Droplet vacío
 quede listo el catálogo base. Las categorías son editables desde la UI después.
 """
 
-from django.core.management.base import BaseCommand
-
 from apps.el_catalogo.models import CategoriaServicio
+from django.core.management.base import BaseCommand
 
 CATEGORIAS_INICIALES = [
     ("Diseño", 10),

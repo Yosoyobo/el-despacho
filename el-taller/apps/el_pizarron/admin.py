@@ -1,6 +1,5 @@
-from django.contrib import admin
-
 from apps.el_pizarron.models import Comentario, Tarea
+from django.contrib import admin
 
 
 @admin.register(Tarea)

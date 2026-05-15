@@ -1,7 +1,6 @@
+import apps.los_proyectos.models.proyecto
 from django.conf import settings
 from django.db import migrations, models
-
-import apps.los_proyectos.models.proyecto
 
 
 class Migration(migrations.Migration):
