@@ -3,18 +3,37 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Buzón — La Recepción — El Despacho</title>
+<script>
+(function(){try{var g=localStorage.getItem('despacho-tema');
+if(g==='dark'){document.documentElement.classList.add('dark');}
+else if(g==='light'){document.documentElement.classList.remove('dark');}
+else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark');}}catch(e){}})();
+</script>
 <style>
-body{font-family:ui-sans-serif,system-ui,sans-serif;background:#fafaf9;color:#1c1917;margin:0;padding:48px 24px;text-align:center}
+:root{--bg:#fafaf9;--fg:#1c1917;--card:#fff;--border:#e7e5e4;--muted:#57534e;--note:#a8a29e;}
+html.dark{--bg:#0f172a;--fg:#f1f5f9;--card:#1e293b;--border:#334155;--muted:#cbd5e1;--note:#64748b;}
+body{font-family:ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:48px 24px;text-align:center}
 h1{margin:0 0 8px;font-size:28px}
-p{color:#57534e}
-.box{max-width:640px;margin:0 auto;background:white;border:1px solid #e7e5e4;border-radius:10px;padding:48px 24px}
+p{color:var(--muted)}
+.box{max-width:640px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:48px 24px}
+.toggle{position:fixed;top:1rem;right:1rem;background:var(--card);border:1px solid var(--border);border-radius:.375rem;padding:.4rem .6rem;cursor:pointer;color:var(--fg);font-size:.875rem}
 </style>
 </head>
 <body>
+<button class="toggle" id="toggle-tema" aria-label="Cambiar tema" type="button"><span class="ico">🌙</span></button>
 <div class="box">
     <h1>Buzón de Clientes</h1>
     <p>Próximamente — podrás escribirnos directamente desde aquí.</p>
-    <p style="font-size:12px;color:#a8a29e;margin-top:24px">El Despacho · Learning Center</p>
+    <p style="font-size:12px;color:var(--note);margin-top:24px">El Despacho · Learning Center</p>
 </div>
+<script>
+(function(){
+var b=document.getElementById('toggle-tema');
+function s(){b.querySelector('.ico').textContent=document.documentElement.classList.contains('dark')?'☀️':'🌙';}
+b.addEventListener('click',function(){var d=document.documentElement.classList.toggle('dark');
+try{localStorage.setItem('despacho-tema',d?'dark':'light');}catch(e){}s();});s();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
+})();
+</script>
 </body>
 </html>

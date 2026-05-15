@@ -1,8 +1,15 @@
 from apps.buzon_admin import handlers as _err
+from apps.interfono_admin.views import perfil_notificaciones as _perfil_notif
 from django.urls import include, path
 from django.views.generic import TemplateView
 
+from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
+
 urlpatterns = [
+    *urlpatterns_sw,
+    *urlpatterns_suscripcion,
+    path("interfono/", include("apps.interfono_admin.urls")),
+    path("perfil/notificaciones/", _perfil_notif, name="interfono-perfil"),
     path("", include("apps.gerencia_home.urls")),
     path("", include("apps.auth_gerencia.urls")),
     path("directorio/", include("apps.el_directorio.urls")),

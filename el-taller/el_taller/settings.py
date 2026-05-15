@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
     "buzon.apps.BuzonConfig",
+    "interfono.apps.InterfonoConfig",
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
     "apps.legal.apps.LegalConfig",
@@ -32,6 +33,7 @@ INSTALLED_APPS = [
     "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.el_pizarron.apps.ElPizarronConfig",
     "apps.buzon_empleado.apps.BuzonEmpleadoConfig",
+    "apps.perfil_notificaciones.apps.PerfilNotificacionesConfig",
 ]
 
 MIDDLEWARE = [
@@ -56,6 +58,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "interfono.context_processors.vapid_public_key",
             ],
         },
     },

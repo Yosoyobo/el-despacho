@@ -1,7 +1,12 @@
 """URLconf de pruebas: monta solo El Taller (los S1b CRUDs)."""
 from django.urls import include, path
 
+from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
+
 urlpatterns = [
+    *urlpatterns_sw,
+    *urlpatterns_suscripcion,
+    path("perfil/notificaciones/", include("apps.perfil_notificaciones.urls")),
     path("", include("apps.taller_home.urls")),
     path("", include("apps.auth_taller.urls")),
     path("legal/", include("apps.legal.urls")),

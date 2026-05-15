@@ -1320,3 +1320,276 @@ secundario en telemetry registrado como deuda), Droplet rebootado limpio,
 4 campos de monto en Proyecto + migración 0002 + admin agrupado + 5 tests
 nuevos verdes. 186/9 tests totales. S2b "El Pipeline" sin plomería
 pendiente, listo para llamada con dueño mañana.
+
+---
+
+# BITÁCORA — Sprint pre-S2b: Despertar El Interfono + Dark Mode
+
+Sprint acotado y paralelo: dos features (notificaciones push propias y
+toggle de tema claro/oscuro) que comparten zona de templates base. Se
+hicieron en una sola pasada para evitar conflictos visuales con S2b
+mañana.
+
+## 1. El Interfono — Despertado
+
+Cero dependencias externas (Webpushr descartado). Web-push VAPID puro
+con `pywebpush` + llaves cifradas en La Bóveda.
+
+### Plomería
+
+- **App raíz `interfono/`** (regla §14: apps usadas por más de un Django
+  project viven en raíz; Dockerfiles de los 3 hosts agregaron
+  `COPY interfono/`). Estructura:
+  - [interfono/apps.py](interfono/apps.py)
+  - [interfono/models/suscripcion.py](interfono/models/suscripcion.py) — `InterfonoSuscripcion` (endpoint UNIQUE, p256dh, auth, user_agent, activa, desactivada_en, índice usuario+activa)
+  - [interfono/models/envio.py](interfono/models/envio.py) — `InterfonoEnvio` (autor, audiencia + label, titulo, cuerpo, url_destino, entregadas/fallidas/invalidadas)
+  - [interfono/migrations/0001_initial.py](interfono/migrations/0001_initial.py) — congelada
+  - [interfono/views_compartidas.py](interfono/views_compartidas.py) — POST suscribir/desuscribir/prueba
+  - [interfono/sw_js.py](interfono/sw_js.py) — `SERVICE_WORKER_JS` constante + view; separado para que La Recepción (sin `django.contrib.auth`) lo importe sin gatillar decoradores de auth
+  - [interfono/urls_compartidas.py](interfono/urls_compartidas.py) — `urlpatterns_sw` y `urlpatterns_suscripcion` listos para extender
+  - [interfono/context_processors.py](interfono/context_processors.py) — inyecta `vapid_public_key` en todos los templates
+  - [interfono/management/commands/interfono_generar_vapid.py](interfono/management/commands/interfono_generar_vapid.py) — par `cryptography.SECP256R1` + escalar privado base64url. **Idempotente al revés**: falla si ya hay llaves para no invalidar suscripciones existentes; instrucciones de regeneración explícitas
+- **`lib/interfono.py`** ([lib/interfono.py](lib/interfono.py)) con:
+  - `InterfonoConfig.{vapid_public_key, vapid_private_key, vapid_email, vapid_claims, esta_configurado}`
+  - `enviar_a_suscripcion(sub, titulo, cuerpo, url, tag) -> "ok"|"expired"|"error"|"no_configurado"` — 404/410 marcan `activa=False`; otros fallos quedan como transitorios
+  - `enviar_a_usuario(usuario, ...) -> {entregadas, fallidas, invalidadas}`
+  - `enviar_a_audiencia(audiencia, ...)` con resolver `todos | rol:<nombre> | usuario:<id>`
+  - Timeout 5s por suscripción
+
+### Slot nuevo en Los Ajustes
+
+- `vapid_email` (default `mailto:soporte@bautista.mx`). Las descripciones
+  de `vapid_public_key`/`vapid_private_key` ahora apuntan al management
+  command. ([ajustes/models/credencial.py:30-32](ajustes/models/credencial.py))
+
+### UI manual en La Gerencia — `/interfono/`
+
+[la-gerencia/apps/interfono_admin/](la-gerencia/apps/interfono_admin/)
+con `@requires_role("super_admin", "dueno")`:
+
+- Form de envío: audiencia (todos / rol → 4 roles / usuario individual
+  con `<select>` poblado por context), título (80) + cuerpo (300) + URL
+  opcional.
+- Botones **Enviarme una prueba** y **Enviar a destinatarios**
+  (este último con `confirm()`).
+- Historial: últimos 50 envíos con fecha, autor, audiencia, título
+  truncado + tooltip cuerpo completo, ok/falla/invalidadas.
+- Aviso visible si VAPID no configurada (con el comando exacto a correr).
+
+Nav de La Gerencia agrega "El Interfono" para `super_admin`/`dueno` y
+una campanita 🔔 hacia `/perfil/notificaciones/` para cualquier usuario
+autenticado.
+
+### `/perfil/notificaciones/` en El Taller y La Gerencia
+
+- [el-taller/apps/perfil_notificaciones/](el-taller/apps/perfil_notificaciones/)
+  para los 4 roles del Taller.
+- Misma view dentro de `interfono_admin` para usuarios de La Gerencia.
+- UI común: estado del navegador (`cargando/suscrito/no_suscrito/bloqueado/no_soportado`),
+  botón "Activar notificaciones" que pide permiso → registra SW → suscribe
+  → POST a `/perfil/notificaciones/suscribir`. Botón "Enviarme una prueba"
+  visible solo si la suscripción está activa. Lista de dispositivos
+  activos con `etiqueta_dispositivo()` (Chrome en Mac, Firefox en Linux…)
+  y botón "Desactivar" por dispositivo.
+
+### Service worker
+
+- [interfono/sw_js.py](interfono/sw_js.py) sirve `/sw.js` desde Django
+  con `Service-Worker-Allowed: /` y `Cache-Control: no-cache, no-store, must-revalidate`.
+  Registrado en los 3 hosts (gerencia, taller, recepción). La Recepción
+  registra el SW en standby pero **no expone UI de suscripción** — eso es
+  S5 cuando llegue el portal de clientes.
+- Convención del `tag` (decisión confirmada):
+  - manuales: `manual-<envio_id>` (segundo manual reemplaza al primero)
+  - automáticos futuros: `auto-<tipo>-<id>`
+  - **default si el payload no trae tag**: `el-despacho-<timestamp>-<rand>`
+    único — no apila pero no colapsa. **Nunca** `el-despacho` fijo.
+
+### Decisión: `/sw.js` desde Django, no Caddy
+
+Caddyfile en este compose ya es multi-host complejo; agregar handlers
+de `file_server` por host triplicaba conflictos potenciales. Django
+permite (i) testear el endpoint con `client.get('/sw.js')`, (ii)
+inyectar la VAPID public key en el SW si futuro lo requiere,
+(iii) headers (`Service-Worker-Allowed`, `Cache-Control`) en la response,
+(iv) un solo punto de cambio. Cero modificaciones al Caddyfile.
+
+### Patrón nuevo: app raíz importada por La Recepción sin auth
+
+La Recepción no tiene `django.contrib.auth`/`django.contrib.sessions`
+en su INSTALLED_APPS (es un stub). El módulo `interfono.views_compartidas`
+sí usa `@login_required`, así que se separó el SW en `interfono/sw_js.py`
+(módulo sin imports de auth). La Recepción importa **solo** `sw_js` y
+no `interfono` en INSTALLED_APPS — no toca DB, no necesita ORM.
+
+## 2. Dark Mode — Camino B (localStorage, sin DB)
+
+### Configuración Tailwind
+
+- `darkMode: 'class'` en los 3 `tailwind.config.js`:
+  [la-gerencia](la-gerencia/tailwind.config.js),
+  [el-taller](el-taller/tailwind.config.js), y
+  [la-recepcion/tailwind.config.js](la-recepcion/tailwind.config.js)
+  nuevo (mínimo, listo para S5).
+
+### Anti-FOUC + toggle
+
+- Script inline en `<head>` de `base.html` de La Gerencia y El Taller
+  aplica la clase `dark` **antes del primer paint**. Default: respeta
+  `prefers-color-scheme` hasta que el usuario clickee el toggle.
+- Componente reusable [_toggle_tema.html](la-gerencia/templates/_toggle_tema.html)
+  con SVG sol/luna inline (sin librerías; cumple regla #1). Mismo
+  archivo en El Taller.
+- [static/js/tema.js](la-gerencia/static/js/tema.js) maneja el click:
+  toggle de clase + `localStorage.setItem('despacho-tema', ...)`. Try/catch
+  para Safari privado.
+
+### La Recepción
+
+Sin `base.html` ni Tailwind compilado (templates standalone con CSS
+inline). Se agregó:
+- Anti-FOUC inline + toggle inline en
+  [proximamente.html](la-recepcion/templates/proximamente.html) y
+  [buzon_proximamente.html](la-recepcion/templates/buzon_proximamente.html)
+  usando **CSS custom properties** que cambian con la clase `.dark` del
+  `<html>`. El toggle muestra 🌙/☀️ según estado. Ambos templates
+  registran el SW en `navigator.serviceWorker.register('/sw.js')`.
+- Service worker activo (standby para S5).
+
+### Audit de templates con dark:
+
+Pasada automática (script one-shot) sobre **38 templates principales**
+de los 3 hosts. **298 cambios** aplicando la tabla de mapeos
+slate-light → slate-dark consensuada:
+
+| Light | Dark |
+|---|---|
+| `bg-white` | `dark:bg-slate-900` |
+| `bg-slate-50` / `bg-stone-50` | `dark:bg-slate-900` |
+| `bg-slate-100` / `bg-stone-100` | `dark:bg-slate-800` |
+| `text-slate-900` / `text-stone-900` | `dark:text-slate-100` |
+| `text-slate-700/600` / `text-stone-700/600` | `dark:text-slate-300` |
+| `text-slate-500` / `text-stone-500` | `dark:text-slate-400` |
+| `text-slate-400` / `text-stone-400` | `dark:text-slate-500` |
+| `border-slate-200/300` / `border-stone-200/300` | `dark:border-slate-700/600` |
+| `hover:bg-slate-50/100` / `hover:bg-stone-50` | `dark:hover:bg-slate-800/700` |
+| `divide-{slate,stone}-100/200` | `dark:divide-slate-800/700` |
+
+(Decisión confirmada: NO normalizar `gray`/`stone` light a `slate` en
+este sprint. Solo agregar dark:slate como variante coherente.)
+
+### Páginas pendientes de revisión visual humana
+
+El audit cubrió los templates listados; queda **probar en navegador**
+y posiblemente ajustar:
+- Vistas de El Site (dashboards con colores semánticos saturados)
+- Tablas largas de Los Ajustes (`tasas.html`)
+- Cualquier color custom en `forms.py` / `widgets`
+- Páginas legales (texto plano, baja prioridad)
+
+## 3. Tests
+
+**+37 tests nuevos verdes**, 0 rojos. **Total 223 verdes** (9 skipped por
+Redis no local).
+
+- [tests/interfono/test_modelos.py](tests/interfono/test_modelos.py) — 6 tests: creación, UNIQUE endpoint, `etiqueta_dispositivo()` con 3 user-agents, defaults de envío.
+- [tests/interfono/test_envio.py](tests/interfono/test_envio.py) — 6 tests: no_configurado, ok, expired (404/410 → `activa=False`), error transitorio (500 → activa sigue), `enviar_a_usuario` totales, mezcla ok+expired con `pywebpush` mockeado.
+- [tests/interfono/test_audiencias.py](tests/interfono/test_audiencias.py) — 5 tests: `todos`, `rol:contador`, `usuario:N`, id inválido, audiencia desconocida.
+- [tests/interfono/test_sw_y_suscripcion.py](tests/interfono/test_sw_y_suscripcion.py) — 9 tests: `/sw.js` publico con tag default único, login required, alta crea fila, idempotente reactiva, payload inválido 400, desuscribir, desuscribir ajeno 404, prueba sin VAPID 503, prueba con VAPID OK.
+- [tests/gerencia/test_interfono_views.py](tests/gerencia/test_interfono_views.py) — 11 tests: permisos (disenador/contador 403, super_admin/dueno 200), aviso sin VAPID, enviar sin VAPID corta, modo prueba override a usuario actual, masivo a todos registra entregadas, perfil_notificaciones login_required + render, `/sw.js` en gerencia.
+
+`tests/django_settings.py` actualizado: agrega `interfono`,
+`interfono_admin`, `perfil_notificaciones` a INSTALLED_APPS y el context
+processor de VAPID. `tests/urls_taller.py` y `tests/urls_gerencia.py`
+montan los `urlpatterns_sw`/`urlpatterns_suscripcion` para que el
+test client encuentre las rutas.
+
+`ruff check .` — All checks passed (corrigió 5 ordenamientos de import
+con `--fix`).
+
+## 4. Endpoints nuevos
+
+| Host | Path | Method | Acceso |
+|---|---|---|---|
+| Los 3 | `/sw.js` | GET | Público |
+| Gerencia + Taller | `/perfil/notificaciones/` | GET | Login |
+| Gerencia + Taller | `/perfil/notificaciones/suscribir` | POST JSON | Login |
+| Gerencia + Taller | `/perfil/notificaciones/<id>/desuscribir` | POST | Dueño de la sub |
+| Gerencia + Taller | `/perfil/notificaciones/prueba` | POST | Login |
+| Gerencia | `/interfono/` | GET | super_admin + dueno |
+| Gerencia | `/interfono/enviar` | POST | super_admin + dueno |
+
+## 5. Tablas nuevas
+
+- `interfono_suscripcion` (FK usuario, endpoint UNIQUE, p256dh, auth,
+  user_agent, activa, desactivada_en; índice `(usuario, activa)`)
+- `interfono_envio` (FK autor SET_NULL, audiencia + audiencia_label,
+  titulo, cuerpo, url_destino, entregadas, fallidas, suscripciones_invalidadas,
+  creado_en con db_index)
+
+## 6. Cambios de configuración
+
+- `tailwind.config.js` (3 archivos): `darkMode: 'class'`.
+- 3 settings.py: agregan `interfono` + sus apps locales a INSTALLED_APPS
+  y el context processor de VAPID.
+- 3 Dockerfiles: `COPY interfono/ /app/interfono/`.
+- 3 urls.py raíz montan `urlpatterns_sw` + `urlpatterns_suscripcion` (la
+  Recepción solo `/sw.js`).
+- Nav de La Gerencia: link "El Interfono" + campanita 🔔.
+- Nav de El Taller: campanita 🔔.
+- Ambos navbars: `_toggle_tema.html` + script `tema.js`.
+
+## 7. Eventos Portavoz
+
+**Cero eventos nuevos** en este sprint (decisión: sin eventos automáticos,
+solo UI manual). Cuando S2b/S2c enganchen automáticos
+("pago.recibido → push", "ticket.escalado → push"), se emite desde el
+trigger normal y `enviar_a_audiencia` se llama desde el handler. La
+plomería está lista.
+
+## 8. Decisiones tomadas
+
+- Webpushr descartado — Interfono propio con `pywebpush`.
+- Llaves VAPID generadas con `cryptography.SECP256R1`, escalar privado
+  base64url; **nunca** en `.env` ni en código. Guardadas con
+  `Credencial.guardar` (cifradas con La Bóveda).
+- `/sw.js` desde Django view, no Caddy (razones en §1).
+- Service worker en los 3 hosts; UI de suscripción solo en Gerencia y
+  Taller (Recepción es S5).
+- Categorías de suscripción: todo-o-nada por ahora. Granularidad llega
+  cuando se cableen eventos automáticos.
+- Sin imágenes en notificaciones (solo título + cuerpo + URL).
+- Dark mode con `localStorage`, sin DB; default `prefers-color-scheme`.
+- Paleta de dark: **slate** en los 3 hosts, sin tocar la paleta light
+  existente (`slate` en Gerencia, `stone` en Taller). Esto se acepta como
+  inconsistencia menor para evitar housekeeping fuera de scope.
+- App `interfono/` en raíz del repo (patrón regla §14, igual que
+  `buzon`/`cuentas`/`ajustes`).
+- Tag default del SW: `el-despacho-<timestamp>-<rand>` único. Nunca el
+  literal `el-despacho` (colapsaría todo).
+
+## 9. Deuda residual al cierre
+
+- **Experimento de rollback en vivo** (deuda S2a.2) — sigue diferido.
+- **GHCR privadas** (deuda S1-deploy G.1) — sigue abierta.
+- **Validación visual en navegador** del dark mode: el audit cubrió
+  patrones comunes pero queda revisar páginas con colores semánticos
+  saturados (El Site, modales) y reportar lo que se vea raro.
+- **Tailwind compilado** en La Recepción: aún CDN-less / sin compilación
+  porque sigue como stub. Cuando llegue S5 con templates Django reales,
+  el config ya está armado.
+- **Eventos automáticos del Portavoz que disparen push**: a cablear en
+  cada módulo conforme llegue (pago recibido, ticket escalado, etc.).
+- **Categorías de notificación**: cuando los automáticos arranquen,
+  considerar agregar columna `categoria` a `InterfonoSuscripcion` y un
+  filtro en `enviar_a_usuario`.
+
+---
+
+**Cierre sprint pre-S2b:** El Interfono despierto end-to-end con
+`pywebpush` + VAPID en La Bóveda; UI manual en `/interfono/` (Gerencia)
+y `/perfil/notificaciones/` (Gerencia + Taller); SW propio en los 3 hosts.
+Dark mode con toggle persistente en localStorage + anti-FOUC + paleta
+slate aplicada a 38 templates principales (298 cambios automatizados).
+**+37 tests verdes; total 223/9, ruff verde.** Listo para llamada de
+S2b "El Pipeline" mañana sin deuda nueva.

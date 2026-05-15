@@ -2,16 +2,16 @@
 {% block title %}Asignar — {{ proyecto.codigo }}{% endblock %}
 {% block contenido %}
 <h1 class="text-2xl font-semibold mb-2">Asignar al proyecto</h1>
-<p class="text-sm text-slate-600 mb-6">{{ proyecto.codigo }} · {{ proyecto.nombre }}</p>
+<p class="text-sm text-slate-600 dark:text-slate-300 mb-6">{{ proyecto.codigo }} · {{ proyecto.nombre }}</p>
 
 <div class="grid sm:grid-cols-2 gap-6">
-    <div class="bg-white border rounded-lg p-4">
+    <div class="bg-white dark:bg-slate-900 border rounded-lg p-4">
         <h2 class="font-semibold mb-3">Equipo actual</h2>
         {% if asignaciones %}
         <ul class="space-y-2">
             {% for a in asignaciones %}
             <li class="flex items-center justify-between text-sm">
-                <span>{{ a.usuario.nombre_completo|default:a.usuario.email }} <span class="text-slate-400">· {{ a.get_rol_en_proyecto_display }}</span></span>
+                <span>{{ a.usuario.nombre_completo|default:a.usuario.email }} <span class="text-slate-400 dark:text-slate-500">· {{ a.get_rol_en_proyecto_display }}</span></span>
                 <form method="post" class="inline" onsubmit="return confirm('¿Quitar asignación?')">
                     {% csrf_token %}
                     <input type="hidden" name="accion" value="quitar">
@@ -21,10 +21,10 @@
             </li>
             {% endfor %}
         </ul>
-        {% else %}<p class="text-sm text-slate-400">Sin asignar.</p>{% endif %}
+        {% else %}<p class="text-sm text-slate-400 dark:text-slate-500">Sin asignar.</p>{% endif %}
     </div>
 
-    <form method="post" class="bg-white border rounded-lg p-4 space-y-4 campo-form">
+    <form method="post" class="bg-white dark:bg-slate-900 border rounded-lg p-4 space-y-4 campo-form">
         {% csrf_token %}
         <h2 class="font-semibold">Agregar al equipo</h2>
         {% for f in form %}
@@ -38,5 +38,5 @@
     </form>
 </div>
 
-<p class="mt-6"><a href="{% url 'proyectos-detalle' proyecto.pk %}" class="text-slate-500 hover:underline text-sm">← Volver al proyecto</a></p>
+<p class="mt-6"><a href="{% url 'proyectos-detalle' proyecto.pk %}" class="text-slate-500 dark:text-slate-400 hover:underline text-sm">← Volver al proyecto</a></p>
 {% endblock %}

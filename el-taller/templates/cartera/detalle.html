@@ -21,46 +21,46 @@
 </div>
 
 <div class="grid sm:grid-cols-2 gap-4 mb-8">
-    <div class="bg-white border rounded-lg p-4">
+    <div class="bg-white dark:bg-slate-900 border rounded-lg p-4">
         <h2 class="font-semibold mb-2">Identificación</h2>
-        <p class="text-sm text-slate-600">RFC: <span class="text-slate-900">{{ cliente.rfc|default:"—" }}</span></p>
-        <p class="text-sm text-slate-600">Creado: <span class="text-slate-900">{{ cliente.creado_en|date:"d M Y" }}</span>
-            {% if cliente.creado_por %}<span class="text-slate-400">por {{ cliente.creado_por.nombre_completo }}</span>{% endif %}</p>
+        <p class="text-sm text-slate-600 dark:text-slate-300">RFC: <span class="text-slate-900 dark:text-slate-100">{{ cliente.rfc|default:"—" }}</span></p>
+        <p class="text-sm text-slate-600 dark:text-slate-300">Creado: <span class="text-slate-900 dark:text-slate-100">{{ cliente.creado_en|date:"d M Y" }}</span>
+            {% if cliente.creado_por %}<span class="text-slate-400 dark:text-slate-500">por {{ cliente.creado_por.nombre_completo }}</span>{% endif %}</p>
     </div>
-    <div class="bg-white border rounded-lg p-4">
+    <div class="bg-white dark:bg-slate-900 border rounded-lg p-4">
         <h2 class="font-semibold mb-2">Contacto</h2>
-        <p class="text-sm text-slate-600">{{ cliente.nombre_contacto|default:"—" }}</p>
-        <p class="text-sm text-slate-600">{{ cliente.email_contacto|default:"—" }}</p>
-        <p class="text-sm text-slate-600">{{ cliente.telefono|default:"—" }}</p>
+        <p class="text-sm text-slate-600 dark:text-slate-300">{{ cliente.nombre_contacto|default:"—" }}</p>
+        <p class="text-sm text-slate-600 dark:text-slate-300">{{ cliente.email_contacto|default:"—" }}</p>
+        <p class="text-sm text-slate-600 dark:text-slate-300">{{ cliente.telefono|default:"—" }}</p>
     </div>
-    <div class="bg-white border rounded-lg p-4 sm:col-span-2">
+    <div class="bg-white dark:bg-slate-900 border rounded-lg p-4 sm:col-span-2">
         <h2 class="font-semibold mb-2">Dirección</h2>
-        <p class="text-sm text-slate-700 whitespace-pre-wrap">{{ cliente.direccion|default:"—" }}</p>
+        <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ cliente.direccion|default:"—" }}</p>
     </div>
     {% if cliente.notas %}
     <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:col-span-2">
         <h2 class="font-semibold mb-2">Notas</h2>
-        <p class="text-sm text-slate-700 whitespace-pre-wrap">{{ cliente.notas }}</p>
+        <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ cliente.notas }}</p>
     </div>
     {% endif %}
 </div>
 
 <h2 class="font-semibold mb-3">Proyectos</h2>
-<div class="bg-white border rounded-lg overflow-hidden">
+<div class="bg-white dark:bg-slate-900 border rounded-lg overflow-hidden">
     <table class="min-w-full text-sm">
-        <thead class="bg-slate-100 text-slate-600 text-left">
+        <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-left">
             <tr><th class="px-4 py-2">Código</th><th class="px-4 py-2">Nombre</th><th class="px-4 py-2">Estado</th><th class="px-4 py-2">Compromiso</th></tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
             {% for p in proyectos %}
             <tr>
                 <td class="px-4 py-2"><a class="text-amber-700 hover:underline" href="{% url 'proyectos-detalle' p.pk %}">{{ p.codigo }}</a></td>
                 <td class="px-4 py-2">{{ p.nombre }}</td>
                 <td class="px-4 py-2"><span class="badge badge-slate">{{ p.get_estado_display }}</span></td>
-                <td class="px-4 py-2 text-slate-600">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
+                <td class="px-4 py-2 text-slate-600 dark:text-slate-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Sin proyectos.</td></tr>
+            <tr><td colspan="4" class="px-4 py-6 text-center text-slate-400 dark:text-slate-500">Sin proyectos.</td></tr>
             {% endfor %}
         </tbody>
     </table>

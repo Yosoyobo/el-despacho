@@ -3,18 +3,18 @@
 {% block contenido %}
 <h1 class="text-2xl font-semibold mb-6">{{ modo|capfirst }} usuario</h1>
 
-<form method="post" class="max-w-xl bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-4">
+<form method="post" class="max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm p-6 space-y-4">
     {% csrf_token %}
     {% for f in form %}
     <div>
         <label class="block text-sm font-medium mb-1">{{ f.label }}</label>
         <div class="campo-form">{{ f }}</div>
-        {% if f.help_text %}<p class="text-xs text-slate-500 mt-1">{{ f.help_text }}</p>{% endif %}
+        {% if f.help_text %}<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ f.help_text }}</p>{% endif %}
         {% if f.errors %}<p class="text-xs text-red-600 mt-1">{{ f.errors|join:" / " }}</p>{% endif %}
     </div>
     {% endfor %}
     <div class="flex justify-between pt-2">
-        <a href="{% url 'directorio-lista' %}" class="text-slate-500 hover:underline">Cancelar</a>
+        <a href="{% url 'directorio-lista' %}" class="text-slate-500 dark:text-slate-400 hover:underline">Cancelar</a>
         <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-md text-sm">
             Guardar
         </button>

@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
     "buzon.apps.BuzonConfig",
+    "interfono.apps.InterfonoConfig",
     # El Taller
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
@@ -36,6 +37,7 @@ INSTALLED_APPS = [
     "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.el_pizarron.apps.ElPizarronConfig",
     "apps.buzon_empleado.apps.BuzonEmpleadoConfig",
+    "apps.perfil_notificaciones.apps.PerfilNotificacionesConfig",
     # La Gerencia (apps es namespace pkg — convive con El Taller)
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -45,6 +47,7 @@ INSTALLED_APPS = [
     "apps.el_catalogo.apps.ElCatalogoConfig",
     "apps.buzon_admin.apps.BuzonAdminConfig",
     "apps.el_site.apps.ElSiteConfig",
+    "apps.interfono_admin.apps.InterfonoAdminConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
@@ -75,6 +78,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.el_site.context_processors.badge_integraciones",
+                "interfono.context_processors.vapid_public_key",
             ],
         },
     },

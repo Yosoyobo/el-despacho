@@ -5,7 +5,7 @@
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold tracking-tight">El Site</h1>
-        <p class="text-sm text-slate-500">Estado de infraestructura, integraciones y servicios internos.</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Estado de infraestructura, integraciones y servicios internos.</p>
     </div>
     <form method="post" action="{% url 'site-probar-todas' %}">
         {% csrf_token %}
@@ -17,7 +17,7 @@
 
 <section class="mb-8">
     <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">🏗️ Infraestructura del Droplet
-        <span class="text-xs text-slate-400 font-normal">(auto-refresh 30s)</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500 font-normal">(auto-refresh 30s)</span>
     </h2>
     {% include "site/partials/infra.html" %}
 </section>
@@ -31,7 +31,7 @@
 
 <section class="mb-8">
     <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">⚙️ Servicios internos
-        <span class="text-xs text-slate-400 font-normal">(auto-refresh 60s)</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500 font-normal">(auto-refresh 60s)</span>
     </h2>
     {% include "site/partials/internos.html" %}
 </section>

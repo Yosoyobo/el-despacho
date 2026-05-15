@@ -9,9 +9,9 @@
     </a>
 </div>
 
-<div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm overflow-hidden">
     <table class="w-full text-sm">
-        <thead class="bg-slate-100 text-slate-600 text-left text-xs uppercase">
+        <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-left text-xs uppercase">
             <tr>
                 <th class="px-4 py-2">Nombre</th>
                 <th class="px-4 py-2">Email</th>
@@ -20,12 +20,12 @@
                 <th class="px-4 py-2"></th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
             {% for u in usuarios %}
             <tr>
                 <td class="px-4 py-2">{{ u.nombre_completo|default:"—" }}</td>
-                <td class="px-4 py-2 text-slate-600">{{ u.email }}</td>
-                <td class="px-4 py-2"><span class="text-xs bg-slate-100 rounded px-2 py-0.5">{{ u.get_rol_display }}</span></td>
+                <td class="px-4 py-2 text-slate-600 dark:text-slate-300">{{ u.email }}</td>
+                <td class="px-4 py-2"><span class="text-xs bg-slate-100 dark:bg-slate-800 rounded px-2 py-0.5">{{ u.get_rol_display }}</span></td>
                 <td class="px-4 py-2">
                     {% if u.is_active %}
                         <span class="text-xs text-emerald-700">activo</span>
@@ -37,12 +37,12 @@
                     <a href="{% url 'directorio-editar' u.pk %}" class="text-amber-700 hover:underline">Editar</a>
                     <form method="post" action="{% url 'directorio-bloquear' u.pk %}" class="inline">
                         {% csrf_token %}
-                        <button class="text-slate-500 hover:text-red-700">{% if u.is_active %}Bloquear{% else %}Activar{% endif %}</button>
+                        <button class="text-slate-500 dark:text-slate-400 hover:text-red-700">{% if u.is_active %}Bloquear{% else %}Activar{% endif %}</button>
                     </form>
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Sin usuarios</td></tr>
+            <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400 dark:text-slate-500">Sin usuarios</td></tr>
             {% endfor %}
         </tbody>
     </table>

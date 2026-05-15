@@ -5,18 +5,18 @@
     <h1 class="text-2xl font-semibold tracking-tight">{% if modo == 'editar' %}Editar servicio{% else %}Nuevo servicio{% endif %}</h1>
 </header>
 
-<form method="post" class="space-y-4 max-w-2xl bg-white rounded-md border border-slate-200 p-6">
+<form method="post" class="space-y-4 max-w-2xl bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-6">
     {% csrf_token %}
     {% for field in form %}
     <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">{{ field.label }}</label>
+        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ field.label }}</label>
         {{ field }}
         {% if field.errors %}<p class="mt-1 text-sm text-red-600">{{ field.errors|join:", " }}</p>{% endif %}
     </div>
     {% endfor %}
     <div class="flex gap-2 pt-2">
         <button class="rounded-md bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-800">Guardar</button>
-        <a href="{% url 'catalogo-lista' %}" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm">Cancelar</a>
+        <a href="{% url 'catalogo-lista' %}" class="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm">Cancelar</a>
     </div>
 </form>
 <style>

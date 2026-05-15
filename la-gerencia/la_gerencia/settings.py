@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
     "buzon.apps.BuzonConfig",
+    "interfono.apps.InterfonoConfig",
     # De La Gerencia
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
     "apps.el_catalogo.apps.ElCatalogoConfig",
     "apps.buzon_admin.apps.BuzonAdminConfig",
     "apps.el_site.apps.ElSiteConfig",
+    "apps.interfono_admin.apps.InterfonoAdminConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",
@@ -70,6 +72,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.el_site.context_processors.badge_integraciones",
+                "interfono.context_processors.vapid_public_key",
             ],
         },
     },

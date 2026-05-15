@@ -24,6 +24,7 @@ COPY lib/ /app/lib/
 COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
 COPY buzon/ /app/buzon/
+COPY interfono/ /app/interfono/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config

@@ -4,22 +4,64 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>La Recepción — Próximamente</title>
+    <script>
+        (function() {
+            try {
+                var g = localStorage.getItem('despacho-tema');
+                if (g === 'dark') { document.documentElement.classList.add('dark'); }
+                else if (g === 'light') { document.documentElement.classList.remove('dark'); }
+                else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <style>
+        :root { --bg-a: #f0f9ff; --bg-b: #e0f2fe; --fg: #1e293b; --card: #fff;
+                --border: #e2e8f0; --muted: #475569; --note: #94a3b8; --shadow: rgba(0,0,0,0.08); }
+        html.dark { --bg-a: #0f172a; --bg-b: #1e293b; --fg: #f1f5f9; --card: #1e293b;
+                    --border: #334155; --muted: #cbd5e1; --note: #94a3b8; --shadow: rgba(0,0,0,0.4); }
         body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
                font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-               background: linear-gradient(135deg, #f0f9ff, #e0f2fe); color: #1e293b; }
-        .tarjeta { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem;
-                   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08); padding: 2.5rem; max-width: 32rem; text-align: center; }
+               background: linear-gradient(135deg, var(--bg-a), var(--bg-b)); color: var(--fg); }
+        .tarjeta { background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
+                   box-shadow: 0 4px 6px -1px var(--shadow); padding: 2.5rem; max-width: 32rem; text-align: center; }
         h1 { font-size: 1.875rem; font-weight: 600; margin: 0 0 0.75rem; }
-        p { margin: 0 0 0.5rem; color: #475569; }
-        .nota { font-size: 0.875rem; color: #94a3b8; }
+        p { margin: 0 0 0.5rem; color: var(--muted); }
+        .nota { font-size: 0.875rem; color: var(--note); }
+        .toggle { position: fixed; top: 1rem; right: 1rem; background: var(--card); border: 1px solid var(--border);
+                  border-radius: 0.375rem; padding: 0.4rem 0.6rem; cursor: pointer; color: var(--fg); font-size: 0.875rem; }
     </style>
 </head>
 <body>
+    <button class="toggle" id="toggle-tema" aria-label="Cambiar tema" type="button">
+        <span class="claro">🌙</span>
+        <span class="oscuro" style="display:none">☀️</span>
+    </button>
     <div class="tarjeta">
         <h1>La Recepción</h1>
         <p>Portal de clientes de Learning Center.</p>
         <p class="nota">Próximamente. Andamio reservado — UI completa en S5.</p>
     </div>
+    <script>
+        (function() {
+            var btn = document.getElementById('toggle-tema');
+            function sincronizarIconos() {
+                var esOscuro = document.documentElement.classList.contains('dark');
+                btn.querySelector('.claro').style.display = esOscuro ? 'none' : '';
+                btn.querySelector('.oscuro').style.display = esOscuro ? '' : 'none';
+            }
+            btn.addEventListener('click', function() {
+                var esOscuro = document.documentElement.classList.toggle('dark');
+                try { localStorage.setItem('despacho-tema', esOscuro ? 'dark' : 'light'); } catch(e) {}
+                sincronizarIconos();
+            });
+            sincronizarIconos();
+            // Registra el service worker (standby; sin UI de suscripción en La Recepción S1a).
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(function() {});
+            }
+        })();
+    </script>
 </body>
 </html>

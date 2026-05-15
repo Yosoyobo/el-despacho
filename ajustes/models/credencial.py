@@ -27,8 +27,9 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("openai_api_key", "OpenAI — API Key (sk-...)", "Fallback de El Reemplazo."),
     ("n8n_webhook_url", "n8n — Webhook URL", "Endpoint del Portavoz (vía Tailscale)."),
     ("n8n_webhook_secret", "n8n — Webhook Secret", "Para firmar HMAC saliente."),
-    ("vapid_public_key", "Web Push — VAPID Public", "Notificaciones PWA (opcional, S3+)."),
-    ("vapid_private_key", "Web Push — VAPID Private", "Notificaciones PWA (opcional, S3+)."),
+    ("vapid_public_key", "Web Push — VAPID Public", "Notificaciones del Interfono. Generar con `interfono_generar_vapid`."),
+    ("vapid_private_key", "Web Push — VAPID Private", "Notificaciones del Interfono. Generar con `interfono_generar_vapid`."),
+    ("vapid_email", "Web Push — VAPID contact", "Correo de contacto del header VAPID (ej. mailto:soporte@bautista.mx)."),
     ("do_api_token", "DigitalOcean — API Token (dop_v1_...)", "Token para que El Site lea specs y bandwidth del Droplet."),
     ("n8n_health_url", "n8n — Health URL (vía Tailscale)", "Ej. http://hal.tailedd04d.ts.net:5678/healthz. El Site lo pinguea."),
 ]

@@ -16,6 +16,7 @@ RUN pip install -r requirements.txt
 COPY lib/ /app/lib/
 COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
+COPY interfono/ /app/interfono/
 COPY la-recepcion/ /app/
 
 EXPOSE 8002

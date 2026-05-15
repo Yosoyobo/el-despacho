@@ -22,6 +22,7 @@ COPY lib/ /app/lib/
 COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
 COPY buzon/ /app/buzon/
+COPY interfono/ /app/interfono/
 COPY el-taller/ /app/
 
 RUN if [ -f tailwind.config.js ]; then \

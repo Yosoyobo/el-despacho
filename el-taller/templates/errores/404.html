@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}404 — El Taller{% endblock %}
 {% block contenido %}
-<div class="bg-white border border-stone-200 rounded-md p-8 text-center">
+<div class="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-md p-8 text-center">
     <h1 class="text-2xl font-semibold tracking-tight mb-2">No encontramos esa página</h1>
-    <p class="text-stone-600 mb-6">La URL <code>{{ request.path }}</code> no existe en El Taller.</p>
+    <p class="text-stone-600 dark:text-slate-300 mb-6">La URL <code>{{ request.path }}</code> no existe en El Taller.</p>
     <a href="{% url 'buzon-empleado-nuevo' %}?tipo=problema&asunto=404+en+{{ request.path|urlencode }}"
-       class="inline-block rounded-md border border-stone-300 bg-white px-4 py-2 text-sm hover:bg-stone-50">Reportar al Buzón</a>
-    <a href="/" class="inline-block ml-2 text-sm underline text-stone-600">← Inicio</a>
+       class="inline-block rounded-md border border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm hover:bg-stone-50 dark:hover:bg-slate-800">Reportar al Buzón</a>
+    <a href="/" class="inline-block ml-2 text-sm underline text-stone-600 dark:text-slate-300">← Inicio</a>
 </div>
 {% endblock %}

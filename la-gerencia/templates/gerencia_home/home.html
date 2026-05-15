@@ -5,30 +5,30 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-    <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">Salud</h2>
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
+        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Salud</h2>
         <ul class="text-sm space-y-1">
             <li>La Bóveda: <span class="font-medium {% if salud_boveda %}text-emerald-700{% else %}text-red-700{% endif %}">{% if salud_boveda %}OK{% else %}FALLA{% endif %}</span></li>
-            <li>Postgres: <span class="font-medium text-emerald-700">OK</span> <span class="text-slate-400">(estás logueado)</span></li>
+            <li>Postgres: <span class="font-medium text-emerald-700">OK</span> <span class="text-slate-400 dark:text-slate-500">(estás logueado)</span></li>
         </ul>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">Credenciales</h2>
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
+        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Credenciales</h2>
         <p class="text-2xl font-semibold">{{ credenciales_configuradas }} / {{ credenciales_total }}</p>
-        <p class="text-sm text-slate-500">slots configurados en Los Ajustes</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">slots configurados en Los Ajustes</p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">Equipo</h2>
-        <p class="text-2xl font-semibold">{{ usuarios_activos }} <span class="text-base font-normal text-slate-400">/ {{ usuarios_total }}</span></p>
-        <p class="text-sm text-slate-500">activos en El Directorio</p>
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
+        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Equipo</h2>
+        <p class="text-2xl font-semibold">{{ usuarios_activos }} <span class="text-base font-normal text-slate-400 dark:text-slate-500">/ {{ usuarios_total }}</span></p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">activos en El Directorio</p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">Próximos módulos</h2>
-        <p class="text-sm text-slate-600">La Cartera, Los Proyectos, El Pizarrón llegan en <strong>S1b</strong>.</p>
-        <p class="text-sm text-slate-600 mt-1">Cotizaciones, Caja, Cobranza en S2. Contaduría en S3. IA en S4.</p>
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
+        <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Próximos módulos</h2>
+        <p class="text-sm text-slate-600 dark:text-slate-300">La Cartera, Los Proyectos, El Pizarrón llegan en <strong>S1b</strong>.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Cotizaciones, Caja, Cobranza en S2. Contaduría en S3. IA en S4.</p>
     </div>
 
 </div>

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}El Interfono — La Gerencia{% endblock %}
+
+{% block contenido %}
+<div class="space-y-8">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">El Interfono</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Notificaciones push manuales al equipo.</p>
+    </div>
+
+    {% if not configurado %}
+    <div class="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200 px-4 py-3 text-sm">
+        <strong>Llaves VAPID no configuradas.</strong>
+        Generarlas con <code>docker compose exec la-gerencia python manage.py interfono_generar_vapid</code>.
+    </div>
+    {% endif %}
+
+    <section class="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+        <h2 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">Enviar notificación</h2>
+        <form method="post" action="{% url 'interfono-enviar' %}" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Enviar a:</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2">
+                        <input type="radio" name="audiencia_tipo" value="todos" checked
+                               onchange="window._actualizarAudiencia()">
+                        <span class="text-sm text-slate-700 dark:text-slate-300">Todos los usuarios activos</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="radio" name="audiencia_tipo" value="rol"
+                               onchange="window._actualizarAudiencia()">
+                        <span class="text-sm text-slate-700 dark:text-slate-300">Por rol</span>
+                        <select name="audiencia_rol" id="audiencia_rol" disabled
+                                class="ml-2 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 text-sm">
+                            <option value="super_admin">super_admin</option>
+                            <option value="dueno">dueno</option>
+                            <option value="contador">contador</option>
+                            <option value="disenador">disenador</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="radio" name="audiencia_tipo" value="usuario"
+                               onchange="window._actualizarAudiencia()">
+                        <span class="text-sm text-slate-700 dark:text-slate-300">Usuario individual</span>
+                        <select name="audiencia_usuario" id="audiencia_usuario" disabled
+                                class="ml-2 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 text-sm">
+                            <option value="">— seleccionar —</option>
+                            {% for u in usuarios %}
+                            <option value="{{ u.id }}">{{ u.email }} — {{ u.nombre_completo|default:"(sin nombre)" }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Título</label>
+                <input type="text" name="titulo" maxlength="80" required
+                       class="block w-full rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 text-sm">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Máx 80 caracteres.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cuerpo</label>
+                <textarea name="cuerpo" maxlength="300" rows="3" required
+                          class="block w-full rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 text-sm"></textarea>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Máx 300 caracteres.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">URL al hacer click <span class="text-slate-400">(opcional)</span></label>
+                <input type="url" name="url_destino"
+                       placeholder="https://gerencia.ninomeando.com/..."
+                       class="block w-full rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 text-sm">
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit" name="modo" value="prueba"
+                        class="rounded bg-slate-100 dark:bg-slate-800 dark:text-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700">
+                    Enviarme una prueba
+                </button>
+                <button type="submit" name="modo" value="enviar"
+                        onclick="return confirm('¿Enviar a los destinatarios seleccionados?')"
+                        class="rounded bg-slate-900 text-white dark:bg-amber-500 dark:text-slate-900 px-4 py-2 text-sm font-medium hover:bg-slate-800 dark:hover:bg-amber-400">
+                    Enviar a destinatarios
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+        <h2 class="text-lg font-medium text-slate-900 dark:text-slate-100 px-6 pt-6">Historial</h2>
+        <div class="overflow-x-auto mt-4">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    <tr>
+                        <th class="text-left px-6 py-2 font-medium">Fecha</th>
+                        <th class="text-left px-6 py-2 font-medium">Autor</th>
+                        <th class="text-left px-6 py-2 font-medium">Audiencia</th>
+                        <th class="text-left px-6 py-2 font-medium">Título</th>
+                        <th class="text-right px-6 py-2 font-medium">Ok / Falla / Inv.</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    {% for e in envios %}
+                    <tr>
+                        <td class="px-6 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ e.creado_en|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-2 text-slate-700 dark:text-slate-300">{{ e.autor.email|default:"—" }}</td>
+                        <td class="px-6 py-2 text-slate-700 dark:text-slate-300">{{ e.audiencia_label }}</td>
+                        <td class="px-6 py-2 text-slate-900 dark:text-slate-100" title="{{ e.cuerpo }}">{{ e.titulo|truncatechars:40 }}</td>
+                        <td class="px-6 py-2 text-right text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                            {{ e.entregadas }} / {{ e.fallidas }} / {{ e.suscripciones_invalidadas }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Sin envíos todavía.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<script>
+window._actualizarAudiencia = function() {
+    var tipo = document.querySelector('input[name=audiencia_tipo]:checked').value;
+    document.getElementById('audiencia_rol').disabled = (tipo !== 'rol');
+    document.getElementById('audiencia_usuario').disabled = (tipo !== 'usuario');
+};
+</script>
+{% endblock %}
