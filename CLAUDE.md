@@ -305,3 +305,67 @@ from lib import google_oauth
 Las apps Django compartidas (`cuentas`, `ajustes`) están en la raíz del repo y
 se copian a `/app/` en cada Dockerfile. Los settings de los 3 proyectos las
 agregan a `INSTALLED_APPS`.
+
+---
+
+## 12. La Limpieza — mantenimiento de disco en La Sede
+
+El Droplet `s-1vcpu-1gb` se aprieta de espacio con el tiempo (imágenes
+viejas, capas de build, logs de journald, kernels viejos, backups
+acumulados). Para liberarlo hay un workflow manual:
+
+**GitHub → Actions → "La Limpieza" → Run workflow → main**
+
+El workflow tiene dos jobs:
+- `poda-ghcr` — corre solo en cron domingo 06:00 UTC. Conserva las
+  últimas 10 versiones de cada imagen en GHCR.
+- `limpiar-disco` — corre **solo en dispatch manual**. Es el job de
+  esta sección.
+
+### Cuándo correrla
+
+- **Cada 2-4 semanas** como mantenimiento preventivo, aunque no haya
+  síntoma. Toma 1-2 minutos.
+- **Cuando El Site reporte disco > 75 % usado** (llega en S2a.2).
+- **Después de un período de despliegues frecuentes** (ej. una semana
+  con 10+ commits a main — las imágenes viejas acumulan rápido).
+- **Antes de un deploy grande** donde quieras espacio garantizado.
+
+### Cuándo NO correrla
+
+- **Si algún container no está `running`.** El pre-flight aborta solo,
+  pero ahórrate el intento si sabes que hay servicios caídos.
+- **Durante un deploy en curso.** Espera a que `🚚 La Mudanza` termine
+  verde antes de disparar.
+- **Si acabas de hacer un cambio crítico sin validar.** Una limpieza
+  descuidada puede ocultar la causa raíz de un bug nuevo.
+
+### Lo que SÍ hace
+
+- `docker system prune -af` (**sin `--volumes`**): borra imágenes sin
+  container, containers parados, redes huérfanas, build cache.
+- `journalctl --vacuum-time=7d`: logs de systemd > 7 días.
+- `/tmp` archivos > 1 día.
+- `apt autoremove + clean`: kernels viejos y caché de paquetes.
+- Rota backups locales: conserva los 4 más recientes de cada serie
+  (`db-*.sql.gz`, `credenciales-*.tar.gz`).
+
+### Lo que NO hace
+
+- **Nunca** `--volumes` en `docker system prune`. Aunque hoy todos los
+  datos viven en bind mounts (`./data/postgres`, `./data/redis`,
+  `./data/caddy/data`) y `--volumes` no los tocaría, la regla queda
+  como defensa por si se agregan volúmenes nombrados después.
+- **Nunca** borra automáticamente volúmenes Docker huérfanos. Los
+  lista para que tú decidas manualmente vía SSH.
+- **Nunca** corre si el pre-flight detecta servicios no-running.
+
+### Si la post-flight falla
+
+El workflow termina rojo con el servicio caído nombrado. Recovery:
+
+1. SSH a La Sede: `ssh -i ~/.ssh/el-despacho-sede despacho@157.230.48.232`
+2. `cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml logs <servicio> --tail 100`
+3. Lo más probable: solo necesita reinicio →
+   `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d <servicio>`
+4. Si no levanta, el último backup en `/opt/el-despacho/backups/` salva.

@@ -840,3 +840,73 @@ nuevos. Inventario de Endpoints disponible en `/inventario-de-endpoints/`
 (super_admin only) — escenografía lista para que El Site y los webhooks
 Stripe/MercadoPago en S2a.2/S2b se documenten automáticamente al escribirlos
 con DRF.
+
+---
+
+# BITÁCORA — La Limpieza (mantenimiento, 2026-05-14)
+
+Mini-sesión de mantenimiento entre S2a.1 y S2a.2. Sin features de producto;
+solo herramienta operativa.
+
+## 1. Qué se agregó
+
+- Job `limpiar-disco` en `.github/workflows/la-limpieza.yml` (workflow
+  ya existente con el job `poda-ghcr`). El job nuevo solo corre en
+  `workflow_dispatch`; el cron semanal sigue disparando únicamente la
+  poda GHCR.
+- Sección §12 en `CLAUDE.md` documentando cuándo y cómo usar el
+  workflow.
+- SSH vía `appleboy/ssh-action@v1.2.0` para consistencia con
+  El Mensajero (no `webfactory/ssh-agent` como sugería el spec
+  conceptual de La Cocina).
+
+## 2. Estructura del job
+
+Cuatro pasos secuenciales, abortando si alguno falla:
+
+1. **Pre-flight** — `docker compose ps --format json | jq` valida que
+   los 7 servicios (`postgres, redis, la-gerencia, el-taller,
+   la-recepcion, portavoz-worker, el-portero`) están `running`. Si no,
+   `exit 1` y nada se ejecuta.
+2. **Limpieza** — `set -uo pipefail` (sin `-e`) para tolerar fallos
+   parciales:
+   - `docker system prune -af` (**sin `--volumes`**)
+   - Lista volúmenes huérfanos (no los borra)
+   - `journalctl --vacuum-time=7d`
+   - `find /tmp -mtime +1 -delete`
+   - `apt autoremove --purge` + `apt clean`
+   - Rota `/opt/el-despacho/backups/{db-*.sql.gz, credenciales-*.tar.gz}`
+     conservando los 4 más recientes.
+3. **Post-flight** — vuelve a validar los 7 servicios.
+4. **Smoke test** — `curl` desde el agent a las 3 URLs HTTPS
+   (`gerencia/taller/recepcion.ninomeando.com/ping`).
+
+## 3. Salvaguardas implementadas
+
+- **Sin `--volumes`**. Aunque en El Despacho todo el storage de Postgres,
+  Redis y Caddy está en bind mounts (`./data/`), la regla queda como
+  defensa preventiva contra futuros volúmenes nombrados.
+- **No se borran volúmenes huérfanos automáticamente** — solo se
+  imprimen para decisión manual vía SSH.
+- **Pre-flight y post-flight** del stack completo: cualquier servicio
+  no-running aborta el run en rojo, sin daño.
+- **El cron domingo no toca el disco** — solo dispara `poda-ghcr`. La
+  limpieza de La Sede es siempre acción humana deliberada.
+
+## 4. Cadencia recomendada
+
+- Cada 2-4 semanas como mantenimiento preventivo.
+- Cuando El Site (S2a.2) reporte disco > 75 % usado.
+- Tras semanas de muchos deploys.
+- Antes de un deploy grande.
+
+## 5. Pendiente para el usuario
+
+- Disparar "La Limpieza" desde la pestaña Actions → seleccionar `main`
+  → Run workflow. Validar verde y anotar aquí el espacio liberado del
+  primer run real (df antes/después).
+
+## 6. No bloquea S2a.2
+
+Los pre-requisitos para S2a.2 siguen siendo los mismos: PAT classic
+con `read/write:packages`, Space en DO + keys, DO API token.

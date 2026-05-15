@@ -2,7 +2,7 @@ name: La Limpieza
 
 on:
   schedule:
-    - cron: "0 6 * * 0"  # domingos 06:00 UTC
+    - cron: "0 6 * * 0"  # domingos 06:00 UTC — solo dispara poda-ghcr
   workflow_dispatch:
 
 jobs:
@@ -22,3 +22,128 @@ jobs:
           package-type: container
           min-versions-to-keep: 10
           delete-only-untagged-versions: false
+
+  limpiar-disco:
+    name: 🧹 Liberar disco en La Sede
+    # Solo manual — el cron semanal sigue podando GHCR, pero el disco se limpia a voluntad.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 🛡️ Pre-flight — verificar que el stack está running
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SEDE_HOST }}
+          username: ${{ secrets.SEDE_USER }}
+          key: ${{ secrets.SEDE_SSH_KEY }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            cd /opt/el-despacho
+            NO_UP=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml ps --format json \
+              | jq -r 'select(.State != "running") | .Service' || true)
+            if [ -n "$NO_UP" ]; then
+              echo "❌ ABORT: estos servicios NO están running:"
+              echo "$NO_UP"
+              echo "La Limpieza no procede hasta que el stack esté completamente healthy."
+              exit 1
+            fi
+            echo "✅ Pre-flight OK: los 7 servicios están running."
+
+      - name: 🧹 Limpiar Docker + logs + apt + tmp + backups
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SEDE_HOST }}
+          username: ${{ secrets.SEDE_USER }}
+          key: ${{ secrets.SEDE_SSH_KEY }}
+          command_timeout: 8m
+          script: |
+            # NO -e: cada paso es tolerante; un fallo aislado no aborta los demás.
+            set -uo pipefail
+
+            echo "=== DISCO ANTES ==="
+            df -h /
+            echo ""
+            echo "=== DOCKER ANTES ==="
+            docker system df
+            echo ""
+
+            echo "=== 1) docker system prune (SIN --volumes) ==="
+            docker system prune -af
+            echo ""
+
+            echo "=== 2) Volúmenes Docker huérfanos (solo listado, NO se borran) ==="
+            DANGLING=$(docker volume ls -qf dangling=true || true)
+            if [ -z "$DANGLING" ]; then
+              echo "Sin volúmenes huérfanos."
+            else
+              echo "Volúmenes huérfanos detectados:"
+              echo "$DANGLING"
+              echo "NO se borran automáticamente (decisión de seguridad)."
+              echo "Revísalos manualmente vía SSH si confirmas que son basura."
+            fi
+            echo ""
+
+            echo "=== 3) journald > 7 días ==="
+            sudo journalctl --vacuum-time=7d 2>/dev/null || true
+            echo ""
+
+            echo "=== 4) /tmp > 1 día ==="
+            sudo find /tmp -maxdepth 1 -mtime +1 -delete 2>/dev/null || true
+            echo ""
+
+            echo "=== 5) apt autoremove + clean ==="
+            sudo apt-get autoremove -y --purge 2>/dev/null || true
+            sudo apt-get clean 2>/dev/null || true
+            echo ""
+
+            echo "=== 6) Rotar backups locales (conservar últimos 4 de cada serie) ==="
+            if [ -d /opt/el-despacho/backups ]; then
+              cd /opt/el-despacho/backups
+              ls -t db-*.sql.gz 2>/dev/null | tail -n +5 | xargs -r rm -v
+              ls -t credenciales-*.tar.gz 2>/dev/null | tail -n +5 | xargs -r rm -v
+            else
+              echo "Sin directorio /opt/el-despacho/backups todavía."
+            fi
+            echo ""
+
+            echo "=== DOCKER DESPUÉS ==="
+            docker system df
+            echo ""
+            echo "=== DISCO DESPUÉS ==="
+            df -h /
+            echo ""
+            echo "✅ Limpieza completada"
+
+      - name: 🩺 Post-flight — verificar que el stack sigue healthy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SEDE_HOST }}
+          username: ${{ secrets.SEDE_USER }}
+          key: ${{ secrets.SEDE_SSH_KEY }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            cd /opt/el-despacho
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            NO_UP=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml ps --format json \
+              | jq -r 'select(.State != "running") | .Service' || true)
+            if [ -n "$NO_UP" ]; then
+              echo "❌ POST-FLIGHT FAILED: estos servicios cayeron tras la limpieza:"
+              echo "$NO_UP"
+              echo "Revisa logs con: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs <servicio> --tail 100"
+              exit 1
+            fi
+            echo "✅ Stack sigue healthy."
+
+      - name: 🚥 Smoke test de las 3 URLs HTTPS
+        run: |
+          set -e
+          for host in gerencia taller recepcion; do
+            CODE=$(curl -fsS -o /dev/null -w "%{http_code}" "https://${host}.ninomeando.com/ping" || echo "FAIL")
+            if [ "$CODE" != "200" ]; then
+              echo "❌ https://${host}.ninomeando.com/ping respondió $CODE"
+              exit 1
+            fi
+            echo "✅ https://${host}.ninomeando.com/ping → 200"
+          done
