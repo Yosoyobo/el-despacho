@@ -26,5 +26,6 @@ urlpatterns = [
          name="buzon-admin-clientes-proximamente"),
     path("buzon/", include("apps.buzon_admin.urls")),
     path("site/", include("apps.el_site.urls")),
+    path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("", include("apps.api.urls")),
 ]

@@ -9,19 +9,25 @@ if(g==='dark'){document.documentElement.classList.add('dark');}
 else if(g==='light'){document.documentElement.classList.remove('dark');}
 else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark');}}catch(e){}})();
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fafaf9;--fg:#1c1917;--card:#fff;--border:#e7e5e4;--muted:#57534e;--note:#a8a29e;}
-html.dark{--bg:#0f172a;--fg:#f1f5f9;--card:#1e293b;--border:#334155;--muted:#cbd5e1;--note:#64748b;}
-body{font-family:ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:48px 24px;text-align:center}
-h1{margin:0 0 8px;font-size:28px}
+/* Tokens TailAdmin (paridad con Gerencia/Taller). */
+:root{--bg:#f9fafb;--fg:#101828;--card:#fff;--border:#e4e7ec;--muted:#475467;--note:#98a2b3;--accent:#465fff;}
+html.dark{--bg:#0c111d;--fg:#f2f4f7;--card:#1d2939;--border:#344054;--muted:#d0d5dd;--note:#98a2b3;--accent:#7592ff;}
+body{font-family:'Outfit',ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:48px 24px;text-align:center}
+h1{margin:0 0 8px;font-size:28px;letter-spacing:-0.01em}
 p{color:var(--muted)}
-.box{max-width:640px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:48px 24px}
-.toggle{position:fixed;top:1rem;right:1rem;background:var(--card);border:1px solid var(--border);border-radius:.375rem;padding:.4rem .6rem;cursor:pointer;color:var(--fg);font-size:.875rem}
+.marca{font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);font-weight:500;margin-bottom:8px}
+.box{max-width:640px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:48px 24px;box-shadow:0 1px 3px 0 rgba(16,24,40,0.1)}
+.toggle{position:fixed;top:1rem;right:1rem;background:var(--card);border:1px solid var(--border);border-radius:.5rem;padding:.4rem .6rem;cursor:pointer;color:var(--fg);font-size:.875rem}
 </style>
 </head>
 <body>
 <button class="toggle" id="toggle-tema" aria-label="Cambiar tema" type="button"><span class="ico">🌙</span></button>
 <div class="box">
+    <p class="marca">La Recepción</p>
     <h1>Buzón de Clientes</h1>
     <p>Próximamente — podrás escribirnos directamente desde aquí.</p>
     <p style="font-size:12px;color:var(--note);margin-top:24px">El Despacho · Learning Center</p>

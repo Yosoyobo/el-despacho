@@ -1,66 +1,58 @@
 {% extends "base.html" %}
 {% block title %}{{ tarea.titulo }} — El Pizarrón{% endblock %}
 {% block contenido %}
-<p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">{{ proyecto.codigo }} · {{ proyecto.nombre }}</p>
-<h1 class="text-2xl font-semibold mb-3">{{ tarea.titulo }}</h1>
-
-<div class="flex gap-2 flex-wrap mb-6">
-    <span class="badge
-        {% if tarea.estado == 'completada' %}badge-emerald
-        {% elif tarea.estado == 'bloqueada' %}badge-rose
-        {% elif tarea.estado == 'en_curso' %}badge-amber
-        {% else %}badge-slate{% endif %}">{{ tarea.get_estado_display }}</span>
-    <span class="badge
-        {% if tarea.prioridad == 'alta' %}badge-rose
-        {% elif tarea.prioridad == 'media' %}badge-amber
-        {% else %}badge-slate{% endif %}">Prioridad: {{ tarea.get_prioridad_display }}</span>
-    {% if tarea.asignada_a %}<span class="badge badge-blue">{{ tarea.asignada_a.nombre_completo }}</span>{% endif %}
-    {% if tarea.fecha_compromiso %}<span class="badge badge-slate">Compromiso: {{ tarea.fecha_compromiso|date:"d M Y" }}</span>{% endif %}
-</div>
+<header class="mb-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">{{ proyecto.codigo }} · {{ proyecto.nombre }}</p>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ tarea.titulo }}</h1>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+        {% include "_componentes_tailadmin/_badge_estado.html" with estado=tarea.estado etiqueta=tarea.get_estado_display %}
+        <span class="badge {% if tarea.prioridad == 'alta' %}badge-error{% elif tarea.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">Prioridad: {{ tarea.get_prioridad_display }}</span>
+        {% if tarea.asignada_a %}<span class="badge badge-blue">{{ tarea.asignada_a.nombre_completo }}</span>{% endif %}
+        {% if tarea.fecha_compromiso %}<span class="badge badge-gray">Compromiso: {{ tarea.fecha_compromiso|date:"d M Y" }}</span>{% endif %}
+    </div>
+</header>
 
 {% if tarea.descripcion %}
-<div class="bg-white dark:bg-gray-900 border rounded-lg p-4 mb-6">
-    <p class="text-sm whitespace-pre-wrap">{{ tarea.descripcion }}</p>
-</div>
+<section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción</h2>
+    <p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ tarea.descripcion }}</p>
+</section>
 {% endif %}
 
-<div class="flex gap-2 mb-8">
+<div class="mb-8 flex flex-wrap gap-2">
     {% if puede_editar %}
-    <a href="{% url 'pizarron-editar-tarea' tarea.pk %}" class="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-md text-sm">Editar</a>
-    {% if tarea.estado != 'completada' %}
-    <form method="post" action="{% url 'pizarron-completar-tarea' tarea.pk %}">
-        {% csrf_token %}
-        <button class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-md text-sm">Marcar completada</button>
-    </form>
+        <a href="{% url 'pizarron-editar-tarea' tarea.pk %}" class="btn-secundario">Editar</a>
+        {% if tarea.estado != 'completada' %}
+        <form method="post" action="{% url 'pizarron-completar-tarea' tarea.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-primario">Marcar completada</button>
+        </form>
+        {% endif %}
     {% endif %}
-    {% endif %}
-    <a href="{% url 'proyectos-detalle' proyecto.pk %}" class="text-gray-500 dark:text-gray-400 hover:underline px-3 py-2 text-sm">← Volver al proyecto</a>
+    <a href="{% url 'proyectos-detalle' proyecto.pk %}" class="ml-auto inline-flex items-center text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">← Volver al proyecto</a>
 </div>
 
-<h2 class="font-semibold mb-3">Comentarios</h2>
-<div class="space-y-3 mb-6">
+<h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Comentarios</h2>
+<div class="mb-6 space-y-3">
     {% for c in comentarios %}
-    <div class="bg-white dark:bg-gray-900 border rounded-lg p-4 {% if c.es_interno %}border-amber-300 bg-amber-50{% endif %}">
-        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
-            <span><strong class="text-gray-700 dark:text-gray-300">{{ c.autor.nombre_completo|default:c.autor.email }}</strong> · {{ c.creado_en|date:"d M Y H:i" }}</span>
-            {% if c.es_interno %}<span class="badge badge-amber">interno</span>{% endif %}
-        </div>
-        <p class="text-sm whitespace-pre-wrap">{{ c.cuerpo }}</p>
-    </div>
+        {% include "_componentes_tailadmin/_hilo_mensaje.html" with autor_nombre=c.autor.nombre_completo|default:c.autor.email autor_email=c.autor.email fecha=c.creado_en|date:'d M Y H:i' cuerpo=c.cuerpo es_interno=c.es_interno %}
     {% empty %}
-    <p class="text-sm text-gray-400 dark:text-gray-500">Sin comentarios.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Sin comentarios.</p>
     {% endfor %}
 </div>
 
-<form method="post" action="{% url 'pizarron-comentar-tarea' tarea.pk %}" class="bg-white dark:bg-gray-900 border rounded-lg p-4 space-y-3 campo-form">
+<form method="post" action="{% url 'pizarron-comentar-tarea' tarea.pk %}" class="campo-form rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     {% csrf_token %}
-    <textarea name="cuerpo" rows="3" required placeholder="Escribe un comentario…"></textarea>
+    <label for="comentar-cuerpo" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nuevo comentario</label>
+    <textarea id="comentar-cuerpo" name="cuerpo" rows="3" required placeholder="Escribe un comentario…"></textarea>
     {% if es_admin or request.user.rol == 'contador' %}
-    <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-        <input type="checkbox" name="es_interno" value="on">
+    <label class="mt-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <input type="checkbox" name="es_interno" value="on" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
         Marcar como interno (oculto a diseñadores no asignados)
     </label>
     {% endif %}
-    <button type="submit" class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-md text-sm">Comentar</button>
+    <div class="mt-4 flex justify-end">
+        <button type="submit" class="btn-primario">Comentar</button>
+    </div>
 </form>
 {% endblock %}

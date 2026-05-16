@@ -1,0 +1,36 @@
+{# Barra de filtros + acción primaria — patrón TailAdmin products-list.
+   Params:
+     - accion_url: URL del form GET (default: '')
+     - busqueda_nombre: name del input de búsqueda (default: 'q')
+     - busqueda_valor: valor actual (default: request.GET.q)
+     - busqueda_placeholder: texto del placeholder
+     - selects: lista de dicts {name, label, opciones=[{valor, etiqueta, seleccionado}]} — opcional
+     - nuevo_url, nuevo_label: si el usuario puede crear, link al alta (opcional)
+   La barra es un form GET; los filtros se aplican al submit (Enter o cambio).
+#}
+<form method="get" action="{{ accion_url|default:'' }}"
+      class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="campo-form flex-1 min-w-[180px]">
+        <label for="filtro-busqueda" class="sr-only">Buscar</label>
+        <input type="text"
+               id="filtro-busqueda"
+               name="{{ busqueda_nombre|default:'q' }}"
+               value="{{ busqueda_valor|default:'' }}"
+               placeholder="{{ busqueda_placeholder|default:'Buscar...' }}">
+    </div>
+    {% for sel in selects|default:'' %}
+        <div class="campo-form min-w-[160px]">
+            <label for="filtro-{{ sel.name }}" class="sr-only">{{ sel.label }}</label>
+            <select id="filtro-{{ sel.name }}" name="{{ sel.name }}" onchange="this.form.submit()">
+                <option value="">{{ sel.label }}</option>
+                {% for op in sel.opciones %}
+                    <option value="{{ op.valor }}" {% if op.seleccionado %}selected{% endif %}>{{ op.etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    {% endfor %}
+    <button type="submit" class="btn-secundario">Filtrar</button>
+    {% if nuevo_url %}
+        <a href="{{ nuevo_url }}" class="btn-primario ml-auto">+ {{ nuevo_label|default:'Nuevo' }}</a>
+    {% endif %}
+</form>

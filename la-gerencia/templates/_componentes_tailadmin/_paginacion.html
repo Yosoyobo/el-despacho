@@ -1,0 +1,24 @@
+{# Paginación TailAdmin.
+   Params:
+     - page_obj: Django Paginator's Page instance
+     - querystring: querystring base sin 'page' (ej. 'q=foo&estado=activo')
+#}
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<nav class="mt-4 flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" aria-label="Paginación">
+    <div class="text-gray-500 dark:text-gray-400">
+        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} resultado{{ page_obj.paginator.count|pluralize:'s' }}
+    </div>
+    <div class="flex gap-2">
+        {% if page_obj.has_previous %}
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}" class="btn-secundario">← Anterior</a>
+        {% else %}
+            <span class="btn-secundario opacity-50 pointer-events-none">← Anterior</span>
+        {% endif %}
+        {% if page_obj.has_next %}
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}" class="btn-secundario">Siguiente →</a>
+        {% else %}
+            <span class="btn-secundario opacity-50 pointer-events-none">Siguiente →</span>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}

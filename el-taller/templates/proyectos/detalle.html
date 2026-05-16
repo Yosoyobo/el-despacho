@@ -2,82 +2,95 @@
 {% load proyectos_extras %}
 {% block title %}{{ proyecto.codigo }} — {{ proyecto.nombre }}{% endblock %}
 {% block contenido %}
-<div class="flex items-start justify-between mb-6 flex-wrap gap-3">
-    <div>
-        <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ proyecto.codigo }}</p>
-        <h1 class="text-2xl font-semibold">{{ proyecto.nombre }}</h1>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Cliente:
-            <a class="text-amber-700 hover:underline" href="{% url 'cartera-detalle' proyecto.cliente.pk %}">{{ proyecto.cliente.razon_social }}</a></p>
-        <span class="badge {{ proyecto.estado|color_estado }} mt-1">{{ proyecto.get_estado_display }}</span>
+<header class="mb-6">
+    <p class="font-mono text-xs uppercase tracking-wider text-brand-500 dark:text-brand-400">{{ proyecto.codigo }}</p>
+    <div class="mt-1 flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ proyecto.nombre }}</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Cliente:
+                <a href="{% url 'cartera-detalle' proyecto.cliente.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ proyecto.cliente.razon_social }}</a>
+            </p>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+                <span class="badge {{ proyecto.estado|color_estado }}">{{ proyecto.get_estado_display }}</span>
+                {% include "_componentes_tailadmin/_chip_referencia.html" with tipo="proyecto" slug=proyecto.codigo|lower variante="badge" %}
+            </div>
+        </div>
+        {% if puede_editar %}
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'proyectos-editar' proyecto.pk %}" class="btn-secundario">Editar</a>
+            <a href="{% url 'proyectos-cambiar-estado' proyecto.pk %}" class="btn-secundario">Cambiar estado</a>
+            <a href="{% url 'proyectos-asignar' proyecto.pk %}" class="btn-primario">Asignar</a>
+        </div>
+        {% endif %}
     </div>
-    {% if puede_editar %}
-    <div class="flex gap-2 flex-wrap">
-        <a href="{% url 'proyectos-editar' proyecto.pk %}" class="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-md text-sm">Editar</a>
-        <a href="{% url 'proyectos-cambiar-estado' proyecto.pk %}" class="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded-md text-sm">Cambiar estado</a>
-        <a href="{% url 'proyectos-asignar' proyecto.pk %}" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-md text-sm">Asignar</a>
-    </div>
-    {% endif %}
-</div>
+</header>
 
-<div class="grid sm:grid-cols-3 gap-4 mb-8">
-    <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
-        <h3 class="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Fechas</h3>
-        <p class="text-sm">Inicio: <span class="font-medium">{{ proyecto.fecha_inicio|date:"d M Y"|default:"—" }}</span></p>
-        <p class="text-sm">Compromiso: <span class="font-medium">{{ proyecto.fecha_compromiso|date:"d M Y"|default:"—" }}</span></p>
-        <p class="text-sm">Entrega real: <span class="font-medium">{{ proyecto.fecha_real_entrega|date:"d M Y"|default:"—" }}</span></p>
-    </div>
-    <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
-        <h3 class="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Monto estimado</h3>
-        <p class="text-xl font-semibold">{% if proyecto.monto_estimado %}${{ proyecto.monto_estimado }}{% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}</p>
-    </div>
-    <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
-        <h3 class="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Equipo</h3>
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <section class="ta-card">
+        <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Fechas</h3>
+        <dl class="mt-3 space-y-1.5 text-sm">
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Inicio</dt><dd class="font-medium text-gray-900 dark:text-gray-100">{{ proyecto.fecha_inicio|date:"d M Y"|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Compromiso</dt><dd class="font-medium text-gray-900 dark:text-gray-100">{{ proyecto.fecha_compromiso|date:"d M Y"|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Entrega real</dt><dd class="font-medium text-gray-900 dark:text-gray-100">{{ proyecto.fecha_real_entrega|date:"d M Y"|default:"—" }}</dd></div>
+        </dl>
+    </section>
+    <section class="ta-card">
+        <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Monto estimado</h3>
+        <p class="mt-3 text-title-xs font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+            {% if proyecto.monto_estimado %}$ {{ proyecto.monto_estimado }}{% else %}<span class="text-gray-400 dark:text-gray-500 text-base">—</span>{% endif %}
+        </p>
+    </section>
+    <section class="ta-card">
+        <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</h3>
         {% if asignaciones %}
-        <ul class="text-sm space-y-1">
+        <ul class="mt-3 space-y-1.5 text-sm">
             {% for a in asignaciones %}
-            <li>{{ a.usuario.nombre_completo|default:a.usuario.email }} <span class="text-gray-400 dark:text-gray-500">({{ a.get_rol_en_proyecto_display }})</span></li>
+            <li class="flex items-center justify-between gap-3">
+                <span class="text-gray-900 dark:text-gray-100">{{ a.usuario.nombre_completo|default:a.usuario.email }}</span>
+                <span class="badge badge-brand">{{ a.get_rol_en_proyecto_display }}</span>
+            </li>
             {% endfor %}
         </ul>
-        {% else %}<p class="text-sm text-gray-400 dark:text-gray-500">Sin asignar.</p>{% endif %}
-    </div>
+        {% else %}<p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Sin asignar.</p>{% endif %}
+    </section>
 </div>
 
 {% if proyecto.descripcion %}
-<div class="bg-white dark:bg-gray-900 border rounded-lg p-4 mb-8">
-    <h3 class="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Descripción</h3>
-    <p class="text-sm whitespace-pre-wrap">{{ proyecto.descripcion }}</p>
-</div>
+<section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción</h3>
+    <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ proyecto.descripcion }}</p>
+</section>
 {% endif %}
 
-<div class="flex items-center justify-between mb-3">
-    <h2 class="font-semibold">El Pizarrón — Tareas</h2>
-    <a href="{% url 'pizarron-nueva-tarea' proyecto.pk %}" class="text-amber-700 hover:underline text-sm">+ Nueva tarea</a>
+<div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+    <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">El Pizarrón — Tareas</h2>
+    <a href="{% url 'pizarron-nueva-tarea' proyecto.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nueva tarea</a>
 </div>
 
-<div class="bg-white dark:bg-gray-900 border rounded-lg overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-left">
-            <tr><th class="px-4 py-2">Tarea</th><th class="px-4 py-2">Asignada a</th><th class="px-4 py-2">Estado</th><th class="px-4 py-2">Prioridad</th></tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            {% for t in tareas %}
-            <tr>
-                <td class="px-4 py-2"><a class="text-amber-700 hover:underline" href="{% url 'pizarron-detalle-tarea' t.pk %}">{{ t.titulo }}</a></td>
-                <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
-                <td class="px-4 py-2"><span class="badge
-                    {% if t.estado == 'completada' %}badge-emerald
-                    {% elif t.estado == 'bloqueada' %}badge-rose
-                    {% elif t.estado == 'en_curso' %}badge-amber
-                    {% else %}badge-slate{% endif %}">{{ t.get_estado_display }}</span></td>
-                <td class="px-4 py-2"><span class="badge
-                    {% if t.prioridad == 'alta' %}badge-rose
-                    {% elif t.prioridad == 'media' %}badge-amber
-                    {% else %}badge-slate{% endif %}">{{ t.get_prioridad_display }}</span></td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400 dark:text-gray-500">Sin tareas todavía.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Tarea</th>
+                    <th class="px-5 py-3 text-left">Asignada a</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-left">Prioridad</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for t in tareas %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
+                    <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}</td>
+                    <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin tareas todavía.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

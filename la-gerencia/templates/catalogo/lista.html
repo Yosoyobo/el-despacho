@@ -1,66 +1,77 @@
 {% extends "base.html" %}
 {% block title %}El Catálogo — La Gerencia{% endblock %}
 {% block contenido %}
-<header class="mb-6 flex items-center justify-between gap-4 flex-wrap">
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-2xl font-semibold tracking-tight">El Catálogo</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Servicios frecuentes — precio base, unidad y categoría.</p>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Catálogo</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Servicios frecuentes — precio base, unidad y categoría.</p>
     </div>
-    <div class="flex gap-2">
-        <a href="{% url 'catalogo-categorias' %}" class="text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">Categorías</a>
-        {% if puede_editar %}
-        <a href="{% url 'catalogo-nuevo' %}" class="text-sm rounded-md bg-gray-900 text-white px-3 py-1.5 hover:bg-gray-800">+ Nuevo servicio</a>
-        {% endif %}
+    <div class="flex flex-wrap gap-2">
+        <a href="{% url 'catalogo-categorias' %}" class="btn-secundario">Categorías</a>
+        {% if puede_editar %}<a href="{% url 'catalogo-nuevo' %}" class="btn-primario">+ Nuevo servicio</a>{% endif %}
     </div>
 </header>
 
-<form method="get" class="mb-4 flex gap-2 items-center flex-wrap">
-    <input name="q" value="{{ q }}" placeholder="Buscar por nombre..." class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm">
-    <select name="categoria" class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm">
-        <option value="">— Todas las categorías —</option>
-        {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria_filtro == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
-    </select>
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex-1 min-w-[200px]">
+        <label for="cat-q" class="sr-only">Buscar</label>
+        <input id="cat-q" name="q" type="text" value="{{ q }}" placeholder="Buscar por nombre...">
+    </div>
+    <div class="min-w-[200px]">
+        <label for="cat-categoria" class="sr-only">Categoría</label>
+        <select id="cat-categoria" name="categoria">
+            <option value="">— Todas las categorías —</option>
+            {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria_filtro == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+        </select>
+    </div>
     {% if puede_editar %}
-    <label class="text-sm flex items-center gap-1 text-gray-600 dark:text-gray-300">
-        <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %}> incluir archivados
+    <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+        Incluir archivados
     </label>
     {% endif %}
-    <button class="text-sm rounded-md bg-gray-900 text-white px-3 py-1.5">Filtrar</button>
+    <button type="submit" class="btn-secundario">Filtrar</button>
 </form>
 
-<div class="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-    <table class="min-w-full text-sm">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-            <tr>
-                <th class="px-3 py-2 text-left">Nombre</th>
-                <th class="px-3 py-2 text-left">Categoría</th>
-                <th class="px-3 py-2 text-left">Unidad</th>
-                <th class="px-3 py-2 text-right">Precio base</th>
-                <th class="px-3 py-2 text-left">Estado</th>
-                {% if puede_editar %}<th class="px-3 py-2"></th>{% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for s in servicios %}
-            <tr class="border-t border-gray-100 {% if not s.activo %}text-gray-400 dark:text-gray-500{% endif %}">
-                <td class="px-3 py-2 font-medium">{{ s.nombre }}</td>
-                <td class="px-3 py-2">{{ s.categoria.nombre }}</td>
-                <td class="px-3 py-2">{{ s.unidad }}</td>
-                <td class="px-3 py-2 text-right tabular-nums">$ {{ s.precio_base }}</td>
-                <td class="px-3 py-2">{% if s.activo %}<span class="text-emerald-700">Activo</span>{% else %}<span>Archivado</span>{% endif %}</td>
-                {% if puede_editar %}
-                <td class="px-3 py-2 text-right">
-                    <a href="{% url 'catalogo-editar' s.pk %}" class="text-gray-700 dark:text-gray-300 hover:underline">Editar</a>
-                    <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}
-                        <button class="ml-2 text-amber-700 hover:underline">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>
-                    </form>
-                </td>
-                {% endif %}
-            </tr>
-            {% empty %}
-            <tr><td colspan="6" class="px-3 py-6 text-center text-gray-400 dark:text-gray-500">Sin servicios — agrega el primero.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Nombre</th>
+                    <th class="px-5 py-3 text-left">Categoría</th>
+                    <th class="px-5 py-3 text-left">Unidad</th>
+                    <th class="px-5 py-3 text-right">Precio base</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    {% if puede_editar %}<th class="px-5 py-3 text-right">Acciones</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for s in servicios %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not s.activo %}opacity-60{% endif %}">
+                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ s.nombre }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ s.categoria.nombre }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ s.unidad }}</td>
+                    <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base }}</td>
+                    <td class="px-5 py-3">
+                        {% if s.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Archivado</span>{% endif %}
+                    </td>
+                    {% if puede_editar %}
+                    <td class="px-5 py-3 text-right">
+                        <div class="inline-flex items-center gap-2">
+                            <a href="{% url 'catalogo-editar' s.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                            <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}
+                                <button type="submit" class="text-sm font-medium text-warning-700 hover:underline dark:text-warning-400">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>
+                            </form>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin servicios — agrega el primero.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

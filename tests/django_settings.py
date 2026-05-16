@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "buzon.apps.BuzonConfig",
     "interfono.apps.InterfonoConfig",
     "auth_google.apps.AuthGoogleConfig",
+    "proximamente.apps.ProximamenteConfig",
     # El Taller
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",

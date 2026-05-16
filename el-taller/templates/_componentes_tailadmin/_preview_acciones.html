@@ -1,0 +1,71 @@
+{# Preview de acciones — andamiaje S-TailAdmin-2 para El Dictado (DOC_04 §4.2a) y Tesorería (DOC_06).
+   Sin lógica funcional todavía: la persistencia/confirmación llegan en sprint S2b.
+
+   Params:
+     - chalan_apodo: string del Chalán que propone (ej. 'Chalán Claudio')
+     - acciones: lista de dicts:
+         {
+           descripcion: string,
+           confianza: float 0..1 (opcional, default 1.0),
+           sin_permiso: bool (opcional),
+           accion_recado_url: si sin_permiso, URL del CTA "Crear recado al rol"
+         }
+     - confirmar_url: action del form de aplicar (opcional — sin él, footer demostrativo)
+     - cancelar_url: link de cancelar (opcional)
+
+   Estados de checkbox por acción:
+     - sin_permiso=True → checkbox disabled + 🔒 + CTA "Crear recado al rol responsable"
+     - confianza<0.7  → ⚠️ "Confianza media — verifica antes de aplicar"
+     - resto          → checkbox marcable, marcado por default
+#}
+<section class="rounded-2xl border border-brand-200 bg-brand-25 p-5 shadow-theme-sm dark:border-brand-500/30 dark:bg-brand-500/5">
+    <header class="mb-4 flex items-start gap-3">
+        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo=chalan_apodo %}
+        <div class="flex-1">
+            <h3 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">
+                🎙️ {{ chalan_apodo|default:'El Chalán' }} propone estas acciones
+            </h3>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Desmarca las que no quieras aplicar.</p>
+        </div>
+    </header>
+
+    {% if confirmar_url %}<form method="post" action="{{ confirmar_url }}">{% csrf_token %}{% endif %}
+        <ul class="space-y-2">
+            {% for accion in acciones %}
+                <li class="rounded-xl border bg-white p-3 dark:bg-gray-900
+                           {% if accion.sin_permiso %}border-gray-200 opacity-75 dark:border-gray-800
+                           {% elif accion.confianza and accion.confianza < 0.7 %}border-warning-200 dark:border-warning-500/30
+                           {% else %}border-gray-200 dark:border-gray-800{% endif %}">
+                    <div class="flex items-start gap-3">
+                        {% if accion.sin_permiso %}
+                            <input type="checkbox" disabled class="mt-1 h-4 w-4 cursor-not-allowed rounded border-gray-300">
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-700 dark:text-gray-200">🔒 {{ accion.descripcion }}</p>
+                                <p class="mt-1 text-xs text-error-600 dark:text-error-400">No tienes permiso para esta acción.</p>
+                                {% if accion.accion_recado_url %}
+                                    <a href="{{ accion.accion_recado_url }}" class="mt-2 inline-flex items-center text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Crear recado al rol responsable →</a>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <input type="checkbox" name="accion_{{ forloop.counter0 }}" checked
+                                   class="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-700 dark:text-gray-200">{{ accion.descripcion }}</p>
+                                {% if accion.confianza and accion.confianza < 0.7 %}
+                                    <p class="mt-1 inline-flex items-center gap-1 text-xs text-warning-700 dark:text-warning-400">⚠️ Confianza media — verifica antes de aplicar</p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </li>
+            {% empty %}
+                <li class="rounded-xl border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">Sin acciones propuestas todavía.</li>
+            {% endfor %}
+        </ul>
+
+        <footer class="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+            {% if cancelar_url %}<a href="{{ cancelar_url }}" class="btn-secundario">Cancelar</a>{% else %}<button type="button" class="btn-secundario" disabled>Cancelar</button>{% endif %}
+            <button type="{% if confirmar_url %}submit{% else %}button{% endif %}" class="btn-primario" {% if not confirmar_url %}disabled{% endif %}>Aplicar acciones</button>
+        </footer>
+    {% if confirmar_url %}</form>{% endif %}
+</section>

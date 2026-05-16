@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.recepcion_stub.apps.RecepcionStubConfig",
     "auth_google.apps.AuthGoogleConfig",
+    "proximamente.apps.ProximamenteConfig",
 ]
 
 MIDDLEWARE = [

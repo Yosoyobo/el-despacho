@@ -1,0 +1,27 @@
+{# Campo de formulario consistente con estilo TailAdmin.
+   Params:
+     - campo: BoundField de Django
+     - ancho_completo: si True, ocupa md:col-span-2 (default False)
+     - hint: texto de ayuda extra (opcional, override de field.help_text)
+   Asume que el padre tiene la clase .campo-form (la heredan los layouts del input.css).
+   Mantiene compatibilidad con templates legacy que ya usaban `{{ form.X|as_crispy_field }}` —
+   este partial es opcional, no obligatorio.
+#}
+<div class="{% if ancho_completo %}md:col-span-2{% endif %}">
+    {% if campo.label %}
+        <label for="{{ campo.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {{ campo.label }}{% if campo.field.required %} <span class="text-error-500">*</span>{% endif %}
+        </label>
+    {% endif %}
+    {{ campo }}
+    {% if hint %}
+        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
+    {% elif campo.help_text %}
+        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ campo.help_text }}</p>
+    {% endif %}
+    {% if campo.errors %}
+        <ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">
+            {% for err in campo.errors %}<li>{{ err }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+</div>

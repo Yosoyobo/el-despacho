@@ -1,24 +1,26 @@
 {% extends "base.html" %}
 {% block title %}Mensaje #{{ mensaje.pk }} — El Buzón{% endblock %}
 {% block contenido %}
-<header class="mb-6"><a href="{% url 'buzon-empleado-mios' %}" class="text-sm text-gray-500 dark:text-gray-400 hover:underline">← Mis mensajes</a></header>
-<article class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-6 max-w-2xl space-y-4">
-    <div>
-        <h1 class="text-xl font-semibold">{{ mensaje.asunto }}</h1>
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ mensaje.get_tipo_display }} · {{ mensaje.creado_en|date:'Y-m-d H:i' }} · estado: {{ mensaje.get_estado_display }}</p>
-    </div>
-    <div>
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Tu mensaje</h2>
-        <p class="text-sm whitespace-pre-wrap text-gray-800">{{ mensaje.cuerpo }}</p>
-    </div>
+<header class="mb-4">
+    <a href="{% url 'buzon-empleado-mios' %}" class="text-sm text-gray-500 hover:text-brand-600 hover:underline dark:text-gray-400 dark:hover:text-brand-400">← Mis mensajes</a>
+</header>
+
+<article class="mx-auto max-w-3xl space-y-5">
+    <header class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h1 class="text-theme-xl font-semibold text-gray-900 dark:text-gray-100">{{ mensaje.asunto }}</h1>
+        <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <span class="badge badge-brand">{{ mensaje.get_tipo_display }}</span>
+            {% include "_componentes_tailadmin/_badge_estado.html" with estado=mensaje.estado etiqueta=mensaje.get_estado_display %}
+            <span>·</span><span>{{ mensaje.creado_en|date:'Y-m-d H:i' }}</span>
+        </div>
+    </header>
+
+    {% include "_componentes_tailadmin/_hilo_mensaje.html" with autor_nombre=mensaje.autor.nombre_completo|default:'Tú' autor_email=mensaje.autor.email fecha=mensaje.creado_en|date:'Y-m-d H:i' cuerpo=mensaje.cuerpo es_propio=True %}
+
     {% if mensaje.respuesta_publica %}
-    <div class="bg-emerald-50 border border-emerald-200 rounded-md p-4">
-        <h2 class="text-sm font-semibold text-emerald-800 mb-1">Respuesta del admin</h2>
-        <p class="text-sm whitespace-pre-wrap text-emerald-900">{{ mensaje.respuesta_publica }}</p>
-        {% if mensaje.respondido_en %}<p class="text-xs text-emerald-700 mt-2">{{ mensaje.respondido_en|date:'Y-m-d H:i' }}</p>{% endif %}
-    </div>
+        {% include "_componentes_tailadmin/_hilo_mensaje.html" with autor_nombre='Admin' fecha=mensaje.respondido_en|date:'Y-m-d H:i' cuerpo=mensaje.respuesta_publica %}
     {% else %}
-    <p class="text-xs text-gray-400 dark:text-gray-500">Pendiente de respuesta.</p>
+        <p class="text-center text-xs text-gray-500 dark:text-gray-400">Pendiente de respuesta del admin.</p>
     {% endif %}
 </article>
 {% endblock %}

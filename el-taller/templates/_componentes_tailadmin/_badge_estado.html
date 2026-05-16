@@ -1,0 +1,32 @@
+{# Badge de estado, mapeo semántico → clase visual TailAdmin.
+   Params:
+     - estado: string (slug del estado)
+     - etiqueta: texto visible (opcional, default = estado humanizado)
+   Mapeo:
+     activo, completado, aprobado, entregado, pagado, cobrada, success → success
+     en_diseno, en_produccion, en_proceso, en_revision → blue
+     prospecto, cotizado, revision_cliente, pendiente → orange
+     pausa, en_pausa, archivado, inactivo → gray
+     cancelado, error, bloqueado, fallo → error
+     prioridad_alta, urgente → error
+     prioridad_media → warning
+     prioridad_baja → gray
+   Cualquier otro estado → gray.
+#}
+{% with e=estado|lower|default:'' %}
+    {% if e == 'activo' or e == 'completado' or e == 'completada' or e == 'aprobado' or e == 'entregado' or e == 'pagado' or e == 'cobrada' or e == 'success' or e == 'ok' %}
+        <span class="badge badge-success">{{ etiqueta|default:estado|capfirst }}</span>
+    {% elif e == 'en_diseno' or e == 'en_produccion' or e == 'en_proceso' or e == 'en_revision' or e == 'enviada' %}
+        <span class="badge badge-blue">{{ etiqueta|default:estado|capfirst }}</span>
+    {% elif e == 'prospecto' or e == 'cotizado' or e == 'revision_cliente' or e == 'pendiente' or e == 'borrador' %}
+        <span class="badge badge-orange">{{ etiqueta|default:estado|capfirst }}</span>
+    {% elif e == 'en_pausa' or e == 'pausa' or e == 'archivado' or e == 'inactivo' or e == 'cerrada' %}
+        <span class="badge badge-gray">{{ etiqueta|default:estado|capfirst }}</span>
+    {% elif e == 'cancelado' or e == 'cancelada' or e == 'error' or e == 'bloqueado' or e == 'fallo' or e == 'urgente' or e == 'prioridad_alta' or e == 'alta' %}
+        <span class="badge badge-error">{{ etiqueta|default:estado|capfirst }}</span>
+    {% elif e == 'prioridad_media' or e == 'media' or e == 'advertencia' %}
+        <span class="badge badge-warning">{{ etiqueta|default:estado|capfirst }}</span>
+    {% else %}
+        <span class="badge badge-gray">{{ etiqueta|default:estado|capfirst }}</span>
+    {% endif %}
+{% endwith %}

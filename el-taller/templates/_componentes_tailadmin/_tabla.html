@@ -1,0 +1,31 @@
+{# Tabla TailAdmin reusable.
+   Params:
+     - cabeceras: lista de strings (encabezados de columna)
+     - filas_html: bloque HTML pre-renderizado (queda más simple que pasar matriz porque las celdas casi siempre llevan markup mixto)
+     - vacia_mensaje: texto cuando no hay filas (default: "Sin registros por ahora")
+   Uso típico:
+     {% with filas_html=... %}
+       {% include "_componentes_tailadmin/_tabla.html" with cabeceras=cabeceras filas_html=filas_html %}
+     {% endwith %}
+   Si tu lista es trivial, usa la clase y markup directo en la página — este partial conviene cuando se repite el patrón.
+#}
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    {% for cabecera in cabeceras %}
+                        <th scope="col" class="px-5 py-3 text-left">{{ cabecera }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% if filas_html %}
+                    {{ filas_html|safe }}
+                {% else %}
+                    <tr><td colspan="{{ cabeceras|length }}" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">{{ vacia_mensaje|default:"Sin registros por ahora" }}</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

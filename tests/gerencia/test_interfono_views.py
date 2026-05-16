@@ -30,7 +30,7 @@ def test_tablero_super_admin_ok(client, usuario_factory):
     client.force_login(usuario_factory(rol="super_admin"))
     resp = client.get("/interfono/")
     assert resp.status_code == 200
-    assert b"El Interfono" in resp.content
+    assert "El Interfón".encode() in resp.content  # S-TailAdmin-2: rename visible Interfono→Interfón
 
 
 def test_tablero_dueno_ok(client, usuario_factory):

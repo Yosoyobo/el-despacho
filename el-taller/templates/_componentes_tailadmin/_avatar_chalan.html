@@ -1,0 +1,30 @@
+{# Avatar del Chalán — andamiaje S-TailAdmin-2 para Los Chalanes (DOC_02) y El Dictado (DOC_04).
+   En S-TailAdmin-2 todas las variantes devuelven el mismo SVG genérico color brand.
+   Sprint pre-S2b diferencia cada Chalán con su iconografía propia.
+
+   Variantes documentadas (todas idénticas visualmente por ahora):
+     - 'claudio' (Anthropic Claude) ← default
+     - 'gpt'     (OpenAI GPT)
+     - 'chino'   (DeepSeek)
+     - 'gemini'  (Google, reservado para futuro)
+
+   Params:
+     - chalan: clave (default: 'claudio')
+     - tamano: 'xs' (24px) | 'sm' (32px, default) | 'md' (40px)
+     - apodo: texto del tooltip / aria-label (opcional, default 'Chalán <nombre>')
+#}
+{% with t=tamano|default:'sm' c=chalan|default:'claudio' %}
+<span aria-label="{{ apodo|default:'Chalán Claudio' }}" title="{{ apodo|default:'Chalán Claudio' }}"
+      class="inline-flex items-center justify-center rounded-full bg-brand-500/10 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300
+             {% if t == 'xs' %}h-6 w-6{% elif t == 'md' %}h-10 w-10{% else %}h-8 w-8{% endif %}"
+      data-chalan="{{ c }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+         class="{% if t == 'xs' %}h-3.5 w-3.5{% elif t == 'md' %}h-5 w-5{% else %}h-4 w-4{% endif %}">
+        {# Robot/asistente genérico — silueta + antena #}
+        <path d="M12 3v2M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="9.5" cy="12" r="1" fill="currentColor"/>
+        <circle cx="14.5" cy="12" r="1" fill="currentColor"/>
+        <path d="M9 15.5h6" stroke-linecap="round"/>
+    </svg>
+</span>
+{% endwith %}

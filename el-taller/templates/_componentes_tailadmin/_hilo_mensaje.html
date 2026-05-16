@@ -1,0 +1,30 @@
+{# Item de mensaje en hilo — adaptado de inbox-details.html / support-ticket-reply.
+   Params:
+     - autor_nombre, autor_email (opcional), autor_avatar (opcional URL)
+     - fecha, cuerpo (texto plano; se renderea con linebreaksbr)
+     - es_interno: booleano — si True, fondo warning suave y badge "Interno"
+     - es_propio: booleano — si True, alinea a la derecha con fondo brand suave
+#}
+<article class="flex gap-3 {% if es_propio %}flex-row-reverse{% endif %}">
+    <div class="flex-shrink-0">
+        {% if autor_avatar %}
+            <img src="{{ autor_avatar }}" alt="" class="h-9 w-9 rounded-full object-cover">
+        {% else %}
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                {{ autor_nombre|default:'?'|slice:':1'|upper }}
+            </span>
+        {% endif %}
+    </div>
+    <div class="flex-1 rounded-2xl border px-4 py-3 text-sm
+                {% if es_interno %}border-warning-200 bg-warning-25 dark:border-warning-500/30 dark:bg-warning-500/10
+                {% elif es_propio %}border-brand-200 bg-brand-25 dark:border-brand-500/30 dark:bg-brand-500/10
+                {% else %}border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900{% endif %}">
+        <div class="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span class="font-medium text-gray-900 dark:text-gray-100">{{ autor_nombre|default:'Anónimo' }}</span>
+            {% if autor_email %}<span class="text-gray-400 dark:text-gray-500">·</span><span class="text-gray-500 dark:text-gray-400">{{ autor_email }}</span>{% endif %}
+            <span class="text-gray-400 dark:text-gray-500">·</span><span class="text-gray-500 dark:text-gray-400">{{ fecha }}</span>
+            {% if es_interno %}<span class="badge badge-warning ml-1">🔒 Interno</span>{% endif %}
+        </div>
+        <div class="whitespace-pre-line text-gray-700 dark:text-gray-200">{{ cuerpo|linebreaksbr }}</div>
+    </div>
+</article>

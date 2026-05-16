@@ -2,46 +2,59 @@
 {% load proyectos_extras %}
 {% block title %}Los Proyectos — El Taller{% endblock %}
 {% block contenido %}
-<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
-    <h1 class="text-2xl font-semibold">Los Proyectos</h1>
-    {% if puede_crear %}
-    <a href="{% url 'proyectos-nuevo' %}" class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-md text-sm">+ Nuevo proyecto</a>
-    {% endif %}
-</div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Los Proyectos</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Proyectos vigentes y su estado de avance.</p>
+    </div>
+    {% if puede_crear %}<a href="{% url 'proyectos-nuevo' %}" class="btn-primario">+ Nuevo proyecto</a>{% endif %}
+</header>
 
-<form method="get" class="mb-4 flex gap-2 flex-wrap items-center">
-    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por código, nombre o cliente…"
-           class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md w-full sm:w-80">
-    <select name="estado" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md">
-        <option value="">— todos los estados —</option>
-        {% for k, v in estados_disponibles %}
-        <option value="{{ k }}" {% if estado == k %}selected{% endif %}>{{ v }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-md text-sm">Filtrar</button>
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex-1 min-w-[220px]">
+        <label for="proy-q" class="sr-only">Buscar</label>
+        <input id="proy-q" type="search" name="q" value="{{ q }}" placeholder="Buscar por código, nombre o cliente…">
+    </div>
+    <div class="min-w-[200px]">
+        <label for="proy-estado" class="sr-only">Estado</label>
+        <select id="proy-estado" name="estado">
+            <option value="">— Todos los estados —</option>
+            {% for k, v in estados_disponibles %}
+                <option value="{{ k }}" {% if estado == k %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn-secundario">Filtrar</button>
 </form>
 
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-left">
-            <tr>
-                <th class="px-4 py-2">Código</th><th class="px-4 py-2">Nombre</th><th class="px-4 py-2">Cliente</th>
-                <th class="px-4 py-2">Estado</th><th class="px-4 py-2">Compromiso</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            {% for p in proyectos %}
-            <tr>
-                <td class="px-4 py-2"><a class="text-amber-700 hover:underline" href="{% url 'proyectos-detalle' p.pk %}">{{ p.codigo }}</a></td>
-                <td class="px-4 py-2 font-medium">{{ p.nombre }}</td>
-                <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social }}</td>
-                <td class="px-4 py-2"><span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
-                <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400 dark:text-gray-500">Sin proyectos visibles.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Código</th>
+                    <th class="px-5 py-3 text-left">Nombre</th>
+                    <th class="px-5 py-3 text-left">Cliente</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-left">Compromiso</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for p in proyectos %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3">
+                        <a href="{% url 'proyectos-detalle' p.pk %}" class="font-mono text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a>
+                    </td>
+                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ p.nombre }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social }}</td>
+                    <td class="px-5 py-3"><span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin proyectos visibles.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

@@ -1,0 +1,24 @@
+{# Tabs sin JS: usan navegación por anchor (?tab=foo) o secciones independientes.
+   Params:
+     - tabs: lista de dicts {clave, etiqueta, url (opcional), badge (opcional)}
+     - activo: clave del tab activo (default: primer item)
+   Si no se pasa url, se asume href="?tab={clave}".
+   Interactividad client-side futura: HTMX puede engancharse a estos links.
+#}
+<div class="mb-5 border-b border-gray-200 dark:border-gray-800">
+    <nav class="-mb-px flex flex-wrap gap-1" aria-label="Tabs">
+        {% for tab in tabs %}
+            {% if tab.clave == activo %}
+                <a href="{{ tab.url|default:'?tab='|add:tab.clave }}" aria-current="page"
+                   class="border-b-2 border-brand-500 px-4 py-2 text-sm font-medium text-brand-600 dark:border-brand-400 dark:text-brand-300">
+                    {{ tab.etiqueta }}{% if tab.badge %}<span class="ml-1.5 text-xs text-gray-500 dark:text-gray-400">({{ tab.badge }})</span>{% endif %}
+                </a>
+            {% else %}
+                <a href="{{ tab.url|default:'?tab='|add:tab.clave }}"
+                   class="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-700 dark:hover:text-gray-200">
+                    {{ tab.etiqueta }}{% if tab.badge %}<span class="ml-1.5 text-xs text-gray-400 dark:text-gray-500">({{ tab.badge }})</span>{% endif %}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+</div>

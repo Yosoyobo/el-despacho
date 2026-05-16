@@ -16,21 +16,29 @@
             } catch (e) {}
         })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        :root { --bg-a: #f0f9ff; --bg-b: #e0f2fe; --fg: #1e293b; --card: #fff;
-                --border: #e2e8f0; --muted: #475569; --note: #94a3b8; --shadow: rgba(0,0,0,0.08); }
-        html.dark { --bg-a: #0f172a; --bg-b: #1e293b; --fg: #f1f5f9; --card: #1e293b;
-                    --border: #334155; --muted: #cbd5e1; --note: #94a3b8; --shadow: rgba(0,0,0,0.4); }
+        /* Tokens portados de TailAdmin (paridad con Gerencia/Taller — paleta gray + brand). */
+        :root { --bg-a: #f9fafb; --bg-b: #ecf3ff; --fg: #101828; --card: #ffffff;
+                --border: #e4e7ec; --muted: #475467; --note: #98a2b3; --accent: #465fff;
+                --shadow: 0 1px 3px 0 rgba(16,24,40,0.1); }
+        html.dark { --bg-a: #0c111d; --bg-b: #161950; --fg: #f2f4f7; --card: #1d2939;
+                    --border: #344054; --muted: #d0d5dd; --note: #98a2b3; --accent: #7592ff;
+                    --shadow: 0 1px 3px 0 rgba(0,0,0,0.4); }
         body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-               font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+               font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
                background: linear-gradient(135deg, var(--bg-a), var(--bg-b)); color: var(--fg); }
         .tarjeta { background: var(--card); border: 1px solid var(--border); border-radius: 1rem;
-                   box-shadow: 0 4px 6px -1px var(--shadow); padding: 2.5rem; max-width: 32rem; text-align: center; }
-        h1 { font-size: 1.875rem; font-weight: 600; margin: 0 0 0.75rem; }
+                   box-shadow: var(--shadow); padding: 2.5rem; max-width: 32rem; text-align: center; }
+        .marca { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase;
+                 color: var(--accent); font-weight: 500; margin-bottom: 0.5rem; }
+        h1 { font-size: 1.875rem; font-weight: 600; margin: 0 0 0.75rem; letter-spacing: -0.01em; }
         p { margin: 0 0 0.5rem; color: var(--muted); }
         .nota { font-size: 0.875rem; color: var(--note); }
         .toggle { position: fixed; top: 1rem; right: 1rem; background: var(--card); border: 1px solid var(--border);
-                  border-radius: 0.375rem; padding: 0.4rem 0.6rem; cursor: pointer; color: var(--fg); font-size: 0.875rem; }
+                  border-radius: 0.5rem; padding: 0.4rem 0.6rem; cursor: pointer; color: var(--fg); font-size: 0.875rem; }
     </style>
 </head>
 <body>
@@ -39,6 +47,7 @@
         <span class="oscuro" style="display:none">☀️</span>
     </button>
     <div class="tarjeta">
+        <p class="marca">El Despacho · La Recepción</p>
         <h1>La Recepción</h1>
         <p>Portal de clientes de Learning Center.</p>
         <p class="nota">Próximamente. Andamio reservado — UI completa en S5.</p>

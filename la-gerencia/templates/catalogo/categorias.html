@@ -1,41 +1,44 @@
 {% extends "base.html" %}
 {% block title %}Categorías — El Catálogo{% endblock %}
 {% block contenido %}
-<header class="mb-6 flex items-center justify-between">
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-2xl font-semibold tracking-tight">Categorías del Catálogo</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Agrupan los servicios y controlan el orden de despliegue.</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Catálogo</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Categorías</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Agrupan los servicios y controlan el orden de despliegue.</p>
     </div>
-    <div class="flex gap-2">
-        <a href="{% url 'catalogo-lista' %}" class="text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5">← Servicios</a>
-        {% if puede_editar %}<a href="{% url 'catalogo-categoria-nueva' %}" class="text-sm rounded-md bg-gray-900 text-white px-3 py-1.5">+ Nueva</a>{% endif %}
+    <div class="flex flex-wrap gap-2">
+        <a href="{% url 'catalogo-lista' %}" class="btn-secundario">← Servicios</a>
+        {% if puede_editar %}<a href="{% url 'catalogo-categoria-nueva' %}" class="btn-primario">+ Nueva categoría</a>{% endif %}
     </div>
 </header>
 
-<div class="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-    <table class="min-w-full text-sm">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-            <tr>
-                <th class="px-3 py-2 text-left">Nombre</th>
-                <th class="px-3 py-2 text-right">Orden</th>
-                <th class="px-3 py-2 text-left">Estado</th>
-                <th class="px-3 py-2 text-right">Servicios</th>
-                {% if puede_editar %}<th class="px-3 py-2"></th>{% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for c in categorias %}
-            <tr class="border-t border-gray-100">
-                <td class="px-3 py-2 font-medium">{{ c.nombre }}</td>
-                <td class="px-3 py-2 text-right">{{ c.orden }}</td>
-                <td class="px-3 py-2">{% if c.activa %}Activa{% else %}<span class="text-gray-400 dark:text-gray-500">Inactiva</span>{% endif %}</td>
-                <td class="px-3 py-2 text-right">{{ c.servicios.count }}</td>
-                {% if puede_editar %}<td class="px-3 py-2 text-right"><a href="{% url 'catalogo-categoria-editar' c.pk %}" class="text-gray-700 dark:text-gray-300 hover:underline">Editar</a></td>{% endif %}
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="px-3 py-6 text-center text-gray-400 dark:text-gray-500">Sin categorías.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Nombre</th>
+                    <th class="px-5 py-3 text-right">Orden</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-right">Servicios</th>
+                    {% if puede_editar %}<th class="px-5 py-3 text-right">Acciones</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for c in categorias %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ c.nombre }}</td>
+                    <td class="px-5 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ c.orden }}</td>
+                    <td class="px-5 py-3">{% if c.activa %}<span class="badge badge-success">Activa</span>{% else %}<span class="badge badge-gray">Inactiva</span>{% endif %}</td>
+                    <td class="px-5 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ c.servicios.count }}</td>
+                    {% if puede_editar %}<td class="px-5 py-3 text-right"><a href="{% url 'catalogo-categoria-editar' c.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a></td>{% endif %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin categorías todavía.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

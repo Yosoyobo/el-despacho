@@ -6,6 +6,28 @@
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">At-a-glance del despacho.</p>
 </div>
 
+{# Andamiaje S-TailAdmin-2 · Slot de El Dictado (DOC_04).
+   En pre-S2b la Sala de Juntas migra al Taller — el slot se va con ella.
+   Hoy vive aquí en La Gerencia porque es donde está la Sala de Juntas. #}
+<section data-andamiaje="dictado-slot"
+         class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
+    <div class="flex items-start gap-3">
+        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
+        <div class="flex-1">
+            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">🎙️ Cuéntale al Chalán qué pasó</h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Próximamente: escribe en lenguaje natural y el Chalán Claudio interpretará tus actualizaciones.</p>
+            <textarea disabled rows="3"
+                      placeholder="Menciona @personas, #proyectos y $clientes... (esta función llega en S2b)"
+                      class="mt-3 w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 px-4 py-2 text-sm text-gray-500 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:placeholder:text-gray-500"></textarea>
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400">Esta función llega en sprint <strong>S2b — El Pipeline</strong>.</p>
+                <button type="button" disabled class="btn-primario opacity-60 cursor-not-allowed">Procesar</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+
 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
     {# Salud #}
     <div class="ta-card">

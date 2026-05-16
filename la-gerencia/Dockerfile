@@ -26,6 +26,7 @@ COPY ajustes/ /app/ajustes/
 COPY buzon/ /app/buzon/
 COPY interfono/ /app/interfono/
 COPY auth_google/ /app/auth_google/
+COPY proximamente/ /app/proximamente/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config

@@ -1,68 +1,83 @@
 {% extends "base.html" %}
 {% block title %}{{ cliente.razon_social }} — La Cartera{% endblock %}
 {% block contenido %}
-<div class="flex items-start justify-between mb-6 flex-wrap gap-3">
-    <div>
-        <h1 class="text-2xl font-semibold">{{ cliente.razon_social }}</h1>
-        {% if not cliente.activo %}<span class="badge badge-slate">archivado</span>{% endif %}
-        <span class="badge {% if cliente.estado == 'activo' %}badge-emerald{% elif cliente.estado == 'prospecto' %}badge-blue{% else %}badge-slate{% endif %}">{{ cliente.get_estado_display }}</span>
+<header class="mb-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Cartera</p>
+    <div class="mt-1 flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ cliente.razon_social }}</h1>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+                {% if not cliente.activo %}<span class="badge badge-gray">Archivado</span>{% endif %}
+                <span class="badge {% if cliente.estado == 'activo' %}badge-success{% elif cliente.estado == 'prospecto' %}badge-blue{% else %}badge-gray{% endif %}">{{ cliente.get_estado_display }}</span>
+                {% include "_componentes_tailadmin/_chip_referencia.html" with tipo="cliente" slug=cliente.razon_social|slugify variante="badge" %}
+            </div>
+        </div>
+        {% if puede_editar %}
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'cartera-editar' cliente.pk %}" class="btn-secundario">Editar</a>
+            <form method="post" action="{% url 'cartera-archivar' cliente.pk %}" onsubmit="return confirm('¿{% if cliente.activo %}Archivar{% else %}Reactivar{% endif %} cliente?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-destructivo">{% if cliente.activo %}Archivar{% else %}Reactivar{% endif %}</button>
+            </form>
+        </div>
+        {% endif %}
     </div>
-    {% if puede_editar %}
-    <div class="flex gap-2">
-        <a href="{% url 'cartera-editar' cliente.pk %}" class="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-md text-sm">Editar</a>
-        <form method="post" action="{% url 'cartera-archivar' cliente.pk %}" onsubmit="return confirm('¿{% if cliente.activo %}Archivar{% else %}Reactivar{% endif %} cliente?');">
-            {% csrf_token %}
-            <button class="bg-rose-700 hover:bg-rose-800 text-white px-3 py-2 rounded-md text-sm">
-                {% if cliente.activo %}Archivar{% else %}Reactivar{% endif %}
-            </button>
-        </form>
-    </div>
-    {% endif %}
-</div>
+</header>
 
-<div class="grid sm:grid-cols-2 gap-4 mb-8">
-    <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
-        <h2 class="font-semibold mb-2">Identificación</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-300">RFC: <span class="text-gray-900 dark:text-gray-100">{{ cliente.rfc|default:"—" }}</span></p>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Creado: <span class="text-gray-900 dark:text-gray-100">{{ cliente.creado_en|date:"d M Y" }}</span>
-            {% if cliente.creado_por %}<span class="text-gray-400 dark:text-gray-500">por {{ cliente.creado_por.nombre_completo }}</span>{% endif %}</p>
-    </div>
-    <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
-        <h2 class="font-semibold mb-2">Contacto</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-300">{{ cliente.nombre_contacto|default:"—" }}</p>
-        <p class="text-sm text-gray-600 dark:text-gray-300">{{ cliente.email_contacto|default:"—" }}</p>
-        <p class="text-sm text-gray-600 dark:text-gray-300">{{ cliente.telefono|default:"—" }}</p>
-    </div>
-    <div class="bg-white dark:bg-gray-900 border rounded-lg p-4 sm:col-span-2">
-        <h2 class="font-semibold mb-2">Dirección</h2>
-        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ cliente.direccion|default:"—" }}</p>
-    </div>
+<div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
+    <section class="ta-card">
+        <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Identificación</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">RFC</dt><dd class="text-gray-900 dark:text-gray-100">{{ cliente.rfc|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Creado</dt><dd class="text-gray-900 dark:text-gray-100">{{ cliente.creado_en|date:"d M Y" }}</dd></div>
+            {% if cliente.creado_por %}<div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Por</dt><dd class="text-gray-900 dark:text-gray-100">{{ cliente.creado_por.nombre_completo }}</dd></div>{% endif %}
+        </dl>
+    </section>
+    <section class="ta-card">
+        <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Contacto</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Nombre</dt><dd class="text-gray-900 dark:text-gray-100">{{ cliente.nombre_contacto|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Email</dt><dd class="text-gray-900 dark:text-gray-100">{{ cliente.email_contacto|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Teléfono</dt><dd class="text-gray-900 dark:text-gray-100">{{ cliente.telefono|default:"—" }}</dd></div>
+        </dl>
+    </section>
+    <section class="ta-card sm:col-span-2">
+        <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dirección</h2>
+        <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cliente.direccion|default:"—" }}</p>
+    </section>
     {% if cliente.notas %}
-    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:col-span-2">
-        <h2 class="font-semibold mb-2">Notas</h2>
-        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ cliente.notas }}</p>
-    </div>
+    <section class="sm:col-span-2 rounded-2xl border border-warning-200 bg-warning-25 p-5 dark:border-warning-500/30 dark:bg-warning-500/5">
+        <h2 class="text-xs font-medium uppercase tracking-wider text-warning-700 dark:text-warning-400">Notas internas</h2>
+        <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cliente.notas }}</p>
+    </section>
     {% endif %}
 </div>
 
-<h2 class="font-semibold mb-3">Proyectos</h2>
-<div class="bg-white dark:bg-gray-900 border rounded-lg overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-left">
-            <tr><th class="px-4 py-2">Código</th><th class="px-4 py-2">Nombre</th><th class="px-4 py-2">Estado</th><th class="px-4 py-2">Compromiso</th></tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            {% for p in proyectos %}
-            <tr>
-                <td class="px-4 py-2"><a class="text-amber-700 hover:underline" href="{% url 'proyectos-detalle' p.pk %}">{{ p.codigo }}</a></td>
-                <td class="px-4 py-2">{{ p.nombre }}</td>
-                <td class="px-4 py-2"><span class="badge badge-slate">{{ p.get_estado_display }}</span></td>
-                <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400 dark:text-gray-500">Sin proyectos.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Proyectos</h2>
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Código</th>
+                    <th class="px-5 py-3 text-left">Nombre</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-left">Compromiso</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for p in proyectos %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3"><a href="{% url 'proyectos-detalle' p.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a></td>
+                    <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ p.nombre }}</td>
+                    <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=p.estado etiqueta=p.get_estado_display %}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin proyectos.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

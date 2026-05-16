@@ -2258,3 +2258,220 @@ Unificación `slate`/`stone` → `gray` aplicada a TODOS los templates
 del repo (ampliación consciente del alcance A, declarada). HTMX
 preservado. **250/9 tests verdes**, ruff verde, Tailwind compila
 verde local. S-TailAdmin-2 y S-TailAdmin-3 esperando turno.
+
+---
+
+# BITÁCORA — Sprint S-TailAdmin-2 (Facelift listas + detalles + andamiaje)
+
+> Cierre del **2026-05-15**. Continúa el Camino A del sprint anterior
+> (Tailwind v3 + tokens portados + vanilla JS). 22 templates principales
+> facelift + 8 items de andamiaje para features futuras (Recados,
+> Tesorería, Chalanes, El Dictado, Sistema de Referencias).
+
+## 1. Andamiaje (8 items entregados)
+
+### A. Slot "Cuéntale al Chalán" en Sala de Juntas
+
+- En `la-gerencia/templates/gerencia_home/home.html`, arriba de los KPIs.
+- Textarea deshabilitada con placeholder "Menciona @personas, #proyectos
+  y $clientes..." + nota "llega en S2b — El Pipeline" + avatar del Chalán.
+- Sin lógica funcional. La migración a Taller llega pre-S2b junto con
+  Sala de Juntas (decisión DOC_04 §2).
+
+### B. Sidebar con items "Próximamente"
+
+- **Gerencia**: bajo super_admin/dueno aparece "Los Chalanes" con badge
+  warning "Pronto".
+- **Taller**: "Los Recados" (visible para todos) + "La Tesorería" (sólo
+  super_admin/dueno/contador). Diseñador no ve siquiera el placeholder.
+- Cada item linkea a `/proximamente/<slug>/`.
+
+### C. App shared `proximamente/` con `/proximamente/<modulo>/`
+
+- App Django raíz nueva (`proximamente/`) — mismo patrón que `cuentas/`,
+  `ajustes/`, `interfono/`. Sin modelos, sin migraciones — sólo `views.py`,
+  `urls.py`, 1 template.
+- 5 slugs soportados: `recados`, `tesoreria`, `chalanes`,
+  `dictado-historial`, `referencias`.
+- `COPY proximamente/ /app/proximamente/` agregado a los 3 Dockerfiles
+  (Gerencia, Taller, Recepción — la última future-proof aunque hoy
+  no exponga la URL).
+- `proximamente.apps.ProximamenteConfig` en los 3 `INSTALLED_APPS` +
+  en `tests/django_settings.py`. URL montada en Gerencia y Taller +
+  en `tests/urls_taller.py` y `tests/urls_gerencia.py`.
+
+### D-F. Partials de andamiaje en `_componentes_tailadmin/`
+
+- **`_chip_referencia.html`** — Chips `@usuario / #proyecto / $cliente`
+  con paleta brand/violet/emerald per DOC_01 §5.3. Dos variantes:
+  `inline` (default, sin bg) y `badge` (con bg pill, para filtros).
+- **`_preview_acciones.html`** — Preview de checkboxes para El Dictado /
+  Tesorería per DOC_04 §4.2a + DOC_06 §6.1. Soporta: confianza media
+  ⚠️, acciones sin permiso 🔒 con CTA "Crear recado al rol responsable",
+  footer [Cancelar] [Aplicar].
+- **`_avatar_chalan.html`** — Avatar genérico de Chalán (SVG robot
+  inline). Acepta `chalan='claudio|gpt|chino|gemini'` para diversificar
+  en sprint pre-S2b; hoy todos los valores renderizan idéntico.
+
+### G. `docs/ICONOS_MODULOS.md`
+
+- Carpeta `docs/` creada con primer documento.
+- Asigna icono SVG a cada módulo vivo y reservado (Recados, Tesorería,
+  Chalanes, El Dictado, etc.). Garantiza que cuando un sprint futuro
+  implemente el módulo, ya tenga icono asignado.
+- También reservados los 4 DOC_XX (DOC_01/03/04/06) + bonus DOC_02
+  (Chalanes v2) y DOC_05 (Manual de Usuario) que llegaron antes del
+  arranque — sirven como referencia conceptual.
+
+### H. "Interfono" → "Interfón" (visible)
+
+- Buscado con `grep -r "Interfono" --include="*.html"`. 8 hits totales:
+  4 son comentarios JS / `{# Django #}` (no visibles) — no tocados.
+- Texto visible al usuario actualizado en 4 ubicaciones:
+  - `la-gerencia/templates/interfono/tablero.html` (title + h1)
+  - `la-gerencia/templates/interfono/perfil_notificaciones.html` (lead)
+  - `el-taller/templates/perfil_notificaciones/perfil.html` (lead)
+  - `la-gerencia/templates/_componentes_tailadmin/sidebar.html` (item del menú)
+- `interfono/apps.py` `verbose_name` también renombrado.
+- **Código, DB, eventos, URLs, IDs, models** preservan `interfono`.
+- Test `tests/gerencia/test_interfono_views.py::test_tablero_super_admin_ok`
+  ajustado: `b"El Interfono"` → `"El Interfón".encode("utf-8")` (regla
+  #6 — el assertion testeaba markup, la lógica no cambió).
+
+## 2. Templates facelift (22 entregados)
+
+### El Taller — 13 templates
+
+- **La Cartera (3):** `lista.html`, `form.html`, `detalle.html`
+- **Los Proyectos (5):** `lista.html`, `form.html`, `detalle.html`,
+  `asignar.html`, `cambiar_estado.html`
+- **El Pizarrón (2):** `form_tarea.html`, `detalle_tarea.html`
+  (detalle usa `_hilo_mensaje.html` para comentarios — patrón inbox-details
+  adaptado, dado que `support-ticket-reply.html` no existe en TailAdmin Pro
+  2.3.0 source, decisión del usuario al revisar inventario)
+- **El Buzón empleado (3):** `mios_lista.html`, `mios_detalle.html`,
+  `nuevo.html`
+
+### La Gerencia — 9 templates
+
+- **El Directorio (2):** `lista.html`, `form.html`
+- **El Catálogo (4):** `lista.html`, `categorias.html`, `form.html`,
+  `categoria_form.html`
+- **El Buzón admin (2):** `lista.html`, `detalle.html`
+- **Buzón clientes placeholder (1):** `clientes_proximamente.html` — solo
+  paleta (decisión del usuario: no consolidar con `/proximamente/<modulo>/`,
+  son rutas distintas con propósito histórico distinto).
+
+### La Recepción — paleta aplicada (3 archivos)
+
+- `proximamente.html`, `buzon_proximamente.html`,
+  `la-gerencia/templates/buzon_admin/clientes_proximamente.html`.
+- Recepción sigue sin Tailwind compilado (mantiene CSS inline) — solo
+  se actualizaron los tokens de color para paridad con Gerencia/Taller:
+  gray + brand. Fuente Outfit añadida vía Google Fonts.
+
+## 3. Partials nuevos en `_componentes_tailadmin/` (11 × 2 copias)
+
+Además de los 3 de andamiaje (D-F), 8 partials de uso transversal:
+
+- `_tabla.html`, `_filtros_lista.html`, `_paginacion.html`,
+  `_badge_estado.html`, `_form_seccion.html`, `_form_campo.html`,
+  `_hilo_mensaje.html`, `_tabs.html`.
+- Los 11 partials existen en `la-gerencia/templates/_componentes_tailadmin/`
+  y `el-taller/templates/_componentes_tailadmin/` (dos copias sincronizadas
+  per decisión S-TailAdmin-1).
+- Los facelifts usan principalmente `_badge_estado.html`, `_hilo_mensaje.html`
+  y `_chip_referencia.html`. Los demás (tabla, filtros, paginación, tabs,
+  form_*) están listos para usarse pero los templates concretos prefirieron
+  inline markup para evitar over-abstracción (no todos los listados se
+  benefician de una tabla genérica).
+
+## 4. Decisiones y notas operativas
+
+- **Tailwind violet/emerald**: el config solo extiende `theme.extend.colors`
+  (no reemplaza). Las paletas `violet` y `emerald` del default Tailwind v3
+  quedan disponibles. `_chip_referencia.html` las usa directamente sin
+  añadir tokens nuevos. El alias legacy `badge-emerald` → `badge-success`
+  sigue funcionando para markup viejo.
+- **`{% url 'proximamente:modulo' modulo='X' %}`**: namespace declarado
+  en `proximamente/urls.py` con `app_name = "proximamente"`. La URL se
+  construye como `/proximamente/<slug>/`.
+- **DOC_04 §2 — slot del Chalán pertenece al Taller**: el documento
+  marca como decisión cerrada (15 mayo) que el text box vive en Sala
+  de Juntas del Taller, NO en Gerencia. Hoy Sala de Juntas vive en
+  Gerencia, así que el placeholder se monta ahí provisionalmente; en
+  pre-S2b cuando Sala de Juntas migre al Taller, el slot se va con
+  ella. NO se duplica en `taller_home/home.html` (evita trabajo
+  desechable).
+- **`support-ticket-reply.html` no existe en TailAdmin Pro 2.3.0** — el
+  prompt original lo referenciaba por error. Sustituido por adaptación
+  del patrón `inbox-details.html` (hilo de mensajes con burbujas).
+- **`apps/proximamente/` shared root**: igual patrón que `cuentas/`,
+  `ajustes/`. Sin modelos → sin migraciones → no requiere coordinación
+  con el grafo `depends_on: service_healthy` de §14 de CLAUDE.md.
+
+## 5. Tests + validaciones
+
+- **250 passed, 9 skipped, 1 warning** en 76s (sin Redis local).
+  Mismo total que cierre S-TailAdmin-1.
+- 1 test actualizado: `test_tablero_super_admin_ok` por rename Interfón.
+- Sin nuevos tests escritos en este sprint (alcance A — facelift puro,
+  sin nueva lógica de negocio).
+- Sin cambios en `requirements.txt`, `Dockerfile`s (excepto el `COPY` de
+  `proximamente/`), `docker-compose*.yml`, `.github/workflows/`.
+
+## 6. Cambios de configuración
+
+- **`proximamente/`** agregada como app shared raíz:
+  - `__init__.py`, `apps.py`, `views.py`, `urls.py`,
+    `templates/proximamente/pagina.html`.
+  - `COPY proximamente/ /app/proximamente/` en los 3 Dockerfiles.
+  - `proximamente.apps.ProximamenteConfig` en INSTALLED_APPS de los 3
+    `settings.py` + `tests/django_settings.py`.
+  - URL montada en `la-gerencia/la_gerencia/urls.py`,
+    `el-taller/el_taller/urls.py`, `tests/urls_gerencia.py`,
+    `tests/urls_taller.py` con `path("proximamente/", include(...))`.
+  - La Recepción NO expone la URL (stub sin auth) — sólo COPY +
+    INSTALLED_APPS para futuro-proofing.
+- **`docs/`** creado en raíz con `ICONOS_MODULOS.md` + los 4 DOC_XX
+  recibidos del usuario (DOC_01 Referencias, DOC_03 Recados, DOC_04
+  Dictado, DOC_06 Tesorería) + bonus DOC_02 Chalanes y DOC_05 Manual
+  de Usuario.
+
+## 7. Deuda residual al cierre de S-TailAdmin-2
+
+- **Pendiente S-TailAdmin-3** (~10 templates):
+  - El Interfón (`tablero.html` markup viejo — colores `amber-50/300/700`,
+    `bg-gray-700` legacy; aún no convertido a paleta TailAdmin completa).
+  - Los Ajustes (`panel`, `tasas`, `tasa_form`).
+  - Auth_google partials internos.
+  - Pulido visual final + validación visual del dueño.
+- **Aliases legacy `badge-slate/emerald/rose/amber/purple`** en
+  `input.css`: tras este sprint sus únicos consumidores residuales son
+  el tablero del Interfón y algún markup esporádico. Limpieza en
+  S-TailAdmin-3.
+- **`_form_seccion.html` y `_form_campo.html`**: creados pero no
+  usados por los facelifts de este sprint. Los formularios prefirieron
+  inline markup. Quedan disponibles para sprints futuros donde el
+  form sea repetitivo y la abstracción pague.
+- **Validación visual del dueño post-deploy**: confirmar listados +
+  detalles + Pizarrón + Buzón en dark mode, chips `@/#/$` en `cartera/detalle`
+  y `proyectos/detalle`, slot del Chalán en Sala de Juntas, items "Pronto"
+  en sidebars, página `/proximamente/recados/` etc.
+- **Andamiaje sin lógica real**: chips, preview, avatar son visuales.
+  Los conecta el sprint pre-S2b cuando llegue el Sistema de Referencias
+  (DOC_01) + Los Chalanes v2 (DOC_02) + El Dictado (DOC_04).
+
+---
+
+**Cierre S-TailAdmin-2:** 22 templates principales facelift + 11 partials
+nuevos + 8 items de andamiaje (slot Chalán, items "Pronto" en sidebars,
+app `proximamente/` shared, 3 partials de andamiaje para Referencias /
+Dictado / Chalanes, `docs/ICONOS_MODULOS.md`, rename Interfono→Interfón
+visible). **250/9 tests verdes**, sin cambios de pipeline. La Sala de
+Juntas estrena su primer slot del Chalán (deshabilitado, etiquetado
+"Próximamente S2b"). Tres pantallas placeholder accesibles:
+`/proximamente/recados/`, `/proximamente/tesoreria/`, `/proximamente/chalanes/`.
+Sprint S-TailAdmin-3 (Ajustes + tablero Interfón + pulido) y pre-S2b
+(Sistema de Referencias + Chalanes v2 + re-arquitectura Sala de Juntas)
+esperando turno.

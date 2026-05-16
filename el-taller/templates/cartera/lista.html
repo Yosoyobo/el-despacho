@@ -1,59 +1,61 @@
 {% extends "base.html" %}
 {% block title %}La Cartera — El Taller{% endblock %}
 {% block contenido %}
-<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
-    <h1 class="text-2xl font-semibold">La Cartera</h1>
-    {% if puede_editar %}
-    <a href="{% url 'cartera-nuevo' %}" class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-md text-sm">+ Nuevo cliente</a>
-    {% endif %}
-</div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Cartera</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Clientes B2B del despacho.</p>
+    </div>
+    {% if puede_editar %}<a href="{% url 'cartera-nuevo' %}" class="btn-primario">+ Nuevo cliente</a>{% endif %}
+</header>
 
-<form method="get" class="mb-4 flex gap-2 flex-wrap items-center">
-    <input type="search" name="q" value="{{ q }}" placeholder="Buscar razón social, RFC o correo…"
-           class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md w-full sm:w-80">
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex-1 min-w-[220px]">
+        <label for="cart-q" class="sr-only">Buscar</label>
+        <input id="cart-q" type="search" name="q" value="{{ q }}" placeholder="Buscar razón social, RFC o correo…">
+    </div>
     {% if puede_editar %}
-    <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1">
-        <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %}>
+    <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
         Incluir archivados
     </label>
     {% endif %}
-    <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-md text-sm">Buscar</button>
+    <button type="submit" class="btn-secundario">Buscar</button>
 </form>
 
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-left">
-            <tr>
-                <th class="px-4 py-2">Razón social</th>
-                <th class="px-4 py-2">RFC</th>
-                <th class="px-4 py-2">Contacto</th>
-                <th class="px-4 py-2">Estado</th>
-                <th class="px-4 py-2"></th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            {% for c in clientes %}
-            <tr class="{% if not c.activo %}opacity-50{% endif %}">
-                <td class="px-4 py-2 font-medium">
-                    <a class="hover:underline" href="{% url 'cartera-detalle' c.pk %}">{{ c.razon_social }}</a>
-                    {% if not c.activo %}<span class="badge badge-slate ml-2">archivado</span>{% endif %}
-                </td>
-                <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{{ c.rfc|default:"—" }}</td>
-                <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{{ c.nombre_contacto|default:"—" }}</td>
-                <td class="px-4 py-2">
-                    <span class="badge
-                        {% if c.estado == 'activo' %}badge-emerald
-                        {% elif c.estado == 'prospecto' %}badge-blue
-                        {% else %}badge-slate{% endif %}">{{ c.get_estado_display }}</span>
-                </td>
-                <td class="px-4 py-2 text-right">
-                    <a href="{% url 'cartera-detalle' c.pk %}" class="text-amber-700 hover:underline">Ver</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400 dark:text-gray-500">Sin clientes todavía.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Razón social</th>
+                    <th class="px-5 py-3 text-left">RFC</th>
+                    <th class="px-5 py-3 text-left">Contacto</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for c in clientes %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not c.activo %}opacity-60{% endif %}">
+                    <td class="px-5 py-3">
+                        <a href="{% url 'cartera-detalle' c.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ c.razon_social }}</a>
+                        {% if not c.activo %}<span class="badge badge-gray ml-2">archivado</span>{% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.rfc|default:"—" }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.nombre_contacto|default:"—" }}</td>
+                    <td class="px-5 py-3">
+                        <span class="badge {% if c.estado == 'activo' %}badge-success{% elif c.estado == 'prospecto' %}badge-blue{% else %}badge-gray{% endif %}">{{ c.get_estado_display }}</span>
+                    </td>
+                    <td class="px-5 py-3 text-right">
+                        <a href="{% url 'cartera-detalle' c.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Ver →</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin clientes todavía.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

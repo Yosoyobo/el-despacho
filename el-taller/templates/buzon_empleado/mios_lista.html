@@ -1,36 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Mis mensajes — El Buzón{% endblock %}
 {% block contenido %}
-<header class="mb-6 flex items-center justify-between">
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-2xl font-semibold tracking-tight">Mis mensajes al Buzón</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Sólo tú y el admin los ven.</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Buzón</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mis mensajes</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Sólo tú y el admin los ven.</p>
     </div>
-    <a href="{% url 'buzon-empleado-nuevo' %}" class="text-sm rounded-md bg-amber-700 text-white px-3 py-1.5 hover:bg-amber-800">+ Nuevo mensaje</a>
+    <a href="{% url 'buzon-empleado-nuevo' %}" class="btn-primario">+ Nuevo mensaje</a>
 </header>
 
-<div class="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-    <table class="min-w-full text-sm">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-            <tr>
-                <th class="px-3 py-2 text-left">Tipo</th>
-                <th class="px-3 py-2 text-left">Asunto</th>
-                <th class="px-3 py-2 text-left">Estado</th>
-                <th class="px-3 py-2 text-left">Recibido</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for m in mensajes %}
-            <tr class="border-t border-gray-100">
-                <td class="px-3 py-2">{{ m.get_tipo_display }}</td>
-                <td class="px-3 py-2"><a href="{% url 'buzon-empleado-mios-detalle' m.pk %}" class="text-gray-900 dark:text-gray-100 hover:underline">{{ m.asunto }}</a></td>
-                <td class="px-3 py-2">{{ m.get_estado_display }}</td>
-                <td class="px-3 py-2 text-gray-500 dark:text-gray-400">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" class="px-3 py-6 text-center text-gray-400 dark:text-gray-500">Aún no has enviado mensajes.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Tipo</th>
+                    <th class="px-5 py-3 text-left">Asunto</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-left">Recibido</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for m in mensajes %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ m.get_tipo_display }}</td>
+                    <td class="px-5 py-3">
+                        <a href="{% url 'buzon-empleado-mios-detalle' m.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ m.asunto }}</a>
+                    </td>
+                    <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=m.estado etiqueta=m.get_estado_display %}</td>
+                    <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Aún no has enviado mensajes.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
