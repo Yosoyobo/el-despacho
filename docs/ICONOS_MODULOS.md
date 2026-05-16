@@ -1,9 +1,14 @@
 # Iconos reservados para módulos de El Despacho
 
-> **Versión:** 1.0 · creado en S-TailAdmin-2 (15 mayo 2026)
+> **Versión:** 1.1 · creado en S-TailAdmin-2, actualizado en S-TailAdmin-3 (15 mayo 2026)
 > **Propósito:** asignar de antemano qué icono representa visualmente a cada
 > módulo, presente o futuro, para que cuando un sprint lo implemente no se
 > elija el icono ad-hoc. Consistencia visual a través del tiempo.
+>
+> **Cambios v1.1:** El Interfón pasó a "vivo" (facelift completo en S-3).
+> Partial `interfono/_panel_suscripcion.html` agregado a la lista de partials
+> reusables del arco. Avatar del Chalán existe ya en `_avatar_chalan.html`
+> con contrato `chalan='claudio|gpt|chino|gemini'` (hoy genérico).
 
 Todos los iconos son SVG inline (path `viewBox="0 0 24 24"`, `stroke="currentColor"`,
 `stroke-width="1.5"`). NO se importan de una librería de iconos externa — son

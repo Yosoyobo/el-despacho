@@ -1,10 +1,39 @@
 # Diseño — Sistema de Referencias `@/#/$`
 
-> **Versión:** 1.0 · 15 mayo 2026
-> **Status:** Diseño aprobado, listo para implementación
+> **Versión:** 1.1 · 15 mayo 2026 (revisión: andamiaje visual TailAdmin disponible)
+> **Status:** Diseño aprobado, listo para implementación · andamiaje visual entregado en S-TailAdmin-2
 > **Audiencia:** Claude Code / desarrollo
 > **Dependencias:** Postgres, La Bóveda (sin uso directo), Los Permisos, HTMX
 > **Dependientes:** Los Recados, El Dictado, eventualmente cualquier campo de texto enriquecido
+
+## Andamiaje visual disponible (cierre arco TailAdmin, 2026-05-15)
+
+Lo que ya existe en el repo y que pre-S2b enchufará al motor real:
+
+- **`_chip_referencia.html`** (× 2 copias Gerencia/Taller) — partial que
+  renderiza un chip con paleta exacta de §5.3:
+  `@` brand · `#` violet · `$` emerald. Soporta dos variantes:
+  `inline` (default, sin bg, para uso en cuerpo de mensaje renderizado)
+  y `badge` (con bg-50, para filtros/headers/preview). Acepta `activo=False`
+  para entidades borradas (line-through + opacity-60). Acepta `url` para
+  envolverlo en `<a>` clickeable. Hoy se usa visualmente en
+  `cartera/detalle.html` y `proyectos/detalle.html` con datos derivados
+  del modelo — sin persistencia todavía.
+- **Página `/proximamente/referencias/`** — placeholder coming-soon
+  registrado en `proximamente/views.py` con descripción y sprint=`pre-S2b`,
+  ya accesible en Gerencia y Taller.
+
+Lo que falta (alcance pre-S2b):
+
+- Migraciones de `slug` en Usuario/Proyecto/Cliente (§8.2)
+- Tabla `referencia` polimórfica (§2 + §8.1)
+- Regex parser + endpoints `/api/autocomplete/{usuarios,proyectos,clientes}` (§3 + §4.2)
+- JS vanilla del autocomplete (§4.5) — el `_chip_referencia.html`
+  visual debe convivir con un `<textarea data-referencias>` que aún
+  no existe en ningún template
+- Filtro de template `renderizar_referencias` (§5.1)
+- Evento Portavoz `referencia.usuario_mencionado` (§6)
+- Endpoint de búsqueda inversa (§7)
 
 ---
 

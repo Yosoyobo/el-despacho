@@ -1,10 +1,35 @@
 # Diseño — Los Chalanes v2 (Multi-provider con cascada configurable)
 
-> **Versión:** 2.0 · 15 mayo 2026 (renombrado desde "Los Analistas")
-> **Status:** Diseño aprobado, listo para implementación
+> **Versión:** 2.1 · 15 mayo 2026 (revisión: andamiaje visual TailAdmin disponible)
+> **Status:** Diseño aprobado, listo para implementación · andamiaje visual entregado en S-TailAdmin-2
 > **Audiencia:** Claude Code / desarrollo
 > **Dependencias:** La Bóveda, Los Permisos, Postgres, Los Ajustes
 > **Dependientes:** El Dictado, La Tesorería (OCR + dictado gasto), futuros casos de uso IA
+
+## Andamiaje visual disponible (cierre arco TailAdmin, 2026-05-15)
+
+- **`_avatar_chalan.html`** (× 2 copias Gerencia/Taller) — partial con
+  contrato `chalan='claudio|gpt|chino|gemini'` y tamaño `xs|sm|md`. Hoy
+  todas las variantes renderizan el mismo SVG genérico (silueta de robot
+  + dos ojos puntuales + boca lineal). Pre-S2b diferencia visualmente:
+  Claudio (Anthropic, brand-500 + tilde), GPT (OpenAI, success-500 +
+  flor 4 pétalos), Chino (DeepSeek, warning-500 + media luna), Gemini
+  (Google, futuro). Tabla de sellos distintivos en `docs/ICONOS_MODULOS.md`.
+- **Slot del Chalán** placeholder en `gerencia_home/home.html` (Sala de
+  Juntas actual). Migra al Taller en pre-S2b junto con Sala de Juntas
+  (decisión cerrada DOC_04 §2).
+- **Item "Pronto · Los Chalanes"** en sidebar de La Gerencia (super_admin
+  y dueno) apuntando a `/proximamente/chalanes/`.
+- **Página `/proximamente/chalanes/`** activa con descripción "Cuadro de
+  Los Chalanes: gestión del motor de IA (Claudio, GPT, Chino…),
+  aprendizajes capturados desde El Dictado y métricas de costo y
+  latencia" — sprint=`pre-S2b`.
+
+Slots `chalan_*_api_key` aún NO existen en `ajustes/models/credencial.py`
+(`SLOTS_CREDENCIAL`). Hoy las llaves de Anthropic/OpenAI están en slots
+legacy `anthropic_api_key` y `openai_api_key` (módulo `Los Analistas`
+en `apps/api/views/analistas`). Pre-S2b renombra/expande estos slots
+según la cascada definida en este documento.
 
 ---
 

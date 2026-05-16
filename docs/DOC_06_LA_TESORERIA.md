@@ -1,10 +1,58 @@
 # Diseño — La Tesorería
 
-> **Versión:** 1.0 · 15 mayo 2026
-> **Status:** Diseño aprobado, listo para implementación
+> **Versión:** 1.1 · 15 mayo 2026 (revisión: andamiaje visual TailAdmin disponible + ubicación)
+> **Status:** Diseño aprobado, listo para implementación · andamiaje visual entregado en S-TailAdmin-2
 > **Audiencia:** Claude Code / desarrollo
 > **Dependencias:** Sistema de Referencias `@/#/$` (DOC_01), Los Chalanes (DOC_02), El Dictado (DOC_04), Google Drive wrapper (S2b), Los Permisos
 > **Dependientes:** Manual de Usuario, Sala de Juntas (los KPIs financieros leen de aquí)
+
+## Andamiaje visual disponible (cierre arco TailAdmin, 2026-05-15)
+
+- **Item "Pronto · La Tesorería"** en sidebar de El Taller con badge
+  `warning`. **Gated por rol estricto** (§11 de este documento):
+  visible solo para `super_admin`, `dueno` y `contador`. El diseñador
+  NO ve siquiera el placeholder — consistente con la regla "información
+  contable no es visible para diseñadores ni siquiera por curiosidad".
+- **Página `/proximamente/tesoreria/`** activa con descripción
+  "Ingresos, egresos, cuentas por cobrar y por pagar, reembolsos y
+  reportes de flujo de caja. Incluye OCR de recibos y dictado de
+  gastos por El Chalán" — sprint=`S2b`.
+- **`_preview_acciones.html`** disponible para el dictado de gastos
+  (§7) — mismo partial que El Dictado de Sala de Juntas (DOC_04), ya
+  que comparten backend según §7.3 ("Ambos viven bajo el mismo módulo
+  de El Dictado en código, solo cambia la UI de entrada y el system
+  prompt"). El partial soporta confianza `<0.7` con chip ⚠️ usado por
+  el OCR cuando los datos extraídos del recibo no son confiables (§6.1
+  punto 4 — "Si confianza < 0.7 → marcar con ⚠️ en preview").
+- **`_chip_referencia.html`** tipo `cliente` ($) y tipo `proyecto` (#)
+  disponibles para usar en listados de ingresos/egresos donde la
+  columna "Proyecto" o "Cliente" debe ser clickeable y consistente
+  con el resto del sistema.
+- **`_filtros_lista.html`** y **`_tabla.html`** disponibles para las
+  vistas de lista de ingresos/egresos/CxC/CxP con filtros estándar
+  (rango fechas, cliente, proyecto, método de pago, centro de costo).
+
+**Slot `chalan_*_api_key`**: el dictado de gastos (§7) y el OCR
+de recibos (§6) requieren llaves de Anthropic y/o OpenAI vía Los
+Chalanes. Hoy esos slots viven como `anthropic_api_key` y
+`openai_api_key` en Los Ajustes (legacy, módulo Los Analistas).
+DOC_02 los renombra/expande en pre-S2b. La Tesorería debe levantarse
+DESPUÉS de pre-S2b para usar la cascada de Los Chalanes v2 directo.
+
+**Slot Google Drive**: el OCR de recibos (§6) guarda el archivo
+original en Drive. El wrapper de Google Drive llega en S2b junto
+con La Caja, Cotizaciones y Facturación. Hoy Los Ajustes tiene
+`google_oauth_client_id` / `google_oauth_client_secret` /
+`google_oauth_project_id` (SSO de Google para login — sprint S2a).
+Drive requiere flow distinto (Service Account o OAuth con scope
+`drive.file`); slots nuevos a definir en S2b junto con el wrapper.
+
+Lo que falta (S2b): migraciones `centro_de_costo` + `ingreso` +
+`egreso` + `egreso_ocr_log` + CxC + CxP + reembolsos (§4), CRUD UI
+(§5), pipeline OCR completo (§6), dictado de gasto integrado (§7),
+reportes y exportación CSV/Sheets (§8), eventos Portavoz (§10),
+permisos granulares por rol (§11), tests (§12). DOC_01 + DOC_02
++ DOC_04 son prerequisitos.
 
 ---
 

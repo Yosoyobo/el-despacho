@@ -1,8 +1,16 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.6 · 15 mayo 2026 (revisión: re-arquitectura de módulos + Chalanes + Tesorería)
+> **Versión:** v0.7 · 15 mayo 2026 (revisión: post arco TailAdmin — visual unificado, andamiaje de módulos futuros visible)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
 > **Política de actualización:** este manual se actualiza después de cada sprint que entregue funcionalidad nueva. La versión final v1.0 se publicará cuando el desarrollo se considere cerrado.
+
+> **Estado al 15 mayo 2026:** look visual unificado a TailAdmin Pro 2.3.0
+> (paleta gray/brand, tipografía Outfit, dark mode con toggle propio).
+> El Interfón se renombró a "El Interfón" en todo lo visible (el sistema
+> sigue llamándolo `interfono` internamente). Los módulos que llegan en
+> sprints futuros (Los Recados, La Tesorería, Los Chalanes, El Dictado)
+> aparecen marcados como "Pronto" en el menú lateral con un placeholder
+> explicando para qué sirven cuando se les hace click.
 
 ---
 

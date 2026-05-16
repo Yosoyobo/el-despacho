@@ -99,6 +99,19 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 16. **El Despacho NO emite CFDI ni integra PAC.** Flujo híbrido — el contador
     timbra externamente.
 17. **No SPA.** Django templates + HTMX + Tailwind. Alpine.js solo si HTMX se queda corto.
+18. **Partials reusables de TailAdmin** viven en `{la-gerencia,el-taller}/templates/_componentes_tailadmin/`
+    (dos copias sincronizadas — patrón S-TailAdmin-1). Antes de escribir
+    `<div class="rounded-2xl border ...">` busca si el partial cubre el caso.
+    Los 17 partials entregados en el arco TailAdmin: `header`, `sidebar`,
+    `tarjeta`, `tarjeta_kpi`, `alertas_mensajes` (S-1) · `_tabla`,
+    `_filtros_lista`, `_paginacion`, `_badge_estado`, `_form_seccion`,
+    `_form_campo`, `_hilo_mensaje`, `_tabs`, `_chip_referencia`,
+    `_preview_acciones`, `_avatar_chalan` (S-2) · `interfono/_panel_suscripcion`
+    (S-3, cross-app, también dos copias). Si te encuentras escribiendo
+    HTML que ya está en un partial, refactoriza al `{% include %}`.
+19. **Dark mode propio** — toggle, `localStorage('despacho-tema')`, anti-FOUC
+    inline en `<head>` antes del primer paint. NO importar otro sistema
+    de dark mode. NO usar `media (prefers-color-scheme)` sin el toggle.
 
 ---
 
@@ -176,11 +189,26 @@ ElDespacho/
   permitir login simultáneo en ambas apps desde el mismo navegador.
 - **El Taller acepta los 4 roles**; La Gerencia solo `super_admin` y `dueno`.
 - **HTMX por encima de SPA** — regla #17.
-- **Tailwind CDN en dev, CLI standalone en build** — el Dockerfile baja el
-  binario Go y compila si hay `tailwind.config.js`. En S1a usamos CDN; en S1b+
-  cuando haya más componentes, compilamos.
+- **Tailwind CLI standalone v3.4.17** — el Dockerfile baja el binario Go y
+  compila si hay `tailwind.config.js`. En S-TailAdmin-1 se eliminó el CDN
+  y se establecieron tokens portados de TailAdmin Pro 2.3.0 (paletas
+  `gray`/`brand`/`blue-light`/`success`/`error`/`warning`/`orange` + escala
+  tipográfica `title-2xl..title-xs`/`theme-xl/sm/xs` + shadows `theme-xs..xl`).
+  Reemplazar `gray` con la paleta TailAdmin canónica fue decisión explícita
+  para tener un único sistema visual.
 - **Google SSO** funcional pero degradado a 503-graceful si no hay credenciales
   en Los Ajustes. El botón solo aparece si `google_oauth.esta_configurado()`.
+- **Camino A elegido en TailAdmin** (Tailwind v3 + tokens portados) sobre
+  Camino B (upgrade a Tailwind v4 con CSS-first). Razones: estabilidad del
+  binario standalone v3.4.17, compatibilidad con Django sin Node, evita
+  migración de utilities entre v3/v4.
+- **Vanilla JS + HTMX exclusivos**. Sin Alpine, sin librerías UI externas
+  (shadcn/MUI/Radix/DaisyUI/Headless), sin charts (ApexCharts diferido a
+  cuando S3 traiga La Sala de Juntas con KPIs reales).
+- **App `proximamente/` shared raíz** (decisión S-TailAdmin-2) — mismo patrón
+  que `cuentas/`, `ajustes/`, `buzon/`, `interfono/`, `auth_google/`. Sin
+  modelos, sin migración; sólo `views.py` + `urls.py` + 1 template para
+  pantalla coming-soon de módulos futuros.
 
 ---
 
@@ -230,28 +258,99 @@ docs). Tailwind compilado per-app (CDN eliminado). S1b completo:
   `docker-compose.prod.yml` con `@sha256:…` y empuja como bot.
 - **71 tests verdes** con Redis service en CI (62 sin Redis local).
 
-### S1-deploy — siguiente sesión
+### S1-deploy ✅
 
-Levantar producción en La Sede: DNS de `gerencia/taller/recepcion.ninomeando.com`,
-secrets `SEDE_*` en GHA, job `mudanza` que SSH-ee y corra `mudanza.sh`,
-backup `archivo.sh` cron, smoke test post-deploy.
+Producción en La Sede: DNS `{gerencia,taller,recepcion}.ninomeando.com` en
+Caddy, secrets `SEDE_*` en GHA, job `mudanza` SSH a `157.230.48.232`,
+backup `archivo.sh` cron 03:00 dom + replicación a HAL vía Tailscale,
+smoke test 3 hosts post-deploy.
 
-### S2 — Comercial y pagos
+### S2a (Fundaciones primera+segunda mitad) ✅
+
+El Site (monitoreo del Droplet), backups remotos a HAL con sentinel,
+rollback automático en La Mudanza, smoke_docker en CI, El Buzón Admin,
+El Catálogo, Tasas e Impuestos, El Interfón (push manual + Service Worker
++ Dark Mode con anti-FOUC), Google SSO con `registerOrLinkGoogleUser`.
+
+### Arco TailAdmin ✅ (sprints S-TailAdmin-1, S-2, S-3, cerrado 2026-05-15)
+
+**Facelift visual completo de El Despacho — 46 templates principales + 17
+partials reusables + 8 items de andamiaje para features de S2b.**
+
+- **S-TailAdmin-1**: shell completo (sidebar + header + base + dashboards
+  + auth + errores + legales + auth_google), Tailwind v3 con tokens de
+  TailAdmin Pro 2.3.0 portados (font Outfit, brand `#465fff`, paleta
+  `gray`/`brand`/`success`/`error`/`warning`/`orange`/`blue-light`).
+  Sweep `slate/stone` → `gray` aplicado a TODOS los templates. Dark mode
+  propio preservado al 100%. Vanilla JS, sin Alpine.
+- **S-TailAdmin-2**: 22 templates de listas y detalles (Cartera, Proyectos,
+  Pizarrón, Buzón empleado+admin, Directorio, Catálogo) + andamiaje:
+  app shared `proximamente/` con `/proximamente/<slug>/` para 5 módulos
+  futuros, slot del Chalán placeholder en Sala de Juntas, items "Pronto"
+  en sidebars gated por rol, chips `@/#/$` con paleta DOC_01 §5.3
+  (brand/violet/emerald), preview de acciones para El Dictado/Tesorería,
+  avatar del Chalán con variantes claudio/gpt/chino/gemini,
+  `docs/ICONOS_MODULOS.md`. Rename visible `Interfono` → `Interfón`
+  (código preserva `interfono`).
+- **S-TailAdmin-3**: pantallas finales (Interfón tablero +
+  perfil_notificaciones + partial unificado cross-app, Los Ajustes panel
+  + tasas + tasa_form preservando contrato Bóveda 100%, auth_google,
+  perfil Taller). Cierre formal del arco.
+
+**Patrón "dos copias sincronizadas"** Gerencia/Taller para partials
+reusables — más simple que namespace package; mantener manualmente
+sincronizadas o el JS/CSS diverge silenciosamente. Aplica a:
+`_componentes_tailadmin/` (16 archivos × 2 = 32) y
+`interfono/_panel_suscripcion.html` (× 2).
+
+### S1-deploy (legacy — superado por S2a)
+
+Levantar producción en La Sede. Cubierto y superado por S2a.
+
+### pre-S2b — siguiente sesión
+
+**El sprint que enchufa lógica al andamiaje visual del arco TailAdmin.**
+Mediano-grande pero factible (los componentes visuales ya están). Cubre:
+
+1. **Sistema de Referencias `@/#/$` real** (DOC_01) — slugs en Usuario/
+   Proyecto/Cliente, tabla `referencia` polimórfica, regex parser,
+   endpoints `/api/autocomplete/{usuarios,proyectos,clientes}`, JS
+   vanilla del autocomplete, filtro `renderizar_referencias`, evento
+   Portavoz `referencia.usuario_mencionado`, búsqueda inversa.
+   `_chip_referencia.html` ya entregado en S-2 — sólo se enchufa.
+2. **Los Chalanes v2** (DOC_02) — Cuadro de Chalanes, Cadena de
+   Sustitución, estaciones, aprendizajes globales. Slots
+   `chalan_*_api_key` se agregan a Los Ajustes. `_avatar_chalan.html`
+   se diferencia por proveedor.
+3. **El Dictado** (DOC_04) — text box en Sala de Juntas (que migra a
+   Taller), interpretación con Chalán Claudio, preview con
+   `_preview_acciones.html` ya entregado.
+4. **Re-arquitectura de ubicaciones:**
+   - Sala de Juntas: Gerencia → **Taller** (donde vive el equipo);
+     el slot del Chalán placeholder se va con ella.
+   - El Buzón: Gerencia (admin) + Taller (empleado) → unificar y mover.
+   - La Gerencia se queda con admin puro: Directorio, Ajustes,
+     Catálogo, Los Chalanes, El Site, Tasas, Interfón.
+
+### S2b — Comercial y pagos (después de pre-S2b)
 
 Cotizaciones (PDF vía Google Docs templates — NO WeasyPrint/ReportLab/Puppeteer) ·
 Facturación · La Caja (Stripe + MercadoPago) · La Cobranza (recordatorios
 automáticos por Portavoz) · wrappers de Google Workspace (Drive, Sheets, Docs,
-Calendar).
+Calendar) · **Los Recados** (DOC_03 — mensajería del equipo) ·
+**La Tesorería** (DOC_06 — ingresos/egresos/CxC/CxP/reembolsos + OCR
+de recibos + dictado de gasto). Placeholders `/proximamente/recados/`
+y `/proximamente/tesoreria/` ya activos.
 
 ### S3 — Contabilidad y reportes
 
 La Contaduría intermedia + andamiaje partida doble · La Sala de Juntas con KPIs.
 
-### S4 — IA (Los Analistas)
+### S4 — IA (Los Chalanes, casos de uso)
 
-Multi-provider: Anthropic primario + OpenAI fallback (El Reemplazo).
-Casos de uso: redactar cotización · categorizar gasto · resumir hilo cliente ·
-sugerir precio.
+Multi-provider ya en pre-S2b (Anthropic + OpenAI fallback + DeepSeek);
+S4 agrega casos de uso adicionales: redactar cotización · categorizar
+gasto automático · resumir hilo cliente · sugerir precio.
 
 ### S5 — La Recepción
 

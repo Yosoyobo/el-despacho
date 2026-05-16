@@ -1,10 +1,32 @@
 # Diseño — Los Recados
 
-> **Versión:** 1.1 · 15 mayo 2026 (revisión: ubicación Taller + permisos granulares)
-> **Status:** Diseño aprobado, listo para implementación
+> **Versión:** 1.2 · 15 mayo 2026 (revisión: andamiaje visual TailAdmin disponible)
+> **Status:** Diseño aprobado, listo para implementación · andamiaje visual entregado en S-TailAdmin-2
 > **Audiencia:** Claude Code / desarrollo
 > **Dependencias:** Sistema de Referencias `@/#/$` (DOC_01), El Interfón, Google Drive wrapper (S2b), La Bóveda, Los Permisos
 > **Dependientes:** Manual de Usuario, El Dictado (puede crear Recados)
+
+## Andamiaje visual disponible (cierre arco TailAdmin, 2026-05-15)
+
+- **Item "Pronto · Los Recados"** en sidebar de El Taller (visible para
+  TODOS los roles — mensajería del equipo). Apunta a
+  `/proximamente/recados/`.
+- **Página `/proximamente/recados/`** activa con descripción "Mensajería
+  interna asíncrona del despacho: avisos, recordatorios y conversaciones
+  cortas con `@personas`, `#proyectos` y `$clientes`" — sprint=`S2b`.
+- **`_chip_referencia.html`** y **`_hilo_mensaje.html`** (× 2 copias)
+  disponibles para renderizar respectivamente los `@/#/$` dentro del
+  cuerpo del recado y cada item del hilo de respuestas. `_hilo_mensaje`
+  ya está en uso en Pizarrón detalle desde S-2 — validado.
+- **El Interfón push** ya está vivo desde S2a — el evento
+  `recado.creado` que dispara push a mencionados (§7) se enchufa
+  directo al `lib/interfono.enviar_a_usuario()` existente.
+
+Lo que falta (S2b): modelos `Recado` + `RecadoDestinatario` + `RecadoVersion`
++ `RecadoAdjunto` + `RecadoGrupo` (§3), endpoint `POST /recados/enviar`
+(§4.3), vistas Bandeja y detalle (§6), wrapper de Google Drive para
+adjuntos (§4.2), eventos Portavoz (§8), MIME validation (§9). El
+Sistema de Referencias DOC_01 es prerequisito.
 
 ---
 

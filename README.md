@@ -25,11 +25,26 @@ GitHub Actions (**El Mensajero**) · GHCR.
 ## Estado por sesión
 
 - **S1a** ✅ Cimientos: infra + `lib/` + auth + El Directorio + Los Ajustes
-- **S1b** ⏳ La Cartera + Los Proyectos + El Pizarrón + tests CRUDs + MANUAL.md
-- **S2** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google Workspace
-- **S3** Contaduría · Sala de Juntas
-- **S4** Los Analistas (IA — Anthropic primario + OpenAI fallback)
-- **S5** La Recepción (portal cliente)
+- **S1b / S1-final** ✅ La Cartera + Los Proyectos + El Pizarrón + tests
+- **S1-deploy / S2a** ✅ Producción en La Sede + El Site (monitoreo) +
+  El Buzón + El Catálogo + Tasas + El Interfón (push) + Google SSO +
+  backups remotos a HAL + rollback automático en La Mudanza
+- **Arco TailAdmin** ✅ (S-TailAdmin-1/2/3, cerrado 2026-05-15):
+  46 templates al sistema visual TailAdmin Pro 2.3.0, 17 partials
+  reusables, andamiaje para módulos futuros (chips `@/#/$`,
+  `/proximamente/<slug>/`, slot del Chalán, items "Pronto" en sidebars)
+- **pre-S2b** ⏳ siguiente: Sistema de Referencias real (DOC_01) +
+  Los Chalanes v2 (DOC_02) + El Dictado (DOC_04) + migración Sala de
+  Juntas y Buzón al Taller
+- **S2b** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google
+  Workspace · Los Recados (DOC_03) · La Tesorería (DOC_06)
+- **S3** Contaduría · Sala de Juntas con KPIs reales
+- **S4** Los Chalanes — casos de uso adicionales (categorizar gasto
+  automático, sugerir precio, resumir hilos)
+- **S5** La Recepción (portal cliente B2B)
+
+Diseño detallado de los módulos futuros en `docs/DOC_01..06.md`.
+Bitácora completa con decisiones por sprint en `BITACORA.md`.
 
 ## Arranque local (HAL)
 

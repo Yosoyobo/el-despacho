@@ -1,10 +1,42 @@
 # Diseño — El Dictado
 
-> **Versión:** 1.1 · 15 mayo 2026 (revisión: ubicación Sala de Juntas Taller + Chalanes + La Tesorería)
-> **Status:** Diseño aprobado, listo para implementación
+> **Versión:** 1.2 · 15 mayo 2026 (revisión: andamiaje visual TailAdmin disponible)
+> **Status:** Diseño aprobado, listo para implementación · andamiaje visual entregado en S-TailAdmin-2
 > **Audiencia:** Claude Code / desarrollo
 > **Dependencias:** Sistema de Referencias `@/#/$` (DOC_01), Los Chalanes v2 (DOC_02), Los Recados (DOC_03), La Tesorería (DOC_06), Los Permisos, Postgres
 > **Dependientes:** Manual de Usuario, Sala de Juntas (lo monta)
+
+## Andamiaje visual disponible (cierre arco TailAdmin, 2026-05-15)
+
+- **Slot del Chalán** en `la-gerencia/templates/gerencia_home/home.html`
+  arriba de los KPIs — textarea deshabilitada con placeholder "Menciona
+  @personas, #proyectos y $clientes..." + avatar genérico + botón
+  "Procesar" disabled + leyenda "llega en sprint S2b — El Pipeline".
+  **Nota arquitectónica:** este documento define que El Dictado vive en
+  Sala de Juntas del Taller (§2 decisión 15 mayo). Hoy Sala de Juntas
+  sigue en La Gerencia, así que el placeholder está provisionalmente ahí.
+  Pre-S2b migra Sala de Juntas a Taller y el slot se va con ella.
+- **`_preview_acciones.html`** (× 2 copias Gerencia/Taller) — partial que
+  renderiza exactamente la UI de §4.2(a): header con avatar del Chalán +
+  apodo, lista de checkboxes con descripción, chip "Confianza media ⚠️"
+  para acciones `confianza<0.7`, acciones sin permiso 🔒 con CTA "Crear
+  recado al rol responsable" (matchea §5.4), footer [Cancelar]
+  [Aplicar N acciones]. Hoy sin lógica detrás — pre-S2b conecta el
+  endpoint `POST /dictado/<id>/aplicar` (§8).
+- **`_avatar_chalan.html`** — ver DOC_02 sección equivalente.
+- **`_chip_referencia.html`** — para preservar `@/#/$` literales en el
+  texto interpretado (principio §7.1 punto 4 del system prompt).
+- **Página `/proximamente/dictado-historial/`** activa con descripción
+  "Tu historial personal de dictados al Chalán: texto crudo,
+  interpretación, acciones aplicadas y errores" (§9) — sprint=`S2b`.
+
+Lo que falta (S2b): migraciones de `dictado` + `dictado_accion` +
+`dictado_aprendizaje` (§3), endpoints `/dictado/interpretar`,
+`/dictado/<id>/aclarar`, `/dictado/<id>/aplicar` (§12 punto 3-5),
+ejecutores por tipo de acción (§8), UI del text box prominente
+arriba de Sala de Juntas (§4.1), histórico personal `/dictado/historial/`
+(§9), gestión de aprendizajes en Gerencia (§6.4), tests (§11).
+Pre-requisitos DOC_01 + DOC_02 + DOC_03.
 
 ---
 
