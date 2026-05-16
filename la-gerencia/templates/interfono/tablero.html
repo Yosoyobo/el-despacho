@@ -2,126 +2,120 @@
 {% block title %}El Interfón — La Gerencia{% endblock %}
 
 {% block contenido %}
-<div class="space-y-8">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Interfón</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Notificaciones push manuales al equipo.</p>
-    </div>
+<header class="mb-6">
+    <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Interfón</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Notificaciones push manuales al equipo.</p>
+</header>
 
-    {% if not configurado %}
-    <div class="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200 px-4 py-3 text-sm">
-        <strong>Llaves VAPID no configuradas.</strong>
-        Generarlas con <code>docker compose exec la-gerencia python manage.py interfono_generar_vapid</code>.
-    </div>
-    {% endif %}
-
-    <section class="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Enviar notificación</h2>
-        <form method="post" action="{% url 'interfono-enviar' %}" class="space-y-4">
-            {% csrf_token %}
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Enviar a:</label>
-                <div class="space-y-2">
-                    <label class="flex items-center gap-2">
-                        <input type="radio" name="audiencia_tipo" value="todos" checked
-                               onchange="window._actualizarAudiencia()">
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Todos los usuarios activos</span>
-                    </label>
-                    <label class="flex items-center gap-2">
-                        <input type="radio" name="audiencia_tipo" value="rol"
-                               onchange="window._actualizarAudiencia()">
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Por rol</span>
-                        <select name="audiencia_rol" id="audiencia_rol" disabled
-                                class="ml-2 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                            <option value="super_admin">super_admin</option>
-                            <option value="dueno">dueno</option>
-                            <option value="contador">contador</option>
-                            <option value="disenador">disenador</option>
-                        </select>
-                    </label>
-                    <label class="flex items-center gap-2">
-                        <input type="radio" name="audiencia_tipo" value="usuario"
-                               onchange="window._actualizarAudiencia()">
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Usuario individual</span>
-                        <select name="audiencia_usuario" id="audiencia_usuario" disabled
-                                class="ml-2 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                            <option value="">— seleccionar —</option>
-                            {% for u in usuarios %}
-                            <option value="{{ u.id }}">{{ u.email }} — {{ u.nombre_completo|default:"(sin nombre)" }}</option>
-                            {% endfor %}
-                        </select>
-                    </label>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título</label>
-                <input type="text" name="titulo" maxlength="80" required
-                       class="block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Máx 80 caracteres.</p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cuerpo</label>
-                <textarea name="cuerpo" maxlength="300" rows="3" required
-                          class="block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm"></textarea>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Máx 300 caracteres.</p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL al hacer click <span class="text-gray-400">(opcional)</span></label>
-                <input type="url" name="url_destino"
-                       placeholder="https://gerencia.ninomeando.com/..."
-                       class="block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-            </div>
-
-            <div class="flex gap-3 pt-2">
-                <button type="submit" name="modo" value="prueba"
-                        class="rounded bg-gray-100 dark:bg-gray-800 dark:text-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700">
-                    Enviarme una prueba
-                </button>
-                <button type="submit" name="modo" value="enviar"
-                        onclick="return confirm('¿Enviar a los destinatarios seleccionados?')"
-                        class="rounded bg-gray-900 text-white dark:bg-amber-500 dark:text-gray-900 px-4 py-2 text-sm font-medium hover:bg-gray-800 dark:hover:bg-amber-400">
-                    Enviar a destinatarios
-                </button>
-            </div>
-        </form>
-    </section>
-
-    <section class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 px-6 pt-6">Historial</h2>
-        <div class="overflow-x-auto mt-4">
-            <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                    <tr>
-                        <th class="text-left px-6 py-2 font-medium">Fecha</th>
-                        <th class="text-left px-6 py-2 font-medium">Autor</th>
-                        <th class="text-left px-6 py-2 font-medium">Audiencia</th>
-                        <th class="text-left px-6 py-2 font-medium">Título</th>
-                        <th class="text-right px-6 py-2 font-medium">Ok / Falla / Inv.</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                    {% for e in envios %}
-                    <tr>
-                        <td class="px-6 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ e.creado_en|date:"Y-m-d H:i" }}</td>
-                        <td class="px-6 py-2 text-gray-700 dark:text-gray-300">{{ e.autor.email|default:"—" }}</td>
-                        <td class="px-6 py-2 text-gray-700 dark:text-gray-300">{{ e.audiencia_label }}</td>
-                        <td class="px-6 py-2 text-gray-900 dark:text-gray-100" title="{{ e.cuerpo }}">{{ e.titulo|truncatechars:40 }}</td>
-                        <td class="px-6 py-2 text-right text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                            {{ e.entregadas }} / {{ e.fallidas }} / {{ e.suscripciones_invalidadas }}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="5" class="px-6 py-6 text-center text-gray-500 dark:text-gray-400">Sin envíos todavía.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
+{% if not configurado %}
+<div class="mb-6 rounded-2xl border border-warning-200 bg-warning-25 px-5 py-4 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+    <strong>Llaves VAPID no configuradas.</strong>
+    Generarlas con <code class="rounded bg-warning-100 px-1.5 py-0.5 font-mono text-xs dark:bg-warning-500/20">docker compose exec la-gerencia python manage.py interfono_generar_vapid</code>.
 </div>
+{% endif %}
+
+<section class="campo-form mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="mb-5 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Enviar notificación</h2>
+    <form method="post" action="{% url 'interfono-enviar' %}" class="space-y-5">
+        {% csrf_token %}
+
+        <div>
+            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Enviar a:</label>
+            <div class="space-y-2.5">
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                    <input type="radio" name="audiencia_tipo" value="todos" checked
+                           onchange="window._actualizarAudiencia()"
+                           class="h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                    Todos los usuarios activos
+                </label>
+                <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                    <input type="radio" name="audiencia_tipo" value="rol"
+                           onchange="window._actualizarAudiencia()"
+                           class="h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                    Por rol
+                    <select name="audiencia_rol" id="audiencia_rol" disabled class="ml-2 max-w-[200px]">
+                        <option value="super_admin">super_admin</option>
+                        <option value="dueno">dueno</option>
+                        <option value="contador">contador</option>
+                        <option value="disenador">disenador</option>
+                    </select>
+                </label>
+                <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                    <input type="radio" name="audiencia_tipo" value="usuario"
+                           onchange="window._actualizarAudiencia()"
+                           class="h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                    Usuario individual
+                    <select name="audiencia_usuario" id="audiencia_usuario" disabled class="ml-2 max-w-[300px]">
+                        <option value="">— seleccionar —</option>
+                        {% for u in usuarios %}
+                        <option value="{{ u.id }}">{{ u.email }} — {{ u.nombre_completo|default:"(sin nombre)" }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <label for="interfono-titulo" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
+            <input id="interfono-titulo" type="text" name="titulo" maxlength="80" required>
+            <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Máx 80 caracteres.</p>
+        </div>
+
+        <div>
+            <label for="interfono-cuerpo" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cuerpo</label>
+            <textarea id="interfono-cuerpo" name="cuerpo" maxlength="300" rows="3" required></textarea>
+            <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Máx 300 caracteres.</p>
+        </div>
+
+        <div>
+            <label for="interfono-url" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">URL al hacer click <span class="text-gray-400 dark:text-gray-500">(opcional)</span></label>
+            <input id="interfono-url" type="url" name="url_destino" placeholder="https://gerencia.ninomeando.com/...">
+        </div>
+
+        <div class="flex flex-wrap gap-3 pt-2">
+            <button type="submit" name="modo" value="prueba" class="btn-secundario">Enviarme una prueba</button>
+            <button type="submit" name="modo" value="enviar"
+                    onclick="return confirm('¿Enviar a los destinatarios seleccionados?')"
+                    class="btn-primario">Enviar a destinatarios</button>
+        </div>
+    </form>
+</section>
+
+<section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="px-6 pt-6 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Historial</h2>
+    <div class="mt-4 overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-y border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-6 py-3 text-left">Fecha</th>
+                    <th class="px-6 py-3 text-left">Autor</th>
+                    <th class="px-6 py-3 text-left">Audiencia</th>
+                    <th class="px-6 py-3 text-left">Título</th>
+                    <th class="px-6 py-3 text-right">Ok / Falla / Inv.</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for e in envios %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="whitespace-nowrap px-6 py-2.5 text-gray-700 dark:text-gray-200">{{ e.creado_en|date:"Y-m-d H:i" }}</td>
+                    <td class="px-6 py-2.5 text-gray-600 dark:text-gray-300">{{ e.autor.email|default:"—" }}</td>
+                    <td class="px-6 py-2.5"><span class="badge badge-brand">{{ e.audiencia_label }}</span></td>
+                    <td class="px-6 py-2.5 text-gray-900 dark:text-gray-100" title="{{ e.cuerpo }}">{{ e.titulo|truncatechars:40 }}</td>
+                    <td class="whitespace-nowrap px-6 py-2.5 text-right text-gray-600 dark:text-gray-300 tabular-nums">
+                        <span class="text-success-600 dark:text-success-400">{{ e.entregadas }}</span>
+                        <span class="text-gray-400 dark:text-gray-500">/</span>
+                        <span class="text-error-600 dark:text-error-400">{{ e.fallidas }}</span>
+                        <span class="text-gray-400 dark:text-gray-500">/</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ e.suscripciones_invalidadas }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin envíos todavía.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 
 <script>
 window._actualizarAudiencia = function() {

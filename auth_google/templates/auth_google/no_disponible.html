@@ -14,16 +14,18 @@ else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').mat
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
 <style>
 /* Variables alineadas con la paleta gray de TailAdmin portada en S-TailAdmin-1. */
-:root{--bg:#f9fafb;--fg:#101828;--card:#fff;--border:#e4e7ec;--muted:#475467;--note:#98a2b3;}
-html.dark{--bg:#0c111d;--fg:#f2f4f7;--card:#1d2939;--border:#344054;--muted:#d0d5dd;--note:#667085;}
-body{font-family:'Outfit',ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:48px 24px;text-align:center}
+:root{--bg:#f9fafb;--fg:#101828;--card:#fff;--border:#e4e7ec;--muted:#475467;--note:#98a2b3;--accent:#465fff;}
+html.dark{--bg:#0c111d;--fg:#f2f4f7;--card:#1d2939;--border:#344054;--muted:#d0d5dd;--note:#98a2b3;--accent:#7592ff;}
+body{font-family:'Outfit',ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:48px 24px;text-align:center;min-height:100vh;display:flex;align-items:center;justify-content:center}
 h1{margin:0 0 8px;font-size:24px;font-weight:600;letter-spacing:-0.01em}
 p{color:var(--muted);line-height:1.5}
-.box{max-width:560px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px 28px;box-shadow:0 1px 2px rgba(16,24,40,0.05)}
+.marca{font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);font-weight:500;margin-bottom:8px}
+.box{max-width:560px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px 28px;box-shadow:0 1px 3px 0 rgba(16,24,40,0.1)}
 </style>
 </head>
 <body>
 <div class="box">
+    <p class="marca">La Recepción</p>
     <h1>Esta sección aún no está activa</h1>
     <p>El portal de clientes y el inicio de sesión con Google se habilitarán
        cuando se libere La Recepción. Por ahora, El Despacho opera solo con

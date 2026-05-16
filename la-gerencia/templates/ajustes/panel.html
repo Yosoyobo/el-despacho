@@ -1,60 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Los Ajustes{% endblock %}
 {% block contenido %}
-<div class="flex items-start justify-between mb-6 gap-4">
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-3xl font-semibold mb-2">Los Ajustes</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Los Ajustes</h1>
+        <p class="mt-1 max-w-xl text-sm text-gray-500 dark:text-gray-400">
             Todas las credenciales del sistema. Se cifran con La Bóveda antes de tocar la DB.
             Solo super_admin tiene acceso a este panel.
         </p>
     </div>
-    <div class="flex gap-2 shrink-0">
-        <a href="{% url 'ajustes-tasas' %}" class="text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">Tasas e Impuestos →</a>
+    <div class="flex flex-wrap gap-2">
+        <a href="{% url 'ajustes-tasas' %}" class="btn-secundario">Tasas e Impuestos →</a>
         <form method="post" action="{% url 'ajustes-probar-analistas' %}">{% csrf_token %}
-            <button class="text-sm rounded-md bg-amber-600 text-white px-3 py-1.5 hover:bg-amber-700">Probar Analistas</button>
+            <button type="submit" class="btn-secundario">Probar Analistas</button>
         </form>
         <form method="post" action="{% url 'ajustes-probar-google-oauth' %}">{% csrf_token %}
-            <button class="text-sm rounded-md bg-gray-700 text-white px-3 py-1.5 hover:bg-gray-800">Probar Google OAuth</button>
+            <button type="submit" class="btn-secundario">Probar Google OAuth</button>
         </form>
     </div>
+</header>
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+        {% for clave, etiqueta, descripcion, configurado in slots %}
+        <li class="grid grid-cols-1 items-start gap-4 p-5 md:grid-cols-[1fr_auto]">
+            <div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ etiqueta }}</h3>
+                    {% if configurado %}
+                        <span class="badge badge-success">Configurado</span>
+                    {% else %}
+                        <span class="badge badge-gray">Vacío</span>
+                    {% endif %}
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ descripcion }}</p>
+                <code class="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">{{ clave }}</code>
+            </div>
+
+            <form method="post" action="{% url 'ajustes-guardar' %}" class="campo-form flex min-w-[280px] flex-col gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="clave" value="{{ clave }}">
+                <input type="password" name="valor" autocomplete="new-password"
+                       placeholder="{% if configurado %}•••• guardado — escribe para reemplazar{% else %}pega el valor{% endif %}">
+                <div class="flex gap-2">
+                    <button type="submit" class="btn-primario flex-1 text-xs">Guardar</button>
+                    {% if configurado %}
+                    <button type="submit" formaction="{% url 'ajustes-probar' clave %}" class="btn-secundario flex-1 text-xs">Probar</button>
+                    {% endif %}
+                </div>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
 </div>
 
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
-    {% for clave, etiqueta, descripcion, configurado in slots %}
-    <div class="p-5 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-start">
-        <div>
-            <div class="flex items-center gap-2">
-                <h3 class="font-medium">{{ etiqueta }}</h3>
-                {% if configurado %}
-                    <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">configurado</span>
-                {% else %}
-                    <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">vacío</span>
-                {% endif %}
-            </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ descripcion }}</p>
-            <code class="text-[10px] text-gray-400 dark:text-gray-500">{{ clave }}</code>
-        </div>
-
-        <form method="post" action="{% url 'ajustes-guardar' %}" class="flex flex-col gap-2 min-w-[280px]">
-            {% csrf_token %}
-            <input type="hidden" name="clave" value="{{ clave }}">
-            <input type="password" name="valor" autocomplete="new-password"
-                   placeholder="{% if configurado %}•••• guardado — escribe para reemplazar{% else %}pega el valor{% endif %}"
-                   class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm">
-            <div class="flex gap-2">
-                <button class="flex-1 bg-gray-900 hover:bg-gray-800 text-white text-xs py-1.5 rounded-md">Guardar</button>
-                {% if configurado %}
-                <button formaction="{% url 'ajustes-probar' clave %}"
-                        class="flex-1 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs py-1.5 rounded-md">Probar</button>
-                {% endif %}
-            </div>
-        </form>
-    </div>
-    {% endfor %}
-</div>
-
-<p class="text-xs text-gray-400 dark:text-gray-500 mt-6">
+<p class="mt-6 text-xs text-gray-500 dark:text-gray-400">
     Los valores nunca se muestran en claro tras guardar. Si necesitas rotar un secret, escribe el nuevo y "Guardar".
     Vaciar el campo y guardar elimina la entrada.
 </p>

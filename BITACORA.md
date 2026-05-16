@@ -2475,3 +2475,286 @@ Juntas estrena su primer slot del Chalán (deshabilitado, etiquetado
 Sprint S-TailAdmin-3 (Ajustes + tablero Interfón + pulido) y pre-S2b
 (Sistema de Referencias + Chalanes v2 + re-arquitectura Sala de Juntas)
 esperando turno.
+
+---
+
+# BITÁCORA — Sprint S-TailAdmin-3 (Facelift final + cierre del arco)
+
+> Cierre del **2026-05-15**. Continúa desde `6cf94b4`. Sprint chico
+> (~6 templates con cambios visibles + 4 ya estaban TailAdmin desde S-1).
+> Tras este sprint, El Despacho queda con look TailAdmin coherente en
+> light y dark mode en TODAS las pantallas.
+
+## 1. Templates entregados
+
+### A. El Interfón (3 archivos)
+
+- **`la-gerencia/templates/interfono/tablero.html`** — Header limpio + form
+  de envío en card TailAdmin (`campo-form` + `btn-primario/secundario`) +
+  historial con tabla TailAdmin canónica (mismo patrón de `_tabla.html`).
+  Triplete `Ok / Falla / Inv.` con color semántico (success/error/gray).
+- **`la-gerencia/templates/interfono/perfil_notificaciones.html`** —
+  Header con kicker brand + `{% include %}` del partial unificado.
+- **`la-gerencia/templates/interfono/_panel_suscripcion.html`** — Card
+  TailAdmin. **PRESERVADO 100%**: IDs (`interfono-estado`, `interfono-activar`,
+  `interfono-prueba`), atributos `data-cuando="cargando|suscrito|no_suscrito|bloqueado|no_soportado"`,
+  globals `window._INTERFONO_VAPID_PUBLIC` y `window._INTERFONO_CSRF`,
+  nombres de cookies (`gerencia_csrftoken` / `taller_csrftoken`), y el
+  `<script src="{% static 'js/interfono_suscribir.js' %}" defer>` que
+  maneja el flow de permiso del navegador. Banner de warning sin VAPID
+  con paleta TailAdmin.
+
+### B. Los Ajustes (3 archivos) — ⚠️ contrato preservado
+
+- **`panel.html`** — Lista de slots como `<ul>` con `divide-y`. Cada slot
+  conserva exactamente: `<input type="hidden" name="clave">`,
+  `<input type="password" name="valor" autocomplete="new-password">`,
+  `action="{% url 'ajustes-guardar' %}"`, `formaction="{% url 'ajustes-probar' clave %}"`
+  para el botón "Probar", `{% csrf_token %}`. Badges `Configurado`/`Vacío`
+  con paleta success/gray. Los 3 forms del header (probar-analistas,
+  probar-google-oauth, tasas) intactos en acción y método.
+- **`tasas.html`** — Tabla TailAdmin canónica. Badge `Activa`/`Inactiva`
+  con color semántico. URL `ajustes-tasa-editar` preservada.
+- **`tasa_form.html`** — Form layout TailAdmin con card + grid de campos.
+  Sin cambios de `{{ form }}` (Django renderea sus widgets — usa
+  `campo-form` heredado para estilo de inputs).
+
+### C. Auth Google (1 archivo con cambio menor)
+
+- **`auth_google/templates/auth_google/_error_body.html`** — ya estaba
+  100% TailAdmin desde S-1 (con icono error-50, card rounded-2xl,
+  6 motivos diferenciados). **No requirió cambios.**
+- **`auth_google/templates/auth_google/error.html`** — wrapper de 2 líneas
+  que delega al body. Sin cambios.
+- **`auth_google/templates/auth_google/no_disponible.html`** — ya estaba
+  con tokens TailAdmin (Outfit, paleta gray, rounded 16). Toque mínimo:
+  agregado kicker `La Recepción` y centrado vertical (`min-height: 100vh`
+  + flex) para consistencia con `la-recepcion/templates/proximamente.html`
+  y `buzon_proximamente.html` de S-2.
+
+### D. Perfil Notificaciones — El Taller (2 archivos)
+
+- **`el-taller/templates/interfono/_panel_suscripcion.html`** — NUEVO
+  (copia del de Gerencia, mismo patrón "dos copias sincronizadas" que
+  `_componentes_tailadmin/*.html`). Mismo contenido y contrato JS.
+- **`el-taller/templates/perfil_notificaciones/perfil.html`** —
+  Refactorizado de markup duplicado inline → `{% include "interfono/_panel_suscripcion.html" %}`.
+  El JS legacy embebido (window._INTERFONO_*) ahora vive sólo en el
+  partial, eliminando duplicación cross-app.
+
+### E. Legales (0 cambios — ya estaban)
+
+Los 4 archivos (`la-gerencia/templates/legal/{privacidad,terminos}.html`
++ `_privacidad_body.html` + `_terminos_body.html` × 2 copias) ya estaban
+en estilo TailAdmin desde S-1 (clases `prose prose-gray dark:prose-invert`,
+contenedor `rounded-2xl border border-gray-200 shadow-theme-sm` con
+fondo `bg-white dark:bg-gray-900`). **No requirieron tocar.** Texto
+LFPDPPP intacto.
+
+## 2. Validaciones
+
+- **`grep -r "Interfono" --include="*.html"`** → 0 hits visibles
+  (los 4 restantes son comentarios JS en `base.html` × 2 y comentarios
+  Django `{# ... #}` en `_404_body.html` / `_500_body.html` — preservados
+  como nombre interno del sprint que los originó).
+- **Contrato Ajustes preservado** (revisión manual del diff):
+  - Mismos `name=` en inputs (`clave`, `valor`)
+  - Mismos `action=` y `formaction=` en forms (`ajustes-guardar`,
+    `ajustes-probar`, `ajustes-probar-analistas`, `ajustes-probar-google-oauth`)
+  - Mismo `{% csrf_token %}` en cada form
+  - Mismo iterador `{% for clave, etiqueta, descripcion, configurado in slots %}`
+    — contrato con la vista intacto
+  - **Validación crítica en producción tras deploy**: entrar a
+    `https://gerencia.ninomeando.com/ajustes/` con `oscar@bautista.mx`,
+    confirmar que los 17+ slots aparecen y "Probar" responde OK en
+    al menos un slot configurado. Si falla, rollback automático cubre.
+- **Service Worker del Interfón preservado**: `window._INTERFONO_VAPID_PUBLIC`,
+  `window._INTERFONO_CSRF`, IDs y `data-cuando` literales del JS
+  `interfono_suscribir.js` están idénticos. Push permission flow
+  intacto.
+- **SSO Google funcional**: `auth_google/_error_body.html` no fue tocado;
+  el context processor `google_oauth_configurado` sigue alimentando
+  el botón "Continuar con Google" de S-1 que renderea condicional en
+  `sign_in` (también intacto).
+
+## 3. Pulido de S-TailAdmin-2
+
+**Cero items.** El usuario indicó que si detectaba algo durante validación
+visual lo pasaría antes del cierre. No llegó nada en la ventana del sprint.
+Lista vacía respetada (regla "max 3 items, no inventes").
+
+## 4. Tests + lint
+
+- **250 passed, 9 skipped, 1 warning** en 78s. Mismo total que S-2.
+- **Ruff verde**: `All checks passed!`
+- Sin nuevos tests escritos en este sprint (alcance A — facelift puro).
+- Sin tests rotos a ajustar — todos los assertions sobre HTML que
+  importaban ya se habían movido a aspectos de lógica en sprints
+  previos.
+
+## 5. Cambios de configuración
+
+- Cero. Sin tocar Dockerfiles, docker-compose, GHA workflows,
+  requirements.txt, settings.py, urls.py.
+
+## 6. Deuda residual al cierre de S-TailAdmin-3
+
+- **`_form_seccion.html` y `_form_campo.html`**: creados en S-2 pero
+  sigue sin usarlos ningún template. Los facelifts de form (Ajustes
+  tasa_form, Interfón form de envío) prefirieron inline. Quedan
+  disponibles para sprints donde el patrón sea genuinamente repetitivo.
+- **Aliases legacy `badge-slate/emerald/rose/amber/purple`** en
+  `input.css`: tras este sprint cero templates en `el-taller/templates/`
+  y `la-gerencia/templates/` los usan (verificación con grep). Pueden
+  eliminarse en sprint pre-S2b al primer toque del `input.css` —
+  o dejarse como compatibilidad hacia atrás indefinida (10 líneas).
+- **Validación visual del dueño en producción**: confirmar Ajustes
+  panel + tasas + Interfón tablero + perfil notificaciones (ambos
+  apps) + legales en light y dark mode. URLs sugeridas abajo.
+- **`auth_google/no_disponible.html`** sirve a La Recepción —
+  estructura HTML 100% standalone (no extiende `base.html` porque
+  Recepción aún no tiene shell autenticado). Cuando Recepción active
+  shell propio en S5, este template se beneficiará de pasar a
+  `{% extends "base.html" %}` como el resto.
+
+## 7. URLs sugeridas para validación visual tras deploy
+
+**La Gerencia:**
+- `https://gerencia.ninomeando.com/interfono/` — tablero (form + historial)
+- `https://gerencia.ninomeando.com/perfil/notificaciones/` — preferencias
+- `https://gerencia.ninomeando.com/ajustes/` — panel de credenciales
+- `https://gerencia.ninomeando.com/ajustes/tasas/` — tabla de tasas
+- `https://gerencia.ninomeando.com/ajustes/tasas/nueva/` — form de tasa
+- `https://gerencia.ninomeando.com/legal/privacidad/` y `/legal/terminos/`
+
+**El Taller:**
+- `https://taller.ninomeando.com/perfil/notificaciones/` — Interfón personal
+- `https://taller.ninomeando.com/legal/privacidad/` y `/legal/terminos/`
+
+**Crítico — verificar que NO se rompió:**
+- `oscar@bautista.mx` puede entrar con SSO Google
+- Los 17+ slots de Ajustes muestran su estado "Configurado"
+- "Probar" en `anthropic_api_key` responde 200/OK
+- Push notifications: "Activar" pide permiso, "Enviarme una prueba"
+  llega al navegador (después de suscribirse)
+
+---
+
+# 🏁 Cierre del arco TailAdmin (S-TailAdmin-1 → S-2 → S-3)
+
+> Marcador formal: **a partir de este commit el facelift visual de
+> El Despacho está completo.** Tres sub-sprints, una semana de trabajo
+> distribuido, cero cambios funcionales. Lo que sigue (pre-S2b) es
+> enchufar lógica al andamiaje que dejamos.
+
+## Resumen de los 3 sub-sprints
+
+| Sprint | Foco | Templates | Decisiones |
+|---|---|---|---|
+| **S-TailAdmin-1** | Cimientos del shell | 18 (auth, errores, legales, auth_google, dashboards, El Site +3 partials, Inicio Taller) | Camino A: Tailwind v3 + tokens portados, font Outfit, color brand `#465fff`, dark mode propio preservado, sin Alpine. Sweep `slate/stone` → `gray` aplicado a todo el repo. Patrón dos copias Gerencia/Taller. |
+| **S-TailAdmin-2** | Listas + detalles + andamiaje | 22 templates (Cartera, Proyectos, Pizarrón, Buzón empleado+admin, Directorio, Catálogo) + 3 placeholders Recepción | Andamiaje funcional para features de S2b: app `proximamente/`, slot Chalán, items "Pronto" gated por rol, chips `@/#/$`, preview de acciones, avatar Chalán. Rename visible Interfono → Interfón. |
+| **S-TailAdmin-3** | Pantallas finales | 6 con cambios + 4 ya estaban (Interfón, Ajustes, auth_google, perfil Taller, legales) | Contrato Ajustes/Bóveda/SW preservado 100%. Cero pulido S-2 inventado. Cierre formal del arco. |
+
+## Totales acumulados
+
+- **Templates convertidos al sistema visual TailAdmin Pro 2.3.0:**
+  18 (S-1) + 22 (S-2) + 6 con cambios (S-3) = **46 templates principales**
+  (más wrappers y bodies estilizados en sprints previos: ~55 archivos
+  HTML totales tocados a lo largo del arco).
+- **Partials reusables creados:**
+  - **S-1 (5):** `_componentes_tailadmin/{header, sidebar, tarjeta,
+    tarjeta_kpi, alertas_mensajes}.html`
+  - **S-2 (11):** `_tabla, _filtros_lista, _paginacion, _badge_estado,
+    _form_seccion, _form_campo, _hilo_mensaje, _tabs, _chip_referencia,
+    _preview_acciones, _avatar_chalan` (× 2 copias Gerencia/Taller =
+    22 archivos en disco)
+  - **S-3 (1):** `interfono/_panel_suscripcion.html` cross-app unificado
+    (× 2 copias = 2 archivos)
+  - **Total partials reusables: 17** (38 archivos por dos copias).
+
+## Andamiaje entregado (vivo, esperando enchufar)
+
+1. **`proximamente/` shared root app** con 5 slugs (`recados`, `tesoreria`,
+   `chalanes`, `dictado-historial`, `referencias`). En INSTALLED_APPS y
+   Dockerfiles de los 3 projects. URL viva en Gerencia y Taller.
+2. **Slot de El Dictado** en `gerencia_home/home.html` (placeholder
+   visual, migra al Taller en pre-S2b con Sala de Juntas).
+3. **Items "Pronto" en sidebars** — Los Chalanes (Gerencia super_admin/dueno),
+   Los Recados + La Tesorería (Taller, La Tesorería gated por rol —
+   diseñador no ve).
+4. **`_chip_referencia.html`** con paleta exacta de DOC_01 §5.3
+   (`@` brand · `#` violet · `$` emerald, variantes `inline` / `badge`).
+5. **`_preview_acciones.html`** con header del Chalán, checkboxes,
+   chip de confianza ⚠️, acciones sin permiso 🔒 con CTA "Crear recado",
+   per DOC_04 §4.2a + DOC_06.
+6. **`_avatar_chalan.html`** con contrato `chalan='claudio|gpt|chino|gemini'`
+   (hoy SVG genérico, pre-S2b diferencia).
+7. **`docs/ICONOS_MODULOS.md`** con todos los iconos reservados.
+8. **`docs/DOC_01..06`** archivados como referencia de diseño.
+
+## Decisiones cerradas durante el arco
+
+- **Camino A (Tailwind v3 + tokens portados)** vs Camino B (Tailwind v4
+  directo). A ganó por estabilidad del binario standalone Tailwind v3.4.17
+  y compatibilidad con Django sin Node.
+- **Sin Alpine, sin librerías UI externas.** Vanilla JS + HTMX cubre todo.
+- **Dark mode propio se queda al 100%** (anti-FOUC inline, `localStorage`
+  con clave `despacho-tema`, toggle de S-Interfono).
+- **Patrón dos copias sincronizadas** Gerencia/Taller para partials
+  reusables — más simple que namespace package de templates compartidos,
+  y el `grep` o el editor mantienen sincronía manual.
+- **HTMX se queda** — interactividad server-driven, no SPA.
+- **TailAdmin source NO se commita** — solo componentes adaptados a
+  templates Django.
+- **Rename visible `Interfono` → `Interfón`** (Ñ tilde), código preserva
+  `interfono` para todo: paths, models, URLs, eventos, IDs JS.
+- **Andamiaje sin lógica** en S-2: chips, preview, avatar son visuales.
+  La lógica llega en pre-S2b enchufando al Sistema de Referencias real
+  (DOC_01).
+- **App `proximamente/` shared root** (no dentro de Gerencia ni Taller).
+  Patrón consistente con `cuentas/`, `ajustes/`, `buzon/`, `interfono/`,
+  `auth_google/`.
+- **Slot del Chalán** vive provisionalmente en Gerencia
+  (`gerencia_home/home.html`) hasta pre-S2b — luego migra al Taller
+  con Sala de Juntas, decisión cerrada en DOC_04 §2.
+
+## Lo que NO entró al arco (deuda explícita)
+
+- **Consolidar legales a una sola fuente** (hoy 4 copias). Sprint
+  dedicado pequeño con DRY explícito cuando se quiera. No es facelift.
+- **Eliminar aliases legacy de badge** (`badge-slate/rose/amber/etc`)
+  del `input.css` — cero consumidores residuales, ready para borrar
+  en pre-S2b o cuando se toque el `input.css`.
+- **`_form_seccion.html` y `_form_campo.html`** creados pero sin
+  consumidores. Disponibles para uso futuro o eliminables si pre-S2b
+  decide que los forms inline son suficientes.
+- **Validación visual del dueño en producción** — sigue siendo el
+  smoke real. Cada sprint declaró "URLs sugeridas para validación";
+  el dueño cierra esa loop offline.
+
+## Próximo paso explícito: **pre-S2b**
+
+Sprint mediano-grande, pero **factible en tiempo razonable** gracias al
+arco TailAdmin. Lo que viene:
+
+1. **Sistema de Referencias `@/#/$` real (DOC_01)** — slugs en Usuario/
+   Proyecto/Cliente, tabla `referencia` polimórfica, regex parser,
+   endpoints `/api/autocomplete/{usuarios,proyectos,clientes}`, JS
+   vanilla del autocomplete, filtro `renderizar_referencias`, evento
+   Portavoz `referencia.usuario_mencionado`, búsqueda inversa. Los
+   chips visuales de `_chip_referencia.html` se enchufan a este motor.
+2. **Los Chalanes v2 (DOC_02)** — Cuadro de Chalanes, Cadena de
+   Sustitución, estaciones, aprendizajes globales. Avatar de
+   `_avatar_chalan.html` se diferencia visualmente.
+3. **El Dictado (DOC_04)** — text box prominente en Sala de Juntas,
+   interpretación con Chalán Claudio, preview de acciones (enchufado
+   a `_preview_acciones.html`), confirmación atómica por subset.
+4. **Re-arquitectura de ubicaciones:**
+   - Sala de Juntas: Gerencia → **Taller** (donde vive el equipo)
+   - El Buzón: Gerencia → **Taller** (mensajería operativa)
+   - El Dictado: nuevo, **Taller** (Sala de Juntas)
+   - La Gerencia se queda con admin puro: Directorio, Ajustes,
+     Catálogo, Los Chalanes, El Site, Tasas.
+
+Cierre del arco TailAdmin firmado. Próximo commit (cuando lo arranques)
+abre el ciclo pre-S2b.

@@ -2,12 +2,13 @@
 {% block title %}Mis notificaciones — La Gerencia{% endblock %}
 
 {% block contenido %}
-<div class="space-y-6 max-w-2xl">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mis notificaciones</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Activa El Interfón en este navegador para recibir avisos.</p>
-    </div>
+<header class="mb-6 max-w-2xl">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Interfón</p>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mis notificaciones</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Activa El Interfón en este navegador para recibir avisos.</p>
+</header>
 
+<div class="max-w-2xl">
     {% include "interfono/_panel_suscripcion.html" %}
 </div>
 {% endblock %}
