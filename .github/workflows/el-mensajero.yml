@@ -293,6 +293,13 @@ jobs:
 
             if [ "$DEPLOY_OK" -ne 0 ]; then
               echo "❌ Healthchecks fallaron tras 3 intentos. Iniciando rollback."
+              echo "=== ps de los containers (estado pre-rollback) ==="
+              docker compose $COMPOSE_FILES ps
+              echo "=== logs de los containers Django (últimas 80 líneas, pre-rollback) ==="
+              for svc in la-gerencia el-taller la-recepcion portavoz-worker; do
+                echo "--- ${svc} ---"
+                docker compose $COMPOSE_FILES logs --tail 80 --no-color "$svc" 2>&1 || true
+              done
               mv docker-compose.prod.yml.previo docker-compose.prod.yml
               git reset --hard "$COMMIT_PREVIO"
               docker compose $COMPOSE_FILES pull
