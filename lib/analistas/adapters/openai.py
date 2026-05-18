@@ -7,6 +7,7 @@ import time
 import httpx
 
 from ..base import Adapter, ErrorPermanente, ErrorTransitorio, FaltaCredencial, Resultado
+from ..capacidades import Capability
 
 MODELO_DEFAULT = "gpt-4o-mini"
 PRECIO_IN = 0.15 / 1_000_000
@@ -15,6 +16,8 @@ PRECIO_OUT = 0.60 / 1_000_000
 
 class OpenAIAdapter(Adapter):
     nombre = "openai"
+    apodo = "Chalán GPT"
+    capacidades = frozenset({Capability.TEXTO, Capability.VISION, Capability.FUNCTION_CALLING})
 
     def __init__(self, modelo: str = MODELO_DEFAULT, timeout: float = 30.0):
         self.modelo = modelo
@@ -22,9 +25,9 @@ class OpenAIAdapter(Adapter):
 
     def _llave(self) -> str:
         from ajustes.models.credencial import Credencial
-        llave = Credencial.obtener("openai_api_key")
+        llave = Credencial.obtener("chalan_openai_api_key") or Credencial.obtener("openai_api_key")
         if not llave:
-            raise FaltaCredencial("openai_api_key no configurada en Los Ajustes")
+            raise FaltaCredencial("chalan_openai_api_key no configurada en Los Ajustes")
         return llave
 
     def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float) -> Resultado:

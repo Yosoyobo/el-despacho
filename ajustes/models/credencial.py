@@ -22,8 +22,14 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("stripe_webhook_secret", "Stripe — Webhook Secret (whsec_...)", "Validación de webhooks entrantes."),
     ("mercadopago_access_token", "MercadoPago — Access Token", "Token de la cuenta vendedor."),
     ("mercadopago_webhook_secret", "MercadoPago — Webhook Secret", "Validación de notificaciones."),
-    ("anthropic_api_key", "Anthropic — API Key (sk-ant-...)", "Provider primario de Los Analistas."),
-    ("openai_api_key", "OpenAI — API Key (sk-...)", "Fallback de El Reemplazo."),
+    ("chalan_anthropic_api_key", "Chalán Claudio — API Key (sk-ant-…)", "API key del Chalán Claudio (Anthropic)."),
+    ("chalan_openai_api_key", "Chalán GPT — API Key (sk-…)", "API key del Chalán GPT (OpenAI)."),
+    ("chalan_deepseek_api_key", "Chalán Chino — API Key", "API key del Chalán Chino (Deepseek). NO soporta visión."),
+    ("chalan_gemini_api_key", "Chalán Gemini — API Key (reservado)", "Reservado; el adapter se activa en un sprint posterior."),
+    # Legacy — reemplazados por chalan_* arriba (pre-S2b.1). El super_admin
+    # los puede borrar manualmente desde la UI tras validar la migración.
+    ("anthropic_api_key", "Legacy: Anthropic — API Key", "Slot legacy. Usa chalan_anthropic_api_key."),
+    ("openai_api_key", "Legacy: OpenAI — API Key", "Slot legacy. Usa chalan_openai_api_key."),
     ("n8n_webhook_url", "n8n — Webhook URL", "Endpoint del Portavoz (vía Tailscale)."),
     ("n8n_webhook_secret", "n8n — Webhook Secret", "Para firmar HMAC saliente."),
     ("vapid_public_key", "Web Push — VAPID Public", "Notificaciones del Interfono. Generar con `interfono_generar_vapid`."),

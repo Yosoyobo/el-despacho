@@ -29,6 +29,8 @@ def generar_codigo_proyecto() -> str:
 
 class Proyecto(models.Model):
     codigo = models.CharField(max_length=12, unique=True, db_index=True, default=generar_codigo_proyecto)
+    # Slug para el Sistema de Referencias (#). Espejo del código en minúsculas.
+    slug = models.CharField(max_length=80, unique=True, db_index=True)
     nombre = models.CharField(max_length=200)
     cliente = models.ForeignKey("cartera.Cliente", on_delete=models.PROTECT, related_name="proyectos")
     descripcion = models.TextField(blank=True, default="")
@@ -85,6 +87,9 @@ class Proyecto(models.Model):
                 if not Proyecto.objects.filter(codigo=self.codigo).exists():
                     break
                 self.codigo = generar_codigo_proyecto()
+        if not self.slug:
+            from lib.slug import generar_slug_proyecto
+            self.slug = generar_slug_proyecto(self)
         super().save(*args, **kwargs)
 
     @property

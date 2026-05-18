@@ -7,6 +7,7 @@ import time
 import httpx
 
 from ..base import Adapter, ErrorPermanente, ErrorTransitorio, FaltaCredencial, Resultado
+from ..capacidades import Capability
 
 # claude-haiku-4-5: barato y rápido. Para cotizaciones largas el caller puede
 # subir a sonnet pasando modelo en kwargs (S2b lo cableará).
@@ -19,18 +20,21 @@ PRECIO_OUT = 5.00 / 1_000_000
 
 class AnthropicAdapter(Adapter):
     nombre = "anthropic"
+    apodo = "Chalán Claudio"
+    capacidades = frozenset({Capability.TEXTO, Capability.VISION, Capability.FUNCTION_CALLING})
 
     def __init__(self, modelo: str = MODELO_DEFAULT, timeout: float = 30.0):
         self.modelo = modelo
         self.timeout = timeout
 
     def _llave(self) -> str:
-        # Import perezoso para que el adapter pueda existir sin Django arrancado
-        # (lo usan tests y workers).
+        # Import perezoso para que el adapter pueda existir sin Django arrancado.
+        # Slot canónico = chalan_anthropic_api_key (pre-S2b.1); fallback al
+        # slot legacy `anthropic_api_key` mientras un super_admin lo migra.
         from ajustes.models.credencial import Credencial
-        llave = Credencial.obtener("anthropic_api_key")
+        llave = Credencial.obtener("chalan_anthropic_api_key") or Credencial.obtener("anthropic_api_key")
         if not llave:
-            raise FaltaCredencial("anthropic_api_key no configurada en Los Ajustes")
+            raise FaltaCredencial("chalan_anthropic_api_key no configurada en Los Ajustes")
         return llave
 
     def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float) -> Resultado:

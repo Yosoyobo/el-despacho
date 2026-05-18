@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Los Chalanes{% endblock %}
+{% block contenido %}
+<header class="mb-6">
+    <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Los Chalanes</h1>
+    <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+        Configura qué Chalán atiende cada estación, el orden de reemplazo cuando uno falla, y revisa la auditoría.
+    </p>
+</header>
+
+{# ── Sección 1: El Cuadro ────────────────────────────────────────────── #}
+<section class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">El Cuadro de Chalanes</h2>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Una fila por estación. Cambia el Chalán predeterminado del equipo.</p>
+    </header>
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-2">Estación</th>
+                <th class="px-5 py-2">Chalán</th>
+                <th class="px-5 py-2">Modelo</th>
+                <th class="px-5 py-2">Notas</th>
+                {% if puede_modificar %}<th class="px-5 py-2"></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for fila in cuadro %}
+            <tr>
+                <form method="post" action="{% url 'los_chalanes:guardar_cuadro' %}">{% csrf_token %}
+                    <input type="hidden" name="estacion" value="{{ fila.estacion }}">
+                    <td class="px-5 py-3 font-mono text-xs text-gray-700 dark:text-gray-300">
+                        {{ fila.estacion }}
+                        {% if fila.requiere_vision %}<span class="ml-1 rounded bg-warning-50 px-1.5 text-[10px] text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">👁 visión</span>{% endif %}
+                    </td>
+                    <td class="px-5 py-3">
+                        {% if puede_modificar %}
+                        <select name="proveedor" class="rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <option value="anthropic" {% if fila.proveedor == "anthropic" %}selected{% endif %}>Chalán Claudio</option>
+                            <option value="openai" {% if fila.proveedor == "openai" %}selected{% endif %}>Chalán GPT</option>
+                            <option value="deepseek" {% if fila.proveedor == "deepseek" %}selected{% endif %}>Chalán Chino</option>
+                        </select>
+                        {% else %}
+                        <span class="text-gray-700 dark:text-gray-300">{{ fila.get_proveedor_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3">
+                        {% if puede_modificar %}
+                        <input name="modelo" value="{{ fila.modelo }}" class="w-48 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        {% else %}<span class="font-mono text-xs text-gray-600 dark:text-gray-400">{{ fila.modelo }}</span>{% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ fila.descripcion }}</td>
+                    {% if puede_modificar %}
+                    <td class="px-5 py-3 text-right">
+                        <button type="submit" class="rounded-lg bg-brand-500 px-3 py-1 text-xs font-medium text-white hover:bg-brand-600">Guardar</button>
+                    </td>
+                    {% endif %}
+                </form>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{# ── Sección 2: La Cadena de Fallback ────────────────────────────────── #}
+<section class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">La Cadena de Fallback</h2>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Orden de reemplazo cuando el primario falla. Usa los botones para reordenar.</p>
+    </header>
+    <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+        {% for c in cadena %}
+        <li class="flex items-center gap-3 px-5 py-3">
+            <span class="w-8 text-center text-sm font-mono text-gray-500">{{ c.prioridad }}</span>
+            <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ c.proveedor }}</span>
+            <span class="text-xs {% if c.activo %}text-success-600{% else %}text-gray-400{% endif %}">
+                {% if c.activo %}activo{% else %}inactivo{% endif %}
+            </span>
+            {% if puede_modificar %}
+            <form method="post" action="{% url 'los_chalanes:reordenar_cadena' %}" class="inline">{% csrf_token %}
+                <input type="hidden" name="proveedor" value="{{ c.proveedor }}">
+                <button name="direccion" value="up" class="rounded-md border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">↑</button>
+                <button name="direccion" value="down" class="rounded-md border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">↓</button>
+            </form>
+            <form method="post" action="{% url 'los_chalanes:toggle_cadena' %}" class="inline">{% csrf_token %}
+                <input type="hidden" name="proveedor" value="{{ c.proveedor }}">
+                <button class="rounded-md border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">⏼</button>
+            </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+
+{# ── Sección 3: Auditoría ────────────────────────────────────────────── #}
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Auditoría reciente</h2>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Últimos 50 intentos. Marcas: <span class="text-warning-600">fallback</span> cuando el primario falló.</p>
+    </header>
+    <table class="w-full text-xs">
+        <thead class="bg-gray-50 text-left uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-2">Cuándo</th>
+                <th class="px-5 py-2">Estación</th>
+                <th class="px-5 py-2">Chalán</th>
+                <th class="px-5 py-2">Latencia</th>
+                <th class="px-5 py-2">Costo USD</th>
+                <th class="px-5 py-2">Resultado</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for log in logs %}
+            <tr>
+                <td class="px-5 py-2 font-mono text-gray-600 dark:text-gray-400">{{ log.creado_en|date:"Y-m-d H:i" }}</td>
+                <td class="px-5 py-2">{{ log.estacion }}</td>
+                <td class="px-5 py-2">
+                    {{ log.provider }}
+                    {% if log.es_fallback %}<span class="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">fallback de {{ log.proveedor_original }}</span>{% endif %}
+                </td>
+                <td class="px-5 py-2 font-mono">{{ log.latencia_ms }}ms</td>
+                <td class="px-5 py-2 font-mono">{{ log.costo_usd_estimado }}</td>
+                <td class="px-5 py-2">{% if log.exito %}<span class="text-success-600">✓</span>{% else %}<span class="text-error-600">✗ {{ log.mensaje_error|truncatechars:60 }}</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-5 py-6 text-center text-gray-400">Aún no hay intentos registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

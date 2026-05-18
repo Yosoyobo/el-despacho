@@ -28,6 +28,8 @@ INSTALLED_APPS = [
     "interfono.apps.InterfonoConfig",
     "auth_google.apps.AuthGoogleConfig",
     "proximamente.apps.ProximamenteConfig",
+    "referencias.apps.ReferenciasConfig",
+    "chalanes.apps.ChalanesConfig",
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
     "apps.legal.apps.LegalConfig",

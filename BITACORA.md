@@ -2758,3 +2758,148 @@ arco TailAdmin. Lo que viene:
 
 Cierre del arco TailAdmin firmado. Próximo commit (cuando lo arranques)
 abre el ciclo pre-S2b.
+
+---
+
+# BITÁCORA — Sprint Pre-S2b.1 (Infraestructura)
+
+> Cierre del **2026-05-18**. Sprint de infraestructura para S2b. Construye
+> los 3 pilares que las features siguientes (Recados, Dictado, Tesorería)
+> consumirán. **No** toca re-arquitectura de ubicaciones (eso es Pre-S2b.2).
+
+## 1. Pilares entregados
+
+### Pilar A — Sistema de Referencias `@/#/$` (DOC_01)
+
+| Pieza | Estado | Notas |
+|---|---|---|
+| `lib/slug.py` | ✅ | `generar_slug_{usuario,cliente,proyecto}` con desambiguación numérica. |
+| Migración slug en 3 modelos | ✅ | `cuentas/0005`, `cartera/0002`, `proyectos/0003`. Patrón 3 pasos: AddField null → RunPython backfill → AlterField unique. |
+| `referencias/` (app raíz) | ✅ | `models.Referencia` con CHECK constraint que exige FK única coherente con `tipo`. |
+| `referencias/parser.py` | ✅ | Regex `(?<![A-Za-z0-9_])([@#$])([A-Za-z0-9_-]{1,80})`. Rechaza `$50`, emails, hashtags-dentro-de-palabra. |
+| `referencias/resolver.py` | ✅ | Una query por tipo, devuelve `{(tipo, slug): instancia\|None}`. |
+| `referencias/services.py` | ✅ | `sincronizar_referencias(texto, contenedor_tipo, contenedor_id, autor)` borra previas, persiste resueltas y emite `referencia.usuario_mencionado` (dedup, excluye autor). |
+| Endpoints autocomplete | ✅ | `/api/autocomplete/{usuarios,proyectos,clientes}?q=…`. Diseñador no ve `$clientes` (lista vacía silenciosa). Prefijo en `slug`, `email`, `razón_social`, `código`. |
+| Endpoints búsqueda inversa | ✅ | `/api/referencias/{usuarios,proyectos,clientes}/<id>` paginado. |
+| `templatetags/referencias.py` | ✅ | Filtro `renderizar_referencias` con colores brand/violet/emerald + line-through para rotas. HTML-escapa el texto base. |
+| `static/js/referencias.js` | ✅ | ~150 líneas vanilla, debounce 150ms, flechas/Enter/Tab/Esc, re-monta en `htmx:afterSwap`. |
+| Event Portavoz | ✅ | `referencia.usuario_mencionado` emitido desde `services.sincronizar_referencias` (dedup + exclude autor). |
+
+### Pilar B — Los Chalanes v2 (DOC_02)
+
+| Pieza | Estado | Notas |
+|---|---|---|
+| `chalanes/` (app raíz) | ✅ | Modelos `CuadroChalanes`, `ChalanAsignado`, `CadenaFallback`. |
+| Migración + seeds | ✅ | `chalanes/0001_initial` siembra 8 estaciones + cadena anthropic=1/openai=2/deepseek=3. |
+| `lib/analistas/capacidades.py` | ✅ | `Capability {TEXTO, VISION, FUNCTION_CALLING}` + `SinCapacidad`. |
+| Adapter Deepseek (Chino) | ✅ | `lib/analistas/adapters/deepseek.py` — API compatible OpenAI. TEXTO + FUNCTION_CALLING, **NO VISION**. |
+| Adapter Gemini (skeleton) | ✅ no registrado | `gemini.py` con `NotImplementedError`. `_FACTORIES` lo omite. |
+| Refactor `base.py` | ✅ | `Adapter` ahora declara `apodo` y `capacidades` (frozenset). Alias `AdapterChalan`. Helper `esta_configurado()`. |
+| Refactor `registry.py` | ✅ | `cadena_de(estacion, usuario_id=None)` consulta DB: ChalanAsignado → CuadroChalanes → CadenaFallback. Fallback a `["anthropic", "openai"]` si DB vacía. |
+| Refactor `reemplazo.py` | ✅ | Marca `es_fallback=True` + `proveedor_original` cuando responde un Chalán posterior al primario. Soporta `requiere={Capability...}` para filtrar la cadena. |
+| Renombre slots Bóveda | ✅ idempotente | `ajustes/0004_chalanes_v2` agrega 4 slots `chalan_*` y copia valor cifrado desde los legacy `anthropic_api_key`/`openai_api_key` (que permanecen como `Legacy:` hasta limpieza manual). |
+| Columnas log v2 | ✅ | `analistas_log.es_fallback` + `proveedor_original` añadidas. |
+| UI `/chalanes/` | ✅ | App `apps.los_chalanes` en Gerencia. Una vista con 3 secciones: Cuadro editable inline, Cadena con botones ↑/↓ y toggle activo, Auditoría (últimos 50 logs con marca `fallback`). Solo super_admin modifica; dueño ve auditoría. |
+| Perfil personal `/perfil/chalanes/` | 🟡 deuda | Tabla `ChalanAsignado` viva y resolver la respeta; UI llega en sprint posterior. |
+| Rename UI "Los Analistas" | 🟡 parcial | Code path interno (`lib/analistas/`) **se preserva** (decisión cerrada). Sólo se introdujo "Los Chalanes" como marca nueva en el panel admin nuevo; el panel de Los Ajustes sigue con el botón "Probar Analistas" hasta sprint posterior. |
+
+### Pilar C — PermisoUsuario granular (DOC_03 §5.2)
+
+| Pieza | Estado | Notas |
+|---|---|---|
+| Modelo `PermisoUsuario` | ✅ | FK usuario + (modulo, permiso, activo). `unique_together`. |
+| Migración `0006_permiso_usuario` | ✅ | Tabla limpia. |
+| Migración `0007_seed_permisos_defaults` | ✅ idempotente | RunPython itera usuarios existentes y popula vía `bulk_create(ignore_conflicts=True)`. |
+| `lib/permisos_defaults.py` | ✅ | Defaults compilados de DOC_03 §5.1 + DOC_04 §5 + DOC_06 §11. 4 roles × 8 módulos. |
+| `lib.permisos.puede(usuario, modulo, permiso)` | ✅ | Consulta `PermisoUsuario`. Retorna False para anon o inactivo. |
+| Signal `auto_seedear_permisos` | ✅ | `post_save(Usuario, created=True)` siembra defaults. Idempotente (get_or_create). |
+| UI `/directorio/<id>/permisos` | ✅ | Checkboxes por módulo×permiso. Botón "Restablecer a defaults del rol". Solo super_admin. Emite `permisos.actualizado`. |
+
+## 2. Tablas Postgres nuevas
+
+```sql
+-- referencias_referencia
+id BIGINT PK
+contenedor_tipo VARCHAR(30) idx
+contenedor_id BIGINT idx
+tipo VARCHAR(10) idx CHECK (en {usuario, proyecto, cliente})
+usuario_id FK SET NULL
+proyecto_id FK SET NULL
+cliente_id FK SET NULL
+token_original VARCHAR(200)
+posicion_inicio INT
+posicion_fin INT
+creado_en TIMESTAMP
+CHECK (referencia_tipo_fk_unica): exactamente un FK poblado, coherente con tipo
+
+-- chalanes_cuadro
+id BIGINT PK · estacion UNIQUE · proveedor · modelo · descripcion · requiere_vision · actualizado_por FK · actualizado_en
+
+-- chalanes_asignado
+id BIGINT PK · usuario FK · estacion · proveedor · modelo · motivo · actualizado_en
+UNIQUE (usuario, estacion)
+
+-- chalanes_cadena_fallback
+id BIGINT PK · proveedor UNIQUE · prioridad idx · activo · actualizado_en
+
+-- cuentas_permiso_usuario
+id BIGINT PK · usuario FK · modulo · permiso · activo · modificado_por FK · modificado_en
+UNIQUE (usuario, modulo, permiso)
+```
+
+Columnas agregadas:
+- `cuentas_usuario.slug VARCHAR(80) UNIQUE` (cuentas/0005)
+- `cartera_cliente.slug VARCHAR(80) UNIQUE` (cartera/0002)
+- `proyectos_proyecto.slug VARCHAR(80) UNIQUE` (proyectos/0003)
+- `ajustes_analistas_log.es_fallback BOOL idx` + `proveedor_original VARCHAR(30)` (ajustes/0004)
+
+## 3. Endpoints nuevos
+
+| App | Ruta | Método | Notas |
+|---|---|---|---|
+| referencias | `/api/autocomplete/usuarios?q=` | GET | Prefijo. Excluye inactivos. |
+| referencias | `/api/autocomplete/proyectos?q=` | GET | Diseñador sólo ve asignados. |
+| referencias | `/api/autocomplete/clientes?q=` | GET | Diseñador → `{"resultados": []}`. |
+| referencias | `/api/referencias/{usuarios,proyectos,clientes}/<id>` | GET | Búsqueda inversa paginada. |
+| los_chalanes | `/chalanes/` | GET | Panel Cuadro+Cadena+Auditoría. |
+| los_chalanes | `/chalanes/cuadro/guardar` | POST | Cambia estación. Emite `chalanes.cuadro_actualizado`. |
+| los_chalanes | `/chalanes/cadena/reordenar` | POST | Direccion=up\|down. Emite `chalanes.cadena_actualizada`. |
+| los_chalanes | `/chalanes/cadena/toggle` | POST | Toggle activo. |
+| el_directorio | `/directorio/<id>/permisos` | GET/POST | UI granular. Emite `permisos.actualizado`. |
+
+## 4. Eventos del Portavoz nuevos
+
+- `referencia.usuario_mencionado` — payload `{usuario_id, autor_id, contenedor_tipo, contenedor_id}`. Emitido desde `services.sincronizar_referencias`. Dedup + excluye autor.
+- `chalanes.cuadro_actualizado` — `{estacion, proveedor, modelo, actor_id}`.
+- `chalanes.cadena_actualizada` — `{actor_id}`.
+- `permisos.actualizado` — `{usuario_id, email}`.
+
+## 5. Decisiones tomadas durante el sprint
+
+- **`referencias/` y `chalanes/` viven en raíz** (patrón shared establecido), no en `apps/`. Documentado en CLAUDE.md §6.
+- **App Django `chalanes/` separada** de `lib/analistas/`. Los modelos viven en `chalanes/`; los adapters y registry en `lib/`. Documentado.
+- **Botones ↑/↓ para reordenar cadena**, no drag-and-drop. Vanilla JS sin librerías. Documentado.
+- **Slots legacy `analista_*` se preservan** marcados como `Legacy:` en `SLOTS_CREDENCIAL` hasta que un super_admin los limpie manualmente. La migración `ajustes/0004_chalanes_v2` copia el valor cifrado al slot nuevo `chalan_*` correspondiente, idempotente.
+- **Anthropic/OpenAI adapters leen primero `chalan_*` con fallback al legacy `*_api_key`** durante 1 sprint. Después se quita el fallback.
+- **Gemini queda como skeleton no registrado** — `_FACTORIES` no lo incluye, levanta `NotImplementedError` si se invoca.
+- **URLconf de Los Ajustes reordenado** (fix de bug preexistente): rutas específicas `analistas/probar` y `google_oauth/probar` ahora preceden al catch-all `<slug:clave>/probar` para que no las absorba.
+
+## 6. Tests pasando
+
+| Archivo | Tests | Cobertura |
+|---|---|---|
+| `tests/test_referencias.py` | 20 | slugs (4) · parser (5) · CHECK constraint (2) · services (3) · filtro (3) · autocomplete (3) |
+| `tests/test_chalanes.py` | 20 | adapters (4) · slot fallback (2) · registry (4) · reemplazo (3) · seed (2) · slots (1) · UI panel (4) |
+| `tests/test_permiso_usuario.py` | 12 | signal (2) · helper `puede()` (3) · defaults (2) · contador (1) · UI (4) |
+| **Total nuevos** | **52** | + 250 suite anterior = **302 verdes** (9 skipped Redis) |
+
+## 7. Deuda residual
+
+- **UI `/perfil/chalanes/`** en El Taller — la tabla `ChalanAsignado` y el resolver ya la respetan; sólo falta la vista para que un usuario elija su Chalán por estación.
+- **Rename UI "Los Analistas" → "Los Chalanes"** en el botón "Probar Analistas" de Los Ajustes — código interno preservado por decisión, sólo el label visual queda como deuda menor.
+- **Comando management `renombrar_slots_chalanes`** — la migración `ajustes/0004_chalanes_v2` ya lo hace en producción al desplegarse; un comando explícito sería útil sólo si se necesita re-correr manualmente.
+- **Indices con nombres custom en `referencias/0001_initial`** — Django prefiere su hash auto-generado; las migraciones rename quedan pendientes (cosméticas, no rompen).
+
+## 8. Próximo sprint
+
+**Pre-S2b.2** — re-arquitectura de ubicaciones (Sala de Juntas + Buzón migran a Taller, sidebar reorganizada, permisos granulares aplicados al sidebar).

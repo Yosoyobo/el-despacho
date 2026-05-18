@@ -17,6 +17,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True, db_index=True)
     nombre_completo = models.CharField(max_length=200)
     rol = models.CharField(max_length=20, choices=ROLES, default="disenador", db_index=True)
+    # Slug para el Sistema de Referencias (@). Auto-generado en save() si vacío.
+    # Unicidad la garantiza la DB; ver lib.slug.generar_slug_usuario.
+    slug = models.CharField(max_length=80, unique=True, db_index=True)
 
     # Vínculo Google SSO opcional. `google_sub` es el ID inmutable que Google
     # emite por usuario; sobrevive cambios de email del lado Google.
@@ -44,6 +47,12 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         verbose_name = "usuario"
         verbose_name_plural = "usuarios"
         ordering = ["nombre_completo"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from lib.slug import generar_slug_usuario
+            self.slug = generar_slug_usuario(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nombre_completo} <{self.email}>"

@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     "interfono.apps.InterfonoConfig",
     "auth_google.apps.AuthGoogleConfig",
     "proximamente.apps.ProximamenteConfig",
+    "referencias.apps.ReferenciasConfig",
+    "chalanes.apps.ChalanesConfig",
     # El Taller
     "apps.auth_taller.apps.AuthTallerConfig",
     "apps.taller_home.apps.TallerHomeConfig",
@@ -50,6 +52,7 @@ INSTALLED_APPS = [
     "apps.buzon_admin.apps.BuzonAdminConfig",
     "apps.el_site.apps.ElSiteConfig",
     "apps.interfono_admin.apps.InterfonoAdminConfig",
+    "apps.los_chalanes.apps.LosChalanesConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",

@@ -134,15 +134,23 @@ ElDespacho/
 │   ├── portavoz.py · portavoz_eventos.py · portavoz_worker.py
 │   ├── permisos.py · sesion.py · sanear.py · ratelimit.py
 │   └── google_oauth.py
-├── cuentas/                    # app Django compartida — Usuario (AUTH_USER_MODEL)
+├── cuentas/                    # app Django compartida — Usuario (AUTH_USER_MODEL) + PermisoUsuario
 │   ├── managers.py · apps.py
-│   ├── models/usuario.py
-│   ├── migrations/0001_initial.py
+│   ├── models/usuario.py · models/permiso_usuario.py
+│   ├── migrations/
 │   └── management/commands/bootstrap_superadmin.py
 ├── ajustes/                    # app Django compartida — Credencial (KV cifrado)
 │   ├── apps.py
 │   ├── models/credencial.py    # SLOTS_CREDENCIAL + .obtener()/.guardar()
-│   └── migrations/0001_initial.py
+│   └── migrations/
+├── referencias/                # app shared raíz (Pre-S2b.1) — Referencia + parser + autocomplete
+│   ├── models/referencia.py
+│   ├── parser.py · resolver.py · views.py · urls.py
+│   ├── templatetags/referencias.py
+│   └── migrations/
+├── chalanes/                   # app shared raíz (Pre-S2b.1) — CuadroChalanes + ChalanAsignado + CadenaFallback
+│   ├── models/{cuadro,asignado,cadena}.py
+│   └── migrations/
 ├── la-gerencia/
 │   ├── Dockerfile · entrypoint.sh · manage.py
 │   ├── la_gerencia/           # Django project: settings, urls, asgi, wsgi
@@ -209,6 +217,25 @@ ElDespacho/
   que `cuentas/`, `ajustes/`, `buzon/`, `interfono/`, `auth_google/`. Sin
   modelos, sin migración; sólo `views.py` + `urls.py` + 1 template para
   pantalla coming-soon de módulos futuros.
+- **Apps `referencias/` y `chalanes/` en raíz** (decisión Pre-S2b.1) — siguen
+  el patrón shared establecido (cuentas, ajustes, buzon, interfono,
+  auth_google, proximamente). Ambas viven en la raíz del repo y se incluyen
+  en `INSTALLED_APPS` de los 3 Django projects. `referencias/` tiene la
+  tabla `Referencia` polimórfica + parser + autocomplete + filtro de
+  templates. `chalanes/` tiene los modelos `CuadroChalanes`,
+  `ChalanAsignado` y `CadenaFallback` que la UI de Gerencia consume;
+  la lógica de adapters y registry se queda en `lib/analistas/` (sin
+  Django, llamable desde scripts y workers). El split es deliberado:
+  modelos Django con queries limpias en la app, lógica pura sin
+  acoplamiento en `lib/`. NO usar `apps/referencias/` ni
+  `apps/chalanes/` (el patrón del repo es raíz, no nested).
+- **Reordenamiento de Cadena de Fallback con botones up/down** (decisión
+  Pre-S2b.1) — no drag-and-drop. Razón: vanilla JS sin librerías + HTMX
+  ya cubre el caso con ~10 líneas (`POST /chalanes/cadena/reordenar`
+  swap-up/swap-down). Drag-and-drop nativo HTML5 requeriría ~80 líneas
+  de JS para manejar dragstart/dragover/drop/touch-equivalente. Mismo
+  resultado funcional, menos superficie de bugs. Aplica también si se
+  agrega reordenamiento en otras tablas administrativas del repo.
 
 ---
 

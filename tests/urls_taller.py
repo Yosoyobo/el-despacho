@@ -16,4 +16,5 @@ urlpatterns = [
     path("", include("apps.el_pizarron.urls")),
     path("", include("apps.buzon_empleado.urls")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
+    path("api/", include("referencias.urls", namespace="referencias")),
 ]

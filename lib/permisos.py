@@ -83,6 +83,26 @@ def puede_ver_comentario(user, comentario) -> bool:
     return False
 
 
+def puede(usuario, modulo: str, permiso: str) -> bool:
+    """Pre-S2b.1: consulta PermisoUsuario granular.
+
+    Retorna True si la fila `(usuario, modulo, permiso)` existe y `activo=True`.
+    Usuario inactivo siempre False. Si la tabla no existe aún o falla la
+    consulta, retorna False defensivamente.
+    """
+    if not usuario or not getattr(usuario, "is_authenticated", False):
+        return False
+    if not getattr(usuario, "is_active", True):
+        return False
+    try:
+        from cuentas.models.permiso_usuario import PermisoUsuario
+        return PermisoUsuario.objects.filter(
+            usuario=usuario, modulo=modulo, permiso=permiso, activo=True
+        ).exists()
+    except Exception:
+        return False
+
+
 def requires_role(*roles: str) -> Callable:
     """Decorador para vistas Django. Si no autenticado → redirect a login;
     si autenticado pero rol no permitido → 403."""

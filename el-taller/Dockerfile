@@ -25,6 +25,8 @@ COPY buzon/ /app/buzon/
 COPY interfono/ /app/interfono/
 COPY auth_google/ /app/auth_google/
 COPY proximamente/ /app/proximamente/
+COPY referencias/ /app/referencias/
+COPY chalanes/ /app/chalanes/
 COPY el-taller/ /app/
 
 RUN if [ -f tailwind.config.js ]; then \

@@ -24,6 +24,10 @@ class AnalistaLog(models.Model):
     exito = models.BooleanField(default=False, db_index=True)
     mensaje_error = models.TextField(blank=True, default="")
 
+    # Pre-S2b.1: marca cuando el intento fue posterior al primario configurado.
+    es_fallback = models.BooleanField(default=False, db_index=True)
+    proveedor_original = models.CharField(max_length=30, blank=True, default="")
+
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

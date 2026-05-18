@@ -17,6 +17,8 @@ class ClienteActivosManager(models.Manager):
 
 class Cliente(models.Model):
     razon_social = models.CharField(max_length=200, db_index=True)
+    # Slug para el Sistema de Referencias ($). Auto-generado en save().
+    slug = models.CharField(max_length=80, unique=True, db_index=True)
     rfc = models.CharField(max_length=13, blank=True, default="", db_index=True)
     nombre_contacto = models.CharField(max_length=200, blank=True, default="")
     email_contacto = models.EmailField(blank=True, default="")
@@ -52,6 +54,12 @@ class Cliente(models.Model):
                 name="cartera_cliente_rfc_unique_nonempty",
             ),
         ]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from lib.slug import generar_slug_cliente
+            self.slug = generar_slug_cliente(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.razon_social

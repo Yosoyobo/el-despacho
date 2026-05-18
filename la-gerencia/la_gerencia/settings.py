@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     "interfono.apps.InterfonoConfig",
     "auth_google.apps.AuthGoogleConfig",
     "proximamente.apps.ProximamenteConfig",
+    "referencias.apps.ReferenciasConfig",
+    "chalanes.apps.ChalanesConfig",
     # De La Gerencia
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     "apps.buzon_admin.apps.BuzonAdminConfig",
     "apps.el_site.apps.ElSiteConfig",
     "apps.interfono_admin.apps.InterfonoAdminConfig",
+    "apps.los_chalanes.apps.LosChalanesConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",

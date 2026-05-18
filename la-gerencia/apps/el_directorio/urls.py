@@ -7,4 +7,5 @@ urlpatterns = [
     path("nuevo", views.crear, name="directorio-crear"),
     path("<int:pk>/editar", views.editar, name="directorio-editar"),
     path("<int:pk>/bloquear", views.bloquear, name="directorio-bloquear"),
+    path("<int:pk>/permisos", views.permisos, name="directorio-permisos"),
 ]

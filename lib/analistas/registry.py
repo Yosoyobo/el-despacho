@@ -1,39 +1,99 @@
-"""Mapeo estación → cadena de adapters.
+"""Registry de adapters + lookup de cadena DB-aware (Chalanes v2).
 
-Estaciones reservadas (las llenará S2b/S4/S5 con casos reales):
-- `cotizaciones` — redactar texto de cotización (S2b)
-- `gastos` — clasificar gasto (S4)
-- `comunicacion` — resumir hilo cliente (S4)
-- `precio` — sugerir precio (S4)
-- `cliente` — chat con cliente (S5)
-- `smoke` — prueba mínima desde Los Ajustes
+`cadena_de(estacion, usuario_id=None)` consulta:
+  1. `ChalanAsignado(usuario, estacion)` → override personal, si existe.
+  2. `CuadroChalanes(estacion)` → preferencia del equipo.
+  3. Hardcoded ['anthropic', 'openai'] → fallback de emergencia (DB vacía).
 
-La cadena DEFAULT es [anthropic → openai]. Cada estación puede sobreescribir
-si necesita un orden distinto.
+Luego agrega los demás Chalanes de la `CadenaFallback` activa, en orden de
+prioridad ASC, omitiendo duplicados.
 """
 
 from __future__ import annotations
 
-from .adapters import AnthropicAdapter, OpenAIAdapter
+from .adapters import AnthropicAdapter, DeepseekAdapter, OpenAIAdapter
 from .base import Adapter
 
-CADENA_DEFAULT = ("anthropic", "openai")
-
-CADENA_POR_ESTACION: dict[str, tuple[str, ...]] = {
-    "cotizaciones": CADENA_DEFAULT,
-    "gastos": CADENA_DEFAULT,
-    "comunicacion": CADENA_DEFAULT,
-    "precio": CADENA_DEFAULT,
-    "cliente": CADENA_DEFAULT,
-    "smoke": CADENA_DEFAULT,
-}
-
-_ADAPTERS: dict[str, type[Adapter]] = {
+# Map nombre → factory. Gemini no se registra aún (skeleton).
+_FACTORIES: dict[str, type[Adapter]] = {
     "anthropic": AnthropicAdapter,
     "openai": OpenAIAdapter,
+    "deepseek": DeepseekAdapter,
 }
 
+# Fallback de seguridad si las tablas chalanes_* no existen aún.
+CADENA_DEFAULT = ("anthropic", "openai")
 
-def cadena_de(estacion: str) -> list[Adapter]:
-    nombres = CADENA_POR_ESTACION.get(estacion, CADENA_DEFAULT)
-    return [_ADAPTERS[n]() for n in nombres if n in _ADAPTERS]
+
+def adapter_de(nombre: str, modelo: str | None = None) -> Adapter | None:
+    factory = _FACTORIES.get(nombre)
+    if factory is None:
+        return None
+    if modelo:
+        return factory(modelo=modelo)
+    return factory()
+
+
+def apodo(nombre: str) -> str:
+    """Para mostrar en UI: 'anthropic' → 'Chalán Claudio'."""
+    factory = _FACTORIES.get(nombre)
+    if factory is None:
+        return nombre
+    return getattr(factory, "apodo", nombre) or nombre
+
+
+def _resolver_primario(estacion: str, usuario_id: int | None) -> tuple[str, str | None] | None:
+    try:
+        from chalanes.models import ChalanAsignado, CuadroChalanes
+    except Exception:
+        return None
+    if usuario_id is not None:
+        try:
+            asignado = ChalanAsignado.objects.filter(usuario_id=usuario_id, estacion=estacion).first()
+        except Exception:
+            asignado = None
+        if asignado:
+            return (asignado.proveedor, asignado.modelo or None)
+    try:
+        cuadro = CuadroChalanes.objects.filter(estacion=estacion).first()
+    except Exception:
+        cuadro = None
+    if cuadro:
+        return (cuadro.proveedor, cuadro.modelo)
+    return None
+
+
+def _orden_fallback() -> list[str]:
+    try:
+        from chalanes.models import CadenaFallback
+        return list(
+            CadenaFallback.objects.filter(activo=True).order_by("prioridad").values_list("proveedor", flat=True)
+        )
+    except Exception:
+        return list(CADENA_DEFAULT)
+
+
+def cadena_de(estacion: str, usuario_id: int | None = None) -> list[Adapter]:
+    """Devuelve la lista ordenada de adapters a intentar."""
+    nombres: list[str] = []
+
+    primario = _resolver_primario(estacion, usuario_id)
+    if primario is not None:
+        nombres.append(primario[0])
+
+    for n in _orden_fallback():
+        if n not in nombres:
+            nombres.append(n)
+
+    if not nombres:
+        nombres = list(CADENA_DEFAULT)
+
+    cadena: list[Adapter] = []
+    for n in nombres:
+        if n not in _FACTORIES:
+            continue
+        modelo = primario[1] if (primario and primario[0] == n) else None
+        adapter = adapter_de(n, modelo=modelo)
+        if adapter:
+            cadena.append(adapter)
+    return cadena

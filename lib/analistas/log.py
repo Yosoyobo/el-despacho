@@ -26,13 +26,14 @@ def registrar_intento(
     resultado: Resultado | None = None,
     mensaje_error: str = "",
     actor_id: int | None = None,
+    es_fallback: bool = False,
+    proveedor_original: str | None = None,
 ) -> None:
-    """Persiste el intento. Import perezoso de Django para no acoplar el módulo
-    a apps cargadas (tests sin Django pueden mockear)."""
+    """Persiste el intento. v2: agrega es_fallback + proveedor_original."""
     try:
         from ajustes.models.analistas_log import AnalistaLog
     except ImportError:
-        return  # Django/app no cargada (uso aislado de la lib).
+        return
 
     fields = {
         "estacion": estacion,
@@ -50,4 +51,11 @@ def registrar_intento(
             costo_usd_estimado=resultado.costo_usd,
             latencia_ms=resultado.latencia_ms,
         )
+    # Columnas v2 — fallan-silenciosas si la migración aún no corrió.
+    try:
+        AnalistaLog._meta.get_field("es_fallback")
+        fields["es_fallback"] = es_fallback
+        fields["proveedor_original"] = proveedor_original or ""
+    except Exception:
+        pass
     AnalistaLog.objects.create(**fields)
