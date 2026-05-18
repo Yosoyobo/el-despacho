@@ -1,16 +1,33 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.7 · 15 mayo 2026 (revisión: post arco TailAdmin — visual unificado, andamiaje de módulos futuros visible)
+> **Versión:** v0.8 · 18 mayo 2026 (revisión: post Pre-S2b.1 — Sistema de Referencias `@/#/$`, Los Chalanes v2 configurables, permisos granulares por usuario)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
 > **Política de actualización:** este manual se actualiza después de cada sprint que entregue funcionalidad nueva. La versión final v1.0 se publicará cuando el desarrollo se considere cerrado.
 
-> **Estado al 15 mayo 2026:** look visual unificado a TailAdmin Pro 2.3.0
-> (paleta gray/brand, tipografía Outfit, dark mode con toggle propio).
-> El Interfón se renombró a "El Interfón" en todo lo visible (el sistema
-> sigue llamándolo `interfono` internamente). Los módulos que llegan en
-> sprints futuros (Los Recados, La Tesorería, Los Chalanes, El Dictado)
-> aparecen marcados como "Pronto" en el menú lateral con un placeholder
-> explicando para qué sirven cuando se les hace click.
+> **Novedades al 18 mayo 2026 (Pre-S2b.1):**
+>
+> - **Referencias `@/#/$` ya funcionan.** Cuando escribas en un Recado o
+>   Dictado, teclear `@oscar`, `#PRY-000123` o `$heladeria-foo` autocompleta
+>   en un dropdown y deja chips coloreados clickeables (`@usuario` morado de
+>   marca, `#proyecto` violeta, `$cliente` verde). Si la referencia se
+>   rompe (por ejemplo el cliente cambió de nombre), aparece tachada.
+> - **Los Chalanes v2 ya son configurables** desde Gerencia → Los Chalanes.
+>   Antes era placeholder; ahora ves el Cuadro de estaciones, la Cadena de
+>   Fallback (botones ↑/↓ para reordenar, toggle activo/inactivo) y la
+>   Auditoría de los últimos 50 intentos con marca cuando un Chalán entró
+>   como fallback en lugar del primario.
+> - **Permisos granulares por usuario** — el super_admin ahora puede
+>   afinar permisos individuales más allá del default del rol en
+>   Gerencia → Directorio → (usuario) → Permisos. Es una lista de
+>   checkboxes por módulo y acción. "Restablecer a defaults del rol"
+>   limpia todo.
+>
+> **Estado al 15 mayo 2026 (recordatorio):** look visual unificado a
+> TailAdmin Pro 2.3.0 (paleta gray/brand, tipografía Outfit, dark mode con
+> toggle propio). El Interfón se renombró a "El Interfón" en todo lo
+> visible. Los módulos que aún están en construcción (Los Recados, La
+> Tesorería, El Dictado) aparecen marcados como "Pronto" en el menú con
+> placeholder explicativo.
 
 ---
 
@@ -151,22 +168,39 @@ Tú revisas, marcas/desmarcas, confirmas. Se aplican las que dejaste marcadas.
 
 ### 🤖 Los Chalanes — el motor de IA
 
-**Dónde se configuran:** Gerencia → Los Chalanes (solo super_admin).
+**Dónde se configuran:** Gerencia → Los Chalanes (solo super_admin modifica; dueño ve la auditoría).
 **Dónde se usan:** detrás de El Dictado, OCR de recibos, sugerencias automáticas, todo lo de IA.
 
 Los Chalanes son tu equipo de asistentes virtuales. Cada uno es un proveedor de IA con su personalidad:
 
-- **Chalán Claudio** (Anthropic Claude) — el formal, bueno para razonamiento complejo
-- **Chalán GPT** (OpenAI) — el versátil
-- **Chalán Chino** (Deepseek) — el económico, alto volumen sin imágenes
-- **Chalán Gemini** (Google) — *próximamente*
+- **Chalán Claudio** (Anthropic Claude) — el formal, bueno para razonamiento complejo, sabe ver imágenes (OCR).
+- **Chalán GPT** (OpenAI) — el versátil, también sabe ver imágenes.
+- **Chalán Chino** (Deepseek) — el económico, alto volumen, **NO sabe ver imágenes**.
+- **Chalán Gemini** (Google) — *reservado, llega en sprint posterior*.
 
-**Cómo funcionan:**
-- Cada caso de uso (estación) tiene un Chalán preferido. Por ejemplo: El Dictado usa Claudio; categorizar gastos masivos usa Chino (más barato).
-- Cada usuario puede preferir un Chalán distinto al global desde su perfil.
-- Si un Chalán falla (sin tokens, error, etc.), el siguiente en la cadena entra automáticamente.
+**Lo que ves en `/chalanes/` (a partir de Pre-S2b.1):**
 
-**Importante para diseñadores:** el Chalán Chino no sabe ver imágenes. Si necesitas OCR de un recibo, el sistema usa otro Chalán automáticamente.
+1. **El Cuadro de Chalanes** — una tabla con todas las "estaciones" (casos
+   de uso) y qué Chalán las atiende. Cambias el dropdown, oprimes Guardar
+   y la siguiente vez que el sistema use esa estación llama al Chalán
+   nuevo. Las estaciones que requieren visión (como OCR de recibos)
+   muestran un badge `👁 visión` y ocultan automáticamente al Chalán
+   Chino del dropdown.
+2. **La Cadena de Fallback** — el orden de "si el primero falla, intenta
+   con éste". Reordenas con los botones ↑/↓; el toggle ⏼ activa o
+   desactiva un Chalán entero (útil cuando estás sin tokens en un
+   proveedor y quieres saltártelo). El default es Claudio → GPT → Chino.
+3. **Auditoría reciente** — últimos 50 intentos con fecha, estación,
+   Chalán que respondió, latencia, costo USD estimado y resultado. Cuando
+   el primario falla y entra un fallback, lo verás marcado en amarillo:
+   `fallback de anthropic`.
+
+**Override personal (próximamente):** un usuario individual podrá preferir
+otro Chalán distinto al global desde su perfil en El Taller. La tabla
+`ChalanAsignado` ya existe; la UI llega en Pre-S2b.2.
+
+**Importante para diseñadores:** el Chalán Chino no sabe ver imágenes. Si
+necesitas OCR de un recibo, el sistema brinca a Claudio o GPT automáticamente.
 
 ### 💰 La Tesorería
 
@@ -227,6 +261,42 @@ Cada proyecto: código (`PRY-000001`...), cliente, descripción, fechas, monto, 
 
 Tareas internas con prioridad, asignado, fecha, estado. Comentarios públicos (todos) e internos (solo admin/dueño).
 
+### 🔗 Sistema de Referencias `@/#/$` (Pre-S2b.1 ✅)
+
+**Dónde:** en cualquier cuadro de texto del sistema que tenga
+referencias activas (próximamente: Recados, Dictado, comentarios).
+
+Cuando escribas, puedes mencionar entidades del sistema con un sigil:
+
+- `@oscar` → menciona al usuario **Oscar** (chip morado de marca).
+- `#PRY-000123` → enlaza al proyecto cuyo código es PRY-000123 (chip violeta).
+- `$heladeria-foo` → enlaza al cliente "Heladería Foo" (chip verde).
+
+**Lo que pasa al teclear:**
+
+1. Apenas tecleas `@`, `#` o `$`, sale un dropdown debajo del cursor con
+   los primeros 8 resultados que coinciden con lo que llevas escrito.
+2. Te mueves con flechas ↑↓, eliges con Enter o Tab, cancelas con Esc.
+3. Al guardar, los chips quedan visibles y clickeables — te llevan al
+   directorio del usuario, ficha del proyecto o ficha del cliente.
+
+**Quién ve qué (autocompletado por rol):**
+
+- `@usuarios` y `#proyectos` los ve todo el mundo (el diseñador sólo ve
+  proyectos donde está asignado).
+- `$clientes` lo ven super_admin, dueño y contador. **El diseñador NO
+  ve el autocompletado de clientes** — su dropdown sale vacío para `$`
+  silenciosamente.
+
+**Referencias rotas:** si después de mencionar a alguien el usuario se
+archiva o el cliente se renombra, la referencia vieja queda como texto
+tachado en gris. No desaparece — sirve como rastro histórico.
+
+**Notificaciones por mención:** cuando alguien te mencione con `@tu-slug`
+en un Recado o Dictado, recibirás un push del Interfón (si tienes
+notificaciones activadas). Es dedupe — si te mencionan 3 veces en el mismo
+mensaje, sólo llega un push.
+
 ### 💬 Los Recados
 
 **Dónde:** El Taller → Los Recados.
@@ -281,6 +351,33 @@ Sirve para que quien opera el backend tenga contexto del negocio sin tener que s
 ### 👥 El Directorio
 
 Lista de usuarios. Por cada uno: nombre, email, rol, estado, **permisos granulares** (checkboxes por módulo y acción).
+
+**Permisos granulares (Pre-S2b.1 ✅):** desde la fila de un usuario, link
+**Permisos** → llegas a `/directorio/<id>/permisos`. Ves la lista de
+módulos del rol de ese usuario, expandidos en checkboxes por acción:
+
+```
+Cartera
+  ☑ ver
+  ☑ crear
+  ☑ editar
+  ☐ archivar          ← desactivado para este usuario
+Proyectos
+  ☑ ver
+  …
+```
+
+El default viene del rol; lo que cambies aquí queda como override
+personal. **Restablecer a defaults del rol** borra todos los overrides y
+re-siembra desde el rol — útil cuando te perdiste tocando checkboxes.
+
+**Cómo lo lee el sistema:** cualquier vista pregunta
+`puede(usuario, "modulo", "accion")` — si la fila está marcada activa,
+pasa; si está desactivada o no existe, no pasa. Diseñador que no tiene
+`cartera.ver` no ve siquiera el item "Cartera" en su menú lateral.
+
+> Usuarios nuevos creados desde El Directorio se siembran automáticamente
+> con los defaults de su rol — no tienes que tocar permisos para arrancar.
 
 ### 📚 El Catálogo
 
