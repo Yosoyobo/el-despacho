@@ -80,7 +80,7 @@ def test_referencia_check_constraint_tipo_usuario(usuario_factory, proyecto_fact
     with pytest.raises(IntegrityError), transaction.atomic():
         Referencia.objects.create(
             contenedor_tipo="t", contenedor_id=1,
-            tipo="usuario", usuario=u, proyecto=p,
+            tipo="usuario", usuario=u, proyecto_id=p.pk,
             token_original="@x", posicion_inicio=0, posicion_fin=1,
         )
 

@@ -63,9 +63,9 @@ def sincronizar_referencias(
             if entidad.pk != autor_id:
                 usuarios_mencionados_ids.add(entidad.pk)
         elif t.tipo == "proyecto":
-            kwargs["proyecto"] = entidad
+            kwargs["proyecto_id"] = entidad.pk
         elif t.tipo == "cliente":
-            kwargs["cliente"] = entidad
+            kwargs["cliente_id"] = entidad.pk
         creadas.append(Referencia.objects.create(**kwargs))
 
     # Emitir un evento por cada usuario único mencionado.
