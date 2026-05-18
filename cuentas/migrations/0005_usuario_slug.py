@@ -45,12 +45,15 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="usuario",
             name="slug",
-            field=models.CharField(max_length=80, null=True, db_index=True),
+            # Sin db_index aquí — el AlterField posterior agrega unique=True que
+            # ya crea su propio índice. Tener db_index + unique=True después
+            # rompe en Postgres con índice duplicado.
+            field=models.CharField(max_length=80, null=True),
         ),
         migrations.RunPython(backfill_slugs, reverse_backfill),
         migrations.AlterField(
             model_name="usuario",
             name="slug",
-            field=models.CharField(max_length=80, unique=True, db_index=True),
+            field=models.CharField(max_length=80, unique=True),
         ),
     ]

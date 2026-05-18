@@ -45,12 +45,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="proyecto",
             name="slug",
-            field=models.CharField(max_length=80, null=True, db_index=True),
+            field=models.CharField(max_length=80, null=True),
         ),
         migrations.RunPython(backfill_slugs, reverse_backfill),
         migrations.AlterField(
             model_name="proyecto",
             name="slug",
-            field=models.CharField(max_length=80, unique=True, db_index=True),
+            field=models.CharField(max_length=80, unique=True),
         ),
     ]

@@ -19,7 +19,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     rol = models.CharField(max_length=20, choices=ROLES, default="disenador", db_index=True)
     # Slug para el Sistema de Referencias (@). Auto-generado en save() si vacío.
     # Unicidad la garantiza la DB; ver lib.slug.generar_slug_usuario.
-    slug = models.CharField(max_length=80, unique=True, db_index=True)
+    slug = models.CharField(max_length=80, unique=True)
 
     # Vínculo Google SSO opcional. `google_sub` es el ID inmutable que Google
     # emite por usuario; sobrevive cambios de email del lado Google.

@@ -18,7 +18,7 @@ class ClienteActivosManager(models.Manager):
 class Cliente(models.Model):
     razon_social = models.CharField(max_length=200, db_index=True)
     # Slug para el Sistema de Referencias ($). Auto-generado en save().
-    slug = models.CharField(max_length=80, unique=True, db_index=True)
+    slug = models.CharField(max_length=80, unique=True)
     rfc = models.CharField(max_length=13, blank=True, default="", db_index=True)
     nombre_contacto = models.CharField(max_length=200, blank=True, default="")
     email_contacto = models.EmailField(blank=True, default="")
