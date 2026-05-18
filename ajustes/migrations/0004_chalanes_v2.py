@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from django.db import migrations, models
 
-
 LEGACY_TO_NUEVO = [
     ("anthropic_api_key", "chalan_anthropic_api_key"),
     ("openai_api_key", "chalan_openai_api_key"),

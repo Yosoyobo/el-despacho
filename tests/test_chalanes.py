@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from lib.analistas.base import ErrorTransitorio, FaltaCredencial, Resultado
+from lib.analistas.base import ErrorTransitorio, Resultado
 from lib.analistas.capacidades import Capability
 
 pytestmark = pytest.mark.django_db
@@ -75,7 +75,6 @@ def test_registry_apodo():
 
 def test_cadena_usa_cuadro_chalanes():
     from chalanes.models import CuadroChalanes
-
     from lib.analistas.registry import cadena_de
     # Migration seed: ocr_recibo → openai. Cambiamos a deepseek para test.
     CuadroChalanes.objects.update_or_create(
@@ -87,7 +86,6 @@ def test_cadena_usa_cuadro_chalanes():
 
 def test_cadena_respeta_chalan_asignado(usuario_factory):
     from chalanes.models import ChalanAsignado, CuadroChalanes
-
     from lib.analistas.registry import cadena_de
     u = usuario_factory()
     CuadroChalanes.objects.update_or_create(
@@ -116,7 +114,6 @@ def test_reemplazo_marca_es_fallback():
     """Anthropic falla, OpenAI responde — log marca es_fallback=True para openai."""
     from ajustes.models.analistas_log import AnalistaLog
     from ajustes.models.credencial import Credencial
-
     from lib.analistas.adapters import AnthropicAdapter, OpenAIAdapter
     from lib.analistas.reemplazo import analizar
 
@@ -151,7 +148,6 @@ def test_reemplazo_salta_sin_credencial():
     """Si fallback no está configurado, se salta — no se loguea intento."""
     from ajustes.models.analistas_log import AnalistaLog
     from ajustes.models.credencial import Credencial
-
     from lib.analistas.adapters import AnthropicAdapter
     from lib.analistas.reemplazo import TodosFallaron, analizar
 
@@ -162,9 +158,8 @@ def test_reemplazo_salta_sin_credencial():
         raise ErrorTransitorio("anthropic: 503")
 
     AnalistaLog.objects.all().delete()
-    with patch.object(AnthropicAdapter, "_invocar", fail):
-        with pytest.raises(TodosFallaron) as exc:
-            analizar("estacion_z", "hola")
+    with patch.object(AnthropicAdapter, "_invocar", fail), pytest.raises(TodosFallaron) as exc:
+        analizar("estacion_z", "hola")
     nombres = [n for n, _ in exc.value.intentos]
     assert "anthropic" in nombres
     assert "openai" in nombres  # marcado como sin credencial
@@ -173,7 +168,6 @@ def test_reemplazo_salta_sin_credencial():
 def test_reemplazo_filtro_capacidad():
     """Si requiere VISION, Chino no entra en la cadena."""
     from ajustes.models.credencial import Credencial
-
     from lib.analistas.adapters import AnthropicAdapter, OpenAIAdapter
     from lib.analistas.capacidades import Capability
     from lib.analistas.reemplazo import analizar

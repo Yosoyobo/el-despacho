@@ -33,11 +33,18 @@ GitHub Actions (**El Mensajero**) · GHCR.
   46 templates al sistema visual TailAdmin Pro 2.3.0, 17 partials
   reusables, andamiaje para módulos futuros (chips `@/#/$`,
   `/proximamente/<slug>/`, slot del Chalán, items "Pronto" en sidebars)
-- **pre-S2b** ⏳ siguiente: Sistema de Referencias real (DOC_01) +
-  Los Chalanes v2 (DOC_02) + El Dictado (DOC_04) + migración Sala de
-  Juntas y Buzón al Taller
+- **Pre-S2b.1** ✅ (cerrado 2026-05-18): infraestructura para S2b — Sistema
+  de Referencias `@/#/$` funcional (slugs + tabla `referencia` + parser +
+  autocomplete + filtro + JS vanilla + evento `referencia.usuario_mencionado`),
+  Los Chalanes v2 (3 tablas, adapter Deepseek/Chino, Gemini placeholder,
+  registry DB-aware, slot rename idempotente, UI `/chalanes/`), tabla
+  `PermisoUsuario` granular con defaults seedeados por rol y UI
+  `/directorio/<id>/permisos`. **302 tests verdes**.
+- **Pre-S2b.2** ⏳ siguiente: re-arquitectura de ubicaciones (Sala de
+  Juntas + Buzón migran a Taller, sidebar reorganizada, perfil personal
+  `/perfil/chalanes/` en Taller, permisos granulares aplicados al sidebar)
 - **S2b** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google
-  Workspace · Los Recados (DOC_03) · La Tesorería (DOC_06)
+  Workspace · Los Recados (DOC_03) · El Dictado (DOC_04) · La Tesorería (DOC_06)
 - **S3** Contaduría · Sala de Juntas con KPIs reales
 - **S4** Los Chalanes — casos de uso adicionales (categorizar gasto
   automático, sugerir precio, resumir hilos)

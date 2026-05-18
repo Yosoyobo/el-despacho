@@ -12,7 +12,6 @@ listado en el rol del usuario.
 
 from __future__ import annotations
 
-
 # Acciones por módulo — espejo "todo permitido" para super_admin y dueno.
 TODO_CARTERA = ["ver", "crear", "editar", "archivar"]
 TODO_PROYECTOS = ["ver", "crear", "editar", "asignar", "cambiar_estado"]

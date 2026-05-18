@@ -1,5 +1,7 @@
 """El Directorio — CRUD de usuarios internos. Solo super_admin y dueño."""
 
+import contextlib
+
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
@@ -108,14 +110,12 @@ def permisos(request, pk: int):
                     usuario=u, modulo=modulo, permiso=permiso,
                     defaults={"activo": activo, "modificado_por": request.user},
                 )
-        try:
+        with contextlib.suppress(Exception):
             emitir(EventoPortavoz(
                 tipo="permisos.actualizado",
                 actor_id=request.user.pk, actor_email=request.user.email,
                 payload={"usuario_id": u.pk, "email": u.email},
             ))
-        except Exception:
-            pass
         messages.success(request, f"Permisos de {u.email} actualizados.")
         return redirect("directorio-permisos", pk=u.pk)
 

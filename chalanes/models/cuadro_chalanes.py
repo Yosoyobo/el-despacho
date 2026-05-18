@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from django.db import models
 
-
 PROVEEDORES = (
     ("anthropic", "Chalán Claudio (Anthropic)"),
     ("openai", "Chalán GPT (OpenAI)"),

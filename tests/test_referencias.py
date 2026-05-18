@@ -77,13 +77,12 @@ def test_referencia_check_constraint_tipo_usuario(usuario_factory, proyecto_fact
     u = usuario_factory()
     p = proyecto_factory()
     # tipo=usuario con proyecto poblado debe violar
-    with pytest.raises(IntegrityError):
-        with transaction.atomic():
-            Referencia.objects.create(
-                contenedor_tipo="t", contenedor_id=1,
-                tipo="usuario", usuario=u, proyecto=p,
-                token_original="@x", posicion_inicio=0, posicion_fin=1,
-            )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Referencia.objects.create(
+            contenedor_tipo="t", contenedor_id=1,
+            tipo="usuario", usuario=u, proyecto=p,
+            token_original="@x", posicion_inicio=0, posicion_fin=1,
+        )
 
 
 def test_referencia_valida_tipo_usuario(usuario_factory):

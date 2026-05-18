@@ -10,6 +10,8 @@ Solo super_admin puede modificar; dueño puede ver auditoría.
 
 from __future__ import annotations
 
+import contextlib
+
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
@@ -47,11 +49,9 @@ def guardar_cuadro(request):
     fila.modelo = modelo
     fila.actualizado_por = request.user
     fila.save()
-    try:
+    with contextlib.suppress(Exception):
         emitir({"tipo": "chalanes.cuadro_actualizado", "estacion": estacion,
                 "proveedor": proveedor, "modelo": modelo, "actor_id": request.user.pk})
-    except Exception:
-        pass
     messages.success(request, f"Estación '{estacion}' → {proveedor}.")
     return redirect("los_chalanes:panel")
 
@@ -74,10 +74,8 @@ def reordenar_cadena(request):
         a.prioridad, b.prioridad = b.prioridad, a.prioridad
         a.save(update_fields=["prioridad"])
         b.save(update_fields=["prioridad"])
-        try:
+        with contextlib.suppress(Exception):
             emitir({"tipo": "chalanes.cadena_actualizada", "actor_id": request.user.pk})
-        except Exception:
-            pass
     return redirect("los_chalanes:panel")
 
 
@@ -89,8 +87,6 @@ def toggle_cadena(request):
     if fila:
         fila.activo = not fila.activo
         fila.save(update_fields=["activo"])
-        try:
+        with contextlib.suppress(Exception):
             emitir({"tipo": "chalanes.cadena_actualizada", "actor_id": request.user.pk})
-        except Exception:
-            pass
     return redirect("los_chalanes:panel")

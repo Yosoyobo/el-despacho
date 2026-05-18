@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from django.db import models
 
-
 TIPOS_REFERENCIA = (
     ("usuario", "Usuario"),
     ("proyecto", "Proyecto"),

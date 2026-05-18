@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from django.db import migrations, models
 
-
 SEEDS_CUADRO = [
     # (estacion, proveedor, modelo, descripcion, requiere_vision)
     ("cotizaciones", "anthropic", "claude-haiku-4-5", "Redactar texto de cotización para cliente", False),
