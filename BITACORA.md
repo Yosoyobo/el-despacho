@@ -2900,6 +2900,16 @@ Columnas agregadas:
 - **Comando management `renombrar_slots_chalanes`** — la migración `ajustes/0004_chalanes_v2` ya lo hace en producción al desplegarse; un comando explícito sería útil sólo si se necesita re-correr manualmente.
 - **Indices con nombres custom en `referencias/0001_initial`** — Django prefiere su hash auto-generado; las migraciones rename quedan pendientes (cosméticas, no rompen).
 
-## 8. Próximo sprint
+## 8. CI / deploy
 
-**Pre-S2b.2** — re-arquitectura de ubicaciones (Sala de Juntas + Buzón migran a Taller, sidebar reorganizada, permisos granulares aplicados al sidebar).
+- Primer push (`915d018`): Ruff bloqueó (17 errors: SIM105/SIM117/F401)
+  → smoke_docker + build + La Mudanza quedaron saltados. Tests sí pasaron.
+- Fix commit (`ca5b6f0`): `ruff --fix --unsafe-fixes .` autocorrige
+  (try/except/pass → contextlib.suppress; nested with → single; drop import
+  sin uso). Tests se quedan en 302 verdes.
+
+## 9. Próximo sprint
+
+**Pre-S2b.2** — re-arquitectura de ubicaciones (Sala de Juntas + Buzón migran
+a Taller, sidebar reorganizada, perfil personal `/perfil/chalanes/` en El
+Taller, permisos granulares aplicados al sidebar).
