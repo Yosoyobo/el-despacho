@@ -12,7 +12,7 @@
     <div class="flex flex-wrap gap-2">
         <a href="{% url 'ajustes-tasas' %}" class="btn-secundario">Tasas e Impuestos →</a>
         <form method="post" action="{% url 'ajustes-probar-analistas' %}">{% csrf_token %}
-            <button type="submit" class="btn-secundario">Probar Analistas</button>
+            <button type="submit" class="btn-secundario">Probar Chalanes</button>
         </form>
         <form method="post" action="{% url 'ajustes-probar-google-oauth' %}">{% csrf_token %}
             <button type="submit" class="btn-secundario">Probar Google OAuth</button>

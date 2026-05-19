@@ -40,9 +40,15 @@ GitHub Actions (**El Mensajero**) · GHCR.
   registry DB-aware, slot rename idempotente, UI `/chalanes/`), tabla
   `PermisoUsuario` granular con defaults seedeados por rol y UI
   `/directorio/<id>/permisos`. **302 tests verdes**.
-- **Pre-S2b.2** ⏳ siguiente: re-arquitectura de ubicaciones (Sala de
-  Juntas + Buzón migran a Taller, sidebar reorganizada, perfil personal
-  `/perfil/chalanes/` en Taller, permisos granulares aplicados al sidebar)
+- **Pre-S2b.2** ✅ (cerrado 2026-05-19): re-arquitectura de ubicaciones —
+  Sala de Juntas + El Buzón + El Catálogo migran de Gerencia a Taller,
+  dashboard ejecutivo espejo en Gerencia, sidebar dinámica por permisos
+  granulares (template tag `{{user|puede:"x.y"}}` + context processor),
+  middleware que redirige contador/diseñador de Gerencia a Taller, perfil
+  personal `/perfil/chalanes/` en Taller, 7 permisos granulares para el
+  Catálogo (incluye `ver_precios` separado), rename "Probar Analistas" →
+  "Probar Chalanes". **331 tests verdes**.
+- **S2b.1** ⏳ siguiente: Los Recados (mensajería interna con `@/#/$`)
 - **S2b** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google
   Workspace · Los Recados (DOC_03) · El Dictado (DOC_04) · La Tesorería (DOC_06)
 - **S3** Contaduría · Sala de Juntas con KPIs reales

@@ -1,9 +1,37 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.8 · 18 mayo 2026 (revisión: post Pre-S2b.1 — Sistema de Referencias `@/#/$`, Los Chalanes v2 configurables, permisos granulares por usuario)
+> **Versión:** v0.9 · 19 mayo 2026 (revisión: post Pre-S2b.2 — re-arquitectura, dashboard espejo, sidebar dinámica, perfil personal de Chalanes)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
 > **Política de actualización:** este manual se actualiza después de cada sprint que entregue funcionalidad nueva. La versión final v1.0 se publicará cuando el desarrollo se considere cerrado.
 
+> **Novedades al 19 mayo 2026 (Pre-S2b.2):**
+>
+> - **La Sala de Juntas vive ahora en El Taller** (antes estaba en La Gerencia).
+>   Con slot del Chalán, KPIs adaptativos por rol (los KPIs reales llegan en
+>   S2b.4 — hoy son placeholders `—`) y dos tablas con datos reales:
+>   *Proyectos activos por fecha de entrega* y *Pendientes de cotizar*.
+> - **La Gerencia tiene un dashboard ejecutivo espejo** — vista compacta con
+>   los mismos KPIs y un CTA grande "Ver Sala de Juntas completa en El Taller".
+> - **El Buzón vive en El Taller** (antes había una bandeja admin en Gerencia
+>   y otra de empleado en Taller). Una sola bandeja que adapta lo que ves
+>   por tu permiso: admin ve todos los mensajes y puede responder; empleado
+>   ve los suyos. URLs viejas (`/buzon/mios/`) redirigen automático.
+> - **El Catálogo vive en El Taller** con 7 permisos granulares toggleables
+>   individualmente desde Directorio → Permisos: `ver_nombres`, `ver_precios`,
+>   `crear`, `editar`, `editar_precios`, `archivar`, `gestionar_categorias`.
+>   Default: diseñador ve nombres pero NO precios; contador ve ambos.
+> - **Mis Chalanes (perfil personal)** — desde el sidebar del Taller, link
+>   "Mis Chalanes" te lleva a `/perfil/chalanes/` donde puedes elegir un
+>   Chalán distinto al del equipo para cada estación. Si dejas "Predeterminado
+>   del equipo" se usa el del Cuadro.
+> - **Sidebar dinámica por permiso** — el sidebar del Taller solo muestra los
+>   módulos para los que tienes permiso de ver. Cuando el super_admin desactiva
+>   `buzon.ver_propios` para alguien, ese alguien deja de ver el item en su
+>   menú al siguiente login.
+> - **Botón "Probar Chalanes"** (antes "Probar Analistas") en Los Ajustes.
+> - **Rol contador/diseñador llegando a `gerencia.ninomeando.com/`**: ahora
+>   los redirige automático al Taller, donde sí pertenecen.
+>
 > **Novedades al 18 mayo 2026 (Pre-S2b.1):**
 >
 > - **Referencias `@/#/$` ya funcionan.** Cuando escribas en un Recado o

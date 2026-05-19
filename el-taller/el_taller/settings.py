@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     "apps.el_pizarron.apps.ElPizarronConfig",
     "apps.buzon_empleado.apps.BuzonEmpleadoConfig",
     "apps.perfil_notificaciones.apps.PerfilNotificacionesConfig",
+    # Pre-S2b.2: movidos desde La Gerencia.
+    "apps.el_catalogo.apps.ElCatalogoConfig",
+    "apps.perfil_chalanes.apps.PerfilChalanesConfig",
 ]
 
 MIDDLEWARE = [
@@ -64,6 +67,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "interfono.context_processors.vapid_public_key",
                 "auth_google.context_processors.google_oauth_configurado",
+                "cuentas.context_processors.permisos_modulos",
             ],
         },
     },

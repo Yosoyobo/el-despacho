@@ -1,8 +1,12 @@
-"""El Catálogo — CRUD de servicios + categorías + permisos."""
+"""El Catálogo — CRUD de servicios + categorías + permisos granulares.
+
+Pre-S2b.2: movido de Gerencia a Taller. Permisos por `puede(user, "catalogo", X)`
+en lugar de `requires_role`.
+"""
 
 import pytest
 
-pytestmark = [pytest.mark.gerencia, pytest.mark.django_db]
+pytestmark = [pytest.mark.taller, pytest.mark.django_db]
 
 
 @pytest.fixture
@@ -17,10 +21,18 @@ class TestCatalogoLista:
         resp = client.get("/catalogo/")
         assert resp.status_code in (302, 403)
 
-    def test_disenador_sin_acceso(self, client, usuario_factory):
+    def test_disenador_ve_nombres_sin_precios(self, client, usuario_factory, categoria):
+        """Pre-S2b.2: diseñador tiene `catalogo.ver_nombres` por default,
+        pero NO `catalogo.ver_precios` — ve la lista sin columna de precio."""
+        from apps.el_catalogo.models import Servicio
+        Servicio.objects.create(nombre="Logo", precio_base="1500.00", categoria=categoria)
         client.force_login(usuario_factory(rol="disenador"))
         resp = client.get("/catalogo/")
-        assert resp.status_code == 403
+        assert resp.status_code == 200
+        assert b"Logo" in resp.content
+        # Precio no debe aparecer en el HTML.
+        assert b"$ 1500.00" not in resp.content
+        assert b"1500.00" not in resp.content
 
     def test_contador_lee(self, client, usuario_factory, categoria):
         from apps.el_catalogo.models import Servicio

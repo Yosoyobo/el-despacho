@@ -106,7 +106,7 @@ def probar_analistas(request):
     try:
         res = analistas_analizar("smoke", prompt, max_tokens=10, temperatura=0.0, actor_id=request.user.pk)
     except TodosLosAnalistasFallaron as exc:
-        messages.error(request, f"Los Analistas no respondieron: {exc}")
+        messages.error(request, f"Los Chalanes no respondieron: {exc}")
         return redirect("ajustes-panel")
     except Exception as exc:
         messages.error(request, f"Error permanente: {exc}")

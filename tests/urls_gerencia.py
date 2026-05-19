@@ -21,7 +21,8 @@ urlpatterns = [
     path("directorio/", include("apps.el_directorio.urls")),
     path("ajustes/", include("apps.los_ajustes.urls")),
     path("legal/", include("apps.legal.urls")),
-    path("catalogo/", include("apps.el_catalogo.urls")),
+    # Pre-S2b.2: catálogo y buzón viven en Taller. En Gerencia solo redirects
+    # — los tests del redirect están en tests/gerencia/test_rearquitectura.py.
     path("buzon/clientes/", TemplateView.as_view(template_name="buzon_admin/clientes_proximamente.html"),
          name="buzon-admin-clientes-proximamente"),
     path("buzon/", include("apps.buzon_admin.urls")),

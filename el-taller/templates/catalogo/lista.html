@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}El Catálogo — La Gerencia{% endblock %}
+{% block title %}El Catálogo{% endblock %}
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Catálogo</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Servicios frecuentes — precio base, unidad y categoría.</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Servicios frecuentes — nombre, unidad{% if ve_precios %}, precio base{% endif %} y categoría.</p>
     </div>
     <div class="flex flex-wrap gap-2">
-        <a href="{% url 'catalogo-categorias' %}" class="btn-secundario">Categorías</a>
-        {% if puede_editar %}<a href="{% url 'catalogo-nuevo' %}" class="btn-primario">+ Nuevo servicio</a>{% endif %}
+        {% if puede_gestionar_cats %}<a href="{% url 'catalogo-categorias' %}" class="btn-secundario">Categorías</a>{% endif %}
+        {% if puede_crear %}<a href="{% url 'catalogo-nuevo' %}" class="btn-primario">+ Nuevo servicio</a>{% endif %}
     </div>
 </header>
 
@@ -24,7 +24,7 @@
             {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria_filtro == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
         </select>
     </div>
-    {% if puede_editar %}
+    {% if puede_archivar %}
     <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
         <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
         Incluir archivados
@@ -41,9 +41,9 @@
                     <th class="px-5 py-3 text-left">Nombre</th>
                     <th class="px-5 py-3 text-left">Categoría</th>
                     <th class="px-5 py-3 text-left">Unidad</th>
-                    <th class="px-5 py-3 text-right">Precio base</th>
+                    {% if ve_precios %}<th class="px-5 py-3 text-right">Precio base</th>{% endif %}
                     <th class="px-5 py-3 text-left">Estado</th>
-                    {% if puede_editar %}<th class="px-5 py-3 text-right">Acciones</th>{% endif %}
+                    {% if puede_editar or puede_archivar %}<th class="px-5 py-3 text-right">Acciones</th>{% endif %}
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -52,17 +52,19 @@
                     <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ s.nombre }}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ s.categoria.nombre }}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ s.unidad }}</td>
-                    <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base }}</td>
+                    {% if ve_precios %}<td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base }}</td>{% endif %}
                     <td class="px-5 py-3">
                         {% if s.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Archivado</span>{% endif %}
                     </td>
-                    {% if puede_editar %}
+                    {% if puede_editar or puede_archivar %}
                     <td class="px-5 py-3 text-right">
                         <div class="inline-flex items-center gap-2">
-                            <a href="{% url 'catalogo-editar' s.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                            {% if puede_editar %}<a href="{% url 'catalogo-editar' s.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>{% endif %}
+                            {% if puede_archivar %}
                             <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}
                                 <button type="submit" class="text-sm font-medium text-warning-700 hover:underline dark:text-warning-400">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                     {% endif %}

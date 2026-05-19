@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     "apps.gerencia_home.apps.GerenciaHomeConfig",
     "apps.legal.apps.LegalConfig",
     "apps.api.apps.ApiConfig",
-    "apps.el_catalogo.apps.ElCatalogoConfig",
+    # Pre-S2b.2: El Catálogo se mudó a El Taller. Gerencia mantiene un
+    # redirect 302 → Taller en urls.py para preservar bookmarks viejos.
     "apps.buzon_admin.apps.BuzonAdminConfig",
     "apps.el_site.apps.ElSiteConfig",
     "apps.interfono_admin.apps.InterfonoAdminConfig",
@@ -62,6 +63,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Pre-S2b.2: redirige contador/disenador autenticados a El Taller.
+    "lib.middleware.RedirigirRolesOperativosMiddleware",
 ]
 
 ROOT_URLCONF = "la_gerencia.urls"
@@ -79,6 +82,7 @@ TEMPLATES = [
                 "apps.el_site.context_processors.badge_integraciones",
                 "interfono.context_processors.vapid_public_key",
                 "auth_google.context_processors.google_oauth_configurado",
+                "cuentas.context_processors.permisos_modulos",
             ],
         },
     },
@@ -107,6 +111,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LOGIN_URL = "/sign-in"
+
+# Pre-S2b.2: destino de redirección para roles operativos. Override en tests
+# con `@override_settings(TALLER_URL="http://testserver/")`.
+TALLER_URL = os.environ.get("TALLER_URL", "https://taller.ninomeando.com/")
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/sign-in"
 

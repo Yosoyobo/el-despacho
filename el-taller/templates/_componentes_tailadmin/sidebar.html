@@ -1,6 +1,6 @@
-{# Sidebar — El Taller. Items dependen del rol del usuario. #}
-{# Mobile: -translate-x-full por default; data-ta-toggle="sidebar" lo abre. #}
-{# Desktop (xl): siempre visible. #}
+{# Sidebar — El Taller. Items condicionales por permiso granular (Pre-S2b.2).
+   Cada item se evalúa con `permisos_modulos.<modulo>` inyectado por context
+   processor. Cambiar permisos desde Gerencia → Directorio → Permisos. #}
 <aside data-ta-sidebar
        class="fixed left-0 top-0 z-40 flex h-screen w-72 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 py-6 transition-transform duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-gray-950">
     <a href="/" class="mb-8 flex items-center gap-2">
@@ -13,43 +13,59 @@
 
         <a href="/" class="menu-item {% if request.path == '/' %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12 12 3l9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Inicio
+            Sala de Juntas
         </a>
 
-        {% if puede_ver_cartera|default:True %}
+        {% if permisos_modulos.cartera %}
         <a href="/cartera/" class="menu-item {% if '/cartera' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 19v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             La Cartera
         </a>
         {% endif %}
 
+        {% if permisos_modulos.proyectos %}
         <a href="/proyectos/" class="menu-item {% if '/proyectos' in request.path and '/pizarron' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Los Proyectos
         </a>
+        {% endif %}
 
-        <a href="/buzon/mios/" class="menu-item {% if '/buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.buzon %}
+        <a href="/buzon/" class="menu-item {% if '/buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16v14H4zM4 7l8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             El Buzón
         </a>
+        {% endif %}
 
-        <a href="/perfil/notificaciones/" class="menu-item {% if '/perfil' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.catalogo %}
+        <a href="/catalogo/" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            El Catálogo
+        </a>
+        {% endif %}
+
+        <a href="/perfil/notificaciones/" class="menu-item {% if '/perfil/notificaciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.4-1.4A6 6 0 0 1 18 11V8a6 6 0 1 0-12 0v3a6 6 0 0 1-.6 4.6L4 17h5m6 0a3 3 0 1 1-6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Notificaciones
         </a>
 
-        {# Andamiaje S-TailAdmin-2 — módulos próximos.
-           - Los Recados: todos los roles (mensajería del equipo).
-           - La Tesorería: solo super_admin/dueno/contador. Diseñador NO ve siquiera el placeholder. #}
+        <a href="/perfil/chalanes/" class="menu-item {% if '/perfil/chalanes' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM12 3v4M9 12h.01M15 12h.01M9 15.5h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Mis Chalanes
+        </a>
+
+        {# Andamiaje S-TailAdmin-2 — módulos próximos (Los Recados S2b.1, La Tesorería S2b.3). #}
         <h3 class="mb-2 mt-4 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Próximamente</h3>
 
+        {% if permisos_modulos.recados %}
         <a href="{% url 'proximamente:modulo' modulo='recados' %}" class="menu-item menu-item-inactive opacity-70 hover:opacity-100">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-3.2-6.9L21 4v6h-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="flex-1">Los Recados</span>
             <span class="badge badge-warning text-[10px]">Pronto</span>
         </a>
+        {% endif %}
 
-        {% if request.user.rol == "super_admin" or request.user.rol == "dueno" or request.user.rol == "contador" %}
+        {% if permisos_modulos.tesoreria %}
         <a href="{% url 'proximamente:modulo' modulo='tesoreria' %}" class="menu-item menu-item-inactive opacity-70 hover:opacity-100">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v10H3zM7 7v10M17 7v10M12 10v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="flex-1">La Tesorería</span>

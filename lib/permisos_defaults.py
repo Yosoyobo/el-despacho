@@ -24,6 +24,12 @@ TODO_TESORERIA = [
 ]
 TODO_DICTADO = ["crear_proyecto", "actualizar_proyecto", "crear_tarea", "registrar_ingreso", "registrar_egreso"]
 TODO_CONTADURIA = ["ver", "reconciliar", "exportar"]
+# Pre-S2b.2: el Catálogo se mudó a El Taller con 7 permisos toggleables
+# individualmente por super_admin desde /directorio/<id>/permisos/.
+TODO_CATALOGO = [
+    "ver_nombres", "ver_precios", "crear", "editar", "editar_precios",
+    "archivar", "gestionar_categorias",
+]
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -36,6 +42,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "tesoreria": list(TODO_TESORERIA),
         "dictado": list(TODO_DICTADO),
         "contaduria": list(TODO_CONTADURIA),
+        "catalogo": list(TODO_CATALOGO),
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -46,6 +53,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "tesoreria": list(TODO_TESORERIA),
         "dictado": list(TODO_DICTADO),
         "contaduria": list(TODO_CONTADURIA),
+        # Dueño ve y edita catálogo pero NO gestiona categorías (decisión Pre-S2b.2).
+        "catalogo": ["ver_nombres", "ver_precios", "crear", "editar", "editar_precios", "archivar"],
     },
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
@@ -57,6 +66,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "tesoreria": list(TODO_TESORERIA),
         "dictado": ["registrar_ingreso", "registrar_egreso"],
         "contaduria": list(TODO_CONTADURIA),
+        # Contador ve catálogo completo (necesita precios para facturación).
+        "catalogo": ["ver_nombres", "ver_precios"],
     },
     "disenador": {
         # Diseñador NO ve cartera (DOC_01 §4.4).
@@ -65,6 +76,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "buzon": ["ver_propios", "responder"],
         "recados": ["ver", "crear", "editar_propios", "adjuntar_drive"],
         "dictado": ["actualizar_proyecto", "crear_tarea"],
+        # Diseñador ve nombres pero NO precios (default — toggleable individualmente).
+        "catalogo": ["ver_nombres"],
     },
 }
 

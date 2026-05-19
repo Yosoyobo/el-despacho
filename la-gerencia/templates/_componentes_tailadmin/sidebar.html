@@ -1,6 +1,6 @@
-{# Sidebar — La Gerencia. Items dependen del rol del usuario. #}
-{# Mobile: oculto con -translate-x-full; el botón data-ta-toggle="sidebar" lo abre. #}
-{# Desktop (xl): siempre visible, no se colapsa en este sprint. #}
+{# Sidebar — La Gerencia (Pre-S2b.2: backend puro). Items operativos se
+   movieron a El Taller. Aquí solo: Dashboard ejecutivo, Directorio,
+   Site, Interfón, Chalanes, Ajustes, Tasas. #}
 <aside data-ta-sidebar
        class="fixed left-0 top-0 z-40 flex h-screen w-72 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 py-6 transition-transform duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-gray-950">
     <a href="/" class="mb-8 flex items-center gap-2">
@@ -13,7 +13,12 @@
 
         <a href="/" class="menu-item {% if request.path == '/' %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12 12 3l9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Sala de Juntas
+            Dashboard ejecutivo
+        </a>
+
+        <a href="/directorio/" class="menu-item {% if '/directorio' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 19v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            El Directorio
         </a>
 
         {% if request.user.rol == "super_admin" or request.user.rol == "dueno" %}
@@ -22,31 +27,12 @@
             <span class="flex-1">El Site</span>
             {% if site_integraciones_rojas %}<span class="badge badge-error">⚠️ {{ site_integraciones_rojas }}</span>{% endif %}
         </a>
-        {% endif %}
 
-        <a href="/directorio/" class="menu-item {% if '/directorio' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 19v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            El Directorio
-        </a>
-
-        <a href="/catalogo/" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14l-4-2-4 2-4-2-3 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            El Catálogo
-        </a>
-
-        <a href="/buzon/" class="menu-item {% if '/buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16v14H4zM4 7l8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            El Buzón
-        </a>
-
-        {% if request.user.rol == "super_admin" or request.user.rol == "dueno" %}
         <a href="/interfono/" class="menu-item {% if '/interfono' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.4-1.4A6 6 0 0 1 18 11V8a6 6 0 1 0-12 0v3a6 6 0 0 1-.6 4.6L4 17h5m6 0a3 3 0 1 1-6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
             El Interfón
         </a>
 
-        {# Pre-S2b.1: Los Chalanes pasa de andamio "Próximamente" a módulo activo
-           — panel /chalanes/ con Cuadro + Cadena + Auditoría. #}
         <a href="/chalanes/" class="menu-item {% if '/chalanes' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM12 3v4M9 12h.01M15 12h.01M9 15.5h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Los Chalanes
@@ -71,5 +57,4 @@
         <a href="/sign-out" class="mt-2 inline-flex items-center gap-1 text-error-600 hover:underline">Salir →</a>
     </div>
 </aside>
-{# Backdrop móvil — oculto en xl #}
 <div data-ta-sidebar-backdrop class="fixed inset-0 z-30 hidden bg-gray-900/50 xl:hidden"></div>

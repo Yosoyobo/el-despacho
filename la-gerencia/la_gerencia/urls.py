@@ -1,9 +1,22 @@
 from apps.buzon_admin import handlers as _err
 from apps.interfono_admin.views import perfil_notificaciones as _perfil_notif
-from django.urls import include, path
-from django.views.generic import TemplateView
+from django.conf import settings
+from django.urls import include, path, re_path
 
 from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
+
+
+def _redirect_a_taller(prefijo: str):
+    """Devuelve view function que redirige `prefijo + resto` a Taller."""
+    from django.http import HttpResponseRedirect
+
+    def _vista(request, resto: str = ""):
+        base = getattr(settings, "TALLER_URL", "https://taller.ninomeando.com/").rstrip("/") + "/"
+        destino = f"{base}{prefijo.strip('/')}/{resto}"
+        if request.META.get("QUERY_STRING"):
+            destino += "?" + request.META["QUERY_STRING"]
+        return HttpResponseRedirect(destino)
+    return _vista
 
 urlpatterns = [
     *urlpatterns_sw,
@@ -16,10 +29,10 @@ urlpatterns = [
     path("directorio/", include("apps.el_directorio.urls")),
     path("ajustes/", include("apps.los_ajustes.urls")),
     path("legal/", include("apps.legal.urls")),
-    path("catalogo/", include("apps.el_catalogo.urls")),
-    path("buzon/", include("apps.buzon_admin.urls")),
-    path("buzon/clientes/", TemplateView.as_view(template_name="buzon_admin/clientes_proximamente.html"),
-         name="buzon-admin-clientes-proximamente"),
+    # Pre-S2b.2: Catálogo y Buzón viven en El Taller. Aquí solo redirects
+    # para preservar bookmarks viejos.
+    re_path(r"^catalogo/(?P<resto>.*)$", _redirect_a_taller("catalogo/")),
+    re_path(r"^buzon/(?P<resto>.*)$", _redirect_a_taller("buzon/")),
     path("site/", include("apps.el_site.urls")),
     path("chalanes/", include("apps.los_chalanes.urls", namespace="los_chalanes")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),

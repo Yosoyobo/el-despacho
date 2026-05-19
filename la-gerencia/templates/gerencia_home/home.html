@@ -1,74 +1,55 @@
 {% extends "base.html" %}
-{% block title %}La Sala de Juntas{% endblock %}
+{% block title %}Dashboard ejecutivo — La Gerencia{% endblock %}
 {% block contenido %}
-<div class="mb-6">
-    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">La Sala de Juntas</h1>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">At-a-glance del despacho.</p>
-</div>
-
-{# Andamiaje S-TailAdmin-2 · Slot de El Dictado (DOC_04).
-   En pre-S2b la Sala de Juntas migra al Taller — el slot se va con ella.
-   Hoy vive aquí en La Gerencia porque es donde está la Sala de Juntas. #}
-<section data-andamiaje="dictado-slot"
-         class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
-    <div class="flex items-start gap-3">
-        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
-        <div class="flex-1">
-            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">🎙️ Cuéntale al Chalán qué pasó</h2>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Próximamente: escribe en lenguaje natural y el Chalán Claudio interpretará tus actualizaciones.</p>
-            <textarea disabled rows="3"
-                      placeholder="Menciona @personas, #proyectos y $clientes... (esta función llega en S2b)"
-                      class="mt-3 w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 px-4 py-2 text-sm text-gray-500 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:placeholder:text-gray-500"></textarea>
-            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Esta función llega en sprint <strong>S2b — El Pipeline</strong>.</p>
-                <button type="button" disabled class="btn-primario opacity-60 cursor-not-allowed">Procesar</button>
-            </div>
-        </div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">Dashboard ejecutivo</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Vista compacta. La operación día a día vive en El Taller.</p>
     </div>
+    <a href="{{ taller_url }}" class="btn-primario inline-flex items-center gap-2">
+        Ver Sala de Juntas completa en El Taller
+        <span aria-hidden="true">→</span>
+    </a>
+</header>
+
+{# KPIs placeholder (hasta S2b.4) — espejo del Taller. #}
+<section class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {% for kpi in kpis %}
+    <div class="ta-card">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ kpi.etiqueta }}</p>
+        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ kpi.valor }}</p>
+        {% if kpi.nota %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Pendiente sprint {{ kpi.nota }}</p>{% endif %}
+    </div>
+    {% endfor %}
 </section>
 
-
-<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-    {# Salud #}
+{# Estado del sistema — counts simples. El Site tiene los detalles. #}
+<section class="grid gap-5 lg:grid-cols-3">
     <div class="ta-card">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Salud</p>
-        <ul class="mt-3 space-y-1 text-sm">
-            <li class="flex items-center justify-between">
-                <span class="text-gray-600 dark:text-gray-300">La Bóveda</span>
-                <span class="badge {% if salud_boveda %}badge-success{% else %}badge-error{% endif %}">{% if salud_boveda %}OK{% else %}FALLA{% endif %}</span>
-            </li>
-            <li class="flex items-center justify-between">
-                <span class="text-gray-600 dark:text-gray-300">Postgres</span>
-                <span class="badge badge-success">OK</span>
-            </li>
-        </ul>
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">La Bóveda</p>
+        <div class="mt-2 flex items-center justify-between gap-2">
+            <span class="badge {% if salud_boveda %}badge-success{% else %}badge-error{% endif %}">{% if salud_boveda %}OK{% else %}FALLA{% endif %}</span>
+            <a href="/site/" class="text-xs text-brand-600 hover:underline dark:text-brand-400">El Site →</a>
+        </div>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Cifrado activo · checks completos en El Site.</p>
     </div>
 
-    {# Credenciales #}
     <div class="ta-card">
         <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Credenciales</p>
         <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">
             {{ credenciales_configuradas }}
             <span class="text-base font-normal text-gray-400 dark:text-gray-500">/ {{ credenciales_total }}</span>
         </p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">slots configurados</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">slots configurados · <a href="/ajustes/" class="text-brand-600 hover:underline dark:text-brand-400">Los Ajustes →</a></p>
     </div>
 
-    {# Equipo #}
     <div class="ta-card">
         <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</p>
         <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">
             {{ usuarios_activos }}
             <span class="text-base font-normal text-gray-400 dark:text-gray-500">/ {{ usuarios_total }}</span>
         </p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">activos en El Directorio</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">activos · <a href="/directorio/" class="text-brand-600 hover:underline dark:text-brand-400">El Directorio →</a></p>
     </div>
-
-    {# Roadmap #}
-    <div class="ta-card">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Próximos módulos</p>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">La Cartera, Los Proyectos y El Pizarrón llegan en <strong>S1b</strong>.</p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cotizaciones, Caja, Cobranza en S2 · Contaduría en S3 · IA en S4.</p>
-    </div>
-</div>
+</section>
 {% endblock %}

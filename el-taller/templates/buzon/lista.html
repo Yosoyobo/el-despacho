@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}El Buzón{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Buzón</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {% if es_admin_buzon %}Todos los mensajes del equipo (sugerencias, problemas, otros).
+            {% else %}Tus mensajes enviados al admin.{% endif %}
+        </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="{% url 'buzon-nuevo' %}" class="btn-primario">+ Nuevo mensaje</a>
+        {% if es_admin_buzon %}<a href="{% url 'buzon-clientes-proximamente' %}" class="btn-secundario">Buzón de clientes →</a>{% endif %}
+    </div>
+</header>
+
+{% if es_admin_buzon %}
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="min-w-[180px]">
+        <label for="bzn-estado" class="sr-only">Estado</label>
+        <select id="bzn-estado" name="estado">
+            <option value="">— Todos los estados —</option>
+            <option value="nuevo" {% if estado_filtro == 'nuevo' %}selected{% endif %}>Nuevo</option>
+            <option value="leido" {% if estado_filtro == 'leido' %}selected{% endif %}>Leído</option>
+            <option value="respondido" {% if estado_filtro == 'respondido' %}selected{% endif %}>Respondido</option>
+            <option value="archivado" {% if estado_filtro == 'archivado' %}selected{% endif %}>Archivado</option>
+        </select>
+    </div>
+    <div class="min-w-[180px]">
+        <label for="bzn-tipo" class="sr-only">Tipo</label>
+        <select id="bzn-tipo" name="tipo">
+            <option value="">— Todos los tipos —</option>
+            <option value="sugerencia" {% if tipo_filtro == 'sugerencia' %}selected{% endif %}>Sugerencia</option>
+            <option value="problema" {% if tipo_filtro == 'problema' %}selected{% endif %}>Problema</option>
+            <option value="otro" {% if tipo_filtro == 'otro' %}selected{% endif %}>Otro</option>
+        </select>
+    </div>
+    <button type="submit" class="btn-secundario">Filtrar</button>
+</form>
+{% endif %}
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">#</th>
+                    {% if es_admin_buzon %}<th class="px-5 py-3 text-left">Autor</th>{% endif %}
+                    <th class="px-5 py-3 text-left">Tipo</th>
+                    <th class="px-5 py-3 text-left">Asunto</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-left">Recibido</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for m in mensajes %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if m.estado == 'nuevo' %}bg-warning-25 dark:bg-warning-500/5{% endif %}">
+                    <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">#{{ m.pk }}</td>
+                    {% if es_admin_buzon %}<td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ m.autor.email }}</td>{% endif %}
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ m.get_tipo_display }}</td>
+                    <td class="px-5 py-3"><a href="{% url 'buzon-detalle' m.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ m.asunto }}</a></td>
+                    <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=m.estado etiqueta=m.get_estado_display %}</td>
+                    <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Buzón vacío.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

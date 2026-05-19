@@ -2913,3 +2913,153 @@ Columnas agregadas:
 **Pre-S2b.2** — re-arquitectura de ubicaciones (Sala de Juntas + Buzón migran
 a Taller, sidebar reorganizada, perfil personal `/perfil/chalanes/` en El
 Taller, permisos granulares aplicados al sidebar).
+
+---
+
+# BITÁCORA — Sprint Pre-S2b.2 (Re-arquitectura)
+
+> Cierre del **2026-05-19**. Sprint mediano que mueve módulos operativos
+> de La Gerencia a El Taller, agrega sidebar dinámica por permisos
+> granulares, y salda dos deudas de Pre-S2b.1 (`/perfil/chalanes/` y
+> rename "Probar Analistas").
+
+## 1. Re-arquitectura entregada
+
+| Módulo | Antes | Después |
+|---|---|---|
+| Sala de Juntas | `gerencia.../` con slot Chalán + counts | `taller.../` con slot Chalán + 4 KPIs por rol + 2 tablas reales (proyectos activos, prospectos pendientes de cotizar) |
+| Dashboard ejecutivo | inexistente | `gerencia.../` con KPIs espejo + CTA "Ver Sala de Juntas en El Taller" + estado del sistema |
+| El Buzón | `buzon_admin` (Gerencia) + `buzon_empleado` (Taller) — apps separadas | App unificada `apps.buzon_empleado` en Taller con `lista`, `detalle`, `nuevo`, `exportar_a_claude`. Adapta UI por `puede(user,"buzon","ver_todos")`. Gerencia redirige `/buzon/*` 302 |
+| El Catálogo | `apps/el_catalogo/` en Gerencia, permisos por rol | `el-taller/apps/el_catalogo/` con 7 permisos granulares (`ver_nombres`, `ver_precios`, `crear`, `editar`, `editar_precios`, `archivar`, `gestionar_categorias`) toggleables desde `/directorio/<id>/permisos`. Gerencia redirige 302 |
+
+## 2. Pilares nuevos de infraestructura
+
+- **Template tag/filtro `puede`** en `cuentas/templatetags/permisos.py`:
+  `{{ user|puede:"buzon.ver_todos" }}` (filtro) y `{% puede u "x" "y" as v %}` (tag).
+  Hookea `lib.permisos.puede()`. Sin librerías.
+- **Context processor `permisos_modulos`** en `cuentas/context_processors.py`:
+  inyecta dict `{modulo: bool}` evaluando la acción de visibilidad por módulo.
+  Mapeo `ACCION_VISIBLE_POR_MODULO` para módulos sin "ver" (buzon usa
+  "ver_propios", catalogo usa "ver_nombres"). Registrado en los 3 settings.
+- **Middleware `RedirigirRolesOperativosMiddleware`** en `lib/middleware.py`:
+  contador/diseñador autenticados en Gerencia → 302 a `TALLER_URL`.
+  Whitelist `/sign-in`, `/auth/`, `/static/`, `/sw.js`, `/manifest.webmanifest`,
+  `/ping`, `/oauth/`. Defensa profunda (auth_gerencia ya rechaza esos roles
+  en el sign-in, pero este middleware cubre cambio de rol mid-sesión).
+
+## 3. Sidebar dinámica
+
+- **El Taller** sidebar nuevo (`_componentes_tailadmin/sidebar.html`)
+  envuelve cada item operativo en `{% if permisos_modulos.<modulo> %}`.
+  Si el super_admin desactiva `buzon.ver_propios` para un usuario, el
+  item desaparece del sidebar de ese usuario al siguiente request. Items
+  fijos: Sala de Juntas (siempre), Notificaciones, Mis Chalanes.
+- **La Gerencia** sidebar reducido a backend puro: Dashboard ejecutivo,
+  El Directorio, El Site, El Interfón, Los Chalanes, Los Ajustes, Tasas.
+  Removidos: Sala de Juntas (movida), Buzón, Catálogo, Cartera.
+
+## 4. Permisos del Catálogo
+
+- 7 acciones nuevas en `lib/permisos_defaults.py`:
+  `ver_nombres`, `ver_precios`, `crear`, `editar`, `editar_precios`,
+  `archivar`, `gestionar_categorias`.
+- Defaults por rol:
+  - super_admin: 7/7
+  - dueño: 6/7 (sin `gestionar_categorias`)
+  - contador: 2/7 (`ver_nombres`, `ver_precios`)
+  - diseñador: 1/7 (`ver_nombres` solamente)
+- Migración `cuentas/0008_seed_permisos_catalogo.py` siembra para usuarios
+  existentes — idempotente (`bulk_create(ignore_conflicts=True)`).
+- Templates condicionales: `lista.html` oculta columna de precio si no
+  `ver_precios`; `form.html` hace `<input readonly>` si no `editar_precios`;
+  botones "Editar/Archivar/Nuevo" condicionales.
+
+## 5. Perfil personal `/perfil/chalanes/` (Taller)
+
+App nueva `apps.perfil_chalanes`. Una vista (`panel`) lista las estaciones
+del Cuadro y muestra dropdown con Chalanes elegibles + opción "Predeterminado
+del equipo". Diseñador ve solo estaciones relevantes (oculta `ocr_recibo`
+y `dictado_gasto`). Estaciones con `requiere_vision=True` ocultan al Chalán
+Chino del dropdown y rechazan POST con él. Persiste en `ChalanAsignado`
+(tabla Pre-S2b.1). Evento Portavoz `chalanes.asignacion_personal_actualizada`.
+
+## 6. Rename + Buzón unificado
+
+- `Probar Analistas` → `Probar Chalanes` (botón en `/ajustes/`).
+- Flash "Los Analistas no respondieron" → "Los Chalanes no respondieron".
+- Code path interno preservado (`lib/analistas/` decisión Pre-S2b.1).
+- `apps.buzon_empleado` ahora atiende `/buzon/`, `/buzon/<id>/`, `/buzon/nuevo`,
+  `/buzon/<id>/exportar.md`. URLs legacy `/buzon/mios/...` → 302 a las nuevas.
+- Templates nuevos en `el-taller/templates/buzon/`: `lista`, `detalle`, `nuevo`,
+  `clientes_proximamente`. Templates legacy en `buzon_admin/` y
+  `buzon_empleado/` quedan en disco (no renderizan ya — no estorban).
+
+## 7. Endpoints redirigidos en Gerencia
+
+- `gerencia.../catalogo/*` → 302 `taller.../catalogo/<resto>` (preserva query
+  string + path interno).
+- `gerencia.../buzon/*` → 302 `taller.../buzon/<resto>`.
+- Implementado con view function `_redirect_a_taller(prefijo)` que
+  reconstruye el destino correcto.
+
+## 8. Eventos del Portavoz nuevos
+
+- `chalanes.asignacion_personal_actualizada` — `{usuario_id, estacion, proveedor}`.
+
+## 9. Tests
+
+29 nuevos en `tests/test_rearquitectura.py`. Total: **331 verdes**
+(302 anteriores + 29 nuevos), 9 skipped.
+
+Cobertura:
+- Filtro/tag `puede` (3): super_admin, diseñador, anónimo.
+- Context processor `permisos_modulos` (2).
+- Middleware (6): diseñador/contador → 302; super_admin/dueño → 200; anónimo;
+  whitelist de assets.
+- Sala de Juntas Taller (3): KPIs por rol.
+- Dashboard espejo (2): CTA + ausencia del slot Chalán.
+- Catálogo (2): redirect Gerencia + ver-sin-precios diseñador.
+- Perfil chalanes (5): carga, oculto a diseñador, guardar override,
+  borrar override, rechazar Chino con VISION.
+- Sidebar (3): super_admin ve todo, diseñador sin cartera, toggle individual.
+- Rename label (1).
+- Buzón unificado (2).
+
+Tests existentes adaptados: `tests/taller/test_buzon.py` (2 cases) y
+`tests/taller/test_catalogo.py` (1 case + movido de gerencia/).
+
+## 10. Decisiones de sprint
+
+- **Catálogo: app movida físicamente a `el-taller/apps/el_catalogo/`** (opción
+  A del plan inicial). app_label preservado (`el_catalogo`), tablas
+  `catalogo_categoria`/`catalogo_servicio` intactas — cero migración de datos.
+  Mejor que convertir a shared raíz (opción B) — menor blast radius.
+- **Sesión cross-host: independientes** (cookies `gerencia_session` vs
+  `taller_session`). El usuario que clickee "Ver en Taller →" desde Gerencia
+  llega a `/sign-in` de Taller y entra en 1 click con SSO Google. Consistente
+  con CLAUDE.md regla #15.
+- **Buzón unificado distinguido por permiso, no por rol** — `puede(user,
+  "buzon", "ver_todos")` permite que el super_admin desactive el "vista
+  admin" para un dueño específico si lo quiere acotado.
+- **El sidebar de Taller incluye "Mis Chalanes" siempre** (no condicionado
+  a permiso) — todos los usuarios tienen al menos algunas estaciones donde
+  pueden tener override personal.
+
+## 11. Deuda residual
+
+- **KPIs reales en Sala de Juntas** (S2b.4): hoy son placeholders `—`. Las
+  2 tablas reales (proyectos activos + pendientes cotizar) sí funcionan.
+- **Estado del sistema en Gerencia dashboard**: hoy muestra counts simples
+  (credenciales, usuarios). El Site tiene los detalles reales; el dashboard
+  los enchufa en S2b.4.
+- **Templates legacy** en `la-gerencia/templates/buzon_admin/` quedaron
+  en disco — no se renderizan más pero ocupan repo. Limpieza opcional.
+
+## 12. CI / deploy — pendiente
+
+Push al cierre del sprint. Tests locales 331 verdes + Ruff limpio.
+
+## 13. Próximo sprint
+
+**S2b.1 — Los Recados** (~2-3h): mensajería con `@/#/$`, adjuntos Drive,
+push automático a `@mencionados`.

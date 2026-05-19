@@ -1,37 +1,68 @@
 {% extends "base.html" %}
 {% load proyectos_extras %}
-{% block title %}El Taller{% endblock %}
+{% block title %}Sala de Juntas — El Taller{% endblock %}
 {% block contenido %}
-<div class="mb-6">
-    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">Bienvenido, {{ request.user.get_short_name }}</h1>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tu rol: <span class="font-medium text-gray-700 dark:text-gray-300">{{ request.user.get_rol_display }}</span></p>
-</div>
+<header class="mb-6">
+    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">La Sala de Juntas</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Bienvenido, {{ request.user.get_short_name }} · {{ request.user.get_rol_display }}</p>
+</header>
 
-<div class="mb-8 grid gap-5 sm:grid-cols-3">
-    {% if puede_ver_cartera %}
-    <a href="{% url 'cartera-lista' %}" class="ta-card transition hover:shadow-theme-md">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">La Cartera</p>
-        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ total_clientes_activos }}</p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">clientes activos</p>
-    </a>
-    {% endif %}
-    <a href="{% url 'proyectos-lista' %}" class="ta-card transition hover:shadow-theme-md">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Los Proyectos</p>
-        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ proyectos_recientes|length }}</p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">visibles para ti</p>
-    </a>
-    <div class="ta-card">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">El Pizarrón</p>
-        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ tareas_pendientes|length }}</p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">tareas pendientes asignadas</p>
+{# 1) Slot del Chalán (placeholder de Pre-S2b.1; se activa en S2b.2 con El Dictado). #}
+<section data-andamiaje="dictado-slot"
+         class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
+    <div class="flex items-start gap-3">
+        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
+        <div class="flex-1">
+            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">🎙️ Cuéntale al Chalán qué pasó</h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Próximamente: escribe en lenguaje natural y el Chalán Claudio interpretará tus actualizaciones.</p>
+            <textarea disabled rows="3"
+                      placeholder="Menciona @personas, #proyectos y $clientes... (esta función llega en S2b.2)"
+                      class="mt-3 w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 px-4 py-2 text-sm text-gray-500 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:placeholder:text-gray-500"></textarea>
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400">Esta función llega en sprint <strong>S2b.2 — El Dictado</strong>.</p>
+                <button type="button" disabled class="btn-primario opacity-60 cursor-not-allowed">Procesar</button>
+            </div>
+        </div>
     </div>
-</div>
+</section>
 
-<div class="grid gap-6 lg:grid-cols-2">
+{# 2) KPIs adaptativos por rol (placeholders hasta S2b.4). #}
+<section class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {% for kpi in kpis %}
+    <div class="ta-card">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ kpi.etiqueta }}</p>
+        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ kpi.valor }}</p>
+        {% if kpi.nota %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Pendiente sprint {{ kpi.nota }}</p>{% endif %}
+    </div>
+    {% endfor %}
+</section>
+
+{# 3) Dos tablas con datos reales. #}
+<section class="grid gap-6 lg:grid-cols-2">
     <div>
-        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos recientes</h2>
+        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos por fecha de entrega</h2>
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            {% for p in proyectos_recientes %}
+            {% for p in proyectos_activos %}
+            <a href="{% url 'proyectos-detalle' p.pk %}"
+               class="block border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="truncate font-medium text-gray-800 dark:text-gray-100">{{ p.nombre }}</p>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ p.codigo }} · {{ p.cliente.razon_social }}{% if p.fecha_compromiso %} · entrega {{ p.fecha_compromiso|date:"d M" }}{% endif %}</p>
+                    </div>
+                    <span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span>
+                </div>
+            </a>
+            {% empty %}
+            <p class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">No hay proyectos activos.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div>
+        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Pendientes de cotizar</h2>
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            {% for p in pendientes_cotizar %}
             <a href="{% url 'proyectos-detalle' p.pk %}"
                class="block border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50">
                 <div class="flex items-center justify-between gap-2">
@@ -39,32 +70,13 @@
                         <p class="truncate font-medium text-gray-800 dark:text-gray-100">{{ p.nombre }}</p>
                         <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ p.codigo }} · {{ p.cliente.razon_social }}</p>
                     </div>
-                    <span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span>
+                    <span class="badge badge-warning">Prospecto</span>
                 </div>
             </a>
             {% empty %}
-            <p class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin proyectos visibles.</p>
+            <p class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin prospectos en pipeline.</p>
             {% endfor %}
         </div>
     </div>
-    <div>
-        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Mis tareas pendientes</h2>
-        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            {% for t in tareas_pendientes %}
-            <a href="{% url 'pizarron-detalle-tarea' t.pk %}"
-               class="block border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="truncate font-medium text-gray-800 dark:text-gray-100">{{ t.titulo }}</p>
-                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ t.proyecto.codigo }}{% if t.fecha_compromiso %} · vence {{ t.fecha_compromiso|date:"d M" }}{% endif %}</p>
-                    </div>
-                    <span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span>
-                </div>
-            </a>
-            {% empty %}
-            <p class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin tareas pendientes 🎉</p>
-            {% endfor %}
-        </div>
-    </div>
-</div>
+</section>
 {% endblock %}

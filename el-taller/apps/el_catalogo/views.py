@@ -1,12 +1,23 @@
-"""El Catálogo — CRUD de servicios + categorías. Admin (super_admin/dueno)
-puede mutar; contador solo lee; disenador no entra."""
+"""El Catálogo — CRUD de servicios + categorías.
+
+Pre-S2b.2: movido de La Gerencia a El Taller. Permisos granulares
+toggleables individualmente via tabla `cuentas_permiso_usuario`:
+
+  catalogo.ver_nombres         → Lista visible + módulo en sidebar
+  catalogo.ver_precios         → Columna de precio en lista/detalle visible
+  catalogo.crear               → Botón "Nuevo servicio"
+  catalogo.editar              → Botón "Editar"
+  catalogo.editar_precios      → Campo precio editable en form (subset de editar)
+  catalogo.archivar            → Botón "Archivar/Reactivar"
+  catalogo.gestionar_categorias → Submenú de categorías + CRUD
+"""
 
 from django.contrib import messages
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from lib.permisos import es_admin
+from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
@@ -14,32 +25,28 @@ from .forms import CategoriaForm, ServicioForm
 from .models import CategoriaServicio, Servicio
 
 
-def _puede_ver(user) -> bool:
-    return getattr(user, "rol", None) in ("super_admin", "dueno", "contador")
-
-
-def _gate_ver(request):
+def _gate(request, accion: str):
+    """Helper: 302 a /sign-in si no auth, 403 si no tiene el permiso, None si OK."""
     if not request.user.is_authenticated:
         return redirect("/sign-in")
-    if not _puede_ver(request.user):
-        return HttpResponseForbidden("Sin acceso a El Catálogo.")
-    return None
-
-
-def _gate_editar(request):
-    if not request.user.is_authenticated:
-        return redirect("/sign-in")
-    if not es_admin(request.user):
-        return HttpResponseForbidden("Solo super_admin y dueño editan El Catálogo.")
+    if not puede(request.user, "catalogo", accion):
+        return HttpResponseForbidden(f"Sin permiso catalogo.{accion}.")
     return None
 
 
 def lista(request):
-    if (r := _gate_ver(request)) is not None:
+    if (r := _gate(request, "ver_nombres")) is not None:
         return r
+    user = request.user
+    ve_precios = puede(user, "catalogo", "ver_precios")
+    puede_crear = puede(user, "catalogo", "crear")
+    puede_editar = puede(user, "catalogo", "editar")
+    puede_archivar = puede(user, "catalogo", "archivar")
+    puede_gestionar_cats = puede(user, "catalogo", "gestionar_categorias")
+
     q = (request.GET.get("q") or "").strip()
     categoria_id = request.GET.get("categoria") or ""
-    incluir_archivados = request.GET.get("archivados") == "1" and es_admin(request.user)
+    incluir_archivados = request.GET.get("archivados") == "1" and puede_archivar
     qs = Servicio.objects.select_related("categoria")
     if not incluir_archivados:
         qs = qs.filter(activo=True)
@@ -53,13 +60,17 @@ def lista(request):
         "q": q,
         "categoria_filtro": categoria_id,
         "incluir_archivados": incluir_archivados,
-        "puede_editar": es_admin(request.user),
+        "ve_precios": ve_precios,
+        "puede_crear": puede_crear,
+        "puede_editar": puede_editar,
+        "puede_archivar": puede_archivar,
+        "puede_gestionar_cats": puede_gestionar_cats,
     })
 
 
 @require_http_methods(["GET", "POST"])
 def nuevo(request):
-    if (r := _gate_editar(request)) is not None:
+    if (r := _gate(request, "crear")) is not None:
         return r
     if request.method == "POST":
         form = ServicioForm(request.POST)
@@ -77,18 +88,26 @@ def nuevo(request):
             return redirect("catalogo-lista")
     else:
         form = ServicioForm()
-    return render(request, "catalogo/form.html", {"form": form, "modo": "nuevo"})
+    return render(request, "catalogo/form.html", {
+        "form": form, "modo": "nuevo",
+        "precio_readonly": not puede(request.user, "catalogo", "editar_precios"),
+    })
 
 
 @require_http_methods(["GET", "POST"])
 def editar(request, pk: int):
-    if (r := _gate_editar(request)) is not None:
+    if (r := _gate(request, "editar")) is not None:
         return r
     srv = get_object_or_404(Servicio, pk=pk)
+    puede_editar_precios = puede(request.user, "catalogo", "editar_precios")
     if request.method == "POST":
         form = ServicioForm(request.POST, instance=srv)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            # Si no tiene editar_precios, restauramos el precio original.
+            if not puede_editar_precios:
+                obj.precio_base = srv.precio_base
+            obj.save()
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_actualizado",
                 actor_id=request.user.pk,
@@ -99,12 +118,15 @@ def editar(request, pk: int):
             return redirect("catalogo-lista")
     else:
         form = ServicioForm(instance=srv)
-    return render(request, "catalogo/form.html", {"form": form, "modo": "editar", "servicio": srv})
+    return render(request, "catalogo/form.html", {
+        "form": form, "modo": "editar", "servicio": srv,
+        "precio_readonly": not puede_editar_precios,
+    })
 
 
 @require_http_methods(["POST"])
 def archivar(request, pk: int):
-    if (r := _gate_editar(request)) is not None:
+    if (r := _gate(request, "archivar")) is not None:
         return r
     srv = get_object_or_404(Servicio, pk=pk)
     srv.activo = not srv.activo
@@ -116,18 +138,15 @@ def archivar(request, pk: int):
 # ── Categorías ───────────────────────────────────────────────────────────────
 
 def categorias_lista(request):
-    if (r := _gate_ver(request)) is not None:
+    if (r := _gate(request, "gestionar_categorias")) is not None:
         return r
     cats = CategoriaServicio.objects.all()
-    return render(request, "catalogo/categorias.html", {
-        "categorias": cats,
-        "puede_editar": es_admin(request.user),
-    })
+    return render(request, "catalogo/categorias.html", {"categorias": cats})
 
 
 @require_http_methods(["GET", "POST"])
 def categoria_nueva(request):
-    if (r := _gate_editar(request)) is not None:
+    if (r := _gate(request, "gestionar_categorias")) is not None:
         return r
     if request.method == "POST":
         form = CategoriaForm(request.POST)
@@ -142,7 +161,7 @@ def categoria_nueva(request):
 
 @require_http_methods(["GET", "POST"])
 def categoria_editar(request, pk: int):
-    if (r := _gate_editar(request)) is not None:
+    if (r := _gate(request, "gestionar_categorias")) is not None:
         return r
     cat = get_object_or_404(CategoriaServicio, pk=pk)
     if request.method == "POST":

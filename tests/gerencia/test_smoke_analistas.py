@@ -54,4 +54,5 @@ def test_smoke_sin_credenciales_emite_error(client, usuario_factory):
     resp = client.post("/ajustes/analistas/probar", follow=True)
     assert resp.status_code == 200
     body = resp.content.decode().lower()
-    assert "no respondieron" in body or "los analistas" in body
+    # Pre-S2b.2: el flash dice "Los Chalanes no respondieron" (renombrado de "Analistas").
+    assert "no respondieron" in body or "los chalanes" in body

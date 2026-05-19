@@ -41,23 +41,28 @@ def test_problema_se_pasa_por_el_colador(client, usuario_factory):
 
 
 def test_mios_solo_ve_los_propios(client, usuario_factory):
+    """Pre-S2b.2: URL unificada es /buzon/. Legacy /buzon/mios/ redirige."""
     from buzon.models import MensajeBuzon
     u1 = usuario_factory(rol="disenador")
     u2 = usuario_factory(rol="disenador")
     MensajeBuzon.objects.create(autor=u1, tipo="otro", asunto="A1", cuerpo="x"*20)
     MensajeBuzon.objects.create(autor=u2, tipo="otro", asunto="A2", cuerpo="y"*20)
     client.force_login(u1)
-    resp = client.get("/buzon/mios/")
+    resp = client.get("/buzon/")
     assert resp.status_code == 200
     assert b"A1" in resp.content
     assert b"A2" not in resp.content
+    # URL vieja redirige a la nueva.
+    resp_legacy = client.get("/buzon/mios/")
+    assert resp_legacy.status_code == 302
 
 
 def test_detalle_ajeno_404(client, usuario_factory):
+    """Pre-S2b.2: detalle unificado en /buzon/<id>/."""
     from buzon.models import MensajeBuzon
     u1 = usuario_factory(rol="disenador")
     u2 = usuario_factory(rol="disenador")
     m = MensajeBuzon.objects.create(autor=u2, tipo="otro", asunto="A", cuerpo="z"*20)
     client.force_login(u1)
-    resp = client.get(f"/buzon/mios/{m.pk}/")
+    resp = client.get(f"/buzon/{m.pk}/")
     assert resp.status_code == 404
