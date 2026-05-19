@@ -202,3 +202,108 @@ def test_autocomplete_clientes_admin_ve(client, usuario_factory, cliente_factory
     r = client.get("/api/autocomplete/clientes?q=hela")
     assert r.status_code == 200
     assert len(r.json()["resultados"]) == 1
+
+
+# ── Autocomplete sin prefijo (hotfix UX Slack-style) ────────────────────────
+
+
+def test_autocomplete_usuarios_sin_prefijo_retorna_top_8_alfabetico(
+    client, usuario_factory, _urls_gerencia
+):
+    """`@` sin prefijo → top 8 usuarios activos ordenados por slug."""
+    for letra in "bdacefghij":  # 10 emails desordenados
+        usuario_factory(email=f"{letra}@a.com", rol="dueno")
+    auth = usuario_factory(email="admin@a.com", rol="super_admin")
+    client.force_login(auth)
+    r = client.get("/api/autocomplete/usuarios?q=")
+    assert r.status_code == 200
+    slugs = [x["slug"] for x in r.json()["resultados"]]
+    assert len(slugs) == 8
+    assert slugs == sorted(slugs), "deben venir alfabéticos por slug"
+
+
+def test_autocomplete_usuarios_sin_prefijo_excluye_inactivos(
+    client, usuario_factory, _urls_gerencia
+):
+    """Permiso de inactividad preservado con q vacío."""
+    u_inactivo = usuario_factory(email="zzz@a.com", rol="dueno")
+    u_inactivo.is_active = False
+    u_inactivo.save()
+    auth = usuario_factory(email="admin@a.com", rol="super_admin")
+    client.force_login(auth)
+    r = client.get("/api/autocomplete/usuarios?q=")
+    slugs = {x["slug"] for x in r.json()["resultados"]}
+    assert "zzz" not in slugs
+
+
+def test_autocomplete_proyectos_sin_prefijo_retorna_top_8(
+    client, usuario_factory, proyecto_factory, _urls_gerencia
+):
+    """`#` sin prefijo → top 8 proyectos alfabéticos."""
+    for i in range(10):
+        proyecto_factory(nombre=f"Proyecto {i:02d}")
+    auth = usuario_factory(rol="super_admin")
+    client.force_login(auth)
+    r = client.get("/api/autocomplete/proyectos?q=")
+    assert r.status_code == 200
+    resultados = r.json()["resultados"]
+    assert len(resultados) == 8
+    slugs = [x["slug"] for x in resultados]
+    assert slugs == sorted(slugs)
+
+
+def test_autocomplete_proyectos_disenador_sin_prefijo_solo_asignados(
+    client, usuario_factory, proyecto_factory, _urls_gerencia
+):
+    """Permiso de diseñador (solo proyectos asignados) preservado con q vacío."""
+    from apps.los_proyectos.models import ProyectoAsignacion
+
+    d = usuario_factory(rol="disenador")
+    asignado = proyecto_factory(nombre="Mío")
+    proyecto_factory(nombre="Ajeno")  # no asignado a d
+    ProyectoAsignacion.objects.create(proyecto=asignado, usuario=d, rol_en_proyecto="disenador")
+    client.force_login(d)
+    r = client.get("/api/autocomplete/proyectos?q=")
+    slugs = [x["slug"] for x in r.json()["resultados"]]
+    assert asignado.slug in slugs
+    assert len(slugs) == 1  # sólo el asignado
+
+
+def test_autocomplete_clientes_sin_prefijo_retorna_top_8(
+    client, usuario_factory, cliente_factory, _urls_gerencia
+):
+    """`$` sin prefijo → top 8 clientes activos alfabéticos."""
+    for i in range(10):
+        cliente_factory(razon_social=f"Cliente {chr(ord('a') + i)}")
+    auth = usuario_factory(rol="super_admin")
+    client.force_login(auth)
+    r = client.get("/api/autocomplete/clientes?q=")
+    assert r.status_code == 200
+    resultados = r.json()["resultados"]
+    assert len(resultados) == 8
+    slugs = [x["slug"] for x in resultados]
+    assert slugs == sorted(slugs)
+
+
+def test_autocomplete_clientes_disenador_sin_prefijo_sigue_vacio(
+    client, usuario_factory, cliente_factory, _urls_gerencia
+):
+    """Permiso de diseñador preservado con q vacío — silencioso."""
+    cliente_factory(razon_social="Heladería Foo")
+    d = usuario_factory(rol="disenador")
+    client.force_login(d)
+    r = client.get("/api/autocomplete/clientes?q=")
+    assert r.status_code == 200
+    assert r.json() == {"resultados": []}
+
+
+def test_autocomplete_q_inexistente_devuelve_vacio(
+    client, usuario_factory, _urls_gerencia
+):
+    """Regresión: `q=xyz` sin matches sigue retornando lista vacía."""
+    usuario_factory(email="oscar@a.com", rol="dueno")
+    auth = usuario_factory(email="admin@a.com", rol="super_admin")
+    client.force_login(auth)
+    r = client.get("/api/autocomplete/usuarios?q=xyz")
+    assert r.status_code == 200
+    assert r.json() == {"resultados": []}

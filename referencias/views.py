@@ -15,18 +15,35 @@ from django.http import JsonResponse
 LIMITE_AUTOCOMPLETE = 8
 
 
+def _aplicar_filtro_y_top(qs, q: str, campos: list[str]):
+    """Aplica filtro `istartswith` sobre `campos` si `q` no es vacío, sino
+    deja `qs` tal cual. Siempre ordena por `slug` y limita a `LIMITE_AUTOCOMPLETE`.
+
+    UX Slack/Notion: `@` sin prefijo muestra el equipo completo (top 8);
+    `@osc` filtra a quienes empiezan con "osc".
+    """
+    if q:
+        cond = Q()
+        for campo in campos:
+            valor = q.upper() if campo == "codigo" else q
+            cond |= Q(**{f"{campo}__istartswith": valor})
+        qs = qs.filter(cond)
+    return qs.order_by("slug")[:LIMITE_AUTOCOMPLETE]
+
+
 @login_required
 def autocomplete_usuarios(request):
-    """Sólo prefijo. Todos los roles pueden ver `@usuario`. Excluye inactivos."""
+    """Todos los roles pueden ver `@usuario`. Excluye inactivos.
+
+    Sin prefijo retorna top 8 alfabético (UX Slack-style).
+    """
     q = (request.GET.get("q") or "").strip().lower()
-    if not q:
-        return JsonResponse({"resultados": []})
     from cuentas.models.usuario import Usuario
-    qs = Usuario.objects.filter(is_active=True).filter(
-        Q(slug__istartswith=q)
-        | Q(email__istartswith=q)
-        | Q(nombre_completo__istartswith=q)
-    ).order_by("slug")[:LIMITE_AUTOCOMPLETE]
+    qs = _aplicar_filtro_y_top(
+        Usuario.objects.filter(is_active=True),
+        q,
+        ["slug", "email", "nombre_completo"],
+    )
     return JsonResponse({"resultados": [
         {
             "slug": u.slug,
@@ -41,18 +58,17 @@ def autocomplete_usuarios(request):
 
 @login_required
 def autocomplete_proyectos(request):
-    """Diseñador sólo ve proyectos donde está asignado."""
+    """Diseñador sólo ve proyectos donde está asignado.
+
+    Sin prefijo retorna top 8 alfabético (UX Slack-style).
+    """
     q = (request.GET.get("q") or "").strip().lower()
-    if not q:
-        return JsonResponse({"resultados": []})
     user = request.user
     from apps.los_proyectos.models.proyecto import Proyecto
-    qs = Proyecto.objects.filter(
-        Q(slug__istartswith=q) | Q(codigo__istartswith=q.upper()) | Q(nombre__istartswith=q)
-    )
+    base = Proyecto.objects.all()
     if getattr(user, "rol", None) == "disenador":
-        qs = qs.filter(asignaciones__usuario_id=user.pk).distinct()
-    qs = qs.order_by("-creado_en")[:LIMITE_AUTOCOMPLETE]
+        base = base.filter(asignaciones__usuario_id=user.pk).distinct()
+    qs = _aplicar_filtro_y_top(base, q, ["slug", "codigo", "nombre"])
     return JsonResponse({"resultados": [
         {
             "slug": p.slug,
@@ -67,17 +83,20 @@ def autocomplete_proyectos(request):
 
 @login_required
 def autocomplete_clientes(request):
-    """Diseñador NO ve clientes — lista vacía silenciosa (DOC_01 §4.4)."""
+    """Diseñador NO ve clientes — lista vacía silenciosa (DOC_01 §4.4).
+
+    Sin prefijo retorna top 8 alfabético (UX Slack-style).
+    """
     q = (request.GET.get("q") or "").strip().lower()
-    if not q:
-        return JsonResponse({"resultados": []})
     user = request.user
     if getattr(user, "rol", None) == "disenador":
         return JsonResponse({"resultados": []})
     from apps.la_cartera.models.cliente import Cliente
-    qs = Cliente.objects.filter(activo=True).filter(
-        Q(slug__istartswith=q) | Q(razon_social__istartswith=q)
-    ).order_by("razon_social")[:LIMITE_AUTOCOMPLETE]
+    qs = _aplicar_filtro_y_top(
+        Cliente.objects.filter(activo=True),
+        q,
+        ["slug", "razon_social"],
+    )
     return JsonResponse({"resultados": [
         {
             "slug": c.slug,
