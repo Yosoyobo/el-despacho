@@ -1,7 +1,9 @@
 # Diseño — El Dictado
 
-> **Versión:** 1.2 · 15 mayo 2026 (revisión: andamiaje visual TailAdmin disponible)
-> **Status:** Diseño aprobado, listo para implementación · andamiaje visual entregado en S-TailAdmin-2
+> **Versión:** 1.3 · 19 mayo 2026 (V1 entregado en S2b.2)
+> **Status:** V1 ✅ deployado · sub-sprint S2b.2.1 pendiente (clarificación iterativa + UI gestión aprendizajes)
+> **V1 cubre:** §3 (modelos), §4 (UX), §5 (filtro de prohibidas backend), §7 (prompt), §8 (aplicación atómica), §9 (histórico), §10 (eventos clave), §11 (14 de 21 tests).
+> **V1 pendiente:** §4.2b (clarificación iterativa), §6.4 (UI aprendizajes en Gerencia), ejecutores de cotizaciones/facturas (módulos no existen aún), `registrar_egreso` (espera S2b.3 — La Tesorería).
 > **Audiencia:** Claude Code / desarrollo
 > **Dependencias:** Sistema de Referencias `@/#/$` (DOC_01), Los Chalanes v2 (DOC_02), Los Recados (DOC_03), La Tesorería (DOC_06), Los Permisos, Postgres
 > **Dependientes:** Manual de Usuario, Sala de Juntas (lo monta)

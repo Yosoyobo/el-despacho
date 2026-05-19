@@ -393,6 +393,45 @@ La Sala de Juntas muestra ahora un **catálogo de ~28 KPIs** distribuidos en 7 c
 
 **KPIs marcados "Completo con S2b.3 — La Tesorería":** Ingresos del mes y Cuentas por cobrar se calculan con valores parciales (`monto_cobrado`, `monto_facturado` del proyecto) hasta que el módulo de Tesorería entregue datos completos. La fórmula y la card no cambian — solo se actualiza el dato fuente automáticamente.
 
+### 🎙️ El Dictado — escribe en lenguaje natural (S2b.2)
+
+Arriba del tablero de la Sala de Juntas vive un text box prominente con un Chalán Claudio (el avatar amarillo): le cuentas en español lo que pasó y el sistema interpreta + propone acciones para confirmar.
+
+**Cómo funciona:**
+
+1. **Escribe tu actualización** en lenguaje natural en el textbox "🎙️ Cuéntale al Chalán qué pasó". Puedes usar `@persona`, `#proyecto`, `$cliente` — el autocomplete de S2b.1.5 te ayuda a escoger.
+   > *Ejemplo:* "En `#PRY-000123` cambia el estado a en producción y crea tarea para `@maria` de mandar el contrato mañana."
+
+2. **Procesa.** El Chalán Claudio (Anthropic) lee tu texto e interpreta. Tarda 2-5 segundos. Te lleva a una pantalla de **preview** con cada acción propuesta como un checkbox separado:
+   - ☑ Actualizar `#PRY-000123` → estado: "en_produccion"
+   - ☑ Crear tarea "Mandar contrato" en `#PRY-000123`, asignada a `@maria`, vence 21 may
+
+3. **Revisa y desmarca lo que no quieras.** Si una acción tiene `⚠️ Confianza media` (color amarillo) es que el Chalán no está 100% seguro — verifícala antes de aplicar.
+
+4. **Aplica.** Las acciones marcadas se ejecutan una por una. Si alguna falla (ej. un proyecto que mencionaste no existe), las demás siguen aplicándose; verás el error en la fila correspondiente.
+
+**Acciones soportadas hoy** (V1):
+
+- Crear / actualizar **proyectos** (estado, monto cotizado, fecha entrega, descripción)
+- Asignar **usuarios a proyectos**
+- Crear / actualizar **tareas** (título, asignada_a, prioridad, fecha)
+- Crear **recados** (mensajería interna)
+- Crear **mensajes en El Buzón**
+- **Registrar egresos** — *no operativo todavía*: cuando S2b.3 entregue La Tesorería, el ejecutor se activa automáticamente y el botón de la propuesta empieza a aplicar de verdad.
+
+**Acciones globalmente prohibidas** — el Chalán **NUNCA** las propondrá ni las puede aplicar:
+- Tocar credenciales o configuración de Los Ajustes
+- Modificar el Catálogo de servicios
+- Cambiar tasas e impuestos
+- Modificar permisos o crear usuarios
+- Borrar entidades existentes (solo crear/actualizar)
+
+**Si los Chalanes están descansando** (LLM caído o sin credenciales), verás un mensaje claro: *"🎙️ Los Chalanes están descansando — usa los formularios tradicionales mientras tanto."*
+
+**Si el Chalán tiene una duda** (ej. mencionaste "la heladería" y hay 3 clientes con ese nombre), te lo dice. En V1, cancela y reescribe con la clarificación; la iteración Chalán↔usuario llega en sub-sprint S2b.2.1.
+
+**Mi historial:** `/dictado/historial/` muestra tus últimos 50 dictados con texto crudo, Chalán que respondió, latencia y estado (Aplicado · Aplicado con errores · Fallo IA · Cancelado). Click en cualquiera abre el detalle con todas sus acciones y los errores si hubo.
+
 ---
 
 ## La Gerencia a fondo
