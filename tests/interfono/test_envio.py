@@ -86,7 +86,10 @@ def test_enviar_a_usuario_agrega_totales(usuario_factory):
     with patch("pywebpush.webpush", return_value=None):
         from lib.interfono import enviar_a_usuario
         totales = enviar_a_usuario(u, "t", "c")
-    assert totales == {"entregadas": 2, "fallidas": 0, "invalidadas": 0}
+    assert totales["entregadas"] == 2
+    assert totales["fallidas"] == 0
+    assert totales["invalidadas"] == 0
+    assert totales["entrega_id"] > 0
 
 
 def test_enviar_a_usuario_mezcla_ok_expired(usuario_factory):

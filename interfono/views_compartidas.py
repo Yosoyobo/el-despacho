@@ -15,6 +15,7 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from interfono.sw_js import sw_js  # noqa: F401  (re-export para urls_compartidas)
@@ -67,6 +68,32 @@ def desuscribir(request: HttpRequest, sub_id: int) -> JsonResponse:
     sub.activa = False
     sub.desactivada_en = timezone.now()
     sub.save(update_fields=["activa", "desactivada_en"])
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+@login_required
+@require_http_methods(["POST"])
+def marcar_clickeado(request: HttpRequest, entrega_id: int) -> JsonResponse:
+    """Marca una entrega como clickeada. Idempotente.
+
+    El Service Worker invoca este endpoint en `notificationclick` antes de
+    abrir la URL final, para que el historial muestre el estado correcto.
+    CSRF exempt: el SW no puede obtener token; el efecto (marcar la propia
+    entrega del usuario autenticado) es benigno incluso si fuera forjado.
+    """
+    from django.utils import timezone
+
+    from interfono.models import InterfonoEntrega
+
+    entrega = InterfonoEntrega.objects.filter(
+        pk=entrega_id, usuario=request.user
+    ).first()
+    if not entrega:
+        return JsonResponse({"error": "no encontrada"}, status=404)
+    if not entrega.clickeado_en:
+        entrega.clickeado_en = timezone.now()
+        entrega.save(update_fields=["clickeado_en"])
     return JsonResponse({"ok": True})
 
 

@@ -15,6 +15,18 @@
     {% include "interfono/_panel_suscripcion.html" %}
 
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Historial de notificaciones</h2>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Avisos que te han llegado recientemente.</p>
+        {% if historial %}
+        <ul class="mt-4 space-y-1">
+            {% include "perfil_notificaciones/_historial_items.html" %}
+        </ul>
+        {% else %}
+        <p class="mt-4 text-sm italic text-gray-400 dark:text-gray-500">Aún no hay notificaciones.</p>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Categorías de avisos</h2>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Por defecto recibes push de todas las categorías; desactiva las que no te interesan.</p>
         <form method="post" action="{% url 'perfil-notificaciones-categorias' %}" class="mt-4 space-y-3">

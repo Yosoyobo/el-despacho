@@ -49,8 +49,19 @@ class InterfonoConfig:
         return bool(cls.vapid_public_key() and cls.vapid_private_key())
 
 
-def enviar_a_suscripcion(suscripcion, titulo: str, cuerpo: str, url: str = "", tag: str = "") -> ResultadoEnvio:
-    """Envía push a UNA suscripción. Marca `activa=False` si el endpoint expiró."""
+def enviar_a_suscripcion(
+    suscripcion,
+    titulo: str,
+    cuerpo: str,
+    url: str = "",
+    tag: str = "",
+    entrega_id: int | None = None,
+) -> ResultadoEnvio:
+    """Envía push a UNA suscripción. Marca `activa=False` si el endpoint expiró.
+
+    Si `entrega_id` se pasa, viaja en el payload para que el Service Worker
+    pueda marcar la entrega como clickeada al abrir la URL.
+    """
     if not InterfonoConfig.esta_configurado():
         return "no_configurado"
 
@@ -61,9 +72,17 @@ def enviar_a_suscripcion(suscripcion, titulo: str, cuerpo: str, url: str = "", t
     private_key = InterfonoConfig.vapid_private_key()
     claims = InterfonoConfig.vapid_claims()
 
-    payload = {"title": titulo, "body": cuerpo, "url": url}
+    payload = {
+        "title": titulo,
+        "body": cuerpo,
+        "url": url,
+        "icon": "/static/branding/Logo_LC-192.png",
+        "badge": "/static/branding/Logo_LC-64.png",
+    }
     if tag:
         payload["tag"] = tag
+    if entrega_id is not None:
+        payload["entrega_id"] = entrega_id
 
     sub_info = {
         "endpoint": suscripcion.endpoint,
@@ -106,27 +125,57 @@ def enviar_a_usuario(
     url: str = "",
     tag: str = "",
     categoria: str | None = None,
+    origen_modulo: str = "",
+    origen_id: int | None = None,
 ) -> dict[str, int]:
     """Itera todas las suscripciones activas del usuario.
+
+    Persiste SIEMPRE una fila en `InterfonoEntrega` (historial orientado al
+    destinatario) antes de despachar. Si la categoría está desactivada o si
+    VAPID no está configurado, la entrega queda con el `estado_despacho`
+    correspondiente pero sigue visible en `/perfil/notificaciones/` historial.
 
     Si `categoria` es no-vacío, respeta la preferencia opt-out del usuario
     para esa categoría (S2b.1 — tabla `PreferenciaCategoriaPush`). Default
     es activa: sólo se silencia si hay fila explícita con `activo=False`.
     """
-    from interfono.models import InterfonoSuscripcion
+    from interfono.models import InterfonoEntrega, InterfonoSuscripcion, categoria_activa
 
-    totales = {"entregadas": 0, "fallidas": 0, "invalidadas": 0}
+    totales = {"entregadas": 0, "fallidas": 0, "invalidadas": 0, "entrega_id": 0}
+
+    entrega = InterfonoEntrega.objects.create(
+        usuario=usuario,
+        titulo=titulo[:200],
+        cuerpo=cuerpo,
+        url=url[:500],
+        tag=tag[:100],
+        categoria=(categoria or "")[:40],
+        origen_modulo=origen_modulo[:40],
+        origen_id=origen_id,
+    )
+    totales["entrega_id"] = entrega.pk
+
     if not InterfonoConfig.esta_configurado():
+        entrega.estado_despacho = "no_configurado"
+        entrega.save(update_fields=["estado_despacho"])
         return totales
 
-    if categoria:
-        from interfono.models import categoria_activa
-        if not categoria_activa(usuario, categoria):
-            return totales
+    if categoria and not categoria_activa(usuario, categoria):
+        entrega.estado_despacho = "silenciada_categoria"
+        entrega.save(update_fields=["estado_despacho"])
+        return totales
 
     qs = InterfonoSuscripcion.objects.filter(usuario=usuario, activa=True)
-    for sub in qs:
-        resultado = enviar_a_suscripcion(sub, titulo, cuerpo, url=url, tag=tag)
+    suscripciones = list(qs)
+    if not suscripciones:
+        entrega.estado_despacho = "sin_suscripciones"
+        entrega.save(update_fields=["estado_despacho"])
+        return totales
+
+    for sub in suscripciones:
+        resultado = enviar_a_suscripcion(
+            sub, titulo, cuerpo, url=url, tag=tag, entrega_id=entrega.pk,
+        )
         if resultado == "ok":
             totales["entregadas"] += 1
         elif resultado == "expired":
@@ -134,6 +183,12 @@ def enviar_a_usuario(
             totales["fallidas"] += 1
         else:
             totales["fallidas"] += 1
+
+    if totales["entregadas"] > 0:
+        entrega.estado_despacho = "entregada"
+    else:
+        entrega.estado_despacho = "fallida"
+    entrega.save(update_fields=["estado_despacho"])
     return totales
 
 
@@ -160,5 +215,5 @@ def enviar_a_audiencia(audiencia: str, titulo: str, cuerpo: str, url: str = "", 
     for usuario in _resolver_usuarios(audiencia):
         parciales = enviar_a_usuario(usuario, titulo, cuerpo, url=url, tag=tag)
         for clave in totales:
-            totales[clave] += parciales[clave]
+            totales[clave] += parciales.get(clave, 0)
     return totales

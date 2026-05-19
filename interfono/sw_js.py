@@ -22,9 +22,9 @@ self.addEventListener('push', function(event) {
     const tag = data.tag || ('el-despacho-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
     const opciones = {
         body: data.body || '',
-        icon: data.icon || '/static/icons/icon-192.png',
-        badge: '/static/icons/badge.png',
-        data: { url: data.url || '/' },
+        icon: data.icon || '/static/branding/Logo_LC-192.png',
+        badge: data.badge || '/static/branding/Logo_LC-64.png',
+        data: { url: data.url || '/', entrega_id: data.entrega_id || null },
         tag: tag,
     };
     event.waitUntil(self.registration.showNotification(data.title || 'El Despacho', opciones));
@@ -32,8 +32,17 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
-    const url = (event.notification.data && event.notification.data.url) || '/';
-    event.waitUntil(clients.openWindow(url));
+    const data = event.notification.data || {};
+    const url = data.url || '/';
+    const entregaId = data.entrega_id;
+    const marcar = entregaId
+        ? fetch('/perfil/notificaciones/' + entregaId + '/clickeado', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {'X-CSRFToken': '', 'X-Despacho-SW': '1'},
+          }).catch(function() {})
+        : Promise.resolve();
+    event.waitUntil(marcar.then(function() { return clients.openWindow(url); }));
 });
 """
 
