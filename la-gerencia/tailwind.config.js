@@ -12,6 +12,16 @@ module.exports = {
     "./apps/**/templates/**/*.html",
     "./apps/**/forms.py",
     "./apps/**/views.py",
+    // Hotfix S2b.1.5: las clases generadas dinámicamente en JS (dropdown de
+    // referencias.js, ui.js) deben quedar en el CSS compilado.
+    "./static/**/*.js",
+    "./apps/**/static/**/*.js",
+    "../referencias/static/**/*.js",
+    "../interfono/static/**/*.js",
+    // En Docker los shared apps se copian planos a /app/<app>/, así que el
+    // mismo glob como sibling cubre el path real durante el build.
+    "./referencias/static/**/*.js",
+    "./interfono/static/**/*.js",
   ],
   theme: {
     extend: {
