@@ -63,7 +63,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **La Cartera** | El Taller | CRUD clientes B2B | S1b |
 | **Los Proyectos** | El Taller | Proyectos, estados, asignaciones | S1b |
 | **El Pizarrón** | El Taller | Tareas + comentarios públicos/internos | S1b |
-| **Los Recados** | El Taller | Mensajería interna con `@/#/$` + push | S2b.1 ✅ |
+| **Los Recados** | El Taller | Mensajería interna con `@/#/$` + push + historial | S2b.1 ✅ · S2b.1.5 ✅ |
 | **Las Cotizaciones** | El Taller | PDF vía Google Docs + envío n8n/Gmail | S2 |
 | **La Facturación** | El Taller | Invoices comerciales (no fiscales) | S2 |
 | **La Caja** | El Taller | Stripe + MercadoPago, links de pago | S2 |
@@ -379,15 +379,48 @@ checkbox + POST de persistencia. Placeholder `/proximamente/recados/`
 removido. 21 tests nuevos (354 verdes totales). Adjuntos a Drive
 quedan para S2b.1b.
 
-### S2b.1b — Los Recados + Drive (próximo, ~1.5h)
+### S2b.1.5 ✅ — Historial + Logo + Drive andamiaje (2026-05-19)
 
-`RecadoAdjunto` (modelo + UI) · wrapper Google Drive con La Bóveda
-(token OAuth + carpeta raíz cifrados) · MIME whitelist + límite 25 MB ·
-carpeta del proyecto si `#PRY` mención, sino general
-`Los Recados / yyyy-mm/` · fallback gracioso si Drive cae (envía sin
-adjunto) · eventos `recado.adjunto_subido` / `recado.adjunto_fallo`.
-El botón 📎 en el form ya existe (disabled con tooltip) — sólo se
-habilita.
+3 features chicos en commits separados (revert quirúrgico posible):
+
+- **El Interfón Historial**: modelo `InterfonoEntrega` (tabla
+  `interfono_entrega`, migración `0004_*`), `lib.interfono.enviar_a_usuario()`
+  persiste SIEMPRE (incluso si categoría silenciada o sin VAPID),
+  endpoint `/perfil/notificaciones/<id>/clickeado` (csrf_exempt +
+  login_required) invocado por el SW, UI con paginación HTMX
+  (25 por lote, `timesince` para timestamps relativos, estados
+  visibles ✓Clickeada / Silenciada / Sin VAPID / Sin dispositivo).
+  Retorna `entrega_id` en el dict de totales. Payload web-push lleva
+  `entrega_id`, `icon`, `badge`.
+- **Logo Learning Center**: `infra/scripts/generar_logos.py` (Pillow
+  LANCZOS) regenera 6 tamaños desde `static/branding/Logo_LC.png`
+  hacia `el-taller/static/branding/` y `la-gerencia/static/branding/`.
+  Sidebar (32×32), login (128×128), favicon (32+64+apple-touch 192),
+  manifests con `theme_color: #465fff`, errores 404/500 (128×128).
+  Mismo PNG en dark/light — sin manipulación.
+- **Wrapper Drive + andamiaje**: `lib/google_drive.py`
+  (`GoogleDriveWrapper` con `service`/`carpeta_raiz_id` perezosos +
+  `subir_archivo`/`crear_carpeta`/`obtener_o_crear_carpeta` que
+  lanzan `NotImplementedError` apuntando a S2b.1b). Slots
+  `google_drive_service_account_json` + `google_drive_carpeta_raiz_id`
+  en SLOTS_CREDENCIAL marcados "(Inactivo)". Deps
+  `google-api-python-client==2.155.0` + `google-auth==2.36.0`
+  (imports diferidos para no pagar ~50 MB en cold start).
+  `docs/SETUP_GOOGLE_DRIVE.md` con guía completa de 8 pasos.
+  19 tests nuevos (373 verdes totales).
+
+### S2b.1b — Los Recados + Drive (próximo, ~1.5h, requiere setup)
+
+**Bloqueado por el setup manual de Drive del admin** (ver
+`docs/SETUP_GOOGLE_DRIVE.md` — 8 pasos en GCP Console).
+
+`RecadoAdjunto` (modelo + UI) · cablear los métodos del wrapper
+`lib.google_drive` que hoy lanzan `NotImplementedError` ·
+MIME whitelist + límite 25 MB · carpeta del proyecto si `#PRY`
+mención, sino general `Los Recados / yyyy-mm/` · fallback gracioso
+si Drive cae (envía sin adjunto) · eventos `recado.adjunto_subido` /
+`recado.adjunto_fallo`. El botón 📎 en el form ya existe (disabled
+con tooltip a la doc) — sólo se habilita.
 
 ### S2b.2 — El Dictado (~3-4h)
 

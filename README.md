@@ -48,7 +48,16 @@ GitHub Actions (**El Mensajero**) · GHCR.
   personal `/perfil/chalanes/` en Taller, 7 permisos granulares para el
   Catálogo (incluye `ver_precios` separado), rename "Probar Analistas" →
   "Probar Chalanes". **331 tests verdes**.
-- **S2b.1** ⏳ siguiente: Los Recados (mensajería interna con `@/#/$`)
+- **S2b.1** ✅ (cerrado 2026-05-19): Los Recados — mensajería interna con
+  `@/#/$`, push opt-out por categoría, sin Drive. **354 tests verdes**.
+- **S2b.1.5** ✅ (cerrado 2026-05-19): Historial Interfón
+  (`InterfonoEntrega` + endpoint click + UI con paginación HTMX),
+  logo Learning Center en sidebars/login/favicon/PWA/errores
+  (script `infra/scripts/generar_logos.py`), wrapper Google Drive
+  + slot en Bóveda + `docs/SETUP_GOOGLE_DRIVE.md` (8 pasos, **NO
+  activado** — espera credenciales del admin). **373 tests verdes**.
+- **S2b.1b** ⏳ siguiente: activar Drive en Los Recados (~1.5h, requiere
+  que el admin complete `docs/SETUP_GOOGLE_DRIVE.md` primero)
 - **S2b** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google
   Workspace · Los Recados (DOC_03) · El Dictado (DOC_04) · La Tesorería (DOC_06)
 - **S3** Contaduría · Sala de Juntas con KPIs reales
