@@ -1,7 +1,7 @@
 {
-  "name": "El Despacho — El Taller",
-  "short_name": "El Taller",
-  "description": "Operación día a día del despacho Learning Center.",
+  "name": "El Despacho — La Gerencia",
+  "short_name": "La Gerencia",
+  "description": "Panel administrativo del despacho Learning Center.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

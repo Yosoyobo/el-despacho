@@ -1,10 +1,11 @@
+{% load static %}
 {% comment %} Sidebar — La Gerencia (Pre-S2b.2: backend puro). Items operativos se
    movieron a El Taller. Aquí solo: Dashboard ejecutivo, Directorio,
    Site, Interfón, Chalanes, Ajustes, Tasas. {% endcomment %}
 <aside data-ta-sidebar
        class="fixed left-0 top-0 z-40 flex h-screen w-72 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 py-6 transition-transform duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-gray-950">
     <a href="/" class="mb-8 flex items-center gap-2">
-        <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white font-semibold">G</span>
+        <img src="{% static 'branding/Logo_LC-64.png' %}" alt="Learning Center" class="h-9 w-9 rounded-lg" />
         <span class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Gerencia</span>
     </a>
 
