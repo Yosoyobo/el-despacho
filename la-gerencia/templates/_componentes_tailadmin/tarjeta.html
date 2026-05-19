@@ -1,9 +1,9 @@
-{# Card genérico. Params:
+{% comment %} Card genérico. Params:
    - titulo  (opcional, string)
    - subtitulo (opcional)
    El contenido va dentro del partial llamador como bloque condicionado por slots.
    Para casos simples, usa directamente la clase .ta-card sin este partial.
-#}
+{% endcomment %}
 <div class="ta-card">
     {% if titulo %}<h2 class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ titulo }}</h2>{% endif %}
     {% if subtitulo %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ subtitulo }}</p>{% endif %}

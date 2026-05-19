@@ -1,4 +1,4 @@
-{# Tabla TailAdmin reusable.
+{% comment %} Tabla TailAdmin reusable.
    Params:
      - cabeceras: lista de strings (encabezados de columna)
      - filas_html: bloque HTML pre-renderizado (queda más simple que pasar matriz porque las celdas casi siempre llevan markup mixto)
@@ -8,7 +8,7 @@
        {% include "_componentes_tailadmin/_tabla.html" with cabeceras=cabeceras filas_html=filas_html %}
      {% endwith %}
    Si tu lista es trivial, usa la clase y markup directo en la página — este partial conviene cuando se repite el patrón.
-#}
+{% endcomment %}
 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="overflow-x-auto">
         <table class="min-w-full text-sm">

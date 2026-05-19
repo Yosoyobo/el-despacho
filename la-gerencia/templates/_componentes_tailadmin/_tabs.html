@@ -1,10 +1,10 @@
-{# Tabs sin JS: usan navegación por anchor (?tab=foo) o secciones independientes.
+{% comment %} Tabs sin JS: usan navegación por anchor (?tab=foo) o secciones independientes.
    Params:
      - tabs: lista de dicts {clave, etiqueta, url (opcional), badge (opcional)}
      - activo: clave del tab activo (default: primer item)
    Si no se pasa url, se asume href="?tab={clave}".
    Interactividad client-side futura: HTMX puede engancharse a estos links.
-#}
+{% endcomment %}
 <div class="mb-5 border-b border-gray-200 dark:border-gray-800">
     <nav class="-mb-px flex flex-wrap gap-1" aria-label="Tabs">
         {% for tab in tabs %}

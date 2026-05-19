@@ -1,4 +1,4 @@
-{# Avatar del Chalán — andamiaje S-TailAdmin-2 para Los Chalanes (DOC_02) y El Dictado (DOC_04).
+{% comment %} Avatar del Chalán — andamiaje S-TailAdmin-2 para Los Chalanes (DOC_02) y El Dictado (DOC_04).
    En S-TailAdmin-2 todas las variantes devuelven el mismo SVG genérico color brand.
    Sprint pre-S2b diferencia cada Chalán con su iconografía propia.
 
@@ -12,7 +12,7 @@
      - chalan: clave (default: 'claudio')
      - tamano: 'xs' (24px) | 'sm' (32px, default) | 'md' (40px)
      - apodo: texto del tooltip / aria-label (opcional, default 'Chalán <nombre>')
-#}
+{% endcomment %}
 {% with t=tamano|default:'sm' c=chalan|default:'claudio' %}
 <span aria-label="{{ apodo|default:'Chalán Claudio' }}" title="{{ apodo|default:'Chalán Claudio' }}"
       class="inline-flex items-center justify-center rounded-full bg-brand-500/10 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300

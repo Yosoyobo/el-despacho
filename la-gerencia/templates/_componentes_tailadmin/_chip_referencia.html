@@ -1,4 +1,4 @@
-{# Chip de Referencia `@/#/$` — andamiaje S-TailAdmin-2 para Sistema de Referencias (DOC_01).
+{% comment %} Chip de Referencia `@/#/$` — andamiaje S-TailAdmin-2 para Sistema de Referencias (DOC_01).
    Sin lógica funcional todavía: la persistencia/autocomplete llegan en sprint pre-S2b.
 
    Params:
@@ -11,7 +11,7 @@
 
    Colores (DOC_01 §5.3):
      @ usuario  → brand    # proyecto → violet    $ cliente → emerald
-#}
+{% endcomment %}
 {% spaceless %}
 {% with v=variante|default:'inline' a=activo|default_if_none:True %}
 {% if url %}<a href="{{ url }}"{% else %}<span{% endif %} class="{% if v == 'badge' %}inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {% if tipo == 'usuario' %}bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300{% elif tipo == 'proyecto' %}bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300{% elif tipo == 'cliente' %}bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300{% else %}bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300{% endif %}{% else %}font-medium hover:underline {% if tipo == 'usuario' %}text-brand-600 dark:text-brand-400{% elif tipo == 'proyecto' %}text-violet-600 dark:text-violet-400{% elif tipo == 'cliente' %}text-emerald-600 dark:text-emerald-400{% else %}text-gray-500 dark:text-gray-400{% endif %}{% endif %}{% if not a %} opacity-60 line-through{% endif %}">{% if tipo == 'usuario' %}@{% elif tipo == 'proyecto' %}#{% elif tipo == 'cliente' %}${% endif %}{{ etiqueta|default:slug }}{% if url %}</a>{% else %}</span>{% endif %}

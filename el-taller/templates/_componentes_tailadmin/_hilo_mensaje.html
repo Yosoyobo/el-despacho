@@ -1,10 +1,10 @@
-{# Item de mensaje en hilo — adaptado de inbox-details.html / support-ticket-reply.
+{% comment %} Item de mensaje en hilo — adaptado de inbox-details.html / support-ticket-reply.
    Params:
      - autor_nombre, autor_email (opcional), autor_avatar (opcional URL)
      - fecha, cuerpo (texto plano; se renderea con linebreaksbr)
      - es_interno: booleano — si True, fondo warning suave y badge "Interno"
      - es_propio: booleano — si True, alinea a la derecha con fondo brand suave
-#}
+{% endcomment %}
 <article class="flex gap-3 {% if es_propio %}flex-row-reverse{% endif %}">
     <div class="flex-shrink-0">
         {% if autor_avatar %}

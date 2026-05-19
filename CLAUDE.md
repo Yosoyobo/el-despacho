@@ -576,6 +576,15 @@ el-taller:
 
 Aplica a cualquier compose con Postgres compartida.
 
+### Bug C — `{# ... #}` Django es single-line only
+
+Django solo trata `{# ... #}` como comentario si abre y cierra **en la misma
+línea**. Un bloque multilínea `{# ... \n ... #}` hace que la primera línea
+desaparezca y el resto se renderice como texto literal en la UI. Para
+comentarios multilínea va `{% comment %}...{% endcomment %}`. Comentarios
+largos de documentación van a `docs/`, no a templates. Cubierto por
+`tests/{taller,gerencia}/test_no_renderiza_comentarios.py`.
+
 ---
 
 ## §15. El Site — monitoreo del Droplet (S2a.2)

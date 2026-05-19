@@ -1,8 +1,8 @@
-{# Paginación TailAdmin.
+{% comment %} Paginación TailAdmin.
    Params:
      - page_obj: Django Paginator's Page instance
      - querystring: querystring base sin 'page' (ej. 'q=foo&estado=activo')
-#}
+{% endcomment %}
 {% if page_obj and page_obj.paginator.num_pages > 1 %}
 <nav class="mt-4 flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" aria-label="Paginación">
     <div class="text-gray-500 dark:text-gray-400">

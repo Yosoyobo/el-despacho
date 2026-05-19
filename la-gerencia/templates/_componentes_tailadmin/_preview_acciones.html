@@ -1,4 +1,4 @@
-{# Preview de acciones — andamiaje S-TailAdmin-2 para El Dictado (DOC_04 §4.2a) y Tesorería (DOC_06).
+{% comment %} Preview de acciones — andamiaje S-TailAdmin-2 para El Dictado (DOC_04 §4.2a) y Tesorería (DOC_06).
    Sin lógica funcional todavía: la persistencia/confirmación llegan en sprint S2b.
 
    Params:
@@ -17,7 +17,7 @@
      - sin_permiso=True → checkbox disabled + 🔒 + CTA "Crear recado al rol responsable"
      - confianza<0.7  → ⚠️ "Confianza media — verifica antes de aplicar"
      - resto          → checkbox marcable, marcado por default
-#}
+{% endcomment %}
 <section class="rounded-2xl border border-brand-200 bg-brand-25 p-5 shadow-theme-sm dark:border-brand-500/30 dark:bg-brand-500/5">
     <header class="mb-4 flex items-start gap-3">
         {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo=chalan_apodo %}

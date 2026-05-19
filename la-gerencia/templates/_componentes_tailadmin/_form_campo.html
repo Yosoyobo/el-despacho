@@ -1,4 +1,4 @@
-{# Campo de formulario consistente con estilo TailAdmin.
+{% comment %} Campo de formulario consistente con estilo TailAdmin.
    Params:
      - campo: BoundField de Django
      - ancho_completo: si True, ocupa md:col-span-2 (default False)
@@ -6,7 +6,7 @@
    Asume que el padre tiene la clase .campo-form (la heredan los layouts del input.css).
    Mantiene compatibilidad con templates legacy que ya usaban `{{ form.X|as_crispy_field }}` —
    este partial es opcional, no obligatorio.
-#}
+{% endcomment %}
 <div class="{% if ancho_completo %}md:col-span-2{% endif %}">
     {% if campo.label %}
         <label for="{{ campo.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">

@@ -1,4 +1,4 @@
-{# Barra de filtros + acción primaria — patrón TailAdmin products-list.
+{% comment %} Barra de filtros + acción primaria — patrón TailAdmin products-list.
    Params:
      - accion_url: URL del form GET (default: '')
      - busqueda_nombre: name del input de búsqueda (default: 'q')
@@ -7,7 +7,7 @@
      - selects: lista de dicts {name, label, opciones=[{valor, etiqueta, seleccionado}]} — opcional
      - nuevo_url, nuevo_label: si el usuario puede crear, link al alta (opcional)
    La barra es un form GET; los filtros se aplican al submit (Enter o cambio).
-#}
+{% endcomment %}
 <form method="get" action="{{ accion_url|default:'' }}"
       class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="campo-form flex-1 min-w-[180px]">

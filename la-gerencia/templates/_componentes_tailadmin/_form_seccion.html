@@ -1,11 +1,11 @@
-{# Sección de formulario con título + grid de campos.
+{% comment %} Sección de formulario con título + grid de campos.
    Uso: envolver con {% include ... with titulo="..." descripcion="..." %} {% endinclude %} NO funciona en Django.
    Mejor patrón aquí: el partial sólo abre la cabecera; los campos van en el llamador, y se cierra con _form_seccion_cierre.html.
    En lugar de partir el partial, ofrecemos un patrón con tag <details> visualmente cerrado:
    Params:
      - titulo, descripcion: string
      - contenido: HTML pre-renderizado del cuerpo (usualmente {{ form.alguno|as_crispy_field }} u otros campos)
-#}
+{% endcomment %}
 <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     {% if titulo %}
         <header class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-800">

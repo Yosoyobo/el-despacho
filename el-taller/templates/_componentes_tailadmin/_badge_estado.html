@@ -1,4 +1,4 @@
-{# Badge de estado, mapeo semántico → clase visual TailAdmin.
+{% comment %} Badge de estado, mapeo semántico → clase visual TailAdmin.
    Params:
      - estado: string (slug del estado)
      - etiqueta: texto visible (opcional, default = estado humanizado)
@@ -12,7 +12,7 @@
      prioridad_media → warning
      prioridad_baja → gray
    Cualquier otro estado → gray.
-#}
+{% endcomment %}
 {% with e=estado|lower|default:'' %}
     {% if e == 'activo' or e == 'completado' or e == 'completada' or e == 'aprobado' or e == 'entregado' or e == 'pagado' or e == 'cobrada' or e == 'success' or e == 'ok' %}
         <span class="badge badge-success">{{ etiqueta|default:estado|capfirst }}</span>
