@@ -40,6 +40,8 @@ def nueva_tarea(request, proyecto_id):
                 actor_email=request.user.email,
                 payload={"tarea_id": tarea.pk, "proyecto_id": proyecto.pk},
             ))
+            from apps.taller_home.push_handlers import notificar_tarea_asignada
+            notificar_tarea_asignada(tarea, request.user)
             messages.success(request, "Tarea creada.")
             return redirect("pizarron-detalle-tarea", pk=tarea.pk)
     else:

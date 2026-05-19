@@ -26,13 +26,54 @@
     </div>
 </section>
 
-{# 2) KPIs adaptativos por rol (placeholders hasta S2b.4). #}
+{# 2a) Sugerencias del Chalán (Capa 2 — reglas heurísticas, S2b.2+ LLM real). #}
+{% if sugerencias %}
+<section class="mb-6 space-y-2">
+    {% for s in sugerencias %}
+    <div class="flex items-start gap-3 rounded-2xl border border-brand-200 bg-brand-25 p-4 dark:border-brand-500/30 dark:bg-brand-500/5">
+        <span class="text-lg">🔮</span>
+        <div class="flex-1">
+            <p class="text-sm text-gray-800 dark:text-gray-100">
+                <span class="font-medium">El Chalán sugiere activar &laquo;{{ s.titulo }}&raquo;</span>
+            </p>
+            <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">{{ s.motivo }}</p>
+        </div>
+        <form method="post" action="{% url 'perfil-dashboard-sugerencia-aceptar' s.id %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">Activar</button>
+        </form>
+        <form method="post" action="{% url 'perfil-dashboard-sugerencia-descartar' s.id %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Descartar</button>
+        </form>
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+{# 2b) KPIs iterados desde catálogo + preferencias del usuario (S2b.4). #}
+<section class="mb-3 flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Tu tablero</h2>
+    <a href="{% url 'perfil-dashboard' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Editar KPIs visibles →</a>
+</section>
 <section class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
     {% for kpi in kpis %}
+    {% if kpi.link %}
+    <a href="{{ kpi.link }}" class="ta-card block hover:border-brand-300 dark:hover:border-brand-500/50">
+    {% else %}
     <div class="ta-card">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ kpi.etiqueta }}</p>
-        <p class="mt-2 text-title-sm font-bold text-gray-900 dark:text-gray-100">{{ kpi.valor }}</p>
-        {% if kpi.nota %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Pendiente sprint {{ kpi.nota }}</p>{% endif %}
+    {% endif %}
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ kpi.titulo }}</p>
+        <p class="mt-2 text-title-sm font-bold {% if kpi.nota == 'alerta' %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{{ kpi.valor }}</p>
+        {% if kpi.estado_kpi == 'pendiente_tesoreria' %}
+        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Completo con S2b.3 — La Tesorería</p>
+        {% elif kpi.nota and kpi.nota != 'alerta' %}
+        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ kpi.nota }}</p>
+        {% endif %}
+    {% if kpi.link %}</a>{% else %}</div>{% endif %}
+    {% empty %}
+    <div class="ta-card col-span-full text-center">
+        <p class="text-sm text-gray-500">No hay KPIs visibles. <a href="{% url 'perfil-dashboard' %}" class="text-brand-600 hover:text-brand-700">Activa los que te interesen →</a></p>
     </div>
     {% endfor %}
 </section>

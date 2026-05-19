@@ -3470,3 +3470,149 @@ levantan con las nuevas deps de Google.
 - **S2b.3 — La Tesorería** (~3-4h).
 - **S2b.4 — KPIs reales + eventos push automáticos** (~2-3h, reusa
   ya la categoría del Interfón establecida en S2b.1).
+
+---
+
+# BITÁCORA — Sprint S2b.4 (KPIs granulares + sugerencias del Chalán + push automáticos)
+
+**Cierre 2026-05-19.** Sprint fragmentado: hoy se entrega Capa 1 (catálogo
++ granularidad) y Capa 2 (sugerencias heurísticas + LLM-ready). Capa 3 (DSL
++ KPIs custom generados por Chalán Claudio) queda para sprint S2b.5 separado.
+
+## 1. Track A — Catálogo de 28 KPIs
+
+App `apps/taller_home/`, módulo nuevo `kpis.py` con registry declarativo.
+
+7 categorías visuales en `CATEGORIAS`:
+
+| Cat | Slug | Roles | Estado |
+|---|---|---|---|
+| 🏗 Operación | proyectos-activos, prospectos-pipeline, cotizados-sin-avance, proyectos-en-pausa, por-entregar-esta-semana, proyectos-vencidos, proyectos-sin-actividad, proyectos-cancelados-mes | todos / admin / contador | activo |
+| ✅ Tareas | mis-tareas-vencidas, mis-tareas-proximas-3d, tareas-vencidas-equipo, tareas-bloqueadas, tareas-sin-asignar, tareas-completadas-semana | todos / admin | activo |
+| 📨 Buzón | buzon-sin-responder, buzon-bugs-abiertos, buzon-sugerencias, buzon-mios-sin-responder | admin / todos | activo |
+| 💬 Recados | mis-recados-no-leidos, recados-enviados-semana | todos | activo |
+| 👥 Cartera | clientes-activos, clientes-nuevos-mes, clientes-sin-proyectos, clientes-con-pry-activos | admin/contador | activo |
+| 📡 Infraestructura | interfon-suscripciones, interfon-pushes-semana, site-integraciones-rojo | admin / super_admin | activo |
+| 💰 Dinero | ingresos-mes, cxc-total | admin/contador | pendiente_tesoreria |
+
+Cada KPI es un dataclass `KPI(slug, titulo, descripcion, categoria,
+roles_visible, calcular, origen, estado_kpi)`. `calcular(user)` retorna
+`{valor, nota, link}` — `nota="alerta"` colorea la card en error, `link`
+hace la card clickable. KPIs con `estado_kpi="pendiente_tesoreria"`
+muestran nota "Completo con S2b.3" en lugar del cálculo placeholder.
+
+## 2. Granularidad por usuario
+
+Tabla `taller_home.PreferenciaKPI(usuario, kpi_slug, visible, orden, origen)`.
+**Default opt-in** (opuesto al opt-out de `PreferenciaCategoriaPush`):
+sin fila = visible si el rol lo permite. Sólo se persiste cuando el
+usuario explícitamente desactiva.
+
+`origen` discrimina entre `manual` (catálogo), `sugerido_chalan`
+(reservado Capa 2), `custom_chalan` (reservado Capa 3 — S2b.5).
+
+## 3. Página `/perfil/dashboard/`
+
+Edición de KPIs visibles: checkboxes agrupados por categoría, con
+descripción y badge "Completo con S2b.3" en KPIs de dinero. Botón
+"Guardar preferencias". POST a `/perfil/dashboard/guardar` aplica
+`update_or_create` para cada slug aplicable al rol — sin riesgo de que
+un diseñador active KPIs admin-only.
+
+Sala de Juntas trae link "Editar KPIs visibles →" en la barra superior
+de la sección "Tu tablero".
+
+## 4. Track B — Capa 2: Sugerencias del Chalán
+
+Modelo `taller_home.SugerenciaKPI(usuario, kpi_slug, motivo, fuente,
+estado, sugerido_en, resuelta_en)`. Estados: `pendiente | aceptada |
+descartada`. Unicidad `(usuario, kpi_slug)` — un slug descartado no se
+vuelve a sugerir.
+
+`sugerencias.py` define `REGLAS` heurísticas en Python (siempre activas,
+0 costo). Hoy implementadas:
+- Admin con >3 tareas vencidas equipo → sugerir `tareas-vencidas-equipo`
+- Admin con >0 proyectos inactivos → sugerir `proyectos-sin-actividad`
+- Admin con >2 buzón sin responder → sugerir `buzon-sin-responder`
+- Usuario con tareas propias vencidas → sugerir `mis-tareas-vencidas`
+
+Banner en Sala de Juntas (top) con botones **Activar** / **Descartar**.
+Aceptar crea `PreferenciaKPI(visible=True, origen='sugerido_chalan')`.
+Descartar marca `estado='descartada'`.
+
+`fuente='heuristica'` hoy; preparado para `fuente='chalan_llm'` cuando
+S2b.2 — El Dictado entregue el intérprete del Chalán Claudio. Mismo
+endpoint, mismo flujo, sólo cambia el origen de las sugerencias.
+
+## 5. Track B — Push automáticos (3 categorías nuevas)
+
+Reusa `lib.interfono.enviar_a_usuario(..., categoria=...)` con historial
+(S2b.1.5) + opt-out (S2b.1). Categorías nuevas en
+`apps.perfil_notificaciones.views.CATEGORIAS` ahora son **tuplas de 4
+elementos** `(slug, nombre, descripcion, roles_visible)` — `roles_visible=None`
+significa visible a todos.
+
+| Trigger | Categoría | Destinatarios |
+|---|---|---|
+| `buzon_empleado.nuevo` crea mensaje | `buzon` | super_admin + dueno activos (no el autor) |
+| `los_proyectos.nuevo` crea proyecto | `proyectos` | super_admin + dueno activos (no el creador) |
+| `los_proyectos.cambiar_estado` | `proyectos` | asignados activos del proyecto (no el actor) |
+| `el_pizarron.nueva_tarea` con `asignada_a` | `tareas` | el `asignada_a` (no si es el actor) |
+
+Todos los hookpoints usan `transaction.on_commit` — si la transacción
+rolibackea, no se despacha push. Errores capturados con `try/except
+Exception` para no tumbar la vista por un push roto.
+
+## 6. Tests — 26 nuevos
+
+`tests/taller/test_sala_juntas_kpis.py` (15):
+- catálogo tiene ≥25 entradas
+- admin ve más KPIs que diseñador
+- buzón es admin-only
+- KPI de dinero marcado pendiente_tesoreria
+- `proyectos-activos`, `mis-tareas-vencidas`, `buzon-sin-responder` calculan correcto
+- preferencias ocultan y default opt-in
+- `dashboard_guardar` persiste selección
+- diseñador no puede activar KPIs admin-only
+- sugerencia se crea, no se duplica, descartada no vuelve
+- aceptar sugerencia crea PreferenciaKPI con `origen='sugerido_chalan'`
+- home renderiza KPIs iterados y oculta los con preferencia
+
+`tests/taller/test_push_automaticos.py` (11):
+- buzón → admins (no autor) + categoría correcta
+- proyecto creado → admins (no creador)
+- proyecto status → asignados (no actor)
+- tarea asignada → solo `asignada_a` con categoría `tareas`
+- tarea sin asignar no dispara
+- tarea asignada a sí mismo no dispara
+- categoría `buzon` visible sólo a admin/dueno en `/perfil/notificaciones/`
+
+Total esperado del repo: **399 verdes** (373 baseline + 26 nuevos).
+
+## 7. Decisiones de sprint
+
+- **Default opt-in** para PreferenciaKPI (opuesto a PreferenciaCategoriaPush).
+  Razón: el usuario espera ver "todo" por default; oculta lo que le molesta.
+  En categorías de push, lo opuesto: opt-in obligatorio ahogaría adopción.
+- **`origen` en PreferenciaKPI** desde día 1 — prepara la Capa 3 sin
+  refactor; ya hoy distingue manual vs sugerido_chalan.
+- **Reglas heurísticas Python primero, LLM después.** Sin costo, sin
+  latencia. Cuando S2b.2 entregue el intérprete, se agrega `fuente='chalan_llm'`
+  como segundo proveedor de sugerencias sin tocar el flujo.
+- **KPIs de dinero parciales hoy** — calculan `monto_cobrado` /
+  `monto_facturado` que ya existen en el modelo de proyecto. El placeholder
+  desaparece y el valor se actualiza solo cuando S2b.3 traiga La Tesorería.
+- **Push admin-only para buzón** — sólo admins se entera porque sólo
+  ellos pueden responder. Diseñador autor no recibe (es quien escribió).
+- **`transaction.on_commit` defensivo** — si la vista hace rollback, no
+  hay push fantasma. Patrón ya validado en S2b.1.
+
+## 8. Próximo sprint
+
+- **S2b.1b — Activar Drive en Los Recados** (~1.5h, bloqueado por setup).
+- **S2b.2 — El Dictado** (~3-4h) — desbloquea el LLM real para sugerencias
+  del Chalán + abre la posibilidad de Capa 3 (DSL + custom KPIs).
+- **S2b.3 — La Tesorería** (~3-4h) — activa los KPIs de dinero que hoy
+  son placeholder parcial.
+- **S2b.5 — Capa 3: DSL + custom KPIs** (~4-5h) — fragmentado para
+  revisar cuidadosamente la seguridad del DSL.

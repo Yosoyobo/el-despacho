@@ -372,7 +372,26 @@ Para reportar problemas, dar sugerencias, comunicar al admin. Cuando algo se rom
 
 **Historial de notificaciones** (desde S2b.1.5): la misma página `/perfil/notificaciones/` muestra arriba la bandeja de avisos recibidos — los últimos 25 con paginación "Mostrar más antiguas". Cada item indica timestamp (`Hace 5 min`), categoría, título, cuerpo y estado (✓ Clickeada · Silenciada · Sin VAPID · Sin dispositivo). Si activaste una categoría que tenías apagada, ahí verás retroactivamente los avisos que se te perdieron mientras estaba silenciada.
 
+**Categorías de push expandidas en S2b.4:**
+
+- **Los Recados** (S2b.1): cuando te mandan o mencionan en mensajería interna.
+- **El Buzón** (S2b.4, solo admins): cuando un empleado crea un mensaje nuevo.
+- **Mis proyectos** (S2b.4): cuando se crea un proyecto o cambia el estado de uno donde estás asignado.
+- **Mis tareas** (S2b.4): cuando te asignan una tarea nueva.
+
+Cada categoría se desactiva por separado en `/perfil/notificaciones/` → checkbox.
+
 **Envío manual de notificaciones** (super_admin y dueño): Gerencia → Envío manual → form (destinatarios, título, cuerpo, URL).
+
+### 📊 Mi tablero (Sala de Juntas — S2b.4)
+
+La Sala de Juntas muestra ahora un **catálogo de ~28 KPIs** distribuidos en 7 categorías visuales (Operación, Tareas, Buzón, Recados, Cartera, Infraestructura, Dinero). Cada usuario ve los KPIs aplicables a su rol y puede personalizar cuáles quiere ver.
+
+**Editar tu tablero:** `/perfil/dashboard/` — checkboxes agrupados por categoría. Default: ves todos los KPIs aplicables a tu rol. Desactiva los que no te interesan.
+
+**Sugerencias del Chalán** (Capa 2 — heurísticas hoy; LLM real cuando S2b.2 esté listo): si el sistema detecta una situación relevante (ej. tu equipo tiene >3 tareas vencidas y no tienes ese KPI visible), aparece un banner azul en la Sala de Juntas con botones [Activar] / [Descartar]. Aceptar agrega el KPI a tu tablero permanente. Descartar lo silencia para siempre.
+
+**KPIs marcados "Completo con S2b.3 — La Tesorería":** Ingresos del mes y Cuentas por cobrar se calculan con valores parciales (`monto_cobrado`, `monto_facturado` del proyecto) hasta que el módulo de Tesorería entregue datos completos. La fórmula y la card no cambian — solo se actualiza el dato fuente automáticamente.
 
 ---
 

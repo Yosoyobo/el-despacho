@@ -158,27 +158,38 @@ def test_middleware_no_toca_assets(client, usuario_factory):
 
 
 def test_sala_juntas_taller_super_admin(client, usuario_factory):
+    """S2b.4: admin ve catálogo de KPIs reales + sugerencias del Chalán.
+
+    Los placeholders "Pendiente sprint S2b.4" desaparecieron cuando se
+    entregó el catálogo. Ahora super_admin ve KPIs reales como
+    'Proyectos activos', 'Buzón sin responder', etc.
+    """
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.content.decode()
     assert "Sala de Juntas" in body
-    # KPIs del rol admin: 4 placeholders.
-    assert body.count("Pendiente sprint S2b.4") >= 4
-    # Slot del Chalán.
+    # Catálogo S2b.4: el admin ve KPIs reales de varias categorías.
+    assert "Proyectos activos" in body
+    assert "Tu tablero" in body
+    assert "Editar KPIs visibles" in body
+    # Slot del Chalán + tabla "Pendientes de cotizar" siguen.
     assert "Chalán Claudio" in body
-    # Sección "Pendientes de cotizar"
     assert "Pendientes de cotizar" in body
 
 
 def test_sala_juntas_taller_contador(client, usuario_factory):
+    """S2b.4: contador ve subset propio (cartera + buzón vista parcial)."""
     u = usuario_factory(rol="contador")
     client.force_login(u)
     resp = client.get("/")
     assert resp.status_code == 200
-    # 3 KPIs para contador.
-    assert resp.content.decode().count("Pendiente sprint S2b.4") == 3
+    body = resp.content.decode()
+    # KPIs aplicables al contador
+    assert "Clientes activos" in body
+    # No le aparecen KPIs admin-only
+    assert "Tareas vencidas del equipo" not in body
 
 
 def test_sala_juntas_taller_disenador(client, usuario_factory):
@@ -187,9 +198,10 @@ def test_sala_juntas_taller_disenador(client, usuario_factory):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    # 2 KPIs para diseñador (sin "Pendiente sprint" — son reales).
-    assert "Mis proyectos activos" in body
-    assert "Mis tareas próximas" in body
+    # KPIs del catálogo aplicables al diseñador.
+    assert "Mis tareas" in body or "Mis recados" in body
+    # No le aparecen KPIs admin-only
+    assert "Buzón sin responder" not in body
 
 
 # ── 4) Dashboard ejecutivo espejo en Gerencia ───────────────────────────────

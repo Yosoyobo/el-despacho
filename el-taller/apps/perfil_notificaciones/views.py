@@ -15,10 +15,27 @@ from lib.interfono import InterfonoConfig
 
 HISTORIAL_PAGINA = 25
 
-# (slug, etiqueta, descripción). Default: opt-out (activo si no hay fila).
+# (slug, etiqueta, descripción, roles_visible). Default: opt-out (activo si no hay fila).
 CATEGORIAS = [
-    ("recados", "Los Recados", "Recibir push cuando me mandan o mencionan."),
+    ("recados", "Los Recados", "Recibir push cuando me mandan o mencionan.", None),
+    ("buzon", "El Buzón (admins)", "Push cuando un empleado crea un mensaje nuevo.",
+     ("super_admin", "dueno")),
+    ("proyectos", "Mis proyectos", "Push cuando se crea un proyecto o cambia el estado de uno donde participo.",
+     None),
+    ("tareas", "Mis tareas", "Push cuando me asignan una tarea nueva.", None),
 ]
+
+
+def _categorias_para(user):
+    rol = getattr(user, "rol", None)
+    salida = []
+    for entrada in CATEGORIAS:
+        slug, nombre, desc = entrada[0], entrada[1], entrada[2]
+        roles = entrada[3] if len(entrada) > 3 else None
+        if roles and rol not in roles:
+            continue
+        salida.append((slug, nombre, desc))
+    return salida
 
 
 @login_required
@@ -33,7 +50,7 @@ def perfil(request):
             "descripcion": desc,
             "activo": categoria_activa(request.user, slug),
         }
-        for slug, nombre, desc in CATEGORIAS
+        for slug, nombre, desc in _categorias_para(request.user)
     ]
     historial = list(
         InterfonoEntrega.objects.filter(usuario=request.user)[:HISTORIAL_PAGINA]
@@ -73,7 +90,7 @@ def historial_pagina(request):
 @require_http_methods(["POST"])
 def guardar_categorias(request):
     seleccionadas = set(request.POST.getlist("categoria"))
-    for slug, _nombre, _desc in CATEGORIAS:
+    for slug, _nombre, _desc in _categorias_para(request.user):
         activo = slug in seleccionadas
         PreferenciaCategoriaPush.objects.update_or_create(
             usuario=request.user, categoria=slug, defaults={"activo": activo}

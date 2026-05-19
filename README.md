@@ -56,6 +56,13 @@ GitHub Actions (**El Mensajero**) · GHCR.
   (script `infra/scripts/generar_logos.py`), wrapper Google Drive
   + slot en Bóveda + `docs/SETUP_GOOGLE_DRIVE.md` (8 pasos, **NO
   activado** — espera credenciales del admin). **373 tests verdes**.
+- **S2b.4** ✅ (cerrado 2026-05-19): KPIs granulares + sugerencias del
+  Chalán + push automáticos. Catálogo de 28 KPIs en 7 categorías,
+  `PreferenciaKPI` con default opt-in, página `/perfil/dashboard/`
+  con checkboxes, `SugerenciaKPI` + reglas heurísticas con banner
+  Activar/Descartar (LLM real en S2b.2+), 3 categorías push nuevas
+  (`buzon`, `proyectos`, `tareas`) con hookpoints + opt-out. **399 tests
+  verdes**.
 - **S2b.1b** ⏳ siguiente: activar Drive en Los Recados (~1.5h, requiere
   que el admin complete `docs/SETUP_GOOGLE_DRIVE.md` primero)
 - **S2b** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google

@@ -59,7 +59,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 |---|---|---|---|
 | **El Directorio** | La Gerencia | CRUD usuarios + roles | S1a ✅ |
 | **Los Ajustes** | La Gerencia | UI credenciales cifradas | S1a ✅ |
-| **La Sala de Juntas** | La Gerencia | Dashboard at-a-glance | S3 |
+| **La Sala de Juntas** | El Taller | Tablero con 28 KPIs granulares + sugerencias del Chalán | S2b.4 ✅ (Capas 1+2) · S2b.5 (Capa 3) |
 | **La Cartera** | El Taller | CRUD clientes B2B | S1b |
 | **Los Proyectos** | El Taller | Proyectos, estados, asignaciones | S1b |
 | **El Pizarrón** | El Taller | Tareas + comentarios públicos/internos | S1b |
@@ -421,6 +421,44 @@ mención, sino general `Los Recados / yyyy-mm/` · fallback gracioso
 si Drive cae (envía sin adjunto) · eventos `recado.adjunto_subido` /
 `recado.adjunto_fallo`. El botón 📎 en el form ya existe (disabled
 con tooltip a la doc) — sólo se habilita.
+
+### S2b.4 ✅ — KPIs granulares + sugerencias del Chalán + push automáticos (2026-05-19)
+
+3 entregas paralelas:
+
+- **Catálogo de 28 KPIs** en `apps/taller_home/kpis.py` (registry
+  declarativo: slug, titulo, descripcion, categoria, roles_visible,
+  calcular, origen, estado_kpi). 7 categorías visuales: Operación
+  (8) · Tareas (6) · Buzón (4) · Recados (2) · Cartera (4) ·
+  Infraestructura (3) · Dinero (2 — `estado_kpi='pendiente_tesoreria'`).
+- **Granularidad por usuario**: tabla `taller_home.PreferenciaKPI(usuario,
+  kpi_slug, visible, orden, origen)`. Default opt-in (visible si no hay
+  fila; opuesto a `PreferenciaCategoriaPush`). Página `/perfil/dashboard/`
+  con checkboxes por categoría. Diseñador no puede activar KPIs admin-only
+  (validación server-side).
+- **Capa 2 — Sugerencias del Chalán**: tabla `taller_home.SugerenciaKPI`
+  + módulo `sugerencias.py` con `REGLAS` heurísticas Python (siempre
+  activas, 0 costo). Banner en Sala de Juntas con botones Activar /
+  Descartar. Descartada no vuelve a sugerirse. Preparado para `fuente='chalan_llm'`
+  cuando S2b.2 entregue el intérprete.
+- **Push automáticos**: 3 categorías nuevas (`buzon`, `proyectos`,
+  `tareas`). Hookpoints en `buzon_empleado.nuevo`, `los_proyectos.nuevo`
+  + `cambiar_estado`, `el_pizarron.nueva_tarea`. `transaction.on_commit`
+  defensivo. `CATEGORIAS` en `perfil_notificaciones` ahora es tupla de 4
+  con `roles_visible` opcional — `buzon` sólo a admin/dueno.
+- 26 tests nuevos (399 verdes totales).
+
+### S2b.5 — Capa 3: DSL + KPIs custom generados por Chalán (~4-5h, fragmentado)
+
+Fragmento del plan original. El Chalán Claudio (con LLM real,
+post-S2b.2) traduce preguntas en lenguaje natural a un **DSL JSON
+acotado** (entidad ∈ whitelist, agregacion ∈ count/sum/avg/min/max,
+filtros con ops vetadas, ventana_tiempo con tokens seguros). El DSL se
+ejecuta vía query builder vetado — NUNCA SQL/ORM libre. Modelo
+`KPICustom(slug, definicion_json, alcance: personal | equipo,
+aprobado_por)`. `alcance='equipo'` requiere aprobación super_admin.
+Cost guard: timeout 5s + límite filas pre-agregación. Origen
+`custom_chalan` en `PreferenciaKPI` ya preparado en S2b.4.
 
 ### S2b.2 — El Dictado (~3-4h)
 

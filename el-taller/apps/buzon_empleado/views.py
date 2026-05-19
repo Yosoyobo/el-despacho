@@ -130,6 +130,8 @@ def nuevo(request):
                 actor_id=request.user.pk, actor_email=request.user.email,
                 payload={"mensaje_id": msg.pk, "tipo": msg.tipo},
             ))
+            from apps.taller_home.push_handlers import notificar_buzon_nuevo
+            notificar_buzon_nuevo(msg, request.user)
             messages.success(request, "Mensaje enviado al Buzón. Gracias por escribirnos.")
             return redirect("buzon-lista")
     else:

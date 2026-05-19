@@ -74,6 +74,8 @@ def nuevo(request):
                 actor_email=request.user.email,
                 payload={"proyecto_id": proyecto.pk, "codigo": proyecto.codigo, "cliente_id": proyecto.cliente_id, "estado": proyecto.estado},
             ))
+            from apps.taller_home.push_handlers import notificar_proyecto_creado
+            notificar_proyecto_creado(proyecto, request.user)
             messages.success(request, f"Proyecto {proyecto.codigo} creado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
     else:
@@ -117,6 +119,8 @@ def cambiar_estado(request, pk):
                 actor_email=request.user.email,
                 payload={"proyecto_id": proyecto.pk, "anterior": anterior, "nuevo": nuevo},
             ))
+            from apps.taller_home.push_handlers import notificar_proyecto_status_cambiado
+            notificar_proyecto_status_cambiado(proyecto, anterior, nuevo, request.user)
             messages.success(request, f"Estado: {anterior} → {nuevo}")
             return redirect("proyectos-detalle", pk=proyecto.pk)
     else:
