@@ -44,17 +44,12 @@
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.4-1.4A6 6 0 0 1 18 11V8a6 6 0 1 0-12 0v3a6 6 0 0 1-.6 4.6L4 17h5m6 0a3 3 0 1 1-6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
             El Interfón
         </a>
-        {% endif %}
 
-        {# Andamiaje S-TailAdmin-2 — módulos próximos.
-           Visibles sólo para super_admin/dueno. Diseñador/contador no ven Gerencia, así que es no-issue. #}
-        {% if request.user.rol == "super_admin" or request.user.rol == "dueno" %}
-        <h3 class="mb-2 mt-4 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Próximamente</h3>
-
-        <a href="{% url 'proximamente:modulo' modulo='chalanes' %}" class="menu-item menu-item-inactive opacity-70 hover:opacity-100">
+        {# Pre-S2b.1: Los Chalanes pasa de andamio "Próximamente" a módulo activo
+           — panel /chalanes/ con Cuadro + Cadena + Auditoría. #}
+        <a href="/chalanes/" class="menu-item {% if '/chalanes' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM12 3v4M9 12h.01M15 12h.01M9 15.5h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="flex-1">Los Chalanes</span>
-            <span class="badge badge-warning text-[10px]">Pronto</span>
+            Los Chalanes
         </a>
         {% endif %}
 
