@@ -13,6 +13,11 @@ pywebpush==2.0.0
 djangorestframework==3.15.2
 drf-spectacular==0.27.2
 drf-spectacular-sidecar==2024.12.1
+# S2b.1.5 — andamiaje Google Drive. NO operativo todavía (slot vacío en La
+# Bóveda). Las libs sólo se importan cuando `lib.google_drive.drive.service`
+# se accede, así que tenerlas instaladas es inocuo.
+google-api-python-client==2.155.0
+google-auth==2.36.0
 # Tests
 pytest==8.3.4
 pytest-django==4.9.0
