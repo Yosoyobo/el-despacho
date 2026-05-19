@@ -3236,3 +3236,237 @@ Push al cierre del sprint. Tests locales 354 verdes + ruff limpio.
 migración + UI), wrapper Google Drive con La Bóveda, MIME whitelist,
 límite 25 MB, carpeta por proyecto si `#PRY`, fallback gracioso si Drive
 cae, evento `recado.adjunto_subido` / `recado.adjunto_fallo`.
+
+---
+
+# BITÁCORA — Sprint S2b.1.5 (Historial + Logo + Drive andamiaje)
+
+**Cierre 2026-05-19.** 3 features chicos independientes en commits
+separados para permitir revert quirúrgico. Tamaño real: ~4h Claude
+Code activo (incluyendo una pausa larga por unmount del RAID en HAL
+durante apagón eléctrico — el repo vive ahí, no se perdió nada
+porque commit Feature 1 ya estaba en `.git/`).
+
+## 1. Feature 1 — El Interfón Historial (`4d849b3`)
+
+Caso de uso ii: el usuario re-visita `/perfil/notificaciones/` y ve
+la bandeja completa de avisos recibidos, incluyendo los que se
+perdió cuando una categoría estaba apagada.
+
+### Modelo nuevo
+
+`interfono.InterfonoEntrega` — una fila por (usuario, push). Tabla
+`interfono_entrega`. Migración `0004_interfono_entrega.py`.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `usuario` | FK CASCADE | `entregas_interfono` related_name. |
+| `titulo`, `cuerpo`, `url`, `categoria`, `tag` | string/text | Redundantes con `InterfonoEnvio` agregado a propósito — queries de la UI quedan per-usuario sin join. |
+| `enviado_en` | timestamptz auto_now_add | |
+| `clickeado_en`, `visto_en` | timestamptz null | |
+| `origen_modulo`, `origen_id` | str/bigint | Para deep-link al detalle (recado, proyecto, etc). |
+| `estado_despacho` | str(30) | `entregada` · `silenciada_categoria` · `no_configurado` · `sin_suscripciones` · `fallida`. |
+
+Índices: `(usuario, -enviado_en)`, `(usuario, clickeado_en)`,
+`(categoria, -enviado_en)`.
+
+### Cambios en `lib/interfono.py`
+
+`enviar_a_usuario()` ahora **persiste SIEMPRE** una fila antes de
+intentar el despacho — esto es deliberado, permite que al activar
+una categoría después se vea histórico de lo que se perdió, y nos
+da auditoría completa. Si la categoría está silenciada o falta
+VAPID, la entrega queda con `estado_despacho` correspondiente pero
+visible en el historial.
+
+Retorna `entrega_id` en el dict de totales (además de `entregadas`,
+`fallidas`, `invalidadas`). Compatible con tests existentes ajustados
+para usar `>=` en vez de equality estricta.
+
+`enviar_a_suscripcion()` acepta kwarg opcional `entrega_id`; viaja en
+el payload web-push junto con `icon`/`badge` apuntando a los nuevos
+Logo_LC (de Feature 2).
+
+### SW (`interfono/sw_js.py`)
+
+`notificationclick` ahora hace `fetch('/perfil/notificaciones/<id>/clickeado', POST)`
+antes de `clients.openWindow(url)`. Endpoint `csrf_exempt` +
+`login_required`: el SW no puede obtener un CSRF token, y el efecto
+("marcar la propia entrega del usuario autenticado") es benigno
+incluso si fuera forjado.
+
+### UI en `/perfil/notificaciones/`
+
+Nueva sección "Historial de notificaciones" arriba de "Categorías".
+Lote inicial de 25 + paginación HTMX (`/perfil/notificaciones/historial/pagina/?offset=N`).
+Cada item: timestamp relativo (`timesince`), categoría, título,
+cuerpo (truncado a 140), badge de estado, enlace a URL del item.
+
+### Tests — 7 nuevos
+
+`tests/interfono/test_historial.py`: persistencia con categoría
+desactivada, persistencia sin VAPID, aislamiento por usuario,
+click + idempotencia + 404 defensivo, paginación HTMX, payload con
+entrega_id + Logo_LC en icon/badge.
+
+## 2. Feature 2 — Logo Learning Center (`<commit>`)
+
+Logo del cliente (círculo azul brand, sol amarillo sonriente, texto
+"LEARNING CENTER") sustituye placeholders de letra ("T"/"G") y los
+iconos PWA naranjas heredados del Taller.
+
+### Script reproducible
+
+`infra/scripts/generar_logos.py` (Pillow LANCZOS) toma
+`static/branding/Logo_LC.png` (master en raíz, único origen) y
+escribe 6 tamaños (32/64/128/192/256/512) a
+`el-taller/static/branding/` y `la-gerencia/static/branding/`. La
+Recepción queda fuera (stub sin `STATICFILES_DIRS`). Idempotente.
+
+### Integración visual
+
+| Lugar | Tamaño |
+|---|---|
+| Sidebar (Gerencia + Taller, dos copias) | 32×32 reemplaza avatar de letra |
+| Login (Gerencia + Taller) | 128×128 centrado arriba del form |
+| Favicon (base.html × 2) | 32 + 64 + apple-touch 192 |
+| Manifest PWA × 2 | 192/512 any + maskable, brand `#465fff` |
+| Errores 404/500 (4 partials × 2 apps) | 128×128 sobre el emoji |
+| Push payload (`lib.interfono` + sw_js) | icon 192 + badge 64 |
+
+Mismo PNG en light y dark — el círculo azul tiene contraste
+suficiente en ambos modos.
+
+### Tests — 5 nuevos
+
+`tests/taller/test_branding.py`: logo en sidebar, logo prominente
+en login, favicon en base.html, manifests con brand color +
+Logo_LC en 192/512, errores partials cargan static + logo.
+
+## 3. Feature 3 — Wrapper Drive + andamiaje (`<commit>`)
+
+Código + slot + docs, **sin activar**. La operación queda fría hasta
+que el admin siga la guía y pegue las credenciales.
+
+### Slots nuevos en `ajustes/credencial`
+
+- `google_drive_service_account_json` — JSON cifrado de la service
+  account
+- `google_drive_carpeta_raiz_id` — ID de la carpeta raíz
+
+Ambos marcados "(Inactivo)" en la etiqueta humana hasta activación.
+
+### Wrapper `lib/google_drive.py`
+
+`GoogleDriveWrapper` con `service` (property perezosa) +
+`carpeta_raiz_id` (property perezosa) + `esta_configurado()` +
+`subir_archivo()` / `crear_carpeta()` / `obtener_o_crear_carpeta()`
+**que lanzan `NotImplementedError` con mensaje claro apuntando a
+S2b.1b**. Esto evita activación accidental — si alguien lo invoca
+hoy, falla ruidosamente.
+
+Imports de `google.oauth2` y `googleapiclient` son **deferidos**
+hasta el primer acceso a `drive.service`, porque las libs son
+~50 MB y no queremos pagarlo en cold start.
+
+`NoConfiguradoError` se lanza si los slots están vacíos o si el JSON
+es inválido.
+
+### Dependencias
+
+`requirements.txt`: `google-api-python-client==2.155.0` +
+`google-auth==2.36.0`. Inocuas hasta que el wrapper se use de verdad.
+
+### Documentación
+
+`docs/SETUP_GOOGLE_DRIVE.md` — guía de 8 pasos: crear proyecto en
+GCP, habilitar Drive API, crear service account, descargar JSON,
+crear carpeta raíz, compartirla con la service account, pegar
+ambos slots en `/ajustes/`, validar con `python manage.py shell`.
+Incluye apéndice sobre por qué service account vs OAuth y nota
+sobre quotas.
+
+### Andamiaje
+
+`recados/form.html`: tooltip del botón 📎 disabled actualizado a
+"...cuando admin configure Google Drive — ver docs/SETUP_GOOGLE_DRIVE.md".
+
+### Tests — 7 nuevos
+
+`tests/test_google_drive.py`: sin credenciales lanza `NoConfiguradoError`,
+métodos lanzan `NotImplementedError`, slots aparecen en
+`SLOTS_CREDENCIAL` con etiqueta "Inactivo", dependencias importables,
+wrapper lee credenciales si existen, doc tiene los 8 pasos, form de
+recados linkea a la doc.
+
+## 4. Tests totales — 373 verdes
+
+| Suite | Tests nuevos S2b.1.5 |
+|---|---|
+| `tests/interfono/test_historial.py` | 7 |
+| `tests/taller/test_branding.py` | 5 |
+| `tests/test_google_drive.py` | 7 |
+| **Subtotal sprint** | **19** |
+| Existentes (con ajuste mínimo en `test_envio.py`) | 354 |
+| **Total** | **373** (9 skipped por Redis local ausente) |
+
+## 5. Decisiones de sprint
+
+- **Persistir entrega SIEMPRE, no sólo en éxito.** Si el ruido es
+  excesivo cuando alguien activa una categoría apagada hace meses,
+  se filtra en UI; el dato no se tira. Permite también auditoría
+  (¿cuántos pushes le mandé a X? ¿cuántos clickeó?).
+- **`csrf_exempt` en `marcar_clickeado`.** El SW no tiene CSRF
+  token disponible; el endpoint sólo afecta al propio usuario
+  autenticado; el blast radius es marcar una entrega de uno mismo
+  como clickeada. Aceptable.
+- **Iconos PWA viejos (`el-taller/static/icons/icon-*.png`) NO se
+  borran en este sprint.** Quedan en disco sin referencias. Deuda
+  menor — se limpia cuando se haga sweep de assets.
+- **Mismo PNG en dark y light mode.** Sin manipulación. El círculo
+  azul brand contrasta bien en ambos. Si en algún punto se ve
+  pobre, se decide en sprint visual; no en este.
+- **Wrapper Drive lanza `NotImplementedError` en métodos, no
+  retorna stubs vacíos.** Si alguien lo llama hoy, falla ruidoso.
+  Mejor que silent no-op.
+- **Imports de Google libs diferidos.** ~50 MB no se pagan en
+  arranque normal; sólo si se invoca `drive.service`.
+- **Sin tagline "Juntos. Tu puedes." en UI** — se posterga (decisión
+  futura, posible Login o Sala de Juntas).
+
+## 6. Bug atrapado durante el sprint
+
+**Bug F — RAID se desmontó durante un apagón en HAL.** El repo vive
+en `/Volumes/RAID/VSCode/ElDespacho/`. A media Feature 2, el shell
+perdió el cwd (`Working directory was deleted`). Recuperación: el
+RAID se remontó automáticamente cuando volvió la luz; el commit de
+Feature 1 estaba ya en `.git/` (no se perdió); Feature 2 quedó a
+mitad en disco no-commiteado pero íntegro. Lección reforzada de
+BITACORA §16: el sentinel anti-unmount sólo aplica a `archivo.sh`
+en producción; en desarrollo el RAID se desmonta y hay que esperar
+remount. Sin pérdida de datos en este caso.
+
+## 7. Deuda residual
+
+- **Limpieza automática de `InterfonoEntrega`** cuando la tabla
+  crezca (1 año o 50K registros). Por ahora crece libre.
+- **Iconos PWA viejos en `el-taller/static/icons/`** quedan en disco
+  sin referencias.
+- **Versión SVG del logo** — solo tenemos PNG.
+- **La Recepción no recibe logo** — es stub, no tiene
+  `STATICFILES_DIRS`. Cuando S5 active La Recepción, se agrega.
+
+## 8. CI / deploy
+
+Push al cierre del sprint. Tests locales 373 verdes + lint pendiente
+de verificar en CI. Job `smoke_docker` validará que las 3 imágenes
+levantan con las nuevas deps de Google.
+
+## 9. Próximo sprint
+
+- **S2b.1b — Activar Drive en Los Recados** (~1.5h, cuando el
+  usuario complete los 8 pasos de `docs/SETUP_GOOGLE_DRIVE.md`).
+- **S2b.2 — El Dictado** (~3-4h).
+- **S2b.3 — La Tesorería** (~3-4h).
+- **S2b.4 — KPIs reales + eventos push automáticos** (~2-3h, reusa
+  ya la categoría del Interfón establecida en S2b.1).

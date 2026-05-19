@@ -370,6 +370,8 @@ Para reportar problemas, dar sugerencias, comunicar al admin. Cuando algo se rom
 - Tareas nuevas asignadas (próximamente)
 - Mensajes del admin (manuales)
 
+**Historial de notificaciones** (desde S2b.1.5): la misma página `/perfil/notificaciones/` muestra arriba la bandeja de avisos recibidos — los últimos 25 con paginación "Mostrar más antiguas". Cada item indica timestamp (`Hace 5 min`), categoría, título, cuerpo y estado (✓ Clickeada · Silenciada · Sin VAPID · Sin dispositivo). Si activaste una categoría que tenías apagada, ahí verás retroactivamente los avisos que se te perdieron mientras estaba silenciada.
+
 **Envío manual de notificaciones** (super_admin y dueño): Gerencia → Envío manual → form (destinatarios, título, cuerpo, URL).
 
 ---
