@@ -37,6 +37,7 @@ def test_push_buzon_nuevo_va_a_admins(monkeypatch, usuario_factory):
     _patch_oncommit(monkeypatch)
     capturas = _capturar_envios(monkeypatch)
     from apps.taller_home.push_handlers import notificar_buzon_nuevo
+
     from buzon.models import MensajeBuzon
 
     autor = usuario_factory(rol="disenador")
@@ -54,6 +55,7 @@ def test_push_buzon_categoria_correcta(monkeypatch, usuario_factory):
     _patch_oncommit(monkeypatch)
     capturas = _capturar_envios(monkeypatch)
     from apps.taller_home.push_handlers import notificar_buzon_nuevo
+
     from buzon.models import MensajeBuzon
 
     autor = usuario_factory()

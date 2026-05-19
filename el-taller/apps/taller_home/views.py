@@ -31,10 +31,9 @@ def home(request):
     rol = getattr(user, "rol", None)
 
     # Capa 2: evalúa reglas heurísticas — crea SugerenciaKPI nuevas si aplican.
-    try:
+    import contextlib
+    with contextlib.suppress(Exception):
         evaluar_y_persistir(user)
-    except Exception:  # noqa: BLE001 — nunca tumbar dashboard por sugerencias
-        pass
 
     sugerencias = sugerencias_pendientes(user)
     # Inyectar el título del KPI sugerido para no resolverlo en el template.

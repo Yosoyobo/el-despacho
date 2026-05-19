@@ -17,7 +17,6 @@ campo `fuente='chalan_llm'` en `SugerenciaKPI` y un job periódico.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Callable
 
 from .kpis import kpi_por_slug
 
@@ -30,9 +29,8 @@ def _tareas_vencidas_equipo_count(user) -> int:
 
 
 def _proyectos_inactivos_count(user) -> int:
-    from django.utils import timezone
-
     from apps.los_proyectos.models import Proyecto
+    from django.utils import timezone
     limite = timezone.now() - timedelta(days=14)
     return Proyecto.objects.filter(
         estado__in=("en_diseno", "revision_cliente", "en_produccion"),

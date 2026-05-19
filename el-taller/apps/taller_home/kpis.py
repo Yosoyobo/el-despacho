@@ -21,9 +21,10 @@ con TTL=60s en `taller_home/cache.py` (sprint futuro).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Callable
+from typing import Any
 
 # ── Constantes auxiliares ──────────────────────────────────────────────────
 
@@ -85,8 +86,8 @@ def _kpi_prospectos_pipeline(user) -> dict:
 
 
 def _kpi_cotizados_sin_avance(user) -> dict:
-    from django.utils import timezone
     from apps.los_proyectos.models import Proyecto
+    from django.utils import timezone
     limite = timezone.now() - timedelta(days=7)
     n = Proyecto.objects.filter(estado="cotizado", actualizado_en__lt=limite).count()
     return _resultado(n, nota=("alerta" if n > 0 else ""), link="/proyectos/?estado=cotizado")
@@ -129,8 +130,8 @@ def _kpi_proyectos_vencidos(user) -> dict:
 
 def _kpi_proyectos_sin_actividad(user) -> dict:
     """Activos sin comentarios ni cambios en 14 días — riesgo de cliente perdido."""
-    from django.utils import timezone
     from apps.los_proyectos.models import Proyecto
+    from django.utils import timezone
     limite = timezone.now() - timedelta(days=14)
     qs = Proyecto.objects.filter(
         estado__in=ESTADOS_PROYECTO_ACTIVOS,
@@ -315,8 +316,8 @@ def _kpi_site_integraciones_rojo(user) -> dict:
 
 def _kpi_ingresos_mes(user) -> dict:
     """Suma de `monto_cobrado` de proyectos cobrados este mes."""
-    from django.db.models import Sum
     from apps.los_proyectos.models import Proyecto
+    from django.db.models import Sum
     inicio = _inicio_mes()
     total = Proyecto.objects.filter(
         actualizado_en__date__gte=inicio,
@@ -326,8 +327,8 @@ def _kpi_ingresos_mes(user) -> dict:
 
 def _kpi_cxc_total(user) -> dict:
     """`monto_facturado - monto_cobrado` agregado de proyectos no-terminales."""
+    from apps.los_proyectos.models import ESTADOS_TERMINALES, Proyecto
     from django.db.models import F, Sum
-    from apps.los_proyectos.models import Proyecto, ESTADOS_TERMINALES
     qs = Proyecto.objects.exclude(estado__in=ESTADOS_TERMINALES)
     total = qs.aggregate(s=Sum(F("monto_facturado") - F("monto_cobrado")))["s"] or 0
     return _resultado(f"${total:,.0f}", nota="(estimado parcial — S2b.3)")
