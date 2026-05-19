@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.perfil_notificaciones.apps.PerfilNotificacionesConfig",
     "apps.el_catalogo.apps.ElCatalogoConfig",
     "apps.perfil_chalanes.apps.PerfilChalanesConfig",
+    "apps.recados.apps.RecadosConfig",
     # La Gerencia (apps es namespace pkg — convive con El Taller)
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -87,6 +88,7 @@ TEMPLATES = [
                 "interfono.context_processors.vapid_public_key",
                 "auth_google.context_processors.google_oauth_configurado",
                 "cuentas.context_processors.permisos_modulos",
+                "apps.recados.context_processors.recados_no_leidos",
             ],
         },
     },

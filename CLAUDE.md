@@ -63,6 +63,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **La Cartera** | El Taller | CRUD clientes B2B | S1b |
 | **Los Proyectos** | El Taller | Proyectos, estados, asignaciones | S1b |
 | **El Pizarrón** | El Taller | Tareas + comentarios públicos/internos | S1b |
+| **Los Recados** | El Taller | Mensajería interna con `@/#/$` + push | S2b.1 ✅ |
 | **Las Cotizaciones** | El Taller | PDF vía Google Docs + envío n8n/Gmail | S2 |
 | **La Facturación** | El Taller | Invoices comerciales (no fiscales) | S2 |
 | **La Caja** | El Taller | Stripe + MercadoPago, links de pago | S2 |
@@ -236,6 +237,25 @@ ElDespacho/
   de JS para manejar dragstart/dragover/drop/touch-equivalente. Mismo
   resultado funcional, menos superficie de bugs. Aplica también si se
   agrega reordenamiento en otras tablas administrativas del repo.
+- **Los Recados vive en `el-taller/apps/recados/`, NO en raíz**
+  (decisión S2b.1) — DOC_03 §2 establece que la mensajería interna existe
+  sólo en El Taller (no es shared cross-app como `referencias/` o
+  `chalanes/`). Patrón: si una feature es exclusiva de un Django project,
+  va a `<proyecto>/apps/<feature>/`; si la consumen ≥2 projects, va a
+  raíz.
+- **Grupo dinámico `equipo-de-#proyecto` se resuelve al persistir el
+  recado** (decisión S2b.1) — no en query de bandeja. Razón: bandeja
+  queda con queries simples por índice; semántica intuitiva (los
+  destinatarios congelan en el momento del envío, así que reasignar el
+  proyecto después no altera la audiencia histórica del recado); más
+  performante en lectura.
+- **Categorías de push con opt-out** (decisión S2b.1) — tabla
+  `interfono_preferencia_categoria(usuario, categoria, activo)`. Si NO
+  hay fila, se trata como activo. Solo se persiste cuando el usuario
+  explícitamente desactiva (o reactiva). Razón: opt-in obligatorio
+  ahogaría adopción del Interfón en mensajería interna; el usuario que
+  no quiere notificaciones las desactiva en `/perfil/notificaciones/`.
+  El primer recado puede sorprender — anotar en onboarding.
 
 ---
 
@@ -334,40 +354,63 @@ sincronizadas o el JS/CSS diverge silenciosamente. Aplica a:
 
 Levantar producción en La Sede. Cubierto y superado por S2a.
 
-### pre-S2b — siguiente sesión
+### Pre-S2b.1 + Pre-S2b.2 ✅ (cerrados)
 
-**El sprint que enchufa lógica al andamiaje visual del arco TailAdmin.**
-Mediano-grande pero factible (los componentes visuales ya están). Cubre:
+Sistema de Referencias `@/#/$` (DOC_01), Los Chalanes v2 (DOC_02),
+re-arquitectura (Sala de Juntas + Buzón + Catálogo a Taller), permisos
+granulares por checkbox, sidebar dinámica. App shared `referencias/` y
+`chalanes/` en raíz; helper `puede()` + filtro/tag `puede` + context
+processor `permisos_modulos`.
 
-1. **Sistema de Referencias `@/#/$` real** (DOC_01) — slugs en Usuario/
-   Proyecto/Cliente, tabla `referencia` polimórfica, regex parser,
-   endpoints `/api/autocomplete/{usuarios,proyectos,clientes}`, JS
-   vanilla del autocomplete, filtro `renderizar_referencias`, evento
-   Portavoz `referencia.usuario_mencionado`, búsqueda inversa.
-   `_chip_referencia.html` ya entregado en S-2 — sólo se enchufa.
-2. **Los Chalanes v2** (DOC_02) — Cuadro de Chalanes, Cadena de
-   Sustitución, estaciones, aprendizajes globales. Slots
-   `chalan_*_api_key` se agregan a Los Ajustes. `_avatar_chalan.html`
-   se diferencia por proveedor.
-3. **El Dictado** (DOC_04) — text box en Sala de Juntas (que migra a
-   Taller), interpretación con Chalán Claudio, preview con
-   `_preview_acciones.html` ya entregado.
-4. **Re-arquitectura de ubicaciones:**
-   - Sala de Juntas: Gerencia → **Taller** (donde vive el equipo);
-     el slot del Chalán placeholder se va con ella.
-   - El Buzón: Gerencia (admin) + Taller (empleado) → unificar y mover.
-   - La Gerencia se queda con admin puro: Directorio, Ajustes,
-     Catálogo, Los Chalanes, El Site, Tasas, Interfón.
+### S2b.1 ✅ — Los Recados (sin Drive, 2026-05-19)
 
-### S2b — Comercial y pagos (después de pre-S2b)
+App `el-taller/apps/recados/` con mensajería interna asíncrona.
+Modelos: `Recado`, `RecadoDestinatario`, `RecadoVersion`, `RecadoGrupo`
+(4 grupos predefinidos seedeados idempotente; grupo dinámico
+`equipo-de-#PRY-X` resuelto al persistir). Endpoints `/recados/{,nuevo/,
+<id>/,<id>/editar/,<id>/leido/}` + DELETE→405 + 404 defensivo en
+detalle. Push automático vía El Interfón a destinatarios + `@mencionados`,
+con dedup y opt-out por categoría (nueva tabla
+`interfono_preferencia_categoria`). `lib/interfono.enviar_a_usuario`
+acepta parámetro `categoria` opcional. Sidebar Taller: ítem movido de
+"Pronto" al menú principal con counter de no leídos (context processor
+solo-Taller). Categoría "Los Recados" en `/perfil/notificaciones/` con
+checkbox + POST de persistencia. Placeholder `/proximamente/recados/`
+removido. 21 tests nuevos (354 verdes totales). Adjuntos a Drive
+quedan para S2b.1b.
+
+### S2b.1b — Los Recados + Drive (próximo, ~1.5h)
+
+`RecadoAdjunto` (modelo + UI) · wrapper Google Drive con La Bóveda
+(token OAuth + carpeta raíz cifrados) · MIME whitelist + límite 25 MB ·
+carpeta del proyecto si `#PRY` mención, sino general
+`Los Recados / yyyy-mm/` · fallback gracioso si Drive cae (envía sin
+adjunto) · eventos `recado.adjunto_subido` / `recado.adjunto_fallo`.
+El botón 📎 en el form ya existe (disabled con tooltip) — sólo se
+habilita.
+
+### S2b.2 — El Dictado (~3-4h)
+
+DOC_04. Text box en Sala de Juntas, interpretación con Chalán Claudio,
+preview con `_preview_acciones.html`, ejecutores, histórico, aprendizajes.
+
+### S2b.3 — La Tesorería (~3-4h)
+
+DOC_06. Ingresos/egresos/CxC/CxP/reembolsos + OCR de recibos + dictado
+de gasto + reportes + export.
+
+### S2b.4 — KPIs reales + eventos push automáticos (~2-3h)
+
+Conectar placeholders de Sala de Juntas con datos reales · eventos push
+automáticos del Buzón/Proyectos/Tareas reusando la categoría de El
+Interfón.
+
+### S2b — Comercial y pagos (después de S2b.4)
 
 Cotizaciones (PDF vía Google Docs templates — NO WeasyPrint/ReportLab/Puppeteer) ·
 Facturación · La Caja (Stripe + MercadoPago) · La Cobranza (recordatorios
 automáticos por Portavoz) · wrappers de Google Workspace (Drive, Sheets, Docs,
-Calendar) · **Los Recados** (DOC_03 — mensajería del equipo) ·
-**La Tesorería** (DOC_06 — ingresos/egresos/CxC/CxP/reembolsos + OCR
-de recibos + dictado de gasto). Placeholders `/proximamente/recados/`
-y `/proximamente/tesoreria/` ya activos.
+Calendar).
 
 ### S3 — Contabilidad y reportes
 
@@ -584,6 +627,46 @@ desaparezca y el resto se renderice como texto literal en la UI. Para
 comentarios multilínea va `{% comment %}...{% endcomment %}`. Comentarios
 largos de documentación van a `docs/`, no a templates. Cubierto por
 `tests/{taller,gerencia}/test_no_renderiza_comentarios.py`.
+
+### Bug D — `ModelForm(instance=obj)` muta el instance en `is_valid()`
+
+Django `ModelForm` con `instance=obj` ejecuta `construct_instance()` en
+`_post_clean()` (parte de `is_valid()`), lo que **asigna los valores
+nuevos al `obj` antes de que llames a `save()`**. Esto rompe cualquier
+comparación delta tipo `if cleaned_data["x"] != obj.x:` — para entonces
+`obj.x` YA es el valor nuevo.
+
+Patrón obligatorio: **captura el valor original ANTES de `form.is_valid()`**:
+
+```python
+cuerpo_actual = recado.cuerpo  # ANTES
+form = RecadoForm(request.POST, instance=recado)
+if form.is_valid():
+    if form.cleaned_data["cuerpo"] != cuerpo_actual:
+        ...
+```
+
+Aplica a cualquier vista que detecte cambios para crear snapshots,
+incrementar `version_actual`, emitir eventos, etc.
+
+### Bug E — `transaction.on_commit` no fira dentro de tests con `db`
+
+pytest-django's `db` fixture envuelve cada test en una transacción que
+hace rollback. Los callbacks registrados con `transaction.on_commit(fn)`
+**nunca corren** porque la transacción no se commitea. En producción
+funciona normal.
+
+Para tests que necesiten validar lógica diferida (push de El Interfón
+tras crear un recado, por ejemplo):
+
+```python
+def _patch_oncommit(monkeypatch):
+    from django.db import transaction as _tx
+    monkeypatch.setattr(_tx, "on_commit",
+        lambda fn, using=None, robust=False: fn())
+```
+
+O usa `@pytest.mark.django_db(transaction=True)` (más lento).
 
 ---
 

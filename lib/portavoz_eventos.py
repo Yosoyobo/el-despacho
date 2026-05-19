@@ -38,6 +38,9 @@ EventoTipo = Literal[
     "auth.google_vinculada",
     "auth.google_error",
     "auth.google_cuenta_no_registrada",
+    "recado.creado",
+    "recado.editado",
+    "recado.leido",
 ]
 
 

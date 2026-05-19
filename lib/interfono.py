@@ -99,13 +99,30 @@ def _invalidar_suscripcion(suscripcion) -> None:
     suscripcion.save(update_fields=["activa", "desactivada_en"])
 
 
-def enviar_a_usuario(usuario, titulo: str, cuerpo: str, url: str = "", tag: str = "") -> dict[str, int]:
-    """Itera todas las suscripciones activas del usuario."""
+def enviar_a_usuario(
+    usuario,
+    titulo: str,
+    cuerpo: str,
+    url: str = "",
+    tag: str = "",
+    categoria: str | None = None,
+) -> dict[str, int]:
+    """Itera todas las suscripciones activas del usuario.
+
+    Si `categoria` es no-vacío, respeta la preferencia opt-out del usuario
+    para esa categoría (S2b.1 — tabla `PreferenciaCategoriaPush`). Default
+    es activa: sólo se silencia si hay fila explícita con `activo=False`.
+    """
     from interfono.models import InterfonoSuscripcion
 
     totales = {"entregadas": 0, "fallidas": 0, "invalidadas": 0}
     if not InterfonoConfig.esta_configurado():
         return totales
+
+    if categoria:
+        from interfono.models import categoria_activa
+        if not categoria_activa(usuario, categoria):
+            return totales
 
     qs = InterfonoSuscripcion.objects.filter(usuario=usuario, activa=True)
     for sub in qs:

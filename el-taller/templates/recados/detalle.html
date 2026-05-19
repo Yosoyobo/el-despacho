@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load referencias %}
+{% block title %}Recado #{{ recado.pk }} — El Taller{% endblock %}
+
+{% block contenido %}
+<div class="flex flex-col gap-6">
+    <div class="flex items-start justify-between gap-4">
+        <div>
+            <a href="{% url 'recados:bandeja' %}" class="text-sm text-gray-500 hover:underline dark:text-gray-400">← Volver a la bandeja</a>
+            <h1 class="mt-2 text-title-md font-semibold text-gray-900 dark:text-gray-100">Recado #{{ recado.pk }}</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                De <span class="font-medium text-gray-700 dark:text-gray-200">{{ recado.autor.nombre_completo|default:recado.autor.email|default:"—" }}</span>
+                · {{ recado.creado_en|date:"d M Y H:i" }}
+                {% if recado.editado %}<span class="italic">(editado · v{{ recado.version_actual }})</span>{% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'recados:nuevo' %}?responder={{ recado.pk }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Responder</a>
+            {% if puede_editar %}
+            <a href="{% url 'recados:editar' pk=recado.pk %}" class="rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600">Editar</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <article class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="prose-sm whitespace-pre-wrap text-gray-800 dark:text-gray-100">{{ recado.cuerpo|renderizar_referencias }}</div>
+    </article>
+
+    <section>
+        <h2 class="mb-3 text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Destinatarios ({{ destinatarios|length }})</h2>
+        <ul class="flex flex-wrap gap-2">
+            {% for d in destinatarios %}
+            <li>{% include "_componentes_tailadmin/_chip_referencia.html" with tipo="usuario" slug=d.usuario.slug etiqueta=d.usuario.nombre_completo variante="badge" %}</li>
+            {% empty %}
+            <li class="text-sm text-gray-500 dark:text-gray-400">Sin destinatarios.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    {% if versiones %}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-3 text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Historial de versiones</h2>
+        <ol class="space-y-3">
+            {% for v in versiones %}
+            <li class="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
+                <p class="text-xs text-gray-500 dark:text-gray-400">v{{ v.version }} · {{ v.editado_en|date:"d M Y H:i" }}{% if v.editado_por %} · {{ v.editado_por.nombre_completo }}{% endif %}</p>
+                <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ v.cuerpo }}</p>
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

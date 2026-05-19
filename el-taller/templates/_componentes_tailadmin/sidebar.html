@@ -37,6 +37,16 @@
         </a>
         {% endif %}
 
+        {% if permisos_modulos.recados %}
+        <a href="/recados/" class="menu-item {% if '/recados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-3.2-6.9L21 4v6h-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="flex-1">Los Recados</span>
+            {% if recados_no_leidos_count %}
+            <span class="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white">{{ recados_no_leidos_count }}</span>
+            {% endif %}
+        </a>
+        {% endif %}
+
         {% if permisos_modulos.catalogo %}
         <a href="/catalogo/" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -54,16 +64,9 @@
             Mis Chalanes
         </a>
 
-        {# Andamiaje S-TailAdmin-2 — módulos próximos (Los Recados S2b.1, La Tesorería S2b.3). #}
+        {% comment %} Andamiaje S-TailAdmin-2 — módulos próximos (La Tesorería S2b.3).
+           Los Recados pasó a menú principal en S2b.1. {% endcomment %}
         <h3 class="mb-2 mt-4 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Próximamente</h3>
-
-        {% if permisos_modulos.recados %}
-        <a href="{% url 'proximamente:modulo' modulo='recados' %}" class="menu-item menu-item-inactive opacity-70 hover:opacity-100">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-3.2-6.9L21 4v6h-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="flex-1">Los Recados</span>
-            <span class="badge badge-warning text-[10px]">Pronto</span>
-        </a>
-        {% endif %}
 
         {% if permisos_modulos.tesoreria %}
         <a href="{% url 'proximamente:modulo' modulo='tesoreria' %}" class="menu-item menu-item-inactive opacity-70 hover:opacity-100">

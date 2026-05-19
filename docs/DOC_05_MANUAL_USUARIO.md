@@ -53,9 +53,9 @@
 > **Estado al 15 mayo 2026 (recordatorio):** look visual unificado a
 > TailAdmin Pro 2.3.0 (paleta gray/brand, tipografía Outfit, dark mode con
 > toggle propio). El Interfón se renombró a "El Interfón" en todo lo
-> visible. Los módulos que aún están en construcción (Los Recados, La
-> Tesorería, El Dictado) aparecen marcados como "Pronto" en el menú con
-> placeholder explicativo.
+> visible. Los módulos que aún están en construcción (La Tesorería,
+> El Dictado) aparecen marcados como "Pronto" en el menú con placeholder
+> explicativo. **Los Recados** ya está disponible desde S2b.1.
 
 ---
 
@@ -329,15 +329,21 @@ mensaje, sólo llega un push.
 
 **Dónde:** El Taller → Los Recados.
 **Quién:** todos.
+**Disponible desde:** sprint S2b.1 (mayo 2026).
 
 Mensajería asíncrona interna. Reemplaza WhatsApp para temas de trabajo.
 
 **Características:**
 - Mandar a 1 persona, varios, o grupos predefinidos (Todo el equipo, Dirección, Diseño y producción, Finanzas, Equipo de #proyecto)
 - Mencionar `@personas` (les llega push), `#proyectos`, `$clientes`
-- Adjuntar archivos hasta 25 MB (se guardan en Drive — carpeta del proyecto si lo mencionas)
-- Editar mensajes (queda marca "editado"), no se borran
-- Histórico completo
+- Editar mensajes (queda marca "editado"), no se borran nunca — quedan en histórico
+- Bandeja con 4 pestañas: Recibidos, Enviados, Menciones, No leídos
+- Counter de no leídos en la sidebar
+- Si vas a mandar a más de 5 personas, te pide confirmación
+- Push automático a destinatarios y `@mencionados` (puedes desactivarlo en `/perfil/notificaciones/` → "Los Recados")
+
+**Adjuntar archivos:** el botón 📎 está en el form pero llega en el sprint
+S2b.1b (Google Drive). Por ahora envía el texto solo.
 
 ### 📬 El Buzón
 
@@ -553,7 +559,7 @@ Sigue en "Próximamente". Cuando llegue, los clientes podrán ver el estado de s
 ### 🚧 En camino (sprint S2b — "El Pipeline")
 
 - **El Dictado en Sala de Juntas del Taller** — texto natural con IA
-- **Los Recados** — mensajería con `@/#/$`
+- **Adjuntos a Los Recados** — Google Drive (S2b.1b)
 - **La Tesorería completa** — OCR de recibos + dictado de gastos + reportes
 - **Los Chalanes v2** — multi-provider con cascada configurable + Chalán Chino (Deepseek)
 - **Sala de Juntas adaptativa** con KPIs reales por rol

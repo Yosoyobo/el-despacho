@@ -3063,3 +3063,176 @@ Push al cierre del sprint. Tests locales 331 verdes + Ruff limpio.
 
 **S2b.1 — Los Recados** (~2-3h): mensajería con `@/#/$`, adjuntos Drive,
 push automático a `@mencionados`.
+
+---
+
+# BITÁCORA — Sprint S2b.1 (Los Recados, sin Drive)
+
+> Cierre del **2026-05-19**. Sprint mediano que enchufa lógica al andamiaje
+> visual del arco TailAdmin: mensajería interna asíncrona con referencias
+> `@/#/$`, push automático a destinatarios y mencionados, grupos
+> predefinidos y dinámicos. Los adjuntos a Google Drive quedan para
+> S2b.1b (no entran en este sprint por decisión explícita).
+
+## 1. Modelos entregados (app `el-taller/apps/recados/`)
+
+| Tabla | Función |
+|---|---|
+| `recado` | Mensaje (autor, cuerpo, editado, version_actual) |
+| `recado_destinatario` | (recado, usuario, leido_en) con `unique_together` |
+| `recado_version` | Snapshot del cuerpo antes de cada edición |
+| `recado_grupo` | Grupos predefinidos (PK=slug, tipo, roles) |
+
+App nueva `apps.recados` en El Taller. NO se registra en La Gerencia ni
+Recepción (decisión DOC_03 §2 — vive solo en El Taller).
+
+Migración `0002_seed_grupos.py` (idempotente, `bulk_create(ignore_conflicts=True)`)
+siembra 4 grupos estáticos: `todos`, `direccion`, `disenio_y_produccion`,
+`finanzas`. El grupo dinámico `equipo-de-#PRY-X` se resuelve al persistir
+el recado (no se persiste como fila — DOC_03 §3.5).
+
+## 2. Endpoints
+
+| URL | Método | Función |
+|---|---|---|
+| `/recados/` | GET | Bandeja con pestañas `tab=recibidos\|enviados\|menciones\|no_leidos` (paginación 25/página) |
+| `/recados/nuevo/` | GET/POST | Crear recado; valida confirmación si > 5 destinatarios |
+| `/recados/<pk>/` | GET | Detalle (marca leído implícito) |
+| `/recados/<pk>/editar/` | GET/POST | Solo autor con `recados.editar_propios`. Crea `RecadoVersion`. |
+| `/recados/<pk>/leido/` | POST | Marca leído explícito (idempotente) |
+
+`DELETE /recados/<pk>/` retorna 405 (recados nunca se borran — DOC_03 §10).
+Detalle al que el usuario no tiene relación devuelve **404 (no 403)** para
+no revelar existencia.
+
+Confirmación de >5 destinatarios:
+
+```http
+POST /recados/nuevo/
+→ 400 {"requiere_confirmacion": true, "total_destinatarios": 6}
+POST /recados/nuevo/ confirmacion_aceptada=1
+→ 302 al detalle
+```
+
+## 3. Push automático vía El Interfón
+
+- Handler en `apps.recados.handlers.push_recado_creado(recado_id)`.
+- Se dispara desde `services.crear_recado()` en `transaction.on_commit()`
+  (fuera del atomic — no demora el commit).
+- Audiencia = destinatarios ∪ mencionados (`@`) − autor. Dedup natural por
+  set. Limita el cuerpo a 120 chars y elimina los sigils `@/#/$` para el
+  texto del push (DOC_03 §7.2).
+- Filtro por categoría: `lib.interfono.enviar_a_usuario(..., categoria="recados")`
+  consulta `PreferenciaCategoriaPush(usuario, categoria, activo)`. Default
+  es **opt-out** — si no hay fila, se envía. Sólo se silencia si hay fila
+  con `activo=False`.
+
+## 4. Cambios mínimos en `lib/interfono.py`
+
+Una sola firma extendida: `enviar_a_usuario(...)` ahora acepta
+`categoria: str | None = None`. Si se pasa categoría y el usuario la
+desactivó en preferencias, retorna silencioso. Cero cambios en
+`enviar_a_suscripcion` y `enviar_a_audiencia`.
+
+## 5. UI
+
+- **Bandeja** (`templates/recados/bandeja.html`): 4 pestañas, lista
+  paginada con autor/fecha/cuerpo truncado (renderizado con
+  `|renderizar_referencias` de Pre-S2b.1) + badge `(editado)`.
+- **Detalle** (`templates/recados/detalle.html`): autor, fecha, cuerpo
+  con chips `@/#/$` clickeables, lista de destinatarios con
+  `_chip_referencia.html`, historial de versiones si aplica, botones
+  "Responder" + "Editar" (este último gated por permiso).
+- **Form** (`templates/recados/form.html`): tres `<details>` colapsables
+  para destinatarios — Personas, Grupos predefinidos, Equipo de proyecto.
+  Textarea con `data-referencias` que el JS de Pre-S2b.1 monta solo.
+  Botón "📎 Adjuntar archivo" **disabled** con tooltip "Adjuntos a Drive
+  llegan en sprint S2b.1b" (reserva visual sin bloque vacío en detalle).
+
+## 6. Sidebar y counter
+
+- "Los Recados" se movió de la sección **PRÓXIMAMENTE** (donde estaba en
+  el andamiaje S-TailAdmin-2 con badge "Pronto") al **MENÚ principal** de
+  El Taller, gated por `permisos_modulos.recados`.
+- Counter de no leídos como badge brand-500 en el ítem, alimentado por
+  un context processor solo-Taller `apps.recados.context_processors.recados_no_leidos`.
+  Query barata por índice `(usuario, leido_en)`. Si no hay no-leídos, no
+  se renderiza el badge.
+- Placeholder `/proximamente/recados/` removido del dict de la app
+  `proximamente`. El slug ya no es ruteable.
+
+## 7. Categoría "Los Recados" en `/perfil/notificaciones/`
+
+- Tabla `interfono_preferencia_categoria` (PK auto, usuario, categoria,
+  activo, modificado_en) con `unique_together(usuario, categoria)`.
+- Sección nueva en el template de perfil con un checkbox por categoría.
+  Estado inicial = activo (opt-out). Submit a
+  `POST /perfil/notificaciones/categorias/` que hace
+  `update_or_create` por categoría.
+
+## 8. Eventos del Portavoz nuevos
+
+- `recado.creado` — `{recado_id, destinatarios_ids, tiene_adjuntos: False}`
+- `recado.editado` — `{recado_id, version_anterior, version_nueva}`
+- `recado.leido` — `{recado_id}`
+
+Añadidos al `EventoTipo` Literal de `lib/portavoz_eventos.py`.
+
+## 9. Decisiones de sprint
+
+- **Grupo dinámico resuelto al persistir**, no en query de bandeja
+  (decisión confirmada en plan). Razón: bandeja queda con queries simples
+  por índice; semántica intuitiva (los destinatarios congelan en el
+  momento del envío); más performante.
+- **Opt-out global de la categoría "recados"**. El primer recado puede
+  sorprender a usuarios — anotado para incluir en onboarding.
+- **`@require_http_methods(["GET"])` en `detalle`** para que DELETE
+  retorne 405 sin necesidad de view separada.
+- **`recado.cuerpo` capturado ANTES de `form.is_valid()`** en editar:
+  Django `ModelForm` con `instance=recado` muta el cuerpo del instance
+  en `_post_clean()`, lo que rompe la comparación delta. Aprendizaje
+  documentado en código.
+- **Counter de no leídos** vive en context processor (no en cada vista)
+  para que el sidebar lo lea sin acoplamiento.
+
+## 10. Tests — 21 nuevos
+
+`tests/taller/test_recados.py`:
+
+| Test | Cubre |
+|---|---|
+| `crear_recado_simple` | flujo básico |
+| `crear_recado_con_referencias` | crea filas `Referencia` para `@` |
+| `crear_recado_a_grupo_estatico` | `disenio_y_produccion` expande a diseñadores |
+| `crear_recado_a_grupo_dinamico_proyecto` | resuelve asignados del `#PRY-XXX` |
+| `destinatario_inactivo_excluido` | re-render con error sin persistir |
+| `confirmacion_requerida_si_mas_de_5` | 400 + `requiere_confirmacion`; con `confirmacion_aceptada=1` → 302 |
+| `editar_recado_crea_version_y_incrementa` | snapshot + bump |
+| `editar_recado_solo_autor` | otro usuario → 403 |
+| `delete_recado_405` | DELETE bloqueado |
+| `push_a_destinatarios` | enviar_a_usuario por destinatario |
+| `push_a_mencionados_aunque_no_destinatarios` | `@oscar` recibe push aunque no esté en lista |
+| `push_dedup_destinatario_y_mencionado` | un solo push por usuario |
+| `push_no_al_autor` | autor no se notifica a sí mismo |
+| `push_respeta_categoria_desactivada` | `PreferenciaCategoriaPush(activo=False)` silencia |
+| `bandeja_recibidos_default` | tab por defecto |
+| `bandeja_no_leidos_filtro` | filtro funcional |
+| `marcar_leido_implicito_al_abrir_detalle` | `RecadoDestinatario.leido_en` se setea |
+| `detalle_404_si_no_autor_ni_destinatario_ni_mencionado` | 404 defensivo |
+| `permiso_recados_ver_desactivado_oculta_sidebar` | toggle granular oculta link |
+| `seed_grupos_idempotente` | bulk_create con ignore_conflicts |
+| `counter_no_leidos_context_processor` | counter aparece en sidebar |
+
+**Total tests del repo: 354 verdes**, 9 skipped (Redis) — desde 333 baseline
+en la rama después de Pre-S2b.2 + hotfix.
+
+## 11. CI / deploy — pendiente
+
+Push al cierre del sprint. Tests locales 354 verdes + ruff limpio.
+
+## 12. Próximo sprint
+
+**S2b.1b — Los Recados + Drive** (~1.5h): `RecadoAdjunto` (modelo +
+migración + UI), wrapper Google Drive con La Bóveda, MIME whitelist,
+límite 25 MB, carpeta por proyecto si `#PRY`, fallback gracioso si Drive
+cae, evento `recado.adjunto_subido` / `recado.adjunto_fallo`.

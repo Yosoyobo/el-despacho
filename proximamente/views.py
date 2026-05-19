@@ -2,16 +2,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 
 MODULOS = {
-    "recados": {
-        "nombre": "Los Recados",
-        "icono": "💬",
-        "descripcion": (
-            "Mensajería interna asíncrona del despacho: avisos, recordatorios "
-            "y conversaciones cortas con `@personas`, `#proyectos` y `$clientes`."
-        ),
-        "sprint": "S2b",
-        "documento": "DOC_03",
-    },
+    # `recados` ya está vivo (S2b.1) — se removió del placeholder.
     "tesoreria": {
         "nombre": "La Tesorería",
         "icono": "💰",

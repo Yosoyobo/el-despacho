@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if modo == 'editar' %}Editar recado{% else %}Nuevo recado{% endif %} — El Taller{% endblock %}
+
+{% block contenido %}
+<div class="mx-auto max-w-3xl">
+    <h1 class="text-title-md font-semibold text-gray-900 dark:text-gray-100">
+        {% if modo == 'editar' %}Editar recado #{{ recado.pk }}{% else %}Nuevo recado{% endif %}
+    </h1>
+
+    <form method="post" class="mt-6 space-y-6" id="form-recado">
+        {% csrf_token %}
+
+        {% if modo != 'editar' %}
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">Para</label>
+            <div class="space-y-2 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                <details>
+                    <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-200">Personas</summary>
+                    <div class="mt-2 max-h-48 overflow-y-auto pr-1">
+                        {% for u in usuarios %}
+                        <label class="flex items-center gap-2 py-1 text-sm">
+                            <input type="checkbox" name="destinatarios_usuarios" value="{{ u.pk }}" class="rounded">
+                            <span>{{ u.nombre_completo }} <span class="text-gray-400">@{{ u.slug }} · {{ u.rol }}</span></span>
+                        </label>
+                        {% empty %}
+                        <p class="text-xs text-gray-500">No hay otros usuarios activos.</p>
+                        {% endfor %}
+                    </div>
+                </details>
+
+                <details>
+                    <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-200">Grupos predefinidos</summary>
+                    <div class="mt-2 space-y-1">
+                        {% for g in grupos %}
+                        <label class="flex items-center gap-2 py-1 text-sm">
+                            <input type="checkbox" name="destinatarios_grupos" value="{{ g.slug }}" class="rounded">
+                            <span>{{ g.nombre_legible }}{% if g.descripcion %} <span class="text-gray-400">— {{ g.descripcion }}</span>{% endif %}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </details>
+
+                <details>
+                    <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-200">Equipo de proyecto</summary>
+                    <div class="mt-2">
+                        <input type="text" name="destinatarios_dinamicos" placeholder="equipo-de-#PRY-000123" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <p class="mt-1 text-xs text-gray-500">Escribe el slug exacto, ej. <code>equipo-de-#PRY-000123</code>.</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+        {% endif %}
+
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">Mensaje</label>
+            {{ form.cuerpo }}
+            {% if form.cuerpo.errors %}<p class="mt-1 text-xs text-error-600">{{ form.cuerpo.errors|join:" · " }}</p>{% endif %}
+            <p class="mt-1 text-xs text-gray-500">Usa <code>@persona</code>, <code>#proyecto</code>, <code>$cliente</code> para vincular referencias.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button type="button" disabled title="Adjuntos a Drive llegan en sprint S2b.1b" class="cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500">
+                📎 Adjuntar archivo
+            </button>
+            <span class="text-xs text-gray-500">Adjuntos llegan en sprint S2b.1b.</span>
+        </div>
+
+        <input type="hidden" name="confirmacion_aceptada" value="" id="conf-aceptada">
+
+        <div class="flex justify-end gap-2">
+            <a href="{% url 'recados:bandeja' %}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Cancelar</a>
+            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                {% if modo == 'editar' %}Guardar cambios{% else %}Enviar recado{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script src="{% static 'js/referencias.js' %}" defer></script>
+{% endblock %}
