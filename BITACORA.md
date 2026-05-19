@@ -3616,3 +3616,137 @@ Total esperado del repo: **399 verdes** (373 baseline + 26 nuevos).
   son placeholder parcial.
 - **S2b.5 — Capa 3: DSL + custom KPIs** (~4-5h) — fragmentado para
   revisar cuidadosamente la seguridad del DSL.
+
+---
+
+# BITÁCORA — Sprint S2b.2 (El Dictado — V1)
+
+**Cierre 2026-05-19.** Text box en Sala de Juntas + Chalán Claudio
+real (Anthropic) que interpreta lenguaje natural y propone acciones.
+V1 cubre 5 ejecutores (los que tienen módulo hoy) y deja `registrar_egreso`
+como STUB que se activará automáticamente cuando S2b.3 entregue La
+Tesorería. UI de gestión de aprendizajes va a sub-sprint S2b.2.1.
+
+## 1. App nueva — `el-taller/apps/el_dictado/`
+
+Modelos:
+- `Dictado(autor, texto_crudo, estado, origen, chalan, chalan_apodo,
+  modelo, interpretacion_raw, pregunta_clarificacion,
+  latencia_interpretacion_ms, costo_usd, creado_en, confirmado_en,
+  aplicado_en)`. Estados: `interpretando | esperando_confirmacion |
+  preguntando | confirmado_parcial | confirmado_total | cancelado |
+  fallo_ia | aplicado | aplicado_con_errores`.
+- `DictadoAccion(dictado, orden, tipo, descripcion, payload, entidad_tipo,
+  entidad_id, confianza, confirmada, aplicada, error_al_aplicar,
+  aplicada_en)`.
+- `DictadoAprendizaje(dictado_origen, autor, frase_o_patron,
+  interpretacion_correcta, activo, peso, creado_en, desactivado_por,
+  desactivado_en, motivo_desactivacion)`. Método `peso_efectivo()` con
+  decaimiento lineal anual.
+
+Migración inicial + data migration que seedea
+`CuadroChalanes(estacion='dictado', proveedor='anthropic',
+modelo='claude-opus-4-7')` para que `lib.analistas.cadena_de('dictado')`
+resuelva.
+
+## 2. Servicios
+
+`apps/el_dictado/services.py`:
+- `interpretar(texto, usuario, origen)`: crea Dictado, llama
+  `lib.analistas.analizar('dictado', prompt)`, parsea JSON (con
+  heurística de extracción si LLM mete texto antes/después), filtra
+  tipos prohibidos (DOC_04 §5.3 — `modificar_ajustes`,
+  `modificar_catalogo`, `modificar_tasas`, `modificar_centro_costo`,
+  `modificar_permisos`, `eliminar_entidad`), persiste acciones, setea
+  estado final. **Nunca lanza** — errores LLM → `estado='fallo_ia'`.
+- `aplicar(dictado, usuario)`: itera acciones `confirmada=True`,
+  llama ejecutor[tipo], captura excepciones por acción (una falla
+  NO aborta resto), persiste estado final + emite eventos.
+
+## 3. Ejecutores
+
+`apps/el_dictado/ejecutores/basicos.py` registra via decorador
+`@registrar(tipo)`:
+- `actualizar_proyecto` (campos whitelisted: estado, monto_cotizado,
+  fecha_compromiso, descripcion)
+- `asignar_usuario_proyecto` (idempotente vía update_or_create)
+- `crear_tarea` (dispara `notificar_tarea_asignada` de S2b.4)
+- `actualizar_tarea` (campos whitelisted)
+- `crear_recado` (vía `apps.recados.services.crear_recado`)
+- `crear_mensaje_buzon` (dispara `notificar_buzon_nuevo` de S2b.4)
+- `registrar_egreso` **STUB** — `raise ValueError("Disponible en S2b.3 —
+  La Tesorería")`. Cuando S2b.3 entregue el módulo de egresos, sólo se
+  reemplaza la implementación del ejecutor; resto del flujo intacto.
+
+## 4. Prompt al Chalán
+
+`apps/el_dictado/prompt.py`:
+- `SYSTEM_PROMPT`: explica dominio + principios + tipos válidos +
+  formato JSON estricto + entidades prohibidas.
+- `construir_user_prompt(usuario, texto_crudo, aprendizajes,
+  aclaracion)`: contextualiza con aprendizajes top 10 + rol + texto.
+- `aprendizajes_activos()`: filtra por `peso_efectivo >= 0.3`, sort por
+  peso, top 10.
+
+## 5. UI
+
+- **Textarea en `taller_home/home.html`** reemplaza el placeholder
+  disabled. Form POST a `/dictado/interpretar`. `data-referencias`
+  activa el autocomplete `@/#/$` de S2b.1.5.
+- **Preview `el_dictado/preview.html`**: muestra acciones con checkboxes
+  marcables, alerta `⚠️ Confianza media` si `confianza<0.7`, manejo de
+  estado `fallo_ia` y `preguntando`.
+- **Detalle `el_dictado/detalle.html`**: post-aplicación, muestra
+  cada acción con badge ✓ / ✗ / ○ y error si aplica.
+- **Histórico `el_dictado/historial.html`**: `/dictado/historial/`
+  con últimos 50 dictados del usuario actual.
+
+## 6. Eventos del Portavoz
+
+Catálogo ampliado en `lib/portavoz_eventos.py` — eventos
+`dictado.creado | dictado.interpretado | dictado.preguntando_clarificacion
+| dictado.confirmado | dictado.aplicado | dictado.aplicado_con_errores |
+dictado.cancelado` (los principales).
+
+## 7. Tests — 14 nuevos
+
+`tests/taller/test_dictado.py`:
+- Interpretación: acciones válidas persisten, pregunta clarificación,
+  fallo total → fallo_ia, JSON inválido → fallo_ia, filtra prohibidas
+- Ejecutores: crear_tarea, crear_recado, registrar_egreso es STUB
+- Aplicación: atómica por acción (falla no aborta resto), sólo confirmadas
+- Histórico: solo propios, detalle 404 si no es autor
+- UI: home muestra textbox activo
+- Aprendizajes: filtra por peso_efectivo
+
+Total esperado del repo: **420** (406 baseline + 14 nuevos).
+
+## 8. Decisiones de sprint
+
+- **`fallo_ia` es silent fallback.** Si el LLM no responde o parsea
+  mal, el dictado se persiste con interpretacion_raw=`{error}` y el
+  usuario ve mensaje claro. NO se reintenta automáticamente.
+- **Tipos prohibidos filtrados en backend** (DOC_04 §5.3). El system
+  prompt los lista para que el Chalán no los proponga, y además el
+  service los descarta antes de persistir. Defensa en profundidad.
+- **`registrar_egreso` es STUB intencional.** Cuando S2b.3 entregue
+  el módulo de egresos, sólo se reemplaza la implementación del
+  ejecutor. El flujo entero (preview, confirmar, aplicar) ya está
+  cableado.
+- **Push automáticos S2b.4 se disparan en ejecutores.** Crear_tarea
+  llama `notificar_tarea_asignada`, crear_mensaje_buzon llama
+  `notificar_buzon_nuevo`. Sin código duplicado.
+- **Sin clarificación iterativa en V1.** Si el Chalán pregunta, el
+  usuario debe cancelar y reescribir. La iteración (Chalán pregunta
+  → user aclara → Chalán reinterpreta) llega en sub-sprint S2b.2.1.
+- **Sin UI de gestión de aprendizajes.** La tabla existe + se
+  inyecta en prompt, pero el super_admin aún no tiene `/chalanes/aprendizajes/`
+  para borrar — sub-sprint S2b.2.1.
+
+## 9. Próximo sprint
+
+- **S2b.3 — La Tesorería** (siguiente) — activa `registrar_egreso`
+  + KPIs de dinero de S2b.4.
+- **S2b.2.1 — UI de aprendizajes + clarificación iterativa** (~1h).
+- **S2b.5 — Capa 3 DSL/KPIs custom** (ya tiene intérprete real disponible
+  desde este sprint).

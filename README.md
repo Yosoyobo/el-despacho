@@ -56,6 +56,12 @@ GitHub Actions (**El Mensajero**) · GHCR.
   (script `infra/scripts/generar_logos.py`), wrapper Google Drive
   + slot en Bóveda + `docs/SETUP_GOOGLE_DRIVE.md` (8 pasos, **NO
   activado** — espera credenciales del admin). **373 tests verdes**.
+- **S2b.2** ✅ (cerrado 2026-05-19): El Dictado V1 — textbox en Sala
+  de Juntas + Chalán Claudio (Anthropic) interpreta lenguaje natural,
+  6 ejecutores activos (`actualizar_proyecto`, `asignar_usuario_proyecto`,
+  `crear_tarea`, `actualizar_tarea`, `crear_recado`, `crear_mensaje_buzon`),
+  `registrar_egreso` STUB hasta S2b.3. Histórico personal en
+  `/dictado/historial/`. **420 tests verdes** locales.
 - **S2b.4** ✅ (cerrado 2026-05-19): KPIs granulares + sugerencias del
   Chalán + push automáticos. Catálogo de 28 KPIs en 7 categorías,
   `PreferenciaKPI` con default opt-in, página `/perfil/dashboard/`

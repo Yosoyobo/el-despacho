@@ -1,0 +1,104 @@
+"""Construcción del prompt para El Chalán cuando interpreta dictados.
+
+System prompt explica el dominio y restricciones; user prompt trae contexto
+del despacho + aprendizajes activos + texto del usuario. El Chalán debe
+responder JSON estricto (parseamos con `json.loads` y validamos forma).
+
+Si el LLM responde texto no-JSON o JSON mal formado, lo capturamos como
+estado=`fallo_ia` (silent fail, sin acciones).
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+SYSTEM_PROMPT = """\
+Eres El Chalán de El Despacho, asistente del CRM/ERP de Learning Center
+(despacho de diseño/maquila B2B mexicano).
+
+Tu trabajo es interpretar lo que dice un usuario en lenguaje natural y
+extraer ACCIONES concretas que el sistema debe ejecutar.
+
+PRINCIPIOS:
+1. PIDE CLARIFICACIÓN si hay ambigüedad real (>=2 entidades coinciden).
+2. NO inventes IDs ni datos. Si falta un dato esencial, pregunta u omite.
+3. CADA ACCIÓN debe ser independiente.
+4. PRESERVA referencias literales `@usuario`, `#proyecto`, `$cliente`.
+5. Devuelve SIEMPRE JSON estricto con la estructura definida abajo.
+
+ENTIDADES TOCABLES: proyectos, clientes, tareas, recados, El Buzón,
+ingresos/egresos (cuando llegue La Tesorería).
+
+ENTIDADES PROHIBIDAS: Ajustes/credenciales, Catálogo, tasas, centros de
+costo, permisos, eliminaciones. NO emitas acciones sobre ellas.
+
+TIPOS DE ACCIÓN VÁLIDOS:
+- crear_proyecto, actualizar_proyecto, asignar_usuario_proyecto
+- crear_cliente, actualizar_cliente
+- crear_tarea, actualizar_tarea
+- crear_recado, crear_mensaje_buzon
+- registrar_ingreso, registrar_egreso (devuelve la acción aunque hoy sea
+  STUB; el sistema decide si la ejecuta o no)
+
+FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
+{
+  "pregunta_clarificacion": null o "texto de la pregunta",
+  "acciones": [
+    {
+      "tipo": "<uno de los tipos válidos>",
+      "descripcion": "Texto humano corto que describe la acción",
+      "payload": { <campos específicos del tipo, ver abajo> },
+      "confianza": 0.0..1.0
+    }
+  ]
+}
+
+PAYLOADS:
+- crear_tarea: {proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad?}
+- actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso?}}
+- actualizar_proyecto: {proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}}
+- asignar_usuario_proyecto: {proyecto_slug, usuario_slug, rol_en_proyecto?}
+- crear_recado: {destinatarios_slugs: [...], cuerpo}
+- crear_mensaje_buzon: {tipo: 'sugerencia'|'problema'|'otro', asunto, cuerpo}
+
+Si pregunta_clarificacion no es null, ignora `acciones` y devuelve la pregunta
+con candidatos cuando aplique.
+"""
+
+
+def construir_user_prompt(
+    *,
+    usuario,
+    texto_crudo: str,
+    aprendizajes: list[dict[str, Any]] | None = None,
+    aclaracion: str | None = None,
+) -> str:
+    partes: list[str] = []
+    if aprendizajes:
+        partes.append("[APRENDIZAJES RECIENTES]")
+        for ap in aprendizajes:
+            partes.append(f"- {ap['frase']} → {ap['interpretacion']} (peso: {ap['peso']:.2f})")
+        partes.append("")
+    rol = getattr(usuario, "rol", "disenador") or "disenador"
+    partes.append(f"[CONTEXTO]\nUsuario: {getattr(usuario, 'nombre_completo', '')} ({rol})")
+    partes.append("")
+    partes.append("[DICTADO]")
+    partes.append(texto_crudo)
+    if aclaracion:
+        partes.append("")
+        partes.append("[ACLARACIÓN PREVIA]")
+        partes.append(aclaracion)
+    return "\n".join(partes)
+
+
+def aprendizajes_activos() -> list[dict[str, Any]]:
+    """Retorna top 10 aprendizajes con peso_efectivo >= 0.3."""
+    from .models import DictadoAprendizaje
+    todos = list(DictadoAprendizaje.objects.filter(activo=True)[:50])
+    con_peso = [
+        {"frase": a.frase_o_patron, "interpretacion": a.interpretacion_correcta, "peso": a.peso_efectivo()}
+        for a in todos
+    ]
+    con_peso = [a for a in con_peso if a["peso"] >= 0.3]
+    con_peso.sort(key=lambda x: x["peso"], reverse=True)
+    return con_peso[:10]

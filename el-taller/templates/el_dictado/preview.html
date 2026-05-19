@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Dictado #{{ dictado.id }} — El Taller{% endblock %}
+
+{% block contenido %}
+<div class="mx-auto max-w-3xl">
+    <header class="mb-6">
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Dictado</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+            Confirma las acciones del Chalán
+        </h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Texto dictado:</p>
+        <blockquote class="mt-2 rounded-lg border-l-4 border-brand-300 bg-brand-25 p-3 text-sm text-gray-700 dark:border-brand-500/40 dark:bg-brand-500/5 dark:text-gray-200">
+            {{ dictado.texto_crudo }}
+        </blockquote>
+    </header>
+
+    {% if dictado.estado == 'fallo_ia' %}
+        <div class="rounded-2xl border border-error-200 bg-error-50 p-5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+            🎙️ Los Chalanes están descansando. Ningún proveedor de IA respondió correctamente. Intenta más tarde o usa los formularios tradicionales.
+        </div>
+    {% elif dictado.estado == 'preguntando' %}
+        <div class="rounded-2xl border border-warning-200 bg-warning-50 p-5 dark:border-warning-500/30 dark:bg-warning-500/10">
+            <h3 class="font-medium text-warning-800 dark:text-warning-300">🎙️ {{ chalan_apodo }} tiene una duda</h3>
+            <p class="mt-2 text-sm text-gray-700 dark:text-gray-200">{{ dictado.pregunta_clarificacion }}</p>
+            <p class="mt-2 text-xs text-gray-500">Por ahora, cancela y reescribe el dictado con la aclaración. La iteración con clarificaciones llega en sub-sprint S2b.2.1.</p>
+            <form method="post" action="{% url 'dictado-cancelar' dictado.pk %}" class="mt-3 inline">
+                {% csrf_token %}
+                <button type="submit" class="btn-secundario">Cancelar y volver</button>
+            </form>
+        </div>
+    {% else %}
+    <form method="post" action="{% url 'dictado-aplicar' dictado.pk %}">
+        {% csrf_token %}
+        <section class="rounded-2xl border border-brand-200 bg-brand-25 p-5 shadow-theme-sm dark:border-brand-500/30 dark:bg-brand-500/5">
+            <header class="mb-4 flex items-start gap-3">
+                {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo=chalan_apodo %}
+                <div class="flex-1">
+                    <h3 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">
+                        🎙️ {{ chalan_apodo }} propone estas acciones
+                    </h3>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Desmarca las que no quieras aplicar.</p>
+                </div>
+            </header>
+            <ul class="space-y-2">
+                {% for a in acciones %}
+                <li class="rounded-xl border bg-white p-3 dark:bg-gray-900
+                           {% if a.confianza < 0.7 %}border-warning-200 dark:border-warning-500/30{% else %}border-gray-200 dark:border-gray-800{% endif %}">
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" name="accion_{{ a.id }}" checked
+                               class="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-700 dark:text-gray-200">{{ a.descripcion }}</p>
+                            <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{{ a.tipo }}</p>
+                            {% if a.confianza < 0.7 %}
+                            <p class="mt-1 inline-flex items-center gap-1 text-xs text-warning-700 dark:text-warning-400">⚠️ Confianza media — verifica antes de aplicar</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </li>
+                {% empty %}
+                <li class="rounded-xl border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">Sin acciones propuestas.</li>
+                {% endfor %}
+            </ul>
+            <footer class="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+                <a href="{% url 'taller-home' %}" class="btn-secundario">Cancelar</a>
+                <button type="submit" class="btn-primario" {% if not acciones %}disabled{% endif %}>Aplicar acciones</button>
+            </footer>
+        </section>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

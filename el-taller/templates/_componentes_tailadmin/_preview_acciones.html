@@ -47,7 +47,7 @@
                                 {% endif %}
                             </div>
                         {% else %}
-                            <input type="checkbox" name="accion_{{ forloop.counter0 }}" checked
+                            <input type="checkbox" name="accion_{{ accion.id|default:forloop.counter0 }}" checked
                                    class="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
                             <div class="flex-1">
                                 <p class="text-sm text-gray-700 dark:text-gray-200">{{ accion.descripcion }}</p>

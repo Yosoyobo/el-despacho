@@ -460,6 +460,40 @@ aprobado_por)`. `alcance='equipo'` requiere aprobación super_admin.
 Cost guard: timeout 5s + límite filas pre-agregación. Origen
 `custom_chalan` en `PreferenciaKPI` ya preparado en S2b.4.
 
+### S2b.2 ✅ — El Dictado V1 (2026-05-19, escrito durante la entrega del sprint)
+
+Text box prominente en Sala de Juntas + Chalán Claudio real
+(Anthropic vía `lib.analistas`) que interpreta lenguaje natural y
+propone acciones. Usuario revisa con checkboxes, confirma, aplica.
+
+- App `el-taller/apps/el_dictado/` con modelos `Dictado`,
+  `DictadoAccion`, `DictadoAprendizaje` + migración con data migration
+  que seedea `CuadroChalanes(estacion='dictado',
+  proveedor='anthropic', modelo='claude-opus-4-7')`.
+- `services.interpretar()` y `services.aplicar()` con manejo de errores
+  silencioso (fallo_ia para LLM caído o JSON inválido) y aplicación
+  atómica por acción (una falla no aborta resto).
+- 6 ejecutores básicos: actualizar_proyecto, asignar_usuario_proyecto,
+  crear_tarea, actualizar_tarea, crear_recado, crear_mensaje_buzon. Los
+  últimos 2 disparan los push automáticos S2b.4 (`notificar_tarea_asignada`,
+  `notificar_buzon_nuevo`). `registrar_egreso` es STUB con
+  `raise ValueError('S2b.3')` — se reemplazará la impl sin tocar el flujo.
+- Prompt estructurado (SYSTEM con principios + entidades prohibidas +
+  formato JSON estricto; USER con aprendizajes top 10 por peso_efectivo
+  + contexto del usuario).
+- Tipos prohibidos (DOC_04 §5.3) filtrados en backend tras
+  `lib.analistas.analizar` y antes de persistir acciones (defensa en
+  profundidad — el system prompt también los lista).
+- UI: textarea en `home.html` (reemplaza placeholder disabled),
+  `preview.html` con checkboxes desmarcables + confianza<0.7 ⚠️,
+  `detalle.html` con resultado de aplicación, `historial.html`
+  con últimos 50 del usuario.
+- 14 tests nuevos.
+
+**V1 NO incluye** (van a sub-sprint S2b.2.1, ~1h):
+- Clarificación iterativa (si Chalán pregunta, hoy se cancela y reescribe)
+- UI de gestión de aprendizajes en Gerencia (`/chalanes/aprendizajes/`)
+
 ### S2b.2 — El Dictado (~3-4h)
 
 DOC_04. Text box en Sala de Juntas, interpretación con Chalán Claudio,

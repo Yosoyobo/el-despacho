@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     "apps.perfil_chalanes.apps.PerfilChalanesConfig",
     # S2b.1
     "apps.recados.apps.RecadosConfig",
+    # S2b.2
+    "apps.el_dictado.apps.ElDictadoConfig",
 ]
 
 MIDDLEWARE = [
