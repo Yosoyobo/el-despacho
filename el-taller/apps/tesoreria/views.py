@@ -11,6 +11,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.html import format_html
 
 from lib.permisos import puede_ver_finanzas
 from lib.portavoz import emitir
@@ -217,7 +219,59 @@ def egreso_detalle(request, pk):
     if (r := _gate(request)) is not None:
         return r
     egreso = get_object_or_404(Egreso, pk=pk)
-    return render(request, "tesoreria/egreso_detalle.html", {"egreso": egreso})
+    estado_pago_clase = {
+        "pagado": "badge-success",
+        "por_reembolsar": "badge-warning",
+    }.get(egreso.estado_pago, "badge-gray")
+    info_clasificacion = [
+        {"label": "Centro de costo", "value": egreso.centro_de_costo.nombre},
+        {"label": "Proyecto", "value": f"{egreso.proyecto.codigo} · {egreso.proyecto.nombre}" if egreso.proyecto else "—"},
+        {"label": "Origen", "value": egreso.get_origen_display() + (f" · confianza {egreso.confianza_ia:.2f}" if egreso.confianza_ia else "")},
+    ]
+    info_pago = [
+        {"label": "Estado", "value_html": format_html(
+            '<span class="badge {}">{}</span>', estado_pago_clase, egreso.get_estado_pago_display(),
+        )},
+        {"label": "Método", "value": egreso.get_metodo_display()},
+        {"label": "Pagado por", "value": (egreso.pagado_por.nombre_completo or egreso.pagado_por.email) if egreso.pagado_por else "—"},
+        {"label": "Solicitado por", "value": (egreso.solicitado_por.nombre_completo or egreso.solicitado_por.email) if egreso.solicitado_por else "—"},
+        {"label": "Proveedor", "value": egreso.proveedor_nombre or "—"},
+    ]
+    info_captura = [
+        {"label": "Capturado por", "value": (egreso.creado_por.nombre_completo or egreso.creado_por.email) if egreso.creado_por else "—"},
+        {"label": "Capturado en", "value": egreso.creado_en.strftime("%Y-%m-%d %H:%M")},
+    ]
+    action_bar_meta = format_html(
+        '<span class="font-mono">{}</span> <span class="text-gray-400">·</span> <span>{}</span>',
+        egreso.codigo, egreso.fecha.strftime("%Y-%m-%d"),
+    )
+    if egreso.anulado:
+        action_bar_acciones = format_html(
+            '<a href="{}" class="btn-secundario">← Egresos</a>',
+            reverse("tesoreria:egresos-lista"),
+        )
+    else:
+        action_bar_acciones = format_html(
+            '<a href="{}" class="btn-secundario">← Egresos</a>'
+            '<a href="{}" class="btn-secundario">Editar</a>'
+            '<a href="{}" class="btn-destructivo">Anular</a>',
+            reverse("tesoreria:egresos-lista"),
+            reverse("tesoreria:egreso-editar", args=[egreso.pk]),
+            reverse("tesoreria:egreso-anular", args=[egreso.pk]),
+        )
+    return render(request, "tesoreria/egreso_detalle.html", {
+        "egreso": egreso,
+        "info_clasificacion": info_clasificacion,
+        "info_pago": info_pago,
+        "info_captura": info_captura,
+        "action_bar_meta": action_bar_meta,
+        "action_bar_acciones": action_bar_acciones,
+        "breadcrumb_items": [
+            {"url": reverse("tesoreria:landing"), "label": "La Tesorería"},
+            {"url": reverse("tesoreria:egresos-lista"), "label": "Egresos"},
+            {"label": egreso.codigo},
+        ],
+    })
 
 
 @login_required

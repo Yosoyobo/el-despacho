@@ -795,12 +795,59 @@ del Wave 2 que se cuentan en taller).
   aplicar el partial a una lista pendiente sin riesgo: el partial ya
   está estable y testeado.
 
-**Wave 4 — Detalles canónicos** pendiente
-Layout TailAdmin: columna principal + sidebar de info card + tabs
-internos (datos · historial · relaciones · acciones) + action bar
-fija al fondo. Sweep en `detalle.html` de cada módulo (cartera,
-proyectos, pizarrón, recados-legacy, buzón, tesorería ingresos/egresos,
-directorio).
+**Wave 4 — Detalles canónicos** ✅ (2026-05-20)
+- 2 partials nuevos en `_componentes_tailadmin/` (dos copias
+  sincronizadas, regla §18):
+  - `_info_card.html` — tarjeta compacta para sidebar con título +
+    lista de pares label/valor. Cada item acepta `value` (texto plano,
+    default `—`), `value_html` (HTML pre-renderizado vía `mark_safe`/
+    `format_html`), `mono` (font-mono para el valor).
+  - `_action_bar.html` — barra inferior con meta a la izquierda y
+    acciones a la derecha. `sticky=True` por default (fija al fondo
+    del viewport con `backdrop-blur`); `sticky=False` la deja inline.
+- Layout canónico: `grid grid-cols-1 gap-6 xl:grid-cols-3` con main
+  `xl:col-span-2` y sidebar `xl:col-span-1`. No se hizo wrapper
+  partial — son 3 líneas de CSS y agregarlo costaría más de lo que
+  ahorraría (dual-copy + slot-templating).
+- Aplicado como **referencia viva** en 3 detalles:
+  - **La Cartera** (`cartera/detalle.html`): main = dirección + notas
+    + tabla de proyectos; sidebar = `Identificación` + `Contacto`;
+    action bar con meta "Última actualización …" + Editar/Archivar
+    (el modal de archivar se preservó y ahora se dispara desde el
+    action bar). `apps.la_cartera.views.detalle` arma
+    `info_identificacion`, `info_contacto`, `action_bar_meta`,
+    `action_bar_acciones`, `breadcrumb_items`.
+  - **Los Proyectos** (`proyectos/detalle.html`): main = descripción
+    + tabla de tareas; sidebar = `Fechas` + `Económico` + Equipo
+    (lista renderizada como HTML porque tiene badge por item).
+    Action bar con Cambiar estado / Editar / Asignar.
+    `apps.los_proyectos.views.detalle` arma `info_fechas`,
+    `info_economico`, `info_equipo_html`, `action_bar_*`,
+    `breadcrumb_items`.
+  - **Tesorería · Egreso detalle** (`tesoreria/egreso_detalle.html`):
+    main = monto grande + descripción + bloque de anulación si
+    aplica; sidebar = `Clasificación` + `Pago` + `Captura`. Action
+    bar con ← Egresos / Editar / Anular (Anular desaparece si ya
+    está anulado).
+- Tests: `tests/taller/test_partials_detalle_wave4.py` (5 pass) —
+  valida que `_info_card` renderiza título/items/HTML seguro/dash
+  default, y que `_action_bar` honra `sticky` / `sticky=False`.
+  Suite total taller+gerencia: **235 pass**.
+- **Patrón canónico para futuros detalles**: view declara `items`
+  list-of-dicts para sidebar cards, ensambla `action_bar_meta`/
+  `action_bar_acciones` con `format_html`/`mark_safe`, expone
+  `breadcrumb_items`. Template hace:
+  - `{% include "_componentes_tailadmin/_page_header.html" with titulo=… subtitulo=… breadcrumb_items=… %}`
+  - grid 2-col con main + `<aside>` que llama a `_info_card.html`
+    múltiples veces
+  - cierra con `_action_bar.html`
+- **Sweep restante incremental** (mismo patrón Wave 2/3): pizarrón
+  (`pizarron/detalle_tarea.html`), recados-legacy
+  (`recados/detalle.html`), buzón empleado (`buzon/detalle.html`),
+  buzón admin (`buzon_admin/detalle.html` en Gerencia), tesorería
+  ingreso (`ingreso_detalle.html`), El Dictado
+  (`el_dictado/detalle.html`). Cualquier sesión puede aplicar los
+  partials a un detalle a la vez sin riesgo.
 
 **Wave 5 — Modales reemplazando páginas de confirmación** pendiente
 Convertir a `_modal.html` las páginas dedicadas: anular ingreso/egreso

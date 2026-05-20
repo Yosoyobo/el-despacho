@@ -5,6 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.html import format_html
 
 from lib.permisos import puede_editar_cartera, puede_ver_cartera
 from lib.portavoz import emitir
@@ -77,10 +79,42 @@ def detalle(request, pk):
     if (r := _gate(request)) is not None:
         return r
     cliente = get_object_or_404(Cliente, pk=pk)
+    puede_editar = puede_editar_cartera(request.user)
+    info_identificacion = [
+        {"label": "RFC", "value": cliente.rfc or "—", "mono": bool(cliente.rfc)},
+        {"label": "Creado", "value": cliente.creado_en.strftime("%d %b %Y")},
+    ]
+    if cliente.creado_por:
+        info_identificacion.append({"label": "Por", "value": cliente.creado_por.nombre_completo})
+    info_contacto = [
+        {"label": "Nombre", "value": cliente.nombre_contacto or "—"},
+        {"label": "Email", "value": cliente.email_contacto or "—"},
+        {"label": "Teléfono", "value": cliente.telefono or "—"},
+    ]
+    action_bar_meta = format_html(
+        '<span>Última actualización <time class="text-gray-700 dark:text-gray-200">{}</time></span>',
+        cliente.actualizado_en.strftime("%d %b %Y %H:%M"),
+    )
+    action_bar_acciones = ""
+    if puede_editar:
+        action_bar_acciones = format_html(
+            '<a href="{}" class="btn-secundario">Editar</a>'
+            '<button type="button" data-modal-target="#modal-archivar-cliente" class="btn-destructivo">{}</button>',
+            reverse("cartera-editar", args=[cliente.pk]),
+            "Archivar" if cliente.activo else "Reactivar",
+        )
     return render(request, "cartera/detalle.html", {
         "cliente": cliente,
-        "puede_editar": puede_editar_cartera(request.user),
+        "puede_editar": puede_editar,
         "proyectos": cliente.proyectos.all(),
+        "info_identificacion": info_identificacion,
+        "info_contacto": info_contacto,
+        "action_bar_meta": action_bar_meta,
+        "action_bar_acciones": action_bar_acciones,
+        "breadcrumb_items": [
+            {"url": reverse("cartera-lista"), "label": "La Cartera"},
+            {"label": cliente.razon_social},
+        ],
     })
 
 

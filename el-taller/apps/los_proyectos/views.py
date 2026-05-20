@@ -6,6 +6,9 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.html import format_html, format_html_join
+from django.utils.safestring import mark_safe
 
 from lib.permisos import (
     es_admin,
@@ -90,12 +93,58 @@ def detalle(request, pk):
             {"url": f"/proyectos/{proyecto.pk}/editar/", "label": "Editar datos"},
             {"url": f"/proyectos/{proyecto.pk}/cambiar-estado/", "label": "Cambiar estado"},
         ]
+    asignaciones = list(proyecto.asignaciones.select_related("usuario"))
+    info_fechas = [
+        {"label": "Inicio", "value": proyecto.fecha_inicio.strftime("%d %b %Y") if proyecto.fecha_inicio else "—"},
+        {"label": "Compromiso", "value": proyecto.fecha_compromiso.strftime("%d %b %Y") if proyecto.fecha_compromiso else "—"},
+        {"label": "Entrega real", "value": proyecto.fecha_real_entrega.strftime("%d %b %Y") if proyecto.fecha_real_entrega else "—"},
+    ]
+    info_economico = [
+        {"label": "Monto estimado", "value": f"$ {proyecto.monto_estimado}" if proyecto.monto_estimado else "—"},
+        {"label": "Cliente", "value_html": format_html(
+            '<a href="{}" class="text-brand-600 hover:underline dark:text-brand-400">{}</a>',
+            reverse("cartera-detalle", args=[proyecto.cliente.pk]), proyecto.cliente.razon_social,
+        )},
+    ]
+    if asignaciones:
+        equipo_html = format_html_join(
+            "",
+            '<li class="flex items-center justify-between gap-3"><span class="text-gray-900 dark:text-gray-100">{}</span><span class="badge badge-brand">{}</span></li>',
+            ((a.usuario.nombre_completo or a.usuario.email, a.get_rol_en_proyecto_display()) for a in asignaciones),
+        )
+        info_equipo_html = format_html('<ul class="space-y-1.5">{}</ul>', equipo_html)
+    else:
+        info_equipo_html = mark_safe('<span class="text-gray-500 dark:text-gray-400">Sin asignar.</span>')
+    action_bar_meta = format_html(
+        '<span>Última actualización <time class="text-gray-700 dark:text-gray-200">{}</time></span>',
+        proyecto.actualizado_en.strftime("%d %b %Y %H:%M"),
+    )
+    if puede_ed:
+        action_bar_acciones = format_html(
+            '<a href="{}" class="btn-secundario">Cambiar estado</a>'
+            '<a href="{}" class="btn-secundario">Editar</a>'
+            '<a href="{}" class="btn-primario">Asignar</a>',
+            reverse("proyectos-cambiar-estado", args=[proyecto.pk]),
+            reverse("proyectos-editar", args=[proyecto.pk]),
+            reverse("proyectos-asignar", args=[proyecto.pk]),
+        )
+    else:
+        action_bar_acciones = ""
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
-        "asignaciones": proyecto.asignaciones.select_related("usuario"),
+        "asignaciones": asignaciones,
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
         "puede_editar": puede_ed,
         "acciones_proyecto": acciones_proyecto,
+        "info_fechas": info_fechas,
+        "info_economico": info_economico,
+        "info_equipo_html": info_equipo_html,
+        "action_bar_meta": action_bar_meta,
+        "action_bar_acciones": action_bar_acciones,
+        "breadcrumb_items": [
+            {"url": reverse("proyectos-lista"), "label": "Los Proyectos"},
+            {"label": proyecto.codigo},
+        ],
     })
 
 
