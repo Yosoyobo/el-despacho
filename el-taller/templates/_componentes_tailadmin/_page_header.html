@@ -1,0 +1,23 @@
+{% comment %}
+Page header TailAdmin canónico. Unifica el patrón
+"título grande + subtítulo + breadcrumb + acciones a la derecha"
+que aparece en cada lista/detalle/form del repo.
+
+Params:
+- titulo (str, requerido)
+- subtitulo (str, opcional)
+- breadcrumb_items (list, opcional) — [{url, label}] última = actual
+- acciones (html, opcional) — bloque HTML con botones/links
+{% endcomment %}
+<header class="mb-6">
+    {% if breadcrumb_items %}
+    <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+    {% endif %}
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ titulo }}</h1>
+            {% if subtitulo %}<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ subtitulo }}</p>{% endif %}
+        </div>
+        {% if acciones %}<div class="flex flex-wrap items-center gap-2">{{ acciones|safe }}</div>{% endif %}
+    </div>
+</header>

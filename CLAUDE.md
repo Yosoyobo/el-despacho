@@ -695,6 +695,76 @@ la bandeja chat). El default `/recados/` ahora es chat.
 - Editar/borrar mensajes.
 - Adjuntos en chat (cuando S2b.1b active Drive se evalúa).
 
+### Arco S-TailAdmin-Sweep — adaptar todo al sistema TailAdmin canónico (6 waves)
+
+**Contexto:** El arco S-TailAdmin-1/2/3 cerró la facelift visual base
+(tokens, paleta, 17 partials, dark mode, shell). El arco
+**S-TailAdmin-Sweep** alinea TODAS las pantallas existentes 1:1 a los
+patrones canónicos de TailAdmin Pro 2.3.0, para que el día de mañana
+Learning Center mande un render de TailAdmin y la adaptación sea
+mecánica (no creativa). Cada wave es independiente, commit + deploy
+propio. Si LC pide algo distinto a mitad, se reordena sin perder lo
+hecho.
+
+Cada wave ~2-3h. Cada wave abre/cierra en una sesión distinta (regla
+del usuario: ahorrar tokens de contexto entre waves).
+
+**Wave 1 — Fundación de chrome** ✅ pendiente
+Nuevos partials en `_componentes_tailadmin/` (dos copias sincronizadas,
+regla §18):
+- `_modal.html` — overlay + dialog con slots title/body/footer + close
+- `_toast.html` — notificación lateral auto-dismiss (4s) — reemplaza
+  el banner `alertas_mensajes`
+- `_breadcrumb.html` — Inicio › Módulo › Detalle
+- `_page_header.html` — título + subtítulo + breadcrumb + acciones a
+  la derecha — unifica el `<header class="mb-6 flex...">` repetido
+- `_dropdown.html` — menú flotante click-to-open con items, divisores,
+  iconos — para acciones contextuales
+
+Aplicar como referencia viva a 4-5 pantallas (1 lista, 1 form, 1
+detalle, 1 confirmación con modal, alertas → toast).
+
+**Wave 2 — Form primitives** pendiente
+Partials: `_checkbox`, `_radio`, `_switch`, `_file_upload`,
+`_datepicker` (wrapper sobre `<input type=date>` con estilo TailAdmin),
+`_tags_input`, `_select_buscable`. Sweep en TODOS los forms del repo:
+Cartera, Proyectos, Pizarrón, Tesorería (ingresos/egresos/centros),
+Ajustes, Directorio, Buzón, Catálogo, Tasas e Impuestos.
+
+**Wave 3 — Data tables** pendiente
+Un partial `_tabla_datos.html` canónico con sort por columna, filtros
+sticky, paginación TailAdmin, search box, action menu en filas. Sweep
+en listas: cartera, proyectos, pizarrón (tareas), recados-legacy,
+buzón, tesorería (ingresos/egresos/CxC/CxP/reembolsos), directorio,
+catálogo, centros de costo, tasas.
+
+**Wave 4 — Detalles canónicos** pendiente
+Layout TailAdmin: columna principal + sidebar de info card + tabs
+internos (datos · historial · relaciones · acciones) + action bar
+fija al fondo. Sweep en `detalle.html` de cada módulo (cartera,
+proyectos, pizarrón, recados-legacy, buzón, tesorería ingresos/egresos,
+directorio).
+
+**Wave 5 — Modales reemplazando páginas de confirmación** pendiente
+Convertir a `_modal.html` las páginas dedicadas: anular ingreso/egreso
+(tesorería), archivar cliente, cambiar estado proyecto, asignar
+diseñador, eliminar/completar tarea. URL endpoint queda igual; el
+template renderiza modal vacío que el botón abre vía HTMX
+(`hx-get=...` → `hx-target=#modal-slot`).
+
+**Wave 6 — Estados y feedback** pendiente
+Empty states canónicos por módulo (ilustración + CTA), skeletons de
+carga para polling HTMX (mensajes chat, bandeja, KPIs), tooltips de
+TailAdmin (`_tooltip.html`), badges con icono SVG, spinners
+estandarizados. Polish final del arco.
+
+**Cómo retomar el arco en una sesión nueva:**
+1. Leer esta sección.
+2. Identificar el siguiente wave pendiente (los completados se marcan
+   ✅ y se referencian al commit/PR).
+3. Trabajar SOLO ese wave. No tocar otros.
+4. Cerrar con commit `S-TailAdmin-Sweep-N: …` y push.
+
 ### S2b — Comercial y pagos (después de S2b.4)
 
 Cotizaciones (PDF vía Google Docs templates — NO WeasyPrint/ReportLab/Puppeteer) ·

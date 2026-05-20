@@ -1,0 +1,38 @@
+{% comment %}
+Dropdown TailAdmin click-to-open.
+Params:
+- id (slug único)
+- trigger_label (str) — texto del botón
+- trigger_class (str, opcional) — clase extra para el botón
+- items (list) — cada item: {url, label, icono_svg?, divider?, peligroso?}
+  - divider=True dibuja una línea separadora.
+  - peligroso=True usa colores destructivos.
+
+JS: `ui.js` maneja [data-dropdown-trigger]; click toggle del [data-dropdown-menu]
+adyacente. Click fuera cierra.
+{% endcomment %}
+<div class="relative inline-block" data-dropdown>
+    <button type="button" data-dropdown-trigger
+            class="{{ trigger_class|default:'btn-secundario' }} inline-flex items-center gap-1.5">
+        {{ trigger_label }}
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div data-dropdown-menu id="{{ id }}" hidden
+         class="absolute right-0 z-30 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <ul class="py-1.5 text-sm">
+            {% for it in items %}
+            {% if it.divider %}
+            <li class="my-1 border-t border-gray-100 dark:border-gray-800"></li>
+            {% else %}
+            <li>
+                <a href="{{ it.url|default:'#' }}"
+                   class="flex items-center gap-2 px-3 py-2 {% if it.peligroso %}text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10{% else %}text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80{% endif %}">
+                    {% if it.icono_svg %}<span class="text-gray-400">{{ it.icono_svg|safe }}</span>{% endif %}
+                    <span>{{ it.label }}</span>
+                </a>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+</div>

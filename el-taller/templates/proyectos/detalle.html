@@ -16,10 +16,9 @@
             </div>
         </div>
         {% if puede_editar %}
-        <div class="flex flex-wrap gap-2">
-            <a href="{% url 'proyectos-editar' proyecto.pk %}" class="btn-secundario">Editar</a>
-            <a href="{% url 'proyectos-cambiar-estado' proyecto.pk %}" class="btn-secundario">Cambiar estado</a>
+        <div class="flex flex-wrap items-center gap-2">
             <a href="{% url 'proyectos-asignar' proyecto.pk %}" class="btn-primario">Asignar</a>
+            {% include "_componentes_tailadmin/_dropdown.html" with id="proyecto-acciones" trigger_label="Acciones" items=acciones_proyecto %}
         </div>
         {% endif %}
     </div>

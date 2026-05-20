@@ -1,14 +1,6 @@
-{# Render del `messages` framework con estilo TailAdmin. #}
-{% if messages %}
-<div class="mb-6 space-y-2">
-    {% for m in messages %}
-    <div class="flex items-start gap-3 rounded-xl border px-4 py-3 text-sm
-        {% if m.tags == 'error' %}border-error-200 bg-error-50 text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300
-        {% elif m.tags == 'success' %}border-success-200 bg-success-50 text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-300
-        {% elif m.tags == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300
-        {% else %}border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300{% endif %}">
-        <span>{{ m }}</span>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
+{% comment %}
+Wave 1 S-TailAdmin-Sweep: este partial ahora delega a _toast.html.
+Los templates que ya incluyen "_componentes_tailadmin/alertas_mensajes.html"
+heredan el upgrade visual a toasts laterales sin cambios.
+{% endcomment %}
+{% include "_componentes_tailadmin/_toast.html" %}

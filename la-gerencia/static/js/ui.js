@@ -56,6 +56,63 @@
     if (e.key === 'Escape') {
       dropdowns.forEach(function (d) { d.panel.classList.add('hidden'); });
       cerrarSidebar();
+      cerrarModales();
     }
+  });
+
+  // --- Modales (S-TailAdmin-Sweep wave 1) ---
+  function abrirModal(modal) {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function cerrarModal(modal) {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  function cerrarModales() {
+    document.querySelectorAll('[data-modal]').forEach(cerrarModal);
+  }
+  document.querySelectorAll('[data-modal-target]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      abrirModal(document.querySelector(btn.getAttribute('data-modal-target')));
+    });
+  });
+  document.querySelectorAll('[data-modal]').forEach(function (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) cerrarModal(modal);  // backdrop
+    });
+  });
+  document.body.addEventListener('click', function (e) {
+    var close = e.target.closest('[data-modal-close]');
+    if (close) cerrarModal(close.closest('[data-modal]'));
+  });
+
+  // --- Dropdowns canónicos S-TailAdmin-Sweep (_dropdown.html) ---
+  document.querySelectorAll('[data-dropdown]').forEach(function (root) {
+    var trigger = root.querySelector('[data-dropdown-trigger]');
+    var menu = root.querySelector('[data-dropdown-menu]');
+    if (!trigger || !menu) return;
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      document.querySelectorAll('[data-dropdown-menu]').forEach(function (m) {
+        if (m !== menu) m.hidden = true;
+      });
+      menu.hidden = !menu.hidden;
+    });
+  });
+  document.addEventListener('click', function () {
+    document.querySelectorAll('[data-dropdown-menu]').forEach(function (m) { m.hidden = true; });
+  });
+
+  // --- Toasts: auto-dismiss 4s ---
+  document.querySelectorAll('[data-toast]').forEach(function (t) {
+    setTimeout(function () { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 300); }, 4000);
+  });
+  document.body.addEventListener('click', function (e) {
+    var close = e.target.closest('[data-toast-close]');
+    if (close) close.closest('[data-toast]').remove();
   });
 })();

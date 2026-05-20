@@ -58,11 +58,19 @@ def detalle(request, pk):
     proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
     if not puede_ver_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Sin acceso a este proyecto.")
+    puede_ed = puede_editar_proyecto(request.user, proyecto)
+    acciones_proyecto = []
+    if puede_ed:
+        acciones_proyecto = [
+            {"url": f"/proyectos/{proyecto.pk}/editar/", "label": "Editar datos"},
+            {"url": f"/proyectos/{proyecto.pk}/cambiar-estado/", "label": "Cambiar estado"},
+        ]
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "asignaciones": proyecto.asignaciones.select_related("usuario"),
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
-        "puede_editar": puede_editar_proyecto(request.user, proyecto),
+        "puede_editar": puede_ed,
+        "acciones_proyecto": acciones_proyecto,
     })
 
 

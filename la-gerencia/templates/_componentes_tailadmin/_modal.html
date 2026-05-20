@@ -1,0 +1,26 @@
+{% comment %}
+Modal TailAdmin. Params: id (slug único), titulo, tamano (sm|md|lg, default md).
+Slots: el caller pone el contenido vía variables `cuerpo` y `footer` (HTML
+seguro) — o, si usas `{% include with %}` con `solo_envoltorio=True`,
+abre el modal y mete tu propio HTML antes del partial de cierre.
+
+Apertura: data-modal-target="#<id>". Cierre: data-modal-close en cualquier
+hijo o click en backdrop. Sin JS extra — `ui.js` ya tiene el handler
+genérico (`document.querySelectorAll('[data-modal-target]')`).
+
+Si no usas el JS genérico, abre con: `document.getElementById('<id>').classList.remove('hidden')`.
+{% endcomment %}
+<div id="{{ id }}" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80" data-modal>
+    <div class="relative w-full {% if tamano == 'sm' %}max-w-sm{% elif tamano == 'lg' %}max-w-2xl{% else %}max-w-md{% endif %} mx-4 rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ titulo }}</h2>
+            <button type="button" data-modal-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <div class="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{{ cuerpo|safe }}</div>
+        {% if footer %}
+        <footer class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">{{ footer|safe }}</footer>
+        {% endif %}
+    </div>
+</div>
