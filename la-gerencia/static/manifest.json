@@ -1,10 +1,12 @@
 {
+  "id": "/?source=pwa-gerencia",
   "name": "El Despacho — La Gerencia",
   "short_name": "La Gerencia",
   "description": "Panel administrativo del despacho Learning Center.",
-  "start_url": "/",
+  "start_url": "/?source=pwa-gerencia",
   "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#465fff",
   "theme_color": "#465fff",
   "lang": "es-MX",

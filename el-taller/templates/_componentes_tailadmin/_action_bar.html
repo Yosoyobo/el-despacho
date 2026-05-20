@@ -12,7 +12,7 @@ Params:
 - sticky (bool, default True) — fija al fondo de la columna principal.
 - clase_extra (str, opcional)
 {% endcomment %}
-<div class="{% if sticky is False %}mt-6{% else %}sticky bottom-0 z-10 mt-6 -mx-4 sm:mx-0{% endif %} {{ clase_extra|default:'' }}">
+<div class="{% if sticky is False %}mt-6{% else %}sticky bottom-0 z-10 mt-6 -mx-4 sm:mx-0 pb-[env(safe-area-inset-bottom)]{% endif %} {{ clase_extra|default:'' }}">
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/95 px-5 py-3 shadow-theme-sm backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
         <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             {% if meta %}{{ meta|safe }}{% endif %}

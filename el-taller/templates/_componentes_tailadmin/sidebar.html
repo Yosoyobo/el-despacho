@@ -3,7 +3,7 @@
    Cada item se evalúa con `permisos_modulos.<modulo>` inyectado por context
    processor. Cambiar permisos desde Gerencia → Directorio → Permisos. {% endcomment %}
 <aside data-ta-sidebar
-       class="fixed left-0 top-0 z-40 flex h-screen w-72 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 py-6 transition-transform duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-gray-950">
+       class="fixed left-0 top-0 z-40 flex h-screen w-72 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)] transition-transform duration-300 lg:static lg:translate-x-0 dark:border-gray-800 dark:bg-gray-950">
     <a href="/" class="mb-8 flex items-center gap-2">
         <img src="{% static 'branding/Logo_LC-64.png' %}" alt="Learning Center" class="h-9 w-9 rounded-lg" />
         <span class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Taller</span>
@@ -86,4 +86,4 @@
         <a href="/sign-out" class="mt-2 inline-flex items-center gap-1 text-error-600 hover:underline">Salir →</a>
     </div>
 </aside>
-<div data-ta-sidebar-backdrop class="fixed inset-0 z-30 hidden bg-gray-900/50 xl:hidden"></div>
+<div data-ta-sidebar-backdrop class="fixed inset-0 z-30 hidden bg-gray-900/50 lg:hidden"></div>

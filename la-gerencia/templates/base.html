@@ -2,7 +2,11 @@
 <html lang="es-mx">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="La Gerencia">
     <title>{% block title %}La Gerencia — El Despacho{% endblock %}</title>
     <script>
         // Anti-FOUC: aplicar tema antes del primer paint. NO TOCAR — sprint Interfono.
@@ -33,15 +37,15 @@
 {% if request.user.is_authenticated %}
 <div class="flex min-h-screen">
     {% include "_componentes_tailadmin/sidebar.html" %}
-    <div class="flex flex-1 flex-col">
+    <div class="flex flex-1 flex-col min-w-0">
         {% include "_componentes_tailadmin/header.html" %}
-        <main class="flex-1 p-4 sm:p-6 lg:p-8">
+        <main class="flex-1 px-[max(env(safe-area-inset-left),1rem)] py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
             <div class="mx-auto max-w-7xl">
                 {% include "_componentes_tailadmin/alertas_mensajes.html" %}
                 {% block contenido %}{% endblock %}
             </div>
         </main>
-        <footer class="border-t border-gray-200 px-4 py-4 text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        <footer class="border-t border-gray-200 px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
             El Despacho · Learning Center · <a href="/legal/privacidad" class="underline hover:text-gray-700 dark:hover:text-gray-300">Privacidad</a>
             · <a href="/legal/terminos" class="underline hover:text-gray-700 dark:hover:text-gray-300">Términos</a>
         </footer>
