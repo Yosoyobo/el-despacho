@@ -366,6 +366,33 @@ def _kpi_reembolsos_pendientes(user) -> dict:
     )
 
 
+# ── Cotizaciones (S2b.cotizaciones-v1) ──
+
+def _kpi_cotizaciones_pendientes(user) -> dict:
+    from apps.cotizaciones.models import Cotizacion
+    n = Cotizacion.objects.filter(estado="enviada").count()
+    return _resultado(n, link="/cotizaciones/?estado=enviada")
+
+
+def _kpi_cotizaciones_vencidas(user) -> dict:
+    from datetime import date
+    from apps.cotizaciones.models import Cotizacion
+    n = Cotizacion.objects.filter(estado="enviada", fecha_validez__lt=date.today()).count()
+    return _resultado(n, nota=("alerta" if n > 0 else ""), link="/cotizaciones/?estado=enviada")
+
+
+def _kpi_cotizaciones_aprobadas_mes(user) -> dict:
+    from datetime import date
+    from apps.cotizaciones.models import Cotizacion
+    hoy = date.today()
+    n = Cotizacion.objects.filter(
+        estado="aprobada",
+        aprobada_en__year=hoy.year,
+        aprobada_en__month=hoy.month,
+    ).count()
+    return _resultado(n, link="/cotizaciones/?estado=aprobada")
+
+
 # ── Catálogo ──
 
 KPIS: list[KPI] = [
@@ -448,6 +475,14 @@ KPIS: list[KPI] = [
         "dinero", ROLES_ADMIN_CONTADOR, _kpi_cxp_total),
     KPI("reembolsos-pendientes", "Reembolsos pendientes", "Dinero adelantado por empleados que el despacho debe.",
         "dinero", ROLES_ADMIN_CONTADOR, _kpi_reembolsos_pendientes),
+
+    # Cotizaciones (S2b.cotizaciones-v1)
+    KPI("cotizaciones-pendientes", "Cotizaciones pendientes", "Enviadas y esperando respuesta del cliente.",
+        "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_pendientes),
+    KPI("cotizaciones-vencidas", "Cotizaciones vencidas", "Enviadas con fecha de validez ya pasada.",
+        "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_vencidas),
+    KPI("cotizaciones-aprobadas-mes", "Cotizaciones aprobadas (mes)", "Conversiones del mes en curso.",
+        "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_aprobadas_mes),
 ]
 
 

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ cot.codigo }} — Las Cotizaciones{% endblock %}
+{% block contenido %}
+
+{% include "_componentes_tailadmin/_page_header.html" with titulo=cot.codigo subtitulo=cot.titulo %}
+
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    {% with estado=cot.estado_visible %}
+    <span class="badge {% if estado == 'aprobada' %}badge-success{% elif estado == 'rechazada' or estado == 'anulada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'enviada' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
+    {% endwith %}
+    {% if cot.proyecto %}<span class="badge badge-gray">{{ cot.proyecto.codigo }}</span>{% endif %}
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Líneas</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Descripción</th>
+                            <th class="px-3 py-2 text-right">Cantidad</th>
+                            <th class="px-3 py-2 text-right">P. unitario</th>
+                            <th class="px-3 py-2 text-right">Desc. %</th>
+                            <th class="px-3 py-2 text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                        {% for it in items %}
+                        <tr>
+                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{{ it.descripcion }}{% if it.servicio %}<div class="text-xs text-gray-400 dark:text-gray-500">{{ it.servicio.nombre }}</div>{% endif %}</td>
+                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.cantidad|floatformat:2 }} {{ it.unidad }}</td>
+                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">${{ it.precio_unitario|floatformat:2 }}</td>
+                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.descuento_porcentaje|floatformat:2 }}%</td>
+                            <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${{ it.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin líneas.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-5 flex justify-end">
+                <dl class="w-full max-w-sm space-y-1 text-sm">
+                    <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Subtotal</dt><dd class="text-gray-900 dark:text-gray-100">${{ totales.subtotal_items|floatformat:2 }}</dd></div>
+                    {% if totales.descuento_global %}<div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Descuento global ({{ cot.descuento_global_porcentaje|floatformat:2 }}%)</dt><dd class="text-error-600 dark:text-error-400">−${{ totales.descuento_global|floatformat:2 }}</dd></div>{% endif %}
+                    {% for imp in totales.impuestos_detalle %}
+                    <div class="flex justify-between">
+                        <dt class="text-gray-500 dark:text-gray-400">{{ imp.nombre }} ({{ imp.porcentaje|floatformat:2 }}%)</dt>
+                        <dd class="{% if imp.tipo == 'retencion' %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{% if imp.tipo == 'retencion' %}−{% endif %}${{ imp.monto|floatformat:2 }}</dd>
+                    </div>
+                    {% endfor %}
+                    <div class="mt-2 flex justify-between border-t border-gray-200 pt-2 text-base font-semibold dark:border-gray-800"><dt class="text-gray-900 dark:text-gray-100">Total ({{ cot.moneda }})</dt><dd class="text-gray-900 dark:text-gray-100">${{ totales.total|floatformat:2 }}</dd></div>
+                </dl>
+            </div>
+        </section>
+
+        {% if cot.notas %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas internas</h2>
+            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cot.notas }}</p>
+        </section>
+        {% endif %}
+
+        {% if cot.terminos %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Términos y condiciones</h2>
+            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cot.terminos }}</p>
+        </section>
+        {% endif %}
+
+        {% if cot.estado == 'rechazada' and cot.motivo_rechazo %}
+        <section class="rounded-2xl border border-error-300 bg-error-50 p-5 dark:border-error-500/30 dark:bg-error-500/10">
+            <h2 class="text-xs font-medium uppercase tracking-wider text-error-700 dark:text-error-400">Motivo de rechazo</h2>
+            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cot.motivo_rechazo }}</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Registrado {{ cot.rechazada_en|date:"Y-m-d H:i" }}</p>
+        </section>
+        {% endif %}
+
+        {% if cot.estado == 'anulada' %}
+        <section class="rounded-2xl border border-gray-300 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/50">
+            <h2 class="text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300">Cotización anulada</h2>
+            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cot.motivo_anulacion }}</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Por {{ cot.anulada_por.nombre_completo|default:cot.anulada_por.email|default:"—" }} el {{ cot.anulada_en|date:"Y-m-d H:i" }}</p>
+        </section>
+        {% endif %}
+    </div>
+
+    <aside class="space-y-4 xl:col-span-1">
+        {% include "_componentes_tailadmin/_info_card.html" with titulo="Cliente" items=info_cliente %}
+        {% include "_componentes_tailadmin/_info_card.html" with titulo="Fechas" items=info_fechas %}
+        {% if cot.estado == 'aprobada' %}
+            {% include "_componentes_tailadmin/_info_card.html" with titulo="Aprobación" items=info_aprobacion %}
+        {% endif %}
+        {% include "_componentes_tailadmin/_info_card.html" with titulo="Captura" items=info_captura %}
+    </aside>
+</div>
+
+{% include "_componentes_tailadmin/_action_bar.html" with meta=action_bar_meta acciones=action_bar_acciones %}
+{% endblock %}

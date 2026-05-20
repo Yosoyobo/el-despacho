@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.recados.apps.RecadosConfig",
     "apps.el_dictado.apps.ElDictadoConfig",
     "apps.tesoreria.apps.TesoreriaConfig",
+    "apps.cotizaciones.apps.CotizacionesConfig",
     # La Gerencia (apps es namespace pkg — convive con El Taller)
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",

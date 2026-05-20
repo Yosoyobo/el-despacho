@@ -32,6 +32,7 @@ urlpatterns = [
     # prefijo que jamás se visitará desde Gerencia real (los enlaces los
     # absorberá el redirect a Taller en producción).
     path("__tesoreria_for_url_reverse__/", include("apps.tesoreria.urls", namespace="tesoreria")),
+    path("__cotizaciones_for_url_reverse__/", include("apps.cotizaciones.urls", namespace="cotizaciones")),
     path("site/", include("apps.el_site.urls")),
     path("chalanes/", include("apps.los_chalanes.urls", namespace="los_chalanes")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),

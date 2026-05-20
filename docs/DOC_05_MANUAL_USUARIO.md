@@ -348,6 +348,113 @@ Cada proyecto: código (`PRY-000001`...), cliente, descripción, fechas, monto, 
 
 Tareas internas con prioridad, asignado, fecha, estado. Comentarios públicos (todos) e internos (solo admin/dueño).
 
+### 📄 Las Cotizaciones (S2b.cotizaciones-v1 ✅)
+
+**Dónde:** El Taller → Las Cotizaciones.
+**Quién:** super_admin, dueño, contador (el diseñador no la ve).
+
+Propuestas comerciales del despacho — captura, cálculos automáticos y
+seguimiento de estado. Cada cotización tiene código correlativo por año
+(`COT-2026-0001`, `COT-2026-0002`, …) y vive en uno de 5 estados:
+
+- **Borrador** → la armas y editas a voluntad. No es visible al cliente.
+- **Enviada** → la "marcaste como enviada" en el sistema. Queda bloqueada
+  a edición. Si la fecha de validez ya pasó y sigue enviada, la lista
+  la pinta como **Vencida** (es un estado derivado — el sistema no lo
+  guarda en DB).
+- **Aprobada** → el cliente dijo que sí. Registras el nombre de quien
+  aprobó, opcionalmente su correo y una referencia (número de OC,
+  asunto de correo).
+- **Rechazada** → el cliente dijo que no. Capturas el motivo.
+- **Anulada** → soft-delete. Desaparece del listado vigente pero queda
+  en histórico con motivo y autor.
+
+**Cómo armar una cotización:**
+
+1. **Nueva cotización** → eliges cliente (de La Cartera), opcionalmente
+   un proyecto, pones título, fechas de emisión y validez (default: hoy
+   y hoy+30 días), moneda y descuento global opcional.
+2. **Líneas** → cada renglón con descripción, cantidad, unidad, precio
+   unitario y descuento por línea (opcional). Botón **+ Agregar línea**
+   añade renglones. Al editar puedes marcar líneas para eliminar.
+3. **Impuestos** → checkboxes con las tasas activas de La Gerencia → Tasas.
+   Las marcadas como "aplicable por defecto" vienen preseleccionadas.
+   Las **trasladadas** suman; las **retenciones** restan.
+4. **Notas y términos** → texto libre que aparece en el detalle (más
+   adelante, en el PDF).
+5. **Guardar** → queda en borrador. Puedes seguir editando.
+
+**Cómo se calcula el total:**
+
+```
+Subtotal de líneas   = Σ (cantidad × precio × (1 − desc.línea/100))
+Descuento global     = Subtotal × desc.global / 100
+Base imponible       = Subtotal − Descuento global
+Trasladados (IVA…)   = Base × tasa / 100
+Retenciones (ISR…)   = Base × tasa / 100
+Total                = Base + Trasladados − Retenciones
+```
+
+**Flujo de estado:**
+
+```
+Borrador ──(Marcar enviada)──▶ Enviada ──(Aprobar)──▶ Aprobada (terminal)
+                                  │
+                                  ├──(Rechazar)──▶ Rechazada (terminal)
+                                  └─────(vence sin acción)─────▶ "Vencida"
+Cualquier estado ──(Anular con motivo)──▶ Anulada (oculta de vigentes)
+```
+
+**Quién puede qué:** los permisos son granulares (configurables por
+super_admin desde Directorio → Permisos):
+
+| Acción | super_admin | dueño | contador | diseñador |
+|---|---|---|---|---|
+| Ver, crear, editar, marcar enviada | ✅ | ✅ | ✅ | ❌ |
+| Aprobar / Rechazar / Anular | ✅ | ✅ | ❌ | ❌ |
+
+El **contador puede armar y enviar** pero no cierra el ciclo: aprobar,
+rechazar y anular son del jefe.
+
+**Acciones útiles desde el detalle:**
+
+- **Duplicar** → crea una nueva en borrador con el título "Copia de …"
+  y todas las líneas e impuestos copiados. Útil para clientes con
+  cotizaciones parecidas.
+- **Editar** → sólo en borrador. Una vez enviada queda inmutable
+  (cualquier cambio sería una cotización nueva — duplicas y editas).
+- **Marcar enviada / Aprobar / Rechazar / Anular** abren un modalito
+  rápido para capturar los datos necesarios.
+
+**La lista trae 4 KPI hero arriba** con conteos al vuelo (borradores,
+enviadas, aprobadas, vencidas) y filtros por estado + búsqueda por
+código/título/cliente. Las anuladas se ocultan por default — para
+verlas, filtra explícitamente "Anuladas".
+
+**Aparece también en la Sala de Juntas:** 3 KPIs nuevos en el tablero
+del Taller (categoría 🏗 Operación), opt-in por usuario en `/perfil/dashboard/`:
+
+- **Cotizaciones pendientes** → cuántas enviaste y no te han contestado.
+- **Cotizaciones vencidas** → de esas, cuáles ya pasaron su fecha de validez
+  (pinta alerta si hay alguna).
+- **Cotizaciones aprobadas (mes)** → conversiones del mes en curso.
+
+**Qué NO hace V1** (queda para una sub-sprint posterior cuando los
+wrappers Google estén activos):
+
+- **No genera PDF** todavía. Marcar enviada registra el envío manual,
+  pero el documento que ves se queda en la pantalla — para imprimirlo
+  o mandarlo por correo, por ahora hay que armarlo aparte. El PDF
+  oficial vía Google Docs templates llega cuando S2b.1b active Drive y
+  el wrapper de Docs exista (esto es la deuda principal del sprint).
+- **No envía correos automáticamente** al cliente.
+- **No marca vencidas solas vía cron** — la semántica "vencida" se
+  computa al vuelo cuando entras al listado.
+- **No genera proyecto o factura automática** cuando aprueba el cliente
+  (eso es S2b.facturacion).
+- **El cliente no aprueba self-service** desde un portal (eso es S5 La
+  Recepción).
+
 ### 🔗 Sistema de Referencias `@/#/$` (Pre-S2b.1 ✅)
 
 **Dónde:** en cualquier cuadro de texto del sistema que tenga

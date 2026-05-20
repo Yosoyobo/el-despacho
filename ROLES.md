@@ -38,7 +38,7 @@ Cuatro roles. Se asignan desde **El Directorio** en La Gerencia. El primer
 | La Cartera (clientes)           | ✅          | ✅    | ✅       | 👁 ver    |
 | Los Proyectos                   | ✅          | ✅    | 👁 ver   | 🔒 propios |
 | El Pizarrón (tareas/comments)   | ✅          | ✅    | 👁 ver   | 🔒 propios |
-| Las Cotizaciones (S2)           | ✅          | ✅    | ✅       | 👁 ver    |
+| Las Cotizaciones V1 (S2b.cotizaciones-v1 ✅) | ✅ todo | ✅ todo | 🔒 arma+envía | ❌ |
 | La Facturación / Caja / Cobranza (S2) | ✅    | ✅    | ✅       | ❌        |
 | La Contaduría (S3)              | ✅          | ✅    | ✅       | ❌        |
 | Los Chalanes — Cuadro/Cadena    | ✅          | 👁 auditoría | ❌ | ❌        |
