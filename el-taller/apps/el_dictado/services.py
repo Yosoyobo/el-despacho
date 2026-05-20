@@ -36,8 +36,22 @@ TIPOS_PROHIBIDOS = {
 }
 
 
-def interpretar(*, texto: str, usuario, origen: str = "sala_juntas", aclaracion: str | None = None):
-    """Crea Dictado + acciones a partir del texto del usuario.
+def interpretar(
+    *,
+    texto: str | None = None,
+    usuario,
+    origen: str = "sala_juntas",
+    aclaracion: str | None = None,
+    dictado=None,
+):
+    """Interpreta un dictado (nuevo o re-iteración tras clarificación).
+
+    Si `dictado=None`, crea uno nuevo con `texto_crudo=texto`.
+    Si `dictado` se pasa (caso S2b.2.1 — el usuario respondió la pregunta
+    del Chalán), reusa el registro, limpia acciones previas y vuelve a
+    interpretar con el historial de clarificaciones acumulado en el
+    prompt. La respuesta del usuario debe haberse agregado al
+    `historial_clarificaciones` por el caller ANTES de invocar.
 
     Retorna el `Dictado` con estado final. Nunca lanza — los errores LLM
     quedan capturados en `estado='fallo_ia'`.
@@ -45,18 +59,26 @@ def interpretar(*, texto: str, usuario, origen: str = "sala_juntas", aclaracion:
     from .models import Dictado, DictadoAccion
     from .prompt import SYSTEM_PROMPT, aprendizajes_activos, construir_user_prompt
 
-    texto = (texto or "").strip()
-    if not texto:
-        raise ValueError("Texto del dictado vacío.")
-
-    dictado = Dictado.objects.create(
-        autor=usuario, texto_crudo=texto, estado="interpretando", origen=origen,
-    )
+    if dictado is None:
+        texto = (texto or "").strip()
+        if not texto:
+            raise ValueError("Texto del dictado vacío.")
+        dictado = Dictado.objects.create(
+            autor=usuario, texto_crudo=texto, estado="interpretando", origen=origen,
+        )
+    else:
+        # Re-iteración: limpiamos acciones previas y reseteamos estado.
+        dictado.acciones.all().delete()
+        dictado.estado = "interpretando"
+        dictado.pregunta_clarificacion = ""
+        dictado.save(update_fields=["estado", "pregunta_clarificacion"])
+        texto = dictado.texto_crudo
 
     aprendizajes = aprendizajes_activos()
     user_prompt = construir_user_prompt(
         usuario=usuario, texto_crudo=texto,
         aprendizajes=aprendizajes, aclaracion=aclaracion,
+        historial=list(dictado.historial_clarificaciones or []),
     )
     prompt_completo = SYSTEM_PROMPT + "\n\n" + user_prompt
 

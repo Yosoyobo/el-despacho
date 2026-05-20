@@ -162,7 +162,7 @@ def dashboard_preferencias(request):
     """Página de edición de KPIs visibles + sugerencias del Chalán."""
     user = request.user
     rol = getattr(user, "rol", None) or "disenador"
-    aplicables = kpis_aplicables_a_rol(rol)
+    aplicables = kpis_aplicables_a_rol(rol, user=user)
 
     ocultos = set(
         PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
@@ -200,7 +200,7 @@ def dashboard_guardar(request):
     """Guarda visibles[] de la página de preferencias. Slugs no marcados → ocultos."""
     user = request.user
     rol = getattr(user, "rol", None) or "disenador"
-    aplicables_slugs = {k.slug for k in kpis_aplicables_a_rol(rol)}
+    aplicables_slugs = {k.slug for k in kpis_aplicables_a_rol(rol, user=user)}
     marcados = set(request.POST.getlist("visible"))
 
     for slug in aplicables_slugs:

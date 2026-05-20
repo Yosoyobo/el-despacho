@@ -460,17 +460,58 @@ con tooltip a la doc) — sólo se habilita.
   con `roles_visible` opcional — `buzon` sólo a admin/dueno.
 - 26 tests nuevos (399 verdes totales).
 
-### S2b.5 — Capa 3: DSL + KPIs custom generados por Chalán (~4-5h, fragmentado)
+### S2b.5 ✅ — DSL + KPIs custom generados por Chalán (2026-05-20)
 
-Fragmento del plan original. El Chalán Claudio (con LLM real,
-post-S2b.2) traduce preguntas en lenguaje natural a un **DSL JSON
-acotado** (entidad ∈ whitelist, agregacion ∈ count/sum/avg/min/max,
-filtros con ops vetadas, ventana_tiempo con tokens seguros). El DSL se
-ejecuta vía query builder vetado — NUNCA SQL/ORM libre. Modelo
-`KPICustom(slug, definicion_json, alcance: personal | equipo,
-aprobado_por)`. `alcance='equipo'` requiere aprobación super_admin.
-Cost guard: timeout 5s + límite filas pre-agregación. Origen
-`custom_chalan` en `PreferenciaKPI` ya preparado en S2b.4.
+Capa 3 de la Sala de Juntas. El Chalán Claudio traduce preguntas en
+lenguaje natural a un **DSL JSON acotado**, que se ejecuta vía query
+builder vetado — NUNCA SQL/ORM libre.
+
+- **DSL `lib/kpi_dsl/`**:
+  - `schema.py`: whitelist entidades (`proyecto`, `tarea`, `cliente`,
+    `egreso`, `ingreso`, `recado`, `buzon_mensaje`), agregaciones
+    (`count`, `sum`, `avg`, `min`, `max`), ops filtro (`eq`, `in`,
+    `gte`, `lte`, `gt`, `lt`), ventanas (`siempre`, `ultimos_7d/30d`,
+    `este_mes/ano`), alcance usuario (`todos`/`mio`). Cada entidad
+    declara su modelo Django (por `app_label`), campos numéricos
+    agregables, campos filtrables con ops permitidas por campo, campo
+    de fecha para ventanas, y campo autor/asignado para alcance=mio.
+  - `validador.py`: `validar(def)` levanta `ValidacionError` si algo
+    sale del whitelist. NUNCA se ejecuta DSL sin validar.
+  - `ejecutor.py`: arma QS via `apps.get_model(app_label, modelo)`,
+    aplica filtros / ventana / alcance, agrega. Cost guard:
+    `MAX_FILAS_PRE_AGREGACION=10_000` filas (PKs más recientes) antes
+    de sum/avg/min/max. `count` usa COUNT SQL-level. Retorna
+    `{valor, nota, link}` con la misma forma que el catálogo.
+- **`KPICustom`** (`apps/taller_home/models/kpi_custom.py`): slug
+  único, titulo, `definicion_json` (DSL normalizado), `alcance` ∈
+  {personal, equipo}, `estado` ∈ {activo, pendiente_aprobacion,
+  rechazado, archivado}, autor, aprobado_por, motivo_rechazo.
+  Migración `0002_kpi_custom` crea la tabla y seedea
+  `CuadroChalanes(estacion='kpi_dsl', proveedor='anthropic')`.
+- **NL→DSL** (`services_kpi_chalan.py`): system prompt enumera el
+  whitelist literalmente, llama `lib.analistas.analizar(
+  estacion='kpi_dsl')`, parsea JSON, valida, ejecuta para hacer
+  preview. Devuelve `{ok, definicion, titulo_sugerido,
+  categoria_sugerida, preview}` o `{ok: False, error}`.
+- **UI Taller**: `/kpis/custom/` lista personal + equipo aprobados,
+  `/nuevo/` textbox NL, `proponer` → render preview con DSL + valor,
+  `crear` persiste con desambiguación de slug. Personal → activo.
+  Equipo → pendiente_aprobacion. Discovery: link "✨ KPIs custom →"
+  en el header "Tu tablero" del home y en la página de preferencias.
+- **UI Gerencia**: `/chalanes/kpis-pendientes/` lista pendientes con
+  preview, botones aprobar / rechazar (con motivo). Botón en
+  `panel.html` junto a Aprendizajes.
+- **Integración con `kpis.py`**: `kpis_aplicables_a_rol(rol, user=)`
+  agrega KPIs custom visibles para `user`. Cada `KPICustom` se
+  materializa como `KPI` dataclass con `origen='custom_chalan'` y
+  `calcular = lambda u: ejecutar(definicion)`. Aparecen mezclados con
+  catálogo en Sala de Juntas. La preferencia `PreferenciaKPI` ya
+  soportaba `origen='custom_chalan'` desde S2b.4.
+- 25 tests nuevos (14 `test_kpi_dsl.py` raíz + 7 `test_kpi_custom.py`
+  Taller + 4 `test_kpi_aprobacion.py` Gerencia). Suite total: **532
+  pass, 9 skipped**.
+- Eventos Portavoz nuevos: `kpi_custom.{creado, archivado, aprobado,
+  rechazado}`.
 
 ### S2b.2 ✅ — El Dictado V1 (2026-05-19, escrito durante la entrega del sprint)
 
@@ -502,9 +543,37 @@ propone acciones. Usuario revisa con checkboxes, confirma, aplica.
   con últimos 50 del usuario.
 - 14 tests nuevos.
 
-**V1 NO incluye** (van a sub-sprint S2b.2.1, ~1h):
-- Clarificación iterativa (si Chalán pregunta, hoy se cancela y reescribe)
-- UI de gestión de aprendizajes en Gerencia (`/chalanes/aprendizajes/`)
+**V1 NO incluye** (cerrado por S2b.2.1, 2026-05-20):
+- ~~Clarificación iterativa~~ — cerrado.
+- ~~UI de gestión de aprendizajes en Gerencia~~ — cerrado.
+
+### S2b.2.1 ✅ — Clarificación iterativa + UI aprendizajes (2026-05-20)
+
+Cierra deuda de S2b.2 V1.
+
+- **Clarificación iterativa del Dictado**: nuevo campo
+  `historial_clarificaciones` (JSONField list) en `Dictado` (migración
+  `0002_historial_clarificaciones`). `services.interpretar()` acepta
+  `dictado=` opcional — re-usa el registro existente, limpia acciones
+  previas y vuelve a interpretar pasando el historial Q&A al prompt.
+  Nueva vista `responder_clarificacion` (POST
+  `/dictado/<id>/responder`) invocada desde el form que reemplazó el
+  "cancela y reescribe" en `preview.html`. Prompt user builder ahora
+  renderiza la sección `[CLARIFICACIONES PREVIAS]` con los turnos
+  acumulados.
+- **UI aprendizajes en Gerencia**: nuevo shadow model
+  `chalanes.Aprendizaje(managed=False)` apuntando a la misma tabla
+  `el_dictado_aprendizaje` (sigue siendo schema-owner desde el
+  Taller). Esto evita migración de movimiento y le da a Gerencia
+  acceso ORM directo sin instalar `apps.el_dictado`. CRUD completo
+  bajo `/chalanes/aprendizajes/`: lista con filtro
+  `activos/inactivos/todos`, form nuevo/editar (widget-detecta switch
+  via `_form_campo`), toggle con motivo. Botones en `panel.html`.
+  `aprendizajes_activos()` en el prompt ahora consulta
+  `chalanes.Aprendizaje`.
+- 13 tests nuevos (5 `test_dictado_clarificacion.py` Taller + 8
+  `test_aprendizajes.py` Gerencia). Suite: 507 pass, 9 skipped (en su
+  momento, antes de S2b.5).
 
 ### S2b.2 — El Dictado (~3-4h)
 

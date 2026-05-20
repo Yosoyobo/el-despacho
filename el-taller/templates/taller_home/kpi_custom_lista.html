@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Mis KPIs custom — Sala de Juntas{% endblock %}
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="KPIs custom del Chalán" subtitulo="KPIs que tú o el equipo le pidieron a Claudio. Los personales son sólo tuyos. Los de equipo necesitan aprobación super_admin." %}
+
+<div class="mb-4 flex justify-end">
+    <a href="{% url 'kpi-custom-nuevo' %}" class="btn-primario">+ Pedirle un KPI al Chalán</a>
+</div>
+
+<section class="mb-8">
+    <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Mis KPIs</h2>
+    <ul class="space-y-2">
+        {% for k in mios %}
+        <li class="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div>
+                <p class="font-medium text-gray-900 dark:text-gray-100">{{ k.titulo }}</p>
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Alcance: <strong>{{ k.get_alcance_display }}</strong> · Estado:
+                    {% if k.estado == 'activo' %}<span class="text-success-600">activo</span>
+                    {% elif k.estado == 'pendiente_aprobacion' %}<span class="text-warning-600">pendiente de aprobación</span>
+                    {% elif k.estado == 'rechazado' %}<span class="text-error-600">rechazado{% if k.motivo_rechazo %} — {{ k.motivo_rechazo }}{% endif %}</span>
+                    {% else %}<span class="text-gray-500">archivado</span>{% endif %}
+                </p>
+                {% if k.descripcion %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ k.descripcion|truncatechars:140 }}</p>{% endif %}
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'kpi-custom-detalle' k.pk %}" class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Ver</a>
+                {% if k.estado != 'archivado' %}
+                <form method="post" action="{% url 'kpi-custom-archivar' k.pk %}" class="inline">{% csrf_token %}
+                    <button class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Archivar</button>
+                </form>
+                {% endif %}
+            </div>
+        </li>
+        {% empty %}
+        <li>{% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no tienes KPIs custom" descripcion="Pídele al Chalán Claudio que arme una métrica en lenguaje natural. Ejemplo: 'Cuántos proyectos en producción tenemos.'" icono="sparkles" cta_url="/kpis/custom/nuevo/" cta_label="+ Pedirle un KPI al Chalán" %}</li>
+        {% endfor %}
+    </ul>
+</section>
+
+{% if aprobados_equipo %}
+<section>
+    <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">KPIs de equipo (aprobados)</h2>
+    <ul class="space-y-2">
+        {% for k in aprobados_equipo %}
+        <li class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <p class="font-medium text-gray-900 dark:text-gray-100">{{ k.titulo }}</p>
+            <p class="mt-0.5 text-xs text-gray-500">Creado por {{ k.autor.nombre_completo|default:k.autor.email }} · Aprobado {{ k.aprobado_en|date:"Y-m-d" }}</p>
+            {% if k.descripcion %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ k.descripcion|truncatechars:140 }}</p>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

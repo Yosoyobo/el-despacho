@@ -38,6 +38,9 @@ class Dictado(models.Model):
 
     interpretacion_raw = models.JSONField(default=dict, blank=True)
     pregunta_clarificacion = models.TextField(blank=True, default="")
+    # Lista de turnos `{pregunta, respuesta}` cuando el Chalán itera
+    # clarificando antes de proponer acciones (S2b.2.1).
+    historial_clarificaciones = models.JSONField(default=list, blank=True)
 
     latencia_interpretacion_ms = models.IntegerField(null=True, blank=True)
     costo_usd = models.DecimalField(max_digits=8, decimal_places=6, default=0)

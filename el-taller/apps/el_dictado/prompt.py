@@ -77,6 +77,7 @@ def construir_user_prompt(
     texto_crudo: str,
     aprendizajes: list[dict[str, Any]] | None = None,
     aclaracion: str | None = None,
+    historial: list[dict[str, str]] | None = None,
 ) -> str:
     partes: list[str] = []
     if aprendizajes:
@@ -89,6 +90,16 @@ def construir_user_prompt(
     partes.append("")
     partes.append("[DICTADO]")
     partes.append(texto_crudo)
+    if historial:
+        partes.append("")
+        partes.append("[CLARIFICACIONES PREVIAS]")
+        for turno in historial:
+            partes.append(f"Chalán preguntó: {turno.get('pregunta', '')}")
+            partes.append(f"Usuario respondió: {turno.get('respuesta', '')}")
+        partes.append(
+            "Con esta información YA tienes lo necesario — propone acciones "
+            "o, si aún hay ambigüedad real, pregunta UNA cosa más distinta.",
+        )
     if aclaracion:
         partes.append("")
         partes.append("[ACLARACIÓN PREVIA]")
@@ -98,8 +109,8 @@ def construir_user_prompt(
 
 def aprendizajes_activos() -> list[dict[str, Any]]:
     """Retorna top 10 aprendizajes con peso_efectivo >= 0.3."""
-    from .models import DictadoAprendizaje
-    todos = list(DictadoAprendizaje.objects.filter(activo=True)[:50])
+    from chalanes.models import Aprendizaje
+    todos = list(Aprendizaje.objects.filter(activo=True)[:50])
     con_peso = [
         {"frase": a.frase_o_patron, "interpretacion": a.interpretacion_correcta, "peso": a.peso_efectivo()}
         for a in todos

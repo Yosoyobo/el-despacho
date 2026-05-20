@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}KPI {{ kpi.titulo }}{% endblock %}
+{% block contenido %}
+<div class="mx-auto max-w-2xl">
+    {% include "_componentes_tailadmin/_page_header.html" with titulo=kpi.titulo subtitulo=kpi.descripcion %}
+
+    <section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs uppercase text-gray-500">Valor</p>
+        {% if resultado.ok %}
+        <p class="mt-1 text-4xl font-semibold text-gray-900 dark:text-gray-100">{{ resultado.resultado.valor }}</p>
+        {% if resultado.resultado.nota %}<p class="mt-1 text-xs text-warning-600">{{ resultado.resultado.nota }}</p>{% endif %}
+        {% else %}
+        <p class="mt-1 text-sm text-error-600">{{ resultado.error }}</p>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs uppercase text-gray-500 mb-2">Definición</p>
+        <pre class="overflow-x-auto rounded bg-gray-100 p-3 font-mono text-[11px] text-gray-700 dark:bg-gray-900 dark:text-gray-300">{{ definicion_json }}</pre>
+        <dl class="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+            <dt class="font-medium">Alcance</dt><dd>{{ kpi.get_alcance_display }}</dd>
+            <dt class="font-medium">Estado</dt><dd>{{ kpi.get_estado_display }}</dd>
+            <dt class="font-medium">Autor</dt><dd>{{ kpi.autor.nombre_completo|default:kpi.autor.email }}</dd>
+            <dt class="font-medium">Creado</dt><dd>{{ kpi.creado_en|date:"Y-m-d H:i" }}</dd>
+            {% if kpi.aprobado_por %}<dt class="font-medium">Aprobado por</dt><dd>{{ kpi.aprobado_por.nombre_completo|default:kpi.aprobado_por.email }}</dd>{% endif %}
+        </dl>
+    </section>
+
+    <div class="mt-4 flex justify-end gap-2">
+        <a href="{% url 'kpi-custom-lista' %}" class="btn-secundario">Volver</a>
+        {% if kpi.estado != 'archivado' %}
+        <form method="post" action="{% url 'kpi-custom-archivar' kpi.pk %}" class="inline">{% csrf_token %}
+            <button class="btn-secundario">Archivar</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

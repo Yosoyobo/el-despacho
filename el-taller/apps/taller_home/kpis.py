@@ -462,9 +462,54 @@ CATEGORIAS = (
 )
 
 
-def kpis_aplicables_a_rol(rol: str) -> list[KPI]:
-    """Filtra el catálogo por rol del usuario."""
-    return [k for k in KPIS if rol in k.roles_visible]
+def _kpis_custom_para(user) -> list[KPI]:
+    """KPIs generados por el Chalán (S2b.5) que aplican a `user`:
+    - personales del autor (alcance='personal', estado='activo')
+    - de equipo aprobados (alcance='equipo', estado='activo')
+    """
+    from lib.kpi_dsl import ejecutar
+    from .models import KPICustom
+
+    qs = KPICustom.objects.filter(estado="activo").filter(
+        models_Q_personal_o_equipo(user)
+    )
+    salida: list[KPI] = []
+    for kpi_db in qs.only(
+        "slug", "titulo", "descripcion", "categoria", "definicion_json", "alcance", "autor_id",
+    ):
+        definicion = dict(kpi_db.definicion_json)  # copia local para no mutar
+
+        def _calc(usuario, _def=definicion):
+            return ejecutar(_def, usuario=usuario)
+
+        salida.append(KPI(
+            slug=f"custom-{kpi_db.slug}",
+            titulo=kpi_db.titulo,
+            descripcion=kpi_db.descripcion or "KPI personalizado.",
+            categoria=kpi_db.categoria or "custom",
+            roles_visible=ROLES_TODOS,
+            calcular=_calc,
+            origen="custom_chalan",
+            estado_kpi="activo",
+        ))
+    return salida
+
+
+def models_Q_personal_o_equipo(user):
+    """Q: (alcance='personal' AND autor=user) OR alcance='equipo'."""
+    from django.db.models import Q
+    return Q(alcance="equipo") | Q(alcance="personal", autor=user)
+
+
+def kpis_aplicables_a_rol(rol: str, *, user=None) -> list[KPI]:
+    """Filtra el catálogo por rol del usuario.
+
+    Si `user` se pasa, agrega también los KPIs custom (S2b.5) del usuario.
+    """
+    base = [k for k in KPIS if rol in k.roles_visible]
+    if user is not None:
+        base = base + _kpis_custom_para(user)
+    return base
 
 
 def kpis_visibles_para(user, *, incluir_ocultos: bool = False) -> list[tuple[KPI, dict]]:
@@ -476,7 +521,7 @@ def kpis_visibles_para(user, *, incluir_ocultos: bool = False) -> list[tuple[KPI
     """
     from .models.preferencia_kpi import PreferenciaKPI
     rol = getattr(user, "rol", None) or "disenador"
-    aplicables = kpis_aplicables_a_rol(rol)
+    aplicables = kpis_aplicables_a_rol(rol, user=user)
     ocultos: set[str] = set(
         PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
     )

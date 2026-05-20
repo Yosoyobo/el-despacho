@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Aprendizajes del Chalán{% endblock %}
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Aprendizajes del Chalán" subtitulo="Frases que el equipo le enseñó al Chalán Claudio. Se inyectan en el prompt del Dictado, decaen con el tiempo." breadcrumb_items=breadcrumb_items %}
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <nav class="flex flex-wrap gap-1 text-sm">
+        {% with totales as t %}
+        <a href="?filtro=todos"     class="rounded-lg px-3 py-1 {% if filtro == 'todos' %}bg-brand-500 text-white{% else %}border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">Todos ({{ t.todos }})</a>
+        <a href="?filtro=activos"   class="rounded-lg px-3 py-1 {% if filtro == 'activos' %}bg-brand-500 text-white{% else %}border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">Activos ({{ t.activos }})</a>
+        <a href="?filtro=inactivos" class="rounded-lg px-3 py-1 {% if filtro == 'inactivos' %}bg-brand-500 text-white{% else %}border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">Inactivos ({{ t.inactivos }})</a>
+        {% endwith %}
+    </nav>
+    {% if puede_modificar %}
+    <a href="{% url 'los_chalanes:aprendizaje-nuevo' %}" class="btn-primario">+ Enseñar al Chalán</a>
+    {% endif %}
+</div>
+
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-2">Frase / patrón</th>
+                <th class="px-5 py-2">Interpretación</th>
+                <th class="px-5 py-2 text-center">Peso</th>
+                <th class="px-5 py-2 text-center">Estado</th>
+                <th class="px-5 py-2 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for ap in aprendizajes %}
+            <tr {% if ap.bajo_umbral %}class="opacity-60"{% endif %}>
+                <td class="px-5 py-3">
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ ap.frase_o_patron }}</p>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">creado {{ ap.creado_en|date:"Y-m-d H:i" }}{% if ap.autor %} · por {{ ap.autor.nombre_completo|default:ap.autor.email }}{% endif %}</p>
+                </td>
+                <td class="px-5 py-3 text-gray-700 dark:text-gray-300">{{ ap.interpretacion_correcta|truncatechars:120 }}</td>
+                <td class="px-5 py-3 text-center font-mono text-xs">
+                    <span title="peso base">{{ ap.peso|floatformat:2 }}</span>
+                    <span class="ml-1 text-gray-400" title="peso efectivo con decay temporal">→ {{ ap.peso_efectivo_calc }}</span>
+                    {% if ap.bajo_umbral and ap.activo %}<p class="mt-1 text-[10px] text-warning-600">Bajo umbral 0.3, no se inyecta.</p>{% endif %}
+                </td>
+                <td class="px-5 py-3 text-center">
+                    {% if ap.activo %}
+                    <span class="inline-flex items-center rounded-full bg-success-50 px-2 py-0.5 text-xs text-success-700 dark:bg-success-500/10 dark:text-success-400">activo</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400" title="{{ ap.motivo_desactivacion }}">inactivo</span>
+                    {% endif %}
+                </td>
+                <td class="px-5 py-3 text-right">
+                    {% if puede_modificar %}
+                    <a href="{% url 'los_chalanes:aprendizaje-editar' ap.pk %}" class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Editar</a>
+                    <form method="post" action="{% url 'los_chalanes:aprendizaje-toggle' ap.pk %}" class="inline">{% csrf_token %}
+                        <button class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
+                            {% if ap.activo %}Desactivar{% else %}Activar{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-5 py-12">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no hay aprendizajes" descripcion="Cuando el equipo descubra patrones que el Chalán suele malinterpretar, regístralos aquí para mejorar la siguiente interpretación." icono="sparkles" cta_url=cta_nuevo_url cta_label="+ Enseñar al Chalán" %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+    Los aprendizajes con peso efectivo &lt; 0.3 no se incluyen en el prompt — pero quedan persistidos por historia.
+    El decay es lineal a lo largo de un año (10% mínimo).
+</p>
+{% endblock %}

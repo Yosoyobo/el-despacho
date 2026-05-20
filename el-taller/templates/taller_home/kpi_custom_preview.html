@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Preview KPI — confirma{% endblock %}
+{% block contenido %}
+<div class="mx-auto max-w-2xl">
+    {% include "_componentes_tailadmin/_page_header.html" with titulo="Confirma el KPI" subtitulo="El Chalán propone esta métrica. Revisa el valor y guárdalo." %}
+
+    <section class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 shadow-theme-sm dark:border-brand-500/30 dark:bg-brand-500/5">
+        <p class="text-xs uppercase text-brand-700 dark:text-brand-300">Pregunta original</p>
+        <p class="mt-1 text-sm text-gray-700 dark:text-gray-200">{{ texto }}</p>
+        <div class="mt-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs uppercase text-gray-500">Valor calculado ahora mismo</p>
+            <p class="mt-1 text-4xl font-semibold text-gray-900 dark:text-gray-100">{{ preview.valor }}</p>
+            {% if preview.nota %}<p class="mt-1 text-xs text-warning-600">{{ preview.nota }}</p>{% endif %}
+        </div>
+    </section>
+
+    <form method="post" action="{% url 'kpi-custom-crear' %}" class="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% csrf_token %}
+        <input type="hidden" name="definicion_json" value="{{ definicion_json }}">
+
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" for="titulo">Título del KPI</label>
+            <input id="titulo" name="titulo" type="text" required maxlength="100"
+                   class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900"
+                   value="{{ titulo_sugerido }}">
+        </div>
+
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" for="descripcion">Descripción (opcional)</label>
+            <textarea id="descripcion" name="descripcion" rows="2"
+                      class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" for="categoria">Categoría</label>
+                <select id="categoria" name="categoria" class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <option value="custom" {% if categoria_sugerida == 'custom' %}selected{% endif %}>📊 Custom</option>
+                    <option value="operacion" {% if categoria_sugerida == 'operacion' %}selected{% endif %}>🏗 Operación</option>
+                    <option value="tareas" {% if categoria_sugerida == 'tareas' %}selected{% endif %}>✅ Tareas</option>
+                    <option value="cartera" {% if categoria_sugerida == 'cartera' %}selected{% endif %}>👥 Cartera</option>
+                    <option value="dinero" {% if categoria_sugerida == 'dinero' %}selected{% endif %}>💰 Dinero</option>
+                    <option value="buzon" {% if categoria_sugerida == 'buzon' %}selected{% endif %}>📨 Buzón</option>
+                    <option value="recados" {% if categoria_sugerida == 'recados' %}selected{% endif %}>💬 Recados</option>
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" for="alcance">Alcance</label>
+                <select id="alcance" name="alcance" class="w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <option value="personal" selected>Personal (sólo yo)</option>
+                    <option value="equipo">Equipo (requiere aprobación)</option>
+                </select>
+            </div>
+        </div>
+
+        <details class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
+            <summary class="cursor-pointer font-medium">Definición técnica (DSL)</summary>
+            <pre class="mt-2 overflow-x-auto rounded bg-gray-100 p-2 font-mono text-[11px] text-gray-700 dark:bg-gray-900 dark:text-gray-300">{{ definicion_json }}</pre>
+        </details>
+
+        <footer class="flex items-center justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+            <a href="{% url 'kpi-custom-nuevo' %}" class="btn-secundario">Volver</a>
+            <button type="submit" class="btn-primario">Guardar KPI</button>
+        </footer>
+    </form>
+</div>
+{% endblock %}

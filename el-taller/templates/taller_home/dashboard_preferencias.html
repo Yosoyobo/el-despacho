@@ -9,6 +9,11 @@
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Marca los KPIs que quieres ver. Por defecto se muestran todos los aplicables a tu rol.
         </p>
+        <div class="mt-3">
+            <a href="{% url 'kpi-custom-lista' %}" class="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400">
+                ✨ Pedirle KPIs custom al Chalán →
+            </a>
+        </div>
     </header>
 
     {% if sugerencias %}

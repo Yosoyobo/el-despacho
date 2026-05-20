@@ -59,7 +59,10 @@
 {# 2b) KPIs iterados desde catálogo + preferencias del usuario (S2b.4). #}
 <section class="mb-3 flex items-center justify-between">
     <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Tu tablero</h2>
-    <a href="{% url 'perfil-dashboard' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Editar KPIs visibles →</a>
+    <div class="flex items-center gap-4 text-xs font-medium">
+        <a href="{% url 'kpi-custom-lista' %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">✨ KPIs custom →</a>
+        <a href="{% url 'perfil-dashboard' %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Editar KPIs visibles →</a>
+    </div>
 </section>
 <section class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
     {% for kpi in kpis %}

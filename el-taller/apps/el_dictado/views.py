@@ -71,6 +71,28 @@ def aplicar_view(request, pk: int):
 
 @login_required
 @require_http_methods(["POST"])
+def responder_clarificacion(request, pk: int):
+    """POST /dictado/<id>/responder — el usuario contesta la pregunta del Chalán."""
+    dictado = get_object_or_404(Dictado, pk=pk, autor=request.user)
+    if dictado.estado != "preguntando":
+        messages.warning(request, "Este dictado no está esperando una clarificación.")
+        return redirect("dictado-preview", pk=pk)
+    respuesta = (request.POST.get("respuesta") or "").strip()
+    if not respuesta:
+        messages.error(request, "Escribe la aclaración antes de enviarla.")
+        return redirect("dictado-preview", pk=pk)
+
+    historial = list(dictado.historial_clarificaciones or [])
+    historial.append({"pregunta": dictado.pregunta_clarificacion, "respuesta": respuesta})
+    dictado.historial_clarificaciones = historial
+    dictado.save(update_fields=["historial_clarificaciones"])
+
+    interpretar(dictado=dictado, usuario=request.user)
+    return redirect("dictado-preview", pk=pk)
+
+
+@login_required
+@require_http_methods(["POST"])
 def cancelar(request, pk: int):
     dictado = get_object_or_404(Dictado, pk=pk, autor=request.user)
     if dictado.estado in ("esperando_confirmacion", "preguntando"):
