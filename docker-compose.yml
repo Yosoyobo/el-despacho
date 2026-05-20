@@ -121,6 +121,10 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      # Bug B §14: el entrypoint corre migrate; serializar para evitar race
+      # con la-gerencia sobre apps compartidas (cuentas, ajustes, buzon).
+      la-gerencia:
+        condition: service_healthy
     command: ["python", "-m", "lib.portavoz_worker"]
 
   el-portero:
