@@ -709,7 +709,7 @@ hecho.
 Cada wave ~2-3h. Cada wave abre/cierra en una sesión distinta (regla
 del usuario: ahorrar tokens de contexto entre waves).
 
-**Wave 1 — Fundación de chrome** ✅ pendiente
+**Wave 1 — Fundación de chrome** ✅ (commit `2bfd229`, 2026-05-20)
 Nuevos partials en `_componentes_tailadmin/` (dos copias sincronizadas,
 regla §18):
 - `_modal.html` — overlay + dialog con slots title/body/footer + close
@@ -724,12 +724,24 @@ regla §18):
 Aplicar como referencia viva a 4-5 pantallas (1 lista, 1 form, 1
 detalle, 1 confirmación con modal, alertas → toast).
 
-**Wave 2 — Form primitives** pendiente
-Partials: `_checkbox`, `_radio`, `_switch`, `_file_upload`,
-`_datepicker` (wrapper sobre `<input type=date>` con estilo TailAdmin),
-`_tags_input`, `_select_buscable`. Sweep en TODOS los forms del repo:
-Cartera, Proyectos, Pizarrón, Tesorería (ingresos/egresos/centros),
-Ajustes, Directorio, Buzón, Catálogo, Tasas e Impuestos.
+**Wave 2 — Form primitives** ✅ (2026-05-20)
+7 partials en `_componentes_tailadmin/` (dos copias sincronizadas):
+`_checkbox`, `_radio`, `_switch` (peer-based, sin JS), `_file_upload`
+(con dropzone + lista de archivos en `form_widgets.js`), `_datepicker`
+(wrapper sobre `<input type=date>` con icono de calendario), `_tags_input`
+(chips vanilla con hidden CSV), `_select_buscable` (wrapper sobre
+`<select>` nativo — la búsqueda type-to-search del navegador ya sirve;
+si en el futuro hace falta combobox custom, el hook `data-select-buscable`
+queda preparado). `form_widgets.js` carga en `base.html` después de
+`ui.js` en ambas apps. Aplicado como referencia viva en `cartera/lista`
+(checkbox archivados), `recados/chat_nueva` (radios), y
+`perfil_notificaciones/perfil` (switches por categoría). Smoke test
+`tests/taller/test_partials_form_wave2.py` (8 tests verdes). El sweep
+exhaustivo de TODOS los forms (Proyectos, Pizarrón, Tesorería, Ajustes,
+Directorio, Buzón, Catálogo, Tasas) queda como tarea incremental — los
+partials ya están listos para que cualquier sesión futura los aplique
+a un form a la vez. **228 tests verdes** (155 taller + 68 gerencia + 5
+del Wave 2 que se cuentan en taller).
 
 **Wave 3 — Data tables** pendiente
 Un partial `_tabla_datos.html` canónico con sort por columna, filtros

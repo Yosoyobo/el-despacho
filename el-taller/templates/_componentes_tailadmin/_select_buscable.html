@@ -1,0 +1,38 @@
+{% comment %}
+Select buscable TailAdmin (combobox vanilla — sin librería).
+Params:
+  - name (obligatorio)
+  - opciones (obligatorio)    iterable de tuplas (valor, etiqueta)
+  - seleccionado (opcional)   valor inicial
+  - label (opcional)
+  - id (opcional)
+  - hint (opcional)
+  - placeholder (opcional)
+  - required (bool)
+
+Render: <select> nativo accesible + UI custom. form_widgets.js mejora con
+search-on-type. El <select> sigue siendo la fuente de verdad y se envía al
+backend con `name`. Si JS falla, sigue funcionando como dropdown nativo.
+{% endcomment %}
+<div data-select-buscable>
+    {% if label %}
+    <label for="{{ id|default:name }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ label }}{% if required %} <span class="text-error-500">*</span>{% endif %}
+    </label>
+    {% endif %}
+    <div class="relative">
+        <select name="{{ name }}" id="{{ id|default:name }}"
+            {% if required %}required{% endif %}
+            data-select-native
+            class="w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-brand-800">
+            {% if placeholder %}<option value="">{{ placeholder }}</option>{% endif %}
+            {% for v, etiqueta in opciones %}
+            <option value="{{ v }}" {% if v|stringformat:'s' == seleccionado|stringformat:'s' %}selected{% endif %}>{{ etiqueta }}</option>
+            {% endfor %}
+        </select>
+        <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400 dark:text-gray-500">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+    </div>
+    {% if hint %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>{% endif %}
+</div>

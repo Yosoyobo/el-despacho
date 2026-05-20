@@ -1,0 +1,34 @@
+{% comment %}
+Input de tags (chips) TailAdmin. Vanilla, sin librería.
+Params:
+  - name (obligatorio)        nombre del hidden que viaja al backend
+  - label (opcional)
+  - id (opcional)
+  - valor (opcional, str)     CSV de tags iniciales, e.g. "rojo,azul"
+  - placeholder (opcional)
+  - hint (opcional)
+  - required (bool, sólo visual)
+
+Comportamiento (form_widgets.js):
+- Enter, coma o blur añade el texto actual como chip
+- Backspace en input vacío borra el último chip
+- Click en la X de un chip lo borra
+- El hidden `name` se mantiene como CSV
+{% endcomment %}
+<div>
+    {% if label %}
+    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ label }}{% if required %} <span class="text-error-500">*</span>{% endif %}
+    </label>
+    {% endif %}
+    <div data-tags-input class="flex min-h-[42px] flex-wrap items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 shadow-theme-xs focus-within:border-brand-300 focus-within:ring focus-within:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:focus-within:border-brand-800">
+        <input type="hidden" name="{{ name }}" value="{{ valor|default:'' }}" data-tags-hidden>
+        <div data-tags-chips class="contents"></div>
+        <input type="text"
+            {% if id %}id="{{ id }}"{% endif %}
+            placeholder="{{ placeholder|default:'Escribe y Enter' }}"
+            class="flex-1 min-w-[8ch] bg-transparent text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none dark:text-gray-100 dark:placeholder:text-gray-500"
+            data-tags-typer>
+    </div>
+    {% if hint %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>{% endif %}
+</div>

@@ -1,0 +1,21 @@
+{% comment %}
+Radio TailAdmin. Params:
+  - name (obligatorio)        nombre del grupo
+  - value (obligatorio)       valor del radio
+  - label (obligatorio)       texto
+  - checked (bool, default F)
+  - id (opcional)
+  - hint (opcional)
+  - disabled (bool)
+{% endcomment %}
+<label class="flex items-start gap-3 cursor-pointer {% if disabled %}opacity-60 cursor-not-allowed{% endif %}">
+    <input type="radio" name="{{ name }}" value="{{ value }}"
+        {% if id %}id="{{ id }}"{% endif %}
+        {% if checked %}checked{% endif %}
+        {% if disabled %}disabled{% endif %}
+        class="mt-0.5 h-4 w-4 border-gray-300 bg-white text-brand-500 shadow-theme-xs transition focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-gray-900">
+    <span class="flex-1">
+        <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ label }}</span>
+        {% if hint %}<span class="block text-xs text-gray-500 dark:text-gray-400">{{ hint }}</span>{% endif %}
+    </span>
+</label>

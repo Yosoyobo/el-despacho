@@ -22,10 +22,7 @@
         <input id="cart-q" type="search" name="q" value="{{ q }}" placeholder="Buscar razón social, RFC o correo…">
     </div>
     {% if puede_editar %}
-    <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-        <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
-        Incluir archivados
-    </label>
+    {% include "_componentes_tailadmin/_checkbox.html" with name="archivados" value="1" label="Incluir archivados" checked=incluir_archivados %}
     {% endif %}
     <button type="submit" class="btn-secundario">Buscar</button>
 </form>

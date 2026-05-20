@@ -1,0 +1,35 @@
+{% comment %}
+Zona de subida TailAdmin (input + dropzone). Params:
+  - name (obligatorio)
+  - label (opcional)
+  - id (opcional)
+  - accept (opcional, e.g. "image/*,.pdf")
+  - multiple (bool)
+  - hint (opcional)
+  - required (bool)
+
+Sin librerías. Vanilla JS en ui.js engancha por `[data-file-upload]`:
+- Click en la dropzone abre el picker
+- Drop de archivos los asigna al input
+- Muestra los nombres seleccionados
+Si JS está apagado, el input nativo sigue funcional (se ve, sólo sin dropzone).
+{% endcomment %}
+<div data-file-upload>
+    {% if label %}
+    <label for="{{ id|default:name }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ label }}{% if required %} <span class="text-error-500">*</span>{% endif %}
+    </label>
+    {% endif %}
+    <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center transition hover:border-brand-300 hover:bg-brand-50/40 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-brand-700 dark:hover:bg-brand-500/5">
+        <svg class="h-8 w-8 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 4v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Haz click o arrastra {% if multiple %}archivos{% else %}un archivo{% endif %} aquí</span>
+        {% if hint %}<span class="text-xs text-gray-500 dark:text-gray-400">{{ hint }}</span>{% endif %}
+        <input type="file" name="{{ name }}"
+            id="{{ id|default:name }}"
+            {% if accept %}accept="{{ accept }}"{% endif %}
+            {% if multiple %}multiple{% endif %}
+            {% if required %}required{% endif %}
+            class="sr-only" data-file-upload-input>
+    </label>
+    <ul data-file-upload-list class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400"></ul>
+</div>

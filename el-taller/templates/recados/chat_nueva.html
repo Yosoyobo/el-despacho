@@ -13,15 +13,9 @@
 
         <div>
             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
-            <div class="flex flex-wrap gap-3 text-sm">
-                <label class="inline-flex items-center gap-2">
-                    <input type="radio" name="tipo" value="directa" checked onclick="document.getElementById('seccion-grupo').hidden=true; document.getElementById('seccion-directa').hidden=false;">
-                    Directa (1:1)
-                </label>
-                <label class="inline-flex items-center gap-2">
-                    <input type="radio" name="tipo" value="grupo" onclick="document.getElementById('seccion-grupo').hidden=false; document.getElementById('seccion-directa').hidden=true;">
-                    Grupo
-                </label>
+            <div class="flex flex-wrap gap-6 text-sm" onclick="(function(t){if(!t||t.type!=='radio')return;document.getElementById('seccion-grupo').hidden=(t.value!=='grupo');document.getElementById('seccion-directa').hidden=(t.value!=='directa');})(event.target);">
+                {% include "_componentes_tailadmin/_radio.html" with name="tipo" value="directa" label="Directa (1:1)" checked=True %}
+                {% include "_componentes_tailadmin/_radio.html" with name="tipo" value="grupo" label="Grupo" %}
             </div>
         </div>
 
