@@ -784,3 +784,57 @@ Mínimo 27 tests.
 - ✅ Cotizaciones y Facturas viven aparte de Tesorería (B)
 - ✅ Optimización de imágenes: recompresión a JPEG 1200px / 75% calidad, target <500KB; PDF 1 página → JPEG; PDF multi-página preservado
 - ✅ Recibos viejos podrían moverse a archivo frío en V2 (decisión futura)
+
+---
+
+## 15. Deuda visual residual (TailAdmin)
+
+Durante el sprint **S-TailAdmin-Cleanup** (2026-05-20) toda La
+Tesorería pasó por los partials canónicos **excepto** una pantalla:
+
+### `templates/tesoreria/por_pagar.html` — dashboard 2-col
+
+**Estado:** NO convertido a `_tabla_datos.html`. Mantiene su layout
+de dos `<ul>` paralelos:
+- Egresos pendientes (lista con código + fecha + proveedor + estado
+  + monto).
+- Reembolsos agrupados por empleado (lista con nombre + #gastos +
+  total).
+
+**Por qué:** el caso de uso es lectura comparativa de un vistazo, no
+ordenamiento ni paginación. Forzar tabla con sort/paginator
+empobrecería el flujo del contador. **Sus empty states YA están en
+`_empty_state` (cleanup sprint).**
+
+**Cuándo atender:** en **S2b.3b** (OCR de recibos + wrapper Sheets),
+cuando La Tesorería entre a sprint de feature, evaluar:
+
+- **Opción A — preservar layout**: dejar tal cual + agregar KPI hero
+  arriba (total CxP, total reembolsos, conteo por estado). Bajo
+  esfuerzo.
+- **Opción B — tabs con `_tabla_datos`**: convertir cada `<ul>` a
+  tabla con sort + paginación, separar en pestañas
+  `Egresos | Reembolsos`. Más alineado al canon pero altera la
+  ergonomía actual del contador.
+- **Opción C — mezclar**: tabla `_tabla_datos` para egresos
+  (más volumen, beneficia de sort), preservar reembolsos como `<ul>`
+  agrupado.
+
+**Decisión diferida a Oscar al iniciar S2b.3b.** Sin urgencia.
+
+### Otros pendientes ligados a S2b.3b
+
+Estos NO son deuda visual — son features no entregadas que tocan
+templates de Tesorería:
+
+- **OCR de recibos** (`apps/tesoreria/services.py::ocr_recibo`):
+  pipeline optimización local → Drive → Chalán con visión → preview
+  con confianza. `EgresoOcrLog` existe sin tocar.
+- **Export "Crear hoja en Drive"**: requiere `lib.google_sheets`.
+  Sin prioridad — CSV cumple.
+- **UI dedicada "Dictar gasto"** (`/tesoreria/egresos/dictar/`): el
+  ejecutor del Dictado ya está vivo, falta la pantalla con system
+  prompt específico de gasto. Sub-sprint pequeño.
+
+Al construir cualquiera de estos, aplicar de entrada los partials
+canónicos (no requieren cleanup post-feature).

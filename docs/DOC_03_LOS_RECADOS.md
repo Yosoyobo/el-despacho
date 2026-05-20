@@ -380,3 +380,48 @@ Mínimo 22 tests.
 - ✅ `@usuario` push, `#proyecto`/`$cliente` solo visual
 - ✅ Búsqueda solo prefijo
 - ✅ El módulo de push se llama **El Interfón** (no Interfono)
+
+---
+
+## 13. Deuda visual residual (TailAdmin)
+
+Durante el sprint **S-TailAdmin-Cleanup** (2026-05-20) se rasuró toda
+la deuda visual del repo excepto un template intencional:
+
+### `templates/recados/form.html` — layout custom legacy
+
+**Estado:** NO convertido al partial canónico `_form_campo.html`.
+
+**Por qué:** el form usa `<details>` plegables para seleccionar
+destinatarios (personas + grupos predefinidos + equipo de proyecto),
+no es un loop `{% for f in form %}` estándar. El partial canónico
+asume forms simples campo-tras-campo.
+
+**Cuándo atender:**
+
+- **Si jubilamos el flujo legacy** (eliminar `/recados/legacy/*` y
+  archivar las rutas `legacy_*` en `apps/recados/urls.py`): este
+  template desaparece con el flujo. No migrar.
+- **Si LC decide mantener el flujo legacy permanentemente**: sprint
+  dedicado de ~1h:
+  1. Extraer el selector a partial
+     `recados/_selector_destinatarios.html` (lógica de
+     `<details>` + checkboxes + slug dinámico).
+  2. Pasar el resto del form (mensaje, confirmación) por
+     `_form_campo`.
+  3. Aplicar `_page_header` con breadcrumb.
+  4. Reemplazar empty state de "No hay otros usuarios activos" con
+     `_empty_state`.
+
+Anotar la decisión en BITACORA.md cuando se tome.
+
+### Otros pendientes ligados a Recados
+
+- **Adjuntos a Drive (S2b.1b)** — el botón 📎 ya existe disabled.
+  Cuando S2b.1b active Drive, el form legacy hereda la
+  funcionalidad sin tocar este template (sólo cambia el `disabled`
+  por hookpoints HTMX).
+- **Chat de recados** — `/recados/` default ya es chat
+  (S-Recados-Chat). El composer está en
+  `templates/recados/chat_conversacion.html` y ya estrena
+  `_spinner` como `htmx-indicator`. No tiene deuda.

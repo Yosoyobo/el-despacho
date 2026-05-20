@@ -1014,6 +1014,60 @@ en una sola sesión, después de cerrar el arco principal. Cobertura:
   (rechaza atributos con guión bajo) — un filter Python lo encapsula.
 - **Suite verde**: 255 tests, 0 fallos.
 
+### Deuda residual diseñada del arco TailAdmin
+
+Después del Cleanup quedan **2 templates intencionalmente NO convertidos**
+y unos partials sub-utilizados. No son bugs ni deuda técnica — son
+decisiones explícitas. Atender solo cuando el módulo correspondiente
+entre a sprint.
+
+**1. `el-taller/templates/recados/form.html` — layout custom legacy.**
+- **Por qué se dejó así**: el form de "Nuevo recado legacy" usa
+  `<details>` plegables para destinatarios (personas + grupos
+  predefinidos + equipo de proyecto), no es un loop estándar de
+  `{% for f in form %}`. Convertirlo a `_form_campo` requeriría
+  rediseñar todo el selector.
+- **Por qué no urge**: el default de `/recados/` ya es chat
+  (S-Recados-Chat). El form legacy sólo se usa desde
+  `/recados/legacy/nuevo` y baja en uso cada semana.
+- **Cuándo atender**: si en algún sprint futuro se decide jubilar
+  formalmente el flujo legacy (eliminar las rutas `legacy_*` de
+  `apps/recados/urls.py` y archivar la bandeja vieja), este template
+  desaparece con él — no hay que migrarlo. Si por el contrario LC
+  pide mantener el flujo legacy permanentemente, hacer un sprint
+  dedicado de ~1h: extraer el selector a un partial
+  `recados/_selector_destinatarios.html` y pasar el resto del form
+  por `_form_campo`. Anotar en BITACORA.md si esto se decide.
+
+**2. `el-taller/templates/tesoreria/por_pagar.html` — layout 2-col.**
+- **Por qué se dejó así**: es un dashboard con dos `<ul>` paralelos
+  (egresos pendientes + reembolsos agrupados por empleado). Forzar
+  `_tabla_datos` lo empobrecería: el caso de uso es leer ambas
+  listas de un vistazo, no ordenar/paginar.
+- **Cuándo atender**: cuando S2b.3b active OCR y wrapper Sheets, La
+  Tesorería va a recibir un sprint amplio. Ahí evaluar si esta
+  pantalla se queda igual o se refactoriza a tabs (egresos | reembolsos)
+  con `_tabla_datos` en cada uno + KPIs hero arriba. **Decisión
+  diferida a Oscar al iniciar S2b.3b.** Sus empty states ya están
+  en `_empty_state` (cleanup sprint).
+
+**Partials con inventario disponible pero sub-utilizados** (no es
+deuda — es capacidad lista para el siguiente caso de uso):
+
+- `_tooltip.html` — sólo en 1 lugar. Usar cuando: aclarar acciones
+  destructivas, explicar iconos sin label, hint sobre badges. Mejor
+  vector: action bars (botones Anular/Archivar) en pantallas nuevas.
+- `_skeleton.html` — 0 usos. Útil cuando una pantalla nueva hace
+  HTMX GET pesado (>200ms) y queremos placeholder. Candidato natural:
+  futura Sala de Juntas con cards de KPI cargando vía HTMX en S2b.5
+  (DSL Chalán) o cuando los charts de El Site se hagan diferidos.
+- `_modal.html` (no-HTMX) coexiste con `_modal_htmx.html`. El primero
+  es para modales **pre-renderizados inline** (data-modal-target),
+  el segundo para **inyección vía HTMX**. Ambos son válidos; el
+  primero queda como fallback para casos donde NO queremos un round
+  trip al servidor (ej. confirmaciones triviales sin form). No
+  unificar — son patrones distintos.
+
 ### S2b — Comercial y pagos (después de S2b.4)
 
 Cotizaciones (PDF vía Google Docs templates — NO WeasyPrint/ReportLab/Puppeteer) ·
