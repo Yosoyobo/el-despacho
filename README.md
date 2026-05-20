@@ -136,8 +136,24 @@ GitHub Actions (**El Mensajero**) · GHCR.
   que el admin complete `docs/SETUP_GOOGLE_DRIVE.md` primero). Desbloquea
   también S2b.3b (OCR de recibos + export Sheets en Tesorería) y
   S2b.cot-pdf (PDF de cotizaciones vía Google Docs templates).
+- **S-PWA-Shell** ✅ (2026-05-20): viewport-fit=cover + safe-area
+  insets + manifests con `id` único + sidebar a `lg` (tablets).
+  PWA ya instala correctamente en iOS y Android sin sobreescribirse.
+- **S3.contaduria-v1** ✅ (cerrado 2026-05-20): La Contaduría V1 —
+  partida doble encima de Tesorería. App `apps.contaduria` con
+  `CuentaContable`/`Asiento`/`Partida`, seed de 26 cuentas
+  SAT-style con slots semánticos, código `AST-YYYY-NNNN`,
+  validación de partida doble en service, hookpoints automáticos
+  que generan asientos al registrar Ingreso/Egreso (con asiento
+  reverso al anular, idempotente). UI completa: landing con KPIs,
+  catálogo, lista de asientos, captura manual, libro mayor por
+  cuenta, balance de comprobación. Permisos granulares (ver/
+  capturar/anular/reportes), módulo HTMX modal de anulación, 4
+  eventos Portavoz, 3 KPIs en Sala de Juntas. **573 tests verdes**.
 - **S2b resto** Facturación · La Caja (Stripe + MercadoPago) ·
   La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
+- **S3 resto** Reconciliación bancaria · Estados financieros ·
+  Cierre de periodo · Export al contador externo
 - **S3** Contaduría · Sala de Juntas con KPIs reales
 - **S4** Los Chalanes — casos de uso adicionales (categorizar gasto
   automático, sugerir precio, resumir hilos)

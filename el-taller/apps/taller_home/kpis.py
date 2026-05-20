@@ -395,6 +395,43 @@ def _kpi_cotizaciones_aprobadas_mes(user) -> dict:
     return _resultado(n, link="/cotizaciones/?estado=aprobada")
 
 
+# ── Contaduría (S3.contaduria-v1) ──
+
+def _kpi_asientos_mes_contaduria(user) -> dict:
+    from datetime import date
+
+    from apps.contaduria.models import Asiento
+    hoy = date.today()
+    n = Asiento.vigentes.filter(fecha__year=hoy.year, fecha__month=hoy.month).count()
+    return _resultado(n, link="/contaduria/asientos/")
+
+
+def _kpi_saldo_banco(user) -> dict:
+    from apps.contaduria.services import cuenta_por_slot, saldo_cuenta
+    banco = cuenta_por_slot("banco")
+    if not banco:
+        return _resultado("—")
+    s = saldo_cuenta(banco)
+    return _resultado(f"${s:,.0f}", link=f"/contaduria/libro-mayor/{banco.pk}/")
+
+
+def _kpi_balance_descuadrado(user) -> dict:
+    """Cuenta de asientos del mes donde sum(cargos) != sum(abonos). Debe ser 0
+    siempre (services valida partida doble). Si >0 algo inconsistente pasó."""
+    from datetime import date
+
+    from apps.contaduria.models import Asiento
+    from django.db.models import Sum
+    hoy = date.today()
+    desc = 0
+    qs = Asiento.vigentes.filter(fecha__year=hoy.year, fecha__month=hoy.month)
+    for a in qs.only("id"):
+        t = a.partidas.aggregate(c=Sum("cargo"), b=Sum("abono"))
+        if (t["c"] or 0) != (t["b"] or 0):
+            desc += 1
+    return _resultado(desc, nota=("alerta" if desc > 0 else ""), link="/contaduria/asientos/")
+
+
 # ── Catálogo ──
 
 KPIS: list[KPI] = [
@@ -485,6 +522,14 @@ KPIS: list[KPI] = [
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_vencidas),
     KPI("cotizaciones-aprobadas-mes", "Cotizaciones aprobadas (mes)", "Conversiones del mes en curso.",
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_aprobadas_mes),
+
+    # Contaduría (S3.contaduria-v1)
+    KPI("contaduria-asientos-mes", "Asientos del mes", "Movimientos contables (vigentes) del mes en curso.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_asientos_mes_contaduria),
+    KPI("contaduria-saldo-banco", "Saldo en bancos", "Saldo deudor actual de la cuenta de Bancos.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_saldo_banco),
+    KPI("contaduria-balance-descuadrado", "Asientos descuadrados", "Asientos del mes con cargos ≠ abonos. Debe ser 0.",
+        "dinero", ROLES_ADMIN, _kpi_balance_descuadrado),
 ]
 
 

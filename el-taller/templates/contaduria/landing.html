@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}La Contaduría — El Taller{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Contaduría</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Libro contable interno · partida doble.</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'contaduria:cuentas' %}" class="btn-secundario">Catálogo</a>
+        <a href="{% url 'contaduria:balance' %}" class="btn-secundario">Balance</a>
+        <a href="{% url 'contaduria:asientos' %}" class="btn-secundario">Asientos</a>
+        {% if puede_capturar %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-primario">+ Asiento manual</a>{% endif %}
+    </div>
+</header>
+
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Asientos del mes" valor=kpis.asientos_mes color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4v16" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Saldo en caja" valor=kpis.saldo_caja|floatformat:2 color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v10H3zM7 7v10M17 7v10" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Saldo en bancos" valor=kpis.saldo_banco|floatformat:2 color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-7h6v7" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por cobrar (CxC)" valor=kpis.saldo_cxc|floatformat:2 color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+</div>
+
+<section class="ta-card">
+    <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Últimos asientos</h2>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <tr>
+                    <th class="px-3 py-2 text-left">Código</th>
+                    <th class="px-3 py-2 text-left">Fecha</th>
+                    <th class="px-3 py-2 text-left">Descripción</th>
+                    <th class="px-3 py-2 text-left">Origen</th>
+                    <th class="px-3 py-2 text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for a in ultimos %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-3 py-2"><a href="{% url 'contaduria:asiento-detalle' a.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ a.codigo }}</a></td>
+                    <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ a.fecha|date:"Y-m-d" }}</td>
+                    <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ a.descripcion|truncatechars:60 }}</td>
+                    <td class="px-3 py-2"><span class="badge badge-gray">{{ a.get_origen_display }}</span></td>
+                    <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${{ a.total|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-3 py-10 text-center">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin asientos todavía" descripcion="Captura un asiento manual o registra movimientos en Tesorería." icono="folder" %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

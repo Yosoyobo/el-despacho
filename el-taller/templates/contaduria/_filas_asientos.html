@@ -1,0 +1,12 @@
+{% for a in asientos %}
+<tr class="{% if a.anulado %}opacity-60{% endif %} hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+    <td class="px-5 py-3"><a href="{% url 'contaduria:asiento-detalle' a.pk %}" class="font-mono font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ a.codigo }}</a>{% if a.anulado %}<span class="badge badge-gray ml-2">anulado</span>{% endif %}</td>
+    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ a.fecha|date:"Y-m-d" }}</td>
+    <td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ a.descripcion|truncatechars:80 }}</td>
+    <td class="px-5 py-3"><span class="badge {% if a.origen == 'manual' %}badge-brand{% elif 'anulacion' in a.origen %}badge-error{% else %}badge-gray{% endif %}">{{ a.get_origen_display }}</span></td>
+    <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">${{ a.total|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right"><a href="{% url 'contaduria:asiento-detalle' a.pk %}" class="text-sm text-brand-600 hover:underline dark:text-brand-400">Ver →</a></td>
+</tr>
+{% empty %}
+<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin asientos.</td></tr>
+{% endfor %}

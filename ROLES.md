@@ -40,7 +40,7 @@ Cuatro roles. Se asignan desde **El Directorio** en La Gerencia. El primer
 | El Pizarrón (tareas/comments)   | ✅          | ✅    | 👁 ver   | 🔒 propios |
 | Las Cotizaciones V1 (S2b.cotizaciones-v1 ✅) | ✅ todo | ✅ todo | 🔒 arma+envía | ❌ |
 | La Facturación / Caja / Cobranza (S2) | ✅    | ✅    | ✅       | ❌        |
-| La Contaduría (S3)              | ✅          | ✅    | ✅       | ❌        |
+| La Contaduría V1 (S3.contaduria-v1 ✅) | ✅ todo | ✅ todo | ✅ todo | ❌ |
 | Los Chalanes — Cuadro/Cadena    | ✅          | 👁 auditoría | ❌ | ❌        |
 | Los Chalanes — uso (estaciones) | ✅          | ✅    | ✅       | ✅        |
 | Los Recados (S2b)               | ✅          | ✅    | ✅       | ✅        |
