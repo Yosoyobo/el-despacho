@@ -1,0 +1,25 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Marcar como enviada · {{ cot.codigo }}</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <form hx-post="{% url 'cotizaciones:enviar' cot.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
+            {% csrf_token %}
+            <div class="px-5 py-4 text-sm text-gray-700 dark:text-gray-300 space-y-3">
+                <p>Esta acción registra el envío manual. La generación de PDF y envío automático llegará en una sub-sprint posterior.</p>
+                <div>
+                    <label for="id_email_destino" class="block text-sm font-medium mb-1">Email destino (opcional)</label>
+                    {{ form.email_destino }}
+                    {% if form.email_destino.errors %}<p class="text-xs text-error-600 mt-1">{{ form.email_destino.errors|join:" " }}</p>{% endif %}
+                </div>
+            </div>
+            <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">Marcar enviada</button>
+            </footer>
+        </form>
+    </div>
+</div>

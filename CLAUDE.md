@@ -1137,12 +1137,101 @@ deuda — es capacidad lista para el siguiente caso de uso):
   trip al servidor (ej. confirmaciones triviales sin form). No
   unificar — son patrones distintos.
 
-### S2b — Comercial y pagos (después de S2b.4)
+### S2b.cotizaciones-v1 ✅ — Las Cotizaciones sin PDF (2026-05-20)
 
-Cotizaciones (PDF vía Google Docs templates — NO WeasyPrint/ReportLab/Puppeteer) ·
-Facturación · La Caja (Stripe + MercadoPago) · La Cobranza (recordatorios
-automáticos por Portavoz) · wrappers de Google Workspace (Drive, Sheets, Docs,
-Calendar).
+App `el-taller/apps/cotizaciones/` con propuestas comerciales completas:
+captura, cálculos, estados, listados/detalles canónicos. **NO incluye
+PDF ni envío automático** — esos quedan para una sub-sprint posterior
+porque la regla §4 #1 / §8 obliga PDF vía Google Docs templates (NO
+WeasyPrint/ReportLab/Puppeteer) y el wrapper Google Docs aún no existe
+(depende de S2b.1b activando Drive y un nuevo wrapper Docs encima).
+
+- **Modelos** en `apps/cotizaciones/models/cotizacion.py`:
+  `Cotizacion` (codigo `COT-YYYY-NNNN` correlativo bajo
+  `select_for_update`, estado ∈ {borrador, enviada, aprobada,
+  rechazada, anulada}, fechas emisión/validez, descuento global,
+  notas, términos, campos de envío/aprobación/rechazo/anulación,
+  soft-delete vía estado=anulada), `CotizacionItem` (FK servicio
+  opcional, descripción libre, cantidad, unidad, precio_unitario,
+  descuento_porcentaje, property `subtotal`), `CotizacionImpuesto`
+  (M2M Cotizacion↔TasaImpositiva con unique constraint, PROTECT en
+  la tasa). Manager `vigentes` excluye anuladas. Property
+  `estado_visible` convierte enviada+fecha_validez<hoy en "vencida"
+  sin mutar la DB. Migración `0001_initial`.
+- **Cálculos** (`Cotizacion.calcular_totales()`): subtotal items →
+  descuento global → base impuestos → trasladados/retenciones →
+  total. Todo `Decimal("0.01")` quantizado. Soporta descuentos por
+  línea + descuento global + mix trasladados/retenciones.
+- **Services** (`services.py`): `marcar_enviada/aprobada/rechazada/anulada`
+  con validación de transición de estado y emisión de evento
+  Portavoz. `duplicar()` clona en estado borrador con items e
+  impuestos. `kpis_landing()` arma los conteos del header.
+- **Permisos**: nuevo módulo `cotizaciones` en `PermisoUsuario` con
+  7 acciones (`ver, crear, editar, enviar, aprobar, rechazar,
+  anular`). Defaults: super_admin/dueno todo, contador `[ver, crear,
+  editar, enviar]` (arma pero no cierra ciclo), diseñador ninguno.
+  Migración `cuentas.0009_seed_permisos_cotizaciones` para usuarios
+  existentes; el signal `auto_seedear_permisos` cubre nuevos.
+  Helpers `puede_*_cotizaciones` en `lib/permisos.py`. Módulo en
+  `MODULOS_VISIBLES` del context processor — sidebar gated por
+  `permisos_modulos.cotizaciones`.
+- **UI Taller**:
+  - `/cotizaciones/` lista con 4 KPI hero (borradores · enviadas ·
+    aprobadas · vencidas), filtro por estado + búsqueda, tabla con
+    sort/paginación vía `_tabla_datos`, dropdown de acciones por
+    fila.
+  - `/cotizaciones/nueva/` y `/cotizaciones/<id>/editar/` con form
+    principal + inline formset de items (clone-row vanilla JS sin
+    librerías) + checkboxes de tasas (preseleccionadas las
+    `aplicable_default`). Editar sólo en borrador.
+  - `/cotizaciones/<id>/` detalle con `_page_header` + grid
+    `xl:grid-cols-3` (main con tabla de líneas + resumen de totales;
+    sidebar con info cards Cliente/Fechas/Aprobación/Captura) +
+    `_action_bar` sticky con botones contextuales según estado y
+    permiso.
+  - 4 modales HTMX (`_modal_enviar/aprobar/rechazar/anular`)
+    siguiendo el patrón canónico Wave 5 (`hx-get` → `#modal-slot`,
+    POST → 204 + `HX-Redirect`, form inválido reinyecta el modal).
+    `duplicar` es POST puro con CSRF inline.
+- **Eventos Portavoz** nuevos: `cotizacion.{creada, actualizada,
+  enviada, aprobada, rechazada, anulada, vencida}` (el último para
+  cuando llegue el cron de marcado automático; por ahora la
+  semántica vencida se computa en lectura vía `estado_visible`).
+- **KPIs Sala de Juntas**: 3 KPIs nuevos en
+  `apps/taller_home/kpis.py` (categoría `operacion`, ROLES_ADMIN_CONTADOR):
+  `cotizaciones-pendientes`, `cotizaciones-vencidas` (con nota
+  "alerta" si >0), `cotizaciones-aprobadas-mes`. Reutilizan el
+  catálogo declarativo de S2b.4 sin tocar schema de
+  `PreferenciaKPI`.
+- **22 tests nuevos** en `tests/taller/test_cotizaciones.py` (modelo,
+  código correlativo, vencida derivada, cálculos con/sin
+  descuentos e impuestos, transiciones, errores de transición,
+  permisos por rol, vistas, modal HTMX, ocultamiento de anuladas).
+- **Fix infra**: `tests/urls_gerencia.py` ahora monta
+  `apps.cotizaciones.urls` bajo `__cotizaciones_for_url_reverse__/`
+  para que la sidebar compartida (que vive en `el-taller/templates/`
+  y se resuelve primero por orden de `TEMPLATES.DIRS`) pueda hacer
+  `{% url 'cotizaciones:lista' %}` sin romper los tests de
+  Gerencia. Mismo patrón que `tesoreria`.
+
+**NO incluye V1** (queda para sub-sprints futuras):
+- PDF de la cotización — requiere wrapper Google Docs encima de
+  S2b.1b (Drive). El botón "enviar" registra envío manual sin
+  generar archivo. Deuda principal del sprint.
+- Envío automático por email/n8n.
+- Marcado automático de vencidas vía cron (hoy se computa en
+  lectura).
+- Convertir aprobada → proyecto/factura — espera
+  S2b.facturacion.
+- Aprobación cliente self-service — espera S5 (La Recepción).
+
+### S2b — Comercial y pagos (resto)
+
+Tras S2b.cotizaciones-v1 quedan: **Cotizaciones PDF** (cuando Drive +
+Docs wrappers existan) · **La Facturación** (invoices comerciales,
+no fiscales) · **La Caja** (Stripe + MercadoPago, links de pago) ·
+**La Cobranza** (recordatorios automáticos vía Portavoz) · wrappers
+de Google Workspace (Drive, Sheets, Docs, Calendar).
 
 ### S3 — Contabilidad y reportes
 

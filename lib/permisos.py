@@ -67,6 +67,34 @@ def puede_ver_tarea(user, tarea) -> bool:
     return puede_ver_proyecto(user, tarea.proyecto)
 
 
+def puede_ver_cotizaciones(user) -> bool:
+    return puede(user, "cotizaciones", "ver")
+
+
+def puede_crear_cotizaciones(user) -> bool:
+    return puede(user, "cotizaciones", "crear")
+
+
+def puede_editar_cotizaciones(user) -> bool:
+    return puede(user, "cotizaciones", "editar")
+
+
+def puede_enviar_cotizaciones(user) -> bool:
+    return puede(user, "cotizaciones", "enviar")
+
+
+def puede_aprobar_cotizaciones(user) -> bool:
+    return puede(user, "cotizaciones", "aprobar")
+
+
+def puede_rechazar_cotizaciones(user) -> bool:
+    return puede(user, "cotizaciones", "rechazar")
+
+
+def puede_anular_cotizaciones(user) -> bool:
+    return puede(user, "cotizaciones", "anular")
+
+
 def puede_ver_comentario(user, comentario) -> bool:
     """Comentario interno: oculto a `disenador` salvo que sea el autor.
     Comentario público: visible si el usuario ve el proyecto/tarea padre."""

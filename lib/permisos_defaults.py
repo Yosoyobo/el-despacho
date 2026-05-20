@@ -30,6 +30,9 @@ TODO_CATALOGO = [
     "ver_nombres", "ver_precios", "crear", "editar", "editar_precios",
     "archivar", "gestionar_categorias",
 ]
+# S2b.cotizaciones-v1: Las Cotizaciones. Aprobar/rechazar/anular son del jefe;
+# el contador puede armar y enviar pero no cerrar el ciclo.
+TODO_COTIZACIONES = ["ver", "crear", "editar", "enviar", "aprobar", "rechazar", "anular"]
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -43,6 +46,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "dictado": list(TODO_DICTADO),
         "contaduria": list(TODO_CONTADURIA),
         "catalogo": list(TODO_CATALOGO),
+        "cotizaciones": list(TODO_COTIZACIONES),
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -55,6 +59,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "contaduria": list(TODO_CONTADURIA),
         # Dueño ve y edita catálogo pero NO gestiona categorías (decisión Pre-S2b.2).
         "catalogo": ["ver_nombres", "ver_precios", "crear", "editar", "editar_precios", "archivar"],
+        "cotizaciones": list(TODO_COTIZACIONES),
     },
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
@@ -68,6 +73,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "contaduria": list(TODO_CONTADURIA),
         # Contador ve catálogo completo (necesita precios para facturación).
         "catalogo": ["ver_nombres", "ver_precios"],
+        # Contador arma y envía cotizaciones pero no aprueba/rechaza/anula.
+        "cotizaciones": ["ver", "crear", "editar", "enviar"],
     },
     "disenador": {
         # Diseñador NO ve cartera (DOC_01 §4.4).

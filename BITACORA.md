@@ -4186,3 +4186,104 @@ Aplicado en:
 - Próximo: **S2b.1b** (Drive en Recados → desbloquea OCR Tesorería +
   adjuntos chat), **S2b.2.1** (clarificación iterativa Dictado),
   **S2b.5** (DSL KPIs custom Chalán).
+
+
+---
+
+# BITÁCORA — Sprint S2b.cotizaciones-v1 (Las Cotizaciones sin PDF)
+
+> Cierre **2026-05-20**. Sprint enfocado en la captura comercial:
+> modelo de cotización, cálculos, estados, UI canónica TailAdmin. **PDF y
+> envío automático quedaron explícitamente fuera** por dependencia del
+> wrapper Google Docs (que a su vez depende de S2b.1b).
+
+## 1. Por qué V1 sin PDF
+
+La regla §4 #1 + §8 del CLAUDE.md prohíbe WeasyPrint/ReportLab/Puppeteer
+— el PDF de cotización debe armarse con Google Docs templates. Eso
+requiere wrapper Drive (existe pero `NotImplementedError` hasta
+S2b.1b) + un wrapper Docs nuevo. Antes que esperar, separamos la
+funcionalidad en dos capas:
+
+- **V1 (este sprint)**: modelo + flujo de estados + cálculos + UI.
+  Permite armar cotizaciones, mandar el link interno, marcar
+  enviada/aprobada/rechazada/anulada y trackear conversión. Ya
+  desbloquea KPIs reales en Sala de Juntas y métricas comerciales.
+- **V2 (S2b.cot-pdf, futuro)**: PDF + envío automático cuando los
+  wrappers Google estén activos.
+
+## 2. Decisiones de diseño
+
+- **"Vencida" derivada, no persistida**: si `fecha_validez < hoy` y
+  estado="enviada", `estado_visible` devuelve "vencida". La DB sigue
+  marcando "enviada". Razón: evitar cron de mantenimiento; la
+  semántica se computa en lectura. Si más adelante necesitamos un
+  estado terminal real (para que aprobar no funcione después de
+  vencer), agregamos cron + transición — pero para V1 con 5 usuarios
+  internos no aporta.
+- **"Anulada" como soft-delete**: en lugar de `anulada=BooleanField`
+  como Tesorería, lo metimos al `estado` directo. Más simple porque
+  no hay que pintar estado + anulada en paralelo en la UI.
+- **Edición sólo en borrador**: una vez enviada, queda inmutable. Si
+  necesitas cambiar, duplicas y editas la copia. Evita ambigüedad
+  sobre "qué versión vio el cliente". No metimos `CotizacionVersion`
+  (snapshot histórico) — YAGNI para V1; si llega facturación contra
+  la cot. aprobada lo agregamos.
+- **Contador arma+envía pero no aprueba**: defaults granulares lo
+  fijan. El contador es operativo; aprobar/rechazar/anular es del
+  jefe. super_admin puede toggleear individualmente desde Directorio
+  → Permisos si LC quiere ajustar.
+- **3 KPIs nuevos en Sala de Juntas**, no 5: nos quedamos con
+  pendientes, vencidas y aprobadas-mes. Otras métricas posibles
+  (tasa de conversión, valor promedio, ticket medio) requieren
+  agregaciones más costosas y se evalúan cuando tengamos volumen.
+- **Sin Sprint nuevo en CLAUDE.md "S2b.cot-pdf"**: lo dejamos como
+  línea en §8 "S2b — Comercial y pagos (resto)" para no inflar el
+  roadmap antes de que Drive esté activo.
+
+## 3. Cosas que me costaron 30 segundos pensar
+
+- **CSRF en botón Duplicar**: el action bar arma el botón en Python
+  como `<form method="post">` con hidden CSRF (`get_token(request)`).
+  No vale `hx-post` porque no tiene `{% csrf_token %}` cerca — el
+  endpoint canónico es POST puro.
+- **Sidebar compartida + tests de Gerencia**: Django resuelve
+  templates de `el-taller/templates/` ANTES que `la-gerencia/templates/`
+  por orden en `TEMPLATES.DIRS`. Eso significa que un `{% url
+  'cotizaciones:lista' %}` en la sidebar del Taller rompe TODOS los
+  tests de Gerencia con `NoReverseMatch`. La solución (heredada de
+  Tesorería) es montar el include en `tests/urls_gerencia.py` bajo
+  un prefijo invisible `__cotizaciones_for_url_reverse__/`. Aplica
+  a cualquier app que entre al sidebar del Taller en el futuro.
+- **`select_for_update` para el correlativo**: copiado de Tesorería.
+  En SQLite (tests) es no-op pero pasa; en Postgres serializa la
+  generación de `COT-YYYY-NNNN` evitando colisiones bajo concurrencia.
+
+## 4. Métricas del sprint
+
+- **Archivos nuevos**: 17 (1 app dir + 5 archivos Python + 1 migración +
+  6 templates + 1 migración seed + 1 test file + 1 `tests/urls_gerencia` edit).
+- **Tests nuevos**: 22 (modelos, cálculos, transiciones, permisos,
+  vistas, modal HTMX).
+- **Suite total**: 553 pass · 9 skipped · 1 flaky pre-existente
+  (`test_filtro_activos_inactivos` pasa aislado).
+- **Eventos Portavoz nuevos**: 7.
+- **KPIs nuevos en Sala de Juntas**: 3.
+- **Cambios en archivos existentes**: `lib/portavoz_eventos.py`,
+  `lib/permisos.py`, `lib/permisos_defaults.py`,
+  `cuentas/context_processors.py`, `el-taller/el_taller/settings.py`,
+  `el-taller/el_taller/urls.py`,
+  `el-taller/templates/_componentes_tailadmin/sidebar.html`,
+  `el-taller/apps/taller_home/kpis.py`, `tests/django_settings.py`,
+  `tests/urls_taller.py`, `tests/urls_gerencia.py`,
+  `README.md`, `ROLES.md`, `CLAUDE.md`, `docs/DOC_05_MANUAL_USUARIO.md`.
+
+## 5. Próximo
+
+- **S2b.1b** sigue siendo el cuello de botella — desbloquea adjuntos en
+  Recados, OCR en Tesorería **y** PDF en Cotizaciones (los tres).
+- Alternativas si Oscar no quiere arrancar Drive todavía: **La Caja**
+  (Stripe + MercadoPago) es independiente y self-contained. **La
+  Facturación** quiere arrancar después de Caja para tener la pieza
+  cobro lista.
+

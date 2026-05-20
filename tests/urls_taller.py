@@ -20,6 +20,7 @@ urlpatterns = [
     path("recados/", include("apps.recados.urls", namespace="recados")),
     path("", include("apps.el_dictado.urls")),
     path("tesoreria/", include("apps.tesoreria.urls", namespace="tesoreria")),
+    path("cotizaciones/", include("apps.cotizaciones.urls", namespace="cotizaciones")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),
 ]

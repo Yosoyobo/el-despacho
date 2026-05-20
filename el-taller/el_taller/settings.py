@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     "apps.el_dictado.apps.ElDictadoConfig",
     # S2b.3
     "apps.tesoreria.apps.TesoreriaConfig",
+    # S2b.cotizaciones-v1
+    "apps.cotizaciones.apps.CotizacionesConfig",
 ]
 
 MIDDLEWARE = [

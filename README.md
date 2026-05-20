@@ -109,11 +109,35 @@ GitHub Actions (**El Mensajero**) · GHCR.
   Sala de Juntas, categoría push `tesoreria_reembolso`, 9 eventos
   Portavoz. OCR + Sheets diferidos a **S2b.3b** cuando S2b.1b active
   Drive. **447 tests verdes**.
+- **S2b.5** ✅ (cerrado 2026-05-20): DSL + KPIs custom generados por
+  Chalán — `lib/kpi_dsl/` (whitelist entidades/agregaciones/ops, validador,
+  ejecutor con cost guard), modelo `KPICustom` con flujo personal/equipo
+  (aprobación en La Gerencia), NL→DSL vía Chalán Claudio. 532 pass.
+- **S2b.2.1** ✅ (cerrado 2026-05-20): clarificación iterativa del
+  Dictado (historial Q&A en el prompt) + UI de aprendizajes en Gerencia
+  (shadow model `chalanes.Aprendizaje`).
+- **Arco S-TailAdmin-Sweep** ✅ (cerrado 2026-05-20, 6 waves + Cleanup):
+  30 partials canónicos en `_componentes_tailadmin/` cubriendo chrome,
+  forms, tablas, detalles, modales HTMX y feedback. 255 pass.
+- **S-Recados-Chat** ✅ (2026-05-20): bandeja chat default en
+  `/recados/` (polling HTMX 5s conversación / 15s bandeja),
+  `Conversacion`+`Mensaje`+`MensajeLectura`, opt-out por categoría
+  `recados_chat`. Legacy preservado bajo `/recados/legacy/`.
+- **S2b.cotizaciones-v1** ✅ (cerrado 2026-05-20): Las Cotizaciones
+  sin PDF — app `apps.cotizaciones` con `Cotizacion`/`CotizacionItem`/
+  `CotizacionImpuesto`, código correlativo `COT-YYYY-NNNN`, 5 estados
+  + vencida derivada, cálculos (subtotal · descuento global ·
+  trasladados/retenciones · total), CRUD completo, 4 modales HTMX
+  (enviar/aprobar/rechazar/anular), duplicar, módulo de permisos
+  granular nuevo (7 acciones), 7 eventos Portavoz, 3 KPIs en Sala
+  de Juntas. PDF + envío automático aplazados hasta tener wrapper
+  Google Docs (depende de S2b.1b). **553 pass**.
 - **S2b.1b** ⏳ siguiente: activar Drive en Los Recados (~1.5h, requiere
   que el admin complete `docs/SETUP_GOOGLE_DRIVE.md` primero). Desbloquea
-  también S2b.3b (OCR de recibos + export Sheets en Tesorería).
-- **S2b** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google
-  Workspace · Los Recados (DOC_03) · El Dictado (DOC_04) · La Tesorería (DOC_06)
+  también S2b.3b (OCR de recibos + export Sheets en Tesorería) y
+  S2b.cot-pdf (PDF de cotizaciones vía Google Docs templates).
+- **S2b resto** Facturación · La Caja (Stripe + MercadoPago) ·
+  La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
 - **S3** Contaduría · Sala de Juntas con KPIs reales
 - **S4** Los Chalanes — casos de uso adicionales (categorizar gasto
   automático, sugerir precio, resumir hilos)
