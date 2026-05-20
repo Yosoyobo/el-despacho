@@ -70,7 +70,7 @@
                 <span class="font-semibold text-success-600 dark:text-success-400">${{ i.monto|floatformat:2 }}</span>
             </li>
             {% empty %}
-            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin ingresos todavía.</li>
+            <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin ingresos" descripcion="Captura el primer ingreso para empezar a ver tendencias." icono="folder" %}</li>
             {% endfor %}
         </ul>
     </section>
@@ -88,7 +88,7 @@
                 <span class="font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</span>
             </li>
             {% empty %}
-            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin egresos todavía.</li>
+            <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin egresos" descripcion="Captura el primer egreso para ver el flujo." icono="folder" %}</li>
             {% endfor %}
         </ul>
     </section>

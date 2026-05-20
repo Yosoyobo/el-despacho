@@ -43,7 +43,7 @@
                                 <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin tareas todavía.</td></tr>
+                            <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

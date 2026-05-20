@@ -14,5 +14,5 @@
     </td>
 </tr>
 {% empty %}
-<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin clientes todavía.</td></tr>
+<tr><td colspan="5" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin clientes" descripcion="Agrega el primer cliente B2B desde + Nuevo." icono="inbox" %}</div></td></tr>
 {% endfor %}
