@@ -29,6 +29,12 @@ COPY auth_google/ /app/auth_google/
 COPY proximamente/ /app/proximamente/
 COPY referencias/ /app/referencias/
 COPY chalanes/ /app/chalanes/
+# S2b.3: la app `apps.tesoreria` vive en El Taller, pero La Gerencia importa
+# el modelo CentroDeCosto + el form para su CRUD admin en /catalogos/. Copia
+# explícita de la sub-carpeta para que el namespace `apps.tesoreria` exista
+# en este contenedor también (regla §14 Bug A — apps shared requieren COPY
+# explícito en cada Dockerfile que las use).
+COPY el-taller/apps/tesoreria/ /app/apps/tesoreria/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config
