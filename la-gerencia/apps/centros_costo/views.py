@@ -7,7 +7,6 @@ otros catálogos cross-app que comparten DB Postgres."""
 from __future__ import annotations
 
 from apps.tesoreria.models import CentroDeCosto
-from .forms import CentroDeCostoForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
@@ -16,6 +15,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from lib.permisos import es_super_admin
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
+
+from .forms import CentroDeCostoForm
 
 
 def _gate(request):

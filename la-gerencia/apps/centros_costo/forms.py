@@ -11,10 +11,9 @@ Mantener este form aquí cuesta una copia pequeña; importar el de
 Taller arrastraría toda la cadena de modelos del Taller a Gerencia.
 """
 
+from apps.tesoreria.models import CentroDeCosto
 from django import forms
 from django.utils.text import slugify
-
-from apps.tesoreria.models import CentroDeCosto
 
 CSS_INPUT = (
     "block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm "
