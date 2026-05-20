@@ -849,12 +849,74 @@ del Wave 2 que se cuentan en taller).
   (`el_dictado/detalle.html`). Cualquier sesión puede aplicar los
   partials a un detalle a la vez sin riesgo.
 
-**Wave 5 — Modales reemplazando páginas de confirmación** pendiente
-Convertir a `_modal.html` las páginas dedicadas: anular ingreso/egreso
-(tesorería), archivar cliente, cambiar estado proyecto, asignar
-diseñador, eliminar/completar tarea. URL endpoint queda igual; el
-template renderiza modal vacío que el botón abre vía HTMX
-(`hx-get=...` → `hx-target=#modal-slot`).
+**Wave 5 — Modales HTMX reemplazando páginas de confirmación** ✅ (2026-05-20)
+- **Infra**:
+  - `<div id="modal-slot"></div>` agregado al final de `base.html` en
+    ambas apps (Taller + Gerencia, dual-copy §18). Es el destino
+    universal para modales inyectados.
+  - `ui.js` extendido: `cerrarSlotModal()` vacía el slot. Cierre por
+    click en `[data-modal-slot-close]`, click en backdrop (el primer
+    hijo del slot, que es el wrapper `fixed inset-0`) o tecla
+    Escape. ui.js sigue dual-copy.
+  - Partial `_componentes_tailadmin/_modal_htmx.html` (dual-copy) —
+    modal canónico **visible al inyectarse** (sin clase `hidden`),
+    con close X que usa `data-modal-slot-close`. Params:
+    `titulo`, `cuerpo|safe`, `footer|safe?`, `tamano`.
+- **Patrón canónico view + template**:
+  - View detecta `request.headers.get("HX-Request") == "true"`.
+    - GET HTMX → renderiza un partial-modal específico
+      (`_modal_<accion>.html`).
+    - GET no-HTMX → renderiza la página completa existente (fallback
+      directo por URL).
+    - POST HTMX (éxito) → `HttpResponse(status=204, headers={"HX-Redirect": destino})`.
+      HTMX dispara una navegación full-page hacia el destino con
+      messages flash intactos.
+    - POST HTMX (form inválido) → renderiza el partial-modal con
+      errores. HTMX hace swap en `#modal-slot` y el usuario corrige
+      sin perder el contexto.
+    - POST no-HTMX → `redirect(destino)` como siempre.
+  - Detalle template: el botón que antes era `<a href="…/anular/">`
+    ahora es `<button hx-get="…" hx-target="#modal-slot" hx-swap="innerHTML">`.
+    Los forms dentro del modal usan `hx-post` al mismo URL.
+- **Convertidos**:
+  - **Tesorería · Anular ingreso/egreso**:
+    `tesoreria/_modal_anular.html` (un solo partial para ambos tipos
+    — branch por `{% if tipo == 'ingreso' %}` en el `hx-post`).
+    `ingreso_anular` y `egreso_anular` aceptan HX-Request.
+  - **Proyectos · Cambiar estado**: `proyectos/_modal_cambiar_estado.html`.
+    `cambiar_estado` aceptra HX-Request. El botón del action bar en
+    el detalle ahora abre el modal.
+  - **Cartera · Archivar/Reactivar**: `cartera/_modal_archivar.html`.
+    `archivar` ahora acepta GET (cuando es HTMX, devuelve el modal)
+    además del POST de siempre. GET sin HTMX hace redirect al
+    detalle (comportamiento previo preservado). El modal pre-renderizado
+    inline en `cartera/detalle.html` fue **removido** — ahora se
+    carga vía HTMX.
+- **No incluido** (decisión consciente, no son páginas de
+  confirmación):
+  - **Proyectos · Asignar** (`asignar.html`) tiene listado de equipo
+    actual + form de agregar/quitar. Es una página de gestión,
+    no de confirmación; modal sería awkward.
+  - **Pizarrón · Completar tarea** es POST-only, no tiene página.
+  - **Pizarrón · Eliminar tarea** no existe como vista.
+  - El **action bar** del detalle de egreso/proyecto ya disparaba
+    estos flujos con `<a href>` — los reemplazamos por
+    `<button hx-get>` sin cambiar URLs ni rutas.
+- **Tests**: `tests/taller/test_modales_wave5.py` (9 pass) — valida
+  el partial `_modal_htmx.html`, los flujos GET/POST con y sin
+  HX-Request, el header `HX-Redirect` en POST exitoso. Suite total
+  taller+gerencia: **244 pass**.
+- **Patrón para futuras conversiones**:
+  1. Crear `app/templates/<modulo>/_modal_<accion>.html` con el
+     wrapper `fixed inset-0 z-50 flex …` + close X con
+     `data-modal-slot-close` + `<form hx-post="…" hx-target="#modal-slot" hx-swap="innerHTML">`.
+  2. En la view: branch `es_htmx = request.headers.get("HX-Request") == "true"`.
+     GET HTMX → render del partial. POST HTMX éxito → `HttpResponse(status=204, headers={"HX-Redirect": destino})`.
+     POST HTMX falla → render del partial con form en errores.
+     Fallback no-HTMX preserva templates existentes.
+  3. En el detalle: cambiar `<a href>` a
+     `<button hx-get="{% url '…' %}" hx-target="#modal-slot" hx-swap="innerHTML">`.
+  4. `_modal_<accion>.html` no extiende base — es fragmento puro.
 
 **Wave 6 — Estados y feedback** pendiente
 Empty states canónicos por módulo (ilustración + CTA), skeletons de

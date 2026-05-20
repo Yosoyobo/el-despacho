@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -138,6 +138,7 @@ def ingreso_anular(request, pk):
     ingreso = get_object_or_404(Ingreso, pk=pk)
     if ingreso.anulado:
         return redirect("tesoreria:ingreso-detalle", pk=ingreso.pk)
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = AnularForm(request.POST)
         if form.is_valid():
@@ -148,11 +149,14 @@ def ingreso_anular(request, pk):
                 "anulado_por_id": request.user.pk,
             })
             messages.success(request, f"Ingreso {ingreso.codigo} anulado.")
-            return redirect("tesoreria:ingreso-detalle", pk=ingreso.pk)
+            destino = reverse("tesoreria:ingreso-detalle", args=[ingreso.pk])
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
     else:
         form = AnularForm()
-    return render(request, "tesoreria/anular.html",
-                  {"form": form, "objeto": ingreso, "tipo": "ingreso"})
+    template = "tesoreria/_modal_anular.html" if es_htmx else "tesoreria/anular.html"
+    return render(request, template, {"form": form, "objeto": ingreso, "tipo": "ingreso"})
 
 
 # ── Egresos ────────────────────────────────────────────────────────────────
@@ -254,7 +258,7 @@ def egreso_detalle(request, pk):
         action_bar_acciones = format_html(
             '<a href="{}" class="btn-secundario">← Egresos</a>'
             '<a href="{}" class="btn-secundario">Editar</a>'
-            '<a href="{}" class="btn-destructivo">Anular</a>',
+            '<button type="button" class="btn-destructivo" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML">Anular</button>',
             reverse("tesoreria:egresos-lista"),
             reverse("tesoreria:egreso-editar", args=[egreso.pk]),
             reverse("tesoreria:egreso-anular", args=[egreso.pk]),
@@ -343,6 +347,7 @@ def egreso_anular(request, pk):
     egreso = get_object_or_404(Egreso, pk=pk)
     if egreso.anulado:
         return redirect("tesoreria:egreso-detalle", pk=egreso.pk)
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = AnularForm(request.POST)
         if form.is_valid():
@@ -353,11 +358,14 @@ def egreso_anular(request, pk):
                 "anulado_por_id": request.user.pk,
             })
             messages.success(request, f"Egreso {egreso.codigo} anulado.")
-            return redirect("tesoreria:egreso-detalle", pk=egreso.pk)
+            destino = reverse("tesoreria:egreso-detalle", args=[egreso.pk])
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
     else:
         form = AnularForm()
-    return render(request, "tesoreria/anular.html",
-                  {"form": form, "objeto": egreso, "tipo": "egreso"})
+    template = "tesoreria/_modal_anular.html" if es_htmx else "tesoreria/anular.html"
+    return render(request, template, {"form": form, "objeto": egreso, "tipo": "egreso"})
 
 
 # ── Cuentas por cobrar / pagar ─────────────────────────────────────────────

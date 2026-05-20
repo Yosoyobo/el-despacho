@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
@@ -121,7 +121,7 @@ def detalle(request, pk):
     )
     if puede_ed:
         action_bar_acciones = format_html(
-            '<a href="{}" class="btn-secundario">Cambiar estado</a>'
+            '<button type="button" class="btn-secundario" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML">Cambiar estado</button>'
             '<a href="{}" class="btn-secundario">Editar</a>'
             '<a href="{}" class="btn-primario">Asignar</a>',
             reverse("proyectos-cambiar-estado", args=[proyecto.pk]),
@@ -194,6 +194,7 @@ def cambiar_estado(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not puede_editar_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Solo admins cambian estado.")
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = CambiarEstadoForm(request.POST)
         if form.is_valid():
@@ -212,10 +213,14 @@ def cambiar_estado(request, pk):
             from apps.taller_home.push_handlers import notificar_proyecto_status_cambiado
             notificar_proyecto_status_cambiado(proyecto, anterior, nuevo, request.user)
             messages.success(request, f"Estado: {anterior} → {nuevo}")
-            return redirect("proyectos-detalle", pk=proyecto.pk)
+            destino = reverse("proyectos-detalle", args=[proyecto.pk])
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
     else:
         form = CambiarEstadoForm(initial={"estado": proyecto.estado})
-    return render(request, "proyectos/cambiar_estado.html", {"form": form, "proyecto": proyecto})
+    template = "proyectos/_modal_cambiar_estado.html" if es_htmx else "proyectos/cambiar_estado.html"
+    return render(request, template, {"form": form, "proyecto": proyecto})
 
 
 @login_required

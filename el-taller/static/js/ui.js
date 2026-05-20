@@ -90,6 +90,27 @@
     if (close) cerrarModal(close.closest('[data-modal]'));
   });
 
+  // --- Modal slot HTMX (S-TailAdmin-Sweep wave 5) ---
+  // Modales inyectados vía hx-get hacia #modal-slot. Cerrar = vaciar slot.
+  function cerrarSlotModal() {
+    var slot = document.getElementById('modal-slot');
+    if (slot) slot.innerHTML = '';
+  }
+  document.body.addEventListener('click', function (e) {
+    if (e.target.closest('[data-modal-slot-close]')) cerrarSlotModal();
+    var slot = document.getElementById('modal-slot');
+    if (slot && e.target === slot.firstElementChild) cerrarSlotModal();  // backdrop
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') cerrarSlotModal();
+  });
+  document.body.addEventListener('htmx:afterRequest', function (e) {
+    var xhr = e.detail && e.detail.xhr;
+    if (!xhr) return;
+    var redirect = xhr.getResponseHeader && xhr.getResponseHeader('HX-Redirect');
+    if (redirect) return;  // htmx maneja el redirect; no toques el slot
+  });
+
   // --- Dropdowns canónicos S-TailAdmin-Sweep (_dropdown.html) ---
   document.querySelectorAll('[data-dropdown]').forEach(function (root) {
     var trigger = root.querySelector('[data-dropdown-trigger]');

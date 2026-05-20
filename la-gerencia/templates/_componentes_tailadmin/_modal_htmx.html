@@ -1,0 +1,29 @@
+{% comment %}
+Modal canónico para inyección vía HTMX (Wave 5).
+
+Se inyecta en `#modal-slot` (presente al fondo de base.html). Visible
+de inmediato — sin clase `hidden`. Cierra con:
+- click en `[data-modal-slot-close]` (close X o botón "Cancelar")
+- click en el backdrop (el contenedor exterior)
+- tecla Escape
+
+Params:
+- titulo (str, requerido)
+- cuerpo (html|safe, requerido)
+- footer (html|safe, opcional)
+- tamano (sm|md|lg, default md)
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative w-full {% if tamano == 'sm' %}max-w-sm{% elif tamano == 'lg' %}max-w-2xl{% else %}max-w-md{% endif %} mx-4 rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ titulo }}</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <div class="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{{ cuerpo|safe }}</div>
+        {% if footer %}
+        <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">{{ footer|safe }}</footer>
+        {% endif %}
+    </div>
+</div>

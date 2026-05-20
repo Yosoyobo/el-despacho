@@ -62,29 +62,5 @@
     </aside>
 </div>
 
-{% if puede_editar %}
-{% include "_componentes_tailadmin/_action_bar.html" with sticky=False meta=action_bar_meta acciones=action_bar_acciones %}
-
-<div id="modal-archivar-cliente" data-modal class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
-    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
-        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{% if cliente.activo %}Archivar{% else %}Reactivar{% endif %} cliente</h2>
-            <button type="button" data-modal-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800" aria-label="Cerrar">
-                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
-            </button>
-        </header>
-        <div class="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
-            ¿Confirmas {% if cliente.activo %}archivar{% else %}reactivar{% endif %} a <span class="font-semibold">{{ cliente.razon_social }}</span>?
-            {% if cliente.activo %}<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">El cliente desaparece de los listados activos. Sus proyectos y datos se conservan.</p>{% endif %}
-        </div>
-        <footer class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
-            <button type="button" data-modal-close class="btn-secundario">Cancelar</button>
-            <form method="post" action="{% url 'cartera-archivar' cliente.pk %}" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="btn-destructivo">{% if cliente.activo %}Sí, archivar{% else %}Sí, reactivar{% endif %}</button>
-            </form>
-        </footer>
-    </div>
-</div>
-{% endif %}
+{% if puede_editar %}{% include "_componentes_tailadmin/_action_bar.html" with sticky=False meta=action_bar_meta acciones=action_bar_acciones %}{% endif %}
 {% endblock %}

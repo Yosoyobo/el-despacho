@@ -10,7 +10,7 @@
         <a href="{% url 'tesoreria:ingresos-lista' %}" class="btn-secundario">← Ingresos</a>
         {% if not ingreso.anulado %}
         <a href="{% url 'tesoreria:ingreso-editar' ingreso.pk %}" class="btn-secundario">Editar</a>
-        <a href="{% url 'tesoreria:ingreso-anular' ingreso.pk %}" class="btn-secundario text-error-600">Anular</a>
+        <button type="button" class="btn-secundario text-error-600" hx-get="{% url 'tesoreria:ingreso-anular' ingreso.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">Anular</button>
         {% endif %}
     </div>
 </header>

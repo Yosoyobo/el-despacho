@@ -3,7 +3,7 @@ from apps.la_cartera.models import Cliente
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -99,8 +99,9 @@ def detalle(request, pk):
     if puede_editar:
         action_bar_acciones = format_html(
             '<a href="{}" class="btn-secundario">Editar</a>'
-            '<button type="button" data-modal-target="#modal-archivar-cliente" class="btn-destructivo">{}</button>',
+            '<button type="button" class="btn-destructivo" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML">{}</button>',
             reverse("cartera-editar", args=[cliente.pk]),
+            reverse("cartera-archivar", args=[cliente.pk]),
             "Archivar" if cliente.activo else "Reactivar",
         )
     return render(request, "cartera/detalle.html", {
@@ -165,13 +166,19 @@ def editar(request, pk):
 
 @login_required
 def archivar(request, pk):
-    """Soft delete: activo=False. POST-only."""
+    """Soft delete: activo=False. GET (HTMX) → modal de confirmación; POST → acción."""
     if not puede_editar_cartera(request.user):
         return HttpResponseForbidden("Solo admins pueden archivar clientes.")
-    if request.method != "POST":
-        return redirect("cartera-detalle", pk=pk)
     cliente = get_object_or_404(Cliente, pk=pk)
-    cliente.activo = not cliente.activo
-    cliente.save(update_fields=["activo", "actualizado_en"])
-    messages.success(request, "Cliente " + ("archivado." if not cliente.activo else "reactivado."))
-    return redirect("cartera-detalle", pk=cliente.pk)
+    es_htmx = request.headers.get("HX-Request") == "true"
+    if request.method == "POST":
+        cliente.activo = not cliente.activo
+        cliente.save(update_fields=["activo", "actualizado_en"])
+        messages.success(request, "Cliente " + ("archivado." if not cliente.activo else "reactivado."))
+        destino = reverse("cartera-detalle", args=[cliente.pk])
+        if es_htmx:
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
+    if es_htmx:
+        return render(request, "cartera/_modal_archivar.html", {"cliente": cliente})
+    return redirect("cartera-detalle", pk=pk)
