@@ -49,7 +49,15 @@ INSTALLED_APPS = [
     "apps.interfono_admin.apps.InterfonoAdminConfig",
     "apps.los_chalanes.apps.LosChalanesConfig",
     # S2b.3 — modelos viven en El Taller (apps.tesoreria); Gerencia
-    # importa el modelo y agrega el CRUD admin.
+    # importa el modelo y agrega el CRUD admin de Centros de costo.
+    # `la_cartera` y `los_proyectos` se instalan porque los modelos de
+    # Tesorería tienen FK a Cliente y Proyecto (Egreso.proyecto,
+    # Ingreso.cliente/proyecto). Sin esos apps, Django levanta E300
+    # al hacer system checks (detectado en CI smoke test de S2b.3).
+    # Gerencia no expone URLs de Cartera ni Proyectos — solo necesita
+    # los modelos registrados para que el grafo de FKs cierre.
+    "apps.la_cartera.apps.LaCarteraConfig",
+    "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.tesoreria.apps.TesoreriaConfig",
     "apps.centros_costo.apps.CentrosCostoConfig",
     # 3rd party

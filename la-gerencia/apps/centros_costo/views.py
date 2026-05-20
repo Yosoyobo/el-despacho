@@ -6,8 +6,8 @@ otros catálogos cross-app que comparten DB Postgres."""
 
 from __future__ import annotations
 
-from apps.tesoreria.forms import CentroDeCostoForm
 from apps.tesoreria.models import CentroDeCosto
+from .forms import CentroDeCostoForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden

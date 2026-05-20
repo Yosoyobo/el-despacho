@@ -29,11 +29,14 @@ COPY auth_google/ /app/auth_google/
 COPY proximamente/ /app/proximamente/
 COPY referencias/ /app/referencias/
 COPY chalanes/ /app/chalanes/
-# S2b.3: la app `apps.tesoreria` vive en El Taller, pero La Gerencia importa
-# el modelo CentroDeCosto + el form para su CRUD admin en /catalogos/. Copia
-# explícita de la sub-carpeta para que el namespace `apps.tesoreria` exista
-# en este contenedor también (regla §14 Bug A — apps shared requieren COPY
-# explícito en cada Dockerfile que las use).
+# S2b.3: la app `apps.tesoreria` vive en El Taller, pero La Gerencia
+# importa el modelo CentroDeCosto + el form para su CRUD admin en
+# /catalogos/. Y como Tesorería tiene FK a `cartera.Cliente` y
+# `proyectos.Proyecto`, ambos apps tienen que estar instalados para
+# que el grafo de FKs cierre (system check E300). Copia explícita —
+# regla §14 Bug A.
+COPY el-taller/apps/la_cartera/ /app/apps/la_cartera/
+COPY el-taller/apps/los_proyectos/ /app/apps/los_proyectos/
 COPY el-taller/apps/tesoreria/ /app/apps/tesoreria/
 COPY la-gerencia/ /app/
 
