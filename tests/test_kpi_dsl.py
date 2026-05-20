@@ -81,6 +81,7 @@ def test_validar_alcance_mio_sin_soporte_rechaza():
 def test_ejecutar_count_proyectos(usuario_factory):
     from apps.la_cartera.models import Cliente
     from apps.los_proyectos.models import Proyecto
+
     from lib.kpi_dsl import ejecutar
 
     cli = Cliente.objects.create(razon_social="X")
@@ -94,6 +95,7 @@ def test_ejecutar_count_proyectos(usuario_factory):
 def test_ejecutar_filtro_in_funciona():
     from apps.la_cartera.models import Cliente
     from apps.los_proyectos.models import Proyecto
+
     from lib.kpi_dsl import ejecutar
 
     cli = Cliente.objects.create(razon_social="X")
@@ -112,6 +114,7 @@ def test_ejecutar_sum_egresos(usuario_factory):
     from datetime import date
 
     from apps.tesoreria.models import CentroDeCosto, Egreso
+
     from lib.kpi_dsl import ejecutar
     u = usuario_factory(rol="dueno")
     cc = CentroDeCosto.objects.create(slug="x", nombre="X")
@@ -124,6 +127,7 @@ def test_ejecutar_sum_egresos(usuario_factory):
 
 def test_ejecutar_alcance_mio(usuario_factory):
     from apps.recados.models import Recado
+
     from lib.kpi_dsl import ejecutar
     u1 = usuario_factory(rol="dueno", email="a@a.com")
     u2 = usuario_factory(rol="dueno", email="b@a.com")
@@ -141,6 +145,7 @@ def test_ejecutor_ventana_tiempo_filtra():
 
     from apps.la_cartera.models import Cliente
     from apps.los_proyectos.models import Proyecto
+
     from lib.kpi_dsl import ejecutar
 
     cli = Cliente.objects.create(razon_social="X")

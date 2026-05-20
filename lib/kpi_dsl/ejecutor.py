@@ -15,11 +15,10 @@ from __future__ import annotations
 
 import logging
 from datetime import date, timedelta
-from importlib import import_module
 from typing import Any
 
 from django.apps import apps
-from django.db.models import Avg, Count, Max, Min, Sum
+from django.db.models import Avg, Max, Min, Sum
 from django.utils import timezone
 
 from .schema import ENTIDADES

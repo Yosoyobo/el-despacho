@@ -114,6 +114,7 @@ def test_modelo_compartido_visible_desde_taller(usuario_factory):
     """Garantiza que `chalanes.Aprendizaje` y `el_dictado.DictadoAprendizaje`
     leen y escriben la MISMA tabla (managed=False shadow)."""
     from apps.el_dictado.models import DictadoAprendizaje
+
     from chalanes.models import Aprendizaje
     u = usuario_factory(rol="super_admin")
     ap = Aprendizaje.objects.create(

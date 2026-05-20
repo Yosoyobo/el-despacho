@@ -468,6 +468,7 @@ def _kpis_custom_para(user) -> list[KPI]:
     - de equipo aprobados (alcance='equipo', estado='activo')
     """
     from lib.kpi_dsl import ejecutar
+
     from .models import KPICustom
 
     qs = KPICustom.objects.filter(estado="activo").filter(

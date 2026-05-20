@@ -25,7 +25,7 @@ trate KPIs custom de forma intercambiable.
 from __future__ import annotations
 
 from .ejecutor import ejecutar, ejecutar_con_preview
-from .schema import ENTIDADES, OPS_FILTRO, AGREGACIONES, VENTANAS_TIEMPO
+from .schema import AGREGACIONES, ENTIDADES, OPS_FILTRO, VENTANAS_TIEMPO
 from .validador import ValidacionError, validar
 
 __all__ = [
