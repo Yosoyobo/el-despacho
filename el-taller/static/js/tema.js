@@ -12,5 +12,9 @@
     } catch (e) {
       // localStorage puede estar bloqueado (Safari privado); ignorar.
     }
+    // Notificar a otros componentes (ej. site_charts.js repinta).
+    try {
+      window.dispatchEvent(new CustomEvent('despacho:tema', { detail: { dark: esOscuro } }));
+    } catch (e) { /* CustomEvent siempre existe en navegadores soportados */ }
   });
 })();

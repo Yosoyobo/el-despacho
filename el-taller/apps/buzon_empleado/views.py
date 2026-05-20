@@ -47,11 +47,19 @@ def lista(request):
     if tipo:
         qs = qs.filter(tipo=tipo)
 
+    base = MensajeBuzon.objects.all() if es_admin_buzon else MensajeBuzon.objects.filter(autor=user)
+    kpis = {
+        "nuevos": base.filter(estado="nuevo").count(),
+        "leidos": base.filter(estado="leido").count(),
+        "respondidos": base.filter(estado="respondido").count(),
+        "archivados": base.filter(estado="archivado").count(),
+    }
     return render(request, "buzon/lista.html", {
         "mensajes": qs,
         "es_admin_buzon": es_admin_buzon,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
+        "kpis": kpis,
     })
 
 

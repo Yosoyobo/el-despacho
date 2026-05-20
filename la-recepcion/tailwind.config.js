@@ -7,6 +7,18 @@
 // partials del sprint). Si surge drift, unificar en sprint futuro.
 module.exports = {
   darkMode: 'class',
+  // Mantener sincronizado con la-gerencia/tailwind.config.js (regla §18).
+  safelist: [
+    'text-success-500', 'text-warning-500', 'text-error-500',
+    'bg-success-500', 'bg-warning-500', 'bg-error-500',
+    'fill-success-500', 'fill-warning-500', 'fill-error-500',
+    'stroke-success-500', 'stroke-warning-500', 'stroke-error-500',
+    { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-(50|500)$/ },
+    { pattern: /^text-(brand|success|error|warning|blue-light|orange|purple)-(400|500|600|700)$/ },
+    { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-500\/(10|15|20)$/, variants: ['dark'] },
+    { pattern: /^text-(brand|success|error|warning|blue-light|orange|purple)-(400|500|600|700)$/, variants: ['dark'] },
+    { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-(50|100)$/ },
+  ],
   content: [
     "./templates/**/*.html",
     "./apps/**/templates/**/*.html",

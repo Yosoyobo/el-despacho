@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}La Tesorería — El Taller{% endblock %}
+
+{% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
+
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
@@ -12,23 +15,35 @@
     </div>
 </header>
 
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ingresos del mes</p>
-        <p class="mt-2 text-title-xs font-semibold text-success-600 dark:text-success-400">${{ kpis.ingresos_mes|floatformat:2 }}</p>
+{# Hero KPIs — 4 tarjetas grandes. #}
+<div class="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Ingresos del mes" valor=kpis.ingresos_mes_fmt color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/ingresos/" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Egresos del mes" valor=kpis.egresos_mes_fmt color="error" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/egresos/" %}
+    {% if kpis.utilidad_mes >= 0 %}
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Utilidad bruta" valor=kpis.utilidad_mes_fmt color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 7-9" stroke-linecap="round" stroke-linejoin="round"/></svg>' badge="positiva" badge_color="success" %}
+    {% else %}
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Utilidad bruta" valor=kpis.utilidad_mes_fmt color="error" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l6 6 4-4 7 9" stroke-linecap="round" stroke-linejoin="round"/></svg>' badge="negativa" badge_color="error" %}
+    {% endif %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Cuentas por pagar" valor=kpis.cxp_total_fmt color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M5 7v13h14V7M9 11h6" stroke-linecap="round" stroke-linejoin="round"/></svg>' badge=kpis.cxp_num badge_color="warning" link="/tesoreria/por-pagar/" %}
+</div>
+
+{# Charts: flujo mensual + top centros de costo. #}
+<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="ta-card lg:col-span-2">
+        <div class="mb-2 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Flujo mensual</h2>
+            <span class="text-xs text-gray-500 dark:text-gray-400">últimos 6 meses · ingresos · egresos · utilidad</span>
+        </div>
+        <div id="tes-area-flujo" data-chart="area-cat" data-altura="280" data-formato="moneda"
+             data-series='{{ charts.area_flujo|safe }}'></div>
     </div>
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Egresos del mes</p>
-        <p class="mt-2 text-title-xs font-semibold text-error-600 dark:text-error-400">${{ kpis.egresos_mes|floatformat:2 }}</p>
-    </div>
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Utilidad bruta</p>
-        <p class="mt-2 text-title-xs font-semibold {% if kpis.utilidad_mes >= 0 %}text-gray-900 dark:text-gray-100{% else %}text-error-600 dark:text-error-400{% endif %}">${{ kpis.utilidad_mes|floatformat:2 }}</p>
-    </div>
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cuentas por pagar</p>
-        <p class="mt-2 text-title-xs font-semibold text-warning-600 dark:text-warning-400">${{ kpis.cxp_total|floatformat:2 }}</p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ kpis.cxp_num }} pendiente{{ kpis.cxp_num|pluralize:"s" }}</p>
+    <div class="ta-card">
+        <div class="mb-2 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Top centros de costo</h2>
+            <span class="text-xs text-gray-500 dark:text-gray-400">egresos del mes</span>
+        </div>
+        <div id="tes-donut-centros" data-chart="donut" data-altura="280" data-total-label="Egresos"
+             data-series='{{ charts.donut_centros|safe }}'></div>
     </div>
 </div>
 

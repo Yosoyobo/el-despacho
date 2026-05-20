@@ -63,6 +63,7 @@
 {% endif %}
 <script src="{% static 'js/tema.js' %}" defer></script>
 <script src="{% static 'js/ui.js' %}" defer></script>
+{% block scripts_graficas %}{# Páginas con charts cargan ApexCharts + site_charts.js #}{% endblock %}
 {% block body_extra %}{% endblock %}
 </body>
 </html>

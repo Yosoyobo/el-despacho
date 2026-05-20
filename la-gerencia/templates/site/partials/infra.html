@@ -1,143 +1,329 @@
+{% load static %}
 <div id="site-infra" hx-get="{% url 'site-partial-infra' %}" hx-trigger="every 30s" hx-swap="outerHTML"
-     class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+     class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 
-    <div class="ta-card">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Host</h3>
+  {# ── Gauges radiales fila superior ─────────────────────────────────── #}
+  {% with g=infra.gauges %}
+
+  {# CPU load #}
+  <div class="ta-card flex flex-col items-center justify-between">
+    <div class="flex w-full items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">CPU load</h3>
+      {% if infra.host.cpu_load.disponible %}
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ infra.host.cpu_load.cores|default:"?" }} cores</span>
+      {% endif %}
+    </div>
+    <div class="relative my-2 h-32 w-32">
+      <svg viewBox="0 0 100 100" class="h-full w-full -rotate-[135deg]">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                class="text-gray-100 dark:text-gray-800"
+                stroke-dasharray="{{ g.cpu.stroke_dasharray_track|default:'0 0' }}"></circle>
+        {% if g.cpu.disponible %}
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                class="text-{{ g.cpu.color }}-500 transition-all duration-700"
+                stroke-dasharray="{{ g.cpu.stroke_dasharray }}"></circle>
+        {% endif %}
+      </svg>
+      <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         {% if infra.host.cpu_load.disponible %}
-        <dl class="space-y-1 text-xs">
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Load 1m/5m/15m</dt>
-                <dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.cpu_load.load_1 }} / {{ infra.host.cpu_load.load_5 }} / {{ infra.host.cpu_load.load_15 }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Cores</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.cpu_load.cores|default:"?" }}</dd></div>
-            {% if infra.host.uptime.disponible %}
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Uptime</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.uptime.humano }}</dd></div>
+          <span class="text-title-xs font-bold text-gray-900 dark:text-gray-100">{{ infra.host.cpu_load.load_1 }}</span>
+          <span class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">load 1m</span>
+        {% else %}
+          <span class="text-xs text-gray-400">n/d</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if infra.host.cpu_load.disponible %}
+    <div class="flex w-full justify-between text-[11px] font-mono text-gray-500 dark:text-gray-400">
+      <span>5m {{ infra.host.cpu_load.load_5 }}</span>
+      <span>15m {{ infra.host.cpu_load.load_15 }}</span>
+    </div>
+    {% if infra.host.uptime.disponible %}
+    <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">uptime {{ infra.host.uptime.humano }}</div>
+    {% endif %}
+    {% else %}
+    <p class="text-xs text-gray-400 dark:text-gray-500">/proc no montado</p>
+    {% endif %}
+  </div>
+
+  {# Memoria #}
+  <div class="ta-card flex flex-col items-center justify-between">
+    <div class="flex w-full items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Memoria</h3>
+      {% if infra.host.memoria.disponible %}
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ infra.host.memoria.total_mb }} MB</span>
+      {% endif %}
+    </div>
+    <div class="relative my-2 h-32 w-32">
+      <svg viewBox="0 0 100 100" class="h-full w-full -rotate-[135deg]">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                class="text-gray-100 dark:text-gray-800"
+                stroke-dasharray="{{ g.memoria.stroke_dasharray_track|default:'0 0' }}"></circle>
+        {% if g.memoria.disponible %}
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                class="text-{{ g.memoria.color }}-500 transition-all duration-700"
+                stroke-dasharray="{{ g.memoria.stroke_dasharray }}"></circle>
+        {% endif %}
+      </svg>
+      <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        {% if g.memoria.disponible %}
+          <span class="text-title-xs font-bold text-gray-900 dark:text-gray-100">{{ g.memoria.pct }}%</span>
+          <span class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">en uso</span>
+        {% else %}
+          <span class="text-xs text-gray-400">n/d</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if infra.host.memoria.disponible %}
+    <div class="flex w-full justify-between text-[11px] font-mono text-gray-500 dark:text-gray-400">
+      <span>{{ infra.host.memoria.usado_mb }} usado</span>
+      <span>{{ infra.host.memoria.libre_mb }} libre</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Disco #}
+  <div class="ta-card flex flex-col items-center justify-between">
+    <div class="flex w-full items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Disco</h3>
+      {% if infra.host.disco.disponible %}
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ infra.host.disco.total_gb }} GB</span>
+      {% endif %}
+    </div>
+    <div class="relative my-2 h-32 w-32">
+      <svg viewBox="0 0 100 100" class="h-full w-full -rotate-[135deg]">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                class="text-gray-100 dark:text-gray-800"
+                stroke-dasharray="{{ g.disco.stroke_dasharray_track|default:'0 0' }}"></circle>
+        {% if g.disco.disponible %}
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                class="text-{{ g.disco.color }}-500 transition-all duration-700"
+                stroke-dasharray="{{ g.disco.stroke_dasharray }}"></circle>
+        {% endif %}
+      </svg>
+      <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        {% if g.disco.disponible %}
+          <span class="text-title-xs font-bold text-gray-900 dark:text-gray-100">{{ g.disco.pct }}%</span>
+          <span class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">ocupado</span>
+        {% else %}
+          <span class="text-xs text-gray-400">n/d</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if infra.host.disco.disponible %}
+    <div class="flex w-full justify-between text-[11px] font-mono text-gray-500 dark:text-gray-400">
+      <span>{{ infra.host.disco.usado_gb }} GB</span>
+      <span>{{ infra.host.disco.libre_gb }} libre</span>
+    </div>
+    {% if infra.host.disco.pct_usado > 75 %}
+    <div class="mt-1 text-[11px] text-warning-700 dark:text-warning-400">⚠️ corre La Limpieza</div>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  {# Containers — donut + leyenda #}
+  <div class="ta-card flex flex-col items-center justify-between">
+    <div class="flex w-full items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Containers</h3>
+      {% if infra.containers.info.disponible %}
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ infra.containers_resumen.total }}</span>
+      {% endif %}
+    </div>
+    <div class="relative my-2 h-32 w-32">
+      {% if infra.containers.info.disponible %}
+      <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="11" class="text-error-500/30 dark:text-error-500/20"></circle>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="11" stroke-linecap="butt"
+                class="text-success-500 transition-all duration-700"
+                stroke-dasharray="{% widthratio infra.containers_resumen.running infra.containers_resumen.total 264 %} 264"></circle>
+      </svg>
+      <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span class="text-title-xs font-bold text-success-600 dark:text-success-400">{{ infra.containers_resumen.running }}</span>
+        <span class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">running</span>
+      </div>
+      {% else %}
+      <div class="flex h-full w-full items-center justify-center text-xs text-gray-400">docker.sock n/d</div>
+      {% endif %}
+    </div>
+    {% if infra.containers.info.disponible %}
+    <div class="flex w-full justify-between text-[11px] font-mono">
+      <span class="text-success-600 dark:text-success-400">● {{ infra.containers_resumen.running }} run</span>
+      <span class="{% if infra.containers_resumen.stopped %}text-error-600 dark:text-error-400{% else %}text-gray-400{% endif %}">● {{ infra.containers_resumen.stopped }} stop</span>
+      <span class="text-gray-500 dark:text-gray-400">{{ infra.containers.info.imagenes }} imgs</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% endwith %}
+
+  {# ── Postgres ────────────────────────────────────────────────────────── #}
+  <div class="ta-card md:col-span-2">
+    <div class="mb-3 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+        <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-light-50 text-blue-light-600 dark:bg-blue-light-500/15 dark:text-blue-light-400">🐘</span>
+        Postgres
+      </h3>
+      {% if infra.postgres.disponible %}
+        <span class="badge badge-success">activa</span>
+      {% else %}
+        <span class="badge badge-error">caída</span>
+      {% endif %}
+    </div>
+    {% if infra.postgres.disponible %}
+    <div class="grid grid-cols-3 gap-3">
+      <div class="rounded-xl bg-gray-50 p-3 dark:bg-gray-800/40">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Tamaño DB</div>
+        <div class="mt-1 text-title-xs font-bold text-gray-900 dark:text-gray-100">{{ infra.postgres.tamano_mb }}<span class="ml-0.5 text-xs font-normal text-gray-500">MB</span></div>
+      </div>
+      <div class="rounded-xl bg-gray-50 p-3 dark:bg-gray-800/40">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Conexiones</div>
+        <div class="mt-1 text-title-xs font-bold text-gray-900 dark:text-gray-100">{{ infra.postgres.conexiones_activas }}</div>
+      </div>
+      <div class="rounded-xl bg-gray-50 p-3 dark:bg-gray-800/40">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Versión</div>
+        <div class="mt-1 truncate text-xs font-mono text-gray-700 dark:text-gray-300" title="{{ infra.postgres.version }}">{{ infra.postgres.version|truncatechars:18 }}</div>
+      </div>
+    </div>
+    <p class="mt-2 text-[11px] font-mono text-gray-500 dark:text-gray-400">db: {{ infra.postgres.db }}</p>
+    {% else %}
+    <p class="text-xs text-error-600 dark:text-error-400">{{ infra.postgres.error|default:"no disponible" }}</p>
+    {% endif %}
+  </div>
+
+  {# ── Redis ──────────────────────────────────────────────────────────── #}
+  <div class="ta-card md:col-span-2">
+    <div class="mb-3 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+        <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400">⚡</span>
+        Redis · El Portavoz
+      </h3>
+      {% if infra.redis.disponible %}<span class="badge badge-success">conectado</span>{% else %}<span class="badge badge-error">caído</span>{% endif %}
+    </div>
+    {% if infra.redis.disponible %}
+    <div class="grid grid-cols-3 gap-3">
+      <div class="rounded-xl bg-gray-50 p-3 dark:bg-gray-800/40">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Memoria</div>
+        <div class="mt-1 text-title-xs font-bold text-gray-900 dark:text-gray-100">{{ infra.redis.memoria_mb }}<span class="ml-0.5 text-xs font-normal text-gray-500">MB</span></div>
+      </div>
+      <div class="rounded-xl bg-gray-50 p-3 dark:bg-gray-800/40">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Cola</div>
+        <div class="mt-1 text-title-xs font-bold {% if infra.redis.portavoz_cola > 50 %}text-warning-600{% else %}text-gray-900 dark:text-gray-100{% endif %}">{{ infra.redis.portavoz_cola }}</div>
+      </div>
+      <div class="rounded-xl {% if infra.redis.portavoz_dlq %}bg-error-50 dark:bg-error-500/10{% else %}bg-gray-50 dark:bg-gray-800/40{% endif %} p-3">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">DLQ</div>
+        <div class="mt-1 text-title-xs font-bold {% if infra.redis.portavoz_dlq %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{{ infra.redis.portavoz_dlq }}</div>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-xs text-error-600 dark:text-error-400">{{ infra.redis.error|default:"no disponible" }}</p>
+    {% endif %}
+  </div>
+
+  {# ── Container list ────────────────────────────────────────────────── #}
+  <div class="ta-card md:col-span-2 lg:col-span-2">
+    <h3 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+      <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">📦</span>
+      Containers Docker
+    </h3>
+    {% if infra.containers.info.disponible %}
+    <ul class="space-y-1.5">
+      {% for c in infra.containers.containers %}
+      <li class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5 dark:bg-gray-800/40">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="relative flex h-2 w-2 shrink-0">
+            {% if c.estado == 'running' %}
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75"></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-success-500"></span>
+            {% else %}
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-warning-500"></span>
             {% endif %}
-        </dl>
-        {% else %}
-        <p class="text-xs text-gray-400 dark:text-gray-500">/proc no montado — host no visible desde el container.</p>
-        {% endif %}
-    </div>
+          </span>
+          <span class="truncate font-mono text-xs text-gray-700 dark:text-gray-200">{{ c.nombre }}</span>
+        </div>
+        <span class="ml-2 truncate text-[11px] text-gray-500 dark:text-gray-400">{{ c.estado_humano|truncatechars:30 }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-xs text-gray-400 dark:text-gray-500">docker.sock no disponible</p>
+    {% endif %}
+  </div>
 
-    <div class="ta-card">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Memoria</h3>
-        {% if infra.host.memoria.disponible %}
-        <dl class="space-y-1 text-xs">
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Total</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.memoria.total_mb }} MB</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Usado</dt>
-                <dd class="font-mono {% if infra.host.memoria.pct_usado > 80 %}text-error-600{% elif infra.host.memoria.pct_usado > 60 %}text-warning-600{% else %}text-gray-800 dark:text-gray-200{% endif %}">
-                {{ infra.host.memoria.usado_mb }} MB ({{ infra.host.memoria.pct_usado }}%)</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Libre</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.memoria.libre_mb }} MB</dd></div>
-        </dl>
-        {% else %}
-        <p class="text-xs text-gray-400 dark:text-gray-500">no disponible</p>
-        {% endif %}
+  {# ── Droplet ────────────────────────────────────────────────────────── #}
+  <div class="ta-card md:col-span-2 lg:col-span-2">
+    <h3 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+      <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-light-50 text-blue-light-600 dark:bg-blue-light-500/15 dark:text-blue-light-400">🌊</span>
+      Droplet (DigitalOcean)
+    </h3>
+    {% if infra.droplet_remoto.disponible %}
+    <div class="grid grid-cols-2 gap-3 text-xs">
+      <div class="space-y-1">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Nombre · región</div>
+        <div class="font-mono text-gray-800 dark:text-gray-200">{{ infra.droplet_remoto.nombre }} · {{ infra.droplet_remoto.region }}</div>
+      </div>
+      <div class="space-y-1">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">IP pública</div>
+        <div class="font-mono text-gray-800 dark:text-gray-200">{{ infra.droplet_remoto.ip_publica }}</div>
+      </div>
+      <div class="col-span-2">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Tamaño</div>
+        <div class="mt-1 flex items-center gap-3 font-mono text-gray-700 dark:text-gray-300">
+          <span class="rounded bg-brand-50 px-2 py-0.5 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ infra.droplet_remoto.vcpus }} vCPU</span>
+          <span class="rounded bg-brand-50 px-2 py-0.5 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ infra.droplet_remoto.ram_mb }} MB</span>
+          <span class="rounded bg-brand-50 px-2 py-0.5 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ infra.droplet_remoto.disco_gb }} GB</span>
+          <span class="text-gray-500">{{ infra.droplet_remoto.tamano }}</span>
+        </div>
+      </div>
     </div>
+    {% else %}
+    <p class="text-xs text-gray-400 dark:text-gray-500">{{ infra.droplet_remoto.motivo|default:"DO API no configurada (Los Ajustes → do_api_token)" }}</p>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Nombre lógico: <span class="font-mono">{{ infra.droplet_local.nombre_logico }}</span> · IP esperada: <span class="font-mono">{{ infra.droplet_local.ip_publica_esperada }}</span></p>
+    {% endif %}
+  </div>
 
-    <div class="ta-card">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Disco</h3>
-        {% if infra.host.disco.disponible %}
-        <dl class="space-y-1 text-xs">
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Path</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.disco.path }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Total</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.disco.total_gb }} GB</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Usado</dt>
-                <dd class="font-mono {% if infra.host.disco.pct_usado > 80 %}text-error-600{% elif infra.host.disco.pct_usado > 75 %}text-warning-600{% else %}text-gray-800 dark:text-gray-200{% endif %}">
-                {{ infra.host.disco.usado_gb }} GB ({{ infra.host.disco.pct_usado }}%)</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Libre</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.host.disco.libre_gb }} GB</dd></div>
-        </dl>
-        {% if infra.host.disco.pct_usado > 75 %}
-        <p class="mt-2 text-xs text-warning-700 dark:text-warning-400">⚠️ Considera correr La Limpieza.</p>
-        {% endif %}
-        {% else %}
-        <p class="text-xs text-gray-400 dark:text-gray-500">no disponible</p>
-        {% endif %}
+  {# ── Caddy certs ────────────────────────────────────────────────────── #}
+  <div class="ta-card md:col-span-2 lg:col-span-4">
+    <div class="mb-3 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+        <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-400">🔒</span>
+        Caddy · Certificados TLS
+      </h3>
+      {% if infra.cert_min_dias is not None %}
+        <span class="text-xs {% if infra.cert_min_dias < 14 %}text-error-600 dark:text-error-400{% elif infra.cert_min_dias < 30 %}text-warning-600 dark:text-warning-400{% else %}text-success-600 dark:text-success-400{% endif %}">
+          más próximo: {{ infra.cert_min_dias }} días
+        </span>
+      {% endif %}
     </div>
-
-    <div class="ta-card">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Postgres</h3>
-        {% if infra.postgres.disponible %}
-        <dl class="space-y-1 text-xs">
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">DB</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.postgres.db }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Tamaño</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.postgres.tamano_mb }} MB</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Conexiones</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.postgres.conexiones_activas }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Versión</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.postgres.version|truncatechars:20 }}</dd></div>
-        </dl>
-        {% else %}
-        <p class="text-xs text-error-600 dark:text-error-400">no disponible: {{ infra.postgres.error|default:"?" }}</p>
-        {% endif %}
+    {% if infra.caddy.disponible and infra.caddy.certs %}
+    <div class="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+      {% for c in infra.caddy.certs %}
+      <div class="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+        <div class="flex items-center justify-between">
+          <span class="truncate font-mono text-xs text-gray-700 dark:text-gray-200" title="{{ c.nombres|join:', ' }}">{{ c.nombres|join:", "|truncatechars:30 }}</span>
+          <span class="text-xs font-semibold {% if c.vence_pronto %}text-error-600 dark:text-error-400{% elif c.dias_para_expirar < 30 %}text-warning-600 dark:text-warning-400{% else %}text-success-600 dark:text-success-400{% endif %}">{{ c.dias_para_expirar|default:"?" }}d</span>
+        </div>
+        <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          {# Barra: 90 días = 100%. Mientras más cerca de 0, más rojo. #}
+          {% widthratio c.dias_para_expirar 90 100 as pct_dias %}
+          <div class="h-full rounded-full {% if c.vence_pronto %}bg-error-500{% elif c.dias_para_expirar < 30 %}bg-warning-500{% else %}bg-success-500{% endif %}"
+               style="width: {% if pct_dias %}{{ pct_dias }}{% else %}0{% endif %}%; max-width: 100%;"></div>
+        </div>
+        <div class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">expira {{ c.expira_en|default:"?"|truncatechars:19 }}</div>
+      </div>
+      {% endfor %}
     </div>
-
-    <div class="ta-card">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Redis (Portavoz)</h3>
-        {% if infra.redis.disponible %}
-        <dl class="space-y-1 text-xs">
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Memoria</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.redis.memoria_mb }} MB</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Cola Portavoz</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.redis.portavoz_cola }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">DLQ</dt>
-                <dd class="font-mono {% if infra.redis.portavoz_dlq > 0 %}text-error-600 dark:text-error-400{% else %}text-gray-800 dark:text-gray-200{% endif %}">{{ infra.redis.portavoz_dlq }}</dd></div>
-        </dl>
-        {% else %}
-        <p class="text-xs text-error-600 dark:text-error-400">no disponible: {{ infra.redis.error|default:"?" }}</p>
-        {% endif %}
-    </div>
-
-    <div class="ta-card">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Containers</h3>
-        {% if infra.containers.info.disponible %}
-        <dl class="space-y-1 text-xs">
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Total</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.containers.info.containers }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Running</dt><dd class="font-mono text-success-600 dark:text-success-400">{{ infra.containers.info.running }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Stopped</dt>
-                <dd class="font-mono {% if infra.containers.info.stopped %}text-warning-600 dark:text-warning-400{% else %}text-gray-800 dark:text-gray-200{% endif %}">{{ infra.containers.info.stopped }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Imágenes</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.containers.info.imagenes }}</dd></div>
-        </dl>
-        <details class="mt-2"><summary class="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Ver containers</summary>
-            <ul class="mt-1 space-y-0.5 font-mono text-xs">
-                {% for c in infra.containers.containers %}
-                <li><span class="{% if c.estado == 'running' %}text-success-600 dark:text-success-400{% else %}text-warning-600 dark:text-warning-400{% endif %}">●</span>
-                    <span class="text-gray-700 dark:text-gray-300">{{ c.nombre }}</span> — <span class="text-gray-500 dark:text-gray-400">{{ c.estado_humano|truncatechars:32 }}</span></li>
-                {% endfor %}
-            </ul>
-        </details>
-        {% else %}
-        <p class="text-xs text-gray-400 dark:text-gray-500">docker.sock no disponible.</p>
-        {% endif %}
-    </div>
-
-    <div class="ta-card">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Droplet (DO)</h3>
-        {% if infra.droplet_remoto.disponible %}
-        <dl class="space-y-1 text-xs">
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Nombre</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.droplet_remoto.nombre }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Región</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.droplet_remoto.region }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Tamaño</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.droplet_remoto.tamano }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">vCPUs / RAM / Disco</dt>
-                <dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.droplet_remoto.vcpus }} / {{ infra.droplet_remoto.ram_mb }}MB / {{ infra.droplet_remoto.disco_gb }}GB</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">IP pública</dt><dd class="font-mono text-gray-800 dark:text-gray-200">{{ infra.droplet_remoto.ip_publica }}</dd></div>
-        </dl>
-        {% else %}
-        <p class="text-xs text-gray-400 dark:text-gray-500">{{ infra.droplet_remoto.motivo|default:"DO API no configurada (Los Ajustes → do_api_token)" }}</p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Nombre lógico: <span class="font-mono">{{ infra.droplet_local.nombre_logico }}</span> · IP esperada: <span class="font-mono">{{ infra.droplet_local.ip_publica_esperada }}</span></p>
-        {% endif %}
-    </div>
-
-    <div class="ta-card md:col-span-2">
-        <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Caddy — Certificados</h3>
-        {% if infra.caddy.disponible %}
-        {% if infra.caddy.certs %}
-        <ul class="space-y-1 font-mono text-xs">
-            {% for c in infra.caddy.certs %}
-            <li class="flex justify-between">
-                <span class="text-gray-700 dark:text-gray-300">{{ c.nombres|join:", "|truncatechars:42 }}</span>
-                <span class="{% if c.vence_pronto %}text-error-600 dark:text-error-400{% elif c.dias_para_expirar < 30 %}text-warning-600 dark:text-warning-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
-                    {{ c.dias_para_expirar|default:"?" }}d · {{ c.expira_en|default:"?"|truncatechars:19 }}
-                </span>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="text-xs text-gray-400 dark:text-gray-500">Directorio Caddy presente pero sin certs todavía.</p>
-        {% endif %}
-        {% else %}
-        <p class="text-xs text-gray-400 dark:text-gray-500">Caddy bind mount no montado ({{ infra.caddy.motivo|default:"?" }}).</p>
-        {% endif %}
-    </div>
+    {% elif infra.caddy.disponible %}
+    <p class="text-xs text-gray-400 dark:text-gray-500">Directorio Caddy presente pero sin certs todavía.</p>
+    {% else %}
+    <p class="text-xs text-gray-400 dark:text-gray-500">Caddy bind mount no montado ({{ infra.caddy.motivo|default:"?" }}).</p>
+    {% endif %}
+  </div>
 </div>

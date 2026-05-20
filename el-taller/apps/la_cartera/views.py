@@ -26,11 +26,23 @@ def lista(request):
     if q:
         from django.db.models import Q
         qs = qs.filter(Q(razon_social__icontains=q) | Q(rfc__icontains=q) | Q(email_contacto__icontains=q))
+    # KPIs hero
+    activos = Cliente.activos.count()
+    archivados = Cliente.objects.filter(activo=False).count()
+    con_proyectos_activos = Cliente.activos.filter(
+        proyectos__estado__in=("en_diseno", "revision_cliente", "en_produccion")
+    ).distinct().count()
     return render(request, "cartera/lista.html", {
         "clientes": qs,
         "q": q,
         "incluir_archivados": incluir_archivados,
         "puede_editar": puede_editar_cartera(request.user),
+        "kpis": {
+            "activos": activos,
+            "archivados": archivados,
+            "con_proyectos": con_proyectos_activos,
+            "sin_proyectos": activos - con_proyectos_activos,
+        },
     })
 
 

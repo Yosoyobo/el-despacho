@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}El Buzón — admin{% endblock %}
+
+{% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
+
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
@@ -8,6 +11,20 @@
     </div>
     <a href="/buzon/clientes/" class="btn-secundario">Buzón de clientes →</a>
 </header>
+
+<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-4 lg:col-span-3 lg:grid-cols-2">
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Nuevos sin leer" valor=kpis.nuevos color="blue-light" badge=kpis.nuevos badge_color="blue" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z M22 6 12 13 2 6" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Leídos" valor=kpis.leidos color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Respondidos" valor=kpis.respondidos color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 17 8-8M4 12l3 3 13-13" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Archivados" valor=kpis.archivados color="purple" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    </div>
+    <div class="ta-card">
+        <div class="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Por tipo</div>
+        <div id="bzn-donut-tipos" data-chart="donut" data-altura="180" data-total-label="Total"
+             data-series='{{ donut_tipos_json|safe }}'></div>
+    </div>
+</div>
 
 <form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="min-w-[180px]">

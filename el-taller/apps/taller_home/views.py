@@ -13,16 +13,84 @@ from datetime import date
 
 from apps.los_proyectos.models import Proyecto
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+
+from lib.graficas import area_mensual, donut_desde_conteo
 
 from .kpis import CATEGORIAS, kpis_aplicables_a_rol, kpis_visibles_para
 from .models import PreferenciaKPI, SugerenciaKPI
 from .sugerencias import evaluar_y_persistir, sugerencias_pendientes
 
 ESTADOS_ACTIVOS = ("en_diseno", "revision_cliente", "en_produccion")
+
+
+def _charts_sala_de_juntas(rol: str) -> dict:
+    """Series JSON para los charts de la Sala de Juntas.
+
+    - Donut: proyectos por estado.
+    - Donut: tareas por estado.
+    - Area mensual: ingresos vs egresos últimos 6 meses (si Tesorería tiene datos).
+    """
+    from apps.el_pizarron.models import Tarea
+
+    proyectos_por_estado = dict(
+        Proyecto.objects.values_list("estado").annotate(c=Count("id")).values_list("estado", "c")
+    )
+    proyectos_etiquetas = dict(
+        (slug, label) for slug, label in
+        Proyecto._meta.get_field("estado").choices
+    )
+
+    tareas_qs = Tarea.objects.exclude(estado="completada")
+    tareas_por_estado = dict(
+        tareas_qs.values_list("estado").annotate(c=Count("id")).values_list("estado", "c")
+    )
+    tareas_etiquetas = dict(Tarea._meta.get_field("estado").choices)
+
+    # Ingresos/egresos últimos 6 meses
+    hoy = timezone.localdate()
+    meses_labels = []
+    ing_data = []
+    egr_data = []
+    try:
+        from apps.tesoreria.models import Egreso, Ingreso
+
+        # Genera lista de inicios de mes (6 meses atrás → ahora).
+        anchors = []
+        y, m = hoy.year, hoy.month
+        for _ in range(6):
+            anchors.append((y, m))
+            m -= 1
+            if m == 0:
+                m = 12
+                y -= 1
+        anchors.reverse()
+        for y, m in anchors:
+            meses_labels.append(date(y, m, 1).strftime("%b"))
+            ing = Ingreso.vigentes.filter(fecha__year=y, fecha__month=m).aggregate(t=Sum("monto"))["t"] or 0
+            egr = Egreso.vigentes.filter(fecha__year=y, fecha__month=m).aggregate(t=Sum("monto"))["t"] or 0
+            ing_data.append(ing)
+            egr_data.append(egr)
+    except Exception:  # noqa: BLE001
+        meses_labels = []
+        ing_data = []
+        egr_data = []
+
+    return {
+        "donut_proyectos_json": donut_desde_conteo(proyectos_por_estado, etiquetas=proyectos_etiquetas),
+        "donut_tareas_json": donut_desde_conteo(tareas_por_estado, etiquetas=tareas_etiquetas),
+        "area_dinero_json": area_mensual(
+            meses_labels,
+            [
+                {"name": "Ingresos", "data": ing_data, "color": "#12b76a"},
+                {"name": "Egresos", "data": egr_data, "color": "#f04438"},
+            ],
+        ) if meses_labels else "",
+    }
 
 
 @login_required
@@ -77,12 +145,15 @@ def home(request):
         pendientes_cotizar_qs = pendientes_cotizar_qs.filter(asignaciones__usuario=user).distinct()
     pendientes_cotizar = list(pendientes_cotizar_qs[:8])
 
+    charts = _charts_sala_de_juntas(rol or "")
+
     return render(request, "taller_home/home.html", {
         "kpis": kpis_render,
         "sugerencias": sugerencias_view,
         "proyectos_activos": proyectos_activos,
         "pendientes_cotizar": pendientes_cotizar,
         "hoy": date.today(),
+        "charts": charts,
     })
 
 

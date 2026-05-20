@@ -1,0 +1,27 @@
+{% comment %}
+KPI card hero — TailAdmin Pro. Params: titulo, valor, icono_svg, color,
+badge, badge_color, subtexto, link, delta, delta_pos. Ver docs en el
+_componentes_tailadmin README cuando exista.
+{% endcomment %}
+{% if link %}
+<a href="{{ link }}" class="ta-card block transition hover:border-brand-300 dark:hover:border-brand-500/40">
+{% else %}
+<div class="ta-card">
+{% endif %}
+    <div class="flex items-center justify-between">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-{{ color|default:'brand' }}-50 text-{{ color|default:'brand' }}-600 dark:bg-{{ color|default:'brand' }}-500/15 dark:text-{{ color|default:'brand' }}-400">
+            {{ icono_svg|safe }}
+        </span>
+        {% if badge %}<span class="badge badge-{{ badge_color|default:'gray' }}">{{ badge }}</span>{% endif %}
+    </div>
+    <div class="mt-4 text-title-md font-bold text-gray-900 dark:text-gray-100">{{ valor }}</div>
+    <div class="flex items-center gap-2">
+        <div class="text-sm text-gray-500 dark:text-gray-400">{{ titulo }}</div>
+        {% if delta %}
+        <span class="text-xs font-medium {% if delta_pos %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">
+            {{ delta }}
+        </span>
+        {% endif %}
+    </div>
+    {% if subtexto %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ subtexto }}</p>{% endif %}
+{% if link %}</a>{% else %}</div>{% endif %}

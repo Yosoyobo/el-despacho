@@ -44,6 +44,45 @@ def reembolsos_pendientes():
     return list(qs)
 
 
+def charts_landing() -> dict[str, str]:
+    """Series JSON para charts de la landing: area mensual (ingresos vs
+    egresos últimos 6 meses) + donut top 5 centros de costo (egresos mes)."""
+    from lib.graficas import area_mensual, donut_desde_conteo
+    hoy = date.today()
+    y, m = hoy.year, hoy.month
+    anchors = []
+    for _ in range(6):
+        anchors.append((y, m))
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+    anchors.reverse()
+    labels, ing_data, egr_data, util_data = [], [], [], []
+    for yy, mm in anchors:
+        labels.append(date(yy, mm, 1).strftime("%b"))
+        ing = Ingreso.vigentes.filter(fecha__year=yy, fecha__month=mm).aggregate(t=Sum("monto"))["t"] or Decimal("0")
+        egr = Egreso.vigentes.filter(fecha__year=yy, fecha__month=mm).aggregate(t=Sum("monto"))["t"] or Decimal("0")
+        ing_data.append(ing)
+        egr_data.append(egr)
+        util_data.append(ing - egr)
+    inicio_mes = hoy.replace(day=1)
+    centros = (
+        Egreso.vigentes.filter(fecha__gte=inicio_mes)
+        .values("centro_de_costo__nombre")
+        .annotate(total=Sum("monto"))
+        .order_by("-total")[:5]
+    )
+    conteo_centros = {(c["centro_de_costo__nombre"] or "Sin centro"): c["total"] for c in centros}
+    return {
+        "area_flujo": area_mensual(labels, [
+            {"name": "Ingresos", "data": ing_data, "color": "#12b76a"},
+            {"name": "Egresos", "data": egr_data, "color": "#f04438"},
+            {"name": "Utilidad", "data": util_data, "color": "#465fff"},
+        ]),
+        "donut_centros": donut_desde_conteo(conteo_centros),
+    }
+
+
 def kpis_landing(usuario) -> dict[str, Any]:
     hoy = date.today()
     inicio_mes = hoy.replace(day=1)

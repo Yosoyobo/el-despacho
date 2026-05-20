@@ -9,6 +9,13 @@
     {% if puede_editar %}<a href="{% url 'cartera-nuevo' %}" class="btn-primario">+ Nuevo cliente</a>{% endif %}
 </header>
 
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes activos" valor=kpis.activos color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Con proyectos activos" valor=kpis.con_proyectos color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z M2 17l10 5 10-5 M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Sin proyectos vivos" valor=kpis.sin_proyectos color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01" stroke-linecap="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Archivados" valor=kpis.archivados color="purple" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+</div>
+
 <form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="flex-1 min-w-[220px]">
         <label for="cart-q" class="sr-only">Buscar</label>

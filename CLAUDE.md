@@ -76,7 +76,9 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 
 ## 4. Reglas inviolables
 
-1. **Sin UI libs externas.** Solo Tailwind. Cero shadcn / MUI / Radix / DaisyUI.
+1. **Sin UI component libs externas.** Cero shadcn / MUI / Radix / DaisyUI /
+   Headless. Tailwind + tokens TailAdmin como sistema visual. **ApexCharts SÍ
+   está permitido** (es la librería de gráficas estándar de TailAdmin Pro).
 2. **`BOVEDA_MASTER_KEY` obligatoria.** App falla al importar `lib.boveda` si
    no existe o no son 64 hex chars. Eager check.
 3. **TODAS las credenciales se configuran desde Los Ajustes** (cifradas con
@@ -212,9 +214,10 @@ ElDespacho/
   Camino B (upgrade a Tailwind v4 con CSS-first). Razones: estabilidad del
   binario standalone v3.4.17, compatibilidad con Django sin Node, evita
   migración de utilities entre v3/v4.
-- **Vanilla JS + HTMX exclusivos**. Sin Alpine, sin librerías UI externas
-  (shadcn/MUI/Radix/DaisyUI/Headless), sin charts (ApexCharts diferido a
-  cuando S3 traiga La Sala de Juntas con KPIs reales).
+- **Vanilla JS + HTMX como base**. Sin Alpine, sin component libs externas
+  (shadcn/MUI/Radix/DaisyUI/Headless). **ApexCharts SÍ habilitado** desde
+  S2b.X (El Site) — es la librería de gráficas estándar de TailAdmin Pro y
+  se carga vendoreada en `static/vendor/apexcharts/`.
 - **App `proximamente/` shared raíz** (decisión S-TailAdmin-2) — mismo patrón
   que `cuentas/`, `ajustes/`, `buzon/`, `interfono/`, `auth_google/`. Sin
   modelos, sin migración; sólo `views.py` + `urls.py` + 1 template para
@@ -563,6 +566,71 @@ real `/tesoreria/`. `proximamente/views.py` ya no expone slug
 Conectar placeholders de Sala de Juntas con datos reales · eventos push
 automáticos del Buzón/Proyectos/Tareas reusando la categoría de El
 Interfón.
+
+### S-Charts ✅ — Revamp gráfico (ApexCharts) en El Site, Taller y Gerencia (2026-05-19)
+
+ApexCharts vía CDN `unpkg@3.54.1` queda habilitado (decisión actualizada en
+§4 regla #1 y §6: ApexCharts SÍ permitido; sigue prohibido shadcn/MUI/
+Radix/DaisyUI/Headless). Tres entregas:
+
+- **Infra compartida** (regla §18 dos copias):
+  - `static/js/site_charts.js` con 8 pintores: `spark-area`, `dona-salud`,
+    `area-latencias`, `barras-chequeos`, `donut`, `area-cat`, `barras`,
+    `radial-kpi`. Re-init en `htmx:afterSwap` + repintado en cambio de
+    tema (evento `despacho:tema` que ahora dispara `tema.js`).
+  - Partial `_componentes_tailadmin/_scripts_graficas.html` (carga
+    ApexCharts CDN + `site_charts.js`).
+  - Partial `_componentes_tailadmin/_kpi_card_hero.html` (icono pill,
+    badge, link opcional, color dinámico).
+  - `lib/graficas/series.py` con `donut_desde_conteo`, `area_mensual`,
+    `series_apex_multiple` + `PALETA_ESTADOS` (estados del repo → hex).
+  - `{% block scripts_graficas %}` en ambos `base.html`.
+  - Safelist en los 3 `tailwind.config.js` con patrones regex para
+    `bg/text-{brand,success,error,warning,blue-light,orange,purple}-N`
+    (cubre el color dinámico del partial KPI hero).
+
+- **El Site** (La Gerencia, ya entregado en sesión previa, parte del arco):
+  Header con 4 KPI hero, dona de salud, área multi-serie de latencias por
+  plataforma, barras apiladas 14d de chequeos OK/error, gauges radiales
+  SVG (CPU/memoria/disco/containers), sparklines por fila de plataforma.
+  `lib/site/historial.py` con `serie_latencia`, `series_apex_por_plataforma`,
+  `histograma_chequeos`, `resumen_estados`.
+
+- **El Taller — Sala de Juntas** (`taller_home`): donut proyectos por
+  estado · donut tareas abiertas · area ingresos vs egresos 6 meses
+  (`_charts_sala_de_juntas`).
+
+- **El Taller — La Tesorería**: 4 KPI hero (ingresos/egresos/utilidad/
+  CxP) · area 6m (ingresos · egresos · utilidad) · donut top 5 centros de
+  costo del mes (`services.charts_landing`). Valores `*_fmt` pre-
+  formateados en el view (las filter expressions complejas no son
+  ergonómicas en `{% include with %}`).
+
+- **El Taller — Listas con headers KPI hero**: La Cartera (activos / con
+  proyectos / sin proyectos / archivados) · Los Proyectos (prospectos /
+  activos / pausa / entregados) · Los Recados (recibidos / no leídos /
+  menciones / enviados) · El Buzón (nuevos / leídos / respondidos /
+  archivados).
+
+- **La Gerencia — Dashboard ejecutivo** (`gerencia_home`): 4 KPI hero
+  (usuarios activos · credenciales · integraciones OK · alertas) +
+  donut equipo por rol + grid de atajos. Salud de integraciones leída de
+  `lib.site.almacen.ultimo_por_plataforma` (degrada graciosamente si no
+  hay datos).
+
+- **La Gerencia — Listas con headers**: El Directorio (activos / admins
+  / inactivos + donut por rol) · El Buzón admin (4 KPI por estado +
+  donut por tipo).
+
+**Bug C cazado al vuelo**: dos partials nuevos tenían comentarios
+multilínea `{# ... \n ... #}` que renderizaban como texto. Patrón
+correcto: `{% comment %}...{% endcomment %}` o single-line. El test
+`tests/{taller,gerencia}/test_no_renderiza_comentarios.py` los cazó
+antes del commit.
+
+**Tests**: 235 verdes (taller 140 · gerencia 60+ · site 35). Tailwind
+recompila en el siguiente Docker build (los patrones del safelist
+toleran clases dinámicas nuevas sin tocar config).
 
 ### S2b — Comercial y pagos (después de S2b.4)
 

@@ -23,10 +23,23 @@ def lista(request):
         qs = qs.filter(estado=estado)
     if tipo:
         qs = qs.filter(tipo=tipo)
+    from django.db.models import Count
+
+    from lib.graficas import donut_desde_conteo
+    base = MensajeBuzon.objects.all()
+    kpis = {
+        "nuevos": base.filter(estado="nuevo").count(),
+        "leidos": base.filter(estado="leido").count(),
+        "respondidos": base.filter(estado="respondido").count(),
+        "archivados": base.filter(estado="archivado").count(),
+    }
+    por_tipo = dict(base.values_list("tipo").annotate(c=Count("id")).values_list("tipo", "c"))
     return render(request, "buzon_admin/lista.html", {
         "mensajes": qs,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
+        "kpis": kpis,
+        "donut_tipos_json": donut_desde_conteo(por_tipo),
     })
 
 

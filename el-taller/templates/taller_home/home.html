@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% load proyectos_extras %}
 {% block title %}Sala de Juntas — El Taller{% endblock %}
+
+{% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
 {% block contenido %}
 <header class="mb-6">
     <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">La Sala de Juntas</h1>
@@ -81,7 +83,39 @@
     {% endfor %}
 </section>
 
-{# 3) Dos tablas con datos reales. #}
+{# 3) Charts ApexCharts — proyectos, tareas, flujo mensual. #}
+<section class="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="ta-card">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Proyectos por estado</h3>
+            <a href="{% url 'proyectos-lista' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver todos →</a>
+        </div>
+        <div id="sj-donut-proyectos" data-chart="donut" data-altura="260" data-total-label="Total"
+             data-series='{{ charts.donut_proyectos_json|safe }}'></div>
+    </div>
+    <div class="ta-card">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas abiertas</h3>
+            <span class="text-xs text-gray-500 dark:text-gray-400">sin completadas</span>
+        </div>
+        <div id="sj-donut-tareas" data-chart="donut" data-altura="260" data-total-label="Pendientes"
+             data-series='{{ charts.donut_tareas_json|safe }}'></div>
+    </div>
+    <div class="ta-card">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Ingresos vs Egresos</h3>
+            <span class="text-xs text-gray-500 dark:text-gray-400">últimos 6 meses</span>
+        </div>
+        {% if charts.area_dinero_json %}
+        <div id="sj-area-dinero" data-chart="area-cat" data-altura="260" data-formato="moneda"
+             data-series='{{ charts.area_dinero_json|safe }}'></div>
+        {% else %}
+        <p class="py-12 text-center text-xs text-gray-400 dark:text-gray-500">Tesorería sin movimientos aún.</p>
+        {% endif %}
+    </div>
+</section>
+
+{# 4) Dos tablas con datos reales. #}
 <section class="grid gap-6 lg:grid-cols-2">
     <div>
         <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos por fecha de entrega</h2>

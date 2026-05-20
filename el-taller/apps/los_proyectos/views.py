@@ -35,6 +35,13 @@ def lista(request):
         qs = qs.filter(Q(nombre__icontains=q) | Q(codigo__icontains=q) | Q(cliente__razon_social__icontains=q))
     if estado:
         qs = qs.filter(estado=estado)
+    base = _proyectos_visibles(request.user)
+    kpis = {
+        "prospectos": base.filter(estado="prospecto").count(),
+        "activos": base.filter(estado__in=("en_diseno", "revision_cliente", "en_produccion")).count(),
+        "pausa": base.filter(estado="en_pausa").count(),
+        "entregados": base.filter(estado="entregado").count(),
+    }
     return render(request, "proyectos/lista.html", {
         "proyectos": qs,
         "q": q,
@@ -42,6 +49,7 @@ def lista(request):
         "estados_disponibles": ESTADOS_PROYECTO,
         "puede_crear": puede_editar_proyecto(request.user, None),
         "es_admin": es_admin(request.user),
+        "kpis": kpis,
     })
 
 

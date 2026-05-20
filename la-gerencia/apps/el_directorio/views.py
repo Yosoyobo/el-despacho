@@ -18,8 +18,32 @@ from .forms import UsuarioForm
 
 @requires_role("super_admin", "dueno")
 def lista(request):
+    from django.db.models import Count
+
+    from lib.graficas import donut_desde_conteo
+
     qs = Usuario.objects.all().order_by("nombre_completo")
-    return render(request, "directorio/lista.html", {"usuarios": qs})
+    activos = Usuario.objects.filter(is_active=True).count()
+    total = Usuario.objects.count()
+    por_rol = dict(
+        Usuario.objects.filter(is_active=True)
+        .values_list("rol").annotate(c=Count("id")).values_list("rol", "c")
+    )
+    etiquetas = {
+        "super_admin": "Super admin", "dueno": "Dueño",
+        "contador": "Contador", "disenador": "Diseñador",
+    }
+    kpis = {
+        "activos": activos,
+        "inactivos": total - activos,
+        "admins": por_rol.get("super_admin", 0) + por_rol.get("dueno", 0),
+        "total": total,
+    }
+    return render(request, "directorio/lista.html", {
+        "usuarios": qs,
+        "kpis": kpis,
+        "donut_roles_json": donut_desde_conteo(por_rol, etiquetas=etiquetas),
+    })
 
 
 @requires_role("super_admin", "dueno")

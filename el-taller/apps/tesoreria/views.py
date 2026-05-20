@@ -44,8 +44,17 @@ def _emitir(tipo: str, request, payload: dict) -> None:
 def landing(request):
     if (r := _gate(request)) is not None:
         return r
+    kpis = services.kpis_landing(request.user)
+    kpis_fmt = {
+        "ingresos_mes_fmt": f"${kpis['ingresos_mes']:,.2f}",
+        "egresos_mes_fmt": f"${kpis['egresos_mes']:,.2f}",
+        "utilidad_mes_fmt": f"${kpis['utilidad_mes']:,.2f}",
+        "cxp_total_fmt": f"${kpis['cxp_total']:,.2f}",
+        **kpis,
+    }
     return render(request, "tesoreria/landing.html", {
-        "kpis": services.kpis_landing(request.user),
+        "kpis": kpis_fmt,
+        "charts": services.charts_landing(),
         "ultimos_ingresos": Ingreso.vigentes.all()[:5],
         "ultimos_egresos": Egreso.vigentes.all()[:5],
     })

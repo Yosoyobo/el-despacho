@@ -70,11 +70,23 @@ def bandeja(request):
     paginator = Paginator(qs, 25)
     pagina = paginator.get_page(request.GET.get("p") or 1)
 
+    # KPIs hero (siempre sobre el usuario, independientes del tab actual).
+    todos = Recado.objects.distinct()
+    kpis = {
+        "recibidos": todos.filter(destinatarios__usuario=user).count(),
+        "enviados": todos.filter(autor=user).count(),
+        "no_leidos": todos.filter(destinatarios__usuario=user, destinatarios__leido_en__isnull=True).count(),
+    }
+    slug = getattr(user, "slug", None) or ""
+    kpis["menciones"] = (
+        todos.filter(cuerpo__icontains=f"@{slug}").exclude(autor=user).count() if slug else 0
+    )
     return render(request, "recados/bandeja.html", {
         "pagina": pagina,
         "recados": pagina.object_list,
         "tab": tab,
         "puede_crear": puede(user, "recados", "crear"),
+        "kpis": kpis,
     })
 
 
