@@ -13,4 +13,7 @@ urlpatterns = [
     path("asientos/<int:pk>/anular/", views.asiento_anular, name="asiento-anular"),
     path("libro-mayor/<int:cuenta_pk>/", views.libro_mayor, name="libro-mayor"),
     path("balance/", views.balance, name="balance"),
+    path("estado-resultados/", views.estado_resultados, name="estado-resultados"),
+    path("balance-general/", views.balance_general, name="balance-general"),
+    path("export/", views.export, name="export"),
 ]

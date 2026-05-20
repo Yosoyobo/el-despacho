@@ -10,6 +10,9 @@
         <a href="{% url 'contaduria:cuentas' %}" class="btn-secundario">Catálogo</a>
         <a href="{% url 'contaduria:balance' %}" class="btn-secundario">Balance</a>
         <a href="{% url 'contaduria:asientos' %}" class="btn-secundario">Asientos</a>
+        <a href="{% url 'contaduria:estado-resultados' %}" class="btn-secundario">Estado de resultados</a>
+        <a href="{% url 'contaduria:balance-general' %}" class="btn-secundario">Balance general</a>
+        <a href="{% url 'contaduria:export' %}" class="btn-secundario">Export contador</a>
         {% if puede_capturar %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-primario">+ Asiento manual</a>{% endif %}
     </div>
 </header>

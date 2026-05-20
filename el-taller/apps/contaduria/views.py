@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.contrib import messages
@@ -19,9 +20,19 @@ from lib.permisos import (
     puede_ver_contaduria,
 )
 
-from . import services
+from . import exports, reportes, services
 from .forms import AnularForm, AsientoForm, PartidaFormSet
 from .models import Asiento, CuentaContable, Partida
+
+
+def _parsear_fecha(valor: str) -> date | None:
+    valor = (valor or "").strip()
+    if not valor:
+        return None
+    try:
+        return datetime.strptime(valor, "%Y-%m-%d").date()
+    except ValueError:
+        return None
 
 CERO = Decimal("0.00")
 ORDEN_ASIENTOS = {"codigo", "fecha", "origen", "descripcion", "creado_en"}
@@ -258,4 +269,72 @@ def balance(request):
         "filas": filas,
         "total_cargos": total_c.quantize(Decimal("0.01")),
         "total_abonos": total_a.quantize(Decimal("0.01")),
+    })
+
+
+# ── Estados financieros (V2) ────────────────────────────────────────────
+
+@login_required
+def estado_resultados(request):
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_reportes_contaduria(request.user):
+        return HttpResponseForbidden("Sin permiso para ver reportes.")
+    hoy = date.today()
+    desde = _parsear_fecha(request.GET.get("desde", "")) or hoy.replace(day=1)
+    hasta = _parsear_fecha(request.GET.get("hasta", "")) or hoy
+    if desde > hasta:
+        desde, hasta = hasta, desde
+    pl = reportes.estado_resultados(desde=desde, hasta=hasta)
+    return render(request, "contaduria/estado_resultados.html", {
+        "pl": pl,
+        "desde": desde,
+        "hasta": hasta,
+    })
+
+
+@login_required
+def balance_general(request):
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_reportes_contaduria(request.user):
+        return HttpResponseForbidden("Sin permiso para ver reportes.")
+    hasta = _parsear_fecha(request.GET.get("hasta", "")) or date.today()
+    bg = reportes.balance_general(hasta=hasta)
+    return render(request, "contaduria/balance_general.html", {
+        "bg": bg,
+        "hasta": hasta,
+    })
+
+
+# ── Export al contador externo ─────────────────────────────────────────
+
+@login_required
+def export(request):
+    """Form HTML para configurar el export. POST/GET con `descargar=1`
+    devuelve el CSV directamente."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_reportes_contaduria(request.user):
+        return HttpResponseForbidden("Sin permiso para exportar.")
+
+    if request.GET.get("descargar") == "1":
+        formato = (request.GET.get("formato") or "polizas").strip()
+        if formato not in exports.FORMATOS:
+            messages.error(request, f"Formato desconocido: {formato}.")
+            return redirect("contaduria:export")
+        params = {
+            "desde": request.GET.get("desde", ""),
+            "hasta": request.GET.get("hasta", ""),
+            "origen": request.GET.get("origen", ""),
+            "incluir_anulados": request.GET.get("incluir_anulados", ""),
+            "incluir_inactivas": request.GET.get("incluir_inactivas", ""),
+        }
+        return exports.responder_csv(formato, params, actor=request.user)
+
+    hoy = date.today()
+    return render(request, "contaduria/export.html", {
+        "default_desde": hoy.replace(day=1).isoformat(),
+        "default_hasta": hoy.isoformat(),
+        "formatos": exports.FORMATOS,
     })

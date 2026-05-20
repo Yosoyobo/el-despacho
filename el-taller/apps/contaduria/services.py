@@ -157,13 +157,22 @@ def anular_asiento(asiento: Asiento, *, actor, motivo: str) -> Asiento:
 
 # ── Saldos y libro mayor ────────────────────────────────────────────────
 
-def saldo_cuenta(cuenta: CuentaContable, *, hasta: date | None = None) -> Decimal:
+def saldo_cuenta(
+    cuenta: CuentaContable,
+    *,
+    desde: date | None = None,
+    hasta: date | None = None,
+) -> Decimal:
     """Saldo según naturaleza: deudora=cargos-abonos, acreedora=abonos-cargos.
 
-    Si `hasta` se pasa, suma sólo asientos vigentes con fecha ≤ hasta.
+    Si `desde`/`hasta` se pasan, suma sólo asientos vigentes en el rango
+    inclusivo. Sin `desde` es saldo acumulado histórico hasta `hasta`
+    (o hasta hoy si tampoco hay `hasta`).
     """
     from django.db.models import Sum
     qs = Partida.objects.filter(cuenta=cuenta, asiento__anulado=False)
+    if desde is not None:
+        qs = qs.filter(asiento__fecha__gte=desde)
     if hasta is not None:
         qs = qs.filter(asiento__fecha__lte=hasta)
     totales = qs.aggregate(c=Sum("cargo"), a=Sum("abono"))
@@ -174,11 +183,15 @@ def saldo_cuenta(cuenta: CuentaContable, *, hasta: date | None = None) -> Decima
     return (abonos - cargos).quantize(Decimal("0.01"))
 
 
-def balance_de_comprobacion(*, hasta: date | None = None) -> list[dict]:
+def balance_de_comprobacion(
+    *, desde: date | None = None, hasta: date | None = None
+) -> list[dict]:
     """Lista de cuentas con cargos, abonos y saldo. Filtra cuentas con
     movimiento; el resto se omite para no inflar la tabla."""
     from django.db.models import Sum
     qs = Partida.objects.filter(asiento__anulado=False).select_related("cuenta")
+    if desde is not None:
+        qs = qs.filter(asiento__fecha__gte=desde)
     if hasta is not None:
         qs = qs.filter(asiento__fecha__lte=hasta)
     agregado = (

@@ -415,6 +415,17 @@ def _kpi_saldo_banco(user) -> dict:
     return _resultado(f"${s:,.0f}", link=f"/contaduria/libro-mayor/{banco.pk}/")
 
 
+def _kpi_utilidad_neta_mes_contaduria(user) -> dict:
+    """Utilidad operativa del mes vía estado de resultados de Contaduría."""
+    from datetime import date
+
+    from apps.contaduria.reportes import estado_resultados
+    hoy = date.today()
+    pl = estado_resultados(desde=hoy.replace(day=1), hasta=hoy)
+    nota = "alerta" if pl["utilidad_neta"] < 0 else ""
+    return _resultado(f"${pl['utilidad_neta']:,.0f}", nota=nota, link="/contaduria/estado-resultados/")
+
+
 def _kpi_balance_descuadrado(user) -> dict:
     """Cuenta de asientos del mes donde sum(cargos) != sum(abonos). Debe ser 0
     siempre (services valida partida doble). Si >0 algo inconsistente pasó."""
@@ -530,6 +541,10 @@ KPIS: list[KPI] = [
         "dinero", ROLES_ADMIN_CONTADOR, _kpi_saldo_banco),
     KPI("contaduria-balance-descuadrado", "Asientos descuadrados", "Asientos del mes con cargos ≠ abonos. Debe ser 0.",
         "dinero", ROLES_ADMIN, _kpi_balance_descuadrado),
+
+    # Contaduría (S3.contaduria-v2)
+    KPI("contaduria-utilidad-neta-mes", "Utilidad neta del mes", "Resultado del periodo según el estado de resultados (sin ISR estimado).",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_utilidad_neta_mes_contaduria),
 ]
 
 

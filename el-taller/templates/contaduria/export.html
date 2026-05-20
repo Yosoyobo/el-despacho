@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Export al contador externo — La Contaduría{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría · Reportes</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Export al contador externo</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Genera CSV con todas las partidas o el catálogo de cuentas para el contador timbrador.</p>
+    </div>
+    <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Volver</a>
+</header>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <form method="get" class="ta-card space-y-4">
+        <input type="hidden" name="descargar" value="1">
+        <input type="hidden" name="formato" value="polizas">
+        <h2 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">Pólizas planas</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Una fila por partida: asiento, cuenta, cargo/abono, referencia. El contador alimenta su libro fiscal con esto.</p>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Desde</label>
+                <input type="date" name="desde" value="{{ default_desde }}" class="input">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Hasta</label>
+                <input type="date" name="hasta" value="{{ default_hasta }}" class="input">
+            </div>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Origen</label>
+            <select name="origen" class="input">
+                <option value="">Todos</option>
+                <option value="manual">Manual</option>
+                <option value="auto_ingreso">Auto · ingreso Tesorería</option>
+                <option value="auto_egreso">Auto · egreso Tesorería</option>
+                <option value="auto_anulacion_ingreso">Auto · anulación ingreso</option>
+                <option value="auto_anulacion_egreso">Auto · anulación egreso</option>
+                <option value="ajuste">Ajuste</option>
+                <option value="cierre">Cierre</option>
+            </select>
+        </div>
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" name="incluir_anulados" value="1">
+            Incluir asientos anulados
+        </label>
+        <button type="submit" class="btn-primario w-full">Descargar CSV de pólizas</button>
+    </form>
+
+    <form method="get" class="ta-card space-y-4">
+        <input type="hidden" name="descargar" value="1">
+        <input type="hidden" name="formato" value="catalogo">
+        <h2 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">Catálogo de cuentas</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Lista del catálogo con código, tipo, naturaleza y slot. Útil para que el contador mapee a su catálogo SAT.</p>
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" name="incluir_inactivas" value="1">
+            Incluir cuentas inactivas
+        </label>
+        <button type="submit" class="btn-primario w-full">Descargar CSV de catálogo</button>
+    </form>
+</div>
+
+<p class="mt-6 text-xs text-gray-500 dark:text-gray-400">Encoding UTF-8 con BOM (Excel abre acentos sin reconfigurar). Fechas ISO 8601. Montos con punto decimal.</p>
+{% endblock %}
