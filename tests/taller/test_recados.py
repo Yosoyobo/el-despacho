@@ -21,7 +21,7 @@ def test_crear_recado_simple(client, usuario_factory):
     autor = _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="maria@ej.com")
 
-    resp = client.post("/recados/nuevo/", {
+    resp = client.post("/recados/legacy/nuevo/", {
         "cuerpo": "Recuerda revisar la maqueta.",
         "destinatarios_usuarios": [str(dest.pk)],
     })
@@ -41,7 +41,7 @@ def test_crear_recado_con_referencias(client, usuario_factory):
     autor = _crear_user_y_login(client, usuario_factory, rol="super_admin")
     maria = usuario_factory(rol="disenador", email="maria@ej.com")
     # El slug se autogenera del email; asumimos `maria` o similar.
-    resp = client.post("/recados/nuevo/", {
+    resp = client.post("/recados/legacy/nuevo/", {
         "cuerpo": f"Hola @{maria.slug}, revisa esto.",
         "destinatarios_usuarios": [str(maria.pk)],
     })
@@ -61,7 +61,7 @@ def test_crear_recado_a_grupo_estatico(client, usuario_factory):
     # Otro rol que NO debe entrar en disenio_y_produccion.
     contador = usuario_factory(rol="contador", email="c@ej.com")
 
-    resp = client.post("/recados/nuevo/", {
+    resp = client.post("/recados/legacy/nuevo/", {
         "cuerpo": "Equipo diseño: junta a las 3.",
         "destinatarios_grupos": ["disenio_y_produccion"],
     })
@@ -85,7 +85,7 @@ def test_crear_recado_a_grupo_dinamico_proyecto(client, usuario_factory, proyect
     ProyectoAsignacion.objects.create(proyecto=pry, usuario=asignado, rol_en_proyecto="disenador")
 
     slug = f"equipo-de-#{pry.codigo}"
-    resp = client.post("/recados/nuevo/", {
+    resp = client.post("/recados/legacy/nuevo/", {
         "cuerpo": "Equipo del proyecto: revisión.",
         "destinatarios_dinamicos": [slug],
     })
@@ -104,7 +104,7 @@ def test_destinatario_inactivo_excluido(client, usuario_factory):
     inactivo.is_active = False
     inactivo.save(update_fields=["is_active"])
 
-    resp = client.post("/recados/nuevo/", {
+    resp = client.post("/recados/legacy/nuevo/", {
         "cuerpo": "Recado a fantasma.",
         "destinatarios_usuarios": [str(inactivo.pk)],
     })
@@ -121,7 +121,7 @@ def test_confirmacion_requerida_si_mas_de_5(client, usuario_factory):
     for i in range(6):
         dest_ids.append(str(usuario_factory(rol="disenador", email=f"d{i}@ej.com").pk))
 
-    resp = client.post("/recados/nuevo/", {
+    resp = client.post("/recados/legacy/nuevo/", {
         "cuerpo": "Aviso general.",
         "destinatarios_usuarios": dest_ids,
     })
@@ -131,7 +131,7 @@ def test_confirmacion_requerida_si_mas_de_5(client, usuario_factory):
     assert data["total_destinatarios"] == 6
 
     # Con confirmación aceptada se persiste.
-    resp2 = client.post("/recados/nuevo/", {
+    resp2 = client.post("/recados/legacy/nuevo/", {
         "cuerpo": "Aviso general.",
         "destinatarios_usuarios": dest_ids,
         "confirmacion_aceptada": "1",
@@ -145,11 +145,11 @@ def test_editar_recado_crea_version_y_incrementa(client, usuario_factory):
     from apps.recados.models import Recado, RecadoVersion
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "Texto original.", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "Texto original.", "destinatarios_usuarios": [str(dest.pk)]})
     r = Recado.objects.get()
     assert r.version_actual == 1
 
-    resp = client.post(f"/recados/{r.pk}/editar/", {"cuerpo": "Texto corregido."})
+    resp = client.post(f"/recados/legacy/{r.pk}/editar/", {"cuerpo": "Texto corregido."})
     assert resp.status_code == 302
     r.refresh_from_db()
     assert r.editado is True
@@ -164,12 +164,12 @@ def test_editar_recado_solo_autor(client, usuario_factory):
     from apps.recados.models import Recado
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "Original.", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "Original.", "destinatarios_usuarios": [str(dest.pk)]})
     r = Recado.objects.get()
 
     client.logout()
     client.force_login(dest)
-    resp = client.post(f"/recados/{r.pk}/editar/", {"cuerpo": "intento ajeno"})
+    resp = client.post(f"/recados/legacy/{r.pk}/editar/", {"cuerpo": "intento ajeno"})
     assert resp.status_code == 403
     r.refresh_from_db()
     assert "Original" in r.cuerpo
@@ -181,9 +181,9 @@ def test_delete_recado_405(client, usuario_factory):
     from apps.recados.models import Recado
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "Texto.", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "Texto.", "destinatarios_usuarios": [str(dest.pk)]})
     r = Recado.objects.get()
-    resp = client.delete(f"/recados/{r.pk}/")
+    resp = client.delete(f"/recados/legacy/{r.pk}/")
     assert resp.status_code == 405
 
 
@@ -216,7 +216,7 @@ def test_push_a_destinatarios(client, usuario_factory, monkeypatch):
     enviados = _patch_push(monkeypatch)
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "Hola.", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "Hola.", "destinatarios_usuarios": [str(dest.pk)]})
     assert any(e["u"] == dest.pk and e["categoria"] == "recados" for e in enviados)
 
 
@@ -226,7 +226,7 @@ def test_push_a_mencionados_aunque_no_destinatarios(client, usuario_factory, mon
     mariana = usuario_factory(rol="disenador", email="mariana@ej.com")
     otro = usuario_factory(rol="disenador", email="otro@ej.com")
     # Mandado solo a `otro`, pero menciona @mariana.
-    client.post("/recados/nuevo/", {
+    client.post("/recados/legacy/nuevo/", {
         "cuerpo": f"Cuidado @{mariana.slug}, eso es importante.",
         "destinatarios_usuarios": [str(otro.pk)],
     })
@@ -238,7 +238,7 @@ def test_push_dedup_destinatario_y_mencionado(client, usuario_factory, monkeypat
     enviados = _patch_push(monkeypatch)
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     oscar = usuario_factory(rol="disenador", email="oscar@ej.com")
-    client.post("/recados/nuevo/", {
+    client.post("/recados/legacy/nuevo/", {
         "cuerpo": f"Hola @{oscar.slug}, te aviso.",
         "destinatarios_usuarios": [str(oscar.pk)],
     })
@@ -251,7 +251,7 @@ def test_push_no_al_autor(client, usuario_factory, monkeypatch):
     autor = _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
     # Autor se auto-menciona — no debe recibir push.
-    client.post("/recados/nuevo/", {
+    client.post("/recados/legacy/nuevo/", {
         "cuerpo": f"Recuerdo @{autor.slug} hacer X.",
         "destinatarios_usuarios": [str(dest.pk)],
     })
@@ -282,7 +282,7 @@ def test_push_respeta_categoria_desactivada(client, usuario_factory, monkeypatch
     # Desactiva la categoría
     PreferenciaCategoriaPush.objects.create(usuario=dest, categoria="recados", activo=False)
 
-    client.post("/recados/nuevo/", {"cuerpo": "Aviso", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "Aviso", "destinatarios_usuarios": [str(dest.pk)]})
     assert dest.pk not in capturadas
 
 
@@ -291,11 +291,11 @@ def test_push_respeta_categoria_desactivada(client, usuario_factory, monkeypatch
 def test_bandeja_recibidos_default(client, usuario_factory):
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "Texto.", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "Texto.", "destinatarios_usuarios": [str(dest.pk)]})
 
     client.logout()
     client.force_login(dest)
-    resp = client.get("/recados/")
+    resp = client.get("/recados/legacy/")
     assert resp.status_code == 200
     assert b"Texto" in resp.content
 
@@ -303,11 +303,11 @@ def test_bandeja_recibidos_default(client, usuario_factory):
 def test_bandeja_no_leidos_filtro(client, usuario_factory):
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "ABC", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "ABC", "destinatarios_usuarios": [str(dest.pk)]})
 
     client.logout()
     client.force_login(dest)
-    resp = client.get("/recados/?tab=no_leidos")
+    resp = client.get("/recados/legacy/?tab=no_leidos")
     assert resp.status_code == 200
     assert b"ABC" in resp.content
 
@@ -316,14 +316,14 @@ def test_marcar_leido_implicito_al_abrir_detalle(client, usuario_factory):
     from apps.recados.models import Recado, RecadoDestinatario
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "X", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "X", "destinatarios_usuarios": [str(dest.pk)]})
     r = Recado.objects.get()
     fila = RecadoDestinatario.objects.get(recado=r, usuario=dest)
     assert fila.leido_en is None
 
     client.logout()
     client.force_login(dest)
-    resp = client.get(f"/recados/{r.pk}/")
+    resp = client.get(f"/recados/legacy/{r.pk}/")
     assert resp.status_code == 200
     fila.refresh_from_db()
     assert fila.leido_en is not None
@@ -334,12 +334,12 @@ def test_detalle_404_si_no_autor_ni_destinatario_ni_mencionado(client, usuario_f
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
     extrano = usuario_factory(rol="disenador", email="extr@ej.com")
-    client.post("/recados/nuevo/", {"cuerpo": "Privado.", "destinatarios_usuarios": [str(dest.pk)]})
+    client.post("/recados/legacy/nuevo/", {"cuerpo": "Privado.", "destinatarios_usuarios": [str(dest.pk)]})
     r = Recado.objects.get()
 
     client.logout()
     client.force_login(extrano)
-    resp = client.get(f"/recados/{r.pk}/")
+    resp = client.get(f"/recados/legacy/{r.pk}/")
     assert resp.status_code == 404
 
 
@@ -377,7 +377,7 @@ def test_counter_no_leidos_context_processor(client, usuario_factory):
     _crear_user_y_login(client, usuario_factory, rol="super_admin")
     dest = usuario_factory(rol="disenador", email="d@ej.com")
     for i in range(3):
-        client.post("/recados/nuevo/", {
+        client.post("/recados/legacy/nuevo/", {
             "cuerpo": f"msg {i}", "destinatarios_usuarios": [str(dest.pk)],
         })
 

@@ -17,7 +17,8 @@ HISTORIAL_PAGINA = 25
 
 # (slug, etiqueta, descripción, roles_visible). Default: opt-out (activo si no hay fila).
 CATEGORIAS = [
-    ("recados", "Los Recados", "Recibir push cuando me mandan o mencionan.", None),
+    ("recados", "Los Recados (legacy)", "Recibir push cuando me mandan o mencionan en la bandeja vieja.", None),
+    ("recados_chat", "Los Recados (chat)", "Recibir push cuando me escriben en una conversación.", None),
     ("buzon", "El Buzón (admins)", "Push cuando un empleado crea un mensaje nuevo.",
      ("super_admin", "dueno")),
     ("proyectos", "Mis proyectos", "Push cuando se crea un proyecto o cambia el estado de uno donde participo.",

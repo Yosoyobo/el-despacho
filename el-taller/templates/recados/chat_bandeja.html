@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Los Recados — chat{% endblock %}
+
+{% block contenido %}
+<div class="flex flex-col gap-6">
+    <div class="flex items-start justify-between gap-4">
+        <div>
+            <h1 class="text-title-md font-semibold text-gray-900 dark:text-gray-100">Los Recados</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Chat interno del despacho.</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'recados:legacy_bandeja' %}" class="btn-secundario">Bandeja vieja →</a>
+            {% if puede_crear %}
+            <a href="{% url 'recados:nueva' %}" class="btn-primario">+ Nueva conversación</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="chat-bandeja" hx-get="{% url 'recados:partial_bandeja' %}" hx-trigger="every 15s" hx-swap="innerHTML">
+        {% include "recados/_chat_bandeja_lista.html" %}
+    </div>
+</div>
+{% endblock %}

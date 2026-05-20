@@ -632,6 +632,69 @@ antes del commit.
 recompila en el siguiente Docker build (los patrones del safelist
 toleran clases dinámicas nuevas sin tocar config).
 
+### S-Recados-Chat ✅ — Los Recados de asíncrono a chat (2026-05-20)
+
+Decisión del usuario: "Hagamos HTMX, no agrupes, de aquí en adelante."
+El sistema async de Recados queda como **bandeja legacy en
+`/recados/legacy/`** (datos preservados, accesible desde el header de
+la bandeja chat). El default `/recados/` ahora es chat.
+
+- **Modelos nuevos** en `apps/recados/models/conversacion.py`:
+  - `Conversacion(tipo='directa'|'grupo', nombre, participantes M2M,
+    ultima_actividad, clave_directa)` — `clave_directa` única evita
+    duplicar conversaciones 1:1 entre el mismo par.
+  - `Mensaje(conversacion, autor, cuerpo, creado_en, editado_en)` —
+    índice `(conversacion, creado_en)`.
+  - `MensajeLectura(usuario, conversacion, ultimo_mensaje_id)` — UNIQUE
+    `(usuario, conversacion)`. Counter de no leídos = `Mensaje.id >
+    ultimo_mensaje_id` en cada conv.
+  - Migración `0003_chat` — sólo crea tablas nuevas. **No** migra
+    `Recado` históricos.
+
+- **Services** en `services_chat.py`:
+  `obtener_o_crear_directa`, `crear_grupo`, `enviar_mensaje`
+  (con `on_commit` → emite Portavoz + push), `marcar_leido_hasta`,
+  `mis_conversaciones`, `total_no_leidos` (subquery única para el
+  badge del sidebar).
+
+- **Views** en `views_chat.py`:
+  - `GET /recados/` — bandeja con polling HTMX cada 15s
+    (`partials/bandeja`).
+  - `GET /recados/c/<id>/` — conversación; partial mensajes hace
+    polling cada 5s con `hx-vals` enviando `desde_id` (último ID
+    visto). Append `hx-swap="beforeend"`, auto-scroll vía
+    `htmx:afterSwap`.
+  - `POST /recados/c/<id>/enviar` — crea mensaje, devuelve fragmento
+    para append. Composer con `Enter envía / Shift+Enter salto`.
+  - `GET/POST /recados/nueva/` — form para 1:1 o grupo.
+  - `POST /recados/c/<id>/leido` — idempotente.
+
+- **Push del Interfón** (`handlers_chat.py`): nueva categoría
+  `recados_chat` en `apps/perfil_notificaciones/views.py` con
+  opt-out por usuario. Push se manda a participantes activos
+  excepto el autor. La categoría legacy `recados` se conserva con
+  etiqueta "(legacy)".
+
+- **Context processor** `recados_no_leidos` ahora cuenta mensajes
+  no leídos de chat (vía `services_chat.total_no_leidos`) — el badge
+  del sidebar del Taller funciona sin tocar el partial.
+
+- **URLs renombradas**: el legacy preserva nombres con prefijo
+  `legacy_*` (`recados:legacy_bandeja`, `legacy_nuevo`, etc.). Los
+  templates legacy y tests se actualizan para usar esos nombres.
+
+- **Tests**: 7 nuevos en `test_recados_chat.py` (bandeja vacía,
+  directa idempotente, grupo, polling con `desde_id`, no participante
+  404, total_no_leidos). Los 21 tests legacy de Recados siguen verdes
+  bajo `/recados/legacy/`.
+
+**No incluye** (queda fuera del scope explícito del usuario):
+- Migración de recados viejos a conversaciones (decisión: "no agrupes").
+- WebSockets / Channels — usamos polling HTMX (regla #17).
+- Indicador "está escribiendo" (más adelante si hay demanda).
+- Editar/borrar mensajes.
+- Adjuntos en chat (cuando S2b.1b active Drive se evalúa).
+
 ### S2b — Comercial y pagos (después de S2b.4)
 
 Cotizaciones (PDF vía Google Docs templates — NO WeasyPrint/ReportLab/Puppeteer) ·

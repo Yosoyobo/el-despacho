@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }} — Los Recados{% endblock %}
+
+{% block contenido %}
+<div class="mx-auto flex h-[calc(100vh-12rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    {# Cabecera #}
+    <header class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+        <a href="{% url 'recados:bandeja' %}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Bandeja
+        </a>
+        <div class="min-w-0 flex-1 text-center">
+            <h1 class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{{ titulo }}</h1>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                {% if conv.tipo == "grupo" %}
+                {{ conv.participantes.count }} participantes
+                {% else %}
+                conversación directa
+                {% endif %}
+            </p>
+        </div>
+        <div class="w-16"></div>
+    </header>
+
+    {# Mensajes — scroll #}
+    <div id="chat-scroll" class="flex-1 overflow-y-auto px-5 py-4">
+        <div id="chat-mensajes"
+             hx-get="{% url 'recados:partial_mensajes' conv.pk %}"
+             hx-trigger="every 5s"
+             hx-vals="js:{desde_id: document.getElementById('chat-mensajes').dataset.ultimoId || 0}"
+             hx-swap="beforeend"
+             data-ultimo-id="{{ ultimo_id }}">
+            {% include "recados/_chat_mensajes.html" with mensajes=mensajes fragmento=False conv=conv ultimo_id=ultimo_id %}
+        </div>
+    </div>
+
+    {# Composer #}
+    <form hx-post="{% url 'recados:enviar' conv.pk %}"
+          hx-target="#chat-mensajes"
+          hx-swap="beforeend"
+          hx-on::after-request="this.querySelector('textarea').value=''; this.querySelector('textarea').focus(); var s=document.getElementById('chat-scroll'); s.scrollTop=s.scrollHeight;"
+          class="border-t border-gray-200 px-4 py-3 dark:border-gray-800">
+        {% csrf_token %}
+        <div class="flex items-end gap-2">
+            <textarea name="cuerpo" rows="1" required placeholder="Escribe un mensaje…"
+                      class="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
+            <button class="btn-primario shrink-0">Enviar</button>
+        </div>
+        <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter envía · Shift+Enter salto de línea</p>
+    </form>
+</div>
+
+<script>
+  // Auto-scroll + tracking del último mensaje visto (alimenta `desde_id` del polling).
+  (function(){
+    function scrollAbajo(){ var s=document.getElementById('chat-scroll'); if(s) s.scrollTop=s.scrollHeight; }
+    function actualizarUltimo(){
+      var c = document.getElementById('chat-mensajes');
+      if (!c) return;
+      var ultimos = c.querySelectorAll('[data-mensaje-id]');
+      if (ultimos.length) {
+        c.dataset.ultimoId = ultimos[ultimos.length - 1].dataset.mensajeId;
+      }
+    }
+    window.addEventListener('DOMContentLoaded', function(){ actualizarUltimo(); scrollAbajo(); });
+    document.body.addEventListener('htmx:afterSwap', function(e){
+      if (e.target && e.target.id === 'chat-mensajes') { actualizarUltimo(); scrollAbajo(); }
+    });
+  })();
+</script>
+{% endblock %}

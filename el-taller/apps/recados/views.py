@@ -197,7 +197,7 @@ def nuevo(request):
             autor=user, cuerpo=cuerpo, destinatarios_ids=destinatarios
         )
         messages.success(request, "Recado enviado.")
-        return redirect("recados:detalle", pk=recado.pk)
+        return redirect("recados:legacy_detalle", pk=recado.pk)
 
     return render(request, "recados/form.html", {
         "form": form, "grupos": grupos, "usuarios": usuarios_qs, "modo": "nuevo",
@@ -230,7 +230,7 @@ def editar(request, pk: int):
                 recado.cuerpo = cuerpo_actual
                 services.editar_recado(recado=recado, editor=user, nuevo_cuerpo=nuevo_cuerpo)
                 messages.success(request, "Recado actualizado.")
-            return redirect("recados:detalle", pk=recado.pk)
+            return redirect("recados:legacy_detalle", pk=recado.pk)
     else:
         form = RecadoForm(instance=recado)
 
