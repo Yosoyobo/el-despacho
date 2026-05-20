@@ -219,8 +219,9 @@ def test_dashboard_gerencia_espejo(client, usuario_factory, _urls_gerencia):
     assert resp.status_code == 200
     body = resp.content.decode()
     assert "Dashboard ejecutivo" in body
-    # KPIs espejo.
-    assert "Pipeline" in body
+    # KPIs hero del dashboard (S-Charts reemplazó placeholders Pipeline
+    # con métricas reales).
+    assert "Usuarios activos" in body
     # CTA a Taller.
     assert "Ver Sala de Juntas completa en El Taller" in body
 
