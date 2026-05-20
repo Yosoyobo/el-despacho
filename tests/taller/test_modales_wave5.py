@@ -10,13 +10,13 @@
 """
 
 import pytest
+from apps.la_cartera.models import Cliente
+from apps.los_proyectos.models import Proyecto
+from apps.tesoreria.models import CentroDeCosto, Egreso, Ingreso
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 
 from cuentas.models.usuario import Usuario
-from apps.la_cartera.models import Cliente
-from apps.los_proyectos.models import Proyecto
-from apps.tesoreria.models import CentroDeCosto, Egreso, Ingreso
 
 pytestmark = [pytest.mark.taller, pytest.mark.django_db]
 
