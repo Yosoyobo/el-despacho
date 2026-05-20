@@ -1,0 +1,34 @@
+{% comment %}
+Empty state canónico (Wave 6). Ilustración SVG + título + descripción +
+CTA opcional. Pensado para listas vacías y estados "aún no hay nada".
+
+Params:
+- titulo (str, requerido)
+- descripcion (str, opcional)
+- icono (str, opcional) — slug de iconos: inbox|search|tasks|folder|chat|alert|sparkles. Default: inbox.
+- cta_url (str, opcional) — si se pasa, renderiza un botón link a esa URL
+- cta_label (str, opcional, default "Crear")
+- clase_extra (str, opcional)
+{% endcomment %}
+<div class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50/50 py-12 px-6 text-center dark:border-gray-700 dark:bg-gray-900/30 {{ clase_extra|default:'' }}">
+    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-500 dark:bg-brand-500/10 dark:text-brand-400">
+        {% if icono == 'search' %}
+        <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
+        {% elif icono == 'tasks' %}
+        <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 11 12 14l5-7" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+        {% elif icono == 'folder' %}
+        <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" stroke-linejoin="round"/></svg>
+        {% elif icono == 'chat' %}
+        <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12a8 8 0 1 1-3.2-6.4L21 4l-1.6 3.2A8 8 0 0 1 21 12Z" stroke-linejoin="round"/></svg>
+        {% elif icono == 'alert' %}
+        <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" stroke-linejoin="round"/></svg>
+        {% elif icono == 'sparkles' %}
+        <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" stroke-linecap="round"/></svg>
+        {% else %}
+        <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" stroke-linejoin="round"/></svg>
+        {% endif %}
+    </div>
+    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ titulo }}</h3>
+    {% if descripcion %}<p class="max-w-md text-sm text-gray-500 dark:text-gray-400">{{ descripcion }}</p>{% endif %}
+    {% if cta_url %}<a href="{{ cta_url }}" class="mt-2 btn-primario">{{ cta_label|default:'Crear' }}</a>{% endif %}
+</div>

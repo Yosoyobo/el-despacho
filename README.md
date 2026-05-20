@@ -33,6 +33,30 @@ GitHub Actions (**El Mensajero**) · GHCR.
   46 templates al sistema visual TailAdmin Pro 2.3.0, 17 partials
   reusables, andamiaje para módulos futuros (chips `@/#/$`,
   `/proximamente/<slug>/`, slot del Chalán, items "Pronto" en sidebars)
+- **Arco S-TailAdmin-Sweep** ✅ (Waves 1-6, cerrado 2026-05-20):
+  segundo pase del sistema visual — alinea TODAS las pantallas a
+  patrones canónicos TailAdmin para que un futuro render de
+  Learning Center se aplique mecánicamente. 30 partials totales
+  (Gerencia/Taller dual-copy). Wave 1 chrome (modal/toast/breadcrumb/
+  page header/dropdown) · Wave 2 form primitives · Wave 3 data tables
+  (sort + paginación + sticky thead + action menu) · Wave 4 detalles
+  canónicos (info cards + action bar) · Wave 5 modales HTMX
+  (`#modal-slot` + `hx-get` + 204+HX-Redirect) · Wave 6 estados y
+  feedback (empty state + skeleton + tooltip + spinner).
+- **S-Charts** ✅ (2026-05-19): revamp gráfico con ApexCharts vía
+  CDN. Infra compartida (`static/js/site_charts.js`, partials
+  `_kpi_card_hero` y `_scripts_graficas`, helper `lib/graficas/`).
+  El Site con 4 KPI hero + dona salud + área multi-serie + barras
+  apiladas + gauges + sparklines. Sala de Juntas, Tesorería landing,
+  Cartera/Proyectos/Recados/Buzón con KPI hero. Gerencia con
+  dashboard ejecutivo + donut por rol. Safelist regex en los 3
+  `tailwind.config.js` para clases dinámicas.
+- **S-Recados-Chat** ✅ (2026-05-20): mensajería async → chat estilo
+  WhatsApp con HTMX polling (sin Channels/WebSockets). Modelos
+  `Conversacion`, `Mensaje`, `MensajeLectura` (migración `0003_chat`,
+  no migra recados viejos). `/recados/` default = chat; recados
+  legacy preservados en `/recados/legacy/`. Polling cada 5-15s con
+  `desde_id`. Push del Interfón con nueva categoría `recados_chat`.
 - **Pre-S2b.1** ✅ (cerrado 2026-05-18): infraestructura para S2b — Sistema
   de Referencias `@/#/$` funcional (slugs + tabla `referencia` + parser +
   autocomplete + filtro + JS vanilla + evento `referencia.usuario_mencionado`),

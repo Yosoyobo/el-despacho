@@ -1,0 +1,23 @@
+{% comment %}
+Spinner canónico (Wave 6). SVG circle con animación `animate-spin`.
+
+Params:
+- tamano (xs|sm|md|lg, default sm)
+- color (brand|gray|white, default brand)
+- etiqueta (str, opcional) — texto acompañante a la derecha
+{% endcomment %}
+<span class="inline-flex items-center gap-2">
+    <svg class="animate-spin
+        {% if tamano == 'xs' %}h-3 w-3
+        {% elif tamano == 'md' %}h-5 w-5
+        {% elif tamano == 'lg' %}h-8 w-8
+        {% else %}h-4 w-4{% endif %}
+        {% if color == 'gray' %}text-gray-400
+        {% elif color == 'white' %}text-white
+        {% else %}text-brand-500{% endif %}"
+        viewBox="0 0 24 24" fill="none" aria-label="Cargando">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-20"/>
+        <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    {% if etiqueta %}<span class="text-sm text-gray-500 dark:text-gray-400">{{ etiqueta }}</span>{% endif %}
+</span>

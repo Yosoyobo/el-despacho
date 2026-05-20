@@ -58,6 +58,26 @@
 > V1** vive desde S2b.3 (CRUD manual, CxC/CxP, reportes, exports CSV);
 > el OCR de recibos y el export a Google Sheets llegan en S2b.3b cuando
 > Drive esté configurado.
+>
+> **Estado al 20 mayo 2026:**
+> - **Los Recados** migró de mensajería async a **chat estilo
+>   WhatsApp**: bandeja con tu lista de conversaciones, polling cada
+>   pocos segundos para mensajes nuevos, "Enter envía / Shift+Enter
+>   salto de línea". Los recados viejos siguen accesibles en
+>   `/recados/legacy/`.
+> - **Gráficas** en El Site, Sala de Juntas, Tesorería, Cartera,
+>   Proyectos, Recados, Buzón y el dashboard de Gerencia (ApexCharts).
+>   Donas de estado, áreas de tendencia, sparklines por fila, gauges.
+> - **Modales unificados** para confirmaciones: anular ingreso/egreso,
+>   cambiar estado de proyecto y archivar cliente ahora abren un modal
+>   ligero sobre la pantalla (en vez de mandarte a una página separada).
+>   Cancelar con Escape, fuera del modal o el botón Cancelar.
+> - **Detalles** de Cartera, Proyectos y Egresos rediseñados con
+>   sidebar de info card + barra de acciones consistente.
+> - **Tablas** de Cartera, Proyectos y Egresos con ordenamiento por
+>   columna y paginación real (clic en cabecera para alternar
+>   ascendente/descendente).
+> - Empty states con ilustración y CTA en lugar de "Sin nada."
 
 ---
 

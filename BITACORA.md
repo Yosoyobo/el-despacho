@@ -3969,3 +3969,220 @@ Total esperado del repo: **420** (406 baseline + 14 nuevos).
 - **S2b.2.1** — clarificación iterativa del Dictado + UI de
   aprendizajes.
 - **S2b.5** — Capa 3 DSL/KPIs custom generados por Chalán.
+
+
+# BITÁCORA — Arco S-TailAdmin-Sweep + S-Charts + S-Recados-Chat (cierre 2026-05-20)
+
+Tres tracks paralelos cerrados sobre la base del Arco TailAdmin original
+(S-TailAdmin-1/2/3). Esta sección consolida en orden cronológico para
+mantener la bitácora coherente con CLAUDE.md.
+
+## 1. S-Charts — Revamp gráfico (ApexCharts)
+
+ApexCharts (CDN `unpkg@3.54.1`) queda habilitado como librería estándar
+de gráficas. Decisión actualizada en CLAUDE §4 regla #1 + §6.
+
+Infra compartida (dos copias §18):
+- `static/js/site_charts.js` con 8 pintores (spark-area, dona-salud,
+  area-latencias, barras-chequeos, donut, area-cat, barras, radial-kpi).
+  Re-init en `htmx:afterSwap` + repintado en cambio de tema (evento
+  `despacho:tema`).
+- `_componentes_tailadmin/_scripts_graficas.html` — carga CDN +
+  site_charts.js.
+- `_componentes_tailadmin/_kpi_card_hero.html` — KPI hero con icono
+  pill + badge + link opcional.
+- `lib/graficas/series.py` — helpers (`donut_desde_conteo`,
+  `area_mensual`, `series_apex_multiple`, `PALETA_ESTADOS`).
+- `{% block scripts_graficas %}` en ambos `base.html`.
+- Safelist regex en los 3 `tailwind.config.js` para clases dinámicas
+  de color (`bg/text-{brand,success,error,warning,blue-light,orange,purple}-N`).
+
+Pantallas que estrenan charts:
+- **El Site** (La Gerencia): 4 KPI hero + dona salud + área multi-serie
+  de latencias + barras apiladas 14d de chequeos + gauges radiales
+  (CPU/memoria/disco/containers) + sparklines por fila.
+- **Sala de Juntas** (Taller): donut proyectos por estado, donut tareas
+  abiertas, area ingresos vs egresos 6 meses.
+- **Tesorería landing**: 4 KPI hero + area 6m (ingresos/egresos/utilidad)
+  + donut top 5 centros de costo del mes.
+- **Listas con headers KPI hero**: Cartera, Proyectos, Recados, Buzón
+  (Taller) · Directorio, Buzón admin (Gerencia).
+- **Dashboard ejecutivo de Gerencia**: 4 KPI hero + donut equipo por rol
+  + grid de atajos. Lee salud de integraciones de
+  `lib.site.almacen.ultimo_por_plataforma`.
+
+**Bug C cazado al vuelo**: comentarios Django multilínea `{# ... \n ... #}`
+renderizando como texto. Patrón correcto: `{% comment %}...{% endcomment %}`
+o single-line. Tests `test_no_renderiza_comentarios.py` los atrapan.
+
+Tests: 235 verdes.
+
+## 2. S-Recados-Chat — Async → chat HTMX
+
+Decisión usuario: "Hagamos HTMX, no agrupes, de aquí en adelante." El
+sistema async de Recados queda como **bandeja legacy en
+`/recados/legacy/`**. Default `/recados/` ahora es chat.
+
+Modelos nuevos (`apps/recados/models/conversacion.py`):
+- `Conversacion(tipo='directa'|'grupo', nombre, participantes M2M,
+  ultima_actividad, clave_directa)` — clave única evita duplicar 1:1.
+- `Mensaje(conversacion, autor, cuerpo, creado_en, editado_en)` —
+  índice `(conversacion, creado_en)`.
+- `MensajeLectura(usuario, conversacion, ultimo_mensaje_id)` — UNIQUE
+  `(usuario, conversacion)`. Counter no leídos = `Mensaje.id >
+  ultimo_mensaje_id`.
+- Migración `0003_chat` — solo crea tablas nuevas. **No** migra
+  `Recado` históricos.
+
+Services (`services_chat.py`):
+- `obtener_o_crear_directa`, `crear_grupo`, `enviar_mensaje` (con
+  `on_commit` → emite Portavoz + push), `marcar_leido_hasta`,
+  `mis_conversaciones`, `total_no_leidos`.
+
+Views (`views_chat.py`):
+- `GET /recados/` — bandeja con polling HTMX cada 15s.
+- `GET /recados/c/<id>/` — conversación; partial mensajes hace polling
+  cada 5s con `hx-vals` enviando `desde_id`. Append `hx-swap="beforeend"`,
+  auto-scroll vía `htmx:afterSwap`.
+- `POST /recados/c/<id>/enviar` — crea mensaje, devuelve fragmento para
+  append. Composer con `Enter envía / Shift+Enter salto`.
+- `GET/POST /recados/nueva/` — form 1:1 o grupo.
+- `POST /recados/c/<id>/leido` — idempotente.
+
+Push del Interfón (`handlers_chat.py`): nueva categoría `recados_chat`
+con opt-out por usuario. La categoría legacy `recados` se conserva con
+etiqueta "(legacy)".
+
+Context processor `recados_no_leidos` ahora cuenta mensajes no leídos
+de chat — el badge del sidebar del Taller funciona sin tocar el partial.
+
+URLs legacy renombradas con prefijo `legacy_*`. 7 tests nuevos + 21
+legacy preservados.
+
+**Fuera de scope explícito**: migración de recados viejos a
+conversaciones, WebSockets/Channels (usamos polling HTMX por regla §17),
+indicador "está escribiendo", edición/borrado de mensajes, adjuntos
+(evalúa cuando S2b.1b active Drive).
+
+## 3. Arco S-TailAdmin-Sweep — Waves 1-6
+
+Cada wave commit + deploy propio; secciones aisladas para que si LC
+manda un render distinto a mitad del arco, se reordene sin perder lo
+hecho. Plan en CLAUDE.md §"Arco S-TailAdmin-Sweep". Resumen:
+
+### Wave 1 — Fundación de chrome (`2bfd229`)
+5 partials nuevos (dos copias): `_modal`, `_toast`, `_breadcrumb`,
+`_page_header`, `_dropdown`. Aplicado como referencia viva en 1 lista
++ 1 form + 1 detalle + 1 confirmación con modal + alertas → toast.
+
+### Wave 2 — Form primitives
+7 partials: `_checkbox`, `_radio`, `_switch` (peer-based, sin JS),
+`_file_upload` (dropzone + lista en `form_widgets.js`), `_datepicker`
+(wrapper sobre `<input type=date>`), `_tags_input` (chips vanilla),
+`_select_buscable` (wrapper sobre `<select>` nativo). `form_widgets.js`
+cargado en ambos `base.html`. Aplicado en `cartera/lista` (checkbox
+archivados), `recados/chat_nueva` (radios), `perfil_notificaciones`
+(switches). El sweep de forms restantes queda incremental — los
+partials están estables. 228 tests.
+
+### Wave 3 — Data tables (`c456aac`)
+- `_tabla_datos.html` — wrapper con `<thead sticky top-0>` cuando el
+  cuerpo scrollea dentro de `max-h-[70vh]`. Cabeceras dict-driven con
+  `sort_key` toggleable asc→desc preservando `querystring_base`. Empty
+  state automático. Paginación al pie con `page_obj`. Acepta
+  `filas_template=` o `filas_html=`.
+- `_tabla_acciones.html` — dropdown 3-puntos verticales por fila.
+- Aplicado en Cartera, Proyectos, Tesorería · Egresos (con paginación
+  real reemplazando `qs[:200]`).
+- Patrón canónico para nuevas listas: view declara `orden_permitido`
+  set, valida `request.GET['orden']`, hace `qs.order_by(orden, "-pk")`,
+  `Paginator(qs, N)`, expone `cabeceras_*`, `orden_actual`,
+  `querystring_base`, `querystring_paginacion`, `page_obj`.
+- Sweep restante (pizarrón, recados-legacy, buzón, etc.) incremental.
+- 230 tests.
+
+### Wave 4 — Detalles canónicos (`63da1ca`)
+- `_info_card.html` — tarjeta compacta para sidebar (título +
+  label/value list). Items aceptan `value`, `value_html|safe`, `mono`.
+- `_action_bar.html` — barra inferior con meta a la izquierda y
+  acciones a la derecha. `sticky=True` default con `backdrop-blur`;
+  `sticky=False` inline.
+- Layout canónico: `grid grid-cols-1 gap-6 xl:grid-cols-3` con main
+  `xl:col-span-2` y `<aside>`.
+- Aplicado en Cartera (Identificación + Contacto), Proyectos
+  (Fechas + Económico + Equipo), Tesorería · Egreso (Clasificación +
+  Pago + Captura).
+- Sweep restante (pizarrón, recados-legacy, buzón empleado/admin,
+  ingreso) incremental.
+- 235 tests.
+
+### Wave 5 — Modales HTMX (`64013a3`)
+Infra:
+- `<div id="modal-slot"></div>` al final de `base.html` (ambas apps,
+  dual-copy).
+- `ui.js` extendido: `cerrarSlotModal()` vacía el slot. Cierre por
+  `[data-modal-slot-close]`, click en backdrop, Escape.
+- `_modal_htmx.html` — modal canónico **visible al inyectarse** (sin
+  `hidden`). Params: `titulo`, `cuerpo|safe`, `footer|safe?`, `tamano`.
+
+Patrón canónico:
+- View detecta `request.headers.get("HX-Request") == "true"`.
+- GET HTMX → renderiza partial-modal. GET no-HTMX → página completa
+  existente (fallback).
+- POST HTMX éxito → `HttpResponse(status=204, headers={"HX-Redirect": destino})`.
+  HTMX navega full-page con messages flash intactos.
+- POST HTMX falla → re-renderiza partial-modal con errores.
+- POST no-HTMX → `redirect(destino)` como siempre.
+
+Convertidos:
+- Tesorería · Anular ingreso/egreso (`_modal_anular.html` único con
+  branch por `tipo`).
+- Proyectos · Cambiar estado (`_modal_cambiar_estado.html`).
+- Cartera · Archivar/Reactivar (`_modal_archivar.html`). El modal
+  pre-renderizado en `cartera/detalle.html` fue **removido**.
+
+Fuera de scope (justificado en CLAUDE.md):
+- Proyectos · Asignar es página de gestión (lista de equipo + form
+  add/remove), no de confirmación.
+- Pizarrón completar es POST-only, no tiene página.
+- Pizarrón eliminar no existe como vista.
+
+244 tests.
+
+### Wave 6 — Estados y feedback (este sprint)
+4 partials:
+- `_empty_state.html` — ilustración SVG + título + descripción + CTA
+  opcional. 7 iconos: inbox/search/tasks/folder/chat/alert/sparkles.
+  Wrapper `border-dashed`.
+- `_skeleton.html` — `animate-pulse`. 4 modos: text/card/avatar/fila.
+  Para iterar N veces en Django (sin `range`): `{% for _ in " "|rjust:filas_n %}`.
+- `_tooltip.html` — CSS-only `group` + `group-hover`, sin JS. 4
+  posiciones.
+- `_spinner.html` — SVG circle con `animate-spin`. 4 tamaños, 3
+  colores, etiqueta opcional.
+
+Aplicado en:
+- Recados chat bandeja vacía → `_empty_state` con `icono='chat'`.
+- Cartera detalle, tabla de proyectos vacía → `_empty_state` con
+  `icono='folder'`.
+- Composer del chat → `_spinner` con clase `htmx-indicator` en el
+  botón Enviar.
+
+255 tests.
+
+## 4. Cierre del arco — totales
+
+- **30 partials** en `_componentes_tailadmin/` (× 2 copias =
+  60 archivos).
+- **Patrones canónicos documentados** en CLAUDE.md por cada wave,
+  incluyendo "patrón para uso futuro" en Wave 6.
+- **Sweep incremental restante**: pizarrón, recados-legacy, buzón
+  empleado/admin, tesorería ingreso, directorio, catálogo, centros
+  de costo, tasas. Cada uno se puede convertir aplicando el partial
+  correspondiente sin riesgo — los partials son estables y testeados.
+- **Tests del arco**: 5 (Wave 4) + 7 (Wave 3) + 5 (Wave 2) + 9 (Wave 5)
+  + 11 (Wave 6) = 37 smoke tests dedicados, además de los tests de
+  flujo (anular HTMX, archivar HTMX, etc.).
+- Próximo: **S2b.1b** (Drive en Recados → desbloquea OCR Tesorería +
+  adjuntos chat), **S2b.2.1** (clarificación iterativa Dictado),
+  **S2b.5** (DSL KPIs custom Chalán).

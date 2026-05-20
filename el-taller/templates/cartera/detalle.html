@@ -47,7 +47,7 @@
                                 <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin proyectos.</td></tr>
+                            <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos todavía" descripcion="Este cliente aún no tiene proyectos asignados." icono="folder" %}</div></td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

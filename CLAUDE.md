@@ -918,18 +918,68 @@ del Wave 2 que se cuentan en taller).
      `<button hx-get="{% url '…' %}" hx-target="#modal-slot" hx-swap="innerHTML">`.
   4. `_modal_<accion>.html` no extiende base — es fragmento puro.
 
-**Wave 6 — Estados y feedback** pendiente
-Empty states canónicos por módulo (ilustración + CTA), skeletons de
-carga para polling HTMX (mensajes chat, bandeja, KPIs), tooltips de
-TailAdmin (`_tooltip.html`), badges con icono SVG, spinners
-estandarizados. Polish final del arco.
+**Wave 6 — Estados y feedback** ✅ (2026-05-20)
+- 4 partials nuevos en `_componentes_tailadmin/` (dual-copy §18):
+  - `_empty_state.html` — ilustración SVG + título + descripción +
+    CTA opcional. 7 iconos disponibles: `inbox` (default), `search`,
+    `tasks`, `folder`, `chat`, `alert`, `sparkles`. Wrapper con
+    `border-dashed`.
+  - `_skeleton.html` — bloque animado `animate-pulse` con 4 modos:
+    `text` (default, N filas configurables), `card` (placeholder de
+    tarjeta completa), `avatar` (círculo + 2 líneas), `fila` (filas
+    de lista). Params: `tipo`, `filas`, `ancho`, `alto`, `clase_extra`.
+    Truco para iterar N veces en template Django:
+    `{% for _ in " "|rjust:filas_n %}` (Django no tiene `range`).
+  - `_tooltip.html` — wrapper CSS-only con `group` + `group-hover`,
+    sin JS. 4 posiciones (`top` default, `bottom`, `left`, `right`).
+    Params: `texto`, `ancla|safe`, `posicion`.
+  - `_spinner.html` — SVG circle con `animate-spin`. 4 tamaños
+    (`xs`, `sm` default, `md`, `lg`), 3 colores (`brand` default,
+    `gray`, `white`). Acepta `etiqueta` opcional al lado.
+- Aplicado como **referencia viva**:
+  - **Recados chat bandeja vacía** (`recados/_chat_bandeja_lista.html`):
+    el bloque "Aún no tienes conversaciones" ahora usa `_empty_state`
+    con `icono='chat'` y CTA `Empezar la primera`.
+  - **Cartera detalle, tabla de proyectos vacía**: la fila empty del
+    `<table>` usa `_empty_state` con `icono='folder'`.
+  - **Composer del chat de Recados**: el botón Enviar incluye un
+    `_spinner` con clase `htmx-indicator` — HTMX lo muestra durante
+    el `hx-post`. Acompaña visualmente la latencia de envío.
+- Tests: `tests/taller/test_partials_wave6.py` (11 pass) — valida
+  los 4 partials con varias combinaciones de params, todos los
+  iconos del empty state, todas las posiciones del tooltip, tipos
+  del skeleton, tamaños+colores del spinner. Suite total
+  taller+gerencia: **255 pass**.
+- **Patrón para uso futuro**:
+  - Reemplazar `<p class="text-gray-500 italic">Sin X.</p>` por
+    `{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin X" descripcion="…" icono="folder" cta_url="…" %}`.
+  - Para indicadores HTMX en submit buttons:
+    `<button>{% include "_componentes_tailadmin/_spinner.html" with tamano="xs" color="white" clase_extra="htmx-indicator" %}Enviar</button>`.
+  - Para hint sobre acciones destructivas en iconos:
+    envolver el botón en `_tooltip.html` con `texto="Acción irreversible"`.
 
-**Cómo retomar el arco en una sesión nueva:**
-1. Leer esta sección.
-2. Identificar el siguiente wave pendiente (los completados se marcan
-   ✅ y se referencian al commit/PR).
-3. Trabajar SOLO ese wave. No tocar otros.
-4. Cerrar con commit `S-TailAdmin-Sweep-N: …` y push.
+### Arco S-TailAdmin-Sweep — ✅ CERRADO 2026-05-20
+
+Los 6 waves entregados consolidaron el sistema visual de El Despacho
+en patrones canónicos de TailAdmin Pro 2.3.0. Partials totales del
+sistema (Wave 1-6): **30** en `_componentes_tailadmin/` (dos copias
+sincronizadas Gerencia/Taller). Commits:
+
+| Wave | Commit | Foco |
+|---|---|---|
+| 1 | `2bfd229` | Chrome (modal, toast, breadcrumb, page header, dropdown) |
+| 2 | (n/a) | Form primitives (checkbox, radio, switch, file, date, tags, select) |
+| 3 | `c456aac` | Data tables (sort, paginación, sticky thead, action menu) |
+| 4 | `63da1ca` | Detalles canónicos (info cards + action bar) |
+| 5 | `64013a3` | Modales HTMX (confirmaciones vía hx-get → #modal-slot) |
+| 6 | _este_ | Estados y feedback (empty, skeleton, tooltip, spinner) |
+
+**Sweep restante incremental** (parchear lista/detalle/form a partial
+canónico — el patrón está estable y testeado, cada conversión es
+local y segura): pizarrón detalle/lista, recados-legacy detalle,
+buzón empleado/admin detalle, tesorería ingreso detalle, directorio,
+catálogo, centros de costo, tasas. Cualquier sesión puede tomar uno
+sin riesgo.
 
 ### S2b — Comercial y pagos (después de S2b.4)
 
