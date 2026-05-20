@@ -974,12 +974,45 @@ sincronizadas Gerencia/Taller). Commits:
 | 5 | `64013a3` | Modales HTMX (confirmaciones vía hx-get → #modal-slot) |
 | 6 | _este_ | Estados y feedback (empty, skeleton, tooltip, spinner) |
 
-**Sweep restante incremental** (parchear lista/detalle/form a partial
-canónico — el patrón está estable y testeado, cada conversión es
-local y segura): pizarrón detalle/lista, recados-legacy detalle,
-buzón empleado/admin detalle, tesorería ingreso detalle, directorio,
-catálogo, centros de costo, tasas. Cualquier sesión puede tomar uno
-sin riesgo.
+### Sprint S-TailAdmin-Cleanup — ✅ CERRADO 2026-05-20
+
+Sprint final del arco: rasura toda la deuda acumulada de los Waves 2-6
+en una sola sesión, después de cerrar el arco principal. Cobertura:
+
+- **Wave 3 (8 listas a `_tabla_datos`)**: tesorería ingresos/CxC,
+  catalogo, buzon, buzon_admin, centros_costo, directorio. **por_pagar
+  intencionalmente NO se convierte** — su layout de 2 columnas de
+  cards (egresos pendientes + reembolsos) no mapea a tabla con
+  cabeceras (forzarlo empobrecería la UX); en su lugar sus empty
+  states se actualizaron a `_empty_state`.
+- **Wave 4 (6 detalles a `_info_card` + `_action_bar`)**: tesorería
+  ingreso_detalle, pizarron detalle_tarea, recados detalle (legacy),
+  buzon detalle (empleado), buzon_admin detalle (Gerencia), el_dictado
+  detalle. Cada uno sigue el patrón `xl:grid-cols-3` con sidebar de
+  info cards.
+- **Wave 2 (forms vía `_form_campo` mejorado)**: en lugar de tocar
+  11 forms uno por uno con widgets manuales, el partial
+  `_form_campo.html` se **mejoró para auto-detectar el widget** vía
+  un nuevo filter `widget_class` (en `cuentas/templatetags/forms_helpers.py`,
+  porque Django no permite `__class__.__name__` en plantillas). El
+  partial ahora dispatcha automáticamente:
+  - `CheckboxInput` → switch toggle inline.
+  - `DateInput` → wrapper con icono de calendario.
+  - otros → render Django estándar.
+  Aplicado a 7 forms (cartera, proyectos, pizarron, catalogo,
+  tesoreria ingreso/egreso, directorio, centros_costo, ajustes tasa).
+  recados/form se preserva (layout custom con destinatarios en
+  `<details>`, no mapea naturalmente).
+- **Wave 6 (empty states legacy)**: el_dictado historial, taller_home
+  home (prospectos vacíos), buzon_empleado mios_lista, perfil_notificaciones
+  (historial vacío), interfono _panel_suscripcion (×2, dual-copy),
+  los_chalanes panel (auditoría vacía), proyectos asignar (sin
+  asignaciones). Todos usan `_empty_state` con iconos contextuales.
+- **Templatetag nuevo**: `cuentas/templatetags/forms_helpers.py` con
+  el filter `widget_class` (registrado vía `{% load forms_helpers %}`).
+  El truco: `__class__.__name__` no es accesible en templates Django
+  (rechaza atributos con guión bajo) — un filter Python lo encapsula.
+- **Suite verde**: 255 tests, 0 fallos.
 
 ### S2b — Comercial y pagos (después de S2b.4)
 

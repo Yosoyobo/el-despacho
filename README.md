@@ -43,6 +43,14 @@ GitHub Actions (**El Mensajero**) · GHCR.
   canónicos (info cards + action bar) · Wave 5 modales HTMX
   (`#modal-slot` + `hx-get` + 204+HX-Redirect) · Wave 6 estados y
   feedback (empty state + skeleton + tooltip + spinner).
+- **Sprint S-TailAdmin-Cleanup** ✅ (2026-05-20): rasura la deuda
+  incremental del arco en una sola sesión — 7 listas restantes a
+  `_tabla_datos` (por_pagar preserva su layout 2-col), 6 detalles a
+  `_info_card`+`_action_bar`, 9 forms vía `_form_campo` mejorado con
+  auto-dispatch por widget (checkbox → switch, date → datepicker), 10
+  empty states legacy a `_empty_state`. Nuevo filter
+  `cuentas/templatetags/forms_helpers.py::widget_class` (Django no
+  permite `__class__.__name__` en plantillas).
 - **S-Charts** ✅ (2026-05-19): revamp gráfico con ApexCharts vía
   CDN. Infra compartida (`static/js/site_charts.js`, partials
   `_kpi_card_hero` y `_scripts_graficas`, helper `lib/graficas/`).

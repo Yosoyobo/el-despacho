@@ -38,7 +38,7 @@
                 <span class="font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</span>
             </li>
             {% empty %}
-            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nada pendiente.</li>
+            <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada pendiente" descripcion="No hay egresos por pagar con esos filtros." icono="sparkles" %}</li>
             {% endfor %}
         </ul>
     </section>
@@ -54,7 +54,7 @@
                 <span class="font-semibold text-warning-600 dark:text-warning-400">${{ r.total|floatformat:2 }}</span>
             </li>
             {% empty %}
-            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nada por reembolsar.</li>
+            <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada por reembolsar" descripcion="No hay gastos personales pendientes de reembolso." icono="sparkles" %}</li>
             {% endfor %}
         </ul>
     </section>

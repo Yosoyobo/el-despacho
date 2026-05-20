@@ -122,13 +122,38 @@ def detalle(request, pk: int):
         .order_by("-version")
     )
 
+    from django.urls import reverse
+    from django.utils.html import format_html
+    puede_ed = recado.autor_id == user.pk and puede(user, "recados", "editar_propios")
+    info_recado = [
+        {"label": "Autor", "value": recado.autor.nombre_completo or recado.autor.email if recado.autor else "—"},
+        {"label": "Enviado", "value": recado.creado_en.strftime("%d %b %Y %H:%M")},
+        {"label": "Destinatarios", "value": str(len(destinatarios))},
+    ]
+    if recado.editado:
+        info_recado.append({"label": "Versión", "value": f"v{recado.version_actual} (editado)"})
+    action_bar_acciones = format_html(
+        '<a href="{}" class="btn-secundario">← Bandeja</a>'
+        '<a href="{}?responder={}" class="btn-secundario">Responder</a>',
+        reverse("recados:legacy_bandeja"), reverse("recados:legacy_nuevo"), recado.pk,
+    )
+    if puede_ed:
+        action_bar_acciones = format_html(
+            '{}<a href="{}" class="btn-primario">Editar</a>',
+            action_bar_acciones,
+            reverse("recados:legacy_editar", args=[recado.pk]),
+        )
     return render(request, "recados/detalle.html", {
         "recado": recado,
         "destinatarios": destinatarios,
         "versiones": versiones,
-        "puede_editar": (
-            recado.autor_id == user.pk and puede(user, "recados", "editar_propios")
-        ),
+        "puede_editar": puede_ed,
+        "info_recado": info_recado,
+        "action_bar_acciones": action_bar_acciones,
+        "breadcrumb_items": [
+            {"url": reverse("recados:legacy_bandeja"), "label": "Recados (legacy)"},
+            {"label": f"#{recado.pk}"},
+        ],
     })
 
 

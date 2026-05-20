@@ -69,15 +69,40 @@ def landing(request):
 def ingresos_lista(request):
     if (r := _gate(request)) is not None:
         return r
+    from django.core.paginator import Paginator
     qs = Ingreso.objects.all() if request.GET.get("anulados") == "1" else Ingreso.vigentes.all()
     qs = qs.select_related("cliente", "proyecto", "creado_por")
     q = (request.GET.get("q") or "").strip()
     if q:
         qs = qs.filter(descripcion__icontains=q)
+    orden_permitido = {"codigo", "fecha", "monto"}
+    orden = (request.GET.get("orden") or "-fecha").strip()
+    if orden.lstrip("-") not in orden_permitido:
+        orden = "-fecha"
+    qs = qs.order_by(orden, "-pk")
+    paginator = Paginator(qs, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    qs_filtros = []
+    if q:
+        qs_filtros.append(f"q={q}")
+    if request.GET.get("anulados") == "1":
+        qs_filtros.append("anulados=1")
     return render(request, "tesoreria/ingresos_lista.html", {
-        "ingresos": qs[:200],
+        "ingresos": page_obj.object_list,
+        "page_obj": page_obj,
         "q": q,
         "incluye_anulados": request.GET.get("anulados") == "1",
+        "orden_actual": orden,
+        "querystring_base": "&".join(qs_filtros),
+        "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-fecha" else [])),
+        "cabeceras_ingresos": [
+            {"label": "Código", "sort_key": "codigo"},
+            {"label": "Fecha", "sort_key": "fecha"},
+            {"label": "Cliente · Proyecto"},
+            {"label": "Método"},
+            {"label": "Monto", "sort_key": "monto", "align": "right"},
+            {"label": "", "align": "right"},
+        ],
     })
 
 
@@ -86,7 +111,46 @@ def ingreso_detalle(request, pk):
     if (r := _gate(request)) is not None:
         return r
     ingreso = get_object_or_404(Ingreso, pk=pk)
-    return render(request, "tesoreria/ingreso_detalle.html", {"ingreso": ingreso})
+    info_clasificacion = [
+        {"label": "Cliente", "value": ingreso.cliente.razon_social if ingreso.cliente else "—"},
+        {"label": "Proyecto", "value": f"{ingreso.proyecto.codigo} · {ingreso.proyecto.nombre}" if ingreso.proyecto else "—"},
+        {"label": "Método", "value": ingreso.get_metodo_display()},
+        {"label": "Ref. externa", "value": ingreso.referencia_externa or "—"},
+    ]
+    info_captura = [
+        {"label": "Capturado por", "value": (ingreso.creado_por.nombre_completo or ingreso.creado_por.email) if ingreso.creado_por else "—"},
+        {"label": "Capturado en", "value": ingreso.creado_en.strftime("%Y-%m-%d %H:%M")},
+    ]
+    action_bar_meta = format_html(
+        '<span class="font-mono">{}</span> <span class="text-gray-400">·</span> <span>{}</span>',
+        ingreso.codigo, ingreso.fecha.strftime("%Y-%m-%d"),
+    )
+    if ingreso.anulado:
+        action_bar_acciones = format_html(
+            '<a href="{}" class="btn-secundario">← Ingresos</a>',
+            reverse("tesoreria:ingresos-lista"),
+        )
+    else:
+        action_bar_acciones = format_html(
+            '<a href="{}" class="btn-secundario">← Ingresos</a>'
+            '<a href="{}" class="btn-secundario">Editar</a>'
+            '<button type="button" class="btn-destructivo" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML">Anular</button>',
+            reverse("tesoreria:ingresos-lista"),
+            reverse("tesoreria:ingreso-editar", args=[ingreso.pk]),
+            reverse("tesoreria:ingreso-anular", args=[ingreso.pk]),
+        )
+    return render(request, "tesoreria/ingreso_detalle.html", {
+        "ingreso": ingreso,
+        "info_clasificacion": info_clasificacion,
+        "info_captura": info_captura,
+        "action_bar_meta": action_bar_meta,
+        "action_bar_acciones": action_bar_acciones,
+        "breadcrumb_items": [
+            {"url": reverse("tesoreria:landing"), "label": "La Tesorería"},
+            {"url": reverse("tesoreria:ingresos-lista"), "label": "Ingresos"},
+            {"label": ingreso.codigo},
+        ],
+    })
 
 
 @login_required
@@ -379,6 +443,13 @@ def por_cobrar(request):
     total = sum(s for _, s in proyectos_saldos)
     return render(request, "tesoreria/por_cobrar.html", {
         "proyectos_saldos": proyectos_saldos, "total": total,
+        "cabeceras_cobrar": [
+            {"label": "Proyecto"},
+            {"label": "Cliente"},
+            {"label": "Facturado", "align": "right"},
+            {"label": "Cobrado", "align": "right"},
+            {"label": "Saldo", "align": "right"},
+        ],
     })
 
 

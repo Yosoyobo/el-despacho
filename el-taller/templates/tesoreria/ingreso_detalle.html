@@ -1,36 +1,32 @@
 {% extends "base.html" %}
 {% block title %}{{ ingreso.codigo }} — Ingreso{% endblock %}
 {% block contenido %}
-<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
-    <div>
-        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Ingreso</p>
-        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ ingreso.codigo }}{% if ingreso.anulado %} <span class="badge badge-gray ml-1">anulado</span>{% endif %}</h1>
-    </div>
-    <div class="flex gap-2">
-        <a href="{% url 'tesoreria:ingresos-lista' %}" class="btn-secundario">← Ingresos</a>
-        {% if not ingreso.anulado %}
-        <a href="{% url 'tesoreria:ingreso-editar' ingreso.pk %}" class="btn-secundario">Editar</a>
-        <button type="button" class="btn-secundario text-error-600" hx-get="{% url 'tesoreria:ingreso-anular' ingreso.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">Anular</button>
+{% include "_componentes_tailadmin/_page_header.html" with titulo=ingreso.codigo subtitulo="La Tesorería · ingreso" breadcrumb_items=breadcrumb_items %}
+
+{% if ingreso.anulado %}<div class="mb-4"><span class="badge badge-gray">Anulado</span></div>{% endif %}
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Monto</p>
+            <p class="mt-1 text-title-md font-semibold text-success-600 dark:text-success-400 tabular-nums">${{ ingreso.monto|floatformat:2 }} <span class="text-base text-gray-500 dark:text-gray-400">{{ ingreso.moneda }}</span></p>
+            <p class="mt-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción</p>
+            <p class="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">{{ ingreso.descripcion }}</p>
+        </section>
+
+        {% if ingreso.anulado %}
+        <section class="rounded-2xl border border-error-200 bg-error-50 px-5 py-4 text-sm text-error-700 dark:border-error-900/30 dark:bg-error-900/10 dark:text-error-300">
+            <p class="font-semibold">Anulado por {{ ingreso.anulado_por.nombre_completo|default:ingreso.anulado_por.email }} el {{ ingreso.anulado_en|date:"Y-m-d H:i" }}.</p>
+            <p class="mt-1">{{ ingreso.motivo_anulacion }}</p>
+        </section>
         {% endif %}
     </div>
-</header>
 
-<section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <dl class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Monto</dt><dd class="mt-1 text-title-xs font-semibold text-success-600 dark:text-success-400">${{ ingreso.monto|floatformat:2 }} {{ ingreso.moneda }}</dd></div>
-        <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Fecha</dt><dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ingreso.fecha|date:"Y-m-d" }}</dd></div>
-        <div class="md:col-span-2"><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción</dt><dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ingreso.descripcion }}</dd></div>
-        <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Cliente</dt><dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{% if ingreso.cliente %}{{ ingreso.cliente.razon_social }}{% else %}—{% endif %}</dd></div>
-        <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Proyecto</dt><dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{% if ingreso.proyecto %}{{ ingreso.proyecto.codigo }} · {{ ingreso.proyecto.nombre }}{% else %}—{% endif %}</dd></div>
-        <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Método</dt><dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ingreso.get_metodo_display }}</dd></div>
-        <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Referencia externa</dt><dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ingreso.referencia_externa|default:"—" }}</dd></div>
-        <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Capturado por</dt><dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ ingreso.creado_por.nombre_completo|default:ingreso.creado_por.email|default:"—" }} · {{ ingreso.creado_en|date:"Y-m-d H:i" }}</dd></div>
-    </dl>
-    {% if ingreso.anulado %}
-    <div class="mt-6 rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-900/30 dark:bg-error-900/10 dark:text-error-300">
-        <p class="font-semibold">Anulado por {{ ingreso.anulado_por.nombre_completo|default:ingreso.anulado_por.email }} el {{ ingreso.anulado_en|date:"Y-m-d H:i" }}.</p>
-        <p class="mt-1">{{ ingreso.motivo_anulacion }}</p>
-    </div>
-    {% endif %}
-</section>
+    <aside class="space-y-6">
+        {% include "_componentes_tailadmin/_info_card.html" with titulo="Clasificación" items=info_clasificacion %}
+        {% include "_componentes_tailadmin/_info_card.html" with titulo="Captura" items=info_captura %}
+    </aside>
+</div>
+
+{% include "_componentes_tailadmin/_action_bar.html" with sticky=False meta=action_bar_meta acciones=action_bar_acciones %}
 {% endblock %}

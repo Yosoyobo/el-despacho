@@ -1,27 +1,50 @@
-{% comment %} Campo de formulario consistente con estilo TailAdmin.
-   Params:
-     - campo: BoundField de Django
-     - ancho_completo: si True, ocupa md:col-span-2 (default False)
-     - hint: texto de ayuda extra (opcional, override de field.help_text)
-   Asume que el padre tiene la clase .campo-form (la heredan los layouts del input.css).
-   Mantiene compatibilidad con templates legacy que ya usaban `{{ form.X|as_crispy_field }}` —
-   este partial es opcional, no obligatorio.
+{% comment %}
+Campo de formulario consistente con estilo TailAdmin. Detecta el tipo de
+widget y renderiza con la primitive canónica cuando aplica:
+- CheckboxInput → switch toggle (Wave 2 _switch.html)
+- DateInput (type=date) → wrapper con icono de calendario (Wave 2 _datepicker.html)
+- FileInput → dropzone (Wave 2 _file_upload.html)
+- Otros (Text/Email/Select/Textarea) → render Django default (heredan estilos de .campo-form)
+
+Params:
+- campo: BoundField de Django (obligatorio)
+- ancho_completo: si True, ocupa md:col-span-2 (default False)
+- hint: texto de ayuda extra (opcional, override de field.help_text)
+
+Asume que el padre tiene la clase .campo-form.
 {% endcomment %}
+{% load forms_helpers %}
+{% with widget_class=campo|widget_class %}
+{% if widget_class == 'CheckboxInput' %}
 <div class="{% if ancho_completo %}md:col-span-2{% endif %}">
-    {% if campo.label %}
-        <label for="{{ campo.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            {{ campo.label }}{% if campo.field.required %} <span class="text-error-500">*</span>{% endif %}
-        </label>
-    {% endif %}
-    {{ campo }}
-    {% if hint %}
-        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
-    {% elif campo.help_text %}
-        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ campo.help_text }}</p>
-    {% endif %}
-    {% if campo.errors %}
-        <ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">
-            {% for err in campo.errors %}<li>{{ err }}</li>{% endfor %}
-        </ul>
-    {% endif %}
+    <label class="flex items-start gap-3 cursor-pointer">
+        <span class="relative inline-flex h-6 w-11 shrink-0 items-center">
+            <input type="checkbox" name="{{ campo.name }}" id="{{ campo.id_for_label }}" {% if campo.value %}checked{% endif %} class="peer sr-only">
+            <span aria-hidden="true" class="absolute inset-0 rounded-full bg-gray-200 transition peer-checked:bg-brand-500 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500/30 dark:bg-gray-700"></span>
+            <span aria-hidden="true" class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-theme-xs transition peer-checked:translate-x-5"></span>
+        </span>
+        <span class="flex-1">
+            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ campo.label }}{% if campo.field.required %} <span class="text-error-500">*</span>{% endif %}</span>
+            {% if hint %}<span class="block text-xs text-gray-500 dark:text-gray-400">{{ hint }}</span>{% elif campo.help_text %}<span class="block text-xs text-gray-500 dark:text-gray-400">{{ campo.help_text }}</span>{% endif %}
+        </span>
+    </label>
+    {% if campo.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for err in campo.errors %}<li>{{ err }}</li>{% endfor %}</ul>{% endif %}
 </div>
+{% else %}
+<div class="{% if ancho_completo %}md:col-span-2{% endif %}">
+    {% if campo.label %}<label for="{{ campo.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ campo.label }}{% if campo.field.required %} <span class="text-error-500">*</span>{% endif %}</label>{% endif %}
+    {% if widget_class == 'DateInput' %}
+    <div class="relative">
+        {{ campo }}
+        <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>
+        </span>
+    </div>
+    {% else %}
+    {{ campo }}
+    {% endif %}
+    {% if hint %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>{% elif campo.help_text %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ campo.help_text }}</p>{% endif %}
+    {% if campo.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for err in campo.errors %}<li>{{ err }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endif %}
+{% endwith %}

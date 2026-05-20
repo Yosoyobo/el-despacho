@@ -54,12 +54,22 @@ def lista(request):
         "respondidos": base.filter(estado="respondido").count(),
         "archivados": base.filter(estado="archivado").count(),
     }
+    cabeceras = [{"label": "#"}]
+    if es_admin_buzon:
+        cabeceras.append({"label": "Autor"})
+    cabeceras += [
+        {"label": "Tipo"},
+        {"label": "Asunto"},
+        {"label": "Estado"},
+        {"label": "Recibido"},
+    ]
     return render(request, "buzon/lista.html", {
         "mensajes": qs,
         "es_admin_buzon": es_admin_buzon,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
         "kpis": kpis,
+        "cabeceras_buzon": cabeceras,
     })
 
 
@@ -107,10 +117,24 @@ def detalle(request, pk: int):
         else:
             form = RespuestaAdminForm(instance=msg)
 
+    from django.urls import reverse
+    info_buzon = [
+        {"label": "Tipo", "value": msg.get_tipo_display()},
+        {"label": "Autor", "value": msg.autor.email},
+        {"label": "Recibido", "value": msg.creado_en.strftime("%Y-%m-%d %H:%M")},
+        {"label": "Estado", "value": msg.get_estado_display()},
+    ]
+    if msg.respondido_en:
+        info_buzon.append({"label": "Respondido", "value": msg.respondido_en.strftime("%Y-%m-%d %H:%M")})
     return render(request, "buzon/detalle.html", {
         "mensaje": msg, "form": form,
         "es_admin_buzon": es_admin_buzon,
         "puede_responder": puede_responder,
+        "info_buzon": info_buzon,
+        "breadcrumb_items": [
+            {"url": reverse("buzon-lista"), "label": "El Buzón"},
+            {"label": f"#{msg.pk}"},
+        ],
     })
 
 

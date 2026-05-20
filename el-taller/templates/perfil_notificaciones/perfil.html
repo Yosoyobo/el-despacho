@@ -22,7 +22,7 @@
             {% include "perfil_notificaciones/_historial_items.html" %}
         </ul>
         {% else %}
-        <p class="mt-4 text-sm italic text-gray-400 dark:text-gray-500">Aún no hay notificaciones.</p>
+        <div class="mt-4">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no hay notificaciones" descripcion="Cuando recibas pushes del Interfón aparecerán aquí." icono="alert" %}</div>
         {% endif %}
     </section>
 

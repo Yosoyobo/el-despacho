@@ -43,6 +43,13 @@ def lista(request):
         "usuarios": qs,
         "kpis": kpis,
         "donut_roles_json": donut_desde_conteo(por_rol, etiquetas=etiquetas),
+        "cabeceras_directorio": [
+            {"label": "Nombre"},
+            {"label": "Email"},
+            {"label": "Rol"},
+            {"label": "Estado"},
+            {"label": "", "align": "right"},
+        ],
     })
 
 

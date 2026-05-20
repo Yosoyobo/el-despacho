@@ -40,6 +40,14 @@ def lista(request):
         "tipo_filtro": tipo,
         "kpis": kpis,
         "donut_tipos_json": donut_desde_conteo(por_tipo),
+        "cabeceras_buzon_admin": [
+            {"label": "#"},
+            {"label": "Autor"},
+            {"label": "Tipo"},
+            {"label": "Asunto"},
+            {"label": "Estado"},
+            {"label": "Recibido"},
+        ],
     })
 
 
@@ -86,7 +94,23 @@ def detalle(request, pk: int):
             return redirect("buzon-admin-detalle", pk=msg.pk)
     else:
         form = RespuestaAdminForm(instance=msg)
-    return render(request, "buzon_admin/detalle.html", {"mensaje": msg, "form": form})
+    from django.urls import reverse
+    info_buzon = [
+        {"label": "Tipo", "value": msg.get_tipo_display()},
+        {"label": "Autor", "value": msg.autor.email},
+        {"label": "Recibido", "value": msg.creado_en.strftime("%Y-%m-%d %H:%M")},
+        {"label": "Estado", "value": msg.get_estado_display()},
+    ]
+    if msg.respondido_en:
+        info_buzon.append({"label": "Respondido", "value": msg.respondido_en.strftime("%Y-%m-%d %H:%M")})
+    return render(request, "buzon_admin/detalle.html", {
+        "mensaje": msg, "form": form,
+        "info_buzon": info_buzon,
+        "breadcrumb_items": [
+            {"url": reverse("buzon-admin-lista"), "label": "El Buzón"},
+            {"label": f"#{msg.pk}"},
+        ],
+    })
 
 
 @requires_role("super_admin", "dueno")

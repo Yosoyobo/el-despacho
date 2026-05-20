@@ -10,37 +10,5 @@
     <a href="{% url 'centros-costo-nuevo' %}" class="btn-primario">+ Nuevo centro</a>
 </header>
 
-<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                <tr>
-                    <th class="px-5 py-3 text-left">Nombre</th>
-                    <th class="px-5 py-3 text-left">Naturaleza</th>
-                    <th class="px-5 py-3 text-left">Descripción</th>
-                    <th class="px-5 py-3 text-left">Estado</th>
-                    <th class="px-5 py-3 text-right">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                {% for c in centros %}
-                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not c.activo %}opacity-60{% endif %}">
-                    <td class="px-5 py-3"><a href="{% url 'centros-costo-editar' c.slug %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ c.nombre }}</a></td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.get_naturaleza_display }}</td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.descripcion|default:"—"|truncatechars:80 }}</td>
-                    <td class="px-5 py-3"><span class="badge {% if c.activo %}badge-success{% else %}badge-gray{% endif %}">{% if c.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
-                    <td class="px-5 py-3 text-right">
-                        <form method="post" action="{% url 'centros-costo-toggle' c.slug %}" class="inline">
-                            {% csrf_token %}
-                            <button type="submit" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{% if c.activo %}Desactivar{% else %}Activar{% endif %}</button>
-                        </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">No hay centros de costo. Crea el primero.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_centros filas_template="centros_costo/_filas.html" sin_scroll_vertical=True %}
 {% endblock %}

@@ -1,48 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Dictado #{{ dictado.id }} — El Taller{% endblock %}
-
 {% block contenido %}
-<div class="mx-auto max-w-3xl">
-    <header class="mb-6">
-        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Dictado · {{ dictado.get_estado_display }}</p>
-        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-            Dictado #{{ dictado.id }}
-        </h1>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ dictado.creado_en|date:"d M Y H:i" }} ·
-            {% if dictado.chalan_apodo %}{{ dictado.chalan_apodo }} ({{ dictado.modelo }}){% else %}—{% endif %} ·
-            {{ dictado.latencia_interpretacion_ms|default:"—" }} ms
-        </p>
-        <blockquote class="mt-3 rounded-lg border-l-4 border-brand-300 bg-brand-25 p-3 text-sm text-gray-700 dark:border-brand-500/40 dark:bg-brand-500/5 dark:text-gray-200">
-            {{ dictado.texto_crudo }}
-        </blockquote>
-    </header>
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Dictado #"|add:dictado.id|stringformat:"s" subtitulo="El Dictado" breadcrumb_items=breadcrumb_items %}
 
-    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <h2 class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Acciones</h2>
-        <ul class="mt-3 space-y-2">
-            {% for a in acciones %}
-            <li class="rounded-xl border p-3 text-sm
-                       {% if a.aplicada %}border-success-200 bg-success-25 dark:border-success-500/30 dark:bg-success-500/5
-                       {% elif a.error_al_aplicar %}border-error-200 bg-error-25 dark:border-error-500/30 dark:bg-error-500/5
-                       {% else %}border-gray-200 dark:border-gray-800{% endif %}">
-                <p class="font-medium text-gray-800 dark:text-gray-100">
-                    {% if a.aplicada %}✓{% elif a.error_al_aplicar %}✗{% elif not a.confirmada %}○{% else %}·{% endif %}
-                    {{ a.descripcion }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ a.tipo }}</p>
-                {% if a.error_al_aplicar %}
-                <p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ a.error_al_aplicar }}</p>
-                {% endif %}
-            </li>
-            {% empty %}
-            <li class="rounded-xl border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500 dark:border-gray-700">Sin acciones.</li>
-            {% endfor %}
-        </ul>
-    </section>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Texto dictado</h2>
+            <blockquote class="mt-3 rounded-lg border-l-4 border-brand-300 bg-brand-25 p-3 text-sm text-gray-700 dark:border-brand-500/40 dark:bg-brand-500/5 dark:text-gray-200">{{ dictado.texto_crudo }}</blockquote>
+        </section>
 
-    <div class="mt-6">
-        <a href="{% url 'dictado-historial' %}" class="text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400">← Volver al historial</a>
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Acciones</h2>
+            <ul class="mt-3 space-y-2">
+                {% for a in acciones %}
+                <li class="rounded-xl border p-3 text-sm
+                           {% if a.aplicada %}border-success-200 bg-success-25 dark:border-success-500/30 dark:bg-success-500/5
+                           {% elif a.error_al_aplicar %}border-error-200 bg-error-25 dark:border-error-500/30 dark:bg-error-500/5
+                           {% else %}border-gray-200 dark:border-gray-800{% endif %}">
+                    <p class="font-medium text-gray-800 dark:text-gray-100">
+                        {% if a.aplicada %}✓{% elif a.error_al_aplicar %}✗{% elif not a.confirmada %}○{% else %}·{% endif %}
+                        {{ a.descripcion }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ a.tipo }}</p>
+                    {% if a.error_al_aplicar %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ a.error_al_aplicar }}</p>{% endif %}
+                </li>
+                {% empty %}
+                <li>{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin acciones" descripcion="El Chalán no produjo acciones aplicables para este dictado." icono="sparkles" %}</li>
+                {% endfor %}
+            </ul>
+        </section>
     </div>
+
+    <aside class="space-y-6">
+        {% include "_componentes_tailadmin/_info_card.html" with titulo="Detalles" items=info_dictado %}
+    </aside>
 </div>
+
+<div class="mt-6"><a href="{% url 'dictado-historial' %}" class="text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400">← Volver al historial</a></div>
 {% endblock %}

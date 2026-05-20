@@ -54,6 +54,12 @@ def lista(request):
         qs = qs.filter(nombre__icontains=q)
     if categoria_id:
         qs = qs.filter(categoria_id=categoria_id)
+    cabeceras = [{"label": "Nombre"}, {"label": "Categoría"}, {"label": "Unidad"}]
+    if ve_precios:
+        cabeceras.append({"label": "Precio base", "align": "right"})
+    cabeceras.append({"label": "Estado"})
+    if puede_editar or puede_archivar:
+        cabeceras.append({"label": "", "align": "right"})
     return render(request, "catalogo/lista.html", {
         "servicios": qs,
         "categorias": CategoriaServicio.objects.filter(activa=True),
@@ -65,6 +71,7 @@ def lista(request):
         "puede_editar": puede_editar,
         "puede_archivar": puede_archivar,
         "puede_gestionar_cats": puede_gestionar_cats,
+        "cabeceras_catalogo": cabeceras,
     })
 
 

@@ -5,7 +5,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 
 from lib.permisos import (
     es_admin,
@@ -58,12 +60,38 @@ def detalle_tarea(request, pk):
         request.user,
         tarea.comentarios.select_related("autor"),
     )
+    puede_ed = puede_ver_proyecto(request.user, tarea.proyecto)
+    info_clasificacion = [
+        {"label": "Estado", "value": tarea.get_estado_display()},
+        {"label": "Prioridad", "value": tarea.get_prioridad_display()},
+        {"label": "Asignada a", "value": tarea.asignada_a.nombre_completo if tarea.asignada_a else "—"},
+        {"label": "Compromiso", "value": tarea.fecha_compromiso.strftime("%d %b %Y") if tarea.fecha_compromiso else "—"},
+    ]
+    info_proyecto = [
+        {"label": "Código", "value_html": format_html(
+            '<a href="{}" class="font-mono text-brand-600 hover:underline dark:text-brand-400">{}</a>',
+            reverse("proyectos-detalle", args=[tarea.proyecto.pk]), tarea.proyecto.codigo,
+        )},
+        {"label": "Cliente", "value": tarea.proyecto.cliente.razon_social if tarea.proyecto.cliente else "—"},
+    ]
+    action_bar_meta = format_html(
+        '<span>{}</span>',
+        f"Creada {tarea.creado_en.strftime('%d %b %Y')}" if hasattr(tarea, "creado_en") else "",
+    )
     return render(request, "pizarron/detalle_tarea.html", {
         "tarea": tarea,
         "proyecto": tarea.proyecto,
         "comentarios": comentarios,
-        "puede_editar": puede_ver_proyecto(request.user, tarea.proyecto),
+        "puede_editar": puede_ed,
         "es_admin": es_admin(request.user),
+        "info_clasificacion": info_clasificacion,
+        "info_proyecto": info_proyecto,
+        "action_bar_meta": action_bar_meta,
+        "breadcrumb_items": [
+            {"url": reverse("proyectos-lista"), "label": "Los Proyectos"},
+            {"url": reverse("proyectos-detalle", args=[tarea.proyecto.pk]), "label": tarea.proyecto.codigo},
+            {"label": tarea.titulo},
+        ],
     })
 
 

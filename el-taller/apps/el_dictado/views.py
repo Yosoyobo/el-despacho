@@ -81,11 +81,23 @@ def cancelar(request, pk: int):
 
 @login_required
 def detalle(request, pk: int):
+    from django.urls import reverse
     dictado = get_object_or_404(Dictado, pk=pk, autor=request.user)
     acciones = list(dictado.acciones.order_by("orden"))
+    info_dictado = [
+        {"label": "Estado", "value": dictado.get_estado_display()},
+        {"label": "Chalán", "value": f"{dictado.chalan_apodo} ({dictado.modelo})" if dictado.chalan_apodo else "—"},
+        {"label": "Latencia", "value": f"{dictado.latencia_interpretacion_ms} ms" if dictado.latencia_interpretacion_ms else "—"},
+        {"label": "Creado", "value": dictado.creado_en.strftime("%d %b %Y %H:%M")},
+    ]
     return render(request, "el_dictado/detalle.html", {
         "dictado": dictado,
         "acciones": acciones,
+        "info_dictado": info_dictado,
+        "breadcrumb_items": [
+            {"url": reverse("dictado-historial"), "label": "El Dictado · historial"},
+            {"label": f"#{dictado.pk}"},
+        ],
     })
 
 

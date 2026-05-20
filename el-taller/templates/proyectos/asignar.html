@@ -26,7 +26,7 @@
             </li>
             {% endfor %}
         </ul>
-        {% else %}<p class="text-sm text-gray-500 dark:text-gray-400">Sin asignar.</p>{% endif %}
+        {% else %}{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin asignaciones" descripcion="Agrega miembros al equipo desde el formulario." icono="inbox" %}{% endif %}
     </section>
 
     <form method="post" class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

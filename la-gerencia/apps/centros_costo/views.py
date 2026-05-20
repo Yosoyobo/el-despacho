@@ -30,7 +30,16 @@ def lista(request):
     if (r := _gate(request)) is not None:
         return r
     centros = CentroDeCosto.objects.all().order_by("-activo", "nombre")
-    return render(request, "centros_costo/lista.html", {"centros": centros})
+    return render(request, "centros_costo/lista.html", {
+        "centros": centros,
+        "cabeceras_centros": [
+            {"label": "Nombre"},
+            {"label": "Naturaleza"},
+            {"label": "Descripción"},
+            {"label": "Estado"},
+            {"label": "", "align": "right"},
+        ],
+    })
 
 
 @login_required

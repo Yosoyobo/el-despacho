@@ -11,17 +11,16 @@
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             {% for f in form %}
-            <div{% if f.name == 'nombre' or f.name == 'descripcion' %} class="md:col-span-2"{% endif %}>
-                {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}{% if f.field.required %} <span class="text-error-500">*</span>{% endif %}{% if f.name == 'precio_base' and precio_readonly %} <span class="text-xs font-normal text-gray-400">(solo lectura)</span>{% endif %}</label>{% endif %}
                 {% if f.name == 'precio_base' and precio_readonly %}
-                    <input type="number" step="0.01" value="{{ f.value|default_if_none:'' }}" readonly disabled
-                           class="w-full cursor-not-allowed rounded-lg border-gray-300 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
+                <div>
+                    <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }} <span class="text-xs font-normal text-gray-400">(solo lectura)</span></label>
+                    <input type="number" step="0.01" value="{{ f.value|default_if_none:'' }}" readonly disabled class="w-full cursor-not-allowed rounded-lg border-gray-300 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
+                </div>
+                {% elif f.name == 'nombre' or f.name == 'descripcion' %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
                 {% else %}
-                    {{ f }}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
                 {% endif %}
-                {% if f.help_text %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ f.help_text }}</p>{% endif %}
-                {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-            </div>
             {% endfor %}
         </div>
     </section>

@@ -152,7 +152,7 @@
                 </div>
             </a>
             {% empty %}
-            <p class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin prospectos en pipeline.</p>
+            <div class="px-4 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin prospectos en pipeline" descripcion="Cuando crees clientes en estado prospecto aparecerán aquí." icono="folder" %}</div>
             {% endfor %}
         </div>
     </div>

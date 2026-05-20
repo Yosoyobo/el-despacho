@@ -47,7 +47,7 @@
             {% endfor %}
         </ul>
         {% else %}
-        <p class="text-sm text-gray-500 dark:text-gray-400">Aún no hay dispositivos suscritos.</p>
+        {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin dispositivos suscritos" descripcion="Activa las notificaciones desde el botón Permitir para empezar a recibir pushes." icono="alert" %}
         {% endif %}
     </div>
 </section>

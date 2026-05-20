@@ -26,9 +26,7 @@
             </div>
         </li>
         {% empty %}
-        <li class="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400 dark:border-gray-700">
-            Aún no has dictado nada al Chalán. Ve a la <a href="{% url 'taller-home' %}" class="text-brand-600 hover:text-brand-700">Sala de Juntas</a>.
-        </li>
+        <li>{% url 'taller-home' as taller_home_url %}{% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no has dictado nada" descripcion="El Chalán Claudio interpreta lenguaje natural en la Sala de Juntas — pruébalo." icono="sparkles" cta_url=taller_home_url cta_label="Ir a la Sala de Juntas" %}</li>
         {% endfor %}
     </ul>
 </div>
