@@ -76,9 +76,17 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 
 ## 4. Reglas inviolables
 
-1. **Sin UI component libs externas.** Cero shadcn / MUI / Radix / DaisyUI /
-   Headless. Tailwind + tokens TailAdmin como sistema visual. **ApexCharts SÍ
-   está permitido** (es la librería de gráficas estándar de TailAdmin Pro).
+1. **Sistema visual = Tailwind v3 + TailAdmin Pro 2.3.0; librerías externas
+   gratuitas SÍ permitidas si encajan.** TailAdmin Pro es la fuente canónica
+   de patrones (sidebars, dashboards, forms, tablas). Librerías externas
+   **gratuitas, vendoreadas** (CDN pin o `static/vendor/`) están permitidas
+   si: (a) integran sin Node toolchain, (b) respetan dark mode + tokens del
+   repo, (c) no son SPA-frameworks. Ya en uso: ApexCharts (gráficas). En
+   ese mismo nivel quedan habilitadas: flatpickr, Choices.js, FullCalendar,
+   SimpleBar, etc. Sigue prohibido: shadcn / MUI / Radix / DaisyUI /
+   Headless (empujan a JSX/runtime propio) y cualquier framework SPA
+   (React/Vue/Angular). Cuando dudes de una lib nueva, pregunta antes de
+   agregarla.
 2. **`BOVEDA_MASTER_KEY` obligatoria.** App falla al importar `lib.boveda` si
    no existe o no son 64 hex chars. Eager check.
 3. **TODAS las credenciales se configuran desde Los Ajustes** (cifradas con
@@ -743,12 +751,49 @@ partials ya están listos para que cualquier sesión futura los aplique
 a un form a la vez. **228 tests verdes** (155 taller + 68 gerencia + 5
 del Wave 2 que se cuentan en taller).
 
-**Wave 3 — Data tables** pendiente
-Un partial `_tabla_datos.html` canónico con sort por columna, filtros
-sticky, paginación TailAdmin, search box, action menu en filas. Sweep
-en listas: cartera, proyectos, pizarrón (tareas), recados-legacy,
-buzón, tesorería (ingresos/egresos/CxC/CxP/reembolsos), directorio,
-catálogo, centros de costo, tasas.
+**Wave 3 — Data tables** ✅ (2026-05-20)
+- Partial canónico `_componentes_tailadmin/_tabla_datos.html` (dos copias
+  sincronizadas Gerencia/Taller, regla §18): wrapper TailAdmin con
+  `<thead sticky top-0>` (header se queda fijo cuando el cuerpo scrollea
+  dentro de `max-h-[70vh] overflow-y-auto`; pasa `sin_scroll_vertical=True`
+  si la tabla es corta). Cabeceras dict-driven: `[{label, sort_key?,
+  align?, clase_th?}, ...]`. Si `sort_key` está, la columna es un link
+  toggleable (asc → desc → asc preservando `querystring_base`). Indicador
+  visual: `&uarr;` activo asc · `&darr;` activo desc · `&#8597;` inactivo.
+  Empty-state automático cuando faltan filas. Paginación al pie si pasas
+  `page_obj` (incluye `_paginacion.html` con `querystring_paginacion`).
+  Acepta `filas_template=` (path, recomendado: `{% include %}` con el
+  contexto del view) o `filas_html=` (cadena pre-renderizada, `|safe`).
+- Partial `_componentes_tailadmin/_tabla_acciones.html` (dos copias):
+  dropdown 3-puntos verticales por fila, wrapper compacto de `_dropdown.html`
+  cableado por `ui.js` (`data-dropdown-trigger`).
+- Aplicado como **referencia viva** en 3 listas:
+  - **La Cartera** (`cartera/lista.html` + `cartera/_filas.html`): sort
+    en razón social / RFC / estado + paginación (25/pág). View
+    `apps/la_cartera/views.py::lista` recibe `?orden=` con whitelist.
+  - **Los Proyectos** (`proyectos/lista.html` + `proyectos/_filas.html`):
+    sort en código / nombre / estado / fecha_compromiso + paginación.
+    Default `-creado_en`.
+  - **Tesorería · Egresos** (`tesoreria/egresos_lista.html` +
+    `tesoreria/_filas_egresos.html`): sort en código / fecha / monto /
+    estado_pago + paginación 50/pág + dropdown 3-puntos por fila
+    (Ver detalle / Editar / Anular) que respeta egreso.anulado (sin
+    menú, solo "Ver"). Reemplaza el slice `qs[:200]` con Paginator real.
+- Tests: `tests/taller/test_partials_tabla_wave3.py` (7 pass) — valida
+  estructura, sticky, toggle asc↔desc, indicador neutro en columnas
+  inactivas, `filas_html|safe`, dropdown de acciones. Suite total
+  taller+gerencia: **230 pass**.
+- **Patrón canónico para futuras listas**: view declara
+  `orden_permitido = {…}`, valida `request.GET['orden']`, hace
+  `qs.order_by(orden, "-pk")`, pagina con `Paginator(qs, N)`, expone
+  `cabeceras_<modulo>`, `orden_actual`, `querystring_base`,
+  `querystring_paginacion`, `page_obj`. Template hace 1 sola línea:
+  `{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=… filas_template="…/_filas.html" orden_actual=… querystring_base=… page_obj=… querystring_paginacion=… %}`.
+- **Sweep restante incremental** (mismo patrón Wave 2): pizarrón,
+  recados-legacy, buzón, tesorería (ingresos/CxC/CxP/reembolsos),
+  directorio, catálogo, centros de costo, tasas. Cualquier sesión puede
+  aplicar el partial a una lista pendiente sin riesgo: el partial ya
+  está estable y testeado.
 
 **Wave 4 — Detalles canónicos** pendiente
 Layout TailAdmin: columna principal + sidebar de info card + tabs

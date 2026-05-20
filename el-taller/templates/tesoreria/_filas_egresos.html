@@ -1,0 +1,34 @@
+{% for e in egresos %}
+<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if e.anulado %}opacity-60{% endif %}">
+    <td class="px-5 py-3"><a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>{% if e.anulado %}<span class="badge badge-gray ml-2">anulado</span>{% endif %}</td>
+    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.fecha|date:"Y-m-d" }}</td>
+    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.proveedor_nombre|default:"—" }}{% if e.proyecto %} · <span class="text-brand-600 dark:text-brand-400">{{ e.proyecto.codigo }}</span>{% endif %}</td>
+    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.centro_de_costo.nombre }}</td>
+    <td class="px-5 py-3"><span class="badge {% if e.estado_pago == 'pagado' %}badge-success{% elif e.estado_pago == 'por_reembolsar' %}badge-warning{% else %}badge-gray{% endif %}">{{ e.get_estado_pago_display }}</span></td>
+    <td class="px-5 py-3 text-right font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right">
+        {% if e.anulado %}
+            <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="text-sm text-gray-500 hover:underline">Ver</a>
+        {% else %}
+            <div class="relative inline-block text-left" data-dropdown>
+                <button type="button" data-dropdown-trigger
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                        aria-label="Acciones">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                </button>
+                <div data-dropdown-menu id="acc-egr-{{ e.pk }}" hidden
+                     class="absolute right-0 z-30 mt-2 w-48 origin-top-right overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+                    <ul class="py-1.5 text-sm">
+                        <li><a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="block px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80">Ver detalle</a></li>
+                        <li><a href="{% url 'tesoreria:egreso-editar' e.pk %}" class="block px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80">Editar</a></li>
+                        <li class="my-1 border-t border-gray-100 dark:border-gray-800"></li>
+                        <li><a href="{% url 'tesoreria:egreso-anular' e.pk %}" class="block px-3 py-2 text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10">Anular</a></li>
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="7" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin egresos.</td></tr>
+{% endfor %}

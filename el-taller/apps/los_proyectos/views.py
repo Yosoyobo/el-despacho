@@ -2,6 +2,7 @@ from apps.los_proyectos.forms import AsignacionForm, CambiarEstadoForm, Proyecto
 from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto, ProyectoAsignacion
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -35,6 +36,13 @@ def lista(request):
         qs = qs.filter(Q(nombre__icontains=q) | Q(codigo__icontains=q) | Q(cliente__razon_social__icontains=q))
     if estado:
         qs = qs.filter(estado=estado)
+    orden_permitido = {"codigo", "nombre", "estado", "fecha_compromiso", "creado_en"}
+    orden = (request.GET.get("orden") or "-creado_en").strip()
+    if orden.lstrip("-") not in orden_permitido:
+        orden = "-creado_en"
+    qs = qs.order_by(orden, "pk")
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
     base = _proyectos_visibles(request.user)
     kpis = {
         "prospectos": base.filter(estado="prospecto").count(),
@@ -42,11 +50,28 @@ def lista(request):
         "pausa": base.filter(estado="en_pausa").count(),
         "entregados": base.filter(estado="entregado").count(),
     }
+    qs_filtros = []
+    if q:
+        qs_filtros.append(f"q={q}")
+    if estado:
+        qs_filtros.append(f"estado={estado}")
+    querystring_base = "&".join(qs_filtros)
     return render(request, "proyectos/lista.html", {
-        "proyectos": qs,
+        "proyectos": page_obj.object_list,
+        "page_obj": page_obj,
         "q": q,
         "estado": estado,
         "estados_disponibles": ESTADOS_PROYECTO,
+        "orden_actual": orden,
+        "querystring_base": querystring_base,
+        "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])),
+        "cabeceras_proyectos": [
+            {"label": "Código", "sort_key": "codigo"},
+            {"label": "Nombre", "sort_key": "nombre"},
+            {"label": "Cliente"},
+            {"label": "Estado", "sort_key": "estado"},
+            {"label": "Compromiso", "sort_key": "fecha_compromiso"},
+        ],
         "puede_crear": puede_editar_proyecto(request.user, None),
         "es_admin": es_admin(request.user),
         "kpis": kpis,

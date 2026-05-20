@@ -34,34 +34,5 @@
     <button type="submit" class="btn-secundario">Filtrar</button>
 </form>
 
-<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                <tr>
-                    <th class="px-5 py-3 text-left">Código</th>
-                    <th class="px-5 py-3 text-left">Nombre</th>
-                    <th class="px-5 py-3 text-left">Cliente</th>
-                    <th class="px-5 py-3 text-left">Estado</th>
-                    <th class="px-5 py-3 text-left">Compromiso</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                {% for p in proyectos %}
-                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                    <td class="px-5 py-3">
-                        <a href="{% url 'proyectos-detalle' p.pk %}" class="font-mono text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a>
-                    </td>
-                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ p.nombre }}</td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social }}</td>
-                    <td class="px-5 py-3"><span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin proyectos visibles.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_proyectos filas_template="proyectos/_filas.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
 {% endblock %}

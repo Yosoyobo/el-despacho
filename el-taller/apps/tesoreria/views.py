@@ -160,6 +160,7 @@ def ingreso_anular(request, pk):
 def egresos_lista(request):
     if (r := _gate(request)) is not None:
         return r
+    from django.core.paginator import Paginator
     qs = Egreso.objects.all() if request.GET.get("anulados") == "1" else Egreso.vigentes.all()
     qs = qs.select_related("centro_de_costo", "proyecto", "pagado_por", "creado_por")
     q = (request.GET.get("q") or "").strip()
@@ -172,10 +173,40 @@ def egresos_lista(request):
         qs = qs.filter(centro_de_costo__slug=centro)
     if estado:
         qs = qs.filter(estado_pago=estado)
+    orden_permitido = {"codigo", "fecha", "monto", "estado_pago"}
+    orden = (request.GET.get("orden") or "-fecha").strip()
+    if orden.lstrip("-") not in orden_permitido:
+        orden = "-fecha"
+    qs = qs.order_by(orden, "-pk")
+    paginator = Paginator(qs, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    qs_filtros = []
+    if q:
+        qs_filtros.append(f"q={q}")
+    if centro:
+        qs_filtros.append(f"centro={centro}")
+    if estado:
+        qs_filtros.append(f"estado_pago={estado}")
+    if request.GET.get("anulados") == "1":
+        qs_filtros.append("anulados=1")
+    querystring_base = "&".join(qs_filtros)
     from .models import CentroDeCosto
     return render(request, "tesoreria/egresos_lista.html", {
-        "egresos": qs[:200],
+        "egresos": page_obj.object_list,
+        "page_obj": page_obj,
         "q": q, "centro": centro, "estado_pago": estado,
+        "orden_actual": orden,
+        "querystring_base": querystring_base,
+        "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-fecha" else [])),
+        "cabeceras_egresos": [
+            {"label": "Código", "sort_key": "codigo"},
+            {"label": "Fecha", "sort_key": "fecha"},
+            {"label": "Proveedor · Proyecto"},
+            {"label": "Centro"},
+            {"label": "Estado", "sort_key": "estado_pago"},
+            {"label": "Monto", "sort_key": "monto", "align": "right"},
+            {"label": "", "align": "right"},
+        ],
         "centros": CentroDeCosto.objects.filter(activo=True),
         "incluye_anulados": request.GET.get("anulados") == "1",
     })

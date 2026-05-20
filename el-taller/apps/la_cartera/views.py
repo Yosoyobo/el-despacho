@@ -2,6 +2,7 @@ from apps.la_cartera.forms import ClienteForm
 from apps.la_cartera.models import Cliente
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -26,15 +27,40 @@ def lista(request):
     if q:
         from django.db.models import Q
         qs = qs.filter(Q(razon_social__icontains=q) | Q(rfc__icontains=q) | Q(email_contacto__icontains=q))
+    orden_permitido = {"razon_social", "rfc", "estado", "creado_en"}
+    orden = (request.GET.get("orden") or "razon_social").strip()
+    orden_clean = orden.lstrip("-")
+    if orden_clean not in orden_permitido:
+        orden = "razon_social"
+    qs = qs.order_by(orden, "pk")
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
     # KPIs hero
     activos = Cliente.activos.count()
     archivados = Cliente.objects.filter(activo=False).count()
     con_proyectos_activos = Cliente.activos.filter(
         proyectos__estado__in=("en_diseno", "revision_cliente", "en_produccion")
     ).distinct().count()
+    qs_filtros = []
+    if q:
+        qs_filtros.append(f"q={q}")
+    if incluir_archivados:
+        qs_filtros.append("archivados=1")
+    querystring_base = "&".join(qs_filtros)
     return render(request, "cartera/lista.html", {
-        "clientes": qs,
+        "clientes": page_obj.object_list,
+        "page_obj": page_obj,
         "q": q,
+        "orden_actual": orden,
+        "querystring_base": querystring_base,
+        "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "razon_social" else [])),
+        "cabeceras_cartera": [
+            {"label": "Razón social", "sort_key": "razon_social"},
+            {"label": "RFC", "sort_key": "rfc"},
+            {"label": "Contacto"},
+            {"label": "Estado", "sort_key": "estado"},
+            {"label": "Acciones", "align": "right"},
+        ],
         "incluir_archivados": incluir_archivados,
         "puede_editar": puede_editar_cartera(request.user),
         "kpis": {

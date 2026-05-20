@@ -38,34 +38,5 @@
     <button type="submit" class="btn-secundario">Buscar</button>
 </form>
 
-<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                <tr>
-                    <th class="px-5 py-3 text-left">Código</th>
-                    <th class="px-5 py-3 text-left">Fecha</th>
-                    <th class="px-5 py-3 text-left">Proveedor · Proyecto</th>
-                    <th class="px-5 py-3 text-left">Centro</th>
-                    <th class="px-5 py-3 text-left">Estado</th>
-                    <th class="px-5 py-3 text-right">Monto</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                {% for e in egresos %}
-                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if e.anulado %}opacity-60{% endif %}">
-                    <td class="px-5 py-3"><a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>{% if e.anulado %}<span class="badge badge-gray ml-2">anulado</span>{% endif %}</td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.fecha|date:"Y-m-d" }}</td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.proveedor_nombre|default:"—" }}{% if e.proyecto %} · <span class="text-brand-600 dark:text-brand-400">{{ e.proyecto.codigo }}</span>{% endif %}</td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.centro_de_costo.nombre }}</td>
-                    <td class="px-5 py-3"><span class="badge {% if e.estado_pago == 'pagado' %}badge-success{% elif e.estado_pago == 'por_reembolsar' %}badge-warning{% else %}badge-gray{% endif %}">{{ e.get_estado_pago_display }}</span></td>
-                    <td class="px-5 py-3 text-right font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin egresos.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_egresos filas_template="tesoreria/_filas_egresos.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
 {% endblock %}

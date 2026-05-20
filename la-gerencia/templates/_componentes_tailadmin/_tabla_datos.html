@@ -1,0 +1,78 @@
+{% comment %}
+Tabla de datos TailAdmin canónica — Wave 3.
+
+Es el sucesor de _tabla.html para listas con orden + paginación. _tabla.html
+queda para tablas pasivas (detalles, resúmenes). Si tu vista es una lista
+con queryset, usa este.
+
+Params:
+  - cabeceras: lista de dicts. Cada dict puede traer:
+      - label (str, requerido)
+      - sort_key (str, opcional): si está, la columna es clickeable y ordena por
+        ese campo. Convención: el view recibe `?orden=foo` o `?orden=-foo`.
+      - align ('left' | 'right' | 'center', default 'left')
+      - clase_th (str, opcional): clases extras para el <th>
+  - filas_template (str, recomendado): path al template parcial que renderiza
+    los <tr>...</tr> del <tbody>. Tu template recibe el contexto completo de
+    la vista (clientes, proyectos, etc.).
+  - filas_html (str, alternativa): bloque HTML pre-renderizado. Útil cuando
+    ya tienes la cadena de filas. Se prefiere filas_template.
+  - vacia_mensaje (str, opcional)
+  - orden_actual (str): valor actual de ?orden= (ej. 'fecha' o '-fecha').
+    Usado para pintar la flecha + invertir el toggle al clic.
+  - querystring_base (str): querystring SIN orden ni page (ej. 'q=foo&estado=activo').
+    Se concatena al link de orden para preservar filtros.
+  - page_obj (opcional): si se pasa, renderiza la paginación TailAdmin al pie.
+
+Sticky thead: el partial agrega `sticky top-0` a <thead> — funciona dentro
+de `overflow-y-auto` (el wrapper aquí ya lo trae con `max-h-[70vh]`).
+Si quieres que NO scrollee, pasa `sin_scroll_vertical=True`.
+
+Acciones por fila: usa _tabla_acciones.html dentro de tus filas_html.
+{% endcomment %}
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto {% if not sin_scroll_vertical %}max-h-[70vh] overflow-y-auto{% endif %}">
+        <table class="min-w-full text-sm">
+            <thead class="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+                <tr>
+                    {% for col in cabeceras %}
+                        <th scope="col" class="px-5 py-3 text-{{ col.align|default:'left' }} {{ col.clase_th|default:'' }}">
+                            {% if col.sort_key %}
+                                {% if orden_actual == col.sort_key %}
+                                    <a href="?{% if querystring_base %}{{ querystring_base }}&amp;{% endif %}orden=-{{ col.sort_key }}"
+                                       class="inline-flex items-center gap-1 text-brand-600 hover:underline dark:text-brand-400">
+                                        {{ col.label }}<span aria-hidden="true">&uarr;</span>
+                                    </a>
+                                {% elif orden_actual == '-'|add:col.sort_key %}
+                                    <a href="?{% if querystring_base %}{{ querystring_base }}&amp;{% endif %}orden={{ col.sort_key }}"
+                                       class="inline-flex items-center gap-1 text-brand-600 hover:underline dark:text-brand-400">
+                                        {{ col.label }}<span aria-hidden="true">&darr;</span>
+                                    </a>
+                                {% else %}
+                                    <a href="?{% if querystring_base %}{{ querystring_base }}&amp;{% endif %}orden={{ col.sort_key }}"
+                                       class="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                                        {{ col.label }}<span class="text-gray-300 dark:text-gray-600" aria-hidden="true">&#8597;</span>
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                {{ col.label }}
+                            {% endif %}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% if filas_template %}
+                    {% include filas_template %}
+                {% elif filas_html %}
+                    {{ filas_html|safe }}
+                {% else %}
+                    <tr><td colspan="{{ cabeceras|length }}" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">{{ vacia_mensaje|default:"Sin registros por ahora" }}</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% if page_obj %}
+    {% include "_componentes_tailadmin/_paginacion.html" with page_obj=page_obj querystring=querystring_paginacion|default:querystring_base %}
+{% endif %}
