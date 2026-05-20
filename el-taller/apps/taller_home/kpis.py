@@ -376,6 +376,7 @@ def _kpi_cotizaciones_pendientes(user) -> dict:
 
 def _kpi_cotizaciones_vencidas(user) -> dict:
     from datetime import date
+
     from apps.cotizaciones.models import Cotizacion
     n = Cotizacion.objects.filter(estado="enviada", fecha_validez__lt=date.today()).count()
     return _resultado(n, nota=("alerta" if n > 0 else ""), link="/cotizaciones/?estado=enviada")
@@ -383,6 +384,7 @@ def _kpi_cotizaciones_vencidas(user) -> dict:
 
 def _kpi_cotizaciones_aprobadas_mes(user) -> dict:
     from datetime import date
+
     from apps.cotizaciones.models import Cotizacion
     hoy = date.today()
     n = Cotizacion.objects.filter(
