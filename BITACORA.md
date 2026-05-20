@@ -3750,3 +3750,222 @@ Total esperado del repo: **420** (406 baseline + 14 nuevos).
 - **S2b.2.1 — UI de aprendizajes + clarificación iterativa** (~1h).
 - **S2b.5 — Capa 3 DSL/KPIs custom** (ya tiene intérprete real disponible
   desde este sprint).
+
+---
+
+# BITÁCORA — Sprint S2b.3 (La Tesorería — V1)
+
+**Cierre:** 2026-05-19 · Claude Code activo ~3.5h · DOC_06 V1.2.
+
+## 1. App nueva — `el-taller/apps/tesoreria/`
+
+- `apps.py` con `label="tesoreria"` (compartida cross-app vía
+  PYTHONPATH; La Gerencia también la instala para que su CRUD de
+  centros de costo importe el modelo directo).
+- `models/` partido por archivo: `centro_de_costo.py`, `ingreso.py`,
+  `egreso.py`, `egreso_ocr_log.py`.
+- Migración `0001_initial` + `0002_seed_centros_costo` (data
+  migration, idempotente vía `get_or_create(slug=...)`, 10 centros).
+- `services.py` concentra `kpis_landing`, `reporte_mes`,
+  `cuentas_por_pagar_qs`, `cxc_proyectos` (cálculo Python — más
+  simple que un Subquery + más claro), `reembolsos_pendientes` (group
+  by pagado_por), `anular_ingreso`/`anular_egreso`.
+- `exports.py` con un encoder por vista + dispatcher `filas_para` +
+  `responder_csv` que setea UTF-8 BOM, `Content-Disposition`, BOM
+  inline. Helpers `_fmt_monto/_fmt_fecha/_fmt_bool`.
+- `push_handlers.py` solo expone `notificar_reembolso_pendiente`
+  (categoría `tesoreria_reembolso`, dedup contra autor).
+- `forms.py` con CSS TailAdmin reutilizable (`_aplicar_css`) +
+  `IngresoForm`, `EgresoForm`, `CentroDeCostoForm`, `AnularForm`.
+  Validaciones: monto>0, `tarjeta_personal + pagado` sugiere
+  por_reembolsar.
+- `views.py` con `_gate(request)` único usando `puede_ver_finanzas`,
+  `_emitir(tipo, request, payload)` para reducir boilerplate Portavoz.
+  Vistas: landing, ingresos CRUD+anular, egresos CRUD+anular, por_cobrar,
+  por_pagar, reportes, exportar.
+
+## 2. Códigos correlativos `ING-YYYY-NNNN` / `EGR-YYYY-NNNN`
+
+- Helper `_generar_codigo(prefijo, anio)` con `select_for_update`
+  sobre los del año en curso. Genera dentro de `transaction.atomic` en
+  el `save()` cuando `codigo` está vacío.
+- El año se toma de `self.fecha or date.today()` — permite registrar
+  fecha futura/pasada sin romper el reset anual.
+
+## 3. CRUD UI
+
+- 11 templates `el-taller/templates/tesoreria/`: landing,
+  ingresos_lista, ingreso_detalle, ingreso_form, egresos_lista,
+  egreso_detalle, egreso_form, anular, por_cobrar, por_pagar,
+  reportes.
+- Filtros estándar en listas: búsqueda + (egresos) selector de
+  centro + selector de estado de pago + toggle "incluir anulados".
+- Detalle muestra dl bloque con dt/dd para cada campo + bloque
+  de anulación destacado en rojo si aplica.
+- Anular requiere motivo ≥5 chars; preserva el registro, solo
+  pone `anulado=True` y desaparece de `Manager.vigentes`.
+
+## 4. Centros de costo en La Gerencia → Catálogos
+
+- App nueva `la-gerencia/apps/centros_costo/` (label
+  `centros_costo_admin` para evitar choque con `tesoreria`).
+- Sin modelos propios: importa `tesoreria.models.CentroDeCosto` +
+  `tesoreria.forms.CentroDeCostoForm`. Patrón "una app gestiona el
+  modelo, otra app gestiona la UI admin" cuando la UI no encaja en
+  la ubicación natural de los datos.
+- Permisos: solo `es_super_admin`. Dueño no edita (defensa contra
+  romper el catálogo accidentalmente).
+- Sidebar Gerencia: nuevo item "Centros de costo" debajo de Tasas.
+- URLs montadas bajo `/catalogos/`. URLs no se exponen desde El
+  Taller — los redirects existentes `/catalogo/` → Taller no aplican
+  a `/catalogos/centros-costo/`.
+
+## 5. Ejecutor `registrar_egreso` activo en El Dictado
+
+- Reemplaza el STUB de S2b.2. Payload acepta: `monto` (>0),
+  `descripcion` (requerida), `centro_de_costo_slug` (fallback "otros"
+  si el slug no existe), `proyecto_slug?`, `proveedor_nombre?`,
+  `pagado_por_slug?` (default = usuario que dictó),
+  `solicitado_por_slug?`, `estado_pago?` ∈ pagado/por_reembolsar/pendiente,
+  `metodo?` ∈ 6 enums, `fecha?` ISO o defecto hoy.
+- `tarjeta_personal + pagado` se fuerza a `por_reembolsar`
+  defensivamente (capa extra sobre la validación del form).
+- Egreso queda con `origen='sala_juntas'`.
+- Si el resultado es `por_reembolsar` llama
+  `notificar_reembolso_pendiente` (push automático con
+  `transaction.on_commit`).
+- Documentado en `el-taller/apps/el_dictado/prompt.py` para que el
+  Chalán Claudio sepa el payload exacto.
+
+## 6. KPIs financieros activos en Sala de Juntas
+
+- Funcs `_kpi_ingresos_mes`, `_kpi_egresos_mes` (nuevo),
+  `_kpi_utilidad_mes` (nuevo), `_kpi_cxc_total`, `_kpi_cxp_total` (nuevo),
+  `_kpi_reembolsos_pendientes` (nuevo) leen de `apps.tesoreria.models`
+  con `vigentes` (omite anulados).
+- 6 KPIs en categoría `dinero` con `estado_kpi='activo'` (antes
+  2 con `pendiente_tesoreria`).
+- Categoría renombrada de "💰 Dinero (S2b.3)" a "💰 Dinero".
+
+## 7. Push automático `tesoreria_reembolso`
+
+- Categoría nueva en `perfil_notificaciones.views.CATEGORIAS` con
+  `roles_visible=("super_admin","dueno","contador")` — diseñador no
+  la ve (no tiene Tesorería).
+- Push se dispara desde la vista `egreso_nuevo` cuando se captura
+  `por_reembolsar`, desde `egreso_editar` cuando el cambio cruza la
+  frontera `!= por_reembolsar` → `por_reembolsar`, y desde el ejecutor
+  del Dictado cuando el resultado es por_reembolsar.
+- Destinatarios: contadores + admins activos + el pagador (dedup
+  contra el autor para evitar auto-push).
+
+## 8. Eventos Portavoz nuevos
+
+- `tesoreria.ingreso_registrado`, `tesoreria.egreso_registrado`,
+  `tesoreria.ocr_procesado`, `tesoreria.reembolso_pendiente`,
+  `tesoreria.ingreso_anulado`, `tesoreria.egreso_anulado`,
+  `tesoreria.cuentas_por_pagar_alta`, `tesoreria.exportado`,
+  `tesoreria.export_fallido`.
+- `centro_costo.creado`, `centro_costo.actualizado`.
+- `EventoTipo` Literal extendido. n8n los puede discriminar por
+  prefijo `tesoreria.*` igual que `recado.*` o `proyecto.*`.
+
+## 9. CSV exports — 6 vistas
+
+- Endpoint `/tesoreria/exportar/<vista>.csv` para `ingresos`,
+  `egresos`, `cxc`, `cxp`, `reembolsos`, `movimientos`.
+- Vista `movimientos` consolida ingresos + egresos en una sola tabla
+  con columna "Tipo" y ordena por fecha desc.
+- Decisiones de formato (DOC_06 §8.2.3): UTF-8 con BOM, fechas ISO
+  8601, montos `1234.56` (no `$1,234.56`), booleanos `Sí/No`, centro
+  de costo como nombre legible, proyecto/cliente como código/razón
+  social, sin límite hardcoded de filas.
+- Cada export emite `tesoreria.exportado` con `vista`, `formato`,
+  `filas`, `filtros`.
+- Sheets export queda para S2b.3b — `responder_sheets` no existe
+  todavía; el wrapper Sheets aún no se ha escrito.
+
+## 10. Tests — 27 nuevos
+
+- `tests/taller/test_tesoreria.py` con: seed centros, códigos
+  correlativos (ING + EGR), centro PROTECT al borrar, anular marca y
+  preserva, manager `vigentes` omite anulados, form ingreso rechaza
+  monto cero, form egreso sugiere reembolso con tarjeta personal,
+  diseñador no entra a Tesorería, contador entra, dueño entra,
+  crear_ingreso emite evento, crear_egreso por_reembolsar emite
+  `reembolso_pendiente`, anular requiere motivo ≥5 chars, anular con
+  motivo válido funciona, CxP query, reembolsos agrupados, reporte
+  mensual, CSV ingresos con BOM + encoding UTF-8, CSV fechas ISO,
+  CSV montos decimal, CSV egresos respeta filtro centro, CSV
+  movimientos unifica, telemetry export, diseñador no exporta,
+  CentroDeCosto super_admin crea, dueño no administra.
+- Test de `test_dictado.py::test_ejecutor_registrar_egreso_es_stub`
+  renombrado a `test_ejecutor_registrar_egreso_crea_egreso` y
+  reescrito.
+- Test `test_kpi_dinero_marcado_como_pendiente_tesoreria` renombrado
+  a `test_kpi_dinero_ya_no_es_pendiente_tesoreria` y verifica los 4
+  KPIs financieros nuevos con `estado_kpi='activo'`.
+- Suite total: **447 pass, 9 skipped** (Postgres → SQLite en memoria
+  para tests, Redis-skipped sin servicio local).
+
+## 11. Decisiones de sprint
+
+- **App `tesoreria` en El Taller, no en raíz.** Sigue el patrón de
+  `recados/` (también vive en El Taller porque sólo Taller la consume).
+  Las apps compartidas (`cuentas`, `ajustes`, `buzon`, `interfono`,
+  `referencias`, `chalanes`, `proximamente`) viven en raíz porque
+  ≥2 projects las consumen. La Gerencia importa `apps.tesoreria` solo
+  para que el form de centros de costo se enchufe — eso no la convierte
+  en shared en el sentido del patrón.
+- **CRUD de centros de costo en Gerencia, no en Taller.** DOC_06 §4.1
+  pide explícitamente que el catálogo se edite desde Gerencia →
+  Catálogos para que el equipo operativo no toque la estructura
+  contable accidentalmente. Tesorería solo lo lee.
+- **CxC sin tabla nueva.** DOC_06 §4.5 documenta que CxC se simula
+  con `Proyecto.monto_facturado - monto_cobrado` mientras llega
+  Facturación en S2b. `cxc_proyectos()` itera en Python (≤30 proyectos
+  no-cancelados típico) — más legible que un Subquery con `F("...")`.
+- **No se construyó `responder_sheets`.** El wrapper `lib.google_sheets`
+  no existe; mejor que el helper falte completo a que exista como STUB
+  que confunde. Cuando S2b.3b lo agregue, `views.exportar` se extenderá
+  con una rama `?formato=sheets` o un endpoint separado.
+- **Migración auto-generada con dependencias incorrectas.** `make-
+  migrations` resolvió las FK a la última migración existente de
+  `cartera` y `proyectos`, pero como Django además generó migraciones
+  espurias `0003_alter_cliente_id` / `0004_alter_proyecto_id_*` (re-
+  detección del `id` BigAutoField), `tesoreria.0001_initial` heredó
+  esas dependencies. Las migraciones espurias se borraron y la dep
+  se reescribió a `cartera 0002_cliente_slug` y `proyectos 0003_proyecto_slug`.
+- **`apps.tesoreria` instalada también en Gerencia.** Una app Django
+  con `db_table` único puede instalarse en N proyectos sin conflicto —
+  la migración la corre uno solo (La Gerencia, por la regla de §14
+  Bug B). Esto permite que `centros_costo_admin` importe el modelo
+  sin re-declararlo.
+- **Tests `urls_gerencia` necesitan namespace `tesoreria` registrado.**
+  La sidebar de El Taller (en `el-taller/templates/`) hace
+  `{% url 'tesoreria:landing' %}`. Como los TEMPLATES DIRS en tests
+  ponen `el-taller/templates` primero, la sidebar de Taller también
+  se renderiza bajo `urls_gerencia`. Solución: montar
+  `apps.tesoreria.urls` en `urls_gerencia.py` bajo un prefijo
+  inalcanzable (`__tesoreria_for_url_reverse__/`) para que la URL
+  resuelva sin agregar superficie real en Gerencia.
+
+## 12. Deuda residual
+
+- **OCR de recibos**: `EgresoOcrLog` existe sin tocar. El pipeline
+  (optimización local → upload Drive → Chalán con visión → preview
+  con confianza) llega en S2b.3b. Bloqueado por activación del
+  wrapper Drive en S2b.1b.
+- **Export Sheets**: requiere wrapper `lib.google_sheets`. Sin
+  prioridad — CSV cumple para el flujo "abrir en Excel/Sheets".
+- **UI dedicada "Dictar gasto"** (`/tesoreria/egresos/dictar/`): el
+  backend ya está vía ejecutor, falta la pantalla con system prompt
+  específico de gasto. Subset chico — entra en cualquier sprint.
+
+## 13. Próximo sprint
+
+- **S2b.1b** (cuando Oscar termine `docs/SETUP_GOOGLE_DRIVE.md`) —
+  desbloquea adjuntos a Recados + OCR de Tesorería + Sheets export.
+- **S2b.2.1** — clarificación iterativa del Dictado + UI de
+  aprendizajes.
+- **S2b.5** — Capa 3 DSL/KPIs custom generados por Chalán.

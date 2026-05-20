@@ -311,27 +311,59 @@ def _kpi_site_integraciones_rojo(user) -> dict:
     return _resultado(n, nota=("alerta" if n > 0 else ""), link="/site/")
 
 
-# ── Dinero (placeholders — calculados con campos del modelo de proyecto) ──
+# ── Dinero (S2b.3 — leen de La Tesorería) ──
 
 
 def _kpi_ingresos_mes(user) -> dict:
-    """Suma de `monto_cobrado` de proyectos cobrados este mes."""
-    from apps.los_proyectos.models import Proyecto
+    from apps.tesoreria.models import Ingreso
     from django.db.models import Sum
-    inicio = _inicio_mes()
-    total = Proyecto.objects.filter(
-        actualizado_en__date__gte=inicio,
-    ).aggregate(s=Sum("monto_cobrado"))["s"] or 0
-    return _resultado(f"${total:,.0f}", nota="(estimado parcial — completar con S2b.3 La Tesorería)")
+    total = Ingreso.vigentes.filter(fecha__gte=_inicio_mes()).aggregate(
+        s=Sum("monto"))["s"] or 0
+    return _resultado(f"${total:,.0f}", link="/tesoreria/ingresos/")
+
+
+def _kpi_egresos_mes(user) -> dict:
+    from apps.tesoreria.models import Egreso
+    from django.db.models import Sum
+    total = Egreso.vigentes.filter(fecha__gte=_inicio_mes()).aggregate(
+        s=Sum("monto"))["s"] or 0
+    return _resultado(f"${total:,.0f}", link="/tesoreria/egresos/")
+
+
+def _kpi_utilidad_mes(user) -> dict:
+    from apps.tesoreria.models import Egreso, Ingreso
+    from django.db.models import Sum
+    desde = _inicio_mes()
+    ingresos = Ingreso.vigentes.filter(fecha__gte=desde).aggregate(s=Sum("monto"))["s"] or 0
+    egresos = Egreso.vigentes.filter(fecha__gte=desde).aggregate(s=Sum("monto"))["s"] or 0
+    diff = ingresos - egresos
+    return _resultado(f"${diff:,.0f}", nota=("alerta" if diff < 0 else ""), link="/tesoreria/reportes/")
 
 
 def _kpi_cxc_total(user) -> dict:
-    """`monto_facturado - monto_cobrado` agregado de proyectos no-terminales."""
-    from apps.los_proyectos.models import ESTADOS_TERMINALES, Proyecto
-    from django.db.models import F, Sum
-    qs = Proyecto.objects.exclude(estado__in=ESTADOS_TERMINALES)
-    total = qs.aggregate(s=Sum(F("monto_facturado") - F("monto_cobrado")))["s"] or 0
-    return _resultado(f"${total:,.0f}", nota="(estimado parcial — S2b.3)")
+    from apps.tesoreria.services import cxc_proyectos
+    total = sum(s for _, s in cxc_proyectos())
+    return _resultado(f"${total:,.0f}", link="/tesoreria/por-cobrar/")
+
+
+def _kpi_cxp_total(user) -> dict:
+    from apps.tesoreria.services import cuentas_por_pagar_qs
+    from django.db.models import Sum
+    total = cuentas_por_pagar_qs().aggregate(s=Sum("monto"))["s"] or 0
+    return _resultado(f"${total:,.0f}", link="/tesoreria/por-pagar/")
+
+
+def _kpi_reembolsos_pendientes(user) -> dict:
+    from apps.tesoreria.models import Egreso
+    from django.db.models import Sum
+    qs = Egreso.vigentes.filter(estado_pago="por_reembolsar")
+    n = qs.count()
+    total = qs.aggregate(s=Sum("monto"))["s"] or 0
+    return _resultado(
+        f"${total:,.0f}",
+        nota=f"{n} pendiente{'s' if n != 1 else ''}" if n else "",
+        link="/tesoreria/por-pagar/",
+    )
 
 
 # ── Catálogo ──
@@ -403,11 +435,19 @@ KPIS: list[KPI] = [
     KPI("site-integraciones-rojo", "Integraciones en rojo", "Plataformas externas fallando en El Site.",
         "infraestructura", ("super_admin", "dueno"), _kpi_site_integraciones_rojo),
 
-    # Dinero (parcial — completo en S2b.3)
-    KPI("ingresos-mes", "Ingresos del mes (estimado)", "Suma de cobros del mes. Completo en La Tesorería.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_ingresos_mes, estado_kpi="pendiente_tesoreria"),
-    KPI("cxc-total", "Cuentas por cobrar (estimado)", "Facturado - cobrado en proyectos no-terminales. Completo en La Tesorería.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_cxc_total, estado_kpi="pendiente_tesoreria"),
+    # Dinero (S2b.3)
+    KPI("ingresos-mes", "Ingresos del mes", "Cobros vigentes (no anulados) del mes en curso.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_ingresos_mes),
+    KPI("egresos-mes", "Egresos del mes", "Gastos vigentes del mes en curso.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_egresos_mes),
+    KPI("utilidad-mes", "Utilidad bruta del mes", "Ingresos menos egresos del mes.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_utilidad_mes),
+    KPI("cxc-total", "Cuentas por cobrar", "Saldos pendientes por cobrar (mientras Facturación llega, se calcula sobre proyectos).",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_cxc_total),
+    KPI("cxp-total", "Cuentas por pagar", "Egresos pendientes o por reembolsar.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_cxp_total),
+    KPI("reembolsos-pendientes", "Reembolsos pendientes", "Dinero adelantado por empleados que el despacho debe.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_reembolsos_pendientes),
 ]
 
 
@@ -418,7 +458,7 @@ CATEGORIAS = (
     ("recados", "💬 Recados"),
     ("cartera", "👥 Cartera"),
     ("infraestructura", "📡 Infraestructura"),
-    ("dinero", "💰 Dinero (S2b.3)"),
+    ("dinero", "💰 Dinero"),
 )
 
 

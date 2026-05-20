@@ -31,10 +31,13 @@ def test_kpi_buzon_solo_admin(usuario_factory):
     assert "disenador" not in kpi.roles_visible
 
 
-def test_kpi_dinero_marcado_como_pendiente_tesoreria():
+def test_kpi_dinero_ya_no_es_pendiente_tesoreria():
+    """S2b.3: los KPIs financieros leen de La Tesorería con estado_kpi='activo'."""
     from apps.taller_home.kpis import kpi_por_slug
-    assert kpi_por_slug("ingresos-mes").estado_kpi == "pendiente_tesoreria"
-    assert kpi_por_slug("cxc-total").estado_kpi == "pendiente_tesoreria"
+    assert kpi_por_slug("ingresos-mes").estado_kpi == "activo"
+    assert kpi_por_slug("egresos-mes").estado_kpi == "activo"
+    assert kpi_por_slug("cxc-total").estado_kpi == "activo"
+    assert kpi_por_slug("cxp-total").estado_kpi == "activo"
 
 
 # ── Cálculos ─────────────────────────────────────────────────────────────

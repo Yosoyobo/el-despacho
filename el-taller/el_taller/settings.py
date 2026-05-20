@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "apps.recados.apps.RecadosConfig",
     # S2b.2
     "apps.el_dictado.apps.ElDictadoConfig",
+    # S2b.3
+    "apps.tesoreria.apps.TesoreriaConfig",
 ]
 
 MIDDLEWARE = [

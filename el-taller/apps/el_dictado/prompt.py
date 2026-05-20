@@ -37,8 +37,13 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - crear_cliente, actualizar_cliente
 - crear_tarea, actualizar_tarea
 - crear_recado, crear_mensaje_buzon
-- registrar_ingreso, registrar_egreso (devuelve la acción aunque hoy sea
-  STUB; el sistema decide si la ejecuta o no)
+- registrar_egreso (S2b.3 activo; payload: monto, descripcion,
+  centro_de_costo_slug, proyecto_slug?, proveedor_nombre?, pagado_por_slug?,
+  estado_pago? ∈ pagado|por_reembolsar|pendiente, metodo? ∈
+  transferencia|tarjeta_empresa|tarjeta_personal|efectivo|cheque|otro,
+  fecha? YYYY-MM-DD)
+- registrar_ingreso (pendiente; emite acción si la entrada lo describe,
+  el sistema decide si la persiste)
 
 FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
 {

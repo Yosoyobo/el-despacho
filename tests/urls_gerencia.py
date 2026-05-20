@@ -26,6 +26,12 @@ urlpatterns = [
     path("buzon/clientes/", TemplateView.as_view(template_name="buzon_admin/clientes_proximamente.html"),
          name="buzon-admin-clientes-proximamente"),
     path("buzon/", include("apps.buzon_admin.urls")),
+    path("catalogos/", include("apps.centros_costo.urls")),
+    # Para que la sidebar compartida pueda hacer `{% url 'tesoreria:...' %}`
+    # incluso bajo el urlconf de Gerencia en tests, montamos la app a un
+    # prefijo que jamás se visitará desde Gerencia real (los enlaces los
+    # absorberá el redirect a Taller en producción).
+    path("__tesoreria_for_url_reverse__/", include("apps.tesoreria.urls", namespace="tesoreria")),
     path("site/", include("apps.el_site.urls")),
     path("chalanes/", include("apps.los_chalanes.urls", namespace="los_chalanes")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),

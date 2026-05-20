@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.perfil_chalanes.apps.PerfilChalanesConfig",
     "apps.recados.apps.RecadosConfig",
     "apps.el_dictado.apps.ElDictadoConfig",
+    "apps.tesoreria.apps.TesoreriaConfig",
     # La Gerencia (apps es namespace pkg — convive con El Taller)
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -56,6 +57,7 @@ INSTALLED_APPS = [
     "apps.el_site.apps.ElSiteConfig",
     "apps.interfono_admin.apps.InterfonoAdminConfig",
     "apps.los_chalanes.apps.LosChalanesConfig",
+    "apps.centros_costo.apps.CentrosCostoConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",

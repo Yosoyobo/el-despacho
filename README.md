@@ -59,18 +59,27 @@ GitHub Actions (**El Mensajero**) · GHCR.
 - **S2b.2** ✅ (cerrado 2026-05-19): El Dictado V1 — textbox en Sala
   de Juntas + Chalán Claudio (Anthropic) interpreta lenguaje natural,
   6 ejecutores activos (`actualizar_proyecto`, `asignar_usuario_proyecto`,
-  `crear_tarea`, `actualizar_tarea`, `crear_recado`, `crear_mensaje_buzon`),
-  `registrar_egreso` STUB hasta S2b.3. Histórico personal en
-  `/dictado/historial/`. **420 tests verdes** locales.
+  `crear_tarea`, `actualizar_tarea`, `crear_recado`, `crear_mensaje_buzon`).
+  Histórico personal en `/dictado/historial/`.
 - **S2b.4** ✅ (cerrado 2026-05-19): KPIs granulares + sugerencias del
   Chalán + push automáticos. Catálogo de 28 KPIs en 7 categorías,
   `PreferenciaKPI` con default opt-in, página `/perfil/dashboard/`
   con checkboxes, `SugerenciaKPI` + reglas heurísticas con banner
   Activar/Descartar (LLM real en S2b.2+), 3 categorías push nuevas
-  (`buzon`, `proyectos`, `tareas`) con hookpoints + opt-out. **399 tests
-  verdes**.
+  (`buzon`, `proyectos`, `tareas`) con hookpoints + opt-out.
+- **S2b.3** ✅ (cerrado 2026-05-19): La Tesorería V1 — app
+  `apps.tesoreria` con `CentroDeCosto`/`Ingreso`/`Egreso`/`EgresoOcrLog`,
+  seed de 10 centros, códigos `ING/EGR-YYYY-NNNN`, CRUD manual
+  ingresos/egresos, CxC simulada + CxP + reembolsos, reportes
+  mensuales, 6 exports CSV (UTF-8 BOM, ISO 8601, decimal punto),
+  CRUD `CentroDeCosto` en La Gerencia → Catálogos, ejecutor
+  `registrar_egreso` del Dictado vivo, KPIs financieros activos en
+  Sala de Juntas, categoría push `tesoreria_reembolso`, 9 eventos
+  Portavoz. OCR + Sheets diferidos a **S2b.3b** cuando S2b.1b active
+  Drive. **447 tests verdes**.
 - **S2b.1b** ⏳ siguiente: activar Drive en Los Recados (~1.5h, requiere
-  que el admin complete `docs/SETUP_GOOGLE_DRIVE.md` primero)
+  que el admin complete `docs/SETUP_GOOGLE_DRIVE.md` primero). Desbloquea
+  también S2b.3b (OCR de recibos + export Sheets en Tesorería).
 - **S2b** Cotizaciones · Facturación · Caja · Cobranza · wrappers Google
   Workspace · Los Recados (DOC_03) · El Dictado (DOC_04) · La Tesorería (DOC_06)
 - **S3** Contaduría · Sala de Juntas con KPIs reales

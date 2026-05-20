@@ -23,6 +23,9 @@ CATEGORIAS = [
     ("proyectos", "Mis proyectos", "Push cuando se crea un proyecto o cambia el estado de uno donde participo.",
      None),
     ("tareas", "Mis tareas", "Push cuando me asignan una tarea nueva.", None),
+    ("tesoreria_reembolso", "Reembolsos pendientes",
+     "Push cuando se captura un egreso por reembolsar (contador + pagador).",
+     ("super_admin", "dueno", "contador")),
 ]
 
 

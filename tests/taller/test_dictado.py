@@ -160,18 +160,28 @@ def test_ejecutor_crear_recado_funciona(usuario_factory):
     assert Recado.objects.filter(autor=autor, cuerpo="Hola María").exists()
 
 
-def test_ejecutor_registrar_egreso_es_stub(usuario_factory):
+def test_ejecutor_registrar_egreso_crea_egreso(usuario_factory):
+    """S2b.3: registrar_egreso ya no es STUB — crea Egreso real."""
     from apps.el_dictado.ejecutores import EJECUTORES
     from apps.el_dictado.models import Dictado, DictadoAccion
+    from apps.tesoreria.models import Egreso
 
     u = usuario_factory(rol="dueno")
     d = Dictado.objects.create(autor=u, texto_crudo="x", estado="esperando_confirmacion")
     a = DictadoAccion.objects.create(
         dictado=d, orden=0, tipo="registrar_egreso", descripcion="Egreso",
-        payload={"monto": 100},
+        payload={
+            "monto": 100, "descripcion": "Papelería",
+            "centro_de_costo_slug": "insumos-de-proyecto",
+            "estado_pago": "pagado",
+        },
     )
-    with pytest.raises(ValueError, match="S2b.3"):
-        EJECUTORES["registrar_egreso"](a, u)
+    EJECUTORES["registrar_egreso"](a, u)
+    assert a.entidad_tipo == "egreso"
+    egreso = Egreso.objects.get(pk=a.entidad_id)
+    assert egreso.monto == 100
+    assert egreso.origen == "sala_juntas"
+    assert egreso.creado_por_id == u.pk
 
 
 def test_aplicacion_atomica_por_accion(usuario_factory, proyecto_factory, monkeypatch):

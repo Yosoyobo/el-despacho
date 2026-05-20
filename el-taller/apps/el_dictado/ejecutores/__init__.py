@@ -4,10 +4,11 @@ Cada ejecutor toma `(accion, usuario)` y aplica el cambio en el sistema.
 Lanza excepción si falla — `aplicar_dictado()` la captura y persiste en
 `accion.error_al_aplicar`. NUNCA aborta el resto de las acciones.
 
-V1 cubre los 5 ejecutores principales: actualizar_proyecto,
-asignar_usuario_proyecto, crear_tarea, actualizar_tarea, crear_recado,
-crear_mensaje_buzon. `registrar_egreso` queda como STUB que documenta
-"Disponible en S2b.3 — La Tesorería" sin tocar nada.
+Ejecutores activos: actualizar_proyecto, asignar_usuario_proyecto,
+crear_tarea, actualizar_tarea, crear_recado, crear_mensaje_buzon,
+registrar_egreso (S2b.3). `registrar_ingreso` queda pendiente — los
+dictados de cobro son raros y casi siempre tienen factura referenciada;
+se agrega cuando un caso real lo pida.
 """
 
 from __future__ import annotations

@@ -68,7 +68,8 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **La Facturación** | El Taller | Invoices comerciales (no fiscales) | S2 |
 | **La Caja** | El Taller | Stripe + MercadoPago, links de pago | S2 |
 | **La Cobranza** | El Taller | Recordatorios automáticos vía Portavoz | S2 |
-| **La Contaduría** | El Taller | Ingresos/egresos/CxC/CxP + flujo de caja | S3 |
+| **La Tesorería** | El Taller | Ingresos/egresos/CxC/CxP/reembolsos + reportes + CSV | S2b.3 ✅ (V1) · S2b.3b (OCR+Sheets) |
+| **La Contaduría** | El Taller | Partida doble + reconciliación | S3 |
 | **El Archivero / Las Planillas / Las Actas / La Agenda** | infra | Wrappers Google Workspace (Drive/Sheets/Docs/Calendar) | S2 |
 
 ---
@@ -499,10 +500,63 @@ propone acciones. Usuario revisa con checkboxes, confirma, aplica.
 DOC_04. Text box en Sala de Juntas, interpretación con Chalán Claudio,
 preview con `_preview_acciones.html`, ejecutores, histórico, aprendizajes.
 
-### S2b.3 — La Tesorería (~3-4h)
+### S2b.3 ✅ — La Tesorería V1 (2026-05-19)
 
-DOC_06. Ingresos/egresos/CxC/CxP/reembolsos + OCR de recibos + dictado
-de gasto + reportes + export.
+DOC_06. App `el-taller/apps/tesoreria/` con modelos `CentroDeCosto`,
+`Ingreso`, `Egreso`, `EgresoOcrLog` + 10 centros seedeados idempotente
+(migración 0002). Códigos correlativos `ING-YYYY-NNNN`/`EGR-YYYY-NNNN`.
+Soft delete vía `anulado=True` + manager `vigentes`. Forms con validación
+(monto>0, tarjeta_personal sugiere por_reembolsar).
+
+CRUD manual completo (`/tesoreria/{ingresos,egresos}/{,nuevo/,<id>/,
+<id>/editar/,<id>/anular/}`). Landing con 4 KPIs propios y últimos
+movimientos. CxC (Python por proyectos con saldo facturado-cobrado),
+CxP (egresos no pagados), reembolsos pendientes (agrupado por empleado).
+Reportes mensuales (estado de resultados + top centros/proveedores/clientes).
+
+Exports CSV: 6 endpoints (`ingresos`, `egresos`, `cxc`, `cxp`,
+`reembolsos`, `movimientos`) con UTF-8 BOM para Excel, fechas ISO 8601,
+montos decimal punto, encabezados localizados español, filtros activos
+respetados. Sheets export queda para S2b.3b (requiere wrapper Sheets).
+
+CRUD `CentroDeCosto` en La Gerencia → Catálogos (`la-gerencia/apps/
+centros_costo/`, solo super_admin). Sidebar Gerencia incluye link.
+
+Ejecutor `registrar_egreso` activado en El Dictado (ya no es STUB).
+Payload: monto, descripcion, centro_de_costo_slug, proyecto_slug?,
+pagado_por_slug?, estado_pago?, metodo?, fecha?. Egreso queda con
+`origen='sala_juntas'`. `tarjeta_personal` fuerza `por_reembolsar`
+defensivamente.
+
+KPIs financieros (`ingresos-mes`, `egresos-mes`, `utilidad-mes`,
+`cxc-total`, `cxp-total`, `reembolsos-pendientes`) reemplazan los
+placeholders `pendiente_tesoreria`. La categoría visual quedó como
+"💰 Dinero" (sin sufijo S2b.3).
+
+Eventos Portavoz nuevos: `tesoreria.{ingreso_registrado,egreso_registrado,
+ocr_procesado,reembolso_pendiente,ingreso_anulado,egreso_anulado,
+cuentas_por_pagar_alta,exportado,export_fallido}` + `centro_costo.
+{creado,actualizado}`.
+
+Push automáticos en `tesoreria_reembolso` cuando se crea o muta un
+egreso a `por_reembolsar` — destinatarios: super_admin + dueño +
+contador + el pagador (dedup contra autor). Categoría opt-out
+agregada a `/perfil/notificaciones/` (visible sólo a contadores y
+admins; diseñadores no pueden recibirla porque no entran a Tesorería).
+
+Sidebar Taller: item "Pronto · La Tesorería" reemplazado por entrada
+real `/tesoreria/`. `proximamente/views.py` ya no expone slug
+`tesoreria` (queda en `chalanes`, `dictado-historial`, `referencias`).
+
+27 tests nuevos. Suite total: 447 pass, 9 skipped.
+
+**V1 NO incluye** (queda para S2b.3b cuando S2b.1b active Google Drive):
+- OCR de recibos (DOC_06 §6) — modelo `EgresoOcrLog` ya existe.
+- Subida de comprobantes a Drive desde el form de egreso.
+- Export "Crear hoja en Drive" (DOC_06 §8.2.4) — requiere wrapper Sheets.
+- "Dictar gasto" desde Tesorería (DOC_06 §7.1) — el dictado de
+  Sala de Juntas ya invoca `registrar_egreso`, pero la UX dedicada
+  con system prompt específico queda pendiente.
 
 ### S2b.4 — KPIs reales + eventos push automáticos (~2-3h)
 

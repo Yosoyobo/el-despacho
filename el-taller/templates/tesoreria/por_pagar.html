@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Por pagar — La Tesorería{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Cuentas por pagar</h1>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'tesoreria:exportar-csv' 'cxp' %}{% if estado_pago %}?estado_pago={{ estado_pago }}{% endif %}" class="btn-secundario">📥 CSV CxP</a>
+        <a href="{% url 'tesoreria:exportar-csv' 'reembolsos' %}" class="btn-secundario">📥 CSV Reembolsos</a>
+    </div>
+</header>
+
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div>
+        <label class="sr-only" for="cxp-estado">Estado</label>
+        <select name="estado_pago" id="cxp-estado">
+            <option value="">Todos los pendientes</option>
+            <option value="por_reembolsar" {% if estado_pago == 'por_reembolsar' %}selected{% endif %}>Por reembolsar</option>
+            <option value="pendiente" {% if estado_pago == 'pendiente' %}selected{% endif %}>Pendiente</option>
+        </select>
+    </div>
+    <button type="submit" class="btn-secundario">Filtrar</button>
+    <span class="ml-auto text-sm text-gray-600 dark:text-gray-300">Total: <strong>${{ total|floatformat:2 }}</strong></span>
+</form>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800"><h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Egresos pendientes</h2></header>
+        <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for e in egresos %}
+            <li class="flex items-center justify-between px-5 py-3 text-sm">
+                <div>
+                    <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ e.fecha|date:"Y-m-d" }} · {{ e.proveedor_nombre|default:e.centro_de_costo.nombre }} · <span class="badge {% if e.estado_pago == 'por_reembolsar' %}badge-warning{% else %}badge-gray{% endif %}">{{ e.get_estado_pago_display }}</span></p>
+                </div>
+                <span class="font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</span>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nada pendiente.</li>
+            {% endfor %}
+        </ul>
+    </section>
+    <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800"><h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reembolsos por empleado</h2></header>
+        <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for r in reembolsos %}
+            <li class="flex items-center justify-between px-5 py-3 text-sm">
+                <div>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ r.pagado_por__nombre_completo|default:r.pagado_por__email }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ r.num }} gasto{{ r.num|pluralize:"s" }}</p>
+                </div>
+                <span class="font-semibold text-warning-600 dark:text-warning-400">${{ r.total|floatformat:2 }}</span>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nada por reembolsar.</li>
+            {% endfor %}
+        </ul>
+    </section>
+</div>
+{% endblock %}

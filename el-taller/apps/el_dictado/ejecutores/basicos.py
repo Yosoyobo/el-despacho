@@ -156,9 +156,77 @@ def crear_mensaje_buzon_ejec(accion, usuario):
 
 
 @registrar("registrar_egreso")
-def registrar_egreso_stub(accion, usuario):
-    """STUB — `registrar_egreso` se activa en S2b.3 — La Tesorería."""
-    raise ValueError(
-        "El módulo La Tesorería llega en S2b.3. Esta acción quedó propuesta "
-        "pero no se ejecuta. Mientras tanto, registra el egreso manualmente."
+def registrar_egreso(accion, usuario):
+    """Crea un Egreso a partir del payload del dictado (DOC_06 §7).
+
+    Payload esperado: monto, descripcion, centro_de_costo_slug, proyecto_slug?,
+    proveedor_nombre?, pagado_por_slug?, solicitado_por_slug?, estado_pago?,
+    metodo?, fecha?.
+    """
+    from datetime import date as _date
+
+    from apps.tesoreria.models import CentroDeCosto, Egreso
+    from apps.tesoreria.push_handlers import notificar_reembolso_pendiente
+
+    payload = accion.payload or {}
+    try:
+        monto = float(payload.get("monto") or 0)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("`monto` inválido.") from exc
+    if monto <= 0:
+        raise ValueError("`monto` debe ser > 0.")
+    descripcion = (payload.get("descripcion") or "").strip()
+    if not descripcion:
+        raise ValueError("`descripcion` requerida.")
+
+    centro_slug = (payload.get("centro_de_costo_slug") or "otros").lower()
+    centro = CentroDeCosto.objects.filter(slug=centro_slug, activo=True).first()
+    if not centro:
+        centro = CentroDeCosto.objects.filter(slug="otros", activo=True).first()
+    if not centro:
+        raise ValueError(f"Centro de costo `{centro_slug}` no encontrado y no hay fallback.")
+
+    proyecto = None
+    proyecto_slug = (payload.get("proyecto_slug") or "").lower()
+    if proyecto_slug:
+        proyecto = _resolver_proyecto(proyecto_slug)
+
+    pagado_por_slug = (payload.get("pagado_por_slug") or "").lower()
+    pagado_por = _resolver_usuario(pagado_por_slug) if pagado_por_slug else usuario
+
+    solicitado_por = None
+    solicitado_por_slug = (payload.get("solicitado_por_slug") or "").lower()
+    if solicitado_por_slug:
+        solicitado_por = _resolver_usuario(solicitado_por_slug)
+
+    estado_pago = (payload.get("estado_pago") or "pagado").lower()
+    if estado_pago not in {"pagado", "por_reembolsar", "pendiente"}:
+        estado_pago = "pagado"
+    metodo = (payload.get("metodo") or "transferencia").lower()
+    if metodo not in {"transferencia", "tarjeta_empresa", "tarjeta_personal",
+                      "efectivo", "cheque", "otro"}:
+        metodo = "otro"
+    if metodo == "tarjeta_personal" and estado_pago == "pagado":
+        estado_pago = "por_reembolsar"
+
+    import contextlib
+
+    fecha_str = payload.get("fecha")
+    fecha = _date.today()
+    if fecha_str:
+        with contextlib.suppress(ValueError):
+            fecha = _date.fromisoformat(str(fecha_str)[:10])
+
+    egreso = Egreso.objects.create(
+        monto=monto, descripcion=descripcion[:300],
+        proveedor_nombre=(payload.get("proveedor_nombre") or "")[:200],
+        centro_de_costo=centro, proyecto=proyecto,
+        pagado_por=pagado_por, solicitado_por=solicitado_por,
+        estado_pago=estado_pago, metodo=metodo,
+        origen="sala_juntas", fecha=fecha, creado_por=usuario,
     )
+    accion.entidad_tipo = "egreso"
+    accion.entidad_id = egreso.pk
+
+    if estado_pago == "por_reembolsar":
+        notificar_reembolso_pendiente(egreso, usuario)

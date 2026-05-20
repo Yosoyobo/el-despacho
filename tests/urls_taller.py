@@ -19,6 +19,7 @@ urlpatterns = [
     path("", include("apps.buzon_empleado.urls")),
     path("recados/", include("apps.recados.urls", namespace="recados")),
     path("", include("apps.el_dictado.urls")),
+    path("tesoreria/", include("apps.tesoreria.urls", namespace="tesoreria")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),
 ]

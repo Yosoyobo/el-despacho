@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Por cobrar — La Tesorería{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Cuentas por cobrar</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Snapshot por proyecto (hasta que Facturación exista en S2b).</p>
+    </div>
+    <a href="{% url 'tesoreria:exportar-csv' 'cxc' %}" class="btn-secundario">📥 CSV</a>
+</header>
+
+<div class="mb-5 rounded-2xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:border-warning-900/30 dark:bg-warning-900/10 dark:text-warning-300">
+    Total pendiente de cobro: <strong>${{ total|floatformat:2 }}</strong>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Proyecto</th>
+                    <th class="px-5 py-3 text-left">Cliente</th>
+                    <th class="px-5 py-3 text-right">Facturado</th>
+                    <th class="px-5 py-3 text-right">Cobrado</th>
+                    <th class="px-5 py-3 text-right">Saldo</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for p, saldo in proyectos_saldos %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3"><a href="/proyectos/{{ p.pk }}/" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a> · {{ p.nombre|truncatechars:50 }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social|default:"—" }}</td>
+                    <td class="px-5 py-3 text-right">${{ p.monto_facturado|floatformat:2 }}</td>
+                    <td class="px-5 py-3 text-right">${{ p.monto_cobrado|floatformat:2 }}</td>
+                    <td class="px-5 py-3 text-right font-semibold text-warning-600 dark:text-warning-400">${{ saldo|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Nada por cobrar. 🎉</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

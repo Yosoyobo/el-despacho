@@ -41,6 +41,17 @@ EventoTipo = Literal[
     "recado.creado",
     "recado.editado",
     "recado.leido",
+    "tesoreria.ingreso_registrado",
+    "tesoreria.egreso_registrado",
+    "tesoreria.ocr_procesado",
+    "tesoreria.reembolso_pendiente",
+    "tesoreria.ingreso_anulado",
+    "tesoreria.egreso_anulado",
+    "tesoreria.cuentas_por_pagar_alta",
+    "tesoreria.exportado",
+    "tesoreria.export_fallido",
+    "centro_costo.creado",
+    "centro_costo.actualizado",
 ]
 
 

@@ -48,6 +48,10 @@ INSTALLED_APPS = [
     "apps.el_site.apps.ElSiteConfig",
     "apps.interfono_admin.apps.InterfonoAdminConfig",
     "apps.los_chalanes.apps.LosChalanesConfig",
+    # S2b.3 — modelos viven en El Taller (apps.tesoreria); Gerencia
+    # importa el modelo y agrega el CRUD admin.
+    "apps.tesoreria.apps.TesoreriaConfig",
+    "apps.centros_costo.apps.CentrosCostoConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",

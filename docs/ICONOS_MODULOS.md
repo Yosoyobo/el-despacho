@@ -43,12 +43,12 @@ templates.
 
 | Módulo | Sprint | Sidebar | Descripción del path |
 |---|---|---|---|
-| Los Recados | S2b | 💬 flecha-burbuja | `M21 12a9 9 0 1 1-3.2-6.9L21 4v6h-6` (refresh-message) |
-| La Tesorería | S2b | 💰 caja registradora | `M3 7h18v10H3zM7 7v10M17 7v10M12 10v4` |
-| Los Chalanes | pre-S2b | 🤖 robot | `M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7…` |
-| El Dictado (historial) | S2b | 🎙️ micrófono | reservado para sprint S2b |
-| Sistema de Referencias | pre-S2b | 🔗 cadena | reservado |
-| Centros de costo | S2b | 📂 carpetas | sub-icono de Tesorería |
+| Los Recados | S2b.1 ✅ | 💬 flecha-burbuja | `M21 12a9 9 0 1 1-3.2-6.9L21 4v6h-6` (refresh-message) |
+| La Tesorería | S2b.3 ✅ | 💰 caja registradora | `M3 7h18v10H3zM7 7v10M17 7v10M12 10v4` |
+| Los Chalanes | pre-S2b ✅ | 🤖 robot | `M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7…` |
+| El Dictado (historial) | S2b.2 ✅ | 🎙️ micrófono | vivo bajo `/dictado/historial/` |
+| Sistema de Referencias | pre-S2b ✅ | 🔗 cadena | autocomplete `@/#/$` |
+| Centros de costo | S2b.3 ✅ | 📂 carpetas | vive en La Gerencia → Catálogos |
 | Cotizaciones | S2 | 📄 documento | reservado |
 | Facturación | S2 | 📃 documento con $ | reservado |
 | La Caja (Stripe + MP) | S2 | 💳 tarjeta | reservado |

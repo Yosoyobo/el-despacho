@@ -65,15 +65,10 @@
             Mis Chalanes
         </a>
 
-        {% comment %} Andamiaje S-TailAdmin-2 — módulos próximos (La Tesorería S2b.3).
-           Los Recados pasó a menú principal en S2b.1. {% endcomment %}
-        <h3 class="mb-2 mt-4 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Próximamente</h3>
-
         {% if permisos_modulos.tesoreria %}
-        <a href="{% url 'proximamente:modulo' modulo='tesoreria' %}" class="menu-item menu-item-inactive opacity-70 hover:opacity-100">
+        <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v10H3zM7 7v10M17 7v10M12 10v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="flex-1">La Tesorería</span>
-            <span class="badge badge-warning text-[10px]">Pronto</span>
+            La Tesorería
         </a>
         {% endif %}
     </nav>

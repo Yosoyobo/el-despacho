@@ -1,10 +1,40 @@
 # Diseño — La Tesorería
 
-> **Versión:** 1.1 · 15 mayo 2026 (revisión: andamiaje visual TailAdmin disponible + ubicación)
-> **Status:** Diseño aprobado, listo para implementación · andamiaje visual entregado en S-TailAdmin-2
+> **Versión:** 1.2 · 19 mayo 2026 (revisión: V1 entregada en S2b.3)
+> **Status:** **V1 entregado en producción** (S2b.3, 2026-05-19) · OCR + Sheets diferidos a S2b.3b
 > **Audiencia:** Claude Code / desarrollo
-> **Dependencias:** Sistema de Referencias `@/#/$` (DOC_01), Los Chalanes (DOC_02), El Dictado (DOC_04), Google Drive wrapper (S2b), Los Permisos
-> **Dependientes:** Manual de Usuario, Sala de Juntas (los KPIs financieros leen de aquí)
+> **Dependencias:** Sistema de Referencias `@/#/$` (DOC_01), Los Chalanes (DOC_02), El Dictado (DOC_04), Google Drive wrapper (S2b.1b — pendiente), Los Permisos
+> **Dependientes:** Manual de Usuario, Sala de Juntas (los KPIs financieros leen de aquí ya con datos reales)
+
+## Estado al 19 mayo 2026 — V1 entregada
+
+**Vivo en producción:** modelos `CentroDeCosto`/`Ingreso`/`Egreso`/`EgresoOcrLog`
+con seed de 10 centros (idempotente, migración `0002_seed_centros_costo`),
+códigos correlativos `ING-YYYY-NNNN` / `EGR-YYYY-NNNN`, soft-delete vía
+manager `vigentes`, CRUD manual completo de ingresos/egresos, CxC simulada
+sobre proyectos (hasta que Facturación llegue en S2b), CxP, reembolsos
+agrupados por empleado, reportes mensuales con estado de resultados +
+top centros/proveedores/clientes, 6 exports CSV (`ingresos`, `egresos`,
+`cxc`, `cxp`, `reembolsos`, `movimientos`) con UTF-8 BOM + fechas ISO
+8601 + encabezados localizados, ejecutor `registrar_egreso` del Dictado
+ya creando egresos reales (`origen='sala_juntas'`), CRUD `CentroDeCosto`
+en La Gerencia → Catálogos (super_admin only), sidebar Taller con item
+real (placeholder `/proximamente/tesoreria/` eliminado), 9 eventos
+Portavoz nuevos (`tesoreria.*` + `centro_costo.*`), push automático
+categoría `tesoreria_reembolso` a contadores/admins/pagador con opt-out
+en `/perfil/notificaciones/`, 27 tests nuevos.
+
+**Diferido a S2b.3b** (bloqueado por activación del wrapper Google Drive
+en S2b.1b):
+- OCR de recibos (§6) — `EgresoOcrLog` existe sin uso, listo para
+  enchufar; carpeta destino, optimización local pre-upload, prompts del
+  Chalán con visión.
+- Subida de comprobantes a Drive desde el form de egreso.
+- Export "Crear hoja en Drive" (§8.2.4) — requiere wrapper Sheets que
+  aún no existe.
+- UI dedicada "Dictar gasto" en `/tesoreria/egresos/dictar/` (§7) — el
+  dictado de Sala de Juntas ya invoca `registrar_egreso`, pero la UX
+  con system prompt específico de gasto queda pendiente.
 
 ## Andamiaje visual disponible (cierre arco TailAdmin, 2026-05-15)
 
@@ -47,12 +77,10 @@ con La Caja, Cotizaciones y Facturación. Hoy Los Ajustes tiene
 Drive requiere flow distinto (Service Account o OAuth con scope
 `drive.file`); slots nuevos a definir en S2b junto con el wrapper.
 
-Lo que falta (S2b): migraciones `centro_de_costo` + `ingreso` +
-`egreso` + `egreso_ocr_log` + CxC + CxP + reembolsos (§4), CRUD UI
-(§5), pipeline OCR completo (§6), dictado de gasto integrado (§7),
-reportes y exportación CSV/Sheets (§8), eventos Portavoz (§10),
-permisos granulares por rol (§11), tests (§12). DOC_01 + DOC_02
-+ DOC_04 son prerequisitos.
+Lo que falta para S2b.3b: pipeline OCR completo (§6), UI dedicada de
+dictado de gasto (§7.1 — backend ya está vía ejecutor
+`registrar_egreso`), export "Crear hoja en Drive" (§8.2.4). Todo lo
+demás de §4–§12 está vivo en producción.
 
 ---
 
@@ -740,7 +768,7 @@ Mínimo 27 tests.
 9. Eventos Portavoz + handlers de push
 10. Tests
 
-**Tiempo estimado:** 3-4 horas de Claude Code activo.
+**Tiempo real V1:** ~3.5 horas de Claude Code activo (2026-05-19).
 
 ---
 

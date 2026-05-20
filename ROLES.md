@@ -45,7 +45,8 @@ Cuatro roles. Se asignan desde **El Directorio** en La Gerencia. El primer
 | Los Chalanes — uso (estaciones) | ✅          | ✅    | ✅       | ✅        |
 | Los Recados (S2b)               | ✅          | ✅    | ✅       | ✅        |
 | El Dictado (S2b)                | ✅ all      | ✅ all | 🔒 gastos | 🔒 tarea/proy |
-| La Tesorería (S2b)              | ✅          | ✅    | ✅       | ❌        |
+| La Tesorería (S2b.3 ✅)         | ✅          | ✅    | ✅       | ❌        |
+| Centros de costo (S2b.3 ✅)     | ✅          | 👁 read | 👁 read | ❌        |
 
 Implementado en [`lib/permisos.py`](./lib/permisos.py) — decoradores
 `@requires_role(...)` y helpers `puede_ver_*(...)`.

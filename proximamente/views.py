@@ -3,17 +3,7 @@ from django.shortcuts import redirect, render
 
 MODULOS = {
     # `recados` ya está vivo (S2b.1) — se removió del placeholder.
-    "tesoreria": {
-        "nombre": "La Tesorería",
-        "icono": "💰",
-        "descripcion": (
-            "Ingresos, egresos, cuentas por cobrar y por pagar, reembolsos y "
-            "reportes de flujo de caja. Incluye OCR de recibos y dictado de "
-            "gastos por El Chalán."
-        ),
-        "sprint": "S2b",
-        "documento": "DOC_06",
-    },
+    # `tesoreria` ya está vivo (S2b.3) — se removió del placeholder.
     "chalanes": {
         "nombre": "Los Chalanes",
         "icono": "🤖",

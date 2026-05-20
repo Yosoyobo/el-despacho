@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}La Tesorería — El Taller{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Tesorería</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Flujo de dinero real del despacho.</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'tesoreria:ingreso-nuevo' %}" class="btn-primario">+ Ingreso</a>
+        <a href="{% url 'tesoreria:egreso-nuevo' %}" class="btn-secundario">+ Egreso</a>
+    </div>
+</header>
+
+<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ingresos del mes</p>
+        <p class="mt-2 text-title-xs font-semibold text-success-600 dark:text-success-400">${{ kpis.ingresos_mes|floatformat:2 }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Egresos del mes</p>
+        <p class="mt-2 text-title-xs font-semibold text-error-600 dark:text-error-400">${{ kpis.egresos_mes|floatformat:2 }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Utilidad bruta</p>
+        <p class="mt-2 text-title-xs font-semibold {% if kpis.utilidad_mes >= 0 %}text-gray-900 dark:text-gray-100{% else %}text-error-600 dark:text-error-400{% endif %}">${{ kpis.utilidad_mes|floatformat:2 }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cuentas por pagar</p>
+        <p class="mt-2 text-title-xs font-semibold text-warning-600 dark:text-warning-400">${{ kpis.cxp_total|floatformat:2 }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ kpis.cxp_num }} pendiente{{ kpis.cxp_num|pluralize:"s" }}</p>
+    </div>
+</div>
+
+<div class="mb-6 flex flex-wrap gap-2">
+    <a href="{% url 'tesoreria:ingresos-lista' %}" class="btn-secundario">Ingresos</a>
+    <a href="{% url 'tesoreria:egresos-lista' %}" class="btn-secundario">Egresos</a>
+    <a href="{% url 'tesoreria:por-cobrar' %}" class="btn-secundario">Por cobrar</a>
+    <a href="{% url 'tesoreria:por-pagar' %}" class="btn-secundario">Por pagar</a>
+    <a href="{% url 'tesoreria:reportes' %}" class="btn-secundario">Reportes</a>
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Últimos ingresos</h2>
+        </header>
+        <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for i in ultimos_ingresos %}
+            <li class="flex items-center justify-between px-5 py-3 text-sm">
+                <div>
+                    <a href="{% url 'tesoreria:ingreso-detalle' i.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ i.codigo }}</a>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ i.fecha|date:"Y-m-d" }} · {{ i.descripcion|truncatechars:60 }}</p>
+                </div>
+                <span class="font-semibold text-success-600 dark:text-success-400">${{ i.monto|floatformat:2 }}</span>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin ingresos todavía.</li>
+            {% endfor %}
+        </ul>
+    </section>
+    <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Últimos egresos</h2>
+        </header>
+        <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for e in ultimos_egresos %}
+            <li class="flex items-center justify-between px-5 py-3 text-sm">
+                <div>
+                    <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ e.fecha|date:"Y-m-d" }} · {{ e.proveedor_nombre|default:e.centro_de_costo.nombre }}</p>
+                </div>
+                <span class="font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</span>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin egresos todavía.</li>
+            {% endfor %}
+        </ul>
+    </section>
+</div>
+{% endblock %}
