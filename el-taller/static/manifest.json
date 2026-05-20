@@ -1,10 +1,12 @@
 {
+  "id": "/?source=pwa-taller",
   "name": "El Despacho — El Taller",
   "short_name": "El Taller",
   "description": "Operación día a día del despacho Learning Center.",
-  "start_url": "/",
+  "start_url": "/?source=pwa-taller",
   "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#465fff",
   "theme_color": "#465fff",
   "lang": "es-MX",

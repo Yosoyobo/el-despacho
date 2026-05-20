@@ -1233,6 +1233,64 @@ no fiscales) · **La Caja** (Stripe + MercadoPago, links de pago) ·
 **La Cobranza** (recordatorios automáticos vía Portavoz) · wrappers
 de Google Workspace (Drive, Sheets, Docs, Calendar).
 
+### S-PWA-Shell ✅ — Responsividad y PWA install correcto (2026-05-20)
+
+Sprint quirúrgico al shell tras reporte del usuario "el PWA no se
+adapta correctamente". Audit identificó 3 problemas críticos + 3
+mejoras. Cambios dual-copy (regla §18, Taller + Gerencia espejados):
+
+- **`viewport-fit=cover`** en `<meta viewport>` de las 3 apps
+  (taller/gerencia/recepción) — sin esto iOS no expone los CSS
+  `env(safe-area-inset-*)` y el contenido queda recortado por el
+  notch / home indicator.
+- **Metas iOS/Android PWA**: `apple-mobile-web-app-capable=yes`,
+  `mobile-web-app-capable=yes`, `apple-mobile-web-app-status-bar-style`,
+  `apple-mobile-web-app-title` por app — habilita el modo standalone
+  real en iOS con título correcto al añadir a Home.
+- **Manifests con `id` único** (`/?source=pwa-taller` vs
+  `/?source=pwa-gerencia`) — sin esto Android consideraba ambas
+  PWAs como una sola instalación y la segunda sobreescribía la
+  primera. `start_url` ahora coincide con `id` y `orientation: any`
+  explícito.
+- **Sidebar responsive a `lg`** (1024px) en vez de `xl` (1280px) —
+  tablets ahora ven el sidebar fijo en vez de drawer. Cambio en
+  `data-ta-sidebar` (clases `lg:static lg:translate-x-0`), backdrop
+  (`lg:hidden`) y botón hamburguesa del header (`lg:hidden`).
+- **Safe-area insets aplicados**:
+  - **Sidebar drawer**: `pt-[max(env(safe-area-inset-top),1.5rem)]` +
+    `pb-[max(env(safe-area-inset-bottom),1.5rem)]` — respeta notch y
+    home indicator del iPhone cuando se abre como drawer en mobile.
+  - **Header sticky**: `pt-[max(env(safe-area-inset-top),0.75rem)]`
+    + `pb-3` (en lugar de `py-3`) — el header no queda tapado por la
+    Dynamic Island.
+  - **Action bar sticky**: `pb-[env(safe-area-inset-bottom)]` — los
+    botones del detalle no quedan bajo el home indicator.
+  - **Main**: `px-[max(env(safe-area-inset-left),1rem)]` — en
+    landscape iPhone, el contenido no se mete debajo del notch.
+  - **Footer**: `pb-[max(env(safe-area-inset-bottom),1rem)]` —
+    consistencia con action bar.
+- **`min-w-0`** en el `<div class="flex flex-1 flex-col">` del shell
+  para que contenidos largos (tablas, URLs) no fuercen scroll
+  horizontal del body en mobile.
+
+**Audit base limpio (no requiere cambios):**
+
+- Manifests ya tenían `maskable` icons (192/512) además de `any`.
+- Tablas ya estaban envueltas en `overflow-x-auto` (`_tabla_datos`).
+- Modales HTMX ya tenían `mx-4` + breakpoints correctos.
+- JS de toggle sidebar en `ui.js` ya manejaba Escape, click backdrop
+  y cierre al navegar.
+- Tailwind v3 standalone JIT detecta arbitrary values
+  `[env(safe-area-inset-*)]` y `[max(env(...),Nrem)]` sin plugin
+  custom — confirmado en recompilación.
+
+**Service Worker offline**: queda pendiente. Hoy las apps son PWA
+instalables con experiencia nativa (standalone, ícono, splash) pero
+**sin caché offline**. Cuando se necesite, se agrega `sw.js` mínimo
+con cache-first para shell + estáticos. No bloquea el uso real
+(Learning Center tiene conexión estable en oficina y celular del
+equipo).
+
 ### S3 — Contabilidad y reportes
 
 La Contaduría intermedia + andamiaje partida doble · La Sala de Juntas con KPIs.

@@ -1,8 +1,8 @@
 {# Header sticky con: botón hamburguesa (móvil), título de página, notificaciones, toggle tema. #}
-<header class="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-3 sm:px-6 dark:border-gray-800 dark:bg-gray-950">
+<header class="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3 sm:px-6 dark:border-gray-800 dark:bg-gray-950">
     <div class="flex items-center gap-3">
         <button data-ta-toggle="sidebar" type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 xl:hidden dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-900"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 lg:hidden dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-900"
                 aria-label="Abrir menú">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg>
         </button>
