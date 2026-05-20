@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Balance de comprobación — La Contaduría{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Balance de comprobación</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Cuentas con movimiento. Cargos totales deben igualar abonos totales (partida doble).</p>
+    </div>
+    <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Volver</a>
+</header>
+
+<div class="ta-card overflow-x-auto">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            <tr>
+                <th class="px-3 py-2 text-left">Código</th>
+                <th class="px-3 py-2 text-left">Cuenta</th>
+                <th class="px-3 py-2 text-left">Tipo</th>
+                <th class="px-3 py-2 text-right">Cargos</th>
+                <th class="px-3 py-2 text-right">Abonos</th>
+                <th class="px-3 py-2 text-right">Saldo</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for f in filas %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <td class="px-3 py-2 font-mono">{{ f.cuenta.codigo }}</td>
+                <td class="px-3 py-2"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ f.cuenta.nombre }}</a></td>
+                <td class="px-3 py-2"><span class="badge badge-gray">{{ f.cuenta.get_tipo_display }}</span></td>
+                <td class="px-3 py-2 text-right">${{ f.cargos|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right">${{ f.abonos|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${{ f.saldo|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-3 py-10 text-center">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin movimientos" descripcion="Captura asientos o registra ingresos/egresos en Tesorería." icono="folder" %}</td></tr>
+            {% endfor %}
+            <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2 text-right text-xs uppercase text-gray-500">Totales</td>
+                <td class="px-3 py-2 text-right">${{ total_cargos|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right">${{ total_abonos|floatformat:2 }}</td>
+                <td class="px-3 py-2"></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+{% if total_cargos != total_abonos %}
+<p class="mt-4 rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">⚠ Cargos ≠ Abonos · hay un asiento desbalanceado. Esto no debería pasar — revisa los asientos manuales recientes.</p>
+{% endif %}
+{% endblock %}

@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     "apps.tesoreria.apps.TesoreriaConfig",
     # S2b.cotizaciones-v1
     "apps.cotizaciones.apps.CotizacionesConfig",
+    # S3.contaduria-v1
+    "apps.contaduria.apps.ContaduriaConfig",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ asiento.codigo }} — La Contaduría{% endblock %}
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=asiento.codigo subtitulo=asiento.descripcion %}
+
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="badge {% if asiento.origen == 'manual' %}badge-brand{% elif 'anulacion' in asiento.origen %}badge-error{% else %}badge-gray{% endif %}">{{ asiento.get_origen_display }}</span>
+    {% if asiento.anulado %}<span class="badge badge-error">anulado</span>{% endif %}
+    {% if asiento.referencia_externa %}<span class="badge badge-gray font-mono">{{ asiento.referencia_externa }}</span>{% endif %}
+</div>
+
+<div class="ta-card mb-6 overflow-x-auto">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            <tr>
+                <th class="px-3 py-2 text-left">Cuenta</th>
+                <th class="px-3 py-2 text-left">Descripción</th>
+                <th class="px-3 py-2 text-right">Cargo (D)</th>
+                <th class="px-3 py-2 text-right">Abono (H)</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for p in partidas %}
+            <tr>
+                <td class="px-3 py-2 font-mono text-gray-900 dark:text-gray-100">{{ p.cuenta.codigo }} <span class="text-gray-500 dark:text-gray-400">· {{ p.cuenta.nombre }}</span></td>
+                <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ p.descripcion|default:"—" }}</td>
+                <td class="px-3 py-2 text-right text-gray-900 dark:text-gray-100">{% if p.cargo > 0 %}${{ p.cargo|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td class="px-3 py-2 text-right text-gray-900 dark:text-gray-100">{% if p.abono > 0 %}${{ p.abono|floatformat:2 }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+            <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2 text-right text-xs uppercase text-gray-500">Totales</td>
+                <td class="px-3 py-2 text-right text-gray-900 dark:text-gray-100">${{ total_cargos|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right text-gray-900 dark:text-gray-100">${{ total_abonos|floatformat:2 }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2">
+    <section class="ta-card">
+        <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Captura</h3>
+        <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between"><dt class="text-gray-500">Fecha</dt><dd>{{ asiento.fecha|date:"Y-m-d" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Por</dt><dd>{{ asiento.creado_por.nombre_completo|default:"—" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Creado</dt><dd>{{ asiento.creado_en|date:"Y-m-d H:i" }}</dd></div>
+        </dl>
+    </section>
+    {% if asiento.anulado %}
+    <section class="ta-card border-error-300 bg-error-50 dark:border-error-500/30 dark:bg-error-500/10">
+        <h3 class="text-xs font-medium uppercase tracking-wider text-error-700 dark:text-error-400">Anulación</h3>
+        <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between"><dt class="text-gray-500">Motivo</dt><dd class="text-right">{{ asiento.motivo_anulacion }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Por</dt><dd>{{ asiento.anulado_por.nombre_completo|default:"—" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Fecha</dt><dd>{{ asiento.anulado_en|date:"Y-m-d H:i" }}</dd></div>
+        </dl>
+    </section>
+    {% endif %}
+</div>
+
+<div class="mt-6 flex justify-between gap-2">
+    <a href="{% url 'contaduria:asientos' %}" class="btn-secundario">← Asientos</a>
+    {% if puede_anular %}
+    <button type="button" hx-get="{% url 'contaduria:asiento-anular' asiento.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm text-error-600 hover:underline">Anular</button>
+    {% endif %}
+</div>
+{% endblock %}

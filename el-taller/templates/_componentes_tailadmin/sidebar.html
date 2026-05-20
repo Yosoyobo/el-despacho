@@ -78,6 +78,13 @@
             Las Cotizaciones
         </a>
         {% endif %}
+
+        {% if permisos_modulos.contaduria %}
+        <a href="{% url 'contaduria:landing' %}" class="menu-item {% if '/contaduria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4zM4 9h16M9 4v16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            La Contaduría
+        </a>
+        {% endif %}
     </nav>
 
     <div class="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">

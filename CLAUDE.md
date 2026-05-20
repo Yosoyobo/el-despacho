@@ -1291,9 +1291,125 @@ con cache-first para shell + estáticos. No bloquea el uso real
 (Learning Center tiene conexión estable en oficina y celular del
 equipo).
 
-### S3 — Contabilidad y reportes
+### S3.contaduria-v1 ✅ — La Contaduría V1 (partida doble) (2026-05-20)
 
-La Contaduría intermedia + andamiaje partida doble · La Sala de Juntas con KPIs.
+App `el-taller/apps/contaduria/` con libro contable interno encima de
+Tesorería. **NO emite CFDI ni se conecta a PAC** (regla §16); el
+contador externo timbra aparte y reconcilia su libro fiscal con
+exports de este libro.
+
+- **Modelos** (`apps/contaduria/models/`):
+  - `CuentaContable` (codigo dot-separated, nombre, tipo ∈
+    {activo, pasivo, capital, ingreso, egreso}, naturaleza ∈
+    {deudora, acreedora}, `slot` semántico para hookpoints
+    automáticos, activa). Migración `0001_initial` + `0002_seed_cuentas`
+    siembra ~26 cuentas SAT-style simplificadas en
+    `cuentas_seed.py` (idempotente vía `update_or_create`).
+  - `Asiento` (codigo `AST-YYYY-NNNN` correlativo bajo
+    `select_for_update`, fecha, descripcion, origen ∈
+    {manual, auto_ingreso, auto_egreso, auto_anulacion_ingreso,
+    auto_anulacion_egreso, ajuste, cierre}, `referencia_externa`
+    para idempotencia, anulado/anulado_en/motivo).
+  - `Partida` (asiento, cuenta PROTECT, orden, cargo, abono,
+    descripcion). `CheckConstraint` cargo/abono ≥ 0.
+- **Slots semánticos** (campo `slot` en `CuentaContable`):
+  `caja`, `banco`, `cxc`, `cxp`, `reembolsos`, `ingreso_ventas`,
+  `egreso_operativo`, `iva_trasladado`, `iva_acreditable`,
+  `iva_retenido_pagar`, `isr_retenido` + 9 sub-categorías de gasto
+  (`egreso_insumos`, `egreso_externos`, `egreso_renta`, etc.).
+  Los signals los usan vía `cuenta_por_slot()` — el catálogo se
+  puede reordenar/extender sin tocar código.
+- **Services** (`services.py`):
+  - `crear_asiento(descripcion, partidas, fecha, origen,
+    referencia_externa, creado_por, idempotente=True)` valida
+    partida doble (sum cargos == sum abonos), rechaza partidas
+    con cargo y abono simultáneos, exige ≥ 2 partidas, lanza
+    `AsientoInvalido` con mensaje específico. Si
+    `idempotente=True` y existe asiento vigente con la misma
+    referencia, devuelve ese sin duplicar.
+  - `anular_asiento(asiento, actor, motivo)` marca anulado pero
+    NO crea reverso automático (decisión: el anular sirve para
+    correcciones de captura; para neutralizar contablemente se
+    captura un asiento de ajuste).
+  - `saldo_cuenta(cuenta, hasta=None)` calcula saldo respetando
+    naturaleza (deudora: cargos-abonos; acreedora: abonos-cargos).
+  - `balance_de_comprobacion(hasta=None)` lista de cuentas con
+    movimiento + cargos/abonos/saldo, ordenadas por código.
+  - `kpis_landing()` para el header (asientos del mes, saldos
+    de caja/banco/CxC).
+- **Hookpoints automáticos** (`signals.py`): `post_save` en
+  `tesoreria.Ingreso` y `tesoreria.Egreso` genera asientos
+  `auto_ingreso`/`auto_egreso` con referencia
+  `tesoreria.ingreso:<pk>` / `tesoreria.egreso:<pk>`. Anulación
+  (`anulado=True`) dispara asiento reverso
+  `tesoreria.ingreso.anulacion:<pk>` con cargos y abonos
+  intercambiados. Idempotente. Si el catálogo está incompleto,
+  log warning y skip — la contabilidad NUNCA tumba la transacción
+  de Tesorería. Mapeo de cuentas:
+  - **Ingreso**: cargo a `caja` (si efectivo) o `banco` · abono a
+    `ingreso_ventas`.
+  - **Egreso**: cargo a `egreso_operativo` · abono a `reembolsos`
+    (si `estado_pago=por_reembolsar`) / `cxp` (si `pendiente`) /
+    `caja` (si efectivo) / `banco`.
+- **Permisos**: módulo `contaduria` × 4 acciones (`ver, capturar,
+  anular, reportes`). Defaults: super_admin/dueno/contador todo;
+  diseñador sin acceso. Migración `cuentas.0010_seed_permisos_contaduria_v1`
+  reemplaza las acciones legacy de 0007 (`reconciliar`, `exportar`)
+  por las V1. Helpers `puede_*_contaduria` en `lib/permisos.py`.
+- **UI Taller**:
+  - `/contaduria/` landing con 4 KPI hero (asientos mes, saldo caja,
+    saldo bancos, CxC) + últimos 8 asientos.
+  - `/contaduria/cuentas/` catálogo con filtro por tipo, link a libro
+    mayor por cuenta.
+  - `/contaduria/asientos/` lista con `_tabla_datos` + filtros
+    (búsqueda, origen, incluir anulados) + paginación.
+  - `/contaduria/asientos/<id>/` detalle con tabla cargo/abono +
+    totales + cards de captura/anulación + botón anular HTMX.
+  - `/contaduria/asientos/nuevo/` form con cabecera + inline formset
+    de partidas (clone-row vanilla JS) + selector de cuentas
+    activas. Valida partida doble en service.
+  - `/contaduria/libro-mayor/<cuenta>/` movimientos cronológicos
+    con saldo acumulado por fila + saldo final.
+  - `/contaduria/balance/` balance de comprobación con cargos/abonos/
+    saldo por cuenta + totales + alerta si descuadrado (gated por
+    permiso `reportes`).
+  - Modal HTMX `_modal_anular.html` patrón Wave 5.
+- **Eventos Portavoz** nuevos: `contaduria.{asiento_creado,
+  asiento_anulado, cuenta_creada, cuenta_actualizada}`.
+- **KPIs Sala de Juntas**: 3 KPIs en categoría 💰 Dinero:
+  `contaduria-asientos-mes`, `contaduria-saldo-banco`,
+  `contaduria-balance-descuadrado` (este último ROLES_ADMIN, alerta
+  si >0 — debe ser 0 siempre porque service valida).
+- **19 tests nuevos** en `tests/taller/test_contaduria.py` (seed,
+  partida doble, transiciones de error, idempotencia, hookpoints
+  Ingreso/Egreso, asiento reverso por anulación, saldos, balance,
+  vistas, permisos, anular HTMX). Fixture `_on_commit_inmediato`
+  fuerza `transaction.on_commit` a ejecutar dentro del rollback
+  de pytest-django (Bug E del §14).
+
+**NO incluye V1** (queda para sub-sprints futuras):
+- **Reconciliación bancaria** (comparar saldo banco contra estado
+  de cuenta real importado).
+- **Estados financieros** (balance general, estado de resultados
+  pre-formateado para reportes ejecutivos).
+- **Cierre de periodo** (asiento de cierre que cancela
+  ingresos/egresos contra Utilidad del ejercicio).
+- **Export contable** (CSV/XML para el contador externo timbrador).
+- **Edición de asientos** (hoy solo se anula y se captura otro).
+  Permitir editar antes de cualquier reporte cerrado podría
+  agregarse en V2.
+- **Retro-llenado de Tesorería existente**: los signals solo
+  generan asientos para Ingresos/Egresos creados desde este
+  sprint. Para sembrar la contabilidad histórica habría que
+  correr un management command que recorra Tesorería vigente
+  y dispare `crear_asiento` por cada uno (idempotente, no
+  duplica). No se incluye porque LC arranca contabilidad limpia.
+
+### S3 — Contabilidad y reportes (resto)
+
+Tras S3.contaduria-v1 quedan: **Reconciliación bancaria** ·
+**Estados financieros** (balance general + estado de resultados) ·
+**Cierre de periodo** · **Export al contador externo**.
 
 ### S4 — IA (Los Chalanes, casos de uso)
 

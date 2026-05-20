@@ -58,6 +58,10 @@ EventoTipo = Literal[
     "tesoreria.export_fallido",
     "centro_costo.creado",
     "centro_costo.actualizado",
+    "contaduria.asiento_creado",
+    "contaduria.asiento_anulado",
+    "contaduria.cuenta_creada",
+    "contaduria.cuenta_actualizada",
 ]
 
 

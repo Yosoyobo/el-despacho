@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Catálogo de cuentas — La Contaduría{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Catálogo de cuentas</h1>
+    </div>
+    <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Volver</a>
+</header>
+
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex-1 min-w-[220px]">
+        <label for="ctd-q" class="sr-only">Buscar</label>
+        <input id="ctd-q" type="search" name="q" value="{{ q }}" placeholder="Buscar código o nombre…">
+    </div>
+    <div>
+        <label class="sr-only" for="ctd-tipo">Tipo</label>
+        <select name="tipo" id="ctd-tipo">
+            <option value="">Todos</option>
+            <option value="activo" {% if tipo_filtro == 'activo' %}selected{% endif %}>Activo</option>
+            <option value="pasivo" {% if tipo_filtro == 'pasivo' %}selected{% endif %}>Pasivo</option>
+            <option value="capital" {% if tipo_filtro == 'capital' %}selected{% endif %}>Capital</option>
+            <option value="ingreso" {% if tipo_filtro == 'ingreso' %}selected{% endif %}>Ingreso</option>
+            <option value="egreso" {% if tipo_filtro == 'ingreso' %}selected{% endif %}>Egreso</option>
+        </select>
+    </div>
+    <button type="submit" class="btn-secundario">Filtrar</button>
+</form>
+
+<div class="ta-card overflow-x-auto">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            <tr>
+                <th class="px-3 py-2 text-left">Código</th>
+                <th class="px-3 py-2 text-left">Nombre</th>
+                <th class="px-3 py-2 text-left">Tipo</th>
+                <th class="px-3 py-2 text-left">Naturaleza</th>
+                <th class="px-3 py-2 text-left">Slot</th>
+                <th class="px-3 py-2 text-right">Libro mayor</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for c in cuentas %}
+            <tr class="{% if not c.activa %}opacity-60{% endif %} hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <td class="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">{{ c.codigo }}</td>
+                <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ c.nombre }}</td>
+                <td class="px-3 py-2"><span class="badge badge-gray">{{ c.get_tipo_display }}</span></td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ c.get_naturaleza_display }}</td>
+                <td class="px-3 py-2 text-xs text-gray-500 font-mono">{{ c.slot|default:"—" }}</td>
+                <td class="px-3 py-2 text-right"><a href="{% url 'contaduria:libro-mayor' c.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">Ver →</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-3 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin cuentas que coincidan con el filtro.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

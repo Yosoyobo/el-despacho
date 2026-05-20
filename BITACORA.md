@@ -4287,3 +4287,123 @@ funcionalidad en dos capas:
   Facturación** quiere arrancar después de Caja para tener la pieza
   cobro lista.
 
+
+
+---
+
+# BITÁCORA — Sprint S3.contaduria-v1 (La Contaduría V1, partida doble)
+
+> Cierre **2026-05-20**. Sprint encima de Tesorería, sin CFDI ni PAC.
+> Construye libro contable interno con hookpoints automáticos.
+
+## 1. Por qué V1 y qué NO incluye
+
+Oscar dijo: NO Drive, NO Stripe/MercadoPago hasta el final. Eso bloquea
+Cotizaciones PDF, S2b.1b y La Caja. La Facturación sin PDF tampoco
+agrega valor hasta tener PDF. **Contaduría es el frente que más valor
+agrega sin ningún setup externo** — encima de la Tesorería que ya
+existe, genera el libro contable que el contador externo necesita.
+
+V1 entrega:
+- Modelo de partida doble (Cuenta/Asiento/Partida) con validación
+  estricta en service.
+- Catálogo SAT-style simplificado (26 cuentas) con slots semánticos
+  que permiten reordenarlas sin tocar código.
+- Hookpoints automáticos en Tesorería (Ingreso/Egreso → asiento;
+  anulación → asiento reverso, idempotente).
+- UI completa: landing, catálogo, asientos lista/detalle/captura,
+  libro mayor, balance de comprobación.
+- 19 tests nuevos. Suite 573 pass.
+
+V1 NO incluye (deuda diseñada):
+- Reconciliación bancaria contra estado de cuenta real.
+- Estados financieros formales (balance general / estado de
+  resultados pre-formateado).
+- Cierre de periodo (asiento que cancela ingresos/egresos contra
+  Utilidad del ejercicio).
+- Export al contador externo (CSV/XML específico para su PAC).
+- Retro-llenado de Tesorería histórica.
+
+## 2. Decisiones de diseño
+
+- **Slots semánticos en el catálogo** en lugar de hardcodear códigos
+  SAT en signals.py. `CuentaContable.slot='banco'` permite que el
+  admin renombre, mueva o subdivida la cuenta de Bancos sin tocar el
+  hookpoint — el signal hace `cuenta_por_slot('banco')`. Trade-off:
+  hay que mantener la lista de slots conocidos en sync entre el seed
+  y el código que los usa. Tolerable a 11 slots; si crece a 30+ vale
+  la pena hacer un Enum.
+- **Anular asiento NO genera reverso automático**. Es distinto de
+  anular un Ingreso/Egreso de Tesorería. Razón: anular un asiento es
+  para corregir captura (típo, monto mal puesto). Si el anulador
+  necesita neutralizar el efecto contable de algo `real` (ej.
+  devolver un cobro a un cliente), captura un asiento de `ajuste`
+  manual. Esto evita el caso donde anular sin querer genera ruido
+  doble.
+- **`select_for_update` para el correlativo `AST-YYYY-NNNN`**: igual
+  que Tesorería y Cotizaciones. Postgres serializa la generación;
+  SQLite (tests) es no-op pero pasa.
+- **Asiento reverso al anular Ingreso/Egreso**: la decisión es
+  opuesta a la del párrafo anterior porque es un `hookpoint
+  automático` — el evento real ocurrió y se anuló, y la contabilidad
+  debe reflejar el ciclo completo. Trazabilidad contable.
+- **Idempotencia por `referencia_externa`**: cualquier service que
+  cree asientos automáticos pasa una referencia única
+  (`tesoreria.ingreso:42`). Si el signal vuelve a dispararse por
+  cualquier razón, no se duplica.
+- **Hookpoints NUNCA tumban Tesorería**: si el catálogo está
+  incompleto o un cálculo falla, el signal hace log.warning y skip.
+  La operación es primaria; la contabilidad es derivada.
+- **Permiso `reportes` separado de `ver`**: para el caso donde un
+  empleado de captura ve el detalle de su asiento pero NO el balance
+  consolidado del despacho. V1 default lo da a admin y contador.
+- **NO retro-llenar Tesorería existente**: el management command
+  está mencionado en CLAUDE.md pero no escrito. Razón: en HAL/prod
+  hay pocos Ingresos/Egresos viejos (la Tesorería se estrenó en
+  S2b.3 hace 1 día); arrancar contabilidad limpia es más limpio que
+  inventar asientos retroactivos.
+
+## 3. Cosas que me costaron pensar
+
+- **Bug E (`on_commit` en tests)**: pytest-django envuelve cada test
+  en transacción que hace rollback, así que `transaction.on_commit`
+  no dispara. Sin fixture, los signals NO crearían los asientos en
+  tests. Solución: fixture `_on_commit_inmediato` autouse en
+  test_contaduria que monkeypatchea `on_commit` a ejecución
+  inmediata. Patrón heredado del bug catalogado en §14.
+- **Sidebar + tests Gerencia**: igual que las dos veces anteriores
+  (Tesorería, Cotizaciones), el sidebar del Taller resuelve PRIMERO
+  por orden en `TEMPLATES.DIRS`. Agregué
+  `__contaduria_for_url_reverse__/` a urls_gerencia.py. Esto se está
+  volviendo un patrón fijo — vale anotar en el manual de bugs.
+- **Permisos legacy 0007**: el seed original sembraba acciones
+  `reconciliar` y `exportar` para contaduria. La migración 0010 las
+  borra y siembra las V1 reales. El signal `auto_seedear_permisos`
+  para usuarios nuevos sigue usando `TODO_CONTADURIA` en
+  permisos_defaults.py, que ya está actualizado. Sin esto, un usuario
+  contador nuevo tendría 'ver' (de 0010) más 'reconciliar' y
+  'exportar' (del signal con la versión vieja, lo cual era el caso
+  cuando `TODO_CONTADURIA` estaba en la versión vieja).
+
+## 4. Métricas
+
+- **Archivos nuevos**: 18 (app dir + 5 archivos Python + 2 migraciones
+  + 8 templates + 1 test file + 1 cuenta_seed.py + cuentas.0010).
+- **Tests nuevos**: 19. Suite total: 573 pass, 9 skipped.
+- **Eventos Portavoz nuevos**: 4.
+- **KPIs Sala de Juntas nuevos**: 3.
+- **Permisos** módulo `contaduria` × 4 acciones × 3 roles = 12 filas
+  seedeadas por usuario.
+
+## 5. Próximo
+
+Si LC sigue sin querer activar Stripe/MercadoPago/Drive, las opciones
+sin setup externo son:
+1. **Estados financieros V1** dentro de Contaduría — balance general
+   + estado de resultados sobre el catálogo actual.
+2. **Cierre de periodo + export contador externo** para que el
+   timbrador externo tenga el libro completo.
+3. **S4 — IA: ejecutores nuevos en El Dictado** (sugerir precio para
+   cotización, categorizar gasto auto, resumir hilos de Recados).
+4. **Mejoras de PWA**: Service Worker offline (cache-first shell).
+

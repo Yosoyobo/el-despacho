@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Asientos — La Contaduría{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Asientos</h1>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Volver</a>
+        {% if puede_capturar %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-primario">+ Nuevo</a>{% endif %}
+    </div>
+</header>
+
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex-1 min-w-[220px]">
+        <input type="search" name="q" value="{{ q }}" placeholder="Buscar código o descripción…">
+    </div>
+    <div>
+        <select name="origen">
+            <option value="">Cualquier origen</option>
+            <option value="manual" {% if origen_filtro == 'manual' %}selected{% endif %}>Manual</option>
+            <option value="auto_ingreso" {% if origen_filtro == 'auto_ingreso' %}selected{% endif %}>Auto · ingreso</option>
+            <option value="auto_egreso" {% if origen_filtro == 'auto_egreso' %}selected{% endif %}>Auto · egreso</option>
+            <option value="auto_anulacion_ingreso" {% if origen_filtro == 'auto_anulacion_ingreso' %}selected{% endif %}>Auto · anulación ingreso</option>
+            <option value="auto_anulacion_egreso" {% if origen_filtro == 'auto_anulacion_egreso' %}selected{% endif %}>Auto · anulación egreso</option>
+            <option value="ajuste" {% if origen_filtro == 'ajuste' %}selected{% endif %}>Ajuste</option>
+        </select>
+    </div>
+    {% include "_componentes_tailadmin/_checkbox.html" with name="anulados" value="1" label="Incluir anulados" checked=incluir_anulados %}
+    <button type="submit" class="btn-secundario">Filtrar</button>
+</form>
+
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras filas_template="contaduria/_filas_asientos.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
+{% endblock %}

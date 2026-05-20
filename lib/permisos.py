@@ -95,6 +95,22 @@ def puede_anular_cotizaciones(user) -> bool:
     return puede(user, "cotizaciones", "anular")
 
 
+def puede_ver_contaduria(user) -> bool:
+    return puede(user, "contaduria", "ver")
+
+
+def puede_capturar_contaduria(user) -> bool:
+    return puede(user, "contaduria", "capturar")
+
+
+def puede_anular_contaduria(user) -> bool:
+    return puede(user, "contaduria", "anular")
+
+
+def puede_reportes_contaduria(user) -> bool:
+    return puede(user, "contaduria", "reportes")
+
+
 def puede_ver_comentario(user, comentario) -> bool:
     """Comentario interno: oculto a `disenador` salvo que sea el autor.
     Comentario público: visible si el usuario ve el proyecto/tarea padre."""

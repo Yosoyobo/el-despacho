@@ -599,6 +599,115 @@ Arriba del tablero de la Sala de Juntas vive un text box prominente con un Chal�
 
 **Mi historial:** `/dictado/historial/` muestra tus últimos 50 dictados con texto crudo, Chalán que respondió, latencia y estado (Aplicado · Aplicado con errores · Fallo IA · Cancelado). Click en cualquiera abre el detalle con todas sus acciones y los errores si hubo.
 
+### 📒 La Contaduría (S3.contaduria-v1 ✅)
+
+**Dónde:** El Taller → La Contaduría.
+**Quién:** super_admin, dueño, contador (el diseñador no la ve).
+
+Libro contable interno con **partida doble**. Cada movimiento se
+captura como un **asiento** con N partidas (cargos y abonos) que
+deben cuadrar — el sistema lo valida y no deja guardar si no
+cuadra.
+
+> **Importante:** El Despacho NO emite CFDI ni se conecta a un PAC
+> (regla §16). Esta contaduría es un libro **interno** para que el
+> equipo entienda cómo está parado el negocio en términos
+> contables. El contador externo timbra los CFDI por su lado y
+> reconcilia su libro fiscal con exports de este.
+
+**Lo que ves al entrar:**
+
+- **4 KPI hero**: asientos del mes, saldo en caja, saldo en bancos,
+  cuentas por cobrar (CxC).
+- **Últimos 8 asientos** con su código (`AST-2026-0001`...), fecha,
+  descripción, origen y total.
+- 3 botones de navegación: **Catálogo** (ver cuentas), **Balance**
+  (de comprobación), **Asientos** (lista completa), y **+ Asiento
+  manual** para captura.
+
+**Catálogo de cuentas:** 26 cuentas pre-cargadas (SAT-style
+simplificado) organizadas en 5 grupos:
+
+- **1.x.x Activos** — Caja, Bancos, Clientes (CxC), IVA acreditable.
+- **2.x.x Pasivos** — Proveedores (CxP), Reembolsos por pagar, IVA
+  trasladado, ISR/IVA retenido por pagar.
+- **3.x.x Capital** — Capital social, Utilidades acumuladas, Utilidad
+  del ejercicio.
+- **4.x.x Ingresos** — Ingresos por servicios, Otros ingresos.
+- **5.x.x Egresos** — Gastos de operación, Materia prima, Servicios
+  externos, Renta, Servicios públicos, Sueldos, Honorarios,
+  Software, Viáticos, Otros.
+
+Click en una cuenta abre su **libro mayor**: todos los movimientos
+cronológicos con saldo acumulado fila por fila.
+
+**Hookpoints automáticos:** cuando registras un **Ingreso** o
+**Egreso** en La Tesorería, el sistema genera el asiento contable
+solo. Patrón:
+
+- **Ingreso por transferencia**: `Bancos DEBE → Ingresos por
+  servicios HABER`.
+- **Egreso pagado por la empresa**: `Gastos de operación DEBE →
+  Bancos HABER`.
+- **Egreso por reembolsar** (tarjeta personal del empleado):
+  `Gastos DEBE → Reembolsos por pagar HABER` (pasivo — el despacho
+  le debe al empleado).
+- **Egreso pendiente** (factura sin pagar todavía): `Gastos DEBE →
+  Proveedores HABER` (CxP).
+
+Cuando **anulas** un Ingreso o Egreso en Tesorería, el sistema
+genera un **asiento reverso** (cargos y abonos intercambiados) en
+lugar de borrar el original. Trazabilidad completa.
+
+**Captura manual:** Si necesitas registrar un asiento que no salió
+de Tesorería (ajuste de inventario, depreciación, traspaso entre
+bancos, etc.), usa **+ Asiento manual**. Capturas:
+
+- Fecha, descripción y opcionalmente una referencia externa.
+- N partidas (mínimo 2). Cada partida: cuenta, descripción y
+  exactamente uno de cargo o abono.
+- El sistema valida que **sum(cargos) == sum(abonos)** antes de
+  guardar. Si no cuadra, te dice por cuánto está desbalanceado.
+
+**Balance de comprobación:** `/contaduria/balance/` lista todas las
+cuentas con movimiento con sus totales y saldo. Al final, los
+**totales de cargos y abonos deben ser iguales** (partida doble);
+si no lo son, sale una alerta roja — eso no debería pasar nunca
+porque el service valida cada asiento, pero la alerta sirve como
+guardia paranoica.
+
+**Anular un asiento:** botón rojo en el detalle. Pide motivo. El
+asiento queda marcado como anulado y desaparece del balance, pero
+NO se genera un asiento reverso automático (a diferencia de
+Tesorería). Si necesitas neutralizar contablemente, captura un
+asiento de **ajuste** con los signos invertidos.
+
+**KPIs nuevos en la Sala de Juntas** (categoría 💰 Dinero):
+
+- **Asientos del mes** — cuántos movimientos contables vigentes
+  llevas en el mes.
+- **Saldo en bancos** — saldo deudor de la cuenta de Bancos.
+- **Asientos descuadrados** — solo admin. Debe ser 0 siempre; si
+  >0, alerta porque algo se metió a la DB sin validar.
+
+**Qué NO hace V1** (queda para sub-sprints):
+
+- **No emite CFDI ni se conecta a PAC** (decisión permanente —
+  el contador externo timbra aparte).
+- **No hace reconciliación bancaria** contra el estado de cuenta
+  del banco.
+- **No genera estados financieros formales** (balance general,
+  estado de resultados pre-formateado).
+- **No tiene cierre de periodo** automatizado (asiento que
+  cancela ingresos/egresos contra Utilidad del ejercicio).
+- **No exporta al contador externo** (CSV/XML formateado para su
+  sistema fiscal).
+- **No retro-llena la Tesorería histórica** — los asientos
+  automáticos solo se generan para Ingresos/Egresos creados desde
+  el deploy de este sprint. Si quieres asientos contables de
+  movimientos viejos, hay que correr un management command
+  (idempotente, no duplica) cuando se decida.
+
 ---
 
 ## La Gerencia a fondo
