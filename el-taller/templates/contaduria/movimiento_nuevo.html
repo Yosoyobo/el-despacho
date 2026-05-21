@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Nuevo movimiento — La Contaduría{% endblock %}
+{% block contenido %}
+<header class="mb-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría</p>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Nuevo movimiento</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">¿Qué tipo de movimiento quieres registrar? Elige una opción.</p>
+</header>
+
+<div class="grid gap-4 md:grid-cols-2">
+    <a href="{% url 'contaduria:movimiento-traspaso' %}" class="ta-card group block hover:border-brand-500 hover:shadow-theme-md transition">
+        <div class="mb-3 text-3xl">🔄</div>
+        <h2 class="text-title-xs font-semibold text-gray-900 group-hover:text-brand-600 dark:text-gray-100 dark:group-hover:text-brand-400">Traspaso entre cuentas</h2>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Cuando moviste dinero de un lado a otro. Por ejemplo, sacaste efectivo del banco para la caja chica, o pagaste con la tarjeta un gasto que ya tenías apartado.
+        </p>
+        <p class="mt-3 text-xs text-brand-600 dark:text-brand-400">Empezar →</p>
+    </a>
+
+    <a href="{% url 'contaduria:movimiento-ajuste' %}" class="ta-card group block hover:border-brand-500 hover:shadow-theme-md transition">
+        <div class="mb-3 text-3xl">⚖️</div>
+        <h2 class="text-title-xs font-semibold text-gray-900 group-hover:text-brand-600 dark:text-gray-100 dark:group-hover:text-brand-400">Ajuste de saldo</h2>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Cuando el saldo del sistema no coincide con la realidad y necesitas corregirlo. Por ejemplo, contaste el efectivo de la caja y faltaba un poco, o sobraba.
+        </p>
+        <p class="mt-3 text-xs text-brand-600 dark:text-brand-400">Empezar →</p>
+    </a>
+</div>
+
+<div class="mt-6">
+    <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Cancelar</a>
+</div>
+{% endblock %}

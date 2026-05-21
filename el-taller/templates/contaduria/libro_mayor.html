@@ -1,18 +1,19 @@
 {% extends "base.html" %}
+{% load forms_helpers contaduria_helpers %}
 {% block title %}Libro mayor · {{ cuenta.codigo }}{% endblock %}
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Libro mayor</p>
-        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100"><span class="font-mono">{{ cuenta.codigo }}</span> · {{ cuenta.nombre }}</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ cuenta.get_tipo_display }} · saldo {{ cuenta.get_naturaleza_display|lower }}.</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ cuenta.nombre }}{% if user.rol == 'super_admin' %} <span class="ml-2 font-mono text-xs text-gray-400">{{ cuenta.codigo }}</span>{% endif %}</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ cuenta.get_tipo_display }}{% if user.rol == 'super_admin' %} · saldo {{ cuenta.get_naturaleza_display|lower }}{% endif %}.</p>
     </div>
     <a href="{% url 'contaduria:cuentas' %}" class="btn-secundario">← Catálogo</a>
 </header>
 
 <div class="ta-card mb-6">
     <p class="text-xs text-gray-500 dark:text-gray-400">Saldo actual</p>
-    <p class="mt-1 text-title-md font-bold text-gray-900 dark:text-gray-100">${{ saldo_final|floatformat:2 }}</p>
+    <p class="mt-1 text-title-md font-bold text-gray-900 dark:text-gray-100">{{ saldo_final|dinero }}</p>
 </div>
 
 <div class="ta-card overflow-x-auto">
@@ -20,23 +21,25 @@
         <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <tr>
                 <th class="px-3 py-2 text-left">Fecha</th>
-                <th class="px-3 py-2 text-left">Asiento</th>
+                <th class="px-3 py-2 text-left">Movimiento</th>
                 <th class="px-3 py-2 text-left">Concepto</th>
-                <th class="px-3 py-2 text-right">Cargo</th>
-                <th class="px-3 py-2 text-right">Abono</th>
+                <th class="px-3 py-2 text-left">Dirección</th>
+                <th class="px-3 py-2 text-right">Monto</th>
                 <th class="px-3 py-2 text-right">Saldo</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for m in movimientos %}
+            {% with dir=m.partida|direccion_partida %}
             <tr>
                 <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ m.partida.asiento.fecha|date:"Y-m-d" }}</td>
                 <td class="px-3 py-2"><a href="{% url 'contaduria:asiento-detalle' m.partida.asiento.pk %}" class="font-mono text-brand-600 hover:underline dark:text-brand-400">{{ m.partida.asiento.codigo }}</a></td>
                 <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ m.partida.descripcion|default:m.partida.asiento.descripcion|truncatechars:60 }}</td>
-                <td class="px-3 py-2 text-right">{% if m.partida.cargo > 0 %}${{ m.partida.cargo|floatformat:2 }}{% else %}—{% endif %}</td>
-                <td class="px-3 py-2 text-right">{% if m.partida.abono > 0 %}${{ m.partida.abono|floatformat:2 }}{% else %}—{% endif %}</td>
-                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${{ m.saldo_acumulado|floatformat:2 }}</td>
+                <td class="px-3 py-2">{% if dir == 'Entra' %}<span class="badge badge-success">↓ Entra</span>{% else %}<span class="badge badge-warning">↑ Sale</span>{% endif %}</td>
+                <td class="px-3 py-2 text-right">{{ m.partida|monto_partida|dinero }}</td>
+                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{{ m.saldo_acumulado|dinero }}</td>
             </tr>
+            {% endwith %}
             {% empty %}
             <tr><td colspan="6" class="px-3 py-10 text-center">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin movimientos" descripcion="Esta cuenta aún no tiene partidas registradas." icono="folder" %}</td></tr>
             {% endfor %}

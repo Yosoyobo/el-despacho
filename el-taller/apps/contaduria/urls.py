@@ -16,4 +16,8 @@ urlpatterns = [
     path("estado-resultados/", views.estado_resultados, name="estado-resultados"),
     path("balance-general/", views.balance_general, name="balance-general"),
     path("export/", views.export, name="export"),
+    # Wizard "+ Nuevo movimiento" (dummy-proof)
+    path("movimiento/nuevo/", views.movimiento_nuevo, name="movimiento-nuevo"),
+    path("movimiento/traspaso/", views.movimiento_traspaso, name="movimiento-traspaso"),
+    path("movimiento/ajuste/", views.movimiento_ajuste, name="movimiento-ajuste"),
 ]

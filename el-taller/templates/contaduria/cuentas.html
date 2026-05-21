@@ -35,19 +35,23 @@
                 <th class="px-3 py-2 text-left">Código</th>
                 <th class="px-3 py-2 text-left">Nombre</th>
                 <th class="px-3 py-2 text-left">Tipo</th>
+                {% if user.rol == 'super_admin' %}
                 <th class="px-3 py-2 text-left">Naturaleza</th>
                 <th class="px-3 py-2 text-left">Slot</th>
+                {% endif %}
                 <th class="px-3 py-2 text-right">Libro mayor</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for c in cuentas %}
             <tr class="{% if not c.activa %}opacity-60{% endif %} hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                <td class="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">{{ c.codigo }}</td>
+                <td class="px-3 py-2 font-mono text-xs text-gray-400">{{ c.codigo }}</td>
                 <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ c.nombre }}</td>
                 <td class="px-3 py-2"><span class="badge badge-gray">{{ c.get_tipo_display }}</span></td>
+                {% if user.rol == 'super_admin' %}
                 <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ c.get_naturaleza_display }}</td>
                 <td class="px-3 py-2 text-xs text-gray-500 font-mono">{{ c.slot|default:"—" }}</td>
+                {% endif %}
                 <td class="px-3 py-2 text-right"><a href="{% url 'contaduria:libro-mayor' c.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">Ver →</a></td>
             </tr>
             {% empty %}

@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Asientos — La Contaduría{% endblock %}
+{% block title %}Movimientos — La Contaduría{% endblock %}
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría</p>
-        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Asientos</h1>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Movimientos contables</h1>
     </div>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
         <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Volver</a>
-        {% if puede_capturar %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-primario">+ Nuevo</a>{% endif %}
+        {% if puede_capturar %}<a href="{% url 'contaduria:movimiento-nuevo' %}" class="btn-primario">+ Nuevo movimiento</a>{% endif %}
+        {% if user.rol == 'super_admin' %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-secundario">+ Avanzado</a>{% endif %}
     </div>
 </header>
 

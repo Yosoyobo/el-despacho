@@ -20,7 +20,7 @@ from lib.permisos import (
     puede_ver_contaduria,
 )
 
-from . import exports, reportes, services
+from . import exports, reportes, services, wizards
 from .forms import AnularForm, AsientoForm, PartidaFormSet
 from .models import Asiento, CuentaContable, Partida
 
@@ -337,4 +337,132 @@ def export(request):
         "default_desde": hoy.replace(day=1).isoformat(),
         "default_hasta": hoy.isoformat(),
         "formatos": exports.FORMATOS,
+    })
+
+
+# ── Wizard "+ Nuevo movimiento" (dummy-proof) ──────────────────────────
+
+@login_required
+def movimiento_nuevo(request):
+    """Pantalla 1: usuario elige Traspaso o Ajuste."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_capturar_contaduria(request.user):
+        return HttpResponseForbidden("Sin permiso para capturar movimientos.")
+    return render(request, "contaduria/movimiento_nuevo.html", {})
+
+
+@login_required
+def movimiento_traspaso(request):
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_capturar_contaduria(request.user):
+        return HttpResponseForbidden("Sin permiso para capturar movimientos.")
+
+    cuentas = wizards.cuentas_traspasables()
+    default_fecha = date.today().isoformat()
+    if request.method == "POST":
+        try:
+            origen = cuentas.get(pk=request.POST.get("cuenta_origen") or 0)
+        except CuentaContable.DoesNotExist:
+            messages.error(request, "Cuenta de origen inválida.")
+            return render(request, "contaduria/movimiento_traspaso_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        try:
+            destino = cuentas.get(pk=request.POST.get("cuenta_destino") or 0)
+        except CuentaContable.DoesNotExist:
+            messages.error(request, "Cuenta de destino inválida.")
+            return render(request, "contaduria/movimiento_traspaso_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        try:
+            monto = Decimal(str(request.POST.get("monto") or "0"))
+        except Exception:
+            messages.error(request, "El monto no es un número válido.")
+            return render(request, "contaduria/movimiento_traspaso_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        fecha_str = (request.POST.get("fecha") or "").strip()
+        fecha = _parsear_fecha(fecha_str) or date.today()
+        descripcion = (request.POST.get("descripcion") or "").strip()
+        if not descripcion:
+            messages.error(request, "Describe para qué fue este traspaso.")
+            return render(request, "contaduria/movimiento_traspaso_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        try:
+            asiento = wizards.registrar_traspaso(
+                cuenta_origen=origen,
+                cuenta_destino=destino,
+                monto=monto,
+                descripcion=descripcion,
+                fecha=fecha,
+                creado_por=request.user,
+            )
+        except services.AsientoInvalido as e:
+            messages.error(request, str(e))
+            return render(request, "contaduria/movimiento_traspaso_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        messages.success(request, f"Movimiento registrado: {asiento.codigo}")
+        return redirect("contaduria:asiento-detalle", pk=asiento.pk)
+
+    return render(request, "contaduria/movimiento_traspaso_form.html", {
+        "cuentas": cuentas, "valores": {}, "default_fecha": date.today().isoformat(),
+    })
+
+
+@login_required
+def movimiento_ajuste(request):
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_capturar_contaduria(request.user):
+        return HttpResponseForbidden("Sin permiso para capturar movimientos.")
+
+    cuentas = wizards.cuentas_ajustables()
+    default_fecha = date.today().isoformat()
+    if request.method == "POST":
+        try:
+            cuenta = cuentas.get(pk=request.POST.get("cuenta") or 0)
+        except CuentaContable.DoesNotExist:
+            messages.error(request, "Cuenta inválida.")
+            return render(request, "contaduria/movimiento_ajuste_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        direccion = (request.POST.get("direccion") or "").strip()
+        try:
+            monto = Decimal(str(request.POST.get("monto") or "0"))
+        except Exception:
+            messages.error(request, "El monto no es un número válido.")
+            return render(request, "contaduria/movimiento_ajuste_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        fecha_str = (request.POST.get("fecha") or "").strip()
+        fecha = _parsear_fecha(fecha_str) or date.today()
+        motivo = (request.POST.get("motivo") or "").strip()
+        if not motivo:
+            messages.error(request, "Explica por qué este ajuste.")
+            return render(request, "contaduria/movimiento_ajuste_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        try:
+            asiento = wizards.registrar_ajuste(
+                cuenta_objetivo=cuenta,
+                direccion=direccion,
+                monto=monto,
+                motivo=motivo,
+                fecha=fecha,
+                creado_por=request.user,
+            )
+        except services.AsientoInvalido as e:
+            messages.error(request, str(e))
+            return render(request, "contaduria/movimiento_ajuste_form.html", {
+                "cuentas": cuentas, "valores": request.POST, "default_fecha": default_fecha,
+            })
+        messages.success(request, f"Movimiento registrado: {asiento.codigo}")
+        return redirect("contaduria:asiento-detalle", pk=asiento.pk)
+
+    return render(request, "contaduria/movimiento_ajuste_form.html", {
+        "cuentas": cuentas, "valores": {}, "default_fecha": date.today().isoformat(),
     })

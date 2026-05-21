@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}Balance de comprobación — La Contaduría{% endblock %}
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Balance de comprobación</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Cuentas con movimiento. Cargos totales deben igualar abonos totales (partida doble).</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Cuentas con movimiento. Toda entrada tiene una salida — los totales deben cuadrar.</p>
     </div>
     <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Volver</a>
 </header>
@@ -16,7 +17,7 @@
             <tr>
                 <th class="px-3 py-2 text-left">Código</th>
                 <th class="px-3 py-2 text-left">Cuenta</th>
-                <th class="px-3 py-2 text-left">Tipo</th>
+                {% if user.rol == 'super_admin' %}<th class="px-3 py-2 text-left">Tipo</th>{% endif %}
                 <th class="px-3 py-2 text-right">Cargos</th>
                 <th class="px-3 py-2 text-right">Abonos</th>
                 <th class="px-3 py-2 text-right">Saldo</th>
@@ -25,22 +26,22 @@
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for f in filas %}
             <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                <td class="px-3 py-2 font-mono">{{ f.cuenta.codigo }}</td>
+                <td class="px-3 py-2 font-mono text-xs text-gray-400">{{ f.cuenta.codigo }}</td>
                 <td class="px-3 py-2"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ f.cuenta.nombre }}</a></td>
-                <td class="px-3 py-2"><span class="badge badge-gray">{{ f.cuenta.get_tipo_display }}</span></td>
-                <td class="px-3 py-2 text-right">${{ f.cargos|floatformat:2 }}</td>
-                <td class="px-3 py-2 text-right">${{ f.abonos|floatformat:2 }}</td>
-                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${{ f.saldo|floatformat:2 }}</td>
+                {% if user.rol == 'super_admin' %}<td class="px-3 py-2"><span class="badge badge-gray">{{ f.cuenta.get_tipo_display }}</span></td>{% endif %}
+                <td class="px-3 py-2 text-right">{{ f.cargos|dinero }}</td>
+                <td class="px-3 py-2 text-right">{{ f.abonos|dinero }}</td>
+                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{{ f.saldo|dinero }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="6" class="px-3 py-10 text-center">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin movimientos" descripcion="Captura asientos o registra ingresos/egresos en Tesorería." icono="folder" %}</td></tr>
             {% endfor %}
             <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
                 <td class="px-3 py-2"></td>
-                <td class="px-3 py-2"></td>
+                {% if user.rol == 'super_admin' %}<td class="px-3 py-2"></td>{% endif %}
                 <td class="px-3 py-2 text-right text-xs uppercase text-gray-500">Totales</td>
-                <td class="px-3 py-2 text-right">${{ total_cargos|floatformat:2 }}</td>
-                <td class="px-3 py-2 text-right">${{ total_abonos|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right">{{ total_cargos|dinero }}</td>
+                <td class="px-3 py-2 text-right">{{ total_abonos|dinero }}</td>
                 <td class="px-3 py-2"></td>
             </tr>
         </tbody>
