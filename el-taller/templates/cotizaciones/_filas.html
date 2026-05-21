@@ -1,3 +1,4 @@
+{% load forms_helpers %}
 {% for c in cotizaciones %}
 {% with totales=c.calcular_totales %}
 <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if c.estado == 'anulada' %}opacity-60{% endif %}">
@@ -14,7 +15,7 @@
         {% endwith %}
     </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.fecha_emision|date:"Y-m-d" }}</td>
-    <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">${{ totales.total|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">{{ totales.total|dinero }}</td>
     <td class="px-5 py-3 text-right">
         <div class="relative inline-block text-left" data-dropdown>
             <button type="button" data-dropdown-trigger

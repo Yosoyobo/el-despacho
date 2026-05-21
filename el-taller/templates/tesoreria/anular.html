@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}Anular {{ tipo }} — La Tesorería{% endblock %}
 {% block contenido %}
 <header class="mb-6">
     <p class="text-xs font-medium uppercase tracking-wider text-error-600 dark:text-error-400">Anular</p>
-    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ objeto.codigo }} · ${{ objeto.monto|floatformat:2 }}</h1>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ objeto.codigo }} · {{ objeto.monto|dinero }}</h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">La anulación es definitiva — el {{ tipo }} queda en la base de datos para auditoría pero no entra en cálculos.</p>
 </header>
 

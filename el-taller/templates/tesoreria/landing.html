@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}La Tesorería — El Taller{% endblock %}
 
 {% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
@@ -67,7 +68,7 @@
                     <a href="{% url 'tesoreria:ingreso-detalle' i.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ i.codigo }}</a>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ i.fecha|date:"Y-m-d" }} · {{ i.descripcion|truncatechars:60 }}</p>
                 </div>
-                <span class="font-semibold text-success-600 dark:text-success-400">${{ i.monto|floatformat:2 }}</span>
+                <span class="font-semibold text-success-600 dark:text-success-400">{{ i.monto|dinero }}</span>
             </li>
             {% empty %}
             <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin ingresos" descripcion="Captura el primer ingreso para empezar a ver tendencias." icono="folder" %}</li>
@@ -85,7 +86,7 @@
                     <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ e.fecha|date:"Y-m-d" }} · {{ e.proveedor_nombre|default:e.centro_de_costo.nombre }}</p>
                 </div>
-                <span class="font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</span>
+                <span class="font-semibold text-error-600 dark:text-error-400">{{ e.monto|dinero }}</span>
             </li>
             {% empty %}
             <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin egresos" descripcion="Captura el primer egreso para ver el flujo." icono="folder" %}</li>

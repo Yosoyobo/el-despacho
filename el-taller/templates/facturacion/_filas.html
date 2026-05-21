@@ -1,3 +1,4 @@
+{% load forms_helpers %}
 {% for f in facturas %}
 {% with totales=f.calcular_totales %}
 <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if f.estado == 'cancelada' %}opacity-60{% endif %}">
@@ -9,7 +10,7 @@
     </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.fecha_emision|date:"Y-m-d" }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.fecha_vencimiento|date:"Y-m-d" }}</td>
-    <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">${{ totales.total|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">{{ totales.total|dinero }}</td>
     <td class="px-5 py-3">
         {% with estado=f.estado_visible %}
         <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>

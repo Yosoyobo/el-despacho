@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}Estado de resultados — La Contaduría{% endblock %}
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -33,45 +34,45 @@
                 <td class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" colspan="2">Ingresos</td>
             </tr>
             {% for sg in pl.ingresos.subgrupos %}
-                <tr><td class="px-3 py-2 pl-6 font-medium text-gray-800 dark:text-gray-200">{{ sg.etiqueta }}</td><td class="px-3 py-2 text-right font-medium">${{ sg.total|floatformat:2 }}</td></tr>
+                <tr><td class="px-3 py-2 pl-6 font-medium text-gray-800 dark:text-gray-200">{{ sg.etiqueta }}</td><td class="px-3 py-2 text-right font-medium">{{ sg.total|dinero }}</td></tr>
                 {% for c in sg.cuentas %}
-                <tr class="text-gray-600 dark:text-gray-400"><td class="px-3 py-1 pl-10"><a href="{% url 'contaduria:libro-mayor' c.cuenta.pk %}" class="hover:underline">{{ c.cuenta.codigo }} · {{ c.cuenta.nombre }}</a></td><td class="px-3 py-1 text-right">${{ c.monto|floatformat:2 }}</td></tr>
+                <tr class="text-gray-600 dark:text-gray-400"><td class="px-3 py-1 pl-10"><a href="{% url 'contaduria:libro-mayor' c.cuenta.pk %}" class="hover:underline">{{ c.cuenta.codigo }} · {{ c.cuenta.nombre }}</a></td><td class="px-3 py-1 text-right">{{ c.monto|dinero }}</td></tr>
                 {% endfor %}
             {% empty %}
                 <tr><td class="px-3 py-4 text-gray-500 italic" colspan="2">Sin ingresos en el periodo.</td></tr>
             {% endfor %}
             <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
                 <td class="px-3 py-2">Total de ingresos</td>
-                <td class="px-3 py-2 text-right text-success-700 dark:text-success-400">${{ pl.ingresos.total|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right text-success-700 dark:text-success-400">{{ pl.ingresos.total|dinero }}</td>
             </tr>
 
             <tr class="bg-gray-50 dark:bg-white/[0.02]">
                 <td class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" colspan="2">Egresos</td>
             </tr>
             {% for sg in pl.egresos.subgrupos %}
-                <tr><td class="px-3 py-2 pl-6 font-medium text-gray-800 dark:text-gray-200">{{ sg.etiqueta }}</td><td class="px-3 py-2 text-right font-medium">${{ sg.total|floatformat:2 }}</td></tr>
+                <tr><td class="px-3 py-2 pl-6 font-medium text-gray-800 dark:text-gray-200">{{ sg.etiqueta }}</td><td class="px-3 py-2 text-right font-medium">{{ sg.total|dinero }}</td></tr>
                 {% for c in sg.cuentas %}
-                <tr class="text-gray-600 dark:text-gray-400"><td class="px-3 py-1 pl-10"><a href="{% url 'contaduria:libro-mayor' c.cuenta.pk %}" class="hover:underline">{{ c.cuenta.codigo }} · {{ c.cuenta.nombre }}</a></td><td class="px-3 py-1 text-right">${{ c.monto|floatformat:2 }}</td></tr>
+                <tr class="text-gray-600 dark:text-gray-400"><td class="px-3 py-1 pl-10"><a href="{% url 'contaduria:libro-mayor' c.cuenta.pk %}" class="hover:underline">{{ c.cuenta.codigo }} · {{ c.cuenta.nombre }}</a></td><td class="px-3 py-1 text-right">{{ c.monto|dinero }}</td></tr>
                 {% endfor %}
             {% empty %}
                 <tr><td class="px-3 py-4 text-gray-500 italic" colspan="2">Sin egresos en el periodo.</td></tr>
             {% endfor %}
             <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
                 <td class="px-3 py-2">Total de egresos</td>
-                <td class="px-3 py-2 text-right text-error-700 dark:text-error-400">${{ pl.egresos.total|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right text-error-700 dark:text-error-400">{{ pl.egresos.total|dinero }}</td>
             </tr>
 
             <tr class="bg-brand-50 dark:bg-brand-500/10">
                 <td class="px-3 py-2 font-semibold text-gray-900 dark:text-gray-100">Utilidad bruta <span class="text-xs text-gray-500">(ingresos − costo de ventas)</span></td>
-                <td class="px-3 py-2 text-right font-semibold">${{ pl.utilidad_bruta|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right font-semibold">{{ pl.utilidad_bruta|dinero }}</td>
             </tr>
             <tr class="bg-brand-50 dark:bg-brand-500/10">
                 <td class="px-3 py-2 font-semibold text-gray-900 dark:text-gray-100">Utilidad operativa <span class="text-xs text-gray-500">(− gastos operativos)</span></td>
-                <td class="px-3 py-2 text-right font-semibold">${{ pl.utilidad_operativa|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right font-semibold">{{ pl.utilidad_operativa|dinero }}</td>
             </tr>
             <tr class="bg-brand-100 text-lg dark:bg-brand-500/20">
                 <td class="px-3 py-3 font-bold text-gray-900 dark:text-gray-100">Utilidad neta</td>
-                <td class="px-3 py-3 text-right font-bold {% if pl.utilidad_neta < 0 %}text-error-700 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">${{ pl.utilidad_neta|floatformat:2 }}</td>
+                <td class="px-3 py-3 text-right font-bold {% if pl.utilidad_neta < 0 %}text-error-700 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ pl.utilidad_neta|dinero }}</td>
             </tr>
         </tbody>
     </table>

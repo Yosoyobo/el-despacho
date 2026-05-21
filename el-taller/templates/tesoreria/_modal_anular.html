@@ -1,3 +1,4 @@
+{% load forms_helpers %}
 {% spaceless %}
 {% if tipo == 'ingreso' %}
     {% url 'tesoreria:ingreso-anular' objeto.pk as accion_url %}
@@ -10,7 +11,7 @@
         <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
             <div>
                 <p class="text-xs font-medium uppercase tracking-wider text-error-600 dark:text-error-400">Anular {{ tipo }}</p>
-                <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">{{ objeto.codigo }} · ${{ objeto.monto|floatformat:2 }}</h2>
+                <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">{{ objeto.codigo }} · {{ objeto.monto|dinero }}</h2>
             </div>
             <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>

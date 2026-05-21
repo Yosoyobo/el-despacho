@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -459,3 +459,74 @@ def duplicar(request, pk):
     nueva = services.duplicar(fac, request.user)
     messages.success(request, f"Factura duplicada como {nueva.codigo}.")
     return redirect("facturacion:editar", pk=nueva.pk)
+
+
+# ── API JSON para autocompletar en factura_form ──────────────────────────
+
+@login_required
+def api_proyecto_datos(request, pk):
+    """Devuelve datos del proyecto para auto-llenar el form de factura.
+
+    GET /facturacion/api/proyecto/<pk>/datos/
+    → {cliente_id, cliente_nombre, codigo, cotizaciones: [{id, codigo, titulo, estado}]}
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    from apps.cotizaciones.models import Cotizacion
+    from apps.los_proyectos.models import Proyecto
+    proyecto = get_object_or_404(
+        Proyecto.objects.select_related("cliente"), pk=pk,
+    )
+    cots = Cotizacion.vigentes.filter(proyecto=proyecto).order_by("-creado_en")[:20]
+    return JsonResponse({
+        "id": proyecto.pk,
+        "codigo": proyecto.codigo,
+        "nombre": proyecto.nombre,
+        "cliente_id": proyecto.cliente_id,
+        "cliente_nombre": proyecto.cliente.razon_social if proyecto.cliente else "",
+        "cotizaciones": [
+            {"id": c.pk, "codigo": c.codigo, "titulo": c.titulo, "estado": c.estado}
+            for c in cots
+        ],
+    })
+
+
+@login_required
+def api_cotizacion_datos(request, pk):
+    """Devuelve datos de la cotización para auto-llenar form de factura.
+
+    GET /facturacion/api/cotizacion/<pk>/datos/
+    → {cliente_id, cliente_nombre, proyecto_id, proyecto_codigo, titulo,
+       descuento_global_porcentaje, notas, terminos, items: [...], impuestos: [tasa_id, ...]}
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    from apps.cotizaciones.models import Cotizacion
+    cot = get_object_or_404(
+        Cotizacion.objects.select_related("cliente", "proyecto"), pk=pk,
+    )
+    return JsonResponse({
+        "id": cot.pk,
+        "codigo": cot.codigo,
+        "titulo": cot.titulo,
+        "estado": cot.estado,
+        "cliente_id": cot.cliente_id,
+        "cliente_nombre": cot.cliente.razon_social if cot.cliente else "",
+        "proyecto_id": cot.proyecto_id,
+        "proyecto_codigo": cot.proyecto.codigo if cot.proyecto else "",
+        "moneda": cot.moneda,
+        "descuento_global_porcentaje": str(cot.descuento_global_porcentaje or 0),
+        "notas": cot.notas,
+        "terminos": cot.terminos,
+        "items": [
+            {
+                "descripcion": it.descripcion,
+                "cantidad": str(it.cantidad),
+                "unidad": it.unidad,
+                "precio_unitario": str(it.precio_unitario),
+                "descuento_porcentaje": str(it.descuento_porcentaje or 0),
+            }
+            for it in cot.items.all().order_by("orden", "pk")
+        ],
+        "impuestos": list(cot.impuestos.values_list("tasa_id", flat=True)),
+    })

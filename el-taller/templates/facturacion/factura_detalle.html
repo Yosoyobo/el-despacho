@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}{{ fac.codigo }} — La Facturación{% endblock %}
 {% block contenido %}
 
@@ -32,9 +33,9 @@
                         <tr>
                             <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{{ it.descripcion }}{% if it.servicio %}<div class="text-xs text-gray-400 dark:text-gray-500">{{ it.servicio.nombre }}</div>{% endif %}</td>
                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.cantidad|floatformat:2 }} {{ it.unidad }}</td>
-                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">${{ it.precio_unitario|floatformat:2 }}</td>
+                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.precio_unitario|dinero }}</td>
                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.descuento_porcentaje|floatformat:2 }}%</td>
-                            <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${{ it.subtotal|floatformat:2 }}</td>
+                            <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{{ it.subtotal|dinero }}</td>
                         </tr>
                         {% empty %}
                         <tr><td colspan="5" class="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin líneas.</td></tr>
@@ -45,18 +46,18 @@
 
             <div class="mt-5 flex justify-end">
                 <dl class="w-full max-w-sm space-y-1 text-sm">
-                    <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Subtotal</dt><dd class="text-gray-900 dark:text-gray-100">${{ totales.subtotal_items|floatformat:2 }}</dd></div>
-                    {% if totales.descuento_global %}<div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Descuento global ({{ fac.descuento_global_porcentaje|floatformat:2 }}%)</dt><dd class="text-error-600 dark:text-error-400">−${{ totales.descuento_global|floatformat:2 }}</dd></div>{% endif %}
+                    <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Subtotal</dt><dd class="text-gray-900 dark:text-gray-100">{{ totales.subtotal_items|dinero }}</dd></div>
+                    {% if totales.descuento_global %}<div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Descuento global ({{ fac.descuento_global_porcentaje|floatformat:2 }}%)</dt><dd class="text-error-600 dark:text-error-400">−{{ totales.descuento_global|dinero }}</dd></div>{% endif %}
                     {% for imp in totales.impuestos_detalle %}
                     <div class="flex justify-between">
                         <dt class="text-gray-500 dark:text-gray-400">{{ imp.nombre }} ({{ imp.porcentaje|floatformat:2 }}%)</dt>
-                        <dd class="{% if imp.tipo == 'retencion' %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{% if imp.tipo == 'retencion' %}−{% endif %}${{ imp.monto|floatformat:2 }}</dd>
+                        <dd class="{% if imp.tipo == 'retencion' %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{% if imp.tipo == 'retencion' %}−{% endif %}{{ imp.monto|dinero }}</dd>
                     </div>
                     {% endfor %}
-                    <div class="mt-2 flex justify-between border-t border-gray-200 pt-2 text-base font-semibold dark:border-gray-800"><dt class="text-gray-900 dark:text-gray-100">Total ({{ fac.moneda }})</dt><dd class="text-gray-900 dark:text-gray-100">${{ totales.total|floatformat:2 }}</dd></div>
+                    <div class="mt-2 flex justify-between border-t border-gray-200 pt-2 text-base font-semibold dark:border-gray-800"><dt class="text-gray-900 dark:text-gray-100">Total ({{ fac.moneda }})</dt><dd class="text-gray-900 dark:text-gray-100">{{ totales.total|dinero }}</dd></div>
                     {% if fac.monto_cobrado %}
-                    <div class="flex justify-between text-success-700 dark:text-success-400"><dt>Cobrado</dt><dd>−${{ fac.monto_cobrado|floatformat:2 }}</dd></div>
-                    <div class="flex justify-between font-semibold"><dt class="text-gray-900 dark:text-gray-100">Saldo</dt><dd class="text-gray-900 dark:text-gray-100">${{ fac.saldo_pendiente|floatformat:2 }}</dd></div>
+                    <div class="flex justify-between text-success-700 dark:text-success-400"><dt>Cobrado</dt><dd>−{{ fac.monto_cobrado|dinero }}</dd></div>
+                    <div class="flex justify-between font-semibold"><dt class="text-gray-900 dark:text-gray-100">Saldo</dt><dd class="text-gray-900 dark:text-gray-100">{{ fac.saldo_pendiente|dinero }}</dd></div>
                     {% endif %}
                 </dl>
             </div>
@@ -80,7 +81,7 @@
                         <td class="px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ c.codigo }}</td>
                         <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ c.fecha|date:"Y-m-d" }}</td>
                         <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ c.get_metodo_display }}</td>
-                        <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${{ c.monto|floatformat:2 }}</td>
+                        <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{{ c.monto|dinero }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

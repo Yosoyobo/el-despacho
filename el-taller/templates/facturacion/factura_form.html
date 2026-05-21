@@ -132,6 +132,112 @@
         body.appendChild(tmp.firstElementChild);
         total.value = idx + 1;
     });
+
+    // ── Auto-completar al seleccionar proyecto o cotización origen ────
+    const $cliente = document.querySelector('[name="cliente"]');
+    const $proyecto = document.querySelector('[name="proyecto"]');
+    const $cot = document.querySelector('[name="cotizacion_origen"]');
+    const $titulo = document.querySelector('[name="titulo"]');
+    const $descGlobal = document.querySelector('[name="descuento_global_porcentaje"]');
+    const $notas = document.querySelector('[name="notas"]');
+    const $terminos = document.querySelector('[name="terminos"]');
+
+    function setIfEmpty(input, value) {
+        if (!input) return;
+        if (value === null || value === undefined || value === '') return;
+        const current = String(input.value || '').trim();
+        if (current === '' || current === '0' || current === '0.00') {
+            input.value = value;
+        }
+    }
+
+    function setSelectIfDifferent(select, value) {
+        if (!select || value == null) return;
+        const target = String(value);
+        if (String(select.value) !== target) {
+            // Solo si la opción existe en el select; si no, dejar como está.
+            const opt = Array.from(select.options).find(o => o.value === target);
+            if (opt) { select.value = target; }
+        }
+    }
+
+    function clearItemRows() {
+        body.querySelectorAll('tr.fac-item-row').forEach(row => {
+            if (row.dataset.existing === '1') return;  // No tocar líneas guardadas
+            row.remove();
+        });
+        // Reset total a sólo lo persistido
+        const existentes = body.querySelectorAll('tr[data-existing="1"]').length;
+        total.value = String(existentes);
+    }
+
+    function addItemRow(item) {
+        const idx = parseInt(total.value, 10);
+        const html = tpl.innerHTML.replace(/__prefix__/g, idx);
+        const tmp = document.createElement('tbody');
+        tmp.innerHTML = html;
+        const tr = tmp.firstElementChild;
+        body.appendChild(tr);
+        total.value = idx + 1;
+        tr.querySelector(`[name="items-${idx}-descripcion"]`).value = item.descripcion || '';
+        tr.querySelector(`[name="items-${idx}-cantidad"]`).value = item.cantidad || '1';
+        tr.querySelector(`[name="items-${idx}-unidad"]`).value = item.unidad || 'pieza';
+        tr.querySelector(`[name="items-${idx}-precio_unitario"]`).value = item.precio_unitario || '0';
+        tr.querySelector(`[name="items-${idx}-descuento_porcentaje"]`).value = item.descuento_porcentaje || '0';
+    }
+
+    if ($proyecto) {
+        $proyecto.addEventListener('change', async () => {
+            const pk = $proyecto.value;
+            if (!pk) return;
+            try {
+                const r = await fetch(`/facturacion/api/proyecto/${pk}/datos/`, {
+                    headers: {'Accept': 'application/json'},
+                    credentials: 'same-origin',
+                });
+                if (!r.ok) return;
+                const d = await r.json();
+                setSelectIfDifferent($cliente, d.cliente_id);
+                if ($titulo && !$titulo.value.trim()) {
+                    $titulo.value = `Factura · ${d.codigo}${d.nombre ? ' — ' + d.nombre : ''}`;
+                }
+            } catch (e) { /* silent */ }
+        });
+    }
+
+    if ($cot) {
+        $cot.addEventListener('change', async () => {
+            const pk = $cot.value;
+            if (!pk) return;
+            const confirmar = body.querySelectorAll('tr.fac-item-row').length > 0
+                ? window.confirm('La cotización tiene líneas e impuestos propios. ¿Reemplazar las líneas actuales? (Cliente/proyecto se actualizan; los datos auto-completados son editables.)')
+                : true;
+            if (!confirmar) { $cot.value = ''; return; }
+            try {
+                const r = await fetch(`/facturacion/api/cotizacion/${pk}/datos/`, {
+                    headers: {'Accept': 'application/json'},
+                    credentials: 'same-origin',
+                });
+                if (!r.ok) return;
+                const d = await r.json();
+                setSelectIfDifferent($cliente, d.cliente_id);
+                setSelectIfDifferent($proyecto, d.proyecto_id);
+                if ($titulo && !$titulo.value.trim()) {
+                    $titulo.value = d.titulo || '';
+                }
+                setIfEmpty($descGlobal, d.descuento_global_porcentaje);
+                if ($notas && !$notas.value.trim()) { $notas.value = d.notas || ''; }
+                if ($terminos && !$terminos.value.trim()) { $terminos.value = d.terminos || ''; }
+                clearItemRows();
+                (d.items || []).forEach(addItemRow);
+                // Marcar checkboxes de impuestos según los de la cotización
+                const ids = new Set((d.impuestos || []).map(String));
+                document.querySelectorAll('input[name="tasas"]').forEach(cb => {
+                    cb.checked = ids.has(String(cb.value));
+                });
+            } catch (e) { /* silent */ }
+        });
+    }
 })();
 </script>
 {% endblock %}

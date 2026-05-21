@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}Balance general — La Contaduría{% endblock %}
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -24,13 +25,13 @@
         <table class="min-w-full text-sm">
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 {% for f in bg.activo.filas %}
-                <tr><td class="px-3 py-1.5"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-gray-700 hover:underline dark:text-gray-300">{{ f.cuenta.codigo }} · {{ f.cuenta.nombre }}</a></td><td class="px-3 py-1.5 text-right">${{ f.saldo|floatformat:2 }}</td></tr>
+                <tr><td class="px-3 py-1.5"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-gray-700 hover:underline dark:text-gray-300">{{ f.cuenta.codigo }} · {{ f.cuenta.nombre }}</a></td><td class="px-3 py-1.5 text-right">{{ f.saldo|dinero }}</td></tr>
                 {% empty %}
                 <tr><td class="px-3 py-3 text-gray-500 italic" colspan="2">Sin saldos.</td></tr>
                 {% endfor %}
                 <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
                     <td class="px-3 py-2">Total activo</td>
-                    <td class="px-3 py-2 text-right">${{ bg.total_activo|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-right">{{ bg.total_activo|dinero }}</td>
                 </tr>
             </tbody>
         </table>
@@ -42,24 +43,24 @@
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 <tr class="bg-gray-50 dark:bg-white/[0.02]"><td class="px-3 py-1.5 text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" colspan="2">Pasivos</td></tr>
                 {% for f in bg.pasivo.filas %}
-                <tr><td class="px-3 py-1.5"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-gray-700 hover:underline dark:text-gray-300">{{ f.cuenta.codigo }} · {{ f.cuenta.nombre }}</a></td><td class="px-3 py-1.5 text-right">${{ f.saldo|floatformat:2 }}</td></tr>
+                <tr><td class="px-3 py-1.5"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-gray-700 hover:underline dark:text-gray-300">{{ f.cuenta.codigo }} · {{ f.cuenta.nombre }}</a></td><td class="px-3 py-1.5 text-right">{{ f.saldo|dinero }}</td></tr>
                 {% empty %}
                 <tr><td class="px-3 py-3 text-gray-500 italic" colspan="2">Sin saldos.</td></tr>
                 {% endfor %}
-                <tr class="font-medium"><td class="px-3 py-1.5">Total pasivos</td><td class="px-3 py-1.5 text-right">${{ bg.total_pasivo|floatformat:2 }}</td></tr>
+                <tr class="font-medium"><td class="px-3 py-1.5">Total pasivos</td><td class="px-3 py-1.5 text-right">{{ bg.total_pasivo|dinero }}</td></tr>
 
                 <tr class="bg-gray-50 dark:bg-white/[0.02]"><td class="px-3 py-1.5 text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" colspan="2">Capital</td></tr>
                 {% for f in bg.capital.filas %}
-                <tr><td class="px-3 py-1.5"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-gray-700 hover:underline dark:text-gray-300">{{ f.cuenta.codigo }} · {{ f.cuenta.nombre }}</a></td><td class="px-3 py-1.5 text-right">${{ f.saldo|floatformat:2 }}</td></tr>
+                <tr><td class="px-3 py-1.5"><a href="{% url 'contaduria:libro-mayor' f.cuenta.pk %}" class="text-gray-700 hover:underline dark:text-gray-300">{{ f.cuenta.codigo }} · {{ f.cuenta.nombre }}</a></td><td class="px-3 py-1.5 text-right">{{ f.saldo|dinero }}</td></tr>
                 {% empty %}
                 <tr><td class="px-3 py-3 text-gray-500 italic" colspan="2">Sin saldos.</td></tr>
                 {% endfor %}
-                <tr><td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">Utilidad del periodo <span class="text-xs text-gray-500">(on-the-fly)</span></td><td class="px-3 py-1.5 text-right">${{ bg.utilidad_periodo|floatformat:2 }}</td></tr>
-                <tr class="font-medium"><td class="px-3 py-1.5">Total capital + utilidad</td><td class="px-3 py-1.5 text-right">${{ bg.total_capital|add:bg.utilidad_periodo|floatformat:2 }}</td></tr>
+                <tr><td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">Utilidad del periodo <span class="text-xs text-gray-500">(on-the-fly)</span></td><td class="px-3 py-1.5 text-right">{{ bg.utilidad_periodo|dinero }}</td></tr>
+                <tr class="font-medium"><td class="px-3 py-1.5">Total capital + utilidad</td><td class="px-3 py-1.5 text-right">{{ bg.total_capital|add:bg.utilidad_periodo|dinero }}</td></tr>
 
                 <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
                     <td class="px-3 py-2">Total pasivo + capital</td>
-                    <td class="px-3 py-2 text-right">${{ bg.total_pasivo_mas_capital|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-right">{{ bg.total_pasivo_mas_capital|dinero }}</td>
                 </tr>
             </tbody>
         </table>
@@ -70,7 +71,7 @@
     {% if bg.cuadrado %}
     <p class="text-sm text-success-700 dark:text-success-400">✓ Activo = Pasivo + Capital + Utilidad · el balance cuadra.</p>
     {% else %}
-    <p class="text-sm text-error-700 dark:text-error-400">⚠ Descuadre de ${{ bg.descuadre|floatformat:2 }}. Activo = ${{ bg.total_activo|floatformat:2 }} ≠ Pasivo+Capital+Utilidad = ${{ bg.total_pasivo_mas_capital|floatformat:2 }}. Revisa asientos manuales recientes.</p>
+    <p class="text-sm text-error-700 dark:text-error-400">⚠ Descuadre de {{ bg.descuadre|dinero }}. Activo = {{ bg.total_activo|dinero }} ≠ Pasivo+Capital+Utilidad = {{ bg.total_pasivo_mas_capital|dinero }}. Revisa asientos manuales recientes.</p>
     {% endif %}
 </div>
 {% endblock %}
