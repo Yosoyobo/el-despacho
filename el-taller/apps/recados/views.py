@@ -154,6 +154,8 @@ def detalle(request, pk: int):
             {"url": reverse("recados:legacy_bandeja"), "label": "Recados (legacy)"},
             {"label": f"#{recado.pk}"},
         ],
+        "back_url": reverse("recados:legacy_bandeja"),
+        "back_label": "Bandeja legacy",
     })
 
 

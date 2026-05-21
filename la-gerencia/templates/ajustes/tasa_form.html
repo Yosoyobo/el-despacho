@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ modo|title }} tasa — Los Ajustes{% endblock %}
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Ajustes" "/ajustes/tasas/" "Tasa" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
     <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Los Ajustes · Tasas</p>
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{% if modo == 'editar' %}Editar tasa{% else %}Nueva tasa{% endif %}</h1>

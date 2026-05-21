@@ -120,6 +120,8 @@ def detalle(request, pk: int):
             {"url": reverse("dictado-historial"), "label": "El Dictado · historial"},
             {"label": f"#{dictado.pk}"},
         ],
+        "back_url": reverse("dictado-historial"),
+        "back_label": "Historial",
     })
 
 

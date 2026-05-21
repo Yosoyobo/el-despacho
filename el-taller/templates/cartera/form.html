@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ modo|capfirst }} cliente — La Cartera{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|add:" cliente"|capfirst subtitulo="Datos B2B del cliente — RFC, contacto, dirección." breadcrumb_items=breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|add:" cliente"|capfirst subtitulo="Datos B2B del cliente — RFC, contacto, dirección." breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
 <form method="post" class="max-w-3xl">
     {% csrf_token %}

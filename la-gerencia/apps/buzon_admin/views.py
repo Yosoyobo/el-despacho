@@ -110,6 +110,8 @@ def detalle(request, pk: int):
             {"url": reverse("buzon-admin-lista"), "label": "El Buzón"},
             {"label": f"#{msg.pk}"},
         ],
+        "back_url": reverse("buzon-admin-lista"),
+        "back_label": "El Buzón",
     })
 
 

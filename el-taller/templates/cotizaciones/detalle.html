@@ -3,7 +3,8 @@
 {% block title %}{{ cot.codigo }} — Las Cotizaciones{% endblock %}
 {% block contenido %}
 
-{% include "_componentes_tailadmin/_page_header.html" with titulo=cot.codigo subtitulo=cot.titulo %}
+{% breadcrumb_items "Las Cotizaciones" "/cotizaciones/" cot.codigo as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=cot.codigo subtitulo=cot.titulo breadcrumb_items=breadcrumb_items back_url="/cotizaciones/" back_label="Cotizaciones" %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
     {% with estado=cot.estado_visible %}

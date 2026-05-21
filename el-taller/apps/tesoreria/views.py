@@ -150,6 +150,8 @@ def ingreso_detalle(request, pk):
             {"url": reverse("tesoreria:ingresos-lista"), "label": "Ingresos"},
             {"label": ingreso.codigo},
         ],
+        "back_url": reverse("tesoreria:ingresos-lista"),
+        "back_label": "Ingresos",
     })
 
 
@@ -339,6 +341,8 @@ def egreso_detalle(request, pk):
             {"url": reverse("tesoreria:egresos-lista"), "label": "Egresos"},
             {"label": egreso.codigo},
         ],
+        "back_url": reverse("tesoreria:egresos-lista"),
+        "back_label": "Egresos",
     })
 
 

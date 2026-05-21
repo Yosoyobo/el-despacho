@@ -45,6 +45,35 @@ def dinero(valor) -> str:
     return f"{signo}${','.join(grupos)}.{decimales or '00':<02}"[:32]
 
 
+@register.simple_tag
+def breadcrumb_items(*args):
+    """Construye una lista de items para `_breadcrumb.html` a partir de
+    pares posicionales label/url. El último item NO debe tener url.
+
+    Uso:
+        {% load forms_helpers %}
+        {% breadcrumb_items "La Cartera" as items %}
+        {% include "_componentes_tailadmin/_breadcrumb.html" with items=items %}
+
+    Para items con url intermedios:
+        {% breadcrumb_items "La Cartera" "/cartera/" "Detalle" as items %}
+    Pasa pares (label, url) y termina con un label suelto (sin url).
+    """
+    items = []
+    i = 0
+    a = list(args)
+    while i < len(a):
+        label = a[i]
+        # Si hay un siguiente arg que parece URL (empieza con /) y no es el último, lo usa como url
+        if i + 1 < len(a) and isinstance(a[i + 1], str) and a[i + 1].startswith("/"):
+            items.append({"label": label, "url": a[i + 1]})
+            i += 2
+        else:
+            items.append({"label": label})
+            i += 1
+    return items
+
+
 @register.filter
 def dinero_sin_signo(valor) -> str:
     """Como `dinero` pero sin el `$` adelante (útil dentro de tablas)."""

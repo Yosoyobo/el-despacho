@@ -92,6 +92,8 @@ def detalle_tarea(request, pk):
             {"url": reverse("proyectos-detalle", args=[tarea.proyecto.pk]), "label": tarea.proyecto.codigo},
             {"label": tarea.titulo},
         ],
+        "back_url": reverse("proyectos-detalle", args=[tarea.proyecto.pk]),
+        "back_label": tarea.proyecto.codigo,
     })
 
 

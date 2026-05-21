@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Mis KPIs custom — Sala de Juntas{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="KPIs custom del Chalán" subtitulo="KPIs que tú o el equipo le pidieron a Claudio. Los personales son sólo tuyos. Los de equipo necesitan aprobación super_admin." %}
+{% load forms_helpers %}
+{% breadcrumb_items "Tablero" "/" "KPIs custom" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="KPIs custom del Chalán" subtitulo="KPIs que tú o el equipo le pidieron a Claudio. Los personales son sólo tuyos. Los de equipo necesitan aprobación super_admin." breadcrumb_items=breadcrumb_items back_url="/" back_label="Tablero" %}
 
 <div class="mb-4 flex justify-end">
     <a href="{% url 'kpi-custom-nuevo' %}" class="btn-primario">+ Pedirle un KPI al Chalán</a>

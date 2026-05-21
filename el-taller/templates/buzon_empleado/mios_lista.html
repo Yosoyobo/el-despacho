@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Mis mensajes — El Buzón{% endblock %}
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Mis mensajes" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Buzón</p>

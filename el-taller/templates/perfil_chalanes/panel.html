@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Mis Chalanes — Perfil{% endblock %}
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Mis Chalanes" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
     <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mis Chalanes</h1>
     <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">

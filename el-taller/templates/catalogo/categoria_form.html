@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ modo|title }} categoría — El Catálogo{% endblock %}
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Catálogo" "/catalogo/categorias/" "Categoría" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
     <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Catálogo · Categorías</p>
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{% if modo == 'editar' %}Editar categoría{% else %}Nueva categoría{% endif %}</h1>

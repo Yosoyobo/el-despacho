@@ -116,6 +116,8 @@ def detalle(request, pk):
             {"url": reverse("cartera-lista"), "label": "La Cartera"},
             {"label": cliente.razon_social},
         ],
+        "back_url": reverse("cartera-lista"),
+        "back_label": "La Cartera",
     })
 
 
@@ -139,7 +141,7 @@ def nuevo(request):
             return redirect("cartera-detalle", pk=cliente.pk)
     else:
         form = ClienteForm()
-    return render(request, "cartera/form.html", {"form": form, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "La Cartera"}, {"label": "Nuevo cliente"}]})
+    return render(request, "cartera/form.html", {"form": form, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "La Cartera"}, {"label": "Nuevo cliente"}], "back_url": "/cartera/", "back_label": "La Cartera"})
 
 
 @login_required
@@ -161,7 +163,7 @@ def editar(request, pk):
             return redirect("cartera-detalle", pk=cliente.pk)
     else:
         form = ClienteForm(instance=cliente)
-    return render(request, "cartera/form.html", {"form": form, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "La Cartera"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}]})
+    return render(request, "cartera/form.html", {"form": form, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "La Cartera"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}], "back_url": f"/cartera/{cliente.pk}/", "back_label": cliente.razon_social})
 
 
 @login_required

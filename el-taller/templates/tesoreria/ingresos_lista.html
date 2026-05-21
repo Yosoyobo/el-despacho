@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Ingresos — La Tesorería{% endblock %}
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Tesorería" "/tesoreria/" "Ingresos" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>

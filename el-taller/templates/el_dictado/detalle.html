@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dictado #{{ dictado.id }} — El Taller{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Dictado #"|add:dictado.id|stringformat:"s" subtitulo="El Dictado" breadcrumb_items=breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Dictado #"|add:dictado.id|stringformat:"s" subtitulo="El Dictado" breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div class="space-y-6 xl:col-span-2">

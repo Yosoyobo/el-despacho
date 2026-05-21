@@ -8,6 +8,9 @@
 {% endblock %}
 
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "El Site" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div>
         <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">El Site</h1>

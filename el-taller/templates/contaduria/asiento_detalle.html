@@ -2,7 +2,8 @@
 {% load forms_helpers contaduria_helpers %}
 {% block title %}{{ asiento.codigo }} — La Contaduría{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=asiento.codigo subtitulo=asiento.descripcion %}
+{% breadcrumb_items "La Contaduría" "/contaduria/" "Asientos" "/contaduria/asientos/" asiento.codigo as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=asiento.codigo subtitulo=asiento.descripcion breadcrumb_items=breadcrumb_items back_url="/contaduria/asientos/" back_label="Asientos" %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
     <span class="badge {% if asiento.origen == 'manual' %}badge-brand{% elif 'anulacion' in asiento.origen %}badge-error{% else %}badge-gray{% endif %}">{{ asiento.get_origen_display }}</span>

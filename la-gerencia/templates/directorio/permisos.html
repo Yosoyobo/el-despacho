@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Permisos · {{ usuario.email }}{% endblock %}
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "El Directorio" "/directorio/" "Permisos" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
     <a href="{% url 'directorio-lista' %}" class="text-xs text-brand-600 hover:underline">← Directorio</a>
     <h1 class="mt-1 text-title-sm font-semibold text-gray-900 dark:text-gray-100">

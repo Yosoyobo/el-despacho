@@ -119,6 +119,12 @@ def aprendizajes_lista(request):
             "activos": Aprendizaje.objects.filter(activo=True).count(),
             "inactivos": Aprendizaje.objects.filter(activo=False).count(),
         },
+        "breadcrumb_items": [
+            {"url": "/chalanes/", "label": "Los Chalanes"},
+            {"label": "Aprendizajes"},
+        ],
+        "back_url": "/chalanes/",
+        "back_label": "Chalanes",
     })
 
 

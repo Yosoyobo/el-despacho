@@ -2,6 +2,9 @@
 {% block title %}Los Recados — chat{% endblock %}
 
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Los Recados" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <div class="flex flex-col gap-6">
     <div class="flex items-start justify-between gap-4">
         <div>

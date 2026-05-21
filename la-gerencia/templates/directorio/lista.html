@@ -4,6 +4,9 @@
 {% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
 
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "El Directorio" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Directorio</h1>

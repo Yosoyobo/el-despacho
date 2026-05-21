@@ -2,7 +2,7 @@
 {% load proyectos_extras %}
 {% block title %}{{ proyecto.codigo }} — {{ proyecto.nombre }}{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=proyecto.nombre subtitulo=proyecto.codigo breadcrumb_items=breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=proyecto.nombre subtitulo=proyecto.codigo breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
     <span class="badge {{ proyecto.estado|color_estado }}">{{ proyecto.get_estado_display }}</span>

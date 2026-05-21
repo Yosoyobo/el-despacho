@@ -2,7 +2,7 @@
 {% load forms_helpers %}
 {% block title %}{{ egreso.codigo }} — Egreso{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=egreso.codigo subtitulo="La Tesorería · egreso" breadcrumb_items=breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=egreso.codigo subtitulo="La Tesorería · egreso" breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
 {% if egreso.anulado %}<div class="mb-4"><span class="badge badge-gray">Anulado</span></div>{% endif %}
 

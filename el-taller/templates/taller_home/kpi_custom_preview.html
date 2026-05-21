@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Preview KPI — confirma{% endblock %}
 {% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Tablero" "/" "KPIs custom" "/kpis/custom/" "Confirmar" as breadcrumb_items %}
 <div class="mx-auto max-w-2xl">
-    {% include "_componentes_tailadmin/_page_header.html" with titulo="Confirma el KPI" subtitulo="El Chalán propone esta métrica. Revisa el valor y guárdalo." %}
+    {% include "_componentes_tailadmin/_page_header.html" with titulo="Confirma el KPI" subtitulo="El Chalán propone esta métrica. Revisa el valor y guárdalo." breadcrumb_items=breadcrumb_items back_url="/kpis/custom/nuevo/" back_label="Reescribir" %}
 
     <section class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 shadow-theme-sm dark:border-brand-500/30 dark:bg-brand-500/5">
         <p class="text-xs uppercase text-brand-700 dark:text-brand-300">Pregunta original</p>

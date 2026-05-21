@@ -145,6 +145,8 @@ def detalle(request, pk):
             {"url": reverse("proyectos-lista"), "label": "Los Proyectos"},
             {"label": proyecto.codigo},
         ],
+        "back_url": reverse("proyectos-lista"),
+        "back_label": "Los Proyectos",
     })
 
 
