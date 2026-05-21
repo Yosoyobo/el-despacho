@@ -98,7 +98,6 @@ def _generar_asiento_emision(factura):
         log.warning("Catálogo incompleto: no se generó asiento para factura %s", factura.codigo)
         return
 
-    from .contable import mapa_iva_para_tasa
 
     partidas = [
         {"cuenta": cxc, "cargo": total, "orden": 0,
