@@ -63,6 +63,17 @@ class Egreso(models.Model):
     estado_pago = models.CharField(max_length=20, choices=ESTADOS_PAGO, default="pagado", db_index=True)
     metodo = models.CharField(max_length=30, choices=METODOS_EGRESO, default="transferencia")
 
+    # Registro del pago efectivo (sprint S-Finanzas-V2). Cuando el egreso
+    # se reembolsa via tesoreria.services.reembolsar_egreso, estos campos
+    # registran la fecha y de qué cuenta (banco/caja) salió el dinero.
+    # Null cuando el egreso todavía no se ha pagado.
+    pagado_en = models.DateField(null=True, blank=True, db_index=True)
+    pagado_desde = models.CharField(
+        max_length=20, blank=True, default="",
+        choices=(("", "—"), ("banco", "Banco"), ("caja", "Caja")),
+        help_text="De qué cuenta salió el dinero al ejecutar el pago.",
+    )
+
     drive_file_id = models.CharField(max_length=100, blank=True, default="")
     drive_url_view = models.URLField(max_length=500, blank=True, default="")
     drive_url_thumbnail = models.URLField(max_length=500, blank=True, default="")

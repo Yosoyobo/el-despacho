@@ -7,6 +7,8 @@ están completos."""
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
@@ -307,6 +309,16 @@ def egreso_detalle(request, pk):
         {"label": "Solicitado por", "value": (egreso.solicitado_por.nombre_completo or egreso.solicitado_por.email) if egreso.solicitado_por else "—"},
         {"label": "Proveedor", "value": egreso.proveedor_nombre or "—"},
     ]
+    if egreso.pagado_en:
+        info_pago.insert(2, {
+            "label": "Fecha de pago",
+            "value_html": format_html(
+                '<span class="font-medium text-success-700 dark:text-success-400">{}</span>'
+                '<span class="ml-1 text-xs text-gray-500">desde {}</span>',
+                egreso.pagado_en.strftime("%Y-%m-%d"),
+                egreso.get_pagado_desde_display() or "—",
+            ),
+        })
     info_captura = [
         {"label": "Capturado por", "value": (egreso.creado_por.nombre_completo or egreso.creado_por.email) if egreso.creado_por else "—"},
         {"label": "Capturado en", "value": egreso.creado_en.strftime("%Y-%m-%d %H:%M")},
@@ -451,7 +463,7 @@ def egreso_reembolsar(request, pk):
     if request.method == "POST":
         form = ReembolsarEgresoForm(request.POST)
         if form.is_valid():
-            services.reembolsar_egreso(
+            resultado = services.reembolsar_egreso(
                 egreso,
                 metodo=form.cleaned_data["metodo"],
                 banco_o_caja=form.cleaned_data["banco_o_caja"],
@@ -459,6 +471,14 @@ def egreso_reembolsar(request, pk):
                 actor=request.user,
             )
             messages.success(request, f"Reembolso de {egreso.codigo} registrado.")
+            if not getattr(resultado, "_reembolso_asiento_creado", True):
+                motivo = getattr(resultado, "_reembolso_motivo_no_asiento", "")
+                messages.warning(
+                    request,
+                    f"⚠ El pago se registró pero el movimiento contable NO se generó: "
+                    f"{motivo} Avisa al super_admin para que revise el catálogo "
+                    f"de cuentas en La Contaduría.",
+                )
             destino = reverse("tesoreria:por-pagar")
             if es_htmx:
                 return HttpResponse(status=204, headers={"HX-Redirect": destino})
@@ -476,16 +496,26 @@ def egreso_reembolsar(request, pk):
 def por_cobrar(request):
     if (r := _gate(request)) is not None:
         return r
-    proyectos_saldos = services.cxc_proyectos()
-    total = sum(s for _, s in proyectos_saldos)
+    filas = services.cxc_unificado()
+    total = sum((f["saldo"] for f in filas), Decimal("0"))
+    # Conteo por tipo para el header
+    cuenta_facturas = sum(1 for f in filas if f["tipo"] == "factura")
+    cuenta_anticipos = sum(1 for f in filas if f["tipo"] == "anticipo")
+    cuenta_proyectos = sum(1 for f in filas if f["tipo"] == "proyecto")
     return render(request, "tesoreria/por_cobrar.html", {
-        "proyectos_saldos": proyectos_saldos, "total": total,
+        "filas": filas,
+        "total": total,
+        "cuenta_facturas": cuenta_facturas,
+        "cuenta_anticipos": cuenta_anticipos,
+        "cuenta_proyectos": cuenta_proyectos,
         "cabeceras_cobrar": [
-            {"label": "Proyecto"},
+            {"label": "Origen"},
+            {"label": "Código"},
             {"label": "Cliente"},
-            {"label": "Facturado", "align": "right"},
-            {"label": "Cobrado", "align": "right"},
+            {"label": "Emisión", "align": "right"},
+            {"label": "Vencimiento", "align": "right"},
             {"label": "Saldo", "align": "right"},
+            {"label": "Estado"},
         ],
     })
 
