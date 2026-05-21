@@ -9,7 +9,6 @@ no-contadores vía wizard.
 
 from django.db import migrations
 
-
 CODIGO = "6.0.01"
 
 

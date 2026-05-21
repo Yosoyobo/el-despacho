@@ -164,7 +164,9 @@ def reembolsar_egreso(egreso: Egreso, *, metodo: str, banco_o_caja: str,
     - Emite evento Portavoz `tesoreria.reembolso_pagado`.
     """
     from apps.contaduria.services import (
-        AsientoInvalido, crear_asiento, cuenta_por_slot,
+        AsientoInvalido,
+        crear_asiento,
+        cuenta_por_slot,
     )
 
     if egreso.anulado:
@@ -187,8 +189,11 @@ def reembolsar_egreso(egreso: Egreso, *, metodo: str, banco_o_caja: str,
         reembolsos = cuenta_por_slot("reembolsos")
         destino = cuenta_por_slot(banco_o_caja)
         if reembolsos is not None and destino is not None:
+            import contextlib
             empleado_email = egreso.pagado_por.email if egreso.pagado_por else "—"
-            try:
+            # No tumbamos la transacción de Tesorería por un fallo contable;
+            # el catálogo puede estar incompleto en tests.
+            with contextlib.suppress(AsientoInvalido):
                 crear_asiento(
                     descripcion=f"Reembolso a {empleado_email} · {egreso.codigo}",
                     fecha=fecha,
@@ -203,10 +208,6 @@ def reembolsar_egreso(egreso: Egreso, *, metodo: str, banco_o_caja: str,
                     ],
                     idempotente=True,
                 )
-            except AsientoInvalido:
-                # No tumbamos la transacción de Tesorería por un fallo
-                # contable; el catálogo puede estar incompleto en tests.
-                pass
 
     from lib.portavoz import emitir
     from lib.portavoz_eventos import EventoPortavoz
