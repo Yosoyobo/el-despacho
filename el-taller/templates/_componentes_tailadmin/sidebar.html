@@ -79,6 +79,13 @@
         </a>
         {% endif %}
 
+        {% if permisos_modulos.facturacion %}
+        <a href="{% url 'facturacion:lista' %}" class="menu-item {% if '/facturacion' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6M9 16h6M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            La Facturación
+        </a>
+        {% endif %}
+
         {% if permisos_modulos.contaduria %}
         <a href="{% url 'contaduria:landing' %}" class="menu-item {% if '/contaduria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4zM4 9h16M9 4v16" stroke-linecap="round" stroke-linejoin="round"/></svg>

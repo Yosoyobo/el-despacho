@@ -20,6 +20,8 @@ ORIGEN_ASIENTO = (
     ("auto_egreso", "Automático · egreso Tesorería"),
     ("auto_anulacion_ingreso", "Automático · anulación ingreso"),
     ("auto_anulacion_egreso", "Automático · anulación egreso"),
+    ("auto_factura_emitida", "Automático · factura emitida"),
+    ("auto_factura_cancelada", "Automático · factura cancelada"),
     ("ajuste", "Ajuste contable"),
     ("cierre", "Cierre de periodo"),
 )

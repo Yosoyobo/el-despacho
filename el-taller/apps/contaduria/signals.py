@@ -103,8 +103,16 @@ def _hook_ingreso(sender, instance, created, update_fields=None, **kwargs):
         return
 
     contra = _cuenta_efectivo_o_banco(instance.metodo)
-    ingresos = cuenta_por_slot("ingreso_ventas")
-    if contra is None or ingresos is None:
+    # S2b.facturacion-v1: si el Ingreso es un cobro de Factura, la
+    # contracuenta es CxC (cancelamos la cuenta por cobrar). El ingreso
+    # ya se reconoció contablemente al EMITIR la factura, no aquí.
+    if getattr(instance, "factura_id", None):
+        contracuenta = cuenta_por_slot("cxc")
+        descripcion_contra = f"Cobro CxC {instance.descripcion[:100]}"
+    else:
+        contracuenta = cuenta_por_slot("ingreso_ventas")
+        descripcion_contra = instance.descripcion[:120]
+    if contra is None or contracuenta is None:
         log.warning("Catálogo incompleto: no se generó asiento para ingreso %s", instance.codigo)
         return
 
@@ -119,8 +127,8 @@ def _hook_ingreso(sender, instance, created, update_fields=None, **kwargs):
                 partidas=[
                     {"cuenta": contra, "cargo": instance.monto, "orden": 0,
                      "descripcion": f"{instance.metodo}"},
-                    {"cuenta": ingresos, "abono": instance.monto, "orden": 1,
-                     "descripcion": instance.descripcion[:120]},
+                    {"cuenta": contracuenta, "abono": instance.monto, "orden": 1,
+                     "descripcion": descripcion_contra},
                 ],
                 idempotente=True,
             )

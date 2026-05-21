@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}La Facturación — El Taller{% endblock %}
+{% block contenido %}
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Facturación</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Facturas comerciales (no fiscales) y cobros.</p>
+    </div>
+    {% if puede_crear %}<a href="{% url 'facturacion:nueva' %}" class="btn-primario">+ Nueva factura</a>{% endif %}
+</header>
+
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Borradores" valor=kpis.borradores color="gray" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Emitidas" valor=kpis.emitidas color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Vencidas" valor=kpis.vencidas color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke-linecap="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Cobradas (mes)" valor=kpis.cobradas_mes color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+</div>
+
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex-1 min-w-[220px]">
+        <label for="fac-q" class="sr-only">Buscar</label>
+        <input id="fac-q" type="search" name="q" value="{{ q }}" placeholder="Buscar código, título o cliente…">
+    </div>
+    <div>
+        <label class="sr-only" for="fac-estado">Estado</label>
+        <select name="estado" id="fac-estado">
+            <option value="">Vigentes (sin canceladas)</option>
+            <option value="borrador" {% if estado_filtro == 'borrador' %}selected{% endif %}>Borrador</option>
+            <option value="emitida" {% if estado_filtro == 'emitida' %}selected{% endif %}>Emitida</option>
+            <option value="cobrada_parcial" {% if estado_filtro == 'cobrada_parcial' %}selected{% endif %}>Cobrada parcial</option>
+            <option value="cobrada_total" {% if estado_filtro == 'cobrada_total' %}selected{% endif %}>Cobrada total</option>
+            <option value="cancelada" {% if estado_filtro == 'cancelada' %}selected{% endif %}>Canceladas</option>
+        </select>
+    </div>
+    <button type="submit" class="btn-secundario">Buscar</button>
+</form>
+
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_facturas filas_template="facturacion/_filas.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
+{% endblock %}

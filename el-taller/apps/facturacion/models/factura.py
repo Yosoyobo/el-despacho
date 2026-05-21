@@ -1,0 +1,274 @@
+"""Modelos de La Facturación V1 (S2b.facturacion-v1).
+
+Factura comercial no fiscal. NO emite CFDI ni se conecta a PAC (regla §16
+de CLAUDE.md). El contador externo timbra aparte y reconcilia su libro
+fiscal con exports del libro interno.
+
+Patrón espejo de `cotizaciones.Cotizacion` — código correlativo
+`FAC-YYYY-NNNN` bajo `select_for_update`, manager `vigentes`, transiciones
+de estado en `services.py`, totales calculados sobre items.
+"""
+
+from __future__ import annotations
+
+from datetime import date, timedelta
+from decimal import Decimal
+
+from django.conf import settings
+from django.db import models, transaction
+
+ESTADOS_FACTURA = (
+    ("borrador", "Borrador"),
+    ("emitida", "Emitida"),
+    ("cobrada_parcial", "Cobrada parcial"),
+    ("cobrada_total", "Cobrada total"),
+    ("cancelada", "Cancelada"),
+)
+
+CERO = Decimal("0.00")
+
+
+def _generar_codigo(anio: int) -> str:
+    """FAC-YYYY-NNNN tomando el max correlativo del año. Usar dentro de atomic."""
+    prefijo = f"FAC-{anio}-"
+    ultimo = (
+        Factura.objects.select_for_update()
+        .filter(codigo__startswith=prefijo)
+        .order_by("-codigo")
+        .first()
+    )
+    if ultimo:
+        try:
+            n = int(ultimo.codigo.rsplit("-", 1)[-1]) + 1
+        except ValueError:
+            n = 1
+    else:
+        n = 1
+    return f"{prefijo}{n:04d}"
+
+
+def _vencimiento_default() -> date:
+    return date.today() + timedelta(days=30)
+
+
+class FacturaVigentesManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().exclude(estado="cancelada")
+
+
+class Factura(models.Model):
+    codigo = models.CharField(max_length=20, unique=True, db_index=True)
+
+    cliente = models.ForeignKey(
+        "cartera.Cliente",
+        on_delete=models.PROTECT,
+        related_name="facturas",
+    )
+    proyecto = models.ForeignKey(
+        "proyectos.Proyecto",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="facturas",
+    )
+    cotizacion_origen = models.ForeignKey(
+        "cotizaciones.Cotizacion",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="facturas",
+    )
+
+    titulo = models.CharField(max_length=200)
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADOS_FACTURA,
+        default="borrador",
+        db_index=True,
+    )
+
+    fecha_emision = models.DateField(default=date.today)
+    fecha_vencimiento = models.DateField(default=_vencimiento_default)
+
+    moneda = models.CharField(max_length=3, default="MXN")
+    descuento_global_porcentaje = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
+
+    notas = models.TextField(blank=True, default="")
+    terminos = models.TextField(blank=True, default="")
+
+    # Denormalizado — se recalcula desde Ingresos vinculados.
+    monto_cobrado = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal("0.00")
+    )
+
+    # Emisión
+    emitida_en = models.DateTimeField(null=True, blank=True)
+    emitida_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="facturas_emitidas",
+    )
+
+    # Cancelación
+    cancelada_en = models.DateTimeField(null=True, blank=True)
+    cancelada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="facturas_canceladas",
+    )
+    motivo_cancelacion = models.CharField(max_length=300, blank=True, default="")
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="facturas_creadas",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    objects = models.Manager()
+    vigentes = FacturaVigentesManager()
+
+    class Meta:
+        db_table = "facturacion_factura"
+        ordering = ["-creado_en"]
+        indexes = [
+            models.Index(fields=["cliente", "-creado_en"]),
+            models.Index(fields=["proyecto", "-creado_en"]),
+            models.Index(fields=["estado", "-fecha_emision"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.codigo} · {self.titulo}"
+
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            anio = (self.fecha_emision or date.today()).year
+            with transaction.atomic():
+                self.codigo = _generar_codigo(anio)
+                super().save(*args, **kwargs)
+            return
+        super().save(*args, **kwargs)
+
+    # --- propiedades derivadas -------------------------------------------
+
+    @property
+    def es_editable(self) -> bool:
+        return self.estado == "borrador"
+
+    @property
+    def esta_vencida(self) -> bool:
+        return (
+            self.estado in {"emitida", "cobrada_parcial"}
+            and self.fecha_vencimiento < date.today()
+        )
+
+    @property
+    def estado_visible(self) -> str:
+        if self.esta_vencida:
+            return "vencida"
+        return self.estado
+
+    @property
+    def saldo_pendiente(self) -> Decimal:
+        total = self.calcular_totales()["total"]
+        return (total - (self.monto_cobrado or CERO)).quantize(Decimal("0.01"))
+
+    # --- totales (copia exacta de Cotizacion.calcular_totales) -----------
+
+    def calcular_totales(self) -> dict:
+        items = list(self.items.all())
+        subtotal_items = sum((it.subtotal for it in items), CERO)
+
+        desc_pct = self.descuento_global_porcentaje or CERO
+        descuento_global = (subtotal_items * desc_pct / Decimal("100")).quantize(Decimal("0.01"))
+        base_impuestos = (subtotal_items - descuento_global).quantize(Decimal("0.01"))
+
+        trasladados = CERO
+        retenciones = CERO
+        impuestos_detalle = []
+        for fi in self.impuestos.select_related("tasa").all():
+            tasa = fi.tasa
+            monto = (base_impuestos * tasa.porcentaje / Decimal("100")).quantize(Decimal("0.01"))
+            if tasa.tipo == "retencion":
+                retenciones += monto
+            else:
+                trasladados += monto
+            impuestos_detalle.append({
+                "id": fi.id,
+                "tasa_id": tasa.id,
+                "nombre": tasa.nombre,
+                "tipo": tasa.tipo,
+                "porcentaje": tasa.porcentaje,
+                "monto": monto,
+            })
+
+        total = (base_impuestos + trasladados - retenciones).quantize(Decimal("0.01"))
+
+        return {
+            "subtotal_items": subtotal_items.quantize(Decimal("0.01")),
+            "descuento_global": descuento_global,
+            "base_impuestos": base_impuestos,
+            "trasladados": trasladados.quantize(Decimal("0.01")),
+            "retenciones": retenciones.quantize(Decimal("0.01")),
+            "total": total,
+            "impuestos_detalle": impuestos_detalle,
+        }
+
+
+class FacturaItem(models.Model):
+    factura = models.ForeignKey(
+        Factura, on_delete=models.CASCADE, related_name="items"
+    )
+    orden = models.PositiveIntegerField(default=0, db_index=True)
+
+    servicio = models.ForeignKey(
+        "el_catalogo.Servicio",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lineas_factura",
+    )
+    descripcion = models.TextField()
+
+    cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
+    unidad = models.CharField(max_length=30, default="pieza")
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    descuento_porcentaje = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
+
+    class Meta:
+        db_table = "facturacion_item"
+        ordering = ["factura", "orden", "pk"]
+
+    def __str__(self) -> str:
+        return f"{self.factura.codigo} · {self.descripcion[:40]}"
+
+    @property
+    def subtotal(self) -> Decimal:
+        bruto = (self.cantidad or CERO) * (self.precio_unitario or CERO)
+        desc = (self.descuento_porcentaje or CERO) / Decimal("100")
+        return (bruto * (Decimal("1") - desc)).quantize(Decimal("0.01"))
+
+
+class FacturaImpuesto(models.Model):
+    factura = models.ForeignKey(
+        Factura, on_delete=models.CASCADE, related_name="impuestos"
+    )
+    tasa = models.ForeignKey(
+        "ajustes.TasaImpositiva", on_delete=models.PROTECT, related_name="facturas"
+    )
+    aplicado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "facturacion_impuesto"
+        unique_together = (("factura", "tasa"),)
+        ordering = ["tasa__orden", "tasa__nombre"]
+
+    def __str__(self) -> str:
+        return f"{self.factura.codigo} · {self.tasa.nombre}"

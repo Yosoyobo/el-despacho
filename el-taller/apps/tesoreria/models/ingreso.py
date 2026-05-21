@@ -78,6 +78,12 @@ class Ingreso(models.Model):
     anulado_en = models.DateTimeField(null=True, blank=True)
     motivo_anulacion = models.CharField(max_length=300, blank=True, default="")
 
+    # S2b.facturacion-v1: vinculación a Factura cuando este Ingreso es un cobro.
+    factura = models.ForeignKey(
+        "facturacion.Factura", null=True, blank=True,
+        on_delete=models.PROTECT, related_name="cobros",
+    )
+
     objects = models.Manager()
     vigentes = IngresoNoAnuladoManager()
 

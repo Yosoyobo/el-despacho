@@ -95,6 +95,30 @@ def puede_anular_cotizaciones(user) -> bool:
     return puede(user, "cotizaciones", "anular")
 
 
+def puede_ver_facturacion(user) -> bool:
+    return puede(user, "facturacion", "ver")
+
+
+def puede_crear_facturacion(user) -> bool:
+    return puede(user, "facturacion", "crear")
+
+
+def puede_editar_facturacion(user) -> bool:
+    return puede(user, "facturacion", "editar")
+
+
+def puede_emitir_facturacion(user) -> bool:
+    return puede(user, "facturacion", "emitir")
+
+
+def puede_cobrar_facturacion(user) -> bool:
+    return puede(user, "facturacion", "cobrar")
+
+
+def puede_cancelar_facturacion(user) -> bool:
+    return puede(user, "facturacion", "cancelar")
+
+
 def puede_ver_contaduria(user) -> bool:
     return puede(user, "contaduria", "ver")
 

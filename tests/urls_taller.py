@@ -21,6 +21,7 @@ urlpatterns = [
     path("", include("apps.el_dictado.urls")),
     path("tesoreria/", include("apps.tesoreria.urls", namespace="tesoreria")),
     path("cotizaciones/", include("apps.cotizaciones.urls", namespace="cotizaciones")),
+    path("facturacion/", include("apps.facturacion.urls", namespace="facturacion")),
     path("contaduria/", include("apps.contaduria.urls", namespace="contaduria")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),

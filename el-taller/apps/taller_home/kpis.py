@@ -395,6 +395,45 @@ def _kpi_cotizaciones_aprobadas_mes(user) -> dict:
     return _resultado(n, link="/cotizaciones/?estado=aprobada")
 
 
+# ── Facturación (S2b.facturacion-v1) ──
+
+def _kpi_facturas_pendientes_cobro(user) -> dict:
+    from apps.facturacion.models import Factura
+    n = Factura.objects.filter(estado__in=["emitida", "cobrada_parcial"]).count()
+    return _resultado(n, link="/facturacion/?estado=emitida")
+
+
+def _kpi_facturas_vencidas(user) -> dict:
+    from datetime import date
+
+    from apps.facturacion.models import Factura
+    hoy = date.today()
+    qs = Factura.objects.filter(
+        estado__in=["emitida", "cobrada_parcial"], fecha_vencimiento__lt=hoy,
+    )
+    n = sum(1 for f in qs if f.saldo_pendiente > 0)
+    return _resultado(n, nota=("alerta" if n > 0 else ""), link="/facturacion/?estado=emitida")
+
+
+def _kpi_monto_por_cobrar(user) -> dict:
+    from apps.facturacion.models import Factura
+    qs = Factura.objects.filter(estado__in=["emitida", "cobrada_parcial"])
+    total = sum((f.saldo_pendiente for f in qs), 0)
+    return _resultado(f"${total:,.0f}", link="/facturacion/?estado=emitida")
+
+
+def _kpi_facturado_mes(user) -> dict:
+    from datetime import date
+
+    from apps.facturacion.models import Factura
+    hoy = date.today()
+    qs = Factura.objects.exclude(estado="cancelada").filter(
+        emitida_en__year=hoy.year, emitida_en__month=hoy.month,
+    )
+    total = sum((f.calcular_totales()["total"] for f in qs), 0)
+    return _resultado(f"${total:,.0f}", link="/facturacion/")
+
+
 # ── Contaduría (S3.contaduria-v1) ──
 
 def _kpi_asientos_mes_contaduria(user) -> dict:
@@ -533,6 +572,20 @@ KPIS: list[KPI] = [
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_vencidas),
     KPI("cotizaciones-aprobadas-mes", "Cotizaciones aprobadas (mes)", "Conversiones del mes en curso.",
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_aprobadas_mes),
+
+    # Facturación (S2b.facturacion-v1)
+    KPI("facturas-pendientes-cobro", "Facturas pendientes de cobro",
+        "Facturas emitidas (totalmente o parcialmente cobradas con saldo pendiente).",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_facturas_pendientes_cobro),
+    KPI("facturas-vencidas", "Facturas vencidas",
+        "Facturas con fecha de vencimiento pasada y saldo > 0.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_facturas_vencidas),
+    KPI("monto-por-cobrar", "Monto por cobrar",
+        "Suma del saldo pendiente de todas las facturas emitidas o parciales.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_monto_por_cobrar),
+    KPI("facturado-mes", "Facturado del mes",
+        "Suma del total de facturas emitidas en el mes en curso (no canceladas).",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_facturado_mes),
 
     # Contaduría (S3.contaduria-v1)
     KPI("contaduria-asientos-mes", "Asientos del mes", "Movimientos contables (vigentes) del mes en curso.",

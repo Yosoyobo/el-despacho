@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}{% if modo == 'nuevo' %}Nueva factura{% else %}Editar {{ fac.codigo }}{% endif %} — El Taller{% endblock %}
+{% block contenido %}
+
+{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|stringformat:'s'|title subtitulo=fac.codigo|default:"Factura nueva" %}
+
+<form method="post" class="space-y-6" id="fac-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <section class="ta-card">
+        <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Datos generales</h2>
+        <div class="grid gap-4 md:grid-cols-2">
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cliente %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cotizacion_origen %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.titulo ancho_completo=True %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_emision %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_vencimiento %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descuento_global_porcentaje %}
+        </div>
+    </section>
+
+    <section class="ta-card">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">Líneas</h2>
+            <button type="button" id="fac-agregar-linea" class="btn-secundario text-sm">+ Agregar línea</button>
+        </div>
+
+        {{ formset.management_form }}
+
+        <div class="overflow-x-auto">
+        <table class="min-w-full text-sm" id="fac-items-tabla">
+            <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                <tr>
+                    <th class="px-3 py-2">Descripción</th>
+                    <th class="px-3 py-2">Cantidad</th>
+                    <th class="px-3 py-2">Unidad</th>
+                    <th class="px-3 py-2">P. unitario</th>
+                    <th class="px-3 py-2">Desc. %</th>
+                    <th class="px-3 py-2 text-right">—</th>
+                </tr>
+            </thead>
+            <tbody id="fac-items-body" class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for f in formset %}
+                <tr class="fac-item-row align-top" {% if f.instance.pk %}data-existing="1"{% endif %}>
+                    <td class="px-3 py-2">
+                        {{ f.id }}{{ f.descripcion }}
+                        <div class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                            {{ f.servicio.label_tag }} {{ f.servicio }}
+                        </div>
+                        {% if f.descripcion.errors %}<p class="text-xs text-error-600">{{ f.descripcion.errors|join:" " }}</p>{% endif %}
+                    </td>
+                    <td class="px-3 py-2 w-24">{{ f.cantidad }}{% if f.cantidad.errors %}<p class="text-xs text-error-600">{{ f.cantidad.errors|join:" " }}</p>{% endif %}</td>
+                    <td class="px-3 py-2 w-24">{{ f.unidad }}</td>
+                    <td class="px-3 py-2 w-32">{{ f.precio_unitario }}{% if f.precio_unitario.errors %}<p class="text-xs text-error-600">{{ f.precio_unitario.errors|join:" " }}</p>{% endif %}</td>
+                    <td class="px-3 py-2 w-24">{{ f.descuento_porcentaje }}</td>
+                    <td class="px-3 py-2 text-right">
+                        <label class="text-xs text-error-600">
+                            {{ f.DELETE }} eliminar
+                        </label>
+                        {{ f.orden.as_hidden }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        <template id="fac-item-template">
+            <tr class="fac-item-row align-top">
+                <td class="px-3 py-2"><textarea name="items-__prefix__-descripcion" rows="2" required></textarea></td>
+                <td class="px-3 py-2 w-24"><input type="number" step="0.01" name="items-__prefix__-cantidad" value="1" required></td>
+                <td class="px-3 py-2 w-24"><input type="text" name="items-__prefix__-unidad" value="pieza"></td>
+                <td class="px-3 py-2 w-32"><input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required></td>
+                <td class="px-3 py-2 w-24"><input type="number" step="0.01" name="items-__prefix__-descuento_porcentaje" value="0"></td>
+                <td class="px-3 py-2 text-right">
+                    <label class="text-xs text-error-600"><input type="checkbox" name="items-__prefix__-DELETE"> eliminar</label>
+                    <input type="hidden" name="items-__prefix__-orden" value="0">
+                </td>
+            </tr>
+        </template>
+    </section>
+
+    <section class="ta-card">
+        <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Impuestos</h2>
+        <div class="grid gap-2 md:grid-cols-2">
+            {% for t in tasas %}
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" name="tasas" value="{{ t.id }}" {% if t.id in tasas_seleccionadas %}checked{% endif %}>
+                <span>{{ t.nombre }} <span class="text-xs text-gray-500">({{ t.porcentaje }}% · {{ t.get_tipo_display }})</span></span>
+            </label>
+            {% empty %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">No hay tasas activas en La Gerencia.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="ta-card">
+        <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Notas y términos</h2>
+        <div class="grid gap-4">
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.terminos %}
+        </div>
+    </section>
+
+    <div class="flex justify-end gap-2">
+        <a href="{% if fac %}{% url 'facturacion:detalle' fac.pk %}{% else %}{% url 'facturacion:lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
+        <button type="submit" class="btn-primario">Guardar</button>
+    </div>
+</form>
+
+<script>
+(function () {
+    const tpl = document.getElementById('fac-item-template');
+    const body = document.getElementById('fac-items-body');
+    const total = document.querySelector('input[name="items-TOTAL_FORMS"]');
+    const btn = document.getElementById('fac-agregar-linea');
+    if (!tpl || !body || !total || !btn) return;
+    btn.addEventListener('click', () => {
+        const idx = parseInt(total.value, 10);
+        const html = tpl.innerHTML.replace(/__prefix__/g, idx);
+        const tmp = document.createElement('tbody');
+        tmp.innerHTML = html;
+        body.appendChild(tmp.firstElementChild);
+        total.value = idx + 1;
+    });
+})();
+</script>
+{% endblock %}
