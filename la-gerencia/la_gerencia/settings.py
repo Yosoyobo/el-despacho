@@ -60,6 +60,15 @@ INSTALLED_APPS = [
     "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.tesoreria.apps.TesoreriaConfig",
     "apps.centros_costo.apps.CentrosCostoConfig",
+    # S2b.cotizaciones-v1 + S2b.facturacion-v1 + S3.contaduria-v1/v2:
+    # mismos modelos viven en El Taller. Gerencia los registra porque
+    # tesoreria.Ingreso.factura → facturacion.Factura → cotizaciones.Cotizacion
+    # cierra el grafo de FKs (Bug A — sin esto el system check de Django
+    # tira E300 al arrancar el contenedor de Gerencia). Detectado en CI
+    # smoke test de S2b.facturacion-v1.
+    "apps.cotizaciones.apps.CotizacionesConfig",
+    "apps.facturacion.apps.FacturacionConfig",
+    "apps.contaduria.apps.ContaduriaConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",
