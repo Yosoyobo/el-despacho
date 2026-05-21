@@ -135,6 +135,9 @@
     });
 
     // ── Auto-completar al seleccionar proyecto o cotización origen ────
+    // S-Finanzas-V2: cambiar/quitar cliente o proyecto limpia los campos
+    // que fueron auto-completados (marcados con data-autocompletado-de).
+    // Lo escrito a mano (sin ese marker) se respeta.
     const $cliente = document.querySelector('[name="cliente"]');
     const $proyecto = document.querySelector('[name="proyecto"]');
     const $cot = document.querySelector('[name="cotizacion_origen"]');
@@ -143,23 +146,38 @@
     const $notas = document.querySelector('[name="notas"]');
     const $terminos = document.querySelector('[name="terminos"]');
 
-    function setIfEmpty(input, value) {
+    function marcarAutoLleno(input, fuente) {
+        if (!input) return;
+        input.dataset.autocompletadoDe = fuente;
+    }
+
+    function limpiarSiAutoLleno(input, fuenteEsperada) {
+        if (!input) return;
+        if (input.dataset.autocompletadoDe === fuenteEsperada) {
+            input.value = '';
+            delete input.dataset.autocompletadoDe;
+        }
+    }
+
+    function setSiVacio(input, value, fuente) {
         if (!input) return;
         if (value === null || value === undefined || value === '') return;
         const current = String(input.value || '').trim();
         if (current === '' || current === '0' || current === '0.00') {
             input.value = value;
+            marcarAutoLleno(input, fuente);
         }
     }
 
-    function setSelectIfDifferent(select, value) {
-        if (!select || value == null) return;
+    function setSelectSiPosible(select, value, fuente) {
+        if (!select || value == null) return false;
         const target = String(value);
-        if (String(select.value) !== target) {
-            // Solo si la opción existe en el select; si no, dejar como está.
-            const opt = Array.from(select.options).find(o => o.value === target);
-            if (opt) { select.value = target; }
-        }
+        if (String(select.value) === target) return false;
+        const opt = Array.from(select.options).find(o => o.value === target);
+        if (!opt) return false;
+        select.value = target;
+        if (fuente) marcarAutoLleno(select, fuente);
+        return true;
     }
 
     function clearItemRows() {
@@ -167,17 +185,17 @@
             if (row.dataset.existing === '1') return;  // No tocar líneas guardadas
             row.remove();
         });
-        // Reset total a sólo lo persistido
         const existentes = body.querySelectorAll('tr[data-existing="1"]').length;
         total.value = String(existentes);
     }
 
-    function addItemRow(item) {
+    function addItemRow(item, fuente) {
         const idx = parseInt(total.value, 10);
         const html = tpl.innerHTML.replace(/__prefix__/g, idx);
         const tmp = document.createElement('tbody');
         tmp.innerHTML = html;
         const tr = tmp.firstElementChild;
+        if (fuente) tr.dataset.autocompletadoDe = fuente;
         body.appendChild(tr);
         total.value = idx + 1;
         tr.querySelector(`[name="items-${idx}-descripcion"]`).value = item.descripcion || '';
@@ -187,10 +205,66 @@
         tr.querySelector(`[name="items-${idx}-descuento_porcentaje"]`).value = item.descuento_porcentaje || '0';
     }
 
+    function limpiarItemsAutoLleno(fuente) {
+        body.querySelectorAll('tr.fac-item-row').forEach(row => {
+            if (row.dataset.autocompletadoDe === fuente) row.remove();
+        });
+        // Re-numera el TOTAL_FORMS contando filas restantes
+        const restantes = body.querySelectorAll('tr.fac-item-row').length;
+        total.value = String(restantes);
+    }
+
+    function limpiarChecksAutoLleno(fuente) {
+        document.querySelectorAll('input[name="tasas"]').forEach(cb => {
+            if (cb.dataset.autocompletadoDe === fuente) {
+                cb.checked = false;
+                delete cb.dataset.autocompletadoDe;
+            }
+        });
+    }
+
+    function limpiarRastroDe(fuente) {
+        // Limpia título/descuento/notas/términos si fueron auto-llenados por `fuente`
+        [$titulo, $notas, $terminos].forEach(i => limpiarSiAutoLleno(i, fuente));
+        if ($descGlobal && $descGlobal.dataset.autocompletadoDe === fuente) {
+            $descGlobal.value = '0';
+            delete $descGlobal.dataset.autocompletadoDe;
+        }
+        limpiarItemsAutoLleno(fuente);
+        limpiarChecksAutoLleno(fuente);
+    }
+
     if ($proyecto) {
         $proyecto.addEventListener('change', async () => {
             const pk = $proyecto.value;
-            if (!pk) return;
+            if (!pk) {
+                // Quitó el proyecto → limpiar todo lo heredado del proyecto y de cualquier cotización
+                limpiarRastroDe('proyecto');
+                limpiarRastroDe('cotizacion');
+                if ($cot) {
+                    $cot.value = '';
+                    delete $cot.dataset.autocompletadoDe;
+                }
+                limpiarSiAutoLleno($cliente, 'proyecto');
+                return;
+            }
+            // Si la cotización seleccionada ya no corresponde al nuevo proyecto, limpiarla.
+            if ($cot && $cot.value) {
+                try {
+                    const r = await fetch(`/facturacion/api/cotizacion/${$cot.value}/datos/`, {
+                        headers: {'Accept': 'application/json'},
+                        credentials: 'same-origin',
+                    });
+                    if (r.ok) {
+                        const dc = await r.json();
+                        if (String(dc.proyecto_id || '') !== String(pk)) {
+                            $cot.value = '';
+                            delete $cot.dataset.autocompletadoDe;
+                            limpiarRastroDe('cotizacion');
+                        }
+                    }
+                } catch (e) { /* silent */ }
+            }
             try {
                 const r = await fetch(`/facturacion/api/proyecto/${pk}/datos/`, {
                     headers: {'Accept': 'application/json'},
@@ -198,20 +272,54 @@
                 });
                 if (!r.ok) return;
                 const d = await r.json();
-                setSelectIfDifferent($cliente, d.cliente_id);
+                // Si el cliente actual fue puesto a mano y NO coincide, NO lo cambies.
+                // Si está vacío o fue auto-llenado, prelletar.
+                const clienteCurrent = $cliente ? String($cliente.value || '') : '';
+                if (!clienteCurrent || ($cliente && $cliente.dataset.autocompletadoDe)) {
+                    setSelectSiPosible($cliente, d.cliente_id, 'proyecto');
+                }
                 if ($titulo && !$titulo.value.trim()) {
                     $titulo.value = `Factura · ${d.codigo}${d.nombre ? ' — ' + d.nombre : ''}`;
+                    marcarAutoLleno($titulo, 'proyecto');
                 }
             } catch (e) { /* silent */ }
+        });
+    }
+
+    if ($cliente) {
+        $cliente.addEventListener('change', () => {
+            // Si el cliente cambia o se vacía, lo escrito a mano sobre el cliente queda,
+            // pero proyecto/cotización heredados de "proyecto" o "cotizacion" se vuelven
+            // potencialmente inconsistentes — los limpiamos.
+            delete $cliente.dataset.autocompletadoDe;
+            // Si proyecto fue auto-llenado por una cotización con otro cliente, limpiarlo.
+            if ($proyecto && $proyecto.dataset.autocompletadoDe === 'cotizacion') {
+                $proyecto.value = '';
+                delete $proyecto.dataset.autocompletadoDe;
+            }
+            // Si la cotización seleccionada no corresponde al nuevo cliente, limpiarla.
+            // Asumimos que cualquier cambio de cliente potencialmente invalida la cotización;
+            // limpiamos para evitar inconsistencia silenciosa.
+            if ($cot && $cot.value) {
+                $cot.value = '';
+                delete $cot.dataset.autocompletadoDe;
+                limpiarRastroDe('cotizacion');
+            }
         });
     }
 
     if ($cot) {
         $cot.addEventListener('change', async () => {
             const pk = $cot.value;
-            if (!pk) return;
-            const confirmar = body.querySelectorAll('tr.fac-item-row').length > 0
-                ? window.confirm('La cotización tiene líneas e impuestos propios. ¿Reemplazar las líneas actuales? (Cliente/proyecto se actualizan; los datos auto-completados son editables.)')
+            if (!pk) {
+                // Quitó la cotización → limpiar lo heredado de la cotización
+                limpiarRastroDe('cotizacion');
+                return;
+            }
+            const hayManuales = Array.from(body.querySelectorAll('tr.fac-item-row'))
+                .some(row => !row.dataset.autocompletadoDe && row.dataset.existing !== '1');
+            const confirmar = hayManuales
+                ? window.confirm('Tienes líneas escritas a mano. Si copias datos de la cotización, las líneas a mano se conservan pero se agregan las de la cotización debajo. ¿Continuar?')
                 : true;
             if (!confirmar) { $cot.value = ''; return; }
             try {
@@ -221,20 +329,34 @@
                 });
                 if (!r.ok) return;
                 const d = await r.json();
-                setSelectIfDifferent($cliente, d.cliente_id);
-                setSelectIfDifferent($proyecto, d.proyecto_id);
+                setSelectSiPosible($cliente, d.cliente_id, 'cotizacion');
+                setSelectSiPosible($proyecto, d.proyecto_id, 'cotizacion');
                 if ($titulo && !$titulo.value.trim()) {
                     $titulo.value = d.titulo || '';
+                    marcarAutoLleno($titulo, 'cotizacion');
                 }
-                setIfEmpty($descGlobal, d.descuento_global_porcentaje);
-                if ($notas && !$notas.value.trim()) { $notas.value = d.notas || ''; }
-                if ($terminos && !$terminos.value.trim()) { $terminos.value = d.terminos || ''; }
-                clearItemRows();
-                (d.items || []).forEach(addItemRow);
+                setSiVacio($descGlobal, d.descuento_global_porcentaje, 'cotizacion');
+                if ($notas && !$notas.value.trim()) {
+                    $notas.value = d.notas || '';
+                    marcarAutoLleno($notas, 'cotizacion');
+                }
+                if ($terminos && !$terminos.value.trim()) {
+                    $terminos.value = d.terminos || '';
+                    marcarAutoLleno($terminos, 'cotizacion');
+                }
+                // Limpiar líneas previamente auto-llenadas por otra cotización
+                limpiarItemsAutoLleno('cotizacion');
+                (d.items || []).forEach(item => addItemRow(item, 'cotizacion'));
                 // Marcar checkboxes de impuestos según los de la cotización
                 const ids = new Set((d.impuestos || []).map(String));
                 document.querySelectorAll('input[name="tasas"]').forEach(cb => {
-                    cb.checked = ids.has(String(cb.value));
+                    if (ids.has(String(cb.value))) {
+                        cb.checked = true;
+                        cb.dataset.autocompletadoDe = 'cotizacion';
+                    } else if (cb.dataset.autocompletadoDe === 'cotizacion') {
+                        cb.checked = false;
+                        delete cb.dataset.autocompletadoDe;
+                    }
                 });
             } catch (e) { /* silent */ }
         });
