@@ -43,6 +43,7 @@ COPY el-taller/apps/tesoreria/ /app/apps/tesoreria/
 # facturacion.Factura → cotizaciones.Cotizacion. Gerencia no expone
 # URLs de estos, pero Django necesita los modelos registrados para
 # que el system check no tire E300 al arrancar.
+COPY el-taller/apps/el_catalogo/ /app/apps/el_catalogo/
 COPY el-taller/apps/cotizaciones/ /app/apps/cotizaciones/
 COPY el-taller/apps/facturacion/ /app/apps/facturacion/
 COPY el-taller/apps/contaduria/ /app/apps/contaduria/
