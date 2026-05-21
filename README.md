@@ -150,10 +150,35 @@ GitHub Actions (**El Mensajero**) · GHCR.
   cuenta, balance de comprobación. Permisos granulares (ver/
   capturar/anular/reportes), módulo HTMX modal de anulación, 4
   eventos Portavoz, 3 KPIs en Sala de Juntas. **573 tests verdes**.
-- **S2b resto** Facturación · La Caja (Stripe + MercadoPago) ·
-  La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
-- **S3 resto** Reconciliación bancaria · Estados financieros ·
-  Cierre de periodo · Export al contador externo
+- **S3.contaduria-v2** ✅ (cerrado 2026-05-20): Estados financieros
+  + export al contador externo. `/contaduria/estado-resultados/`
+  con subgrupos (Costo de ventas + Gastos operativos) y utilidad
+  bruta/operativa/neta. `/contaduria/balance-general/` con saldos
+  a fecha + utilidad del periodo on-the-fly + verificación
+  A=P+C+Utilidad. `/contaduria/export/` con CSV de pólizas planas
+  (una fila por partida) y catálogo, UTF-8 BOM, filtros de
+  rango/origen, opt-in para incluir anulados. Evento
+  `contaduria.exportado`. KPI nuevo `contaduria-utilidad-neta-mes`.
+  `saldo_cuenta`/`balance_de_comprobacion` aceptan `desde=`.
+  **16 tests nuevos**.
+- **S2b.facturacion-v1** ✅ (cerrado 2026-05-20): Facturación
+  comercial **NO fiscal** encima de Cotizaciones+Tesorería.
+  App `apps.facturacion` con `Factura`/`FacturaItem`/`FacturaImpuesto`,
+  código `FAC-YYYY-NNNN`, 5 estados (borrador → emitida →
+  cobrada_parcial/total / cancelada / vencida derivada).
+  `crear_desde_cotizacion`, `emitir`, `registrar_cobro` (crea
+  Ingreso vinculado), `cancelar`, `duplicar`. Signal genera asiento
+  `auto_factura_emitida` (D cxc / H ingreso_ventas + H iva_trasladado
+  + D retenciones); cancelación → reverso idempotente.
+  `tesoreria.Ingreso.factura` FK PROTECT — cuando un cobro tiene
+  factura, el signal de `auto_ingreso` usa contracuenta `cxc` (evita
+  doble contabilización). UI completa con KPI hero, tabla canónica,
+  detalle con info cards + action bar, 3 modales HTMX (emitir/
+  cobrar/cancelar). Permisos `facturacion` × 6 acciones. 4 KPIs
+  nuevos. 6 eventos Portavoz. **20 tests nuevos. Suite total 609 pass.**
+- **S2b resto** La Caja (Stripe + MercadoPago) · La Cobranza ·
+  wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
+- **S3 resto** Reconciliación bancaria · Cierre de periodo
 - **S3** Contaduría · Sala de Juntas con KPIs reales
 - **S4** Los Chalanes — casos de uso adicionales (categorizar gasto
   automático, sugerir precio, resumir hilos)

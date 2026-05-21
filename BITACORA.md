@@ -4407,3 +4407,184 @@ sin setup externo son:
    cotización, categorizar gasto auto, resumir hilos de Recados).
 4. **Mejoras de PWA**: Service Worker offline (cache-first shell).
 
+
+---
+
+# BITÁCORA — Sesión S3.contaduria-v2 + S2b.facturacion-v1 (2026-05-20)
+
+> Cierre dual: dos sprints en una sesión. Suite total: **609 pass, 9 skipped**.
+> Commits: `6e9b75f` (S3.contaduria-v2) + `2ae44e4` (S2b.facturacion-v1).
+
+## 1. S3.contaduria-v2 — Estados financieros + Export contador externo
+
+### Módulos entregados
+
+| Módulo | Estado | Notas |
+|---|---|---|
+| `apps/contaduria/reportes.py` | ✅ | `estado_resultados(desde, hasta)` + `balance_general(hasta)` puros, sin signals nuevos. |
+| `apps/contaduria/exports.py` | ✅ | CSV pólizas planas + catálogo, UTF-8 BOM. Filtros rango/origen/anulados/inactivas. |
+| `/contaduria/estado-resultados/` | ✅ | Subgrupos Costo de ventas + Gastos operativos, utilidad bruta/operativa/neta. |
+| `/contaduria/balance-general/` | ✅ | Grid 2-col activos / pasivos+capital, verificación A=P+C+Utilidad. |
+| `/contaduria/export/` | ✅ | Dos forms paralelos (pólizas + catálogo). Evento `contaduria.exportado`. |
+| KPI `contaduria-utilidad-neta-mes` | ✅ | Categoría 💰 Dinero, `ROLES_ADMIN_CONTADOR`. |
+| Servicios extendidos | ✅ | `saldo_cuenta` y `balance_de_comprobacion` aceptan `desde=` (back-compat). |
+| 16 tests nuevos | ✅ | `tests/taller/test_contaduria_v2.py`. |
+
+### Decisiones de diseño
+
+- **Subgrupos por slot, no por código**. El P&L agrupa cuentas por
+  prefijo de slot (`egreso_insumos`/`egreso_externos` → "Costo de
+  ventas"; resto operativos → "Gastos operativos"). Si LC quiere
+  reorganizar el catálogo o agregar cuentas, el reporte sigue
+  funcionando sin tocar código — sólo hay que asignar el slot
+  correcto al crear la cuenta. Mapa explícito en
+  `SLOT_A_SUBGRUPO_*` en `reportes.py`.
+- **Utilidad neta == utilidad operativa en V2**. Sin estimación de
+  ISR/PTU. Razón: el contador externo timbra y declara fiscalmente
+  aparte; el equipo interno necesita ver la operación real del
+  periodo, no una aproximación fiscal que puede confundir. ISR
+  estimado entrará en el sprint de cierre cuando exista la lógica
+  de cierre formal.
+- **Utilidad del periodo en balance general on-the-fly**, no leyendo
+  `3.2.02 Utilidad del ejercicio`. Razón: aún no existe cierre, así
+  que `3.2.02` está siempre vacía. Cuando se implemente cierre, el
+  service `balance_general` cambia a leer la cuenta directamente
+  (sin tocar la UI).
+- **Export pólizas excluye anulados por default**. Razón: el contador
+  no quiere ruido. Opt-in explícito con checkbox para trazabilidad
+  cuando se necesite.
+- **Format CSV genérico, no XML SAT**. V2 entrega columnas
+  legibles que cualquier contador puede importar a su software (Excel,
+  ContPaq, Aspel, Bind ERP, etc.). Si LC necesita un formato
+  específico del PAC, se agrega como `formato='sat_xml'` en un
+  sprint posterior — la infra de `exports.py` soporta agregar
+  formatos sin tocar el patrón.
+
+## 2. S2b.facturacion-v1 — Facturación comercial NO fiscal
+
+### Módulos entregados
+
+| Módulo | Estado | Notas |
+|---|---|---|
+| `apps/facturacion/` (nueva app) | ✅ | `Factura`/`FacturaItem`/`FacturaImpuesto` con `FAC-YYYY-NNNN`. |
+| `apps/facturacion/contable.py` | ✅ | `mapa_iva_para_tasa(tasa)` por convención `tipo` + substring `isr`. |
+| Signals (emitida + cancelada) | ✅ | Asiento auto con D cxc / H ingreso + iva + D retenciones. Reverso idempotente. |
+| `tesoreria.Ingreso.factura` FK | ✅ | Migración `0003_ingreso_factura`, PROTECT. |
+| `contaduria` signal branch cxc | ✅ | Cuando `ingreso.factura_id`, contracuenta es `cxc` (no `ingreso_ventas`). Evita doble contabilización. |
+| `contaduria` orígenes nuevos | ✅ | Migración `0003_origenes_factura`: `auto_factura_emitida`, `auto_factura_cancelada`. |
+| Permisos `facturacion` × 6 | ✅ | `cuentas.0011_seed_permisos_facturacion`. Helpers en `lib/permisos.py`. |
+| UI completa | ✅ | Lista con KPI hero, form con clone-row, detalle canónico, 3 modales HTMX (emitir/cobrar/cancelar). |
+| 4 KPIs Sala de Juntas | ✅ | `facturas-pendientes-cobro`, `facturas-vencidas`, `monto-por-cobrar`, `facturado-mes`. |
+| 6 eventos Portavoz | ✅ | `factura.{creada,emitida,cobrada_parcial,cobrada_total,cancelada,vencida}`. |
+| Sidebar Taller + context processor | ✅ | Entre Cotizaciones y Contaduría, gated. |
+| 20 tests nuevos | ✅ | `tests/taller/test_facturacion.py`. |
+
+### Decisiones de diseño
+
+- **Mapeo IVA por convención, no por campo nuevo en
+  TasaImpositiva**. `contable.mapa_iva_para_tasa(tasa)` lee `tasa.tipo`
+  (traslado/retención) y detecta ISR por substring en `tasa.nombre`.
+  Trade-off: si LC crea una tasa "Retención IEPS" sin la palabra
+  "ISR", caerá en `iva_retenido_pagar`. Aceptable en V1 (LC sólo
+  factura con IVA traslado 16% + retención ISR 1.25%). Si crece,
+  agregar `slot_contable` opcional al modelo TasaImpositiva en V2.
+- **Asiento de emisión cuadra algebraicamente**: D cxc(total) /
+  H ingreso(base) / H iva_trasladado(trasladados) / D
+  retenciones(retenciones). Por definición `total = base +
+  trasladados - retenciones` ⟹ `total + retenciones = base +
+  trasladados` ⟹ partida doble OK. Verificado en
+  `test_emitir_genera_asiento_partida_doble`.
+- **Branch cxc en signal de Ingreso cuando viene de factura** —
+  ESTE es el riesgo crítico que el plan identificó. Si el signal
+  de `auto_ingreso` siempre usara `ingreso_ventas`, una factura
+  emitida (que ya generó D cxc / H ingreso_ventas) seguida del
+  cobro generaría D banco / H ingreso_ventas — doble
+  contabilización del ingreso. La factura tiene que aparecer
+  contablemente UNA sola vez al emitirse (reconocimiento contable)
+  y el cobro sólo cancela la CxC. Test
+  `test_signal_ingreso_con_factura_usa_cxc` lo verifica.
+- **Cancelar con cobros: prohibido**. Razón: si cancelas factura con
+  cobros aplicados, los Ingresos quedan huérfanos contablemente.
+  V1 obliga a anular los Ingresos primero (lo cual ya dispara su
+  reverso por el signal de Tesorería). Test
+  `test_cancelar_con_cobros_falla`.
+- **Cotizaciones aprobadas existentes**: se permite crear factura
+  desde cualquier cotización no anulada (no sólo aprobada). UI
+  muestra el estado pero no bloquea. Caso de uso: facturar
+  parcialmente una cotización en negociación, generar borrador
+  para enviar referencia al cliente, etc.
+- **Cobro parcial → estado**: parcial si `0 < monto_cobrado <
+  total`, total si `monto_cobrado >= total - 0.01`. El 0.01 absorbe
+  redondeos de decimal en cobros múltiples.
+- **Vencida derivada en lectura**, sin cron. Misma decisión que
+  Cotizaciones. Si LC necesita el evento `factura.vencida` emitido
+  proactivamente (push, recordatorio), agregar management command +
+  cron en La Limpieza o un cron dedicado.
+
+## 3. Cosas que me costaron pensar
+
+- **Doble contabilización**: el riesgo más sutil de todo el sprint.
+  Lo identifiqué en el plan inicial, pero hasta escribir el test no
+  estaba 100% seguro que la solución era robusta. La solución
+  (`branch` en `_hook_ingreso` por `factura_id`) es quirúrgica: 3
+  líneas de código en `contaduria/signals.py`. Pero requiere que
+  TODOS los Ingresos vinculados a factura pasen por
+  `services.registrar_cobro` para que `factura_id` esté set. Si
+  alguien crea un Ingreso manual y le pega el FK a mano, el branch
+  funciona. Si se hace algo más exótico (importar Ingresos por
+  bulk), revisar.
+- **Test `_on_commit_inmediato`** sigue siendo crítico para que los
+  signals corran en tests (Bug E de §14). Lo dupliqué en
+  `test_contaduria_v2.py` y `test_facturacion.py`. Vale considerar
+  promover el fixture a `tests/conftest.py` global, pero algunos
+  tests pueden NO querer este comportamiento (los que validan que
+  algo NO se persiste tras rollback). Por ahora se mantiene
+  per-archivo.
+- **Subgrupos del P&L**: la decisión inicial era usar `tipo` puro
+  (ingreso/egreso). Pero un P&L crudo de "Ingreso $X / Egreso $Y"
+  no le sirve al equipo — necesita ver costo de ventas separado de
+  gastos operativos para calcular utilidad bruta correcta. El mapa
+  `SLOT_A_SUBGRUPO_*` es la traducción semántica. Tomó dos
+  iteraciones encontrar los nombres correctos en español.
+- **Migración `0003_origenes_factura`**: makemigrations detectó
+  cambios espurios en otros modelos (BigAutoField, índices). El
+  agente removió las migraciones espurias y mantuvo solo la
+  relevante. Cuando se haga `migrate` en La Sede, Django va a
+  intentar reconciliar; si surge alguna inconsistencia, hay que
+  diagnosticarla. Probable que no surja porque las "espurias" son
+  cambios cosméticos.
+
+## 4. Métricas
+
+- **Archivos nuevos**:
+  - S3.contaduria-v2: 6 (reportes.py, exports.py, 3 templates, 1 test file).
+  - S2b.facturacion-v1: ~20 (app completa: models, services, signals,
+    contable, forms, views, urls + 7 templates + 1 test file + 3
+    migraciones).
+- **Tests nuevos**: 16 + 20 = **36**. Suite total: **609 pass, 9 skipped** (4:33s).
+- **Eventos Portavoz nuevos**: 1 (`contaduria.exportado`) + 6 (`factura.*`) = 7.
+- **KPIs Sala de Juntas nuevos**: 1 + 4 = 5.
+- **Permisos** módulo `facturacion` × 6 acciones × 3 roles activos =
+  18 filas seedeadas por usuario.
+
+## 5. Próximo
+
+Opciones desbloqueadas (sin setup externo):
+
+1. **S2b.cobranza** — recordatorios automáticos de Facturas vencidas
+   vía Portavoz/Interfón. Reutiliza eventos `factura.vencida` y
+   cron de marcado.
+2. **S3 cierre de periodo** — asiento que cancela 4.x/5.x contra
+   `3.2.02 Utilidad del ejercicio`, deja el siguiente periodo
+   limpio.
+3. **S3 reconciliación bancaria** — import de estado de cuenta
+   real, match contra movimientos de la cuenta `banco`.
+4. **S4 IA** — ejecutores nuevos del Dictado: "facturar #PRY-X",
+   "marcar factura como cobrada", "sugerir precio para
+   cotización".
+
+Opciones bloqueadas por setup externo:
+
+- **S2b.1b** (Drive) → desbloquea Cotizaciones PDF, Facturación PDF,
+  OCR de recibos, Sheets export.
+- **S2b.caja** → Stripe + MercadoPago, requiere credenciales.

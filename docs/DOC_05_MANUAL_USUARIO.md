@@ -1,8 +1,42 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.9 · 19 mayo 2026 (revisión: post Pre-S2b.2 — re-arquitectura, dashboard espejo, sidebar dinámica, perfil personal de Chalanes)
+> **Versión:** v0.13 · 20 mayo 2026 (revisión: post S3.contaduria-v2 + S2b.facturacion-v1)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
 > **Política de actualización:** este manual se actualiza después de cada sprint que entregue funcionalidad nueva. La versión final v1.0 se publicará cuando el desarrollo se considere cerrado.
+
+> **Novedades al 20 mayo 2026 (S3.contaduria-v2 + S2b.facturacion-v1):**
+>
+> - **La Facturación vive ya en El Taller.** Encima de Cotizaciones y
+>   Tesorería: borrador → emitida → cobrada parcial/total / cancelada.
+>   Códigos `FAC-YYYY-NNNN` correlativos. Crea factura desde una
+>   cotización con un click ("Generar factura" en el detalle de la
+>   cotización), registra cobros que generan Ingresos en Tesorería
+>   automáticamente, ve el saldo pendiente en tiempo real. **No emite
+>   CFDI** — sigue siendo gestión comercial interna; el contador
+>   externo timbra aparte.
+> - **Cuando emites una factura**, La Contaduría genera el asiento
+>   contable solo (D Clientes / H Ingresos por servicios + H IVA
+>   trasladado + D retenciones). Cuando cobras parcial o total, el
+>   Ingreso generado se conecta a la factura: el asiento del cobro
+>   usa "Clientes" como contracuenta (en lugar de generar otro ingreso),
+>   así no se cuenta dos veces el mismo dinero.
+> - **Estados financieros en La Contaduría.** Dos pantallas nuevas:
+>   **Estado de resultados** (`/contaduria/estado-resultados/`) con
+>   ingresos y egresos del periodo agrupados por subgrupo (Costo de
+>   ventas, Gastos operativos) y utilidad bruta/operativa/neta;
+>   **Balance general** (`/contaduria/balance-general/`) con saldos
+>   acumulados a fecha de corte, agrupados en Activos / Pasivos /
+>   Capital, con verificación automática de la ecuación contable.
+> - **Export al contador externo.** Pantalla `/contaduria/export/`
+>   con dos descargas CSV: **pólizas planas** (una fila por partida
+>   con asiento, cuenta, cargo/abono, referencia) y **catálogo de
+>   cuentas**. El contador timbrador puede alimentar su libro fiscal
+>   o reconciliar contra su PAC.
+> - **4 KPIs nuevos en Sala de Juntas** (Dinero): Facturas pendientes
+>   de cobro, Facturas vencidas, Monto por cobrar, Facturado del mes.
+>   Más: Utilidad neta del mes (vía estado de resultados).
+>
+> **Novedades anteriores al 19 mayo 2026 (Pre-S2b.2):**
 
 > **Novedades al 19 mayo 2026 (Pre-S2b.2):**
 >
@@ -450,10 +484,143 @@ wrappers Google estén activos):
 - **No envía correos automáticamente** al cliente.
 - **No marca vencidas solas vía cron** — la semántica "vencida" se
   computa al vuelo cuando entras al listado.
-- **No genera proyecto o factura automática** cuando aprueba el cliente
-  (eso es S2b.facturacion).
+- **No genera proyecto** automáticamente cuando aprueba el cliente.
+  **Sí puede generar factura** (ver La Facturación abajo).
 - **El cliente no aprueba self-service** desde un portal (eso es S5 La
   Recepción).
+
+### 🧾 La Facturación (S2b.facturacion-v1 ✅)
+
+**Dónde:** El Taller → La Facturación.
+**Quién:** super_admin, dueño, contador (el diseñador no la ve por
+default; el super_admin puede permitirlo desde Directorio →
+Permisos).
+
+Facturas comerciales **internas** del despacho, encima de las
+Cotizaciones y la Tesorería. Lleva el ciclo cliente → factura →
+cobro → asiento contable automático.
+
+> **Importante:** estas facturas **NO son CFDI ni se conectan a un
+> PAC** (regla §16). Son tu libro comercial interno para gestionar
+> Cuentas por Cobrar. El contador externo sigue timbrando los CFDI
+> reales por su lado, alimentándose del export de Contaduría que
+> entrega esta versión.
+
+**Lo que ves al entrar a `/facturacion/`:**
+
+- **4 KPI hero**: Borradores · Emitidas · Vencidas · Cobradas del mes.
+- **Tabla canónica** con sort y paginación. Columnas: Código
+  (`FAC-2026-0001`...), Cliente, Fecha de emisión, Vencimiento,
+  Total, Estado, Acciones.
+- Filtros por estado y búsqueda libre.
+- Botón **+ Nueva factura**.
+
+**Los 5 estados de una factura:**
+
+1. **Borrador** — Editable, sin asiento contable. Puedes cambiarle
+   todo.
+2. **Emitida** — Lista, generó el asiento `D Clientes / H Ingresos +
+   H IVA trasladado / D retenciones`. Ya cuenta como Cuenta por
+   Cobrar.
+3. **Cobrada parcial** — Recibió al menos un cobro pero no completo.
+4. **Cobrada total** — Saldo pendiente $0.
+5. **Cancelada** — Se anuló. Si tenía asiento, se generó un asiento
+   reverso automático.
+
+Adicionalmente, una factura emitida o parcialmente cobrada cuya
+fecha de vencimiento ya pasó aparece visualmente como **"Vencida"**
+(no es un estado físico, es derivado en lectura).
+
+**Crear factura nueva — dos caminos:**
+
+1. **Desde cero**: botón "+ Nueva factura". Eliges cliente, agregas
+   líneas (cantidad, unidad, precio, descuento por línea), marcas
+   tasas (IVA traslado y retenciones — las marcadas como "default"
+   en Tasas e Impuestos vienen pre-seleccionadas), define fechas y
+   notas. Se guarda en borrador.
+2. **Desde una cotización**: en el detalle de una cotización (de
+   cualquier estado salvo anulada), botón **"Generar factura"** que
+   clona items, impuestos, cliente, descuento, notas y deja la
+   factura en borrador con vínculo a la cotización origen.
+
+**Editar:** sólo borradores. Cuando emites, la factura queda
+"congelada".
+
+**Emitir:** botón en el detalle (super_admin / dueño / contador con
+permiso `emitir`). Pasa la factura a estado emitida y dispara el
+asiento contable automático en La Contaduría. Idempotente — si por
+alguna razón se repite la acción, no se duplica el asiento.
+
+**Registrar cobro:** modal accesible desde el detalle. Indicas:
+
+- Monto (no puede exceder el saldo pendiente).
+- Fecha del cobro.
+- Método (transferencia, depósito, efectivo, cheque, Stripe,
+  MercadoPago, otro).
+- Banco o caja (si el método es efectivo, va a Caja; otros van a
+  Bancos por default).
+
+El sistema crea automáticamente un **Ingreso en La Tesorería**
+vinculado a la factura, recalcula el saldo pendiente y transiciona
+el estado (parcial o total según corresponda). En La Contaduría
+genera un asiento `D Caja/Bancos / H Clientes` (cancela la CxC; el
+ingreso ya se reconoció al emitir la factura — no se cuenta dos
+veces).
+
+**Cancelar:** modal con motivo obligatorio. **Sólo permitido si la
+factura no tiene cobros aplicados.** Si tiene cobros, primero hay
+que anularlos en Tesorería (cada anulación dispara su reverso
+contable). Cuando cancelas una factura emitida sin cobros, se
+genera un asiento reverso (D Ingresos / H Clientes — espejo del
+asiento de emisión).
+
+**Duplicar:** crea una copia en borrador, conservando líneas e
+impuestos. Útil para facturas recurrentes (renta, suscripciones).
+
+**Detalle de factura:**
+
+- **Header** con código, cliente, estado visible.
+- **Main**: tabla de líneas con subtotales + bloque de totales
+  (subtotal, descuento global, base, IVA trasladado, retenciones,
+  total, saldo pendiente, monto cobrado) + **tabla de cobros
+  vinculados** (cada Ingreso con su código `ING-YYYY-NNNN`, fecha,
+  método, monto). Click en un cobro abre el Ingreso en Tesorería.
+- **Sidebar** (info cards):
+  - **Cliente** con razón social + datos básicos.
+  - **Fechas** (emisión, vencimiento, días para vencer).
+  - **Totales** con saldo pendiente destacado.
+  - **Captura** (quién creó, cuándo).
+  - **Cancelación** (sólo si aplica, con motivo).
+- **Action bar** sticky abajo con botones contextuales: Editar (sólo
+  borrador), Emitir (sólo borrador), Registrar cobro (sólo
+  emitida/parcial), Cancelar (sólo emitida/parcial sin cobros),
+  Duplicar (cualquiera).
+
+**KPIs en Sala de Juntas** (categoría 💰 Dinero):
+
+- **Facturas pendientes de cobro** — cuántas emitidas/parciales
+  tienen saldo > 0.
+- **Facturas vencidas** — emitidas/parciales con fecha de
+  vencimiento pasada.
+- **Monto por cobrar** — suma de saldos pendientes.
+- **Facturado del mes** — total emitido en el mes en curso.
+
+**Qué NO hace V1** (queda para sub-sprints):
+
+- **No genera PDF** todavía. Misma deuda que Cotizaciones — espera
+  el wrapper de Google Docs sobre Drive (S2b.1b).
+- **No envía email automático** al cliente.
+- **No marca vencidas solas vía cron** — la semántica "vencida" se
+  computa al vuelo en lectura.
+- **No permite cobros sin factura emitida** (anticipos de clientes).
+  V2.1 agregará la cuenta `2.1.04 Anticipos de clientes` y permitirá
+  cobros pre-factura.
+- **No envía recordatorios automáticos** de facturas vencidas — eso
+  es S2b.cobranza.
+- **No emite CFDI** (decisión permanente — el contador externo
+  timbra aparte).
+- **No se conecta a Stripe / MercadoPago** para cobros automáticos
+  — eso es S2b.caja.
 
 ### 🔗 Sistema de Referencias `@/#/$` (Pre-S2b.1 ✅)
 
@@ -599,7 +766,7 @@ Arriba del tablero de la Sala de Juntas vive un text box prominente con un Chal�
 
 **Mi historial:** `/dictado/historial/` muestra tus últimos 50 dictados con texto crudo, Chalán que respondió, latencia y estado (Aplicado · Aplicado con errores · Fallo IA · Cancelado). Click en cualquiera abre el detalle con todas sus acciones y los errores si hubo.
 
-### 📒 La Contaduría (S3.contaduria-v1 ✅)
+### 📒 La Contaduría (S3.contaduria-v1 + v2 ✅)
 
 **Dónde:** El Taller → La Contaduría.
 **Quién:** super_admin, dueño, contador (el diseñador no la ve).
@@ -621,9 +788,10 @@ cuadra.
   cuentas por cobrar (CxC).
 - **Últimos 8 asientos** con su código (`AST-2026-0001`...), fecha,
   descripción, origen y total.
-- 3 botones de navegación: **Catálogo** (ver cuentas), **Balance**
-  (de comprobación), **Asientos** (lista completa), y **+ Asiento
-  manual** para captura.
+- 6 botones de navegación: **Catálogo** (ver cuentas), **Balance**
+  (de comprobación), **Asientos** (lista completa), **Estado de
+  resultados** (V2), **Balance general** (V2), **Export contador**
+  (V2), y **+ Asiento manual** para captura.
 
 **Catálogo de cuentas:** 26 cuentas pre-cargadas (SAT-style
 simplificado) organizadas en 5 grupos:
@@ -682,29 +850,116 @@ NO se genera un asiento reverso automático (a diferencia de
 Tesorería). Si necesitas neutralizar contablemente, captura un
 asiento de **ajuste** con los signos invertidos.
 
-**KPIs nuevos en la Sala de Juntas** (categoría 💰 Dinero):
+**KPIs en la Sala de Juntas** (categoría 💰 Dinero):
 
 - **Asientos del mes** — cuántos movimientos contables vigentes
   llevas en el mes.
 - **Saldo en bancos** — saldo deudor de la cuenta de Bancos.
+- **Utilidad neta del mes** (V2) — ingresos − costo de ventas −
+  gastos operativos del mes. Si es negativo, alerta.
 - **Asientos descuadrados** — solo admin. Debe ser 0 siempre; si
   >0, alerta porque algo se metió a la DB sin validar.
 
-**Qué NO hace V1** (queda para sub-sprints):
+---
+
+#### 📊 Estados financieros (V2)
+
+**Estado de resultados** (`/contaduria/estado-resultados/`)
+
+P&L del periodo (mes en curso por default; configurable con
+filtros "Desde" / "Hasta"). Agrupa cuentas en:
+
+- **Ingresos**
+  - Ingresos por servicios (cuenta `4.1.01`)
+  - Otros ingresos (cuenta `4.2.01` y similares)
+- **Egresos**
+  - **Costo de ventas** — Materia prima e insumos (`5.1.02`) +
+    Servicios externos (`5.1.03`)
+  - **Gastos operativos** — Gastos de operación, Renta, Servicios
+    públicos, Sueldos, Honorarios, Software, Viáticos, Otros
+
+Calcula tres líneas de utilidad:
+
+1. **Utilidad bruta** = Ingresos − Costo de ventas
+2. **Utilidad operativa** = Utilidad bruta − Gastos operativos
+3. **Utilidad neta** = Utilidad operativa (V2 no estima ISR/PTU; eso
+   vendrá en el sprint de cierre)
+
+Cada línea de cuenta es clickeable y abre el libro mayor de esa
+cuenta para auditar de dónde vienen los montos.
+
+**Balance general** (`/contaduria/balance-general/`)
+
+Saldos acumulados a fecha de corte (hoy por default; configurable).
+Grid 2-col:
+
+- **Izquierda**: Activos (Caja, Bancos, Clientes, IVA acreditable,
+  Deudores diversos) con total.
+- **Derecha**: Pasivos (Proveedores, Reembolsos, IVAs por pagar,
+  ISR retenido) + Capital (Capital social, Utilidades acumuladas) +
+  **Utilidad del periodo** (calculada on-the-fly: P&L del año hasta
+  la fecha de corte).
+
+Al pie, verificación automática de la **ecuación contable**:
+
+```
+Activo = Pasivo + Capital + Utilidad del periodo
+```
+
+Si cuadra → mensaje verde "✓ El balance cuadra". Si descuadra →
+mensaje rojo con el monto exacto, lo cual significa que un asiento
+manual se metió mal (no debería pasar porque el service valida
+partida doble, pero la alerta sirve como guardia).
+
+---
+
+#### 📤 Export al contador externo (V2)
+
+`/contaduria/export/` — dos descargas CSV (UTF-8 con BOM, Excel
+abre acentos sin reconfigurar):
+
+**1. Pólizas planas:**
+
+Una fila por **partida** (no por asiento) con: Asiento, Fecha,
+Origen, Descripción del asiento, Código y Nombre de la cuenta,
+Tipo, Naturaleza, Cargo, Abono, Descripción de la partida,
+Referencia externa, ¿Anulado?, Capturado por.
+
+Filtros:
+
+- Rango de fechas (desde/hasta).
+- Origen (todos, manual, auto_ingreso, auto_egreso, etc.).
+- ☐ Incluir asientos anulados (opt-in, default false).
+
+Este es el formato que tu contador externo importa a su software
+(Excel, ContPaq, Aspel, Bind ERP, etc.) para alimentar el libro
+fiscal y reconciliar con los CFDI emitidos por su PAC.
+
+**2. Catálogo de cuentas:**
+
+Lista del catálogo con Código, Nombre, Tipo, Naturaleza, Slot,
+Activa, Descripción. Filtro opt-in para incluir cuentas inactivas.
+
+Útil cuando el contador necesita mapear el catálogo interno al
+catálogo SAT que usa fiscalmente.
+
+**Qué NO hace V1+V2** (queda para sub-sprints):
 
 - **No emite CFDI ni se conecta a PAC** (decisión permanente —
   el contador externo timbra aparte).
 - **No hace reconciliación bancaria** contra el estado de cuenta
   del banco.
-- **No genera estados financieros formales** (balance general,
-  estado de resultados pre-formateado).
-- **No tiene cierre de periodo** automatizado (asiento que
-  cancela ingresos/egresos contra Utilidad del ejercicio).
-- **No exporta al contador externo** (CSV/XML formateado para su
-  sistema fiscal).
+- **No estima ISR ni PTU** en el estado de resultados (V2: utilidad
+  neta = utilidad operativa). Las estimaciones fiscales llegan en
+  cierre.
+- **No tiene cierre de periodo** automatizado (asiento que cancela
+  ingresos/egresos contra Utilidad del ejercicio).
+- **No exporta en formato XML SAT específico** para el PAC. V2
+  entrega CSV genérico — si el PAC necesita XML, se agrega como
+  formato adicional sin tocar la lógica de exports.
 - **No retro-llena la Tesorería histórica** — los asientos
   automáticos solo se generan para Ingresos/Egresos creados desde
-  el deploy de este sprint. Si quieres asientos contables de
+  el deploy de S3.contaduria-v1. Si quieres asientos contables de
   movimientos viejos, hay que correr un management command
   (idempotente, no duplica) cuando se decida.
 

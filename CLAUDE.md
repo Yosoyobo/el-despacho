@@ -64,12 +64,12 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **Los Proyectos** | El Taller | Proyectos, estados, asignaciones | S1b |
 | **El Pizarrón** | El Taller | Tareas + comentarios públicos/internos | S1b |
 | **Los Recados** | El Taller | Mensajería interna con `@/#/$` + push + historial | S2b.1 ✅ · S2b.1.5 ✅ |
-| **Las Cotizaciones** | El Taller | PDF vía Google Docs + envío n8n/Gmail | S2 |
-| **La Facturación** | El Taller | Invoices comerciales (no fiscales) | S2 |
+| **Las Cotizaciones** | El Taller | Propuestas comerciales (PDF aplazado) | S2b.cotizaciones-v1 ✅ |
+| **La Facturación** | El Taller | Invoices comerciales no fiscales + CxC | S2b.facturacion-v1 ✅ (PDF aplazado) |
 | **La Caja** | El Taller | Stripe + MercadoPago, links de pago | S2 |
 | **La Cobranza** | El Taller | Recordatorios automáticos vía Portavoz | S2 |
 | **La Tesorería** | El Taller | Ingresos/egresos/CxC/CxP/reembolsos + reportes + CSV | S2b.3 ✅ (V1) · S2b.3b (OCR+Sheets) |
-| **La Contaduría** | El Taller | Partida doble + reconciliación | S3 |
+| **La Contaduría** | El Taller | Partida doble + estados financieros + export contador | S3.contaduria-v1/v2 ✅ |
 | **El Archivero / Las Planillas / Las Actas / La Agenda** | infra | Wrappers Google Workspace (Drive/Sheets/Docs/Calendar) | S2 |
 
 ---
@@ -1405,11 +1405,205 @@ exports de este libro.
   y dispare `crear_asiento` por cada uno (idempotente, no
   duplica). No se incluye porque LC arranca contabilidad limpia.
 
+### S3.contaduria-v2 ✅ — Estados financieros + Export contador externo (2026-05-20)
+
+Continuación caliente de S3.contaduria-v1, dos entregas paralelas
+sobre el catálogo y los asientos ya existentes (lectura pura — no
+introduce signals nuevos).
+
+- **`apps/contaduria/reportes.py`** — funciones puras
+  `estado_resultados(desde, hasta)` y `balance_general(hasta)`.
+  - El P&L agrupa cuentas tipo `ingreso`/`egreso` por subgrupo
+    derivado del slot: "Ingresos por servicios" (`ingreso_ventas`),
+    "Otros ingresos" (`ingreso_otros`), "Costo de ventas"
+    (`egreso_insumos` + `egreso_externos`), "Gastos operativos"
+    (`egreso_operativo` + `egreso_renta` + `egreso_servicios` +
+    `egreso_nomina` + `egreso_honorarios` + `egreso_software` +
+    `egreso_viaticos` + `egreso_otros`). Mapa en
+    `SLOT_A_SUBGRUPO_*`. Calcula `utilidad_bruta` (ingresos −
+    costo_ventas), `utilidad_operativa` (− gastos_operativos),
+    `utilidad_neta` = operativa en V2 (sin ISR estimado, eso vive
+    en cierre).
+  - El balance agrupa por `tipo` (activo/pasivo/capital) sobre los
+    saldos acumulados hasta `hasta`. Utilidad del periodo se
+    calcula on-the-fly (P&L del año hasta `hasta`) hasta que exista
+    un asiento de cierre que la mueva a `3.2.02`. Verifica
+    ecuación contable A = P + C + Utilidad y reporta `cuadrado` y
+    `descuadre`.
+- **`services.saldo_cuenta` y `balance_de_comprobacion`** ahora
+  aceptan `desde=None` (back-compat — sin `desde` siguen siendo
+  saldo acumulado histórico). Permite computar movimiento del
+  periodo para cuentas nominales (P&L).
+- **`apps/contaduria/exports.py`** — dos formatos CSV:
+  - `polizas`: una fila por **partida** (no por asiento) con
+    columnas `Asiento, Fecha, Origen, Descripción asiento, Código
+    cuenta, Nombre cuenta, Tipo, Naturaleza, Cargo, Abono,
+    Descripción partida, Referencia externa, Anulado, Capturado
+    por`. Filtros: rango fechas, origen, opt-in
+    `incluir_anulados` (default false).
+  - `catalogo`: lista de cuentas con `Código, Nombre, Tipo,
+    Naturaleza, Slot, Activa, Descripción`. Opt-in
+    `incluir_inactivas`.
+  - UTF-8 BOM + headers español igual que `tesoreria/exports.py`.
+    Emite evento `contaduria.exportado` con payload del rango.
+- **Views nuevas** en `apps/contaduria/views.py`:
+  `estado_resultados`, `balance_general`, `export` (form HTML +
+  `?descargar=1` devuelve el CSV). Las 3 gated por
+  `puede_reportes_contaduria`.
+- **URLs nuevas**: `/contaduria/estado-resultados/`,
+  `/contaduria/balance-general/`, `/contaduria/export/`.
+- **Templates nuevos** en `templates/contaduria/`:
+  `estado_resultados.html` (filtros rango + tabla con subgrupos y
+  totales destacados), `balance_general.html` (grid 2-col activos /
+  pasivos+capital con tarjeta de verificación), `export.html` (dos
+  formularios paralelos). Link nuevo en `landing.html`.
+- **KPI nuevo** en `apps/taller_home/kpis.py`:
+  `contaduria-utilidad-neta-mes` (categoría 💰 Dinero,
+  ROLES_ADMIN_CONTADOR). Alerta si <0.
+- **16 tests nuevos** en `tests/taller/test_contaduria_v2.py`.
+
+**NO incluye V2** (queda para sprints futuros):
+- **Reconciliación bancaria** (importar estado de cuenta del banco
+  y casarlo contra movimientos de la cuenta `banco`).
+- **Cierre de periodo** (asiento que cancela 4.x y 5.x contra
+  `3.2.02 Utilidad del ejercicio` y arranca el siguiente).
+- **Estimación de ISR/PTU** en P&L (queda en cierre).
+- **Export XML / formato fiscal específico** para el PAC del
+  contador externo — V2 entrega solo CSV genérico.
+
+### S2b.facturacion-v1 ✅ — Facturación comercial NO fiscal (2026-05-20)
+
+App `el-taller/apps/facturacion/` con invoices internos encima de
+Cotizaciones + Tesorería + Contaduría. **NO emite CFDI ni se
+conecta a PAC** (regla §16) — son facturas comerciales internas
+para gestión de CxC. El contador externo timbra aparte y reconcilia
+contra los exports de Contaduría.
+
+- **Modelos** en `apps/facturacion/models/factura.py`:
+  - `Factura`: código `FAC-YYYY-NNNN` correlativo bajo
+    `select_for_update`, FK PROTECT a `cartera.Cliente` (obligatorio),
+    FK SET_NULL a `proyectos.Proyecto` y `cotizaciones.Cotizacion`
+    (origen opcional). Estados ∈ {borrador, emitida, cobrada_parcial,
+    cobrada_total, cancelada}. Manager `vigentes` excluye cancelada.
+    Campos `fecha_emision` (default hoy), `fecha_vencimiento`
+    (default hoy+30), `descuento_global_porcentaje`, `monto_cobrado`
+    denormalizado, campos de emisión/cancelación. Property
+    `es_editable` (=borrador), `esta_vencida` (estado in
+    {emitida, cobrada_parcial} y `fecha_vencimiento < hoy`),
+    `estado_visible` (sustituye por "vencida" en lectura),
+    `saldo_pendiente`, `calcular_totales` (espejo exacto de
+    Cotizacion).
+  - `FacturaItem`, `FacturaImpuesto` — misma estructura que en
+    Cotizaciones (incluyendo unique_together en impuesto).
+- **`apps/facturacion/contable.py`** — `mapa_iva_para_tasa(tasa)`
+  retorna slot por convención:
+  - `tipo='traslado'` → `iva_trasladado`
+  - `tipo='retencion'` + `"isr"` en nombre → `isr_retenido`
+  - otras retenciones → `iva_retenido_pagar`
+
+  No toca `ajustes.TasaImpositiva` (decisión: mapeo por convención
+  en lugar de agregar `slot_contable` al modelo).
+- **Services** en `apps/facturacion/services.py`:
+  `crear_desde_cotizacion(cot, actor)` clona items+impuestos+vínculo;
+  `emitir(factura, actor)` (borrador→emitida, dispara asiento +
+  evento); `registrar_cobro(factura, *, monto, fecha, metodo,
+  actor, banco_o_caja)` crea `tesoreria.Ingreso` con `factura=factura`,
+  recalcula `monto_cobrado` desde la suma de Ingresos vigentes,
+  transiciona estado (`cobrada_total` si `monto_cobrado >= total -
+  0.01`, parcial si `0 < monto_cobrado < total`); `cancelar(factura,
+  actor, motivo)` (prohibido si `monto_cobrado > 0`); `duplicar`
+  crea borrador con mismos items. `kpis_landing()` para el header.
+- **Signal** en `apps/facturacion/signals.py`:
+  - `post_save Factura` con transición a `emitida` → asiento
+    `auto_factura_emitida` con partidas:
+    - D `cxc` por `total`
+    - H `ingreso_ventas` por `subtotal_items − descuento_global`
+    - H slot trasladado (`iva_trasladado`) por suma de
+      trasladados
+    - D slot retención (`iva_retenido_pagar` o `isr_retenido`)
+      por monto de cada retención
+
+    **Algebra cuadra** porque `total = base + trasladados −
+    retenciones` ⟹ `total + retenciones = base + trasladados`
+    (verificado en tests).
+  - Transición a `cancelada` → asiento `auto_factura_cancelada`
+    con cargos/abonos intercambiados del original. Idempotente vía
+    `referencia_externa = facturacion.factura:{pk}`.
+  - Captura `_estado_previo: dict[int, str]` en `pre_save` para
+    detectar transiciones.
+  - Silent skip si catálogo incompleto, igual que Contaduría V1.
+- **Modificaciones en Tesorería**:
+  - `apps/tesoreria/models/ingreso.py`: campo nuevo
+    `factura = ForeignKey("facturacion.Factura", null=True,
+    blank=True, on_delete=PROTECT, related_name="cobros")`.
+    Migración `0003_ingreso_factura`.
+- **Modificaciones en Contaduría**:
+  - `apps/contaduria/signals.py::_hook_ingreso`: si
+    `instance.factura_id is not None`, la contracuenta del asiento
+    `auto_ingreso` es **`cxc`** (no `ingreso_ventas`). El ingreso
+    ya se reconoció contablemente al emitir la factura; el cobro
+    sólo cancela la CxC. Sin este branch habría doble
+    contabilización del ingreso.
+  - `apps/contaduria/models/asiento.py::ORIGEN_ASIENTO`: agrega
+    `auto_factura_emitida` y `auto_factura_cancelada`. Migración
+    `0003_origenes_factura`.
+- **Permisos**: módulo `facturacion` × 6 acciones (`ver, crear,
+  editar, emitir, cobrar, cancelar`). Defaults: super_admin /
+  dueno / contador todo; diseñador ninguno. Migración
+  `cuentas.0011_seed_permisos_facturacion`. Helpers
+  `puede_*_facturacion` en `lib/permisos.py`. Módulo registrado
+  en `MODULOS_VISIBLES` del context processor — sidebar Taller
+  gated por `permisos_modulos.facturacion`.
+- **UI Taller**:
+  - `/facturacion/` lista con 4 KPI hero (borradores · emitidas ·
+    vencidas · cobradas-mes), filtro por estado + búsqueda, tabla
+    canónica `_tabla_datos` con sort/paginación, dropdown de
+    acciones por fila.
+  - `/facturacion/nueva/` y `/facturacion/<id>/editar/` con form
+    principal + inline formset de items (clone-row vanilla JS) +
+    checkboxes de tasas (`aplicable_default=True` preseleccionadas).
+  - `/facturacion/desde-cotizacion/<cot_pk>/` (POST-only) crea
+    factura clonando la cotización.
+  - `/facturacion/<id>/` detalle con `_page_header` + grid
+    `xl:grid-cols-3` (main con tabla de líneas + tabla de cobros
+    vinculados; sidebar con info cards Cliente/Fechas/Totales/
+    Captura) + `_action_bar` sticky con botones contextuales según
+    estado y permiso.
+  - 3 modales HTMX (`_modal_emitir/cobrar/cancelar`) siguiendo el
+    patrón Wave 5 (`hx-get` → `#modal-slot`, POST → 204 +
+    `HX-Redirect`).
+- **Eventos Portavoz** nuevos: `factura.{creada, emitida,
+  cobrada_parcial, cobrada_total, cancelada, vencida}`.
+- **KPIs Sala de Juntas**: 4 nuevos categoría 💰 Dinero,
+  `ROLES_ADMIN_CONTADOR`: `facturas-pendientes-cobro`,
+  `facturas-vencidas`, `monto-por-cobrar`, `facturado-mes`.
+- **Sidebar Taller**: entrada nueva entre Cotizaciones y Contaduría,
+  gated por permiso.
+- **20 tests nuevos** en `tests/taller/test_facturacion.py`. **Suite
+  total 609 pass, 9 skipped**.
+
+**NO incluye V1** (queda para sub-sprints futuras):
+- **PDF de la factura** — requiere wrapper Google Docs encima de
+  S2b.1b (Drive). Botón "emitir" registra envío manual sin generar
+  archivo. Misma deuda que Cotizaciones.
+- **Envío automático por email/n8n**.
+- **Marcado automático de vencidas vía cron** — hoy se computa
+  derivado en lectura. Si LC necesita el evento `factura.vencida`
+  emitido proactivamente, agregar management command + cron.
+- **Cobro vinculado a anticipos** (cuenta `2.1.04 Anticipos de
+  clientes`) — V1 sólo permite cobro contra factura emitida.
+  Aplazado a V2.1 con migración de catálogo.
+- **Aprobación cliente self-service** — espera S5 (La Recepción).
+- **Cancelación de factura con cobros** — V1 lo prohíbe (debe
+  anularse el Ingreso primero).
+
 ### S3 — Contabilidad y reportes (resto)
 
-Tras S3.contaduria-v1 quedan: **Reconciliación bancaria** ·
-**Estados financieros** (balance general + estado de resultados) ·
-**Cierre de periodo** · **Export al contador externo**.
+Tras S3.contaduria-v1 + S3.contaduria-v2 quedan: **Reconciliación
+bancaria** (importar estado de cuenta del banco) · **Cierre de
+periodo** (asiento que cancela ingresos/egresos contra Utilidad del
+ejercicio) · **Estimación de ISR/PTU** en estado de resultados ·
+**Export XML/formato fiscal específico** para el PAC del contador.
 
 ### S4 — IA (Los Chalanes, casos de uso)
 
