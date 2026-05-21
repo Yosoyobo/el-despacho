@@ -176,6 +176,26 @@ GitHub Actions (**El Mensajero**) · GHCR.
   detalle con info cards + action bar, 3 modales HTMX (emitir/
   cobrar/cancelar). Permisos `facturacion` × 6 acciones. 4 KPIs
   nuevos. 6 eventos Portavoz. **20 tests nuevos. Suite total 609 pass.**
+- **S-UX-Dummy-Proof** ✅ (cerrado 2026-05-21, 5 entregas):
+  (1) **Breadcrumbs + botón Volver** en todas las pantallas — partial
+  `_page_header.html` acepta `back_url` + `back_label`; sweep de 97
+  archivos en Taller y Gerencia. Tag `breadcrumb_items` inline en
+  `forms_helpers`. (2) **Filtro `|dinero`** formatea `$1,234.56` con
+  separador de miles + manejo de None/negativos; reemplazó 75 usos
+  de `floatformat:2` en 23 templates. (3) **Botón "Reembolsar"** por
+  egreso individual en `/tesoreria/por_pagar/` — modal HTMX con
+  método + Banco/Caja + fecha; service `reembolsar_egreso` dispara
+  asiento `D Reembolsos / H Banco|Caja` idempotente. Nuevo origen
+  `auto_reembolso`. (4) **Factura auto-completar** desde proyecto o
+  cotización via endpoints JSON `/facturacion/api/{proyecto,cotizacion}/<pk>/datos/`;
+  JS vanilla pre-llena campos editables (confirm antes de
+  reemplazar líneas). (5) **Contabilidad dummy proof**: wizard
+  `/contaduria/movimiento/nuevo/` con Traspaso o Ajuste (sin jerga);
+  cuenta nueva `6.0.01 Ajustes de captura` via migración 0005;
+  filtros `direccion_partida`/`monto_partida` muestran "Entra/Sale"
+  según naturaleza; columnas técnicas (Naturaleza/Slot/código)
+  ocultas a no-super_admin; "Asiento manual" gated a super_admin.
+  **638 tests verdes** (+29 sobre baseline 609).
 - **S2b resto** La Caja (Stripe + MercadoPago) · La Cobranza ·
   wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
 - **S3 resto** Reconciliación bancaria · Cierre de periodo

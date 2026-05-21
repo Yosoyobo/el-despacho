@@ -4588,3 +4588,58 @@ Opciones bloqueadas por setup externo:
 - **S2b.1b** (Drive) → desbloquea Cotizaciones PDF, Facturación PDF,
   OCR de recibos, Sheets export.
 - **S2b.caja** → Stripe + MercadoPago, requiere credenciales.
+
+---
+
+# BITÁCORA — Sesión S-UX-Dummy-Proof (2026-05-21)
+
+> Sprint de UX: 5 entregas en una sola sesión. Suite **638 pass, 9 skipped**.
+> Commits: `1d861b6` (#3) · `5892d5d` (#2+#4) · `0aa3c39` (#5) · `e120dc5` (#1).
+
+## 1. Módulos entregados
+
+| # | Entrega | Estado | Archivos | Tests nuevos |
+|---|---|---|---|---|
+| 1 | Breadcrumbs + botón ← Volver universales | ✅ | 97 (templates + 9 views + partial _page_header) | 12 smoke |
+| 2 | Filtro `\|dinero` ($1,234.56) | ✅ | 24 (templatetags + 23 templates sweep) | (cubierto en suite) |
+| 3 | Botón "Reembolsar" dummy por egreso | ✅ | 9 (service + form + view + url + modal + por_pagar + migración) | 7 |
+| 4 | Factura auto-completar desde proyecto/cotización | ✅ | 3 (urls + views + factura_form JS) | (E2E manual) |
+| 5 | Contabilidad dummy proof V1 completo | ✅ | 15 (wizards + templatetags + 3 templates form + sweep contaduria/* + migración 0005) | 10 |
+
+## 2. Decisiones de diseño
+
+- **Filtro `dinero` puro Python** sin `django.contrib.humanize`. Razón: cero deps nuevas, lógica de 10 líneas, control sobre format de None/negativos. Si en el futuro se requiere localización (separador `1.234,56` europeo), un solo lugar para parametrizar.
+- **Reembolso por egreso individual** (no por empleado). Confirmado por el usuario en el plan. Razón: control granular — un empleado puede tener varios egresos en estados distintos; reembolsar de a uno permite que el contador escoja qué pagar primero o anote cosas diferentes por método.
+- **Wizard "+ Nuevo movimiento"** con 2 tipos (Traspaso, Ajuste) en lugar de 4-5. Razón: cubre el 80% de captura manual que un no-contador necesita. Cobros y pagos van por Tesorería (que ya genera asiento automático). Si LC pide otras tipologías, agregar al wizard.
+- **Cuenta `6.0.01 Ajustes de captura`** centralizada (capital · acreedora · slot `ajuste_captura`). El contador externo puede mover esos saldos a las cuentas correctas en su libro fiscal vía el export de pólizas (S3.contaduria-v2). Trade-off: granularidad vs simplicidad. V1 elige simplicidad.
+- **"Entra/Sale" según naturaleza de cuenta** en lugar de Cargo/Abono. Es la traducción natural: una cuenta deudora (Bancos, Caja) "entra" cuando hace cargo; una cuenta acreedora (Proveedores, IVA por pagar) "entra" cuando hace abono. El usuario nunca tiene que pensar en naturaleza — el filter lo hace.
+- **Autocompletar factura con `confirm()` al reemplazar líneas**. Razón: usuario podría haber escrito líneas a mano antes de cambiar de cotización. Confirm evita pérdida no-deseada de trabajo.
+- **Tag `breadcrumb_items` inline** (no template method). Razón: muchos templates necesitan breadcrumb sin que la view tenga que armarlo (especialmente listas estáticas). El tag es declarativo: `{% breadcrumb_items "La Cartera" %}` o con URLs intermedias.
+
+## 3. Cosas que me costaron pensar
+
+- **Sweep de breadcrumbs con `_page_header.html` partial**: tuve que decidir si re-renderizar el header completo o sólo agregar el back link. Elegí extender el partial (mantiene un solo punto de mantenimiento) con shim de compat para templates que NO pasan `back_url`. Sin breaking changes.
+- **Filtro `dinero` y Decimals con quantize**: el caso `dinero("0.5")` debe dar `$0.50`, no `$.50` ni `$0.5`. Manejo: zfill del componente decimal a 2 chars con `:<02`. Edge case del signo negativo: el `-` va ANTES del `$`, no después (es lo natural en español: "-$2,500").
+- **Reembolso e idempotencia**: el signal de Tesoría ya disparó el asiento `auto_egreso` al crear el egreso (D Gastos / H Reembolsos). Cuando el contador hace "Reembolsar", NO se modifica ese asiento — se crea uno NUEVO (`auto_reembolso`) con `D Reembolsos / H Banco`. Esto preserva la trazabilidad contable completa. Si el contador re-pulsa "Reembolsar" (race condition o doble click), `referencia_externa='tesoreria.egreso.reembolso:<pk>'` previene duplicar.
+- **Captura manual gated a super_admin**: era tentador dejarlo accesible a todos los que tienen `puede_capturar_contaduria` (super_admin/dueno/contador) y solo cambiar el flow recomendado. Pero la spec dice "los usuarios no saben de contabilidad". Decisión: gateando el link visualmente, dueno/contador entran al wizard por default. Para casos avanzados, super_admin (Oscar) puede usar la captura full. La URL `/contaduria/asientos/nuevo/` sigue accesible si conocen la ruta — no es un bloqueo de seguridad, es uno de descubribilidad.
+
+## 4. Métricas
+
+- **Archivos nuevos**:
+  - #3: `_modal_reembolsar.html`, `test_tesoreria_reembolso.py`, migración 0004.
+  - #5: `wizards.py`, `templatetags/contaduria_helpers.py`, 3 templates de wizard, migración 0005, `test_contaduria_dummy_proof.py`.
+  - #1: `test_breadcrumbs.py` × 2 (Taller + Gerencia).
+- **Tests nuevos**: ~29 (10 dummy proof + 7 reembolso + 12 breadcrumbs + smoke en cotizaciones/facturación). Suite total: 638 pass (+29 sobre 609 base).
+- **Reemplazos mecánicos**: 75 occurrences de `floatformat:2` → `|dinero` en 23 templates + auto-import de `{% load forms_helpers %}` donde faltaba.
+- **Templates con breadcrumb sweep**: 97 archivos modificados, ~33 listas + 22 forms migradas al partial.
+
+## 5. Próximo
+
+Opciones desbloqueadas sin setup externo:
+
+1. **S2b.cobranza** — recordatorios automáticos de Facturas vencidas (push del Interfón + email). Reusar evento `factura.vencida`.
+2. **S3 cierre de periodo** — asiento que cancela 4.x/5.x contra `3.2.02`. El wizard de Ajuste ya es media bandera para esto.
+3. **S4 IA Dictado expansion** — ejecutores nuevos: "facturar #PRY-X" (usa `crear_desde_cotizacion`), "marcar factura como cobrada", "reembolsar a Juan" (usa `reembolsar_egreso`).
+4. **Mi tablero** (`/perfil/dashboard/`) — el sweep de breadcrumbs no llegó ahí. Probablemente quiere migración aparte cuando alguien lo toque.
+
+Bloqueadas: S2b.1b (Drive setup manual), S2b.caja (credenciales Stripe/MP), S5 Recepción (UI completa).

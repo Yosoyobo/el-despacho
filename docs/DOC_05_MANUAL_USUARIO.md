@@ -1,10 +1,43 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.13 · 20 mayo 2026 (revisión: post S3.contaduria-v2 + S2b.facturacion-v1)
+> **Versión:** v0.14 · 21 mayo 2026 (revisión: post S-UX-Dummy-Proof)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
 > **Política de actualización:** este manual se actualiza después de cada sprint que entregue funcionalidad nueva. La versión final v1.0 se publicará cuando el desarrollo se considere cerrado.
 
-> **Novedades al 20 mayo 2026 (S3.contaduria-v2 + S2b.facturacion-v1):**
+> **Novedades al 21 mayo 2026 (S-UX-Dummy-Proof):**
+>
+> - **Breadcrumbs y botón "← Volver"** en todas las pantallas. Encima
+>   del título siempre vas a ver "Inicio › Módulo › Página" y un link
+>   prominente para regresar al nivel anterior. Sirve sobre todo en
+>   formularios largos donde antes había que usar la flecha del
+>   navegador.
+> - **Cifras de dinero con separador de miles**: todos los montos del
+>   sistema ahora salen como `$1,234,567.89` en vez de `$1234567.89`.
+>   Mucho más legible en reportes y exports.
+> - **Botón "Reembolsar" en cada egreso por reembolsar**: en
+>   *Tesorería → Por pagar → Reembolsos pendientes*, cada fila tiene
+>   un botón verde "Reembolsar". Lo aprietas, eliges Método
+>   (transferencia/efectivo/cheque), de dónde sale el dinero (Banco o
+>   Caja) y la fecha; el sistema marca el egreso como pagado y genera
+>   el asiento contable automático `Sale de Reembolsos por pagar → Entra
+>   a Banco o Caja`. Sin tocar nada manual.
+> - **Crear factura desde proyecto/cotización auto-rellena**: al
+>   seleccionar un proyecto en el form de factura, el cliente se
+>   sugiere solo. Al seleccionar una cotización origen, se copian
+>   líneas, impuestos, notas, términos y descuento — todo editable.
+>   Si ya tenías líneas escritas, el sistema te pregunta antes de
+>   reemplazarlas.
+> - **La Contaduría es dummy proof**: la captura técnica de asientos
+>   manuales sigue ahí pero queda escondida para super_admin. Para
+>   todos los demás, hay un wizard nuevo **"+ Nuevo movimiento"** con
+>   dos tipos: *Traspaso entre cuentas* (pasé dinero de Banco a Caja)
+>   y *Ajuste de saldo* (corregir un saldo que no cuadra con la
+>   realidad). El sistema arma el asiento detrás. En las pantallas,
+>   "Cargo/Abono" ahora se ve como **"Entra/Sale"** según la cuenta,
+>   sin jerga contable. Columnas técnicas (naturaleza, slot, código
+>   de cuenta) están ocultas a no-super_admin.
+>
+> **Novedades anteriores al 20 mayo 2026 (S3.contaduria-v2 + S2b.facturacion-v1):**
 >
 > - **La Facturación vive ya en El Taller.** Encima de Cotizaciones y
 >   Tesorería: borrador → emitida → cobrada parcial/total / cancelada.
@@ -350,6 +383,23 @@ por pagar, reembolsos por empleado, y movimientos consolidados
 "Por reembolsar", llega push automático a contadores, admins y al
 empleado pagador. Categoría `tesoreria_reembolso` en
 `/perfil/notificaciones/` (puedes apagarla si no la quieres).
+
+**Pagar un reembolso (S-UX-Dummy-Proof, mayo 21):** en
+`/tesoreria/por-pagar/` cada egreso por reembolsar lleva un botón verde
+**"Reembolsar"**. Lo pulsas, se abre una ventanita con tres preguntas:
+
+1. **Método** — Transferencia, Efectivo, Cheque, etc.
+2. **De dónde sale el dinero** — Banco (sale de la cuenta de cheques)
+   o Caja (sale de caja chica).
+3. **Fecha** — cuándo se ejecutó el pago.
+
+Aprietas "Confirmar". El egreso queda marcado como **pagado**, y La
+Contaduría genera por detrás el movimiento contable
+`Sale de Reembolsos por pagar → Entra a Banco|Caja`. Si vuelves a
+pulsar "Reembolsar" en un egreso ya pagado, el sistema te avisa que
+ya no aplica. Si no hay catálogo contable (cuentas Banco/Caja sin
+sembrar), el reembolso del egreso sigue funcionando pero el
+movimiento contable se omite con un aviso.
 
 **Pendiente de S2b.3b** (cuando se configure Google Drive):
 - **OCR de recibos** — foto del recibo → Chalán con visión lee monto,
@@ -766,15 +816,23 @@ Arriba del tablero de la Sala de Juntas vive un text box prominente con un Chal�
 
 **Mi historial:** `/dictado/historial/` muestra tus últimos 50 dictados con texto crudo, Chalán que respondió, latencia y estado (Aplicado · Aplicado con errores · Fallo IA · Cancelado). Click en cualquiera abre el detalle con todas sus acciones y los errores si hubo.
 
-### 📒 La Contaduría (S3.contaduria-v1 + v2 ✅)
+### 📒 La Contaduría (S3.contaduria-v1 + v2 ✅ + dummy proof V1 ✅)
 
 **Dónde:** El Taller → La Contaduría.
 **Quién:** super_admin, dueño, contador (el diseñador no la ve).
 
-Libro contable interno con **partida doble**. Cada movimiento se
-captura como un **asiento** con N partidas (cargos y abonos) que
-deben cuadrar — el sistema lo valida y no deja guardar si no
-cuadra.
+Libro contable interno. Cada **movimiento contable** lleva la
+huella de qué cuenta gana dinero ("entra") y cuál lo pierde ("sale")
+en partes iguales — el sistema lo valida y no deja guardar si no
+cuadra (regla "toda entrada tiene una salida").
+
+> **Dummy proof (S-UX-Dummy-Proof, mayo 21):** las palabras técnicas
+> ("asiento", "cargo", "abono", "naturaleza deudora/acreedora") se
+> reemplazaron en pantalla por lenguaje normal: **"movimiento
+> contable"** y **"Entra/Sale"** según corresponda. La captura
+> manual de asientos con N partidas sigue existiendo pero queda
+> reservada a super_admin. Para todos los demás, hay un wizard
+> nuevo (ver "+ Nuevo movimiento" abajo).
 
 > **Importante:** El Despacho NO emite CFDI ni se conecta a un PAC
 > (regla §16). Esta contaduría es un libro **interno** para que el
@@ -788,10 +846,30 @@ cuadra.
   cuentas por cobrar (CxC).
 - **Últimos 8 asientos** con su código (`AST-2026-0001`...), fecha,
   descripción, origen y total.
-- 6 botones de navegación: **Catálogo** (ver cuentas), **Balance**
-  (de comprobación), **Asientos** (lista completa), **Estado de
-  resultados** (V2), **Balance general** (V2), **Export contador**
-  (V2), y **+ Asiento manual** para captura.
+- 7 botones de navegación: **Catálogo** (ver cuentas),
+  **Balance** (de comprobación), **Movimientos** (lista completa),
+  **Estado de resultados** (V2), **Balance general** (V2),
+  **Export contador** (V2), **+ Nuevo movimiento** (wizard).
+  Adicionalmente, super_admin ve **+ Movimiento avanzado** (la
+  captura manual con N partidas para casos no cubiertos por el
+  wizard).
+
+**+ Nuevo movimiento** (dummy proof V1, mayo 21) — abre un selector
+con dos tipos:
+
+- **🔄 Traspaso entre cuentas**: pasé dinero del banco a la caja
+  chica, o de un banco a otro. Form simple con "De qué cuenta sale",
+  "A qué cuenta entra", monto, fecha y para qué fue. El sistema
+  arma el movimiento detrás.
+- **⚖️ Ajuste de saldo**: tengo un saldo en el sistema que no cuadra
+  con la realidad y necesito corregirlo. Form con "Qué cuenta
+  ajustar", "Sube o baja", monto, fecha y por qué (obligatorio). La
+  contrapartida se mete en una cuenta especial **`6.0.01 Ajustes de
+  captura`** que el contador externo puede reconciliar contra el
+  libro fiscal con el export de pólizas.
+
+Ambas opciones generan un movimiento contable cuadrado y trazable —
+el usuario nunca tiene que pensar en cargos/abonos ni en partidas.
 
 **Catálogo de cuentas:** 26 cuentas pre-cargadas (SAT-style
 simplificado) organizadas en 5 grupos:

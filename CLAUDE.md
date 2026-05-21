@@ -1605,6 +1605,161 @@ periodo** (asiento que cancela ingresos/egresos contra Utilidad del
 ejercicio) · **Estimación de ISR/PTU** en estado de resultados ·
 **Export XML/formato fiscal específico** para el PAC del contador.
 
+### S-UX-Dummy-Proof ✅ — 5 mejoras de UX (2026-05-21)
+
+Sprint dedicado a quitar fricción y tecnicismos del sistema para los
+usuarios reales (que NO son contadores). 5 entregas en una sesión:
+
+#### (1) Breadcrumbs + botón "← Volver" universales
+
+- **Partial `_page_header.html`** (dos copias §18) acepta `back_url`
+  y `back_label`. Renderiza link prominente con flecha antes del
+  título; mantiene compat con páginas que no lo pasan.
+- **Tag `breadcrumb_items`** inline en
+  `cuentas/templatetags/forms_helpers.py`. Permite construir lista
+  `[{label,url?},...]` desde args posicionales sin tocar la view.
+- **Sweep de 97 archivos**: 33 listas + 22 forms migrados a
+  `_page_header.html` (antes tenían `<header>` inline); 9 views
+  actualizadas para pasar `back_url` y `breadcrumb_items`; partials
+  con layout custom (chat_bandeja, mios_detalle, site/tablero)
+  editados manualmente.
+- **Excluciones**: `base.html`, auth/legal/errores 4xx-5xx,
+  modales HTMX, partials internos, La Recepción (stub).
+- **12 smoke tests** nuevos (10 Taller + 2 Gerencia).
+
+#### (2) Filtro `|dinero` para todas las cifras
+
+- **`cuentas/templatetags/forms_helpers.py::dinero`** formatea
+  `$1,234.56` con coma de miles + 2 decimales fijos. Maneja
+  `None`/`""` → `—`; negativos → `-$X`; Decimal/float/str/int.
+  Implementación pura Python (sin `humanize`) para minimizar
+  dependencias.
+- Filtro hermano `|dinero_sin_signo` para tablas donde el `$`
+  estorba.
+- **Sweep**: 75 ocurrencias de `${{ x|floatformat:2 }}` reemplazadas
+  por `{{ x|dinero }}` en 23 templates de Tesorería, Cotizaciones,
+  Facturación, Contaduría. Script
+  `/tmp/sweep_dinero.py` (one-shot) hace el match con regex y
+  agrega `{% load forms_helpers %}` donde falta. Cantidades y
+  porcentajes (no dinero) siguen con `floatformat:2`.
+
+#### (3) Botón "Reembolsar ahora" dummy proof
+
+- **Service nuevo** `tesoreria.services.reembolsar_egreso(egreso,
+  *, metodo, banco_o_caja, fecha, actor)` en
+  `apps/tesoreria/services.py`. Valida `estado_pago='por_reembolsar'`,
+  transiciona a `pagado`, registra `metodo`, dispara asiento
+  `auto_reembolso` (origen nuevo en `ORIGEN_ASIENTO`, migración
+  `0004_origen_auto_reembolso`) con partidas D `reembolsos` / H
+  `banco`|`caja` según parámetro. Idempotente vía
+  `referencia_externa='tesoreria.egreso.reembolso:<pk>'`. Silent
+  skip si catálogo incompleto (igual que los signals de Tesorería).
+- **Vista HTMX** `views.egreso_reembolsar`: GET con `HX-Request`
+  retorna modal Wave 5 con form (método select / Banco·Caja radio
+  / fecha). POST exitoso → 204 + `HX-Redirect` a por-pagar. POST
+  fallido reinyecta modal con errores.
+- **Form `ReembolsarEgresoForm`** (Form puro, no ModelForm) con
+  método + banco_o_caja + fecha.
+- **UI**: `templates/tesoreria/_modal_reembolsar.html` (patrón Wave
+  5); `por_pagar.html` reorganizado: cada egreso por reembolsar es
+  una fila con botón verde "Reembolsar" individual (decisión del
+  usuario: NO botón agregado-por-empleado).
+- **Evento Portavoz** `tesoreria.reembolso_pagado` con payload del
+  movimiento.
+- **7 tests nuevos** en `tests/taller/test_tesoreria_reembolso.py`.
+
+#### (4) Factura auto-completar desde proyecto / cotización
+
+- **2 endpoints JSON** nuevos en `apps/facturacion/views.py`:
+  - `GET /facturacion/api/proyecto/<pk>/datos/` →
+    `{id, codigo, nombre, cliente_id, cliente_nombre, cotizaciones:[{id, codigo, titulo, estado}]}`.
+  - `GET /facturacion/api/cotizacion/<pk>/datos/` →
+    `{id, codigo, titulo, cliente_id, cliente_nombre, proyecto_id,
+    proyecto_codigo, moneda, descuento_global_porcentaje, notas,
+    terminos, items:[{descripcion,cantidad,unidad,precio_unitario,
+    descuento_porcentaje}], impuestos:[tasa_id,...]}`.
+  - Ambos `login_required` + `puede_ver_facturacion`.
+- **JS vanilla en `factura_form.html`**: escucha `change` en
+  selects de `proyecto` y `cotizacion_origen`. Al cambiar proyecto
+  pre-llena cliente (solo si está vacío) y arma título sugerido. Al
+  cambiar cotización pre-llena cliente+proyecto+título+
+  descuento+notas+términos, reemplaza líneas existentes (con
+  `confirm()` si ya había) y marca checkboxes de impuestos. Todos
+  los campos quedan editables — es asistencia, no imposición.
+- Helper `setSelectIfDifferent` valida que la opción exista en el
+  `<select>` antes de cambiar valor (sin agregarla si no está).
+
+#### (5) Contabilidad dummy proof V1 completo
+
+Los usuarios NO saben contabilidad. Cambios visuales + un wizard
+nuevo:
+
+- **Templatetags nuevos**
+  `apps/contaduria/templatetags/contaduria_helpers.py`:
+  - `direccion_partida(partida)` → `"Entra"` o `"Sale"` según el
+    binomio (cargo|abono, naturaleza deudora|acreedora). Regla
+    simple: cargo a deudora = entra (la cuenta gana); cargo a
+    acreedora = sale; etc.
+  - `monto_partida(partida)` → retorna el lado > 0 (cargo o abono).
+- **Wizard `+ Nuevo movimiento`** (`/contaduria/movimiento/nuevo/`)
+  con 2 modos:
+  - **Traspaso entre cuentas** (banco→caja, banco A→B):
+    `/contaduria/movimiento/traspaso/`. Form: de qué cuenta sale, a
+    cuál entra, monto, fecha, descripción. El sistema arma
+    `D destino / H origen` con origen=`manual`. Cuentas elegibles:
+    `tipo in {activo, pasivo}` (representan dinero líquido).
+  - **Ajuste de saldo** (corregir saldo que no cuadra con la
+    realidad): `/contaduria/movimiento/ajuste/`. Form: qué cuenta,
+    Sube/Baja (radio), monto, fecha, descripción (obligatoria). El
+    sistema mete contrapartida en la cuenta nueva `6.0.01 Ajustes
+    de captura` (sembrada por migración `0005_cuenta_ajuste_captura`,
+    idempotente, tipo=capital, naturaleza=acreedora,
+    slot=`ajuste_captura`). origen=`ajuste`. Lógica de dirección
+    según naturaleza de la cuenta objetivo.
+- **`apps/contaduria/wizards.py`** con
+  `cuentas_traspasables()`/`cuentas_ajustables()`/`registrar_traspaso`/
+  `registrar_ajuste`/`_obtener_o_crear_cuenta_ajuste`.
+- **Renombrado UI** (no en código — sólo strings visibles):
+  - "Asiento contable" → "Movimiento contable".
+  - "Asientos" en navbar/listas → "Movimientos".
+  - "Cargo" / "Abono" → columna unificada **"Movimiento"** con
+    chip "Entra" (verde) o "Sale" (rojo).
+  - "Partida doble" → "Toda entrada tiene una salida".
+  - "Cuenta contable" → "Cuenta".
+- **Columnas técnicas ocultas a no-super_admin**:
+  Naturaleza, Slot, código de cuenta (degradado a tipo de letra
+  pequeño gris claro en `cuentas.html`); "Tipo" en balance;
+  prefijos `1.2.01` en libros mayores.
+- **"+ Asiento manual"** ahora se llama **"+ Movimiento avanzado"**
+  y está gated por `user.rol == 'super_admin'`. El landing muestra
+  ese link solo a esos roles. Resto entra al wizard.
+- **10 tests nuevos** en `tests/taller/test_contaduria_dummy_proof.py`.
+
+**Suite total tras el sprint**: 638 pass, 9 skipped (+29 sobre
+baseline 609). Commits:
+
+| Commit | Entrega |
+|---|---|
+| `1d861b6` | #3 Reembolsar dummy |
+| `5892d5d` | #2 Filtro dinero + #4 Factura autocompletar |
+| `0aa3c39` | #5 Contabilidad dummy proof |
+| `e120dc5` | #1 Breadcrumbs universales |
+
+**Deuda residual diseñada**:
+- Wizard de movimiento NO tiene Step UI (paso 1→2 visual). Cada
+  pantalla es URL propia (`/movimiento/nuevo`, `/traspaso`,
+  `/ajuste`). Suficiente para V1; si LC pide UX más wizard-like,
+  agregar `<nav>` de pasos en V2.
+- "Cuenta de ajustes" `6.0.01` aparece como capital — un contador
+  externo puede preferir que esté en "Otros gastos" o "Ingresos
+  extraordinarios" según el signo del ajuste. V1 deja todo
+  centralizado para visibilidad; V2 puede split por signo.
+- `factura_form` autocompletar reemplaza líneas pero **no impuestos**
+  de líneas existentes — los impuestos al nivel factura sí se
+  reemplazan completos por confirm().
+- Ningún sweep todavía cubre **Mi tablero** (`/perfil/dashboard/`)
+  ni La Recepción (que sigue stub).
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider ya en pre-S2b (Anthropic + OpenAI fallback + DeepSeek);
