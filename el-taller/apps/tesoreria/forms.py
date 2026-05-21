@@ -3,7 +3,7 @@ from datetime import date
 from django import forms
 from django.utils.text import slugify
 
-from .models import CentroDeCosto, Egreso, Ingreso
+from .models import METODOS_EGRESO, CentroDeCosto, Egreso, Ingreso
 
 CSS_INPUT = (
     "block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm "
@@ -113,6 +113,30 @@ class CentroDeCostoForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError("Ya existe un centro de costo con ese nombre/slug.")
         return nombre
+
+
+class ReembolsarEgresoForm(forms.Form):
+    metodo = forms.ChoiceField(
+        choices=METODOS_EGRESO, initial="transferencia",
+        label="Método de pago",
+    )
+    banco_o_caja = forms.ChoiceField(
+        choices=[("banco", "Banco"), ("caja", "Caja")],
+        initial="banco",
+        widget=forms.RadioSelect,
+        label="Cuenta de salida",
+    )
+    fecha = forms.DateField(
+        initial=date.today,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Fecha del pago",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _aplicar_css(self)
+        # El radio no se beneficia de CSS_INPUT (es inline).
+        self.fields["banco_o_caja"].widget.attrs.pop("class", None)
 
 
 class AnularForm(forms.Form):

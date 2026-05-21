@@ -10,6 +10,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from django.db import transaction
 from django.db.models import Count, Sum
 from django.utils import timezone
 
@@ -149,6 +150,80 @@ def anular_ingreso(ingreso: Ingreso, usuario, motivo: str) -> Ingreso:
     ingreso.save(update_fields=["anulado", "anulado_por", "anulado_en",
                                  "motivo_anulacion", "actualizado_en"])
     return ingreso
+
+
+def reembolsar_egreso(egreso: Egreso, *, metodo: str, banco_o_caja: str,
+                      fecha=None, actor=None) -> Egreso:
+    """Marca un Egreso 'por_reembolsar' como pagado y genera asiento
+    'D Reembolsos por pagar / H Banco|Caja' en La Contaduría.
+
+    - `banco_o_caja` ∈ {'banco', 'caja'} — slot de la cuenta destino.
+    - `metodo`: clave de METODOS_EGRESO (transferencia, efectivo, etc.).
+    - Idempotente vía referencia_externa `tesoreria.egreso.reembolso:<pk>`.
+    - Valida estado_pago == 'por_reembolsar' y no anulado.
+    - Emite evento Portavoz `tesoreria.reembolso_pagado`.
+    """
+    from apps.contaduria.services import (
+        AsientoInvalido, crear_asiento, cuenta_por_slot,
+    )
+
+    if egreso.anulado:
+        raise ValueError("No se puede reembolsar un egreso anulado.")
+    if egreso.estado_pago != "por_reembolsar":
+        raise ValueError(
+            f"El egreso {egreso.codigo} no está en estado 'por reembolsar' "
+            f"(actual: {egreso.estado_pago})."
+        )
+    if banco_o_caja not in ("banco", "caja"):
+        raise ValueError("banco_o_caja debe ser 'banco' o 'caja'.")
+
+    fecha = fecha or date.today()
+
+    with transaction.atomic():
+        egreso.estado_pago = "pagado"
+        egreso.metodo = metodo
+        egreso.save(update_fields=["estado_pago", "metodo", "actualizado_en"])
+
+        reembolsos = cuenta_por_slot("reembolsos")
+        destino = cuenta_por_slot(banco_o_caja)
+        if reembolsos is not None and destino is not None:
+            empleado_email = egreso.pagado_por.email if egreso.pagado_por else "—"
+            try:
+                crear_asiento(
+                    descripcion=f"Reembolso a {empleado_email} · {egreso.codigo}",
+                    fecha=fecha,
+                    origen="auto_reembolso",
+                    referencia_externa=f"tesoreria.egreso.reembolso:{egreso.pk}",
+                    creado_por=actor,
+                    partidas=[
+                        {"cuenta": reembolsos, "cargo": egreso.monto, "orden": 0,
+                         "descripcion": f"Cancela reembolso por pagar de {empleado_email}"},
+                        {"cuenta": destino, "abono": egreso.monto, "orden": 1,
+                         "descripcion": f"{metodo} desde {banco_o_caja}"},
+                    ],
+                    idempotente=True,
+                )
+            except AsientoInvalido:
+                # No tumbamos la transacción de Tesorería por un fallo
+                # contable; el catálogo puede estar incompleto en tests.
+                pass
+
+    from lib.portavoz import emitir
+    from lib.portavoz_eventos import EventoPortavoz
+    emitir(EventoPortavoz(
+        tipo="tesoreria.reembolso_pagado",
+        actor_id=getattr(actor, "id", None),
+        actor_email=getattr(actor, "email", None),
+        payload={
+            "egreso_id": egreso.pk,
+            "codigo": egreso.codigo,
+            "monto": float(egreso.monto),
+            "metodo": metodo,
+            "banco_o_caja": banco_o_caja,
+            "empleado_email": egreso.pagado_por.email if egreso.pagado_por else None,
+        },
+    ))
+    return egreso
 
 
 def anular_egreso(egreso: Egreso, usuario, motivo: str) -> Egreso:

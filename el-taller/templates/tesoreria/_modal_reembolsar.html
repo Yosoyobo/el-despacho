@@ -1,0 +1,53 @@
+{% load forms_helpers %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div>
+                <p class="text-xs font-medium uppercase tracking-wider text-success-600 dark:text-success-400">Reembolsar egreso</p>
+                <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">{{ egreso.codigo }}</h2>
+            </div>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <form hx-post="{% url 'tesoreria:egreso-reembolsar' egreso.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
+            {% csrf_token %}
+            <div class="space-y-4 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                <div class="rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                    <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Monto a reembolsar</p>
+                    <p class="mt-1 text-2xl font-semibold text-success-600 dark:text-success-400">{{ egreso.monto|dinero }}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        A {% if egreso.pagado_por %}{{ egreso.pagado_por.nombre_completo|default:egreso.pagado_por.email }}{% else %}—{% endif %}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">{{ egreso.descripcion }}</p>
+                </div>
+
+                <div>
+                    <label for="{{ form.metodo.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método de pago</label>
+                    {{ form.metodo }}
+                    {% if form.metodo.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in form.metodo.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div>
+                    <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cuenta de salida</span>
+                    <div class="flex gap-4 text-sm">
+                        {% for choice in form.banco_o_caja %}
+                            <label class="flex items-center gap-2">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label>
+                        {% endfor %}
+                    </div>
+                    {% if form.banco_o_caja.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in form.banco_o_caja.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.fecha.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha del pago</label>
+                    {{ form.fecha }}
+                    {% if form.fecha.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in form.fecha.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario bg-success-600 hover:bg-success-700">Pagar reembolso</button>
+            </footer>
+        </form>
+    </div>
+</div>

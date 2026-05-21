@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}Por pagar — La Tesorería{% endblock %}
 {% block contenido %}
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -22,7 +23,7 @@
         </select>
     </div>
     <button type="submit" class="btn-secundario">Filtrar</button>
-    <span class="ml-auto text-sm text-gray-600 dark:text-gray-300">Total: <strong>${{ total|floatformat:2 }}</strong></span>
+    <span class="ml-auto text-sm text-gray-600 dark:text-gray-300">Total: <strong>{{ total|dinero }}</strong></span>
 </form>
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -35,7 +36,7 @@
                     <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ e.fecha|date:"Y-m-d" }} · {{ e.proveedor_nombre|default:e.centro_de_costo.nombre }} · <span class="badge {% if e.estado_pago == 'por_reembolsar' %}badge-warning{% else %}badge-gray{% endif %}">{{ e.get_estado_pago_display }}</span></p>
                 </div>
-                <span class="font-semibold text-error-600 dark:text-error-400">${{ e.monto|floatformat:2 }}</span>
+                <span class="font-semibold text-error-600 dark:text-error-400">{{ e.monto|dinero }}</span>
             </li>
             {% empty %}
             <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada pendiente" descripcion="No hay egresos por pagar con esos filtros." icono="sparkles" %}</li>
@@ -43,20 +44,38 @@
         </ul>
     </section>
     <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800"><h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reembolsos por empleado</h2></header>
+        <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800"><h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reembolsos pendientes</h2></header>
         <ul class="divide-y divide-gray-200 dark:divide-gray-800">
-            {% for r in reembolsos %}
-            <li class="flex items-center justify-between px-5 py-3 text-sm">
-                <div>
-                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ r.pagado_por__nombre_completo|default:r.pagado_por__email }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ r.num }} gasto{{ r.num|pluralize:"s" }}</p>
+            {% for e in egresos_reembolsar %}
+            <li class="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                <div class="min-w-0">
+                    <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>
+                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                        {% if e.pagado_por %}{{ e.pagado_por.nombre_completo|default:e.pagado_por.email }}{% else %}—{% endif %}
+                        · {{ e.fecha|date:"Y-m-d" }}
+                        · {{ e.descripcion|truncatechars:40 }}
+                    </p>
                 </div>
-                <span class="font-semibold text-warning-600 dark:text-warning-400">${{ r.total|floatformat:2 }}</span>
+                <div class="flex flex-shrink-0 items-center gap-3">
+                    <span class="font-semibold text-warning-600 dark:text-warning-400">{{ e.monto|dinero }}</span>
+                    <button type="button"
+                        class="btn-primario bg-success-600 hover:bg-success-700"
+                        hx-get="{% url 'tesoreria:egreso-reembolsar' e.pk %}"
+                        hx-target="#modal-slot" hx-swap="innerHTML">
+                        Reembolsar
+                    </button>
+                </div>
             </li>
             {% empty %}
             <li class="px-5 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada por reembolsar" descripcion="No hay gastos personales pendientes de reembolso." icono="sparkles" %}</li>
             {% endfor %}
         </ul>
+        {% if reembolsos %}
+        <footer class="border-t border-gray-200 px-5 py-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            Totales por empleado:
+            {% for r in reembolsos %}<span class="mr-3">{{ r.pagado_por__nombre_completo|default:r.pagado_por__email }} · <strong>{{ r.total|dinero }}</strong></span>{% endfor %}
+        </footer>
+        {% endif %}
     </section>
 </div>
 {% endblock %}

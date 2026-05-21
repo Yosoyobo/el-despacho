@@ -19,7 +19,7 @@ from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
 from . import exports, services
-from .forms import AnularForm, EgresoForm, IngresoForm
+from .forms import AnularForm, EgresoForm, IngresoForm, ReembolsarEgresoForm
 from .models import Egreso, Ingreso
 from .push_handlers import notificar_reembolso_pendiente
 
@@ -432,6 +432,39 @@ def egreso_anular(request, pk):
     return render(request, template, {"form": form, "objeto": egreso, "tipo": "egreso"})
 
 
+@login_required
+def egreso_reembolsar(request, pk):
+    if (r := _gate(request)) is not None:
+        return r
+    egreso = get_object_or_404(Egreso, pk=pk)
+    es_htmx = request.headers.get("HX-Request") == "true"
+    if egreso.anulado or egreso.estado_pago != "por_reembolsar":
+        messages.error(request, "Sólo egresos 'por reembolsar' vigentes pueden reembolsarse.")
+        destino = reverse("tesoreria:egreso-detalle", args=[egreso.pk])
+        if es_htmx:
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
+    if request.method == "POST":
+        form = ReembolsarEgresoForm(request.POST)
+        if form.is_valid():
+            services.reembolsar_egreso(
+                egreso,
+                metodo=form.cleaned_data["metodo"],
+                banco_o_caja=form.cleaned_data["banco_o_caja"],
+                fecha=form.cleaned_data["fecha"],
+                actor=request.user,
+            )
+            messages.success(request, f"Reembolso de {egreso.codigo} registrado.")
+            destino = reverse("tesoreria:por-pagar")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
+    else:
+        form = ReembolsarEgresoForm()
+    template = "tesoreria/_modal_reembolsar.html" if es_htmx else "tesoreria/reembolsar.html"
+    return render(request, template, {"form": form, "egreso": egreso})
+
+
 # ── Cuentas por cobrar / pagar ─────────────────────────────────────────────
 
 
@@ -463,9 +496,15 @@ def por_pagar(request):
         qs = qs.filter(estado_pago=estado)
     qs = qs.order_by("fecha")
     total = sum((e.monto for e in qs), 0)
+    egresos_reembolsar = (
+        Egreso.vigentes.filter(estado_pago="por_reembolsar")
+        .select_related("pagado_por", "centro_de_costo")
+        .order_by("pagado_por__email", "fecha")
+    )
     return render(request, "tesoreria/por_pagar.html", {
         "egresos": qs, "estado_pago": estado, "total": total,
         "reembolsos": services.reembolsos_pendientes(),
+        "egresos_reembolsar": egresos_reembolsar,
     })
 
 
