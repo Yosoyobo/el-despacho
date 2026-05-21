@@ -1760,6 +1760,160 @@ baseline 609). Commits:
 - Ningún sweep todavía cubre **Mi tablero** (`/perfil/dashboard/`)
   ni La Recepción (que sigue stub).
 
+### S-Finanzas-V2 ✅ — 5 mejoras finanzas + UX (2026-05-21)
+
+Sprint dirigido por reporte de usuario: bug en reembolso + 4 mejoras
+de flujo financiero. Decisiones aprobadas: ejecutar A-E (saltar
+sprint Buzón→Recados para sesión propia).
+
+#### (A) Fix reembolso reflejado en totales, egresos y bancos
+
+- **Migración `0006_resemilla_cuentas_criticas`** (contaduria):
+  recorre 12 slots críticos y fuerza `activa=True` + slot correcto
+  + naturaleza correcta vía `update_or_create`. Idempotente y
+  **auto-curativa**: si en algún entorno una cuenta crítica quedó
+  desactivada (caso original del bug), el siguiente `migrate` la
+  endereza sin intervención manual.
+- **Campos nuevos `Egreso.pagado_en` y `Egreso.pagado_desde`**
+  (`banco`/`caja`) vía migración `0004_egreso_pagado_desde_egreso_pagado_en`.
+  `reembolsar_egreso` los puebla. El detalle del egreso muestra
+  "Fecha de pago YYYY-MM-DD · desde Banco" en una nueva línea del
+  info card "Pago".
+- **`services.reembolsar_egreso` ahora retorna flags**
+  `_reembolso_asiento_creado: bool` y `_reembolso_motivo_no_asiento: str`.
+  Si la operación cambia el estado del egreso pero el asiento NO se
+  genera (catálogo incompleto u otro fallo), la vista surfacea
+  `messages.warning(...)` claro y emite evento
+  `tesoreria.reembolso_sin_asiento` (visible en El Site / DLQ).
+  Antes era un silent skip — ahora se entera el equipo.
+- **5 tests E2E** en `tests/taller/test_reembolso_e2e.py` cubren:
+  Banco baja por el monto, Caja idem, catálogo incompleto deja
+  warning sin tumbar, detalle muestra fecha de pago, migración
+  0006 garantiza activa=True.
+
+#### (B) Autorelleno de factura se limpia al cambiar cliente/proyecto
+
+JS de `factura_form.html` ahora trackea con
+`data-autocompletado-de="proyecto|cotizacion"` cada campo que se
+auto-llenó. Cambios:
+
+- **Cambiar/quitar proyecto** → limpia `cotizacion_origen` +
+  campos heredados de cotización. Cliente se mantiene si fue puesto
+  a mano; sólo se actualiza si estaba auto-lleno. Si la cotización
+  seleccionada no pertenece al nuevo proyecto, se limpia (fetch
+  rápido a la API para verificar).
+- **Cambiar/quitar cliente** → limpia `cotizacion_origen` y
+  proyecto auto-lleno (pueden ser de otro cliente). Conserva lo
+  escrito a mano sobre cliente.
+- **Cambiar/quitar cotización** → limpia título/notas/términos/
+  descuento/líneas/impuestos heredados. `data-autocompletado-de`
+  marca cada elemento para distinguir herencia vs escritura a mano.
+- **`confirm()` mejorado**: en lugar de "reemplazar líneas
+  actuales", ahora aclara "las líneas a mano se conservan, las de
+  la cotización se agregan debajo".
+
+#### (C) Cuentas Stripe / MercadoPago + flujo de payouts
+
+- **Migración `0007_cuentas_procesadores_pago`**: crea
+  `1.1.03 Saldo en Stripe` (activo·deudora·slot `stripe_saldo`) y
+  `1.1.04 Saldo en MercadoPago` (slot `mp_saldo`). Idempotente.
+- **`_cuenta_efectivo_o_banco` en `contaduria/signals.py`**: si
+  `metodo='stripe'` → cuenta Stripe; `metodo='mercadopago'` → MP;
+  resto sigue igual (efectivo → caja; otros → banco). Fallback a
+  banco si el slot no está sembrado (catálogo viejo). Consecuencia:
+  un Ingreso con método Stripe asienta `D Stripe / H Ingresos`,
+  no `D Banco / H Ingresos`. El dinero aparece en el saldo de
+  Stripe hasta que se haga el payout.
+- **Atajo en `/tesoreria/`**: dos botones nuevos en el navbar de
+  Tesorería: "↓ Payout Stripe" y "↓ Retiro MP" que enlazan al
+  wizard de Traspaso pre-configurado con `?origen=<slot>&destino=banco&descripcion=...`.
+- **Tarjetas de saldo en procesadores** en landing de Tesorería:
+  cuando `saldo_stripe > 0` o `saldo_mp > 0`, se muestra una tarjeta
+  prominente con el monto pendiente y un botón "Registrar payout".
+- **Wizard de Traspaso** (`/contaduria/movimiento/traspaso/`)
+  ahora acepta query string `?origen=<slot>&destino=<slot>&descripcion=...`
+  para pre-seleccionar selects. Patrón genérico — sirve para
+  cualquier traspaso recurrente.
+- **5 tests** en `tests/taller/test_stripe_mp.py`.
+
+#### (D) CxC unificado: facturas + anticipos + proyectos legacy
+
+- **`tesoreria.services.cxc_unificado()`** retorna lista de dicts
+  con tipo (`factura`/`anticipo`/`proyecto`), código, cliente,
+  proyecto_codigo, monto_total, monto_cobrado, saldo, fechas,
+  url_detalle, estado_visible. Ordena por vencimiento ascendente
+  (nulls al final).
+- **Evita doble conteo**: los proyectos legacy con factura emitida
+  vinculada NO aparecen como CxC de proyecto (sólo la factura
+  cuenta). Caso de regresión cubierto por test.
+- **`cxc_total_unificado()`** suma el saldo de las 3 fuentes; KPI
+  `cxc-total` ahora lo usa.
+- **Vista `por_cobrar`** rediseñada: 4 KPI hero (Total / Facturas /
+  Anticipos / Proyectos) + tabla con columnas Origen, Código,
+  Cliente, Proyecto, Emisión, Vencimiento, Saldo, Estado.
+- **Export CSV** de cxc ampliado: 10 columnas con Origen + Estado.
+
+#### (E) Anticipos en cotizaciones aprobadas
+
+- **Modelo `Cotizacion`** (migración `0002_anticipo`):
+  - `anticipo_porcentaje` (Decimal 5,2, default 0) — % del total.
+  - `anticipo_monto_override` (Decimal 12,2, nullable) — monto
+    absoluto que pisa al porcentaje cuando se quiere un número
+    redondo ($5,000 exactos).
+  - `anticipo_facturado_en` (DateTime, nullable) — sello de cuando
+    se generó la factura del anticipo.
+- **Properties**:
+  - `anticipo_monto` → override si > 0, si no `total × pct / 100`.
+  - `anticipo_pendiente` → `True` si aprobada + monto > 0 + sin
+    factura del anticipo generada.
+- **Form**: dos campos opcionales con validación (0-100% y monto
+  no negativo). Labels y help_texts amigables.
+- **Service `crear_factura_anticipo(cot, actor)`** en
+  `cotizaciones/services.py`:
+  - Valida `estado='aprobada'` y `anticipo_monto > 0` y
+    `anticipo_facturado_en is None`.
+  - Crea `Factura` borrador con monto=anticipo, línea única
+    "Anticipo · {título}", `cotizacion_origen=cot`, título
+    "Anticipo de {COT-XXXX}", notas incluyen referencia al %.
+  - Marca `cot.anticipo_facturado_en = now`.
+  - Emite evento `cotizacion.anticipo_facturado`.
+  - Idempotente: segunda llamada levanta `ValueError`.
+- **URL/View** `POST /cotizaciones/<pk>/factura-anticipo/`.
+- **UI**: botón "Generar factura del anticipo" en action bar del
+  detalle (solo aparece si `anticipo_pendiente`). Info card
+  "Anticipo" muestra %, monto, override y estado.
+- **KPI nuevo** `anticipos-pendientes`: cuenta cotizaciones
+  aprobadas con anticipo > 0 y sin factura generada. Alerta si > 0.
+- **12 tests** en `tests/taller/test_cxc_anticipos.py`.
+
+**Suite total tras sprint**: 660 pass, 9 skipped (+22 sobre 638).
+Commits:
+
+| Commit | Entrega |
+|---|---|
+| `…` | #A Fix reembolso + migración 0006 + campos pagado_en/desde |
+| `…` | #B Autorelleno factura reset |
+| `…` | #C Stripe/MP cuentas + signal + atajo |
+| `…` | #D + #E CxC unificado + Anticipos |
+
+**Deuda residual diseñada**:
+- **Sprint `S-Buzon-A-Recados-V1`** (unificar Buzón en Recados con
+  clasificación al admin): aprobado para próxima sesión dedicada.
+  Hoy NO se tocó porque cambia migración + permisos y merece su
+  propio deploy.
+- **Cuenta `6.0.01 Ajustes de captura`** (S-UX-Dummy-Proof #5)
+  está como capital; si el contador externo necesita reorganizarla
+  por signo del ajuste, agregar split V2.1.
+- **Stripe webhooks** (registro automático de payouts vía API):
+  cuando LC active credenciales reales de Stripe en Los Ajustes,
+  el webhook puede llamar `wizards.registrar_traspaso` con los
+  datos del payout. Por ahora es manual con atajo de UI.
+- **Cobranza automática de facturas vencidas** (push/email):
+  evento `factura.vencida` ya se emite; falta cron + handler.
+- **Vencidos derivados al vuelo** (cotizaciones y facturas): si LC
+  necesita el evento emitido proactivamente, agregar management
+  command + cron.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider ya en pre-S2b (Anthropic + OpenAI fallback + DeepSeek);

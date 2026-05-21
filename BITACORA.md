@@ -4643,3 +4643,62 @@ Opciones desbloqueadas sin setup externo:
 4. **Mi tablero** (`/perfil/dashboard/`) — el sweep de breadcrumbs no llegó ahí. Probablemente quiere migración aparte cuando alguien lo toque.
 
 Bloqueadas: S2b.1b (Drive setup manual), S2b.caja (credenciales Stripe/MP), S5 Recepción (UI completa).
+
+---
+
+# BITÁCORA — Sesión S-Finanzas-V2 (2026-05-21)
+
+> 5 entregas dirigidas a finanzas y UX. Suite **660 pass, 9 skipped**.
+
+## 1. Módulos entregados
+
+| # | Entrega | Estado | Tests |
+|---|---|---|---|
+| A | Fix reembolso (migración 0006 + pagado_en/desde + warning UI + evento sin_asiento) | ✅ | 5 |
+| B | Autorelleno factura resetea heredados al quitar/cambiar cliente o proyecto | ✅ | (E2E manual) |
+| C | Cuentas Stripe/MP + signal + atajo payout en Tesorería | ✅ | 5 |
+| D | CxC unificado: facturas + anticipos + proyectos legacy sin doble conteo | ✅ | (en E) |
+| E | Anticipos en cotizaciones aprobadas + service crear_factura_anticipo + KPI | ✅ | 12 |
+
+## 2. Decisiones de diseño
+
+- **Auto-curativa migración 0006** en lugar de "buscar el bug en prod". Razón: aunque el código de S-UX-Dummy-Proof era correcto, no podía estar seguro del estado en La Sede. Una migración idempotente que fuerza activa=True + slot correcto resuelve el bug sin investigación remota y previene recurrencias.
+- **`pagado_en` y `pagado_desde` como campos del Egreso** (no FK al asiento contable). Razón: la trazabilidad contable vive en el asiento, pero el operador necesita ver "cuándo se le reembolsó esto" sin entrar a Contaduría. Dos campos pequeños cubren el caso al 100%.
+- **Service retorna flags `_reembolso_*`** en lugar de raise. Razón: si el catálogo está incompleto, queremos que el egreso igual pase a "pagado" (la operación real ya pasó) pero avisar al usuario que la contabilidad quedó pendiente de fix. Lanzar excepción dejaría al egreso en limbo.
+- **JS de autorelleno con `data-autocompletado-de`** (no flag global). Razón: campo a campo permite respetar lo escrito a mano. Si el usuario escribió manualmente título="Factura especial", cambiar proyecto NO lo borra. Sólo se limpia lo que tenga el marker.
+- **Stripe/MP como cuentas en lugar de campos sueltos**. Razón: integra naturalmente con la contabilidad existente. El saldo de Stripe ES un activo (cuenta deudora). Cuando bajas el payout, es un traspaso contable estándar. Patrón extensible a otros procesadores futuros (Conekta, PayPal, OpenPay).
+- **Wizard de Traspaso con query string** para atajos. Razón: un solo punto de mantenimiento (el wizard). Los atajos de Stripe/MP son sólo URLs con `?origen=...&destino=...&descripcion=...`. Si mañana LC quiere "Traspaso Caja → Banco" como atajo recurrente, otra URL — sin código nuevo.
+- **Anticipos como metadato en Cotización**, NO estado nuevo. Razón: añadir estado "aprobada-con-anticipo" complica las transiciones existentes. El anticipo es información paralela. La cotización sigue siendo "aprobada"; el sistema sabe si tiene anticipo pendiente via property.
+- **`anticipo_monto_override` además del porcentaje**. Razón: el caso de uso real "20% redondeado a $5,000" no se modela bien con sólo porcentaje. El override gana cuando está; si está vacío, se computa del %.
+- **CxC unificado: anticipos desaparecen al generar la factura del anticipo, no antes**. Razón: la cotización aprobada con anticipo no facturado SÍ es CxC (LC tiene que cobrar ese dinero). Una vez generada la factura, ya es CxC vía la factura, no via cotización. Single source of truth.
+- **Proyectos legacy con factura no se cuentan**. Razón: si emitiste factura del proyecto, la factura ES la CxC. El campo `monto_facturado` del proyecto es legacy de antes de S2b.facturacion-v1 — se preserva por compatibilidad pero no debe doblar contar.
+
+## 3. Cosas que me costaron pensar
+
+- **Encontrar la causa raíz del bug del reembolso**: no tenía acceso a Sede para diagnosticar. Decidí ir directo a la mitigación robusta (migración auto-curativa + warning si asiento falla + evento de visibilidad). El usuario obtiene el fix sin que importe cuál fue la causa exacta.
+- **Mantener el cliente "escrito a mano" cuando cambia el proyecto**: caso de uso: tengo cliente Juan ya seleccionado, agrego proyecto cuyo dueño es Pedro. ¿Cambiar a Pedro automáticamente? Decisión: NO. Si el usuario puso Juan a mano, mantenerlo y dejar que él decida. Solo si el cliente estaba vacío o auto-lleno, sustituir.
+- **Confirm() de cotización**: el original decía "reemplazar líneas actuales". Pero si tienes mixto (a-mano + de-cotización-anterior), no es claro qué se preserva. Reescribí a "las líneas a mano se conservan, las de la cotización se agregan debajo". El comportamiento implementado coincide.
+- **Cuenta de capital para los ajustes**: la cuenta `6.0.01 Ajustes de captura` es contraintuitiva como capital. Pero contablemente, los ajustes son cambios de patrimonio (si subo el saldo de Bancos sin razón externa, mi patrimonio crece). El contador externo puede recategorizar al hacer su libro fiscal.
+- **CxC anticipos: ¿generan asiento o no?** Decidí que NO. La cotización aprobada es promesa de cobro, no realización contable. Cuando se genera la factura del anticipo, ESA factura genera asiento normal (D CxC / H Ingresos + IVA). Si el cliente paga, asiento normal (D Banco / H CxC). El anticipo no es ingreso hasta que se factura.
+
+## 4. Métricas
+
+- **Archivos nuevos**: 9 (migraciones 0006/0007 contaduria, 0002 cotizaciones, 0004 tesoreria, 3 archivos de tests, sin templates nuevos — los wizards existentes manejan los nuevos casos).
+- **Tests nuevos**: 22 (5 reembolso + 5 stripe/mp + 12 cxc/anticipos). Suite total: 660.
+- **Eventos Portavoz nuevos**: 2 (`tesoreria.reembolso_sin_asiento`, `cotizacion.anticipo_facturado`).
+- **KPIs Sala de Juntas nuevos/actualizados**: 1 nuevo (`anticipos-pendientes`) + 1 actualizado (`cxc-total` ahora unificado).
+- **Cuentas contables nuevas**: 2 (Stripe, MercadoPago).
+- **Migraciones**: 4 (todas idempotentes / forward-only).
+
+## 5. Próximo
+
+Sprints aprobados pendientes:
+
+1. **S-Buzon-A-Recados-V1** — unificar Buzón en Recados con clasificación al admin. Sprint propio para mantener cambio aislado (toca migración + permisos + sidebar + Interfón categorías).
+2. **S-Stripe-API** — integración real con Stripe webhooks. Hoy es manual con atajo UI; el webhook llamaría `wizards.registrar_traspaso` automático cuando llega un payout.
+3. **S-Cobranza** — recordatorios automáticos de facturas vencidas (push + email).
+
+Bloqueados por setup externo:
+- S2b.1b (Drive) → desbloquea PDF Cotizaciones/Facturas, OCR recibos.
+- S2b.caja → Stripe + MercadoPago API real (credenciales).
+- S5 Recepción.

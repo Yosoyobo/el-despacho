@@ -196,8 +196,33 @@ GitHub Actions (**El Mensajero**) · GHCR.
   según naturaleza; columnas técnicas (Naturaleza/Slot/código)
   ocultas a no-super_admin; "Asiento manual" gated a super_admin.
   **638 tests verdes** (+29 sobre baseline 609).
-- **S2b resto** La Caja (Stripe + MercadoPago) · La Cobranza ·
-  wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
+- **S-Finanzas-V2** ✅ (cerrado 2026-05-21, 5 entregas):
+  (A) **Fix reembolso**: migración 0006 re-fuerza activa=True en
+  cuentas críticas (auto-curativa); campos `Egreso.pagado_en` y
+  `Egreso.pagado_desde` surfaced en detalle; service retorna flag de
+  warning si asiento no se crea; evento `tesoreria.reembolso_sin_asiento`.
+  (B) **Autorelleno factura reset**: JS trackea
+  `data-autocompletado-de` y limpia campos heredados al
+  quitar/cambiar cliente o proyecto; lo escrito a mano se respeta.
+  (C) **Cuentas Stripe/MercadoPago** + signal: `1.1.03 Stripe`
+  (slot=`stripe_saldo`) y `1.1.04 MercadoPago` (slot=`mp_saldo`)
+  via migración 0007; ingresos con método stripe/mercadopago
+  asientan a sus cuentas (no Banco); atajo "Registrar payout" en
+  Tesorería → wizard Traspaso pre-filtrado. (D) **CxC unificado**:
+  facturas emitidas + anticipos pendientes + proyectos legacy en
+  una sola tabla con columna Origen; evita doble conteo
+  (proyecto con factura no aparece como legacy). KPI `cxc-total`
+  usa total unificado. (E) **Anticipos en cotizaciones**: campos
+  `anticipo_porcentaje` y `anticipo_monto_override` (migración
+  0002_anticipo); service `crear_factura_anticipo` genera Factura
+  borrador con monto=anticipo, vincula a cotización origen,
+  marca `anticipo_facturado_en`; botón en detalle aprobada;
+  evento `cotizacion.anticipo_facturado`; KPI `anticipos-pendientes`.
+  **660 tests verdes** (+22 sobre 638).
+- **S2b resto** La Caja (Stripe + MercadoPago integración API) ·
+  La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
+- **S-Buzon-A-Recados-V1** (pendiente — unificar Buzón en Recados
+  con clasificación al admin; reservado como sprint propio)
 - **S3 resto** Reconciliación bancaria · Cierre de periodo
 - **S3** Contaduría · Sala de Juntas con KPIs reales
 - **S4** Los Chalanes — casos de uso adicionales (categorizar gasto

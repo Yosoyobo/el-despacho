@@ -1,10 +1,45 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.14 · 21 mayo 2026 (revisión: post S-UX-Dummy-Proof)
+> **Versión:** v0.15 · 21 mayo 2026 tarde (revisión: post S-Finanzas-V2)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
 > **Política de actualización:** este manual se actualiza después de cada sprint que entregue funcionalidad nueva. La versión final v1.0 se publicará cuando el desarrollo se considere cerrado.
 
-> **Novedades al 21 mayo 2026 (S-UX-Dummy-Proof):**
+> **Novedades al 21 mayo 2026 — tarde (S-Finanzas-V2):**
+>
+> - **Fix del reembolso**: el bug que dejaba los reembolsos sin afectar
+>   saldos en bancos y totales quedó arreglado. Ahora cuando aprietas
+>   "Reembolsar", el egreso pasa a pagado, aparece la fecha de pago y
+>   desde qué cuenta (Banco o Caja) en el detalle, y el saldo de la
+>   cuenta efectivamente baja por el monto. Si por alguna razón el
+>   movimiento contable no se pudo generar (cuenta desactivada), sale
+>   un warning claro en la pantalla y al super_admin le llega un evento
+>   — antes pasaba silencioso.
+> - **Autorelleno de factura más limpio**: si cambias o quitas el
+>   cliente o el proyecto, los datos que el sistema había auto-rellenado
+>   (líneas de cotización, notas, términos, impuestos) se borran solos.
+>   Lo que tú escribiste a mano se conserva siempre.
+> - **Stripe y MercadoPago como cuentas propias**: cuando registras un
+>   ingreso con método "stripe" o "mercadopago", el dinero ya NO entra
+>   directo a Bancos — entra a la cuenta del procesador (`Saldo en
+>   Stripe`, `Saldo en MercadoPago`). Cuando bajas el payout manualmente
+>   a tu banco, usas el atajo nuevo **"↓ Payout Stripe"** o el botón
+>   **"Registrar payout"** que aparece cuando hay saldo pendiente. Eso
+>   abre el wizard de Traspaso pre-configurado. Refleja la realidad: el
+>   dinero NO está en banco hasta que tú lo bajas.
+> - **Cuentas por cobrar unificadas**: `/tesoreria/por-cobrar/` muestra
+>   **3 fuentes** juntas: facturas emitidas con saldo + anticipos
+>   pendientes de cotizaciones aprobadas + proyectos legacy. Tabla con
+>   columna **Origen** + KPI hero con conteos. Sin doble conteo —
+>   proyectos con factura sólo cuentan como la factura.
+> - **Anticipos en cotizaciones**: el form de cotización tiene dos
+>   campos nuevos, **Anticipo (%)** y **Anticipo ($) override
+>   opcional**. Cuando una cotización aprobada tiene anticipo > 0,
+>   aparece como **CxC tipo Anticipo** y el detalle muestra un botón
+>   **"Generar factura del anticipo"** que crea una Factura en borrador
+>   con el monto correcto, vinculada a la cotización origen. KPI nuevo
+>   en Sala de Juntas: "Anticipos pendientes de facturar".
+>
+> **Novedades anteriores al 21 mayo 2026 — mañana (S-UX-Dummy-Proof):**
 >
 > - **Breadcrumbs y botón "← Volver"** en todas las pantallas. Encima
 >   del título siempre vas a ver "Inicio › Módulo › Página" y un link
