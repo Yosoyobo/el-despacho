@@ -14,4 +14,5 @@ urlpatterns = [
     path("<int:pk>/rechazar/", views.rechazar, name="rechazar"),
     path("<int:pk>/anular/", views.anular, name="anular"),
     path("<int:pk>/duplicar/", views.duplicar, name="duplicar"),
+    path("<int:pk>/factura-anticipo/", views.factura_anticipo, name="factura-anticipo"),
 ]

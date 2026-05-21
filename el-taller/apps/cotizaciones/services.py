@@ -142,12 +142,77 @@ def duplicar(cot: Cotizacion, actor) -> Cotizacion:
     return nueva
 
 
+def crear_factura_anticipo(cot: Cotizacion, actor) -> Factura:  # noqa: F821
+    """Genera una Factura por el monto del anticipo de la cotización.
+
+    Requiere `cot.anticipo_pendiente == True`. Crea la factura en
+    estado 'borrador' con:
+    - monto = `cot.anticipo_monto` (línea única)
+    - cliente, proyecto: heredados de la cotización
+    - cotizacion_origen = esta cotización
+    - titulo = "Anticipo de {COT-XXXX}"
+    - notas mencionan el anticipo
+
+    Marca `cot.anticipo_facturado_en = now`. Idempotente: si ya fue
+    facturado, levanta `ValueError`.
+    """
+    from datetime import date as _date
+    from decimal import Decimal as _Decimal
+
+    if cot.estado != "aprobada":
+        raise ValueError("Solo se puede generar factura de anticipo desde una cotización aprobada.")
+    if cot.anticipo_monto <= 0:
+        raise ValueError("Esta cotización no tiene anticipo configurado.")
+    if cot.anticipo_facturado_en is not None:
+        raise ValueError("Ya se generó la factura del anticipo para esta cotización.")
+
+    from apps.facturacion.models import Factura, FacturaItem
+
+    monto = cot.anticipo_monto
+    with transaction.atomic():
+        factura = Factura.objects.create(
+            cliente=cot.cliente,
+            proyecto=cot.proyecto,
+            cotizacion_origen=cot,
+            titulo=f"Anticipo de {cot.codigo}",
+            estado="borrador",
+            fecha_emision=_date.today(),
+            moneda=cot.moneda,
+            descuento_global_porcentaje=_Decimal("0"),
+            notas=f"Anticipo del {cot.anticipo_porcentaje}% sobre {cot.codigo}.\n\n{cot.notas}".strip(),
+            terminos=cot.terminos,
+            creado_por=actor if getattr(actor, "is_authenticated", False) else None,
+        )
+        FacturaItem.objects.create(
+            factura=factura,
+            orden=0,
+            descripcion=f"Anticipo · {cot.titulo}",
+            cantidad=_Decimal("1.00"),
+            unidad="servicio",
+            precio_unitario=monto,
+            descuento_porcentaje=_Decimal("0.00"),
+        )
+        cot.anticipo_facturado_en = timezone.now()
+        cot.save(update_fields=["anticipo_facturado_en", "actualizado_en"])
+
+    _emitir("cotizacion.anticipo_facturado", cot, actor, {
+        "factura_id": factura.pk,
+        "factura_codigo": factura.codigo,
+        "anticipo_monto": float(monto),
+    })
+    return factura
+
+
 # --- KPIs ----------------------------------------------------------------
 
 def kpis_landing() -> dict:
     """Conteos para el header de la lista de Cotizaciones."""
     qs = Cotizacion.objects.exclude(estado="anulada")
     from datetime import date
+    aprobadas = qs.filter(estado="aprobada", anticipo_facturado_en__isnull=True)
+    # Aprobadas con anticipo pendiente: hay que iterar porque anticipo_monto
+    # es property derivada. Sobre 5 usuarios el conjunto es pequeño.
+    anticipos_pendientes = sum(1 for c in aprobadas if c.anticipo_monto > 0)
     return {
         "borradores": qs.filter(estado="borrador").count(),
         "enviadas": qs.filter(estado="enviada").count(),
@@ -155,4 +220,20 @@ def kpis_landing() -> dict:
         "vencidas": qs.filter(
             estado="enviada", fecha_validez__lt=date.today()
         ).count(),
+        "anticipos_pendientes": anticipos_pendientes,
     }
+
+
+def cotizaciones_con_anticipo_pendiente():
+    """Lista de cotizaciones aprobadas con `anticipo_pendiente=True`.
+
+    Útil para CxC unificado (S-Finanzas-V2 #D) y KPIs. Itera porque
+    `anticipo_monto` es una property derivada; sobre 5 usuarios el
+    conjunto es pequeño (< 50 por mes esperado).
+    """
+    qs = (
+        Cotizacion.objects.filter(estado="aprobada", anticipo_facturado_en__isnull=True)
+        .select_related("cliente", "proyecto")
+        .order_by("-aprobada_en")
+    )
+    return [c for c in qs if c.anticipo_monto > 0]

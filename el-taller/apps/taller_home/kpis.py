@@ -341,9 +341,19 @@ def _kpi_utilidad_mes(user) -> dict:
 
 
 def _kpi_cxc_total(user) -> dict:
-    from apps.tesoreria.services import cxc_proyectos
-    total = sum(s for _, s in cxc_proyectos())
+    """CxC unificado: facturas + anticipos + proyectos legacy."""
+    from apps.tesoreria.services import cxc_total_unificado
+    total = cxc_total_unificado()
     return _resultado(f"${total:,.0f}", link="/tesoreria/por-cobrar/")
+
+
+def _kpi_anticipos_pendientes(user) -> dict:
+    """Cotizaciones aprobadas con anticipo > 0 sin factura del anticipo
+    generada todavía."""
+    from apps.cotizaciones.services import cotizaciones_con_anticipo_pendiente
+    cots = cotizaciones_con_anticipo_pendiente()
+    n = len(cots)
+    return _resultado(n, nota=("alerta" if n > 0 else ""), link="/cotizaciones/?estado=aprobada")
 
 
 def _kpi_cxp_total(user) -> dict:
@@ -572,6 +582,9 @@ KPIS: list[KPI] = [
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_vencidas),
     KPI("cotizaciones-aprobadas-mes", "Cotizaciones aprobadas (mes)", "Conversiones del mes en curso.",
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_aprobadas_mes),
+    KPI("anticipos-pendientes", "Anticipos pendientes de facturar",
+        "Cotizaciones aprobadas con anticipo > 0 sin factura del anticipo generada.",
+        "dinero", ROLES_ADMIN_CONTADOR, _kpi_anticipos_pendientes),
 
     # Facturación (S2b.facturacion-v1)
     KPI("facturas-pendientes-cobro", "Facturas pendientes de cobro",

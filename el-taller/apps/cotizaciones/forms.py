@@ -14,6 +14,7 @@ class CotizacionForm(forms.ModelForm):
             "cliente", "proyecto", "titulo",
             "fecha_emision", "fecha_validez",
             "moneda", "descuento_global_porcentaje",
+            "anticipo_porcentaje", "anticipo_monto_override",
             "notas", "terminos",
         ]
         widgets = {
@@ -22,6 +23,20 @@ class CotizacionForm(forms.ModelForm):
             "notas": forms.Textarea(attrs={"rows": 3}),
             "terminos": forms.Textarea(attrs={"rows": 3}),
         }
+        labels = {
+            "anticipo_porcentaje": "Anticipo (%)",
+            "anticipo_monto_override": "Anticipo ($) — override opcional",
+        }
+        help_texts = {
+            "anticipo_porcentaje": "Porcentaje del total que se cobra como anticipo al aprobar. Deja en 0 para no pedir anticipo.",
+            "anticipo_monto_override": "Si quieres un monto exacto distinto al calculado, ponlo aquí.",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Anticipo es opcional en el form (modelo tiene default 0 / null).
+        self.fields["anticipo_porcentaje"].required = False
+        self.fields["anticipo_monto_override"].required = False
 
     def clean(self):
         cleaned = super().clean()
@@ -35,6 +50,14 @@ class CotizacionForm(forms.ModelForm):
         if desc is not None and (desc < 0 or desc > Decimal("100")):
             self.add_error("descuento_global_porcentaje",
                            "El descuento debe estar entre 0 y 100.")
+        ant_pct = cleaned.get("anticipo_porcentaje")
+        if ant_pct is not None and (ant_pct < 0 or ant_pct > Decimal("100")):
+            self.add_error("anticipo_porcentaje",
+                           "El anticipo debe estar entre 0 y 100%.")
+        ant_monto = cleaned.get("anticipo_monto_override")
+        if ant_monto is not None and ant_monto < 0:
+            self.add_error("anticipo_monto_override",
+                           "El monto del anticipo no puede ser negativo.")
         return cleaned
 
 

@@ -244,6 +244,33 @@ def detalle(request, pk):
         {"label": "Creada", "value": cot.creado_en.strftime("%Y-%m-%d %H:%M")},
         {"label": "Actualizada", "value": cot.actualizado_en.strftime("%Y-%m-%d %H:%M")},
     ]
+    info_anticipo: list = []
+    if (cot.anticipo_porcentaje or 0) > 0 or (cot.anticipo_monto_override or 0) > 0:
+        from cuentas.templatetags.forms_helpers import dinero
+        info_anticipo = [
+            {"label": "Porcentaje", "value": f"{cot.anticipo_porcentaje}%"},
+            {"label": "Monto", "value": dinero(cot.anticipo_monto)},
+        ]
+        if cot.anticipo_monto_override:
+            info_anticipo.append({
+                "label": "Override",
+                "value": dinero(cot.anticipo_monto_override),
+            })
+        if cot.anticipo_facturado_en:
+            info_anticipo.append({
+                "label": "Facturado",
+                "value_html": format_html(
+                    '<span class="text-success-700 dark:text-success-400 font-medium">{}</span>',
+                    cot.anticipo_facturado_en.strftime("%Y-%m-%d %H:%M"),
+                ),
+            })
+        elif cot.estado == "aprobada":
+            info_anticipo.append({
+                "label": "Estado",
+                "value_html": format_html(
+                    '<span class="text-warning-700 dark:text-warning-400 font-medium">Pendiente de facturar</span>',
+                ),
+            })
 
     puede_editar = puede_editar_cotizaciones(request.user) and cot.es_editable
     puede_enviar = puede_enviar_cotizaciones(request.user) and cot.estado == "borrador"
@@ -289,6 +316,21 @@ def detalle(request, pk):
             reverse("cotizaciones:anular", args=[cot.pk]),
         ))
 
+    # Botón "Generar factura del anticipo" — sólo si aprobada y anticipo
+    # configurado pero aún no facturado.
+    if cot.anticipo_pendiente and puede_crear_cotizaciones(request.user):
+        from django.middleware.csrf import get_token
+        token = get_token(request)
+        acciones_html.append(format_html(
+            '<form method="post" action="{}" class="inline">'
+            '<input type="hidden" name="csrfmiddlewaretoken" value="{}">'
+            '<button type="submit" class="btn-primario" '
+            'title="Crea una Factura en borrador por el monto del anticipo, vinculada a esta cotización.">'
+            'Generar factura del anticipo</button></form>',
+            reverse("cotizaciones:factura-anticipo", args=[cot.pk]),
+            token,
+        ))
+
     action_bar_acciones = mark_safe("".join(str(a) for a in acciones_html))
     action_bar_meta = format_html(
         '<span class="text-gray-500">Última actualización {}</span>',
@@ -302,6 +344,7 @@ def detalle(request, pk):
         "info_cliente": info_cliente,
         "info_fechas": info_fechas,
         "info_aprobacion": info_aprobacion,
+        "info_anticipo": info_anticipo,
         "info_captura": info_captura,
         "action_bar_meta": action_bar_meta,
         "action_bar_acciones": action_bar_acciones,
@@ -445,3 +488,27 @@ def duplicar(request, pk):
     nueva = services.duplicar(cot, request.user)
     messages.success(request, f"Cotización duplicada como {nueva.codigo}.")
     return redirect("cotizaciones:editar", pk=nueva.pk)
+
+
+@login_required
+def factura_anticipo(request, pk):
+    """Genera Factura por el monto del anticipo desde una cotización
+    aprobada (S-Finanzas-V2 #E). POST-only."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_crear_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso.")
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido.")
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    try:
+        factura = services.crear_factura_anticipo(cot, request.user)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect("cotizaciones:detalle", pk=cot.pk)
+    messages.success(
+        request,
+        f"Factura del anticipo {factura.codigo} creada en borrador. "
+        f"Revisa los datos y emítela cuando estés listo.",
+    )
+    return redirect("facturacion:editar", pk=factura.pk)

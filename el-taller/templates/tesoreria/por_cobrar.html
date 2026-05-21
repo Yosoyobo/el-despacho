@@ -2,21 +2,95 @@
 {% load forms_helpers %}
 {% block title %}Por cobrar — La Tesorería{% endblock %}
 {% block contenido %}
-{% load forms_helpers %}
 {% breadcrumb_items "Tesorería" "/tesoreria/" "Por cobrar" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Cuentas por cobrar</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Snapshot por proyecto (hasta que Facturación exista en S2b).</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Facturas emitidas con saldo + anticipos de cotizaciones + proyectos legacy.</p>
     </div>
     <a href="{% url 'tesoreria:exportar-csv' 'cxc' %}" class="btn-secundario">📥 CSV</a>
 </header>
 
-<div class="mb-5 rounded-2xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:border-warning-900/30 dark:bg-warning-900/10 dark:text-warning-300">
-    Total pendiente de cobro: <strong>{{ total|dinero }}</strong>
+<div class="mb-5 grid grid-cols-1 gap-3 md:grid-cols-4">
+    <div class="rounded-2xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:border-warning-900/30 dark:bg-warning-900/10 dark:text-warning-300">
+        <p class="text-xs uppercase tracking-wider">Total por cobrar</p>
+        <p class="mt-1 text-title-xs font-semibold">{{ total|dinero }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs uppercase tracking-wider text-gray-500">Facturas</p>
+        <p class="mt-1 text-title-xs font-semibold text-gray-900 dark:text-gray-100">{{ cuenta_facturas }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs uppercase tracking-wider text-gray-500">Anticipos</p>
+        <p class="mt-1 text-title-xs font-semibold text-gray-900 dark:text-gray-100">{{ cuenta_anticipos }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs uppercase tracking-wider text-gray-500">Proyectos legacy</p>
+        <p class="mt-1 text-title-xs font-semibold text-gray-900 dark:text-gray-100">{{ cuenta_proyectos }}</p>
+    </div>
 </div>
 
-{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_cobrar filas_template="tesoreria/_filas_cobrar.html" sin_scroll_vertical=True %}
+<div class="ta-card overflow-x-auto">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            <tr>
+                <th class="px-3 py-2 text-left">Origen</th>
+                <th class="px-3 py-2 text-left">Código</th>
+                <th class="px-3 py-2 text-left">Cliente</th>
+                <th class="px-3 py-2 text-left">Proyecto</th>
+                <th class="px-3 py-2 text-right">Emisión</th>
+                <th class="px-3 py-2 text-right">Vencimiento</th>
+                <th class="px-3 py-2 text-right">Saldo</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for f in filas %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <td class="px-3 py-2">
+                    {% if f.tipo == "factura" %}
+                        <span class="badge badge-brand">Factura</span>
+                    {% elif f.tipo == "anticipo" %}
+                        <span class="badge badge-warning">Anticipo</span>
+                    {% else %}
+                        <span class="badge badge-gray">Proyecto</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-2 font-mono">
+                    <a href="{{ f.url_detalle }}" class="text-brand-600 hover:underline dark:text-brand-400">{{ f.codigo }}</a>
+                </td>
+                <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ f.cliente }}</td>
+                <td class="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ f.proyecto_codigo|default:"—" }}</td>
+                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ f.fecha_emision|date:"Y-m-d"|default:"—" }}</td>
+                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ f.fecha_vencimiento|date:"Y-m-d"|default:"—" }}</td>
+                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{{ f.saldo|dinero }}</td>
+                <td class="px-3 py-2">
+                    {% if f.estado_visible == "vencida" %}
+                        <span class="badge badge-error">Vencida</span>
+                    {% elif f.estado_visible == "emitida" %}
+                        <span class="badge badge-brand">Emitida</span>
+                    {% elif f.estado_visible == "cobrada_parcial" %}
+                        <span class="badge badge-warning">Parcial</span>
+                    {% elif f.estado_visible == "anticipo_pendiente" %}
+                        <span class="badge badge-warning">Anticipo pendiente</span>
+                    {% else %}
+                        <span class="badge badge-gray">Legacy</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="px-3 py-10 text-center">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin cuentas por cobrar" descripcion="Cuando emitas facturas o apruebes cotizaciones con anticipo, aparecerán aquí." icono="folder" %}</td></tr>
+            {% endfor %}
+            {% if filas %}
+            <tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-700">
+                <td class="px-3 py-2" colspan="6">Total</td>
+                <td class="px-3 py-2 text-right">{{ total|dinero }}</td>
+                <td class="px-3 py-2"></td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

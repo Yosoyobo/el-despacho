@@ -35,8 +35,9 @@ ENCABEZADOS: dict[str, list[str]] = {
         "Enlace comprobante", "Capturado por", "Anulado",
     ],
     "cxc": [
-        "Proyecto", "Cliente", "Monto facturado", "Monto cobrado",
-        "Saldo pendiente", "Fecha ingreso esperado",
+        "Origen", "Código", "Cliente", "Proyecto", "Monto total",
+        "Monto cobrado", "Saldo pendiente", "Fecha emisión",
+        "Fecha vencimiento", "Estado",
     ],
     "cxp": [
         "Código", "Fecha", "Proveedor", "Monto", "Pagado por",
@@ -156,15 +157,19 @@ def _filas_egresos(qs):
 
 
 def _filas_cxc():
-    from .services import cxc_proyectos
-    for p, saldo in cxc_proyectos():
+    from .services import cxc_unificado
+    for f in cxc_unificado():
         yield [
-            p.codigo,
-            p.cliente.razon_social if p.cliente else "",
-            _fmt_monto(p.monto_facturado),
-            _fmt_monto(p.monto_cobrado),
-            _fmt_monto(saldo),
-            _fmt_fecha(p.fecha_ingreso_esperado),
+            f["tipo"].capitalize(),
+            f["codigo"],
+            f["cliente"],
+            f["proyecto_codigo"] or "",
+            _fmt_monto(f["monto_total"]),
+            _fmt_monto(f["monto_cobrado"]),
+            _fmt_monto(f["saldo"]),
+            _fmt_fecha(f["fecha_emision"]),
+            _fmt_fecha(f["fecha_vencimiento"]),
+            f["estado_visible"],
         ]
 
 

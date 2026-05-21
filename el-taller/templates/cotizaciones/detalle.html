@@ -96,6 +96,9 @@
         {% if cot.estado == 'aprobada' %}
             {% include "_componentes_tailadmin/_info_card.html" with titulo="Aprobación" items=info_aprobacion %}
         {% endif %}
+        {% if info_anticipo %}
+            {% include "_componentes_tailadmin/_info_card.html" with titulo="Anticipo" items=info_anticipo %}
+        {% endif %}
         {% include "_componentes_tailadmin/_info_card.html" with titulo="Captura" items=info_captura %}
     </aside>
 </div>

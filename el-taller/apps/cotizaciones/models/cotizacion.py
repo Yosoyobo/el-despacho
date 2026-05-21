@@ -79,6 +79,24 @@ class Cotizacion(models.Model):
         max_digits=5, decimal_places=2, default=Decimal("0.00")
     )
 
+    # Anticipo (S-Finanzas-V2 #E). Cuando la cotización está aprobada y
+    # `anticipo_porcentaje > 0`, el monto se cuenta como "por cobrar"
+    # hasta que se genere la factura del anticipo (vía service).
+    # `anticipo_monto_override` permite fijar un monto absoluto distinto
+    # al calculado del porcentaje (caso uso: redondeo a $5,000 exactos).
+    anticipo_porcentaje = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        help_text="% del total que se cobra como anticipo. 0 = sin anticipo.",
+    )
+    anticipo_monto_override = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Monto absoluto del anticipo. Si se deja vacío, se calcula del porcentaje.",
+    )
+    anticipo_facturado_en = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Cuando se generó la factura del anticipo desde esta cotización.",
+    )
+
     notas = models.TextField(blank=True, default="")
     terminos = models.TextField(blank=True, default="")
 
@@ -161,6 +179,29 @@ class Cotizacion(models.Model):
         if self.esta_vencida:
             return "vencida"
         return self.estado
+
+    # --- Anticipo (S-Finanzas-V2 #E) -------------------------------------
+
+    @property
+    def anticipo_monto(self) -> Decimal:
+        """Monto del anticipo. Usa override si está, si no calcula del %."""
+        if self.anticipo_monto_override is not None and self.anticipo_monto_override > 0:
+            return Decimal(self.anticipo_monto_override).quantize(Decimal("0.01"))
+        pct = self.anticipo_porcentaje or Decimal("0")
+        if pct <= 0:
+            return Decimal("0.00")
+        total = self.calcular_totales()["total"]
+        return (Decimal(total) * pct / Decimal("100")).quantize(Decimal("0.01"))
+
+    @property
+    def anticipo_pendiente(self) -> bool:
+        """True si el anticipo está configurado, cotización aprobada y
+        aún no se ha generado la factura del anticipo."""
+        return (
+            self.estado == "aprobada"
+            and self.anticipo_monto > 0
+            and self.anticipo_facturado_en is None
+        )
 
     # --- totales (calculados sobre items) --------------------------------
 
