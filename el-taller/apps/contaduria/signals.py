@@ -34,10 +34,20 @@ def _en_test_sin_settings() -> bool:
 
 
 def _cuenta_efectivo_o_banco(metodo: str):
-    """Para un Ingreso: efectivo → caja; otros métodos → bancos."""
+    """Cuenta donde aterriza un Ingreso según el método de cobro.
+
+    - `efectivo` → Caja
+    - `stripe` → Saldo en Stripe (hasta que se baje el payout manual)
+    - `mercadopago` → Saldo en MercadoPago (igual)
+    - otros (transferencia, depósito, cheque) → Bancos
+    """
     from .services import cuenta_por_slot
     if metodo == "efectivo":
         return cuenta_por_slot("caja")
+    if metodo == "stripe":
+        return cuenta_por_slot("stripe_saldo") or cuenta_por_slot("banco")
+    if metodo == "mercadopago":
+        return cuenta_por_slot("mp_saldo") or cuenta_por_slot("banco")
     return cuenta_por_slot("banco")
 
 

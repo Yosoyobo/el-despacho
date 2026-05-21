@@ -408,8 +408,26 @@ def movimiento_traspaso(request):
         messages.success(request, f"Movimiento registrado: {asiento.codigo}")
         return redirect("contaduria:asiento-detalle", pk=asiento.pk)
 
+    # GET: permitir pre-seleccionar origen/destino via query string
+    # (?origen=stripe_saldo&destino=banco). Atajo Stripe-payout en
+    # /tesoreria/landing/.
+    valores_iniciales = {}
+    slot_origen = (request.GET.get("origen") or "").strip()
+    slot_destino = (request.GET.get("destino") or "").strip()
+    if slot_origen:
+        c = cuentas.filter(slot=slot_origen).first()
+        if c:
+            valores_iniciales["cuenta_origen"] = str(c.pk)
+    if slot_destino:
+        c = cuentas.filter(slot=slot_destino).first()
+        if c:
+            valores_iniciales["cuenta_destino"] = str(c.pk)
+    if request.GET.get("descripcion"):
+        valores_iniciales["descripcion"] = request.GET["descripcion"]
+
     return render(request, "contaduria/movimiento_traspaso_form.html", {
-        "cuentas": cuentas, "valores": {}, "default_fecha": date.today().isoformat(),
+        "cuentas": cuentas, "valores": valores_iniciales,
+        "default_fecha": date.today().isoformat(),
     })
 
 

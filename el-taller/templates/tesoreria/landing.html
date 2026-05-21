@@ -57,7 +57,35 @@
     <a href="{% url 'tesoreria:por-cobrar' %}" class="btn-secundario">Por cobrar</a>
     <a href="{% url 'tesoreria:por-pagar' %}" class="btn-secundario">Por pagar</a>
     <a href="{% url 'tesoreria:reportes' %}" class="btn-secundario">Reportes</a>
+    <a href="/contaduria/movimiento/traspaso/?origen=stripe_saldo&destino=banco&descripcion=Payout+de+Stripe+a+Banco" class="btn-secundario" title="Registra que bajaste tu balance de Stripe a tu cuenta de banco.">↓ Payout Stripe</a>
+    <a href="/contaduria/movimiento/traspaso/?origen=mp_saldo&destino=banco&descripcion=Retiro+de+MercadoPago+a+Banco" class="btn-secundario" title="Registra que retiraste tu balance de MercadoPago a tu cuenta de banco.">↓ Retiro MP</a>
 </div>
+
+{# Saldos en procesadores (info — sólo si hay saldo > 0). #}
+{% if kpis.saldo_stripe or kpis.saldo_mp %}
+<div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+    {% if kpis.saldo_stripe %}
+    <div class="ta-card flex items-center justify-between">
+        <div>
+            <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Saldo en Stripe</p>
+            <p class="mt-1 text-title-xs font-semibold text-gray-900 dark:text-gray-100">{{ kpis.saldo_stripe|dinero }}</p>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400">Pendiente de bajar a Banco</p>
+        </div>
+        <a href="/contaduria/movimiento/traspaso/?origen=stripe_saldo&destino=banco&descripcion=Payout+de+Stripe+a+Banco" class="btn-primario text-sm">Registrar payout</a>
+    </div>
+    {% endif %}
+    {% if kpis.saldo_mp %}
+    <div class="ta-card flex items-center justify-between">
+        <div>
+            <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Saldo en MercadoPago</p>
+            <p class="mt-1 text-title-xs font-semibold text-gray-900 dark:text-gray-100">{{ kpis.saldo_mp|dinero }}</p>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400">Pendiente de retirar</p>
+        </div>
+        <a href="/contaduria/movimiento/traspaso/?origen=mp_saldo&destino=banco&descripcion=Retiro+de+MercadoPago+a+Banco" class="btn-primario text-sm">Registrar retiro</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
     <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
