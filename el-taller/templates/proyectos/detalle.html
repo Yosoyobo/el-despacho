@@ -19,6 +19,34 @@
         {% endif %}
 
         <section>
+            <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Productos involucrados</h2>
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <table class="min-w-full text-sm">
+                    <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                        <tr>
+                            <th class="px-5 py-3 text-left">Producto</th>
+                            <th class="px-5 py-3 text-left">Variación</th>
+                            <th class="px-5 py-3 text-right">Cantidad</th>
+                            <th class="px-5 py-3 text-left">Nota</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                        {% for pp in proyecto.productos.all %}
+                        <tr>
+                            <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ pp.servicio.nombre }}</td>
+                            <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ pp.variacion.nombre|default:"—" }}</td>
+                            <td class="px-5 py-3 text-right tabular-nums">{{ pp.cantidad }}</td>
+                            <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ pp.nota|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin productos vinculados aún. Edítalos al editar el proyecto.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
             <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
                 <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">El Pizarrón — Tareas</h2>
                 {% if puede_editar %}<a href="{% url 'pizarron-nueva-tarea' proyecto.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nueva tarea</a>{% endif %}

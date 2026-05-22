@@ -1,0 +1,6 @@
+{# Cierra el modal vaciando el slot Y refresca el select del cliente con OOB. #}
+<select id="id_cliente" name="cliente" hx-swap-oob="outerHTML:#id_cliente">
+    {% for c in clientes %}
+    <option value="{{ c.pk }}" {% if c.pk == seleccionado %}selected{% endif %}>{{ c.razon_social }}</option>
+    {% endfor %}
+</select>

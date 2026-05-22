@@ -1,5 +1,17 @@
-from apps.los_proyectos.forms import AsignacionForm, CambiarEstadoForm, ProyectoForm
-from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto, ProyectoAsignacion
+from apps.la_cartera.models import Cliente
+from apps.los_proyectos.forms import (
+    AsignacionForm,
+    CambiarEstadoForm,
+    ProyectoForm,
+    ProyectoProductoFormSet,
+    ProyectoProductoFormSetEdit,
+)
+from apps.los_proyectos.models import (
+    ESTADOS_PROYECTO,
+    Proyecto,
+    ProyectoAsignacion,
+    ProyectoProducto,
+)
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -43,7 +55,7 @@ def lista(request):
     orden = (request.GET.get("orden") or "-creado_en").strip()
     if orden.lstrip("-") not in orden_permitido:
         orden = "-creado_en"
-    qs = qs.order_by(orden, "pk")
+    qs = qs.order_by(orden, "pk").prefetch_related("productos__servicio", "productos__variacion")
     paginator = Paginator(qs, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
     base = _proyectos_visibles(request.user)
@@ -78,6 +90,22 @@ def lista(request):
         "puede_crear": puede_editar_proyecto(request.user, None),
         "es_admin": es_admin(request.user),
         "kpis": kpis,
+    })
+
+
+@login_required
+def kanban(request):
+    """Vista Kanban: columnas por estado, tarjetas movibles visualmente."""
+    qs = _proyectos_visibles(request.user).prefetch_related(
+        "productos__servicio", "productos__variacion",
+    )
+    columnas = []
+    for slug, label in ESTADOS_PROYECTO:
+        proyectos = list(qs.filter(estado=slug).order_by("fecha_compromiso", "-creado_en"))
+        columnas.append({"slug": slug, "label": label, "proyectos": proyectos, "total": len(proyectos)})
+    return render(request, "proyectos/kanban.html", {
+        "columnas": columnas,
+        "puede_crear": puede_editar_proyecto(request.user, None),
     })
 
 
@@ -142,11 +170,11 @@ def detalle(request, pk):
         "action_bar_meta": action_bar_meta,
         "action_bar_acciones": action_bar_acciones,
         "breadcrumb_items": [
-            {"url": reverse("proyectos-lista"), "label": "Los Proyectos"},
+            {"url": reverse("proyectos-lista"), "label": "Proyectos"},
             {"label": proyecto.codigo},
         ],
         "back_url": reverse("proyectos-lista"),
-        "back_label": "Los Proyectos",
+        "back_label": "Proyectos",
     })
 
 
@@ -156,10 +184,14 @@ def nuevo(request):
         return HttpResponseForbidden("Solo admins pueden crear proyectos.")
     if request.method == "POST":
         form = ProyectoForm(request.POST)
+        formset = ProyectoProductoFormSet(request.POST, instance=Proyecto())
         if form.is_valid():
             proyecto = form.save(commit=False)
             proyecto.creado_por = request.user
             proyecto.save()
+            formset = ProyectoProductoFormSet(request.POST, instance=proyecto)
+            if formset.is_valid():
+                formset.save()
             emitir(EventoPortavoz(
                 tipo="proyecto.creado",
                 actor_id=request.user.pk,
@@ -172,7 +204,8 @@ def nuevo(request):
             return redirect("proyectos-detalle", pk=proyecto.pk)
     else:
         form = ProyectoForm()
-    return render(request, "proyectos/form.html", {"form": form, "modo": "nuevo"})
+        formset = ProyectoProductoFormSet(instance=Proyecto())
+    return render(request, "proyectos/form.html", {"form": form, "formset": formset, "modo": "nuevo"})
 
 
 @login_required
@@ -182,13 +215,54 @@ def editar(request, pk):
         return HttpResponseForbidden("Solo admins pueden editar proyectos.")
     if request.method == "POST":
         form = ProyectoForm(request.POST, instance=proyecto)
-        if form.is_valid():
+        formset = ProyectoProductoFormSetEdit(request.POST, instance=proyecto)
+        if form.is_valid() and formset.is_valid():
             form.save()
+            formset.save()
             messages.success(request, "Proyecto actualizado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
     else:
         form = ProyectoForm(instance=proyecto)
-    return render(request, "proyectos/form.html", {"form": form, "modo": "editar", "proyecto": proyecto})
+        formset = ProyectoProductoFormSetEdit(instance=proyecto)
+    return render(request, "proyectos/form.html", {
+        "form": form, "formset": formset, "modo": "editar", "proyecto": proyecto,
+    })
+
+
+@login_required
+def cliente_inline(request):
+    """Modal HTMX para crear un Cliente nuevo desde el form de Proyecto.
+
+    GET HTMX  → renderiza modal con form.
+    POST HTMX éxito → 200 con OOB swap del <select cliente> incluyendo
+                       el nuevo cliente seleccionado + cierre del modal.
+    POST HTMX falla → reinyecta modal con errores.
+    """
+    from apps.los_proyectos.forms import ClienteInlineForm
+
+    if not puede_editar_proyecto(request.user, None):
+        return HttpResponseForbidden()
+    es_htmx = request.headers.get("HX-Request") == "true"
+    if request.method == "POST":
+        form = ClienteInlineForm(request.POST)
+        if form.is_valid():
+            cliente = form.save(commit=False)
+            cliente.creado_por = request.user
+            cliente.save()
+            emitir(EventoPortavoz(
+                tipo="cliente.creado",
+                actor_id=request.user.pk,
+                actor_email=request.user.email,
+                payload={"cliente_id": cliente.pk, "origen": "form_proyecto"},
+            ))
+            if es_htmx:
+                return render(request, "proyectos/_cliente_select_oob.html", {
+                    "clientes": Cliente.activos.all(), "seleccionado": cliente.pk,
+                })
+            return redirect("cartera-detalle", pk=cliente.pk)
+    else:
+        form = ClienteInlineForm()
+    return render(request, "proyectos/_modal_cliente.html", {"form": form})
 
 
 @login_required

@@ -1,20 +1,29 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|capfirst }} proyecto — Los Proyectos{% endblock %}
+{% block title %}{{ modo|capfirst }} proyecto — Proyectos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Los Proyectos" "/proyectos/" "Proyecto" as breadcrumb_items %}
-<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
-<header class="mb-6">
-    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Los Proyectos</p>
-    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} proyecto</h1>
-</header>
+{% breadcrumb_items "Proyectos" "/proyectos/" "Proyecto" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|capfirst|add:" proyecto" subtitulo="Datos del proyecto + productos involucrados" breadcrumb_items=breadcrumb_items back_url="/proyectos/" back_label="Proyectos" %}
 
-<form method="post" class="max-w-3xl">
+<form method="post" class="max-w-4xl">
     {% csrf_token %}
-    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos del proyecto</h2>
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             {% for f in form %}
-                {% if f.name == 'nombre' or f.name == 'descripcion' or f.name == 'notas' %}
+                {% if f.name == 'cliente' %}
+                <div class="md:col-span-2">
+                    <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1">{{ f }}</div>
+                        <button type="button" class="btn-secundario whitespace-nowrap"
+                                hx-get="{% url 'proyectos-cliente-inline' %}"
+                                hx-target="#modal-slot"
+                                hx-swap="innerHTML">+ Nuevo cliente</button>
+                    </div>
+                    {% if f.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.errors|join:" · " }}</p>{% endif %}
+                </div>
+                {% elif f.name == 'nombre' or f.name == 'descripcion' %}
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
                 {% else %}
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
@@ -22,9 +31,56 @@
             {% endfor %}
         </div>
     </section>
+
+    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos involucrados</h2>
+            <button type="button" id="add-producto" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Agregar línea</button>
+        </div>
+        {{ formset.management_form }}
+        <div id="formset-productos" class="space-y-3">
+            {% for f in formset %}
+            <div class="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_70px_2fr_auto] dark:border-gray-800">
+                {{ f.id }}
+                <div>{{ f.servicio.label_tag }} {{ f.servicio }}</div>
+                <div>{{ f.variacion.label_tag }} {{ f.variacion }}</div>
+                <div>{{ f.cantidad.label_tag }} {{ f.cantidad }}</div>
+                <div>{{ f.nota.label_tag }} {{ f.nota }}</div>
+                <div class="flex items-end">{% if f.instance.pk %}<label class="text-xs text-error-600 dark:text-error-400">Quitar {{ f.DELETE }}</label>{% endif %}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Si el producto no existe aún, agrégalo primero al <a href="{% url 'catalogo-lista' %}" class="text-brand-600 hover:underline dark:text-brand-400">Catálogo</a> con sus variaciones.</p>
+    </section>
+
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
         <a href="{% if proyecto %}{% url 'proyectos-detalle' proyecto.pk %}{% else %}{% url 'proyectos-lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar proyecto</button>
     </div>
 </form>
+
+<script>
+(function() {
+    const btn = document.getElementById('add-producto');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        const totalForms = document.querySelector('input[name$="-TOTAL_FORMS"]');
+        const contenedor = document.getElementById('formset-productos');
+        const idx = parseInt(totalForms.value, 10);
+        const ultimo = contenedor.lastElementChild;
+        const clon = ultimo.cloneNode(true);
+        clon.innerHTML = clon.innerHTML
+            .replace(new RegExp('productos-' + (idx - 1) + '-', 'g'), 'productos-' + idx + '-')
+            .replace(new RegExp('id_productos-' + (idx - 1) + '-', 'g'), 'id_productos-' + idx + '-');
+        clon.querySelectorAll('input, select, textarea').forEach(function(el) {
+            if (el.type === 'checkbox') { el.checked = false; }
+            else if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
+            else if (el.name && el.name.endsWith('-cantidad')) { el.value = '1'; }
+            else { el.value = ''; }
+        });
+        contenedor.appendChild(clon);
+        totalForms.value = idx + 1;
+    });
+})();
+</script>
 {% endblock %}

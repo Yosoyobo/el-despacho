@@ -2,7 +2,7 @@
 {% block title %}Cambiar estado — {{ proyecto.codigo }}{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Los Proyectos" "/proyectos/" "Cambiar estado" as breadcrumb_items %}
+{% breadcrumb_items "Proyectos" "/proyectos/" "Cambiar estado" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
     <p class="font-mono text-xs uppercase tracking-wider text-brand-500 dark:text-brand-400">{{ proyecto.codigo }} · {{ proyecto.nombre }}</p>

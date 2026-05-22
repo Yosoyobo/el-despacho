@@ -1,14 +1,29 @@
 {% load proyectos_extras %}
 {% for p in proyectos %}
-<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+<tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" onclick="window.location='{% url 'proyectos-detalle' p.pk %}'">
     <td class="px-5 py-3">
-        <a href="{% url 'proyectos-detalle' p.pk %}" class="font-mono text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a>
+        <span class="font-mono text-sm font-medium text-brand-600 dark:text-brand-400">{{ p.codigo }}</span>
     </td>
-    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ p.nombre }}</td>
+    <td class="px-5 py-3">
+        <div class="font-medium text-gray-900 dark:text-gray-100">{{ p.nombre }}</div>
+        {% if p.productos.all %}
+        <div class="mt-1 flex flex-wrap gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            {% for pp in p.productos.all|slice:":4" %}
+                <span class="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 dark:bg-white/[0.05]">{{ pp.etiqueta }}</span>
+            {% endfor %}
+            {% if p.productos.all|length > 4 %}<span class="text-gray-400">+{{ p.productos.all|length|add:"-4" }} más</span>{% endif %}
+        </div>
+        {% endif %}
+    </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social }}</td>
     <td class="px-5 py-3"><span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
+    <td class="px-5 py-3 {{ p.fecha_compromiso|dentro_de_clase }}">
+        {% if p.fecha_compromiso %}
+            <div>{{ p.fecha_compromiso|date:"d M Y" }}</div>
+            <div class="text-xs">{{ p.fecha_compromiso|dentro_de }}</div>
+        {% else %}—{% endif %}
+    </td>
 </tr>
 {% empty %}
-<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin proyectos visibles.</td></tr>
+<tr><td colspan="5" class="px-5 py-10 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos" descripcion="Crea el primer proyecto desde el botón de arriba." icono="folder" %}</div></td></tr>
 {% endfor %}

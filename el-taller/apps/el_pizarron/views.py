@@ -88,7 +88,7 @@ def detalle_tarea(request, pk):
         "info_proyecto": info_proyecto,
         "action_bar_meta": action_bar_meta,
         "breadcrumb_items": [
-            {"url": reverse("proyectos-lista"), "label": "Los Proyectos"},
+            {"url": reverse("proyectos-lista"), "label": "Proyectos"},
             {"url": reverse("proyectos-detalle", args=[tarea.proyecto.pk]), "label": tarea.proyecto.codigo},
             {"label": tarea.titulo},
         ],
