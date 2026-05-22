@@ -246,6 +246,18 @@ GitHub Actions (**El Mensajero**) · GHCR.
   `resumen_global`. (3) El Site (`/site/`) gana cuadrante "🤖
   Chalanes IA" con réplica compacta del mismo dashboard. 10 tests
   nuevos. Suite raíz+gerencia **350 pass + 9 skipped**.
+- **S-RAM-Wave1** ✅ (cerrado 2026-05-22): tuning para droplet de 1 GB.
+  Gunicorn `--workers 2` → `--workers 1` con `--max-requests 1000`
+  en la-gerencia y el-taller (uvicorn async maneja >100 conexiones
+  con 1 worker para 5 usuarios). `MALLOC_ARENA_MAX=2` en las 3 apps
+  + portavoz-worker. Postgres con `shared_buffers=64MB`,
+  `max_connections=20`, `work_mem=2MB`. Redis con `--maxmemory 64mb
+  --maxmemory-policy allkeys-lru`. Ahorro estimado ~400-500 MB.
+  **La Optimización** (`infra/scripts/optimizar.sh`) hookeada al
+  final de `archivo.sh`: VACUUM ANALYZE + Redis BGREWRITEAOF
+  condicional + HUP a gunicorn (graceful, libera fragmentación) +
+  `docker system prune -f` + drop OS page cache. Corre cada noche
+  tras el backup, reporta antes/después en una línea estructurada.
 - **S2b resto** La Caja (Stripe + MercadoPago integración API) ·
   La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
 - **S-Buzon-A-Recados-V1** (pendiente — unificar Buzón en Recados

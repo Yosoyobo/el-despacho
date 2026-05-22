@@ -81,3 +81,14 @@ if [ -f "$HAL_KEY" ]; then
 else
     echo "==> [Archivo] HAL_KEY=$HAL_KEY no existe; saltando rsync remoto."
 fi
+
+# ── La Optimización: limpieza post-backup ────────────────────────────────────
+# Corre best-effort tras cada backup. Su salida queda en el mismo log del cron.
+# Si quieres saltarla puntualmente: `SKIP_OPTIMIZAR=1 archivo.sh`.
+if [ "${SKIP_OPTIMIZAR:-0}" != "1" ]; then
+    OPTIMIZAR="$(dirname "$0")/optimizar.sh"
+    if [ -x "$OPTIMIZAR" ]; then
+        echo "==> [Archivo] disparando La Optimización..."
+        "$OPTIMIZAR" || echo "==> [Archivo] optimizar.sh falló (no bloquea)."
+    fi
+fi

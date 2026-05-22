@@ -50,6 +50,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Portavoz** | Eventos tipados → n8n vía Tailscale (`lib/portavoz.py`) | — |
 | **El Archivo** | Backup pg_dump + credenciales (`archivo.sh`) | — |
 | **La Limpieza** | Cron semanal de imágenes/contenedores | — |
+| **La Optimización** | Limpieza post-backup (vacuum + redis + HUP gunicorn + prune + drop_caches) | — |
 | **Los Analistas** | Abstracción IA multi-provider (S4) | — |
 | **El Reemplazo** | Fallback IA automático (S4) | — |
 
@@ -2089,6 +2090,91 @@ Los Chalanes y en El Site".
   LC quiere unificarlos, refactor pequeño: que `chequear_anthropic`
   delegue a `MimoAdapter()/AnthropicAdapter().probar()`. No es
   bloqueante porque el panel ya muestra el estado en vivo.
+
+### S-RAM-Wave1 ✅ — Optimización de RAM en La Sede (2026-05-22)
+
+Sprint dirigido por reporte del usuario "el server está al límite". El
+droplet `s-1vcpu-1gb` venía corriendo cerca del techo: gunicorn × 2
+workers en la-gerencia + 2 en el-taller = 4 workers async, cada uno
+~150 MB de Django cargado; postgres con defaults (`shared_buffers=128MB`,
+`max_connections=100`); redis sin techo de memoria. Total estimado
+~800-1100 MB en un droplet de 1 GB, con muchos picos a swap.
+
+**Cambios de configuración (sin cambio funcional)**:
+
+- **Gunicorn workers**: `--workers 2` → `--workers 1` en
+  `la-gerencia/entrypoint.sh` y `el-taller/entrypoint.sh`. Un worker
+  UvicornWorker maneja >100 conexiones simultáneas vía event loop;
+  para 5 usuarios y HTMX (sin SSE/WS), 1 basta. Agregado `--max-requests 1000
+  --max-requests-jitter 100` para que gunicorn recicle el worker
+  cada ~1000 requests y libere fragmentación de heap acumulada.
+  Ahorro: ~300 MB.
+- **`MALLOC_ARENA_MAX=2`** como env en las 3 apps Django +
+  portavoz-worker (`docker-compose.yml`). glibc malloc por defecto crea
+  N arenas/CPU que pueden inflarse con Python multithreaded; cap a 2
+  ahorra ~100-200 MB de fragmentación. Conservador, bien documentado
+  para workloads Python en containers chicos.
+- **Postgres command tuning**: `shared_buffers=64MB · work_mem=2MB
+  · effective_cache_size=192MB · max_connections=20
+  · maintenance_work_mem=32MB`. Dimensionado para 5 usuarios y
+  workload pequeño. Ahorro: ~70 MB.
+- **Redis** ahora arranca con `--maxmemory 64mb --maxmemory-policy
+  allkeys-lru`. Antes podía crecer sin techo (la cola del Portavoz y
+  rate-limiter eran riesgo silencioso). LRU evicta lo más viejo
+  cuando llena.
+
+**Ahorro estimado total Wave 1: ~400-500 MB**. Con 1 GB de RAM,
+saca al droplet del límite y deja margen para picos.
+
+**La Optimización** (`infra/scripts/optimizar.sh`) — nuevo script
+hookeado al final de `archivo.sh` (best-effort, `SKIP_OPTIMIZAR=1`
+para saltar). Corre cada noche tras el backup. 5 pasos:
+
+1. **VACUUM ANALYZE** vía `psql` en el container postgres (libera
+   filas muertas, refresca planner stats).
+2. **Redis BGREWRITEAOF** si el AOF llegó a ≥64 MB (umbral configurable
+   `AOF_THRESHOLD_MB`). Compacta el append-only log sin tumbar el
+   container.
+3. **HUP a gunicorn** de la-gerencia y el-taller. Gunicorn maneja
+   HUP graceful: master arranca workers nuevos antes de matar los
+   viejos. Libera memoria fragmentada que `--max-requests` no
+   alcanzó a reciclar ese día. Sin downtime perceptible.
+4. **`docker system prune -f`** (sin `--volumes` por regla §12).
+   Borra containers parados, redes huérfanas, build cache, imágenes
+   dangling. Reporta MB liberados.
+5. **Drop OS page cache** (`sync && echo 3 > /proc/sys/vm/drop_caches`).
+   Libera caché de I/O que el kernel guarda generosamente. En
+   sistemas de 1 GB, valores honestos de `free -m` sirven más que
+   caché especulativo. `SKIP_DROP_CACHES=1` para saltarlo (útil en
+   dev/macOS).
+
+Salida estructurada en una línea final tipo:
+`[Optimización] terminó · RAM_antes=820/1024MB · RAM_despues=540/1024MB
+· vacuum=ok · aof=bajo_umbral(12MB) · hup=ok=2 · prune="Total reclaimed
+space: 124.3MB" · cache=ok`. El cron diario `/var/log/archivo.log`
+captura todo.
+
+**Variables de entorno del script**:
+- `COMPOSE_DIR` (default `/opt/el-despacho`) — ruta al compose en La Sede.
+- `AOF_THRESHOLD_MB` (default 64) — umbral para BGREWRITEAOF.
+- `SKIP_DROP_CACHES`, `SKIP_DOCKER_PRUNE` — flags para entornos
+  donde no aplican.
+
+**Riesgo**: ninguno funcional. El HUP a gunicorn es graceful (validado
+por la propia documentación de gunicorn); si fallara, el container
+queda con el worker viejo y `restart: unless-stopped` cubre el
+worst-case. VACUUM y prune son operaciones rutinarias en cualquier
+deploy de prod. Drop_caches sólo limpia caché de lectura — la
+escritura ya hizo `sync` antes.
+
+**Próximos waves disponibles** (no aplicados aún, decisión del usuario):
+- **Wave 2**: 1 GB swapfile en El Droplet (5 min SSH, previene OOM
+  cuando hay picos como deploys + backup simultáneo).
+- **Wave 3**: apagar `la-recepcion` mientras S5 no exista (ahorra
+  ~120 MB, Caddy responde 503 estático).
+- **Wave 4**: cambiar `UvicornWorker` → sync + `--threads 4` (ahorra
+  30-60 MB, requiere validar que ningún view sea async — el repo es
+  Django clásico sync, debería ser cero código).
 
 ### S4 — IA (Los Chalanes, casos de uso)
 
