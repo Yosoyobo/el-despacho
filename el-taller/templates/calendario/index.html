@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Calendario — El Taller{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Calendario" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Calendario" subtitulo="Entregas de proyectos y tareas con fecha." breadcrumb_items=breadcrumb_items %}
+
+<div class="grid gap-6 lg:grid-cols-2">
+    {% with mes_grid=grid_actual nombre_mes=nombre_mes_actual mes_year=year %}
+    {% include "calendario/_mes.html" %}
+    {% endwith %}
+    {% with mes_grid=grid_siguiente nombre_mes=nombre_mes_siguiente mes_year=year_siguiente %}
+    {% include "calendario/_mes.html" %}
+    {% endwith %}
+</div>
+{% endblock %}

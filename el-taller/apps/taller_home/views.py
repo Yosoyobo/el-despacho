@@ -147,6 +147,16 @@ def home(request):
 
     charts = _charts_sala_de_juntas(rol or "")
 
+    # Mini-calendario del mes en curso (S-LC-Feedback-V1).
+    from apps.calendario.services import datos_mini_cal
+    _hoy = date.today()
+    _meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    mini_cal = {
+        "nombre_mes": f"{_meses[_hoy.month - 1]} {_hoy.year}",
+        "datos": datos_mini_cal(user, _hoy.year, _hoy.month),
+    }
+
     return render(request, "taller_home/home.html", {
         "kpis": kpis_render,
         "sugerencias": sugerencias_view,
@@ -154,6 +164,7 @@ def home(request):
         "pendientes_cotizar": pendientes_cotizar,
         "hoy": date.today(),
         "charts": charts,
+        "mini_cal": mini_cal,
     })
 
 

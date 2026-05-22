@@ -16,6 +16,7 @@ urlpatterns = [
     path("proyectos/", include("apps.los_proyectos.urls")),
     path("catalogo/", include("apps.el_catalogo.urls")),
     path("", include("apps.el_pizarron.urls")),
+    path("calendario/", include("apps.calendario.urls")),
     path("", include("apps.buzon_empleado.urls")),
     path("recados/", include("apps.recados.urls", namespace="recados")),
     path("", include("apps.el_dictado.urls")),
