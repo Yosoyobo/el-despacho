@@ -51,7 +51,6 @@ def test_signal_no_duplica_si_ya_existe():
 @pytest.mark.django_db
 def test_estadisticas_proveedores_agrega_por_provider():
     from ajustes.models.analistas_log import AnalistaLog
-
     from lib.analistas.stats import estadisticas_proveedores
 
     for prov, ok, costo, pt, ct in [
@@ -77,7 +76,6 @@ def test_estadisticas_proveedores_agrega_por_provider():
 @pytest.mark.django_db
 def test_estadisticas_excluye_fuera_de_ventana():
     from ajustes.models.analistas_log import AnalistaLog
-
     from lib.analistas.stats import estadisticas_proveedores
 
     log = AnalistaLog.objects.create(
