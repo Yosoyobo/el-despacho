@@ -27,14 +27,17 @@ else
     python manage.py collectstatic --noinput --clear
 fi
 
-echo "[la-gerencia] Arrancando gunicorn (UvicornWorker, 1 worker)..."
-# S-RAM-Wave1: 1 worker async basta para 5 usuarios; uvicorn maneja >100
-# conexiones simultáneas vía event loop. --max-requests recicla el worker
-# cada ~1000 requests para liberar memoria fragmentada acumulada.
-exec gunicorn la_gerencia.asgi:application \
-    -k uvicorn.workers.UvicornWorker \
+echo "[la-gerencia] Arrancando gunicorn (gthread, 1 worker × 4 threads)..."
+# S-RAM-Wave4: cambio UvicornWorker → gthread (sync con thread pool).
+# El código es Django clásico sync (cero `async def` en views/middleware),
+# así que el event loop de uvicorn era overhead puro (~30-60 MB). gthread
+# con 4 threads sirve >=4 requests concurrentes con menos RAM.
+# --max-requests recicla el worker cada ~1000 reqs para liberar fragmentación.
+exec gunicorn la_gerencia.wsgi:application \
+    -k gthread \
     -b 0.0.0.0:8001 \
     --workers 1 \
+    --threads 4 \
     --max-requests 1000 \
     --max-requests-jitter 100 \
     --access-logfile - \

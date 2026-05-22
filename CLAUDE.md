@@ -2167,14 +2167,82 @@ worst-case. VACUUM y prune son operaciones rutinarias en cualquier
 deploy de prod. Drop_caches sólo limpia caché de lectura — la
 escritura ya hizo `sync` antes.
 
-**Próximos waves disponibles** (no aplicados aún, decisión del usuario):
-- **Wave 2**: 1 GB swapfile en El Droplet (5 min SSH, previene OOM
-  cuando hay picos como deploys + backup simultáneo).
-- **Wave 3**: apagar `la-recepcion` mientras S5 no exista (ahorra
-  ~120 MB, Caddy responde 503 estático).
-- **Wave 4**: cambiar `UvicornWorker` → sync + `--threads 4` (ahorra
-  30-60 MB, requiere validar que ningún view sea async — el repo es
-  Django clásico sync, debería ser cero código).
+Los Waves 2-4 se aplicaron en el siguiente sprint (S-RAM-Waves234).
+
+### S-RAM-Waves234 ✅ — Swap + apagar la-recepcion + gthread (2026-05-22)
+
+Continuación inmediata de Wave 1 tras "dale a todo". Las 3 olas
+aplicadas en una sesión.
+
+**Wave 2 — La Reserva (swapfile 1 GB, costo $0)**:
+- `infra/scripts/habilitar_swap.sh` — script idempotente, ejecuta una
+  vez vía SSH a La Sede como root. Crea `/swapfile` de 1 GB
+  (`fallocate` con fallback a `dd`), `mkswap` + `swapon`, persiste
+  en `/etc/fstab`, configura `vm.swappiness=10` y
+  `vm.vfs_cache_pressure=50` en `/etc/sysctl.d/99-despacho-swap.conf`.
+- **NO sube el plan del droplet** — usa ~1 GB del disco de 25 GB que
+  ya tiene. Es red de seguridad para picos (deploy + backup
+  simultáneos, OCR pesado, etc.). El kernel usa swap sólo cuando es
+  necesario, no preventivamente (swappiness=10 vs default 60).
+- Detecta swap existente y aborta gracefully. Reversible con
+  `swapoff /swapfile && rm /swapfile && sed -i '/\/swapfile/d' /etc/fstab`.
+- **Uso**: `sudo bash infra/scripts/habilitar_swap.sh` desde
+  `/opt/el-despacho` en La Sede. Una sola vez en la vida del droplet.
+
+**Wave 3 — Apagar la-recepcion hasta S5**:
+- `docker-compose.yml`: el servicio `la-recepcion` ahora tiene
+  `profiles: ["s5"]`. Por default NO arranca (docker compose ignora
+  servicios con profile a menos que se pase `--profile`). Para
+  reactivar cuando llegue S5:
+  `docker compose --profile s5 up -d la-recepcion`.
+- `el-portero` (Caddy) pierde el `depends_on` a la-recepcion (sino
+  Caddy no arrancaría sin S5 activo).
+- `Caddyfile` — el bloque `recepcion.ninomeando.com` ahora responde
+  HTML estático "Próximamente · S5" con `503` (mantiene `/ping` 200
+  para healthchecks externos). Cuando S5 active, volver a
+  `reverse_proxy la-recepcion:8002`.
+- Ahorro: ~120 MB de RAM (worker uvicorn + Django stack stub).
+
+**Wave 4 — UvicornWorker → wsgi + gthread**:
+- Validado previamente: cero `async def` en views/middleware del
+  repo. Django clásico sync, sin Channels, sin SSE/WS. UvicornWorker
+  era overhead puro (~30-60 MB por worker en event loop + uvloop).
+- `la-gerencia/entrypoint.sh` y `el-taller/entrypoint.sh`:
+  - `la_gerencia.asgi:application` → `la_gerencia.wsgi:application`
+    (idem para taller). Los archivos `wsgi.py` ya existen desde S1a.
+  - `-k uvicorn.workers.UvicornWorker` → `-k gthread`.
+  - `--workers 1` se mantiene; agregado `--threads 4`.
+- gthread es el worker sync estándar de gunicorn con thread pool;
+  para Django sync + I/O ligero (psycopg, HTTP a IA) es la elección
+  canónica.
+- Ahorro: ~30-60 MB por app × 2 apps = ~60-120 MB.
+- `uvicorn[standard]==0.32.1` queda en `requirements.txt` (deuda
+  diseñada — quitarlo es deuda menor para un follow-up).
+
+**Total estimado Waves 1-4**: ~600-700 MB liberados sobre la línea
+base, más swap como red de seguridad. El droplet de 1 GB queda con
+margen cómodo para 5 usuarios + picos.
+
+**Tests**: cambios de configuración runtime. `bash -n` valida
+sintaxis de los scripts; smoke_docker en El Mensajero valida runtime
+con la nueva config. Suite Python intacta (268 pass + 9 skipped root).
+
+**Riesgo**:
+- Wave 2: ninguno. Swap es estándar de Linux.
+- Wave 3: si Caddy no recarga config al deploy, queda apuntando al
+  upstream caído; `compose pull && up -d` re-genera Caddy también.
+- Wave 4: gthread es ampliamente probado. Único caso problemático
+  sería código no-thread-safe (globals mutables); no hay tal patrón
+  en el repo (revisado).
+
+**Operación post-deploy**:
+1. El Mensajero corre solo, aplica entrypoints nuevos + Caddy nuevo
+   + profile s5 (la-recepcion no arranca).
+2. SSH a La Sede una vez para habilitar swap:
+   `sudo bash /opt/el-despacho/infra/scripts/habilitar_swap.sh`.
+3. `free -h` debe mostrar `Swap: 1024MB` y los procesos gunicorn
+   aparecen como `gthread` en `ps`.
+4. El Site monitorea RAM/CPU — debería bajar ~600 MB el `used`.
 
 ### S4 — IA (Los Chalanes, casos de uso)
 

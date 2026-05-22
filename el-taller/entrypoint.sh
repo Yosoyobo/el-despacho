@@ -18,12 +18,13 @@ else
     python manage.py collectstatic --noinput --clear
 fi
 
-echo "[el-taller] Arrancando gunicorn (UvicornWorker, 1 worker)..."
-# S-RAM-Wave1: ver entrypoint de la-gerencia para el racional.
-exec gunicorn el_taller.asgi:application \
-    -k uvicorn.workers.UvicornWorker \
+echo "[el-taller] Arrancando gunicorn (gthread, 1 worker × 4 threads)..."
+# S-RAM-Wave4: ver entrypoint de la-gerencia para el racional completo.
+exec gunicorn el_taller.wsgi:application \
+    -k gthread \
     -b 0.0.0.0:8000 \
     --workers 1 \
+    --threads 4 \
     --max-requests 1000 \
     --max-requests-jitter 100 \
     --access-logfile - \

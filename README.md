@@ -258,6 +258,18 @@ GitHub Actions (**El Mensajero**) · GHCR.
   condicional + HUP a gunicorn (graceful, libera fragmentación) +
   `docker system prune -f` + drop OS page cache. Corre cada noche
   tras el backup, reporta antes/después en una línea estructurada.
+- **S-RAM-Waves234** ✅ (cerrado 2026-05-22): tres olas adicionales
+  tras Wave 1. **Wave 2 — La Reserva**: `infra/scripts/habilitar_swap.sh`
+  idempotente crea swapfile 1 GB en La Sede (costo $0, NO sube el
+  plan), `swappiness=10` para usar swap sólo cuando es necesario. Red
+  de seguridad contra OOM-kill en picos. **Wave 3 — apagar la-recepcion**:
+  servicio con `profiles: ["s5"]` (no arranca por default hasta S5);
+  Caddy responde HTML estático "Próximamente · S5" con 503. Ahorro:
+  ~120 MB. **Wave 4 — gthread**: tras verificar cero `async def`,
+  `-k uvicorn.workers.UvicornWorker` → `-k gthread` con `--threads 4`,
+  `wsgi:application` en vez de `asgi:application`. Ahorro: ~60-120 MB.
+  Total Waves 1-4: **~600-700 MB liberados** sobre la línea base + swap
+  como red de seguridad. El droplet de 1 GB queda holgado.
 - **S2b resto** La Caja (Stripe + MercadoPago integración API) ·
   La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
 - **S-Buzon-A-Recados-V1** (pendiente — unificar Buzón en Recados

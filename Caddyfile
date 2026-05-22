@@ -16,8 +16,13 @@ gerencia.ninomeando.com {
 }
 
 recepcion.ninomeando.com {
+	# S-RAM-Wave3: La Recepción apagada hasta S5 para ahorrar ~120 MB de
+	# RAM en el droplet. Para reactivar: subir el servicio con
+	# `docker compose --profile s5 up -d la-recepcion` y cambiar este
+	# bloque a `reverse_proxy la-recepcion:8002`.
 	encode gzip
-	reverse_proxy la-recepcion:8002
+	respond /ping "ok" 200
+	respond * `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>La Recepción — Próximamente</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0}main{max-width:480px;padding:2rem;text-align:center}h1{font-size:1.5rem;margin:0 0 0.5rem;color:#fff}p{margin:0;color:#94a3b8;line-height:1.6}.tag{display:inline-block;margin-top:1.5rem;padding:0.25rem 0.75rem;border-radius:9999px;background:#1e293b;color:#60a5fa;font-size:0.75rem;font-weight:500}</style></head><body><main><h1>La Recepción está en obras</h1><p>El portal para clientes estará disponible cuando el despacho termine la siguiente fase de desarrollo. Mientras tanto, comunícate con tu contacto en Learning Center.</p><span class="tag">Próximamente · S5</span></main></body></html>` 503
 }
 
 # Acceso por IP / localhost (HAL dev): mismo routing por path-prefix de host header.
