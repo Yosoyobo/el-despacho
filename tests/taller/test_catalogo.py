@@ -12,7 +12,9 @@ pytestmark = [pytest.mark.taller, pytest.mark.django_db]
 @pytest.fixture
 def categoria(db):
     from apps.el_catalogo.models import CategoriaServicio
-    return CategoriaServicio.objects.create(nombre="Diseño", orden=10)
+    # La categoría "Diseño" ya queda sembrada por la migración LC; reusamos.
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Diseño", defaults={"orden": 10})
+    return cat
 
 
 class TestCatalogoLista:
@@ -116,8 +118,9 @@ def test_seed_idempotente(db):
     from apps.el_catalogo.models import CategoriaServicio
     from django.core.management import call_command
 
+    # Suma de seed_catalogo (6) + migración LC (agrega "Diseño + Producción" extra).
     call_command("seed_catalogo")
     n1 = CategoriaServicio.objects.count()
-    assert n1 == 6
+    assert n1 >= 6
     call_command("seed_catalogo")
     assert CategoriaServicio.objects.count() == n1

@@ -21,8 +21,8 @@ from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
-from .forms import CategoriaForm, ServicioForm
-from .models import CategoriaServicio, Servicio
+from .forms import CategoriaForm, ServicioForm, VariacionForm
+from .models import CategoriaServicio, Servicio, Variacion
 
 
 def _gate(request, accion: str):
@@ -140,6 +140,85 @@ def archivar(request, pk: int):
     srv.save(update_fields=["activo", "actualizado_en"])
     messages.success(request, "Servicio " + ("archivado." if not srv.activo else "reactivado."))
     return redirect("catalogo-lista")
+
+
+# ── Variaciones ──────────────────────────────────────────────────────────────
+
+def variaciones_lista(request, pk: int):
+    """Detalle del servicio + listado de variaciones."""
+    if (r := _gate(request, "ver_nombres")) is not None:
+        return r
+    srv = get_object_or_404(Servicio, pk=pk)
+    variaciones = srv.variaciones.all()
+    return render(request, "catalogo/variaciones.html", {
+        "servicio": srv,
+        "variaciones": variaciones,
+        "puede_editar": puede(request.user, "catalogo", "editar"),
+        "puede_archivar": puede(request.user, "catalogo", "archivar"),
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def variacion_nueva(request, pk: int):
+    if (r := _gate(request, "crear")) is not None:
+        return r
+    srv = get_object_or_404(Servicio, pk=pk)
+    if request.method == "POST":
+        form = VariacionForm(request.POST)
+        if form.is_valid():
+            v = form.save(commit=False)
+            v.servicio = srv
+            v.save()
+            emitir(EventoPortavoz(
+                tipo="catalogo.variacion_creada",
+                actor_id=request.user.pk,
+                actor_email=request.user.email,
+                payload={"servicio_id": srv.pk, "variacion_id": v.pk, "nombre": v.nombre},
+            ))
+            messages.success(request, f"Variación «{v.nombre}» creada.")
+            return redirect("catalogo-variaciones", pk=srv.pk)
+    else:
+        form = VariacionForm()
+    return render(request, "catalogo/variacion_form.html", {
+        "form": form, "servicio": srv, "modo": "nueva",
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def variacion_editar(request, pk: int, vpk: int):
+    if (r := _gate(request, "editar")) is not None:
+        return r
+    srv = get_object_or_404(Servicio, pk=pk)
+    v = get_object_or_404(Variacion, pk=vpk, servicio=srv)
+    if request.method == "POST":
+        form = VariacionForm(request.POST, instance=v)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="catalogo.variacion_actualizada",
+                actor_id=request.user.pk,
+                actor_email=request.user.email,
+                payload={"servicio_id": srv.pk, "variacion_id": v.pk},
+            ))
+            messages.success(request, "Variación actualizada.")
+            return redirect("catalogo-variaciones", pk=srv.pk)
+    else:
+        form = VariacionForm(instance=v)
+    return render(request, "catalogo/variacion_form.html", {
+        "form": form, "servicio": srv, "variacion": v, "modo": "editar",
+    })
+
+
+@require_http_methods(["POST"])
+def variacion_archivar(request, pk: int, vpk: int):
+    if (r := _gate(request, "archivar")) is not None:
+        return r
+    srv = get_object_or_404(Servicio, pk=pk)
+    v = get_object_or_404(Variacion, pk=vpk, servicio=srv)
+    v.disponible = not v.disponible
+    v.save(update_fields=["disponible", "actualizado_en"])
+    messages.success(request, "Variación " + ("ocultada." if not v.disponible else "disponible."))
+    return redirect("catalogo-variaciones", pk=srv.pk)
 
 
 # ── Categorías ───────────────────────────────────────────────────────────────

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ servicio.nombre }} — Variaciones{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "El Catálogo" "/catalogo/" servicio.nombre as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=servicio.nombre subtitulo=servicio.categoria.nombre breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Catálogo" %}
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div class="text-sm text-gray-600 dark:text-gray-300">
+        {% if servicio.descripcion_default %}{{ servicio.descripcion_default }}{% else %}Sin descripción.{% endif %}
+    </div>
+    <div class="flex gap-2">
+        {% if puede_editar %}<a href="{% url 'catalogo-editar' servicio.pk %}" class="btn-secundario">Editar servicio</a>{% endif %}
+        <a href="{% url 'catalogo-variacion-nueva' servicio.pk %}" class="btn-primario">+ Nueva variación</a>
+    </div>
+</div>
+
+<div class="rounded-2xl border border-gray-200 bg-white p-0 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3">Variación</th>
+                <th class="px-5 py-3">Detalles</th>
+                <th class="px-5 py-3 text-right">Costo</th>
+                <th class="px-5 py-3">Impresión</th>
+                <th class="px-5 py-3">Estado</th>
+                <th class="px-5 py-3 text-right"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for v in variaciones %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not v.disponible %}opacity-60{% endif %}">
+                <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ v.nombre }}</td>
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ v.descripcion|default:"—" }}</td>
+                <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">{{ v.costo|dinero }}</td>
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
+                    {% if v.impresion_activa %}
+                        <span class="badge badge-blue">Sí</span>
+                        <div class="mt-1 text-xs">{{ v.impresion_descripcion|default:"—" }} · {{ v.impresion_costo|dinero }}</div>
+                    {% else %}
+                        <span class="badge badge-gray">No</span>
+                    {% endif %}
+                </td>
+                <td class="px-5 py-3">
+                    {% if v.disponible %}<span class="badge badge-success">Disponible</span>{% else %}<span class="badge badge-gray">No disponible</span>{% endif %}
+                </td>
+                <td class="px-5 py-3 text-right">
+                    <div class="inline-flex items-center gap-2">
+                        {% if puede_editar %}<a href="{% url 'catalogo-variacion-editar' servicio.pk v.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>{% endif %}
+                        {% if puede_archivar %}
+                        <form method="post" action="{% url 'catalogo-variacion-archivar' servicio.pk v.pk %}" class="inline">{% csrf_token %}
+                            <button type="submit" class="text-sm font-medium text-warning-700 hover:underline dark:text-warning-400">{% if v.disponible %}Ocultar{% else %}Mostrar{% endif %}</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin variaciones" descripcion="Agrega la primera variante de este producto (talla, color, tintas, etc.)." icono="folder" %}</div></td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
