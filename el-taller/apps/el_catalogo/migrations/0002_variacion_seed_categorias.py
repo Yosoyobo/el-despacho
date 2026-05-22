@@ -3,7 +3,6 @@ solicitadas por LC (Diseño / Impresión / Producción / Diseño + Producción).
 
 from django.db import migrations, models
 
-
 CATEGORIAS_LC = [
     ("Diseño", 10),
     ("Impresión", 20),

@@ -28,7 +28,7 @@ def test_calendario_admin_ve_meses(client, usuario_factory):
 def test_calendario_muestra_entrega_proyecto(client, usuario_factory, proyecto_factory):
     u = usuario_factory(rol="super_admin")
     target = date.today() + timedelta(days=5)
-    p = proyecto_factory(nombre="ProyectoCal", fecha_compromiso=target)
+    proyecto_factory(nombre="ProyectoCal", fecha_compromiso=target)
     client.force_login(u)
     resp = client.get(f"/calendario/?year={target.year}&month={target.month}")
     assert resp.status_code == 200

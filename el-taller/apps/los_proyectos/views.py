@@ -10,7 +10,6 @@ from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
     Proyecto,
     ProyectoAsignacion,
-    ProyectoProducto,
 )
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required

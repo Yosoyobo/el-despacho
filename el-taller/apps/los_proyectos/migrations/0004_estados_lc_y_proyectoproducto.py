@@ -10,9 +10,7 @@ Mapeo de valores viejos → nuevos:
   entregado, en_pausa, cancelado se quedan.
 """
 
-from django.conf import settings
 from django.db import migrations, models
-
 
 MAPEO = {
     "prospecto": "por_cotizar",
