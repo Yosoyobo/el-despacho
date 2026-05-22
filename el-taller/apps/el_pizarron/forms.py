@@ -7,16 +7,21 @@ from cuentas.models.usuario import Usuario
 class TareaForm(forms.ModelForm):
     asignada_a = forms.ModelChoiceField(
         queryset=Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
-        required=False,
-        empty_label="— sin asignar —",
+        required=True,
+        empty_label="— Elige una persona —",
+        label="Asignada a",
+        error_messages={"required": "Asigna la tarea a alguien."},
+    )
+    fecha_compromiso = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Fecha de compromiso",
+        error_messages={"required": "Pon una fecha de compromiso."},
     )
 
     class Meta:
         model = Tarea
         fields = ["titulo", "descripcion", "estado", "prioridad", "asignada_a", "fecha_compromiso"]
-        widgets = {
-            "fecha_compromiso": forms.DateInput(attrs={"type": "date"}),
-        }
 
 
 class ComentarioForm(forms.ModelForm):

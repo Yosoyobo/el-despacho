@@ -13,12 +13,29 @@ def test_admin_crea_tarea(client, usuario_factory, proyecto_factory):
     resp = client.post(
         f"/proyectos/{p.pk}/tareas/nueva",
         {"titulo": "Diseñar portada", "descripcion": "",
-         "estado": "pendiente", "prioridad": "alta", "fecha_compromiso": ""},
+         "estado": "pendiente", "prioridad": "alta",
+         "asignada_a": admin.pk, "fecha_compromiso": "2030-01-15"},
         follow=True,
     )
     assert resp.status_code == 200
     from apps.el_pizarron.models import Tarea
-    assert Tarea.objects.filter(titulo="Diseñar portada", proyecto=p).exists()
+    t = Tarea.objects.get(titulo="Diseñar portada", proyecto=p)
+    assert t.asignada_a_id == admin.pk
+    assert t.fecha_compromiso.isoformat() == "2030-01-15"
+
+
+def test_tarea_sin_asignado_o_fecha_falla(client, usuario_factory, proyecto_factory):
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    client.force_login(admin)
+    resp = client.post(
+        f"/proyectos/{p.pk}/tareas/nueva",
+        {"titulo": "X", "descripcion": "", "estado": "pendiente", "prioridad": "media",
+         "asignada_a": "", "fecha_compromiso": ""},
+    )
+    assert resp.status_code == 200
+    from apps.el_pizarron.models import Tarea
+    assert not Tarea.objects.filter(titulo="X").exists()
 
 
 def test_disenador_asignado_crea_y_completa_tarea(client, usuario_factory, proyecto_factory):
@@ -32,7 +49,8 @@ def test_disenador_asignado_crea_y_completa_tarea(client, usuario_factory, proye
     client.post(
         f"/proyectos/{p.pk}/tareas/nueva",
         {"titulo": "Render final", "descripcion": "",
-         "estado": "pendiente", "prioridad": "media", "fecha_compromiso": ""},
+         "estado": "pendiente", "prioridad": "media",
+         "asignada_a": d.pk, "fecha_compromiso": "2030-02-01"},
     )
     t = Tarea.objects.get(titulo="Render final")
     client.post(f"/tareas/{t.pk}/completar")
