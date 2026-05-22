@@ -94,7 +94,7 @@ def test_push_proyecto_status_va_a_asignados_no_actor(monkeypatch, usuario_facto
     ProyectoAsignacion.objects.create(proyecto=p, usuario=asignado, rol_en_proyecto="disenador")
     ProyectoAsignacion.objects.create(proyecto=p, usuario=actor, rol_en_proyecto="lider")
 
-    notificar_proyecto_status_cambiado(p, "prospecto", "en_diseno", actor)
+    notificar_proyecto_status_cambiado(p, "por_cotizar", "en_proceso_diseno", actor)
     ids = {c["usuario_id"] for c in capturas}
     assert asignado.pk in ids
     assert actor.pk not in ids

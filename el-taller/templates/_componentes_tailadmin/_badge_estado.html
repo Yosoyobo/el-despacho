@@ -16,9 +16,9 @@
 {% with e=estado|lower|default:'' %}
     {% if e == 'activo' or e == 'completado' or e == 'completada' or e == 'aprobado' or e == 'entregado' or e == 'pagado' or e == 'cobrada' or e == 'success' or e == 'ok' %}
         <span class="badge badge-success">{{ etiqueta|default:estado|capfirst }}</span>
-    {% elif e == 'en_diseno' or e == 'en_produccion' or e == 'en_proceso' or e == 'en_revision' or e == 'enviada' %}
+    {% elif e == 'en_diseno' or e == 'en_produccion' or e == 'en_proceso_diseno' or e == 'en_proceso_produccion' or e == 'en_proceso' or e == 'en_revision' or e == 'enviada' %}
         <span class="badge badge-blue">{{ etiqueta|default:estado|capfirst }}</span>
-    {% elif e == 'prospecto' or e == 'cotizado' or e == 'revision_cliente' or e == 'pendiente' or e == 'borrador' %}
+    {% elif e == 'prospecto' or e == 'cotizado' or e == 'por_cotizar' or e == 'esperando_respuesta' or e == 'revision_cliente' or e == 'pendiente' or e == 'borrador' %}
         <span class="badge badge-orange">{{ etiqueta|default:estado|capfirst }}</span>
     {% elif e == 'en_pausa' or e == 'pausa' or e == 'archivado' or e == 'inactivo' or e == 'cerrada' %}
         <span class="badge badge-gray">{{ etiqueta|default:estado|capfirst }}</span>

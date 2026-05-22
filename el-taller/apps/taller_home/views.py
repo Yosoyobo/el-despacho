@@ -25,7 +25,7 @@ from .kpis import CATEGORIAS, kpis_aplicables_a_rol, kpis_visibles_para
 from .models import PreferenciaKPI, SugerenciaKPI
 from .sugerencias import evaluar_y_persistir, sugerencias_pendientes
 
-ESTADOS_ACTIVOS = ("en_diseno", "revision_cliente", "en_produccion")
+ESTADOS_ACTIVOS = ("en_proceso_diseno", "en_proceso_produccion")
 
 
 def _charts_sala_de_juntas(rol: str) -> dict:
@@ -139,7 +139,7 @@ def home(request):
 
     # Tabla "Pendientes de cotizar" — datos reales.
     pendientes_cotizar_qs = Proyecto.objects.filter(
-        estado="prospecto",
+        estado="por_cotizar",
     ).select_related("cliente").order_by("-creado_en")
     if rol == "disenador":
         pendientes_cotizar_qs = pendientes_cotizar_qs.filter(asignaciones__usuario=user).distinct()

@@ -85,8 +85,8 @@ def test_ejecutar_count_proyectos(usuario_factory):
     from lib.kpi_dsl import ejecutar
 
     cli = Cliente.objects.create(razon_social="X")
-    Proyecto.objects.create(cliente=cli, nombre="A", estado="en_diseno")
-    Proyecto.objects.create(cliente=cli, nombre="B", estado="cotizado")
+    Proyecto.objects.create(cliente=cli, nombre="A", estado="en_proceso_diseno")
+    Proyecto.objects.create(cliente=cli, nombre="B", estado="esperando_respuesta")
 
     res = ejecutar({"entidad": "proyecto"})
     assert res["valor"] == 2
@@ -99,13 +99,13 @@ def test_ejecutar_filtro_in_funciona():
     from lib.kpi_dsl import ejecutar
 
     cli = Cliente.objects.create(razon_social="X")
-    Proyecto.objects.create(cliente=cli, nombre="A", estado="en_diseno")
-    Proyecto.objects.create(cliente=cli, nombre="B", estado="cotizado")
+    Proyecto.objects.create(cliente=cli, nombre="A", estado="en_proceso_diseno")
+    Proyecto.objects.create(cliente=cli, nombre="B", estado="esperando_respuesta")
     Proyecto.objects.create(cliente=cli, nombre="C", estado="entregado")
 
     res = ejecutar({
         "entidad": "proyecto",
-        "filtros": [{"campo": "estado", "op": "in", "valor": ["en_diseno", "cotizado"]}],
+        "filtros": [{"campo": "estado", "op": "in", "valor": ["en_proceso_diseno", "esperando_respuesta"]}],
     })
     assert res["valor"] == 2
 
@@ -149,7 +149,7 @@ def test_ejecutor_ventana_tiempo_filtra():
     from lib.kpi_dsl import ejecutar
 
     cli = Cliente.objects.create(razon_social="X")
-    p = Proyecto.objects.create(cliente=cli, nombre="A", estado="en_diseno")
+    p = Proyecto.objects.create(cliente=cli, nombre="A", estado="en_proceso_diseno")
     # Forzar fecha vieja para que ventana 'este_mes' lo excluya.
     Proyecto.objects.filter(pk=p.pk).update(creado_en=date(2020, 1, 1))
 

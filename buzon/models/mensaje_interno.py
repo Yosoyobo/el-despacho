@@ -30,6 +30,11 @@ class MensajeBuzon(models.Model):
     asunto = models.CharField(max_length=200)
     cuerpo = models.TextField()
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="nuevo", db_index=True)
+    prioridad = models.PositiveSmallIntegerField(
+        default=5,
+        db_index=True,
+        help_text="Slider 0-10. 10 = más urgente.",
+    )
 
     nota_interna = models.TextField(blank=True, default="")
     respuesta_publica = models.TextField(blank=True, default="")
@@ -44,7 +49,7 @@ class MensajeBuzon(models.Model):
 
     class Meta:
         db_table = "buzon_mensaje"
-        ordering = ["-creado_en"]
+        ordering = ["-prioridad", "-creado_en"]
         verbose_name = "mensaje del Buzón"
         verbose_name_plural = "mensajes del Buzón"
 

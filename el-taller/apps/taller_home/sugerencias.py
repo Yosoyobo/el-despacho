@@ -33,7 +33,7 @@ def _proyectos_inactivos_count(user) -> int:
     from django.utils import timezone
     limite = timezone.now() - timedelta(days=14)
     return Proyecto.objects.filter(
-        estado__in=("en_diseno", "revision_cliente", "en_produccion"),
+        estado__in=("en_proceso_diseno", "en_proceso_produccion"),
         actualizado_en__lt=limite,
     ).count()
 

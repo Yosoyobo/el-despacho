@@ -56,7 +56,7 @@ def test_admin_crea_proyecto(client, usuario_factory, cliente_factory):
     resp = client.post(
         "/proyectos/nuevo",
         {"nombre": "Catálogo 2026", "cliente": cli.pk, "descripcion": "",
-         "estado": "prospecto", "fecha_inicio": "", "fecha_compromiso": "", "monto_estimado": ""},
+         "estado": "por_cotizar", "fecha_inicio": "", "fecha_compromiso": "", "monto_estimado": ""},
         follow=True,
     )
     assert resp.status_code == 200
@@ -66,16 +66,16 @@ def test_admin_crea_proyecto(client, usuario_factory, cliente_factory):
 
 def test_cambiar_estado_emite_evento(client, usuario_factory, proyecto_factory):
     admin = usuario_factory(rol="dueno")
-    p = proyecto_factory(estado="cotizado")
+    p = proyecto_factory(estado="esperando_respuesta")
     client.force_login(admin)
     resp = client.post(
         f"/proyectos/{p.pk}/cambiar-estado",
-        {"estado": "en_diseno"},
+        {"estado": "en_proceso_diseno"},
         follow=True,
     )
     assert resp.status_code == 200
     p.refresh_from_db()
-    assert p.estado == "en_diseno"
+    assert p.estado == "en_proceso_diseno"
 
 
 def test_detalle_403_para_disenador_no_asignado(client, usuario_factory, proyecto_factory):

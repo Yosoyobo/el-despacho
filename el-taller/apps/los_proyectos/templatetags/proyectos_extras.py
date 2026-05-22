@@ -3,11 +3,10 @@ from django import template
 register = template.Library()
 
 _COLORES = {
-    "prospecto": "badge-blue",
-    "cotizado": "badge-purple",
-    "en_diseno": "badge-warning",
-    "revision_cliente": "badge-orange",
-    "en_produccion": "badge-warning",
+    "por_cotizar": "badge-blue",
+    "esperando_respuesta": "badge-orange",
+    "en_proceso_diseno": "badge-warning",
+    "en_proceso_produccion": "badge-warning",
     "entregado": "badge-success",
     "en_pausa": "badge-gray",
     "cancelado": "badge-error",

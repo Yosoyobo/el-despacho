@@ -33,7 +33,7 @@ def cliente(db, admin):
 
 @pytest.fixture
 def proyecto(db, cliente, admin):
-    return Proyecto.objects.create(cliente=cliente, nombre="Test", estado="en_diseno", creado_por=admin)
+    return Proyecto.objects.create(cliente=cliente, nombre="Test", estado="en_proceso_diseno", creado_por=admin)
 
 
 @pytest.fixture

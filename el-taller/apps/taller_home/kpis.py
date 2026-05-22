@@ -28,7 +28,7 @@ from typing import Any
 
 # ── Constantes auxiliares ──────────────────────────────────────────────────
 
-ESTADOS_PROYECTO_ACTIVOS = ("en_diseno", "revision_cliente", "en_produccion")
+ESTADOS_PROYECTO_ACTIVOS = ("en_proceso_diseno", "en_proceso_produccion")
 ROLES_TODOS = ("super_admin", "dueno", "contador", "disenador")
 ROLES_ADMIN = ("super_admin", "dueno")
 ROLES_ADMIN_CONTADOR = ("super_admin", "dueno", "contador")
@@ -80,8 +80,8 @@ def _kpi_proyectos_activos(user) -> dict:
 def _kpi_prospectos_pipeline(user) -> dict:
     from apps.los_proyectos.models import Proyecto
     return _resultado(
-        Proyecto.objects.filter(estado="prospecto").count(),
-        link="/proyectos/?estado=prospecto",
+        Proyecto.objects.filter(estado="por_cotizar").count(),
+        link="/proyectos/?estado=por_cotizar",
     )
 
 
@@ -89,8 +89,8 @@ def _kpi_cotizados_sin_avance(user) -> dict:
     from apps.los_proyectos.models import Proyecto
     from django.utils import timezone
     limite = timezone.now() - timedelta(days=7)
-    n = Proyecto.objects.filter(estado="cotizado", actualizado_en__lt=limite).count()
-    return _resultado(n, nota=("alerta" if n > 0 else ""), link="/proyectos/?estado=cotizado")
+    n = Proyecto.objects.filter(estado="esperando_respuesta", actualizado_en__lt=limite).count()
+    return _resultado(n, nota=("alerta" if n > 0 else ""), link="/proyectos/?estado=esperando_respuesta")
 
 
 def _kpi_proyectos_en_pausa(user) -> dict:

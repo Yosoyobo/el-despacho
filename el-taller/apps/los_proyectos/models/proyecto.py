@@ -3,17 +3,12 @@ import secrets
 from django.conf import settings
 from django.db import models
 
-# Enum expandido para giro diseño/maquila:
-# - cotizado: entre prospecto y arranque (ventana comercial S2).
-# - revision_cliente: bottleneck típico waiting-on-client.
-# - en_pausa: insumos atrasados, cliente que desaparece (lateral, reversible).
-# - cancelado: terminal.
+# Enum reflejando el ciclo real del despacho (LC, 2026-05-22).
 ESTADOS_PROYECTO = (
-    ("prospecto", "Prospecto"),
-    ("cotizado", "Cotizado"),
-    ("en_diseno", "En diseño"),
-    ("revision_cliente", "Revisión cliente"),
-    ("en_produccion", "En producción"),
+    ("por_cotizar", "Por cotizar"),
+    ("esperando_respuesta", "Esperando respuesta"),
+    ("en_proceso_diseno", "En proceso de diseño"),
+    ("en_proceso_produccion", "En proceso de producción"),
     ("entregado", "Entregado"),
     ("en_pausa", "En pausa"),
     ("cancelado", "Cancelado"),
@@ -34,7 +29,7 @@ class Proyecto(models.Model):
     nombre = models.CharField(max_length=200)
     cliente = models.ForeignKey("cartera.Cliente", on_delete=models.PROTECT, related_name="proyectos")
     descripcion = models.TextField(blank=True, default="")
-    estado = models.CharField(max_length=20, choices=ESTADOS_PROYECTO, default="prospecto", db_index=True)
+    estado = models.CharField(max_length=24, choices=ESTADOS_PROYECTO, default="por_cotizar", db_index=True)
 
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_compromiso = models.DateField(null=True, blank=True)

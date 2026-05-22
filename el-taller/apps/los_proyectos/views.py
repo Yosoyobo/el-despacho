@@ -48,8 +48,8 @@ def lista(request):
     page_obj = paginator.get_page(request.GET.get("page"))
     base = _proyectos_visibles(request.user)
     kpis = {
-        "prospectos": base.filter(estado="prospecto").count(),
-        "activos": base.filter(estado__in=("en_diseno", "revision_cliente", "en_produccion")).count(),
+        "prospectos": base.filter(estado="por_cotizar").count(),
+        "activos": base.filter(estado__in=("en_proceso_diseno", "en_proceso_produccion")).count(),
         "pausa": base.filter(estado="en_pausa").count(),
         "entregados": base.filter(estado="entregado").count(),
     }

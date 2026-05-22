@@ -36,7 +36,7 @@ def test_nl_a_dsl_traduce_y_valida(usuario_factory):
     respuesta = json.dumps({
         "entidad": "proyecto",
         "agregacion": "count",
-        "filtros": [{"campo": "estado", "op": "in", "valor": ["en_produccion"]}],
+        "filtros": [{"campo": "estado", "op": "in", "valor": ["en_proceso_produccion"]}],
         "ventana_tiempo": "siempre",
         "alcance_usuario": "todos",
         "titulo_sugerido": "Proyectos en producción",

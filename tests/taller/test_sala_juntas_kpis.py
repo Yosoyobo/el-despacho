@@ -45,9 +45,9 @@ def test_kpi_dinero_ya_no_es_pendiente_tesoreria():
 
 def test_kpi_proyectos_activos_cuenta_correctamente(usuario_factory, proyecto_factory):
     u = usuario_factory(rol="dueno")
-    proyecto_factory(estado="en_diseno")
-    proyecto_factory(estado="en_produccion")
-    proyecto_factory(estado="prospecto")  # no debe contar
+    proyecto_factory(estado="en_proceso_diseno")
+    proyecto_factory(estado="en_proceso_produccion")
+    proyecto_factory(estado="por_cotizar")  # no debe contar
     proyecto_factory(estado="cancelado")  # no debe contar
 
     from apps.taller_home.kpis import kpi_por_slug
