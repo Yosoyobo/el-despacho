@@ -48,7 +48,37 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # OJO: AlterField PRIMERO. En Postgres el campo es varchar(20) y los
+        # nuevos slugs ("en_proceso_produccion" = 21 chars) no caben hasta
+        # extender el max_length. SQLite no hace el check, por eso este
+        # error sólo se vio en prod/smoke.
+        migrations.AlterField(
+            model_name="proyecto",
+            name="estado",
+            field=models.CharField(
+                choices=[
+                    ("por_cotizar", "Por cotizar"),
+                    ("esperando_respuesta", "Esperando respuesta"),
+                    ("en_proceso_diseno", "En proceso de diseño"),
+                    ("en_proceso_produccion", "En proceso de producción"),
+                    ("entregado", "Entregado"),
+                    ("en_pausa", "En pausa"),
+                    ("cancelado", "Cancelado"),
+                    # Los choices viejos quedan temporalmente para no romper
+                    # validación entre AlterField y RunPython.
+                    ("prospecto", "Prospecto"),
+                    ("cotizado", "Cotizado"),
+                    ("revision_cliente", "Revisión cliente"),
+                    ("en_diseno", "En diseño"),
+                    ("en_produccion", "En producción"),
+                ],
+                db_index=True,
+                default="por_cotizar",
+                max_length=24,
+            ),
+        ),
         migrations.RunPython(renombrar_estados, revertir_estados),
+        # Tras el remap, quitar los choices viejos.
         migrations.AlterField(
             model_name="proyecto",
             name="estado",
