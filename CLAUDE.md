@@ -2379,6 +2379,46 @@ sistema. 7 commits, 6 features grandes en una sola sesión. Suite total
   el push automático de tarea asignada ya existe (S2b.4), pero un
   cron diario que avise "se vence mañana" queda pendiente.
 
+### S-LC-Feedback-V1 hotfix ✅ — Fallback robusto + 3 ejecutores nuevos + catálogo visible (2026-05-22)
+
+Dos bugs reportados por LC tras la primera ola del sprint, más una
+mejora de discoverabilidad:
+
+- **Bug 1 — Fallback no se disparaba con `ErrorPermanente`**
+  ([lib/analistas/reemplazo.py:59-67](lib/analistas/reemplazo.py#L59-L67)):
+  cuando Anthropic devolvía 401/4xx (`ErrorPermanente`) la cadena
+  abortaba en lugar de saltar al siguiente Chalán. Política v3: una
+  llave inválida en un proveedor no implica nada del siguiente, así
+  que la cadena continúa también con `ErrorPermanente`. Solo si
+  TODOS fallan se levanta `TodosFallaron`. Test
+  `test_anthropic_permanente_NO_intenta_openai` renombrado a
+  `test_anthropic_permanente_cae_a_openai` con la nueva aserción.
+- **Bug 2 — "Sin ejecutor para tipo `crear_proyecto`"** (también
+  `crear_cliente`, `actualizar_cliente`): el prompt del Dictado los
+  anunciaba pero no había ejecutores. Cuando el LLM los emitía,
+  `services.aplicar` los marcaba "Sin ejecutor" y nada pasaba.
+  Agregados 3 ejecutores nuevos en
+  [el-taller/apps/el_dictado/ejecutores/basicos.py](el-taller/apps/el_dictado/ejecutores/basicos.py)
+  con whitelist de campos, validación de fechas, resolución de
+  `$cliente`/`@usuario`/`#proyecto` por slug, choices válidos. Total
+  ejecutores activos: **10** (crear/actualizar proyecto+cliente,
+  asignar usuario, crear/actualizar tarea, recado, mensaje del
+  buzón, registrar egreso). `registrar_ingreso` sigue pendiente.
+- **Catálogo visible en Los Chalanes**
+  ([lib/dictado_catalogo.py](lib/dictado_catalogo.py) +
+  [la-gerencia/templates/los_chalanes/panel.html](la-gerencia/templates/los_chalanes/panel.html)):
+  nueva sección "Qué pueden hacer Los Chalanes" en `/chalanes/` con
+  dos columnas — 10 comandos disponibles (con ejemplo en lenguaje
+  natural + payload) y 7 comandos prohibidos con la razón. Fuente
+  única de verdad en `lib/dictado_catalogo.py` (importable desde
+  Gerencia sin acoplar al proyecto Taller). Si agregas un ejecutor
+  nuevo, actualizar los **tres** lugares: ejecutores/, prompt.py,
+  dictado_catalogo.py.
+- Docs actualizadas: DOC_02 §7.2 (política de fallback v3), DOC_04
+  (header v1.4 + nueva §8.1 con tabla de ejecutores activos),
+  DOC_05 manual de usuario (sección Los Chalanes + sección El
+  Dictado con referencia al catálogo).
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

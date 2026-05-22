@@ -190,15 +190,23 @@ class TestCadenaReemplazo:
         assert logs[0].exito is False and logs[0].provider == "anthropic"
         assert logs[1].exito is True and logs[1].provider == "openai"
 
-    def test_anthropic_permanente_NO_intenta_openai(self, credenciales_dummy):
+    def test_anthropic_permanente_cae_a_openai(self, credenciales_dummy):
+        # Política v3 (S-LC-Feedback-V1): ErrorPermanente también dispara
+        # fallback. Una llave inválida en un proveedor no implica nada del
+        # siguiente — cada Chalán tiene su propia credencial.
+        from ajustes.models import AnalistaLog
+
         post_mock = _post_routed(
             anthropic_resp=_RespFalsa(401),
-            openai_resp=_RespFalsa(200, _openai_payload()),
+            openai_resp=_RespFalsa(200, _openai_payload("ok")),
         )
-        with patch("httpx.post", side_effect=post_mock) as mock, \
-             pytest.raises(ErrorPermanente):
-            analizar("cotizaciones", "prompt")
-        assert mock.call_count == 1  # Solo se intentó anthropic.
+        with patch("httpx.post", side_effect=post_mock) as mock:
+            res = analizar("cotizaciones", "prompt")
+        assert res.provider == "openai"
+        assert mock.call_count == 2
+        logs = list(AnalistaLog.objects.order_by("creado_en"))
+        assert logs[0].exito is False and logs[0].provider == "anthropic"
+        assert logs[1].exito is True and logs[1].provider == "openai"
 
     def test_ambos_transitorios_falla_cadena(self, credenciales_dummy):
         post_mock = _post_routed(

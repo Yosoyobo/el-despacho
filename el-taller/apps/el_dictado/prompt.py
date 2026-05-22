@@ -59,6 +59,11 @@ FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
 }
 
 PAYLOADS:
+- crear_proyecto: {nombre, cliente_slug, descripcion?, estado?, fecha_compromiso?, monto_estimado?, monto_cotizado?}
+  estado ∈ por_cotizar|esperando_respuesta|en_proceso_diseno|en_proceso_produccion|entregado|en_pausa|cancelado
+- crear_cliente: {razon_social, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}
+  estado ∈ prospecto|activo|inactivo
+- actualizar_cliente: {cliente_slug, campos: {razon_social?, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}}
 - crear_tarea: {proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad?}
 - actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso?}}
 - actualizar_proyecto: {proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}}

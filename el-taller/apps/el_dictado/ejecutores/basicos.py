@@ -10,6 +10,14 @@ from . import registrar
 
 CAMPOS_PROYECTO_PERMITIDOS = {"estado", "monto_cotizado", "fecha_compromiso", "descripcion"}
 CAMPOS_TAREA_PERMITIDOS = {"estado", "prioridad", "asignado_slug", "fecha_compromiso"}
+CAMPOS_CLIENTE_PERMITIDOS = {
+    "razon_social", "rfc", "nombre_contacto", "email_contacto",
+    "telefono", "direccion", "notas", "estado",
+}
+ESTADOS_PROYECTO_VALIDOS = {
+    "por_cotizar", "esperando_respuesta", "en_proceso_diseno",
+    "en_proceso_produccion", "entregado", "en_pausa", "cancelado",
+}
 
 
 def _resolver_proyecto(slug: str):
@@ -22,12 +30,123 @@ def _resolver_proyecto(slug: str):
     return proyecto
 
 
+def _resolver_cliente(slug: str):
+    from apps.la_cartera.models import Cliente
+    if not slug:
+        raise ValueError("Falta `cliente_slug` en payload.")
+    cliente = Cliente.objects.filter(slug=slug.lower()).first()
+    if not cliente:
+        raise ValueError(f"Cliente `${slug}` no encontrado.")
+    return cliente
+
+
 def _resolver_usuario(slug: str):
     from cuentas.models.usuario import Usuario
     u = Usuario.objects.filter(slug=slug.lower(), is_active=True).first()
     if not u:
         raise ValueError(f"Usuario `@{slug}` no encontrado.")
     return u
+
+
+@registrar("crear_proyecto")
+def crear_proyecto(accion, usuario):
+    """Crea un Proyecto a partir del payload del dictado.
+
+    Payload: nombre (requerido), cliente_slug (requerido, $cliente),
+    descripcion?, estado?, fecha_compromiso?, monto_estimado?,
+    monto_cotizado?.
+    """
+    from datetime import date as _date
+
+    from apps.los_proyectos.models import Proyecto
+
+    payload = accion.payload or {}
+    nombre = (payload.get("nombre") or "").strip()
+    if not nombre:
+        raise ValueError("Falta `nombre` en payload.")
+    cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower())
+
+    estado = (payload.get("estado") or "por_cotizar").lower()
+    if estado not in ESTADOS_PROYECTO_VALIDOS:
+        estado = "por_cotizar"
+
+    fecha_compromiso = None
+    fecha_str = payload.get("fecha_compromiso")
+    if fecha_str:
+        try:
+            fecha_compromiso = _date.fromisoformat(str(fecha_str)[:10])
+        except ValueError as exc:
+            raise ValueError(f"`fecha_compromiso` inválida: {fecha_str}") from exc
+
+    kwargs = {
+        "nombre": nombre[:200],
+        "cliente": cliente,
+        "estado": estado,
+        "descripcion": (payload.get("descripcion") or "")[:2000],
+        "creado_por": usuario,
+    }
+    if fecha_compromiso:
+        kwargs["fecha_compromiso"] = fecha_compromiso
+    for campo in ("monto_estimado", "monto_cotizado"):
+        valor = payload.get(campo)
+        if valor in (None, ""):
+            continue
+        try:
+            kwargs[campo] = float(valor)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"`{campo}` inválido: {valor}") from exc
+
+    proyecto = Proyecto.objects.create(**kwargs)
+    accion.entidad_tipo = "proyecto"
+    accion.entidad_id = proyecto.pk
+
+
+@registrar("crear_cliente")
+def crear_cliente(accion, usuario):
+    """Crea un Cliente. Payload: razon_social (requerido), rfc?, nombre_contacto?,
+    email_contacto?, telefono?, direccion?, notas?, estado?.
+    """
+    from apps.la_cartera.models import Cliente
+
+    payload = accion.payload or {}
+    razon = (payload.get("razon_social") or "").strip()
+    if not razon:
+        raise ValueError("Falta `razon_social` en payload.")
+    estado = (payload.get("estado") or "prospecto").lower()
+    if estado not in {"prospecto", "activo", "inactivo"}:
+        estado = "prospecto"
+    cliente = Cliente.objects.create(
+        razon_social=razon[:200],
+        rfc=(payload.get("rfc") or "")[:13],
+        nombre_contacto=(payload.get("nombre_contacto") or "")[:200],
+        email_contacto=(payload.get("email_contacto") or "")[:254],
+        telefono=(payload.get("telefono") or "")[:40],
+        direccion=(payload.get("direccion") or ""),
+        notas=(payload.get("notas") or ""),
+        estado=estado,
+        creado_por=usuario,
+    )
+    accion.entidad_tipo = "cliente"
+    accion.entidad_id = cliente.pk
+
+
+@registrar("actualizar_cliente")
+def actualizar_cliente(accion, usuario):
+    cliente = _resolver_cliente((accion.payload.get("cliente_slug") or "").lower())
+    campos = accion.payload.get("campos") or {}
+    if not isinstance(campos, dict):
+        raise ValueError("Campo `campos` debe ser dict.")
+    aplicado = []
+    for k, v in campos.items():
+        if k not in CAMPOS_CLIENTE_PERMITIDOS:
+            continue
+        setattr(cliente, k, v)
+        aplicado.append(k)
+    if not aplicado:
+        raise ValueError("Sin campos válidos para actualizar.")
+    cliente.save(update_fields=[*aplicado, "actualizado_en"])
+    accion.entidad_tipo = "cliente"
+    accion.entidad_id = cliente.pk
 
 
 @registrar("actualizar_proyecto")

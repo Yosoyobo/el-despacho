@@ -280,8 +280,13 @@ analizar(estacion, ...)
   │
   ├─ invocar adapter
   │    try: adapter.invocar(llamada)
-  │    catch RateLimit, Timeout, Connection, 5xx: → Reemplazo
-  │    catch ConfigError, AuthError: → propagar (no fallback)
+  │    catch RateLimit, Timeout, Connection, 5xx (ErrorTransitorio): → Reemplazo
+  │    catch FaltaCredencial: → Reemplazo (otro Chalán puede tener su llave)
+  │    catch AuthError, 4xx, prompt rechazado (ErrorPermanente): → Reemplazo
+  │       ↑ política v3 (S-LC-Feedback-V1, 2026-05-22): una llave inválida en
+  │         un proveedor no implica nada del siguiente, así que la cadena
+  │         continúa también con ErrorPermanente. Solo si TODOS los Chalanes
+  │         fallan, se levanta `TodosFallaron`.
   │
   ├─ log a analistas_log (con es_fallback si aplica)
   │

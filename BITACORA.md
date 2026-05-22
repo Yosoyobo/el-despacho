@@ -4918,3 +4918,63 @@ de estado.
 
 S2b.3b sigue ahí cuando LC active Google Drive. Mientras tanto la
 operación con S-LC-Feedback-V1 debería sentirse mucho más fluida.
+
+---
+
+## 8. Hotfix 22 mayo 2026 — Fallback robusto + ejecutores faltantes
+
+Dos bugs reportados tras la primera ola del sprint, más mejora de
+discoverabilidad. Un solo commit.
+
+### 8.1. Fallback ignoraba ErrorPermanente
+
+[lib/analistas/reemplazo.py](lib/analistas/reemplazo.py): un dictado a
+Anthropic devolvió un error permanente (4xx/auth) y la cadena abortó
+en vez de saltar al siguiente Chalán. Cambio de política: una llave
+inválida en un proveedor no implica nada del siguiente, así que
+`ErrorPermanente` también dispara fallback. Solo si TODOS los Chalanes
+fallan se levanta `TodosFallaron`.
+
+Test actualizado:
+`test_anthropic_permanente_NO_intenta_openai` →
+`test_anthropic_permanente_cae_a_openai`.
+
+### 8.2. Ejecutores faltantes (crear_proyecto, crear_cliente, actualizar_cliente)
+
+El prompt del Dictado anunciaba estos 3 tipos pero no había ejecutores
+registrados en
+[el-taller/apps/el_dictado/ejecutores/basicos.py](el-taller/apps/el_dictado/ejecutores/basicos.py).
+Cuando el LLM los emitía, `services.aplicar()` los marcaba "Sin
+ejecutor para tipo X" y nada pasaba. Casos reales reportados (#14, #16
+en historial del Dictado).
+
+Agregados con whitelist de campos, validación de fechas, resolución de
+`$cliente` por slug, choices válidos. Total ejecutores activos: **10**.
+`registrar_ingreso` sigue pendiente.
+
+### 8.3. Catálogo visible "Qué pueden hacer Los Chalanes"
+
+Nueva sección en `/chalanes/` de La Gerencia con dos columnas:
+
+- **✓ Comandos disponibles** — los 10 tipos con título, ejemplo en
+  lenguaje natural y payload esperado.
+- **✗ Lo que no pueden hacer** — los 7 prohibidos con la razón.
+
+Fuente única en [lib/dictado_catalogo.py](lib/dictado_catalogo.py) (en
+`lib/` para que Gerencia lo importe sin acoplar al proyecto Taller).
+
+### 8.4. Docs
+
+- DOC_02 §7.2 documenta la política de fallback v3.
+- DOC_04 header v1.4 + nueva §8.1 con tabla de los 10 ejecutores.
+- DOC_05 manual de usuario actualizado (Los Chalanes + El Dictado).
+- CLAUDE.md nueva sección "S-LC-Feedback-V1 hotfix".
+
+### 8.5. Configuración post-deploy
+
+Cero pasos manuales. El Mensajero corre el deploy normal — no hay
+migración nueva en este hotfix.
+
+Recomendación: super_admin verifica en `/chalanes/cadena/` que la
+cadena tenga al menos 2 Chalanes con llave válida (Claudio + GPT, por
+ejemplo), para que el fallback ahora robusto tenga a dónde caer.

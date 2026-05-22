@@ -20,6 +20,7 @@ from chalanes.models import Aprendizaje, CadenaFallback, CuadroChalanes
 from chalanes.models.cuadro_chalanes import PROVEEDORES
 from lib.analistas.registry import adapter_de
 from lib.analistas.stats import resumen_global, tarjetas_chalanes
+from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS
 from lib.permisos import requires_role
 from lib.portavoz import emitir
 
@@ -41,6 +42,8 @@ def panel(request):
         "tarjetas": tarjetas_chalanes(dias=30),
         "resumen": resumen_global(dias=30),
         "proveedores_opciones": list(PROVEEDORES),
+        "comandos_dictado": COMANDOS_DICTADO,
+        "comandos_prohibidos": COMANDOS_PROHIBIDOS,
     })
 
 

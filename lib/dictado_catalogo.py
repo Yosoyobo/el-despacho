@@ -1,0 +1,112 @@
+"""Catálogo de comandos que El Dictado puede ejecutar.
+
+Fuente única de verdad para la UI de Los Chalanes (qué SÍ y qué NO puede
+hacer un dictado). El prompt del Dictado y los ejecutores reales viven en
+`apps.el_dictado.*` (Taller); este módulo está en `lib/` para que La
+Gerencia lo pueda importar sin acoplarse al proyecto Taller.
+
+Si agregas un ejecutor nuevo en `apps/el_dictado/ejecutores/`, agrégalo
+también aquí y al prompt en `apps/el_dictado/prompt.py`.
+"""
+
+from __future__ import annotations
+
+COMANDOS_DICTADO: list[dict] = [
+    {
+        "tipo": "crear_proyecto",
+        "titulo": "Crear proyecto",
+        "ejemplo": 'Crea un proyecto "branding" para $noko-devs.',
+        "payload": "nombre, cliente_slug, descripcion?, estado?, fecha_compromiso?, monto_estimado?, monto_cotizado?",
+    },
+    {
+        "tipo": "actualizar_proyecto",
+        "titulo": "Actualizar proyecto",
+        "ejemplo": "Cambia el estado de #pry-123456 a entregado.",
+        "payload": "proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}",
+    },
+    {
+        "tipo": "asignar_usuario_proyecto",
+        "titulo": "Asignar usuario a proyecto",
+        "ejemplo": "Asigna a @ana como líder de #pry-123456.",
+        "payload": "proyecto_slug, usuario_slug, rol_en_proyecto? (lider|disenador|produccion|revisor)",
+    },
+    {
+        "tipo": "crear_cliente",
+        "titulo": "Crear cliente",
+        "ejemplo": 'Crea un cliente que se llame "NoKo Devs".',
+        "payload": "razon_social, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?",
+    },
+    {
+        "tipo": "actualizar_cliente",
+        "titulo": "Actualizar cliente",
+        "ejemplo": "Actualiza el teléfono de $noko-devs a 555-1234.",
+        "payload": "cliente_slug, campos: {razon_social?, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}",
+    },
+    {
+        "tipo": "crear_tarea",
+        "titulo": "Crear tarea",
+        "ejemplo": 'Crea una tarea en #pry-123456: "diseñar logo", asignada a @ana, vence el 30 de mayo.',
+        "payload": "proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad? (baja|media|alta)",
+    },
+    {
+        "tipo": "actualizar_tarea",
+        "titulo": "Actualizar tarea",
+        "ejemplo": "Marca como completa la tarea 42.",
+        "payload": "tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso?}",
+    },
+    {
+        "tipo": "crear_recado",
+        "titulo": "Crear recado",
+        "ejemplo": "Mándale a @ana un recado: que revise #pry-123456 mañana.",
+        "payload": "destinatarios_slugs: [...], cuerpo",
+    },
+    {
+        "tipo": "crear_mensaje_buzon",
+        "titulo": "Crear mensaje en El Buzón",
+        "ejemplo": "Sugerencia para el Buzón: agregar export de tareas a CSV.",
+        "payload": "tipo (sugerencia|problema|otro), asunto, cuerpo",
+    },
+    {
+        "tipo": "registrar_egreso",
+        "titulo": "Registrar egreso",
+        "ejemplo": "Registra un gasto de $450 en papelería, pagado con tarjeta personal.",
+        "payload": "monto, descripcion, centro_de_costo_slug, proyecto_slug?, proveedor_nombre?, pagado_por_slug?, estado_pago?, metodo?, fecha?",
+    },
+]
+
+# Acciones que el Chalán nunca puede ejecutar, aunque el LLM las proponga.
+# El service `interpretar()` las filtra en `TIPOS_PROHIBIDOS` antes de
+# persistir; aquí se documentan para la UI.
+COMANDOS_PROHIBIDOS: list[dict] = [
+    {
+        "tipo": "modificar_ajustes",
+        "razon": "Las credenciales (La Bóveda) solo se editan desde Los Ajustes.",
+    },
+    {
+        "tipo": "modificar_catalogo",
+        "razon": "Servicios y variaciones se administran manualmente en El Catálogo.",
+    },
+    {
+        "tipo": "modificar_tasas",
+        "razon": "Las tasas impositivas requieren validación contable manual.",
+    },
+    {
+        "tipo": "modificar_centro_costo",
+        "razon": "Los centros de costo los administra La Gerencia.",
+    },
+    {
+        "tipo": "modificar_permisos",
+        "razon": "Solo super_admin asigna permisos desde El Directorio.",
+    },
+    {
+        "tipo": "eliminar_entidad",
+        "razon": "El dictado nunca borra — soft-delete o anulación se hacen desde su módulo.",
+    },
+    {
+        "tipo": "registrar_ingreso",
+        "razon": "Pendiente: los cobros casi siempre tienen factura referenciada. Se captura desde La Caja o La Tesorería.",
+    },
+]
+
+
+__all__ = ["COMANDOS_DICTADO", "COMANDOS_PROHIBIDOS"]

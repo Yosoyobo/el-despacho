@@ -318,6 +318,17 @@ Tú revisas, marcas/desmarcas, confirmas. Se aplican las que dejaste marcadas.
 
 **Si la IA no entiende algo:** te pregunta. Tu respuesta queda como aprendizaje del sistema para futuras ocasiones.
 
+**¿Qué puede ejecutar El Dictado?** Hay una lista visible en
+*Gerencia → Los Chalanes* ("Qué pueden hacer Los Chalanes") con los 10
+comandos disponibles (crear/actualizar proyecto, crear/actualizar
+cliente, asignar usuario, crear/actualizar tarea, recado, mensaje del
+Buzón, registrar egreso) y los 7 que **NO** puede tocar (ajustes,
+catálogo, tasas, centros de costo, permisos, borrar entidades,
+registrar ingreso). Cuando el Chalán propone algo que no está en la
+lista, el dictado queda con marca "Sin ejecutor para tipo X" en el
+historial — es señal de que el LLM se inventó un comando y el sistema
+lo bloqueó por seguridad.
+
 ### 🤖 Los Chalanes — el motor de IA
 
 **Dónde se configuran:** Gerencia → Los Chalanes (solo super_admin modifica; dueño ve la auditoría).
@@ -342,10 +353,17 @@ Los Chalanes son tu equipo de asistentes virtuales. Cada uno es un proveedor de 
    con éste". Reordenas con los botones ↑/↓; el toggle ⏼ activa o
    desactiva un Chalán entero (útil cuando estás sin tokens en un
    proveedor y quieres saltártelo). El default es Claudio → GPT → Chino.
-3. **Auditoría reciente** — últimos 50 intentos con fecha, estación,
+3. **Qué pueden hacer Los Chalanes** *(S-LC-Feedback-V1 hotfix, 22 may 2026)* —
+   dos columnas: comandos disponibles (con ejemplo de cómo decírselo en
+   voz alta) y comandos prohibidos con la razón. Útil para entrenar al
+   equipo y entender por qué a veces un dictado dice "Sin ejecutor".
+4. **Auditoría reciente** — últimos 50 intentos con fecha, estación,
    Chalán que respondió, latencia, costo USD estimado y resultado. Cuando
    el primario falla y entra un fallback, lo verás marcado en amarillo:
-   `fallback de anthropic`.
+   `fallback de anthropic`. **Desde 22 may 2026** la cadena de fallback
+   también se dispara cuando el primario rechaza el request por llave
+   inválida o auth (antes solo brincaba con timeouts/5xx) — una llave
+   inválida en un proveedor no impide que el siguiente Chalán intente.
 
 **Override personal (próximamente):** un usuario individual podrá preferir
 otro Chalán distinto al global desde su perfil en El Taller. La tabla

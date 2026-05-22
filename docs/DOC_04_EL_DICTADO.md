@@ -1,9 +1,9 @@
 # Diseño — El Dictado
 
-> **Versión:** 1.3 · 19 mayo 2026 (V1 entregado en S2b.2)
-> **Status:** V1 ✅ deployado · sub-sprint S2b.2.1 pendiente (clarificación iterativa + UI gestión aprendizajes)
-> **V1 cubre:** §3 (modelos), §4 (UX), §5 (filtro de prohibidas backend), §7 (prompt), §8 (aplicación atómica), §9 (histórico), §10 (eventos clave), §11 (14 de 21 tests).
-> **V1 pendiente:** §4.2b (clarificación iterativa), §6.4 (UI aprendizajes en Gerencia), ejecutores de cotizaciones/facturas (módulos no existen aún). `registrar_egreso` **vivo desde S2b.3** (2026-05-19) — crea Egresos reales en La Tesorería con `origen='sala_juntas'`.
+> **Versión:** 1.4 · 22 mayo 2026 (hotfix S-LC-Feedback-V1)
+> **Status:** V1 ✅ deployado · sub-sprint S2b.2.1 ✅ entregado · hotfix 22-may ✅ (fallback con ErrorPermanente + ejecutores crear_proyecto/crear_cliente/actualizar_cliente + catálogo visible en Los Chalanes)
+> **V1 cubre:** §3 (modelos), §4 (UX), §5 (filtro de prohibidas backend), §7 (prompt), §8 (aplicación atómica + 10 ejecutores), §9 (histórico), §10 (eventos clave), §11 (14 de 21 tests).
+> **V1 pendiente:** ejecutores de cotizaciones/facturas (módulos no existen aún). `registrar_egreso` **vivo desde S2b.3** (2026-05-19) — crea Egresos reales en La Tesorería con `origen='sala_juntas'`. `registrar_ingreso` sigue pendiente.
 > **Audiencia:** Claude Code / desarrollo
 > **Dependencias:** Sistema de Referencias `@/#/$` (DOC_01), Los Chalanes v2 (DOC_02), Los Recados (DOC_03), La Tesorería (DOC_06), Los Permisos, Postgres
 > **Dependientes:** Manual de Usuario, Sala de Juntas (lo monta)
@@ -453,6 +453,32 @@ def aplicar(dictado, usuario):
 ```
 
 Cada acción es atómica e independiente — una falla no aborta las demás.
+
+### 8.1. Ejecutores activos (hotfix 22 mayo 2026)
+
+10 ejecutores registrados en `apps/el_dictado/ejecutores/basicos.py`:
+
+| Tipo | Crea/Actualiza | Notas |
+|---|---|---|
+| `crear_proyecto` | Proyecto | requiere `cliente_slug` ($cliente). Estados nuevos LC (S-LC-Feedback-V1). |
+| `actualizar_proyecto` | Proyecto | whitelist: estado, monto_cotizado, fecha_compromiso, descripcion. |
+| `asignar_usuario_proyecto` | ProyectoAsignacion | update_or_create con rol_en_proyecto. |
+| `crear_cliente` | Cliente | requiere `razon_social`. Slug se autogenera. |
+| `actualizar_cliente` | Cliente | whitelist: razon_social, rfc, contacto, email, tel, dirección, notas, estado. |
+| `crear_tarea` | Tarea | dispara push automático (S2b.4) si hay asignado. |
+| `actualizar_tarea` | Tarea | whitelist: estado, prioridad, asignado, fecha. |
+| `crear_recado` | Recado | usa servicio `recados.services.crear_recado` con destinatarios_ids. |
+| `crear_mensaje_buzon` | MensajeBuzon | dispara push automático S2b.4. |
+| `registrar_egreso` | Egreso | S2b.3; soporta `tarjeta_personal → por_reembolsar`. |
+
+**`registrar_ingreso` sigue pendiente** — los cobros casi siempre tienen
+factura referenciada; se captura desde La Caja o La Tesorería.
+
+La fuente canónica para la UI ("qué SÍ y qué NO pueden hacer Los
+Chalanes") vive en [`lib/dictado_catalogo.py`](../lib/dictado_catalogo.py)
+y se renderiza en el panel `/chalanes/` de La Gerencia. Si agregas un
+ejecutor nuevo, **actualiza los tres lugares**: ejecutores/, prompt.py,
+dictado_catalogo.py.
 
 ---
 
