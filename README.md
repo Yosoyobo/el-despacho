@@ -230,6 +230,22 @@ GitHub Actions (**El Mensajero**) · GHCR.
   como skeleton sin activar. Patrón portado del doc *Los
   Cocineros* de La Cocina/Pantry. 5 tests nuevos. Suite raíz
   **258 pass + 9 skipped**.
+- **S-Chalanes-Panel** ✅ (cerrado 2026-05-22): (1) signal en
+  `ajustes.Credencial` auto-agrega proveedor a `CadenaFallback`
+  cuando se guarda una `chalan_<X>_api_key` con valor (idempotente,
+  ignora skeletons como Gemini); data migration `0003_seed_mimo_cadena`
+  alinea entornos viejos. Cuadro `<select>` ahora arma opciones desde
+  `PROVEEDORES` (antes hardcoded 3 → MiMo no aparecía). (2) Panel
+  `/chalanes/` gana **💰 Gastado en IA — 30d** + tarjetas por Chalán
+  (llave enmascarada, último test, modelo, gasto/llamadas/tokens 30d,
+  botones Probar/Cambiar llave/Eliminar). `adapter.probar()` en
+  `Adapter` base (ping 1-token) persiste resultado en `Credencial`
+  via 3 campos nuevos (`ultimo_test_*`, migración
+  `ajustes.0005_credencial_ultimo_test`). `lib/analistas/stats.py`
+  nuevo: `estadisticas_proveedores` + `tarjetas_chalanes` +
+  `resumen_global`. (3) El Site (`/site/`) gana cuadrante "🤖
+  Chalanes IA" con réplica compacta del mismo dashboard. 10 tests
+  nuevos. Suite raíz+gerencia **350 pass + 9 skipped**.
 - **S2b resto** La Caja (Stripe + MercadoPago integración API) ·
   La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
 - **S-Buzon-A-Recados-V1** (pendiente — unificar Buzón en Recados

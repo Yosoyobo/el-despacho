@@ -15,7 +15,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from ajustes.models.analistas_log import AnalistaLog
+from ajustes.models.credencial import Credencial
 from chalanes.models import Aprendizaje, CadenaFallback, CuadroChalanes
+from chalanes.models.cuadro_chalanes import PROVEEDORES
+from lib.analistas.registry import adapter_de
+from lib.analistas.stats import resumen_global, tarjetas_chalanes
 from lib.permisos import requires_role
 from lib.portavoz import emitir
 
@@ -34,7 +38,56 @@ def panel(request):
         "puede_modificar": request.user.rol == "super_admin",
         "total_aprendizajes": Aprendizaje.objects.count(),
         "aprendizajes_activos_count": Aprendizaje.objects.filter(activo=True).count(),
+        "tarjetas": tarjetas_chalanes(dias=30),
+        "resumen": resumen_global(dias=30),
+        "proveedores_opciones": list(PROVEEDORES),
     })
+
+
+@require_POST
+@requires_role("super_admin")
+def probar_chalan(request, nombre: str):
+    """POST /chalanes/<nombre>/probar — ping de 1 token y persiste resultado."""
+    adapter = adapter_de(nombre)
+    if adapter is None:
+        messages.error(request, f"Chalán desconocido: {nombre}")
+        return redirect("los_chalanes:panel")
+    resultado = adapter.probar()
+    slot = f"chalan_{nombre}_api_key"
+    cred = Credencial.objects.filter(clave=slot).first()
+    if cred is not None:
+        cred.ultimo_test_en = timezone.now()
+        cred.ultimo_test_ok = resultado["ok"]
+        cred.ultimo_test_mensaje = (resultado.get("mensaje") or "")[:240]
+        cred.save(update_fields=["ultimo_test_en", "ultimo_test_ok", "ultimo_test_mensaje"])
+    if resultado["ok"]:
+        latencia = resultado.get("latencia_ms") or "?"
+        messages.success(request, f"Chalán {nombre}: conexión OK ({latencia} ms).")
+    elif resultado.get("estado") == "no_configurada":
+        messages.warning(request, f"Chalán {nombre}: sin credencial. Configúrala en Los Ajustes.")
+    else:
+        messages.error(request, f"Chalán {nombre}: {resultado.get('mensaje', 'error')[:200]}")
+    with contextlib.suppress(Exception):
+        emitir({"tipo": "chalanes.probado", "proveedor": nombre,
+                "ok": resultado["ok"], "latencia_ms": resultado.get("latencia_ms"),
+                "actor_id": request.user.pk})
+    return redirect("los_chalanes:panel")
+
+
+@require_POST
+@requires_role("super_admin")
+def borrar_llave(request, nombre: str):
+    """POST /chalanes/<nombre>/borrar-llave — borra credencial del slot."""
+    slot = f"chalan_{nombre}_api_key"
+    qs = Credencial.objects.filter(clave=slot)
+    existia = qs.exists()
+    qs.delete()
+    if existia:
+        messages.success(request, f"Llave del Chalán {nombre} eliminada.")
+        with contextlib.suppress(Exception):
+            emitir({"tipo": "chalanes.llave_borrada", "proveedor": nombre,
+                    "actor_id": request.user.pk})
+    return redirect("los_chalanes:panel")
 
 
 @require_POST

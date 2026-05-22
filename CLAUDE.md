@@ -1976,6 +1976,120 @@ puntos backend + slot + choice + migración + tests.
 - Tarifa real en `PRECIO_IN/OUT`. Placeholder hasta confirmar con
   Xiaomi.
 
+### S-Chalanes-Panel ✅ — Auto-fallback + dashboard de Chalanes (2026-05-22)
+
+Sprint rápido (~1 h) dirigido por dos observaciones del usuario sobre
+las screenshots de Stove: (1) "en el fallback no se ve MiMo, cada que
+se agreguen credenciales válidas debe entrar a esa lista", y
+(2) "replica las tarjetas de cocineros (saldo, gasto, conexión) en
+Los Chalanes y en El Site".
+
+**Parte 1 — Auto-add al fallback al guardar credencial**:
+
+- `chalanes/signals.py` nuevo: `post_save` en `ajustes.Credencial`
+  detecta slot `chalan_<proveedor>_api_key` con valor; si el proveedor
+  está en `_FACTORIES` (no es skeleton) y no tiene fila en
+  `CadenaFallback`, la crea con `prioridad = max+1` y `activo=True`.
+  Gemini queda excluido vía constante `_NO_REGISTRAR` mientras el
+  adapter siga sin implementar `_invocar`.
+- Conectado en `chalanes/apps.py::ready()`.
+- `chalanes/migrations/0003_seed_mimo_cadena.py`: data migration
+  retroactiva que crea la fila de `mimo` para entornos ya desplegados
+  (idempotente — verifica existencia antes de crear). Hoy la cadena
+  queda: anthropic=1, openai=2, deepseek=3, mimo=4.
+- `panel.html` ahora arma el `<select>` del Cuadro a partir de
+  `PROVEEDORES` de `cuadro_chalanes` (antes era hardcoded 3 options
+  — por eso MiMo no aparecía en el dropdown a pesar de estar
+  registrado).
+
+**Parte 2 — Tarjetas por Chalán, gasto 30d, probar conexión**:
+
+- `Credencial` gana 3 campos via migración
+  `ajustes.0005_credencial_ultimo_test`: `ultimo_test_en`,
+  `ultimo_test_ok`, `ultimo_test_mensaje`. Persisten el resultado del
+  botón "Probar conexión" para que la tarjeta muestre estado actual
+  sin re-pegar al provider.
+- `lib/analistas/base.py::Adapter.probar()` nuevo método default que
+  reutiliza `_invocar` con `max_tokens=1` y captura todos los errores
+  tipados, retornando `{ok, estado, mensaje, latencia_ms, modelo}`.
+  Costo: <1 ¢ por click. Funciona para los 4 adapters sin override.
+- `lib/analistas/stats.py` nuevo módulo con 3 helpers:
+  - `estadisticas_proveedores(dias=30)` → `{provider: {llamadas,
+    llamadas_ok, llamadas_falla, prompt_tokens, completion_tokens,
+    tokens, costo_usd, ultima_actividad}}`. Agrega desde
+    `ajustes_analistas_log` con índices existentes (provider +
+    creado_en).
+  - `tarjetas_chalanes(dias=30)` → lista combinada de
+    `_FACTORIES × Credencial × stats`, lista para render. Ordena por
+    actividad descendente. Llave enmascarada con
+    `_enmascarar(valor)` (4 chars al inicio + 8 puntos + 4 chars al
+    final).
+  - `resumen_global(dias=30)` → `{costo_total, llamadas_total,
+    tokens_total, max_costo, por_proveedor: [...]}` con
+    `porcentaje_costo` pre-calculado para los `<div>` de barras.
+- View `panel()` inyecta `tarjetas`, `resumen`, `proveedores_opciones`.
+  Dos endpoints nuevos:
+  - `POST /chalanes/<nombre>/probar` — invoca `adapter.probar()`,
+    persiste resultado en `Credencial`, emite Portavoz
+    `chalanes.probado` y redirige con `messages` flash.
+  - `POST /chalanes/<nombre>/borrar-llave` — borra credencial del
+    slot, emite `chalanes.llave_borrada`. UI tiene `confirm()` JS
+    inline.
+- Template del panel: 2 secciones nuevas arriba del Cuadro:
+  1. **💰 Gastado en IA — últimos 30 días**: header con
+     `costo_total` grande + breakdown por proveedor como lista de
+     barras horizontales (`<div>` ancho dinámico según
+     `porcentaje_costo`).
+  2. **Tarjetas por Chalán** (grid 1/2/3 columnas responsive): apodo
+     + badge "Activo/Sin llave", llave enmascarada, último test
+     (verde/rojo + timesince), modelo default, gasto 30d con
+     llamadas y tokens, fallas si las hay. Footer con 3 botones:
+     Probar conexión (POST) · Cambiar llave (link a
+     `/ajustes/#<slot>`) · Eliminar (POST con confirm).
+
+**Parte 3 — Réplica compacta en El Site**:
+
+- Tablero (`/site/`) gana cuadrante 4 "🤖 Chalanes IA" con partial
+  `chalanes_ia.html`: mismo resumen 30d (barras más compactas) +
+  grid de cards reducidas (apodo, badge de estado, llave
+  enmascarada, gasto+llamadas+tokens). Link al final "Ir al panel
+  de Los Chalanes →".
+- `el_site/views.py::tablero` carga `resumen_global` y
+  `tarjetas_chalanes` con `try/except` defensivo — El Site nunca se
+  tumba si la query a `AnalistaLog` falla.
+
+**Tests**: `tests/test_chalanes_panel.py` con 10 casos:
+- Signal auto-agrega proveedor conocido al guardar credencial.
+- Signal ignora proveedores no registrados (no spammea la tabla).
+- Signal no duplica si ya existe la fila.
+- `estadisticas_proveedores` agrega correctamente OK/falla/tokens/costo.
+- `estadisticas_proveedores` excluye logs fuera de ventana.
+- `tarjetas_chalanes` incluye los 4 adapters registrados.
+- Enmascaramiento de llave preserva 4 iniciales + 4 finales.
+- `adapter.probar()` sin credencial devuelve `estado='no_configurada'`.
+- View `/chalanes/mimo/probar` persiste `ultimo_test_ok` en
+  `Credencial`.
+- View `/chalanes/mimo/borrar-llave` elimina el slot.
+- **Suite raíz + gerencia**: 350 pass, 9 skipped (+12 sobre baseline
+  338, considerando los 2 tests de smoke gerencia que ya pasaban).
+
+**Deuda residual**:
+- El UI usa `/ajustes/#<slot>` para "Cambiar llave" — funciona si la
+  página de Los Ajustes monta los slots con `id="<slot>"` (ya lo
+  hace para anclar). Si LC quiere edición inline desde el panel sin
+  saltar a Ajustes, sería un sprint chico (modal HTMX + reuso del
+  form de Credencial).
+- "Gasto por agente" en barras horizontales (sección 0a del panel)
+  es CSS puro; si LC pide ApexCharts horizontal-bar para consistencia
+  con S-Charts, se cambia el `<div>` por un `<div data-chart=...>`
+  como en otras vistas.
+- El chequeo diario de El Site (`site_chequeo_diario` cron) no usa
+  el nuevo `adapter.probar()` — sigue con `lib/site/integraciones.py`
+  contra los slots legacy `anthropic_api_key`/`openai_api_key`. Si
+  LC quiere unificarlos, refactor pequeño: que `chequear_anthropic`
+  delegue a `MimoAdapter()/AnthropicAdapter().probar()`. No es
+  bloqueante porque el panel ya muestra el estado en vivo.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

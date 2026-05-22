@@ -64,6 +64,44 @@ class Adapter(ABC):
         except Exception:
             return False
 
+    def probar(self) -> dict:
+        """Ping de 1 token al provider. Devuelve `{ok, estado, mensaje, latencia_ms, modelo}`.
+
+        Reutiliza `_invocar` con `max_tokens=1` y captura errores. Costo: <1 ¢
+        por invocación. Usado por el botón "Probar conexión" en /chalanes/ y
+        por el chequeo diario de El Site.
+        """
+        import time
+        t0 = time.monotonic()
+        try:
+            res = self._invocar("ok", max_tokens=1, temperatura=0.0)
+        except FaltaCredencial as exc:
+            return {
+                "ok": False, "estado": "no_configurada",
+                "mensaje": str(exc), "latencia_ms": None,
+                "modelo": getattr(self, "modelo", ""),
+            }
+        except (ErrorPermanente, ErrorTransitorio) as exc:
+            return {
+                "ok": False, "estado": "error",
+                "mensaje": str(exc)[:200],
+                "latencia_ms": int((time.monotonic() - t0) * 1000),
+                "modelo": getattr(self, "modelo", ""),
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "ok": False, "estado": "error",
+                "mensaje": f"{type(exc).__name__}: {str(exc)[:180]}",
+                "latencia_ms": int((time.monotonic() - t0) * 1000),
+                "modelo": getattr(self, "modelo", ""),
+            }
+        return {
+            "ok": True, "estado": "ok",
+            "mensaje": "Conexión exitosa",
+            "latencia_ms": res.latencia_ms,
+            "modelo": res.modelo,
+        }
+
 
 # Alias semántico para el código nuevo de v2.
 AdapterChalan = Adapter

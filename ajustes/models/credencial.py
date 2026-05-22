@@ -52,6 +52,12 @@ class Credencial(models.Model):
     actualizada_por = models.ForeignKey(
         "cuentas.Usuario", on_delete=models.SET_NULL, null=True, blank=True
     )
+    # Resultado del último "Probar conexión" — sólo aplica a slots de IA por
+    # ahora pero el campo vive aquí para no proliferar tablas. NULL = nunca
+    # probada.
+    ultimo_test_en = models.DateTimeField(null=True, blank=True)
+    ultimo_test_ok = models.BooleanField(null=True, blank=True)
+    ultimo_test_mensaje = models.CharField(max_length=240, blank=True, default="")
 
     class Meta:
         db_table = "ajustes_credencial"

@@ -21,6 +21,105 @@
     </div>
 </header>
 
+{# ── Sección 0a: Resumen 30 días ────────────────────────────────────── #}
+<section class="mb-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <header class="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+        <div>
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">💰 Gastado en IA — últimos 30 días</h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Estimación basada en <code>ajustes_analistas_log × precios oficiales</code>. Compárala con el dashboard del proveedor antes de tomar decisiones de billing.</p>
+        </div>
+        <div class="text-right">
+            <div class="text-title-md font-bold text-success-600 dark:text-success-400">${{ resumen.costo_total|floatformat:4 }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">{{ resumen.llamadas_total }} llamadas · {{ resumen.tokens_total }} tokens</div>
+        </div>
+    </header>
+    {% if resumen.por_proveedor %}
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for fila in resumen.por_proveedor %}
+        <li class="px-5 py-3">
+            <div class="mb-1 flex items-baseline justify-between gap-3 text-sm">
+                <span class="font-medium capitalize text-gray-900 dark:text-gray-100">{{ fila.provider }}</span>
+                <span class="font-mono text-xs text-gray-600 dark:text-gray-400">${{ fila.costo_usd|floatformat:4 }} <span class="text-gray-400">· {{ fila.llamadas }} llamadas · {{ fila.tokens }} tok</span></span>
+            </div>
+            <div class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                <div class="h-full bg-brand-500 dark:bg-brand-400" style="width: {{ fila.porcentaje_costo|floatformat:1 }}%"></div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Aún no se ha registrado ninguna llamada en los últimos 30 días.</div>
+    {% endif %}
+</section>
+
+{# ── Sección 0b: Tarjetas por Chalán ─────────────────────────────────── #}
+<section class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    {% for c in tarjetas %}
+    <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ c.apodo }}</span>
+                    {% if c.soporta_vision %}<span class="rounded bg-warning-50 px-1.5 text-[10px] text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">👁 visión</span>{% endif %}
+                </div>
+                <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ c.nombre }}</div>
+            </div>
+            {% if c.configurado %}
+                <span class="rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-medium text-success-700 dark:bg-success-500/10 dark:text-success-300">Activo</span>
+            {% else %}
+                <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">Sin llave</span>
+            {% endif %}
+        </header>
+        <div class="space-y-3 px-5 py-4 text-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Llave</span>
+                <span class="font-mono text-xs {% if c.configurado %}text-gray-700 dark:text-gray-300{% else %}text-gray-400 italic{% endif %}">{{ c.llave_enmascarada|default:"—" }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Último test</span>
+                {% if c.ultimo_test_en %}
+                    <span class="text-xs {% if c.ultimo_test_ok %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">
+                        {% if c.ultimo_test_ok %}🟢 OK{% else %}🔴 falla{% endif %} · {{ c.ultimo_test_en|timesince }} atrás
+                    </span>
+                {% else %}
+                    <span class="text-xs text-gray-400 italic">nunca probada</span>
+                {% endif %}
+            </div>
+            {% if c.ultimo_test_mensaje and not c.ultimo_test_ok %}
+            <div class="rounded-md bg-error-50 px-2 py-1 text-[11px] text-error-700 dark:bg-error-500/10 dark:text-error-300">{{ c.ultimo_test_mensaje|truncatechars:120 }}</div>
+            {% endif %}
+            <div class="flex items-center justify-between">
+                <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Modelo default</span>
+                <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ c.modelo_default|default:"—" }}</span>
+            </div>
+            <div class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/40">
+                <div class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Gastado (30d)</div>
+                <div class="mt-0.5 flex items-baseline justify-between">
+                    <span class="text-lg font-bold text-success-600 dark:text-success-400">${{ c.estadisticas.costo_usd|floatformat:4 }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ c.estadisticas.llamadas }} llamadas · {{ c.estadisticas.tokens }} tokens</span>
+                </div>
+                {% if c.estadisticas.llamadas_falla %}
+                <div class="mt-1 text-[11px] text-warning-600 dark:text-warning-400">⚠ {{ c.estadisticas.llamadas_falla }} fallidas</div>
+                {% endif %}
+            </div>
+        </div>
+        {% if puede_modificar %}
+        <footer class="flex items-center gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <form method="post" action="{% url 'los_chalanes:probar_chalan' nombre=c.nombre %}" class="inline">{% csrf_token %}
+                <button class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Probar conexión</button>
+            </form>
+            <a href="/ajustes/#{{ c.slot }}" class="rounded-lg bg-warning-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-warning-600">{% if c.configurado %}Cambiar llave{% else %}Configurar{% endif %}</a>
+            {% if c.configurado %}
+            <form method="post" action="{% url 'los_chalanes:borrar_llave' nombre=c.nombre %}" class="ml-auto inline" onsubmit="return confirm('¿Eliminar la llave de {{ c.apodo }}? El Chalán quedará inactivo hasta que pegues otra.');">{% csrf_token %}
+                <button class="text-xs font-medium text-error-600 hover:underline dark:text-error-400">Eliminar</button>
+            </form>
+            {% endif %}
+        </footer>
+        {% endif %}
+    </article>
+    {% endfor %}
+</section>
+
 {# ── Sección 1: El Cuadro ────────────────────────────────────────────── #}
 <section class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
@@ -49,9 +148,9 @@
                     <td class="px-5 py-3">
                         {% if puede_modificar %}
                         <select name="proveedor" class="rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
-                            <option value="anthropic" {% if fila.proveedor == "anthropic" %}selected{% endif %}>Chalán Claudio</option>
-                            <option value="openai" {% if fila.proveedor == "openai" %}selected{% endif %}>Chalán GPT</option>
-                            <option value="deepseek" {% if fila.proveedor == "deepseek" %}selected{% endif %}>Chalán Chino</option>
+                            {% for valor, etiqueta in proveedores_opciones %}
+                            <option value="{{ valor }}" {% if fila.proveedor == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                            {% endfor %}
                         </select>
                         {% else %}
                         <span class="text-gray-700 dark:text-gray-300">{{ fila.get_proveedor_display }}</span>

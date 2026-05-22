@@ -193,11 +193,20 @@ def tablero(request):
     infra = _ctx_infra()
     integ = _ctx_integraciones()
     intern = _ctx_internos()
+    try:
+        from lib.analistas.stats import resumen_global, tarjetas_chalanes
+        chalanes_resumen = resumen_global(dias=30)
+        chalanes_tarjetas = tarjetas_chalanes(dias=30)
+    except Exception:  # noqa: BLE001 — El Site nunca debe tumbarse por esto.
+        chalanes_resumen = {"costo_total": 0, "llamadas_total": 0, "tokens_total": 0, "por_proveedor": []}
+        chalanes_tarjetas = []
     ctx = {
         "infra": infra,
         "integraciones": integ,
         "internos": intern,
         "global": _ctx_global(infra, integ, intern),
+        "chalanes_resumen": chalanes_resumen,
+        "chalanes_tarjetas": chalanes_tarjetas,
     }
     return render(request, "site/tablero.html", ctx)
 
