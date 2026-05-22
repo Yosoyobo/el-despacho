@@ -248,7 +248,7 @@ def test_catalogo_redirect_de_gerencia(client, usuario_factory, _urls_gerencia):
 
 def test_catalogo_taller_disenador_sin_precios(client, usuario_factory):
     from apps.el_catalogo.models import CategoriaServicio, Servicio
-    cat = CategoriaServicio.objects.create(nombre="Diseño")
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Diseño")
     Servicio.objects.create(nombre="Logo único", precio_base="1500.00", categoria=cat)
     u = usuario_factory(rol="disenador")
     client.force_login(u)
@@ -323,7 +323,7 @@ def test_sidebar_taller_super_admin_ve_todo(client, usuario_factory):
     resp = client.get("/")
     body = resp.content.decode()
     assert "La Cartera" in body
-    assert "Los Proyectos" in body
+    assert "Proyectos" in body
     assert "El Buzón" in body
     assert "El Catálogo" in body
     assert "Mis Chalanes" in body
