@@ -4702,3 +4702,86 @@ Bloqueados por setup externo:
 - S2b.1b (Drive) → desbloquea PDF Cotizaciones/Facturas, OCR recibos.
 - S2b.caja → Stripe + MercadoPago API real (credenciales).
 - S5 Recepción.
+
+---
+
+# BITÁCORA — Sesión S-Chalan-MiMo (2026-05-22)
+
+> Sprint quirúrgico de ~30 min. Cuarto Chalán activo en `lib/analistas/`.
+> Patrón portado del documento de referencia *Los Cocineros* (La Cocina /
+> Pantry). Sigue exactamente el checklist §5 del docto — 8 puntos backend.
+
+## 1. Contexto
+
+El sistema multi-provider (Los Analistas / Chalanes) ya tenía 3 adapters
+activos (Anthropic/Claudio, OpenAI/GPT, Deepseek/Chino) + Gemini como
+skeleton sin activar. El usuario aportó el documento `EL_DESPACHO.md`
+(guía de adopción de Los Cocineros con el patrón completo para sumar
+proveedores) y solicitó integrar MiMo de Xiaomi. MiMo es OpenAI-compat
+con 3 diferencias clave:
+
+- Base URL `https://api.xiaomimimo.com/v1`.
+- Header de auth `api-key: <KEY>` (NO `Authorization: Bearer`).
+- Parámetro `max_completion_tokens` (NO `max_tokens`).
+- Soporta visión en `mimo-v2.5-pro` → candidato natural para
+  `ocr_recibo` cuando se active.
+
+## 2. Cambios
+
+| Archivo | Cambio |
+|---|---|
+| `lib/analistas/adapters/mimo.py` (nuevo) | `MimoAdapter` con las 3 diferencias contra Deepseek. Capabilities `{TEXTO, VISION, FUNCTION_CALLING}`. Errores 401/403 permanentes; 429/5xx transitorios. Precios placeholder `0.20/0.60` USD por MTok. |
+| `lib/analistas/adapters/__init__.py` | Export de `MimoAdapter`. |
+| `lib/analistas/registry.py` | `_FACTORIES["mimo"] = MimoAdapter`. |
+| `ajustes/models/credencial.py` | Slot `chalan_mimo_api_key` en `SLOTS_CREDENCIAL`. |
+| `chalanes/models/cuadro_chalanes.py` | Choice `("mimo", "Chalán MiMo (Xiaomi)")` en `PROVEEDORES`. |
+| `chalanes/migrations/0002_mimo_proveedor.py` (nueva) | `AlterField` del campo `proveedor` para reconocer `mimo` en validación de formularios. No toca datos. |
+| `tests/test_analistas.py` | +5 tests: `test_mimo_sin_credencial_lanza_falta`, `test_mimo_200_devuelve_resultado` (valida header `api-key` + `max_completion_tokens`), `test_mimo_401_es_permanente`, `test_mimo_429_es_transitorio`, `test_mimo_registrado_en_factories`. |
+| `CLAUDE.md` | Sprint añadido bajo §8 entre S-Finanzas-V2 y S4. S4 actualizado a "4 Chalanes activos". |
+| `README.md` | Entrada de sesión en estado por sprint. |
+
+## 3. Tests
+
+```
+.venv/bin/pytest tests/ -q --ignore=tests/taller --ignore=tests/gerencia
+→ 258 passed, 9 skipped
+```
+
+Suite raíz al día. Taller + Gerencia no se tocan en este sprint.
+
+## 4. Decisiones explícitas
+
+- **Apodo**: `apodo = "Chalán MiMo"` (no "Chalán Xiaomi" ni "Chalán
+  MIMO"). El choice del dropdown queda `"Chalán MiMo (Xiaomi)"` por
+  consistencia con el patrón existente (`Claudio (Anthropic)`,
+  `GPT (OpenAI)`, etc.) — el "(Xiaomi)" es disambiguador del
+  proveedor, no parte del nombre.
+- **No se agrega a `CadenaFallback`** por data migration. El
+  super_admin decide desde `/chalanes/cadena/` si MiMo participa en
+  el fallback global. Hoy queda como Chalán disponible pero
+  inactivo en cadena hasta asignación manual.
+- **No se implementa "Probar" en Los Ajustes**. El docto §6 propone
+  `probar(llave)` con una llamada mínima de chat. Aplazado al
+  sprint que también agregue "Probar" a Anthropic/OpenAI/Deepseek
+  (hoy ninguno lo tiene en UI) — sería deuda agregar uno solo.
+- **Precios placeholder**. MiMo no publica tarifa pública obvia;
+  `PRECIO_IN/OUT` queda en `0.20 / 0.60` USD por MTok. Se loggea
+  en `cocineros_log` para reportes pero no se cobra al usuario.
+- **API key NO en código**. El usuario aportó la llave por chat;
+  se documenta el paso manual de guardarla en `/ajustes/` post-deploy
+  (regla #3: credenciales sólo en La Bóveda cifrada).
+
+## 5. Configuración post-deploy
+
+1. **El Mensajero**: `migrate` aplica `chalanes.0002_mimo_proveedor`.
+2. **super_admin en La Gerencia → Los Ajustes**: pegar la API key
+   en el slot **Chalán MiMo — API Key**.
+3. **(Opcional) super_admin → `/chalanes/`**: asignar `ocr_recibo`
+   a MiMo (candidato fuerte por visión) o sumarlo a la cadena de
+   fallback global desde `/chalanes/cadena/`.
+
+## 6. Próximo
+
+Sin nuevos sprints abiertos por este cambio. La deuda residual
+(probar/llaves UI, tarifa real, asignaciones por estación)
+queda al criterio operativo de LC, no requiere código.

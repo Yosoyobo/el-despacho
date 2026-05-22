@@ -11,7 +11,7 @@ prioridad ASC, omitiendo duplicados.
 
 from __future__ import annotations
 
-from .adapters import AnthropicAdapter, DeepseekAdapter, OpenAIAdapter
+from .adapters import AnthropicAdapter, DeepseekAdapter, MimoAdapter, OpenAIAdapter
 from .base import Adapter
 
 # Map nombre → factory. Gemini no se registra aún (skeleton).
@@ -19,6 +19,7 @@ _FACTORIES: dict[str, type[Adapter]] = {
     "anthropic": AnthropicAdapter,
     "openai": OpenAIAdapter,
     "deepseek": DeepseekAdapter,
+    "mimo": MimoAdapter,
 }
 
 # Fallback de seguridad si las tablas chalanes_* no existen aún.

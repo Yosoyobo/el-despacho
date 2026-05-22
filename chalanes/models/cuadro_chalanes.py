@@ -12,6 +12,7 @@ PROVEEDORES = (
     ("openai", "Chalán GPT (OpenAI)"),
     ("deepseek", "Chalán Chino (Deepseek)"),
     ("gemini", "Chalán Gemini (Google)"),
+    ("mimo", "Chalán MiMo (Xiaomi)"),
 )
 
 

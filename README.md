@@ -219,6 +219,17 @@ GitHub Actions (**El Mensajero**) · GHCR.
   marca `anticipo_facturado_en`; botón en detalle aprobada;
   evento `cotizacion.anticipo_facturado`; KPI `anticipos-pendientes`.
   **660 tests verdes** (+22 sobre 638).
+- **S-Chalan-MiMo** ✅ (cerrado 2026-05-22): cuarto Chalán activo
+  en `lib/analistas/`. `MimoAdapter` (Xiaomi, OpenAI-compat con
+  header `api-key` y `max_completion_tokens`), capabilities
+  TEXTO+VISION+FUNCTION_CALLING (candidato natural para
+  `ocr_recibo`). Slot `chalan_mimo_api_key` en Los Ajustes,
+  choice `("mimo", "Chalán MiMo (Xiaomi)")` en `CuadroChalanes`
+  vía migración `0002_mimo_proveedor`. Cadena hoy: Anthropic
+  (Claudio), OpenAI (GPT), Deepseek (Chino), MiMo. Gemini sigue
+  como skeleton sin activar. Patrón portado del doc *Los
+  Cocineros* de La Cocina/Pantry. 5 tests nuevos. Suite raíz
+  **258 pass + 9 skipped**.
 - **S2b resto** La Caja (Stripe + MercadoPago integración API) ·
   La Cobranza · wrappers Google Workspace (Drive/Sheets/Docs/Calendar)
 - **S-Buzon-A-Recados-V1** (pendiente — unificar Buzón en Recados

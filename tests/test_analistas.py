@@ -8,6 +8,7 @@ import httpx  # noqa: F401  (asegura módulo cargado para patch)
 import pytest
 
 from lib.analistas.adapters.anthropic import AnthropicAdapter
+from lib.analistas.adapters.mimo import MimoAdapter
 from lib.analistas.adapters.openai import OpenAIAdapter
 from lib.analistas.base import (
     ErrorPermanente,
@@ -91,6 +92,56 @@ class TestAdaptersUnitarios:
             res = OpenAIAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
         assert res.texto == "ok"
         assert res.provider == "openai"
+
+    def test_mimo_sin_credencial_lanza_falta(self, db):
+        with pytest.raises(FaltaCredencial):
+            MimoAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_mimo_200_devuelve_resultado(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_mimo_api_key", "mimo-test-xxxx")
+        payload = {
+            "model": "mimo-v2.5-pro",
+            "choices": [{"message": {"role": "assistant", "content": "ok"}}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 2},
+        }
+        with patch("httpx.post", return_value=_RespFalsa(200, payload)) as mock_post:
+            res = MimoAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+        # Auth con api-key, no Bearer
+        _, kw = mock_post.call_args
+        assert kw["headers"]["api-key"] == "mimo-test-xxxx"
+        assert "Authorization" not in kw["headers"]
+        # max_completion_tokens, no max_tokens
+        assert "max_completion_tokens" in kw["json"]
+        assert "max_tokens" not in kw["json"]
+        assert kw["json"]["max_completion_tokens"] == 10
+        assert res.texto == "ok"
+        assert res.provider == "mimo"
+        assert res.prompt_tokens == 5
+        assert res.completion_tokens == 2
+        assert res.costo_usd > 0
+
+    def test_mimo_401_es_permanente(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_mimo_api_key", "mimo-test-xxxx")
+        with patch("httpx.post", return_value=_RespFalsa(401, text="bad key")), \
+             pytest.raises(ErrorPermanente):
+            MimoAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_mimo_429_es_transitorio(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_mimo_api_key", "mimo-test-xxxx")
+        with patch("httpx.post", return_value=_RespFalsa(429, text="rate")), \
+             pytest.raises(ErrorTransitorio):
+            MimoAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_mimo_registrado_en_factories(self):
+        from lib.analistas.registry import _FACTORIES, adapter_de
+        assert "mimo" in _FACTORIES
+        adapter = adapter_de("mimo")
+        assert adapter is not None
+        assert adapter.nombre == "mimo"
+        assert adapter.apodo == "Chalán MiMo"
 
 
 def _post_routed(*, anthropic_resp, openai_resp):

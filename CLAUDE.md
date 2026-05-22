@@ -1914,11 +1914,75 @@ Commits:
   necesita el evento emitido proactivamente, agregar management
   command + cron.
 
+### S-Chalan-MiMo ✅ — Cuarto Chalán: MiMo (Xiaomi) (2026-05-22)
+
+Sprint quirúrgico siguiendo el patrón del documento de referencia
+*Los Cocineros* (portado de La Cocina/Pantry). Cuarto adapter activo
+en `lib/analistas/`. Sigue exactamente el checklist §5 del docto: 8
+puntos backend + slot + choice + migración + tests.
+
+- **`lib/analistas/adapters/mimo.py`** — nuevo `MimoAdapter`. Tres
+  diferencias con OpenAI/Deepseek (compartidas con la versión TS de
+  Pantry):
+  - Base URL `https://api.xiaomimimo.com/v1/chat/completions`.
+  - Header `api-key: <KEY>` (NO `Authorization: Bearer`).
+  - Parámetro `max_completion_tokens` (NO `max_tokens`).
+  - Capabilities `{TEXTO, VISION, FUNCTION_CALLING}` — sí soporta
+    visión en `mimo-v2.5-pro` (a diferencia de Deepseek). Es
+    candidato natural para la estación `ocr_recibo` cuando active
+    LC.
+  - Modelo default `mimo-v2.5-pro`. Precios placeholder `0.20 / 0.60`
+    USD por MTok (ajustar cuando Xiaomi publique tarifa oficial).
+  - Errores 401/403 → `ErrorPermanente`. 429 / 5xx → `ErrorTransitorio`.
+    Sin credencial → `FaltaCredencial` (la cadena salta al siguiente
+    Chalán).
+- **`lib/analistas/adapters/__init__.py`** + **`lib/analistas/registry.py`**
+  registran `MimoAdapter` en `_FACTORIES["mimo"]`.
+- **`ajustes/models/credencial.py`** — nuevo slot
+  `chalan_mimo_api_key` en `SLOTS_CREDENCIAL`. UI de Los Ajustes lo
+  expone automáticamente (no requiere migración: La Bóveda es KV
+  cifrado).
+- **`chalanes/models/cuadro_chalanes.py`** + migración
+  `0002_mimo_proveedor.py` — `("mimo", "Chalán MiMo (Xiaomi)")`
+  agregado a `PROVEEDORES`. Solo `AlterField`, no toca datos.
+- **5 tests nuevos** en `tests/test_analistas.py`: sin credencial
+  lanza `FaltaCredencial`, 200 OK valida header `api-key` (no
+  Bearer) y `max_completion_tokens` (no `max_tokens`), 401 es
+  permanente, 429 transitorio, registry incluye `mimo`. Suite total
+  raíz: **258 pass, 9 skipped**.
+
+**Configuración prod** (deploy + 1 paso manual):
+1. El Mensajero corre `migrate` que aplica `chalanes.0002_mimo_proveedor`.
+2. super_admin entra a `/ajustes/` en La Gerencia y pega la API key
+   en el slot **Chalán MiMo — API Key**. Sin esto el adapter lanza
+   `FaltaCredencial`, transitoria — la cadena de fallback salta a
+   Anthropic/OpenAI sin tumbar la operación.
+3. (Opcional) `/chalanes/` para asignar MiMo como primario en
+   alguna estación (`ocr_recibo` natural por visión) o
+   `/chalanes/cadena/` para sumarlo a `CadenaFallback` con
+   `prioridad=4`.
+
+**NO incluye** (deferred):
+- Botón "Probar" en Los Ajustes que haga ping a `/chat/completions`
+  con 1 token (igual que el `probar()` del docto §6). El backend
+  ya tiene `MimoAdapter().esta_configurado()` y el UI tiene la
+  infraestructura — sumarlo es <30 LOC, va al sprint que también
+  agregue "Probar" a los otros 3 Chalanes (hoy ninguno lo tiene).
+- Sumar MiMo a `CadenaFallback` por data migration. Decisión:
+  cada despacho decide su orden de fallback; LC lo configura desde
+  UI. La cadena hoy queda: anthropic=1, openai=2, deepseek=3,
+  mimo=sin entrada (no participa en fallback global hasta que el
+  super_admin lo agregue).
+- Tarifa real en `PRECIO_IN/OUT`. Placeholder hasta confirmar con
+  Xiaomi.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
-Multi-provider ya en pre-S2b (Anthropic + OpenAI fallback + DeepSeek);
-S4 agrega casos de uso adicionales: redactar cotización · categorizar
-gasto automático · resumir hilo cliente · sugerir precio.
+Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
+GPT (OpenAI), Chino (Deepseek), MiMo (Xiaomi). Gemini sigue como
+skeleton sin activar. S4 agrega casos de uso adicionales: redactar
+cotización · categorizar gasto automático · resumir hilo cliente ·
+sugerir precio.
 
 ### S5 — La Recepción
 

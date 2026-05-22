@@ -26,6 +26,7 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("chalan_openai_api_key", "Chalán GPT — API Key (sk-…)", "API key del Chalán GPT (OpenAI)."),
     ("chalan_deepseek_api_key", "Chalán Chino — API Key", "API key del Chalán Chino (Deepseek). NO soporta visión."),
     ("chalan_gemini_api_key", "Chalán Gemini — API Key (reservado)", "Reservado; el adapter se activa en un sprint posterior."),
+    ("chalan_mimo_api_key", "Chalán MiMo — API Key", "API key del Chalán MiMo (Xiaomi). Soporta visión. Header `api-key`, no Bearer."),
     # Legacy — reemplazados por chalan_* arriba (pre-S2b.1). El super_admin
     # los puede borrar manualmente desde la UI tras validar la migración.
     ("anthropic_api_key", "Legacy: Anthropic — API Key", "Slot legacy. Usa chalan_anthropic_api_key."),
