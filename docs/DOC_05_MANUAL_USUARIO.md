@@ -454,18 +454,56 @@ Todos los clientes con razón social, RFC, contacto, teléfono, correo, notas.
 
 Se archivan, no se borran. Histórico se preserva.
 
-### 📂 Los Proyectos
+### 📂 Proyectos
 
-**Dónde:** El Taller → Los Proyectos.
+**Dónde:** El Taller → Proyectos.
 **Quién:** todos (diseñador solo donde está asignado).
 
-Cada proyecto: código (`PRY-000001`...), cliente, descripción, fechas, monto, estado (8 posibles), equipo asignado con roles (líder, diseñador, producción, revisor).
+Cada proyecto: código (`PRY-000001`...), cliente, descripción, fechas, monto, estado, equipo asignado con roles (líder, diseñador, producción, revisor), y **productos involucrados** (servicios + variaciones del Catálogo, S-LC-Feedback-V1).
+
+**Los 7 estados** (reflejan el ciclo real LC):
+
+1. **Por cotizar** — el cliente pidió algo, todavía no le mandas precio.
+2. **Esperando respuesta** — ya cotizaste, esperas su OK.
+3. **En proceso de diseño** — equipo de diseño trabajando.
+4. **En proceso de producción** — pasó a maquila / impresión.
+5. **Entregado** — terminado.
+6. **En pausa** — proyecto detenido (cliente que no responde, insumo atrasado, etc.).
+7. **Cancelado** — terminal.
+
+**Dos vistas** (S-LC-Feedback-V1):
+
+- **Lista** (`/proyectos/`) — tabla con columnas Código · Nombre · Cliente · Estado · Compromiso. Cada fila es **clickeable** (entra al detalle). Debajo del nombre se muestran chips compactos con los **productos involucrados** ("Playera azul ×50", "Lonas 3×2 m ×4", "+2 más"). La columna Compromiso muestra la fecha + "en N días" / "hoy" / "vencido hace N días" con color (rojo vencido, naranja ≤3 días).
+- **Kanban** (`/proyectos/kanban/`) — columnas por estado, tarjetas movibles visualmente con código, nombre, cliente, dentro_de y chips de productos. Botón "+ Nuevo proyecto" del lado izquierdo en ambas vistas.
+
+**Crear proyecto:**
+
+El form ahora tiene dos secciones:
+
+1. **Datos del proyecto** (nombre, cliente, descripción, estado, fechas, monto). Junto al selector de cliente hay un botón **"+ Nuevo cliente"** que abre un modal sin salir del form — capturas razón social / RFC / contacto / email / teléfono y queda preseleccionado al cerrar el modal.
+2. **Productos involucrados** (líneas con servicio + variación opcional + cantidad + nota corta). Botón **"+ Agregar línea"** para sumar productos del Catálogo. Si el producto no existe, primero lo das de alta en el Catálogo con sus variaciones.
 
 ### 📋 El Pizarrón
 
 **Dónde:** dentro de cada proyecto, tab "Tareas".
 
 Tareas internas con prioridad, asignado, fecha, estado. Comentarios públicos (todos) e internos (solo admin/dueño).
+
+**Importante (S-LC-Feedback-V1):** los campos **Asignada a** y **Fecha de compromiso** son **obligatorios** al crear o editar una tarea. Ya no se aceptan tareas huérfanas. Si tratas de guardar sin asignado o sin fecha, el sistema te avisa qué falta.
+
+### 🗓️ Calendario (S-LC-Feedback-V1)
+
+**Dónde:** El Taller → Calendario (sidebar).
+**Quién:** todos (filtrado por rol — el diseñador sólo ve sus proyectos y tareas asignadas).
+
+Página que muestra el **mes actual + el siguiente** lado a lado, semana lunes a domingo, fines de semana en gris claro, día actual marcado con un círculo brand. En cada celda aparecen como chips:
+
+- **Entregas de proyecto** (color brand) — proyectos con `fecha_compromiso` ese día.
+- **Tareas pendientes** (warning si prioridad alta, gris si normal) — tareas no completadas con `fecha_compromiso` ese día.
+
+Hasta 3 chips por celda + "+N más" si hay más. Click en cualquier chip te lleva al detalle del proyecto o la tarea.
+
+**Mini-calendario en la Sala de Juntas (home):** debajo de los KPIs y los charts aparece un mini-calendario del mes en curso. Es un grid 7×6 con número del día y un puntito brand bajo cualquier día que tenga eventos. Sirve como vista de un vistazo — el link "Ver calendario completo →" te lleva a la página completa.
 
 ### 📄 Las Cotizaciones (S2b.cotizaciones-v1 ✅)
 
@@ -769,6 +807,14 @@ S2b.1b (Google Drive). Por ahora envía el texto solo.
 **Quién:** todos.
 
 Para reportar problemas, dar sugerencias, comunicar al admin. Cuando algo se rompe, el botón "Reportar al Buzón" en la pantalla de error manda los detalles técnicos automáticamente.
+
+**Slider de prioridad 0–10 (S-LC-Feedback-V1):** al escribir un mensaje
+ajustas qué tan urgente es. 0 = "cuando puedas", 5 = normal (default),
+10 = urgente. El badge al lado del slider muestra el valor mientras lo
+mueves. En las listas del Buzón aparece una columna **Prioridad** con
+un badge codificado por color (rojo ≥8, naranja ≥6, brand ≥3, gris <3).
+Los mensajes se ordenan **por prioridad descendente** y luego por
+fecha — los urgentes quedan arriba sin que tengas que abrir cada uno.
 
 ### 📨 El Interfón
 
@@ -1119,7 +1165,32 @@ pasa; si está desactivada o no existe, no pasa. Diseñador que no tiene
 
 ### 📚 El Catálogo
 
-Servicios frecuentes con precio y unidad.
+**Dónde:** El Taller → El Catálogo (no La Gerencia — vive aquí desde Pre-S2b.2).
+
+Productos y servicios frecuentes con sus precios base, agrupados por categoría. Cada renglón tiene un **toggle "Disponible"** (S-LC-Feedback-V1, antes decía "Activo") — si lo apagas deja de aparecer en cotizaciones, facturas y en el form de Proyecto, pero el histórico lo conserva.
+
+**Categorías sembradas** (LC):
+
+- Diseño
+- Impresión
+- Producción
+- Diseño + Producción
+
+(Más las legacy Maquila, Bordado, Otros — todas editables desde "Categorías".)
+
+#### Variaciones (S-LC-Feedback-V1)
+
+LC modela productos como cosas tipo "Playera promocional" donde el costo, los detalles y la opción de impresión cambian por talla / color / tela / tintas. Para eso cada servicio tiene un sub-listado de **variaciones**.
+
+**Click en el nombre de un producto en la lista del Catálogo** te lleva a su página de variaciones. Cada variación captura:
+
+- **Variación** — nombre corto (ej. "Talla M · algodón blanco · 1 tinta").
+- **Costo (sin IVA)** — lo que cuesta fabricarlo o comprarlo.
+- **Lleva impresión** (toggle) — si la activas se habilitan dos campos más: **Costo de impresión** y **Detalle de impresión** (tintas, técnica, posición).
+- **Detalles** — descripción libre corta (tela, tamaño, color, etc.).
+- **Disponible** (toggle) — si la apagas no aparece en proyectos / cotizaciones / facturas.
+
+Las variaciones se ligan a proyectos desde el form de Proyecto (sección "Productos involucrados"). Si el cliente pide algo que no tienes en el Catálogo, primero das de alta el servicio padre y luego sus variaciones específicas.
 
 ### 📑 Centros de costo
 

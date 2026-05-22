@@ -62,8 +62,9 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **Los Ajustes** | La Gerencia | UI credenciales cifradas | S1a ✅ |
 | **La Sala de Juntas** | El Taller | Tablero con 28 KPIs granulares + sugerencias del Chalán | S2b.4 ✅ (Capas 1+2) · S2b.5 (Capa 3) |
 | **La Cartera** | El Taller | CRUD clientes B2B | S1b |
-| **Los Proyectos** | El Taller | Proyectos, estados, asignaciones | S1b |
-| **El Pizarrón** | El Taller | Tareas + comentarios públicos/internos | S1b |
+| **Proyectos** | El Taller | Proyectos, 7 estados ciclo LC, asignaciones, productos involucrados, vista Kanban | S1b · S-LC-Feedback-V1 |
+| **El Pizarrón** | El Taller | Tareas + comentarios públicos/internos (asignado y fecha required) | S1b · S-LC-Feedback-V1 |
+| **Calendario** | El Taller | Mes actual + siguiente con entregas y tareas + mini-cal en home | S-LC-Feedback-V1 ✅ |
 | **Los Recados** | El Taller | Mensajería interna con `@/#/$` + push + historial | S2b.1 ✅ · S2b.1.5 ✅ |
 | **Las Cotizaciones** | El Taller | Propuestas comerciales (PDF aplazado) | S2b.cotizaciones-v1 ✅ |
 | **La Facturación** | El Taller | Invoices comerciales no fiscales + CxC | S2b.facturacion-v1 ✅ (PDF aplazado) |
@@ -2243,6 +2244,140 @@ con la nueva config. Suite Python intacta (268 pass + 9 skipped root).
 3. `free -h` debe mostrar `Swap: 1024MB` y los procesos gunicorn
    aparecen como `gthread` en `ps`.
 4. El Site monitorea RAM/CPU — debería bajar ~600 MB el `used`.
+
+### S-LC-Feedback-V1 ✅ — Feedback completo de Learning Center (2026-05-22)
+
+Sprint dirigido por la primera ronda de comentarios de LC tras usar el
+sistema. 7 commits, 6 features grandes en una sola sesión. Suite total
+**686 pass, 9 skipped** (+26 sobre baseline 660).
+
+**Modelos + migraciones** (commit `b10cd7b`):
+
+- `Proyecto.estado` renombrado al ciclo real LC. Nuevos choices:
+  `por_cotizar, esperando_respuesta, en_proceso_diseno,
+  en_proceso_produccion, entregado, en_pausa, cancelado`. Data
+  migration mapea valores viejos:
+  - `prospecto` → `por_cotizar`
+  - `cotizado` → `esperando_respuesta`
+  - `revision_cliente` → `esperando_respuesta` (LC no lo lista)
+  - `en_diseno` → `en_proceso_diseno`
+  - `en_produccion` → `en_proceso_produccion`
+- `el_catalogo.Variacion` modelo nuevo (FK a Servicio, nombre, costo,
+  toggle impresión + costo + descripción, descripción libre,
+  disponible). Migración `0002_variacion_seed_categorias` también
+  siembra las 4 categorías LC (Diseño, Impresión, Producción,
+  Diseño + Producción) — coexisten con las legacy del seed_catalogo
+  (Maquila, Bordado, Otros).
+- `los_proyectos.ProyectoProducto` modelo intermedio (FK proyecto +
+  servicio + variación opcional + cantidad + nota) — habilita el
+  resumen compacto de productos en lista/Kanban y el formset inline
+  del form de Proyecto.
+- `buzon.MensajeBuzon.prioridad` PositiveSmallIntegerField 0-10
+  default 5, `db_index=True`. `Meta.ordering` ahora es
+  `["-prioridad", "-creado_en"]` — los urgentes quedan arriba.
+- Update masivo del resto del repo para los estados nuevos: kpis,
+  sugerencias, vistas, badge templates Gerencia + Taller, paleta de
+  gráficas, todos los tests.
+
+**Pizarrón required** (commit `890039e`):
+
+- `TareaForm`: `asignada_a` y `fecha_compromiso` ahora son
+  `required=True` con labels y empty_label amigables. Mensajes de
+  error en español ("Asigna la tarea a alguien.", "Pon una fecha
+  de compromiso."). El modelo sigue nullable en DB para no migrar
+  tareas viejas. Test nuevo `test_tarea_sin_asignado_o_fecha_falla`.
+
+**Catálogo · Variaciones CRUD + Disponible** (commit `df7fe44`):
+
+- CRUD completo bajo `/catalogo/<pk>/variaciones/` (lista + nueva +
+  editar + archivar toggle). Templates
+  `templates/catalogo/variaciones.html` y `variacion_form.html`.
+- `ServicioForm.activo`: label cambia a "Disponible" (el campo en DB
+  sigue siendo `activo` para no migrar). En la lista del Catálogo el
+  badge ahora dice "Disponible / No disponible".
+- El nombre del servicio en la lista linkea a su página de variaciones
+  + badge "N variación{es}" al lado.
+- Eventos Portavoz: `catalogo.variacion_creada/actualizada`.
+- Permisos: variaciones heredan los permisos granulares del servicio
+  padre (`crear`, `editar`, `archivar`, `ver_nombres`).
+
+**Proyectos · Kanban + UX completa** (commit `50309ec`):
+
+- Rename "Los Proyectos" → "Proyectos" en sidebar, breadcrumbs,
+  headers, `apps.py::verbose_name`, vistas (`back_label`).
+- Vista Kanban `/proyectos/kanban/` con columnas por estado (todas
+  visibles, totales en cada header), scroll horizontal en mobile,
+  tarjetas con código + nombre + cliente + dentro_de + chips de
+  productos (hasta 3 + "+N").
+- Toggle "Lista | Kanban" en ambos headers (estilo segmented).
+- Filas de la lista clickeables (whole `<tr>` con `onclick`).
+- Columna Compromiso muestra fecha + "en N días" / "hoy" / "mañana" /
+  "vencido hace N días" con color (rojo vencido, naranja ≤3d, gris).
+  Nuevos templatetags `dentro_de` y `dentro_de_clase` en
+  `proyectos_extras.py`.
+- Resumen compacto de productos debajo de cada fila (lista) y en cada
+  tarjeta (Kanban). Hasta 3-4 chips + "+N más".
+- Botón "+ Nuevo proyecto" reubicado al lado izquierdo del header
+  (antes del título), en lista y Kanban.
+- `ProyectoProducto` inline formset en el form de Proyecto (nuevo y
+  editar): selector de Servicio + Variación opcional + cantidad +
+  nota. Clone-row vanilla JS para "+ Agregar línea".
+- "+ Nuevo cliente" inline modal HTMX desde el form de Proyecto.
+  Endpoint `/proyectos/cliente-nuevo/` con form minimalista
+  (razón social + RFC + contacto + email + teléfono). POST exitoso
+  reinyecta el `<select cliente>` con OOB swap incluyendo el nuevo
+  cliente preseleccionado, y cierra el modal vaciando el slot.
+- Detalle de Proyecto muestra tabla "Productos involucrados" arriba
+  del Pizarrón.
+- Eventos: `cliente.creado` con `origen=form_proyecto`.
+
+**Buzón · Slider de prioridad** (commit `fa8c14f`):
+
+- `NuevoMensajeForm` agrega campo `prioridad` con widget range 0-10
+  (default 5), label "Prioridad (0 baja · 10 urgente)". Badge inline
+  muestra el valor mientras se mueve el slider (5 LOC vanilla JS).
+- Lista del Buzón (Taller + admin Gerencia) gana columna "Prioridad"
+  con badge codificado por color: rojo ≥8, naranja ≥6, brand ≥3,
+  gris <3. `title="Prioridad: N/10"` para tooltip.
+- Detalle admin: prioridad agregado a info_card.
+- Test nuevo `test_prioridad_orden_descendente`.
+
+**Calendario** (commit `8f6786f`):
+
+- App nueva `el-taller/apps/calendario/` (sin modelos — lee Tareas
+  no completadas y Proyectos visibles, los proyecta sobre celdas
+  por día). `services.py` expone `grid_mes(year, month)`,
+  `eventos_por_dia(user, inicio, fin)`, `datos_mini_cal(user, year,
+  month)`. Filtros por rol (super_admin/dueno/contador todo;
+  diseñador sólo sus asignados).
+- Vista `/calendario/` con grid de dos meses lado a lado, semana
+  lunes-domingo, fines de semana en gris claro, día actual con
+  círculo brand, eventos como chips coloreados (entrega proyecto =
+  brand, tarea alta = warning, otras = gris). Truncate de 3 chips +
+  "+N más".
+- Mini-calendario en la Sala de Juntas (home): grid 7-col, día
+  actual resaltado, fines de semana en gris claro, puntito brand
+  bajo cualquier día con eventos, link "Ver calendario completo →".
+- Sidebar Taller: nuevo ítem "Calendario" después de Proyectos
+  (siempre visible — no requiere permiso explícito porque sólo
+  expone lecturas filtradas por rol).
+
+**NO incluye V1** (queda como deuda diseñada):
+
+- **Drag-and-drop en Kanban** para cambiar estado arrastrando
+  tarjeta entre columnas. Requeriría JS más complejo. Por ahora se
+  cambia estado desde el detalle (modal HTMX existente).
+- **Reordenar líneas de producto** en el formset (todas pasan en
+  orden de captura). Si LC lo pide, agregar campo `orden` al modelo.
+- **Productos sin variación específica** en proyecto (servicio
+  "genérico" sin elegir variante) — soportado por el modelo
+  (`variacion = null`), pero el form la sugiere para que LC sea
+  explícito. Si quieren más rápido, sumar opción "Sin variación
+  específica" como default visible.
+- **Compartir calendario al cliente** — espera S5 (La Recepción).
+- **Recordatorios push automáticos basados en `fecha_compromiso`** —
+  el push automático de tarea asignada ya existe (S2b.4), pero un
+  cron diario que avise "se vence mañana" queda pendiente.
 
 ### S4 — IA (Los Chalanes, casos de uso)
 

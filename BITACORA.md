@@ -4785,3 +4785,136 @@ Suite raíz al día. Taller + Gerencia no se tocan en este sprint.
 Sin nuevos sprints abiertos por este cambio. La deuda residual
 (probar/llaves UI, tarifa real, asignaciones por estación)
 queda al criterio operativo de LC, no requiere código.
+
+
+---
+
+# BITÁCORA — Sesión S-LC-Feedback-V1 (2026-05-22)
+
+> Cierre del sprint **S-LC-Feedback-V1**: feedback completo de Learning
+> Center tras la primera ronda de uso. 7 commits desde `b10cd7b` hasta
+> `1ab04b8` (más éste de docs).
+
+## 1. Decisión
+
+Frente a la opción de arrancar **S2b.3b** (Tesorería OCR + Sheets) o
+atender los comentarios de LC, el usuario eligió "todos en un sprint"
+los comentarios. Buena decisión — eran fricciones reales en el flujo
+operativo diario, mientras que S2b.3b cubre necesidades que aún no son
+urgentes y está bloqueado por el setup manual de Drive (S2b.1b).
+
+## 2. Lo que entró
+
+### Modelos + migraciones (`b10cd7b`)
+
+- `Proyecto.estado` con los 7 estados del ciclo LC. Data migration
+  remapea valores viejos (`prospecto → por_cotizar`, `cotizado +
+  revision_cliente → esperando_respuesta`, `en_diseno →
+  en_proceso_diseno`, `en_produccion → en_proceso_produccion`).
+- `el_catalogo.Variacion` + seed de las 4 categorías LC.
+- `los_proyectos.ProyectoProducto` (FK proyecto + servicio + variación
+  opcional + cantidad + nota).
+- `buzon.MensajeBuzon.prioridad` PositiveSmallIntegerField 0-10.
+
+### Pizarrón required (`890039e`)
+
+`TareaForm` ahora exige asignada_a + fecha_compromiso, con mensajes de
+error en español. Modelo sigue nullable en DB.
+
+### Catálogo · Variaciones + Disponible (`df7fe44`)
+
+CRUD bajo `/catalogo/<pk>/variaciones/`, partial del nombre del servicio
+en lista linkea a sus variaciones + badge de conteo. Label "Activo" →
+"Disponible".
+
+### Proyectos · Kanban + UX (`50309ec`)
+
+- Rename "Los Proyectos" → "Proyectos" en toda la UI.
+- Vista `/proyectos/kanban/` con columnas por estado.
+- Filas clickeables (whole-row onclick).
+- Columna Compromiso con "dentro de N días" + color por urgencia.
+- Resumen compacto de productos chips abajo del nombre.
+- Botón "+ Nuevo proyecto" al lado izquierdo del header.
+- Formset inline de productos en el form de Proyecto.
+- Modal HTMX "+ Nuevo cliente" con OOB swap del select tras crear.
+
+### Buzón · Slider prioridad (`fa8c14f`)
+
+Widget range 0-10 en el form, badge codificado por color en listas
+(rojo ≥8, naranja ≥6, brand ≥3, gris <3), orden default por prioridad
+desc.
+
+### Calendario (`8f6786f`)
+
+App nueva `apps/calendario/` sin modelos (lee Proyectos + Tareas
+visibles). Vista de mes actual + siguiente, mini-cal en el home con
+puntitos bajo días con eventos. Sidebar Taller suma ítem "Calendario".
+
+### Tests fix (`1ab04b8`)
+
+Dos asunciones obsoletas en `tests/test_rearquitectura.py`:
+`CategoriaServicio.objects.create(nombre="Diseño")` → `get_or_create`
+(la categoría ahora viene sembrada por la migración LC); búsqueda
+"Los Proyectos" → "Proyectos" en sidebar.
+
+## 3. Suite
+
+**686 pass, 9 skipped** (de 660 baseline antes del sprint, +26 tests
+nuevos). 0 fallas.
+
+| Archivo | Tests nuevos |
+|---|---|
+| `tests/taller/test_proyectos.py` | +4 (kanban, cliente inline get/post, productos en detalle) |
+| `tests/taller/test_pizarron.py` | +1 (tarea sin asignado/fecha falla) |
+| `tests/taller/test_buzon.py` | +1 (orden por prioridad) |
+| `tests/taller/test_calendario.py` | +5 (anon, admin, evento, mini-cal, grid_mes) |
+
+## 4. Decisiones tomadas en autonomía
+
+- **`revision_cliente`** mapeado a `esperando_respuesta` en data
+  migration (LC no lo lista).
+- **"Activo" → "Disponible"** sólo cambia el label de UI; el campo
+  en DB sigue siendo `activo` para no migrar.
+- **Variación** = modelo separado con FK al Servicio. El servicio
+  padre queda con su nombre/categoría/precio_base, las variaciones
+  cargan costo/impresión/detalles específicos.
+- **Productos en Proyecto** = modelo intermedio `ProyectoProducto`
+  con servicio + variación opcional + cantidad + nota.
+- **Calendario** = app sólo en El Taller (no shared cross-app).
+- **Cliente inline modal** = patrón Wave 5 (HTMX hx-get →
+  #modal-slot, POST 200 + OOB swap del select).
+- **Botón "+ Nuevo proyecto" en izquierda** = antes del título en el
+  flex header (no en el sidebar — eso ya tiene la entrada principal).
+- **Drag-and-drop en Kanban** = no incluido. Se queda como deuda
+  diseñada — por ahora se cambia estado desde el modal del detalle
+  (que ya existía).
+
+## 5. Deuda residual
+
+- **Drag-and-drop en Kanban** para cambiar estado arrastrando entre
+  columnas. Requeriría JS no-trivial; espera a que LC lo pida.
+- **Reordenar líneas de producto** en el formset.
+- **"Sin variación específica"** como default visible en proyectos
+  (hoy el modelo lo soporta — `variacion = null` — pero la UI sugiere
+  elegir una para evitar pérdida de info).
+- **Compartir calendario al cliente** — espera S5 (La Recepción).
+- **Recordatorios push automáticos** por `fecha_compromiso` cercano
+  (cron diario). Push automático de tarea asignada ya existe (S2b.4).
+
+## 6. Configuración post-deploy
+
+Cero pasos manuales. El Mensajero corre las 3 migraciones nuevas
+automáticamente:
+
+- `proyectos.0004_estados_lc_y_proyectoproducto`
+- `el_catalogo.0002_variacion_seed_categorias` (siembra las 4
+  categorías LC vía `update_or_create` — idempotente)
+- `buzon.0002_prioridad`
+
+Los proyectos existentes quedan automáticamente con sus nuevos slugs
+de estado.
+
+## 7. Próximo
+
+S2b.3b sigue ahí cuando LC active Google Drive. Mientras tanto la
+operación con S-LC-Feedback-V1 debería sentirse mucho más fluida.
