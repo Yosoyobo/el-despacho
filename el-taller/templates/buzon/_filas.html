@@ -1,6 +1,9 @@
 {% for m in mensajes %}
 <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if m.estado == 'nuevo' %}bg-warning-25 dark:bg-warning-500/5{% endif %}">
     <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">#{{ m.pk }}</td>
+    <td class="px-5 py-3 text-center">
+        <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-full {% if m.prioridad >= 8 %}bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300{% elif m.prioridad >= 6 %}bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300{% elif m.prioridad >= 3 %}bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300{% else %}bg-gray-100 text-gray-600 dark:bg-white/[0.05] dark:text-gray-400{% endif %} px-2 text-xs font-bold tabular-nums" title="Prioridad: {{ m.prioridad }}/10">{{ m.prioridad }}</span>
+    </td>
     {% if es_admin_buzon %}<td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ m.autor.email }}</td>{% endif %}
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ m.get_tipo_display }}</td>
     <td class="px-5 py-3"><a href="{% url 'buzon-detalle' m.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ m.asunto }}</a></td>

@@ -16,8 +16,9 @@
         <div class="space-y-5">
             {% for f in form %}
             <div>
-                {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}{% if f.field.required %} <span class="text-error-500">*</span>{% endif %}</label>{% endif %}
+                {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}{% if f.field.required %} <span class="text-error-500">*</span>{% endif %}{% if f.name == 'prioridad' %} <span id="prioridad-valor" class="ml-2 inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ f.value|default:5 }}</span>{% endif %}</label>{% endif %}
                 {{ f }}
+                {% if f.name == 'prioridad' %}<div class="mt-1 flex justify-between text-[10px] text-gray-400"><span>0 · sin prisa</span><span>5 · normal</span><span>10 · urgente</span></div>{% endif %}
                 {% if f.help_text %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ f.help_text }}</p>{% endif %}
                 {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
             </div>
@@ -29,4 +30,13 @@
         <button type="submit" class="btn-primario">Enviar mensaje</button>
     </div>
 </form>
+<script>
+(function() {
+    const slider = document.querySelector('input[name="prioridad"]');
+    const valor = document.getElementById('prioridad-valor');
+    if (slider && valor) {
+        slider.addEventListener('input', function() { valor.textContent = slider.value; });
+    }
+})();
+</script>
 {% endblock %}

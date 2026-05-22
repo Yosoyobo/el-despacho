@@ -18,6 +18,7 @@ def test_empleado_envia_mensaje(client, usuario_factory):
         "tipo": "sugerencia",
         "asunto": "Mejorar el filtro de Proyectos",
         "cuerpo": "Sería útil filtrar por cliente y por estado al mismo tiempo.",
+        "prioridad": "5",
     })
     assert resp.status_code == 302
     msg = MensajeBuzon.objects.get(autor=u)
@@ -33,7 +34,7 @@ def test_problema_se_pasa_por_el_colador(client, usuario_factory):
     u = usuario_factory(rol="contador")
     client.force_login(u)
     cuerpo = "Error en /opt/el-despacho/.env con key sk-ant-test-abcdefghijklmnopqrstuvwxyz01234567"
-    client.post("/buzon/nuevo", {"tipo": "problema", "asunto": "Bug", "cuerpo": cuerpo})
+    client.post("/buzon/nuevo", {"tipo": "problema", "asunto": "Bug", "cuerpo": cuerpo, "prioridad": "7"})
     msg = MensajeBuzon.objects.get(autor=u)
     assert "/opt/el-despacho/.env" not in msg.cuerpo
     assert "sk-ant-test-" not in msg.cuerpo
@@ -66,3 +67,18 @@ def test_detalle_ajeno_404(client, usuario_factory):
     client.force_login(u1)
     resp = client.get(f"/buzon/{m.pk}/")
     assert resp.status_code == 404
+
+
+def test_prioridad_orden_descendente(client, usuario_factory):
+    """Lista del buzón ordena por prioridad descendente y luego fecha desc."""
+    from buzon.models import MensajeBuzon
+    u = usuario_factory(rol="super_admin")
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="baja", cuerpo="x"*20, prioridad=1)
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="urgente", cuerpo="y"*20, prioridad=9)
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="media", cuerpo="z"*20, prioridad=5)
+    client.force_login(u)
+    resp = client.get("/buzon/")
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    # urgente (9) debe aparecer antes que media (5) antes que baja (1).
+    assert body.index("urgente") < body.index("media") < body.index("baja")

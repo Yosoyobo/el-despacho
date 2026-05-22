@@ -54,7 +54,7 @@ def lista(request):
         "respondidos": base.filter(estado="respondido").count(),
         "archivados": base.filter(estado="archivado").count(),
     }
-    cabeceras = [{"label": "#"}]
+    cabeceras = [{"label": "#"}, {"label": "Prioridad", "align": "center"}]
     if es_admin_buzon:
         cabeceras.append({"label": "Autor"})
     cabeceras += [

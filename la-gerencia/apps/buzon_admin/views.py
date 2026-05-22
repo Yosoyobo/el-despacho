@@ -42,6 +42,7 @@ def lista(request):
         "donut_tipos_json": donut_desde_conteo(por_tipo),
         "cabeceras_buzon_admin": [
             {"label": "#"},
+            {"label": "Prioridad", "align": "center"},
             {"label": "Autor"},
             {"label": "Tipo"},
             {"label": "Asunto"},
@@ -97,6 +98,7 @@ def detalle(request, pk: int):
     from django.urls import reverse
     info_buzon = [
         {"label": "Tipo", "value": msg.get_tipo_display()},
+        {"label": "Prioridad", "value": f"{msg.prioridad}/10"},
         {"label": "Autor", "value": msg.autor.email},
         {"label": "Recibido", "value": msg.creado_en.strftime("%Y-%m-%d %H:%M")},
         {"label": "Estado", "value": msg.get_estado_display()},

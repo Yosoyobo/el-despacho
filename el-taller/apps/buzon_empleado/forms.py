@@ -17,9 +17,15 @@ class RespuestaAdminForm(forms.ModelForm):
 
 
 class NuevoMensajeForm(forms.ModelForm):
+    prioridad = forms.IntegerField(
+        min_value=0, max_value=10, initial=5,
+        widget=forms.NumberInput(attrs={"type": "range", "min": 0, "max": 10, "step": 1, "class": "w-full"}),
+        label="Prioridad (0 baja · 10 urgente)",
+    )
+
     class Meta:
         model = MensajeBuzon
-        fields = ["tipo", "asunto", "cuerpo"]
+        fields = ["tipo", "asunto", "cuerpo", "prioridad"]
         widgets = {
             "cuerpo": forms.Textarea(attrs={"rows": 8, "maxlength": 5000}),
             "asunto": forms.TextInput(attrs={"maxlength": 200}),
