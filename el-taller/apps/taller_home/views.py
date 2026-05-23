@@ -235,6 +235,26 @@ def dashboard_guardar(request):
 
 @login_required
 @require_http_methods(["POST"])
+def dashboard_reordenar(request):
+    """POST /perfil/dashboard/reordenar — guarda orden de KPIs vía drag&drop.
+
+    S-LC-Feedback-V3. Body: `slugs[]` lista ordenada de slugs visibles.
+    Actualiza `PreferenciaKPI.orden` por usuario (0..N).
+    """
+    user = request.user
+    slugs = request.POST.getlist("slugs")
+    if not slugs:
+        return JsonResponse({"ok": False, "error": "Vacío."}, status=400)
+    for i, slug in enumerate(slugs):
+        PreferenciaKPI.objects.update_or_create(
+            usuario=user, kpi_slug=slug,
+            defaults={"orden": i, "visible": True},
+        )
+    return JsonResponse({"ok": True, "n": len(slugs)})
+
+
+@login_required
+@require_http_methods(["POST"])
 def sugerencia_aceptar(request, sugerencia_id: int):
     """Acepta la sugerencia: activa la PreferenciaKPI + marca aceptada."""
     from django.shortcuts import get_object_or_404, redirect

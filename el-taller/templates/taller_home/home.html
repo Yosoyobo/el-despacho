@@ -90,12 +90,12 @@
         <a href="{% url 'perfil-dashboard' %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Editar KPIs visibles →</a>
     </div>
 </section>
-<section class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+<section id="kpis-grid" class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
     {% for kpi in kpis %}
     {% if kpi.link %}
-    <a href="{{ kpi.link }}" class="ta-card block hover:border-brand-300 dark:hover:border-brand-500/50">
+    <a href="{{ kpi.link }}" draggable="true" data-kpi-slug="{{ kpi.slug }}" class="kpi-card ta-card block cursor-grab hover:border-brand-300 dark:hover:border-brand-500/50 active:cursor-grabbing">
     {% else %}
-    <div class="ta-card">
+    <div draggable="true" data-kpi-slug="{{ kpi.slug }}" class="kpi-card ta-card cursor-grab active:cursor-grabbing">
     {% endif %}
         <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ kpi.titulo }}</p>
         <p class="mt-2 text-title-sm font-bold {% if kpi.nota == 'alerta' %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{{ kpi.valor }}</p>
@@ -111,6 +111,45 @@
     </div>
     {% endfor %}
 </section>
+<script>
+(function () {
+    // S-LC-Feedback-V3: drag & drop de tarjetas KPI. Persiste orden en backend.
+    const grid = document.getElementById('kpis-grid');
+    if (!grid) return;
+    let dragEl = null;
+    grid.addEventListener('dragstart', e => {
+        const card = e.target.closest('.kpi-card');
+        if (!card) return;
+        dragEl = card;
+        card.classList.add('opacity-50');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    grid.addEventListener('dragend', e => {
+        const card = e.target.closest('.kpi-card');
+        if (card) card.classList.remove('opacity-50');
+        dragEl = null;
+        // Persistir el orden actual.
+        const slugs = Array.from(grid.querySelectorAll('.kpi-card')).map(c => c.getAttribute('data-kpi-slug'));
+        const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+        const body = new FormData();
+        slugs.forEach(s => body.append('slugs', s));
+        fetch('{% url "perfil-dashboard-reordenar" %}', {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrf || ''},
+            body: body,
+        }).catch(() => {});
+    });
+    grid.addEventListener('dragover', e => {
+        e.preventDefault();
+        const card = e.target.closest('.kpi-card');
+        if (!card || card === dragEl || !dragEl) return;
+        const rect = card.getBoundingClientRect();
+        const antes = (e.clientX - rect.left) < rect.width / 2;
+        if (antes) card.parentNode.insertBefore(dragEl, card);
+        else card.parentNode.insertBefore(dragEl, card.nextSibling);
+    });
+})();
+</script>
 
 {# 3) Proyectos — S-LC-Feedback-V2: justo abajo del Tablero. #}
 <section class="mb-8 grid gap-6 lg:grid-cols-2">

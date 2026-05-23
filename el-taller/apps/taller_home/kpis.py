@@ -689,6 +689,12 @@ def kpis_visibles_para(user, *, incluir_ocultos: bool = False) -> list[tuple[KPI
     ocultos: set[str] = set(
         PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
     )
+    # S-LC-Feedback-V3: orden personalizado por usuario (campo `orden` en
+    # PreferenciaKPI, persistido por drag&drop). Slugs sin preferencia
+    # quedan al final en el orden del catálogo.
+    ordenes = dict(
+        PreferenciaKPI.objects.filter(usuario=user).values_list("kpi_slug", "orden")
+    )
 
     salida: list[tuple[KPI, dict]] = []
     for kpi in aplicables:
@@ -701,6 +707,8 @@ def kpis_visibles_para(user, *, incluir_ocultos: bool = False) -> list[tuple[KPI
         except Exception:  # noqa: BLE001 — un KPI roto no debe tumbar el dashboard
             resultado = {"valor": "?", "nota": "error", "link": ""}
         salida.append((kpi, resultado))
+    # Ordenar respetando preferencia (sin preferencia = orden default catálogo).
+    salida.sort(key=lambda pair: ordenes.get(pair[0].slug, 9999))
     return salida
 
 
