@@ -21,11 +21,12 @@ from ..capacidades import Capability
 MODELO_DEFAULT = "mimo-v2.5-pro"
 API_URL = "https://api.xiaomimimo.com/v1/chat/completions"
 
-# Precios placeholder en USD por token. Ajustar cuando MiMo publique tarifa
-# oficial; no se cobra al usuario, sólo se loggea en cocineros_log para
-# reportes de costo aproximado.
-PRECIO_IN = 0.20 / 1_000_000
-PRECIO_OUT = 0.60 / 1_000_000
+# MiMo (Xiaomi) está actualmente en programa de acceso gratuito — no se
+# cobra por uso. Precios = 0 hasta que Xiaomi publique tarifa oficial.
+# Cuando dejen de ser gratis, actualizar a valores reales y emitir un
+# evento "chalan.precio_actualizado" para que la UI alerte al admin.
+PRECIO_IN = 0.0
+PRECIO_OUT = 0.0
 
 
 class MimoAdapter(Adapter):
@@ -85,3 +86,10 @@ class MimoAdapter(Adapter):
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
             latencia_ms=latencia,
         )
+
+    def consultar_saldo(self) -> dict:
+        # MiMo (Xiaomi) está en programa gratuito en este momento.
+        return {"soportado": True, "disponible": None, "moneda": "USD",
+                "etiqueta": "Gratis (programa de acceso)",
+                "fuente_url": "https://www.xiaomimimo.com/",
+                "mensaje": "MiMo está actualmente sin costo por uso. Revisa periódicamente."}

@@ -68,3 +68,10 @@ class OpenAIAdapter(Adapter):
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
             latencia_ms=latencia,
         )
+
+    def consultar_saldo(self) -> dict:
+        # OpenAI deprecó `/v1/dashboard/billing/credit_grants`. Link al dashboard.
+        return {"soportado": False, "disponible": None, "moneda": "USD",
+                "etiqueta": "Ver en dashboard",
+                "fuente_url": "https://platform.openai.com/settings/organization/billing/overview",
+                "mensaje": "OpenAI no expone saldo vía API. Revisa el dashboard."}

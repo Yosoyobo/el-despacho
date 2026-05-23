@@ -76,3 +76,43 @@ class DeepseekAdapter(Adapter):
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
             latencia_ms=latencia,
         )
+
+    def consultar_saldo(self) -> dict:
+        """Deepseek expone `GET /user/balance` con Bearer.
+
+        Respuesta típica:
+        {"is_available": true, "balance_infos": [{"currency": "USD", "total_balance": "5.00", ...}]}
+        """
+        try:
+            llave = self._llave()
+        except FaltaCredencial as exc:
+            return {"soportado": True, "disponible": None, "moneda": "USD",
+                    "etiqueta": "—", "fuente_url": "https://platform.deepseek.com/usage",
+                    "mensaje": str(exc)}
+        try:
+            resp = httpx.get(
+                "https://api.deepseek.com/user/balance",
+                headers={"Authorization": f"Bearer {llave}", "Accept": "application/json"},
+                timeout=self.timeout,
+            )
+        except httpx.RequestError as exc:
+            return {"soportado": True, "disponible": None, "moneda": "USD",
+                    "etiqueta": "—", "fuente_url": "https://platform.deepseek.com/usage",
+                    "mensaje": f"red/timeout: {exc}"}
+        if resp.status_code != 200:
+            return {"soportado": True, "disponible": None, "moneda": "USD",
+                    "etiqueta": "—", "fuente_url": "https://platform.deepseek.com/usage",
+                    "mensaje": f"HTTP {resp.status_code}"}
+        data = resp.json()
+        infos = data.get("balance_infos") or []
+        if not infos:
+            return {"soportado": True, "disponible": 0.0, "moneda": "USD",
+                    "etiqueta": "$0.00 USD", "fuente_url": "https://platform.deepseek.com/usage",
+                    "mensaje": "Sin saldo activo."}
+        # Tomamos USD si existe, si no el primero.
+        usd = next((b for b in infos if (b.get("currency") or "").upper() == "USD"), infos[0])
+        monto = float(usd.get("total_balance") or 0)
+        moneda = (usd.get("currency") or "USD").upper()
+        return {"soportado": True, "disponible": monto, "moneda": moneda,
+                "etiqueta": f"${monto:,.2f} {moneda}",
+                "fuente_url": "https://platform.deepseek.com/usage", "mensaje": "OK"}

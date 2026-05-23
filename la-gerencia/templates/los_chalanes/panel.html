@@ -108,6 +108,9 @@
             <form method="post" action="{% url 'los_chalanes:probar_chalan' nombre=c.nombre %}" class="inline">{% csrf_token %}
                 <button class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Probar conexión</button>
             </form>
+            <form method="post" action="{% url 'los_chalanes:consultar_saldo' nombre=c.nombre %}" class="inline">{% csrf_token %}
+                <button class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" title="Consulta saldo disponible — abre el dashboard del proveedor si no hay API">💰 Saldo</button>
+            </form>
             <a href="/ajustes/#{{ c.slot }}" class="rounded-lg bg-warning-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-warning-600">{% if c.configurado %}Cambiar llave{% else %}Configurar{% endif %}</a>
             {% if c.configurado %}
             <form method="post" action="{% url 'los_chalanes:borrar_llave' nombre=c.nombre %}" class="ml-auto inline" onsubmit="return confirm('¿Eliminar la llave de {{ c.apodo }}? El Chalán quedará inactivo hasta que pegues otra.');">{% csrf_token %}
@@ -209,6 +212,11 @@
     <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
         <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Qué pueden hacer Los Chalanes</h2>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Acciones que El Dictado interpreta y ejecuta. Cualquier otra petición se marca como "Sin ejecutor" en el historial.</p>
+        {% if referencias_entre_acciones %}
+        <div class="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+            <strong class="font-semibold">Referencias entre acciones:</strong> {{ referencias_entre_acciones }}
+        </div>
+        {% endif %}
     </header>
     <div class="grid grid-cols-1 gap-4 px-5 py-4 lg:grid-cols-2">
         <div>

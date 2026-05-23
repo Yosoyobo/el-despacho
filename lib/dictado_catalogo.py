@@ -11,6 +11,16 @@ también aquí y al prompt en `apps/el_dictado/prompt.py`.
 
 from __future__ import annotations
 
+REFERENCIAS_ENTRE_ACCIONES = (
+    "Si una acción depende de una entidad creada por otra acción del MISMO "
+    "dictado, el Chalán puede usar `@accion_N` (donde N es el índice de la "
+    "acción que la creó) en lugar de un slug. Ej: crear proyecto + asignar "
+    "líder en un solo dictado — el segundo usa `proyecto_slug: \"@accion_0\"`. "
+    "Si el Chalán adivina un slug parecido al nombre, el sistema también "
+    "hace fuzzy match contra las entidades recién creadas."
+)
+
+
 COMANDOS_DICTADO: list[dict] = [
     {
         "tipo": "crear_proyecto",
@@ -109,4 +119,4 @@ COMANDOS_PROHIBIDOS: list[dict] = [
 ]
 
 
-__all__ = ["COMANDOS_DICTADO", "COMANDOS_PROHIBIDOS"]
+__all__ = ["COMANDOS_DICTADO", "COMANDOS_PROHIBIDOS", "REFERENCIAS_ENTRE_ACCIONES"]

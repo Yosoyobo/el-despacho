@@ -24,7 +24,7 @@ from chalanes.models import ChalanAsignado, CuadroChalanes
 from lib.analistas import registry as _registry
 from lib.analistas.capacidades import Capability
 from lib.analistas.stats import resumen_global, tarjetas_chalanes
-from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS
+from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
 from lib.portavoz import emitir
 
 ROLES_ADMIN_TALLER = {"super_admin", "dueno"}
@@ -76,6 +76,7 @@ def panel(request):
         "filas": filas,
         "comandos_dictado": COMANDOS_DICTADO,
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
+        "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
     }
     if rol in ROLES_ADMIN_TALLER:
         # Dashboard reducido para admins (mismo dato que /chalanes/ en Gerencia,
@@ -126,4 +127,39 @@ def guardar(request):
             "usuario_id": user.pk, "estacion": estacion,
             "proveedor": proveedor or None,
         })
+    return redirect("perfil-chalanes")
+
+
+@require_POST
+@login_required
+def consultar_saldo(request, nombre: str):
+    """POST /perfil/chalanes/<nombre>/saldo — solo super_admin/dueno.
+
+    Misma lógica que en Gerencia, pero accesible desde el panel del Taller.
+    """
+    if getattr(request.user, "rol", None) not in ROLES_ADMIN_TALLER:
+        messages.error(request, "Sólo super_admin y dueño pueden consultar saldo.")
+        return redirect("perfil-chalanes")
+    adapter = _registry.adapter_de(nombre)
+    if adapter is None:
+        messages.error(request, f"Chalán desconocido: {nombre}")
+        return redirect("perfil-chalanes")
+    try:
+        saldo = adapter.consultar_saldo()
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f"Chalán {nombre}: no se pudo consultar saldo ({exc}).")
+        return redirect("perfil-chalanes")
+    etiqueta = saldo.get("etiqueta") or "—"
+    mensaje = saldo.get("mensaje") or ""
+    url = saldo.get("fuente_url") or ""
+    if saldo.get("soportado") and saldo.get("disponible") is not None:
+        messages.success(request, f"Saldo de {nombre}: {etiqueta} · {mensaje}")
+    elif saldo.get("soportado"):
+        messages.info(request, f"Saldo de {nombre}: {etiqueta}. {mensaje} {url}".strip())
+    else:
+        messages.info(request, f"Saldo de {nombre}: este proveedor no expone saldo vía API. Revisa: {url}")
+    with contextlib.suppress(Exception):
+        emitir({"tipo": "chalanes.saldo_consultado", "proveedor": nombre,
+                "soportado": saldo.get("soportado"), "etiqueta": etiqueta,
+                "actor_id": request.user.pk})
     return redirect("perfil-chalanes")

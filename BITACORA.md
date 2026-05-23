@@ -5105,3 +5105,88 @@ Cero pasos manuales. Tailwind recompila en El Mensajero (las clases
 `xl:grid-cols-7` y `ring-2 ring-brand-500` ya estaban en el safelist
 implícito del JIT). El Mensajero hace `migrate` (sin migraciones
 nuevas) y todo se aplica al deploy.
+
+---
+
+## 10. Hotfix 23 mayo 2026 — Referencias entre acciones + saldo + MiMo gratis
+
+3 entregas: plan 3 (capas 1+2+3) para el bug "Proyecto X no encontrado"
+cuando el dictado encadena acciones, método `consultar_saldo()` por
+adapter, MiMo a precio cero.
+
+### 10.1. Referencias entre acciones (`@accion_N` + fuzzy + error útil)
+
+**Bug original**: dictado #20 hizo `crear_proyecto "album nuevo branding"
+para $pxndx` + `asignar_usuario_proyecto "album-nuevo-branding"`. La
+primera ejecutó OK (slug real `pry-654321`). La segunda falló porque el
+LLM adivinó el slug a partir del nombre, no del código autogenerado.
+
+**Plan implementado** (DOC_04 §8.2):
+
+- **Capa 1 — sintaxis `@accion_N`**:
+  [`apps/el_dictado/services.py::aplicar()`](el-taller/apps/el_dictado/services.py)
+  ahora mantiene `contexto["entidades_creadas"] = {orden: {tipo, id}}`
+  y pasa `contexto` como tercer arg a cada ejecutor (firma
+  `(accion, usuario, contexto=None)` — retrocompat por arity).
+  [`ejecutores/basicos.py`](el-taller/apps/el_dictado/ejecutores/basicos.py)
+  resolvers (`_resolver_proyecto/cliente/usuario`) detectan
+  `@accion_N` y leen del contexto antes de tocar DB.
+- **Capa 2 — fuzzy fallback**: si el slug literal no existe,
+  `_fuzzy_recientes()` busca entre las entidades del mismo dictado
+  por `slugify(nombre)`. Match exacto, substring, o reverso. Solo
+  mira el contexto — no toca la DB global.
+- **Capa 3 — error útil**: cuando ambas fallan,
+  `_sugerencia_recien_creado()` arma un mensaje del tipo `Proyecto X
+  no encontrado. ¿Quisiste decir "PRY-654321 · album nuevo branding"
+  (recién creado en esta misma acción)?`
+- **Prompt actualizado** ([`prompt.py`](el-taller/apps/el_dictado/prompt.py))
+  con sección "REFERENCIAS ENTRE ACCIONES" + ejemplo.
+- **Catálogo visible**: nueva constante `REFERENCIAS_ENTRE_ACCIONES`
+  en [`lib/dictado_catalogo.py`](lib/dictado_catalogo.py) que se
+  renderiza como banner brand en la sección "Qué pueden hacer Los
+  Chalanes" de ambos paneles (Gerencia + Taller, dual-copy).
+
+Patrón general — sirve para cualquier acción que dependa de otra del
+mismo dictado (crear cliente + crear proyecto + crear tarea + asignar
+todo en un solo dictado).
+
+### 10.2. Consultar saldo del proveedor
+
+Nuevo método opcional `Adapter.consultar_saldo()` en
+[`lib/analistas/base.py`](lib/analistas/base.py). Default retorna
+`{soportado: False, fuente_url, mensaje}` apuntando al dashboard del
+proveedor. Overrides:
+
+| Adapter | Soporte | Endpoint |
+|---|---|---|
+| Deepseek | ✅ | `GET https://api.deepseek.com/user/balance` |
+| Anthropic | ❌ | Link al dashboard de billing |
+| OpenAI | ❌ | Link al dashboard (credit_grants deprecado) |
+| MiMo | n/a | "Gratis (programa de acceso)" |
+
+UI nueva:
+
+- [`la-gerencia/apps/los_chalanes/views.py::consultar_saldo_chalan`](la-gerencia/apps/los_chalanes/views.py)
+  + URL `chalanes/<nombre>/saldo` (POST).
+- [`el-taller/apps/perfil_chalanes/views.py::consultar_saldo`](el-taller/apps/perfil_chalanes/views.py)
+  (super_admin/dueno only) + URL `perfil/chalanes/<nombre>/saldo`.
+- Botón "💰 Saldo" en footer de cada tarjeta (Gerencia) y en cada
+  card del dashboard reducido del Taller. Click → flash con el
+  resultado del provider o link al dashboard si no hay API pública.
+
+Eventos Portavoz: `chalanes.saldo_consultado`.
+
+### 10.3. MiMo en programa gratuito
+
+[`lib/analistas/adapters/mimo.py`](lib/analistas/adapters/mimo.py):
+`PRECIO_IN = PRECIO_OUT = 0.0` con comentario indicando que cuando
+Xiaomi publique tarifa hay que actualizar + emitir evento
+`chalan.precio_actualizado`. Los logs históricos en `AnalistaLog`
+con costos previos quedan como están (no migración) — el agregado de
+`/chalanes/` los seguirá sumando, pero los nuevos serán $0.
+
+### 10.4. Configuración post-deploy
+
+Cero pasos manuales. Para usar el botón "💰 Saldo" de Deepseek, la
+llave debe estar configurada en Los Ajustes (ya el caso) — el adapter
+hace GET con el mismo Bearer y devuelve el `total_balance` del usuario.

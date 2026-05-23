@@ -1,7 +1,7 @@
 # Diseño — El Dictado
 
-> **Versión:** 1.4 · 22 mayo 2026 (hotfix S-LC-Feedback-V1)
-> **Status:** V1 ✅ deployado · sub-sprint S2b.2.1 ✅ entregado · hotfix 22-may ✅ (fallback con ErrorPermanente + ejecutores crear_proyecto/crear_cliente/actualizar_cliente + catálogo visible en Los Chalanes)
+> **Versión:** 1.5 · 23 mayo 2026 (hotfix S-LC-Feedback-V1 wave 3)
+> **Status:** V1 ✅ deployado · sub-sprint S2b.2.1 ✅ entregado · hotfix 22-may ✅ (fallback con ErrorPermanente + ejecutores crear_proyecto/crear_cliente/actualizar_cliente + catálogo visible en Los Chalanes) · hotfix 23-may ✅ (referencias entre acciones `@accion_N` + fuzzy fallback + consultar saldo)
 > **V1 cubre:** §3 (modelos), §4 (UX), §5 (filtro de prohibidas backend), §7 (prompt), §8 (aplicación atómica + 10 ejecutores), §9 (histórico), §10 (eventos clave), §11 (14 de 21 tests).
 > **V1 pendiente:** ejecutores de cotizaciones/facturas (módulos no existen aún). `registrar_egreso` **vivo desde S2b.3** (2026-05-19) — crea Egresos reales en La Tesorería con `origen='sala_juntas'`. `registrar_ingreso` sigue pendiente.
 > **Audiencia:** Claude Code / desarrollo
@@ -479,6 +479,59 @@ Chalanes") vive en [`lib/dictado_catalogo.py`](../lib/dictado_catalogo.py)
 y se renderiza en el panel `/chalanes/` de La Gerencia. Si agregas un
 ejecutor nuevo, **actualiza los tres lugares**: ejecutores/, prompt.py,
 dictado_catalogo.py.
+
+### 8.2. Referencias entre acciones (hotfix 23 mayo 2026)
+
+Cuando un dictado encadena acciones — *crear proyecto y asignar líder*,
+*crear cliente y luego un proyecto para él*, etc. — la segunda acción
+no podía referenciar la entidad recién creada por la primera (su slug
+real aún no existía y el LLM solía adivinar uno inválido).
+
+**Capa 1 — Sintaxis `@accion_N`** (la limpia):
+- El prompt enseña al LLM a usar `proyecto_slug: "@accion_0"` cuando la
+  acción depende de algo creado en la acción N=0 del mismo dictado.
+- `services.aplicar()` mantiene `contexto["entidades_creadas"] = {orden:
+  {tipo, id}}` y los ejecutores reciben `contexto` como tercer argumento
+  (firma `(accion, usuario, contexto=None)` — retrocompatible).
+- Resolvers `_resolver_proyecto/cliente/usuario` detectan `@accion_N`
+  y leen del contexto antes de tocar la DB.
+
+**Capa 2 — Fuzzy fallback** (la red de seguridad):
+- Si el LLM se olvidó de usar `@accion_N` y emitió un slug literal
+  parecido al nombre, los resolvers hacen `slugify(nombre)` contra las
+  entidades creadas en este mismo dictado.
+- Match si `slugify(slug_pedido) == slugify(nombre)` o si uno contiene
+  al otro como substring. Sólo mira entidades de este dictado — no
+  toca la DB global por seguridad.
+
+**Capa 3 — Error útil**:
+- Cuando ambas fallan, el mensaje incluye: `Proyecto X no encontrado.
+  ¿Quisiste decir "PRY-654321 · album nuevo branding" (recién creado
+  en esta misma acción)?` El usuario sabe qué pasó y puede re-dictar.
+
+Patrón sólido para futuras acciones encadenadas. Si agregas un
+ejecutor que devuelve entidad nueva, simplemente setea
+`accion.entidad_tipo` y `accion.entidad_id` antes de retornar; el
+contexto se enriquece automáticamente.
+
+### 8.3. Consultar saldo del proveedor
+
+Nuevo método opcional `Adapter.consultar_saldo()` en
+[`lib/analistas/base.py`](../lib/analistas/base.py). Default retorna
+`{soportado: False, ...}` con link al dashboard del proveedor.
+Overrides:
+
+| Adapter | Soporte | Notas |
+|---|---|---|
+| Deepseek | ✅ API | `GET /user/balance` retorna saldo USD. |
+| Anthropic | ❌ | No tiene endpoint público — link a `console.anthropic.com/settings/billing`. |
+| OpenAI | ❌ | `credit_grants` deprecado — link al dashboard. |
+| MiMo | n/a | Programa gratuito por ahora — etiqueta "Gratis". |
+
+UI: botón "💰 Saldo" en cada tarjeta de Chalán en `/chalanes/` (Gerencia)
+y `/perfil/chalanes/` (Taller para super_admin/dueno). Click POST a
+`<nombre>/saldo` → consulta + flash con resultado. Evento Portavoz
+`chalanes.saldo_consultado`.
 
 ---
 

@@ -11,6 +11,7 @@ urlpatterns = [
     path("cadena/toggle", views.toggle_cadena, name="toggle_cadena"),
     # S-Chalanes-Panel: prueba de conexión + borrar llave por proveedor
     path("<slug:nombre>/probar", views.probar_chalan, name="probar_chalan"),
+    path("<slug:nombre>/saldo", views.consultar_saldo_chalan, name="consultar_saldo"),
     path("<slug:nombre>/borrar-llave", views.borrar_llave, name="borrar_llave"),
     # Aprendizajes (S2b.2.1)
     path("aprendizajes/", views.aprendizajes_lista, name="aprendizajes-lista"),

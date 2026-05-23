@@ -163,6 +163,10 @@ def aplicar(*, dictado, usuario):
     acciones = list(dictado.acciones.filter(confirmada=True).order_by("orden"))
     aplicadas = 0
     fallidas = 0
+    # Contexto compartido entre ejecutores del mismo dictado. Permite que una
+    # acción referencie la entidad creada por otra acción previa vía
+    # `@accion_N` en el slug, o fuzzy-match por nombre. Plan 3 capas 1+2.
+    contexto: dict = {"entidades_creadas": {}, "actor": usuario}
     for accion in acciones:
         ejecutor = EJECUTORES.get(accion.tipo)
         if not ejecutor:
@@ -171,7 +175,14 @@ def aplicar(*, dictado, usuario):
             fallidas += 1
             continue
         try:
-            ejecutor(accion, usuario)
+            # Retrocompat: ejecutores viejos toman (accion, usuario); los
+            # nuevos toman (accion, usuario, contexto). Detectar por arity.
+            import inspect
+            sig = inspect.signature(ejecutor)
+            if len(sig.parameters) >= 3:
+                ejecutor(accion, usuario, contexto)
+            else:
+                ejecutor(accion, usuario)
         except Exception as exc:  # noqa: BLE001
             accion.error_al_aplicar = str(exc)[:1000]
             accion.save(update_fields=["error_al_aplicar"])
@@ -180,6 +191,13 @@ def aplicar(*, dictado, usuario):
         accion.aplicada = True
         accion.aplicada_en = timezone.now()
         accion.save(update_fields=["aplicada", "aplicada_en", "entidad_tipo", "entidad_id"])
+        # Registra la entidad creada para que acciones posteriores la
+        # puedan referenciar con `@accion_N`.
+        if accion.entidad_tipo and accion.entidad_id:
+            contexto["entidades_creadas"][accion.orden] = {
+                "tipo": accion.entidad_tipo,
+                "id": accion.entidad_id,
+            }
         aplicadas += 1
 
     dictado.estado = "aplicado" if fallidas == 0 and aplicadas > 0 else (

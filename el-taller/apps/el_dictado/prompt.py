@@ -58,6 +58,15 @@ FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
   ]
 }
 
+REFERENCIAS ENTRE ACCIONES (importante):
+Si una acción depende de una entidad creada en una acción PREVIA del MISMO
+dictado, NO inventes su slug. Usa la sintaxis `@accion_N` donde N es el
+índice de la acción que la creó (0 = primera). Ejemplo: si la acción 0 es
+`crear_proyecto` y la 1 es `asignar_usuario_proyecto`, usa
+`"proyecto_slug": "@accion_0"` en la 1. El sistema resuelve la referencia
+al aplicar. Aplica también a `cliente_slug` cuando creas cliente y luego
+un proyecto para él.
+
 PAYLOADS:
 - crear_proyecto: {nombre, cliente_slug, descripcion?, estado?, fecha_compromiso?, monto_estimado?, monto_cotizado?}
   estado ∈ por_cotizar|esperando_respuesta|en_proceso_diseno|en_proceso_produccion|entregado|en_pausa|cancelado

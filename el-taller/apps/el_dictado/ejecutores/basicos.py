@@ -1,10 +1,18 @@
 """Ejecutores básicos V1 — proyectos, tareas, recados, buzón.
 
-Cada función toma `(accion: DictadoAccion, usuario: Usuario)` y aplica el
-cambio. Lanza `ValueError` si el payload es inválido o la entidad no existe.
+Cada función toma `(accion: DictadoAccion, usuario: Usuario, contexto: dict)`
+y aplica el cambio. Lanza `ValueError` si el payload es inválido o la entidad
+no existe.
+
+`contexto["entidades_creadas"]` es un dict `{orden: {tipo, id}}` con las
+entidades creadas por acciones previas del MISMO dictado. Habilita
+referencias como `@accion_0` en payload (capa 1) y fuzzy fallback por
+nombre cuando el LLM adivina un slug que no coincide con el real (capa 2).
 """
 
 from __future__ import annotations
+
+import re
 
 from . import registrar
 
@@ -20,27 +28,115 @@ ESTADOS_PROYECTO_VALIDOS = {
 }
 
 
-def _resolver_proyecto(slug: str):
+REF_ACCION_RE = re.compile(r"^@accion_(\d+)$")
+
+
+def _ref_anterior(slug: str, contexto: dict | None, tipo_esperado: str):
+    """Capa 1 — resuelve `@accion_N` mirando `contexto.entidades_creadas`.
+
+    Retorna la instancia del modelo o None si el slug no es una referencia
+    o si la referencia no existe / es de otro tipo.
+    """
+    if not slug or not contexto:
+        return None
+    m = REF_ACCION_RE.match(slug.strip())
+    if not m:
+        return None
+    orden = int(m.group(1))
+    entidades = (contexto or {}).get("entidades_creadas") or {}
+    info = entidades.get(orden)
+    if not info or info.get("tipo") != tipo_esperado:
+        return None
+    return info.get("id")
+
+
+def _fuzzy_recientes(slug: str, contexto: dict | None, tipo: str, modelo):
+    """Capa 2 — fuzzy match contra entidades del mismo dictado por nombre.
+
+    Si el LLM adivinó un slug que no existe en DB pero suena al nombre de
+    una entidad recién creada en este mismo dictado, la resuelve.
+    """
+    from django.utils.text import slugify
+    if not slug or not contexto:
+        return None
+    pedido = slugify(slug)
+    entidades = (contexto or {}).get("entidades_creadas") or {}
+    candidatos_ids = [
+        info["id"] for info in entidades.values()
+        if info.get("tipo") == tipo and info.get("id")
+    ]
+    if not candidatos_ids:
+        return None
+    for obj in modelo.objects.filter(pk__in=candidatos_ids):
+        nombre_attr = "razon_social" if tipo == "cliente" else "nombre"
+        nombre = getattr(obj, nombre_attr, "") or ""
+        slug_nombre = slugify(nombre)
+        if not slug_nombre:
+            continue
+        if pedido == slug_nombre or pedido in slug_nombre or slug_nombre in pedido:
+            return obj
+    return None
+
+
+def _sugerencia_recien_creado(contexto: dict | None, tipo: str, modelo) -> str:
+    """Capa 3 — arma sugerencia útil para el error message."""
+    if not contexto:
+        return ""
+    entidades = (contexto or {}).get("entidades_creadas") or {}
+    ids = [info["id"] for info in entidades.values() if info.get("tipo") == tipo]
+    if not ids:
+        return ""
+    obj = modelo.objects.filter(pk__in=ids).first()
+    if not obj:
+        return ""
+    if tipo == "cliente":
+        return f' ¿Quisiste decir "{obj.razon_social}" (slug: `{obj.slug}`, recién creado en esta misma acción)?'
+    return f' ¿Quisiste decir "{obj.codigo} · {obj.nombre}" (slug: `{obj.slug}`, recién creado en esta misma acción)?'
+
+
+def _resolver_proyecto(slug: str, contexto: dict | None = None):
     from apps.los_proyectos.models import Proyecto
     if not slug:
         raise ValueError("Falta `proyecto_slug` en payload.")
+    # Capa 1: @accion_N
+    ref_id = _ref_anterior(slug, contexto, "proyecto")
+    if ref_id:
+        obj = Proyecto.objects.filter(pk=ref_id).first()
+        if obj:
+            return obj
+    # Slug literal
     proyecto = Proyecto.objects.filter(slug=slug.lower()).first()
-    if not proyecto:
-        raise ValueError(f"Proyecto `{slug}` no encontrado.")
-    return proyecto
+    if proyecto:
+        return proyecto
+    # Capa 2: fuzzy contra recién creados
+    fuzzy = _fuzzy_recientes(slug, contexto, "proyecto", Proyecto)
+    if fuzzy:
+        return fuzzy
+    # Capa 3: error útil
+    sugerencia = _sugerencia_recien_creado(contexto, "proyecto", Proyecto)
+    raise ValueError(f"Proyecto `{slug}` no encontrado.{sugerencia}")
 
 
-def _resolver_cliente(slug: str):
+def _resolver_cliente(slug: str, contexto: dict | None = None):
     from apps.la_cartera.models import Cliente
     if not slug:
         raise ValueError("Falta `cliente_slug` en payload.")
+    ref_id = _ref_anterior(slug, contexto, "cliente")
+    if ref_id:
+        obj = Cliente.objects.filter(pk=ref_id).first()
+        if obj:
+            return obj
     cliente = Cliente.objects.filter(slug=slug.lower()).first()
-    if not cliente:
-        raise ValueError(f"Cliente `${slug}` no encontrado.")
-    return cliente
+    if cliente:
+        return cliente
+    fuzzy = _fuzzy_recientes(slug, contexto, "cliente", Cliente)
+    if fuzzy:
+        return fuzzy
+    sugerencia = _sugerencia_recien_creado(contexto, "cliente", Cliente)
+    raise ValueError(f"Cliente `${slug}` no encontrado.{sugerencia}")
 
 
-def _resolver_usuario(slug: str):
+def _resolver_usuario(slug: str, contexto: dict | None = None):
     from cuentas.models.usuario import Usuario
     u = Usuario.objects.filter(slug=slug.lower(), is_active=True).first()
     if not u:
@@ -49,7 +145,7 @@ def _resolver_usuario(slug: str):
 
 
 @registrar("crear_proyecto")
-def crear_proyecto(accion, usuario):
+def crear_proyecto(accion, usuario, contexto=None):
     """Crea un Proyecto a partir del payload del dictado.
 
     Payload: nombre (requerido), cliente_slug (requerido, $cliente),
@@ -64,7 +160,7 @@ def crear_proyecto(accion, usuario):
     nombre = (payload.get("nombre") or "").strip()
     if not nombre:
         raise ValueError("Falta `nombre` en payload.")
-    cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower())
+    cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower(), contexto)
 
     estado = (payload.get("estado") or "por_cotizar").lower()
     if estado not in ESTADOS_PROYECTO_VALIDOS:
@@ -102,7 +198,7 @@ def crear_proyecto(accion, usuario):
 
 
 @registrar("crear_cliente")
-def crear_cliente(accion, usuario):
+def crear_cliente(accion, usuario, contexto=None):
     """Crea un Cliente. Payload: razon_social (requerido), rfc?, nombre_contacto?,
     email_contacto?, telefono?, direccion?, notas?, estado?.
     """
@@ -131,8 +227,8 @@ def crear_cliente(accion, usuario):
 
 
 @registrar("actualizar_cliente")
-def actualizar_cliente(accion, usuario):
-    cliente = _resolver_cliente((accion.payload.get("cliente_slug") or "").lower())
+def actualizar_cliente(accion, usuario, contexto=None):
+    cliente = _resolver_cliente((accion.payload.get("cliente_slug") or "").lower(), contexto)
     campos = accion.payload.get("campos") or {}
     if not isinstance(campos, dict):
         raise ValueError("Campo `campos` debe ser dict.")
@@ -150,8 +246,8 @@ def actualizar_cliente(accion, usuario):
 
 
 @registrar("actualizar_proyecto")
-def actualizar_proyecto(accion, usuario):
-    proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""))
+def actualizar_proyecto(accion, usuario, contexto=None):
+    proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
     campos = accion.payload.get("campos") or {}
     if not isinstance(campos, dict):
         raise ValueError("Campo `campos` debe ser dict.")
@@ -169,9 +265,9 @@ def actualizar_proyecto(accion, usuario):
 
 
 @registrar("asignar_usuario_proyecto")
-def asignar_usuario_proyecto(accion, usuario):
-    proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""))
-    u = _resolver_usuario(accion.payload.get("usuario_slug", ""))
+def asignar_usuario_proyecto(accion, usuario, contexto=None):
+    proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
+    u = _resolver_usuario(accion.payload.get("usuario_slug", ""), contexto)
     rol_en_proyecto = (accion.payload.get("rol_en_proyecto") or "disenador").lower()
     if rol_en_proyecto not in {"lider", "disenador", "produccion", "revisor"}:
         rol_en_proyecto = "disenador"
@@ -185,13 +281,13 @@ def asignar_usuario_proyecto(accion, usuario):
 
 
 @registrar("crear_tarea")
-def crear_tarea(accion, usuario):
-    proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""))
+def crear_tarea(accion, usuario, contexto=None):
+    proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
     titulo = (accion.payload.get("titulo") or "").strip()
     if not titulo:
         raise ValueError("Falta `titulo` en payload.")
     asignado_slug = (accion.payload.get("asignado_slug") or "").strip()
-    asignada_a = _resolver_usuario(asignado_slug) if asignado_slug else None
+    asignada_a = _resolver_usuario(asignado_slug, contexto) if asignado_slug else None
     fecha = accion.payload.get("fecha_compromiso") or None
     prioridad = (accion.payload.get("prioridad") or "media").lower()
     if prioridad not in {"baja", "media", "alta"}:
@@ -211,7 +307,7 @@ def crear_tarea(accion, usuario):
 
 
 @registrar("actualizar_tarea")
-def actualizar_tarea(accion, usuario):
+def actualizar_tarea(accion, usuario, contexto=None):
     from apps.el_pizarron.models import Tarea
     tarea_id = accion.payload.get("tarea_id")
     if not tarea_id:
@@ -225,7 +321,7 @@ def actualizar_tarea(accion, usuario):
         if k not in CAMPOS_TAREA_PERMITIDOS:
             continue
         if k == "asignado_slug":
-            tarea.asignada_a = _resolver_usuario(v)
+            tarea.asignada_a = _resolver_usuario(v, contexto)
             aplicado.append("asignada_a")
         else:
             setattr(tarea, k, v)
@@ -238,7 +334,7 @@ def actualizar_tarea(accion, usuario):
 
 
 @registrar("crear_recado")
-def crear_recado_ejec(accion, usuario):
+def crear_recado_ejec(accion, usuario, contexto=None):
     from apps.recados.services import crear_recado
     destinatarios = accion.payload.get("destinatarios_slugs") or []
     cuerpo = (accion.payload.get("cuerpo") or "").strip()
@@ -257,7 +353,7 @@ def crear_recado_ejec(accion, usuario):
 
 
 @registrar("crear_mensaje_buzon")
-def crear_mensaje_buzon_ejec(accion, usuario):
+def crear_mensaje_buzon_ejec(accion, usuario, contexto=None):
     from buzon.models import MensajeBuzon
     tipo = (accion.payload.get("tipo") or "otro").lower()
     if tipo not in {"sugerencia", "problema", "otro"}:
@@ -275,7 +371,7 @@ def crear_mensaje_buzon_ejec(accion, usuario):
 
 
 @registrar("registrar_egreso")
-def registrar_egreso(accion, usuario):
+def registrar_egreso(accion, usuario, contexto=None):
     """Crea un Egreso a partir del payload del dictado (DOC_06 §7).
 
     Payload esperado: monto, descripcion, centro_de_costo_slug, proyecto_slug?,
@@ -308,15 +404,15 @@ def registrar_egreso(accion, usuario):
     proyecto = None
     proyecto_slug = (payload.get("proyecto_slug") or "").lower()
     if proyecto_slug:
-        proyecto = _resolver_proyecto(proyecto_slug)
+        proyecto = _resolver_proyecto(proyecto_slug, contexto)
 
     pagado_por_slug = (payload.get("pagado_por_slug") or "").lower()
-    pagado_por = _resolver_usuario(pagado_por_slug) if pagado_por_slug else usuario
+    pagado_por = _resolver_usuario(pagado_por_slug, contexto) if pagado_por_slug else usuario
 
     solicitado_por = None
     solicitado_por_slug = (payload.get("solicitado_por_slug") or "").lower()
     if solicitado_por_slug:
-        solicitado_por = _resolver_usuario(solicitado_por_slug)
+        solicitado_por = _resolver_usuario(solicitado_por_slug, contexto)
 
     estado_pago = (payload.get("estado_pago") or "pagado").lower()
     if estado_pago not in {"pagado", "por_reembolsar", "pendiente"}:

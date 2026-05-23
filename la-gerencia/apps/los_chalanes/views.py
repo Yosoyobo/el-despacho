@@ -20,7 +20,7 @@ from chalanes.models import Aprendizaje, CadenaFallback, CuadroChalanes
 from chalanes.models.cuadro_chalanes import PROVEEDORES
 from lib.analistas.registry import adapter_de
 from lib.analistas.stats import resumen_global, tarjetas_chalanes
-from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS
+from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
 from lib.permisos import requires_role
 from lib.portavoz import emitir
 
@@ -44,7 +44,37 @@ def panel(request):
         "proveedores_opciones": list(PROVEEDORES),
         "comandos_dictado": COMANDOS_DICTADO,
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
+        "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
     })
+
+
+@require_POST
+@requires_role("super_admin", "dueno")
+def consultar_saldo_chalan(request, nombre: str):
+    """POST /chalanes/<nombre>/saldo — consulta saldo y muestra como flash."""
+    adapter = adapter_de(nombre)
+    if adapter is None:
+        messages.error(request, f"Chalán desconocido: {nombre}")
+        return redirect("los_chalanes:panel")
+    try:
+        saldo = adapter.consultar_saldo()
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f"Chalán {nombre}: no se pudo consultar saldo ({exc}).")
+        return redirect("los_chalanes:panel")
+    etiqueta = saldo.get("etiqueta") or "—"
+    mensaje = saldo.get("mensaje") or ""
+    url = saldo.get("fuente_url") or ""
+    if saldo.get("soportado") and saldo.get("disponible") is not None:
+        messages.success(request, f"Saldo de {nombre}: {etiqueta} · {mensaje}")
+    elif saldo.get("soportado"):
+        messages.info(request, f"Saldo de {nombre}: {etiqueta}. {mensaje} {url}".strip())
+    else:
+        messages.info(request, f"Saldo de {nombre}: este proveedor no expone saldo vía API. Revisa: {url}")
+    with contextlib.suppress(Exception):
+        emitir({"tipo": "chalanes.saldo_consultado", "proveedor": nombre,
+                "soportado": saldo.get("soportado"), "etiqueta": etiqueta,
+                "actor_id": request.user.pk})
+    return redirect("los_chalanes:panel")
 
 
 @require_POST

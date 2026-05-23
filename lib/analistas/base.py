@@ -64,6 +64,26 @@ class Adapter(ABC):
         except Exception:
             return False
 
+    def consultar_saldo(self) -> dict:
+        """Consulta el saldo disponible en el proveedor — best-effort.
+
+        Devuelve `{disponible, moneda, etiqueta, fuente_url, mensaje, soportado}`.
+        Subclases overridean si el proveedor expone un endpoint público; las
+        que no lo soportan retornan `soportado=False` y la UI muestra un
+        link al dashboard del proveedor.
+
+        Costo: 1 GET HTTP en proveedores soportados. Diseñado para llamarse
+        desde un botón manual ("Consultar saldo"), no en cada request.
+        """
+        return {
+            "soportado": False,
+            "disponible": None,
+            "moneda": "USD",
+            "etiqueta": "—",
+            "fuente_url": "",
+            "mensaje": "Este proveedor no expone saldo vía API. Consulta su dashboard.",
+        }
+
     def probar(self) -> dict:
         """Ping de 1 token al provider. Devuelve `{ok, estado, mensaje, latencia_ms, modelo}`.
 

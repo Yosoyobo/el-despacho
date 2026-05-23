@@ -2473,6 +2473,40 @@ Cero pasos post-deploy. Tailwind recompila en CI; las clases
 arbitrarias (`xl:grid-cols-7`, `ring-2 ring-brand-500`) están en el
 JIT.
 
+### S-LC-Feedback-V1 hotfix 3 ✅ — Referencias entre acciones + saldo + MiMo gratis (2026-05-23)
+
+3 entregas — bug raíz del dictado encadenado, capacidad nueva,
+corrección de tarifa:
+
+- **Bug "Proyecto X no encontrado" en dictados encadenados** —
+  resuelto con plan 3 capas (DOC_04 §8.2):
+  - **Capa 1**: sintaxis `@accion_N` en payload. `services.aplicar()`
+    mantiene `contexto["entidades_creadas"] = {orden: {tipo, id}}`
+    y lo pasa como tercer arg a cada ejecutor (firma
+    retrocompatible). Resolvers detectan `@accion_N` y leen del
+    contexto antes de tocar DB.
+  - **Capa 2**: fuzzy fallback por `slugify(nombre)` contra
+    entidades del mismo dictado. Cubre el caso del bug original
+    (dictado #20: LLM adivinó `album-nuevo-branding` y el slug real
+    era `pry-654321`).
+  - **Capa 3**: mensaje de error útil con sugerencia de la entidad
+    recién creada.
+  - Banner `REFERENCIAS_ENTRE_ACCIONES` en
+    [`lib/dictado_catalogo.py`](lib/dictado_catalogo.py) renderizado
+    en `/chalanes/` (Gerencia) y `/perfil/chalanes/` (Taller).
+- **`Adapter.consultar_saldo()`** — método opcional en
+  [`lib/analistas/base.py`](lib/analistas/base.py). Deepseek lo
+  implementa contra `GET /user/balance`. Anthropic/OpenAI no exponen
+  API pública (link al dashboard). MiMo retorna "Gratis (programa de
+  acceso)". Botón "💰 Saldo" en cada tarjeta (Gerencia + Taller
+  super_admin/dueno). Evento Portavoz `chalanes.saldo_consultado`.
+- **MiMo precio = 0**:
+  [`PRECIO_IN = PRECIO_OUT = 0.0`](lib/analistas/adapters/mimo.py).
+  Logs históricos quedan como están (no migración).
+
+Cero migraciones, cero pasos post-deploy. Docs: DOC_04 v1.5 (§8.2 y
+§8.3), CLAUDE.md hotfix 3, BITACORA §10.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

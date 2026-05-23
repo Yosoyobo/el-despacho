@@ -79,3 +79,10 @@ class AnthropicAdapter(Adapter):
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
             latencia_ms=latencia,
         )
+
+    def consultar_saldo(self) -> dict:
+        # Anthropic no expone saldo vía API pública. Link al dashboard.
+        return {"soportado": False, "disponible": None, "moneda": "USD",
+                "etiqueta": "Ver en dashboard",
+                "fuente_url": "https://console.anthropic.com/settings/billing",
+                "mensaje": "Anthropic no expone saldo vía API. Revisa el dashboard."}
