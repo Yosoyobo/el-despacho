@@ -2419,6 +2419,60 @@ mejora de discoverabilidad:
   DOC_05 manual de usuario (sección Los Chalanes + sección El
   Dictado con referencia al catálogo).
 
+### S-LC-Feedback-V1 hotfix 2 ✅ — UX polish + flujos de captura (2026-05-22)
+
+8 mejoras de UX en una sola sesión, sin migraciones:
+
+- **Number inputs sin spinners**: regla CSS global en `@layer base`
+  de [`input.css` (dual-copy)](el-taller/static/css/input.css) oculta
+  `::-webkit-(outer|inner)-spin-button` + `appearance: textfield`.
+- **Tesorería redirige a landing tras crear** ingreso/egreso (no al
+  detalle). Edición sigue al detalle.
+- **Catálogo de comandos + dashboard reducido en El Taller**: la
+  vista [`/perfil/chalanes/`](el-taller/apps/perfil_chalanes/views.py)
+  inyecta `comandos_dictado`/`comandos_prohibidos` (todos los roles)
+  y, sólo para `super_admin`/`dueno`, `tarjetas_chalanes` +
+  `resumen_chalanes` con el gasto 30d por proveedor + tarjetas
+  estado-de-llave/modelo/gasto. Sin botones de admin (link a
+  Gerencia para cambios reales).
+- **Ingreso auto-completar desde proyecto**: nuevo endpoint
+  `tesoreria:api-proyecto-datos`, JS en `ingreso_form.html` que
+  rellena cliente, descripción y monto pendiente. Cada campo se
+  marca `data-autollenado="proyecto"` para que cambiar/limpiar
+  proyecto resetee sólo los heredados; lo escrito a mano se
+  preserva.
+- **KPI cards clickeables como filtros toggle** en Buzón y
+  Proyectos. `_kpi_card_hero.html` acepta `activo` (boolean) →
+  `ring-2 ring-brand-500`. Buzón usa `?estado=<slug>` directo;
+  Proyectos usa meta-filtro `?kpi=<slug>` (mapea a sets de estados,
+  ya que "Activos en taller" abarca dos estados reales). KPI
+  `proyectos-activos` en `kpis.py` corregido para usar `?kpi=activos`
+  (antes apuntaba a `?estado=activos`, estado inexistente).
+- **Filas clickeables vía `data-href`**: listener global en
+  [`ui.js` (dual-copy)](el-taller/static/js/ui.js) captura clicks en
+  `<tr data-href>`, excluyendo elementos interactivos (`a`/`button`/
+  dropdowns/opt-out via `[data-no-row-click]`). Soporta
+  cmd/ctrl-click para nueva pestaña. Aplicado a 7 listas (cartera,
+  buzón, cotizaciones, facturación, egresos, ingresos, catálogo,
+  asientos).
+- **Date inputs canónicos**: JS en `ui.js` recorre
+  `input[type="date"]` al cargar + HTMX swap, llama `showPicker()`
+  al focus/click (graceful) e inyecta botón "Hoy" hermano que
+  setea valor a hoy + dispara `change`. Opt-out con
+  `data-sin-hoy="1"`.
+- **Kanban sin scroll horizontal**:
+  [`kanban.html`](el-taller/templates/proyectos/kanban.html) cambia
+  de `grid-flow-col overflow-x-auto` a
+  `grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7`. Las 7
+  columnas LC caben en pantallas XL en una sola fila; en pantallas
+  chicas se rompen en 2-3 renglones (mejor que ocultar columnas
+  tras scroll). Tarjetas compactas (`text-xs`, truncate, productos
+  visibles bajados a 2 + "+N").
+
+Cero pasos post-deploy. Tailwind recompila en CI; las clases
+arbitrarias (`xl:grid-cols-7`, `ring-2 ring-brand-500`) están en el
+JIT.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -173,7 +173,7 @@ def ingreso_nuevo(request):
                 "origen": "manual",
             })
             messages.success(request, f"Ingreso {ingreso.codigo} registrado.")
-            return redirect("tesoreria:ingreso-detalle", pk=ingreso.pk)
+            return redirect("tesoreria:landing")
     else:
         form = IngresoForm()
     return render(request, "tesoreria/ingreso_form.html", {"form": form, "modo": "nuevo"})
@@ -383,7 +383,7 @@ def egreso_nuevo(request):
                 })
                 notificar_reembolso_pendiente(egreso, request.user)
             messages.success(request, f"Egreso {egreso.codigo} registrado.")
-            return redirect("tesoreria:egreso-detalle", pk=egreso.pk)
+            return redirect("tesoreria:landing")
     else:
         form = EgresoForm()
     return render(request, "tesoreria/egreso_form.html", {"form": form, "modo": "nuevo"})
@@ -579,3 +579,30 @@ def exportar(request, vista):
         "filtros": dict(request.GET),
     })
     return response
+
+
+# ── API JSON para autocompletar ingreso ──────────────────────────────────
+
+@login_required
+def api_proyecto_datos(request, pk):
+    """Datos del proyecto para auto-llenar el form de ingreso.
+
+    GET /tesoreria/api/proyecto/<pk>/datos/
+    → {id, codigo, nombre, cliente_id, cliente_nombre, monto_pendiente}
+    """
+    if (r := _gate(request)) is not None:
+        return r
+    from apps.los_proyectos.models import Proyecto
+    proyecto = get_object_or_404(
+        Proyecto.objects.select_related("cliente"), pk=pk,
+    )
+    monto_pendiente = (proyecto.monto_facturado or Decimal("0")) - (proyecto.monto_cobrado or Decimal("0"))
+    return JsonResponse({
+        "id": proyecto.pk,
+        "codigo": proyecto.codigo,
+        "nombre": proyecto.nombre,
+        "cliente_id": proyecto.cliente_id,
+        "cliente_nombre": proyecto.cliente.razon_social if proyecto.cliente else "",
+        "monto_pendiente": str(monto_pendiente if monto_pendiente > 0 else 0),
+        "descripcion_sugerida": f"Cobro de {proyecto.codigo} · {proyecto.nombre}",
+    })

@@ -63,6 +63,15 @@ def lista(request):
         {"label": "Estado"},
         {"label": "Recibido"},
     ]
+    # Toggle: KPI cards clickeables. Cuando el filtro está activo, el link
+    # apunta a "" (sin filtro); cuando no, aplica el filtro.
+    def _kpi_link(filtro):
+        if estado == filtro:
+            return "?"  # quitar
+        base = f"?estado={filtro}"
+        if tipo:
+            base += f"&tipo={tipo}"
+        return base
     return render(request, "buzon/lista.html", {
         "mensajes": qs,
         "es_admin_buzon": es_admin_buzon,
@@ -70,6 +79,18 @@ def lista(request):
         "tipo_filtro": tipo,
         "kpis": kpis,
         "cabeceras_buzon": cabeceras,
+        "kpi_links": {
+            "nuevo": _kpi_link("nuevo"),
+            "leido": _kpi_link("leido"),
+            "respondido": _kpi_link("respondido"),
+            "archivado": _kpi_link("archivado"),
+        },
+        "kpi_activos": {
+            "nuevo": estado == "nuevo",
+            "leido": estado == "leido",
+            "respondido": estado == "respondido",
+            "archivado": estado == "archivado",
+        },
     })
 
 

@@ -128,6 +128,51 @@
     document.querySelectorAll('[data-dropdown-menu]').forEach(function (m) { m.hidden = true; });
   });
 
+  // --- <input type="date">: botón "Hoy" + auto-mostrar calendario al click ---
+  document.querySelectorAll('input[type="date"]:not([data-hoy-listo])').forEach(function (input) {
+    input.dataset.hoyListo = '1';
+    var openPicker = function () {
+      try { if (typeof input.showPicker === 'function') input.showPicker(); } catch (_) { /* noop */ }
+    };
+    input.addEventListener('focus', openPicker);
+    input.addEventListener('click', openPicker);
+    if (input.dataset.sinHoy === '1') return;
+    var hoyBtn = document.createElement('button');
+    hoyBtn.type = 'button';
+    hoyBtn.textContent = 'Hoy';
+    hoyBtn.className = 'ml-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700';
+    hoyBtn.setAttribute('data-no-row-click', '');
+    hoyBtn.setAttribute('aria-label', 'Poner fecha de hoy');
+    hoyBtn.addEventListener('click', function () {
+      var t = new Date();
+      var iso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+      input.value = iso;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.focus();
+    });
+    var anchor = input.closest('.relative') || input;
+    if (anchor.parentNode) {
+      var holder = document.createElement('span');
+      holder.className = 'inline-flex items-center align-middle';
+      holder.appendChild(hoyBtn);
+      anchor.parentNode.insertBefore(holder, anchor.nextSibling);
+    }
+  });
+
+  // --- Filas <tr data-href="..."> clickeables ---
+  document.body.addEventListener('click', function (e) {
+    var row = e.target.closest('[data-href]');
+    if (!row) return;
+    if (e.target.closest('a, button, input, label, select, textarea, [data-dropdown], [data-no-row-click]')) return;
+    var url = row.getAttribute('data-href');
+    if (!url) return;
+    if (e.metaKey || e.ctrlKey) {
+      window.open(url, '_blank');
+    } else {
+      window.location.href = url;
+    }
+  });
+
   // --- Toasts: auto-dismiss 4s ---
   document.querySelectorAll('[data-toast]').forEach(function (t) {
     setTimeout(function () { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 300); }, 4000);

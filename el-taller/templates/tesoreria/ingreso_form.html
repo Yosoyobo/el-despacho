@@ -27,4 +27,67 @@
         <button type="submit" class="btn-primario">Guardar ingreso</button>
     </div>
 </form>
+
+<script>
+(() => {
+    // Autocompletar desde proyecto, con reset al cambiar.
+    const root  = document.currentScript.parentElement;
+    const proyectoSel  = root.querySelector('[name="proyecto"]');
+    const clienteSel   = root.querySelector('[name="cliente"]');
+    const descInput    = root.querySelector('[name="descripcion"]');
+    const montoInput   = root.querySelector('[name="monto"]');
+
+    if (!proyectoSel) return;
+
+    const setIfFree = (input, valor) => {
+        if (!input || valor === "" || valor === null) return;
+        if (input.value && input.dataset.autollenado !== "proyecto") return; // respeta valores escritos
+        input.value = valor;
+        input.dataset.autollenado = "proyecto";
+    };
+    const clearAuto = (input) => {
+        if (input && input.dataset.autollenado === "proyecto") {
+            input.value = "";
+            delete input.dataset.autollenado;
+        }
+    };
+    const setSelectIfExists = (select, valor) => {
+        if (!select || !valor) return;
+        const opt = select.querySelector(`option[value="${valor}"]`);
+        if (!opt) return;
+        if (select.value && select.dataset.autollenado !== "proyecto") return;
+        select.value = String(valor);
+        select.dataset.autollenado = "proyecto";
+    };
+
+    proyectoSel.addEventListener("change", async () => {
+        const pk = proyectoSel.value;
+        if (!pk) {
+            clearAuto(clienteSel);
+            clearAuto(descInput);
+            clearAuto(montoInput);
+            return;
+        }
+        try {
+            const resp = await fetch(`{% url 'tesoreria:api-proyecto-datos' 0 %}`.replace("/0/", `/${pk}/`));
+            if (!resp.ok) return;
+            const data = await resp.json();
+            setSelectIfExists(clienteSel, data.cliente_id);
+            setIfFree(descInput, data.descripcion_sugerida);
+            if (parseFloat(data.monto_pendiente) > 0) {
+                setIfFree(montoInput, data.monto_pendiente);
+            }
+        } catch (e) { /* silencioso — el usuario teclea a mano */ }
+    });
+
+    // Cambiar el cliente limpia los auto-llenos del proyecto (otro cliente puede no embonar).
+    if (clienteSel) {
+        clienteSel.addEventListener("change", () => {
+            if (clienteSel.dataset.autollenado === "proyecto") {
+                delete clienteSel.dataset.autollenado; // el usuario lo eligió manualmente
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

@@ -1,6 +1,7 @@
 {% load forms_helpers %}
 {% for i in ingresos %}
-<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if i.anulado %}opacity-60{% endif %}">
+<tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if i.anulado %}opacity-60{% endif %}"
+    data-href="{% url 'tesoreria:ingreso-detalle' i.pk %}">
     <td class="px-5 py-3"><a href="{% url 'tesoreria:ingreso-detalle' i.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ i.codigo }}</a>{% if i.anulado %}<span class="badge badge-gray ml-2">anulado</span>{% endif %}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ i.fecha|date:"Y-m-d" }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if i.cliente %}{{ i.cliente.razon_social }}{% endif %}{% if i.proyecto %} · <span class="text-brand-600 dark:text-brand-400">{{ i.proyecto.codigo }}</span>{% endif %}{% if not i.cliente and not i.proyecto %}—{% endif %}</td>

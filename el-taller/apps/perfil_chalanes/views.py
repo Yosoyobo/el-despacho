@@ -23,7 +23,11 @@ from django.views.decorators.http import require_POST
 from chalanes.models import ChalanAsignado, CuadroChalanes
 from lib.analistas import registry as _registry
 from lib.analistas.capacidades import Capability
+from lib.analistas.stats import resumen_global, tarjetas_chalanes
+from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS
 from lib.portavoz import emitir
+
+ROLES_ADMIN_TALLER = {"super_admin", "dueno"}
 
 # Estaciones ocultas a roles operativos no-admin (Pre-S2b.1 acuerdo).
 ESTACIONES_OCULTAS_DISENADOR = {"ocr_recibo", "dictado_gasto"}
@@ -68,7 +72,22 @@ def panel(request):
             "override_proveedor": override.proveedor if override else "",
         })
 
-    return render(request, "perfil_chalanes/panel.html", {"filas": filas})
+    ctx = {
+        "filas": filas,
+        "comandos_dictado": COMANDOS_DICTADO,
+        "comandos_prohibidos": COMANDOS_PROHIBIDOS,
+    }
+    if rol in ROLES_ADMIN_TALLER:
+        # Dashboard reducido para admins (mismo dato que /chalanes/ en Gerencia,
+        # sin acciones de admin — solo lectura). Defensivo: si la query falla
+        # por algún motivo, omite la sección.
+        try:
+            ctx["tarjetas_chalanes"] = tarjetas_chalanes(dias=30)
+            ctx["resumen_chalanes"] = resumen_global(dias=30)
+        except Exception:  # noqa: BLE001
+            ctx["tarjetas_chalanes"] = []
+            ctx["resumen_chalanes"] = None
+    return render(request, "perfil_chalanes/panel.html", ctx)
 
 
 @require_POST

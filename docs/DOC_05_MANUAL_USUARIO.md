@@ -180,6 +180,37 @@
 >   columna y paginación real (clic en cabecera para alternar
 >   ascendente/descendente).
 > - Empty states con ilustración y CTA en lugar de "Sin nada."
+>
+> **Estado al 22 mayo 2026 (S-LC-Feedback-V1 hotfix 2):**
+> - **Filas clickeables**: en Cartera, Buzón, Cotizaciones, Facturas,
+>   Egresos, Ingresos, Catálogo y Asientos contables ahora basta con
+>   clickear cualquier parte de la fila para ir al detalle (cmd/ctrl-click
+>   abre nueva pestaña). Proyectos ya lo hacía.
+> - **KPIs filtran al picarlos**: los 4 cuadros de KPI hero de
+>   Buzón y Proyectos ahora son filtros toggle. Click activa el
+>   filtro (la tarjeta se ilumina con borde brand); click otra vez lo
+>   quita. Los KPIs de Sala de Juntas siempre llevaron a la lista
+>   filtrada correspondiente.
+> - **Date inputs**: cualquier campo de fecha despliega el mini
+>   calendario al click + tiene un botón "Hoy" al lado que setea hoy
+>   en un toque.
+> - **Montos sin flechitas**: los inputs de $ ya no muestran las
+>   flechas para subir/bajar (eran ruido visual; el valor se teclea).
+> - **Ingreso auto-rellena desde proyecto**: en
+>   *Tesorería → Nuevo ingreso*, al elegir un proyecto se completa
+>   cliente, descripción y monto pendiente automáticamente. Puedes
+>   editarlos. Si cambias el proyecto, los auto-rellenados se limpian
+>   (lo que escribiste a mano se respeta).
+> - **Tras crear un ingreso/egreso** se regresa a la pantalla de
+>   Tesorería (antes te dejaba en el detalle).
+> - **Kanban de proyectos sin scroll horizontal**: las 7 columnas
+>   caben en pantalla ancha en una sola fila; en pantallas chicas se
+>   acomodan en 2-3 renglones.
+> - **Mis Chalanes en El Taller** (`/perfil/chalanes/`) muestra
+>   ahora la lista completa de comandos que el Chalán puede ejecutar
+>   y los que tiene prohibidos, para todos. Si eres super_admin o
+>   dueño verás además el gasto en IA 30 días + tarjetas resumen por
+>   Chalán. Configuración avanzada sigue en Gerencia → Los Chalanes.
 
 ---
 

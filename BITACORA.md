@@ -4978,3 +4978,130 @@ migración nueva en este hotfix.
 Recomendación: super_admin verifica en `/chalanes/cadena/` que la
 cadena tenga al menos 2 Chalanes con llave válida (Claudio + GPT, por
 ejemplo), para que el fallback ahora robusto tenga a dónde caer.
+
+---
+
+## 9. Hotfix 22 mayo 2026 (segunda ola) — UX polish + flujos de captura
+
+8 mejoras pedidas por LC en una sola sesión. Cero migraciones nuevas;
+cero pasos manuales post-deploy.
+
+### 9.1. Flechas de número eliminadas
+
+[el-taller/static/css/input.css](el-taller/static/css/input.css) +
+[la-gerencia/static/css/input.css](la-gerencia/static/css/input.css):
+regla global en `@layer base` que oculta `::-webkit-(outer|inner)-spin-button`
+y `appearance: textfield` para Firefox. Sigue siendo
+`<input type="number">` (validación + teclado numérico en mobile), sólo
+sin los spinners visuales que estorbaban en montos de $ y cantidades.
+
+### 9.2. Tesorería: redirect a landing tras crear ingreso/egreso
+
+[el-taller/apps/tesoreria/views.py](el-taller/apps/tesoreria/views.py):
+`ingreso_nuevo` y `egreso_nuevo` ahora redirigen a `tesoreria:landing`
+en lugar del detalle. El usuario regresa al tablero con el mensaje
+flash de éxito. La edición sigue devolviendo al detalle (es el
+patrón natural de "guardar cambios").
+
+### 9.3. Catálogo de comandos + dashboard reducido en El Taller
+
+[el-taller/apps/perfil_chalanes/views.py](el-taller/apps/perfil_chalanes/views.py)
+ahora inyecta:
+
+- `comandos_dictado` + `comandos_prohibidos` (importados de
+  `lib.dictado_catalogo`) para todos los roles.
+- `tarjetas_chalanes` + `resumen_chalanes` (de `lib.analistas.stats`)
+  sólo para `super_admin` y `dueno`.
+
+[el-taller/templates/perfil_chalanes/panel.html](el-taller/templates/perfil_chalanes/panel.html)
+gana tres secciones nuevas debajo de los overrides personales:
+"💰 Gastado en IA — últimos 30 días" con barras por proveedor,
+"Estado de los Chalanes" con tarjetas resumidas (sin botones de admin),
+y "Qué pueden hacer Los Chalanes" con los 10 comandos + 7 prohibidos
+(el mismo catálogo que en Gerencia). El admin tiene el dashboard de
+RAM/conexión vía link a Gerencia → Los Chalanes.
+
+### 9.4. Autocompletar ingreso desde proyecto
+
+[el-taller/apps/tesoreria/views.py](el-taller/apps/tesoreria/views.py)
+nuevo endpoint `api_proyecto_datos` (registrado en
+[urls.py](el-taller/apps/tesoreria/urls.py) como `api-proyecto-datos`)
+que devuelve `{cliente_id, cliente_nombre, codigo, nombre,
+monto_pendiente, descripcion_sugerida}`.
+
+[el-taller/templates/tesoreria/ingreso_form.html](el-taller/templates/tesoreria/ingreso_form.html)
+gana JS inline que escucha `change` en `proyecto` y rellena cliente,
+descripción y monto si están vacíos. Marca cada campo con
+`data-autollenado="proyecto"` para que un cambio posterior limpie
+sólo los campos heredados (los escritos a mano se respetan). Cambiar
+de proyecto a vacío limpia todo el auto-relleno.
+
+### 9.5. KPI cards clickeables como filtros toggle
+
+[el-taller/templates/_componentes_tailadmin/_kpi_card_hero.html](el-taller/templates/_componentes_tailadmin/_kpi_card_hero.html):
+acepta nuevo param `activo` (bool) que aplica `ring-2 ring-brand-500`
+para señalar filtro activo.
+
+Aplicado a:
+
+- **Buzón empleado** (`apps/buzon_empleado/views.py`): cada KPI hero
+  (Nuevos · Leídos · Respondidos · Archivados) linkea a
+  `?estado=<slug>`; cuando ya está activo, linkea a `?` (toggle off).
+  Conserva otros filtros (`tipo`) si están puestos.
+- **Proyectos lista** (`apps/los_proyectos/views.py`): igual pero
+  con un meta-filtro `kpi=<slug>` que mapea a uno o más estados
+  reales (los "Activos en taller" son `en_proceso_diseno` +
+  `en_proceso_produccion`, que `?estado=` no podría capturar).
+- **Sala de Juntas**: los KPIs ya tenían `link` a listas filtradas
+  por catálogo en `kpis.py`. Único arreglo: el link de
+  `proyectos-activos` apuntaba a `?estado=activos` (estado inexistente
+  → no filtraba); ahora usa `?kpi=activos` para usar el meta-filtro
+  nuevo del view.
+
+### 9.6. Filas clickeables vía `data-href`
+
+Patrón global en
+[el-taller/static/js/ui.js](el-taller/static/js/ui.js) +
+[la-gerencia/static/js/ui.js](la-gerencia/static/js/ui.js): listener
+global en `document.body` que captura clicks en cualquier `<tr>` con
+atributo `data-href`. Excluye clicks sobre `a`, `button`, `input`,
+`label`, `select`, `textarea`, `[data-dropdown]` y opt-out via
+`[data-no-row-click]`. Soporta cmd/ctrl-click para nueva pestaña.
+
+Aplicado a 7 listas: cartera, buzón, cotizaciones, facturación,
+egresos, ingresos, catálogo, asientos contables. Cada `_filas.html`
+añade `cursor-pointer` + `data-href="{% url '<modulo>:detalle' x.pk %}"`
+al `<tr>` raíz. Proyectos ya lo tenía con `onclick` desde
+S-LC-Feedback-V1 — no se tocó (el patrón nuevo es retro-compatible).
+
+### 9.7. Date inputs con auto-picker y botón "Hoy"
+
+[el-taller/static/js/ui.js](el-taller/static/js/ui.js) +
+[la-gerencia/static/js/ui.js](la-gerencia/static/js/ui.js): listener
+que recorre `input[type="date"]:not([data-hoy-listo])` al cargar (y
+HTMX swap) y:
+
+1. Llama `input.showPicker()` al focus/click — el calendario se
+   despliega sin tocar el ícono (graceful en browsers sin soporte).
+2. Inyecta un botón "Hoy" hermano que setea `value = today_iso` y
+   dispara `change`. Opt-out con `data-sin-hoy="1"` en el input si
+   algún caso particular no lo quiere.
+
+### 9.8. Kanban sin scroll horizontal
+
+[el-taller/templates/proyectos/kanban.html](el-taller/templates/proyectos/kanban.html):
+reemplazado `grid auto-cols-[minmax(260px,1fr)] grid-flow-col
+overflow-x-auto` por `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4
+xl:grid-cols-7`. Las 7 columnas (una por estado del ciclo LC) caben
+en pantallas XL en una sola fila; en pantallas más chicas la fila
+se rompe en 2-3 renglones (lo cual es preferible a scroll horizontal
+que esconde columnas). Tarjetas más compactas (`text-xs`, padding
+reducido, truncate de cliente y productos) para que el contenido
+quepa en columnas de ~180px.
+
+### 9.9. Configuración post-deploy
+
+Cero pasos manuales. Tailwind recompila en El Mensajero (las clases
+`xl:grid-cols-7` y `ring-2 ring-brand-500` ya estaban en el safelist
+implícito del JIT). El Mensajero hace `migrate` (sin migraciones
+nuevas) y todo se aplica al deploy.

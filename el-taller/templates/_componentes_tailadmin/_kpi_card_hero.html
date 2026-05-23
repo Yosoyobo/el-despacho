@@ -4,7 +4,8 @@ badge, badge_color, subtexto, link, delta, delta_pos. Ver docs en el
 _componentes_tailadmin README cuando exista.
 {% endcomment %}
 {% if link %}
-<a href="{{ link }}" class="ta-card block transition hover:border-brand-300 dark:hover:border-brand-500/40">
+<a href="{{ link }}" class="ta-card block transition hover:border-brand-300 dark:hover:border-brand-500/40 {% if activo %}ring-2 ring-brand-500 border-brand-300 dark:border-brand-500/40{% endif %}"
+   {% if activo %}title="Filtro activo — click para quitar"{% endif %}>
 {% else %}
 <div class="ta-card">
 {% endif %}

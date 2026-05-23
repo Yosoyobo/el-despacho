@@ -6,6 +6,19 @@
   body {
     @apply font-outfit;
   }
+
+  /* Inputs numéricos: ocultar las flechas/spinners nativos del browser.
+     Usamos `type=number` para validación + teclado numérico en mobile, pero
+     los spinners desktop son ruido visual en montos de $ y cantidades. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
 @layer components {

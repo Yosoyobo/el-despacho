@@ -74,7 +74,7 @@ def _kpi_proyectos_activos(user) -> dict:
     qs = Proyecto.objects.filter(estado__in=ESTADOS_PROYECTO_ACTIVOS)
     if getattr(user, "rol", None) == "disenador":
         qs = qs.filter(asignaciones__usuario=user).distinct()
-    return _resultado(qs.count(), link="/proyectos/?estado=activos")
+    return _resultado(qs.count(), link="/proyectos/?kpi=activos")
 
 
 def _kpi_prospectos_pipeline(user) -> dict:

@@ -1,7 +1,8 @@
 {% load forms_helpers %}
 {% for f in facturas %}
 {% with totales=f.calcular_totales %}
-<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if f.estado == 'cancelada' %}opacity-60{% endif %}">
+<tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if f.estado == 'cancelada' %}opacity-60{% endif %}"
+    data-href="{% url 'facturacion:detalle' f.pk %}">
     <td class="px-5 py-3">
         <a href="{% url 'facturacion:detalle' f.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ f.codigo }}</a>
     </td>

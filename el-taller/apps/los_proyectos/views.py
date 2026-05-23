@@ -45,11 +45,21 @@ def _proyectos_visibles(user):
 def lista(request):
     q = (request.GET.get("q") or "").strip()
     estado = request.GET.get("estado") or ""
+    kpi_activo = (request.GET.get("kpi") or "").strip()
+    # Mapeo KPI → conjunto de estados a filtrar (KPI hero clickeable).
+    KPI_MAP = {
+        "prospectos": ("por_cotizar",),
+        "activos": ("en_proceso_diseno", "en_proceso_produccion"),
+        "pausa": ("en_pausa",),
+        "entregados": ("entregado",),
+    }
     qs = _proyectos_visibles(request.user)
     if q:
         qs = qs.filter(Q(nombre__icontains=q) | Q(codigo__icontains=q) | Q(cliente__razon_social__icontains=q))
     if estado:
         qs = qs.filter(estado=estado)
+    elif kpi_activo in KPI_MAP:
+        qs = qs.filter(estado__in=KPI_MAP[kpi_activo])
     orden_permitido = {"codigo", "nombre", "estado", "fecha_compromiso", "creado_en"}
     orden = (request.GET.get("orden") or "-creado_en").strip()
     if orden.lstrip("-") not in orden_permitido:
@@ -69,7 +79,18 @@ def lista(request):
         qs_filtros.append(f"q={q}")
     if estado:
         qs_filtros.append(f"estado={estado}")
+    if kpi_activo in KPI_MAP and not estado:
+        qs_filtros.append(f"kpi={kpi_activo}")
     querystring_base = "&".join(qs_filtros)
+
+    def _kpi_link(slug):
+        if kpi_activo == slug and not estado:
+            return "?"  # toggle off
+        parts = []
+        if q:
+            parts.append(f"q={q}")
+        parts.append(f"kpi={slug}")
+        return "?" + "&".join(parts)
     return render(request, "proyectos/lista.html", {
         "proyectos": page_obj.object_list,
         "page_obj": page_obj,
@@ -89,6 +110,18 @@ def lista(request):
         "puede_crear": puede_editar_proyecto(request.user, None),
         "es_admin": es_admin(request.user),
         "kpis": kpis,
+        "kpi_links": {
+            "prospectos": _kpi_link("prospectos"),
+            "activos": _kpi_link("activos"),
+            "pausa": _kpi_link("pausa"),
+            "entregados": _kpi_link("entregados"),
+        },
+        "kpi_activos": {
+            "prospectos": kpi_activo == "prospectos" and not estado,
+            "activos": kpi_activo == "activos" and not estado,
+            "pausa": kpi_activo == "pausa" and not estado,
+            "entregados": kpi_activo == "entregados" and not estado,
+        },
     })
 
 

@@ -1,7 +1,8 @@
 {% load forms_helpers %}
 {% for c in cotizaciones %}
 {% with totales=c.calcular_totales %}
-<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if c.estado == 'anulada' %}opacity-60{% endif %}">
+<tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if c.estado == 'anulada' %}opacity-60{% endif %}"
+    data-href="{% url 'cotizaciones:detalle' c.pk %}">
     <td class="px-5 py-3">
         <a href="{% url 'cotizaciones:detalle' c.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ c.codigo }}</a>
     </td>

@@ -25,4 +25,6 @@ urlpatterns = [
     path("reportes/", views.reportes, name="reportes"),
     # Exports
     path("exportar/<str:vista>.csv", views.exportar, name="exportar-csv"),
+    # API JSON para autocompletar
+    path("api/proyecto/<int:pk>/datos/", views.api_proyecto_datos, name="api-proyecto-datos"),
 ]

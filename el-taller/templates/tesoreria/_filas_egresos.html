@@ -1,6 +1,7 @@
 {% load forms_helpers %}
 {% for e in egresos %}
-<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if e.anulado %}opacity-60{% endif %}">
+<tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if e.anulado %}opacity-60{% endif %}"
+    data-href="{% url 'tesoreria:egreso-detalle' e.pk %}">
     <td class="px-5 py-3"><a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>{% if e.anulado %}<span class="badge badge-gray ml-2">anulado</span>{% endif %}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.fecha|date:"Y-m-d" }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.proveedor_nombre|default:"—" }}{% if e.proyecto %} · <span class="text-brand-600 dark:text-brand-400">{{ e.proyecto.codigo }}</span>{% endif %}</td>

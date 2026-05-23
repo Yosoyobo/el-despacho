@@ -1,6 +1,7 @@
 {% load forms_helpers %}
 {% for a in asientos %}
-<tr class="{% if a.anulado %}opacity-60{% endif %} hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+<tr class="cursor-pointer {% if a.anulado %}opacity-60{% endif %} hover:bg-gray-50 dark:hover:bg-white/[0.02]"
+    data-href="{% url 'contaduria:asiento-detalle' a.pk %}">
     <td class="px-5 py-3"><a href="{% url 'contaduria:asiento-detalle' a.pk %}" class="font-mono font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ a.codigo }}</a>{% if a.anulado %}<span class="badge badge-gray ml-2">anulado</span>{% endif %}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ a.fecha|date:"Y-m-d" }}</td>
     <td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ a.descripcion|truncatechars:80 }}</td>
