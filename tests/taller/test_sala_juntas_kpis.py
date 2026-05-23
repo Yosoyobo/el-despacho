@@ -227,3 +227,21 @@ def test_home_oculta_kpi_si_preferencia_lo_dice(client, usuario_factory):
     # El KPI no debe estar listado en el contexto.
     titulos = [k["titulo"] for k in resp.context["kpis"]]
     assert "Proyectos activos" not in titulos
+
+
+def test_home_sobrevive_preferencia_kpi_con_orden_null(client, usuario_factory):
+    """S-LC-Feedback-V4 hotfix: filas legacy de PreferenciaKPI pueden tener
+    orden=NULL. Antes del fix, el sort tronaba con
+    `'<' not supported between NoneType and NoneType` y el dashboard daba 500.
+    """
+    from apps.taller_home.models import PreferenciaKPI
+    u = usuario_factory(rol="dueno")
+    # Dos filas con orden=NULL (legacy) y una con orden=0.
+    PreferenciaKPI.objects.create(usuario=u, kpi_slug="proyectos-activos", visible=True, orden=None)
+    PreferenciaKPI.objects.create(usuario=u, kpi_slug="tareas-vencidas", visible=True, orden=None)
+    PreferenciaKPI.objects.create(usuario=u, kpi_slug="tareas-abiertas-mias", visible=True, orden=0)
+    client.force_login(u)
+    resp = client.get("/")
+    assert resp.status_code == 200
+    # KPIs deben estar presentes — no debe haber tumbado nada.
+    assert resp.context["kpis"], "kpis vino vacío — el _safe() los descartó por excepción"

@@ -708,7 +708,11 @@ def kpis_visibles_para(user, *, incluir_ocultos: bool = False) -> list[tuple[KPI
             resultado = {"valor": "?", "nota": "error", "link": ""}
         salida.append((kpi, resultado))
     # Ordenar respetando preferencia (sin preferencia = orden default catálogo).
-    salida.sort(key=lambda pair: ordenes.get(pair[0].slug, 9999))
+    # S-LC-Feedback-V4 hotfix: PreferenciaKPI puede tener orden=NULL en prod
+    # (filas legacy creadas antes de que el campo tuviera default). `dict.get`
+    # devuelve None en ese caso y rompe el sort con `'<' not supported between
+    # NoneType`. Coalescemos a 9999 (mismo bucket que "sin preferencia").
+    salida.sort(key=lambda pair: ordenes.get(pair[0].slug) if ordenes.get(pair[0].slug) is not None else 9999)
     return salida
 
 
