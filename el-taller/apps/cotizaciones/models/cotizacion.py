@@ -258,7 +258,13 @@ class CotizacionItem(models.Model):
         on_delete=models.SET_NULL,
         related_name="lineas_cotizacion",
     )
-    descripcion = models.TextField()
+    variacion = models.ForeignKey(
+        "el_catalogo.Variacion",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lineas_cotizacion",
+    )
+    descripcion = models.TextField(blank=True, default="")
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
     unidad = models.CharField(max_length=30, default="pieza")

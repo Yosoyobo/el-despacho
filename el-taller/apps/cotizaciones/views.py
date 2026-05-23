@@ -112,15 +112,40 @@ def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
     # línea (en lugar de un text input libre).
     from apps.el_catalogo.models import Unidad
     unidades = list(Unidad.objects.filter(activa=True).values_list("nombre", flat=True))
+    titulo_pagina = "Nueva cotización" if modo == "nuevo" else f"Editar {cot.codigo if cot else ''}".strip()
     return {
         "form": form,
         "formset": formset,
         "modo": modo,
         "cot": cot,
+        "titulo_pagina": titulo_pagina,
         "tasas": tasas_qs if tasas_qs is not None else TasaImpositiva.objects.filter(activa=True),
         "tasas_seleccionadas": set(tasas_seleccionadas or []),
         "unidades_disponibles": unidades,
     }
+
+
+def _autocompletar_lineas_desde_catalogo(formset):
+    """S-LC-Feedback-V4: si una línea tiene servicio pero descripción vacía,
+    la rellenamos desde el nombre del servicio (+ variación). Si el precio
+    unitario es 0 y la variación trae costo, lo usamos como precio sugerido.
+    """
+    from decimal import Decimal
+    for form in formset.forms:
+        if form.cleaned_data.get("DELETE"):
+            continue
+        servicio = form.cleaned_data.get("servicio")
+        variacion = form.cleaned_data.get("variacion")
+        if servicio and not (form.cleaned_data.get("descripcion") or "").strip():
+            partes = [servicio.nombre]
+            if variacion:
+                partes.append(variacion.nombre)
+            form.instance.descripcion = " · ".join(partes)
+        precio = form.cleaned_data.get("precio_unitario") or Decimal("0")
+        if precio == 0 and variacion is not None:
+            costo = getattr(variacion, "costo", None)
+            if costo:
+                form.instance.precio_unitario = costo
 
 
 def _persistir_impuestos(cot: Cotizacion, ids_seleccionadas: list[int]):
@@ -163,6 +188,7 @@ def nuevo(request):
             cot.creado_por = request.user
             cot.save()
             formset.instance = cot
+            _autocompletar_lineas_desde_catalogo(formset)
             formset.save()
             _persistir_impuestos(cot, ids)
             services.emitir_creada(cot, request.user)
@@ -199,6 +225,7 @@ def editar(request, pk):
         ids = _ids_tasas(request)
         if form.is_valid() and formset.is_valid():
             form.save()
+            _autocompletar_lineas_desde_catalogo(formset)
             formset.save()
             _persistir_impuestos(cot, ids)
             services.emitir_actualizada(cot, request.user)

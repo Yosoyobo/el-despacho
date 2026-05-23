@@ -26,6 +26,10 @@ class CotizacionForm(forms.ModelForm):
             "terminos": forms.Textarea(attrs={"rows": 3}),
         }
         labels = {
+            "titulo": "Título",
+            "fecha_emision": "Fecha de emisión",
+            "moneda": "Moneda",
+            "descuento_global_porcentaje": "Descuento global (%)",
             "anticipo_porcentaje": "Anticipo (%)",
             "anticipo_monto_override": "Anticipo ($) — override opcional",
         }
@@ -66,13 +70,27 @@ class CotizacionItemForm(forms.ModelForm):
     class Meta:
         model = CotizacionItem
         fields = [
-            "orden", "servicio", "descripcion",
+            "orden", "servicio", "variacion", "descripcion",
             "cantidad", "unidad", "precio_unitario", "descuento_porcentaje",
         ]
         widgets = {
             "descripcion": forms.Textarea(attrs={"rows": 2}),
             "orden": forms.NumberInput(attrs={"min": 0}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # S-LC-Feedback-V4: servicio/variacion opcionales (descripción libre como fallback).
+        self.fields["servicio"].required = False
+        self.fields["variacion"].required = False
+        self.fields["descripcion"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        # Si no hay servicio elegido, exige descripción libre.
+        if not cleaned.get("servicio") and not (cleaned.get("descripcion") or "").strip():
+            self.add_error("descripcion", "Elige un producto del catálogo o escribe una descripción.")
+        return cleaned
 
     def clean_cantidad(self):
         v = self.cleaned_data.get("cantidad")

@@ -3,7 +3,7 @@
 {% block title %}{% if modo == 'nuevo' %}Nueva cotización{% else %}Editar {{ cot.codigo }}{% endif %} — El Taller{% endblock %}
 {% block contenido %}
 
-{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|stringformat:'s'|title subtitulo=cot.codigo|default:"Cotización nueva" breadcrumb_items=breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=titulo_pagina subtitulo=cot.codigo|default:"" breadcrumb_items=breadcrumb_items %}
 
 <form method="post" class="space-y-6" id="cot-form">
     {% csrf_token %}
@@ -48,87 +48,113 @@
 
     <section class="ta-card">
         <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">Líneas</h2>
-            <button type="button" id="cot-agregar-linea" class="btn-secundario text-sm">+ Agregar línea</button>
+            <h2 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">Productos / servicios</h2>
+            <button type="button" id="cot-agregar-linea" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Agregar línea</button>
         </div>
 
         {{ formset.management_form }}
 
-        <div class="overflow-x-auto">
-        <table class="min-w-full text-sm" id="cot-items-tabla">
-            <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-                <tr>
-                    <th class="px-3 py-2">Descripción</th>
-                    <th class="px-3 py-2">Cantidad</th>
-                    <th class="px-3 py-2">Unidad</th>
-                    <th class="px-3 py-2">P. unitario</th>
-                    <th class="px-3 py-2">Desc. %</th>
-                    <th class="px-3 py-2 text-right">—</th>
-                </tr>
-            </thead>
-            <tbody id="cot-items-body" class="divide-y divide-gray-200 dark:divide-gray-800">
-                {% for f in formset %}
-                <tr class="cot-item-row align-top" {% if f.instance.pk %}data-existing="1"{% endif %}>
-                    <td class="px-3 py-2">
-                        {{ f.id }}{{ f.descripcion }}
-                        <div class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
-                            {{ f.servicio.label_tag }} {{ f.servicio }}
-                        </div>
+        <div id="cot-items-body" class="space-y-3">
+            {% for f in formset %}
+            <div class="cot-item-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_80px_120px_120px_80px_auto] dark:border-gray-800" {% if f.instance.pk %}data-existing="1"{% endif %}>
+                {{ f.id }}
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Producto</label>
+                    {{ f.servicio }}
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Variación</label>
+                    {{ f.variacion }}
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Cantidad</label>
+                    {{ f.cantidad }}
+                    {% if f.cantidad.errors %}<p class="text-xs text-error-600">{{ f.cantidad.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Unidad</label>
+                    <select name="{{ f.unidad.html_name }}" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                        {% for u in unidades_disponibles %}
+                        <option value="{{ u }}" {% if f.unidad.value == u %}selected{% endif %}>{{ u }}</option>
+                        {% endfor %}
+                        {% if f.unidad.value and f.unidad.value not in unidades_disponibles %}
+                        <option value="{{ f.unidad.value }}" selected>{{ f.unidad.value }} (legacy)</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">P. unitario</label>
+                    {{ f.precio_unitario }}
+                    {% if f.precio_unitario.errors %}<p class="text-xs text-error-600">{{ f.precio_unitario.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Desc. %</label>
+                    {{ f.descuento_porcentaje }}
+                </div>
+                <div class="flex items-end justify-end">
+                    <button type="button"
+                            class="cot-item-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
+                            title="Quitar línea" aria-label="Quitar línea"
+                            {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                    {% if f.instance.pk %}<label class="sr-only">{{ f.DELETE }}</label>{% endif %}
+                </div>
+                <div class="md:col-span-7">
+                    <details>
+                        <summary class="cursor-pointer text-[11px] text-gray-500 hover:text-brand-600 dark:text-gray-400">Descripción libre (opcional)</summary>
+                        <div class="mt-2">{{ f.descripcion }}</div>
                         {% if f.descripcion.errors %}<p class="text-xs text-error-600">{{ f.descripcion.errors|join:" " }}</p>{% endif %}
-                    </td>
-                    <td class="px-3 py-2 w-24">{{ f.cantidad }}{% if f.cantidad.errors %}<p class="text-xs text-error-600">{{ f.cantidad.errors|join:" " }}</p>{% endif %}</td>
-                    <td class="px-3 py-2 w-28">
-                        {# S-LC-Feedback-V2: dropdown desde el catálogo de Unidades. #}
-                        <select name="{{ f.unidad.html_name }}" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
-                            {% for u in unidades_disponibles %}
-                            <option value="{{ u }}" {% if f.unidad.value == u %}selected{% endif %}>{{ u }}</option>
-                            {% endfor %}
-                            {# Si el valor actual no está en el catálogo (legacy), preservarlo. #}
-                            {% if f.unidad.value and f.unidad.value not in unidades_disponibles %}
-                            <option value="{{ f.unidad.value }}" selected>{{ f.unidad.value }} (legacy)</option>
-                            {% endif %}
-                        </select>
-                    </td>
-                    <td class="px-3 py-2 w-32">{{ f.precio_unitario }}{% if f.precio_unitario.errors %}<p class="text-xs text-error-600">{{ f.precio_unitario.errors|join:" " }}</p>{% endif %}</td>
-                    <td class="px-3 py-2 w-24">{{ f.descuento_porcentaje }}</td>
-                    <td class="px-3 py-2 text-right">
-                        {# S-LC-Feedback-V3: botón "x" reemplaza el checkbox feo. #}
-                        <button type="button"
-                                class="cot-item-eliminar inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
-                                title="Quitar línea" aria-label="Quitar línea"
-                                {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
-                        </button>
-                        {% if f.instance.pk %}<label class="sr-only">{{ f.DELETE }}</label>{% endif %}
-                        {{ f.orden.as_hidden }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </details>
+                    {{ f.orden.as_hidden }}
+                </div>
+            </div>
+            {% endfor %}
         </div>
 
         <template id="cot-item-template">
-            <tr class="cot-item-row align-top">
-                <td class="px-3 py-2"><textarea name="items-__prefix__-descripcion" rows="2" required></textarea></td>
-                <td class="px-3 py-2 w-24"><input type="number" step="0.01" name="items-__prefix__-cantidad" value="1" required></td>
-                <td class="px-3 py-2 w-28">
+            {# Plantilla para fila nueva. El JS reemplaza __prefix__ por el índice y agrega al body. #}
+            <div class="cot-item-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_80px_120px_120px_80px_auto] dark:border-gray-800">
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Producto</label>
+                    <select name="items-__prefix__-servicio" class="cot-tpl-servicio w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900"><option value="">— Producto —</option></select>
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Variación</label>
+                    <select name="items-__prefix__-variacion" class="cot-tpl-variacion w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900"><option value="">— Variación —</option></select>
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Cantidad</label>
+                    <input type="number" step="0.01" name="items-__prefix__-cantidad" value="1" min="0.01" required class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Unidad</label>
                     <select name="items-__prefix__-unidad" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
-                        {% for u in unidades_disponibles %}
-                        <option value="{{ u }}" {% if u == 'Piezas' %}selected{% endif %}>{{ u }}</option>
-                        {% endfor %}
+                        {% for u in unidades_disponibles %}<option value="{{ u }}" {% if u == 'Piezas' %}selected{% endif %}>{{ u }}</option>{% endfor %}
                     </select>
-                </td>
-                <td class="px-3 py-2 w-32"><input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required></td>
-                <td class="px-3 py-2 w-24"><input type="number" step="0.01" name="items-__prefix__-descuento_porcentaje" value="0"></td>
-                <td class="px-3 py-2 text-right">
-                    <button type="button" class="cot-item-eliminar inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar línea" aria-label="Quitar línea">
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">P. unitario</label>
+                    <input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Desc. %</label>
+                    <input type="number" step="0.01" name="items-__prefix__-descuento_porcentaje" value="0" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div class="flex items-end justify-end">
+                    <button type="button" class="cot-item-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar línea" aria-label="Quitar línea">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
                     </button>
+                </div>
+                <div class="md:col-span-7">
+                    <details>
+                        <summary class="cursor-pointer text-[11px] text-gray-500 hover:text-brand-600 dark:text-gray-400">Descripción libre (opcional)</summary>
+                        <div class="mt-2"><textarea name="items-__prefix__-descripcion" rows="2" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900"></textarea></div>
+                    </details>
                     <input type="hidden" name="items-__prefix__-DELETE" value="">
                     <input type="hidden" name="items-__prefix__-orden" value="0">
-                </td>
-            </tr>
+                </div>
+            </div>
         </template>
     </section>
 
@@ -168,14 +194,35 @@
     const total = document.querySelector('input[name="items-TOTAL_FORMS"]');
     const btn = document.getElementById('cot-agregar-linea');
     if (!tpl || !body || !total || !btn) return;
+
+    // Captura opciones de servicio y variación de la primera fila existente
+    // (Django ya las renderizó con el catálogo completo). Las reusamos al clonar
+    // para que el botón "+ Agregar línea" produzca filas con los mismos selects.
+    function clonarOptions(selectorOrigen) {
+        const src = body.querySelector(selectorOrigen);
+        if (!src) return '';
+        return Array.from(src.options).map(o =>
+            `<option value="${o.value}">${o.textContent}</option>`
+        ).join('');
+    }
+
     btn.addEventListener('click', () => {
         const idx = parseInt(total.value, 10);
-        const html = tpl.innerHTML.replace(/__prefix__/g, idx);
-        const tmp = document.createElement('tbody');
+        let html = tpl.innerHTML.replace(/__prefix__/g, idx);
+        const tmp = document.createElement('div');
         tmp.innerHTML = html;
-        body.appendChild(tmp.firstElementChild);
+        const nueva = tmp.firstElementChild;
+        // Inyectar opciones de servicio + variacion clonadas de la primera fila.
+        const opcServicio = clonarOptions('select[name$="-servicio"]');
+        const opcVariacion = clonarOptions('select[name$="-variacion"]');
+        const selServ = nueva.querySelector('.cot-tpl-servicio');
+        const selVar = nueva.querySelector('.cot-tpl-variacion');
+        if (opcServicio && selServ) selServ.innerHTML = opcServicio;
+        if (opcVariacion && selVar) selVar.innerHTML = opcVariacion;
+        body.appendChild(nueva);
         total.value = idx + 1;
     });
+
     // S-LC-Feedback-V3: botón "x" para quitar línea de items.
     document.addEventListener('click', function (e) {
         const x = e.target.closest('.cot-item-eliminar');
