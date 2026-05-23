@@ -21,6 +21,7 @@ urlpatterns = [
     # Layout unificado.
     path("buzon/", views.lista, name="buzon-lista"),
     path("buzon/nuevo", views.nuevo, name="buzon-nuevo"),
+    path("buzon/masivo", views.accion_masiva, name="buzon-masivo"),
     path("buzon/clientes/", TemplateView.as_view(template_name="buzon/clientes_proximamente.html"),
          name="buzon-clientes-proximamente"),
     path("buzon/<int:pk>/", views.detalle, name="buzon-detalle"),

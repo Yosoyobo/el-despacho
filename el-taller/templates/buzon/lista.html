@@ -61,5 +61,58 @@
 </form>
 {% endif %}
 
+{% if es_admin_buzon %}
+{# S-LC-Feedback-V3: barra de acciones masivas. Aparece cuando hay ≥1 fila seleccionada. #}
+<form method="post" action="{% url 'buzon-masivo' %}" id="buzon-masivo-form" class="hidden mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-brand-200 bg-brand-25 px-4 py-2.5 dark:border-brand-500/30 dark:bg-brand-500/5">
+    {% csrf_token %}
+    <span class="text-sm font-medium text-brand-700 dark:text-brand-300"><span id="buzon-masivo-conteo">0</span> seleccionado(s)</span>
+    <div class="ml-auto flex flex-wrap gap-2">
+        <button type="submit" name="accion" value="estado_leido" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">Marcar leído</button>
+        <button type="submit" name="accion" value="estado_respondido" class="rounded-lg bg-success-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-success-600">Marcar respondido</button>
+        <button type="submit" name="accion" value="estado_archivado" class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Archivar</button>
+        {% if request.user.rol == "super_admin" or request.user.rol == "dueno" %}
+        <button type="submit" name="accion" value="eliminar" class="rounded-lg bg-error-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-error-600"
+                onclick="return confirm('¿Eliminar los mensajes seleccionados? Esta acción no se puede deshacer.');">Eliminar</button>
+        {% endif %}
+    </div>
+</form>
+<div id="buzon-masivo-ids-holder"></div>
+{% endif %}
+
 {% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_buzon filas_template="buzon/_filas.html" sin_scroll_vertical=True %}
+
+{% if es_admin_buzon %}
+<script>
+(function () {
+    // S-LC-Feedback-V3: barra de acciones masivas del Buzón.
+    const form = document.getElementById('buzon-masivo-form');
+    const holder = document.getElementById('buzon-masivo-ids-holder');
+    const conteo = document.getElementById('buzon-masivo-conteo');
+    if (!form || !holder || !conteo) return;
+
+    function refresh() {
+        const checked = document.querySelectorAll('.buzon-row-check:checked');
+        conteo.textContent = checked.length;
+        if (checked.length > 0) form.classList.remove('hidden');
+        else form.classList.add('hidden');
+        // Recrea los hidden inputs con los ids seleccionados antes de enviar.
+        holder.innerHTML = '';
+        checked.forEach(cb => {
+            const i = document.createElement('input');
+            i.type = 'hidden'; i.name = 'ids'; i.value = cb.value;
+            holder.appendChild(i);
+        });
+    }
+
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('buzon-row-check')) refresh();
+    });
+
+    // Inserta el holder dentro del form al submit (Django form sólo lee inputs dentro de form).
+    form.addEventListener('submit', function () {
+        Array.from(holder.children).forEach(c => form.appendChild(c.cloneNode(true)));
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

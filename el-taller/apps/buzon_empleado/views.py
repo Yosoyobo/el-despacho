@@ -64,7 +64,10 @@ def lista(request):
         "respondidos": base.filter(estado="respondido").count(),
         "archivados": base.filter(estado="archivado").count(),
     }
-    cabeceras = [{"label": "#"}, {"label": "Prioridad", "align": "center"}]
+    cabeceras = []
+    if es_admin_buzon:
+        cabeceras.append({"label": "", "clase_th": "w-8"})  # checkbox col
+    cabeceras += [{"label": "#"}, {"label": "Prioridad", "align": "center"}]
     if es_admin_buzon:
         cabeceras.append({"label": "Autor"})
     cabeceras += [
@@ -217,6 +220,62 @@ def nuevo(request):
     else:
         form = NuevoMensajeForm(initial=inicial)
     return render(request, "buzon/nuevo.html", {"form": form})
+
+
+@login_required
+@require_http_methods(["POST"])
+def accion_masiva(request):
+    """POST /buzon/masivo — acción sobre múltiples mensajes a la vez.
+
+    S-LC-Feedback-V3. Acciones válidas (solo admin con buzon.ver_todos):
+      - estado_leido / estado_respondido / estado_archivado / estado_nuevo
+      - eliminar (borra de DB; sólo super_admin/dueno).
+
+    Espera POST con `ids[]` lista de PKs y `accion` string.
+    """
+    if not puede(request.user, "buzon", "ver_todos"):
+        return HttpResponse("Sin acceso.", status=403)
+    ids = request.POST.getlist("ids")
+    accion = (request.POST.get("accion") or "").strip()
+    if not ids or not accion:
+        messages.error(request, "Selecciona al menos un mensaje y una acción.")
+        return redirect("buzon-lista")
+    try:
+        ids_int = [int(i) for i in ids]
+    except ValueError:
+        messages.error(request, "IDs inválidos.")
+        return redirect("buzon-lista")
+
+    qs = MensajeBuzon.objects.filter(pk__in=ids_int)
+    n = qs.count()
+    if accion == "eliminar":
+        if request.user.rol not in ("super_admin", "dueno"):
+            return HttpResponse("Solo super_admin o dueño pueden eliminar.", status=403)
+        # Emite evento antes de borrar.
+        for m in qs:
+            emitir(EventoPortavoz(
+                tipo="buzon.eliminado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"mensaje_id": m.pk, "asunto": m.asunto},
+            ))
+        qs.delete()
+        messages.success(request, f"{n} mensaje{'s' if n != 1 else ''} eliminado{'s' if n != 1 else ''}.")
+    elif accion.startswith("estado_"):
+        nuevo_estado = accion.removeprefix("estado_")
+        if nuevo_estado not in {"nuevo", "leido", "respondido", "archivado"}:
+            messages.error(request, "Estado inválido.")
+            return redirect("buzon-lista")
+        qs.update(estado=nuevo_estado, actualizado_en=timezone.now())
+        for pk in ids_int:
+            emitir(EventoPortavoz(
+                tipo="buzon.estado_cambiado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"mensaje_id": pk, "estado": nuevo_estado, "masivo": True},
+            ))
+        messages.success(request, f"{n} mensaje{'s' if n != 1 else ''} marcado{'s' if n != 1 else ''} como «{nuevo_estado}».")
+    else:
+        messages.error(request, "Acción desconocida.")
+    return redirect("buzon-lista")
 
 
 @login_required

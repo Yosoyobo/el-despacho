@@ -84,6 +84,37 @@ def test_prioridad_orden_descendente(client, usuario_factory):
     assert body.index("urgente") < body.index("media") < body.index("baja")
 
 
+def test_accion_masiva_marca_leidos(client, usuario_factory):
+    """S-LC-Feedback-V3: POST /buzon/masivo con accion=estado_leido marca varios mensajes."""
+    from buzon.models import MensajeBuzon
+    admin = usuario_factory(rol="super_admin")
+    u = usuario_factory(rol="disenador")
+    m1 = MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="A", cuerpo="x"*20, estado="nuevo")
+    m2 = MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="B", cuerpo="y"*20, estado="nuevo")
+    client.force_login(admin)
+    resp = client.post("/buzon/masivo", {
+        "ids": [str(m1.pk), str(m2.pk)],
+        "accion": "estado_leido",
+    })
+    assert resp.status_code == 302
+    m1.refresh_from_db(); m2.refresh_from_db()
+    assert m1.estado == "leido"
+    assert m2.estado == "leido"
+
+
+def test_accion_masiva_eliminar_solo_super_admin(client, usuario_factory):
+    """Eliminación masiva sólo permitida a super_admin/dueno."""
+    from buzon.models import MensajeBuzon
+    contador = usuario_factory(rol="contador")
+    u = usuario_factory(rol="disenador")
+    m = MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="X", cuerpo="x"*20)
+    client.force_login(contador)
+    resp = client.post("/buzon/masivo", {"ids": [str(m.pk)], "accion": "eliminar"})
+    assert resp.status_code == 403
+    # Mensaje debe seguir existiendo.
+    assert MensajeBuzon.objects.filter(pk=m.pk).exists()
+
+
 def test_orden_fecha_invierte_prioridad(client, usuario_factory):
     """S-LC-Feedback-V2: ?orden=fecha ordena cronológico descendente (más reciente arriba)
     independientemente de la prioridad."""
