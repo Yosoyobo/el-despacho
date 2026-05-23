@@ -1,10 +1,86 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.15 · 21 mayo 2026 tarde (revisión: post S-Finanzas-V2)
+> **Versión:** v0.17 · 23 mayo 2026 (revisión: post S-LC-Feedback-V3)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
-> **Política de actualización:** este manual se actualiza después de cada sprint que entregue funcionalidad nueva. La versión final v1.0 se publicará cuando el desarrollo se considere cerrado.
+> **Política de actualización:** este manual se actualiza ANTES de cada deploy productivo. Es la fuente única de verdad y la página `/ayuda/` lo renderiza para todos los usuarios.
 
-> **Novedades al 21 mayo 2026 — tarde (S-Finanzas-V2):**
+> **Novedades al 23 mayo 2026 (S-LC-Feedback-V3):**
+>
+> - **Página de ayuda en el sistema**: nuevo ítem "Ayuda" en la barra
+>   lateral. Ahí está este manual completo con tabla de contenidos para
+>   saltar entre secciones. También puedes descargarlo en Markdown.
+> - **Dashboard reorganizado**: El Dictado (cuéntale al Chalán) ahora
+>   está arriba, justo debajo de los botones de Nuevo proyecto / Nuevo
+>   producto / Nuevo ingreso / Nuevo egreso. Los KPIs de "Tu tablero"
+>   ahora se pueden **arrastrar y reordenar** — el orden queda guardado
+>   por usuario.
+> - **Kanban con drag & drop**: en `/proyectos/kanban/` arrastras una
+>   tarjeta a otra columna y el estado del proyecto cambia
+>   automáticamente. La tarjeta se mueve enseguida (optimistic) y si
+>   algo falla, regresa sola.
+> - **Botones "x" para eliminar líneas**: en Nuevo proyecto, Nueva
+>   cotización y Nueva factura, las líneas de productos ahora tienen un
+>   botón rojo "x" a la derecha. Le picas y la línea desaparece.
+>   Reemplazó el checkbox feo de "eliminar".
+> - **Buzón con acciones masivas**: como admin del Buzón, ahora cada
+>   mensaje tiene una casilla a la izquierda. Marcas varios y aparece
+>   una barra arriba con los botones Marcar leído / Marcar respondido /
+>   Archivar / Eliminar (sólo super_admin/dueño).
+> - **Costo y margen en el catálogo**: cada producto/servicio ahora
+>   tiene un campo "Costo" (lo que te cuesta) junto al "Precio" (lo que
+>   vendes). La lista del catálogo muestra una columna **Margen** con
+>   color: verde ≥50%, naranja ≥20%, rojo <20%. Al crear un producto
+>   nuevo dentro del form de proyecto, ves el margen calculado en vivo
+>   mientras llenas costo y precio.
+> - **CRM de Proveedores**: dentro del Catálogo hay una sección nueva
+>   "Proveedores" con su propia lista, formulario y detalle (razón
+>   social, contacto, email, teléfono, RFC, notas). En el form de cada
+>   servicio puedes asociar los proveedores que te lo surten; en el
+>   detalle del proveedor ves qué productos le compras.
+> - **MiMo aparece como Gratis**: en Mis Chalanes y en el Panel de
+>   Chalanes, el Chalán MiMo (Xiaomi) ya no muestra `$0.0000` con barra
+>   vacía — sale con badge **"Gratis"** y oculta la barra de gasto.
+>   Cuando Xiaomi termine su programa gratuito, se actualiza el precio
+>   y aparece como los demás.
+> - **Tarjetas de Chalanes colapsables**: en `/perfil/chalanes/` y
+>   `/chalanes/` cada tarjeta arranca cerrada. Le picas para ver llave,
+>   modelo, gasto detallado y botón de Consultar saldo. La sección "Qué
+>   pueden hacer Los Chalanes" también es un acordeón.
+> - **Móvil arreglado**: cifras grandes que se salían en mobile (KPIs,
+>   totales) ahora se ajustan automáticamente con `break-all` y tamaño
+>   responsive. Las gráficas se mantienen dentro del ancho de pantalla.
+>
+> **Novedades anteriores al 22 mayo 2026 (S-LC-Feedback-V2):**
+>
+> - **Semáforo en el header**: junto al toggle de tema, un círculo
+>   verde 🟢 indica que el sistema está operativo. Si hay deploy en
+>   curso, cambia a 🔴 — la página puede recargar; espera 30 segundos.
+> - **Barra lateral fija**: la sidebar ya no scrollea con el contenido
+>   en desktop, queda pegada arriba para acceso rápido a cualquier
+>   módulo.
+> - **Buzón con orden seleccionable**: arriba a la derecha, segmented
+>   "Por prioridad" / "Por fecha". Default prioridad.
+> - **Códigos LC-NNNN**: los proyectos ahora se numeran LC-0001,
+>   LC-0002, etc. Los que tenías como `PRY-NNNNNN` se renumeraron
+>   automáticamente al deploy.
+> - **Finanzas agrupada en la sidebar**: Tesorería, Facturación y
+>   Contaduría aparecen ahora bajo un grupo desplegable "Finanzas".
+>   Cotizaciones queda como item separado.
+> - **"Sala de Juntas" se llama "Dashboard"** ahora.
+> - **Calendario rediseñado**: 60% calendario (mes actual + siguiente
+>   apilados, con navegación), 40% panel derecho con botón "+ Nuevo
+>   evento" y lista de próximos eventos clickeables.
+> - **Quick-create de producto en Nuevo proyecto**: panel "+ Crear
+>   producto nuevo en el catálogo" con Tipo · Nombre · Precio ·
+>   Cantidad · botón Agregar. Crea el servicio en el Catálogo y lo
+>   agrega al proyecto al mismo tiempo.
+> - **Catálogo de Unidades**: dentro de Catálogo, gestión de unidades
+>   de medida (Piezas, Metros, +). Antes era texto libre.
+> - **Cotización con cliente/proyecto obligatorio**: proyecto ahora es
+>   obligatorio (asterisco rojo). Botones inline para crear cliente o
+>   proyecto sin salir del form. Fecha de validez retirada del form.
+
+> **Novedades anteriores al 21 mayo 2026 — tarde (S-Finanzas-V2):**
 >
 > - **Fix del reembolso**: el bug que dejaba los reembolsos sin afectar
 >   saldos en bancos y totales quedó arreglado. Ahora cuando aprietas

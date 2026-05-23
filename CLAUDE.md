@@ -2565,6 +2565,51 @@ dual-copy del partial).
 Cero migraciones. Una sola corrida de `mudanza.sh` con el código
 nuevo activa todo automáticamente.
 
+### S-LC-Feedback-V3 ✅ — Tercera ronda de feedback de LC (2026-05-23)
+
+10 commits independientes. Manual de usuario actualizado ANTES del push.
+
+- **Commit 1 — Dashboard reorden**: Dictado a la posición 2 (debajo de
+  Acciones rápidas).
+- **Commit 2 — Botones "x" eliminar** en formsets Productos / Cotización
+  / Factura. Reemplaza checkbox feo.
+- **Commit 3 — MiMo gratis sin $/gasto**: `lib.analistas.stats` detecta
+  proveedores con `PRECIO_IN + PRECIO_OUT == 0` y los marca
+  `es_gratis=True`. Templates ocultan `$` y barra de costo, muestran
+  badge "Gratis".
+- **Commit 4 — Acordeones** en Mis Chalanes (cada tarjeta colapsada) y
+  "Qué pueden hacer Los Chalanes" (sección entera) — `<details>` HTML
+  nativo sin JS.
+- **Commit 5 — Costo en Servicio + calculadora margen**: migración
+  `el_catalogo.0004_costo_servicio`, property
+  `Servicio.margen_porcentaje`, 3 columnas nuevas en lista del Catálogo
+  (Costo · Precio · Margen con color), quick-create de Servicio en
+  form de Proyecto con calculadora en tiempo real.
+- **Commit 6 — CRM Proveedores**: migración `0005_proveedor` + M2M con
+  Servicio. CRUD `/catalogo/proveedores/`. Detalle muestra servicios que
+  surte. Eventos Portavoz nuevos.
+- **Commit 7 — Buzón acciones masivas**: checkbox por fila + barra
+  flotante (Marcar leído / Marcar respondido / Archivar / Eliminar —
+  last sólo super_admin/dueno). Endpoint `POST /buzon/masivo`.
+- **Commit 8 — Drag & Drop Kanban + KPIs**: HTML5 drag/drop nativo.
+  Kanban arrastra entre columnas → `cambiar-estado` con HX-Request
+  header. KPIs Dashboard arrastrables, orden persistido en
+  `PreferenciaKPI.orden`. `kpis_visibles_para()` ordena por `orden`.
+- **Commit 9 — Sweep responsivo móvil**: `_kpi_card_hero.html` y KPIs
+  Dashboard con `text-2xl sm:text-title-sm md:text-title-md
+  tabular-nums break-all`. `input.css` global con regla `[data-chart]
+  width 100% overflow-hidden max-height 240px` en mobile.
+- **Commit 10 — Página /ayuda con manual de usuario**: nueva app
+  `apps.ayuda` que lee `docs/DOC_05_MANUAL_USUARIO.md` y lo convierte
+  con `markdown` lib. TOC sticky + cuerpo. Cache por mtime
+  (`?refresh=1` para super_admin invalida). Sidebar Taller item "Ayuda".
+  Dockerfile copia `docs/` a `/app/docs/`. Dep `markdown==3.7`.
+
+**Regla nueva del proyecto** (agregada a §10): el manual
+`docs/DOC_05_MANUAL_USUARIO.md` **se actualiza ANTES de cada deploy
+productivo**. Es la fuente única de verdad consumible por usuarios
+no técnicos vía `/ayuda/`.
+
 ### S-LC-Feedback-V2 ✅ — Segunda ronda de feedback de LC (2026-05-23)
 
 Sprint dirigido por la segunda ronda de comentarios de LC. 8 commits
@@ -2706,6 +2751,18 @@ historial de facturas y pagos, mensajería con el despacho.
 5. **Si Django se queja de migraciones:** las migraciones están congeladas
    (committeadas). Los entrypoints solo hacen `migrate --noinput`, no
    `makemigrations`.
+6. **Actualiza el manual de usuario ANTES de cada deploy.**
+   `docs/DOC_05_MANUAL_USUARIO.md` es la fuente única de verdad
+   consumida por usuarios no técnicos vía `/ayuda/` (S-LC-Feedback-V3
+   commit 10). Antes de push a `main`:
+   - agrega un bloque "Novedades al <fecha> (<nombre del sprint>)"
+     arriba de las novedades existentes,
+   - escribe en español llano (no jerga técnica) describiendo cambios
+     visibles para el usuario final,
+   - si removiste o renombraste una sección de UI, actualiza las
+     referencias correspondientes en el manual.
+   El cache de `/ayuda/` se invalida automáticamente cuando cambia el
+   mtime del archivo en el deploy; no hay paso manual.
 
 ---
 
