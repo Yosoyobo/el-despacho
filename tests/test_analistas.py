@@ -119,7 +119,9 @@ class TestAdaptersUnitarios:
         assert res.provider == "mimo"
         assert res.prompt_tokens == 5
         assert res.completion_tokens == 2
-        assert res.costo_usd > 0
+        # MiMo está en programa gratuito (hotfix 23 may 2026) — costo = 0.0.
+        # Cuando Xiaomi publique tarifa, este aserto vuelve a `> 0`.
+        assert res.costo_usd == 0.0
 
     def test_mimo_401_es_permanente(self, db):
         from ajustes.models.credencial import Credencial
