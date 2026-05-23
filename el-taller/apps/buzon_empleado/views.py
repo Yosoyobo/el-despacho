@@ -47,6 +47,16 @@ def lista(request):
     if tipo:
         qs = qs.filter(tipo=tipo)
 
+    # Orden — S-LC-Feedback-V2: selector prioridad ↔ fecha. Default prioridad
+    # (mensajes urgentes arriba). El default del modelo ya es por prioridad
+    # pero hacemos explícito el order_by para que el selector funcione.
+    orden = request.GET.get("orden") or "prioridad"
+    if orden == "fecha":
+        qs = qs.order_by("-creado_en")
+    else:
+        orden = "prioridad"
+        qs = qs.order_by("-prioridad", "-creado_en")
+
     base = MensajeBuzon.objects.all() if es_admin_buzon else MensajeBuzon.objects.filter(autor=user)
     kpis = {
         "nuevos": base.filter(estado="nuevo").count(),
@@ -66,17 +76,32 @@ def lista(request):
     # Toggle: KPI cards clickeables. Cuando el filtro está activo, el link
     # apunta a "" (sin filtro); cuando no, aplica el filtro.
     def _kpi_link(filtro):
-        if estado == filtro:
-            return "?"  # quitar
-        base = f"?estado={filtro}"
+        partes = []
+        if estado != filtro:
+            partes.append(f"estado={filtro}")
         if tipo:
-            base += f"&tipo={tipo}"
-        return base
+            partes.append(f"tipo={tipo}")
+        if orden and orden != "prioridad":
+            partes.append(f"orden={orden}")
+        return "?" + "&".join(partes) if partes else "?"
+    # Querystring base para preservar filtros + orden en links del header
+    def _qs_con_orden(nuevo_orden: str) -> str:
+        partes = []
+        if estado:
+            partes.append(f"estado={estado}")
+        if tipo:
+            partes.append(f"tipo={tipo}")
+        partes.append(f"orden={nuevo_orden}")
+        return "?" + "&".join(partes)
+
     return render(request, "buzon/lista.html", {
         "mensajes": qs,
         "es_admin_buzon": es_admin_buzon,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
+        "orden_actual": orden,
+        "link_orden_prioridad": _qs_con_orden("prioridad"),
+        "link_orden_fecha": _qs_con_orden("fecha"),
         "kpis": kpis,
         "cabeceras_buzon": cabeceras,
         "kpi_links": {

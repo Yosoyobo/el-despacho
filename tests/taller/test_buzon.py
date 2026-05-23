@@ -82,3 +82,22 @@ def test_prioridad_orden_descendente(client, usuario_factory):
     body = resp.content.decode()
     # urgente (9) debe aparecer antes que media (5) antes que baja (1).
     assert body.index("urgente") < body.index("media") < body.index("baja")
+
+
+def test_orden_fecha_invierte_prioridad(client, usuario_factory):
+    """S-LC-Feedback-V2: ?orden=fecha ordena cronológico descendente (más reciente arriba)
+    independientemente de la prioridad."""
+    from buzon.models import MensajeBuzon
+    u = usuario_factory(rol="super_admin")
+    # Creo en orden cronológico inverso al de prioridad.
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="urgente", cuerpo="y"*20, prioridad=9)
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="media", cuerpo="z"*20, prioridad=5)
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="baja", cuerpo="x"*20, prioridad=1)
+    client.force_login(u)
+    resp = client.get("/buzon/?orden=fecha")
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    # Más reciente (baja, creada al final) debe estar arriba.
+    assert body.index("baja") < body.index("media") < body.index("urgente")
+    # El segmented control debe marcar "Por fecha" activo.
+    assert "Por fecha" in body

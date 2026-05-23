@@ -12,7 +12,17 @@
             {% else %}Tus mensajes enviados al admin.{% endif %}
         </p>
     </div>
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+        <div class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs dark:border-gray-800 dark:bg-gray-900" role="group" aria-label="Ordenar mensajes">
+            <a href="{{ link_orden_prioridad }}"
+               class="rounded-md px-3 py-1.5 font-medium transition {% if orden_actual == 'prioridad' %}bg-brand-500 text-white shadow-sm{% else %}text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">
+                Por prioridad
+            </a>
+            <a href="{{ link_orden_fecha }}"
+               class="rounded-md px-3 py-1.5 font-medium transition {% if orden_actual == 'fecha' %}bg-brand-500 text-white shadow-sm{% else %}text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">
+                Por fecha
+            </a>
+        </div>
         <a href="{% url 'buzon-nuevo' %}" class="btn-primario">+ Nuevo mensaje</a>
         {% if es_admin_buzon %}<a href="{% url 'buzon-clientes-proximamente' %}" class="btn-secundario">Buzón de clientes →</a>{% endif %}
     </div>
@@ -27,6 +37,7 @@
 
 {% if es_admin_buzon %}
 <form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <input type="hidden" name="orden" value="{{ orden_actual }}">
     <div class="min-w-[180px]">
         <label for="bzn-estado" class="sr-only">Estado</label>
         <select id="bzn-estado" name="estado">
