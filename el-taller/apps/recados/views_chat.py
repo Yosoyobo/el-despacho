@@ -51,8 +51,9 @@ def _datos_buzon_para(user):
     - Admin (puede ver_todos): lista de mensajes pendientes con link al detalle.
     - Empleado: form para escribir nuevo + sus propios mensajes recientes en lectura.
     """
-    from buzon.models import MensajeBuzon
     from apps.buzon_empleado.forms import NuevoMensajeForm
+
+    from buzon.models import MensajeBuzon
 
     es_admin = puede(user, "buzon", "ver_todos")
     if es_admin:
