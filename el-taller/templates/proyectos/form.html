@@ -47,10 +47,7 @@
                 <div>{{ f.cantidad.label_tag }} {{ f.cantidad }}</div>
                 <div>{{ f.nota.label_tag }} {{ f.nota }}</div>
                 <div class="flex items-end">
-                    {# S-LC-Feedback-V3: botón "x" rojo para quitar la línea.
-                       Si el form ya existe en DB (instance.pk), marcamos DELETE
-                       (Django lo borra al save). Si es una fila nueva, simplemente
-                       removemos del DOM y decrementamos TOTAL_FORMS. #}
+                    {% comment %}S-LC-Feedback-V3: botón "x" rojo para quitar la línea. Persistida → marca DELETE; nueva → quita del DOM y decrementa TOTAL_FORMS.{% endcomment %}
                     <button type="button"
                             class="producto-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
                             title="Quitar producto" aria-label="Quitar producto"

@@ -54,24 +54,27 @@
     {% endif %}
 </section>
 
-{# ── Sección 0b: Tarjetas por Chalán ─────────────────────────────────── #}
+{# ── Sección 0b: Tarjetas por Chalán (S-LC-Feedback-V4: acordeón) ────── #}
 <section class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
     {% for c in tarjetas %}
-    <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+    <details class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <summary class="flex cursor-pointer list-none items-start justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
             <div>
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ c.apodo }}</span>
                     {% if c.soporta_vision %}<span class="rounded bg-warning-50 px-1.5 text-[10px] text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">👁 visión</span>{% endif %}
                 </div>
-                <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ c.nombre }}</div>
+                <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ c.nombre }}{% if not c.es_gratis %} · ${{ c.estadisticas.costo_usd|default:0|floatformat:4 }} 30d{% endif %}</div>
             </div>
-            {% if c.configurado %}
-                <span class="rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-medium text-success-700 dark:bg-success-500/10 dark:text-success-300">Activo</span>
-            {% else %}
-                <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">Sin llave</span>
-            {% endif %}
-        </header>
+            <div class="flex items-center gap-2">
+                {% if c.configurado %}
+                    <span class="rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-medium text-success-700 dark:bg-success-500/10 dark:text-success-300">Activo</span>
+                {% else %}
+                    <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">Sin llave</span>
+                {% endif %}
+                <svg class="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+        </summary>
         <div class="space-y-3 px-5 py-4 text-sm">
             <div class="flex items-center justify-between">
                 <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Llave</span>
@@ -125,7 +128,7 @@
             {% endif %}
         </footer>
         {% endif %}
-    </article>
+    </details>
     {% endfor %}
 </section>
 

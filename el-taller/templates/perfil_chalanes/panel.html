@@ -13,31 +13,42 @@
     </p>
 </header>
 
-<div class="space-y-3">
+<div class="space-y-2">
 {% for fila in filas %}
-<form method="post" action="{% url 'perfil-chalanes-guardar' %}"
-      class="flex flex-wrap items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    {% csrf_token %}
-    <input type="hidden" name="estacion" value="{{ fila.estacion }}">
-    <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-            <h2 class="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{{ fila.estacion }}</h2>
+{% comment %}S-LC-Feedback-V4: cada estación es un acordeón. Header muestra slug + Chalán actual; al abrir muestra descripción + selector + botón.{% endcomment %}
+<details class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3">
+        <div class="flex min-w-0 items-center gap-2">
+            <h2 class="font-mono text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ fila.estacion }}</h2>
             {% if fila.requiere_vision %}<span class="rounded bg-warning-50 px-1.5 text-[10px] text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">👁 visión</span>{% endif %}
         </div>
-        {% if fila.descripcion %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ fila.descripcion }}</p>{% endif %}
-    </div>
-    <select name="proveedor" class="rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
-        <option value="" {% if not fila.override_proveedor %}selected{% endif %}>
-            Usar el predeterminado del equipo ({{ fila.default_equipo }})
-        </option>
-        {% for c in fila.elegibles %}
-        <option value="{{ c.nombre }}" {% if fila.override_proveedor == c.nombre %}selected{% endif %}>
-            {{ c.apodo }}
-        </option>
-        {% endfor %}
-    </select>
-    <button type="submit" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">Guardar</button>
-</form>
+        <div class="flex flex-none items-center gap-2">
+            <span class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[12rem]">
+                {% if fila.override_proveedor %}{% for c in fila.elegibles %}{% if c.nombre == fila.override_proveedor %}{{ c.apodo }}{% endif %}{% endfor %}{% else %}Predeterminado · {{ fila.default_equipo }}{% endif %}
+            </span>
+            <svg class="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+    </summary>
+    <form method="post" action="{% url 'perfil-chalanes-guardar' %}"
+          class="flex flex-wrap items-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-800">
+        {% csrf_token %}
+        <input type="hidden" name="estacion" value="{{ fila.estacion }}">
+        <div class="w-full">
+            {% if fila.descripcion %}<p class="text-xs text-gray-500 dark:text-gray-400">{{ fila.descripcion }}</p>{% endif %}
+        </div>
+        <select name="proveedor" class="flex-1 min-w-[14rem] rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+            <option value="" {% if not fila.override_proveedor %}selected{% endif %}>
+                Usar el predeterminado del equipo ({{ fila.default_equipo }})
+            </option>
+            {% for c in fila.elegibles %}
+            <option value="{{ c.nombre }}" {% if fila.override_proveedor == c.nombre %}selected{% endif %}>
+                {{ c.apodo }}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">Guardar</button>
+    </form>
+</details>
 {% empty %}
 <p class="text-sm text-gray-500 dark:text-gray-400">No hay estaciones disponibles para ti.</p>
 {% endfor %}

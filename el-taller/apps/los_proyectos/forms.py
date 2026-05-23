@@ -60,7 +60,7 @@ class ProyectoProductoForm(forms.ModelForm):
 
 ProyectoProductoFormSet = inlineformset_factory(
     Proyecto, ProyectoProducto, form=ProyectoProductoForm,
-    extra=3, can_delete=True,
+    extra=1, can_delete=True,
 )
 ProyectoProductoFormSetEdit = inlineformset_factory(
     Proyecto, ProyectoProducto, form=ProyectoProductoForm,
