@@ -17,6 +17,7 @@ EventoTipo = Literal[
     "cliente.actualizado",
     "proyecto.creado",
     "proyecto.status_cambiado",
+    "proyecto.codigo_renumerado",
     "tarea.creada",
     "tarea.completada",
     "cotizacion.creada",

@@ -35,7 +35,8 @@ def test_slug_cliente_desde_razon_social(cliente_factory):
 def test_slug_proyecto_desde_codigo(proyecto_factory):
     p = proyecto_factory()
     assert p.slug == p.codigo.lower()
-    assert p.slug.startswith("pry-")
+    # S-LC-Feedback-V2: códigos ahora correlativos LC-NNNN.
+    assert p.slug.startswith("lc-")
 
 
 # ── Parser ──────────────────────────────────────────────────────────────────

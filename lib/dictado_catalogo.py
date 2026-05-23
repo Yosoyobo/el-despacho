@@ -31,13 +31,13 @@ COMANDOS_DICTADO: list[dict] = [
     {
         "tipo": "actualizar_proyecto",
         "titulo": "Actualizar proyecto",
-        "ejemplo": "Cambia el estado de #pry-123456 a entregado.",
+        "ejemplo": "Cambia el estado de #lc-0001 a entregado.",
         "payload": "proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}",
     },
     {
         "tipo": "asignar_usuario_proyecto",
         "titulo": "Asignar usuario a proyecto",
-        "ejemplo": "Asigna a @ana como líder de #pry-123456.",
+        "ejemplo": "Asigna a @ana como líder de #lc-0001.",
         "payload": "proyecto_slug, usuario_slug, rol_en_proyecto? (lider|disenador|produccion|revisor)",
     },
     {
@@ -55,7 +55,7 @@ COMANDOS_DICTADO: list[dict] = [
     {
         "tipo": "crear_tarea",
         "titulo": "Crear tarea",
-        "ejemplo": 'Crea una tarea en #pry-123456: "diseñar logo", asignada a @ana, vence el 30 de mayo.',
+        "ejemplo": 'Crea una tarea en #lc-0001: "diseñar logo", asignada a @ana, vence el 30 de mayo.',
         "payload": "proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad? (baja|media|alta)",
     },
     {
@@ -67,7 +67,7 @@ COMANDOS_DICTADO: list[dict] = [
     {
         "tipo": "crear_recado",
         "titulo": "Crear recado",
-        "ejemplo": "Mándale a @ana un recado: que revise #pry-123456 mañana.",
+        "ejemplo": "Mándale a @ana un recado: que revise #lc-0001 mañana.",
         "payload": "destinatarios_slugs: [...], cuerpo",
     },
     {

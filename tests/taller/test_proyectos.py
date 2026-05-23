@@ -10,6 +10,18 @@ def test_anonimo_redirigido(client):
     assert resp.status_code in (301, 302)
 
 
+def test_codigo_correlativo_lc(proyecto_factory):
+    """S-LC-Feedback-V2: códigos correlativos LC-NNNN, no PRY-aleatorio."""
+    p1 = proyecto_factory()
+    p2 = proyecto_factory()
+    p3 = proyecto_factory()
+    assert p1.codigo == "LC-0001"
+    assert p2.codigo == "LC-0002"
+    assert p3.codigo == "LC-0003"
+    # Slug espejo en minúsculas.
+    assert p1.slug == "lc-0001"
+
+
 def test_admin_ve_todos(client, usuario_factory, proyecto_factory):
     admin = usuario_factory(rol="super_admin")
     proyecto_factory()

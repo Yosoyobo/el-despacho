@@ -20,7 +20,7 @@
             <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
                 {% csrf_token %}
                 <textarea name="texto" rows="3" required data-referencias
-                          placeholder="Menciona @personas, #proyectos y $clientes... ej. 'En #PRY-000123 asigna a @maria y crea tarea de mandar contrato mañana.'"
+                          placeholder="Menciona @personas, #proyectos y $clientes... ej. 'En #LC-0001 asigna a @maria y crea tarea de mandar contrato mañana.'"
                           class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
                     <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>

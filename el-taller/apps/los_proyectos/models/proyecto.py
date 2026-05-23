@@ -1,7 +1,5 @@
-import secrets
-
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 
 # Enum reflejando el ciclo real del despacho (LC, 2026-05-22).
 ESTADOS_PROYECTO = (
@@ -18,8 +16,28 @@ ESTADOS_TERMINALES = {"entregado", "cancelado"}
 
 
 def generar_codigo_proyecto() -> str:
-    """Genera PRY-NNNNNN aleatorio. Se verifica unicidad en save()."""
-    return f"PRY-{secrets.randbelow(900000) + 100000}"
+    """Genera LC-NNNN correlativo (atómico vía select_for_update).
+
+    Decisión S-LC-Feedback-V2: códigos correlativos LC-0001, LC-0002, … en
+    lugar de PRY-NNNNNN aleatorio. Para go-live productivo existe el
+    management command `resetear_contador_proyectos` que limpia demos y
+    deja el contador en LC-0001.
+    """
+    with transaction.atomic():
+        codigos = (
+            Proyecto.objects.select_for_update()
+            .filter(codigo__startswith="LC-")
+            .values_list("codigo", flat=True)
+        )
+        max_n = 0
+        for c in codigos:
+            try:
+                n = int(c.split("-", 1)[1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                continue
+        return f"LC-{max_n + 1:04d}"
 
 
 class Proyecto(models.Model):
@@ -76,8 +94,11 @@ class Proyecto(models.Model):
         return f"{self.codigo} · {self.nombre}"
 
     def save(self, *args, **kwargs):
-        # Garantía de unicidad del código autogenerado: hasta 5 intentos.
-        if not self.pk and self.codigo:
+        # Si el código es el default y aún no se generó, hacerlo dentro de
+        # la transacción para evitar colisiones bajo carga. generar_codigo_proyecto
+        # ya hace select_for_update; aquí solo regeneramos si colisiona por
+        # llamadas concurrentes que crearon mismo número antes del save.
+        if not self.pk and self.codigo and self.codigo.startswith("LC-"):
             for _ in range(5):
                 if not Proyecto.objects.filter(codigo=self.codigo).exists():
                     break
