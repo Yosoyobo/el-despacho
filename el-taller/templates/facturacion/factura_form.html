@@ -64,9 +64,13 @@
                     <td class="px-3 py-2 w-32">{{ f.precio_unitario }}{% if f.precio_unitario.errors %}<p class="text-xs text-error-600">{{ f.precio_unitario.errors|join:" " }}</p>{% endif %}</td>
                     <td class="px-3 py-2 w-24">{{ f.descuento_porcentaje }}</td>
                     <td class="px-3 py-2 text-right">
-                        <label class="text-xs text-error-600">
-                            {{ f.DELETE }} eliminar
-                        </label>
+                        <button type="button"
+                                class="fac-item-eliminar inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
+                                title="Quitar línea" aria-label="Quitar línea"
+                                {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                        </button>
+                        {% if f.instance.pk %}<label class="sr-only">{{ f.DELETE }}</label>{% endif %}
                         {{ f.orden.as_hidden }}
                     </td>
                 </tr>
@@ -83,7 +87,10 @@
                 <td class="px-3 py-2 w-32"><input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required></td>
                 <td class="px-3 py-2 w-24"><input type="number" step="0.01" name="items-__prefix__-descuento_porcentaje" value="0"></td>
                 <td class="px-3 py-2 text-right">
-                    <label class="text-xs text-error-600"><input type="checkbox" name="items-__prefix__-DELETE"> eliminar</label>
+                    <button type="button" class="fac-item-eliminar inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar línea" aria-label="Quitar línea">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                    <input type="hidden" name="items-__prefix__-DELETE" value="">
                     <input type="hidden" name="items-__prefix__-orden" value="0">
                 </td>
             </tr>
@@ -132,6 +139,21 @@
         tmp.innerHTML = html;
         body.appendChild(tmp.firstElementChild);
         total.value = idx + 1;
+    });
+    // S-LC-Feedback-V3: botón "x" para quitar línea.
+    document.addEventListener('click', function (e) {
+        const x = e.target.closest('.fac-item-eliminar');
+        if (!x) return;
+        const fila = x.closest('.fac-item-row');
+        const checkboxId = x.getAttribute('data-delete-checkbox');
+        if (checkboxId) {
+            const cb = document.getElementById(checkboxId);
+            if (cb) cb.checked = true;
+            if (fila) fila.style.display = 'none';
+        } else if (fila) {
+            fila.remove();
+            total.value = parseInt(total.value, 10) - 1;
+        }
     });
 
     // ── Auto-completar al seleccionar proyecto o cotización origen ────

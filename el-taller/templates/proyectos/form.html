@@ -40,13 +40,25 @@
         {{ formset.management_form }}
         <div id="formset-productos" class="space-y-3">
             {% for f in formset %}
-            <div class="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_70px_2fr_auto] dark:border-gray-800">
+            <div class="producto-fila grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_70px_2fr_auto] dark:border-gray-800">
                 {{ f.id }}
                 <div>{{ f.servicio.label_tag }} {{ f.servicio }}</div>
                 <div>{{ f.variacion.label_tag }} {{ f.variacion }}</div>
                 <div>{{ f.cantidad.label_tag }} {{ f.cantidad }}</div>
                 <div>{{ f.nota.label_tag }} {{ f.nota }}</div>
-                <div class="flex items-end">{% if f.instance.pk %}<label class="text-xs text-error-600 dark:text-error-400">Quitar {{ f.DELETE }}</label>{% endif %}</div>
+                <div class="flex items-end">
+                    {# S-LC-Feedback-V3: botón "x" rojo para quitar la línea.
+                       Si el form ya existe en DB (instance.pk), marcamos DELETE
+                       (Django lo borra al save). Si es una fila nueva, simplemente
+                       removemos del DOM y decrementamos TOTAL_FORMS. #}
+                    <button type="button"
+                            class="producto-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
+                            title="Quitar producto" aria-label="Quitar producto"
+                            {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                    {% if f.instance.pk %}<label class="sr-only">Quitar {{ f.DELETE }}</label>{% endif %}
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -92,6 +104,25 @@
 
 <script>
 (function() {
+    // S-LC-Feedback-V3: botón "x" para quitar línea de producto.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.producto-eliminar');
+        if (!btn) return;
+        const fila = btn.closest('.producto-fila');
+        const checkboxId = btn.getAttribute('data-delete-checkbox');
+        if (checkboxId) {
+            // Fila persistida: marca DELETE y oculta la fila.
+            const cb = document.getElementById(checkboxId);
+            if (cb) cb.checked = true;
+            fila.style.display = 'none';
+        } else if (fila) {
+            // Fila nueva: remueve del DOM y decrementa TOTAL_FORMS.
+            const totalForms = document.querySelector('input[name="productos-TOTAL_FORMS"]');
+            fila.remove();
+            if (totalForms) totalForms.value = parseInt(totalForms.value, 10) - 1;
+        }
+    });
+
     const btn = document.getElementById('add-producto');
     if (!btn) return;
     btn.addEventListener('click', function() {
@@ -108,6 +139,10 @@
             else if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
             else if (el.name && el.name.endsWith('-cantidad')) { el.value = '1'; }
             else { el.value = ''; }
+        });
+        // El botón "x" del clon NO debe tratar la fila como persistida.
+        clon.querySelectorAll('.producto-eliminar').forEach(function (b) {
+            b.removeAttribute('data-delete-checkbox');
         });
         contenedor.appendChild(clon);
         totalForms.value = idx + 1;
