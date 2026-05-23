@@ -97,7 +97,8 @@ def test_accion_masiva_marca_leidos(client, usuario_factory):
         "accion": "estado_leido",
     })
     assert resp.status_code == 302
-    m1.refresh_from_db(); m2.refresh_from_db()
+    m1.refresh_from_db()
+    m2.refresh_from_db()
     assert m1.estado == "leido"
     assert m2.estado == "leido"
 
