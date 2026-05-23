@@ -7,7 +7,11 @@
     </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ s.categoria.nombre }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ s.unidad }}</td>
-    {% if ve_precios %}<td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base }}</td>{% endif %}
+    {% if ve_precios %}
+    <td class="px-5 py-3 text-right tabular-nums text-gray-500 dark:text-gray-400">$ {{ s.costo|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right tabular-nums {% if s.margen_porcentaje >= 50 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 20 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:1 }}%</td>
+    {% endif %}
     <td class="px-5 py-3">
         {% if s.activo %}<span class="badge badge-success">Disponible</span>{% else %}<span class="badge badge-gray">No disponible</span>{% endif %}
     </td>

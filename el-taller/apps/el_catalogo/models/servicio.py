@@ -15,6 +15,8 @@ class Servicio(models.Model):
     descripcion_default = models.TextField(blank=True, default="")
     unidad = models.CharField(max_length=30, default="pieza")
     precio_base = models.DecimalField(max_digits=12, decimal_places=2)
+    # S-LC-Feedback-V3: costo para cálculo de margen en proyectos/cotizaciones.
+    costo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     categoria = models.ForeignKey(
         "el_catalogo.CategoriaServicio",
         on_delete=models.PROTECT,
@@ -43,3 +45,13 @@ class Servicio(models.Model):
 
     def __str__(self) -> str:
         return f"{self.nombre} ({self.categoria.nombre})"
+
+    @property
+    def margen_porcentaje(self) -> float:
+        """Margen calculado (precio_base - costo) / precio_base × 100.
+
+        Si precio_base es 0, devuelve 0. Si costo es 0, devuelve 100.
+        """
+        if not self.precio_base or self.precio_base <= 0:
+            return 0.0
+        return float((self.precio_base - self.costo) / self.precio_base * 100)

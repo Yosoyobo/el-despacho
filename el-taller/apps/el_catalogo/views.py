@@ -56,7 +56,9 @@ def lista(request):
         qs = qs.filter(categoria_id=categoria_id)
     cabeceras = [{"label": "Nombre"}, {"label": "Categoría"}, {"label": "Unidad"}]
     if ve_precios:
-        cabeceras.append({"label": "Precio base", "align": "right"})
+        cabeceras.append({"label": "Costo", "align": "right"})
+        cabeceras.append({"label": "Precio", "align": "right"})
+        cabeceras.append({"label": "Margen", "align": "right"})
     cabeceras.append({"label": "Estado"})
     if puede_editar or puede_archivar:
         cabeceras.append({"label": "", "align": "right"})
@@ -342,13 +344,15 @@ def servicio_quick_create(request):
     nombre = (request.POST.get("nombre") or "").strip()
     categoria_id = request.POST.get("categoria_id")
     precio_raw = (request.POST.get("precio_base") or "").strip()
+    costo_raw = (request.POST.get("costo") or "0").strip() or "0"
     unidad = (request.POST.get("unidad") or "pieza").strip() or "pieza"
     if not nombre or not categoria_id or not precio_raw:
         return JsonResponse({"ok": False, "error": "Faltan campos requeridos."}, status=400)
     try:
         precio = float(precio_raw)
+        costo = float(costo_raw)
     except ValueError:
-        return JsonResponse({"ok": False, "error": "Precio inválido."}, status=400)
+        return JsonResponse({"ok": False, "error": "Precio o costo inválido."}, status=400)
     try:
         categoria = CategoriaServicio.objects.get(pk=categoria_id, activa=True)
     except CategoriaServicio.DoesNotExist:
@@ -357,6 +361,7 @@ def servicio_quick_create(request):
         nombre=nombre,
         categoria=categoria,
         precio_base=precio,
+        costo=costo,
         unidad=unidad,
         creado_por=request.user,
     )
@@ -371,5 +376,7 @@ def servicio_quick_create(request):
         "nombre": s.nombre,
         "categoria_nombre": categoria.nombre,
         "precio": str(s.precio_base),
+        "costo": str(s.costo),
+        "margen": s.margen_porcentaje,
         "label": f"{s.nombre} ({categoria.nombre})",
     })

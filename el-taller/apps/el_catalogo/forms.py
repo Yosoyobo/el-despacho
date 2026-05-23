@@ -24,16 +24,25 @@ class CategoriaForm(forms.ModelForm):
 
 class ServicioForm(forms.ModelForm):
     activo = forms.BooleanField(required=False, label="Disponible", initial=True)
+    # S-LC-Feedback-V3: costo opcional con default 0 (margen 100% si no se captura).
+    costo = forms.DecimalField(required=False, initial=0, min_value=0,
+                                label="Costo (lo que te cuesta)",
+                                help_text="Lo que te cuesta producir o comprar. Usado para calcular margen.")
 
     class Meta:
         model = Servicio
-        fields = ["nombre", "descripcion_default", "unidad", "precio_base", "categoria", "activo"]
+        fields = ["nombre", "descripcion_default", "unidad", "costo", "precio_base", "categoria", "activo"]
         labels = {
             "nombre": "Nombre",
             "descripcion_default": "Descripción",
             "unidad": "Unidad",
-            "precio_base": "Precio base",
+            "costo": "Costo (lo que te cuesta)",
+            "precio_base": "Precio de venta",
             "categoria": "Categoría",
+        }
+        help_texts = {
+            "costo": "Lo que te cuesta producir o comprar este servicio/producto. Usado para calcular margen.",
+            "precio_base": "Precio sugerido al que lo vendes. El margen se calcula automáticamente.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -44,6 +53,10 @@ class ServicioForm(forms.ModelForm):
                 pk__in=list(qs.values_list("pk", flat=True)) + [self.instance.categoria_id]
             )
         self.fields["categoria"].queryset = qs.distinct()
+
+    def clean_costo(self):
+        v = self.cleaned_data.get("costo")
+        return v if v is not None else 0
 
 
 class VariacionForm(forms.ModelForm):

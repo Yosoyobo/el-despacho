@@ -65,8 +65,8 @@
         {# S-LC-Feedback-V2: quick-create de Servicio inline (no hay que salir al Catálogo). #}
         <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
             <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Crear producto nuevo en el catálogo</summary>
-            <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1.5fr_2fr_120px_90px_auto]">
-                <div>
+            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_110px_110px_90px_auto]">
+                <div class="col-span-2 md:col-span-1">
                     <label for="qc-categoria" class="text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
                     <select id="qc-categoria" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                         <option value="">— Tipo de producto —</option>
@@ -75,9 +75,13 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div>
+                <div class="col-span-2 md:col-span-1">
                     <label for="qc-nombre" class="text-xs font-medium text-gray-600 dark:text-gray-300">Nombre</label>
                     <input id="qc-nombre" type="text" placeholder="ej. Playera bordada" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div>
+                    <label for="qc-costo" class="text-xs font-medium text-gray-600 dark:text-gray-300">Costo</label>
+                    <input id="qc-costo" type="number" step="0.01" min="0" placeholder="0.00" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                 </div>
                 <div>
                     <label for="qc-precio" class="text-xs font-medium text-gray-600 dark:text-gray-300">Precio unit.</label>
@@ -91,6 +95,7 @@
                     <button type="button" id="qc-agregar" class="btn-primario whitespace-nowrap">Agregar</button>
                 </div>
             </div>
+            <p id="qc-margen" class="mt-2 text-xs font-medium hidden"></p>
             <p id="qc-msg" class="mt-2 text-xs text-error-600 dark:text-error-400 hidden"></p>
         </details>
         <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">También puedes administrar el catálogo completo en <a href="{% url 'catalogo-lista' %}" class="text-brand-600 hover:underline dark:text-brand-400">El Catálogo</a>.</p>
@@ -149,15 +154,31 @@
     });
 
     // S-LC-Feedback-V2: quick-create de Servicio inline.
+    // S-LC-Feedback-V3: ahora con costo + cálculo de margen en tiempo real.
     const qcBtn = document.getElementById('qc-agregar');
     if (!qcBtn) return;
     const qcCat = document.getElementById('qc-categoria');
     const qcNom = document.getElementById('qc-nombre');
+    const qcCos = document.getElementById('qc-costo');
     const qcPre = document.getElementById('qc-precio');
     const qcCnt = document.getElementById('qc-cantidad');
     const qcMsg = document.getElementById('qc-msg');
+    const qcMrg = document.getElementById('qc-margen');
     function msg(texto) { qcMsg.textContent = texto; qcMsg.classList.remove('hidden'); }
     function ocultarMsg() { qcMsg.classList.add('hidden'); }
+    function calcMargen() {
+        const costo = parseFloat(qcCos.value || '0');
+        const precio = parseFloat(qcPre.value || '0');
+        if (precio <= 0) { qcMrg.classList.add('hidden'); return; }
+        const margen = ((precio - costo) / precio) * 100;
+        let cls = 'text-error-600 dark:text-error-400';
+        if (margen >= 50) cls = 'text-success-600 dark:text-success-400';
+        else if (margen >= 20) cls = 'text-warning-600 dark:text-warning-400';
+        qcMrg.className = 'mt-2 text-xs font-medium ' + cls;
+        qcMrg.textContent = 'Margen calculado: ' + margen.toFixed(1) + '%  (precio − costo) / precio';
+    }
+    if (qcCos) qcCos.addEventListener('input', calcMargen);
+    if (qcPre) qcPre.addEventListener('input', calcMargen);
     qcBtn.addEventListener('click', async function() {
         ocultarMsg();
         if (!qcCat.value || !qcNom.value.trim() || !qcPre.value) {
@@ -171,6 +192,7 @@
             body.append('nombre', qcNom.value.trim());
             body.append('categoria_id', qcCat.value);
             body.append('precio_base', qcPre.value);
+            body.append('costo', qcCos.value || '0');
             const resp = await fetch('{% url "catalogo-quick-create" %}', {
                 method: 'POST',
                 headers: {'X-CSRFToken': csrf},
@@ -207,6 +229,7 @@
             totalForms.value = idx + 1;
             // Reset del formulario quick-create
             qcNom.value = ''; qcPre.value = ''; qcCnt.value = '1'; qcCat.selectedIndex = 0;
+            qcCos.value = ''; qcMrg.classList.add('hidden');
         } catch (err) {
             msg('Error de red. Intenta otra vez.');
         }
