@@ -36,12 +36,15 @@
                data-proyecto-id="{{ p.pk }}"
                data-estado-actual="{{ p.estado }}"
                class="kanban-card block min-w-0 cursor-grab rounded-xl border border-gray-200 bg-white p-2.5 shadow-theme-xs transition hover:border-brand-300 hover:shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500 active:cursor-grabbing">
-                <div class="flex items-center justify-between gap-1.5">
-                    <span class="truncate font-mono text-[11px] font-medium text-brand-600 dark:text-brand-400">{{ p.codigo }}</span>
+                {# S-LC-Feedback-V4: nombre prominente, código secundario. #}
+                <div class="flex items-start justify-between gap-1.5">
+                    <div class="min-w-0 flex-1">
+                        <div class="line-clamp-2 text-xs font-semibold text-gray-900 dark:text-gray-100">{{ p.nombre }}</div>
+                        <div class="truncate font-mono text-[10px] text-gray-400 dark:text-gray-500">{{ p.codigo }}</div>
+                    </div>
                     <span class="whitespace-nowrap text-[10px] {{ p.fecha_compromiso|dentro_de_clase }}">{{ p.fecha_compromiso|dentro_de }}</span>
                 </div>
-                <div class="mt-1 line-clamp-2 text-xs font-medium text-gray-900 dark:text-gray-100">{{ p.nombre }}</div>
-                <div class="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{{ p.cliente.razon_social }}</div>
+                <div class="mt-1 truncate text-[11px] text-gray-500 dark:text-gray-400">{{ p.cliente.razon_social }}</div>
                 {% if p.productos.all %}
                 <div class="mt-1.5 flex flex-wrap gap-1 text-[10px] text-gray-500 dark:text-gray-400">
                     {% for pp in p.productos.all|slice:":2" %}

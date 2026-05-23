@@ -101,8 +101,8 @@ def lista(request):
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])),
         "cabeceras_proyectos": [
-            {"label": "Código", "sort_key": "codigo"},
-            {"label": "Nombre", "sort_key": "nombre"},
+            # S-LC-Feedback-V4: nombre es lo principal, código secundario.
+            {"label": "Proyecto", "sort_key": "nombre"},
             {"label": "Cliente"},
             {"label": "Estado", "sort_key": "estado"},
             {"label": "Compromiso", "sort_key": "fecha_compromiso"},

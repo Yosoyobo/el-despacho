@@ -2,10 +2,9 @@
 {% for p in proyectos %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" onclick="window.location='{% url 'proyectos-detalle' p.pk %}'">
     <td class="px-5 py-3">
-        <span class="font-mono text-sm font-medium text-brand-600 dark:text-brand-400">{{ p.codigo }}</span>
-    </td>
-    <td class="px-5 py-3">
-        <div class="font-medium text-gray-900 dark:text-gray-100">{{ p.nombre }}</div>
+        {# S-LC-Feedback-V4: nombre prominente, código abajo en chiquito. #}
+        <div class="font-semibold text-gray-900 dark:text-gray-100">{{ p.nombre }}</div>
+        <div class="mt-0.5 font-mono text-[11px] text-gray-400 dark:text-gray-500">{{ p.codigo }}</div>
         {% if p.productos.all %}
         <div class="mt-1 flex flex-wrap gap-1.5 text-xs text-gray-500 dark:text-gray-400">
             {% for pp in p.productos.all|slice:":4" %}
@@ -25,5 +24,5 @@
     </td>
 </tr>
 {% empty %}
-<tr><td colspan="5" class="px-5 py-10 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos" descripcion="Crea el primer proyecto desde el botón de arriba." icono="folder" %}</div></td></tr>
+<tr><td colspan="4" class="px-5 py-10 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos" descripcion="Crea el primer proyecto desde el botón de arriba." icono="folder" %}</div></td></tr>
 {% endfor %}

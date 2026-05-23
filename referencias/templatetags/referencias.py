@@ -47,6 +47,37 @@ def _url_de(tipo: str, entidad) -> str:
     return "#"
 
 
+def _etiqueta_visible(tipo: str, entidad) -> str:
+    """S-LC-Feedback-V4: para `#proyecto` mostramos 'Nombre (LC-XXXX)' en lugar
+    del slug crudo. Para `@usuario` el nombre completo; para `$cliente` la
+    razón social. Si la entidad no expone nombre legible, fallback al slug.
+    """
+    if entidad is None:
+        return ""
+    if tipo == "proyecto":
+        nombre = getattr(entidad, "nombre", "") or ""
+        codigo = getattr(entidad, "codigo", "") or ""
+        if nombre and codigo:
+            return f"#{nombre} ({codigo})"
+        if nombre:
+            return f"#{nombre}"
+        if codigo:
+            return f"#{codigo}"
+    if tipo == "usuario":
+        nombre = (
+            getattr(entidad, "nombre_completo", None)
+            or getattr(entidad, "get_full_name", lambda: "")()
+            or getattr(entidad, "email", "")
+        )
+        if nombre:
+            return f"@{nombre}"
+    if tipo == "cliente":
+        nombre = getattr(entidad, "razon_social", "") or ""
+        if nombre:
+            return f"${nombre}"
+    return ""
+
+
 @register.filter(name="renderizar_referencias")
 def renderizar_referencias(texto):
     """Reemplaza tokens por anchors con clases TailAdmin. HTML-escapa el texto
@@ -74,13 +105,14 @@ def renderizar_referencias(texto):
                 CLASE_ROTO, t.token_original,
             ))
         else:
+            etiqueta = _etiqueta_visible(t.tipo, entidad) or t.token_original
             salida.append(format_html(
                 '<a href="{}" class="{}" data-ref-tipo="{}" data-ref-slug="{}">{}</a>',
                 _url_de(t.tipo, entidad),
                 CLASES_POR_TIPO[t.tipo],
                 t.tipo,
                 t.slug,
-                t.token_original,
+                etiqueta,
             ))
         cursor = t.fin
     if cursor < len(texto):

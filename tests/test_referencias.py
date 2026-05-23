@@ -144,12 +144,15 @@ def test_sincronizar_dedup_menciones_y_excluye_autor(usuario_factory):
 # ── Filtro renderizar_referencias ───────────────────────────────────────────
 
 def test_filtro_render_chip_activo(usuario_factory):
+    """S-LC-Feedback-V4: el chip renderizado muestra el nombre legible, no el slug.
+    El slug viaja en data-ref-slug para que el JS de autocomplete lo siga viendo."""
     from referencias.templatetags.referencias import renderizar_referencias
     u = usuario_factory(email="oscar@x.com")
     out = str(renderizar_referencias(f"Hola @{u.slug} pásale"))
     assert "text-brand-600" in out
-    assert f"@{u.slug}" in out
     assert 'href="/directorio/' in out
+    # El slug ya no es el visible, ahora va en data-ref-slug.
+    assert f'data-ref-slug="{u.slug}"' in out
 
 
 def test_filtro_render_chip_roto():
