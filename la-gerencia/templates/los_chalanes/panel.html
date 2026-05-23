@@ -213,17 +213,22 @@
     </ul>
 </section>
 
-{# ── Sección 3: Comandos del Dictado ──────────────────────────────────── #}
-<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Qué pueden hacer Los Chalanes</h2>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Acciones que El Dictado interpreta y ejecuta. Cualquier otra petición se marca como "Sin ejecutor" en el historial.</p>
+{# ── Sección 3: Comandos del Dictado (S-LC-Feedback-V3: acordeón) ─────── #}
+<details class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <summary class="cursor-pointer list-none border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Qué pueden hacer Los Chalanes</h2>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Acciones que El Dictado interpreta y ejecuta.</p>
+            </div>
+            <svg class="h-5 w-5 flex-none text-gray-400 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
         {% if referencias_entre_acciones %}
         <div class="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
             <strong class="font-semibold">Referencias entre acciones:</strong> {{ referencias_entre_acciones }}
         </div>
         {% endif %}
-    </header>
+    </summary>
     <div class="grid grid-cols-1 gap-4 px-5 py-4 lg:grid-cols-2">
         <div>
             <h3 class="mb-2 text-sm font-semibold text-success-700 dark:text-success-400">✓ Comandos disponibles</h3>
@@ -254,7 +259,7 @@
             </ul>
         </div>
     </div>
-</section>
+</details>
 
 {# ── Sección 4: Auditoría ────────────────────────────────────────────── #}
 <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
