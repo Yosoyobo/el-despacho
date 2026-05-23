@@ -17,6 +17,12 @@ def _sumar_mes(year: int, month: int):
     return year, month + 1
 
 
+def _restar_mes(year: int, month: int):
+    if month == 1:
+        return year - 1, 12
+    return year, month - 1
+
+
 @login_required
 def calendario(request):
     hoy = date.today()
@@ -40,6 +46,13 @@ def calendario(request):
                 celda["eventos"] = evmap.get(celda["fecha"], [])
         return grid
 
+    # Lista de eventos a partir de hoy (90 días) para la columna derecha.
+    proximos = proximos_eventos(request)
+
+    # Navegación
+    y_prev, m_prev = _restar_mes(year, month)
+    y_next, m_next = _sumar_mes(year, month)
+
     return render(request, "calendario/index.html", {
         "grid_actual": _enriquecer(grid_actual, eventos_actual),
         "grid_siguiente": _enriquecer(grid_siguiente, eventos_siguiente),
@@ -49,6 +62,13 @@ def calendario(request):
         "nombre_mes_actual": _NOMBRES_MESES[month - 1],
         "nombre_mes_siguiente": _NOMBRES_MESES[m2 - 1],
         "year_siguiente": y2,
+        "proximos_eventos": proximos,
+        "nav": {
+            "prev_url": f"?year={y_prev}&month={m_prev}",
+            "next_url": f"?year={y_next}&month={m_next}",
+            "hoy_url": "?",
+        },
+        "meses": _NOMBRES_MESES,
     })
 
 
@@ -79,6 +99,19 @@ def dia_popover(request, fecha_iso: str):
 
 
 @login_required
+def nuevo_evento_modal(request):
+    """GET /calendario/nuevo/ — modal HTMX con dos opciones (Tarea o Proyecto).
+
+    Decisión S-LC-Feedback-V2: no creamos modelo Evento — reusamos Tarea
+    y Proyecto existentes. El modal redirige al form correspondiente con
+    la fecha pre-cargada si viene en la querystring.
+    """
+    fecha_default = request.GET.get("fecha") or ""
+    return render(request, "calendario/_modal_nuevo_evento.html", {
+        "fecha_default": fecha_default,
+    })
+
+
 def proximos_eventos(request):
     """Lista de tareas/entregas desde hoy en adelante (para la página Calendario)."""
     hoy = date.today()

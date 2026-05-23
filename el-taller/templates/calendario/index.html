@@ -5,12 +5,82 @@
 {% breadcrumb_items "Calendario" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Calendario" subtitulo="Entregas de proyectos y tareas con fecha." breadcrumb_items=breadcrumb_items %}
 
-<div class="grid gap-6 lg:grid-cols-2">
-    {% with mes_grid=grid_actual nombre_mes=nombre_mes_actual mes_year=year %}
-    {% include "calendario/_mes.html" %}
-    {% endwith %}
-    {% with mes_grid=grid_siguiente nombre_mes=nombre_mes_siguiente mes_year=year_siguiente %}
-    {% include "calendario/_mes.html" %}
-    {% endwith %}
+<div class="grid gap-6 lg:grid-cols-5">
+    {# Columna izquierda 60% — calendario con navegación + meses apilados. #}
+    <div class="lg:col-span-3 space-y-4">
+        {# Barra de navegación de mes. #}
+        <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <a href="{{ nav.prev_url }}"
+               class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
+               title="Mes anterior" aria-label="Mes anterior">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <a href="{{ nav.hoy_url }}" class="inline-flex h-9 items-center rounded-lg border border-gray-200 px-3 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800">Hoy</a>
+            <a href="{{ nav.next_url }}"
+               class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
+               title="Mes siguiente" aria-label="Mes siguiente">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <form method="get" class="flex items-center gap-2">
+                <label for="cal-month" class="sr-only">Mes</label>
+                <select id="cal-month" name="month" onchange="this.form.submit()" class="h-9 rounded-lg border-gray-200 bg-white text-sm dark:border-gray-800 dark:bg-gray-900">
+                    {% for nombre in meses %}
+                    <option value="{{ forloop.counter }}" {% if forloop.counter == month %}selected{% endif %}>{{ nombre }}</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="year" value="{{ year }}" class="h-9 w-24 rounded-lg border-gray-200 bg-white text-sm dark:border-gray-800 dark:bg-gray-900">
+                <noscript><button type="submit" class="btn-secundario">Ir</button></noscript>
+            </form>
+        </div>
+
+        {# Mes actual — celdas grandes para leer eventos. #}
+        {% with mes_grid=grid_actual nombre_mes=nombre_mes_actual mes_year=year %}
+        {% include "calendario/_mes.html" %}
+        {% endwith %}
+
+        {# Mes siguiente — más chico pero legible. #}
+        {% with mes_grid=grid_siguiente nombre_mes=nombre_mes_siguiente mes_year=year_siguiente %}
+        {% include "calendario/_mes.html" %}
+        {% endwith %}
+    </div>
+
+    {# Columna derecha 40% — botón Nuevo evento + lista de eventos desde hoy. #}
+    <aside class="lg:col-span-2 lg:sticky lg:top-20 lg:self-start space-y-3">
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <button type="button"
+                    hx-get="{% url 'calendario-nuevo-evento' %}"
+                    hx-target="#modal-slot"
+                    hx-swap="innerHTML"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                Nuevo evento
+            </button>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Próximos eventos</h2>
+            <ul class="max-h-[600px] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+                {% for ev in proximos_eventos %}
+                <li class="py-2.5">
+                    <a href="{{ ev.url }}" class="block">
+                        <div class="flex items-start gap-2">
+                            <div class="mt-1 flex flex-col items-center text-center" style="min-width:34px">
+                                <span class="text-[10px] font-semibold uppercase tracking-wider {% if ev.color == 'brand' %}text-brand-600 dark:text-brand-400{% elif ev.color == 'warning' %}text-warning-600 dark:text-warning-400{% else %}text-gray-500 dark:text-gray-400{% endif %}">{{ ev.fecha|date:"M" }}</span>
+                                <span class="text-lg font-bold text-gray-800 dark:text-gray-100 leading-none">{{ ev.fecha|date:"d" }}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{{ ev.titulo }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ ev.tipo|capfirst }} · {{ ev.subtitulo }}</p>
+                            </div>
+                        </div>
+                    </a>
+                </li>
+                {% empty %}
+                <li class="py-6">
+                    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin eventos próximos" descripcion="Las entregas y tareas con fecha aparecerán aquí." icono="tasks" %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
 </div>
 {% endblock %}
