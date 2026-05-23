@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ modo|title }} unidad — El Catálogo{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Catálogo" "/catalogo/unidades/" "Unidad" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Unidad de medida" subtitulo="" breadcrumb_items=breadcrumb_items back_url="/catalogo/unidades/" back_label="Unidades" %}
+
+<form method="post" class="max-w-xl">
+    {% csrf_token %}
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="space-y-5">
+            {% for f in form %}{% include "_componentes_tailadmin/_form_campo.html" with campo=f %}{% endfor %}
+        </div>
+    </section>
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <a href="{% url 'catalogo-unidades' %}" class="btn-secundario">Cancelar</a>
+        <button type="submit" class="btn-primario">Guardar unidad</button>
+    </div>
+</form>
+{% endblock %}

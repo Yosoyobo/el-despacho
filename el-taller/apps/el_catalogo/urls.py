@@ -14,4 +14,11 @@ urlpatterns = [
     path("categorias/", views.categorias_lista, name="catalogo-categorias"),
     path("categorias/nueva", views.categoria_nueva, name="catalogo-categoria-nueva"),
     path("categorias/<int:pk>/editar", views.categoria_editar, name="catalogo-categoria-editar"),
+    # S-LC-Feedback-V2: catálogo de unidades de medida
+    path("unidades/", views.unidades_lista, name="catalogo-unidades"),
+    path("unidades/nueva", views.unidad_nueva, name="catalogo-unidad-nueva"),
+    path("unidades/<int:pk>/editar", views.unidad_editar, name="catalogo-unidad-editar"),
+    path("unidades/<int:pk>/archivar", views.unidad_archivar, name="catalogo-unidad-archivar"),
+    # S-LC-Feedback-V2: quick-create de Servicio desde el form de Proyecto
+    path("quick-create/", views.servicio_quick_create, name="catalogo-quick-create"),
 ]

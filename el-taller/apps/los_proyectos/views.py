@@ -237,7 +237,11 @@ def nuevo(request):
     else:
         form = ProyectoForm()
         formset = ProyectoProductoFormSet(instance=Proyecto())
-    return render(request, "proyectos/form.html", {"form": form, "formset": formset, "modo": "nuevo"})
+    from apps.el_catalogo.models import CategoriaServicio
+    return render(request, "proyectos/form.html", {
+        "form": form, "formset": formset, "modo": "nuevo",
+        "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+    })
 
 
 @login_required
@@ -256,8 +260,10 @@ def editar(request, pk):
     else:
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetEdit(instance=proyecto)
+    from apps.el_catalogo.models import CategoriaServicio
     return render(request, "proyectos/form.html", {
         "form": form, "formset": formset, "modo": "editar", "proyecto": proyecto,
+        "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
     })
 
 

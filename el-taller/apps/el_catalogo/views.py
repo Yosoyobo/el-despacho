@@ -21,8 +21,8 @@ from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
-from .forms import CategoriaForm, ServicioForm, VariacionForm
-from .models import CategoriaServicio, Servicio, Variacion
+from .forms import CategoriaForm, ServicioForm, UnidadForm, VariacionForm
+from .models import CategoriaServicio, Servicio, Unidad, Variacion
 
 
 def _gate(request, accion: str):
@@ -259,3 +259,117 @@ def categoria_editar(request, pk: int):
     else:
         form = CategoriaForm(instance=cat)
     return render(request, "catalogo/categoria_form.html", {"form": form, "modo": "editar", "categoria": cat})
+
+
+# ── Unidades (S-LC-Feedback-V2) ─────────────────────────────────────────────
+
+def unidades_lista(request):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    incluir_archivadas = request.GET.get("archivadas") == "1"
+    qs = Unidad.objects.all() if incluir_archivadas else Unidad.objects.filter(activa=True)
+    return render(request, "catalogo/unidades.html", {
+        "unidades": qs,
+        "incluir_archivadas": incluir_archivadas,
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def unidad_nueva(request):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    if request.method == "POST":
+        form = UnidadForm(request.POST)
+        if form.is_valid():
+            u = form.save()
+            emitir(EventoPortavoz(
+                tipo="catalogo.unidad_creada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"unidad_id": u.pk, "nombre": u.nombre},
+            ))
+            messages.success(request, f"Unidad '{u.nombre}' creada.")
+            return redirect("catalogo-unidades")
+    else:
+        form = UnidadForm()
+    return render(request, "catalogo/unidad_form.html", {"form": form, "modo": "nuevo"})
+
+
+@require_http_methods(["GET", "POST"])
+def unidad_editar(request, pk: int):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    u = get_object_or_404(Unidad, pk=pk)
+    if request.method == "POST":
+        form = UnidadForm(request.POST, instance=u)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="catalogo.unidad_actualizada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"unidad_id": u.pk, "nombre": u.nombre},
+            ))
+            messages.success(request, "Unidad actualizada.")
+            return redirect("catalogo-unidades")
+    else:
+        form = UnidadForm(instance=u)
+    return render(request, "catalogo/unidad_form.html", {"form": form, "modo": "editar", "unidad": u})
+
+
+@require_http_methods(["POST"])
+def unidad_archivar(request, pk: int):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    u = get_object_or_404(Unidad, pk=pk)
+    u.activa = not u.activa
+    u.save(update_fields=["activa"])
+    messages.success(request, f"Unidad '{u.nombre}' " + ("desactivada." if not u.activa else "activada."))
+    return redirect("catalogo-unidades")
+
+
+# ── Quick-create de Servicio (S-LC-Feedback-V2) ─────────────────────────────
+
+@require_http_methods(["POST"])
+def servicio_quick_create(request):
+    """POST /catalogo/quick-create/ — crea Servicio inline desde el form de Proyecto.
+
+    Espera POST con: nombre, categoria_id, precio_base, unidad (default 'pieza').
+    Retorna JSON con id + nombre + categoria_nombre + precio para que el JS
+    del form de Proyecto agregue la opción al select y la seleccione.
+    """
+    if (r := _gate(request, "crear")) is not None:
+        return r
+    from django.http import JsonResponse
+    nombre = (request.POST.get("nombre") or "").strip()
+    categoria_id = request.POST.get("categoria_id")
+    precio_raw = (request.POST.get("precio_base") or "").strip()
+    unidad = (request.POST.get("unidad") or "pieza").strip() or "pieza"
+    if not nombre or not categoria_id or not precio_raw:
+        return JsonResponse({"ok": False, "error": "Faltan campos requeridos."}, status=400)
+    try:
+        precio = float(precio_raw)
+    except ValueError:
+        return JsonResponse({"ok": False, "error": "Precio inválido."}, status=400)
+    try:
+        categoria = CategoriaServicio.objects.get(pk=categoria_id, activa=True)
+    except CategoriaServicio.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Categoría no encontrada."}, status=400)
+    s = Servicio.objects.create(
+        nombre=nombre,
+        categoria=categoria,
+        precio_base=precio,
+        unidad=unidad,
+        creado_por=request.user,
+    )
+    emitir(EventoPortavoz(
+        tipo="catalogo.servicio_quick_creado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"servicio_id": s.pk, "nombre": s.nombre, "categoria": categoria.nombre},
+    ))
+    return JsonResponse({
+        "ok": True,
+        "id": s.pk,
+        "nombre": s.nombre,
+        "categoria_nombre": categoria.nombre,
+        "precio": str(s.precio_base),
+        "label": f"{s.nombre} ({categoria.nombre})",
+    })

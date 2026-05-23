@@ -1,6 +1,19 @@
 from django import forms
 
-from .models import CategoriaServicio, Servicio, Variacion
+from .models import CategoriaServicio, Servicio, Unidad, Variacion
+
+
+class UnidadForm(forms.ModelForm):
+    activa = forms.BooleanField(required=False, label="Disponible", initial=True)
+
+    class Meta:
+        model = Unidad
+        fields = ["nombre", "abreviacion", "orden", "activa"]
+        labels = {
+            "nombre": "Nombre",
+            "abreviacion": "Abreviación",
+            "orden": "Orden",
+        }
 
 
 class CategoriaForm(forms.ModelForm):
