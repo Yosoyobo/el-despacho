@@ -22,5 +22,95 @@
     <div id="chat-bandeja" hx-get="{% url 'recados:partial_bandeja' %}" hx-trigger="every 15s" hx-swap="innerHTML">
         {% include "recados/_chat_bandeja_lista.html" %}
     </div>
+
+    {# S-LC-Feedback-V4: sección Buzón embebida. Admin ve los mensajes pendientes;
+       empleado ve un form para escribir + sus mensajes previos. #}
+    <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">📬 El Buzón</h2>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {% if buzon_es_admin %}Mensajes pendientes del equipo. Click para responder.{% else %}Mándale un mensaje al admin del despacho.{% endif %}
+                </p>
+            </div>
+            <a href="{% url 'buzon-lista' %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver todo →</a>
+        </header>
+
+        {% if buzon_es_admin %}
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for m in buzon_mensajes %}
+            <li>
+                <a href="{% url 'buzon-detalle' m.pk %}" class="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <span class="mt-1 inline-flex h-7 w-7 flex-none items-center justify-center rounded-full {% if m.prioridad >= 8 %}bg-error-100 text-error-700{% elif m.prioridad >= 6 %}bg-warning-100 text-warning-700{% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300{% endif %} text-[10px] font-semibold" title="Prioridad {{ m.prioridad }}/10">{{ m.prioridad }}</span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <span class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ m.asunto|default:"(sin asunto)" }}</span>
+                            <span class="flex-none text-[11px] text-gray-400">{{ m.creado_en|timesince }} atrás</span>
+                        </div>
+                        <div class="mt-0.5 flex items-baseline gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{{ m.autor.nombre_completo|default:m.autor.email }}</span>
+                            <span>·</span>
+                            <span class="capitalize">{{ m.get_tipo_display }}</span>
+                            <span>·</span>
+                            <span class="capitalize">{{ m.get_estado_display }}</span>
+                        </div>
+                    </div>
+                </a>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin mensajes pendientes.</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        {# Vista empleado: form simple + sus mensajes recientes. #}
+        <form method="post" action="{% url 'buzon-nuevo' %}?next={% url 'recados:bandeja' %}" class="space-y-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            {% csrf_token %}
+            <div class="grid gap-3 md:grid-cols-[160px_1fr]">
+                <div>
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
+                    {{ buzon_form.tipo }}
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Asunto</label>
+                    {{ buzon_form.asunto }}
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Mensaje</label>
+                {{ buzon_form.cuerpo }}
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex-1 min-w-[240px]">
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Prioridad</label>
+                    {{ buzon_form.prioridad }}
+                </div>
+                <button type="submit" class="btn-primario">Enviar al Buzón</button>
+            </div>
+        </form>
+        {% if buzon_mensajes %}
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for m in buzon_mensajes %}
+            <li class="flex items-start gap-3 px-5 py-3">
+                <span class="mt-1 inline-flex h-6 w-6 flex-none items-center justify-center rounded-full bg-gray-100 text-[10px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300" title="Prioridad {{ m.prioridad }}/10">{{ m.prioridad }}</span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <span class="truncate text-sm font-medium text-gray-700 dark:text-gray-200">{{ m.asunto|default:"(sin asunto)" }}</span>
+                        <span class="flex-none text-[11px] text-gray-400">{{ m.creado_en|timesince }} atrás</span>
+                    </div>
+                    <div class="mt-0.5 text-xs capitalize text-gray-500 dark:text-gray-400">{{ m.get_estado_display }}</div>
+                    {% if m.respuesta_publica %}
+                    <div class="mt-1 rounded-md bg-brand-50 px-3 py-2 text-xs text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                        <span class="font-medium">Respuesta:</span> {{ m.respuesta_publica|truncatechars:160 }}
+                    </div>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">Aún no has mandado mensajes al Buzón.</p>
+        {% endif %}
+        {% endif %}
+    </section>
 </div>
 {% endblock %}

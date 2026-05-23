@@ -45,15 +45,47 @@ def _gate(request):
 # ── Bandeja ──────────────────────────────────────────────────────────────────
 
 
+def _datos_buzon_para(user):
+    """S-LC-Feedback-V4: bloque de Buzón embebido en la bandeja de Recados.
+
+    - Admin (puede ver_todos): lista de mensajes pendientes con link al detalle.
+    - Empleado: form para escribir nuevo + sus propios mensajes recientes en lectura.
+    """
+    from buzon.models import MensajeBuzon
+    from apps.buzon_empleado.forms import NuevoMensajeForm
+
+    es_admin = puede(user, "buzon", "ver_todos")
+    if es_admin:
+        qs = (
+            MensajeBuzon.objects.select_related("autor")
+            .exclude(estado="archivado")
+            .order_by("-prioridad", "-creado_en")[:10]
+        )
+        return {
+            "buzon_es_admin": True,
+            "buzon_mensajes": list(qs),
+            "buzon_form": None,
+        }
+    return {
+        "buzon_es_admin": False,
+        "buzon_mensajes": list(
+            MensajeBuzon.objects.filter(autor=user).order_by("-creado_en")[:5]
+        ),
+        "buzon_form": NuevoMensajeForm(),
+    }
+
+
 @login_required
 def bandeja(request):
     if (r := _gate(request)) is not None:
         return r
     items = services_chat.mis_conversaciones(request.user)
-    return render(request, "recados/chat_bandeja.html", {
+    ctx = {
         "items": items,
         "puede_crear": puede(request.user, "recados", "crear"),
-    })
+    }
+    ctx.update(_datos_buzon_para(request.user))
+    return render(request, "recados/chat_bandeja.html", ctx)
 
 
 @login_required

@@ -216,6 +216,11 @@ def nuevo(request):
             from apps.taller_home.push_handlers import notificar_buzon_nuevo
             notificar_buzon_nuevo(msg, request.user)
             messages.success(request, "Mensaje enviado al Buzón. Gracias por escribirnos.")
+            # S-LC-Feedback-V4: si vino con ?next= (p.ej. desde el embed en /recados/),
+            # respetamos esa URL para volver al contexto original.
+            siguiente = (request.POST.get("next") or request.GET.get("next") or "").strip()
+            if siguiente and siguiente.startswith("/"):
+                return redirect(siguiente)
             return redirect("buzon-lista")
     else:
         form = NuevoMensajeForm(initial=inicial)
