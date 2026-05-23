@@ -38,12 +38,14 @@
         {% for fila in resumen.por_proveedor %}
         <li class="px-5 py-3">
             <div class="mb-1 flex items-baseline justify-between gap-3 text-sm">
-                <span class="font-medium capitalize text-gray-900 dark:text-gray-100">{{ fila.provider }}</span>
-                <span class="font-mono text-xs text-gray-600 dark:text-gray-400">${{ fila.costo_usd|floatformat:4 }} <span class="text-gray-400">· {{ fila.llamadas }} llamadas · {{ fila.tokens }} tok</span></span>
+                <span class="font-medium capitalize text-gray-900 dark:text-gray-100">{{ fila.provider }}{% if fila.es_gratis %} <span class="ml-1 rounded bg-success-50 px-1.5 text-[10px] font-medium text-success-700 dark:bg-success-500/10 dark:text-success-300">Gratis</span>{% endif %}</span>
+                <span class="font-mono text-xs text-gray-600 dark:text-gray-400">{% if not fila.es_gratis %}${{ fila.costo_usd|floatformat:4 }} · {% endif %}{{ fila.llamadas }} llamadas · {{ fila.tokens }} tok</span>
             </div>
+            {% if not fila.es_gratis %}
             <div class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                 <div class="h-full bg-brand-500 dark:bg-brand-400" style="width: {{ fila.porcentaje_costo|floatformat:1 }}%"></div>
             </div>
+            {% endif %}
         </li>
         {% endfor %}
     </ul>
@@ -93,9 +95,13 @@
                 <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ c.modelo_default|default:"—" }}</span>
             </div>
             <div class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/40">
-                <div class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Gastado (30d)</div>
+                <div class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if c.es_gratis %}Uso (30d){% else %}Gastado (30d){% endif %}</div>
                 <div class="mt-0.5 flex items-baseline justify-between">
+                    {% if c.es_gratis %}
+                    <span class="text-lg font-bold text-success-600 dark:text-success-400">Gratis</span>
+                    {% else %}
                     <span class="text-lg font-bold text-success-600 dark:text-success-400">${{ c.estadisticas.costo_usd|floatformat:4 }}</span>
+                    {% endif %}
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ c.estadisticas.llamadas }} llamadas · {{ c.estadisticas.tokens }} tokens</span>
                 </div>
                 {% if c.estadisticas.llamadas_falla %}

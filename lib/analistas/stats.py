@@ -91,6 +91,17 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
         cred = Credencial.objects.filter(clave=slot).first()
         llave = Credencial.obtener(slot) if cred else None
         configurado = bool(llave)
+        # S-LC-Feedback-V3: detecta proveedores gratis (precio_in + precio_out == 0).
+        # MiMo es el caso actual. Se importa por nombre desde el módulo del adapter.
+        from importlib import import_module
+        es_gratis = False
+        try:
+            mod = import_module(f"lib.analistas.adapters.{nombre}")
+            precio_in = float(getattr(mod, "PRECIO_IN", 0))
+            precio_out = float(getattr(mod, "PRECIO_OUT", 0))
+            es_gratis = (precio_in + precio_out) == 0
+        except Exception:  # noqa: BLE001
+            pass
         salida.append({
             "nombre": nombre,
             "apodo": adapter.apodo,
@@ -102,6 +113,7 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
             "ultimo_test_mensaje": cred.ultimo_test_mensaje if cred else "",
             "modelo_default": getattr(adapter, "modelo", ""),
             "soporta_vision": Capability.VISION in adapter.capacidades,
+            "es_gratis": es_gratis,
             "estadisticas": stats.get(nombre, {
                 "llamadas": 0, "tokens": 0, "costo_usd": Decimal("0"),
                 "ultima_actividad": None,
@@ -114,7 +126,12 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
 
 def resumen_global(dias: int = 30) -> dict:
     """`{costo_total, llamadas_total, tokens_total, max_costo_provider}` —
-    para el banner superior del panel y de El Site."""
+    para el banner superior del panel y de El Site.
+
+    S-LC-Feedback-V3: proveedores con `costo_usd == 0` (MiMo gratis) se
+    incluyen en llamadas/tokens pero `es_gratis=True` para que la UI
+    no muestre barra de costo.
+    """
     stats = estadisticas_proveedores(dias=dias)
     if not stats:
         return {
@@ -133,7 +150,8 @@ def resumen_global(dias: int = 30) -> dict:
         "max_costo": max_costo,
         "por_proveedor": [
             {"provider": p, "costo_usd": c, "tokens": t, "llamadas": ll,
-             "porcentaje_costo": float((c / max_costo * 100) if max_costo > 0 else 0)}
+             "porcentaje_costo": float((c / max_costo * 100) if max_costo > 0 else 0),
+             "es_gratis": c == 0}
             for p, c, t, ll in por_proveedor
         ],
     }
