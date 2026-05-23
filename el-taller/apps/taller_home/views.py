@@ -93,6 +93,20 @@ def _charts_sala_de_juntas(rol: str) -> dict:
     }
 
 
+def _safe(label: str, fn, default):
+    """S-LC-Feedback-V4 hotfix: wrapper defensivo. Si una sección del dashboard
+    revienta por datos inconsistentes, NO debe tumbar la página entera.
+    Log a stderr para que el operador la cace en `docker compose logs`.
+    """
+    import logging
+    log = logging.getLogger("taller_home.dashboard")
+    try:
+        return fn()
+    except Exception as e:  # noqa: BLE001 — el dashboard no se tumba por una sección rota
+        log.exception("Dashboard: sección %r falló: %s", label, e)
+        return default
+
+
 @login_required
 def home(request):
     user = request.user
@@ -103,67 +117,85 @@ def home(request):
     with contextlib.suppress(Exception):
         evaluar_y_persistir(user)
 
-    sugerencias = sugerencias_pendientes(user)
-    # Inyectar el título del KPI sugerido para no resolverlo en el template.
-    from .kpis import kpi_por_slug
-    sugerencias_view = [
-        {
-            "id": s.pk,
-            "kpi_slug": s.kpi_slug,
-            "titulo": (kpi_por_slug(s.kpi_slug).titulo if kpi_por_slug(s.kpi_slug) else s.kpi_slug),
-            "motivo": s.motivo,
+    def _build_sugerencias():
+        from .kpis import kpi_por_slug
+        sugerencias = sugerencias_pendientes(user)
+        return [
+            {
+                "id": s.pk,
+                "kpi_slug": s.kpi_slug,
+                "titulo": (kpi_por_slug(s.kpi_slug).titulo if kpi_por_slug(s.kpi_slug) else s.kpi_slug),
+                "motivo": s.motivo,
+            }
+            for s in sugerencias
+        ]
+
+    sugerencias_view = _safe("sugerencias", _build_sugerencias, [])
+
+    def _build_kpis():
+        out = []
+        for kpi, resultado in kpis_visibles_para(user):
+            out.append({
+                "slug": kpi.slug,
+                "titulo": kpi.titulo,
+                "categoria": kpi.categoria,
+                "valor": resultado.get("valor", "—"),
+                "nota": resultado.get("nota", ""),
+                "link": resultado.get("link", ""),
+                "estado_kpi": kpi.estado_kpi,
+            })
+        return out
+
+    kpis_render = _safe("kpis", _build_kpis, [])
+
+    def _build_proyectos_activos():
+        qs = (
+            Proyecto.objects.filter(estado__in=ESTADOS_ACTIVOS)
+            .select_related("cliente")
+            .order_by("fecha_compromiso", "-creado_en")
+        )
+        if rol == "disenador":
+            qs = qs.filter(asignaciones__usuario=user).distinct()
+        return list(qs[:10])
+
+    proyectos_activos = _safe("proyectos_activos", _build_proyectos_activos, [])
+
+    def _build_pendientes_cotizar():
+        qs = (
+            Proyecto.objects.filter(estado="por_cotizar")
+            .select_related("cliente")
+            .order_by("-creado_en")
+        )
+        if rol == "disenador":
+            qs = qs.filter(asignaciones__usuario=user).distinct()
+        return list(qs[:8])
+
+    pendientes_cotizar = _safe("pendientes_cotizar", _build_pendientes_cotizar, [])
+
+    charts = _safe("charts", lambda: _charts_sala_de_juntas(rol or ""), {})
+
+    def _build_mini_cal():
+        from apps.calendario.services import datos_mini_cal
+        _hoy = date.today()
+        _meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        _y2, _m2 = (_hoy.year, _hoy.month + 1) if _hoy.month < 12 else (_hoy.year + 1, 1)
+        return {
+            "actual": {
+                "nombre_mes": f"{_meses[_hoy.month - 1]} {_hoy.year}",
+                "datos": datos_mini_cal(user, _hoy.year, _hoy.month),
+            },
+            "siguiente": {
+                "nombre_mes": f"{_meses[_m2 - 1]} {_y2}",
+                "datos": datos_mini_cal(user, _y2, _m2),
+            },
         }
-        for s in sugerencias
-    ]
 
-    # KPIs visibles para el usuario (catálogo + preferencias).
-    kpis_render = []
-    for kpi, resultado in kpis_visibles_para(user):
-        kpis_render.append({
-            "slug": kpi.slug,
-            "titulo": kpi.titulo,
-            "categoria": kpi.categoria,
-            "valor": resultado.get("valor", "—"),
-            "nota": resultado.get("nota", ""),
-            "link": resultado.get("link", ""),
-            "estado_kpi": kpi.estado_kpi,
-        })
-
-    # Tabla "Proyectos activos por fecha" — datos reales.
-    proyectos_activos_qs = Proyecto.objects.filter(
-        estado__in=ESTADOS_ACTIVOS,
-    ).select_related("cliente").order_by("fecha_compromiso", "-creado_en")
-    if rol == "disenador":
-        proyectos_activos_qs = proyectos_activos_qs.filter(asignaciones__usuario=user).distinct()
-    proyectos_activos = list(proyectos_activos_qs[:10])
-
-    # Tabla "Pendientes de cotizar" — datos reales.
-    pendientes_cotizar_qs = Proyecto.objects.filter(
-        estado="por_cotizar",
-    ).select_related("cliente").order_by("-creado_en")
-    if rol == "disenador":
-        pendientes_cotizar_qs = pendientes_cotizar_qs.filter(asignaciones__usuario=user).distinct()
-    pendientes_cotizar = list(pendientes_cotizar_qs[:8])
-
-    charts = _charts_sala_de_juntas(rol or "")
-
-    # Mini-calendario del mes actual + siguiente (S-LC-Feedback-V2:
-    # interactivo, días con eventos clickeables).
-    from apps.calendario.services import datos_mini_cal
-    _hoy = date.today()
-    _meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-    _y2, _m2 = (_hoy.year, _hoy.month + 1) if _hoy.month < 12 else (_hoy.year + 1, 1)
-    mini_cal = {
-        "actual": {
-            "nombre_mes": f"{_meses[_hoy.month - 1]} {_hoy.year}",
-            "datos": datos_mini_cal(user, _hoy.year, _hoy.month),
-        },
-        "siguiente": {
-            "nombre_mes": f"{_meses[_m2 - 1]} {_y2}",
-            "datos": datos_mini_cal(user, _y2, _m2),
-        },
-    }
+    mini_cal = _safe(
+        "mini_cal",
+        _build_mini_cal,
+        {"actual": {"nombre_mes": "", "datos": []}, "siguiente": {"nombre_mes": "", "datos": []}},
+    )
 
     return render(request, "taller_home/home.html", {
         "kpis": kpis_render,
