@@ -8,6 +8,6 @@ class RespuestaAdminForm(forms.ModelForm):
         model = MensajeBuzon
         fields = ["estado", "nota_interna", "respuesta_publica"]
         widgets = {
-            "nota_interna": forms.Textarea(attrs={"rows": 4}),
-            "respuesta_publica": forms.Textarea(attrs={"rows": 6}),
+            "nota_interna": forms.Textarea(attrs={"data-referencias": "1", "rows": 4}),
+            "respuesta_publica": forms.Textarea(attrs={"data-referencias": "1", "rows": 6}),
         }

@@ -142,7 +142,8 @@
   }
 
   function montar() {
-    document.querySelectorAll("textarea[data-referencias]").forEach((ta) => {
+    // S-LC-Feedback-V4: aceptamos textarea e <input type="text"> con data-referencias.
+    document.querySelectorAll("textarea[data-referencias], input[data-referencias]").forEach((ta) => {
       if (ta.__autocompleteRefs) return;
       ta.__autocompleteRefs = new AutocompleteReferencias(ta);
     });

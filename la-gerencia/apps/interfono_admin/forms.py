@@ -17,7 +17,7 @@ class EnvioInterfonoForm(forms.Form):
     audiencia_rol = forms.ChoiceField(choices=[(r, r) for r in ROLES], required=False)
     audiencia_usuario = forms.IntegerField(required=False)
     titulo = forms.CharField(max_length=80)
-    cuerpo = forms.CharField(max_length=300, widget=forms.Textarea(attrs={"rows": 3}))
+    cuerpo = forms.CharField(max_length=300, widget=forms.Textarea(attrs={"data-referencias": "1", "rows": 3}))
     url_destino = forms.URLField(required=False)
 
     def audiencia_resuelta(self) -> tuple[str, str]:

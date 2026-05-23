@@ -27,6 +27,9 @@ class ProyectoForm(forms.ModelForm):
             "monto_estimado",
         ]
         widgets = {
+            # S-LC-Feedback-V4: autocomplete @#$ en nombre y descripción.
+            "nombre": forms.TextInput(attrs={"data-referencias": "1"}),
+            "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 4}),
             "fecha_inicio": forms.DateInput(attrs={"type": "date"}),
             "fecha_compromiso": forms.DateInput(attrs={"type": "date"}),
         }

@@ -22,8 +22,8 @@ class ProveedorForm(forms.ModelForm):
             "notas": "Notas",
         }
         widgets = {
-            "direccion": forms.Textarea(attrs={"rows": 2}),
-            "notas": forms.Textarea(attrs={"rows": 3}),
+            "direccion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
+            "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
 
 

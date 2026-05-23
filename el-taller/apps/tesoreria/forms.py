@@ -142,7 +142,7 @@ class ReembolsarEgresoForm(forms.Form):
 class AnularForm(forms.Form):
     motivo = forms.CharField(
         max_length=300,
-        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Razón de la anulación"}),
+        widget=forms.Textarea(attrs={"data-referencias": "1", "rows": 3, "placeholder": "Razón de la anulación"}),
     )
 
     def __init__(self, *args, **kwargs):

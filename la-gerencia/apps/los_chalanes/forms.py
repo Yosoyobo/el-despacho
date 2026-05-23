@@ -15,7 +15,7 @@ class AprendizajeForm(forms.ModelForm):
                 "placeholder": "la heladería",
                 "maxlength": 300,
             }),
-            "interpretacion_correcta": forms.Textarea(attrs={
+            "interpretacion_correcta": forms.Textarea(attrs={"data-referencias": "1", 
                 "class": "w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900",
                 "rows": 3,
                 "placeholder": "$heladeria-michoacana (el cliente activo más grande)",

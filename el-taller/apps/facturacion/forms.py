@@ -20,8 +20,8 @@ class FacturaForm(forms.ModelForm):
         widgets = {
             "fecha_emision": forms.DateInput(attrs={"type": "date"}),
             "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
-            "notas": forms.Textarea(attrs={"rows": 3}),
-            "terminos": forms.Textarea(attrs={"rows": 3}),
+            "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
+            "terminos": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
 
     def clean(self):
@@ -47,7 +47,7 @@ class FacturaItemForm(forms.ModelForm):
             "cantidad", "unidad", "precio_unitario", "descuento_porcentaje",
         ]
         widgets = {
-            "descripcion": forms.Textarea(attrs={"rows": 2}),
+            "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
             "orden": forms.NumberInput(attrs={"min": 0}),
         }
 
@@ -86,7 +86,7 @@ class EmitirForm(forms.Form):
 
 
 class CancelarForm(forms.Form):
-    motivo = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), max_length=300)
+    motivo = forms.CharField(widget=forms.Textarea(attrs={"data-referencias": "1", "rows": 3}), max_length=300)
 
 
 class RegistrarCobroForm(forms.Form):

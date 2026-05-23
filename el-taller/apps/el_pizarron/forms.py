@@ -22,9 +22,17 @@ class TareaForm(forms.ModelForm):
     class Meta:
         model = Tarea
         fields = ["titulo", "descripcion", "estado", "prioridad", "asignada_a", "fecha_compromiso"]
+        widgets = {
+            # S-LC-Feedback-V4: autocomplete @#$ en título y descripción.
+            "titulo": forms.TextInput(attrs={"data-referencias": "1"}),
+            "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 4}),
+        }
 
 
 class ComentarioForm(forms.ModelForm):
     class Meta:
         model = Comentario
         fields = ["cuerpo", "es_interno"]
+        widgets = {
+            "cuerpo": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
+        }

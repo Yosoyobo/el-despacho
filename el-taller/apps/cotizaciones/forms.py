@@ -22,8 +22,8 @@ class CotizacionForm(forms.ModelForm):
         ]
         widgets = {
             "fecha_emision": forms.DateInput(attrs={"type": "date"}),
-            "notas": forms.Textarea(attrs={"rows": 3}),
-            "terminos": forms.Textarea(attrs={"rows": 3}),
+            "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
+            "terminos": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
         labels = {
             "titulo": "Título",
@@ -74,7 +74,7 @@ class CotizacionItemForm(forms.ModelForm):
             "cantidad", "unidad", "precio_unitario", "descuento_porcentaje",
         ]
         widgets = {
-            "descripcion": forms.Textarea(attrs={"rows": 2}),
+            "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
             "orden": forms.NumberInput(attrs={"min": 0}),
         }
 
@@ -136,7 +136,7 @@ class AprobarForm(forms.Form):
 
 
 class RechazarForm(forms.Form):
-    motivo = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), max_length=1000)
+    motivo = forms.CharField(widget=forms.Textarea(attrs={"data-referencias": "1", "rows": 3}), max_length=1000)
 
 
 class AnularForm(forms.Form):
