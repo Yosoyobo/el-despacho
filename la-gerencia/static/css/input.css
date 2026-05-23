@@ -22,6 +22,18 @@
 }
 
 @layer components {
+  /* S-LC-Feedback-V3: contenedores de charts no desbordan en mobile.
+     ApexCharts respeta width 100% del contenedor; sólo aseguramos overflow
+     hidden para que el SVG no salga horizontalmente y dejamos el browser
+     elegir el alto sin exceder 240px en móvil. */
+  [data-chart] {
+    @apply w-full overflow-hidden;
+    max-width: 100%;
+  }
+  @media (max-width: 640px) {
+    [data-chart] { max-height: 240px; }
+  }
+
   /* Inputs de formulario — patrón TailAdmin */
   .campo-form input[type="text"],
   .campo-form input[type="email"],

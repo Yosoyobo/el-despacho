@@ -98,7 +98,7 @@
     <div draggable="true" data-kpi-slug="{{ kpi.slug }}" class="kpi-card ta-card cursor-grab active:cursor-grabbing">
     {% endif %}
         <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ kpi.titulo }}</p>
-        <p class="mt-2 text-title-sm font-bold {% if kpi.nota == 'alerta' %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{{ kpi.valor }}</p>
+        <p class="mt-2 text-xl sm:text-title-sm font-bold tabular-nums break-all {% if kpi.nota == 'alerta' %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{{ kpi.valor }}</p>
         {% if kpi.estado_kpi == 'pendiente_tesoreria' %}
         <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Completo con S2b.3 — La Tesorería</p>
         {% elif kpi.nota and kpi.nota != 'alerta' %}

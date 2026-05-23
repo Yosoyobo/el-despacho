@@ -15,7 +15,8 @@ _componentes_tailadmin README cuando exista.
         </span>
         {% if badge %}<span class="badge badge-{{ badge_color|default:'gray' }}">{{ badge }}</span>{% endif %}
     </div>
-    <div class="mt-4 text-title-md font-bold text-gray-900 dark:text-gray-100">{{ valor }}</div>
+    {# S-LC-Feedback-V3: tamaño responsive + tabular-nums + break para cifras largas. #}
+    <div class="mt-4 text-2xl sm:text-title-sm md:text-title-md font-bold tabular-nums text-gray-900 dark:text-gray-100 break-all">{{ valor }}</div>
     <div class="flex items-center gap-2">
         <div class="text-sm text-gray-500 dark:text-gray-400">{{ titulo }}</div>
         {% if delta %}
