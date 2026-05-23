@@ -7,7 +7,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from django.test import Client
 
 from lib.aviso_deploy import (
     CLAVE_REDIS,

@@ -258,9 +258,10 @@ def _reinterpretar_con_otro_chalan(*, dictado, usuario, excluir: set):
     el dictado como estaba para que `aplicar()` cierre como
     `aplicado_con_errores`/`fallo_ia` normalmente.
     """
+    import logging
+
     from .models import DictadoAccion
     from .prompt import SYSTEM_PROMPT, aprendizajes_activos, construir_user_prompt
-    import logging
     log = logging.getLogger(__name__)
 
     aprendizajes = aprendizajes_activos()

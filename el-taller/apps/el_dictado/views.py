@@ -112,6 +112,7 @@ def reintentar(request, pk: int):
     preview para confirmar las nuevas.
     """
     from django.contrib import messages
+
     from .services import _reinterpretar_con_otro_chalan
     dictado = get_object_or_404(Dictado, pk=pk, autor=request.user)
     if dictado.estado not in ("aplicado_con_errores", "fallo_ia"):
