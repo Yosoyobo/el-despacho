@@ -1,8 +1,42 @@
 # Manual de Usuario — El Despacho
 
-> **Versión:** v0.17 · 23 mayo 2026 (revisión: post S-LC-Feedback-V3)
+> **Versión:** v0.18 · 23 mayo 2026 (revisión: post S-LC-Feedback-V4)
 > **Audiencia:** Equipo de Learning Center (5 usuarios + clientes futuros)
 > **Política de actualización:** este manual se actualiza ANTES de cada deploy productivo. Es la fuente única de verdad y la página `/ayuda/` lo renderiza para todos los usuarios.
+
+> **Novedades al 23 mayo 2026 (S-LC-Feedback-V4):**
+>
+> - **Cotizaciones con productos del catálogo**: las líneas de una
+>   cotización ahora se eligen igual que en Nuevo Proyecto — un
+>   selector "Producto" + "Variación" + cantidad + unidad + precio.
+>   La descripción libre queda plegable en cada línea para casos
+>   donde quieras añadir algo extra. Si no eliges del catálogo,
+>   puedes seguir escribiendo descripción a mano.
+> - **Nuevo proyecto arranca con 1 línea**: antes agregaba 3 vacías
+>   por default. Ahora 1, le picas a "+ Agregar línea" para más.
+> - **Mis Chalanes y Los Chalanes con acordeones**: cada estación y
+>   cada Chalán están colapsados por defecto. Click en el header
+>   para abrir. Mucho menos scroll para encontrar lo que buscas.
+> - **El nombre del proyecto es lo importante**: en la lista de
+>   Proyectos y en el Kanban se ve primero el nombre en grande y el
+>   código LC-NNNN en chiquito debajo.
+> - **Las menciones #proyecto muestran el nombre**: cuando alguien
+>   escribe `#PRY-0005` en un recado/tarea/comentario, ahora se
+>   renderiza como `#Medallas Liverpool (LC-0005)` en lugar del slug.
+>   Lo mismo para `@usuario` (nombre completo) y `$cliente`
+>   (razón social).
+> - **Autocomplete @ # $ universal**: en cualquier campo de texto
+>   largo (descripciones, notas, términos, comentarios, mensajes
+>   del Buzón…) ahora puedes escribir `@`, `#` o `$` y aparece el
+>   dropdown con sugerencias. Antes sólo estaba en El Dictado y
+>   los composers de chat; ahora está en todos.
+> - **El Buzón se ve dentro de Los Recados**: al final de la bandeja
+>   del chat hay una sección "📬 El Buzón". El admin ve mensajes
+>   pendientes (click para responder); los demás ven un formulario
+>   directo para mandarle un mensaje al admin sin salir de Recados.
+> - **Fix visual**: en Nuevo proyecto ya no aparecen notas técnicas
+>   raras como texto. Cotizaciones muestra labels limpios ("Fecha
+>   de emisión", "Descuento global (%)") en lugar de "Fecha emision".
 
 > **Novedades al 23 mayo 2026 (S-LC-Feedback-V3):**
 >
