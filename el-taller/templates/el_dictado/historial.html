@@ -29,7 +29,7 @@
             </div>
         </li>
         {% empty %}
-        <li>{% url 'taller-home' as taller_home_url %}{% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no has dictado nada" descripcion="El Chalán Claudio interpreta lenguaje natural en la Sala de Juntas — pruébalo." icono="sparkles" cta_url=taller_home_url cta_label="Ir a la Sala de Juntas" %}</li>
+        <li>{% url 'taller-home' as taller_home_url %}{% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no has dictado nada" descripcion="El Chalán Claudio interpreta lenguaje natural en la Dashboard — pruébalo." icono="sparkles" cta_url=taller_home_url cta_label="Ir a la Dashboard" %}</li>
         {% endfor %}
     </ul>
 </div>

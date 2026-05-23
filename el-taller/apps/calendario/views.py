@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.shortcuts import render
 
 from .services import eventos_por_dia, grid_mes
@@ -55,3 +56,36 @@ _NOMBRES_MESES = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ]
+
+
+@login_required
+def dia_popover(request, fecha_iso: str):
+    """GET /calendario/dia/<YYYY-MM-DD>/ — modal HTMX con eventos del día.
+
+    Usado por el mini-calendario del Dashboard: click en un día con eventos
+    inyecta este partial en #modal-slot.
+    """
+    try:
+        f = datetime.strptime(fecha_iso, "%Y-%m-%d").date()
+    except ValueError as e:
+        raise Http404("fecha inválida") from e
+    eventos = eventos_por_dia(request.user, f, f).get(f, [])
+    nombre = f.strftime("%d") + " " + _NOMBRES_MESES[f.month - 1] + f" {f.year}"
+    return render(request, "calendario/_modal_dia.html", {
+        "fecha": f,
+        "fecha_etiqueta": nombre,
+        "eventos": eventos,
+    })
+
+
+@login_required
+def proximos_eventos(request):
+    """Lista de tareas/entregas desde hoy en adelante (para la página Calendario)."""
+    hoy = date.today()
+    fin = hoy + timedelta(days=90)  # ventana de 90 días para no inflar el render
+    evs = eventos_por_dia(request.user, hoy, fin)
+    items = []
+    for f in sorted(evs.keys()):
+        for ev in evs[f]:
+            items.append({**ev, "fecha": f})
+    return items

@@ -1,37 +1,41 @@
 {% extends "base.html" %}
 {% load proyectos_extras %}
-{% block title %}Sala de Juntas — El Taller{% endblock %}
+{% block title %}Dashboard — El Taller{% endblock %}
 
 {% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
 {% block contenido %}
 <header class="mb-6">
-    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">La Sala de Juntas</h1>
+    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">Dashboard</h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Bienvenido, {{ request.user.get_short_name }} · {{ request.user.get_rol_display }}</p>
 </header>
 
-{# 1) El Dictado — textbox activo (S2b.2). #}
-<section data-andamiaje="dictado-slot"
-         class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
-    <div class="flex items-start gap-3">
-        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
-        <div class="flex-1">
-            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">🎙️ Cuéntale al Chalán qué pasó</h2>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Escribe en lenguaje natural. El Chalán interpreta y te muestra acciones para confirmar.</p>
-            <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
-                {% csrf_token %}
-                <textarea name="texto" rows="3" required data-referencias
-                          placeholder="Menciona @personas, #proyectos y $clientes... ej. 'En #LC-0001 asigna a @maria y crea tarea de mandar contrato mañana.'"
-                          class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
-                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
-                    <button type="submit" class="btn-primario">Procesar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+{# 1) Acciones rápidas (S-LC-Feedback-V2): botones azules para crear lo más común. #}
+<section class="mb-6 flex flex-wrap gap-2">
+    {% if permisos_modulos.proyectos %}
+    <a href="{% url 'proyectos-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        Nuevo proyecto
+    </a>
+    {% endif %}
+    {% if permisos_modulos.catalogo %}
+    <a href="{% url 'catalogo-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        Nuevo producto
+    </a>
+    {% endif %}
+    {% if permisos_modulos.tesoreria %}
+    <a href="{% url 'tesoreria:ingreso-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        Nuevo ingreso
+    </a>
+    <a href="{% url 'tesoreria:egreso-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        Nuevo egreso
+    </a>
+    {% endif %}
 </section>
 
-{# 2a) Sugerencias del Chalán (Capa 2 — reglas heurísticas, S2b.2+ LLM real). #}
+{# 2a) Sugerencias del Chalán (Capa 2 — reglas heurísticas). #}
 {% if sugerencias %}
 <section class="mb-6 space-y-2">
     {% for s in sugerencias %}
@@ -56,7 +60,7 @@
 </section>
 {% endif %}
 
-{# 2b) KPIs iterados desde catálogo + preferencias del usuario (S2b.4). #}
+{# 2b) Tablero (KPIs) — iterados desde catálogo + preferencias del usuario. #}
 <section class="mb-3 flex items-center justify-between">
     <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Tu tablero</h2>
     <div class="flex items-center gap-4 text-xs font-medium">
@@ -86,63 +90,8 @@
     {% endfor %}
 </section>
 
-{# 3) Charts ApexCharts — proyectos, tareas, flujo mensual. #}
-<section class="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-    <div class="ta-card">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Proyectos por estado</h3>
-            <a href="{% url 'proyectos-lista' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver todos →</a>
-        </div>
-        <div id="sj-donut-proyectos" data-chart="donut" data-altura="260" data-total-label="Total"
-             data-series='{{ charts.donut_proyectos_json|safe }}'></div>
-    </div>
-    <div class="ta-card">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas abiertas</h3>
-            <span class="text-xs text-gray-500 dark:text-gray-400">sin completadas</span>
-        </div>
-        <div id="sj-donut-tareas" data-chart="donut" data-altura="260" data-total-label="Pendientes"
-             data-series='{{ charts.donut_tareas_json|safe }}'></div>
-    </div>
-    <div class="ta-card">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Ingresos vs Egresos</h3>
-            <span class="text-xs text-gray-500 dark:text-gray-400">últimos 6 meses</span>
-        </div>
-        {% if charts.area_dinero_json %}
-        <div id="sj-area-dinero" data-chart="area-cat" data-altura="260" data-formato="moneda"
-             data-series='{{ charts.area_dinero_json|safe }}'></div>
-        {% else %}
-        <p class="py-12 text-center text-xs text-gray-400 dark:text-gray-500">Tesorería sin movimientos aún.</p>
-        {% endif %}
-    </div>
-</section>
-
-{# 3.5) Mini-calendario con eventos del mes. #}
-{% if mini_cal %}
-<section class="mb-8">
-    <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ mini_cal.nombre_mes }} — {{ mini_cal.datos.total_eventos }} evento{{ mini_cal.datos.total_eventos|pluralize }}</h2>
-        <a href="/calendario/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver calendario completo →</a>
-    </div>
-    <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <div class="grid grid-cols-7 gap-1 text-center">
-            {% for dia in "LMXJVSD" %}<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{{ dia }}</div>{% endfor %}
-            {% for semana in mini_cal.datos.grid.semanas %}
-                {% for celda in semana %}
-                <div class="relative aspect-square {% if not celda.mes_actual %}text-gray-300 dark:text-gray-600{% elif celda.es_finde %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %} flex items-center justify-center text-xs">
-                    {% if celda.es_hoy %}<span class="absolute inset-1 rounded-full bg-brand-500 text-white font-semibold flex items-center justify-center">{{ celda.fecha.day }}</span>{% else %}{{ celda.fecha.day }}{% endif %}
-                    {% if celda.fecha in mini_cal.datos.dias_con_eventos %}<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-500"></span>{% endif %}
-                </div>
-                {% endfor %}
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
-{# 4) Dos tablas con datos reales. #}
-<section class="grid gap-6 lg:grid-cols-2">
+{# 3) Proyectos — S-LC-Feedback-V2: justo abajo del Tablero. #}
+<section class="mb-8 grid gap-6 lg:grid-cols-2">
     <div>
         <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos por fecha de entrega</h2>
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
@@ -174,13 +123,108 @@
                         <p class="truncate font-medium text-gray-800 dark:text-gray-100">{{ p.nombre }}</p>
                         <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ p.codigo }} · {{ p.cliente.razon_social }}</p>
                     </div>
-                    <span class="badge badge-warning">Prospecto</span>
+                    <span class="badge badge-warning">Por cotizar</span>
                 </div>
             </a>
             {% empty %}
-            <div class="px-4 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin prospectos en pipeline" descripcion="Cuando crees clientes en estado prospecto aparecerán aquí." icono="folder" %}</div>
+            <div class="px-4 py-6">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos por cotizar" descripcion="Cuando crees proyectos en este estado aparecerán aquí." icono="folder" %}</div>
             {% endfor %}
         </div>
     </div>
 </section>
+
+{# 4) Charts ApexCharts — proyectos, tareas, flujo mensual. #}
+<section class="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="ta-card">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Proyectos por estado</h3>
+            <a href="{% url 'proyectos-lista' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver todos →</a>
+        </div>
+        <div id="sj-donut-proyectos" data-chart="donut" data-altura="260" data-total-label="Total"
+             data-series='{{ charts.donut_proyectos_json|safe }}'></div>
+    </div>
+    <div class="ta-card">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas abiertas</h3>
+            <span class="text-xs text-gray-500 dark:text-gray-400">sin completadas</span>
+        </div>
+        <div id="sj-donut-tareas" data-chart="donut" data-altura="260" data-total-label="Pendientes"
+             data-series='{{ charts.donut_tareas_json|safe }}'></div>
+    </div>
+    <div class="ta-card">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Ingresos vs Egresos</h3>
+            <span class="text-xs text-gray-500 dark:text-gray-400">últimos 6 meses</span>
+        </div>
+        {% if charts.area_dinero_json %}
+        <div id="sj-area-dinero" data-chart="area-cat" data-altura="260" data-formato="moneda"
+             data-series='{{ charts.area_dinero_json|safe }}'></div>
+        {% else %}
+        <p class="py-12 text-center text-xs text-gray-400 dark:text-gray-500">Tesorería sin movimientos aún.</p>
+        {% endif %}
+    </div>
+</section>
+
+{# 5) El Dictado — abajo del Tablero/Proyectos (S-LC-Feedback-V2 reorder). #}
+<section data-andamiaje="dictado-slot"
+         class="mb-8 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
+    <div class="flex items-start gap-3">
+        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
+        <div class="flex-1">
+            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">🎙️ Cuéntale al Chalán qué pasó</h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Escribe en lenguaje natural. El Chalán interpreta y te muestra acciones para confirmar.</p>
+            <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
+                {% csrf_token %}
+                <textarea name="texto" rows="3" required data-referencias
+                          placeholder="Menciona @personas, #proyectos y $clientes... ej. 'En #LC-0001 asigna a @maria y crea tarea de mandar contrato mañana.'"
+                          class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
+                    <button type="submit" class="btn-primario">Procesar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+{# 6) Mini-calendario interactivo — 2 meses, días con eventos clickeables. #}
+{% if mini_cal %}
+<section class="mb-8">
+    <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Calendario</h2>
+        <a href="/calendario/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver completo →</a>
+    </div>
+    <div class="grid gap-4 md:grid-cols-2">
+        {% for cal in mini_cal.values %}
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-3 flex items-center justify-between">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ cal.nombre_mes }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ cal.datos.total_eventos }} evento{{ cal.datos.total_eventos|pluralize }}</p>
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center">
+                {% for dia in "LMXJVSD" %}<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{{ dia }}</div>{% endfor %}
+                {% for semana in cal.datos.grid.semanas %}
+                    {% for celda in semana %}
+                    {% if celda.fecha in cal.datos.dias_con_eventos and celda.mes_actual %}
+                    <button type="button"
+                            hx-get="/calendario/dia/{{ celda.fecha|date:'Y-m-d' }}/"
+                            hx-target="#modal-slot"
+                            hx-swap="innerHTML"
+                            class="relative aspect-square flex items-center justify-center text-xs font-medium {% if celda.es_finde %}text-gray-500 dark:text-gray-400{% else %}text-gray-700 dark:text-gray-200{% endif %} rounded hover:bg-brand-50 dark:hover:bg-brand-500/10">
+                        {% if celda.es_hoy %}<span class="absolute inset-1 rounded-full bg-brand-500 text-white font-semibold flex items-center justify-center">{{ celda.fecha.day }}</span>{% else %}{{ celda.fecha.day }}{% endif %}
+                        <span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-500"></span>
+                    </button>
+                    {% else %}
+                    <div class="relative aspect-square {% if not celda.mes_actual %}text-gray-300 dark:text-gray-600{% elif celda.es_finde %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %} flex items-center justify-center text-xs">
+                        {% if celda.es_hoy %}<span class="absolute inset-1 rounded-full bg-brand-500 text-white font-semibold flex items-center justify-center">{{ celda.fecha.day }}</span>{% else %}{{ celda.fecha.day }}{% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 {% endblock %}

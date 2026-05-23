@@ -41,7 +41,10 @@ def test_mini_cal_en_home(client, usuario_factory):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    assert "Ver calendario completo" in body
+    # S-LC-Feedback-V2: el texto del link cambió a "Ver completo →" para
+    # acompañar al label "Calendario" del header (antes era "Ver calendario
+    # completo →" en el header "<Mes> — N evento(s)").
+    assert "Ver completo" in body or "Ver calendario" in body
 
 
 def test_grid_mes_pure():

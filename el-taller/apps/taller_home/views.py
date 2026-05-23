@@ -147,14 +147,22 @@ def home(request):
 
     charts = _charts_sala_de_juntas(rol or "")
 
-    # Mini-calendario del mes en curso (S-LC-Feedback-V1).
+    # Mini-calendario del mes actual + siguiente (S-LC-Feedback-V2:
+    # interactivo, días con eventos clickeables).
     from apps.calendario.services import datos_mini_cal
     _hoy = date.today()
     _meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
               "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    _y2, _m2 = (_hoy.year, _hoy.month + 1) if _hoy.month < 12 else (_hoy.year + 1, 1)
     mini_cal = {
-        "nombre_mes": f"{_meses[_hoy.month - 1]} {_hoy.year}",
-        "datos": datos_mini_cal(user, _hoy.year, _hoy.month),
+        "actual": {
+            "nombre_mes": f"{_meses[_hoy.month - 1]} {_hoy.year}",
+            "datos": datos_mini_cal(user, _hoy.year, _hoy.month),
+        },
+        "siguiente": {
+            "nombre_mes": f"{_meses[_m2 - 1]} {_y2}",
+            "datos": datos_mini_cal(user, _y2, _m2),
+        },
     }
 
     return render(request, "taller_home/home.html", {
