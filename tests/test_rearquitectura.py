@@ -169,7 +169,8 @@ def test_sala_juntas_taller_super_admin(client, usuario_factory):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    assert "Sala de Juntas" in body
+    # S-LC-Feedback-V2: header renombrado "Sala de Juntas" → "Dashboard".
+    assert "Dashboard" in body
     # Catálogo S2b.4: el admin ve KPIs reales de varias categorías.
     assert "Proyectos activos" in body
     assert "Tu tablero" in body
@@ -223,7 +224,8 @@ def test_dashboard_gerencia_espejo(client, usuario_factory, _urls_gerencia):
     # con métricas reales).
     assert "Usuarios activos" in body
     # CTA a Taller.
-    assert "Ver Sala de Juntas completa en El Taller" in body
+    # S-LC-Feedback-V2: link renombrado en Gerencia.
+    assert "Ver Dashboard completa en El Taller" in body or "Ver Dashboard" in body
 
 
 def test_dashboard_gerencia_no_tiene_slot_chalan(client, usuario_factory, _urls_gerencia):

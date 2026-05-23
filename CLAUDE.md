@@ -2565,6 +2565,107 @@ dual-copy del partial).
 Cero migraciones. Una sola corrida de `mudanza.sh` con el código
 nuevo activa todo automáticamente.
 
+### S-LC-Feedback-V2 ✅ — Segunda ronda de feedback de LC (2026-05-23)
+
+Sprint dirigido por la segunda ronda de comentarios de LC. 8 commits
+independientes, revertibles uno por uno si algo sale mal. **Suite total:
+705 pass, 9 skipped** (+19 sobre baseline 686, los 3 fallos en local son
+los tests de Redis que pasan en CI).
+
+- **Commit 1 — Semáforo deploy + sidebar fija**:
+  - 🟢/🔴 en header (Taller + Gerencia, dual-copy §18) que polleea
+    `/sistema/aviso-deploy/semaforo/` cada 10s y refleja la bandera
+    Redis de `lib.aviso_deploy`. Verde = OK, rojo = deploy en curso.
+  - Sidebar cambia de `lg:static` a `lg:sticky lg:top-0`: ya no scrollea
+    con el body en desktop. Toggle de esconder en mobile intacto.
+  - El banner de deploy ya nunca devuelve 204 — el div queda vacío pero
+    polleando para detectar el siguiente deploy sin recargar página.
+
+- **Commit 2 — Buzón selector de orden**: query param
+  `?orden=prioridad|fecha` (default prioridad) con segmented control en
+  el header de la lista. Preserva filtros estado+tipo al alternar.
+
+- **Commit 3 — Códigos LC-NNNN correlativos**:
+  - `generar_codigo_proyecto()` ahora produce `LC-0001`, `LC-0002`, …
+    con `select_for_update`. Padding 4 dígitos (hasta LC-9999 antes de
+    pasar a 5+).
+  - Migración `los_proyectos.0005_renumerar_a_lc` renumera proyectos
+    existentes en orden de pk (idempotente). Usa códigos temporales
+    `__tmp_lc_N__` para evitar colisiones intermedias y luego asigna
+    los definitivos.
+  - Management command `resetear_contador_proyectos --confirmar` para
+    el día del go-live productivo (borra todos los proyectos demo;
+    el siguiente arranca en LC-0001).
+  - Evento Portavoz nuevo `proyecto.codigo_renumerado`.
+
+- **Commit 4 — Sidebar "Finanzas" agrupada**: Tesorería + Facturación +
+  Contaduría bajo un grupo expandible/colapsable. Cotizaciones queda
+  como item plano (pre-venta). Estado expand/collapse en
+  `localStorage['despacho-sidebar-grupos']`. Context processor
+  `apps.taller_home.context_processors.sidebar_grupos` precomputa
+  `finanzas_grupo_activo` para auto-expandir según URL.
+
+- **Commit 5 — "Sala de Juntas" → "Dashboard" + reorg del home**:
+  Strings visibles renombradas (sidebar, headers, templates). Apps
+  internas y choices del modelo se quedan como están (`taller_home`,
+  `origen='sala_juntas'`). Nuevo orden del home:
+  1. **Acciones rápidas** (4 botones azules: Nuevo proyecto · Nuevo
+     producto · Nuevo ingreso · Nuevo egreso).
+  2. Sugerencias del Chalán (si hay).
+  3. **Tablero** (KPIs).
+  4. **Proyectos** activos + pendientes de cotizar.
+  5. **Charts** ApexCharts.
+  6. **El Dictado** (Chalán Claudio).
+  7. **Mini-calendario interactivo** con mes actual + siguiente.
+  Días con eventos clickeables abren modal HTMX
+  (`/calendario/dia/<YYYY-MM-DD>/`) con la lista de eventos del día.
+
+- **Commit 6 — Página Calendario re-layout 60/40**:
+  - Lado izquierdo (60%): navegación (← mes anterior · Hoy · →
+    siguiente · selector de mes+año), mes actual + mes siguiente
+    apilados (no lado a lado) con celdas grandes y legibles.
+  - Lado derecho (40%, sticky): botón "+ Nuevo evento" → modal HTMX
+    con 2 opciones (Tarea → lista de proyectos para elegir; Proyecto
+    → form directo). Sin modelo Evento nuevo, reusa Tarea y Proyecto.
+  - Lista de "próximos eventos" (próximos 90 días) con fecha grande
+    + tipo + título + subtítulo, todos clickeables.
+
+- **Commit 7 — Modelo Unidad + quick-create Producto**:
+  - Nuevo modelo `Unidad` (`el_catalogo`) con seed `[Piezas, Metros]`
+    vía migración `0003_unidad`.
+  - CRUD `/catalogo/unidades/` (admin con `gestionar_categorias`).
+  - Endpoint `POST /catalogo/quick-create/` retorna JSON con el
+    servicio creado para que el JS del form de Proyecto agregue la
+    opción al `<select>` y clone una fila del formset con cantidad
+    pre-llenada. UI: panel `<details>` "+ Crear producto nuevo" en
+    Nuevo proyecto + Editar proyecto.
+  - Eventos Portavoz: `catalogo.unidad_creada/actualizada/quick_creado`.
+
+- **Commit 8 — Cotizaciones form ajustes**:
+  - `proyecto` ahora obligatorio (form-level `required=True`, asterisco
+    visible). El modelo aún acepta null por back-compat.
+  - `fecha_validez` removida del form y del template (queda nullable
+    en el modelo para no migrar registros existentes).
+  - Botón inline "+ Nuevo cliente" (modal HTMX, reusa
+    `proyectos-cliente-inline`).
+  - Botón inline "+ Nuevo proyecto" (link directo al form).
+  - Campo `unidad` por línea: `<select>` poblado desde el catálogo de
+    Unidades. Preserva valores legacy con etiqueta `(legacy)` si no
+    están en el catálogo.
+
+**Deuda residual diseñada del sprint**:
+- **Conversión FK** `CotizacionItem.unidad` / `FacturaItem.unidad`. Hoy
+  son CharField con `<select>` populado desde catálogo; cuando LC lo
+  pida en producción, un sprint dedicado migra a FK preservando valores
+  por nombre case-insensitive.
+- **Selector de año libre** en el header del Calendario (`<input
+  type=number>`): si el usuario escribe un año fuera de rango razonable,
+  el render se ralentiza. Aceptable hoy con 5 usuarios.
+- **Botón "Tarea"** en modal "Nuevo evento" lleva a la lista de proyectos
+  para que el usuario elija — no abre un form de Tarea directamente
+  (el endpoint requiere `proyecto_id`). Si LC pide flujo más directo,
+  el siguiente sprint agrega selector de proyecto inline al modal.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
