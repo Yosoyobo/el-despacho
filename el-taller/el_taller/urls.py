@@ -31,6 +31,7 @@ urlpatterns = [
     path("contaduria/", include("apps.contaduria.urls", namespace="contaduria")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),
+    path("ayuda/", include("apps.ayuda.urls")),
 ]
 
 handler404 = _err.handler404

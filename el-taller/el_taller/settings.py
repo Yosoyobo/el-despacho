@@ -54,6 +54,8 @@ INSTALLED_APPS = [
     "apps.facturacion.apps.FacturacionConfig",
     # S3.contaduria-v1
     "apps.contaduria.apps.ContaduriaConfig",
+    # S-LC-Feedback-V3: página de ayuda con manual de usuario.
+    "apps.ayuda.apps.AyudaConfig",
 ]
 
 MIDDLEWARE = [

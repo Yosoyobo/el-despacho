@@ -24,6 +24,7 @@ urlpatterns = [
     path("cotizaciones/", include("apps.cotizaciones.urls", namespace="cotizaciones")),
     path("facturacion/", include("apps.facturacion.urls", namespace="facturacion")),
     path("contaduria/", include("apps.contaduria.urls", namespace="contaduria")),
+    path("ayuda/", include("apps.ayuda.urls")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),
 ]
