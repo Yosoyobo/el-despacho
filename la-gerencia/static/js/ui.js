@@ -32,6 +32,47 @@
   });
   if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', cerrarSidebar);
 
+  // --- Sidebar groups colapsables (S-LC-Feedback-V2) ---
+  // Persisten el estado abierto/cerrado en localStorage. Si el grupo
+  // contiene una URL activa, el server ya lo renderiza expandido.
+  const SIDEBAR_GRUPOS_KEY = 'despacho-sidebar-grupos';
+  function leerSidebarGrupos() {
+    try {
+      const raw = localStorage.getItem(SIDEBAR_GRUPOS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function escribirSidebarGrupos(estado) {
+    try { localStorage.setItem(SIDEBAR_GRUPOS_KEY, JSON.stringify(estado)); } catch (e) { /* noop */ }
+  }
+  document.querySelectorAll('[data-sidebar-group]').forEach(function (btn) {
+    const grupo = btn.getAttribute('data-sidebar-group');
+    const panel = document.querySelector('[data-sidebar-group-panel="' + grupo + '"]');
+    const chevron = btn.querySelector('[data-sidebar-group-chevron]');
+    if (!panel) return;
+
+    // Si localStorage tiene preferencia explícita, respetarla
+    // (sólo si el grupo NO contiene un link activo — server tiene preferencia
+    // sobre localStorage cuando el usuario navegó adentro).
+    const grupos = leerSidebarGrupos();
+    const yaActivo = btn.getAttribute('aria-expanded') === 'true';
+    if (!yaActivo && grupos[grupo] === true) {
+      panel.classList.remove('hidden');
+      btn.setAttribute('aria-expanded', 'true');
+      if (chevron) chevron.classList.add('rotate-180');
+    }
+
+    btn.addEventListener('click', function () {
+      const ahora = panel.classList.toggle('hidden');
+      const abierto = !ahora;
+      btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+      if (chevron) chevron.classList.toggle('rotate-180', abierto);
+      const g = leerSidebarGrupos();
+      g[grupo] = abierto;
+      escribirSidebarGrupos(g);
+    });
+  });
+
   // --- Dropdowns del header ---
   const dropdowns = []; // { trigger, panel }
   document.querySelectorAll('[data-ta-dropdown]').forEach(function (trigger) {
@@ -129,14 +170,20 @@
   });
 
   // --- <input type="date">: botón "Hoy" + auto-mostrar calendario al click ---
+  // Mejora cosmética: cada <input type=date> recibe un botón "Hoy" hermano
+  // que setea el valor al día actual y dispara `change`. Además al hacer
+  // focus se invoca showPicker() (soporte en Chrome/Safari modernos) para
+  // que el calendario se despliegue sin necesidad de tocar el ícono.
   document.querySelectorAll('input[type="date"]:not([data-hoy-listo])').forEach(function (input) {
     input.dataset.hoyListo = '1';
+    // 1) Auto-mostrar el picker al focus / click (graceful si el browser no soporta).
     var openPicker = function () {
       try { if (typeof input.showPicker === 'function') input.showPicker(); } catch (_) { /* noop */ }
     };
     input.addEventListener('focus', openPicker);
     input.addEventListener('click', openPicker);
-    if (input.dataset.sinHoy === '1') return;
+    // 2) Botón "Hoy" hermano.
+    if (input.dataset.sinHoy === '1') return; // opt-out
     var hoyBtn = document.createElement('button');
     hoyBtn.type = 'button';
     hoyBtn.textContent = 'Hoy';
@@ -150,8 +197,10 @@
       input.dispatchEvent(new Event('change', { bubbles: true }));
       input.focus();
     });
+    // Inserta el botón después del wrapper relativo (si existe) o del input.
     var anchor = input.closest('.relative') || input;
     if (anchor.parentNode) {
+      // Si el padre no es flex, hacemos un span inline; suficiente para alinearse.
       var holder = document.createElement('span');
       holder.className = 'inline-flex items-center align-middle';
       holder.appendChild(hoyBtn);
@@ -160,6 +209,10 @@
   });
 
   // --- Filas <tr data-href="..."> clickeables ---
+  // Cualquier <tr> con data-href se vuelve navegable. No dispara cuando el
+  // click cae sobre un <a>, <button>, <input>, <label>, <select> u otro
+  // elemento interactivo — esos manejan su propio click. Soporta cmd/ctrl
+  // click para abrir en pestaña nueva.
   document.body.addEventListener('click', function (e) {
     var row = e.target.closest('[data-href]');
     if (!row) return;

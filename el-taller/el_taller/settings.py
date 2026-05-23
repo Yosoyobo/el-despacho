@@ -83,6 +83,7 @@ TEMPLATES = [
                 "cuentas.context_processors.permisos_modulos",
                 "apps.recados.context_processors.recados_no_leidos",
                 "lib.aviso_deploy.contexto_aviso_deploy",
+                "apps.taller_home.context_processors.sidebar_grupos",
             ],
         },
     },

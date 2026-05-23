@@ -32,6 +32,47 @@
   });
   if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', cerrarSidebar);
 
+  // --- Sidebar groups colapsables (S-LC-Feedback-V2) ---
+  // Persisten el estado abierto/cerrado en localStorage. Si el grupo
+  // contiene una URL activa, el server ya lo renderiza expandido.
+  const SIDEBAR_GRUPOS_KEY = 'despacho-sidebar-grupos';
+  function leerSidebarGrupos() {
+    try {
+      const raw = localStorage.getItem(SIDEBAR_GRUPOS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function escribirSidebarGrupos(estado) {
+    try { localStorage.setItem(SIDEBAR_GRUPOS_KEY, JSON.stringify(estado)); } catch (e) { /* noop */ }
+  }
+  document.querySelectorAll('[data-sidebar-group]').forEach(function (btn) {
+    const grupo = btn.getAttribute('data-sidebar-group');
+    const panel = document.querySelector('[data-sidebar-group-panel="' + grupo + '"]');
+    const chevron = btn.querySelector('[data-sidebar-group-chevron]');
+    if (!panel) return;
+
+    // Si localStorage tiene preferencia explícita, respetarla
+    // (sólo si el grupo NO contiene un link activo — server tiene preferencia
+    // sobre localStorage cuando el usuario navegó adentro).
+    const grupos = leerSidebarGrupos();
+    const yaActivo = btn.getAttribute('aria-expanded') === 'true';
+    if (!yaActivo && grupos[grupo] === true) {
+      panel.classList.remove('hidden');
+      btn.setAttribute('aria-expanded', 'true');
+      if (chevron) chevron.classList.add('rotate-180');
+    }
+
+    btn.addEventListener('click', function () {
+      const ahora = panel.classList.toggle('hidden');
+      const abierto = !ahora;
+      btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+      if (chevron) chevron.classList.toggle('rotate-180', abierto);
+      const g = leerSidebarGrupos();
+      g[grupo] = abierto;
+      escribirSidebarGrupos(g);
+    });
+  });
+
   // --- Dropdowns del header ---
   const dropdowns = []; // { trigger, panel }
   document.querySelectorAll('[data-ta-dropdown]').forEach(function (trigger) {

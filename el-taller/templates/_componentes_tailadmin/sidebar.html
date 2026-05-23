@@ -70,13 +70,6 @@
             Mis Chalanes
         </a>
 
-        {% if permisos_modulos.tesoreria %}
-        <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v10H3zM7 7v10M17 7v10M12 10v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            La Tesorería
-        </a>
-        {% endif %}
-
         {% if permisos_modulos.cotizaciones %}
         <a href="{% url 'cotizaciones:lista' %}" class="menu-item {% if '/cotizaciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -84,18 +77,41 @@
         </a>
         {% endif %}
 
-        {% if permisos_modulos.facturacion %}
-        <a href="{% url 'facturacion:lista' %}" class="menu-item {% if '/facturacion' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6M9 16h6M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            La Facturación
-        </a>
-        {% endif %}
-
-        {% if permisos_modulos.contaduria %}
-        <a href="{% url 'contaduria:landing' %}" class="menu-item {% if '/contaduria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4zM4 9h16M9 4v16" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            La Contaduría
-        </a>
+        {% comment %} Grupo "Finanzas" — colapsable. Se auto-expande si alguna URL del grupo está activa.
+           Estado persistido en localStorage. Sub-items gated por permiso individual.
+           Inyectamos finanzas_grupo_activo desde el context processor sidebar_extras. {% endcomment %}
+        {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria %}
+        <button type="button"
+                data-sidebar-group="finanzas"
+                aria-expanded="{% if finanzas_grupo_activo %}true{% else %}false{% endif %}"
+                class="menu-item menu-item-inactive w-full justify-between">
+            <span class="flex items-center gap-3">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v10H3zM7 7v10M17 7v10M12 10v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Finanzas
+            </span>
+            <svg data-sidebar-group-chevron class="h-4 w-4 transition-transform {% if finanzas_grupo_activo %}rotate-180{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div data-sidebar-group-panel="finanzas"
+             class="ml-4 flex flex-col gap-1 border-l border-gray-200 pl-3 dark:border-gray-800 {% if not finanzas_grupo_activo %}hidden{% endif %}">
+            {% if permisos_modulos.tesoreria %}
+            <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v10H3zM7 7v10M17 7v10M12 10v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Tesorería
+            </a>
+            {% endif %}
+            {% if permisos_modulos.facturacion %}
+            <a href="{% url 'facturacion:lista' %}" class="menu-item {% if '/facturacion' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6M9 16h6M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Facturación
+            </a>
+            {% endif %}
+            {% if permisos_modulos.contaduria %}
+            <a href="{% url 'contaduria:landing' %}" class="menu-item {% if '/contaduria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4zM4 9h16M9 4v16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Contaduría
+            </a>
+            {% endif %}
+        </div>
         {% endif %}
     </nav>
 
