@@ -21,8 +21,8 @@ from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
-from .forms import CategoriaForm, ServicioForm, UnidadForm, VariacionForm
-from .models import CategoriaServicio, Servicio, Unidad, Variacion
+from .forms import CategoriaForm, ProveedorForm, ServicioForm, UnidadForm, VariacionForm
+from .models import CategoriaServicio, Proveedor, Servicio, Unidad, Variacion
 
 
 def _gate(request, accion: str):
@@ -380,3 +380,89 @@ def servicio_quick_create(request):
         "margen": s.margen_porcentaje,
         "label": f"{s.nombre} ({categoria.nombre})",
     })
+
+
+# ── Proveedores (S-LC-Feedback-V3) ──────────────────────────────────────────
+
+def proveedores_lista(request):
+    if (r := _gate(request, "ver_nombres")) is not None:
+        return r
+    incluir_archivados = request.GET.get("archivados") == "1"
+    qs = Proveedor.objects.all() if incluir_archivados else Proveedor.objects.filter(activo=True)
+    q = (request.GET.get("q") or "").strip()
+    if q:
+        qs = qs.filter(razon_social__icontains=q)
+    return render(request, "catalogo/proveedores_lista.html", {
+        "proveedores": qs.order_by("razon_social"),
+        "q": q,
+        "incluir_archivados": incluir_archivados,
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def proveedor_nuevo(request):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    if request.method == "POST":
+        form = ProveedorForm(request.POST)
+        if form.is_valid():
+            prov = form.save(commit=False)
+            prov.creado_por = request.user
+            prov.save()
+            emitir(EventoPortavoz(
+                tipo="proveedor.creado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proveedor_id": prov.pk, "razon_social": prov.razon_social},
+            ))
+            messages.success(request, f"Proveedor '{prov.razon_social}' creado.")
+            return redirect("catalogo-proveedores")
+    else:
+        form = ProveedorForm()
+    return render(request, "catalogo/proveedor_form.html", {"form": form, "modo": "nuevo"})
+
+
+def proveedor_detalle(request, pk: int):
+    if (r := _gate(request, "ver_nombres")) is not None:
+        return r
+    prov = get_object_or_404(Proveedor, pk=pk)
+    return render(request, "catalogo/proveedor_detalle.html", {
+        "proveedor": prov,
+        "servicios": prov.servicios.filter(activo=True),
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def proveedor_editar(request, pk: int):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    prov = get_object_or_404(Proveedor, pk=pk)
+    if request.method == "POST":
+        form = ProveedorForm(request.POST, instance=prov)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="proveedor.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proveedor_id": prov.pk},
+            ))
+            messages.success(request, "Proveedor actualizado.")
+            return redirect("catalogo-proveedor-detalle", pk=prov.pk)
+    else:
+        form = ProveedorForm(instance=prov)
+    return render(request, "catalogo/proveedor_form.html", {"form": form, "modo": "editar", "proveedor": prov})
+
+
+@require_http_methods(["POST"])
+def proveedor_archivar(request, pk: int):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    prov = get_object_or_404(Proveedor, pk=pk)
+    prov.activo = not prov.activo
+    prov.save(update_fields=["activo"])
+    emitir(EventoPortavoz(
+        tipo="proveedor.archivado" if not prov.activo else "proveedor.reactivado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proveedor_id": prov.pk},
+    ))
+    messages.success(request, f"Proveedor '{prov.razon_social}' " + ("desactivado." if not prov.activo else "reactivado."))
+    return redirect("catalogo-proveedores")

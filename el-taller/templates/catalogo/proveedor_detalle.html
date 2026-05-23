@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ proveedor.razon_social }} — Proveedores{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Catálogo" "/catalogo/" "Proveedores" "/catalogo/proveedores/" proveedor.razon_social as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=proveedor.razon_social breadcrumb_items=breadcrumb_items back_url="/catalogo/proveedores/" back_label="Proveedores" %}
+
+<div class="grid gap-6 xl:grid-cols-3">
+    <main class="space-y-6 xl:col-span-2">
+        <section class="ta-card">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Información de contacto</h2>
+            <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Contacto</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.nombre_contacto|default:"—" }}</dd></div>
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Email</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.email_contacto|default:"—" }}</dd></div>
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Teléfono</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.telefono|default:"—" }}</dd></div>
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">RFC</dt><dd class="font-mono text-gray-900 dark:text-gray-100">{{ proveedor.rfc|default:"—" }}</dd></div>
+                {% if proveedor.direccion %}<div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-gray-500">Dirección</dt><dd class="text-gray-900 dark:text-gray-100 whitespace-pre-line">{{ proveedor.direccion }}</dd></div>{% endif %}
+                {% if proveedor.notas %}<div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-gray-500">Notas</dt><dd class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ proveedor.notas }}</dd></div>{% endif %}
+            </dl>
+        </section>
+
+        <section class="ta-card">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Productos que surte</h2>
+            {% if servicios %}
+            <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for s in servicios %}
+                <li class="flex items-center justify-between gap-2 py-2">
+                    <a href="{% url 'catalogo-variaciones' s.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ s.nombre }}</a>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ s.categoria.nombre }} · $ {{ s.precio_base|floatformat:2 }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no surte ningún producto" descripcion="Asigna este proveedor en el form de un servicio del catálogo." icono="folder" %}
+            {% endif %}
+        </section>
+    </main>
+
+    <aside class="space-y-4">
+        <section class="ta-card">
+            <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Estado</h3>
+            {% if proveedor.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}
+        </section>
+        <section class="ta-card flex flex-col gap-2">
+            <a href="{% url 'catalogo-proveedor-editar' proveedor.pk %}" class="btn-primario text-sm">Editar</a>
+            <form method="post" action="{% url 'catalogo-proveedor-archivar' proveedor.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-secundario w-full text-sm">{% if proveedor.activo %}Desactivar{% else %}Reactivar{% endif %}</button>
+            </form>
+        </section>
+    </aside>
+</div>
+{% endblock %}

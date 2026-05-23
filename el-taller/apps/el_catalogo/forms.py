@@ -1,6 +1,30 @@
 from django import forms
 
-from .models import CategoriaServicio, Servicio, Unidad, Variacion
+from .models import CategoriaServicio, Proveedor, Servicio, Unidad, Variacion
+
+
+class ProveedorForm(forms.ModelForm):
+    activo = forms.BooleanField(required=False, label="Activo", initial=True)
+
+    class Meta:
+        model = Proveedor
+        fields = [
+            "razon_social", "nombre_contacto", "email_contacto",
+            "telefono", "rfc", "direccion", "notas", "activo",
+        ]
+        labels = {
+            "razon_social": "Razón social",
+            "nombre_contacto": "Persona de contacto",
+            "email_contacto": "Email",
+            "telefono": "Teléfono",
+            "rfc": "RFC",
+            "direccion": "Dirección",
+            "notas": "Notas",
+        }
+        widgets = {
+            "direccion": forms.Textarea(attrs={"rows": 2}),
+            "notas": forms.Textarea(attrs={"rows": 3}),
+        }
 
 
 class UnidadForm(forms.ModelForm):
@@ -31,7 +55,7 @@ class ServicioForm(forms.ModelForm):
 
     class Meta:
         model = Servicio
-        fields = ["nombre", "descripcion_default", "unidad", "costo", "precio_base", "categoria", "activo"]
+        fields = ["nombre", "descripcion_default", "unidad", "costo", "precio_base", "categoria", "proveedores", "activo"]
         labels = {
             "nombre": "Nombre",
             "descripcion_default": "Descripción",
@@ -53,6 +77,12 @@ class ServicioForm(forms.ModelForm):
                 pk__in=list(qs.values_list("pk", flat=True)) + [self.instance.categoria_id]
             )
         self.fields["categoria"].queryset = qs.distinct()
+        # S-LC-Feedback-V3: proveedores opcional, sólo activos.
+        if "proveedores" in self.fields:
+            self.fields["proveedores"].queryset = Proveedor.objects.filter(activo=True).order_by("razon_social")
+            self.fields["proveedores"].required = False
+            self.fields["proveedores"].label = "Proveedores aplicables"
+            self.fields["proveedores"].help_text = "Quién te puede surtir este producto. Opcional."
 
     def clean_costo(self):
         v = self.cleaned_data.get("costo")

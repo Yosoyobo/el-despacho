@@ -23,6 +23,12 @@ class Servicio(models.Model):
         related_name="servicios",
     )
     activo = models.BooleanField(default=True, db_index=True)
+    # S-LC-Feedback-V3: proveedores aplicables a este servicio.
+    proveedores = models.ManyToManyField(
+        "el_catalogo.Proveedor",
+        blank=True,
+        related_name="servicios",
+    )
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)

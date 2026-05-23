@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Proveedores — El Catálogo{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Catálogo" "/catalogo/" "Proveedores" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Proveedores" subtitulo="CRM de quién te surte cada producto." breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Catálogo" %}
+
+<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex-1 min-w-[200px]">
+        <label for="prov-q" class="sr-only">Buscar</label>
+        <input id="prov-q" name="q" type="text" value="{{ q }}" placeholder="Buscar por razón social...">
+    </div>
+    <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+        Incluir desactivados
+    </label>
+    <button type="submit" class="btn-secundario">Filtrar</button>
+    <a href="{% url 'catalogo-proveedor-nuevo' %}" class="btn-primario">+ Nuevo proveedor</a>
+</form>
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3 text-left">Razón social</th>
+                <th class="px-5 py-3 text-left">Contacto</th>
+                <th class="px-5 py-3 text-left">Email / Tel.</th>
+                <th class="px-5 py-3 text-right">Servicios</th>
+                <th class="px-5 py-3 text-right">Estado</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for p in proveedores %}
+            <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not p.activo %}opacity-60{% endif %}" data-href="{% url 'catalogo-proveedor-detalle' p.pk %}">
+                <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">
+                    <a href="{% url 'catalogo-proveedor-detalle' p.pk %}" class="hover:underline">{{ p.razon_social }}</a>
+                </td>
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.nombre_contacto|default:"—" }}</td>
+                <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">
+                    {{ p.email_contacto|default:"" }}{% if p.email_contacto and p.telefono %} · {% endif %}{{ p.telefono|default:"" }}
+                    {% if not p.email_contacto and not p.telefono %}—{% endif %}
+                </td>
+                <td class="px-5 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ p.servicios.count }}</td>
+                <td class="px-5 py-3 text-right">
+                    {% if p.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-5 py-12">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proveedores aún" descripcion="Agrega tu primer proveedor para asociarlo a productos del catálogo." icono="folder" cta_url="/catalogo/proveedores/nuevo" cta_label="+ Nuevo proveedor" %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
