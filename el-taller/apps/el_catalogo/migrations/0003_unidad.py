@@ -2,7 +2,6 @@
 
 from django.db import migrations, models
 
-
 SEED_UNIDADES = [
     ("Piezas", "pz", 10),
     ("Metros", "m", 20),

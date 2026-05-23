@@ -13,10 +13,9 @@ El siguiente proyecto que se cree arrancará en LC-0001.
 
 from __future__ import annotations
 
+from apps.los_proyectos.models.proyecto import Proyecto
 from django.core.management.base import BaseCommand
 from django.db import transaction
-
-from apps.los_proyectos.models.proyecto import Proyecto
 
 
 class Command(BaseCommand):
