@@ -212,16 +212,38 @@ def test_disenador_403(client, usuario_factory):
     assert client.get("/cotizaciones/").status_code == 403
 
 
-def test_contador_ve_y_crea(client, usuario_factory, cliente_factory):
+def test_proyecto_es_obligatorio(usuario_factory, cliente_factory):
+    """S-LC-Feedback-V2: el form bloquea cotizaciones sin proyecto."""
+    from apps.cotizaciones.forms import CotizacionForm
     c = usuario_factory(rol="contador")
     cli = cliente_factory(creado_por=c)
+    f = CotizacionForm(data={
+        "cliente": cli.pk, "proyecto": "",
+        "titulo": "X", "fecha_emision": date.today().isoformat(),
+        "moneda": "MXN", "descuento_global_porcentaje": "0",
+    })
+    assert not f.is_valid()
+    assert "proyecto" in f.errors
+
+
+def test_fecha_validez_no_esta_en_form_fields():
+    """S-LC-Feedback-V2: el campo fecha_validez se removió del form."""
+    from apps.cotizaciones.forms import CotizacionForm
+    f = CotizacionForm()
+    assert "fecha_validez" not in f.fields
+
+
+def test_contador_ve_y_crea(client, usuario_factory, cliente_factory, proyecto_factory):
+    c = usuario_factory(rol="contador")
+    cli = cliente_factory(creado_por=c)
+    # S-LC-Feedback-V2: cotización ahora requiere proyecto.
+    pry = proyecto_factory(cliente=cli, creado_por=c)
     client.force_login(c)
     assert client.get("/cotizaciones/").status_code == 200
     resp = client.post("/cotizaciones/nueva/", {
-        "cliente": cli.pk, "proyecto": "",
+        "cliente": cli.pk, "proyecto": pry.pk,
         "titulo": "Cotización test",
         "fecha_emision": date.today().isoformat(),
-        "fecha_validez": (date.today() + timedelta(days=30)).isoformat(),
         "moneda": "MXN", "descuento_global_porcentaje": "0",
         "notas": "", "terminos": "",
         # Inline formset: 1 fila vacía + management

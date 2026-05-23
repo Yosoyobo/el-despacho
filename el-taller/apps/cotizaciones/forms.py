@@ -10,16 +10,18 @@ from .models import Cotizacion, CotizacionItem
 class CotizacionForm(forms.ModelForm):
     class Meta:
         model = Cotizacion
+        # S-LC-Feedback-V2: fecha_validez removida del form (queda nullable en el modelo
+        # por back-compat con cotizaciones existentes — el formulario sólo edita los
+        # demás campos).
         fields = [
             "cliente", "proyecto", "titulo",
-            "fecha_emision", "fecha_validez",
+            "fecha_emision",
             "moneda", "descuento_global_porcentaje",
             "anticipo_porcentaje", "anticipo_monto_override",
             "notas", "terminos",
         ]
         widgets = {
             "fecha_emision": forms.DateInput(attrs={"type": "date"}),
-            "fecha_validez": forms.DateInput(attrs={"type": "date"}),
             "notas": forms.Textarea(attrs={"rows": 3}),
             "terminos": forms.Textarea(attrs={"rows": 3}),
         }
@@ -37,15 +39,14 @@ class CotizacionForm(forms.ModelForm):
         # Anticipo es opcional en el form (modelo tiene default 0 / null).
         self.fields["anticipo_porcentaje"].required = False
         self.fields["anticipo_monto_override"].required = False
+        # S-LC-Feedback-V2: Proyecto es obligatorio (toda cotización debe ir
+        # ligada a un proyecto). El modelo aún acepta null para no migrar
+        # cotizaciones legacy, pero el form bloquea.
+        self.fields["proyecto"].required = True
+        self.fields["proyecto"].empty_label = None
 
     def clean(self):
         cleaned = super().clean()
-        emi = cleaned.get("fecha_emision")
-        val = cleaned.get("fecha_validez")
-        if emi and val and val < emi:
-            raise forms.ValidationError(
-                "La fecha de validez no puede ser anterior a la fecha de emisión."
-            )
         desc = cleaned.get("descuento_global_porcentaje")
         if desc is not None and (desc < 0 or desc > Decimal("100")):
             self.add_error("descuento_global_porcentaje",

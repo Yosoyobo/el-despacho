@@ -108,6 +108,10 @@ def lista(request):
 
 def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
               tasas_qs=None, tasas_seleccionadas=None):
+    # S-LC-Feedback-V2: unidades del catálogo para poblar el <select> de cada
+    # línea (en lugar de un text input libre).
+    from apps.el_catalogo.models import Unidad
+    unidades = list(Unidad.objects.filter(activa=True).values_list("nombre", flat=True))
     return {
         "form": form,
         "formset": formset,
@@ -115,6 +119,7 @@ def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
         "cot": cot,
         "tasas": tasas_qs if tasas_qs is not None else TasaImpositiva.objects.filter(activa=True),
         "tasas_seleccionadas": set(tasas_seleccionadas or []),
+        "unidades_disponibles": unidades,
     }
 
 
