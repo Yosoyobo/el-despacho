@@ -188,6 +188,33 @@
 </form>
 
 <script>
+// S-LC-Feedback-V4 hotfix: auto-llenar cliente al elegir proyecto.
+(function () {
+    const selProyecto = document.querySelector('#cot-form select[name="proyecto"]');
+    const selCliente = document.querySelector('#cot-form select[name="cliente"]');
+    const inpTitulo = document.querySelector('#cot-form input[name="titulo"]');
+    if (!selProyecto || !selCliente) return;
+    async function autollenar() {
+        const pk = selProyecto.value;
+        if (!pk) return;
+        try {
+            const r = await fetch(`/tesoreria/api/proyecto/${pk}/datos/`, {credentials: 'same-origin'});
+            if (!r.ok) return;
+            const data = await r.json();
+            if (data.cliente_id && !selCliente.value) {
+                const opt = Array.from(selCliente.options).find(o => o.value === String(data.cliente_id));
+                if (opt) selCliente.value = String(data.cliente_id);
+            }
+            if (inpTitulo && !inpTitulo.value && data.nombre) {
+                inpTitulo.value = `Cotización · ${data.nombre}`;
+            }
+        } catch (e) { /* silent */ }
+    }
+    selProyecto.addEventListener('change', autollenar);
+    // Ejecutar al cargar si ya hay un proyecto preseleccionado.
+    if (selProyecto.value) autollenar();
+})();
+
 (function () {
     const tpl = document.getElementById('cot-item-template');
     const body = document.getElementById('cot-items-body');

@@ -48,6 +48,16 @@ class CotizacionForm(forms.ModelForm):
         # cotizaciones legacy, pero el form bloquea.
         self.fields["proyecto"].required = True
         self.fields["proyecto"].empty_label = None
+        # S-LC-Feedback-V4 hotfix: defaults del modelo NO los aplica Django a
+        # un ModelForm unbound. Si no hay instancia, pre-llenamos los campos
+        # para que el usuario no tenga que escribir MXN / 0.00 / fecha hoy.
+        from datetime import date as _date
+        from decimal import Decimal as _D
+        if not self.instance.pk:
+            self.fields["fecha_emision"].initial = _date.today()
+            self.fields["moneda"].initial = "MXN"
+            self.fields["descuento_global_porcentaje"].initial = _D("0.00")
+            self.fields["anticipo_porcentaje"].initial = _D("0.00")
 
     def clean(self):
         cleaned = super().clean()
@@ -84,6 +94,15 @@ class CotizacionItemForm(forms.ModelForm):
         self.fields["servicio"].required = False
         self.fields["variacion"].required = False
         self.fields["descripcion"].required = False
+        # S-LC-Feedback-V4 hotfix: defaults visibles en filas nuevas. El default
+        # del modelo es "pieza" (lowercase, legacy) — usamos "Piezas" del
+        # catálogo para evitar el "(legacy)" en el dropdown.
+        from decimal import Decimal as _D
+        if not self.instance.pk:
+            self.fields["cantidad"].initial = _D("1.00")
+            self.fields["precio_unitario"].initial = _D("0.00")
+            self.fields["descuento_porcentaje"].initial = _D("0.00")
+            self.fields["unidad"].initial = "Piezas"
 
     def clean(self):
         cleaned = super().clean()
