@@ -2,12 +2,13 @@ from apps.buzon_empleado import handlers as _err
 from django.urls import include, path
 
 from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
-from lib.aviso_deploy_views import banner_deploy
+from lib.aviso_deploy_views import banner_deploy, semaforo_deploy
 
 # El admin de Django vive solo en La Gerencia (Django project con `django.contrib.admin`
 # en INSTALLED_APPS). El Taller no lo necesita y no tiene la app instalada.
 urlpatterns = [
     path("sistema/aviso-deploy/", banner_deploy, name="aviso-deploy"),
+    path("sistema/aviso-deploy/semaforo/", semaforo_deploy, name="aviso-deploy-semaforo"),
     *urlpatterns_sw,
     *urlpatterns_suscripcion,
     path("", include("auth_google.urls", namespace="google_oauth")),

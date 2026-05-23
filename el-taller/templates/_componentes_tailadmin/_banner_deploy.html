@@ -1,7 +1,8 @@
 {% comment %}
-Banner "deploy en curso". Renderiza vacío si no hay deploy activo.
-Self-replacing vía HTMX cada 10s — cuando el endpoint devuelve 204,
-HTMX limpia el DOM y el banner desaparece. Decisión S-Aviso-Deploy-V1.
+Banner "deploy en curso". Self-replacing vía HTMX cada 10s.
+Cuando no hay deploy, el div queda vacío pero sigue polleando — así detecta
+el siguiente deploy sin necesidad de recargar la página. Decisión actualizada
+en S-LC-Feedback-V2: antes devolvía 204 y dejaba de polleear.
 {% endcomment %}
 <div id="banner-deploy"
      hx-get="/sistema/aviso-deploy/"

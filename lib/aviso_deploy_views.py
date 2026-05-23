@@ -1,31 +1,43 @@
-"""Vista compartida HTMX para el banner de aviso de deploy.
+"""Vistas compartidas HTMX para el aviso de deploy (banner + semáforo).
 
 Importar desde el `urls.py` de cada Django project:
 
-    from lib.aviso_deploy_views import banner_deploy
-    urlpatterns += [path("sistema/aviso-deploy/", banner_deploy)]
+    from lib.aviso_deploy_views import banner_deploy, semaforo_deploy
+    urlpatterns += [
+        path("sistema/aviso-deploy/", banner_deploy),
+        path("sistema/aviso-deploy/semaforo/", semaforo_deploy),
+    ]
 """
 
 from __future__ import annotations
 
-from django.http import HttpResponse
 from django.shortcuts import render
 
 from lib.aviso_deploy import obtener_deploy_en_curso
 
 
 def banner_deploy(request):
-    """GET /sistema/aviso-deploy/ — devuelve el partial si hay deploy, 204 si no.
+    """GET /sistema/aviso-deploy/ — devuelve el partial con el banner.
 
-    Sin auth: el banner aparece también en pantallas de login (deliberado,
-    para que un intento fallido durante deploy quede explicado).
-    HTMX self-replacing: cuando devolvemos 204, el div se borra solo.
+    Always renders the partial; el partial decide si mostrar el contenido
+    o quedarse vacío. Mantiene el polling HTMX activo sin importar el estado.
     """
     sha = obtener_deploy_en_curso()
-    if not sha:
-        return HttpResponse(status=204)
     return render(
         request,
         "_componentes_tailadmin/_banner_deploy.html",
-        {"hay_deploy_en_curso": True, "deploy_commit_sha": sha},
+        {"hay_deploy_en_curso": bool(sha), "deploy_commit_sha": sha},
+    )
+
+
+def semaforo_deploy(request):
+    """GET /sistema/aviso-deploy/semaforo/ — devuelve el partial del semáforo.
+
+    🟢 todo OK · 🔴 deploy en curso. Self-replacing HTMX cada 10s.
+    """
+    sha = obtener_deploy_en_curso()
+    return render(
+        request,
+        "_componentes_tailadmin/_semaforo_deploy.html",
+        {"hay_deploy_en_curso": bool(sha), "deploy_commit_sha": sha},
     )

@@ -74,3 +74,21 @@ def test_partial_dos_copias_sincronizadas():
     assert a.exists(), f"falta {a}"
     assert b.exists(), f"falta {b}"
     assert filecmp.cmp(a, b, shallow=False), "Las dos copias del partial divergen — sincronizar."
+
+
+def test_semaforo_dual_copy_sincronizada():
+    """S-LC-Feedback-V2: el partial del semáforo también es dual-copy."""
+    root = Path(__file__).resolve().parent.parent
+    a = root / "el-taller/templates/_componentes_tailadmin/_semaforo_deploy.html"
+    b = root / "la-gerencia/templates/_componentes_tailadmin/_semaforo_deploy.html"
+    assert a.exists(), f"falta {a}"
+    assert b.exists(), f"falta {b}"
+    assert filecmp.cmp(a, b, shallow=False), "Las dos copias del partial divergen — sincronizar."
+
+
+def test_semaforo_renderiza_verde_sin_deploy():
+    """Sin flag, el partial muestra 🟢."""
+    root = Path(__file__).resolve().parent.parent
+    contenido = (root / "el-taller/templates/_componentes_tailadmin/_semaforo_deploy.html").read_text()
+    assert "🟢" in contenido
+    assert "🔴" in contenido  # también incluye la rama de deploy

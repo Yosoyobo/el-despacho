@@ -1,0 +1,14 @@
+{% comment %}
+Semáforo de estado del sistema en el header. Self-replacing HTMX cada 10s.
+🟢 todo OK · 🔴 deploy en curso. Decisión S-LC-Feedback-V2.
+Reusa la bandera Redis `lib.aviso_deploy` que ya alimenta el banner.
+{% endcomment %}
+<span id="semaforo-deploy"
+      hx-get="/sistema/aviso-deploy/semaforo/"
+      hx-trigger="every 10s"
+      hx-swap="outerHTML"
+      class="inline-flex h-9 items-center justify-center rounded-lg border border-gray-200 px-2 text-base dark:border-gray-800"
+      title="{% if hay_deploy_en_curso %}🚧 Actualización en curso — la página puede recargar{% else %}Sistema operativo · todo OK{% endif %}"
+      aria-label="{% if hay_deploy_en_curso %}Deploy en curso{% else %}Sistema OK{% endif %}">
+    {% if hay_deploy_en_curso %}🔴{% else %}🟢{% endif %}
+</span>
