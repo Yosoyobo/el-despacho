@@ -105,6 +105,7 @@ TEMPLATES = [
                 "interfono.context_processors.vapid_public_key",
                 "auth_google.context_processors.google_oauth_configurado",
                 "cuentas.context_processors.permisos_modulos",
+                "lib.aviso_deploy.contexto_aviso_deploy",
             ],
         },
     },

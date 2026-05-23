@@ -5190,3 +5190,121 @@ con costos previos quedan como están (no migración) — el agregado de
 Cero pasos manuales. Para usar el botón "💰 Saldo" de Deepseek, la
 llave debe estar configurada en Los Ajustes (ya el caso) — el adapter
 hace GET con el mismo Bearer y devuelve el `total_balance` del usuario.
+
+---
+
+## 11. Hotfix 23 mayo 2026 (segunda ola) — Robustez del Dictado + S-Aviso-Deploy-V1
+
+### 11.1. Capa A — strip de prefijos `@/#/$`
+
+[el-taller/apps/el_dictado/ejecutores/basicos.py](el-taller/apps/el_dictado/ejecutores/basicos.py):
+helper `_limpiar_slug()` quita los prefijos `@`, `#`, `$` cuando el LLM
+los mete literalmente en `cliente_slug` / `proyecto_slug` / `usuario_slug`.
+Preserva `@accion_N` (referencia entre acciones). Resuelve casos como
+"Cliente `$$optimist` no encontrado" (dictados #22, #25).
+
+### 11.2. Capa B — re-interpretación automática con siguiente Chalán
+
+`lib/analistas/reemplazo.py::analizar()` acepta nuevo param
+`excluir: set[str] | None` que filtra la cadena.
+
+`apps/el_dictado/services.py::aplicar()` detecta el caso "el LLM se
+equivocó completo" (`aplicadas == 0 and fallidas > 0`) y, si quedan
+Chalanes en cadena sin probar, llama `_reinterpretar_con_otro_chalan()`
+con `excluir={chalan_anterior}`. Reemplaza las acciones del dictado
+y vuelve a aplicar. Cap `MAX_REINTENTOS_CHALAN = 2` (3 Chalanes total).
+
+**NO reintenta** cuando hubo aplicación parcial (`aplicadas > 0`):
+el cliente o proyecto ya están en DB y un retry duplicaría efectos.
+Para ese caso queda la capa C manual.
+
+### 11.3. Capa C — botón "🔄 Reintentar con otro Chalán"
+
+Nueva vista
+[`el_dictado/views.py::reintentar`](el-taller/apps/el_dictado/views.py)
++ ruta `dictado-reintentar`. Botón visible en el detalle del dictado
+cuando `estado in ('aplicado_con_errores', 'fallo_ia')`. POST limpia
+las acciones previas, llama `_reinterpretar_con_otro_chalan` con
+`excluir={chalan_actual}` y redirige al preview con las nuevas
+acciones para que el usuario las confirme.
+
+### 11.4. S-Aviso-Deploy-V1 — banner "🚧 Actualización en curso"
+
+**Lib compartida**
+[`lib/aviso_deploy.py`](lib/aviso_deploy.py):
+`marcar_deploy_en_curso(sha, ttl=600)` /
+`limpiar_deploy_en_curso()` / `obtener_deploy_en_curso()`.
+Bandera en Redis con clave `despacho:deploy:en_curso`. TTL como red
+de seguridad. Si Redis está caído, `obtener` devuelve None (no
+mostramos banner — Redis caído es problema más grande).
+
+**Context processor** `contexto_aviso_deploy` registrado en los 3
+settings (Gerencia + Taller + Recepción).
+
+**Partial dual-copy**
+[`_componentes_tailadmin/_banner_deploy.html`](el-taller/templates/_componentes_tailadmin/_banner_deploy.html)
+(idéntico en ambas apps, regla #18). Banner amarillo full-width arriba
+del header con `hx-get="/sistema/aviso-deploy/" hx-trigger="every 10s"
+hx-swap="outerHTML"`. Self-replacing: cuando el endpoint devuelve 204,
+HTMX limpia el DOM solo. Respeta dark mode.
+
+**Endpoint compartido**
+[`lib/aviso_deploy_views.py::banner_deploy`](lib/aviso_deploy_views.py)
+registrado como `/sistema/aviso-deploy/` en las 3 apps. Sin auth
+(deliberado — el banner aparece también en pantallas de login para
+explicar fallos durante el deploy).
+
+**Hook en mudanza.sh**:
+
+```bash
+docker compose exec -T redis redis-cli SET despacho:deploy:en_curso "$SHA" EX 600
+docker compose exec -T la-gerencia python manage.py emitir_evento deploy.iniciado --payload ...
+# ... pull && up -d ...
+docker compose exec -T redis redis-cli DEL despacho:deploy:en_curso
+```
+
+Todo tolerante a fallo (los `|| echo "(warn)..."` no abortan el
+deploy si Redis no responde un instante).
+
+**Management command nuevo**
+[`emitir_evento`](cuentas/management/commands/emitir_evento.py):
+`python manage.py emitir_evento <tipo> --payload '<json>'` — útil
+para hooks de shell y scripts ad-hoc.
+
+**El Site** ([`partials/internos.html`](la-gerencia/templates/site/partials/internos.html)):
+badge "🚧 Deploy en curso" con `animate-pulse` reemplaza el badge de
+estado del último deploy mientras el flag está activo.
+
+**Evento Portavoz** nuevo: `deploy.iniciado` (sumado al Literal
+[`portavoz_eventos.py`](lib/portavoz_eventos.py); los `deploy.exitoso`
+y `deploy.rollback` ya existían).
+
+**Tests** (`tests/test_aviso_deploy.py`, 7 casos):
+- `obtener` sin flag retorna None.
+- `marcar` setea TTL > 0.
+- `limpiar` borra la clave.
+- Redis caído → `obtener` devuelve None defensivo.
+- Context processor expone `hay_deploy_en_curso` / `deploy_commit_sha`.
+- Dos copias del partial idénticas (filecmp).
+
+### 11.5. Configuración post-deploy
+
+Cero pasos manuales. La primera corrida de `mudanza.sh` con el código
+nuevo activa el flag al inicio y lo limpia al final.
+
+Para verificar en vivo: durante un deploy,
+`docker compose exec redis redis-cli GET despacho:deploy:en_curso`
+debe devolver el SHA mientras dura, y `(nil)` después del healthcheck
+verde.
+
+### 11.6. Deuda diseñada / NO incluye (S-Aviso-Deploy-V2)
+
+- Página estática de mantenimiento en Caddy (`handle_errors 502 503
+  504 { ... }`) que cubra los ~15s de corte real (no sólo el aviso
+  previo). Sprint propio.
+- Aviso programado ("se reiniciará en X min") con botón en La
+  Gerencia para super_admin. Útil para deploys agendados.
+- Push del Interfón avisando del deploy. Sobreoptimización para 5
+  usuarios — banner alcanza.
+- Mostrar SHA del commit en el banner. Decisión: solo super_admin
+  necesita esa info y la tiene en El Site.

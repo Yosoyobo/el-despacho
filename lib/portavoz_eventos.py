@@ -39,6 +39,7 @@ EventoTipo = Literal[
     "buzon.estado_cambiado",
     "buzon.respondido",
     "site.integracion_fallo",
+    "deploy.iniciado",
     "deploy.exitoso",
     "deploy.rollback",
     "auth.google_vinculada",

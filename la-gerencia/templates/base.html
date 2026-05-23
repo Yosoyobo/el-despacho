@@ -34,6 +34,7 @@
     {% block head_extra %}{% endblock %}
 </head>
 <body class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100 min-h-screen">
+{% include "_componentes_tailadmin/_banner_deploy.html" %}
 {% if request.user.is_authenticated %}
 <div class="flex min-h-screen">
     {% include "_componentes_tailadmin/sidebar.html" %}

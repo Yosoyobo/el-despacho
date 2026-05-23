@@ -37,5 +37,15 @@
     </aside>
 </div>
 
-<div class="mt-6"><a href="{% url 'dictado-historial' %}" class="text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400">← Volver al historial</a></div>
+<div class="mt-6 flex items-center justify-between gap-3">
+    <a href="{% url 'dictado-historial' %}" class="text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400">← Volver al historial</a>
+    {% if dictado.estado == 'aplicado_con_errores' or dictado.estado == 'fallo_ia' %}
+    <form method="post" action="{% url 'dictado-reintentar' dictado.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="rounded-lg border border-warning-300 bg-warning-50 px-3 py-1.5 text-sm font-medium text-warning-700 hover:bg-warning-100 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300 dark:hover:bg-warning-500/20" title="Re-interpreta el mismo texto con el siguiente Chalán de la cadena">
+            🔄 Reintentar con otro Chalán
+        </button>
+    </form>
+    {% endif %}
+</div>
 {% endblock %}

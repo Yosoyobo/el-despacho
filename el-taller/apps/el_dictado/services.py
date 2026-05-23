@@ -153,12 +153,24 @@ def interpretar(
     return dictado
 
 
-def aplicar(*, dictado, usuario):
-    """Ejecuta las acciones `confirmada=True`. Una falla NO aborta el resto."""
+MAX_REINTENTOS_CHALAN = 2  # 1 primario + 2 fallbacks = 3 Chalanes máximo.
+
+
+def aplicar(*, dictado, usuario, _reintentos: int = 0, _proveedores_intentados: set | None = None):
+    """Ejecuta las acciones `confirmada=True`. Una falla NO aborta el resto.
+
+    Si **todas** las acciones fallan (aplicadas == 0) y aún quedan Chalanes
+    sin probar en la cadena, re-interpreta automáticamente con el siguiente
+    proveedor (capa B). Cap: `MAX_REINTENTOS_CHALAN` reintentos.
+    """
     from .ejecutores import EJECUTORES
 
     if dictado.autor_id and dictado.autor_id != usuario.pk:
         raise PermissionError("Solo el autor puede aplicar su propio dictado.")
+
+    proveedores_intentados = _proveedores_intentados or set()
+    if dictado.chalan:
+        proveedores_intentados.add(dictado.chalan)
 
     acciones = list(dictado.acciones.filter(confirmada=True).order_by("orden"))
     aplicadas = 0
@@ -200,6 +212,30 @@ def aplicar(*, dictado, usuario):
             }
         aplicadas += 1
 
+    # Capa B (S-LC-Feedback-V1 hotfix 4): si TODAS las acciones fallaron y aún
+    # quedan Chalanes sin probar, re-interpretamos automáticamente con el
+    # siguiente proveedor en cadena. Solo aplica al caso "el LLM se equivocó
+    # completo" — si al menos una acción cambió DB, NO reintentamos
+    # (duplicaría efectos).
+    if (
+        aplicadas == 0
+        and fallidas > 0
+        and _reintentos < MAX_REINTENTOS_CHALAN
+        and len(acciones) > 0
+    ):
+        siguiente = _reinterpretar_con_otro_chalan(
+            dictado=dictado,
+            usuario=usuario,
+            excluir=proveedores_intentados,
+        )
+        if siguiente:
+            # Limpia el estado del dictado y aplica las nuevas acciones.
+            return aplicar(
+                dictado=dictado, usuario=usuario,
+                _reintentos=_reintentos + 1,
+                _proveedores_intentados=proveedores_intentados,
+            )
+
     dictado.estado = "aplicado" if fallidas == 0 and aplicadas > 0 else (
         "aplicado_con_errores" if aplicadas > 0 else "fallo_ia"
     )
@@ -212,6 +248,75 @@ def aplicar(*, dictado, usuario):
         {"dictado_id": dictado.pk, "num_aplicadas": aplicadas, "num_fallidas": fallidas},
     )
     return {"aplicadas": aplicadas, "fallidas": fallidas}
+
+
+def _reinterpretar_con_otro_chalan(*, dictado, usuario, excluir: set):
+    """Re-interpreta el dictado con el siguiente Chalán de la cadena.
+
+    Borra las acciones fallidas previas y persiste las nuevas en el mismo
+    dictado. Si no hay siguiente Chalán disponible, retorna False y deja
+    el dictado como estaba para que `aplicar()` cierre como
+    `aplicado_con_errores`/`fallo_ia` normalmente.
+    """
+    from .models import DictadoAccion
+    from .prompt import SYSTEM_PROMPT, aprendizajes_activos, construir_user_prompt
+    import logging
+    log = logging.getLogger(__name__)
+
+    aprendizajes = aprendizajes_activos()
+    user_prompt = construir_user_prompt(
+        usuario=usuario, texto_crudo=dictado.texto_crudo,
+        aprendizajes=aprendizajes,
+        historial=list(dictado.historial_clarificaciones or []),
+    )
+    prompt_completo = SYSTEM_PROMPT + "\n\n" + user_prompt
+
+    try:
+        from lib.analistas import analizar
+        resultado = analizar(
+            estacion="dictado", prompt=prompt_completo,
+            max_tokens=2000, temperatura=0.2,
+            actor_id=getattr(usuario, "pk", None),
+            excluir=excluir,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("dictado=%s reinterpretar falló: %s", dictado.pk, exc)
+        return False
+
+    parsed = _parsear_json(resultado.texto)
+    if not parsed or not isinstance(parsed, dict):
+        return False
+
+    # Reemplaza acciones previas con las nuevas. Marcamos las nuevas como
+    # confirmada=True automáticamente — el usuario ya confirmó el dictado
+    # original; el reintento es transparente.
+    dictado.acciones.all().delete()
+    acciones_raw = parsed.get("acciones") or []
+    orden = 0
+    for raw in acciones_raw:
+        if not isinstance(raw, dict):
+            continue
+        tipo = (raw.get("tipo") or "").strip()
+        if not tipo or tipo in TIPOS_PROHIBIDOS:
+            continue
+        DictadoAccion.objects.create(
+            dictado=dictado, orden=orden, tipo=tipo,
+            descripcion=(raw.get("descripcion") or "")[:300],
+            payload=raw.get("payload") or {},
+            confianza=float(raw.get("confianza") or 1.0),
+            confirmada=True,
+        )
+        orden += 1
+    dictado.chalan = resultado.provider
+    dictado.chalan_apodo = _apodo_de(resultado.provider)
+    dictado.modelo = resultado.modelo
+    dictado.save(update_fields=["chalan", "chalan_apodo", "modelo"])
+    _emitir_evento("dictado.reinterpretado", usuario, {
+        "dictado_id": dictado.pk,
+        "chalan_nuevo": resultado.provider,
+        "excluidos": sorted(excluir),
+    })
+    return True
 
 
 def _parsear_json(texto: str):

@@ -1,0 +1,22 @@
+{% comment %}
+Banner "deploy en curso". Renderiza vacío si no hay deploy activo.
+Self-replacing vía HTMX cada 10s — cuando el endpoint devuelve 204,
+HTMX limpia el DOM y el banner desaparece. Decisión S-Aviso-Deploy-V1.
+{% endcomment %}
+<div id="banner-deploy"
+     hx-get="/sistema/aviso-deploy/"
+     hx-trigger="every 10s"
+     hx-swap="outerHTML">
+    {% if hay_deploy_en_curso %}
+    <div role="status" aria-live="polite"
+         class="border-b border-warning-300 bg-warning-50 px-4 py-2.5 text-sm text-warning-700 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
+        <div class="mx-auto flex max-w-7xl items-center gap-3">
+            <span class="text-base" aria-hidden="true">🚧</span>
+            <span class="flex-1">
+                <strong class="font-semibold">Actualización en curso</strong> — la página puede recargar en los próximos segundos.
+                <span class="opacity-80">Tus cambios sin guardar pueden perderse.</span>
+            </span>
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -9,5 +9,6 @@ urlpatterns = [
     path("dictado/<int:pk>/aplicar", views.aplicar_view, name="dictado-aplicar"),
     path("dictado/<int:pk>/responder", views.responder_clarificacion, name="dictado-responder"),
     path("dictado/<int:pk>/cancelar", views.cancelar, name="dictado-cancelar"),
+    path("dictado/<int:pk>/reintentar", views.reintentar, name="dictado-reintentar"),
     path("dictado/<int:pk>/", views.detalle, name="dictado-detalle"),
 ]

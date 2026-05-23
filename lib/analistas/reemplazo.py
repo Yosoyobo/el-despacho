@@ -39,10 +39,16 @@ def analizar(
     temperatura: float = 0.4,
     actor_id: int | None = None,
     requiere: set | None = None,
+    excluir: set[str] | None = None,
 ) -> Resultado:
     cadena = cadena_de(estacion, usuario_id=actor_id)
     if not cadena:
         raise RuntimeError(f"No hay adapters configurados para estación '{estacion}'")
+
+    if excluir:
+        cadena = [a for a in cadena if a.nombre not in excluir]
+        if not cadena:
+            raise TodosFallaron([("(excluidos)", f"todos los proveedores excluidos: {excluir}")])
 
     if requiere:
         cadena = [a for a in cadena if set(requiere).issubset(set(a.capacidades or ()))]

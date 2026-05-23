@@ -36,7 +36,10 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
-        "OPTIONS": {"context_processors": ["django.template.context_processors.request"]},
+        "OPTIONS": {"context_processors": [
+            "django.template.context_processors.request",
+            "lib.aviso_deploy.contexto_aviso_deploy",
+        ]},
     },
 ]
 ASGI_APPLICATION = "la_recepcion.asgi.application"

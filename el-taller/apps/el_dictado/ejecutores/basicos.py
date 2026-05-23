@@ -31,6 +31,23 @@ ESTADOS_PROYECTO_VALIDOS = {
 REF_ACCION_RE = re.compile(r"^@accion_(\d+)$")
 
 
+def _limpiar_slug(slug: str) -> str:
+    """Quita prefijos `@/#/$` que el LLM a veces emite literales en el slug.
+
+    Ejemplo: el LLM mete `cliente_slug: "$optimist"` cuando debería ser
+    `cliente_slug: "optimist"`. Preserva `@accion_N` (referencia entre
+    acciones) que sí debe iniciar con `@`.
+    """
+    if not slug:
+        return slug
+    s = slug.strip()
+    if REF_ACCION_RE.match(s):
+        return s
+    while s and s[0] in ("$", "#", "@"):
+        s = s[1:]
+    return s
+
+
 def _ref_anterior(slug: str, contexto: dict | None, tipo_esperado: str):
     """Capa 1 — resuelve `@accion_N` mirando `contexto.entidades_creadas`.
 
@@ -98,6 +115,7 @@ def _resolver_proyecto(slug: str, contexto: dict | None = None):
     from apps.los_proyectos.models import Proyecto
     if not slug:
         raise ValueError("Falta `proyecto_slug` en payload.")
+    slug = _limpiar_slug(slug)
     # Capa 1: @accion_N
     ref_id = _ref_anterior(slug, contexto, "proyecto")
     if ref_id:
@@ -121,6 +139,7 @@ def _resolver_cliente(slug: str, contexto: dict | None = None):
     from apps.la_cartera.models import Cliente
     if not slug:
         raise ValueError("Falta `cliente_slug` en payload.")
+    slug = _limpiar_slug(slug)
     ref_id = _ref_anterior(slug, contexto, "cliente")
     if ref_id:
         obj = Cliente.objects.filter(pk=ref_id).first()
@@ -138,6 +157,7 @@ def _resolver_cliente(slug: str, contexto: dict | None = None):
 
 def _resolver_usuario(slug: str, contexto: dict | None = None):
     from cuentas.models.usuario import Usuario
+    slug = _limpiar_slug(slug)
     u = Usuario.objects.filter(slug=slug.lower(), is_active=True).first()
     if not u:
         raise ValueError(f"Usuario `@{slug}` no encontrado.")

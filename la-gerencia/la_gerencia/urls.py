@@ -4,6 +4,7 @@ from django.conf import settings
 from django.urls import include, path, re_path
 
 from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
+from lib.aviso_deploy_views import banner_deploy
 
 
 def _redirect_a_taller(prefijo: str):
@@ -19,6 +20,7 @@ def _redirect_a_taller(prefijo: str):
     return _vista
 
 urlpatterns = [
+    path("sistema/aviso-deploy/", banner_deploy, name="aviso-deploy"),
     *urlpatterns_sw,
     *urlpatterns_suscripcion,
     path("", include("auth_google.urls", namespace="google_oauth")),

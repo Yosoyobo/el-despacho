@@ -2507,6 +2507,64 @@ corrección de tarifa:
 Cero migraciones, cero pasos post-deploy. Docs: DOC_04 v1.5 (§8.2 y
 §8.3), CLAUDE.md hotfix 3, BITACORA §10.
 
+### S-LC-Feedback-V1 hotfix 4 ✅ — Robustez del Dictado + S-Aviso-Deploy-V1 (2026-05-23)
+
+Dos entregas independientes en una sesión:
+
+**Hotfix 4 al Dictado** (3 capas):
+
+- **Capa A — strip `@/#/$` en resolvers**
+  ([ejecutores/basicos.py](el-taller/apps/el_dictado/ejecutores/basicos.py)):
+  helper `_limpiar_slug()` quita prefijos literales que el LLM a
+  veces emite en el slug (`cliente_slug: "$optimist"` → `optimist`).
+  Preserva `@accion_N` (referencia entre acciones).
+- **Capa B — re-interpretación automática con siguiente Chalán**
+  ([services.py](el-taller/apps/el_dictado/services.py)): si TODAS las
+  acciones fallan al aplicar (`aplicadas == 0 and fallidas > 0`) y
+  aún quedan Chalanes sin probar, `aplicar()` llama
+  `_reinterpretar_con_otro_chalan()` con `excluir={chalan_actual}`,
+  reemplaza las acciones y vuelve a aplicar. Cap: 2 reintentos
+  (3 Chalanes total). NO reintenta si `aplicadas > 0` (parcial —
+  retry duplicaría efectos). Nueva firma `analizar(..., excluir=...)`
+  en [lib/analistas/reemplazo.py](lib/analistas/reemplazo.py).
+- **Capa C — botón "🔄 Reintentar con otro Chalán"** en el detalle
+  del dictado cuando `aplicado_con_errores`/`fallo_ia`. POST a
+  nueva ruta `dictado-reintentar` re-interpreta excluyendo el
+  Chalán actual y devuelve al usuario al preview.
+
+Evento Portavoz nuevo: `dictado.reinterpretado`.
+
+**S-Aviso-Deploy-V1**: banner amarillo "🚧 Actualización en curso"
+que aparece durante deploys en las 3 apps.
+
+- [`lib/aviso_deploy.py`](lib/aviso_deploy.py): API basada en Redis
+  (`marcar`/`limpiar`/`obtener`). TTL 600s como red de seguridad.
+  Tolerante a Redis caído (return None en lugar de raise).
+- Context processor `contexto_aviso_deploy` registrado en los 3
+  settings (Gerencia + Taller + Recepción).
+- Partial dual-copy `_componentes_tailadmin/_banner_deploy.html`
+  con `hx-trigger="every 10s"` self-replacing — cuando el endpoint
+  devuelve 204, HTMX limpia el banner solo.
+- Endpoint compartido [`lib/aviso_deploy_views.py::banner_deploy`](lib/aviso_deploy_views.py)
+  registrado como `/sistema/aviso-deploy/` en las 3 apps.
+- Hook en [`mudanza.sh`](infra/scripts/mudanza.sh): `SET` antes de
+  `compose up` + emisión de `deploy.iniciado` (vía management
+  command nuevo
+  [`emitir_evento`](cuentas/management/commands/emitir_evento.py)) +
+  `DEL` tras finalizar. Todo tolerante a fallo — el banner no debe
+  abortar el deploy.
+- El Site (`internos.html` partial): badge "🚧 Deploy en curso"
+  reemplaza el badge de "último deploy" mientras el flag está
+  activo.
+- Evento Portavoz `deploy.iniciado` agregado al Literal de tipos.
+
+Tests nuevos: `tests/test_aviso_deploy.py` (7 casos — marcar/limpiar,
+TTL, Redis caído defensivo, context processor, sincronización
+dual-copy del partial).
+
+Cero migraciones. Una sola corrida de `mudanza.sh` con el código
+nuevo activa todo automáticamente.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

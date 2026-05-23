@@ -101,7 +101,9 @@
                 <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">🚚</span>
                 Último deploy · La Mudanza
             </h3>
-            {% if internos.deploy.disponible %}
+            {% if hay_deploy_en_curso %}
+                <span class="badge badge-warning animate-pulse">🚧 Deploy en curso{% if deploy_commit_sha %} · {{ deploy_commit_sha|truncatechars:9 }}{% endif %}</span>
+            {% elif internos.deploy.disponible %}
                 <span class="badge {% if internos.deploy.estado == 'ok' %}badge-success{% else %}badge-error{% endif %}">{{ internos.deploy.estado }}</span>
             {% endif %}
         </div>

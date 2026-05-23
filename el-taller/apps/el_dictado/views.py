@@ -102,6 +102,35 @@ def cancelar(request, pk: int):
 
 
 @login_required
+@require_http_methods(["POST"])
+def reintentar(request, pk: int):
+    """POST /dictado/<id>/reintentar — re-interpreta excluyendo el Chalán actual.
+
+    Útil para `aplicado_con_errores` o `fallo_ia` cuando el usuario quiere
+    pedirle a otro Chalán que vuelva a interpretar el mismo texto. Las
+    acciones previas se reemplazan; el usuario vuelve a la pantalla de
+    preview para confirmar las nuevas.
+    """
+    from django.contrib import messages
+    from .services import _reinterpretar_con_otro_chalan
+    dictado = get_object_or_404(Dictado, pk=pk, autor=request.user)
+    if dictado.estado not in ("aplicado_con_errores", "fallo_ia"):
+        messages.error(request, "Sólo se puede reintentar un dictado que falló.")
+        return redirect("dictado-detalle", pk=dictado.pk)
+    excluir = {dictado.chalan} if dictado.chalan else set()
+    ok = _reinterpretar_con_otro_chalan(
+        dictado=dictado, usuario=request.user, excluir=excluir,
+    )
+    if not ok:
+        messages.error(request, "No fue posible reintentar — no quedan más Chalanes disponibles o ninguno entendió el texto.")
+        return redirect("dictado-detalle", pk=dictado.pk)
+    dictado.estado = "esperando_confirmacion"
+    dictado.save(update_fields=["estado"])
+    messages.success(request, f"Re-interpretado con {dictado.chalan_apodo}. Revisa las nuevas acciones.")
+    return redirect("dictado-preview", pk=dictado.pk)
+
+
+@login_required
 def detalle(request, pk: int):
     from django.urls import reverse
     dictado = get_object_or_404(Dictado, pk=pk, autor=request.user)
