@@ -35,7 +35,29 @@
     {% endif %}
 </section>
 
-{# 2a) Sugerencias del Chalán (Capa 2 — reglas heurísticas). #}
+{# El Dictado — S-LC-Feedback-V3: justo abajo de Acciones rápidas. #}
+<section data-andamiaje="dictado-slot"
+         class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
+    <div class="flex items-start gap-3">
+        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
+        <div class="flex-1">
+            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">🎙️ Cuéntale al Chalán qué pasó</h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Escribe en lenguaje natural. El Chalán interpreta y te muestra acciones para confirmar.</p>
+            <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
+                {% csrf_token %}
+                <textarea name="texto" rows="3" required data-referencias
+                          placeholder="Menciona @personas, #proyectos y $clientes... ej. 'En #LC-0001 asigna a @maria y crea tarea de mandar contrato mañana.'"
+                          class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
+                    <button type="submit" class="btn-primario">Procesar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+{# Sugerencias del Chalán (Capa 2 — reglas heurísticas). #}
 {% if sugerencias %}
 <section class="mb-6 space-y-2">
     {% for s in sugerencias %}
@@ -165,29 +187,7 @@
     </div>
 </section>
 
-{# 5) El Dictado — abajo del Tablero/Proyectos (S-LC-Feedback-V2 reorder). #}
-<section data-andamiaje="dictado-slot"
-         class="mb-8 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
-    <div class="flex items-start gap-3">
-        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
-        <div class="flex-1">
-            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">🎙️ Cuéntale al Chalán qué pasó</h2>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Escribe en lenguaje natural. El Chalán interpreta y te muestra acciones para confirmar.</p>
-            <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
-                {% csrf_token %}
-                <textarea name="texto" rows="3" required data-referencias
-                          placeholder="Menciona @personas, #proyectos y $clientes... ej. 'En #LC-0001 asigna a @maria y crea tarea de mandar contrato mañana.'"
-                          class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
-                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
-                    <button type="submit" class="btn-primario">Procesar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</section>
-
-{# 6) Mini-calendario interactivo — 2 meses, días con eventos clickeables. #}
+{# Mini-calendario interactivo — 2 meses, días con eventos clickeables. #}
 {% if mini_cal %}
 <section class="mb-8">
     <div class="mb-3 flex items-center justify-between">
