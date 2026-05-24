@@ -8,6 +8,7 @@ import httpx  # noqa: F401  (asegura módulo cargado para patch)
 import pytest
 
 from lib.analistas.adapters.anthropic import AnthropicAdapter
+from lib.analistas.adapters.gemini import GeminiAdapter
 from lib.analistas.adapters.mimo import MimoAdapter
 from lib.analistas.adapters.openai import OpenAIAdapter
 from lib.analistas.base import (
@@ -143,7 +144,64 @@ class TestAdaptersUnitarios:
         adapter = adapter_de("mimo")
         assert adapter is not None
         assert adapter.nombre == "mimo"
-        assert adapter.apodo == "Chalán MiMo"
+
+    # ── Gemini (S-Demo-Pre-Showcase) ──
+
+    def test_gemini_sin_credencial_lanza_falta(self, db):
+        with pytest.raises(FaltaCredencial):
+            GeminiAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_gemini_200_devuelve_resultado(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_gemini_api_key", "AIza-test-xxxx")
+        payload = {
+            "candidates": [
+                {"content": {"parts": [{"text": "hola desde gemini"}], "role": "model"}}
+            ],
+            "usageMetadata": {
+                "promptTokenCount": 7,
+                "candidatesTokenCount": 4,
+                "totalTokenCount": 11,
+            },
+        }
+        with patch("httpx.post", return_value=_RespFalsa(200, payload)) as mock_post:
+            res = GeminiAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+        # API key va por query string, NO en header de auth.
+        _, kw = mock_post.call_args
+        assert kw["params"]["key"] == "AIza-test-xxxx"
+        assert "Authorization" not in kw["headers"]
+        assert "api-key" not in kw["headers"]
+        # Body es contents/parts, no messages/choices.
+        assert "contents" in kw["json"]
+        assert kw["json"]["generationConfig"]["maxOutputTokens"] == 10
+        assert res.texto == "hola desde gemini"
+        assert res.provider == "gemini"
+        assert res.prompt_tokens == 7
+        assert res.completion_tokens == 4
+        # Placeholder $0/$0.
+        assert res.costo_usd == 0.0
+
+    def test_gemini_400_es_permanente(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_gemini_api_key", "AIza-test-xxxx")
+        with patch("httpx.post", return_value=_RespFalsa(400, text="API_KEY_INVALID")), \
+             pytest.raises(ErrorPermanente):
+            GeminiAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_gemini_429_es_transitorio(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_gemini_api_key", "AIza-test-xxxx")
+        with patch("httpx.post", return_value=_RespFalsa(429, text="rate")), \
+             pytest.raises(ErrorTransitorio):
+            GeminiAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_gemini_registrado_en_factories(self):
+        from lib.analistas.registry import _FACTORIES, adapter_de
+        assert "gemini" in _FACTORIES
+        adapter = adapter_de("gemini")
+        assert adapter is not None
+        assert adapter.nombre == "gemini"
+        assert adapter.apodo == "Chalán Gemini"
 
 
 def _post_routed(*, anthropic_resp, openai_resp):

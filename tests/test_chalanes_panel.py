@@ -89,11 +89,11 @@ def test_estadisticas_excluye_fuera_de_ventana():
 
 
 @pytest.mark.django_db
-def test_tarjetas_incluye_los_4_chalanes_registrados():
+def test_tarjetas_incluye_los_5_chalanes_registrados():
     from lib.analistas.stats import tarjetas_chalanes
     tarjetas = tarjetas_chalanes(dias=30)
     nombres = {t["nombre"] for t in tarjetas}
-    assert nombres == {"anthropic", "openai", "deepseek", "mimo"}
+    assert nombres == {"anthropic", "openai", "deepseek", "mimo", "gemini"}
 
 
 @pytest.mark.django_db

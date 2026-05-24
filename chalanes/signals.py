@@ -19,8 +19,9 @@ from django.dispatch import receiver
 # Coincide con `chalan_<nombre>_api_key`. Captura el nombre del proveedor.
 _PATRON_SLOT = re.compile(r"^chalan_([a-z0-9]+)_api_key$")
 
-# Proveedores que aún no tienen adapter funcional (skeleton).
-_NO_REGISTRAR = {"gemini"}
+# Proveedores que aún no tienen adapter funcional (skeleton). Vacío a
+# partir de S-Demo-Pre-Showcase — Gemini activado.
+_NO_REGISTRAR: set[str] = set()
 
 
 @receiver(post_save, sender="ajustes.Credencial")
