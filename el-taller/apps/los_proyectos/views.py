@@ -2,7 +2,10 @@ from apps.la_cartera.models import Cliente
 from apps.los_proyectos.forms import (
     AsignacionForm,
     CambiarEstadoForm,
+    EditarEconomicoForm,
+    EditarFechasForm,
     ProyectoForm,
+    ProyectoProductoForm,
     ProyectoProductoFormSet,
     ProyectoProductoFormSetEdit,
 )
@@ -10,6 +13,7 @@ from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
     Proyecto,
     ProyectoAsignacion,
+    ProyectoProducto,
 )
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -365,3 +369,134 @@ def asignar(request, pk):
         "proyecto": proyecto,
         "asignaciones": proyecto.asignaciones.select_related("usuario"),
     })
+
+
+# ── S-LC-Feedback-V5 c4: quick-edits inline ────────────────────────────
+
+
+def _es_htmx(request):
+    return request.headers.get("HX-Request") == "true"
+
+
+def _redir_detalle(proyecto):
+    return reverse("proyectos-detalle", args=[proyecto.pk])
+
+
+@login_required
+def editar_fechas(request, pk):
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        form = EditarFechasForm(request.POST, instance=proyecto)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="proyecto.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proyecto_id": proyecto.pk, "campo": "fechas"},
+            ))
+            messages.success(request, "Fechas actualizadas.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})
+            return redirect(_redir_detalle(proyecto))
+    else:
+        form = EditarFechasForm(instance=proyecto)
+    return render(request, "proyectos/_modal_editar_fechas.html", {"form": form, "proyecto": proyecto})
+
+
+@login_required
+def editar_economico(request, pk):
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        form = EditarEconomicoForm(request.POST, instance=proyecto)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="proyecto.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proyecto_id": proyecto.pk, "campo": "economico"},
+            ))
+            messages.success(request, "Datos económicos actualizados.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})
+            return redirect(_redir_detalle(proyecto))
+    else:
+        form = EditarEconomicoForm(instance=proyecto)
+    return render(request, "proyectos/_modal_editar_economico.html", {"form": form, "proyecto": proyecto})
+
+
+@login_required
+def agregar_tarea_modal(request, pk):
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    from apps.el_pizarron.forms import TareaForm
+    from apps.el_pizarron.models.tarea import Tarea
+    from apps.taller_home.push_handlers import notificar_tarea_asignada
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        form = TareaForm(request.POST)
+        if form.is_valid():
+            tarea = form.save(commit=False)
+            tarea.proyecto = proyecto
+            tarea.creada_por = request.user
+            tarea.save()
+            emitir(EventoPortavoz(
+                tipo="tarea.creada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"tarea_id": tarea.pk, "proyecto_id": proyecto.pk},
+            ))
+            try:
+                notificar_tarea_asignada(tarea, request.user)
+            except Exception:
+                pass
+            messages.success(request, f"Tarea «{tarea.titulo}» creada.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})
+            return redirect(_redir_detalle(proyecto))
+    else:
+        form = TareaForm()
+    return render(request, "proyectos/_modal_agregar_tarea.html", {"form": form, "proyecto": proyecto})
+
+
+@login_required
+def agregar_producto_modal(request, pk):
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        form = ProyectoProductoForm(request.POST)
+        if form.is_valid():
+            prod = form.save(commit=False)
+            prod.proyecto = proyecto
+            prod.save()
+            emitir(EventoPortavoz(
+                tipo="proyecto.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proyecto_id": proyecto.pk, "campo": "producto_agregado", "producto_id": prod.pk},
+            ))
+            messages.success(request, "Producto agregado.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})
+            return redirect(_redir_detalle(proyecto))
+    else:
+        form = ProyectoProductoForm()
+    return render(request, "proyectos/_modal_agregar_producto.html", {"form": form, "proyecto": proyecto})
+
+
+@login_required
+def quitar_producto(request, pk, prod_pk):
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    if request.method != "POST":
+        return HttpResponseForbidden("Solo POST.")
+    ProyectoProducto.objects.filter(proyecto=proyecto, pk=prod_pk).delete()
+    messages.success(request, "Producto quitado.")
+    return redirect(_redir_detalle(proyecto))

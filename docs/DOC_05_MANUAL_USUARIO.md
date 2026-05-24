@@ -4,6 +4,15 @@
 
 ---
 
+## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 4)
+
+- **Edición rápida desde el detalle del proyecto.** Ya no tienes que entrar a "Editar" cuando solo quieres cambiar las fechas o los montos.
+  - **"Editar fechas →"** abajo de la tarjeta de Fechas: abre un modal con inicio, compromiso y entrega real.
+  - **"Editar montos →"** abajo de la tarjeta de Económico: estimado, cotizado y facturado.
+  - **"Gestionar equipo →"** abajo de la tarjeta de Equipo: lleva a la pantalla completa de asignaciones.
+- **"+ Nueva tarea" abre modal sin salir del proyecto.** Antes te mandaba a una página separada del Pizarrón. Ahora abre directo y al guardar regresas al detalle con la tarea ya en la lista.
+- **"+ Agregar producto" desde el detalle.** Junto al título "Productos involucrados" hay un botón nuevo que abre modal con selector de producto + variación + cantidad + nota. Cada fila también tiene "Quitar" para removerlo sin entrar a editar todo el proyecto.
+
 ## Novedades al 23 de mayo de 2026 (S-LC-Feedback-V5 commit 3)
 
 - **Crear producto on-the-fly desde Cotizaciones y Facturación.** En el form de Nueva Cotización o Nueva Factura, abajo de la lista de líneas, hay un panel desplegable "+ Crear producto nuevo en el catálogo". Captura tipo + nombre + costo + precio + cantidad, dale "Crear y agregar" y el producto queda registrado en el catálogo + agregado como nueva línea de la cotización o factura. Mismo patrón que ya existía en Proyectos.

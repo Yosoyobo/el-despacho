@@ -40,6 +40,37 @@ class CambiarEstadoForm(forms.Form):
     fecha_real_entrega = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
 
 
+class EditarFechasForm(forms.ModelForm):
+    """S-LC-Feedback-V5 c4 — edición rápida de fechas desde el detalle."""
+
+    class Meta:
+        model = Proyecto
+        fields = ["fecha_inicio", "fecha_compromiso", "fecha_real_entrega"]
+        widgets = {
+            "fecha_inicio": forms.DateInput(attrs={"type": "date"}),
+            "fecha_compromiso": forms.DateInput(attrs={"type": "date"}),
+            "fecha_real_entrega": forms.DateInput(attrs={"type": "date"}),
+        }
+        labels = {
+            "fecha_inicio": "Inicio",
+            "fecha_compromiso": "Compromiso",
+            "fecha_real_entrega": "Entrega real",
+        }
+
+
+class EditarEconomicoForm(forms.ModelForm):
+    """S-LC-Feedback-V5 c4 — edición rápida del bloque económico."""
+
+    class Meta:
+        model = Proyecto
+        fields = ["monto_estimado", "monto_cotizado", "monto_facturado"]
+        labels = {
+            "monto_estimado": "Monto estimado",
+            "monto_cotizado": "Monto cotizado",
+            "monto_facturado": "Monto facturado",
+        }
+
+
 class ProyectoProductoForm(forms.ModelForm):
     servicio = forms.ModelChoiceField(
         queryset=Servicio.activos.all().select_related("categoria"),

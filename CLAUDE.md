@@ -2829,6 +2829,36 @@ movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
   cláusulas como "los proyectos activos" donde "los" es artículo
   natural del español).
 
+### S-LC-Feedback-V5 ✅ commit 4 — Proyectos: quick-edit inline (fechas/económico) + agregar tarea/producto (2026-05-24)
+
+3 modales granulares + 2 quick-add desde el detalle del proyecto.
+Patrón Wave 5 (HTMX `hx-get` → `#modal-slot`, POST → 204 +
+`HX-Redirect`).
+
+- **Forms nuevos** en [el-taller/apps/los_proyectos/forms.py](el-taller/apps/los_proyectos/forms.py):
+  `EditarFechasForm` (inicio/compromiso/real_entrega) y
+  `EditarEconomicoForm` (monto_estimado/cotizado/facturado). Ambos
+  `ModelForm` sobre `Proyecto`.
+- **5 views nuevas** en [el-taller/apps/los_proyectos/views.py](el-taller/apps/los_proyectos/views.py):
+  `editar_fechas`, `editar_economico`, `agregar_tarea_modal`,
+  `agregar_producto_modal`, `quitar_producto`. Las 4 primeras
+  detectan `HX-Request` y renderean partial-modal o 204+`HX-Redirect`.
+  `quitar_producto` es POST puro con redirect (confirma con JS
+  inline en el botón).
+- **4 partials de modal nuevos** en `el-taller/templates/proyectos/`:
+  `_modal_editar_fechas.html`, `_modal_editar_economico.html`,
+  `_modal_agregar_tarea.html`, `_modal_agregar_producto.html`. Patrón
+  copiado de `_modal_cambiar_estado.html`.
+- **Detalle del proyecto** ([detalle.html](el-taller/templates/proyectos/detalle.html)):
+  cada info_card del sidebar gana un link "Editar … →" debajo;
+  Productos involucrados tiene "+ Agregar producto" en su header +
+  columna "Quitar" en cada fila; "+ Nueva tarea" ahora abre modal
+  HTMX en vez de salir a la página del Pizarrón.
+- **5 URLs nuevas** en `el-taller/apps/los_proyectos/urls.py`.
+
+Sin migraciones. Reusa el `#modal-slot` y `ui.js` existente. Tests
+verdes (proyectos + pizarron = 23 pass).
+
 ### S-LC-Feedback-V5 ✅ commit 3 — Productos on-the-fly en Cotizaciones + Facturación (2026-05-23)
 
 Replica el panel quick-create de Proyectos en los forms de Cotización
