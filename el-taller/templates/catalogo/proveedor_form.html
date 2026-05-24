@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|title }} proveedor — El Catálogo{% endblock %}
+{% block title %}{{ modo|title }} proveedor — Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Catálogo" "/catalogo/" "Proveedores" "/catalogo/proveedores/" "Proveedor" as breadcrumb_items %}
+{% breadcrumb_items "Productos" "/catalogo/" "Proveedores" "/catalogo/proveedores/" "Proveedor" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Proveedor" breadcrumb_items=breadcrumb_items back_url="/catalogo/proveedores/" back_label="Proveedores" %}
 
 <form method="post" class="max-w-2xl">

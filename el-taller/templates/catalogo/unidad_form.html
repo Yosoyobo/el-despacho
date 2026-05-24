@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|title }} unidad — El Catálogo{% endblock %}
+{% block title %}{{ modo|title }} unidad — Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Catálogo" "/catalogo/unidades/" "Unidad" as breadcrumb_items %}
+{% breadcrumb_items "Productos" "/catalogo/unidades/" "Unidad" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Unidad de medida" subtitulo="" breadcrumb_items=breadcrumb_items back_url="/catalogo/unidades/" back_label="Unidades" %}
 
 <form method="post" class="max-w-xl">

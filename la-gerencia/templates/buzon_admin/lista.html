@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}El Buzón — admin{% endblock %}
+{% block title %}Buzón — admin{% endblock %}
 
 {% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
 
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "El Buzón" as breadcrumb_items %}
+{% breadcrumb_items "Buzón" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Buzón</h1>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Buzón</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Mensajes de empleados (sugerencias, problemas, otros).</p>
     </div>
     <a href="/buzon/clientes/" class="btn-secundario">Buzón de clientes →</a>

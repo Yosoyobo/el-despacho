@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Las Cotizaciones — El Taller{% endblock %}
+{% block title %}Cotizaciones — El Taller{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Las Cotizaciones" as breadcrumb_items %}
+{% breadcrumb_items "Cotizaciones" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Las Cotizaciones</h1>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Cotizaciones</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Propuestas comerciales del despacho.</p>
     </div>
     {% if puede_crear %}<a href="{% url 'cotizaciones:nuevo' %}" class="btn-primario">+ Nueva cotización</a>{% endif %}

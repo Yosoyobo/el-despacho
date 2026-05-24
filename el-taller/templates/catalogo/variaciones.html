@@ -2,8 +2,8 @@
 {% block title %}{{ servicio.nombre }} — Variaciones{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "El Catálogo" "/catalogo/" servicio.nombre as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=servicio.nombre subtitulo=servicio.categoria.nombre breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Catálogo" %}
+{% breadcrumb_items "Productos" "/catalogo/" servicio.nombre as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=servicio.nombre subtitulo=servicio.categoria.nombre breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Productos" %}
 
 <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
     <div class="text-sm text-gray-600 dark:text-gray-300">

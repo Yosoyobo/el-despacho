@@ -2769,6 +2769,66 @@ Cero migraciones, cero pasos manuales post-deploy. Tailwind recompila
 en el siguiente Docker build y captura los selectores nuevos del
 `.manual-cuerpo` + `.manual-toc`.
 
+### S-LC-Feedback-V5 ✅ commit 1 — Quick-wins UI (2026-05-23)
+
+Primer commit del sprint V5. Sweep de strings visibles + ajuste del
+autocomplete `#proyecto`. Cero migraciones, cero models, cero URLs
+movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
+
+- **Autocomplete `#proyecto`** ([referencias/views.py:74-76](referencias/views.py#L74-L76)):
+  el JSON ahora retorna `"etiqueta": p.nombre` y `"secundario": p.codigo`
+  (antes era al revés). El dropdown muestra "Correas para las perras"
+  grande y "LC-0001" como referencia pequeña/secundaria. El JS
+  ([referencias/static/js/referencias.js:75-78](referencias/static/js/referencias.js#L75-L78))
+  no requirió cambio — pinta lo que viene en el payload.
+
+- **Renombres en sidebar y headers** (regla §18 dual-copy):
+  - Sidebar Taller ([el-taller/templates/_componentes_tailadmin/sidebar.html](el-taller/templates/_componentes_tailadmin/sidebar.html)):
+    La Cartera→Clientes · El Buzón→Buzón · Los Recados→Recados ·
+    El Catálogo→Productos · Mis Chalanes→Chalanes · Las Cotizaciones→Cotizaciones.
+    Tesorería/Facturación/Contaduría ya estaban sin "La" desde S-LC-Feedback-V2.
+  - Sidebar Gerencia: Los Chalanes→Chalanes.
+  - Templates con headers/breadcrumbs/títulos: ~30 archivos en
+    `el-taller/templates/{cartera,buzon,buzon_empleado,recados,cotizaciones,catalogo,tesoreria,facturacion,contaduria,perfil_chalanes}/`
+    y `la-gerencia/templates/{buzon_admin,los_chalanes,gerencia_home,centros_costo,site/partials}/`.
+  - Views con `back_label=` y `breadcrumb_items()`: 9 archivos en
+    `el-taller/apps/{la_cartera,buzon_empleado,tesoreria,recados,cotizaciones,facturacion}/views*.py`
+    y `la-gerencia/apps/{buzon_admin,los_chalanes}/views.py`.
+  - Catálogo de productos: breadcrumb "Catálogo" → "Productos" en
+    `catalogo/{categorias,unidades,proveedores_lista,unidad_form,categoria_form,proveedor_detalle,proveedor_form,variaciones}.html`.
+  - Label visible "👥 Cartera" → "👥 Clientes" en `taller_home/kpi_custom_preview.html`
+    (value="cartera" preservado).
+
+- **NO se tocaron** (intencionalmente):
+  - `app_label`, `verbose_name`, URL names, model `Meta`, choices DB,
+    slugs (regla del proyecto §4 + naming corporativo §3).
+  - Comentarios `{% comment %}` con refs históricas a sprints.
+  - "Catálogo" en Contaduría (chart of accounts — significado distinto).
+  - `taller_home/home.html:103` "Completo con S2b.3 — La Tesorería" (ref histórica).
+  - `el_dictado/preview.html` "Los Chalanes están descansando" (frase
+    narrativa que se refiere al equipo de Chalanes, no al módulo).
+  - System prompts del Dictado (`el_dictado/prompt.py`) — texto que
+    consume el LLM, no UI.
+  - Tabla "Estado al 19 de mayo de 2026" en DOC_05 (changelog dated).
+
+- **Manual de usuario** (`docs/DOC_05_MANUAL_USUARIO.md`): bloque
+  "Novedades al 23 de mayo de 2026" insertado al inicio + ~32
+  sustituciones en encabezados de sección, tablas de módulos,
+  glosario y narrativa. Cache de `/ayuda/` se invalida automáticamente
+  cuando cambia mtime del archivo en el deploy.
+
+**Deuda residual diseñada**:
+- Los `verbose_name` de las apps (`La Cartera`, `Los Proyectos`,
+  etc.) siguen con artículo — solo aparecen en el Django admin, que
+  hoy no usamos. Si LC quiere consistencia total, sprint chico
+  renombra `verbose_name` con migración no-op.
+- "Los Proyectos" como heading interno en algunos templates puede
+  quedar; el rename a "Proyectos" se aplicó en sidebar y page titles
+  principales, pero referencias narrativas dentro del cuerpo del
+  manual fueron actualizadas sólo donde tenía sentido (no en
+  cláusulas como "los proyectos activos" donde "los" es artículo
+  natural del español).
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

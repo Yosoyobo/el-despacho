@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}Estado de resultados — La Contaduría{% endblock %}
+{% block title %}Estado de resultados — Contaduría{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Contaduría" "/contaduria/" "Estado de resultados" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría · Reportes</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Contaduría · Reportes</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Estado de resultados</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresos menos costos y gastos del periodo. Sin estimación de ISR ni PTU.</p>
     </div>

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Nuevo asiento — La Contaduría{% endblock %}
+{% block title %}Nuevo asiento — Contaduría{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Contaduría" "/contaduria/asientos/" "Asiento" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
-    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría</p>
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Contaduría</p>
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Nuevo asiento manual</h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Captura cargos y abonos. La suma debe cuadrar (partida doble).</p>
 </header>

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Unidades — El Catálogo{% endblock %}
+{% block title %}Unidades — Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Catálogo" "/catalogo/" "Unidades" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Unidades de medida" subtitulo="Cómo se cuenta cada producto: Piezas, Metros, etc." breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Catálogo" %}
+{% breadcrumb_items "Productos" "/catalogo/" "Unidades" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Unidades de medida" subtitulo="Cómo se cuenta cada producto: Piezas, Metros, etc." breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Productos" %}
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <div class="text-xs text-gray-500 dark:text-gray-400">

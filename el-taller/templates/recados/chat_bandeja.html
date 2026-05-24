@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Los Recados — chat{% endblock %}
+{% block title %}Recados — chat{% endblock %}
 
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Los Recados" as breadcrumb_items %}
+{% breadcrumb_items "Recados" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <div class="flex flex-col gap-6">
     <div class="flex items-start justify-between gap-4">
         <div>
-            <h1 class="text-title-md font-semibold text-gray-900 dark:text-gray-100">Los Recados</h1>
+            <h1 class="text-title-md font-semibold text-gray-900 dark:text-gray-100">Recados</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Chat interno del despacho.</p>
         </div>
         <div class="flex gap-2">
@@ -27,7 +27,7 @@
     <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <header class="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-800">
             <div>
-                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">📬 El Buzón</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">📬 Buzón</h2>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                     {% if buzon_es_admin %}Mensajes pendientes del equipo. Click para responder.{% else %}Mándale un mensaje al admin del despacho.{% endif %}
                 </p>

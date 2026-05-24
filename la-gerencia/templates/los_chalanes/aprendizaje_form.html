@@ -2,7 +2,7 @@
 {% block title %}{% if es_nuevo %}Enseñar al Chalán{% else %}Editar aprendizaje{% endif %}{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Los Chalanes" "/chalanes/" "Aprendizajes" "/chalanes/aprendizajes/" titulo|default:"Aprendizaje" as breadcrumb_items %}
+{% breadcrumb_items "Chalanes" "/chalanes/" "Aprendizajes" "/chalanes/aprendizajes/" titulo|default:"Aprendizaje" as breadcrumb_items %}
 <div class="mx-auto max-w-2xl">
     {% include "_componentes_tailadmin/_page_header.html" with titulo=titulo|default:"Aprendizaje del Chalán" subtitulo="Frase que el Chalán solía malinterpretar y su lectura correcta. Se inyecta al prompt del Dictado." breadcrumb_items=breadcrumb_items back_url="/chalanes/aprendizajes/" back_label="Aprendizajes" %}
 

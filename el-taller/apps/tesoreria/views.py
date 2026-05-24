@@ -1,4 +1,4 @@
-"""Vistas de La Tesorería (S2b.3 V1).
+"""Vistas de Tesorería (S2b.3 V1).
 
 Pipeline OCR de recibos (DOC_06 §6) y export a Google Sheets (§8.2.4)
 quedan diferidos a S2b.3b — requieren wrappers de Google Drive/Sheets
@@ -30,7 +30,7 @@ from .push_handlers import notificar_reembolso_pendiente
 
 def _gate(request):
     if not puede_ver_finanzas(request.user):
-        return HttpResponseForbidden("Sin acceso a La Tesorería.")
+        return HttpResponseForbidden("Sin acceso a Tesorería.")
     return None
 
 
@@ -148,7 +148,7 @@ def ingreso_detalle(request, pk):
         "action_bar_meta": action_bar_meta,
         "action_bar_acciones": action_bar_acciones,
         "breadcrumb_items": [
-            {"url": reverse("tesoreria:landing"), "label": "La Tesorería"},
+            {"url": reverse("tesoreria:landing"), "label": "Tesorería"},
             {"url": reverse("tesoreria:ingresos-lista"), "label": "Ingresos"},
             {"label": ingreso.codigo},
         ],
@@ -349,7 +349,7 @@ def egreso_detalle(request, pk):
         "action_bar_meta": action_bar_meta,
         "action_bar_acciones": action_bar_acciones,
         "breadcrumb_items": [
-            {"url": reverse("tesoreria:landing"), "label": "La Tesorería"},
+            {"url": reverse("tesoreria:landing"), "label": "Tesorería"},
             {"url": reverse("tesoreria:egresos-lista"), "label": "Egresos"},
             {"label": egreso.codigo},
         ],
@@ -477,7 +477,7 @@ def egreso_reembolsar(request, pk):
                     request,
                     f"⚠ El pago se registró pero el movimiento contable NO se generó: "
                     f"{motivo} Avisa al super_admin para que revise el catálogo "
-                    f"de cuentas en La Contaduría.",
+                    f"de cuentas en Contaduría.",
                 )
             destino = reverse("tesoreria:por-pagar")
             if es_htmx:

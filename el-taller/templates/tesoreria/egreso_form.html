@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|capfirst }} egreso — La Tesorería{% endblock %}
+{% block title %}{{ modo|capfirst }} egreso — Tesorería{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Tesorería" "/tesoreria/egresos/" "Egreso" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
-    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Tesorería</p>
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} egreso</h1>
     {% if modo == 'nuevo' %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">📷 OCR de recibos y dictado de gasto llegarán en S2b.3b cuando el wrapper de Google Drive esté listo.</p>{% endif %}
 </header>

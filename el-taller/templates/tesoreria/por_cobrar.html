@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}Por cobrar — La Tesorería{% endblock %}
+{% block title %}Por cobrar — Tesorería{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Tesorería" "/tesoreria/" "Por cobrar" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Tesorería</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Cuentas por cobrar</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Facturas emitidas con saldo + anticipos de cotizaciones + proyectos legacy.</p>
     </div>

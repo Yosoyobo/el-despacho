@@ -1,4 +1,4 @@
-"""Vistas de Los Recados (S2b.1).
+"""Vistas de Recados (S2b.1).
 
 Endpoints:
   /recados/             GET  → bandeja con pestañas tab=recibidos|enviados|menciones|no_leidos
@@ -33,7 +33,7 @@ UMBRAL_CONFIRMACION = 5
 
 
 def _sin_acceso():
-    return HttpResponse("Sin acceso a Los Recados.", status=403)
+    return HttpResponse("Sin acceso a Recados.", status=403)
 
 
 # ── Bandeja ──────────────────────────────────────────────────────────────────

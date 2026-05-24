@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}{{ fac.codigo }} — La Facturación{% endblock %}
+{% block title %}{{ fac.codigo }} — Facturación{% endblock %}
 {% block contenido %}
 
-{% breadcrumb_items "La Facturación" "/facturacion/" fac.codigo as breadcrumb_items %}
+{% breadcrumb_items "Facturación" "/facturacion/" fac.codigo as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=fac.codigo subtitulo=fac.titulo breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">

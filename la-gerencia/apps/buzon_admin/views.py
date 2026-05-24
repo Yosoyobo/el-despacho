@@ -1,4 +1,4 @@
-"""El Buzón (admin) — vista para super_admin/dueño."""
+"""Buzón (admin) — vista para super_admin/dueño."""
 
 from django.contrib import messages
 from django.http import HttpResponse
@@ -109,11 +109,11 @@ def detalle(request, pk: int):
         "mensaje": msg, "form": form,
         "info_buzon": info_buzon,
         "breadcrumb_items": [
-            {"url": reverse("buzon-admin-lista"), "label": "El Buzón"},
+            {"url": reverse("buzon-admin-lista"), "label": "Buzón"},
             {"label": f"#{msg.pk}"},
         ],
         "back_url": reverse("buzon-admin-lista"),
-        "back_label": "El Buzón",
+        "back_label": "Buzón",
     })
 
 

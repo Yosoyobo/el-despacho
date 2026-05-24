@@ -1,4 +1,4 @@
-"""Views de La Facturación."""
+"""Views de Facturación."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ ORDEN_PERMITIDO = {"codigo", "fecha_emision", "fecha_vencimiento", "estado", "cr
 
 def _gate_ver(request):
     if not puede_ver_facturacion(request.user):
-        return HttpResponseForbidden("Sin acceso a La Facturación.")
+        return HttpResponseForbidden("Sin acceso a Facturación.")
     return None
 
 

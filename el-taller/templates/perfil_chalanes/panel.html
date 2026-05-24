@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Mis Chalanes — Perfil{% endblock %}
+{% block title %}Chalanes — Perfil{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Mis Chalanes" as breadcrumb_items %}
+{% breadcrumb_items "Chalanes" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
-    <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mis Chalanes</h1>
+    <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Chalanes</h1>
     <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
         Para cada estación puedes elegir un Chalán distinto al predeterminado del
         equipo. Si dejas "Predeterminado del equipo", se usa el que está en El
@@ -121,7 +121,7 @@
         </details>
         {% endfor %}
     </div>
-    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Configuración avanzada (cambiar llaves, probar conexión, cadena de fallback): <a href="https://gerencia.ninomeando.com/chalanes/" class="text-brand-600 hover:underline">Gerencia → Los Chalanes</a>.</p>
+    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Configuración avanzada (cambiar llaves, probar conexión, cadena de fallback): <a href="https://gerencia.ninomeando.com/chalanes/" class="text-brand-600 hover:underline">Gerencia → Chalanes</a>.</p>
 </section>
 {% endif %}
 {% endif %}
@@ -131,7 +131,7 @@
     <summary class="cursor-pointer list-none border-b border-gray-200 px-5 py-3 dark:border-gray-800">
         <div class="flex items-center justify-between gap-3">
             <div>
-                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Qué pueden hacer Los Chalanes</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Qué pueden hacer Chalanes</h2>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Acciones que El Dictado interpreta y ejecuta.</p>
             </div>
             <svg class="h-5 w-5 flex-none text-gray-400 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9" stroke-linecap="round" stroke-linejoin="round"/></svg>

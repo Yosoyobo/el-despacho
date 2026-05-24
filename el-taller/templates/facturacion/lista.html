@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}La Facturación — El Taller{% endblock %}
+{% block title %}Facturación — El Taller{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "La Facturación" as breadcrumb_items %}
+{% breadcrumb_items "Facturación" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Facturación</h1>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Facturación</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Facturas comerciales (no fiscales) y cobros.</p>
     </div>
     {% if puede_crear %}<a href="{% url 'facturacion:nueva' %}" class="btn-primario">+ Nueva factura</a>{% endif %}

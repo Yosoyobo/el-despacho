@@ -15,7 +15,7 @@ from lib.portavoz_eventos import EventoPortavoz
 
 def _gate(request, ver=True):
     if ver and not puede_ver_cartera(request.user):
-        return HttpResponseForbidden("Sin acceso a La Cartera.")
+        return HttpResponseForbidden("Sin acceso a Clientes.")
     return None
 
 
@@ -113,11 +113,11 @@ def detalle(request, pk):
         "action_bar_meta": action_bar_meta,
         "action_bar_acciones": action_bar_acciones,
         "breadcrumb_items": [
-            {"url": reverse("cartera-lista"), "label": "La Cartera"},
+            {"url": reverse("cartera-lista"), "label": "Clientes"},
             {"label": cliente.razon_social},
         ],
         "back_url": reverse("cartera-lista"),
-        "back_label": "La Cartera",
+        "back_label": "Clientes",
     })
 
 
@@ -141,7 +141,7 @@ def nuevo(request):
             return redirect("cartera-detalle", pk=cliente.pk)
     else:
         form = ClienteForm()
-    return render(request, "cartera/form.html", {"form": form, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "La Cartera"}, {"label": "Nuevo cliente"}], "back_url": "/cartera/", "back_label": "La Cartera"})
+    return render(request, "cartera/form.html", {"form": form, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"label": "Nuevo cliente"}], "back_url": "/cartera/", "back_label": "Clientes"})
 
 
 @login_required
@@ -163,7 +163,7 @@ def editar(request, pk):
             return redirect("cartera-detalle", pk=cliente.pk)
     else:
         form = ClienteForm(instance=cliente)
-    return render(request, "cartera/form.html", {"form": form, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "La Cartera"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}], "back_url": f"/cartera/{cliente.pk}/", "back_label": cliente.razon_social})
+    return render(request, "cartera/form.html", {"form": form, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}], "back_url": f"/cartera/{cliente.pk}/", "back_label": cliente.razon_social})
 
 
 @login_required

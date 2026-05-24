@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}El Catálogo{% endblock %}
+{% block title %}Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "El Catálogo" as breadcrumb_items %}
+{% breadcrumb_items "Productos" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Catálogo</h1>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Productos</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Servicios frecuentes — nombre, unidad{% if ve_precios %}, precio base{% endif %} y categoría.</p>
     </div>
     <div class="flex flex-wrap gap-2">

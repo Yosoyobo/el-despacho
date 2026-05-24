@@ -1,4 +1,4 @@
-"""Los Chalanes (admin) — panel de El Cuadro + La Cadena + Auditoría + Aprendizajes.
+"""Chalanes (admin) — panel de El Cuadro + La Cadena + Auditoría + Aprendizajes.
 
 Solo super_admin puede modificar; dueño puede ver. Los aprendizajes (S2b.2.1)
 viven en la tabla compartida `el_dictado_aprendizaje` y se gestionan desde
@@ -206,7 +206,7 @@ def aprendizajes_lista(request):
             "inactivos": Aprendizaje.objects.filter(activo=False).count(),
         },
         "breadcrumb_items": [
-            {"url": "/chalanes/", "label": "Los Chalanes"},
+            {"url": "/chalanes/", "label": "Chalanes"},
             {"label": "Aprendizajes"},
         ],
         "back_url": "/chalanes/",

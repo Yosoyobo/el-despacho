@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}La Cartera — El Taller{% endblock %}
+{% block title %}Clientes — El Taller{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "La Cartera" as breadcrumb_items %}
+{% breadcrumb_items "Clientes" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Cartera</h1>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Clientes</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Clientes B2B del despacho.</p>
     </div>
     {% if puede_editar %}<a href="{% url 'cartera-nuevo' %}" class="btn-primario">+ Nuevo cliente</a>{% endif %}

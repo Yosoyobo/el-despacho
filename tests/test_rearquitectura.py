@@ -269,7 +269,7 @@ def test_perfil_chalanes_taller_carga(client, usuario_factory):
     resp = client.get("/perfil/chalanes/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    assert "Mis Chalanes" in body
+    assert "Chalanes" in body
     # Estaciones del Cuadro (seed Pre-S2b.1).
     assert "cotizaciones" in body
 
@@ -324,11 +324,11 @@ def test_sidebar_taller_super_admin_ve_todo(client, usuario_factory):
     client.force_login(u)
     resp = client.get("/")
     body = resp.content.decode()
-    assert "La Cartera" in body
+    assert "Clientes" in body
     assert "Proyectos" in body
-    assert "El Buzón" in body
-    assert "El Catálogo" in body
-    assert "Mis Chalanes" in body
+    assert "Buzón" in body
+    assert "Productos" in body
+    assert "Chalanes" in body
 
 
 def test_sidebar_taller_disenador_sin_cartera(client, usuario_factory):
@@ -337,7 +337,7 @@ def test_sidebar_taller_disenador_sin_cartera(client, usuario_factory):
     resp = client.get("/")
     body = resp.content.decode()
     # Diseñador no tiene cartera.ver
-    assert ">La Cartera<" not in body  # ojo: en sidebar, no en otros lados
+    assert ">Clientes<" not in body  # ojo: en sidebar, no en otros lados
 
 
 def test_sidebar_respeta_toggle_individual(client, usuario_factory):
@@ -348,7 +348,7 @@ def test_sidebar_respeta_toggle_individual(client, usuario_factory):
     client.force_login(u)
     resp = client.get("/")
     body = resp.content.decode()
-    assert ">El Buzón<" not in body
+    assert ">Buzón<" not in body
 
 
 # ── 8) Rename "Probar Analistas" → "Probar Chalanes" ────────────────────────

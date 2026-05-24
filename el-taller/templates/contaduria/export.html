@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Export al contador externo — La Contaduría{% endblock %}
+{% block title %}Export al contador externo — Contaduría{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Contaduría" "/contaduria/" "Exportar" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Contaduría · Reportes</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Contaduría · Reportes</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Export al contador externo</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Genera CSV con todas las partidas o el catálogo de cuentas para el contador timbrador.</p>
     </div>

@@ -1,4 +1,4 @@
-"""El Buzón unificado en El Taller (Pre-S2b.2).
+"""Buzón unificado en El Taller (Pre-S2b.2).
 
 Antes había dos apps: `buzon_admin` en Gerencia (super_admin/dueno veían
 todos los mensajes con form de respuesta) y `buzon_empleado` en Taller
@@ -181,11 +181,11 @@ def detalle(request, pk: int):
         "puede_responder": puede_responder,
         "info_buzon": info_buzon,
         "breadcrumb_items": [
-            {"url": reverse("buzon-lista"), "label": "El Buzón"},
+            {"url": reverse("buzon-lista"), "label": "Buzón"},
             {"label": f"#{msg.pk}"},
         ],
         "back_url": reverse("buzon-lista"),
-        "back_label": "El Buzón",
+        "back_label": "Buzón",
     })
 
 

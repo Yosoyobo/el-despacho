@@ -2,7 +2,7 @@
 {% block title %}{{ proveedor.razon_social }} — Proveedores{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Catálogo" "/catalogo/" "Proveedores" "/catalogo/proveedores/" proveedor.razon_social as breadcrumb_items %}
+{% breadcrumb_items "Productos" "/catalogo/" "Proveedores" "/catalogo/proveedores/" proveedor.razon_social as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=proveedor.razon_social breadcrumb_items=breadcrumb_items back_url="/catalogo/proveedores/" back_label="Proveedores" %}
 
 <div class="grid gap-6 xl:grid-cols-3">

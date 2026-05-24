@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Proveedores — El Catálogo{% endblock %}
+{% block title %}Proveedores — Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Catálogo" "/catalogo/" "Proveedores" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Proveedores" subtitulo="CRM de quién te surte cada producto." breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Catálogo" %}
+{% breadcrumb_items "Productos" "/catalogo/" "Proveedores" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Proveedores" subtitulo="CRM de quién te surte cada producto." breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Productos" %}
 
 <form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="flex-1 min-w-[200px]">

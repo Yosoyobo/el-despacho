@@ -3,7 +3,7 @@
 {% block title %}{% if modo == 'nuevo' %}Nueva factura{% else %}Editar {{ fac.codigo }}{% endif %} — El Taller{% endblock %}
 {% block contenido %}
 
-{% if modo == 'nuevo' %}{% breadcrumb_items "La Facturación" "/facturacion/" "Nueva" as breadcrumb_items %}{% else %}{% breadcrumb_items "La Facturación" "/facturacion/" fac.codigo "/facturacion/"|add:fac.pk|stringformat:"s"|add:"/" "Editar" as breadcrumb_items %}{% endif %}
+{% if modo == 'nuevo' %}{% breadcrumb_items "Facturación" "/facturacion/" "Nueva" as breadcrumb_items %}{% else %}{% breadcrumb_items "Facturación" "/facturacion/" fac.codigo "/facturacion/"|add:fac.pk|stringformat:"s"|add:"/" "Editar" as breadcrumb_items %}{% endif %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=modo|stringformat:'s'|title subtitulo=fac.codigo|default:"Factura nueva" breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
 
 <form method="post" class="space-y-6" id="fac-form">

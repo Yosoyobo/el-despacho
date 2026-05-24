@@ -72,8 +72,8 @@ def autocomplete_proyectos(request):
     return JsonResponse({"resultados": [
         {
             "slug": p.slug,
-            "etiqueta": p.codigo,
-            "secundario": p.nombre,
+            "etiqueta": p.nombre,
+            "secundario": p.codigo,
             "tipo": "proyecto",
             "sigil": "#",
         }

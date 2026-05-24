@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}{{ cot.codigo }} — Las Cotizaciones{% endblock %}
+{% block title %}{{ cot.codigo }} — Cotizaciones{% endblock %}
 {% block contenido %}
 
-{% breadcrumb_items "Las Cotizaciones" "/cotizaciones/" cot.codigo as breadcrumb_items %}
+{% breadcrumb_items "Cotizaciones" "/cotizaciones/" cot.codigo as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=cot.codigo subtitulo=cot.titulo breadcrumb_items=breadcrumb_items back_url="/cotizaciones/" back_label="Cotizaciones" %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">

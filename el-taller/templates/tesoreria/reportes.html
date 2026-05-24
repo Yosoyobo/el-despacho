@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}Reportes — La Tesorería{% endblock %}
+{% block title %}Reportes — Tesorería{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Tesorería" "/tesoreria/" "Reportes" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Tesorería</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Reportes · {{ reporte.desde|date:"F Y"|capfirst }}</h1>
     </div>
     <a href="{% url 'tesoreria:exportar-csv' 'movimientos' %}?desde={{ reporte.desde|date:'Y-m-d' }}&hasta={{ reporte.hasta|date:'Y-m-d' }}" class="btn-secundario">📥 Movimientos CSV</a>

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load forms_helpers contaduria_helpers %}
-{% block title %}{{ asiento.codigo }} — La Contaduría{% endblock %}
+{% block title %}{{ asiento.codigo }} — Contaduría{% endblock %}
 {% block contenido %}
-{% breadcrumb_items "La Contaduría" "/contaduria/" "Asientos" "/contaduria/asientos/" asiento.codigo as breadcrumb_items %}
+{% breadcrumb_items "Contaduría" "/contaduria/" "Asientos" "/contaduria/asientos/" asiento.codigo as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=asiento.codigo subtitulo=asiento.descripcion breadcrumb_items=breadcrumb_items back_url="/contaduria/asientos/" back_label="Asientos" %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">

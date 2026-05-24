@@ -2,10 +2,10 @@
 {% block title %}Escribir al Buzón{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "El Buzón" "/buzon/" "Nuevo" as breadcrumb_items %}
+{% breadcrumb_items "Buzón" "/buzon/" "Nuevo" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
-    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Buzón</p>
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Buzón</p>
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Escribir al Buzón</h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Sugerencia, problema o lo que quieras decirle a la administración.</p>
 </header>

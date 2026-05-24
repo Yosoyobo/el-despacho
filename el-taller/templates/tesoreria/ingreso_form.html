@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|capfirst }} ingreso — La Tesorería{% endblock %}
+{% block title %}{{ modo|capfirst }} ingreso — Tesorería{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Tesorería" "/tesoreria/ingresos/" "Ingreso" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
-    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">La Tesorería</p>
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Tesorería</p>
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} ingreso</h1>
 </header>
 

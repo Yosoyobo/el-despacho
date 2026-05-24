@@ -1,4 +1,4 @@
-"""Views de Las Cotizaciones."""
+"""Views de Cotizaciones."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ ORDEN_PERMITIDO = {"codigo", "titulo", "estado", "fecha_emision", "creado_en"}
 
 def _gate_ver(request):
     if not puede_ver_cotizaciones(request.user):
-        return HttpResponseForbidden("Sin acceso a Las Cotizaciones.")
+        return HttpResponseForbidden("Sin acceso a Cotizaciones.")
     return None
 
 

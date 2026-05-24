@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}La Tesorería — El Taller{% endblock %}
+{% block title %}Tesorería — El Taller{% endblock %}
 
 {% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
 
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "La Tesorería" as breadcrumb_items %}
+{% breadcrumb_items "Tesorería" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Tesorería</h1>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Tesorería</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Flujo de dinero real del despacho.</p>
     </div>
     <div class="flex gap-2">

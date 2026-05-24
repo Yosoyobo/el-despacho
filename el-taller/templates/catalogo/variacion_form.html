@@ -2,7 +2,7 @@
 {% block title %}{{ modo|capfirst }} variación — {{ servicio.nombre }}{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "El Catálogo" "/catalogo/" servicio.nombre "/catalogo/"|add:servicio.pk|stringformat:"d"|add:"/variaciones/" "Variación" as breadcrumb_items %}
+{% breadcrumb_items "Productos" "/catalogo/" servicio.nombre "/catalogo/"|add:servicio.pk|stringformat:"d"|add:"/variaciones/" "Variación" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=modo|capfirst|add:" variación" subtitulo=servicio.nombre breadcrumb_items=breadcrumb_items back_url="/catalogo/"|add:servicio.pk|stringformat:"d"|add:"/variaciones/" back_label=servicio.nombre %}
 
 <form method="post" class="max-w-3xl">

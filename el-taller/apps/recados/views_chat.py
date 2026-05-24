@@ -33,7 +33,7 @@ from .models import Conversacion
 
 
 def _sin_acceso():
-    return HttpResponse("Sin acceso a Los Recados.", status=403)
+    return HttpResponse("Sin acceso a Recados.", status=403)
 
 
 def _gate(request):
