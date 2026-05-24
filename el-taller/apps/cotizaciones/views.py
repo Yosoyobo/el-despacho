@@ -532,9 +532,8 @@ def api_proyecto_datos(request, pk):
     Gated por `puede_ver_cotizaciones` para no acoplar el form de
     Cotizaciones al permiso de Tesorería (S-LC-Feedback-V4 hotfix 2).
     """
-    from django.http import JsonResponse
-
     from apps.los_proyectos.models import Proyecto
+    from django.http import JsonResponse
 
     if (r := _gate_ver(request)) is not None:
         return r
