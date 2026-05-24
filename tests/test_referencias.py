@@ -32,11 +32,12 @@ def test_slug_cliente_desde_razon_social(cliente_factory):
     assert c.slug == "cafe-nino-s-a"
 
 
-def test_slug_proyecto_desde_codigo(proyecto_factory):
+def test_slug_proyecto_desde_nombre(proyecto_factory):
+    """S-LC-Feedback-V5 c9: el slug se basa en el nombre (no en el código)
+    para que el autocomplete `#nombre-del-proyecto` sea legible."""
+    from lib.slug import _normalizar
     p = proyecto_factory()
-    assert p.slug == p.codigo.lower()
-    # S-LC-Feedback-V2: códigos ahora correlativos LC-NNNN.
-    assert p.slug.startswith("lc-")
+    assert p.slug == _normalizar(p.nombre)
 
 
 # ── Parser ──────────────────────────────────────────────────────────────────
