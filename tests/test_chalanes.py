@@ -38,11 +38,11 @@ def test_chalan_chino_sin_vision():
     assert Capability.VISION not in a.capacidades
 
 
-def test_gemini_skeleton_no_registrado():
-    """Gemini está pero no en _FACTORIES."""
+def test_gemini_registrado_y_activo():
+    """S-Demo-Pre-Showcase: Gemini pasa de skeleton a adapter activo."""
     from lib.analistas import registry
     from lib.analistas.adapters.gemini import GeminiAdapter
-    assert "gemini" not in registry._FACTORIES
+    assert "gemini" in registry._FACTORIES
     assert GeminiAdapter().apodo == "Chalán Gemini"
 
 
