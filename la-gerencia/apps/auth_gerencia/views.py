@@ -18,9 +18,21 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from lib.errors import RateLimitExcedido
+from lib.permisos import puede
 from lib.ratelimit import intentar, reset
 
-ROLES_PERMITIDOS_EN_DIRECCION = ("super_admin", "dueno")
+# S-LC-Feedback-V5 c5: el acceso a La Gerencia se hereda por permiso
+# granular (modulo="gerencia", accion="acceder"). Super_admin y dueno lo
+# reciben por default. Cualquier otro rol puede recibirlo manualmente
+# desde Directorio en La Gerencia.
+ROLES_PERMITIDOS_FAILSAFE = ("super_admin",)
+
+
+def _puede_entrar_gerencia(user) -> bool:
+    """Combina permiso granular + failsafe para super_admin (siempre puede)."""
+    if user.rol in ROLES_PERMITIDOS_FAILSAFE:
+        return True
+    return puede(user, "gerencia", "acceder")
 
 
 @require_http_methods(["GET", "POST"])
@@ -51,8 +63,8 @@ def sign_in(request):
         messages.error(request, "Credenciales inválidas.")
         return render(request, "auth/sign_in.html", status=401)
 
-    if user.rol not in ROLES_PERMITIDOS_EN_DIRECCION:
-        messages.error(request, "Esta área es solo para super_admin y dueño.")
+    if not _puede_entrar_gerencia(user):
+        messages.error(request, "No tienes permiso para entrar a La Gerencia. Pide a un super_admin que te lo asigne.")
         return render(request, "auth/sign_in.html", status=403)
 
     login(request, user)

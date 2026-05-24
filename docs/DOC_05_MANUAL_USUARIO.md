@@ -4,6 +4,11 @@
 
 ---
 
+## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 5)
+
+- **Acceso a La Gerencia ahora es heredable.** Hasta hoy solo super_admin y dueño podían entrar a `gerencia.ninomeando.com`. Ahora es un permiso granular (`gerencia → acceder`) que el super_admin puede activar a cualquier usuario desde **Directorio → Permisos**. Útil cuando le quieres dar acceso temporal a Ajustes a un contador externo o asistente sin promoverlo a dueño.
+- **Atajo "Ajustes" en El Taller.** Si tienes el permiso de Gerencia, te aparece un nuevo ítem "Ajustes" en el sidebar de El Taller (justo arriba de "Ayuda"). Te lleva directo a `gerencia.ninomeando.com/ajustes/` con tu misma sesión. Si no lo tienes, no aparece.
+
 ## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 4)
 
 - **Edición rápida desde el detalle del proyecto.** Ya no tienes que entrar a "Editar" cuando solo quieres cambiar las fechas o los montos.

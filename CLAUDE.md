@@ -2829,6 +2829,39 @@ movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
   cláusulas como "los proyectos activos" donde "los" es artículo
   natural del español).
 
+### S-LC-Feedback-V5 ✅ commit 5 — Acceso a Gerencia heredable + atajo Ajustes (2026-05-24)
+
+El gate de login de La Gerencia deja de ser un check literal de rol y
+pasa a ser un permiso granular `(gerencia, acceder)`. Super_admin
+queda como failsafe duro (siempre puede entrar aunque la fila no
+exista) para evitar lock-out catastrófico.
+
+- **Contexto** [cuentas/context_processors.py](cuentas/context_processors.py):
+  agrega `"gerencia"` a `MODULOS_VISIBLES` y
+  `ACCION_VISIBLE_POR_MODULO["gerencia"] = "acceder"`.
+- **Defaults** [lib/permisos_defaults.py](lib/permisos_defaults.py):
+  super_admin y dueno reciben `("gerencia", "acceder")` en
+  `DEFAULTS_POR_ROL`. El signal `auto_seedear_permisos` lo aplica a
+  usuarios nuevos.
+- **Migración** [cuentas/migrations/0012_seed_permiso_gerencia.py](cuentas/migrations/0012_seed_permiso_gerencia.py):
+  seed retroactivo para super_admin + dueno existentes. Idempotente.
+- **Login Gerencia** [la-gerencia/apps/auth_gerencia/views.py](la-gerencia/apps/auth_gerencia/views.py):
+  reemplaza `if user.rol not in ROLES_PERMITIDOS_EN_DIRECCION` por
+  `if not _puede_entrar_gerencia(user)`. Helper combina
+  `ROLES_PERMITIDOS_FAILSAFE = ("super_admin",)` con
+  `puede(user, "gerencia", "acceder")`.
+- **Sidebar Taller** [_componentes_tailadmin/sidebar.html](el-taller/templates/_componentes_tailadmin/sidebar.html):
+  nuevo item "Ajustes" gated por `permisos_modulos.gerencia`, apunta
+  a `https://gerencia.ninomeando.com/ajustes/`. Justo arriba de
+  "Ayuda".
+
+Para asignar a un usuario nuevo: super_admin entra a
+`/directorio/<id>/permisos/` y marca la fila
+`gerencia / acceder`. Mismo flujo que cualquier otro módulo.
+
+Tests: 112 pass (rearquitectura + gerencia). Sin migraciones de
+schema (solo data migration de PermisoUsuario).
+
 ### S-LC-Feedback-V5 ✅ commit 4 — Proyectos: quick-edit inline (fechas/económico) + agregar tarea/producto (2026-05-24)
 
 3 modales granulares + 2 quick-add desde el detalle del proyecto.

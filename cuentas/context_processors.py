@@ -17,6 +17,8 @@ from lib.permisos import puede as _puede
 ACCION_VISIBLE_POR_MODULO = {
     "buzon": "ver_propios",        # admin lo ve por ver_propios también
     "catalogo": "ver_nombres",
+    # S-LC-Feedback-V5 c5: acceso a Gerencia heredable por permiso granular.
+    "gerencia": "acceder",
     # los demás usan "ver"
 }
 
@@ -26,6 +28,7 @@ MODULOS_VISIBLES = (
     "facturacion",
     "directorio", "ajustes", "chalanes", "site",
     "centros_costo", "tasas",
+    "gerencia",
 )
 
 

@@ -51,6 +51,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogo": list(TODO_CATALOGO),
         "cotizaciones": list(TODO_COTIZACIONES),
         "facturacion": list(TODO_FACTURACION),
+        # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
+        "gerencia": ["acceder"],
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -65,6 +67,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogo": ["ver_nombres", "ver_precios", "crear", "editar", "editar_precios", "archivar"],
         "cotizaciones": list(TODO_COTIZACIONES),
         "facturacion": list(TODO_FACTURACION),
+        # S-LC-Feedback-V5 c5: dueno entra a La Gerencia por default.
+        "gerencia": ["acceder"],
     },
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
