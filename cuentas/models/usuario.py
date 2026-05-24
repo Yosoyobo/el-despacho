@@ -33,6 +33,13 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
+    # S-LC-Feedback-V5 c7: roles personalizados adicionales (encima del
+    # rol primario CharField). El user los puede tener N roles extra que
+    # contribuyen permisos a la unión efectiva.
+    roles_extra = models.ManyToManyField(
+        "cuentas.Rol", blank=True, related_name="usuarios",
+    )
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     ultimo_acceso_en = models.DateTimeField(blank=True, null=True)

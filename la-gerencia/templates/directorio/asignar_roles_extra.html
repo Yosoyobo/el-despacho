@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Roles extra de {{ usuario.nombre_completo }}{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Directorio" "/directorio/" usuario.nombre_completo "Roles extra" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Roles extra" subtitulo=usuario.nombre_completo|add:" — además del rol primario "|add:usuario.rol breadcrumb_items=breadcrumb_items back_url="/directorio/" back_label="Directorio" %}
+
+<form method="post" class="max-w-2xl">
+    {% csrf_token %}
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Marca los roles que se suman al rol primario <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">{{ usuario.rol }}</code>. Cada rol aporta sus permisos a la unión efectiva del usuario.</p>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {% for rol in roles_disponibles %}
+            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10">
+                <input type="checkbox" name="roles_extra" value="{{ rol.pk }}" {% if rol.pk in roles_actuales_ids %}checked{% endif %} class="mt-0.5">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ rol.nombre }}</span>
+                        {% if rol.sistema %}<span class="badge badge-gray text-[10px]">Sistema</span>{% endif %}
+                    </div>
+                    {% if rol.descripcion %}<p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ rol.descripcion }}</p>{% endif %}
+                </div>
+            </label>
+            {% endfor %}
+        </div>
+    </section>
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <a href="{% url 'directorio-lista' %}" class="btn-secundario">Volver al Directorio</a>
+        <button type="submit" class="btn-primario">Guardar asignación</button>
+    </div>
+</form>
+{% endblock %}

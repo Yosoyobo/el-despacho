@@ -13,6 +13,7 @@
         <div class="inline-flex items-center gap-2">
             <a href="{% url 'directorio-editar' u.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
             {% if request.user.es_super_admin %}<a href="{% url 'directorio-permisos' u.pk %}" class="text-sm font-medium text-violet-600 hover:underline dark:text-violet-400">Permisos</a>{% endif %}
+            {% if request.user.es_super_admin %}<a href="{% url 'directorio-asignar-roles-extra' u.pk %}" class="text-sm font-medium text-violet-600 hover:underline dark:text-violet-400">Roles</a>{% endif %}
             <form method="post" action="{% url 'directorio-bloquear' u.pk %}" class="inline">
                 {% csrf_token %}
                 <button type="submit" class="text-sm font-medium text-gray-500 hover:text-error-600 dark:text-gray-400 dark:hover:text-error-400">{% if u.is_active %}Bloquear{% else %}Activar{% endif %}</button>

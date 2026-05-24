@@ -2829,6 +2829,44 @@ movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
   cláusulas como "los proyectos activos" donde "los" es artículo
   natural del español).
 
+### S-LC-Feedback-V5 ✅ commit 7 — Roles personalizados (2026-05-24)
+
+Encima del campo `Usuario.rol` (preservado como rol primario), ahora
+hay M2M `Usuario.roles_extra` apuntando a una tabla `Rol`. Los
+permisos efectivos del usuario unen rol primario (via signals
+existentes) + roles extra + PermisoUsuario individuales.
+
+- **Modelo `Rol`** ([cuentas/models/rol.py](cuentas/models/rol.py)):
+  `(nombre, descripcion, permisos JSONField, sistema bool)`. Permisos
+  como `{"modulo": ["accion", ...]}`. Method `tiene_permiso(modulo, accion)`.
+- **M2M nuevo** `Usuario.roles_extra` en
+  [cuentas/models/usuario.py](cuentas/models/usuario.py).
+- **Migración `0014_rol_y_roles_extra`**: crea tabla + M2M + seed
+  idempotente con los 4 roles sistema (super_admin, dueno, contador,
+  disenador) usando `DEFAULTS_POR_ROL`. Cada rol sistema tiene
+  `sistema=True`. Super_admin no se puede editar; los otros sistema
+  sí pero no se pueden borrar.
+- **Hook en `lib/permisos.puede()`**:
+  - PermisoUsuario con `activo=False` → revoca SIEMPRE (override
+    individual gana sobre roles).
+  - PermisoUsuario con `activo=True` → True directo.
+  - Si no hay fila individual → consulta roles extra del usuario;
+    si cualquier rol extra contiene el permiso, True.
+  - El rol primario sigue gobernándose por las migraciones de
+    seed existentes (0007-0012) y el signal `auto_seedear_permisos`.
+- **CRUD `/directorio/roles/`** en La Gerencia (gated por
+  `@requires_role("super_admin")`):
+  - `roles_lista` + `rol_nuevo` + `rol_editar` + `rol_borrar`.
+  - Form con textarea JSON. Validación de JSON parse. Roles sistema
+    no se borran; super_admin no se edita.
+- **Asignación múltiple** `/directorio/<pk>/roles-extra` con grid de
+  checkboxes que muestra descripción + badge "Sistema". POST hace
+  `u.roles_extra.set(...)`.
+- **Eventos Portavoz nuevos**: `rol.creado`, `rol.actualizado`,
+  `rol.borrado`, `usuario.roles_extra_actualizados`.
+
+Tests: suite global 711 pass (sin contar 3 redis-dependientes).
+
 ### S-LC-Feedback-V5 ✅ commit 6 — Sidebar order global (2026-05-24)
 
 Orden y visibilidad del sidebar del Taller configurable por el

@@ -157,6 +157,11 @@ def puede(usuario, modulo: str, permiso: str) -> bool:
     Retorna True si la fila `(usuario, modulo, permiso)` existe y `activo=True`.
     Usuario inactivo siempre False. Si la tabla no existe aún o falla la
     consulta, retorna False defensivamente.
+
+    S-LC-Feedback-V5 c7: además consulta `Usuario.roles_extra` — si
+    cualquier rol extra del usuario contiene el permiso, retorna True.
+    El PermisoUsuario individual con `activo=False` SIEMPRE gana (revoca
+    incluso permisos heredados por roles).
     """
     if not usuario or not getattr(usuario, "is_authenticated", False):
         return False
@@ -164,9 +169,22 @@ def puede(usuario, modulo: str, permiso: str) -> bool:
         return False
     try:
         from cuentas.models.permiso_usuario import PermisoUsuario
-        return PermisoUsuario.objects.filter(
-            usuario=usuario, modulo=modulo, permiso=permiso, activo=True
+        # Override individual (activo=False) revoca incluso permisos por rol extra.
+        revocado = PermisoUsuario.objects.filter(
+            usuario=usuario, modulo=modulo, permiso=permiso, activo=False
         ).exists()
+        if revocado:
+            return False
+        # Activo individual → True directo.
+        if PermisoUsuario.objects.filter(
+            usuario=usuario, modulo=modulo, permiso=permiso, activo=True
+        ).exists():
+            return True
+        # Fallback: roles extra del usuario (M2M Rol.permisos JSON).
+        for rol in usuario.roles_extra.all():
+            if permiso in (rol.permisos.get(modulo) or []):
+                return True
+        return False
     except Exception:
         return False
 

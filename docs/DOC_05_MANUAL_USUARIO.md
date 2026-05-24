@@ -4,6 +4,14 @@
 
 ---
 
+## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 7)
+
+- **Roles personalizados (super_admin).** Antes solo había 4 roles fijos (super_admin, dueño, contador, diseñador). Ahora puedes crear roles a la medida en **Directorio → "Roles personalizados →"** que se suman al rol primario del usuario.
+  - Ejemplo: crear el rol "supervisor_produccion" con permisos `{"proyectos": ["ver", "editar"], "pizarron": ["ver", "crear", "editar", "completar"]}`. Luego en cada usuario presionas "Roles" (al lado de "Permisos" en la fila del directorio) y marcas el checkbox.
+  - El usuario hereda los permisos de su rol primario **+ todos sus roles extra** **+ permisos individuales del toggle (PermisoUsuario)**. Si revocas un permiso individual con el toggle, gana ese override aunque el rol lo otorgue.
+  - Los 4 roles del sistema (super_admin, dueño, contador, diseñador) están protegidos: super_admin no se puede editar; los otros 3 sí pero no se pueden borrar.
+- **Formato de permisos:** `{"modulo": ["accion1", "accion2"]}` en JSON. Mira los roles "sistema" para referencia de qué módulos y acciones existen.
+
 ## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 6)
 
 - **Orden del sidebar configurable globalmente (super_admin).** En La Gerencia → Ajustes → "Orden del sidebar →" hay una nueva pantalla para reordenar y ocultar items del sidebar de El Taller para **todos los usuarios**. Arrastra para reordenar (HTML5 drag) o usa los botones ↑↓. Marca "Ocultar" para que un item desaparezca aunque el usuario tenga permiso (override global encima de los permisos individuales). Cambio se aplica al siguiente request.
