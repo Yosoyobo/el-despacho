@@ -2,6 +2,8 @@
 
 import pytest
 
+from lib.slug import _normalizar as _normalizar_para_test  # noqa: F401
+
 pytestmark = [pytest.mark.django_db, pytest.mark.taller]
 
 
@@ -18,8 +20,8 @@ def test_codigo_correlativo_lc(proyecto_factory):
     assert p1.codigo == "LC-0001"
     assert p2.codigo == "LC-0002"
     assert p3.codigo == "LC-0003"
-    # Slug espejo en minúsculas.
-    assert p1.slug == "lc-0001"
+    # Slug basado en el nombre del proyecto (S-LC-Feedback-V5 c9).
+    assert p1.slug == _normalizar_para_test(p1.nombre)
 
 
 def test_admin_ve_todos(client, usuario_factory, proyecto_factory):

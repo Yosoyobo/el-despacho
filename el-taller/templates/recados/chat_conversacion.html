@@ -2,69 +2,90 @@
 {% block title %}{{ titulo }} — Recados{% endblock %}
 
 {% block contenido %}
-<div class="mx-auto flex h-[calc(100vh-12rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    {# Cabecera #}
-    <header class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
-        <a href="{% url 'recados:bandeja' %}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Bandeja
-        </a>
-        <div class="min-w-0 flex-1 text-center">
-            <h1 class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{{ titulo }}</h1>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-                {% if conv.tipo == "grupo" %}
-                {{ conv.participantes.count }} participantes
-                {% else %}
-                conversación directa
-                {% endif %}
-            </p>
-        </div>
-        <div class="w-16"></div>
-    </header>
+{% load forms_helpers %}
+{% breadcrumb_items "Recados" "/recados/" titulo as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 
-    {# Mensajes — scroll #}
-    <div id="chat-scroll" class="flex-1 overflow-y-auto px-5 py-4">
-        <div id="chat-mensajes"
-             hx-get="{% url 'recados:partial_mensajes' conv.pk %}"
-             hx-trigger="every 5s"
-             hx-vals="js:{desde_id: document.getElementById('chat-mensajes').dataset.ultimoId || 0}"
-             hx-swap="beforeend"
-             data-ultimo-id="{{ ultimo_id }}">
-            {% include "recados/_chat_mensajes.html" with mensajes=mensajes fragmento=False conv=conv ultimo_id=ultimo_id %}
-        </div>
-    </div>
+<div class="flex h-[calc(100vh-10rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
 
-    {# Composer #}
-    <form hx-post="{% url 'recados:enviar' conv.pk %}"
-          hx-target="#chat-mensajes"
-          hx-swap="beforeend"
-          hx-on::after-request="this.querySelector('textarea').value=''; this.querySelector('textarea').focus(); var s=document.getElementById('chat-scroll'); s.scrollTop=s.scrollHeight;"
-          class="border-t border-gray-200 px-4 py-3 dark:border-gray-800">
-        {% csrf_token %}
-        <div class="flex items-end gap-2">
-            <textarea name="cuerpo" rows="1" required placeholder="Escribe un mensaje…" data-referencias
-                      class="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
-            <button class="btn-primario shrink-0 flex items-center gap-1.5">
-                <span class="htmx-indicator">{% include "_componentes_tailadmin/_spinner.html" with tamano="xs" color="white" %}</span>
-                Enviar
-            </button>
+    {# ── Sidebar de conversaciones ───────────────────────────── #}
+    <aside class="hidden w-72 shrink-0 flex-col border-r border-gray-200 md:flex dark:border-gray-800">
+        <header class="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+            <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100">Recados</h1>
+            {% if puede_crear %}
+            <a href="{% url 'recados:nueva' %}" class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600" title="Nueva conversación">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            </a>
+            {% endif %}
+        </header>
+        <div id="chat-bandeja" class="flex-1 overflow-y-auto" hx-get="{% url 'recados:partial_bandeja' %}?activa={{ activa_pk }}" hx-trigger="every 15s" hx-swap="innerHTML">
+            {% include "recados/_chat_bandeja_lista.html" %}
         </div>
-        <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter envía · Shift+Enter salto de línea</p>
-    </form>
+    </aside>
+
+    {# ── Panel principal: hilo de la conversación ──────────── #}
+    <section class="flex min-w-0 flex-1 flex-col">
+
+        {# Header del hilo #}
+        <header class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+            <div class="flex items-center gap-3 min-w-0">
+                <a href="{% url 'recados:bandeja' %}" class="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" title="Volver">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
+                    {% if conv.tipo == "grupo" %}👥{% else %}{{ titulo|first|upper }}{% endif %}
+                </span>
+                <div class="min-w-0">
+                    <h2 class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{{ titulo }}</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {% if conv.tipo == "grupo" %}{{ conv.participantes.count }} participantes · grupo{% else %}conversación directa{% endif %}
+                    </p>
+                </div>
+            </div>
+        </header>
+
+        {# Mensajes — scroll #}
+        <div id="chat-scroll" class="flex-1 overflow-y-auto bg-gray-50/40 px-5 py-4 dark:bg-gray-900/40">
+            <div id="chat-mensajes"
+                 hx-get="{% url 'recados:partial_mensajes' conv.pk %}"
+                 hx-trigger="every 5s"
+                 hx-vals="js:{desde_id: document.getElementById('chat-mensajes').dataset.ultimoId || 0}"
+                 hx-swap="beforeend"
+                 data-ultimo-id="{{ ultimo_id }}">
+                {% include "recados/_chat_mensajes.html" with mensajes=mensajes fragmento=False conv=conv ultimo_id=ultimo_id %}
+            </div>
+        </div>
+
+        {# Composer #}
+        <form hx-post="{% url 'recados:enviar' conv.pk %}"
+              hx-target="#chat-mensajes"
+              hx-swap="beforeend"
+              hx-on::after-request="this.querySelector('textarea').value=''; this.querySelector('textarea').focus(); var s=document.getElementById('chat-scroll'); s.scrollTop=s.scrollHeight;"
+              class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+            {% csrf_token %}
+            <div class="flex items-end gap-2">
+                <textarea name="cuerpo" rows="1" required placeholder="Escribe un mensaje…" data-referencias
+                          class="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
+                <button class="btn-primario shrink-0 flex items-center gap-1.5">
+                    <span class="htmx-indicator">{% include "_componentes_tailadmin/_spinner.html" with tamano="xs" color="white" %}</span>
+                    Enviar
+                </button>
+            </div>
+            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter envía · Shift+Enter salto de línea</p>
+        </form>
+
+    </section>
 </div>
 
 <script>
-  // Auto-scroll + tracking del último mensaje visto (alimenta `desde_id` del polling).
   (function(){
     function scrollAbajo(){ var s=document.getElementById('chat-scroll'); if(s) s.scrollTop=s.scrollHeight; }
     function actualizarUltimo(){
       var c = document.getElementById('chat-mensajes');
       if (!c) return;
       var ultimos = c.querySelectorAll('[data-mensaje-id]');
-      if (ultimos.length) {
-        c.dataset.ultimoId = ultimos[ultimos.length - 1].dataset.mensajeId;
-      }
+      if (ultimos.length) c.dataset.ultimoId = ultimos[ultimos.length - 1].dataset.mensajeId;
     }
     window.addEventListener('DOMContentLoaded', function(){ actualizarUltimo(); scrollAbajo(); });
     document.body.addEventListener('htmx:afterSwap', function(e){

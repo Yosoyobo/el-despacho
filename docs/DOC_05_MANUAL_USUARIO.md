@@ -78,8 +78,9 @@ El super admin puede reordenar y ocultar items del menú para todo el equipo des
 
 Lo primero que ves al entrar. Tiene:
 
+- **Hero arriba:** 3 tarjetas grandes con los números más importantes (Ingresos del mes, Proyectos activos, Por cobrar) + un velocímetro circular que compara tus ingresos del mes contra la meta configurada.
 - **Acciones rápidas:** botones azules para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
-- **El Dictado:** una caja de texto donde le cuentas al Chalán qué pasó. Él interpreta y te propone acciones a revisar antes de aplicarlas.
+- **Dictado al asistente:** una caja de texto donde le cuentas al asistente qué pasó. Él interpreta y te propone acciones a revisar antes de aplicarlas.
 - **Tu tablero (KPIs):** los números clave del negocio. Cada quien elige cuáles ve desde "Mi tablero". Los que tienen meta configurada muestran barra de progreso.
 - **Proyectos activos y pendientes de cotizar:** lista rápida de lo que está en marcha.
 - **Mini calendario:** mes actual con los días que tienen entregas o tareas; click en un día abre los eventos del día.
@@ -175,12 +176,13 @@ Cada mensaje tiene **prioridad 0-10** (slider al crearlo). La bandeja se ordena 
 
 ## Recados (chat interno)
 
-Conversaciones del equipo, estilo WhatsApp/Slack.
+Conversaciones del equipo, estilo Slack.
 
-- **Bandeja:** lista de tus conversaciones, las no leídas se ven en negrita y arriba.
-- **Nueva conversación:** directa (1:1) o grupo. Si arrancas una directa con alguien con quien ya hablaste, se reutiliza el hilo.
+- **Layout dos paneles:** a la izquierda la lista de tus conversaciones (la activa se resalta en azul); a la derecha el hilo abierto con header, mensajes y caja de envío al pie.
+- **Nueva conversación:** click en el botón **+** del header. Directa (1:1) o grupo. Si arrancas una directa con alguien con quien ya hablaste, se reutiliza el hilo.
 - **Polling automático:** cada 5 segundos pregunta al servidor si hay mensajes nuevos. No hay que recargar.
 - **Push automático** a los participantes (puedes silenciar la categoría desde Notificaciones).
+- **Buzón embebido** al pie del panel cuando no tienes ninguna conversación abierta — mandas un mensaje al admin sin salir.
 
 ---
 

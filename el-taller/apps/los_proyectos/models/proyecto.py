@@ -44,6 +44,10 @@ class Proyecto(models.Model):
     codigo = models.CharField(max_length=12, unique=True, db_index=True, default=generar_codigo_proyecto)
     # Slug para el Sistema de Referencias (#). Espejo del código en minúsculas.
     slug = models.CharField(max_length=80, unique=True)
+    # S-LC-Feedback-V5 c9: el slug ahora se basa en el NOMBRE del proyecto.
+    # El slug original (basado en código `lc-0001`) se preserva aquí para
+    # resolver referencias `#lc-0001` en mensajes históricos.
+    slug_legacy = models.CharField(max_length=80, null=True, blank=True, db_index=True)
     nombre = models.CharField(max_length=200)
     cliente = models.ForeignKey("cartera.Cliente", on_delete=models.PROTECT, related_name="proyectos")
     descripcion = models.TextField(blank=True, default="")

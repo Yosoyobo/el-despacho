@@ -197,6 +197,45 @@ def home(request):
         {"actual": {"nombre_mes": "", "datos": []}, "siguiente": {"nombre_mes": "", "datos": []}},
     )
 
+    # S-LC-Feedback-V5 c9: hero KPIs + gauge meta en el header del Dashboard.
+    def _build_hero():
+        try:
+            from apps.taller_home.services_meta_kpi import obtener_meta
+            from apps.tesoreria.services import kpis_landing as kpis_tes
+            t = kpis_tes(user)
+            ingresos_mes = float(t.get("ingresos_mes") or 0)
+            cxc_total = float(t.get("cxc_total") or 0)
+        except Exception:
+            ingresos_mes, cxc_total = 0.0, 0.0
+        try:
+            proyectos_activos_n = Proyecto.objects.filter(estado__in=ESTADOS_ACTIVOS).count()
+            if rol == "disenador":
+                proyectos_activos_n = Proyecto.objects.filter(
+                    estado__in=ESTADOS_ACTIVOS, asignaciones__usuario=user
+                ).distinct().count()
+        except Exception:
+            proyectos_activos_n = 0
+        # Gauge contra meta de ingresos del mes
+        gauge_pct = 0
+        gauge_meta_fmt = ""
+        try:
+            m = obtener_meta("ingresos-mes")
+            if m and float(m.valor) > 0:
+                gauge_pct = max(0, min(100, round(ingresos_mes / float(m.valor) * 100)))
+                gauge_meta_fmt = f"${float(m.valor):,.0f}"
+        except Exception:
+            pass
+        return {
+            "ingresos_mes_fmt": f"${ingresos_mes:,.0f}",
+            "proyectos_activos_num": proyectos_activos_n,
+            "cxc_total_fmt": f"${cxc_total:,.0f}",
+            "gauge_pct": gauge_pct,
+            "gauge_meta_fmt": gauge_meta_fmt,
+            "ingresos_mes_actual_fmt": f"${ingresos_mes:,.0f}",
+        }
+
+    hero = _safe("hero", _build_hero, {})
+
     return render(request, "taller_home/home.html", {
         "kpis": kpis_render,
         "sugerencias": sugerencias_view,
@@ -205,6 +244,7 @@ def home(request):
         "hoy": date.today(),
         "charts": charts,
         "mini_cal": mini_cal,
+        "hero": hero,
     })
 
 

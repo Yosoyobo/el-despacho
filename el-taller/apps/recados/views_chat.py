@@ -94,7 +94,12 @@ def partial_bandeja(request):
     if (r := _gate(request)) is not None:
         return r
     items = services_chat.mis_conversaciones(request.user)
-    return render(request, "recados/_chat_bandeja_lista.html", {"items": items})
+    # S-LC-Feedback-V5 c9: resaltar conv activa en sidebar Slack-like.
+    try:
+        activa_pk = int(request.GET.get("activa") or 0) or None
+    except (TypeError, ValueError):
+        activa_pk = None
+    return render(request, "recados/_chat_bandeja_lista.html", {"items": items, "activa_pk": activa_pk})
 
 
 # ── Conversación ─────────────────────────────────────────────────────────────
@@ -116,11 +121,16 @@ def conversacion(request, pk: int):
     if mensajes:
         services_chat.marcar_leido_hasta(usuario=request.user, conversacion=conv, mensaje_id=mensajes[-1].pk)
     titulo = _titulo(conv, request.user)
+    # S-LC-Feedback-V5 c9: layout Slack — incluir sidebar de conversaciones.
+    items = services_chat.mis_conversaciones(request.user)
     return render(request, "recados/chat_conversacion.html", {
         "conv": conv,
         "mensajes": mensajes,
         "titulo": titulo,
         "ultimo_id": mensajes[-1].pk if mensajes else 0,
+        "items": items,
+        "activa_pk": conv.pk,
+        "puede_crear": puede(request.user, "recados", "crear"),
     })
 
 

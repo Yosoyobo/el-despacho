@@ -65,8 +65,14 @@ def generar_slug_cliente(cliente) -> str:
 
 
 def generar_slug_proyecto(proyecto) -> str:
+    """Slug basado en el NOMBRE del proyecto (más legible en autocomplete).
+
+    Antes era el código (`lc-0001`); ahora `correas-para-las-perras`.
+    Si el nombre cambia y `save()` no lo regenera (por preservar
+    referencias en mensajes históricos), el slug original se queda y el
+    matching sigue funcionando.
+    """
     from apps.los_proyectos.models.proyecto import Proyecto
 
-    codigo = (proyecto.codigo or "").lower()
-    base = _normalizar(codigo) or "proyecto"
+    base = _normalizar(proyecto.nombre or "")[:60] or "proyecto"
     return _desambiguar(base, Proyecto, exclude_id=proyecto.pk)
