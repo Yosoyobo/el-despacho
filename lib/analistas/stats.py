@@ -29,6 +29,24 @@ def _enmascarar(valor: str) -> str:
     return f"{valor[:4]}{'•' * 8}{valor[-4:]}"
 
 
+def _es_gratis(provider: str) -> bool:
+    """True si el adapter del proveedor reporta PRECIO_IN+PRECIO_OUT == 0.
+
+    Override defensivo para que logs históricos con costo>0 de un proveedor
+    que pasó a gratis (caso real: MiMo en S-LC-Feedback-V5) no inflen los
+    totales del panel y de El Site. Si el adapter no existe (proveedor
+    desconocido) retorna False — preserva el comportamiento previo.
+    """
+    from importlib import import_module
+    try:
+        mod = import_module(f"lib.analistas.adapters.{provider}")
+        precio_in = float(getattr(mod, "PRECIO_IN", 0))
+        precio_out = float(getattr(mod, "PRECIO_OUT", 0))
+        return (precio_in + precio_out) == 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def estadisticas_proveedores(dias: int = 30) -> dict[str, dict]:
     """Devuelve `{provider: {llamadas, llamadas_ok, llamadas_falla, prompt_tokens,
     completion_tokens, tokens, costo_usd, ultima_actividad, latencia_promedio}}`.
@@ -49,12 +67,16 @@ def estadisticas_proveedores(dias: int = 30) -> dict[str, dict]:
         ultima=Max("creado_en"),
     ):
         provider = row["provider"]
+        # Si el proveedor es gratis (precio in+out == 0) forzamos costo a 0
+        # aunque los logs históricos digan otra cosa. No toca la DB.
+        costo_bruto = Decimal(row["costo"] or 0)
+        costo_final = Decimal("0") if _es_gratis(provider) else costo_bruto
         salida[provider] = {
             "llamadas": int(row["llamadas"] or 0),
             "prompt_tokens": int(row["prompt_tokens"] or 0),
             "completion_tokens": int(row["completion_tokens"] or 0),
             "tokens": int((row["prompt_tokens"] or 0) + (row["completion_tokens"] or 0)),
-            "costo_usd": Decimal(row["costo"] or 0).quantize(Decimal("0.000001")),
+            "costo_usd": costo_final.quantize(Decimal("0.000001")),
             "ultima_actividad": row["ultima"],
         }
 
@@ -91,17 +113,7 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
         cred = Credencial.objects.filter(clave=slot).first()
         llave = Credencial.obtener(slot) if cred else None
         configurado = bool(llave)
-        # S-LC-Feedback-V3: detecta proveedores gratis (precio_in + precio_out == 0).
-        # MiMo es el caso actual. Se importa por nombre desde el módulo del adapter.
-        from importlib import import_module
-        es_gratis = False
-        try:
-            mod = import_module(f"lib.analistas.adapters.{nombre}")
-            precio_in = float(getattr(mod, "PRECIO_IN", 0))
-            precio_out = float(getattr(mod, "PRECIO_OUT", 0))
-            es_gratis = (precio_in + precio_out) == 0
-        except Exception:  # noqa: BLE001
-            pass
+        es_gratis = _es_gratis(nombre)
         salida.append({
             "nombre": nombre,
             "apodo": adapter.apodo,
