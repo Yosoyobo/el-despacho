@@ -81,7 +81,10 @@
 
         <template id="fac-item-template">
             <tr class="fac-item-row align-top">
-                <td class="px-3 py-2"><textarea name="items-__prefix__-descripcion" rows="2" required></textarea></td>
+                <td class="px-3 py-2">
+                    <textarea name="items-__prefix__-descripcion" rows="2" required></textarea>
+                    <input type="hidden" name="items-__prefix__-servicio" value="">
+                </td>
                 <td class="px-3 py-2 w-24"><input type="number" step="0.01" name="items-__prefix__-cantidad" value="1" required></td>
                 <td class="px-3 py-2 w-24"><input type="text" name="items-__prefix__-unidad" value="pieza"></td>
                 <td class="px-3 py-2 w-32"><input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required></td>
@@ -95,6 +98,40 @@
                 </td>
             </tr>
         </template>
+
+        {# Quick-create de servicio inline (S-LC-Feedback-V5 c3) #}
+        <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+            <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Crear producto nuevo en el catálogo</summary>
+            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_110px_110px_90px_auto]">
+                <div class="col-span-2 md:col-span-1">
+                    <label for="fac-qc-categoria" class="text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
+                    <select id="fac-qc-categoria" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <option value="">— Tipo de producto —</option>
+                        {% for c in categorias_disponibles %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-span-2 md:col-span-1">
+                    <label for="fac-qc-nombre" class="text-xs font-medium text-gray-600 dark:text-gray-300">Nombre</label>
+                    <input id="fac-qc-nombre" type="text" placeholder="ej. Playera bordada" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div>
+                    <label for="fac-qc-costo" class="text-xs font-medium text-gray-600 dark:text-gray-300">Costo</label>
+                    <input id="fac-qc-costo" type="number" step="0.01" min="0" placeholder="0.00" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div>
+                    <label for="fac-qc-precio" class="text-xs font-medium text-gray-600 dark:text-gray-300">Precio unit.</label>
+                    <input id="fac-qc-precio" type="number" step="0.01" min="0" placeholder="0.00" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div>
+                    <label for="fac-qc-cantidad" class="text-xs font-medium text-gray-600 dark:text-gray-300">Cantidad</label>
+                    <input id="fac-qc-cantidad" type="number" min="1" value="1" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div class="flex items-end">
+                    <button type="button" id="fac-qc-agregar" class="btn-primario whitespace-nowrap">Crear y agregar</button>
+                </div>
+            </div>
+            <p id="fac-qc-msg" class="mt-2 text-xs hidden"></p>
+        </details>
     </section>
 
     <section class="ta-card">
@@ -383,6 +420,65 @@
             } catch (e) { /* silent */ }
         });
     }
+})();
+
+// Quick-create de servicio (S-LC-Feedback-V5 c3) — crea Servicio y agrega nueva línea pre-llenada.
+(function () {
+    const btn = document.getElementById('fac-qc-agregar');
+    if (!btn) return;
+    const csrf = document.querySelector('input[name=csrfmiddlewaretoken]').value;
+    const inputs = {
+        categoria: document.getElementById('fac-qc-categoria'),
+        nombre: document.getElementById('fac-qc-nombre'),
+        costo: document.getElementById('fac-qc-costo'),
+        precio: document.getElementById('fac-qc-precio'),
+        cantidad: document.getElementById('fac-qc-cantidad'),
+    };
+    const msg = document.getElementById('fac-qc-msg');
+    const tpl = document.getElementById('fac-item-template');
+    const body = document.getElementById('fac-items-body');
+    const total = document.querySelector('input[name="items-TOTAL_FORMS"]');
+
+    function mostrarMsg(t, esErr) {
+        msg.textContent = t;
+        msg.className = 'mt-2 text-xs ' + (esErr ? 'text-error-600 dark:text-error-400' : 'text-success-600 dark:text-success-400');
+    }
+
+    btn.addEventListener('click', async function () {
+        const nombre = (inputs.nombre.value || '').trim();
+        const categoria_id = inputs.categoria.value;
+        const precio = (inputs.precio.value || '').trim();
+        const cantidad = parseInt(inputs.cantidad.value || '1', 10);
+        if (!nombre || !categoria_id || !precio) { mostrarMsg('Faltan tipo, nombre o precio.', true); return; }
+        btn.disabled = true;
+        const fd = new FormData();
+        fd.append('nombre', nombre);
+        fd.append('categoria_id', categoria_id);
+        fd.append('precio_base', precio);
+        fd.append('costo', inputs.costo.value || '0');
+        try {
+            const r = await fetch('{% url "catalogo-quick-create" %}', {method: 'POST', headers: {'X-CSRFToken': csrf}, body: fd});
+            const data = await r.json();
+            if (!r.ok || !data.ok) { mostrarMsg(data.error || 'Error', true); btn.disabled = false; return; }
+            const idx = parseInt(total.value, 10);
+            const html = tpl.innerHTML.replace(/__prefix__/g, idx);
+            const tmp = document.createElement('tbody');
+            tmp.innerHTML = html;
+            const tr = tmp.firstElementChild;
+            tr.querySelector(`[name="items-${idx}-descripcion"]`).value = data.nombre;
+            tr.querySelector(`[name="items-${idx}-cantidad"]`).value = cantidad;
+            tr.querySelector(`[name="items-${idx}-precio_unitario"]`).value = data.precio || precio;
+            const hidServ = tr.querySelector(`[name="items-${idx}-servicio"]`);
+            if (hidServ) hidServ.value = data.id;
+            body.appendChild(tr);
+            total.value = idx + 1;
+            inputs.nombre.value = ''; inputs.precio.value = ''; inputs.costo.value = ''; inputs.cantidad.value = '1';
+            mostrarMsg('Producto «' + data.nombre + '» creado y agregado.', false);
+            btn.disabled = false;
+        } catch (err) {
+            mostrarMsg('Error de red.', true); btn.disabled = false;
+        }
+    });
 })();
 </script>
 {% endblock %}

@@ -118,6 +118,9 @@ def lista(request):
 
 def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,
               tasas_qs=None, tasas_seleccionadas=None):
+    # S-LC-Feedback-V5 c3: categorías para el quick-create de servicio inline.
+    from apps.el_catalogo.models import CategoriaServicio
+    categorias = CategoriaServicio.objects.filter(activa=True).order_by("orden", "nombre")
     return {
         "form": form,
         "formset": formset,
@@ -125,6 +128,7 @@ def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,
         "fac": fac,
         "tasas": tasas_qs if tasas_qs is not None else TasaImpositiva.objects.filter(activa=True),
         "tasas_seleccionadas": set(tasas_seleccionadas or []),
+        "categorias_disponibles": categorias,
     }
 
 

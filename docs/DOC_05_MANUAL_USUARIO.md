@@ -4,6 +4,10 @@
 
 ---
 
+## Novedades al 23 de mayo de 2026 (S-LC-Feedback-V5 commit 3)
+
+- **Crear producto on-the-fly desde Cotizaciones y Facturación.** En el form de Nueva Cotización o Nueva Factura, abajo de la lista de líneas, hay un panel desplegable "+ Crear producto nuevo en el catálogo". Captura tipo + nombre + costo + precio + cantidad, dale "Crear y agregar" y el producto queda registrado en el catálogo + agregado como nueva línea de la cotización o factura. Mismo patrón que ya existía en Proyectos.
+
 ## Novedades al 23 de mayo de 2026 (S-LC-Feedback-V5 commit 2)
 
 - **Proveedores con checkboxes en Productos.** Al crear o editar un producto, la sección "Proveedores aplicables" ahora es una grilla de casillas con el nombre de cada proveedor. Marca uno o varios — la casilla se ilumina en azul al seleccionarla. Adiós al `<select multiple>` confuso.

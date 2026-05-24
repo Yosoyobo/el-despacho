@@ -2829,6 +2829,31 @@ movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
   cláusulas como "los proyectos activos" donde "los" es artículo
   natural del español).
 
+### S-LC-Feedback-V5 ✅ commit 3 — Productos on-the-fly en Cotizaciones + Facturación (2026-05-23)
+
+Replica el panel quick-create de Proyectos en los forms de Cotización
+y Factura. Reusa el endpoint `catalogo-quick-create` existente.
+
+- **Cotizaciones**
+  ([el-taller/templates/cotizaciones/form.html](el-taller/templates/cotizaciones/form.html)
+  + [views.py:114-128](el-taller/apps/cotizaciones/views.py)):
+  panel `<details>` "+ Crear producto nuevo en el catálogo" antes del
+  `<template id="cot-item-template">`. JS hace fetch POST a
+  `catalogo-quick-create`, inyecta el nuevo `<option>` en todos los
+  selects de servicio existentes y clona una fila del formset
+  pre-seleccionando el servicio + cantidad + precio. Cálculo de
+  margen en vivo. Context var nueva: `categorias_disponibles`.
+- **Facturación**
+  ([el-taller/templates/facturacion/factura_form.html](el-taller/templates/facturacion/factura_form.html)
+  + [views.py:119-131](el-taller/apps/facturacion/views.py)):
+  mismo panel + JS. Como `FacturaItem` tiene `servicio` como FK
+  opcional, se agregó hidden `<input name="items-__prefix__-servicio">`
+  al template; el JS lo pre-llena con el ID nuevo. La descripción
+  de la línea se pre-llena con el nombre del producto creado.
+
+Cero migraciones. El endpoint `catalogo-quick-create` ya existía desde
+S-LC-Feedback-V2 commit 7.
+
 ### S-LC-Feedback-V5 ✅ commit 2 — Productos: proveedores con checkmarks + columna + quick-create (2026-05-23)
 
 UX de proveedores aplicables más obvia, más rápida.
