@@ -89,4 +89,94 @@
   .menu-item        { @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium; }
   .menu-item-active   { @apply bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400; }
   .menu-item-inactive { @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5; }
+
+  /* ── Manual de usuario (/ayuda) ──────────────────────────────────────
+     Estilo de lectura plano sin tailwind-typography. Vive aquí en lugar
+     de un <style> inline porque Tailwind no procesa @apply en templates. */
+  .manual-cuerpo { @apply text-[15px] leading-7 text-gray-700 dark:text-gray-300; }
+  .manual-cuerpo :is(h1,h2,h3,h4,h5,h6) { scroll-margin-top: 6rem; }
+  .manual-cuerpo h1 { @apply mt-0 mb-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50; }
+  .manual-cuerpo h2 { @apply relative mt-12 mb-4 border-b border-gray-200 pb-3 text-2xl font-bold tracking-tight text-gray-900 dark:border-gray-800 dark:text-gray-50; }
+  .manual-cuerpo h2::before {
+    content: ""; position: absolute; left: 0; bottom: -1px;
+    width: 3rem; height: 2px; border-radius: 1px;
+    @apply bg-brand-500;
+  }
+  .manual-cuerpo h3 { @apply mt-8 mb-3 text-xl font-semibold text-gray-900 dark:text-gray-100; }
+  .manual-cuerpo h4 { @apply mt-6 mb-2 text-base font-semibold text-gray-800 dark:text-gray-200; }
+  .manual-cuerpo h5 { @apply mt-5 mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400; }
+
+  .manual-cuerpo p { @apply my-4; }
+  .manual-cuerpo ul { @apply my-4 space-y-2 list-none pl-0; }
+  .manual-cuerpo ul > li { @apply relative pl-6; }
+  .manual-cuerpo ul > li::before {
+    content: ""; position: absolute; left: 0.5rem; top: 0.65rem;
+    width: 6px; height: 6px; border-radius: 9999px;
+    @apply bg-brand-500;
+  }
+  .manual-cuerpo ol { @apply my-4 ml-6 list-decimal space-y-2; }
+  .manual-cuerpo ol > li { @apply pl-2; }
+  .manual-cuerpo li > ul, .manual-cuerpo li > ol { @apply my-2; }
+
+  .manual-cuerpo strong { @apply font-semibold text-gray-900 dark:text-gray-100; }
+  .manual-cuerpo em { @apply italic; }
+
+  .manual-cuerpo a {
+    @apply font-medium text-brand-600 underline decoration-brand-300 decoration-1 underline-offset-2 transition hover:text-brand-700 hover:decoration-brand-500 dark:text-brand-400 dark:decoration-brand-700 dark:hover:text-brand-300;
+  }
+
+  .manual-cuerpo code {
+    @apply rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-[0.85em] text-brand-700 dark:border-gray-700 dark:bg-gray-800 dark:text-brand-300;
+  }
+  .manual-cuerpo pre {
+    @apply my-4 overflow-x-auto rounded-xl border border-gray-800 bg-gray-950 p-4 text-[13px] leading-6 text-gray-100 shadow-theme-xs;
+  }
+  .manual-cuerpo pre code { @apply border-0 bg-transparent p-0 text-gray-100; }
+
+  .manual-cuerpo blockquote {
+    @apply my-5 rounded-r-xl border-l-4 border-brand-400 bg-brand-50 px-5 py-3 text-gray-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-gray-200;
+  }
+  .manual-cuerpo blockquote > :first-child { margin-top: 0; }
+  .manual-cuerpo blockquote > :last-child  { margin-bottom: 0; }
+  .manual-cuerpo blockquote strong { @apply text-brand-800 dark:text-brand-200; }
+
+  .manual-cuerpo table {
+    @apply my-5 w-full overflow-hidden rounded-xl border border-gray-200 text-sm shadow-theme-xs dark:border-gray-800;
+    border-collapse: separate; border-spacing: 0;
+  }
+  .manual-cuerpo thead { @apply bg-gray-50 dark:bg-gray-800; }
+  .manual-cuerpo th {
+    @apply border-b border-gray-200 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-700 dark:border-gray-700 dark:text-gray-200;
+  }
+  .manual-cuerpo td {
+    @apply border-b border-gray-100 px-4 py-2.5 align-top text-gray-700 dark:border-gray-800 dark:text-gray-300;
+  }
+  .manual-cuerpo tbody tr:last-child td { border-bottom: 0; }
+  .manual-cuerpo tbody tr:hover { @apply bg-gray-50/60 dark:bg-gray-800/40; }
+
+  .manual-cuerpo hr {
+    @apply my-10 h-px border-0;
+    background-image: linear-gradient(90deg, transparent, rgb(209 213 219), transparent);
+  }
+  .dark .manual-cuerpo hr {
+    background-image: linear-gradient(90deg, transparent, rgb(55 65 81), transparent);
+  }
+
+  .manual-cuerpo img {
+    @apply my-5 max-w-full rounded-xl border border-gray-200 shadow-theme-xs dark:border-gray-800;
+    height: auto;
+  }
+
+  /* TOC del manual */
+  .manual-toc ul { @apply space-y-1.5 list-none pl-0 text-sm; }
+  .manual-toc ul ul {
+    @apply ml-3 mt-1.5 space-y-1 border-l border-gray-200 pl-3 dark:border-gray-700;
+  }
+  .manual-toc a {
+    @apply block rounded px-2 py-1 text-gray-600 no-underline transition hover:bg-brand-50 hover:text-brand-700 dark:text-gray-400 dark:hover:bg-brand-500/10 dark:hover:text-brand-300;
+  }
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
 }

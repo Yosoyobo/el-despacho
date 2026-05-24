@@ -2,53 +2,57 @@
 {% load forms_helpers %}
 {% block title %}{% if modo == 'nuevo' %}Nueva cotización{% else %}Editar {{ cot.codigo }}{% endif %} — El Taller{% endblock %}
 {% block contenido %}
+{% breadcrumb_items "Cotizaciones" "/cotizaciones/" titulo_pagina as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=titulo_pagina subtitulo=cot.codigo|default:"Datos de la cotización + líneas + impuestos" breadcrumb_items=breadcrumb_items back_url="/cotizaciones/" back_label="Cotizaciones" %}
 
-{% include "_componentes_tailadmin/_page_header.html" with titulo=titulo_pagina subtitulo=cot.codigo|default:"" breadcrumb_items=breadcrumb_items %}
-
-<form method="post" class="space-y-6" id="cot-form">
+<form method="post" class="max-w-5xl" id="cot-form">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
-    <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">
+    <div class="mb-4 rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">
         {{ form.non_field_errors }}
     </div>
     {% endif %}
 
-    <section class="ta-card">
-        <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Datos generales</h2>
-        <div class="grid gap-4 md:grid-cols-2">
-            {# S-LC-Feedback-V2: cliente y proyecto con link inline a "+ Nuevo". #}
+    {# ── Datos generales ───────────────────────────────────────────── #}
+    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos generales</h2>
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+
             <div>
-                <div class="mb-1.5 flex items-center justify-between">
-                    <label for="{{ form.cliente.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.cliente.label }}</label>
-                    <a href="{% url 'proyectos-cliente-inline' %}"
-                       hx-get="{% url 'proyectos-cliente-inline' %}"
-                       hx-target="#modal-slot"
-                       hx-swap="innerHTML"
-                       class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo cliente</a>
+                <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.cliente.label }}</label>
+                <div class="flex items-center gap-2">
+                    <div class="flex-1">{{ form.cliente }}</div>
+                    <button type="button" class="btn-secundario whitespace-nowrap"
+                            hx-get="{% url 'proyectos-cliente-inline' %}"
+                            hx-target="#modal-slot"
+                            hx-swap="innerHTML">+ Nuevo</button>
                 </div>
-                {{ form.cliente }}
-                {% if form.cliente.errors %}<p class="mt-1 text-xs text-error-600">{{ form.cliente.errors|join:" " }}</p>{% endif %}
+                {% if form.cliente.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.cliente.errors|join:" · " }}</p>{% endif %}
             </div>
+
             <div>
-                <div class="mb-1.5 flex items-center justify-between">
-                    <label for="{{ form.proyecto.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.proyecto.label }} <span class="text-error-500" title="Obligatorio">*</span></label>
-                    <a href="{% url 'proyectos-nuevo' %}"
-                       class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto</a>
+                <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.proyecto.label }} <span class="text-error-500" title="Obligatorio">*</span></label>
+                <div class="flex items-center gap-2">
+                    <div class="flex-1">{{ form.proyecto }}</div>
+                    <a href="{% url 'proyectos-nuevo' %}" class="btn-secundario whitespace-nowrap">+ Nuevo</a>
                 </div>
-                {{ form.proyecto }}
-                {% if form.proyecto.errors %}<p class="mt-1 text-xs text-error-600">{{ form.proyecto.errors|join:" " }}</p>{% endif %}
+                {% if form.proyecto.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.proyecto.errors|join:" · " }}</p>{% endif %}
             </div>
+
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.titulo ancho_completo=True %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_emision %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descuento_global_porcentaje %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.anticipo_porcentaje %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.anticipo_monto_override %}
         </div>
     </section>
 
-    <section class="ta-card">
+    {# ── Productos / servicios ─────────────────────────────────────── #}
+    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">Productos / servicios</h2>
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos / servicios</h2>
             <button type="button" id="cot-agregar-linea" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Agregar línea</button>
         </div>
 
@@ -56,24 +60,24 @@
 
         <div id="cot-items-body" class="space-y-3">
             {% for f in formset %}
-            <div class="cot-item-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_80px_120px_120px_80px_auto] dark:border-gray-800" {% if f.instance.pk %}data-existing="1"{% endif %}>
+            <div class="cot-item-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40 md:grid-cols-[2fr_2fr_80px_120px_120px_80px_auto]" {% if f.instance.pk %}data-existing="1"{% endif %}>
                 {{ f.id }}
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Producto</label>
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Producto</label>
                     {{ f.servicio }}
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Variación</label>
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Variación</label>
                     {{ f.variacion }}
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Cantidad</label>
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Cantidad</label>
                     {{ f.cantidad }}
-                    {% if f.cantidad.errors %}<p class="text-xs text-error-600">{{ f.cantidad.errors|join:" " }}</p>{% endif %}
+                    {% if f.cantidad.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.cantidad.errors|join:" " }}</p>{% endif %}
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Unidad</label>
-                    <select name="{{ f.unidad.html_name }}" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Unidad</label>
+                    <select name="{{ f.unidad.html_name }}">
                         {% for u in unidades_disponibles %}
                         <option value="{{ u }}" {% if f.unidad.value == u %}selected{% endif %}>{{ u }}</option>
                         {% endfor %}
@@ -83,12 +87,12 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">P. unitario</label>
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">P. unitario</label>
                     {{ f.precio_unitario }}
-                    {% if f.precio_unitario.errors %}<p class="text-xs text-error-600">{{ f.precio_unitario.errors|join:" " }}</p>{% endif %}
+                    {% if f.precio_unitario.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.precio_unitario.errors|join:" " }}</p>{% endif %}
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Desc. %</label>
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desc. %</label>
                     {{ f.descuento_porcentaje }}
                 </div>
                 <div class="flex items-end justify-end">
@@ -104,7 +108,7 @@
                     <details>
                         <summary class="cursor-pointer text-[11px] text-gray-500 hover:text-brand-600 dark:text-gray-400">Descripción libre (opcional)</summary>
                         <div class="mt-2">{{ f.descripcion }}</div>
-                        {% if f.descripcion.errors %}<p class="text-xs text-error-600">{{ f.descripcion.errors|join:" " }}</p>{% endif %}
+                        {% if f.descripcion.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.descripcion.errors|join:" " }}</p>{% endif %}
                     </details>
                     {{ f.orden.as_hidden }}
                 </div>
@@ -113,33 +117,32 @@
         </div>
 
         <template id="cot-item-template">
-            {# Plantilla para fila nueva. El JS reemplaza __prefix__ por el índice y agrega al body. #}
-            <div class="cot-item-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_80px_120px_120px_80px_auto] dark:border-gray-800">
+            <div class="cot-item-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40 md:grid-cols-[2fr_2fr_80px_120px_120px_80px_auto]">
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Producto</label>
-                    <select name="items-__prefix__-servicio" class="cot-tpl-servicio w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900"><option value="">— Producto —</option></select>
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Producto</label>
+                    <select name="items-__prefix__-servicio" class="cot-tpl-servicio"><option value="">— Producto —</option></select>
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Variación</label>
-                    <select name="items-__prefix__-variacion" class="cot-tpl-variacion w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900"><option value="">— Variación —</option></select>
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Variación</label>
+                    <select name="items-__prefix__-variacion" class="cot-tpl-variacion"><option value="">— Variación —</option></select>
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Cantidad</label>
-                    <input type="number" step="0.01" name="items-__prefix__-cantidad" value="1" min="0.01" required class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Cantidad</label>
+                    <input type="number" step="0.01" name="items-__prefix__-cantidad" value="1" min="0.01" required>
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Unidad</label>
-                    <select name="items-__prefix__-unidad" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Unidad</label>
+                    <select name="items-__prefix__-unidad">
                         {% for u in unidades_disponibles %}<option value="{{ u }}" {% if u == 'Piezas' %}selected{% endif %}>{{ u }}</option>{% endfor %}
                     </select>
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">P. unitario</label>
-                    <input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">P. unitario</label>
+                    <input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required>
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400">Desc. %</label>
-                    <input type="number" step="0.01" name="items-__prefix__-descuento_porcentaje" value="0" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desc. %</label>
+                    <input type="number" step="0.01" name="items-__prefix__-descuento_porcentaje" value="0">
                 </div>
                 <div class="flex items-end justify-end">
                     <button type="button" class="cot-item-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar línea" aria-label="Quitar línea">
@@ -149,7 +152,7 @@
                 <div class="md:col-span-7">
                     <details>
                         <summary class="cursor-pointer text-[11px] text-gray-500 hover:text-brand-600 dark:text-gray-400">Descripción libre (opcional)</summary>
-                        <div class="mt-2"><textarea name="items-__prefix__-descripcion" rows="2" class="w-full rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900"></textarea></div>
+                        <div class="mt-2"><textarea name="items-__prefix__-descripcion" rows="2"></textarea></div>
                     </details>
                     <input type="hidden" name="items-__prefix__-DELETE" value="">
                     <input type="hidden" name="items-__prefix__-orden" value="0">
@@ -158,12 +161,13 @@
         </template>
     </section>
 
-    <section class="ta-card">
-        <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Impuestos</h2>
+    {# ── Impuestos ─────────────────────────────────────────────────── #}
+    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Impuestos</h2>
         <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Las marcadas como aplicables por defecto vienen preseleccionadas. Configurables en La Gerencia → Tasas.</p>
         <div class="grid gap-2 md:grid-cols-2">
             {% for t in tasas %}
-            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <label class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300 dark:hover:bg-gray-800">
                 <input type="checkbox" name="tasas" value="{{ t.id }}" {% if t.id in tasas_seleccionadas %}checked{% endif %}>
                 <span>{{ t.nombre }} <span class="text-xs text-gray-500">({{ t.porcentaje }}% · {{ t.get_tipo_display }})</span></span>
             </label>
@@ -173,22 +177,23 @@
         </div>
     </section>
 
-    <section class="ta-card">
-        <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Notas y términos</h2>
-        <div class="grid gap-4">
+    {# ── Notas y términos ──────────────────────────────────────────── #}
+    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Notas y términos</h2>
+        <div class="grid gap-5">
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.terminos %}
         </div>
     </section>
 
-    <div class="flex justify-end gap-2">
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
         <a href="{% if cot %}{% url 'cotizaciones:detalle' cot.pk %}{% else %}{% url 'cotizaciones:lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
-        <button type="submit" class="btn-primario">Guardar</button>
+        <button type="submit" class="btn-primario">Guardar cotización</button>
     </div>
 </form>
 
 <script>
-// S-LC-Feedback-V4 hotfix: auto-llenar cliente al elegir proyecto.
+// Auto-llenar cliente al elegir proyecto.
 (function () {
     const selProyecto = document.querySelector('#cot-form select[name="proyecto"]');
     const selCliente = document.querySelector('#cot-form select[name="cliente"]');
@@ -198,12 +203,15 @@
         const pk = selProyecto.value;
         if (!pk) return;
         try {
-            const r = await fetch(`/tesoreria/api/proyecto/${pk}/datos/`, {credentials: 'same-origin'});
+            const r = await fetch(`/cotizaciones/api/proyecto/${pk}/datos/`, {credentials: 'same-origin'});
             if (!r.ok) return;
             const data = await r.json();
-            if (data.cliente_id && !selCliente.value) {
+            if (data.cliente_id) {
                 const opt = Array.from(selCliente.options).find(o => o.value === String(data.cliente_id));
-                if (opt) selCliente.value = String(data.cliente_id);
+                if (opt) {
+                    selCliente.value = String(data.cliente_id);
+                    selCliente.dispatchEvent(new Event('change', {bubbles: true}));
+                }
             }
             if (inpTitulo && !inpTitulo.value && data.nombre) {
                 inpTitulo.value = `Cotización · ${data.nombre}`;
@@ -211,10 +219,10 @@
         } catch (e) { /* silent */ }
     }
     selProyecto.addEventListener('change', autollenar);
-    // Ejecutar al cargar si ya hay un proyecto preseleccionado.
     if (selProyecto.value) autollenar();
 })();
 
+// Formset: agregar línea + quitar línea (botón "x").
 (function () {
     const tpl = document.getElementById('cot-item-template');
     const body = document.getElementById('cot-items-body');
@@ -222,9 +230,6 @@
     const btn = document.getElementById('cot-agregar-linea');
     if (!tpl || !body || !total || !btn) return;
 
-    // Captura opciones de servicio y variación de la primera fila existente
-    // (Django ya las renderizó con el catálogo completo). Las reusamos al clonar
-    // para que el botón "+ Agregar línea" produzca filas con los mismos selects.
     function clonarOptions(selectorOrigen) {
         const src = body.querySelector(selectorOrigen);
         if (!src) return '';
@@ -239,7 +244,6 @@
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
         const nueva = tmp.firstElementChild;
-        // Inyectar opciones de servicio + variacion clonadas de la primera fila.
         const opcServicio = clonarOptions('select[name$="-servicio"]');
         const opcVariacion = clonarOptions('select[name$="-variacion"]');
         const selServ = nueva.querySelector('.cot-tpl-servicio');
@@ -250,7 +254,6 @@
         total.value = idx + 1;
     });
 
-    // S-LC-Feedback-V3: botón "x" para quitar línea de items.
     document.addEventListener('click', function (e) {
         const x = e.target.closest('.cot-item-eliminar');
         if (!x) return;

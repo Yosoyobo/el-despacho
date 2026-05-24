@@ -523,6 +523,34 @@ def duplicar(request, pk):
 
 
 @login_required
+def api_proyecto_datos(request, pk):
+    """Datos del proyecto para auto-llenar el form de cotización.
+
+    GET /cotizaciones/api/proyecto/<pk>/datos/
+    → {id, codigo, nombre, cliente_id, cliente_nombre}
+
+    Gated por `puede_ver_cotizaciones` para no acoplar el form de
+    Cotizaciones al permiso de Tesorería (S-LC-Feedback-V4 hotfix 2).
+    """
+    from django.http import JsonResponse
+
+    from apps.los_proyectos.models import Proyecto
+
+    if (r := _gate_ver(request)) is not None:
+        return r
+    proyecto = get_object_or_404(
+        Proyecto.objects.select_related("cliente"), pk=pk,
+    )
+    return JsonResponse({
+        "id": proyecto.pk,
+        "codigo": proyecto.codigo,
+        "nombre": proyecto.nombre,
+        "cliente_id": proyecto.cliente_id,
+        "cliente_nombre": proyecto.cliente.razon_social if proyecto.cliente else "",
+    })
+
+
+@login_required
 def factura_anticipo(request, pk):
     """Genera Factura por el monto del anticipo desde una cotización
     aprobada (S-Finanzas-V2 #E). POST-only."""

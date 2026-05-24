@@ -2711,6 +2711,64 @@ los tests de Redis que pasan en CI).
   (el endpoint requiere `proyecto_id`). Si LC pide flujo más directo,
   el siguiente sprint agrega selector de proyecto inline al modal.
 
+### S-LC-Feedback-V4 hotfix 2 ✅ — Cotizaciones UI + manual limpio + ayuda bonita (2026-05-23)
+
+Tres entregas en una sesión, dirigida por feedback de LC:
+
+- **Cotizaciones autollenar cliente fix raíz**: el JS del form pegaba
+  a `/tesoreria/api/proyecto/<pk>/datos/` que está gated por
+  `puede_ver_finanzas`. Usuarios con permiso de Cotizaciones pero sin
+  Tesorería recibían 403 y el `try/catch` lo silenciaba. Endpoint
+  nuevo dedicado [`cotizaciones:api-proyecto-datos`](el-taller/apps/cotizaciones/views.py)
+  gated por `puede_ver_cotizaciones`. JS de
+  [`form.html`](el-taller/templates/cotizaciones/form.html)
+  apunta al endpoint propio y ahora dispara `change` en el
+  `<select cliente>` por si otro listener escucha.
+
+- **Cotizaciones form UI ahora coincide con Proyectos** (regla §4 #1
+  TailAdmin canónico). Causa raíz del look pálido: el form usaba
+  `<section class="ta-card">`, que NO activa las reglas
+  `.campo-form input/select/textarea/label` definidas en
+  [`input.css`](el-taller/static/css/input.css). Cambiado a
+  `<section class="campo-form rounded-2xl border bg-white p-6 ...">`
+  igual que `proyectos/form.html`. Beneficio inmediato: bordes,
+  padding, focus rings, dark mode parejo en todos los campos. Cada
+  fila de producto ahora tiene fondo claro/oscuro responsivo
+  (`bg-gray-50/50 dark:bg-gray-800/40`) que contrasta con el blanco
+  del card. Cliente/proyecto con botones inline "+ Nuevo" como en
+  Proyectos. Anticipo (%) + override ahora aparecen en la grilla.
+
+- **Manual de usuario limpio + página `/ayuda/` bonita**
+  ([docs/DOC_05_MANUAL_USUARIO.md](docs/DOC_05_MANUAL_USUARIO.md),
+  [el-taller/templates/ayuda/manual.html](el-taller/templates/ayuda/manual.html),
+  [el-taller/static/css/input.css](el-taller/static/css/input.css)):
+  - **Bitácora extraída del manual**: removidas ~320 líneas de
+    "Novedades al X mayo 2026 — S-LC-Feedback-VN" del encabezado, +
+    los sufijos `(S2b.X)`, `(Pre-S2b.X)`, `(S-LC-Feedback-VN)`, etc.
+    inline en headings/párrafos. El manual ahora son sólo
+    **instrucciones de uso plain**. Política §10 sigue vigente
+    (actualizar antes de cada deploy), pero el contenido pasa a ser
+    novedades de uso, no de implementación. 1545 → 1223 líneas.
+  - **Estilos del manual al CSS compilado**: los estilos viejos
+    vivían en `<style>` inline con `@apply` y **el browser ignoraba
+    todo** (Tailwind sólo procesa `@apply` en archivos fuente, no
+    en templates). Movido todo el styling a `.manual-cuerpo` /
+    `.manual-toc` en el `@layer components` de `input.css`. Ahora
+    el manual rendea con: H2 con accent brand bajo el border, bullets
+    brand custom, blockquotes con border-l-4 brand + fondo brand
+    suave (dark mode), tablas con hover por fila + headers shaded,
+    code inline brand-coloreado, pre/code dark theme propio, links
+    con underline brand sutil, TOC jerárquico con border-left guía.
+  - **Scroll del TOC arreglado**: `scroll-margin-top: 6rem` en
+    h1–h6 + `scroll-behavior: smooth` global. Antes el header
+    sticky tapaba el destino del salto. Además **highlight activo
+    en el TOC** vía `IntersectionObserver` — la sección que estás
+    leyendo se ilumina en el índice mientras scrolleas.
+
+Cero migraciones, cero pasos manuales post-deploy. Tailwind recompila
+en el siguiente Docker build y captura los selectores nuevos del
+`.manual-cuerpo` + `.manual-toc`.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
