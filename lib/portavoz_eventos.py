@@ -28,6 +28,7 @@ EventoTipo = Literal[
     "cotizacion.anulada",
     "cotizacion.vencida",
     "factura.emitida",
+    "factura.vencida",
     "pago.recibido",
     "pago.recordatorio",
     "usuario.creado",

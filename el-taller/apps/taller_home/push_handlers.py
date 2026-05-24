@@ -29,6 +29,14 @@ def _admins_activos():
     return Usuario.objects.filter(is_active=True, rol__in=("super_admin", "dueno"))
 
 
+def _cobranza_activos():
+    """Usuarios que reciben alertas de cobranza: admins + contadores activos."""
+    from cuentas.models.usuario import Usuario
+    return Usuario.objects.filter(
+        is_active=True, rol__in=("super_admin", "dueno", "contador")
+    )
+
+
 def _enviar(usuario, titulo: str, cuerpo: str, *, url: str, tag: str, categoria: str,
             origen_modulo: str, origen_id: int) -> None:
     from lib.interfono import enviar_a_usuario
@@ -107,6 +115,36 @@ def notificar_proyecto_status_cambiado(proyecto, anterior: str, nuevo: str, acto
                 categoria="proyectos",
                 origen_modulo="proyectos",
                 origen_id=proyecto.pk,
+            )
+    transaction.on_commit(_hacer)
+
+
+# ── Cobranza ──
+
+
+def notificar_factura_vencida(factura, dias_vencida: int, saldo: float) -> None:
+    """Push a admins + contador cuando el cron marca una factura como vencida.
+
+    Categoría `cobranza` — opt-out individual desde /perfil/notificaciones/.
+    Idempotente porque el cron sólo dispara una vez por factura (campo
+    `vencida_notificada_en`).
+    """
+    cliente = getattr(factura, "cliente", None)
+    cliente_label = getattr(cliente, "razon_social", "") or "cliente"
+    titulo = f"💸 Factura vencida: {factura.codigo}"
+    cuerpo = (
+        f"{cliente_label} · {dias_vencida} día{'s' if dias_vencida != 1 else ''} de retraso"
+        f" · saldo ${saldo:,.2f}"
+    )
+    url = f"/facturacion/{factura.pk}/"
+    tag = f"factura-vencida-{factura.pk}"
+
+    def _hacer():
+        for u in _cobranza_activos():
+            _enviar(
+                u, titulo=titulo, cuerpo=cuerpo, url=url, tag=tag,
+                categoria="cobranza",
+                origen_modulo="facturacion", origen_id=factura.pk,
             )
     transaction.on_commit(_hacer)
 

@@ -26,6 +26,10 @@ _componentes_tailadmin README cuando exista.
         {% endif %}
     </div>
     {% if subtexto %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ subtexto }}</p>{% endif %}
+    {% if sparkline_serie %}
+    {# Sparkline 30 días — ApexCharts. Color hereda el del card. #}
+    <div class="-mb-1 mt-2 h-9" id="spark-{{ sparkline_id }}" data-chart="spark-kpi" data-series="{{ sparkline_serie }}" data-color="{{ sparkline_color|default:'#465fff' }}" data-formato="{{ sparkline_formato|default:'' }}" data-nombre="{{ titulo }}"></div>
+    {% endif %}
     {% if meta_valor %}
     {# S-LC-Feedback-V5 c8: bullet horizontal — barra de progreso hacia la meta. #}
     <div class="mt-3">

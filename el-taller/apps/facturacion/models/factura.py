@@ -112,6 +112,10 @@ class Factura(models.Model):
         related_name="facturas_emitidas",
     )
 
+    # Marca cuando el cron emitió el evento `factura.vencida` para evitar
+    # duplicados. Si se registra un cobro y la factura sale de mora, limpiar.
+    vencida_notificada_en = models.DateTimeField(null=True, blank=True)
+
     # Cancelación
     cancelada_en = models.DateTimeField(null=True, blank=True)
     cancelada_por = models.ForeignKey(
@@ -237,6 +241,13 @@ class FacturaItem(models.Model):
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
     unidad = models.CharField(max_length=30, default="pieza")
+    unidad_fk = models.ForeignKey(
+        "el_catalogo.Unidad",
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name="lineas_factura",
+        help_text="Catálogo. Si está vacío, se usa la cadena en 'unidad' (legacy).",
+    )
     precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
     descuento_porcentaje = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("0.00")
@@ -248,6 +259,12 @@ class FacturaItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.factura.codigo} · {self.descripcion[:40]}"
+
+    @property
+    def unidad_label(self) -> str:
+        if self.unidad_fk_id:
+            return self.unidad_fk.nombre
+        return self.unidad or ""
 
     @property
     def subtotal(self) -> Decimal:

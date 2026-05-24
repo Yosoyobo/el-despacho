@@ -6,7 +6,7 @@ Mantener consultas en un solo lugar — un cambio de modelo no debe arrastrar
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -202,6 +202,34 @@ def charts_landing() -> dict[str, str]:
         ]),
         "donut_centros": donut_desde_conteo(conteo_centros),
     }
+
+
+def series_diarias_30d() -> dict[str, list]:
+    """Series de los últimos 30 días (incluyendo hoy) para sparklines.
+
+    Devuelve listas de 30 floats — ingresos diarios, egresos diarios y
+    utilidad diaria (ingresos - egresos). Día 0 = hace 29 días; último = hoy.
+    """
+    from collections import defaultdict
+    hoy = date.today()
+    desde = hoy - timedelta(days=29)
+    ing_por_dia: dict = defaultdict(lambda: Decimal("0"))
+    egr_por_dia: dict = defaultdict(lambda: Decimal("0"))
+    for fila in Ingreso.vigentes.filter(fecha__gte=desde).values("fecha").annotate(t=Sum("monto")):
+        ing_por_dia[fila["fecha"]] = fila["t"] or Decimal("0")
+    for fila in Egreso.vigentes.filter(fecha__gte=desde).values("fecha").annotate(t=Sum("monto")):
+        egr_por_dia[fila["fecha"]] = fila["t"] or Decimal("0")
+    ingresos: list[float] = []
+    egresos: list[float] = []
+    utilidad: list[float] = []
+    for i in range(30):
+        d = desde + timedelta(days=i)
+        ing = float(ing_por_dia.get(d, 0))
+        egr = float(egr_por_dia.get(d, 0))
+        ingresos.append(ing)
+        egresos.append(egr)
+        utilidad.append(ing - egr)
+    return {"ingresos": ingresos, "egresos": egresos, "utilidad": utilidad}
 
 
 def kpis_landing(usuario) -> dict[str, Any]:

@@ -322,8 +322,42 @@
     instancias.set(id, c);
   }
 
+  function sparkKpi(el) {
+    // Sparkline para KPI cards. data-series='[n1, n2, ...]' (números planos
+    // diarios, típicamente 30 días). data-color='#465fff' opcional.
+    // data-formato='moneda' formatea tooltip como $N. Sin formato → número.
+    let datos;
+    try { datos = JSON.parse(el.dataset.series || "[]"); } catch (e) { return; }
+    if (!Array.isArray(datos) || !datos.length) return;
+    const id = el.id;
+    if (!id || !window.ApexCharts) return;
+    destruir(id);
+    const color = el.dataset.color || "#465fff";
+    const formato = el.dataset.formato || "";
+    const opts = {
+      chart: {
+        type: "area", height: parseInt(el.dataset.altura || "36", 10),
+        sparkline: { enabled: true }, animations: { enabled: false },
+      },
+      stroke: { curve: "smooth", width: 2 },
+      fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0, stops: [0, 90] } },
+      colors: [color],
+      series: [{ name: el.dataset.nombre || "valor", data: datos.map(Number) }],
+      tooltip: {
+        theme: tema(),
+        x: { show: false },
+        y: { formatter: (v) => formato === "moneda" ? "$" + Math.round(v).toLocaleString() : Math.round(v).toLocaleString() },
+        marker: { show: false },
+      },
+    };
+    const c = new ApexCharts(el, opts);
+    c.render();
+    instancias.set(id, c);
+  }
+
   const PINTORES = {
     "spark-area": sparkArea,
+    "spark-kpi": sparkKpi,
     "dona-salud": donaSalud,
     "area-latencias": areaLatencias,
     "barras-chequeos": barrasChequeos,

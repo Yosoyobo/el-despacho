@@ -61,6 +61,12 @@ def landing(request):
     meta_ingresos = enriquecer_con_meta({"valor": kpis_fmt["ingresos_mes_fmt"]}, "ingresos-mes", valor_numerico=float(kpis["ingresos_mes"]))
     meta_egresos = enriquecer_con_meta({"valor": kpis_fmt["egresos_mes_fmt"]}, "egresos-mes", valor_numerico=float(kpis["egresos_mes"]))
     meta_utilidad = enriquecer_con_meta({"valor": kpis_fmt["utilidad_mes_fmt"]}, "utilidad-mes", valor_numerico=float(kpis["utilidad_mes"]))
+    # Sparklines 30 días — JSON inline en data-series del partial.
+    import json as _json
+    series = services.series_diarias_30d()
+    spark_ingresos = _json.dumps(series["ingresos"])
+    spark_egresos = _json.dumps(series["egresos"])
+    spark_utilidad = _json.dumps(series["utilidad"])
     return render(request, "tesoreria/landing.html", {
         "kpis": kpis_fmt,
         "charts": services.charts_landing(),
@@ -69,6 +75,9 @@ def landing(request):
         "meta_ingresos": meta_ingresos,
         "meta_egresos": meta_egresos,
         "meta_utilidad": meta_utilidad,
+        "spark_ingresos": spark_ingresos,
+        "spark_egresos": spark_egresos,
+        "spark_utilidad": spark_utilidad,
     })
 
 

@@ -27,6 +27,9 @@ CATEGORIAS = [
     ("tesoreria_reembolso", "Reembolsos pendientes",
      "Push cuando se captura un egreso por reembolsar (contador + pagador).",
      ("super_admin", "dueno", "contador")),
+    ("cobranza", "Cobranza · facturas vencidas",
+     "Push diario cuando una factura cruza su fecha de vencimiento sin cobrarse.",
+     ("super_admin", "dueno", "contador")),
 ]
 
 

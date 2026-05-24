@@ -33,7 +33,7 @@
                         {% for it in items %}
                         <tr>
                             <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{{ it.descripcion }}{% if it.servicio %}<div class="text-xs text-gray-400 dark:text-gray-500">{{ it.servicio.nombre }}</div>{% endif %}</td>
-                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.cantidad|floatformat:2 }} {{ it.unidad }}</td>
+                            <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.cantidad|floatformat:2 }} {{ it.unidad_label }}</td>
                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.precio_unitario|dinero }}</td>
                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.descuento_porcentaje|floatformat:2 }}%</td>
                             <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{{ it.subtotal|dinero }}</td>
