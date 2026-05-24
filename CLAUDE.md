@@ -3096,6 +3096,145 @@ sugerir precio.
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
 historial de facturas y pagos, mensajería con el despacho.
 
+### S-Deuda-V1 ✅ — Cron vencidas + cobranza + sparklines + FK Unidad (2026-05-24)
+
+Cuatro deudas diseñadas atendidas en una sesión:
+
+- **Cron de vencidas**: campos `vencida_notificada_en` (DateTimeField
+  nullable) en `Cotizacion` y `Factura` + migraciones
+  [`0004_vencida_notificada_en`](el-taller/apps/cotizaciones/migrations/0004_vencida_notificada_en.py)
+  y [`0002_vencida_notificada_en`](el-taller/apps/facturacion/migrations/0002_vencida_notificada_en.py)
+  + management commands `marcar_cotizaciones_vencidas` y
+  `marcar_facturas_vencidas`. Idempotentes — emiten una sola vez por
+  entidad. Evento `factura.vencida` registrado en
+  `lib/portavoz_eventos.py`. **Crontab post-deploy en La Sede** (§10).
+- **Cobranza automática**: handler `notificar_factura_vencida` en
+  [`apps/taller_home/push_handlers.py`](el-taller/apps/taller_home/push_handlers.py)
+  envía push a admins+contador vía Interfón cuando el cron marca
+  vencida. Categoría opt-out `cobranza` en `/perfil/notificaciones/`.
+- **Sparklines 30d**: pintor `spark-kpi` en `site_charts.js` (dual-copy
+  §18) + `services.series_diarias_30d` en Tesorería + partial
+  `_kpi_card_hero` extendido con `sparkline_serie`. Aplicado a
+  Ingresos, Egresos y Utilidad de la landing de Tesorería.
+- **FK Unidad**: `unidad_fk` FK nullable a `el_catalogo.Unidad` en
+  `CotizacionItem` y `FacturaItem` + data migrations case-insensitive.
+  Property `unidad_label` prefiere FK sobre el CharField legacy.
+  Templates de detalle actualizados. Forms preservan CharField hasta
+  un sprint dedicado de UI.
+
+**30 tests nuevos**. Suite total Taller: 377 pass.
+
+### S-Demo-Pre-Showcase ✅ — Activar Gemini + Dashboard Taller + sweep responsivo (2026-05-24)
+
+Sprint dirigido por feedback del usuario y rondas de demo próximas.
+**Cinco commits independientes**, reversibles uno por uno:
+
+- **Commit 1 — Override MiMo gratis en stats**: el cuadrante "Gastado
+  en IA" mostraba $0.0033 de MiMo porque los logs históricos de
+  AnalistaLog tenían `costo_usd_estimado > 0` desde antes de
+  S-LC-Feedback-V3 c3 (cuando MiMo pasó a gratis). Helper
+  `_es_gratis(provider)` en [`lib/analistas/stats.py`](lib/analistas/stats.py)
+  detecta proveedores con `PRECIO_IN + PRECIO_OUT == 0` y fuerza
+  `costo_usd = 0` en el output sin tocar DB. Retroactivo y reversible
+  si MiMo deja de ser gratis. `resumen_global` hereda el override.
+  4 tests cubren MiMo neutralizado, Anthropic preservado, total
+  global excluye MiMo, tarjetas marcan `es_gratis=True`.
+
+- **Commit 2 — Activar Gemini como 5º Chalán**: pasó de skeleton
+  (`NotImplementedError`) a adapter real en
+  [`lib/analistas/adapters/gemini.py`](lib/analistas/adapters/gemini.py).
+  Endpoint `v1beta/models/<modelo>:generateContent`. API key vía
+  query string `?key=` (NO header). Body
+  `{contents: [{parts: [{text}]}], generationConfig: {maxOutputTokens, temperature}}`.
+  Parse de `usageMetadata.{promptTokenCount, candidatesTokenCount}`.
+  Errores: 400/401/403 permanente, 429/5xx transitorio. Capacidades:
+  TEXTO + VISION + FUNCTION_CALLING. Modelo default
+  `gemini-2.5-flash`. Precio placeholder $0/$0 (decisión consciente
+  — Oscar actualiza tarifa cuando confirme con consola Google).
+  Quitado de `_NO_REGISTRAR` en `chalanes/signals.py`. Migración
+  `chalanes.0004_seed_gemini_cadena` siembra retroactivamente la
+  fila en `CadenaFallback` con la siguiente `prioridad` libre.
+  5 tests + actualización del test que enumera Chalanes (de 4 a 5).
+
+- **Commit 3 — MiMo + Gemini + Deepseek en El Site PLATAFORMAS**:
+  los tres faltaban en la tabla de "Integraciones externas". Helper
+  `_chequear_via_adapter(provider)` en
+  [`lib/site/integraciones.py`](lib/site/integraciones.py) reusa
+  `Adapter.probar()` (S-Chalanes-Panel) — cero duplicación HTTP.
+  Funciones `chequear_deepseek/gemini/mimo` + registradas en
+  `PLATAFORMAS` del registry. UI los pinta sola (dict-driven). El
+  cron diario `site_chequeo_diario` los recoge automáticamente.
+
+- **Commit 4 — Gauges del droplet + Chalanes IA en Dashboard del
+  Taller (super_admin)**: dos bloques nuevos visibles SÓLO a
+  super_admin / dueño, justo arriba de "Acciones rápidas" del home:
+  - **Infraestructura del droplet**: 4 gauges (CPU, Memoria, Disco,
+    Containers) con SVG inline — versión compacta del cuadrante de
+    El Site. Link "Ir al Site →" para detalle completo.
+  - **Chalanes IA — gasto últimos 30 días**: barra horizontal por
+    proveedor + total. MiMo sale con badge "Gratis" sin barra de
+    costo (override commit 1).
+  - **Refactor compartido**: `lib/site/gauges.py` nuevo módulo
+    extrae `gauge()` y `snapshot_gauges_minimo()` del antiguo
+    `_ctx_infra` de `el_site/views.py`. La app `el_site` sigue
+    funcionando idéntica (importa `gauge as _gauge`).
+  - **Infra**: `docker-compose.site.yml` ahora monta también en
+    `el-taller` los mismos read-only mounts (`/proc`, `/sys`, `/`,
+    `docker.sock`) que ya tenía `la-gerencia`. El Mensajero stackea
+    `site.yml` automáticamente.
+  - Degradación elegante: si `/proc` no está montado, los partials
+    muestran "n/d" sin tumbar el home. Try/except envuelve los dos
+    imports — un fallo de stats o de host no rompe el dashboard.
+
+- **Commit 5 — Sweep responsivo de tablas grandes**: foco demos
+  próximas en tablet vertical y móvil:
+  - `_tabla_datos.html` (dual-copy): `min-w-full` → `min-w-[640px]
+    md:min-w-full`. En mobile fuerza scroll horizontal dentro del
+    `overflow-x-auto` que ya existía.
+  - `facturacion/factura_form.html`: tabla de líneas con
+    `min-w-[720px] md:min-w-full` (≥6 columnas — descripción,
+    cantidad, unidad, precio, descuento, eliminar).
+  - `site/partials/integraciones.html`: tabla de integraciones
+    envuelta en `overflow-x-auto` + `min-w-[820px]`. Antes se
+    compactaba ilegiblemente en tablet vertical.
+
+**Configuración prod post-deploy**:
+
+1. El Mensajero corre migrations + sube imágenes a GHCR + La Mudanza
+   stackea `docker-compose.site.yml` (que ahora incluye mounts en
+   `el-taller`). Sin acción manual.
+2. super_admin entra a `/ajustes/` y pega la API key de **Gemini** en
+   el slot **Chalán Gemini — API Key**. El signal auto-agrega Gemini
+   al fallback (la migración `0004_seed_gemini_cadena` también lo
+   siembra). Sin la key, el adapter lanza `FaltaCredencial` y la
+   cadena salta al siguiente Chalán.
+3. (Opcional) `/chalanes/` para asignar Gemini como primario en
+   estaciones específicas o reordenar `CadenaFallback`.
+4. **Crontab para vencidas en La Sede** (one-time, agregar a
+   `/etc/cron.d/el-despacho` o crontab del usuario `despacho`):
+
+   ```cron
+   0 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_cotizaciones_vencidas >> /var/log/vencidas.log 2>&1
+   5 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_facturas_vencidas >> /var/log/vencidas.log 2>&1
+   ```
+
+**Deuda residual diseñada**:
+
+- **Tarifa real Gemini**: `PRECIO_IN = PRECIO_OUT = 0.0` placeholder.
+  Confirmar con consola Google + actualizar en
+  [`adapters/gemini.py`](lib/analistas/adapters/gemini.py). Los logs
+  acumulados quedan con costo 0 hasta que se cambie — luego nuevos
+  registros usan la tarifa real.
+- **Refactor `<table>` → `<div grid>`** en form de Facturación
+  (espejo de lo que hicieron con Cotizaciones). Hoy resuelto con
+  scroll horizontal, suficiente para la demo; el refactor reescribe
+  clone-row JS y vale un sprint dedicado si LC reporta que el scroll
+  horizontal es UX subóptima en móvil real.
+- **Limpieza histórica de costo_usd de MiMo en AnalistaLog**: el
+  override en stats es retroactivo y no toca DB. Si Oscar quiere los
+  registros limpios (ej. para export externo de Contaduría), un
+  management command de 10 LOC los actualiza a 0. No urgente.
+
 ---
 
 ## 9. Decisiones operativas tomadas
@@ -3135,6 +3274,20 @@ historial de facturas y pagos, mensajería con el despacho.
      referencias correspondientes en el manual.
    El cache de `/ayuda/` se invalida automáticamente cuando cambia el
    mtime del archivo en el deploy; no hay paso manual.
+7. **Crontab vigente en La Sede** (consulta de referencia):
+
+   ```cron
+   # /etc/cron.d/el-despacho — agregadas en S-Deuda-V1 (2026-05-24)
+   30 3 * * 0 /opt/el-despacho/infra/scripts/archivo.sh
+   0 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_cotizaciones_vencidas >> /var/log/vencidas.log 2>&1
+   5 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_facturas_vencidas  >> /var/log/vencidas.log 2>&1
+   30 3 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml exec -T la-gerencia python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
+   ```
+
+   Los dos comandos de "vencidas" son idempotentes (campo
+   `vencida_notificada_en`) — correr varias veces al día no duplica
+   eventos. Si necesitas dry-run: añadir `--dry-run` al final del
+   manage.py call.
 
 ---
 

@@ -4,6 +4,34 @@
 
 ---
 
+## Novedades al 24 de mayo de 2026
+
+- **Cobranza automática de facturas vencidas**. Cada mañana El
+  Despacho revisa las facturas emitidas que pasaron su fecha de
+  vencimiento y aún tienen saldo. Si encuentra alguna, te llega un
+  push al celular (sólo a admins y al contador) con el código de la
+  factura, días de retraso y monto pendiente. Si no quieres
+  recibirlas, ve a **Mi perfil → Notificaciones** y desactiva la
+  categoría *"Cobranza · facturas vencidas"*.
+- **Sparkline de 30 días en los KPIs de Tesorería**. Ingresos del
+  mes, Egresos del mes y Utilidad ahora muestran una mini-gráfica
+  abajo de cada tarjeta con la tendencia diaria. Pasa el cursor por
+  encima para ver el valor exacto de cada día.
+- **Gemini activado como quinto Chalán**. Anthropic, OpenAI,
+  Deepseek, MiMo (Xiaomi) y ahora **Gemini de Google**. El
+  super_admin pega la API key en *Ajustes → Credenciales*. Si un
+  Chalán falla, el sistema salta automáticamente al siguiente —
+  Gemini queda integrado a esa cadena de relevo.
+- **Tu Dashboard te muestra gauges del servidor** (sólo a admins
+  y dueño). CPU, memoria, disco y containers del droplet aparecen
+  arriba de "Acciones rápidas". Si algo se pone amarillo o rojo,
+  abre **El Site** desde el link.
+- **Gráficas y tablas más legibles en celular y tablet**. Si la
+  pantalla es chica, las tablas grandes ahora se pueden desplazar
+  con el dedo de lado en lugar de comprimirse y quedar ilegibles.
+
+---
+
 ## Bienvenida
 
 Este es **tu** sistema. Aquí vive toda la información del despacho: clientes, proyectos, tareas, comunicación interna, dinero (ingresos, gastos, cobros), facturas comerciales y propuestas para tus clientes.
