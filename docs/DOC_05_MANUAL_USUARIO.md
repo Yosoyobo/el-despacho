@@ -4,6 +4,10 @@
 
 ---
 
+## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 6)
+
+- **Orden del sidebar configurable globalmente (super_admin).** En La Gerencia → Ajustes → "Orden del sidebar →" hay una nueva pantalla para reordenar y ocultar items del sidebar de El Taller para **todos los usuarios**. Arrastra para reordenar (HTML5 drag) o usa los botones ↑↓. Marca "Ocultar" para que un item desaparezca aunque el usuario tenga permiso (override global encima de los permisos individuales). Cambio se aplica al siguiente request.
+
 ## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 5)
 
 - **Acceso a La Gerencia ahora es heredable.** Hasta hoy solo super_admin y dueño podían entrar a `gerencia.ninomeando.com`. Ahora es un permiso granular (`gerencia → acceder`) que el super_admin puede activar a cualquier usuario desde **Directorio → Permisos**. Útil cuando le quieres dar acceso temporal a Ajustes a un contador externo o asistente sin promoverlo a dueño.

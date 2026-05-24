@@ -83,6 +83,7 @@ TEMPLATES = [
                 "interfono.context_processors.vapid_public_key",
                 "auth_google.context_processors.google_oauth_configurado",
                 "cuentas.context_processors.permisos_modulos",
+                "cuentas.context_processors.sidebar_orden",
                 "apps.recados.context_processors.recados_no_leidos",
                 "lib.aviso_deploy.contexto_aviso_deploy",
                 "apps.taller_home.context_processors.sidebar_grupos",

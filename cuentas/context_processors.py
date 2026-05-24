@@ -41,3 +41,20 @@ def permisos_modulos(request):
         accion = ACCION_VISIBLE_POR_MODULO.get(m, "ver")
         accesos[m] = _puede(user, m, accion)
     return {"permisos_modulos": accesos}
+
+
+def sidebar_orden(request):
+    """S-LC-Feedback-V5 c6 — orden global del sidebar del Taller.
+
+    Inyecta `sidebar_orden` = `{slug: {orden, oculto}}` para que el
+    template aplique `style="order: N"` (flexbox) y oculte items.
+    """
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return {"sidebar_orden": {}}
+    try:
+        from cuentas.models.sidebar_orden import SidebarOrden
+        filas = SidebarOrden.objects.all()
+        return {"sidebar_orden": {f.slug: {"orden": f.orden, "oculto": f.oculto} for f in filas}}
+    except Exception:
+        return {"sidebar_orden": {}}

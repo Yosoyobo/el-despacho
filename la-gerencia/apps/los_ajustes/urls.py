@@ -14,4 +14,7 @@ urlpatterns = [
     path("tasas/", views.tasas_lista, name="ajustes-tasas"),
     path("tasas/nueva", views.tasa_nueva, name="ajustes-tasa-nueva"),
     path("tasas/<int:pk>/editar", views.tasa_editar, name="ajustes-tasa-editar"),
+    # S-LC-Feedback-V5 c6: orden y visibilidad del sidebar de El Taller (global).
+    path("sidebar/", views.sidebar_panel, name="ajustes-sidebar"),
+    path("sidebar/guardar", views.sidebar_guardar, name="ajustes-sidebar-guardar"),
 ]

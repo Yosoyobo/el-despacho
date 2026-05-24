@@ -12,39 +12,43 @@
     <nav class="flex flex-col gap-1 text-sm">
         <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú</h3>
 
-        <a href="/" class="menu-item {% if request.path == '/' %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if not sidebar_orden.dashboard.oculto %}
+        <a href="/" style="order: {{ sidebar_orden.dashboard.orden|default:10 }}" class="menu-item {% if request.path == '/' %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12 12 3l9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Dashboard
         </a>
+        {% endif %}
 
-        {% if permisos_modulos.cartera %}
-        <a href="/cartera/" class="menu-item {% if '/cartera' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.cartera and not sidebar_orden.clientes.oculto %}
+        <a href="/cartera/" style="order: {{ sidebar_orden.clientes.orden|default:20 }}" class="menu-item {% if '/cartera' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 19v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Clientes
         </a>
         {% endif %}
 
-        {% if permisos_modulos.proyectos %}
-        <a href="/proyectos/" class="menu-item {% if '/proyectos' in request.path and '/pizarron' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.proyectos and not sidebar_orden.proyectos.oculto %}
+        <a href="/proyectos/" style="order: {{ sidebar_orden.proyectos.orden|default:30 }}" class="menu-item {% if '/proyectos' in request.path and '/pizarron' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Proyectos
         </a>
         {% endif %}
 
-        <a href="/calendario/" class="menu-item {% if '/calendario' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if not sidebar_orden.calendario.oculto %}
+        <a href="/calendario/" style="order: {{ sidebar_orden.calendario.orden|default:40 }}" class="menu-item {% if '/calendario' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Calendario
         </a>
+        {% endif %}
 
-        {% if permisos_modulos.buzon %}
-        <a href="/buzon/" class="menu-item {% if '/buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.buzon and not sidebar_orden.buzon.oculto %}
+        <a href="/buzon/" style="order: {{ sidebar_orden.buzon.orden|default:50 }}" class="menu-item {% if '/buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16v14H4zM4 7l8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Buzón
         </a>
         {% endif %}
 
-        {% if permisos_modulos.recados %}
-        <a href="/recados/" class="menu-item {% if '/recados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.recados and not sidebar_orden.recados.oculto %}
+        <a href="/recados/" style="order: {{ sidebar_orden.recados.orden|default:60 }}" class="menu-item {% if '/recados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-3.2-6.9L21 4v6h-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="flex-1">Recados</span>
             {% if recados_no_leidos_count %}
@@ -53,37 +57,43 @@
         </a>
         {% endif %}
 
-        {% if permisos_modulos.catalogo %}
-        <a href="/catalogo/" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.catalogo and not sidebar_orden.productos.oculto %}
+        <a href="/catalogo/" style="order: {{ sidebar_orden.productos.orden|default:70 }}" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Productos
         </a>
         {% endif %}
 
-        <a href="/perfil/notificaciones/" class="menu-item {% if '/perfil/notificaciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if not sidebar_orden.notificaciones.oculto %}
+        <a href="/perfil/notificaciones/" style="order: {{ sidebar_orden.notificaciones.orden|default:80 }}" class="menu-item {% if '/perfil/notificaciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.4-1.4A6 6 0 0 1 18 11V8a6 6 0 1 0-12 0v3a6 6 0 0 1-.6 4.6L4 17h5m6 0a3 3 0 1 1-6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Notificaciones
         </a>
+        {% endif %}
 
-        {% if permisos_modulos.gerencia %}
-        <a href="https://gerencia.ninomeando.com/ajustes/" class="menu-item menu-item-inactive">
+        {% if permisos_modulos.gerencia and not sidebar_orden.ajustes.oculto %}
+        <a href="https://gerencia.ninomeando.com/ajustes/" style="order: {{ sidebar_orden.ajustes.orden|default:120 }}" class="menu-item menu-item-inactive">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Ajustes
         </a>
         {% endif %}
 
-        <a href="/ayuda/" class="menu-item {% if '/ayuda' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if not sidebar_orden.ayuda.oculto %}
+        <a href="/ayuda/" style="order: {{ sidebar_orden.ayuda.orden|default:130 }}" class="menu-item {% if '/ayuda' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Ayuda
         </a>
+        {% endif %}
 
-        <a href="/perfil/chalanes/" class="menu-item {% if '/perfil/chalanes' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if not sidebar_orden.chalanes.oculto %}
+        <a href="/perfil/chalanes/" style="order: {{ sidebar_orden.chalanes.orden|default:90 }}" class="menu-item {% if '/perfil/chalanes' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM12 3v4M9 12h.01M15 12h.01M9 15.5h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Chalanes
         </a>
+        {% endif %}
 
-        {% if permisos_modulos.cotizaciones %}
-        <a href="{% url 'cotizaciones:lista' %}" class="menu-item {% if '/cotizaciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if permisos_modulos.cotizaciones and not sidebar_orden.cotizaciones.oculto %}
+        <a href="{% url 'cotizaciones:lista' %}" style="order: {{ sidebar_orden.cotizaciones.orden|default:100 }}" class="menu-item {% if '/cotizaciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Cotizaciones
         </a>
@@ -93,7 +103,9 @@
            Estado persistido en localStorage. Sub-items gated por permiso individual.
            Inyectamos finanzas_grupo_activo desde el context processor sidebar_extras. {% endcomment %}
         {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria %}
+        {% if not sidebar_orden.finanzas.oculto %}
         <button type="button"
+                style="order: {{ sidebar_orden.finanzas.orden|default:110 }}"
                 data-sidebar-group="finanzas"
                 aria-expanded="{% if finanzas_grupo_activo %}true{% else %}false{% endif %}"
                 class="menu-item menu-item-inactive w-full justify-between">
@@ -104,6 +116,7 @@
             <svg data-sidebar-group-chevron class="h-4 w-4 transition-transform {% if finanzas_grupo_activo %}rotate-180{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div data-sidebar-group-panel="finanzas"
+             style="order: {{ sidebar_orden.finanzas.orden|default:110 }}"
              class="ml-4 flex flex-col gap-1 border-l border-gray-200 pl-3 dark:border-gray-800 {% if not finanzas_grupo_activo %}hidden{% endif %}">
             {% if permisos_modulos.tesoreria %}
             <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
@@ -124,6 +137,7 @@
             </a>
             {% endif %}
         </div>
+        {% endif %}
         {% endif %}
     </nav>
 

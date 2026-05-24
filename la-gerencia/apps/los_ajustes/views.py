@@ -157,3 +157,48 @@ def tasa_editar(request, pk: int):
     else:
         form = TasaForm(instance=t)
     return render(request, "ajustes/tasa_form.html", {"form": form, "modo": "editar", "tasa": t})
+
+
+# ── S-LC-Feedback-V5 c6: orden global del sidebar del Taller ───────
+
+
+@requires_role("super_admin")
+def sidebar_panel(request):
+    from cuentas.models.sidebar_orden import SLUGS_SIDEBAR_TALLER, SidebarOrden
+    existentes = {s.slug: s for s in SidebarOrden.objects.all()}
+    items = []
+    for slug, label in SLUGS_SIDEBAR_TALLER:
+        fila = existentes.get(slug)
+        items.append({
+            "slug": slug,
+            "label": label,
+            "orden": fila.orden if fila else 999,
+            "oculto": fila.oculto if fila else False,
+        })
+    items.sort(key=lambda x: (x["orden"], x["slug"]))
+    return render(request, "ajustes/sidebar_panel.html", {"items": items})
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def sidebar_guardar(request):
+    from cuentas.models.sidebar_orden import SLUGS_SIDEBAR_TALLER, SidebarOrden
+    cambios = 0
+    for slug, _ in SLUGS_SIDEBAR_TALLER:
+        orden_raw = request.POST.get(f"orden__{slug}", "").strip()
+        oculto = request.POST.get(f"oculto__{slug}") == "1"
+        try:
+            orden = int(orden_raw)
+        except (TypeError, ValueError):
+            continue
+        SidebarOrden.objects.update_or_create(
+            slug=slug, defaults={"orden": orden, "oculto": oculto},
+        )
+        cambios += 1
+    emitir(EventoPortavoz(
+        tipo="sidebar.orden_actualizado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"items_actualizados": cambios},
+    ))
+    messages.success(request, f"Orden del sidebar guardado ({cambios} items).")
+    return redirect("ajustes-sidebar")

@@ -2829,6 +2829,41 @@ movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
   cláusulas como "los proyectos activos" donde "los" es artículo
   natural del español).
 
+### S-LC-Feedback-V5 ✅ commit 6 — Sidebar order global (2026-05-24)
+
+Orden y visibilidad del sidebar del Taller configurable por el
+super_admin desde Gerencia, aplica a TODOS los usuarios. Implementa
+**reordenamiento por CSS `order` flexbox** sin refactorizar el HTML
+estático del sidebar.
+
+- **Modelo `SidebarOrden`** ([cuentas/models/sidebar_orden.py](cuentas/models/sidebar_orden.py)):
+  `(slug, orden, oculto)`. Constante `SLUGS_SIDEBAR_TALLER` con los
+  13 items canónicos del sidebar (dashboard, clientes, proyectos,
+  calendario, buzon, recados, productos, notificaciones, chalanes,
+  cotizaciones, finanzas, ajustes, ayuda).
+- **Migración `0013_sidebar_orden`** crea tabla + seed con orden
+  inicial (10, 20, 30, ...) espaciado para insertar futuros items
+  sin renumerar. Idempotente.
+- **Context processor `sidebar_orden`** en `cuentas/context_processors.py`:
+  inyecta `{slug: {orden, oculto}}` por request. Registrado en
+  `el-taller/el_taller/settings.py`.
+- **Sidebar template** ([_componentes_tailadmin/sidebar.html](el-taller/templates/_componentes_tailadmin/sidebar.html)):
+  cada item gana `style="order: {{ sidebar_orden.<slug>.orden|default:N }}"`
+  y `{% if not sidebar_orden.<slug>.oculto %}` envolvente. El grupo
+  "Finanzas" comparte el mismo `order` entre `<button>` y panel
+  `<div>` para que queden contiguos en flex.
+- **UI panel** ([la-gerencia/templates/ajustes/sidebar_panel.html](la-gerencia/templates/ajustes/sidebar_panel.html)):
+  lista drag-and-drop HTML5 nativo + botones ↑↓ + número editable +
+  checkbox "Ocultar" por item. POST guarda todo de una vez vía
+  `update_or_create`.
+- **Views** `sidebar_panel` y `sidebar_guardar` en
+  [la-gerencia/apps/los_ajustes/views.py](la-gerencia/apps/los_ajustes/views.py)
+  gated por `@requires_role("super_admin")`. Link nuevo en
+  `ajustes/panel.html`.
+- **Evento Portavoz nuevo** `sidebar.orden_actualizado`.
+
+Tests: 112 pass.
+
 ### S-LC-Feedback-V5 ✅ commit 5 — Acceso a Gerencia heredable + atajo Ajustes (2026-05-24)
 
 El gate de login de La Gerencia deja de ser un check literal de rol y
