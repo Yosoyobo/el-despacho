@@ -19,6 +19,9 @@ ESTADOS = ("ok", "error", "no_configurada")
 PLATAFORMAS: dict[str, Callable[[], dict[str, Any]]] = {
     "anthropic": integraciones.chequear_anthropic,
     "openai": integraciones.chequear_openai,
+    "deepseek": integraciones.chequear_deepseek,
+    "gemini": integraciones.chequear_gemini,
+    "mimo": integraciones.chequear_mimo,
     "do_api": droplet.chequear,
     "postgres": postgres.chequear,
     "redis": redis_status.chequear,

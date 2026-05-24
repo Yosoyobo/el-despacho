@@ -28,6 +28,32 @@ def _credencial(clave: str) -> str | None:
         return None
 
 
+# ── Helper compartido para chequeos vía Adapter.probar() ─────────────────────
+
+
+def _chequear_via_adapter(provider: str) -> dict[str, Any]:
+    """Reusa `Adapter.probar()` para chequeos del Site. Convierte el dict
+    `{ok, estado, mensaje, latencia_ms}` al formato del registry.
+
+    Para proveedores nuevos (mimo, gemini, deepseek) basta agregar una
+    llamada wrapper — no duplicar la lógica HTTP que ya vive en el adapter.
+    """
+    try:
+        from lib.analistas.registry import adapter_de
+    except Exception as exc:  # noqa: BLE001
+        return {"estado": "error", "mensaje_error": f"adapter unavailable: {exc}"[:200]}
+    adapter = adapter_de(provider)
+    if adapter is None:
+        return {"estado": "error", "mensaje_error": f"adapter '{provider}' no registrado"}
+    res = adapter.probar()
+    if res["estado"] == "no_configurada":
+        return {"estado": "no_configurada", "mensaje_error": res.get("mensaje", "")}
+    if not res["ok"]:
+        return {"estado": "error", "mensaje_error": res.get("mensaje", "")[:200],
+                "latencia_ms": res.get("latencia_ms")}
+    return {"estado": "ok", "latencia_ms": res.get("latencia_ms")}
+
+
 # ── Anthropic ────────────────────────────────────────────────────────────────
 
 def chequear_anthropic() -> dict[str, Any]:
@@ -82,6 +108,21 @@ def chequear_openai() -> dict[str, Any]:
     if r.status_code != 200:
         return {"estado": "error", "mensaje_error": f"HTTP {r.status_code}: {r.text[:120]}", "latencia_ms": latencia}
     return {"estado": "ok", "latencia_ms": latencia}
+
+
+# ── Deepseek · Gemini · MiMo (delegado a Adapter.probar) ────────────────────
+
+
+def chequear_deepseek() -> dict[str, Any]:
+    return _chequear_via_adapter("deepseek")
+
+
+def chequear_gemini() -> dict[str, Any]:
+    return _chequear_via_adapter("gemini")
+
+
+def chequear_mimo() -> dict[str, Any]:
+    return _chequear_via_adapter("mimo")
 
 
 # ── Docker socket ────────────────────────────────────────────────────────────
