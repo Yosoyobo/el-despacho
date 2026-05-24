@@ -9,8 +9,6 @@ Uso típico desde una view:
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 
 def obtener_meta(kpi_slug: str):
     try:

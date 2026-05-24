@@ -13,7 +13,6 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
-
 PERIODOS = (
     ("mes", "Mensual"),
     ("trimestre", "Trimestral"),

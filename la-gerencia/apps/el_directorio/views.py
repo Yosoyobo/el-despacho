@@ -178,8 +178,9 @@ def roles_lista(request):
 @requires_role("super_admin")
 @require_http_methods(["GET", "POST"])
 def rol_nuevo(request):
-    from cuentas.models.rol import Rol
     import json as _json
+
+    from cuentas.models.rol import Rol
     if request.method == "POST":
         nombre = (request.POST.get("nombre") or "").strip()
         descripcion = (request.POST.get("descripcion") or "").strip()
@@ -208,8 +209,9 @@ def rol_nuevo(request):
 @requires_role("super_admin")
 @require_http_methods(["GET", "POST"])
 def rol_editar(request, pk: int):
-    from cuentas.models.rol import Rol
     import json as _json
+
+    from cuentas.models.rol import Rol
     rol = get_object_or_404(Rol, pk=pk)
     if request.method == "POST":
         if rol.sistema and rol.nombre == "super_admin":

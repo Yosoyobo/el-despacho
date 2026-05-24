@@ -1,3 +1,5 @@
+import contextlib
+
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.forms import (
     AsignacionForm,
@@ -436,7 +438,6 @@ def agregar_tarea_modal(request, pk):
     if not puede_editar_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Sin permiso.")
     from apps.el_pizarron.forms import TareaForm
-    from apps.el_pizarron.models.tarea import Tarea
     from apps.taller_home.push_handlers import notificar_tarea_asignada
     es_htmx = _es_htmx(request)
     if request.method == "POST":
@@ -451,10 +452,8 @@ def agregar_tarea_modal(request, pk):
                 actor_id=request.user.pk, actor_email=request.user.email,
                 payload={"tarea_id": tarea.pk, "proyecto_id": proyecto.pk},
             ))
-            try:
+            with contextlib.suppress(Exception):
                 notificar_tarea_asignada(tarea, request.user)
-            except Exception:
-                pass
             messages.success(request, f"Tarea «{tarea.titulo}» creada.")
             if es_htmx:
                 return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})

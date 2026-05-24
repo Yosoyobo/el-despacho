@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from django.db import models
 
-
 # Slugs canónicos del sidebar del Taller. Si agregas un item nuevo,
 # añade aquí su slug + label (label es solo informativo en la UI de
 # /ajustes/sidebar/; el sidebar template sigue siendo HTML estático

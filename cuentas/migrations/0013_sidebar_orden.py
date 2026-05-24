@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from django.db import migrations, models
 
-
 SEED = [
     ("dashboard", 10),
     ("clientes", 20),

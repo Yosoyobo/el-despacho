@@ -181,10 +181,10 @@ def puede(usuario, modulo: str, permiso: str) -> bool:
         ).exists():
             return True
         # Fallback: roles extra del usuario (M2M Rol.permisos JSON).
-        for rol in usuario.roles_extra.all():
-            if permiso in (rol.permisos.get(modulo) or []):
-                return True
-        return False
+        return any(
+            permiso in (rol.permisos.get(modulo) or [])
+            for rol in usuario.roles_extra.all()
+        )
     except Exception:
         return False
 
