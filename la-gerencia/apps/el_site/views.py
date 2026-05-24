@@ -34,13 +34,12 @@ from lib.site import (
     postgres,
     redis_status,
 )
-from lib.site.registry import PLATAFORMAS, chequear
-
 
 # `_gauge` migrado a `lib/site/gauges.gauge` para que el Taller pueda
 # reusarlo. El alias `_gauge` se conserva para compat hacia abajo en
 # este archivo.
 from lib.site.gauges import gauge as _gauge  # noqa: E402
+from lib.site.registry import PLATAFORMAS, chequear
 
 
 def _barra(pct: float | None, *, umbral_warn: float = 60, umbral_err: float = 80) -> dict:

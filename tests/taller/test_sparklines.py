@@ -54,8 +54,8 @@ def test_series_30d_excluye_fuera_de_ventana(cliente_factory, usuario_factory):
 
 
 def test_series_30d_utilidad_es_diff(cliente_factory, usuario_factory):
-    from apps.tesoreria.services import series_diarias_30d
     from apps.tesoreria.models import CentroDeCosto
+    from apps.tesoreria.services import series_diarias_30d
     autor = usuario_factory(rol="super_admin")
     cli = cliente_factory(creado_por=autor)
     # Reusa centro existente del seed o crea uno

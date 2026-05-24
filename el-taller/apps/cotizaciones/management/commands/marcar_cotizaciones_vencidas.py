@@ -12,10 +12,10 @@ from __future__ import annotations
 
 from datetime import date
 
+from apps.cotizaciones.models import Cotizacion
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.cotizaciones.models import Cotizacion
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
