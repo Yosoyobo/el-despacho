@@ -47,7 +47,7 @@ def lista(request):
     q = (request.GET.get("q") or "").strip()
     categoria_id = request.GET.get("categoria") or ""
     incluir_archivados = request.GET.get("archivados") == "1" and puede_archivar
-    qs = Servicio.objects.select_related("categoria")
+    qs = Servicio.objects.select_related("categoria").prefetch_related("proveedores")
     if not incluir_archivados:
         qs = qs.filter(activo=True)
     if q:
@@ -59,6 +59,7 @@ def lista(request):
         cabeceras.append({"label": "Costo", "align": "right"})
         cabeceras.append({"label": "Precio", "align": "right"})
         cabeceras.append({"label": "Margen", "align": "right"})
+    cabeceras.append({"label": "Proveedores"})
     cabeceras.append({"label": "Estado"})
     if puede_editar or puede_archivar:
         cabeceras.append({"label": "", "align": "right"})
@@ -397,6 +398,35 @@ def proveedores_lista(request):
         "q": q,
         "incluir_archivados": incluir_archivados,
     })
+
+
+@require_http_methods(["POST"])
+def proveedor_quick_create(request):
+    """POST /catalogo/proveedores/quick-create/ — crea Proveedor inline desde el form de Servicio.
+
+    Espera POST con: razon_social (requerido), nombre_contacto, email_contacto, telefono.
+    Retorna JSON con id + razon_social para que el JS agregue un checkbox marcado.
+    Requiere permiso `crear` del módulo catálogo (el mismo que crea servicios).
+    """
+    if (r := _gate(request, "crear")) is not None:
+        return r
+    from django.http import JsonResponse
+    razon = (request.POST.get("razon_social") or "").strip()
+    if not razon:
+        return JsonResponse({"ok": False, "error": "La razón social es obligatoria."}, status=400)
+    prov = Proveedor.objects.create(
+        razon_social=razon,
+        nombre_contacto=(request.POST.get("nombre_contacto") or "").strip(),
+        email_contacto=(request.POST.get("email_contacto") or "").strip(),
+        telefono=(request.POST.get("telefono") or "").strip(),
+        creado_por=request.user,
+    )
+    emitir(EventoPortavoz(
+        tipo="proveedor.quick_creado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proveedor_id": prov.pk, "razon_social": prov.razon_social},
+    ))
+    return JsonResponse({"ok": True, "id": prov.pk, "razon_social": prov.razon_social})
 
 
 @require_http_methods(["GET", "POST"])

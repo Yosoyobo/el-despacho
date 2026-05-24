@@ -4,6 +4,12 @@
 
 ---
 
+## Novedades al 23 de mayo de 2026 (S-LC-Feedback-V5 commit 2)
+
+- **Proveedores con checkboxes en Productos.** Al crear o editar un producto, la sección "Proveedores aplicables" ahora es una grilla de casillas con el nombre de cada proveedor. Marca uno o varios — la casilla se ilumina en azul al seleccionarla. Adiós al `<select multiple>` confuso.
+- **"+ Nuevo proveedor" inline desde el producto.** Si tu proveedor no existe todavía, despliega "+ Nuevo proveedor" debajo de la grilla, captura razón social + contacto + email + teléfono y dale "Crear y marcar". El proveedor queda creado y aparece marcado automáticamente. No hay que salir del producto.
+- **Columna "Proveedores" en la lista de Productos.** La tabla del catálogo ahora muestra hasta 2 badges de proveedores por producto + "+N" si hay más. Útil para ver rápido qué productos están "sueltos" sin proveedor.
+
 ## Novedades al 23 de mayo de 2026 (S-LC-Feedback-V5 commit 1)
 
 - **Cambios de nombres en el menú lateral.** Los módulos ya no llevan "La/El/Los/Las" delante. Ahora se llaman simplemente:

@@ -43,6 +43,7 @@ EventoTipo = Literal[
     "proveedor.actualizado",
     "proveedor.archivado",
     "proveedor.reactivado",
+    "proveedor.quick_creado",
     "buzon.nuevo_mensaje",
     "buzon.estado_cambiado",
     "buzon.respondido",

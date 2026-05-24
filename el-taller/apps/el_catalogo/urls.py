@@ -24,6 +24,8 @@ urlpatterns = [
     # S-LC-Feedback-V3: CRM de proveedores
     path("proveedores/", views.proveedores_lista, name="catalogo-proveedores"),
     path("proveedores/nuevo", views.proveedor_nuevo, name="catalogo-proveedor-nuevo"),
+    # S-LC-Feedback-V5: quick-create inline desde el form de Servicio
+    path("proveedores/quick-create/", views.proveedor_quick_create, name="catalogo-proveedor-quick-create"),
     path("proveedores/<int:pk>/", views.proveedor_detalle, name="catalogo-proveedor-detalle"),
     path("proveedores/<int:pk>/editar", views.proveedor_editar, name="catalogo-proveedor-editar"),
     path("proveedores/<int:pk>/archivar", views.proveedor_archivar, name="catalogo-proveedor-archivar"),

@@ -77,12 +77,13 @@ class ServicioForm(forms.ModelForm):
                 pk__in=list(qs.values_list("pk", flat=True)) + [self.instance.categoria_id]
             )
         self.fields["categoria"].queryset = qs.distinct()
-        # S-LC-Feedback-V3: proveedores opcional, sólo activos.
+        # S-LC-Feedback-V5: proveedores como checkboxes (más obvio que <select multiple>).
         if "proveedores" in self.fields:
             self.fields["proveedores"].queryset = Proveedor.objects.filter(activo=True).order_by("razon_social")
             self.fields["proveedores"].required = False
             self.fields["proveedores"].label = "Proveedores aplicables"
-            self.fields["proveedores"].help_text = "Quién te puede surtir este producto. Opcional."
+            self.fields["proveedores"].help_text = "Marca quién te puede surtir este producto. Opcional."
+            self.fields["proveedores"].widget = forms.CheckboxSelectMultiple()
 
     def clean_costo(self):
         v = self.cleaned_data.get("costo")

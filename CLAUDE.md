@@ -2829,6 +2829,52 @@ movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
   cláusulas como "los proyectos activos" donde "los" es artículo
   natural del español).
 
+### S-LC-Feedback-V5 ✅ commit 2 — Productos: proveedores con checkmarks + columna + quick-create (2026-05-23)
+
+UX de proveedores aplicables más obvia, más rápida.
+
+- **`ServicioForm.proveedores` con `CheckboxSelectMultiple`** en
+  [el-taller/apps/el_catalogo/forms.py:86](el-taller/apps/el_catalogo/forms.py#L86)
+  (antes era `SelectMultiple` HTML estándar). El widget queda como
+  default de Django pero el template hace render custom.
+- **Render custom de checkboxes** en
+  [el-taller/templates/catalogo/form.html](el-taller/templates/catalogo/form.html):
+  el campo `proveedores` sale del loop genérico de `_form_campo.html`
+  y se pinta como grilla `grid-cols-1 sm:grid-cols-2` de `<label>`
+  con `has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50`
+  (CSS puro — sin JS para el highlight). Tailwind v3 JIT detecta la
+  pseudo-clase `has-[:checked]:`.
+- **Columna "Proveedores" en la lista del catálogo**
+  ([el-taller/templates/catalogo/_filas.html](el-taller/templates/catalogo/_filas.html)
+  + [views.py:50,62](el-taller/apps/el_catalogo/views.py)): badges
+  con primeros 2 proveedores + "+N" si hay más. `prefetch_related("proveedores")`
+  en el queryset para evitar N+1.
+- **`proveedor_quick_create`** view nueva
+  ([views.py](el-taller/apps/el_catalogo/views.py) sección Proveedores):
+  endpoint `POST /catalogo/proveedores/quick-create/` que acepta
+  razón social (obligatoria) + contacto + email + teléfono, crea
+  `Proveedor` y retorna `{ok, id, razon_social}` JSON. Gated por
+  permiso `catalogo.crear` (mismo que crea servicios).
+- **UI inline en form de producto**: `<details>` "+ Nuevo proveedor"
+  con form chico (4 campos en grid 2-col) + botón "Crear y marcar".
+  JS vanilla hace fetch al endpoint, parsea respuesta, inyecta un
+  `<label>` con checkbox `name="proveedores" value=<id>` marcado en
+  la grilla. No hay reload, no hay HTMX — el form sigue editándose.
+- **Evento Portavoz nuevo** `proveedor.quick_creado` agregado al
+  Literal en `lib/portavoz_eventos.py`.
+- **Tests verdes**: suite Taller (360 pass). Los tests existentes de
+  catálogo siguen pasando porque el comportamiento POST del form no
+  cambia (Django acepta tanto `<select multiple>` como checkboxes
+  con el mismo name).
+
+**Deuda residual diseñada**:
+- El quick-create no expone `RFC` ni `dirección`. Si LC pide más
+  campos, se agregan al `<details>` sin tocar la view (la view solo
+  lee lo que llegue + razón_social es lo único obligatorio).
+- La grilla no busca/filtra proveedores. Con catálogo grande
+  (>50 proveedores) podría costar — entonces se agrega un `<input>`
+  arriba con filtro client-side por `.includes()`. Hoy LC tiene 2-3.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
