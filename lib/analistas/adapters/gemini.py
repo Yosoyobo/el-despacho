@@ -36,11 +36,11 @@ from ..capacidades import Capability
 MODELO_DEFAULT = "gemini-2.5-flash"
 API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
-# Placeholder hasta que confirmes tarifa real. Actualizar a:
-# - gemini-2.5-flash: ~$0.075 in / $0.30 out por MTok (público May 2025).
-# - gemini-2.5-pro: ~$1.25 in / $5.00 out por MTok.
-PRECIO_IN = 0.0
-PRECIO_OUT = 0.0
+# gemini-2.5-flash · tarifa oficial Google AI Studio (Mayo 2026):
+#   $0.30 / MTok input  ·  $2.50 / MTok output
+# Si cambias a gemini-2.5-pro, ajusta a 1.25 in / 10.00 out.
+PRECIO_IN = 0.30 / 1_000_000
+PRECIO_OUT = 2.50 / 1_000_000
 
 
 class GeminiAdapter(Adapter):

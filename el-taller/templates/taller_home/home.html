@@ -9,13 +9,17 @@
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Bienvenido, {{ request.user.get_short_name }} · {{ request.user.get_rol_display }}</p>
 </header>
 
-{# Hero — 3 KPI cards + 1 gauge radial (S-LC-Feedback-V5 c9) #}
-{% if hero %}
+{% comment %}
+Hero — 3 KPI cards + 1 gauge radial. Cada card es toggleable desde
+/perfil/dashboard/ (S-Demo-Pre-Showcase-2).
+{% endcomment %}
+{% if hero and hero_alguno_visible %}
 <section class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Ingresos del mes" valor=hero.ingresos_mes_fmt color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/ingresos/" %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Proyectos activos" valor=hero.proyectos_activos_num color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/proyectos/kanban/" %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por cobrar" valor=hero.cxc_total_fmt color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M5 7v13h14V7M9 11h6" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/por-cobrar/" %}
+    {% if hero_visible.ingresos %}{% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Ingresos del mes" valor=hero.ingresos_mes_fmt color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/ingresos/" %}{% endif %}
+    {% if hero_visible.proyectos %}{% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Proyectos activos" valor=hero.proyectos_activos_num color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/proyectos/kanban/" %}{% endif %}
+    {% if hero_visible.por_cobrar %}{% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por cobrar" valor=hero.cxc_total_fmt color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M5 7v13h14V7M9 11h6" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/por-cobrar/" %}{% endif %}
 
+    {% if hero_visible.meta %}
     {# Gauge radial — meta de ingresos del mes #}
     <div class="ta-card flex flex-col">
         <div class="flex items-center justify-between">
@@ -38,28 +42,8 @@
         </div>
         {% endif %}
     </div>
+    {% endif %}
 </section>
-{% endif %}
-
-{% comment %}
-S-Demo-Pre-Showcase: solo super_admin/dueno ve gauges del droplet y panel
-compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado.
-{% endcomment %}
-{% if request.user.rol in 'super_admin,dueno' and infra_gauges %}
-    {% include "taller_home/_gauges_droplet.html" %}
-{% endif %}
-{% if request.user.rol in 'super_admin,dueno' and chalanes_resumen %}
-    <section class="mb-6">
-        <header class="mb-3 flex items-center justify-between">
-            <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">🤖</span>
-                Chalanes IA — gasto últimos 30 días
-                <span class="text-xs font-normal text-gray-400 dark:text-gray-500">(super_admin)</span>
-            </h2>
-            <a href="https://gerencia.ninomeando.com/chalanes/" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Panel completo →</a>
-        </header>
-        {% include "taller_home/_chalanes_ia.html" %}
-    </section>
 {% endif %}
 
 {# 1) Acciones rápidas: botones azules para crear lo más común. #}
@@ -96,14 +80,14 @@ compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado.
 <section data-andamiaje="dictado-slot"
          class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
     <div class="flex items-start gap-3">
-        {% include "_componentes_tailadmin/_avatar_chalan.html" with chalan='claudio' tamano='md' apodo='Chalán Claudio' %}
+        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-2xl dark:bg-brand-500/15" aria-hidden="true">🎤</span>
         <div class="flex-1">
             <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Dictado al asistente</h2>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Escribe en lenguaje natural lo que pasó. Revisas las acciones antes de aplicarlas.</p>
             <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
                 {% csrf_token %}
                 <textarea name="texto" rows="3" required data-referencias
-                          placeholder="Menciona @personas, #proyectos y $clientes... ej. 'En #LC-0001 asigna a @maria y crea tarea de mandar contrato mañana.'"
+                          placeholder="Habla normal. Usa @persona, #LC-0001 (proyecto) y $cliente. Ej.: 'En #LC-0001 asígnale a @maria que mande el contrato el lunes.'"
                           class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
                     <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
@@ -283,22 +267,36 @@ compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado.
     </div>
 </section>
 
-{# Mini-calendario interactivo — 2 meses, días con eventos clickeables. #}
+{% comment %}
+Mini-calendario interactivo — 2 meses, días con eventos clickeables.
+Estilizado en S-Demo-Pre-Showcase-2: gradient sutil de fondo, celdas con
+shadow on hover, día actual con anillo brand, días con eventos con dot
+pulsante y badge contador.
+{% endcomment %}
 {% if mini_cal %}
 <section class="mb-8">
     <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Calendario</h2>
+        <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">📅</span>
+            Calendario
+        </h2>
         <a href="/calendario/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver completo →</a>
     </div>
     <div class="grid gap-4 md:grid-cols-2">
         {% for cal in mini_cal.values %}
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <div class="mb-3 flex items-center justify-between">
-                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ cal.nombre_mes }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ cal.datos.total_eventos }} evento{{ cal.datos.total_eventos|pluralize }}</p>
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-4 shadow-theme-sm dark:border-gray-800 dark:from-gray-900 dark:to-gray-800/40">
+            <div class="mb-3 flex items-center justify-between border-b border-gray-100 pb-2 dark:border-gray-800">
+                <p class="text-sm font-semibold capitalize text-gray-800 dark:text-gray-100">{{ cal.nombre_mes }}</p>
+                {% if cal.datos.total_eventos %}
+                <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                    {{ cal.datos.total_eventos }} evento{{ cal.datos.total_eventos|pluralize }}
+                </span>
+                {% else %}
+                <span class="text-[10px] text-gray-400 dark:text-gray-500">sin eventos</span>
+                {% endif %}
             </div>
-            <div class="grid grid-cols-7 gap-1 text-center">
-                {% for dia in "LMXJVSD" %}<div class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{{ dia }}</div>{% endfor %}
+            <div class="grid grid-cols-7 gap-0.5 text-center">
+                {% for dia in "LMXJVSD" %}<div class="pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{{ dia }}</div>{% endfor %}
                 {% for semana in cal.datos.grid.semanas %}
                     {% for celda in semana %}
                     {% if celda.fecha in cal.datos.dias_con_eventos and celda.mes_actual %}
@@ -306,13 +304,13 @@ compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado.
                             hx-get="/calendario/dia/{{ celda.fecha|date:'Y-m-d' }}/"
                             hx-target="#modal-slot"
                             hx-swap="innerHTML"
-                            class="relative aspect-square flex items-center justify-center text-xs font-medium {% if celda.es_finde %}text-gray-500 dark:text-gray-400{% else %}text-gray-700 dark:text-gray-200{% endif %} rounded hover:bg-brand-50 dark:hover:bg-brand-500/10">
-                        {% if celda.es_hoy %}<span class="absolute inset-1 rounded-full bg-brand-500 text-white font-semibold flex items-center justify-center">{{ celda.fecha.day }}</span>{% else %}{{ celda.fecha.day }}{% endif %}
-                        <span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-500"></span>
+                            class="group relative aspect-square flex items-center justify-center rounded-lg text-xs font-medium transition hover:bg-brand-50 hover:shadow-theme-xs dark:hover:bg-brand-500/15 {% if celda.es_finde %}text-gray-500 dark:text-gray-400{% else %}text-gray-700 dark:text-gray-200{% endif %}">
+                        {% if celda.es_hoy %}<span class="absolute inset-1 rounded-full bg-brand-500 font-bold text-white shadow-theme-sm flex items-center justify-center">{{ celda.fecha.day }}</span>{% else %}{{ celda.fecha.day }}{% endif %}
+                        <span class="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-500 group-hover:h-1.5 group-hover:w-1.5 transition-all"></span>
                     </button>
                     {% else %}
-                    <div class="relative aspect-square {% if not celda.mes_actual %}text-gray-300 dark:text-gray-600{% elif celda.es_finde %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %} flex items-center justify-center text-xs">
-                        {% if celda.es_hoy %}<span class="absolute inset-1 rounded-full bg-brand-500 text-white font-semibold flex items-center justify-center">{{ celda.fecha.day }}</span>{% else %}{{ celda.fecha.day }}{% endif %}
+                    <div class="relative aspect-square flex items-center justify-center rounded-lg text-xs {% if not celda.mes_actual %}text-gray-300 dark:text-gray-700{% elif celda.es_finde %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %} {% if celda.es_hoy and not celda.mes_actual %}{% else %}{% endif %}">
+                        {% if celda.es_hoy %}<span class="absolute inset-1 rounded-full ring-2 ring-brand-500/40 font-bold text-brand-600 dark:text-brand-300 flex items-center justify-center">{{ celda.fecha.day }}</span>{% else %}{{ celda.fecha.day }}{% endif %}
                     </div>
                     {% endif %}
                     {% endfor %}
@@ -322,5 +320,27 @@ compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado.
         {% endfor %}
     </div>
 </section>
+{% endif %}
+
+{% comment %}
+S-Demo-Pre-Showcase-2: panel técnico (gauges del droplet + Chalanes IA)
+vive al final del Dashboard, sólo super_admin/dueno. Los partials
+degradan a "n/d" sin /proc montado.
+{% endcomment %}
+{% if request.user.rol in 'super_admin,dueno' and infra_gauges %}
+    {% include "taller_home/_gauges_droplet.html" %}
+{% endif %}
+{% if request.user.rol in 'super_admin,dueno' and chalanes_resumen %}
+    <section class="mb-6">
+        <header class="mb-3 flex items-center justify-between">
+            <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">🤖</span>
+                Chalanes IA — gasto últimos 30 días
+                <span class="text-xs font-normal text-gray-400 dark:text-gray-500">(super_admin)</span>
+            </h2>
+            <a href="https://gerencia.ninomeando.com/chalanes/" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Panel completo →</a>
+        </header>
+        {% include "taller_home/_chalanes_ia.html" %}
+    </section>
 {% endif %}
 {% endblock %}

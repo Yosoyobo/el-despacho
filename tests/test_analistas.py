@@ -178,8 +178,9 @@ class TestAdaptersUnitarios:
         assert res.provider == "gemini"
         assert res.prompt_tokens == 7
         assert res.completion_tokens == 4
-        # Placeholder $0/$0.
-        assert res.costo_usd == 0.0
+        # Tarifa gemini-2.5-flash: 7 in * 0.30 + 4 out * 2.50 = $1.21e-5
+        assert res.costo_usd > 0
+        assert round(res.costo_usd, 6) == round(7 * 0.30 / 1_000_000 + 4 * 2.50 / 1_000_000, 6)
 
     def test_gemini_400_es_permanente(self, db):
         from ajustes.models.credencial import Credencial

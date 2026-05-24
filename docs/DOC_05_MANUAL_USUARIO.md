@@ -1,8 +1,32 @@
 # Manual de Usuario — El Despacho
 
 > Sistema interno de Learning Center.
+> Desarrollado por **[NoKo Devs](https://nokodevs.com)** · © 2026.
 
 ---
+
+## Novedades al 24 de mayo de 2026 (tarde)
+
+- **Tu Dashboard se reorganizó**. Las tarjetas de Acciones rápidas y el
+  Dictado al asistente quedaron arriba. Toda la información operativa y
+  técnica (proyectos, charts, calendario, gauges del droplet, panel de
+  Chalanes IA) se mueve abajo.
+- **Personaliza qué tarjetas del header ves**. Las 4 tarjetas grandes
+  (Ingresos, Proyectos, Por cobrar, Meta) ahora se desactivan
+  individualmente desde **Mi perfil → Dashboard → Tarjetas del header**.
+- **Calendario más bonito**. Tarjetas con sombras suaves, día actual con
+  anillo brand, eventos clickeables con badges coloreados. Aplica al
+  mini-calendario del Dashboard y a la página `/calendario/`.
+- **Chalanes IA con acordeón**. La lista de tarjetas individuales por
+  Chalán (Claudio, Chino, GPT, Gemini, MiMo) se colapsa por default. El
+  resumen de gasto sigue siempre visible.
+- **MiMo (y cualquier Chalán gratis) aparece con barra verde llena**
+  en el panel de gasto. Antes la barra se ocultaba y la fila se veía
+  "vacía".
+- **El Dictado vuelve al emoji 🎤** y el placeholder explica mejor cómo
+  usar `@persona`, `#LC-0001` y `$cliente`.
+- **Gemini con tarifa real**. Modelo `gemini-2.5-flash` a $0.30/$2.50
+  USD por millón de tokens (in/out). Antes estaba como placeholder $0.
 
 ## Novedades al 24 de mayo de 2026
 

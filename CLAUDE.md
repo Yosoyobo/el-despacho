@@ -1,5 +1,9 @@
 # CLAUDE.md — Memoria del agente para El Despacho
 
+> Desarrollado por **NoKo Devs** ([nokodevs.com](https://nokodevs.com)) ·
+> © 2026 Learning Center. Cualquier footer / documentación visible al
+> usuario final debe preservar la línea "Desarrollado por NoKo Devs".
+
 > Léeme **primero** en cualquier sesión nueva. Aquí está el contexto del proyecto,
 > reglas inviolables, decisiones tomadas y qué viene en cada sesión.
 
@@ -3095,6 +3099,49 @@ sugerir precio.
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
 historial de facturas y pagos, mensajería con el despacho.
+
+### S-Demo-Pre-Showcase-2 ✅ — UX feedback nocturno (2026-05-24)
+
+Sprint dirigido por una segunda ronda de feedback de Oscar tras ver
+S-Demo-Pre-Showcase desplegado. 7 mejoras puntuales, un solo commit
+agrupado en main:
+
+- **Reorden del Dashboard**: el panel técnico (gauges del droplet +
+  Chalanes IA) ahora vive al final del home, debajo del mini-calendario.
+  Lo primero que ve el usuario es: KPIs → Acciones rápidas → Dictado →
+  Tablero → Proyectos → Charts → Calendario → Infra.
+- **KPIs hero togglables individualmente**: cada una de las 4 cards
+  (Ingresos, Proyectos, Por cobrar, Meta) se puede ocultar desde
+  `/perfil/dashboard/` → "Tarjetas del header". Slugs `hero-ingresos`,
+  `hero-proyectos`, `hero-por-cobrar`, `hero-meta` viven en
+  `PreferenciaKPI` con `origen='hero'`. Default visible; sólo se persiste
+  fila cuando el usuario desactiva (mismo patrón de
+  `PreferenciaCategoriaPush`).
+- **Calendarios estilizados**: mini-cal del Dashboard y página
+  `/calendario/` ahora con gradient sutil, día actual con shadow brand,
+  eventos con badges coloreados de borde + fondo + hover. Mes con icono
+  📅 en el header.
+- **Chalanes IA con acordeón**: las tarjetas individuales por Chalán se
+  envuelven en `<details>` colapsado por default. El resumen de gasto
+  30d sigue siempre visible.
+- **Barra verde llena para proveedores gratis**: en el panel
+  "Gastado en IA — últimos 30 días", cuando `es_gratis=True`, la barra
+  se pinta 100% verde (antes se ocultaba y la fila quedaba "vacía").
+  Aplica a MiMo y a cualquier Chalán futuro con `PRECIO_IN+OUT=0`.
+- **Gemini tarifa real**: `lib/analistas/adapters/gemini.py` ahora usa
+  `PRECIO_IN = 0.30 / 1_000_000` y `PRECIO_OUT = 2.50 / 1_000_000`
+  (gemini-2.5-flash tarifa Mayo 2026). El test del adapter actualizado
+  para validar `costo_usd > 0` con cálculo exacto.
+- **Dictado**: emoji 🎤 regresó al lado del título (antes era avatar del
+  Chalán Claudio). Placeholder del textarea ahora explica mejor el uso
+  de `@persona`, `#LC-0001` (proyecto) y `$cliente` con un ejemplo más
+  claro.
+- **Footer NoKo Devs**: las 3 apps (Taller, Gerencia, Recepción)
+  muestran "© 2026 Learning Center · Privacidad · Términos · Desarrollado
+  por NoKo Devs" con link a nokodevs.com. README.md, CLAUDE.md y
+  DOC_05 también marcan el crédito.
+
+Cero migraciones de schema, cero pasos manuales post-deploy.
 
 ### S-Deuda-V1 ✅ — Cron vencidas + cobranza + sparklines + FK Unidad (2026-05-24)
 
