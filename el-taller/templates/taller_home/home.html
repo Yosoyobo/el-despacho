@@ -41,8 +41,10 @@
 </section>
 {% endif %}
 
-{# S-Demo-Pre-Showcase: solo super_admin/dueno ve gauges del droplet y panel
-   compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado. #}
+{% comment %}
+S-Demo-Pre-Showcase: solo super_admin/dueno ve gauges del droplet y panel
+compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado.
+{% endcomment %}
 {% if request.user.rol in 'super_admin,dueno' and infra_gauges %}
     {% include "taller_home/_gauges_droplet.html" %}
 {% endif %}
