@@ -1,0 +1,147 @@
+{% comment %}
+S-Demo-Pre-Showcase. 4 gauges del droplet (CPU, Memoria, Disco,
+Containers) condensados para el Dashboard del Taller. Sólo se renderea
+si el view inyectó `infra_gauges` (gate por rol super_admin/dueno).
+
+Lógica de datos: lib/site/gauges.snapshot_gauges_minimo().
+Requiere /proc, docker.sock montados via docker-compose.site.yml.
+{% endcomment %}
+{% with g=infra_gauges.gauges h=infra_gauges.host c=infra_gauges.containers cr=infra_gauges.containers_resumen %}
+<section class="mb-6">
+  <header class="mb-3 flex items-center justify-between">
+    <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+      <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-400">🏗️</span>
+      Infraestructura del droplet
+      <span class="text-xs font-normal text-gray-400 dark:text-gray-500">(super_admin)</span>
+    </h2>
+    <a href="https://gerencia.ninomeando.com/site/" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Ir al Site →</a>
+  </header>
+  <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+    {# CPU #}
+    <div class="ta-card flex flex-col items-center justify-between">
+      <div class="flex w-full items-center justify-between">
+        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-200">CPU</h3>
+        {% if h.cpu_load.disponible %}<span class="text-[10px] text-gray-500">{{ h.cpu_load.cores }} cores</span>{% endif %}
+      </div>
+      <div class="relative my-2 h-24 w-24 sm:h-28 sm:w-28">
+        <svg viewBox="0 0 100 100" class="h-full w-full -rotate-[135deg]">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"
+                  class="text-gray-100 dark:text-gray-800"
+                  stroke-dasharray="{{ g.cpu.stroke_dasharray_track|default:'0 0' }}"></circle>
+          {% if g.cpu.disponible %}
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"
+                  class="text-{{ g.cpu.color }}-500 transition-all duration-700"
+                  stroke-dasharray="{{ g.cpu.stroke_dasharray }}"></circle>
+          {% endif %}
+        </svg>
+        <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          {% if h.cpu_load.disponible %}
+            <span class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ h.cpu_load.load_1 }}</span>
+            <span class="text-[9px] uppercase tracking-wide text-gray-500">load 1m</span>
+          {% else %}
+            <span class="text-xs text-gray-400">n/d</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if h.cpu_load.disponible %}
+      <div class="flex w-full justify-between text-[10px] font-mono text-gray-500">
+        <span>5m {{ h.cpu_load.load_5 }}</span><span>15m {{ h.cpu_load.load_15 }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Memoria #}
+    <div class="ta-card flex flex-col items-center justify-between">
+      <div class="flex w-full items-center justify-between">
+        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-200">Memoria</h3>
+        {% if h.memoria.disponible %}<span class="text-[10px] text-gray-500">{{ h.memoria.total_mb }} MB</span>{% endif %}
+      </div>
+      <div class="relative my-2 h-24 w-24 sm:h-28 sm:w-28">
+        <svg viewBox="0 0 100 100" class="h-full w-full -rotate-[135deg]">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"
+                  class="text-gray-100 dark:text-gray-800"
+                  stroke-dasharray="{{ g.memoria.stroke_dasharray_track|default:'0 0' }}"></circle>
+          {% if g.memoria.disponible %}
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"
+                  class="text-{{ g.memoria.color }}-500 transition-all duration-700"
+                  stroke-dasharray="{{ g.memoria.stroke_dasharray }}"></circle>
+          {% endif %}
+        </svg>
+        <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          {% if g.memoria.disponible %}
+            <span class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ g.memoria.pct }}%</span>
+            <span class="text-[9px] uppercase tracking-wide text-gray-500">en uso</span>
+          {% else %}<span class="text-xs text-gray-400">n/d</span>{% endif %}
+        </div>
+      </div>
+      {% if h.memoria.disponible %}
+      <div class="flex w-full justify-between text-[10px] font-mono text-gray-500">
+        <span>{{ h.memoria.usado_mb }} usado</span><span>{{ h.memoria.libre_mb }} libre</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Disco #}
+    <div class="ta-card flex flex-col items-center justify-between">
+      <div class="flex w-full items-center justify-between">
+        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-200">Disco</h3>
+        {% if h.disco.disponible %}<span class="text-[10px] text-gray-500">{{ h.disco.total_gb }} GB</span>{% endif %}
+      </div>
+      <div class="relative my-2 h-24 w-24 sm:h-28 sm:w-28">
+        <svg viewBox="0 0 100 100" class="h-full w-full -rotate-[135deg]">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"
+                  class="text-gray-100 dark:text-gray-800"
+                  stroke-dasharray="{{ g.disco.stroke_dasharray_track|default:'0 0' }}"></circle>
+          {% if g.disco.disponible %}
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"
+                  class="text-{{ g.disco.color }}-500 transition-all duration-700"
+                  stroke-dasharray="{{ g.disco.stroke_dasharray }}"></circle>
+          {% endif %}
+        </svg>
+        <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          {% if g.disco.disponible %}
+            <span class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ g.disco.pct }}%</span>
+            <span class="text-[9px] uppercase tracking-wide text-gray-500">ocupado</span>
+          {% else %}<span class="text-xs text-gray-400">n/d</span>{% endif %}
+        </div>
+      </div>
+      {% if h.disco.disponible %}
+      <div class="flex w-full justify-between text-[10px] font-mono text-gray-500">
+        <span>{{ h.disco.usado_gb }} GB</span><span>{{ h.disco.libre_gb }} libre</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Containers #}
+    <div class="ta-card flex flex-col items-center justify-between">
+      <div class="flex w-full items-center justify-between">
+        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-200">Containers</h3>
+        {% if c.info.disponible %}<span class="text-[10px] text-gray-500">{{ cr.total }}</span>{% endif %}
+      </div>
+      <div class="relative my-2 h-24 w-24 sm:h-28 sm:w-28">
+        {% if c.info.disponible %}
+        <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="11"
+                  class="text-error-500/30 dark:text-error-500/20"></circle>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="butt"
+                  class="text-success-500 transition-all duration-700"
+                  stroke-dasharray="{% widthratio cr.running cr.total 264 %} 264"></circle>
+        </svg>
+        <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <span class="text-lg font-bold text-success-600 dark:text-success-400">{{ cr.running }}</span>
+          <span class="text-[9px] uppercase tracking-wide text-gray-500">running</span>
+        </div>
+        {% else %}
+        <div class="flex h-full w-full items-center justify-center text-xs text-gray-400">docker.sock n/d</div>
+        {% endif %}
+      </div>
+      {% if c.info.disponible %}
+      <div class="flex w-full justify-between text-[10px] font-mono">
+        <span class="text-success-600 dark:text-success-400">● {{ cr.running }} run</span>
+        <span class="{% if cr.stopped %}text-error-600 dark:text-error-400{% else %}text-gray-400{% endif %}">● {{ cr.stopped }} stop</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endwith %}

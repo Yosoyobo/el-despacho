@@ -37,30 +37,10 @@ from lib.site import (
 from lib.site.registry import PLATAFORMAS, chequear
 
 
-def _gauge(pct: float | None, *, umbral_warn: float = 60, umbral_err: float = 80) -> dict:
-    """Pre-calcula coordenadas de un arco SVG (270°) para un gauge radial.
-    Devuelve color por umbrales."""
-    if pct is None:
-        return {"disponible": False}
-    pct_c = max(0.0, min(100.0, float(pct)))
-    if pct_c >= umbral_err:
-        color = "error"
-    elif pct_c >= umbral_warn:
-        color = "warning"
-    else:
-        color = "success"
-    radio = 42
-    circ = 2 * 3.14159265 * radio
-    arco_total = circ * 0.75  # 270°
-    relleno = arco_total * (pct_c / 100)
-    return {
-        "disponible": True,
-        "pct": round(pct_c, 1),
-        "color": color,
-        "stroke_dasharray": f"{relleno:.2f} {circ:.2f}",
-        "stroke_dasharray_track": f"{arco_total:.2f} {circ:.2f}",
-        "radio": radio,
-    }
+# `_gauge` migrado a `lib/site/gauges.gauge` para que el Taller pueda
+# reusarlo. El alias `_gauge` se conserva para compat hacia abajo en
+# este archivo.
+from lib.site.gauges import gauge as _gauge  # noqa: E402
 
 
 def _barra(pct: float | None, *, umbral_warn: float = 60, umbral_err: float = 80) -> dict:

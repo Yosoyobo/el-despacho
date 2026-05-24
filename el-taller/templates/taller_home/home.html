@@ -41,6 +41,25 @@
 </section>
 {% endif %}
 
+{# S-Demo-Pre-Showcase: solo super_admin/dueno ve gauges del droplet y panel
+   compacto de Chalanes IA. Los partials degradan a "n/d" sin /proc montado. #}
+{% if request.user.rol in 'super_admin,dueno' and infra_gauges %}
+    {% include "taller_home/_gauges_droplet.html" %}
+{% endif %}
+{% if request.user.rol in 'super_admin,dueno' and chalanes_resumen %}
+    <section class="mb-6">
+        <header class="mb-3 flex items-center justify-between">
+            <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">🤖</span>
+                Chalanes IA — gasto últimos 30 días
+                <span class="text-xs font-normal text-gray-400 dark:text-gray-500">(super_admin)</span>
+            </h2>
+            <a href="https://gerencia.ninomeando.com/chalanes/" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Panel completo →</a>
+        </header>
+        {% include "taller_home/_chalanes_ia.html" %}
+    </section>
+{% endif %}
+
 {# 1) Acciones rápidas: botones azules para crear lo más común. #}
 <section class="mb-6 flex flex-wrap gap-2">
     {% if permisos_modulos.proyectos %}

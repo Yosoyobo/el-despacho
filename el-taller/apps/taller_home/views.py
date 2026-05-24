@@ -236,6 +236,27 @@ def home(request):
 
     hero = _safe("hero", _build_hero, {})
 
+    # S-Demo-Pre-Showcase: gauges del droplet + tarjetas Chalanes IA.
+    # Sólo super_admin/dueno. Best-effort: si los volúmenes /proc no están
+    # montados (entorno dev/CI sin docker-compose.site.yml), los partials
+    # degradan a "n/d" sin tumbar el home.
+    infra_gauges = None
+    chalanes_resumen = None
+    chalanes_tarjetas = None
+    if rol in ("super_admin", "dueno"):
+        try:
+            from lib.site.gauges import snapshot_gauges_minimo
+            infra_gauges = snapshot_gauges_minimo()
+        except Exception:  # noqa: BLE001
+            infra_gauges = None
+        try:
+            from lib.analistas.stats import resumen_global, tarjetas_chalanes
+            chalanes_resumen = resumen_global(dias=30)
+            chalanes_tarjetas = tarjetas_chalanes(dias=30)
+        except Exception:  # noqa: BLE001
+            chalanes_resumen = None
+            chalanes_tarjetas = None
+
     return render(request, "taller_home/home.html", {
         "kpis": kpis_render,
         "sugerencias": sugerencias_view,
@@ -245,6 +266,9 @@ def home(request):
         "charts": charts,
         "mini_cal": mini_cal,
         "hero": hero,
+        "infra_gauges": infra_gauges,
+        "chalanes_resumen": chalanes_resumen,
+        "chalanes_tarjetas": chalanes_tarjetas,
     })
 
 
