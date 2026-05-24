@@ -4,6 +4,12 @@
 
 ---
 
+## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 8)
+
+- **Metas de KPI con barra de progreso.** Cada KPI financiero (ingresos del mes, egresos, utilidad, facturado, CxC) puede tener una meta. La barra de progreso aparece debajo del valor en la tarjeta, con porcentaje hacia la meta.
+- **Editar metas KPI:** En La Gerencia → Ajustes → "Metas KPI →" hay una pantalla con los KPIs principales (ingresos, egresos, utilidad, facturado, CxC, utilidad neta contable). Captura el valor objetivo y el periodo. Deja en blanco para borrar.
+- **Visible inmediatamente en Tesorería.** Las 3 primeras tarjetas del landing de Tesorería (Ingresos del mes, Egresos del mes, Utilidad bruta) muestran la barra de progreso si la meta correspondiente está activa.
+
 ## Novedades al 24 de mayo de 2026 (S-LC-Feedback-V5 commit 7)
 
 - **Roles personalizados (super_admin).** Antes solo había 4 roles fijos (super_admin, dueño, contador, diseñador). Ahora puedes crear roles a la medida en **Directorio → "Roles personalizados →"** que se suman al rol primario del usuario.

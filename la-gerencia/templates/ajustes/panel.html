@@ -15,6 +15,7 @@
     <div class="flex flex-wrap gap-2">
         <a href="{% url 'ajustes-tasas' %}" class="btn-secundario">Tasas e Impuestos →</a>
         <a href="{% url 'ajustes-sidebar' %}" class="btn-secundario">Orden del sidebar →</a>
+        <a href="{% url 'ajustes-metas-kpi' %}" class="btn-secundario">Metas KPI →</a>
         <form method="post" action="{% url 'ajustes-probar-analistas' %}">{% csrf_token %}
             <button type="submit" class="btn-secundario">Probar Chalanes</button>
         </form>

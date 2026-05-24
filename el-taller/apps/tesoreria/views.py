@@ -56,11 +56,19 @@ def landing(request):
         "cxp_total_fmt": f"${kpis['cxp_total']:,.2f}",
         **kpis,
     }
+    # S-LC-Feedback-V5 c8: metas KPI con barra de progreso.
+    from apps.taller_home.services_meta_kpi import enriquecer_con_meta
+    meta_ingresos = enriquecer_con_meta({"valor": kpis_fmt["ingresos_mes_fmt"]}, "ingresos-mes", valor_numerico=float(kpis["ingresos_mes"]))
+    meta_egresos = enriquecer_con_meta({"valor": kpis_fmt["egresos_mes_fmt"]}, "egresos-mes", valor_numerico=float(kpis["egresos_mes"]))
+    meta_utilidad = enriquecer_con_meta({"valor": kpis_fmt["utilidad_mes_fmt"]}, "utilidad-mes", valor_numerico=float(kpis["utilidad_mes"]))
     return render(request, "tesoreria/landing.html", {
         "kpis": kpis_fmt,
         "charts": services.charts_landing(),
         "ultimos_ingresos": Ingreso.vigentes.all()[:5],
         "ultimos_egresos": Egreso.vigentes.all()[:5],
+        "meta_ingresos": meta_ingresos,
+        "meta_egresos": meta_egresos,
+        "meta_utilidad": meta_utilidad,
     })
 
 

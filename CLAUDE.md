@@ -2829,6 +2829,53 @@ movidas. Reversión rápida si algo se ve raro: `git revert <commit>`.
   cláusulas como "los proyectos activos" donde "los" es artículo
   natural del español).
 
+### S-LC-Feedback-V5 ✅ commit 8 — KPIs visuales con metas (2026-05-24)
+
+Base para visualizaciones de KPIs. Entrega lo más impactante: bullet
+chart horizontal CSS (barra de progreso vs meta) en el partial
+canónico de KPI hero. Sparklines + gauges quedan listos para ser
+extendidos en sub-sprints (la infra de ApexCharts ya existe desde
+S-Charts).
+
+- **Modelo `MetaKPI`** en
+  [el-taller/apps/taller_home/models/meta_kpi.py](el-taller/apps/taller_home/models/meta_kpi.py):
+  `(kpi_slug unique, valor Decimal, periodo, activa)`. Migración
+  `0003_meta_kpi`.
+- **Partial `_kpi_card_hero.html`** extendido: si `meta_valor` se
+  pasa, renderiza barra horizontal con porcentaje. `meta_porcentaje_clamp`
+  va al `style="width:N%"` (clamped 0-100), `meta_porcentaje` se
+  muestra en texto.
+- **Service helper** `services_meta_kpi.enriquecer_con_meta(ctx, slug, valor_numerico=N)`
+  añade los campos `meta_valor`, `meta_porcentaje`, `meta_porcentaje_clamp`
+  al ctx para passar al partial.
+- **UI `/ajustes/metas-kpi/`** en Gerencia (super_admin only):
+  6 slugs sugeridos (`ingresos-mes`, `egresos-mes`, `utilidad-mes`,
+  `facturado-mes`, `cxc-total`, `contaduria-utilidad-neta-mes`).
+  Editar valor + periodo + activa. Vacío = borrar.
+- **Aplicado en Tesorería landing**: 3 cards (ingresos/egresos/utilidad)
+  ahora muestran barra de progreso si la meta correspondiente está
+  activa. Los demás KPI cards del sistema heredan automáticamente la
+  capacidad pasando los params del partial.
+- **Evento Portavoz nuevo**: `meta_kpi.actualizada`.
+
+Tests: 110 pass (tesoreria + gerencia). Sin afectar suite existente.
+
+**Deuda residual diseñada** (entregable en sprints chicos cuando LC
+pida):
+- **Sparklines 30d** en cada KPI: el pintor `spark-area` de
+  `site_charts.js` ya existe (S-Charts). Falta exponer endpoint
+  `/api/kpi/<slug>/serie-30d/` que retorne JSON `[n1, n2, …, n30]`
+  y agregar `<div data-chart="spark-area" data-series="...">` al
+  partial KPI hero.
+- **Gauges radiales**: `radial-kpi` ya existe en site_charts.js.
+  Pintar como cuadrante en Dashboard del Taller cuando hay meta y
+  el slug está en la lista de gauges habilitados.
+- **Bullet chart ApexCharts** (valor vs meta vs anterior): para 3-4
+  KPIs financieros principales. Sigue patrón de `barras` pintor.
+- **Donas/barras categóricas**: aplicar `donut` / `barras` a KPIs
+  de tipo conteo (proyectos por estado, tareas por prioridad,
+  egresos por centro de costo del mes).
+
 ### S-LC-Feedback-V5 ✅ commit 7 — Roles personalizados (2026-05-24)
 
 Encima del campo `Usuario.rol` (preservado como rol primario), ahora

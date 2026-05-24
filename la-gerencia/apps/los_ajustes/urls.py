@@ -17,4 +17,7 @@ urlpatterns = [
     # S-LC-Feedback-V5 c6: orden y visibilidad del sidebar de El Taller (global).
     path("sidebar/", views.sidebar_panel, name="ajustes-sidebar"),
     path("sidebar/guardar", views.sidebar_guardar, name="ajustes-sidebar-guardar"),
+    # S-LC-Feedback-V5 c8: metas KPI.
+    path("metas-kpi/", views.metas_kpi_panel, name="ajustes-metas-kpi"),
+    path("metas-kpi/guardar", views.metas_kpi_guardar, name="ajustes-metas-kpi-guardar"),
 ]

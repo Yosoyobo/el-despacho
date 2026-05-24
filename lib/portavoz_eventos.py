@@ -49,6 +49,7 @@ EventoTipo = Literal[
     "rol.actualizado",
     "rol.borrado",
     "usuario.roles_extra_actualizados",
+    "meta_kpi.actualizada",
     "buzon.nuevo_mensaje",
     "buzon.estado_cambiado",
     "buzon.respondido",
