@@ -48,7 +48,7 @@ def home(request):
     )
     etiquetas_rol = {
         "super_admin": "Super admin",
-        "dueno": "Dueño",
+        "dueno": "Admin",
         "contador": "Contador",
         "disenador": "Diseñador",
     }

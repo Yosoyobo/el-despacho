@@ -30,7 +30,7 @@ def lista(request):
         .values_list("rol").annotate(c=Count("id")).values_list("rol", "c")
     )
     etiquetas = {
-        "super_admin": "Super admin", "dueno": "Dueño",
+        "super_admin": "Super admin", "dueno": "Admin",
         "contador": "Contador", "disenador": "Diseñador",
     }
     kpis = {

@@ -5,7 +5,7 @@ from cuentas.managers import UsuarioManager
 
 ROLES = (
     ("super_admin", "Super Admin"),
-    ("dueno", "Dueño"),
+    ("dueno", "Admin"),
     ("contador", "Contador"),
     ("disenador", "Diseñador"),
 )

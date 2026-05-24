@@ -13,7 +13,7 @@ def seed(apps, schema_editor):
     Rol = apps.get_model("cuentas", "Rol")
     DESCRIPCIONES = {
         "super_admin": "Acceso total. No se puede editar ni borrar.",
-        "dueno": "Dueño del despacho. Acceso a todo excepto config técnica crítica.",
+        "dueno": "Admin del despacho. Acceso a todo excepto configuración técnica crítica (solo super_admin).",
         "contador": "Operación financiera y proyectos en lectura.",
         "disenador": "Solo proyectos asignados + tareas + recados.",
     }
