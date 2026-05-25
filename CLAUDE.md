@@ -3143,6 +3143,41 @@ agrupado en main:
 
 Cero migraciones de schema, cero pasos manuales post-deploy.
 
+### S-Proveedores-Bidireccional ✅ — Fix checkboxes vacíos + asignar productos desde proveedor (2026-05-25)
+
+Hotfix corto dirigido por feedback de Oscar tras ver el form de
+producto y el detalle de proveedor:
+
+- **Bug raíz del checkbox vacío en form de servicio**
+  ([el-taller/apps/el_catalogo/forms.py:81-89](el-taller/apps/el_catalogo/forms.py#L81-L89)):
+  el setter `queryset` de `ModelMultipleChoiceField` propaga `choices`
+  al **widget actual**. `ServicioForm.__init__` asignaba primero el
+  queryset (`Proveedor.objects.filter(activo=True)`) y después
+  reemplazaba el widget con `CheckboxSelectMultiple()`. El widget nuevo
+  quedaba sin choices y el `{% for choice in form.proveedores %}` del
+  template caía al `{% empty %}` aunque sí hubiera proveedores.
+  Fix: invertir el orden — primero asignar el widget, después el
+  queryset (el setter de queryset propaga choices al widget nuevo).
+- **Lado inverso: asignar productos desde el detalle de Proveedor**:
+  - Vista nueva [`proveedor_servicios`](el-taller/apps/el_catalogo/views.py)
+    gated por `catalogo.editar`. GET arma grupos de Servicios activos
+    por categoría con un dict `{categoria: [{id, nombre, marcado}]}`.
+    POST valida server-side contra `Servicio.objects.filter(activo=True)`
+    para evitar IDs inyectados, hace `proveedor.servicios.set(validos)`,
+    emite evento y redirige al detalle.
+  - URL `proveedores/<pk>/servicios` (`catalogo-proveedor-servicios`).
+  - Template
+    [`catalogo/proveedor_servicios.html`](el-taller/templates/catalogo/proveedor_servicios.html)
+    con checkboxes agrupados por categoría, mismo patrón visual
+    TailAdmin `has-[:checked]:` que el form de servicio del lado opuesto.
+  - Detalle del proveedor ahora tiene link "Editar productos →" en el
+    header de la sección + botón "Asignar productos" en el empty state.
+- **Evento Portavoz nuevo**: `proveedor.servicios_actualizados` con
+  payload `{proveedor_id, total}`.
+
+Cero migraciones de schema. La M2M `Servicio.proveedores` se opera
+desde cualquiera de los dos lados sin diferencias.
+
 ### S-Deuda-V1 ✅ — Cron vencidas + cobranza + sparklines + FK Unidad (2026-05-24)
 
 Cuatro deudas diseñadas atendidas en una sesión:

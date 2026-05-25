@@ -45,6 +45,7 @@ EventoTipo = Literal[
     "proveedor.archivado",
     "proveedor.reactivado",
     "proveedor.quick_creado",
+    "proveedor.servicios_actualizados",
     "sidebar.orden_actualizado",
     "rol.creado",
     "rol.actualizado",

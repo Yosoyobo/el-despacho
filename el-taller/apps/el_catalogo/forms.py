@@ -78,12 +78,15 @@ class ServicioForm(forms.ModelForm):
             )
         self.fields["categoria"].queryset = qs.distinct()
         # S-LC-Feedback-V5: proveedores como checkboxes (más obvio que <select multiple>).
+        # Importante: el widget debe asignarse ANTES del queryset. El setter de queryset
+        # propaga `choices` al widget actual; si reemplazamos después, el widget nuevo
+        # queda sin choices y el template muestra "Aún no hay proveedores registrados".
         if "proveedores" in self.fields:
+            self.fields["proveedores"].widget = forms.CheckboxSelectMultiple()
             self.fields["proveedores"].queryset = Proveedor.objects.filter(activo=True).order_by("razon_social")
             self.fields["proveedores"].required = False
             self.fields["proveedores"].label = "Proveedores aplicables"
             self.fields["proveedores"].help_text = "Marca quién te puede surtir este producto. Opcional."
-            self.fields["proveedores"].widget = forms.CheckboxSelectMultiple()
 
     def clean_costo(self):
         v = self.cleaned_data.get("costo")

@@ -5,6 +5,23 @@
 
 ---
 
+## Novedades al 25 de mayo de 2026
+
+- **Proveedores ahora se asignan en los dos sentidos**. Antes, el form
+  de un producto mostraba la lista de proveedores como checkboxes —
+  pero por un bug visual decía "Aún no hay proveedores registrados"
+  aunque sí los hubiera. Quedó arreglado: ahora ves todos los
+  proveedores activos del catálogo y los puedes marcar.
+- **Asignar productos desde el proveedor**. Al abrir el detalle de un
+  proveedor (Productos → Proveedores → tu proveedor) ahora hay un link
+  **"Editar productos →"** en la sección "Productos que surte" (y un
+  botón grande cuando aún no surte nada). Te lleva a una pantalla con
+  checkboxes agrupados por categoría: marca todo lo que el proveedor
+  te puede surtir y guarda. Los cambios aparecen también en el form
+  de cada producto marcado.
+
+---
+
 ## Novedades al 24 de mayo de 2026 (tarde)
 
 - **Tu Dashboard se reorganizó**. Las tarjetas de Acciones rápidas y el

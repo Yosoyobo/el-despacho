@@ -28,5 +28,6 @@ urlpatterns = [
     path("proveedores/quick-create/", views.proveedor_quick_create, name="catalogo-proveedor-quick-create"),
     path("proveedores/<int:pk>/", views.proveedor_detalle, name="catalogo-proveedor-detalle"),
     path("proveedores/<int:pk>/editar", views.proveedor_editar, name="catalogo-proveedor-editar"),
+    path("proveedores/<int:pk>/servicios", views.proveedor_servicios, name="catalogo-proveedor-servicios"),
     path("proveedores/<int:pk>/archivar", views.proveedor_archivar, name="catalogo-proveedor-archivar"),
 ]

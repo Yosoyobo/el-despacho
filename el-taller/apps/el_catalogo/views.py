@@ -458,6 +458,56 @@ def proveedor_detalle(request, pk: int):
     return render(request, "catalogo/proveedor_detalle.html", {
         "proveedor": prov,
         "servicios": prov.servicios.filter(activo=True),
+        "puede_gestionar_servicios": puede(request.user, "catalogo", "editar"),
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def proveedor_servicios(request, pk: int):
+    """Editor de la lista de servicios que surte un proveedor.
+
+    Inverso del checkbox `proveedores` en el form de Servicio: aquí marcas
+    productos desde la perspectiva del proveedor. Misma M2M, gated por el
+    permiso `editar` del catálogo (mismo que tocar la lista del lado servicio).
+    """
+    if (r := _gate(request, "editar")) is not None:
+        return r
+    prov = get_object_or_404(Proveedor, pk=pk)
+    if request.method == "POST":
+        ids = request.POST.getlist("servicios")
+        try:
+            ids_int = [int(i) for i in ids]
+        except ValueError:
+            return HttpResponseForbidden("IDs inválidos.")
+        validos = list(
+            Servicio.objects.filter(pk__in=ids_int, activo=True).values_list("pk", flat=True)
+        )
+        prov.servicios.set(validos)
+        emitir(EventoPortavoz(
+            tipo="proveedor.servicios_actualizados",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"proveedor_id": prov.pk, "total": len(validos)},
+        ))
+        messages.success(request, f"Productos del proveedor «{prov.razon_social}» actualizados.")
+        return redirect("catalogo-proveedor-detalle", pk=prov.pk)
+
+    asignados_ids = set(prov.servicios.values_list("pk", flat=True))
+    servicios = (
+        Servicio.objects.filter(activo=True)
+        .select_related("categoria")
+        .order_by("categoria__orden", "nombre")
+    )
+    # Agrupado por categoría para una UI más legible.
+    por_categoria: dict[str, list] = {}
+    for s in servicios:
+        por_categoria.setdefault(s.categoria.nombre, []).append({
+            "id": s.pk, "nombre": s.nombre, "marcado": s.pk in asignados_ids,
+        })
+    grupos = [{"categoria": k, "items": v} for k, v in por_categoria.items()]
+    return render(request, "catalogo/proveedor_servicios.html", {
+        "proveedor": prov,
+        "grupos": grupos,
+        "total_marcados": len(asignados_ids),
     })
 
 
