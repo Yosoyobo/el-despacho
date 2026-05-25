@@ -27,6 +27,7 @@ urlpatterns = [
          name="buzon-admin-clientes-proximamente"),
     path("buzon/", include("apps.buzon_admin.urls")),
     path("catalogos/", include("apps.centros_costo.urls")),
+    path("catalogos/", include("apps.estados_proyecto.urls")),
     # Para que la sidebar compartida pueda hacer `{% url 'tesoreria:...' %}`
     # incluso bajo el urlconf de Gerencia en tests, montamos la app a un
     # prefijo que jamás se visitará desde Gerencia real (los enlaces los

@@ -3178,6 +3178,56 @@ producto y el detalle de proveedor:
 Cero migraciones de schema. La M2M `Servicio.proveedores` se opera
 desde cualquiera de los dos lados sin diferencias.
 
+### S-Proyecto-Estados-V1 ✅ — Estados configurables + dropdown inline + proveedores aplicables (2026-05-25)
+
+Sprint dirigido por feedback de LC sobre el detalle de proyecto:
+
+- **Dropdown inline para cambiar estado**
+  ([el-taller/templates/proyectos/_badge_estado.html](el-taller/templates/proyectos/_badge_estado.html)):
+  el modal "Cambiar estado" del action bar se reemplazó por un
+  `<select>` al lado del badge en el header del detalle. Cambio en
+  vivo (HTMX `hx-post` con `hx-swap="outerHTML"` que devuelve solo el
+  partial del badge actualizado). El modal sigue funcionando como
+  fallback para flujos no-HTMX.
+- **Modelo `EstadoProyecto`** configurable desde Gerencia
+  ([el-taller/apps/los_proyectos/models/estado.py](el-taller/apps/los_proyectos/models/estado.py)):
+  campos `slug, label, color, orden, terminal, activo, sistema`.
+  Migración `0007_estado_proyecto` crea la tabla, libera el
+  `choices=` del CharField `Proyecto.estado`, y siembra los 7 base
+  con `sistema=True` (idempotente).
+  - **Cache de proceso 60s** del mapa slug → {label, color} en
+    `templatetags/proyectos_extras.py` (Django cache). Signals
+    `post_save`/`post_delete` en `EstadoProyecto` invalidan el cache
+    desde `apps.py::ready()`.
+  - `Proyecto.get_estado_display()` ahora lee del modelo (fallback al
+    label hardcoded si la migración no corrió aún o el slug es custom
+    huérfano).
+  - Filter nuevo `|estado_label` además del `|color_estado` existente.
+- **CRUD en La Gerencia** bajo `/catalogos/estados-proyecto/` (nueva
+  app `la-gerencia/apps/estados_proyecto/`, gated por super_admin).
+  Lista con conteo de proyectos usando cada estado, form edit/nuevo
+  con auto-slug desde label, borrar gated por `sistema=False` AND
+  `0 proyectos usando`. Sidebar Gerencia gana entrada bajo "Catálogos
+  · Estados de proyecto".
+- **Card "Proveedores aplicables"** en el sidebar del detalle de
+  proyecto: deriva de
+  `Proveedor.objects.filter(activo=True, servicios__en_proyectos__proyecto=p).distinct()`.
+  Cero migración (reusa la M2M `Servicio.proveedores` de
+  S-LC-Feedback-V3 c6). Link a `catalogo-proveedor-detalle` por
+  cada uno.
+- **Eventos Portavoz nuevos**: `proyecto.estado_creado`,
+  `proyecto.estado_actualizado`, `proyecto.estado_borrado`.
+- **8 tests nuevos** en `tests/taller/test_proyectos_estados.py`
+  (seed, terminal/no-terminal, label override, dropdown inline,
+  permiso diseñador, proveedores aplicables + inactivos filtrados,
+  estados inactivos no aparecen en dropdown).
+
+**Deuda residual diseñada**: si el super_admin desactiva un estado
+que ya tienen proyectos asignados, los proyectos siguen funcionando
+(la migración no migra valores), pero el dropdown no permite volver
+a esa columna. Si necesitan limpieza histórica, agregar management
+command `reasignar_proyectos_estado --de=X --a=Y`.
+
 ### S-Deuda-V1 ✅ — Cron vencidas + cobranza + sparklines + FK Unidad (2026-05-24)
 
 Cuatro deudas diseñadas atendidas en una sesión:

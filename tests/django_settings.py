@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "apps.interfono_admin.apps.InterfonoAdminConfig",
     "apps.los_chalanes.apps.LosChalanesConfig",
     "apps.centros_costo.apps.CentrosCostoConfig",
+    "apps.estados_proyecto.apps.EstadosProyectoConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",

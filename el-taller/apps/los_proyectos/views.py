@@ -13,6 +13,7 @@ from apps.los_proyectos.forms import (
 )
 from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
+    EstadoProyecto,
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
@@ -160,6 +161,18 @@ def detalle(request, pk):
             {"url": f"/proyectos/{proyecto.pk}/cambiar-estado/", "label": "Cambiar estado"},
         ]
     asignaciones = list(proyecto.asignaciones.select_related("usuario"))
+    estados_disponibles = list(
+        EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label")
+    )
+    # Proveedores aplicables: derivados de los productos del proyecto vía
+    # M2M Servicio.proveedores (S-LC-Feedback-V3).
+    from apps.el_catalogo.models import Proveedor
+    proveedores_aplicables = list(
+        Proveedor.objects.filter(
+            activo=True,
+            servicios__en_proyectos__proyecto=proyecto,
+        ).distinct().order_by("razon_social")
+    )
     info_fechas = [
         {"label": "Inicio", "value": proyecto.fecha_inicio.strftime("%d %b %Y") if proyecto.fecha_inicio else "—"},
         {"label": "Compromiso", "value": proyecto.fecha_compromiso.strftime("%d %b %Y") if proyecto.fecha_compromiso else "—"},
@@ -187,10 +200,8 @@ def detalle(request, pk):
     )
     if puede_ed:
         action_bar_acciones = format_html(
-            '<button type="button" class="btn-secundario" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML">Cambiar estado</button>'
             '<a href="{}" class="btn-secundario">Editar</a>'
             '<a href="{}" class="btn-primario">Asignar</a>',
-            reverse("proyectos-cambiar-estado", args=[proyecto.pk]),
             reverse("proyectos-editar", args=[proyecto.pk]),
             reverse("proyectos-asignar", args=[proyecto.pk]),
         )
@@ -199,6 +210,8 @@ def detalle(request, pk):
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "asignaciones": asignaciones,
+        "estados_disponibles": estados_disponibles,
+        "proveedores_aplicables": proveedores_aplicables,
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
         "puede_editar": puede_ed,
         "acciones_proyecto": acciones_proyecto,
@@ -315,15 +328,25 @@ def cambiar_estado(request, pk):
     if not puede_editar_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Solo admins cambian estado.")
     es_htmx = request.headers.get("HX-Request") == "true"
+    # S-Proyecto-Estados-V1: si llega `estado` directo en POST sin
+    # `fecha_real_entrega`, lo tratamos como dropdown inline y devolvemos
+    # el badge actualizado por OOB. El modal sigue funcionando para
+    # fallback no-HTMX.
+    inline = request.method == "POST" and "fecha_real_entrega" not in request.POST
     if request.method == "POST":
-        form = CambiarEstadoForm(request.POST)
+        if inline:
+            form = CambiarEstadoForm({"estado": request.POST.get("estado", "")})
+        else:
+            form = CambiarEstadoForm(request.POST)
         if form.is_valid():
             anterior = proyecto.estado
             nuevo = form.cleaned_data["estado"]
             proyecto.estado = nuevo
+            updates = ["estado", "actualizado_en"]
             if nuevo == "entregado" and form.cleaned_data.get("fecha_real_entrega"):
                 proyecto.fecha_real_entrega = form.cleaned_data["fecha_real_entrega"]
-            proyecto.save(update_fields=["estado", "fecha_real_entrega", "actualizado_en"])
+                updates.append("fecha_real_entrega")
+            proyecto.save(update_fields=updates)
             emitir(EventoPortavoz(
                 tipo="proyecto.status_cambiado",
                 actor_id=request.user.pk,
@@ -332,6 +355,15 @@ def cambiar_estado(request, pk):
             ))
             from apps.taller_home.push_handlers import notificar_proyecto_status_cambiado
             notificar_proyecto_status_cambiado(proyecto, anterior, nuevo, request.user)
+            if inline and es_htmx:
+                # Devolvemos solo el partial del badge para swap inline.
+                return render(request, "proyectos/_badge_estado.html", {
+                    "proyecto": proyecto,
+                    "estados_disponibles": list(
+                        EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label")
+                    ),
+                    "puede_editar": True,
+                })
             messages.success(request, f"Estado: {anterior} → {nuevo}")
             destino = reverse("proyectos-detalle", args=[proyecto.pk])
             if es_htmx:

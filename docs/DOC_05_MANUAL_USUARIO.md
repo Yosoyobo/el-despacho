@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades al 25 de mayo de 2026 (tarde)
+
+- **El estado del proyecto se cambia con un menú desplegable**. Antes
+  había que abrir un modal "Cambiar estado" desde el botón al pie del
+  detalle. Ahora, junto al título del proyecto, ves directamente el
+  badge del estado actual y a su lado un menú desplegable: eliges el
+  estado nuevo y se guarda al instante (sin recargar). El botón viejo
+  del action bar desapareció.
+- **Los estados ahora se configuran desde La Gerencia**. Catálogos →
+  **Estados de proyecto** (solo super_admin). Puedes renombrar los 7
+  estados base (ej. "Por cotizar" → "Por presupuestar"), cambiar su
+  color, reordenarlos, marcarlos como terminales (cierran el
+  proyecto), desactivarlos para que ya no aparezcan en el dropdown,
+  o **agregar estados nuevos** propios de tu flujo. Los 7 base están
+  marcados como "sistema": se pueden editar pero no borrar. Los que
+  agregues tú sí se pueden borrar mientras ningún proyecto los use.
+- **Proveedores aplicables en el detalle del proyecto**. Una nueva
+  tarjeta a la derecha del detalle (debajo de Equipo) lista los
+  proveedores que pueden surtir los productos involucrados en el
+  proyecto, deducidos automáticamente de la relación
+  Productos ↔ Proveedores que ya definiste en el catálogo. Si aún no
+  tienes productos vinculados al proyecto, te lo recuerda con un
+  mensaje.
+
+---
+
 ## Novedades al 25 de mayo de 2026
 
 - **Proveedores ahora se asignan en los dos sentidos**. Antes, el form

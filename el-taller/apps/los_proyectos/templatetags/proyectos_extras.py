@@ -39,7 +39,7 @@ def dentro_de_clase(fecha):
         return "text-warning-600 dark:text-warning-400 font-medium"
     return "text-gray-600 dark:text-gray-300"
 
-_COLORES = {
+_COLORES_FALLBACK = {
     "por_cotizar": "badge-blue",
     "esperando_respuesta": "badge-orange",
     "en_proceso_diseno": "badge-warning",
@@ -50,6 +50,59 @@ _COLORES = {
 }
 
 
+def _mapa_estados():
+    """Cache de proceso (60s) del mapa slug → {label, color}.
+
+    Evita N+1 queries en listas/Kanban con muchos badges. Cambios desde
+    Gerencia se ven a los ≤60s sin restart. Tolerante a DB no migrada
+    (tests aislados, primer boot).
+    """
+    from django.core.cache import cache
+    clave = "proyectos:mapa_estados:v1"
+    cacheado = cache.get(clave)
+    if cacheado is not None:
+        return cacheado
+    from apps.los_proyectos.models import EstadoProyecto
+    try:
+        mapa = {
+            e.slug: {"label": e.label, "color": e.color}
+            for e in EstadoProyecto.objects.all()
+        }
+        cache.set(clave, mapa, 60)
+        return mapa
+    except Exception:
+        return {}
+
+
+def invalidar_mapa_estados():
+    """Llamado desde signals al guardar/borrar EstadoProyecto."""
+    from django.core.cache import cache
+    cache.delete("proyectos:mapa_estados:v1")
+
+
 @register.filter(name="color_estado")
 def color_estado(estado: str) -> str:
-    return _COLORES.get(estado, "badge-gray")
+    mapa = _mapa_estados()
+    if estado in mapa:
+        return mapa[estado]["color"]
+    return _COLORES_FALLBACK.get(estado, "badge-gray")
+
+
+@register.filter(name="estado_label")
+def estado_label(estado: str) -> str:
+    """Label visible del estado (configurable desde Gerencia)."""
+    mapa = _mapa_estados()
+    if estado in mapa:
+        return mapa[estado]["label"]
+    for slug, label in (
+        ("por_cotizar", "Por cotizar"),
+        ("esperando_respuesta", "Esperando respuesta"),
+        ("en_proceso_diseno", "En proceso de diseño"),
+        ("en_proceso_produccion", "En proceso de producción"),
+        ("entregado", "Entregado"),
+        ("en_pausa", "En pausa"),
+        ("cancelado", "Cancelado"),
+    ):
+        if slug == estado:
+            return label
+    return estado

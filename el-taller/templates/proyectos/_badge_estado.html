@@ -1,0 +1,21 @@
+{% load proyectos_extras %}
+<div id="proyecto-estado-{{ proyecto.pk }}" class="flex flex-wrap items-center gap-2">
+    <span class="badge {{ proyecto.estado|color_estado }}">{{ proyecto.estado|estado_label }}</span>
+    {% if puede_editar %}
+    <form hx-post="{% url 'proyectos-cambiar-estado' proyecto.pk %}"
+          hx-target="#proyecto-estado-{{ proyecto.pk }}"
+          hx-swap="outerHTML"
+          class="inline-flex">
+        {% csrf_token %}
+        <select name="estado"
+                aria-label="Cambiar estado"
+                onchange="this.form.requestSubmit()"
+                class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-theme-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+            {% for e in estados_disponibles %}
+            <option value="{{ e.slug }}" {% if e.slug == proyecto.estado %}selected{% endif %}>{{ e.label }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+    {% include "_componentes_tailadmin/_chip_referencia.html" with tipo="proyecto" slug=proyecto.codigo|lower variante="badge" %}
+</div>

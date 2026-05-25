@@ -2,6 +2,7 @@ from apps.el_catalogo.models import Servicio, Variacion
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
+    EstadoProyecto,
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
@@ -14,6 +15,11 @@ from cuentas.models.usuario import Usuario
 
 class ProyectoForm(forms.ModelForm):
     cliente = forms.ModelChoiceField(queryset=Cliente.activos.all())
+    estado = forms.ChoiceField(choices=[])
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["estado"].choices = _choices_estado_activos()
 
     class Meta:
         model = Proyecto
@@ -35,9 +41,20 @@ class ProyectoForm(forms.ModelForm):
         }
 
 
+def _choices_estado_activos():
+    try:
+        return [(e.slug, e.label) for e in EstadoProyecto.objects.filter(activo=True).order_by("orden")]
+    except Exception:
+        return list(ESTADOS_PROYECTO)
+
+
 class CambiarEstadoForm(forms.Form):
-    estado = forms.ChoiceField(choices=ESTADOS_PROYECTO)
+    estado = forms.ChoiceField(choices=[])
     fecha_real_entrega = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["estado"].choices = _choices_estado_activos()
 
 
 class EditarFechasForm(forms.ModelForm):

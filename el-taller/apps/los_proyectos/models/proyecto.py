@@ -51,7 +51,7 @@ class Proyecto(models.Model):
     nombre = models.CharField(max_length=200)
     cliente = models.ForeignKey("cartera.Cliente", on_delete=models.PROTECT, related_name="proyectos")
     descripcion = models.TextField(blank=True, default="")
-    estado = models.CharField(max_length=24, choices=ESTADOS_PROYECTO, default="por_cotizar", db_index=True)
+    estado = models.CharField(max_length=32, default="por_cotizar", db_index=True)
 
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_compromiso = models.DateField(null=True, blank=True)
@@ -114,4 +114,33 @@ class Proyecto(models.Model):
 
     @property
     def es_terminal(self) -> bool:
-        return self.estado in ESTADOS_TERMINALES
+        # Lookup DB primero (configurable); fallback al set hardcoded para
+        # entornos donde la migración 0007 aún no corrió.
+        from .estado import EstadoProyecto
+        try:
+            obj = EstadoProyecto.objects.only("terminal").get(slug=self.estado)
+            return obj.terminal
+        except EstadoProyecto.DoesNotExist:
+            return self.estado in ESTADOS_TERMINALES
+
+    @property
+    def estado_obj(self):
+        """Retorna EstadoProyecto correspondiente o None si el slug no existe."""
+        from .estado import EstadoProyecto
+        try:
+            return EstadoProyecto.objects.get(slug=self.estado)
+        except EstadoProyecto.DoesNotExist:
+            return None
+
+    def get_estado_display(self) -> str:
+        """Override del método estándar de Django (que requería choices).
+
+        Lee del modelo EstadoProyecto; fallback al label hardcoded.
+        """
+        obj = self.estado_obj
+        if obj:
+            return obj.label
+        for slug, label in ESTADOS_PROYECTO:
+            if slug == self.estado:
+                return label
+        return self.estado
