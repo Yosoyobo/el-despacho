@@ -8,12 +8,11 @@ class LosProyectosConfig(AppConfig):
     verbose_name = "Proyectos"
 
     def ready(self):
-        from django.db.models.signals import post_delete, post_save
-
         from apps.los_proyectos.models.estado import EstadoProyecto
         from apps.los_proyectos.templatetags.proyectos_extras import (
             invalidar_mapa_estados,
         )
+        from django.db.models.signals import post_delete, post_save
 
         def _invalidar(sender, **kwargs):
             invalidar_mapa_estados()

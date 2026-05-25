@@ -8,12 +8,12 @@ sí se pueden borrar siempre y cuando ningún proyecto los use.
 
 from __future__ import annotations
 
+from apps.los_proyectos.models import EstadoProyecto, Proyecto
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.los_proyectos.models import EstadoProyecto, Proyecto
 from lib.permisos import es_super_admin
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz

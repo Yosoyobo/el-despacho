@@ -1,7 +1,6 @@
+from apps.los_proyectos.models import EstadoProyecto
 from django import forms
 from django.utils.text import slugify
-
-from apps.los_proyectos.models import EstadoProyecto
 
 
 class EstadoProyectoForm(forms.ModelForm):

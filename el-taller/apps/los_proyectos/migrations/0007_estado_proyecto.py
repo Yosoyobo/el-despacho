@@ -7,7 +7,6 @@ no se mueven), pero la validación de label/color/terminal vive en DB.
 
 from django.db import migrations, models
 
-
 ESTADOS_BASE = (
     ("por_cotizar",            "Por cotizar",            "badge-blue",     10, False),
     ("esperando_respuesta",    "Esperando respuesta",    "badge-orange",   20, False),
