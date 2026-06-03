@@ -166,6 +166,82 @@ No se alquila. Está hecho a la medida de cómo trabajan ustedes.
 
 ---
 
+## Roadmap del proyecto
+
+> **Última actualización: 3 de junio de 2026.** Esta sección se revisa y
+> actualiza en cada sesión de trabajo sobre el sistema, para que siempre
+> sepan en qué punto va El Despacho: qué ya está listo, qué cambió respecto
+> al plan, qué falta y hacia dónde vamos.
+
+### 🎯 La meta
+
+Tener **todo el despacho operando dentro de un solo sistema**: desde que
+entra un cliente y se cotiza un trabajo, pasando por el proyecto, las
+tareas, el dinero (ingresos, gastos, cobros, facturas y contabilidad), la
+comunicación interna y la inteligencia artificial que ayuda a operar, hasta
+un **portal donde el propio cliente vea el avance de sus proyectos y sus
+facturas**. Un sistema hecho a la medida de Learning Center, sin rentas
+mensuales por usuario.
+
+### ✅ Lo que ya está listo y se puede usar hoy
+
+- **Clientes** — directorio completo de clientes B2B.
+- **Proyectos** — alta, ciclo de estados configurable, tablero Kanban,
+  productos involucrados, equipo, proveedores y panel económico por proyecto.
+- **Tareas (Pizarrón)** y **Calendario** — pendientes con responsable y fecha.
+- **Buzón** y **Recados (chat interno)** — comunicación del equipo.
+- **Productos (Catálogo)** — servicios, variaciones, costos, márgenes,
+  proveedores y unidades.
+- **Cotizaciones** — propuestas comerciales con cálculo de impuestos y
+  anticipos.
+- **Facturación interna** (comercial, no fiscal) — control de cuentas por
+  cobrar.
+- **Tesorería** — ingresos, gastos, reembolsos, cuentas por cobrar/pagar,
+  reportes y exportación a Excel.
+- **Contaduría** — libro contable interno con estados financieros y
+  exportación para el contador externo.
+- **Chalanes (IA)** — 5 asistentes de inteligencia artificial con respaldo
+  automático entre ellos, y **El Dictado** para dar instrucciones en lenguaje
+  natural.
+- **Dashboard** con indicadores (KPIs), metas, sugerencias y mini-calendario.
+- **Notificaciones push**, **roles y permisos personalizados**, y panel de
+  configuración (Ajustes).
+
+### 🔄 Desviaciones respecto al plan original
+
+Cosas que cambiamos en el camino porque resultó mejor así:
+
+- **Recados pasó de "mensajería" a "chat".** Lo viejo quedó como bandeja
+  histórica; el día a día ahora es un chat más ágil.
+- **Los PDF de cotizaciones y facturas se aplazaron.** Se generarán cuando se
+  conecte Google Drive/Docs; por ahora el envío se registra de forma manual.
+- **Los estados de proyecto se ajustaron al flujo real de Learning Center**
+  (Por cotizar, Esperando respuesta, En proceso de diseño, etc.) y ahora son
+  configurables.
+- **Los códigos de proyecto cambiaron a LC-0001, LC-0002…** (antes eran
+  PRY-NNNNNN).
+- **El portal de clientes (La Recepción) está apagado por ahora** para ahorrar
+  recursos del servidor; se enciende al llegar a esa etapa.
+
+### 🚧 Lo que falta (roadmap)
+
+En orden aproximado de prioridad:
+
+1. **PDF de cotizaciones y facturas** — generar el documento descargable
+   (requiere conectar Google Drive/Docs).
+2. **La Caja** — links de pago con Stripe y MercadoPago.
+3. **La Cobranza** — recordatorios automáticos de facturas vencidas.
+4. **Tesorería avanzada** — leer recibos por foto (OCR), reconciliación con el
+   banco y cierre de periodo contable.
+5. **Adjuntos en Recados** — mandar archivos en el chat (vía Google Drive).
+6. **Más casos de IA** — redactar cotizaciones, categorizar gastos, resumir
+   conversaciones y sugerir precios automáticamente.
+7. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus
+   proyectos, apruebe cotizaciones y consulte sus facturas y pagos. Es la gran
+   etapa final.
+
+---
+
 ## ¿Cómo entro?
 
 El Despacho vive en tres direcciones:
