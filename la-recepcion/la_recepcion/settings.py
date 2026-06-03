@@ -39,6 +39,7 @@ TEMPLATES = [
         "OPTIONS": {"context_processors": [
             "django.template.context_processors.request",
             "lib.aviso_deploy.contexto_aviso_deploy",
+            "lib.version.contexto_version",
         ]},
     },
 ]

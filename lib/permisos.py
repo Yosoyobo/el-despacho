@@ -9,6 +9,7 @@ Roles:
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable, Iterable
 from functools import wraps
 
@@ -19,12 +20,31 @@ ROLES = ("super_admin", "dueno", "contador", "disenador")
 ROL_DEFAULT = "disenador"
 
 
+def roles_efectivos(user) -> set[str]:
+    """S-LC-Feedback-V5 c7 / fix: unión del rol primario (`user.rol`) +
+    los nombres de los `roles_extra` asignados.
+
+    Es la base de los checks que gatean por **nombre de rol** (no por
+    permiso granular). Sin esto los roles extra solo aplicaban al camino
+    granular `puede()` y los helpers gruesos (`es_admin`,
+    `puede_ver_finanzas`, etc.) los ignoraban — por eso "los roles no se
+    aplicaban" al asignarlos. Defensivo: si el M2M no existe (modelo viejo
+    o usuario sin guardar) devuelve solo el rol primario."""
+    roles: set[str] = set()
+    primario = getattr(user, "rol", None)
+    if primario:
+        roles.add(primario)
+    with contextlib.suppress(Exception):
+        roles.update(user.roles_extra.values_list("nombre", flat=True))
+    return roles
+
+
 def es_admin(user) -> bool:
-    return getattr(user, "rol", None) in ("super_admin", "dueno")
+    return bool(roles_efectivos(user) & {"super_admin", "dueno"})
 
 
 def es_super_admin(user) -> bool:
-    return getattr(user, "rol", None) == "super_admin"
+    return "super_admin" in roles_efectivos(user)
 
 
 def puede_ver_ajustes(user) -> bool:
@@ -32,16 +52,15 @@ def puede_ver_ajustes(user) -> bool:
 
 
 def puede_ver_finanzas(user) -> bool:
-    return getattr(user, "rol", None) in ("super_admin", "dueno", "contador")
+    return bool(roles_efectivos(user) & {"super_admin", "dueno", "contador"})
 
 
 def puede_ver_proyecto(user, proyecto) -> bool:
-    rol = getattr(user, "rol", None)
-    if rol in ("super_admin", "dueno"):
+    roles = roles_efectivos(user)
+    if roles & {"super_admin", "dueno", "contador"}:
+        # contador ve proyectos para reconciliar pagos (read-only enforced en vistas)
         return True
-    if rol == "contador":
-        return True  # ve proyectos para reconciliar pagos (read-only enforced en vistas)
-    if rol == "disenador":
+    if "disenador" in roles:
         return proyecto.asignaciones.filter(usuario_id=user.pk).exists()
     return False
 
@@ -54,7 +73,7 @@ def puede_editar_proyecto(user, proyecto) -> bool:
 
 def puede_ver_cartera(user) -> bool:
     """Listar y ver clientes: admins + contador (read-only); diseñadores no."""
-    return getattr(user, "rol", None) in ("super_admin", "dueno", "contador")
+    return bool(roles_efectivos(user) & {"super_admin", "dueno", "contador"})
 
 
 def puede_editar_cartera(user) -> bool:
@@ -199,7 +218,7 @@ def requires_role(*roles: str) -> Callable:
             if not user or not user.is_authenticated:
                 login_url = getattr(request, "_login_url", "/sign-in")
                 return redirect(login_url)
-            if getattr(user, "rol", None) not in roles:
+            if not (roles_efectivos(user) & set(roles)):
                 return HttpResponseForbidden("Sin permisos para esta acción.")
             return view(request, *args, **kwargs)
         return inner

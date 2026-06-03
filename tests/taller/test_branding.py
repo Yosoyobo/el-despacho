@@ -60,3 +60,13 @@ def test_errores_incluyen_logo():
             contenido = path.read_text()
             assert "branding/Logo_LC" in contenido, f"{app}/{nombre} sin logo"
             assert "{% load static %}" in contenido, f"{app}/{nombre} sin load static"
+
+
+def test_version_aparece_en_footer(client, usuario_factory):
+    """Control de versiones discreto en el footer (lib/version.py)."""
+    from lib.version import VERSION
+
+    u = usuario_factory(rol="dueno")
+    client.force_login(u)
+    html = client.get("/").content.decode()
+    assert f"v{VERSION}" in html, "La versión no aparece en el footer"

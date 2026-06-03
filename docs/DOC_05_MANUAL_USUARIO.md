@@ -5,6 +5,18 @@
 
 ---
 
+## Novedades al 3 de junio de 2026 (tarde)
+
+- **Número de versión en el pie de página.** Abajo de todo, junto a "NoKo
+  Devs", ahora aparece la versión del sistema (por ejemplo `v2026.06.2`). Es
+  pequeña y discreta; sirve para saber qué versión estás usando al reportar
+  algo. Pasa el cursor encima y verás la fecha de la última actualización.
+- **Los "roles extra" ahora sí se aplican.** Cuando el super admin le suma a
+  alguien un rol adicional (por ejemplo, darle a un diseñador el rol extra de
+  "contador"), esos permisos **ya se respetan en todo el sistema**: la persona
+  entra a las secciones del rol extra y no solo las ve en el menú. Antes el rol
+  extra se guardaba pero no surtía efecto en algunas pantallas.
+
 ## Novedades al 3 de junio de 2026
 
 - **La página del Proyecto ahora es editable directo, sin entrar a "Editar".**
@@ -172,7 +184,7 @@ No se alquila. Está hecho a la medida de cómo trabajan ustedes.
 
 ## Roadmap del proyecto
 
-> **Última actualización: 3 de junio de 2026.** Esta sección se revisa y
+> **Última actualización: 3 de junio de 2026 (tarde).** Esta sección se revisa y
 > actualiza en cada sesión de trabajo sobre el sistema, para que siempre
 > sepan en qué punto va El Despacho: qué ya está listo, qué cambió respecto
 > al plan, qué falta y hacia dónde vamos.

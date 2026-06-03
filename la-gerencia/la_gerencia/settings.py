@@ -107,6 +107,7 @@ TEMPLATES = [
                 "auth_google.context_processors.google_oauth_configurado",
                 "cuentas.context_processors.permisos_modulos",
                 "lib.aviso_deploy.contexto_aviso_deploy",
+                "lib.version.contexto_version",
             ],
         },
     },

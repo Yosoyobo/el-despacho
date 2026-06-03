@@ -21,7 +21,7 @@ from chalanes.models.cuadro_chalanes import PROVEEDORES
 from lib.analistas.registry import adapter_de
 from lib.analistas.stats import resumen_global, tarjetas_chalanes
 from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
-from lib.permisos import requires_role
+from lib.permisos import es_super_admin, requires_role
 from lib.portavoz import emitir
 
 from .forms import AprendizajeForm
@@ -36,7 +36,7 @@ def panel(request):
         "cuadro": cuadro,
         "cadena": cadena,
         "logs": logs,
-        "puede_modificar": request.user.rol == "super_admin",
+        "puede_modificar": es_super_admin(request.user),
         "total_aprendizajes": Aprendizaje.objects.count(),
         "aprendizajes_activos_count": Aprendizaje.objects.filter(activo=True).count(),
         "tarjetas": tarjetas_chalanes(dias=30),
@@ -199,7 +199,7 @@ def aprendizajes_lista(request):
     return render(request, "los_chalanes/aprendizajes_lista.html", {
         "aprendizajes": aprendizajes,
         "filtro": filtro,
-        "puede_modificar": request.user.rol == "super_admin",
+        "puede_modificar": es_super_admin(request.user),
         "totales": {
             "todos": Aprendizaje.objects.count(),
             "activos": Aprendizaje.objects.filter(activo=True).count(),
@@ -272,7 +272,7 @@ def kpis_pendientes(request):
             k.valor_preview = {"valor": "?", "nota": "error", "link": ""}
     return render(request, "los_chalanes/kpis_pendientes.html", {
         "pendientes": pendientes,
-        "puede_modificar": request.user.rol == "super_admin",
+        "puede_modificar": es_super_admin(request.user),
     })
 
 

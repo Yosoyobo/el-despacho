@@ -23,7 +23,7 @@ from django.views.decorators.http import require_http_methods
 
 from buzon.models import MensajeBuzon
 from lib.colador import colar_reporte
-from lib.permisos import puede
+from lib.permisos import es_admin, puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 from lib.sanear import sanear_contexto
@@ -279,7 +279,7 @@ def accion_masiva(request):
     qs = MensajeBuzon.objects.filter(pk__in=ids_int)
     n = qs.count()
     if accion == "eliminar":
-        if request.user.rol not in ("super_admin", "dueno"):
+        if not es_admin(request.user):
             return HttpResponse("Solo super_admin o dueño pueden eliminar.", status=403)
         # Emite evento antes de borrar.
         for m in qs:
