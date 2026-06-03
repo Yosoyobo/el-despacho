@@ -21,8 +21,7 @@
 
 <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">💡 Arrastra una tarjeta a otra columna para cambiar su estado.</p>
 
-{# C3 S-LC-Feedback-V6: dos filas. Arriba el flujo activo (4 columnas),
-   abajo cierre/pausa (3 columnas). Más ancho por columna = más legible. #}
+{% comment %}C3 S-LC-Feedback-V6: dos filas. Arriba el flujo activo (4 columnas), abajo cierre/pausa (3 columnas). Más ancho por columna = más legible.{% endcomment %}
 <div id="kanban-grid" class="space-y-5 pb-4">
     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
         {% for col in fila_arriba %}{% include "proyectos/_kanban_columna.html" with col=col %}{% endfor %}
