@@ -562,7 +562,11 @@ def agregar_producto_modal(request, pk):
             return redirect(_redir_detalle(proyecto))
     else:
         form = ProyectoProductoForm()
-    return render(request, "proyectos/_modal_agregar_producto.html", {"form": form, "proyecto": proyecto})
+    from apps.el_catalogo.models import CategoriaServicio
+    return render(request, "proyectos/_modal_agregar_producto.html", {
+        "form": form, "proyecto": proyecto,
+        "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+    })
 
 
 @login_required

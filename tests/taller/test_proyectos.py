@@ -262,6 +262,16 @@ def test_monto_estimado_se_autollena_de_productos(client, usuario_factory, clien
     assert p.merma_total == 1
 
 
+def test_modal_agregar_producto_trae_quickcreate(client, usuario_factory, proyecto_factory):
+    """C4 follow-up: el modal 'Agregar producto' permite crear producto nuevo."""
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    client.force_login(admin)
+    body = client.get(f"/proyectos/{p.pk}/agregar-producto", HTTP_HX_REQUEST="true").content.decode()
+    assert "Crear producto nuevo en el catálogo" in body
+    assert 'id="qcp-crear"' in body
+
+
 def test_agregar_y_quitar_proveedor_proyecto(client, usuario_factory, proyecto_factory):
     """C5 S-LC-Feedback-V6: asignar proveedor con compromiso fecha+hora y quitarlo."""
     from apps.el_catalogo.models import Proveedor
