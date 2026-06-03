@@ -80,9 +80,8 @@ def test_admin_crea_proyecto(client, usuario_factory, cliente_factory):
 
 def test_crea_proyecto_fecha_hora_default_mediodia(client, usuario_factory, cliente_factory):
     """C6 S-LC-Feedback-V6: si se da el día sin hora, default 12:00 PM local."""
-    from django.utils import timezone
-
     from apps.los_proyectos.models import Proyecto
+    from django.utils import timezone
     admin = usuario_factory(rol="super_admin")
     cli = cliente_factory(creado_por=admin)
     client.force_login(admin)
@@ -101,9 +100,8 @@ def test_crea_proyecto_fecha_hora_default_mediodia(client, usuario_factory, clie
 
 def test_crea_proyecto_fecha_hora_explicita(client, usuario_factory, cliente_factory):
     """C6: respeta la hora explícita capturada."""
-    from django.utils import timezone
-
     from apps.los_proyectos.models import Proyecto
+    from django.utils import timezone
     admin = usuario_factory(rol="super_admin")
     cli = cliente_factory(creado_por=admin)
     client.force_login(admin)
@@ -266,10 +264,9 @@ def test_monto_estimado_se_autollena_de_productos(client, usuario_factory, clien
 
 def test_agregar_y_quitar_proveedor_proyecto(client, usuario_factory, proyecto_factory):
     """C5 S-LC-Feedback-V6: asignar proveedor con compromiso fecha+hora y quitarlo."""
-    from django.utils import timezone
-
     from apps.el_catalogo.models import Proveedor
     from apps.los_proyectos.models import ProyectoProveedor
+    from django.utils import timezone
     admin = usuario_factory(rol="super_admin")
     prov = Proveedor.objects.create(razon_social="Maquilas SA")
     p = proyecto_factory()

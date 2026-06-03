@@ -126,8 +126,9 @@ def detalle(request, pk: int):
                     payload={"mensaje_id": obj.pk, "estado": obj.estado},
                 ))
             messages.success(request, "Mensaje actualizado.")
-            from django.urls import reverse as _reverse
             from urllib.parse import urlencode as _urlencode
+
+            from django.urls import reverse as _reverse
             destino = _reverse("buzon-admin-detalle", args=[msg.pk])
             if volver:
                 destino += "?" + _urlencode({"volver": volver})

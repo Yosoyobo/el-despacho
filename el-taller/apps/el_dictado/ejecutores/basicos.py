@@ -16,6 +16,7 @@ import re
 
 from . import registrar
 
+
 def _fecha_compromiso_proyecto(fecha_str):
     """Convierte una fecha ISO ('YYYY-MM-DD') a datetime aware a las 12:00 PM.
 
@@ -189,7 +190,6 @@ def crear_proyecto(accion, usuario, contexto=None):
     descripcion?, estado?, fecha_compromiso?, monto_estimado?,
     monto_cotizado?.
     """
-    from datetime import date as _date
 
     from apps.los_proyectos.models import Proyecto
 

@@ -92,8 +92,8 @@ def test_buzon_default_orden_fecha(client, usuario_factory):
     """C1: sin ?orden, el listado ordena por fecha (lo más reciente arriba)."""
     from buzon.models import MensajeBuzon
     u = usuario_factory(rol="super_admin")
-    viejo = MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="viejo-msg", cuerpo="x"*20, prioridad=9)
-    nuevo = MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="nuevo-msg", cuerpo="y"*20, prioridad=1)
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="viejo-msg", cuerpo="x"*20, prioridad=9)
+    MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="nuevo-msg", cuerpo="y"*20, prioridad=1)
     # `creado_en` es auto_now_add; el segundo creado es más reciente.
     client.force_login(u)
     body = client.get("/buzon/").content.decode()

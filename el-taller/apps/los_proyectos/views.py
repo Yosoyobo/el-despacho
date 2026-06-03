@@ -18,6 +18,7 @@ from apps.los_proyectos.models import (
     ProyectoAsignacion,
     ProyectoProducto,
 )
+from apps.los_proyectos.templatetags.proyectos_extras import dentro_de
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -29,8 +30,6 @@ from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import ensure_csrf_cookie
-
-from apps.los_proyectos.templatetags.proyectos_extras import dentro_de
 
 from lib.permisos import (
     es_admin,
@@ -582,7 +581,6 @@ def quitar_producto(request, pk, prod_pk):
 @login_required
 def agregar_proveedor_modal(request, pk):
     """C5 S-LC-Feedback-V6: asignar un proveedor (existente o nuevo) al proyecto."""
-    from apps.el_catalogo.models import CategoriaServicio
     from apps.los_proyectos.forms import ProyectoProveedorForm
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not puede_editar_proyecto(request.user, proyecto):
