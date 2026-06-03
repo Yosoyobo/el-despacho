@@ -53,8 +53,11 @@ class Proyecto(models.Model):
     descripcion = models.TextField(blank=True, default="")
     estado = models.CharField(max_length=32, default="por_cotizar", db_index=True)
 
-    fecha_inicio = models.DateField(null=True, blank=True)
-    fecha_compromiso = models.DateField(null=True, blank=True)
+    # C6 S-LC-Feedback-V6: Inicio y Entrega ahora llevan hora (default 12:00 PM
+    # en el form). fecha_real_entrega se conserva como DateField (no se muestra
+    # en la página; se setea al marcar "entregado").
+    fecha_inicio = models.DateTimeField(null=True, blank=True)
+    fecha_compromiso = models.DateTimeField(null=True, blank=True)
     fecha_real_entrega = models.DateField(null=True, blank=True)
 
     monto_estimado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)

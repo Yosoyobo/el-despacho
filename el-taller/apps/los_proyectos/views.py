@@ -25,9 +25,12 @@ from django.db.models import Q
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import ensure_csrf_cookie
+
+from apps.los_proyectos.templatetags.proyectos_extras import dentro_de
 
 from lib.permisos import (
     es_admin,
@@ -36,6 +39,13 @@ from lib.permisos import (
 )
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
+
+
+def _fmt_fechahora(dt):
+    """Formatea un datetime aware como 'dd Mmm YYYY · HH:MM' en hora local."""
+    if not dt:
+        return "—"
+    return timezone.localtime(dt).strftime("%d %b %Y · %H:%M")
 
 
 def _proyectos_visibles(user):
@@ -188,9 +198,11 @@ def detalle(request, pk):
         ).distinct().order_by("razon_social")
     )
     info_fechas = [
-        {"label": "Inicio", "value": proyecto.fecha_inicio.strftime("%d %b %Y") if proyecto.fecha_inicio else "—"},
-        {"label": "Compromiso", "value": proyecto.fecha_compromiso.strftime("%d %b %Y") if proyecto.fecha_compromiso else "—"},
-        {"label": "Entrega real", "value": proyecto.fecha_real_entrega.strftime("%d %b %Y") if proyecto.fecha_real_entrega else "—"},
+        {"label": "Inicio", "value": _fmt_fechahora(proyecto.fecha_inicio)},
+        {"label": "Entrega", "value": (
+            f"{_fmt_fechahora(proyecto.fecha_compromiso)} ({dentro_de(proyecto.fecha_compromiso)})"
+            if proyecto.fecha_compromiso else "—"
+        )},
     ]
     info_economico = [
         {"label": "Monto estimado", "value": f"$ {proyecto.monto_estimado}" if proyecto.monto_estimado else "—"},

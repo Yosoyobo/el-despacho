@@ -16,6 +16,23 @@ import re
 
 from . import registrar
 
+def _fecha_compromiso_proyecto(fecha_str):
+    """Convierte una fecha ISO ('YYYY-MM-DD') a datetime aware a las 12:00 PM.
+
+    C6 S-LC-Feedback-V6: Proyecto.fecha_compromiso pasó a DateTimeField con
+    hora; el Dictado recibe sólo una fecha del LLM, así que fijamos mediodía.
+    """
+    from datetime import date as _d
+    from datetime import datetime as _dt
+    from datetime import time as _t
+
+    from django.utils import timezone as _tz
+
+    dia = _d.fromisoformat(str(fecha_str)[:10])
+    naive = _dt.combine(dia, _t(12, 0))
+    return _tz.make_aware(naive) if _tz.is_naive(naive) else naive
+
+
 CAMPOS_PROYECTO_PERMITIDOS = {"estado", "monto_cotizado", "fecha_compromiso", "descripcion"}
 CAMPOS_TAREA_PERMITIDOS = {"estado", "prioridad", "asignado_slug", "fecha_compromiso"}
 CAMPOS_CLIENTE_PERMITIDOS = {
@@ -190,7 +207,7 @@ def crear_proyecto(accion, usuario, contexto=None):
     fecha_str = payload.get("fecha_compromiso")
     if fecha_str:
         try:
-            fecha_compromiso = _date.fromisoformat(str(fecha_str)[:10])
+            fecha_compromiso = _fecha_compromiso_proyecto(fecha_str)
         except ValueError as exc:
             raise ValueError(f"`fecha_compromiso` inválida: {fecha_str}") from exc
 
@@ -275,6 +292,10 @@ def actualizar_proyecto(accion, usuario, contexto=None):
     for k, v in campos.items():
         if k not in CAMPOS_PROYECTO_PERMITIDOS:
             continue
+        # C6 S-LC-Feedback-V6: fecha_compromiso del proyecto es datetime con
+        # hora (default 12:00). El LLM manda una fecha ISO; la convertimos.
+        if k == "fecha_compromiso" and v:
+            v = _fecha_compromiso_proyecto(v)
         setattr(proyecto, k, v)
         aplicado.append(k)
     if not aplicado:

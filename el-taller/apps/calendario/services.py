@@ -10,6 +10,8 @@ from calendar import monthrange
 from collections import defaultdict
 from datetime import date, timedelta
 
+from django.utils import timezone
+
 
 def _proyectos_visibles_qs(user):
     from apps.los_proyectos.models import Proyecto
@@ -39,10 +41,12 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
     """Devuelve un dict {fecha: [{tipo, titulo, url, color}]} para el rango."""
     eventos: dict[date, list[dict]] = defaultdict(list)
 
+    # C6 S-LC-Feedback-V6: Proyecto.fecha_compromiso ahora es datetime → se
+    # filtra y agrupa por su componente de fecha (`__date` / .date()).
     for p in _proyectos_visibles_qs(user).filter(
-        fecha_compromiso__gte=inicio, fecha_compromiso__lte=fin
+        fecha_compromiso__date__gte=inicio, fecha_compromiso__date__lte=fin
     ):
-        eventos[p.fecha_compromiso].append({
+        eventos[timezone.localtime(p.fecha_compromiso).date()].append({
             "tipo": "entrega",
             "titulo": p.nombre,
             "subtitulo": p.cliente.razon_social,

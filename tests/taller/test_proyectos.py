@@ -78,6 +78,47 @@ def test_admin_crea_proyecto(client, usuario_factory, cliente_factory):
     assert Proyecto.objects.filter(nombre="Catálogo 2026").exists()
 
 
+def test_crea_proyecto_fecha_hora_default_mediodia(client, usuario_factory, cliente_factory):
+    """C6 S-LC-Feedback-V6: si se da el día sin hora, default 12:00 PM local."""
+    from django.utils import timezone
+
+    from apps.los_proyectos.models import Proyecto
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin)
+    client.force_login(admin)
+    client.post(
+        "/proyectos/nuevo",
+        {"nombre": "ConFecha", "cliente": cli.pk, "descripcion": "", "estado": "por_cotizar",
+         "fecha_compromiso_dia": "2026-06-15", "fecha_compromiso_hora": "",
+         "monto_estimado": ""},
+        follow=True,
+    )
+    p = Proyecto.objects.get(nombre="ConFecha")
+    local = timezone.localtime(p.fecha_compromiso)
+    assert (local.year, local.month, local.day) == (2026, 6, 15)
+    assert (local.hour, local.minute) == (12, 0)
+
+
+def test_crea_proyecto_fecha_hora_explicita(client, usuario_factory, cliente_factory):
+    """C6: respeta la hora explícita capturada."""
+    from django.utils import timezone
+
+    from apps.los_proyectos.models import Proyecto
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin)
+    client.force_login(admin)
+    client.post(
+        "/proyectos/nuevo",
+        {"nombre": "ConHora", "cliente": cli.pk, "descripcion": "", "estado": "por_cotizar",
+         "fecha_compromiso_dia": "2026-06-15", "fecha_compromiso_hora": "09:30",
+         "monto_estimado": ""},
+        follow=True,
+    )
+    p = Proyecto.objects.get(nombre="ConHora")
+    local = timezone.localtime(p.fecha_compromiso)
+    assert (local.hour, local.minute) == (9, 30)
+
+
 def test_cambiar_estado_emite_evento(client, usuario_factory, proyecto_factory):
     admin = usuario_factory(rol="dueno")
     p = proyecto_factory(estado="esperando_respuesta")

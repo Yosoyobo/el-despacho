@@ -112,6 +112,16 @@ def proyecto_factory(db, cliente_factory, usuario_factory):
         creado_por = creado_por or usuario_factory(rol="super_admin")
         defaults = {"nombre": kwargs.pop("nombre", "Proyecto de prueba"), "cliente": cliente, "creado_por": creado_por}
         defaults.update(kwargs)
+        # C6 S-LC-Feedback-V6: fecha_inicio/fecha_compromiso son DateTimeField
+        # aware. Si un test pasa un `date`, lo elevamos a datetime 12:00 aware.
+        import datetime as _dt
+
+        from django.utils import timezone as _tz
+        for campo in ("fecha_inicio", "fecha_compromiso"):
+            val = defaults.get(campo)
+            if isinstance(val, _dt.date) and not isinstance(val, _dt.datetime):
+                naive = _dt.datetime.combine(val, _dt.time(12, 0))
+                defaults[campo] = _tz.make_aware(naive) if _tz.is_naive(naive) else naive
         return Proyecto.objects.create(**defaults)
 
     return _crear

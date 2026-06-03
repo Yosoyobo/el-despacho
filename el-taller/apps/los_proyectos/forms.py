@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from apps.el_catalogo.models import Servicio, Variacion
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.models import (
@@ -9,17 +11,76 @@ from apps.los_proyectos.models import (
 )
 from django import forms
 from django.forms import inlineformset_factory
+from django.utils import timezone
 
 from cuentas.models.usuario import Usuario
 
+# C6 S-LC-Feedback-V6: hora por default en los campos fecha+hora del proyecto.
+HORA_DEFAULT = time(12, 0)
 
-class ProyectoForm(forms.ModelForm):
+
+class FechaHoraMixin:
+    """Reemplaza campos DateTimeField del modelo por un par día + hora en el
+    form, con la hora default a las 12:00 PM (pedido de LC).
+
+    Declarar `pares_fecha_hora = (("fecha_inicio", "Inicio"), ...)`. Los campos
+    del modelo NO deben estar en Meta.fields — el mixin los asigna en save().
+    """
+
+    pares_fecha_hora: tuple = ()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo, label in self.pares_fecha_hora:
+            actual = getattr(getattr(self, "instance", None), campo, None)
+            local = timezone.localtime(actual) if actual else None
+            self.fields[f"{campo}_dia"] = forms.DateField(
+                required=False, label=label,
+                widget=forms.DateInput(attrs={"type": "date"}),
+                initial=local.date() if local else None,
+            )
+            self.fields[f"{campo}_hora"] = forms.TimeField(
+                required=False, label="Hora",
+                widget=forms.TimeInput(attrs={"type": "time"}),
+                initial=local.time().replace(second=0, microsecond=0) if local else HORA_DEFAULT,
+            )
+
+    def clean(self):
+        cleaned = super().clean()
+        for campo, _label in self.pares_fecha_hora:
+            dia = cleaned.get(f"{campo}_dia")
+            hora = cleaned.get(f"{campo}_hora") or HORA_DEFAULT
+            if dia:
+                dt = datetime.combine(dia, hora)
+                cleaned[campo] = timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+            else:
+                cleaned[campo] = None
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        for campo, _label in self.pares_fecha_hora:
+            setattr(obj, campo, self.cleaned_data.get(campo))
+        if commit:
+            obj.save()
+            self.save_m2m()
+        return obj
+
+
+class ProyectoForm(FechaHoraMixin, forms.ModelForm):
     cliente = forms.ModelChoiceField(queryset=Cliente.activos.all())
     estado = forms.ChoiceField(choices=[])
+    pares_fecha_hora = (("fecha_inicio", "Inicio"), ("fecha_compromiso", "Entrega"))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["estado"].choices = _choices_estado_activos()
+        self.order_fields([
+            "nombre", "cliente", "descripcion", "estado",
+            "fecha_inicio_dia", "fecha_inicio_hora",
+            "fecha_compromiso_dia", "fecha_compromiso_hora",
+            "monto_estimado",
+        ])
 
     class Meta:
         model = Proyecto
@@ -28,16 +89,12 @@ class ProyectoForm(forms.ModelForm):
             "cliente",
             "descripcion",
             "estado",
-            "fecha_inicio",
-            "fecha_compromiso",
             "monto_estimado",
         ]
         widgets = {
             # S-LC-Feedback-V4: autocomplete @#$ en nombre y descripción.
             "nombre": forms.TextInput(attrs={"data-referencias": "1"}),
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 4}),
-            "fecha_inicio": forms.DateInput(attrs={"type": "date"}),
-            "fecha_compromiso": forms.DateInput(attrs={"type": "date"}),
         }
 
 
@@ -57,22 +114,18 @@ class CambiarEstadoForm(forms.Form):
         self.fields["estado"].choices = _choices_estado_activos()
 
 
-class EditarFechasForm(forms.ModelForm):
-    """S-LC-Feedback-V5 c4 — edición rápida de fechas desde el detalle."""
+class EditarFechasForm(FechaHoraMixin, forms.ModelForm):
+    """S-LC-Feedback-V5 c4 — edición rápida de fechas desde el detalle.
+
+    C6 S-LC-Feedback-V6: solo Inicio + Entrega, con hora (default 12:00).
+    'Entrega real' se setea al marcar el proyecto como entregado.
+    """
+
+    pares_fecha_hora = (("fecha_inicio", "Inicio"), ("fecha_compromiso", "Entrega"))
 
     class Meta:
         model = Proyecto
-        fields = ["fecha_inicio", "fecha_compromiso", "fecha_real_entrega"]
-        widgets = {
-            "fecha_inicio": forms.DateInput(attrs={"type": "date"}),
-            "fecha_compromiso": forms.DateInput(attrs={"type": "date"}),
-            "fecha_real_entrega": forms.DateInput(attrs={"type": "date"}),
-        }
-        labels = {
-            "fecha_inicio": "Inicio",
-            "fecha_compromiso": "Compromiso",
-            "fecha_real_entrega": "Entrega real",
-        }
+        fields: list = []
 
 
 class EditarEconomicoForm(forms.ModelForm):

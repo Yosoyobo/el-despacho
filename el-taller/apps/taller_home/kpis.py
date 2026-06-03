@@ -107,8 +107,8 @@ def _kpi_por_entregar_esta_semana(user) -> dict:
     fin = hoy + timedelta(days=7)
     qs = Proyecto.objects.filter(
         estado__in=ESTADOS_PROYECTO_ACTIVOS,
-        fecha_compromiso__gte=hoy,
-        fecha_compromiso__lte=fin,
+        fecha_compromiso__date__gte=hoy,
+        fecha_compromiso__date__lte=fin,
     )
     if getattr(user, "rol", None) == "disenador":
         qs = qs.filter(asignaciones__usuario=user).distinct()
@@ -120,7 +120,7 @@ def _kpi_proyectos_vencidos(user) -> dict:
     hoy = _hoy()
     qs = Proyecto.objects.filter(
         estado__in=ESTADOS_PROYECTO_ACTIVOS,
-        fecha_compromiso__lt=hoy,
+        fecha_compromiso__date__lt=hoy,
     )
     if getattr(user, "rol", None) == "disenador":
         qs = qs.filter(asignaciones__usuario=user).distinct()
