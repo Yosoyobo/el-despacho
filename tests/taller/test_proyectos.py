@@ -199,3 +199,66 @@ def test_proyecto_con_productos(client, usuario_factory, proyecto_factory):
     resp = client.get(f"/proyectos/{p.pk}/")
     assert resp.status_code == 200
     assert "Playera promo" in resp.content.decode()
+
+
+def test_producto_precio_costo_merma_calculos(proyecto_factory):
+    """C4 S-LC-Feedback-V6: subtotal usa precio×cantidad; costo incluye merma."""
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import CategoriaServicio, Servicio
+    from apps.los_proyectos.models import ProyectoProducto
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Producción", defaults={"orden": 10})
+    srv = Servicio.objects.create(nombre="Lanyard", precio_base="65", costo="20", categoria=cat)
+    p = proyecto_factory()
+    # Sin override: hereda precio 65 / costo 20 del catálogo. cantidad 10, merma 2.
+    pp = ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=10, merma=2)
+    assert pp.precio_efectivo == Decimal("65")
+    assert pp.costo_efectivo == Decimal("20")
+    assert pp.subtotal == Decimal("650")            # 65 × 10 (merma NO se cobra)
+    assert pp.costo_total_linea == Decimal("240")   # 20 × (10 + 2)
+    assert pp.merma_costo == Decimal("40")
+
+
+def test_producto_override_precio_costo(proyecto_factory):
+    """C4: precio/costo por proyecto pisan al catálogo."""
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import CategoriaServicio, Servicio
+    from apps.los_proyectos.models import ProyectoProducto
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Producción", defaults={"orden": 10})
+    srv = Servicio.objects.create(nombre="Taza", precio_base="50", costo="15", categoria=cat)
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=srv, cantidad=4, precio_unitario="80", costo_unitario="25",
+    )
+    assert pp.subtotal == Decimal("320")            # 80 × 4 (override)
+    assert pp.costo_total_linea == Decimal("100")   # 25 × 4
+
+
+def test_monto_estimado_se_autollena_de_productos(client, usuario_factory, cliente_factory):
+    """C4: al guardar productos, monto_estimado = suma de subtotales."""
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import CategoriaServicio, Servicio
+    from apps.los_proyectos.models import Proyecto
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin)
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Producción", defaults={"orden": 10})
+    srv = Servicio.objects.create(nombre="Gorra", precio_base="120", costo="40", categoria=cat)
+    client.force_login(admin)
+    client.post(
+        "/proyectos/nuevo",
+        {
+            "nombre": "ConProductos", "cliente": cli.pk, "descripcion": "", "estado": "por_cotizar",
+            "monto_estimado": "",
+            "productos-TOTAL_FORMS": "1", "productos-INITIAL_FORMS": "0",
+            "productos-MIN_NUM_FORMS": "0", "productos-MAX_NUM_FORMS": "1000",
+            "productos-0-servicio": srv.pk, "productos-0-cantidad": "3",
+            "productos-0-merma": "1", "productos-0-precio_unitario": "", "productos-0-costo_unitario": "",
+            "productos-0-nota": "",
+        },
+        follow=True,
+    )
+    p = Proyecto.objects.get(nombre="ConProductos")
+    assert p.monto_estimado == Decimal("360")       # 120 × 3
+    assert p.merma_total == 1

@@ -115,6 +115,43 @@ class Proyecto(models.Model):
             self.slug = generar_slug_proyecto(self)
         super().save(*args, **kwargs)
 
+    # ── Totales de productos (C4 S-LC-Feedback-V6) ───────────────────────────
+
+    def _productos_calc(self):
+        return list(self.productos.select_related("servicio", "variacion").all())
+
+    @property
+    def valor_productos(self):
+        """Suma de lo que se le cobra al cliente por los productos (subtotales)."""
+        from decimal import Decimal
+        return sum((pp.subtotal for pp in self._productos_calc()), Decimal("0.00"))
+
+    @property
+    def costo_productos(self):
+        """Costo real de los productos, incluyendo merma."""
+        from decimal import Decimal
+        return sum((pp.costo_total_linea for pp in self._productos_calc()), Decimal("0.00"))
+
+    @property
+    def merma_total(self) -> int:
+        return sum(pp.merma for pp in self._productos_calc())
+
+    @property
+    def utilidad_productos(self):
+        """Valor a cobrar menos el costo real (con merma)."""
+        return self.valor_productos - self.costo_productos
+
+    def recalcular_monto_estimado(self, guardar=True):
+        """C4: el monto estimado se deriva de los productos (suma de subtotales)
+        cuando hay líneas. Si no hay productos, se respeta el valor manual."""
+        productos = self._productos_calc()
+        if not productos:
+            return
+        from decimal import Decimal
+        self.monto_estimado = sum((pp.subtotal for pp in productos), Decimal("0.00"))
+        if guardar:
+            self.save(update_fields=["monto_estimado", "actualizado_en"])
+
     @property
     def es_terminal(self) -> bool:
         # Lookup DB primero (configurable); fallback al set hardcoded para

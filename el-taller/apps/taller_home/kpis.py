@@ -85,6 +85,18 @@ def _kpi_prospectos_pipeline(user) -> dict:
     )
 
 
+def _kpi_valor_proyectos(user) -> dict:
+    """C4 S-LC-Feedback-V6: suma del valor estimado (derivado de productos)
+    de los proyectos no terminales — refleja el pipeline en pesos."""
+    from apps.los_proyectos.models import Proyecto
+    from django.db.models import Sum
+    qs = Proyecto.objects.exclude(estado__in=("entregado", "cancelado"))
+    if getattr(user, "rol", None) == "disenador":
+        qs = qs.filter(asignaciones__usuario=user).distinct()
+    total = qs.aggregate(s=Sum("monto_estimado"))["s"] or 0
+    return _resultado(f"${total:,.0f}", link="/proyectos/")
+
+
 def _kpi_cotizados_sin_avance(user) -> dict:
     from apps.los_proyectos.models import Proyecto
     from django.utils import timezone
@@ -500,6 +512,8 @@ KPIS: list[KPI] = [
         "operacion", ROLES_TODOS, _kpi_proyectos_activos),
     KPI("prospectos-pipeline", "Prospectos en pipeline", "Clientes potenciales con conversación abierta.",
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_prospectos_pipeline),
+    KPI("valor-proyectos", "Valor en proyectos", "Suma estimada (derivada de productos) de los proyectos no terminados.",
+        "operacion", ROLES_ADMIN_CONTADOR, _kpi_valor_proyectos),
     KPI("cotizados-sin-avance", "Cotizados >7d sin avance", "Cotización enviada y sin movimiento. Velocidad comercial.",
         "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizados_sin_avance),
     KPI("proyectos-en-pausa", "Proyectos en pausa", "Pausados — insumos atrasados, cliente desaparecido.",

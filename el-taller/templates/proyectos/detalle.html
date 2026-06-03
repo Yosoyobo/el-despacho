@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load proyectos_extras %}
+{% load proyectos_extras forms_helpers %}
 {% block title %}{{ proyecto.codigo }} — {{ proyecto.nombre }}{% endblock %}
 {% block contenido %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=proyecto.nombre subtitulo=proyecto.codigo breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
@@ -23,26 +23,34 @@
                 {% if puede_editar %}<button type="button" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
                         hx-get="{% url 'proyectos-agregar-producto' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Agregar producto</button>{% endif %}
             </div>
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-                <table class="min-w-full text-sm">
+            <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <table class="min-w-[680px] text-sm md:min-w-full">
                     <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
                         <tr>
-                            <th class="px-5 py-3 text-left">Producto</th>
-                            <th class="px-5 py-3 text-left">Variación</th>
-                            <th class="px-5 py-3 text-right">Cantidad</th>
-                            <th class="px-5 py-3 text-left">Nota</th>
-                            {% if puede_editar %}<th class="px-5 py-3 text-right">—</th>{% endif %}
+                            <th class="px-4 py-3 text-left">Producto</th>
+                            <th class="px-4 py-3 text-right">Cant.</th>
+                            <th class="px-4 py-3 text-right" title="Piezas extra que no se cobran">Merma</th>
+                            <th class="px-4 py-3 text-right">Precio</th>
+                            <th class="px-4 py-3 text-right">Costo</th>
+                            <th class="px-4 py-3 text-right">Subtotal</th>
+                            {% if puede_editar %}<th class="px-4 py-3 text-right">—</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                        {% for pp in proyecto.productos.all %}
+                        {% for pp in productos %}
                         <tr>
-                            <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ pp.servicio.nombre }}</td>
-                            <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ pp.variacion.nombre|default:"—" }}</td>
-                            <td class="px-5 py-3 text-right tabular-nums">{{ pp.cantidad }}</td>
-                            <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ pp.nota|default:"—" }}</td>
+                            <td class="px-4 py-3">
+                                <div class="font-medium text-gray-900 dark:text-gray-100">{{ pp.servicio.nombre }}</div>
+                                {% if pp.variacion %}<div class="text-xs text-gray-500 dark:text-gray-400">{{ pp.variacion.nombre }}</div>{% endif %}
+                                {% if pp.nota %}<div class="text-xs text-gray-400 dark:text-gray-500">{{ pp.nota }}</div>{% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ pp.cantidad }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums {% if pp.merma %}text-warning-600 dark:text-warning-400{% else %}text-gray-400{% endif %}">{{ pp.merma|default:"—" }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ pp.precio_efectivo|dinero }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ pp.costo_efectivo|dinero }}</td>
+                            <td class="px-4 py-3 text-right font-medium tabular-nums text-gray-900 dark:text-gray-100">{{ pp.subtotal|dinero }}</td>
                             {% if puede_editar %}
-                            <td class="px-5 py-3 text-right">
+                            <td class="px-4 py-3 text-right">
                                 <form method="post" action="{% url 'proyectos-quitar-producto' proyecto.pk pp.pk %}" class="inline" onsubmit="return confirm('¿Quitar este producto del proyecto?');">
                                     {% csrf_token %}
                                     <button type="submit" class="text-xs font-medium text-error-600 hover:underline dark:text-error-400">Quitar</button>
@@ -51,11 +59,28 @@
                             {% endif %}
                         </tr>
                         {% empty %}
-                        <tr><td colspan="{% if puede_editar %}5{% else %}4{% endif %}" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin productos vinculados aún.</td></tr>
+                        <tr><td colspan="{% if puede_editar %}7{% else %}6{% endif %}" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin productos vinculados aún.</td></tr>
                         {% endfor %}
                     </tbody>
+                    {% if productos %}
+                    <tfoot class="border-t-2 border-gray-200 bg-gray-50 text-sm dark:border-gray-700 dark:bg-gray-900/50">
+                        <tr>
+                            <td class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300" colspan="4">Costo total (incluye merma)</td>
+                            <td class="px-4 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ proyecto.costo_productos|dinero }}</td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ proyecto.valor_productos|dinero }}</td>
+                            {% if puede_editar %}<td></td>{% endif %}
+                        </tr>
+                    </tfoot>
+                    {% endif %}
                 </table>
             </div>
+            {% if productos %}
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Valor a cobrar: <strong class="text-gray-700 dark:text-gray-200">{{ proyecto.valor_productos|dinero }}</strong>
+                · Costo (con merma): {{ proyecto.costo_productos|dinero }}
+                · Utilidad estimada: <strong class="{% if proyecto.valor_productos > proyecto.costo_productos %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ proyecto.utilidad_productos|dinero }}</strong>
+            </p>
+            {% endif %}
         </section>
 
         <section>

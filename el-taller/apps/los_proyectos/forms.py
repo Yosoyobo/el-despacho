@@ -155,11 +155,27 @@ class ProyectoProductoForm(forms.ModelForm):
         label="Variación",
     )
     cantidad = forms.IntegerField(min_value=1, initial=1, label="Cantidad")
+    precio_unitario = forms.DecimalField(
+        required=False, min_value=0, label="Precio unit.",
+        widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "catálogo"}),
+    )
+    costo_unitario = forms.DecimalField(
+        required=False, min_value=0, label="Costo unit.",
+        widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "catálogo"}),
+    )
+    merma = forms.IntegerField(
+        required=False, min_value=0, initial=0, label="Merma",
+        widget=forms.NumberInput(attrs={"placeholder": "0"}),
+    )
 
     class Meta:
         model = ProyectoProducto
-        fields = ["servicio", "variacion", "cantidad", "nota"]
+        fields = ["servicio", "variacion", "cantidad", "precio_unitario", "costo_unitario", "merma", "nota"]
         labels = {"nota": "Nota corta (opcional)"}
+
+    def clean_merma(self):
+        # merma es NOT NULL con default 0; el form vacío llega como None.
+        return self.cleaned_data.get("merma") or 0
 
 
 ProyectoProductoFormSet = inlineformset_factory(

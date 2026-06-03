@@ -40,11 +40,14 @@
         {{ formset.management_form }}
         <div id="formset-productos" class="space-y-3">
             {% for f in formset %}
-            <div class="producto-fila grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[2fr_2fr_70px_2fr_auto] dark:border-gray-800">
+            <div class="producto-fila grid grid-cols-2 gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[1.6fr_1.6fr_60px_90px_90px_60px_1.4fr_auto] dark:border-gray-800">
                 {{ f.id }}
-                <div>{{ f.servicio.label_tag }} {{ f.servicio }}</div>
-                <div>{{ f.variacion.label_tag }} {{ f.variacion }}</div>
+                <div class="col-span-2 md:col-span-1">{{ f.servicio.label_tag }} {{ f.servicio }}</div>
+                <div class="col-span-2 md:col-span-1">{{ f.variacion.label_tag }} {{ f.variacion }}</div>
                 <div>{{ f.cantidad.label_tag }} {{ f.cantidad }}</div>
+                <div>{{ f.precio_unitario.label_tag }} {{ f.precio_unitario }}</div>
+                <div>{{ f.costo_unitario.label_tag }} {{ f.costo_unitario }}</div>
+                <div>{{ f.merma.label_tag }} {{ f.merma }}</div>
                 <div>{{ f.nota.label_tag }} {{ f.nota }}</div>
                 <div class="flex items-end">
                     {% comment %}S-LC-Feedback-V3: botón "x" rojo para quitar la línea. Persistida → marca DELETE; nueva → quita del DOM y decrementa TOTAL_FORMS.{% endcomment %}
@@ -59,10 +62,11 @@
             </div>
             {% endfor %}
         </div>
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">💡 Precio y costo vacíos usan los del catálogo. <strong>Merma</strong> = piezas extra que fabricas (muestras, control de calidad, regalos): suman costo pero no se le cobran al cliente.</p>
         {# S-LC-Feedback-V2: quick-create de Servicio inline (no hay que salir al Catálogo). #}
         <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
             <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Crear producto nuevo en el catálogo</summary>
-            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_110px_110px_90px_auto]">
+            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_100px_100px_80px_80px_auto]">
                 <div class="col-span-2 md:col-span-1">
                     <label for="qc-categoria" class="text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
                     <select id="qc-categoria" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
@@ -88,6 +92,10 @@
                     <label for="qc-cantidad" class="text-xs font-medium text-gray-600 dark:text-gray-300">Cantidad</label>
                     <input id="qc-cantidad" type="number" min="1" value="1" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                 </div>
+                <div>
+                    <label for="qc-merma" class="text-xs font-medium text-gray-600 dark:text-gray-300" title="Piezas extra que fabricas (muestras, control de calidad, regalos)">Merma</label>
+                    <input id="qc-merma" type="number" min="0" value="0" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
                 <div class="flex items-end">
                     <button type="button" id="qc-agregar" class="btn-primario whitespace-nowrap">Agregar</button>
                 </div>
@@ -106,6 +114,25 @@
 
 <script>
 (function() {
+    // C4 S-LC-Feedback-V6: mapa de precios/costos del catálogo para pre-llenar
+    // precio/costo de la línea al elegir un producto (si están vacíos).
+    const SERVICIOS_DATOS = {{ servicios_datos_json|default:"{}"|safe }};
+    function prellenarDesdeServicio(sel) {
+        const fila = sel.closest('.producto-fila');
+        if (!fila) return;
+        const datos = SERVICIOS_DATOS[sel.value];
+        if (!datos) return;
+        const precio = fila.querySelector('input[name$="-precio_unitario"]');
+        const costo = fila.querySelector('input[name$="-costo_unitario"]');
+        if (precio && !precio.value) precio.value = datos.precio;
+        if (costo && !costo.value) costo.value = datos.costo;
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.matches('select[name$="-servicio"]')) {
+            prellenarDesdeServicio(e.target);
+        }
+    });
+
     // S-LC-Feedback-V3: botón "x" para quitar línea de producto.
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.producto-eliminar');
@@ -159,6 +186,7 @@
     const qcCos = document.getElementById('qc-costo');
     const qcPre = document.getElementById('qc-precio');
     const qcCnt = document.getElementById('qc-cantidad');
+    const qcMer = document.getElementById('qc-merma');
     const qcMsg = document.getElementById('qc-msg');
     const qcMrg = document.getElementById('qc-margen');
     function msg(texto) { qcMsg.textContent = texto; qcMsg.classList.remove('hidden'); }
@@ -220,13 +248,17 @@
                     else { el.selectedIndex = 0; }
                 }
                 else if (el.name && el.name.endsWith('-cantidad')) { el.value = qcCnt.value || '1'; }
+                // C4: pre-llena precio/costo/merma de la línea con lo capturado.
+                else if (el.name && el.name.endsWith('-precio_unitario')) { el.value = qcPre.value || ''; }
+                else if (el.name && el.name.endsWith('-costo_unitario')) { el.value = qcCos.value || ''; }
+                else if (el.name && el.name.endsWith('-merma')) { el.value = qcMer.value || '0'; }
                 else { el.value = ''; }
             });
             contenedor.appendChild(clon);
             totalForms.value = idx + 1;
             // Reset del formulario quick-create
             qcNom.value = ''; qcPre.value = ''; qcCnt.value = '1'; qcCat.selectedIndex = 0;
-            qcCos.value = ''; qcMrg.classList.add('hidden');
+            qcCos.value = ''; qcMer.value = '0'; qcMrg.classList.add('hidden');
         } catch (err) {
             msg('Error de red. Intenta otra vez.');
         }

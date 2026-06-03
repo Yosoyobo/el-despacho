@@ -7,7 +7,11 @@ puede apuntar a Servicio (genérico) o Variacion (específica del producto).
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.db import models
+
+CERO = Decimal("0.00")
 
 
 class ProyectoProducto(models.Model):
@@ -25,6 +29,22 @@ class ProyectoProducto(models.Model):
         related_name="en_proyectos",
     )
     cantidad = models.PositiveIntegerField(default=1)
+    # C4 S-LC-Feedback-V6: precio/costo por proyecto (override). Si quedan en
+    # null, se heredan del catálogo (servicio.precio_base / costo de la
+    # variación o servicio). `merma` = piezas extra que se fabrican para ESTE
+    # proyecto: cuentan al costo pero NO se le cobran al cliente.
+    precio_unitario = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Precio por unidad para este proyecto. Vacío = usa el del catálogo.",
+    )
+    costo_unitario = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Costo por unidad para este proyecto. Vacío = usa el del catálogo.",
+    )
+    merma = models.PositiveIntegerField(
+        default=0,
+        help_text="Piezas extra (muestras, control de calidad, regalos). Suman costo, no se cobran.",
+    )
     nota = models.CharField(max_length=200, blank=True, default="")
 
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -47,3 +67,45 @@ class ProyectoProducto(models.Model):
         if self.cantidad > 1:
             return f"{base} ×{self.cantidad}"
         return base
+
+    # ── Precio / costo / merma (C4 S-LC-Feedback-V6) ──────────────────────────
+
+    @property
+    def precio_efectivo(self) -> Decimal:
+        """Precio unitario: override del proyecto o, si no, el del catálogo."""
+        if self.precio_unitario is not None:
+            return Decimal(str(self.precio_unitario))
+        base = self.servicio.precio_base if self.servicio_id else None
+        return Decimal(str(base)) if base is not None else CERO
+
+    @property
+    def costo_efectivo(self) -> Decimal:
+        """Costo unitario: override del proyecto o, si no, el del catálogo
+        (costo de la variación si existe, si no el del servicio)."""
+        if self.costo_unitario is not None:
+            return Decimal(str(self.costo_unitario))
+        if self.variacion_id:
+            return Decimal(str(self.variacion.costo_total or 0))
+        base = self.servicio.costo if self.servicio_id else None
+        return Decimal(str(base)) if base is not None else CERO
+
+    @property
+    def subtotal(self) -> Decimal:
+        """Lo que se le cobra al cliente por esta línea (precio × cantidad).
+        La merma NO se cobra, por eso no entra aquí."""
+        return self.precio_efectivo * self.cantidad
+
+    @property
+    def merma_costo(self) -> Decimal:
+        """Costo de las piezas de merma (costo × merma)."""
+        return self.costo_efectivo * self.merma
+
+    @property
+    def costo_total_linea(self) -> Decimal:
+        """Costo real de producir la línea: incluye las piezas de merma."""
+        return self.costo_efectivo * (self.cantidad + self.merma)
+
+    @property
+    def utilidad(self) -> Decimal:
+        """Subtotal menos el costo real (incluyendo merma)."""
+        return self.subtotal - self.costo_total_linea

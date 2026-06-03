@@ -41,6 +41,19 @@ from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
 
+def _servicios_datos_json():
+    """Mapa {servicio_id: {precio, costo}} para que el form de Proyecto
+    pre-llene precio/costo al elegir un producto (C4 S-LC-Feedback-V6)."""
+    import json
+
+    from apps.el_catalogo.models import Servicio
+    datos = {
+        str(s.pk): {"precio": str(s.precio_base or 0), "costo": str(s.costo or 0)}
+        for s in Servicio.objects.filter(activo=True).only("pk", "precio_base", "costo")
+    }
+    return json.dumps(datos)
+
+
 def _fmt_fechahora(dt):
     """Formatea un datetime aware como 'dd Mmm YYYY · HH:MM' en hora local."""
     if not dt:
@@ -238,6 +251,7 @@ def detalle(request, pk):
         "asignaciones": asignaciones,
         "estados_disponibles": estados_disponibles,
         "proveedores_aplicables": proveedores_aplicables,
+        "productos": proyecto.productos.select_related("servicio", "variacion").all(),
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
         "puede_editar": puede_ed,
         "acciones_proyecto": acciones_proyecto,
@@ -269,6 +283,7 @@ def nuevo(request):
             formset = ProyectoProductoFormSet(request.POST, instance=proyecto)
             if formset.is_valid():
                 formset.save()
+                proyecto.recalcular_monto_estimado()  # C4: estimado = Σ subtotales
             emitir(EventoPortavoz(
                 tipo="proyecto.creado",
                 actor_id=request.user.pk,
@@ -286,6 +301,7 @@ def nuevo(request):
     return render(request, "proyectos/form.html", {
         "form": form, "formset": formset, "modo": "nuevo",
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+        "servicios_datos_json": _servicios_datos_json(),
     })
 
 
@@ -300,6 +316,7 @@ def editar(request, pk):
         if form.is_valid() and formset.is_valid():
             form.save()
             formset.save()
+            proyecto.recalcular_monto_estimado()  # C4: estimado = Σ subtotales
             messages.success(request, "Proyecto actualizado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
     else:
@@ -309,6 +326,7 @@ def editar(request, pk):
     return render(request, "proyectos/form.html", {
         "form": form, "formset": formset, "modo": "editar", "proyecto": proyecto,
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+        "servicios_datos_json": _servicios_datos_json(),
     })
 
 
@@ -533,6 +551,7 @@ def agregar_producto_modal(request, pk):
             prod = form.save(commit=False)
             prod.proyecto = proyecto
             prod.save()
+            proyecto.recalcular_monto_estimado()  # C4
             emitir(EventoPortavoz(
                 tipo="proyecto.actualizado",
                 actor_id=request.user.pk, actor_email=request.user.email,
@@ -555,5 +574,6 @@ def quitar_producto(request, pk, prod_pk):
     if request.method != "POST":
         return HttpResponseForbidden("Solo POST.")
     ProyectoProducto.objects.filter(proyecto=proyecto, pk=prod_pk).delete()
+    proyecto.recalcular_monto_estimado()  # C4
     messages.success(request, "Producto quitado.")
     return redirect(_redir_detalle(proyecto))
