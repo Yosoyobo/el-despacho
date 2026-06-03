@@ -13,12 +13,12 @@ from apps.los_proyectos.forms import (
 )
 from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
+    ROLES_PROYECTO,
     EstadoProyecto,
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
 )
-from apps.los_proyectos.templatetags.proyectos_extras import dentro_de
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -27,8 +27,6 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import format_html, format_html_join
-from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from lib.permisos import (
@@ -184,81 +182,96 @@ def kanban(request):
     })
 
 
+def _reconciliar_equipo(request, proyecto):
+    """C7 S-LC-Feedback-V6: ajusta el equipo según los checkboxes `equipo_<id>`
+    y los selects `rol_<id>`. Marcado = asignado (crea/actualiza rol);
+    desmarcado = se quita del proyecto."""
+    from cuentas.models.usuario import Usuario
+    roles_validos = dict(ROLES_PROYECTO)
+    actuales = {a.usuario_id: a for a in proyecto.asignaciones.all()}
+    for u in Usuario.objects.filter(is_active=True):
+        marcado = request.POST.get(f"equipo_{u.pk}") in ("on", "1", "true")
+        rol = request.POST.get(f"rol_{u.pk}") or "disenador"
+        if rol not in roles_validos:
+            rol = "disenador"
+        if marcado:
+            a = actuales.get(u.pk)
+            if a is None:
+                ProyectoAsignacion.objects.create(proyecto=proyecto, usuario=u, rol_en_proyecto=rol)
+            elif a.rol_en_proyecto != rol:
+                a.rol_en_proyecto = rol
+                a.save(update_fields=["rol_en_proyecto"])
+        elif u.pk in actuales:
+            actuales[u.pk].delete()
+
+
+def _ctx_equipo(proyecto):
+    """Lista de todos los usuarios activos con su estado asignado/rol para el
+    widget de equipo del detalle."""
+    from cuentas.models.usuario import Usuario
+    asignados = {a.usuario_id: a.rol_en_proyecto for a in proyecto.asignaciones.all()}
+    opciones = []
+    for u in Usuario.objects.filter(is_active=True).order_by("nombre_completo", "email"):
+        opciones.append({
+            "usuario": u,
+            "asignado": u.pk in asignados,
+            "rol": asignados.get(u.pk, "disenador"),
+        })
+    return opciones
+
+
 @login_required
 def detalle(request, pk):
     proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
     if not puede_ver_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Sin acceso a este proyecto.")
     puede_ed = puede_editar_proyecto(request.user, proyecto)
-    acciones_proyecto = []
-    if puede_ed:
-        acciones_proyecto = [
-            {"url": f"/proyectos/{proyecto.pk}/editar/", "label": "Editar datos"},
-            {"url": f"/proyectos/{proyecto.pk}/cambiar-estado/", "label": "Cambiar estado"},
-        ]
-    asignaciones = list(proyecto.asignaciones.select_related("usuario"))
-    estados_disponibles = list(
-        EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label")
-    )
-    # Proveedores aplicables: derivados de los productos del proyecto vía
-    # M2M Servicio.proveedores (S-LC-Feedback-V3).
-    from apps.el_catalogo.models import Proveedor
+    es_htmx = _es_htmx(request)
+
+    if request.method == "POST" and puede_ed:
+        form = ProyectoForm(request.POST, instance=proyecto)
+        formset = ProyectoProductoFormSetEdit(request.POST, instance=proyecto)
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            _reconciliar_equipo(request, proyecto)
+            proyecto.recalcular_monto_estimado()
+            proyecto.refresh_from_db()
+            emitir(EventoPortavoz(
+                tipo="proyecto.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proyecto_id": proyecto.pk, "campo": "detalle_inline"},
+            ))
+            # C7: autoguardado HTMX → refresca panel económico + indicador (OOB).
+            if es_htmx:
+                return render(request, "proyectos/_guardado_oob.html",
+                              {"proyecto": proyecto, "ok": True})
+            messages.success(request, "Proyecto guardado.")
+            return redirect("proyectos-detalle", pk=proyecto.pk)
+        if es_htmx:
+            return render(request, "proyectos/_guardado_oob.html",
+                          {"proyecto": proyecto, "ok": False}, status=200)
+    else:
+        form = ProyectoForm(instance=proyecto)
+        formset = ProyectoProductoFormSetEdit(instance=proyecto)
+
+    from apps.el_catalogo.models import CategoriaServicio, Proveedor
     proveedores_aplicables = list(
         Proveedor.objects.filter(
-            activo=True,
-            servicios__en_proyectos__proyecto=proyecto,
+            activo=True, servicios__en_proyectos__proyecto=proyecto,
         ).distinct().order_by("razon_social")
     )
-    info_fechas = [
-        {"label": "Inicio", "value": _fmt_fechahora(proyecto.fecha_inicio)},
-        {"label": "Entrega", "value": (
-            f"{_fmt_fechahora(proyecto.fecha_compromiso)} ({dentro_de(proyecto.fecha_compromiso)})"
-            if proyecto.fecha_compromiso else "—"
-        )},
-    ]
-    info_economico = [
-        {"label": "Monto estimado", "value": f"$ {proyecto.monto_estimado}" if proyecto.monto_estimado else "—"},
-        {"label": "Cliente", "value_html": format_html(
-            '<a href="{}" class="text-brand-600 hover:underline dark:text-brand-400">{}</a>',
-            reverse("cartera-detalle", args=[proyecto.cliente.pk]), proyecto.cliente.razon_social,
-        )},
-    ]
-    if asignaciones:
-        equipo_html = format_html_join(
-            "",
-            '<li class="flex items-center justify-between gap-3"><span class="text-gray-900 dark:text-gray-100">{}</span><span class="badge badge-brand">{}</span></li>',
-            ((a.usuario.nombre_completo or a.usuario.email, a.get_rol_en_proyecto_display()) for a in asignaciones),
-        )
-        info_equipo_html = format_html('<ul class="space-y-1.5">{}</ul>', equipo_html)
-    else:
-        info_equipo_html = mark_safe('<span class="text-gray-500 dark:text-gray-400">Sin asignar.</span>')
-    action_bar_meta = format_html(
-        '<span>Última actualización <time class="text-gray-700 dark:text-gray-200">{}</time></span>',
-        proyecto.actualizado_en.strftime("%d %b %Y %H:%M"),
-    )
-    if puede_ed:
-        action_bar_acciones = format_html(
-            '<a href="{}" class="btn-secundario">Editar</a>'
-            '<a href="{}" class="btn-primario">Asignar</a>',
-            reverse("proyectos-editar", args=[proyecto.pk]),
-            reverse("proyectos-asignar", args=[proyecto.pk]),
-        )
-    else:
-        action_bar_acciones = ""
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
-        "asignaciones": asignaciones,
-        "estados_disponibles": estados_disponibles,
-        "proveedores_aplicables": proveedores_aplicables,
-        "productos": proyecto.productos.select_related("servicio", "variacion").all(),
-        "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
+        "form": form,
+        "formset": formset,
         "puede_editar": puede_ed,
-        "acciones_proyecto": acciones_proyecto,
-        "info_fechas": info_fechas,
-        "info_economico": info_economico,
-        "info_equipo_html": info_equipo_html,
-        "action_bar_meta": action_bar_meta,
-        "action_bar_acciones": action_bar_acciones,
+        "equipo_opciones": _ctx_equipo(proyecto),
+        "roles_proyecto": ROLES_PROYECTO,
+        "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+        "servicios_datos_json": _servicios_datos_json(),
+        "proveedores_aplicables": proveedores_aplicables,
+        "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
         "breadcrumb_items": [
             {"url": reverse("proyectos-lista"), "label": "Proyectos"},
             {"label": proyecto.codigo},

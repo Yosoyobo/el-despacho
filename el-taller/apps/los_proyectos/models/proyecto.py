@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models, transaction
 
@@ -81,6 +83,8 @@ class Proyecto(models.Model):
         null=True, blank=True,
         help_text="Fecha en la que se espera cobrar el grueso del proyecto. Usada para proyecciones.",
     )
+    # C7 S-LC-Feedback-V6: IVA del proyecto. False = 16% (default); True = exento.
+    iva_exento = models.BooleanField(default=False)
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
@@ -117,37 +121,65 @@ class Proyecto(models.Model):
 
     # ── Totales de productos (C4 S-LC-Feedback-V6) ───────────────────────────
 
+    # Tasa de IVA estándar México (C7). Si en el futuro se quiere configurable,
+    # mover a TasaImpositiva sin tocar las properties.
+    IVA_TASA = Decimal("0.16")
+
     def _productos_calc(self):
         return list(self.productos.select_related("servicio", "variacion").all())
 
-    @property
-    def valor_productos(self):
-        """Suma de lo que se le cobra al cliente por los productos (subtotales)."""
-        from decimal import Decimal
-        return sum((pp.subtotal for pp in self._productos_calc()), Decimal("0.00"))
+    def _productos_incluidos(self):
+        """C7: solo las líneas marcadas para entrar en los cálculos de dinero."""
+        return [pp for pp in self._productos_calc() if pp.incluir_en_calculo]
 
     @property
+    def monto_calculado(self):
+        """C7: suma de subtotales de los productos INCLUIDOS (lo que se cobra,
+        antes de IVA). Reemplaza al 'monto estimado' manual en la UI."""
+        return sum((pp.subtotal for pp in self._productos_incluidos()), Decimal("0.00"))
+
+    # Alias retro-compatible: 'valor_productos' = monto calculado.
+    @property
+    def valor_productos(self):
+        return self.monto_calculado
+
+    @property
+    def costo_produccion(self):
+        """Costo real de producir los productos incluidos, con merma."""
+        return sum((pp.costo_total_linea for pp in self._productos_incluidos()), Decimal("0.00"))
+
+    # Alias retro-compatible.
+    @property
     def costo_productos(self):
-        """Costo real de los productos, incluyendo merma."""
-        from decimal import Decimal
-        return sum((pp.costo_total_linea for pp in self._productos_calc()), Decimal("0.00"))
+        return self.costo_produccion
+
+    @property
+    def iva_monto(self):
+        """IVA sobre el monto calculado. 0 si el proyecto es exento (C7)."""
+        if self.iva_exento:
+            return Decimal("0.00")
+        return (self.monto_calculado * self.IVA_TASA).quantize(Decimal("0.01"))
+
+    @property
+    def monto_a_facturar(self):
+        """Monto calculado + IVA — lo que se le facturaría al cliente."""
+        return self.monto_calculado + self.iva_monto
 
     @property
     def merma_total(self) -> int:
-        return sum(pp.merma for pp in self._productos_calc())
+        return sum(pp.merma for pp in self._productos_incluidos())
 
     @property
     def utilidad_productos(self):
-        """Valor a cobrar menos el costo real (con merma)."""
-        return self.valor_productos - self.costo_productos
+        """Monto calculado menos el costo de producción (con merma)."""
+        return self.monto_calculado - self.costo_produccion
 
     def recalcular_monto_estimado(self, guardar=True):
-        """C4: el monto estimado se deriva de los productos (suma de subtotales)
-        cuando hay líneas. Si no hay productos, se respeta el valor manual."""
-        productos = self._productos_calc()
-        if not productos:
+        """C4/C7: el monto estimado se deriva de los productos INCLUIDOS.
+        Si no hay productos, se respeta el valor que ya tuviera."""
+        productos = self._productos_incluidos()
+        if not self._productos_calc():
             return
-        from decimal import Decimal
         self.monto_estimado = sum((pp.subtotal for pp in productos), Decimal("0.00"))
         if guardar:
             self.save(update_fields=["monto_estimado", "actualizado_en"])

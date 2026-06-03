@@ -45,6 +45,9 @@ class ProyectoProducto(models.Model):
         default=0,
         help_text="Piezas extra (muestras, control de calidad, regalos). Suman costo, no se cobran.",
     )
+    # C7 S-LC-Feedback-V6: si está desmarcado, la línea NO entra en los
+    # cálculos de dinero del proyecto (monto calculado / IVA / costo).
+    incluir_en_calculo = models.BooleanField(default=True)
     nota = models.CharField(max_length=200, blank=True, default="")
 
     creado_en = models.DateTimeField(auto_now_add=True)

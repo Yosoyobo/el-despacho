@@ -1,0 +1,6 @@
+{% comment %}C7 S-LC-Feedback-V6: respuesta del autoguardado. Refresca por OOB el panel económico, el indicador "Guardado ✓" y la marca de última actualización.{% endcomment %}
+{% include "proyectos/_economico_panel.html" with proyecto=proyecto oob=True %}
+<span id="guardado-indicador" hx-swap-oob="true" class="text-xs font-medium {% if ok %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">
+    {% if ok %}Guardado ✓{% else %}No se pudo guardar{% endif %}
+</span>
+<time id="ult-act" hx-swap-oob="true">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time>

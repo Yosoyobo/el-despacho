@@ -1,0 +1,111 @@
+{% comment %}C4/C7 S-LC-Feedback-V6: JS del formset de productos (clone, quitar, quick-create, prefill precio/costo). Usado por el detalle editable y el form de Nuevo/Editar proyecto.{% endcomment %}
+<script>
+(function() {
+    const SERVICIOS_DATOS = {{ servicios_datos_json|default:"{}"|safe }};
+    const form = document.getElementById('form-proyecto') || document.querySelector('form');
+
+    function marcarIncluir(scope) {
+        // Las líneas nuevas entran al cálculo por default.
+        scope.querySelectorAll('input[name$="-incluir_en_calculo"]').forEach(c => { c.checked = true; });
+    }
+    function prellenarDesdeServicio(sel) {
+        const fila = sel.closest('.producto-fila');
+        if (!fila) return;
+        const datos = SERVICIOS_DATOS[sel.value];
+        if (!datos) return;
+        const precio = fila.querySelector('input[name$="-precio_unitario"]');
+        const costo = fila.querySelector('input[name$="-costo_unitario"]');
+        if (precio && !precio.value) precio.value = datos.precio;
+        if (costo && !costo.value) costo.value = datos.costo;
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.matches('select[name$="-servicio"]')) prellenarDesdeServicio(e.target);
+    });
+
+    // Quitar línea.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.producto-eliminar');
+        if (!btn) return;
+        const fila = btn.closest('.producto-fila');
+        const checkboxId = btn.getAttribute('data-delete-checkbox');
+        if (checkboxId) {
+            const cb = document.getElementById(checkboxId);
+            if (cb) cb.checked = true;
+            if (fila) fila.style.display = 'none';
+        } else if (fila) {
+            const totalForms = document.querySelector('input[name="productos-TOTAL_FORMS"]');
+            fila.remove();
+            if (totalForms) totalForms.value = parseInt(totalForms.value, 10) - 1;
+        }
+        if (form) form.dispatchEvent(new Event('change', {bubbles: true}));  // autoguarda
+    });
+
+    function clonarUltima(seleccionarServicioId, cantidadVal, precioVal, costoVal, mermaVal) {
+        const totalForms = document.querySelector('input[name$="-TOTAL_FORMS"]');
+        const contenedor = document.getElementById('formset-productos');
+        const idx = parseInt(totalForms.value, 10);
+        const ultimo = contenedor.lastElementChild;
+        const clon = ultimo.cloneNode(true);
+        clon.innerHTML = clon.innerHTML
+            .replace(new RegExp('productos-' + (idx - 1) + '-', 'g'), 'productos-' + idx + '-')
+            .replace(new RegExp('id_productos-' + (idx - 1) + '-', 'g'), 'id_productos-' + idx + '-');
+        clon.querySelectorAll('input, select, textarea').forEach(function(el) {
+            if (el.type === 'checkbox') { el.checked = false; }
+            else if (el.tagName === 'SELECT') {
+                if (el.name.endsWith('-servicio') && seleccionarServicioId) { el.value = String(seleccionarServicioId); }
+                else { el.selectedIndex = 0; }
+            }
+            else if (el.name && el.name.endsWith('-cantidad')) { el.value = cantidadVal || '1'; }
+            else if (el.name && el.name.endsWith('-precio_unitario')) { el.value = precioVal || ''; }
+            else if (el.name && el.name.endsWith('-costo_unitario')) { el.value = costoVal || ''; }
+            else if (el.name && el.name.endsWith('-merma')) { el.value = mermaVal || '0'; }
+            else { el.value = ''; }
+        });
+        clon.style.display = '';
+        marcarIncluir(clon);
+        clon.querySelectorAll('.producto-eliminar').forEach(b => b.removeAttribute('data-delete-checkbox'));
+        contenedor.appendChild(clon);
+        totalForms.value = idx + 1;
+        return clon;
+    }
+
+    const addBtn = document.getElementById('add-producto');
+    if (addBtn) addBtn.addEventListener('click', () => clonarUltima(null, '1'));
+
+    // Quick-create de Servicio.
+    const qcBtn = document.getElementById('qc-agregar');
+    if (qcBtn) {
+        const qcCat = document.getElementById('qc-categoria');
+        const qcNom = document.getElementById('qc-nombre');
+        const qcCos = document.getElementById('qc-costo');
+        const qcPre = document.getElementById('qc-precio');
+        const qcCnt = document.getElementById('qc-cantidad');
+        const qcMer = document.getElementById('qc-merma');
+        const qcMsg = document.getElementById('qc-msg');
+        function msg(t) { if (qcMsg) { qcMsg.textContent = t; qcMsg.classList.remove('hidden'); } }
+        qcBtn.addEventListener('click', async function() {
+            if (qcMsg) qcMsg.classList.add('hidden');
+            if (!qcCat.value || !qcNom.value.trim() || !qcPre.value) { msg('Tipo, nombre y precio son obligatorios.'); return; }
+            qcBtn.disabled = true;
+            try {
+                const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+                const body = new FormData();
+                body.append('nombre', qcNom.value.trim());
+                body.append('categoria_id', qcCat.value);
+                body.append('precio_base', qcPre.value);
+                body.append('costo', qcCos.value || '0');
+                const resp = await fetch('{% url "catalogo-quick-create" %}', { method: 'POST', headers: {'X-CSRFToken': csrf}, body });
+                const data = await resp.json();
+                if (!resp.ok || !data.ok) { msg(data.error || 'Error al crear.'); qcBtn.disabled = false; return; }
+                document.querySelectorAll('select[name$="-servicio"]').forEach(function(sel) {
+                    const opt = document.createElement('option'); opt.value = data.id; opt.textContent = data.label; sel.appendChild(opt);
+                });
+                clonarUltima(data.id, qcCnt.value || '1', qcPre.value, qcCos.value || '', qcMer.value || '0');
+                qcNom.value = ''; qcPre.value = ''; qcCnt.value = '1'; qcCat.selectedIndex = 0; qcCos.value = ''; if (qcMer) qcMer.value = '0';
+                if (form) form.dispatchEvent(new Event('change', {bubbles: true}));  // autoguarda
+            } catch (e) { msg('Error de red. Intenta otra vez.'); }
+            qcBtn.disabled = false;
+        });
+    }
+})();
+</script>

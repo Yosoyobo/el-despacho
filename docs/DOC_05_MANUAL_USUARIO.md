@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades al 3 de junio de 2026
+
+- **La página del Proyecto ahora es editable directo, sin entrar a "Editar".**
+  Todo (nombre, cliente, estado, descripción, fechas y productos) se cambia
+  en la misma pantalla. Los cambios se **guardan solos** al salir de cada
+  campo (verás "Guardado ✓" arriba) y además hay un botón **Guardar** en la
+  barra de arriba. Desaparecieron los enlaces "Editar fechas", "Editar montos"
+  y "Editar".
+- **Equipo con un clic.** En la tarjeta "Equipo" aparecen **todos los usuarios**
+  con una casilla: márcala para incluir a alguien y elige su rol al lado.
+  Desmarcar lo quita. El botón **Asignar** de arriba te lleva a esa tarjeta.
+- **Productos: incluir o excluir del cálculo.** Cada producto tiene una casilla
+  ✓ al inicio. Si la desmarcas, esa línea **no cuenta** en el dinero del
+  proyecto (útil para opciones que aún no confirma el cliente).
+- **Panel Económico nuevo.** Muestra: **Monto calculado** (suma de lo marcado),
+  **IVA** (16% por default, con opción de marcar el proyecto como **exento**),
+  **Monto a facturar** (calculado + IVA), **Costo de producción** (incluye
+  merma) y **Utilidad estimada**. Todo se recalcula solo al cambiar productos.
+
 ## Novedades al 2 de junio de 2026
 
 - **Tablero (Kanban) de Proyectos en dos filas.** Al entrar a

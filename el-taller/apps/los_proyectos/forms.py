@@ -80,7 +80,7 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
             "nombre", "cliente", "descripcion", "estado",
             "fecha_inicio_dia", "fecha_inicio_hora",
             "fecha_compromiso_dia", "fecha_compromiso_hora",
-            "monto_estimado",
+            "iva_exento",
         ])
 
     class Meta:
@@ -90,13 +90,14 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
             "cliente",
             "descripcion",
             "estado",
-            "monto_estimado",
+            "iva_exento",
         ]
         widgets = {
             # S-LC-Feedback-V4: autocomplete @#$ en nombre y descripción.
             "nombre": forms.TextInput(attrs={"data-referencias": "1"}),
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 4}),
         }
+        labels = {"iva_exento": "Proyecto exento de IVA"}
 
 
 def _choices_estado_activos():
@@ -168,10 +169,13 @@ class ProyectoProductoForm(forms.ModelForm):
         required=False, min_value=0, initial=0, label="Merma",
         widget=forms.NumberInput(attrs={"placeholder": "0"}),
     )
+    incluir_en_calculo = forms.BooleanField(
+        required=False, initial=True, label="Incluir en cálculo",
+    )
 
     class Meta:
         model = ProyectoProducto
-        fields = ["servicio", "variacion", "cantidad", "precio_unitario", "costo_unitario", "merma", "nota"]
+        fields = ["servicio", "variacion", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota"]
         labels = {"nota": "Nota corta (opcional)"}
 
     def clean_merma(self):

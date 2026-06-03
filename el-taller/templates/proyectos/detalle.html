@@ -4,10 +4,131 @@
 {% block contenido %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=proyecto.nombre subtitulo=proyecto.codigo breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
-<div class="mb-4">
-    {% include "proyectos/_badge_estado.html" with proyecto=proyecto estados_disponibles=estados_disponibles puede_editar=puede_editar %}
+{# C7 S-LC-Feedback-V6: barra de acciones ARRIBA (antes estaba al pie). #}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+        <span class="badge {{ proyecto.estado|color_estado }}">{{ proyecto.estado|estado_label }}</span>
+        <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time></span>
+        <span id="guardado-indicador" class="text-xs font-medium text-success-600 dark:text-success-400"></span>
+    </div>
+    {% if puede_editar %}
+    <div class="flex gap-2">
+        <button type="button" class="btn-secundario" onclick="document.getElementById('equipo-widget').scrollIntoView({behavior:'smooth', block:'center'});">Asignar</button>
+        <button type="submit" form="form-proyecto" class="btn-primario">Guardar</button>
+    </div>
+    {% endif %}
 </div>
 
+{% if puede_editar %}
+<form id="form-proyecto" method="post" action="{% url 'proyectos-detalle' proyecto.pk %}"
+      hx-post="{% url 'proyectos-detalle' proyecto.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
+      class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
+    {% csrf_token %}
+    <div class="space-y-6 xl:col-span-2">
+        {# ── Datos del proyecto (editable en sitio) ── #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos del proyecto</h2>
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {% for f in form %}
+                    {% if f.name == 'cliente' %}
+                    <div class="md:col-span-2">
+                        <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1">{{ f }}</div>
+                            <button type="button" class="btn-secundario whitespace-nowrap"
+                                    hx-get="{% url 'proyectos-cliente-inline' %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nuevo cliente</button>
+                        </div>
+                        {% if f.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.errors|join:" · " }}</p>{% endif %}
+                    </div>
+                    {% elif f.name == 'nombre' or f.name == 'descripcion' %}
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
+                    {% else %}
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+
+        {# ── Productos involucrados (editables) ── #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos involucrados</h2>
+                <button type="button" id="add-producto" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Agregar línea</button>
+            </div>
+            {{ formset.management_form }}
+            <div id="formset-productos" class="space-y-3">
+                {% for f in formset %}
+                <div class="producto-fila grid grid-cols-2 items-start gap-3 rounded-xl border border-gray-200 p-3 md:grid-cols-[28px_1.6fr_1.6fr_60px_90px_90px_60px_1.2fr_auto] dark:border-gray-800">
+                    {{ f.id }}
+                    <div class="flex items-center pt-6" title="Incluir en el cálculo de dinero">{{ f.incluir_en_calculo }}</div>
+                    <div class="col-span-2 md:col-span-1">{{ f.servicio.label_tag }} {{ f.servicio }}</div>
+                    <div class="col-span-2 md:col-span-1">{{ f.variacion.label_tag }} {{ f.variacion }}</div>
+                    <div>{{ f.cantidad.label_tag }} {{ f.cantidad }}</div>
+                    <div>{{ f.precio_unitario.label_tag }} {{ f.precio_unitario }}</div>
+                    <div>{{ f.costo_unitario.label_tag }} {{ f.costo_unitario }}</div>
+                    <div>{{ f.merma.label_tag }} {{ f.merma }}</div>
+                    <div>{{ f.nota.label_tag }} {{ f.nota }}</div>
+                    <div class="flex items-end">
+                        <button type="button" class="producto-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
+                                title="Quitar producto" aria-label="Quitar producto"
+                                {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                        </button>
+                        {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">💡 Desmarca el ✓ de la izquierda para excluir una línea del cálculo. Precio/costo vacíos usan el catálogo. <strong>Merma</strong> = piezas extra (no se cobran, suman costo).</p>
+            <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+                <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Crear producto nuevo en el catálogo</summary>
+                <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_100px_100px_80px_80px_auto]">
+                    <div class="col-span-2 md:col-span-1">
+                        <select id="qc-categoria" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <option value="">— Tipo de producto —</option>
+                            {% for c in categorias_disponibles %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-span-2 md:col-span-1"><input id="qc-nombre" type="text" placeholder="Nombre del producto" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><input id="qc-costo" type="number" step="0.01" min="0" placeholder="Costo" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><input id="qc-precio" type="number" step="0.01" min="0" placeholder="Precio" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><input id="qc-cantidad" type="number" min="1" value="1" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><input id="qc-merma" type="number" min="0" value="0" placeholder="Merma" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div class="flex items-end"><button type="button" id="qc-agregar" class="btn-secundario whitespace-nowrap">Agregar</button></div>
+                </div>
+                <p id="qc-msg" class="mt-2 text-xs text-error-600 dark:text-error-400 hidden"></p>
+            </details>
+        </section>
+    </div>
+
+    <aside class="space-y-6">
+        {% include "proyectos/_economico_panel.html" with proyecto=proyecto %}
+
+        {# ── Equipo: checkbox + rol por persona ── #}
+        <section id="equipo-widget" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</h3>
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Marca quién participa y su rol.</p>
+            <ul class="mt-3 space-y-2">
+                {% for op in equipo_opciones %}
+                <li class="flex items-center gap-2">
+                    <label class="flex flex-1 items-center gap-2 text-sm">
+                        <input type="checkbox" name="equipo_{{ op.usuario.pk }}" value="on" {% if op.asignado %}checked{% endif %}
+                               class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                        <span class="truncate text-gray-900 dark:text-gray-100">{{ op.usuario.nombre_completo|default:op.usuario.email }}</span>
+                    </label>
+                    <select name="rol_{{ op.usuario.pk }}" class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                        {% for slug, label in roles_proyecto %}<option value="{{ slug }}" {% if op.rol == slug %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                </li>
+                {% empty %}
+                <li class="text-sm text-gray-500 dark:text-gray-400">No hay usuarios activos.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </aside>
+</form>
+{% else %}
+{# Vista de solo lectura (diseñador sin permiso de edición). #}
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div class="space-y-6 xl:col-span-2">
         {% if proyecto.descripcion %}
@@ -16,131 +137,59 @@
             <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ proyecto.descripcion }}</p>
         </section>
         {% endif %}
-
-        <section>
-            <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
-                <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Productos involucrados</h2>
-                {% if puede_editar %}<button type="button" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
-                        hx-get="{% url 'proyectos-agregar-producto' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Agregar producto</button>{% endif %}
-            </div>
-            <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-                <table class="min-w-[680px] text-sm md:min-w-full">
-                    <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Producto</th>
-                            <th class="px-4 py-3 text-right">Cant.</th>
-                            <th class="px-4 py-3 text-right" title="Piezas extra que no se cobran">Merma</th>
-                            <th class="px-4 py-3 text-right">Precio</th>
-                            <th class="px-4 py-3 text-right">Costo</th>
-                            <th class="px-4 py-3 text-right">Subtotal</th>
-                            {% if puede_editar %}<th class="px-4 py-3 text-right">—</th>{% endif %}
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                        {% for pp in productos %}
-                        <tr>
-                            <td class="px-4 py-3">
-                                <div class="font-medium text-gray-900 dark:text-gray-100">{{ pp.servicio.nombre }}</div>
-                                {% if pp.variacion %}<div class="text-xs text-gray-500 dark:text-gray-400">{{ pp.variacion.nombre }}</div>{% endif %}
-                                {% if pp.nota %}<div class="text-xs text-gray-400 dark:text-gray-500">{{ pp.nota }}</div>{% endif %}
-                            </td>
-                            <td class="px-4 py-3 text-right tabular-nums">{{ pp.cantidad }}</td>
-                            <td class="px-4 py-3 text-right tabular-nums {% if pp.merma %}text-warning-600 dark:text-warning-400{% else %}text-gray-400{% endif %}">{{ pp.merma|default:"—" }}</td>
-                            <td class="px-4 py-3 text-right tabular-nums">{{ pp.precio_efectivo|dinero }}</td>
-                            <td class="px-4 py-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ pp.costo_efectivo|dinero }}</td>
-                            <td class="px-4 py-3 text-right font-medium tabular-nums text-gray-900 dark:text-gray-100">{{ pp.subtotal|dinero }}</td>
-                            {% if puede_editar %}
-                            <td class="px-4 py-3 text-right">
-                                <form method="post" action="{% url 'proyectos-quitar-producto' proyecto.pk pp.pk %}" class="inline" onsubmit="return confirm('¿Quitar este producto del proyecto?');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="text-xs font-medium text-error-600 hover:underline dark:text-error-400">Quitar</button>
-                                </form>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="{% if puede_editar %}7{% else %}6{% endif %}" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin productos vinculados aún.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                    {% if productos %}
-                    <tfoot class="border-t-2 border-gray-200 bg-gray-50 text-sm dark:border-gray-700 dark:bg-gray-900/50">
-                        <tr>
-                            <td class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300" colspan="4">Costo total (incluye merma)</td>
-                            <td class="px-4 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ proyecto.costo_productos|dinero }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ proyecto.valor_productos|dinero }}</td>
-                            {% if puede_editar %}<td></td>{% endif %}
-                        </tr>
-                    </tfoot>
-                    {% endif %}
-                </table>
-            </div>
-            {% if productos %}
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Valor a cobrar: <strong class="text-gray-700 dark:text-gray-200">{{ proyecto.valor_productos|dinero }}</strong>
-                · Costo (con merma): {{ proyecto.costo_productos|dinero }}
-                · Utilidad estimada: <strong class="{% if proyecto.valor_productos > proyecto.costo_productos %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ proyecto.utilidad_productos|dinero }}</strong>
-            </p>
-            {% endif %}
-        </section>
-
-        <section>
-            <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
-                <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">El Pizarrón — Tareas</h2>
-                {% if puede_editar %}<button type="button" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
-                        hx-get="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nueva tarea</button>{% endif %}
-            </div>
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                            <tr>
-                                <th class="px-5 py-3 text-left">Tarea</th>
-                                <th class="px-5 py-3 text-left">Asignada a</th>
-                                <th class="px-5 py-3 text-left">Estado</th>
-                                <th class="px-5 py-3 text-left">Prioridad</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                            {% for t in tareas %}
-                            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                                <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
-                                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
-                                <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}</td>
-                                <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        <section class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <table class="min-w-[480px] text-sm md:min-w-full">
+                <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400"><tr><th class="px-4 py-3 text-left">Producto</th><th class="px-4 py-3 text-right">Cant.</th><th class="px-4 py-3 text-right">Subtotal</th></tr></thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                    {% for pp in proyecto.productos.all %}
+                    <tr class="{% if not pp.incluir_en_calculo %}opacity-50{% endif %}"><td class="px-4 py-3">{{ pp.servicio.nombre }}{% if pp.variacion %} · {{ pp.variacion.nombre }}{% endif %}</td><td class="px-4 py-3 text-right">{{ pp.cantidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ pp.subtotal|dinero }}</td></tr>
+                    {% empty %}<tr><td colspan="3" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Sin productos.</td></tr>{% endfor %}
+                </tbody>
+            </table>
         </section>
     </div>
-
     <aside class="space-y-6">
-        <div>
-            {% include "_componentes_tailadmin/_info_card.html" with titulo="Fechas" items=info_fechas %}
-            {% if puede_editar %}
-            <button type="button" class="mt-2 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
-                    hx-get="{% url 'proyectos-editar-fechas' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">Editar fechas →</button>
-            {% endif %}
-        </div>
-        <div>
-            {% include "_componentes_tailadmin/_info_card.html" with titulo="Económico" items=info_economico %}
-            {% if puede_editar %}
-            <button type="button" class="mt-2 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
-                    hx-get="{% url 'proyectos-editar-economico' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">Editar montos →</button>
-            {% endif %}
-        </div>
+        {% include "proyectos/_economico_panel.html" with proyecto=proyecto %}
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</h3>
-            <div class="mt-3 text-sm">{{ info_equipo_html }}</div>
-            {% if puede_editar %}
-            <a href="{% url 'proyectos-asignar' proyecto.pk %}" class="mt-3 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Gestionar equipo →</a>
-            {% endif %}
+            <ul class="mt-3 space-y-1.5 text-sm">
+                {% for op in equipo_opciones %}{% if op.asignado %}<li class="flex items-center justify-between gap-3"><span class="text-gray-900 dark:text-gray-100">{{ op.usuario.nombre_completo|default:op.usuario.email }}</span><span class="badge badge-brand">{{ op.rol }}</span></li>{% endif %}{% endfor %}
+            </ul>
         </section>
+    </aside>
+</div>
+{% endif %}
 
+{# ── Proveedores + Tareas (fuera del form para no anidar <form>) ── #}
+<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <section class="xl:col-span-2">
+        <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Tareas</h2>
+            {% if puede_editar %}<button type="button" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                    hx-get="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nueva tarea</button>{% endif %}
+        </div>
+        <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <table class="min-w-[520px] text-sm md:min-w-full">
+                <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                    <tr><th class="px-5 py-3 text-left">Tarea</th><th class="px-5 py-3 text-left">Asignada a</th><th class="px-5 py-3 text-left">Estado</th><th class="px-5 py-3 text-left">Prioridad</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                    {% for t in tareas %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                        <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
+                        <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
+                        <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}</td>
+                        <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <aside class="space-y-6">
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <div class="flex items-center justify-between gap-2">
                 <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Proveedores del proyecto</h3>
@@ -156,8 +205,7 @@
                         <a href="{% url 'catalogo-proveedor-detalle' pv.proveedor.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ pv.proveedor.razon_social }}</a>
                         {% if puede_editar %}
                         <form method="post" action="{% url 'proyectos-quitar-proveedor' proyecto.pk pv.pk %}" onsubmit="return confirm('¿Quitar este proveedor del proyecto?');">
-                            {% csrf_token %}
-                            <button type="submit" class="text-xs text-error-600 hover:underline dark:text-error-400">Quitar</button>
+                            {% csrf_token %}<button type="submit" class="text-xs text-error-600 hover:underline dark:text-error-400">Quitar</button>
                         </form>
                         {% endif %}
                     </div>
@@ -182,7 +230,6 @@
                 {% for prov in proveedores_aplicables %}
                 <li class="flex items-center justify-between gap-3">
                     <a href="{% url 'catalogo-proveedor-detalle' prov.pk %}" class="text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ prov.razon_social }}</a>
-                    {% if prov.contacto %}<span class="text-xs text-gray-500 dark:text-gray-400">{{ prov.contacto }}</span>{% endif %}
                 </li>
                 {% endfor %}
             </ul>
@@ -194,5 +241,5 @@
     </aside>
 </div>
 
-{% if puede_editar %}{% include "_componentes_tailadmin/_action_bar.html" with sticky=False meta=action_bar_meta acciones=action_bar_acciones %}{% endif %}
+{% if puede_editar %}{% include "proyectos/_form_productos_js.html" %}{% endif %}
 {% endblock %}

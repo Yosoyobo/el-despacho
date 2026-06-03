@@ -253,13 +253,62 @@ def test_monto_estimado_se_autollena_de_productos(client, usuario_factory, clien
             "productos-MIN_NUM_FORMS": "0", "productos-MAX_NUM_FORMS": "1000",
             "productos-0-servicio": srv.pk, "productos-0-cantidad": "3",
             "productos-0-merma": "1", "productos-0-precio_unitario": "", "productos-0-costo_unitario": "",
-            "productos-0-nota": "",
+            "productos-0-incluir_en_calculo": "on", "productos-0-nota": "",
         },
         follow=True,
     )
     p = Proyecto.objects.get(nombre="ConProductos")
     assert p.monto_estimado == Decimal("360")       # 120 × 3
     assert p.merma_total == 1
+
+
+def test_iva_y_monto_calculado_solo_incluidos(proyecto_factory):
+    """C7: monto calculado/IVA/total usan solo las líneas incluidas."""
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import CategoriaServicio, Servicio
+    from apps.los_proyectos.models import ProyectoProducto
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Producción", defaults={"orden": 10})
+    srv = Servicio.objects.create(nombre="Pin", precio_base="100", costo="30", categoria=cat)
+    p = proyecto_factory()
+    ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=2, incluir_en_calculo=True)   # 200
+    ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=5, incluir_en_calculo=False)  # excluida
+    assert p.monto_calculado == Decimal("200")
+    assert p.iva_monto == Decimal("32.00")              # 16%
+    assert p.monto_a_facturar == Decimal("232.00")
+    p.iva_exento = True
+    p.save(update_fields=["iva_exento"])
+    assert p.iva_monto == Decimal("0.00")
+    assert p.monto_a_facturar == Decimal("200")
+
+
+def test_detalle_editable_guarda_inline(client, usuario_factory, proyecto_factory):
+    """C7: la página del Proyecto guarda datos + equipo desde el detalle."""
+    from apps.los_proyectos.models import ProyectoAsignacion
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory(nombre="Nombre viejo")
+    client.force_login(admin)
+    # GET muestra el form editable.
+    body = client.get(f"/proyectos/{p.pk}/").content.decode()
+    assert 'id="form-proyecto"' in body
+    # POST inline: cambia nombre + asigna al admin como líder.
+    client.post(f"/proyectos/{p.pk}/", {
+        "nombre": "Nombre nuevo", "cliente": p.cliente_id, "estado": "por_cotizar", "descripcion": "",
+        "productos-TOTAL_FORMS": "0", "productos-INITIAL_FORMS": "0",
+        "productos-MIN_NUM_FORMS": "0", "productos-MAX_NUM_FORMS": "1000",
+        f"equipo_{admin.pk}": "on", f"rol_{admin.pk}": "lider",
+    }, follow=True)
+    p.refresh_from_db()
+    assert p.nombre == "Nombre nuevo"
+    asig = ProyectoAsignacion.objects.get(proyecto=p, usuario=admin)
+    assert asig.rol_en_proyecto == "lider"
+    # Desmarcar lo quita.
+    client.post(f"/proyectos/{p.pk}/", {
+        "nombre": "Nombre nuevo", "cliente": p.cliente_id, "estado": "por_cotizar", "descripcion": "",
+        "productos-TOTAL_FORMS": "0", "productos-INITIAL_FORMS": "0",
+        "productos-MIN_NUM_FORMS": "0", "productos-MAX_NUM_FORMS": "1000",
+    }, follow=True)
+    assert not ProyectoAsignacion.objects.filter(proyecto=p, usuario=admin).exists()
 
 
 def test_modal_agregar_producto_trae_quickcreate(client, usuario_factory, proyecto_factory):
