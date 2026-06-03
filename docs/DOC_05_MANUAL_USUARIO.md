@@ -5,6 +5,46 @@
 
 ---
 
+## Novedades al 2 de junio de 2026
+
+- **Tablero (Kanban) de Proyectos en dos filas.** Al entrar a
+  **Proyectos** ahora se abre directo el tablero Kanban. Las columnas
+  se acomodan en dos filas para que se lean mejor: arriba el flujo
+  activo (Por cotizar · Esperando respuesta · En proceso de diseño ·
+  En proceso de producción) y abajo el cierre (Entregado · En pausa ·
+  Cancelado). Puedes cambiar a vista Lista con el botón de arriba a la
+  derecha.
+- **Arrastrar tarjetas en el Kanban ya funciona.** Antes salía el
+  error "No se pudo cambiar el estado". Quedó corregido: arrastra una
+  tarjeta a otra columna y su estado se actualiza solo.
+- **Fechas del proyecto con hora.** En la página del proyecto quedan
+  solo dos fechas: **Inicio** y **Entrega**, y cada una lleva hora
+  (por defecto las **12:00 PM** — la cambias si quieres). La entrega
+  muestra además la leyenda "(dentro de X días)".
+- **Productos del proyecto: precio, costo y merma.** En "Productos
+  involucrados" ahora capturas, por cada producto, su **precio** y
+  **costo** (vienen del catálogo pero los puedes ajustar solo para ese
+  proyecto) y la **merma**: las piezas extra que fabricas (muestras,
+  control de calidad, regalos). La merma **suma al costo pero no se le
+  cobra al cliente**. El detalle del proyecto muestra el **subtotal por
+  línea** y los **totales** (valor a cobrar, costo con merma y utilidad
+  estimada). El valor de los productos llena automáticamente el "Monto
+  estimado" y se refleja en el Tablero (KPI "Valor en proyectos").
+- **Proveedores por proyecto.** Nueva tarjeta "Proveedores del
+  proyecto" en el detalle: asigna a quién le encargaste algo para ESE
+  proyecto, eligiendo uno existente o **creando uno nuevo ahí mismo**.
+  Por cada proveedor registras si **ellos entregan** o **nosotros
+  recogemos**, la **fecha y hora** del compromiso (default 12:00),
+  un **contacto** y una **ubicación**. Sirve para organizar y
+  visualizar pendientes.
+- **Buzón: orden por fecha y filtros que no se pierden.** El Buzón
+  ahora ordena por fecha (lo más reciente arriba) por defecto — ya no
+  hay que cambiarlo cada vez. Los filtros por estado y tipo están
+  disponibles para todos, y cuando abres un mensaje y regresas, el
+  filtro que tenías puesto se conserva.
+
+---
+
 ## Novedades al 25 de mayo de 2026 (tarde)
 
 - **El estado del proyecto se cambia con un menú desplegable**. Antes
