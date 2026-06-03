@@ -23,6 +23,10 @@
   **IVA** (16% por default, con opción de marcar el proyecto como **exento**),
   **Monto a facturar** (calculado + IVA), **Costo de producción** (incluye
   merma) y **Utilidad estimada**. Todo se recalcula solo al cambiar productos.
+- **Las fechas del proyecto ya se guardan bien.** Las fechas de **Inicio** y
+  **Entrega** ahora muestran y conservan correctamente el día que pones; antes
+  podían verse en blanco aunque ya tuvieran fecha (y el guardado automático
+  llegaba a borrarlas). Ya quedó corregido.
 
 ## Novedades al 2 de junio de 2026
 

@@ -35,14 +35,21 @@ class FechaHoraMixin:
         for campo, label in self.pares_fecha_hora:
             actual = getattr(getattr(self, "instance", None), campo, None)
             local = timezone.localtime(actual) if actual else None
+            # `<input type="date">` SOLO acepta ISO (YYYY-MM-DD) para mostrar y
+            # enviar el valor. Sin `format="%Y-%m-%d"` el widget rendea
+            # "11/06/2026" (locale es-mx), el navegador lo rechaza y el campo
+            # queda en blanco — el autoguardado lo mandaba vacío y BORRABA la
+            # fecha. Forzamos ISO en render y aceptamos ISO al parsear.
             self.fields[f"{campo}_dia"] = forms.DateField(
                 required=False, label=label,
-                widget=forms.DateInput(attrs={"type": "date"}),
+                widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+                input_formats=["%Y-%m-%d", "%d/%m/%Y"],
                 initial=local.date() if local else None,
             )
             self.fields[f"{campo}_hora"] = forms.TimeField(
                 required=False, label="Hora",
-                widget=forms.TimeInput(attrs={"type": "time"}),
+                widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+                input_formats=["%H:%M", "%H:%M:%S"],
                 initial=local.time().replace(second=0, microsecond=0) if local else HORA_DEFAULT,
             )
 

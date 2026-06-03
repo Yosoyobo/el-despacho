@@ -311,6 +311,38 @@ def test_detalle_editable_guarda_inline(client, usuario_factory, proyecto_factor
     assert not ProyectoAsignacion.objects.filter(proyecto=p, usuario=admin).exists()
 
 
+def test_detalle_fecha_se_rendea_y_no_se_borra(client, usuario_factory, proyecto_factory):
+    """Bug LC: el `<input type=date>` necesita ISO (YYYY-MM-DD) para mostrar y
+    enviar el valor. Bajo es-mx el widget rendeaba 11/06/2026, el navegador lo
+    rechazaba (campo vacío) y el autoguardado borraba la fecha. Aquí validamos
+    que (1) el detalle rendea la fecha en ISO y (2) un autoguardado que reenvía
+    esa misma fecha NO la borra."""
+    import datetime as dt
+
+    from django.utils import timezone
+    admin = usuario_factory(rol="super_admin")
+    fecha = timezone.make_aware(dt.datetime(2026, 6, 11, 12, 0))
+    p = proyecto_factory(fecha_compromiso=fecha, fecha_inicio=fecha)
+    client.force_login(admin)
+    # (1) El detalle rendea la fecha en ISO, no en formato local.
+    body = client.get(f"/proyectos/{p.pk}/").content.decode()
+    assert 'value="2026-06-11"' in body
+    assert 'value="11/06/2026"' not in body
+    # (2) Autoguardado reenviando la fecha ISO la conserva (no la borra).
+    client.post(f"/proyectos/{p.pk}/", {
+        "nombre": p.nombre, "cliente": p.cliente_id, "estado": "por_cotizar", "descripcion": "",
+        "fecha_inicio_dia": "2026-06-11", "fecha_inicio_hora": "12:00",
+        "fecha_compromiso_dia": "2026-06-15", "fecha_compromiso_hora": "09:30",
+        "productos-TOTAL_FORMS": "0", "productos-INITIAL_FORMS": "0",
+        "productos-MIN_NUM_FORMS": "0", "productos-MAX_NUM_FORMS": "1000",
+    }, HTTP_HX_REQUEST="true")
+    p.refresh_from_db()
+    assert p.fecha_compromiso is not None
+    local = timezone.localtime(p.fecha_compromiso)
+    assert (local.year, local.month, local.day) == (2026, 6, 15)
+    assert (local.hour, local.minute) == (9, 30)
+
+
 def test_modal_agregar_producto_trae_quickcreate(client, usuario_factory, proyecto_factory):
     """C4 follow-up: el modal 'Agregar producto' permite crear producto nuevo."""
     admin = usuario_factory(rol="super_admin")
