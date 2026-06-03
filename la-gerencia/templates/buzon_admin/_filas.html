@@ -6,7 +6,7 @@
     </td>
     <td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ m.autor.email }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ m.get_tipo_display }}</td>
-    <td class="px-5 py-3"><a href="{% url 'buzon-admin-detalle' m.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ m.asunto }}</a></td>
+    <td class="px-5 py-3"><a href="{% url 'buzon-admin-detalle' m.pk %}{% if volver_qs %}?volver={{ volver_qs|urlencode }}{% endif %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ m.asunto }}</a></td>
     <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=m.estado etiqueta=m.get_estado_display %}</td>
     <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
 </tr>

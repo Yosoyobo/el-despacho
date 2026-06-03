@@ -1,6 +1,6 @@
 {% for m in mensajes %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if m.estado == 'nuevo' %}bg-warning-25 dark:bg-warning-500/5{% endif %}"
-    data-href="{% url 'buzon-detalle' m.pk %}">
+    data-href="{% url 'buzon-detalle' m.pk %}{% if volver_qs %}?volver={{ volver_qs|urlencode }}{% endif %}">
     {% if es_admin_buzon %}<td class="px-5 py-3" data-no-row-click onclick="event.stopPropagation()"><input type="checkbox" class="buzon-row-check h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" value="{{ m.pk }}"></td>{% endif %}
     <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">#{{ m.pk }}</td>
     <td class="px-5 py-3 text-center">
@@ -8,7 +8,7 @@
     </td>
     {% if es_admin_buzon %}<td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ m.autor.email }}</td>{% endif %}
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ m.get_tipo_display }}</td>
-    <td class="px-5 py-3"><a href="{% url 'buzon-detalle' m.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ m.asunto }}</a></td>
+    <td class="px-5 py-3"><a href="{% url 'buzon-detalle' m.pk %}{% if volver_qs %}?volver={{ volver_qs|urlencode }}{% endif %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ m.asunto }}</a></td>
     <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=m.estado etiqueta=m.get_estado_display %}</td>
     <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
 </tr>

@@ -11,10 +11,13 @@ Permisos:
   buzon.responder    → puede escribir respuesta_admin
 """
 
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -47,15 +50,14 @@ def lista(request):
     if tipo:
         qs = qs.filter(tipo=tipo)
 
-    # Orden — S-LC-Feedback-V2: selector prioridad ↔ fecha. Default prioridad
-    # (mensajes urgentes arriba). El default del modelo ya es por prioridad
-    # pero hacemos explícito el order_by para que el selector funcione.
-    orden = request.GET.get("orden") or "prioridad"
-    if orden == "fecha":
-        qs = qs.order_by("-creado_en")
-    else:
-        orden = "prioridad"
+    # Orden — selector prioridad ↔ fecha. C1 S-LC-Feedback-V6: default ahora
+    # es FECHA (lo más reciente arriba) por pedido de LC — antes era prioridad.
+    orden = request.GET.get("orden") or "fecha"
+    if orden == "prioridad":
         qs = qs.order_by("-prioridad", "-creado_en")
+    else:
+        orden = "fecha"
+        qs = qs.order_by("-creado_en")
 
     base = MensajeBuzon.objects.all() if es_admin_buzon else MensajeBuzon.objects.filter(autor=user)
     kpis = {
@@ -77,14 +79,15 @@ def lista(request):
         {"label": "Recibido"},
     ]
     # Toggle: KPI cards clickeables. Cuando el filtro está activo, el link
-    # apunta a "" (sin filtro); cuando no, aplica el filtro.
+    # apunta a "" (sin filtro); cuando no, aplica el filtro. `orden` solo se
+    # incluye si no es el default (fecha), para mantener las URLs limpias.
     def _kpi_link(filtro):
         partes = []
         if estado != filtro:
             partes.append(f"estado={filtro}")
         if tipo:
             partes.append(f"tipo={tipo}")
-        if orden and orden != "prioridad":
+        if orden and orden != "fecha":
             partes.append(f"orden={orden}")
         return "?" + "&".join(partes) if partes else "?"
     # Querystring base para preservar filtros + orden en links del header
@@ -94,8 +97,21 @@ def lista(request):
             partes.append(f"estado={estado}")
         if tipo:
             partes.append(f"tipo={tipo}")
-        partes.append(f"orden={nuevo_orden}")
-        return "?" + "&".join(partes)
+        if nuevo_orden != "fecha":
+            partes.append(f"orden={nuevo_orden}")
+        return "?" + "&".join(partes) if partes else "?"
+
+    # C1 S-LC-Feedback-V6: querystring de los filtros activos. Se cuelga de
+    # cada fila como `?volver=…` para que el detalle pueda regresar al listado
+    # con el mismo filtro aplicado (el repo no preservaba filtros al volver).
+    volver_partes = []
+    if estado:
+        volver_partes.append(f"estado={estado}")
+    if tipo:
+        volver_partes.append(f"tipo={tipo}")
+    if orden and orden != "fecha":
+        volver_partes.append(f"orden={orden}")
+    volver_qs = "&".join(volver_partes)
 
     return render(request, "buzon/lista.html", {
         "mensajes": qs,
@@ -103,6 +119,7 @@ def lista(request):
         "estado_filtro": estado,
         "tipo_filtro": tipo,
         "orden_actual": orden,
+        "volver_qs": volver_qs,
         "link_orden_prioridad": _qs_con_orden("prioridad"),
         "link_orden_fecha": _qs_con_orden("fecha"),
         "kpis": kpis,
@@ -135,6 +152,10 @@ def detalle(request, pk: int):
     if not es_admin_buzon and msg.autor_id != user.pk:
         raise Http404
 
+    # C1 S-LC-Feedback-V6: `volver` trae el querystring de filtros del listado
+    # para regresar con el mismo filtro aplicado.
+    volver = (request.GET.get("volver") or "").strip()
+
     # Auto-marcar como leído al abrir un mensaje "nuevo" (solo admin).
     if request.method == "GET" and es_admin_buzon and msg.estado == "nuevo":
         msg.estado = "leido"
@@ -162,11 +183,13 @@ def detalle(request, pk: int):
                     payload={"mensaje_id": m.pk},
                 ))
                 messages.success(request, "Respuesta guardada.")
-                return redirect("buzon-detalle", pk=m.pk)
+                destino = reverse("buzon-detalle", args=[m.pk])
+                if volver:
+                    destino += "?" + urlencode({"volver": volver})
+                return redirect(destino)
         else:
             form = RespuestaAdminForm(instance=msg)
 
-    from django.urls import reverse
     info_buzon = [
         {"label": "Tipo", "value": msg.get_tipo_display()},
         {"label": "Autor", "value": msg.autor.email},
@@ -175,16 +198,18 @@ def detalle(request, pk: int):
     ]
     if msg.respondido_en:
         info_buzon.append({"label": "Respondido", "value": msg.respondido_en.strftime("%Y-%m-%d %H:%M")})
+    # C1: regresa al listado con el filtro previo (si vino `volver`).
+    url_lista = reverse("buzon-lista") + (f"?{volver}" if volver else "")
     return render(request, "buzon/detalle.html", {
         "mensaje": msg, "form": form,
         "es_admin_buzon": es_admin_buzon,
         "puede_responder": puede_responder,
         "info_buzon": info_buzon,
         "breadcrumb_items": [
-            {"url": reverse("buzon-lista"), "label": "Buzón"},
+            {"url": url_lista, "label": "Buzón"},
             {"label": f"#{msg.pk}"},
         ],
-        "back_url": reverse("buzon-lista"),
+        "back_url": url_lista,
         "back_label": "Buzón",
     })
 

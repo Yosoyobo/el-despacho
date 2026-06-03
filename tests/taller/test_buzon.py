@@ -70,18 +70,49 @@ def test_detalle_ajeno_404(client, usuario_factory):
 
 
 def test_prioridad_orden_descendente(client, usuario_factory):
-    """Lista del buzón ordena por prioridad descendente y luego fecha desc."""
+    """Con ?orden=prioridad ordena por prioridad desc y luego fecha desc.
+
+    C1 S-LC-Feedback-V6: el default del listado cambió a 'fecha', por eso el
+    orden por prioridad se pide explícitamente.
+    """
     from buzon.models import MensajeBuzon
     u = usuario_factory(rol="super_admin")
     MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="baja", cuerpo="x"*20, prioridad=1)
     MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="urgente", cuerpo="y"*20, prioridad=9)
     MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="media", cuerpo="z"*20, prioridad=5)
     client.force_login(u)
-    resp = client.get("/buzon/")
+    resp = client.get("/buzon/?orden=prioridad")
     assert resp.status_code == 200
     body = resp.content.decode()
     # urgente (9) debe aparecer antes que media (5) antes que baja (1).
     assert body.index("urgente") < body.index("media") < body.index("baja")
+
+
+def test_buzon_default_orden_fecha(client, usuario_factory):
+    """C1: sin ?orden, el listado ordena por fecha (lo más reciente arriba)."""
+    from buzon.models import MensajeBuzon
+    u = usuario_factory(rol="super_admin")
+    viejo = MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="viejo-msg", cuerpo="x"*20, prioridad=9)
+    nuevo = MensajeBuzon.objects.create(autor=u, tipo="otro", asunto="nuevo-msg", cuerpo="y"*20, prioridad=1)
+    # `creado_en` es auto_now_add; el segundo creado es más reciente.
+    client.force_login(u)
+    body = client.get("/buzon/").content.decode()
+    # El más reciente (nuevo-msg, prioridad baja) va arriba pese a su prioridad.
+    assert body.index("nuevo-msg") < body.index("viejo-msg")
+
+
+def test_buzon_preserva_filtro_al_volver(client, usuario_factory):
+    """C1: las filas llevan ?volver= y el detalle reconstruye el back link."""
+    from buzon.models import MensajeBuzon
+    u = usuario_factory(rol="super_admin")
+    m = MensajeBuzon.objects.create(autor=u, tipo="problema", asunto="con-filtro", cuerpo="z"*20)
+    client.force_login(u)
+    # Listado filtrado por estado=nuevo.
+    body = client.get("/buzon/?estado=nuevo").content.decode()
+    assert "volver=" in body
+    # El detalle abierto con volver reconstruye el back_url con el filtro.
+    detalle = client.get(f"/buzon/{m.pk}/?volver=estado%3Dnuevo").content.decode()
+    assert "/buzon/?estado=nuevo" in detalle
 
 
 def test_accion_masiva_marca_leidos(client, usuario_factory):

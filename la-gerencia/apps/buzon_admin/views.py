@@ -23,6 +23,35 @@ def lista(request):
         qs = qs.filter(estado=estado)
     if tipo:
         qs = qs.filter(tipo=tipo)
+
+    # Orden — C1 S-LC-Feedback-V6: selector prioridad ↔ fecha, default FECHA
+    # (alineado con el Buzón del Taller).
+    orden = request.GET.get("orden") or "fecha"
+    if orden == "prioridad":
+        qs = qs.order_by("-prioridad", "-creado_en")
+    else:
+        orden = "fecha"
+        qs = qs.order_by("-creado_en")
+
+    def _qs_con_orden(nuevo_orden: str) -> str:
+        partes = []
+        if estado:
+            partes.append(f"estado={estado}")
+        if tipo:
+            partes.append(f"tipo={tipo}")
+        if nuevo_orden != "fecha":
+            partes.append(f"orden={nuevo_orden}")
+        return "?" + "&".join(partes) if partes else "?"
+
+    volver_partes = []
+    if estado:
+        volver_partes.append(f"estado={estado}")
+    if tipo:
+        volver_partes.append(f"tipo={tipo}")
+    if orden and orden != "fecha":
+        volver_partes.append(f"orden={orden}")
+    volver_qs = "&".join(volver_partes)
+
     from django.db.models import Count
 
     from lib.graficas import donut_desde_conteo
@@ -38,6 +67,10 @@ def lista(request):
         "mensajes": qs,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
+        "orden_actual": orden,
+        "volver_qs": volver_qs,
+        "link_orden_prioridad": _qs_con_orden("prioridad"),
+        "link_orden_fecha": _qs_con_orden("fecha"),
         "kpis": kpis,
         "donut_tipos_json": donut_desde_conteo(por_tipo),
         "cabeceras_buzon_admin": [
@@ -56,6 +89,7 @@ def lista(request):
 @require_http_methods(["GET", "POST"])
 def detalle(request, pk: int):
     msg = get_object_or_404(MensajeBuzon, pk=pk)
+    volver = (request.GET.get("volver") or "").strip()
     # Auto-marcar como leído al abrir un mensaje "nuevo".
     if request.method == "GET" and msg.estado == "nuevo":
         msg.estado = "leido"
@@ -92,7 +126,12 @@ def detalle(request, pk: int):
                     payload={"mensaje_id": obj.pk, "estado": obj.estado},
                 ))
             messages.success(request, "Mensaje actualizado.")
-            return redirect("buzon-admin-detalle", pk=msg.pk)
+            from django.urls import reverse as _reverse
+            from urllib.parse import urlencode as _urlencode
+            destino = _reverse("buzon-admin-detalle", args=[msg.pk])
+            if volver:
+                destino += "?" + _urlencode({"volver": volver})
+            return redirect(destino)
     else:
         form = RespuestaAdminForm(instance=msg)
     from django.urls import reverse
@@ -105,14 +144,15 @@ def detalle(request, pk: int):
     ]
     if msg.respondido_en:
         info_buzon.append({"label": "Respondido", "value": msg.respondido_en.strftime("%Y-%m-%d %H:%M")})
+    url_lista = reverse("buzon-admin-lista") + (f"?{volver}" if volver else "")
     return render(request, "buzon_admin/detalle.html", {
         "mensaje": msg, "form": form,
         "info_buzon": info_buzon,
         "breadcrumb_items": [
-            {"url": reverse("buzon-admin-lista"), "label": "Buzón"},
+            {"url": url_lista, "label": "Buzón"},
             {"label": f"#{msg.pk}"},
         ],
-        "back_url": reverse("buzon-admin-lista"),
+        "back_url": url_lista,
         "back_label": "Buzón",
     })
 
