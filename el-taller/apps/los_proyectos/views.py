@@ -27,6 +27,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from lib.permisos import (
     es_admin,
@@ -133,17 +134,30 @@ def lista(request):
 
 
 @login_required
+@ensure_csrf_cookie
 def kanban(request):
-    """Vista Kanban: columnas por estado, tarjetas movibles visualmente."""
+    """Vista Kanban: columnas por estado, tarjetas movibles visualmente.
+
+    `ensure_csrf_cookie` garantiza que la cookie `csrftoken` exista al cargar
+    la página — el drag-and-drop hace POST a /cambiar-estado/ leyendo el token
+    de esa cookie (no hay <form> visible que lo siembre). Sin esto, el POST
+    salía con token vacío → 403 → "No se pudo cambiar el estado".
+    """
     qs = _proyectos_visibles(request.user).prefetch_related(
         "productos__servicio", "productos__variacion",
     )
-    columnas = []
+    # C3 S-LC-Feedback-V6: dos filas. Arriba el flujo activo; abajo los
+    # estados de cierre/pausa. Estados custom nuevos caen arriba por default.
+    SLUGS_FILA_ABAJO = ("entregado", "en_pausa", "cancelado")
+    columnas = {}
     for slug, label in ESTADOS_PROYECTO:
         proyectos = list(qs.filter(estado=slug).order_by("fecha_compromiso", "-creado_en"))
-        columnas.append({"slug": slug, "label": label, "proyectos": proyectos, "total": len(proyectos)})
+        columnas[slug] = {"slug": slug, "label": label, "proyectos": proyectos, "total": len(proyectos)}
+    fila_arriba = [columnas[s] for s, _ in ESTADOS_PROYECTO if s not in SLUGS_FILA_ABAJO]
+    fila_abajo = [columnas[s] for s in SLUGS_FILA_ABAJO if s in columnas]
     return render(request, "proyectos/kanban.html", {
-        "columnas": columnas,
+        "fila_arriba": fila_arriba,
+        "fila_abajo": fila_abajo,
         "puede_crear": puede_editar_proyecto(request.user, None),
     })
 
