@@ -262,3 +262,35 @@ def test_monto_estimado_se_autollena_de_productos(client, usuario_factory, clien
     p = Proyecto.objects.get(nombre="ConProductos")
     assert p.monto_estimado == Decimal("360")       # 120 × 3
     assert p.merma_total == 1
+
+
+def test_agregar_y_quitar_proveedor_proyecto(client, usuario_factory, proyecto_factory):
+    """C5 S-LC-Feedback-V6: asignar proveedor con compromiso fecha+hora y quitarlo."""
+    from django.utils import timezone
+
+    from apps.el_catalogo.models import Proveedor
+    from apps.los_proyectos.models import ProyectoProveedor
+    admin = usuario_factory(rol="super_admin")
+    prov = Proveedor.objects.create(razon_social="Maquilas SA")
+    p = proyecto_factory()
+    client.force_login(admin)
+    resp = client.post(
+        f"/proyectos/{p.pk}/agregar-proveedor",
+        {
+            "proveedor": prov.pk, "tipo": "recogemos_nosotros",
+            "compromiso_dia": "2026-06-20", "compromiso_hora": "",
+            "contacto": "Juan 555", "ubicacion": "Bodega 3", "nota": "",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+    assert resp.status_code == 204
+    pv = ProyectoProveedor.objects.get(proyecto=p, proveedor=prov)
+    local = timezone.localtime(pv.compromiso)
+    assert (local.hour, local.minute) == (12, 0)     # default mediodía
+    assert pv.ubicacion == "Bodega 3"
+    # Aparece en el detalle.
+    detalle = client.get(f"/proyectos/{p.pk}/").content.decode()
+    assert "Maquilas SA" in detalle
+    # Quitar.
+    client.post(f"/proyectos/{p.pk}/quitar-proveedor/{pv.pk}")
+    assert not ProyectoProveedor.objects.filter(pk=pv.pk).exists()

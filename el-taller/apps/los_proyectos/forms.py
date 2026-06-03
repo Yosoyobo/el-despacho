@@ -1,6 +1,6 @@
 from datetime import datetime, time
 
-from apps.el_catalogo.models import Servicio, Variacion
+from apps.el_catalogo.models import Proveedor, Servicio, Variacion
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
@@ -8,6 +8,7 @@ from apps.los_proyectos.models import (
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
+    ProyectoProveedor,
 )
 from django import forms
 from django.forms import inlineformset_factory
@@ -186,6 +187,31 @@ ProyectoProductoFormSetEdit = inlineformset_factory(
     Proyecto, ProyectoProducto, form=ProyectoProductoForm,
     extra=1, can_delete=True,
 )
+
+
+class ProyectoProveedorForm(FechaHoraMixin, forms.ModelForm):
+    """C5 S-LC-Feedback-V6 — asignar un proveedor a un proyecto con su
+    compromiso de entrega/recolección (fecha+hora), contacto y ubicación."""
+
+    pares_fecha_hora = (("compromiso", "Fecha de compromiso"),)
+    proveedor = forms.ModelChoiceField(
+        queryset=Proveedor.objects.filter(activo=True).order_by("razon_social"),
+        label="Proveedor",
+    )
+
+    class Meta:
+        model = ProyectoProveedor
+        fields = ["proveedor", "tipo", "contacto", "ubicacion", "nota"]
+        labels = {
+            "tipo": "Tipo",
+            "contacto": "Contacto",
+            "ubicacion": "Ubicación",
+            "nota": "Nota (opcional)",
+        }
+        widgets = {
+            "ubicacion": forms.TextInput(attrs={"placeholder": "Dirección o referencia"}),
+            "contacto": forms.TextInput(attrs={"placeholder": "Nombre / teléfono"}),
+        }
 
 
 class ClienteInlineForm(forms.ModelForm):

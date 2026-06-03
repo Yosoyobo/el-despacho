@@ -1,0 +1,81 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div>
+                <p class="font-mono text-xs uppercase tracking-wider text-brand-500 dark:text-brand-400">{{ proyecto.codigo }}</p>
+                <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">Agregar proveedor</h2>
+            </div>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <form hx-post="{% url 'proyectos-agregar-proveedor' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
+            {% csrf_token %}
+            <div class="space-y-4 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                {% for f in form %}
+                <div>
+                    {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}{% if f.field.required %} <span class="text-error-500">*</span>{% endif %}</label>{% endif %}
+                    {{ f }}
+                    {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                {% endfor %}
+
+                {# C5: alta rápida de proveedor sin salir del modal. #}
+                <details class="rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+                    <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Nuevo proveedor</summary>
+                    <div class="mt-3 grid grid-cols-2 gap-3">
+                        <div class="col-span-2"><input id="pv-razon" type="text" placeholder="Razón social *" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                        <input id="pv-contacto" type="text" placeholder="Contacto" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input id="pv-telefono" type="text" placeholder="Teléfono" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <div class="col-span-2 flex items-center justify-between gap-2">
+                            <p id="pv-msg" class="text-xs text-error-600 dark:text-error-400"></p>
+                            <button type="button" id="pv-crear" class="btn-secundario whitespace-nowrap">Crear y seleccionar</button>
+                        </div>
+                    </div>
+                </details>
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">Agregar proveedor</button>
+            </footer>
+        </form>
+    </div>
+</div>
+<script>
+(function () {
+    const btn = document.getElementById('pv-crear');
+    if (!btn) return;
+    const sel = document.querySelector('#modal-slot select[name="proveedor"]');
+    const razon = document.getElementById('pv-razon');
+    const contacto = document.getElementById('pv-contacto');
+    const tel = document.getElementById('pv-telefono');
+    const msg = document.getElementById('pv-msg');
+    btn.addEventListener('click', async function () {
+        msg.textContent = '';
+        if (!razon.value.trim()) { msg.textContent = 'La razón social es obligatoria.'; return; }
+        btn.disabled = true;
+        try {
+            const csrf = document.querySelector('#modal-slot input[name="csrfmiddlewaretoken"]').value;
+            const body = new FormData();
+            body.append('razon_social', razon.value.trim());
+            body.append('nombre_contacto', contacto.value.trim());
+            body.append('telefono', tel.value.trim());
+            const resp = await fetch('{% url "catalogo-proveedor-quick-create" %}', {
+                method: 'POST', headers: {'X-CSRFToken': csrf}, body: body,
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) { msg.textContent = data.error || 'Error al crear.'; btn.disabled = false; return; }
+            if (sel) {
+                const opt = document.createElement('option');
+                opt.value = data.id; opt.textContent = data.razon_social; opt.selected = true;
+                sel.appendChild(opt);
+            }
+            razon.value = ''; contacto.value = ''; tel.value = '';
+            const det = btn.closest('details'); if (det) det.open = false;
+        } catch (e) {
+            msg.textContent = 'Error de red. Intenta otra vez.';
+        }
+        btn.disabled = false;
+    });
+})();
+</script>

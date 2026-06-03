@@ -577,3 +577,45 @@ def quitar_producto(request, pk, prod_pk):
     proyecto.recalcular_monto_estimado()  # C4
     messages.success(request, "Producto quitado.")
     return redirect(_redir_detalle(proyecto))
+
+
+@login_required
+def agregar_proveedor_modal(request, pk):
+    """C5 S-LC-Feedback-V6: asignar un proveedor (existente o nuevo) al proyecto."""
+    from apps.el_catalogo.models import CategoriaServicio
+    from apps.los_proyectos.forms import ProyectoProveedorForm
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        form = ProyectoProveedorForm(request.POST)
+        if form.is_valid():
+            pv = form.save(commit=False)
+            pv.proyecto = proyecto
+            pv.save()
+            emitir(EventoPortavoz(
+                tipo="proyecto.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proyecto_id": proyecto.pk, "campo": "proveedor_asignado", "proveedor_id": pv.proveedor_id},
+            ))
+            messages.success(request, "Proveedor agregado al proyecto.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})
+            return redirect(_redir_detalle(proyecto))
+    else:
+        form = ProyectoProveedorForm()
+    return render(request, "proyectos/_modal_agregar_proveedor.html", {"form": form, "proyecto": proyecto})
+
+
+@login_required
+def quitar_proveedor(request, pk, prov_pk):
+    from apps.los_proyectos.models import ProyectoProveedor
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    if request.method != "POST":
+        return HttpResponseForbidden("Solo POST.")
+    ProyectoProveedor.objects.filter(proyecto=proyecto, pk=prov_pk).delete()
+    messages.success(request, "Proveedor quitado del proyecto.")
+    return redirect(_redir_detalle(proyecto))
