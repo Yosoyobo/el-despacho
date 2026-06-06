@@ -55,14 +55,61 @@ def _credencial(clave: str) -> str | None:
     return Credencial.obtener(clave)
 
 
+def parsear_cliente_json(texto: str) -> dict[str, Any]:
+    """Extrae client_id / client_secret / redirect_uris del JSON descargado de
+    Google Cloud (formato {"web": {...}} o {"installed": {...}}).
+
+    Lanza ValueError con mensaje claro si el JSON no tiene la forma esperada.
+    """
+    import json
+    try:
+        data = json.loads(texto)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"El archivo no es un JSON válido: {exc}") from exc
+
+    bloque = data.get("web") or data.get("installed") or data
+    cid = bloque.get("client_id")
+    sec = bloque.get("client_secret")
+    if not cid or not sec:
+        raise ValueError(
+            "El JSON no trae client_id y client_secret. Asegúrate de pegar el "
+            "archivo de 'ID de cliente de OAuth' descargado de Google Cloud."
+        )
+    return {
+        "client_id": cid,
+        "client_secret": sec,
+        "redirect_uris": bloque.get("redirect_uris", []),
+        "project_id": bloque.get("project_id"),
+    }
+
+
+def cliente_id_actual() -> str | None:
+    """El client_id en uso (dedicado de Drive o, si no, el del login). No es secreto."""
+    return _credencial("google_drive_oauth_client_id") or _credencial("google_oauth_client_id")
+
+
+def cliente_configurado() -> bool:
+    """True si hay un cliente OAuth usable (dedicado de Drive o el del login)."""
+    drive_cid = _credencial("google_drive_oauth_client_id")
+    drive_sec = _credencial("google_drive_oauth_client_secret")
+    if drive_cid and drive_sec:
+        return True
+    return bool(_credencial("google_oauth_client_id") and _credencial("google_oauth_client_secret"))
+
+
 def _cliente_oauth() -> tuple[str, str]:
-    """(client_id, client_secret) del cliente OAuth compartido con el login."""
-    cid = _credencial("google_oauth_client_id")
-    sec = _credencial("google_oauth_client_secret")
+    """(client_id, client_secret) del cliente OAuth.
+
+    Prefiere un cliente DEDICADO de Drive (`google_drive_oauth_client_*`); si
+    no está, cae al cliente del login con Google (`google_oauth_client_*`). Esto
+    permite usar un cliente aparte para Drive sin tocar el SSO.
+    """
+    cid = _credencial("google_drive_oauth_client_id") or _credencial("google_oauth_client_id")
+    sec = _credencial("google_drive_oauth_client_secret") or _credencial("google_oauth_client_secret")
     if not cid or not sec:
         raise NoConfiguradoError(
-            "Falta el cliente OAuth de Google. Configúralo primero en "
-            "Los Ajustes (es el mismo del login con Google)."
+            "Falta el cliente OAuth de Google. Pega el archivo de cliente "
+            "(JSON) en el asistente, o configura el del login con Google."
         )
     return cid, sec
 
@@ -137,11 +184,7 @@ class GoogleDriveWrapper:
 
     def esta_configurado(self) -> bool:
         """True si hay cliente OAuth + refresh token guardado."""
-        return bool(
-            _credencial("google_oauth_client_id")
-            and _credencial("google_oauth_client_secret")
-            and _credencial("google_drive_oauth_refresh_token")
-        )
+        return bool(cliente_configurado() and _credencial("google_drive_oauth_refresh_token"))
 
     def esta_conectado(self) -> bool:
         """True si además la carpeta raíz ya quedó creada y guardada."""
@@ -246,11 +289,11 @@ class GoogleDriveWrapper:
         """
         self.recargar()
 
-        if not (_credencial("google_oauth_client_id") and _credencial("google_oauth_client_secret")):
+        if not cliente_configurado():
             return {
                 "ok": False,
                 "estado": "no_conectado",
-                "mensaje": "Falta el cliente OAuth de Google (el del login). Configúralo en Los Ajustes.",
+                "mensaje": "Falta el cliente OAuth de Google. Pega tu archivo de cliente (JSON) en el paso 2.",
             }
         if not _credencial("google_drive_oauth_refresh_token"):
             return {
@@ -311,4 +354,7 @@ __all__ = [
     "SCOPES",
     "construir_url_consentimiento",
     "intercambiar_codigo_por_refresh_token",
+    "parsear_cliente_json",
+    "cliente_configurado",
+    "cliente_id_actual",
 ]

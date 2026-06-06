@@ -12,6 +12,7 @@ urlpatterns = [
     path("google_oauth/probar", views.probar_google_oauth, name="ajustes-probar-google-oauth"),
     # Asistente guiado de Google Drive (OAuth sin clave). Antes del slug catch-all.
     path("google-drive/", views.google_drive_guia, name="ajustes-google-drive"),
+    path("google-drive/cliente", views.google_drive_guardar_cliente, name="ajustes-google-drive-cliente"),
     path("google-drive/conectar", views.google_drive_conectar, name="ajustes-google-drive-conectar"),
     path("google-drive/oauth/callback", views.google_drive_callback, name="ajustes-google-drive-callback"),
     path("google-drive/desconectar", views.google_drive_desconectar, name="ajustes-google-drive-desconectar"),

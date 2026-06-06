@@ -9,8 +9,9 @@
 
 - **Ya puedes conectar Google Drive, sin archivos ni complicaciones.** En La
   Gerencia, entra a **Ajustes → Conectar Google Drive**. Es un asistente con
-  pasos cortos en lenguaje sencillo: habilitas Drive en Google, registras una
-  dirección (una sola vez) y haces clic en **"Conectar mi cuenta de Google"**.
+  pasos cortos en lenguaje sencillo: habilitas Drive en Google, pegas el
+  archivo de cliente que Google te da (se guarda cifrado), registras una
+  dirección de regreso y haces clic en **"Conectar mi cuenta de Google"**.
   Das permiso con la cuenta de la empresa y **el sistema crea su propia carpeta
   solo** ("El Despacho - Adjuntos") — no tienes que crear ni compartir nada a
   mano, ni descargar ningún archivo de clave. Al final, el botón **"Probar

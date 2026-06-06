@@ -98,6 +98,45 @@ def test_drive_guia_renderiza_y_muestra_redirect_uri(client, usuario_factory):
     assert "/ajustes/google-drive/oauth/callback" in body
 
 
+def test_drive_guardar_cliente_desde_json(client, usuario_factory):
+    """Pegar el JSON del cliente extrae id/secret a slots dedicados de Drive."""
+    import json
+
+    from ajustes.models.credencial import Credencial
+    client.force_login(usuario_factory(rol="super_admin"))
+    blob = json.dumps({"web": {
+        "client_id": "525803625406-abc.apps.googleusercontent.com",
+        "client_secret": "GOCSPX-secreto",
+        "project_id": "el-despacho-learning-center",
+        "redirect_uris": ["https://testserver/ajustes/google-drive/oauth/callback"],
+    }})
+    resp = client.post("/ajustes/google-drive/cliente", {"cliente_json": blob}, follow=True)
+    assert resp.status_code == 200
+    assert Credencial.obtener("google_drive_oauth_client_id") == "525803625406-abc.apps.googleusercontent.com"
+    assert Credencial.obtener("google_drive_oauth_client_secret") == "GOCSPX-secreto"
+    # El callback estaba en redirect_uris → mensaje de éxito (no warning).
+    assert b"ya est\xc3\xa1 registrada" in resp.content
+
+
+def test_drive_guardar_cliente_json_invalido(client, usuario_factory):
+    from ajustes.models.credencial import Credencial
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.post("/ajustes/google-drive/cliente", {"cliente_json": "no es json"}, follow=True)
+    assert resp.status_code == 200
+    assert not Credencial.esta_configurado("google_drive_oauth_client_id")
+
+
+def test_drive_conectar_usa_cliente_dedicado(client, usuario_factory):
+    """Con cliente dedicado de Drive (sin el de SSO), conectar funciona igual."""
+    from ajustes.models.credencial import Credencial
+    Credencial.guardar("google_drive_oauth_client_id", "drive-cid.apps.googleusercontent.com")
+    Credencial.guardar("google_drive_oauth_client_secret", "drive-secret")
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.post("/ajustes/google-drive/conectar")
+    assert resp.status_code == 302
+    assert "drive-cid.apps.googleusercontent.com" in resp.url
+
+
 def test_drive_conectar_redirige_a_google(client, usuario_factory):
     _config_oauth()
     client.force_login(usuario_factory(rol="super_admin"))

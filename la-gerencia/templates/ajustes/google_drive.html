@@ -70,29 +70,50 @@
         </div>
     </details>
 
-    {# ── Paso 2 ─────────────────────────────────────────────────── #}
-    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" {% if not conectado %}open{% endif %}>
+    {# ── Paso 2: pegar el JSON del cliente OAuth ─────────────────── #}
+    <details class="group rounded-2xl border bg-white shadow-theme-sm dark:bg-gray-900 {% if oauth_listo %}border-success-300 dark:border-success-700{% else %}border-gray-200 dark:border-gray-800{% endif %}" {% if not oauth_listo %}open{% endif %}>
         <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">2</span>
-            Registrar la dirección de regreso (una sola vez)
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white {% if oauth_listo %}bg-success-500{% else %}bg-brand-500{% endif %}">{% if oauth_listo %}✓{% else %}2{% endif %}</span>
+            Pegar el archivo de cliente OAuth
+            {% if oauth_listo %}<span class="badge badge-success ml-auto">Guardado</span>{% endif %}
         </summary>
         <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
-            <p>Para que Google sepa a dónde regresarte después de dar permiso, hay que registrar esta dirección en el cliente de Google (el mismo del login). Cópiala tal cual:</p>
+            <p>Google te dio un archivo JSON al crear el "ID de cliente de OAuth". Ábrelo (Bloc de notas / TextEdit), copia <strong>todo</strong> su contenido y pégalo aquí. Se guarda cifrado en La Bóveda.</p>
+            {% if oauth_listo and cliente_id %}
+            <p class="text-xs text-gray-500 dark:text-gray-400">Cliente actual: <code class="rounded bg-gray-100 px-1.5 py-0.5 font-mono dark:bg-gray-800">{{ cliente_id }}</code></p>
+            {% endif %}
+            <form method="post" action="{% url 'ajustes-google-drive-cliente' %}" class="campo-form space-y-2">
+                {% csrf_token %}
+                <textarea name="cliente_json" rows="5" autocomplete="off" spellcheck="false"
+                    placeholder='Pega aquí el archivo, empieza con {"web": { ...'
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs dark:border-gray-700 dark:bg-gray-900"></textarea>
+                <button type="submit" class="btn-primario text-xs">Guardar cliente</button>
+            </form>
+        </div>
+    </details>
+
+    {# ── Paso 3 ─────────────────────────────────────────────────── #}
+    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">3</span>
+            Confirmar la dirección de regreso
+        </summary>
+        <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
+            <p>El cliente OAuth debe tener registrada esta dirección de regreso. Si al guardar el JSON (paso 2) salió «ya está registrada ✓», puedes saltar este paso.</p>
             <code class="block break-all rounded-lg bg-gray-100 px-3 py-2 font-mono text-xs text-gray-900 dark:bg-gray-800 dark:text-gray-100">{{ redirect_uri }}</code>
             <ol class="list-decimal space-y-1 pl-5">
-                <li>Abre <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="text-brand-500 underline">Credenciales de Google Cloud</a>.</li>
-                <li>En "ID de cliente de OAuth 2.0", haz clic en el cliente del sistema (el del login con Google).</li>
-                <li>En <strong>"URIs de redireccionamiento autorizados"</strong>, haz clic en <strong>+ Agregar URI</strong> y pega la dirección de arriba.</li>
-                <li><strong>Guardar</strong>. Los cambios pueden tardar unos minutos en activarse en Google.</li>
+                <li>Abre <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="text-brand-500 underline">Credenciales de Google Cloud</a> y haz clic en tu cliente OAuth.</li>
+                <li>En <strong>"URIs de redireccionamiento autorizados"</strong> → <strong>+ Agregar URI</strong> → pega la dirección de arriba → <strong>Guardar</strong>.</li>
+                <li>Puede tardar unos minutos en activarse en Google.</li>
             </ol>
             <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="btn-secundario inline-block text-xs">Abrir Credenciales →</a>
         </div>
     </details>
 
-    {# ── Paso 3: conectar ───────────────────────────────────────── #}
+    {# ── Paso 4: conectar ───────────────────────────────────────── #}
     <details class="group rounded-2xl border bg-white shadow-theme-sm dark:bg-gray-900 {% if conectado %}border-success-300 dark:border-success-700{% else %}border-gray-200 dark:border-gray-800{% endif %}" open>
         <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white {% if conectado %}bg-success-500{% else %}bg-brand-500{% endif %}">{% if conectado %}✓{% else %}3{% endif %}</span>
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white {% if conectado %}bg-success-500{% else %}bg-brand-500{% endif %}">{% if conectado %}✓{% else %}4{% endif %}</span>
             Conectar tu cuenta de Google
             {% if conectado %}<span class="badge badge-success ml-auto">Conectada</span>{% endif %}
         </summary>
@@ -109,10 +130,10 @@
         </div>
     </details>
 
-    {# ── Paso 4: probar ─────────────────────────────────────────── #}
+    {# ── Paso 5: probar ─────────────────────────────────────────── #}
     <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" open>
         <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">4</span>
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">5</span>
             Probar que todo quedó bien
         </summary>
         <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">

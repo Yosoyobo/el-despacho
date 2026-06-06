@@ -84,9 +84,10 @@ def _drive_redirect_uri(request) -> str:
 
 
 def _drive_contexto(request):
-    from lib.google_oauth import GoogleOAuthConfig
+    from lib.google_drive import cliente_configurado, cliente_id_actual
     return {
-        "oauth_listo": GoogleOAuthConfig.esta_configurado(),
+        "oauth_listo": cliente_configurado(),
+        "cliente_id": cliente_id_actual() or "",
         "conectado": Credencial.esta_configurado("google_drive_oauth_refresh_token"),
         "carpeta_lista": Credencial.esta_configurado("google_drive_carpeta_raiz_id"),
         "redirect_uri": _drive_redirect_uri(request),
@@ -103,15 +104,56 @@ def google_drive_guia(request):
 
 @requires_role("super_admin")
 @require_http_methods(["POST"])
+def google_drive_guardar_cliente(request):
+    """Recibe el JSON del cliente OAuth, extrae id/secret y los cifra en La Bóveda.
+
+    Usa slots DEDICADOS de Drive para no tocar el cliente del login con Google.
+    Verifica que el redirect URI del callback ya esté en el JSON y avisa si no.
+    """
+    from lib.google_drive import parsear_cliente_json
+
+    texto = (request.POST.get("cliente_json") or "").strip()
+    if not texto:
+        messages.error(request, "Pega el contenido del archivo JSON del cliente OAuth.")
+        return redirect("ajustes-google-drive")
+
+    try:
+        datos = parsear_cliente_json(texto)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("ajustes-google-drive")
+
+    Credencial.guardar("google_drive_oauth_client_id", datos["client_id"], usuario=request.user)
+    Credencial.guardar("google_drive_oauth_client_secret", datos["client_secret"], usuario=request.user)
+
+    emitir(EventoPortavoz(
+        tipo="ajuste.credencial_guardada",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"clave": "google_drive_oauth_client"},
+    ))
+
+    callback = _drive_redirect_uri(request)
+    if callback in datos.get("redirect_uris", []):
+        messages.success(request, "Cliente OAuth guardado. La dirección de regreso ya está registrada ✓. Ahora conecta tu cuenta.")
+    else:
+        messages.warning(
+            request,
+            f"Cliente OAuth guardado, pero tu archivo no incluye la dirección de "
+            f"regreso «{callback}». Agrégala en Google Cloud (paso 2) antes de conectar.",
+        )
+    return redirect("ajustes-google-drive")
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
 def google_drive_conectar(request):
     """Arranca el consentimiento OAuth: redirige al admin a Google."""
     import secrets
 
-    from lib.google_drive import construir_url_consentimiento
-    from lib.google_oauth import GoogleOAuthConfig
+    from lib.google_drive import cliente_configurado, construir_url_consentimiento
 
-    if not GoogleOAuthConfig.esta_configurado():
-        messages.error(request, "Primero configura el cliente OAuth de Google (el del login con Google).")
+    if not cliente_configurado():
+        messages.error(request, "Primero pega el archivo de cliente OAuth (paso 2).")
         return redirect("ajustes-google-drive")
 
     state = secrets.token_urlsafe(24)
