@@ -1,0 +1,18 @@
+{% comment %}
+Render-V1 — Calendario de selección de fecha inline (vanilla JS, sin librería).
+Params:
+- campo: bound field tipo DateField (type=date). Se renderiza OCULTO (conserva
+  name/id para submit); el calendario lo lee/escribe en ISO yyyy-mm-dd.
+- titulo: etiqueta visible ("Inicio" / "Entrega").
+
+El JS de `_form_productos_js.html` busca `[data-calendario]`, lee el id del
+input destino y pinta el grid Lun–Dom. Día elegido = negritas + círculo azul;
+fin de semana en gris medio; días pasados en gris claro.
+{% endcomment %}
+<div>
+    <span class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ titulo }}</span>
+    <div class="hidden">{{ campo }}</div>
+    <div data-calendario="{{ campo.id_for_label }}"
+         class="rounded-xl border border-gray-200 bg-white p-3 text-sm dark:border-gray-800 dark:bg-gray-900"></div>
+    {% if campo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ campo.errors|join:" · " }}</p>{% endif %}
+</div>

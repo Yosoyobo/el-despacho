@@ -5,6 +5,34 @@
 
 ---
 
+## Novedades al 6 de junio de 2026
+
+- **La página del Proyecto se rediseñó para verse y trabajarse más claro.**
+  - **Barra de estado con colores.** Arriba ves todos los estados en fila; el
+    actual resaltado con un contorno de su color y los demás atenuados. Haz
+    **clic en cualquier estado para cambiarlo al instante** (sin ventanas
+    extra).
+  - **Calendarios visuales para Inicio y Entrega.** En vez de escribir la
+    fecha, eliges el día en un calendario de lunes a domingo: el día elegido
+    sale en azul, los fines de semana en gris y los días que ya pasaron
+    apagados.
+  - **Interruptor de IVA.** En el bloque **Económico** hay un toggle para
+    **incluir o quitar el IVA (16%)** del cálculo. Lo prendes o apagas y los
+    totales se recalculan solos.
+  - **Cada producto es una tarjeta.** Cada tarjeta tiene un interruptor para
+    **incluirla o no en el total**: si la apagas, la tarjeta se atenúa y su
+    "Monto calculado" queda en $0.00 (el resto del proyecto no la cuenta).
+  - **Impresión y gastos por producto.** Dentro de cada producto puedes elegir
+    un **proveedor de impresión** con su costo, y agregar con **"+ Proceso"**
+    gastos operativos sueltos (clavos, pegamento, viáticos, embalaje…). Esos
+    montos **suman al costo del proyecto** (bajan la utilidad) pero **no
+    cambian lo que se le cobra al cliente**.
+  - **Proveedores del proyecto.** A la derecha aparece cuánto se le **debe a
+    cada proveedor** por este proyecto (sumado de los productos y la
+    impresión).
+- **Las "migas de pan" (la ruta arriba de cada página) ahora son más grandes**
+  y fáciles de leer en todo el sistema.
+
 ## Novedades al 5 de junio de 2026
 
 - **Ya puedes conectar Google Drive, sin archivos ni complicaciones.** En La
@@ -384,18 +412,31 @@ Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clic
 
 ### Detalle del proyecto
 
-A la izquierda ves la descripción y dos tablas:
+La página es **editable directo** (los cambios se guardan solos; verás
+"Guardado ✓" arriba). De arriba hacia abajo:
 
-- **Productos involucrados** (lo que vas a producirle al cliente) con botón "+ Agregar producto" y "Quitar" por fila.
-- **Tareas** del Pizarrón con botón "+ Nueva tarea".
+- **Barra de estado** con todos los estados en colores. El actual está
+  resaltado; haz clic en otro para cambiarlo al instante.
+- **Datos del proyecto:** nombre, cliente (con "+ Nuevo cliente"), descripción
+  y dos **calendarios** (Inicio y Entrega) para elegir las fechas.
+- **Productos involucrados:** cada producto es una **tarjeta** con:
+  - Interruptor para **incluirlo o no** en el total (apagado = se atenúa y su
+    monto queda en $0.00).
+  - Categoría · Producto · Cantidad · Merma · Precio unitario.
+  - **Proveedor** principal + costo unitario + notas.
+  - **Impresión** (proveedor + costo) y el botón **"+ Proceso"** para sumar
+    gastos operativos sueltos (materiales, viáticos, embalaje…).
+  - **Monto calculado** (precio × cantidad) abajo a la derecha.
 
-A la derecha tres tarjetas:
+A la derecha:
 
-- **Fechas** con link "Editar fechas →"
-- **Económico** (monto estimado, cotizado, facturado) con "Editar montos →"
-- **Equipo** con "Gestionar equipo →"
+- **Económico:** Monto calculado, IVA (con su interruptor para activarlo o no),
+  Monto a facturar, Costo de producción, Utilidad estimada y la lista de
+  gastos operativos.
+- **Equipo:** marca quién participa y su rol.
+- **Proveedores:** cuánto se le debe a cada proveedor por este proyecto.
 
-Abajo, una barra con los botones principales: Cambiar estado · Editar · Asignar.
+Abajo está la tabla de **Tareas** del Pizarrón con "+ Nueva tarea".
 
 ### Crear producto sin salir del proyecto
 

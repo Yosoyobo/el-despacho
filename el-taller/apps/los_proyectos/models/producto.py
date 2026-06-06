@@ -28,6 +28,15 @@ class ProyectoProducto(models.Model):
         blank=True,
         related_name="en_proyectos",
     )
+    # S-LC-Proyecto-Render-V1: proveedor principal del producto (fila
+    # "PROVEEDOR" del render). Su costo unitario es `costo_unitario`. El monto
+    # se le adeuda a este proveedor (ver Proyecto.deuda_por_proveedor).
+    proveedor = models.ForeignKey(
+        "el_catalogo.Proveedor",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="productos_proyecto",
+    )
     cantidad = models.PositiveIntegerField(default=1)
     # C4 S-LC-Feedback-V6: precio/costo por proyecto (override). Si quedan en
     # null, se heredan del catálogo (servicio.precio_base / costo de la
@@ -105,10 +114,24 @@ class ProyectoProducto(models.Model):
 
     @property
     def costo_total_linea(self) -> Decimal:
-        """Costo real de producir la línea: incluye las piezas de merma."""
+        """Costo real de producir la línea: incluye las piezas de merma.
+        NO incluye los procesos (esos son montos fijos aparte)."""
         return self.costo_efectivo * (self.cantidad + self.merma)
+
+    # ── Procesos / impresión (S-LC-Proyecto-Render-V1) ───────────────────────
+
+    @property
+    def costo_procesos(self) -> Decimal:
+        """Suma FIJA de los procesos de esta línea (impresión + operativos).
+        No se multiplica por cantidad. Usa los procesos precargados si los hay."""
+        return sum((Decimal(str(p.costo or 0)) for p in self.procesos.all()), CERO)
+
+    @property
+    def costo_total_con_procesos(self) -> Decimal:
+        """Costo de la línea (producto + merma) más sus procesos fijos."""
+        return self.costo_total_linea + self.costo_procesos
 
     @property
     def utilidad(self) -> Decimal:
-        """Subtotal menos el costo real (incluyendo merma)."""
-        return self.subtotal - self.costo_total_linea
+        """Subtotal menos el costo real (merma + procesos)."""
+        return self.subtotal - self.costo_total_con_procesos

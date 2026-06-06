@@ -126,7 +126,12 @@ class Proyecto(models.Model):
     IVA_TASA = Decimal("0.16")
 
     def _productos_calc(self):
-        return list(self.productos.select_related("servicio", "variacion").all())
+        return list(
+            self.productos
+            .select_related("servicio", "variacion", "proveedor")
+            .prefetch_related("procesos__proveedor")
+            .all()
+        )
 
     def _productos_incluidos(self):
         """C7: solo las líneas marcadas para entrar en los cálculos de dinero."""
@@ -145,8 +150,12 @@ class Proyecto(models.Model):
 
     @property
     def costo_produccion(self):
-        """Costo real de producir los productos incluidos, con merma."""
-        return sum((pp.costo_total_linea for pp in self._productos_incluidos()), Decimal("0.00"))
+        """Costo real de producir los productos incluidos: costo de la línea
+        (con merma) MÁS los procesos fijos (impresión + operativos)."""
+        return sum(
+            (pp.costo_total_con_procesos for pp in self._productos_incluidos()),
+            Decimal("0.00"),
+        )
 
     # Alias retro-compatible.
     @property
@@ -173,6 +182,56 @@ class Proyecto(models.Model):
     def utilidad_productos(self):
         """Monto calculado menos el costo de producción (con merma)."""
         return self.monto_calculado - self.costo_produccion
+
+    # ── Proveedores y gastos derivados de los productos (Render-V1) ───────────
+
+    def deuda_por_proveedor(self):
+        """Cuánto se le adeuda a cada proveedor por ESTE proyecto.
+
+        Suma, de los productos INCLUIDOS:
+        - costo del proveedor principal del producto = costo_total_linea
+        - costo de cada proceso de impresión ligado a un proveedor (fijo)
+
+        Retorna lista de dicts {proveedor, total} ordenada por total desc.
+        Los gastos operativos (sin proveedor) NO entran aquí — ver
+        `gastos_operativos`. El tipo de entrega (entregan/recogemos) lo aporta
+        `ProyectoProveedor` por separado en la UI.
+        """
+        acumulado: dict[int, dict] = {}
+        for pp in self._productos_incluidos():
+            if pp.proveedor_id:
+                slot = acumulado.setdefault(
+                    pp.proveedor_id, {"proveedor": pp.proveedor, "total": Decimal("0.00")}
+                )
+                slot["total"] += pp.costo_total_linea
+            for proc in pp.procesos.all():
+                if proc.tipo == "impresion" and proc.proveedor_id:
+                    slot = acumulado.setdefault(
+                        proc.proveedor_id,
+                        {"proveedor": proc.proveedor, "total": Decimal("0.00")},
+                    )
+                    slot["total"] += Decimal(str(proc.costo or 0))
+        return sorted(acumulado.values(), key=lambda d: d["total"], reverse=True)
+
+    def gastos_operativos(self):
+        """Gastos operativos (sin proveedor) de los productos incluidos.
+
+        Lista de dicts {descripcion, costo, producto} para enlistar en los
+        gastos del proyecto (clavos, pegamento, viáticos, embalaje…)."""
+        filas = []
+        for pp in self._productos_incluidos():
+            for proc in pp.procesos.all():
+                if proc.tipo == "operativo":
+                    filas.append({
+                        "descripcion": proc.descripcion or "Gasto operativo",
+                        "costo": Decimal(str(proc.costo or 0)),
+                        "producto": pp,
+                    })
+        return filas
+
+    @property
+    def gastos_operativos_total(self):
+        return sum((g["costo"] for g in self.gastos_operativos()), Decimal("0.00"))
 
     def recalcular_monto_estimado(self, guardar=True):
         """C4/C7: el monto estimado se deriva de los productos INCLUIDOS.

@@ -88,6 +88,27 @@ def color_estado(estado: str) -> str:
     return _COLORES_FALLBACK.get(estado, "badge-gray")
 
 
+# Render-V1: color de TEXTO por token de badge, para la barra de status
+# (activo = contorno del color del texto; inactivos al 40% de opacidad).
+# Todas estas clases están en el safelist de tailwind.config.js.
+_TEXTO_POR_BADGE = {
+    "badge-blue": "text-blue-light-600 dark:text-blue-light-400",
+    "badge-brand": "text-brand-600 dark:text-brand-400",
+    "badge-orange": "text-orange-600 dark:text-orange-400",
+    "badge-warning": "text-warning-600 dark:text-warning-400",
+    "badge-success": "text-success-600 dark:text-success-400",
+    "badge-error": "text-error-600 dark:text-error-400",
+    "badge-gray": "text-gray-600 dark:text-gray-300",
+    "badge-purple": "text-purple-600 dark:text-purple-400",
+}
+
+
+@register.filter(name="estado_text_clase")
+def estado_text_clase(color_badge: str) -> str:
+    """Clase(s) de color de texto para un token de badge de estado."""
+    return _TEXTO_POR_BADGE.get(color_badge, "text-gray-600 dark:text-gray-300")
+
+
 @register.filter(name="estado_label")
 def estado_label(estado: str) -> str:
     """Label visible del estado (configurable desde Gerencia)."""

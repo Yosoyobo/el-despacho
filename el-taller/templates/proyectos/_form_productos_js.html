@@ -1,111 +1,265 @@
-{% comment %}C4/C7 S-LC-Feedback-V6: JS del formset de productos (clone, quitar, quick-create, prefill precio/costo). Usado por el detalle editable y el form de Nuevo/Editar proyecto.{% endcomment %}
+{% comment %}Render-V1: JS del editor de proyecto — calendarios inline, tarjetas de producto (toggle incluir, monto en vivo, impresión + procesos operativos serializados a JSON), filtro por categoría, prefill desde catálogo, clonado, quick-create y sync del estado. Vanilla JS, sin librerías. Usado por detalle (autoguardado) y form de Nuevo/Editar.{% endcomment %}
 <script>
-(function() {
+(function () {
     const SERVICIOS_DATOS = {{ servicios_datos_json|default:"{}"|safe }};
     const form = document.getElementById('form-proyecto') || document.querySelector('form');
+    let cargando = true;
 
-    function marcarIncluir(scope) {
-        // Las líneas nuevas entran al cálculo por default.
-        scope.querySelectorAll('input[name$="-incluir_en_calculo"]').forEach(c => { c.checked = true; });
-    }
-    function prellenarDesdeServicio(sel) {
-        const fila = sel.closest('.producto-fila');
-        if (!fila) return;
-        const datos = SERVICIOS_DATOS[sel.value];
-        if (!datos) return;
-        const precio = fila.querySelector('input[name$="-precio_unitario"]');
-        const costo = fila.querySelector('input[name$="-costo_unitario"]');
-        if (precio && !precio.value) precio.value = datos.precio;
-        if (costo && !costo.value) costo.value = datos.costo;
-    }
-    document.addEventListener('change', function (e) {
-        if (e.target && e.target.matches('select[name$="-servicio"]')) prellenarDesdeServicio(e.target);
-    });
+    // ── Utilidades ────────────────────────────────────────────────────────
+    function num(v) { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isNaN(n) ? 0 : n; }
+    function fmt(n) { return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function autosave() { if (!cargando && form) form.dispatchEvent(new Event('change', { bubbles: true })); }
 
-    // Quitar línea.
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.producto-eliminar');
-        if (!btn) return;
-        const fila = btn.closest('.producto-fila');
-        const checkboxId = btn.getAttribute('data-delete-checkbox');
-        if (checkboxId) {
-            const cb = document.getElementById(checkboxId);
-            if (cb) cb.checked = true;
-            if (fila) fila.style.display = 'none';
-        } else if (fila) {
-            const totalForms = document.querySelector('input[name="productos-TOTAL_FORMS"]');
-            fila.remove();
-            if (totalForms) totalForms.value = parseInt(totalForms.value, 10) - 1;
+    // ── Calendarios inline ──────────────────────────────────────────────────
+    const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    function montarCalendario(cont) {
+        const input = document.getElementById(cont.getAttribute('data-calendario'));
+        if (!input) return;
+        const v = /^\d{4}-\d{2}-\d{2}$/.test(input.value) ? input.value.split('-').map(Number) : null;
+        const hoy = new Date();
+        cont._view = v ? { y: v[0], m: v[1] - 1 } : { y: hoy.getFullYear(), m: hoy.getMonth() };
+        function render() {
+            const { y, m } = cont._view;
+            const startW = (new Date(y, m, 1).getDay() + 6) % 7;
+            const dim = new Date(y, m + 1, 0).getDate();
+            const sel = input.value;
+            const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+            let h = '<div class="mb-2 flex items-center justify-between">';
+            h += '<button type="button" data-nav="-1" class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">&#8249;</button>';
+            h += '<span class="text-sm font-medium text-gray-700 dark:text-gray-200">' + MESES[m] + ' ' + y + '</span>';
+            h += '<button type="button" data-nav="1" class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">&#8250;</button></div>';
+            h += '<div class="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-gray-400">';
+            ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(d => h += '<span>' + d + '</span>');
+            h += '</div><div class="mt-1 grid grid-cols-7 gap-1">';
+            for (let i = 0; i < startW; i++) h += '<span></span>';
+            for (let d = 1; d <= dim; d++) {
+                const iso = y + '-' + pad(m + 1) + '-' + pad(d);
+                const col = (startW + d - 1) % 7;
+                const dt = new Date(y, m, d);
+                let cls = 'mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm ';
+                if (iso === sel) cls += 'bg-brand-500 font-bold text-white';
+                else if (dt < t0) cls += 'text-gray-300 dark:text-gray-600';
+                else if (col >= 5) cls += 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]';
+                else cls += 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06]';
+                h += '<button type="button" data-iso="' + iso + '" class="' + cls + '">' + d + '</button>';
+            }
+            cont.innerHTML = h + '</div>';
         }
-        if (form) form.dispatchEvent(new Event('change', {bubbles: true}));  // autoguarda
+        cont._render = render;
+        render();
+        cont.addEventListener('click', function (e) {
+            const nav = e.target.closest('[data-nav]');
+            if (nav) {
+                cont._view.m += parseInt(nav.dataset.nav, 10);
+                if (cont._view.m < 0) { cont._view.m = 11; cont._view.y--; }
+                if (cont._view.m > 11) { cont._view.m = 0; cont._view.y++; }
+                render(); return;
+            }
+            const day = e.target.closest('[data-iso]');
+            if (day) {
+                input.value = day.dataset.iso;
+                render();
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    }
+    document.querySelectorAll('[data-calendario]').forEach(montarCalendario);
+
+    // ── Tarjetas de producto ─────────────────────────────────────────────────
+    function precioEfectivo(card) {
+        const sel = card.querySelector('select[name$="-servicio"]');
+        const pIn = card.querySelector('input[name$="-precio_unitario"]');
+        if (pIn && pIn.value !== '') return num(pIn.value);
+        if (sel && SERVICIOS_DATOS[sel.value]) return num(SERVICIOS_DATOS[sel.value].precio);
+        return 0;
+    }
+    function recalcular(card) {
+        const inc = card.querySelector('input[name$="-incluir_en_calculo"]');
+        const cant = num((card.querySelector('input[name$="-cantidad"]') || {}).value);
+        const incluido = !inc || inc.checked;
+        const monto = card.querySelector('[data-monto]');
+        if (monto) monto.textContent = fmt(incluido ? precioEfectivo(card) * cant : 0);
+        const cuerpo = card.querySelector('[data-cuerpo]');
+        if (cuerpo) cuerpo.classList.toggle('opacity-40', !incluido), cuerpo.classList.toggle('pointer-events-none', !incluido);
+    }
+    function prellenarServicio(sel) {
+        const card = sel.closest('[data-card]'); if (!card) return;
+        const datos = SERVICIOS_DATOS[sel.value];
+        if (datos) {
+            const precio = card.querySelector('input[name$="-precio_unitario"]');
+            const costo = card.querySelector('input[name$="-costo_unitario"]');
+            if (precio && !precio.value) precio.value = datos.precio;
+            if (costo && !costo.value) costo.value = datos.costo;
+            const cat = card.querySelector('[data-cat-filtro]');
+            if (cat && datos.categoria) cat.value = datos.categoria;
+        }
+        recalcular(card);
+    }
+    function aplicarCatFiltro(card) {
+        const cat = card.querySelector('[data-cat-filtro]');
+        const serv = card.querySelector('select[name$="-servicio"]');
+        if (!cat || !serv) return;
+        const val = cat.value;
+        Array.from(serv.options).forEach(opt => {
+            if (!opt.value) { opt.hidden = false; return; }
+            const d = SERVICIOS_DATOS[opt.value];
+            opt.hidden = !!(val && d && d.categoria !== val);
+        });
+    }
+    function setCatDesdeServicio(card) {
+        const cat = card.querySelector('[data-cat-filtro]');
+        const serv = card.querySelector('select[name$="-servicio"]');
+        if (cat && serv && serv.value && SERVICIOS_DATOS[serv.value] && SERVICIOS_DATOS[serv.value].categoria) {
+            cat.value = SERVICIOS_DATOS[serv.value].categoria;
+        }
+    }
+
+    // ── Procesos (impresión + operativos) → JSON ──────────────────────────────
+    function serializar(card) {
+        const hidden = card.querySelector('input[name$="-procesos_json"]');
+        if (!hidden) return;
+        const arr = [];
+        const impProv = card.querySelector('.imp-proveedor');
+        const impCosto = card.querySelector('.imp-costo');
+        if (impProv && impProv.value) arr.push({ tipo: 'impresion', proveedor_id: parseInt(impProv.value, 10), costo: num(impCosto && impCosto.value) });
+        card.querySelectorAll('.proceso-fila').forEach(fila => {
+            const d = (fila.querySelector('.proc-desc') || {}).value || '';
+            const c = num((fila.querySelector('.proc-costo') || {}).value);
+            if (d.trim() || c) arr.push({ tipo: 'operativo', descripcion: d.trim(), costo: c });
+        });
+        hidden.value = JSON.stringify(arr);
+    }
+    function renumerar(card) {
+        card.querySelectorAll('.proceso-num').forEach((s, i) => s.textContent = (i + 1));
+    }
+    function agregarProceso(card) {
+        const lista = card.querySelector('.proceso-lista');
+        const fila = document.createElement('div');
+        fila.className = 'proceso-fila grid grid-cols-[auto_1fr_120px_auto] items-center gap-2';
+        fila.innerHTML = '<span class="proceso-num text-xs font-medium text-gray-400"></span>' +
+            '<input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento, viáticos, embalaje">' +
+            '<input type="number" step="0.01" min="0" class="proc-costo w-full" placeholder="0.00">' +
+            '<button type="button" class="proceso-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>';
+        lista.appendChild(fila);
+        renumerar(card);
+    }
+
+    function initCard(card) {
+        setCatDesdeServicio(card);
+        aplicarCatFiltro(card);
+        recalcular(card);
+        serializar(card);
+        renumerar(card);
+    }
+    document.querySelectorAll('#formset-productos [data-card]').forEach(initCard);
+
+    // ── Delegación de eventos ─────────────────────────────────────────────────
+    document.addEventListener('change', function (e) {
+        const t = e.target;
+        const card = t.closest && t.closest('[data-card]');
+        if (t.matches && t.matches('select[name$="-servicio"]')) { prellenarServicio(t); }
+        else if (card && t.matches && t.matches('[data-cat-filtro]')) { aplicarCatFiltro(card); }
+        else if (card && t.matches && t.matches('input[name$="-incluir_en_calculo"], input[name$="-cantidad"], input[name$="-precio_unitario"]')) { recalcular(card); }
+        if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .proc-desc, .proc-costo')) { serializar(card); }
+        // Sync del estado oculto cuando se cambia desde la barra de status.
+        const chip = t.closest && t.closest('[data-estado-slug]');
+        if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }
+    });
+    document.addEventListener('input', function (e) {
+        const t = e.target;
+        const card = t.closest && t.closest('[data-card]');
+        if (!card) return;
+        if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"]')) recalcular(card);
+        if (t.matches('.imp-costo, .proc-desc, .proc-costo')) serializar(card);
+    });
+    document.addEventListener('click', function (e) {
+        // Sync inmediato del estado oculto al clickear un chip de status.
+        const chip = e.target.closest && e.target.closest('[data-estado-slug]');
+        if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }
+
+        const card = e.target.closest && e.target.closest('[data-card]');
+        const add = e.target.closest && e.target.closest('.proceso-add');
+        if (add && card) { agregarProceso(card); return; }
+        const del = e.target.closest && e.target.closest('.proceso-del');
+        if (del && card) { del.closest('.proceso-fila').remove(); renumerar(card); serializar(card); autosave(); return; }
+        // Quitar producto.
+        const elim = e.target.closest && e.target.closest('.producto-eliminar');
+        if (elim) {
+            const fila = elim.closest('[data-card]');
+            const checkboxId = elim.getAttribute('data-delete-checkbox');
+            if (checkboxId) { const cb = document.getElementById(checkboxId); if (cb) cb.checked = true; if (fila) fila.style.display = 'none'; }
+            else if (fila) { const tf = document.querySelector('input[name$="-TOTAL_FORMS"]'); fila.remove(); if (tf) tf.value = parseInt(tf.value, 10) - 1; }
+            autosave();
+        }
     });
 
-    function clonarUltima(seleccionarServicioId, cantidadVal, precioVal, costoVal, mermaVal) {
-        const totalForms = document.querySelector('input[name$="-TOTAL_FORMS"]');
-        const contenedor = document.getElementById('formset-productos');
-        const idx = parseInt(totalForms.value, 10);
-        const ultimo = contenedor.lastElementChild;
-        const clon = ultimo.cloneNode(true);
+    // ── Clonar tarjeta ────────────────────────────────────────────────────────
+    function clonarUltima(servId, cantVal, precioVal, costoVal, mermaVal) {
+        const tf = document.querySelector('input[name$="-TOTAL_FORMS"]');
+        const cont = document.getElementById('formset-productos');
+        const idx = parseInt(tf.value, 10);
+        const clon = cont.lastElementChild.cloneNode(true);
         clon.innerHTML = clon.innerHTML
             .replace(new RegExp('productos-' + (idx - 1) + '-', 'g'), 'productos-' + idx + '-')
             .replace(new RegExp('id_productos-' + (idx - 1) + '-', 'g'), 'id_productos-' + idx + '-');
-        clon.querySelectorAll('input, select, textarea').forEach(function(el) {
-            if (el.type === 'checkbox') { el.checked = false; }
+        const lista = clon.querySelector('.proceso-lista'); if (lista) lista.innerHTML = '';
+        clon.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.type === 'checkbox') { el.checked = !!(el.name && el.name.endsWith('-incluir_en_calculo')); }
             else if (el.tagName === 'SELECT') {
-                if (el.name.endsWith('-servicio') && seleccionarServicioId) { el.value = String(seleccionarServicioId); }
-                else { el.selectedIndex = 0; }
+                if (el.name && el.name.endsWith('-servicio') && servId) el.value = String(servId);
+                else el.selectedIndex = 0;
             }
-            else if (el.name && el.name.endsWith('-cantidad')) { el.value = cantidadVal || '1'; }
-            else if (el.name && el.name.endsWith('-precio_unitario')) { el.value = precioVal || ''; }
-            else if (el.name && el.name.endsWith('-costo_unitario')) { el.value = costoVal || ''; }
-            else if (el.name && el.name.endsWith('-merma')) { el.value = mermaVal || '0'; }
-            else { el.value = ''; }
+            else if (el.name && el.name.endsWith('-cantidad')) el.value = cantVal || '1';
+            else if (el.name && el.name.endsWith('-precio_unitario')) el.value = precioVal || '';
+            else if (el.name && el.name.endsWith('-costo_unitario')) el.value = costoVal || '';
+            else if (el.name && el.name.endsWith('-merma')) el.value = mermaVal || '0';
+            else el.value = '';
         });
-        clon.style.display = '';
-        marcarIncluir(clon);
         clon.querySelectorAll('.producto-eliminar').forEach(b => b.removeAttribute('data-delete-checkbox'));
-        contenedor.appendChild(clon);
-        totalForms.value = idx + 1;
+        clon.querySelectorAll('span.hidden').forEach(s => { if (s.querySelector('input[name$="-DELETE"]')) s.remove(); });
+        clon.style.display = '';
+        cont.appendChild(clon);
+        tf.value = idx + 1;
+        initCard(clon);
         return clon;
     }
-
     const addBtn = document.getElementById('add-producto');
     if (addBtn) addBtn.addEventListener('click', () => clonarUltima(null, '1'));
 
-    // Quick-create de Servicio.
+    // ── Quick-create de Servicio ──────────────────────────────────────────────
     const qcBtn = document.getElementById('qc-agregar');
     if (qcBtn) {
-        const qcCat = document.getElementById('qc-categoria');
-        const qcNom = document.getElementById('qc-nombre');
-        const qcCos = document.getElementById('qc-costo');
-        const qcPre = document.getElementById('qc-precio');
-        const qcCnt = document.getElementById('qc-cantidad');
-        const qcMer = document.getElementById('qc-merma');
-        const qcMsg = document.getElementById('qc-msg');
+        const $ = id => document.getElementById(id);
+        const qcMsg = $('qc-msg');
         function msg(t) { if (qcMsg) { qcMsg.textContent = t; qcMsg.classList.remove('hidden'); } }
-        qcBtn.addEventListener('click', async function() {
+        qcBtn.addEventListener('click', async function () {
             if (qcMsg) qcMsg.classList.add('hidden');
-            if (!qcCat.value || !qcNom.value.trim() || !qcPre.value) { msg('Tipo, nombre y precio son obligatorios.'); return; }
+            const cat = $('qc-categoria'), nom = $('qc-nombre'), pre = $('qc-precio'), cos = $('qc-costo'), cnt = $('qc-cantidad'), mer = $('qc-merma');
+            if (!cat.value || !nom.value.trim() || !pre.value) { msg('Tipo, nombre y precio son obligatorios.'); return; }
             qcBtn.disabled = true;
             try {
                 const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
                 const body = new FormData();
-                body.append('nombre', qcNom.value.trim());
-                body.append('categoria_id', qcCat.value);
-                body.append('precio_base', qcPre.value);
-                body.append('costo', qcCos.value || '0');
-                const resp = await fetch('{% url "catalogo-quick-create" %}', { method: 'POST', headers: {'X-CSRFToken': csrf}, body });
+                body.append('nombre', nom.value.trim());
+                body.append('categoria_id', cat.value);
+                body.append('precio_base', pre.value);
+                body.append('costo', cos.value || '0');
+                const resp = await fetch('{% url "catalogo-quick-create" %}', { method: 'POST', headers: { 'X-CSRFToken': csrf }, body });
                 const data = await resp.json();
                 if (!resp.ok || !data.ok) { msg(data.error || 'Error al crear.'); qcBtn.disabled = false; return; }
-                document.querySelectorAll('select[name$="-servicio"]').forEach(function(sel) {
+                SERVICIOS_DATOS[data.id] = { precio: pre.value, costo: cos.value || '0', categoria: cat.value };
+                document.querySelectorAll('select[name$="-servicio"]').forEach(sel => {
                     const opt = document.createElement('option'); opt.value = data.id; opt.textContent = data.label; sel.appendChild(opt);
                 });
-                clonarUltima(data.id, qcCnt.value || '1', qcPre.value, qcCos.value || '', qcMer.value || '0');
-                qcNom.value = ''; qcPre.value = ''; qcCnt.value = '1'; qcCat.selectedIndex = 0; qcCos.value = ''; if (qcMer) qcMer.value = '0';
-                if (form) form.dispatchEvent(new Event('change', {bubbles: true}));  // autoguarda
+                clonarUltima(data.id, cnt.value || '1', pre.value, cos.value || '', mer.value || '0');
+                nom.value = ''; pre.value = ''; cnt.value = '1'; cat.selectedIndex = 0; cos.value = ''; if (mer) mer.value = '0';
+                autosave();
             } catch (e) { msg('Error de red. Intenta otra vez.'); }
             qcBtn.disabled = false;
         });
     }
+
+    cargando = false;
 })();
 </script>

@@ -1,0 +1,25 @@
+{% load proyectos_extras %}
+{% comment %}
+Render-V1 — Barra de status del proyecto con código de color.
+El estado activo se muestra con un contorno delgado del color de su texto;
+los demás al 40% de opacidad. Click = cambio instantáneo (sin modal).
+hx-target se reemplaza a sí mismo (outerHTML) con esta misma barra.
+{% endcomment %}
+<div id="proyecto-status-bar-{{ proyecto.pk }}"
+     class="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900"
+     {% if puede_editar %}hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}>
+    {% for e in estados_barra %}
+    {% if e.slug == proyecto.estado %}
+    <span class="inline-flex items-center rounded-full border border-current px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 {{ e.color|estado_text_clase }}">{{ e.label }}</span>
+    {% elif puede_editar %}
+    <button type="button" data-estado-slug="{{ e.slug }}"
+            hx-post="{% url 'proyectos-cambiar-estado' proyecto.pk %}"
+            hx-vals='{"estado": "{{ e.slug }}"}'
+            hx-target="#proyecto-status-bar-{{ proyecto.pk }}"
+            hx-swap="outerHTML"
+            class="inline-flex items-center rounded-full border border-transparent px-3.5 py-1.5 text-sm font-medium opacity-40 transition hover:opacity-100 {{ e.color|estado_text_clase }}">{{ e.label }}</button>
+    {% else %}
+    <span class="inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium opacity-40 {{ e.color|estado_text_clase }}">{{ e.label }}</span>
+    {% endif %}
+    {% endfor %}
+</div>

@@ -79,16 +79,33 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
     cliente = forms.ModelChoiceField(queryset=Cliente.activos.all())
     estado = forms.ChoiceField(choices=[])
     pares_fecha_hora = (("fecha_inicio", "Inicio"), ("fecha_compromiso", "Entrega"))
+    # Render-V1: toggle "Aplicar IVA (16%)" = inverso de iva_exento. ON = se
+    # cobra IVA. Más natural para el usuario que un check "exento".
+    aplicar_iva = forms.BooleanField(
+        required=False, initial=True, label="Aplicar IVA (16%)",
+        widget=forms.CheckboxInput(attrs={"class": "peer sr-only"}),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["estado"].choices = _choices_estado_activos()
+        inst = getattr(self, "instance", None)
+        if inst is not None and inst.pk:
+            self.fields["aplicar_iva"].initial = not inst.iva_exento
         self.order_fields([
             "nombre", "cliente", "descripcion", "estado",
             "fecha_inicio_dia", "fecha_inicio_hora",
             "fecha_compromiso_dia", "fecha_compromiso_hora",
-            "iva_exento",
+            "aplicar_iva",
         ])
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)  # FechaHoraMixin: setea fechas, no guarda
+        obj.iva_exento = not self.cleaned_data.get("aplicar_iva", True)
+        if commit:
+            obj.save()
+            self.save_m2m()
+        return obj
 
     class Meta:
         model = Proyecto
@@ -97,14 +114,12 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
             "cliente",
             "descripcion",
             "estado",
-            "iva_exento",
         ]
         widgets = {
             # S-LC-Feedback-V4: autocomplete @#$ en nombre y descripción.
             "nombre": forms.TextInput(attrs={"data-referencias": "1"}),
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 4}),
         }
-        labels = {"iva_exento": "Proyecto exento de IVA"}
 
 
 def _choices_estado_activos():
@@ -163,6 +178,16 @@ class ProyectoProductoForm(forms.ModelForm):
         empty_label="— Sin variación específica —",
         label="Variación",
     )
+    # S-LC-Proyecto-Render-V1: proveedor principal del producto.
+    proveedor = forms.ModelChoiceField(
+        queryset=Proveedor.objects.filter(activo=True).order_by("razon_social"),
+        required=False,
+        empty_label="— Proveedor —",
+        label="Proveedor",
+    )
+    # Procesos (impresión + operativos) serializados en JSON por el front;
+    # la vista los sincroniza a ProyectoProductoProceso tras guardar el form.
+    procesos_json = forms.CharField(required=False, widget=forms.HiddenInput())
     cantidad = forms.IntegerField(min_value=1, initial=1, label="Cantidad")
     precio_unitario = forms.DecimalField(
         required=False, min_value=0, label="Precio unit.",
@@ -178,11 +203,12 @@ class ProyectoProductoForm(forms.ModelForm):
     )
     incluir_en_calculo = forms.BooleanField(
         required=False, initial=True, label="Incluir en cálculo",
+        widget=forms.CheckboxInput(attrs={"class": "peer sr-only", "data-incluir": "1"}),
     )
 
     class Meta:
         model = ProyectoProducto
-        fields = ["servicio", "variacion", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota"]
+        fields = ["servicio", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota"]
         labels = {"nota": "Nota corta (opcional)"}
 
     def clean_merma(self):

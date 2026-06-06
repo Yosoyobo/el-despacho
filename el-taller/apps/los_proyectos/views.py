@@ -1,4 +1,5 @@
 import contextlib
+from decimal import Decimal
 
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.forms import (
@@ -39,16 +40,75 @@ from lib.portavoz_eventos import EventoPortavoz
 
 
 def _servicios_datos_json():
-    """Mapa {servicio_id: {precio, costo}} para que el form de Proyecto
-    pre-llene precio/costo al elegir un producto (C4 S-LC-Feedback-V6)."""
+    """Mapa {servicio_id: {precio, costo, categoria}} para que el form de
+    Proyecto pre-llene precio/costo al elegir un producto y filtre el
+    selector de Producto por Categoría (Render-V1)."""
     import json
 
     from apps.el_catalogo.models import Servicio
     datos = {
-        str(s.pk): {"precio": str(s.precio_base or 0), "costo": str(s.costo or 0)}
-        for s in Servicio.objects.filter(activo=True).only("pk", "precio_base", "costo")
+        str(s.pk): {
+            "precio": str(s.precio_base or 0),
+            "costo": str(s.costo or 0),
+            "categoria": str(s.categoria_id or ""),
+        }
+        for s in Servicio.objects.filter(activo=True).only("pk", "precio_base", "costo", "categoria_id")
     }
     return json.dumps(datos)
+
+
+def _proveedores_activos():
+    """Proveedores activos para los selects (principal + impresión)."""
+    from apps.el_catalogo.models import Proveedor
+    return list(Proveedor.objects.filter(activo=True).order_by("razon_social"))
+
+
+def _proveedores_panel(proyecto):
+    """Deuda por proveedor (auto-sumada de los productos) fusionada con la
+    asignación explícita (tipo entregan/recogemos, compromiso, contacto)."""
+    asignados = {
+        pv.proveedor_id: pv
+        for pv in proyecto.proveedores_asignados.select_related("proveedor").all()
+    }
+    filas, vistos = [], set()
+    for d in proyecto.deuda_por_proveedor():
+        pid = d["proveedor"].pk
+        vistos.add(pid)
+        filas.append({"proveedor": d["proveedor"], "total": d["total"], "asignacion": asignados.get(pid)})
+    for pid, pv in asignados.items():
+        if pid not in vistos:
+            filas.append({"proveedor": pv.proveedor, "total": Decimal("0.00"), "asignacion": pv})
+    return filas
+
+
+def _anotar_procesos(formset):
+    """Para render (GET): anota en cada form su proceso de impresión y la lista
+    de procesos operativos, para prellenar la tarjeta."""
+    for form in formset.forms:
+        inst = getattr(form, "instance", None)
+        impresion, operativos = None, []
+        if inst and inst.pk:
+            for p in inst.procesos.all().order_by("orden", "creado_en"):
+                if p.tipo == "impresion" and impresion is None:
+                    impresion = p
+                elif p.tipo == "operativo":
+                    operativos.append(p)
+        form.proc_impresion = impresion
+        form.procs_operativos = operativos
+
+
+def _sync_procesos_formset(formset):
+    """Tras formset.save(): sincroniza los procesos (impresión + operativos)
+    de cada línea que sobrevivió (no borrada, con pk)."""
+    from .services_procesos import sincronizar_procesos
+    borrados = set(formset.deleted_forms)
+    for form in formset.forms:
+        if form in borrados:
+            continue
+        inst = getattr(form, "instance", None)
+        if not inst or not inst.pk:
+            continue
+        sincronizar_procesos(inst, form.cleaned_data.get("procesos_json"))
 
 
 def _fmt_fechahora(dt):
@@ -234,6 +294,7 @@ def detalle(request, pk):
         if form.is_valid() and formset.is_valid():
             form.save()
             formset.save()
+            _sync_procesos_formset(formset)
             _reconciliar_equipo(request, proyecto)
             proyecto.recalcular_monto_estimado()
             proyecto.refresh_from_db()
@@ -245,12 +306,14 @@ def detalle(request, pk):
             # C7: autoguardado HTMX → refresca panel económico + indicador (OOB).
             if es_htmx:
                 return render(request, "proyectos/_guardado_oob.html",
-                              {"proyecto": proyecto, "ok": True})
+                              {"proyecto": proyecto, "ok": True,
+                               "form": ProyectoForm(instance=proyecto), "puede_editar": True})
             messages.success(request, "Proyecto guardado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
         if es_htmx:
             return render(request, "proyectos/_guardado_oob.html",
-                          {"proyecto": proyecto, "ok": False}, status=200)
+                          {"proyecto": proyecto, "ok": False,
+                           "form": form, "puede_editar": True}, status=200)
     else:
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetEdit(instance=proyecto)
@@ -261,6 +324,7 @@ def detalle(request, pk):
             activo=True, servicios__en_proyectos__proyecto=proyecto,
         ).distinct().order_by("razon_social")
     )
+    _anotar_procesos(formset)
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "form": form,
@@ -271,6 +335,11 @@ def detalle(request, pk):
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
         "servicios_datos_json": _servicios_datos_json(),
         "proveedores_aplicables": proveedores_aplicables,
+        "proveedores_panel": _proveedores_panel(proyecto),
+        "proveedores_activos": _proveedores_activos(),
+        "estados_barra": list(
+            EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
+        ),
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
         "breadcrumb_items": [
             {"url": reverse("proyectos-lista"), "label": "Proyectos"},
@@ -295,6 +364,7 @@ def nuevo(request):
             formset = ProyectoProductoFormSet(request.POST, instance=proyecto)
             if formset.is_valid():
                 formset.save()
+                _sync_procesos_formset(formset)
                 proyecto.recalcular_monto_estimado()  # C4: estimado = Σ subtotales
             emitir(EventoPortavoz(
                 tipo="proyecto.creado",
@@ -310,10 +380,12 @@ def nuevo(request):
         form = ProyectoForm()
         formset = ProyectoProductoFormSet(instance=Proyecto())
     from apps.el_catalogo.models import CategoriaServicio
+    _anotar_procesos(formset)
     return render(request, "proyectos/form.html", {
         "form": form, "formset": formset, "modo": "nuevo",
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
         "servicios_datos_json": _servicios_datos_json(),
+        "proveedores_activos": _proveedores_activos(),
     })
 
 
@@ -328,6 +400,7 @@ def editar(request, pk):
         if form.is_valid() and formset.is_valid():
             form.save()
             formset.save()
+            _sync_procesos_formset(formset)
             proyecto.recalcular_monto_estimado()  # C4: estimado = Σ subtotales
             messages.success(request, "Proyecto actualizado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
@@ -335,10 +408,12 @@ def editar(request, pk):
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetEdit(instance=proyecto)
     from apps.el_catalogo.models import CategoriaServicio
+    _anotar_procesos(formset)
     return render(request, "proyectos/form.html", {
         "form": form, "formset": formset, "modo": "editar", "proyecto": proyecto,
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
         "servicios_datos_json": _servicios_datos_json(),
+        "proveedores_activos": _proveedores_activos(),
     })
 
 
@@ -412,11 +487,11 @@ def cambiar_estado(request, pk):
             from apps.taller_home.push_handlers import notificar_proyecto_status_cambiado
             notificar_proyecto_status_cambiado(proyecto, anterior, nuevo, request.user)
             if inline and es_htmx:
-                # Devolvemos solo el partial del badge para swap inline.
-                return render(request, "proyectos/_badge_estado.html", {
+                # Render-V1: devolvemos la barra de status para swap inline.
+                return render(request, "proyectos/_barra_status.html", {
                     "proyecto": proyecto,
-                    "estados_disponibles": list(
-                        EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label")
+                    "estados_barra": list(
+                        EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
                     ),
                     "puede_editar": True,
                 })

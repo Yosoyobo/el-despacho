@@ -1,0 +1,44 @@
+{% load forms_helpers %}
+{% comment %}
+Render-V1 — Panel de Proveedores del proyecto. Auto-suma cuánto se le adeuda a
+cada proveedor (costo del producto + impresión ligada a ese proveedor), sin
+importar el tipo de entrega. La asignación explícita (ProyectoProveedor) aporta
+el tipo (entregan/recogemos), el compromiso, contacto y ubicación.
+{% endcomment %}
+<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex items-center justify-between gap-2">
+        <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Proveedores</h3>
+        {% if puede_editar %}<button type="button" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                hx-get="{% url 'proyectos-agregar-proveedor' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Agregar</button>{% endif %}
+    </div>
+    {% if proveedores_panel %}
+    <ul class="mt-3 space-y-3 text-sm">
+        {% for fila in proveedores_panel %}
+        <li class="rounded-lg border border-gray-200 p-2.5 dark:border-gray-800">
+            <div class="flex items-start justify-between gap-2">
+                <a href="{% url 'catalogo-proveedor-detalle' fila.proveedor.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ fila.proveedor.razon_social }}</a>
+                <span class="shrink-0 font-semibold tabular-nums text-gray-700 dark:text-gray-200">{{ fila.total|dinero }}</span>
+            </div>
+            {% if fila.asignacion %}
+            <p class="mt-1 text-xs">
+                <span class="badge {% if fila.asignacion.tipo == 'recogemos_nosotros' %}badge-orange{% else %}badge-brand{% endif %}">{{ fila.asignacion.get_tipo_display }}</span>
+                {% if fila.asignacion.compromiso %}<span class="ml-1 text-gray-600 dark:text-gray-300">{{ fila.asignacion.compromiso|date:"d M Y · H:i" }}</span>{% endif %}
+            </p>
+            {% if fila.asignacion.contacto %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">📞 {{ fila.asignacion.contacto }}</p>{% endif %}
+            {% if fila.asignacion.ubicacion %}<p class="text-xs text-gray-500 dark:text-gray-400">📍 {{ fila.asignacion.ubicacion }}</p>{% endif %}
+            {% if puede_editar %}
+            <form method="post" action="{% url 'proyectos-quitar-proveedor' proyecto.pk fila.asignacion.pk %}" onsubmit="return confirm('¿Quitar la asignación de este proveedor?');" class="mt-1">
+                {% csrf_token %}<button type="submit" class="text-xs text-error-600 hover:underline dark:text-error-400">Quitar asignación</button>
+            </form>
+            {% endif %}
+            {% else %}
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Sin asignación de entrega.{% if puede_editar %} Usa “+ Agregar” para fijar tipo y compromiso.{% endif %}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Montos = lo que se le adeuda por este proyecto.</p>
+    {% else %}
+    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proveedores" descripcion="Asigna un proveedor a un producto o usa “+ Agregar”." icono="folder" %}
+    {% endif %}
+</section>
