@@ -85,8 +85,11 @@ def _drive_redirect_uri(request) -> str:
 
 def _drive_contexto(request):
     from lib.google_drive import cliente_configurado, cliente_id_actual
+    cliente_dedicado = Credencial.esta_configurado("google_drive_oauth_client_id")
     return {
         "oauth_listo": cliente_configurado(),
+        "cliente_dedicado": cliente_dedicado,
+        "usando_login": cliente_configurado() and not cliente_dedicado,
         "cliente_id": cliente_id_actual() or "",
         "conectado": Credencial.esta_configurado("google_drive_oauth_refresh_token"),
         "carpeta_lista": Credencial.esta_configurado("google_drive_carpeta_raiz_id"),

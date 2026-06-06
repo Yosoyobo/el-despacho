@@ -137,6 +137,27 @@ def test_drive_conectar_usa_cliente_dedicado(client, usuario_factory):
     assert "drive-cid.apps.googleusercontent.com" in resp.url
 
 
+def test_drive_guia_avisa_si_usa_cliente_login(client, usuario_factory):
+    """Con solo el cliente del login (sin el dedicado de Drive), avisa del riesgo."""
+    from ajustes.models.credencial import Credencial
+    Credencial.guardar("google_oauth_client_id", "647660941626-login.apps.googleusercontent.com")
+    Credencial.guardar("google_oauth_client_secret", "login-secret")
+    client.force_login(usuario_factory(rol="super_admin"))
+    body = client.get("/ajustes/google-drive/").content.decode()
+    assert "login con Google" in body
+    assert "647660941626-login.apps.googleusercontent.com" in body
+
+
+def test_drive_guia_muestra_cliente_dedicado(client, usuario_factory):
+    from ajustes.models.credencial import Credencial
+    Credencial.guardar("google_drive_oauth_client_id", "525803625406-drive.apps.googleusercontent.com")
+    Credencial.guardar("google_drive_oauth_client_secret", "drive-secret")
+    client.force_login(usuario_factory(rol="super_admin"))
+    body = client.get("/ajustes/google-drive/").content.decode()
+    assert "Cliente de Drive" in body
+    assert "525803625406-drive.apps.googleusercontent.com" in body
+
+
 def test_drive_conectar_redirige_a_google(client, usuario_factory):
     _config_oauth()
     client.force_login(usuario_factory(rol="super_admin"))
