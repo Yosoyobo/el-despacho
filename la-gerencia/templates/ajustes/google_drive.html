@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Conectar Google Drive — Ajustes{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Conectar Google Drive" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Conectar Google Drive" subtitulo="Sigue los 7 pasos en orden. Toma unos 10 minutos y solo se hace una vez." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+{# ── Semáforo de estado ─────────────────────────────────────────── #}
+<section class="mb-6 rounded-2xl border p-5 shadow-theme-sm
+    {% if ultimo_test.ultimo_test_ok %}border-success-300 bg-success-50 dark:border-success-700 dark:bg-success-500/10
+    {% elif ultimo_test.ultimo_test_ok is False %}border-error-300 bg-error-50 dark:border-error-700 dark:bg-error-500/10
+    {% else %}border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900{% endif %}">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            {% if ultimo_test.ultimo_test_ok %}
+                <span class="text-2xl">🟢</span>
+                <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Google Drive está conectado</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-300">{{ ultimo_test.ultimo_test_mensaje }}</p>
+                </div>
+            {% elif ultimo_test.ultimo_test_ok is False %}
+                <span class="text-2xl">🔴</span>
+                <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Aún falta algo</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-300">{{ ultimo_test.ultimo_test_mensaje }}</p>
+                </div>
+            {% else %}
+                <span class="text-2xl">⚪</span>
+                <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Sin conectar todavía</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-300">Completa los pasos y prueba la conexión al final.</p>
+                </div>
+            {% endif %}
+        </div>
+        <form method="post" action="{% url 'ajustes-google-drive-probar' %}">{% csrf_token %}
+            <button type="submit" class="btn-primario">Probar conexión</button>
+        </form>
+    </div>
+</section>
+
+<div class="space-y-4">
+
+    {# ── Paso 1 ─────────────────────────────────────────────────── #}
+    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" open>
+        <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">1</span>
+            Crear el proyecto en Google Cloud
+        </summary>
+        <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
+            <p>Esto crea un "espacio" gratuito de Google donde vivirá la conexión. Entra con la cuenta de Google de la empresa (la del correo corporativo).</p>
+            <ol class="list-decimal space-y-1 pl-5">
+                <li>Abre <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener" class="text-brand-500 underline">la página para crear proyectos de Google Cloud</a>.</li>
+                <li>En <strong>"Nombre del proyecto"</strong> escribe: <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">El Despacho — Learning Center</code></li>
+                <li>Haz clic en <strong>Crear</strong> y espera unos 30 segundos.</li>
+                <li>Asegúrate de que arriba a la izquierda quede seleccionado ese proyecto.</li>
+            </ol>
+            <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener" class="btn-secundario inline-block text-xs">Abrir Google Cloud →</a>
+        </div>
+    </details>
+
+    {# ── Paso 2 ─────────────────────────────────────────────────── #}
+    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">2</span>
+            Encender la conexión con Drive
+        </summary>
+        <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
+            <p>Le decimos a Google que este proyecto podrá usar Google Drive.</p>
+            <ol class="list-decimal space-y-1 pl-5">
+                <li>Abre <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener" class="text-brand-500 underline">la página de la API de Google Drive</a>.</li>
+                <li>Haz clic en el botón azul <strong>Habilitar</strong>.</li>
+                <li>Espera a que diga "API habilitada".</li>
+            </ol>
+            <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener" class="btn-secundario inline-block text-xs">Habilitar Drive →</a>
+        </div>
+    </details>
+
+    {# ── Paso 3 ─────────────────────────────────────────────────── #}
+    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">3</span>
+            Crear la "cuenta de servicio"
+        </summary>
+        <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
+            <p>Una cuenta de servicio es como un "empleado robot" que guarda los archivos por el sistema. No tiene buzón ni contraseña humana.</p>
+            <ol class="list-decimal space-y-1 pl-5">
+                <li>Abre <a href="https://console.cloud.google.com/iam-admin/serviceaccounts/create" target="_blank" rel="noopener" class="text-brand-500 underline">la página para crear cuentas de servicio</a>.</li>
+                <li>En <strong>"Nombre"</strong> escribe: <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">el-despacho-drive</code></li>
+                <li>Haz clic en <strong>Crear y continuar</strong>.</li>
+                <li>En el paso de roles, <strong>no elijas nada</strong>: haz clic en <strong>Continuar</strong> y luego en <strong>Listo</strong>.</li>
+            </ol>
+            <a href="https://console.cloud.google.com/iam-admin/serviceaccounts/create" target="_blank" rel="noopener" class="btn-secundario inline-block text-xs">Crear cuenta de servicio →</a>
+        </div>
+    </details>
+
+    {# ── Paso 4 ─────────────────────────────────────────────────── #}
+    <details class="group rounded-2xl border bg-white shadow-theme-sm dark:bg-gray-900 {% if json_configurado %}border-success-300 dark:border-success-700{% else %}border-gray-200 dark:border-gray-800{% endif %}" {% if not json_configurado %}open{% endif %}>
+        <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white {% if json_configurado %}bg-success-500{% else %}bg-brand-500{% endif %}">{% if json_configurado %}✓{% else %}4{% endif %}</span>
+            Descargar la llave y pegarla aquí
+            {% if json_configurado %}<span class="badge badge-success ml-auto">Guardado</span>{% endif %}
+        </summary>
+        <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
+            <p>Google te dará un archivo de texto (la "llave"). Lo pegas en el recuadro de abajo y el sistema lo guarda cifrado.</p>
+            <ol class="list-decimal space-y-1 pl-5">
+                <li>Abre <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener" class="text-brand-500 underline">la lista de cuentas de servicio</a> y haz clic en <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">el-despacho-drive</code>.</li>
+                <li>Entra a la pestaña <strong>Claves</strong> → <strong>Agregar clave</strong> → <strong>Crear clave nueva</strong>.</li>
+                <li>Elige tipo <strong>JSON</strong> y haz clic en <strong>Crear</strong>. Se descargará un archivo.</li>
+                <li>Abre ese archivo (con el Bloc de notas o TextEdit), selecciona <strong>todo</strong> el contenido y cópialo.</li>
+                <li>Pégalo completo en el recuadro de abajo (desde la primera <code>{</code> hasta la última <code>}</code>).</li>
+            </ol>
+        </div>
+    </details>
+
+    {# ── Paso 5: form de guardado (JSON + carpeta) ──────────────── #}
+    <form method="post" action="{% url 'ajustes-google-drive-guardar' %}" class="campo-form space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% csrf_token %}
+        <div>
+            <label class="text-sm font-medium text-gray-900 dark:text-gray-100">Contenido de la llave (JSON)</label>
+            <textarea name="service_account_json" rows="6" autocomplete="off" spellcheck="false"
+                placeholder="{% if json_configurado %}•••• ya guardado — pega de nuevo solo si quieres reemplazarlo{% else %}Pega aquí el archivo completo, empieza con { y termina con }{% endif %}"
+                class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs dark:border-gray-700 dark:bg-gray-900"></textarea>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Si ya está guardado y no lo cambias, déjalo en blanco.</p>
+        </div>
+
+        <div class="border-t border-gray-200 pt-4 dark:border-gray-700">
+            <div class="mb-2 flex items-center gap-2">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white {% if carpeta_configurada %}bg-success-500{% else %}bg-brand-500{% endif %}">{% if carpeta_configurada %}✓{% else %}5{% endif %}</span>
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Crear la carpeta en Drive y pegar su enlace</span>
+                {% if carpeta_configurada %}<span class="badge badge-success ml-auto">Guardado</span>{% endif %}
+            </div>
+            <div class="pl-[36px] text-sm text-gray-600 dark:text-gray-300">
+                <ol class="mb-3 list-decimal space-y-1 pl-5">
+                    <li>Abre <a href="https://drive.google.com" target="_blank" rel="noopener" class="text-brand-500 underline">Google Drive</a> con la cuenta de la empresa.</li>
+                    <li>Crea una carpeta nueva llamada <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">El Despacho - Adjuntos</code>.</li>
+                    <li>Entra a la carpeta y copia el enlace de la barra de direcciones del navegador.</li>
+                    <li>Pega el enlace completo aquí abajo (el sistema saca el ID solo).</li>
+                </ol>
+                <label class="text-sm font-medium text-gray-900 dark:text-gray-100">Enlace o ID de la carpeta</label>
+                <input type="text" name="carpeta_raiz_id" value="{{ carpeta_id }}" autocomplete="off"
+                    placeholder="https://drive.google.com/drive/folders/1A2b3C..."
+                    class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="btn-primario">Guardar</button>
+        </div>
+    </form>
+
+    {# ── Paso 6: compartir carpeta con la cuenta de servicio ────── #}
+    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" {% if json_configurado and carpeta_configurada %}open{% endif %}>
+        <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">6</span>
+            Darle acceso a la carpeta
+        </summary>
+        <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
+            <p>El "empleado robot" todavía no puede ver la carpeta. Hay que compartírsela, igual que compartirías una carpeta con un compañero.</p>
+            {% if email_servicio %}
+            <div class="rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-700 dark:bg-brand-500/10">
+                <p class="mb-1 text-xs text-gray-600 dark:text-gray-300">Comparte la carpeta con este correo (cópialo):</p>
+                <code class="block break-all rounded bg-white px-2 py-1 font-mono text-xs text-gray-900 dark:bg-gray-900 dark:text-gray-100">{{ email_servicio }}</code>
+            </div>
+            {% else %}
+            <p class="rounded-lg border border-warning-200 bg-warning-50 p-3 text-xs text-gray-700 dark:border-warning-700 dark:bg-warning-500/10 dark:text-gray-200">Primero guarda la llave (JSON) en el paso 4 — entonces aquí aparecerá el correo que debes usar para compartir.</p>
+            {% endif %}
+            <ol class="list-decimal space-y-1 pl-5">
+                <li>En Drive, clic derecho sobre la carpeta <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">El Despacho - Adjuntos</code> → <strong>Compartir</strong>.</li>
+                <li>Pega el correo de arriba en el campo de personas.</li>
+                <li>Cambia el permiso a <strong>Editor</strong>.</li>
+                <li>Desmarca "Notificar a las personas" (es un robot, no tiene buzón) y haz clic en <strong>Compartir</strong>.</li>
+            </ol>
+        </div>
+    </details>
+
+    {# ── Paso 7: probar ─────────────────────────────────────────── #}
+    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" open>
+        <summary class="flex cursor-pointer items-center gap-3 p-5 font-medium text-gray-900 dark:text-gray-100">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">7</span>
+            Probar que todo quedó bien
+        </summary>
+        <div class="space-y-3 px-5 pb-5 pl-[60px] text-sm text-gray-600 dark:text-gray-300">
+            <p>Este botón le pide al sistema que abra la carpeta. Si responde con palomita verde, ya terminaste. Si sale en rojo, el mensaje te dice qué paso revisar.</p>
+            <form method="post" action="{% url 'ajustes-google-drive-probar' %}">{% csrf_token %}
+                <button type="submit" class="btn-primario">Probar conexión</button>
+            </form>
+        </div>
+    </details>
+
+</div>
+
+<p class="mt-6 text-xs text-gray-500 dark:text-gray-400">
+    La llave se guarda cifrada con La Bóveda; nadie la vuelve a ver en claro.
+    El envío de archivos adjuntos en Recados y Cotizaciones se activa en una
+    actualización posterior — esta pantalla deja lista la conexión.
+</p>
+{% endblock %}

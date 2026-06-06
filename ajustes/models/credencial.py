@@ -38,10 +38,10 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("vapid_email", "Web Push — VAPID contact", "Correo de contacto del header VAPID (ej. mailto:soporte@bautista.mx)."),
     ("do_api_token", "DigitalOcean — API Token (dop_v1_...)", "Token para que El Site lea specs y bandwidth del Droplet."),
     ("n8n_health_url", "n8n — Health URL (vía Tailscale)", "Ej. http://hal.tailedd04d.ts.net:5678/healthz. El Site lo pinguea."),
-    # S2b.1.5 — Andamiaje Google Drive. Wrapper presente, no operacional hasta
-    # que se peguen las credenciales aquí. Ver docs/SETUP_GOOGLE_DRIVE.md.
-    ("google_drive_service_account_json", "Google Drive — Service Account JSON (Inactivo)", "JSON completo de la service account. INACTIVO hasta que el admin siga docs/SETUP_GOOGLE_DRIVE.md."),
-    ("google_drive_carpeta_raiz_id", "Google Drive — Carpeta raíz ID (Inactivo)", "ID de la carpeta de Drive donde el wrapper guardará adjuntos. INACTIVO."),
+    # Google Drive. Configúralo con el asistente guiado en /ajustes/google-drive/
+    # (no pegues estos valores a mano aquí — el asistente valida la conexión).
+    ("google_drive_service_account_json", "Google Drive — Cuenta de servicio (JSON)", "Configúralo desde el asistente: Ajustes → Conectar Google Drive."),
+    ("google_drive_carpeta_raiz_id", "Google Drive — Carpeta raíz (ID)", "Configúralo desde el asistente: Ajustes → Conectar Google Drive."),
 ]
 
 

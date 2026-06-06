@@ -1,9 +1,16 @@
 # Setup Google Drive para El Despacho
 
-> **Estado:** wrapper escrito (S2b.1.5) — pendiente cablear y activar en S2b.1b.
-> Sigue esta guía cuando estés listo para que Los Recados (y módulos futuros
-> como Las Cotizaciones) guarden adjuntos en una carpeta corporativa de Drive
-> que el contador pueda auditar.
+> **¿Eres el administrador no técnico?** No necesitas este documento.
+> Entra a La Gerencia → **Ajustes → Conectar Google Drive** y sigue el
+> asistente guiado de 7 pasos. Hace lo mismo que esta guía pero con
+> botones, enlaces directos y un botón "Probar conexión" que te avisa si
+> quedó bien. Este archivo es la referencia técnica equivalente.
+
+> **Estado:** wrapper escrito (S2b.1.5), asistente de configuración + prueba
+> de conexión en vivo (S-Drive-Setup). Pendiente cablear la subida de
+> adjuntos en S2b.1b. Sigue esta guía (o el asistente) cuando estés listo
+> para que Los Recados (y módulos futuros como Las Cotizaciones) guarden
+> adjuntos en una carpeta corporativa de Drive que el contador pueda auditar.
 
 Una vez completes los 8 pasos, el slot `google_drive_service_account_json`
 en Los Ajustes tendrá el JSON cifrado, el slot `google_drive_carpeta_raiz_id`

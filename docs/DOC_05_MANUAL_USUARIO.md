@@ -5,6 +5,17 @@
 
 ---
 
+## Novedades al 5 de junio de 2026
+
+- **Ya puedes conectar Google Drive con un asistente paso a paso.** En La
+  Gerencia, entra a **Ajustes → Conectar Google Drive**. Te guía con 7 pasos
+  en lenguaje sencillo (con botones que abren directamente las páginas de
+  Google) para crear el acceso y enlazar una carpeta de la empresa. Al final
+  hay un botón **"Probar conexión"** que te dice con un semáforo verde/rojo si
+  quedó bien o qué falta revisar. Solo lo hace el super administrador y solo
+  una vez. Esta conexión es la base para que más adelante se puedan guardar
+  archivos adjuntos y generar los PDF de cotizaciones y facturas.
+
 ## Novedades al 3 de junio de 2026 (tarde)
 
 - **Número de versión en el pie de página.** Abajo de todo, junto a "NoKo
@@ -184,7 +195,7 @@ No se alquila. Está hecho a la medida de cómo trabajan ustedes.
 
 ## Roadmap del proyecto
 
-> **Última actualización: 3 de junio de 2026 (tarde).** Esta sección se revisa y
+> **Última actualización: 5 de junio de 2026.** Esta sección se revisa y
 > actualiza en cada sesión de trabajo sobre el sistema, para que siempre
 > sepan en qué punto va El Despacho: qué ya está listo, qué cambió respecto
 > al plan, qué falta y hacia dónde vamos.
@@ -243,13 +254,15 @@ Cosas que cambiamos en el camino porque resultó mejor así:
 
 En orden aproximado de prioridad:
 
-1. **PDF de cotizaciones y facturas** — generar el documento descargable
-   (requiere conectar Google Drive/Docs).
+1. **PDF de cotizaciones y facturas** — generar el documento descargable.
+   La **conexión a Google Drive ya se puede activar** (Ajustes → Conectar
+   Google Drive); falta el paso de generar el documento sobre esa conexión.
 2. **La Caja** — links de pago con Stripe y MercadoPago.
 3. **La Cobranza** — recordatorios automáticos de facturas vencidas.
 4. **Tesorería avanzada** — leer recibos por foto (OCR), reconciliación con el
    banco y cierre de periodo contable.
-5. **Adjuntos en Recados** — mandar archivos en el chat (vía Google Drive).
+5. **Adjuntos en Recados** — mandar archivos en el chat (vía Google Drive, una
+   vez conectado en Ajustes).
 6. **Más casos de IA** — redactar cotizaciones, categorizar gastos, resumir
    conversaciones y sugerir precios automáticamente.
 7. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus

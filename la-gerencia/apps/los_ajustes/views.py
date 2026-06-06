@@ -73,6 +73,108 @@ def probar(request, clave: str):
     return redirect("ajustes-panel")
 
 
+# ── Google Drive — asistente guiado ──────────────────────────────────────────
+
+# Email de la service account, extraído del JSON, para mostrarlo en el paso 6
+# (el usuario lo necesita para compartir la carpeta). NO es secreto.
+def _drive_email_servicio() -> str | None:
+    import json
+    crudo = Credencial.obtener("google_drive_service_account_json")
+    if not crudo:
+        return None
+    try:
+        return json.loads(crudo).get("client_email")
+    except Exception:
+        return None
+
+
+def _drive_contexto():
+    return {
+        "json_configurado": Credencial.esta_configurado("google_drive_service_account_json"),
+        "carpeta_configurada": Credencial.esta_configurado("google_drive_carpeta_raiz_id"),
+        "carpeta_id": Credencial.obtener("google_drive_carpeta_raiz_id") or "",
+        "email_servicio": _drive_email_servicio(),
+        "ultimo_test": Credencial.objects.filter(
+            clave="google_drive_carpeta_raiz_id"
+        ).values("ultimo_test_en", "ultimo_test_ok", "ultimo_test_mensaje").first(),
+    }
+
+
+@requires_role("super_admin")
+def google_drive_guia(request):
+    return render(request, "ajustes/google_drive.html", _drive_contexto())
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def google_drive_guardar(request):
+    """Guarda los dos slots de Drive sin borrar accidentalmente.
+
+    A diferencia del `guardar` genérico, un campo vacío NO borra el valor ya
+    configurado — solo se ignora. Esto evita que el usuario pierda el JSON al
+    actualizar nada más el ID de la carpeta.
+    """
+    from lib.google_drive import drive
+
+    json_sa = (request.POST.get("service_account_json") or "").strip()
+    carpeta = (request.POST.get("carpeta_raiz_id") or "").strip()
+    # El ID a veces se pega como URL completa de Drive — extraemos el ID.
+    if "drive.google.com" in carpeta and "/folders/" in carpeta:
+        carpeta = carpeta.split("/folders/", 1)[1].split("?")[0].split("/")[0]
+
+    guardados = []
+    if json_sa:
+        Credencial.guardar("google_drive_service_account_json", json_sa, usuario=request.user)
+        guardados.append("cuenta de servicio")
+    if carpeta:
+        Credencial.guardar("google_drive_carpeta_raiz_id", carpeta, usuario=request.user)
+        guardados.append("carpeta")
+
+    if guardados:
+        drive.recargar()
+        emitir(EventoPortavoz(
+            tipo="ajuste.credencial_guardada",
+            actor_id=request.user.pk,
+            actor_email=request.user.email,
+            payload={"clave": "google_drive", "campos": guardados},
+        ))
+        messages.success(request, f"Guardado ({', '.join(guardados)}). Ahora prueba la conexión.")
+    else:
+        messages.info(request, "No escribiste nada nuevo; no se cambió la configuración.")
+    return redirect("ajustes-google-drive")
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def google_drive_probar(request):
+    """Llama de verdad a Drive y guarda el resultado para mostrar el semáforo."""
+    from django.utils import timezone
+
+    from lib.google_drive import drive
+    res = drive.probar()
+
+    # Persistimos el resultado en el slot de la carpeta (sirve de ancla para el
+    # semáforo aunque el JSON esté vacío). Solo si la fila existe.
+    fila = Credencial.objects.filter(clave="google_drive_carpeta_raiz_id").first()
+    if fila:
+        fila.ultimo_test_en = timezone.now()
+        fila.ultimo_test_ok = res["ok"]
+        fila.ultimo_test_mensaje = res["mensaje"][:240]
+        fila.save(update_fields=["ultimo_test_en", "ultimo_test_ok", "ultimo_test_mensaje"])
+
+    if res["ok"]:
+        messages.success(request, res["mensaje"])
+    else:
+        messages.error(request, res["mensaje"])
+    emitir(EventoPortavoz(
+        tipo="ajuste.drive_probado",
+        actor_id=request.user.pk,
+        actor_email=request.user.email,
+        payload={"estado": res["estado"], "ok": res["ok"]},
+    ))
+    return redirect("ajustes-google-drive")
+
+
 # ── Tasas Impositivas ────────────────────────────────────────────────────────
 
 @requires_role("super_admin")

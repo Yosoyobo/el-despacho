@@ -32,17 +32,83 @@ def test_wrapper_drive_metodos_lanzan_notimplemented():
 
 
 @pytest.mark.django_db
-def test_slot_google_drive_aparece_en_ajustes_y_marcado_inactivo():
-    """SLOTS_CREDENCIAL lista los slots de Drive con etiqueta 'Inactivo'."""
+def test_slot_google_drive_aparece_en_ajustes():
+    """SLOTS_CREDENCIAL lista los slots de Drive (ya sin etiqueta 'Inactivo')."""
     from ajustes.models.credencial import SLOTS_CREDENCIAL
 
     claves = {c for c, _, _ in SLOTS_CREDENCIAL}
     assert "google_drive_service_account_json" in claves
     assert "google_drive_carpeta_raiz_id" in claves
 
-    etiquetas = {c: e for c, e, _ in SLOTS_CREDENCIAL}
-    assert "Inactivo" in etiquetas["google_drive_service_account_json"]
-    assert "Inactivo" in etiquetas["google_drive_carpeta_raiz_id"]
+
+@pytest.mark.django_db
+def test_probar_incompleto_sin_credenciales():
+    """probar() sin nada configurado avisa que falta el JSON, sin reventar."""
+    from lib.google_drive import GoogleDriveWrapper
+
+    res = GoogleDriveWrapper().probar()
+    assert res["ok"] is False
+    assert res["estado"] == "incompleto"
+
+
+@pytest.mark.django_db
+def test_probar_json_invalido():
+    """JSON corrupto → estado json_invalido, mensaje amable."""
+    from ajustes.models.credencial import Credencial
+    from lib.google_drive import GoogleDriveWrapper
+
+    Credencial.guardar("google_drive_service_account_json", "esto no es json")
+    Credencial.guardar("google_drive_carpeta_raiz_id", "1ABC")
+
+    res = GoogleDriveWrapper().probar()
+    assert res["ok"] is False
+    assert res["estado"] == "json_invalido"
+
+
+@pytest.mark.django_db
+def test_probar_ok_con_servicio_mockeado(monkeypatch):
+    """Con un service que responde, probar() devuelve ok=True y el nombre."""
+    from ajustes.models.credencial import Credencial
+    from lib.google_drive import GoogleDriveWrapper
+
+    Credencial.guardar("google_drive_service_account_json", '{"type":"service_account"}')
+    Credencial.guardar("google_drive_carpeta_raiz_id", "1ABC")
+
+    class _Exec:
+        def execute(self):
+            return {"id": "1ABC", "name": "El Despacho - Adjuntos"}
+
+    class _Files:
+        def get(self, **kwargs):
+            return _Exec()
+
+    class _Service:
+        def files(self):
+            return _Files()
+
+    wrapper = GoogleDriveWrapper()
+    # Evitamos construir el cliente real de Google: forzamos el service.
+    monkeypatch.setattr(type(wrapper), "service", property(lambda self: _Service()))
+
+    res = wrapper.probar()
+    assert res["ok"] is True
+    assert res["estado"] == "ok"
+    assert "El Despacho - Adjuntos" in res["mensaje"]
+
+
+@pytest.mark.django_db
+def test_recargar_olvida_carpeta_cacheada():
+    """recargar() limpia el ID de carpeta cacheado tras cambiarlo."""
+    from ajustes.models.credencial import Credencial
+    from lib.google_drive import GoogleDriveWrapper
+
+    Credencial.guardar("google_drive_carpeta_raiz_id", "viejo")
+    wrapper = GoogleDriveWrapper()
+    assert wrapper.carpeta_raiz_id == "viejo"
+
+    Credencial.guardar("google_drive_carpeta_raiz_id", "nuevo")
+    wrapper.recargar()
+    assert wrapper.carpeta_raiz_id == "nuevo"
 
 
 def test_dependencias_google_importables():

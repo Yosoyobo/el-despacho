@@ -92,6 +92,102 @@ class GoogleDriveWrapper:
             and self._credencial("google_drive_carpeta_raiz_id")
         )
 
+    def recargar(self) -> None:
+        """Olvida el cliente y la carpeta cacheados.
+
+        Necesario tras guardar credenciales nuevas: el wrapper es un singleton
+        de módulo y, sin esto, `probar()` reusaría el JSON o el ID viejos.
+        """
+        self._service = None
+        self._carpeta_raiz_id = None
+
+    def probar(self) -> dict[str, Any]:
+        """Verifica de punta a punta que Drive quedó bien configurado.
+
+        Hace una llamada real: pide a Drive los datos de la carpeta raíz con la
+        service account. Devuelve un dict pensado para mostrarse a un usuario no
+        técnico — `estado` es uno de {ok, incompleto, json_invalido, sin_acceso,
+        no_encontrada, error}, y `mensaje` ya viene en español llano.
+        """
+        self.recargar()
+
+        if not self._credencial("google_drive_service_account_json"):
+            return {
+                "ok": False,
+                "estado": "incompleto",
+                "mensaje": "Falta pegar el archivo JSON de la cuenta de servicio (paso 4).",
+            }
+        if not self._credencial("google_drive_carpeta_raiz_id"):
+            return {
+                "ok": False,
+                "estado": "incompleto",
+                "mensaje": "Falta pegar el ID de la carpeta de Drive (paso 5).",
+            }
+
+        try:
+            servicio = self.service
+        except NoConfiguradoError as exc:
+            # JSON mal pegado o dependencias ausentes — mensaje ya es claro.
+            return {
+                "ok": False,
+                "estado": "json_invalido",
+                "mensaje": (
+                    "El archivo JSON no se entendió. Cópialo completo otra vez, "
+                    f"incluyendo las llaves {{ y }}. Detalle: {exc}"
+                ),
+            }
+
+        try:
+            from googleapiclient.errors import HttpError
+        except ImportError:
+            HttpError = Exception  # type: ignore[assignment, misc]
+
+        try:
+            info = servicio.files().get(
+                fileId=self.carpeta_raiz_id,
+                fields="id,name",
+                supportsAllDrives=True,
+            ).execute()
+        except HttpError as exc:  # type: ignore[misc]
+            estatus = getattr(getattr(exc, "resp", None), "status", None)
+            if estatus == 404:
+                return {
+                    "ok": False,
+                    "estado": "no_encontrada",
+                    "mensaje": (
+                        "No encontré esa carpeta. Revisa que el ID del paso 5 sea "
+                        "correcto y que la carpeta no se haya borrado."
+                    ),
+                }
+            if estatus in (401, 403):
+                return {
+                    "ok": False,
+                    "estado": "sin_acceso",
+                    "mensaje": (
+                        "La cuenta de servicio existe pero no tiene acceso a la "
+                        "carpeta. Vuelve al paso 6: comparte la carpeta con el "
+                        "correo de la cuenta de servicio, con permiso de Editor."
+                    ),
+                }
+            return {
+                "ok": False,
+                "estado": "error",
+                "mensaje": f"Google respondió con un error inesperado: {exc}",
+            }
+        except Exception as exc:  # noqa: BLE001 — queremos atrapar todo para el usuario
+            return {
+                "ok": False,
+                "estado": "error",
+                "mensaje": f"No se pudo conectar con Google Drive: {exc}",
+            }
+
+        return {
+            "ok": True,
+            "estado": "ok",
+            "mensaje": f"¡Listo! Conectado a la carpeta «{info.get('name', '?')}».",
+            "carpeta_nombre": info.get("name"),
+        }
+
     # ── API funcional — pendiente de cableado en S2b.1b ─────────────────────
 
     def subir_archivo(
