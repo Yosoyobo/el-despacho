@@ -39,6 +39,8 @@ EventoTipo = Literal[
     "ajuste.credencial_guardada",
     "ajuste.tasa_guardada",
     "ajuste.drive_probado",
+    "ajuste.drive_conectado",
+    "ajuste.drive_desconectado",
     "catalogo.servicio_creado",
     "catalogo.servicio_actualizado",
     "catalogo.servicio_quick_creado",

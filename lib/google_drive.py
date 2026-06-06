@@ -1,194 +1,291 @@
-"""Wrapper de Google Drive — andamiaje S2b.1.5.
+"""Wrapper de Google Drive — autenticación SIN archivo de clave (Opción B).
 
-**NO está activo en producción todavía.** Las credenciales viven en
-La Bóveda en los slots:
-    - `google_drive_service_account_json` (JSON de la service account)
-    - `google_drive_carpeta_raiz_id` (ID de la carpeta raíz en Drive)
+La organización de Learning Center bloquea la creación de claves de cuentas
+de servicio (`iam.disableServiceAccountKeyCreation`), así que NO usamos un
+JSON de service account. En su lugar usamos **OAuth con token de
+actualización**:
 
-Cuando ambos slots tengan valor válido y los métodos se cableen al
-SDK real (sprint S2b.1b), este wrapper se vuelve operativo. Hasta
-entonces:
+1. El admin da consentimiento una vez con la cuenta corporativa (asistente
+   en `/ajustes/google-drive/`). Reutilizamos el MISMO cliente OAuth del
+   login con Google (slots `google_oauth_client_id` / `_secret`).
+2. Guardamos el `refresh_token` cifrado en La Bóveda
+   (`google_drive_oauth_refresh_token`).
+3. Cada vez que se necesita, el wrapper canjea ese refresh token por un
+   `access_token` de corta vida y llama a la API REST de Drive con httpx
+   (mismo patrón que `lib/google_oauth.py`, sin dependencias pesadas).
 
-- `drive.service` lanza `NoConfiguradoError` si el JSON no está pegado.
-- `drive.subir_archivo()` / `crear_carpeta()` / `obtener_o_crear_carpeta()`
-  lanzan `NotImplementedError` con mensaje claro.
+Alcance: `drive.file` — el sistema solo ve/toca lo que él mismo crea. Por
+eso crea su propia carpeta raíz "El Despacho - Adjuntos" en la Mi unidad de
+la cuenta que dio consentimiento, y guarda su ID en
+`google_drive_carpeta_raiz_id`.
 
-Setup completo: ver `docs/SETUP_GOOGLE_DRIVE.md`.
+Setup completo: el asistente en La Gerencia → Ajustes → Conectar Google
+Drive. Referencia técnica: `docs/SETUP_GOOGLE_DRIVE.md`.
 """
 
 from __future__ import annotations
 
-import json
 from typing import Any
+from urllib.parse import urlencode
 
+import httpx
+
+# Scope mínimo: solo archivos creados por la app. NO es scope sensible, así
+# que no requiere verificación de Google.
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+
+AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files"
+CARPETA_RAIZ_NOMBRE = "El Despacho - Adjuntos"
+HTTP_TIMEOUT = 10.0
+
+MIME_CARPETA = "application/vnd.google-apps.folder"
 
 
 class NoConfiguradoError(Exception):
-    """Drive no está configurado en La Bóveda."""
+    """Drive no está conectado (falta el cliente OAuth o el refresh token)."""
+
+
+# ── Helpers de credenciales ──────────────────────────────────────────────────
+
+
+def _credencial(clave: str) -> str | None:
+    from ajustes.models.credencial import Credencial
+    return Credencial.obtener(clave)
+
+
+def _cliente_oauth() -> tuple[str, str]:
+    """(client_id, client_secret) del cliente OAuth compartido con el login."""
+    cid = _credencial("google_oauth_client_id")
+    sec = _credencial("google_oauth_client_secret")
+    if not cid or not sec:
+        raise NoConfiguradoError(
+            "Falta el cliente OAuth de Google. Configúralo primero en "
+            "Los Ajustes (es el mismo del login con Google)."
+        )
+    return cid, sec
+
+
+# ── Flujo de consentimiento (OAuth 3-legged, offline) ─────────────────────────
+
+
+def construir_url_consentimiento(redirect_uri: str, state: str) -> str:
+    """URL para enviar al navegador del admin y pedir consentimiento.
+
+    `access_type=offline` + `prompt=consent` fuerzan que Google devuelva un
+    refresh token cada vez (no solo en el primer consentimiento).
+    """
+    cid, _ = _cliente_oauth()
+    params = {
+        "client_id": cid,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(SCOPES),
+        "access_type": "offline",
+        "prompt": "consent",
+        "include_granted_scopes": "true",
+        "state": state,
+    }
+    return f"{AUTH_URL}?{urlencode(params)}"
+
+
+def intercambiar_codigo_por_refresh_token(code: str, redirect_uri: str) -> str:
+    """Canjea el `code` del callback por un refresh token. Lo retorna crudo."""
+    cid, sec = _cliente_oauth()
+    try:
+        with httpx.Client(timeout=HTTP_TIMEOUT) as cli:
+            resp = cli.post(
+                TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": cid,
+                    "client_secret": sec,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
+    except httpx.HTTPError as exc:
+        raise NoConfiguradoError(f"No se pudo contactar a Google: {exc}") from exc
+
+    if resp.status_code >= 400:
+        detalle = (resp.json() or {}).get("error", f"http_{resp.status_code}")
+        raise NoConfiguradoError(f"Google rechazó el consentimiento: {detalle}")
+
+    data = resp.json()
+    refresh = data.get("refresh_token")
+    if not refresh:
+        raise NoConfiguradoError(
+            "Google no devolvió un refresh token. Revoca el acceso anterior de "
+            "la app y vuelve a conectar (debe pedir consentimiento de nuevo)."
+        )
+    return refresh
+
+
+# ── Wrapper operativo ─────────────────────────────────────────────────────────
 
 
 class GoogleDriveWrapper:
-    """Singleton perezoso — instancia el cliente API solo cuando se usa."""
+    """Acceso a Drive vía refresh token. Crea su propia carpeta raíz."""
 
     def __init__(self) -> None:
-        self._service: Any = None
         self._carpeta_raiz_id: str | None = None
 
-    def _credencial(self, clave: str) -> str | None:
+    def recargar(self) -> None:
+        """Olvida la carpeta cacheada (tras reconectar o cambiar credenciales)."""
+        self._carpeta_raiz_id = None
+
+    def esta_configurado(self) -> bool:
+        """True si hay cliente OAuth + refresh token guardado."""
+        return bool(
+            _credencial("google_oauth_client_id")
+            and _credencial("google_oauth_client_secret")
+            and _credencial("google_drive_oauth_refresh_token")
+        )
+
+    def esta_conectado(self) -> bool:
+        """True si además la carpeta raíz ya quedó creada y guardada."""
+        return self.esta_configurado() and bool(
+            _credencial("google_drive_carpeta_raiz_id")
+        )
+
+    # ── Auth interno ──────────────────────────────────────────────────────────
+
+    def _access_token(self) -> str:
+        """Canjea el refresh token por un access token de corta vida."""
+        refresh = _credencial("google_drive_oauth_refresh_token")
+        if not refresh:
+            raise NoConfiguradoError(
+                "Google Drive no está conectado. Usa el asistente: Ajustes → "
+                "Conectar Google Drive."
+            )
+        cid, sec = _cliente_oauth()
+        try:
+            with httpx.Client(timeout=HTTP_TIMEOUT) as cli:
+                resp = cli.post(
+                    TOKEN_URL,
+                    data={
+                        "refresh_token": refresh,
+                        "client_id": cid,
+                        "client_secret": sec,
+                        "grant_type": "refresh_token",
+                    },
+                )
+        except httpx.HTTPError as exc:
+            raise NoConfiguradoError(f"No se pudo contactar a Google: {exc}") from exc
+
+        if resp.status_code >= 400:
+            detalle = (resp.json() or {}).get("error", f"http_{resp.status_code}")
+            raise NoConfiguradoError(
+                f"El acceso de Google expiró o fue revocado ({detalle}). "
+                "Reconecta desde el asistente."
+            )
+        return resp.json()["access_token"]
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._access_token()}"}
+
+    # ── Carpetas ────────────────────────────────────────────────────────────
+
+    def crear_carpeta(self, nombre: str, padre_id: str | None = None) -> dict[str, str]:
+        """Crea una carpeta en Drive. Sin `padre_id`, queda en la raíz (Mi unidad)."""
+        cuerpo: dict[str, Any] = {"name": nombre, "mimeType": MIME_CARPETA}
+        if padre_id:
+            cuerpo["parents"] = [padre_id]
+        with httpx.Client(timeout=HTTP_TIMEOUT) as cli:
+            resp = cli.post(
+                DRIVE_FILES_URL,
+                headers=self._headers(),
+                params={"fields": "id,name"},
+                json=cuerpo,
+            )
+        resp.raise_for_status()
+        return resp.json()
+
+    def obtener_o_crear_carpeta_raiz(self) -> str:
+        """Devuelve el ID de la carpeta raíz; la crea si no existe.
+
+        Idempotente: si el slot ya tiene un ID válido (la carpeta existe),
+        lo reusa. Si el ID guardado ya no existe en Drive (la borraron),
+        crea una nueva y actualiza el slot.
+        """
+        if self._carpeta_raiz_id:
+            return self._carpeta_raiz_id
+
+        guardado = _credencial("google_drive_carpeta_raiz_id")
+        if guardado:
+            with httpx.Client(timeout=HTTP_TIMEOUT) as cli:
+                resp = cli.get(
+                    f"{DRIVE_FILES_URL}/{guardado}",
+                    headers=self._headers(),
+                    params={"fields": "id,name,trashed"},
+                )
+            if resp.status_code == 200 and not resp.json().get("trashed"):
+                self._carpeta_raiz_id = guardado
+                return guardado
+            # 404 o en papelera → caemos a crear una nueva.
+
+        creada = self.crear_carpeta(CARPETA_RAIZ_NOMBRE)
         from ajustes.models.credencial import Credencial
-        return Credencial.obtener(clave)
+        Credencial.guardar("google_drive_carpeta_raiz_id", creada["id"])
+        self._carpeta_raiz_id = creada["id"]
+        return creada["id"]
 
     @property
     def carpeta_raiz_id(self) -> str:
-        if self._carpeta_raiz_id is None:
-            valor = self._credencial("google_drive_carpeta_raiz_id")
-            if not valor:
-                raise NoConfiguradoError(
-                    "Falta `google_drive_carpeta_raiz_id` en Los Ajustes. "
-                    "Ver docs/SETUP_GOOGLE_DRIVE.md paso 5."
-                )
-            self._carpeta_raiz_id = valor
-        return self._carpeta_raiz_id
+        return self.obtener_o_crear_carpeta_raiz()
 
-    @property
-    def service(self) -> Any:
-        if self._service is None:
-            json_str = self._credencial("google_drive_service_account_json")
-            if not json_str:
-                raise NoConfiguradoError(
-                    "Falta `google_drive_service_account_json` en Los Ajustes. "
-                    "Ver docs/SETUP_GOOGLE_DRIVE.md."
-                )
-            try:
-                creds_info = json.loads(json_str)
-            except json.JSONDecodeError as exc:
-                raise NoConfiguradoError(
-                    f"`google_drive_service_account_json` no es JSON válido: {exc}"
-                ) from exc
-
-            # Imports deferidos: el paquete `google-api-python-client` es pesado
-            # (~50 MB con sus deps); solo se importa cuando el wrapper se usa
-            # de verdad. Si llegamos aquí sin las libs, falla con mensaje claro.
-            try:
-                from google.oauth2 import service_account
-                from googleapiclient.discovery import build
-            except ImportError as exc:
-                raise NoConfiguradoError(
-                    "Faltan dependencias de Google: instala "
-                    "`google-api-python-client` y `google-auth`."
-                ) from exc
-
-            credentials = service_account.Credentials.from_service_account_info(
-                creds_info, scopes=SCOPES
-            )
-            self._service = build("drive", "v3", credentials=credentials, cache_discovery=False)
-        return self._service
-
-    def esta_configurado(self) -> bool:
-        """True si ambos slots tienen valor (no valida JSON ni conectividad)."""
-        return bool(
-            self._credencial("google_drive_service_account_json")
-            and self._credencial("google_drive_carpeta_raiz_id")
-        )
-
-    def recargar(self) -> None:
-        """Olvida el cliente y la carpeta cacheados.
-
-        Necesario tras guardar credenciales nuevas: el wrapper es un singleton
-        de módulo y, sin esto, `probar()` reusaría el JSON o el ID viejos.
-        """
-        self._service = None
-        self._carpeta_raiz_id = None
+    # ── Diagnóstico ───────────────────────────────────────────────────────────
 
     def probar(self) -> dict[str, Any]:
-        """Verifica de punta a punta que Drive quedó bien configurado.
+        """Verifica de punta a punta que Drive quedó bien conectado.
 
-        Hace una llamada real: pide a Drive los datos de la carpeta raíz con la
-        service account. Devuelve un dict pensado para mostrarse a un usuario no
-        técnico — `estado` es uno de {ok, incompleto, json_invalido, sin_acceso,
-        no_encontrada, error}, y `mensaje` ya viene en español llano.
+        Refresca el access token y asegura la carpeta raíz. Devuelve un dict
+        pensado para usuarios no técnicos — `estado` ∈ {no_conectado,
+        sin_acceso, error, ok}, `mensaje` en español llano.
         """
         self.recargar()
 
-        if not self._credencial("google_drive_service_account_json"):
+        if not (_credencial("google_oauth_client_id") and _credencial("google_oauth_client_secret")):
             return {
                 "ok": False,
-                "estado": "incompleto",
-                "mensaje": "Falta pegar el archivo JSON de la cuenta de servicio (paso 4).",
+                "estado": "no_conectado",
+                "mensaje": "Falta el cliente OAuth de Google (el del login). Configúralo en Los Ajustes.",
             }
-        if not self._credencial("google_drive_carpeta_raiz_id"):
+        if not _credencial("google_drive_oauth_refresh_token"):
             return {
                 "ok": False,
-                "estado": "incompleto",
-                "mensaje": "Falta pegar el ID de la carpeta de Drive (paso 5).",
+                "estado": "no_conectado",
+                "mensaje": "Aún no has conectado tu cuenta de Google. Usa el botón «Conectar mi cuenta de Google».",
             }
 
         try:
-            servicio = self.service
+            carpeta_id = self.obtener_o_crear_carpeta_raiz()
         except NoConfiguradoError as exc:
-            # JSON mal pegado o dependencias ausentes — mensaje ya es claro.
-            return {
-                "ok": False,
-                "estado": "json_invalido",
-                "mensaje": (
-                    "El archivo JSON no se entendió. Cópialo completo otra vez, "
-                    f"incluyendo las llaves {{ y }}. Detalle: {exc}"
-                ),
-            }
-
-        try:
-            from googleapiclient.errors import HttpError
-        except ImportError:
-            HttpError = Exception  # type: ignore[assignment, misc]
-
-        try:
-            info = servicio.files().get(
-                fileId=self.carpeta_raiz_id,
-                fields="id,name",
-                supportsAllDrives=True,
-            ).execute()
-        except HttpError as exc:  # type: ignore[misc]
-            estatus = getattr(getattr(exc, "resp", None), "status", None)
-            if estatus == 404:
-                return {
-                    "ok": False,
-                    "estado": "no_encontrada",
-                    "mensaje": (
-                        "No encontré esa carpeta. Revisa que el ID del paso 5 sea "
-                        "correcto y que la carpeta no se haya borrado."
-                    ),
-                }
+            return {"ok": False, "estado": "sin_acceso", "mensaje": str(exc)}
+        except httpx.HTTPStatusError as exc:
+            estatus = exc.response.status_code
             if estatus in (401, 403):
                 return {
                     "ok": False,
                     "estado": "sin_acceso",
                     "mensaje": (
-                        "La cuenta de servicio existe pero no tiene acceso a la "
-                        "carpeta. Vuelve al paso 6: comparte la carpeta con el "
-                        "correo de la cuenta de servicio, con permiso de Editor."
+                        "Google rechazó el acceso. Asegúrate de haber habilitado "
+                        "la API de Drive (paso 1) y vuelve a conectar tu cuenta."
                     ),
                 }
-            return {
-                "ok": False,
-                "estado": "error",
-                "mensaje": f"Google respondió con un error inesperado: {exc}",
-            }
-        except Exception as exc:  # noqa: BLE001 — queremos atrapar todo para el usuario
-            return {
-                "ok": False,
-                "estado": "error",
-                "mensaje": f"No se pudo conectar con Google Drive: {exc}",
-            }
+            return {"ok": False, "estado": "error", "mensaje": f"Google respondió con error: {exc}"}
+        except Exception as exc:  # noqa: BLE001 — atrapar todo para el usuario
+            return {"ok": False, "estado": "error", "mensaje": f"No se pudo conectar con Drive: {exc}"}
 
         return {
             "ok": True,
             "estado": "ok",
-            "mensaje": f"¡Listo! Conectado a la carpeta «{info.get('name', '?')}».",
-            "carpeta_nombre": info.get("name"),
+            "mensaje": f"¡Listo! Conectado. La carpeta «{CARPETA_RAIZ_NOMBRE}» está lista en tu Drive.",
+            "carpeta_id": carpeta_id,
         }
 
-    # ── API funcional — pendiente de cableado en S2b.1b ─────────────────────
+    # ── API de adjuntos — pendiente de cableado en S2b.1b ─────────────────────
 
     def subir_archivo(
         self,
@@ -197,25 +294,21 @@ class GoogleDriveWrapper:
         carpeta_id: str,
         mime_type: str,
     ) -> dict[str, str]:
-        """Sube archivo. Activación en S2b.1b — ver docs/SETUP_GOOGLE_DRIVE.md."""
+        """Sube archivo. La conexión ya está lista; el cableado de adjuntos
+        (modelo + UI) llega en S2b.1b."""
         raise NotImplementedError(
-            "Subida a Drive llega en S2b.1b. Configura credenciales primero "
-            "(docs/SETUP_GOOGLE_DRIVE.md) y luego el wrapper se cablea."
-        )
-
-    def crear_carpeta(self, nombre: str, padre_id: str) -> dict[str, str]:
-        """Crea carpeta. Activación en S2b.1b."""
-        raise NotImplementedError(
-            "Creación de carpeta llega en S2b.1b. Ver docs/SETUP_GOOGLE_DRIVE.md."
-        )
-
-    def obtener_o_crear_carpeta(self, nombre: str, padre_id: str) -> dict[str, str]:
-        """Idempotente — busca por nombre, crea si no existe. Activación en S2b.1b."""
-        raise NotImplementedError(
-            "Idempotencia de carpetas llega en S2b.1b. Ver docs/SETUP_GOOGLE_DRIVE.md."
+            "La subida de adjuntos llega en S2b.1b. La conexión a Drive ya "
+            "está activa (Ajustes → Conectar Google Drive)."
         )
 
 
 drive = GoogleDriveWrapper()
 
-__all__ = ["GoogleDriveWrapper", "NoConfiguradoError", "drive", "SCOPES"]
+__all__ = [
+    "GoogleDriveWrapper",
+    "NoConfiguradoError",
+    "drive",
+    "SCOPES",
+    "construir_url_consentimiento",
+    "intercambiar_codigo_por_refresh_token",
+]

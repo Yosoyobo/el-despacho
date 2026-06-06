@@ -7,14 +7,17 @@
 
 ## Novedades al 5 de junio de 2026
 
-- **Ya puedes conectar Google Drive con un asistente paso a paso.** En La
-  Gerencia, entra a **Ajustes → Conectar Google Drive**. Te guía con 7 pasos
-  en lenguaje sencillo (con botones que abren directamente las páginas de
-  Google) para crear el acceso y enlazar una carpeta de la empresa. Al final
-  hay un botón **"Probar conexión"** que te dice con un semáforo verde/rojo si
-  quedó bien o qué falta revisar. Solo lo hace el super administrador y solo
-  una vez. Esta conexión es la base para que más adelante se puedan guardar
-  archivos adjuntos y generar los PDF de cotizaciones y facturas.
+- **Ya puedes conectar Google Drive, sin archivos ni complicaciones.** En La
+  Gerencia, entra a **Ajustes → Conectar Google Drive**. Es un asistente con
+  pasos cortos en lenguaje sencillo: habilitas Drive en Google, registras una
+  dirección (una sola vez) y haces clic en **"Conectar mi cuenta de Google"**.
+  Das permiso con la cuenta de la empresa y **el sistema crea su propia carpeta
+  solo** ("El Despacho - Adjuntos") — no tienes que crear ni compartir nada a
+  mano, ni descargar ningún archivo de clave. Al final, el botón **"Probar
+  conexión"** te muestra un semáforo verde/rojo. Solo lo hace el super
+  administrador y solo una vez. Esta conexión es la base para que más adelante
+  se puedan guardar archivos adjuntos y generar los PDF de cotizaciones y
+  facturas. Si necesitas quitarlo, hay un botón **"Desconectar"**.
 
 ## Novedades al 3 de junio de 2026 (tarde)
 

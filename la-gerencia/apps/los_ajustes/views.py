@@ -73,74 +73,112 @@ def probar(request, clave: str):
     return redirect("ajustes-panel")
 
 
-# ── Google Drive — asistente guiado ──────────────────────────────────────────
+# ── Google Drive — asistente guiado (OAuth sin clave) ─────────────────────────
 
-# Email de la service account, extraído del JSON, para mostrarlo en el paso 6
-# (el usuario lo necesita para compartir la carpeta). NO es secreto.
-def _drive_email_servicio() -> str | None:
-    import json
-    crudo = Credencial.obtener("google_drive_service_account_json")
-    if not crudo:
-        return None
-    try:
-        return json.loads(crudo).get("client_email")
-    except Exception:
-        return None
+_DRIVE_OAUTH_STATE = "drive_oauth_state"
 
 
-def _drive_contexto():
+def _drive_redirect_uri(request) -> str:
+    """URI de callback que debe registrarse en el cliente OAuth de Google."""
+    return f"{request.scheme}://{request.get_host()}/ajustes/google-drive/oauth/callback"
+
+
+def _drive_contexto(request):
+    from lib.google_oauth import GoogleOAuthConfig
     return {
-        "json_configurado": Credencial.esta_configurado("google_drive_service_account_json"),
-        "carpeta_configurada": Credencial.esta_configurado("google_drive_carpeta_raiz_id"),
-        "carpeta_id": Credencial.obtener("google_drive_carpeta_raiz_id") or "",
-        "email_servicio": _drive_email_servicio(),
+        "oauth_listo": GoogleOAuthConfig.esta_configurado(),
+        "conectado": Credencial.esta_configurado("google_drive_oauth_refresh_token"),
+        "carpeta_lista": Credencial.esta_configurado("google_drive_carpeta_raiz_id"),
+        "redirect_uri": _drive_redirect_uri(request),
         "ultimo_test": Credencial.objects.filter(
-            clave="google_drive_carpeta_raiz_id"
+            clave="google_drive_oauth_refresh_token"
         ).values("ultimo_test_en", "ultimo_test_ok", "ultimo_test_mensaje").first(),
     }
 
 
 @requires_role("super_admin")
 def google_drive_guia(request):
-    return render(request, "ajustes/google_drive.html", _drive_contexto())
+    return render(request, "ajustes/google_drive.html", _drive_contexto(request))
 
 
 @requires_role("super_admin")
 @require_http_methods(["POST"])
-def google_drive_guardar(request):
-    """Guarda los dos slots de Drive sin borrar accidentalmente.
+def google_drive_conectar(request):
+    """Arranca el consentimiento OAuth: redirige al admin a Google."""
+    import secrets
 
-    A diferencia del `guardar` genérico, un campo vacío NO borra el valor ya
-    configurado — solo se ignora. Esto evita que el usuario pierda el JSON al
-    actualizar nada más el ID de la carpeta.
-    """
-    from lib.google_drive import drive
+    from lib.google_drive import construir_url_consentimiento
+    from lib.google_oauth import GoogleOAuthConfig
 
-    json_sa = (request.POST.get("service_account_json") or "").strip()
-    carpeta = (request.POST.get("carpeta_raiz_id") or "").strip()
-    # El ID a veces se pega como URL completa de Drive — extraemos el ID.
-    if "drive.google.com" in carpeta and "/folders/" in carpeta:
-        carpeta = carpeta.split("/folders/", 1)[1].split("?")[0].split("/")[0]
+    if not GoogleOAuthConfig.esta_configurado():
+        messages.error(request, "Primero configura el cliente OAuth de Google (el del login con Google).")
+        return redirect("ajustes-google-drive")
 
-    guardados = []
-    if json_sa:
-        Credencial.guardar("google_drive_service_account_json", json_sa, usuario=request.user)
-        guardados.append("cuenta de servicio")
-    if carpeta:
-        Credencial.guardar("google_drive_carpeta_raiz_id", carpeta, usuario=request.user)
-        guardados.append("carpeta")
+    state = secrets.token_urlsafe(24)
+    request.session[_DRIVE_OAUTH_STATE] = state
+    try:
+        url = construir_url_consentimiento(_drive_redirect_uri(request), state)
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f"No se pudo iniciar la conexión: {exc}")
+        return redirect("ajustes-google-drive")
+    return redirect(url)
 
-    if guardados:
+
+@requires_role("super_admin")
+def google_drive_callback(request):
+    """Recibe el `code` de Google, guarda el refresh token y crea la carpeta."""
+    from lib.google_drive import drive, intercambiar_codigo_por_refresh_token
+
+    error = request.GET.get("error")
+    if error:
+        messages.error(request, f"Google canceló la conexión: {error}")
+        return redirect("ajustes-google-drive")
+
+    state_recibido = request.GET.get("state")
+    state_esperado = request.session.pop(_DRIVE_OAUTH_STATE, None)
+    if not state_esperado or state_recibido != state_esperado:
+        messages.error(request, "La sesión de conexión expiró o no coincide. Intenta de nuevo.")
+        return redirect("ajustes-google-drive")
+
+    code = request.GET.get("code")
+    if not code:
+        messages.error(request, "Google no devolvió el código de autorización.")
+        return redirect("ajustes-google-drive")
+
+    try:
+        refresh = intercambiar_codigo_por_refresh_token(code, _drive_redirect_uri(request))
+        Credencial.guardar("google_drive_oauth_refresh_token", refresh, usuario=request.user)
         drive.recargar()
-        emitir(EventoPortavoz(
-            tipo="ajuste.credencial_guardada",
-            actor_id=request.user.pk,
-            actor_email=request.user.email,
-            payload={"clave": "google_drive", "campos": guardados},
-        ))
-        messages.success(request, f"Guardado ({', '.join(guardados)}). Ahora prueba la conexión.")
-    else:
-        messages.info(request, "No escribiste nada nuevo; no se cambió la configuración.")
+        drive.obtener_o_crear_carpeta_raiz()  # crea la carpeta raíz ya mismo
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f"No se pudo completar la conexión: {exc}")
+        return redirect("ajustes-google-drive")
+
+    emitir(EventoPortavoz(
+        tipo="ajuste.drive_conectado",
+        actor_id=request.user.pk,
+        actor_email=request.user.email,
+        payload={},
+    ))
+    messages.success(request, "¡Cuenta de Google conectada! La carpeta de adjuntos quedó lista.")
+    return redirect("ajustes-google-drive")
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def google_drive_desconectar(request):
+    """Borra el refresh token y el ID de carpeta (no borra la carpeta en Drive)."""
+    from lib.google_drive import drive
+    Credencial.guardar("google_drive_oauth_refresh_token", "")
+    Credencial.guardar("google_drive_carpeta_raiz_id", "")
+    drive.recargar()
+    emitir(EventoPortavoz(
+        tipo="ajuste.drive_desconectado",
+        actor_id=request.user.pk,
+        actor_email=request.user.email,
+        payload={},
+    ))
+    messages.success(request, "Google Drive se desconectó. La carpeta sigue en tu Drive.")
     return redirect("ajustes-google-drive")
 
 
@@ -153,9 +191,7 @@ def google_drive_probar(request):
     from lib.google_drive import drive
     res = drive.probar()
 
-    # Persistimos el resultado en el slot de la carpeta (sirve de ancla para el
-    # semáforo aunque el JSON esté vacío). Solo si la fila existe.
-    fila = Credencial.objects.filter(clave="google_drive_carpeta_raiz_id").first()
+    fila = Credencial.objects.filter(clave="google_drive_oauth_refresh_token").first()
     if fila:
         fila.ultimo_test_en = timezone.now()
         fila.ultimo_test_ok = res["ok"]
