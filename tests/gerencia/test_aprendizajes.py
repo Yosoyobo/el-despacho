@@ -100,6 +100,13 @@ def test_toggle_desactiva_y_guarda_motivo(client, usuario_factory):
 
 
 def test_filtro_activos_inactivos(client, usuario_factory):
+    from chalanes.models import Aprendizaje
+    # `el_dictado_aprendizaje` es managed=False y compartida con tests de Taller;
+    # en la suite completa pueden quedar filas comiteadas de otros tests que,
+    # acumuladas, empujan "iI" fuera del slice [:200] del view. Partimos de
+    # tabla limpia para que este test (sobre SUS dos filas) sea determinista;
+    # el rollback de django_db restaura el estado al terminar.
+    Aprendizaje.objects.all().delete()
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
     _crear_aprendizaje(autor=u, frase_o_patron="aA", activo=True)
