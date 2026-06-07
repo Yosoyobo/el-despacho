@@ -5,8 +5,8 @@ Backfill: subtotal = monto para registros existentes (incluye_iva=False, así
 que subtotal == monto y la contabilidad no cambia).
 """
 
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 def backfill_subtotal(apps, schema_editor):

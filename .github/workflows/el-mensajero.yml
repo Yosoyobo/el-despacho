@@ -11,6 +11,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Un solo deploy a la vez por rama: si llega un push nuevo mientras corre
+# El Mensajero, se cancela el anterior para que no compitan dos despliegues
+# sobre La Sede. cancel-in-progress aplica a runs que arranquen con esta
+# config (los anteriores al cambio no quedan en el grupo).
+concurrency:
+  group: el-mensajero-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
 

@@ -13,6 +13,10 @@ for p in (str(REPO_ROOT), str(BASE_DIR)):
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = os.environ.get("DESPACHO_ENV", "development") != "production"
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",") if h.strip()]
+# Host canónico productivo siempre aceptado, aunque el .env del droplet quede
+# desfasado tras un cambio de dominio (defensa contra rollback en deploy).
+if "recepcion.learningcenter.mx" not in ALLOWED_HOSTS and "*" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("recepcion.learningcenter.mx")
 
 import lib.boveda  # noqa: E402, F401
 
