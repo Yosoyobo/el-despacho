@@ -152,6 +152,13 @@ def test_egreso_con_iva_calcula_total_y_gasto_operativo(client, usuario_factory,
     assert e.proveedor_nombre == "Gasto operativo"
 
 
+def test_get_forms_renderizan(client, usuario_factory):
+    """Smoke: los forms de ingreso/egreso (mini-cal, IVA, semáforo) renderizan."""
+    client.force_login(usuario_factory(rol="dueno"))
+    assert client.get("/tesoreria/ingresos/nuevo/").status_code == 200
+    assert client.get("/tesoreria/egresos/nuevo/").status_code == 200
+
+
 # ── Permisos ─────────────────────────────────────────────────────────────
 
 

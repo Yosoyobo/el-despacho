@@ -174,6 +174,21 @@ def ingreso_detalle(request, pk):
     })
 
 
+def _ingreso_pickers(request):
+    """Quick-pick: 6 clientes/proyectos más recientes + flag de alta inline."""
+    from apps.la_cartera.models import Cliente
+    from apps.los_proyectos.models import Proyecto
+
+    from lib.permisos import puede_editar_cartera
+    return {
+        "clientes_recientes": list(Cliente.activos.all().order_by("-actualizado_en")[:6]),
+        "proyectos_recientes": list(
+            Proyecto.objects.exclude(estado__in=["cancelado", "cerrado"]).order_by("-actualizado_en")[:6]
+        ),
+        "puede_crear_cliente": puede_editar_cartera(request.user),
+    }
+
+
 @login_required
 def ingreso_nuevo(request):
     if (r := _gate(request)) is not None:
@@ -193,7 +208,8 @@ def ingreso_nuevo(request):
             return redirect("tesoreria:landing")
     else:
         form = IngresoForm()
-    return render(request, "tesoreria/ingreso_form.html", {"form": form, "modo": "nuevo"})
+    return render(request, "tesoreria/ingreso_form.html",
+                  {"form": form, "modo": "nuevo", **_ingreso_pickers(request)})
 
 
 @login_required
@@ -213,7 +229,7 @@ def ingreso_editar(request, pk):
     else:
         form = IngresoForm(instance=ingreso)
     return render(request, "tesoreria/ingreso_form.html",
-                  {"form": form, "modo": "editar", "ingreso": ingreso})
+                  {"form": form, "modo": "editar", "ingreso": ingreso, **_ingreso_pickers(request)})
 
 
 @login_required

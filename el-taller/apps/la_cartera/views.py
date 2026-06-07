@@ -122,6 +122,33 @@ def detalle(request, pk):
 
 
 @login_required
+def cliente_quick_create(request):
+    """Alta mínima de cliente vía JSON (S-LC-Buzon). Usado inline desde el form
+    de Ingreso. Sólo razón social es obligatoria."""
+    if request.method != "POST" or not puede_editar_cartera(request.user):
+        return HttpResponseForbidden("No autorizado.")
+    from django.http import JsonResponse
+    razon = (request.POST.get("razon_social") or "").strip()
+    if not razon:
+        return JsonResponse({"ok": False, "error": "La razón social es obligatoria."})
+    cliente = Cliente.objects.create(
+        razon_social=razon,
+        rfc=(request.POST.get("rfc") or "").strip().upper(),
+        nombre_contacto=(request.POST.get("nombre_contacto") or "").strip(),
+        email_contacto=(request.POST.get("email_contacto") or "").strip(),
+        telefono=(request.POST.get("telefono") or "").strip(),
+        creado_por=request.user,
+    )
+    emitir(EventoPortavoz(
+        tipo="cliente.creado",
+        actor_id=request.user.pk,
+        actor_email=request.user.email,
+        payload={"cliente_id": cliente.pk, "razon_social": cliente.razon_social, "origen": "quick_create_ingreso"},
+    ))
+    return JsonResponse({"ok": True, "id": cliente.pk, "razon_social": cliente.razon_social})
+
+
+@login_required
 def nuevo(request):
     if not puede_editar_cartera(request.user):
         return HttpResponseForbidden("Solo admins pueden crear clientes.")

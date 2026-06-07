@@ -15,7 +15,7 @@
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             {% include "tesoreria/_iva_campos.html" with form=form %}
 
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha %}
+            {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion ancho_completo=True %}
 
