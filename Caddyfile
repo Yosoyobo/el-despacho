@@ -1,8 +1,22 @@
 # El Portero — Caddy 2 con auto-HTTPS Let's Encrypt en producción.
 # En HAL local los puertos están remapeados (18080/18443) en docker-compose.
-
 {
 	email oscar@bautista.mx
+}
+
+# Dominio raíz: splash estático con el logo de Learning Center centrado
+# sobre el color de fondo de marca. Servido por file_server desde el bind
+# mount ./infra/landing (ver docker-compose.yml). No es una app Django.
+learningcenter.mx {
+	encode gzip
+	root * /srv/landing
+	respond /ping "ok" 200
+	file_server
+}
+
+# www → apex (redirect permanente).
+www.learningcenter.mx {
+	redir https://learningcenter.mx{uri} permanent
 }
 
 taller.learningcenter.mx {

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+	<meta charset="utf-8">
+	<title>Learning Center</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#5C6BC0">
+	<meta name="description" content="Learning Center — despacho de diseño y maquila de productos promocionales.">
+	<link rel="icon" type="image/png" href="/logo.png">
+	<style>
+		html, body {
+			margin: 0;
+			height: 100%;
+		}
+		body {
+			min-height: 100vh;
+			min-height: 100dvh;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			/* Color de fondo del logo de Learning Center (periwinkle) */
+			background: #5C6BC0;
+			padding: max(env(safe-area-inset-top), 1.5rem)
+			         max(env(safe-area-inset-right), 1.5rem)
+			         max(env(safe-area-inset-bottom), 1.5rem)
+			         max(env(safe-area-inset-left), 1.5rem);
+			box-sizing: border-box;
+			font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+		}
+		.logo {
+			width: min(60vmin, 460px);
+			height: auto;
+			display: block;
+		}
+		footer {
+			position: fixed;
+			bottom: max(env(safe-area-inset-bottom), 1rem);
+			left: 0;
+			right: 0;
+			text-align: center;
+			font-size: 0.75rem;
+			color: rgba(255, 255, 255, 0.6);
+		}
+		footer a {
+			color: rgba(255, 255, 255, 0.85);
+			text-decoration: none;
+		}
+		footer a:hover {
+			text-decoration: underline;
+		}
+	</style>
+</head>
+<body>
+	<img class="logo" src="/logo.png" alt="Learning Center" width="512" height="512">
+	<footer>Desarrollado por <a href="https://nokodevs.com" rel="noopener">NoKo Devs</a></footer>
+</body>
+</html>
