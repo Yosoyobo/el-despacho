@@ -4,38 +4,37 @@
 
 {% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
 {% block contenido %}
-<header class="mb-6">
-    <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">Dashboard</h1>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Bienvenido, {{ request.user.get_short_name }} · {{ request.user.get_rol_display }}</p>
+<header class="mb-6 pt-4">
+    <h1 class="text-lg font-medium text-gray-800 dark:text-gray-100">Bienvenido, {{ request.user.get_short_name }}</h1>
 </header>
 
 {% comment %}Hero KPIs eliminadas (sprint S-LC-Buzon): la info ya vive en el Tablero, Proyectos, Charts y Tesorería más abajo.{% endcomment %}
 
-{# 1) Acciones rápidas: botones azules para crear lo más común. #}
-<section class="mb-6 flex flex-wrap gap-2">
+{# 1) Acciones rápidas: botones full-width, un color por acción. #}
+<section class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
     {% if permisos_modulos.proyectos %}
-    <a href="{% url 'proyectos-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    <a href="{% url 'proyectos-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo proyecto
     </a>
     {% endif %}
     {% if permisos_modulos.catalogo %}
-    <a href="{% url 'catalogo-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    <a href="{% url 'catalogo-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-purple-600">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo producto
     </a>
-    <a href="{% url 'catalogo-proveedor-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    <a href="{% url 'catalogo-proveedor-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-light-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-blue-light-600">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo proveedor
     </a>
     {% endif %}
     {% if permisos_modulos.tesoreria %}
-    <a href="{% url 'tesoreria:ingreso-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    <a href="{% url 'tesoreria:ingreso-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-lg bg-success-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-success-600">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo ingreso
     </a>
-    <a href="{% url 'tesoreria:egreso-nuevo' %}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    <a href="{% url 'tesoreria:egreso-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-lg bg-error-500 px-4 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition hover:bg-error-600">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo egreso
     </a>
     {% endif %}
@@ -44,23 +43,17 @@
 {# El Dictado — S-LC-Feedback-V3: justo abajo de Acciones rápidas. #}
 <section data-andamiaje="dictado-slot"
          class="mb-6 rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
-    <div class="flex items-start gap-3">
-        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-2xl dark:bg-brand-500/15" aria-hidden="true">🎤</span>
-        <div class="flex-1">
-            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Dictado al asistente</h2>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Escribe en lenguaje natural lo que pasó. Revisas las acciones antes de aplicarlas.</p>
-            <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
-                {% csrf_token %}
-                <textarea name="texto" rows="3" required data-referencias
-                          placeholder="Habla normal. Usa @persona, #LC-0001 (proyecto) y $cliente. Ej.: 'En #LC-0001 asígnale a @maria que mande el contrato el lunes.'"
-                          class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
-                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
-                    <button type="submit" class="btn-primario">Procesar</button>
-                </div>
-            </form>
+    <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Cuéntame</h2>
+    <form method="post" action="{% url 'dictado-interpretar' %}" class="mt-3">
+        {% csrf_token %}
+        <textarea name="texto" rows="3" required data-referencias
+                  placeholder="Dame tus updates, tareas, nuevos pendientes. Yo los interpreto, organizo, y te muestro acciones para confirmar."
+                  class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
+            <button type="submit" class="btn-primario">Procesar</button>
         </div>
-    </div>
+    </form>
 </section>
 
 {# Sugerencias del Chalán (Capa 2 — reglas heurísticas). #}
