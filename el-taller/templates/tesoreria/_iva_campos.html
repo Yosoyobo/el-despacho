@@ -1,0 +1,54 @@
+{% comment %}
+Bloque de captura de monto con IVA (S-LC-Buzon). Reusado por ingreso_form y
+egreso_form. Espera `form` con campos `subtotal` (DecimalField) e
+`incluye_iva` (checkbox). El IVA es la excepción: por default OFF, se registra
+como efectivo (operación informal). JS calcula IVA 16% y total en vivo.
+{% endcomment %}
+<div data-iva-block class="md:col-span-2">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div class="campo-form">
+            <label for="{{ form.subtotal.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Monto (sin IVA)</label>
+            {{ form.subtotal }}
+            {% for e in form.subtotal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="flex items-end">
+            <div class="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-white/[0.03]">
+                <label for="{{ form.incluye_iva.id_for_label }}" class="flex cursor-pointer items-center justify-between gap-3">
+                    <span class="text-sm text-gray-600 dark:text-gray-300">IVA 16% · <span data-iva-monto class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">$0.00</span></span>
+                    {{ form.incluye_iva }}
+                </label>
+                <div class="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
+                    <span class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Total</span>
+                    <span data-iva-total class="text-base font-bold tabular-nums text-gray-900 dark:text-gray-100">$0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div data-iva-ribbon class="mt-2 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+        <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Sin IVA — se registra como <strong>efectivo</strong> (operación informal). Recuérdalo para efectos contables y fiscales.</span>
+    </div>
+</div>
+<script>
+(() => {
+    const block = document.currentScript.previousElementSibling;
+    if (!block || !block.matches("[data-iva-block]")) return;
+    const sub    = block.querySelector('[name="subtotal"]');
+    const chk     = block.querySelector('[name="incluye_iva"]');
+    const ivaOut  = block.querySelector('[data-iva-monto]');
+    const totOut  = block.querySelector('[data-iva-total]');
+    const ribbon  = block.querySelector('[data-iva-ribbon]');
+    const fmt = (n) => "$" + (n || 0).toLocaleString("es-MX", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const recalc = () => {
+        const base = parseFloat(sub && sub.value) || 0;
+        const con = chk && chk.checked;
+        const iva = con ? base * 0.16 : 0;
+        if (ivaOut) ivaOut.textContent = fmt(iva);
+        if (totOut) totOut.textContent = fmt(base + iva);
+        if (ribbon) ribbon.classList.toggle("hidden", !!con);
+    };
+    if (sub) sub.addEventListener("input", recalc);
+    if (chk) chk.addEventListener("change", recalc);
+    recalc();
+})();
+</script>

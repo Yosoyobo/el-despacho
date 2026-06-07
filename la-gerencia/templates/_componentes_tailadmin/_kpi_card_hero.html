@@ -1,7 +1,9 @@
 {% comment %}
-KPI card hero — TailAdmin Pro. Params: titulo, valor, icono_svg, color,
-badge, badge_color, subtexto, link, delta, delta_pos. Ver docs en el
-_componentes_tailadmin README cuando exista.
+KPI card — sistema ÚNICO de tarjetas del sitio (sprint S-LC-Buzon).
+Compacta, título en small-caps SIN emoji/ícono. El param `icono_svg` se
+ignora (se conserva en call-sites por compatibilidad; ya no se pinta).
+Params: titulo, valor, color (sólo barra de meta), badge, badge_color,
+subtexto, link, activo, delta, delta_pos, sparkline_*, meta_*.
 {% endcomment %}
 {% if link %}
 <a href="{{ link }}" class="ta-card block transition hover:border-brand-300 dark:hover:border-brand-500/40 {% if activo %}ring-2 ring-brand-500 border-brand-300 dark:border-brand-500/40{% endif %}"
@@ -9,29 +11,23 @@ _componentes_tailadmin README cuando exista.
 {% else %}
 <div class="ta-card">
 {% endif %}
-    <div class="flex items-center justify-between">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-{{ color|default:'brand' }}-50 text-{{ color|default:'brand' }}-600 dark:bg-{{ color|default:'brand' }}-500/15 dark:text-{{ color|default:'brand' }}-400">
-            {{ icono_svg|safe }}
-        </span>
+    <div class="flex items-start justify-between gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ titulo }}</span>
         {% if badge %}<span class="badge badge-{{ badge_color|default:'gray' }}">{{ badge }}</span>{% endif %}
     </div>
-    {# S-LC-Feedback-V3: tamaño responsive + tabular-nums + break para cifras largas. #}
-    <div class="mt-4 text-2xl sm:text-title-sm md:text-title-md font-bold tabular-nums text-gray-900 dark:text-gray-100 break-all">{{ valor }}</div>
-    <div class="flex items-center gap-2">
-        <div class="text-sm text-gray-500 dark:text-gray-400">{{ titulo }}</div>
+    <div class="mt-2 flex items-baseline gap-2">
+        <span class="text-2xl sm:text-title-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 break-all">{{ valor }}</span>
         {% if delta %}
-        <span class="text-xs font-medium {% if delta_pos %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">
-            {{ delta }}
-        </span>
+        <span class="text-xs font-medium {% if delta_pos %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ delta }}</span>
         {% endif %}
     </div>
     {% if subtexto %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ subtexto }}</p>{% endif %}
     {% if sparkline_serie %}
-    {# Sparkline 30 días — ApexCharts. Color hereda el del card. #}
+    {# Sparkline 30 días — ApexCharts. #}
     <div class="-mb-1 mt-2 h-9" id="spark-{{ sparkline_id }}" data-chart="spark-kpi" data-series="{{ sparkline_serie }}" data-color="{{ sparkline_color|default:'#465fff' }}" data-formato="{{ sparkline_formato|default:'' }}" data-nombre="{{ titulo }}"></div>
     {% endif %}
     {% if meta_valor %}
-    {# S-LC-Feedback-V5 c8: bullet horizontal — barra de progreso hacia la meta. #}
+    {# Bullet horizontal — barra de progreso hacia la meta. #}
     <div class="mt-3">
         <div class="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
             <span>Meta: {{ meta_valor }}</span>

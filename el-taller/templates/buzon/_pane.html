@@ -1,0 +1,49 @@
+{% comment %}
+Panel de lectura del Buzón (S-LC-Buzon master-detail). Fragmento HTMX que se
+inyecta en #buzon-pane al picar una fila. NO extiende base.
+{% endcomment %}
+<div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex items-start justify-between gap-3 border-b border-gray-100 p-5 dark:border-gray-800">
+        <div class="min-w-0">
+            <h2 class="truncate text-base font-semibold text-gray-900 dark:text-gray-100">{{ mensaje.asunto }}</h2>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">#{{ mensaje.pk }} · {{ mensaje.get_tipo_display }} · {{ mensaje.creado_en|date:'Y-m-d H:i' }}</p>
+        </div>
+        {% include "_componentes_tailadmin/_badge_estado.html" with estado=mensaje.estado etiqueta=mensaje.get_estado_display %}
+    </div>
+    <div class="space-y-4 p-5">
+        <div>
+            <p class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">De</p>
+            <p class="text-sm text-gray-700 dark:text-gray-200">{{ mensaje.autor.email }}</p>
+        </div>
+        <div>
+            <p class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Mensaje</p>
+            <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ mensaje.cuerpo }}</p>
+        </div>
+        {% if mensaje.respuesta_publica %}
+        <div class="rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-500/30 dark:bg-brand-500/5">
+            <p class="text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-300">Respuesta del admin</p>
+            <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ mensaje.respuesta_publica }}</p>
+        </div>
+        {% endif %}
+        {% if puede_responder and form %}
+        <form hx-post="{% url 'buzon-detalle' mensaje.pk %}" hx-target="#buzon-pane" hx-swap="innerHTML"
+              class="campo-form space-y-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+            {% csrf_token %}
+            {% for f in form %}
+            <div>
+                {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}</label>{% endif %}
+                {{ f }}
+                {% if f.errors %}<ul class="mt-1 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            {% endfor %}
+            <div class="flex items-center justify-end gap-2">
+                <a href="{% url 'buzon-detalle' mensaje.pk %}" target="_blank" class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400">Abrir en página →</a>
+                <button type="submit" class="btn-primario">Guardar</button>
+            </div>
+        </form>
+        {% endif %}
+        {% if es_admin_buzon %}
+        <a href="{% url 'buzon-exportar' mensaje.pk %}" target="_blank" class="inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">📋 Exportar a Claude</a>
+        {% endif %}
+    </div>
+</div>

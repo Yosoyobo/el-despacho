@@ -295,9 +295,9 @@ python -c "import secrets;print('DJANGO_SECRET_KEY=' + secrets.token_hex(32))" >
 # Edita .env y completa POSTGRES_PASSWORD, DESPACHO_SUPERADMIN_PASSWORD, etc.
 
 docker compose up -d --build
-# La Gerencia  → http://localhost:18080  (host: gerencia.ninomeando.com)
-# El Taller     → http://localhost:18080  (host: taller.ninomeando.com)
-# La Recepción  → http://localhost:18080  (host: recepcion.ninomeando.com)
+# La Gerencia  → http://localhost:18080  (host: gerencia.learningcenter.mx)
+# El Taller     → http://localhost:18080  (host: taller.learningcenter.mx)
+# La Recepción  → http://localhost:18080  (host: recepcion.learningcenter.mx)
 ```
 
 En HAL los puertos de Caddy están remapeados a `18080/18443` porque macOS reserva

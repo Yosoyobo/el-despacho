@@ -131,7 +131,7 @@ chmod 600 ~/.ssh/authorized_keys
 |---|---|---|
 | `infra/scripts/archivo.sh` | `infra/scripts/archivo.sh` | Renombrar `HAL_DEST`, nombre de servicio postgres, comando `registrar_backup_remoto` (o quitarlo si no hay equivalente). |
 | `infra/scripts/mudanza.sh` | `infra/scripts/mudanza.sh` | Path `/opt/<proyecto>` y archivos compose. |
-| `.github/workflows/el-mensajero.yml` job `mudanza` | mismo workflow | Hosts del healthcheck (`*.ninomeando.com`), nombre del paquete GHCR. |
+| `.github/workflows/el-mensajero.yml` job `mudanza` | mismo workflow | Hosts del healthcheck (`*.learningcenter.mx`), nombre del paquete GHCR. |
 | `.github/workflows/la-limpieza.yml` | mismo workflow | Nombre del paquete GHCR. |
 
 ---

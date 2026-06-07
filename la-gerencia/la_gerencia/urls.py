@@ -12,7 +12,7 @@ def _redirect_a_taller(prefijo: str):
     from django.http import HttpResponseRedirect
 
     def _vista(request, resto: str = ""):
-        base = getattr(settings, "TALLER_URL", "https://taller.ninomeando.com/").rstrip("/") + "/"
+        base = getattr(settings, "TALLER_URL", "https://taller.learningcenter.mx/").rstrip("/") + "/"
         destino = f"{base}{prefijo.strip('/')}/{resto}"
         if request.META.get("QUERY_STRING"):
             destino += "?" + request.META["QUERY_STRING"]

@@ -35,7 +35,19 @@
                     <td class="px-5 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ c.orden }}</td>
                     <td class="px-5 py-3">{% if c.activa %}<span class="badge badge-success">Activa</span>{% else %}<span class="badge badge-gray">Inactiva</span>{% endif %}</td>
                     <td class="px-5 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ c.servicios.count }}</td>
-                    {% if puede_editar %}<td class="px-5 py-3 text-right"><a href="{% url 'catalogo-categoria-editar' c.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a></td>{% endif %}
+                    {% if puede_editar %}
+                    <td class="px-5 py-3 text-right">
+                        <a href="{% url 'catalogo-categoria-editar' c.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                        {% if c.servicios.count == 0 %}
+                        <form method="post" action="{% url 'catalogo-categoria-borrar' c.pk %}" class="ml-3 inline" onsubmit="return confirm('¿Eliminar la categoría «{{ c.nombre|escapejs }}»? Esta acción no se puede deshacer.');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-sm font-medium text-error-600 hover:underline dark:text-error-400">Eliminar</button>
+                        </form>
+                        {% else %}
+                        <span class="ml-3 text-xs text-gray-400 dark:text-gray-500" title="Tiene productos asociados">En uso</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin categorías todavía.</td></tr>

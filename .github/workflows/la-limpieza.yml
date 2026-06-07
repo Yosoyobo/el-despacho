@@ -140,10 +140,10 @@ jobs:
         run: |
           set -e
           for host in gerencia taller recepcion; do
-            CODE=$(curl -fsS -o /dev/null -w "%{http_code}" "https://${host}.ninomeando.com/ping" || echo "FAIL")
+            CODE=$(curl -fsS -o /dev/null -w "%{http_code}" "https://${host}.learningcenter.mx/ping" || echo "FAIL")
             if [ "$CODE" != "200" ]; then
-              echo "❌ https://${host}.ninomeando.com/ping respondió $CODE"
+              echo "❌ https://${host}.learningcenter.mx/ping respondió $CODE"
               exit 1
             fi
-            echo "✅ https://${host}.ninomeando.com/ping → 200"
+            echo "✅ https://${host}.learningcenter.mx/ping → 200"
           done

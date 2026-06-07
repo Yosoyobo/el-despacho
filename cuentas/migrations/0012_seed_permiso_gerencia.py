@@ -2,7 +2,7 @@
 
 Defaults: super_admin y dueno reciben (gerencia, acceder). Otros roles no.
 Heredable: el super_admin puede toglear este permiso a cualquier usuario
-desde el directorio. Si lo tiene, puede entrar a `gerencia.ninomeando.com`
+desde el directorio. Si lo tiene, puede entrar a `gerencia.learningcenter.mx`
 con la misma cuenta y verá el atajo "Ajustes" en el sidebar de El Taller.
 
 Idempotente vía bulk_create(ignore_conflicts=True).

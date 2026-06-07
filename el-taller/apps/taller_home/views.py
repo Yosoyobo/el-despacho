@@ -197,63 +197,6 @@ def home(request):
         {"actual": {"nombre_mes": "", "datos": []}, "siguiente": {"nombre_mes": "", "datos": []}},
     )
 
-    # S-LC-Feedback-V5 c9: hero KPIs + gauge meta en el header del Dashboard.
-    def _build_hero():
-        try:
-            from apps.taller_home.services_meta_kpi import obtener_meta
-            from apps.tesoreria.services import kpis_landing as kpis_tes
-            t = kpis_tes(user)
-            ingresos_mes = float(t.get("ingresos_mes") or 0)
-            cxc_total = float(t.get("cxc_total") or 0)
-        except Exception:
-            ingresos_mes, cxc_total = 0.0, 0.0
-        try:
-            proyectos_activos_n = Proyecto.objects.filter(estado__in=ESTADOS_ACTIVOS).count()
-            if rol == "disenador":
-                proyectos_activos_n = Proyecto.objects.filter(
-                    estado__in=ESTADOS_ACTIVOS, asignaciones__usuario=user
-                ).distinct().count()
-        except Exception:
-            proyectos_activos_n = 0
-        # Gauge contra meta de ingresos del mes
-        gauge_pct = 0
-        gauge_meta_fmt = ""
-        try:
-            m = obtener_meta("ingresos-mes")
-            if m and float(m.valor) > 0:
-                gauge_pct = max(0, min(100, round(ingresos_mes / float(m.valor) * 100)))
-                gauge_meta_fmt = f"${float(m.valor):,.0f}"
-        except Exception:
-            pass
-        return {
-            "ingresos_mes_fmt": f"${ingresos_mes:,.0f}",
-            "proyectos_activos_num": proyectos_activos_n,
-            "cxc_total_fmt": f"${cxc_total:,.0f}",
-            "gauge_pct": gauge_pct,
-            "gauge_meta_fmt": gauge_meta_fmt,
-            "ingresos_mes_actual_fmt": f"${ingresos_mes:,.0f}",
-        }
-
-    hero = _safe("hero", _build_hero, {})
-
-    # S-Demo-Pre-Showcase-2: visibilidad individual de cada card hero.
-    # Slugs `hero-ingresos`, `hero-proyectos`, `hero-por-cobrar`, `hero-meta`.
-    # Default visible (sin fila en PreferenciaKPI). Si el usuario lo oculta
-    # desde /perfil/dashboard/, queda fila con visible=False.
-    HERO_SLUGS = ("hero-ingresos", "hero-proyectos", "hero-por-cobrar", "hero-meta")
-    hero_ocultos = set(
-        PreferenciaKPI.objects.filter(
-            usuario=user, kpi_slug__in=HERO_SLUGS, visible=False
-        ).values_list("kpi_slug", flat=True)
-    )
-    hero_visible = {
-        "ingresos": "hero-ingresos" not in hero_ocultos,
-        "proyectos": "hero-proyectos" not in hero_ocultos,
-        "por_cobrar": "hero-por-cobrar" not in hero_ocultos,
-        "meta": "hero-meta" not in hero_ocultos,
-    }
-    hero_alguno_visible = any(hero_visible.values())
-
     # S-Demo-Pre-Showcase: gauges del droplet + tarjetas Chalanes IA.
     # Sólo super_admin/dueno. Best-effort: si los volúmenes /proc no están
     # montados (entorno dev/CI sin docker-compose.site.yml), los partials
@@ -283,9 +226,6 @@ def home(request):
         "hoy": date.today(),
         "charts": charts,
         "mini_cal": mini_cal,
-        "hero": hero,
-        "hero_visible": hero_visible,
-        "hero_alguno_visible": hero_alguno_visible,
         "infra_gauges": infra_gauges,
         "chalanes_resumen": chalanes_resumen,
         "chalanes_tarjetas": chalanes_tarjetas,
@@ -323,24 +263,9 @@ def dashboard_preferencias(request):
     ]
     sugerencias = sugerencias_pendientes(user)
 
-    # Hero cards toggleables (S-Demo-Pre-Showcase-2).
-    HERO_CHOICES = [
-        ("hero-ingresos", "Ingresos del mes", "Suma de cobros vigentes del mes."),
-        ("hero-proyectos", "Proyectos activos", "Conteo de proyectos en ciclo (no entregados/cancelados)."),
-        ("hero-por-cobrar", "Por cobrar", "Saldo total pendiente de cobranza."),
-        ("hero-meta", "Meta del mes", "Gauge contra meta de ingresos configurada."),
-    ]
-    hero_ocultos = set(
-        PreferenciaKPI.objects.filter(
-            usuario=user, kpi_slug__in=[s for s, _, _ in HERO_CHOICES], visible=False,
-        ).values_list("kpi_slug", flat=True)
-    )
-
     return render(request, "taller_home/dashboard_preferencias.html", {
         "grupos": grupos,
         "sugerencias": sugerencias,
-        "hero_choices": HERO_CHOICES,
-        "hero_ocultos": hero_ocultos,
     })
 
 
@@ -351,20 +276,12 @@ def dashboard_guardar(request):
     user = request.user
     rol = getattr(user, "rol", None) or "disenador"
     aplicables_slugs = {k.slug for k in kpis_aplicables_a_rol(rol, user=user)}
-    # Slugs hero (S-Demo-Pre-Showcase-2) viven fuera del catálogo y se
-    # persisten también en PreferenciaKPI con origen='hero'.
-    HERO_SLUGS = {"hero-ingresos", "hero-proyectos", "hero-por-cobrar", "hero-meta"}
     marcados = set(request.POST.getlist("visible"))
 
     for slug in aplicables_slugs:
         visible = slug in marcados
         PreferenciaKPI.objects.update_or_create(
             usuario=user, kpi_slug=slug, defaults={"visible": visible, "origen": "manual"},
-        )
-    for slug in HERO_SLUGS:
-        visible = slug in marcados
-        PreferenciaKPI.objects.update_or_create(
-            usuario=user, kpi_slug=slug, defaults={"visible": visible, "origen": "hero"},
         )
     from django.contrib import messages
     messages.success(request, "Preferencias del dashboard guardadas.")

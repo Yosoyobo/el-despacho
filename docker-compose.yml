@@ -116,7 +116,7 @@ services:
     # S-RAM-Wave3: La Recepción es stub vacío hasta S5 — apagada por default
     # para ahorrar ~120 MB de RAM en el droplet de 1 GB. Para reactivarla:
     #   docker compose --profile s5 up -d la-recepcion
-    # Caddy responde 503 estático en recepcion.ninomeando.com mientras esté
+    # Caddy responde 503 estático en recepcion.learningcenter.mx mientras esté
     # apagada (ver Caddyfile).
     profiles: ["s5"]
     build:
@@ -172,7 +172,7 @@ services:
       el-taller:
         condition: service_healthy
       # la-recepcion: apagada por profile 's5' hasta que arranque S5.
-      # Caddy responde 503 estático en recepcion.ninomeando.com mientras tanto.
+      # Caddy responde 503 estático en recepcion.learningcenter.mx mientras tanto.
     ports:
       - "${CADDY_HTTP_PORT:-80}:80"
       - "${CADDY_HTTPS_PORT:-443}:443"

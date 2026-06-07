@@ -58,7 +58,7 @@ El Chalán interpreta y propone **6 acciones**: actualizar 3 campos del proyecto
 
 ## 2. Ubicación
 
-- **Vive en la Sala de Juntas del Taller** (`taller.ninomeando.com/`)
+- **Vive en la Sala de Juntas del Taller** (`taller.learningcenter.mx/`)
 - **NO existe en La Gerencia** (decisión 15 mayo 2026)
 - **Es el cuadro de texto más prominente** de la página principal
 - Disponible para todos los roles, **con permisos diferenciados** por tipo de acción (ver §4)

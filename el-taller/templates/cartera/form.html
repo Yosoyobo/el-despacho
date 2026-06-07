@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ modo|capfirst }} cliente — Clientes{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|add:" cliente"|capfirst subtitulo="Datos B2B del cliente — RFC, contacto, dirección." breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|add:" cliente"|capfirst subtitulo="Datos del cliente — nombre, contactos, ubicación." breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
 <form method="post" class="max-w-3xl">
     {% csrf_token %}
@@ -16,9 +16,61 @@
             {% endfor %}
         </div>
     </section>
+
+    {# Contactos — varias personas (formset inline). #}
+    <section class="campo-form mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Contactos</h2>
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}<ul class="mb-3 text-xs text-error-600 dark:text-error-400">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        <div id="contactos-formset" class="space-y-3">
+            {% for cf in formset %}
+            <div class="contacto-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-2 dark:border-gray-700 dark:bg-gray-800/40">
+                {% for hidden in cf.hidden_fields %}{{ hidden }}{% endfor %}
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Nombre</label>{{ cf.nombre }}</div>
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Puesto</label>{{ cf.puesto }}</div>
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Email</label>{{ cf.email }}</div>
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Teléfono</label>{{ cf.telefono }}</div>
+                <div class="flex items-center justify-between gap-3 sm:col-span-2">
+                    <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">{{ cf.principal }} Principal</label>
+                    {% if cf.instance.pk %}<label class="flex items-center gap-2 text-sm text-error-600 dark:text-error-400">{{ cf.DELETE }} Quitar</label>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <template id="contacto-template">
+            <div class="contacto-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-2 dark:border-gray-700 dark:bg-gray-800/40">
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Nombre</label><input type="text" name="__prefix__-nombre" maxlength="200" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Puesto</label><input type="text" name="__prefix__-puesto" maxlength="120" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Email</label><input type="email" name="__prefix__-email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                <div><label class="mb-1 block text-xs font-medium text-gray-500">Teléfono</label><input type="text" name="__prefix__-telefono" maxlength="40" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                <div class="sm:col-span-2"><label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" name="__prefix__-principal" class="h-4 w-4 rounded border-gray-300 text-brand-600"> Principal</label></div>
+            </div>
+        </template>
+        <button type="button" id="add-contacto" class="btn-secundario mt-3">+ Agregar contacto</button>
+    </section>
+
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
         <a href="{% if cliente %}{% url 'cartera-detalle' cliente.pk %}{% else %}{% url 'cartera-lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar cliente</button>
     </div>
 </form>
+
+<script>
+(() => {
+    const prefijo = "{{ formset.prefix }}";
+    const totalInput = document.getElementById("id_" + prefijo + "-TOTAL_FORMS");
+    const cont = document.getElementById("contactos-formset");
+    const tpl = document.getElementById("contacto-template");
+    const btn = document.getElementById("add-contacto");
+    if (!totalInput || !cont || !tpl || !btn) return;
+    btn.addEventListener("click", () => {
+        const i = parseInt(totalInput.value, 10);
+        const html = tpl.innerHTML.replaceAll("__prefix__", prefijo + "-" + i);
+        const wrap = document.createElement("div");
+        wrap.innerHTML = html.trim();
+        cont.appendChild(wrap.firstElementChild);
+        totalInput.value = i + 1;
+    });
+})();
+</script>
 {% endblock %}

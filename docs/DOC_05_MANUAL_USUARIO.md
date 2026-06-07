@@ -5,6 +5,67 @@
 
 ---
 
+## Novedades — cambio de dirección (7 de junio de 2026)
+
+- **El sistema cambió de dirección de internet.** Ahora se entra por
+  **learningcenter.mx**. Las nuevas direcciones son:
+  - **taller.learningcenter.mx** — la oficina principal (uso diario).
+  - **gerencia.learningcenter.mx** — configuración y tablero ejecutivo.
+  - **recepcion.learningcenter.mx** — portal de clientes (próximamente).
+
+  Las direcciones viejas (`*.ninomeando.com`) dejan de funcionar.
+  Actualiza tus marcadores y vuelve a instalar la app en el celular
+  (el ícono de la pantalla de inicio) con la dirección nueva.
+
+## Novedades — ronda de comentarios (7 de junio de 2026)
+
+- **Tablero (Inicio) más limpio.** Se quitaron las tarjetas grandes de arriba
+  (esa información ya está más abajo). Arriba dice **"Bienvenido, <tu nombre>"**.
+  Los botones para crear (**Nuevo proyecto, producto, proveedor, ingreso,
+  egreso**) ahora ocupan todo el ancho y cada uno tiene su **color**. El cuadro
+  de dictado ahora se llama **"Cuéntame"** — escribe ahí tus pendientes en
+  lenguaje normal. En el menú de la izquierda, arriba, dice **Learning Center**
+  con **EL TALLER** en chiquito encima.
+- **Las tarjetas de números** (KPIs) de todo el sistema quedaron **compactas,
+  con el título en mayúsculas y sin emoji** — un solo estilo en todo el sitio.
+- **Calendario más grande.** La columna de la derecha (Nuevo evento y Próximos
+  eventos) se hizo más angosta para que el calendario se lea mejor.
+- **Proyectos.**
+  - Nuevo estado **"Cerrado"** (proyecto entregado, pagado y cobrado).
+  - El **tablero Kanban** ahora pinta cada columna y tarjeta con el **color de
+    su estado**.
+  - Dentro de cada proyecto hay botones **Nuevo ingreso** y **Nuevo egreso**
+    que crean el movimiento ya ligado al proyecto (y al proveedor), y lo
+    muestran abajo.
+  - Al escribir **#** para mencionar un proyecto, ya **no aparecen** los
+    cancelados ni los cerrados.
+- **Buzón.** Al picar un mensaje **se abre a la derecha**, sin cambiar de
+  página ni tener que regresar.
+- **Clientes.**
+  - Buscador **grande** que busca por **cliente, contacto y proyecto**.
+  - La tabla muestra **Nombre, Contacto, # de proyectos y Estado**.
+  - Un cliente puede tener **varias personas de contacto**.
+  - Botones para **ordenar/filtrar** (Nombre, Contacto, Activos, Con proyectos,
+    Prospectos) y los **archivados** quedan en una sección desplegable.
+  - La página de cada cliente tiene **tarjetas** (proyectos activos, totales,
+    por cobrar), sus **proyectos divididos por estado**, y la dirección ahora
+    se llama **Ubicación**.
+- **Productos › Categorías.** Ya puedes **crear, editar y eliminar** categorías.
+- **Nuevo ingreso / egreso.**
+  - El **monto se captura sin IVA**; hay una casilla para **sumar el 16%**
+    automáticamente. Si no la marcas, se registra como **efectivo**.
+  - En egresos, el **proveedor** se elige de una lista (o **"Gasto operativo"**)
+    y puedes **dar de alta uno nuevo ahí mismo**.
+  - El **estado de pago** se elige con botones tipo **semáforo** (Pendiente en
+    rojo, Por reembolsar en naranja, Pagado en verde).
+  - La **fecha** se elige en un **mini-calendario** con botón **Hoy**.
+  - Aparecen **botones de los clientes/proyectos recientes** para elegir con un
+    clic, y puedes **crear un cliente o proyecto nuevo** sin salir.
+- **Facturación.** La tabla muestra **Código, Cliente, Concepto, Emisión, Total
+  con IVA y Estado** (en palabra, p. ej. *COBRADA*). Cada factura tiene botón
+  **EDITAR** para corregir estado, concepto o fechas, y al abrirla se ven abajo
+  los **ingresos y egresos del proyecto**.
+
 ## Novedades al 7 de junio de 2026
 
 - **La página del Proyecto quedó aún más cómoda de usar.**
@@ -338,9 +399,9 @@ El Despacho vive en tres direcciones:
 
 | Dirección | Para qué sirve | Quién entra |
 |---|---|---|
-| **taller.ninomeando.com** | La oficina principal — operación del día a día | Todo el equipo |
-| **gerencia.ninomeando.com** | Configuración del sistema + tablero ejecutivo | Super admin y quien tenga el permiso |
-| **recepcion.ninomeando.com** | Portal para clientes externos | Próximamente |
+| **taller.learningcenter.mx** | La oficina principal — operación del día a día | Todo el equipo |
+| **gerencia.learningcenter.mx** | Configuración del sistema + tablero ejecutivo | Super admin y quien tenga el permiso |
+| **recepcion.learningcenter.mx** | Portal para clientes externos | Próximamente |
 
 ### Dos formas de entrar
 

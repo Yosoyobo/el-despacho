@@ -6,7 +6,7 @@ from .egreso import (
     Egreso,
 )
 from .egreso_ocr_log import EgresoOcrLog
-from .ingreso import METODOS_INGRESO, Ingreso
+from .ingreso import METODOS_INGRESO, METODOS_INGRESO_FORM, Ingreso
 
 __all__ = [
     "CentroDeCosto",
@@ -16,5 +16,6 @@ __all__ = [
     "Ingreso",
     "METODOS_EGRESO",
     "METODOS_INGRESO",
+    "METODOS_INGRESO_FORM",
     "ORIGEN_EGRESO",
 ]

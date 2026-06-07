@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% load forms_helpers proyectos_extras %}
 {% block title %}{{ cliente.razon_social }} — Clientes{% endblock %}
 {% block contenido %}
 {% spaceless %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=cliente.razon_social subtitulo="Clientes · cliente B2B" breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=cliente.razon_social subtitulo="Cliente" breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 {% endspaceless %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -11,13 +12,16 @@
     {% include "_componentes_tailadmin/_chip_referencia.html" with tipo="cliente" slug=cliente.razon_social|slugify variante="badge" %}
 </div>
 
+{# Header cards del cliente. #}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Proyectos activos" valor=kpis_cliente.proyectos_activos color="brand" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Proyectos totales" valor=kpis_cliente.proyectos_totales color="blue-light" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="% de conversión" valor=kpis_cliente.conversion color="purple" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por cobrar" valor=kpis_cliente.por_cobrar|dinero color="warning" %}
+</div>
+
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div class="space-y-6 xl:col-span-2">
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dirección</h2>
-            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cliente.direccion|default:"—" }}</p>
-        </section>
-
         {% if cliente.notas %}
         <section class="rounded-2xl border border-warning-200 bg-warning-25 p-5 dark:border-warning-500/30 dark:bg-warning-500/5">
             <h2 class="text-xs font-medium uppercase tracking-wider text-warning-700 dark:text-warning-400">Notas internas</h2>
@@ -25,40 +29,69 @@
         </section>
         {% endif %}
 
+        {# Proyectos divididos por estado (activos arriba por el orden del estado). #}
         <section>
             <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Proyectos</h2>
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                            <tr>
-                                <th class="px-5 py-3 text-left">Código</th>
-                                <th class="px-5 py-3 text-left">Nombre</th>
-                                <th class="px-5 py-3 text-left">Estado</th>
-                                <th class="px-5 py-3 text-left">Compromiso</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                            {% for p in proyectos %}
-                            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                                <td class="px-5 py-3"><a href="{% url 'proyectos-detalle' p.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a></td>
-                                <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ p.nombre }}</td>
-                                <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=p.estado etiqueta=p.get_estado_display %}</td>
-                                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos todavía" descripcion="Este cliente aún no tiene proyectos asignados." icono="folder" %}</div></td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            {% for grupo in proyectos_por_estado %}
+            <div class="mb-4">
+                <div class="mb-2 flex items-center gap-2">
+                    <span class="badge {{ grupo.slug|color_estado }}">{{ grupo.slug|estado_label }}</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ grupo.proyectos|length }}</span>
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                                {% for p in grupo.proyectos %}
+                                <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" data-href="{% url 'proyectos-detalle' p.pk %}">
+                                    <td class="px-5 py-3"><a href="{% url 'proyectos-detalle' p.pk %}" class="font-mono text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a></td>
+                                    <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ p.nombre }}</td>
+                                    <td class="px-5 py-3 text-right text-gray-600 dark:text-gray-300">{{ p.fecha_compromiso|date:"d M Y"|default:"—" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+            {% empty %}
+            <div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos todavía" descripcion="Este cliente aún no tiene proyectos asignados." icono="folder" %}</div>
+            {% endfor %}
         </section>
     </div>
 
     <aside class="space-y-6">
-        {% include "_componentes_tailadmin/_info_card.html" with titulo="Identificación" items=info_identificacion %}
-        {% include "_componentes_tailadmin/_info_card.html" with titulo="Contacto" items=info_contacto %}
+        {# Contacto(s) — varias personas. #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Contacto</h3>
+            <ul class="mt-3 space-y-3">
+                {% for c in contactos %}
+                <li class="{% if not forloop.first %}border-t border-gray-100 pt-3 dark:border-gray-800{% endif %}">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ c.nombre }}{% if c.principal %} <span class="badge badge-brand ml-1">principal</span>{% endif %}</p>
+                    {% if c.puesto %}<p class="text-xs text-gray-500 dark:text-gray-400">{{ c.puesto }}</p>{% endif %}
+                    {% if c.email %}<p class="text-sm text-gray-600 dark:text-gray-300">{{ c.email }}</p>{% endif %}
+                    {% if c.telefono %}<p class="text-sm text-gray-600 dark:text-gray-300">{{ c.telefono }}</p>{% endif %}
+                </li>
+                {% empty %}
+                <li class="text-sm text-gray-400 dark:text-gray-500">Sin contactos.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        {# Ubicación (antes 'Dirección'). #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ubicación</h3>
+            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cliente.direccion|default:"—" }}</p>
+        </section>
+
+        {# Identificación. #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Identificación</h3>
+            <dl class="mt-3 space-y-1.5 text-sm">
+                <div class="flex justify-between gap-2"><dt class="text-gray-500 dark:text-gray-400">RFC</dt><dd class="font-mono text-gray-800 dark:text-gray-100">{{ cliente.rfc|default:"—" }}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-gray-500 dark:text-gray-400">Creado</dt><dd class="text-gray-800 dark:text-gray-100">{{ cliente.creado_en|date:"d M Y" }}</dd></div>
+            </dl>
+        </section>
     </aside>
 </div>
 

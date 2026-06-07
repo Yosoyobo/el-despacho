@@ -42,7 +42,7 @@ CAMPOS_CLIENTE_PERMITIDOS = {
 }
 ESTADOS_PROYECTO_VALIDOS = {
     "por_cotizar", "esperando_respuesta", "en_proceso_diseno",
-    "en_proceso_produccion", "entregado", "en_pausa", "cancelado",
+    "en_proceso_produccion", "entregado", "cerrado", "en_pausa", "cancelado",
 }
 
 

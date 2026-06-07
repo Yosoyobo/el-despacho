@@ -140,7 +140,7 @@ ElDespacho/
 ├── .env(.example)              # solo BOVEDA + Django + Postgres + Redis + bootstrap
 ├── docker-compose.yml          # 6 servicios: postgres, redis, la-gerencia, el-taller, la-recepcion, portavoz-worker, el-portero
 ├── docker-compose.prod.yml     # override con images GHCR
-├── Caddyfile                   # 3 hosts (taller/gerencia/recepcion .ninomeando.com)
+├── Caddyfile                   # 3 hosts (taller/gerencia/recepcion .learningcenter.mx)
 ├── requirements.txt            # compartido entre las 3 apps
 ├── pyproject.toml              # ruff + pytest
 ├── README.md · ROLES.md · CLAUDE.md
@@ -3373,9 +3373,17 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
 
 - **Repo:** `Yosoyobo/el-despacho` (privado). Imágenes en GHCR
   `ghcr.io/yosoyobo/el-despacho-{gerencia,taller,recepcion}`.
-- **Dominios placeholder:** `taller.ninomeando.com` (El Taller),
-  `gerencia.ninomeando.com` (La Gerencia). Se cambian cuando el usuario tenga
-  acceso a las DNS finales del cliente.
+- **Dominios productivos (2026-06-07):** `taller.learningcenter.mx` (El Taller),
+  `gerencia.learningcenter.mx` (La Gerencia), `recepcion.learningcenter.mx`
+  (La Recepción, apagada hasta S5). El dominio raíz `learningcenter.mx` no
+  sirve ninguna app. Migrados desde los placeholder `*.ninomeando.com`
+  (reemplazo total — el dominio viejo ya no se usa). El DNS de
+  `learningcenter.mx` apunta a la IP del Droplet y Caddy emite los certs
+  automáticos. **Pasos manuales post-deploy:** (1) actualizar las tres
+  `*_ALLOWED_HOSTS` en el `.env` de La Sede al nuevo dominio; (2) actualizar
+  las Authorized redirect URIs / JavaScript origins en Google Cloud Console
+  para que el SSO siga funcionando (`https://taller.learningcenter.mx/auth/google/callback`,
+  idem gerencia).
 - **Bootstrap super_admin:** `oscar@bautista.mx` via ENV `DESPACHO_SUPERADMIN_*`
   + management command `bootstrap_superadmin` (idempotente cada arranque).
 - **Worker del Portavoz:** servicio separado en Docker Compose desde S1a.

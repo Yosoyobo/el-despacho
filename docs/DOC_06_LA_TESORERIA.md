@@ -98,7 +98,7 @@ Módulo de **flujo de dinero real** del despacho. Captura lo que entró y lo que
 
 ## 2. Ubicación y acceso
 
-- **Vive en El Taller** (taller.ninomeando.com → sidebar → La Tesorería)
+- **Vive en El Taller** (taller.learningcenter.mx → sidebar → La Tesorería)
 - **Acceso por rol:**
   - `super_admin` ✅ todo
   - `dueno` ✅ todo

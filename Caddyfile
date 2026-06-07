@@ -5,17 +5,17 @@
 	email oscar@bautista.mx
 }
 
-taller.ninomeando.com {
+taller.learningcenter.mx {
 	encode gzip
 	reverse_proxy el-taller:8000
 }
 
-gerencia.ninomeando.com {
+gerencia.learningcenter.mx {
 	encode gzip
 	reverse_proxy la-gerencia:8001
 }
 
-recepcion.ninomeando.com {
+recepcion.learningcenter.mx {
 	# S-RAM-Wave3: La Recepción apagada hasta S5 para ahorrar ~120 MB de
 	# RAM en el droplet. Para reactivar: subir el servicio con
 	# `docker compose --profile s5 up -d la-recepcion` y cambiar este

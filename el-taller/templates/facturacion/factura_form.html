@@ -22,6 +22,8 @@
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cotizacion_origen %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.titulo ancho_completo=True %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.concepto ancho_completo=True %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.estado %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_emision %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_vencimiento %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
@@ -29,6 +31,7 @@
         </div>
     </section>
 
+    {% if formset %}
     <section class="ta-card">
         <div class="mb-4 flex items-center justify-between">
             <h2 class="text-title-xs font-semibold text-gray-900 dark:text-gray-100">Líneas</h2>
@@ -147,6 +150,11 @@
             {% endfor %}
         </div>
     </section>
+    {% else %}
+    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 dark:border-gray-700 dark:bg-white/[0.02] dark:text-gray-400">
+        Las líneas e impuestos sólo se editan mientras la factura está en borrador. Aquí puedes corregir el estado, el concepto, las fechas y las notas.
+    </div>
+    {% endif %}
 
     <section class="ta-card">
         <h2 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Notas y términos</h2>

@@ -10,11 +10,13 @@ ESTADOS_PROYECTO = (
     ("en_proceso_diseno", "En proceso de diseño"),
     ("en_proceso_produccion", "En proceso de producción"),
     ("entregado", "Entregado"),
+    ("cerrado", "Cerrado"),
     ("en_pausa", "En pausa"),
     ("cancelado", "Cancelado"),
 )
 
-ESTADOS_TERMINALES = {"entregado", "cancelado"}
+# 'cerrado' = entregado + pagado + cobrado (cierre total del proyecto).
+ESTADOS_TERMINALES = {"entregado", "cerrado", "cancelado"}
 
 
 def generar_codigo_proyecto() -> str:

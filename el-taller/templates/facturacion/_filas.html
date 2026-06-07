@@ -6,35 +6,17 @@
     <td class="px-5 py-3">
         <a href="{% url 'facturacion:detalle' f.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ f.codigo }}</a>
     </td>
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
-        {{ f.cliente.razon_social|truncatechars:40 }}{% if f.proyecto %} · <span class="text-brand-600 dark:text-brand-400">{{ f.proyecto.codigo }}</span>{% endif %}
-    </td>
+    <td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ f.cliente.razon_social|truncatechars:40 }}</td>
+    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.concepto|default:f.titulo|truncatechars:40 }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.fecha_emision|date:"Y-m-d" }}</td>
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.fecha_vencimiento|date:"Y-m-d" }}</td>
     <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">{{ totales.total|dinero }}</td>
     <td class="px-5 py-3">
         {% with estado=f.estado_visible %}
-        <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
+        <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{% if estado == 'cobrada_total' %}COBRADA{% elif estado == 'cobrada_parcial' %}PARCIAL{% else %}{{ estado|upper }}{% endif %}</span>
         {% endwith %}
-    </td>
-    <td class="px-5 py-3 text-right">
-        <div class="relative inline-block text-left" data-dropdown>
-            <button type="button" data-dropdown-trigger
-                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-                    aria-label="Acciones">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-            </button>
-            <div data-dropdown-menu id="acc-fac-{{ f.pk }}" hidden
-                 class="absolute right-0 z-30 mt-2 w-44 origin-top-right overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
-                <ul class="py-1.5 text-sm">
-                    <li><a href="{% url 'facturacion:detalle' f.pk %}" class="block px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80">Ver detalle</a></li>
-                    {% if f.es_editable %}<li><a href="{% url 'facturacion:editar' f.pk %}" class="block px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80">Editar</a></li>{% endif %}
-                </ul>
-            </div>
-        </div>
     </td>
 </tr>
 {% endwith %}
 {% empty %}
-<tr><td colspan="7" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin facturas.</td></tr>
+<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin facturas.</td></tr>
 {% endfor %}

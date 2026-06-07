@@ -12,7 +12,8 @@ class FacturaForm(forms.ModelForm):
     class Meta:
         model = Factura
         fields = [
-            "cliente", "proyecto", "cotizacion_origen", "titulo",
+            "cliente", "proyecto", "cotizacion_origen", "titulo", "concepto",
+            "estado",
             "fecha_emision", "fecha_vencimiento",
             "moneda", "descuento_global_porcentaje",
             "notas", "terminos",

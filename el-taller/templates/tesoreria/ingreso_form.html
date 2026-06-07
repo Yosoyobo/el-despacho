@@ -11,15 +11,73 @@
 
 <form method="post" class="max-w-3xl">
     {% csrf_token %}
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {% for f in form %}
-                {% if f.name == 'descripcion' %}
-                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
-                {% else %}
-                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+            {% include "tesoreria/_iva_campos.html" with form=form %}
+
+            {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
+
+            {# Método como botones — Tarjeta default. 'Otro' revela referencia. #}
+            <div class="md:col-span-2" data-metodo-group>
+                <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método</span>
+                <div class="flex flex-wrap gap-2">
+                    {% for val, etiqueta in form.metodo.field.choices %}
+                    <label class="cursor-pointer rounded-lg border-2 border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                        <input type="radio" name="metodo" value="{{ val }}" class="sr-only" {% if form.metodo.value|default:'tarjeta' == val %}checked{% endif %} data-metodo-radio>
+                        {{ etiqueta }}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% for e in form.metodo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div class="md:col-span-2 {% if form.metodo.value != 'otro' %}hidden{% endif %}" data-ref-wrap>
+                <label for="{{ form.referencia_externa.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Especifica el método / referencia</label>
+                {{ form.referencia_externa }}
+            </div>
+
+            {# Cliente: chips de recientes + select + alta inline. #}
+            <div class="campo-form md:col-span-2">
+                <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                {% if clientes_recientes %}
+                <div class="mb-2 flex flex-wrap gap-1.5">
+                    {% for c in clientes_recientes %}
+                    <button type="button" data-pick-select="id_cliente" data-val="{{ c.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ c.razon_social|truncatechars:24 }}</button>
+                    {% endfor %}
+                </div>
                 {% endif %}
-            {% endfor %}
+                {{ form.cliente }}
+                {% if puede_crear_cliente %}
+                <details class="mt-2 text-sm">
+                    <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo cliente</summary>
+                    <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
+                        <input type="text" id="cli-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input type="text" id="cli-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input type="email" id="cli-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input type="text" id="cli-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <button type="button" id="cli-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
+                    </div>
+                </details>
+                {% endif %}
+            </div>
+
+            {# Proyecto: chips de recientes + select + link a nuevo. #}
+            <div class="campo-form md:col-span-2">
+                <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
+                {% if proyectos_recientes %}
+                <div class="mb-2 flex flex-wrap gap-1.5">
+                    {% for p in proyectos_recientes %}
+                    <button type="button" data-pick-select="id_proyecto" data-val="{{ p.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.codigo }} · {{ p.nombre|truncatechars:20 }}</button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {{ form.proyecto }}
+                <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
+            </div>
+
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion ancho_completo=True %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
         </div>
     </section>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -30,62 +88,98 @@
 
 <script>
 (() => {
+    const root = document.currentScript.parentElement;
+
+    // Chips de recientes → setean el <select>.
+    root.querySelectorAll("[data-pick-select]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const sel = document.getElementById(btn.dataset.pickSelect);
+            if (!sel) return;
+            sel.value = btn.dataset.val;
+            sel.dispatchEvent(new Event("change"));
+        });
+    });
+
+    // Método 'Otro' revela el campo de referencia.
+    const refWrap = root.querySelector("[data-ref-wrap]");
+    root.querySelectorAll("[data-metodo-radio]").forEach(r => {
+        r.addEventListener("change", () => {
+            if (refWrap) refWrap.classList.toggle("hidden", r.value !== "otro" || !r.checked);
+        });
+    });
+
+    // Alta inline de cliente → inyecta opción en #id_cliente.
+    const btnCli = document.getElementById("cli-crear");
+    const selCli = document.getElementById("id_cliente");
+    if (btnCli && selCli) {
+        const csrf = root.querySelector('[name="csrfmiddlewaretoken"]').value;
+        btnCli.addEventListener("click", async () => {
+            const razon = document.getElementById("cli-razon").value.trim();
+            if (!razon) { document.getElementById("cli-razon").focus(); return; }
+            const body = new URLSearchParams({
+                razon_social: razon,
+                nombre_contacto: document.getElementById("cli-contacto").value.trim(),
+                email_contacto: document.getElementById("cli-email").value.trim(),
+                telefono: document.getElementById("cli-tel").value.trim(),
+            });
+            btnCli.disabled = true;
+            try {
+                const r = await fetch("{% url 'cartera-quick-create' %}", {
+                    method: "POST",
+                    headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded"},
+                    body,
+                });
+                const data = await r.json();
+                if (data.ok) {
+                    selCli.add(new Option(data.razon_social, data.id, true, true));
+                    selCli.value = String(data.id);
+                    ["cli-razon","cli-contacto","cli-email","cli-tel"].forEach(id => document.getElementById(id).value = "");
+                } else { alert(data.error || "No se pudo crear el cliente."); }
+            } catch (e) { alert("Error de red al crear el cliente."); }
+            finally { btnCli.disabled = false; }
+        });
+    }
+
     // Autocompletar desde proyecto, con reset al cambiar.
-    const root  = document.currentScript.parentElement;
-    const proyectoSel  = root.querySelector('[name="proyecto"]');
-    const clienteSel   = root.querySelector('[name="cliente"]');
-    const descInput    = root.querySelector('[name="descripcion"]');
-    const montoInput   = root.querySelector('[name="monto"]');
-
-    if (!proyectoSel) return;
-
+    const proyectoSel = document.getElementById("id_proyecto");
+    const clienteSel  = document.getElementById("id_cliente");
+    const descInput   = root.querySelector('[name="descripcion"]');
+    const subInput    = root.querySelector('[name="subtotal"]');
     const setIfFree = (input, valor) => {
         if (!input || valor === "" || valor === null) return;
-        if (input.value && input.dataset.autollenado !== "proyecto") return; // respeta valores escritos
-        input.value = valor;
-        input.dataset.autollenado = "proyecto";
+        if (input.value && input.dataset.autollenado !== "proyecto") return;
+        input.value = valor; input.dataset.autollenado = "proyecto";
+        input.dispatchEvent(new Event("input"));
     };
     const clearAuto = (input) => {
         if (input && input.dataset.autollenado === "proyecto") {
-            input.value = "";
-            delete input.dataset.autollenado;
+            input.value = ""; delete input.dataset.autollenado;
+            input.dispatchEvent(new Event("input"));
         }
     };
-    const setSelectIfExists = (select, valor) => {
-        if (!select || !valor) return;
-        const opt = select.querySelector(`option[value="${valor}"]`);
-        if (!opt) return;
-        if (select.value && select.dataset.autollenado !== "proyecto") return;
-        select.value = String(valor);
-        select.dataset.autollenado = "proyecto";
+    const setSelIfExists = (sel, val) => {
+        if (!sel || !val) return;
+        if (!sel.querySelector(`option[value="${val}"]`)) return;
+        if (sel.value && sel.dataset.autollenado !== "proyecto") return;
+        sel.value = String(val); sel.dataset.autollenado = "proyecto";
     };
-
-    proyectoSel.addEventListener("change", async () => {
-        const pk = proyectoSel.value;
-        if (!pk) {
-            clearAuto(clienteSel);
-            clearAuto(descInput);
-            clearAuto(montoInput);
-            return;
-        }
-        try {
-            const resp = await fetch(`{% url 'tesoreria:api-proyecto-datos' 0 %}`.replace("/0/", `/${pk}/`));
-            if (!resp.ok) return;
-            const data = await resp.json();
-            setSelectIfExists(clienteSel, data.cliente_id);
-            setIfFree(descInput, data.descripcion_sugerida);
-            if (parseFloat(data.monto_pendiente) > 0) {
-                setIfFree(montoInput, data.monto_pendiente);
-            }
-        } catch (e) { /* silencioso — el usuario teclea a mano */ }
-    });
-
-    // Cambiar el cliente limpia los auto-llenos del proyecto (otro cliente puede no embonar).
+    if (proyectoSel) {
+        proyectoSel.addEventListener("change", async () => {
+            const pk = proyectoSel.value;
+            if (!pk) { clearAuto(clienteSel); clearAuto(descInput); clearAuto(subInput); return; }
+            try {
+                const resp = await fetch(`{% url 'tesoreria:api-proyecto-datos' 0 %}`.replace("/0/", `/${pk}/`));
+                if (!resp.ok) return;
+                const data = await resp.json();
+                setSelIfExists(clienteSel, data.cliente_id);
+                setIfFree(descInput, data.descripcion_sugerida);
+                if (parseFloat(data.monto_pendiente) > 0) setIfFree(subInput, data.monto_pendiente);
+            } catch (e) { /* el usuario teclea a mano */ }
+        });
+    }
     if (clienteSel) {
         clienteSel.addEventListener("change", () => {
-            if (clienteSel.dataset.autollenado === "proyecto") {
-                delete clienteSel.dataset.autollenado; // el usuario lo eligió manualmente
-            }
+            if (clienteSel.dataset.autollenado === "proyecto") delete clienteSel.dataset.autollenado;
         });
     }
 })();

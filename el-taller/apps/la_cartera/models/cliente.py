@@ -63,3 +63,12 @@ class Cliente(models.Model):
 
     def __str__(self):
         return self.razon_social
+
+    @property
+    def contacto_principal(self):
+        """Contacto marcado principal, o el primero; None si no hay ninguno."""
+        contactos = list(self.contactos.all())
+        for c in contactos:
+            if c.principal:
+                return c
+        return contactos[0] if contactos else None

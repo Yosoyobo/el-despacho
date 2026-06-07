@@ -228,7 +228,7 @@ def kanban(request):
     )
     # C3 S-LC-Feedback-V6: dos filas. Arriba el flujo activo; abajo los
     # estados de cierre/pausa. Estados custom nuevos caen arriba por default.
-    SLUGS_FILA_ABAJO = ("entregado", "en_pausa", "cancelado")
+    SLUGS_FILA_ABAJO = ("entregado", "cerrado", "en_pausa", "cancelado")
     columnas = {}
     for slug, label in ESTADOS_PROYECTO:
         proyectos = list(qs.filter(estado=slug).order_by("fecha_compromiso", "-creado_en"))
@@ -356,6 +356,8 @@ def detalle(request, pk):
             EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
         ),
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
+        "ingresos_proyecto": proyecto.ingresos.filter(anulado=False).order_by("-fecha")[:50],
+        "egresos_proyecto": proyecto.egresos.filter(anulado=False).select_related("proveedor").order_by("-fecha")[:50],
         "breadcrumb_items": [
             {"url": reverse("proyectos-lista"), "label": "Proyectos"},
             {"label": proyecto.codigo},

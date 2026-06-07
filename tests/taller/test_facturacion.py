@@ -75,6 +75,29 @@ def _factura(cliente, *, autor, titulo="Factura mayo", items=None, impuestos=Non
     return fac
 
 
+def test_editar_concepto_y_estado_en_cualquier_estado(client, cliente_factory, usuario_factory):
+    """S-LC-Buzon: la factura se puede editar (concepto/estado) aunque no sea
+    borrador; las líneas quedan intactas (formset no se procesa)."""
+    autor = usuario_factory(rol="super_admin")
+    client.force_login(autor)
+    cli = cliente_factory(creado_por=autor)
+    fac = _factura(cli, autor=autor)
+    fac.estado = "emitida"
+    fac.save(update_fields=["estado"])
+    resp = client.post(f"/facturacion/{fac.pk}/editar/", {
+        "cliente": cli.pk, "proyecto": "", "cotizacion_origen": "",
+        "titulo": "Factura mayo", "concepto": "Lona gran formato", "estado": "emitida",
+        "fecha_emision": fac.fecha_emision.isoformat(),
+        "fecha_vencimiento": fac.fecha_vencimiento.isoformat(),
+        "moneda": "MXN", "descuento_global_porcentaje": "0",
+        "notas": "", "terminos": "",
+    })
+    assert resp.status_code == 302
+    fac.refresh_from_db()
+    assert fac.concepto == "Lona gran formato"
+    assert fac.items.count() == 1  # líneas intactas
+
+
 # ── Modelo y código ──────────────────────────────────────────────────────
 
 

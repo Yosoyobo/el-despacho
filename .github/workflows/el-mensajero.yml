@@ -275,7 +275,7 @@ jobs:
             DEPLOY_OK=1
             for intento in 1 2 3; do
               FALLOS=""
-              for host in gerencia.ninomeando.com taller.ninomeando.com recepcion.ninomeando.com; do
+              for host in gerencia.learningcenter.mx taller.learningcenter.mx recepcion.learningcenter.mx; do
                 CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 8 \
                     "https://${host}/ping" || echo "FAIL")
                 if [ "$CODE" != "200" ]; then

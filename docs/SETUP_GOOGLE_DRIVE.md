@@ -46,7 +46,7 @@ El flujo OAuth necesita una "dirección de regreso" registrada en el cliente
 OAuth. Es la misma por cada host (gerencia):
 
 ```
-https://gerencia.ninomeando.com/ajustes/google-drive/oauth/callback
+https://gerencia.learningcenter.mx/ajustes/google-drive/oauth/callback
 ```
 
 (En HAL local: `http://localhost:PUERTO/ajustes/google-drive/oauth/callback`.)
