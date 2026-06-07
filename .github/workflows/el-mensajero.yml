@@ -288,9 +288,12 @@ jobs:
             echo "=== Esperando 45s para healthchecks ==="
             sleep 45
 
-            echo "=== Validando healthchecks (3 intentos espaciados 10s) ==="
+            # Ventana amplia (~3 min): la PRIMERA emisión de certs Let's Encrypt
+            # de un dominio nuevo (3 hosts vía ACME) no cabe en 75s. Si rolleamos
+            # antes de que Caddy termine, revertimos el Caddyfile y nunca emite.
+            echo "=== Validando healthchecks (10 intentos espaciados 15s) ==="
             DEPLOY_OK=1
-            for intento in 1 2 3; do
+            for intento in $(seq 1 10); do
               FALLOS=""
               for host in gerencia.learningcenter.mx taller.learningcenter.mx recepcion.learningcenter.mx; do
                 CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 8 \
@@ -305,7 +308,7 @@ jobs:
                 break
               fi
               echo "⚠️  Intento $intento falló:$FALLOS"
-              if [ "$intento" -lt 3 ]; then sleep 10; fi
+              if [ "$intento" -lt 10 ]; then sleep 15; fi
             done
 
             if [ "$DEPLOY_OK" -ne 0 ]; then
