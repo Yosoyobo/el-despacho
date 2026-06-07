@@ -102,11 +102,10 @@ def lista(request):
         "cabeceras_facturas": [
             {"label": "Código", "sort_key": "codigo"},
             {"label": "Cliente"},
+            {"label": "Concepto"},
             {"label": "Emisión", "sort_key": "fecha_emision"},
-            {"label": "Vencimiento", "sort_key": "fecha_vencimiento"},
-            {"label": "Total", "align": "right"},
+            {"label": "Total con IVA", "align": "right"},
             {"label": "Estado", "sort_key": "estado"},
-            {"label": "Acciones", "align": "right"},
         ],
         "kpis": services.kpis_landing(),
         "puede_crear": puede_crear_facturacion(request.user),
@@ -198,32 +197,35 @@ def editar(request, pk):
     fac = get_object_or_404(Factura, pk=pk)
     if not puede_editar_facturacion(request.user):
         return HttpResponseForbidden("Sin permiso para editar facturas.")
-    if not fac.es_editable:
-        messages.error(request, "Solo se pueden editar facturas en borrador.")
-        return redirect("facturacion:detalle", pk=fac.pk)
+    # Las líneas/impuestos sólo se editan en borrador; el encabezado (estado,
+    # concepto, fechas…) se puede corregir en cualquier estado (S-LC-Buzon).
+    editable_items = fac.es_editable
 
     tasas_qs = TasaImpositiva.objects.filter(activa=True)
     ids_actuales = list(fac.impuestos.values_list("tasa_id", flat=True))
 
     if request.method == "POST":
         form = FacturaForm(request.POST, instance=fac)
-        formset = ItemFormSet(request.POST, instance=fac)
+        formset = ItemFormSet(request.POST, instance=fac) if editable_items else None
         ids = _ids_tasas(request)
-        if form.is_valid() and formset.is_valid():
+        if form.is_valid() and (formset is None or formset.is_valid()):
             form.save()
-            formset.save()
-            _persistir_impuestos(fac, ids)
+            if formset is not None:
+                formset.save()
+                _persistir_impuestos(fac, ids)
             services.emitir_actualizada(fac, request.user)
             messages.success(request, f"Factura {fac.codigo} actualizada.")
             return redirect("facturacion:detalle", pk=fac.pk)
         ctx = _ctx_form(form, formset, modo="editar", fac=fac, tasas_qs=tasas_qs,
                         tasas_seleccionadas=ids)
+        ctx["editable_items"] = editable_items
         return render(request, "facturacion/factura_form.html", ctx)
 
     form = FacturaForm(instance=fac)
-    formset = ItemFormSet(instance=fac)
+    formset = ItemFormSet(instance=fac) if editable_items else None
     ctx = _ctx_form(form, formset, modo="editar", fac=fac, tasas_qs=tasas_qs,
                     tasas_seleccionadas=ids_actuales)
+    ctx["editable_items"] = editable_items
     return render(request, "facturacion/factura_form.html", ctx)
 
 
@@ -256,8 +258,13 @@ def detalle(request, pk):
     totales = fac.calcular_totales()
     items = list(fac.items.select_related("servicio").all())
 
-    from apps.tesoreria.models import Ingreso
+    from apps.tesoreria.models import Egreso, Ingreso
     cobros = list(Ingreso.vigentes.filter(factura=fac).order_by("-fecha", "-pk"))
+    # Movimientos del proyecto ligado (S-LC-Buzon): se muestran abajo del detalle.
+    ingresos_proyecto, egresos_proyecto = [], []
+    if fac.proyecto_id:
+        ingresos_proyecto = list(Ingreso.vigentes.filter(proyecto_id=fac.proyecto_id).order_by("-fecha")[:50])
+        egresos_proyecto = list(Egreso.vigentes.filter(proyecto_id=fac.proyecto_id).select_related("proveedor").order_by("-fecha")[:50])
 
     info_cliente = [
         {"label": "Razón social", "value": fac.cliente.razon_social},
@@ -289,7 +296,9 @@ def detalle(request, pk):
             {"label": "Título", "value": fac.cotizacion_origen.titulo[:80]},
         ]
 
-    puede_editar = puede_editar_facturacion(request.user) and fac.es_editable
+    # EDITAR disponible en cualquier estado (para corregir estado, concepto,
+    # fechas…). Las líneas sólo se editan en borrador (ver vista editar).
+    puede_editar = puede_editar_facturacion(request.user)
     puede_emitir_ = puede_emitir_facturacion(request.user) and fac.estado == "borrador"
     puede_cobrar = (
         puede_cobrar_facturacion(request.user)
@@ -345,6 +354,8 @@ def detalle(request, pk):
         "items": items,
         "totales": totales,
         "cobros": cobros,
+        "ingresos_proyecto": ingresos_proyecto,
+        "egresos_proyecto": egresos_proyecto,
         "info_cliente": info_cliente,
         "info_fechas": info_fechas,
         "info_totales": info_totales,

@@ -80,6 +80,8 @@ class Factura(models.Model):
     )
 
     titulo = models.CharField(max_length=200)
+    # Concepto corto para identificar la factura en listas (S-LC-Buzon).
+    concepto = models.CharField(max_length=200, blank=True, default="")
     estado = models.CharField(
         max_length=20,
         choices=ESTADOS_FACTURA,
