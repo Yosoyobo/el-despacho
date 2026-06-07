@@ -29,27 +29,43 @@ def test_logo_aparece_en_login_taller(client):
 
 
 def test_favicon_referenciado_en_base_html(client):
-    """El `<link rel="icon">` apunta al logo en ambos tamaños."""
+    """El `<link rel="icon">` apunta al ícono de app (fondo de color de marca)."""
     resp = client.get("/sign-in")
     html = resp.content.decode()
     assert 'rel="icon"' in html
-    assert "Logo_LC-32.png" in html
+    assert "Icono_LC-32.png" in html
     assert 'rel="apple-touch-icon"' in html
 
 
-def test_manifest_json_tiene_logos_y_brand_color():
-    """Ambos manifests (Taller + Gerencia) usan Logo_LC y theme_color brand."""
-    for app in ("el-taller", "la-gerencia"):
+# Color de marca del ícono/PWA por app (debe coincidir con
+# infra/scripts/generar_logos.py::COLOR_ICONO y los <meta name="theme-color">).
+COLOR_MARCA_POR_APP = {
+    "el-taller": "#465fff",    # azul brand
+    "la-gerencia": "#3E9E4F",  # verde Learning Center
+}
+
+
+def test_manifest_json_tiene_icono_y_color_por_app():
+    """Cada manifest usa Icono_LC y su color de marca propio (Taller azul, Gerencia verde)."""
+    for app, color in COLOR_MARCA_POR_APP.items():
         path = RAIZ / app / "static" / "manifest.json"
         data = json.loads(path.read_text())
-        assert data["theme_color"] == "#465fff", f"{app} manifest theme_color"
-        assert data["background_color"] == "#465fff", f"{app} manifest background_color"
+        assert data["theme_color"] == color, f"{app} manifest theme_color"
+        assert data["background_color"] == color, f"{app} manifest background_color"
         assert all(
-            "branding/Logo_LC" in icon["src"] for icon in data["icons"]
+            "branding/Icono_LC" in icon["src"] for icon in data["icons"]
         ), f"{app} manifest icons"
         sizes = {icon["sizes"] for icon in data["icons"]}
         assert "192x192" in sizes
         assert "512x512" in sizes
+
+
+def test_iconos_de_app_existen_por_tamano():
+    """Los íconos de app coloreados se generaron para favicon + PWA."""
+    for app in COLOR_MARCA_POR_APP:
+        destino = RAIZ / app / "static" / "branding"
+        for size in (32, 64, 192, 512):
+            assert (destino / f"Icono_LC-{size}.png").exists(), f"{app} Icono_LC-{size}"
 
 
 def test_errores_incluyen_logo():

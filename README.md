@@ -3,7 +3,7 @@
 CRM/ERP interno para **Learning Center**, despacho mexicano de diseño y maquila de
 productos promocionales, arte e imagen corporativa.
 
-> Desarrollado por **[NoKo Devs](https://nokodevs.com)** · © 2026 Learning Center.
+> Desarrollado por **[NoKo Devs](https://www.noko.mx)** · © 2026 Learning Center.
 
 > Esto **no es un SaaS**. Es uso interno. No hay tiers, no hay créditos, no se cobra
 > a usuarios internos.

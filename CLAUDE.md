@@ -1,6 +1,6 @@
 # CLAUDE.md — Memoria del agente para El Despacho
 
-> Desarrollado por **NoKo Devs** ([nokodevs.com](https://nokodevs.com)) ·
+> Desarrollado por **NoKo Devs** ([noko.mx](https://www.noko.mx)) ·
 > © 2026 Learning Center. Cualquier footer / documentación visible al
 > usuario final debe preservar la línea "Desarrollado por NoKo Devs".
 
@@ -3138,7 +3138,7 @@ agrupado en main:
   claro.
 - **Footer NoKo Devs**: las 3 apps (Taller, Gerencia, Recepción)
   muestran "© 2026 Learning Center · Privacidad · Términos · Desarrollado
-  por NoKo Devs" con link a nokodevs.com. README.md, CLAUDE.md y
+  por NoKo Devs" con link a noko.mx. README.md, CLAUDE.md y
   DOC_05 también marcan el crédito.
 
 Cero migraciones de schema, cero pasos manuales post-deploy.

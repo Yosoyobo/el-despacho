@@ -1,7 +1,7 @@
 # Manual de Usuario — El Despacho
 
 > Sistema interno de Learning Center.
-> Desarrollado por **[NoKo Devs](https://nokodevs.com)** · © 2026.
+> Desarrollado por **[NoKo Devs](https://www.noko.mx)** · © 2026.
 
 ---
 

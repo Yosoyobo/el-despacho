@@ -152,8 +152,18 @@ def intercambiar_codigo_por_perfil(code: str, redirect_uri: str) -> PerfilGoogle
                 },
             )
             if tok.status_code >= 400:
-                detalle = (tok.json() or {}).get("error", f"http_{tok.status_code}")
-                raise GoogleOAuthCodigoInvalido(f"Google rechazó el code: {detalle}")
+                cuerpo = tok.json() or {}
+                error = cuerpo.get("error", f"http_{tok.status_code}")
+                desc = cuerpo.get("error_description", "")
+                detalle = f"{error} — {desc}" if desc else error
+                # Incluimos el redirect_uri enviado: ante `redirect_uri_mismatch`
+                # permite comparar al instante contra Google Cloud Console (la
+                # causa típica tras migrar de dominio). El evento del Portavoz
+                # lo expone en El Site.
+                raise GoogleOAuthCodigoInvalido(
+                    f"Google rechazó el code: {detalle} "
+                    f"(redirect_uri enviado: {redirect_uri})"
+                )
             access = tok.json()["access_token"]
             info = cli.get(USERINFO_URL, headers={"Authorization": f"Bearer {access}"})
             info.raise_for_status()
