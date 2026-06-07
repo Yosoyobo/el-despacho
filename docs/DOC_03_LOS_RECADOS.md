@@ -45,7 +45,7 @@ Mensajería asíncrona interna entre usuarios de El Despacho. Reemplaza WhatsApp
 
 ## 2. Ubicación y acceso
 
-- **Vive en El Taller** (`taller.ninomeando.com/recados/`)
+- **Vive en El Taller** (`taller.learningcenter.mx/recados/`)
 - **NO existe en La Gerencia** (decisión de re-arquitectura 15 mayo 2026)
 - **Acceso por rol con permisos granulares por checkbox** (ver §5)
 

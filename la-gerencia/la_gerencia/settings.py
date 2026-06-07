@@ -139,7 +139,7 @@ LOGIN_URL = "/sign-in"
 
 # Pre-S2b.2: destino de redirección para roles operativos. Override en tests
 # con `@override_settings(TALLER_URL="http://testserver/")`.
-TALLER_URL = os.environ.get("TALLER_URL", "https://taller.ninomeando.com/")
+TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/sign-in"
 

@@ -2,7 +2,7 @@
 
 `RedirigirRolesOperativosMiddleware` — defensa profunda en La Gerencia:
 si un usuario autenticado tiene rol `contador` o `disenador`, se le redirige
-a https://taller.ninomeando.com/ (donde sí pertenece). El flujo normal
+a https://taller.learningcenter.mx/ (donde sí pertenece). El flujo normal
 (`auth_gerencia`) ya rechaza esos roles en `/sign-in`, pero este middleware
 cubre el edge case de un cambio de rol mid-sesión o un bookmark stale.
 
@@ -29,7 +29,7 @@ PREFIJOS_WHITELIST = (
 
 # Destino al que se redirige a los roles operativos cuando aterrizan en
 # La Gerencia. Configurable vía settings.TALLER_URL si se quiere.
-TALLER_URL_DEFAULT = "https://taller.ninomeando.com/"
+TALLER_URL_DEFAULT = "https://taller.learningcenter.mx/"
 
 
 class RedirigirRolesOperativosMiddleware:

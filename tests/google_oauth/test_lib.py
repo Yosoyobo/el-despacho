@@ -164,6 +164,6 @@ def test_redirect_uri_desde_request():
 
     class R:
         scheme = "https"
-        def get_host(self): return "taller.ninomeando.com"
+        def get_host(self): return "taller.learningcenter.mx"
 
-    assert redirect_uri_desde_request(R()) == "https://taller.ninomeando.com/auth/google/callback"
+    assert redirect_uri_desde_request(R()) == "https://taller.learningcenter.mx/auth/google/callback"

@@ -68,7 +68,7 @@ def home(request):
         "credenciales_total": len(SLOTS_CREDENCIAL),
         "usuarios_total": Usuario.objects.count(),
         "usuarios_activos": Usuario.objects.filter(is_active=True).count(),
-        "taller_url": getattr(settings, "TALLER_URL", "https://taller.ninomeando.com/"),
+        "taller_url": getattr(settings, "TALLER_URL", "https://taller.learningcenter.mx/"),
     })
 
 

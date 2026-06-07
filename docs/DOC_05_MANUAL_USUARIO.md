@@ -5,6 +5,18 @@
 
 ---
 
+## Novedades — cambio de dirección (7 de junio de 2026)
+
+- **El sistema cambió de dirección de internet.** Ahora se entra por
+  **learningcenter.mx**. Las nuevas direcciones son:
+  - **taller.learningcenter.mx** — la oficina principal (uso diario).
+  - **gerencia.learningcenter.mx** — configuración y tablero ejecutivo.
+  - **recepcion.learningcenter.mx** — portal de clientes (próximamente).
+
+  Las direcciones viejas (`*.ninomeando.com`) dejan de funcionar.
+  Actualiza tus marcadores y vuelve a instalar la app en el celular
+  (el ícono de la pantalla de inicio) con la dirección nueva.
+
 ## Novedades — ronda de comentarios (7 de junio de 2026)
 
 - **Tablero (Inicio) más limpio.** Se quitaron las tarjetas grandes de arriba
@@ -387,9 +399,9 @@ El Despacho vive en tres direcciones:
 
 | Dirección | Para qué sirve | Quién entra |
 |---|---|---|
-| **taller.ninomeando.com** | La oficina principal — operación del día a día | Todo el equipo |
-| **gerencia.ninomeando.com** | Configuración del sistema + tablero ejecutivo | Super admin y quien tenga el permiso |
-| **recepcion.ninomeando.com** | Portal para clientes externos | Próximamente |
+| **taller.learningcenter.mx** | La oficina principal — operación del día a día | Todo el equipo |
+| **gerencia.learningcenter.mx** | Configuración del sistema + tablero ejecutivo | Super admin y quien tenga el permiso |
+| **recepcion.learningcenter.mx** | Portal para clientes externos | Próximamente |
 
 ### Dos formas de entrar
 
