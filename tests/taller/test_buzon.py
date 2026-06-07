@@ -101,16 +101,23 @@ def test_buzon_default_orden_fecha(client, usuario_factory):
     assert body.index("nuevo-msg") < body.index("viejo-msg")
 
 
-def test_buzon_preserva_filtro_al_volver(client, usuario_factory):
-    """C1: las filas llevan ?volver= y el detalle reconstruye el back link."""
+def test_buzon_master_detail_panel_htmx(client, usuario_factory):
+    """S-LC-Buzon: las filas cargan el panel vía HTMX; el detalle responde un
+    fragmento (no página completa) cuando es HX-Request; la página completa
+    sigue reconstruyendo el back link con el filtro (?volver=)."""
     from buzon.models import MensajeBuzon
     u = usuario_factory(rol="super_admin")
     m = MensajeBuzon.objects.create(autor=u, tipo="problema", asunto="con-filtro", cuerpo="z"*20)
     client.force_login(u)
-    # Listado filtrado por estado=nuevo.
+    # Listado: existe el panel y las filas apuntan a él vía HTMX.
     body = client.get("/buzon/?estado=nuevo").content.decode()
-    assert "volver=" in body
-    # El detalle abierto con volver reconstruye el back_url con el filtro.
+    assert 'id="buzon-pane"' in body
+    assert f'hx-get="/buzon/{m.pk}/"' in body
+    # HX-Request al detalle → fragmento (sin <html>) con el asunto.
+    pane = client.get(f"/buzon/{m.pk}/", HTTP_HX_REQUEST="true").content.decode()
+    assert "con-filtro" in pane
+    assert "</html>" not in pane
+    # Página completa con volver reconstruye el back_url con el filtro.
     detalle = client.get(f"/buzon/{m.pk}/?volver=estado%3Dnuevo").content.decode()
     assert "/buzon/?estado=nuevo" in detalle
 

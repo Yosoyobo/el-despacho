@@ -155,6 +155,9 @@ def detalle(request, pk: int):
     # C1 S-LC-Feedback-V6: `volver` trae el querystring de filtros del listado
     # para regresar con el mismo filtro aplicado.
     volver = (request.GET.get("volver") or "").strip()
+    # S-LC-Buzon: master-detail. Si el request es HTMX, devolvemos sólo el panel
+    # de lectura (buzon/_pane.html) para inyectar en #buzon-pane sin navegar.
+    es_htmx = request.headers.get("HX-Request") == "true"
 
     # Auto-marcar como leído al abrir un mensaje "nuevo" (solo admin).
     if request.method == "GET" and es_admin_buzon and msg.estado == "nuevo":
@@ -182,11 +185,16 @@ def detalle(request, pk: int):
                     actor_id=user.pk, actor_email=user.email,
                     payload={"mensaje_id": m.pk},
                 ))
-                messages.success(request, "Respuesta guardada.")
-                destino = reverse("buzon-detalle", args=[m.pk])
-                if volver:
-                    destino += "?" + urlencode({"volver": volver})
-                return redirect(destino)
+                if es_htmx:
+                    # Re-render del panel con form fresco y mensaje actualizado.
+                    msg = m
+                    form = RespuestaAdminForm(instance=msg)
+                else:
+                    messages.success(request, "Respuesta guardada.")
+                    destino = reverse("buzon-detalle", args=[m.pk])
+                    if volver:
+                        destino += "?" + urlencode({"volver": volver})
+                    return redirect(destino)
         else:
             form = RespuestaAdminForm(instance=msg)
 
@@ -200,6 +208,13 @@ def detalle(request, pk: int):
         info_buzon.append({"label": "Respondido", "value": msg.respondido_en.strftime("%Y-%m-%d %H:%M")})
     # C1: regresa al listado con el filtro previo (si vino `volver`).
     url_lista = reverse("buzon-lista") + (f"?{volver}" if volver else "")
+    if es_htmx:
+        return render(request, "buzon/_pane.html", {
+            "mensaje": msg, "form": form,
+            "es_admin_buzon": es_admin_buzon,
+            "puede_responder": puede_responder,
+            "info_buzon": info_buzon,
+        })
     return render(request, "buzon/detalle.html", {
         "mensaje": msg, "form": form,
         "es_admin_buzon": es_admin_buzon,
