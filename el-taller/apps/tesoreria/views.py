@@ -174,6 +174,12 @@ def ingreso_detalle(request, pk):
     })
 
 
+def _next_seguro(request):
+    """URL interna a la que volver tras guardar (ej. el proyecto de origen)."""
+    nxt = request.POST.get("next") or request.GET.get("next") or ""
+    return nxt if nxt.startswith("/") and "//" not in nxt[1:3] else ""
+
+
 def _ingreso_pickers(request):
     """Quick-pick: 6 clientes/proyectos más recientes + flag de alta inline."""
     from apps.la_cartera.models import Cliente
@@ -205,11 +211,14 @@ def ingreso_nuevo(request):
                 "origen": "manual",
             })
             messages.success(request, f"Ingreso {ingreso.codigo} registrado.")
-            return redirect("tesoreria:landing")
+            return redirect(_next_seguro(request) or "tesoreria:landing")
     else:
-        form = IngresoForm()
+        initial = {}
+        if request.GET.get("proyecto"):
+            initial["proyecto"] = request.GET.get("proyecto")
+        form = IngresoForm(initial=initial)
     return render(request, "tesoreria/ingreso_form.html",
-                  {"form": form, "modo": "nuevo", **_ingreso_pickers(request)})
+                  {"form": form, "modo": "nuevo", "next_url": _next_seguro(request), **_ingreso_pickers(request)})
 
 
 @login_required
@@ -403,6 +412,7 @@ def egreso_nuevo(request):
             if not egreso.pagado_por:
                 egreso.pagado_por = request.user
             egreso.save()
+            _vincular_proveedor_a_proyecto(egreso)
             _emitir("tesoreria.egreso_registrado", request, {
                 "egreso_id": egreso.pk, "monto": str(egreso.monto),
                 "centro_de_costo_id": egreso.centro_de_costo_id,
@@ -416,10 +426,33 @@ def egreso_nuevo(request):
                 })
                 notificar_reembolso_pendiente(egreso, request.user)
             messages.success(request, f"Egreso {egreso.codigo} registrado.")
-            return redirect("tesoreria:landing")
+            return redirect(_next_seguro(request) or "tesoreria:landing")
     else:
-        form = EgresoForm()
-    return render(request, "tesoreria/egreso_form.html", {"form": form, "modo": "nuevo"})
+        initial = {}
+        pk = request.GET.get("proyecto")
+        if pk:
+            initial["proyecto"] = pk
+            from apps.el_catalogo.models import Proveedor
+            prov = Proveedor.objects.filter(
+                activo=True, servicios__en_proyectos__proyecto_id=pk,
+            ).first()
+            if prov:
+                initial["proveedor"] = prov.pk
+        form = EgresoForm(initial=initial)
+    return render(request, "tesoreria/egreso_form.html",
+                  {"form": form, "modo": "nuevo", "next_url": _next_seguro(request)})
+
+
+def _vincular_proveedor_a_proyecto(egreso):
+    """Si el egreso liga proyecto + proveedor y el proveedor no estaba asignado
+    al proyecto, lo asigna (S-LC-Buzon: 'lo liga con el proveedor... o lo asigna
+    al crear el gasto si no existía')."""
+    if not (egreso.proyecto_id and egreso.proveedor_id):
+        return
+    from apps.los_proyectos.models.proveedor_proyecto import ProyectoProveedor
+    ProyectoProveedor.objects.get_or_create(
+        proyecto_id=egreso.proyecto_id, proveedor_id=egreso.proveedor_id,
+    )
 
 
 @login_required

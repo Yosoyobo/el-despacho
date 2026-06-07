@@ -356,6 +356,8 @@ def detalle(request, pk):
             EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
         ),
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
+        "ingresos_proyecto": proyecto.ingresos.filter(anulado=False).order_by("-fecha")[:50],
+        "egresos_proyecto": proyecto.egresos.filter(anulado=False).select_related("proveedor").order_by("-fecha")[:50],
         "breadcrumb_items": [
             {"url": reverse("proyectos-lista"), "label": "Proyectos"},
             {"label": proyecto.codigo},

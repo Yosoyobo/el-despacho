@@ -152,6 +152,35 @@ def test_egreso_con_iva_calcula_total_y_gasto_operativo(client, usuario_factory,
     assert e.proveedor_nombre == "Gasto operativo"
 
 
+def test_egreso_desde_proyecto_liga_y_asigna_proveedor(client, usuario_factory, centro, cliente_factory):
+    """Egreso creado con ?proyecto&next se liga al proyecto, asigna el proveedor
+    y redirige de vuelta al proyecto (commit 11)."""
+    from apps.el_catalogo.models import Proveedor
+    from apps.los_proyectos.models import Proyecto
+    from apps.los_proyectos.models.proveedor_proyecto import ProyectoProveedor
+    actor = usuario_factory(rol="dueno")
+    client.force_login(actor)
+    proy = Proyecto.objects.create(nombre="Demo", cliente=cliente_factory(), creado_por=actor)
+    prov = Proveedor.objects.create(razon_social="Maquilas SA", creado_por=actor)
+    resp = client.post(
+        f"/tesoreria/egresos/nuevo/?proyecto={proy.pk}&next=/proyectos/{proy.pk}/",
+        {
+            "subtotal": "200", "fecha": "2026-05-19", "descripcion": "Maquila",
+            "proveedor": prov.pk, "centro_de_costo": centro.pk, "proyecto": proy.pk,
+            "pagado_por": actor.pk, "solicitado_por": "",
+            "estado_pago": "pagado", "metodo": "transferencia", "moneda": "MXN",
+        },
+    )
+    assert resp.status_code == 302
+    assert resp.url == f"/proyectos/{proy.pk}/"
+    from apps.tesoreria.models import Egreso
+    e = Egreso.objects.get()
+    assert e.proyecto_id == proy.pk
+    assert e.proveedor_id == prov.pk
+    assert e.proveedor_nombre == "Maquilas SA"
+    assert ProyectoProveedor.objects.filter(proyecto=proy, proveedor=prov).exists()
+
+
 def test_get_forms_renderizan(client, usuario_factory):
     """Smoke: los forms de ingreso/egreso (mini-cal, IVA, semáforo) renderizan."""
     client.force_login(usuario_factory(rol="dueno"))
