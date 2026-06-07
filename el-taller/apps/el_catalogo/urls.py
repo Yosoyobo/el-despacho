@@ -14,6 +14,7 @@ urlpatterns = [
     path("categorias/", views.categorias_lista, name="catalogo-categorias"),
     path("categorias/nueva", views.categoria_nueva, name="catalogo-categoria-nueva"),
     path("categorias/<int:pk>/editar", views.categoria_editar, name="catalogo-categoria-editar"),
+    path("categorias/<int:pk>/borrar", views.categoria_borrar, name="catalogo-categoria-borrar"),
     # S-LC-Feedback-V2: catálogo de unidades de medida
     path("unidades/", views.unidades_lista, name="catalogo-unidades"),
     path("unidades/nueva", views.unidad_nueva, name="catalogo-unidad-nueva"),

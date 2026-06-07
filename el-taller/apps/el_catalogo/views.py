@@ -230,7 +230,8 @@ def categorias_lista(request):
     if (r := _gate(request, "gestionar_categorias")) is not None:
         return r
     cats = CategoriaServicio.objects.all()
-    return render(request, "catalogo/categorias.html", {"categorias": cats})
+    # Si llegó aquí, _gate confirmó que puede gestionar categorías.
+    return render(request, "catalogo/categorias.html", {"categorias": cats, "puede_editar": True})
 
 
 @require_http_methods(["GET", "POST"])
@@ -262,6 +263,24 @@ def categoria_editar(request, pk: int):
     else:
         form = CategoriaForm(instance=cat)
     return render(request, "catalogo/categoria_form.html", {"form": form, "modo": "editar", "categoria": cat})
+
+
+@require_http_methods(["POST"])
+def categoria_borrar(request, pk: int):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    cat = get_object_or_404(CategoriaServicio, pk=pk)
+    if cat.servicios.exists():
+        messages.error(
+            request,
+            f"No se puede eliminar «{cat.nombre}»: tiene productos asociados. "
+            "Desactívala o reasigna sus productos primero.",
+        )
+        return redirect("catalogo-categorias")
+    nombre = cat.nombre
+    cat.delete()
+    messages.success(request, f"Categoría «{nombre}» eliminada.")
+    return redirect("catalogo-categorias")
 
 
 # ── Unidades (S-LC-Feedback-V2) ─────────────────────────────────────────────
