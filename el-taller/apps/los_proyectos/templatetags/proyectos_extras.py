@@ -45,6 +45,7 @@ _COLORES_FALLBACK = {
     "en_proceso_diseno": "badge-warning",
     "en_proceso_produccion": "badge-warning",
     "entregado": "badge-success",
+    "cerrado": "badge-brand",
     "en_pausa": "badge-gray",
     "cancelado": "badge-error",
 }
@@ -121,6 +122,7 @@ def estado_label(estado: str) -> str:
         ("en_proceso_diseno", "En proceso de diseño"),
         ("en_proceso_produccion", "En proceso de producción"),
         ("entregado", "Entregado"),
+        ("cerrado", "Cerrado"),
         ("en_pausa", "En pausa"),
         ("cancelado", "Cancelado"),
     ):

@@ -21,6 +21,7 @@ ESTADOS_BASE = (
     ("en_proceso_diseno",      "En proceso de diseño",   "badge-warning",  30, False),
     ("en_proceso_produccion",  "En proceso de producción", "badge-warning", 40, False),
     ("entregado",              "Entregado",              "badge-success",  50, True),
+    ("cerrado",                "Cerrado",                "badge-brand",    55, True),
     ("en_pausa",               "En pausa",               "badge-gray",     60, False),
     ("cancelado",              "Cancelado",              "badge-error",    70, True),
 )

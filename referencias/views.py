@@ -65,7 +65,8 @@ def autocomplete_proyectos(request):
     q = (request.GET.get("q") or "").strip().lower()
     user = request.user
     from apps.los_proyectos.models.proyecto import Proyecto
-    base = Proyecto.objects.all()
+    # No referenciar proyectos cancelados ni cerrados (ya no son accionables).
+    base = Proyecto.objects.exclude(estado__in=["cancelado", "cerrado"])
     if getattr(user, "rol", None) == "disenador":
         base = base.filter(asignaciones__usuario_id=user.pk).distinct()
     qs = _aplicar_filtro_y_top(base, q, ["slug", "codigo", "nombre"])

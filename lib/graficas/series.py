@@ -29,6 +29,7 @@ PALETA_ESTADOS = {
     "exitoso": "#12b76a",
     "completada": "#12b76a",
     "entregado": "#12b76a",
+    "cerrado": "#465fff",
     "activo": "#12b76a",
     "vigente": "#12b76a",
     "leido": "#12b76a",
