@@ -9,42 +9,7 @@
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Bienvenido, {{ request.user.get_short_name }} · {{ request.user.get_rol_display }}</p>
 </header>
 
-{% comment %}
-Hero — 3 KPI cards + 1 gauge radial. Cada card es toggleable desde
-/perfil/dashboard/ (S-Demo-Pre-Showcase-2).
-{% endcomment %}
-{% if hero and hero_alguno_visible %}
-<section class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-    {% if hero_visible.ingresos %}{% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Ingresos del mes" valor=hero.ingresos_mes_fmt color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/ingresos/" %}{% endif %}
-    {% if hero_visible.proyectos %}{% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Proyectos activos" valor=hero.proyectos_activos_num color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/proyectos/kanban/" %}{% endif %}
-    {% if hero_visible.por_cobrar %}{% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por cobrar" valor=hero.cxc_total_fmt color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M5 7v13h14V7M9 11h6" stroke-linecap="round" stroke-linejoin="round"/></svg>' link="/tesoreria/por-cobrar/" %}{% endif %}
-
-    {% if hero_visible.meta %}
-    {# Gauge radial — meta de ingresos del mes #}
-    <div class="ta-card flex flex-col">
-        <div class="flex items-center justify-between">
-            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
-                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6m0 8v6M2 12h6m8 0h6M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24" stroke-linecap="round"/></svg>
-            </span>
-            <span class="text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500">Meta mes</span>
-        </div>
-        {% if hero.gauge_meta_fmt %}
-        <div id="hero-gauge-ingresos" data-chart="radial-kpi" data-altura="160"
-             data-series='{"valor": {{ hero.gauge_pct }}, "label": "vs meta"}'
-             class="-mt-2"></div>
-        <div class="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
-            {{ hero.ingresos_mes_actual_fmt }} de <span class="font-semibold">{{ hero.gauge_meta_fmt }}</span>
-        </div>
-        {% else %}
-        <div class="mt-3 flex flex-1 flex-col items-center justify-center text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Sin meta configurada</p>
-            <a href="https://gerencia.ninomeando.com/ajustes/metas-kpi/" class="mt-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Configurar →</a>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-</section>
-{% endif %}
+{% comment %}Hero KPIs eliminadas (sprint S-LC-Buzon): la info ya vive en el Tablero, Proyectos, Charts y Tesorería más abajo.{% endcomment %}
 
 {# 1) Acciones rápidas: botones azules para crear lo más común. #}
 <section class="mb-6 flex flex-wrap gap-2">
