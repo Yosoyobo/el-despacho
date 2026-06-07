@@ -5,30 +5,68 @@
 {% breadcrumb_items "Clientes" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
-    <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Clientes</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Clientes B2B del despacho.</p>
-    </div>
+    <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Clientes</h1>
     {% if puede_editar %}<a href="{% url 'cartera-nuevo' %}" class="btn-primario">+ Nuevo cliente</a>{% endif %}
 </header>
 
-<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes activos" valor=kpis.activos color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Con proyectos activos" valor=kpis.con_proyectos color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z M2 17l10 5 10-5 M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Sin proyectos vivos" valor=kpis.sin_proyectos color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01" stroke-linecap="round"/></svg>' %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Archivados" valor=kpis.archivados color="purple" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes con proyectos activos" valor=kpis.con_proyectos color="brand" link="?ver=con_proyectos" activo=kpi_activo_con_proyectos %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes activos" valor=kpis.activos color="success" link="?ver=activos" activo=kpi_activo_activos %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes archivados" valor=kpis.archivados color="gray" %}
 </div>
 
-<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="flex-1 min-w-[220px]">
-        <label for="cart-q" class="sr-only">Buscar</label>
-        <input id="cart-q" type="search" name="q" value="{{ q }}" placeholder="Buscar razón social, RFC o correo…">
+{# Búsqueda grande — busca por nombre, contacto y proyecto (incluye archivados). #}
+<form method="get" class="mb-4">
+    {% if ver_actual != 'nombre' %}<input type="hidden" name="ver" value="{{ ver_actual }}">{% endif %}
+    <div class="relative">
+        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
+        </span>
+        <input id="cart-q" type="search" name="q" value="{{ q }}"
+               placeholder="Buscar cliente, contacto, proyecto"
+               class="w-full rounded-xl border border-gray-300 bg-white py-3.5 pl-12 pr-4 text-base text-gray-900 placeholder-gray-400 shadow-theme-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500">
     </div>
-    {% if puede_editar %}
-    {% include "_componentes_tailadmin/_checkbox.html" with name="archivados" value="1" label="Incluir archivados" checked=incluir_archivados %}
-    {% endif %}
-    <button type="submit" class="btn-secundario">Buscar</button>
 </form>
 
-{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_cartera filas_template="cartera/_filas.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
+{# Segmented control: ordenar/filtrar. #}
+<div class="mb-5 flex flex-wrap gap-1.5">
+    {% for val, etiqueta in ver_opciones %}
+    <a href="?ver={{ val }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+       class="rounded-lg border px-3 py-1.5 text-xs font-medium transition {% if ver_actual == val %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ etiqueta }}</a>
+    {% endfor %}
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-[640px] md:min-w-full text-sm">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3 text-left">Nombre</th>
+                    <th class="px-5 py-3 text-left">Contacto</th>
+                    <th class="px-5 py-3 text-right">Proyectos</th>
+                    <th class="px-5 py-3 text-left">Estado</th>
+                    <th class="px-5 py-3 text-right"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% include "cartera/_filas.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% if page_obj %}<div class="mt-4">{% include "_componentes_tailadmin/_paginacion.html" with page_obj=page_obj querystring=querystring_paginacion %}</div>{% endif %}
+
+{# Archivados — sección desplegable (solo sin búsqueda). #}
+{% if archivados_lista %}
+<details class="mt-6 rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <summary class="cursor-pointer px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-200">Clientes archivados ({{ archivados_lista|length }})</summary>
+    <div class="overflow-x-auto border-t border-gray-100 dark:border-gray-800">
+        <table class="min-w-[640px] md:min-w-full text-sm">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% include "cartera/_filas.html" with clientes=archivados_lista %}
+            </tbody>
+        </table>
+    </div>
+</details>
+{% endif %}
 {% endblock %}
