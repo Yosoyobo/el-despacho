@@ -26,6 +26,11 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 echo "==> [Mudanza] docker compose up -d"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
+echo "==> [Mudanza] recargando Caddy (Caddyfile es bind-mount, up -d no lo recrea)"
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-portero \
+    caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
+  || docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate el-portero
+
 echo "==> [Mudanza] poda de imágenes huérfanas"
 docker image prune -f
 

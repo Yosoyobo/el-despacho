@@ -276,6 +276,15 @@ jobs:
             echo "=== docker compose up -d ==="
             docker compose $COMPOSE_FILES up -d
 
+            echo "=== Recargando Caddy (el Caddyfile es bind-mount) ==="
+            # `up -d` NO recrea el-portero al cambiar el Caddyfile montado, así
+            # que un cambio de hosts/dominios no se aplicaría y Caddy seguiría
+            # sirviendo la config vieja (sin cert para el dominio nuevo).
+            # Recargamos en caliente; si falla, recreamos el contenedor.
+            docker compose $COMPOSE_FILES exec -T el-portero \
+                caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
+              || docker compose $COMPOSE_FILES up -d --force-recreate el-portero
+
             echo "=== Esperando 45s para healthchecks ==="
             sleep 45
 
