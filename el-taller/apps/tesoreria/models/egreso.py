@@ -37,10 +37,20 @@ class Egreso(models.Model):
     codigo = models.CharField(max_length=20, unique=True, db_index=True)
 
     monto = models.DecimalField(max_digits=12, decimal_places=2)
+    # Desglose IVA (S-LC-Buzon). Ver Ingreso.subtotal/incluye_iva.
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    incluye_iva = models.BooleanField(default=False)
     moneda = models.CharField(max_length=3, default="MXN")
     fecha = models.DateField()
 
     descripcion = models.CharField(max_length=300)
+    # Proveedor del catálogo (S-LC-Buzon). Null = "Gasto operativo" (viáticos,
+    # operación interna). `proveedor_nombre` se mantiene denormalizado para
+    # exports/display y se rellena desde el proveedor o "Gasto operativo".
+    proveedor = models.ForeignKey(
+        "el_catalogo.Proveedor", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="egresos",
+    )
     proveedor_nombre = models.CharField(max_length=200, blank=True, default="")
 
     centro_de_costo = models.ForeignKey(

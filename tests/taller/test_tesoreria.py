@@ -114,11 +114,11 @@ def test_manager_vigentes_omite_anulados(make_ingreso, usuario_factory):
 
 def test_form_ingreso_rechaza_monto_cero():
     from apps.tesoreria.forms import IngresoForm
-    form = IngresoForm(data={"monto": "0", "fecha": "2026-05-19",
+    form = IngresoForm(data={"subtotal": "0", "fecha": "2026-05-19",
                               "descripcion": "x", "moneda": "MXN",
-                              "metodo": "transferencia"})
+                              "metodo": "tarjeta"})
     assert not form.is_valid()
-    assert "monto" in form.errors
+    assert "subtotal" in form.errors
 
 
 def test_form_egreso_tarjeta_personal_sugiere_reembolso(centro):
@@ -130,6 +130,26 @@ def test_form_egreso_tarjeta_personal_sugiere_reembolso(centro):
     })
     assert not form.is_valid()
     assert "estado_pago" in form.errors
+
+
+def test_egreso_con_iva_calcula_total_y_gasto_operativo(client, usuario_factory, centro):
+    """incluye_iva → monto = subtotal×1.16; proveedor vacío → 'Gasto operativo'."""
+    actor = usuario_factory(rol="dueno")
+    client.force_login(actor)
+    resp = client.post("/tesoreria/egresos/nuevo/", {
+        "subtotal": "100", "incluye_iva": "on", "fecha": "2026-05-19",
+        "descripcion": "Con IVA", "proveedor": "",
+        "centro_de_costo": centro.pk, "proyecto": "",
+        "pagado_por": actor.pk, "solicitado_por": "",
+        "estado_pago": "pagado", "metodo": "transferencia", "moneda": "MXN",
+    })
+    assert resp.status_code == 302
+    from apps.tesoreria.models import Egreso
+    e = Egreso.objects.get()
+    assert e.subtotal == Decimal("100")
+    assert e.incluye_iva is True
+    assert e.monto == Decimal("116.00")
+    assert e.proveedor_nombre == "Gasto operativo"
 
 
 # ── Permisos ─────────────────────────────────────────────────────────────
@@ -160,7 +180,7 @@ def test_crear_ingreso_genera_codigo_y_evento(client, usuario_factory, cliente_f
     client.force_login(usuario_factory(rol="dueno"))
     cli = cliente_factory()
     resp = client.post("/tesoreria/ingresos/nuevo/", {
-        "monto": "1500", "fecha": "2026-05-19",
+        "subtotal": "1500", "fecha": "2026-05-19",
         "descripcion": "Anticipo proyecto", "cliente": cli.pk,
         "proyecto": "", "moneda": "MXN", "metodo": "transferencia",
         "referencia_externa": "",
@@ -170,6 +190,7 @@ def test_crear_ingreso_genera_codigo_y_evento(client, usuario_factory, cliente_f
     i = Ingreso.objects.get()
     assert i.codigo.startswith("ING-")
     assert i.creado_por_id is not None
+    assert i.monto == Decimal("1500")  # sin IVA → total = subtotal
 
 
 def test_crear_egreso_por_reembolsar_dispara_evento(
@@ -188,8 +209,8 @@ def test_crear_egreso_por_reembolsar_dispara_evento(
     actor = usuario_factory(rol="dueno")
     client.force_login(actor)
     resp = client.post("/tesoreria/egresos/nuevo/", {
-        "monto": "300", "fecha": "2026-05-19",
-        "descripcion": "Insumos", "proveedor_nombre": "Papelería",
+        "subtotal": "300", "fecha": "2026-05-19",
+        "descripcion": "Insumos", "proveedor": "",
         "centro_de_costo": centro.pk, "proyecto": "",
         "pagado_por": actor.pk, "solicitado_por": "",
         "estado_pago": "por_reembolsar", "metodo": "tarjeta_personal",

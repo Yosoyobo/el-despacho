@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import models, transaction
 
 METODOS_INGRESO = (
+    ("tarjeta", "Tarjeta"),
     ("transferencia", "Transferencia"),
     ("deposito", "Depósito"),
     ("efectivo", "Efectivo"),
@@ -12,6 +13,10 @@ METODOS_INGRESO = (
     ("mercadopago", "MercadoPago"),
     ("otro", "Otro"),
 )
+
+# Métodos ofrecidos en el form de captura manual (S-LC-Buzon). Los demás
+# (deposito/cheque/stripe/mercadopago) los siguen poniendo integraciones.
+METODOS_INGRESO_FORM = ("tarjeta", "transferencia", "efectivo", "otro")
 
 
 def _generar_codigo(prefijo: str, anio: int) -> str:
@@ -46,6 +51,11 @@ class Ingreso(models.Model):
     codigo = models.CharField(max_length=20, unique=True, db_index=True)
 
     monto = models.DecimalField(max_digits=12, decimal_places=2)
+    # Desglose IVA (S-LC-Buzon). `subtotal` = base sin IVA capturada; `monto`
+    # = total que va a Contaduría (subtotal o subtotal×1.16). Para operaciones
+    # informales (la mayoría en LC) incluye_iva=False y se trata como efectivo.
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    incluye_iva = models.BooleanField(default=False)
     moneda = models.CharField(max_length=3, default="MXN")
     fecha = models.DateField()
 
