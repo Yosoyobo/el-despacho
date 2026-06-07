@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades al 7 de junio de 2026
+
+- **La página del Proyecto quedó aún más cómoda de usar.**
+  - **El nombre y el código van juntos arriba** (por ejemplo *Exte* con la
+    etiqueta **LC-0008** al lado), para identificar el proyecto de un vistazo.
+  - **La barra de estado ocupa todo el ancho** y reparte los estados en partes
+    iguales. El estado actual lleva un **contorno grueso de su color**.
+  - **Se guarda solo, y ahora lo ves claro.** Junto a "Última actualización"
+    aparece **"● Nuevos cambios"** mientras escribes y **"✓ Guardado"** cuando
+    el sistema ya guardó. El botón **Guardar** sigue ahí por si lo quieres usar.
+  - **Botón "↶ Deshacer".** Si te equivocaste, deshace el último cambio (hasta
+    **5 pasos** hacia atrás). El número entre paréntesis indica cuántos pasos
+    puedes deshacer.
+  - **Tareas arriba de los productos.** Ahora la lista de **Tareas** del
+    proyecto va antes de los productos, con el botón **"+ Nueva tarea"**
+    centrado debajo de la lista.
+  - **Nombre, Cliente y "+ Nuevo cliente" en una sola línea**, y la
+    **descripción** quedó chiquita arriba del bloque **Económico**.
+  - **El bloque Económico muestra el desglose de productos** que se están
+    sumando (nombre y cantidad a la izquierda, su monto a la derecha) antes del
+    total.
+  - **Productos con color.** Cada tarjeta de producto tiene un **fondo de color
+    suave distinto** para diferenciarlas de un vistazo.
+  - **Calendarios más compactos** (ocupan menos alto), con el **mes y las
+    flechas más grandes** y **sin el sombreado gris en fines de semana**.
+    Debajo del calendario de **Inicio** hay un botón **"Hoy"**.
+  - **El recuadro de Proveedores subió** y **se actualiza solo** cuando asignas
+    un proveedor a un producto.
+
 ## Novedades al 6 de junio de 2026
 
 - **La página del Proyecto se rediseñó para verse y trabajarse más claro.**

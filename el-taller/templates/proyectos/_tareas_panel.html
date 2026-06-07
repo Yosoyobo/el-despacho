@@ -1,0 +1,33 @@
+{% comment %}
+Render-V2 — Panel de Tareas del proyecto. Va ARRIBA de Productos involucrados.
+El botón "+ Nueva tarea" va centrado DEBAJO de la lista (no en el header).
+Params: proyecto, tareas, puede_editar.
+{% endcomment %}
+<section>
+    <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas</h2>
+    <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <table class="min-w-[520px] text-sm md:min-w-full">
+            <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr><th class="px-5 py-3 text-left">Tarea</th><th class="px-5 py-3 text-left">Asignada a</th><th class="px-5 py-3 text-left">Estado</th><th class="px-5 py-3 text-left">Prioridad</th></tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for t in tareas %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
+                    <td class="px-5 py-3 text-sm">{% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}</td>
+                    <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if puede_editar %}
+    <div class="mt-3 flex justify-center">
+        <button type="button" class="btn-secundario"
+                hx-get="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nueva tarea</button>
+    </div>
+    {% endif %}
+</section>

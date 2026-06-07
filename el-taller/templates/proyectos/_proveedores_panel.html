@@ -5,7 +5,7 @@ cada proveedor (costo del producto + impresión ligada a ese proveedor), sin
 importar el tipo de entrega. La asignación explícita (ProyectoProveedor) aporta
 el tipo (entregan/recogemos), el compromiso, contacto y ubicación.
 {% endcomment %}
-<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+<section id="proveedores-panel"{% if oob %} hx-swap-oob="true"{% endif %} class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="flex items-center justify-between gap-2">
         <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Proveedores</h3>
         {% if puede_editar %}<button type="button" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
@@ -27,9 +27,10 @@ el tipo (entregan/recogemos), el compromiso, contacto y ubicación.
             {% if fila.asignacion.contacto %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">📞 {{ fila.asignacion.contacto }}</p>{% endif %}
             {% if fila.asignacion.ubicacion %}<p class="text-xs text-gray-500 dark:text-gray-400">📍 {{ fila.asignacion.ubicacion }}</p>{% endif %}
             {% if puede_editar %}
-            <form method="post" action="{% url 'proyectos-quitar-proveedor' proyecto.pk fila.asignacion.pk %}" onsubmit="return confirm('¿Quitar la asignación de este proveedor?');" class="mt-1">
-                {% csrf_token %}<button type="submit" class="text-xs text-error-600 hover:underline dark:text-error-400">Quitar asignación</button>
-            </form>
+            <button type="button" class="mt-1 text-xs text-error-600 hover:underline dark:text-error-400"
+                    hx-post="{% url 'proyectos-quitar-proveedor' proyecto.pk fila.asignacion.pk %}"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-confirm="¿Quitar la asignación de este proveedor?">Quitar asignación</button>
             {% endif %}
             {% else %}
             <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Sin asignación de entrega.{% if puede_editar %} Usa “+ Agregar” para fijar tipo y compromiso.{% endif %}</p>

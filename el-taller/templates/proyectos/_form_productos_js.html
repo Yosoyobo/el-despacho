@@ -10,6 +10,10 @@
     function fmt(n) { return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function pad(n) { return String(n).padStart(2, '0'); }
     function autosave() { if (!cargando && form) form.dispatchEvent(new Event('change', { bubbles: true })); }
+    function marcarSucio() {
+        const ind = document.getElementById('guardado-indicador');
+        if (ind) { ind.className = 'inline-flex items-center gap-1 text-xs font-medium text-warning-600 dark:text-warning-400'; ind.textContent = '● Nuevos cambios'; }
+    }
 
     // ── Calendarios inline ──────────────────────────────────────────────────
     const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -25,22 +29,22 @@
             const dim = new Date(y, m + 1, 0).getDate();
             const sel = input.value;
             const t0 = new Date(); t0.setHours(0, 0, 0, 0);
-            let h = '<div class="mb-2 flex items-center justify-between">';
-            h += '<button type="button" data-nav="-1" class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">&#8249;</button>';
-            h += '<span class="text-sm font-medium text-gray-700 dark:text-gray-200">' + MESES[m] + ' ' + y + '</span>';
-            h += '<button type="button" data-nav="1" class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">&#8250;</button></div>';
-            h += '<div class="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-gray-400">';
+            // Render-V2: mes/flechas más grandes; celdas ~25% más compactas
+            // (h-6); sin gris en fin de semana.
+            let h = '<div class="mb-1.5 flex items-center justify-between">';
+            h += '<button type="button" data-nav="-1" class="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">&#8249;</button>';
+            h += '<span class="text-base font-semibold text-gray-800 dark:text-gray-100">' + MESES[m] + ' ' + y + '</span>';
+            h += '<button type="button" data-nav="1" class="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">&#8250;</button></div>';
+            h += '<div class="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-gray-400">';
             ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(d => h += '<span>' + d + '</span>');
-            h += '</div><div class="mt-1 grid grid-cols-7 gap-1">';
+            h += '</div><div class="mt-0.5 grid grid-cols-7 gap-0.5">';
             for (let i = 0; i < startW; i++) h += '<span></span>';
             for (let d = 1; d <= dim; d++) {
                 const iso = y + '-' + pad(m + 1) + '-' + pad(d);
-                const col = (startW + d - 1) % 7;
                 const dt = new Date(y, m, d);
-                let cls = 'mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm ';
+                let cls = 'mx-auto flex h-6 w-6 items-center justify-center rounded-full text-sm ';
                 if (iso === sel) cls += 'bg-brand-500 font-bold text-white';
                 else if (dt < t0) cls += 'text-gray-300 dark:text-gray-600';
-                else if (col >= 5) cls += 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]';
                 else cls += 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06]';
                 h += '<button type="button" data-iso="' + iso + '" class="' + cls + '">' + d + '</button>';
             }
@@ -174,6 +178,20 @@
         if (t.matches('.imp-costo, .proc-desc, .proc-costo')) serializar(card);
     });
     document.addEventListener('click', function (e) {
+        // Botón "Hoy" debajo del calendario de inicio.
+        const hoyBtn = e.target.closest && e.target.closest('[data-hoy]');
+        if (hoyBtn) {
+            const id = hoyBtn.getAttribute('data-hoy');
+            const input = document.getElementById(id);
+            if (input) {
+                const n = new Date();
+                input.value = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate());
+                const cont = document.querySelector('[data-calendario="' + id + '"]');
+                if (cont && cont._render) { cont._view = { y: n.getFullYear(), m: n.getMonth() }; cont._render(); }
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+        }
         // Sync inmediato del estado oculto al clickear un chip de status.
         const chip = e.target.closest && e.target.closest('[data-estado-slug]');
         if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }
@@ -258,6 +276,12 @@
             } catch (e) { msg('Error de red. Intenta otra vez.'); }
             qcBtn.disabled = false;
         });
+    }
+
+    // Indicador permanente: marca "● Nuevos cambios" al editar; el OOB del
+    // autoguardado lo regresa a "✓ Guardado" / "✕ No se pudo guardar".
+    if (form) {
+        ['input', 'change'].forEach(ev => form.addEventListener(ev, function () { if (!cargando) marcarSucio(); }));
     }
 
     cargando = false;

@@ -1,0 +1,10 @@
+{% comment %}
+Render-V2 — Indicador de guardado SIEMPRE visible.
+Estados: "guardado" (✓ verde), "nuevos" (● ámbar), "error" (✕ rojo).
+El JS de _form_productos_js.html lo cambia a "nuevos" al editar y el OOB del
+autoguardado lo regresa a "guardado"/"error". `oob=True` añade hx-swap-oob.
+{% endcomment %}
+<span id="guardado-indicador"{% if oob %} hx-swap-oob="true"{% endif %}
+      class="inline-flex items-center gap-1 text-xs font-medium {% if estado == 'nuevos' %}text-warning-600 dark:text-warning-400{% elif estado == 'error' %}text-error-600 dark:text-error-400{% else %}text-success-600 dark:text-success-400{% endif %}">
+    {% if estado == 'nuevos' %}● Nuevos cambios{% elif estado == 'error' %}✕ No se pudo guardar{% else %}✓ Guardado{% endif %}
+</span>

@@ -292,6 +292,15 @@ def detalle(request, pk):
         form = ProyectoForm(request.POST, instance=proyecto)
         formset = ProyectoProductoFormSetEdit(request.POST, instance=proyecto)
         if form.is_valid() and formset.is_valid():
+            # Render-V2: snapshot del estado ANTES de guardar, para el Undo
+            # (Redis, coalescido). Se hace sobre una instancia fresca para no
+            # capturar las mutaciones que el ModelForm ya aplicó al `instance`.
+            import time as _time
+
+            from . import services_undo
+            with contextlib.suppress(Exception):
+                services_undo.registrar_frame(
+                    Proyecto.objects.get(pk=proyecto.pk), ahora_ts=_time.time())
             form.save()
             formset.save()
             _sync_procesos_formset(formset)
@@ -303,17 +312,21 @@ def detalle(request, pk):
                 actor_id=request.user.pk, actor_email=request.user.email,
                 payload={"proyecto_id": proyecto.pk, "campo": "detalle_inline"},
             ))
-            # C7: autoguardado HTMX → refresca panel económico + indicador (OOB).
+            # C7: autoguardado HTMX → refresca panel económico + proveedores +
+            # indicador + estado del Undo (OOB).
             if es_htmx:
                 return render(request, "proyectos/_guardado_oob.html",
                               {"proyecto": proyecto, "ok": True,
-                               "form": ProyectoForm(instance=proyecto), "puede_editar": True})
+                               "form": ProyectoForm(instance=proyecto), "puede_editar": True,
+                               "proveedores_panel": _proveedores_panel(proyecto),
+                               "pasos_undo": services_undo.pasos_disponibles(proyecto)})
             messages.success(request, "Proyecto guardado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
         if es_htmx:
             return render(request, "proyectos/_guardado_oob.html",
                           {"proyecto": proyecto, "ok": False,
-                           "form": form, "puede_editar": True}, status=200)
+                           "form": form, "puede_editar": True,
+                           "proveedores_panel": _proveedores_panel(proyecto)}, status=200)
     else:
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetEdit(instance=proyecto)
@@ -325,11 +338,13 @@ def detalle(request, pk):
         ).distinct().order_by("razon_social")
     )
     _anotar_procesos(formset)
+    from . import services_undo
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "form": form,
         "formset": formset,
         "puede_editar": puede_ed,
+        "pasos_undo": services_undo.pasos_disponibles(proyecto),
         "equipo_opciones": _ctx_equipo(proyecto),
         "roles_proyecto": ROLES_PROYECTO,
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
@@ -472,6 +487,13 @@ def cambiar_estado(request, pk):
         if form.is_valid():
             anterior = proyecto.estado
             nuevo = form.cleaned_data["estado"]
+            # Render-V2: el cambio de estado también es un paso deshacible.
+            import time as _time
+
+            from . import services_undo
+            with contextlib.suppress(Exception):
+                services_undo.registrar_frame(
+                    Proyecto.objects.get(pk=proyecto.pk), ahora_ts=_time.time())
             proyecto.estado = nuevo
             updates = ["estado", "actualizado_en"]
             if nuevo == "entregado" and form.cleaned_data.get("fecha_real_entrega"):
@@ -708,4 +730,31 @@ def quitar_proveedor(request, pk, prov_pk):
         return HttpResponseForbidden("Solo POST.")
     ProyectoProveedor.objects.filter(proyecto=proyecto, pk=prov_pk).delete()
     messages.success(request, "Proveedor quitado del proyecto.")
-    return redirect(_redir_detalle(proyecto))
+    destino = _redir_detalle(proyecto)
+    if _es_htmx(request):
+        return HttpResponse(status=204, headers={"HX-Redirect": destino})
+    return redirect(destino)
+
+
+@login_required
+def deshacer(request, pk):
+    """Render-V2: deshace el último guardado restaurando el frame de Redis."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    if request.method != "POST":
+        return HttpResponseForbidden("Solo POST.")
+    from . import services_undo
+    if services_undo.deshacer(proyecto):
+        emitir(EventoPortavoz(
+            tipo="proyecto.actualizado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"proyecto_id": proyecto.pk, "campo": "undo"},
+        ))
+        messages.success(request, "Se deshizo el último cambio.")
+    else:
+        messages.info(request, "No hay cambios que deshacer.")
+    destino = _redir_detalle(proyecto)
+    if _es_htmx(request):
+        return HttpResponse(status=204, headers={"HX-Redirect": destino})
+    return redirect(destino)

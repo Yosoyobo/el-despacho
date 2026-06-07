@@ -1,6 +1,15 @@
-{% comment %}C7 S-LC-Feedback-V6: respuesta del autoguardado. Refresca por OOB el panel económico, el indicador "Guardado ✓" y la marca de última actualización.{% endcomment %}
-{% include "proyectos/_economico_panel.html" with proyecto=proyecto oob=True %}
-<span id="guardado-indicador" hx-swap-oob="true" class="text-xs font-medium {% if ok %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">
-    {% if ok %}Guardado ✓{% else %}No se pudo guardar{% endif %}
-</span>
+{% comment %}Render-V2: respuesta del autoguardado. Refresca por OOB: panel económico,
+panel de proveedores, indicador permanente (✓/✕), marca de última actualización y el
+estado del botón Deshacer (cuántos pasos quedan).{% endcomment %}
+{% include "proyectos/_economico_panel.html" with proyecto=proyecto form=form puede_editar=puede_editar oob=True %}
+{% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=True oob=True %}
+{% include "proyectos/_guardado_indicador.html" with estado=ok|yesno:"guardado,error" oob=True %}
 <time id="ult-act" hx-swap-oob="true">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time>
+{% if ok %}
+<button id="btn-undo" hx-swap-oob="true"
+        hx-post="{% url 'proyectos-deshacer' proyecto.pk %}"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-confirm="¿Deshacer el último cambio guardado?"
+        class="btn-secundario disabled:cursor-not-allowed disabled:opacity-40"
+        {% if not pasos_undo %}disabled{% endif %}>↶ Deshacer{% if pasos_undo %} ({{ pasos_undo }}){% endif %}</button>
+{% endif %}

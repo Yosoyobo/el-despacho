@@ -1,0 +1,21 @@
+# Override SOLO para verificación local en HAL (no se usa en prod).
+# Publica los puertos de las apps Django directamente al host y amplía
+# ALLOWED_HOSTS para abrirlas por localhost / IP de LAN / Tailscale sin
+# pasar por Caddy (que rutea por hostname). DEBUG=development → cookies no
+# secure y acceso same-origin sobre HTTP, así que el login funciona directo.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build \
+#       postgres redis la-gerencia el-taller portavoz-worker
+services:
+  el-taller:
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,192.168.100.20,192.168.100.30,100.107.38.26"
+
+  la-gerencia:
+    ports:
+      - "8001:8001"
+    environment:
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,192.168.100.20,192.168.100.30,100.107.38.26"

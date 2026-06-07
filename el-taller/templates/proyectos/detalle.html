@@ -2,20 +2,39 @@
 {% load proyectos_extras forms_helpers %}
 {% block title %}{{ proyecto.codigo }} — {{ proyecto.nombre }}{% endblock %}
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=proyecto.nombre subtitulo=proyecto.codigo breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
-{# Barra de status con código de color (Render-V1) #}
+{# ── Encabezado: nombre + código juntos (Render-V2) ── #}
+<header class="mb-5">
+    {% if breadcrumb_items %}<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>{% endif %}
+    {% if back_url %}
+    <a href="{{ back_url }}" class="mb-2 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m0 0 6-6m-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {{ back_label|default:"Proyectos" }}
+    </a>
+    {% endif %}
+    <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ proyecto.nombre }}</h1>
+        <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-semibold tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ proyecto.codigo }}</span>
+    </div>
+</header>
+
+{# ── Barra de status full-width: chips repartidos, seleccionado con outline grueso a color ── #}
 {% include "proyectos/_barra_status.html" with proyecto=proyecto estados_barra=estados_barra puede_editar=puede_editar %}
 
-{# Barra de acciones #}
+{# ── Barra de acciones: indicador permanente + Undo + Guardar ── #}
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
         <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time></span>
-        <span id="guardado-indicador" class="text-xs font-medium text-success-600 dark:text-success-400"></span>
+        {% include "proyectos/_guardado_indicador.html" with estado="guardado" %}
     </div>
     {% if puede_editar %}
     <div class="flex gap-2">
-        <button type="button" class="btn-secundario" onclick="document.getElementById('equipo-widget').scrollIntoView({behavior:'smooth', block:'center'});">Asignar</button>
+        <button type="button" id="btn-undo"
+                hx-post="{% url 'proyectos-deshacer' proyecto.pk %}"
+                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                hx-confirm="¿Deshacer el último cambio guardado?"
+                class="btn-secundario disabled:cursor-not-allowed disabled:opacity-40"
+                {% if not pasos_undo %}disabled{% endif %}>↶ Deshacer{% if pasos_undo %} ({{ pasos_undo }}){% endif %}</button>
         <button type="submit" form="form-proyecto" class="btn-primario">Guardar</button>
     </div>
     {% endif %}
@@ -27,53 +46,49 @@
       data-servicios='{{ servicios_datos_json|safe }}'
       class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
-    {# estado se cambia desde la barra; aquí va oculto y el JS lo sincroniza #}
     <div class="hidden">{{ form.estado }}</div>
+
+    {# ── Columna principal: Datos → Tareas → Productos ── #}
     <div class="space-y-6 xl:col-span-2">
-        {# ── Datos del proyecto ── #}
+        {# ── Datos del proyecto (sin título) ── #}
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos del proyecto</h2>
-            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {% for f in form %}
-                    {% if f.name == 'cliente' %}
-                    <div class="md:col-span-2">
-                        <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
-                        <div class="flex items-center gap-2">
-                            <div class="flex-1">{{ f }}</div>
-                            <button type="button" class="btn-secundario whitespace-nowrap"
-                                    hx-get="{% url 'proyectos-cliente-inline' %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nuevo cliente</button>
-                        </div>
-                        {% if f.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.errors|join:" · " }}</p>{% endif %}
-                    </div>
-                    {% elif f.name == 'nombre' or f.name == 'descripcion' %}
-                        {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
-                    {% endif %}
-                {% endfor %}
+            {# Nombre · Cliente · + Nuevo cliente en una sola línea #}
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                <div>
+                    <label for="{{ form.nombre.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.nombre.errors|join:" · " }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                    {{ form.cliente }}
+                    {% if form.cliente.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.cliente.errors|join:" · " }}</p>{% endif %}
+                </div>
+                <div>
+                    <button type="button" class="btn-secundario whitespace-nowrap"
+                            hx-get="{% url 'proyectos-cliente-inline' %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nuevo cliente</button>
+                </div>
             </div>
 
-            {# ── Fechas: calendarios inline (Render-V1) ── #}
+            {# ── Fechas: calendarios inline ── #}
             <div class="mt-5 border-t border-gray-200 pt-5 dark:border-gray-800">
                 <div class="hidden">{{ form.fecha_inicio_hora }}{{ form.fecha_compromiso_hora }}</div>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_inicio_dia titulo="Inicio" %}
+                    {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_inicio_dia titulo="Inicio" con_hoy=True %}
                     {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_compromiso_dia titulo="Entrega" %}
                 </div>
             </div>
         </section>
 
-        {# ── Productos involucrados ── #}
-        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos involucrados</h2>
-                <button type="button" id="add-producto" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo producto</button>
-            </div>
-            {{ formset.management_form }}
-            <div id="formset-productos" class="space-y-4">
-                {% for f in formset %}
-                    {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos %}
-                {% endfor %}
-            </div>
-            <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+        {# ── Tareas (arriba de Productos) ── #}
+        {% include "proyectos/_tareas_panel.html" with proyecto=proyecto tareas=tareas puede_editar=puede_editar %}
+
+        {# ── Productos involucrados (tarjetas sobre el gris, sin contenedor) ── #}
+        <section>
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Productos involucrados</h2>
+
+            {# Crear producto nuevo en el catálogo — arriba, debajo del título #}
+            <details class="mb-4 rounded-xl border border-dashed border-gray-300 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
                 <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Crear producto nuevo en el catálogo</summary>
                 <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_100px_100px_80px_80px_auto]">
                     <div class="col-span-2 md:col-span-1">
@@ -91,25 +106,58 @@
                 </div>
                 <p id="qc-msg" class="mt-2 text-xs text-error-600 dark:text-error-400 hidden"></p>
             </details>
+
+            {{ formset.management_form }}
+            <div id="formset-productos" class="space-y-4">
+                {% for f in formset %}
+                    {% cycle 'brand' 'success' 'warning' 'blue-light' 'orange' as cardcolor silent %}
+                    {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=cardcolor %}
+                {% endfor %}
+            </div>
+
+            {# + Nuevo producto — hasta abajo, centrado #}
+            <div class="mt-4 flex justify-center">
+                <button type="button" id="add-producto" class="btn-secundario">+ Nuevo producto</button>
+            </div>
         </section>
     </div>
 
+    {# ── Aside: descripción → Económico → Proveedores → Equipo ── #}
     <aside class="space-y-6">
+        {# Descripción chiquita, arriba del Económico #}
+        <div>
+            <label for="{{ form.descripcion.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Descripción</label>
+            {{ form.descripcion }}
+        </div>
+
         {% include "proyectos/_economico_panel.html" with proyecto=proyecto form=form puede_editar=puede_editar %}
 
-        {# ── Equipo ── #}
+        {% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=puede_editar %}
+
+        {% if proveedores_aplicables %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Proveedores aplicables</h3>
+            <ul class="mt-3 space-y-1.5 text-sm">
+                {% for prov in proveedores_aplicables %}
+                <li><a href="{% url 'catalogo-proveedor-detalle' prov.pk %}" class="text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ prov.razon_social }}</a></li>
+                {% endfor %}
+            </ul>
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Derivados de los productos del proyecto (catálogo).</p>
+        </section>
+        {% endif %}
+
+        {# ── Equipo: checkmark + nombre + rol en una sola línea ── #}
         <section id="equipo-widget" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</h3>
             <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Marca quién participa y su rol.</p>
             <ul class="mt-3 space-y-2">
                 {% for op in equipo_opciones %}
                 <li class="flex items-center gap-2">
-                    <label class="flex flex-1 items-center gap-2 text-sm">
-                        <input type="checkbox" name="equipo_{{ op.usuario.pk }}" value="on" {% if op.asignado %}checked{% endif %}
-                               class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
-                        <span class="truncate text-gray-900 dark:text-gray-100">{{ op.usuario.nombre_completo|default:op.usuario.email }}</span>
-                    </label>
-                    <select name="rol_{{ op.usuario.pk }}" class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    <input type="checkbox" name="equipo_{{ op.usuario.pk }}" value="on" {% if op.asignado %}checked{% endif %}
+                           id="equipo-{{ op.usuario.pk }}"
+                           class="h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                    <label for="equipo-{{ op.usuario.pk }}" class="min-w-0 flex-1 truncate text-sm text-gray-900 dark:text-gray-100">{{ op.usuario.nombre_completo|default:op.usuario.email }}</label>
+                    <select name="rol_{{ op.usuario.pk }}" class="shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                         {% for slug, label in roles_proyecto %}<option value="{{ slug }}" {% if op.rol == slug %}selected{% endif %}>{{ label }}</option>{% endfor %}
                     </select>
                 </li>
@@ -120,29 +168,30 @@
         </section>
     </aside>
 </form>
+
 {% else %}
-{# Vista de solo lectura (diseñador sin permiso de edición). #}
+{# ── Vista de solo lectura (diseñador sin permiso de edición) ── #}
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div class="space-y-6 xl:col-span-2">
-        {% if proyecto.descripcion %}
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción</h3>
-            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ proyecto.descripcion }}</p>
-        </section>
-        {% endif %}
-        <section class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <table class="min-w-[480px] text-sm md:min-w-full">
-                <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400"><tr><th class="px-4 py-3 text-left">Producto</th><th class="px-4 py-3 text-right">Cant.</th><th class="px-4 py-3 text-right">Subtotal</th></tr></thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                    {% for pp in proyecto.productos.all %}
-                    <tr class="{% if not pp.incluir_en_calculo %}opacity-50{% endif %}"><td class="px-4 py-3">{{ pp.servicio.nombre }}{% if pp.variacion %} · {{ pp.variacion.nombre }}{% endif %}</td><td class="px-4 py-3 text-right">{{ pp.cantidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ pp.subtotal|dinero }}</td></tr>
-                    {% empty %}<tr><td colspan="3" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Sin productos.</td></tr>{% endfor %}
-                </tbody>
-            </table>
+        {% include "proyectos/_tareas_panel.html" with proyecto=proyecto tareas=tareas puede_editar=False %}
+        <section>
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Productos involucrados</h2>
+            <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <table class="min-w-[480px] text-sm md:min-w-full">
+                    <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400"><tr><th class="px-4 py-3 text-left">Producto</th><th class="px-4 py-3 text-right">Cant.</th><th class="px-4 py-3 text-right">Subtotal</th></tr></thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                        {% for pp in proyecto.productos.all %}
+                        <tr class="{% if not pp.incluir_en_calculo %}opacity-50{% endif %}"><td class="px-4 py-3">{{ pp.servicio.nombre }}</td><td class="px-4 py-3 text-right">{{ pp.cantidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ pp.subtotal|dinero }}</td></tr>
+                        {% empty %}<tr><td colspan="3" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Sin productos.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </section>
     </div>
     <aside class="space-y-6">
+        {% if proyecto.descripcion %}<div><h3 class="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Descripción</h3><p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ proyecto.descripcion }}</p></div>{% endif %}
         {% include "proyectos/_economico_panel.html" with proyecto=proyecto %}
+        {% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=False %}
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</h3>
             <ul class="mt-3 space-y-1.5 text-sm">
@@ -152,54 +201,6 @@
     </aside>
 </div>
 {% endif %}
-
-{# ── Tareas + Proveedores (fuera del form para no anidar <form>) ── #}
-<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
-    <section class="xl:col-span-2">
-        <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Tareas</h2>
-            {% if puede_editar %}<button type="button" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
-                    hx-get="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nueva tarea</button>{% endif %}
-        </div>
-        <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <table class="min-w-[520px] text-sm md:min-w-full">
-                <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                    <tr><th class="px-5 py-3 text-left">Tarea</th><th class="px-5 py-3 text-left">Asignada a</th><th class="px-5 py-3 text-left">Estado</th><th class="px-5 py-3 text-left">Prioridad</th></tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                    {% for t in tareas %}
-                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                        <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
-                        <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
-                        <td class="px-5 py-3 text-sm">{% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}</td>
-                        <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <aside class="space-y-6">
-        {% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=puede_editar %}
-
-        {% if proveedores_aplicables %}
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Proveedores aplicables</h3>
-            <ul class="mt-3 space-y-1.5 text-sm">
-                {% for prov in proveedores_aplicables %}
-                <li class="flex items-center justify-between gap-3">
-                    <a href="{% url 'catalogo-proveedor-detalle' prov.pk %}" class="text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ prov.razon_social }}</a>
-                </li>
-                {% endfor %}
-            </ul>
-            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Derivados de los productos del proyecto (catálogo).</p>
-        </section>
-        {% endif %}
-    </aside>
-</div>
 
 {% if puede_editar %}{% include "proyectos/_form_productos_js.html" %}{% endif %}
 {% endblock %}

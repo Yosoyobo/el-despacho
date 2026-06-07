@@ -1,25 +1,26 @@
 {% comment %}
-Render-V1 — Tarjeta de producto del proyecto. Reusada por el detalle (autoguardado)
-y el form de Nuevo/Editar. Espera `f` (form del formset), `categorias_disponibles`,
-`proveedores_activos`. La vista anota `f.proc_impresion` y `f.procs_operativos`.
+Render-V2 — Tarjeta de producto del proyecto. Vive directamente sobre el fondo
+gris (sin contenedor blanco envolvente). Cada tarjeta toma un color tenue
+rotado vía `card_color` (brand/success/warning/blue-light/orange/purple).
+Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
+`card_color`. La vista anota `f.proc_impresion` y `f.procs_operativos`.
 
-- Toggle "Incluir en el cálculo": apagado ⇒ cuerpo al 40% + bloqueado; el
-  "Monto calculado" se queda al 100% mostrando $0.00.
-- Fila Impresión: proveedor (select) + costo. El "+" agrega filas operativas
-  (texto libre + costo, numeradas) que se guardan como gastos del proyecto.
-- Procesos serializados en el hidden `procesos_json` (lo arma el JS).
+- Toggle "Incluir en el cálculo": apagado ⇒ cuerpo al 40% + bloqueado.
+- Variación: se conserva oculta (no se usa en la UI por ahora, pedido LC) para
+  no nulificar el dato de proyectos existentes al autoguardar.
+- Impresión + procesos operativos: SIN recuadro punteado (un nivel arriba).
 {% endcomment %}
-<div class="producto-fila rounded-xl border border-gray-200 p-4 dark:border-gray-800" data-card>
+<div class="producto-fila rounded-xl p-4 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card>
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
-    <div class="hidden">{{ f.procesos_json }}</div>
+    <div class="hidden">{{ f.procesos_json }}{{ f.variacion }}</div>
 
     {# Toggle incluir — siempre interactivo #}
     <div class="flex items-center justify-between gap-3">
         <label class="inline-flex cursor-pointer items-center gap-2" title="Incluir esta línea en el cálculo del proyecto">
             {{ f.incluir_en_calculo }}
             <span class="relative h-5 w-9 rounded-full bg-gray-300 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:bg-brand-500 peer-checked:after:translate-x-4 dark:bg-gray-700"></span>
-            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Incluir en el cálculo</span>
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Incluir en el cálculo</span>
         </label>
     </div>
 
@@ -51,12 +52,6 @@ y el form de Nuevo/Editar. Espera `f` (form del formset), `categorias_disponible
             </div>
         </div>
 
-        {# Variación opcional #}
-        <div>
-            <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Variación (opcional)</label>
-            {{ f.variacion }}
-        </div>
-
         {# Fila 2: proveedor principal · costo unitario · notas #}
         <div class="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_120px_1.6fr] md:items-end">
             <div>
@@ -73,8 +68,8 @@ y el form de Nuevo/Editar. Espera `f` (form del formset), `categorias_disponible
             </div>
         </div>
 
-        {# Impresión + procesos operativos #}
-        <div class="rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700" data-procesos>
+        {# Impresión + procesos operativos — sin recuadro punteado #}
+        <div data-procesos>
             <div class="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_120px_auto] md:items-end" data-impresion>
                 <div>
                     <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
@@ -90,7 +85,7 @@ y el form de Nuevo/Editar. Espera `f` (form del formset), `categorias_disponible
                     <input type="number" step="0.01" min="0" class="imp-costo w-full" placeholder="0.00" value="{% if f.proc_impresion %}{{ f.proc_impresion.costo|stringformat:'.2f' }}{% endif %}">
                 </div>
                 <div class="flex items-end">
-                    <button type="button" class="proceso-add inline-flex h-9 items-center gap-1 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/[0.03]" title="Agregar proceso / gasto">+ Proceso</button>
+                    <button type="button" class="proceso-add inline-flex h-9 items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]" title="Agregar proceso / gasto">+ Proceso</button>
                 </div>
             </div>
             <div class="proceso-lista mt-2 space-y-2">
@@ -109,10 +104,10 @@ y el form de Nuevo/Editar. Espera `f` (form del formset), `categorias_disponible
         </div>
     </div>
 
-    {# Footer: siempre al 100% — Monto calculado + eliminar #}
-    <div class="mt-3 flex items-center justify-between border-t border-gray-200 pt-3 dark:border-gray-800">
+    {# Footer: Monto calculado + eliminar #}
+    <div class="mt-3 flex items-center justify-between border-t border-gray-200/70 pt-3 dark:border-gray-700/50">
         <button type="button"
-                class="producto-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
+                class="producto-eliminar inline-flex h-9 w-9 items-center justify-center rounded-lg border border-error-200 bg-white text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10"
                 title="Quitar producto" aria-label="Quitar producto"
                 {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>

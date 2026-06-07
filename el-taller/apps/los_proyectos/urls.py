@@ -20,4 +20,6 @@ urlpatterns = [
     # C5 S-LC-Feedback-V6: proveedores asignados al proyecto.
     path("<int:pk>/agregar-proveedor", views.agregar_proveedor_modal, name="proyectos-agregar-proveedor"),
     path("<int:pk>/quitar-proveedor/<int:prov_pk>", views.quitar_proveedor, name="proyectos-quitar-proveedor"),
+    # Render-V2: deshacer el último guardado (Undo en Redis).
+    path("<int:pk>/deshacer", views.deshacer, name="proyectos-deshacer"),
 ]

@@ -138,6 +138,12 @@ class Proyecto(models.Model):
         return [pp for pp in self._productos_calc() if pp.incluir_en_calculo]
 
     @property
+    def productos_incluidos(self):
+        """Accesor público (los templates Django no pueden llamar métodos con
+        guión bajo) — usado por el desglose del panel Económico (Render-V2)."""
+        return self._productos_incluidos()
+
+    @property
     def monto_calculado(self):
         """C7: suma de subtotales de los productos INCLUIDOS (lo que se cobra,
         antes de IVA). Reemplaza al 'monto estimado' manual en la UI."""
