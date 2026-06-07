@@ -22,6 +22,8 @@ module.exports = {
     { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-500\/(10|15|20)$/, variants: ['dark'] },
     { pattern: /^text-(brand|success|error|warning|blue-light|orange|purple)-(400|500|600|700)$/, variants: ['dark'] },
     { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-(50|100)$/ },
+    // Kanban: outlines de color por estado de proyecto (border-t/l, runtime).
+    { pattern: /^border-(t|l)-(brand|success|error|warning|blue-light|orange|gray)-400$/ },
   ],
   content: [
     "./templates/**/*.html",
