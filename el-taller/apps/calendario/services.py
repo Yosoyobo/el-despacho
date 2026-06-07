@@ -63,6 +63,7 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
             "subtitulo": t.proyecto.codigo,
             "url": f"/tareas/{t.pk}/",
             "color": "warning" if t.prioridad == "alta" else "gray",
+            "estado": t.estado,
         })
 
     return eventos

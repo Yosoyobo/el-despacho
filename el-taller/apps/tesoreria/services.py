@@ -232,6 +232,34 @@ def series_diarias_30d() -> dict[str, list]:
     return {"ingresos": ingresos, "egresos": egresos, "utilidad": utilidad}
 
 
+def series_mensuales_6m() -> dict[str, list[float]]:
+    """Series mensuales de los últimos 6 meses (incluyendo el mes en curso).
+
+    Devuelve listas de 6 floats — ingresos, egresos y utilidad por mes.
+    Pensado para los sparklines de las KPI financieras del Dashboard
+    (la nota de LC pide "este número en los últimos 6 meses").
+    """
+    hoy = date.today()
+    y, m = hoy.year, hoy.month
+    anchors: list[tuple[int, int]] = []
+    for _ in range(6):
+        anchors.append((y, m))
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+    anchors.reverse()
+    ingresos: list[float] = []
+    egresos: list[float] = []
+    utilidad: list[float] = []
+    for yy, mm in anchors:
+        ing = Ingreso.vigentes.filter(fecha__year=yy, fecha__month=mm).aggregate(t=Sum("monto"))["t"] or Decimal("0")
+        egr = Egreso.vigentes.filter(fecha__year=yy, fecha__month=mm).aggregate(t=Sum("monto"))["t"] or Decimal("0")
+        ingresos.append(float(ing))
+        egresos.append(float(egr))
+        utilidad.append(float(ing - egr))
+    return {"ingresos": ingresos, "egresos": egresos, "utilidad": utilidad}
+
+
 def kpis_landing(usuario) -> dict[str, Any]:
     hoy = date.today()
     inicio_mes = hoy.replace(day=1)

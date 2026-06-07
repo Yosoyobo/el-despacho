@@ -214,19 +214,20 @@ def test_home_renderiza_kpis_iterados(client, usuario_factory):
     assert resp.status_code == 200
     html = resp.content.decode()
     assert "Tu tablero" in html
-    assert "Editar KPIs visibles" in html
+    assert "Editar tablero" in html
 
 
 def test_home_oculta_kpi_si_preferencia_lo_dice(client, usuario_factory):
+    # S-Dashboard-Render: la zona compacta (8 KPIs default) honra PreferenciaKPI.
     from apps.taller_home.models import PreferenciaKPI
     u = usuario_factory(rol="dueno")
-    PreferenciaKPI.objects.create(usuario=u, kpi_slug="proyectos-activos", visible=False)
+    PreferenciaKPI.objects.create(usuario=u, kpi_slug="cxc-total", visible=False)
     client.force_login(u)
     resp = client.get("/")
     assert resp.status_code == 200
-    # El KPI no debe estar listado en el contexto.
-    titulos = [k["titulo"] for k in resp.context["kpis"]]
-    assert "Proyectos activos" not in titulos
+    # El KPI no debe estar listado en la zona compacta.
+    titulos = [k["titulo"] for k in resp.context["compact_kpis"]]
+    assert "Cuentas por cobrar" not in titulos
 
 
 def test_home_sobrevive_preferencia_kpi_con_orden_null(client, usuario_factory):
@@ -243,5 +244,5 @@ def test_home_sobrevive_preferencia_kpi_con_orden_null(client, usuario_factory):
     client.force_login(u)
     resp = client.get("/")
     assert resp.status_code == 200
-    # KPIs deben estar presentes — no debe haber tumbado nada.
-    assert resp.context["kpis"], "kpis vino vacío — el _safe() los descartó por excepción"
+    # KPIs compactos deben estar presentes — no debe haber tumbado nada.
+    assert resp.context["compact_kpis"], "compact_kpis vino vacío — el _safe() los descartó por excepción"

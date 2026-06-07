@@ -5,6 +5,21 @@
 
 ---
 
+## Novedades — nuevo Dashboard (7 de junio de 2026)
+
+- **El Dashboard se rediseñó por completo.** Ahora, de arriba hacia abajo:
+  cinco botones de acción rápida, una fila con **Mis tareas**, **Próximos
+  eventos** y el **chatbot** del asistente, cinco tarjetas grandes de
+  indicadores, el **Kanban** de los proyectos activos (arrastra para cambiar
+  de columna), el **calendario** con el mes actual y el siguiente lado a
+  lado, y tu **tablero de KPIs** (los financieros con mini-gráfica de seis
+  meses).
+- El tablero sigue siendo **tuyo**: oculta o reordena las tarjetas desde
+  "Editar tablero" y oculta las grandes desde "Mi tablero → Tarjetas del
+  header".
+- El calendario del Dashboard ahora se ve **igual** que la página de
+  Calendario, con números más grandes y los nombres de los eventos legibles.
+
 ## Novedades — cambio de dirección (7 de junio de 2026)
 
 - **El sistema cambió de dirección de internet.** Ahora se entra por
@@ -457,14 +472,16 @@ El super admin puede reordenar y ocultar items del menú para todo el equipo des
 
 ## Dashboard (página de inicio)
 
-Lo primero que ves al entrar. Tiene:
+Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 
-- **Hero arriba:** 3 tarjetas grandes con los números más importantes (Ingresos del mes, Proyectos activos, Por cobrar) + un velocímetro circular que compara tus ingresos del mes contra la meta configurada.
-- **Acciones rápidas:** botones azules para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
-- **Dictado al asistente:** una caja de texto donde le cuentas al asistente qué pasó. Él interpreta y te propone acciones a revisar antes de aplicarlas.
-- **Tu tablero (KPIs):** los números clave del negocio. Cada quien elige cuáles ve desde "Mi tablero". Los que tienen meta configurada muestran barra de progreso.
-- **Proyectos activos y pendientes de cotizar:** lista rápida de lo que está en marcha.
-- **Mini calendario:** mes actual con los días que tienen entregas o tareas; click en un día abre los eventos del día.
+- **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
+- **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
+- **Próximos eventos:** las siguientes entregas y tareas con fecha. Click en la tarjeta te lleva al calendario completo.
+- **Chatbot (Dictado al asistente):** una caja de texto donde le cuentas al asistente qué pasó (usa `@persona`, `#LC-0001` para un proyecto y `$cliente`). Él interpreta y te propone acciones a revisar antes de aplicarlas. Abajo tienes "Mi historial".
+- **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
+- **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. "Ver Kanban completo" abre el tablero con todas las columnas.
+- **Calendario:** el mes actual y el siguiente lado a lado, igual que la página de Calendario, con los eventos del día visibles.
+- **Tu tablero (KPIs):** ocho indicadores del negocio; los tres financieros traen una mini-gráfica de los últimos seis meses. Puedes ocultarlos o reordenarlos (arrastrando) desde "Editar tablero", y pedirle KPIs a la medida al asistente desde "KPIs custom".
 
 ---
 

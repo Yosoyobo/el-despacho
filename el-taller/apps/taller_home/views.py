@@ -1,96 +1,76 @@
-"""La Sala de Juntas (S2b.4 — KPIs reales + granularidad).
+"""El Dashboard de El Taller (rediseño render-driven S-Dashboard-Render).
 
-Estructura:
-1. Slot del Chalán placeholder (sigue en placeholder hasta S2b.2).
-2. Banner de sugerencias del Chalán (Capa 2 — reglas heurísticas).
-3. KPIs reales iterando `kpis_visibles_para(user)` (respeta preferencias).
-4. Dos tablas con datos reales: proyectos activos + pendientes de cotizar.
+Layout fijo dirigido por el render de Learning Center:
+1. Topbar "LEARNING CENTER" + encabezado Dashboard.
+2. 5 botones de acción pastel.
+3. Fila de 3 widgets: Mis tareas · Próximos eventos · Chatbot (El Dictado).
+4. 5 KPIs grandes (zona hero).
+5. Kanban de 4 columnas activas.
+6. Calendario mes actual + siguiente (idéntico al calendario completo).
+7. 8 KPIs compactos (los 3 financieros con sparkline de 6 meses).
+
+El render es la base para todos; la zona compacta sigue siendo personalizable
+(ocultar/reordenar) vía `PreferenciaKPI`. La zona hero se oculta por tarjeta
+con slugs sintéticos `hero-*` desde /perfil/dashboard.
 """
 
 from __future__ import annotations
 
-from datetime import date
+import json
+from datetime import date, timedelta
 
-from apps.los_proyectos.models import Proyecto
+from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from lib.graficas import area_mensual, donut_desde_conteo
-
-from .kpis import CATEGORIAS, kpis_aplicables_a_rol, kpis_visibles_para
+from .kpis import (
+    CATEGORIAS,
+    ROLES_ADMIN_CONTADOR,
+    _kpi_ingresos_mes,
+    _kpi_proyectos_activos,
+    _kpi_utilidad_mes,
+    kpi_por_slug,
+    kpis_aplicables_a_rol,
+)
 from .models import PreferenciaKPI, SugerenciaKPI
 from .sugerencias import evaluar_y_persistir, sugerencias_pendientes
 
 ESTADOS_ACTIVOS = ("en_proceso_diseno", "en_proceso_produccion")
 
+_NOMBRES_MESES = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+]
 
-def _charts_sala_de_juntas(rol: str) -> dict:
-    """Series JSON para los charts de la Sala de Juntas.
+# Slugs del Kanban embebido en el Dashboard (4 columnas activas del render).
+KANBAN_SLUGS_DASHBOARD = (
+    "por_cotizar", "esperando_respuesta", "en_proceso_diseno", "en_proceso_produccion",
+)
 
-    - Donut: proyectos por estado.
-    - Donut: tareas por estado.
-    - Area mensual: ingresos vs egresos últimos 6 meses (si Tesorería tiene datos).
-    """
-    from apps.el_pizarron.models import Tarea
+# Zona compacta: 8 KPIs del render como default para todos (personalizable).
+COMPACT_KPI_SLUGS = (
+    "ingresos-mes", "egresos-mes", "utilidad-mes", "cxp-total",
+    "tareas-vencidas-equipo", "valor-proyectos", "cxc-total", "cotizaciones-pendientes",
+)
+# Los 3 primeros llevan sparkline de 6 meses (verde / rojo / azul).
+SPARKLINE_FINANCIERO = {
+    "ingresos-mes": ("ingresos", "#12b76a"),
+    "egresos-mes": ("egresos", "#f04438"),
+    "utilidad-mes": ("utilidad", "#465fff"),
+}
 
-    proyectos_por_estado = dict(
-        Proyecto.objects.values_list("estado").annotate(c=Count("id")).values_list("estado", "c")
-    )
-    proyectos_etiquetas = dict(
-        (slug, label) for slug, label in
-        Proyecto._meta.get_field("estado").choices
-    )
-
-    tareas_qs = Tarea.objects.exclude(estado="completada")
-    tareas_por_estado = dict(
-        tareas_qs.values_list("estado").annotate(c=Count("id")).values_list("estado", "c")
-    )
-    tareas_etiquetas = dict(Tarea._meta.get_field("estado").choices)
-
-    # Ingresos/egresos últimos 6 meses
-    hoy = timezone.localdate()
-    meses_labels = []
-    ing_data = []
-    egr_data = []
-    try:
-        from apps.tesoreria.models import Egreso, Ingreso
-
-        # Genera lista de inicios de mes (6 meses atrás → ahora).
-        anchors = []
-        y, m = hoy.year, hoy.month
-        for _ in range(6):
-            anchors.append((y, m))
-            m -= 1
-            if m == 0:
-                m = 12
-                y -= 1
-        anchors.reverse()
-        for y, m in anchors:
-            meses_labels.append(date(y, m, 1).strftime("%b"))
-            ing = Ingreso.vigentes.filter(fecha__year=y, fecha__month=m).aggregate(t=Sum("monto"))["t"] or 0
-            egr = Egreso.vigentes.filter(fecha__year=y, fecha__month=m).aggregate(t=Sum("monto"))["t"] or 0
-            ing_data.append(ing)
-            egr_data.append(egr)
-    except Exception:  # noqa: BLE001
-        meses_labels = []
-        ing_data = []
-        egr_data = []
-
-    return {
-        "donut_proyectos_json": donut_desde_conteo(proyectos_por_estado, etiquetas=proyectos_etiquetas),
-        "donut_tareas_json": donut_desde_conteo(tareas_por_estado, etiquetas=tareas_etiquetas),
-        "area_dinero_json": area_mensual(
-            meses_labels,
-            [
-                {"name": "Ingresos", "data": ing_data, "color": "#12b76a"},
-                {"name": "Egresos", "data": egr_data, "color": "#f04438"},
-            ],
-        ) if meses_labels else "",
-    }
+# Zona hero (5 KPIs grandes). Slugs sintéticos `hero-*` para ocultar por
+# tarjeta sin chocar con la zona compacta. (slug, titulo, requiere_finanzas).
+HERO_DEFS = (
+    ("hero-proyectos-activos", "Proyectos activos", False),
+    ("hero-en-produccion", "En producción", False),
+    ("hero-tareas-urgentes", "Tareas urgentes", False),
+    ("hero-ingresos", "Ingresos del mes", True),
+    ("hero-utilidad", "Utilidad bruta del mes", True),
+)
 
 
 def _safe(label: str, fn, default):
@@ -107,128 +87,203 @@ def _safe(label: str, fn, default):
         return default
 
 
+def _puede_finanzas(rol) -> bool:
+    return rol in ROLES_ADMIN_CONTADOR
+
+
+def _hero_kpis(user, rol) -> list[dict]:
+    """Las 5 KPIs grandes del render. Slugs sintéticos `hero-*` para poder
+    ocultarlas por tarjeta desde /perfil/dashboard sin chocar con la zona
+    compacta. Las financieras sólo para roles con acceso a finanzas."""
+    from apps.el_pizarron.models import Tarea
+
+    ocultos = set(
+        PreferenciaKPI.objects.filter(usuario=user, visible=False, kpi_slug__startswith="hero-")
+        .values_list("kpi_slug", flat=True)
+    )
+    mes = _NOMBRES_MESES[date.today().month - 1]
+
+    en_produccion = Proyecto.objects.filter(estado="en_proceso_produccion")
+    if rol == "disenador":
+        en_produccion = en_produccion.filter(asignaciones__usuario=user).distinct()
+    tareas_urgentes = Tarea.objects.filter(prioridad="alta").exclude(estado="completada")
+    if rol == "disenador":
+        tareas_urgentes = tareas_urgentes.filter(asignada_a=user)
+
+    candidatos: list[dict] = [
+        {"slug": "hero-proyectos-activos", "titulo": "Proyectos activos",
+         **_kpi_proyectos_activos(user)},
+        {"slug": "hero-en-produccion", "titulo": "En producción",
+         "valor": en_produccion.count(), "nota": "", "link": "/proyectos/?estado=en_proceso_produccion"},
+        {"slug": "hero-tareas-urgentes", "titulo": "Tareas urgentes",
+         "valor": tareas_urgentes.count(),
+         "nota": ("alerta" if tareas_urgentes.exists() else ""), "link": "/pizarron/?prioridad=alta"},
+    ]
+    if _puede_finanzas(rol):
+        candidatos.append({"slug": "hero-ingresos", "titulo": f"Ingresos {mes}",
+                           **_kpi_ingresos_mes(user)})
+        candidatos.append({"slug": "hero-utilidad", "titulo": f"Utilidad bruta {mes}",
+                           **_kpi_utilidad_mes(user)})
+    return [
+        {**c, "alerta": c.get("nota") == "alerta"}
+        for c in candidatos if c["slug"] not in ocultos
+    ]
+
+
+def _compact_kpis(user, rol) -> list[dict]:
+    """Los 8 KPIs compactos: default del render, filtrados por rol, honrando
+    `PreferenciaKPI` (oculto + orden). Los 3 financieros llevan sparkline 6m."""
+    ocultos = set(
+        PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
+    )
+    ordenes = dict(
+        PreferenciaKPI.objects.filter(usuario=user).values_list("kpi_slug", "orden")
+    )
+
+    spark = {}
+    if _puede_finanzas(rol):
+        try:
+            from apps.tesoreria.services import series_mensuales_6m
+            spark = series_mensuales_6m()
+        except Exception:  # noqa: BLE001
+            spark = {}
+
+    salida: list[dict] = []
+    # Candidatos = los 8 del render (orden 0..7) + KPIs custom del usuario
+    # (S2b.5, orden 100+i) para que la personalización siga apareciendo aquí.
+    from .kpis import _kpis_custom_para
+    candidatos: list[tuple[int, object]] = [
+        (i, kpi_por_slug(slug)) for i, slug in enumerate(COMPACT_KPI_SLUGS)
+    ]
+    candidatos += [(100 + i, kpi) for i, kpi in enumerate(_kpis_custom_para(user))]
+
+    for orden_default, kpi in candidatos:
+        if kpi is None or rol not in kpi.roles_visible or kpi.slug in ocultos:
+            continue
+        try:
+            res = kpi.calcular(user)
+        except Exception:  # noqa: BLE001 — un KPI roto no tumba el dashboard
+            res = {"valor": "?", "nota": "error", "link": ""}
+        item = {
+            "slug": kpi.slug,
+            "titulo": kpi.titulo,
+            "valor": res.get("valor", "—"),
+            "nota": res.get("nota", ""),
+            "alerta": res.get("nota", "") == "alerta",
+            "link": res.get("link", ""),
+            "orden_default": orden_default,
+        }
+        if kpi.slug in SPARKLINE_FINANCIERO and spark:
+            clave, color = SPARKLINE_FINANCIERO[kpi.slug]
+            item["sparkline_serie"] = json.dumps(spark.get(clave, []))
+            item["sparkline_color"] = color
+        salida.append(item)
+
+    salida.sort(key=lambda it: ordenes[it["slug"]] if ordenes.get(it["slug"]) is not None else 1000 + it["orden_default"])
+    return salida
+
+
+def _mis_tareas(user):
+    """Tareas asignadas a mí, sin completadas. (No existe estado 'cancelada'.)"""
+    from apps.el_pizarron.models import Tarea
+    qs = (
+        Tarea.objects.filter(asignada_a=user)
+        .exclude(estado="completada")
+        .select_related("proyecto")
+        .order_by("fecha_compromiso")
+    )
+    total = qs.count()
+    return list(qs[:4]), total
+
+
+def _proximos_eventos(user):
+    """Entregas de proyectos + tareas con fecha, desde hoy. Excluye tareas
+    bloqueadas (la nota: el contador '+N' no cuenta Bloqueados)."""
+    from apps.calendario.services import eventos_por_dia
+    hoy = date.today()
+    fin = hoy + timedelta(days=90)
+    evmap = eventos_por_dia(user, hoy, fin)
+    items = []
+    for f in sorted(evmap.keys()):
+        for ev in evmap[f]:
+            if ev.get("tipo") == "tarea" and ev.get("estado") == "bloqueada":
+                continue  # la nota: el contador '+N' no cuenta Bloqueados
+            items.append({**ev, "fecha": f})
+    return items[:4], max(0, len(items) - 4)
+
+
+def _kanban_cols(user):
+    """4 columnas activas del Kanban, reusando la lógica de la página Kanban."""
+    from apps.los_proyectos.views import _proyectos_visibles
+    qs = _proyectos_visibles(user).prefetch_related(
+        "productos__servicio", "productos__variacion",
+    )
+    labels = dict(ESTADOS_PROYECTO)
+    cols = []
+    for slug in KANBAN_SLUGS_DASHBOARD:
+        proyectos = list(qs.filter(estado=slug).order_by("fecha_compromiso", "-creado_en"))
+        cols.append({"slug": slug, "label": labels.get(slug, slug),
+                     "proyectos": proyectos, "total": len(proyectos)})
+    return cols
+
+
+def _calendarios(user):
+    """Mes actual + siguiente, grids enriquecidos con eventos (igual que la
+    vista de Calendario, reusando sus services)."""
+    from apps.calendario.services import eventos_por_dia, grid_mes
+    hoy = date.today()
+    y2, m2 = (hoy.year, hoy.month + 1) if hoy.month < 12 else (hoy.year + 1, 1)
+
+    def _enriquecer(grid):
+        evmap = eventos_por_dia(user, grid["inicio"], grid["fin"])
+        for semana in grid["semanas"]:
+            for celda in semana:
+                celda["eventos"] = evmap.get(celda["fecha"], [])
+        return grid
+
+    return {
+        "actual": {
+            "grid": _enriquecer(grid_mes(hoy.year, hoy.month)),
+            "nombre_mes": _NOMBRES_MESES[hoy.month - 1], "year": hoy.year,
+        },
+        "siguiente": {
+            "grid": _enriquecer(grid_mes(y2, m2)),
+            "nombre_mes": _NOMBRES_MESES[m2 - 1], "year": y2,
+        },
+    }
+
+
 @login_required
 def home(request):
     user = request.user
     rol = getattr(user, "rol", None)
 
-    # Capa 2: evalúa reglas heurísticas — crea SugerenciaKPI nuevas si aplican.
+    # Capa 2: evalúa reglas heurísticas — crea SugerenciaKPI (se ven en
+    # /perfil/dashboard; el banner ya no vive en el home).
     import contextlib
     with contextlib.suppress(Exception):
         evaluar_y_persistir(user)
 
-    def _build_sugerencias():
-        from .kpis import kpi_por_slug
-        sugerencias = sugerencias_pendientes(user)
-        return [
-            {
-                "id": s.pk,
-                "kpi_slug": s.kpi_slug,
-                "titulo": (kpi_por_slug(s.kpi_slug).titulo if kpi_por_slug(s.kpi_slug) else s.kpi_slug),
-                "motivo": s.motivo,
-            }
-            for s in sugerencias
-        ]
-
-    sugerencias_view = _safe("sugerencias", _build_sugerencias, [])
-
-    def _build_kpis():
-        out = []
-        for kpi, resultado in kpis_visibles_para(user):
-            out.append({
-                "slug": kpi.slug,
-                "titulo": kpi.titulo,
-                "categoria": kpi.categoria,
-                "valor": resultado.get("valor", "—"),
-                "nota": resultado.get("nota", ""),
-                "link": resultado.get("link", ""),
-                "estado_kpi": kpi.estado_kpi,
-            })
-        return out
-
-    kpis_render = _safe("kpis", _build_kpis, [])
-
-    def _build_proyectos_activos():
-        qs = (
-            Proyecto.objects.filter(estado__in=ESTADOS_ACTIVOS)
-            .select_related("cliente")
-            .order_by("fecha_compromiso", "-creado_en")
-        )
-        if rol == "disenador":
-            qs = qs.filter(asignaciones__usuario=user).distinct()
-        return list(qs[:10])
-
-    proyectos_activos = _safe("proyectos_activos", _build_proyectos_activos, [])
-
-    def _build_pendientes_cotizar():
-        qs = (
-            Proyecto.objects.filter(estado="por_cotizar")
-            .select_related("cliente")
-            .order_by("-creado_en")
-        )
-        if rol == "disenador":
-            qs = qs.filter(asignaciones__usuario=user).distinct()
-        return list(qs[:8])
-
-    pendientes_cotizar = _safe("pendientes_cotizar", _build_pendientes_cotizar, [])
-
-    charts = _safe("charts", lambda: _charts_sala_de_juntas(rol or ""), {})
-
-    def _build_mini_cal():
-        from apps.calendario.services import datos_mini_cal
-        _hoy = date.today()
-        _meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-        _y2, _m2 = (_hoy.year, _hoy.month + 1) if _hoy.month < 12 else (_hoy.year + 1, 1)
-        return {
-            "actual": {
-                "nombre_mes": f"{_meses[_hoy.month - 1]} {_hoy.year}",
-                "datos": datos_mini_cal(user, _hoy.year, _hoy.month),
-            },
-            "siguiente": {
-                "nombre_mes": f"{_meses[_m2 - 1]} {_y2}",
-                "datos": datos_mini_cal(user, _y2, _m2),
-            },
-        }
-
-    mini_cal = _safe(
-        "mini_cal",
-        _build_mini_cal,
-        {"actual": {"nombre_mes": "", "datos": []}, "siguiente": {"nombre_mes": "", "datos": []}},
-    )
-
-    # S-Demo-Pre-Showcase: gauges del droplet + tarjetas Chalanes IA.
-    # Sólo super_admin/dueno. Best-effort: si los volúmenes /proc no están
-    # montados (entorno dev/CI sin docker-compose.site.yml), los partials
-    # degradan a "n/d" sin tumbar el home.
-    infra_gauges = None
-    chalanes_resumen = None
-    chalanes_tarjetas = None
-    if rol in ("super_admin", "dueno"):
-        try:
-            from lib.site.gauges import snapshot_gauges_minimo
-            infra_gauges = snapshot_gauges_minimo()
-        except Exception:  # noqa: BLE001
-            infra_gauges = None
-        try:
-            from lib.analistas.stats import resumen_global, tarjetas_chalanes
-            chalanes_resumen = resumen_global(dias=30)
-            chalanes_tarjetas = tarjetas_chalanes(dias=30)
-        except Exception:  # noqa: BLE001
-            chalanes_resumen = None
-            chalanes_tarjetas = None
+    mis_tareas, mis_tareas_total = _safe("mis_tareas", lambda: _mis_tareas(user), ([], 0))
+    proximos, proximos_mas = _safe("proximos_eventos", lambda: _proximos_eventos(user), ([], 0))
+    kanban_cols = _safe("kanban_cols", lambda: _kanban_cols(user), [])
+    hero_kpis = _safe("hero_kpis", lambda: _hero_kpis(user, rol), [])
+    compact_kpis = _safe("compact_kpis", lambda: _compact_kpis(user, rol), [])
+    calendarios = _safe("calendarios", lambda: _calendarios(user),
+                        {"actual": None, "siguiente": None})
 
     return render(request, "taller_home/home.html", {
-        "kpis": kpis_render,
-        "sugerencias": sugerencias_view,
-        "proyectos_activos": proyectos_activos,
-        "pendientes_cotizar": pendientes_cotizar,
+        "titulo": "LEARNING CENTER",
         "hoy": date.today(),
-        "charts": charts,
-        "mini_cal": mini_cal,
-        "infra_gauges": infra_gauges,
-        "chalanes_resumen": chalanes_resumen,
-        "chalanes_tarjetas": chalanes_tarjetas,
+        "mis_tareas": mis_tareas,
+        "mis_tareas_total": mis_tareas_total,
+        "mis_tareas_mas": max(0, mis_tareas_total - len(mis_tareas)),
+        "proximos_eventos": proximos,
+        "proximos_eventos_mas": proximos_mas,
+        "kanban_cols": kanban_cols,
+        "hero_kpis": hero_kpis,
+        "compact_kpis": compact_kpis,
+        "calendarios": calendarios,
     })
 
 
@@ -263,9 +318,21 @@ def dashboard_preferencias(request):
     ]
     sugerencias = sugerencias_pendientes(user)
 
+    # Tarjetas del header (zona hero) — toggle por tarjeta. Default visible.
+    hero_ocultos = set(
+        PreferenciaKPI.objects.filter(usuario=user, visible=False, kpi_slug__startswith="hero-")
+        .values_list("kpi_slug", flat=True)
+    )
+    hero_cards = [
+        {"slug": slug, "titulo": titulo, "visible": slug not in hero_ocultos}
+        for slug, titulo, requiere_finanzas in HERO_DEFS
+        if (not requiere_finanzas) or _puede_finanzas(rol)
+    ]
+
     return render(request, "taller_home/dashboard_preferencias.html", {
         "grupos": grupos,
         "sugerencias": sugerencias,
+        "hero_cards": hero_cards,
     })
 
 
@@ -283,6 +350,17 @@ def dashboard_guardar(request):
         PreferenciaKPI.objects.update_or_create(
             usuario=user, kpi_slug=slug, defaults={"visible": visible, "origen": "manual"},
         )
+
+    # Tarjetas del header (zona hero) — checkboxes `hero_visible`.
+    hero_marcados = set(request.POST.getlist("hero_visible"))
+    for slug, _titulo, requiere_finanzas in HERO_DEFS:
+        if requiere_finanzas and not _puede_finanzas(rol):
+            continue
+        PreferenciaKPI.objects.update_or_create(
+            usuario=user, kpi_slug=slug,
+            defaults={"visible": slug in hero_marcados, "origen": "hero"},
+        )
+
     from django.contrib import messages
     messages.success(request, "Preferencias del dashboard guardadas.")
     from django.shortcuts import redirect

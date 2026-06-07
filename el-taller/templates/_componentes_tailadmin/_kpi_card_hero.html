@@ -16,7 +16,7 @@ subtexto, link, activo, delta, delta_pos, sparkline_*, meta_*.
         {% if badge %}<span class="badge badge-{{ badge_color|default:'gray' }}">{{ badge }}</span>{% endif %}
     </div>
     <div class="mt-2 flex items-baseline gap-2">
-        <span class="text-2xl sm:text-title-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 break-all">{{ valor }}</span>
+        <span class="text-2xl sm:text-title-sm font-bold tabular-nums break-all {% if valor_alerta %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">{{ valor }}</span>
         {% if delta %}
         <span class="text-xs font-medium {% if delta_pos %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ delta }}</span>
         {% endif %}

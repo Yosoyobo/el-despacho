@@ -171,13 +171,13 @@ def test_sala_juntas_taller_super_admin(client, usuario_factory):
     body = resp.content.decode()
     # S-LC-Feedback-V2: header renombrado "Sala de Juntas" → "Dashboard".
     assert "Dashboard" in body
-    # Catálogo S2b.4: el admin ve KPIs reales de varias categorías.
+    # S-Dashboard-Render: KPI hero + zona compacta + chatbot + Kanban.
     assert "Proyectos activos" in body
     assert "Tu tablero" in body
-    assert "Editar KPIs visibles" in body
-    # Slot del Chalán + tabla "Pendientes de cotizar" siguen.
-    assert "Chalán Claudio" in body
-    assert "Pendientes de cotizar" in body
+    assert "Editar tablero" in body
+    # Chatbot (El Dictado) + Kanban de 4 columnas activas.
+    assert "Procesar" in body
+    assert "Por cotizar" in body
 
 
 def test_sala_juntas_taller_contador(client, usuario_factory):
@@ -187,8 +187,8 @@ def test_sala_juntas_taller_contador(client, usuario_factory):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    # KPIs aplicables al contador
-    assert "Clientes activos" in body
+    # S-Dashboard-Render: el contador ve KPIs financieros de la zona compacta.
+    assert "Cuentas por cobrar" in body
     # No le aparecen KPIs admin-only
     assert "Tareas vencidas del equipo" not in body
 
