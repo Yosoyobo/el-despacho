@@ -15,6 +15,7 @@ urlpatterns = [
     # Egresos
     path("egresos/", views.egresos_lista, name="egresos-lista"),
     path("egresos/nuevo/", views.egreso_nuevo, name="egreso-nuevo"),
+    path("egresos/escanear/", views.egreso_escanear, name="egreso-escanear"),
     path("egresos/<int:pk>/", views.egreso_detalle, name="egreso-detalle"),
     path("egresos/<int:pk>/editar/", views.egreso_editar, name="egreso-editar"),
     path("egresos/<int:pk>/anular/", views.egreso_anular, name="egreso-anular"),

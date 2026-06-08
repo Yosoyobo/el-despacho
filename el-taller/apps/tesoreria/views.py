@@ -452,6 +452,87 @@ def egreso_comprobante(request, pk):
 
 
 @login_required
+def egreso_escanear(request):
+    """Sube la foto/PDF de un recibo → OCR con visión → pre-llena el form de
+    Egreso (decisión: pre-llenar, no auto-crear). Carga `ocr_log_id` para
+    vincular el log al egreso cuando se guarde."""
+    if (r := _gate(request)) is not None:
+        return r
+    if request.method == "POST" and request.FILES.get("comprobante"):
+        from lib import adjuntos
+
+        from . import ocr
+        archivo = request.FILES["comprobante"]
+        err = adjuntos.validar(archivo)
+        if err:
+            messages.error(request, err)
+            return render(request, "tesoreria/egreso_escanear.html", {})
+        contenido = archivo.read()
+        media_type = (getattr(archivo, "content_type", "") or "image/jpeg")
+        # Sube a Drive (best-effort) para conservar el comprobante.
+        drive_id = ""
+        res_drive = adjuntos.subir(archivo, subcarpeta="Comprobantes")
+        if res_drive.ok and res_drive.data:
+            drive_id = res_drive.data.get("id", "")
+        resultado = ocr.extraer_recibo(
+            contenido=contenido, media_type=media_type,
+            nombre_original=archivo.name, usuario=request.user,
+            drive_file_id=drive_id, tamano_original=archivo.size,
+        )
+        if not resultado["ok"]:
+            messages.error(request, resultado["error"])
+            return render(request, "tesoreria/egreso_escanear.html", {})
+        datos = resultado["datos"]
+        initial = {"moneda": datos["moneda"], "incluye_iva": datos["incluye_iva"]}
+        if datos["subtotal_sugerido"] is not None:
+            initial["subtotal"] = datos["subtotal_sugerido"]
+        if datos["fecha"]:
+            initial["fecha"] = datos["fecha"]
+        if datos["concepto"]:
+            initial["descripcion"] = datos["concepto"]
+        messages.info(
+            request,
+            f"Leí el recibo con {resultado['chalan'] or 'el Chalán'}. "
+            "Revisa los datos y guárdalo.",
+        )
+        return render(request, "tesoreria/egreso_form.html", {
+            "form": EgresoForm(initial=initial),
+            "modo": "nuevo",
+            "form_action": reverse("tesoreria:egreso-nuevo"),
+            "ocr_log_id": resultado["log_id"],
+            "ocr_datos": datos,
+            "next_url": _next_seguro(request),
+        })
+    return render(request, "tesoreria/egreso_escanear.html", {})
+
+
+def _vincular_ocr_log(request, egreso) -> None:
+    """Liga el EgresoOcrLog al egreso recién guardado y anota correcciones
+    (diff entre lo extraído y lo que el usuario terminó guardando)."""
+    log_id = request.POST.get("ocr_log_id")
+    if not log_id:
+        return
+    from .models import EgresoOcrLog
+    log = EgresoOcrLog.objects.filter(pk=log_id, egreso__isnull=True).first()
+    if not log:
+        return
+    crudo = log.raw_extraccion or {}
+    correcciones = {}
+    total_extraido = crudo.get("total") or crudo.get("subtotal")
+    if total_extraido is not None and str(total_extraido) != str(egreso.monto):
+        correcciones["monto"] = {"ocr": total_extraido, "final": str(egreso.monto)}
+    if crudo.get("fecha") and str(crudo["fecha"])[:10] != egreso.fecha.isoformat():
+        correcciones["fecha"] = {"ocr": crudo["fecha"], "final": egreso.fecha.isoformat()}
+    log.egreso = egreso
+    log.fue_corregido = bool(correcciones)
+    log.correcciones = correcciones
+    log.save(update_fields=["egreso", "fue_corregido", "correcciones"])
+    _emitir("tesoreria.ocr_procesado", request, {
+        "egreso_id": egreso.pk, "log_id": log.pk,
+        "chalan": log.chalan_usado, "corregido": log.fue_corregido,
+    })
+
+
 def egreso_nuevo(request):
     if (r := _gate(request)) is not None:
         return r
@@ -464,6 +545,7 @@ def egreso_nuevo(request):
                 egreso.pagado_por = request.user
             egreso.save()
             _vincular_proveedor_a_proyecto(egreso)
+            _vincular_ocr_log(request, egreso)
             _procesar_comprobante(request, egreso)
             _emitir("tesoreria.egreso_registrado", request, {
                 "egreso_id": egreso.pk, "monto": str(egreso.monto),
