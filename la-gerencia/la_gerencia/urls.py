@@ -38,6 +38,7 @@ urlpatterns = [
     re_path(r"^buzon/(?P<resto>.*)$", _redirect_a_taller("buzon/")),
     path("catalogos/", include("apps.centros_costo.urls")),
     path("catalogos/", include("apps.estados_proyecto.urls")),
+    path("catalogos/", include("apps.estados_buzon.urls")),
     path("site/", include("apps.el_site.urls")),
     path("chalanes/", include("apps.los_chalanes.urls", namespace="los_chalanes")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),

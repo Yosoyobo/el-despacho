@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "apps.los_chalanes.apps.LosChalanesConfig",
     "apps.centros_costo.apps.CentrosCostoConfig",
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
+    "apps.estados_buzon.apps.EstadosBuzonConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",

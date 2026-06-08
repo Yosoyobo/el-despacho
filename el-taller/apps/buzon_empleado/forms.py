@@ -15,6 +15,22 @@ class RespuestaAdminForm(forms.ModelForm):
             "respuesta_publica": forms.Textarea(attrs={"data-referencias": "1", "rows": 6}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # S-Buzon-Estados-V1: el estado es configurable — el dropdown ofrece
+        # los estados activos (incluidos los custom). Si el actual ya no está
+        # activo, lo agregamos para no perderlo al guardar.
+        from buzon.estados import estados_activos
+
+        opciones = [(e["slug"], e["label"]) for e in estados_activos()]
+        actual = self.instance.estado if self.instance and self.instance.pk else None
+        if actual and actual not in {s for s, _ in opciones}:
+            from buzon.estados import label_de
+            opciones.insert(0, (actual, label_de(actual)))
+        self.fields["estado"] = forms.ChoiceField(
+            choices=opciones, label="Estado", required=True,
+        )
+
 
 class NuevoMensajeForm(forms.ModelForm):
     prioridad = forms.IntegerField(

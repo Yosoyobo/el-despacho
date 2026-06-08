@@ -1,6 +1,7 @@
+{% load buzon_extras %}
 {% for m in mensajes %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if m.estado == 'nuevo' %}bg-warning-25 dark:bg-warning-500/5{% endif %}"
-    hx-get="{% url 'buzon-detalle' m.pk %}" hx-target="#buzon-pane" hx-swap="innerHTML" hx-push-url="false">
+    hx-get="{% url 'buzon-detalle' m.pk %}" hx-target="#buzon-pane" hx-swap="innerHTML show:#buzon-pane:top" hx-push-url="false">
     {% if es_admin_buzon %}<td class="px-5 py-3" data-no-row-click onclick="event.stopPropagation()"><input type="checkbox" class="buzon-row-check h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" value="{{ m.pk }}"></td>{% endif %}
     <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">#{{ m.pk }}</td>
     <td class="px-5 py-3 text-center">
@@ -8,8 +9,11 @@
     </td>
     {% if es_admin_buzon %}<td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ m.autor.email }}</td>{% endif %}
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ m.get_tipo_display }}</td>
-    <td class="px-5 py-3"><span class="font-medium text-gray-900 dark:text-gray-100">{{ m.asunto }}</span></td>
-    <td class="px-5 py-3">{% include "_componentes_tailadmin/_badge_estado.html" with estado=m.estado etiqueta=m.get_estado_display %}</td>
+    <td class="px-5 py-3">
+        <span class="font-medium text-gray-900 dark:text-gray-100">{{ m.asunto }}</span>
+        {% if m.num_adjuntos %}<span class="ml-1.5 inline-flex items-center gap-0.5 align-middle text-gray-400 dark:text-gray-500" title="{{ m.num_adjuntos }} adjunto{{ m.num_adjuntos|pluralize:'s' }}"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" stroke-linecap="round" stroke-linejoin="round"/></svg>{% if m.num_adjuntos > 1 %}<span class="text-xs font-medium tabular-nums">{{ m.num_adjuntos }}</span>{% endif %}</span>{% endif %}
+    </td>
+    <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ m.estado|color_estado_buzon }}">{{ m.estado|estado_label_buzon }}</span></td>
     <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
 </tr>
 {% empty %}

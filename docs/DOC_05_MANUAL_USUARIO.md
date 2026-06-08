@@ -5,6 +5,29 @@
 
 ---
 
+## Novedades — Buzón horizontal, indicador de adjunto y estados configurables (8 de junio de 2026)
+
+- **El Buzón abre los mensajes en modo horizontal.** Antes el mensaje se abría
+  en una columna angosta a la derecha y el texto se enredaba. Ahora, al tocar un
+  ticket de la lista, el mensaje se abre **a todo lo ancho, justo debajo de la
+  lista**, y la pantalla baja sola hasta él. Se lee mucho más cómodo, sobre todo
+  los asuntos y textos largos.
+- **Los tickets con archivo muestran un clip 📎.** En la lista del Buzón, los
+  mensajes que traen uno o más adjuntos aparecen con un pequeño ícono de clip
+  junto al asunto (y el número, si trae varios). Así sabes de un vistazo cuáles
+  tienen archivos sin necesidad de abrirlos.
+- **Puedes crear tus propios estados de ticket y elegir su color** *(solo
+  super_admin)*. En La Gerencia, en **Catálogos → Estados del Buzón**, puedes
+  renombrar los 4 estados base (Nuevo, Leído, Respondido, Archivado), **cambiar
+  su color** con un selector idéntico al de los Estados de proyecto, y **agregar
+  estados nuevos** (por ejemplo "En seguimiento"). Los estados activos aparecen
+  en el filtro del Buzón y en el selector de estado al responder un ticket; los
+  colores se ven en las etiquetas de cada mensaje. Los 4 base no se pueden
+  borrar (solo desactivar), y un estado propio no se borra mientras haya tickets
+  usándolo.
+
+---
+
 ## Novedades — Adjuntos más cómodos en el Buzón y en el chat (8 de junio de 2026)
 
 - **Los adjuntos del Buzón se abren en un panel inferior.** Cuando un mensaje

@@ -15,12 +15,14 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from buzon.estados import estados_activos, label_de
 from buzon.models import MensajeBuzon
 from lib.colador import colar_reporte
 from lib.permisos import es_admin, puede
@@ -38,7 +40,7 @@ def lista(request):
     """Bandeja adaptativa: admin (ver_todos) o empleado (ver_propios)."""
     user = request.user
     es_admin_buzon = puede(user, "buzon", "ver_todos")
-    qs = MensajeBuzon.objects.select_related("autor")
+    qs = MensajeBuzon.objects.select_related("autor").annotate(num_adjuntos=Count("adjuntos"))
     if not es_admin_buzon:
         qs = qs.filter(autor=user)
 
@@ -123,6 +125,7 @@ def lista(request):
         "link_orden_prioridad": _qs_con_orden("prioridad"),
         "link_orden_fecha": _qs_con_orden("fecha"),
         "kpis": kpis,
+        "estados_disponibles": estados_activos(),
         "cabeceras_buzon": cabeceras,
         "kpi_links": {
             "nuevo": _kpi_link("nuevo"),
@@ -202,7 +205,7 @@ def detalle(request, pk: int):
         {"label": "Tipo", "value": msg.get_tipo_display()},
         {"label": "Autor", "value": msg.autor.email},
         {"label": "Recibido", "value": msg.creado_en.strftime("%Y-%m-%d %H:%M")},
-        {"label": "Estado", "value": msg.get_estado_display()},
+        {"label": "Estado", "value": label_de(msg.estado)},
     ]
     if msg.respondido_en:
         info_buzon.append({"label": "Respondido", "value": msg.respondido_en.strftime("%Y-%m-%d %H:%M")})
@@ -361,7 +364,10 @@ def accion_masiva(request):
         messages.success(request, f"{n} mensaje{'s' if n != 1 else ''} eliminado{'s' if n != 1 else ''}.")
     elif accion.startswith("estado_"):
         nuevo_estado = accion.removeprefix("estado_")
-        if nuevo_estado not in {"nuevo", "leido", "respondido", "archivado"}:
+        # S-Buzon-Estados-V1: válido si es un estado activo configurado o uno
+        # de los 4 base del sistema (que siempre existen).
+        validos = {e["slug"] for e in estados_activos()} | {"nuevo", "leido", "respondido", "archivado"}
+        if nuevo_estado not in validos:
             messages.error(request, "Estado inválido.")
             return redirect("buzon-lista")
         qs.update(estado=nuevo_estado, actualizado_en=timezone.now())

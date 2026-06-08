@@ -29,7 +29,10 @@ class MensajeBuzon(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, db_index=True)
     asunto = models.CharField(max_length=200)
     cuerpo = models.TextField()
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="nuevo", db_index=True)
+    # S-Buzon-Estados-V1: el estado dejó de usar `choices` fijos — los estados
+    # son configurables (modelo EstadoBuzon). El slug se valida en el form
+    # contra los estados activos; el label/color salen de buzon.estados.
+    estado = models.CharField(max_length=20, default="nuevo", db_index=True)
     prioridad = models.PositiveSmallIntegerField(
         default=5,
         db_index=True,
@@ -55,3 +58,12 @@ class MensajeBuzon(models.Model):
 
     def __str__(self) -> str:
         return f"#{self.pk} {self.tipo} — {self.asunto[:40]}"
+
+    def get_estado_display(self) -> str:
+        """El campo `estado` ya no tiene `choices` (S-Buzon-Estados-V1), así
+        que Django no genera este método. Lo proveemos manualmente para
+        preservar a todos los callers (templates/vistas), devolviendo el label
+        configurable del EstadoBuzon."""
+        from buzon.estados import label_de
+
+        return label_de(self.estado)
