@@ -27,9 +27,12 @@ class UsuarioForm(forms.ModelForm):
         elif not u.pk:
             # alta nueva sin password: marca cuenta inutilizable hasta SSO o reset
             u.set_unusable_password()
-        if u.rol == "super_admin":
-            u.is_staff = True
-            u.is_superuser = True
+        # El rol super_admin gobierna los flags de Django. Hay que SET y CLEAR:
+        # si no se limpian al degradar, el usuario conserva poderes de
+        # superusuario aunque su rol ya no sea super_admin (bug del checkmark).
+        es_super = u.rol == "super_admin"
+        u.is_staff = es_super
+        u.is_superuser = es_super
         if commit:
             u.save()
         return u

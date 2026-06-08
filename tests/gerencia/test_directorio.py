@@ -60,6 +60,39 @@ def test_admin_edita_rol(client, usuario_factory):
     assert target.nombre_completo == "Editado"
 
 
+def test_promover_a_super_admin_activa_flags(client, usuario_factory):
+    target = usuario_factory(rol="contador", email="t@x.com")
+    assert target.is_superuser is False
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.post(f"/directorio/{target.pk}/editar", {
+        "email": "t@x.com", "nombre_completo": "T", "rol": "super_admin",
+        "is_active": "on", "password": "",
+    })
+    assert resp.status_code == 302
+    target.refresh_from_db()
+    assert target.rol == "super_admin"
+    assert target.is_superuser is True
+    assert target.is_staff is True
+
+
+def test_degradar_de_super_admin_limpia_flags(client, usuario_factory):
+    # Bug del checkmark: degradar dejaba is_superuser/is_staff pegados en True.
+    target = usuario_factory(rol="super_admin", email="t@x.com")
+    target.is_staff = True
+    target.is_superuser = True
+    target.save(update_fields=["is_staff", "is_superuser"])
+    client.force_login(usuario_factory(rol="super_admin", email="admin@x.com"))
+    resp = client.post(f"/directorio/{target.pk}/editar", {
+        "email": "t@x.com", "nombre_completo": "T", "rol": "contador",
+        "is_active": "on", "password": "",
+    })
+    assert resp.status_code == 302
+    target.refresh_from_db()
+    assert target.rol == "contador"
+    assert target.is_superuser is False
+    assert target.is_staff is False
+
+
 def test_admin_bloquea_a_otro(client, usuario_factory):
     target = usuario_factory(rol="contador")
     assert target.is_active is True
