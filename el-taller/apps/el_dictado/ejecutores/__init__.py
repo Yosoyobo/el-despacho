@@ -25,6 +25,6 @@ def registrar(tipo: str):
     return deco
 
 
-from . import basicos  # noqa: F401, E402 — registra ejecutores al importar
+from . import avanzados, basicos  # noqa: F401, E402 — registra ejecutores al importar
 
 __all__ = ["EJECUTORES", "registrar"]

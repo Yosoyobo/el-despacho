@@ -81,8 +81,116 @@ COMANDOS_DICTADO: list[dict] = [
         "titulo": "Registrar egreso",
         "ejemplo": "Registra un gasto de $450 en papelería, pagado con tarjeta personal.",
         "payload": "monto, descripcion, centro_de_costo_slug, proyecto_slug?, proveedor_nombre?, pagado_por_slug?, estado_pago?, metodo?, fecha?",
+        "gating": "finanzas",
+    },
+    # ── Fase B (S-Chalán-Scope-OCR): escritura financiera, gateada por permiso.
+    {
+        "tipo": "registrar_ingreso",
+        "titulo": "Registrar ingreso",
+        "ejemplo": "Registra un ingreso de $5,000 de $noko-devs por #lc-0001.",
+        "payload": "monto, descripcion, cliente_slug?, proyecto_slug?, metodo?, fecha?",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "reembolsar_egreso",
+        "titulo": "Reembolsar egreso",
+        "ejemplo": "Reembolsa el egreso EGR-2026-0007 por banco.",
+        "payload": "codigo, banco_o_caja? (banco|caja), metodo?",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "anular_egreso",
+        "titulo": "Anular egreso",
+        "ejemplo": "Anula el egreso EGR-2026-0007: se capturó dos veces.",
+        "payload": "codigo, motivo",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "anular_ingreso",
+        "titulo": "Anular ingreso",
+        "ejemplo": "Anula el ingreso ING-2026-0003: fue un error.",
+        "payload": "codigo, motivo",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "emitir_factura",
+        "titulo": "Emitir factura",
+        "ejemplo": "Emite la factura FAC-2026-0012.",
+        "payload": "codigo",
+        "gating": "facturacion_emitir",
+    },
+    {
+        "tipo": "cobrar_factura",
+        "titulo": "Registrar cobro de factura",
+        "ejemplo": "Registra un cobro de $3,000 a la factura FAC-2026-0012 por banco.",
+        "payload": "codigo, monto, metodo?, banco_o_caja? (banco|caja), fecha?",
+        "gating": "facturacion_cobrar",
+    },
+    {
+        "tipo": "enviar_cotizacion",
+        "titulo": "Enviar cotización",
+        "ejemplo": "Marca como enviada la cotización COT-2026-0005.",
+        "payload": "codigo, email?",
+        "gating": "cotizaciones_enviar",
+    },
+    {
+        "tipo": "aprobar_cotizacion",
+        "titulo": "Aprobar cotización",
+        "ejemplo": "Aprueba la cotización COT-2026-0005, la aprobó Juan Pérez.",
+        "payload": "codigo, nombre, email?, referencia?",
+        "gating": "cotizaciones_aprobar",
+    },
+    {
+        "tipo": "rechazar_cotizacion",
+        "titulo": "Rechazar cotización",
+        "ejemplo": "Rechaza la cotización COT-2026-0005: el cliente eligió otra opción.",
+        "payload": "codigo, motivo",
+        "gating": "cotizaciones_rechazar",
+    },
+    {
+        "tipo": "capturar_traspaso",
+        "titulo": "Traspaso entre cuentas (contabilidad)",
+        "ejemplo": "Traspasa $2,000 de Stripe a banco.",
+        "payload": "cuenta_origen, cuenta_destino, monto, descripcion?, fecha?",
+        "gating": "contaduria_capturar",
+    },
+    {
+        "tipo": "capturar_ajuste",
+        "titulo": "Ajuste de saldo (contabilidad)",
+        "ejemplo": "Ajusta el saldo de caja: súbelo $150 por una diferencia de captura.",
+        "payload": "cuenta, direccion (sube|baja), monto, motivo, fecha?",
+        "gating": "contaduria_capturar",
     },
 ]
+
+
+# Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
+def _gating_checks():
+    from lib import permisos
+    return {
+        "abierto": lambda u: True,
+        "finanzas": permisos.puede_ver_finanzas,
+        "facturacion_emitir": permisos.puede_emitir_facturacion,
+        "facturacion_cobrar": permisos.puede_cobrar_facturacion,
+        "cotizaciones_enviar": permisos.puede_enviar_cotizaciones,
+        "cotizaciones_aprobar": permisos.puede_aprobar_cotizaciones,
+        "cotizaciones_rechazar": permisos.puede_rechazar_cotizaciones,
+        "contaduria_capturar": permisos.puede_capturar_contaduria,
+    }
+
+
+def comandos_para(usuario) -> list[dict]:
+    """Comandos del Dictado que el usuario puede ejecutar según su rol.
+
+    El prompt enumera solo lo permitido (regla de seguridad #2); el ejecutor
+    re-chequea el permiso al aplicar (defensa en profundidad)."""
+    checks = _gating_checks()
+    out = []
+    for c in COMANDOS_DICTADO:
+        fn = checks.get(c.get("gating", "abierto"))
+        if fn is None or fn(usuario):
+            out.append(c)
+    return out
 
 # Acciones que el Chalán nunca puede ejecutar, aunque el LLM las proponga.
 # El service `interpretar()` las filtra en `TIPOS_PROHIBIDOS` antes de
@@ -113,8 +221,12 @@ COMANDOS_PROHIBIDOS: list[dict] = [
         "razon": "El dictado nunca borra — soft-delete o anulación se hacen desde su módulo.",
     },
     {
-        "tipo": "registrar_ingreso",
-        "razon": "Pendiente: los cobros casi siempre tienen factura referenciada. Se captura desde La Caja o La Tesorería.",
+        "tipo": "timbrar_cfdi",
+        "razon": "El Despacho no timbra; el contador externo emite el CFDI aparte.",
+    },
+    {
+        "tipo": "cancelar_factura_cobrada",
+        "razon": "Una factura con cobros no se cancela; primero se anula el ingreso.",
     },
 ]
 
@@ -149,4 +261,5 @@ __all__ = [
     "REFERENCIAS_ENTRE_ACCIONES",
     "CONSULTAS_CHAT",
     "BANNER_CHAT",
+    "comandos_para",
 ]

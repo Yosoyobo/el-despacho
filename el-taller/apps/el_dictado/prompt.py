@@ -42,8 +42,12 @@ TIPOS DE ACCIÓN VÁLIDOS:
   estado_pago? ∈ pagado|por_reembolsar|pendiente, metodo? ∈
   transferencia|tarjeta_empresa|tarjeta_personal|efectivo|cheque|otro,
   fecha? YYYY-MM-DD)
-- registrar_ingreso (pendiente; emite acción si la entrada lo describe,
-  el sistema decide si la persiste)
+- registrar_ingreso, reembolsar_egreso, anular_egreso, anular_ingreso
+- emitir_factura, cobrar_factura
+- enviar_cotizacion, aprobar_cotizacion, rechazar_cotizacion
+- capturar_traspaso, capturar_ajuste
+  (todas las financieras requieren permiso; el sistema rechaza la acción si
+  el usuario no lo tiene)
 
 FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
 {
@@ -79,6 +83,17 @@ PAYLOADS:
 - asignar_usuario_proyecto: {proyecto_slug, usuario_slug, rol_en_proyecto?}
 - crear_recado: {destinatarios_slugs: [...], cuerpo}
 - crear_mensaje_buzon: {tipo: 'sugerencia'|'problema'|'otro', asunto, cuerpo}
+- registrar_ingreso: {monto, descripcion, cliente_slug?, proyecto_slug?, metodo?, fecha?}
+- reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}
+- anular_egreso: {codigo, motivo}
+- anular_ingreso: {codigo, motivo}
+- emitir_factura: {codigo}
+- cobrar_factura: {codigo, monto, metodo?, banco_o_caja?: 'banco'|'caja', fecha?}
+- enviar_cotizacion: {codigo, email?}
+- aprobar_cotizacion: {codigo, nombre, email?, referencia?}
+- rechazar_cotizacion: {codigo, motivo}
+- capturar_traspaso: {cuenta_origen, cuenta_destino, monto, descripcion?, fecha?}  (cuenta = código, slot o nombre)
+- capturar_ajuste: {cuenta, direccion: 'sube'|'baja', monto, motivo, fecha?}
 
 Si pregunta_clarificacion no es null, ignora `acciones` y devuelve la pregunta
 con candidatos cuando aplique.

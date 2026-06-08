@@ -52,10 +52,10 @@ def _seccion_herramientas(usuario) -> str:
     return "\n".join(lineas)
 
 
-def _seccion_acciones() -> str:
-    from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS
+def _seccion_acciones(usuario) -> str:
+    from lib.dictado_catalogo import COMANDOS_PROHIBIDOS, comandos_para
     lineas = ["TIPOS DE ACCIÓN PERMITIDOS (para tipo `accion`):"]
-    for c in COMANDOS_DICTADO:
+    for c in comandos_para(usuario):
         lineas.append(f"- {c['tipo']}: payload = {c['payload']}")
     prohibidos = ", ".join(c["tipo"] for c in COMANDOS_PROHIBIDOS)
     lineas.append(f"PROHIBIDOS (nunca los emitas): {prohibidos}")
@@ -66,7 +66,7 @@ def construir_system_prompt(usuario) -> str:
     return "\n\n".join([
         _BASE,
         _seccion_herramientas(usuario),
-        _seccion_acciones(),
+        _seccion_acciones(usuario),
         _REFS,
     ])
 
