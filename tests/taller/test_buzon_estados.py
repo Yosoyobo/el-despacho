@@ -54,6 +54,7 @@ def test_lista_filtro_muestra_estados_configurados(client, usuario_factory):
 
 def test_form_respuesta_ofrece_estado_custom(usuario_factory):
     from apps.buzon_empleado.forms import RespuestaAdminForm
+
     from buzon.models import EstadoBuzon
     EstadoBuzon.objects.create(
         slug="en_seguimiento3", label="Seguimiento", color="#465fff",
@@ -71,6 +72,7 @@ def test_form_conserva_estado_actual_si_inactivo(usuario_factory):
     """Si el ticket está en un estado que ya no está activo, el dropdown lo
     conserva para no perderlo al guardar."""
     from apps.buzon_empleado.forms import RespuestaAdminForm
+
     from buzon.models import EstadoBuzon
     EstadoBuzon.objects.create(
         slug="viejo_x", label="Viejo", color="#667085",
