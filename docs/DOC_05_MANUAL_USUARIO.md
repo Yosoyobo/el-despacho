@@ -5,6 +5,16 @@
 
 ---
 
+## Novedades — El Chalán entiende las menciones @/#/$ (8 de junio de 2026)
+
+- **Mencionar con @/#/$ en el chat ya funciona bien.** Cuando escribes `#` y
+  eliges un proyecto de la lista (o `@` una persona, `$` un cliente), **Enter
+  ahora selecciona la sugerencia** en vez de mandar el mensaje a medias.
+- **El Chalán ya sabe a qué te refieres.** Si le escribes *"dame el status de
+  #branding"*, ahora recibe el **proyecto exacto** (código y nombre) y te
+  responde directo — antes te pedía "el código LC-0001" aunque ya lo habías
+  mencionado.
+
 ## Novedades — El Chalán hace más + escanear recibos (7 de junio de 2026)
 
 - **Escanear recibos (Tesorería).** En **Tesorería → Egresos** hay un botón

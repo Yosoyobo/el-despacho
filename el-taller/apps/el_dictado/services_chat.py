@@ -81,6 +81,48 @@ def chat_acepta_imagenes(usuario=None) -> bool:
         return False
 
 
+def _bloque_referencias(mensaje: str) -> str:
+    """Resuelve los `@usuario/#proyecto/$cliente` del mensaje a entidades reales
+    y arma un bloque para que el LLM sepa EXACTAMENTE a qué se refiere.
+
+    Sin esto el modelo recibe `#exte` a secas y pide "el código (LC-0001)" aunque
+    el usuario ya lo mencionó. Reusa el parser/resolver de `referencias`.
+    """
+    try:
+        from referencias.parser import extraer_tokens
+        from referencias.resolver import resolver_tokens
+    except Exception:  # noqa: BLE001 — nunca tumbar el chat por esto
+        return ""
+    tokens = extraer_tokens(mensaje or "")
+    if not tokens:
+        return ""
+    resuelto = resolver_tokens(tokens)
+    lineas: list[str] = []
+    vistos: set[tuple] = set()
+    for t in tokens:
+        clave = (t.tipo, t.slug)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        obj = resuelto.get(clave)
+        sig = f"{t.sigil}{t.slug}"
+        if obj is None:
+            lineas.append(f"{sig} → (no encontrado)")
+        elif t.tipo == "proyecto":
+            lineas.append(f"{sig} → proyecto {obj.codigo} «{obj.nombre}» (slug: {obj.slug})")
+        elif t.tipo == "cliente":
+            lineas.append(f"{sig} → cliente «{obj.razon_social}» (slug: {obj.slug})")
+        elif t.tipo == "usuario":
+            nombre = getattr(obj, "nombre_completo", "") or obj.email
+            lineas.append(f"{sig} → usuario {nombre} (slug: {obj.slug})")
+    if not lineas:
+        return ""
+    return (
+        "\n\n[REFERENCIAS RESUELTAS — usa estos datos exactos para responder/actuar; "
+        "NO pidas el código si aquí aparece]\n" + "\n".join(lineas)
+    )
+
+
 def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = None) -> dict:
     """Procesa un mensaje del usuario. Persiste turnos y devuelve los nuevos.
 
@@ -126,7 +168,7 @@ def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = No
 
     system = construir_system_prompt(usuario)
     user_prompt = construir_user_prompt_chat(usuario=usuario, historial=historial, mensaje=mensaje)
-    prompt_turno = system + "\n\n" + user_prompt
+    prompt_turno = system + "\n\n" + user_prompt + _bloque_referencias(mensaje)
 
     chalan_provider = ""
     vistos: set[tuple] = set()

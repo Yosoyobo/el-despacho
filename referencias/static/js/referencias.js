@@ -38,7 +38,18 @@
       this.debounceTimer = null;
 
       textarea.addEventListener("input", () => this.onInput());
-      textarea.addEventListener("keydown", (e) => this.onKeyDown(e));
+      // Navegación del dropdown en fase de CAPTURA a nivel document: corre
+      // ANTES del `onkeydown` inline del compositor (Enter→enviar). Sin esto,
+      // con el dropdown abierto Enter enviaba el form con el token a medias
+      // en vez de seleccionar la referencia.
+      this._onKeyCapture = (e) => {
+        if (!this.activo || e.target !== this.textarea) return;
+        if (["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(e.key)) {
+          this.onKeyDown(e);
+          if (e.key !== "Escape") e.stopImmediatePropagation();
+        }
+      };
+      document.addEventListener("keydown", this._onKeyCapture, true);
       textarea.addEventListener("blur", () => setTimeout(() => this.cerrar(), 200));
     }
 
