@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — Adjuntos más cómodos en el Buzón y en el chat (8 de junio de 2026)
+
+- **Los adjuntos del Buzón se abren en un panel inferior.** Cuando un mensaje
+  del Buzón trae archivos, ya no verás una lista de ligas sueltas: aparece un
+  botón **"📎 N adjuntos"**. Al tocarlo sube un **panel desde la parte de abajo
+  de la pantalla** con todos los archivos. Las **imágenes** se muestran como
+  miniaturas (tócalas para verlas grandes); los **PDF y documentos** se abren
+  o descargan con un clic. Cierras el panel tocando fuera, la **X** o la tecla
+  **Esc**. Esto funciona igual en El Taller y en Gerencia (antes, en Gerencia
+  los adjuntos ni siquiera se mostraban).
+- **Las imágenes en el chat de Recados se ven dentro de la conversación.**
+  Cuando alguien manda una foto o imagen en un chat, ahora aparece **en línea,
+  dentro de la burbuja del mensaje**, como una vista previa. Si la **tocas, se
+  agranda** en pantalla completa para verla con detalle (tócala de nuevo o
+  presiona **Esc** para cerrarla). Los archivos que no son imágenes (PDF, Word,
+  Excel) siguen apareciendo como una liga para descargar.
+
+---
+
 ## Novedades — Edita la voz de El Chalán + los gastos de proyecto entran a Tesorería (7 de junio de 2026)
 
 - **Ahora puedes editar el tono y la personalidad de El Chalán.** En

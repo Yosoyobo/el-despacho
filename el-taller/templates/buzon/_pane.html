@@ -19,7 +19,7 @@ inyecta en #buzon-pane al picar una fila. NO extiende base.
             <p class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Mensaje</p>
             <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ mensaje.cuerpo }}</p>
         </div>
-        {% include "buzon/_adjuntos_lista.html" %}
+        {% include "_componentes_tailadmin/_adjuntos_popover.html" with adjuntos=mensaje.adjuntos.all url_adjunto="buzon-adjunto" popover_id="adjuntos-buzon-pane" %}
         {% if mensaje.respuesta_publica %}
         <div class="rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-500/30 dark:bg-brand-500/5">
             <p class="text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-300">Respuesta del admin</p>

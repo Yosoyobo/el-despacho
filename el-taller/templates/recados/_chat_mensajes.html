@@ -4,7 +4,11 @@
     <div class="max-w-[75%] rounded-2xl rounded-tr-sm bg-brand-500 px-4 py-2 text-sm text-white shadow-theme-xs">
         {% if m.cuerpo %}<p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>{% endif %}
         {% for a in m.adjuntos.all %}
-        <a href="{% url 'recados:chat_adjunto' a.pk %}" target="_blank" rel="noopener" class="mt-1 flex items-center gap-1.5 text-xs underline decoration-white/50 hover:decoration-white">{% if a.es_imagen %}🖼️{% else %}📎{% endif %} <span class="truncate">{{ a.nombre }}</span></a>
+        {% if a.es_imagen %}
+        <img src="{% url 'recados:chat_adjunto' a.pk %}" alt="{{ a.nombre }}" loading="lazy" data-lightbox="{% url 'recados:chat_adjunto' a.pk %}" data-lightbox-alt="{{ a.nombre }}" class="mt-1.5 max-h-48 w-auto max-w-full cursor-zoom-in rounded-lg border border-white/20 object-cover"/>
+        {% else %}
+        <a href="{% url 'recados:chat_adjunto' a.pk %}" target="_blank" rel="noopener" class="mt-1 flex items-center gap-1.5 text-xs underline decoration-white/50 hover:decoration-white">📎 <span class="truncate">{{ a.nombre }}</span></a>
+        {% endif %}
         {% endfor %}
         <p class="mt-1 text-right text-[10px] opacity-80">{{ m.creado_en|date:"H:i" }}</p>
     </div>
@@ -20,7 +24,11 @@
         {% endif %}
         {% if m.cuerpo %}<p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>{% endif %}
         {% for a in m.adjuntos.all %}
-        <a href="{% url 'recados:chat_adjunto' a.pk %}" target="_blank" rel="noopener" class="mt-1 flex items-center gap-1.5 text-xs text-brand-600 underline hover:text-brand-700 dark:text-brand-400">{% if a.es_imagen %}🖼️{% else %}📎{% endif %} <span class="truncate">{{ a.nombre }}</span></a>
+        {% if a.es_imagen %}
+        <img src="{% url 'recados:chat_adjunto' a.pk %}" alt="{{ a.nombre }}" loading="lazy" data-lightbox="{% url 'recados:chat_adjunto' a.pk %}" data-lightbox-alt="{{ a.nombre }}" class="mt-1.5 max-h-48 w-auto max-w-full cursor-zoom-in rounded-lg border border-gray-200 object-cover dark:border-gray-700"/>
+        {% else %}
+        <a href="{% url 'recados:chat_adjunto' a.pk %}" target="_blank" rel="noopener" class="mt-1 flex items-center gap-1.5 text-xs text-brand-600 underline hover:text-brand-700 dark:text-brand-400">📎 <span class="truncate">{{ a.nombre }}</span></a>
+        {% endif %}
         {% endfor %}
         <p class="mt-1 text-right text-[10px] text-gray-500 dark:text-gray-400">{{ m.creado_en|date:"H:i" }}</p>
     </div>

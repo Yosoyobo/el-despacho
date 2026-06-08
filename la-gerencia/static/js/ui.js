@@ -286,4 +286,67 @@
     var close = e.target.closest('[data-toast-close]');
     if (close) close.closest('[data-toast]').remove();
   });
+
+  // --- Bottom pop-over de adjuntos (S-Adjuntos-UI) ---
+  // Bottom-sheet que sube desde abajo. Usado por el Buzón para listar adjuntos.
+  // Delegación para tolerar contenido inyectado vía HTMX.
+  function abrirPopover(pop) {
+    if (!pop) return;
+    pop.hidden = false;
+    var panel = pop.querySelector('[data-adjuntos-popover-panel]');
+    requestAnimationFrame(function () {
+      if (panel) panel.classList.remove('translate-y-full');
+    });
+  }
+  function cerrarPopover(pop) {
+    if (!pop) return;
+    var panel = pop.querySelector('[data-adjuntos-popover-panel]');
+    if (panel) panel.classList.add('translate-y-full');
+    setTimeout(function () { pop.hidden = true; }, 220);
+  }
+  function cerrarPopovers() {
+    document.querySelectorAll('[data-adjuntos-popover]:not([hidden])').forEach(cerrarPopover);
+  }
+  document.body.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-adjuntos-popover-trigger]');
+    if (trigger) {
+      e.preventDefault();
+      abrirPopover(document.querySelector(trigger.getAttribute('data-adjuntos-popover-trigger')));
+      return;
+    }
+    if (e.target.closest('[data-adjuntos-popover-close]') || e.target.matches('[data-adjuntos-popover-backdrop]')) {
+      var pop = e.target.closest('[data-adjuntos-popover]');
+      if (pop) cerrarPopover(pop);
+    }
+  });
+
+  // --- Lightbox de imágenes (S-Adjuntos-UI) ---
+  // Cualquier elemento con [data-lightbox="<url>"] abre la imagen a tamaño
+  // grande en un overlay full-screen. Si es un <img> sin atributo, usa su src.
+  function abrirLightbox(src, alt) {
+    if (!src) return;
+    var ov = document.createElement('div');
+    ov.setAttribute('data-lightbox-overlay', '');
+    ov.className = 'fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4';
+    var img = document.createElement('img');
+    img.src = src;
+    img.alt = alt || '';
+    img.className = 'max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl';
+    ov.appendChild(img);
+    ov.addEventListener('click', function () { ov.remove(); });
+    document.body.appendChild(ov);
+  }
+  function cerrarLightbox() {
+    document.querySelectorAll('[data-lightbox-overlay]').forEach(function (o) { o.remove(); });
+  }
+  document.body.addEventListener('click', function (e) {
+    var lb = e.target.closest('[data-lightbox]');
+    if (!lb) return;
+    e.preventDefault();
+    var src = lb.getAttribute('data-lightbox') || (lb.tagName === 'IMG' ? lb.src : '');
+    abrirLightbox(src, lb.getAttribute('data-lightbox-alt') || lb.getAttribute('alt'));
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { cerrarLightbox(); cerrarPopovers(); }
+  });
 })();

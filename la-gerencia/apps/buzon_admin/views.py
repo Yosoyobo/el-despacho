@@ -1,7 +1,7 @@
 """Buzón (admin) — vista para super_admin/dueño."""
 
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -156,6 +156,34 @@ def detalle(request, pk: int):
         "back_url": url_lista,
         "back_label": "Buzón",
     })
+
+
+@requires_role("super_admin", "dueno")
+@require_http_methods(["GET"])
+def adjunto_descargar(request, pk: int):
+    """Sirve un adjunto del Buzón desde Drive (proxy autenticado para admins).
+
+    La Gerencia tiene su propio proxy: la URL `buzon-adjunto` del Taller no
+    resuelve aquí (otro urlconf) y la sesión es `gerencia_session`, no
+    `taller_session`. Mismo patrón que el proxy del empleado, gateado a
+    super_admin/dueño.
+    """
+    from urllib.parse import quote
+
+    from buzon.models import MensajeBuzonAdjunto
+
+    adj = get_object_or_404(MensajeBuzonAdjunto.objects.select_related("mensaje"), pk=pk)
+
+    from lib.google_drive import drive
+    try:
+        contenido, mime, nombre = drive.descargar(adj.drive_file_id)
+    except Exception:  # noqa: BLE001
+        raise Http404("No se pudo obtener el archivo de Drive.") from None
+
+    resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
+    disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
+    resp["Content-Disposition"] = f"{disposicion}; filename*=UTF-8''{quote(nombre)}"
+    return resp
 
 
 @requires_role("super_admin", "dueno")
