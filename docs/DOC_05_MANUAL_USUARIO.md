@@ -5,6 +5,28 @@
 
 ---
 
+## Novedades — El Chalán hace más + escanear recibos (7 de junio de 2026)
+
+- **Escanear recibos (Tesorería).** En **Tesorería → Egresos** hay un botón
+  **"📸 Escanear recibo"**. Súbele la foto o el PDF de un ticket y El Chalán
+  lee el **monto, la fecha y el proveedor** y te deja el formulario del gasto
+  **ya pre-llenado**. Solo revisas que esté bien, eliges el proveedor y
+  guardas. El sistema nunca guarda el gasto solo: tú confirmas.
+- **El Chalán ahora consulta casi todo.** En el chat puedes preguntarle por
+  **tus tareas**, las **tareas de un proyecto**, el **detalle de un ingreso**,
+  **saldos de contabilidad**, los **próximos eventos del calendario**, o
+  **buscar** un proyecto/cliente/factura por nombre — además de lo que ya
+  hacía. Cada quien ve solo lo que su rol le permite.
+- **El Chalán ahora puede operar finanzas (con tu confirmación).** Puedes
+  pedirle, por ejemplo, *"emite la factura FAC-2026-0012"*, *"registra un
+  cobro de $3,000 a esa factura"*, *"marca como enviada la cotización
+  COT-2026-0005"* o *"traspasa $2,000 de Stripe a banco"*. Siempre te muestra
+  lo que va a hacer y **tú lo confirmas** antes de aplicarse. Si no tienes
+  permiso para esa acción, no se ejecuta.
+- **Mandarle una foto a El Chalán.** En el chat, si el asistente activo lo
+  soporta, aparece un botón **📎** para adjuntar una imagen (por ejemplo un
+  recibo) y preguntarle sobre ella.
+
 ## Novedades — Tareas y mejoras a El Chalán (8 de junio de 2026)
 
 - **Nueva página "Tareas".** En el menú de la izquierda, debajo de Proyectos,

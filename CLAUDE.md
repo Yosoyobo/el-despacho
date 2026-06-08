@@ -3147,6 +3147,61 @@ detalle rico de factura/cotización (V1 expone campos clave + link). MiMo:
 confirmar tarifa real con Xiaomi y, si expone endpoint de saldo, implementar
 `consultar_saldo` estilo Deepseek.
 
+### S-Chalán-Scope-OCR ✅ — Ampliar scope de El Chalán + visión/OCR (2026-06-07)
+
+Sprint amplio A+B+C (handoff `docs/SPRINT_CHALAN_SCOPE_OCR.md`, decisiones
+§6 confirmadas por Oscar). 5 commits independientes, orden seguro
+leer→escribir→visión. Reglas de seguridad invariables intactas (preview/
+confirm humano, gating por rol doble, DSL vetado, `sanear_contexto`,
+auditoría, `TIPOS_PROHIBIDOS`).
+
+- **Fase A — lectura ampliada** (`apps/el_dictado/herramientas.py`): 8
+  herramientas read-only nuevas con gating + whitelist + recorte:
+  `detalle_ingreso` (finanzas), `detalle_tarea`, `mis_tareas`,
+  `tareas_de_proyecto`, `contaduria_saldo_cuenta` + `contaduria_balance`
+  (gating `contaduria` nuevo en `_gate_ok`), `proximos_eventos`
+  (calendario), `buscar` (texto libre acotado, respeta permiso por
+  entidad). El system prompt del chat las enumera solo a quien las puede
+  usar. Catálogo visible (`CONSULTAS_CHAT`) actualizado.
+- **Fase B — escritura financiera gateada** (`ejecutores/avanzados.py`,
+  archivo nuevo): 12 ejecutores que envuelven servicios existentes, cada
+  uno re-chequea permiso con `lib.permisos` antes de tocar DB (defensa en
+  profundidad): `registrar_ingreso` (activa el pendiente histórico),
+  `reembolsar_egreso`, `anular_egreso`, `anular_ingreso`, `emitir_factura`,
+  `cobrar_factura`, `enviar/aprobar/rechazar_cotizacion`,
+  `capturar_traspaso`, `capturar_ajuste`. `lib/dictado_catalogo` gana
+  campo `gating` por comando + `comandos_para(usuario)` (el prompt enumera
+  por rol). `registrar_ingreso` sale de PROHIBIDOS; se documentan
+  `timbrar_cfdi` y `cancelar_factura_cobrada` como vetados. **Al sumar un
+  ejecutor: tocar los 3 lugares** (ejecutores, prompt.py/prompt_chat.py,
+  dictado_catalogo).
+- **Fase C1 — plomería multimodal** (`lib/analistas/`): cambio
+  retrocompatible `analizar(..., imagenes=None)` de punta a punta.
+  `multimodal.py` con formato canónico `{base64, media_type}` + builders
+  por proveedor. Adapters con visión (anthropic/openai/gemini/mimo)
+  formatean la imagen; deepseek la ignora. `reemplazo` fuerza
+  `requiere={VISION}` cuando hay imágenes (salta no-visión).
+- **Fase C3 — OCR de recibos** (`apps/tesoreria/`): estación `ocr_recibo`
+  seedeada (`chalanes/0006`, cadena con fallback de Chalanes con visión).
+  `ocr.py::extraer_recibo()` sube la imagen al LLM, parsea JSON robusto,
+  normaliza para el form de Egreso y registra SIEMPRE `EgresoOcrLog`
+  (nunca lanza). Pantalla "📸 Escanear recibo" → **pre-llena el form de
+  Egreso** (decisión: no auto-crea); al guardar vincula el log y anota
+  correcciones. Evento `tesoreria.ocr_procesado`.
+- **Fase C2 — adjuntos con visión en el chat**: `conversar(..., imagenes)`
+  pasa la imagen al LLM solo en la primera iteración del loop;
+  `chat_acepta_imagenes()` gatea el botón 📎 a que la estación `taller_chat`
+  tenga un Chalán con visión configurado.
+- **Tests**: +35 (Fase A 7, Fase B 9, C1 7, C3 8, C2 4). Suite raíz +
+  taller verde.
+
+**Deuda diseñada**: adjunto del chat no persiste el archivo en Drive ni en
+`MensajeChat` (solo se pasa al LLM + se marca 📎 en el turno); el OCR
+pre-llena `subtotal` con el total cuando no detecta IVA desglosado (el
+usuario ajusta el toggle IVA); proveedor detectado se muestra como hint,
+no se auto-selecciona el FK; tarifa real de OCR depende del Chalán primario
+configurado por el super_admin en `/chalanes/`.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
