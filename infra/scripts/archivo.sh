@@ -23,6 +23,20 @@ tar -czf "$CRED_FILE" -C ./data credenciales 2>/dev/null || true
 echo "==> [Archivo] listo:"
 ls -lh "$OUT_DIR"/*-$STAMP* 2>/dev/null || true
 
+# ── Rotación local en el droplet ─────────────────────────────────────────────
+# Conserva los N más recientes por serie EN EL DROPLET. La copia más reciente
+# siempre vive aquí; el rsync de abajo la espeja a HAL (redundancia/failsafe).
+# Best-effort: si falla, el backup recién generado sigue intacto.
+LOCAL_RETENER="${LOCAL_RETENER:-5}"
+echo "==> [Archivo] rotando local (conservar $LOCAL_RETENER por serie)"
+# Patrón literal directo (no via variable) para no depender del globbing de
+# variable sin comillas, que difiere entre bash (expande) y zsh (no expande).
+(
+    cd "$OUT_DIR" 2>/dev/null || exit 0
+    ls -1t db-*.sql.gz          2>/dev/null | tail -n +$(( LOCAL_RETENER + 1 )) | xargs -r rm -f -- || true
+    ls -1t credenciales-*.tar.gz 2>/dev/null | tail -n +$(( LOCAL_RETENER + 1 )) | xargs -r rm -f -- || true
+) || echo "==> [Archivo] rotación local falló (no bloquea)"
+
 # ── rsync a HAL ──────────────────────────────────────────────────────────────
 HAL_USER="${HAL_USER:-mediacenter}"
 HAL_HOST="${HAL_HOST:-hal.tailedd04d.ts.net}"
@@ -36,20 +50,6 @@ _registrar() {
         python manage.py registrar_backup_remoto \
             --archivo "$1" --destino "HAL" --estado "$2" \
         2>/dev/null || true
-}
-
-_rsync_uno() {
-    local archivo="$1"
-    local nombre
-    nombre=$(basename "$archivo")
-    if rsync -az --timeout=120 -e "ssh -i ${HAL_KEY} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10" \
-            "$archivo" "${HAL_USER}@${HAL_HOST}:${HAL_DEST}"; then
-        echo "==> [Archivo] rsync→HAL OK: $nombre"
-        _registrar "$archivo" ok
-    else
-        echo "==> [Archivo] rsync→HAL FAIL: $nombre" >&2
-        _registrar "$archivo" error
-    fi
 }
 
 if [ -f "$HAL_KEY" ]; then
@@ -66,8 +66,24 @@ if [ -f "$HAL_KEY" ]; then
         exit 0
     fi
 
-    _rsync_uno "$DB_FILE"
-    _rsync_uno "$CRED_FILE"
+    # Reconciliación droplet→HAL: rsync del DIRECTORIO LOCAL COMPLETO, no solo
+    # de los dos archivos de esta corrida. rsync transfiere únicamente lo que
+    # HAL aún no tiene, así que:
+    #   1. la copia más reciente SIEMPRE queda espejada en ambos lados, y
+    #   2. si HAL estuvo apagado / RAID desmontado en corridas previas, esta
+    #      corrida lo pone al día con lo que se haya perdido (failsafe).
+    # Sin --delete: el droplet conserva 5 y HAL conserva 30; HAL acumula más
+    # historia pero el set reciente del droplet siempre está presente en HAL.
+    if rsync -az --timeout=120 -e "ssh -i ${HAL_KEY} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10" \
+            "$OUT_DIR"/ "${HAL_USER}@${HAL_HOST}:${HAL_DEST}"; then
+        echo "==> [Archivo] rsync→HAL OK (reconciliado): $OUT_DIR/"
+        _registrar "$DB_FILE" ok
+        _registrar "$CRED_FILE" ok
+    else
+        echo "==> [Archivo] rsync→HAL FAIL (reconciliación)" >&2
+        _registrar "$DB_FILE" error
+        _registrar "$CRED_FILE" error
+    fi
 
     # Rotación en HAL: conserva los N más recientes de cada serie
     echo "==> [Archivo] rotando en HAL (conservar $HAL_RETENER por serie)"

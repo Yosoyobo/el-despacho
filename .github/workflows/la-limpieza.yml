@@ -97,11 +97,11 @@ jobs:
             sudo apt-get clean 2>/dev/null || true
             echo ""
 
-            echo "=== 6) Rotar backups locales (conservar últimos 4 de cada serie) ==="
+            echo "=== 6) Rotar backups locales (conservar últimos 5 de cada serie) ==="
             if [ -d /opt/el-despacho/backups ]; then
               cd /opt/el-despacho/backups
-              ls -t db-*.sql.gz 2>/dev/null | tail -n +5 | xargs -r rm -v
-              ls -t credenciales-*.tar.gz 2>/dev/null | tail -n +5 | xargs -r rm -v
+              ls -t db-*.sql.gz 2>/dev/null | tail -n +6 | xargs -r rm -v
+              ls -t credenciales-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -v
             else
               echo "Sin directorio /opt/el-despacho/backups todavía."
             fi

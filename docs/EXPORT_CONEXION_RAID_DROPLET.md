@@ -67,9 +67,17 @@ HAL_USER=mediacenter
 HAL_HOST=hal.tailedd04d.ts.net          # Tailscale MagicDNS de HAL
 HAL_DEST=Backups/<proyecto>/             # ruta RELATIVA al $HOME de HAL
 HAL_KEY=$HOME/.ssh/hal-backup            # priv key del Droplet
-HAL_RETENER=30                           # nº de backups por serie a conservar
+HAL_RETENER=30                           # nº de backups por serie a conservar EN HAL
+LOCAL_RETENER=5                          # nº de backups por serie a conservar en el Droplet
 OUT_DIR=./backups                        # local en /opt/<proyecto>/backups
 ```
+
+> **Redundancia / failsafe:** `archivo.sh` conserva `LOCAL_RETENER` (5) por
+> serie en el Droplet y `HAL_RETENER` (30) en HAL. El rsync a HAL es
+> **reconciliador** — sincroniza el directorio local completo, no solo la
+> corrida actual, así que la copia más reciente siempre vive en ambos y, si
+> HAL estuvo apagado/desmontado en corridas previas, la siguiente corrida lo
+> pone al día. Sin `--delete`: HAL acumula historia más larga.
 
 ### En HAL (no variables; sólo estructura de archivos)
 
@@ -120,7 +128,9 @@ chmod 600 ~/.ssh/authorized_keys
 
 ```cron
 # /etc/cron.d/<proyecto>-archivo
-0 3 * * 0 <usuario> cd /opt/<proyecto> && ./infra/scripts/archivo.sh >> /var/log/<proyecto>-archivo.log 2>&1
+# Cada 3 días a las 03:00 (días 1,4,7,…,28,31 del mes; hueco de 2-3 días en
+# el cambio de mes, comportamiento estándar de */3, aceptable para backups).
+0 3 */3 * * <usuario> cd /opt/<proyecto> && ./infra/scripts/archivo.sh >> /var/log/<proyecto>-archivo.log 2>&1
 ```
 
 ---

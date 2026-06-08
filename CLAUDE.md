@@ -3647,7 +3647,8 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
 
    ```cron
    # /etc/cron.d/el-despacho — agregadas en S-Deuda-V1 (2026-05-24)
-   30 3 * * 0 /opt/el-despacho/infra/scripts/archivo.sh
+   # archivo.sh: cada 3 días a las 03:00 (cambiado de semanal en S-Backup-3d, 2026-06-07)
+   0 3 */3 * * /opt/el-despacho/infra/scripts/archivo.sh
    0 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_cotizaciones_vencidas >> /var/log/vencidas.log 2>&1
    5 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_facturas_vencidas  >> /var/log/vencidas.log 2>&1
    30 3 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml exec -T la-gerencia python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
@@ -3950,9 +3951,21 @@ La Mudanza stackea automáticamente este archivo si existe:
 
 ## §16. Backups remotos a HAL (S2a.2)
 
-Tras cada corrida de `archivo.sh` el script intenta replicar los dos
-`.tar.gz` (db + credenciales) a HAL vía Tailscale + rsync. Si falla,
-el backup local sigue válido — la replicación es best-effort.
+Tras cada corrida de `archivo.sh` (cada 3 días, 03:00 — ver §10) el
+script genera el backup local en el Droplet y luego **reconcilia** con
+HAL vía Tailscale + rsync. Si falla, el backup local sigue válido — la
+replicación es best-effort.
+
+**Reconciliación (redundancia/failsafe, S-Backup-3d):** el rsync sincroniza
+el **directorio local completo** (`$OUT_DIR/`), no solo los dos `.tar.gz`
+de la corrida actual. rsync transfiere únicamente lo que HAL no tiene, así
+que (1) la copia más reciente **siempre vive en ambos** y (2) si HAL estuvo
+apagado/desmontado en corridas previas, la siguiente corrida lo pone al día
+con lo que se haya perdido. Como los backups solo se generan en el Droplet,
+éste es siempre la fuente de la "versión más reciente"; HAL nunca tendrá una
+más nueva. Sin `--delete`: el Droplet conserva 5 por serie (`LOCAL_RETENER`)
+y HAL conserva 30 (`HAL_RETENER`), así que HAL acumula historia más larga
+pero el set reciente del Droplet siempre está espejado en HAL.
 
 **Setup:**
 
@@ -3982,9 +3995,13 @@ funciona normal. Si macOS montara el RAID en un path distinto (raro,
 pero pasa cuando coexisten 2 volúmenes con el mismo nombre), expulsar
 el "intruso" y reconectar restaura el path canónico.
 
-**Rotación:** archivo.sh, tras cada rsync exitoso, hace SSH a HAL y
-borra los archivos `.tar.gz` más viejos que los 30 más recientes por
-serie (`db-*` y `credenciales-*` por separado).
+**Rotación local (Droplet):** antes del rsync, `archivo.sh` conserva
+los `LOCAL_RETENER` (default 5) más recientes por serie en `$OUT_DIR` y
+borra el resto. Best-effort; el backup recién generado nunca se toca.
+
+**Rotación remota (HAL):** tras cada rsync exitoso, hace SSH a HAL y
+borra los archivos `.tar.gz` más viejos que los `HAL_RETENER` (30) más
+recientes por serie (`db-*` y `credenciales-*` por separado).
 
 **Trazabilidad:** El comando `registrar_backup_remoto` escribe en
 `site_backup_remoto` el resultado de cada rsync. El Site lo muestra
