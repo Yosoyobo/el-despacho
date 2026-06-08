@@ -297,3 +297,72 @@ def test_hash_prompt_es_sha256():
     assert len(h) == 64
     assert hash_prompt("hola") == h  # determinista
     assert hash_prompt("hola2") != h
+
+
+# ── Fase C1 (S-Chalán-Scope-OCR): plomería multimodal ──────────────────────────
+
+_IMG = [{"base64": "QQ==", "media_type": "image/png"}]
+
+
+def test_normalizar_imagenes_filtra_y_capea():
+    from lib.analistas.multimodal import MAX_IMAGENES, normalizar_imagenes
+    assert normalizar_imagenes(None) == []
+    assert normalizar_imagenes([{"data": "X", "mime_type": "image/jpeg"}]) == [
+        {"base64": "X", "media_type": "image/jpeg"}
+    ]
+    assert normalizar_imagenes(["basura", {"sin": "datos"}]) == []
+    muchas = [{"base64": "X", "media_type": "image/png"} for _ in range(MAX_IMAGENES + 5)]
+    assert len(normalizar_imagenes(muchas)) == MAX_IMAGENES
+
+
+@pytest.mark.django_db
+class TestMultimodal:
+
+    def test_anthropic_incluye_imagen(self, credenciales_dummy):
+        with patch("httpx.post", return_value=_RespFalsa(200, _anthropic_payload("ok"))) as m:
+            AnthropicAdapter()._invocar("describe", max_tokens=10, temperatura=0.0, imagenes=_IMG)
+        contenido = m.call_args.kwargs["json"]["messages"][0]["content"]
+        assert isinstance(contenido, list)
+        assert any(b.get("type") == "image" for b in contenido)
+        assert any(b.get("type") == "text" for b in contenido)
+
+    def test_anthropic_sin_imagen_es_texto_plano(self, credenciales_dummy):
+        with patch("httpx.post", return_value=_RespFalsa(200, _anthropic_payload("ok"))) as m:
+            AnthropicAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+        assert m.call_args.kwargs["json"]["messages"][0]["content"] == "hola"
+
+    def test_openai_incluye_imagen_data_url(self, credenciales_dummy):
+        with patch("httpx.post", return_value=_RespFalsa(200, _openai_payload("ok"))) as m:
+            OpenAIAdapter()._invocar("describe", max_tokens=10, temperatura=0.0, imagenes=_IMG)
+        contenido = m.call_args.kwargs["json"]["messages"][0]["content"]
+        url = next(b["image_url"]["url"] for b in contenido if b.get("type") == "image_url")
+        assert url.startswith("data:image/png;base64,")
+
+    def test_gemini_incluye_inline_data(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_gemini_api_key", "g-test-xxxx")
+        payload = {"candidates": [{"content": {"parts": [{"text": "ok"}]}}],
+                   "usageMetadata": {"promptTokenCount": 3, "candidatesTokenCount": 1}}
+        with patch("httpx.post", return_value=_RespFalsa(200, payload)) as m:
+            GeminiAdapter()._invocar("describe", max_tokens=10, temperatura=0.0, imagenes=_IMG)
+        partes = m.call_args.kwargs["json"]["contents"][0]["parts"]
+        assert any("inline_data" in p for p in partes)
+
+    def test_mimo_incluye_imagen(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_mimo_api_key", "mimo-test-xxxx")
+        payload = {"model": "mimo", "choices": [{"message": {"content": "ok"}}],
+                   "usage": {"prompt_tokens": 3, "completion_tokens": 1}}
+        with patch("httpx.post", return_value=_RespFalsa(200, payload)) as m:
+            MimoAdapter()._invocar("describe", max_tokens=10, temperatura=0.0, imagenes=_IMG)
+        contenido = m.call_args.kwargs["json"]["messages"][0]["content"]
+        assert any(b.get("type") == "image_url" for b in contenido)
+
+    def test_reemplazo_con_imagenes_salta_no_vision(self, monkeypatch):
+        """Si se pasan imágenes, el Reemplazo exige VISION y salta los adapters
+        que no la soportan (Deepseek)."""
+        from lib.analistas import reemplazo
+        from lib.analistas.adapters.deepseek import DeepseekAdapter
+        monkeypatch.setattr(reemplazo, "cadena_de", lambda *a, **k: [DeepseekAdapter()])
+        with pytest.raises(TodosLosAnalistasFallaron):
+            analizar("ocr_recibo", "lee el recibo", imagenes=_IMG)

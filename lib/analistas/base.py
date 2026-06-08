@@ -48,10 +48,16 @@ class Adapter(ABC):
     capacidades: frozenset = frozenset()
 
     @abstractmethod
-    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float) -> Resultado: ...
+    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float,
+                 imagenes: list | None = None) -> Resultado: ...
 
-    def analizar(self, prompt: str, *, max_tokens: int = 400, temperatura: float = 0.4) -> Resultado:
-        return self._invocar(prompt, max_tokens=max_tokens, temperatura=temperatura)
+    def analizar(self, prompt: str, *, max_tokens: int = 400, temperatura: float = 0.4,
+                 imagenes: list | None = None) -> Resultado:
+        """`imagenes` (opcional): lista de dicts `{base64, media_type}` para
+        adapters con visión. Los que no la soportan la ignoran — el Reemplazo
+        los salta cuando se pide `requiere={Capability.VISION}`."""
+        return self._invocar(prompt, max_tokens=max_tokens, temperatura=temperatura,
+                             imagenes=imagenes)
 
     def esta_configurado(self) -> bool:
         """Default: intenta cargar la llave; subclases sin `_llave` retornan False."""

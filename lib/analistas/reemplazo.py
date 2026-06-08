@@ -40,10 +40,17 @@ def analizar(
     actor_id: int | None = None,
     requiere: set | None = None,
     excluir: set[str] | None = None,
+    imagenes: list | None = None,
 ) -> Resultado:
     cadena = cadena_de(estacion, usuario_id=actor_id)
     if not cadena:
         raise RuntimeError(f"No hay adapters configurados para estación '{estacion}'")
+
+    # Si llegan imágenes, solo tienen sentido los Chalanes con visión — los
+    # demás producirían basura. Forzamos el filtro de capacidad.
+    if imagenes:
+        from .capacidades import Capability
+        requiere = set(requiere or set()) | {Capability.VISION}
 
     if excluir:
         cadena = [a for a in cadena if a.nombre not in excluir]
@@ -65,7 +72,8 @@ def analizar(
             intentos_fallidos.append((adapter.nombre, "sin credencial — saltado"))
             continue
         try:
-            res = adapter.analizar(prompt, max_tokens=max_tokens, temperatura=temperatura)
+            res = adapter.analizar(prompt, max_tokens=max_tokens, temperatura=temperatura,
+                                   imagenes=imagenes)
         except ErrorPermanente as exc:
             registrar_intento(
                 estacion=estacion, prompt_hash=ph, provider=adapter.nombre,

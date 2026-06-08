@@ -35,7 +35,10 @@ class DeepseekAdapter(Adapter):
             raise FaltaCredencial("chalan_deepseek_api_key no configurada en Los Ajustes")
         return llave
 
-    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float) -> Resultado:
+    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float,
+                 imagenes: list | None = None) -> Resultado:
+        # Deepseek no tiene visión (no declara Capability.VISION); el Reemplazo
+        # lo salta cuando se piden imágenes. `imagenes` se ignora aquí.
         llave = self._llave()
         t0 = time.monotonic()
         try:

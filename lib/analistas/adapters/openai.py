@@ -30,8 +30,12 @@ class OpenAIAdapter(Adapter):
             raise FaltaCredencial("chalan_openai_api_key no configurada en Los Ajustes")
         return llave
 
-    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float) -> Resultado:
+    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float,
+                 imagenes: list | None = None) -> Resultado:
+        from ..multimodal import contenido_openai, normalizar_imagenes
         llave = self._llave()
+        imgs = normalizar_imagenes(imagenes)
+        contenido = contenido_openai(prompt, imgs) if imgs else prompt
         t0 = time.monotonic()
         try:
             resp = httpx.post(
@@ -41,7 +45,7 @@ class OpenAIAdapter(Adapter):
                     "model": self.modelo,
                     "max_tokens": max_tokens,
                     "temperature": temperatura,
-                    "messages": [{"role": "user", "content": prompt}],
+                    "messages": [{"role": "user", "content": contenido}],
                 },
                 timeout=self.timeout,
             )

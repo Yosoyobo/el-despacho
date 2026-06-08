@@ -59,8 +59,12 @@ class GeminiAdapter(Adapter):
             raise FaltaCredencial("chalan_gemini_api_key no configurada en Los Ajustes")
         return llave
 
-    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float) -> Resultado:
+    def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float,
+                 imagenes: list | None = None) -> Resultado:
+        from ..multimodal import normalizar_imagenes, partes_gemini
         llave = self._llave()
+        imgs = normalizar_imagenes(imagenes)
+        partes = partes_gemini(prompt, imgs) if imgs else [{"text": prompt}]
         url = f"{API_URL_BASE}/{self.modelo}:generateContent"
         t0 = time.monotonic()
         try:
@@ -69,7 +73,7 @@ class GeminiAdapter(Adapter):
                 params={"key": llave},
                 headers={"content-type": "application/json"},
                 json={
-                    "contents": [{"parts": [{"text": prompt}]}],
+                    "contents": [{"parts": partes}],
                     "generationConfig": {
                         "maxOutputTokens": max_tokens,
                         "temperature": temperatura,
