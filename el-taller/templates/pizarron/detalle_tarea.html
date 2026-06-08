@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ tarea.titulo }} — El Pizarrón{% endblock %}
+{% block title %}{{ tarea.titulo }} — Tareas{% endblock %}
 {% block contenido %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=tarea.titulo subtitulo=tarea.proyecto.codigo|add:" · "|add:tarea.proyecto.nombre breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 

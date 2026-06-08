@@ -54,7 +54,8 @@
         <form hx-post="{% url 'chalan-enviar' conversacion.pk %}"
               hx-target="#chat-mensajes"
               hx-swap="beforeend"
-              hx-on::after-request="this.querySelector('textarea').value=''; this.querySelector('textarea').focus(); var s=document.getElementById('chat-scroll'); s.scrollTop=s.scrollHeight;"
+              hx-on::before-request="var b=this.querySelector('button'),t=this.querySelector('textarea'); if(b)b.disabled=true; if(t)t.disabled=true; var c=document.getElementById('chat-mensajes'); if(c&&!document.getElementById('chat-pensando')){var d=document.createElement('div'); d.id='chat-pensando'; d.className='mb-3 flex items-center gap-2 text-xs italic text-gray-500 dark:text-gray-400'; d.textContent='El Chalán está pensando…'; c.appendChild(d);} var s=document.getElementById('chat-scroll'); if(s)s.scrollTop=s.scrollHeight;"
+              hx-on::after-request="var p=document.getElementById('chat-pensando'); if(p)p.remove(); var b=this.querySelector('button'),t=this.querySelector('textarea'); if(b)b.disabled=false; if(t){t.disabled=false; t.value=''; t.focus();} var s=document.getElementById('chat-scroll'); if(s)s.scrollTop=s.scrollHeight;"
               class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
         {% else %}
         <form method="post" action="{% url 'chalan-nuevo' %}"

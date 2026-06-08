@@ -117,7 +117,7 @@ def _hero_kpis(user, rol) -> list[dict]:
          "valor": en_produccion.count(), "nota": "", "link": "/proyectos/?estado=en_proceso_produccion"},
         {"slug": "hero-tareas-urgentes", "titulo": "Tareas urgentes",
          "valor": tareas_urgentes.count(),
-         "nota": ("alerta" if tareas_urgentes.exists() else ""), "link": "/pizarron/?prioridad=alta"},
+         "nota": ("alerta" if tareas_urgentes.exists() else ""), "link": "/tareas/?estado=pendiente"},
     ]
     if _puede_finanzas(rol):
         candidatos.append({"slug": "hero-ingresos", "titulo": f"Ingresos {mes}",

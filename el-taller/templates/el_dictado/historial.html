@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Historial de El Dictado — El Taller{% endblock %}
+{% block title %}Historial de El Chalán — El Taller{% endblock %}
 
 {% block contenido %}
 <div class="mx-auto max-w-3xl">
     {% load forms_helpers %}
-    {% breadcrumb_items "El Dictado" "/" "Historial" as breadcrumb_items %}
+    {% breadcrumb_items "El Chalán" "/" "Historial" as breadcrumb_items %}
     <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
     <header class="mb-6">
-        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Dictado</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">El Chalán</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mi historial</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tus últimos {{ dictados|length }} dictados al Chalán.</p>
     </header>

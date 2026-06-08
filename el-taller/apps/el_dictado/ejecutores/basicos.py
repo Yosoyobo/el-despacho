@@ -129,6 +129,21 @@ def _sugerencia_recien_creado(contexto: dict | None, tipo: str, modelo) -> str:
     return f' ¿Quisiste decir "{obj.codigo} · {obj.nombre}" (slug: `{obj.slug}`, recién creado en esta misma acción)?'
 
 
+def _campos_a_actualizar(payload: dict, permitidos: set[str]) -> dict:
+    """Devuelve los campos a actualizar.
+
+    El LLM a veces anida los cambios en `campos` y otras veces los pone al
+    nivel superior del payload (junto al slug). Aceptamos ambos: si `campos`
+    no trae nada útil, recogemos las claves permitidas del nivel superior.
+    Esto cierra el bug 'pedí actualizar una fecha y no funcionó' (la fecha
+    llegaba arriba y `campos` quedaba vacío → "Sin campos válidos").
+    """
+    campos = payload.get("campos")
+    if isinstance(campos, dict) and any(k in permitidos for k in campos):
+        return {k: v for k, v in campos.items() if k in permitidos}
+    return {k: v for k, v in (payload or {}).items() if k in permitidos}
+
+
 def _resolver_proyecto(slug: str, contexto: dict | None = None):
     from apps.los_proyectos.models import Proyecto
     if not slug:
@@ -266,13 +281,9 @@ def crear_cliente(accion, usuario, contexto=None):
 @registrar("actualizar_cliente")
 def actualizar_cliente(accion, usuario, contexto=None):
     cliente = _resolver_cliente((accion.payload.get("cliente_slug") or "").lower(), contexto)
-    campos = accion.payload.get("campos") or {}
-    if not isinstance(campos, dict):
-        raise ValueError("Campo `campos` debe ser dict.")
+    campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_CLIENTE_PERMITIDOS)
     aplicado = []
     for k, v in campos.items():
-        if k not in CAMPOS_CLIENTE_PERMITIDOS:
-            continue
         setattr(cliente, k, v)
         aplicado.append(k)
     if not aplicado:
@@ -285,17 +296,16 @@ def actualizar_cliente(accion, usuario, contexto=None):
 @registrar("actualizar_proyecto")
 def actualizar_proyecto(accion, usuario, contexto=None):
     proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
-    campos = accion.payload.get("campos") or {}
-    if not isinstance(campos, dict):
-        raise ValueError("Campo `campos` debe ser dict.")
+    campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_PROYECTO_PERMITIDOS)
     aplicado = []
     for k, v in campos.items():
-        if k not in CAMPOS_PROYECTO_PERMITIDOS:
-            continue
         # C6 S-LC-Feedback-V6: fecha_compromiso del proyecto es datetime con
         # hora (default 12:00). El LLM manda una fecha ISO; la convertimos.
         if k == "fecha_compromiso" and v:
-            v = _fecha_compromiso_proyecto(v)
+            try:
+                v = _fecha_compromiso_proyecto(v)
+            except ValueError as exc:
+                raise ValueError(f"`fecha_compromiso` inválida: {v}") from exc
         setattr(proyecto, k, v)
         aplicado.append(k)
     if not aplicado:
@@ -356,11 +366,9 @@ def actualizar_tarea(accion, usuario, contexto=None):
     tarea = Tarea.objects.filter(pk=tarea_id).first()
     if not tarea:
         raise ValueError(f"Tarea {tarea_id} no encontrada.")
-    campos = accion.payload.get("campos") or {}
+    campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_TAREA_PERMITIDOS)
     aplicado: list[str] = []
     for k, v in campos.items():
-        if k not in CAMPOS_TAREA_PERMITIDOS:
-            continue
         if k == "asignado_slug":
             tarea.asignada_a = _resolver_usuario(v, contexto)
             aplicado.append("asignada_a")

@@ -12,6 +12,7 @@ from django.utils.html import format_html
 from lib.permisos import (
     es_admin,
     puede_ver_comentario,
+    puede_ver_finanzas,
     puede_ver_proyecto,
     puede_ver_tarea,
 )
@@ -22,6 +23,56 @@ from lib.sanear import sanear_contexto
 
 def _comentarios_visibles(user, queryset):
     return [c for c in queryset if puede_ver_comentario(user, c)]
+
+
+@login_required
+def lista_tareas(request):
+    """Lista global de tareas (S-LC-Feedback-V6): todas las tareas visibles al
+    usuario, filtrables por estado / asignación. Antes las tareas sólo se veían
+    dentro de cada proyecto y `/pizarron/` no existía (link roto del Dashboard).
+
+    Visibilidad: admins (super_admin/dueño) y contador ven todas; el diseñador
+    ve sólo las suyas o las de proyectos donde está asignado.
+    """
+    from apps.el_pizarron.models.tarea import ESTADOS_TAREA
+    from django.db.models import Q
+
+    user = request.user
+    ve_todo = es_admin(user) or puede_ver_finanzas(user)
+    visibles = Tarea.objects.select_related("proyecto", "asignada_a", "proyecto__cliente")
+    if not ve_todo:
+        visibles = visibles.filter(
+            Q(asignada_a=user) | Q(proyecto__asignaciones__usuario=user)
+        ).distinct()
+
+    qs = visibles
+    estado = (request.GET.get("estado") or "").strip()
+    if estado in dict(ESTADOS_TAREA):
+        qs = qs.filter(estado=estado)
+    elif not estado:
+        # Por defecto ocultamos las completadas (se ven con el filtro explícito).
+        qs = qs.exclude(estado="completada")
+
+    solo_mias = request.GET.get("asignado") == "mio"
+    if solo_mias:
+        qs = qs.filter(asignada_a=user)
+
+    qs = qs.order_by("fecha_compromiso", "-creado_en")
+
+    kpis = {
+        "pendientes": visibles.filter(estado="pendiente").count(),
+        "en_curso": visibles.filter(estado="en_curso").count(),
+        "bloqueadas": visibles.filter(estado="bloqueada").count(),
+        "mias": visibles.filter(asignada_a=user).exclude(estado="completada").count(),
+    }
+    return render(request, "pizarron/lista.html", {
+        "tareas": list(qs[:300]),
+        "estados": ESTADOS_TAREA,
+        "estado_filtro": estado,
+        "solo_mias": solo_mias,
+        "kpis": kpis,
+        "ve_todo": ve_todo,
+    })
 
 
 @login_required

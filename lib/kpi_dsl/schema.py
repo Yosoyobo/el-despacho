@@ -26,7 +26,7 @@ ENTIDADES: dict[str, dict] = {
             "prioridad": ("eq", "in"),
         },
         "campo_fecha": "creado_en",
-        "link_default": "/pizarron/",
+        "link_default": "/tareas/",
         "campo_autor": "creada_por",
         "campo_asignado": "asignada_a",
     },
@@ -48,6 +48,9 @@ ENTIDADES: dict[str, dict] = {
             "estado_pago": ("eq", "in"),
             "metodo": ("eq", "in"),
             "anulado": ("eq",),
+            # Búsqueda por texto: "gasto en ubers" → descripcion/proveedor contiene 'uber'.
+            "descripcion": ("contiene",),
+            "proveedor_nombre": ("contiene", "eq"),
         },
         "campo_fecha": "fecha",
         "link_default": "/tesoreria/egresos/",
@@ -59,6 +62,7 @@ ENTIDADES: dict[str, dict] = {
         "campos_numericos": ("monto",),
         "campos_filtrables": {
             "anulado": ("eq",),
+            "descripcion": ("contiene",),
         },
         "campo_fecha": "fecha",
         "link_default": "/tesoreria/ingresos/",
@@ -89,7 +93,9 @@ ENTIDADES: dict[str, dict] = {
 }
 
 AGREGACIONES = ("count", "sum", "avg", "min", "max")
-OPS_FILTRO = ("eq", "in", "gte", "lte", "gt", "lt")
+# `contiene` = búsqueda de subcadena case-insensitive (icontains), solo en
+# campos de texto declarados (p.ej. egreso.descripcion / proveedor_nombre).
+OPS_FILTRO = ("eq", "in", "gte", "lte", "gt", "lt", "contiene")
 
 # Token → función que retorna (date_inicio, date_fin) o None=sin filtro.
 VENTANAS_TIEMPO = ("siempre", "ultimos_7d", "ultimos_30d", "este_mes", "este_ano")

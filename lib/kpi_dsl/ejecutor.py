@@ -57,6 +57,7 @@ def _aplicar_filtros(qs, filtros: list[dict]):
         "lte": "lte",
         "gt": "gt",
         "lt": "lt",
+        "contiene": "icontains",
     }
     for f in filtros:
         lookup = op_a_lookup[f["op"]]
@@ -66,14 +67,24 @@ def _aplicar_filtros(qs, filtros: list[dict]):
 
 
 def _aplicar_ventana(qs, entidad: str, ventana: str):
+    from django.db.models import DateTimeField
+
     campo_fecha = ENTIDADES[entidad].get("campo_fecha")
     if not campo_fecha or ventana == "siempre":
         return qs
     desde, hasta = _ventana_a_rango(ventana)
+    # El lookup `__date` SOLO aplica a DateTimeField. Egreso/Ingreso usan
+    # `fecha` como DateField puro — ahí va el lookup directo (sin `__date`),
+    # o Django lanza "Unsupported lookup 'date' for DateField".
+    try:
+        es_datetime = isinstance(qs.model._meta.get_field(campo_fecha), DateTimeField)
+    except Exception:  # noqa: BLE001
+        es_datetime = True
+    sufijo = "__date" if es_datetime else ""
     if desde:
-        qs = qs.filter(**{f"{campo_fecha}__date__gte": desde})
+        qs = qs.filter(**{f"{campo_fecha}{sufijo}__gte": desde})
     if hasta:
-        qs = qs.filter(**{f"{campo_fecha}__date__lte": hasta})
+        qs = qs.filter(**{f"{campo_fecha}{sufijo}__lte": hasta})
     return qs
 
 

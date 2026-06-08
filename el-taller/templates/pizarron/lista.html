@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Tareas — El Taller{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Tareas" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Todas tus tareas en un solo lugar" breadcrumb_items=breadcrumb_items %}
+
+{# KPIs hero #}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Pendientes" valor=kpis.pendientes color="brand" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="En curso" valor=kpis.en_curso color="blue-light" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Bloqueadas" valor=kpis.bloqueadas color="error" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Mías abiertas" valor=kpis.mias color="warning" %}
+</div>
+
+{# Filtros #}
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    <a href="?{% if solo_mias %}asignado=mio{% endif %}" class="rounded-lg border px-3 py-1.5 text-sm {% if not estado_filtro %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300{% endif %}">Activas</a>
+    {% for slug, label in estados %}
+    <a href="?estado={{ slug }}{% if solo_mias %}&asignado=mio{% endif %}" class="rounded-lg border px-3 py-1.5 text-sm {% if estado_filtro == slug %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ label }}</a>
+    {% endfor %}
+    <span class="mx-1 text-gray-300 dark:text-gray-700">·</span>
+    <a href="?{% if estado_filtro %}estado={{ estado_filtro }}&{% endif %}{% if not solo_mias %}asignado=mio{% endif %}" class="rounded-lg border px-3 py-1.5 text-sm {% if solo_mias %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300{% endif %}">Solo mías</a>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-[640px] md:min-w-full text-sm">
+            <thead class="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3">Tarea</th>
+                    <th class="px-5 py-3">Proyecto</th>
+                    <th class="px-5 py-3">Asignada</th>
+                    <th class="px-5 py-3">Estado</th>
+                    <th class="px-5 py-3">Compromiso</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for t in tareas %}
+                <tr data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.proyecto.codigo }} · {{ t.proyecto.nombre|truncatechars:30 }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                    <td class="px-5 py-3">
+                        <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium
+                            {% if t.estado == 'completada' %}bg-success-100 text-success-700 dark:bg-success-500/15 dark:text-success-300
+                            {% elif t.estado == 'bloqueada' %}bg-error-100 text-error-700 dark:bg-error-500/15 dark:text-error-300
+                            {% elif t.estado == 'en_curso' %}bg-blue-light-100 text-blue-light-700 dark:bg-blue-light-500/15 dark:text-blue-light-300
+                            {% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300{% endif %}">{{ t.get_estado_display }}</span>
+                    </td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.fecha_compromiso %}{{ t.fecha_compromiso|date:"d M Y" }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-5 py-10">
+                    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="No hay tareas que coincidan con el filtro." icono="tasks" %}
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

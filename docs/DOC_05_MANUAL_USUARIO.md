@@ -5,6 +5,24 @@
 
 ---
 
+## Novedades — Tareas y mejoras a El Chalán (8 de junio de 2026)
+
+- **Nueva página "Tareas".** En el menú de la izquierda, debajo de Proyectos,
+  ahora hay **Tareas**: una lista con **todas tus tareas** de todos los
+  proyectos en un solo lugar, con filtros rápidos (por estado y "solo mías").
+  Antes las tareas solo se veían entrando a cada proyecto. (El enlace "N más"
+  del Dashboard ahora abre esta página.)
+- **El Chalán te avisa que está trabajando.** Al enviar una pregunta, verás
+  **"El Chalán está pensando…"** y el botón se desactiva un momento, para que
+  no tengas que mandar el mensaje varias veces creyendo que se quedó pegado.
+- **El Chalán ya responde "¿cuánto gastamos en…?"** Ahora puedes preguntarle
+  por gasto buscando una palabra (por ejemplo *"¿cuánto se gastó en ubers este
+  mes?"*) y te da el total. Antes esas preguntas daban error o respuesta vacía.
+- **Actualizar fechas por El Chalán ya funciona.** Pedirle que cambie la fecha
+  de compromiso de un proyecto ahora aplica el cambio correctamente.
+- **El Dictado ahora se llama El Chalán** en todas las pantallas, para que sea
+  un solo nombre.
+
 ## Novedades — El Chalán, tu chat con el asistente (7 de junio de 2026)
 
 - **Ya puedes platicar con El Chalán.** En el menú lateral, abre **"El Chalán"**

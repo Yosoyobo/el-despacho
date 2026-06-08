@@ -98,6 +98,8 @@ def validar_args(h: Herramienta, args: dict) -> dict:
         elif tipo == "dict":
             if not isinstance(valor, dict):
                 raise ValueError(f"{clave} debe ser un objeto")
+        elif tipo == "any":
+            pass  # se normaliza en la propia herramienta (p.ej. filtros)
         else:
             valor = str(valor)
         enum = spec.get("enum")
@@ -145,6 +147,29 @@ def _h_consultar_kpi(args: dict, usuario) -> dict:
 _ENTIDADES_FINANZAS = {"egreso", "ingreso"}
 
 
+def _normalizar_filtros(filtros) -> list[dict]:
+    """Acepta filtros como lista DSL `[{campo,op,valor}]` o como dict cómodo
+    (`{campo: valor}` ó `{campo: {op, valor}}`) y devuelve siempre la lista DSL.
+
+    Esto reconcilia lo que el LLM produce naturalmente (un objeto) con lo que
+    el validador del DSL espera (una lista). Antes, cualquier filtro reventaba
+    porque la herramienta forzaba dict y el DSL pedía lista.
+    """
+    if not filtros:
+        return []
+    if isinstance(filtros, list):
+        return [f for f in filtros if isinstance(f, dict)]
+    if isinstance(filtros, dict):
+        out: list[dict] = []
+        for campo, v in filtros.items():
+            if isinstance(v, dict) and "valor" in v:
+                out.append({"campo": campo, "op": v.get("op", "eq"), "valor": v["valor"]})
+            else:
+                out.append({"campo": campo, "op": "eq", "valor": v})
+        return out
+    return []
+
+
 def _h_consultar_metrica(args: dict, usuario) -> dict:
     from lib import permisos
     from lib.kpi_dsl.ejecutor import ejecutar_con_preview
@@ -155,8 +180,9 @@ def _h_consultar_metrica(args: dict, usuario) -> dict:
     for opt in ("campo", "ventana_tiempo", "alcance_usuario"):
         if args.get(opt):
             definicion[opt] = args[opt]
-    if args.get("filtros"):
-        definicion["filtros"] = args["filtros"]
+    filtros = _normalizar_filtros(args.get("filtros"))
+    if filtros:
+        definicion["filtros"] = filtros
     if definicion["entidad"] in _ENTIDADES_FINANZAS and not permisos.puede_ver_finanzas(usuario):
         return {"error": "sin_permiso"}
     salida = ejecutar_con_preview(definicion, usuario=usuario)
@@ -337,8 +363,13 @@ HERRAMIENTAS: dict[str, Herramienta] = {
         descripcion=(
             "Métrica agregada vía consulta acotada. entidad ∈ {proyecto, tarea, cliente, "
             "egreso, ingreso, recado, buzon_mensaje}; agregacion ∈ {count, sum, avg, min, max}; "
-            "campo (para sum/avg/min/max); ventana_tiempo ∈ {siempre, ultimos_7d, ultimos_30d, "
-            "este_mes, este_ano}; alcance_usuario ∈ {todos, mio}; filtros (objeto)."
+            "campo (para sum/avg/min/max — en egreso/ingreso es 'monto'); "
+            "ventana_tiempo ∈ {siempre, ultimos_7d, ultimos_30d, este_mes, este_ano}; "
+            "alcance_usuario ∈ {todos, mio}. "
+            "filtros: objeto {campo: {op, valor}}. Para buscar por texto usa op 'contiene' "
+            "(ej. gasto en ubers este mes → entidad=egreso, agregacion=sum, campo=monto, "
+            "ventana_tiempo=este_mes, filtros={\"descripcion\": {\"op\": \"contiene\", \"valor\": \"uber\"}}). "
+            "Campos de texto buscables: egreso.descripcion, egreso.proveedor_nombre, ingreso.descripcion."
         ),
         args_schema={
             "entidad": {"tipo": "str", "requerido": True},
@@ -348,7 +379,7 @@ HERRAMIENTAS: dict[str, Herramienta] = {
             "ventana_tiempo": {"tipo": "str", "requerido": False,
                                "enum": ["siempre", "ultimos_7d", "ultimos_30d", "este_mes", "este_ano"]},
             "alcance_usuario": {"tipo": "str", "requerido": False, "enum": ["todos", "mio"]},
-            "filtros": {"tipo": "dict", "requerido": False},
+            "filtros": {"tipo": "any", "requerido": False},
         },
         gating="abierto", fn=_h_consultar_metrica,
     ),
