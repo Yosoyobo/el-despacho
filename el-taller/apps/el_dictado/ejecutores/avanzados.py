@@ -23,7 +23,6 @@ from decimal import Decimal, InvalidOperation
 from . import registrar
 from .basicos import _limpiar_slug, _resolver_cliente, _resolver_proyecto
 
-
 # ── Helpers comunes ───────────────────────────────────────────────────────────
 
 def _exigir(condicion: bool, mensaje: str) -> None:

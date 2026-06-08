@@ -32,9 +32,10 @@ def _fake(texto):
 # ── Extractor ─────────────────────────────────────────────────────────────────
 
 def test_extraer_recibo_happy(monkeypatch, usuario_factory):
-    import lib.analistas as la
     from apps.tesoreria import ocr
     from apps.tesoreria.models import EgresoOcrLog
+
+    import lib.analistas as la
     u = usuario_factory(rol="super_admin")
     monkeypatch.setattr(la, "analizar", _fake(
         '{"total": 1160, "subtotal": 1000, "iva": 160, "fecha": "2026-06-01", '
@@ -51,8 +52,9 @@ def test_extraer_recibo_happy(monkeypatch, usuario_factory):
 
 
 def test_extraer_recibo_solo_total_sin_iva(monkeypatch, usuario_factory):
-    import lib.analistas as la
     from apps.tesoreria import ocr
+
+    import lib.analistas as la
     monkeypatch.setattr(la, "analizar", _fake('{"total": 450, "fecha": null, "proveedor": "Uber"}'))
     out = ocr.extraer_recibo(contenido=b"x", media_type="image/jpeg", usuario=usuario_factory())
     assert out["ok"]
@@ -61,9 +63,10 @@ def test_extraer_recibo_solo_total_sin_iva(monkeypatch, usuario_factory):
 
 
 def test_extraer_recibo_json_malo(monkeypatch, usuario_factory):
-    import lib.analistas as la
     from apps.tesoreria import ocr
     from apps.tesoreria.models import EgresoOcrLog
+
+    import lib.analistas as la
     monkeypatch.setattr(la, "analizar", _fake("perdón, no puedo leer la imagen"))
     out = ocr.extraer_recibo(contenido=b"x", media_type="image/jpeg", usuario=usuario_factory())
     assert out["ok"] is False
@@ -72,8 +75,9 @@ def test_extraer_recibo_json_malo(monkeypatch, usuario_factory):
 
 
 def test_extraer_recibo_llm_caido(monkeypatch, usuario_factory):
-    import lib.analistas as la
     from apps.tesoreria import ocr
+
+    import lib.analistas as la
 
     def boom(*a, **k):
         raise RuntimeError("cadena agotada")
@@ -101,8 +105,9 @@ def test_escanear_get_muestra_form(client, usuario_factory):
 
 
 def test_escanear_post_prellena_form(client, monkeypatch, usuario_factory):
-    import lib.analistas as la
     from django.core.files.uploadedfile import SimpleUploadedFile
+
+    import lib.analistas as la
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
     monkeypatch.setattr(la, "analizar", _fake(

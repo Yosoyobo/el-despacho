@@ -372,8 +372,9 @@ def test_proximos_eventos_abierto(usuario_factory, proyecto_factory):
 
 def test_conversar_pasa_imagenes_al_llm(monkeypatch, usuario_factory):
     """La imagen del usuario se pasa a analizar() en la primera iteración."""
-    import lib.analistas as la
     from apps.el_dictado.services_chat import conversar
+
+    import lib.analistas as la
     capturado = {}
 
     def fake(estacion, prompt, **kw):
@@ -389,8 +390,9 @@ def test_conversar_pasa_imagenes_al_llm(monkeypatch, usuario_factory):
 
 
 def test_conversar_imagen_sin_texto(monkeypatch, usuario_factory):
-    import lib.analistas as la
     from apps.el_dictado.services_chat import conversar
+
+    import lib.analistas as la
     monkeypatch.setattr(la, "analizar", _fake_analizar(
         [{"tipo": "responder", "texto": "Veo un ticket."}])[0])
     u = usuario_factory(rol="super_admin")
@@ -403,6 +405,7 @@ def test_chat_acepta_imagenes_segun_vision(monkeypatch, usuario_factory):
     from types import SimpleNamespace
 
     from apps.el_dictado.services_chat import chat_acepta_imagenes
+
     from lib.analistas import registry
     from lib.analistas.capacidades import Capability
     u = usuario_factory(rol="super_admin")
@@ -418,10 +421,10 @@ def test_chat_acepta_imagenes_segun_vision(monkeypatch, usuario_factory):
 
 
 def test_enviar_con_imagen_htmx(client, monkeypatch, usuario_factory):
-    import lib.analistas as la
+    from apps.el_dictado.services_chat import crear_conversacion
     from django.core.files.uploadedfile import SimpleUploadedFile
 
-    from apps.el_dictado.services_chat import crear_conversacion
+    import lib.analistas as la
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
     conv = crear_conversacion(usuario=u)

@@ -130,9 +130,9 @@ def test_capturar_traspaso(usuario_factory, _on_commit_inmediato):
 
 def test_reembolsar_egreso_valida_estado(usuario_factory, _on_commit_inmediato):
     """Un egreso que no está 'por_reembolsar' es rechazado con mensaje claro."""
-    from apps.el_dictado.ejecutores import EJECUTORES
     from datetime import date
 
+    from apps.el_dictado.ejecutores import EJECUTORES
     from apps.tesoreria.models import CentroDeCosto, Egreso
     admin = usuario_factory(rol="super_admin")
     centro = CentroDeCosto.objects.filter(activo=True).first()
