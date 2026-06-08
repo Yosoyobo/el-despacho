@@ -1,0 +1,16 @@
+{% comment %}Lista de adjuntos de un mensaje del Buzón. Espera `mensaje` en contexto.{% endcomment %}
+{% with adjuntos=mensaje.adjuntos.all %}
+{% if adjuntos %}
+<div>
+    <p class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Adjuntos</p>
+    <ul class="mt-1.5 space-y-1.5">
+        {% for a in adjuntos %}
+        <li class="flex items-center gap-2 text-sm">
+            <span aria-hidden="true">{% if a.es_imagen %}🖼️{% else %}📎{% endif %}</span>
+            <a href="{% url 'buzon-adjunto' a.pk %}" target="_blank" rel="noopener" class="text-brand-600 hover:underline dark:text-brand-400">{{ a.nombre }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endwith %}

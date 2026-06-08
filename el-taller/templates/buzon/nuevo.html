@@ -10,7 +10,7 @@
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Sugerencia, problema o lo que quieras decirle a la administración.</p>
 </header>
 
-<form method="post" class="max-w-3xl">
+<form method="post" enctype="multipart/form-data" class="max-w-3xl">
     {% csrf_token %}
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="space-y-5">
@@ -22,6 +22,11 @@
                 {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
             </div>
             {% endfor %}
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">📎 Adjuntar archivos (opcional)</label>
+                {% include "_componentes_tailadmin/_file_upload.html" with name="adjuntos" multiple=True accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hint="Imágenes o PDF, hasta 25 MB c/u. Se guardan en Google Drive." %}
+            </div>
         </div>
     </section>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">

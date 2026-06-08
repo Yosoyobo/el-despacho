@@ -26,6 +26,7 @@ urlpatterns = [
          name="buzon-clientes-proximamente"),
     path("buzon/<int:pk>/", views.detalle, name="buzon-detalle"),
     path("buzon/<int:pk>/exportar.md", views.exportar_a_claude, name="buzon-exportar"),
+    path("buzon/adjunto/<int:pk>/", views.adjunto_descargar, name="buzon-adjunto"),
 
     # Legacy — redirects al layout nuevo.
     path("buzon/mios/", views.mios_lista, name="buzon-empleado-mios"),

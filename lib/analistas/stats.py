@@ -29,24 +29,6 @@ def _enmascarar(valor: str) -> str:
     return f"{valor[:4]}{'•' * 8}{valor[-4:]}"
 
 
-def _es_gratis(provider: str) -> bool:
-    """True si el adapter del proveedor reporta PRECIO_IN+PRECIO_OUT == 0.
-
-    Override defensivo para que logs históricos con costo>0 de un proveedor
-    que pasó a gratis (caso real: MiMo en S-LC-Feedback-V5) no inflen los
-    totales del panel y de El Site. Si el adapter no existe (proveedor
-    desconocido) retorna False — preserva el comportamiento previo.
-    """
-    from importlib import import_module
-    try:
-        mod = import_module(f"lib.analistas.adapters.{provider}")
-        precio_in = float(getattr(mod, "PRECIO_IN", 0))
-        precio_out = float(getattr(mod, "PRECIO_OUT", 0))
-        return (precio_in + precio_out) == 0
-    except Exception:  # noqa: BLE001
-        return False
-
-
 def estadisticas_proveedores(dias: int = 30) -> dict[str, dict]:
     """Devuelve `{provider: {llamadas, llamadas_ok, llamadas_falla, prompt_tokens,
     completion_tokens, tokens, costo_usd, ultima_actividad, latencia_promedio}}`.
@@ -67,10 +49,7 @@ def estadisticas_proveedores(dias: int = 30) -> dict[str, dict]:
         ultima=Max("creado_en"),
     ):
         provider = row["provider"]
-        # Si el proveedor es gratis (precio in+out == 0) forzamos costo a 0
-        # aunque los logs históricos digan otra cosa. No toca la DB.
-        costo_bruto = Decimal(row["costo"] or 0)
-        costo_final = Decimal("0") if _es_gratis(provider) else costo_bruto
+        costo_final = Decimal(row["costo"] or 0)
         salida[provider] = {
             "llamadas": int(row["llamadas"] or 0),
             "prompt_tokens": int(row["prompt_tokens"] or 0),
@@ -113,7 +92,6 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
         cred = Credencial.objects.filter(clave=slot).first()
         llave = Credencial.obtener(slot) if cred else None
         configurado = bool(llave)
-        es_gratis = _es_gratis(nombre)
         salida.append({
             "nombre": nombre,
             "apodo": adapter.apodo,
@@ -125,7 +103,6 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
             "ultimo_test_mensaje": cred.ultimo_test_mensaje if cred else "",
             "modelo_default": getattr(adapter, "modelo", ""),
             "soporta_vision": Capability.VISION in adapter.capacidades,
-            "es_gratis": es_gratis,
             "estadisticas": stats.get(nombre, {
                 "llamadas": 0, "tokens": 0, "costo_usd": Decimal("0"),
                 "ultima_actividad": None,
@@ -138,11 +115,8 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
 
 def resumen_global(dias: int = 30) -> dict:
     """`{costo_total, llamadas_total, tokens_total, max_costo_provider}` —
-    para el banner superior del panel y de El Site.
-
-    S-LC-Feedback-V3: proveedores con `costo_usd == 0` (MiMo gratis) se
-    incluyen en llamadas/tokens pero `es_gratis=True` para que la UI
-    no muestre barra de costo.
+    para el banner superior del panel y de El Site. Todos los proveedores
+    cuentan su costo real desde `AnalistaLog`.
     """
     stats = estadisticas_proveedores(dias=dias)
     if not stats:
@@ -162,8 +136,7 @@ def resumen_global(dias: int = 30) -> dict:
         "max_costo": max_costo,
         "por_proveedor": [
             {"provider": p, "costo_usd": c, "tokens": t, "llamadas": ll,
-             "porcentaje_costo": float((c / max_costo * 100) if max_costo > 0 else 0),
-             "es_gratis": c == 0}
+             "porcentaje_costo": float((c / max_costo * 100) if max_costo > 0 else 0)}
             for p, c, t, ll in por_proveedor
         ],
     }

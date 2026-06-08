@@ -1,8 +1,17 @@
 from django.urls import path
 
-from . import views
+from . import views, views_chat
 
 urlpatterns = [
+    # Chat conversacional (El Chalán) — S-Chalan-Chat-V1.
+    path("chalan/", views_chat.chat, name="chalan-chat"),
+    path("chalan/c/<int:pk>/", views_chat.conversacion, name="chalan-conversacion"),
+    path("chalan/nuevo", views_chat.nuevo, name="chalan-nuevo"),
+    path("chalan/c/<int:pk>/enviar", views_chat.enviar, name="chalan-enviar"),
+    path("chalan/<int:pk>/aplicar", views_chat.aplicar_accion, name="chalan-aplicar"),
+    path("chalan/<int:pk>/cancelar", views_chat.cancelar_accion, name="chalan-cancelar"),
+    path("chalan/partial/lista", views_chat.lista, name="chalan-lista"),
+    # El Dictado (flujo clásico de acciones).
     path("dictado/interpretar", views.interpretar_view, name="dictado-interpretar"),
     path("dictado/historial/", views.historial, name="dictado-historial"),
     path("dictado/<int:pk>/preview", views.preview, name="dictado-preview"),

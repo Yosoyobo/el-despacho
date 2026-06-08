@@ -67,14 +67,12 @@
         {% for p in resumen_chalanes.por_proveedor %}
         <div>
             <div class="flex items-baseline justify-between text-xs">
-                <span class="text-gray-700 dark:text-gray-300">{{ p.provider|capfirst }}{% if p.es_gratis %} <span class="ml-1 rounded bg-success-50 px-1.5 text-[9px] font-medium text-success-700 dark:bg-success-500/10 dark:text-success-300">Gratis</span>{% endif %}</span>
-                <span class="font-mono text-gray-500">{% if not p.es_gratis %}${{ p.costo_usd|floatformat:4 }} · {% endif %}{{ p.llamadas }} llamadas</span>
+                <span class="text-gray-700 dark:text-gray-300">{{ p.provider|capfirst }}</span>
+                <span class="font-mono text-gray-500">${{ p.costo_usd|floatformat:4 }} · {{ p.llamadas }} llamadas</span>
             </div>
-            {% if not p.es_gratis %}
             <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                 <div class="h-full bg-brand-500" style="width: {{ p.porcentaje_costo|floatformat:0 }}%;"></div>
             </div>
-            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -92,7 +90,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ c.apodo }}</h3>
-                        <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ c.nombre }}{% if c.es_gratis %} · gratis{% else %} · ${{ c.estadisticas.costo_usd|default:0|floatformat:4 }} 30d{% endif %}</p>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ c.nombre }} · ${{ c.estadisticas.costo_usd|default:0|floatformat:4 }} 30d</p>
                     </div>
                     <div class="flex items-center gap-2">
                         {% if c.configurado %}
@@ -110,7 +108,7 @@
                     <div class="flex justify-between"><dt class="text-gray-500">Llave</dt><dd class="font-mono text-gray-700 dark:text-gray-300">{{ c.llave_enmascarada }}</dd></div>
                     {% endif %}
                     <div class="flex justify-between"><dt class="text-gray-500">Modelo</dt><dd class="font-mono text-gray-700 dark:text-gray-300">{{ c.modelo_default|default:"—" }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">{% if c.es_gratis %}Costo{% else %}Gasto 30d{% endif %}</dt><dd class="font-mono text-success-600">{% if c.es_gratis %}Gratis{% else %}${{ c.estadisticas.costo_usd|default:0|floatformat:4 }}{% endif %}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-500">Gasto 30d</dt><dd class="font-mono text-success-600">${{ c.estadisticas.costo_usd|default:0|floatformat:4 }}</dd></div>
                     <div class="flex justify-between"><dt class="text-gray-500">Llamadas</dt><dd class="font-mono text-gray-700 dark:text-gray-300">{{ c.estadisticas.llamadas|default:0 }} ({{ c.estadisticas.llamadas_falla|default:0 }} fallas)</dd></div>
                 </dl>
                 <form method="post" action="{% url 'perfil-chalanes-saldo' nombre=c.nombre %}" class="mt-3">

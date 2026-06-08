@@ -13,6 +13,7 @@ urlpatterns = [
     path("c/<int:pk>/mensajes", views_chat.partial_mensajes, name="partial_mensajes"),
     path("c/<int:pk>/enviar", views_chat.enviar, name="enviar"),
     path("c/<int:pk>/leido", views_chat.marcar_leido, name="leido_conv"),
+    path("adjunto/<int:pk>/", views_chat.adjunto_descargar, name="chat_adjunto"),
 
     # ── Bandeja legacy (Recados S2b.1) ──────────────────────────────────────
     path("legacy/", views.bandeja, name="legacy_bandeja"),

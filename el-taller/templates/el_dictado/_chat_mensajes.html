@@ -1,0 +1,67 @@
+{% comment %}Render de turnos del chat. Variantes: user / bot texto / bot herramienta / bot acción.{% endcomment %}
+{% for m in mensajes %}
+{% if m.rol == "user" %}
+<div class="mb-3 flex justify-end" data-mensaje-id="{{ m.pk }}">
+    <div class="max-w-[80%] rounded-2xl rounded-tr-sm bg-brand-500 px-4 py-2 text-sm text-white shadow-theme-xs">
+        <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        <p class="mt-1 text-right text-[10px] opacity-80">{{ m.creado_en|date:"H:i" }}</p>
+    </div>
+</div>
+
+{% elif m.tipo == "herramienta" %}
+<div class="mb-3 flex items-center gap-2 pl-9" data-mensaje-id="{{ m.pk }}">
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L5 16v3h3l4.3-4.3a4 4 0 0 1 5.4-5.4l-2.3 2.3-1.7-1.7 2.3-2.3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Consulté: {{ m.nombre_herramienta }}
+    </span>
+</div>
+
+{% elif m.tipo == "accion" %}
+<div class="mb-3 flex items-end gap-2" data-mensaje-id="{{ m.pk }}">
+    {% include "_componentes_tailadmin/_avatar_chalan.html" with tamano="xs" %}
+    <div class="max-w-[85%] rounded-2xl rounded-tl-sm border border-warning-200 bg-warning-50/60 px-4 py-3 text-sm text-gray-800 shadow-theme-xs dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-gray-100">
+        <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        {% if m.dictado %}
+            {% if m.dictado.estado == "esperando_confirmacion" or m.dictado.estado == "confirmado_parcial" %}
+            <form method="post" action="{% url 'chalan-aplicar' m.dictado.pk %}" class="mt-2">
+                {% csrf_token %}
+                <ul class="space-y-1.5">
+                    {% for a in m.dictado.acciones.all %}
+                    <li class="flex items-start gap-2">
+                        <input type="checkbox" name="accion_{{ a.pk }}" id="acc_{{ a.pk }}" checked
+                               class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500/30">
+                        <label for="acc_{{ a.pk }}" class="text-xs leading-snug">
+                            {{ a.descripcion }}
+                            {% if a.confianza < 0.7 %}<span class="ml-1 text-warning-600 dark:text-warning-400" title="Confianza baja">⚠</span>{% endif %}
+                        </label>
+                    </li>
+                    {% empty %}
+                    <li class="text-xs text-gray-500 dark:text-gray-400">El Chalán no propuso acciones concretas.</li>
+                    {% endfor %}
+                </ul>
+                <div class="mt-3 flex items-center gap-2">
+                    <button class="btn-primario px-3 py-1.5 text-xs">Aplicar</button>
+                    <button type="submit" formaction="{% url 'chalan-cancelar' m.dictado.pk %}" formmethod="post"
+                            class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Descartar</button>
+                </div>
+            </form>
+            {% else %}
+            <p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                {{ m.dictado.get_estado_display }}
+            </p>
+            {% endif %}
+        {% endif %}
+        <p class="mt-1 text-right text-[10px] text-gray-400 dark:text-gray-500">{{ m.creado_en|date:"H:i" }}</p>
+    </div>
+</div>
+
+{% else %}
+<div class="mb-3 flex items-end gap-2" data-mensaje-id="{{ m.pk }}">
+    {% include "_componentes_tailadmin/_avatar_chalan.html" with tamano="xs" %}
+    <div class="max-w-[80%] rounded-2xl rounded-tl-sm bg-gray-100 px-4 py-2 text-sm text-gray-800 shadow-theme-xs dark:bg-gray-800 dark:text-gray-100">
+        <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        <p class="mt-1 text-right text-[10px] text-gray-500 dark:text-gray-400">{{ m.creado_en|date:"H:i" }}</p>
+    </div>
+</div>
+{% endif %}
+{% endfor %}

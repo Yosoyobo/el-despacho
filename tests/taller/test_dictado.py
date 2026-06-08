@@ -266,9 +266,9 @@ def test_home_muestra_textbox_activo(client, usuario_factory):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    # El textbox ya no está disabled
-    assert 'name="texto"' in body
-    assert "/dictado/interpretar" in body
+    # El textbox del Dashboard ahora alimenta el Chat (El Chalán).
+    assert 'name="mensaje"' in body
+    assert "/chalan/nuevo" in body
     assert "esta función llega en sprint" not in body  # ya no es placeholder
 
 

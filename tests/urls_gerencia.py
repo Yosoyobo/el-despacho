@@ -36,6 +36,8 @@ urlpatterns = [
     path("__cotizaciones_for_url_reverse__/", include("apps.cotizaciones.urls", namespace="cotizaciones")),
     path("__facturacion_for_url_reverse__/", include("apps.facturacion.urls", namespace="facturacion")),
     path("__contaduria_for_url_reverse__/", include("apps.contaduria.urls", namespace="contaduria")),
+    # La sidebar compartida referencia `{% url 'chalan-chat' %}` (El Dictado/Chat).
+    path("__chalan_for_url_reverse__/", include("apps.el_dictado.urls")),
     path("site/", include("apps.el_site.urls")),
     path("chalanes/", include("apps.los_chalanes.urls", namespace="los_chalanes")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),

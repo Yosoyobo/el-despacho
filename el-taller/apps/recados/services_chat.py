@@ -61,9 +61,9 @@ def crear_grupo(*, autor, nombre: str, participantes_ids: Iterable[int]) -> Conv
 # ── Enviar mensaje ───────────────────────────────────────────────────────────
 
 
-def enviar_mensaje(*, conversacion: Conversacion, autor, cuerpo: str) -> Mensaje:
+def enviar_mensaje(*, conversacion: Conversacion, autor, cuerpo: str, permitir_vacio: bool = False) -> Mensaje:
     cuerpo = (cuerpo or "").strip()
-    if not cuerpo:
+    if not cuerpo and not permitir_vacio:
         raise ValueError("Mensaje vacío.")
     if not conversacion.participantes.filter(pk=autor.pk).exists():
         raise PermissionError("No eres participante de esta conversación.")

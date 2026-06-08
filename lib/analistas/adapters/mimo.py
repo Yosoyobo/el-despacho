@@ -21,12 +21,12 @@ from ..capacidades import Capability
 MODELO_DEFAULT = "mimo-v2.5-pro"
 API_URL = "https://api.xiaomimimo.com/v1/chat/completions"
 
-# MiMo (Xiaomi) está actualmente en programa de acceso gratuito — no se
-# cobra por uso. Precios = 0 hasta que Xiaomi publique tarifa oficial.
-# Cuando dejen de ser gratis, actualizar a valores reales y emitir un
-# evento "chalan.precio_actualizado" para que la UI alerte al admin.
-PRECIO_IN = 0.0
-PRECIO_OUT = 0.0
+# MiMo (Xiaomi) salió del programa gratuito. Tarifa por token (USD/token).
+# NOTA: placeholder marcado — confirmar con Xiaomi la tarifa oficial. El conteo
+# de tokens y llamadas (AnalistaLog) es exacto sin importar el precio; solo el
+# costo estimado depende de estos valores. Ajustar cuando se publique la tarifa.
+PRECIO_IN = 0.30 / 1_000_000   # placeholder — confirmar con Xiaomi
+PRECIO_OUT = 0.60 / 1_000_000  # placeholder — confirmar con Xiaomi
 
 
 class MimoAdapter(Adapter):
@@ -88,8 +88,11 @@ class MimoAdapter(Adapter):
         )
 
     def consultar_saldo(self) -> dict:
-        # MiMo (Xiaomi) está en programa gratuito en este momento.
-        return {"soportado": True, "disponible": None, "moneda": "USD",
-                "etiqueta": "Gratis (programa de acceso)",
-                "fuente_url": "https://www.xiaomimimo.com/",
-                "mensaje": "MiMo está actualmente sin costo por uso. Revisa periódicamente."}
+        """MiMo no documenta un endpoint público de saldo. Reportamos
+        `soportado=False` y la UI muestra el uso (llamadas/tokens/costo) que
+        ya viene de `AnalistaLog`. Si Xiaomi publica un endpoint de balance,
+        implementarlo aquí estilo Deepseek (`GET /user/balance`)."""
+        return {"soportado": False, "disponible": None, "moneda": "USD",
+                "etiqueta": "—",
+                "fuente_url": "https://platform.xiaomimimo.com/",
+                "mensaje": "MiMo no expone saldo por API; revisa el uso (llamadas, tokens y costo)."}

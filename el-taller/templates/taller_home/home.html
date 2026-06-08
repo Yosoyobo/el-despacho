@@ -108,20 +108,20 @@
     {# Chatbot — El Dictado, compacto, 3/5 de ancho. #}
     <section data-andamiaje="dictado-slot"
              class="flex flex-col rounded-2xl border border-brand-200 bg-brand-25 p-4 lg:col-span-3 dark:border-brand-500/30 dark:bg-brand-500/5">
-        <form method="post" action="{% url 'dictado-interpretar' %}" class="flex flex-1 flex-col">
+        <form method="post" action="{% url 'chalan-nuevo' %}" class="flex flex-1 flex-col">
             {% csrf_token %}
             <div class="flex flex-1 items-start gap-3">
                 <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">🎤</span>
-                <textarea name="texto" rows="4" required data-referencias
-                          placeholder="Dame tus updates, tareas, nuevos pendientes. Usa @persona, #LC-0001 (proyecto) y $cliente. Yo los interpreto, organizo, y te muestro acciones para confirmar."
+                <textarea name="mensaje" rows="4" required data-referencias
+                          placeholder="Pregúntame el estatus (proyectos, finanzas, gasto de IA, servidor) o dame updates y tareas. Usa @persona, #LC-0001 (proyecto) y $cliente. Abro un chat y te respondo o te muestro acciones para confirmar."
                           class="w-full flex-1 resize-none border-0 bg-transparent px-0 py-1 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
             </div>
             <div class="mt-2 flex items-center justify-end">
-                <button type="submit" class="btn-primario">Procesar</button>
+                <button type="submit" class="btn-primario">Preguntar al Chalán</button>
             </div>
         </form>
         <div class="mt-2 border-t border-brand-200/60 pt-2 dark:border-brand-500/20">
-            <a href="{% url 'dictado-historial' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mi historial →</a>
+            <a href="{% url 'chalan-chat' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir el Chat →</a>
         </div>
     </section>
 </section>

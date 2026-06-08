@@ -1,6 +1,6 @@
 # Diseño — El Dictado
 
-> **Versión:** 1.5 · 23 mayo 2026 (hotfix S-LC-Feedback-V1 wave 3)
+> **Versión:** 1.6 · 7 junio 2026 (S-Chalan-Chat-V1 — chat conversacional, ver §12)
 > **Status:** V1 ✅ deployado · sub-sprint S2b.2.1 ✅ entregado · hotfix 22-may ✅ (fallback con ErrorPermanente + ejecutores crear_proyecto/crear_cliente/actualizar_cliente + catálogo visible en Los Chalanes) · hotfix 23-may ✅ (referencias entre acciones `@accion_N` + fuzzy fallback + consultar saldo)
 > **V1 cubre:** §3 (modelos), §4 (UX), §5 (filtro de prohibidas backend), §7 (prompt), §8 (aplicación atómica + 10 ejecutores), §9 (histórico), §10 (eventos clave), §11 (14 de 21 tests).
 > **V1 pendiente:** ejecutores de cotizaciones/facturas (módulos no existen aún). `registrar_egreso` **vivo desde S2b.3** (2026-05-19) — crea Egresos reales en La Tesorería con `origen='sala_juntas'`. `registrar_ingreso` sigue pendiente.
@@ -640,3 +640,59 @@ Mínimo 21 tests.
 - ✅ NO toca: Ajustes/credenciales, Catálogo, tasas, centros de costo, permisos, eliminaciones
 - ✅ Pregunta y aprende
 - ✅ La Tesorería tiene su propio dictado de gastos (subset de El Dictado, mismo backend)
+
+---
+
+## §12. Chat conversacional — El Chalán (S-Chalan-Chat-V1, 7 jun 2026)
+
+El Dictado evolucionó a un **chat** que además de proponer acciones ahora
+**consulta estatus** (proyectos, finanzas, gasto de IA, servidor). Ruta
+`/chalan/` (sección estilo TailAdmin AI: lista de conversaciones + chat
+activo + "Nuevo chat"). El textarea del Dashboard crea un chat nuevo y
+redirige a la sección.
+
+### Loop de tool-use sobre `analizar()`
+
+`lib.analistas.analizar` es texto→texto (sin function-calling nativo). Se usa
+un **mini-protocolo JSON**: el LLM responde un sobre
+`{tipo: responder|herramienta|accion, …}`. El backend
+(`apps/el_dictado/services_chat.py::conversar`) lo parsea:
+
+- `herramienta` → ejecuta una función read-only vetada
+  (`herramientas.ejecutar_herramienta`), re-inyecta el resultado recortado y
+  vuelve a llamar al LLM. Cap `MAX_ITERACIONES=4` + dedup de tool-calls.
+- `responder` → persiste el mensaje del bot. Fin.
+- `accion` → crea `Dictado(origen="taller_chat")` + `DictadoAccion` (mismo
+  formato y `TIPOS_PROHIBIDOS` que el dictado clásico). El usuario confirma con
+  preview inline (botón Aplicar → `services.aplicar`, sin cambios). Nunca
+  auto-aplica.
+
+Eficiencia de tokens: historial al LLM capado a los últimos 6 turnos
+(`MAX_TURNOS_PROMPT`), resultados de herramienta recortados a 1200 chars,
+estación `taller_chat` con modelo barato (`claude-haiku-4-5`), `max_tokens=700`.
+
+### Herramientas read-only (`apps/el_dictado/herramientas.py`)
+
+Whitelist físico. Cada una envuelve una pieza existente y devuelve un dict
+recortado: `listar_kpis`, `consultar_kpi`, `consultar_metrica` (vía
+`lib.kpi_dsl` vetado), `detalle_proyecto`, `detalle_cliente`,
+`detalle_factura`, `detalle_cotizacion`, `gasto_ia` (vía
+`lib.analistas.stats`), `estado_servidor` y `specs_servidor` (vía
+`lib.site`, abiertas a todos los roles). Gating por rol doble: el prompt solo
+enumera las permitidas y el backend re-chequea con `lib.permisos`.
+
+### Persistencia
+
+`ConversacionChat` + `MensajeChat` (migración `0003_chat_conversaciones`).
+Las conversaciones se guardan para navegarlas; la eficiencia de tokens vive en
+el cap de historial enviado al LLM, no en el almacenamiento. Las acciones
+(escritura) se auditan en `Dictado`/`DictadoAccion`. Toda llamada al LLM queda
+en `AnalistaLog`.
+
+### Guardrails
+
+`sanear_contexto` en input · whitelist de herramientas y de args
+(`validar_args` + `kpi_dsl.validador`) · sin SQL libre · sin escritura directa
+(las acciones requieren confirmación) · refusal off-topic en el system prompt ·
+cap de loop/tokens · JSON inválido → mensaje de error suave · permiso
+por-objeto en `detalle_proyecto`.

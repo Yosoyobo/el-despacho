@@ -1,11 +1,8 @@
 {% comment %}
 Bloque IA — réplica compacta del panel de Chalanes. Recibe
-`chalanes_resumen` y `chalanes_tarjetas` desde el view.
-
-S-Demo-Pre-Showcase-2:
-- Proveedores gratis ahora muestran barra 100% verde (antes la barra
-  se ocultaba y la fila se veía "vacía").
-- Tarjetas individuales por Chalán colapsadas en <details> (acordeón).
+`chalanes_resumen` y `chalanes_tarjetas` desde el view. Todos los Chalanes
+cuentan su costo real (MiMo dejó de ser gratis). Tarjetas individuales
+colapsadas en <details> (acordeón).
 {% endcomment %}
 <div class="mb-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="mb-3 flex flex-wrap items-baseline justify-between gap-3">
@@ -20,16 +17,11 @@ S-Demo-Pre-Showcase-2:
         {% for fila in chalanes_resumen.por_proveedor %}
         <div>
             <div class="flex items-baseline justify-between text-xs">
-                <span class="capitalize text-gray-700 dark:text-gray-300">{{ fila.provider }}{% if fila.es_gratis %} <span class="ml-1 rounded bg-success-50 px-1 text-[9px] text-success-700 dark:bg-success-500/10 dark:text-success-300">Gratis</span>{% endif %}</span>
-                <span class="font-mono text-gray-500 dark:text-gray-400">{% if fila.es_gratis %}Gratis · {% else %}${{ fila.costo_usd|floatformat:4 }} · {% endif %}{{ fila.llamadas }} ll</span>
+                <span class="capitalize text-gray-700 dark:text-gray-300">{{ fila.provider }}</span>
+                <span class="font-mono text-gray-500 dark:text-gray-400">${{ fila.costo_usd|floatformat:4 }} · {{ fila.llamadas }} ll</span>
             </div>
             <div class="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                {% if fila.es_gratis %}
-                    {# Barra 100% verde: el proveedor tuvo uso real pero $0. #}
-                    <div class="h-full rounded-full bg-success-500 dark:bg-success-400" style="width: 100%"></div>
-                {% else %}
-                    <div class="h-full rounded-full bg-brand-500 dark:bg-brand-400" style="width: {{ fila.porcentaje_costo|floatformat:1 }}%"></div>
-                {% endif %}
+                <div class="h-full rounded-full bg-brand-500 dark:bg-brand-400" style="width: {{ fila.porcentaje_costo|floatformat:1 }}%"></div>
             </div>
         </div>
         {% endfor %}
@@ -66,7 +58,7 @@ S-Demo-Pre-Showcase-2:
             <div class="text-[11px] font-mono text-gray-500 dark:text-gray-400">{{ c.llave_enmascarada|default:"—" }}</div>
             <div class="mt-2 flex items-baseline justify-between text-xs">
                 <span class="text-gray-500 dark:text-gray-400">30d</span>
-                <span class="font-mono text-gray-700 dark:text-gray-300">{% if c.es_gratis %}Gratis{% else %}${{ c.estadisticas.costo_usd|floatformat:4 }}{% endif %}</span>
+                <span class="font-mono text-gray-700 dark:text-gray-300">${{ c.estadisticas.costo_usd|floatformat:4 }}</span>
             </div>
             <div class="mt-0.5 flex items-baseline justify-between text-[11px] text-gray-500 dark:text-gray-400">
                 <span>{{ c.estadisticas.llamadas }} llamadas</span>

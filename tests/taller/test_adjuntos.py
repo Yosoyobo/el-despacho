@@ -194,3 +194,91 @@ def test_proxy_comprobante_sin_archivo_404(client, usuario_factory, centro):
     client.force_login(actor)
     resp = client.get(f"/tesoreria/egresos/{egreso.pk}/comprobante/")
     assert resp.status_code == 404
+
+
+# ── Chat de Recados: adjuntos ─────────────────────────────────────────────────
+
+
+def test_chat_mensaje_con_adjunto(client, usuario_factory, monkeypatch):
+    from apps.recados import services_chat
+    from apps.recados.models import MensajeAdjunto
+    autor = usuario_factory(rol="super_admin")
+    otro = usuario_factory(rol="disenador", email="o@ej.com")
+    conv = services_chat.obtener_o_crear_directa(autor, otro)
+    client.force_login(autor)
+    _ok(monkeypatch)
+
+    archivo = SimpleUploadedFile("foto.png", b"\x89PNG", content_type="image/png")
+    resp = client.post(f"/recados/c/{conv.pk}/enviar", {"cuerpo": "mira esto", "adjuntos": archivo})
+    assert resp.status_code == 200
+    adj = MensajeAdjunto.objects.get()
+    assert adj.drive_file_id == "drv-1"
+    assert adj.mensaje.conversacion_id == conv.pk
+
+
+def test_chat_mensaje_solo_adjunto_sin_texto(client, usuario_factory, monkeypatch):
+    """Se puede mandar un adjunto sin texto."""
+    from apps.recados import services_chat
+    from apps.recados.models import Mensaje, MensajeAdjunto
+    autor = usuario_factory(rol="super_admin")
+    otro = usuario_factory(rol="disenador", email="o@ej.com")
+    conv = services_chat.obtener_o_crear_directa(autor, otro)
+    client.force_login(autor)
+    _ok(monkeypatch)
+
+    archivo = SimpleUploadedFile("foto.png", b"\x89PNG", content_type="image/png")
+    resp = client.post(f"/recados/c/{conv.pk}/enviar", {"cuerpo": "", "adjuntos": archivo})
+    assert resp.status_code == 200
+    assert Mensaje.objects.filter(conversacion=conv).count() == 1
+    assert MensajeAdjunto.objects.count() == 1
+
+
+def test_chat_proxy_adjunto_no_participante_404(client, usuario_factory, monkeypatch):
+    from apps.recados import services_chat
+    from apps.recados.models import MensajeAdjunto
+    autor = usuario_factory(rol="super_admin")
+    otro = usuario_factory(rol="disenador", email="o@ej.com")
+    intruso = usuario_factory(rol="disenador", email="intruso@ej.com")
+    conv = services_chat.obtener_o_crear_directa(autor, otro)
+    msg = services_chat.enviar_mensaje(conversacion=conv, autor=autor, cuerpo="x")
+    adj = MensajeAdjunto.objects.create(mensaje=msg, drive_file_id="drv-1", nombre="f.png")
+    client.force_login(intruso)
+    resp = client.get(f"/recados/adjunto/{adj.pk}/")
+    assert resp.status_code == 404
+
+
+# ── Buzón: adjuntos ───────────────────────────────────────────────────────────
+
+
+def test_buzon_nuevo_con_adjunto(client, usuario_factory, monkeypatch):
+    from buzon.models import MensajeBuzon, MensajeBuzonAdjunto
+    from lib.adjuntos import ResultadoAdjunto
+    autor = usuario_factory(rol="disenador")
+    client.force_login(autor)
+    monkeypatch.setattr(
+        "lib.adjuntos.subir",
+        lambda archivo, subcarpeta=None: ResultadoAdjunto(
+            ok=True, data={"id": "bz-1", "name": "doc.pdf", "mimeType": "application/pdf"}
+        ),
+    )
+    archivo = SimpleUploadedFile("doc.pdf", b"%PDF", content_type="application/pdf")
+    resp = client.post("/buzon/nuevo", {
+        "tipo": "sugerencia", "asunto": "Idea", "cuerpo": "una idea", "prioridad": "5",
+        "adjuntos": archivo,
+    })
+    assert resp.status_code == 302
+    msg = MensajeBuzon.objects.get()
+    adj = MensajeBuzonAdjunto.objects.get()
+    assert adj.mensaje_id == msg.pk
+    assert adj.drive_file_id == "bz-1"
+
+
+def test_buzon_proxy_adjunto_ajeno_404(client, usuario_factory):
+    from buzon.models import MensajeBuzon, MensajeBuzonAdjunto
+    autor = usuario_factory(rol="disenador")
+    intruso = usuario_factory(rol="disenador", email="intruso@ej.com")
+    msg = MensajeBuzon.objects.create(autor=autor, tipo="sugerencia", asunto="x", cuerpo="y")
+    adj = MensajeBuzonAdjunto.objects.create(mensaje=msg, drive_file_id="bz-1", nombre="f.pdf")
+    client.force_login(intruso)
+    resp = client.get(f"/buzon/adjunto/{adj.pk}/")
+    assert resp.status_code == 404

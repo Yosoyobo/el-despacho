@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}El Chalán — Chat{% endblock %}
+
+{% block contenido %}
+<div class="flex h-[calc(100vh-9rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+
+    {# ── Sidebar: nuevo chat + conversaciones pasadas ───────────── #}
+    <aside class="hidden w-72 shrink-0 flex-col border-r border-gray-200 md:flex dark:border-gray-800">
+        <header class="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+            <form method="post" action="{% url 'chalan-nuevo' %}">
+                {% csrf_token %}
+                <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                    Nuevo chat
+                </button>
+            </form>
+        </header>
+        <div class="flex-1 overflow-y-auto">
+            {% include "el_dictado/_chat_lista.html" %}
+        </div>
+    </aside>
+
+    {# ── Panel principal ────────────────────────────────────────── #}
+    <section class="flex min-w-0 flex-1 flex-col">
+        <header class="flex items-center gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+            {% include "_componentes_tailadmin/_avatar_chalan.html" with tamano="sm" apodo="El Chalán" %}
+            <div class="min-w-0">
+                <h2 class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">El Chalán</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Pregúntame sobre proyectos, finanzas, gasto de IA o el servidor.</p>
+            </div>
+        </header>
+
+        <div id="chat-scroll" class="flex-1 overflow-y-auto bg-gray-50/40 px-5 py-4 dark:bg-gray-900/40">
+            {% if conversacion %}
+            <div id="chat-mensajes" data-ultimo-id="{{ ultimo_id }}">
+                {% include "el_dictado/_chat_mensajes.html" with mensajes=mensajes %}
+            </div>
+            {% else %}
+            <div class="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
+                {% include "_componentes_tailadmin/_avatar_chalan.html" with tamano="md" apodo="El Chalán" %}
+                <h3 class="mt-3 text-base font-semibold text-gray-800 dark:text-gray-100">¿En qué te ayudo?</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Consulto estatus y propongo acciones del Taller. Prueba:</p>
+                <ul class="mt-3 space-y-1.5 text-sm">
+                    <li class="rounded-lg bg-white px-3 py-1.5 text-gray-600 shadow-theme-xs dark:bg-gray-800 dark:text-gray-300">¿Cuántos proyectos activos hay?</li>
+                    <li class="rounded-lg bg-white px-3 py-1.5 text-gray-600 shadow-theme-xs dark:bg-gray-800 dark:text-gray-300">¿Cuánto llevamos gastado en IA este mes?</li>
+                    <li class="rounded-lg bg-white px-3 py-1.5 text-gray-600 shadow-theme-xs dark:bg-gray-800 dark:text-gray-300">¿Cómo está el servidor?</li>
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Composer #}
+        {% if conversacion %}
+        <form hx-post="{% url 'chalan-enviar' conversacion.pk %}"
+              hx-target="#chat-mensajes"
+              hx-swap="beforeend"
+              hx-on::after-request="this.querySelector('textarea').value=''; this.querySelector('textarea').focus(); var s=document.getElementById('chat-scroll'); s.scrollTop=s.scrollHeight;"
+              class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+        {% else %}
+        <form method="post" action="{% url 'chalan-nuevo' %}"
+              class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+        {% endif %}
+            {% csrf_token %}
+            <div class="flex items-end gap-2">
+                <textarea name="mensaje" rows="1" required placeholder="Escribe tu pregunta… (usa @persona, #LC-0001, $cliente)"
+                          class="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
+                <button class="btn-primario shrink-0 flex items-center gap-1.5">
+                    <span class="htmx-indicator">{% include "_componentes_tailadmin/_spinner.html" with tamano="xs" color="white" %}</span>
+                    Enviar
+                </button>
+            </div>
+            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter envía · Shift+Enter salto de línea · El Chalán solo consulta y propone (tú confirmas las acciones).</p>
+        </form>
+    </section>
+</div>
+
+<script>
+  (function(){
+    function scrollAbajo(){ var s=document.getElementById('chat-scroll'); if(s) s.scrollTop=s.scrollHeight; }
+    function actualizarUltimo(){
+      var c = document.getElementById('chat-mensajes');
+      if (!c) return;
+      var ultimos = c.querySelectorAll('[data-mensaje-id]');
+      if (ultimos.length) c.dataset.ultimoId = ultimos[ultimos.length - 1].dataset.mensajeId;
+    }
+    window.addEventListener('DOMContentLoaded', function(){ actualizarUltimo(); scrollAbajo(); });
+    document.body.addEventListener('htmx:afterSwap', function(e){
+      if (e.target && e.target.id === 'chat-mensajes') { actualizarUltimo(); scrollAbajo(); }
+    });
+  })();
+</script>
+{% endblock %}

@@ -229,6 +229,59 @@ def detalle(request, pk: int):
     })
 
 
+def _procesar_adjuntos_buzon(request, msg) -> None:
+    """Sube los archivos del mensaje del Buzón a Drive y crea las filas.
+
+    Fallback gracioso: si Drive cae, el mensaje ya quedó guardado; el adjunto
+    simplemente no se crea (avisamos con un warning)."""
+    archivos = request.FILES.getlist("adjuntos")
+    if not archivos:
+        return
+    from buzon.models import MensajeBuzonAdjunto
+    from lib.adjuntos import subir
+    subidos = 0
+    for archivo in archivos:
+        res = subir(archivo, subcarpeta="Buzón")
+        if res.ok and res.data:
+            MensajeBuzonAdjunto.objects.create(
+                mensaje=msg,
+                drive_file_id=res.data["id"],
+                nombre=res.data.get("name") or archivo.name,
+                mime_type=res.data.get("mimeType") or getattr(archivo, "content_type", "") or "",
+                tamano_bytes=int(res.data.get("size") or getattr(archivo, "size", 0) or 0),
+                subido_por=request.user,
+            )
+            subidos += 1
+        else:
+            messages.warning(request, f"Adjunto no subido: {res.error}")
+
+
+@login_required
+@require_http_methods(["GET"])
+def adjunto_descargar(request, pk: int):
+    """Sirve un adjunto del Buzón desde Drive (proxy autenticado). Lo bajan el
+    autor del mensaje o los admins del Buzón (ver_todos)."""
+    from urllib.parse import quote
+
+    from buzon.models import MensajeBuzonAdjunto
+
+    adj = get_object_or_404(MensajeBuzonAdjunto.objects.select_related("mensaje"), pk=pk)
+    user = request.user
+    if not puede(user, "buzon", "ver_todos") and adj.mensaje.autor_id != user.pk:
+        raise Http404("Adjunto no encontrado.")
+
+    from lib.google_drive import drive
+    try:
+        contenido, mime, nombre = drive.descargar(adj.drive_file_id)
+    except Exception:  # noqa: BLE001
+        raise Http404("No se pudo obtener el archivo de Drive.") from None
+
+    resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
+    disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
+    resp["Content-Disposition"] = f"{disposicion}; filename*=UTF-8''{quote(nombre)}"
+    return resp
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def nuevo(request):
@@ -248,6 +301,7 @@ def nuevo(request):
                 msg.cuerpo = sanear_contexto(msg.cuerpo, max_len=5000)
             msg.asunto = sanear_contexto(msg.asunto, max_len=200) or msg.asunto[:200]
             msg.save()
+            _procesar_adjuntos_buzon(request, msg)
             emitir(EventoPortavoz(
                 tipo="buzon.nuevo_mensaje",
                 actor_id=request.user.pk, actor_email=request.user.email,

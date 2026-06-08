@@ -60,11 +60,19 @@
         <form hx-post="{% url 'recados:enviar' conv.pk %}"
               hx-target="#chat-mensajes"
               hx-swap="beforeend"
-              hx-on::after-request="this.querySelector('textarea').value=''; this.querySelector('textarea').focus(); var s=document.getElementById('chat-scroll'); s.scrollTop=s.scrollHeight;"
+              hx-encoding="multipart/form-data"
+              hx-on::after-request="this.querySelector('textarea').value=''; this.querySelector('textarea').focus(); var f=this.querySelector('input[type=file]'); if(f){f.value=''; var n=this.querySelector('[data-adjuntos-nombres]'); if(n){n.textContent='';}} var s=document.getElementById('chat-scroll'); s.scrollTop=s.scrollHeight;"
               class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
             {% csrf_token %}
             <div class="flex items-end gap-2">
-                <textarea name="cuerpo" rows="1" required placeholder="Escribe un mensaje…" data-referencias
+                {% if puede_adjuntar %}
+                <label class="shrink-0 cursor-pointer inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 hover:text-brand-600 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800" title="Adjuntar archivo">
+                    📎
+                    <input type="file" name="adjuntos" multiple accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" class="sr-only"
+                           onchange="var n=this.closest('form').querySelector('[data-adjuntos-nombres]'); if(n){n.textContent=this.files.length?(this.files.length+' archivo(s): '+Array.from(this.files).map(function(f){return f.name;}).join(', ')):'';}">
+                </label>
+                {% endif %}
+                <textarea name="cuerpo" rows="1" placeholder="Escribe un mensaje…" data-referencias
                           class="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
                 <button class="btn-primario shrink-0 flex items-center gap-1.5">
@@ -72,7 +80,8 @@
                     Enviar
                 </button>
             </div>
-            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter envía · Shift+Enter salto de línea</p>
+            {% if puede_adjuntar %}<p data-adjuntos-nombres class="mt-1 text-[11px] text-brand-600 dark:text-brand-400"></p>{% endif %}
+            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter envía · Shift+Enter salto de línea{% if puede_adjuntar %} · 📎 adjunta imágenes o PDF{% endif %}</p>
         </form>
 
     </section>

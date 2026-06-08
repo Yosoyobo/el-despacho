@@ -3087,6 +3087,66 @@ UX de proveedores aplicables más obvia, más rápida.
   (>50 proveedores) podría costar — entonces se agrega un `<input>`
   arriba con filtro client-side por `.includes()`. Hoy LC tiene 2-3.
 
+### S-Chalan-Chat-V1 ✅ — Chat conversacional del Taller (El Chalán) + MiMo deja de ser gratis (2026-06-07)
+
+El Dictado evoluciona de "solo acciones" a un **chat unificado** que consulta
+estatus Y propone acciones. Sección nueva `/chalan/` estilo TailAdmin AI:
+sidebar con "Nuevo chat" + lista de conversaciones pasadas, panel con burbujas
+y composer HTMX (patrón Recados). El textarea del Dashboard ahora crea un chat
+nuevo y redirige a la sección. Visible a todos los roles en el sidebar.
+
+- **Loop de tool-use sobre `analizar()`** (texto→texto, sin function-calling
+  nativo) vía mini-protocolo JSON: el LLM responde un sobre
+  `{tipo: responder|herramienta|accion}`. `apps/el_dictado/services_chat.py::conversar`
+  lo parsea: `herramienta` → ejecuta función read-only vetada, re-inyecta
+  resultado recortado y vuelve a llamar (cap `MAX_ITERACIONES=4` + dedup);
+  `responder` → mensaje del bot; `accion` → crea `Dictado(origen="taller_chat")`
+  con preview/confirm (reusa `services.aplicar`, nunca auto-aplica,
+  `TIPOS_PROHIBIDOS` filtrados).
+- **Estación nueva `taller_chat`** en `chalanes/estaciones.py` + migración
+  data-seed `chalanes/0005_taller_chat_estacion.py` (CuadroChalanes →
+  anthropic/claude-haiku-4-5, modelo barato). Eficiencia de tokens: historial
+  al LLM capado a 6 turnos, tool output ≤1200 chars, `max_tokens=700`.
+- **Registry `apps/el_dictado/herramientas.py`** (read-only vetado):
+  `listar_kpis`, `consultar_kpi`, `consultar_metrica` (vía `lib.kpi_dsl`),
+  `detalle_proyecto/cliente/factura/cotizacion`, `gasto_ia` (vía
+  `lib.analistas.stats`), `estado_servidor`/`specs_servidor` (vía `lib.site`,
+  **abiertas a todos los roles**). Gating por rol doble (prompt enumera solo
+  permitidas + backend re-chequea con `lib.permisos`); `validar_args` +
+  `kpi_dsl.validador` (whitelist físico, sin SQL libre); `recortar()`.
+- **Persistencia**: modelos `ConversacionChat` + `MensajeChat`
+  (`apps/el_dictado/models/conversacion_chat.py`, migración
+  `0003_chat_conversaciones`; origen `taller_chat` agregado a `ORIGENES`).
+  Conversaciones navegables; las acciones se auditan en Dictado/DictadoAccion;
+  cada llamada al LLM queda en `AnalistaLog`.
+- **Sidebar**: slug `chat` en `SLUGS_SIDEBAR_TALLER` + item "El Chalán".
+  `lib/dictado_catalogo.py` gana `CONSULTAS_CHAT` + `BANNER_CHAT` (fuente única
+  para los paneles de Chalanes).
+- **Fix infra tests**: `tests/urls_gerencia.py` monta `apps.el_dictado.urls`
+  bajo `__chalan_for_url_reverse__/` para que la sidebar compartida pueda
+  hacer `{% url 'chalan-chat' %}` bajo el urlconf de Gerencia (mismo patrón
+  que tesoreria/cotizaciones).
+- **MiMo ya no es gratis**: eliminado TODO el tratamiento "gratis" — `mimo.py`
+  con tarifa real (placeholder marcado, confirmar con Xiaomi) y `consultar_saldo`
+  sin "Gratis" (soportado=False, cuenta el uso); `stats.py` sin `_es_gratis`
+  ni clave `es_gratis` (costo directo de `AnalistaLog`); 4 templates sin badge
+  "Gratis" ni branches que ocultaban el costo. Logs históricos quedan como
+  están. `tests/test_stats_gratis.py` reescrito para el nuevo comportamiento.
+- **Tests**: `tests/taller/test_chat_chalan.py` (26 casos: loop responder/
+  herramienta/cap/JSON inválido/herramienta inexistente/dedup/LLM caído,
+  acciones crean Dictado pendiente + filtran prohibidos, gating finanzas/server,
+  whitelist DSL, args inválidos, recorte, conversaciones+título+historial
+  capado, views nuevo/enviar HTMX/login). Suite total: **~884 pass, 9 skipped**
+  (3 fallos locales de Redis pasan en CI).
+
+**NO incluye V1** (deuda diseñada): streaming/SSE (es síncrono con spinner);
+re-alimentar al LLM más de 6 turnos; function-calling nativo de adapters;
+caché de resultados de herramientas; renombrar/archivar conversaciones desde
+la UI; herramientas de escritura más allá de los 10 ejecutores del Dictado;
+detalle rico de factura/cotización (V1 expone campos clave + link). MiMo:
+confirmar tarifa real con Xiaomi y, si expone endpoint de saldo, implementar
+`consultar_saldo` estilo Deepseek.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

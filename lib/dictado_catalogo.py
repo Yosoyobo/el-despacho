@@ -119,4 +119,30 @@ COMANDOS_PROHIBIDOS: list[dict] = [
 ]
 
 
-__all__ = ["COMANDOS_DICTADO", "COMANDOS_PROHIBIDOS", "REFERENCIAS_ENTRE_ACCIONES"]
+# S-Chalan-Chat-V1: el Chat del Taller (El Chalán, ruta /chalan/) además de
+# proponer las acciones de arriba, puede CONSULTAR datos en solo-lectura vía
+# herramientas vetadas. Aquí se documentan para la UI de Los Chalanes.
+CONSULTAS_CHAT: list[dict] = [
+    {"nombre": "listar_kpis / consultar_kpi", "que": "Indicadores del tablero (según el rol)."},
+    {"nombre": "consultar_metrica", "que": "Conteos/sumas acotadas (proyectos, tareas, clientes, ingresos/egresos)."},
+    {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
+    {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},
+    {"nombre": "detalle_factura / detalle_cotizacion", "que": "Estatus por código (requiere permiso)."},
+    {"nombre": "gasto_ia", "que": "Costo, llamadas y tokens de IA por proveedor."},
+    {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},
+]
+
+BANNER_CHAT = (
+    "El Chat (El Chalán) consulta estatus en solo-lectura mediante herramientas "
+    "vetadas y propone acciones (las de arriba) que tú confirmas. Nunca ejecuta "
+    "nada sin confirmación ni responde fuera del contexto del Taller."
+)
+
+
+__all__ = [
+    "COMANDOS_DICTADO",
+    "COMANDOS_PROHIBIDOS",
+    "REFERENCIAS_ENTRE_ACCIONES",
+    "CONSULTAS_CHAT",
+    "BANNER_CHAT",
+]

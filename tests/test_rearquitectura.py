@@ -175,8 +175,8 @@ def test_sala_juntas_taller_super_admin(client, usuario_factory):
     assert "Proyectos activos" in body
     assert "Tu tablero" in body
     assert "Editar tablero" in body
-    # Chatbot (El Dictado) + Kanban de 4 columnas activas.
-    assert "Procesar" in body
+    # Chat (El Chalán) + Kanban de 4 columnas activas.
+    assert "Preguntar al Chalán" in body
     assert "Por cotizar" in body
 
 

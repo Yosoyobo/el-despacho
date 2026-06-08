@@ -5,6 +5,28 @@
 
 ---
 
+## Novedades — El Chalán, tu chat con el asistente (7 de junio de 2026)
+
+- **Ya puedes platicar con El Chalán.** En el menú lateral, abre **"El Chalán"**
+  (o escribe en el recuadro del Dashboard) para hacerle preguntas en lenguaje
+  normal. Antes solo recibía instrucciones para hacer cosas; ahora también
+  **responde consultas de estatus**:
+  - "¿Cuántos proyectos activos hay?"
+  - "¿Cómo va el proyecto LC-0007?"
+  - "¿Cuánto llevamos gastado en IA este mes?"
+  - "¿Cómo está el servidor?" (memoria, disco, etc.)
+- **Una pregunta, un chat.** Cada conversación queda guardada en la lista de la
+  izquierda para que puedas volver a leerla. Cuando quieras empezar de cero,
+  usa **"✨ Nuevo chat"**. El recuadro del Dashboard siempre abre un chat nuevo.
+- **Sigue pudiendo hacer cosas.** Si le pides una acción ("crea una tarea en
+  #LC-0007 para mañana"), te muestra una **propuesta para que la confirmes**
+  antes de aplicarla — nunca cambia nada por su cuenta.
+- **Se mantiene dentro del Taller.** El Chalán solo habla de tus proyectos,
+  clientes, finanzas, indicadores, gasto de IA y el servidor. Si le preguntas
+  algo ajeno, te lo dirá amablemente y te reorientará.
+- **No inventa números.** Cada cifra que te da viene de una consulta real al
+  sistema en ese momento.
+
 ## Novedades — adjuntar archivos a Drive (7 de junio de 2026)
 
 - **Ya puedes adjuntar archivos** en dos lugares, y se guardan en el Google

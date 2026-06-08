@@ -1,4 +1,4 @@
-from .adjunto import RecadoAdjunto
+from .adjunto import MensajeAdjunto, RecadoAdjunto
 from .conversacion import Conversacion, Mensaje, MensajeLectura
 from .destinatario import RecadoDestinatario
 from .grupo import RecadoGrupo
@@ -8,6 +8,7 @@ from .version import RecadoVersion
 __all__ = [
     "Conversacion",
     "Mensaje",
+    "MensajeAdjunto",
     "MensajeLectura",
     "Recado",
     "RecadoAdjunto",

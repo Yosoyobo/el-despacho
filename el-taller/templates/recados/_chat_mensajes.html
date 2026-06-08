@@ -2,7 +2,10 @@
 {% if m.autor_id == request.user.pk %}
 <div class="mb-3 flex justify-end" data-mensaje-id="{{ m.pk }}">
     <div class="max-w-[75%] rounded-2xl rounded-tr-sm bg-brand-500 px-4 py-2 text-sm text-white shadow-theme-xs">
-        <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        {% if m.cuerpo %}<p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>{% endif %}
+        {% for a in m.adjuntos.all %}
+        <a href="{% url 'recados:chat_adjunto' a.pk %}" target="_blank" rel="noopener" class="mt-1 flex items-center gap-1.5 text-xs underline decoration-white/50 hover:decoration-white">{% if a.es_imagen %}🖼️{% else %}📎{% endif %} <span class="truncate">{{ a.nombre }}</span></a>
+        {% endfor %}
         <p class="mt-1 text-right text-[10px] opacity-80">{{ m.creado_en|date:"H:i" }}</p>
     </div>
 </div>
@@ -15,7 +18,10 @@
         {% if conv.tipo == "grupo" and m.autor %}
         <p class="text-[11px] font-semibold text-brand-600 dark:text-brand-400">{{ m.autor.get_short_name|default:m.autor.email }}</p>
         {% endif %}
-        <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        {% if m.cuerpo %}<p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>{% endif %}
+        {% for a in m.adjuntos.all %}
+        <a href="{% url 'recados:chat_adjunto' a.pk %}" target="_blank" rel="noopener" class="mt-1 flex items-center gap-1.5 text-xs text-brand-600 underline hover:text-brand-700 dark:text-brand-400">{% if a.es_imagen %}🖼️{% else %}📎{% endif %} <span class="truncate">{{ a.nombre }}</span></a>
+        {% endfor %}
         <p class="mt-1 text-right text-[10px] text-gray-500 dark:text-gray-400">{{ m.creado_en|date:"H:i" }}</p>
     </div>
 </div>

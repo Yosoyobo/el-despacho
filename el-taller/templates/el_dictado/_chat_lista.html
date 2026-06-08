@@ -1,0 +1,15 @@
+{% comment %}Lista lateral de conversaciones del Chat (El Chalán).{% endcomment %}
+<ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for c in conversaciones %}
+    <li>
+        <a href="{% url 'chalan-conversacion' c.pk %}"
+           class="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60
+                  {% if conversacion and c.pk == conversacion.pk %}border-l-2 border-brand-500 bg-brand-50/40 dark:bg-brand-500/10{% else %}border-l-2 border-transparent{% endif %}">
+            <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ c.titulo|default:"Chat nuevo" }}</p>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500">{{ c.actualizado_en|timesince }} atrás</p>
+        </a>
+    </li>
+    {% empty %}
+    <li class="px-4 py-6 text-center text-xs text-gray-400 dark:text-gray-500">Aún no tienes conversaciones.</li>
+    {% endfor %}
+</ul>

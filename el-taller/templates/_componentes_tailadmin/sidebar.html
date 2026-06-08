@@ -60,6 +60,13 @@
         </a>
         {% endif %}
 
+        {% if not sidebar_orden.chat.oculto %}
+        <a href="{% url 'chalan-chat' %}" style="order: {{ sidebar_orden.chat.orden|default:65 }}" class="menu-item {% if '/chalan' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 9h8M8 13h5" stroke-linecap="round"/></svg>
+            <span class="flex-1">El Chalán</span>
+        </a>
+        {% endif %}
+
         {% if permisos_modulos.catalogo and not sidebar_orden.productos.oculto %}
         <a href="/catalogo/" style="order: {{ sidebar_orden.productos.orden|default:70 }}" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" stroke-linejoin="round"/></svg>
