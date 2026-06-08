@@ -54,8 +54,9 @@
         <form hx-post="{% url 'chalan-enviar' conversacion.pk %}"
               hx-target="#chat-mensajes"
               hx-swap="beforeend"
+              {% if chat_vision_ok %}hx-encoding="multipart/form-data"{% endif %}
               hx-on::before-request="var b=this.querySelector('button'),t=this.querySelector('textarea'); if(b)b.disabled=true; if(t)t.disabled=true; var c=document.getElementById('chat-mensajes'); if(c&&!document.getElementById('chat-pensando')){var d=document.createElement('div'); d.id='chat-pensando'; d.className='mb-3 flex items-center gap-2 text-xs italic text-gray-500 dark:text-gray-400'; d.textContent='El Chalán está pensando…'; c.appendChild(d);} var s=document.getElementById('chat-scroll'); if(s)s.scrollTop=s.scrollHeight;"
-              hx-on::after-request="var p=document.getElementById('chat-pensando'); if(p)p.remove(); var b=this.querySelector('button'),t=this.querySelector('textarea'); if(b)b.disabled=false; if(t){t.disabled=false; t.value=''; t.focus();} var s=document.getElementById('chat-scroll'); if(s)s.scrollTop=s.scrollHeight;"
+              hx-on::after-request="var p=document.getElementById('chat-pensando'); if(p)p.remove(); var b=this.querySelector('button'),t=this.querySelector('textarea'); if(b)b.disabled=false; if(t){t.disabled=false; t.value=''; t.focus();} var fi=document.getElementById('chat-imagen'); if(fi){fi.value='';} var fn=document.getElementById('chat-imagen-nombre'); if(fn){fn.textContent='';} var s=document.getElementById('chat-scroll'); if(s)s.scrollTop=s.scrollHeight;"
               class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
         {% else %}
         <form method="post" action="{% url 'chalan-nuevo' %}"
@@ -63,7 +64,13 @@
         {% endif %}
             {% csrf_token %}
             <div class="flex items-end gap-2">
-                <textarea name="mensaje" rows="1" required placeholder="Escribe tu pregunta… (usa @persona, #LC-0001, $cliente)" data-referencias
+                {% if conversacion and chat_vision_ok %}
+                <label for="chat-imagen" title="Adjuntar imagen (recibo, foto…)"
+                       class="shrink-0 cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">📎</label>
+                <input type="file" name="imagen" id="chat-imagen" accept="image/*" class="hidden"
+                       onchange="var n=document.getElementById('chat-imagen-nombre'); if(n)n.textContent=this.files.length?('📎 '+this.files[0].name):'';">
+                {% endif %}
+                <textarea name="mensaje" rows="1" {% if not chat_vision_ok %}required{% endif %} placeholder="Escribe tu pregunta… (usa @persona, #LC-0001, $cliente)" data-referencias
                           class="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
                 <button class="btn-primario shrink-0 flex items-center gap-1.5">
@@ -71,6 +78,7 @@
                     Enviar
                 </button>
             </div>
+            {% if conversacion and chat_vision_ok %}<p id="chat-imagen-nombre" class="mt-1 text-[11px] text-brand-600 dark:text-brand-400"></p>{% endif %}
             <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Enter envía · Shift+Enter salto de línea · El Chalán solo consulta y propone (tú confirmas las acciones).</p>
         </form>
     </section>

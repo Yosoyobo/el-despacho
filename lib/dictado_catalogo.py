@@ -246,6 +246,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
     {"nombre": "gasto_ia", "que": "Costo, llamadas y tokens de IA por proveedor."},
     {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},
+    {"nombre": "📎 imagen", "que": "Adjunta una foto (recibo, ticket) y el Chalán la lee — si el Chalán activo tiene visión."},
 ]
 
 BANNER_CHAT = (

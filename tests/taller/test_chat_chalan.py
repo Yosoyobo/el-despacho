@@ -366,3 +366,69 @@ def test_proximos_eventos_abierto(usuario_factory, proyecto_factory):
     salida = herramientas.ejecutar_herramienta("proximos_eventos", {"dias": 14}, u)
     assert salida.get("error") != "sin_permiso"
     assert "eventos" in salida
+
+
+# ── Fase C2 (S-Chalán-Scope-OCR): adjuntos con visión en el chat ────────────────
+
+def test_conversar_pasa_imagenes_al_llm(monkeypatch, usuario_factory):
+    """La imagen del usuario se pasa a analizar() en la primera iteración."""
+    import lib.analistas as la
+    from apps.el_dictado.services_chat import conversar
+    capturado = {}
+
+    def fake(estacion, prompt, **kw):
+        capturado["imagenes"] = kw.get("imagenes")
+        return _ns(json.dumps({"tipo": "responder", "texto": "Es un recibo de $450."}))
+
+    monkeypatch.setattr(la, "analizar", fake)
+    u = usuario_factory(rol="super_admin")
+    img = [{"base64": "QQ==", "media_type": "image/png"}]
+    res = conversar(mensaje="¿qué es esto?", usuario=u, conversacion=_conv(u), imagenes=img)
+    assert capturado["imagenes"] == img
+    assert "📎" in res["mensajes"][0].cuerpo  # el turno del user marca el adjunto
+
+
+def test_conversar_imagen_sin_texto(monkeypatch, usuario_factory):
+    import lib.analistas as la
+    from apps.el_dictado.services_chat import conversar
+    monkeypatch.setattr(la, "analizar", _fake_analizar(
+        [{"tipo": "responder", "texto": "Veo un ticket."}])[0])
+    u = usuario_factory(rol="super_admin")
+    res = conversar(mensaje="", usuario=u, conversacion=_conv(u),
+                    imagenes=[{"base64": "QQ==", "media_type": "image/jpeg"}])
+    assert res["mensajes"]  # no se descarta por mensaje vacío si hay imagen
+
+
+def test_chat_acepta_imagenes_segun_vision(monkeypatch, usuario_factory):
+    from types import SimpleNamespace
+
+    from apps.el_dictado.services_chat import chat_acepta_imagenes
+    from lib.analistas import registry
+    from lib.analistas.capacidades import Capability
+    u = usuario_factory(rol="super_admin")
+
+    con_vision = SimpleNamespace(capacidades=frozenset({Capability.VISION}),
+                                 esta_configurado=lambda: True)
+    sin_vision = SimpleNamespace(capacidades=frozenset({Capability.TEXTO}),
+                                 esta_configurado=lambda: True)
+    monkeypatch.setattr(registry, "cadena_de", lambda *a, **k: [con_vision])
+    assert chat_acepta_imagenes(u) is True
+    monkeypatch.setattr(registry, "cadena_de", lambda *a, **k: [sin_vision])
+    assert chat_acepta_imagenes(u) is False
+
+
+def test_enviar_con_imagen_htmx(client, monkeypatch, usuario_factory):
+    import lib.analistas as la
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from apps.el_dictado.services_chat import crear_conversacion
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    conv = crear_conversacion(usuario=u)
+    monkeypatch.setattr(la, "analizar", _fake_analizar(
+        [{"tipo": "responder", "texto": "Recibo leído."}])[0])
+    img = SimpleUploadedFile("recibo.png", b"\x89PNG fake", content_type="image/png")
+    resp = client.post(f"/chalan/c/{conv.pk}/enviar", {"mensaje": "lee esto", "imagen": img},
+                       HTTP_HX_REQUEST="true")
+    assert resp.status_code == 200
+    assert b"Recibo le" in resp.content

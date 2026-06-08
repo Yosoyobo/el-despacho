@@ -66,8 +66,28 @@ def _crear_mensaje(conversacion, *, rol, tipo="texto", cuerpo="", nombre_herrami
     )
 
 
-def conversar(*, mensaje: str, usuario, conversacion) -> dict:
+def chat_acepta_imagenes(usuario=None) -> bool:
+    """True si la estación `taller_chat` tiene algún Chalán con visión
+    configurado — gobierna si el composer muestra el botón 📎."""
+    try:
+        from lib.analistas.capacidades import Capability
+        from lib.analistas.registry import cadena_de
+        cadena = cadena_de("taller_chat", usuario_id=getattr(usuario, "pk", None))
+        return any(
+            Capability.VISION in (a.capacidades or ()) and a.esta_configurado()
+            for a in cadena
+        )
+    except Exception:  # noqa: BLE001 — sin DB/credenciales → sin botón
+        return False
+
+
+def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = None) -> dict:
     """Procesa un mensaje del usuario. Persiste turnos y devuelve los nuevos.
+
+    `imagenes` (opcional, S-Chalán-Scope-OCR C2): lista de dicts
+    `{base64, media_type}` que se pasan al LLM en la primera iteración del
+    loop (la imagen es la entrada del usuario; no se re-manda en las llamadas
+    de herramienta). El Reemplazo exige VISION cuando hay imágenes.
 
     Nunca lanza — errores del LLM o de parseo terminan en un mensaje de error
     suave del bot. Retorna `{"mensajes": [MensajeChat, ...], "dictado": Dictado|None}`.
@@ -82,11 +102,15 @@ def conversar(*, mensaje: str, usuario, conversacion) -> dict:
     from .services import _parsear_json  # heurística tolerante {…}
 
     mensaje = sanear_contexto((mensaje or "").strip(), max_len=4000)
-    if not mensaje:
+    if not mensaje and not imagenes:
         return {"mensajes": [], "dictado": None}
+    # Imagen sin texto: el usuario solo adjuntó una foto.
+    if not mensaje and imagenes:
+        mensaje = "Lee esta imagen y dime qué información trae."
 
     nuevos = []
-    msg_user = _crear_mensaje(conversacion, rol="user", cuerpo=mensaje)
+    cuerpo_user = mensaje + (" 📎 (imagen adjunta)" if imagenes else "")
+    msg_user = _crear_mensaje(conversacion, rol="user", cuerpo=cuerpo_user)
     nuevos.append(msg_user)
 
     # Título desde el primer mensaje del usuario.
@@ -97,7 +121,7 @@ def conversar(*, mensaje: str, usuario, conversacion) -> dict:
     historial = _historial_para_prompt(conversacion)
     # El último turno del historial es el mensaje recién creado; lo quitamos
     # para no duplicarlo (va aparte como [MENSAJE NUEVO]).
-    if historial and historial[-1]["rol"] == "user" and historial[-1]["texto"] == mensaje:
+    if historial and historial[-1]["rol"] == "user" and historial[-1]["texto"] == cuerpo_user:
         historial = historial[:-1]
 
     system = construir_system_prompt(usuario)
@@ -109,6 +133,7 @@ def conversar(*, mensaje: str, usuario, conversacion) -> dict:
     dictado_creado = None
     cerrado = False
 
+    imgs_turno = imagenes or None  # solo en la primera llamada al LLM
     for _ in range(MAX_ITERACIONES):
         try:
             from lib.analistas import analizar
@@ -116,7 +141,9 @@ def conversar(*, mensaje: str, usuario, conversacion) -> dict:
                 estacion="taller_chat", prompt=prompt_turno,
                 max_tokens=700, temperatura=0.3,
                 actor_id=getattr(usuario, "pk", None),
+                imagenes=imgs_turno,
             )
+            imgs_turno = None  # las herramientas posteriores no re-envían la imagen
         except Exception as exc:  # noqa: BLE001 — TodosFallaron, etc.
             logger.warning("chat conv=%s LLM falló: %s", conversacion.pk, exc)
             nuevos.append(_crear_mensaje(

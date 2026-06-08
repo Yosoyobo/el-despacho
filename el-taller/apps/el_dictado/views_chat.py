@@ -13,11 +13,30 @@ from django.views.decorators.http import require_http_methods
 
 from .models import ConversacionChat, Dictado
 from .services import aplicar
-from .services_chat import conversar, crear_conversacion
+from .services_chat import chat_acepta_imagenes, conversar, crear_conversacion
 
 
 def _es_htmx(request) -> bool:
     return request.headers.get("HX-Request") == "true"
+
+
+def _imagenes_de_request(request) -> list | None:
+    """Lee una imagen adjunta del request (campo `imagen`), la valida y la
+    devuelve como lista de dicts `{base64, media_type}` para `conversar`.
+    Solo imágenes (el chat con visión no lee PDFs). Best-effort: si algo
+    falla, devuelve None y el chat sigue como texto."""
+    archivo = request.FILES.get("imagen")
+    if not archivo:
+        return None
+    from lib import adjuntos
+    if adjuntos.validar(archivo):
+        return None
+    media = (getattr(archivo, "content_type", "") or "").lower()
+    if not media.startswith("image/"):
+        return None
+    import base64
+    contenido = archivo.read()
+    return [{"base64": base64.b64encode(contenido).decode("ascii"), "media_type": media}]
 
 
 def _conversaciones_de(usuario):
@@ -32,6 +51,7 @@ def _render_shell(request, conversacion):
         "conversacion": conversacion,
         "mensajes": mensajes,
         "ultimo_id": ultimo_id,
+        "chat_vision_ok": chat_acepta_imagenes(request.user),
     })
 
 
@@ -67,11 +87,12 @@ def enviar(request, pk: int):
     """POST /chalan/c/<pk>/enviar — corre el loop y devuelve los turnos nuevos."""
     conv = get_object_or_404(ConversacionChat, pk=pk, usuario=request.user)
     mensaje = (request.POST.get("mensaje") or "").strip()
-    if not mensaje:
+    imagenes = _imagenes_de_request(request)
+    if not mensaje and not imagenes:
         if _es_htmx(request):
             return render(request, "el_dictado/_chat_mensajes.html", {"mensajes": []})
         return redirect("chalan-conversacion", pk=pk)
-    resultado = conversar(mensaje=mensaje, usuario=request.user, conversacion=conv)
+    resultado = conversar(mensaje=mensaje, usuario=request.user, conversacion=conv, imagenes=imagenes)
     if _es_htmx(request):
         return render(request, "el_dictado/_chat_mensajes.html", {"mensajes": resultado["mensajes"]})
     return redirect("chalan-conversacion", pk=pk)
