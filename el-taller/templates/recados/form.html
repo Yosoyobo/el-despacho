@@ -15,7 +15,7 @@
         {% if modo == 'editar' %}Editar recado #{{ recado.pk }}{% else %}Nuevo recado{% endif %}
     </h1>
 
-    <form method="post" class="mt-6 space-y-6" id="form-recado">
+    <form method="post" enctype="multipart/form-data" class="mt-6 space-y-6" id="form-recado">
         {% csrf_token %}
 
         {% if modo != 'editar' %}
@@ -66,12 +66,12 @@
             <p class="mt-1 text-xs text-gray-500">Usa <code>@persona</code>, <code>#proyecto</code>, <code>$cliente</code> para vincular referencias.</p>
         </div>
 
-        <div class="flex items-center gap-2">
-            <button type="button" disabled title="Adjuntos a Drive disponibles cuando el admin configure Google Drive — ver docs/SETUP_GOOGLE_DRIVE.md" class="cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500">
-                📎 Adjuntar archivo
-            </button>
-            <span class="text-xs text-gray-500">Disponible cuando admin configure Google Drive.</span>
+        {% if puede_adjuntar %}
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">📎 Adjuntar archivos</label>
+            {% include "_componentes_tailadmin/_file_upload.html" with name="adjuntos" multiple=True accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hint="Hasta 25 MB c/u. Se guardan en Google Drive." %}
         </div>
+        {% endif %}
 
         <input type="hidden" name="confirmacion_aceptada" value="" id="conf-aceptada">
 

@@ -25,8 +25,10 @@ Drive. Referencia técnica: `docs/SETUP_GOOGLE_DRIVE.md`.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import urlencode
+from uuid import uuid4
 
 import httpx
 
@@ -37,8 +39,11 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files"
+DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files"
 CARPETA_RAIZ_NOMBRE = "El Despacho - Adjuntos"
 HTTP_TIMEOUT = 10.0
+# Subir/bajar archivos puede tardar más que un ping; damos margen.
+HTTP_TIMEOUT_ARCHIVO = 60.0
 
 MIME_CARPETA = "application/vnd.google-apps.folder"
 
@@ -328,20 +333,125 @@ class GoogleDriveWrapper:
             "carpeta_id": carpeta_id,
         }
 
-    # ── API de adjuntos — pendiente de cableado en S2b.1b ─────────────────────
+    # ── Subcarpetas ───────────────────────────────────────────────────────────
+
+    def obtener_o_crear_subcarpeta(self, nombre: str, padre_id: str | None = None) -> str:
+        """ID de una subcarpeta por nombre bajo `padre_id` (o la raíz); la crea
+        si no existe. Sirve para organizar adjuntos (p.ej. «Los Recados»,
+        «Comprobantes», «2026-06»). Idempotente.
+
+        Con scope `drive.file` la búsqueda solo ve carpetas que la app creó, que
+        es justo lo que queremos.
+        """
+        padre = padre_id or self.obtener_o_crear_carpeta_raiz()
+        nombre_q = nombre.replace("\\", "\\\\").replace("'", "\\'")
+        consulta = (
+            f"name = '{nombre_q}' and mimeType = '{MIME_CARPETA}' "
+            f"and '{padre}' in parents and trashed = false"
+        )
+        with httpx.Client(timeout=HTTP_TIMEOUT) as cli:
+            resp = cli.get(
+                DRIVE_FILES_URL,
+                headers=self._headers(),
+                params={"q": consulta, "fields": "files(id,name)", "pageSize": 1},
+            )
+        resp.raise_for_status()
+        encontrados = resp.json().get("files", [])
+        if encontrados:
+            return encontrados[0]["id"]
+        return self.crear_carpeta(nombre, padre_id=padre)["id"]
+
+    # ── Adjuntos: subir / descargar ───────────────────────────────────────────
+
+    def subir_fileobj(
+        self,
+        fileobj: Any,
+        nombre_destino: str,
+        carpeta_id: str | None = None,
+        mime_type: str = "application/octet-stream",
+    ) -> dict[str, str]:
+        """Sube un objeto tipo-archivo (p.ej. `request.FILES['x']`) a Drive.
+
+        Sin `carpeta_id`, lo deja en la carpeta raíz. Devuelve la metadata de
+        Drive: `id`, `name`, `mimeType`, `size`, `webViewLink`.
+        """
+        return self._subir_contenido(fileobj.read(), nombre_destino, carpeta_id, mime_type)
 
     def subir_archivo(
         self,
         ruta_local: str,
         nombre_destino: str,
-        carpeta_id: str,
+        carpeta_id: str | None = None,
+        mime_type: str = "application/octet-stream",
+    ) -> dict[str, str]:
+        """Sube un archivo desde una ruta local del servidor. Misma salida que
+        `subir_fileobj`."""
+        with open(ruta_local, "rb") as fh:
+            contenido = fh.read()
+        return self._subir_contenido(contenido, nombre_destino, carpeta_id, mime_type)
+
+    def _subir_contenido(
+        self,
+        contenido: bytes,
+        nombre_destino: str,
+        carpeta_id: str | None,
         mime_type: str,
     ) -> dict[str, str]:
-        """Sube archivo. La conexión ya está lista; el cableado de adjuntos
-        (modelo + UI) llega en S2b.1b."""
-        raise NotImplementedError(
-            "La subida de adjuntos llega en S2b.1b. La conexión a Drive ya "
-            "está activa (Ajustes → Conectar Google Drive)."
+        """Subida multipart (metadata + bytes en una sola llamada)."""
+        carpeta = carpeta_id or self.obtener_o_crear_carpeta_raiz()
+        metadata = {"name": nombre_destino, "parents": [carpeta]}
+        frontera = f"despacho_{uuid4().hex}"
+        prefijo = (
+            f"--{frontera}\r\n"
+            "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            f"{json.dumps(metadata)}\r\n"
+            f"--{frontera}\r\n"
+            f"Content-Type: {mime_type}\r\n\r\n"
+        ).encode()
+        sufijo = f"\r\n--{frontera}--\r\n".encode()
+        cuerpo = prefijo + contenido + sufijo
+
+        headers = self._headers()
+        headers["Content-Type"] = f"multipart/related; boundary={frontera}"
+        with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
+            resp = cli.post(
+                DRIVE_UPLOAD_URL,
+                headers=headers,
+                params={
+                    "uploadType": "multipart",
+                    "fields": "id,name,mimeType,size,webViewLink",
+                },
+                content=cuerpo,
+            )
+        resp.raise_for_status()
+        return resp.json()
+
+    def descargar(self, file_id: str) -> tuple[bytes, str, str]:
+        """Descarga un archivo de Drive. Devuelve `(contenido, mime_type, nombre)`.
+
+        Lo usa el proxy de El Despacho para servir adjuntos a usuarios
+        autenticados sin exponer el archivo públicamente en Drive (el Drive
+        vive en otra cuenta/dominio que el del equipo).
+        """
+        headers = self._headers()
+        with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
+            meta = cli.get(
+                f"{DRIVE_FILES_URL}/{file_id}",
+                headers=headers,
+                params={"fields": "name,mimeType"},
+            )
+            meta.raise_for_status()
+            datos = meta.json()
+            cont = cli.get(
+                f"{DRIVE_FILES_URL}/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            cont.raise_for_status()
+        return (
+            cont.content,
+            datos.get("mimeType", "application/octet-stream"),
+            datos.get("name", "archivo"),
         )
 
 

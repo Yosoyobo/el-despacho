@@ -11,7 +11,13 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
+from django.http import (
+    Http404,
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseNotAllowed,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -400,12 +406,57 @@ def egreso_detalle(request, pk):
     })
 
 
+def _procesar_comprobante(request, egreso) -> None:
+    """Sube el comprobante del egreso a Drive y popula los campos drive_*.
+
+    Fallback gracioso: si Drive cae o el archivo es inválido, el egreso ya
+    quedó guardado; sólo avisamos con messages.
+    """
+    archivo = request.FILES.get("comprobante")
+    if not archivo:
+        return
+    from lib.adjuntos import subir
+    res = subir(archivo, subcarpeta="Comprobantes")
+    if res.ok and res.data:
+        egreso.drive_file_id = res.data["id"]
+        egreso.drive_url_view = res.data.get("webViewLink", "")
+        egreso.tiene_comprobante = True
+        egreso.save(update_fields=["drive_file_id", "drive_url_view", "tiene_comprobante"])
+        messages.success(request, "Comprobante guardado en Drive.")
+    else:
+        messages.warning(request, f"Comprobante no subido: {res.error}")
+
+
+@login_required
+def egreso_comprobante(request, pk):
+    """Sirve el comprobante del egreso desde Drive (proxy autenticado, sin liga
+    pública). Lo ve cualquiera con acceso a Tesorería."""
+    if (r := _gate(request)) is not None:
+        return r
+    from urllib.parse import quote
+
+    egreso = get_object_or_404(Egreso, pk=pk)
+    if not (egreso.tiene_comprobante and egreso.drive_file_id):
+        raise Http404("Este egreso no tiene comprobante.")
+
+    from lib.google_drive import drive
+    try:
+        contenido, mime, nombre = drive.descargar(egreso.drive_file_id)
+    except Exception:  # noqa: BLE001
+        raise Http404("No se pudo obtener el comprobante de Drive.") from None
+
+    resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
+    disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
+    resp["Content-Disposition"] = f"{disposicion}; filename*=UTF-8''{quote(nombre)}"
+    return resp
+
+
 @login_required
 def egreso_nuevo(request):
     if (r := _gate(request)) is not None:
         return r
     if request.method == "POST":
-        form = EgresoForm(request.POST)
+        form = EgresoForm(request.POST, request.FILES)
         if form.is_valid():
             egreso = form.save(commit=False)
             egreso.creado_por = request.user
@@ -413,6 +464,7 @@ def egreso_nuevo(request):
                 egreso.pagado_por = request.user
             egreso.save()
             _vincular_proveedor_a_proyecto(egreso)
+            _procesar_comprobante(request, egreso)
             _emitir("tesoreria.egreso_registrado", request, {
                 "egreso_id": egreso.pk, "monto": str(egreso.monto),
                 "centro_de_costo_id": egreso.centro_de_costo_id,
@@ -465,9 +517,10 @@ def egreso_editar(request, pk):
         return redirect("tesoreria:egreso-detalle", pk=egreso.pk)
     estado_previo = egreso.estado_pago
     if request.method == "POST":
-        form = EgresoForm(request.POST, instance=egreso)
+        form = EgresoForm(request.POST, request.FILES, instance=egreso)
         if form.is_valid():
             form.save()
+            _procesar_comprobante(request, egreso)
             if (
                 form.cleaned_data["estado_pago"] == "por_reembolsar"
                 and estado_previo != "por_reembolsar"

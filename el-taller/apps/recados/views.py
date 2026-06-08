@@ -27,13 +27,46 @@ from lib.sanear import sanear_contexto
 
 from . import services
 from .forms import RecadoForm
-from .models import Recado, RecadoDestinatario, RecadoGrupo, RecadoVersion
+from .models import Recado, RecadoAdjunto, RecadoDestinatario, RecadoGrupo, RecadoVersion
 
 UMBRAL_CONFIRMACION = 5
 
 
 def _sin_acceso():
     return HttpResponse("Sin acceso a Recados.", status=403)
+
+
+def _procesar_adjuntos(request, recado, user) -> None:
+    """Sube los archivos del form a Drive y crea las filas RecadoAdjunto.
+
+    Fallback gracioso: si Drive cae o un archivo es inválido, el recado ya
+    quedó enviado; sólo avisamos con messages y seguimos.
+    """
+    if not puede(user, "recados", "adjuntar_drive"):
+        return
+    archivos = request.FILES.getlist("adjuntos")
+    if not archivos:
+        return
+
+    from lib.adjuntos import subir
+
+    subidos = 0
+    for archivo in archivos:
+        res = subir(archivo, subcarpeta="Los Recados")
+        if res.ok and res.data:
+            RecadoAdjunto.objects.create(
+                recado=recado,
+                drive_file_id=res.data["id"],
+                nombre=res.data.get("name") or archivo.name,
+                mime_type=res.data.get("mimeType") or getattr(archivo, "content_type", "") or "",
+                tamano_bytes=int(res.data.get("size") or getattr(archivo, "size", 0) or 0),
+                subido_por=user,
+            )
+            subidos += 1
+        else:
+            messages.warning(request, f"Adjunto no subido: {res.error}")
+    if subidos:
+        messages.success(request, f"{subidos} adjunto(s) guardado(s) en Drive.")
 
 
 # ── Bandeja ──────────────────────────────────────────────────────────────────
@@ -207,6 +240,7 @@ def nuevo(request):
             return render(request, "recados/form.html", {
                 "form": form, "grupos": grupos, "usuarios": usuarios_qs,
                 "modo": "nuevo",
+                "puede_adjuntar": puede(user, "recados", "adjuntar_drive"),
             })
 
         confirmado = (request.POST.get("confirmacion_aceptada") or "") in ("1", "true", "on")
@@ -223,11 +257,13 @@ def nuevo(request):
         recado = services.crear_recado(
             autor=user, cuerpo=cuerpo, destinatarios_ids=destinatarios
         )
+        _procesar_adjuntos(request, recado, user)
         messages.success(request, "Recado enviado.")
         return redirect("recados:legacy_detalle", pk=recado.pk)
 
     return render(request, "recados/form.html", {
         "form": form, "grupos": grupos, "usuarios": usuarios_qs, "modo": "nuevo",
+        "puede_adjuntar": puede(user, "recados", "adjuntar_drive"),
     })
 
 
@@ -257,6 +293,7 @@ def editar(request, pk: int):
                 recado.cuerpo = cuerpo_actual
                 services.editar_recado(recado=recado, editor=user, nuevo_cuerpo=nuevo_cuerpo)
                 messages.success(request, "Recado actualizado.")
+            _procesar_adjuntos(request, recado, user)
             return redirect("recados:legacy_detalle", pk=recado.pk)
     else:
         form = RecadoForm(instance=recado)
@@ -265,6 +302,7 @@ def editar(request, pk: int):
         "form": form, "recado": recado, "modo": "editar",
         "grupos": _grupos_disponibles(),
         "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
+        "puede_adjuntar": puede(user, "recados", "adjuntar_drive"),
     })
 
 
@@ -283,5 +321,37 @@ def marcar_leido(request, pk: int):
         fila.save(update_fields=["leido_en"])
         services.emitir_leido(fila.recado, user)
     return HttpResponse(status=204)
+
+
+# ── Adjunto: proxy de descarga ───────────────────────────────────────────────
+
+
+@login_required
+@require_http_methods(["GET"])
+def adjunto_descargar(request, pk: int):
+    """Sirve un adjunto desde Drive al usuario autenticado (sin liga pública).
+
+    Solo quien puede ver el recado puede bajar su adjunto.
+    """
+    from urllib.parse import quote
+
+    user = request.user
+    if not puede(user, "recados", "ver"):
+        return _sin_acceso()
+
+    adj = get_object_or_404(RecadoAdjunto.objects.select_related("recado"), pk=pk)
+    if not services.puede_ver_recado(user, adj.recado):
+        raise Http404("Adjunto no encontrado.")
+
+    from lib.google_drive import drive
+    try:
+        contenido, mime, nombre = drive.descargar(adj.drive_file_id)
+    except Exception:  # noqa: BLE001 — el archivo pudo borrarse en Drive
+        raise Http404("No se pudo obtener el archivo de Drive.") from None
+
+    resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
+    disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
+    resp["Content-Disposition"] = f"{disposicion}; filename*=UTF-8''{quote(nombre)}"
+    return resp
 
 

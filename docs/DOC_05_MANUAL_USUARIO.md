@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — adjuntar archivos a Drive (7 de junio de 2026)
+
+- **Ya puedes adjuntar archivos** en dos lugares, y se guardan en el Google
+  Drive del despacho:
+  - **Egresos (Tesorería):** al registrar o editar un egreso aparece un
+    recuadro **"📎 Comprobante (opcional)"**. Arrastra ahí una foto o un PDF
+    del recibo (hasta 25 MB) o haz click para elegirlo. Después, en el
+    detalle del egreso, verás el enlace **"📎 Ver comprobante"** para abrirlo.
+  - **Recados (bandeja clásica):** al escribir un recado aparece
+    **"📎 Adjuntar archivos"**; puedes subir varias imágenes o documentos.
+    Quedan listados dentro del recado para descargarlos.
+- **Privado para el equipo.** Aunque los archivos viven en un solo Drive del
+  despacho, **no son públicos**: solo se abren desde el sistema y solo si
+  tienes acceso a ese egreso o recado. No necesitas tu propia cuenta de
+  Google ni configurar nada.
+- Si en algún momento Drive no está disponible, el egreso o el recado **se
+  guarda igual** y el sistema te avisa que el archivo no se pudo subir; puedes
+  reintentar editándolo más tarde.
+
 ## Novedades — nuevo Dashboard (7 de junio de 2026)
 
 - **El Dashboard se rediseñó por completo.** Ahora, de arriba hacia abajo:

@@ -20,4 +20,5 @@ urlpatterns = [
     path("legacy/<int:pk>/", views.detalle, name="legacy_detalle"),
     path("legacy/<int:pk>/editar/", views.editar, name="legacy_editar"),
     path("legacy/<int:pk>/leido/", views.marcar_leido, name="legacy_marcar_leido"),
+    path("legacy/adjunto/<int:pk>/", views.adjunto_descargar, name="legacy_adjunto"),
 ]
