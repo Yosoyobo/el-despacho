@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("recados", "0002_seed_grupos"),
-        ("cuentas", "__latest__"),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [

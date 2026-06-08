@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("buzon", "0002_prioridad"),
-        ("cuentas", "__latest__"),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [

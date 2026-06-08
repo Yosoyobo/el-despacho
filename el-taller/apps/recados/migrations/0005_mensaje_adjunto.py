@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("recados", "0004_recado_adjunto"),
-        ("cuentas", "__latest__"),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
