@@ -23,6 +23,8 @@ import logging
 
 from django.db import transaction
 
+from lib.analistas import PresupuestoIAExcedido
+
 logger = logging.getLogger(__name__)
 
 MAX_ITERACIONES = 4
@@ -186,6 +188,11 @@ def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = No
                 imagenes=imgs_turno,
             )
             imgs_turno = None  # las herramientas posteriores no re-envían la imagen
+        except PresupuestoIAExcedido as exc:
+            # El usuario alcanzó su tope de IA del mes (política `topar`).
+            nuevos.append(_crear_mensaje(conversacion, rol="bot", cuerpo=str(exc)))
+            cerrado = True
+            break
         except Exception as exc:  # noqa: BLE001 — TodosFallaron, etc.
             logger.warning("chat conv=%s LLM falló: %s", conversacion.pk, exc)
             nuevos.append(_crear_mensaje(

@@ -109,3 +109,21 @@ def test_borra_custom_sin_uso(client, usuario_factory):
     resp = client.post("/catalogos/estados-proyecto/orphan_x/borrar/")
     assert resp.status_code in (301, 302)
     assert not EstadoProyecto.objects.filter(slug="orphan_x").exists()
+
+
+def test_toggle_ocultar_estado(client, usuario_factory):
+    """S-Directorio-Panel-V1: ocultar/mostrar un estado desde la lista, incluso
+    si es del sistema o está en uso (es reversible)."""
+    from apps.los_proyectos.models import EstadoProyecto
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    e = EstadoProyecto.objects.filter(activo=True).first()
+    assert e is not None
+    resp = client.post(f"/catalogos/estados-proyecto/{e.slug}/toggle/")
+    assert resp.status_code in (301, 302)
+    e.refresh_from_db()
+    assert e.activo is False
+    # Volver a mostrar.
+    client.post(f"/catalogos/estados-proyecto/{e.slug}/toggle/")
+    e.refresh_from_db()
+    assert e.activo is True

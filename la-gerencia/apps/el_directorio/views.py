@@ -3,7 +3,9 @@
 import contextlib
 
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from cuentas.models.permiso_usuario import PermisoUsuario
@@ -39,14 +41,39 @@ def lista(request):
         "admins": por_rol.get("super_admin", 0) + por_rol.get("dueno", 0),
         "total": total,
     }
+    # S-Directorio-Panel-V1: enriquece cada usuario con su Proveedor IA efectivo,
+    # gasto IA 30d y semáforo de presupuesto, para la fila compacta.
+    from decimal import Decimal
+
+    from chalanes.services import proveedor_efectivo, proveedores_configurados
+    from cuentas.models.presupuesto_ia import PresupuestoIA
+    from lib.analistas.registry import apodo as _apodo
+    from lib.analistas.stats import gasto_mes_por_usuario, gasto_por_usuario_dias
+
+    usuarios = list(qs)
+    g30 = gasto_por_usuario_dias(30)
+    gmes = gasto_mes_por_usuario()
+    presup = {p.usuario_id: p for p in PresupuestoIA.objects.filter(activo=True)}
+    for u in usuarios:
+        ef = proveedor_efectivo(u)
+        u.ia_efectivo = ef
+        u.ia_efectivo_apodo = {"auto": "Auto", "mixto": "Mixto"}.get(ef) or _apodo(ef)
+        u.gasto_30d = g30.get(u.pk, Decimal("0"))
+        p = presup.get(u.pk)
+        u.ia_rebasado = bool(p and p.tope_usd > 0 and gmes.get(u.pk, Decimal("0")) >= p.tope_usd)
+    chips_ia = [{"nombre": n, "apodo": _apodo(n)} for n in proveedores_configurados()]
+
     return render(request, "directorio/lista.html", {
-        "usuarios": qs,
+        "usuarios": usuarios,
+        "chips_ia": chips_ia,
         "kpis": kpis,
         "donut_roles_json": donut_desde_conteo(por_rol, etiquetas=etiquetas),
         "cabeceras_directorio": [
             {"label": "Nombre"},
             {"label": "Email"},
             {"label": "Rol"},
+            {"label": "Proveedor IA"},
+            {"label": "Gasto IA 30d", "align": "right"},
             {"label": "Estado"},
             {"label": "", "align": "right"},
         ],
@@ -257,6 +284,189 @@ def rol_borrar(request, pk: int):
     ))
     messages.success(request, f"Rol «{nombre}» borrado.")
     return redirect("directorio-roles")
+
+
+# ── S-Directorio-Panel-V1: modal de detalle con tabs (Datos · IA · Permisos) ──
+
+
+def _es_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def _ctx_ia(usuario) -> dict:
+    """Contexto del tab IA: estaciones con default global + override, Chalanes
+    disponibles, panel de uso 7/30/90d y estado del presupuesto."""
+    from chalanes.estaciones import ESTACIONES_DICT
+    from chalanes.models import CuadroChalanes
+    from chalanes.services import overrides_de, proveedor_efectivo
+    from cuentas.models.presupuesto_ia import PresupuestoIA
+    from cuentas.servicios_presupuesto import evaluar
+    from lib.analistas import registry as reg
+    from lib.analistas.capacidades import Capability
+    from lib.analistas.stats import uso_por_usuario
+
+    cuadro = {c.estacion: c for c in CuadroChalanes.objects.all()}
+    overs = overrides_de(usuario)
+    chalanes = [
+        {"nombre": n, "apodo": reg.apodo(n),
+         "vision": Capability.VISION in (getattr(f, "capacidades", set()) or set())}
+        for n, f in reg._FACTORIES.items()
+    ]
+    filas = []
+    for slug, meta in ESTACIONES_DICT.items():
+        c = cuadro.get(slug)
+        default_prov = c.proveedor if c else meta["proveedor_default"]
+        ov = overs.get(slug)
+        elegibles = [ch for ch in chalanes if (not meta["requiere_vision"] or ch["vision"])]
+        filas.append({
+            "slug": slug, "etiqueta": meta["etiqueta"],
+            "requiere_vision": meta["requiere_vision"],
+            "default_apodo": reg.apodo(default_prov),
+            "elegibles": elegibles,
+            "override_prov": ov[0] if ov else "",
+            "override_modelo": ov[1] if ov else "",
+        })
+    return {
+        "usuario": usuario,
+        "filas_ia": filas,
+        "chalanes_ia": chalanes,
+        "ia_efectivo": proveedor_efectivo(usuario),
+        "uso_ia": uso_por_usuario(usuario.pk),
+        "presupuesto": evaluar(usuario),
+        "politicas": PresupuestoIA.POLITICAS,
+    }
+
+
+def _secciones_permisos(u):
+    activos = {
+        (p.modulo, p.permiso): p.activo
+        for p in PermisoUsuario.objects.filter(usuario=u)
+    }
+    secciones = []
+    for modulo, permisos_lista in DEFAULTS_POR_ROL.get(u.rol, {}).items():
+        filas = [(p, activos.get((modulo, p), True)) for p in permisos_lista]
+        secciones.append((modulo, filas))
+    return secciones
+
+
+@requires_role("super_admin")
+def panel(request, pk: int):
+    """GET HTMX → modal de detalle con tabs. El tab Datos viene precargado."""
+    u = get_object_or_404(Usuario, pk=pk)
+    return render(request, "directorio/_modal_panel.html", {
+        "usuario": u, "form": UsuarioForm(instance=u),
+    })
+
+
+@requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def panel_datos(request, pk: int):
+    u = get_object_or_404(Usuario, pk=pk)
+    if request.method == "POST":
+        form = UsuarioForm(request.POST, instance=u)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Usuario actualizado.")
+            return HttpResponse(status=204, headers={"HX-Redirect": reverse("directorio-lista")})
+    else:
+        form = UsuarioForm(instance=u)
+    return render(request, "directorio/_tab_datos.html", {"usuario": u, "form": form})
+
+
+@requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def panel_ia(request, pk: int):
+    u = get_object_or_404(Usuario, pk=pk)
+    from chalanes.estaciones import ESTACIONES_DICT
+    from chalanes.services import set_override
+    if request.method == "POST":
+        for slug in ESTACIONES_DICT:
+            prov = request.POST.get(f"prov_{slug}", "")
+            modelo = request.POST.get(f"modelo_{slug}", "")
+            set_override(u, slug, prov, modelo, request.user)
+        messages.success(request, "Asignación de Chalanes actualizada.")
+        return render(request, "directorio/_tab_ia.html", {**_ctx_ia(u), "guardado": True})
+    return render(request, "directorio/_tab_ia.html", _ctx_ia(u))
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def ia_forzar(request, pk: int):
+    u = get_object_or_404(Usuario, pk=pk)
+    from chalanes.services import forzar_proveedor, limpiar_overrides
+    prov = (request.POST.get("proveedor") or "").strip()
+    if prov in ("", "auto"):
+        limpiar_overrides(u, request.user)
+        messages.success(request, "Chalanes en automático (usa el Cuadro del equipo).")
+    else:
+        forzar_proveedor(u, prov, request.user)
+        messages.success(request, "Proveedor IA forzado en todas las estaciones.")
+    return render(request, "directorio/_tab_ia.html", {**_ctx_ia(u), "guardado": True})
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def presupuesto(request, pk: int):
+    from decimal import Decimal, InvalidOperation
+
+    from cuentas.models.presupuesto_ia import PresupuestoIA
+    u = get_object_or_404(Usuario, pk=pk)
+    try:
+        tope = Decimal((request.POST.get("tope_usd") or "0").replace(",", "")).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
+        tope = Decimal("0")
+    if tope < 0:
+        tope = Decimal("0")
+    politica = request.POST.get("politica") or PresupuestoIA.POLITICA_ALERTAR
+    if politica not in dict(PresupuestoIA.POLITICAS):
+        politica = PresupuestoIA.POLITICA_ALERTAR
+    activo = bool(request.POST.get("activo"))
+    PresupuestoIA.objects.update_or_create(
+        usuario=u,
+        defaults={"tope_usd": tope, "politica": politica, "activo": activo,
+                  "actualizado_por": request.user},
+    )
+    emitir(EventoPortavoz(
+        tipo="usuario.presupuesto_ia_actualizado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"usuario_id": u.pk, "tope_usd": float(tope), "politica": politica, "activo": activo},
+    ))
+    messages.success(request, "Presupuesto de IA actualizado.")
+    return render(request, "directorio/_tab_ia.html", {**_ctx_ia(u), "guardado": True})
+
+
+@requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def panel_permisos(request, pk: int):
+    from cuentas.models.rol import Rol
+    u = get_object_or_404(Usuario, pk=pk)
+    if request.method == "POST":
+        seleccionados = set(request.POST.getlist("permisos"))
+        for modulo, permisos_lista in DEFAULTS_POR_ROL.get(u.rol, {}).items():
+            for permiso in permisos_lista:
+                PermisoUsuario.objects.update_or_create(
+                    usuario=u, modulo=modulo, permiso=permiso,
+                    defaults={"activo": f"{modulo}.{permiso}" in seleccionados,
+                              "modificado_por": request.user},
+                )
+        u.roles_extra.set(Rol.objects.filter(pk__in=request.POST.getlist("roles_extra")))
+        with contextlib.suppress(Exception):
+            emitir(EventoPortavoz(
+                tipo="permisos.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"usuario_id": u.pk, "email": u.email},
+            ))
+        messages.success(request, f"Permisos de {u.email} actualizados.")
+        return render(request, "directorio/_tab_permisos.html", {
+            "usuario": u, "secciones": _secciones_permisos(u), "guardado": True,
+            "roles_disponibles": Rol.objects.all().order_by("sistema", "nombre"),
+            "roles_actuales_ids": set(u.roles_extra.values_list("pk", flat=True)),
+        })
+    return render(request, "directorio/_tab_permisos.html", {
+        "usuario": u, "secciones": _secciones_permisos(u),
+        "roles_disponibles": Rol.objects.all().order_by("sistema", "nombre"),
+        "roles_actuales_ids": set(u.roles_extra.values_list("pk", flat=True)),
+    })
 
 
 @requires_role("super_admin")

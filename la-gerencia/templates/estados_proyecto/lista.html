@@ -39,6 +39,10 @@
                 <td class="px-5 py-3 text-right tabular-nums">{{ e.proyectos_usando }}</td>
                 <td class="px-5 py-3 text-right">
                     <a href="{% url 'estados-proyecto-editar' e.slug %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                    <form method="post" action="{% url 'estados-proyecto-toggle' e.slug %}" class="ml-2 inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-xs font-medium text-gray-500 hover:underline dark:text-gray-400" title="{% if e.activo %}Ocúltalo del dropdown (los proyectos que lo usan lo conservan){% else %}Vuélvelo a mostrar en el dropdown{% endif %}">{% if e.activo %}Ocultar{% else %}Mostrar{% endif %}</button>
+                    </form>
                     {% if not e.sistema and e.proyectos_usando == 0 %}
                     <form method="post" action="{% url 'estados-proyecto-borrar' e.slug %}" class="ml-2 inline" onsubmit="return confirm('¿Borrar el estado «{{ e.label|escapejs }}»?');">
                         {% csrf_token %}

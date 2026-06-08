@@ -73,6 +73,70 @@ def estadisticas_proveedores(dias: int = 30) -> dict[str, dict]:
     return salida
 
 
+def _inicio_mes_actual():
+    ahora = timezone.now()
+    return ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def uso_por_usuario(usuario_id: int, ventanas: tuple[int, ...] = (7, 30, 90)) -> dict[str, dict]:
+    """`{"7d": {llamadas, tokens, costo_usd}, "30d": {...}, "90d": {...}}` para un
+    usuario, desde `AnalistaLog.actor`. Alimenta el panel de uso del Directorio."""
+    from ajustes.models.analistas_log import AnalistaLog
+
+    salida: dict[str, dict] = {}
+    ahora = timezone.now()
+    for dias in ventanas:
+        agg = (
+            AnalistaLog.objects.filter(actor_id=usuario_id, creado_en__gte=ahora - timedelta(days=dias))
+            .aggregate(
+                llamadas=Count("id"),
+                prompt_tokens=Sum("prompt_tokens"),
+                completion_tokens=Sum("completion_tokens"),
+                costo=Sum("costo_usd_estimado"),
+            )
+        )
+        salida[f"{dias}d"] = {
+            "llamadas": int(agg["llamadas"] or 0),
+            "tokens": int((agg["prompt_tokens"] or 0) + (agg["completion_tokens"] or 0)),
+            "costo_usd": Decimal(agg["costo"] or 0).quantize(Decimal("0.000001")),
+        }
+    return salida
+
+
+def gasto_mes_usuario(usuario_id: int) -> Decimal:
+    """Suma de `costo_usd_estimado` del usuario en el mes calendario en curso."""
+    from ajustes.models.analistas_log import AnalistaLog
+
+    agg = AnalistaLog.objects.filter(
+        actor_id=usuario_id, creado_en__gte=_inicio_mes_actual()
+    ).aggregate(costo=Sum("costo_usd_estimado"))
+    return Decimal(agg["costo"] or 0).quantize(Decimal("0.01"))
+
+
+def gasto_mes_por_usuario() -> dict[int, Decimal]:
+    """`{usuario_id: costo_usd}` del mes en curso, una sola query agrupada."""
+    from ajustes.models.analistas_log import AnalistaLog
+
+    qs = (
+        AnalistaLog.objects.filter(creado_en__gte=_inicio_mes_actual(), actor__isnull=False)
+        .values("actor_id").annotate(costo=Sum("costo_usd_estimado"))
+    )
+    return {row["actor_id"]: Decimal(row["costo"] or 0).quantize(Decimal("0.01")) for row in qs}
+
+
+def gasto_por_usuario_dias(dias: int = 30) -> dict[int, Decimal]:
+    """`{usuario_id: costo_usd}` en los últimos `dias`, una sola query agrupada.
+    Para el chip de gasto IA en la lista del Directorio."""
+    from ajustes.models.analistas_log import AnalistaLog
+
+    desde = timezone.now() - timedelta(days=dias)
+    qs = (
+        AnalistaLog.objects.filter(creado_en__gte=desde, actor__isnull=False)
+        .values("actor_id").annotate(costo=Sum("costo_usd_estimado"))
+    )
+    return {row["actor_id"]: Decimal(row["costo"] or 0).quantize(Decimal("0.01")) for row in qs}
+
+
 def tarjetas_chalanes(dias: int = 30) -> list[dict]:
     """Lista de dicts listos para renderizar — un dict por adapter en `_FACTORIES`.
 

@@ -1,0 +1,18 @@
+{% comment %}Tab Datos del modal del Directorio. Fragmento HTMX.{% endcomment %}
+<form hx-post="{% url 'directorio-panel-datos' usuario.pk %}" hx-target="#dir-tab-content" hx-swap="innerHTML"
+      class="campo-form space-y-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="rounded-lg bg-error-50 p-3 text-sm text-error-700 dark:bg-error-500/10 dark:text-error-300">{{ form.non_field_errors }}</div>{% endif %}
+    {% for f in form %}
+    <div>
+        {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}</label>{% endif %}
+        {{ f }}
+        {% if f.help_text %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ f.help_text }}</p>{% endif %}
+        {% if f.errors %}<ul class="mt-1 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+        <button type="button" data-modal-slot-close class="btn-secundario">Cerrar</button>
+        <button type="submit" class="btn-primario">Guardar</button>
+    </div>
+</form>

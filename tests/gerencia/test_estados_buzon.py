@@ -116,3 +116,19 @@ def test_borra_custom_sin_uso(client, usuario_factory):
     resp = client.post("/catalogos/estados-buzon/huerfano_x/borrar/")
     assert resp.status_code in (301, 302)
     assert not EstadoBuzon.objects.filter(slug="huerfano_x").exists()
+
+
+def test_toggle_ocultar_estado_buzon(client, usuario_factory):
+    """S-Directorio-Panel-V1: ocultar/mostrar un estado del Buzón desde la lista."""
+    from buzon.models import EstadoBuzon
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    e = EstadoBuzon.objects.filter(activo=True).first()
+    assert e is not None
+    resp = client.post(f"/catalogos/estados-buzon/{e.slug}/toggle/")
+    assert resp.status_code in (301, 302)
+    e.refresh_from_db()
+    assert e.activo is False
+    client.post(f"/catalogos/estados-buzon/{e.slug}/toggle/")
+    e.refresh_from_db()
+    assert e.activo is True

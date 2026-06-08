@@ -1,0 +1,51 @@
+{% comment %}S-Directorio-Panel-V1: modal de detalle de usuario con tabs (Datos·IA·Permisos).
+Se inyecta en #modal-slot vía HTMX. Cierra con close X / backdrop / Escape (ui.js).
+Los tabs IA y Permisos cargan perezosamente con hx-get; Datos viene precargado.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/60 px-4 py-8 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative w-full max-w-3xl rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-base font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ usuario.nombre_completo|default:usuario.email|slice:":1"|upper }}</span>
+                <div>
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ usuario.nombre_completo|default:usuario.email }}</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ usuario.email }} · {{ usuario.get_rol_display }}</p>
+                </div>
+            </div>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+
+        <nav class="flex gap-1 border-b border-gray-200 px-5 dark:border-gray-800" aria-label="Tabs" id="dir-tabs">
+            <button type="button" class="dir-tab border-b-2 border-brand-500 px-4 py-2.5 text-sm font-medium text-brand-600 dark:border-brand-400 dark:text-brand-300" aria-current="page"
+                    hx-get="{% url 'directorio-panel-datos' usuario.pk %}" hx-target="#dir-tab-content" hx-swap="innerHTML">Datos</button>
+            <button type="button" class="dir-tab border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    hx-get="{% url 'directorio-panel-ia' usuario.pk %}" hx-target="#dir-tab-content" hx-swap="innerHTML">Inteligencia (IA)</button>
+            <button type="button" class="dir-tab border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    hx-get="{% url 'directorio-panel-permisos' usuario.pk %}" hx-target="#dir-tab-content" hx-swap="innerHTML">Permisos</button>
+        </nav>
+
+        <div id="dir-tab-content" class="max-h-[70vh] overflow-y-auto px-5 py-4">
+            {% include "directorio/_tab_datos.html" with usuario=usuario form=form %}
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    // Resalta el tab activo. Delegación local al modal recién inyectado.
+    var tabs = document.getElementById('dir-tabs');
+    if (!tabs) return;
+    tabs.addEventListener('click', function (e) {
+        var btn = e.target.closest('.dir-tab');
+        if (!btn) return;
+        tabs.querySelectorAll('.dir-tab').forEach(function (t) {
+            t.classList.remove('border-brand-500', 'text-brand-600', 'dark:border-brand-400', 'dark:text-brand-300');
+            t.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+            t.removeAttribute('aria-current');
+        });
+        btn.classList.add('border-brand-500', 'text-brand-600', 'dark:border-brand-400', 'dark:text-brand-300');
+        btn.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+        btn.setAttribute('aria-current', 'page');
+    });
+})();
+</script>

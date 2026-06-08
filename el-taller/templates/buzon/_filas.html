@@ -1,21 +1,34 @@
 {% load buzon_extras %}
+{% comment %}S-LC-Buzon two-pane: ítems compactos de la lista (izquierda). Click → carga
+buzon/_pane.html en #buzon-pane (derecha) vía HTMX. Reemplaza la tabla ancha (_tabla_datos)
+para que la lista quepa en ~40% del ancho, estilo Gmail.{% endcomment %}
 {% for m in mensajes %}
-<tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if m.estado == 'nuevo' %}bg-warning-25 dark:bg-warning-500/5{% endif %}"
-    hx-get="{% url 'buzon-detalle' m.pk %}" hx-target="#buzon-pane" hx-swap="innerHTML show:#buzon-pane:top" hx-push-url="false">
-    {% if es_admin_buzon %}<td class="px-5 py-3" data-no-row-click onclick="event.stopPropagation()"><input type="checkbox" class="buzon-row-check h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" value="{{ m.pk }}"></td>{% endif %}
-    <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">#{{ m.pk }}</td>
-    <td class="px-5 py-3 text-center">
-        <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-full {% if m.prioridad >= 8 %}bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300{% elif m.prioridad >= 6 %}bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300{% elif m.prioridad >= 3 %}bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300{% else %}bg-gray-100 text-gray-600 dark:bg-white/[0.05] dark:text-gray-400{% endif %} px-2 text-xs font-bold tabular-nums" title="Prioridad: {{ m.prioridad }}/10">{{ m.prioridad }}</span>
-    </td>
-    {% if es_admin_buzon %}<td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ m.autor.email }}</td>{% endif %}
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ m.get_tipo_display }}</td>
-    <td class="px-5 py-3">
-        <span class="font-medium text-gray-900 dark:text-gray-100">{{ m.asunto }}</span>
-        {% if m.num_adjuntos %}<span class="ml-1.5 inline-flex items-center gap-0.5 align-middle text-gray-400 dark:text-gray-500" title="{{ m.num_adjuntos }} adjunto{{ m.num_adjuntos|pluralize:'s' }}"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" stroke-linecap="round" stroke-linejoin="round"/></svg>{% if m.num_adjuntos > 1 %}<span class="text-xs font-medium tabular-nums">{{ m.num_adjuntos }}</span>{% endif %}</span>{% endif %}
-    </td>
-    <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ m.estado|color_estado_buzon }}">{{ m.estado|estado_label_buzon }}</span></td>
-    <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ m.creado_en|date:'Y-m-d H:i' }}</td>
-</tr>
+<div class="relative flex cursor-pointer gap-3 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if m.estado == 'nuevo' %}bg-warning-25 dark:bg-warning-500/5{% endif %}"
+     hx-get="{% url 'buzon-detalle' m.pk %}" hx-target="#buzon-pane" hx-swap="innerHTML show:#buzon-pane:top" hx-push-url="false">
+    {% if es_admin_buzon %}
+    <div class="flex items-start pt-0.5" data-no-row-click onclick="event.stopPropagation()">
+        <input type="checkbox" class="buzon-row-check h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" value="{{ m.pk }}">
+    </div>
+    {% endif %}
+    <span class="mt-0.5 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full {% if m.prioridad >= 8 %}bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300{% elif m.prioridad >= 6 %}bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300{% elif m.prioridad >= 3 %}bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300{% else %}bg-gray-100 text-gray-600 dark:bg-white/[0.05] dark:text-gray-400{% endif %} px-1.5 text-xs font-bold tabular-nums" title="Prioridad: {{ m.prioridad }}/10">{{ m.prioridad }}</span>
+    <div class="min-w-0 flex-1">
+        <div class="flex items-baseline justify-between gap-2">
+            <p class="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ m.asunto }}</p>
+            <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ m.creado_en|date:'m-d H:i' }}</span>
+        </div>
+        <div class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            {% if es_admin_buzon %}<span class="truncate">{{ m.autor.email }}</span><span class="text-gray-300 dark:text-gray-600">·</span>{% endif %}
+            <span class="shrink-0">{{ m.get_tipo_display }}</span>
+            {% if m.num_adjuntos %}<span class="inline-flex shrink-0 items-center gap-0.5 text-gray-400 dark:text-gray-500" title="{{ m.num_adjuntos }} adjunto{{ m.num_adjuntos|pluralize:'s' }}"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" stroke-linecap="round" stroke-linejoin="round"/></svg>{% if m.num_adjuntos > 1 %}<span class="tabular-nums">{{ m.num_adjuntos }}</span>{% endif %}</span>{% endif %}
+        </div>
+        <div class="mt-1.5 flex items-center gap-2">
+            <span class="font-mono text-[11px] text-gray-400 dark:text-gray-500">#{{ m.pk }}</span>
+            <span class="badge badge-hex" style="--ec: {{ m.estado|color_estado_buzon }}">{{ m.estado|estado_label_buzon }}</span>
+        </div>
+    </div>
+</div>
 {% empty %}
-{% if es_admin_buzon %}{% with colspan_buzon=6 %}<tr><td colspan="{{ colspan_buzon }}" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Buzón vacío" descripcion="No hay mensajes que coincidan con los filtros." icono="inbox" %}</div></td></tr>{% endwith %}{% else %}<tr><td colspan="5" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="No has enviado mensajes" descripcion="Usa el botón Nuevo mensaje para sugerencias, problemas u otros temas." icono="chat" %}</div></td></tr>{% endif %}
+<div class="p-8">
+    {% if es_admin_buzon %}{% include "_componentes_tailadmin/_empty_state.html" with titulo="Buzón vacío" descripcion="No hay mensajes que coincidan con los filtros." icono="inbox" %}{% else %}{% include "_componentes_tailadmin/_empty_state.html" with titulo="No has enviado mensajes" descripcion="Usa el botón Nuevo mensaje para sugerencias, problemas u otros temas." icono="chat" %}{% endif %}
+</div>
 {% endfor %}

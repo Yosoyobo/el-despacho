@@ -34,6 +34,13 @@ class FaltaCredencial(ErrorTransitorio):
     """El adapter no tiene su llave configurada — no consume retry-budget."""
 
 
+class PresupuestoIAExcedido(Exception):
+    """El usuario alcanzó su tope de gasto IA del mes y su política es `topar`.
+    La llamada se rechaza ANTES de invocar a ningún Chalán. Los callers la
+    capturan (ya envuelven `analizar` en try/except) y degradan con un mensaje
+    claro, sin tumbar la operación no-IA."""
+
+
 class Adapter(ABC):
     """Interfaz común. Cada provider implementa `nombre`, `apodo`,
     `capacidades` y `_invocar`.

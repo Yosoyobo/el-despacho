@@ -84,6 +84,28 @@ def editar(request, slug):
 
 
 @login_required
+def toggle_activo(request, slug):
+    """Oculta/muestra un estado sin borrarlo. Un estado inactivo desaparece del
+    dropdown del detalle del proyecto; los proyectos que ya lo usan lo conservan.
+    Sirve para 'desaparecer' estados que ya no se usan, incluso si están en uso
+    o son del sistema (es reversible)."""
+    if (r := _gate(request)) is not None:
+        return r
+    if request.method != "POST":
+        return redirect("estados-proyecto-lista")
+    obj = get_object_or_404(EstadoProyecto, slug=slug)
+    obj.activo = not obj.activo
+    obj.save(update_fields=["activo"])
+    emitir(EventoPortavoz(
+        tipo="proyecto.estado_actualizado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"slug": obj.slug, "label": obj.label, "activo": obj.activo},
+    ))
+    messages.success(request, f"Estado «{obj.label}» {'mostrado' if obj.activo else 'oculto'}.")
+    return redirect("estados-proyecto-lista")
+
+
+@login_required
 def borrar(request, slug):
     if (r := _gate(request)) is not None:
         return r

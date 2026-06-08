@@ -1,5 +1,7 @@
+{% load forms_helpers %}
 {% for u in usuarios %}
-<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]{% if request.user.es_super_admin %} cursor-pointer{% endif %}"
+    {% if request.user.es_super_admin %}hx-get="{% url 'directorio-panel' u.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"{% endif %}>
     <td class="px-5 py-3">
         <div class="flex items-center gap-3">
             <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ u.nombre_completo|default:u.email|slice:":1"|upper }}</span>
@@ -8,12 +10,26 @@
     </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ u.email }}</td>
     <td class="px-5 py-3"><span class="badge badge-brand">{{ u.get_rol_display }}</span></td>
+    <td class="px-5 py-3">
+        {% if u.ia_efectivo == 'auto' %}
+            <span class="badge badge-gray">Auto</span>
+        {% elif u.ia_efectivo == 'mixto' %}
+            <span class="badge badge-warning">Mixto</span>
+        {% else %}
+            <span class="badge badge-brand">{{ u.ia_efectivo_apodo }}</span>
+        {% endif %}
+    </td>
+    <td class="px-5 py-3 text-right tabular-nums {% if u.ia_rebasado %}text-error-600 dark:text-error-400 font-medium{% else %}text-gray-600 dark:text-gray-300{% endif %}">
+        {% if u.ia_rebasado %}<span title="Rebasó su presupuesto de IA del mes">● </span>{% endif %}{{ u.gasto_30d|dinero }}
+    </td>
     <td class="px-5 py-3">{% if u.is_active %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-error">Bloqueado</span>{% endif %}</td>
-    <td class="px-5 py-3 text-right">
+    <td class="px-5 py-3 text-right" data-no-row-click onclick="event.stopPropagation()">
         <div class="inline-flex items-center gap-2">
+            {% if request.user.es_super_admin %}
+            <button type="button" hx-get="{% url 'directorio-panel' u.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Abrir</button>
+            {% else %}
             <a href="{% url 'directorio-editar' u.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
-            {% if request.user.es_super_admin %}<a href="{% url 'directorio-permisos' u.pk %}" class="text-sm font-medium text-violet-600 hover:underline dark:text-violet-400">Permisos</a>{% endif %}
-            {% if request.user.es_super_admin %}<a href="{% url 'directorio-asignar-roles-extra' u.pk %}" class="text-sm font-medium text-violet-600 hover:underline dark:text-violet-400">Roles</a>{% endif %}
+            {% endif %}
             <form method="post" action="{% url 'directorio-bloquear' u.pk %}" class="inline">
                 {% csrf_token %}
                 <button type="submit" class="text-sm font-medium text-gray-500 hover:text-error-600 dark:text-gray-400 dark:hover:text-error-400">{% if u.is_active %}Bloquear{% else %}Activar{% endif %}</button>
@@ -22,5 +38,5 @@
     </td>
 </tr>
 {% empty %}
-<tr><td colspan="5" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin usuarios" descripcion="Aún no hay nadie en El Directorio." icono="inbox" %}</div></td></tr>
+<tr><td colspan="7" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin usuarios" descripcion="Aún no hay nadie en El Directorio." icono="inbox" %}</div></td></tr>
 {% endfor %}

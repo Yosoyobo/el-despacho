@@ -42,6 +42,23 @@ def analizar(
     excluir: set[str] | None = None,
     imagenes: list | None = None,
 ) -> Resultado:
+    # Gate de presupuesto IA (S-Directorio-Panel-V1): si el usuario tiene
+    # política `topar` y ya rebasó su tope del mes, se rechaza ANTES de llamar
+    # a ningún Chalán. La consulta es defensiva (cualquier error → no topa).
+    if actor_id:
+        debe = False
+        try:
+            from cuentas.servicios_presupuesto import debe_topar
+            debe = debe_topar(actor_id)
+        except Exception:
+            debe = False
+        if debe:
+            from .base import PresupuestoIAExcedido
+            raise PresupuestoIAExcedido(
+                "Alcanzaste tu tope de IA del mes. Pídele al admin que lo amplíe "
+                "en El Directorio."
+            )
+
     cadena = cadena_de(estacion, usuario_id=actor_id)
     if not cadena:
         raise RuntimeError(f"No hay adapters configurados para estación '{estacion}'")

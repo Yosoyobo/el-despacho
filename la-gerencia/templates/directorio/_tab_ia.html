@@ -1,0 +1,98 @@
+{% comment %}Tab IA del modal del Directorio. Fragmento HTMX. Uso 7/30/90d + chips
+forzar proveedor + presupuesto USD (alertar/topar) + override por estación.{% endcomment %}
+{% load forms_helpers %}
+{% if guardado %}<div class="mb-3 rounded-lg bg-success-50 px-3 py-2 text-sm text-success-700 dark:bg-success-500/10 dark:text-success-300">✓ Guardado.</div>{% endif %}
+
+{# Panel de uso #}
+<div class="mb-5 grid grid-cols-3 gap-3">
+    <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-white/[0.02]">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Últimos 7 días</p>
+        <p class="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">{{ uso_ia.7d.costo_usd|dinero }}</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500">{{ uso_ia.7d.llamadas }} llamadas · {{ uso_ia.7d.tokens }} tokens</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-white/[0.02]">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Últimos 30 días</p>
+        <p class="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">{{ uso_ia.30d.costo_usd|dinero }}</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500">{{ uso_ia.30d.llamadas }} llamadas · {{ uso_ia.30d.tokens }} tokens</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-white/[0.02]">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Últimos 90 días</p>
+        <p class="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">{{ uso_ia.90d.costo_usd|dinero }}</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500">{{ uso_ia.90d.llamadas }} llamadas · {{ uso_ia.90d.tokens }} tokens</p>
+    </div>
+</div>
+
+{# Chips: forzar proveedor en todas las estaciones #}
+<div class="mb-5">
+    <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor IA (atajo: fija todas las estaciones)</p>
+    <div class="flex flex-wrap gap-2">
+        <button type="button" hx-post="{% url 'directorio-ia-forzar' usuario.pk %}" hx-vals='{"proveedor": "auto"}' hx-target="#dir-tab-content" hx-swap="innerHTML"
+                class="rounded-lg border px-3 py-1.5 text-sm font-medium transition {% if ia_efectivo == 'auto' %}border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">Auto</button>
+        {% for ch in chalanes_ia %}
+        <button type="button" hx-post="{% url 'directorio-ia-forzar' usuario.pk %}" hx-vals='{"proveedor": "{{ ch.nombre }}"}' hx-target="#dir-tab-content" hx-swap="innerHTML"
+                class="rounded-lg border px-3 py-1.5 text-sm font-medium transition {% if ia_efectivo == ch.nombre %}border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ ch.apodo }}</button>
+        {% endfor %}
+    </div>
+    {% if ia_efectivo == 'mixto' %}<p class="mt-1.5 text-xs text-warning-600 dark:text-warning-400">Estaciones con proveedores distintos (mixto). Usa un chip para uniformar, o ajusta abajo por estación.</p>{% endif %}
+</div>
+
+{# Presupuesto IA en USD #}
+<form hx-post="{% url 'directorio-presupuesto' usuario.pk %}" hx-target="#dir-tab-content" hx-swap="innerHTML"
+      class="campo-form mb-5 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+    {% csrf_token %}
+    <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Presupuesto de IA (mensual, USD)</p>
+    <div class="flex flex-wrap items-end gap-4">
+        <div>
+            <label for="ia-tope" class="mb-1 block text-xs text-gray-500 dark:text-gray-400">Tope (0 = sin tope)</label>
+            <input id="ia-tope" type="number" step="0.01" min="0" name="tope_usd" value="{{ presupuesto.tope_usd }}" class="w-32">
+        </div>
+        <div>
+            <span class="mb-1 block text-xs text-gray-500 dark:text-gray-400">Al rebasar</span>
+            <div class="inline-flex rounded-lg border border-gray-200 p-0.5 text-sm dark:border-gray-700">
+                {% for val, lbl in politicas %}
+                <label class="cursor-pointer rounded-md px-3 py-1.5 {% if presupuesto.politica == val %}bg-brand-500 text-white{% else %}text-gray-600 dark:text-gray-300{% endif %}">
+                    <input type="radio" name="politica" value="{{ val }}" class="sr-only" {% if presupuesto.politica == val %}checked{% endif %}>{{ lbl }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" name="activo" value="1" {% if presupuesto.activo or not presupuesto.tiene_tope %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+            Activo
+        </label>
+        <button type="submit" class="btn-secundario ml-auto">Guardar presupuesto</button>
+    </div>
+    {% if presupuesto.tiene_tope %}
+    <p class="mt-2 text-xs {% if presupuesto.rebasado %}text-error-600 dark:text-error-400{% else %}text-gray-500 dark:text-gray-400{% endif %}">
+        Este mes: {{ presupuesto.gastado_mes|dinero }} de {{ presupuesto.tope_usd|dinero }} ({{ presupuesto.porcentaje }}%){% if presupuesto.rebasado %} — rebasado{% if presupuesto.politica == 'topar' %}, la IA de este usuario está topada{% endif %}{% endif %}.
+    </p>
+    {% endif %}
+</form>
+
+{# Override por estación #}
+<form hx-post="{% url 'directorio-panel-ia' usuario.pk %}" hx-target="#dir-tab-content" hx-swap="innerHTML" class="campo-form">
+    {% csrf_token %}
+    <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Chalán por estación (vacío = usa el del equipo)</p>
+    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:bg-gray-900/50 dark:text-gray-400">
+                <tr><th class="px-4 py-2 text-left">Estación</th><th class="px-4 py-2 text-left">Proveedor</th><th class="px-4 py-2 text-left">Modelo (opcional)</th></tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for fila in filas_ia %}
+                <tr>
+                    <td class="px-4 py-2 text-gray-700 dark:text-gray-200">{{ fila.etiqueta }}{% if fila.requiere_vision %} <span class="text-[10px] uppercase text-gray-400">visión</span>{% endif %}</td>
+                    <td class="px-4 py-2">
+                        <select name="prov_{{ fila.slug }}" class="w-full">
+                            <option value="">Equipo ({{ fila.default_apodo }})</option>
+                            {% for ch in fila.elegibles %}<option value="{{ ch.nombre }}" {% if fila.override_prov == ch.nombre %}selected{% endif %}>{{ ch.apodo }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td class="px-4 py-2"><input type="text" name="modelo_{{ fila.slug }}" value="{{ fila.override_modelo }}" placeholder="default" class="w-full"></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="mt-3 flex justify-end"><button type="submit" class="btn-primario">Guardar estaciones</button></div>
+</form>

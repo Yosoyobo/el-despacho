@@ -5,13 +5,40 @@
 
 ---
 
+## Novedades — Panel de usuarios y ocultar estados que ya no usas (8 de junio de 2026)
+
+- **El Directorio ahora abre cada usuario en una ventana con pestañas** *(La
+  Gerencia, solo super_admin)*. En **El Directorio**, la lista muestra de un
+  vistazo el **proveedor de IA** de cada quien y su **gasto de IA de los últimos
+  30 días**. Al hacer clic en una persona se abre una ventana con tres
+  pestañas:
+  - **Datos** — nombre, correo, rol y contraseña.
+  - **Inteligencia (IA)** — cuánto ha gastado en IA (7/30/90 días), un atajo
+    para fijar el mismo Chalán en todas sus tareas (o dejarlo en **Auto**), el
+    detalle por tarea, y un **presupuesto mensual en dólares**.
+  - **Permisos** — qué módulos y acciones puede usar, más sus roles extra.
+- **Puedes ponerle un tope de gasto de IA a cada usuario** *(solo super_admin)*.
+  En la pestaña Inteligencia escribes un monto en dólares al mes y eliges qué
+  pasa al rebasarlo: **Solo alertar** (te avisa pero la IA sigue funcionando) o
+  **Topar consumo** (la IA de esa persona se pausa hasta el siguiente mes; tú
+  puedes ampliar el tope cuando quieras). Dejar el tope en 0 = sin límite.
+- **Puedes ocultar o borrar los estados que ya no uses** *(solo super_admin)*.
+  En **Catálogos → Estados de proyecto** y **Catálogos → Estados del Buzón**,
+  cada estado tiene ahora un botón **Ocultar** (y **Mostrar** para volver a
+  activarlo). Un estado oculto desaparece de los menús pero los proyectos o
+  tickets que ya lo usaban lo conservan. Los estados nuevos que no use nadie se
+  pueden **Borrar** por completo.
+
+---
+
 ## Novedades — Buzón horizontal, indicador de adjunto y estados configurables (8 de junio de 2026)
 
-- **El Buzón abre los mensajes en modo horizontal.** Antes el mensaje se abría
-  en una columna angosta a la derecha y el texto se enredaba. Ahora, al tocar un
-  ticket de la lista, el mensaje se abre **a todo lo ancho, justo debajo de la
-  lista**, y la pantalla baja sola hasta él. Se lee mucho más cómodo, sobre todo
-  los asuntos y textos largos.
+- **El Buzón se ve como un correo: lista a un lado, mensaje al otro.** Al entrar
+  al Buzón verás la **lista de tickets a la izquierda** (compacta, con su propio
+  scroll) y, al tocar uno, el mensaje completo se abre **a la derecha**, sin
+  perder de vista la lista. Así puedes pasar de un ticket a otro de un clic. En
+  el celular se acomoda en una sola columna: primero la lista y debajo el
+  mensaje que abriste.
 - **Los tickets con archivo muestran un clip 📎.** En la lista del Buzón, los
   mensajes que traen uno o más adjuntos aparecen con un pequeño ícono de clip
   junto al asunto (y el número, si trae varios). Así sabes de un vistazo cuáles
