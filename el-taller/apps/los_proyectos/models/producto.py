@@ -59,6 +59,17 @@ class ProyectoProducto(models.Model):
     incluir_en_calculo = models.BooleanField(default=True)
     nota = models.CharField(max_length=200, blank=True, default="")
 
+    # B (2026-06-07): Egreso generado en Tesorería cuando el proyecto pasa a
+    # producción. Marca de idempotencia — una línea con egreso no vuelve a
+    # generar. SET_NULL: si el egreso se borra físicamente, la línea queda sin
+    # marca (podría regenerarse). Ver apps.los_proyectos.signals_egresos.
+    egreso = models.ForeignKey(
+        "tesoreria.Egreso",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="lineas_proyecto",
+    )
+
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:

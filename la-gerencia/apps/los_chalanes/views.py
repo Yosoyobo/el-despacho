@@ -23,6 +23,7 @@ from lib.analistas.stats import resumen_global, tarjetas_chalanes
 from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
 from lib.permisos import es_super_admin, requires_role
 from lib.portavoz import emitir
+from lib.portavoz_eventos import EventoPortavoz
 
 from .forms import AprendizajeForm
 
@@ -45,6 +46,57 @@ def panel(request):
         "comandos_dictado": COMANDOS_DICTADO,
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
         "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
+    })
+
+
+# ── Prompts (voz editable de Los Chalanes) ───────────────────────────
+
+
+@requires_role("super_admin")
+def prompts_voz(request):
+    """Edita la voz/tono de Los Chalanes (Prompt base + voces por estación).
+
+    No toca los prompts estructurales (esquemas JSON, whitelist del DSL,
+    schema del OCR) — esos son contrato con el código. Slot vacío = default.
+    """
+    from chalanes.models import PromptVoz
+    from chalanes.models.prompt_voz import SLOTS_VOZ
+    from chalanes.voz import invalidar_cache_voz
+
+    existentes = {pv.clave: pv for pv in PromptVoz.objects.all()}
+    if request.method == "POST":
+        for clave, _etq, _ayuda in SLOTS_VOZ:
+            contenido = (request.POST.get(f"voz_{clave}") or "").strip()
+            pv = existentes.get(clave) or PromptVoz(clave=clave)
+            pv.contenido = contenido
+            pv.actualizado_por = request.user
+            pv.save()
+        invalidar_cache_voz()
+        with contextlib.suppress(Exception):
+            emitir(EventoPortavoz(
+                tipo="chalan.voz_actualizada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"slots": [s[0] for s in SLOTS_VOZ]},
+            ))
+        messages.success(request, "Prompts guardados. Los Chalanes los usarán en la próxima llamada.")
+        return redirect("los_chalanes:prompts-voz")
+
+    slots = []
+    for clave, etiqueta, ayuda in SLOTS_VOZ:
+        pv = existentes.get(clave)
+        slots.append({
+            "clave": clave, "etiqueta": etiqueta, "ayuda": ayuda,
+            "contenido": pv.contenido if pv else "",
+            "es_base": clave == "base",
+        })
+    return render(request, "los_chalanes/prompts.html", {
+        "slots": slots,
+        "breadcrumb_items": [
+            {"url": "/chalanes/", "label": "Chalanes"},
+            {"label": "Prompts"},
+        ],
+        "back_url": "/chalanes/",
+        "back_label": "Chalanes",
     })
 
 

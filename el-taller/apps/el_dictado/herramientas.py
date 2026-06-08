@@ -210,6 +210,15 @@ def _h_detalle_proyecto(args: dict, usuario) -> dict:
         {"usuario": a.usuario.get_full_name() or a.usuario.email, "rol": a.rol_en_proyecto}
         for a in p.asignaciones.select_related("usuario").all()
     ]
+    # Gastos del proyecto: costos derivados de los productos + Egresos reales
+    # ya registrados en Tesorería (B 2026-06-07). Así el Chalán reporta cuánto
+    # se ha gastado/se le adeuda a proveedores por este proyecto.
+    from django.db.models import Count, Sum
+    eg = p.egresos.filter(anulado=False).aggregate(n=Count("id"), total=Sum("monto"))
+    deuda = [
+        {"proveedor": d["proveedor"].razon_social, "total": float(d["total"])}
+        for d in p.deuda_por_proveedor()
+    ]
     return {
         "codigo": p.codigo,
         "nombre": p.nombre,
@@ -218,6 +227,13 @@ def _h_detalle_proyecto(args: dict, usuario) -> dict:
         "fecha_compromiso": p.fecha_compromiso.date().isoformat() if p.fecha_compromiso else None,
         "monto_cotizado": p.monto_cotizado,
         "asignados": asignados,
+        "costo_produccion": float(p.costo_produccion),
+        "utilidad_estimada": float(p.utilidad_productos),
+        "egresos_registrados": {
+            "cantidad": eg["n"] or 0,
+            "total": float(eg["total"] or 0),
+        },
+        "deuda_por_proveedor": deuda,
         "link": f"/proyectos/{p.slug}/",
     }
 
@@ -558,7 +574,7 @@ HERRAMIENTAS: dict[str, Herramienta] = {
     ),
     "detalle_proyecto": Herramienta(
         nombre="detalle_proyecto",
-        descripcion="Estatus de un proyecto por código (LC-0001) o slug.",
+        descripcion="Estatus de un proyecto por código (LC-0001) o slug: incluye costo de producción, utilidad estimada, egresos registrados en Tesorería y deuda por proveedor.",
         args_schema={"proyecto_slug": {"tipo": "str", "requerido": True}},
         gating="abierto", fn=_h_detalle_proyecto,
     ),

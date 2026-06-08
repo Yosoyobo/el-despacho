@@ -80,7 +80,8 @@ def interpretar(
         aprendizajes=aprendizajes, aclaracion=aclaracion,
         historial=list(dictado.historial_clarificaciones or []),
     )
-    prompt_completo = SYSTEM_PROMPT + "\n\n" + user_prompt
+    from chalanes.voz import preludio
+    prompt_completo = preludio("dictado") + SYSTEM_PROMPT + "\n\n" + user_prompt
 
     t0 = time.monotonic()
     try:
@@ -270,7 +271,8 @@ def _reinterpretar_con_otro_chalan(*, dictado, usuario, excluir: set):
         aprendizajes=aprendizajes,
         historial=list(dictado.historial_clarificaciones or []),
     )
-    prompt_completo = SYSTEM_PROMPT + "\n\n" + user_prompt
+    from chalanes.voz import preludio
+    prompt_completo = preludio("dictado") + SYSTEM_PROMPT + "\n\n" + user_prompt
 
     try:
         from lib.analistas import analizar

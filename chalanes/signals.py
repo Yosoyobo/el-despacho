@@ -13,7 +13,7 @@ from __future__ import annotations
 import contextlib
 import re
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 # Coincide con `chalan_<nombre>_api_key`. Captura el nombre del proveedor.
@@ -61,3 +61,13 @@ def auto_agregar_a_cadena_fallback(sender, instance, created, **kwargs):  # noqa
         CadenaFallback.objects.create(
             proveedor=proveedor, prioridad=siguiente, activo=True,
         )
+
+
+@receiver(post_save, sender="chalanes.PromptVoz", dispatch_uid="prompt_voz_cache_save")
+@receiver(post_delete, sender="chalanes.PromptVoz", dispatch_uid="prompt_voz_cache_del")
+def _invalidar_cache_voz(sender, **kwargs):  # noqa: ARG001
+    """Al guardar/borrar una voz, limpia el caché para que el próximo prompt
+    la recoja sin esperar a que expire el TTL."""
+    with contextlib.suppress(Exception):
+        from .voz import invalidar_cache_voz
+        invalidar_cache_voz()

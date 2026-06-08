@@ -71,7 +71,8 @@ def nl_a_dsl(*, texto: str, usuario, max_tokens: int = 1500) -> dict:
     """
     from lib.analistas import analizar
 
-    prompt = _system_prompt() + "\n\nPREGUNTA DEL USUARIO:\n" + texto
+    from chalanes.voz import preludio
+    prompt = preludio("kpi_dsl") + _system_prompt() + "\n\nPREGUNTA DEL USUARIO:\n" + texto
     try:
         resultado = analizar(
             estacion="kpi_dsl", prompt=prompt,

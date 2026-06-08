@@ -63,7 +63,8 @@ def _seccion_acciones(usuario) -> str:
 
 
 def construir_system_prompt(usuario) -> str:
-    return "\n\n".join([
+    from chalanes.voz import preludio
+    return preludio("taller_chat") + "\n\n".join([
         _BASE,
         _seccion_herramientas(usuario),
         _seccion_acciones(usuario),

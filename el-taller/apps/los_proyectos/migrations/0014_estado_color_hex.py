@@ -41,6 +41,11 @@ class Migration(migrations.Migration):
     dependencies = [("proyectos", "0013_estado_cerrado")]
 
     operations = [
+        # Orden importa: primero convertimos los badge-* (hasta 13 chars) a HEX
+        # (7 chars) sobre la columna varchar(24) original; recién entonces la
+        # encogemos a varchar(7). Al revés, el AlterField truncaría los valores
+        # largos y reventaría con "value too long for type character varying(7)".
+        migrations.RunPython(badge_a_hex, noop),
         migrations.AlterField(
             model_name="estadoproyecto",
             name="color",
@@ -54,5 +59,4 @@ class Migration(migrations.Migration):
                 )],
             ),
         ),
-        migrations.RunPython(badge_a_hex, noop),
     ]

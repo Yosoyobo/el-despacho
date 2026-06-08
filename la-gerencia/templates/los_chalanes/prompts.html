@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Prompts · Chalanes{% endblock %}
+{% block contenido %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+
+<header class="mb-6">
+    <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Los Prompts</h1>
+    <p class="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
+        Edita la voz y personalidad de los Chalanes. Todos los prompts usan la misma
+        estructura, sin importar qué Chalán (Claudio/GPT/Chino/MiMo/Gemini) los ejecute.
+        Los prompts <strong>estructurales</strong> (esquemas JSON del Dictado, whitelist
+        del DSL de KPIs, schema del OCR) <strong>NO son editables</strong> porque su forma
+        es contrato con el código.
+    </p>
+</header>
+
+<form method="post" action="{% url 'los_chalanes:prompts-voz' %}" class="space-y-6">
+    {% csrf_token %}
+    {% for s in slots %}
+    <section class="overflow-hidden rounded-2xl border {% if s.es_base %}border-brand-200 dark:border-brand-500/40{% else %}border-gray-200 dark:border-gray-800{% endif %} bg-white shadow-theme-sm dark:bg-gray-900">
+        <header class="border-b border-gray-100 px-5 py-3 dark:border-gray-800">
+            <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {% if s.es_base %}🧂{% else %}🗣️{% endif %} {{ s.etiqueta }}
+                {% if s.es_base %}<span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">global</span>{% endif %}
+            </h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ s.ayuda }}</p>
+        </header>
+        <div class="p-5">
+            <textarea
+                name="voz_{{ s.clave }}"
+                rows="{% if s.es_base %}6{% else %}4{% endif %}"
+                class="w-full rounded-lg border-gray-300 text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                placeholder="{% if s.es_base %}Personalidad e instrucciones generales del asistente…{% else %}(opcional — vacío usa el comportamiento por defecto){% endif %}"
+            >{{ s.contenido }}</textarea>
+        </div>
+    </section>
+    {% endfor %}
+
+    <div class="flex items-center gap-3">
+        <button type="submit" class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600">
+            Guardar prompts
+        </button>
+        <a href="{% url 'los_chalanes:panel' %}" class="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

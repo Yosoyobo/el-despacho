@@ -7,6 +7,8 @@ app_name = "los_chalanes"
 urlpatterns = [
     path("", views.panel, name="panel"),
     path("cuadro/guardar", views.guardar_cuadro, name="guardar_cuadro"),
+    # Prompts — voz editable (Prompt base + voces por estación)
+    path("prompts/", views.prompts_voz, name="prompts-voz"),
     path("cadena/reordenar", views.reordenar_cadena, name="reordenar_cadena"),
     path("cadena/toggle", views.toggle_cadena, name="toggle_cadena"),
     # S-Chalanes-Panel: prueba de conexión + borrar llave por proveedor

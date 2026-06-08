@@ -25,6 +25,7 @@ ORIGEN_EGRESO = (
     ("ocr", "OCR de recibo"),
     ("dictado", "Dictado El Chalán"),
     ("sala_juntas", "Dictado desde Sala de Juntas"),
+    ("proyecto", "Gasto de proyecto (producción)"),
 )
 
 

@@ -21,6 +21,8 @@ EventoTipo = Literal[
     "proyecto.estado_creado",
     "proyecto.estado_actualizado",
     "proyecto.estado_borrado",
+    "proyecto.egresos_generados",
+    "chalan.voz_actualizada",
     "tarea.creada",
     "tarea.completada",
     "cotizacion.creada",
