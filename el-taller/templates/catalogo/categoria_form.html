@@ -13,7 +13,13 @@
     {% csrf_token %}
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="space-y-5">
-            {% for f in form %}{% include "_componentes_tailadmin/_form_campo.html" with campo=f %}{% endfor %}
+            {% for f in form %}
+                {% if f.name == "color" %}
+                    {% include "_componentes_tailadmin/_campo_color_hex.html" with campo=f %}
+                {% else %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                {% endif %}
+            {% endfor %}
         </div>
     </section>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">

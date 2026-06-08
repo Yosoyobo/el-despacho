@@ -152,6 +152,58 @@
     if (redirect) return;  // htmx maneja el redirect; no toques el slot
   });
 
+  // --- Campo de color HEX con popover poco intrusivo (S-Estados-Color-HEX) ---
+  // Sincroniza swatch ↔ cuadro de texto ↔ rueda nativa ↔ chips. El cuadro de
+  // texto es la fuente de verdad (#RRGGBB). Delegación para tolerar formularios
+  // re-renderizados (HTMX) sin re-bindear.
+  function _hexValido(v) { return /^#[0-9a-fA-F]{6}$/.test(v); }
+  function _aplicarColor(campo, valor) {
+    valor = (valor || '').trim();
+    if (valor && valor[0] !== '#') valor = '#' + valor;
+    var input = campo.querySelector('[data-color-input]');
+    var swatch = campo.querySelector('[data-color-swatch]');
+    var preview = campo.querySelector('[data-color-preview]');
+    var wheel = campo.querySelector('[data-color-wheel]');
+    if (input && input.value !== valor) input.value = valor.toUpperCase();
+    if (_hexValido(valor)) {
+      if (swatch) swatch.style.backgroundColor = valor;
+      if (preview) preview.style.setProperty('--ec', valor);
+      if (wheel) wheel.value = valor;
+    }
+  }
+  function _cerrarPopovers(excepto) {
+    document.querySelectorAll('[data-color-popover]').forEach(function (p) {
+      if (p !== excepto) p.hidden = true;
+    });
+  }
+  document.body.addEventListener('click', function (e) {
+    var swatch = e.target.closest('[data-color-swatch]');
+    if (swatch) {
+      e.preventDefault();
+      var campo = swatch.closest('[data-campo-color]');
+      var pop = campo && campo.querySelector('[data-color-popover]');
+      if (pop) { var abrir = pop.hidden; _cerrarPopovers(pop); pop.hidden = !abrir; }
+      return;
+    }
+    var chip = e.target.closest('[data-color-chip]');
+    if (chip) {
+      e.preventDefault();
+      var campoChip = chip.closest('[data-campo-color]');
+      _aplicarColor(campoChip, chip.getAttribute('data-color-chip'));
+      var popChip = campoChip.querySelector('[data-color-popover]');
+      if (popChip) popChip.hidden = true;
+      return;
+    }
+    if (!e.target.closest('[data-campo-color]')) _cerrarPopovers(null);
+  });
+  document.body.addEventListener('input', function (e) {
+    var campo = e.target.closest('[data-campo-color]');
+    if (!campo) return;
+    if (e.target.matches('[data-color-input]') || e.target.matches('[data-color-wheel]')) {
+      _aplicarColor(campo, e.target.value);
+    }
+  });
+
   // --- Dropdowns canónicos S-TailAdmin-Sweep (_dropdown.html) ---
   document.querySelectorAll('[data-dropdown]').forEach(function (root) {
     var trigger = root.querySelector('[data-dropdown-trigger]');

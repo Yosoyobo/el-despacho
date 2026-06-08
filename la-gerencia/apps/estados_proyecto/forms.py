@@ -4,6 +4,10 @@ from django.utils.text import slugify
 
 
 class EstadoProyectoForm(forms.ModelForm):
+    # Color opcional: vacío → default gris. HEX inválido se rechaza vía el
+    # validador del modelo (RegexValidator en EstadoProyecto.color).
+    color = forms.CharField(required=False, label="Color")
+
     class Meta:
         model = EstadoProyecto
         fields = ["label", "color", "orden", "terminal", "activo"]
@@ -18,6 +22,9 @@ class EstadoProyectoForm(forms.ModelForm):
             "terminal": "Es estado terminal (cierra el proyecto)",
             "activo": "Activo (visible en dropdowns)",
         }
+
+    def clean_color(self):
+        return (self.cleaned_data.get("color") or "").strip() or "#667085"
 
 
 class EstadoProyectoNuevoForm(EstadoProyectoForm):

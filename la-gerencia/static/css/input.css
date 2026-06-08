@@ -85,6 +85,25 @@
   .badge-amber   { @apply badge-warning; }
   .badge-purple  { @apply bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300; }
 
+  /* Color HEX libre (Estados de proyecto / Categorías). El color va en la
+     custom property --ec (inline). color-mix garantiza legibilidad en claro
+     y oscuro para CUALQUIER hex, sin depender de variantes Tailwind por color
+     ni del safelist. Pastilla tenue: fondo del color al 14-26%, texto del
+     color oscurecido en claro / aclarado en oscuro. */
+  .badge-hex {
+    background-color: color-mix(in srgb, var(--ec, #667085) 14%, #ffffff);
+    color: color-mix(in srgb, var(--ec, #667085) 78%, #000000);
+  }
+  .dark .badge-hex {
+    background-color: color-mix(in srgb, var(--ec, #667085) 26%, transparent);
+    color: color-mix(in srgb, var(--ec, #667085) 48%, #ffffff);
+  }
+  /* Chip de la barra de status del detalle de proyecto. El activo usa
+     border-current + ring-current (Tailwind), que heredan este color. */
+  .estado-chip { color: color-mix(in srgb, var(--ec, #667085) 72%, #000000); }
+  .dark .estado-chip { color: color-mix(in srgb, var(--ec, #667085) 52%, #ffffff); }
+  .estado-chip[data-activo] { background-color: color-mix(in srgb, var(--ec, #667085) 12%, transparent); }
+
   /* Sidebar / nav del shell — TailAdmin patrones */
   .menu-item        { @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium; }
   .menu-item-active   { @apply bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400; }

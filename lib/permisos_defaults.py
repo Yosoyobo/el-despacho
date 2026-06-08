@@ -36,6 +36,10 @@ TODO_COTIZACIONES = ["ver", "crear", "editar", "enviar", "aprobar", "rechazar", 
 # S2b.facturacion-v1: La Facturación. super_admin/dueno/contador todo;
 # diseñador ninguno.
 TODO_FACTURACION = ["ver", "crear", "editar", "emitir", "cobrar", "cancelar"]
+# S-Estados-Color-HEX: el chat de El Chalán se gatea por permiso. Default
+# activo para los 4 roles (preserva el comportamiento previo); el super_admin
+# lo revoca por usuario/rol desde /directorio/<id>/permisos/.
+TODO_CHALAN = ["usar"]
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -51,6 +55,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogo": list(TODO_CATALOGO),
         "cotizaciones": list(TODO_COTIZACIONES),
         "facturacion": list(TODO_FACTURACION),
+        "chalan": list(TODO_CHALAN),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
         "gerencia": ["acceder"],
     },
@@ -67,6 +72,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogo": ["ver_nombres", "ver_precios", "crear", "editar", "editar_precios", "archivar"],
         "cotizaciones": list(TODO_COTIZACIONES),
         "facturacion": list(TODO_FACTURACION),
+        "chalan": list(TODO_CHALAN),
         # S-LC-Feedback-V5 c5: dueno entra a La Gerencia por default.
         "gerencia": ["acceder"],
     },
@@ -85,6 +91,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # Contador arma y envía cotizaciones pero no aprueba/rechaza/anula.
         "cotizaciones": ["ver", "crear", "editar", "enviar"],
         "facturacion": list(TODO_FACTURACION),
+        "chalan": list(TODO_CHALAN),
     },
     "disenador": {
         # Diseñador NO ve cartera (DOC_01 §4.4).
@@ -95,6 +102,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "dictado": ["actualizar_proyecto", "crear_tarea"],
         # Diseñador ve nombres pero NO precios (default — toggleable individualmente).
         "catalogo": ["ver_nombres"],
+        "chalan": list(TODO_CHALAN),
     },
 }
 

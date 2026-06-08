@@ -41,9 +41,18 @@ class UnidadForm(forms.ModelForm):
 
 
 class CategoriaForm(forms.ModelForm):
+    # Color opcional: si llega vacío, default gris (el partial lo pre-llena,
+    # pero callers viejos / sin color no deben romper). El HEX inválido sí se
+    # rechaza vía el validador del modelo.
+    color = forms.CharField(required=False, label="Color")
+
     class Meta:
         model = CategoriaServicio
-        fields = ["nombre", "orden", "activa"]
+        fields = ["nombre", "color", "orden", "activa"]
+        labels = {"color": "Color"}
+
+    def clean_color(self):
+        return (self.cleaned_data.get("color") or "").strip() or "#667085"
 
 
 class ServicioForm(forms.ModelForm):

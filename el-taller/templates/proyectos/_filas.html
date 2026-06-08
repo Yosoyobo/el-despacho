@@ -15,7 +15,7 @@
         {% endif %}
     </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social }}</td>
-    <td class="px-5 py-3"><span class="badge {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
+    <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
     <td class="px-5 py-3 {{ p.fecha_compromiso|dentro_de_clase }}">
         {% if p.fecha_compromiso %}
             <div>{{ p.fecha_compromiso|date:"d M Y" }}</div>

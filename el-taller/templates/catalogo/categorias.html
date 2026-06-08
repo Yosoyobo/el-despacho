@@ -31,7 +31,7 @@
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                 {% for c in categorias %}
                 <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ c.nombre }}</td>
+                    <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ c.color }}">{{ c.nombre }}</span></td>
                     <td class="px-5 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ c.orden }}</td>
                     <td class="px-5 py-3">{% if c.activa %}<span class="badge badge-success">Activa</span>{% else %}<span class="badge badge-gray">Inactiva</span>{% endif %}</td>
                     <td class="px-5 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ c.servicios.count }}</td>

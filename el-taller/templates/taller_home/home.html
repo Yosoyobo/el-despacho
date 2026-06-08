@@ -105,7 +105,8 @@
         {% endif %}
     </a>
 
-    {# Chatbot — El Dictado, compacto, 3/5 de ancho. #}
+    {# Chatbot — El Dictado, compacto, 3/5 de ancho. Gateado por (chalan, usar). #}
+    {% if permisos_modulos.chalan %}
     <section data-andamiaje="dictado-slot"
              class="flex flex-col rounded-2xl border border-brand-200 bg-brand-25 p-4 lg:col-span-3 dark:border-brand-500/30 dark:bg-brand-500/5">
         <form method="post" action="{% url 'chalan-nuevo' %}" class="flex flex-1 flex-col">
@@ -124,6 +125,7 @@
             <a href="{% url 'chalan-chat' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir el Chat →</a>
         </div>
     </section>
+    {% endif %}
 </section>
 
 {# ── 3) 5 KPIs grandes (zona hero), 1/5 c/u. ── #}

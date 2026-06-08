@@ -1,0 +1,49 @@
+{% comment %}
+Campo de color HEX libre (S-Estados-Color-HEX). Dual-copy §18.
+
+Render del campo `color` de un form (Estados de proyecto / Categorías):
+swatch clickeable + cuadro de texto #RRGGBB + vista previa de la pastilla.
+Al hacer click en el swatch se abre un popover POCO INTRUSIVO (panel
+flotante chico, no modal de pantalla completa) con la rueda de color
+nativa y chips sugeridos. Toda la lógica vive en ui.js (delegación).
+
+Params:
+- campo (BoundField, requerido) — el campo `color` del form.
+{% endcomment %}
+<div class="relative" data-campo-color>
+    <label for="{{ campo.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ campo.label }}</label>
+    <div class="flex items-center gap-2.5">
+        <button type="button" data-color-swatch
+                style="background-color: {{ campo.value|default:'#667085' }}"
+                class="h-9 w-9 shrink-0 rounded-lg border border-gray-300 shadow-theme-xs transition hover:ring-2 hover:ring-brand-500/30 dark:border-gray-700"
+                aria-label="Elegir color"></button>
+        <input type="text" name="{{ campo.name }}" id="{{ campo.id_for_label }}"
+               value="{{ campo.value|default:'#667085' }}"
+               data-color-input maxlength="7" autocomplete="off" spellcheck="false"
+               placeholder="#465fff"
+               class="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-sm uppercase text-gray-800 shadow-theme-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+        <span class="badge badge-hex" data-color-preview style="--ec: {{ campo.value|default:'#667085' }}">Vista previa</span>
+    </div>
+
+    {# Popover poco intrusivo — panel flotante anclado al swatch. #}
+    <div data-color-popover hidden
+         class="absolute left-0 z-30 mt-2 w-60 rounded-xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <input type="color" data-color-wheel value="{{ campo.value|default:'#667085' }}"
+               class="h-10 w-full cursor-pointer rounded-lg border border-gray-200 bg-transparent dark:border-gray-700"
+               aria-label="Rueda de color">
+        <p class="mt-2 mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Sugeridos</p>
+        <div class="flex flex-wrap gap-1.5">
+            <button type="button" data-color-chip="#465fff" style="background-color:#465fff" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#465fff"></button>
+            <button type="button" data-color-chip="#0ba5ec" style="background-color:#0ba5ec" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#0ba5ec"></button>
+            <button type="button" data-color-chip="#12b76a" style="background-color:#12b76a" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#12b76a"></button>
+            <button type="button" data-color-chip="#f79009" style="background-color:#f79009" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#f79009"></button>
+            <button type="button" data-color-chip="#fb6514" style="background-color:#fb6514" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#fb6514"></button>
+            <button type="button" data-color-chip="#f04438" style="background-color:#f04438" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#f04438"></button>
+            <button type="button" data-color-chip="#7a5af8" style="background-color:#7a5af8" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#7a5af8"></button>
+            <button type="button" data-color-chip="#667085" style="background-color:#667085" class="h-6 w-6 rounded-md border border-black/10 transition hover:scale-110 dark:border-white/10" title="#667085"></button>
+        </div>
+    </div>
+
+    {% if campo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ campo.errors.0 }}</p>{% endif %}
+    {% if campo.help_text %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ campo.help_text }}</p>{% endif %}
+</div>

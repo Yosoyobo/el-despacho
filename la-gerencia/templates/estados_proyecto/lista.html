@@ -32,7 +32,7 @@
             <tr>
                 <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ e.label }} {% if e.sistema %}<span class="ml-1 text-[10px] uppercase tracking-wider text-gray-400">sistema</span>{% endif %}</td>
                 <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{{ e.slug }}</td>
-                <td class="px-5 py-3"><span class="badge {{ e.color }}">{{ e.label }}</span></td>
+                <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ e.color }}">{{ e.label }}</span> <span class="ml-1 font-mono text-[10px] uppercase text-gray-400 dark:text-gray-500">{{ e.color }}</span></td>
                 <td class="px-5 py-3 text-right tabular-nums">{{ e.orden }}</td>
                 <td class="px-5 py-3 text-center">{% if e.terminal %}<span class="badge badge-gray">Sí</span>{% else %}—{% endif %}</td>
                 <td class="px-5 py-3 text-center">{% if e.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}</td>

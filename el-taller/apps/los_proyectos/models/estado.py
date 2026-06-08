@@ -1,29 +1,33 @@
+from django.core.validators import RegexValidator
 from django.db import models
 
-# Colores TailAdmin disponibles para badges de estado (alineados con
-# templatetag `color_estado`). Mantén consistencia con la paleta del repo.
-COLORES_ESTADO = (
-    ("badge-blue", "Azul"),
-    ("badge-orange", "Naranja"),
-    ("badge-warning", "Amarillo"),
-    ("badge-success", "Verde"),
-    ("badge-error", "Rojo"),
-    ("badge-gray", "Gris"),
-    ("badge-brand", "Brand"),
+# S-Estados-Color-HEX: el color es ahora un HEX libre (#RRGGBB) que el
+# super_admin captura desde la UI. Validador compartido por estados y
+# categorías. El render usa color-mix sobre la custom property --ec, así
+# que cualquier hex queda legible en claro y oscuro.
+HEX_COLOR = RegexValidator(
+    regex=r"^#[0-9a-fA-F]{6}$",
+    message="Usa un color hexadecimal de 6 dígitos, ej. #465fff.",
+)
+
+# Sugerencias rápidas (chips del popover). Paleta canónica TailAdmin Pro 2.3.
+COLORES_SUGERIDOS = (
+    "#465fff", "#0ba5ec", "#12b76a", "#f79009",
+    "#fb6514", "#f04438", "#7a5af8", "#667085",
 )
 
 # Slug → (label, color, orden, terminal). Sembrado como sistema=True en
 # la migración 0007. Si LC quiere cambiar labels/colores, lo hace desde
 # la UI de Gerencia sin tocar código.
 ESTADOS_BASE = (
-    ("por_cotizar",            "Por cotizar",            "badge-blue",     10, False),
-    ("esperando_respuesta",    "Esperando respuesta",    "badge-orange",   20, False),
-    ("en_proceso_diseno",      "En proceso de diseño",   "badge-warning",  30, False),
-    ("en_proceso_produccion",  "En proceso de producción", "badge-warning", 40, False),
-    ("entregado",              "Entregado",              "badge-success",  50, True),
-    ("cerrado",                "Cerrado",                "badge-brand",    55, True),
-    ("en_pausa",               "En pausa",               "badge-gray",     60, False),
-    ("cancelado",              "Cancelado",              "badge-error",    70, True),
+    ("por_cotizar",            "Por cotizar",            "#0ba5ec", 10, False),
+    ("esperando_respuesta",    "Esperando respuesta",    "#fb6514", 20, False),
+    ("en_proceso_diseno",      "En proceso de diseño",   "#f79009", 30, False),
+    ("en_proceso_produccion",  "En proceso de producción", "#f79009", 40, False),
+    ("entregado",              "Entregado",              "#12b76a", 50, True),
+    ("cerrado",                "Cerrado",                "#465fff", 55, True),
+    ("en_pausa",               "En pausa",               "#667085", 60, False),
+    ("cancelado",              "Cancelado",              "#f04438", 70, True),
 )
 
 
@@ -39,7 +43,8 @@ class EstadoProyecto(models.Model):
 
     slug = models.SlugField(max_length=32, unique=True, db_index=True)
     label = models.CharField(max_length=64)
-    color = models.CharField(max_length=24, choices=COLORES_ESTADO, default="badge-gray")
+    color = models.CharField(max_length=7, default="#667085", validators=[HEX_COLOR],
+                             help_text="Color HEX del badge, ej. #465fff.")
     orden = models.PositiveSmallIntegerField(default=100)
     terminal = models.BooleanField(default=False, help_text="Si está marcado, el proyecto se considera cerrado.")
     activo = models.BooleanField(default=True)

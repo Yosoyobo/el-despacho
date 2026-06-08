@@ -39,15 +39,17 @@ def dentro_de_clase(fecha):
         return "text-warning-600 dark:text-warning-400 font-medium"
     return "text-gray-600 dark:text-gray-300"
 
+# S-Estados-Color-HEX: el color del estado es un HEX libre. El fallback
+# (estados legacy sin fila en DB) usa la paleta TailAdmin canónica.
 _COLORES_FALLBACK = {
-    "por_cotizar": "badge-blue",
-    "esperando_respuesta": "badge-orange",
-    "en_proceso_diseno": "badge-warning",
-    "en_proceso_produccion": "badge-warning",
-    "entregado": "badge-success",
-    "cerrado": "badge-brand",
-    "en_pausa": "badge-gray",
-    "cancelado": "badge-error",
+    "por_cotizar": "#0ba5ec",
+    "esperando_respuesta": "#fb6514",
+    "en_proceso_diseno": "#f79009",
+    "en_proceso_produccion": "#f79009",
+    "entregado": "#12b76a",
+    "cerrado": "#465fff",
+    "en_pausa": "#667085",
+    "cancelado": "#f04438",
 }
 
 
@@ -83,55 +85,11 @@ def invalidar_mapa_estados():
 
 @register.filter(name="color_estado")
 def color_estado(estado: str) -> str:
+    """Color HEX del estado (#RRGGBB). Se inyecta en la custom property --ec."""
     mapa = _mapa_estados()
     if estado in mapa:
         return mapa[estado]["color"]
-    return _COLORES_FALLBACK.get(estado, "badge-gray")
-
-
-# badge-X (color del estado) → color base Tailwind. Para outlines del Kanban
-# ligados al color del tag de Estado (sprint S-LC-Buzon).
-_BADGE_A_COLOR = {
-    "badge-blue": "blue-light-400",
-    "badge-orange": "orange-400",
-    "badge-warning": "warning-400",
-    "badge-success": "success-400",
-    "badge-error": "error-400",
-    "badge-gray": "gray-400",
-    "badge-brand": "brand-400",
-}
-
-
-@register.filter(name="borde_estado")
-def borde_estado(estado: str, lado: str = "t") -> str:
-    """Clase de borde Tailwind (`border-<lado>-<color>`) del color del estado.
-
-    `lado` ∈ {t, l, r, b}. Deriva de color_estado. Las clases viven en el
-    safelist de tailwind.config.js porque se arman en runtime.
-    """
-    color = _BADGE_A_COLOR.get(color_estado(estado), "gray-400")
-    return f"border-{lado}-{color}"
-
-
-# Render-V1: color de TEXTO por token de badge, para la barra de status
-# (activo = contorno del color del texto; inactivos al 40% de opacidad).
-# Todas estas clases están en el safelist de tailwind.config.js.
-_TEXTO_POR_BADGE = {
-    "badge-blue": "text-blue-light-600 dark:text-blue-light-400",
-    "badge-brand": "text-brand-600 dark:text-brand-400",
-    "badge-orange": "text-orange-600 dark:text-orange-400",
-    "badge-warning": "text-warning-600 dark:text-warning-400",
-    "badge-success": "text-success-600 dark:text-success-400",
-    "badge-error": "text-error-600 dark:text-error-400",
-    "badge-gray": "text-gray-600 dark:text-gray-300",
-    "badge-purple": "text-purple-600 dark:text-purple-400",
-}
-
-
-@register.filter(name="estado_text_clase")
-def estado_text_clase(color_badge: str) -> str:
-    """Clase(s) de color de texto para un token de badge de estado."""
-    return _TEXTO_POR_BADGE.get(color_badge, "text-gray-600 dark:text-gray-300")
+    return _COLORES_FALLBACK.get(estado, "#667085")
 
 
 @register.filter(name="estado_label")

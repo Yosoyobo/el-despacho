@@ -6,14 +6,30 @@ Sección `/chalan/` estilo TailAdmin AI: lista de conversaciones + chat activo +
 
 from __future__ import annotations
 
+from functools import wraps
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
+
+from lib.permisos import puede
 
 from .models import ConversacionChat, Dictado
 from .services import aplicar
 from .services_chat import chat_acepta_imagenes, conversar, crear_conversacion
+
+
+def _requiere_chalan(view):
+    """Gate del chat de El Chalán por (chalan, usar). Defensa en profundidad:
+    el sidebar y el Dashboard ya lo ocultan, pero las URLs también lo exigen."""
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not puede(request.user, "chalan", "usar"):
+            return HttpResponseForbidden("No tienes permiso para usar El Chalán.")
+        return view(request, *args, **kwargs)
+    return wrapper
 
 
 def _es_htmx(request) -> bool:
@@ -56,6 +72,7 @@ def _render_shell(request, conversacion):
 
 
 @login_required
+@_requiere_chalan
 def chat(request):
     """GET /chalan/ — abre la conversación más reciente o el estado vacío."""
     conversacion = _conversaciones_de(request.user).first()
@@ -63,6 +80,7 @@ def chat(request):
 
 
 @login_required
+@_requiere_chalan
 def conversacion(request, pk: int):
     """GET /chalan/c/<pk>/ — abre una conversación específica."""
     conv = get_object_or_404(ConversacionChat, pk=pk, usuario=request.user)
@@ -70,6 +88,7 @@ def conversacion(request, pk: int):
 
 
 @login_required
+@_requiere_chalan
 @require_http_methods(["POST"])
 def nuevo(request):
     """POST /chalan/nuevo — crea un chat nuevo (con mensaje inicial opcional del
@@ -82,6 +101,7 @@ def nuevo(request):
 
 
 @login_required
+@_requiere_chalan
 @require_http_methods(["POST"])
 def enviar(request, pk: int):
     """POST /chalan/c/<pk>/enviar — corre el loop y devuelve los turnos nuevos."""
@@ -99,6 +119,7 @@ def enviar(request, pk: int):
 
 
 @login_required
+@_requiere_chalan
 @require_http_methods(["POST"])
 def aplicar_accion(request, pk: int):
     """POST /chalan/<dpk>/aplicar — confirma y aplica las acciones del Dictado
@@ -133,6 +154,7 @@ def aplicar_accion(request, pk: int):
 
 
 @login_required
+@_requiere_chalan
 @require_http_methods(["POST"])
 def cancelar_accion(request, pk: int):
     """POST /chalan/<dpk>/cancelar — descarta la propuesta de acción."""
@@ -149,6 +171,7 @@ def cancelar_accion(request, pk: int):
 
 
 @login_required
+@_requiere_chalan
 def lista(request):
     """GET /chalan/partial/lista — refresca la sidebar de conversaciones."""
     return render(request, "el_dictado/_chat_lista.html", {

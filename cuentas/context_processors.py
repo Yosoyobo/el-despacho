@@ -19,13 +19,15 @@ ACCION_VISIBLE_POR_MODULO = {
     "catalogo": "ver_nombres",
     # S-LC-Feedback-V5 c5: acceso a Gerencia heredable por permiso granular.
     "gerencia": "acceder",
+    # S-Estados-Color-HEX: el chat de El Chalán se gatea por (chalan, usar).
+    "chalan": "usar",
     # los demás usan "ver"
 }
 
 MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
-    "facturacion",
+    "facturacion", "chalan",
     "directorio", "ajustes", "chalanes", "site",
     "centros_costo", "tasas",
     "gerencia",

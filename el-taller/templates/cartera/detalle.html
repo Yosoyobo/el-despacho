@@ -35,7 +35,7 @@
             {% for grupo in proyectos_por_estado %}
             <div class="mb-4">
                 <div class="mb-2 flex items-center gap-2">
-                    <span class="badge {{ grupo.slug|color_estado }}">{{ grupo.slug|estado_label }}</span>
+                    <span class="badge badge-hex" style="--ec: {{ grupo.slug|color_estado }}">{{ grupo.slug|estado_label }}</span>
                     <span class="text-xs text-gray-400 dark:text-gray-500">{{ grupo.proyectos|length }}</span>
                 </div>
                 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

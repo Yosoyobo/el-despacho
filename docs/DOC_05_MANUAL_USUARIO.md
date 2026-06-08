@@ -5,6 +5,28 @@
 
 ---
 
+## Novedades — Colores libres en estados y categorías + permiso del Chalán (7 de junio de 2026)
+
+- **Elige el color que quieras para los estados de proyecto.** En
+  **Gerencia → Catálogos → Estados de proyecto**, al crear o editar un estado,
+  el color ya no es una lista de 7 opciones: ahora hay un **cuadro de texto
+  para escribir el color en HEX** (ej. `#465fff`). Haz clic en el cuadrito de
+  color y se abre un panel pequeño con una **rueda de color** y unos **colores
+  sugeridos** para elegir rápido. La vista previa te muestra cómo se verá la
+  etiqueta antes de guardar.
+- **Las categorías de productos también tienen color.** En
+  **Productos → Categorías** cada categoría ahora lleva su color (mismo
+  selector HEX). Ese color aparece como etiqueta en la lista de productos y de
+  categorías, para distinguirlas de un vistazo.
+- **Los colores ya se ven bien en modo oscuro.** Antes, algunos colores de
+  estado casi no se notaban con el tema oscuro activado. Ahora cualquier color
+  que elijas se ve claro y legible tanto en modo claro como oscuro.
+- **El chat de El Chalán ahora se puede activar o desactivar por persona.**
+  En **Gerencia → Directorio → (un usuario) → Permisos** hay una sección
+  **"chalan"** con la opción **"usar"**. Si la desmarcas, esa persona **deja de
+  ver El Chalán** en su menú y no puede abrir el chat. Por defecto todos lo
+  tienen activo (igual que antes).
+
 ## Novedades — El Chalán entiende las menciones @/#/$ (8 de junio de 2026)
 
 - **Mencionar con @/#/$ en el chat ya funciona bien.** Cuando escribes `#` y

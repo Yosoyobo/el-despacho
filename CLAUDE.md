@@ -3202,6 +3202,58 @@ usuario ajusta el toggle IVA); proveedor detectado se muestra como hint,
 no se auto-selecciona el FK; tarifa real de OCR depende del Chalán primario
 configurado por el super_admin en `/chalanes/`.
 
+### S-Estados-Color-HEX ✅ — Color HEX libre + dark mode + permiso del Chalán (2026-06-07)
+
+Tres pedidos de Oscar en una sesión:
+
+- **Color HEX libre en Estados de proyecto y Categorías**: el campo
+  `color` pasa de 7 clases fijas `badge-*` a HEX libre (`#RRGGBB`).
+  - `EstadoProyecto.color` y `CategoriaServicio.color` ahora son
+    `CharField(max_length=7)` con `RegexValidator(^#[0-9a-fA-F]{6}$)`,
+    default `#667085`. Migraciones `proyectos.0014_estado_color_hex`
+    (AlterField + RunPython que mapea los `badge-*` existentes a su HEX
+    de la paleta TailAdmin) y `el_catalogo.0006_categoria_color`
+    (AddField).
+  - Editor en **popover poco intrusivo**: partial dual-copy
+    `_componentes_tailadmin/_campo_color_hex.html` — swatch clickeable
+    + cuadro de texto `#RRGGBB` (fuente de verdad) + vista previa +
+    panel flotante con rueda nativa `<input type=color>` y 8 chips
+    sugeridos. JS de sincronización por delegación en `ui.js`
+    (dual-copy): `[data-campo-color]`, `[data-color-swatch/input/wheel/
+    chip/popover]`. Los forms de estado (Gerencia) y categoría (Taller)
+    rutean el campo `color` por este partial; el resto por `_form_campo`.
+  - `COLORES_ESTADO` (choices) eliminado; `ESTADOS_BASE` y
+    `_COLORES_FALLBACK` actualizados a HEX. Constante nueva
+    `COLORES_SUGERIDOS` + validador `HEX_COLOR` exportados.
+- **Dark mode definitivo**: render con custom property `--ec` (inline)
+  + `color-mix` en `input.css` (dual-copy). `.badge-hex` = pastilla
+  tenue (fondo del color 14/26%, texto oscurecido en claro / aclarado
+  en oscuro); `.estado-chip[data-activo]` para la barra de status (el
+  activo usa `border-current`/`ring-current` que heredan el color-mix).
+  El filtro `color_estado` ahora devuelve HEX; `borde_estado` y
+  `estado_text_clase` se eliminaron (kanban y barra usan estilo inline).
+  Templates tocados: `proyectos/{_filas,_badge_estado,_barra_status,
+  _kanban_columna}`, `cartera/detalle`, `catalogo/{_filas,categorias}`,
+  Gerencia `estados_proyecto/{lista,form}`, Taller `catalogo/categoria_form`.
+  Sin dependencia del safelist de Tailwind para colores de estado.
+- **Permiso del chat de El Chalán**: módulo nuevo `chalan` × acción
+  `usar`. Default activo para los 4 roles (preserva comportamiento)
+  vía `lib/permisos_defaults.TODO_CHALAN` + migración
+  `cuentas.0016_seed_permisos_chalan` (seedea TODOS los usuarios
+  existentes). Gateado en 3 capas: sidebar (`permisos_modulos.chalan`),
+  sección Dictado del Dashboard, y las 7 vistas de `views_chat.py`
+  (decorador `_requiere_chalan` → 403). `chalan` agregado a
+  `MODULOS_VISIBLES` + `ACCION_VISIBLE_POR_MODULO["chalan"]="usar"`,
+  así aparece solo en `/directorio/<id>/permisos/` para
+  activar/revocar por usuario o rol. Helper `puede_usar_chalan`.
+- **Tests**: `tests/taller/test_color_hex_y_chalan_permiso.py` (6) +
+  ampliación de `tests/gerencia/test_estados_proyecto.py` (HEX válido,
+  HEX inválido rechazado). Verde.
+
+Cero pasos manuales post-deploy: las migraciones corren en El Mensajero,
+la UI de permisos expone `chalan` sola, y Tailwind recompila el CSS con
+`.badge-hex`/`.estado-chip`.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

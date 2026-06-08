@@ -1,6 +1,6 @@
 {% load proyectos_extras %}
 <div id="proyecto-estado-{{ proyecto.pk }}" class="flex flex-wrap items-center gap-2">
-    <span class="badge {{ proyecto.estado|color_estado }}">{{ proyecto.estado|estado_label }}</span>
+    <span class="badge badge-hex" style="--ec: {{ proyecto.estado|color_estado }}">{{ proyecto.estado|estado_label }}</span>
     {% if puede_editar %}
     <form hx-post="{% url 'proyectos-cambiar-estado' proyecto.pk %}"
           hx-target="#proyecto-estado-{{ proyecto.pk }}"

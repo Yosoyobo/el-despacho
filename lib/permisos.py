@@ -154,6 +154,11 @@ def puede_reportes_contaduria(user) -> bool:
     return puede(user, "contaduria", "reportes")
 
 
+def puede_usar_chalan(user) -> bool:
+    """S-Estados-Color-HEX: acceso al chat conversacional de El Chalán."""
+    return puede(user, "chalan", "usar")
+
+
 def puede_ver_comentario(user, comentario) -> bool:
     """Comentario interno: oculto a `disenador` salvo que sea el autor.
     Comentario público: visible si el usuario ve el proyecto/tarea padre."""

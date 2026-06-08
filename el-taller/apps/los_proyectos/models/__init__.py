@@ -1,5 +1,5 @@
 from .asignacion import ROLES_PROYECTO, ProyectoAsignacion  # noqa: F401
-from .estado import COLORES_ESTADO, ESTADOS_BASE, EstadoProyecto  # noqa: F401
+from .estado import COLORES_SUGERIDOS, ESTADOS_BASE, EstadoProyecto, HEX_COLOR  # noqa: F401
 from .proceso import ProyectoProductoProceso  # noqa: F401
 from .producto import ProyectoProducto  # noqa: F401
 from .proveedor_proyecto import ProyectoProveedor  # noqa: F401
