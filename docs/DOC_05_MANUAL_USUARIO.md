@@ -5,6 +5,29 @@
 
 ---
 
+## Novedades — Edita la voz de El Chalán + los gastos de proyecto entran a Tesorería (7 de junio de 2026)
+
+- **Ahora puedes editar el tono y la personalidad de El Chalán.** En
+  **Gerencia → Chalanes → 📝 Prompts** hay una pantalla nueva, **"Los
+  Prompts"**. Arriba está el **Prompt base**: lo que escribas ahí se aplica a
+  TODO lo que hace El Chalán (interpretar dictados, el chat, leer recibos,
+  armar indicadores). Abajo hay cuadros opcionales para darle un tono distinto
+  a cada función (chat, dictado, recibos, KPIs). Si dejas un cuadro vacío, esa
+  función usa el comportamiento de siempre. Lo que **no** se puede cambiar son
+  las reglas técnicas internas (los formatos de datos), porque son parte del
+  código; aquí sólo ajustas el tono y las prioridades. Sólo el super_admin
+  ve esta pantalla.
+- **Los gastos de un proyecto ahora se registran solos en Tesorería.** Cuando
+  un proyecto pasa a **"En proceso de producción"**, el sistema crea
+  automáticamente un **egreso por cada producto** del proyecto (con su costo,
+  su proveedor y el centro de costo *Insumos de proyecto*). Quedan como
+  **pendientes de pago** para que sepas cuánto se le debe a cada proveedor.
+  Así esos gastos aparecen en Tesorería y en la contabilidad sin capturarlos a
+  mano, y **El Chalán los puede reportar**: pregúntale *"¿cuánto va de gasto en
+  el proyecto LC-0001?"* y te dirá el costo de producción, los egresos
+  registrados y la deuda por proveedor. Si vuelves a poner el proyecto en
+  producción no se duplican los egresos.
+
 ## Novedades — Colores libres en estados y categorías + permiso del Chalán (7 de junio de 2026)
 
 - **Elige el color que quieras para los estados de proyecto.** En

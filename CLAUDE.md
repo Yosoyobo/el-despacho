@@ -3254,6 +3254,68 @@ Cero pasos manuales post-deploy: las migraciones corren en El Mensajero,
 la UI de permisos expone `chalan` sola, y Tailwind recompila el CSS con
 `.badge-hex`/`.estado-chip`.
 
+### S-Chalan-Prompts-Egresos ✅ — Prompts editables + gastos de proyecto a Tesorería (2026-06-07)
+
+Dos features independientes en un commit (decisión Oscar: "en este commit").
+
+**A — "Los Prompts": voz editable de Los Chalanes** (réplica del patrón
+"El Sazón" de La Cocina). El super_admin edita tono/personalidad sin tocar
+los prompts ESTRUCTURALES (esquemas JSON, whitelist del DSL, schema del OCR
+— contrato con el código).
+- Modelo `chalanes.PromptVoz(clave unique, contenido, actualizado_por/en)`,
+  migración `chalanes/0007_prompt_voz` crea tabla + seedea 5 slots vacíos
+  (`base`, `dictado`, `taller_chat`, `ocr_recibo`, `kpi_dsl`). Vacío =
+  comportamiento por defecto. `SLOTS_VOZ` en el modelo es la fuente de verdad
+  de etiquetas/ayudas.
+- Helper [`chalanes/voz.py`](chalanes/voz.py): `voz(clave)` (saneado vía
+  `sanear_contexto`, caché de proceso 60s), `preludio(estacion)` combina el
+  slot `base` (global) + el de la estación en un bloque
+  `[INSTRUCCIONES DE VOZ — Learning Center]…`. Caché invalidado por signal
+  post_save/post_delete de `PromptVoz` (en `chalanes/signals.py`). Defensivo:
+  cualquier fallo → "" (nunca tumba la llamada al LLM).
+- **Injerto en los 4 builders** (anteponer `preludio(estacion)`, sin tocar lo
+  estructural): dictado [`services.py`](el-taller/apps/el_dictado/services.py)
+  (interpretar + reinterpretar), chat
+  [`prompt_chat.py::construir_system_prompt`](el-taller/apps/el_dictado/prompt_chat.py),
+  OCR [`ocr.py`](el-taller/apps/tesoreria/ocr.py),
+  KPI DSL [`services_kpi_chalan.py`](el-taller/apps/taller_home/services_kpi_chalan.py).
+- UI Gerencia `/chalanes/prompts/` (super_admin): vista `prompts_voz` +
+  template `los_chalanes/prompts.html` (Prompt base destacado + voces
+  opcionales con placeholder "(opcional — vacío usa el comportamiento por
+  defecto)" + nota de "no editables"). Link "📝 Prompts" en `panel.html`.
+  Evento `chalan.voz_actualizada`.
+
+**B — Gastos de proyecto → Egresos en Tesorería** (cierra la deuda
+`proyecto-procesos-tesoreria-pendiente`). Decisiones Oscar: **disparo
+automático al pasar a `en_proceso_produccion`** + **un Egreso por línea de
+producto**.
+- FK `ProyectoProducto.egreso → tesoreria.Egreso` (SET_NULL, marca de
+  idempotencia), migración `proyectos/0015_producto_egreso`. Nuevo origen
+  `proyecto` en `Egreso.ORIGEN_EGRESO`, migración
+  `tesoreria/0006_egreso_origen_proyecto`.
+- Signal [`signals_egresos.py`](el-taller/apps/los_proyectos/signals_egresos.py)
+  (wired en `apps.py::ready`): pre_save captura `_estado_previo`; post_save, en
+  la TRANSICIÓN a producción, genera vía `on_commit` un Egreso por cada línea
+  incluida con `costo_total_con_procesos > 0` que aún no tenga egreso. Egreso:
+  monto = costo de la línea (producto+merma+procesos), `proveedor` de la línea,
+  centro `insumos-de-proyecto`, `estado_pago=pendiente` (→ CxP), `origen=proyecto`.
+  Idempotente (FK guard) — re-entrar a producción no duplica. Dispara el asiento
+  `auto_egreso` de Contaduría (D egreso_operativo / H cxp). Silent-skip si el
+  centro de costo falta. Evento `proyecto.egresos_generados`.
+- Herramienta `detalle_proyecto` del Chalán ampliada: `costo_produccion`,
+  `utilidad_estimada`, `egresos_registrados {cantidad,total}`,
+  `deuda_por_proveedor`. Así el Chalán reporta el gasto del proyecto.
+- **Tests** (+21 nuevos): `tests/test_prompt_voz.py` (8),
+  `tests/gerencia/test_prompts_voz.py` (3),
+  `tests/taller/test_voz_builders.py` (2),
+  `tests/taller/test_proyecto_egresos.py` (8). VERSION → `2026.06.22`.
+
+**Deuda diseñada**: líneas agregadas DESPUÉS de entrar a producción no generan
+egreso (el disparo es por transición); un proceso de impresión con proveedor
+distinto al de la línea queda dentro del egreso de la línea (no se separa por
+proveedor del proceso); sin reversa automática de egresos si el proyecto sale
+de producción (se anulan a mano).
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
