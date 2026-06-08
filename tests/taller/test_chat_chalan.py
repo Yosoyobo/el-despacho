@@ -291,3 +291,78 @@ def test_enviar_htmx_devuelve_fragmento(monkeypatch, client, usuario_factory):
 def test_enviar_requiere_login(client):
     resp = client.post("/chalan/c/1/enviar", {"mensaje": "hola"})
     assert resp.status_code in (302, 301)
+
+
+# ── Fase A: herramientas de lectura nuevas (S-Chalan-Scope-OCR) ─────────────────
+
+def test_mis_tareas_solo_del_usuario(usuario_factory, proyecto_factory):
+    from apps.el_dictado import herramientas
+    from apps.el_pizarron.models.tarea import Tarea
+    u = usuario_factory(rol="disenador")
+    otro = usuario_factory(rol="disenador")
+    p = proyecto_factory()
+    Tarea.objects.create(proyecto=p, titulo="Mía abierta", asignada_a=u)
+    Tarea.objects.create(proyecto=p, titulo="Mía cerrada", asignada_a=u, estado="completada")
+    Tarea.objects.create(proyecto=p, titulo="De otro", asignada_a=otro)
+    salida = herramientas.ejecutar_herramienta("mis_tareas", {}, u)
+    titulos = {t["titulo"] for t in salida["tareas"]}
+    assert titulos == {"Mía abierta"}  # excluye completada y la de otro
+
+
+def test_tareas_de_proyecto_por_codigo(usuario_factory, proyecto_factory):
+    from apps.el_dictado import herramientas
+    from apps.el_pizarron.models.tarea import Tarea
+    u = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    Tarea.objects.create(proyecto=p, titulo="T1")
+    salida = herramientas.ejecutar_herramienta(
+        "tareas_de_proyecto", {"proyecto_slug": p.codigo}, u
+    )
+    assert salida["proyecto"] == p.codigo
+    assert any(t["titulo"] == "T1" for t in salida["tareas"])
+
+
+def test_detalle_ingreso_requiere_finanzas(usuario_factory):
+    from apps.el_dictado import herramientas
+    u = usuario_factory(rol="disenador")
+    assert "detalle_ingreso" not in {h.nombre for h in herramientas.herramientas_para(u)}
+    salida = herramientas.ejecutar_herramienta("detalle_ingreso", {"codigo": "ING-2026-0001"}, u)
+    assert salida == {"error": "sin_permiso", "nombre": "detalle_ingreso"}
+
+
+def test_contaduria_balance_gating(usuario_factory):
+    from apps.el_dictado import herramientas
+    diseñador = usuario_factory(rol="disenador")
+    assert "contaduria_balance" not in {h.nombre for h in herramientas.herramientas_para(diseñador)}
+    admin = usuario_factory(rol="super_admin")
+    assert "contaduria_balance" in {h.nombre for h in herramientas.herramientas_para(admin)}
+    salida = herramientas.ejecutar_herramienta("contaduria_balance", {}, admin)
+    assert salida.get("error") != "sin_permiso"
+
+
+def test_buscar_respeta_permisos_por_entidad(usuario_factory, proyecto_factory):
+    from apps.el_dictado import herramientas
+    u = usuario_factory(rol="disenador")
+    proyecto_factory(nombre="Proyecto Buscable XYZ")
+    salida = herramientas.ejecutar_herramienta("buscar", {"texto": "Buscable"}, u)
+    # diseñador no ve clientes/facturas/cotizaciones, solo proyectos
+    assert "proyectos" in salida
+    assert "facturas" not in salida and "cotizaciones" not in salida
+
+
+def test_buscar_texto_muy_corto(usuario_factory):
+    from apps.el_dictado import herramientas
+    u = usuario_factory(rol="super_admin")
+    salida = herramientas.ejecutar_herramienta("buscar", {"texto": "x"}, u)
+    assert salida["error"] == "texto_muy_corto"
+
+
+def test_proximos_eventos_abierto(usuario_factory, proyecto_factory):
+    from datetime import date, timedelta
+
+    from apps.el_dictado import herramientas
+    u = usuario_factory(rol="super_admin")
+    proyecto_factory(nombre="Entrega próxima", fecha_compromiso=date.today() + timedelta(days=3))
+    salida = herramientas.ejecutar_herramienta("proximos_eventos", {"dias": 14}, u)
+    assert salida.get("error") != "sin_permiso"
+    assert "eventos" in salida

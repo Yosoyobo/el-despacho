@@ -140,12 +140,18 @@ Portavoz + audit en Dictado). Candidatos por módulo:
 - OCR modelo vacío: `el-taller/apps/tesoreria/models/egreso_ocr_log.py`
 - Docs de referencia: `docs/DOC_04_EL_DICTADO.md`, `docs/DOC_06_LA_TESORERIA.md`
 
-## 6. Decisiones abiertas (confirmar con Oscar al iniciar)
+## 6. Decisiones tomadas (Oscar, 2026-06-07)
 
-- ¿Qué acciones de escritura quedan FUERA por riesgo (p.ej. cancelar facturas
-  cobradas, borrados, mover dinero real)?
-- ¿El OCR auto-crea el Egreso como borrador para confirmar, o solo pre-llena el
-  form de egreso?
-- Tarifa/estación para `ocr_recibo` (MiMo y Gemini tienen visión; confirmar
-  modelo por costo).
-- ¿Adjuntos en el chat se guardan siempre en Drive, o solo cuando hay visión?
+- **Alcance:** sprint amplio **A + B + C** (leer-todo, operar/editar-todo,
+  visión/OCR). Varios commits, cada uno desplegable solo.
+- **Resultado del OCR:** **pre-llena el form de Egreso** (NO auto-crea borrador).
+  El usuario revisa/edita/guarda en pantalla; las correcciones se registran en
+  `EgresoOcrLog.correcciones` / `fue_corregido`.
+- **Entrada del OCR:** **ambas** — pantalla dedicada en Tesorería ("Escanear
+  recibo") **y** adjunto 📎 en el chat del Chalán (solo si la estación activa
+  tiene un Chalán con visión).
+- **Modelo del OCR:** **cadena de fallback** sobre la estación `ocr_recibo`
+  (solo Chalanes con `VISION` participan). El super_admin elige el primario y
+  reordena la cadena desde `/chalanes/`.
+- **Acciones de escritura vetadas (se mantienen en `TIPOS_PROHIBIDOS`):**
+  borrados duros, timbrado CFDI, cancelar factura ya cobrada, mover dinero real.

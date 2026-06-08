@@ -51,6 +51,7 @@ def _gate_ok(gating: str, usuario) -> bool:
         "cartera": permisos.puede_ver_cartera,
         "cotizaciones": permisos.puede_ver_cotizaciones,
         "facturacion": permisos.puede_ver_facturacion,
+        "contaduria": permisos.puede_ver_contaduria,
     }.get(gating)
     return bool(fn(usuario)) if fn else False
 
@@ -343,6 +344,178 @@ def _h_specs_servidor(args: dict, usuario) -> dict:
     return salida
 
 
+def _h_detalle_ingreso(args: dict, usuario) -> dict:
+    from apps.tesoreria.models import Ingreso
+    codigo = args["codigo"].strip().upper()
+    ing = Ingreso.objects.filter(codigo__iexact=codigo).first()
+    if ing is None:
+        return {"error": "no_encontrado", "codigo": codigo}
+    return {
+        "codigo": ing.codigo,
+        "fecha": ing.fecha.isoformat() if ing.fecha else None,
+        "monto": ing.monto,
+        "descripcion": ing.descripcion,
+        "cliente": ing.cliente.razon_social if ing.cliente_id else None,
+        "proyecto": ing.proyecto.codigo if ing.proyecto_id else None,
+        "metodo": ing.get_metodo_display(),
+        "factura": ing.factura.codigo if ing.factura_id else None,
+        "anulado": ing.anulado,
+        "link": f"/tesoreria/ingresos/{ing.pk}/",
+    }
+
+
+def _h_detalle_tarea(args: dict, usuario) -> dict:
+    from apps.el_pizarron.models.tarea import Tarea
+
+    from lib import permisos
+    t = Tarea.objects.filter(pk=args["tarea_id"]).select_related("proyecto", "asignada_a").first()
+    if t is None:
+        return {"error": "no_encontrado", "tarea_id": args["tarea_id"]}
+    if not permisos.puede_ver_tarea(usuario, t):
+        return {"error": "sin_permiso"}
+    return {
+        "id": t.pk,
+        "titulo": t.titulo,
+        "estado": t.get_estado_display(),
+        "prioridad": t.get_prioridad_display(),
+        "proyecto": t.proyecto.codigo,
+        "asignada_a": (t.asignada_a.get_full_name() or t.asignada_a.email) if t.asignada_a_id else None,
+        "fecha_compromiso": t.fecha_compromiso.isoformat() if t.fecha_compromiso else None,
+        "link": f"/tareas/{t.pk}/",
+    }
+
+
+def _fila_tarea(t) -> dict:
+    return {
+        "id": t.pk, "titulo": t.titulo, "estado": t.get_estado_display(),
+        "prioridad": t.get_prioridad_display(), "proyecto": t.proyecto.codigo,
+        "fecha_compromiso": t.fecha_compromiso.isoformat() if t.fecha_compromiso else None,
+        "link": f"/tareas/{t.pk}/",
+    }
+
+
+def _h_mis_tareas(args: dict, usuario) -> dict:
+    from apps.el_pizarron.models.tarea import Tarea
+    qs = (
+        Tarea.objects.filter(asignada_a=usuario)
+        .exclude(estado="completada")
+        .select_related("proyecto")
+        .order_by("fecha_compromiso", "-prioridad")
+    )
+    filas = [_fila_tarea(t) for t in qs[:_TOP_N * 2]]
+    return {"tareas": filas, "total": qs.count()}
+
+
+def _h_tareas_de_proyecto(args: dict, usuario) -> dict:
+    from apps.el_pizarron.models.tarea import Tarea
+    from apps.los_proyectos.models import Proyecto
+
+    from lib import permisos
+    slug = args["proyecto_slug"].strip().lstrip("#").lower()
+    p = (
+        Proyecto.objects.filter(slug=slug).first()
+        or Proyecto.objects.filter(codigo__iexact=slug).first()
+        or Proyecto.objects.filter(slug_legacy=slug).first()
+    )
+    if p is None:
+        return {"error": "no_encontrado", "proyecto_slug": slug}
+    if not permisos.puede_ver_proyecto(usuario, p):
+        return {"error": "sin_permiso"}
+    solo_abiertas = args.get("solo_abiertas", True)
+    qs = Tarea.objects.filter(proyecto=p).select_related("proyecto").order_by("estado", "-prioridad")
+    if solo_abiertas:
+        qs = qs.exclude(estado="completada")
+    filas = [_fila_tarea(t) for t in qs[:_TOP_N * 2]]
+    return {"proyecto": p.codigo, "tareas": filas, "total": qs.count()}
+
+
+def _h_contaduria_saldo_cuenta(args: dict, usuario) -> dict:
+    from apps.contaduria.models import CuentaContable
+    from apps.contaduria.services import saldo_cuenta
+    clave = args["cuenta"].strip()
+    cta = (
+        CuentaContable.objects.filter(codigo__iexact=clave).first()
+        or CuentaContable.objects.filter(slot=clave.lower()).first()
+        or CuentaContable.objects.filter(nombre__icontains=clave).first()
+    )
+    if cta is None:
+        return {"error": "no_encontrado", "cuenta": clave}
+    return {
+        "codigo": cta.codigo,
+        "nombre": cta.nombre,
+        "tipo": cta.get_tipo_display(),
+        "saldo": saldo_cuenta(cta),
+    }
+
+
+def _h_contaduria_balance(args: dict, usuario) -> dict:
+    from apps.contaduria.services import balance_de_comprobacion
+    filas = balance_de_comprobacion()
+    salida = [
+        {"codigo": f["cuenta"].codigo, "nombre": f["cuenta"].nombre, "saldo": f["saldo"]}
+        for f in filas
+        if f["saldo"]
+    ]
+    return {"cuentas": salida[: _TOP_N * 3], "total_cuentas": len(salida)}
+
+
+def _h_proximos_eventos(args: dict, usuario) -> dict:
+    from datetime import date, timedelta
+
+    from apps.calendario.services import eventos_por_dia
+    dias = int(args.get("dias", 14))
+    dias = max(1, min(dias, 90))
+    hoy = date.today()
+    por_dia = eventos_por_dia(usuario, hoy, hoy + timedelta(days=dias))
+    salida: list[dict] = []
+    for fecha in sorted(por_dia):
+        for ev in por_dia[fecha]:
+            salida.append({
+                "fecha": fecha.isoformat(), "tipo": ev.get("tipo"),
+                "titulo": ev.get("titulo"), "subtitulo": ev.get("subtitulo"),
+            })
+    return {"dias": dias, "eventos": salida[: _TOP_N * 3], "total": len(salida)}
+
+
+def _h_buscar(args: dict, usuario) -> dict:
+    """Búsqueda libre acotada por texto. Respeta el gating de cada entidad:
+    proyectos (visibilidad por proyecto), clientes (cartera), facturas
+    (facturación), cotizaciones (cotizaciones). Top-N por tipo."""
+    from lib import permisos
+    texto = args["texto"].strip()
+    if len(texto) < 2:
+        return {"error": "texto_muy_corto"}
+    out: dict = {}
+
+    from apps.los_proyectos.models import Proyecto
+    proys = Proyecto.objects.filter(nombre__icontains=texto)[: _TOP_N * 2]
+    out["proyectos"] = [
+        {"codigo": p.codigo, "nombre": p.nombre, "estado": p.get_estado_display(),
+         "link": f"/proyectos/{p.slug}/"}
+        for p in proys if permisos.puede_ver_proyecto(usuario, p)
+    ]
+
+    if permisos.puede_ver_cartera(usuario):
+        from apps.la_cartera.models import Cliente
+        out["clientes"] = [
+            {"razon_social": c.razon_social, "rfc": c.rfc or None, "link": f"/clientes/{c.slug}/"}
+            for c in Cliente.objects.filter(razon_social__icontains=texto)[:_TOP_N]
+        ]
+    if permisos.puede_ver_facturacion(usuario):
+        from apps.facturacion.models import Factura
+        out["facturas"] = [
+            {"codigo": f.codigo, "titulo": f.titulo, "link": f"/facturacion/{f.pk}/"}
+            for f in Factura.objects.filter(titulo__icontains=texto)[:_TOP_N]
+        ]
+    if permisos.puede_ver_cotizaciones(usuario):
+        from apps.cotizaciones.models import Cotizacion
+        out["cotizaciones"] = [
+            {"codigo": c.codigo, "titulo": c.titulo, "link": f"/cotizaciones/{c.pk}/"}
+            for c in Cotizacion.objects.filter(titulo__icontains=texto)[:_TOP_N]
+        ]
+    return out
+
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 HERRAMIENTAS: dict[str, Herramienta] = {
@@ -424,6 +597,58 @@ HERRAMIENTAS: dict[str, Herramienta] = {
         descripcion="Especificaciones del servidor: cores de CPU, RAM total, disco total, uptime.",
         args_schema={},
         gating="abierto", fn=_h_specs_servidor,
+    ),
+    "detalle_ingreso": Herramienta(
+        nombre="detalle_ingreso",
+        descripcion="Estatus de un ingreso por código (ING-2026-0001).",
+        args_schema={"codigo": {"tipo": "str", "requerido": True}},
+        gating="finanzas", fn=_h_detalle_ingreso,
+    ),
+    "detalle_tarea": Herramienta(
+        nombre="detalle_tarea",
+        descripcion="Detalle de una tarea por su id numérico.",
+        args_schema={"tarea_id": {"tipo": "int", "requerido": True}},
+        gating="abierto", fn=_h_detalle_tarea,
+    ),
+    "mis_tareas": Herramienta(
+        nombre="mis_tareas",
+        descripcion="Las tareas abiertas asignadas al usuario actual, ordenadas por fecha.",
+        args_schema={},
+        gating="abierto", fn=_h_mis_tareas,
+    ),
+    "tareas_de_proyecto": Herramienta(
+        nombre="tareas_de_proyecto",
+        descripcion="Tareas de un proyecto por código (LC-0001) o slug. Arg opcional: solo_abiertas (default true).",
+        args_schema={"proyecto_slug": {"tipo": "str", "requerido": True},
+                     "solo_abiertas": {"tipo": "bool", "requerido": False}},
+        gating="abierto", fn=_h_tareas_de_proyecto,
+    ),
+    "contaduria_saldo_cuenta": Herramienta(
+        nombre="contaduria_saldo_cuenta",
+        descripcion="Saldo de una cuenta contable por código, slot (caja, banco, cxc…) o nombre.",
+        args_schema={"cuenta": {"tipo": "str", "requerido": True}},
+        gating="contaduria", fn=_h_contaduria_saldo_cuenta,
+    ),
+    "contaduria_balance": Herramienta(
+        nombre="contaduria_balance",
+        descripcion="Balance de comprobación: saldo por cuenta con movimiento.",
+        args_schema={},
+        gating="contaduria", fn=_h_contaduria_balance,
+    ),
+    "proximos_eventos": Herramienta(
+        nombre="proximos_eventos",
+        descripcion="Entregas de proyectos y tareas con fecha en los próximos N días (default 14). Arg opcional: dias.",
+        args_schema={"dias": {"tipo": "int", "requerido": False}},
+        gating="abierto", fn=_h_proximos_eventos,
+    ),
+    "buscar": Herramienta(
+        nombre="buscar",
+        descripcion=(
+            "Búsqueda libre por texto en proyectos, clientes, facturas y cotizaciones "
+            "(cada tipo según tus permisos). Arg: texto (mínimo 2 caracteres)."
+        ),
+        args_schema={"texto": {"tipo": "str", "requerido": True}},
+        gating="abierto", fn=_h_buscar,
     ),
 }
 

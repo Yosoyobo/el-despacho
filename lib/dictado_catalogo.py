@@ -125,9 +125,13 @@ COMANDOS_PROHIBIDOS: list[dict] = [
 CONSULTAS_CHAT: list[dict] = [
     {"nombre": "listar_kpis / consultar_kpi", "que": "Indicadores del tablero (según el rol)."},
     {"nombre": "consultar_metrica", "que": "Conteos/sumas acotadas (proyectos, tareas, clientes, ingresos/egresos)."},
+    {"nombre": "buscar", "que": "Búsqueda libre por texto en proyectos, clientes, facturas y cotizaciones."},
     {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
+    {"nombre": "tareas_de_proyecto / mis_tareas / detalle_tarea", "que": "Tareas de un proyecto, tus tareas abiertas, o el detalle de una."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},
-    {"nombre": "detalle_factura / detalle_cotizacion", "que": "Estatus por código (requiere permiso)."},
+    {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},
+    {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
+    {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
     {"nombre": "gasto_ia", "que": "Costo, llamadas y tokens de IA por proveedor."},
     {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},
 ]
