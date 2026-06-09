@@ -519,6 +519,12 @@ def cambiar_estado(request, pk):
             ))
             from apps.taller_home.push_handlers import notificar_proyecto_status_cambiado
             notificar_proyecto_status_cambiado(proyecto, anterior, nuevo, request.user)
+            from . import servicios_actividad
+            servicios_actividad.registrar(
+                proyecto=proyecto, tipo="estado_cambiado",
+                descripcion=f"Estado: {anterior} → {nuevo}", actor=request.user,
+                url=f"/proyectos/{proyecto.pk}/",
+            )
             if inline and es_htmx:
                 # Render-V1: devolvemos la barra de status para swap inline.
                 return render(request, "proyectos/_barra_status.html", {
@@ -650,6 +656,12 @@ def agregar_tarea_modal(request, pk):
             ))
             with contextlib.suppress(Exception):
                 notificar_tarea_asignada(tarea, request.user)
+            from . import servicios_actividad
+            servicios_actividad.registrar(
+                proyecto=proyecto, tipo="tarea_creada",
+                descripcion=f"Nueva tarea «{tarea.titulo[:60]}»", actor=request.user,
+                url=f"/proyectos/{proyecto.pk}/",
+            )
             messages.success(request, f"Tarea «{tarea.titulo}» creada.")
             if es_htmx:
                 return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})

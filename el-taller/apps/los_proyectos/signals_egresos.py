@@ -103,6 +103,13 @@ def _crear_egresos_de_proyecto(proyecto_id: int) -> None:
     if not generados:
         return
     with contextlib.suppress(Exception):
+        from . import servicios_actividad
+        servicios_actividad.registrar(
+            proyecto=proyecto, tipo="egreso_generado",
+            descripcion=f"{len(generados)} egreso(s) generado(s) al entrar a producción",
+            actor=None, url=f"/proyectos/{proyecto.pk}/",
+        )
+    with contextlib.suppress(Exception):
         from lib.portavoz import emitir
         from lib.portavoz_eventos import EventoPortavoz
         emitir(EventoPortavoz(

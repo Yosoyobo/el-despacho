@@ -108,6 +108,12 @@ def nueva_tarea(request, proyecto_id):
             ))
             from apps.taller_home.push_handlers import notificar_tarea_asignada
             notificar_tarea_asignada(tarea, request.user)
+            from apps.los_proyectos import servicios_actividad
+            servicios_actividad.registrar(
+                proyecto=proyecto, tipo="tarea_creada",
+                descripcion=f"Nueva tarea «{tarea.titulo[:60]}»", actor=request.user,
+                url=f"/proyectos/{proyecto.pk}/",
+            )
             messages.success(request, "Tarea creada.")
             return redirect("pizarron-detalle-tarea", pk=tarea.pk)
     else:
@@ -215,6 +221,13 @@ def comentar_tarea(request, pk):
             c.es_interno = False
         c.save()
         _sincronizar_menciones_comentario(c, request.user, "comentario_tarea")
+        if tarea.proyecto_id:
+            from apps.los_proyectos import servicios_actividad
+            servicios_actividad.registrar(
+                proyecto=tarea.proyecto, tipo="comentario",
+                descripcion=f"Comentario en tarea «{tarea.titulo[:60]}»", actor=request.user,
+                url=f"/proyectos/{tarea.proyecto_id}/",
+            )
         messages.success(request, "Comentario agregado.")
     else:
         messages.error(request, "Comentario inválido.")
@@ -238,5 +251,11 @@ def comentar_proyecto(request, proyecto_id):
             c.es_interno = False
         c.save()
         _sincronizar_menciones_comentario(c, request.user, "comentario_proyecto")
+        from apps.los_proyectos import servicios_actividad
+        servicios_actividad.registrar(
+            proyecto=proyecto, tipo="comentario",
+            descripcion="Comentario en el proyecto", actor=request.user,
+            url=f"/proyectos/{proyecto.pk}/",
+        )
         messages.success(request, "Comentario agregado al proyecto.")
     return redirect("proyectos-detalle", pk=proyecto.pk)
