@@ -108,6 +108,32 @@ def notificar_buzon_estado(mensaje, actor) -> None:
         transaction.on_commit(_hacer)
 
 
+def notificar_buzon_comentario(mensaje, autor_comentario) -> None:
+    """C5d: avisa al otro lado del ticket. Si comentó el autor del mensaje →
+    avisa a los admins; si comentó un admin → avisa al autor. Best-effort."""
+    es_autor_del_mensaje = mensaje.autor_id == getattr(autor_comentario, "pk", None)
+
+    def _hacer():
+        if es_autor_del_mensaje:
+            destinatarios = list(_admins_activos())
+        else:
+            destinatarios = [mensaje.autor] if mensaje.autor_id else []
+        for u in destinatarios:
+            if u.pk == autor_comentario.pk:
+                continue
+            _enviar(
+                u,
+                titulo=f"💬 Respuesta en Buzón #{mensaje.pk}",
+                cuerpo=f"{autor_comentario.nombre_completo}: {mensaje.asunto[:100]}",
+                url=f"/buzon/{mensaje.pk}/",
+                tag=f"buzon-{mensaje.pk}",
+                categoria="buzon",
+                origen_modulo="buzon",
+                origen_id=mensaje.pk,
+            )
+    transaction.on_commit(_hacer)
+
+
 # ── Proyectos ──
 
 

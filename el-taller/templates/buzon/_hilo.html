@@ -1,0 +1,31 @@
+{% comment %}Hilo de comentarios del Buzón (C5d). Params: mensaje, comentarios,
+puede_comentar_hilo, volver_qs.{% endcomment %}
+{% load referencias %}
+<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">Conversación</h3>
+    <div class="space-y-3">
+        {% for c in comentarios %}
+        <div class="flex gap-3 {% if c.autor_id == mensaje.autor_id %}{% else %}flex-row-reverse{% endif %}">
+            <div class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ c.autor.nombre_completo|default:c.autor.email|slice:":1"|upper }}</div>
+            <div class="min-w-0 max-w-[80%] rounded-2xl px-3.5 py-2 {% if c.autor_id == mensaje.autor_id %}bg-gray-100 dark:bg-gray-800{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}">
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ c.autor.nombre_completo|default:c.autor.email }} · {{ c.creado_en|date:"d M H:i" }}</p>
+                <p class="mt-0.5 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ c.cuerpo|renderizar_referencias|safe }}</p>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-sm text-gray-500 dark:text-gray-400">Aún no hay respuestas en este ticket.</p>
+        {% endfor %}
+    </div>
+    {% if puede_comentar_hilo %}
+    <form method="post" action="{% url 'buzon-comentar' mensaje.pk %}" class="campo-form mt-4 flex items-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+        {% csrf_token %}
+        {% if volver_qs %}<input type="hidden" name="volver" value="{{ volver_qs }}">{% endif %}
+        <div class="min-w-0 flex-1">
+            <textarea name="cuerpo" data-referencias="1" rows="2" placeholder="Escribe una respuesta…" class="!min-h-[44px]"></textarea>
+        </div>
+        <button type="submit" class="btn-primario shrink-0">Responder</button>
+    </form>
+    {% else %}
+    <p class="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">Solo el equipo puede responder en este ticket.</p>
+    {% endif %}
+</section>

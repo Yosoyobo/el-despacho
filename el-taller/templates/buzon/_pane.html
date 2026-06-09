@@ -27,6 +27,7 @@ inyecta en #buzon-pane al picar una fila. NO extiende base.
             <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ mensaje.respuesta_publica }}</p>
         </div>
         {% endif %}
+        {% include "buzon/_hilo.html" %}
         {% if puede_responder and form %}
         <form hx-post="{% url 'buzon-detalle' mensaje.pk %}" hx-target="#buzon-pane" hx-swap="innerHTML"
               class="campo-form space-y-3 border-t border-gray-100 pt-4 dark:border-gray-800">

@@ -256,6 +256,11 @@ def detalle(request, pk: int):
     ]
     if msg.respondido_en:
         info_buzon.append({"label": "Respondido", "value": msg.respondido_en.strftime("%Y-%m-%d %H:%M")})
+    # C5d: hilo de comentarios autor↔admin.
+    from buzon.models import ConfiguracionBuzon
+    comentarios = list(msg.comentarios.select_related("autor"))
+    puede_comentar_hilo = es_admin_buzon or (
+        msg.autor_id == user.pk and ConfiguracionBuzon.obtener().empleado_puede_responder)
     # C1: regresa al listado con el filtro previo (si vino `volver`).
     url_lista = reverse("buzon-lista") + (f"?{volver}" if volver else "")
     if es_htmx:
@@ -264,12 +269,18 @@ def detalle(request, pk: int):
             "es_admin_buzon": es_admin_buzon,
             "puede_responder": puede_responder,
             "info_buzon": info_buzon,
+            "comentarios": comentarios,
+            "puede_comentar_hilo": puede_comentar_hilo,
+            "volver_qs": volver,
         })
     return render(request, "buzon/detalle.html", {
         "mensaje": msg, "form": form,
         "es_admin_buzon": es_admin_buzon,
         "puede_responder": puede_responder,
         "info_buzon": info_buzon,
+        "comentarios": comentarios,
+        "puede_comentar_hilo": puede_comentar_hilo,
+        "volver_qs": volver,
         "breadcrumb_items": [
             {"url": url_lista, "label": "Buzón"},
             {"label": f"#{msg.pk}"},
@@ -325,6 +336,43 @@ def toggle_leido(request, pk: int):
         messages.success(request, "Marcado como leído.")
     volver = (request.POST.get("volver") or "").strip()
     destino = reverse("buzon-lista") + (f"?{volver}" if volver else "")
+    return redirect(destino)
+
+
+@login_required
+@require_http_methods(["POST"])
+def comentar(request, pk: int):
+    """C5d S-LC-Buzon-V2: hilo de comentarios autor↔admin. Admins (responder)
+    siempre; el autor solo si ConfiguracionBuzon.empleado_puede_responder."""
+    from buzon.models import ConfiguracionBuzon, MensajeBuzonComentario
+    msg = get_object_or_404(MensajeBuzon, pk=pk)
+    user = request.user
+    es_admin_buzon = puede(user, "buzon", "ver_todos")
+    es_autor = msg.autor_id == user.pk
+    if not es_admin_buzon and not es_autor:
+        raise Http404
+    # Admin (ver_todos) siempre; el empleado-autor solo si el toggle lo permite.
+    puede_comentar = es_admin_buzon or (
+        es_autor and ConfiguracionBuzon.obtener().empleado_puede_responder)
+    if not puede_comentar:
+        return HttpResponse("No puedes responder en este ticket.", status=403)
+    cuerpo = sanear_contexto((request.POST.get("cuerpo") or "").strip(), max_len=5000)
+    if cuerpo:
+        MensajeBuzonComentario.objects.create(mensaje=msg, autor=user, cuerpo=cuerpo)
+        emitir(EventoPortavoz(
+            tipo="buzon.comentario",
+            actor_id=user.pk, actor_email=user.email,
+            payload={"mensaje_id": msg.pk},
+        ))
+        from apps.taller_home.push_handlers import notificar_buzon_comentario
+        notificar_buzon_comentario(msg, user)
+        messages.success(request, "Comentario enviado.")
+    else:
+        messages.error(request, "Escribe algo antes de enviar.")
+    volver = (request.POST.get("volver") or "").strip()
+    destino = reverse("buzon-detalle", args=[msg.pk])
+    if volver:
+        destino += "?" + urlencode({"volver": volver})
     return redirect(destino)
 
 

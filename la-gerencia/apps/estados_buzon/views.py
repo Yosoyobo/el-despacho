@@ -13,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
-from buzon.models import EstadoBuzon, MensajeBuzon
+from buzon.models import ConfiguracionBuzon, EstadoBuzon, MensajeBuzon
 from lib.permisos import es_super_admin
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -38,7 +38,29 @@ def lista(request):
     estados = list(EstadoBuzon.objects.all().order_by("orden", "label"))
     for e in estados:
         e.tickets_usando = uso.get(e.slug, 0)
-    return render(request, "estados_buzon/lista.html", {"estados": estados})
+    return render(request, "estados_buzon/lista.html", {
+        "estados": estados,
+        "config": ConfiguracionBuzon.obtener(),
+    })
+
+
+@login_required
+def config_buzon(request):
+    """C5d: toggle global — el empleado puede responder en su propio ticket."""
+    if (r := _gate(request)) is not None:
+        return r
+    if request.method != "POST":
+        return redirect("estados-buzon-lista")
+    cfg = ConfiguracionBuzon.obtener()
+    cfg.empleado_puede_responder = request.POST.get("empleado_puede_responder") == "on"
+    cfg.save(update_fields=["empleado_puede_responder", "actualizado_en"])
+    emitir(EventoPortavoz(
+        tipo="buzon.config_actualizada",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"empleado_puede_responder": cfg.empleado_puede_responder},
+    ))
+    messages.success(request, "Configuración del Buzón actualizada.")
+    return redirect("estados-buzon-lista")
 
 
 @login_required

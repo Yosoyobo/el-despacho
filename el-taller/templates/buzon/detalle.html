@@ -18,6 +18,8 @@
         </section>
         {% endif %}
 
+        {% include "buzon/_hilo.html" %}
+
         {% if puede_responder and form %}
         <form method="post" class="campo-form">
             {% csrf_token %}

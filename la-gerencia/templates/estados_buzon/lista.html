@@ -13,6 +13,19 @@
     <a href="{% url 'estados-buzon-nuevo' %}" class="btn-primario">+ Nuevo estado</a>
 </header>
 
+<form method="post" action="{% url 'estados-buzon-config' %}" class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    {% csrf_token %}
+    <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Respuestas del empleado en su ticket</p>
+        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Si lo activas, el autor del mensaje puede responder en el hilo de su propio ticket del Buzón. Por defecto, solo el equipo responde.</p>
+    </div>
+    <label class="inline-flex cursor-pointer items-center gap-2">
+        <input type="checkbox" name="empleado_puede_responder" {% if config.empleado_puede_responder %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+        <span class="text-sm text-gray-700 dark:text-gray-200">Permitir</span>
+        <button type="submit" class="btn-secundario ml-3">Guardar</button>
+    </label>
+</form>
+
 <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <table class="min-w-full text-sm">
         <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
