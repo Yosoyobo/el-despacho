@@ -27,8 +27,18 @@ class UsuarioForm(forms.ModelForm):
             "dias_trabajo": forms.TextInput(attrs={"placeholder": "Ej. Lunes a viernes"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # La ficha es opcional: `modalidad` tiene default y los demás son blank.
+        # Sin esto, agregar `modalidad` (ChoiceField) rompería el alta/edición
+        # de usuario que no la envíe.
+        self.fields["modalidad"].required = False
+
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()
+
+    def clean_modalidad(self):
+        return self.cleaned_data.get("modalidad") or "presencial"
 
     def save(self, commit=True):
         u = super().save(commit=False)

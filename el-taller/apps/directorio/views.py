@@ -27,7 +27,9 @@ def lista(request):
             Q(nombre_completo__icontains=q) | Q(email__icontains=q)
             | Q(puesto__icontains=q) | Q(oficina__icontains=q)
         )
-    return render(request, "directorio/lista.html", {
+    # Template namespaced (directorio_taller/) para no colisionar con el
+    # `directorio/lista.html` de La Gerencia en el settings combinado de tests.
+    return render(request, "directorio_taller/lista.html", {
         "usuarios": usuarios,
         "q": q,
         "incluir_inactivos": incluir_inactivos,

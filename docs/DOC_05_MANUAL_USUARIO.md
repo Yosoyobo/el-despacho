@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Buzón más práctico, Directorio del equipo y consumo de IA (9 de junio de 2026)
+
+**Buzón:**
+- Arreglamos el buscador y los filtros (se veían "pelones"). Ahora filtras con
+  **botones**: por estado, por tipo de mensaje y por **"con adjunto"** — además
+  de buscar por texto.
+- Botón **"Marcar todo como leído"** para dejar la bandeja limpia de un clic, y
+  **"Seleccionar todo"** para acciones en lote.
+- La lista ahora se pagina de **15 en 15** (más rápida).
+- Cuando **archivas** un mensaje, queda marcado como leído.
+- Si un admin pone un mensaje en **"nuevo" a mano**, se queda en "nuevo" (no se
+  vuelve a marcar leído solo al abrirlo).
+- El Chalán 🤖 ahora también te ayuda a redactar la **nota interna** (antes solo
+  la respuesta al autor).
+- **En La Gerencia:** ya puedes crear y editar los **Tipos** de mensaje y los
+  **Estados** del Buzón. A cada estado le pones un *significado* y una *acción
+  automática* (avisar al autor o a los admins cuando un mensaje entra a ese estado).
+
+**Directorio del equipo (nuevo):** en el menú del Taller aparece **Directorio**,
+una página donde consultas la ficha de tus compañeros (puesto, correo, teléfono,
+oficina, modalidad presencial/home office y horario). Es solo de lectura; la
+información se captura desde La Gerencia. El control de entradas/salidas (check-in)
+llega en un módulo aparte más adelante.
+
+**Consumo de IA (La Gerencia):** nueva página **Chalanes → Consumo de IA** con el
+detalle de gasto: llamadas, tokens, costo, desglose por función y por proveedor,
+quién usa más la IA y las últimas 50 llamadas. Puedes ver **7, 30 o 90 días**. En
+el Taller, los super administradores ven un resumen de 30 días.
+
 ## Novedades — Productos (antes "servicios"), más botones 🤖 y proveedores sugeridos (9 de junio de 2026)
 
 - Lo que llamábamos **"servicios" ahora se llama "productos"** en todo el
