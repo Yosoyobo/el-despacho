@@ -13,6 +13,33 @@
     </p>
 </header>
 
+<section class="mb-8 overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-theme-sm dark:border-brand-500/40 dark:bg-gray-900">
+    <header class="border-b border-gray-100 px-5 py-3 dark:border-gray-800">
+        <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            🗣️ Cómo quieres que te hable El Chalán
+        </h2>
+        <p class="mt-1 max-w-2xl text-xs text-gray-500 dark:text-gray-400">
+            Tu estilo personal. Se suma al tono del equipo y solo cambia <strong>cómo</strong>
+            te responde (al dictar y en el chat) — nunca qué puede hacer ni a qué tienes
+            acceso. Déjalo vacío para usar el tono del equipo.
+        </p>
+    </header>
+    <form method="post" action="{% url 'perfil-chalanes-voz' %}" class="p-5">
+        {% csrf_token %}
+        <textarea
+            name="voz_chalan"
+            rows="4"
+            class="w-full rounded-lg border-gray-300 text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+            placeholder="Ej.: «Háblame de tú, directo y al grano. Soy diseñador, los números fiscales no me interesan — resúmemelos en una línea.»"
+        >{{ request.user.voz_chalan }}</textarea>
+        <div class="mt-3">
+            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                Guardar mi estilo
+            </button>
+        </div>
+    </form>
+</section>
+
 <div class="space-y-2">
 {% for fila in filas %}
 {% comment %}S-LC-Feedback-V4: cada estación es un acordeón. Header muestra slug + Chalán actual; al abrir muestra descripción + selector + botón.{% endcomment %}

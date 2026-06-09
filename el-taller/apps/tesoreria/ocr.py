@@ -118,10 +118,10 @@ def extraer_recibo(
     error = ""
 
     try:
-        from chalanes.voz import preludio
+        from chalanes.voz import preludio, reglas
         from lib.analistas import analizar
         res = analizar(
-            estacion="ocr_recibo", prompt=preludio("ocr_recibo") + _PROMPT, imagenes=imagenes,
+            estacion="ocr_recibo", prompt=preludio("ocr_recibo") + _PROMPT + reglas(), imagenes=imagenes,
             max_tokens=_MAX_TOKENS, temperatura=0.0,
             actor_id=getattr(usuario, "pk", None),
         )

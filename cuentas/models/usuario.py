@@ -33,6 +33,13 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
+    # S-Chalan-Voz-Usuario: voz/estilo personal del usuario para Los Chalanes.
+    # Capa ADITIVA — se concatena DESPUÉS de la voz institucional (PromptVoz),
+    # solo afecta tono en flujos conversacionales (Dictado, chat). Nunca toca
+    # permisos ni acciones permitidas (eso lo gobierna el rol en código). Vacío
+    # = sin personalización. Se sanea al inyectarse (chalanes.voz).
+    voz_chalan = models.TextField(blank=True, default="")
+
     # S-LC-Feedback-V5 c7: roles personalizados adicionales (encima del
     # rol primario CharField). El user los puede tener N roles extra que
     # contribuyen permisos a la unión efectiva.

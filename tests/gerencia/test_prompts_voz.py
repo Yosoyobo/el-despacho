@@ -51,3 +51,27 @@ def test_disenador_sin_acceso(client, usuario_factory):
     client.force_login(u)
     resp = client.get("/chalanes/prompts/")
     assert resp.status_code in (302, 403)
+
+
+def test_get_muestra_slot_reglas(client, usuario_factory):
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    resp = client.get("/chalanes/prompts/")
+    assert resp.status_code == 200
+    assert "Reglas operativas" in resp.content.decode()
+
+
+def test_post_guarda_reglas_operativas(client, usuario_factory):
+    from chalanes.voz import invalidar_cache_voz, reglas
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    resp = client.post("/chalanes/prompts/", {
+        "voz_base": "", "voz_dictado": "", "voz_taller_chat": "",
+        "voz_ocr_recibo": "", "voz_kpi_dsl": "",
+        "voz_reglas_operativas": "Cliente urgente → prioridad 8.",
+    })
+    assert resp.status_code == 302
+    invalidar_cache_voz()
+    out = reglas()
+    assert "prioridad 8" in out
+    assert "REGLAS OPERATIVAS" in out

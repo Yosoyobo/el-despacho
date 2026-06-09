@@ -132,6 +132,34 @@ def guardar(request):
 
 @require_POST
 @login_required
+def guardar_voz(request):
+    """POST /perfil/chalanes/voz — guarda la voz/estilo personal del usuario.
+
+    Capa aditiva sobre la voz institucional. Solo afecta tono en flujos
+    conversacionales (Dictado, chat). Vacío = sin personalización."""
+    from lib.sanear import sanear_contexto
+
+    crudo = (request.POST.get("voz_chalan") or "").strip()
+    # Saneamos y acotamos antes de persistir (defensa en profundidad — voz.py
+    # vuelve a sanear al inyectar).
+    limpio = sanear_contexto(crudo, max_len=4000) if crudo else ""
+    request.user.voz_chalan = limpio
+    request.user.save(update_fields=["voz_chalan"])
+    with contextlib.suppress(Exception):
+        emitir({
+            "tipo": "chalan.voz_personal_actualizada",
+            "usuario_id": request.user.pk,
+            "vacia": not bool(limpio),
+        })
+    if limpio:
+        messages.success(request, "Tu estilo personal con El Chalán quedó guardado.")
+    else:
+        messages.success(request, "Tu estilo personal quedó vacío (vuelves al tono del equipo).")
+    return redirect("perfil-chalanes")
+
+
+@require_POST
+@login_required
 def consultar_saldo(request, nombre: str):
     """POST /perfil/chalanes/<nombre>/saldo — solo super_admin/dueno.
 

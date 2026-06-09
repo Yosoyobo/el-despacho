@@ -41,6 +41,21 @@ SLOTS_VOZ: tuple[tuple[str, str, str], ...] = (
 
 SLOTS_VOZ_DICT = {s[0]: {"etiqueta": s[1], "ayuda": s[2]} for s in SLOTS_VOZ}
 
+# S-Chalan-Voz-Usuario: slot ESTRUCTURAL global (no es "voz"/tono). Es texto
+# libre que se inyecta DESPUÉS del esquema estructural de cada builder para
+# refinar comportamiento (p.ej. "si el cliente es urgente, sube prioridad a
+# 8"). NO toca el esquema JSON, el whitelist del DSL ni el schema del OCR —
+# esos siguen siendo contrato con el código y las barreras de seguridad
+# re-validan server-side sin importar este texto. Vacío = sin inyección.
+SLOT_REGLAS = "reglas_operativas"
+SLOT_REGLAS_ETIQUETA = "Reglas operativas (avanzado)"
+SLOT_REGLAS_AYUDA = (
+    "Guías estructurales extra para Los Chalanes, aplicadas a TODAS las "
+    "estaciones. Se anteponen como reglas adicionales, NO reemplazan el "
+    "esquema interno. El sistema sigue validando en código qué acciones son "
+    "permitidas; este texto solo orienta. Vacío = comportamiento por defecto."
+)
+
 
 class PromptVoz(models.Model):
     clave = models.CharField(max_length=40, unique=True, db_index=True)

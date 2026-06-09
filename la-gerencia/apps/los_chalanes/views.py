@@ -60,12 +60,20 @@ def prompts_voz(request):
     schema del OCR) — esos son contrato con el código. Slot vacío = default.
     """
     from chalanes.models import PromptVoz
-    from chalanes.models.prompt_voz import SLOTS_VOZ
+    from chalanes.models.prompt_voz import (
+        SLOT_REGLAS,
+        SLOT_REGLAS_AYUDA,
+        SLOT_REGLAS_ETIQUETA,
+        SLOTS_VOZ,
+    )
     from chalanes.voz import invalidar_cache_voz
+
+    # Todas las claves editables = slots de voz + el slot estructural de reglas.
+    todas_las_claves = [s[0] for s in SLOTS_VOZ] + [SLOT_REGLAS]
 
     existentes = {pv.clave: pv for pv in PromptVoz.objects.all()}
     if request.method == "POST":
-        for clave, _etq, _ayuda in SLOTS_VOZ:
+        for clave in todas_las_claves:
             contenido = (request.POST.get(f"voz_{clave}") or "").strip()
             pv = existentes.get(clave) or PromptVoz(clave=clave)
             pv.contenido = contenido
@@ -76,7 +84,7 @@ def prompts_voz(request):
             emitir(EventoPortavoz(
                 tipo="chalan.voz_actualizada",
                 actor_id=request.user.pk, actor_email=request.user.email,
-                payload={"slots": [s[0] for s in SLOTS_VOZ]},
+                payload={"slots": todas_las_claves},
             ))
         messages.success(request, "Prompts guardados. Los Chalanes los usarán en la próxima llamada.")
         return redirect("los_chalanes:prompts-voz")
@@ -89,8 +97,16 @@ def prompts_voz(request):
             "contenido": pv.contenido if pv else "",
             "es_base": clave == "base",
         })
+    pv_reglas = existentes.get(SLOT_REGLAS)
+    regla = {
+        "clave": SLOT_REGLAS,
+        "etiqueta": SLOT_REGLAS_ETIQUETA,
+        "ayuda": SLOT_REGLAS_AYUDA,
+        "contenido": pv_reglas.contenido if pv_reglas else "",
+    }
     return render(request, "los_chalanes/prompts.html", {
         "slots": slots,
+        "regla": regla,
         "breadcrumb_items": [
             {"url": "/chalanes/", "label": "Chalanes"},
             {"label": "Prompts"},

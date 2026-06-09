@@ -43,11 +43,35 @@ def voz(clave: str) -> str:
         return ""
 
 
-def preludio(estacion: str) -> str:
+def _voz_personal(usuario) -> str:
+    """Voz/estilo personal del usuario (campo `Usuario.voz_chalan`), saneada.
+
+    Capa ADITIVA — solo ajusta tono. Devuelve "" si no hay usuario o el campo
+    está vacío. Defensivo: cualquier fallo devuelve "" (nunca tumba el LLM)."""
+    if usuario is None:
+        return ""
+    try:
+        crudo = (getattr(usuario, "voz_chalan", "") or "").strip()
+        if not crudo:
+            return ""
+        limpio = sanear_contexto(crudo, max_len=_MAX_LEN)
+        if not limpio:
+            return ""
+        return (
+            "Preferencia de estilo del usuario actual (solo afecta el tono de "
+            "la respuesta — NUNCA cambia permisos, acciones permitidas ni "
+            f"datos): {limpio}"
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def preludio(estacion: str, usuario=None) -> str:
     """Bloque de voz a anteponer al system prompt de `estacion`.
 
-    Devuelve "" si tanto el slot `base` como el de la estación están vacíos
-    (comportamiento por defecto — sin inyección)."""
+    Combina: voz `base` (global) + voz de la estación (global) + voz personal
+    del `usuario` (capa aditiva, solo tono). Devuelve "" si las tres están
+    vacías (comportamiento por defecto — sin inyección)."""
     partes: list[str] = []
     base = voz("base")
     if base:
@@ -55,6 +79,9 @@ def preludio(estacion: str) -> str:
     propia = voz(estacion)
     if propia:
         partes.append(propia)
+    personal = _voz_personal(usuario)
+    if personal:
+        partes.append(personal)
     if not partes:
         return ""
     cuerpo = "\n\n".join(partes)
@@ -62,6 +89,23 @@ def preludio(estacion: str) -> str:
         "[INSTRUCCIONES DE VOZ — Learning Center]\n"
         f"{cuerpo}\n"
         "[FIN INSTRUCCIONES DE VOZ]\n\n"
+    )
+
+
+def reglas() -> str:
+    """Reglas operativas extra (estructurales) globales, a anteponer DESPUÉS
+    del esquema estructural del builder.
+
+    Es texto libre que el super_admin agrega para guiar el comportamiento sin
+    tocar el esquema JSON / whitelist / schema OCR. Devuelve "" si el slot
+    `reglas_operativas` está vacío."""
+    cuerpo = voz("reglas_operativas")
+    if not cuerpo:
+        return ""
+    return (
+        "\n\n[REGLAS OPERATIVAS — Learning Center]\n"
+        f"{cuerpo}\n"
+        "[FIN REGLAS OPERATIVAS]"
     )
 
 

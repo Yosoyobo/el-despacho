@@ -69,9 +69,9 @@ def nl_a_dsl(*, texto: str, usuario, max_tokens: int = 1500) -> dict:
        "categoria_sugerida": str, "preview": <resultado_ejecutado>}`
     - `{"ok": False, "error": str}` (cualquier falla — LLM, validación, etc.)
     """
-    from chalanes.voz import preludio
+    from chalanes.voz import preludio, reglas
     from lib.analistas import analizar
-    prompt = preludio("kpi_dsl") + _system_prompt() + "\n\nPREGUNTA DEL USUARIO:\n" + texto
+    prompt = preludio("kpi_dsl") + _system_prompt() + reglas() + "\n\nPREGUNTA DEL USUARIO:\n" + texto
     try:
         resultado = analizar(
             estacion="kpi_dsl", prompt=prompt,

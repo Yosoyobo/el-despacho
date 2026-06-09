@@ -36,6 +36,26 @@
     </section>
     {% endfor %}
 
+    {% if regla %}
+    <section class="overflow-hidden rounded-2xl border border-warning-200 dark:border-warning-500/40 bg-warning-50/40 shadow-theme-sm dark:bg-warning-500/5">
+        <header class="border-b border-warning-100 px-5 py-3 dark:border-warning-500/30">
+            <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                ⚙️ {{ regla.etiqueta }}
+                <span class="rounded-full bg-warning-100 px-2 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">avanzado</span>
+            </h2>
+            <p class="mt-1 max-w-3xl text-xs text-gray-600 dark:text-gray-400">{{ regla.ayuda }}</p>
+        </header>
+        <div class="p-5">
+            <textarea
+                name="voz_{{ regla.clave }}"
+                rows="5"
+                class="w-full rounded-lg border-gray-300 text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                placeholder="(opcional — reglas extra de comportamiento. Ej.: «Si el cliente está marcado urgente, pon prioridad 8 en las tareas.»)"
+            >{{ regla.contenido }}</textarea>
+        </div>
+    </section>
+    {% endif %}
+
     <div class="flex items-center gap-3">
         <button type="submit" class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600">
             Guardar prompts

@@ -85,3 +85,83 @@ def test_signal_invalida_cache():
     pv.contenido = "NUEVO"
     pv.save()  # el signal limpia el caché
     assert voz("base") == "NUEVO"
+
+
+# ── Capa aditiva: voz personal del usuario (S-Chalan-Voz-Usuario) ──────
+
+
+class _UsuarioFalso:
+    """Duck-type para `_voz_personal` — solo necesita el atributo."""
+
+    def __init__(self, voz_chalan=""):
+        self.voz_chalan = voz_chalan
+
+
+def test_preludio_agrega_voz_personal_del_usuario():
+    from chalanes.models import PromptVoz
+    from chalanes.voz import invalidar_cache_voz, preludio
+    PromptVoz.objects.filter(clave="base").update(contenido="VOZBASE")
+    invalidar_cache_voz()
+    u = _UsuarioFalso(voz_chalan="Háblame de tú.")
+    pre = preludio("dictado", u)
+    assert "VOZBASE" in pre
+    assert "Háblame de tú." in pre
+
+
+def test_preludio_sin_usuario_no_lleva_voz_personal():
+    from chalanes.models import PromptVoz
+    from chalanes.voz import invalidar_cache_voz, preludio
+    PromptVoz.objects.filter(clave="base").update(contenido="VOZBASE")
+    invalidar_cache_voz()
+    pre = preludio("dictado")  # usuario=None
+    assert "VOZBASE" in pre
+
+
+def test_voz_personal_vacia_no_inyecta_nada():
+    from chalanes.voz import preludio
+    u = _UsuarioFalso(voz_chalan="")
+    # Sin voz global ni personal → preludio vacío.
+    assert preludio("dictado", u) == ""
+
+
+def test_voz_personal_se_sanea():
+    from chalanes.voz import preludio
+    u = _UsuarioFalso(voz_chalan="Hola <script>alert(1)</script> directo")
+    pre = preludio("taller_chat", u)
+    assert "<script>" not in pre
+    assert "directo" in pre
+
+
+# ── Reglas operativas (slot estructural global) ───────────────────────
+
+
+def test_reglas_slot_seedeado():
+    from chalanes.models import PromptVoz
+    assert PromptVoz.objects.filter(clave="reglas_operativas").exists()
+
+
+def test_reglas_vacio_devuelve_cadena_vacia():
+    from chalanes.voz import reglas
+    assert reglas() == ""
+
+
+def test_reglas_con_contenido_envuelve_en_bloque():
+    from chalanes.models import PromptVoz
+    from chalanes.voz import invalidar_cache_voz, reglas
+    PromptVoz.objects.filter(clave="reglas_operativas").update(
+        contenido="Si el cliente es urgente, sube prioridad a 8.")
+    invalidar_cache_voz()
+    out = reglas()
+    assert "REGLAS OPERATIVAS" in out
+    assert "prioridad a 8" in out
+
+
+def test_reglas_se_sanea():
+    from chalanes.models import PromptVoz
+    from chalanes.voz import invalidar_cache_voz, reglas
+    PromptVoz.objects.filter(clave="reglas_operativas").update(
+        contenido="regla <script>x</script> segura")
+    invalidar_cache_voz()
+    out = reglas()
+    assert "<script>" not in out
+    assert "segura" in out

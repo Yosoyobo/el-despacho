@@ -5,6 +5,26 @@
 
 ---
 
+## Novedades — Tu estilo personal con El Chalán + reglas avanzadas (9 de junio de 2026)
+
+- **Ahora cada quien puede decirle a El Chalán cómo hablarle.** Entra a tu
+  perfil de **Chalanes** (en el menú lateral, *Chalanes*) y arriba verás un
+  recuadro **"Cómo quieres que te hable El Chalán"**. Escribe ahí tu
+  preferencia —por ejemplo *"háblame de tú, directo y al grano; soy
+  diseñador, los números fiscales resúmemelos en una línea"*— y guárdala. Eso
+  cambia **solo el tono** con el que te responde al dictar y en el chat; **no
+  cambia lo que puede hacer ni a qué tienes acceso** (eso lo sigue mandando tu
+  rol). Si lo dejas vacío, El Chalán usa el tono general del equipo. Tu estilo
+  se suma al tono que fija el administrador, no lo reemplaza.
+
+- **El administrador puede agregar "reglas operativas" a El Chalán.** *(Solo
+  super admin, en Gerencia → Chalanes → 📝 Prompts.)* Debajo de los recuadros
+  de voz hay uno nuevo, **"Reglas operativas (avanzado)"**, para escribir guías
+  de comportamiento que aplican a todo —por ejemplo *"si un cliente está
+  marcado como urgente, pon prioridad 8 en sus tareas"*. Son indicaciones
+  extra; **no tocan** las acciones que El Chalán tiene permitidas (el sistema
+  sigue validando cada cosa por su cuenta). Vacío = comportamiento normal.
+
 ## Novedades — Panel de usuarios y ocultar estados que ya no usas (8 de junio de 2026)
 
 - **El Directorio ahora abre cada usuario en una ventana con pestañas** *(La
