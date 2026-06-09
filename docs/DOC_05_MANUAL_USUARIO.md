@@ -5,6 +5,24 @@
 
 ---
 
+## Novedades — El Cartero: ya se mandan correos (9 de junio de 2026)
+
+- **El sistema ya envía correos.** Al marcar una **cotización como enviada** o
+  al **emitir una factura**, El Despacho manda el correo al cliente con el
+  **PDF adjunto** automáticamente.
+- **Tú eliges por dónde sale el correo** *(super admin, en Gerencia → Ajustes
+  → El Cartero)*: por tu **servidor SMTP** (pones host, usuario, contraseña…)
+  o por **n8n**. Hay un botón **"Probar envío"** para mandarte un correo de
+  prueba y confirmar que quedó.
+- **Puedes diseñar el correo a tu gusto** *(Gerencia → Ajustes → El Cartero →
+  Editar plantillas)*: un **editor visual** (arrastrar y soltar) para el
+  cuerpo de cada correo (cotización, factura, recordatorio de cobranza). Hay
+  fichas con las **variables** disponibles ({{ codigo }}, {{ total }}, etc.)
+  que puedes copiar y pegar.
+- **El Chalán te ayuda a redactar.** En el editor, escribe qué quieres
+  ("hazlo más formal", "agrega un saludo cálido") y el botón **"✨ Redactar
+  con El Chalán"** genera o mejora el correo por ti, respetando las variables.
+
 ## Novedades — PDF de cotizaciones/facturas y más cosas a Google Drive (9 de junio de 2026)
 
 - **Ya puedes descargar el PDF de una cotización o una factura.** En el detalle

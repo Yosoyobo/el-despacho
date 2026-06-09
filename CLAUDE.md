@@ -57,6 +57,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **La Optimización** | Limpieza post-backup (vacuum + redis + HUP gunicorn + prune + drop_caches) | — |
 | **Los Analistas** | Abstracción IA multi-provider (S4) | — |
 | **El Reemplazo** | Fallback IA automático (S4) | — |
+| **El Cartero** | Envío de correo con canal intercambiable SMTP/n8n (`lib/cartero.py`) | — |
 
 ### Módulos de negocio
 
@@ -3465,6 +3466,56 @@ el export de Sheets es por-vista (no un libro multi-pestaña). Si el scope
 `drive.file` resultara insuficiente para la API de Sheets en algún
 entorno, el wrapper devuelve error gracioso y habría que sumar el scope
 `spreadsheets` y re-consentir.
+
+### S-Cartero-V1 ✅ — El Cartero: correo con canal SMTP/n8n + plantillas editables + IA (2026-06-09)
+
+Pre-requisito que Oscar pidió antes de La Cobranza/El Resguardo. El Despacho
+**compone** el correo y **decide**; el canal (SMTP o n8n) solo entrega. El
+canal se elige en La Gerencia. 2 commits. VERSION → `2026.06.29`.
+
+- **`lib/cartero.py`** (núcleo, estilo El Portavoz): `enviar(destinatario,
+  asunto, html, adjuntos)` → SMTP (Django `EmailMessage` con conexión armada
+  al vuelo desde La Bóveda) o n8n (evento Portavoz `correo.solicitado` con el
+  correo YA armado, adjuntos en base64; el worker → n8n solo entrega).
+  `probar()`/`esta_configurado()`/`proveedor_activo()`. Fallback gracioso
+  (nunca lanza).
+- **`ajustes.ConfiguracionCorreo`** (singleton, migración `ajustes/0006`):
+  canal activo (`n8n` default | `smtp`) + nombre del remitente. Slots SMTP en
+  La Bóveda (`smtp_host/port/user/password/use_tls/from_email`, `SLOTS_SMTP`
+  en `lib/cartero.py`).
+- **UI Gerencia `/ajustes/cartero/`**: selector de canal + form SMTP +
+  "probar envío". Link desde el panel de Ajustes. Eventos
+  `correo.{solicitado,enviado,fallido}` + `ajuste.cartero_configurado`.
+- **Cableado**: cotización "enviar" y factura "emitir" ahora MANDAN el correo
+  con el PDF adjunto (best-effort — el estado se marca aunque el correo falle,
+  con `messages.warning`).
+- **Plantillas editables** (`ajustes.PlantillaCorreo`, migración
+  `ajustes/0007` que seedea 4 defaults desde `ajustes/plantillas_correo_default.py`:
+  cotizacion/factura/cobranza/generico). Cuerpo HTML + asunto con variables
+  `{{ }}`; `render(contexto)` con motor de Django + contexto ACOTADO
+  (autoescape) + fallback al default si está vacía/rota. El Cartero renderiza
+  desde aquí (cae al template de archivo si falla).
+- **Editor gráfico GrapesJS** (vendoreado vía CDN pin unpkg `grapesjs@0.21.13`
+  + `grapesjs-preset-newsletter`, solo en la página de Gerencia — regla §4 #1
+  consultada y aprobada por Oscar) con su vista de código + preview integrados,
+  chips de variables (copiar al portapapeles) y botón "✨ Redactar con El
+  Chalán". `/ajustes/cartero/plantillas/` lista + editar.
+- **IA**: estación `correo_redaccion` (`chalanes/estaciones` + seed
+  `chalanes/0009`), `lib/cartero_ia.redactar(intencion, html_actual,
+  variables)` → HTML; limpia fences/scripts, preserva variables, nunca lanza.
+  Endpoint JSON `/ajustes/cartero/plantillas/<slug>/redactar`.
+- **32 tests nuevos** (8 núcleo SMTP/n8n + 5 UI canal + 5 cableado + 4 modelo
+  plantilla + 5 UI editor + 5 IA/render). Templates de cuerpo de archivo
+  (`cotizaciones/email.html`, `facturacion/email.html`) quedan como fallback.
+
+**Deuda diseñada / NO incluye**: el worker del Portavoz (`lib/portavoz_worker.py`)
+entrega `correo.solicitado` a n8n, pero el **workflow de n8n que realmente
+manda el correo** se arma del lado de n8n (fuera del repo). GrapesJS guarda
+`getHtml()+<style>getCss()</style>` — Gmail ignora `<style>`, así que para
+máxima compatibilidad conviene estilo inline (el preset newsletter ayuda; el
+usuario puede ajustar en la vista de código). Plantilla `cobranza` queda lista
+para que La Cobranza la consuma. El envío de cotización/factura regenera el
+PDF en cada "enviar" (no reusa el `pdf_file_id` guardado) — aceptable.
 
 ### S4 — IA (Los Chalanes, casos de uso)
 
