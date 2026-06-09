@@ -34,4 +34,6 @@ urlpatterns = [
     # S-LC-Feedback-V5 c8: metas KPI.
     path("metas-kpi/", views.metas_kpi_panel, name="ajustes-metas-kpi"),
     path("metas-kpi/guardar", views.metas_kpi_guardar, name="ajustes-metas-kpi-guardar"),
+    # S-Chalanes-UX #4: recordatorios de tareas por vencer (config global).
+    path("recordatorios/", views.recordatorios_panel, name="ajustes-recordatorios"),
 ]

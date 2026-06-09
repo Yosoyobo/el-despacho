@@ -27,6 +27,9 @@ class Tarea(models.Model):
     )
     fecha_compromiso = models.DateField(null=True, blank=True)
     completada_en = models.DateTimeField(null=True, blank=True)
+    # Idempotencia del cron de recordatorios (S-Chalanes-UX #4): fecha del
+    # último recordatorio enviado. Evita repetir el mismo día.
+    ultimo_recordatorio = models.DateField(null=True, blank=True)
 
     creado_en = models.DateTimeField(auto_now_add=True)
     creado_por = models.ForeignKey(

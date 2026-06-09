@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Recordatorios — Ajustes{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Recordatorios" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Recordatorios de tareas" subtitulo="Cuándo y a quién avisar de tareas por vencer (push del Interfón)" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+<form method="post" action="{% url 'ajustes-recordatorios' %}" class="campo-form max-w-2xl space-y-6">
+    {% csrf_token %}
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-100">
+            <input type="checkbox" name="activo" value="1" {% if config.activo %}checked{% endif %}
+                   class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+            Recordatorios activos
+        </label>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Si lo apagas, el cron diario no envía nada.</p>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">¿Cuándo avisar?</h2>
+        <div class="space-y-3">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input type="checkbox" name="avisar_el_dia" value="1" {% if config.avisar_el_dia %}checked{% endif %}
+                       class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                El día de la entrega
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input type="checkbox" name="avisar_vencidas" value="1" {% if config.avisar_vencidas %}checked{% endif %}
+                       class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                Mientras siga vencida (una vez al día)
+            </label>
+            <div>
+                <label for="dias_antes_csv" class="mb-1.5 block text-sm text-gray-700 dark:text-gray-200">Días de anticipación</label>
+                <input type="text" id="dias_antes_csv" name="dias_antes_csv" value="{{ config.dias_antes_csv }}"
+                       placeholder="Ej. 1,3 — vacío = no avisar antes">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Avisa N días antes del compromiso. Separa con comas. Déjalo vacío para no avisar con anticipación.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">¿A quién avisar?</h2>
+        <div class="space-y-3">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input type="checkbox" name="incluir_asignado" value="1" {% if config.incluir_asignado %}checked{% endif %}
+                       class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                Al responsable de la tarea
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input type="checkbox" name="incluir_lider" value="1" {% if config.incluir_lider %}checked{% endif %}
+                       class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                Al líder del proyecto
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input type="checkbox" name="incluir_admins" value="1" {% if config.incluir_admins %}checked{% endif %}
+                       class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                A super_admin y dueño
+            </label>
+        </div>
+        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Cada usuario puede silenciar la categoría «Tareas» desde su perfil de notificaciones.</p>
+    </section>
+
+    <div class="flex justify-end">
+        <button type="submit" class="btn-primario">Guardar</button>
+    </div>
+</form>
+{% endblock %}

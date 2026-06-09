@@ -166,10 +166,38 @@ def notificar_tarea_asignada(tarea, actor) -> None:
             titulo=f"✅ Nueva tarea: {tarea.titulo[:80]}",
             cuerpo=(f"En {tarea.proyecto.codigo}" if tarea.proyecto_id else "Nueva tarea")
                    + (f" · entrega {tarea.fecha_compromiso}" if tarea.fecha_compromiso else ""),
-            url=f"/proyectos/{tarea.proyecto_id}/" if tarea.proyecto_id else "/",
+            url=f"/tareas/{tarea.pk}/",
             tag=f"tarea-asignada-{tarea.pk}",
             categoria="tareas",
             origen_modulo="tareas",
             origen_id=tarea.pk,
         )
     transaction.on_commit(_hacer)
+
+
+def notificar_tarea_recordatorio(tarea, usuario, *, motivo: str, dias: int = 0) -> None:
+    """Recordatorio de tarea por vencer (S-Chalanes-UX #4). Lo invoca el cron
+    `recordar_tareas_por_vencer` por cada (tarea, destinatario). Envío directo
+    (sin on_commit) — corre fuera de una request. Categoría `tareas` (opt-out).
+
+    `motivo` ∈ {antes, hoy, vencida}; `dias` = días de anticipación (motivo=antes).
+    """
+    if not usuario or not getattr(usuario, "is_active", False):
+        return
+    if motivo == "vencida":
+        emoji, frase = "🔴", f"vencida hace {abs(dias)} día{'s' if abs(dias) != 1 else ''}" if dias else "vencida"
+    elif motivo == "hoy":
+        emoji, frase = "⏰", "vence hoy"
+    else:
+        emoji, frase = "🔔", f"vence en {dias} día{'s' if dias != 1 else ''}"
+    proyecto = f" · {tarea.proyecto.codigo}" if tarea.proyecto_id else ""
+    _enviar(
+        usuario,
+        titulo=f"{emoji} Tarea {frase}: {tarea.titulo[:70]}",
+        cuerpo=f"Entrega {tarea.fecha_compromiso}{proyecto}",
+        url=f"/tareas/{tarea.pk}/",
+        tag=f"tarea-recordatorio-{tarea.pk}",
+        categoria="tareas",
+        origen_modulo="tareas",
+        origen_id=tarea.pk,
+    )

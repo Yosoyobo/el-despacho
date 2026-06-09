@@ -26,6 +26,8 @@ EventoTipo = Literal[
     "chalan.voz_personal_actualizada",
     "tarea.creada",
     "tarea.completada",
+    "tarea.recordatorio",
+    "recordatorios.config_actualizada",
     "cotizacion.creada",
     "cotizacion.actualizada",
     "cotizacion.enviada",

@@ -32,6 +32,32 @@ def panel(request):
 
 
 @requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def recordatorios_panel(request):
+    """Config global de recordatorios de tareas por vencer (S-Chalanes-UX #4)."""
+    from cuentas.models import ConfigRecordatorios
+
+    config = ConfigRecordatorios.get_solo()
+    if request.method == "POST":
+        config.dias_antes_csv = (request.POST.get("dias_antes_csv") or "").strip()
+        config.avisar_el_dia = bool(request.POST.get("avisar_el_dia"))
+        config.avisar_vencidas = bool(request.POST.get("avisar_vencidas"))
+        config.incluir_asignado = bool(request.POST.get("incluir_asignado"))
+        config.incluir_lider = bool(request.POST.get("incluir_lider"))
+        config.incluir_admins = bool(request.POST.get("incluir_admins"))
+        config.activo = bool(request.POST.get("activo"))
+        config.save()
+        emitir(EventoPortavoz(
+            tipo="recordatorios.config_actualizada",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"activo": config.activo, "dias_antes": config.dias_antes},
+        ))
+        messages.success(request, "Configuración de recordatorios guardada.")
+        return redirect("ajustes-recordatorios")
+    return render(request, "ajustes/recordatorios.html", {"config": config})
+
+
+@requires_role("super_admin")
 @require_http_methods(["POST"])
 def guardar(request):
     clave = (request.POST.get("clave") or "").strip()
