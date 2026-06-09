@@ -5,6 +5,29 @@
 
 ---
 
+## Novedades — Recados con 3 pestañas, conversación en el Buzón y avisos en el ícono de la app (9 de junio de 2026)
+
+**Recados ahora tiene 3 pestañas:**
+- **Chat:** la mensajería de siempre (directos y grupos).
+- **Mi Buzón:** todo lo que has mandado al Buzón del equipo, con su estado y la
+  respuesta — y un botón para escribir uno nuevo. (Antes el Buzón salía
+  apretado al pie del chat; ahora tiene su propio espacio.)
+- **Actividad:** dos cosas en un solo lugar — **"Te mencionaron"** (cuando
+  alguien te etiqueta con @tu-nombre en un chat, recado o comentario; al darle
+  clic te lleva ahí) y, si participas en proyectos, **la actividad de tus
+  proyectos** (cambios de estado, tareas nuevas, comentarios, gastos…).
+
+**Conversación dentro del Buzón:** cada mensaje del Buzón ahora tiene un **hilo**
+para que el equipo y la persona conversen dentro del ticket. Por defecto solo el
+equipo responde; un super administrador puede activar, desde *Gerencia →
+Catálogos → Estados del Buzón*, que el autor también pueda responder en su ticket.
+
+**Avisos en el ícono de la app (PWA):** si instalaste El Taller como app, el
+ícono ahora muestra un **número con tus pendientes** (mensajes y Buzón sin leer)
+y se limpia solo cuando los lees.
+
+El ícono de **Recados** en el menú cambió a un sobre ✉️.
+
 ## Novedades — Buzón más práctico, Directorio del equipo y consumo de IA (9 de junio de 2026)
 
 **Buzón:**
