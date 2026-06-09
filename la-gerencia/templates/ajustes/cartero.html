@@ -5,6 +5,10 @@
 {% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="El Cartero" subtitulo="El Despacho compone el correo; tú eliges por qué canal sale. El canal solo entrega." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
 
+<div class="mb-4">
+    <a href="{% url 'ajustes-cartero-plantillas' %}" class="btn-secundario">✏️ Editar plantillas de correo →</a>
+</div>
+
 <section class="mb-6 rounded-2xl border p-5 shadow-theme-sm
     {% if configurado %}border-success-300 bg-success-50 dark:border-success-700 dark:bg-success-500/10
     {% else %}border-warning-300 bg-warning-50 dark:border-warning-700 dark:bg-warning-500/10{% endif %}">

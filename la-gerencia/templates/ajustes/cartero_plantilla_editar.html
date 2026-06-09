@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Editar plantilla — El Cartero{% endblock %}
+
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Plantillas" "/ajustes/cartero/plantillas/" pl.nombre as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=pl.nombre subtitulo="Diseña el correo gráficamente. Usa los botones de código y vista previa del editor, o pídele a El Chalán que lo redacte." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/plantillas/" back_label="Plantillas" %}
+
+{# GrapesJS — editor visual de correo (vendoreado vía CDN pin, regla §4 #1). #}
+<link rel="stylesheet" href="https://unpkg.com/grapesjs@0.21.13/dist/css/grapes.min.css">
+<link rel="stylesheet" href="https://unpkg.com/grapesjs-preset-newsletter@1.0.2/dist/grapesjs-preset-newsletter.css">
+
+{{ pl.cuerpo_html|json_script:"cuerpo-inicial" }}
+
+<form method="post" id="form-plantilla" action="{% url 'ajustes-cartero-plantilla-editar' pl.slug %}" class="space-y-5">
+    {% csrf_token %}
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Asunto del correo</label>
+        <input type="text" name="asunto" value="{{ pl.asunto }}"
+               class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+               placeholder="Cotización {% templatetag openvariable %} codigo {% templatetag closevariable %} · Learning Center">
+    </div>
+
+    {# Variables disponibles — clic para copiar #}
+    {% if variables %}
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="mb-2 text-xs font-medium text-gray-600 dark:text-gray-400">Variables disponibles (clic para copiar y pegar en el correo):</p>
+        <div class="flex flex-wrap gap-2">
+            {% for v in variables %}
+            <button type="button" class="var-chip rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:bg-brand-500/10 dark:text-brand-300"
+                    data-var="{% templatetag openvariable %} {{ v }} {% templatetag closevariable %}">{% templatetag openvariable %} {{ v }} {% templatetag closevariable %}</button>
+            {% endfor %}
+        </div>
+        <p id="var-copiado" class="mt-2 hidden text-xs text-success-600 dark:text-success-400">Copiado ✓</p>
+    </div>
+    {% endif %}
+
+    {# Asistente de IA #}
+    <div class="rounded-2xl border border-brand-200 bg-brand-50/40 p-4 shadow-theme-sm dark:border-brand-500/40 dark:bg-brand-500/5">
+        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">✨ Pídele a El Chalán</label>
+        <textarea id="ia-intencion" rows="2"
+                  class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                  placeholder="Ej.: hazlo más cálido y formal; agrega un saludo y menciona que estamos a sus órdenes."></textarea>
+        <div class="mt-2 flex items-center gap-2">
+            <button type="button" id="btn-ia" class="btn-secundario">✨ Redactar con El Chalán</button>
+            <span id="ia-estado" class="text-xs text-gray-500 dark:text-gray-400"></span>
+        </div>
+    </div>
+
+    <div id="gjs"></div>
+    <input type="hidden" name="cuerpo_html" id="cuerpo_html">
+
+    <div class="flex items-center gap-3">
+        <button type="submit" class="btn-primario">Guardar plantilla</button>
+        <a href="{% url 'ajustes-cartero-plantillas' %}" class="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancelar</a>
+    </div>
+</form>
+
+<script src="https://unpkg.com/grapesjs@0.21.13"></script>
+<script src="https://unpkg.com/grapesjs-preset-newsletter@1.0.2"></script>
+<script>
+(function () {
+    var htmlInicial = "";
+    try { htmlInicial = JSON.parse(document.getElementById("cuerpo-inicial").textContent || '""'); } catch (e) {}
+
+    var editor = grapesjs.init({
+        container: "#gjs",
+        height: "520px",
+        fromElement: false,
+        storageManager: false,
+        plugins: ["grapesjs-preset-newsletter"],
+        pluginsOpts: { "grapesjs-preset-newsletter": { modalLabelImport: "Pega tu HTML" } },
+    });
+    if (htmlInicial) { editor.setComponents(htmlInicial); }
+
+    // Al guardar, vuelca el HTML + CSS del editor al campo oculto.
+    document.getElementById("form-plantilla").addEventListener("submit", function () {
+        var css = editor.getCss();
+        document.getElementById("cuerpo_html").value = editor.getHtml() + (css ? "<style>" + css + "</style>" : "");
+    });
+
+    // Variables: copiar al portapapeles.
+    document.querySelectorAll(".var-chip").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+            var txt = chip.getAttribute("data-var");
+            (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () {
+                var ok = document.getElementById("var-copiado");
+                ok.classList.remove("hidden");
+                setTimeout(function () { ok.classList.add("hidden"); }, 1500);
+            }).catch(function () {});
+        });
+    });
+
+    // El Chalán redacta → carga el HTML en el editor.
+    var btn = document.getElementById("btn-ia");
+    var estado = document.getElementById("ia-estado");
+    btn.addEventListener("click", function () {
+        var intencion = document.getElementById("ia-intencion").value.trim();
+        if (!intencion) { estado.textContent = "Escribe qué quieres."; return; }
+        btn.disabled = true; estado.textContent = "El Chalán está redactando…";
+        var fd = new FormData();
+        fd.append("intencion", intencion);
+        fd.append("html_actual", editor.getHtml());
+        fd.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
+        fetch("{% url 'ajustes-cartero-plantilla-redactar' pl.slug %}", { method: "POST", body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.ok) { editor.setComponents(d.html); estado.textContent = "Listo ✓ — revisa y guarda."; }
+                else { estado.textContent = d.error || "No se pudo redactar."; }
+            })
+            .catch(function () { estado.textContent = "Error de red."; })
+            .finally(function () { btn.disabled = false; });
+    });
+})();
+</script>
+{% endblock %}

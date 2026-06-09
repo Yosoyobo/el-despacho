@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Plantillas de correo — El Cartero{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Plantillas" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Plantillas de correo" subtitulo="El cuerpo y el asunto de cada correo que manda El Cartero. Edítalas gráficamente o pídele a El Chalán que las redacte." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="El Cartero" %}
+
+<ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+    {% for pl in plantillas %}
+    <li class="flex items-center justify-between gap-4 p-5">
+        <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ pl.nombre }}</h3>
+            <p class="truncate text-xs text-gray-500 dark:text-gray-400">Asunto: {{ pl.asunto|default:"—" }}</p>
+            <code class="text-[11px] text-gray-400">{{ pl.slug }}</code>
+        </div>
+        <a href="{% url 'ajustes-cartero-plantilla-editar' pl.slug %}" class="btn-secundario shrink-0">Editar →</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -52,8 +52,6 @@ def enviar_por_correo(cot: Cotizacion, actor, email_destino: str = ""):
 
     Devuelve `lib.cartero.ResultadoCorreo`. Genera el PDF si Drive está
     disponible; si no, manda el correo sin adjunto. Nunca lanza."""
-    from django.template.loader import render_to_string
-
     from lib import cartero
 
     destino = (email_destino or cot.enviada_a_email
@@ -67,12 +65,31 @@ def enviar_por_correo(cot: Cotizacion, actor, email_destino: str = ""):
         adjuntos.append(cartero.Adjunto(
             nombre=f"{cot.codigo}.pdf", contenido=res_pdf.pdf_bytes, mime="application/pdf"))
 
-    html = render_to_string("cotizaciones/email.html", {"cot": cot})
-    return cartero.enviar(
-        destinatario=destino,
-        asunto=f"Cotización {cot.codigo} · Learning Center",
-        html=html, adjuntos=adjuntos,
-    )
+    asunto, html = _render_correo(cot)
+    return cartero.enviar(destinatario=destino, asunto=asunto, html=html, adjuntos=adjuntos)
+
+
+def _render_correo(cot: Cotizacion) -> tuple[str, str]:
+    """(asunto, cuerpo_html) desde la PlantillaCorreo editable; fallback al
+    template de archivo si la plantilla no existe."""
+    from cuentas.templatetags.forms_helpers import dinero
+    totales = cot.calcular_totales()
+    contexto = {
+        "codigo": cot.codigo,
+        "titulo": cot.titulo,
+        "cliente": cot.cliente.razon_social,
+        "total": dinero(totales["total"]),
+        "moneda": cot.moneda,
+        "fecha_validez": cot.fecha_validez.strftime("%d/%m/%Y") if cot.fecha_validez else "",
+        "notas": cot.notas or "",
+    }
+    try:
+        from ajustes.models import PlantillaCorreo
+        return PlantillaCorreo.obtener("cotizacion").render(contexto)
+    except Exception:  # noqa: BLE001 — fallback al template de archivo
+        from django.template.loader import render_to_string
+        html = render_to_string("cotizaciones/email.html", {"cot": cot})
+        return f"Cotización {cot.codigo} · Learning Center", html
 
 
 def generar_pdf(cot: Cotizacion, actor):

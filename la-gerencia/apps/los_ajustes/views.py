@@ -159,6 +159,54 @@ def cartero_probar(request):
     return redirect("ajustes-cartero")
 
 
+# ── Plantillas de correo (editor gráfico + IA) ────────────────────────────
+
+
+@requires_role("super_admin")
+def cartero_plantillas(request):
+    """Lista las plantillas editables de El Cartero."""
+    from ajustes.models import PlantillaCorreo
+    from ajustes.plantillas_correo_default import SLUGS_PLANTILLA
+    plantillas = [PlantillaCorreo.obtener(slug) for slug in SLUGS_PLANTILLA]
+    return render(request, "ajustes/cartero_plantillas.html", {"plantillas": plantillas})
+
+
+@requires_role("super_admin")
+def cartero_plantilla_editar(request, slug: str):
+    """Editor gráfico (GrapesJS) de una plantilla. GET muestra; POST guarda."""
+    from ajustes.models import PlantillaCorreo
+    from ajustes.plantillas_correo_default import variables_de
+    pl = PlantillaCorreo.obtener(slug)
+    if request.method == "POST":
+        pl.asunto = (request.POST.get("asunto") or "").strip()
+        pl.cuerpo_html = request.POST.get("cuerpo_html") or ""
+        pl.actualizado_por = request.user
+        pl.save()
+        messages.success(request, f"Plantilla «{pl.nombre}» guardada.")
+        return redirect("ajustes-cartero-plantillas")
+    return render(request, "ajustes/cartero_plantilla_editar.html", {
+        "pl": pl,
+        "variables": variables_de(slug),
+    })
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def cartero_plantilla_redactar(request, slug: str):
+    """El Chalán redacta/mejora el HTML de la plantilla. Devuelve JSON."""
+    from django.http import JsonResponse
+
+    from ajustes.plantillas_correo_default import variables_de
+    from lib import cartero_ia
+    intencion = request.POST.get("intencion") or ""
+    html_actual = request.POST.get("html_actual") or ""
+    res = cartero_ia.redactar(
+        intencion=intencion, html_actual=html_actual,
+        variables=variables_de(slug), usuario=request.user,
+    )
+    return JsonResponse(res)
+
+
 # ── Google Drive — asistente guiado (OAuth sin clave) ─────────────────────────
 
 _DRIVE_OAUTH_STATE = "drive_oauth_state"

@@ -62,8 +62,6 @@ def enviar_por_correo(fac: Factura, actor):
 
     Destinatario: el correo del cliente. Devuelve `lib.cartero.ResultadoCorreo`.
     Genera el PDF si Drive está disponible; nunca lanza."""
-    from django.template.loader import render_to_string
-
     from lib import cartero
 
     destino = (getattr(fac.cliente, "email_contacto", "") or "").strip()
@@ -76,12 +74,32 @@ def enviar_por_correo(fac: Factura, actor):
         adjuntos.append(cartero.Adjunto(
             nombre=f"{fac.codigo}.pdf", contenido=res_pdf.pdf_bytes, mime="application/pdf"))
 
-    html = render_to_string("facturacion/email.html", {"fac": fac})
-    return cartero.enviar(
-        destinatario=destino,
-        asunto=f"Factura {fac.codigo} · Learning Center",
-        html=html, adjuntos=adjuntos,
-    )
+    asunto, html = _render_correo(fac)
+    return cartero.enviar(destinatario=destino, asunto=asunto, html=html, adjuntos=adjuntos)
+
+
+def _render_correo(fac: Factura) -> tuple[str, str]:
+    """(asunto, cuerpo_html) desde la PlantillaCorreo editable; fallback al
+    template de archivo."""
+    from cuentas.templatetags.forms_helpers import dinero
+    totales = fac.calcular_totales()
+    contexto = {
+        "codigo": fac.codigo,
+        "titulo": fac.titulo,
+        "cliente": fac.cliente.razon_social,
+        "total": dinero(totales["total"]),
+        "moneda": fac.moneda,
+        "fecha_emision": fac.fecha_emision.strftime("%d/%m/%Y") if fac.fecha_emision else "",
+        "vencimiento": fac.fecha_vencimiento.strftime("%d/%m/%Y") if fac.fecha_vencimiento else "",
+        "notas": fac.notas or "",
+    }
+    try:
+        from ajustes.models import PlantillaCorreo
+        return PlantillaCorreo.obtener("factura").render(contexto)
+    except Exception:  # noqa: BLE001
+        from django.template.loader import render_to_string
+        html = render_to_string("facturacion/email.html", {"fac": fac})
+        return f"Factura {fac.codigo} · Learning Center", html
 
 
 def generar_pdf(fac: Factura, actor):
