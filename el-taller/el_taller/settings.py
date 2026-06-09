@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "apps.los_proyectos.apps.LosProyectosConfig",
     "apps.el_pizarron.apps.ElPizarronConfig",
     "apps.calendario.apps.CalendarioConfig",
+    "apps.directorio.apps.DirectorioConfig",
     "apps.buzon_empleado.apps.BuzonEmpleadoConfig",
     "apps.perfil_notificaciones.apps.PerfilNotificacionesConfig",
     # Pre-S2b.2: movidos desde La Gerencia.

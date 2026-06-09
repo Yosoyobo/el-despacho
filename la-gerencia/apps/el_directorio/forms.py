@@ -14,7 +14,18 @@ class UsuarioForm(forms.ModelForm):
 
     class Meta:
         model = Usuario
-        fields = ["email", "nombre_completo", "rol", "is_active"]
+        # S-Directorio-V1: la ficha (puesto/teléfono/oficina/modalidad/horario)
+        # se edita aquí en La Gerencia; el Taller solo la muestra read-only.
+        fields = [
+            "email", "nombre_completo", "rol", "is_active",
+            "puesto", "telefono", "oficina", "modalidad",
+            "horario_inicio", "horario_fin", "dias_trabajo",
+        ]
+        widgets = {
+            "horario_inicio": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            "horario_fin": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            "dias_trabajo": forms.TextInput(attrs={"placeholder": "Ej. Lunes a viernes"}),
+        }
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()

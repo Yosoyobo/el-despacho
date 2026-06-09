@@ -19,6 +19,7 @@ SLUGS_SIDEBAR_TALLER = [
     ("clientes", "Clientes"),
     ("proyectos", "Proyectos"),
     ("calendario", "Calendario"),
+    ("directorio", "Directorio"),
     ("buzon", "Buzón"),
     ("recados", "Recados"),
     ("chat", "El Chalán (chat IA)"),

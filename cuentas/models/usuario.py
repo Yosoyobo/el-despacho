@@ -33,6 +33,25 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
+    # S-Directorio-V1: ficha del empleado. Editable solo en La Gerencia; el
+    # Taller la muestra read-only. Los checkins/ponchado viven en El Checador
+    # (sprint aparte) — aquí solo el horario/oficina/modalidad declarados.
+    MODALIDADES = (
+        ("presencial", "Presencial"),
+        ("remoto", "Home office"),
+        ("hibrido", "Híbrido"),
+    )
+    puesto = models.CharField(max_length=120, blank=True, default="",
+                              help_text="Cargo o puesto, ej. Auditor.")
+    telefono = models.CharField(max_length=40, blank=True, default="")
+    oficina = models.CharField(max_length=120, blank=True, default="",
+                               help_text="Sede o ubicación de trabajo.")
+    modalidad = models.CharField(max_length=12, choices=MODALIDADES, default="presencial")
+    horario_inicio = models.TimeField(null=True, blank=True)
+    horario_fin = models.TimeField(null=True, blank=True)
+    dias_trabajo = models.CharField(max_length=80, blank=True, default="",
+                                    help_text="Ej. Lunes a viernes.")
+
     # S-Chalan-Voz-Usuario: voz/estilo personal del usuario para Los Chalanes.
     # Capa ADITIVA — se concatena DESPUÉS de la voz institucional (PromptVoz),
     # solo afecta tono en flujos conversacionales (Dictado, chat). Nunca toca

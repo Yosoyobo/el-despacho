@@ -50,6 +50,13 @@
         </a>
         {% endif %}
 
+        {% if not sidebar_orden.directorio.oculto %}
+        <a href="{% url 'directorio-lista' %}" style="order: {{ sidebar_orden.directorio.orden|default:45 }}" class="menu-item {% if '/directorio' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 20v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Directorio
+        </a>
+        {% endif %}
+
         {% if permisos_modulos.buzon and not sidebar_orden.buzon.oculto %}
         <a href="/buzon/" style="order: {{ sidebar_orden.buzon.orden|default:50 }}" class="menu-item {% if '/buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 13h4l2 3h4l2-3h4M4 13l2-8h12l2 8v5H4z" stroke-linecap="round" stroke-linejoin="round"/></svg>
