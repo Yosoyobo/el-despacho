@@ -5,6 +5,39 @@
 
 ---
 
+## Novedades — El Chalán te ayuda a escribir, recordatorios y un Buzón como correo (9 de junio de 2026)
+
+Cuatro mejoras grandes:
+
+- **Menciones @ # $ en todos lados.** Ahora puedes usar `@persona`,
+  `#LC-0001` (proyecto) y `$cliente` en **cualquier** campo de texto del
+  Taller: comentarios de proyecto y de tarea, notas de cotización y factura,
+  movimientos de contaduría, etc. Sirve para que El Chalán encuentre y entienda
+  de qué estás hablando.
+- **Botón "🤖 Redactar" en los comentarios y respuestas.** Junto a varios
+  campos de texto aparece una barra de El Chalán: escribe qué quieres decir
+  (por ejemplo "redacta el avance de #LC-0001 para @oscar"), pícale a
+  **Redactar** y El Chalán propone el texto. Tú lo revisas, lo editas si quieres
+  y lo guardas. Si mencionaste un proyecto o persona, El Chalán ya sabe a qué
+  te refieres.
+- **Recordatorios de tareas.** El sistema te avisa por notificación cuando una
+  tarea está por vencer o ya venció. El super_admin configura cuándo avisar y a
+  quién en **Gerencia → Ajustes → Recordatorios de tareas**. Las notificaciones
+  ahora abren directamente la tarea.
+- **El Buzón ahora funciona como tu correo.** Cada quien tiene su propio "no
+  leído": los mensajes sin abrir salen en **negrita** con un puntito, hay un
+  contador de pendientes, **buscador** por asunto/texto/remitente, y puedes
+  marcar leído/no leído (uno por uno o varios a la vez).
+
+## Novedades — La Ayuda quedó más fácil de consultar + aviso de cambios (9 de junio de 2026)
+
+- La **Ayuda** se dividió en dos: el **Manual** (cómo usar el sistema) y las
+  **Novedades** (lo nuevo y lo que cambió). Así el manual ya no es una página
+  larguísima y se consulta más rápido.
+- Cuando hay **cambios nuevos**, te llega una notificación y aparece un
+  **globito con el número** de novedades sin ver junto a "Ayuda" en el menú.
+  El número se va sumando hasta que entras a ver las Novedades.
+
 ## Novedades — Menciones @#$ en los comentarios (9 de junio de 2026)
 
 - **En los comentarios de tareas ya puedes mencionar** con `@persona`,

@@ -3853,6 +3853,8 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    0 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_cotizaciones_vencidas >> /var/log/vencidas.log 2>&1
    5 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_facturas_vencidas  >> /var/log/vencidas.log 2>&1
    30 3 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml exec -T la-gerencia python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
+   # S-Chalanes-UX #4 (2026-06-09): recordatorios de tareas por vencer (config en Gerencia → Ajustes → Recordatorios)
+   10 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py recordar_tareas_por_vencer >> /var/log/recordatorios.log 2>&1
    ```
 
    Los dos comandos de "vencidas" son idempotentes (campo
