@@ -44,34 +44,39 @@ propio) y panel de lectura a la derecha (~60%, sticky). Se llena vía HTMX al pi
 En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-5">
 <div class="min-w-0 lg:col-span-2">
-{# C1 S-LC-Feedback-V6: filtros visibles para todos (antes solo admin). #}
-<form method="get" class="campo-form mb-3 flex flex-wrap items-end gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    {% if orden_actual != 'fecha' %}<input type="hidden" name="orden" value="{{ orden_actual }}">{% endif %}
-    <div class="min-w-[140px] flex-1">
-        <label for="bzn-estado" class="sr-only">Estado</label>
-        <select id="bzn-estado" name="estado">
-            <option value="">— Todos los estados —</option>
-            {% for e in estados_disponibles %}
-            <option value="{{ e.slug }}" {% if estado_filtro == e.slug %}selected{% endif %}>{{ e.label }}</option>
-            {% endfor %}
-        </select>
+{# S-LC-Buzon-V2: filtros tipo-botón (estado/tipo/adjunto) + buscador. #}
+<div class="mb-3 space-y-2.5 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <form method="get" class="campo-form flex items-center gap-2">
+        {% if estado_filtro %}<input type="hidden" name="estado" value="{{ estado_filtro }}">{% endif %}
+        {% if tipo_filtro %}<input type="hidden" name="tipo" value="{{ tipo_filtro }}">{% endif %}
+        {% if adjunto_filtro %}<input type="hidden" name="adjunto" value="{{ adjunto_filtro }}">{% endif %}
+        {% if orden_actual != 'fecha' %}<input type="hidden" name="orden" value="{{ orden_actual }}">{% endif %}
+        <div class="min-w-0 flex-1">
+            <label for="bzn-q" class="sr-only">Buscar</label>
+            <input type="search" id="bzn-q" name="q" value="{{ q }}" placeholder="Buscar asunto, texto o remitente…">
+        </div>
+        <button type="submit" class="btn-secundario shrink-0">Buscar</button>
+    </form>
+    <div class="flex flex-wrap items-center gap-1.5">
+        <span class="mr-1 w-12 text-xs font-medium text-gray-400 dark:text-gray-500">Estado</span>
+        {% for c in estado_chips %}
+        <a href="{{ c.link }}" class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition {% if c.activo %}border-brand-500 bg-brand-500 text-white{% else %}border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">
+            {% if c.color %}<span class="h-2 w-2 rounded-full" style="background:{{ c.color }}"></span>{% endif %}{{ c.label }}
+        </a>
+        {% endfor %}
     </div>
-    <div class="min-w-[140px] flex-1">
-        <label for="bzn-tipo" class="sr-only">Tipo</label>
-        <select id="bzn-tipo" name="tipo">
-            <option value="">— Todos los tipos —</option>
-            <option value="sugerencia" {% if tipo_filtro == 'sugerencia' %}selected{% endif %}>Sugerencia</option>
-            <option value="problema" {% if tipo_filtro == 'problema' %}selected{% endif %}>Problema</option>
-            <option value="otro" {% if tipo_filtro == 'otro' %}selected{% endif %}>Otro</option>
-        </select>
+    <div class="flex flex-wrap items-center gap-1.5">
+        <span class="mr-1 w-12 text-xs font-medium text-gray-400 dark:text-gray-500">Tipo</span>
+        {% for c in tipo_chips %}
+        <a href="{{ c.link }}" class="rounded-full border px-3 py-1 text-xs font-medium transition {% if c.activo %}border-brand-500 bg-brand-500 text-white{% else %}border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ c.label }}</a>
+        {% endfor %}
+        <span class="mx-1 h-4 w-px bg-gray-200 dark:bg-gray-700"></span>
+        <a href="{{ adjunto_chip.link }}" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition {% if adjunto_chip.activo %}border-brand-500 bg-brand-500 text-white{% else %}border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" stroke-linecap="round" stroke-linejoin="round"/></svg>Con adjunto
+        </a>
+        {% if tiene_filtros %}<a href="?{% if orden_actual != 'fecha' %}orden={{ orden_actual }}{% endif %}" class="ml-auto text-xs text-gray-500 hover:text-brand-600 dark:text-gray-400">Limpiar</a>{% endif %}
     </div>
-    <div class="min-w-[180px] flex-1">
-        <label for="bzn-q" class="sr-only">Buscar</label>
-        <input type="search" id="bzn-q" name="q" value="{{ q }}" placeholder="Buscar asunto, texto o remitente…">
-    </div>
-    <button type="submit" class="btn-secundario">Buscar</button>
-    {% if estado_filtro or tipo_filtro or q %}<a href="?{% if orden_actual != 'fecha' %}orden={{ orden_actual }}{% endif %}" class="text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400">Limpiar</a>{% endif %}
-</form>
+</div>
 
 {% if es_admin_buzon %}
 {# S-LC-Feedback-V3: barra de acciones masivas. Aparece cuando hay ≥1 fila seleccionada. #}
@@ -93,12 +98,29 @@ En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
 <div id="buzon-masivo-ids-holder"></div>
 {% endif %}
 
+{# Barra fina: seleccionar todo (admin) + marcar todo como leído (todos). #}
+<div class="mb-2 flex items-center gap-3 px-1">
+    {% if es_admin_buzon %}
+    <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <input type="checkbox" id="buzon-select-all" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+        Seleccionar todo
+    </label>
+    {% endif %}
+    {% if no_leidos_mio %}
+    <form method="post" action="{% url 'buzon-masivo' %}" class="ml-auto">
+        {% csrf_token %}
+        <button type="submit" name="accion" value="marcar_todo_leido_mio" class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">✓ Marcar todo como leído</button>
+    </form>
+    {% endif %}
+</div>
+
 {# Lista compacta con scroll propio: ocupa ~la mitad de arriba sin empujar el detalle. #}
 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="max-h-[calc(100vh-20rem)] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
         {% include "buzon/_filas.html" %}
     </div>
 </div>
+{% include "_componentes_tailadmin/_paginacion.html" with page_obj=page_obj querystring=querystring_paginacion %}
 </div>{# /columna lista #}
 
 <aside id="buzon-pane" class="min-w-0 lg:col-span-3 lg:sticky lg:top-6 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto">
@@ -136,6 +158,15 @@ En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
     document.addEventListener('change', function (e) {
         if (e.target && e.target.classList.contains('buzon-row-check')) refresh();
     });
+
+    // "Seleccionar todo": marca/desmarca todas las filas visibles.
+    const selectAll = document.getElementById('buzon-select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.buzon-row-check').forEach(cb => { cb.checked = selectAll.checked; });
+            refresh();
+        });
+    }
 
     // Inserta el holder dentro del form al submit (Django form sólo lee inputs dentro de form).
     form.addEventListener('submit', function () {

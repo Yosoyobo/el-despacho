@@ -44,14 +44,17 @@ def lista(request):
     if not es_admin_buzon:
         qs = qs.filter(autor=user)
 
-    # Filtros admin
+    # Filtros (visibles para todos)
     estado = request.GET.get("estado") or ""
     tipo = request.GET.get("tipo") or ""
+    adjunto = request.GET.get("adjunto") or ""
     q = (request.GET.get("q") or "").strip()
     if estado:
         qs = qs.filter(estado=estado)
     if tipo:
         qs = qs.filter(tipo=tipo)
+    if adjunto:
+        qs = qs.filter(num_adjuntos__gt=0)
     if q:
         from django.db.models import Q
         qs = qs.filter(
@@ -91,60 +94,64 @@ def lista(request):
         {"label": "Estado"},
         {"label": "Recibido"},
     ]
-    # Toggle: KPI cards clickeables. Cuando el filtro está activo, el link
-    # apunta a "" (sin filtro); cuando no, aplica el filtro. `orden` solo se
-    # incluye si no es el default (fecha), para mantener las URLs limpias.
-    from urllib.parse import quote
-    def _kpi_link(filtro):
-        partes = []
-        if estado != filtro:
-            partes.append(f"estado={filtro}")
-        if tipo:
-            partes.append(f"tipo={tipo}")
-        if q:
-            partes.append(f"q={quote(q)}")
-        if orden and orden != "fecha":
-            partes.append(f"orden={orden}")
-        return "?" + "&".join(partes) if partes else "?"
-    # Querystring base para preservar filtros + orden en links del header
-    def _qs_con_orden(nuevo_orden: str) -> str:
-        partes = []
-        if estado:
-            partes.append(f"estado={estado}")
-        if tipo:
-            partes.append(f"tipo={tipo}")
-        if q:
-            partes.append(f"q={quote(q)}")
-        if nuevo_orden != "fecha":
-            partes.append(f"orden={nuevo_orden}")
-        return "?" + "&".join(partes) if partes else "?"
+    # ── Builder de querystring: preserva filtros activos, permite overrides ──
+    # `orden=fecha` (default) y valores vacíos se omiten para URLs limpias.
+    def _link(**overrides):
+        cur = {"estado": estado, "tipo": tipo, "adjunto": adjunto, "q": q, "orden": orden}
+        cur.update(overrides)
+        if cur.get("orden") == "fecha":
+            cur["orden"] = ""
+        params = {k: v for k, v in cur.items() if v}
+        return "?" + urlencode(params) if params else "?"
 
-    # C1 S-LC-Feedback-V6: querystring de los filtros activos. Se cuelga de
-    # cada fila como `?volver=…` para que el detalle pueda regresar al listado
-    # con el mismo filtro aplicado (el repo no preservaba filtros al volver).
-    volver_partes = []
-    if estado:
-        volver_partes.append(f"estado={estado}")
-    if tipo:
-        volver_partes.append(f"tipo={tipo}")
-    if q:
-        volver_partes.append(f"q={quote(q)}")
-    if orden and orden != "fecha":
-        volver_partes.append(f"orden={orden}")
-    volver_qs = "&".join(volver_partes)
+    # Chips de filtro tipo-botón (estado / tipo / adjunto) — S-LC-Buzon-V2.
+    estado_chips = [{"label": "Todos", "link": _link(estado=""), "activo": not estado, "color": ""}]
+    for e in estados_activos():
+        estado_chips.append({
+            "label": e["label"], "link": _link(estado=e["slug"]),
+            "activo": estado == e["slug"], "color": e.get("color") or "",
+        })
+    tipo_chips = [{"label": "Todos", "link": _link(tipo=""), "activo": not tipo}]
+    for slug, label in MensajeBuzon._meta.get_field("tipo").choices:
+        tipo_chips.append({"label": label, "link": _link(tipo=slug), "activo": tipo == slug})
+    adjunto_chip = {"link": _link(adjunto="" if adjunto else "1"), "activo": bool(adjunto)}
+
+    # KPI cards clickeables (toggle estado base).
+    def _kpi_link(filtro):
+        return _link(estado="" if estado == filtro else filtro)
+
+    # Paginación — 15 por página (S-LC-Buzon-V2).
+    from django.core.paginator import Paginator
+    page_obj = Paginator(qs, 15).get_page(request.GET.get("page"))
+
+    # Querystring de filtros activos (sin `page`) para paginación y `volver`.
+    qs_pag = urlencode({k: v for k, v in {
+        "estado": estado, "tipo": tipo, "adjunto": adjunto, "q": q,
+        "orden": orden if orden != "fecha" else "",
+    }.items() if v})
+    volver_qs = qs_pag
+    if page_obj.number > 1:
+        volver_qs = (f"{qs_pag}&" if qs_pag else "") + f"page={page_obj.number}"
 
     return render(request, "buzon/lista.html", {
-        "mensajes": qs,
+        "mensajes": page_obj,
+        "page_obj": page_obj,
+        "querystring_paginacion": qs_pag,
         "es_admin_buzon": es_admin_buzon,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
+        "adjunto_filtro": adjunto,
         "q": q,
         "no_leidos_mio": no_leidos_mio,
         "orden_actual": orden,
         "volver_qs": volver_qs,
-        "link_orden_prioridad": _qs_con_orden("prioridad"),
-        "link_orden_fecha": _qs_con_orden("fecha"),
+        "link_orden_prioridad": _link(orden="prioridad"),
+        "link_orden_fecha": _link(orden="fecha"),
         "kpis": kpis,
+        "estado_chips": estado_chips,
+        "tipo_chips": tipo_chips,
+        "adjunto_chip": adjunto_chip,
+        "tiene_filtros": bool(estado or tipo or adjunto or q),
         "estados_disponibles": estados_activos(),
         "cabeceras_buzon": cabeceras,
         "kpi_links": {
@@ -210,6 +217,10 @@ def detalle(request, pk: int):
                 if not m.estado or m.estado in ("nuevo", "leido"):
                     m.estado = "respondido"
                 m.save()
+                # #2 S-LC-Buzon-V2: archivar marca leído (por usuario).
+                if m.estado == "archivado":
+                    from buzon.lecturas import marcar_leido
+                    marcar_leido(user, m)
                 emitir(EventoPortavoz(
                     tipo="buzon.respondido",
                     actor_id=user.pk, actor_email=user.email,
@@ -387,8 +398,23 @@ def accion_masiva(request):
 
     Espera POST con `ids[]` lista de PKs y `accion` string.
     """
-    ids = request.POST.getlist("ids")
     accion = (request.POST.get("accion") or "").strip()
+
+    # ── "Marcar todo como leído" (yo) — no requiere selección ───────────────
+    # Marca leído (por usuario) TODOS los mensajes visibles para el usuario.
+    if accion == "marcar_todo_leido_mio":
+        from buzon.models import LecturaBuzon
+        visibles = MensajeBuzon.objects.all()
+        if not puede(request.user, "buzon", "ver_todos"):
+            visibles = visibles.filter(autor=request.user)
+        ya = set(LecturaBuzon.objects.filter(usuario=request.user).values_list("mensaje_id", flat=True))
+        faltan = [LecturaBuzon(usuario=request.user, mensaje_id=i)
+                  for i in visibles.values_list("pk", flat=True) if i not in ya]
+        LecturaBuzon.objects.bulk_create(faltan, ignore_conflicts=True)
+        messages.success(request, f"{len(faltan)} marcado(s) como leído.")
+        return redirect("buzon-lista")
+
+    ids = request.POST.getlist("ids")
     if not ids or not accion:
         messages.error(request, "Selecciona al menos un mensaje y una acción.")
         return redirect("buzon-lista")
@@ -443,6 +469,12 @@ def accion_masiva(request):
             messages.error(request, "Estado inválido.")
             return redirect("buzon-lista")
         qs.update(estado=nuevo_estado, actualizado_en=timezone.now())
+        # #2 S-LC-Buzon-V2: archivar marca leído (por usuario) para quien archiva.
+        if nuevo_estado == "archivado":
+            from buzon.models import LecturaBuzon
+            LecturaBuzon.objects.bulk_create(
+                [LecturaBuzon(usuario=request.user, mensaje_id=i) for i in ids_int],
+                ignore_conflicts=True)
         for pk in ids_int:
             emitir(EventoPortavoz(
                 tipo="buzon.estado_cambiado",
