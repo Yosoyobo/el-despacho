@@ -7,7 +7,7 @@
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Productos</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Servicios frecuentes — nombre, unidad{% if ve_precios %}, precio base{% endif %} y categoría.</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Productos frecuentes — nombre, unidad{% if ve_precios %}, precio base{% endif %} y categoría.</p>
     </div>
     <div class="flex flex-wrap gap-2">
         {% if puede_gestionar_cats %}<a href="{% url 'catalogo-categorias' %}" class="btn-secundario">Categorías</a>{% endif %}

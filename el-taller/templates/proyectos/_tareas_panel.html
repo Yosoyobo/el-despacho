@@ -12,7 +12,7 @@ Params: proyecto, tareas, puede_editar.
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                 {% for t in tareas %}
-                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <tr data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
                     <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
                     <td class="px-5 py-3 text-sm">{% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}</td>

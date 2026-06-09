@@ -448,6 +448,24 @@ def proveedor_quick_create(request):
     return JsonResponse({"ok": True, "id": prov.pk, "razon_social": prov.razon_social})
 
 
+@require_http_methods(["POST"])
+def sugerir_proveedores(request):
+    """POST /catalogo/sugerir-proveedores/ — El Chalán propone proveedores para
+    el producto, según qué surte cada quien hoy (historial). Devuelve JSON con
+    los ids a marcar. Gated por `crear` (mismo permiso que crea productos)."""
+    if (r := _gate(request, "crear")) is not None:
+        return r
+    from django.http import JsonResponse
+
+    from .services_sugerencia import sugerir_proveedores as _sugerir
+    res = _sugerir(
+        nombre=request.POST.get("nombre") or "",
+        descripcion=request.POST.get("descripcion") or "",
+        usuario=request.user,
+    )
+    return JsonResponse(res)
+
+
 @require_http_methods(["GET", "POST"])
 def proveedor_nuevo(request):
     if (r := _gate(request, "gestionar_categorias")) is not None:

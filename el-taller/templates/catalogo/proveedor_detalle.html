@@ -36,7 +36,7 @@
                 {% endfor %}
             </ul>
             {% else %}
-            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no surte ningún producto" descripcion="Asigna productos desde aquí o márcalo en el form de un servicio del catálogo." icono="folder" %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no surte ningún producto" descripcion="Asigna productos desde aquí o márcalo en el form de un producto del catálogo." icono="folder" %}
             {% if puede_gestionar_servicios %}
             <div class="mt-3 text-center">
                 <a href="{% url 'catalogo-proveedor-servicios' proveedor.pk %}" class="btn-primario inline-block text-sm">Asignar productos</a>

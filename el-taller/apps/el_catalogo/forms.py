@@ -74,7 +74,7 @@ class ServicioForm(forms.ModelForm):
             "categoria": "Categoría",
         }
         help_texts = {
-            "costo": "Lo que te cuesta producir o comprar este servicio/producto. Usado para calcular margen.",
+            "costo": "Lo que te cuesta producir o comprar este producto. Usado para calcular margen.",
             "precio_base": "Precio sugerido al que lo vendes. El margen se calcula automáticamente.",
         }
 

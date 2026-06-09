@@ -16,6 +16,7 @@
                 <div>
                     {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}{% if f.field.required %} <span class="text-error-500">*</span>{% endif %}</label>{% endif %}
                     {{ f }}
+                    {% if f.name == 'descripcion' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label contexto_modelo="proyecto" contexto_id=proyecto.pk instruccion_ph="Ej. describe la tarea para este proyecto" %}{% endif %}
                     {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                 </div>
                 {% endfor %}

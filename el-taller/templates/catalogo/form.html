@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|title }} servicio — Productos{% endblock %}
+{% block title %}{{ modo|title }} producto — Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Productos" "/catalogo/" "Servicio" as breadcrumb_items %}
+{% breadcrumb_items "Productos" "/catalogo/" "Producto" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
     <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Productos</p>
-    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{% if modo == 'editar' %}Editar servicio{% else %}Nuevo servicio{% endif %}</h1>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{% if modo == 'editar' %}Editar producto{% else %}Nuevo producto{% endif %}</h1>
 </header>
 
 <form method="post" class="max-w-2xl">
@@ -21,7 +21,12 @@
                     <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }} <span class="text-xs font-normal text-gray-400">(solo lectura)</span></label>
                     <input type="number" step="0.01" value="{{ f.value|default_if_none:'' }}" readonly disabled class="w-full cursor-not-allowed rounded-lg border-gray-300 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
                 </div>
-                {% elif f.name == 'nombre' or f.name == 'descripcion' %}
+                {% elif f.name == 'descripcion_default' %}
+                    <div class="md:col-span-2">
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
+                        {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label contexto_modelo="" contexto_id="" instruccion_ph="Ej. describe este producto para una cotización" %}
+                    </div>
+                {% elif f.name == 'nombre' %}
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
                 {% else %}
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
@@ -36,7 +41,14 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.proveedores.label }}</label>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.proveedores.help_text }}</p>
                 </div>
+                {% if permisos_modulos.chalan %}
+                <button type="button" id="prov-sugerir"
+                        class="shrink-0 inline-flex items-center gap-1 rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-60 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10">
+                    🤖 Sugerir
+                </button>
+                {% endif %}
             </div>
+            <p id="prov-sugerir-msg" class="mt-2 hidden text-xs text-gray-500 dark:text-gray-400"></p>
             <div id="proveedores-lista" class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {% for choice in form.proveedores %}
                 <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10">
@@ -80,7 +92,7 @@
     </section>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
         <a href="{% url 'catalogo-lista' %}" class="btn-secundario">Cancelar</a>
-        <button type="submit" class="btn-primario">Guardar servicio</button>
+        <button type="submit" class="btn-primario">Guardar producto</button>
     </div>
 </form>
 
@@ -140,6 +152,45 @@
             mostrarMsg('Error de red.', true);
             btn.disabled = false;
         }
+    });
+})();
+
+// 🤖 Sugerir proveedores por historial (S-Chalanes-UX hotfix).
+(function () {
+    const btn = document.getElementById('prov-sugerir');
+    if (!btn) return;
+    const msg = document.getElementById('prov-sugerir-msg');
+    const csrf = document.querySelector('input[name=csrfmiddlewaretoken]').value;
+    const setMsg = (t, err) => {
+        msg.textContent = t || '';
+        msg.classList.toggle('hidden', !t);
+        msg.classList.toggle('text-error-600', !!err);
+    };
+    btn.addEventListener('click', async () => {
+        const nombre = (document.querySelector('[name=nombre]')?.value || '').trim();
+        const descripcion = (document.querySelector('[name=descripcion_default]')?.value || '').trim();
+        if (!nombre) { setMsg('Escribe primero el nombre del producto.', true); return; }
+        btn.disabled = true; setMsg('El Chalán está pensando…');
+        try {
+            const body = new URLSearchParams({ nombre, descripcion });
+            const resp = await fetch('{% url "catalogo-sugerir-proveedores" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
+                credentials: 'same-origin', body: body.toString(),
+            });
+            const data = await resp.json();
+            if (!data.ok) { setMsg(data.error || 'No se pudo sugerir.', true); btn.disabled = false; return; }
+            if (!data.sugeridos.length) { setMsg('El Chalán no encontró proveedores que encajen.'); btn.disabled = false; return; }
+            const nombres = [];
+            data.sugeridos.forEach(s => {
+                const chk = document.querySelector('input[name=proveedores][value="' + s.id + '"]');
+                if (chk) { chk.checked = true; nombres.push(s.razon_social); }
+            });
+            setMsg('Sugeridos: ' + nombres.join(', ') + '. Revísalos antes de guardar.');
+        } catch (err) {
+            setMsg('Error de red.', true);
+        }
+        btn.disabled = false;
     });
 })();
 </script>

@@ -5,6 +5,19 @@
 
 ---
 
+## Novedades — Productos (antes "servicios"), más botones 🤖 y proveedores sugeridos (9 de junio de 2026)
+
+- Lo que llamábamos **"servicios" ahora se llama "productos"** en todo el
+  catálogo (es el mismo módulo, solo el nombre).
+- El botón **🤖 Redactar** aparece en más campos: la **descripción de la tarea**
+  al crearla desde un proyecto, la **descripción del producto**, las **notas
+  del proveedor** y las **notas y términos** de las cotizaciones.
+- En el formulario de producto hay un botón **🤖 Sugerir** que propone qué
+  **proveedores** podrían surtirlo, basándose en qué surte cada proveedor hoy.
+  Tú revisas y confirmas las palomitas.
+- En el detalle del proyecto, las **filas de tareas** ahora se abren al hacer
+  clic en cualquier parte del renglón (no solo en el nombre).
+
 ## Novedades — El Chalán te ayuda a escribir, recordatorios y un Buzón como correo (9 de junio de 2026)
 
 Cuatro mejoras grandes:
