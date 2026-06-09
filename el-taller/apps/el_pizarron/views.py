@@ -25,6 +25,19 @@ def _comentarios_visibles(user, queryset):
     return [c for c in queryset if puede_ver_comentario(user, c)]
 
 
+def _sincronizar_menciones_comentario(comentario, autor, contenedor_tipo) -> None:
+    """S-Recados-V2: persiste menciones @/#/$ del comentario en la tabla
+    Referencia → alimenta el inbox "te taggearon". Best-effort."""
+    try:
+        from referencias.services import sincronizar_referencias
+        sincronizar_referencias(
+            texto=comentario.cuerpo, contenedor_tipo=contenedor_tipo,
+            contenedor_id=comentario.pk, autor=autor,
+        )
+    except Exception:  # noqa: BLE001 — una mención rota no debe tumbar el comentario
+        pass
+
+
 @login_required
 def lista_tareas(request):
     """Lista global de tareas (S-LC-Feedback-V6): todas las tareas visibles al
@@ -201,6 +214,7 @@ def comentar_tarea(request, pk):
         if not es_admin(request.user) and getattr(request.user, "rol", None) != "contador":
             c.es_interno = False
         c.save()
+        _sincronizar_menciones_comentario(c, request.user, "comentario_tarea")
         messages.success(request, "Comentario agregado.")
     else:
         messages.error(request, "Comentario inválido.")
@@ -223,5 +237,6 @@ def comentar_proyecto(request, proyecto_id):
         if not es_admin(request.user) and getattr(request.user, "rol", None) != "contador":
             c.es_interno = False
         c.save()
+        _sincronizar_menciones_comentario(c, request.user, "comentario_proyecto")
         messages.success(request, "Comentario agregado al proyecto.")
     return redirect("proyectos-detalle", pk=proyecto.pk)

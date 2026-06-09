@@ -76,6 +76,17 @@ def enviar_mensaje(*, conversacion: Conversacion, autor, cuerpo: str, permitir_v
             usuario=autor, conversacion=conversacion,
             defaults={"ultimo_mensaje": m},
         )
+        # S-Recados-V2: persiste menciones @/#/$ del chat en la tabla
+        # Referencia → alimenta el inbox "te taggearon". contenedor_id = mensaje;
+        # la conversación se resuelve al armar el deep-link en el inbox.
+        try:
+            from referencias.services import sincronizar_referencias
+            sincronizar_referencias(
+                texto=cuerpo, contenedor_tipo="mensaje_chat",
+                contenedor_id=m.pk, autor=autor,
+            )
+        except Exception:
+            logger.exception("recados_chat: sincronizar_referencias falló mensaje_id=%s", m.pk)
 
     transaction.on_commit(lambda: _emitir_creado(m))
     transaction.on_commit(lambda: _disparar_push(m.pk))
