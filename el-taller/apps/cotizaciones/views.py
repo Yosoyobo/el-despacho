@@ -421,8 +421,15 @@ def enviar(request, pk):
     if request.method == "POST":
         form = EnviarForm(request.POST)
         if form.is_valid():
-            services.marcar_enviada(cot, request.user, form.cleaned_data.get("email_destino", ""))
-            messages.success(request, f"Cotización {cot.codigo} marcada como enviada.")
+            email_destino = form.cleaned_data.get("email_destino", "")
+            services.marcar_enviada(cot, request.user, email_destino)
+            # El Cartero entrega el correo con el PDF (best-effort — marcar
+            # enviada nunca falla por el correo; solo avisamos).
+            res = services.enviar_por_correo(cot, request.user, email_destino)
+            if res.ok:
+                messages.success(request, f"Cotización {cot.codigo} enviada por correo. {res.detalle}")
+            else:
+                messages.warning(request, f"Cotización {cot.codigo} marcada como enviada, pero el correo no salió: {res.error}")
             destino = reverse("cotizaciones:detalle", args=[cot.pk])
             if es_htmx:
                 return _hx_redirect(destino)

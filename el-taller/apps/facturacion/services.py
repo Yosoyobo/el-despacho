@@ -57,6 +57,33 @@ def construir_html_pdf(fac: Factura) -> str:
     })
 
 
+def enviar_por_correo(fac: Factura, actor):
+    """Manda la factura por El Cartero con el PDF adjunto (best-effort).
+
+    Destinatario: el correo del cliente. Devuelve `lib.cartero.ResultadoCorreo`.
+    Genera el PDF si Drive está disponible; nunca lanza."""
+    from django.template.loader import render_to_string
+
+    from lib import cartero
+
+    destino = (getattr(fac.cliente, "email_contacto", "") or "").strip()
+    if not destino:
+        return cartero.ResultadoCorreo(ok=False, error="El cliente no tiene correo.")
+
+    adjuntos = []
+    res_pdf = generar_pdf(fac, actor)
+    if res_pdf.ok and res_pdf.pdf_bytes:
+        adjuntos.append(cartero.Adjunto(
+            nombre=f"{fac.codigo}.pdf", contenido=res_pdf.pdf_bytes, mime="application/pdf"))
+
+    html = render_to_string("facturacion/email.html", {"fac": fac})
+    return cartero.enviar(
+        destinatario=destino,
+        asunto=f"Factura {fac.codigo} · Learning Center",
+        html=html, adjuntos=adjuntos,
+    )
+
+
 def generar_pdf(fac: Factura, actor):
     """Genera (o regenera) el PDF de la factura vía Google Docs y lo guarda en
     Drive. Devuelve `lib.documentos.ResultadoPdf`. Borra el PDF anterior si lo

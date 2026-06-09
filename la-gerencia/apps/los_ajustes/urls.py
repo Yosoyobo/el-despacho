@@ -17,6 +17,10 @@ urlpatterns = [
     path("google-drive/oauth/callback", views.google_drive_callback, name="ajustes-google-drive-callback"),
     path("google-drive/desconectar", views.google_drive_desconectar, name="ajustes-google-drive-desconectar"),
     path("google-drive/probar", views.google_drive_probar, name="ajustes-google-drive-probar"),
+    # El Cartero — canal de correo (SMTP / n8n). Antes del slug catch-all.
+    path("cartero/", views.cartero_panel, name="ajustes-cartero"),
+    path("cartero/guardar", views.cartero_guardar, name="ajustes-cartero-guardar"),
+    path("cartero/probar", views.cartero_probar, name="ajustes-cartero-probar"),
     path("<slug:clave>/probar", views.probar, name="ajustes-probar"),
     path("tasas/", views.tasas_lista, name="ajustes-tasas"),
     path("tasas/nueva", views.tasa_nueva, name="ajustes-tasa-nueva"),

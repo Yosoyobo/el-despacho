@@ -1,0 +1,13 @@
+{% load forms_helpers %}<!DOCTYPE html>
+<html lang="es">
+<body style="font-family: Arial, sans-serif; color:#1d2939; font-size:14px; line-height:1.5;">
+  <p>Estimado/a {{ cot.cliente.razon_social }}:</p>
+  <p>Adjuntamos la cotización <strong>{{ cot.codigo }}</strong>{% if cot.titulo %} — {{ cot.titulo }}{% endif %},
+     con vigencia hasta el <strong>{{ cot.fecha_validez|date:"d/m/Y" }}</strong>.</p>
+  <p>Total: <strong>{{ cot.calcular_totales.total|dinero }} {{ cot.moneda }}</strong>.</p>
+  {% if cot.notas %}<p>{{ cot.notas|linebreaksbr }}</p>{% endif %}
+  <p>Quedamos atentos a cualquier duda.</p>
+  <p style="color:#475467;">Learning Center<br>
+     <span style="font-size:12px; color:#98a2b3;">Diseño · Maquila · Imagen corporativa</span></p>
+</body>
+</html>

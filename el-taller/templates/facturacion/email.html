@@ -1,0 +1,15 @@
+{% load forms_helpers %}<!DOCTYPE html>
+<html lang="es">
+<body style="font-family: Arial, sans-serif; color:#1d2939; font-size:14px; line-height:1.5;">
+  <p>Estimado/a {{ fac.cliente.razon_social }}:</p>
+  <p>Adjuntamos la factura <strong>{{ fac.codigo }}</strong>{% if fac.titulo %} — {{ fac.titulo }}{% endif %},
+     con fecha de emisión {{ fac.fecha_emision|date:"d/m/Y" }} y vencimiento
+     <strong>{{ fac.fecha_vencimiento|date:"d/m/Y" }}</strong>.</p>
+  <p>Total: <strong>{{ fac.calcular_totales.total|dinero }} {{ fac.moneda }}</strong>.</p>
+  <p style="font-size:12px; color:#98a2b3;">Documento comercial — no es un CFDI.</p>
+  {% if fac.notas %}<p>{{ fac.notas|linebreaksbr }}</p>{% endif %}
+  <p>Quedamos atentos a cualquier duda.</p>
+  <p style="color:#475467;">Learning Center<br>
+     <span style="font-size:12px; color:#98a2b3;">Diseño · Maquila · Imagen corporativa</span></p>
+</body>
+</html>

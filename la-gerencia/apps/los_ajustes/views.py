@@ -73,6 +73,92 @@ def probar(request, clave: str):
     return redirect("ajustes-panel")
 
 
+# ── El Cartero — canal de correo (SMTP / n8n) ─────────────────────────────
+
+
+def _estado_smtp():
+    """[(clave, etiqueta, descripcion, tipo_input, valor_o_configurado), ...]."""
+    from lib.cartero import SLOTS_SMTP
+    out = []
+    for clave, etiqueta, desc, tipo in SLOTS_SMTP:
+        val = Credencial.obtener(clave) or ""
+        # No revelamos contraseñas: solo si están configuradas. El resto sí
+        # se muestra (host/puerto/usuario/remitente no son secretos).
+        if tipo == "password":
+            out.append((clave, etiqueta, desc, tipo, "", bool(val)))
+        else:
+            out.append((clave, etiqueta, desc, tipo, val, bool(val)))
+    return out
+
+
+@requires_role("super_admin")
+def cartero_panel(request):
+    """Asistente de El Cartero: elige canal (SMTP/n8n) + configura SMTP."""
+    from ajustes.models import ConfiguracionCorreo
+    from lib import cartero
+    cfg = ConfiguracionCorreo.obtener()
+    return render(request, "ajustes/cartero.html", {
+        "cfg": cfg,
+        "smtp_slots": _estado_smtp(),
+        "n8n_configurado": bool(Credencial.obtener("n8n_webhook_url")),
+        "proveedor_activo": cfg.proveedor,
+        "configurado": cartero.esta_configurado(),
+    })
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def cartero_guardar(request):
+    """Guarda el canal activo + nombre del remitente + slots SMTP."""
+    from ajustes.models import ConfiguracionCorreo
+    from lib.cartero import SLOTS_SMTP
+
+    cfg = ConfiguracionCorreo.obtener()
+    proveedor = (request.POST.get("proveedor") or "").strip()
+    if proveedor in {"smtp", "n8n"}:
+        cfg.proveedor = proveedor
+    cfg.remitente_nombre = (request.POST.get("remitente_nombre") or "").strip() or "Learning Center"
+    cfg.actualizado_por = request.user
+    cfg.save()
+
+    # Slots SMTP: solo guardamos los que vengan con valor (la contraseña en
+    # blanco NO borra la guardada — hay que dejarla explícitamente vacía con
+    # el checkbox de "borrar contraseña").
+    for clave, _etq, _desc, tipo in SLOTS_SMTP:
+        if tipo == "password":
+            if request.POST.get("smtp_password_borrar"):
+                Credencial.guardar(clave, "", usuario=request.user)
+            else:
+                nuevo = (request.POST.get(clave) or "").strip()
+                if nuevo:
+                    Credencial.guardar(clave, nuevo, usuario=request.user)
+        else:
+            Credencial.guardar(clave, (request.POST.get(clave) or "").strip(),
+                               usuario=request.user)
+
+    emitir(EventoPortavoz(
+        tipo="ajuste.cartero_configurado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proveedor": cfg.proveedor},
+    ))
+    messages.success(request, f"El Cartero quedó configurado (canal: {cfg.get_proveedor_display()}).")
+    return redirect("ajustes-cartero")
+
+
+@requires_role("super_admin")
+@require_http_methods(["POST"])
+def cartero_probar(request):
+    """Manda un correo de prueba al super_admin por el canal activo."""
+    from lib import cartero
+    destino = (request.POST.get("destinatario") or request.user.email or "").strip()
+    res = cartero.probar(destino)
+    if res.ok:
+        messages.success(request, f"Prueba enviada por {res.proveedor} a {destino}. {res.detalle}")
+    else:
+        messages.error(request, f"No se pudo enviar la prueba: {res.error}")
+    return redirect("ajustes-cartero")
+
+
 # ── Google Drive — asistente guiado (OAuth sin clave) ─────────────────────────
 
 _DRIVE_OAUTH_STATE = "drive_oauth_state"

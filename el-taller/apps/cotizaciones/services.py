@@ -47,6 +47,34 @@ def construir_html_pdf(cot: Cotizacion) -> str:
     })
 
 
+def enviar_por_correo(cot: Cotizacion, actor, email_destino: str = ""):
+    """Manda la cotización por El Cartero con el PDF adjunto (best-effort).
+
+    Devuelve `lib.cartero.ResultadoCorreo`. Genera el PDF si Drive está
+    disponible; si no, manda el correo sin adjunto. Nunca lanza."""
+    from django.template.loader import render_to_string
+
+    from lib import cartero
+
+    destino = (email_destino or cot.enviada_a_email
+               or getattr(cot.cliente, "email_contacto", "") or "").strip()
+    if not destino:
+        return cartero.ResultadoCorreo(ok=False, error="El cliente no tiene correo.")
+
+    adjuntos = []
+    res_pdf = generar_pdf(cot, actor)
+    if res_pdf.ok and res_pdf.pdf_bytes:
+        adjuntos.append(cartero.Adjunto(
+            nombre=f"{cot.codigo}.pdf", contenido=res_pdf.pdf_bytes, mime="application/pdf"))
+
+    html = render_to_string("cotizaciones/email.html", {"cot": cot})
+    return cartero.enviar(
+        destinatario=destino,
+        asunto=f"Cotización {cot.codigo} · Learning Center",
+        html=html, adjuntos=adjuntos,
+    )
+
+
 def generar_pdf(cot: Cotizacion, actor):
     """Genera (o regenera) el PDF de la cotización vía Google Docs y lo guarda
     en Drive. Devuelve `lib.documentos.ResultadoPdf`. Borra el PDF anterior si

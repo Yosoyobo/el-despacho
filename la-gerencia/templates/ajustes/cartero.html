@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}El Cartero — Ajustes{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="El Cartero" subtitulo="El Despacho compone el correo; tú eliges por qué canal sale. El canal solo entrega." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+<section class="mb-6 rounded-2xl border p-5 shadow-theme-sm
+    {% if configurado %}border-success-300 bg-success-50 dark:border-success-700 dark:bg-success-500/10
+    {% else %}border-warning-300 bg-warning-50 dark:border-warning-700 dark:bg-warning-500/10{% endif %}">
+    <div class="flex items-center gap-3">
+        <span class="text-2xl">{% if configurado %}🟢{% else %}🟡{% endif %}</span>
+        <div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {% if configurado %}El Cartero está listo para enviar{% else %}Falta configurar el canal activo{% endif %}
+            </p>
+            <p class="text-xs text-gray-600 dark:text-gray-300">
+                Canal activo: <strong>{{ cfg.get_proveedor_display }}</strong>
+            </p>
+        </div>
+    </div>
+</section>
+
+<form method="post" action="{% url 'ajustes-cartero-guardar' %}" class="space-y-6 max-w-2xl">
+    {% csrf_token %}
+
+    {# ── Canal ──────────────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Canal de salida</h2>
+        <div class="space-y-2">
+            <label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                <input type="radio" name="proveedor" value="n8n" class="mt-0.5" {% if proveedor_activo == "n8n" %}checked{% endif %}>
+                <span>
+                    <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">n8n (vía El Portavoz)</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">El correo se encola y un workflow de n8n lo entrega. {% if n8n_configurado %}✅ Webhook configurado.{% else %}⚠️ Falta el Webhook URL de n8n (en este mismo panel de Ajustes).{% endif %}</span>
+                </span>
+            </label>
+            <label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                <input type="radio" name="proveedor" value="smtp" class="mt-0.5" {% if proveedor_activo == "smtp" %}checked{% endif %}>
+                <span>
+                    <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">SMTP directo</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">El Despacho manda el correo directo por tu servidor SMTP (abajo).</span>
+                </span>
+            </label>
+        </div>
+        <div class="mt-4">
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Nombre del remitente</label>
+            <input type="text" name="remitente_nombre" value="{{ cfg.remitente_nombre }}"
+                   class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                   placeholder="Learning Center">
+        </div>
+    </section>
+
+    {# ── SMTP ───────────────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Servidor SMTP</h2>
+        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Solo se usa si el canal activo es «SMTP directo». Se guarda cifrado en La Bóveda.</p>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% for clave, etiqueta, desc, tipo, valor, configurado in smtp_slots %}
+            <div{% if clave == "smtp_host" or clave == "smtp_from_email" %} class="sm:col-span-2"{% endif %}>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">{{ etiqueta }}</label>
+                {% if tipo == "password" %}
+                <input type="password" name="{{ clave }}" autocomplete="new-password"
+                       placeholder="{% if configurado %}•••••••• (guardada — deja vacío para conservar){% else %}escribe la contraseña{% endif %}"
+                       class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+                {% if configurado %}<label class="mt-1 inline-flex items-center gap-1.5 text-xs text-gray-500"><input type="checkbox" name="smtp_password_borrar" class="rounded"> Borrar contraseña guardada</label>{% endif %}
+                {% else %}
+                <input type="text" name="{{ clave }}" value="{{ valor }}"
+                       class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+                {% endif %}
+                <p class="mt-1 text-[11px] text-gray-400">{{ desc }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="flex items-center gap-3">
+        <button type="submit" class="btn-primario">Guardar</button>
+        <a href="{% url 'ajustes-panel' %}" class="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancelar</a>
+    </div>
+</form>
+
+{# ── Probar envío ───────────────────────────────────────────── #}
+<section class="mt-6 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Probar envío</h2>
+    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Manda un correo de prueba por el canal activo. Guarda primero los cambios.</p>
+    <form method="post" action="{% url 'ajustes-cartero-probar' %}" class="flex flex-wrap items-center gap-2">
+        {% csrf_token %}
+        <input type="email" name="destinatario" value="{{ request.user.email }}"
+               class="rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+               placeholder="correo@destino.mx">
+        <button type="submit" class="btn-secundario">✉️ Enviar prueba</button>
+    </form>
+</section>
+{% endblock %}

@@ -398,7 +398,12 @@ def emitir(request, pk):
         form = EmitirForm(request.POST)
         if form.is_valid():
             services.emitir_factura(fac, request.user)
-            messages.success(request, f"Factura {fac.codigo} emitida.")
+            # El Cartero entrega la factura por correo con el PDF (best-effort).
+            res = services.enviar_por_correo(fac, request.user)
+            if res.ok:
+                messages.success(request, f"Factura {fac.codigo} emitida y enviada por correo. {res.detalle}")
+            else:
+                messages.warning(request, f"Factura {fac.codigo} emitida, pero el correo no salió: {res.error}")
             destino = reverse("facturacion:detalle", args=[fac.pk])
             return _hx_redirect(destino) if es_htmx else redirect(destino)
     return _modal(request, "facturacion/_modal_emitir.html",
