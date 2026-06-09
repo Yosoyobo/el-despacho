@@ -6,10 +6,14 @@
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Buzón</h1>
+        <h1 class="flex items-center gap-2 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+            Buzón
+            {% if no_leidos_mio %}<span title="Sin leer (tú)" class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-500 px-2 text-xs font-semibold text-white">{{ no_leidos_mio }}</span>{% endif %}
+        </h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {% if es_admin_buzon %}Todos los mensajes del equipo (sugerencias, problemas, otros).
             {% else %}Tus mensajes enviados al admin.{% endif %}
+            {% if no_leidos_mio %} · <span class="font-medium text-brand-600 dark:text-brand-400">{{ no_leidos_mio }} sin leer</span>{% endif %}
         </p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -61,8 +65,12 @@ En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
             <option value="otro" {% if tipo_filtro == 'otro' %}selected{% endif %}>Otro</option>
         </select>
     </div>
-    <button type="submit" class="btn-secundario">Filtrar</button>
-    {% if estado_filtro or tipo_filtro %}<a href="?{% if orden_actual != 'fecha' %}orden={{ orden_actual }}{% endif %}" class="text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400">Limpiar</a>{% endif %}
+    <div class="min-w-[180px] flex-1">
+        <label for="bzn-q" class="sr-only">Buscar</label>
+        <input type="search" id="bzn-q" name="q" value="{{ q }}" placeholder="Buscar asunto, texto o remitente…">
+    </div>
+    <button type="submit" class="btn-secundario">Buscar</button>
+    {% if estado_filtro or tipo_filtro or q %}<a href="?{% if orden_actual != 'fecha' %}orden={{ orden_actual }}{% endif %}" class="text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400">Limpiar</a>{% endif %}
 </form>
 
 {% if es_admin_buzon %}
@@ -71,6 +79,8 @@ En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
     {% csrf_token %}
     <span class="text-sm font-medium text-brand-700 dark:text-brand-300"><span id="buzon-masivo-conteo">0</span> seleccionado(s)</span>
     <div class="ml-auto flex flex-wrap gap-2">
+        <button type="submit" name="accion" value="marcar_leido_mio" class="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10">Leído (yo)</button>
+        <button type="submit" name="accion" value="marcar_no_leido_mio" class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">No leído (yo)</button>
         <button type="submit" name="accion" value="estado_leido" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">Marcar leído</button>
         <button type="submit" name="accion" value="estado_respondido" class="rounded-lg bg-success-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-success-600">Marcar respondido</button>
         <button type="submit" name="accion" value="estado_archivado" class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Archivar</button>

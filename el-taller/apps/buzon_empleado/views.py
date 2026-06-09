@@ -47,10 +47,20 @@ def lista(request):
     # Filtros admin
     estado = request.GET.get("estado") or ""
     tipo = request.GET.get("tipo") or ""
+    q = (request.GET.get("q") or "").strip()
     if estado:
         qs = qs.filter(estado=estado)
     if tipo:
         qs = qs.filter(tipo=tipo)
+    if q:
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(asunto__icontains=q) | Q(cuerpo__icontains=q) | Q(autor__email__icontains=q))
+
+    # S-Chalanes-UX #3: lectura POR USUARIO. Anotamos cada mensaje con
+    # `leido_para_mi` (negrita si no) y contamos los no leídos del usuario.
+    from buzon.lecturas import anotar_leido, contar_no_leidos
+    qs = anotar_leido(qs, user)
 
     # Orden — selector prioridad ↔ fecha. C1 S-LC-Feedback-V6: default ahora
     # es FECHA (lo más reciente arriba) por pedido de LC — antes era prioridad.
@@ -68,6 +78,7 @@ def lista(request):
         "respondidos": base.filter(estado="respondido").count(),
         "archivados": base.filter(estado="archivado").count(),
     }
+    no_leidos_mio = contar_no_leidos(user, base)
     cabeceras = []
     if es_admin_buzon:
         cabeceras.append({"label": "", "clase_th": "w-8"})  # checkbox col
@@ -83,12 +94,15 @@ def lista(request):
     # Toggle: KPI cards clickeables. Cuando el filtro está activo, el link
     # apunta a "" (sin filtro); cuando no, aplica el filtro. `orden` solo se
     # incluye si no es el default (fecha), para mantener las URLs limpias.
+    from urllib.parse import quote
     def _kpi_link(filtro):
         partes = []
         if estado != filtro:
             partes.append(f"estado={filtro}")
         if tipo:
             partes.append(f"tipo={tipo}")
+        if q:
+            partes.append(f"q={quote(q)}")
         if orden and orden != "fecha":
             partes.append(f"orden={orden}")
         return "?" + "&".join(partes) if partes else "?"
@@ -99,6 +113,8 @@ def lista(request):
             partes.append(f"estado={estado}")
         if tipo:
             partes.append(f"tipo={tipo}")
+        if q:
+            partes.append(f"q={quote(q)}")
         if nuevo_orden != "fecha":
             partes.append(f"orden={nuevo_orden}")
         return "?" + "&".join(partes) if partes else "?"
@@ -111,6 +127,8 @@ def lista(request):
         volver_partes.append(f"estado={estado}")
     if tipo:
         volver_partes.append(f"tipo={tipo}")
+    if q:
+        volver_partes.append(f"q={quote(q)}")
     if orden and orden != "fecha":
         volver_partes.append(f"orden={orden}")
     volver_qs = "&".join(volver_partes)
@@ -120,6 +138,8 @@ def lista(request):
         "es_admin_buzon": es_admin_buzon,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
+        "q": q,
+        "no_leidos_mio": no_leidos_mio,
         "orden_actual": orden,
         "volver_qs": volver_qs,
         "link_orden_prioridad": _qs_con_orden("prioridad"),
@@ -162,7 +182,14 @@ def detalle(request, pk: int):
     # de lectura (buzon/_pane.html) para inyectar en #buzon-pane sin navegar.
     es_htmx = request.headers.get("HX-Request") == "true"
 
-    # Auto-marcar como leído al abrir un mensaje "nuevo" (solo admin).
+    # S-Chalanes-UX #3: marca leído POR USUARIO al abrir (todos, como email).
+    if request.method == "GET":
+        from buzon.lecturas import marcar_leido
+        marcar_leido(user, msg)
+
+    # Auto-marcar el estado GLOBAL como "leido" al abrir un mensaje "nuevo"
+    # (solo admin) — flujo de atención del equipo, independiente del leído
+    # por-usuario.
     if request.method == "GET" and es_admin_buzon and msg.estado == "nuevo":
         msg.estado = "leido"
         msg.save(update_fields=["estado", "actualizado_en"])
@@ -260,6 +287,28 @@ def _procesar_adjuntos_buzon(request, msg) -> None:
 
 
 @login_required
+@require_http_methods(["POST"])
+def toggle_leido(request, pk: int):
+    """Alterna leído/no leído POR USUARIO (S-Chalanes-UX #3). Cualquier usuario
+    sobre un mensaje que pueda ver."""
+    msg = get_object_or_404(MensajeBuzon, pk=pk)
+    if not puede(request.user, "buzon", "ver_todos") and msg.autor_id != request.user.pk:
+        raise Http404
+    from buzon.lecturas import marcar_leido, marcar_no_leido
+    from buzon.models import LecturaBuzon
+    ya = LecturaBuzon.objects.filter(usuario=request.user, mensaje=msg).exists()
+    if ya:
+        marcar_no_leido(request.user, msg)
+        messages.success(request, "Marcado como no leído.")
+    else:
+        marcar_leido(request.user, msg)
+        messages.success(request, "Marcado como leído.")
+    volver = (request.POST.get("volver") or "").strip()
+    destino = reverse("buzon-lista") + (f"?{volver}" if volver else "")
+    return redirect(destino)
+
+
+@login_required
 @require_http_methods(["GET"])
 def adjunto_descargar(request, pk: int):
     """Sirve un adjunto del Buzón desde Drive (proxy autenticado). Lo bajan el
@@ -329,14 +378,15 @@ def nuevo(request):
 def accion_masiva(request):
     """POST /buzon/masivo — acción sobre múltiples mensajes a la vez.
 
-    S-LC-Feedback-V3. Acciones válidas (solo admin con buzon.ver_todos):
+    Acciones de lectura POR USUARIO (cualquier autenticado, S-Chalanes-UX #3):
+      - marcar_leido_mio / marcar_no_leido_mio
+
+    Acciones de estado GLOBAL (solo admin con buzon.ver_todos):
       - estado_leido / estado_respondido / estado_archivado / estado_nuevo
       - eliminar (borra de DB; sólo super_admin/dueno).
 
     Espera POST con `ids[]` lista de PKs y `accion` string.
     """
-    if not puede(request.user, "buzon", "ver_todos"):
-        return HttpResponse("Sin acceso.", status=403)
     ids = request.POST.getlist("ids")
     accion = (request.POST.get("accion") or "").strip()
     if not ids or not accion:
@@ -347,6 +397,28 @@ def accion_masiva(request):
     except ValueError:
         messages.error(request, "IDs inválidos.")
         return redirect("buzon-lista")
+
+    # ── Lectura por usuario (todos los roles) ──────────────────────────────
+    if accion in ("marcar_leido_mio", "marcar_no_leido_mio"):
+        from buzon.models import LecturaBuzon
+        # Sólo sobre mensajes visibles para el usuario.
+        visibles = MensajeBuzon.objects.filter(pk__in=ids_int)
+        if not puede(request.user, "buzon", "ver_todos"):
+            visibles = visibles.filter(autor=request.user)
+        vis_ids = list(visibles.values_list("pk", flat=True))
+        if accion == "marcar_leido_mio":
+            LecturaBuzon.objects.bulk_create(
+                [LecturaBuzon(usuario=request.user, mensaje_id=i) for i in vis_ids],
+                ignore_conflicts=True)
+            messages.success(request, f"{len(vis_ids)} marcado(s) como leído.")
+        else:
+            LecturaBuzon.objects.filter(usuario=request.user, mensaje_id__in=vis_ids).delete()
+            messages.success(request, f"{len(vis_ids)} marcado(s) como no leído.")
+        return redirect("buzon-lista")
+
+    # ── Estado global / eliminar (solo admin) ──────────────────────────────
+    if not puede(request.user, "buzon", "ver_todos"):
+        return HttpResponse("Sin acceso.", status=403)
 
     qs = MensajeBuzon.objects.filter(pk__in=ids_int)
     n = qs.count()

@@ -13,7 +13,10 @@ para que la lista quepa en ~40% del ancho, estilo Gmail.{% endcomment %}
     <span class="mt-0.5 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full {% if m.prioridad >= 8 %}bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300{% elif m.prioridad >= 6 %}bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300{% elif m.prioridad >= 3 %}bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300{% else %}bg-gray-100 text-gray-600 dark:bg-white/[0.05] dark:text-gray-400{% endif %} px-1.5 text-xs font-bold tabular-nums" title="Prioridad: {{ m.prioridad }}/10">{{ m.prioridad }}</span>
     <div class="min-w-0 flex-1">
         <div class="flex items-baseline justify-between gap-2">
-            <p class="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ m.asunto }}</p>
+            <p class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm {% if m.leido_para_mi %}font-medium text-gray-700 dark:text-gray-300{% else %}font-bold text-gray-900 dark:text-gray-50{% endif %}">
+                {% if not m.leido_para_mi %}<span class="inline-flex h-2 w-2 shrink-0 rounded-full bg-brand-500" title="No leído"></span>{% endif %}
+                <span class="truncate">{{ m.asunto }}</span>
+            </p>
             <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ m.creado_en|date:'m-d H:i' }}</span>
         </div>
         <div class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
@@ -24,6 +27,13 @@ para que la lista quepa en ~40% del ancho, estilo Gmail.{% endcomment %}
         <div class="mt-1.5 flex items-center gap-2">
             <span class="font-mono text-[11px] text-gray-400 dark:text-gray-500">#{{ m.pk }}</span>
             <span class="badge badge-hex" style="--ec: {{ m.estado|color_estado_buzon }}">{{ m.estado|estado_label_buzon }}</span>
+            <form method="post" action="{% url 'buzon-toggle-leido' m.pk %}" class="ml-auto" data-no-row-click onclick="event.stopPropagation()">
+                {% csrf_token %}
+                {% if volver_qs %}<input type="hidden" name="volver" value="{{ volver_qs }}">{% endif %}
+                <button type="submit" class="text-[11px] font-medium text-gray-400 hover:text-brand-600 dark:hover:text-brand-400">
+                    {% if m.leido_para_mi %}Marcar no leído{% else %}Marcar leído{% endif %}
+                </button>
+            </form>
         </div>
     </div>
 </div>
