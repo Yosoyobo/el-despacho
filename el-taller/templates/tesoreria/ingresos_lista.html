@@ -12,6 +12,7 @@
     <div class="flex gap-2">
         <a href="?{% if incluye_anulados %}{% else %}anulados=1{% endif %}" class="btn-secundario">{% if incluye_anulados %}Solo vigentes{% else %}Incluir anulados{% endif %}</a>
         <a href="{% url 'tesoreria:exportar-csv' 'ingresos' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn-secundario">📥 CSV</a>
+        <a href="{% url 'tesoreria:exportar-sheets' 'ingresos' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn-secundario" title="Crea una hoja de cálculo en Google Drive con estos datos.">📊 Hoja en Drive</a>
         <a href="{% url 'tesoreria:ingreso-nuevo' %}" class="btn-primario">+ Nuevo</a>
     </div>
 </header>

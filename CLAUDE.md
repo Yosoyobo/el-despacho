@@ -3410,6 +3410,62 @@ voz personal solo aplica a Dictado/chat — si en el futuro se quiere matizar
 el OCR/KPI-DSL por usuario, pasar `usuario` a esos `preludio()` (hoy se
 omite a propósito por costo de tokens sin beneficio).
 
+### S-Drive-Cierre ✅ — PDF de cotizaciones/facturas + adjuntos del chat + export Sheets (2026-06-09)
+
+Cierra la integración con Google Drive (ya estaba ~70%: adjuntos en
+Recados/Buzón, comprobantes de Egreso, OCR de recibos). 3 commits
+independientes. VERSION → `2026.06.28`.
+
+- **Commit 1 — PDF vía Google Docs** (regla §8, sin libs locales):
+  - `lib/google_drive.py`: `html_a_pdf()` (HTML → Google Doc nativo por
+    conversión → export PDF → sube el PDF a Drive → borra el Doc temporal)
+    + `exportar()` + `borrar()` + `_subir_html_como_gdoc()`. Constantes
+    `MIME_GDOC`/`MIME_PDF`.
+  - `lib/documentos.py` (nuevo): `generar_pdf()` con fallback gracioso
+    (patrón espejo de `lib/adjuntos.py`).
+  - Cotizaciones + Facturas: campos `pdf_file_id/pdf_url/pdf_generado_en`
+    (migraciones `cotizaciones/0006`, `facturacion/0005`),
+    `services.generar_pdf` (regenera + guarda en Drive subcarpeta
+    "Cotizaciones"/"Facturas" + borra PDF previo), templates `pdf.html`
+    table-based (óptimos para la conversión de Docs), vista `generar_pdf`
+    (GET → descarga inline), botón "📄 PDF" en el action bar. La factura
+    marca "Documento comercial — no es un CFDI" (regla §16).
+  - Eventos: `cotizacion.pdf_generado`, `factura.pdf_generado`.
+- **Commit 2 — adjuntos de El Chalán persistidos**: antes la imagen se
+  pasaba al LLM y se descartaba. Modelo `MensajeChatAdjunto` (migración
+  `el_dictado/0004`), `services_chat.conversar(archivo_adjunto=)` sube a
+  Drive (subcarpeta "El Chalán") tras crear el turno del usuario (fallback
+  gracioso), vista proxy `adjunto_descargar` (solo el dueño de la
+  conversación) + url `chalan-adjunto`, el template del chat muestra la
+  imagen/archivo. El **comprobante de Egreso y el auto-upload del OCR ya
+  estaban completos** desde S-Chalán-Scope-OCR (verificado — no requerían
+  cambios).
+- **Commit 3 — wrapper Sheets + export Tesorería**:
+  - `lib/google_sheets.py` (nuevo): `crear_hoja()` crea la hoja en Drive
+    (subcarpeta "Tesorería") y la llena vía la API de Sheets, reutilizando
+    la auth OAuth de Drive (scope `drive.file` cubre Sheets sobre archivos
+    creados por la app — sin re-consentimiento). Fallback gracioso.
+  - `tesoreria/exports.py::crear_hoja_drive(vista, params)` reusa
+    `filas_para()` (mismo origen de datos que el CSV). Vista
+    `exportar_sheets` (GET → crea hoja → redirige a la hoja; degrada a
+    landing con mensaje si Drive falla) + url `exportar-sheets`. Botón
+    "📊 Hoja en Drive" junto al de CSV en Ingresos, Egresos y CxC.
+- **21 tests nuevos**: `tests/test_drive_pdf.py` (4), `tests/test_google_sheets.py`
+  (3), `tests/taller/test_pdf_cotizacion_factura.py` (8),
+  `tests/taller/test_chat_adjunto.py` (3), `tests/taller/test_export_sheets.py`
+  (4). Mockean Drive/Sheets/LLM — no pegan a servicios externos.
+
+**Estado de Drive tras este arco**: completo. Adjuntos (Recados, Buzón,
+El Chalán), comprobantes + OCR (Tesorería), PDF (Cotizaciones, Facturas),
+export a hojas de cálculo (Tesorería). **Deuda menor**: el PDF se guarda
+en Drive pero el "enviar" sigue siendo registro manual (sin email/n8n
+automático — pendiente de La Cobranza); el adjunto del chat no se
+re-alimenta al LLM en turnos posteriores (solo primer turno con visión);
+el export de Sheets es por-vista (no un libro multi-pestaña). Si el scope
+`drive.file` resultara insuficiente para la API de Sheets en algún
+entorno, el wrapper devuelve error gracioso y habría que sumar el scope
+`spreadsheets` y re-consentir.
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),

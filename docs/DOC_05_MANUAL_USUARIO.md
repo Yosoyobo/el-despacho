@@ -5,6 +5,22 @@
 
 ---
 
+## Novedades — PDF de cotizaciones/facturas y más cosas a Google Drive (9 de junio de 2026)
+
+- **Ya puedes descargar el PDF de una cotización o una factura.** En el detalle
+  de cualquiera de las dos hay un botón **"📄 PDF"**: genera el documento con el
+  formato de Learning Center (lo arma Google Drive) y lo abre en una pestaña
+  nueva. El archivo también queda guardado en tu Google Drive. La factura
+  aclara que es un **documento comercial, no un CFDI** (el timbrado lo hace tu
+  contador aparte).
+- **Las imágenes que le mandas a El Chalán ahora se guardan.** Antes el
+  asistente leía la foto y la "olvidaba"; ahora queda en el historial del chat
+  para que puedas volver a verla.
+- **Tesorería: "📊 Hoja en Drive".** Junto al botón de CSV, en Ingresos,
+  Egresos y Cuentas por cobrar, hay un botón nuevo que crea directamente una
+  **hoja de cálculo en tu Google Drive** con esos datos (respetando los filtros)
+  y te lleva a ella.
+
 ## Novedades — Tu estilo personal con El Chalán + reglas avanzadas (9 de junio de 2026)
 
 - **Ahora cada quien puede decirle a El Chalán cómo hablarle.** Entra a tu
@@ -620,20 +636,19 @@ Cosas que cambiamos en el camino porque resultó mejor así:
 
 En orden aproximado de prioridad:
 
-1. **PDF de cotizaciones y facturas** — generar el documento descargable.
-   La **conexión a Google Drive ya se puede activar** (Ajustes → Conectar
-   Google Drive); falta el paso de generar el documento sobre esa conexión.
-2. **La Caja** — links de pago con Stripe y MercadoPago.
-3. **La Cobranza** — recordatorios automáticos de facturas vencidas.
-4. **Tesorería avanzada** — leer recibos por foto (OCR), reconciliación con el
-   banco y cierre de periodo contable.
-5. **Adjuntos en Recados** — mandar archivos en el chat (vía Google Drive, una
-   vez conectado en Ajustes).
-6. **Más casos de IA** — redactar cotizaciones, categorizar gastos, resumir
+1. **La Caja** — links de pago con Stripe y MercadoPago.
+2. **La Cobranza** — recordatorios automáticos de facturas vencidas.
+3. **Tesorería avanzada** — reconciliación con el banco y cierre de periodo
+   contable. (Leer recibos por foto con OCR ya funciona.)
+4. **Más casos de IA** — redactar cotizaciones, categorizar gastos, resumir
    conversaciones y sugerir precios automáticamente.
-7. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus
+5. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus
    proyectos, apruebe cotizaciones y consulte sus facturas y pagos. Es la gran
    etapa final.
+
+> **Google Drive quedó conectado de punta a punta:** adjuntos en Recados, Buzón
+> y El Chalán; comprobantes y lectura de recibos (OCR) en Tesorería; PDF de
+> cotizaciones y facturas; y exportar Tesorería a hojas de cálculo.
 
 ---
 

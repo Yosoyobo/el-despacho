@@ -10,7 +10,10 @@
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Cuentas por cobrar</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Facturas emitidas con saldo + anticipos de cotizaciones + proyectos legacy.</p>
     </div>
-    <a href="{% url 'tesoreria:exportar-csv' 'cxc' %}" class="btn-secundario">📥 CSV</a>
+    <div class="flex gap-2">
+        <a href="{% url 'tesoreria:exportar-csv' 'cxc' %}" class="btn-secundario">📥 CSV</a>
+        <a href="{% url 'tesoreria:exportar-sheets' 'cxc' %}" class="btn-secundario" title="Crea una hoja de cálculo en Google Drive con estos datos.">📊 Hoja en Drive</a>
+    </div>
 </header>
 
 <div class="mb-5 grid grid-cols-1 gap-3 md:grid-cols-4">

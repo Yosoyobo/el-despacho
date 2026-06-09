@@ -782,6 +782,27 @@ def exportar(request, vista):
     return response
 
 
+@login_required
+def exportar_sheets(request, vista):
+    """Crea una hoja de cálculo en Google Drive con los datos de `vista` y
+    redirige a la hoja. Fallback gracioso: si Drive falla, mensaje + vuelve."""
+    if (r := _gate(request)) is not None:
+        return r
+    if vista not in exports.VISTAS:
+        return HttpResponseNotAllowed(["GET"])
+    res, num_filas = exports.crear_hoja_drive(vista, request.GET.dict())
+    if not res.ok:
+        messages.error(request, f"No se pudo crear la hoja en Drive: {res.error}")
+        _emitir("tesoreria.export_fallido", request, {"vista": vista, "formato": "sheets"})
+        return redirect("tesoreria:landing")
+    _emitir("tesoreria.exportado", request, {
+        "vista": vista, "formato": "sheets", "filas": num_filas,
+        "hoja_id": res.id, "filtros": dict(request.GET),
+    })
+    messages.success(request, "Hoja creada en Google Drive. Te llevamos a ella.")
+    return redirect(res.url)
+
+
 # ── API JSON para autocompletar ingreso ──────────────────────────────────
 
 @login_required

@@ -250,6 +250,28 @@ def filas_para(vista: str, params: dict) -> tuple[list[str], list[list[Any]]]:
     return ENCABEZADOS[vista], filas
 
 
+NOMBRES_VISTA = {
+    "ingresos": "ingresos", "egresos": "egresos", "cxc": "cuentas por cobrar",
+    "cxp": "cuentas por pagar", "reembolsos": "reembolsos",
+    "movimientos": "movimientos",
+}
+
+
+def crear_hoja_drive(vista: str, params: dict):
+    """Crea una hoja de cálculo en Drive con los datos de `vista`. Devuelve
+    `(lib.google_sheets.ResultadoHoja, num_filas)`. Mismo origen de datos que
+    el CSV (filas_para). Fallback gracioso vía el wrapper de Sheets."""
+    from datetime import date as _date
+
+    from lib.google_sheets import crear_hoja
+
+    encabezados, filas = filas_para(vista, params)
+    titulo = f"Tesorería · {NOMBRES_VISTA.get(vista, vista)} · {_date.today().isoformat()}"
+    res = crear_hoja(titulo=titulo, encabezados=encabezados, filas=filas,
+                     subcarpeta="Tesorería")
+    return res, len(filas)
+
+
 def responder_csv(vista: str, params: dict) -> HttpResponse:
     encabezados, filas = filas_para(vista, params)
     response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
