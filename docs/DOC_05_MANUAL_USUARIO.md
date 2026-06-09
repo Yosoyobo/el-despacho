@@ -5,6 +5,12 @@
 
 ---
 
+## Novedades — Menciones @#$ en los comentarios (9 de junio de 2026)
+
+- **En los comentarios de tareas ya puedes mencionar** con `@persona`,
+  `#LC-0001` (proyecto) o `$cliente`, igual que en el chat. Empieza a escribir
+  el símbolo y aparece el autocompletado.
+
 ## Novedades — El Cartero: ya se mandan correos (9 de junio de 2026)
 
 - **El sistema ya envía correos.** Al marcar una **cotización como enviada** o

@@ -30,7 +30,7 @@
             <form method="post" action="{% url 'pizarron-comentar-tarea' tarea.pk %}" class="campo-form mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
                 {% csrf_token %}
                 <label for="comentar-cuerpo" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nuevo comentario</label>
-                <textarea id="comentar-cuerpo" name="cuerpo" rows="3" required placeholder="Escribe un comentario…"></textarea>
+                <textarea id="comentar-cuerpo" name="cuerpo" rows="3" required data-referencias placeholder="Escribe un comentario… usa @persona, #LC-0001 o $cliente"></textarea>
                 {% if es_admin or request.user.rol == 'contador' %}
                 <label class="mt-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                     <input type="checkbox" name="es_interno" value="on" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">

@@ -130,3 +130,19 @@ def test_comentario_de_disenador_no_puede_ser_interno(client, usuario_factory, p
     client.post(f"/tareas/{t.pk}/comentar", {"cuerpo": "hola", "es_interno": "on"})
     c = Comentario.objects.get(tarea=t, autor=d)
     assert c.es_interno is False  # diseñador no puede marcar interno
+
+
+def test_textarea_comentario_tiene_referencias(client, usuario_factory, proyecto_factory):
+    """Regresión S-Chalanes-UX #1: el textarea de comentarios debe traer
+    data-referencias para que funcione el autocompletar @/#/$."""
+    from apps.el_pizarron.models import Tarea
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    t = Tarea.objects.create(proyecto=p, titulo="X", asignada_a=admin,
+                             estado="pendiente", prioridad="media")
+    client.force_login(admin)
+    resp = client.get(f"/tareas/{t.pk}/")
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert 'name="cuerpo"' in body
+    assert "data-referencias" in body
