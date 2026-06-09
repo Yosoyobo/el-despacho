@@ -19,7 +19,14 @@ from ajustes.models.credencial import Credencial
 from chalanes.models import Aprendizaje, CadenaFallback, CuadroChalanes
 from chalanes.models.cuadro_chalanes import PROVEEDORES
 from lib.analistas.registry import adapter_de
-from lib.analistas.stats import resumen_global, tarjetas_chalanes
+from lib.analistas.stats import (
+    estadisticas_por_estacion,
+    kpis_consumo,
+    resumen_global,
+    tarjetas_chalanes,
+    ultimas_llamadas,
+    usuarios_top,
+)
 from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
 from lib.permisos import es_super_admin, requires_role
 from lib.portavoz import emitir
@@ -46,6 +53,30 @@ def panel(request):
         "comandos_dictado": COMANDOS_DICTADO,
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
         "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
+    })
+
+
+VENTANAS_CONSUMO = (7, 30, 90)
+
+
+@requires_role("super_admin", "dueno")
+def consumo(request):
+    """Analítica de consumo de IA con selector de ventana (7/30/90 días):
+    KPIs, por función, por proveedor, usuarios top, últimas 50 llamadas."""
+    try:
+        ventana = int(request.GET.get("ventana") or 30)
+    except ValueError:
+        ventana = 30
+    if ventana not in VENTANAS_CONSUMO:
+        ventana = 30
+    return render(request, "los_chalanes/consumo.html", {
+        "ventana": ventana,
+        "ventanas": VENTANAS_CONSUMO,
+        "kpis": kpis_consumo(dias=ventana),
+        "resumen": resumen_global(dias=ventana),
+        "por_estacion": estadisticas_por_estacion(dias=ventana),
+        "usuarios_top": usuarios_top(dias=ventana, limit=10),
+        "ultimas": ultimas_llamadas(dias=ventana, limit=50),
     })
 
 

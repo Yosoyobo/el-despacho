@@ -106,6 +106,37 @@
     {% endif %}
 </section>
 
+{% if por_estacion or usuarios_top %}
+{% load forms_helpers %}
+<section class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">Por función — últimos 30 días</h2>
+        <div class="space-y-3">
+            {% for f in por_estacion %}
+            <div>
+                <div class="flex items-baseline justify-between gap-2 text-sm">
+                    <span class="truncate font-medium text-gray-700 dark:text-gray-200">{{ f.etiqueta }}</span>
+                    <span class="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ f.tokens|miles }} tok · {{ f.costo_usd|costo_ia }}</span>
+                </div>
+                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-full bg-brand-500" style="width: {{ f.porcentaje_costo }}%"></div></div>
+            </div>
+            {% empty %}<p class="text-sm text-gray-500 dark:text-gray-400">Sin actividad.</p>{% endfor %}
+        </div>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">Usuarios con más llamadas</h2>
+        <ul class="space-y-2 text-sm">
+            {% for u in usuarios_top %}
+            <li class="flex items-baseline justify-between gap-2">
+                <span class="truncate text-gray-700 dark:text-gray-200">{{ u.nombre }}</span>
+                <span class="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ u.llamadas|miles }} llam. · {{ u.tokens|miles }} tok</span>
+            </li>
+            {% empty %}<li class="text-gray-500 dark:text-gray-400">Sin actividad.</li>{% endfor %}
+        </ul>
+    </div>
+</section>
+{% endif %}
+
 {% if tarjetas_chalanes %}
 <section class="mt-6">
     <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Estado de los Chalanes</h2>

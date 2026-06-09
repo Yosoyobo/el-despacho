@@ -23,7 +23,13 @@ from django.views.decorators.http import require_POST
 from chalanes.models import ChalanAsignado, CuadroChalanes
 from lib.analistas import registry as _registry
 from lib.analistas.capacidades import Capability
-from lib.analistas.stats import resumen_global, tarjetas_chalanes
+from lib.analistas.stats import (
+    estadisticas_por_estacion,
+    kpis_consumo,
+    resumen_global,
+    tarjetas_chalanes,
+    usuarios_top,
+)
 from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
 from lib.portavoz import emitir
 
@@ -78,13 +84,17 @@ def panel(request):
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
         "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
     }
-    if rol in ROLES_ADMIN_TALLER:
-        # Dashboard reducido para admins (mismo dato que /chalanes/ en Gerencia,
-        # sin acciones de admin — solo lectura). Defensivo: si la query falla
-        # por algún motivo, omite la sección.
+    # S-Chalanes-Consumo: la analítica de consumo (30 días) es SOLO para
+    # super_admin en el Taller (decisión Oscar). Defensivo: si la query falla,
+    # omite la sección sin tumbar el panel.
+    ctx["es_super_admin_taller"] = rol == "super_admin"
+    if rol == "super_admin":
         try:
             ctx["tarjetas_chalanes"] = tarjetas_chalanes(dias=30)
             ctx["resumen_chalanes"] = resumen_global(dias=30)
+            ctx["kpis_consumo"] = kpis_consumo(dias=30)
+            ctx["por_estacion"] = estadisticas_por_estacion(dias=30)
+            ctx["usuarios_top"] = usuarios_top(dias=30, limit=8)
         except Exception:  # noqa: BLE001
             ctx["tarjetas_chalanes"] = []
             ctx["resumen_chalanes"] = None

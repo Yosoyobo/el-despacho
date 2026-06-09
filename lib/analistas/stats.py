@@ -177,6 +177,133 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
     return salida
 
 
+def _etiquetas_estaciones() -> dict[str, str]:
+    """slug de estación → etiqueta legible (desde chalanes.estaciones)."""
+    try:
+        from chalanes.estaciones import ESTACIONES
+        return {clave: etiqueta for clave, etiqueta, *_ in ESTACIONES}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def kpis_consumo(dias: int = 30) -> dict:
+    """KPIs del header de la analítica: llamadas, tokens totales/entrada/salida,
+    costo estimado (en la ventana de `dias`)."""
+    from ajustes.models.analistas_log import AnalistaLog
+
+    desde = timezone.now() - timedelta(days=dias)
+    agg = AnalistaLog.objects.filter(creado_en__gte=desde).aggregate(
+        llamadas=Count("id"),
+        prompt_tokens=Sum("prompt_tokens"),
+        completion_tokens=Sum("completion_tokens"),
+        costo=Sum("costo_usd_estimado"),
+    )
+    pin = int(agg["prompt_tokens"] or 0)
+    pout = int(agg["completion_tokens"] or 0)
+    return {
+        "llamadas": int(agg["llamadas"] or 0),
+        "tokens_total": pin + pout,
+        "tokens_entrada": pin,
+        "tokens_salida": pout,
+        "costo_total": Decimal(agg["costo"] or 0).quantize(Decimal("0.0001")),
+    }
+
+
+def estadisticas_por_estacion(dias: int = 30) -> list[dict]:
+    """`[{estacion, etiqueta, llamadas, tokens, costo_usd, porcentaje_costo}]`
+    ordenado por costo desc. Para la sección 'Por función'."""
+    from ajustes.models.analistas_log import AnalistaLog
+
+    desde = timezone.now() - timedelta(days=dias)
+    etiquetas = _etiquetas_estaciones()
+    filas = []
+    for row in (
+        AnalistaLog.objects.filter(creado_en__gte=desde)
+        .values("estacion")
+        .annotate(
+            llamadas=Count("id"),
+            prompt_tokens=Sum("prompt_tokens"),
+            completion_tokens=Sum("completion_tokens"),
+            costo=Sum("costo_usd_estimado"),
+        )
+    ):
+        est = row["estacion"] or "—"
+        costo = Decimal(row["costo"] or 0).quantize(Decimal("0.000001"))
+        filas.append({
+            "estacion": est,
+            "etiqueta": etiquetas.get(est, est),
+            "llamadas": int(row["llamadas"] or 0),
+            "tokens": int((row["prompt_tokens"] or 0) + (row["completion_tokens"] or 0)),
+            "costo_usd": costo,
+        })
+    filas.sort(key=lambda x: -x["costo_usd"])
+    max_costo = max((f["costo_usd"] for f in filas), default=Decimal("0"))
+    for f in filas:
+        f["porcentaje_costo"] = float((f["costo_usd"] / max_costo * 100) if max_costo > 0 else 0)
+    return filas
+
+
+def usuarios_top(dias: int = 30, limit: int = 10) -> list[dict]:
+    """`[{actor_id, nombre, email, llamadas, tokens, costo_usd}]` — usuarios con
+    más llamadas en la ventana, top `limit`."""
+    from ajustes.models.analistas_log import AnalistaLog
+    from cuentas.models.usuario import Usuario
+
+    desde = timezone.now() - timedelta(days=dias)
+    filas = list(
+        AnalistaLog.objects.filter(creado_en__gte=desde, actor__isnull=False)
+        .values("actor_id")
+        .annotate(
+            llamadas=Count("id"),
+            prompt_tokens=Sum("prompt_tokens"),
+            completion_tokens=Sum("completion_tokens"),
+            costo=Sum("costo_usd_estimado"),
+        )
+        .order_by("-llamadas")[:limit]
+    )
+    nombres = dict(
+        Usuario.objects.filter(pk__in=[f["actor_id"] for f in filas])
+        .values_list("pk", "nombre_completo")
+    )
+    correos = dict(
+        Usuario.objects.filter(pk__in=[f["actor_id"] for f in filas]).values_list("pk", "email")
+    )
+    return [{
+        "actor_id": f["actor_id"],
+        "nombre": nombres.get(f["actor_id"], "—"),
+        "email": correos.get(f["actor_id"], ""),
+        "llamadas": int(f["llamadas"] or 0),
+        "tokens": int((f["prompt_tokens"] or 0) + (f["completion_tokens"] or 0)),
+        "costo_usd": Decimal(f["costo"] or 0).quantize(Decimal("0.0001")),
+    } for f in filas]
+
+
+def ultimas_llamadas(dias: int = 30, limit: int = 50) -> list[dict]:
+    """`[{creado_en, estacion, etiqueta, provider, modelo, prompt_tokens,
+    completion_tokens, costo_usd, actor_email, exito}]` — auditoría reciente."""
+    from ajustes.models.analistas_log import AnalistaLog
+
+    desde = timezone.now() - timedelta(days=dias)
+    etiquetas = _etiquetas_estaciones()
+    filas = (
+        AnalistaLog.objects.filter(creado_en__gte=desde)
+        .select_related("actor")
+        .order_by("-creado_en")[:limit]
+    )
+    return [{
+        "creado_en": r.creado_en,
+        "estacion": r.estacion,
+        "etiqueta": etiquetas.get(r.estacion, r.estacion),
+        "provider": r.provider,
+        "modelo": r.modelo,
+        "prompt_tokens": r.prompt_tokens,
+        "completion_tokens": r.completion_tokens,
+        "costo_usd": r.costo_usd_estimado,
+        "actor_email": r.actor.email if r.actor_id else "—",
+        "exito": r.exito,
+    } for r in filas]
+
+
 def resumen_global(dias: int = 30) -> dict:
     """`{costo_total, llamadas_total, tokens_total, max_costo_provider}` —
     para el banner superior del panel y de El Site. Todos los proveedores

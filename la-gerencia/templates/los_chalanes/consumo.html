@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Consumo de IA — Chalanes{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Chalanes" "/chalanes/" "Consumo de IA" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Los Chalanes</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Consumo de IA</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Llamadas, tokens y costo estimado de Los Chalanes.</p>
+    </div>
+    <div class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs dark:border-gray-800 dark:bg-gray-900" role="group" aria-label="Ventana de tiempo">
+        {% for v in ventanas %}
+        <a href="?ventana={{ v }}" class="rounded-md px-3 py-1.5 font-medium transition {% if ventana == v %}bg-brand-500 text-white shadow-sm{% else %}text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ v }} días</a>
+        {% endfor %}
+    </div>
+</header>
+
+{# KPI row #}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
+    {% include "los_chalanes/_consumo_kpi.html" with valor=kpis.llamadas|miles titulo="Llamadas totales" sub="Peticiones a la IA" color="gray" %}
+    {% include "los_chalanes/_consumo_kpi.html" with valor=kpis.tokens_total|miles titulo="Tokens totales" sub="Entrada + salida" color="orange" %}
+    {% include "los_chalanes/_consumo_kpi.html" with valor=kpis.tokens_entrada|miles titulo="Tokens entrada" sub="Enviados al modelo" color="blue-light" %}
+    {% include "los_chalanes/_consumo_kpi.html" with valor=kpis.tokens_salida|miles titulo="Tokens salida" sub="Generados por el modelo" color="success" %}
+    {% include "los_chalanes/_consumo_kpi.html" with valor=kpis.costo_total|costo_ia titulo="Costo estimado" sub="USD — referencia estática" color="warning" %}
+</div>
+
+<div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+    {# Por función #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">Por función</h2>
+        <div class="space-y-3">
+            {% for f in por_estacion %}
+            <div>
+                <div class="flex items-baseline justify-between gap-2 text-sm">
+                    <span class="truncate font-medium text-gray-700 dark:text-gray-200">{{ f.etiqueta }}</span>
+                    <span class="shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ f.tokens|miles }} tok · <span class="font-medium text-gray-700 dark:text-gray-200">{{ f.costo_usd|costo_ia }}</span></span>
+                </div>
+                <div class="mt-1 flex items-center gap-2">
+                    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-full rounded-full bg-brand-500" style="width: {{ f.porcentaje_costo }}%"></div></div>
+                    <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ f.llamadas }} llam.</span>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Sin actividad en el periodo.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# Por proveedor #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">Por proveedor</h2>
+        <div class="space-y-3">
+            {% for p in resumen.por_proveedor %}
+            <div>
+                <div class="flex items-baseline justify-between gap-2 text-sm">
+                    <span class="truncate font-medium capitalize text-gray-700 dark:text-gray-200">{{ p.provider }}</span>
+                    <span class="shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ p.tokens|miles }} tok · <span class="font-medium text-gray-700 dark:text-gray-200">{{ p.costo_usd|costo_ia }}</span></span>
+                </div>
+                <div class="mt-1 flex items-center gap-2">
+                    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-full rounded-full bg-success-500" style="width: {{ p.porcentaje_costo }}%"></div></div>
+                    <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ p.llamadas }} llam.</span>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Sin actividad en el periodo.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+{# Usuarios con más llamadas #}
+<section class="mb-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="border-b border-gray-100 px-5 py-3 text-base font-semibold text-gray-900 dark:border-gray-800 dark:text-gray-100">Usuarios con más llamadas</h2>
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr><th class="px-5 py-3 text-left">Usuario</th><th class="px-5 py-3 text-right">Llamadas</th><th class="px-5 py-3 text-right">Tokens</th><th class="px-5 py-3 text-right">Costo</th></tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for u in usuarios_top %}
+            <tr>
+                <td class="px-5 py-3"><span class="font-medium text-gray-900 dark:text-gray-100">{{ u.nombre }}</span><span class="ml-2 text-xs text-gray-400 dark:text-gray-500">{{ u.email }}</span></td>
+                <td class="px-5 py-3 text-right tabular-nums text-gray-700 dark:text-gray-200">{{ u.llamadas|miles }}</td>
+                <td class="px-5 py-3 text-right tabular-nums text-orange-600 dark:text-orange-400">{{ u.tokens|miles }}</td>
+                <td class="px-5 py-3 text-right tabular-nums text-gray-700 dark:text-gray-200">{{ u.costo_usd|costo_ia }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin actividad en el periodo.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{# Últimas 50 llamadas #}
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="border-b border-gray-100 px-5 py-3 text-base font-semibold text-gray-900 dark:border-gray-800 dark:text-gray-100">Últimas 50 llamadas</h2>
+    <div class="max-h-[28rem] overflow-y-auto">
+    <table class="min-w-[760px] text-sm">
+        <thead class="sticky top-0 border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            <tr><th class="px-4 py-3 text-left">Fecha</th><th class="px-4 py-3 text-left">Función</th><th class="px-4 py-3 text-left">Proveedor</th><th class="px-4 py-3 text-left">Modelo</th><th class="px-4 py-3 text-right">In</th><th class="px-4 py-3 text-right">Out</th><th class="px-4 py-3 text-right">Costo</th><th class="px-4 py-3 text-left">Usuario</th></tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for l in ultimas %}
+            <tr class="{% if not l.exito %}bg-error-25 dark:bg-error-500/5{% endif %}">
+                <td class="whitespace-nowrap px-4 py-2.5 text-gray-500 dark:text-gray-400">{{ l.creado_en|date:"d M Y, H:i" }}</td>
+                <td class="px-4 py-2.5 text-gray-700 dark:text-gray-200">{{ l.etiqueta }}{% if not l.exito %} <span class="badge badge-error">falló</span>{% endif %}</td>
+                <td class="px-4 py-2.5 capitalize text-brand-600 dark:text-brand-400">{{ l.provider }}</td>
+                <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400">{{ l.modelo }}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ l.prompt_tokens|miles }}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ l.completion_tokens|miles }}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-gray-700 dark:text-gray-200">{{ l.costo_usd|costo_ia }}</td>
+                <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400">{{ l.actor_email }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin llamadas en el periodo.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% endblock %}

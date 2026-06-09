@@ -45,6 +45,43 @@ def dinero(valor) -> str:
     return f"{signo}${','.join(grupos)}.{decimales or '00':<02}"[:32]
 
 
+@register.filter
+def miles(valor) -> str:
+    """Formatea un entero con separador de miles: `55582` → `55,582`. None /
+    vacío → `0`. Para tokens y conteos (sin decimales)."""
+    if valor is None or valor == "":
+        return "0"
+    try:
+        n = int(valor)
+    except (ValueError, TypeError):
+        return str(valor)
+    signo = "-" if n < 0 else ""
+    entero = str(abs(n))
+    grupos = []
+    while len(entero) > 3:
+        grupos.insert(0, entero[-3:])
+        entero = entero[:-3]
+    if entero:
+        grupos.insert(0, entero)
+    return f"{signo}{','.join(grupos)}"
+
+
+@register.filter
+def costo_ia(valor) -> str:
+    """Costo de IA: 4 decimales con `$`, o `< $0.001` para montos diminutos
+    no nulos. `$0.0365`, `< $0.001`, `$0.0000` para cero."""
+    from decimal import Decimal as _D
+    if valor is None or valor == "":
+        return "—"
+    try:
+        v = _D(str(valor))
+    except (InvalidOperation, ValueError, TypeError):
+        return str(valor)
+    if v > 0 and v < _D("0.001"):
+        return "< $0.001"
+    return f"${v.quantize(_D('0.0001'))}"
+
+
 @register.simple_tag
 def breadcrumb_items(*args):
     """Construye una lista de items para `_breadcrumb.html` a partir de
