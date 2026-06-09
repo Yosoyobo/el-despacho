@@ -18,6 +18,7 @@ ESTACIONES: list[tuple[str, str, str, bool, str, str]] = [
     ("taller_chat",        "Chat del Taller",             "Chat conversacional: consulta estatus (proyectos, finanzas, gasto IA, servidor) y propone acciones con confirmación.", False, "anthropic", "claude-haiku-4-5"),
     ("ocr_recibo",         "OCR de recibo",                "Extrae monto, fecha y concepto de la foto de un recibo.", True,  "openai",    "gpt-4o-mini"),
     ("correo_redaccion",   "Redactar correo (El Cartero)", "Redacta/mejora el HTML de las plantillas de correo respetando las variables.", False, "anthropic", "claude-haiku-4-5"),
+    ("redaccion_asistida", "Redactar texto (widget 🤖)",   "El botón 🤖 redacta comentarios, notas y respuestas; resuelve @#$ a datos reales.", False, "anthropic", "claude-haiku-4-5"),
     ("smoke",              "Smoke test",                   "Prueba mínima desde Los Ajustes — un saludo.", False, "anthropic", "claude-haiku-4-5"),
 ]
 

@@ -1,0 +1,41 @@
+{# Widget AI 🤖 reusable (S-Chalanes-UX #2) — textarea + barra "Redactar con El
+   Chalán". El botón pide una redacción; El Chalán resuelve @#$ a datos reales y
+   propone el texto (el usuario revisa/edita y guarda con el submit normal).
+
+   Params:
+     name            (req) — name del textarea
+     id              — id del textarea (default: ia-<name>)
+     rows            — default 3
+     value           — texto actual
+     placeholder     — del textarea
+     required        — bool
+     data_referencias — bool: habilita autocompletar @#$ en el textarea
+     contexto_modelo — para que el endpoint resuelva el recurso (proyecto, comentario_tarea, buzon, …)
+     contexto_id     — pk del recurso
+     instruccion_ph  — placeholder del input de instrucción
+
+   La barra IA sólo aparece si el usuario tiene permiso (chalan, usar). #}
+{% with tid=id|default:name %}
+<div data-textarea-ia
+     data-endpoint="{% url 'chalan-redactar' %}"
+     data-target="#ia-{{ tid }}"
+     data-contexto-modelo="{{ contexto_modelo|default:'' }}"
+     data-contexto-id="{{ contexto_id|default:'' }}">
+  <textarea id="ia-{{ tid }}" name="{{ name }}" rows="{{ rows|default:3 }}"
+            {% if required %}required{% endif %}
+            {% if data_referencias %}data-referencias{% endif %}
+            placeholder="{{ placeholder|default:'' }}">{{ value|default:'' }}</textarea>
+  {% if permisos_modulos.chalan %}
+  <div class="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-brand-50/60 p-2 dark:border-brand-500/30 dark:bg-brand-500/10">
+    <input type="text" data-ia-instruccion
+           class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+           placeholder="{{ instruccion_ph|default:'Dile a El Chalán qué redactar… usa @persona, #LC-0001, $cliente' }}">
+    <button type="button" data-ia-redactar
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60">
+      🤖 Redactar
+    </button>
+    <span data-ia-estado class="text-xs text-gray-500 dark:text-gray-400"></span>
+  </div>
+  {% endif %}
+</div>
+{% endwith %}

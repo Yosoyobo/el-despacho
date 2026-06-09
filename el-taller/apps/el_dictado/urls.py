@@ -1,8 +1,10 @@
 from django.urls import path
 
-from . import views, views_chat
+from . import views, views_chat, views_redactor
 
 urlpatterns = [
+    # Widget AI 🤖 reusable (S-Chalanes-UX #2): redacta texto en cualquier campo.
+    path("chalan/redactar", views_redactor.redactar_texto, name="chalan-redactar"),
     # Chat conversacional (El Chalán) — S-Chalan-Chat-V1.
     path("chalan/", views_chat.chat, name="chalan-chat"),
     path("chalan/c/<int:pk>/", views_chat.conversacion, name="chalan-conversacion"),

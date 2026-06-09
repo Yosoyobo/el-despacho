@@ -1,0 +1,28 @@
+{# Barra AI 🤖 "Redactar con El Chalán" para un textarea YA renderizado por
+   Django ({{ form.campo }}). Variante de _textarea_ia.html sin textarea propio:
+   apunta a un selector externo vía data-target.
+
+   Params:
+     target          (req) — selector CSS del textarea destino (ej. "#id_respuesta_publica")
+     contexto_modelo — recurso para el endpoint (buzon, proyecto, …)
+     contexto_id     — pk del recurso
+     instruccion_ph  — placeholder del input de instrucción
+
+   Sólo aparece si el usuario tiene permiso (chalan, usar). #}
+{% if permisos_modulos.chalan %}
+<div data-textarea-ia
+     data-endpoint="{% url 'chalan-redactar' %}"
+     data-target="{{ target }}"
+     data-contexto-modelo="{{ contexto_modelo|default:'' }}"
+     data-contexto-id="{{ contexto_id|default:'' }}"
+     class="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-brand-50/60 p-2 dark:border-brand-500/30 dark:bg-brand-500/10">
+  <input type="text" data-ia-instruccion
+         class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+         placeholder="{{ instruccion_ph|default:'Dile a El Chalán qué redactar… usa @persona, #LC-0001, $cliente' }}">
+  <button type="button" data-ia-redactar
+          class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60">
+    🤖 Redactar
+  </button>
+  <span data-ia-estado class="text-xs text-gray-500 dark:text-gray-400"></span>
+</div>
+{% endif %}
