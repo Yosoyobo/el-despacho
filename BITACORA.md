@@ -5308,3 +5308,76 @@ verde.
   usuarios — banner alcanza.
 - Mostrar SHA del commit en el banner. Decisión: solo super_admin
   necesita esa info y la tiene en El Site.
+
+---
+
+# BITÁCORA — Sesión S-Directorio-Panel-V1 + S-Chalan-Voz-Usuario (2026-06-08 → 2026-06-09)
+
+> Dos sprints encadenados. `S-Directorio-Panel-V1` (2026-06-08, commit
+> `0fb2f19`) ya estaba en código pero faltaba en CLAUDE.md/BITACORA — se
+> documenta aquí. `S-Chalan-Voz-Usuario` (2026-06-09, commit `95e8f15`) es
+> el sprint de esta sesión. Detalle completo en CLAUDE.md §8.
+
+## 1. S-Directorio-Panel-V1 (commit `0fb2f19`)
+
+Rediseño de **La Gerencia → El Directorio** al patrón de gestión de usuarios
+de La Cocina/Stove. Handoff: `docs/SPRINT_DIRECTORIO_PANEL.md`.
+
+- Modelo `cuentas.PresupuestoIA` (OneToOne, `tope_usd`/`politica`/`activo`/
+  `alerta_mes`), migración `cuentas/0017_presupuesto_ia`.
+- `chalanes/services.py` (overrides_de/set_override/forzar_proveedor/
+  limpiar_overrides/proveedores_configurados). `lib/analistas/stats.py`
+  extendido (uso_por_usuario, gasto_mes_usuario). `cuentas/servicios_presupuesto.py`.
+- Gate `PresupuestoIAExcedido` en `lib.analistas.analizar` cuando política
+  `topar`; callers (Dictado/chat/OCR) lo capturan. Command cron
+  `evaluar_presupuestos_ia` para la alerta de ambas políticas.
+- UI: lista compacta + modal único con tabs Datos·IA·Permisos (HTMX lazy).
+- Hotfixes incluidos: Buzón two-pane (master-detail) + toggle Ocultar/Mostrar
+  estados de proyecto y de Buzón.
+- Eventos: `presupuesto_ia.{topado,rebasado,actualizado}`.
+- Deuda: edición IA por `dueno`, tope global del despacho, **El Resguardo**
+  (backup offsite a DO Spaces — setup manual pendiente en el Droplet).
+
+## 2. S-Chalan-Voz-Usuario (commit `95e8f15`, esta sesión)
+
+Dos features sobre "Los Prompts", ambas en la capa segura (tono/guía, no
+esquema estructural). VERSION → `2026.06.27`.
+
+### 2.1. Voz personal por usuario (capa aditiva)
+
+- Campo `Usuario.voz_chalan` (migración `cuentas/0018_usuario_voz_chalan`).
+- `chalanes.voz.preludio(estacion, usuario=None)` concatena base global →
+  estación global → voz personal del usuario (`_voz_personal`, saneada,
+  máx 4000). Solo en Dictado (`services.py` × 2) y chat (`prompt_chat.py`);
+  OCR/KPI-DSL no la llevan.
+- UI: recuadro en `perfil_chalanes/panel.html` → `POST /perfil/chalanes/voz`
+  (`guardar_voz`). Rotulada como "solo afecta tono, nunca permisos/acciones".
+- Evento `chalan.voz_personal_actualizada`.
+
+### 2.2. Slot de reglas operativas (estructural global, con guardrail)
+
+- Slot `reglas_operativas` en `PromptVoz` (migración
+  `chalanes/0008_prompt_voz_reglas`, seed vacío idempotente). Constantes
+  `SLOT_REGLAS*` en `chalanes/models/prompt_voz.py`.
+- `chalanes.voz.reglas()` inyecta el bloque `[REGLAS OPERATIVAS]` DESPUÉS
+  del esquema en las 4 estaciones. NO toca esquema JSON / whitelist DSL /
+  schema OCR.
+- UI: sección "Reglas operativas (avanzado)" en Gerencia → Chalanes →
+  Prompts (`los_chalanes/prompts.html` + view `prompts_voz`).
+
+### 2.3. Tests
+
+- `tests/test_prompt_voz.py` (voz personal aditiva, saneo, reglas, bloque).
+- `tests/taller/test_voz_personal.py` (POST guarda/limpia/sanea, panel).
+- `tests/gerencia/test_prompts_voz.py` (slot reglas GET/POST).
+- 58 pass en los flujos afectados; ruff limpio; `makemigrations --check`
+  confirma 0018/0008 completas.
+
+### 2.4. Deuda diseñada
+
+- Editar el **texto estructural crudo** del esquema: descartado (no abre
+  huecos pero produce fallas silenciosas). Camino correcto futuro: editor
+  con validación-al-guardar contra ejecutores/DSL/parser + restaurar default
+  (opción "b").
+- Voz personal solo en Dictado/chat; matizar OCR/KPI-DSL por usuario sería
+  pasar `usuario` a esos `preludio()` (hoy omitido por costo sin beneficio).

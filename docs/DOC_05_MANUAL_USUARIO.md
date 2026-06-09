@@ -557,7 +557,7 @@ No se alquila. Está hecho a la medida de cómo trabajan ustedes.
 
 ## Roadmap del proyecto
 
-> **Última actualización: 5 de junio de 2026.** Esta sección se revisa y
+> **Última actualización: 9 de junio de 2026.** Esta sección se revisa y
 > actualiza en cada sesión de trabajo sobre el sistema, para que siempre
 > sepan en qué punto va El Despacho: qué ya está listo, qué cambió respecto
 > al plan, qué falta y hacia dónde vamos.
@@ -591,7 +591,11 @@ mensuales por usuario.
   exportación para el contador externo.
 - **Chalanes (IA)** — 5 asistentes de inteligencia artificial con respaldo
   automático entre ellos, y **El Dictado** para dar instrucciones en lenguaje
-  natural.
+  natural. El administrador edita el **tono y las reglas** de los asistentes, y
+  **cada usuario puede definir su propio estilo personal** de respuesta.
+- **Presupuesto de IA por usuario** — el administrador asigna un tope mensual
+  en dólares por persona, con aviso o corte al rebasarlo, y un panel de
+  consumo (7/30/90 días).
 - **Dashboard** con indicadores (KPIs), metas, sugerencias y mini-calendario.
 - **Notificaciones push**, **roles y permisos personalizados**, y panel de
   configuración (Ajustes).

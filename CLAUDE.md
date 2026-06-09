@@ -3316,6 +3316,100 @@ distinto al de la línea queda dentro del egreso de la línea (no se separa por
 proveedor del proceso); sin reversa automática de egresos si el proyecto sale
 de producción (se anulan a mano).
 
+### S-Directorio-Panel-V1 ✅ — Panel de usuarios (Datos·IA·Permisos) + presupuesto IA por usuario (2026-06-08)
+
+Handoff `docs/SPRINT_DIRECTORIO_PANEL.md`. Rediseña **La Gerencia → El
+Directorio** al patrón de gestión de usuarios de La Cocina/Stove, adaptado
+a El Despacho (sin Tiers/Caja Chica — regla §2). Commit `0fb2f19`.
+
+- **Modelo `cuentas.PresupuestoIA`** (OneToOne Usuario): `tope_usd`
+  (0 = sin tope), `politica` ∈ {alertar (default), topar}, `activo`,
+  `alerta_mes` (YYYY-MM dedup). Migración `cuentas/0017_presupuesto_ia`
+  (solo tabla; ausencia de fila = sin tope). No toca ChalanAsignado /
+  PermisoUsuario / Rol / AnalistaLog.
+- **`chalanes/services.py`** (shared §6): `overrides_de`, `set_override`,
+  `forzar_proveedor` (upsert las 9 estaciones al mismo proveedor),
+  `limpiar_overrides` (vuelve a "Auto"), `proveedores_configurados`.
+  `perfil_chalanes/views.py::guardar()` refactorizado para usarlos (DRY).
+- **`lib/analistas/stats.py`** extendido: `uso_por_usuario` (7/30/90d),
+  `gasto_mes_usuario` (cacheado ~60s en Redis).
+  **`cuentas/servicios_presupuesto.py`**: `evaluar(usuario)`.
+- **Gate de presupuesto**: `lib.analistas.analizar(...)` levanta
+  `PresupuestoIAExcedido` ANTES de invocar al Chalán si la política es
+  `topar` y el gasto del mes ≥ tope. `alertar` NO usa gate. Los callers
+  (Dictado, chat, OCR) lo capturan con mensaje claro y nunca rompen la
+  operación no-IA. Emite `presupuesto_ia.topado`.
+- **Alerta (cron, ambas políticas)**: command
+  `cuentas/management/commands/evaluar_presupuestos_ia.py` recorre topes,
+  emite `presupuesto_ia.rebasado` + push Interfón a super_admin/dueño,
+  idempotente vía `alerta_mes`. Crontab diario en La Sede (§10). El
+  semáforo rojo de la lista se computa al vuelo (no depende del cron).
+- **UI El Directorio**: lista compacta (chips de Proveedor IA + badge rol +
+  gasto IA 30d + semáforo de presupuesto) y **modal único con tabs**
+  (patrón Wave 5 `#modal-slot` + `_tabs.html`): **Datos** (UsuarioForm) ·
+  **IA** (chips proveedor + tabla 9 estaciones con dropdown
+  proveedor/modelo + panel uso 7/30/90d + presupuesto USD + segmentado
+  Alertar/Topar) · **Permisos** (grilla módulo×acción). Tabs lazy vía HTMX.
+- **Hotfixes en el mismo commit**: **Buzón two-pane** (master-detail
+  horizontal) y toggle **Ocultar/Mostrar** estados de proyecto y de Buzón
+  que ya no se usan.
+- Eventos Portavoz: `presupuesto_ia.{topado,rebasado,actualizado}` +
+  los de override de Chalán por usuario.
+
+**NO incluye V1** (deuda diseñada): edición de IA por `dueno` (solo
+super_admin); tope global del despacho (solo per-usuario); drawer lateral
+(se eligió modal); **El Resguardo** (backup offsite a DO Spaces, §12) —
+requiere setup manual en el Droplet (rclone + Space + llaves), se hace
+cuando Oscar lo habilite.
+
+### S-Chalan-Voz-Usuario ✅ — Voz personal por usuario + slot de reglas operativas (2026-06-09)
+
+Continuación de "Los Prompts" (S-Chalan-Prompts-Egresos) tras dos pedidos
+de Oscar. Ambas features en la **capa segura** (tono/guía, NO esquema
+estructural — la seguridad sigue en código). Commit `95e8f15`. VERSION →
+`2026.06.27`.
+
+- **Voz personal por usuario (capa aditiva)**: campo
+  `Usuario.voz_chalan` (migración `cuentas/0018_usuario_voz_chalan`).
+  `chalanes.voz.preludio(estacion, usuario=None)` ahora concatena:
+  voz `base` global → voz de estación global → **voz personal del
+  usuario** (helper `_voz_personal`, saneada, máx 4000). Solo se aplica
+  a flujos **conversacionales** (Dictado en `services.py` × 2 sitios y
+  chat en `prompt_chat.py`); OCR y KPI-DSL NO la llevan (no "hablan").
+  UI en el perfil del Taller: recuadro "Cómo quieres que te hable El
+  Chalán" en `perfil_chalanes/panel.html` → `POST /perfil/chalanes/voz`
+  (`guardar_voz`). Rotulada in-prompt como "solo afecta tono — nunca
+  permisos/acciones/datos"; los ejecutores re-validan en código. Lo peor
+  que puede hacer un usuario es volver inútil su propio asistente.
+- **Slot estructural global `reglas_operativas`** (PromptVoz, migración
+  `chalanes/0008_prompt_voz_reglas`, seed vacío idempotente). Helper
+  `chalanes.voz.reglas()` lo inyecta **DESPUÉS** del esquema estructural
+  en las 4 estaciones (Dictado, chat, OCR, KPI-DSL). Es texto de guía
+  ("si el cliente es urgente, sube prioridad a 8") que NO toca el esquema
+  JSON / whitelist del DSL / schema del OCR — esos siguen siendo contrato
+  con el código y las barreras reales (`validar`, `TIPOS_PROHIBIDOS`,
+  re-chequeo de rol, preview+confirm) corren igual. UI en Gerencia →
+  Chalanes → 📝 Prompts (super_admin, sección "avanzado" con estilo de
+  advertencia). Constantes `SLOT_REGLAS*` en `chalanes/models/prompt_voz.py`.
+- Eventos Portavoz: `chalan.voz_personal_actualizada`.
+- **12 tests nuevos**: `tests/test_prompt_voz.py` (voz personal aditiva,
+  saneo, reglas, envoltura del bloque), `tests/taller/test_voz_personal.py`
+  (POST guarda/limpia/sanea, panel muestra valor),
+  `tests/gerencia/test_prompts_voz.py` (slot reglas GET/POST). Suite de los
+  flujos afectados: 58 pass.
+
+**Deuda diseñada / NO incluye**: editar el **texto estructural crudo** del
+esquema (acciones/DSL/OCR) — descartado conscientemente: no abre huecos de
+seguridad (la barda está en código) pero produce **fallas silenciosas**
+(prompt anuncia acción sin ejecutor → "Sin ejecutor" al aplicar). El camino
+correcto si algún día se necesita es un editor con **validación-al-guardar**
+que cruce la edición contra los ejecutores registrados / schema del DSL /
+llaves del parser OCR y rechace guardar si quedó desincronizado, con botón
+"restaurar default" (opción "b" que Oscar dejó para un sprint futuro). La
+voz personal solo aplica a Dictado/chat — si en el futuro se quiere matizar
+el OCR/KPI-DSL por usuario, pasar `usuario` a esos `preludio()` (hoy se
+omite a propósito por costo de tokens sin beneficio).
+
 ### S4 — IA (Los Chalanes, casos de uso)
 
 Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
