@@ -27,7 +27,18 @@ self.addEventListener('push', function(event) {
         data: { url: data.url || '/', entrega_id: data.entrega_id || null },
         tag: tag,
     };
-    event.waitUntil(self.registration.showNotification(data.title || 'El Despacho', opciones));
+    // Badge del ícono de la app (App Badging API). Si el payload trae
+    // `badge_count` lo usamos; si no, marcamos un punto genérico. El cliente
+    // sincroniza el número exacto al abrir/navegar (ver base.html).
+    let tareas = self.registration.showNotification(data.title || 'El Despacho', opciones);
+    if (self.navigator && self.navigator.setAppBadge) {
+        const n = parseInt(data.badge_count, 10);
+        tareas = Promise.all([
+            tareas,
+            (Number.isFinite(n) ? self.navigator.setAppBadge(n) : self.navigator.setAppBadge()).catch(function(){}),
+        ]);
+    }
+    event.waitUntil(tareas);
 });
 
 self.addEventListener('notificationclick', function(event) {

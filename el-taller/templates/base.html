@@ -82,5 +82,19 @@
 {% block scripts_graficas %}{# Páginas con charts cargan ApexCharts + site_charts.js #}{% endblock %}
 {% block body_extra %}{% endblock %}
 <div id="modal-slot"></div>
+{% if request.user.is_authenticated %}
+<script>
+// S-Recados-V2 (C5e): badge del PWA — sincroniza el ícono de la app con los
+// no leídos del servidor (Recados chat + Buzón) en cada carga/navegación.
+(function () {
+    if (!('setAppBadge' in navigator)) return;
+    var total = {{ recados_no_leidos_count|default:0 }} + {{ buzon_no_leidos_count|default:0 }};
+    try {
+        if (total > 0) { navigator.setAppBadge(total).catch(function(){}); }
+        else if (navigator.clearAppBadge) { navigator.clearAppBadge().catch(function(){}); }
+    } catch (e) {}
+})();
+</script>
+{% endif %}
 </body>
 </html>
