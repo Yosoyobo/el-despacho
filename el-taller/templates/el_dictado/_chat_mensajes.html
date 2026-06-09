@@ -4,6 +4,15 @@
 <div class="mb-3 flex justify-end" data-mensaje-id="{{ m.pk }}">
     <div class="max-w-[80%] rounded-2xl rounded-tr-sm bg-brand-500 px-4 py-2 text-sm text-white shadow-theme-xs">
         <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        {% for adj in m.adjuntos.all %}
+        <a href="{% url 'chalan-adjunto' adj.pk %}" target="_blank" rel="noopener" class="mt-2 block">
+            {% if adj.es_imagen %}
+            <img src="{% url 'chalan-adjunto' adj.pk %}" alt="{{ adj.nombre }}" class="max-h-40 rounded-lg border border-white/30">
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-2.5 py-1 text-xs underline">📎 {{ adj.nombre }}</span>
+            {% endif %}
+        </a>
+        {% endfor %}
         <p class="mt-1 text-right text-[10px] opacity-80">{{ m.creado_en|date:"H:i" }}</p>
     </div>
 </div>

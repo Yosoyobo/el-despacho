@@ -125,13 +125,43 @@ def _bloque_referencias(mensaje: str) -> str:
     )
 
 
-def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = None) -> dict:
+def _persistir_adjunto_chat(mensaje, usuario, archivo) -> None:
+    """Sube la imagen del turno a Drive (subcarpeta "El Chalán") y crea
+    MensajeChatAdjunto. Fallback gracioso: si Drive cae, el chat ya respondió;
+    el adjunto simplemente no queda en el historial."""
+    if archivo is None:
+        return
+    import contextlib
+
+    from lib.adjuntos import subir
+
+    from .models import MensajeChatAdjunto
+    with contextlib.suppress(Exception):
+        archivo.seek(0)  # _imagenes_de_request ya lo leyó para el base64
+    res = subir(archivo, subcarpeta="El Chalán")
+    if res.ok and res.data:
+        MensajeChatAdjunto.objects.create(
+            mensaje=mensaje,
+            drive_file_id=res.data["id"],
+            nombre=res.data.get("name") or getattr(archivo, "name", "imagen"),
+            mime_type=res.data.get("mimeType") or getattr(archivo, "content_type", "") or "",
+            tamano_bytes=int(res.data.get("size") or getattr(archivo, "size", 0) or 0),
+            subido_por=usuario,
+        )
+
+
+def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = None,
+              archivo_adjunto=None) -> dict:
     """Procesa un mensaje del usuario. Persiste turnos y devuelve los nuevos.
 
     `imagenes` (opcional, S-Chalán-Scope-OCR C2): lista de dicts
     `{base64, media_type}` que se pasan al LLM en la primera iteración del
     loop (la imagen es la entrada del usuario; no se re-manda en las llamadas
     de herramienta). El Reemplazo exige VISION cuando hay imágenes.
+
+    `archivo_adjunto` (opcional, S-Drive-Cierre): el UploadedFile original de
+    la imagen, para PERSISTIRLO en Drive y dejarlo en el historial del chat
+    (antes la imagen solo se pasaba al LLM y se descartaba).
 
     Nunca lanza — errores del LLM o de parseo terminan en un mensaje de error
     suave del bot. Retorna `{"mensajes": [MensajeChat, ...], "dictado": Dictado|None}`.
@@ -156,6 +186,8 @@ def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = No
     cuerpo_user = mensaje + (" 📎 (imagen adjunta)" if imagenes else "")
     msg_user = _crear_mensaje(conversacion, rol="user", cuerpo=cuerpo_user)
     nuevos.append(msg_user)
+    if archivo_adjunto is not None:
+        _persistir_adjunto_chat(msg_user, usuario, archivo_adjunto)
 
     # Título desde el primer mensaje del usuario.
     if not conversacion.titulo:

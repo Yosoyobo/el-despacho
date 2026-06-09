@@ -79,3 +79,39 @@ class MensajeChat(models.Model):
 
     def __str__(self) -> str:
         return f"msg#{self.pk} {self.rol}/{self.tipo} conv={self.conversacion_id}"
+
+
+class MensajeChatAdjunto(models.Model):
+    """Imagen/archivo adjunto a un turno del chat de El Chalán, en Drive.
+
+    Mismo patrón que `recados.MensajeAdjunto`: guardamos solo la referencia
+    (`drive_file_id`) y servimos el contenido por proxy autenticado. Antes
+    (S-Chalán-Scope-OCR C2) la imagen se pasaba al LLM y se descartaba; ahora
+    queda en el historial del chat."""
+
+    mensaje = models.ForeignKey(
+        MensajeChat, on_delete=models.CASCADE, related_name="adjuntos"
+    )
+    drive_file_id = models.CharField(max_length=255)
+    nombre = models.CharField(max_length=255)
+    mime_type = models.CharField(max_length=120, blank=True, default="")
+    tamano_bytes = models.PositiveBigIntegerField(default=0)
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="chat_adjuntos",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "el_dictado_mensaje_chat_adjunto"
+        ordering = ["creado_en"]
+
+    def __str__(self) -> str:
+        return f"chat_adjunto#{self.pk} {self.nombre}"
+
+    @property
+    def es_imagen(self) -> bool:
+        return self.mime_type.startswith("image/")

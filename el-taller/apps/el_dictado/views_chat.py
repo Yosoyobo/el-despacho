@@ -10,7 +10,7 @@ from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
@@ -51,7 +51,12 @@ def _imagenes_de_request(request) -> list | None:
     if not media.startswith("image/"):
         return None
     import base64
+    import contextlib
     contenido = archivo.read()
+    # Rebobina para que el mismo UploadedFile pueda re-leerse al persistirlo
+    # en Drive (lib.adjuntos.subir hace otro .read()).
+    with contextlib.suppress(Exception):
+        archivo.seek(0)
     return [{"base64": base64.b64encode(contenido).decode("ascii"), "media_type": media}]
 
 
@@ -108,11 +113,15 @@ def enviar(request, pk: int):
     conv = get_object_or_404(ConversacionChat, pk=pk, usuario=request.user)
     mensaje = (request.POST.get("mensaje") or "").strip()
     imagenes = _imagenes_de_request(request)
+    archivo = request.FILES.get("imagen") if imagenes else None
     if not mensaje and not imagenes:
         if _es_htmx(request):
             return render(request, "el_dictado/_chat_mensajes.html", {"mensajes": []})
         return redirect("chalan-conversacion", pk=pk)
-    resultado = conversar(mensaje=mensaje, usuario=request.user, conversacion=conv, imagenes=imagenes)
+    resultado = conversar(
+        mensaje=mensaje, usuario=request.user, conversacion=conv,
+        imagenes=imagenes, archivo_adjunto=archivo,
+    )
     if _es_htmx(request):
         return render(request, "el_dictado/_chat_mensajes.html", {"mensajes": resultado["mensajes"]})
     return redirect("chalan-conversacion", pk=pk)
@@ -168,6 +177,34 @@ def cancelar_accion(request, pk: int):
     if msg:
         return redirect("chalan-conversacion", pk=msg.conversacion_id)
     return redirect("chalan-chat")
+
+
+@login_required
+@_requiere_chalan
+@require_http_methods(["GET"])
+def adjunto_descargar(request, pk: int):
+    """GET /chalan/adjunto/<pk> — sirve un adjunto del chat desde Drive (proxy
+    autenticado). Solo el dueño de la conversación puede bajarlo."""
+    from urllib.parse import quote
+
+    from .models import MensajeChatAdjunto
+
+    adj = get_object_or_404(
+        MensajeChatAdjunto.objects.select_related("mensaje__conversacion"), pk=pk
+    )
+    if adj.mensaje.conversacion.usuario_id != request.user.pk:
+        raise Http404("Adjunto no encontrado.")
+
+    from lib.google_drive import drive
+    try:
+        contenido, mime, nombre = drive.descargar(adj.drive_file_id)
+    except Exception:  # noqa: BLE001
+        raise Http404("No se pudo obtener el archivo de Drive.") from None
+
+    resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
+    disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
+    resp["Content-Disposition"] = f"{disposicion}; filename*=UTF-8''{quote(nombre)}"
+    return resp
 
 
 @login_required
