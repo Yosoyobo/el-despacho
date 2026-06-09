@@ -33,6 +33,7 @@ def _resolver_contexto(user, modelo: str, pk) -> dict:
     try:
         if modelo in ("comentario_proyecto", "proyecto"):
             from apps.los_proyectos.models import Proyecto
+
             from lib.permisos import puede_ver_proyecto
             p = Proyecto.objects.select_related("cliente").get(pk=pk)
             if not puede_ver_proyecto(user, p):
@@ -41,6 +42,7 @@ def _resolver_contexto(user, modelo: str, pk) -> dict:
 
         if modelo == "comentario_tarea":
             from apps.el_pizarron.models import Tarea
+
             from lib.permisos import puede_ver_tarea
             t = Tarea.objects.select_related("proyecto", "proyecto__cliente", "asignada_a").get(pk=pk)
             if not puede_ver_tarea(user, t):

@@ -64,6 +64,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Notificadas {len(nuevas)} novedad(es) a todos los usuarios.")
 
     def _notificar_a_todos(self, cuantas: int):
+        import contextlib
+
         from cuentas.models.usuario import Usuario
         from lib.interfono import enviar_a_usuario
 
@@ -71,11 +73,10 @@ class Command(BaseCommand):
         titulo = f"🔔 {cuantas} {plural} en El Despacho"
         cuerpo = "Toca para ver qué hay de nuevo."
         for u in Usuario.objects.filter(is_active=True):
-            try:
+            # Un push roto no aborta el resto.
+            with contextlib.suppress(Exception):
                 enviar_a_usuario(
                     u, titulo=titulo, cuerpo=cuerpo, url="/ayuda/novedades/",
                     tag="novedades", categoria="novedades",
                     origen_modulo="ayuda", origen_id=0,
                 )
-            except Exception:  # noqa: BLE001 — un push roto no aborta el resto
-                pass

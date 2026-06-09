@@ -1,8 +1,8 @@
 """LecturaBuzon — lectura por usuario (S-Chalanes-UX #3)."""
 
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
 
 
 class Migration(migrations.Migration):

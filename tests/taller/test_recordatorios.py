@@ -105,7 +105,7 @@ def test_recordatorio_incluye_lider(monkeypatch, usuario_factory, proyecto_facto
     lider = usuario_factory(rol="disenador")
     p = proyecto_factory()
     ProyectoAsignacion.objects.create(proyecto=p, usuario=lider, rol_en_proyecto="lider")
-    t = _tarea(p, asignada, date.today())
+    _tarea(p, asignada, date.today())
     enviados = _capturar(monkeypatch)
     call_command("recordar_tareas_por_vencer", stdout=StringIO())
     pks = {u for (_, u, _) in enviados}

@@ -52,7 +52,7 @@ class ConfigRecordatorios(models.Model):
         return sorted(out)
 
     @classmethod
-    def get_solo(cls) -> "ConfigRecordatorios":
+    def get_solo(cls) -> ConfigRecordatorios:
         """Devuelve el singleton (lo crea con defaults si no existe)."""
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
