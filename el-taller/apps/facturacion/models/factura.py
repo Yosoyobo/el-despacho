@@ -100,6 +100,12 @@ class Factura(models.Model):
     notas = models.TextField(blank=True, default="")
     terminos = models.TextField(blank=True, default="")
 
+    # PDF generado vía Google Docs (regla §8). Se regenera al pedirlo y se
+    # guarda en Drive (subcarpeta "Facturas"). Vacío = aún no se generó.
+    pdf_file_id = models.CharField(max_length=100, blank=True, default="")
+    pdf_url = models.URLField(max_length=500, blank=True, default="")
+    pdf_generado_en = models.DateTimeField(null=True, blank=True)
+
     # Denormalizado — se recalcula desde Ingresos vinculados.
     monto_cobrado = models.DecimalField(
         max_digits=14, decimal_places=2, default=Decimal("0.00")

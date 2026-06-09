@@ -14,6 +14,7 @@ urlpatterns = [
     path("<int:pk>/cobrar/", views.registrar_cobro, name="cobrar"),
     path("<int:pk>/cancelar/", views.cancelar, name="cancelar"),
     path("<int:pk>/duplicar/", views.duplicar, name="duplicar"),
+    path("<int:pk>/pdf/", views.generar_pdf, name="pdf"),
     path("api/proyecto/<int:pk>/datos/", views.api_proyecto_datos, name="api-proyecto-datos"),
     path("api/cotizacion/<int:pk>/datos/", views.api_cotizacion_datos, name="api-cotizacion-datos"),
 ]

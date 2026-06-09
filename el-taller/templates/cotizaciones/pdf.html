@@ -1,0 +1,117 @@
+{% load forms_helpers %}<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><title>{{ cot.codigo }}</title></head>
+<body style="font-family: Arial, sans-serif; color: #1d2939; font-size: 11pt;">
+
+  <table style="width:100%; border-collapse:collapse; margin-bottom:18pt;">
+    <tr>
+      <td style="vertical-align:top;">
+        <div style="font-size:20pt; font-weight:bold; color:#465fff;">Learning Center</div>
+        <div style="font-size:9pt; color:#667085;">Diseño · Maquila · Imagen corporativa</div>
+      </td>
+      <td style="vertical-align:top; text-align:right;">
+        <div style="font-size:16pt; font-weight:bold;">COTIZACIÓN</div>
+        <div style="font-size:12pt; color:#475467;">{{ cot.codigo }}</div>
+      </td>
+    </tr>
+  </table>
+
+  <table style="width:100%; border-collapse:collapse; margin-bottom:14pt;">
+    <tr>
+      <td style="vertical-align:top; width:60%;">
+        <div style="font-size:9pt; color:#667085; font-weight:bold;">CLIENTE</div>
+        <div style="font-weight:bold;">{{ cot.cliente.razon_social }}</div>
+        {% if cot.cliente.rfc %}<div>RFC: {{ cot.cliente.rfc }}</div>{% endif %}
+        {% if cot.cliente.email_contacto %}<div>{{ cot.cliente.email_contacto }}</div>{% endif %}
+        {% if cot.cliente.telefono %}<div>{{ cot.cliente.telefono }}</div>{% endif %}
+      </td>
+      <td style="vertical-align:top; text-align:right;">
+        <div><strong>Emisión:</strong> {{ cot.fecha_emision|date:"d/m/Y" }}</div>
+        <div><strong>Validez:</strong> {{ cot.fecha_validez|date:"d/m/Y" }}</div>
+        {% if cot.proyecto %}<div><strong>Proyecto:</strong> {{ cot.proyecto.codigo }}</div>{% endif %}
+        <div><strong>Moneda:</strong> {{ cot.moneda }}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="font-size:13pt; font-weight:bold; margin-bottom:8pt;">{{ cot.titulo }}</div>
+
+  <table style="width:100%; border-collapse:collapse; margin-bottom:14pt; font-size:10pt;">
+    <thead>
+      <tr style="background-color:#f2f4f7;">
+        <th style="border:1px solid #d0d5dd; padding:6pt; text-align:left;">Descripción</th>
+        <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">Cant.</th>
+        <th style="border:1px solid #d0d5dd; padding:6pt; text-align:left;">Unidad</th>
+        <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">P. unitario</th>
+        <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">Desc.</th>
+        <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">Importe</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td style="border:1px solid #d0d5dd; padding:6pt;">{{ it.descripcion|default:"—" }}</td>
+        <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{{ it.cantidad|floatformat:2 }}</td>
+        <td style="border:1px solid #d0d5dd; padding:6pt;">{{ it.unidad_label }}</td>
+        <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{{ it.precio_unitario|dinero }}</td>
+        <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{% if it.descuento_porcentaje %}{{ it.descuento_porcentaje|floatformat:2 }}%{% else %}—{% endif %}</td>
+        <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{{ it.subtotal|dinero }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="border:1px solid #d0d5dd; padding:6pt; color:#667085;">Sin conceptos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table style="width:100%; border-collapse:collapse; margin-bottom:14pt;">
+    <tr>
+      <td style="width:55%;"></td>
+      <td style="width:45%;">
+        <table style="width:100%; border-collapse:collapse; font-size:10pt;">
+          <tr>
+            <td style="padding:3pt;">Subtotal</td>
+            <td style="padding:3pt; text-align:right;">{{ totales.subtotal_items|dinero }}</td>
+          </tr>
+          {% if totales.descuento_global %}
+          <tr>
+            <td style="padding:3pt;">Descuento global ({{ cot.descuento_global_porcentaje|floatformat:2 }}%)</td>
+            <td style="padding:3pt; text-align:right;">-{{ totales.descuento_global|dinero }}</td>
+          </tr>
+          {% endif %}
+          {% for imp in totales.impuestos_detalle %}
+          <tr>
+            <td style="padding:3pt;">{{ imp.nombre }} ({{ imp.porcentaje|floatformat:2 }}%){% if imp.tipo == "retencion" %} ret.{% endif %}</td>
+            <td style="padding:3pt; text-align:right;">{% if imp.tipo == "retencion" %}-{% endif %}{{ imp.monto|dinero }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="background-color:#f2f4f7;">
+            <td style="padding:6pt; font-weight:bold; font-size:12pt;">TOTAL</td>
+            <td style="padding:6pt; text-align:right; font-weight:bold; font-size:12pt;">{{ totales.total|dinero }} {{ cot.moneda }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  {% if cot.anticipo_monto %}
+  <div style="margin-bottom:10pt; font-size:10pt;">
+    <strong>Anticipo:</strong> {{ cot.anticipo_monto|dinero }}{% if cot.anticipo_porcentaje %} ({{ cot.anticipo_porcentaje|floatformat:2 }}%){% endif %}
+  </div>
+  {% endif %}
+
+  {% if cot.notas %}
+  <div style="margin-bottom:10pt; font-size:10pt;">
+    <div style="font-weight:bold; color:#667085;">NOTAS</div>
+    <div style="white-space:pre-line;">{{ cot.notas }}</div>
+  </div>
+  {% endif %}
+
+  {% if cot.terminos %}
+  <div style="margin-bottom:10pt; font-size:9pt; color:#475467;">
+    <div style="font-weight:bold; color:#667085;">TÉRMINOS Y CONDICIONES</div>
+    <div style="white-space:pre-line;">{{ cot.terminos }}</div>
+  </div>
+  {% endif %}
+
+</body>
+</html>

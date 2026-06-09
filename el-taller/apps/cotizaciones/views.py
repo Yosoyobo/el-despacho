@@ -314,6 +314,11 @@ def detalle(request, pk):
     puede_duplicar = puede_crear_cotizaciones(request.user)
 
     acciones_html: list = []
+    acciones_html.append(format_html(
+        '<a href="{}" target="_blank" rel="noopener" class="btn-secundario" '
+        'title="Genera el PDF con el formato de Learning Center y lo abre en una pestaña nueva.">📄 PDF</a>',
+        reverse("cotizaciones:pdf", args=[cot.pk]),
+    ))
     if puede_editar:
         acciones_html.append(format_html(
             '<a href="{}" class="btn-secundario">Editar</a>',
@@ -573,3 +578,22 @@ def factura_anticipo(request, pk):
         f"Revisa los datos y emítela cuando estés listo.",
     )
     return redirect("facturacion:editar", pk=factura.pk)
+
+
+@login_required
+def generar_pdf(request, pk):
+    """Genera/regenera el PDF de la cotización (vía Google Docs) y lo descarga.
+
+    GET puro — cualquiera que pueda ver Cotizaciones puede descargar el PDF.
+    Si Drive no está conectado o falla, muestra mensaje y vuelve al detalle
+    (fallback gracioso — nunca rompe)."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    res = services.generar_pdf(cot, request.user)
+    if not res.ok or not res.pdf_bytes:
+        messages.error(request, f"No se pudo generar el PDF: {res.error}")
+        return redirect("cotizaciones:detalle", pk=cot.pk)
+    resp = HttpResponse(res.pdf_bytes, content_type="application/pdf")
+    resp["Content-Disposition"] = f'inline; filename="{cot.codigo}.pdf"'
+    return resp

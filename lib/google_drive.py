@@ -46,6 +46,9 @@ HTTP_TIMEOUT = 10.0
 HTTP_TIMEOUT_ARCHIVO = 60.0
 
 MIME_CARPETA = "application/vnd.google-apps.folder"
+MIME_GDOC = "application/vnd.google-apps.document"
+MIME_PDF = "application/pdf"
+DRIVE_EXPORT_FMT = "https://www.googleapis.com/drive/v3/files/{file_id}/export"
 
 
 class NoConfiguradoError(Exception):
@@ -453,6 +456,77 @@ class GoogleDriveWrapper:
             datos.get("mimeType", "application/octet-stream"),
             datos.get("name", "archivo"),
         )
+
+    def borrar(self, file_id: str) -> None:
+        """Borra (mueve a papelera permanente) un archivo de Drive. Best-effort:
+        no lanza si ya no existe (404)."""
+        with httpx.Client(timeout=HTTP_TIMEOUT) as cli:
+            resp = cli.delete(f"{DRIVE_FILES_URL}/{file_id}", headers=self._headers())
+        if resp.status_code not in (200, 204, 404):
+            resp.raise_for_status()
+
+    def exportar(self, file_id: str, mime_destino: str = MIME_PDF) -> bytes:
+        """Exporta un Google Doc/Sheet a otro formato (p.ej. PDF). Solo funciona
+        con documentos nativos de Google (los `application/vnd.google-apps.*`)."""
+        with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
+            resp = cli.get(
+                DRIVE_EXPORT_FMT.format(file_id=file_id),
+                headers=self._headers(),
+                params={"mimeType": mime_destino},
+            )
+        resp.raise_for_status()
+        return resp.content
+
+    def _subir_html_como_gdoc(self, html: str, nombre: str, carpeta_id: str | None) -> str:
+        """Sube HTML a Drive convirtiéndolo a Google Doc nativo. Devuelve el
+        ID del Doc. La conversión la hace Google (metadata.mimeType = GDoc)."""
+        carpeta = carpeta_id or self.obtener_o_crear_carpeta_raiz()
+        metadata = {"name": nombre, "parents": [carpeta], "mimeType": MIME_GDOC}
+        frontera = f"despacho_{uuid4().hex}"
+        prefijo = (
+            f"--{frontera}\r\n"
+            "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            f"{json.dumps(metadata)}\r\n"
+            f"--{frontera}\r\n"
+            "Content-Type: text/html; charset=UTF-8\r\n\r\n"
+        ).encode()
+        sufijo = f"\r\n--{frontera}--\r\n".encode()
+        cuerpo = prefijo + html.encode("utf-8") + sufijo
+        headers = self._headers()
+        headers["Content-Type"] = f"multipart/related; boundary={frontera}"
+        with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
+            resp = cli.post(
+                DRIVE_UPLOAD_URL,
+                headers=headers,
+                params={"uploadType": "multipart", "fields": "id"},
+                content=cuerpo,
+            )
+        resp.raise_for_status()
+        return resp.json()["id"]
+
+    def html_a_pdf(
+        self, *, html: str, nombre: str, carpeta_id: str | None = None
+    ) -> dict[str, Any]:
+        """Genera un PDF a partir de HTML usando Google (regla §8: NO librerías
+        de PDF locales). Flujo: HTML → Google Doc nativo (conversión) → export
+        PDF → sube el PDF como archivo real → borra el Doc temporal.
+
+        Devuelve `{id, name, webViewLink, pdf_bytes}` — `pdf_bytes` para servir
+        la descarga inmediata; `id`/`webViewLink` para persistir el enlace.
+        """
+        import contextlib
+
+        nombre_pdf = nombre if nombre.lower().endswith(".pdf") else f"{nombre}.pdf"
+        doc_id = self._subir_html_como_gdoc(html, f"_tmp_{nombre}", carpeta_id)
+        try:
+            pdf_bytes = self.exportar(doc_id, MIME_PDF)
+        finally:
+            # El Doc intermedio no debe quedar como basura en Drive (best-effort).
+            with contextlib.suppress(Exception):
+                self.borrar(doc_id)
+        meta = self._subir_contenido(pdf_bytes, nombre_pdf, carpeta_id, MIME_PDF)
+        meta["pdf_bytes"] = pdf_bytes
+        return meta
 
 
 drive = GoogleDriveWrapper()

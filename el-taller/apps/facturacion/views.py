@@ -312,6 +312,11 @@ def detalle(request, pk):
     puede_duplicar = puede_crear_facturacion(request.user)
 
     acciones_html: list = []
+    acciones_html.append(format_html(
+        '<a href="{}" target="_blank" rel="noopener" class="btn-secundario" '
+        'title="Genera el PDF con el formato de Learning Center y lo abre en una pestaña nueva.">📄 PDF</a>',
+        reverse("facturacion:pdf", args=[fac.pk]),
+    ))
     if puede_editar:
         acciones_html.append(format_html(
             '<a href="{}" class="btn-secundario">Editar</a>',
@@ -545,3 +550,21 @@ def api_cotizacion_datos(request, pk):
         ],
         "impuestos": list(cot.impuestos.values_list("tasa_id", flat=True)),
     })
+
+
+@login_required
+def generar_pdf(request, pk):
+    """Genera/regenera el PDF de la factura (vía Google Docs) y lo descarga.
+
+    GET puro — cualquiera que pueda ver Facturación puede descargar el PDF.
+    Fallback gracioso: si Drive falla, mensaje y vuelve al detalle."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    fac = get_object_or_404(Factura, pk=pk)
+    res = services.generar_pdf(fac, request.user)
+    if not res.ok or not res.pdf_bytes:
+        messages.error(request, f"No se pudo generar el PDF: {res.error}")
+        return redirect("facturacion:detalle", pk=fac.pk)
+    resp = HttpResponse(res.pdf_bytes, content_type="application/pdf")
+    resp["Content-Disposition"] = f'inline; filename="{fac.codigo}.pdf"'
+    return resp

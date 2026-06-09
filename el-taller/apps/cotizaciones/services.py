@@ -37,6 +37,42 @@ def emitir_creada(cot: Cotizacion, actor):
     _emitir("cotizacion.creada", cot, actor, {"titulo": cot.titulo})
 
 
+def construir_html_pdf(cot: Cotizacion) -> str:
+    """Renderiza el HTML imprimible de la cotización (template `pdf.html`)."""
+    from django.template.loader import render_to_string
+    return render_to_string("cotizaciones/pdf.html", {
+        "cot": cot,
+        "items": list(cot.items.select_related("servicio", "unidad_fk").all()),
+        "totales": cot.calcular_totales(),
+    })
+
+
+def generar_pdf(cot: Cotizacion, actor):
+    """Genera (o regenera) el PDF de la cotización vía Google Docs y lo guarda
+    en Drive. Devuelve `lib.documentos.ResultadoPdf`. Borra el PDF anterior si
+    lo había. Fallback gracioso (nunca lanza)."""
+    from lib.documentos import generar_pdf as _gen
+    from lib.google_drive import drive
+
+    html = construir_html_pdf(cot)
+    res = _gen(html=html, nombre=cot.codigo, subcarpeta="Cotizaciones")
+    if not res.ok:
+        return res
+
+    # Borra el PDF previo (best-effort) antes de apuntar al nuevo.
+    if cot.pdf_file_id and cot.pdf_file_id != res.data.get("id"):
+        import contextlib
+        with contextlib.suppress(Exception):
+            drive.borrar(cot.pdf_file_id)
+
+    cot.pdf_file_id = res.data.get("id", "")
+    cot.pdf_url = res.data.get("webViewLink", "")
+    cot.pdf_generado_en = timezone.now()
+    cot.save(update_fields=["pdf_file_id", "pdf_url", "pdf_generado_en"])
+    _emitir("cotizacion.pdf_generado", cot, actor, {"pdf_file_id": cot.pdf_file_id})
+    return res
+
+
 def emitir_actualizada(cot: Cotizacion, actor):
     _emitir("cotizacion.actualizada", cot, actor)
 

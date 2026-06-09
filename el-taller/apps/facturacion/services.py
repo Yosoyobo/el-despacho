@@ -47,6 +47,41 @@ def emitir_actualizada(fac: Factura, actor):
     _emitir("factura.actualizada", fac, actor)
 
 
+def construir_html_pdf(fac: Factura) -> str:
+    """Renderiza el HTML imprimible de la factura (template `pdf.html`)."""
+    from django.template.loader import render_to_string
+    return render_to_string("facturacion/pdf.html", {
+        "fac": fac,
+        "items": list(fac.items.select_related("servicio", "unidad_fk").all()),
+        "totales": fac.calcular_totales(),
+    })
+
+
+def generar_pdf(fac: Factura, actor):
+    """Genera (o regenera) el PDF de la factura vía Google Docs y lo guarda en
+    Drive. Devuelve `lib.documentos.ResultadoPdf`. Borra el PDF anterior si lo
+    había. Fallback gracioso (nunca lanza)."""
+    from lib.documentos import generar_pdf as _gen
+    from lib.google_drive import drive
+
+    html = construir_html_pdf(fac)
+    res = _gen(html=html, nombre=fac.codigo, subcarpeta="Facturas")
+    if not res.ok:
+        return res
+
+    if fac.pdf_file_id and fac.pdf_file_id != res.data.get("id"):
+        import contextlib
+        with contextlib.suppress(Exception):
+            drive.borrar(fac.pdf_file_id)
+
+    fac.pdf_file_id = res.data.get("id", "")
+    fac.pdf_url = res.data.get("webViewLink", "")
+    fac.pdf_generado_en = timezone.now()
+    fac.save(update_fields=["pdf_file_id", "pdf_url", "pdf_generado_en"])
+    _emitir("factura.pdf_generado", fac, actor, {"pdf_file_id": fac.pdf_file_id})
+    return res
+
+
 def crear_desde_cotizacion(cotizacion, actor) -> Factura:
     """Clona items+impuestos+vínculo, hereda datos comerciales. Estado
     borrador. Vencimiento por default 30 días desde hoy."""

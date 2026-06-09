@@ -100,6 +100,12 @@ class Cotizacion(models.Model):
     notas = models.TextField(blank=True, default="")
     terminos = models.TextField(blank=True, default="")
 
+    # PDF generado vía Google Docs (regla §8). Se regenera al pedirlo y se
+    # guarda en Drive (subcarpeta "Cotizaciones"). Vacío = aún no se generó.
+    pdf_file_id = models.CharField(max_length=100, blank=True, default="")
+    pdf_url = models.URLField(max_length=500, blank=True, default="")
+    pdf_generado_en = models.DateTimeField(null=True, blank=True)
+
     # Envío
     enviada_en = models.DateTimeField(null=True, blank=True)
     enviada_a_email = models.CharField(max_length=200, blank=True, default="")
