@@ -29,7 +29,7 @@ def _mapa() -> dict:
         mapa = {
             e.slug: {
                 "label": e.label, "color": e.color, "activo": e.activo,
-                "orden": e.orden, "terminal": e.terminal,
+                "orden": e.orden, "terminal": e.terminal, "accion": e.accion,
             }
             for e in EstadoBuzon.objects.all()
         }
@@ -58,6 +58,12 @@ def color_de(slug: str) -> str:
     if info:
         return info["color"]
     return _FALLBACK_COLOR.get(slug, "#667085")
+
+
+def accion_de(slug: str) -> str:
+    """Acción automática configurada para el estado (o 'ninguna')."""
+    info = _mapa().get(slug)
+    return (info or {}).get("accion", "ninguna")
 
 
 def estados_activos() -> list[dict]:

@@ -30,14 +30,31 @@ ESTADOS_BASE = (
     ("archivado",  "Archivado",  "#7a5af8", 40, True),
 )
 
+# Acciones automáticas que se disparan cuando un mensaje ENTRA a este estado
+# por una acción explícita del admin (S-LC-Buzon-V2). El auto-avance
+# nuevo→leído al abrir NO las dispara (es automático, sería ruidoso).
+ACCION_CHOICES = (
+    ("ninguna",          "Ninguna"),
+    ("notificar_autor",  "Avisar al autor del mensaje (push)"),
+    ("notificar_admins", "Avisar a los admins del Buzón (push)"),
+)
+
 
 class EstadoBuzon(models.Model):
     """Estado de un mensaje/ticket del Buzón, configurable desde La Gerencia."""
 
     slug = models.SlugField(max_length=32, unique=True, db_index=True)
     label = models.CharField(max_length=64)
+    descripcion = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Qué significa este estado (visible como ayuda al equipo).",
+    )
     color = models.CharField(max_length=7, default="#667085", validators=[HEX_COLOR],
                              help_text="Color HEX del badge, ej. #465fff.")
+    accion = models.CharField(
+        max_length=24, choices=ACCION_CHOICES, default="ninguna",
+        help_text="Acción automática al mover un mensaje a este estado.",
+    )
     orden = models.PositiveSmallIntegerField(default=100)
     terminal = models.BooleanField(default=False, help_text="Si está marcado, el ticket se considera cerrado.")
     activo = models.BooleanField(default=True)

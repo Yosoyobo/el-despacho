@@ -20,6 +20,7 @@
                 <th class="px-5 py-3 text-left">Nombre</th>
                 <th class="px-5 py-3 text-left">Slug</th>
                 <th class="px-5 py-3 text-left">Color</th>
+                <th class="px-5 py-3 text-left">Acción</th>
                 <th class="px-5 py-3 text-right">Orden</th>
                 <th class="px-5 py-3 text-center">Terminal</th>
                 <th class="px-5 py-3 text-center">Activo</th>
@@ -30,9 +31,10 @@
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {% for e in estados %}
             <tr>
-                <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ e.label }} {% if e.sistema %}<span class="ml-1 text-[10px] uppercase tracking-wider text-gray-400">sistema</span>{% endif %}</td>
+                <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ e.label }} {% if e.sistema %}<span class="ml-1 text-[10px] uppercase tracking-wider text-gray-400">sistema</span>{% endif %}{% if e.descripcion %}<p class="mt-0.5 text-xs font-normal text-gray-500 dark:text-gray-400">{{ e.descripcion }}</p>{% endif %}</td>
                 <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{{ e.slug }}</td>
                 <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ e.color }}">{{ e.label }}</span> <span class="ml-1 font-mono text-[10px] uppercase text-gray-400 dark:text-gray-500">{{ e.color }}</span></td>
+                <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{% if e.accion != 'ninguna' %}{{ e.get_accion_display }}{% else %}—{% endif %}</td>
                 <td class="px-5 py-3 text-right tabular-nums">{{ e.orden }}</td>
                 <td class="px-5 py-3 text-center">{% if e.terminal %}<span class="badge badge-gray">Sí</span>{% else %}—{% endif %}</td>
                 <td class="px-5 py-3 text-center">{% if e.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}</td>
@@ -52,7 +54,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="8" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin estados configurados.</td></tr>
+            <tr><td colspan="9" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin estados configurados.</td></tr>
             {% endfor %}
         </tbody>
     </table>

@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "apps.centros_costo.apps.CentrosCostoConfig",
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
+    "apps.tipos_buzon.apps.TiposBuzonConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",

@@ -111,9 +111,10 @@ def lista(request):
             "label": e["label"], "link": _link(estado=e["slug"]),
             "activo": estado == e["slug"], "color": e.get("color") or "",
         })
+    from buzon.tipos import tipos_activos
     tipo_chips = [{"label": "Todos", "link": _link(tipo=""), "activo": not tipo}]
-    for slug, label in MensajeBuzon._meta.get_field("tipo").choices:
-        tipo_chips.append({"label": label, "link": _link(tipo=slug), "activo": tipo == slug})
+    for t in tipos_activos():
+        tipo_chips.append({"label": t["label"], "link": _link(tipo=t["slug"]), "activo": tipo == t["slug"]})
     adjunto_chip = {"link": _link(adjunto="" if adjunto else "1"), "activo": bool(adjunto)}
 
     # KPI cards clickeables (toggle estado base).
@@ -196,8 +197,9 @@ def detalle(request, pk: int):
 
     # Auto-marcar el estado GLOBAL como "leido" al abrir un mensaje "nuevo"
     # (solo admin) — flujo de atención del equipo, independiente del leído
-    # por-usuario.
-    if request.method == "GET" and es_admin_buzon and msg.estado == "nuevo":
+    # por-usuario. #3 S-LC-Buzon-V2: si el estado se fijó a mano (estado_manual),
+    # NO se auto-avanza — el "nuevo" puesto a mano manda.
+    if request.method == "GET" and es_admin_buzon and msg.estado == "nuevo" and not msg.estado_manual:
         msg.estado = "leido"
         msg.save(update_fields=["estado", "actualizado_en"])
         emitir(EventoPortavoz(
@@ -214,13 +216,20 @@ def detalle(request, pk: int):
                 m = form.save(commit=False)
                 m.respondido_en = timezone.now()
                 m.respondido_por = user
-                if not m.estado or m.estado in ("nuevo", "leido"):
+                # Si el admin no tocó el estado (sigue en "leido") y está
+                # respondiendo, avanza a "respondido". Si eligió otro a mano
+                # (incluido "nuevo"), se respeta (#3 S-LC-Buzon-V2).
+                if not m.estado or m.estado == "leido":
                     m.estado = "respondido"
+                m.estado_manual = True  # el admin fijó el estado a mano
                 m.save()
                 # #2 S-LC-Buzon-V2: archivar marca leído (por usuario).
                 if m.estado == "archivado":
                     from buzon.lecturas import marcar_leido
                     marcar_leido(user, m)
+                # Acción automática del estado (notificar autor/admins).
+                from apps.taller_home.push_handlers import notificar_buzon_estado
+                notificar_buzon_estado(m, user)
                 emitir(EventoPortavoz(
                     tipo="buzon.respondido",
                     actor_id=user.pk, actor_email=user.email,
@@ -468,13 +477,18 @@ def accion_masiva(request):
         if nuevo_estado not in validos:
             messages.error(request, "Estado inválido.")
             return redirect("buzon-lista")
-        qs.update(estado=nuevo_estado, actualizado_en=timezone.now())
+        # estado_manual=True: cambio explícito del admin (#3 S-LC-Buzon-V2).
+        qs.update(estado=nuevo_estado, estado_manual=True, actualizado_en=timezone.now())
         # #2 S-LC-Buzon-V2: archivar marca leído (por usuario) para quien archiva.
         if nuevo_estado == "archivado":
             from buzon.models import LecturaBuzon
             LecturaBuzon.objects.bulk_create(
                 [LecturaBuzon(usuario=request.user, mensaje_id=i) for i in ids_int],
                 ignore_conflicts=True)
+        # Acción automática del estado (notificar autor/admins), por mensaje.
+        from apps.taller_home.push_handlers import notificar_buzon_estado
+        for m in MensajeBuzon.objects.filter(pk__in=ids_int).select_related("autor"):
+            notificar_buzon_estado(m, request.user)
         for pk in ids_int:
             emitir(EventoPortavoz(
                 tipo="buzon.estado_cambiado",

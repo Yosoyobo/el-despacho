@@ -26,13 +26,20 @@ class MensajeBuzon(models.Model):
     autor = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="mensajes_buzon"
     )
-    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, db_index=True)
+    # S-LC-Buzon-V2: el tipo dejó de usar `choices` fijos — los tipos son
+    # configurables (modelo TipoBuzon). El slug se valida en el form contra
+    # los tipos activos; el label/color salen de buzon.tipos.
+    tipo = models.CharField(max_length=32, db_index=True)
     asunto = models.CharField(max_length=200)
     cuerpo = models.TextField()
     # S-Buzon-Estados-V1: el estado dejó de usar `choices` fijos — los estados
     # son configurables (modelo EstadoBuzon). El slug se valida en el form
     # contra los estados activos; el label/color salen de buzon.estados.
     estado = models.CharField(max_length=20, default="nuevo", db_index=True)
+    # S-LC-Buzon-V2 (#3): True cuando un admin fijó el estado a mano. Si está
+    # en True y el estado es "nuevo", abrir el mensaje NO lo auto-avanza a
+    # "leído" (el estado manual manda).
+    estado_manual = models.BooleanField(default=False)
     prioridad = models.PositiveSmallIntegerField(
         default=5,
         db_index=True,
@@ -67,3 +74,10 @@ class MensajeBuzon(models.Model):
         from buzon.estados import label_de
 
         return label_de(self.estado)
+
+    def get_tipo_display(self) -> str:
+        """El campo `tipo` ya no tiene `choices` (S-LC-Buzon-V2): el label
+        sale del TipoBuzon configurable."""
+        from buzon.tipos import label_de
+
+        return label_de(self.tipo)

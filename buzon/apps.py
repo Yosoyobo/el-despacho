@@ -13,12 +13,19 @@ class BuzonConfig(AppConfig):
 
         from buzon.estados import invalidar_cache
         from buzon.models.estado import EstadoBuzon
+        from buzon.models.tipo import TipoBuzon
+        from buzon.tipos import invalidar_cache as invalidar_cache_tipos
 
         def _invalidar(sender, **kwargs):
             invalidar_cache()
+
+        def _invalidar_tipos(sender, **kwargs):
+            invalidar_cache_tipos()
 
         # weak=False: _invalidar es una clausura local; sin esto la weak-ref se
         # recolecta y el signal nunca dispara (el cache quedaría stale hasta el
         # TTL de 60s). Con weak=False el receptor vive con el AppConfig.
         post_save.connect(_invalidar, sender=EstadoBuzon, weak=False, dispatch_uid="buzon_estado_cache")
         post_delete.connect(_invalidar, sender=EstadoBuzon, weak=False, dispatch_uid="buzon_estado_cache_del")
+        post_save.connect(_invalidar_tipos, sender=TipoBuzon, weak=False, dispatch_uid="buzon_tipo_cache")
+        post_delete.connect(_invalidar_tipos, sender=TipoBuzon, weak=False, dispatch_uid="buzon_tipo_cache_del")

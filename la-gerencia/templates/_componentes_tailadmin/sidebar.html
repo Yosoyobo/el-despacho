@@ -61,6 +61,10 @@
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v12H5.2L4 17.2V4Z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/><circle cx="15" cy="10" r="1.2" fill="currentColor"/></svg>
             Estados del Buzón
         </a>
+        <a href="{% url 'tipos-buzon-lista' %}" class="menu-item {% if '/catalogos/tipos-buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10M7 12h10M7 17h6" stroke-linecap="round"/><path d="M3.5 7h.01M3.5 12h.01M3.5 17h.01" stroke-linecap="round"/></svg>
+            Tipos del Buzón
+        </a>
         {% endif %}
     </nav>
 

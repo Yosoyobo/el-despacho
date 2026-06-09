@@ -28,6 +28,8 @@
                     <div>
                         {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}</label>{% endif %}
                         {{ f }}
+                        {% if f.name == 'respuesta_publica' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label contexto_modelo="buzon" contexto_id=mensaje.pk instruccion_ph="Ej. responde al cliente confirmando la entrega" %}{% endif %}
+                        {% if f.name == 'nota_interna' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label contexto_modelo="buzon" contexto_id=mensaje.pk instruccion_ph="Ej. resume el problema para el equipo" %}{% endif %}
                         {% if f.help_text %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ f.help_text }}</p>{% endif %}
                         {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                     </div>

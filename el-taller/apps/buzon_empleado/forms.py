@@ -47,6 +47,17 @@ class NuevoMensajeForm(forms.ModelForm):
             "asunto": forms.TextInput(attrs={"maxlength": 200}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # S-LC-Buzon-V2: el tipo es configurable (TipoBuzon). El dropdown ofrece
+        # los tipos activos; si el actual ya no está activo, lo conservamos.
+        from buzon.tipos import label_de, tipos_activos
+        opciones = [(t["slug"], t["label"]) for t in tipos_activos()]
+        actual = self.instance.tipo if self.instance and self.instance.pk else None
+        if actual and actual not in {s for s, _ in opciones}:
+            opciones.insert(0, (actual, label_de(actual)))
+        self.fields["tipo"] = forms.ChoiceField(choices=opciones, label="Tipo", required=True)
+
     def clean_cuerpo(self):
         cuerpo = (self.cleaned_data.get("cuerpo") or "").strip()
         if len(cuerpo) < 5:

@@ -11,21 +11,33 @@ class EstadoBuzonForm(forms.ModelForm):
 
     class Meta:
         model = EstadoBuzon
-        fields = ["label", "color", "orden", "terminal", "activo"]
+        fields = ["label", "descripcion", "color", "accion", "orden", "terminal", "activo"]
         widgets = {
             "label": forms.TextInput(attrs={"placeholder": "Ej. En seguimiento"}),
+            "descripcion": forms.TextInput(attrs={"placeholder": "Ej. Esperando información del autor"}),
             "orden": forms.NumberInput(attrs={"min": 0, "max": 999}),
         }
         labels = {
             "label": "Nombre visible",
+            "descripcion": "Significado (ayuda para el equipo)",
             "color": "Color del badge",
+            "accion": "Acción automática al entrar a este estado",
             "orden": "Orden",
             "terminal": "Es estado terminal (cierra el ticket)",
             "activo": "Activo (visible en dropdowns)",
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # `accion` y `descripcion` son opcionales: si no vienen, usamos el
+        # default ("ninguna" / "") sin invalidar el form.
+        self.fields["accion"].required = False
+
     def clean_color(self):
         return (self.cleaned_data.get("color") or "").strip() or "#667085"
+
+    def clean_accion(self):
+        return self.cleaned_data.get("accion") or "ninguna"
 
 
 class EstadoBuzonNuevoForm(EstadoBuzonForm):
@@ -38,7 +50,7 @@ class EstadoBuzonNuevoForm(EstadoBuzonForm):
     )
 
     class Meta(EstadoBuzonForm.Meta):
-        fields = ["slug", "label", "color", "orden", "terminal", "activo"]
+        fields = ["slug", "label", "descripcion", "color", "accion", "orden", "terminal", "activo"]
 
     def clean(self):
         cleaned = super().clean()

@@ -71,6 +71,43 @@ def notificar_buzon_nuevo(mensaje, autor) -> None:
     transaction.on_commit(_hacer)
 
 
+def notificar_buzon_estado(mensaje, actor) -> None:
+    """S-LC-Buzon-V2: dispara la acción automática configurada para el estado
+    actual del mensaje (notificar_autor / notificar_admins). Se llama tras un
+    cambio EXPLÍCITO de estado por un admin. Best-effort."""
+    from buzon.estados import accion_de
+    accion = accion_de(mensaje.estado)
+    if accion == "notificar_autor":
+        def _hacer():
+            _enviar(
+                mensaje.autor,
+                titulo=f"📨 Tu mensaje del Buzón: {mensaje.get_estado_display()}",
+                cuerpo=mensaje.asunto[:120],
+                url=f"/buzon/{mensaje.pk}/",
+                tag=f"buzon-{mensaje.pk}",
+                categoria="buzon",
+                origen_modulo="buzon",
+                origen_id=mensaje.pk,
+            )
+        transaction.on_commit(_hacer)
+    elif accion == "notificar_admins":
+        def _hacer():
+            for admin in _admins_activos():
+                if actor and admin.pk == actor.pk:
+                    continue
+                _enviar(
+                    admin,
+                    titulo=f"📨 Buzón #{mensaje.pk}: {mensaje.get_estado_display()}",
+                    cuerpo=mensaje.asunto[:120],
+                    url=f"/buzon/{mensaje.pk}/",
+                    tag=f"buzon-{mensaje.pk}",
+                    categoria="buzon",
+                    origen_modulo="buzon",
+                    origen_id=mensaje.pk,
+                )
+        transaction.on_commit(_hacer)
+
+
 # ── Proyectos ──
 
 
