@@ -5,6 +5,12 @@
 {% breadcrumb_items "Ayuda" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Ayuda y manual de usuario" subtitulo="Cómo usar El Despacho. Si algo no encuentras, escríbeme al Buzón." breadcrumb_items=breadcrumb_items %}
 
+<div class="mb-5">
+    <a href="{% url 'ayuda-novedades' %}" class="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300">
+        🔔 Ver novedades del sistema →
+    </a>
+</div>
+
 <div class="grid gap-6 lg:grid-cols-4">
     {# Tabla de contenidos sticky en desktop, colapsable en mobile. #}
     <aside class="lg:col-span-1 lg:sticky lg:top-20 lg:self-start">

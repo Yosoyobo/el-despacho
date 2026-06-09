@@ -60,3 +60,16 @@ def sidebar_orden(request):
         return {"sidebar_orden": {f.slug: {"orden": f.orden, "oculto": f.oculto} for f in filas}}
     except Exception:
         return {"sidebar_orden": {}}
+
+
+def novedades_badge(request):
+    """S-Chalanes-UX #5 — contador de novedades no vistas para el badge del
+    sidebar (item Ayuda). Se acumula y se limpia al abrir /ayuda/novedades/."""
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return {"novedades_no_vistas": 0}
+    try:
+        from lib import novedades as _nov
+        return {"novedades_no_vistas": _nov.no_vistas_para(user)}
+    except Exception:
+        return {"novedades_no_vistas": 0}

@@ -37,6 +37,14 @@ docker image prune -f
 echo "==> [Mudanza] estado:"
 docker compose ps
 
+# S-Chalanes-UX #5: anuncia las novedades nuevas del manual a todos los
+# usuarios (push masivo). Primera corrida = baseline silencioso. Best-effort:
+# si falla no aborta el deploy.
+echo "==> [Mudanza] anunciando novedades del manual"
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller \
+  python manage.py anunciar_novedades || \
+  echo "   (warn) anunciar_novedades falló — se reintenta en el próximo deploy"
+
 # S-Aviso-Deploy-V1: limpia la bandera tras un compose up exitoso.
 # El healthcheck post-arranque que corre desde GHA (§17) controla rollback;
 # si dispara, llega de nuevo a este script con el código viejo y vuelve a

@@ -1,4 +1,4 @@
-{# Barra AI 🤖 "Redactar con El Chalán" para un textarea YA renderizado por
+{% comment %} Barra AI 🤖 "Redactar con El Chalán" para un textarea YA renderizado por
    Django ({{ form.campo }}). Variante de _textarea_ia.html sin textarea propio:
    apunta a un selector externo vía data-target.
 
@@ -8,7 +8,7 @@
      contexto_id     — pk del recurso
      instruccion_ph  — placeholder del input de instrucción
 
-   Sólo aparece si el usuario tiene permiso (chalan, usar). #}
+   Sólo aparece si el usuario tiene permiso (chalan, usar). {% endcomment %}
 {% if permisos_modulos.chalan %}
 <div data-textarea-ia
      data-endpoint="{% url 'chalan-redactar' %}"

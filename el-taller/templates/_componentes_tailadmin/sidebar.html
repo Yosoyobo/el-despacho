@@ -99,6 +99,9 @@
         <a href="/ayuda/" style="order: {{ sidebar_orden.ayuda.orden|default:130 }}" class="menu-item {% if '/ayuda' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Ayuda
+            {% if novedades_no_vistas %}
+            <span title="Novedades sin ver" class="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white">{{ novedades_no_vistas }}</span>
+            {% endif %}
         </a>
         {% endif %}
 

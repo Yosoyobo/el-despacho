@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Novedades — El Taller{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Ayuda" "/ayuda/" "Novedades" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Novedades del sistema" subtitulo="Lo nuevo y lo que cambió, de lo más reciente a lo más viejo." breadcrumb_items=breadcrumb_items back_url="/ayuda/" back_label="Ayuda" %}
+
+<div class="mx-auto max-w-3xl space-y-3">
+    {% for n in novedades %}
+    <details class="manual-cuerpo group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" {% if forloop.first %}open{% endif %}>
+        <summary class="flex cursor-pointer select-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-800 dark:text-gray-100">
+            <span class="flex items-center gap-2">
+                {% if forloop.first %}<span class="inline-flex h-2 w-2 shrink-0 rounded-full bg-brand-500"></span>{% endif %}
+                {{ n.titulo }}
+            </span>
+            <span class="shrink-0 text-gray-400 transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div class="border-t border-gray-100 px-5 py-4 dark:border-gray-800">
+            {{ n.html|safe }}
+        </div>
+    </details>
+    {% empty %}
+    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin novedades" descripcion="Aquí aparecerán los cambios del sistema." icono="sparkles" %}
+    {% endfor %}
+</div>
+{% endblock %}

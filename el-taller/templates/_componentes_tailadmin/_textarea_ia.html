@@ -1,4 +1,4 @@
-{# Widget AI 🤖 reusable (S-Chalanes-UX #2) — textarea + barra "Redactar con El
+{% comment %} Widget AI 🤖 reusable (S-Chalanes-UX #2) — textarea + barra "Redactar con El
    Chalán". El botón pide una redacción; El Chalán resuelve @#$ a datos reales y
    propone el texto (el usuario revisa/edita y guarda con el submit normal).
 
@@ -14,7 +14,7 @@
      contexto_id     — pk del recurso
      instruccion_ph  — placeholder del input de instrucción
 
-   La barra IA sólo aparece si el usuario tiene permiso (chalan, usar). #}
+   La barra IA sólo aparece si el usuario tiene permiso (chalan, usar). {% endcomment %}
 {% with tid=id|default:name %}
 <div data-textarea-ia
      data-endpoint="{% url 'chalan-redactar' %}"
