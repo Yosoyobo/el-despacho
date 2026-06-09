@@ -265,6 +265,13 @@ def _reconciliar_equipo(request, proyecto):
             actuales[u.pk].delete()
 
 
+def _comentarios_proyecto_visibles(user, proyecto):
+    """Comentarios del proyecto filtrados por visibilidad (es_interno)."""
+    from lib.permisos import puede_ver_comentario
+    qs = proyecto.comentarios.select_related("autor").order_by("creado_en")
+    return [c for c in qs if puede_ver_comentario(user, c)]
+
+
 def _ctx_equipo(proyecto):
     """Lista de todos los usuarios activos con su estado asignado/rol para el
     widget de equipo del detalle."""
@@ -356,6 +363,8 @@ def detalle(request, pk):
             EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
         ),
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
+        "comentarios": _comentarios_proyecto_visibles(request.user, proyecto),
+        "es_admin": es_admin(request.user),
         "ingresos_proyecto": proyecto.ingresos.filter(anulado=False).order_by("-fecha")[:50],
         "egresos_proyecto": proyecto.egresos.filter(anulado=False).select_related("proveedor").order_by("-fecha")[:50],
         "breadcrumb_items": [

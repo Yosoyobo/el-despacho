@@ -1,0 +1,28 @@
+{# Comentarios del proyecto — fuera del <form> de edición del proyecto.
+   Patrón espejo de pizarron/detalle_tarea.html. El textarea lleva
+   data-referencias para que funcione @persona / #LC-0001 / $cliente (Fin #1). #}
+<section class="mt-6">
+    <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Comentarios del proyecto</h2>
+    <div class="space-y-3">
+        {% for c in comentarios %}
+            {% include "_componentes_tailadmin/_hilo_mensaje.html" with autor_nombre=c.autor.nombre_completo|default:c.autor.email autor_email=c.autor.email fecha=c.creado_en|date:'d M Y H:i' cuerpo=c.cuerpo es_interno=c.es_interno %}
+        {% empty %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin comentarios" descripcion="Sé el primero en comentar este proyecto." icono="chat" %}
+        {% endfor %}
+    </div>
+
+    <form method="post" action="{% url 'pizarron-comentar-proyecto' proyecto.pk %}" class="campo-form mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% csrf_token %}
+        <label for="comentar-proyecto-cuerpo" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nuevo comentario</label>
+        <textarea id="comentar-proyecto-cuerpo" name="cuerpo" rows="3" required data-referencias placeholder="Escribe un comentario… usa @persona, #LC-0001 o $cliente"></textarea>
+        {% if es_admin or request.user.rol == 'contador' %}
+        <label class="mt-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+            <input type="checkbox" name="es_interno" value="on" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+            Marcar como interno (oculto a diseñadores no asignados)
+        </label>
+        {% endif %}
+        <div class="mt-4 flex justify-end">
+            <button type="submit" class="btn-primario">Comentar</button>
+        </div>
+    </form>
+</section>

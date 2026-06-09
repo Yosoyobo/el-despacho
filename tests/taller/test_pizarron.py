@@ -146,3 +146,30 @@ def test_textarea_comentario_tiene_referencias(client, usuario_factory, proyecto
     body = resp.content.decode()
     assert 'name="cuerpo"' in body
     assert "data-referencias" in body
+
+
+def test_detalle_proyecto_tiene_form_comentarios_con_referencias(
+    client, usuario_factory, proyecto_factory):
+    """S-Chalanes-UX #1: el detalle del proyecto ahora muestra el form de
+    comentarios con data-referencias (antes la URL existía pero no la UI)."""
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    client.force_login(admin)
+    resp = client.get(f"/proyectos/{p.pk}/")
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert "pizarron-comentar-proyecto" in body or f"/proyectos/{p.pk}/comentar" in body
+    assert 'name="cuerpo"' in body
+    assert "data-referencias" in body
+
+
+def test_comentar_proyecto_persiste_y_se_ve(client, usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Comentario
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    client.force_login(admin)
+    resp = client.post(f"/proyectos/{p.pk}/comentar",
+                       {"cuerpo": "Nota del proyecto"}, follow=True)
+    assert resp.status_code == 200
+    assert Comentario.objects.filter(proyecto=p, cuerpo="Nota del proyecto").exists()
+    assert "Nota del proyecto" in resp.content.decode()
