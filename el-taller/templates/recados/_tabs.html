@@ -1,0 +1,15 @@
+{% comment %}Tabs de las 3 zonas de Recados (S-Recados-V2). El activo se detecta
+por request.path.{% endcomment %}
+<nav class="mb-4 flex gap-1 border-b border-gray-200 dark:border-gray-800" aria-label="Zonas de Recados">
+    {% with p=request.path %}
+    <a href="{% url 'recados:bandeja' %}" class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition {% if p == '/recados/' or '/recados/c/' in p %}border-brand-500 text-brand-600 dark:text-brand-400{% else %}border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200{% endif %}">
+        💬 Chat{% if recados_no_leidos_count %} <span class="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white">{{ recados_no_leidos_count }}</span>{% endif %}
+    </a>
+    <a href="{% url 'recados:zona_buzon' %}" class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition {% if '/recados/buzon' in p %}border-brand-500 text-brand-600 dark:text-brand-400{% else %}border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200{% endif %}">
+        📬 Mi Buzón
+    </a>
+    <a href="{% url 'recados:zona_actividad' %}" class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition {% if '/recados/actividad' in p %}border-brand-500 text-brand-600 dark:text-brand-400{% else %}border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200{% endif %}">
+        🔔 Actividad
+    </a>
+    {% endwith %}
+</nav>

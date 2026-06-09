@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_chat
+from . import views, views_chat, views_zonas
 
 app_name = "recados"
 
@@ -9,6 +9,9 @@ urlpatterns = [
     path("", views_chat.bandeja, name="bandeja"),
     path("partials/bandeja", views_chat.partial_bandeja, name="partial_bandeja"),
     path("nueva/", views_chat.nueva, name="nueva"),
+    # ── Zonas S-Recados-V2 (C5c) ────────────────────────────────────────────
+    path("buzon/", views_zonas.zona_buzon, name="zona_buzon"),
+    path("actividad/", views_zonas.zona_actividad, name="zona_actividad"),
     path("c/<int:pk>/", views_chat.conversacion, name="conversacion"),
     path("c/<int:pk>/mensajes", views_chat.partial_mensajes, name="partial_mensajes"),
     path("c/<int:pk>/enviar", views_chat.enviar, name="enviar"),

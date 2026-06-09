@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Actividad — Recados{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Recados" "/recados/" "Actividad" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+{% include "recados/_tabs.html" %}
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    {# ── Menciones ── #}
+    <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="border-b border-gray-100 px-5 py-3 text-base font-semibold text-gray-900 dark:border-gray-800 dark:text-gray-100">🔔 Te mencionaron</h2>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for m in menciones %}
+            <li>
+                <a href="{{ m.url }}" class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <span class="text-sm text-gray-700 dark:text-gray-200">Te mencionaron <span class="font-medium">{{ m.fuente }}</span></span>
+                    <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ m.creado_en|timesince }}</span>
+                </a>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin menciones" descripcion="Cuando alguien te etiquete con @tu-nombre en un chat, recado o comentario, aparecerá aquí." icono="inbox" %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    {# ── Actividad de mis proyectos ── #}
+    <section class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="border-b border-gray-100 px-5 py-3 text-base font-semibold text-gray-900 dark:border-gray-800 dark:text-gray-100">📁 Actividad de mis proyectos</h2>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for a in actividad %}
+            <li>
+                <a href="{{ a.url }}" class="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <span class="mt-0.5 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">{{ a.proyecto.codigo }}</span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm text-gray-700 dark:text-gray-200">{{ a.descripcion }}</p>
+                        <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{{ a.get_tipo_display }} · {% if a.actor %}{{ a.actor.nombre_completo|default:a.actor.email }} · {% endif %}{{ a.creado_en|timesince }}</p>
+                    </div>
+                </a>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin actividad reciente" descripcion="Aquí verás los avances de los proyectos en los que participas: cambios de estado, tareas, comentarios y más." icono="folder" %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+</div>
+{% endblock %}

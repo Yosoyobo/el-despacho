@@ -11,6 +11,16 @@
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Conversación directa con un colega o grupo con varios.</p>
     </header>
 
+    {# S-Recados-V2: el Buzón como destinatario — atajo para escribirle al equipo. #}
+    <a href="{% url 'buzon-nuevo' %}?next={% url 'recados:zona_buzon' %}" class="mb-4 flex items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 transition hover:border-brand-300 dark:border-brand-500/30 dark:bg-brand-500/5">
+        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">📬</span>
+        <span class="min-w-0 flex-1">
+            <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Escribirle al Buzón del equipo</span>
+            <span class="block text-xs text-gray-500 dark:text-gray-400">Sugerencias, problemas o cualquier tema para el equipo.</span>
+        </span>
+        <span class="shrink-0 text-brand-600 dark:text-brand-400">→</span>
+    </a>
+
     <form method="post" class="campo-form space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         {% csrf_token %}
 
