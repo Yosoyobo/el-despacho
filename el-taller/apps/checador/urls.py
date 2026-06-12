@@ -25,4 +25,5 @@ urlpatterns = [
     path("correcciones/<int:pk>/resolver", views.correccion_resolver, name="correccion_resolver"),
     path("equipo/", views.equipo, name="equipo"),
     path("equipo/export", views.equipo_export, name="equipo_export"),
+    path("api/sync", views.api_sync, name="api_sync"),
 ]

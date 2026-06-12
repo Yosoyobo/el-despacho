@@ -5381,3 +5381,85 @@ esquema estructural). VERSION → `2026.06.27`.
   (opción "b").
 - Voz personal solo en Dictado/chat; matizar OCR/KPI-DSL por usuario sería
   pasar `usuario` a esos `preludio()` (hoy omitido por costo sin beneficio).
+
+---
+
+# BITÁCORA — S-Checador (El Checador V1)
+
+> Cierre **2026-06-11**. Asistencia y registro de jornada para el staff de
+> Learning Center. App nueva `apps.checador` (Taller) + `apps.checador_admin`
+> (Gerencia). 7 entregas (E1–E7), commit por entrega. VERSION `2026.06.36`.
+
+## 1. Qué se entregó
+
+- **E1 Cimientos**: 5 modelos (`Jornada`, `Visita`, `SesionProyecto`,
+  `HorarioLaboral`, `SolicitudCorreccion`), migración inicial + seed de horario
+  global L-V 9:00–18:00 tol 15, `services.py` (checar entrada/salida idempotente
+  por uuid + snapshot geo + retardo override>global, visitas cliente XOR
+  proveedor, timer un-solo-activo, captura manual, correcciones, `horas_de`).
+  Permiso `checador` × 5 acciones (checar / ver_equipo / aprobar_correcciones /
+  configurar_horarios / exportar) + migración `cuentas.0022` + defaults por rol.
+- **E2 Checada móvil**: `/checador/` móvil-first (botón grande, reloj, retardo,
+  snapshot geo no-bloqueante), "Mi semana", item de sidebar.
+- **E3 Visitas**: modal HTMX cliente/proveedor (selects nativos) + lista del día
+  con link a Google Maps.
+- **E4 Timer**: widget iniciar/detener con cronómetro, captura manual, historial
+  personal con totales.
+- **E5 Correcciones + horarios**: Taller solicita (modal) + bandeja de
+  aprobación; Gerencia (`apps.checador_admin`) CRUD de `HorarioLaboral` en
+  Catálogos + bandeja espejo.
+- **E6 Reportes/KPIs/push**: `/checador/equipo/` (ver_equipo) + export CSV
+  jornadas/sesiones (exportar) + 4 KPIs (categoría 🕐 Checador) + categoría push
+  `checador` (solicitud→aprobadores, resolución→solicitante).
+- **E7 Cola offline**: endpoint `/checador/api/sync` idempotente por uuid +
+  cola IndexedDB en `checador.js` (encola si `!navigator.onLine`, vacía en
+  `online`/al abrir) + badge "N pendientes".
+
+## 2. Decisiones de implementación
+
+- **`apps.checador` instalada en Taller Y Gerencia** (+ COPY en el Dockerfile de
+  Gerencia): obligatorio porque solo `la-gerencia` corre `migrate` en prod
+  (§14 Bug B) y porque E5 (Gerencia) accede a los modelos. Mismo patrón que
+  `apps.tesoreria`.
+- **`HorarioLaboral` separado de los campos `Usuario.horario_*`** (ficha del
+  Directorio, S-Directorio C3): la ficha es informativa; el operativo (retardo)
+  vive en `HorarioLaboral` con granularidad por día + tolerancia, como pidió el
+  handoff.
+- **Retardo** = `minutos_tarde - tolerancia` (0 si dentro de tolerancia). La
+  tolerancia es periodo de gracia.
+- **Item de sidebar con `href="/checador/"`** (no `{% url %}`) para no tener que
+  montar la URL en `tests/urls_gerencia.py` por la sidebar compartida.
+- **Selects nativos** para cliente/proveedor en visitas (no autocomplete `$`) —
+  evita resolver slug server-side; el `$` puede sustituirlo en un follow-up.
+- **Offline solo jornada + visitas** (no timer — requiere el servidor como
+  fuente de verdad). El online sigue siendo form-POST normal; solo se encola
+  cuando `navigator.onLine` es false.
+
+## 3. Fuera de alcance V1 (deuda diseñada)
+
+- **Nómina / cálculo de pagos** sobre las horas.
+- **Costos por proyecto** alimentados desde sesiones (conectaría con
+  Tesorería/Contaduría en V2).
+- **Geocercas, validación de radio, mapas embebidos, tracking continuo** — el
+  snapshot es puntual y sin API de mapas (link a Google Maps).
+- **Ejecutores del Dictado** para checar por voz — candidato S4.
+- **"fetch falla estando online"**: hoy se encola solo en offline explícito
+  (`navigator.onLine === false`); un POST que falle por red intermitente estando
+  "online" no se encola (el form da error normal). Cubrir esto requeriría migrar
+  el envío online a fetch.
+- **Sidebar de Gerencia** muestra Horarios/Correcciones solo a super_admin; un
+  dueño con permiso accede por URL directa (las vistas gatean por permiso).
+
+## 4. Configuración / operación post-deploy
+
+- El Mensajero corre `migrate` (aplica `checador.0001/0002` + `cuentas.0022`).
+- Sin pasos manuales: el permiso `checador` se seedea por rol; el horario global
+  queda sembrado; el item de sidebar aparece para quien tenga `checar`.
+- El super_admin ajusta horarios en La Gerencia → Catálogos → Horarios laborales
+  y revoca/asigna el permiso `checador` por usuario en `/directorio/<id>/permisos/`.
+
+## 5. Tests
+
+69 nuevos (`tests/taller/test_checador*.py` + `tests/gerencia/test_checador_admin.py`):
+services, permisos, vistas de checada, visitas, timer, correcciones, reporte de
+equipo, export CSV, KPIs, push, y sync offline idempotente. Verde.

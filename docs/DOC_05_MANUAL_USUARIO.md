@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — El Checador: registra tu jornada, visitas y tiempo por proyecto (11 de junio de 2026)
+
+Hay una sección nueva en el menú: **Checador**. Desde tu celular (o la
+computadora) registras tu día de trabajo:
+
+- **Entrada y salida**: un botón grande. Al tocarlo se guarda tu ubicación
+  en ese momento (solo en ese momento, no te rastrea). Si el GPS no está
+  disponible, igual se registra tu checada, marcada como "sin ubicación".
+  Si llegas tarde según tu horario, te avisa cuántos minutos de retardo.
+- **Visitas**: cuando vas a ver a un cliente o proveedor, toca "Registrar
+  visita", elige a quién visitaste y se guarda con la ubicación.
+- **Tiempo por proyecto**: inicia un cronómetro al empezar a trabajar en un
+  proyecto y deténlo al terminar; o captura el tiempo a mano. En
+  **Mi historial** ves tus horas de la semana, tus visitas y tus retardos.
+- **¿Te equivocaste al checar?** Desde tu historial pides una **corrección**
+  (por ejemplo, "marqué tarde por error"); un administrador la aprueba o
+  rechaza. Cuando te la resuelven, te llega un aviso.
+- **Sin internet**: si checas sin señal, tu checada se guarda en el celular
+  y se envía sola en cuanto recuperas conexión (verás un aviso de
+  "pendientes de sincronizar").
+
+Para los administradores: en **Checador del equipo** ves las horas, retardos
+y visitas de todo el staff por rango de fechas, y puedes descargar el reporte
+en Excel (CSV). En **La Gerencia → Catálogos → Horarios laborales** se
+configura el horario general y excepciones por persona; y en **Correcciones
+de checada** se aprueban/rechazan las solicitudes del equipo.
+
+---
+
 ## Novedades — El Chalán entiende mejor tus @personas, #proyectos y $clientes (11 de junio de 2026)
 
 Cuando le escribes a El Chalán o le dictas una instrucción, ahora puedes

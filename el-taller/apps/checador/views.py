@@ -427,6 +427,69 @@ def equipo_export(request):
     return response
 
 
+# ───────────────────────── cola offline / sync (E7) ─────────────────────────
+
+@login_required
+@_requiere_checar
+@require_POST
+def api_sync(request):
+    """Recibe un lote de checadas/visitas encoladas offline y las aplica.
+
+    Idempotente por `uuid` (los services ya lo son). Responde el estado por
+    item para que el cliente borre los aplicados y reintente los que fallen.
+    El lote se procesa en orden (la entrada antes que la salida).
+    """
+    import json
+
+    from apps.el_catalogo.models import Proveedor
+    from apps.la_cartera.models import Cliente
+    from django.http import JsonResponse
+
+    try:
+        data = json.loads(request.body or b"{}")
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "JSON inválido"}, status=400)
+
+    items = data.get("items") or []
+    if not isinstance(items, list):
+        return JsonResponse({"error": "items debe ser una lista"}, status=400)
+
+    resultados = []
+    for it in items[:100]:
+        if not isinstance(it, dict):
+            continue
+        uuid = (str(it.get("uuid") or ""))[:64]
+        tipo = it.get("tipo")
+        reg = _parse_dt(it.get("registrado_en"))
+        geo = {
+            "lat": it.get("lat"), "lng": it.get("lng"),
+            "precision": it.get("precision"), "sin_geo": bool(it.get("sin_geo")),
+        }
+        try:
+            if tipo == "entrada":
+                services.checar_entrada(request.user, geo=geo, registrado_en=reg, uuid=uuid, offline=True)
+            elif tipo == "salida":
+                services.checar_salida(request.user, geo=geo, registrado_en=reg, uuid=uuid, offline=True)
+            elif tipo == "visita":
+                vtipo = it.get("visita_tipo", "cliente")
+                cliente = proveedor = None
+                if vtipo == "cliente" and it.get("cliente"):
+                    cliente = Cliente.objects.filter(pk=it.get("cliente")).first()
+                elif vtipo == "proveedor" and it.get("proveedor"):
+                    proveedor = Proveedor.objects.filter(pk=it.get("proveedor")).first()
+                services.registrar_visita(
+                    request.user, tipo=vtipo, cliente=cliente, proveedor=proveedor,
+                    geo=geo, registrado_en=reg, nota=(it.get("nota") or ""), uuid=uuid, offline=True,
+                )
+            else:
+                raise ValueError("Tipo de checada desconocido.")
+            resultados.append({"uuid": uuid, "ok": True})
+        except ValueError as exc:
+            resultados.append({"uuid": uuid, "ok": False, "error": str(exc)})
+
+    return JsonResponse({"resultados": resultados})
+
+
 @login_required
 @_requiere_checar
 @require_POST
