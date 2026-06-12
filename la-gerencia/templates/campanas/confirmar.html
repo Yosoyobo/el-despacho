@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Confirmar campaña — La Gerencia{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Campañas de correo" "/campanas/" "Confirmar" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Confirmar envío" breadcrumb_items=breadcrumb_items back_url="/campanas/nueva/" back_label="Editar campaña" %}
+
+<div class="grid max-w-5xl grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-warning-300 bg-warning-25 p-6 dark:border-warning-500/40 dark:bg-warning-500/5">
+            <h2 class="text-base font-semibold text-warning-700 dark:text-warning-400">⚠️ Vas a enviar este correo a {{ total }} cliente{{ total|pluralize }}</h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">El envío es inmediato y no se puede deshacer. Un destinatario fallido no detiene el resto; todo queda auditado.</p>
+        </section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Vista previa (primer destinatario)</h3>
+            <p class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Asunto: {{ asunto_preview }}</p>
+            <div class="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">{{ html_preview|safe }}</div>
+        </section>
+    </div>
+    <aside class="space-y-6">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Destinatarios ({{ total }})</h3>
+            <ul class="mt-3 max-h-72 space-y-1 overflow-y-auto text-sm text-gray-700 dark:text-gray-200">
+                {% for c in seleccion %}<li class="truncate">{{ c.razon_social }} <span class="text-xs text-gray-400">{{ c.email_contacto }}</span></li>{% endfor %}
+            </ul>
+        </section>
+        <form method="post" action="/campanas/nueva/">
+            {% csrf_token %}
+            <input type="hidden" name="confirmado" value="1">
+            <input type="hidden" name="plantilla" value="{{ plantilla }}">
+            <input type="hidden" name="asunto" value="{{ asunto }}">
+            <input type="hidden" name="mensaje" value="{{ mensaje }}">
+            {% for c in seleccion %}<input type="hidden" name="clientes" value="{{ c.pk }}">{% endfor %}
+            <button type="submit" class="btn-primario w-full">Enviar a {{ total }} cliente{{ total|pluralize }}</button>
+        </form>
+        <a href="/campanas/nueva/" class="btn-secundario block w-full text-center">Cancelar</a>
+    </aside>
+</div>
+{% endblock %}

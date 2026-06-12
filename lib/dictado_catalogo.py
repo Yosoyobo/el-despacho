@@ -161,6 +161,13 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "cuenta, direccion (sube|baja), monto, motivo, fecha?",
         "gating": "contaduria_capturar",
     },
+    {
+        "tipo": "enviar_correo",
+        "titulo": "Enviar correo a un cliente (El Cartero)",
+        "ejemplo": "Mándale un correo a $karikari avisando que su pedido está listo para recolección.",
+        "payload": "cliente_slug, tipo_plantilla (generico|bienvenida|cobranza), asunto?, mensaje?",
+        "gating": "comunicacion",
+    },
 ]
 
 
@@ -176,6 +183,8 @@ def _gating_checks():
         "cotizaciones_aprobar": permisos.puede_aprobar_cotizaciones,
         "cotizaciones_rechazar": permisos.puede_rechazar_cotizaciones,
         "contaduria_capturar": permisos.puede_capturar_contaduria,
+        # V6 Bloque 7B: correo a clientes — permiso granular (comunicacion).
+        "comunicacion": permisos.puede_enviar_correo,
     }
 
 

@@ -64,6 +64,36 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
             "</div>"
         ),
     },
+    "pago": {
+        "nombre": "Confirmación de pago",
+        "asunto": "Pago recibido · {{ referencia }} · Learning Center",
+        "variables": ["cliente", "monto", "moneda", "referencia", "metodo", "fecha"],
+        "cuerpo_html": (
+            '<div style="font-family:Arial,sans-serif;color:#1d2939;font-size:14px;line-height:1.5;">'
+            "<p>Estimado/a {{ cliente }}:</p>"
+            "<p>Confirmamos la recepción de su pago por "
+            "<strong>{{ monto }} {{ moneda }}</strong> el {{ fecha }}"
+            "{% if referencia %} (referencia {{ referencia }}){% endif %}.</p>"
+            "<p>¡Gracias por su confianza!</p>"
+            f"{_FOOTER}"
+            "</div>"
+        ),
+    },
+    "bienvenida": {
+        "nombre": "Bienvenida",
+        "asunto": "¡Bienvenido a Learning Center, {{ cliente }}!",
+        "variables": ["cliente", "representante", "fecha"],
+        "cuerpo_html": (
+            '<div style="font-family:Arial,sans-serif;color:#1d2939;font-size:14px;line-height:1.5;">'
+            "<p>Estimado/a {{ cliente }}:</p>"
+            "<p>Nos da mucho gusto darle la bienvenida. En Learning Center diseñamos "
+            "y producimos productos promocionales, arte e imagen corporativa.</p>"
+            "<p>A partir de hoy su equipo de contacto le acompañará en cada proyecto. "
+            "Cualquier duda, responda directamente a este correo.</p>"
+            f"{_FOOTER}"
+            "</div>"
+        ),
+    },
     "generico": {
         "nombre": "Genérico",
         "asunto": "{{ asunto }}",
@@ -79,7 +109,7 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
 }
 
 # Orden de aparición en la lista del editor.
-SLUGS_PLANTILLA = ["cotizacion", "factura", "cobranza", "generico"]
+SLUGS_PLANTILLA = ["cotizacion", "factura", "cobranza", "pago", "bienvenida", "generico"]
 
 
 def variables_de(slug: str) -> list[str]:

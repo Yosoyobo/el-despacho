@@ -44,6 +44,10 @@ TODO_CHALAN = ["usar"]
 # supervisión (ver equipo, aprobar correcciones, configurar horarios,
 # exportar) son de admin.
 TODO_CHECADOR = ["checar", "ver_equipo", "aprobar_correcciones", "configurar_horarios", "exportar"]
+# V6 Bloque 7: Comunicaciones — correos a clientes vía El Chalán y campañas
+# masivas. Default SOLO super_admin (decisión Oscar: gating 100% granular,
+# el resto lo recibe vía la grilla de permisos o roles personalizados).
+TODO_COMUNICACION = ["enviar_correo", "campanas"]
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -61,6 +65,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "facturacion": list(TODO_FACTURACION),
         "chalan": list(TODO_CHALAN),
         "checador": list(TODO_CHECADOR),
+        "comunicacion": list(TODO_COMUNICACION),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
         "gerencia": ["acceder"],
     },

@@ -144,6 +144,9 @@ def cartero_guardar(request):
     if proveedor in {"smtp", "n8n"}:
         cfg.proveedor = proveedor
     cfg.remitente_nombre = (request.POST.get("remitente_nombre") or "").strip() or "Learning Center"
+    # V6 Bloque 7A: flags de correos automáticos (checkbox → bool).
+    cfg.auto_bienvenida = bool(request.POST.get("auto_bienvenida"))
+    cfg.auto_pago = bool(request.POST.get("auto_pago"))
     cfg.actualizado_por = request.user
     cfg.save()
 

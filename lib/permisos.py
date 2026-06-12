@@ -154,6 +154,15 @@ def puede_reportes_contaduria(user) -> bool:
     return puede(user, "contaduria", "reportes")
 
 
+# V6 Bloque 7 — Comunicaciones (correo a clientes vía Chalán + campañas).
+def puede_enviar_correo(user) -> bool:
+    return puede(user, "comunicacion", "enviar_correo")
+
+
+def puede_campanas(user) -> bool:
+    return puede(user, "comunicacion", "campanas")
+
+
 def puede_usar_chalan(user) -> bool:
     """S-Estados-Color-HEX: acceso al chat conversacional de El Chalán."""
     return puede(user, "chalan", "usar")

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Nueva campaña — La Gerencia{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Campañas de correo" "/campanas/" "Nueva" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Nueva campaña" subtitulo="Elige plantilla y destinatarios. Antes de enviar verás una confirmación con el total." breadcrumb_items=breadcrumb_items back_url="/campanas/" back_label="Campañas" %}
+
+<form method="post" class="campo-form grid max-w-5xl grid-cols-1 gap-6 xl:grid-cols-3">
+    {% csrf_token %}
+    <div class="space-y-6 xl:col-span-2">
+        {% comment %}Audiencia con CHECKBOXES (regla #6) + atajos de selección.{% endcomment %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Destinatarios <span class="text-xs font-normal text-gray-400">(solo clientes con email)</span></h2>
+                <div class="flex gap-2 text-xs">
+                    <button type="button" data-sel="todos" class="text-brand-600 underline dark:text-brand-400">Todos</button>
+                    <button type="button" data-sel="activos" class="text-brand-600 underline dark:text-brand-400">Activos</button>
+                    <button type="button" data-sel="prospectos" class="text-brand-600 underline dark:text-brand-400">Prospectos</button>
+                    <button type="button" data-sel="ninguno" class="text-gray-500 underline">Ninguno</button>
+                </div>
+            </div>
+            <div class="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                {% for c in clientes %}
+                <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm transition hover:border-gray-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10" data-estado-cliente="{{ c.estado }}">
+                    <input type="checkbox" name="clientes" value="{{ c.pk }}" class="rounded">
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ c.razon_social }}</span>
+                        <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ c.email_contacto }}</span>
+                    </span>
+                </label>
+                {% empty %}
+                <p class="text-sm text-gray-400">No hay clientes con email de contacto.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <aside class="space-y-6">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Plantilla</h3>
+            <div class="mt-3 flex flex-wrap gap-2">
+                {% for p in plantillas %}
+                <label class="cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-sm transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:font-medium dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                    <input type="radio" name="plantilla" value="{{ p }}" class="sr-only" {% if forloop.first %}checked{% endif %}>
+                    {{ p|capfirst }}
+                </label>
+                {% endfor %}
+            </div>
+            <p class="mt-2 text-[11px] text-gray-400">Las plantillas se editan en Ajustes → El Cartero → Plantillas.</p>
+        </section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" id="seccion-generico">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Contenido (genérico)</h3>
+            <label class="mt-3 block text-xs font-medium text-gray-600 dark:text-gray-400">Asunto</label>
+            <input type="text" name="asunto" maxlength="200" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-950" placeholder="Mensaje de Learning Center">
+            <label class="mt-3 block text-xs font-medium text-gray-600 dark:text-gray-400">Mensaje</label>
+            <textarea name="mensaje" rows="5" class="mt-1 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-950" placeholder="Texto del correo…"></textarea>
+        </section>
+        <button type="submit" class="btn-primario w-full">Revisar y confirmar →</button>
+    </aside>
+</form>
+
+<script>
+(function () {
+    // Atajos de selección por estado del cliente.
+    document.querySelectorAll('[data-sel]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modo = btn.getAttribute('data-sel');
+            document.querySelectorAll('[data-estado-cliente]').forEach(lbl => {
+                const cb = lbl.querySelector('input[type=checkbox]');
+                if (!cb) return;
+                if (modo === 'todos') cb.checked = true;
+                else if (modo === 'ninguno') cb.checked = false;
+                else cb.checked = lbl.getAttribute('data-estado-cliente') === (modo === 'activos' ? 'activo' : 'prospecto');
+            });
+        });
+    });
+    // La sección de contenido solo aplica a la plantilla genérica.
+    const seccion = document.getElementById('seccion-generico');
+    document.querySelectorAll('input[name=plantilla]').forEach(r => {
+        r.addEventListener('change', () => {
+            seccion.classList.toggle('hidden', document.querySelector('input[name=plantilla]:checked').value !== 'generico');
+        });
+    });
+})();
+</script>
+{% endblock %}

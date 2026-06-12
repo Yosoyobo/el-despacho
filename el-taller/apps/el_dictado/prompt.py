@@ -46,8 +46,11 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - emitir_factura, cobrar_factura
 - enviar_cotizacion, aprobar_cotizacion, rechazar_cotizacion
 - capturar_traspaso, capturar_ajuste
-  (todas las financieras requieren permiso; el sistema rechaza la acción si
-  el usuario no lo tiene)
+- enviar_correo (V6: correo a UN cliente vía El Cartero; payload:
+  cliente_slug, tipo_plantilla ∈ generico|bienvenida|cobranza, asunto?,
+  mensaje? — solo al email registrado del cliente, nunca direcciones libres)
+  (todas las financieras y enviar_correo requieren permiso; el sistema
+  rechaza la acción si el usuario no lo tiene)
 
 FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
 {

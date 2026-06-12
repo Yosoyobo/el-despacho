@@ -72,6 +72,8 @@ INSTALLED_APPS = [
     # (Bug B §14) y para el CRUD admin de Estados de tarea.
     "apps.el_pizarron.apps.ElPizarronConfig",
     "apps.estados_tarea.apps.EstadosTareaConfig",
+    # V6 Bloque 7C: campañas de correo masivo (exclusiva de Gerencia).
+    "apps.campanas.apps.CampanasConfig",
     # S-Checador E5: CRUD de horarios + bandeja de correcciones (admin).
     "apps.checador_admin.apps.CheckadorAdminConfig",
     # S2b.cotizaciones-v1 + S2b.facturacion-v1 + S3.contaduria-v1/v2:

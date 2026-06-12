@@ -310,3 +310,60 @@ def capturar_ajuste(accion, usuario, contexto=None):
     )
     accion.entidad_tipo = "asiento"
     accion.entidad_id = asiento.pk
+
+
+# ── Comunicaciones (V6 Bloque 7B) ────────────────────────────────────────────
+
+@registrar("enviar_correo")
+def enviar_correo(accion, usuario, contexto=None):
+    """Payload: cliente_slug, tipo_plantilla (generico|bienvenida|cobranza),
+    asunto?, mensaje? (requerido si generico).
+
+    Manda SOLO al email de contacto registrado del cliente — el Chalán nunca
+    escribe a direcciones arbitrarias. Preview/confirm humano garantizado por
+    services.aplicar; aquí re-chequeamos permiso + saneamos el texto libre.
+    """
+    _gate(usuario, "puede_enviar_correo", "enviar correos a clientes")
+    from ajustes.models.plantilla_correo import PlantillaCorreo
+
+    from lib import cartero
+    from lib.sanear import sanear_contexto
+
+    payload = accion.payload or {}
+    cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower(), contexto)
+    email = (cliente.email_contacto or "").strip()
+    _exigir(bool(email), f"El cliente «{cliente.razon_social}» no tiene email de contacto registrado.")
+
+    tipo = (payload.get("tipo_plantilla") or "generico").strip().lower()
+    _exigir(tipo in {"generico", "bienvenida", "cobranza"},
+            "`tipo_plantilla` debe ser generico, bienvenida o cobranza.")
+
+    contexto_correo: dict = {"cliente": cliente.nombre_contacto or cliente.razon_social}
+    if tipo == "generico":
+        mensaje = sanear_contexto((payload.get("mensaje") or "").strip())
+        _exigir(bool(mensaje), "`mensaje` requerido para un correo genérico.")
+        contexto_correo["mensaje"] = mensaje
+        contexto_correo["asunto"] = sanear_contexto(
+            (payload.get("asunto") or "").strip()
+        ) or f"Mensaje de Learning Center para {cliente.razon_social}"
+    elif tipo == "bienvenida":
+        from django.utils import timezone
+        contexto_correo["fecha"] = timezone.localdate().strftime("%d/%m/%Y")
+        contexto_correo["representante"] = usuario.get_short_name() or ""
+
+    plantilla = PlantillaCorreo.obtener(tipo)
+    asunto_r, html = plantilla.render(contexto_correo)
+    resultado = cartero.enviar(destinatario=email, asunto=asunto_r, html=html)
+    _exigir(bool(getattr(resultado, "ok", False)),
+            f"El Cartero no pudo entregar el correo: {getattr(resultado, 'error', 'error desconocido')}")
+
+    accion.entidad_tipo = "correo"
+    accion.entidad_id = cliente.pk
+    with contextlib.suppress(Exception):
+        from lib.portavoz import emitir
+        from lib.portavoz_eventos import EventoPortavoz
+        emitir(EventoPortavoz(
+            tipo="correo.enviado_chalan",
+            actor_id=usuario.pk, actor_email=usuario.email,
+            payload={"cliente_id": cliente.pk, "tipo_plantilla": tipo},
+        ))

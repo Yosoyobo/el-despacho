@@ -23,13 +23,15 @@ ACCION_VISIBLE_POR_MODULO = {
     "chalan": "usar",
     # S-Checador: el item del sidebar aparece si el usuario puede checar.
     "checador": "checar",
+    # V6 Bloque 7: Comunicaciones (Chalán correo + campañas).
+    "comunicacion": "enviar_correo",
     # los demás usan "ver"
 }
 
 MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
-    "facturacion", "chalan", "checador",
+    "facturacion", "chalan", "checador", "comunicacion",
     "directorio", "ajustes", "chalanes", "site",
     "centros_costo", "tasas",
     "gerencia",

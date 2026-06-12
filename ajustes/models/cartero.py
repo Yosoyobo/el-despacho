@@ -33,6 +33,16 @@ class ConfiguracionCorreo(models.Model):
         max_length=120, blank=True, default="Learning Center",
         help_text="Nombre visible del remitente (ej. «Learning Center»).",
     )
+    # V6 Bloque 7A — correos automáticos. ARRANCAN APAGADOS (mismo criterio
+    # que La Cobranza) para no sorprender a los clientes.
+    auto_bienvenida = models.BooleanField(
+        default=False,
+        help_text="Enviar correo de bienvenida al dar de alta un cliente con email.",
+    )
+    auto_pago = models.BooleanField(
+        default=False,
+        help_text="Enviar confirmación de pago al registrar un ingreso con cliente.",
+    )
     actualizado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
         on_delete=models.SET_NULL, related_name="config_correo_actualizadas",

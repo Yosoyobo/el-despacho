@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Campaña {{ campana.pk }} — La Gerencia{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Campañas de correo" "/campanas/" "Detalle" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Campaña de correo" subtitulo=campana.creado_en|date:"d M Y H:i" breadcrumb_items=breadcrumb_items back_url="/campanas/" back_label="Campañas" %}
+
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Destinatarios" valor=campana.total_destinatarios color="brand" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Enviados" valor=campana.enviados color="success" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Fallidos" valor=campana.fallidos color="error" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Plantilla" valor=campana.plantilla_slug color="purple" %}
+</div>
+
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3 text-left">Cliente</th>
+                <th class="px-5 py-3 text-left">Email</th>
+                <th class="px-5 py-3 text-left">Estado</th>
+                <th class="px-5 py-3 text-left">Error</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for e in envios %}
+            <tr>
+                <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ e.cliente.razon_social }}</td>
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.email }}</td>
+                <td class="px-5 py-3">{% if e.estado == 'enviado' %}<span class="badge badge-success">Enviado</span>{% else %}<span class="badge badge-error">Fallido</span>{% endif %}</td>
+                <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ e.error|default:"—"|truncatechars:60 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
