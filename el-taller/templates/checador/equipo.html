@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Equipo — Checador{% endblock %}
+
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Checador del equipo" subtitulo="Horas, retardos y visitas por persona" back_url="/checador/" back_label="Checador" %}
+
+<div class="mx-auto grid max-w-5xl grid-cols-1 gap-6">
+
+    {# ── Filtro de rango + export ───────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <form method="get" class="campo-form flex flex-wrap items-end gap-3">
+            <div>
+                <label for="f-desde" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Desde</label>
+                <input type="date" name="desde" id="f-desde" value="{{ desde|date:'Y-m-d' }}">
+            </div>
+            <div>
+                <label for="f-hasta" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Hasta</label>
+                <input type="date" name="hasta" id="f-hasta" value="{{ hasta|date:'Y-m-d' }}">
+            </div>
+            <button type="submit" class="btn-primario">Ver</button>
+            {% if puede_exportar %}
+            <div class="ml-auto flex gap-2">
+                <a href="{% url 'checador:equipo_export' %}?vista=jornadas&{{ querystring }}" class="btn-secundario">📄 Jornadas CSV</a>
+                <a href="{% url 'checador:equipo_export' %}?vista=sesiones&{{ querystring }}" class="btn-secundario">📄 Sesiones CSV</a>
+            </div>
+            {% endif %}
+        </form>
+    </section>
+
+    {# ── Tabla por persona ──────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% if filas %}
+        <div class="overflow-x-auto">
+            <table class="min-w-[640px] text-sm md:min-w-full">
+                <thead>
+                    <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-400 dark:border-gray-800">
+                        <th class="py-2 pr-3 font-medium">Persona</th>
+                        <th class="py-2 pr-3 font-medium">Días</th>
+                        <th class="py-2 pr-3 font-medium">Horas jornada</th>
+                        <th class="py-2 pr-3 font-medium">Horas proyecto</th>
+                        <th class="py-2 pr-3 font-medium">Retardos</th>
+                        <th class="py-2 pr-3 font-medium">Visitas</th>
+                        <th class="py-2 font-medium">Sin ubicación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
+                        <td class="py-2 pr-3 text-gray-800 dark:text-gray-100">{{ f.usuario.nombre_completo|default:f.usuario.email }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.dias }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada_horas }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.sesiones_horas }}</td>
+                        <td class="py-2 pr-3">{% if f.retardos %}<span class="text-warning-600 dark:text-warning-400">{{ f.retardos }}</span>{% else %}<span class="text-gray-400">0</span>{% endif %}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.visitas }}</td>
+                        <td class="py-2">{% if f.sin_geo %}<span class="rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{{ f.sin_geo }}</span>{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin actividad en el rango" descripcion="Nadie del equipo registró checadas en estas fechas." icono="search" %}
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

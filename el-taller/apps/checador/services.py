@@ -45,6 +45,26 @@ def _emitir(tipo: str, *, actor, payload: dict) -> None:
     transaction.on_commit(_post)
 
 
+def _push(usuario, titulo: str, cuerpo: str, *, url: str = "") -> None:
+    """Push del Interfón (categoría 'checador', opt-out). Best-effort tras commit."""
+
+    def _post():
+        try:
+            from lib.interfono import enviar_a_usuario
+            enviar_a_usuario(usuario, titulo, cuerpo, url=url, categoria="checador", origen_modulo="checador")
+        except Exception:  # noqa: BLE001 — el push nunca debe tumbar la operación
+            pass
+
+    transaction.on_commit(_post)
+
+
+def _aprobadores():
+    """Usuarios activos con permiso de aprobar correcciones."""
+    from cuentas.models.usuario import Usuario
+    from lib.permisos import puede_aprobar_correcciones_checador
+    return [u for u in Usuario.objects.filter(is_active=True) if puede_aprobar_correcciones_checador(u)]
+
+
 def _aplicar_geo(obj, prefijo: str, geo: dict | None) -> None:
     """Copia lat/lng/precision/sin_geo del dict `geo` a los campos del objeto.
 
@@ -262,6 +282,12 @@ def solicitar_correccion(usuario, *, tipo: str, valor_propuesto, motivo: str,
     _emitir("checador.correccion_solicitada", actor=usuario, payload={
         "solicitud_id": sol.pk, "tipo": tipo,
     })
+    quien = getattr(usuario, "nombre_completo", "") or getattr(usuario, "email", "Alguien")
+    for admin in _aprobadores():
+        if admin.pk != getattr(usuario, "pk", None):
+            _push(admin, "Corrección de checada pendiente",
+                  f"{quien} pide corregir su {sol.get_tipo_display().lower()}.",
+                  url="/checador/correcciones/")
     return sol
 
 
@@ -304,6 +330,10 @@ def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
         "solicitud_id": solicitud.pk, "aprobada": aprobar,
         "solicitante_id": solicitud.usuario_id,
     })
+    estado_txt = "aprobada" if aprobar else "rechazada"
+    _push(solicitud.usuario, f"Tu corrección fue {estado_txt}",
+          f"La corrección de tu {solicitud.get_tipo_display().lower()} fue {estado_txt}.",
+          url="/checador/historial/")
     return solicitud
 
 

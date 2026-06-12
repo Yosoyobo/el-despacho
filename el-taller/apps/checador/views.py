@@ -15,7 +15,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from lib.permisos import puede_aprobar_correcciones_checador, puede_checar
+from lib.permisos import (
+    puede_aprobar_correcciones_checador,
+    puede_checar,
+    puede_exportar_checador,
+    puede_ver_equipo_checador,
+)
 
 from . import services
 from .models import Jornada, SolicitudCorreccion, Visita
@@ -35,6 +40,15 @@ def _requiere_aprobar(view):
     def inner(request, *args, **kwargs):
         if not puede_aprobar_correcciones_checador(request.user):
             return HttpResponseForbidden("Sin permiso para aprobar correcciones.")
+        return view(request, *args, **kwargs)
+    return inner
+
+
+def _requiere_ver_equipo(view):
+    @wraps(view)
+    def inner(request, *args, **kwargs):
+        if not puede_ver_equipo_checador(request.user):
+            return HttpResponseForbidden("Sin permiso para ver el equipo.")
         return view(request, *args, **kwargs)
     return inner
 
@@ -253,6 +267,7 @@ def historial(request):
         "proyectos": _proyectos_para(request.user),
         "mis_correcciones": mis_correcciones,
         "puede_aprobar": puede_aprobar_correcciones_checador(request.user),
+        "puede_ver_equipo": puede_ver_equipo_checador(request.user),
     })
 
 
@@ -350,6 +365,66 @@ def correccion_resolver(request, pk: int):
         from django.http import HttpResponse
         return HttpResponse(status=204, headers={"HX-Redirect": "/checador/correcciones/"})
     return redirect("checador:correcciones")
+
+
+# ───────────────────────── reporte de equipo + export (E6) ─────────────────────────
+
+def _parse_date(valor):
+    if not valor:
+        return None
+    try:
+        return datetime.date.fromisoformat(valor)
+    except (TypeError, ValueError):
+        return None
+
+
+@login_required
+@_requiere_ver_equipo
+def equipo(request):
+    from django.db.models import Q
+
+    from cuentas.models.usuario import Usuario
+    hoy = timezone.localdate()
+    desde = _parse_date(request.GET.get("desde")) or (hoy - datetime.timedelta(days=hoy.weekday()))
+    hasta = _parse_date(request.GET.get("hasta")) or hoy
+
+    filas = []
+    for u in Usuario.objects.filter(is_active=True).order_by("nombre_completo"):
+        agg = services.horas_de(u, desde, hasta)
+        if not (agg["dias"] or agg["visitas"] or agg["sesiones_min"]):
+            continue
+        sin_geo = (
+            Jornada.objects.filter(usuario=u, fecha__gte=desde, fecha__lte=hasta)
+            .filter(Q(entrada_sin_geo=True) | Q(salida_sin_geo=True)).count()
+        )
+        filas.append({"usuario": u, "sin_geo": sin_geo, **agg})
+
+    qs = request.GET.urlencode()
+    return render(request, "checador/equipo.html", {
+        "filas": filas, "desde": desde, "hasta": hasta,
+        "querystring": qs,
+        "puede_exportar": puede_exportar_checador(request.user),
+    })
+
+
+@login_required
+@_requiere_ver_equipo
+def equipo_export(request):
+    if not puede_exportar_checador(request.user):
+        return HttpResponseForbidden("Sin permiso para exportar.")
+    from .exports import VISTAS, responder_csv
+    vista = request.GET.get("vista", "jornadas")
+    if vista not in VISTAS:
+        vista = "jornadas"
+    response, n = responder_csv(vista, request.GET.dict())
+    emitir_kwargs = {"vista": vista, "filas": n, "desde": request.GET.get("desde", ""), "hasta": request.GET.get("hasta", "")}
+    from lib.portavoz import emitir
+    from lib.portavoz_eventos import EventoPortavoz
+    emitir(EventoPortavoz(
+        tipo="checador.exportado",
+        actor_id=request.user.pk, actor_email=request.user.email, payload=emitir_kwargs,
+    ))
+    return response
 
 
 @login_required

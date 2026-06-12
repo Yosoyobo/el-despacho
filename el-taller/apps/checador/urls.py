@@ -23,4 +23,6 @@ urlpatterns = [
     path("correcciones/", views.correcciones, name="correcciones"),
     path("correcciones/<int:pk>/resolver/modal", views.correccion_resolver_modal, name="correccion_resolver_modal"),
     path("correcciones/<int:pk>/resolver", views.correccion_resolver, name="correccion_resolver"),
+    path("equipo/", views.equipo, name="equipo"),
+    path("equipo/export", views.equipo_export, name="equipo_export"),
 ]

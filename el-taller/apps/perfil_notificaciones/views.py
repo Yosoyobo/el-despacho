@@ -31,6 +31,8 @@ CATEGORIAS = [
     ("cobranza", "Cobranza · facturas vencidas",
      "Push diario cuando una factura cruza su fecha de vencimiento sin cobrarse.",
      ("super_admin", "dueno", "contador")),
+    ("checador", "El Checador",
+     "Push de correcciones de checada: solicitudes (a quien aprueba) y resoluciones (a quien solicitó).", None),
 ]
 
 

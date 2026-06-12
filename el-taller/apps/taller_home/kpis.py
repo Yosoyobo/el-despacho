@@ -504,6 +504,38 @@ def _kpi_balance_descuadrado(user) -> dict:
     return _resultado(desc, nota=("alerta" if desc > 0 else ""), link="/contaduria/asientos/")
 
 
+# ── Checador (S-Checador E6) ──
+
+def _kpi_checador_horas_semana(user) -> dict:
+    from apps.checador import services
+    agg = services.horas_de(user, _inicio_semana(), _hoy())
+    return _resultado(agg["jornada_horas"], nota="horas esta semana", link="/checador/historial/")
+
+
+def _kpi_checador_retardos_mes(user) -> dict:
+    from apps.checador.models import Jornada
+    n = Jornada.objects.filter(usuario=user, fecha__gte=_inicio_mes(), retardo_min__gt=0).count()
+    return _resultado(n, nota=("retardos este mes" if n else "sin retardos"), link="/checador/historial/")
+
+
+def _kpi_checador_visitas_semana(user) -> dict:
+    from apps.checador.models import Visita
+    n = Visita.objects.filter(usuario=user, registrado_en__date__gte=_inicio_semana()).count()
+    return _resultado(n, nota="visitas esta semana", link="/checador/historial/")
+
+
+def _kpi_checador_horas_proyecto_top(user) -> dict:
+    from apps.checador.models import SesionProyecto
+    from django.db.models import Sum
+    row = (
+        SesionProyecto.objects.filter(usuario=user, estado="cerrada", inicio__date__gte=_inicio_semana())
+        .values("proyecto__codigo").annotate(t=Sum("duracion_min")).order_by("-t").first()
+    )
+    if not row or not row["t"]:
+        return _resultado(0, nota="sin tiempo registrado", link="/checador/historial/")
+    return _resultado(round(row["t"] / 60, 1), nota=f"{row['proyecto__codigo']} (top)", link="/checador/historial/")
+
+
 # ── Catálogo ──
 
 KPIS: list[KPI] = [
@@ -625,6 +657,16 @@ KPIS: list[KPI] = [
     # Contaduría (S3.contaduria-v2)
     KPI("contaduria-utilidad-neta-mes", "Utilidad neta del mes", "Resultado del periodo según el estado de resultados (sin ISR estimado).",
         "dinero", ROLES_ADMIN_CONTADOR, _kpi_utilidad_neta_mes_contaduria),
+
+    # Checador (S-Checador E6) — personales, todo el staff.
+    KPI("checador-horas-semana", "Mis horas esta semana", "Horas de jornada (entrada→salida) acumuladas esta semana.",
+        "checador", ROLES_TODOS, _kpi_checador_horas_semana),
+    KPI("checador-retardos-mes", "Mis retardos del mes", "Días con retardo este mes según tu horario.",
+        "checador", ROLES_TODOS, _kpi_checador_retardos_mes),
+    KPI("checador-visitas-semana", "Mis visitas esta semana", "Visitas a clientes/proveedores registradas esta semana.",
+        "checador", ROLES_TODOS, _kpi_checador_visitas_semana),
+    KPI("checador-horas-por-proyecto-top", "Proyecto con más horas", "Proyecto donde más tiempo registraste esta semana.",
+        "checador", ROLES_TODOS, _kpi_checador_horas_proyecto_top),
 ]
 
 
@@ -636,6 +678,7 @@ CATEGORIAS = (
     ("cartera", "👥 Cartera"),
     ("infraestructura", "📡 Infraestructura"),
     ("dinero", "💰 Dinero"),
+    ("checador", "🕐 Checador"),
 )
 
 
