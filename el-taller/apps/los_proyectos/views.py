@@ -309,6 +309,19 @@ def _ctx_equipo(proyecto):
 
 
 @login_required
+def _primer_error(form, formset) -> str:
+    """Primer error legible del form o del formset, para el indicador del
+    autosave (V6 Bloque 5). '' si no hay (no debería pasar en rama inválida)."""
+    for f in [form, *formset.forms]:
+        for campo, errores in f.errors.items():
+            etiqueta = "" if campo == "__all__" else f"{f.fields.get(campo).label if f.fields.get(campo) else campo}: "
+            if errores:
+                return f"{etiqueta}{errores[0]}"
+    for e in formset.non_form_errors():
+        return str(e)
+    return ""
+
+
 def detalle(request, pk):
     proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
     if not puede_ver_proyecto(request.user, proyecto):
@@ -351,9 +364,13 @@ def detalle(request, pk):
             messages.success(request, "Proyecto guardado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
         if es_htmx:
+            # V6 Bloque 5: el autosave fallido era silencioso (solo "✕") y el
+            # usuario creía que su cambio (p.ej. el toggle de incluir) se había
+            # guardado. Ahora el OOB lleva el primer error legible.
             return render(request, "proyectos/_guardado_oob.html",
                           {"proyecto": proyecto, "ok": False,
                            "form": form, "puede_editar": True,
+                           "error_detalle": _primer_error(form, formset),
                            "proveedores_panel": _proveedores_panel(proyecto)}, status=200)
     else:
         form = ProyectoForm(instance=proyecto)

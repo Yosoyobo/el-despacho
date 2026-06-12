@@ -10,7 +10,7 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
   no nulificar el dato de proyectos existentes al autoguardar.
 - Impresión + procesos operativos: SIN recuadro punteado (un nivel arriba).
 {% endcomment %}
-<div class="producto-fila rounded-xl p-4 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card>
+<div class="producto-fila rounded-xl p-4 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}{% if acordeon_oculto and not f.errors %} hidden{% endif %}" data-card{% if acordeon_oculto and not f.errors %} data-acordeon-oculto{% endif %}>
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
     <div class="hidden">{{ f.procesos_json }}{{ f.variacion }}</div>

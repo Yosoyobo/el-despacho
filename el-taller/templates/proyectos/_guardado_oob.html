@@ -4,6 +4,10 @@ estado del botón Deshacer (cuántos pasos quedan).{% endcomment %}
 {% include "proyectos/_economico_panel.html" with proyecto=proyecto form=form puede_editar=puede_editar oob=True %}
 {% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=True oob=True %}
 {% include "proyectos/_guardado_indicador.html" with estado=ok|yesno:"guardado,error" oob=True %}
+{% comment %}V6 Bloque 5: error legible del autosave — antes el fallo era un
+"✕" mudo y el usuario creía que su cambio (p.ej. el toggle de incluir) quedó
+guardado.{% endcomment %}
+<span id="autosave-error-detalle" hx-swap-oob="true" class="text-xs text-error-600 dark:text-error-400">{% if not ok and error_detalle %}{{ error_detalle }}{% endif %}</span>
 <time id="ult-act" hx-swap-oob="true">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time>
 {% if ok %}
 <button id="btn-undo" hx-swap-oob="true"

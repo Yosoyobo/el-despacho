@@ -245,6 +245,18 @@
     const addBtn = document.getElementById('add-producto');
     if (addBtn) addBtn.addEventListener('click', () => clonarUltima(null, '1'));
 
+    // ── Acordeón de productos (V6 Bloque 5) ──────────────────────────────────
+    // Muestra/oculta las tarjetas 3+ guardadas. display:none NO excluye los
+    // inputs del submit, así que el autosave sigue posteando todo el formset.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-acordeon-productos]');
+        if (!btn) return;
+        const abierto = btn.getAttribute('data-abierto') === '1';
+        document.querySelectorAll('[data-acordeon-oculto]').forEach(c => c.classList.toggle('hidden', abierto));
+        btn.setAttribute('data-abierto', abierto ? '0' : '1');
+        btn.textContent = abierto ? btn.getAttribute('data-label-mas') : 'Ver menos';
+    });
+
     // ── Quick-create de Servicio ──────────────────────────────────────────────
     const qcBtn = document.getElementById('qc-agregar');
     if (qcBtn) {
