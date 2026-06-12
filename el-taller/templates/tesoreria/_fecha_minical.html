@@ -54,7 +54,8 @@ de texto sincronizado. Params: `valor` (ISO YYYY-MM-DD o ''), `nombre`
                 ? "bg-brand-500 font-semibold text-white"
                 : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800")
                 + (iso === hoyISO() && iso !== sel ? " ring-1 ring-brand-300" : "");
-            b.addEventListener("click", () => { input.value = iso; render(); });
+            // V6 Bloque 4: re-picar el día activo lo deselecciona (toggle).
+            b.addEventListener("click", () => { input.value = (input.value === iso) ? "" : iso; render(); });
             grid.appendChild(b);
         }
     };

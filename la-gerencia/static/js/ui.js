@@ -249,6 +249,28 @@
       input.dispatchEvent(new Event('change', { bubbles: true }));
       input.focus();
     });
+    // 3) Botón "Quitar" (V6 Bloque 4): limpia la fecha y dispara change. El
+    // picker nativo del SO no permite des-seleccionar desde adentro — esta es
+    // la afordancia equivalente. Visible solo con valor y en campos opcionales.
+    // Opt-out con data-sin-quitar="1".
+    var quitarBtn = null;
+    if (input.dataset.sinQuitar !== '1' && !input.required) {
+      quitarBtn = document.createElement('button');
+      quitarBtn.type = 'button';
+      quitarBtn.textContent = '✕';
+      quitarBtn.title = 'Quitar fecha';
+      quitarBtn.className = 'ml-1 inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-error-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700';
+      quitarBtn.setAttribute('data-no-row-click', '');
+      quitarBtn.setAttribute('aria-label', 'Quitar fecha');
+      quitarBtn.addEventListener('click', function () {
+        input.value = '';
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      var syncQuitar = function () { quitarBtn.style.display = input.value ? '' : 'none'; };
+      input.addEventListener('change', syncQuitar);
+      input.addEventListener('input', syncQuitar);
+      syncQuitar();
+    }
     // Inserta el botón después del wrapper relativo (si existe) o del input.
     var anchor = input.closest('.relative') || input;
     if (anchor.parentNode) {
@@ -256,6 +278,7 @@
       var holder = document.createElement('span');
       holder.className = 'inline-flex items-center align-middle';
       holder.appendChild(hoyBtn);
+      if (quitarBtn) holder.appendChild(quitarBtn);
       anchor.parentNode.insertBefore(holder, anchor.nextSibling);
     }
   });
