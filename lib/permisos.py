@@ -159,6 +159,27 @@ def puede_usar_chalan(user) -> bool:
     return puede(user, "chalan", "usar")
 
 
+def puede_checar(user) -> bool:
+    """S-Checador: registrar jornada/visitas/tiempo (todo el staff por default)."""
+    return puede(user, "checador", "checar")
+
+
+def puede_ver_equipo_checador(user) -> bool:
+    return puede(user, "checador", "ver_equipo")
+
+
+def puede_aprobar_correcciones_checador(user) -> bool:
+    return puede(user, "checador", "aprobar_correcciones")
+
+
+def puede_configurar_horarios_checador(user) -> bool:
+    return puede(user, "checador", "configurar_horarios")
+
+
+def puede_exportar_checador(user) -> bool:
+    return puede(user, "checador", "exportar")
+
+
 def puede_ver_comentario(user, comentario) -> bool:
     """Comentario interno: oculto a `disenador` salvo que sea el autor.
     Comentario público: visible si el usuario ve el proyecto/tarea padre."""

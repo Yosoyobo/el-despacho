@@ -21,13 +21,15 @@ ACCION_VISIBLE_POR_MODULO = {
     "gerencia": "acceder",
     # S-Estados-Color-HEX: el chat de El Chalán se gatea por (chalan, usar).
     "chalan": "usar",
+    # S-Checador: el item del sidebar aparece si el usuario puede checar.
+    "checador": "checar",
     # los demás usan "ver"
 }
 
 MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
-    "facturacion", "chalan",
+    "facturacion", "chalan", "checador",
     "directorio", "ajustes", "chalanes", "site",
     "centros_costo", "tasas",
     "gerencia",

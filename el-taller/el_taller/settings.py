@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     "apps.facturacion.apps.FacturacionConfig",
     # S3.contaduria-v1
     "apps.contaduria.apps.ContaduriaConfig",
+    # S-Checador: asistencia, visitas y tiempo por proyecto.
+    "apps.checador.apps.CheckadorConfig",
     # S-LC-Feedback-V3: página de ayuda con manual de usuario.
     "apps.ayuda.apps.AyudaConfig",
 ]

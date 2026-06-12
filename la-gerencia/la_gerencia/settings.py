@@ -77,6 +77,11 @@ INSTALLED_APPS = [
     "apps.cotizaciones.apps.CotizacionesConfig",
     "apps.facturacion.apps.FacturacionConfig",
     "apps.contaduria.apps.ContaduriaConfig",
+    # S-Checador: modelos viven en El Taller (apps.checador). Gerencia los
+    # registra para (a) que `la-gerencia` aplique sus migraciones en prod
+    # (es la única que corre `migrate`, Bug B §14) y (b) el CRUD de
+    # HorarioLaboral + bandeja de correcciones espejo (E5).
+    "apps.checador.apps.CheckadorConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",

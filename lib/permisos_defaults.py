@@ -40,6 +40,10 @@ TODO_FACTURACION = ["ver", "crear", "editar", "emitir", "cobrar", "cancelar"]
 # activo para los 4 roles (preserva el comportamiento previo); el super_admin
 # lo revoca por usuario/rol desde /directorio/<id>/permisos/.
 TODO_CHALAN = ["usar"]
+# S-Checador: asistencia. `checar` es para todo el staff; las funciones de
+# supervisión (ver equipo, aprobar correcciones, configurar horarios,
+# exportar) son de admin.
+TODO_CHECADOR = ["checar", "ver_equipo", "aprobar_correcciones", "configurar_horarios", "exportar"]
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -56,6 +60,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "cotizaciones": list(TODO_COTIZACIONES),
         "facturacion": list(TODO_FACTURACION),
         "chalan": list(TODO_CHALAN),
+        "checador": list(TODO_CHECADOR),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
         "gerencia": ["acceder"],
     },
@@ -73,6 +78,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "cotizaciones": list(TODO_COTIZACIONES),
         "facturacion": list(TODO_FACTURACION),
         "chalan": list(TODO_CHALAN),
+        "checador": list(TODO_CHECADOR),
         # S-LC-Feedback-V5 c5: dueno entra a La Gerencia por default.
         "gerencia": ["acceder"],
     },
@@ -92,6 +98,9 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "cotizaciones": ["ver", "crear", "editar", "enviar"],
         "facturacion": list(TODO_FACTURACION),
         "chalan": list(TODO_CHALAN),
+        # Contador checa, ve al equipo y exporta (insumo para nómina/costos);
+        # no aprueba correcciones ni configura horarios.
+        "checador": ["checar", "ver_equipo", "exportar"],
     },
     "disenador": {
         # Diseñador NO ve cartera (DOC_01 §4.4).
@@ -103,6 +112,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # Diseñador ve nombres pero NO precios (default — toggleable individualmente).
         "catalogo": ["ver_nombres"],
         "chalan": list(TODO_CHALAN),
+        # Diseñador solo checa su propia jornada/visitas/tiempo.
+        "checador": ["checar"],
     },
 }
 

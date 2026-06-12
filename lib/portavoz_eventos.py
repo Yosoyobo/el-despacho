@@ -106,6 +106,16 @@ EventoTipo = Literal[
     "contaduria.asiento_anulado",
     "contaduria.cuenta_creada",
     "contaduria.cuenta_actualizada",
+    "checador.entrada",
+    "checador.salida",
+    "checador.visita",
+    "checador.retardo",
+    "checador.sesion_iniciada",
+    "checador.sesion_cerrada",
+    "checador.correccion_solicitada",
+    "checador.correccion_resuelta",
+    "checador.horario_actualizado",
+    "checador.exportado",
 ]
 
 

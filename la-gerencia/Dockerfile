@@ -47,6 +47,9 @@ COPY el-taller/apps/el_catalogo/ /app/apps/el_catalogo/
 COPY el-taller/apps/cotizaciones/ /app/apps/cotizaciones/
 COPY el-taller/apps/facturacion/ /app/apps/facturacion/
 COPY el-taller/apps/contaduria/ /app/apps/contaduria/
+# S-Checador: Gerencia registra apps.checador para aplicar sus migraciones
+# en prod (única que corre migrate) + CRUD de horarios y correcciones (E5).
+COPY el-taller/apps/checador/ /app/apps/checador/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config
