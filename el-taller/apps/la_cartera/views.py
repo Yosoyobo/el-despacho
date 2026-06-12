@@ -208,12 +208,8 @@ def cliente_quick_create(request):
         telefono=tel_c,
         creado_por=request.user,
     )
-    if nombre_c or email_c or tel_c:
-        from apps.la_cartera.models import ClienteContacto
-        ClienteContacto.objects.create(
-            cliente=cliente, nombre=nombre_c or "Contacto",
-            email=email_c, telefono=tel_c, principal=True,
-        )
+    from apps.la_cartera.services import asegurar_contacto_principal
+    asegurar_contacto_principal(cliente)
     emitir(EventoPortavoz(
         tipo="cliente.creado",
         actor_id=request.user.pk,
@@ -231,11 +227,13 @@ def nuevo(request):
         form = ClienteForm(request.POST)
         formset = ClienteContactoFormSet(request.POST)
         if form.is_valid() and formset.is_valid():
+            from apps.la_cartera.services import espejar_contacto_principal
             cliente = form.save(commit=False)
             cliente.creado_por = request.user
             cliente.save()
             formset.instance = cliente
             formset.save()
+            espejar_contacto_principal(cliente)
             emitir(EventoPortavoz(
                 tipo="cliente.creado",
                 actor_id=request.user.pk,
@@ -259,8 +257,10 @@ def editar(request, pk):
         form = ClienteForm(request.POST, instance=cliente)
         formset = ClienteContactoFormSet(request.POST, instance=cliente)
         if form.is_valid() and formset.is_valid():
+            from apps.la_cartera.services import espejar_contacto_principal
             form.save()
             formset.save()
+            espejar_contacto_principal(cliente)
             emitir(EventoPortavoz(
                 tipo="cliente.actualizado",
                 actor_id=request.user.pk,

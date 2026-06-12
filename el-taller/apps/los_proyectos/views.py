@@ -515,9 +515,11 @@ def cliente_inline(request):
     if request.method == "POST":
         form = ClienteInlineForm(request.POST)
         if form.is_valid():
+            from apps.la_cartera.services import asegurar_contacto_principal
             cliente = form.save(commit=False)
             cliente.creado_por = request.user
             cliente.save()
+            asegurar_contacto_principal(cliente)
             emitir(EventoPortavoz(
                 tipo="cliente.creado",
                 actor_id=request.user.pk,
