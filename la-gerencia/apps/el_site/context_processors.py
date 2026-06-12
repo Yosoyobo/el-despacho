@@ -9,10 +9,13 @@ from __future__ import annotations
 
 
 def badge_integraciones(request):
+    from lib.permisos import tiene_rol
+
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated:
         return {}
-    if getattr(user, "rol", None) not in ("super_admin", "dueno"):
+    # V6 Bloque 10: reconoce rol primario + roles personalizados (roles_extra).
+    if not tiene_rol(user, "super_admin", "dueno"):
         return {}
     try:
         from lib.site.almacen import hay_integraciones_rojas

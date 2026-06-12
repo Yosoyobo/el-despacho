@@ -31,6 +31,7 @@ from lib.analistas.stats import (
     usuarios_top,
 )
 from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
+from lib.permisos import roles_efectivos, tiene_rol
 from lib.portavoz import emitir
 
 ROLES_ADMIN_TALLER = {"super_admin", "dueno"}
@@ -42,11 +43,12 @@ ESTACIONES_OCULTAS_DISENADOR = {"ocr_recibo", "dictado_gasto"}
 @login_required
 def panel(request):
     user = request.user
-    rol = getattr(user, "rol", None)
+    # V6 Bloque 10: roles efectivos (rol primario + roles personalizados).
+    roles = roles_efectivos(user)
 
     # Estaciones disponibles.
     cuadro_qs = CuadroChalanes.objects.all().order_by("estacion")
-    if rol == "disenador":
+    if "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"}):
         cuadro_qs = cuadro_qs.exclude(estacion__in=ESTACIONES_OCULTAS_DISENADOR)
 
     asignados = {
@@ -87,8 +89,10 @@ def panel(request):
     # S-Chalanes-Consumo: la analítica de consumo (30 días) es SOLO para
     # super_admin en el Taller (decisión Oscar). Defensivo: si la query falla,
     # omite la sección sin tumbar el panel.
-    ctx["es_super_admin_taller"] = rol == "super_admin"
-    if rol == "super_admin":
+    # V6 Bloque 10: tiene_rol reconoce rol primario + roles personalizados.
+    es_super = tiene_rol(user, "super_admin")
+    ctx["es_super_admin_taller"] = es_super
+    if es_super:
         try:
             ctx["tarjetas_chalanes"] = tarjetas_chalanes(dias=30)
             ctx["resumen_chalanes"] = resumen_global(dias=30)
@@ -175,7 +179,8 @@ def consultar_saldo(request, nombre: str):
 
     Misma lógica que en Gerencia, pero accesible desde el panel del Taller.
     """
-    if getattr(request.user, "rol", None) not in ROLES_ADMIN_TALLER:
+    # V6 Bloque 10: tiene_rol reconoce rol primario + roles personalizados.
+    if not tiene_rol(request.user, "super_admin", "dueno"):
         messages.error(request, "Sólo super_admin y dueño pueden consultar saldo.")
         return redirect("perfil-chalanes")
     adapter = _registry.adapter_de(nombre)

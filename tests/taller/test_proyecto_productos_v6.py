@@ -81,7 +81,7 @@ def test_acordeon_oculta_despues_de_dos(client, entorno):
     """V6: con >2 productos, el detalle muestra 2 y esconde el resto tras
     'Ver más (+N)'."""
     from apps.los_proyectos.models import ProyectoProducto
-    for i in range(3):
+    for _i in range(3):
         ProyectoProducto.objects.create(
             proyecto=entorno["p"], servicio=entorno["srv"], cantidad=1,
         )

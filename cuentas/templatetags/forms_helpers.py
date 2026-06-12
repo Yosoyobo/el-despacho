@@ -26,6 +26,20 @@ def widget_class(bound_field) -> str:
 
 
 @register.filter
+def tiene_rol(user, nombres: str) -> bool:
+    """V6 Bloque 10: check de rol en templates que reconoce rol primario +
+    roles personalizados (roles_extra). Uso:
+    `{% if request.user|tiene_rol:"super_admin,dueno" %}`.
+    Reemplaza a los `request.user.rol == "x"` duros que ignoraban roles_extra."""
+    try:
+        from lib.permisos import roles_efectivos
+        pedidos = {n.strip() for n in (nombres or "").split(",") if n.strip()}
+        return bool(roles_efectivos(user) & pedidos)
+    except Exception:  # noqa: BLE001 — un check de UI nunca tumba el render
+        return False
+
+
+@register.filter
 def dinero(valor) -> str:
     """Formatea un monto como `$1,234.56`. None / vacío → `—`."""
     if valor is None or valor == "":

@@ -10,7 +10,7 @@ from django.views.decorators.http import require_http_methods
 
 from cuentas.models.permiso_usuario import PermisoUsuario
 from cuentas.models.usuario import Usuario
-from lib.permisos import requires_role
+from lib.permisos import requires_role, usuarios_con_rol
 from lib.permisos_defaults import DEFAULTS_POR_ROL
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -38,7 +38,9 @@ def lista(request):
     kpis = {
         "activos": activos,
         "inactivos": total - activos,
-        "admins": por_rol.get("super_admin", 0) + por_rol.get("dueno", 0),
+        # V6 Bloque 10: cuenta admins por rol primario O rol personalizado
+        # (usuarios_con_rol ya filtra is_active=True).
+        "admins": usuarios_con_rol("super_admin", "dueno").count(),
         "total": total,
     }
     # S-Directorio-Panel-V1: enriquece cada usuario con su Proveedor IA efectivo,

@@ -30,8 +30,10 @@ def _destinatarios(tarea, config):
                 rol_en_proyecto="lider", usuario__is_active=True).select_related("usuario"):
             por_pk[asig.usuario_id] = asig.usuario
     if config.incluir_admins:
-        from cuentas.models.usuario import Usuario
-        for u in Usuario.objects.filter(is_active=True, rol__in=("super_admin", "dueno")):
+        # V6 Bloque 10: usuarios_con_rol reconoce rol primario + roles
+        # personalizados (roles_extra) y ya filtra is_active=True.
+        from lib.permisos import usuarios_con_rol
+        for u in usuarios_con_rol("super_admin", "dueno"):
             por_pk[u.pk] = u
     return list(por_pk.values())
 

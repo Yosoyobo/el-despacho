@@ -15,14 +15,15 @@ from django.shortcuts import render
 from ajustes.models.credencial import SLOTS_CREDENCIAL, Credencial
 from cuentas.models.usuario import Usuario
 from lib.graficas import donut_desde_conteo
+from lib.permisos import tiene_rol
 
 
 @login_required
 def home(request):
     user = request.user
-    rol = getattr(user, "rol", None)
 
-    if rol not in ("super_admin", "dueno"):
+    # V6 Bloque 10: reconoce rol primario + roles personalizados (roles_extra).
+    if not tiene_rol(user, "super_admin", "dueno"):
         # contador/disenador no entran a Gerencia (middleware redirige).
         return render(request, "gerencia_home/home.html", {"kpis": []})
 

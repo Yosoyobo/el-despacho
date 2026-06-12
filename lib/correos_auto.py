@@ -20,7 +20,6 @@ def _config():
 
 def _render_y_enviar(slug: str, destinatario: str, contexto: dict) -> bool:
     from ajustes.models.plantilla_correo import PlantillaCorreo
-
     from lib import cartero
 
     plantilla = PlantillaCorreo.obtener(slug)

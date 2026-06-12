@@ -7,9 +7,11 @@ se vea uniforme entre apps.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from django.http import HttpRequest
+
+from lib.permisos import roles_efectivos
 
 
 @dataclass(frozen=True)
@@ -19,14 +21,19 @@ class ContextoUsuario:
     nombre: str
     rol: str
     activo: bool
+    # V6 Bloque 10: roles efectivos (rol primario + roles_extra) capturados
+    # en getAuth(). El dataclass no carga el user, así que el set viaja aquí.
+    roles: frozenset[str] = field(default_factory=frozenset)
 
     @property
     def es_admin(self) -> bool:
-        return self.rol in ("super_admin", "dueno")
+        # V6 Bloque 10: reconoce roles personalizados además del rol primario.
+        return bool(({self.rol} | self.roles) & {"super_admin", "dueno"})
 
     @property
     def es_super_admin(self) -> bool:
-        return self.rol == "super_admin"
+        # V6 Bloque 10: idem — super_admin puede venir como rol personalizado.
+        return "super_admin" in ({self.rol} | self.roles)
 
 
 def getAuth(request: HttpRequest) -> ContextoUsuario | None:
@@ -39,4 +46,6 @@ def getAuth(request: HttpRequest) -> ContextoUsuario | None:
         nombre=getattr(user, "nombre_completo", "") or getattr(user, "username", ""),
         rol=getattr(user, "rol", "disenador"),
         activo=bool(getattr(user, "is_active", False)),
+        # V6 Bloque 10: une rol primario + roles_extra (defensivo si no hay M2M).
+        roles=frozenset(roles_efectivos(user)),
     )

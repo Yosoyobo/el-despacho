@@ -10,10 +10,9 @@ class LaCarteraConfig(AppConfig):
     def ready(self):
         # V6 Bloque 7A: correo de bienvenida al alta de cliente (best-effort,
         # gobernado por ConfiguracionCorreo.auto_bienvenida — arranca apagado).
+        from apps.la_cartera.models import Cliente
         from django.db import transaction
         from django.db.models.signals import post_save
-
-        from apps.la_cartera.models import Cliente
 
         def _bienvenida(sender, instance, created, **kwargs):
             if not created:

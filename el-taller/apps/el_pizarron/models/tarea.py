@@ -82,6 +82,6 @@ class Tarea(models.Model):
         ahora = timezone.localtime()
         if self.fecha_compromiso < ahora.date():
             return True
-        if self.fecha_compromiso == ahora.date() and self.hora and self.hora < ahora.time():
-            return True
-        return False
+        return bool(
+            self.fecha_compromiso == ahora.date() and self.hora and self.hora < ahora.time()
+        )

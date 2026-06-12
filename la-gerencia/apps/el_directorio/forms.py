@@ -33,6 +33,15 @@ class UsuarioForm(forms.ModelForm):
         # Sin esto, agregar `modalidad` (ChoiceField) rompería el alta/edición
         # de usuario que no la envíe.
         self.fields["modalidad"].required = False
+        # V6 Bloque 10 (decisión Oscar): solo super_admin y miembro son
+        # asignables — todo lo demás se modela con roles personalizados (tabla
+        # Rol) + permisos granulares. Si el usuario editado conserva un rol
+        # legacy, se ofrece para no forzar el cambio en una edición ajena.
+        asignables = [("super_admin", "Super Admin"), ("miembro", "Miembro")]
+        actual = getattr(self.instance, "rol", None)
+        if self.instance.pk and actual and actual not in {r[0] for r in asignables}:
+            asignables.append((actual, dict(ROLES).get(actual, actual)))
+        self.fields["rol"].choices = asignables
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()

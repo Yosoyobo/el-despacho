@@ -21,6 +21,7 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from lib.permisos import tiene_rol
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 from lib.site import (
@@ -53,7 +54,8 @@ def _barra(pct: float | None, *, umbral_warn: float = 60, umbral_err: float = 80
 def _gate(request):
     if not request.user.is_authenticated:
         return redirect("/sign-in")
-    if getattr(request.user, "rol", None) not in ("super_admin", "dueno"):
+    # V6 Bloque 10: reconoce rol primario + roles personalizados (roles_extra).
+    if not tiene_rol(request.user, "super_admin", "dueno"):
         return HttpResponseForbidden("Acceso restringido a super_admin y dueño.")
     return None
 

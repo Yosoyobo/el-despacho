@@ -37,12 +37,15 @@ CATEGORIAS = [
 
 
 def _categorias_para(user):
-    rol = getattr(user, "rol", None)
+    # V6 Bloque 10: la comparación contra roles_visible usa los roles
+    # efectivos del usuario (rol primario + roles personalizados).
+    from lib.permisos import roles_efectivos
+    roles_user = roles_efectivos(user)
     salida = []
     for entrada in CATEGORIAS:
         slug, nombre, desc = entrada[0], entrada[1], entrada[2]
         roles = entrada[3] if len(entrada) > 3 else None
-        if roles and rol not in roles:
+        if roles and not (roles_user & set(roles)):
             continue
         salida.append((slug, nombre, desc))
     return salida

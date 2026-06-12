@@ -34,13 +34,13 @@ def test_admin_crea_usuario(client, usuario_factory):
     resp = client.post("/directorio/nuevo", {
         "email": "nuevo@x.com",
         "nombre_completo": "Usuario Nuevo",
-        "rol": "contador",
+        "rol": "miembro",
         "password": "contraseñasegura",
         "is_active": "on",
     })
     assert resp.status_code == 302
     u = Usuario.objects.get(email="nuevo@x.com")
-    assert u.rol == "contador"
+    assert u.rol == "miembro"
     assert u.is_active is True
 
 
@@ -50,13 +50,13 @@ def test_admin_edita_rol(client, usuario_factory):
     resp = client.post(f"/directorio/{target.pk}/editar", {
         "email": "t@x.com",
         "nombre_completo": "Editado",
-        "rol": "contador",
+        "rol": "miembro",
         "is_active": "on",
         "password": "",
     })
     assert resp.status_code == 302
     target.refresh_from_db()
-    assert target.rol == "contador"
+    assert target.rol == "miembro"
     assert target.nombre_completo == "Editado"
 
 
@@ -83,12 +83,12 @@ def test_degradar_de_super_admin_limpia_flags(client, usuario_factory):
     target.save(update_fields=["is_staff", "is_superuser"])
     client.force_login(usuario_factory(rol="super_admin", email="admin@x.com"))
     resp = client.post(f"/directorio/{target.pk}/editar", {
-        "email": "t@x.com", "nombre_completo": "T", "rol": "contador",
+        "email": "t@x.com", "nombre_completo": "T", "rol": "miembro",
         "is_active": "on", "password": "",
     })
     assert resp.status_code == 302
     target.refresh_from_db()
-    assert target.rol == "contador"
+    assert target.rol == "miembro"
     assert target.is_superuser is False
     assert target.is_staff is False
 

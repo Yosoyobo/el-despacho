@@ -36,6 +36,7 @@ from lib.permisos import (
     puede_editar_proyecto,
     puede_ver_finanzas,
     puede_ver_proyecto,
+    roles_efectivos,
 )
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -141,11 +142,13 @@ def _fmt_fechahora(dt):
 
 def _proyectos_visibles(user):
     """Queryset filtrado por rol."""
-    rol = getattr(user, "rol", None)
+    # V6 Bloque 10: roles efectivos (rol primario + roles_extra) en lugar de
+    # user.rol duro — un "miembro" con rol personalizado "dueno" ve lo mismo.
+    roles = roles_efectivos(user)
     qs = Proyecto.objects.select_related("cliente")
-    if rol in ("super_admin", "dueno", "contador"):
+    if roles & {"super_admin", "dueno", "contador"}:
         return qs
-    if rol == "disenador":
+    if "disenador" in roles:
         return qs.filter(asignaciones__usuario=user).distinct()
     return Proyecto.objects.none()
 

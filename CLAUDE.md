@@ -3798,6 +3798,83 @@ Patrón defensivo (preludio+sistema+reglas, sanear, try/except, `{ok,...,error}`
 + gating doble (UI `permisos_modulos.chalan` + endpoint `puede_usar_chalan`).
 13 tests en `tests/taller/test_s4_ia.py`. **Pendiente S4 ya NO existe.**
 
+### S-LC-Feedback-V6 ✅ — Arco completo de comentarios del buzón (2026-06-12, VERSION 2026.06.43)
+
+Handoff en `docs/SPRINT-LC-Feedback-V6-Buzon.md`. 10 bloques, un commit
+revertible c/u. Decisiones Oscar: contacto unificado; EstadoTarea espejo +
+"Atrasada" automática; barrido de TODOS los forms; Chalán correo B+C;
+campañas sin límite con confirmación; PWA nativo; TWA Android $0 (iOS
+abortado por regla "gratis o abortamos"); **eliminar rol dueño → granular**.
+
+- **B0 fix(cartera)**: dos sistemas de contacto sin sincronizar (legacy
+  `Cliente.nombre_contacto/telefono` vs `ClienteContacto`). `la_cartera/
+  services.py`: `espejar_contacto_principal` (principal→legacy, en ficha) +
+  `asegurar_contacto_principal` (legacy→ClienteContacto, en modal de
+  proyecto y quick-create). 5 tests de regresión.
+- **B1 EstadoTarea configurable** (espejo S-Proyecto-Estados-V1): modelo en
+  `el_pizarron/models/estado_tarea.py` (HEX, orden, terminal, activo,
+  sistema; tabla `pizarron_estado`) + cache 60s + CRUD Gerencia
+  (`apps/estados_tarea/`, `/catalogos/estados-tarea/`). `Tarea` gana `tipo`
+  (tarea/entrega/junta/recoger) + `hora` (migr. 0003); migr. 0004 libera
+  choices, seedea 3 estados y elimina `bloqueada`→pendiente. **"Atrasada" es
+  DERIVADA** (`Tarea.esta_atrasada`: compromiso vencido sin terminal),
+  amarillo, nunca almacenada. `apps.el_pizarron` instalada en Gerencia
+  (Bug A/B §14). KPI `tareas-bloqueadas` conserva slug, semántica=atrasadas.
+  **Fix transversal**: signals de invalidación de cache con `weak=False`
+  (la closure moría por GC y la señal no disparaba — afectaba también a
+  EstadoProyecto).
+- **B2 Tareas Kanban**: `/tareas/` = Kanban (default "mis tareas", filtros
+  estado×persona combinables por chips, drag&drop con endpoint
+  `cambiar-estado` que sincroniza `completada_en`); `/tareas/lista/` la
+  tabular; `/tareas/nueva/` form global con pastillas (proyecto con filtro,
+  persona, tipo) + fecha + hora. Calendario muestra emoji por tipo + hora.
+- **B3 Dashboard**: botón NUEVA TAREA (6 acciones, grid-cols-6), fecha+reloj
+  en vivo bajo el saludo, widgets Mis tareas/Eventos/Chalán a 2/6 c/u,
+  inclusion tag `bloque_fecha` (HOY/MAÑANA/amarillo-pasado), chips Kanban
+  con cliente en lugar del código.
+- **B4 quitar fecha**: minical de Tesorería togglea al re-picar; `ui.js`
+  (dual) botón ✕ en date inputs opcionales (`data-sin-quitar` opt-out).
+- **B5 productos**: acordeón (2 visibles + "Ver más (+N)", display:none
+  sigue posteando, errores nunca se ocultan, `clonarUltima` intacto). El
+  toggle incluir SÍ persistía — el bug real era el **autosave silencioso**:
+  ahora `_guardado_oob` inyecta el primer error legible
+  (`#autosave-error-detalle`).
+- **B6 barrido forms** (workflow 7 agentes + verificador adversarial):
+  cotizaciones, factura, ingreso/egreso, catálogo×4, cartera, proyectos +
+  Gerencia chicos → patrón grid 3-col + aside ventanas chicas + pastillas
+  has-[:checked]. Cero cambios a name/id/data-*.
+- **B7 comunicaciones**: plantillas `pago`+`bienvenida`; auto-envío
+  APAGADO por default (flags en ConfiguracionCorreo, migr. ajustes 0010,
+  switches en El Cartero; signals on_commit best-effort en
+  `lib/correos_auto.py`). Ejecutor `enviar_correo` (3 lugares; SOLO email
+  registrado del cliente; permiso granular `(comunicacion, enviar_correo)`
+  seed solo super_admin, migr. cuentas 0023). Campañas en Gerencia
+  `/campanas/` (checkboxes + confirmación "Vas a enviar a N" + preview +
+  auditoría CampanaCorreo/CampanaEnvio; app `la-gerencia/apps/campanas/`).
+- **B8 PWA**: input.css (dual) — inputs ≥16px móvil (mata el zoom iOS),
+  text-size-adjust, tap-highlight, overscroll-y none, touch-callout en
+  chrome, momentum scroll, `.min-h-screen→100dvh` vía @supports.
+  `tests/test_pwa_css.py` valida sincronía dual-copy.
+- **B9 El Envoltorio**: TWA Android de El Taller, $0 — `envoltorio/README.md`
+  (keystore fuera del repo→HAL, PWABuilder/Bubblewrap, APK directo) +
+  assetlinks.json en Caddyfile (placeholder de fingerprint hasta que Oscar
+  genere el keystore). iOS abortado (regla gratis).
+- **B10 eliminar rol dueño** (decisión Oscar: granular total): rol primario
+  neutro `miembro` + valores legacy no asignables; migr. cuentas 0024
+  (dueno→miembro + Rol personalizado "dueno" en roles_extra — los checks
+  los reconocen vía `roles_efectivos`). Helpers canónicos
+  `lib.permisos.tiene_rol(user, *nombres)` y `usuarios_con_rol(*nombres)`
+  (queryset rol primario ∪ roles_extra). Sweep de ~50 checks duros en 24
+  archivos a los helpers (workflow 3 zonas + verificador con suite
+  completa). El Directorio solo ofrece Super Admin | Miembro (+ legacy del
+  editado). **Patrón nuevo**: NUNCA `user.rol == "x"` ni
+  `filter(rol__in=...)` — siempre `tiene_rol`/`usuarios_con_rol`.
+
+**Deuda diseñada V6**: limpiar los valores legacy del enum ROLES cuando LC
+confirme que los roles personalizados cubren todo; validación visual en
+iPhone/Android real (Bloque 8/9 acceptance manual); pasos manuales de Oscar
+para El Envoltorio (keystore + fingerprint en Caddyfile + APK).
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

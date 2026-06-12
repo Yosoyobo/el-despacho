@@ -1,4 +1,4 @@
-{% load static %}
+{% load static forms_helpers %}
 {% comment %} Sidebar — La Gerencia (Pre-S2b.2: backend puro). Items operativos se
    movieron a El Taller. Aquí solo: Dashboard ejecutivo, Directorio,
    Site, Interfón, Chalanes, Ajustes, Tasas. {% endcomment %}
@@ -22,7 +22,7 @@
             El Directorio
         </a>
 
-        {% if request.user.rol == "super_admin" or request.user.rol == "dueno" %}
+        {% if request.user|tiene_rol:"super_admin,dueno" %}
         <a href="/site/" class="menu-item {% if '/site' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h18M3 12h18M3 19h18" stroke-linecap="round"/></svg>
             <span class="flex-1">El Site</span>

@@ -3,11 +3,18 @@ from django.db import models
 
 from cuentas.managers import UsuarioManager
 
+# V6 Bloque 10 (decisión Oscar): super_admin es el ÚNICO rol duro; todo lo
+# demás se modela con roles personalizados (tabla Rol vía roles_extra) +
+# permisos granulares. "miembro" es el rol primario neutro (sin defaults).
+# "dueno/contador/disenador" quedan como valores LEGACY no asignables desde
+# la UI — usuarios existentes y tests los conservan; los checks pasan por
+# lib.permisos.roles_efectivos/tiene_rol, que reconocen ambas vías.
 ROLES = (
     ("super_admin", "Super Admin"),
-    ("dueno", "Admin"),
-    ("contador", "Contador"),
-    ("disenador", "Diseñador"),
+    ("miembro", "Miembro"),
+    ("dueno", "Admin (legacy)"),
+    ("contador", "Contador (legacy)"),
+    ("disenador", "Diseñador (legacy)"),
 )
 
 

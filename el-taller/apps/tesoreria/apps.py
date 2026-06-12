@@ -11,10 +11,9 @@ class TesoreriaConfig(AppConfig):
         # V6 Bloque 7A: confirmación de pago al registrar un Ingreso con
         # cliente (best-effort, gobernado por ConfiguracionCorreo.auto_pago —
         # arranca apagado).
+        from apps.tesoreria.models.ingreso import Ingreso
         from django.db import transaction
         from django.db.models.signals import post_save
-
-        from apps.tesoreria.models.ingreso import Ingreso
 
         def _confirmar_pago(sender, instance, created, **kwargs):
             if not created or instance.anulado:

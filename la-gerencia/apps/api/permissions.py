@@ -7,6 +7,8 @@ gerencia_session), así que estos permisos cooperan con `lib.permisos`.
 
 from rest_framework.permissions import BasePermission
 
+from lib.permisos import tiene_rol
+
 
 class SoloSuperAdmin(BasePermission):
     message = "Acceso restringido a super_admin."
@@ -15,7 +17,8 @@ class SoloSuperAdmin(BasePermission):
         user = getattr(request, "user", None)
         if not user or not user.is_authenticated:
             return False
-        return getattr(user, "rol", None) == "super_admin"
+        # V6 Bloque 10: reconoce rol primario + roles personalizados.
+        return tiene_rol(user, "super_admin")
 
 
 class AdminOdueno(BasePermission):
@@ -25,7 +28,8 @@ class AdminOdueno(BasePermission):
         user = getattr(request, "user", None)
         if not user or not user.is_authenticated:
             return False
-        return getattr(user, "rol", None) in ("super_admin", "dueno")
+        # V6 Bloque 10: reconoce rol primario + roles personalizados.
+        return tiene_rol(user, "super_admin", "dueno")
 
 
 class SoloSuperAdminOdueno(AdminOdueno):

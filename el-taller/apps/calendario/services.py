@@ -16,11 +16,15 @@ from django.utils import timezone
 def _proyectos_visibles_qs(user):
     from apps.los_proyectos.models import Proyecto
 
-    rol = getattr(user, "rol", None)
+    from lib.permisos import roles_efectivos
+
+    # V6 Bloque 10: roles efectivos (rol primario + roles_extra) en lugar de
+    # user.rol duro — un "miembro" con rol personalizado "dueno" ve lo mismo.
+    roles = roles_efectivos(user)
     qs = Proyecto.objects.select_related("cliente")
-    if rol in ("super_admin", "dueno", "contador"):
+    if roles & {"super_admin", "dueno", "contador"}:
         return qs
-    if rol == "disenador":
+    if "disenador" in roles:
         return qs.filter(asignaciones__usuario=user).distinct()
     return Proyecto.objects.none()
 
@@ -29,9 +33,13 @@ def _tareas_visibles_qs(user):
     from apps.el_pizarron.models import Tarea
     from apps.los_proyectos.models import ProyectoAsignacion
 
-    rol = getattr(user, "rol", None)
+    from lib.permisos import roles_efectivos
+
+    # V6 Bloque 10: restringe a sus proyectos solo si es diseñador (primario
+    # o personalizado) sin un rol amplio que le dé visibilidad total.
+    roles = roles_efectivos(user)
     qs = Tarea.objects.exclude(estado="completada").select_related("proyecto", "asignada_a")
-    if rol == "disenador":
+    if "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"}):
         proyectos_ids = ProyectoAsignacion.objects.filter(usuario=user).values_list("proyecto_id", flat=True)
         qs = qs.filter(proyecto_id__in=list(proyectos_ids))
     return qs

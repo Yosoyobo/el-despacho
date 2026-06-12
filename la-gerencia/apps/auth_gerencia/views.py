@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from lib.errors import RateLimitExcedido
-from lib.permisos import puede
+from lib.permisos import puede, tiene_rol
 from lib.ratelimit import intentar, reset
 
 # S-LC-Feedback-V5 c5: el acceso a La Gerencia se hereda por permiso
@@ -30,7 +30,8 @@ ROLES_PERMITIDOS_FAILSAFE = ("super_admin",)
 
 def _puede_entrar_gerencia(user) -> bool:
     """Combina permiso granular + failsafe para super_admin (siempre puede)."""
-    if user.rol in ROLES_PERMITIDOS_FAILSAFE:
+    # V6 Bloque 10: el failsafe también reconoce roles personalizados.
+    if tiene_rol(user, *ROLES_PERMITIDOS_FAILSAFE):
         return True
     return puede(user, "gerencia", "acceder")
 

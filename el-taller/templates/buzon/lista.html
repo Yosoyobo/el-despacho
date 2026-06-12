@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load forms_helpers %}
 {% block title %}Buzón{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
@@ -89,7 +90,7 @@ En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
         <button type="submit" name="accion" value="estado_leido" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">Marcar leído</button>
         <button type="submit" name="accion" value="estado_respondido" class="rounded-lg bg-success-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-success-600">Marcar respondido</button>
         <button type="submit" name="accion" value="estado_archivado" class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Archivar</button>
-        {% if request.user.rol == "super_admin" or request.user.rol == "dueno" %}
+        {% if request.user|tiene_rol:"super_admin,dueno" %}
         <button type="submit" name="accion" value="eliminar" class="rounded-lg bg-error-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-error-600"
                 onclick="return confirm('¿Eliminar los mensajes seleccionados? Esta acción no se puede deshacer.');">Eliminar</button>
         {% endif %}

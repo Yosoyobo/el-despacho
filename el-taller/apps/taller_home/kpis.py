@@ -66,13 +66,22 @@ def _resultado(valor: Any, *, nota: str = "", link: str = "") -> dict[str, Any]:
     return {"valor": valor, "nota": nota, "link": link}
 
 
+def _es_solo_disenador(user) -> bool:
+    """V6 Bloque 10: restringe el queryset a "sus" proyectos solo si el
+    usuario es diseñador (rol primario o personalizado vía roles_extra) y NO
+    tiene un rol amplio que le dé visibilidad total."""
+    from lib.permisos import roles_efectivos
+    roles = roles_efectivos(user)
+    return "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"})
+
+
 # ── Cálculos por categoría ──────────────────────────────────────────────────
 
 
 def _kpi_proyectos_activos(user) -> dict:
     from apps.los_proyectos.models import Proyecto
     qs = Proyecto.objects.filter(estado__in=ESTADOS_PROYECTO_ACTIVOS)
-    if getattr(user, "rol", None) == "disenador":
+    if _es_solo_disenador(user):  # V6 Bloque 10
         qs = qs.filter(asignaciones__usuario=user).distinct()
     return _resultado(qs.count(), link="/proyectos/?kpi=activos")
 
@@ -91,7 +100,7 @@ def _kpi_valor_proyectos(user) -> dict:
     from apps.los_proyectos.models import Proyecto
     from django.db.models import Sum
     qs = Proyecto.objects.exclude(estado__in=("entregado", "cancelado"))
-    if getattr(user, "rol", None) == "disenador":
+    if _es_solo_disenador(user):  # V6 Bloque 10
         qs = qs.filter(asignaciones__usuario=user).distinct()
     total = qs.aggregate(s=Sum("monto_estimado"))["s"] or 0
     return _resultado(f"${total:,.0f}", link="/proyectos/")
@@ -122,7 +131,7 @@ def _kpi_por_entregar_esta_semana(user) -> dict:
         fecha_compromiso__date__gte=hoy,
         fecha_compromiso__date__lte=fin,
     )
-    if getattr(user, "rol", None) == "disenador":
+    if _es_solo_disenador(user):  # V6 Bloque 10
         qs = qs.filter(asignaciones__usuario=user).distinct()
     return _resultado(qs.count())
 
@@ -134,7 +143,7 @@ def _kpi_proyectos_vencidos(user) -> dict:
         estado__in=ESTADOS_PROYECTO_ACTIVOS,
         fecha_compromiso__date__lt=hoy,
     )
-    if getattr(user, "rol", None) == "disenador":
+    if _es_solo_disenador(user):  # V6 Bloque 10
         qs = qs.filter(asignaciones__usuario=user).distinct()
     n = qs.count()
     return _resultado(n, nota=("alerta" if n > 0 else ""))
@@ -733,8 +742,18 @@ def kpis_aplicables_a_rol(rol: str, *, user=None) -> list[KPI]:
     """Filtra el catálogo por rol del usuario.
 
     Si `user` se pasa, agrega también los KPIs custom (S2b.5) del usuario.
+
+    V6 Bloque 10: cuando hay `user`, la comparación contra `roles_visible`
+    usa sus roles EFECTIVOS (rol primario + roles personalizados vía
+    roles_extra) — un "miembro" con rol personalizado "dueno" ve los mismos
+    KPIs que veía un dueño. Llamadas solo-string (tests, herramientas)
+    conservan el comportamiento literal.
     """
-    base = [k for k in KPIS if rol in k.roles_visible]
+    roles = {rol} if rol else set()
+    if user is not None:
+        from lib.permisos import roles_efectivos
+        roles |= roles_efectivos(user)
+    base = [k for k in KPIS if roles & set(k.roles_visible)]
     if user is not None:
         base = base + _kpis_custom_para(user)
     return base

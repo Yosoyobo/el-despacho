@@ -25,16 +25,17 @@ logger = logging.getLogger(__name__)
 
 
 def _admins_activos():
-    from cuentas.models.usuario import Usuario
-    return Usuario.objects.filter(is_active=True, rol__in=("super_admin", "dueno"))
+    # V6 Bloque 10: usuarios_con_rol reconoce rol primario + roles
+    # personalizados (roles_extra) y ya filtra is_active=True.
+    from lib.permisos import usuarios_con_rol
+    return usuarios_con_rol("super_admin", "dueno")
 
 
 def _cobranza_activos():
     """Usuarios que reciben alertas de cobranza: admins + contadores activos."""
-    from cuentas.models.usuario import Usuario
-    return Usuario.objects.filter(
-        is_active=True, rol__in=("super_admin", "dueno", "contador")
-    )
+    # V6 Bloque 10: usuarios_con_rol (rol primario + roles_extra, is_active).
+    from lib.permisos import usuarios_con_rol
+    return usuarios_con_rol("super_admin", "dueno", "contador")
 
 
 def _enviar(usuario, titulo: str, cuerpo: str, *, url: str, tag: str, categoria: str,

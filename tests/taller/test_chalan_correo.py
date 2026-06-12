@@ -62,8 +62,9 @@ def test_auto_bienvenida_apagada_no_envia(cliente_con_email):
 
 def test_auto_bienvenida_activada_envia(cliente_con_email):
     admin, _ = cliente_con_email
-    from ajustes.models.cartero import ConfiguracionCorreo
     from apps.la_cartera.models import Cliente
+
+    from ajustes.models.cartero import ConfiguracionCorreo
     cfg = ConfiguracionCorreo.obtener()
     cfg.auto_bienvenida = True
     cfg.save()
@@ -79,8 +80,9 @@ def test_auto_bienvenida_activada_envia(cliente_con_email):
 def test_auto_pago_nunca_lanza(cliente_con_email):
     """Best-effort: si El Cartero truena, el helper regresa False sin levantar."""
     admin, cli = cliente_con_email
-    from ajustes.models.cartero import ConfiguracionCorreo
     from apps.tesoreria.models import Ingreso
+
+    from ajustes.models.cartero import ConfiguracionCorreo
     cfg = ConfiguracionCorreo.obtener()
     cfg.auto_pago = True
     cfg.save()
@@ -115,6 +117,7 @@ def test_ejecutor_enviar_correo_gating(usuario_factory, cliente_con_email):
 
 def test_ejecutor_enviar_correo_ok(cliente_con_email):
     from apps.el_dictado.ejecutores.avanzados import enviar_correo
+
     from cuentas.models.permiso_usuario import PermisoUsuario
     admin, cli = cliente_con_email
     PermisoUsuario.objects.get_or_create(usuario=admin, modulo="comunicacion",
@@ -132,6 +135,7 @@ def test_ejecutor_enviar_correo_ok(cliente_con_email):
 
 def test_ejecutor_sin_email_registrado_falla(usuario_factory, cliente_factory):
     from apps.el_dictado.ejecutores.avanzados import enviar_correo
+
     from cuentas.models.permiso_usuario import PermisoUsuario
     admin = usuario_factory(rol="super_admin")
     PermisoUsuario.objects.get_or_create(usuario=admin, modulo="comunicacion",
@@ -144,19 +148,19 @@ def test_ejecutor_sin_email_registrado_falla(usuario_factory, cliente_factory):
 
 def test_ejecutor_cartero_caido_falla_legible(cliente_con_email):
     from apps.el_dictado.ejecutores.avanzados import enviar_correo
+
     from cuentas.models.permiso_usuario import PermisoUsuario
     admin, cli = cliente_con_email
     PermisoUsuario.objects.get_or_create(usuario=admin, modulo="comunicacion",
                                          permiso="enviar_correo", defaults={"activo": True})
-    with mock.patch("lib.cartero.enviar", return_value=_ResultadoFalla()):
-        with pytest.raises(ValueError, match="Cartero"):
-            enviar_correo(_accion({"cliente_slug": cli.slug,
-                                   "tipo_plantilla": "generico", "mensaje": "x"}), admin)
+    with mock.patch("lib.cartero.enviar", return_value=_ResultadoFalla()), \
+         pytest.raises(ValueError, match="Cartero"):
+        enviar_correo(_accion({"cliente_slug": cli.slug,
+                               "tipo_plantilla": "generico", "mensaje": "x"}), admin)
 
 
 def test_catalogo_dictado_incluye_enviar_correo(usuario_factory):
     from cuentas.models.permiso_usuario import PermisoUsuario
-
     from lib.dictado_catalogo import comandos_para
     admin = usuario_factory(rol="super_admin")
     PermisoUsuario.objects.get_or_create(usuario=admin, modulo="comunicacion",

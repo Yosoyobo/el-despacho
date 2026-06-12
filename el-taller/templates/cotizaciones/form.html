@@ -226,7 +226,10 @@
             <div class="grid grid-cols-1 gap-2">
                 {% for t in tasas %}
                 <label class="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10">
-                    <input type="checkbox" name="tasas" value="{{ t.id }}" class="sr-only" {% if t.id in tasas_seleccionadas %}checked{% endif %}>
+                    <input type="checkbox" name="tasas" value="{{ t.id }}" class="peer sr-only" {% if t.id in tasas_seleccionadas %}checked{% endif %}>
+                    <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-gray-300 text-transparent transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:text-white dark:border-gray-600">
+                        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
                     <span class="min-w-0 flex-1 break-words">{{ t.nombre }} <span class="text-xs tabular-nums text-gray-500 dark:text-gray-400">({{ t.porcentaje }}% · {{ t.get_tipo_display }})</span></span>
                 </label>
                 {% empty %}

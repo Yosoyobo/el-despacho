@@ -325,7 +325,6 @@ def enviar_correo(accion, usuario, contexto=None):
     """
     _gate(usuario, "puede_enviar_correo", "enviar correos a clientes")
     from ajustes.models.plantilla_correo import PlantillaCorreo
-
     from lib import cartero
     from lib.sanear import sanear_contexto
 

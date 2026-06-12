@@ -39,6 +39,25 @@ def roles_efectivos(user) -> set[str]:
     return roles
 
 
+def tiene_rol(user, *nombres: str) -> bool:
+    """V6 Bloque 10: check canónico por NOMBRE de rol. Reconoce tanto el rol
+    primario como los roles personalizados (roles_extra). Reemplaza a los
+    `user.rol == "x"` / `user.rol in (...)` directos."""
+    return bool(roles_efectivos(user) & set(nombres))
+
+
+def usuarios_con_rol(*nombres: str):
+    """Queryset de usuarios activos cuyo rol primario O alguno de sus roles
+    personalizados está en `nombres`. Para destinatarios de pushes/avisos."""
+    from django.db.models import Q
+
+    from cuentas.models.usuario import Usuario
+    return Usuario.objects.filter(
+        Q(rol__in=nombres) | Q(roles_extra__nombre__in=nombres),
+        is_active=True,
+    ).distinct()
+
+
 def es_admin(user) -> bool:
     return bool(roles_efectivos(user) & {"super_admin", "dueno"})
 

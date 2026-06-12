@@ -5,6 +5,69 @@
 
 ---
 
+## Novedades — La gran puesta al día: Tareas con Kanban, correos a clientes, campañas y mucho más (12 de junio de 2026)
+
+Esta entrega atiende **todos los comentarios pendientes del buzón**:
+
+- **El teléfono del contacto ya se guarda.** Arreglamos de raíz el error donde
+  al editar el contacto de un cliente se guardaba el nombre pero no el
+  teléfono. Ahora todo lo que captures en Contactos queda guardado y visible.
+- **Página de Tareas renovada (Kanban).** El menú **Tareas** ahora abre un
+  tablero por columnas: tus tareas activas arriba y las cerradas abajo. Los
+  **filtros de estado y de persona siempre están visibles** y se pueden
+  combinar picándolos. Puedes **arrastrar una tarjeta** a otra columna para
+  cambiarle el estado. La vista de lista sigue disponible con "Ver lista".
+- **Botón NUEVA TAREA.** En el Dashboard (antes de "Nuevo proyecto") y en la
+  página de Tareas. Eliges **proyecto, persona y tipo con un click**
+  (pastillas), pones fecha en el calendario y una **hora opcional**. Los tipos
+  son: **Tarea, Entrega 📦, Junta 📅 y Recoger 🚚** — y se ven en el Calendario.
+- **"Atrasada" automática.** Ya no existe el estado "Bloqueada". Cuando una
+  tarea se pasa de su fecha sin cerrarse, el sistema la marca **Atrasada en
+  amarillo** él solo. Además, los **estados de tarea ahora se configuran** en
+  La Gerencia → Catálogos → Estados de tarea (nombre, color, orden), igual que
+  los de proyecto.
+- **Dashboard al día.** Fecha y **reloj en vivo** bajo el saludo; los bloques
+  "Mis tareas", "Próximos eventos" y El Chalán ahora **miden lo mismo**; en
+  "Mis tareas" la fecha muestra día/número/mes, dice **HOY** o **MAÑANA**
+  cuando aplica y se pinta **amarilla si ya pasó**. En las tarjetas del Kanban
+  de proyectos ahora se ve el **nombre del cliente** en lugar del código.
+- **Quitar una fecha.** En los calendarios, picar de nuevo el día seleccionado
+  lo **deselecciona**; los campos de fecha tienen un botón **✕** para limpiar.
+- **Productos del proyecto más ordenados.** El detalle muestra los **primeros
+  2 productos** y el resto se abre con **"Ver más (+N)"**. Y si un cambio no
+  se puede guardar, ahora el sistema te dice **exactamente qué falta** junto al
+  indicador de guardado (antes solo aparecía una ✕ sin explicación).
+- **Formularios renovados.** Cotizaciones, facturas, ingresos, egresos,
+  productos, clientes y proyectos ahora siguen el mismo diseño de dos columnas
+  del detalle de Proyecto: lo principal a la izquierda y las notas/extras en
+  ventanas chicas a la derecha. Los proveedores e impuestos se eligen con
+  **pastillas** de un click.
+- **Correos a clientes.** Hay dos plantillas nuevas (**Confirmación de pago**
+  y **Bienvenida**) editables en Ajustes → El Cartero → Plantillas. Si lo
+  activas en Ajustes → El Cartero, el sistema puede mandar solos el correo de
+  bienvenida al dar de alta un cliente y la confirmación al registrar un pago
+  (**vienen apagados** — nadie recibe nada hasta que tú lo enciendas).
+- **El Chalán puede mandar correos.** Pídeselo en el chat ("mándale un correo
+  a $cliente avisando que su pedido está listo") — te muestra la acción para
+  **confirmar antes de enviar**, y solo manda al correo registrado del cliente.
+  Requiere el permiso de Comunicación (se asigna en el Directorio).
+- **Campañas de correo.** En La Gerencia → Campañas de correo puedes mandar
+  un correo a **varios clientes a la vez**: eliges plantilla, marcas los
+  destinatarios con casillas (con atajos Todos/Activos/Prospectos), revisas la
+  vista previa y confirmas. Todo queda auditado destinatario por destinatario.
+- **Roles más simples.** Al crear un usuario ahora eliges solo **Super Admin**
+  o **Miembro**, y lo que cada quien puede hacer se arma con **roles
+  personalizados** y permisos por módulo en el Directorio. Los usuarios
+  existentes conservan exactamente lo que podían hacer.
+- **La app se siente más nativa en el teléfono.** Quitamos el zoom indeseado al
+  tocar un campo en iPhone, el rebote del navegador, los textos desbordados y
+  las diferencias de escala entre pantallas. Y para Android preparamos **la
+  app instalable** (pregunta a tu administrador por el archivo de instalación).
+  En iPhone: Safari → Compartir → "Añadir a pantalla de inicio" (así también
+  llegan las notificaciones).
+
+---
+
 ## Novedades — Ajustar jornada con aprobación, y ubicación + dirección fiscal en clientes/proveedores (12 de junio de 2026)
 
 - **Ajustar la jornada (con aprobación).** Desde tu historial puedes pedir

@@ -22,7 +22,6 @@ def enviar_campana(campana: CampanaCorreo, clientes, actor) -> CampanaCorreo:
     """Manda el lote. Un fallo por destinatario NO aborta el resto. Audita
     cada envío y emite eventos Portavoz."""
     from ajustes.models.plantilla_correo import PlantillaCorreo
-
     from lib import cartero
     from lib.portavoz import emitir
     from lib.portavoz_eventos import EventoPortavoz

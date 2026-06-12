@@ -44,7 +44,9 @@ def _buzon_pendiente_count(user) -> int:
 
 
 def _es_admin(user) -> bool:
-    return getattr(user, "rol", None) in ("super_admin", "dueno")
+    # V6 Bloque 10: tiene_rol reconoce rol primario + roles personalizados.
+    from lib.permisos import tiene_rol
+    return tiene_rol(user, "super_admin", "dueno")
 
 
 REGLAS: list[dict] = [
@@ -96,8 +98,11 @@ def evaluar_y_persistir(user) -> int:
         kpi = kpi_por_slug(slug)
         if not kpi:
             continue
-        rol = getattr(user, "rol", None) or "disenador"
-        if rol not in kpi.roles_visible:
+        # V6 Bloque 10: la comparación contra roles_visible acepta el set de
+        # roles efectivos (primario + roles_extra). Sin rol → trato disenador.
+        from lib.permisos import roles_efectivos
+        roles = roles_efectivos(user) or {"disenador"}
+        if not (roles & set(kpi.roles_visible)):
             continue
         # Si el usuario ya lo tiene visible explícitamente o lo descartó como sugerencia, skip.
         if slug not in pref_ocultas and PreferenciaKPI.objects.filter(usuario=user, kpi_slug=slug, visible=True).exists():
