@@ -1,0 +1,53 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Solicitar corrección</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+
+        <form method="post" action="{% url 'checador:correccion' %}" class="campo-form">
+            {% csrf_token %}
+            {% if jornada %}<input type="hidden" name="jornada" value="{{ jornada.pk }}">{% endif %}
+            {% if sesion %}<input type="hidden" name="sesion" value="{{ sesion.pk }}"><input type="hidden" name="tipo" value="sesion">{% endif %}
+
+            <div class="space-y-4 px-5 py-4 text-sm">
+                {% if jornada %}
+                <p class="text-xs text-gray-500 dark:text-gray-400">Jornada del {{ jornada.fecha|date:"D j N" }}</p>
+                <div>
+                    <label class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">¿Qué corregir?</label>
+                    <div class="flex gap-2">
+                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="tipo" value="entrada" checked class="accent-brand-500"> Entrada
+                        </label>
+                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="tipo" value="salida" class="accent-brand-500"> Salida
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label for="corr-valor" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Hora correcta</label>
+                    <input type="datetime-local" name="valor_propuesto" id="corr-valor" required
+                           value="{{ jornada.entrada_en|date:'Y-m-d\TH:i' }}">
+                </div>
+                {% else %}
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ sesion.proyecto.codigo }} · sesión del {{ sesion.inicio|date:"D j H:i" }}</p>
+                <div>
+                    <label for="corr-valor" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Hora de fin correcta</label>
+                    <input type="datetime-local" name="valor_propuesto" id="corr-valor" required
+                           value="{{ sesion.fin|date:'Y-m-d\TH:i' }}">
+                </div>
+                {% endif %}
+                <div>
+                    <label for="corr-motivo" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Motivo</label>
+                    <textarea name="motivo" id="corr-motivo" rows="2" required placeholder="Explica por qué pides el cambio"></textarea>
+                </div>
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">Enviar solicitud</button>
+            </footer>
+        </form>
+    </div>
+</div>

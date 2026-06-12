@@ -65,6 +65,14 @@
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10M7 12h10M7 17h6" stroke-linecap="round"/><path d="M3.5 7h.01M3.5 12h.01M3.5 17h.01" stroke-linecap="round"/></svg>
             Tipos del Buzón
         </a>
+        <a href="{% url 'checador-admin-horarios' %}" class="menu-item {% if '/catalogos/horarios' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Horarios laborales
+        </a>
+        <a href="{% url 'checador-admin-correcciones' %}" class="menu-item {% if '/checador/correcciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Correcciones de checada
+        </a>
         {% endif %}
     </nav>
 

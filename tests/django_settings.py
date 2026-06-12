@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
     "apps.tipos_buzon.apps.TiposBuzonConfig",
+    "apps.checador_admin.apps.CheckadorAdminConfig",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",

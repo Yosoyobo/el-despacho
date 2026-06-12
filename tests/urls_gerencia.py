@@ -30,6 +30,7 @@ urlpatterns = [
     path("catalogos/", include("apps.estados_proyecto.urls")),
     path("catalogos/", include("apps.estados_buzon.urls")),
     path("catalogos/", include("apps.tipos_buzon.urls")),
+    path("", include("apps.checador_admin.urls")),
     # Para que la sidebar compartida pueda hacer `{% url 'tesoreria:...' %}`
     # incluso bajo el urlconf de Gerencia en tests, montamos la app a un
     # prefijo que jamás se visitará desde Gerencia real (los enlaces los

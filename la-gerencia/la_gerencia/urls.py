@@ -40,6 +40,7 @@ urlpatterns = [
     path("catalogos/", include("apps.estados_proyecto.urls")),
     path("catalogos/", include("apps.estados_buzon.urls")),
     path("catalogos/", include("apps.tipos_buzon.urls")),
+    path("", include("apps.checador_admin.urls")),
     path("site/", include("apps.el_site.urls")),
     path("chalanes/", include("apps.los_chalanes.urls", namespace="los_chalanes")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),

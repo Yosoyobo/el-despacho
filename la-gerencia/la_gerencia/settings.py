@@ -67,6 +67,8 @@ INSTALLED_APPS = [
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
     "apps.tipos_buzon.apps.TiposBuzonConfig",
+    # S-Checador E5: CRUD de horarios + bandeja de correcciones (admin).
+    "apps.checador_admin.apps.CheckadorAdminConfig",
     # S2b.cotizaciones-v1 + S2b.facturacion-v1 + S3.contaduria-v1/v2:
     # mismos modelos viven en El Taller. Gerencia los registra porque
     # tesoreria.Ingreso.factura → facturacion.Factura → cotizaciones.Cotizacion

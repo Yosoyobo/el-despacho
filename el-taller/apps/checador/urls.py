@@ -18,4 +18,9 @@ urlpatterns = [
     path("sesion/nueva", views.sesion_modal, name="sesion_modal"),
     path("sesion", views.sesion, name="sesion"),
     path("historial/", views.historial, name="historial"),
+    path("correccion/nueva", views.correccion_modal, name="correccion_modal"),
+    path("correccion", views.correccion, name="correccion"),
+    path("correcciones/", views.correcciones, name="correcciones"),
+    path("correcciones/<int:pk>/resolver/modal", views.correccion_resolver_modal, name="correccion_resolver_modal"),
+    path("correcciones/<int:pk>/resolver", views.correccion_resolver, name="correccion_resolver"),
 ]

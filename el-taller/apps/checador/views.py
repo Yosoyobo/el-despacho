@@ -11,14 +11,14 @@ from functools import wraps
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from lib.permisos import puede_checar
+from lib.permisos import puede_aprobar_correcciones_checador, puede_checar
 
 from . import services
-from .models import Jornada, Visita
+from .models import Jornada, SolicitudCorreccion, Visita
 
 
 def _requiere_checar(view):
@@ -26,6 +26,15 @@ def _requiere_checar(view):
     def inner(request, *args, **kwargs):
         if not puede_checar(request.user):
             return HttpResponseForbidden("Sin acceso a El Checador.")
+        return view(request, *args, **kwargs)
+    return inner
+
+
+def _requiere_aprobar(view):
+    @wraps(view)
+    def inner(request, *args, **kwargs):
+        if not puede_aprobar_correcciones_checador(request.user):
+            return HttpResponseForbidden("Sin permiso para aprobar correcciones.")
         return view(request, *args, **kwargs)
     return inner
 
@@ -231,6 +240,9 @@ def historial(request):
             usuario=request.user, estado="cerrada", inicio__date__gte=desde, inicio__date__lte=hoy,
         ).select_related("proyecto").order_by("-inicio"),
     )
+    mis_correcciones = list(
+        SolicitudCorreccion.objects.filter(usuario=request.user).order_by("-creado_en")[:10],
+    )
     return render(request, "checador/historial.html", {
         "desde": desde,
         "hoy": hoy,
@@ -239,7 +251,105 @@ def historial(request):
         "sesiones": sesiones,
         "totales": services.horas_de(request.user, desde, hoy),
         "proyectos": _proyectos_para(request.user),
+        "mis_correcciones": mis_correcciones,
+        "puede_aprobar": puede_aprobar_correcciones_checador(request.user),
     })
+
+
+# ───────────────────────── correcciones (E5) ─────────────────────────
+
+@login_required
+@_requiere_checar
+def correccion_modal(request):
+    """GET HTMX → modal para solicitar corrección de una jornada o sesión propia."""
+    from .models import SesionProyecto
+    jornada = sesion = None
+    jid = request.GET.get("jornada")
+    sid = request.GET.get("sesion")
+    if jid:
+        jornada = Jornada.objects.filter(pk=jid, usuario=request.user).first()
+    elif sid:
+        sesion = SesionProyecto.objects.filter(pk=sid, usuario=request.user).select_related("proyecto").first()
+    if jornada is None and sesion is None:
+        return HttpResponseForbidden("Registro no encontrado.")
+    return render(request, "checador/_modal_correccion.html", {"jornada": jornada, "sesion": sesion})
+
+
+@login_required
+@_requiere_checar
+@require_POST
+def correccion(request):
+    from .models import SesionProyecto
+    tipo = request.POST.get("tipo", "")
+    motivo = (request.POST.get("motivo") or "").strip()
+    valor = _parse_dt(request.POST.get("valor_propuesto"))
+
+    jornada = sesion = None
+    jid = request.POST.get("jornada")
+    sid = request.POST.get("sesion")
+    if jid:
+        jornada = Jornada.objects.filter(pk=jid, usuario=request.user).first()
+    elif sid:
+        sesion = SesionProyecto.objects.filter(pk=sid, usuario=request.user).first()
+
+    if valor is None or not motivo or (jornada is None and sesion is None):
+        messages.error(request, "Indica el nuevo valor y el motivo.")
+        return redirect("checador:historial")
+    if tipo not in ("entrada", "salida", "sesion", "visita"):
+        tipo = "sesion" if sesion else "entrada"
+
+    try:
+        services.solicitar_correccion(
+            request.user, tipo=tipo, valor_propuesto=valor, motivo=motivo,
+            jornada=jornada, sesion=sesion,
+        )
+        messages.success(request, "Solicitud de corrección enviada. Un administrador la revisará.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("checador:historial")
+
+
+@login_required
+@_requiere_aprobar
+def correcciones(request):
+    """Bandeja de aprobación (Taller) para quien tiene aprobar_correcciones."""
+    pendientes = list(
+        SolicitudCorreccion.objects.filter(estado="pendiente")
+        .select_related("usuario", "jornada", "sesion").order_by("creado_en"),
+    )
+    resueltas = list(
+        SolicitudCorreccion.objects.exclude(estado="pendiente")
+        .select_related("usuario", "resuelto_por").order_by("-resuelto_en")[:20],
+    )
+    return render(request, "checador/correcciones.html", {
+        "pendientes": pendientes,
+        "resueltas": resueltas,
+    })
+
+
+@login_required
+@_requiere_aprobar
+def correccion_resolver_modal(request, pk: int):
+    sol = get_object_or_404(SolicitudCorreccion, pk=pk)
+    return render(request, "checador/_modal_resolver.html", {"sol": sol})
+
+
+@login_required
+@_requiere_aprobar
+@require_POST
+def correccion_resolver(request, pk: int):
+    sol = get_object_or_404(SolicitudCorreccion, pk=pk)
+    aprobar = request.POST.get("decision") == "aprobar"
+    comentario = (request.POST.get("comentario") or "").strip()
+    try:
+        services.resolver_correccion(sol, admin=request.user, aprobar=aprobar, comentario=comentario)
+        messages.success(request, "Corrección aprobada." if aprobar else "Corrección rechazada.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    if request.headers.get("HX-Request") == "true":
+        from django.http import HttpResponse
+        return HttpResponse(status=204, headers={"HX-Redirect": "/checador/correcciones/"})
+    return redirect("checador:correcciones")
 
 
 @login_required
