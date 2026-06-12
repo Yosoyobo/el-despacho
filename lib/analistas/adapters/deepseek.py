@@ -17,12 +17,15 @@ MODELO_DEFAULT = "deepseek-chat"
 # Precios aproximados USD por 1M tokens (deepseek-chat a fecha pre-S2b.1).
 PRECIO_IN = 0.14 / 1_000_000
 PRECIO_OUT = 0.28 / 1_000_000
+MODELOS_CURADOS = ("deepseek-chat", "deepseek-reasoner")
 
 
 class DeepseekAdapter(Adapter):
     nombre = "deepseek"
     apodo = "Chalán Chino"
     capacidades = frozenset({Capability.TEXTO, Capability.FUNCTION_CALLING})
+    modelo_default = MODELO_DEFAULT
+    modelos_curados = MODELOS_CURADOS
 
     def __init__(self, modelo: str = MODELO_DEFAULT, timeout: float = 30.0):
         self.modelo = modelo
@@ -79,6 +82,24 @@ class DeepseekAdapter(Adapter):
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
             latencia_ms=latencia,
         )
+
+    def listar_modelos(self) -> list[str]:
+        try:
+            llave = self._llave()
+        except Exception:
+            return list(MODELOS_CURADOS)
+        try:
+            resp = httpx.get(
+                "https://api.deepseek.com/models",
+                headers={"Authorization": f"Bearer {llave}", "Accept": "application/json"},
+                timeout=self.timeout,
+            )
+            if resp.status_code != 200:
+                return list(MODELOS_CURADOS)
+            ids = [m.get("id") for m in (resp.json().get("data") or []) if m.get("id")]
+            return ids or list(MODELOS_CURADOS)
+        except Exception:
+            return list(MODELOS_CURADOS)
 
     def consultar_saldo(self) -> dict:
         """Deepseek expone `GET /user/balance` con Bearer.

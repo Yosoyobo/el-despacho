@@ -41,12 +41,15 @@ API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 # Si cambias a gemini-2.5-pro, ajusta a 1.25 in / 10.00 out.
 PRECIO_IN = 0.30 / 1_000_000
 PRECIO_OUT = 2.50 / 1_000_000
+MODELOS_CURADOS = ("gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash")
 
 
 class GeminiAdapter(Adapter):
     nombre = "gemini"
     apodo = "Chalán Gemini"
     capacidades = frozenset({Capability.TEXTO, Capability.VISION, Capability.FUNCTION_CALLING})
+    modelo_default = MODELO_DEFAULT
+    modelos_curados = MODELOS_CURADOS
 
     def __init__(self, modelo: str = MODELO_DEFAULT, timeout: float = 30.0):
         self.modelo = modelo
@@ -109,6 +112,25 @@ class GeminiAdapter(Adapter):
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
             latencia_ms=latencia,
         )
+
+    def listar_modelos(self) -> list[str]:
+        try:
+            llave = self._llave()
+        except Exception:
+            return list(MODELOS_CURADOS)
+        try:
+            resp = httpx.get(API_URL_BASE, params={"key": llave}, timeout=self.timeout)
+            if resp.status_code != 200:
+                return list(MODELOS_CURADOS)
+            out = []
+            for m in (resp.json().get("models") or []):
+                name = (m.get("name") or "").replace("models/", "")
+                metodos = m.get("supportedGenerationMethods") or []
+                if name.startswith("gemini") and (not metodos or "generateContent" in metodos):
+                    out.append(name)
+            return sorted(set(out)) or list(MODELOS_CURADOS)
+        except Exception:
+            return list(MODELOS_CURADOS)
 
     def consultar_saldo(self) -> dict:
         # Google no expone API pública de saldo del API key. Link a consola.

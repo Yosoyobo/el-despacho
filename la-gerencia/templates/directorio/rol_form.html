@@ -5,7 +5,7 @@
 {% breadcrumb_items "Directorio" "/directorio/" "Roles" "/directorio/roles/" rol.nombre|default:"Nuevo" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=modo|title|add:" rol" breadcrumb_items=breadcrumb_items back_url="/directorio/roles/" back_label="Roles" %}
 
-<form method="post" class="max-w-3xl">
+<form method="post" class="max-w-5xl">
     {% csrf_token %}
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="space-y-5">
@@ -23,13 +23,32 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>
                 <input type="text" name="descripcion" value="{{ descripcion|default:'' }}" placeholder="Para qué sirve este rol" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
             </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Permisos (JSON)</label>
-                <textarea name="permisos_json" rows="14" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs dark:border-gray-700 dark:bg-gray-900">{{ permisos_json }}</textarea>
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Formato: <code>{"modulo": ["accion1", "accion2"]}</code>. Módulos válidos: cartera, proyectos, pizarron, buzon, recados, tesoreria, contaduria, catalogo, cotizaciones, facturacion, dictado, gerencia. Las acciones dependen de cada módulo (ver módulos sistema existentes para referencia).</p>
-            </div>
         </div>
     </section>
+
+    {# Grilla de permisos por checkbox — idéntica al editor por-usuario. #}
+    <div class="mt-5">
+        <h2 class="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">Permisos del rol</h2>
+        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Marca las acciones que este rol concede. Se suman al rol primario del usuario.</p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {% for modulo, filas in secciones %}
+            <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+                    <h3 class="text-sm font-semibold capitalize text-gray-900 dark:text-gray-100">{{ modulo }}</h3>
+                </header>
+                <div class="flex flex-wrap gap-2 p-4">
+                    {% for permiso, activo in filas %}
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10">
+                        <input type="checkbox" name="permisos" value="{{ modulo }}.{{ permiso }}" {% if activo %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500">
+                        <span>{{ permiso }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+    </div>
+
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
         <a href="{% url 'directorio-roles' %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar rol</button>

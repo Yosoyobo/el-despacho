@@ -27,6 +27,7 @@ COPY auth_google/ /app/auth_google/
 COPY proximamente/ /app/proximamente/
 COPY referencias/ /app/referencias/
 COPY chalanes/ /app/chalanes/
+COPY campanas/ /app/campanas/
 # S-LC-Feedback-V3: docs/ se copia al contenedor para que /ayuda/ pueda
 # leer el manual de usuario en runtime.
 COPY docs/ /app/docs/

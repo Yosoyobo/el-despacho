@@ -207,24 +207,17 @@ def roles_lista(request):
 @requires_role("super_admin")
 @require_http_methods(["GET", "POST"])
 def rol_nuevo(request):
-    import json as _json
-
     from cuentas.models.rol import Rol
     if request.method == "POST":
         nombre = (request.POST.get("nombre") or "").strip()
         descripcion = (request.POST.get("descripcion") or "").strip()
-        permisos_raw = (request.POST.get("permisos_json") or "{}").strip()
+        permisos = _permisos_desde_checkboxes(request)
         if not nombre:
             messages.error(request, "El nombre del rol es obligatorio.")
-            return render(request, "directorio/rol_form.html", {"modo": "nuevo", "nombre": nombre, "descripcion": descripcion, "permisos_json": permisos_raw})
-        try:
-            permisos = _json.loads(permisos_raw) if permisos_raw else {}
-        except _json.JSONDecodeError as e:
-            messages.error(request, f"Permisos JSON inválido: {e}")
-            return render(request, "directorio/rol_form.html", {"modo": "nuevo", "nombre": nombre, "descripcion": descripcion, "permisos_json": permisos_raw})
+            return render(request, "directorio/rol_form.html", {"modo": "nuevo", "nombre": nombre, "descripcion": descripcion, "secciones": _secciones_rol(permisos)})
         if Rol.objects.filter(nombre=nombre).exists():
             messages.error(request, f"Ya existe un rol llamado «{nombre}».")
-            return render(request, "directorio/rol_form.html", {"modo": "nuevo", "nombre": nombre, "descripcion": descripcion, "permisos_json": permisos_raw})
+            return render(request, "directorio/rol_form.html", {"modo": "nuevo", "nombre": nombre, "descripcion": descripcion, "secciones": _secciones_rol(permisos)})
         rol = Rol.objects.create(nombre=nombre, descripcion=descripcion, permisos=permisos, sistema=False)
         emitir(EventoPortavoz(
             tipo="rol.creado", actor_id=request.user.pk, actor_email=request.user.email,
@@ -232,14 +225,12 @@ def rol_nuevo(request):
         ))
         messages.success(request, f"Rol «{rol.nombre}» creado.")
         return redirect("directorio-roles")
-    return render(request, "directorio/rol_form.html", {"modo": "nuevo", "permisos_json": "{}"})
+    return render(request, "directorio/rol_form.html", {"modo": "nuevo", "secciones": _secciones_rol({})})
 
 
 @requires_role("super_admin")
 @require_http_methods(["GET", "POST"])
 def rol_editar(request, pk: int):
-    import json as _json
-
     from cuentas.models.rol import Rol
     rol = get_object_or_404(Rol, pk=pk)
     if request.method == "POST":
@@ -247,12 +238,7 @@ def rol_editar(request, pk: int):
             messages.error(request, "El rol super_admin del sistema no se puede editar.")
             return redirect("directorio-roles")
         descripcion = (request.POST.get("descripcion") or "").strip()
-        permisos_raw = (request.POST.get("permisos_json") or "{}").strip()
-        try:
-            permisos = _json.loads(permisos_raw) if permisos_raw else {}
-        except _json.JSONDecodeError as e:
-            messages.error(request, f"Permisos JSON inválido: {e}")
-            return render(request, "directorio/rol_form.html", {"modo": "editar", "rol": rol, "nombre": rol.nombre, "descripcion": descripcion, "permisos_json": permisos_raw})
+        permisos = _permisos_desde_checkboxes(request)
         rol.descripcion = descripcion
         rol.permisos = permisos
         rol.save()
@@ -266,7 +252,7 @@ def rol_editar(request, pk: int):
         "modo": "editar", "rol": rol,
         "nombre": rol.nombre,
         "descripcion": rol.descripcion,
-        "permisos_json": __import__("json").dumps(rol.permisos, indent=2, ensure_ascii=False),
+        "secciones": _secciones_rol(rol.permisos),
     })
 
 
@@ -340,13 +326,45 @@ def _ctx_ia(usuario) -> dict:
 
 
 def _secciones_permisos(u):
+    """Grilla módulo×acción para el editor por-usuario. Muestra TODO el catálogo
+    (no solo los defaults del rol primario) para poder conceder cualquier permiso
+    a cualquier usuario — incluido `miembro`, que no tiene defaults. El estado
+    "marcado por default" sigue lo que el rol primario otorga."""
+    from lib.permisos_defaults import catalogo_permisos, defaults_de
     activos = {
         (p.modulo, p.permiso): p.activo
         for p in PermisoUsuario.objects.filter(usuario=u)
     }
+    base = defaults_de(u.rol)
     secciones = []
-    for modulo, permisos_lista in DEFAULTS_POR_ROL.get(u.rol, {}).items():
-        filas = [(p, activos.get((modulo, p), True)) for p in permisos_lista]
+    for modulo, permisos_lista in catalogo_permisos().items():
+        defm = base.get(modulo, [])
+        filas = [(p, activos.get((modulo, p), p in defm)) for p in permisos_lista]
+        secciones.append((modulo, filas))
+    return secciones
+
+
+def _permisos_desde_checkboxes(request):
+    """Arma el dict {modulo: [acciones]} desde los checkboxes `permisos`
+    (valor `modulo.accion`), validando contra el catálogo canónico."""
+    from lib.permisos_defaults import catalogo_permisos
+    sel = set(request.POST.getlist("permisos"))
+    out: dict[str, list[str]] = {}
+    for modulo, acciones in catalogo_permisos().items():
+        elegidas = [a for a in acciones if f"{modulo}.{a}" in sel]
+        if elegidas:
+            out[modulo] = elegidas
+    return out
+
+
+def _secciones_rol(permisos):
+    """Grilla módulo×acción para el form de Rol, con las acciones del rol marcadas."""
+    from lib.permisos_defaults import catalogo_permisos
+    permisos = permisos or {}
+    secciones = []
+    for modulo, acciones in catalogo_permisos().items():
+        marcadas = set(permisos.get(modulo) or [])
+        filas = [(a, a in marcadas) for a in acciones]
         secciones.append((modulo, filas))
     return secciones
 
@@ -443,8 +461,9 @@ def panel_permisos(request, pk: int):
     from cuentas.models.rol import Rol
     u = get_object_or_404(Usuario, pk=pk)
     if request.method == "POST":
+        from lib.permisos_defaults import catalogo_permisos
         seleccionados = set(request.POST.getlist("permisos"))
-        for modulo, permisos_lista in DEFAULTS_POR_ROL.get(u.rol, {}).items():
+        for modulo, permisos_lista in catalogo_permisos().items():
             for permiso in permisos_lista:
                 PermisoUsuario.objects.update_or_create(
                     usuario=u, modulo=modulo, permiso=permiso,

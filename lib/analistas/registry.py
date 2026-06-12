@@ -51,6 +51,57 @@ def apodo(nombre: str) -> str:
     return getattr(factory, "apodo", nombre) or nombre
 
 
+def modelo_default_de(nombre: str) -> str:
+    """Modelo predeterminado de un proveedor (espejo de su MODELO_DEFAULT)."""
+    factory = _FACTORIES.get(nombre)
+    if factory is None:
+        return ""
+    return getattr(factory, "modelo_default", "") or ""
+
+
+def modelos_por_proveedor(forzar: bool = False) -> dict[str, list[str]]:
+    """Mapa {proveedor: [modelos disponibles]} para poblar el dropdown del Cuadro.
+
+    Consulta cada adapter (que pega a la API del proveedor con las credenciales
+    actuales) y cachea ~1h en el cache de Django. `forzar=True` ignora el cache.
+    Best-effort: un proveedor sin llave o con la API caída cae a su lista curada.
+    """
+    try:
+        from django.core.cache import cache
+    except Exception:
+        cache = None
+    out: dict[str, list[str]] = {}
+    for nombre, factory in _FACTORIES.items():
+        clave = f"chalan_modelos_{nombre}"
+        modelos = None if forzar else (cache.get(clave) if cache else None)
+        if modelos is None:
+            try:
+                modelos = factory().listar_modelos()
+            except Exception:
+                modelos = []
+            if cache:
+                cache.set(clave, modelos, 3600)
+        out[nombre] = modelos
+    return out
+
+
+def modelo_valido(proveedor: str, modelo: str) -> str:
+    """Normaliza el modelo para un proveedor.
+
+    Si el modelo no está entre los disponibles del proveedor (cross-wiring),
+    devuelve el MODELO_DEFAULT del proveedor. Si no se pudo listar (API caída),
+    respeta lo que venga. Vacío → default.
+    """
+    if proveedor not in _FACTORIES:
+        return modelo
+    if not modelo:
+        return modelo_default_de(proveedor)
+    disponibles = modelos_por_proveedor().get(proveedor) or []
+    if disponibles and modelo not in disponibles:
+        return modelo_default_de(proveedor) or modelo
+    return modelo
+
+
 def _resolver_primario(estacion: str, usuario_id: int | None) -> tuple[str, str | None] | None:
     try:
         from chalanes.models import ChalanAsignado, CuadroChalanes

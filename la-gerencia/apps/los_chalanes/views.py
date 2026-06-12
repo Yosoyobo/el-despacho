@@ -18,7 +18,7 @@ from ajustes.models.analistas_log import AnalistaLog
 from ajustes.models.credencial import Credencial
 from chalanes.models import Aprendizaje, CadenaFallback, CuadroChalanes
 from chalanes.models.cuadro_chalanes import PROVEEDORES
-from lib.analistas.registry import adapter_de
+from lib.analistas.registry import adapter_de, modelo_valido, modelos_por_proveedor
 from lib.analistas.stats import (
     estadisticas_por_estacion,
     kpis_consumo,
@@ -37,11 +37,18 @@ from .forms import AprendizajeForm
 
 @requires_role("super_admin", "dueno")
 def panel(request):
+    import json as _json
+
     cuadro = CuadroChalanes.objects.all().order_by("estacion")
     cadena = CadenaFallback.objects.all().order_by("prioridad")
     logs = AnalistaLog.objects.all().order_by("-creado_en")[:50]
+    # Mapa {proveedor: [modelos]} para el dropdown dependiente del Chalán.
+    # forzar=1 (solo super_admin) re-consulta las APIs ignorando el cache.
+    forzar = request.GET.get("refrescar_modelos") == "1" and es_super_admin(request.user)
+    modelos_map = modelos_por_proveedor(forzar=forzar)
     return render(request, "los_chalanes/panel.html", {
         "cuadro": cuadro,
+        "modelos_por_proveedor_json": _json.dumps(modelos_map, ensure_ascii=False),
         "cadena": cadena,
         "logs": logs,
         "puede_modificar": es_super_admin(request.user),
@@ -232,14 +239,21 @@ def guardar_cuadro(request):
     if not fila:
         messages.error(request, f"Estación desconocida: {estacion}")
         return redirect("los_chalanes:panel")
+    # Anti cross-wiring: si el modelo no pertenece al proveedor, cae a su default.
+    modelo_norm = modelo_valido(proveedor, modelo)
     fila.proveedor = proveedor
-    fila.modelo = modelo
+    fila.modelo = modelo_norm
     fila.actualizado_por = request.user
     fila.save()
     with contextlib.suppress(Exception):
         emitir({"tipo": "chalanes.cuadro_actualizado", "estacion": estacion,
-                "proveedor": proveedor, "modelo": modelo, "actor_id": request.user.pk})
-    messages.success(request, f"Estación '{estacion}' → {proveedor}.")
+                "proveedor": proveedor, "modelo": modelo_norm, "actor_id": request.user.pk})
+    if modelo and modelo_norm != modelo:
+        messages.warning(
+            request,
+            f"'{modelo}' no es un modelo de {proveedor}; se ajustó a '{modelo_norm}'.",
+        )
+    messages.success(request, f"Estación '{estacion}' → {proveedor} · {modelo_norm}.")
     return redirect("los_chalanes:panel")
 
 

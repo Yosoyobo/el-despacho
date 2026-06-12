@@ -62,7 +62,7 @@ def test_post_sin_confirmar_muestra_confirmacion(client, entorno):
         }).content.decode()
         m.assert_not_called()
     assert "Vas a enviar este correo a 3 cliente" in body
-    from apps.campanas.models import CampanaCorreo
+    from campanas.models import CampanaCorreo
     assert CampanaCorreo.objects.count() == 0
 
 
@@ -78,7 +78,7 @@ def test_envio_confirmado_best_effort(client, entorno):
             "clientes": [c.pk for c in clientes], "confirmado": "1",
         }, follow=True)
     assert resp.status_code == 200
-    from apps.campanas.models import CampanaCorreo
+    from campanas.models import CampanaCorreo
     campana = CampanaCorreo.objects.get()
     assert campana.total_destinatarios == 3
     assert campana.enviados == 2

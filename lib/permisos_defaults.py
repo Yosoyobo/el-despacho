@@ -123,6 +123,34 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
 }
 
 
+# Catálogo canónico módulo→acciones. FUENTE ÚNICA para los editores de permisos
+# (grilla del form de Rol y grilla por-usuario). Incluye TODAS las acciones de
+# cada módulo — independiente del rol primario, para poder conceder cualquier
+# permiso a cualquier usuario (incluido `miembro`, que no tiene defaults).
+CATALOGO_PERMISOS: dict[str, list[str]] = {
+    "cartera": list(TODO_CARTERA),
+    "proyectos": list(TODO_PROYECTOS),
+    "pizarron": list(TODO_PIZARRON),
+    "buzon": list(TODO_BUZON),
+    "recados": list(TODO_RECADOS),
+    "tesoreria": list(TODO_TESORERIA),
+    "dictado": list(TODO_DICTADO),
+    "contaduria": list(TODO_CONTADURIA),
+    "catalogo": list(TODO_CATALOGO),
+    "cotizaciones": list(TODO_COTIZACIONES),
+    "facturacion": list(TODO_FACTURACION),
+    "chalan": list(TODO_CHALAN),
+    "checador": list(TODO_CHECADOR),
+    "comunicacion": list(TODO_COMUNICACION),
+    "gerencia": ["acceder"],
+}
+
+
 def defaults_de(rol: str) -> dict[str, list[str]]:
     """Devuelve dict {modulo: [permisos]} para un rol. Vacío si rol desconocido."""
     return DEFAULTS_POR_ROL.get(rol, {})
+
+
+def catalogo_permisos() -> dict[str, list[str]]:
+    """Catálogo canónico módulo→[acciones] — todas las acciones de cada módulo."""
+    return {m: list(a) for m, a in CATALOGO_PERMISOS.items()}

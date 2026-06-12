@@ -34,6 +34,7 @@ urlpatterns = [
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),
     path("ayuda/", include("apps.ayuda.urls")),
+    path("", include("campanas.urls")),
 ]
 
 handler404 = _err.handler404

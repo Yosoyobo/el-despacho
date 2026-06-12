@@ -63,6 +63,8 @@ INSTALLED_APPS = [
     "apps.checador.apps.CheckadorConfig",
     # S-LC-Feedback-V3: página de ayuda con manual de usuario.
     "apps.ayuda.apps.AyudaConfig",
+    # Campañas de correo masivo: app raíz compartida; la UI/operación vive aquí.
+    "campanas.apps.CampanasConfig",
 ]
 
 MIDDLEWARE = [

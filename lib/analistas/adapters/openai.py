@@ -12,12 +12,15 @@ from ..capacidades import Capability
 MODELO_DEFAULT = "gpt-4o-mini"
 PRECIO_IN = 0.15 / 1_000_000
 PRECIO_OUT = 0.60 / 1_000_000
+MODELOS_CURADOS = ("gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini", "o4-mini")
 
 
 class OpenAIAdapter(Adapter):
     nombre = "openai"
     apodo = "Chalán GPT"
     capacidades = frozenset({Capability.TEXTO, Capability.VISION, Capability.FUNCTION_CALLING})
+    modelo_default = MODELO_DEFAULT
+    modelos_curados = MODELOS_CURADOS
 
     def __init__(self, modelo: str = MODELO_DEFAULT, timeout: float = 30.0):
         self.modelo = modelo
@@ -72,6 +75,26 @@ class OpenAIAdapter(Adapter):
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
             latencia_ms=latencia,
         )
+
+    def listar_modelos(self) -> list[str]:
+        try:
+            llave = self._llave()
+        except Exception:
+            return list(MODELOS_CURADOS)
+        try:
+            resp = httpx.get(
+                "https://api.openai.com/v1/models",
+                headers={"Authorization": f"Bearer {llave}"},
+                timeout=self.timeout,
+            )
+            if resp.status_code != 200:
+                return list(MODELOS_CURADOS)
+            ids = [m.get("id") for m in (resp.json().get("data") or []) if m.get("id")]
+            # El endpoint lista embeddings/whisper/tts/etc. — filtra a modelos de chat.
+            chat = sorted(i for i in ids if i.startswith(("gpt", "o1", "o3", "o4", "chatgpt")))
+            return chat or list(MODELOS_CURADOS)
+        except Exception:
+            return list(MODELOS_CURADOS)
 
     def consultar_saldo(self) -> dict:
         # OpenAI deprecó `/v1/dashboard/billing/credit_grants`. Link al dashboard.

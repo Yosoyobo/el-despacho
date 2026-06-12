@@ -53,10 +53,23 @@ class Adapter(ABC):
     nombre: str = ""
     apodo: str = ""
     capacidades: frozenset = frozenset()
+    # Modelo predeterminado del proveedor (espejo del MODELO_DEFAULT del módulo).
+    modelo_default: str = ""
+    # Lista corta de modelos conocidos — fallback cuando la API no responde.
+    modelos_curados: tuple = ()
 
     @abstractmethod
     def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float,
                  imagenes: list | None = None) -> Resultado: ...
+
+    def listar_modelos(self) -> list[str]:
+        """Modelos disponibles para este proveedor con las credenciales actuales.
+
+        Best-effort: las subclases consultan el endpoint del proveedor y caen a
+        `modelos_curados` si la API falla o no hay llave. NUNCA lanza. La capa
+        que la usa (panel de Chalanes) cachea el resultado ~1h.
+        """
+        return list(self.modelos_curados)
 
     def analizar(self, prompt: str, *, max_tokens: int = 400, temperatura: float = 0.4,
                  imagenes: list | None = None) -> Resultado:

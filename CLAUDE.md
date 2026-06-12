@@ -3875,6 +3875,47 @@ confirme que los roles personalizados cubren todo; validación visual en
 iPhone/Android real (Bloque 8/9 acceptance manual); pasos manuales de Oscar
 para El Envoltorio (keystore + fingerprint en Caddyfile + APK).
 
+### S-Chalanes-Roles-Correos ✅ — 4 fixes (2026-06-12, VERSION 2026.06.44)
+
+Ronda de bugs + mejora de Oscar. Manual de deploy manual en
+`docs/DEPLOY_MANUAL_S-Chalanes-Roles-Correos.md`. Suite verde
+(Gerencia 192 + taller/raíz afectados).
+
+- **Modelos del Cuadro de Chalanes (raíz del "Deepseek falla 400")**: el campo
+  `modelo` era texto libre y al cambiar el Chalán quedaba pegado un modelo de
+  otro proveedor (ej. Deepseek + `claude-haiku-4-5` → 400). Cada adapter gana
+  `listar_modelos()` (API del proveedor con la credencial → fallback
+  `modelos_curados`) + class attrs `modelo_default`/`modelos_curados`.
+  `registry.modelos_por_proveedor()` (cache Django 1h) + `modelo_valido()`
+  (anti cross-wiring) + `modelo_default_de()`. `guardar_cuadro` normaliza
+  proveedor↔modelo. Template: `<input>` → `<select>` dependiente del Chalán
+  (JS reconstruye opciones al cambiar proveedor, opción "✏️ Otro…", link
+  "↻ Refrescar lista de modelos" con `?refrescar_modelos=1`). Migración
+  `chalanes/0012_enderezar_modelos_cuadro` (data, idempotente) endereza filas
+  viejas por prefijo de familia.
+- **Cables cruzados (redactar comentario → update)**: mismo origen (fallback a
+  mimo tras el 400). `lib/redactor_ia.py` `_SYSTEM` reescrito ("mejora SOLO el
+  borrador, el contexto es para resolver @#$, NUNCA generar reporte") y
+  colocado ANTES de `preludio()` para que la intención gobierne sobre la voz.
+- **Roles con checkboxes**: fuente única `lib.permisos_defaults.CATALOGO_PERMISOS`
+  + `catalogo_permisos()`. Form de Rol (Gerencia → Directorio → Roles) pasó de
+  textarea JSON a grilla de checkboxes idéntica al editor por-usuario
+  (`_permisos_desde_checkboxes`, `_secciones_rol`). **Fix de fondo**: el editor
+  por-usuario (`_secciones_permisos`) y el POST de `panel_permisos` ahora
+  iteran TODO el catálogo (antes solo `DEFAULTS_POR_ROL[u.rol]`), así un
+  `miembro` (sin defaults) ya puede recibir cualquier permiso.
+- **Campañas movidas Gerencia → Taller** (decisión Oscar — Gerencia=config,
+  Taller=operación): la app `campanas` pasó de `la-gerencia/apps/campanas` a
+  **app raíz `campanas/`** (label sigue `campanas`, tablas `campanas_*` intactas
+  → SIN migración de schema; la fila `(campanas,0001_initial)` sigue válida).
+  Instalada en INSTALLED_APPS de AMBOS projects (Gerencia migra, Bug B §14),
+  URLs+sidebar SOLO en Taller gateadas por `(comunicacion, campanas)`. Templates
+  a `el-taller/templates/campanas/`. COPY en ambos Dockerfiles. Gerencia conserva
+  la config de El Cartero. El ejecutor `enviar_correo` del Chalán se queda en
+  Taller (es operación, no campaña).
+- Tests nuevos: `tests/test_modelo_cuadro.py` (4) + `tests/gerencia/test_rol_checkboxes.py`
+  (2). `tests/gerencia/test_campanas.py` actualizado a `from campanas.models`.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

@@ -135,7 +135,8 @@
 <section class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <header class="border-b border-gray-200 px-5 py-3 dark:border-gray-800">
         <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">El Cuadro de Chalanes</h2>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Una fila por estación. Cambia el Chalán predeterminado del equipo.</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Una fila por estación. Cambia el Chalán predeterminado del equipo. Al cambiar el Chalán, los modelos se ajustan a los disponibles con esas credenciales.
+            {% if puede_modificar %}<a href="?refrescar_modelos=1" class="ml-1 text-brand-500 hover:underline">↻ Refrescar lista de modelos</a>{% endif %}</p>
     </header>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
@@ -158,7 +159,7 @@
                     </td>
                     <td class="px-5 py-3">
                         {% if puede_modificar %}
-                        <select name="proveedor" class="rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <select name="proveedor" data-cuadro-proveedor class="rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
                             {% for valor, etiqueta in proveedores_opciones %}
                             <option value="{{ valor }}" {% if fila.proveedor == valor %}selected{% endif %}>{{ etiqueta }}</option>
                             {% endfor %}
@@ -169,7 +170,9 @@
                     </td>
                     <td class="px-5 py-3">
                         {% if puede_modificar %}
-                        <input name="modelo" value="{{ fila.modelo }}" class="w-48 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <select name="modelo" data-cuadro-modelo data-actual="{{ fila.modelo }}" class="w-48 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <option value="{{ fila.modelo }}" selected>{{ fila.modelo }}</option>
+                        </select>
                         {% else %}<span class="font-mono text-xs text-gray-600 dark:text-gray-400">{{ fila.modelo }}</span>{% endif %}
                     </td>
                     <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ fila.descripcion }}</td>
@@ -184,6 +187,55 @@
         </tbody>
     </table>
 </section>
+
+{% if puede_modificar %}
+<script id="chalanes-modelos-data" type="application/json">{{ modelos_por_proveedor_json|safe }}</script>
+<script>
+(function () {
+  var MAP = {};
+  try { MAP = JSON.parse(document.getElementById("chalanes-modelos-data").textContent); } catch (e) {}
+  function repoblar(form) {
+    var prov = form.querySelector("[data-cuadro-proveedor]");
+    var sel = form.querySelector("[data-cuadro-modelo]");
+    if (!prov || !sel) return;
+    var actual = sel.getAttribute("data-actual") || sel.value || "";
+    var lista = (MAP[prov.value] || []).slice();
+    if (actual && lista.indexOf(actual) === -1) lista.unshift(actual);
+    sel.innerHTML = "";
+    lista.forEach(function (m) {
+      var o = document.createElement("option");
+      o.value = m; o.textContent = m;
+      if (m === actual) o.selected = true;
+      sel.appendChild(o);
+    });
+    var otro = document.createElement("option");
+    otro.value = "__otro__"; otro.textContent = "✏️ Otro…";
+    sel.appendChild(otro);
+  }
+  document.querySelectorAll("[data-cuadro-proveedor]").forEach(function (prov) {
+    var form = prov.closest("form");
+    repoblar(form);
+    prov.addEventListener("change", function () {
+      var sel = form.querySelector("[data-cuadro-modelo]");
+      if (sel) sel.removeAttribute("data-actual"); // al cambiar Chalán, no fuerces el modelo viejo
+      repoblar(form);
+    });
+    var modeloSel = form.querySelector("[data-cuadro-modelo]");
+    if (modeloSel) modeloSel.addEventListener("change", function () {
+      if (this.value !== "__otro__") return;
+      var custom = (window.prompt("Nombre exacto del modelo:") || "").trim();
+      if (custom) {
+        var o = document.createElement("option");
+        o.value = custom; o.textContent = custom; o.selected = true;
+        this.insertBefore(o, this.firstChild);
+      } else {
+        this.selectedIndex = 0;
+      }
+    });
+  });
+})();
+</script>
+{% endif %}
 
 {# ── Sección 2: La Cadena de Fallback ────────────────────────────────── #}
 <section class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

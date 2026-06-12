@@ -5,6 +5,28 @@
 
 ---
 
+## Novedades — Chalanes más confiables, roles con casillas y campañas en El Taller (12 de junio de 2026)
+
+- **Los Chalanes ya no se "cruzan".** En La Gerencia → Chalanes, el **modelo**
+  de cada estación ahora es una lista que **cambia sola** según el Chalán que
+  elijas, mostrando solo los modelos que funcionan con esas credenciales. Esto
+  arregla los errores en los que un Chalán fallaba por tener asignado un modelo
+  que no le corresponde. (Botón **"↻ Refrescar lista de modelos"** si acabas de
+  cargar una credencial nueva.)
+- **El botón "🤖 Redactar" respeta tu borrador.** Antes, al pedirle que
+  redactara un comentario corto, a veces devolvía un "reporte" largo del
+  proyecto. Ahora **mejora exactamente lo que escribiste**, sin inventar un
+  informe.
+- **Roles con casillas.** Al crear o editar un rol en La Gerencia → Directorio
+  → Roles, ya **no se escribe nada técnico**: marcas con casillas qué puede
+  hacer el rol, módulo por módulo — igual que la pantalla de permisos de cada
+  usuario. Además, ahora puedes **conceder cualquier permiso a cualquier
+  persona**, aunque su rol sea "Miembro".
+- **Campañas de correo, ahora en El Taller.** El módulo para **enviar
+  campañas** a clientes se movió al Taller (es trabajo del día a día). En La
+  Gerencia queda solo la **configuración** del correo. Aparece en el menú del
+  Taller para quien tenga el permiso de campañas.
+
 ## Novedades — La gran puesta al día: Tareas con Kanban, correos a clientes, campañas y mucho más (12 de junio de 2026)
 
 Esta entrega atiende **todos los comentarios pendientes del buzón**:
