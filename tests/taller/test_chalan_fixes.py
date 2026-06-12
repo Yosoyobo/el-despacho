@@ -86,13 +86,18 @@ def test_actualizar_proyecto_fecha_top_level(usuario_factory, cliente_factory):
 
 
 def test_tareas_lista_carga(client, usuario_factory, cliente_factory):
+    """V6 Bloque 2: /tareas/ es Kanban con default 'mis tareas' — la tarea
+    debe estar asignada al actor para aparecer sin filtros."""
     from apps.el_pizarron.models import Tarea
     from apps.los_proyectos.models import Proyecto
     actor = usuario_factory(rol="dueno")
     cliente = cliente_factory()
     proy = Proyecto.objects.create(nombre="Proy", cliente=cliente, creado_por=actor)
-    Tarea.objects.create(proyecto=proy, titulo="Revisar arte", estado="pendiente", creado_por=actor)
+    Tarea.objects.create(proyecto=proy, titulo="Revisar arte", estado="pendiente",
+                         creado_por=actor, asignada_a=actor)
     client.force_login(actor)
     resp = client.get("/tareas/")
     assert resp.status_code == 200
     assert b"Revisar arte" in resp.content
+    # La vista de lista tabular sigue viva en /tareas/lista/.
+    assert client.get("/tareas/lista/").status_code == 200

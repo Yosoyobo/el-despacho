@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Nueva tarea — El Taller{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Tareas" "/tareas/" "Nueva tarea" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Nueva tarea" subtitulo="Proyecto, persona, fecha y tipo — todo con un click." breadcrumb_items=breadcrumb_items back_url="/tareas/" back_label="Tareas" %}
+
+<form method="post" class="max-w-3xl">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<ul class="mb-3 text-sm text-error-600 dark:text-error-400">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {# 1. Proyecto — pastillas clickeables con filtro rápido. #}
+        <div>
+            <div class="mb-2 flex items-center justify-between gap-2">
+                <label class="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Proyecto <span class="text-error-500">*</span></label>
+                <input type="text" id="filtro-proyectos" placeholder="Filtrar…" class="w-36 rounded-lg border border-gray-200 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800" autocomplete="off">
+            </div>
+            {% if form.proyecto.errors %}<p class="mb-2 text-xs text-error-600 dark:text-error-400">{{ form.proyecto.errors.0 }}</p>{% endif %}
+            <div id="chips-proyecto" class="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                {% for p in proyectos_chips %}
+                <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm transition hover:border-gray-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10" data-chip-proyecto="{{ p.nombre|lower }} {{ p.cliente.razon_social|lower }} {{ p.codigo|lower }}">
+                    <input type="radio" name="proyecto" value="{{ p.pk }}" class="sr-only" {% if form.proyecto.value|stringformat:"s" == p.pk|stringformat:"s" %}checked{% endif %}>
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ p.nombre }}</span>
+                        <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ p.cliente.razon_social }} · {{ p.codigo }}</span>
+                    </span>
+                </label>
+                {% empty %}
+                <p class="text-sm text-gray-400">No hay proyectos activos. <a href="/proyectos/nuevo/" class="text-brand-600 underline">Crea uno primero</a>.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# 2. Nombre. #}
+        <div class="mt-5">
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nombre de la tarea <span class="text-error-500">*</span></label>
+            {% if form.titulo.errors %}<p class="mb-1 text-xs text-error-600 dark:text-error-400">{{ form.titulo.errors.0 }}</p>{% endif %}
+            {{ form.titulo }}
+        </div>
+
+        {# 3. Persona — un click. #}
+        <div class="mt-5">
+            <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Asignar a <span class="text-error-500">*</span></label>
+            {% if form.asignada_a.errors %}<p class="mb-2 text-xs text-error-600 dark:text-error-400">{{ form.asignada_a.errors.0 }}</p>{% endif %}
+            <div class="flex flex-wrap gap-2">
+                {% for u in usuarios_chips %}
+                <label class="cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-sm transition hover:border-gray-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:font-medium dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                    <input type="radio" name="asignada_a" value="{{ u.pk }}" class="sr-only" {% if form.asignada_a.value|stringformat:"s" == u.pk|stringformat:"s" %}checked{% endif %}>
+                    {{ u.get_short_name|default:u.email }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# 4. Fecha (click en el calendario) + hora. #}
+        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Fecha <span class="text-error-500">*</span></label>
+                {% if form.fecha_compromiso.errors %}<p class="mb-1 text-xs text-error-600 dark:text-error-400">{{ form.fecha_compromiso.errors.0 }}</p>{% endif %}
+                {{ form.fecha_compromiso }}
+            </div>
+            <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Hora (opcional)</label>
+                {{ form.hora }}
+            </div>
+        </div>
+
+        {# 5. Tipo — un click (Tarea default). #}
+        <div class="mt-5">
+            <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo</label>
+            <div class="flex flex-wrap gap-2">
+                {% for valor, etiqueta in tipos_chips %}
+                <label class="cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-sm transition hover:border-gray-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:font-medium dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                    <input type="radio" name="tipo" value="{{ valor }}" class="sr-only" {% if form.tipo.value|default:"tarea" == valor %}checked{% endif %}>
+                    {{ etiqueta }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Descripción opcional, compacta. #}
+        <div class="mt-5">
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción (opcional)</label>
+            {{ form.descripcion }}
+        </div>
+        {{ form.prioridad.as_hidden }}
+    </section>
+
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <a href="/tareas/" class="btn-secundario">Cancelar</a>
+        <button type="submit" class="btn-primario">Crear tarea</button>
+    </div>
+</form>
+
+<script>
+(function () {
+    // Filtro rápido client-side de los chips de proyecto.
+    const input = document.getElementById('filtro-proyectos');
+    if (!input) return;
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        document.querySelectorAll('[data-chip-proyecto]').forEach(ch => {
+            ch.classList.toggle('hidden', q && !ch.getAttribute('data-chip-proyecto').includes(q));
+        });
+    });
+})();
+</script>
+{% endblock %}

@@ -3,7 +3,7 @@
 {% block title %}Tareas — El Taller{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Tareas" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Todas tus tareas en un solo lugar" breadcrumb_items=breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Todas tus tareas en un solo lugar" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/" class="btn-secundario">Ver Kanban</a>' %}
 
 {# KPIs hero #}
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">

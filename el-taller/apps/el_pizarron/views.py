@@ -1,4 +1,4 @@
-from apps.el_pizarron.forms import ComentarioForm, TareaForm
+from apps.el_pizarron.forms import ComentarioForm, TareaForm, TareaGlobalForm
 from apps.el_pizarron.models import Tarea
 from apps.los_proyectos.models import Proyecto
 from django.contrib import messages
@@ -95,6 +95,167 @@ def lista_tareas(request):
         "solo_mias": solo_mias,
         "kpis": kpis,
         "ve_todo": ve_todo,
+    })
+
+
+def _tareas_visibles(user):
+    from django.db.models import Q
+    visibles = Tarea.objects.select_related("proyecto", "asignada_a", "proyecto__cliente")
+    if not (es_admin(user) or puede_ver_finanzas(user)):
+        visibles = visibles.filter(
+            Q(asignada_a=user) | Q(proyecto__asignaciones__usuario=user)
+        ).distinct()
+    return visibles
+
+
+def _qs_filtros(estados_sel, personas_sel):
+    """Querystring canónico de los filtros combinables del Kanban."""
+    partes = ["f=1"]
+    partes += [f"estado={s}" for s in sorted(estados_sel)]
+    partes += [f"persona={p}" for p in sorted(personas_sel)]
+    return "?" + "&".join(partes)
+
+
+@login_required
+def kanban_tareas(request):
+    """Página Tareas (V6 Bloque 2A): Kanban por estado. Default = mis tareas.
+    Filtros de botones siempre visibles y COMBINABLES: estados + personas.
+    Estados activos en una fila arriba; terminales (cerradas) en una fila abajo.
+    """
+    from apps.el_pizarron.models.estado_tarea import EstadoTarea
+
+    user = request.user
+    visibles = _tareas_visibles(user)
+
+    estados_def = list(EstadoTarea.objects.filter(activo=True))
+    slugs_validos = {e.slug for e in estados_def}
+
+    estados_sel = {s for s in request.GET.getlist("estado") if s in slugs_validos}
+    personas_sel = {p for p in request.GET.getlist("persona") if p.isdigit()}
+    # Sin interacción previa (sin flag f) → default "mis tareas".
+    if "f" not in request.GET and not personas_sel and not estados_sel:
+        personas_sel = {str(user.pk)}
+
+    qs = visibles
+    if personas_sel:
+        qs = qs.filter(asignada_a__pk__in=[int(p) for p in personas_sel])
+    if estados_sel:
+        qs = qs.filter(estado__in=estados_sel)
+
+    tareas = list(qs.order_by("fecha_compromiso", "-creado_en")[:500])
+    por_estado: dict[str, list] = {}
+    for t in tareas:
+        por_estado.setdefault(t.estado, []).append(t)
+
+    def _cols(defs):
+        return [{
+            "slug": e.slug, "label": e.label, "color": e.color,
+            "tareas": por_estado.get(e.slug, []),
+        } for e in defs]
+
+    cols_activas = _cols([e for e in estados_def if not e.terminal])
+    cols_cerradas = _cols([e for e in estados_def if e.terminal])
+
+    # Chips de filtros: cada uno togglea su valor preservando el resto.
+    chips_estado = [{
+        "slug": e.slug, "label": e.label, "color": e.color,
+        "activo": e.slug in estados_sel,
+        "url": _qs_filtros(estados_sel ^ {e.slug}, personas_sel),
+    } for e in estados_def]
+
+    from cuentas.models.usuario import Usuario
+    chips_persona = [{
+        "pk": u.pk,
+        "nombre": u.get_short_name() or u.email,
+        "activo": str(u.pk) in personas_sel,
+        "url": _qs_filtros(estados_sel, personas_sel ^ {str(u.pk)}),
+    } for u in Usuario.objects.filter(is_active=True).order_by("nombre_completo")]
+
+    return render(request, "pizarron/kanban.html", {
+        "cols_activas": cols_activas,
+        "cols_cerradas": cols_cerradas,
+        "chips_estado": chips_estado,
+        "chips_persona": chips_persona,
+        "url_limpiar": "?f=1",
+        "hay_filtros": bool(estados_sel or personas_sel),
+        "total": len(tareas),
+    })
+
+
+@login_required
+def cambiar_estado_tarea(request, pk):
+    """Drag & drop del Kanban de tareas: POST con `estado` nuevo (slug de
+    EstadoTarea activo). Sincroniza `completada_en` con la terminalidad."""
+    from apps.el_pizarron.models.estado_tarea import EstadoTarea
+
+    tarea = get_object_or_404(Tarea.objects.select_related("proyecto"), pk=pk)
+    if not puede_ver_tarea(request.user, tarea):
+        return HttpResponseForbidden()
+    if request.method != "POST":
+        return redirect("pizarron-detalle-tarea", pk=pk)
+    nuevo = (request.POST.get("estado") or "").strip()
+    try:
+        estado_def = EstadoTarea.objects.get(slug=nuevo, activo=True)
+    except EstadoTarea.DoesNotExist:
+        return HttpResponseForbidden("Estado inválido.")
+    if tarea.estado == nuevo:
+        from django.http import HttpResponse
+        return HttpResponse(status=204)
+    tarea.estado = nuevo
+    if estado_def.terminal and tarea.completada_en is None:
+        tarea.completada_en = timezone.now()
+    elif not estado_def.terminal:
+        tarea.completada_en = None
+    tarea.save(update_fields=["estado", "completada_en"])
+    if estado_def.terminal:
+        emitir(EventoPortavoz(
+            tipo="tarea.completada",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"tarea_id": tarea.pk, "proyecto_id": tarea.proyecto_id},
+        ))
+    from django.http import HttpResponse
+    return HttpResponse(status=204)
+
+
+@login_required
+def nueva_tarea_global(request):
+    """Form "Nueva Tarea" sin proyecto fijo (V6 Bloque 2B) — accesible desde
+    el Dashboard y la página Tareas. Proyecto/persona/tipo con un click."""
+    TERMINALES_PRY = {"entregado", "cerrado", "cancelado"}
+    if request.method == "POST":
+        form = TareaGlobalForm(request.POST)
+        if form.is_valid():
+            tarea = form.save(commit=False)
+            tarea.creado_por = request.user
+            tarea.save()
+            emitir(EventoPortavoz(
+                tipo="tarea.creada",
+                actor_id=request.user.pk,
+                actor_email=request.user.email,
+                payload={"tarea_id": tarea.pk, "proyecto_id": tarea.proyecto_id, "origen": "form_global"},
+            ))
+            from apps.taller_home.push_handlers import notificar_tarea_asignada
+            notificar_tarea_asignada(tarea, request.user)
+            from apps.los_proyectos import servicios_actividad
+            servicios_actividad.registrar(
+                proyecto=tarea.proyecto, tipo="tarea_creada",
+                descripcion=f"Nueva tarea «{tarea.titulo[:60]}»", actor=request.user,
+                url=f"/proyectos/{tarea.proyecto_id}/",
+            )
+            messages.success(request, "Tarea creada.")
+            return redirect("tareas-kanban")
+    else:
+        form = TareaGlobalForm()
+    from cuentas.models.usuario import Usuario
+    proyectos_chips = list(
+        Proyecto.objects.exclude(estado__in=TERMINALES_PRY)
+        .select_related("cliente").order_by("-creado_en")[:60]
+    )
+    return render(request, "pizarron/form_tarea_global.html", {
+        "form": form,
+        "proyectos_chips": proyectos_chips,
+        "usuarios_chips": list(Usuario.objects.filter(is_active=True).order_by("nombre_completo")),
+        "tipos_chips": Tarea._meta.get_field("tipo").choices,
     })
 
 

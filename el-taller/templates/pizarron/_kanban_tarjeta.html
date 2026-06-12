@@ -1,0 +1,24 @@
+{% load tareas_extras %}
+{% comment %} Tarjeta de tarea del Kanban (V6 Bloque 2A).
+   Params: t (Tarea). Draggable — el script de _kanban_script_tareas la mueve. {% endcomment %}
+<a href="{% url 'pizarron-detalle-tarea' t.pk %}"
+   draggable="true"
+   data-tarea-id="{{ t.pk }}"
+   data-estado-actual="{{ t.estado }}"
+   class="kanban-card-tarea block cursor-grab rounded-xl border border-gray-200 bg-white p-2.5 shadow-theme-xs transition hover:border-brand-300 hover:shadow-theme-sm active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800/80 dark:hover:border-brand-600">
+    <div class="flex items-start justify-between gap-1.5">
+        <div class="min-w-0 flex-1">
+            <div class="line-clamp-2 text-xs font-semibold text-gray-900 dark:text-gray-100">{% if t.tipo and t.tipo != 'tarea' %}{{ t.tipo|tipo_tarea_emoji }} {% endif %}{{ t.titulo }}</div>
+            <div class="mt-0.5 truncate text-[10px] text-gray-500 dark:text-gray-400">{{ t.proyecto.cliente.razon_social|default:t.proyecto.codigo|truncatechars:24 }}</div>
+        </div>
+        {% if t.fecha_compromiso %}
+        <span class="whitespace-nowrap text-[10px] font-medium {% if t.esta_atrasada %}text-warning-600 dark:text-warning-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">
+            {{ t.fecha_compromiso|date:"d M" }}{% if t.hora %} · {{ t.hora|time:"H:i" }}{% endif %}
+        </span>
+        {% endif %}
+    </div>
+    <div class="mt-1.5 flex items-center justify-between gap-1">
+        <span class="truncate text-[10px] text-gray-500 dark:text-gray-400">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}Sin asignar{% endif %}</span>
+        {% if t.esta_atrasada %}<span class="badge badge-hex text-[9px]" style="--ec: #f79009">Atrasada</span>{% endif %}
+    </div>
+</a>

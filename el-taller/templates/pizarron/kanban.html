@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Tareas — El Taller{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Tareas" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Kanban por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a>' %}
+
+{% comment %} Filtros de botones SIEMPRE visibles y combinables (V6 com. 6):
+estados + personas. Cada chip togglea su valor preservando el resto. {% endcomment %}
+<div class="mb-2 flex flex-wrap items-center gap-2">
+    <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Estado</span>
+    {% for ch in chips_estado %}
+    <a href="{{ ch.url }}" class="rounded-lg border px-3 py-1.5 text-sm transition {% if ch.activo %}border-transparent text-white{% else %}border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300{% endif %}"
+       {% if ch.activo %}style="background-color: {{ ch.color }}"{% endif %}>{{ ch.label }}</a>
+    {% endfor %}
+</div>
+<div class="mb-5 flex flex-wrap items-center gap-2">
+    <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Persona</span>
+    {% for ch in chips_persona %}
+    <a href="{{ ch.url }}" class="rounded-lg border px-3 py-1.5 text-sm transition {% if ch.activo %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ ch.nombre }}</a>
+    {% endfor %}
+    {% if hay_filtros %}
+    <a href="{{ url_limpiar }}" class="ml-1 text-xs text-gray-400 underline hover:text-gray-600 dark:hover:text-gray-300">Limpiar filtros</a>
+    {% endif %}
+    <span class="ml-auto text-xs text-gray-400 dark:text-gray-500">{{ total }} tarea{{ total|pluralize }}</span>
+</div>
+
+{% comment %} Fila 1: estados activos. Fila 2: cerrados (terminal).
+   Flex adaptativo: N columnas configurables sin clases de grid dinámicas
+   (Tailwind JIT no genera clases en runtime). {% endcomment %}
+<div class="flex flex-wrap gap-3">
+    {% for col in cols_activas %}
+    <div class="kanban-columna-tarea min-w-[220px] flex-1 rounded-2xl border border-gray-200 bg-gray-50/60 p-2.5 dark:border-gray-800 dark:bg-gray-900/60" data-estado="{{ col.slug }}">
+        <div class="mb-2 flex items-center justify-between px-1">
+            <span class="badge badge-hex text-[10px]" style="--ec: {{ col.color }}">{{ col.label }}</span>
+            <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
+        </div>
+        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2">
+            {% for t in col.tareas %}{% include "pizarron/_kanban_tarjeta.html" %}{% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if cols_cerradas %}
+<h2 class="mb-2 mt-8 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Cerradas</h2>
+<div class="flex flex-wrap gap-3">
+    {% for col in cols_cerradas %}
+    <div class="kanban-columna-tarea min-w-[220px] max-w-md flex-1 rounded-2xl border border-gray-200 bg-gray-50/60 p-2.5 opacity-90 dark:border-gray-800 dark:bg-gray-900/60" data-estado="{{ col.slug }}">
+        <div class="mb-2 flex items-center justify-between px-1">
+            <span class="badge badge-hex text-[10px]" style="--ec: {{ col.color }}">{{ col.label }}</span>
+            <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
+        </div>
+        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2">
+            {% for t in col.tareas %}{% include "pizarron/_kanban_tarjeta.html" %}{% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if total == 0 %}
+<div class="mx-auto mt-6 max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="No hay tareas que coincidan con los filtros." icono="tasks" cta_url="/tareas/nueva/" cta_label="+ Nueva tarea" %}</div>
+{% endif %}
+
+{% include "pizarron/_kanban_script_tareas.html" %}
+{% endblock %}

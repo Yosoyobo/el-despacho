@@ -54,12 +54,18 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
             "color": "brand",
         })
 
+    # V6 Bloque 2: el tipo de la tarea (Entrega/Junta/Recoger) se refleja en
+    # el calendario con emoji + hora si existe.
+    _emoji = {"entrega": "📦", "junta": "📅", "recoger": "🚚"}
     for t in _tareas_visibles_qs(user).filter(
         fecha_compromiso__gte=inicio, fecha_compromiso__lte=fin
     ):
+        pre = _emoji.get(t.tipo)
+        hora = t.hora.strftime("%H:%M") + " · " if t.hora else ""
         eventos[t.fecha_compromiso].append({
             "tipo": "tarea",
-            "titulo": t.titulo,
+            "tipo_tarea": t.tipo,
+            "titulo": f"{pre} {hora}{t.titulo}" if pre else f"{hora}{t.titulo}",
             "subtitulo": t.proyecto.codigo,
             "url": f"/tareas/{t.pk}/",
             "color": "warning" if t.prioridad == "alta" else "gray",

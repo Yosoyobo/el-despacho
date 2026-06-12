@@ -61,13 +61,33 @@ class TareaForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Estado dinámico (el campo del modelo ya no tiene choices). Si la
         # tarea está en un slug inactivo/huérfano, se conserva como opción
-        # para no romper la edición.
-        choices = _choices_estado_tarea()
-        actual = getattr(self.instance, "estado", None)
-        if actual and actual not in {c[0] for c in choices}:
-            from apps.el_pizarron.templatetags.tareas_extras import estado_label_tarea
-            choices = [*choices, (actual, f"{estado_label_tarea(actual)} (inactivo)")]
-        self.fields["estado"] = forms.ChoiceField(choices=choices, label="Estado")
+        # para no romper la edición. El form global (sin "estado" en fields)
+        # deja el default del modelo.
+        if "estado" in self.fields:
+            choices = _choices_estado_tarea()
+            actual = getattr(self.instance, "estado", None)
+            if actual and actual not in {c[0] for c in choices}:
+                from apps.el_pizarron.templatetags.tareas_extras import estado_label_tarea
+                choices = [*choices, (actual, f"{estado_label_tarea(actual)} (inactivo)")]
+            self.fields["estado"] = forms.ChoiceField(choices=choices, label="Estado")
+
+
+class TareaGlobalForm(TareaForm):
+    """Form "Nueva Tarea" sin proyecto fijo (V6 Bloque 2B): el usuario elige
+    proyecto / persona / tipo con un click (chips), fecha en el calendario y
+    hora opcional. El estado arranca en el default del modelo (pendiente)."""
+
+    class Meta(TareaForm.Meta):
+        fields = ["proyecto", "titulo", "descripcion", "prioridad", "tipo",
+                  "asignada_a", "fecha_compromiso", "hora"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["proyecto"].error_messages = {"required": "Elige un proyecto."}
+        self.fields["prioridad"].required = False
+
+    def clean_prioridad(self):
+        return self.cleaned_data.get("prioridad") or "media"
 
 
 class ComentarioForm(forms.ModelForm):
