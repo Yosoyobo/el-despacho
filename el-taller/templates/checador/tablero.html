@@ -65,6 +65,40 @@
         {% endif %}
     </section>
 
+    {# ── Timer de proyecto ──────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Tiempo por proyecto</h2>
+            <button type="button" hx-get="{% url 'checador:sesion_modal' %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                    class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Captura manual</button>
+        </div>
+        {% if timer %}
+        <div class="flex flex-col items-center gap-3 rounded-xl bg-brand-50 p-4 dark:bg-brand-500/10">
+            <p class="text-xs text-gray-600 dark:text-gray-300">{{ timer.proyecto.codigo }} · {{ timer.proyecto.nombre }}</p>
+            <p id="cronometro" data-inicio="{{ timer.inicio|date:'c' }}" class="text-title-md font-bold tabular-nums text-brand-700 dark:text-brand-300">00:00:00</p>
+            <form method="post" action="{% url 'checador:timer_detener' %}">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                    Detener
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <form method="post" action="{% url 'checador:timer_iniciar' %}" class="campo-form flex flex-col gap-3 sm:flex-row">
+            {% csrf_token %}
+            <select name="proyecto" required class="flex-1">
+                <option value="">— Elige un proyecto —</option>
+                {% for p in proyectos %}<option value="{{ p.pk }}">{{ p.codigo }} · {{ p.nombre }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Iniciar
+            </button>
+        </form>
+        {% endif %}
+    </section>
+
     {# ── Visitas de hoy ─────────────────────────────────────────── #}
     {% if visitas_hoy %}
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
@@ -91,7 +125,10 @@
 
     {# ── Mi semana ──────────────────────────────────────────────── #}
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-100">Mi semana</h2>
+        <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Mi semana</h2>
+            <a href="{% url 'checador:historial' %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver historial →</a>
+        </div>
         {% if semana %}
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">

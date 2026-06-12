@@ -65,10 +65,24 @@
     el.textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   }
 
+  // Cronómetro del timer de proyecto: cuenta hacia arriba desde data-inicio
+  // (ISO del servidor — la fuente de verdad es la DB, esto es solo visual).
+  function cronometro() {
+    var el = document.getElementById("cronometro");
+    if (!el || !el.dataset.inicio) return;
+    var inicio = new Date(el.dataset.inicio).getTime();
+    if (isNaN(inicio)) return;
+    var segs = Math.max(0, Math.floor((Date.now() - inicio) / 1000));
+    var h = Math.floor(segs / 3600), m = Math.floor((segs % 3600) / 60), s = segs % 60;
+    el.textContent = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  }
+
   function init() {
     montar();
     reloj();
     setInterval(reloj, 10000);
+    cronometro();
+    setInterval(cronometro, 1000);
   }
 
   if (document.readyState === "loading") {

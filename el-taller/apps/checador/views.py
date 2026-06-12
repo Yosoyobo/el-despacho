@@ -79,6 +79,8 @@ def tablero(request):
         "semana": semana,
         "visitas_hoy": visitas_hoy,
         "hoy": hoy,
+        "timer": services.timer_activo(request.user),
+        "proyectos": _proyectos_para(request.user),
     })
 
 
@@ -124,6 +126,120 @@ def visita(request):
         messages.error(request, str(exc))
 
     return redirect("checador:tablero")
+
+
+# ───────────────────────── timer de proyecto (E4) ─────────────────────────
+
+def _proyectos_para(user):
+    """Proyectos que el usuario puede ver (para el selector del timer)."""
+    from apps.los_proyectos.models import Proyecto
+
+    from lib.permisos import roles_efectivos
+    roles = roles_efectivos(user)
+    qs = Proyecto.objects.all()
+    if "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"}):
+        qs = qs.filter(asignaciones__usuario=user).distinct()
+    return qs.order_by("codigo")
+
+
+@login_required
+@_requiere_checar
+@require_POST
+def timer_iniciar(request):
+    proyecto = _proyectos_para(request.user).filter(pk=request.POST.get("proyecto")).first()
+    if proyecto is None:
+        messages.error(request, "Selecciona un proyecto válido.")
+        return redirect("checador:tablero")
+    services.iniciar_timer(request.user, proyecto)
+    messages.success(request, f"Cronómetro iniciado en {proyecto.codigo}.")
+    return redirect("checador:tablero")
+
+
+@login_required
+@_requiere_checar
+@require_POST
+def timer_detener(request):
+    try:
+        sesion = services.detener_timer(request.user)
+        messages.success(request, f"Cronómetro detenido: {sesion.duracion_min} min registrados.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("checador:tablero")
+
+
+@login_required
+@_requiere_checar
+def sesion_modal(request):
+    """GET HTMX → modal de captura manual de tiempo por proyecto."""
+    return render(request, "checador/_modal_sesion.html", {
+        "proyectos": _proyectos_para(request.user),
+    })
+
+
+@login_required
+@_requiere_checar
+@require_POST
+def sesion(request):
+    proyecto = _proyectos_para(request.user).filter(pk=request.POST.get("proyecto")).first()
+    if proyecto is None:
+        messages.error(request, "Selecciona un proyecto válido.")
+        return redirect("checador:historial")
+    inicio = _parse_dt(request.POST.get("inicio"))
+    fin = _parse_dt(request.POST.get("fin"))
+    if inicio is None or fin is None:
+        messages.error(request, "Indica inicio y fin válidos.")
+        return redirect("checador:historial")
+    try:
+        services.capturar_sesion_manual(
+            request.user, proyecto, inicio=inicio, fin=fin,
+            nota=(request.POST.get("nota") or "").strip(),
+        )
+        messages.success(request, "Tiempo registrado.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("checador:historial")
+
+
+def _parse_dt(valor):
+    """Parsea un <input type=datetime-local> ('YYYY-MM-DDTHH:MM') a aware MX."""
+    if not valor:
+        return None
+    try:
+        naive = datetime.datetime.fromisoformat(valor)
+    except ValueError:
+        return None
+    return timezone.make_aware(naive) if timezone.is_naive(naive) else naive
+
+
+# ───────────────────────── historial personal (E4) ─────────────────────────
+
+@login_required
+@_requiere_checar
+def historial(request):
+    from .models import SesionProyecto
+    hoy = timezone.localdate()
+    desde = hoy - datetime.timedelta(days=hoy.weekday())  # lunes de esta semana
+    jornadas = list(
+        Jornada.objects.filter(usuario=request.user, fecha__gte=desde, fecha__lte=hoy).order_by("-fecha"),
+    )
+    visitas = list(
+        Visita.objects.filter(usuario=request.user, registrado_en__date__gte=desde, registrado_en__date__lte=hoy)
+        .select_related("cliente", "proveedor").order_by("-registrado_en"),
+    )
+    sesiones = list(
+        SesionProyecto.objects.filter(
+            usuario=request.user, estado="cerrada", inicio__date__gte=desde, inicio__date__lte=hoy,
+        ).select_related("proyecto").order_by("-inicio"),
+    )
+    return render(request, "checador/historial.html", {
+        "desde": desde,
+        "hoy": hoy,
+        "jornadas": jornadas,
+        "visitas": visitas,
+        "sesiones": sesiones,
+        "totales": services.horas_de(request.user, desde, hoy),
+        "proyectos": _proyectos_para(request.user),
+    })
 
 
 @login_required
