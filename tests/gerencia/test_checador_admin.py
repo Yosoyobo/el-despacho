@@ -75,7 +75,7 @@ def test_horario_global_no_se_borra(client, usuario_factory):
 @GERENCIA
 def test_bandeja_gerencia_resuelve(client, usuario_factory):
     from apps.checador import services
-    from apps.checador.models import Jornada, SolicitudCorreccion
+    from apps.checador.models import Jornada
     empleado = usuario_factory(rol="disenador")
     j = services.checar_entrada(empleado, registrado_en=_dt(9, 40))
     sol = services.solicitar_correccion(empleado, tipo="entrada", valor_propuesto=_dt(9, 5), motivo="x", jornada=j)

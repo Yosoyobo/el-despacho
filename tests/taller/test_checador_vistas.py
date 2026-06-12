@@ -91,7 +91,7 @@ def test_boton_visita_solo_tras_entrada(client, usuario_factory):
 
 def test_visita_modal_lista_clientes(client, usuario_factory, cliente_factory):
     u = usuario_factory(rol="disenador")
-    cliente = cliente_factory(razon_social="Heladería La Michoacana")
+    cliente_factory(razon_social="Heladería La Michoacana")
     client.force_login(u)
     resp = client.get("/checador/visita/nueva")
     assert resp.status_code == 200
