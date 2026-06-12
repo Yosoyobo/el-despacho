@@ -5,24 +5,27 @@
 {% breadcrumb_items "Cotizaciones" "/cotizaciones/" titulo_pagina as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=titulo_pagina subtitulo=cot.codigo|default:"Datos de la cotización + líneas + impuestos" breadcrumb_items=breadcrumb_items back_url="/cotizaciones/" back_label="Cotizaciones" %}
 
-<form method="post" class="max-w-5xl" id="cot-form">
+<form method="post" id="cot-form" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
-    <div class="mb-4 rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">
+    <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300 xl:col-span-3">
         {{ form.non_field_errors }}
     </div>
     {% endif %}
 
+    {# ── Columna principal: Datos generales → Productos ── #}
+    <div class="min-w-0 space-y-6 xl:col-span-2">
+
     {# ── Datos generales ───────────────────────────────────────────── #}
-    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos generales</h2>
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 
-            <div>
+            <div class="min-w-0">
                 <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.cliente.label }}</label>
                 <div class="flex items-center gap-2">
-                    <div class="flex-1">{{ form.cliente }}</div>
+                    <div class="min-w-0 flex-1">{{ form.cliente }}</div>
                     <button type="button" class="btn-secundario whitespace-nowrap"
                             hx-get="{% url 'proyectos-cliente-inline' %}"
                             hx-target="#modal-slot"
@@ -31,10 +34,10 @@
                 {% if form.cliente.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.cliente.errors|join:" · " }}</p>{% endif %}
             </div>
 
-            <div>
+            <div class="min-w-0">
                 <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.proyecto.label }} <span class="text-error-500" title="Obligatorio">*</span></label>
                 <div class="flex items-center gap-2">
-                    <div class="flex-1">{{ form.proyecto }}</div>
+                    <div class="min-w-0 flex-1">{{ form.proyecto }}</div>
                     <a href="{% url 'proyectos-nuevo' %}" class="btn-secundario whitespace-nowrap">+ Nuevo</a>
                 </div>
                 {% if form.proyecto.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.proyecto.errors|join:" · " }}</p>{% endif %}
@@ -44,13 +47,11 @@
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_emision %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descuento_global_porcentaje %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.anticipo_porcentaje %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.anticipo_monto_override %}
         </div>
     </section>
 
     {# ── Productos / servicios ─────────────────────────────────────── #}
-    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <section class="min-w-0 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="mb-4 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos / servicios</h2>
             <button type="button" id="cot-agregar-linea" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Agregar línea</button>
@@ -204,38 +205,54 @@
         </template>
     </section>
 
-    {# ── Impuestos ─────────────────────────────────────────────────── #}
-    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <h2 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Impuestos</h2>
-        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Las marcadas como aplicables por defecto vienen preseleccionadas. Configurables en La Gerencia → Tasas.</p>
-        <div class="grid gap-2 md:grid-cols-2">
-            {% for t in tasas %}
-            <label class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300 dark:hover:bg-gray-800">
-                <input type="checkbox" name="tasas" value="{{ t.id }}" {% if t.id in tasas_seleccionadas %}checked{% endif %}>
-                <span>{{ t.nombre }} <span class="text-xs text-gray-500">({{ t.porcentaje }}% · {{ t.get_tipo_display }})</span></span>
-            </label>
-            {% empty %}
-            <p class="text-sm text-gray-500 dark:text-gray-400">No hay tasas activas en La Gerencia.</p>
-            {% endfor %}
-        </div>
-    </section>
+    </div>{% comment %} Cierra la columna principal {% endcomment %}
 
-    {# ── Notas y términos ──────────────────────────────────────────── #}
-    <section class="campo-form mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Notas y términos</h2>
-        <div class="grid gap-5">
-            <div>
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
-                {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.notas.id_for_label estacion="cotizaciones" contexto_modelo="cotizacion" contexto_id=cot.pk instruccion_ph="Ej. redacta una nota cordial para el cliente" %}
-            </div>
-            <div>
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.terminos %}
-                {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.terminos.id_for_label estacion="cotizaciones" contexto_modelo="cotizacion" contexto_id=cot.pk instruccion_ph="Ej. redacta los términos de pago y entrega" %}
-            </div>
-        </div>
-    </section>
+    {# ── Columna lateral: Anticipo · Impuestos · Notas y términos ── #}
+    <aside class="min-w-0 space-y-6">
 
-    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        {# ── Anticipo ──────────────────────────────────────────────── #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Anticipo</h3>
+            <div class="grid grid-cols-1 gap-4">
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.anticipo_porcentaje %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.anticipo_monto_override %}
+            </div>
+        </section>
+
+        {# ── Impuestos ─────────────────────────────────────────────── #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Impuestos</h3>
+            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Las marcadas como aplicables por defecto vienen preseleccionadas. Configurables en La Gerencia → Tasas.</p>
+            <div class="grid grid-cols-1 gap-2">
+                {% for t in tasas %}
+                <label class="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10">
+                    <input type="checkbox" name="tasas" value="{{ t.id }}" class="sr-only" {% if t.id in tasas_seleccionadas %}checked{% endif %}>
+                    <span class="min-w-0 flex-1 break-words">{{ t.nombre }} <span class="text-xs tabular-nums text-gray-500 dark:text-gray-400">({{ t.porcentaje }}% · {{ t.get_tipo_display }})</span></span>
+                </label>
+                {% empty %}
+                <p class="text-sm text-gray-500 dark:text-gray-400">No hay tasas activas en La Gerencia.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        {# ── Notas y términos ──────────────────────────────────────── #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas y términos</h3>
+            <div class="grid grid-cols-1 gap-5">
+                <div class="min-w-0">
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
+                    {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.notas.id_for_label estacion="cotizaciones" contexto_modelo="cotizacion" contexto_id=cot.pk instruccion_ph="Ej. redacta una nota cordial para el cliente" %}
+                </div>
+                <div class="min-w-0">
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.terminos %}
+                    {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.terminos.id_for_label estacion="cotizaciones" contexto_modelo="cotizacion" contexto_id=cot.pk instruccion_ph="Ej. redacta los términos de pago y entrega" %}
+                </div>
+            </div>
+        </section>
+
+    </aside>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 xl:col-span-3">
         <a href="{% if cot %}{% url 'cotizaciones:detalle' cot.pk %}{% else %}{% url 'cotizaciones:lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar cotización</button>
     </div>

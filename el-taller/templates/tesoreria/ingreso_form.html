@@ -9,78 +9,98 @@
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} ingreso</h1>
 </header>
 
-<form method="post" class="max-w-3xl">
+<form method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
-    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {% include "tesoreria/_iva_campos.html" with form=form %}
 
-            {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
+    {% comment %} Columna principal: dinero + clasificación. {% endcomment %}
+    <div class="min-w-0 space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {% include "tesoreria/_iva_campos.html" with form=form %}
 
-            {# Método como botones — Tarjeta default. 'Otro' revela referencia. #}
-            <div class="md:col-span-2" data-metodo-group>
-                <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método</span>
-                <div class="flex flex-wrap gap-2">
-                    {% for val, etiqueta in form.metodo.field.choices %}
-                    <label class="cursor-pointer rounded-lg border-2 border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
-                        <input type="radio" name="metodo" value="{{ val }}" class="sr-only" {% if form.metodo.value|default:'tarjeta' == val %}checked{% endif %} data-metodo-radio>
-                        {{ etiqueta }}
-                    </label>
-                    {% endfor %}
-                </div>
-                {% for e in form.metodo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
-            </div>
+                {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
 
-            <div class="md:col-span-2 {% if form.metodo.value != 'otro' %}hidden{% endif %}" data-ref-wrap>
-                <label for="{{ form.referencia_externa.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Especifica el método / referencia</label>
-                {{ form.referencia_externa }}
-            </div>
-
-            {# Cliente: chips de recientes + select + alta inline. #}
-            <div class="campo-form md:col-span-2">
-                <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
-                {% if clientes_recientes %}
-                <div class="mb-2 flex flex-wrap gap-1.5">
-                    {% for c in clientes_recientes %}
-                    <button type="button" data-pick-select="id_cliente" data-val="{{ c.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ c.razon_social|truncatechars:24 }}</button>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {{ form.cliente }}
-                {% if puede_crear_cliente %}
-                <details class="mt-2 text-sm">
-                    <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo cliente</summary>
-                    <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
-                        <input type="text" id="cli-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <input type="text" id="cli-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <input type="email" id="cli-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <input type="text" id="cli-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <button type="button" id="cli-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
+                {# Método como botones — Tarjeta default. 'Otro' revela referencia. #}
+                <div class="md:col-span-2" data-metodo-group>
+                    <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método</span>
+                    <div class="flex flex-wrap gap-2">
+                        {% for val, etiqueta in form.metodo.field.choices %}
+                        <label class="cursor-pointer rounded-lg border-2 border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                            <input type="radio" name="metodo" value="{{ val }}" class="sr-only" {% if form.metodo.value|default:'tarjeta' == val %}checked{% endif %} data-metodo-radio>
+                            {{ etiqueta }}
+                        </label>
+                        {% endfor %}
                     </div>
-                </details>
-                {% endif %}
-            </div>
-
-            {# Proyecto: chips de recientes + select + link a nuevo. #}
-            <div class="campo-form md:col-span-2">
-                <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
-                {% if proyectos_recientes %}
-                <div class="mb-2 flex flex-wrap gap-1.5">
-                    {% for p in proyectos_recientes %}
-                    <button type="button" data-pick-select="id_proyecto" data-val="{{ p.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.codigo }} · {{ p.nombre|truncatechars:20 }}</button>
-                    {% endfor %}
+                    {% for e in form.metodo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
                 </div>
-                {% endif %}
-                {{ form.proyecto }}
-                <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
-            </div>
 
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion ancho_completo=True %}
+                <div class="md:col-span-2 {% if form.metodo.value != 'otro' %}hidden{% endif %}" data-ref-wrap>
+                    <label for="{{ form.referencia_externa.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Especifica el método / referencia</label>
+                    {{ form.referencia_externa }}
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Clasificación</h3>
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {# Cliente: chips de recientes + select + alta inline. #}
+                <div class="campo-form min-w-0 md:col-span-2">
+                    <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                    {% if clientes_recientes %}
+                    <div class="mb-2 flex flex-wrap gap-1.5">
+                        {% for c in clientes_recientes %}
+                        <button type="button" data-pick-select="id_cliente" data-val="{{ c.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ c.razon_social|truncatechars:24 }}</button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {{ form.cliente }}
+                    {% if puede_crear_cliente %}
+                    <details class="mt-2 text-sm">
+                        <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo cliente</summary>
+                        <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
+                            <input type="text" id="cli-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" id="cli-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="email" id="cli-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" id="cli-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <button type="button" id="cli-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
+                        </div>
+                    </details>
+                    {% endif %}
+                </div>
+
+                {# Proyecto: chips de recientes + select + link a nuevo. #}
+                <div class="campo-form min-w-0 md:col-span-2">
+                    <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
+                    {% if proyectos_recientes %}
+                    <div class="mb-2 flex flex-wrap gap-1.5">
+                        {% for p in proyectos_recientes %}
+                        <button type="button" data-pick-select="id_proyecto" data-val="{{ p.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.codigo }} · {{ p.nombre|truncatechars:20 }}</button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {{ form.proyecto }}
+                    <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    {% comment %} Columna secundaria: ventanas chicas (notas, configuración). {% endcomment %}
+    <aside class="min-w-0 space-y-6">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</h3>
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion %}
+        </section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Configuración</h3>
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
-        </div>
-    </section>
-    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        </section>
+    </aside>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 xl:col-span-3">
         <a href="{% if ingreso %}{% url 'tesoreria:ingreso-detalle' ingreso.pk %}{% else %}{% url 'tesoreria:ingresos-lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar ingreso</button>
     </div>

@@ -3,53 +3,85 @@
 {% block contenido %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=modo|add:" cliente"|capfirst subtitulo="Datos del cliente — nombre, contactos, ubicación." breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
-<form method="post" class="max-w-3xl">
+<form method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
-    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {% for f in form %}
-                {% if f.name == 'razon_social' or f.name == 'notas' or f.name == 'direccion' %}
-                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
-                {% else %}
-                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
-                {% endif %}
-            {% endfor %}
-        </div>
-    </section>
+    {% if form.non_field_errors %}
+    <div class="xl:col-span-3 rounded-xl border border-error-300 bg-error-50 p-4 text-sm text-error-700 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">
+        {{ form.non_field_errors|join:" · " }}
+    </div>
+    {% endif %}
 
-    {# Contactos — varias personas (formset inline). #}
-    <section class="campo-form mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <h2 class="mb-4 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Contactos</h2>
-        {{ formset.management_form }}
-        {% if formset.non_form_errors %}<ul class="mb-3 text-xs text-error-600 dark:text-error-400">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-        <div id="contactos-formset" class="space-y-3">
-            {% for cf in formset %}
-            <div class="contacto-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-2 dark:border-gray-700 dark:bg-gray-800/40">
-                {% for hidden in cf.hidden_fields %}{{ hidden }}{% endfor %}
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Nombre</label>{{ cf.nombre }}</div>
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Puesto</label>{{ cf.puesto }}</div>
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Email</label>{{ cf.email }}</div>
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Teléfono</label>{{ cf.telefono }}</div>
-                <div class="flex items-center justify-between gap-3 sm:col-span-2">
-                    <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">{{ cf.principal }} Principal</label>
-                    {% if cf.instance.pk %}<label class="flex items-center gap-2 text-sm text-error-600 dark:text-error-400">{{ cf.DELETE }} Quitar</label>{% endif %}
+    {% comment %} ── Columna principal: datos del cliente + contactos ── {% endcomment %}
+    <div class="min-w-0 space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {% for f in form %}
+                    {% if f.name != 'direccion' and f.name != 'fiscal_igual' and f.name != 'direccion_fiscal' and f.name != 'notas' %}
+                        {% if f.name == 'razon_social' %}
+                            {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
+                        {% else %}
+                            {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+
+        {% comment %} Contactos — varias personas (formset inline). {% endcomment %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-4 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Contactos</h2>
+            {{ formset.management_form }}
+            {% if formset.non_form_errors %}<ul class="mb-3 text-xs text-error-600 dark:text-error-400">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            <div id="contactos-formset" class="space-y-3">
+                {% for cf in formset %}
+                <div class="contacto-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-2 dark:border-gray-700 dark:bg-gray-800/40">
+                    {% for hidden in cf.hidden_fields %}{{ hidden }}{% endfor %}
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Nombre</label>{{ cf.nombre }}</div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Puesto</label>{{ cf.puesto }}</div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Email</label>{{ cf.email }}</div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Teléfono</label>{{ cf.telefono }}</div>
+                    <div class="flex items-center justify-between gap-3 sm:col-span-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">{{ cf.principal }} Principal</label>
+                        {% if cf.instance.pk %}<label class="flex items-center gap-2 text-sm text-error-600 dark:text-error-400">{{ cf.DELETE }} Quitar</label>{% endif %}
+                    </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
-        <template id="contacto-template">
-            <div class="contacto-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-2 dark:border-gray-700 dark:bg-gray-800/40">
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Nombre</label><input type="text" name="__prefix__-nombre" maxlength="200" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Puesto</label><input type="text" name="__prefix__-puesto" maxlength="120" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Email</label><input type="email" name="__prefix__-email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
-                <div><label class="mb-1 block text-xs font-medium text-gray-500">Teléfono</label><input type="text" name="__prefix__-telefono" maxlength="40" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
-                <div class="sm:col-span-2"><label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" name="__prefix__-principal" class="h-4 w-4 rounded border-gray-300 text-brand-600"> Principal</label></div>
-            </div>
-        </template>
-        <button type="button" id="add-contacto" class="btn-secundario mt-3">+ Agregar contacto</button>
-    </section>
+            <template id="contacto-template">
+                <div class="contacto-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-2 dark:border-gray-700 dark:bg-gray-800/40">
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Nombre</label><input type="text" name="__prefix__-nombre" maxlength="200" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Puesto</label><input type="text" name="__prefix__-puesto" maxlength="120" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Email</label><input type="email" name="__prefix__-email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Teléfono</label><input type="text" name="__prefix__-telefono" maxlength="40" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div class="sm:col-span-2"><label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" name="__prefix__-principal" class="h-4 w-4 rounded border-gray-300 text-brand-600"> Principal</label></div>
+                </div>
+            </template>
+            <button type="button" id="add-contacto" class="btn-secundario mt-3">+ Agregar contacto</button>
+        </section>
+    </div>
 
-    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+    {% comment %} ── Aside: dirección · dirección fiscal · notas ── {% endcomment %}
+    <aside class="min-w-0 space-y-6">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dirección</h3>
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
+        </section>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dirección fiscal</h3>
+            <div class="space-y-4">
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fiscal_igual %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion_fiscal %}
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</h3>
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
+        </section>
+    </aside>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 xl:col-span-3">
         <a href="{% if cliente %}{% url 'cartera-detalle' cliente.pk %}{% else %}{% url 'cartera-lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar cliente</button>
     </div>

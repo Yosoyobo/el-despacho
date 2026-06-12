@@ -9,70 +9,89 @@
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} egreso</h1>
 </header>
 
-{% if ocr_log_id %}
-<div class="mb-4 max-w-3xl rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm dark:border-brand-500/30 dark:bg-brand-500/10">
-    <p class="font-medium text-brand-700 dark:text-brand-300">📸 Datos leídos del recibo</p>
-    <p class="mt-1 text-gray-600 dark:text-gray-300">
-        Revisa y corrige lo que haga falta antes de guardar.
-        {% if ocr_datos.proveedor %}Proveedor detectado: <strong>{{ ocr_datos.proveedor }}</strong> (selecciónalo abajo o créalo).{% endif %}
-    </p>
-</div>
-{% endif %}
-<form method="post" enctype="multipart/form-data" class="max-w-3xl"{% if form_action %} action="{{ form_action }}"{% endif %}>
+<form method="post" enctype="multipart/form-data" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3"{% if form_action %} action="{{ form_action }}"{% endif %}>
     {% csrf_token %}
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
     {% if ocr_log_id %}<input type="hidden" name="ocr_log_id" value="{{ ocr_log_id }}">{% endif %}
-    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {% include "tesoreria/_iva_campos.html" with form=form %}
 
-            {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion ancho_completo=True %}
-            {% if permisos_modulos.chalan %}
-            <div class="md:col-span-2 -mt-3">
-                <button type="button" id="egreso-cat-ia" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400" title="El Chalán sugiere el centro de costo según la descripción">🤖 Sugerir categoría</button>
-                <span id="egreso-cat-ia-estado" class="ml-2 text-xs text-gray-500 dark:text-gray-400"></span>
+    {% comment %} Columna principal: dinero + clasificación. {% endcomment %}
+    <div class="min-w-0 space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {% include "tesoreria/_iva_campos.html" with form=form %}
+
+                {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
             </div>
-            {% endif %}
+        </section>
 
-            {# Proveedor: select del catálogo (vacío = Gasto operativo) + alta inline. #}
-            <div class="campo-form md:col-span-2">
-                <label for="{{ form.proveedor.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
-                {{ form.proveedor }}
-                {% for e in form.proveedor.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
-                <details class="mt-2 text-sm">
-                    <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proveedor</summary>
-                    <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
-                        <input type="text" id="prov-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <input type="text" id="prov-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <input type="email" id="prov-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <input type="text" id="prov-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <button type="button" id="prov-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
-                    </div>
-                </details>
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Clasificación</h3>
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion ancho_completo=True %}
+                {% if permisos_modulos.chalan %}
+                <div class="md:col-span-2 -mt-3">
+                    <button type="button" id="egreso-cat-ia" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400" title="El Chalán sugiere el centro de costo según la descripción">🤖 Sugerir categoría</button>
+                    <span id="egreso-cat-ia-estado" class="ml-2 text-xs text-gray-500 dark:text-gray-400"></span>
+                </div>
+                {% endif %}
+
+                {# Proveedor: select del catálogo (vacío = Gasto operativo) + alta inline. #}
+                <div class="campo-form min-w-0 md:col-span-2">
+                    <label for="{{ form.proveedor.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
+                    {{ form.proveedor }}
+                    {% for e in form.proveedor.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+                    <details class="mt-2 text-sm">
+                        <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proveedor</summary>
+                        <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
+                            <input type="text" id="prov-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" id="prov-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="email" id="prov-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" id="prov-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <button type="button" id="prov-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
+                        </div>
+                    </details>
+                </div>
+
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.centro_de_costo %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.pagado_por %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.solicitado_por %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.metodo %}
+
+                {% include "tesoreria/_semaforo_estado_pago.html" with form=form %}
             </div>
+            {% if form.non_field_errors %}<ul class="mt-4 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </section>
+    </div>
 
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.centro_de_costo %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.pagado_por %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.solicitado_por %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.metodo %}
-
-            {% include "tesoreria/_semaforo_estado_pago.html" with form=form %}
-        </div>
-        {% if form.non_field_errors %}<ul class="mt-4 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-    </section>
-
-    <section class="campo-form mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">📎 Comprobante (opcional)</label>
-        {% if egreso.tiene_comprobante %}
-        <p class="mb-2 text-xs text-success-600 dark:text-success-400">Este egreso ya tiene un comprobante. Sube otro para reemplazarlo.</p>
+    {% comment %} Columna secundaria: ventanas chicas (OCR, comprobante, configuración). {% endcomment %}
+    <aside class="min-w-0 space-y-6">
+        {% if ocr_log_id %}
+        <section class="rounded-2xl border border-brand-200 bg-brand-50 p-5 text-sm shadow-theme-sm dark:border-brand-500/30 dark:bg-brand-500/10">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-brand-700 dark:text-brand-300">📸 Datos leídos del recibo</h3>
+            <p class="mt-2 min-w-0 break-words text-gray-600 dark:text-gray-300">
+                Revisa y corrige lo que haga falta antes de guardar.
+                {% if ocr_datos.proveedor %}Proveedor detectado: <strong>{{ ocr_datos.proveedor }}</strong> (selecciónalo abajo o créalo).{% endif %}
+            </p>
+        </section>
         {% endif %}
-        {% include "_componentes_tailadmin/_file_upload.html" with name="comprobante" accept="image/*,application/pdf" hint="Imagen o PDF, hasta 25 MB. Se guarda en Google Drive." %}
-    </section>
 
-    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <section class="campo-form rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">📎 Comprobante (opcional)</h3>
+            {% if egreso.tiene_comprobante %}
+            <p class="mb-2 text-xs text-success-600 dark:text-success-400">Este egreso ya tiene un comprobante. Sube otro para reemplazarlo.</p>
+            {% endif %}
+            {% include "_componentes_tailadmin/_file_upload.html" with name="comprobante" accept="image/*,application/pdf" hint="Imagen o PDF, hasta 25 MB. Se guarda en Google Drive." %}
+        </section>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Configuración</h3>
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
+        </section>
+    </aside>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 xl:col-span-3">
         <a href="{% if egreso %}{% url 'tesoreria:egreso-detalle' egreso.pk %}{% else %}{% url 'tesoreria:egresos-lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar egreso</button>
     </div>
