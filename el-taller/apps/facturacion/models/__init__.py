@@ -1,3 +1,4 @@
+from .cobranza import RecordatorioCobranza
 from .factura import (
     ESTADOS_FACTURA,
     Factura,
@@ -10,4 +11,5 @@ __all__ = [
     "Factura",
     "FacturaItem",
     "FacturaImpuesto",
+    "RecordatorioCobranza",
 ]

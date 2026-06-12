@@ -38,6 +38,7 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("vapid_email", "Web Push — VAPID contact", "Correo de contacto del header VAPID (ej. mailto:soporte@bautista.mx)."),
     ("do_api_token", "DigitalOcean — API Token (dop_v1_...)", "Token para que El Site lea specs y bandwidth del Droplet."),
     ("n8n_health_url", "n8n — Health URL (vía Tailscale)", "Ej. http://hal.tailedd04d.ts.net:5678/healthz. El Site lo pinguea."),
+    ("rfc_empresa", "Contaduría — RFC de la empresa", "RFC de Learning Center. Se usa en el export fiscal XML (Anexo 24). Ej. XAXX010101000."),
     # Google Drive se configura con el asistente guiado en /ajustes/google-drive/
     # (OAuth sin clave). Sus slots — `google_drive_oauth_refresh_token` y
     # `google_drive_carpeta_raiz_id` — los gestiona ese flujo, NO se pegan a

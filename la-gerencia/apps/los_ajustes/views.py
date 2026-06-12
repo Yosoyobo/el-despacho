@@ -619,3 +619,47 @@ def metas_kpi_guardar(request):
     ))
     messages.success(request, f"Metas KPI guardadas ({cambios}).")
     return redirect("ajustes-metas-kpi")
+
+
+# ── La Cobranza — recordatorios automáticos de pago (S3 resto) ───────────
+
+@requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def cobranza_panel(request):
+    """Política de recordatorios de cobranza al cliente. Arranca apagada."""
+    from ajustes.models import ConfiguracionCobranza
+
+    cfg = ConfiguracionCobranza.obtener()
+    if request.method == "POST":
+        cfg.activa = bool(request.POST.get("activa"))
+        cfg.incluir_pdf = bool(request.POST.get("incluir_pdf"))
+
+        def _entero(nombre, default, maximo=365):
+            try:
+                v = int(request.POST.get(nombre) or default)
+            except (TypeError, ValueError):
+                v = default
+            return max(0, min(v, maximo))
+
+        cfg.dias_entre_recordatorios = _entero("dias_entre_recordatorios", 7)
+        cfg.max_recordatorios = _entero("max_recordatorios", 4, maximo=50)
+        cfg.recordar_pre_vencimiento_dias = _entero("recordar_pre_vencimiento_dias", 0)
+        cfg.actualizado_por = request.user
+        cfg.save()
+        emitir(EventoPortavoz(
+            tipo="ajuste.cobranza_configurada",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"activa": cfg.activa, "dias_entre": cfg.dias_entre_recordatorios},
+        ))
+        messages.success(
+            request,
+            "La Cobranza quedó " + ("ACTIVADA." if cfg.activa else "desactivada."),
+        )
+        return redirect("ajustes-cobranza")
+
+    from lib import cartero
+    return render(request, "ajustes/cobranza.html", {
+        "cfg": cfg,
+        "correo_configurado": cartero.esta_configurado(),
+        "canal_correo": cartero.proveedor_activo(),
+    })

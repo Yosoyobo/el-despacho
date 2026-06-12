@@ -63,4 +63,44 @@
 </div>
 
 <p class="mt-6 text-xs text-gray-500 dark:text-gray-400">Encoding UTF-8 con BOM (Excel abre acentos sin reconfigurar). Fechas ISO 8601. Montos con punto decimal.</p>
+
+<h2 class="mt-10 mb-2 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Export fiscal XML <span class="ml-2 rounded-full bg-warning-50 px-2 py-0.5 text-xs font-normal text-warning-700 dark:bg-warning-500/15 dark:text-warning-400">Borrador</span></h2>
+<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">Formato estilo SAT (Contabilidad Electrónica, Anexo 24): catálogo, balanza y pólizas. <strong>Verifica el RFC y el código agrupador SAT por cuenta antes de presentarlos</strong> — el contador externo los refina.</p>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <form method="get" class="ta-card space-y-3">
+        <input type="hidden" name="descargar" value="1">
+        <input type="hidden" name="formato" value="xml_catalogo">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Catálogo de cuentas</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Código agrupador, nivel y naturaleza por cuenta.</p>
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" name="incluir_inactivas" value="1"> Incluir inactivas
+        </label>
+        <button type="submit" class="btn-secundario w-full">Descargar XML</button>
+    </form>
+
+    <form method="get" class="ta-card space-y-3">
+        <input type="hidden" name="descargar" value="1">
+        <input type="hidden" name="formato" value="xml_balanza">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Balanza de comprobación</h3>
+        <div class="grid grid-cols-2 gap-2">
+            <input type="date" name="desde" value="{{ default_desde }}" class="input">
+            <input type="date" name="hasta" value="{{ default_hasta }}" class="input">
+        </div>
+        <button type="submit" class="btn-secundario w-full">Descargar XML</button>
+    </form>
+
+    <form method="get" class="ta-card space-y-3">
+        <input type="hidden" name="descargar" value="1">
+        <input type="hidden" name="formato" value="xml_polizas">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Pólizas del periodo</h3>
+        <div class="grid grid-cols-2 gap-2">
+            <input type="date" name="desde" value="{{ default_desde }}" class="input">
+            <input type="date" name="hasta" value="{{ default_hasta }}" class="input">
+        </div>
+        <button type="submit" class="btn-secundario w-full">Descargar XML</button>
+    </form>
+</div>
+
+<p class="mt-4 text-xs text-gray-500 dark:text-gray-400">El RFC se toma de Ajustes → Contaduría (slot «RFC de la empresa»); si falta, se usa el genérico <code>XAXX010101000</code>. El código agrupador SAT de cada cuenta se edita en el catálogo de cuentas.</p>
 {% endblock %}

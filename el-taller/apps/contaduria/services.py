@@ -237,3 +237,144 @@ def kpis_landing() -> dict:
         "saldo_banco": saldo_banco,
         "saldo_cxc": saldo_cxc,
     }
+
+
+# ── Cierre de periodo (S3 resto) ─────────────────────────────────────────
+
+CODIGO_UTILIDAD_EJERCICIO = "3.2.02"
+
+
+class CierreInvalido(ValueError):
+    pass
+
+
+def cerrar_periodo(*, desde: date, hasta: date, actor=None):
+    """Cancela ingresos (4.x) y egresos (5.x) del rango contra
+    `3.2.02 Utilidad del ejercicio` con un asiento de cierre.
+
+    El asiento lleva, por cada cuenta de resultado con saldo en el rango,
+    una partida que la deja en cero (la del lado opuesto a su naturaleza),
+    y una partida balance a la cuenta de utilidad por la diferencia (=
+    utilidad o pérdida del periodo). Devuelve el `CierrePeriodo`.
+
+    Idempotente: si ya hay un cierre VIGENTE para el mismo rango, lo
+    devuelve sin duplicar.
+    """
+    from .models import CierrePeriodo
+
+    if hasta < desde:
+        raise CierreInvalido("El rango es inválido (la fecha final es anterior a la inicial).")
+
+    existente = CierrePeriodo.vigentes.filter(desde=desde, hasta=hasta).first()
+    if existente:
+        return existente
+
+    cuenta_utilidad = cuenta_por_codigo(CODIGO_UTILIDAD_EJERCICIO)
+    if cuenta_utilidad is None:
+        raise CierreInvalido(
+            f"Falta la cuenta {CODIGO_UTILIDAD_EJERCICIO} (Utilidad del ejercicio) en el catálogo."
+        )
+
+    nominales = CuentaContable.objects.filter(
+        tipo__in=["ingreso", "egreso"], activa=True
+    ).order_by("codigo")
+
+    partidas: list[dict] = []
+    suma_cargos = CERO
+    suma_abonos = CERO
+    for cuenta in nominales:
+        s = saldo_cuenta(cuenta, desde=desde, hasta=hasta)
+        if s == CERO:
+            continue
+        # Dejar la cuenta en cero: postear del lado contrario a su naturaleza.
+        if cuenta.naturaleza == "acreedora":
+            if s > 0:
+                partidas.append({"cuenta": cuenta, "cargo": s, "descripcion": "Cierre de periodo"})
+                suma_cargos += s
+            else:
+                partidas.append({"cuenta": cuenta, "abono": -s, "descripcion": "Cierre de periodo"})
+                suma_abonos += -s
+        else:  # deudora
+            if s > 0:
+                partidas.append({"cuenta": cuenta, "abono": s, "descripcion": "Cierre de periodo"})
+                suma_abonos += s
+            else:
+                partidas.append({"cuenta": cuenta, "cargo": -s, "descripcion": "Cierre de periodo"})
+                suma_cargos += -s
+
+    if not partidas:
+        raise CierreInvalido("No hay movimientos de ingresos ni egresos que cerrar en el periodo.")
+
+    # Partida balance a Utilidad del ejercicio. dif = cargos − abonos de las
+    # cuentas de resultado == utilidad (positiva) o pérdida (negativa).
+    utilidad = (suma_cargos - suma_abonos).quantize(Decimal("0.01"))
+    if utilidad > 0:
+        partidas.append({
+            "cuenta": cuenta_utilidad, "abono": utilidad,
+            "descripcion": "Utilidad del ejercicio",
+        })
+    elif utilidad < 0:
+        partidas.append({
+            "cuenta": cuenta_utilidad, "cargo": -utilidad,
+            "descripcion": "Pérdida del ejercicio",
+        })
+
+    if len(partidas) < 2:
+        raise CierreInvalido("El cierre no genera partida doble (un solo movimiento).")
+
+    asiento = crear_asiento(
+        descripcion=f"Cierre de periodo {desde.isoformat()} → {hasta.isoformat()}",
+        partidas=partidas,
+        fecha=hasta,
+        origen="cierre",
+        referencia_externa=CierrePeriodo.referencia_para(desde, hasta),
+        creado_por=actor,
+        idempotente=True,
+    )
+    cierre = CierrePeriodo.objects.create(
+        desde=desde, hasta=hasta, asiento=asiento, utilidad=utilidad,
+        creado_por=actor if getattr(actor, "is_authenticated", False) else None,
+    )
+    emitir(EventoPortavoz(
+        tipo="contaduria.periodo_cerrado",
+        actor_id=getattr(actor, "id", None),
+        actor_email=getattr(actor, "email", None),
+        payload={
+            "cierre_id": cierre.id,
+            "desde": desde.isoformat(),
+            "hasta": hasta.isoformat(),
+            "utilidad": float(utilidad),
+            "asiento_codigo": asiento.codigo,
+        },
+    ))
+    return cierre
+
+
+def reabrir_periodo(cierre, *, actor, motivo: str):
+    """Revierte un cierre: anula el asiento de cierre y marca el periodo
+    como reabierto (queda la traza). No borra el `CierrePeriodo`."""
+    if cierre.reabierto:
+        raise CierreInvalido("El periodo ya estaba reabierto.")
+    motivo = (motivo or "").strip()
+    if not motivo:
+        raise CierreInvalido("Debe registrarse el motivo de reapertura.")
+    with transaction.atomic():
+        if cierre.asiento and not cierre.asiento.anulado:
+            anular_asiento(
+                cierre.asiento, actor=actor,
+                motivo=f"Reapertura de periodo: {motivo}"[:300],
+            )
+        cierre.reabierto = True
+        cierre.reabierto_en = timezone.now()
+        cierre.reabierto_por = actor if getattr(actor, "is_authenticated", False) else None
+        cierre.motivo_reapertura = motivo[:300]
+        cierre.save(update_fields=[
+            "reabierto", "reabierto_en", "reabierto_por", "motivo_reapertura",
+        ])
+    emitir(EventoPortavoz(
+        tipo="contaduria.periodo_reabierto",
+        actor_id=getattr(actor, "id", None),
+        actor_email=getattr(actor, "email", None),
+        payload={"cierre_id": cierre.id, "motivo": motivo[:200]},
+    ))
+    return cierre

@@ -36,4 +36,6 @@ urlpatterns = [
     path("metas-kpi/guardar", views.metas_kpi_guardar, name="ajustes-metas-kpi-guardar"),
     # S-Chalanes-UX #4: recordatorios de tareas por vencer (config global).
     path("recordatorios/", views.recordatorios_panel, name="ajustes-recordatorios"),
+    # S3 resto: La Cobranza — recordatorios de pago al cliente.
+    path("cobranza/", views.cobranza_panel, name="ajustes-cobranza"),
 ]

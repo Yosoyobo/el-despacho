@@ -9,7 +9,7 @@
     <div>
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Contaduría · Reportes</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Estado de resultados</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresos menos costos y gastos del periodo. Sin estimación de ISR ni PTU.</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresos menos costos y gastos del periodo, con estimación de ISR y PTU.</p>
     </div>
     <a href="{% url 'contaduria:landing' %}" class="btn-secundario">← Volver</a>
 </header>
@@ -74,12 +74,28 @@
                 <td class="px-3 py-2 text-right font-semibold">{{ pl.utilidad_operativa|dinero }}</td>
             </tr>
             <tr class="bg-brand-100 text-lg dark:bg-brand-500/20">
-                <td class="px-3 py-3 font-bold text-gray-900 dark:text-gray-100">Utilidad neta</td>
-                <td class="px-3 py-3 text-right font-bold {% if pl.utilidad_neta < 0 %}text-error-700 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ pl.utilidad_neta|dinero }}</td>
+                <td class="px-3 py-3 font-bold text-gray-900 dark:text-gray-100">Utilidad antes de impuestos</td>
+                <td class="px-3 py-3 text-right font-bold {% if pl.utilidad_antes_impuestos < 0 %}text-error-700 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ pl.utilidad_antes_impuestos|dinero }}</td>
+            </tr>
+
+            <tr class="bg-gray-50 dark:bg-white/[0.02]">
+                <td class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" colspan="2">Estimación de impuestos <span class="font-normal normal-case text-gray-400">(aproximado · no fiscal)</span></td>
+            </tr>
+            <tr class="text-gray-600 dark:text-gray-400">
+                <td class="px-3 py-2 pl-6">ISR estimado <span class="text-xs text-gray-400">({{ pl.isr_tasa|floatformat:0 }}%)</span></td>
+                <td class="px-3 py-2 text-right">−{{ pl.isr_estimado|dinero_sin_signo }}</td>
+            </tr>
+            <tr class="text-gray-600 dark:text-gray-400">
+                <td class="px-3 py-2 pl-6">PTU estimada <span class="text-xs text-gray-400">({{ pl.ptu_tasa|floatformat:0 }}%)</span></td>
+                <td class="px-3 py-2 text-right">−{{ pl.ptu_estimado|dinero_sin_signo }}</td>
+            </tr>
+            <tr class="bg-brand-100 text-lg dark:bg-brand-500/20">
+                <td class="px-3 py-3 font-bold text-gray-900 dark:text-gray-100">Utilidad después de impuestos <span class="text-xs font-normal text-gray-500">(estimada)</span></td>
+                <td class="px-3 py-3 text-right font-bold {% if pl.utilidad_despues_impuestos < 0 %}text-error-700 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ pl.utilidad_despues_impuestos|dinero }}</td>
             </tr>
         </tbody>
     </table>
 
-    <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">V2: utilidad neta = utilidad operativa (sin ISR ni PTU estimados). Esos vienen en el sprint de cierre.</p>
+    <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">La estimación de ISR ({{ pl.isr_tasa|floatformat:0 }}%) y PTU ({{ pl.ptu_tasa|floatformat:0 }}%) es informativa: aproxima la utilidad después de impuestos sobre la utilidad operativa positiva. <strong>No es el cálculo fiscal real</strong> — ese lo determina el contador externo. Solo se estima cuando la utilidad es positiva.</p>
 </div>
 {% endblock %}

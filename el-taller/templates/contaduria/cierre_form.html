@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Cerrar periodo — Contaduría{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Contaduría" "/contaduria/" "Cierres" "/contaduria/cierre/" "Cerrar periodo" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Cerrar periodo" subtitulo="Cancela ingresos y egresos del periodo contra la Utilidad del ejercicio." breadcrumb_items=breadcrumb_items back_url="/contaduria/cierre/" back_label="Cierres" %}
+
+<div class="ta-card max-w-lg">
+    <form method="post" class="campo-form space-y-4">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <label for="id_desde" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Desde <span class="text-error-500">*</span></label>
+                <input type="date" id="id_desde" name="desde" value="{{ default_desde }}" class="input" required>
+            </div>
+            <div>
+                <label for="id_hasta" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Hasta <span class="text-error-500">*</span></label>
+                <input type="date" id="id_hasta" name="hasta" value="{{ default_hasta }}" class="input" required>
+            </div>
+        </div>
+        <div class="rounded-xl border border-warning-200 bg-warning-50 p-3 text-xs text-warning-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+            Al cerrar, las cuentas de ingresos y egresos del periodo quedan en cero y su resultado se mueve a <strong>Utilidad del ejercicio</strong>. Es <strong>reversible</strong>: puedes reabrir el periodo cuando quieras (se anula el asiento de cierre).
+        </div>
+        <div class="flex justify-end gap-2">
+            <a href="{% url 'contaduria:cierre-lista' %}" class="btn-secundario">Cancelar</a>
+            <button type="submit" class="btn-primario">Cerrar periodo</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Cierre de mes, conciliación bancaria, impuestos estimados y recordatorios de cobro (11 de junio de 2026)
+
+Cuatro herramientas nuevas para llevar mejor las cuentas, más los recordatorios
+de pago a clientes. Todo vive en **Contaduría** (menos los recordatorios, que se
+configuran en Ajustes).
+
+- **Cerrar el mes (o el año)**: en *Contaduría → Cierres de periodo* puedes
+  "cerrar" un periodo. El sistema pasa lo que ganaste y gastaste a la cuenta de
+  *Utilidad del ejercicio* y deja los contadores en cero para empezar limpio el
+  siguiente mes. Es **reversible**: si te equivocaste, lo reabres y corriges.
+- **Conciliación bancaria**: en *Contaduría → Conciliación bancaria* subes el
+  estado de cuenta del banco (un archivo CSV) y el sistema lo coteja contra tus
+  movimientos, marcando lo que cuadra y mostrándote la diferencia. Sirve para
+  detectar cargos o depósitos que no habías registrado.
+- **Impuestos estimados**: el *Estado de resultados* ahora muestra un
+  aproximado de ISR (30%) y PTU (10%) sobre tu utilidad, para que veas más o
+  menos cuánto te quedaría después de impuestos. **Es solo una estimación** — el
+  cálculo real lo hace tu contador.
+- **Export para el contador (XML)**: en *Contaduría → Export contador* hay
+  nuevos botones para descargar tu catálogo, balanza y pólizas en formato XML
+  estilo SAT. Es un **borrador** que tu contador revisa antes de presentarlo.
+- **La Cobranza (recordatorios de pago)**: el sistema puede mandarle un correo
+  al cliente recordándole una factura vencida. **Arranca apagada**: el
+  administrador la activa en *Ajustes → La Cobranza* y elige cada cuántos días
+  insistir y cuántas veces. El texto del correo se edita en las plantillas de
+  El Cartero.
+
+---
+
 ## Novedades — El Chalán te ayuda en cotizaciones, gastos, proyectos y precios (11 de junio de 2026)
 
 El Chalán ahora echa la mano en cuatro lugares más. En todos, **propone** y tú
@@ -804,8 +833,11 @@ mensuales por usuario.
   cobrar.
 - **Tesorería** — ingresos, gastos, reembolsos, cuentas por cobrar/pagar,
   reportes y exportación a Excel.
-- **Contaduría** — libro contable interno con estados financieros y
-  exportación para el contador externo.
+- **Contaduría** — libro contable interno con estados financieros (con
+  estimación de ISR/PTU), **cierre de periodo**, **conciliación bancaria** y
+  exportación para el contador externo (CSV y XML estilo SAT).
+- **La Cobranza** — recordatorios de pago automáticos por correo a clientes con
+  facturas vencidas (se activa y configura en Ajustes).
 - **Chalanes (IA)** — 5 asistentes de inteligencia artificial con respaldo
   automático entre ellos, y **El Dictado** para dar instrucciones en lenguaje
   natural. El administrador edita el **tono y las reglas** de los asistentes, y
@@ -846,13 +878,15 @@ Cosas que cambiamos en el camino porque resultó mejor así:
 En orden aproximado de prioridad:
 
 1. **La Caja** — links de pago con Stripe y MercadoPago.
-2. **La Cobranza** — recordatorios automáticos de facturas vencidas.
-3. **Tesorería avanzada** — reconciliación con el banco y cierre de periodo
-   contable. (Leer recibos por foto con OCR ya funciona.)
-4. **El Checador V2** — nómina y costo por proyecto a partir de las horas.
-5. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus
+2. **El Checador V2** — nómina y costo por proyecto a partir de las horas.
+3. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus
    proyectos, apruebe cotizaciones y consulte sus facturas y pagos. Es la gran
    etapa final.
+
+> **Contabilidad avanzada y cobranza: listas.** El cierre de periodo, la
+> conciliación bancaria, la estimación de ISR/PTU y el export XML para el
+> contador ya están en Contaduría; y los recordatorios de cobro a clientes se
+> activan en Ajustes → La Cobranza.
 
 > **Google Drive quedó conectado de punta a punta:** adjuntos en Recados, Buzón
 > y El Chalán; comprobantes y lectura de recibos (OCR) en Tesorería; PDF de
@@ -1230,9 +1264,48 @@ Partida doble simplificada para llevar tu libro contable encima de Tesorería. *
 - **Cuentas:** catálogo SAT simplificado (Activos, Pasivos, Capital, Ingresos, Egresos).
 - **Libro mayor:** todos los movimientos de una cuenta con saldo acumulado.
 - **Balance de comprobación:** todas las cuentas con cargo/abono/saldo + verificación de que cuadra.
-- **Estado de resultados** con utilidad bruta/operativa/neta.
+- **Estado de resultados** con utilidad bruta/operativa y una **estimación de
+  ISR (30%) y PTU (10%)** que aproxima cuánto te quedaría después de impuestos.
+  Esa estimación es informativa — el cálculo fiscal real lo hace tu contador.
 - **Balance general** con verificación de la ecuación contable.
-- **Exports CSV** (pólizas + catálogo) para el contador externo.
+- **Exports** para el contador externo: CSV (pólizas + catálogo) y **XML estilo
+  SAT** (catálogo, balanza y pólizas).
+
+### Cerrar un periodo
+
+En **Cierres de periodo** puedes cerrar un mes o un año:
+
+1. Toca **"+ Cerrar periodo"** y elige el rango (por defecto trae el mes anterior).
+2. El sistema crea un movimiento de cierre que deja en cero tus cuentas de
+   ingresos y egresos y manda el resultado a **Utilidad del ejercicio**.
+3. Verás el periodo en la lista con su utilidad o pérdida.
+
+Si te equivocaste, usa **Reabrir** (pide un motivo): se anula el movimiento de
+cierre y puedes corregir y volver a cerrar. Es totalmente reversible.
+
+### Conciliación bancaria
+
+En **Conciliación bancaria** cotejas tu estado de cuenta del banco contra lo que
+tienes registrado:
+
+1. Toca **"+ Nueva conciliación"**, elige la cuenta (banco/caja) y el periodo, y
+   pon el saldo final que muestra tu estado de cuenta.
+2. **Importa el estado de cuenta** en CSV. El archivo necesita encabezado con
+   columnas `fecha`, `descripcion` y `monto` (positivo si entra, negativo si
+   sale) — o el par `deposito`/`retiro`.
+3. Toca **"⚡ Cotejar automáticamente"** y el sistema casa cada línea del banco
+   con tu movimiento del mismo monto y fecha cercana. Lo que no case lo puedes
+   casar a mano con el botón **Casar**.
+4. Arriba ves la **diferencia** entre el saldo del banco y el de tus libros. Si
+   es cero, todo cuadra.
+
+### Export para el contador (XML)
+
+En **Export contador**, además de los CSV, hay tres botones de **XML estilo SAT
+(Contabilidad Electrónica)**: catálogo de cuentas, balanza de comprobación y
+pólizas del periodo. Son un **borrador**: tu contador debe verificar el RFC (se
+configura en *Ajustes → Contaduría*) y los códigos agrupadores antes de
+presentarlos al SAT.
 
 ### Si necesitas mover dinero manualmente
 
@@ -1242,6 +1315,30 @@ Botón **"+ Nuevo movimiento"** te lleva a un wizard:
 - **Ajuste de saldo** (corregir cuando la realidad no coincide): cuenta, sube/baja, monto, fecha y descripción **obligatoria**.
 
 "Movimiento avanzado" (asiento manual con partidas libres) sólo lo ve el super admin.
+
+---
+
+## La Cobranza (recordatorios de pago)
+
+El sistema puede mandarle un correo al cliente recordándole una factura vencida,
+para que no tengas que perseguirlo a mano.
+
+**Arranca apagada.** El super admin la activa en **Ajustes → La Cobranza** y ahí
+elige:
+
+- Si está **activa** o no.
+- **Cada cuántos días** se le insiste al mismo cliente (para no spamear).
+- El **máximo de recordatorios** por factura.
+- Si además quiere un **aviso antes de vencer** (cuántos días antes).
+- Si **adjunta el PDF** de la factura (requiere Google Drive).
+
+El correo sale por El Cartero (el mismo canal que usas para cotizaciones y
+facturas) y usa la plantilla **"Recordatorio de cobranza"**, que se edita en
+*Ajustes → El Cartero → Plantillas*. En el detalle de cada factura puedes ver
+los recordatorios que ya se enviaron.
+
+> El cliente debe tener correo registrado en su ficha de Clientes; si no, el
+> recordatorio se marca como fallido y no se manda.
 
 ---
 

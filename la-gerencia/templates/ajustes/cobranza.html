@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}La Cobranza — Ajustes{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Cobranza" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="La Cobranza" subtitulo="Recordatorios de pago automáticos a los clientes con facturas vencidas." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+{% if not correo_configurado %}
+<div class="mb-4 rounded-xl border border-warning-300 bg-warning-50 p-3 text-sm text-warning-800 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
+    El Cartero no está configurado todavía. La Cobranza usa El Cartero para enviar los correos — configúralo en <a href="{% url 'ajustes-cartero' %}" class="underline font-medium">Ajustes → El Cartero</a> antes de activar.
+</div>
+{% endif %}
+
+<div class="ta-card max-w-xl">
+    <form method="post" class="campo-form space-y-5">
+        {% csrf_token %}
+
+        <label class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+            <span>
+                <span class="block font-medium text-gray-900 dark:text-gray-100">Activar La Cobranza</span>
+                <span class="block text-xs text-gray-500 dark:text-gray-400">El cron diario manda recordatorios a los clientes. Apagada por defecto.</span>
+            </span>
+            <input type="checkbox" name="activa" value="1" {% if cfg.activa %}checked{% endif %} class="h-5 w-5 rounded border-gray-300 text-brand-500 focus:ring-brand-500">
+        </label>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <label for="id_dias_entre" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Días entre recordatorios</label>
+                <input type="number" min="1" max="365" id="id_dias_entre" name="dias_entre_recordatorios" value="{{ cfg.dias_entre_recordatorios }}" class="input">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No se le insiste al cliente más seguido que esto.</p>
+            </div>
+            <div>
+                <label for="id_max" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Máximo de recordatorios</label>
+                <input type="number" min="0" max="50" id="id_max" name="max_recordatorios" value="{{ cfg.max_recordatorios }}" class="input">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Por factura. 0 = sin límite.</p>
+            </div>
+            <div>
+                <label for="id_pre" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Aviso antes de vencer (días)</label>
+                <input type="number" min="0" max="60" id="id_pre" name="recordar_pre_vencimiento_dias" value="{{ cfg.recordar_pre_vencimiento_dias }}" class="input">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">0 = solo recuerda después de vencer.</p>
+            </div>
+        </div>
+
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" name="incluir_pdf" value="1" {% if cfg.incluir_pdf %}checked{% endif %}>
+            Adjuntar el PDF de la factura (requiere Google Drive)
+        </label>
+
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 dark:border-gray-800 dark:bg-white/[0.02] dark:text-gray-400">
+            El texto del correo se edita en <a href="{% url 'ajustes-cartero-plantillas' %}" class="underline">Ajustes → El Cartero → Plantillas</a> (plantilla «Recordatorio de cobranza»). El envío real lo corre el cron diario; revisa la guía de operación.
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="btn-primario">Guardar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -5541,3 +5541,73 @@ proyecto** (no chat, La Recepción sigue apagada); incluir higiene + PWA offline
   Hasta entonces queda dormido.
 - super_admin puede reasignar proveedor/modelo o editar la voz de las 4
   estaciones nuevas en `/chalanes/`.
+
+---
+
+# BITÁCORA — S3-resto + La Cobranza (2026-06-11, VERSION 2026.06.38)
+
+Cierra el resto de S3 (contabilidad avanzada) + La Cobranza de S2b. Un solo
+commit + deploy. Era lo único cerrable por código sin Learning Center. Decidido
+con Oscar: alcance = S3 resto + La Cobranza (no La Caja, que necesita las
+cuentas Stripe/MercadoPago de LC).
+
+## 1. Entregas
+
+- **E1 — Cierre de periodo** (`apps/contaduria`): modelo `CierrePeriodo` +
+  `services.cerrar_periodo`/`reabrir_periodo` (asiento origen=`cierre` que deja
+  4.x/5.x en cero contra `3.2.02`; idempotente por rango; reversible).
+  UI `/contaduria/cierre/`. Eventos `contaduria.periodo_cerrado/reabierto`.
+- **E2 — ISR/PTU estimado**: `reportes.estado_resultados` añade `isr_estimado`
+  (30%), `ptu_estimado` (10%), `utilidad_despues_impuestos` sobre utilidad
+  operativa positiva. Informativo, no fiscal. `utilidad_neta` intacta (== op).
+- **E3 — Reconciliación bancaria**: modelos `ConciliacionBancaria` +
+  `LineaBancaria` + `conciliacion.py` (importar_csv flexible, automatch por
+  monto firmado + fecha ±3d, match/desmatch manual, resumen banco vs libros).
+  UI `/contaduria/conciliacion/`.
+- **E4 — Export fiscal XML SAT Anexo 24 (BORRADOR)**: `exports_xml.py`
+  (catálogo/balanza/pólizas 1.3) + campo `CuentaContable.codigo_agrupador_sat`
+  (migración 0008 + data migration 0009 que lo siembra) + slot Bóveda
+  `rfc_empresa`. Cableado en la view `export` + sección en `export.html`.
+- **E5 — La Cobranza**: `ajustes.ConfiguracionCobranza` (singleton, **apagada
+  por default**) + `facturacion.RecordatorioCobranza` (auditoría) +
+  `cobranza.py` (facturas_a_recordar + enviar_recordatorio vía El Cartero,
+  plantilla `cobranza`) + command cron `enviar_recordatorios_cobranza` +
+  UI Gerencia `/ajustes/cobranza/`. Detalle de factura muestra recordatorios.
+
+## 2. Decisiones / patrones
+
+- **Permisos**: reusan `contaduria.capturar`/`reportes` (cierre/conciliación bajo
+  capturar; export bajo reportes). NO se agregó migración de permisos — menos
+  riesgo. La cobranza config es super_admin (`@requires_role`).
+- **Migraciones**: `contaduria/0008` (campo + 3 modelos), `contaduria/0009`
+  (seed agrupador SAT idempotente), `ajustes/0008` (ConfiguracionCobranza —
+  reescrita a mano para quitar un `AlterField id on credencial` ESPURIO que
+  makemigrations generó por la discrepancia latente de BigAutoField; ajeno al
+  sprint), `facturacion/0006` (RecordatorioCobranza). Sin Dockerfile changes:
+  contaduria/facturacion ya están en ambos INSTALLED_APPS y se copian.
+- **ISR/PTU**: constantes `ISR_TASA`/`PTU_TASA` en `reportes.py`. Deuda: mover a
+  config editable si LC pide otras tasas.
+- **Export XML**: borrador explícito (RFC genérico si falta, código agrupador
+  sembrado por convención). Verificar con el contador antes del SAT.
+- **La Cobranza opt-in**: `activa=False` por default para no mandar correos a
+  clientes reales sin que Oscar lo habilite.
+
+## 3. Tests
+
+- `tests/taller/test_s3_resto.py` (30): cierre (utilidad/idempotente/sin
+  movimiento/reabrir-recerrar/pérdida), ISR/PTU, conciliación (csv firmado +
+  deposito/retiro, automatch, match/desmatch, resumen), export XML
+  (bien-formado, RFC genérico, content-type, seed agrupador) + smoke de vistas.
+- `tests/taller/test_cobranza.py` (8): facturas_a_recordar, cadencia, tope,
+  enviar (ok / sin correo), command apagado/activo.
+- `tests/gerencia/test_cobranza_ui.py` (3): panel + permisos + guardar.
+- Ruff limpio.
+
+## 4. Post-deploy manual
+
+- **Crontab en La Sede**: agregar `enviar_recordatorios_cobranza` 6:15 (§10).
+  No envía nada hasta activar La Cobranza en Ajustes.
+- super_admin: pegar el **RFC de la empresa** en Ajustes → Contaduría para que
+  el export XML salga con el RFC real (si no, usa genérico).
+- super_admin: activar y configurar **La Cobranza** en Ajustes → La Cobranza
+  cuando se quiera empezar a recordar pagos a clientes.

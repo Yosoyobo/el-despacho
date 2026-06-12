@@ -90,6 +90,27 @@
         </section>
         {% endif %}
 
+        {% if recordatorios %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Recordatorios de cobranza</h2>
+            <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
+                {% for rec in recordatorios %}
+                <li class="flex items-center justify-between gap-2 py-2">
+                    <span class="text-gray-700 dark:text-gray-300">
+                        {{ rec.enviado_en|date:"Y-m-d H:i" }}
+                        <span class="text-xs text-gray-400">· {% if rec.tipo == 'pre_vencimiento' %}aviso previo{% else %}{{ rec.dias_vencida }}d vencida{% endif %}{% if rec.canal %} · {{ rec.canal }}{% endif %}</span>
+                    </span>
+                    {% if rec.ok %}
+                        <span class="rounded-full bg-success-50 px-2 py-0.5 text-xs text-success-700 dark:bg-success-500/15 dark:text-success-400">Enviado</span>
+                    {% else %}
+                        <span class="rounded-full bg-error-50 px-2 py-0.5 text-xs text-error-700 dark:bg-error-500/15 dark:text-error-400" title="{{ rec.detalle }}">Falló</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
         {# Ingresos y egresos del proyecto ligado (S-LC-Buzon). #}
         {% if fac.proyecto and permisos_modulos.tesoreria %}
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Conciliación {{ conc.cuenta.codigo }} — Contaduría{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Contaduría" "/contaduria/" "Reconciliación" "/contaduria/conciliacion/" conc.cuenta.codigo as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Conciliación bancaria" subtitulo=conc.cuenta.nombre breadcrumb_items=breadcrumb_items back_url="/contaduria/conciliacion/" back_label="Reconciliación" %}
+
+<!-- Resumen -->
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="ta-card">
+        <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Saldo según el banco</p>
+        <p class="mt-1 text-title-sm font-semibold text-gray-900 dark:text-gray-100">{{ resumen.saldo_estado_cuenta|dinero }}</p>
+    </div>
+    <div class="ta-card">
+        <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Saldo según libros</p>
+        <p class="mt-1 text-title-sm font-semibold text-gray-900 dark:text-gray-100">{{ resumen.saldo_libros|dinero }}</p>
+    </div>
+    <div class="ta-card {% if resumen.cuadrada %}border-success-200 dark:border-success-500/30{% else %}border-warning-300 dark:border-warning-500/40{% endif %}">
+        <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Diferencia</p>
+        <p class="mt-1 text-title-sm font-semibold {% if resumen.cuadrada %}text-success-700 dark:text-success-400{% else %}text-warning-700 dark:text-warning-400{% endif %}">{{ resumen.diferencia|dinero }}</p>
+        <p class="mt-1 text-xs text-gray-500">{{ resumen.conciliadas }} de {{ resumen.total_lineas }} líneas conciliadas</p>
+    </div>
+</div>
+
+{% if puede_capturar %}
+<div class="mb-6 flex flex-wrap items-center gap-3">
+    <form method="post" action="{% url 'contaduria:conciliacion-importar' conc.pk %}" enctype="multipart/form-data" class="flex items-center gap-2">
+        {% csrf_token %}
+        <input type="file" name="archivo" accept=".csv,text/csv" class="text-sm" required>
+        <button type="submit" class="btn-secundario">Importar estado de cuenta (CSV)</button>
+    </form>
+    <form method="post" action="{% url 'contaduria:conciliacion-automatch' conc.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-primario">⚡ Cotejar automáticamente</button>
+    </form>
+</div>
+<p class="-mt-3 mb-6 text-xs text-gray-500 dark:text-gray-400">CSV con encabezado: columnas <code>fecha</code>, <code>descripcion</code> y <code>monto</code> (firmado: + entra, − sale) — o el par <code>deposito</code>/<code>retiro</code>. Opcional <code>referencia</code>.</p>
+{% endif %}
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <!-- Líneas del banco -->
+    <div class="ta-card">
+        <h2 class="mb-3 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Estado de cuenta del banco</h2>
+        <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for ln in lineas %}
+                <tr>
+                    <td class="px-2 py-2 align-top">
+                        <p class="font-medium text-gray-800 dark:text-gray-200">{{ ln.fecha|date:"Y-m-d" }} · <span class="{% if ln.monto < 0 %}text-error-600 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ ln.monto|dinero }}</span></p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ ln.descripcion|default:"—" }}{% if ln.referencia %} · {{ ln.referencia }}{% endif %}</p>
+                        {% if ln.conciliada %}
+                            <p class="mt-1 text-xs text-success-700 dark:text-success-400">✓ Conciliada{% if ln.partida %} con <a href="{% url 'contaduria:asiento-detalle' ln.partida.asiento.pk %}" class="underline">{{ ln.partida.asiento.codigo }}</a>{% endif %}</p>
+                        {% elif puede_capturar %}
+                            <form method="post" action="{% url 'contaduria:conciliacion-match' ln.pk %}" class="mt-2 flex items-center gap-2">
+                                {% csrf_token %}
+                                <select name="partida" class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" required>
+                                    <option value="">Casar con…</option>
+                                    {% for p in pendientes_libro %}<option value="{{ p.pk }}">{{ p.fecha|date:"m-d" }} · {{ p.codigo }} · {{ p.firmada|dinero }}</option>{% endfor %}
+                                </select>
+                                <button type="submit" class="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Casar</button>
+                            </form>
+                        {% else %}
+                            <p class="mt-1 text-xs text-warning-600 dark:text-warning-400">Pendiente</p>
+                        {% endif %}
+                    </td>
+                    {% if ln.conciliada and puede_capturar %}
+                    <td class="px-2 py-2 text-right align-top">
+                        <form method="post" action="{% url 'contaduria:conciliacion-desmatch' ln.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs text-gray-400 hover:text-error-600">Descasar</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr><td class="px-2 py-6 text-center text-sm text-gray-500 italic">Importa el estado de cuenta para empezar.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <!-- Movimientos del libro pendientes -->
+    <div class="ta-card">
+        <h2 class="mb-3 text-title-xs font-semibold text-gray-900 dark:text-gray-100">Movimientos del libro pendientes <span class="text-xs font-normal text-gray-500">({{ resumen.monto_pendiente_libro|dinero }})</span></h2>
+        <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for p in pendientes_libro %}
+                <tr>
+                    <td class="px-2 py-2"><a href="{% url 'contaduria:asiento-detalle' p.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ p.codigo }}</a> · <span class="text-gray-500">{{ p.fecha|date:"Y-m-d" }}</span><br><span class="text-xs text-gray-500">{{ p.desc }}</span></td>
+                    <td class="px-2 py-2 text-right {% if p.firmada < 0 %}text-error-600 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ p.firmada|dinero }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="px-2 py-6 text-center text-sm text-success-700 dark:text-success-400">✓ Todos los movimientos del libro están conciliados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

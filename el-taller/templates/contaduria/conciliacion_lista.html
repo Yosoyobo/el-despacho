@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Reconciliación bancaria — Contaduría{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Contaduría" "/contaduria/" "Reconciliación bancaria" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Reconciliación bancaria" subtitulo="Coteja el estado de cuenta del banco contra tus movimientos." breadcrumb_items=breadcrumb_items back_url="/contaduria/" back_label="Contaduría" %}
+
+{% if puede_capturar %}
+<div class="mb-4">
+    <a href="{% url 'contaduria:conciliacion-nueva' %}" class="btn-primario">+ Nueva conciliación</a>
+</div>
+{% endif %}
+
+<div class="ta-card overflow-x-auto">
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <th class="px-3 py-2">Cuenta</th>
+                <th class="px-3 py-2">Periodo</th>
+                <th class="px-3 py-2 text-right">Saldo banco</th>
+                <th class="px-3 py-2">Creada por</th>
+                <th class="px-3 py-2"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for c in conciliaciones %}
+            <tr data-href="{% url 'contaduria:conciliacion-detalle' c.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <td class="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">{{ c.cuenta.codigo }} · {{ c.cuenta.nombre }}</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ c.desde|date:"Y-m-d" }} → {{ c.hasta|date:"Y-m-d" }}</td>
+                <td class="px-3 py-2 text-right">{{ c.saldo_estado_cuenta|dinero }}</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ c.creada_por.nombre_completo|default:c.creada_por.email|default:"—" }}</td>
+                <td class="px-3 py-2 text-right"><a href="{% url 'contaduria:conciliacion-detalle' c.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">Abrir →</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-3 py-8">
+                {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin conciliaciones" descripcion="Crea una para cotejar el estado de cuenta del banco contra tus movimientos." icono="folder" %}
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

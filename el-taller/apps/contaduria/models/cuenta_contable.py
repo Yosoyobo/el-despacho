@@ -48,6 +48,11 @@ class CuentaContable(models.Model):
     # NULL si la cuenta no participa de hooks.
     slot = models.CharField(max_length=40, blank=True, default="", db_index=True)
 
+    # Código agrupador del SAT (Anexo 24) para el export fiscal. Se siembra
+    # con un default razonable por cuenta y es editable; el contador externo
+    # lo refina antes de presentar al SAT. Vacío = sin mapeo.
+    codigo_agrupador_sat = models.CharField(max_length=10, blank=True, default="")
+
     activa = models.BooleanField(default=True, db_index=True)
 
     creada_en = models.DateTimeField(auto_now_add=True)

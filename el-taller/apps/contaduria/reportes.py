@@ -1,9 +1,10 @@
-"""Estados financieros — V2.
+"""Estados financieros — V2 + S3 resto.
 
 Estado de resultados (P&L): movimiento del periodo de ingresos y
-egresos, agrupados en subgrupos legibles. Utilidad neta == utilidad
-operativa en V2 (no se estima ISR ni PTU; eso vive en cierre de
-periodo, sprint futuro).
+egresos, agrupados en subgrupos legibles. La utilidad operativa es la
+base; sobre ella se calcula una **estimación** de ISR y PTU (S3 resto)
+con tasas estándar de México, claramente etiquetada como estimación —
+NO sustituye el cálculo del contador externo (regla §16).
 
 Balance general: saldos acumulados a fecha de corte, agrupado por
 tipo (activo / pasivo / capital). La utilidad del ejercicio se
@@ -21,6 +22,14 @@ from django.db.models import Sum
 from .models import CuentaContable, Partida
 
 CERO = Decimal("0.00")
+
+# Tasas estándar México para la ESTIMACIÓN de impuestos en el P&L. No son
+# el cálculo fiscal real (eso lo hace el contador externo, regla §16); sirven
+# para que LC vea un aproximado de la utilidad después de impuestos. Si LC
+# necesita tasas distintas, hoy se editan aquí; un sprint futuro puede moverlas
+# a una ConfiguracionFiscal editable.
+ISR_TASA = Decimal("30")   # % sobre la utilidad antes de impuestos
+PTU_TASA = Decimal("10")   # % de participación de los trabajadores en las utilidades
 
 # slot → (clave_subgrupo, etiqueta_subgrupo, orden)
 SLOT_A_SUBGRUPO_INGRESO = {
@@ -106,7 +115,18 @@ def estado_resultados(
     )
     utilidad_bruta = (total_ingresos - total_costo).quantize(Decimal("0.01"))
     utilidad_operativa = (utilidad_bruta - total_gastos).quantize(Decimal("0.01"))
-    utilidad_neta = utilidad_operativa  # V2: sin ISR estimado
+    # `utilidad_neta` se mantiene == operativa para compatibilidad con
+    # `balance_general` y los KPIs (que NO deben restar impuestos estimados
+    # de los saldos contables reales). La estimación ISR/PTU es informativa.
+    utilidad_neta = utilidad_operativa
+
+    # Estimación de impuestos (S3 resto). Solo sobre utilidad positiva.
+    base_impuestos_estimados = utilidad_operativa if utilidad_operativa > CERO else CERO
+    isr_estimado = (base_impuestos_estimados * ISR_TASA / Decimal("100")).quantize(Decimal("0.01"))
+    ptu_estimado = (base_impuestos_estimados * PTU_TASA / Decimal("100")).quantize(Decimal("0.01"))
+    utilidad_despues_impuestos = (
+        utilidad_operativa - isr_estimado - ptu_estimado
+    ).quantize(Decimal("0.01"))
 
     return {
         "desde": desde,
@@ -118,6 +138,13 @@ def estado_resultados(
         "utilidad_bruta": utilidad_bruta,
         "utilidad_operativa": utilidad_operativa,
         "utilidad_neta": utilidad_neta,
+        # Estimación informativa de impuestos (no es cálculo fiscal real).
+        "isr_tasa": ISR_TASA,
+        "ptu_tasa": PTU_TASA,
+        "isr_estimado": isr_estimado,
+        "ptu_estimado": ptu_estimado,
+        "utilidad_antes_impuestos": utilidad_operativa,
+        "utilidad_despues_impuestos": utilidad_despues_impuestos,
     }
 
 

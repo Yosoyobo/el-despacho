@@ -1605,13 +1605,81 @@ contra los exports de Contaduría.
 - **Cancelación de factura con cobros** — V1 lo prohíbe (debe
   anularse el Ingreso primero).
 
-### S3 — Contabilidad y reportes (resto)
+### S3-resto + La Cobranza ✅ — Contabilidad avanzada + recordatorios de pago (2026-06-11, VERSION 2026.06.38)
 
-Tras S3.contaduria-v1 + S3.contaduria-v2 quedan: **Reconciliación
-bancaria** (importar estado de cuenta del banco) · **Cierre de
-periodo** (asiento que cancela ingresos/egresos contra Utilidad del
-ejercicio) · **Estimación de ISR/PTU** en estado de resultados ·
-**Export XML/formato fiscal específico** para el PAC del contador.
+Cierra el resto de S3 (contabilidad avanzada) y La Cobranza de S2b, en un
+solo commit + deploy. Sin LC: era lo único cerrable por código. Decisiones
+por default: permisos reusan `capturar`/`reportes` (sin migración de
+permisos nueva), ISR/PTU como constantes 30/10, La Cobranza **opt-in**
+(arranca apagada). 5 entregas:
+
+- **E1 — Cierre de periodo** (`apps/contaduria`): modelo `CierrePeriodo`
+  (desde/hasta, asiento FK, utilidad, reabierto + traza) + migración
+  `0008_*`. `services.cerrar_periodo(desde, hasta, actor)` arma el asiento
+  origen=`cierre`: por cada cuenta de resultado (4.x/5.x) con saldo en el
+  rango, una partida que la deja en cero (lado contrario a su naturaleza);
+  la diferencia (= utilidad/pérdida) va a `3.2.02 Utilidad del ejercicio`.
+  Idempotente (vigente por rango) y reversible (`reabrir_periodo` anula el
+  asiento + marca reabierto; permite re-cerrar). UI `/contaduria/cierre/`
+  (lista + form + modal de reapertura Wave 5). Eventos
+  `contaduria.periodo_cerrado/reabierto`. Excepción `CierreInvalido`.
+- **E2 — ISR/PTU estimado** (`reportes.estado_resultados`): constantes
+  `ISR_TASA=30` / `PTU_TASA=10`. Sobre utilidad operativa **positiva**
+  calcula `isr_estimado`, `ptu_estimado`, `utilidad_despues_impuestos`
+  (informativo, NO fiscal — etiquetado en la UI). `utilidad_neta` se
+  mantiene == operativa para no contaminar balance/KPIs. Template muestra
+  el bloque "Estimación de impuestos".
+- **E3 — Reconciliación bancaria** (`apps/contaduria`): modelos
+  `ConciliacionBancaria` + `LineaBancaria` (monto firmado: + entra al
+  banco). `conciliacion.py`: `crear_conciliacion`, `importar_csv` (CSV
+  flexible: `fecha`+`monto` firmado o par `deposito`/`retiro`; detecta
+  delimitador `,`/`;`), `automatch` (casa por monto firmado + fecha ±3d
+  contra partidas del libro en la cuenta), `match_manual`/`desmatch`,
+  `resumen` (saldo banco vs saldo libros + diferencia + pendientes de
+  ambos lados). UI `/contaduria/conciliacion/{,nueva/,<id>/,...}` con
+  upload CSV + botón cotejar + cotejo manual por fila. Cuentas elegibles:
+  activas, deudoras, líquidas (slot banco/caja/stripe_saldo/mp_saldo o
+  tipo activo). Eventos `contaduria.conciliacion_creada/actualizada`.
+- **E4 — Export fiscal XML SAT Anexo 24 (BORRADOR)** (`exports_xml.py`):
+  Catálogo + Balanza + Pólizas en XML estilo SAT Contabilidad Electrónica
+  1.3. Campo nuevo `CuentaContable.codigo_agrupador_sat` (migración 0008 +
+  data migration `0009` que siembra códigos agrupadores razonables por
+  cuenta, idempotente solo-si-vacío). RFC desde La Bóveda (slot nuevo
+  `rfc_empresa`); si falta usa genérico `XAXX010101000`. Cableado en la
+  view `export` (formatos `xml_catalogo/xml_balanza/xml_polizas`) + sección
+  en `export.html` etiquetada Borrador. Evento `contaduria.exportado_xml`.
+  **Verificar RFC + código agrupador con el contador antes de presentar al
+  SAT** — es punto de partida, no entrega fiscal final.
+- **E5 — La Cobranza** (`apps/facturacion` + `ajustes`): singleton
+  `ajustes.ConfiguracionCobranza` (migración `ajustes/0008`, **activa=False
+  por default** para no sorprender a clientes) con cadencia
+  (dias_entre_recordatorios=7, max_recordatorios=4,
+  recordar_pre_vencimiento_dias=0, incluir_pdf). Auditoría
+  `facturacion.RecordatorioCobranza` (migración `0006`). `cobranza.py`:
+  `facturas_a_recordar` (vencidas/por-vencer con saldo>0, respeta cadencia
+  + tope) y `enviar_recordatorio` (renderiza la plantilla `cobranza` de El
+  Cartero al `cliente.email_contacto`, audita, nunca lanza). Command cron
+  `enviar_recordatorios_cobranza` (gated en `activa`, `--dry-run`). UI de
+  config en Gerencia `/ajustes/cobranza/` (super_admin). El detalle de la
+  factura muestra los recordatorios enviados. Eventos
+  `cobranza.recordatorio_enviado/fallido`, `ajuste.cobranza_configurada`.
+  **Crontab nuevo en La Sede** (§10): `enviar_recordatorios_cobranza` 6:15.
+- **41 tests nuevos** (`tests/taller/test_s3_resto.py` 30 + cierre/isr/
+  conciliación/xml + smoke de vistas, `tests/taller/test_cobranza.py` 8,
+  `tests/gerencia/test_cobranza_ui.py` 3).
+
+**NO incluye / deuda diseñada**:
+- **ISR/PTU configurable**: tasas son constantes en `reportes.py`; si LC
+  necesita otras, un sprint mueve a una `ConfiguracionFiscal` editable.
+- **Export XML estricto-SAT**: el `codigo_agrupador_sat` sembrado y el RFC
+  son borrador; falta validación contra el XSD oficial y posible ajuste de
+  subcódigos por el contador. El export no incluye sello/firma.
+- **Reconciliación**: V1 no genera asientos automáticos por comisiones
+  bancarias (se capturan con el wizard de movimiento); el `monto` asume
+  cuentas deudoras (banco/caja/Stripe/MP).
+- **La Cobranza**: el adjunto PDF al recordatorio requiere Drive; el envío
+  real depende de El Cartero configurado (SMTP/n8n). No re-marca como
+  no-vencida si se cobra (eso lo hace el flujo de cobro existente).
 
 ### S-UX-Dummy-Proof ✅ — 5 mejoras de UX (2026-05-21)
 
@@ -3921,6 +3989,8 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    30 3 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml exec -T la-gerencia python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
    # S-Chalanes-UX #4 (2026-06-09): recordatorios de tareas por vencer (config en Gerencia → Ajustes → Recordatorios)
    10 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py recordar_tareas_por_vencer >> /var/log/recordatorios.log 2>&1
+   # S3 resto (2026-06-11): La Cobranza — recordatorios de pago a clientes (config en Gerencia → Ajustes → La Cobranza; ARRANCA APAGADA, no envía hasta activarla)
+   15 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py enviar_recordatorios_cobranza >> /var/log/cobranza.log 2>&1
    ```
 
    Los dos comandos de "vencidas" son idempotentes (campo

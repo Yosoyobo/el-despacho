@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Cierres de periodo — Contaduría{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Contaduría" "/contaduria/" "Cierres de periodo" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Cierres de periodo" subtitulo="Cierra el mes/año para fijar la utilidad. Reversible." breadcrumb_items=breadcrumb_items back_url="/contaduria/" back_label="Contaduría" %}
+
+{% if puede_capturar %}
+<div class="mb-4">
+    <a href="{% url 'contaduria:cierre-nuevo' %}" class="btn-primario">+ Cerrar periodo</a>
+</div>
+{% endif %}
+
+<div class="ta-card overflow-x-auto">
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <th class="px-3 py-2">Periodo</th>
+                <th class="px-3 py-2 text-right">Utilidad / pérdida</th>
+                <th class="px-3 py-2">Asiento</th>
+                <th class="px-3 py-2">Cerrado por</th>
+                <th class="px-3 py-2">Estado</th>
+                <th class="px-3 py-2"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for c in cierres %}
+            <tr class="{% if c.reabierto %}opacity-60{% endif %}">
+                <td class="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">{{ c.desde|date:"Y-m-d" }} → {{ c.hasta|date:"Y-m-d" }}</td>
+                <td class="px-3 py-2 text-right {% if c.utilidad < 0 %}text-error-700 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ c.utilidad|dinero }}</td>
+                <td class="px-3 py-2">{% if c.asiento %}<a href="{% url 'contaduria:asiento-detalle' c.asiento.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ c.asiento.codigo }}</a>{% else %}—{% endif %}</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ c.creado_por.nombre_completo|default:c.creado_por.email|default:"—" }}</td>
+                <td class="px-3 py-2">
+                    {% if c.reabierto %}
+                        <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">Reabierto</span>
+                    {% else %}
+                        <span class="rounded-full bg-success-50 px-2 py-0.5 text-xs text-success-700 dark:bg-success-500/15 dark:text-success-400">Cerrado</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-2 text-right">
+                    {% if puede_capturar and not c.reabierto %}
+                    <button type="button" class="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                            hx-get="{% url 'contaduria:cierre-reabrir' c.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">Reabrir</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-3 py-8">
+                {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin cierres todavía" descripcion="Cierra un periodo para fijar la utilidad del mes o del año." icono="folder" %}
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

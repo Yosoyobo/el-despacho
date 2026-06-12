@@ -359,6 +359,7 @@ def detalle(request, pk):
         "items": items,
         "totales": totales,
         "cobros": cobros,
+        "recordatorios": list(fac.recordatorios.order_by("-enviado_en")[:10]),
         "ingresos_proyecto": ingresos_proyecto,
         "egresos_proyecto": egresos_proyecto,
         "info_cliente": info_cliente,
