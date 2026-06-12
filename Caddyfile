@@ -21,6 +21,13 @@ www.learningcenter.mx {
 
 taller.learningcenter.mx {
 	encode gzip
+	# El Envoltorio (V6 Bloque 9): Digital Asset Links para la TWA Android.
+	# El fingerprint SHA-256 sale del keystore de firma (ver envoltorio/README.md);
+	# mientras sea el placeholder, la app abre con barra de URL (no rompe nada).
+	handle /.well-known/assetlinks.json {
+		header Content-Type application/json
+		respond `[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"mx.learningcenter.taller","sha256_cert_fingerprints":["REEMPLAZAR_CON_FINGERPRINT_SHA256"]}}]` 200
+	}
 	reverse_proxy el-taller:8000
 }
 

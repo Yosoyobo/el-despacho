@@ -19,3 +19,10 @@ staticfiles/
 .idea/
 .vscode/
 *.log
+
+# El Envoltorio (V6 Bloque 9): el keystore y los builds NUNCA al repo.
+envoltorio/*.keystore
+envoltorio/*.apk
+envoltorio/*.aab
+envoltorio/app/
+envoltorio/node_modules/
