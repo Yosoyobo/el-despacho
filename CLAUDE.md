@@ -77,6 +77,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **La Cobranza** | El Taller | Recordatorios automáticos vía Portavoz | S2 |
 | **La Tesorería** | El Taller | Ingresos/egresos/CxC/CxP/reembolsos + reportes + CSV | S2b.3 ✅ (V1) · S2b.3b (OCR+Sheets) |
 | **La Contaduría** | El Taller | Partida doble + estados financieros + export contador | S3.contaduria-v1/v2 ✅ |
+| **El Checador** | El Taller (+ admin en Gerencia) | Jornada + visitas geolocalizadas + tiempo por proyecto + correcciones + horarios + cola offline | S-Checador ✅ |
 | **El Archivero / Las Planillas / Las Actas / La Agenda** | infra | Wrappers Google Workspace (Drive/Sheets/Docs/Calendar) | S2 |
 
 ---
@@ -3516,6 +3517,51 @@ máxima compatibilidad conviene estilo inline (el preset newsletter ayuda; el
 usuario puede ajustar en la vista de código). Plantilla `cobranza` queda lista
 para que La Cobranza la consuma. El envío de cotización/factura regenera el
 PDF en cada "enviar" (no reusa el `pdf_file_id` guardado) — aceptable.
+
+### S-Checador ✅ — El Checador V1 (asistencia + visitas + tiempo) (2026-06-11)
+
+App nueva `apps.checador` (El Taller) + `apps.checador_admin` (La Gerencia).
+PWA móvil-first con geolocalización por **snapshot puntual al checar** (sin
+tracking continuo). 7 entregas, commit por entrega. VERSION `2026.06.36`.
+Handoff: `docs/SPRINT-CHECADOR.md`. Detalle de cierre en BITACORA §S-Checador.
+
+- **Modelos** (`apps/checador/models/`): `Jornada` (1 por usuario+día, entrada/
+  salida con lat/lng/precisión/sin_geo/offline/uuid, retardo_min, estado),
+  `Visita` (cliente XOR proveedor, geo, uuid_cliente para dedup), `SesionProyecto`
+  (timer/manual, duracion_min), `HorarioLaboral` (global usuario=NULL + overrides
+  por usuario+día, tolerancia), `SolicitudCorreccion` (entrada/salida/sesion/
+  visita, pendiente→aprobada/rechazada). Migración inicial + seed horario global
+  L-V 9:00–18:00 tol 15.
+- **Services** (`apps/checador/services.py`): `checar_entrada/salida` (idempotente
+  por uuid, geo no-bloqueante, retardo = minutos_tarde − tolerancia contra horario
+  vigente override>global), `registrar_visita`, `iniciar/detener_timer` (un solo
+  activo), `capturar_sesion_manual`, `solicitar/resolver_correccion` (al aprobar
+  aplica el valor y recalcula), `horas_de`. Eventos `checador.*` + push Interfón.
+- **Permisos**: módulo `checador` × 5 acciones (`checar` todo staff · `ver_equipo`
+  · `aprobar_correcciones` · `configurar_horarios` · `exportar`). Defaults por
+  rol + migración `cuentas.0022_seed_permisos_checador` + helpers en `lib/permisos`
+  + `MODULOS_VISIBLES` (acción visible `checar`).
+- **El Taller** (`/checador/`): tablero móvil (botón Entrada/Salida + reloj +
+  retardo + snapshot geo), visitas (modal HTMX), timer de proyecto + captura
+  manual, `/historial/` personal con totales, solicitar corrección, bandeja de
+  aprobación, `/equipo/` (reporte por persona) + export CSV jornadas/sesiones,
+  `/api/sync` (cola offline). Item de sidebar nuevo (slug `checador`).
+- **La Gerencia** (`apps.checador_admin`): CRUD de `HorarioLaboral` en Catálogos
+  (global + overrides) + bandeja de correcciones espejo. Items de sidebar.
+- **Offline (E7)**: cola IndexedDB en `static/js/checador.js` — encola checadas/
+  visitas si `navigator.onLine` es false, vacía en `online`/al abrir vía
+  `/checador/api/sync` (idempotente por uuid), badge "N pendientes". El timer NO
+  opera offline (servidor = fuente de verdad).
+- **KPIs Sala de Juntas**: categoría 🕐 Checador con `checador-horas-semana`,
+  `checador-retardos-mes`, `checador-visitas-semana`, `checador-horas-por-proyecto-top`.
+- **`apps.checador` instalada en AMBOS projects** (+ COPY en Dockerfile de
+  Gerencia): obligatorio porque solo `la-gerencia` corre `migrate` (§14 Bug B) y
+  porque Gerencia accede a los modelos. Mismo patrón que `apps.tesoreria`.
+- **69 tests nuevos** (Taller + Gerencia).
+
+**NO incluye V1** (deuda diseñada, ver BITACORA): nómina, costos por proyecto
+desde sesiones, geocercas/mapas embebidos/tracking, ejecutores del Dictado para
+checar por voz, encolar fallos de red estando "online" (solo offline explícito).
 
 ### S4 — IA (Los Chalanes, casos de uso)
 
