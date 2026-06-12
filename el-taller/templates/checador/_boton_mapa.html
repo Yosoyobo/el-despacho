@@ -1,0 +1,13 @@
+{% comment %}
+Botón "📍 Mapa" que abre el modal con el mapa del punto (siempre en modal,
+decisión Oscar). Params: lat, lng, etiqueta, cuando (opcional), precision (opcional).
+Si no hay coordenadas, muestra un chip "sin ubicación".
+{% endcomment %}
+{% if lat and lng %}
+<button type="button"
+        hx-get="{% url 'checador:mapa' %}?lat={{ lat|stringformat:'f' }}&lng={{ lng|stringformat:'f' }}&etiqueta={{ etiqueta|urlencode }}&cuando={{ cuando|urlencode }}&precision={{ precision|default:''|stringformat:'s' }}"
+        hx-target="#modal-slot" hx-swap="innerHTML"
+        class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-brand-600 transition hover:bg-brand-50 hover:underline dark:text-brand-400 dark:hover:bg-brand-500/10">📍 Mapa</button>
+{% else %}
+<span class="text-xs text-gray-400 dark:text-gray-500">sin ubicación</span>
+{% endif %}

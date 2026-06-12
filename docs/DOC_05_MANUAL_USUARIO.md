@@ -5,6 +5,41 @@
 
 ---
 
+## Novedades — Checador: horarios por lote, hora 24h, balance de horas y cierre automático (12 de junio de 2026)
+
+Mejoras al control de horas:
+
+- **Horarios por lote.** Al crear un horario eliges **varios días** y **varios
+  empleados** a la vez con casillas (checkboxes), en vez de uno por uno.
+- **Hora en formato 24 h.** Los campos de hora de los horarios ahora usan un
+  selector en 24 horas (00:00–23:59), sin AM/PM.
+- **Horas trabajadas y balance del mes.** En "Mi semana" se agregó la columna de
+  **horas en proyectos**; y arriba ves tu **balance del mes**: horas trabajadas
+  vs. las esperadas según tu horario, mostrando si vas **a favor** o con
+  **deuda**. Regla: un día con jornada cerrada cuenta sus horas; si ese día no
+  abriste jornada pero sí registraste tiempo de proyecto, ese tiempo cuenta como
+  jornada; un día con jornada aún abierta no cuenta hasta cerrarla.
+- **Cierre automático de jornada.** Si dejas tu jornada abierta y no la cierras
+  antes de las 5:00 a.m. del día siguiente, el sistema la cierra solo, al
+  horario de salida default de la empresa.
+
+---
+
+## Novedades — El Checador: mapa de cada checada y recordatorio de entrada (12 de junio de 2026)
+
+Dos mejoras más a El Checador:
+
+- **Mapa de la checada.** Junto a cada **entrada** y **salida** ahora hay un
+  botón **📍 Mapa** que abre una ventana con el **mapa del lugar** donde se
+  registró, con un pin y un **link a Google Maps**. Lo ves tú en tu tablero e
+  historial; y el administrador, al entrar a *Checador del equipo* y abrir a una
+  persona, ve las checadas de cada quién con su mapa.
+- **Recordatorio para checar entrada.** Si ya pasó tu hora de entrada y aún no
+  has checado, el sistema te manda una **notificación** para que no se te pase.
+  Solo te lo recuerda una vez al día.
+
+---
+
 ## Novedades — El Checador: cronómetros en vivo, historial completo y correcciones por Recados (12 de junio de 2026)
 
 Tres mejoras a El Checador:
@@ -1148,14 +1183,18 @@ Registra tu día de trabajo desde el celular o la computadora. La ubicación se 
 - **Cronómetros en vivo:** mientras tu jornada está abierta, el tablero muestra el **tiempo corriendo** de tu jornada; y si tienes un cronómetro de proyecto activo, también ese, contando segundo a segundo.
 - **Visitas:** cuando vas con un cliente o proveedor, toca "Registrar visita", elige a quién y se guarda con la ubicación.
 - **Tiempo por proyecto:** un cronómetro (Iniciar / Detener) o captura el tiempo a mano. Solo puede haber un cronómetro activo a la vez.
+- **Mapa de cada checada:** junto a la entrada y la salida (en el tablero y en tu historial) hay un botón **📍 Mapa** que abre una ventana con el mapa del lugar donde checaste, con pin y **link a Google Maps**.
+- **Recordatorio de entrada:** si ya pasó tu hora de entrada y aún no checas, recibes una **notificación** para recordártelo (una vez al día).
+- **Balance de horas del mes:** en el tablero ves si vas **a favor** o con **deuda** de horas (trabajadas vs. las esperadas según tu horario). En "Mi semana" se muestra también la columna de **horas en proyectos**. Si un día no abriste jornada pero registraste tiempo de proyecto, ese tiempo cuenta como tu jornada de ese día.
+- **Cierre automático:** si dejas tu jornada abierta, el sistema la cierra solo a las 5:00 a.m. del día siguiente, usando el horario de salida default de la empresa. Mejor ciérrala tú para que la hora sea exacta.
 - **Mi historial:** tus **jornadas**, **visitas** y **tiempo por proyecto**, con totales de horas y retardos. Arriba eliges el periodo: **Esta semana / Este mes / Últimos 30 días**.
 - **¿Marcaste mal?** Desde tu historial pides una **corrección** con el motivo. La solicitud le llega al administrador con permiso **por Recados** (una conversación), donde la aprueba o rechaza con botones en el chat; la respuesta te llega ahí mismo.
 - **Sin internet:** si checas sin señal, se guarda en tu dispositivo y se envía solo al recuperar conexión (verás "N pendientes de sincronizar"). El cronómetro sí necesita conexión.
 
 ### Para administradores
 
-- **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV).
-- **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo.
+- **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV). Haz clic en una persona para ver el **detalle**: sus jornadas y visitas con el botón **📍 Mapa** de cada checada.
+- **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo. Al crear, eliges **varios días y varios empleados a la vez** (casillas) y la hora en **formato 24 h**. Los horarios configurados son la base del **balance de horas** de cada quien.
 - **Correcciones:** las solicitudes te llegan **por Recados** (con botones Aprobar/Rechazar en el chat) y también las tienes en la **bandeja** de correcciones. Resuelvas donde resuelvas, la respuesta se publica en la conversación del solicitante.
 
 Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar depende de los permisos que te dé el super admin.

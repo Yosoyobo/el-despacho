@@ -20,7 +20,7 @@ from lib.permisos import (
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
-from .forms import HorarioLaboralForm
+from .forms import HorarioBulkForm, HorarioLaboralForm
 
 
 def _gate_horarios(request):
@@ -56,14 +56,18 @@ def horario_nuevo(request):
     if (r := _gate_horarios(request)) is not None:
         return r
     if request.method == "POST":
-        form = HorarioLaboralForm(request.POST)
+        form = HorarioBulkForm(request.POST)
         if form.is_valid():
-            obj = form.save()
-            _emit_horario(request, obj, "creado")
-            messages.success(request, "Horario creado.")
+            n = form.guardar()
+            emitir(EventoPortavoz(
+                tipo="checador.horario_actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"accion": "alta_masiva", "registros": n},
+            ))
+            messages.success(request, f"{n} horario(s) guardado(s).")
             return redirect("checador-admin-horarios")
     else:
-        form = HorarioLaboralForm()
+        form = HorarioBulkForm()
     return render(request, "checador_admin/horario_form.html", {"form": form, "modo": "nuevo"})
 
 

@@ -27,11 +27,13 @@
                     {% else %}
                         · <span class="font-semibold text-success-600 dark:text-success-400">a tiempo</span>
                     {% endif %}
+                    · {% include "checador/_boton_mapa.html" with lat=jornada.entrada_lat lng=jornada.entrada_lng etiqueta="Entrada" cuando=jornada.entrada_en|date:"D j H:i" precision=jornada.entrada_precision %}
                 </p>
                 {% if jornada.salida_en %}
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
                     Salida: <span class="font-semibold">{{ jornada.salida_en|date:"H:i" }}</span>
                     · {{ jornada.horas_trabajadas }} h trabajadas
+                    · {% include "checador/_boton_mapa.html" with lat=jornada.salida_lat lng=jornada.salida_lng etiqueta="Salida" cuando=jornada.salida_en|date:"D j H:i" precision=jornada.salida_precision %}
                 </p>
                 {% else %}
                 <div class="mt-3 inline-flex flex-col items-center gap-0.5 rounded-xl bg-success-50 px-5 py-2 dark:bg-success-500/10">
@@ -135,37 +137,56 @@
     </section>
     {% endif %}
 
+    {# ── Balance de horas del mes (a favor / deuda) ─────────────── #}
+    <section class="rounded-2xl border p-5 shadow-theme-sm {% if balance.a_favor %}border-success-200 bg-success-50/50 dark:border-success-500/30 dark:bg-success-500/5{% else %}border-warning-300 bg-warning-50/50 dark:border-warning-500/40 dark:bg-warning-500/5{% endif %}">
+        <div class="flex flex-wrap items-end justify-between gap-2">
+            <div>
+                <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Balance del mes</p>
+                <p class="mt-1 text-title-sm font-bold {% if balance.a_favor %}text-success-700 dark:text-success-400{% else %}text-warning-700 dark:text-warning-400{% endif %}">
+                    {% if balance.a_favor %}+{% endif %}{{ balance.balance_horas }} h
+                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{% if balance.a_favor %}a favor{% else %}de deuda{% endif %}</span>
+                </p>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Trabajadas {{ balance.trabajadas_horas }} h · esperadas {{ balance.esperadas_horas }} h</p>
+        </div>
+    </section>
+
     {# ── Mi semana ──────────────────────────────────────────────── #}
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Mi semana</h2>
             <a href="{% url 'checador:historial' %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver historial →</a>
         </div>
-        {% if semana %}
+        {% if filas_semana %}
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="min-w-[560px] text-sm md:min-w-full">
                 <thead>
                     <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-400 dark:border-gray-800">
                         <th class="py-2 pr-3 font-medium">Día</th>
                         <th class="py-2 pr-3 font-medium">Entrada</th>
                         <th class="py-2 pr-3 font-medium">Salida</th>
-                        <th class="py-2 pr-3 font-medium">Horas</th>
+                        <th class="py-2 pr-3 font-medium">Proyecto</th>
+                        <th class="py-2 pr-3 font-medium">Trabajadas</th>
                         <th class="py-2 font-medium">Retardo</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for j in semana %}
+                    {% for f in filas_semana %}
                     <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
-                        <td class="py-2 pr-3 capitalize text-gray-700 dark:text-gray-300">{{ j.fecha|date:"D j" }}</td>
-                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ j.entrada_en|date:"H:i"|default:"—" }}</td>
-                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ j.salida_en|date:"H:i"|default:"—" }}</td>
-                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{% if j.horas_trabajadas %}{{ j.horas_trabajadas }}{% else %}—{% endif %}</td>
+                        <td class="py-2 pr-3 capitalize text-gray-700 dark:text-gray-300">{{ f.fecha|date:"D j" }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada.entrada_en|date:"H:i"|default:"—" }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada.salida_en|date:"H:i"|default:"—" }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-600 dark:text-gray-400">{% if f.proyecto_horas %}{{ f.proyecto_horas }}{% else %}—{% endif %}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">
+                            {% if f.tipo == "abierta" %}<span class="text-xs text-gray-400">en curso</span>
+                            {% elif f.trabajado_horas %}{{ f.trabajado_horas }}{% if f.tipo == "proyecto" %} <span class="text-[10px] text-brand-500" title="Sin jornada: el tiempo de proyecto cuenta como jornada">(proy.)</span>{% endif %}
+                            {% else %}—{% endif %}
+                        </td>
                         <td class="py-2">
-                            {% if j.retardo_min %}
-                            <span class="rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{{ j.retardo_min }} min</span>
-                            {% else %}
-                            <span class="text-xs text-success-600 dark:text-success-400">a tiempo</span>
-                            {% endif %}
+                            {% if f.retardo_min %}
+                            <span class="rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{{ f.retardo_min }} min</span>
+                            {% elif f.jornada %}<span class="text-xs text-success-600 dark:text-success-400">a tiempo</span>
+                            {% else %}<span class="text-xs text-gray-400">—</span>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}

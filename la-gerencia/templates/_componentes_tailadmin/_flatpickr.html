@@ -1,0 +1,29 @@
+{% comment %}
+flatpickr para campos de hora en 24h (decisión Oscar, §4 lib gratuita vía CDN
+pin como ApexCharts/grapesjs). Aplica a [data-flatpickr-time]. Si el JS no
+carga, el input de texto HH:MM sigue siendo válido.
+{% endcomment %}
+<link rel="stylesheet" href="https://unpkg.com/flatpickr@4.6.13/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://unpkg.com/flatpickr@4.6.13/dist/themes/dark.css">
+<script src="https://unpkg.com/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
+<script src="https://unpkg.com/flatpickr@4.6.13/dist/l10n/es.js" defer></script>
+<script>
+  (function () {
+    function montar(root) {
+      if (!window.flatpickr) return;
+      (root || document).querySelectorAll("[data-flatpickr-time]:not([data-fp-listo])").forEach(function (el) {
+        el.dataset.fpListo = "1";
+        window.flatpickr(el, {
+          enableTime: true, noCalendar: true, dateFormat: "H:i",
+          time_24hr: true, minuteIncrement: 5,
+          locale: (window.flatpickr.l10ns && window.flatpickr.l10ns.es) || "default",
+        });
+      });
+    }
+    function init() { montar(document); }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () { setTimeout(init, 0); });
+    } else { setTimeout(init, 0); }
+    document.body.addEventListener("htmx:afterSwap", function (e) { montar(e.target); });
+  })();
+</script>

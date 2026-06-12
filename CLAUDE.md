@@ -1747,6 +1747,50 @@ dentro del chat** de Recados.
   varios aprobadores la solicitud va a un DM por admin; botones viejos en otra
   sesión abierta caen graciosamente al reintentar.
 
+### S-Checador-V1.2 ✅ — Mapa de entrada/salida (modal + Google Maps) + recordatorio de entrada (2026-06-12, VERSION 2026.06.41)
+
+Dos pedidos de Oscar. El mapa SIEMPRE en modal (decisión Oscar) y con link a
+Google Maps.
+
+- **M1 — Mapa de la checada**: templatetags `checador_extras` (`osm_embed_src`
+  iframe OpenStreetMap gratis sin API key, `osm_link`, `gmaps_link`). Modal
+  `_modal_mapa.html` (iframe OSM + botón Google Maps + OSM; empty-state si sin
+  geo). Vista `checador:mapa` (GET HTMX, recibe lat/lng/etiqueta por query, no
+  consulta DB). Partial `_boton_mapa.html` (📍 Mapa → `#modal-slot`) en tablero
+  (entrada+salida), historial, y el **drill-down de equipo**
+  `checador:equipo_persona` (`_requiere_ver_equipo`) — clic en una persona del
+  reporte muestra sus jornadas/visitas con 📍. CSP OK (X_FRAME_OPTIONS solo
+  aplica a que nos embeban a nosotros).
+- **M2 — Recordatorio de entrada**: modelo `RecordatorioEntrada(usuario,fecha)`
+  unique (migr. `checador/0003`). `services.recordar_entradas_pendientes` avisa
+  por Interfón a candidatos (jornada en ≤14d o horario propio hoy) cuya hora de
+  entrada+tolerancia ya pasó (y < +6h), sin entrada checada ni recordatorio del
+  día. Command `recordar_checada_entrada` (`--dry-run`); **crontab** cada 30 min
+  L-V 7-12 (§10). Evento `checador.recordatorio_entrada`.
+- **8 tests** (`tests/taller/test_checador_v12.py`). **Deuda**: el "snapshot" es
+  iframe interactivo OSM (no imagen estática, evita API key); empleado nuevo sin
+  historial ni horario propio no recibe recordatorio el día 1.
+- **N1-N4 (tanda extra, mismo commit/deploy)** — decisiones AskUserQuestion:
+  flatpickr (24h) + lógica de horas "como la describió Oscar":
+  - **N1 Horarios por lote**: `HorarioBulkForm` (checkboxes de `usuarios` +
+    `dias` + `aplicar_global`); `guardar()` = `update_or_create` por
+    (usuario|None × día), idempotente. `horario_nuevo` usa el bulk; `editar`
+    sigue single. Regla de UI guardada en memoria: **multi-select = checkboxes**.
+  - **N2 Hora 24h**: partial `_flatpickr.html` (CDN pin unpkg 4.6.13 + init en
+    `[data-flatpickr-time]`, `time_24hr`); widgets de hora del form de horarios a
+    texto `data-flatpickr-time`. Directorio queda nativo (deuda menor).
+  - **N3 Horas de proyecto + balance**: `services.filas_semana` (Mi semana con
+    columna Proyectos) + `balance_mensual` (esperadas = Σ horarios configurados
+    hasta hoy; balance = trabajadas − esperadas; a favor/deuda). Regla:
+    jornada cerrada→sus horas; abierta→no cuenta aún; sin jornada+proyecto→el
+    proyecto cuenta como jornada. Tablero muestra tarjeta de balance.
+  - **N4 Auto-cierre**: `Jornada.salida_automatica` (migr. `checador/0004`) +
+    `services.cerrar_jornadas_vencidas` (no cerrada antes de 05:00 del día
+    siguiente → salida global de la compañía, fallback 18:00). Command
+    `cerrar_jornadas_abiertas` + **crontab 05:10** (§10).
+  - **+8 tests** (`test_checador_horas.py` 5 + `test_horario_bulk.py` 3); 2 tests
+    viejos de horario admin actualizados al alta masiva.
+
 ### S-UX-Dummy-Proof ✅ — 5 mejoras de UX (2026-05-21)
 
 Sprint dedicado a quitar fricción y tecnicismos del sistema para los
@@ -4057,6 +4101,10 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    10 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py recordar_tareas_por_vencer >> /var/log/recordatorios.log 2>&1
    # S3 resto (2026-06-11): La Cobranza — recordatorios de pago a clientes (config en Gerencia → Ajustes → La Cobranza; ARRANCA APAGADA, no envía hasta activarla)
    15 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py enviar_recordatorios_cobranza >> /var/log/cobranza.log 2>&1
+   # S-Checador-V1.2 (2026-06-12): recuerda checar entrada a quien ya es tarde y no ha checado (idempotente por día; cada 30 min en franja matutina)
+   */30 7-12 * * 1-5 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py recordar_checada_entrada >> /var/log/checador_entrada.log 2>&1
+   # S-Checador-V1.2 (2026-06-12): cierra jornadas abiertas no checadas antes de las 05:00 del día siguiente (al horario de salida default de la compañía)
+   10 5 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py cerrar_jornadas_abiertas >> /var/log/checador_cierre.log 2>&1
    ```
 
    Los dos comandos de "vencidas" son idempotentes (campo

@@ -5742,3 +5742,93 @@ puntual, sin timer) y **aprobar/rechazar dentro del chat** de Recados.
 - Los botones en el chat se reemplazan inline al resolver; en la vista de otro
   admin que tenía la conversación abierta, los botones viejos siguen hasta el
   próximo refresh (al reintentar, el endpoint cae graciosamente al estado actual).
+
+---
+
+# BITÁCORA — S-Checador-V1.2 (2026-06-12, VERSION 2026.06.41)
+
+Dos pedidos de Oscar sobre El Checador: ver el **mapa** de dónde se checó
+entrada/salida (siempre en **modal**, con link a **Google Maps**) y un
+**recordatorio** si ya pasó la hora de entrada y no han checado.
+
+## M1 — Mapa de entrada/salida (en modal)
+- Templatetags `checador/templatetags/checador_extras.py`: `osm_embed_src`
+  (iframe OpenStreetMap, gratis sin API key, bbox ~250 m + marcador),
+  `osm_link`, `gmaps_link` (link a Google Maps `?api=1&query=lat,lng`).
+- Modal `checador/_modal_mapa.html`: iframe OSM + botón **Abrir en Google Maps**
+  + OpenStreetMap; empty-state "Sin ubicación" si la checada fue sin geo.
+- Vista `checador:mapa` (GET HTMX, `_requiere_checar`): recibe lat/lng/etiqueta/
+  cuando/precision por query (no consulta DB — solo pinta coordenadas que ya se
+  muestran en la página que abrió el modal).
+- Partial `checador/_boton_mapa.html` (botón 📍 Mapa → `#modal-slot`) reusado en:
+  tablero (entrada+salida), historial (tabla de jornadas), y el **drill-down de
+  equipo**.
+- **Drill-down admin**: `checador:equipo_persona` (`_requiere_ver_equipo`) — al
+  hacer clic en una persona del reporte de equipo se ven sus jornadas
+  (entrada/salida con 📍) y visitas (con 📍). Cada persona del reporte ahora
+  linkea aquí preservando el rango. CSP OK (X_FRAME_OPTIONS=DENY solo evita que
+  nos embeban a nosotros, no bloquea iframes salientes).
+
+## M2 — Recordatorio de entrada no checada
+- Modelo `checador.RecordatorioEntrada(usuario, fecha)` unique → dedup por día
+  (migr. `checador/0003`, limpia, solo CreateModel).
+- `services.recordar_entradas_pendientes(ahora=None, ventana_horas=6)`: para cada
+  candidato (habitual con jornada en ≤14d O con horario propio hoy) cuyo horario
+  ya pasó (entrada + tolerancia) y < entrada+6h, sin entrada checada y sin
+  recordatorio del día → push Interfón (categoría `checador`, opt-out) + crea el
+  RecordatorioEntrada. Evita molestar a quien no usa el Checador y a deshoras.
+- Command `recordar_checada_entrada` (`--dry-run`). **Crontab** cada 30 min
+  L-V 7-12 (§10).
+- Evento `checador.recordatorio_entrada`.
+
+## Tests
+- `tests/taller/test_checador_v12.py` (8): templatetags OSM/GMaps; modal con/sin
+  coords (incluye link Google Maps); botón en tablero; equipo_persona admin OK +
+  diseñador 403; recordatorio enviado+idempotente, no-si-ya-checó, no-si-no-es-tarde.
+- Existentes del Checador verdes. Ruff limpio.
+
+## Deuda diseñada
+- El "snapshot" es un iframe interactivo de OSM (no una imagen estática — eso
+  requeriría API key de Static Maps). Suficiente y gratis.
+- El recordatorio usa heurística de candidatos (jornada reciente / horario
+  propio); un empleado nuevo sin historial ni override no recibe aviso el día 1.
+
+## S-Checador-V1.2 (cont.) — horarios por lote + 24h + balance de horas + auto-cierre
+
+Tanda extra de Oscar (antes del commit/deploy de V1.2). Decisiones por
+AskUserQuestion: **flatpickr** (24h) y la lógica de horas **"como la describí"**.
+
+- **N1 — Horarios por lote con checkboxes**: `HorarioBulkForm` (no-ModelForm) en
+  `checador_admin/forms.py`: `aplicar_global` + `usuarios` (CheckboxSelectMultiple)
+  + `dias` (MultipleChoice checkboxes) + entrada/salida/tolerancia/activo. `guardar()`
+  hace `update_or_create` por (usuario|None × día) → idempotente, sin error de dup.
+  `horario_nuevo` usa el bulk; `horario_editar` sigue con el ModelForm single.
+  Template `horario_form.html` ramifica por modo (grillas `has-[:checked]`). Regla
+  de UI guardada en memoria: multi-select = checkboxes.
+- **N2 — Hora 24h con flatpickr**: partial `_flatpickr.html` (CDN pin unpkg
+  4.6.13, como ApexCharts/grapesjs) + init sobre `[data-flatpickr-time]`
+  (`time_24hr`, `H:i`, locale es). Widgets de hora del form de horarios → texto
+  `data-flatpickr-time` (si el JS no carga, queda input HH:MM válido). El
+  Directorio se dejó nativo (ya envía 24h) — deuda menor.
+- **N3 — Horas de proyecto + balance mensual** (`services`): `_min_horario`,
+  `_proyecto_min_dia`, `_trabajado_min_dia` (jornada cerrada→sus min; abierta→0;
+  sin jornada+proyecto→proyecto cuenta como jornada), `filas_semana` (Mi semana
+  con columna Proyectos + tipo) y `balance_mensual(ahora=)` (esperadas = Σ horarios
+  configurados hasta hoy; balance = trabajadas − esperadas; a favor/deuda). El
+  tablero muestra tarjeta de balance + tabla Mi semana nueva.
+- **N4 — Auto-cierre de jornada abierta**: campo `Jornada.salida_automatica`
+  (migr. `checador/0004`). `services.cerrar_jornadas_vencidas(ahora=)`: jornada
+  abierta no cerrada antes de las 05:00 del día siguiente → salida = horario de
+  salida GLOBAL de la compañía ese día (fallback 18:00), `salida_automatica=True`,
+  `salida_sin_geo=True`. Command `cerrar_jornadas_abiertas` (`--dry-run`) +
+  **crontab 05:10** (§10). Guarda contra duración negativa (turno nocturno).
+- **Tests**: `tests/taller/test_checador_horas.py` (5: proyecto-como-jornada,
+  balance deuda, auto-cierre vencida/no-hoy), `tests/gerencia/test_horario_bulk.py`
+  (3: alta por usuario, global idempotente, validación). 2 tests viejos de
+  `test_checador_admin.py` actualizados al alta masiva (update_or_create). Migr.
+  `checador/0004` limpia. flatpickr crontab 05:10 + recordatorio matutino (§10).
+
+**Deuda**: el Directorio conserva `<input type=time>` nativo (24h por locale);
+balance asume todos los días con horario como laborables (sin calendario de
+festivos); empleado nuevo sin historial ni horario propio no recibe recordatorio
+de entrada el día 1.

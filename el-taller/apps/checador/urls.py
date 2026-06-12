@@ -13,6 +13,7 @@ urlpatterns = [
     path("checar", views.checar, name="checar"),
     path("visita/nueva", views.visita_modal, name="visita_modal"),
     path("visita", views.visita, name="visita"),
+    path("mapa", views.mapa, name="mapa"),
     path("timer/iniciar", views.timer_iniciar, name="timer_iniciar"),
     path("timer/detener", views.timer_detener, name="timer_detener"),
     path("sesion/nueva", views.sesion_modal, name="sesion_modal"),
@@ -26,5 +27,6 @@ urlpatterns = [
     path("correcciones/<int:pk>/resolver-chat", views.correccion_resolver_chat, name="correccion_resolver_chat"),
     path("equipo/", views.equipo, name="equipo"),
     path("equipo/export", views.equipo_export, name="equipo_export"),
+    path("equipo/<int:pk>/", views.equipo_persona, name="equipo_persona"),
     path("api/sync", views.api_sync, name="api_sync"),
 ]

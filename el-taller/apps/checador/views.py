@@ -88,9 +88,7 @@ def tablero(request):
         accion = "completa"
 
     desde = hoy - datetime.timedelta(days=6)
-    semana = list(
-        Jornada.objects.filter(usuario=request.user, fecha__gte=desde, fecha__lte=hoy).order_by("-fecha"),
-    )
+    filas = services.filas_semana(request.user, desde, hoy)
     visitas_hoy = list(
         Visita.objects.filter(usuario=request.user, registrado_en__date=hoy)
         .select_related("cliente", "proveedor").order_by("-registrado_en"),
@@ -99,11 +97,32 @@ def tablero(request):
     return render(request, "checador/tablero.html", {
         "jornada": jornada,
         "accion": accion,
-        "semana": semana,
+        "filas_semana": filas,
+        "balance": services.balance_mensual(request.user),
         "visitas_hoy": visitas_hoy,
         "hoy": hoy,
         "timer": services.timer_activo(request.user),
         "proyectos": _proyectos_para(request.user),
+    })
+
+
+@login_required
+@_requiere_checar
+def mapa(request):
+    """GET HTMX → modal con el mapa (OpenStreetMap) del punto recibido por
+    query (lat, lng, etiqueta, cuando, precision). Solo renderiza coordenadas
+    que ya se muestran en la página que abrió el modal — no consulta DB."""
+    def _num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+    return render(request, "checador/_modal_mapa.html", {
+        "lat": _num(request.GET.get("lat")),
+        "lng": _num(request.GET.get("lng")),
+        "etiqueta": (request.GET.get("etiqueta") or "Ubicación")[:60],
+        "cuando": (request.GET.get("cuando") or "")[:40],
+        "precision": _num(request.GET.get("precision")),
     })
 
 
@@ -446,6 +465,38 @@ def equipo(request):
         "filas": filas, "desde": desde, "hasta": hasta,
         "querystring": qs,
         "puede_exportar": puede_exportar_checador(request.user),
+    })
+
+
+@login_required
+@_requiere_ver_equipo
+def equipo_persona(request, pk):
+    """Detalle de un miembro del equipo (admin): sus jornadas (entrada/salida
+    con mapa) y visitas en el rango. El mapa se abre en modal."""
+    from cuentas.models.usuario import Usuario
+
+    from .models import SesionProyecto
+    persona = get_object_or_404(Usuario, pk=pk)
+    hoy = timezone.localdate()
+    desde = _parse_date(request.GET.get("desde")) or (hoy - datetime.timedelta(days=hoy.weekday()))
+    hasta = _parse_date(request.GET.get("hasta")) or hoy
+    jornadas = list(
+        Jornada.objects.filter(usuario=persona, fecha__gte=desde, fecha__lte=hasta).order_by("-fecha"),
+    )
+    visitas = list(
+        Visita.objects.filter(usuario=persona, registrado_en__date__gte=desde, registrado_en__date__lte=hasta)
+        .select_related("cliente", "proveedor").order_by("-registrado_en"),
+    )
+    sesiones = list(
+        SesionProyecto.objects.filter(
+            usuario=persona, estado="cerrada", inicio__date__gte=desde, inicio__date__lte=hasta,
+        ).select_related("proyecto").order_by("-inicio"),
+    )
+    return render(request, "checador/equipo_persona.html", {
+        "persona": persona, "desde": desde, "hasta": hasta,
+        "jornadas": jornadas, "visitas": visitas, "sesiones": sesiones,
+        "totales": services.horas_de(persona, desde, hasta),
+        "querystring": request.GET.urlencode(),
     })
 
 

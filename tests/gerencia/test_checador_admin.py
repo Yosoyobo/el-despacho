@@ -36,12 +36,13 @@ def test_horarios_disenador_sin_permiso(client, usuario_factory):
 
 @GERENCIA
 def test_horario_override_se_crea(client, usuario_factory):
+    # S-Checador-V1.2: el alta es masiva (checkboxes usuarios + días).
     from apps.checador.models import HorarioLaboral
     admin = usuario_factory(rol="super_admin")
     empleado = usuario_factory(rol="disenador")
     client.force_login(admin)
     resp = client.post("/catalogos/horarios/nuevo/", {
-        "usuario": str(empleado.pk), "dia_semana": "0",
+        "usuarios": [str(empleado.pk)], "dias": ["0"],
         "hora_entrada": "10:00", "hora_salida": "19:00", "tolerancia_min": "10", "activo": "on",
     })
     assert resp.status_code == 302
@@ -50,16 +51,21 @@ def test_horario_override_se_crea(client, usuario_factory):
 
 
 @GERENCIA
-def test_horario_global_duplicado_rechazado(client, usuario_factory):
+def test_horario_global_alta_es_idempotente(client, usuario_factory):
+    # S-Checador-V1.2: el alta masiva usa update_or_create — re-crear el global
+    # de un día lo ACTUALIZA (no duplica, no error).
+    from apps.checador.models import HorarioLaboral
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
-    # El seed ya creó el global del lunes (dia_semana=0).
+    antes = HorarioLaboral.objects.filter(usuario__isnull=True, dia_semana=0).count()
     resp = client.post("/catalogos/horarios/nuevo/", {
-        "usuario": "", "dia_semana": "0",
+        "aplicar_global": "on", "dias": ["0"],
         "hora_entrada": "08:00", "hora_salida": "17:00", "tolerancia_min": "15", "activo": "on",
     })
-    assert resp.status_code == 200  # re-render con error de validación
-    assert b"Ya existe un horario" in resp.content
+    assert resp.status_code == 302
+    assert HorarioLaboral.objects.filter(usuario__isnull=True, dia_semana=0).count() == antes
+    h = HorarioLaboral.objects.get(usuario__isnull=True, dia_semana=0)
+    assert h.hora_entrada == datetime.time(8, 0)
 
 
 @GERENCIA

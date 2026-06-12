@@ -34,6 +34,9 @@ class Jornada(models.Model):
     salida_sin_geo = models.BooleanField(default=False)
     salida_offline = models.BooleanField(default=False)
     salida_uuid = models.CharField(max_length=64, blank=True, default="")
+    # La salida la puso el sistema (no la checó el empleado): jornada que quedó
+    # abierta y se cerró al horario de salida default de la compañía (V1.2).
+    salida_automatica = models.BooleanField(default=False)
 
     estado = models.CharField(max_length=10, choices=ESTADO_JORNADA, default="abierta")
     # Minutos de retardo contra el HorarioLaboral vigente al checar entrada.
