@@ -23,13 +23,36 @@ from .models import CuentaContable, Partida
 
 CERO = Decimal("0.00")
 
-# Tasas estándar México para la ESTIMACIÓN de impuestos en el P&L. No son
-# el cálculo fiscal real (eso lo hace el contador externo, regla §16); sirven
-# para que LC vea un aproximado de la utilidad después de impuestos. Si LC
-# necesita tasas distintas, hoy se editan aquí; un sprint futuro puede moverlas
-# a una ConfiguracionFiscal editable.
-ISR_TASA = Decimal("30")   # % sobre la utilidad antes de impuestos
-PTU_TASA = Decimal("10")   # % de participación de los trabajadores en las utilidades
+# Fallback si no se puede leer la Configuración Fiscal (sin DB/migración).
+# Las tasas reales viven en `ajustes.ConfiguracionFiscal`, editable en Gerencia.
+ISR_TASA_FALLBACK = Decimal("2")          # RESICO PF aproximado
+PTU_TASA_FALLBACK = Decimal("10")
+ISR_BASE_FALLBACK = "ingresos"            # RESICO PF tributa sobre ingresos
+
+
+def _config_fiscal() -> dict:
+    """Lee la Configuración Fiscal; cae a los valores RESICO PF por defecto
+    si la tabla no existe todavía. Devuelve tasas como Decimal y etiqueta."""
+    try:
+        from ajustes.models import ConfiguracionFiscal
+        cfg = ConfiguracionFiscal.obtener()
+        return {
+            "regimen": cfg.regimen,
+            "regimen_label": cfg.get_regimen_display(),
+            "isr_base": cfg.isr_base,
+            "isr_tasa": Decimal(str(cfg.isr_tasa)),
+            "ptu_tasa": Decimal(str(cfg.ptu_tasa)),
+            "ptu_aplica": cfg.ptu_aplica,
+        }
+    except Exception:  # noqa: BLE001 — nunca tumbar el reporte
+        return {
+            "regimen": "resico_pf",
+            "regimen_label": "RESICO · Persona Física",
+            "isr_base": ISR_BASE_FALLBACK,
+            "isr_tasa": ISR_TASA_FALLBACK,
+            "ptu_tasa": PTU_TASA_FALLBACK,
+            "ptu_aplica": False,
+        }
 
 # slot → (clave_subgrupo, etiqueta_subgrupo, orden)
 SLOT_A_SUBGRUPO_INGRESO = {
@@ -120,10 +143,21 @@ def estado_resultados(
     # de los saldos contables reales). La estimación ISR/PTU es informativa.
     utilidad_neta = utilidad_operativa
 
-    # Estimación de impuestos (S3 resto). Solo sobre utilidad positiva.
-    base_impuestos_estimados = utilidad_operativa if utilidad_operativa > CERO else CERO
-    isr_estimado = (base_impuestos_estimados * ISR_TASA / Decimal("100")).quantize(Decimal("0.01"))
-    ptu_estimado = (base_impuestos_estimados * PTU_TASA / Decimal("100")).quantize(Decimal("0.01"))
+    # Estimación de impuestos según la Configuración Fiscal (editable en
+    # Gerencia). RESICO PF → ISR sobre ingresos; régimen general → sobre
+    # utilidad. PTU solo si el régimen lo causa. Informativo, no fiscal.
+    cfg = _config_fiscal()
+    if cfg["isr_base"] == "ingresos":
+        base_isr = total_ingresos if total_ingresos > CERO else CERO
+    else:
+        base_isr = utilidad_operativa if utilidad_operativa > CERO else CERO
+    isr_estimado = (base_isr * cfg["isr_tasa"] / Decimal("100")).quantize(Decimal("0.01"))
+
+    base_ptu = utilidad_operativa if utilidad_operativa > CERO else CERO
+    ptu_estimado = (
+        (base_ptu * cfg["ptu_tasa"] / Decimal("100")).quantize(Decimal("0.01"))
+        if cfg["ptu_aplica"] else CERO
+    )
     utilidad_despues_impuestos = (
         utilidad_operativa - isr_estimado - ptu_estimado
     ).quantize(Decimal("0.01"))
@@ -139,8 +173,12 @@ def estado_resultados(
         "utilidad_operativa": utilidad_operativa,
         "utilidad_neta": utilidad_neta,
         # Estimación informativa de impuestos (no es cálculo fiscal real).
-        "isr_tasa": ISR_TASA,
-        "ptu_tasa": PTU_TASA,
+        "regimen": cfg["regimen"],
+        "regimen_label": cfg["regimen_label"],
+        "isr_base": cfg["isr_base"],
+        "isr_tasa": cfg["isr_tasa"],
+        "ptu_tasa": cfg["ptu_tasa"],
+        "ptu_aplica": cfg["ptu_aplica"],
         "isr_estimado": isr_estimado,
         "ptu_estimado": ptu_estimado,
         "utilidad_antes_impuestos": utilidad_operativa,

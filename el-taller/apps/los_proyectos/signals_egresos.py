@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import contextlib
 import logging
-from datetime import date
 from decimal import Decimal
 
 from django.db import transaction
@@ -54,52 +53,17 @@ def _generar_egresos_al_entrar_produccion(sender, instance, created, **kwargs): 
 
 
 def _crear_egresos_de_proyecto(proyecto_id: int) -> None:
-    from apps.tesoreria.models import CentroDeCosto, Egreso
-
+    from . import gastos
     from .models import Proyecto
 
     proyecto = Proyecto.objects.filter(pk=proyecto_id).first()
     if proyecto is None:
         return
-    centro = CentroDeCosto.objects.filter(slug=CENTRO_SLUG).first()
-    if centro is None:
-        logger.warning(
-            "proyecto=%s: centro '%s' ausente — no se generan egresos.",
-            proyecto_id, CENTRO_SLUG,
-        )
-        return
 
-    generados = []
-    with transaction.atomic():
-        lineas = (
-            proyecto.productos
-            .select_related("proveedor", "servicio", "variacion")
-            .prefetch_related("procesos")
-        )
-        for pp in lineas:
-            if not pp.incluir_en_calculo or pp.egreso_id:
-                continue
-            monto = Decimal(str(pp.costo_total_con_procesos)).quantize(Decimal("0.01"))
-            if monto <= 0:
-                continue
-            egreso = Egreso.objects.create(
-                monto=monto,
-                fecha=date.today(),
-                descripcion=f"Proyecto {proyecto.codigo} · {pp.etiqueta}"[:300],
-                proveedor=pp.proveedor,
-                proveedor_nombre=(
-                    pp.proveedor.razon_social if pp.proveedor_id else "Gasto de proyecto"
-                )[:200],
-                centro_de_costo=centro,
-                proyecto=proyecto,
-                estado_pago="pendiente",
-                metodo="transferencia",
-                origen="proyecto",
-            )
-            pp.egreso = egreso
-            pp.save(update_fields=["egreso"])
-            generados.append(egreso)
-
+    # Cada gasto (producto + impresión + operativo) se liga por separado a su
+    # propio egreso (decisión Oscar 2026-06-12). Idempotente: solo los que no
+    # tienen egreso vigente. Silent-skip si el centro de costo está ausente.
+    generados = gastos.registrar_pendientes(proyecto)
     if not generados:
         return
     with contextlib.suppress(Exception):

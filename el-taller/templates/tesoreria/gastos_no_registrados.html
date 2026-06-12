@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Gastos no registrados — Tesorería{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Tesorería" "/tesoreria/" "Gastos no registrados" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Gastos no registrados" subtitulo="Gastos de proyectos que aún no tienen un egreso en Tesorería. Regístralos para tener la contabilidad al día." breadcrumb_items=breadcrumb_items back_url="/tesoreria/" back_label="Tesorería" %}
+
+<div class="mb-5 grid grid-cols-2 gap-4 sm:max-w-md">
+    <div class="ta-card">
+        <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Gastos pendientes</p>
+        <p class="mt-1 text-title-sm font-semibold text-gray-900 dark:text-gray-100">{{ cantidad }}</p>
+    </div>
+    <div class="ta-card">
+        <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Monto total</p>
+        <p class="mt-1 text-title-sm font-semibold text-gray-900 dark:text-gray-100">{{ total|dinero }}</p>
+    </div>
+</div>
+
+{% for grupo in grupos %}
+<section class="ta-card mb-4">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <a href="{% url 'proyectos-detalle' grupo.proyecto.pk %}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ grupo.proyecto.codigo }} · {{ grupo.proyecto.nombre }}</a>
+            <span class="ml-2 text-xs font-normal text-gray-500">{{ grupo.subtotal|dinero }}</span>
+        </h2>
+        <form method="post" action="{% url 'proyectos-registrar-gastos-todos' grupo.proyecto.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="volver" value="tesoreria">
+            <button type="submit" class="btn-secundario">Registrar todos</button>
+        </form>
+    </div>
+    <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
+        {% for u in grupo.unidades %}
+        <li class="flex items-center justify-between gap-2 py-2">
+            <span class="min-w-0 truncate text-gray-700 dark:text-gray-200">
+                {{ u.label }}{% if u.proveedor %} <span class="text-xs text-gray-500">· {{ u.proveedor.razon_social }}</span>{% endif %}
+            </span>
+            <span class="flex shrink-0 items-center gap-2">
+                <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ u.monto|dinero }}</span>
+                <form method="post" action="{% url 'proyectos-registrar-gasto' grupo.proyecto.pk u.clase u.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="volver" value="tesoreria">
+                    <button type="submit" class="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">Registrar</button>
+                </form>
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% empty %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Todo registrado" descripcion="No hay gastos de proyecto pendientes de registrar en Tesorería." icono="sparkles" %}
+{% endfor %}
+{% endblock %}

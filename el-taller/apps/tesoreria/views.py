@@ -85,6 +85,34 @@ def landing(request):
         "spark_ingresos": spark_ingresos,
         "spark_egresos": spark_egresos,
         "spark_utilidad": spark_utilidad,
+        "gastos_no_registrados": _conteo_gastos_no_registrados(),
+    })
+
+
+def _conteo_gastos_no_registrados() -> dict:
+    """Gastos de proyecto sin egreso (para la alerta/KPI del landing).
+    Defensivo: si algo falla, no tumba el landing."""
+    try:
+        from apps.los_proyectos import gastos
+        return gastos.conteo_no_registrados()
+    except Exception:  # noqa: BLE001
+        return {"cantidad": 0, "total": Decimal("0.00")}
+
+
+@login_required
+def gastos_no_registrados(request):
+    """Gastos de proyectos sin egreso registrado, agrupados por proyecto, con
+    botón para registrarlos (contabilidad en línea)."""
+    if (r := _gate(request)) is not None:
+        return r
+    from apps.los_proyectos import gastos
+    grupos = gastos.proyectos_con_pendientes()
+    total = sum((g["subtotal"] for g in grupos), Decimal("0.00"))
+    cantidad = sum(len(g["unidades"]) for g in grupos)
+    return render(request, "tesoreria/gastos_no_registrados.html", {
+        "grupos": grupos,
+        "total": total,
+        "cantidad": cantidad,
     })
 
 

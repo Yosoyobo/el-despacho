@@ -92,7 +92,9 @@ def test_costo_cero_no_genera(proyecto_factory, catalogo):
     assert Egreso.objects.filter(proyecto=p, origen="proyecto").count() == 0
 
 
-def test_egreso_incluye_procesos(proyecto_factory, catalogo):
+def test_gasto_por_separado_producto_y_proceso(proyecto_factory, catalogo):
+    """S-Finanzas-V3 (decisión Oscar 2026-06-12): cada gasto liga su PROPIO
+    egreso — el producto (costo de línea) y cada proceso operativo por separado."""
     from apps.los_proyectos.models import ProyectoProductoProceso
     from apps.tesoreria.models import Egreso
     p = proyecto_factory(estado="en_proceso_diseno")
@@ -102,8 +104,9 @@ def test_egreso_incluye_procesos(proyecto_factory, catalogo):
     )
     p.estado = "en_proceso_produccion"
     p.save()
-    e = Egreso.objects.get(proyecto=p, origen="proyecto")
-    assert float(e.monto) == 70.0  # 40 (producto) + 30 (proceso)
+    egresos = Egreso.objects.filter(proyecto=p, origen="proyecto")
+    assert egresos.count() == 2  # producto (40) + proceso "Clavos" (30) por separado
+    assert sorted(float(e.monto) for e in egresos) == [30.0, 40.0]
 
 
 def test_egreso_genera_asiento_contable(proyecto_factory, catalogo):

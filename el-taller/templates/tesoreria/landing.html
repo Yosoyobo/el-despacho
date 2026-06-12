@@ -56,10 +56,19 @@
     <a href="{% url 'tesoreria:egresos-lista' %}" class="btn-secundario">Egresos</a>
     <a href="{% url 'tesoreria:por-cobrar' %}" class="btn-secundario">Por cobrar</a>
     <a href="{% url 'tesoreria:por-pagar' %}" class="btn-secundario">Por pagar</a>
+    <a href="{% url 'tesoreria:gastos-no-registrados' %}" class="btn-secundario">Gastos no registrados{% if gastos_no_registrados.cantidad %} ({{ gastos_no_registrados.cantidad }}){% endif %}</a>
     <a href="{% url 'tesoreria:reportes' %}" class="btn-secundario">Reportes</a>
     <a href="/contaduria/movimiento/traspaso/?origen=stripe_saldo&destino=banco&descripcion=Payout+de+Stripe+a+Banco" class="btn-secundario" title="Registra que bajaste tu balance de Stripe a tu cuenta de banco.">↓ Payout Stripe</a>
     <a href="/contaduria/movimiento/traspaso/?origen=mp_saldo&destino=banco&descripcion=Retiro+de+MercadoPago+a+Banco" class="btn-secundario" title="Registra que retiraste tu balance de MercadoPago a tu cuenta de banco.">↓ Retiro MP</a>
 </div>
+
+{# Alerta: gastos de proyecto sin registrar como egreso (contabilidad en línea). #}
+{% if gastos_no_registrados.cantidad %}
+<a href="{% url 'tesoreria:gastos-no-registrados' %}" class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning-300 bg-warning-50 p-4 transition hover:bg-warning-100 dark:border-warning-500/40 dark:bg-warning-500/10 dark:hover:bg-warning-500/20">
+    <span class="text-sm font-semibold text-warning-800 dark:text-warning-300">⚠️ {{ gastos_no_registrados.cantidad }} gasto{{ gastos_no_registrados.cantidad|pluralize:"s" }} de proyecto sin registrar · {{ gastos_no_registrados.total|dinero }}</span>
+    <span class="text-xs font-medium text-warning-700 dark:text-warning-400">Ver y registrar →</span>
+</a>
+{% endif %}
 
 {# Saldos en procesadores (info — sólo si hay saldo > 0). #}
 {% if kpis.saldo_stripe or kpis.saldo_mp %}

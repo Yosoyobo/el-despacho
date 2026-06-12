@@ -5611,3 +5611,78 @@ cuentas Stripe/MercadoPago de LC).
   el export XML salga con el RFC real (si no, usa genérico).
 - super_admin: activar y configurar **La Cobranza** en Ajustes → La Cobranza
   cuando se quiera empezar a recordar pagos a clientes.
+
+---
+
+# BITÁCORA — S-Finanzas-V3 (2026-06-12, VERSION 2026.06.39)
+
+Tres pedidos de Oscar "aprovechando que tocamos Contaduría". Decisiones por
+AskUserQuestion: **RESICO Persona Física** (ISR sobre ingresos, PTU off, IVA
+16%) y **cada gasto por separado** (cada producto Y cada gasto operativo liga
+su propio egreso). Un commit + deploy.
+
+## F1 — Figuras fiscales editables por GUI
+- `ajustes.ConfiguracionFiscal` (singleton, migr. `ajustes/0009`): regimen,
+  isr_base (ingresos|utilidad), isr_tasa, ptu_aplica, ptu_tasa, iva_tasa.
+  Seed default = RESICO PF.
+- `contaduria.reportes.estado_resultados` la lee (helper `_config_fiscal` con
+  fallback): ISR sobre ingresos o utilidad según base; PTU solo si aplica.
+  Template muestra régimen + base; oculta PTU si no aplica.
+- `Proyecto.iva_tasa_efectiva` (property) lee `ConfiguracionFiscal.iva_fraccion`
+  (fallback al constante `IVA_TASA`); `iva_monto` la usa. `iva_pct_label` para UI.
+- GUI Gerencia `/ajustes/fiscal/` (super_admin) + link en panel. Evento
+  `ajuste.fiscal_configurada`.
+- **Regla del proyecto confirmada (Oscar)**: si algo se puede configurar/mover,
+  DEBE existir un GUI en Gerencia.
+
+## F2 — Gastos no registrados → egresos (contabilidad en línea)
+- `Proceso.egreso` FK nuevo (`ProyectoProductoProceso`, migr. `proyectos/0017`).
+- `apps/los_proyectos/gastos.py`: unidades de gasto (producto = costo_total_linea,
+  impresión y operativo = su costo cada uno) ↔ egreso vigente. `iter_unidades`,
+  `pendientes_de`, `registrar_egreso(clase,pk)`, `registrar_pendientes`,
+  `proyectos_con_pendientes`, `conteo_no_registrados`.
+- **Cambio de comportamiento**: el signal de producción (`signals_egresos`) ahora
+  delega en `gastos.registrar_pendientes` → un egreso POR GASTO (antes era 1 por
+  línea con costo_total_con_procesos). Idempotente, silent-skip si falta el
+  centro `insumos-de-proyecto`. Test `test_egreso_incluye_procesos` reescrito a
+  `test_gasto_por_separado_producto_y_proceso`.
+- Alerta amarilla en el detalle del proyecto (lista + botón Registrar / Registrar
+  todos). Vistas `registrar_gasto` + `registrar_gastos_todos` (gated
+  editar_proyecto O ver_finanzas; `volver=tesoreria` redirige a la página).
+- Tesorería: KPI/alerta en el landing + página `/tesoreria/gastos-no-registrados/`
+  agrupada por proyecto con botones. Evento `proyecto.gasto_registrado`.
+
+## F3 — IVA en el monto de proveedor
+- `_proveedores_panel` (view) agrega `iva` + `total_con_iva` por fila usando
+  `proyecto.iva_tasa_efectiva`. Template `_proveedores_panel.html` muestra
+  Subtotal + IVA % + Total (compacto). Cuadra con egresos pagados con IVA.
+
+## Migraciones (limpias a mano)
+makemigrations volvió a generar espurios (BigAutoField en credencial, rename de
+índice en actividadproyecto, AlterField metodo en ingreso). Se reescribieron a
+mano `ajustes/0009_configuracion_fiscal` (solo CreateModel) y
+`proyectos/0017_proceso_egreso` (solo AddField); se BORRÓ el
+`tesoreria/0007_alter_ingreso_metodo` espurio. La deriva latente queda igual que
+antes del sprint (no es su alcance; CI no corre makemigrations --check).
+
+## Tests
+- `tests/taller/test_finanzas_v3.py` (12): config fiscal (RESICO PF / general),
+  IVA del proyecto lee config, unidades/pendientes, registrar individual +
+  pendientes + conteo, alerta en detalle, view de registro, página Tesorería,
+  IVA en panel de proveedores (5600 → +896 → 6496).
+- `tests/gerencia/test_fiscal_ui.py` (3): panel + permisos + guardar.
+- `tests/taller/test_proyecto_egresos.py`: 1 test reescrito (gasto por separado).
+- `tests/taller/test_s3_resto.py`: 2 tests de ISR/PTU ahora fijan la config.
+- Ruff limpio.
+
+## Post-deploy manual
+- super_admin entra a Gerencia → Ajustes → Fiscal y confirma régimen/tasas
+  (arranca RESICO PF). Nada más es necesario; las migraciones corren en CI.
+
+## Deuda diseñada
+- Proyectos que entraron a producción bajo la lógica vieja (1 egreso por línea
+  con procesos incluidos) tienen sus procesos sin egreso propio → aparecerían
+  como "no registrados". LC arranca limpio, así que no aplica; si hiciera falta,
+  un command de reconciliación lo resuelve.
+- ISR RESICO PF usa una tasa fija configurable (no la tabla progresiva del SAT).
+  Suficiente para la estimación informativa.

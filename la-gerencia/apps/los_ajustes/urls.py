@@ -38,4 +38,6 @@ urlpatterns = [
     path("recordatorios/", views.recordatorios_panel, name="ajustes-recordatorios"),
     # S3 resto: La Cobranza — recordatorios de pago al cliente.
     path("cobranza/", views.cobranza_panel, name="ajustes-cobranza"),
+    # Figuras fiscales (régimen + ISR/PTU/IVA).
+    path("fiscal/", views.fiscal_panel, name="ajustes-fiscal"),
 ]

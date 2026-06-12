@@ -123,9 +123,25 @@ class Proyecto(models.Model):
 
     # ── Totales de productos (C4 S-LC-Feedback-V6) ───────────────────────────
 
-    # Tasa de IVA estándar México (C7). Si en el futuro se quiere configurable,
-    # mover a TasaImpositiva sin tocar las properties.
+    # Tasa de IVA fallback (C7). La tasa REAL vive en
+    # `ajustes.ConfiguracionFiscal` (editable en Gerencia); se lee vía
+    # `iva_tasa_efectiva`. Este constante solo es respaldo si no hay config.
     IVA_TASA = Decimal("0.16")
+
+    @property
+    def iva_tasa_efectiva(self) -> Decimal:
+        """Fracción de IVA (ej. 0.16) desde la Configuración Fiscal; cae al
+        constante si la tabla no existe todavía."""
+        try:
+            from ajustes.models import ConfiguracionFiscal
+            return ConfiguracionFiscal.obtener().iva_fraccion
+        except Exception:  # noqa: BLE001
+            return self.IVA_TASA
+
+    @property
+    def iva_pct_label(self) -> str:
+        """Etiqueta legible del IVA, ej. '16%' o '8%'."""
+        return f"{float(self.iva_tasa_efectiva * 100):g}%"
 
     def _productos_calc(self):
         return list(
@@ -175,7 +191,7 @@ class Proyecto(models.Model):
         """IVA sobre el monto calculado. 0 si el proyecto es exento (C7)."""
         if self.iva_exento:
             return Decimal("0.00")
-        return (self.monto_calculado * self.IVA_TASA).quantize(Decimal("0.01"))
+        return (self.monto_calculado * self.iva_tasa_efectiva).quantize(Decimal("0.01"))
 
     @property
     def monto_a_facturar(self):

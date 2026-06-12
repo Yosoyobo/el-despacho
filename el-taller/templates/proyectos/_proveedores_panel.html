@@ -17,7 +17,10 @@ el tipo (entregan/recogemos), el compromiso, contacto y ubicación.
         <li class="rounded-lg border border-gray-200 p-2.5 dark:border-gray-800">
             <div class="flex items-start justify-between gap-2">
                 <a href="{% url 'catalogo-proveedor-detalle' fila.proveedor.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ fila.proveedor.razon_social }}</a>
-                <span class="shrink-0 font-semibold tabular-nums text-gray-700 dark:text-gray-200">{{ fila.total|dinero }}</span>
+                <span class="shrink-0 text-right">
+                    <span class="block font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ fila.total_con_iva|dinero }}</span>
+                    <span class="block text-[11px] tabular-nums text-gray-400 dark:text-gray-500">{{ fila.total|dinero }} + IVA {{ proyecto.iva_pct_label }} {{ fila.iva|dinero }}</span>
+                </span>
             </div>
             {% if fila.asignacion %}
             <p class="mt-1 text-xs">
@@ -38,7 +41,7 @@ el tipo (entregan/recogemos), el compromiso, contacto y ubicación.
         </li>
         {% endfor %}
     </ul>
-    <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Montos = lo que se le adeuda por este proyecto.</p>
+    <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Montos con IVA = lo que se le paga al proveedor por este proyecto.</p>
     {% else %}
     {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proveedores" descripcion="Asigna un proveedor a un producto o usa “+ Agregar”." icono="folder" %}
     {% endif %}

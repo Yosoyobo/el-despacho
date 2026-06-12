@@ -107,10 +107,23 @@ def test_cierre_perdida_carga_utilidad(usuario_factory):
 
 # ── E2: ISR/PTU estimado ─────────────────────────────────────────────────
 
+def _config_fiscal(**kw):
+    """Fija la Configuración Fiscal (S-Finanzas-V3 la hizo editable)."""
+    from ajustes.models import ConfiguracionFiscal
+    cfg = ConfiguracionFiscal.obtener()
+    for k, v in kw.items():
+        setattr(cfg, k, v)
+    cfg.save()
+    return cfg
+
+
 def test_estado_resultados_estima_isr_ptu():
     from apps.contaduria import reportes
     hoy = date.today()
     desde = hoy.replace(day=1)
+    # Régimen general: ISR 30% sobre utilidad + PTU 10%.
+    _config_fiscal(isr_base="utilidad", isr_tasa=Decimal("30.000"),
+                   ptu_aplica=True, ptu_tasa=Decimal("10.000"))
     _asiento_ingreso("1000.00", hoy)
     _asiento_egreso("400.00", hoy)
     pl = reportes.estado_resultados(desde=desde, hasta=hoy)
@@ -124,6 +137,9 @@ def test_estado_resultados_sin_impuestos_en_perdida():
     from apps.contaduria import reportes
     hoy = date.today()
     desde = hoy.replace(day=1)
+    # ISR sobre utilidad: en pérdida no se estima nada.
+    _config_fiscal(isr_base="utilidad", isr_tasa=Decimal("30.000"),
+                   ptu_aplica=True, ptu_tasa=Decimal("10.000"))
     _asiento_ingreso("100.00", hoy)
     _asiento_egreso("500.00", hoy)
     pl = reportes.estado_resultados(desde=desde, hasta=hoy)

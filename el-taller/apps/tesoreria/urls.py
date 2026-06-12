@@ -25,6 +25,7 @@ urlpatterns = [
     # CxC / CxP / reportes
     path("por-cobrar/", views.por_cobrar, name="por-cobrar"),
     path("por-pagar/", views.por_pagar, name="por-pagar"),
+    path("gastos-no-registrados/", views.gastos_no_registrados, name="gastos-no-registrados"),
     path("reportes/", views.reportes, name="reportes"),
     # Exports
     path("exportar/<str:vista>.csv", views.exportar, name="exportar-csv"),

@@ -29,10 +29,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
 
 from lib.permisos import (
     es_admin,
     puede_editar_proyecto,
+    puede_ver_finanzas,
     puede_ver_proyecto,
 )
 from lib.portavoz import emitir
@@ -65,7 +67,17 @@ def _proveedores_activos():
 
 def _proveedores_panel(proyecto):
     """Deuda por proveedor (auto-sumada de los productos) fusionada con la
-    asignación explícita (tipo entregan/recogemos, compromiso, contacto)."""
+    asignación explícita (tipo entregan/recogemos, compromiso, contacto).
+
+    Cada fila trae `total` (subtotal sin IVA), `iva` y `total_con_iva`: los
+    proveedores facturan con IVA, así cuadra con los egresos pagados. La tasa
+    sale de la Configuración Fiscal (editable en Gerencia)."""
+    iva_fraccion = proyecto.iva_tasa_efectiva
+
+    def _con_iva(subtotal):
+        iva = (subtotal * iva_fraccion).quantize(Decimal("0.01"))
+        return iva, (subtotal + iva).quantize(Decimal("0.01"))
+
     asignados = {
         pv.proveedor_id: pv
         for pv in proyecto.proveedores_asignados.select_related("proveedor").all()
@@ -74,10 +86,19 @@ def _proveedores_panel(proyecto):
     for d in proyecto.deuda_por_proveedor():
         pid = d["proveedor"].pk
         vistos.add(pid)
-        filas.append({"proveedor": d["proveedor"], "total": d["total"], "asignacion": asignados.get(pid)})
+        iva, total_iva = _con_iva(d["total"])
+        filas.append({
+            "proveedor": d["proveedor"], "total": d["total"],
+            "iva": iva, "total_con_iva": total_iva,
+            "asignacion": asignados.get(pid),
+        })
     for pid, pv in asignados.items():
         if pid not in vistos:
-            filas.append({"proveedor": pv.proveedor, "total": Decimal("0.00"), "asignacion": pv})
+            filas.append({
+                "proveedor": pv.proveedor, "total": Decimal("0.00"),
+                "iva": Decimal("0.00"), "total_con_iva": Decimal("0.00"),
+                "asignacion": pv,
+            })
     return filas
 
 
@@ -345,12 +366,15 @@ def detalle(request, pk):
         ).distinct().order_by("razon_social")
     )
     _anotar_procesos(formset)
-    from . import services_undo
+    from . import gastos, services_undo
+    gastos_pendientes = gastos.pendientes_de(proyecto)
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "form": form,
         "formset": formset,
         "puede_editar": puede_ed,
+        "gastos_pendientes": gastos_pendientes,
+        "gastos_pendientes_total": sum((g["monto"] for g in gastos_pendientes), Decimal("0.00")),
         "pasos_undo": services_undo.pasos_disponibles(proyecto),
         "equipo_opciones": _ctx_equipo(proyecto),
         "roles_proyecto": ROLES_PROYECTO,
@@ -812,3 +836,56 @@ def deshacer(request, pk):
     if _es_htmx(request):
         return HttpResponse(status=204, headers={"HX-Redirect": destino})
     return redirect(destino)
+
+
+# ── Gastos no registrados → egresos (contabilidad en línea) ──────────────
+
+def _puede_registrar_gastos(user, proyecto) -> bool:
+    """Puede registrar gastos quien edita el proyecto O quien lleva finanzas
+    (contador desde la página de Tesorería)."""
+    return puede_editar_proyecto(user, proyecto) or puede_ver_finanzas(user)
+
+
+def _destino_registro(request, proyecto):
+    if (request.POST.get("volver") or "").strip() == "tesoreria":
+        return reverse("tesoreria:gastos-no-registrados")
+    return reverse("proyectos-detalle", args=[proyecto.pk])
+
+
+@login_required
+@require_POST
+def registrar_gasto(request, pk, clase, obj_pk):
+    """Registra UNA unidad de gasto del proyecto como egreso de Tesorería."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not _puede_registrar_gastos(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
+    from . import gastos
+    if clase not in ("producto", "proceso"):
+        messages.error(request, "Tipo de gasto inválido.")
+        return redirect("proyectos-detalle", pk=proyecto.pk)
+    eg = gastos.registrar_egreso(proyecto, clase, obj_pk, actor=request.user)
+    if eg is None:
+        messages.error(
+            request,
+            "No se pudo registrar el gasto. Verifica que exista el centro de costo "
+            "«insumos-de-proyecto» y que el monto sea mayor a cero.",
+        )
+    else:
+        messages.success(request, f"Gasto registrado como egreso {eg.codigo}.")
+    return redirect(_destino_registro(request, proyecto))
+
+
+@login_required
+@require_POST
+def registrar_gastos_todos(request, pk):
+    """Registra TODOS los gastos pendientes del proyecto de una vez."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not _puede_registrar_gastos(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
+    from . import gastos
+    creados = gastos.registrar_pendientes(proyecto, actor=request.user)
+    if creados:
+        messages.success(request, f"{len(creados)} gasto(s) registrado(s) en Tesorería.")
+    else:
+        messages.info(request, "No había gastos pendientes (o falta el centro de costo).")
+    return redirect(_destino_registro(request, proyecto))

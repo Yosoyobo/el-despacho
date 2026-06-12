@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — Figuras fiscales configurables, gastos del proyecto al día y IVA en proveedores (12 de junio de 2026)
+
+Tres mejoras de contabilidad pensadas para que los números cuadren con tu
+realidad fiscal:
+
+- **Tus figuras fiscales ahora se configuran tú mismo.** En *Gerencia → Ajustes
+  → Fiscal* eliges tu régimen (RESICO Persona Física, etc.) y las tasas de ISR,
+  PTU e IVA. El sistema arranca configurado como **RESICO Persona Física** (ISR
+  estimado sobre tus ingresos, sin PTU, IVA 16%). Si más adelante cambias de
+  régimen al crecer, lo ajustas ahí sin que toquemos nada. Esa configuración
+  alimenta la estimación de impuestos del Estado de resultados y el IVA de los
+  proyectos.
+- **Gastos del proyecto sin registrar.** Cada gasto de un proyecto (un producto
+  con su proveedor, una impresión, o un gasto operativo como "clavos $150") debe
+  quedar ligado a un egreso en Tesorería para que la contabilidad esté al día.
+  Ahora, en la página del proyecto aparece una **alerta** con los gastos que
+  faltan por registrar y un botón para hacerlo (uno por uno o todos). Además, en
+  *Tesorería* hay un acceso **"Gastos no registrados"** con la lista completa de
+  todos los proyectos y su botón para registrarlos.
+- **El monto del proveedor ahora muestra el IVA.** En la página del proyecto, el
+  cuadro de Proveedores ya no muestra solo el subtotal: ahora ves **Subtotal +
+  IVA + Total**, para que cuadre con lo que realmente pagas (los proveedores
+  facturan con IVA).
+
+---
+
 ## Novedades — Cierre de mes, conciliación bancaria, impuestos estimados y recordatorios de cobro (11 de junio de 2026)
 
 Cuatro herramientas nuevas para llevar mejor las cuentas, más los recordatorios
@@ -1028,7 +1054,16 @@ A la derecha:
   Monto a facturar, Costo de producción, Utilidad estimada y la lista de
   gastos operativos.
 - **Equipo:** marca quién participa y su rol.
-- **Proveedores:** cuánto se le debe a cada proveedor por este proyecto.
+- **Proveedores:** cuánto se le paga a cada proveedor por este proyecto, con el
+  desglose **Subtotal + IVA + Total** (los proveedores facturan con IVA, así
+  cuadra con lo que realmente pagas).
+
+Si el proyecto tiene **gastos sin registrar en Tesorería**, arriba aparece una
+**alerta amarilla** con la lista de esos gastos (cada producto, impresión o
+gasto operativo) y su monto. Usa **"Registrar"** en cada uno, o **"Registrar
+todos"**, para crear el egreso correspondiente y mantener la contabilidad al
+día. (Al pasar el proyecto a *En producción* esto se hace solo; la alerta cubre
+lo que agregues después.)
 
 Abajo está la tabla de **Tareas** del Pizarrón con "+ Nueva tarea".
 
@@ -1244,6 +1279,11 @@ El dinero que entra y sale.
 - **Egresos:** qué gastaste, centro de costo, proveedor opcional, quién pagó (caja chica vs tarjeta personal), estado de pago. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción.
 - **Por cobrar (CxC):** vista unificada de facturas pendientes + anticipos por generar + proyectos legacy con saldo, ordenado por vencimiento.
 - **Por pagar (CxP):** egresos pendientes de pagar + reembolsos pendientes por empleado.
+- **Gastos no registrados:** lista de gastos de proyectos que aún no tienen un
+  egreso (por producto, impresión o gasto operativo), agrupados por proyecto,
+  con un botón para registrarlos (uno o todos). Es la misma alerta que ves en
+  cada proyecto, pero junta de todos. El acceso del navbar muestra cuántos
+  faltan entre paréntesis.
 - **Reembolsar:** botón "Reembolsar" en cada egreso pendiente — captura método y banco, baja el saldo, crea el asiento contable.
 - **Reportes mensuales** con Estado de Resultados.
 - **Exports CSV** para mandárselos al contador externo.
@@ -1265,8 +1305,10 @@ Partida doble simplificada para llevar tu libro contable encima de Tesorería. *
 - **Libro mayor:** todos los movimientos de una cuenta con saldo acumulado.
 - **Balance de comprobación:** todas las cuentas con cargo/abono/saldo + verificación de que cuadra.
 - **Estado de resultados** con utilidad bruta/operativa y una **estimación de
-  ISR (30%) y PTU (10%)** que aproxima cuánto te quedaría después de impuestos.
-  Esa estimación es informativa — el cálculo fiscal real lo hace tu contador.
+  ISR y PTU** según tu régimen fiscal (configurable en *Ajustes → Fiscal*; por
+  defecto RESICO Persona Física, ISR sobre ingresos, sin PTU). Aproxima cuánto
+  te quedaría después de impuestos. Es informativa — el cálculo fiscal real lo
+  hace tu contador.
 - **Balance general** con verificación de la ecuación contable.
 - **Exports** para el contador externo: CSV (pólizas + catálogo) y **XML estilo
   SAT** (catálogo, balanza y pólizas).
@@ -1360,13 +1402,31 @@ En **Notificaciones** ves el historial de las que recibiste y puedes silenciar c
 Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 
 - **Credenciales** (llaves de API: Stripe, OpenAI, Anthropic, Google, etc.) — cifradas.
-- **Tasas e impuestos** (IVA, retenciones, ISR).
+- **Fiscal** (régimen, ISR, PTU, IVA) — ver abajo.
+- **Tasas e impuestos** (IVA, retenciones, ISR para cotizaciones/facturas).
+- **La Cobranza** (recordatorios de pago automáticos a clientes).
 - **Catálogos** (categorías, unidades, centros de costo).
 - **Orden del sidebar** para todo el equipo.
 - **Metas KPI** (ingresos/egresos/utilidad del mes con barra de progreso).
 - **Directorio** (usuarios, sus permisos individuales, roles extra personalizados).
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
+
+### Fiscal (régimen, ISR, PTU, IVA)
+
+En *Ajustes → Fiscal* defines las figuras fiscales del despacho. El sistema
+arranca como **RESICO Persona Física**. Aquí eliges:
+
+- **Régimen** — RESICO Persona Física / Persona Moral, General de Ley, etc. Solo
+  orienta; puedes cambiarlo al crecer.
+- **ISR** — sobre qué se estima (ingresos, como en RESICO PF; o utilidad, como
+  en el régimen general) y la tasa (%).
+- **PTU** — si aplica (normalmente no en RESICO PF sin empleados) y su tasa.
+- **IVA** — la tasa estándar (16%).
+
+Esta configuración alimenta la **estimación de impuestos** del Estado de
+resultados (que es solo informativa — el cálculo real lo hace tu contador) y el
+**IVA** que se calcula en los montos de los proyectos y de sus proveedores.
 
 ---
 

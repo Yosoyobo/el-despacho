@@ -621,6 +621,56 @@ def metas_kpi_guardar(request):
     return redirect("ajustes-metas-kpi")
 
 
+# ── Configuración Fiscal (figuras fiscales editables) ────────────────────
+
+@requires_role("super_admin")
+@require_http_methods(["GET", "POST"])
+def fiscal_panel(request):
+    """Régimen + tasas de ISR/PTU/IVA editables. Las consume Contaduría
+    (estimación) y Proyectos (IVA)."""
+    from decimal import Decimal, InvalidOperation
+
+    from ajustes.models import ConfiguracionFiscal
+    from ajustes.models.fiscal import ISR_BASE_CHOICES, REGIMEN_CHOICES
+
+    cfg = ConfiguracionFiscal.obtener()
+    if request.method == "POST":
+        regimen = (request.POST.get("regimen") or "").strip()
+        if regimen in dict(REGIMEN_CHOICES):
+            cfg.regimen = regimen
+        isr_base = (request.POST.get("isr_base") or "").strip()
+        if isr_base in dict(ISR_BASE_CHOICES):
+            cfg.isr_base = isr_base
+        cfg.ptu_aplica = bool(request.POST.get("ptu_aplica"))
+
+        def _tasa(nombre, actual):
+            try:
+                v = Decimal(str(request.POST.get(nombre) or actual))
+            except (InvalidOperation, ValueError):
+                return actual
+            return max(Decimal("0"), min(v, Decimal("100")))
+
+        cfg.isr_tasa = _tasa("isr_tasa", cfg.isr_tasa)
+        cfg.ptu_tasa = _tasa("ptu_tasa", cfg.ptu_tasa)
+        cfg.iva_tasa = _tasa("iva_tasa", cfg.iva_tasa)
+        cfg.actualizado_por = request.user
+        cfg.save()
+        emitir(EventoPortavoz(
+            tipo="ajuste.fiscal_configurada",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"regimen": cfg.regimen, "isr_base": cfg.isr_base,
+                     "isr_tasa": float(cfg.isr_tasa), "iva_tasa": float(cfg.iva_tasa)},
+        ))
+        messages.success(request, "Configuración fiscal guardada.")
+        return redirect("ajustes-fiscal")
+
+    return render(request, "ajustes/fiscal.html", {
+        "cfg": cfg,
+        "regimenes": REGIMEN_CHOICES,
+        "isr_bases": ISR_BASE_CHOICES,
+    })
+
+
 # ── La Cobranza — recordatorios automáticos de pago (S3 resto) ───────────
 
 @requires_role("super_admin")

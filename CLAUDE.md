@@ -1669,8 +1669,7 @@ permisos nueva), ISR/PTU como constantes 30/10, La Cobranza **opt-in**
   `tests/gerencia/test_cobranza_ui.py` 3).
 
 **NO incluye / deuda diseñada**:
-- **ISR/PTU configurable**: tasas son constantes en `reportes.py`; si LC
-  necesita otras, un sprint mueve a una `ConfiguracionFiscal` editable.
+- ~~**ISR/PTU configurable**~~ — cerrado en S-Finanzas-V3 (`ConfiguracionFiscal`).
 - **Export XML estricto-SAT**: el `codigo_agrupador_sat` sembrado y el RFC
   son borrador; falta validación contra el XSD oficial y posible ajuste de
   subcódigos por el contador. El export no incluye sello/firma.
@@ -1680,6 +1679,43 @@ permisos nueva), ISR/PTU como constantes 30/10, La Cobranza **opt-in**
 - **La Cobranza**: el adjunto PDF al recordatorio requiere Drive; el envío
   real depende de El Cartero configurado (SMTP/n8n). No re-marca como
   no-vencida si se cobra (eso lo hace el flujo de cobro existente).
+
+### S-Finanzas-V3 ✅ — Figuras fiscales por GUI + gastos no registrados + IVA proveedor (2026-06-12, VERSION 2026.06.39)
+
+Tres pedidos de Oscar. Decisiones por AskUserQuestion: **RESICO PF** (ISR sobre
+ingresos, PTU off, IVA 16%) y **cada gasto por separado**.
+
+- **F1 — Configuración Fiscal editable** (`ajustes.ConfiguracionFiscal`,
+  singleton, migr. `ajustes/0009`): `regimen`, `isr_base` (ingresos|utilidad),
+  `isr_tasa`, `ptu_aplica`, `ptu_tasa`, `iva_tasa`; seed RESICO PF. La consume
+  `contaduria.reportes.estado_resultados` (ISR sobre ingresos o utilidad; PTU
+  condicional) y `Proyecto.iva_tasa_efectiva`/`iva_monto` (fallback al constante
+  `IVA_TASA`). GUI Gerencia `/ajustes/fiscal/` (super_admin) + link en panel.
+  Evento `ajuste.fiscal_configurada`. **Regla del proyecto reconfirmada por
+  Oscar**: lo configurable vive en un GUI de Gerencia.
+- **F2 — Gastos no registrados → egresos** (contabilidad en línea): FK
+  `ProyectoProductoProceso.egreso` (migr. `proyectos/0017`).
+  `apps/los_proyectos/gastos.py` modela "unidades de gasto" (producto =
+  `costo_total_linea`; impresión y operativo = su costo, cada uno) ↔ egreso
+  vigente. El signal de producción ahora delega en `gastos.registrar_pendientes`
+  → **un egreso POR GASTO** (antes 1 por línea con procesos incluidos). Alerta
+  en el detalle del proyecto (Registrar / Registrar todos) + KPI/alerta en el
+  landing de Tesorería + página `/tesoreria/gastos-no-registrados/`. Vistas
+  `registrar_gasto`/`registrar_gastos_todos` (gated editar_proyecto O
+  ver_finanzas; `volver=tesoreria`). Evento `proyecto.gasto_registrado`.
+- **F3 — IVA en el monto de proveedor**: `_proveedores_panel` agrega `iva` +
+  `total_con_iva` (usa `iva_tasa_efectiva`); el partial muestra Subtotal + IVA%
+  + Total compacto (cuadra con egresos pagados con IVA).
+- **15 tests nuevos** (`test_finanzas_v3.py` 12, `test_fiscal_ui.py` 3) +
+  ajustes a `test_proyecto_egresos.py` (gasto por separado) y `test_s3_resto.py`
+  (ISR/PTU fijan config). Migraciones reescritas a mano (makemigrations generó
+  espurios de BigAutoField/índice/`metodo`; se borró `tesoreria/0007` espurio).
+
+**Deuda diseñada**: proyectos que entraron a producción con la lógica vieja
+(1 egreso por línea con procesos) tienen procesos sin egreso propio → saldrían
+"no registrados" (no aplica con arranque limpio; un command los reconcilia si
+hace falta). ISR RESICO PF usa tasa fija configurable (no la tabla progresiva
+del SAT) — suficiente para la estimación informativa.
 
 ### S-UX-Dummy-Proof ✅ — 5 mejoras de UX (2026-05-21)
 

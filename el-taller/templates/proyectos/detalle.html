@@ -21,6 +21,42 @@
 {# ── Barra de status full-width: chips repartidos, seleccionado con outline grueso a color ── #}
 {% include "proyectos/_barra_status.html" with proyecto=proyecto estados_barra=estados_barra puede_editar=puede_editar %}
 
+{# ── Alerta: gastos del proyecto sin registrar como egreso (contabilidad en línea) ── #}
+{% if gastos_pendientes %}
+<div class="mb-5 rounded-2xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-500/40 dark:bg-warning-500/10">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <p class="text-sm font-semibold text-warning-800 dark:text-warning-300">⚠️ {{ gastos_pendientes|length }} gasto{{ gastos_pendientes|length|pluralize:"s" }} sin registrar en Tesorería · {{ gastos_pendientes_total|dinero }}</p>
+            <p class="mt-0.5 text-xs text-warning-700 dark:text-warning-400">Liga cada gasto a un egreso para tener la contabilidad al día.</p>
+        </div>
+        {% if puede_editar %}
+        <form method="post" action="{% url 'proyectos-registrar-gastos-todos' proyecto.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-primario">Registrar todos</button>
+        </form>
+        {% endif %}
+    </div>
+    <ul class="mt-3 divide-y divide-warning-200/60 text-sm dark:divide-warning-500/20">
+        {% for g in gastos_pendientes %}
+        <li class="flex items-center justify-between gap-2 py-1.5">
+            <span class="min-w-0 truncate text-gray-700 dark:text-gray-200">
+                {{ g.label }}{% if g.proveedor %} <span class="text-xs text-gray-500">· {{ g.proveedor.razon_social }}</span>{% endif %}
+            </span>
+            <span class="flex shrink-0 items-center gap-2">
+                <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ g.monto|dinero }}</span>
+                {% if puede_editar %}
+                <form method="post" action="{% url 'proyectos-registrar-gasto' proyecto.pk g.clase g.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">Registrar</button>
+                </form>
+                {% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 {# ── Barra de acciones: indicador permanente + Undo + Guardar ── #}
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">

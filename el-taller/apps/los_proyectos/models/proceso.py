@@ -54,6 +54,17 @@ class ProyectoProductoProceso(models.Model):
     # Monto FIJO del proceso (no se multiplica por la cantidad del producto).
     costo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
+    # Egreso de Tesorería que registra ESTE gasto (contabilidad en línea).
+    # Cada gasto se liga por separado (decisión Oscar 2026-06-12). Marca de
+    # idempotencia: un proceso con egreso no vuelve a generar. SET_NULL: si el
+    # egreso se borra, el proceso queda "no registrado" y se puede re-registrar.
+    egreso = models.ForeignKey(
+        "tesoreria.Egreso",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="procesos_proyecto",
+    )
+
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
