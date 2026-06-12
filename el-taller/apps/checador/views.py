@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from lib.permisos import puede_checar
 
 from . import services
-from .models import Jornada
+from .models import Jornada, Visita
 
 
 def _requiere_checar(view):
@@ -68,13 +68,62 @@ def tablero(request):
     semana = list(
         Jornada.objects.filter(usuario=request.user, fecha__gte=desde, fecha__lte=hoy).order_by("-fecha"),
     )
+    visitas_hoy = list(
+        Visita.objects.filter(usuario=request.user, registrado_en__date=hoy)
+        .select_related("cliente", "proveedor").order_by("-registrado_en"),
+    )
 
     return render(request, "checador/tablero.html", {
         "jornada": jornada,
         "accion": accion,
         "semana": semana,
+        "visitas_hoy": visitas_hoy,
         "hoy": hoy,
     })
+
+
+@login_required
+@_requiere_checar
+def visita_modal(request):
+    """GET HTMX → fragmento del modal para registrar una visita."""
+    from apps.el_catalogo.models import Proveedor
+    from apps.la_cartera.models import Cliente
+    return render(request, "checador/_modal_visita.html", {
+        "clientes": Cliente.objects.filter(activo=True).order_by("razon_social"),
+        "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
+    })
+
+
+@login_required
+@_requiere_checar
+@require_POST
+def visita(request):
+    from apps.el_catalogo.models import Proveedor
+    from apps.la_cartera.models import Cliente
+
+    tipo = request.POST.get("tipo", "cliente")
+    nota = (request.POST.get("nota") or "").strip()
+    geo = _geo_de_request(request)
+    uuid = (request.POST.get("uuid") or "")[:64]
+
+    cliente = proveedor = None
+    if tipo == "cliente":
+        cid = request.POST.get("cliente")
+        cliente = Cliente.objects.filter(pk=cid).first() if cid else None
+    elif tipo == "proveedor":
+        pid = request.POST.get("proveedor")
+        proveedor = Proveedor.objects.filter(pk=pid).first() if pid else None
+
+    try:
+        services.registrar_visita(
+            request.user, tipo=tipo, cliente=cliente, proveedor=proveedor,
+            geo=geo, nota=nota, uuid=uuid,
+        )
+        messages.success(request, "Visita registrada.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+
+    return redirect("checador:tablero")
 
 
 @login_required

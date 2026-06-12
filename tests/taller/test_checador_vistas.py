@@ -76,3 +76,61 @@ def test_checar_get_no_permitido(client, usuario_factory):
     client.force_login(u)
     resp = client.get("/checador/checar")
     assert resp.status_code == 405
+
+
+# ───────────────────────── visitas (E3) ─────────────────────────
+
+def test_boton_visita_solo_tras_entrada(client, usuario_factory):
+    u = usuario_factory(rol="disenador")
+    client.force_login(u)
+    # Sin entrada: no aparece el botón de visita.
+    assert b"Registrar visita" not in client.get("/checador/").content
+    client.post("/checador/checar", {"accion": "entrada", "sin_geo": "1", "uuid": "e-1"})
+    assert b"Registrar visita" in client.get("/checador/").content
+
+
+def test_visita_modal_lista_clientes(client, usuario_factory, cliente_factory):
+    u = usuario_factory(rol="disenador")
+    cliente = cliente_factory(razon_social="Heladería La Michoacana")
+    client.force_login(u)
+    resp = client.get("/checador/visita/nueva")
+    assert resp.status_code == 200
+    assert b"Helader" in resp.content
+
+
+def test_registrar_visita_cliente(client, usuario_factory, cliente_factory):
+    from apps.checador.models import Visita
+    u = usuario_factory(rol="disenador")
+    cliente = cliente_factory()
+    client.force_login(u)
+    resp = client.post("/checador/visita", {
+        "tipo": "cliente", "cliente": str(cliente.pk), "nota": "Entrega de arte",
+        "lat": "19.4", "lng": "-99.1", "sin_geo": "0", "uuid": "vis-1",
+    })
+    assert resp.status_code == 302
+    v = Visita.objects.get(usuario=u)
+    assert v.cliente_id == cliente.pk
+    assert v.tipo == "cliente"
+    assert v.nota == "Entrega de arte"
+
+
+def test_registrar_visita_proveedor(client, usuario_factory):
+    from apps.checador.models import Visita
+    from apps.el_catalogo.models import Proveedor
+    u = usuario_factory(rol="disenador")
+    prov = Proveedor.objects.create(razon_social="Imprenta Z")
+    client.force_login(u)
+    client.post("/checador/visita", {
+        "tipo": "proveedor", "proveedor": str(prov.pk), "sin_geo": "1", "uuid": "vis-2",
+    })
+    v = Visita.objects.get(usuario=u)
+    assert v.proveedor_id == prov.pk
+    assert v.cliente_id is None
+
+
+def test_registrar_visita_cliente_sin_cliente_no_crea(client, usuario_factory):
+    from apps.checador.models import Visita
+    u = usuario_factory(rol="disenador")
+    client.force_login(u)
+    client.post("/checador/visita", {"tipo": "cliente", "sin_geo": "1", "uuid": "vis-3"})
+    assert Visita.objects.filter(usuario=u).count() == 0

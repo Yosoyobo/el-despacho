@@ -1,0 +1,80 @@
+{% load static %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Registrar visita</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+
+        <form method="post" action="{% url 'checador:visita' %}" class="campo-form">
+            {% csrf_token %}
+            <input type="hidden" name="lat">
+            <input type="hidden" name="lng">
+            <input type="hidden" name="precision">
+            <input type="hidden" name="sin_geo" value="0">
+            <input type="hidden" name="uuid">
+
+            <div class="space-y-4 px-5 py-4 text-sm">
+                <div>
+                    <label class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Tipo de visita</label>
+                    <div class="flex gap-2" data-visita-tipo>
+                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="tipo" value="cliente" checked class="accent-brand-500"> Cliente
+                        </label>
+                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="tipo" value="proveedor" class="accent-brand-500"> Proveedor
+                        </label>
+                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="tipo" value="otro" class="accent-brand-500"> Otro
+                        </label>
+                    </div>
+                </div>
+
+                <div data-campo="cliente">
+                    <label for="visita-cliente" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                    <select name="cliente" id="visita-cliente">
+                        <option value="">— Selecciona —</option>
+                        {% for c in clientes %}<option value="{{ c.pk }}">{{ c.razon_social }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div data-campo="proveedor" class="hidden">
+                    <label for="visita-proveedor" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
+                    <select name="proveedor" id="visita-proveedor">
+                        <option value="">— Selecciona —</option>
+                        {% for p in proveedores %}<option value="{{ p.pk }}">{{ p.razon_social }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="visita-nota" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Nota (opcional)</label>
+                    <textarea name="nota" id="visita-nota" rows="2" placeholder="¿Qué fuiste a hacer?"></textarea>
+                </div>
+
+                <p data-geo-estado class="text-xs text-gray-400 dark:text-gray-500">Tomamos tu ubicación al registrar la visita.</p>
+            </div>
+
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="button" data-checar-geo class="btn-primario">Registrar</button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<script>
+  (function () {
+    var wrap = document.querySelector("[data-visita-tipo]");
+    if (!wrap) return;
+    var campos = { cliente: document.querySelector("[data-campo=cliente]"), proveedor: document.querySelector("[data-campo=proveedor]") };
+    function sync() {
+      var tipo = (document.querySelector("[data-visita-tipo] input:checked") || {}).value;
+      campos.cliente.classList.toggle("hidden", tipo !== "cliente");
+      campos.proveedor.classList.toggle("hidden", tipo !== "proveedor");
+    }
+    wrap.addEventListener("change", sync);
+    sync();
+  })();
+</script>
