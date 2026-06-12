@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_POST
 
 from ajustes.models.tasa import TasaImpositiva
 from lib.permisos import (
@@ -561,6 +562,30 @@ def api_proyecto_datos(request, pk):
         "cliente_id": proyecto.cliente_id,
         "cliente_nombre": proyecto.cliente.razon_social if proyecto.cliente else "",
     })
+
+
+@login_required
+@require_POST
+def sugerir_precio(request):
+    """El Chalán sugiere un rango de precio para un servicio (estación `precio`, S4).
+
+    POST /cotizaciones/api/sugerir-precio/  {servicio_id}
+    → {ok, precio_minimo, precio_maximo, justificacion, confianza, n_historico, error}
+
+    Gated por acceso a Cotizaciones + permiso (chalan, usar)."""
+    from django.http import JsonResponse
+
+    from lib.permisos import puede_usar_chalan
+
+    from .precio_ia import sugerir_precio as _sugerir
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_usar_chalan(request.user):
+        return HttpResponseForbidden("No tienes permiso para usar El Chalán.")
+    servicio_id = (request.POST.get("servicio_id") or "").strip()
+    if not servicio_id:
+        return JsonResponse({"ok": False, "error": "Elige un producto primero."})
+    return JsonResponse(_sugerir(servicio_id=servicio_id, usuario=request.user))
 
 
 @login_required

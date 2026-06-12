@@ -38,6 +38,12 @@ REGLAS ESTRICTAS:
 _RE_FENCE = re.compile(r"^```(?:\w+)?|```$", re.IGNORECASE | re.MULTILINE)
 _RE_HTML = re.compile(r"<[^>]+>")
 
+# Estaciones que el widget 🤖 puede invocar. El cliente manda `estacion`; se
+# valida AQUÍ (server-side) — un valor fuera de la allowlist cae al default
+# para que nadie enrute presupuesto/voz a una estación arbitraria.
+_ESTACIONES_PERMITIDAS = {"redaccion_asistida", "cotizaciones"}
+_ESTACION_DEFAULT = "redaccion_asistida"
+
 
 def _limpiar(texto: str) -> str:
     """Salida = texto plano. Quita fences y cualquier etiqueta HTML."""
@@ -88,14 +94,19 @@ def bloque_referencias(*textos: str) -> str:
 
 
 def redactar(*, instruccion: str, texto_actual: str = "", contexto: dict | None = None,
-             usuario=None) -> dict:
+             usuario=None, estacion: str = _ESTACION_DEFAULT) -> dict:
     """Genera/mejora el texto de un campo. Devuelve `{ok, texto, error}`.
 
     - `instruccion`: lo que el usuario quiere ("redacta el avance para @oscar").
     - `texto_actual`: lo ya escrito en el campo (puede estar vacío).
     - `contexto`: dict acotado, RESUELTO EN SERVIDOR por el endpoint a partir de
       (modelo, pk) — nunca confiar en contexto enviado por el cliente.
+    - `estacion`: estación del Cuadro a usar (define proveedor/modelo/voz/
+      presupuesto). Validada contra `_ESTACIONES_PERMITIDAS`; fuera de la
+      allowlist cae al default. Ej. `cotizaciones` para redactar términos/notas
+      de una cotización con su propia voz.
     """
+    estacion = estacion if estacion in _ESTACIONES_PERMITIDAS else _ESTACION_DEFAULT
     instruccion = (instruccion or "").strip()
     if not instruccion:
         return {"ok": False, "texto": "", "error": "Escribe qué quieres que redacte El Chalán."}
@@ -117,9 +128,9 @@ def redactar(*, instruccion: str, texto_actual: str = "", contexto: dict | None 
         from chalanes.voz import preludio
         from lib.analistas import analizar
         from lib.sanear import sanear_contexto
-        prompt = (preludio("redaccion_asistida") + _SYSTEM + "\n\n"
+        prompt = (preludio(estacion) + _SYSTEM + "\n\n"
                   + sanear_contexto(user_prompt, max_len=8000))
-        res = analizar(estacion="redaccion_asistida", prompt=prompt,
+        res = analizar(estacion=estacion, prompt=prompt,
                        max_tokens=800, temperatura=0.5,
                        actor_id=getattr(usuario, "pk", None))
     except Exception as exc:  # noqa: BLE001 — nunca tumbar la UI

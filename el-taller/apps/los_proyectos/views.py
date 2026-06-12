@@ -377,6 +377,37 @@ def detalle(request, pk):
 
 
 @login_required
+def resumen_actividad(request, pk):
+    """El Chalán resume la actividad del proyecto (estación `comunicacion`, S4).
+
+    GET HTMX → modal con el resumen. No persiste. Gated por ver-proyecto +
+    permiso (chalan, usar)."""
+    from django.utils.html import format_html
+
+    from lib.permisos import puede_usar_chalan
+
+    from .resumen_ia import resumir_actividad
+    proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    if not puede_usar_chalan(request.user):
+        return HttpResponseForbidden("No tienes permiso para usar El Chalán.")
+    res = resumir_actividad(proyecto=proyecto, usuario=request.user)
+    if res.get("ok"):
+        cuerpo = format_html('<p class="whitespace-pre-line">{}</p>', res["resumen"])
+    else:
+        cuerpo = format_html(
+            '<p class="text-error-600 dark:text-error-400">{}</p>',
+            res.get("error") or "El Chalán no respondió.",
+        )
+    return render(request, "_componentes_tailadmin/_modal_htmx.html", {
+        "titulo": f"Resumen de actividad · {proyecto.codigo}",
+        "cuerpo": cuerpo,
+        "tamano": "lg",
+    })
+
+
+@login_required
 def nuevo(request):
     if not puede_editar_proyecto(request.user, None):
         return HttpResponseForbidden("Solo admins pueden crear proyectos.")

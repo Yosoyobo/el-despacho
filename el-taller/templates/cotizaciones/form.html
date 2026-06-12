@@ -90,6 +90,10 @@
                     <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">P. unitario</label>
                     {{ f.precio_unitario }}
                     {% if f.precio_unitario.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.precio_unitario.errors|join:" " }}</p>{% endif %}
+                    {% if permisos_modulos.chalan %}
+                    <button type="button" class="cot-precio-ia mt-1 text-[11px] font-medium text-brand-600 hover:underline dark:text-brand-400" title="El Chalán sugiere un precio según el histórico">🤖 Sugerir</button>
+                    <span class="cot-precio-ia-estado block text-[11px] text-gray-500 dark:text-gray-400"></span>
+                    {% endif %}
                 </div>
                 <div>
                     <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desc. %</label>
@@ -174,6 +178,10 @@
                 <div>
                     <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">P. unitario</label>
                     <input type="number" step="0.01" name="items-__prefix__-precio_unitario" value="0" required>
+                    {% if permisos_modulos.chalan %}
+                    <button type="button" class="cot-precio-ia mt-1 text-[11px] font-medium text-brand-600 hover:underline dark:text-brand-400" title="El Chalán sugiere un precio según el histórico">🤖 Sugerir</button>
+                    <span class="cot-precio-ia-estado block text-[11px] text-gray-500 dark:text-gray-400"></span>
+                    {% endif %}
                 </div>
                 <div>
                     <label class="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Desc. %</label>
@@ -218,11 +226,11 @@
         <div class="grid gap-5">
             <div>
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
-                {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.notas.id_for_label instruccion_ph="Ej. redacta una nota cordial para el cliente" %}
+                {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.notas.id_for_label estacion="cotizaciones" contexto_modelo="cotizacion" contexto_id=cot.pk instruccion_ph="Ej. redacta una nota cordial para el cliente" %}
             </div>
             <div>
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.terminos %}
-                {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.terminos.id_for_label instruccion_ph="Ej. redacta los términos de pago y entrega" %}
+                {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.terminos.id_for_label estacion="cotizaciones" contexto_modelo="cotizacion" contexto_id=cot.pk instruccion_ph="Ej. redacta los términos de pago y entrega" %}
             </div>
         </div>
     </section>
@@ -401,6 +409,55 @@
             btn.disabled = false;
         } catch (err) {
             mostrarMsg('Error de red.', true); btn.disabled = false;
+        }
+    });
+})();
+
+// Sugerir precio con El Chalán (S4, estación `precio`). Delegación: funciona en
+// filas existentes y en las clonadas dinámicamente.
+(function () {
+    const csrfEl = document.querySelector('#cot-form input[name=csrfmiddlewaretoken]');
+    if (!csrfEl) return;
+    const csrf = csrfEl.value;
+    document.addEventListener('click', async function (e) {
+        const btn = e.target.closest('.cot-precio-ia');
+        if (!btn) return;
+        const fila = btn.closest('.cot-item-row');
+        if (!fila) return;
+        const selServ = fila.querySelector('select[name$="-servicio"]');
+        const inpPrecio = fila.querySelector('input[name$="-precio_unitario"]');
+        const estado = fila.querySelector('.cot-precio-ia-estado');
+        const setEstado = (t, err) => {
+            if (!estado) return;
+            estado.textContent = t || '';
+            estado.className = 'cot-precio-ia-estado block text-[11px] ' +
+                (err ? 'text-error-600 dark:text-error-400' : 'text-gray-500 dark:text-gray-400');
+        };
+        const servicioId = selServ && selServ.value;
+        if (!servicioId) { setEstado('Elige un producto primero.', true); return; }
+        btn.disabled = true; setEstado('El Chalán está calculando…');
+        try {
+            const r = await fetch('{% url "cotizaciones:api-sugerir-precio" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+                credentials: 'same-origin',
+                body: new URLSearchParams({ servicio_id: servicioId }).toString(),
+            });
+            const data = await r.json();
+            if (data && data.ok) {
+                if (inpPrecio) {
+                    inpPrecio.value = data.precio_maximo;
+                    inpPrecio.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                const just = data.justificacion ? ' · ' + data.justificacion : '';
+                setEstado(`Sugerido $${data.precio_minimo} – $${data.precio_maximo}${just}`, false);
+            } else {
+                setEstado((data && data.error) || 'El Chalán no respondió.', true);
+            }
+        } catch (err) {
+            setEstado('No se pudo contactar a El Chalán.', true);
+        } finally {
+            btn.disabled = false;
         }
     });
 })();

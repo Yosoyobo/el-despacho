@@ -17,4 +17,5 @@ urlpatterns = [
     path("<int:pk>/pdf/", views.generar_pdf, name="pdf"),
     path("<int:pk>/factura-anticipo/", views.factura_anticipo, name="factura-anticipo"),
     path("api/proyecto/<int:pk>/datos/", views.api_proyecto_datos, name="api-proyecto-datos"),
+    path("api/sugerir-precio/", views.sugerir_precio, name="api-sugerir-precio"),
 ]

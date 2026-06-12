@@ -3563,13 +3563,33 @@ Handoff: `docs/SPRINT-CHECADOR.md`. Detalle de cierre en BITACORA §S-Checador.
 desde sesiones, geocercas/mapas embebidos/tracking, ejecutores del Dictado para
 checar por voz, encolar fallos de red estando "online" (solo offline explícito).
 
-### S4 — IA (Los Chalanes, casos de uso)
+### S4 — IA (Los Chalanes, casos de uso) ✅ (2026-06-11, VERSION 2026.06.37)
 
-Multi-provider con **4 Chalanes activos**: Claudio (Anthropic),
-GPT (OpenAI), Chino (Deepseek), MiMo (Xiaomi). Gemini sigue como
-skeleton sin activar. S4 agrega casos de uso adicionales: redactar
-cotización · categorizar gasto automático · resumir hilo cliente ·
-sugerir precio.
+Multi-provider con **5 Chalanes activos**: Claudio (Anthropic), GPT (OpenAI),
+Chino (Deepseek), MiMo (Xiaomi), Gemini (Google). Los 4 casos de uso de S4
+quedaron cableados (estaban declarados en `chalanes/estaciones.py` sin impl);
+migración `chalanes/0011_estaciones_s4` seedea las 4 filas en CuadroChalanes:
+
+- **`cotizaciones` — Redactar cotización**: se reusó el widget 🤖
+  (`redaccion_asistida`) con un parámetro `estacion` validado server-side
+  (allowlist `{redaccion_asistida, cotizaciones}` en `lib/redactor_ia.redactar`).
+  `views_redactor`, `textarea_ia.js` y `_ia_bar/_textarea_ia` (dual-copy) pasan
+  `data-estacion`; los dos `_ia_bar` de `cotizaciones/form.html` usan `estacion="cotizaciones"`.
+- **`gastos` — Categorizar gasto**: `apps/tesoreria/categorizador_ia.py` (enumera
+  CentroDeCosto activos, JSON `{centro_de_costo_slug, confianza}`, resuelve slug→pk
+  validando, no-match si confianza≤0.3) + view `egreso_sugerir_categoria` + botón
+  en `egreso_form.html`.
+- **`comunicacion` — Resumir actividad de proyecto** (decisión Oscar: NO chat de
+  cliente, La Recepción sigue apagada): `apps/los_proyectos/resumen_ia.py` junta
+  ActividadProyecto + Comentario visibles + Tarea (**sin Buzón** — no hay vínculo
+  modelo) + view `resumen_actividad` (modal HTMX) + botón en el detalle.
+- **`precio` — Sugerir precio**: `apps/cotizaciones/precio_ia.py` (Servicio +
+  histórico CotizacionItem no anuladas) + view `sugerir_precio` + botón por línea
+  (delegación) en `form.html`.
+
+Patrón defensivo (preludio+sistema+reglas, sanear, try/except, `{ok,...,error}`)
++ gating doble (UI `permisos_modulos.chalan` + endpoint `puede_usar_chalan`).
+13 tests en `tests/taller/test_s4_ia.py`. **Pendiente S4 ya NO existe.**
 
 ### S5 — La Recepción
 

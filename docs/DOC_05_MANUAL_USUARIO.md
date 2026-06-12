@@ -5,6 +5,39 @@
 
 ---
 
+## Novedades — El Chalán te ayuda en cotizaciones, gastos, proyectos y precios (11 de junio de 2026)
+
+El Chalán ahora echa la mano en cuatro lugares más. En todos, **propone** y tú
+revisas: nada se guarda ni se aplica solo.
+
+- **Redactar una cotización**: en el formulario de cotización, junto a las
+  cajas de **Notas** y **Términos**, escribe qué quieres ("redacta los términos
+  de pago y entrega") y toca **🤖 Redactar**. El Chalán llena el texto y tú lo
+  ajustas antes de guardar.
+- **Sugerir el precio de una línea**: al armar las líneas de una cotización,
+  cada producto tiene un botón **🤖 Sugerir**. El Chalán mira el precio del
+  catálogo y lo que se ha cobrado antes por ese producto, y propone un rango;
+  pone el precio sugerido en la línea para que lo edites si quieres.
+- **Categorizar un gasto**: al registrar un egreso en Tesorería, escribe la
+  descripción y toca **🤖 Sugerir categoría**. El Chalán elige el centro de
+  costo que mejor encaja. Si no está seguro, te pide que lo elijas a mano.
+- **Resumir la actividad de un proyecto**: en el detalle de un proyecto, el
+  botón **🤖 Resumir actividad** abre una ventana con un párrafo que resume en
+  qué va el proyecto (tareas, comentarios y movimientos recientes).
+
+Estos botones solo aparecen si tienes permiso de usar El Chalán.
+
+---
+
+## Novedades — La app funciona aunque se caiga el internet (11 de junio de 2026)
+
+Si instalaste El Despacho como aplicación (PWA) en tu celular o computadora,
+ahora la pantalla principal **abre aunque te quedes sin señal**. Lo que
+necesite datos nuevos del servidor sí requiere conexión, pero ya no verás una
+pantalla en blanco al abrir la app offline.
+
+---
+
 ## Novedades — El Checador: registra tu jornada, visitas y tiempo por proyecto (11 de junio de 2026)
 
 Hay una sección nueva en el menú: **Checador**. Desde tu celular (o la
@@ -741,7 +774,7 @@ No se alquila. Está hecho a la medida de cómo trabajan ustedes.
 
 ## Roadmap del proyecto
 
-> **Última actualización: 9 de junio de 2026.** Esta sección se revisa y
+> **Última actualización: 11 de junio de 2026.** Esta sección se revisa y
 > actualiza en cada sesión de trabajo sobre el sistema, para que siempre
 > sepan en qué punto va El Despacho: qué ya está listo, qué cambió respecto
 > al plan, qué falta y hacia dónde vamos.
@@ -776,13 +809,21 @@ mensuales por usuario.
 - **Chalanes (IA)** — 5 asistentes de inteligencia artificial con respaldo
   automático entre ellos, y **El Dictado** para dar instrucciones en lenguaje
   natural. El administrador edita el **tono y las reglas** de los asistentes, y
-  **cada usuario puede definir su propio estilo personal** de respuesta.
+  **cada usuario puede definir su propio estilo personal** de respuesta. Además,
+  El Chalán ayuda con botones 🤖 en puntos concretos: **redactar cotización**,
+  **sugerir precio** de una línea, **categorizar un gasto** y **resumir la
+  actividad de un proyecto**.
 - **Presupuesto de IA por usuario** — el administrador asigna un tope mensual
   en dólares por persona, con aviso o corte al rebasarlo, y un panel de
   consumo (7/30/90 días).
+- **El Checador** — asistencia (entrada/salida con ubicación puntual), visitas a
+  clientes/proveedores, tiempo por proyecto, correcciones, horarios y captura
+  sin conexión.
 - **Dashboard** con indicadores (KPIs), metas, sugerencias y mini-calendario.
 - **Notificaciones push**, **roles y permisos personalizados**, y panel de
   configuración (Ajustes).
+- **La app abre sin conexión** — instalada como PWA, la pantalla principal
+  funciona aunque te quedes sin internet.
 
 ### 🔄 Desviaciones respecto al plan original
 
@@ -808,8 +849,7 @@ En orden aproximado de prioridad:
 2. **La Cobranza** — recordatorios automáticos de facturas vencidas.
 3. **Tesorería avanzada** — reconciliación con el banco y cierre de periodo
    contable. (Leer recibos por foto con OCR ya funciona.)
-4. **Más casos de IA** — redactar cotizaciones, categorizar gastos, resumir
-   conversaciones y sugerir precios automáticamente.
+4. **El Checador V2** — nómina y costo por proyecto a partir de las horas.
 5. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus
    proyectos, apruebe cotizaciones y consulte sus facturas y pagos. Es la gran
    etapa final.
@@ -870,6 +910,7 @@ Toda la operación del negocio vive en **El Taller**. La Gerencia es para config
 | **Calendario** | Mes actual y siguiente con fechas de entrega y tareas |
 | **Buzón** | Mensajes que llegan a la empresa o reportes internos |
 | **Recados** | Chat interno entre el equipo |
+| **Checador** | Tu jornada, visitas a clientes/proveedores y tiempo por proyecto |
 | **Productos** | Catálogo de servicios + sus variaciones + proveedores que los surten |
 | **Notificaciones** | Tus alertas push y preferencias |
 | **Chalanes** | Tus asistentes de IA |
@@ -957,6 +998,8 @@ A la derecha:
 
 Abajo está la tabla de **Tareas** del Pizarrón con "+ Nueva tarea".
 
+Si tienes El Chalán habilitado, arriba aparece **🤖 Resumir actividad**: abre una ventana con un resumen del proyecto (tareas, comentarios y movimientos recientes) en un párrafo.
+
 ### Crear producto sin salir del proyecto
 
 Si el cliente quiere algo que no tienes en el catálogo, despliega "+ Crear producto nuevo en el catálogo" abajo de la lista de productos. Captura tipo + nombre + costo + precio + cantidad y queda registrado en el catálogo y agregado a este proyecto.
@@ -1009,6 +1052,29 @@ Conversaciones del equipo, estilo Slack.
 
 ---
 
+## Checador
+
+Registra tu día de trabajo desde el celular o la computadora. La ubicación se toma **solo en el momento de checar** — no te rastrea.
+
+### Tu día a día
+
+- **Entrada / Salida:** un botón grande. Marca la hora y tu ubicación en ese instante. Si el GPS no está disponible, igual se registra (marcada "sin ubicación"). Si llegas tarde según tu horario, te dice cuántos minutos de retardo.
+- **Visitas:** cuando vas con un cliente o proveedor, toca "Registrar visita", elige a quién y se guarda con la ubicación.
+- **Tiempo por proyecto:** un cronómetro (Iniciar / Detener) o captura el tiempo a mano. Solo puede haber un cronómetro activo a la vez.
+- **Mi historial:** tus jornadas, visitas y sesiones de la semana, con totales de horas y retardos.
+- **¿Marcaste mal?** Desde tu historial pides una **corrección** con el motivo; un administrador la aprueba o rechaza y te avisa.
+- **Sin internet:** si checas sin señal, se guarda en tu dispositivo y se envía solo al recuperar conexión (verás "N pendientes de sincronizar"). El cronómetro sí necesita conexión.
+
+### Para administradores
+
+- **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV).
+- **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo.
+- **Correcciones:** bandeja para aprobar/rechazar las solicitudes del equipo.
+
+Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar depende de los permisos que te dé el super admin.
+
+---
+
 ## Productos (Catálogo)
 
 Lo que vendes/produces. Cada producto tiene:
@@ -1034,14 +1100,31 @@ Listas de referencia que sólo super admin gestiona (Gerencia → Catálogos).
 
 ## Chalanes (IA)
 
-Cuatro asistentes virtuales conectados a proveedores de IA:
+Cinco asistentes virtuales conectados a proveedores de IA:
 
 - **Claudio** (Anthropic)
 - **GPT** (OpenAI)
 - **Chino** (Deepseek)
 - **MiMo** (Xiaomi)
+- **Gemini** (Google)
 
 Cada estación del sistema (cotizaciones, dictado, OCR de recibos, etc.) tiene un Chalán asignado. Si el primario falla, automáticamente intenta con el siguiente en la cadena de fallback.
+
+### Dónde te ayuda El Chalán (botones 🤖)
+
+Además del chat y el Dictado, El Chalán echa la mano en puntos concretos del
+sistema. En todos **propone** y tú revisas — nada se aplica solo. Los botones
+solo aparecen si tienes permiso de usar El Chalán.
+
+- **Redactar cotización:** en el formulario de cotización, junto a **Notas** y
+  **Términos**, escribe qué quieres y toca **🤖 Redactar**.
+- **Sugerir precio:** en cada línea de una cotización, el botón **🤖 Sugerir**
+  propone un rango con base en el catálogo y el histórico de ese producto.
+- **Sugerir categoría de un gasto:** al registrar un egreso en Tesorería, el
+  botón **🤖 Sugerir categoría** elige el centro de costo según la descripción.
+- **Resumir actividad de un proyecto:** en el detalle de un proyecto, el botón
+  **🤖 Resumir actividad** abre un resumen de en qué va (tareas, comentarios y
+  movimientos recientes).
 
 ### En el sidebar — "Chalanes"
 
@@ -1086,6 +1169,8 @@ Propuestas comerciales para tus clientes.
 
 Cuando una cotización está aprobada y tiene anticipo, aparece un botón **"Generar factura del anticipo"** que crea una factura borrador con el monto del anticipo.
 
+**El Chalán te ayuda:** botón **🤖 Redactar** junto a **Notas** y **Términos**, y **🤖 Sugerir** en cada línea para proponer el precio (ver *Chalanes (IA)*).
+
 ### Crear producto desde la cotización
 
 Mismo patrón que en Proyectos: panel desplegable "+ Crear producto nuevo" abajo de las líneas. Crea el producto en el catálogo y lo agrega como línea de la cotización en un solo paso.
@@ -1122,7 +1207,7 @@ El dinero que entra y sale.
 ### Lo que puedes hacer
 
 - **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`.
-- **Egresos:** qué gastaste, centro de costo, proveedor opcional, quién pagó (caja chica vs tarjeta personal), estado de pago. Código `EGR-YYYY-NNNN`.
+- **Egresos:** qué gastaste, centro de costo, proveedor opcional, quién pagó (caja chica vs tarjeta personal), estado de pago. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción.
 - **Por cobrar (CxC):** vista unificada de facturas pendientes + anticipos por generar + proyectos legacy con saldo, ordenado por vencimiento.
 - **Por pagar (CxP):** egresos pendientes de pagar + reembolsos pendientes por empleado.
 - **Reembolsar:** botón "Reembolsar" en cada egreso pendiente — captura método y banco, baja el saldo, crea el asiento contable.
@@ -1216,7 +1301,7 @@ No. Es facturación interna. Tu contador externo timbra las CFDI con su PAC.
 
 ### ¿Qué pasa si pierdo internet?
 
-El sistema requiere conexión. Si caes, lo escrito en formularios se pierde — guarda seguido.
+Si instalaste El Despacho como app (PWA), la pantalla principal **abre aunque estés sin conexión** (queda guardada en caché). Lo que necesita datos nuevos del servidor sí requiere internet, y lo que escribas en un formulario sin guardar se puede perder — guarda seguido. **El Checador** sí funciona sin conexión: tus checadas se guardan en el dispositivo y se envían solas al recuperar señal.
 
 ### ¿Hay app móvil?
 

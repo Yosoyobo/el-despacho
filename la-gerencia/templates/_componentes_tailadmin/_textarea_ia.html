@@ -20,7 +20,8 @@
      data-endpoint="{% url 'chalan-redactar' %}"
      data-target="#ia-{{ tid }}"
      data-contexto-modelo="{{ contexto_modelo|default:'' }}"
-     data-contexto-id="{{ contexto_id|default:'' }}">
+     data-contexto-id="{{ contexto_id|default:'' }}"
+     data-estacion="{{ estacion|default:'' }}">
   <textarea id="ia-{{ tid }}" name="{{ name }}" rows="{{ rows|default:3 }}"
             {% if required %}required{% endif %}
             {% if data_referencias %}data-referencias{% endif %}

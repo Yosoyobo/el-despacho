@@ -44,11 +44,12 @@ HAL_DEST="${HAL_DEST:-Backups/el-despacho/}"
 HAL_KEY="${HAL_KEY:-$HOME/.ssh/hal-backup}"
 HAL_RETENER="${HAL_RETENER:-30}"
 
+# Trazabilidad en El Site: $1=archivo, $2=estado (ok|error), $3=destino (HAL|DO Spaces)
 _registrar() {
     docker compose ps --status running --services 2>/dev/null | grep -qx la-gerencia || return 0
     docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T la-gerencia \
         python manage.py registrar_backup_remoto \
-            --archivo "$1" --destino "HAL" --estado "$2" \
+            --archivo "$1" --destino "$3" --estado "$2" \
         2>/dev/null || true
 }
 
@@ -61,8 +62,8 @@ if [ -f "$HAL_KEY" ]; then
             "${HAL_USER}@${HAL_HOST}" "test -f ~/${HAL_DEST}.target_ok" 2>/dev/null; then
         echo "==> [Archivo] ABORTO rsync→HAL: sentinel ~/${HAL_DEST}.target_ok no encontrado." >&2
         echo "    Probablemente /Volumes/RAID está desmontado en HAL o cambió de path." >&2
-        _registrar "$DB_FILE" error
-        _registrar "$CRED_FILE" error
+        _registrar "$DB_FILE" error "HAL"
+        _registrar "$CRED_FILE" error "HAL"
         exit 0
     fi
 
@@ -77,12 +78,12 @@ if [ -f "$HAL_KEY" ]; then
     if rsync -az --timeout=120 -e "ssh -i ${HAL_KEY} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10" \
             "$OUT_DIR"/ "${HAL_USER}@${HAL_HOST}:${HAL_DEST}"; then
         echo "==> [Archivo] rsync→HAL OK (reconciliado): $OUT_DIR/"
-        _registrar "$DB_FILE" ok
-        _registrar "$CRED_FILE" ok
+        _registrar "$DB_FILE" ok "HAL"
+        _registrar "$CRED_FILE" ok "HAL"
     else
         echo "==> [Archivo] rsync→HAL FAIL (reconciliación)" >&2
-        _registrar "$DB_FILE" error
-        _registrar "$CRED_FILE" error
+        _registrar "$DB_FILE" error "HAL"
+        _registrar "$CRED_FILE" error "HAL"
     fi
 
     # Rotación en HAL: conserva los N más recientes de cada serie
@@ -96,6 +97,46 @@ if [ -f "$HAL_KEY" ]; then
     " || echo "==> [Archivo] rotación en HAL falló (no bloquea)"
 else
     echo "==> [Archivo] HAL_KEY=$HAL_KEY no existe; saltando rsync remoto."
+fi
+
+# ── El Resguardo: push offsite a DigitalOcean Spaces (best-effort, dormido) ───
+# Tercer destino tras el local (droplet) y HAL. rclone corre en el HOST (no
+# Docker); las credenciales viven en el .env del Droplet porque archivo.sh es
+# bash sin acceso a La Bóveda. Si faltan llaves o rclone no está instalado, se
+# SALTA sin fallar el backup — mismo contrato best-effort que el rsync→HAL.
+# Setup y rotación (lifecycle del Space): docs/SETUP_RESGUARDO.md
+DO_SPACES_KEY="${DO_SPACES_KEY:-}"
+DO_SPACES_SECRET="${DO_SPACES_SECRET:-}"
+DO_SPACES_BUCKET="${DO_SPACES_BUCKET:-}"
+DO_SPACES_REGION="${DO_SPACES_REGION:-nyc3}"
+DO_SPACES_ENDPOINT="${DO_SPACES_ENDPOINT:-https://${DO_SPACES_REGION}.digitaloceanspaces.com}"
+
+if [ "${SKIP_RESGUARDO:-0}" = "1" ]; then
+    echo "==> [Resguardo] SKIP_RESGUARDO=1 — saltando push offsite."
+elif [ -z "$DO_SPACES_KEY" ] || [ -z "$DO_SPACES_SECRET" ] || [ -z "$DO_SPACES_BUCKET" ]; then
+    echo "==> [Resguardo] dormido (sin llaves DO_SPACES_* en .env). Ver docs/SETUP_RESGUARDO.md"
+elif ! command -v rclone >/dev/null 2>&1; then
+    echo "==> [Resguardo] dormido (rclone no instalado en el host). Ver docs/SETUP_RESGUARDO.md"
+else
+    echo "==> [Resguardo] push offsite → DO Spaces ($DO_SPACES_BUCKET)"
+    # Backend on-the-fly por env (sin escribir rclone.conf). Sin --delete:
+    # reconciliación incremental igual que HAL; la rotación la hace el lifecycle
+    # del Space. Reconcilia el DIRECTORIO LOCAL COMPLETO (paridad 1:1 con HAL).
+    if rclone copy "$OUT_DIR/" ":s3:${DO_SPACES_BUCKET}/el-despacho/" \
+            --s3-provider=DigitalOcean \
+            --s3-access-key-id="$DO_SPACES_KEY" \
+            --s3-secret-access-key="$DO_SPACES_SECRET" \
+            --s3-region="$DO_SPACES_REGION" \
+            --s3-endpoint="$DO_SPACES_ENDPOINT" \
+            --transfers=2 --checkers=4 --contimeout=20s --timeout=300s; then
+        echo "==> [Resguardo] push→DO Spaces OK"
+        _registrar "$DB_FILE" ok "DO Spaces"
+        _registrar "$CRED_FILE" ok "DO Spaces"
+    else
+        echo "==> [Resguardo] push→DO Spaces FAIL (no bloquea)" >&2
+        _registrar "$DB_FILE" error "DO Spaces"
+        _registrar "$CRED_FILE" error "DO Spaces"
+    fi
 fi
 
 # ── La Optimización: limpieza post-backup ────────────────────────────────────

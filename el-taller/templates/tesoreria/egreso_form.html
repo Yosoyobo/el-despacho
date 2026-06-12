@@ -29,6 +29,12 @@
             {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion ancho_completo=True %}
+            {% if permisos_modulos.chalan %}
+            <div class="md:col-span-2 -mt-3">
+                <button type="button" id="egreso-cat-ia" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400" title="El Chalán sugiere el centro de costo según la descripción">🤖 Sugerir categoría</button>
+                <span id="egreso-cat-ia-estado" class="ml-2 text-xs text-gray-500 dark:text-gray-400"></span>
+            </div>
+            {% endif %}
 
             {# Proveedor: select del catálogo (vacío = Gasto operativo) + alta inline. #}
             <div class="campo-form md:col-span-2">
@@ -106,6 +112,48 @@
             }
         } catch (e) { alert("Error de red al crear el proveedor."); }
         finally { btn.disabled = false; }
+    });
+})();
+
+(() => {
+    // Sugerir centro de costo con El Chalán (S4, estación `gastos`).
+    const btn = document.getElementById("egreso-cat-ia");
+    if (!btn) return;
+    const desc = document.querySelector('[name="descripcion"]');
+    const selCentro = document.querySelector('[name="centro_de_costo"]');
+    const estado = document.getElementById("egreso-cat-ia-estado");
+    const csrf = document.querySelector('[name="csrfmiddlewaretoken"]').value;
+    const setEstado = (t, err) => {
+        if (!estado) return;
+        estado.textContent = t || "";
+        estado.className = "ml-2 text-xs " + (err ? "text-error-600 dark:text-error-400" : "text-success-600 dark:text-success-400");
+    };
+    btn.addEventListener("click", async () => {
+        const d = ((desc && desc.value) || "").trim();
+        if (!d) { setEstado("Escribe primero la descripción del gasto.", true); if (desc) desc.focus(); return; }
+        btn.disabled = true; setEstado("El Chalán está pensando…");
+        try {
+            const r = await fetch("{% url 'tesoreria:egreso-sugerir-categoria' %}", {
+                method: "POST",
+                headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+                credentials: "same-origin",
+                body: new URLSearchParams({ descripcion: d }).toString(),
+            });
+            const data = await r.json();
+            if (data && data.ok && data.centro_de_costo_id && selCentro) {
+                selCentro.value = String(data.centro_de_costo_id);
+                selCentro.dispatchEvent(new Event("change", { bubbles: true }));
+                setEstado("Sugerido: " + data.centro_de_costo_nombre, false);
+            } else if (data && data.ok) {
+                setEstado("El Chalán no encontró una categoría clara, elige a mano.", true);
+            } else {
+                setEstado((data && data.error) || "El Chalán no respondió.", true);
+            }
+        } catch (e) {
+            setEstado("No se pudo contactar a El Chalán.", true);
+        } finally {
+            btn.disabled = false;
+        }
     });
 })();
 </script>

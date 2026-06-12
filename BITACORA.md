@@ -5463,3 +5463,81 @@ esquema estructural). VERSION → `2026.06.27`.
 69 nuevos (`tests/taller/test_checador*.py` + `tests/gerencia/test_checador_admin.py`):
 services, permisos, vistas de checada, visitas, timer, correcciones, reporte de
 equipo, export CSV, KPIs, push, y sync offline idempotente. Verde.
+
+---
+
+# BITÁCORA — S4 (IA) + deuda code-closeable (2026-06-11, VERSION 2026.06.37)
+
+Cierre de **S4 — IA (Los Chalanes, casos de uso)** + atención de deuda en un
+solo commit/deploy. Decisiones de Oscar: resumir hilo = **actividad de
+proyecto** (no chat, La Recepción sigue apagada); incluir higiene + PWA offline
++ El Resguardo (dormido) + handoff de Checador V2; tarifa Gemini fuera (sin dato).
+
+## 1. S4 — 4 estaciones cableadas (estaban declaradas, sin impl)
+
+- Migración `chalanes/0011_estaciones_s4` seedea las 4 filas en CuadroChalanes
+  (cotizaciones→anthropic, gastos→deepseek, comunicacion→anthropic,
+  precio→anthropic). `chalanes/estaciones.py`: descripción de `comunicacion`
+  cambiada a "Resumir actividad de proyecto".
+- **Redactar cotización** (`cotizaciones`): se reusó el widget 🤖 existente con un
+  parámetro `estacion` validado server-side (allowlist `{redaccion_asistida,
+  cotizaciones}`) en `lib/redactor_ia.redactar` + `views_redactor` + `textarea_ia.js`
+  + `_ia_bar/_textarea_ia` (dual-copy) + los dos `_ia_bar` de `cotizaciones/form.html`.
+- **Categorizar gasto** (`gastos`): `apps/tesoreria/categorizador_ia.py` (enumera
+  CentroDeCosto activos, JSON `{centro_de_costo_slug, confianza}`, resuelve
+  slug→pk validando, no-match suave si confianza≤0.3) + view
+  `egreso_sugerir_categoria` + URL + botón en `egreso_form.html`.
+- **Resumir actividad de proyecto** (`comunicacion`): `apps/los_proyectos/resumen_ia.py`
+  (junta ActividadProyecto + Comentario visibles + Tarea; **sin Buzón**, no hay
+  vínculo) + view `resumen_actividad` (modal HTMX `_modal_htmx`) + URL + botón en
+  el detalle.
+- **Sugerir precio** (`precio`): `apps/cotizaciones/precio_ia.py` (Servicio +
+  histórico CotizacionItem no anuladas, JSON rango) + view `sugerir_precio` + URL
+  + botón por línea (delegación, sirve en filas clonadas) en `form.html`.
+- Patrón defensivo de los 4: `preludio(estacion)+_SYSTEM+reglas()`, `sanear_contexto`,
+  try/except que nunca lanza, `{ok, ..., error}`. Gating doble: UI por
+  `permisos_modulos.chalan` + cada endpoint re-chequea `puede_usar_chalan`.
+
+## 2. Deuda
+
+- **Higiene:** quitado `uvicorn[standard]` de `requirements.txt`; `la-recepcion`
+  pasa a `gthread`/`wsgi` (nuevo `la_recepcion/wsgi.py`) — la remoción queda
+  riesgo cero.
+- **PWA offline (B1):** `interfono/sw_js.py` ahora arma el SW por request:
+  `SERVICE_WORKER_JS` constante (push/notificationclick intactos + handlers
+  install/activate/fetch) y `_cabecera()` inyecta `DESPACHO_CACHE` versionado por
+  `lib.version.VERSION` + `DESPACHO_PRECACHE` resuelto con `static()` (hasheado en
+  prod, cada asset guardado con try/except). Navegación network-first (cae a
+  caché o `/`), `/static/` cache-first, resto passthrough. Registro **eager** en
+  `base.html` (dual-copy). `SERVICE_WORKER_JS` se conservó como símbolo (lo
+  importa `test_badge_pwa`).
+- **El Resguardo (dormido):** bloque best-effort en `archivo.sh` (rclone en host,
+  credenciales en `.env`, salta si faltan llaves o rclone) tras el rsync→HAL;
+  `_registrar` ahora toma destino como 3er arg ("HAL"/"DO Spaces"); `.env.example`
+  + `docs/SETUP_RESGUARDO.md`. Sin llaves no afecta el backup.
+- **Handoff Checador V2:** `docs/SPRINT-CHECADOR-V2.md` (solo docs) con el molde
+  de MENAJE-PREP: nómina + costeo por proyecto + geocercas, modelos probables,
+  E1-E7, KPIs, permisos, enganche Tesorería/Contaduría. NO implementa nada.
+
+## 3. Tests / cierre
+
+- 13 nuevos en `tests/taller/test_s4_ia.py` (seed migración, override de estación
+  + allowlist, categorizar happy/slug inexistente/confianza baja/LLM caído/vacío,
+  precio happy/inexistente/JSON malo, resumir happy + LLM caído). Mockean
+  `lib.analistas.analizar`.
+- Suite: **1203 pass, 9 skipped**, 3 fallos locales de Redis (aviso_deploy) que
+  pasan en CI. Ruff limpio.
+- **Manual** (`docs/DOC_05`): además de Novedades, se redactó el cuerpo —
+  sección nueva **Checador**, subsección "Dónde te ayuda El Chalán (botones 🤖)"
+  + menciones en Cotizaciones/Tesorería/Proyectos, fila Checador en el menú, FAQ
+  de internet actualizado, y Roadmap refrescado (Checador + S4 + offline a
+  "listo"; "más casos de IA" sale de "falta"). Regla nueva: cada feature/sección
+  nueva exige su manual de uso en el CUERPO, no solo Novedades.
+
+## 4. Post-deploy manual (opcional)
+
+- **El Resguardo:** crear Space + Spaces keys en DO, instalar rclone en el host,
+  poblar `DO_SPACES_*` en `/opt/el-despacho/.env` (`docs/SETUP_RESGUARDO.md`).
+  Hasta entonces queda dormido.
+- super_admin puede reasignar proveedor/modelo o editar la voz de las 4
+  estaciones nuevas en `/chalanes/`.

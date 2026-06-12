@@ -21,6 +21,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
+from django.views.decorators.http import require_POST
 
 from lib.permisos import puede_ver_finanzas
 from lib.portavoz import emitir
@@ -801,6 +802,29 @@ def exportar_sheets(request, vista):
     })
     messages.success(request, "Hoja creada en Google Drive. Te llevamos a ella.")
     return redirect(res.url)
+
+
+# ── El Chalán: sugerir centro de costo (estación `gastos`, S4) ────────────
+
+@login_required
+@require_POST
+def egreso_sugerir_categoria(request):
+    """El Chalán sugiere el centro de costo desde la descripción del gasto.
+
+    POST /tesoreria/egresos/sugerir-categoria/  {descripcion}
+    → {ok, centro_de_costo_id, centro_de_costo_nombre, confianza, error}
+
+    Gated por acceso a Tesorería + permiso (chalan, usar)."""
+    from lib.permisos import puede_usar_chalan
+
+    from .categorizador_ia import sugerir_categoria
+    if (r := _gate(request)) is not None:
+        return r
+    if not puede_usar_chalan(request.user):
+        return HttpResponseForbidden("No tienes permiso para usar El Chalán.")
+    return JsonResponse(sugerir_categoria(
+        descripcion=request.POST.get("descripcion") or "", usuario=request.user,
+    ))
 
 
 # ── API JSON para autocompletar ingreso ──────────────────────────────────

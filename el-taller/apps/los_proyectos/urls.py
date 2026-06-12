@@ -10,6 +10,7 @@ urlpatterns = [
     path("<int:pk>/", views.detalle, name="proyectos-detalle"),
     path("<int:pk>/editar", views.editar, name="proyectos-editar"),
     path("<int:pk>/cambiar-estado", views.cambiar_estado, name="proyectos-cambiar-estado"),
+    path("<int:pk>/resumir-actividad", views.resumen_actividad, name="proyectos-resumir-actividad"),
     path("<int:pk>/asignar", views.asignar, name="proyectos-asignar"),
     # S-LC-Feedback-V5 c4: quick-edits inline desde el detalle.
     path("<int:pk>/editar-fechas", views.editar_fechas, name="proyectos-editar-fechas"),

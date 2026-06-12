@@ -26,6 +26,15 @@
     <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
         <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time></span>
         {% include "proyectos/_guardado_indicador.html" with estado="guardado" %}
+        {% if permisos_modulos.chalan %}
+        <button type="button"
+                hx-get="{% url 'proyectos-resumir-actividad' proyecto.pk %}"
+                hx-target="#modal-slot" hx-swap="innerHTML"
+                class="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50/60 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300"
+                title="El Chalán resume la actividad reciente del proyecto">
+            🤖 Resumir actividad
+        </button>
+        {% endif %}
     </div>
     {% if puede_editar %}
     <div class="flex gap-2">

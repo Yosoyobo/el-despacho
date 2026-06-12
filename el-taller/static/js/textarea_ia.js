@@ -53,6 +53,7 @@
         texto_actual: target.value || "",
         contexto_modelo: root.dataset.contextoModelo || "",
         contexto_id: root.dataset.contextoId || "",
+        estacion: root.dataset.estacion || "",
       });
       fetch(root.dataset.endpoint, {
         method: "POST",

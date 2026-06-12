@@ -21,6 +21,7 @@ urlpatterns = [
     path("egresos/<int:pk>/anular/", views.egreso_anular, name="egreso-anular"),
     path("egresos/<int:pk>/reembolsar/", views.egreso_reembolsar, name="egreso-reembolsar"),
     path("egresos/<int:pk>/comprobante/", views.egreso_comprobante, name="egreso-comprobante"),
+    path("egresos/sugerir-categoria/", views.egreso_sugerir_categoria, name="egreso-sugerir-categoria"),
     # CxC / CxP / reportes
     path("por-cobrar/", views.por_cobrar, name="por-cobrar"),
     path("por-pagar/", views.por_pagar, name="por-pagar"),

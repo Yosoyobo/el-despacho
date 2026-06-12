@@ -96,5 +96,14 @@
 })();
 </script>
 {% endif %}
+<script>
+// Caché offline del PWA (S4): registra el service worker para todos los usuarios.
+// Convive con interfono_suscribir.js (el navegador deduplica por scope).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+}
+</script>
 </body>
 </html>

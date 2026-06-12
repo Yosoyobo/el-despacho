@@ -97,10 +97,15 @@ def redactar_texto(request):
     texto_actual = request.POST.get("texto_actual") or ""
     contexto_modelo = request.POST.get("contexto_modelo") or ""
     contexto_id = request.POST.get("contexto_id") or ""
+    # Estación opcional (S4): el widget puede pedir una estación dedicada
+    # (ej. `cotizaciones`). `redactar()` valida contra su allowlist; vacío o
+    # desconocido cae a `redaccion_asistida`.
+    estacion = (request.POST.get("estacion") or "").strip()
 
     contexto = _resolver_contexto(request.user, contexto_modelo, contexto_id)
     resultado = redactar(
         instruccion=instruccion, texto_actual=texto_actual,
         contexto=contexto, usuario=request.user,
+        estacion=estacion or "redaccion_asistida",
     )
     return JsonResponse(resultado)
