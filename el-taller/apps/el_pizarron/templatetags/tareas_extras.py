@@ -71,3 +71,23 @@ def tipo_tarea_label(tipo: str) -> str:
 @register.filter(name="tipo_tarea_emoji")
 def tipo_tarea_emoji(tipo: str) -> str:
     return _EMOJI_TIPO.get(tipo, "✓")
+
+
+@register.inclusion_tag("pizarron/_bloque_fecha.html")
+def bloque_fecha(fecha):
+    """Bloque de fecha de 'Mis tareas' (V6 Bloque 3): día de la semana arriba,
+    número en medio, mes abajo. HOY/MAÑANA reemplazan el bloque; las fechas
+    pasadas se pintan en amarillo (coherente con 'Atrasada')."""
+    from django.utils import timezone
+    hoy = timezone.localdate()
+    es_hoy = es_manana = es_pasada = False
+    if fecha:
+        es_hoy = fecha == hoy
+        es_manana = (fecha - hoy).days == 1
+        es_pasada = fecha < hoy
+    return {
+        "fecha": fecha,
+        "es_hoy": es_hoy,
+        "es_manana": es_manana,
+        "es_pasada": es_pasada,
+    }

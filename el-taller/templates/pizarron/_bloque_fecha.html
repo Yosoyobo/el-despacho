@@ -1,0 +1,16 @@
+{% comment %} Bloque de fecha (V6 Bloque 3) — usado por "Mis tareas" del
+Dashboard. Día de la semana / número / mes en 3 líneas; HOY y MAÑANA
+reemplazan el bloque; fecha pasada → amarillo (warning). {% endcomment %}
+<div class="flex w-11 shrink-0 flex-col items-center justify-center text-center leading-none">
+    {% if not fecha %}
+        <span class="text-base text-gray-300 dark:text-gray-600">—</span>
+    {% elif es_hoy %}
+        <span class="text-[11px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">HOY</span>
+    {% elif es_manana %}
+        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-light-600 dark:text-blue-light-400">MAÑANA</span>
+    {% else %}
+        <span class="text-[9px] font-semibold uppercase tracking-wider {% if es_pasada %}text-warning-500 dark:text-warning-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">{{ fecha|date:"D" }}</span>
+        <span class="my-0.5 text-base font-bold {% if es_pasada %}text-warning-600 dark:text-warning-400{% else %}text-gray-800 dark:text-gray-100{% endif %}">{{ fecha|date:"d" }}</span>
+        <span class="text-[9px] font-semibold uppercase tracking-wider {% if es_pasada %}text-warning-500 dark:text-warning-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">{{ fecha|date:"M" }}</span>
+    {% endif %}
+</div>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load proyectos_extras %}
+{% load proyectos_extras tareas_extras %}
 {% block title %}Dashboard — El Taller{% endblock %}
 
 {% block scripts_graficas %}{% include "_componentes_tailadmin/_scripts_graficas.html" %}{% endblock %}
@@ -8,10 +8,37 @@
 <header class="mb-6 pt-2">
     <h1 class="text-title-md font-bold tracking-tight text-gray-900 dark:text-gray-100">Dashboard</h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Bienvenido, {{ request.user.get_short_name }}</p>
+    {% comment %} V6 Bloque 3: fecha de hoy en mayúsculas discretas (estilo de
+    los botones "nuevos", sin fondo) + reloj de texto en la misma línea. {% endcomment %}
+    <p class="mt-1.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+        <span id="dash-fecha"></span>
+        <span class="text-gray-300 dark:text-gray-600">·</span>
+        <span id="dash-reloj" class="tabular-nums"></span>
+    </p>
 </header>
+<script>
+(function () {
+    const f = document.getElementById('dash-fecha');
+    const r = document.getElementById('dash-reloj');
+    if (!f || !r) return;
+    const fmtF = new Intl.DateTimeFormat('es-MX', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+    const fmtR = new Intl.DateTimeFormat('es-MX', {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+    function tick() {
+        const ahora = new Date();
+        f.textContent = fmtF.format(ahora);
+        r.textContent = fmtR.format(ahora);
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
 
-{# ── 1) Acciones rápidas: 5 botones pastel, 1/5 c/u. Mayúsculas, fondo suave, borde + texto del mismo color brillante. ── #}
-<section class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+{# ── 1) Acciones rápidas: 6 botones pastel en una línea (V6). Mayúsculas, fondo suave, borde + texto del mismo color brillante. ── #}
+<section class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <a href="{% url 'pizarron-nueva-tarea-global' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-warning-500 bg-warning-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-warning-600 transition hover:bg-warning-100 dark:border-warning-500/50 dark:bg-warning-500/10 dark:text-warning-400 dark:hover:bg-warning-500/20">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        Nueva tarea
+    </a>
     {% if permisos_modulos.proyectos %}
     <a href="{% url 'proyectos-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-success-500 bg-success-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-success-600 transition hover:bg-success-100 dark:border-success-500/50 dark:bg-success-500/10 dark:text-success-400 dark:hover:bg-success-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
@@ -40,10 +67,10 @@
     {% endif %}
 </section>
 
-{# ── 2) Fila de 3 widgets: Mis tareas (1/5) · Próximos eventos (1/5) · Chatbot El Dictado (3/5). ── #}
-<section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
+{# ── 2) Fila de 3 widgets del MISMO ancho (2/6 c/u, V6): Mis tareas · Próximos eventos · El Chalán. ── #}
+<section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-6">
     {# Mis tareas #}
-    <div class="ta-card lg:col-span-1">
+    <div class="ta-card lg:col-span-2">
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Mis tareas</h2>
             <span class="text-sm font-bold tabular-nums text-gray-800 dark:text-gray-100">{{ mis_tareas_total }}</span>
@@ -51,19 +78,11 @@
         <ul class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for t in mis_tareas %}
             <li class="py-2">
-                <a href="/tareas/{{ t.pk }}/" class="flex items-start gap-2">
-                    <div class="flex flex-col items-center text-center leading-none" style="min-width:30px">
-                        {% if t.fecha_compromiso %}
-                        <span class="text-[9px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{{ t.fecha_compromiso|date:"D" }}</span>
-                        <span class="text-[9px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{{ t.fecha_compromiso|date:"M" }}</span>
-                        <span class="text-base font-bold text-gray-800 dark:text-gray-100">{{ t.fecha_compromiso|date:"d" }}</span>
-                        {% else %}
-                        <span class="text-base text-gray-300 dark:text-gray-600">—</span>
-                        {% endif %}
-                    </div>
+                <a href="/tareas/{{ t.pk }}/" class="flex items-start gap-2.5">
+                    {% bloque_fecha t.fecha_compromiso %}
                     <div class="min-w-0 flex-1">
                         <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ t.titulo }}</p>
-                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">Tarea · {{ t.proyecto.codigo }}</p>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ t.tipo|tipo_tarea_label }} · {{ t.proyecto.codigo }}</p>
                     </div>
                 </a>
             </li>
@@ -77,7 +96,7 @@
     </div>
 
     {# Próximos eventos — toda la tarjeta lleva al calendario. #}
-    <a href="/calendario/" class="ta-card block lg:col-span-1 transition hover:border-brand-300 dark:hover:border-brand-500/40">
+    <a href="/calendario/" class="ta-card block lg:col-span-2 transition hover:border-brand-300 dark:hover:border-brand-500/40">
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Próximos eventos</h2>
             <svg class="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -105,10 +124,10 @@
         {% endif %}
     </a>
 
-    {# Chatbot — El Dictado, compacto, 3/5 de ancho. Gateado por (chalan, usar). #}
+    {# Chatbot — El Dictado, mismo ancho que los otros widgets (2/6, V6). Gateado por (chalan, usar). #}
     {% if permisos_modulos.chalan %}
     <section data-andamiaje="dictado-slot"
-             class="flex flex-col rounded-2xl border border-brand-200 bg-brand-25 p-4 lg:col-span-3 dark:border-brand-500/30 dark:bg-brand-500/5">
+             class="flex flex-col rounded-2xl border border-brand-200 bg-brand-25 p-4 lg:col-span-2 dark:border-brand-500/30 dark:bg-brand-500/5">
         <form method="post" action="{% url 'chalan-nuevo' %}" class="flex flex-1 flex-col">
             {% csrf_token %}
             <div class="flex flex-1 items-start gap-3">
