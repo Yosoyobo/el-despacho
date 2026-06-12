@@ -10,6 +10,7 @@ TIPO_CORRECCION = (
     ("salida", "Hora de salida"),
     ("visita", "Hora de visita"),
     ("sesion", "Sesión de proyecto"),
+    ("jornada", "Jornada completa"),
 )
 
 ESTADO_CORRECCION = (
@@ -37,7 +38,14 @@ class SolicitudCorreccion(models.Model):
     )
 
     tipo = models.CharField(max_length=10, choices=TIPO_CORRECCION)
-    valor_propuesto = models.DateTimeField(help_text="Nuevo valor solicitado")
+    # Para los tipos de un solo dato (entrada/salida/visita/sesion).
+    valor_propuesto = models.DateTimeField(null=True, blank=True, help_text="Nuevo valor solicitado")
+    # Para el tipo 'jornada' (ajusta entrada Y salida juntas, o registra un día
+    # sin checar): el día y ambas horas. `jornada` puede ser NULL si el día no
+    # tenía jornada (olvido total) — se crea al aprobar.
+    fecha = models.DateField(null=True, blank=True, help_text="Día de la jornada (tipo jornada)")
+    valor_entrada = models.DateTimeField(null=True, blank=True)
+    valor_salida = models.DateTimeField(null=True, blank=True)
     motivo = models.TextField()
 
     estado = models.CharField(max_length=10, choices=ESTADO_CORRECCION, default="pendiente")

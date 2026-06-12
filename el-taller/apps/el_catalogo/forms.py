@@ -10,7 +10,8 @@ class ProveedorForm(forms.ModelForm):
         model = Proveedor
         fields = [
             "razon_social", "nombre_contacto", "email_contacto",
-            "telefono", "rfc", "direccion", "notas", "activo",
+            "telefono", "rfc", "direccion", "fiscal_igual", "direccion_fiscal",
+            "notas", "activo",
         ]
         labels = {
             "razon_social": "Razón social",
@@ -19,10 +20,13 @@ class ProveedorForm(forms.ModelForm):
             "telefono": "Teléfono",
             "rfc": "RFC",
             "direccion": "Dirección",
+            "fiscal_igual": "La dirección fiscal es la misma",
+            "direccion_fiscal": "Dirección fiscal",
             "notas": "Notas",
         }
         widgets = {
             "direccion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
+            "direccion_fiscal": forms.Textarea(attrs={"rows": 2, "data-fiscal-box": "1"}),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
 

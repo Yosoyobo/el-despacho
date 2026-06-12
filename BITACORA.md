@@ -5832,3 +5832,59 @@ AskUserQuestion: **flatpickr** (24h) y la lógica de horas **"como la describí"
 balance asume todos los días con horario como laborables (sin calendario de
 festivos); empleado nuevo sin historial ni horario propio no recibe recordatorio
 de entrada el día 1.
+
+---
+
+# BITÁCORA — S-Checador-V1.3 + Ubicación cliente/proveedor (2026-06-12, VERSION 2026.06.42)
+
+Pedidos de Oscar: ajustar la jornada con flujo de aprobación (request → quién
+aprobó); + bug de transparencia detectado en screenshot ("¿quién aprobó? yo no
+fui"); + ubicación/dirección fiscal en perfiles de cliente/proveedor. Decisiones
+AskUserQuestion: **jornada completa + día faltante** y **admin edita directo +
+empleado solicita**.
+
+## Ajuste de jornada (V1.3)
+- `SolicitudCorreccion`: tipo nuevo `jornada` + campos `fecha`, `valor_entrada`,
+  `valor_salida` (`valor_propuesto` ahora nullable). `Jornada`: `ajustado_por` +
+  `ajustado_en` (auditoría). Migración `checador/0005`.
+- `services.solicitar_ajuste_jornada` (empleado: entrada+salida juntas o día sin
+  jornada; va por la misma vía de aprobación → Recados + bandeja). `_aplicar_correccion`
+  tipo `jornada` (crea la jornada si el día no existía; setea ambas horas + retardo +
+  ajustado_por). `editar_jornada_directo` (admin, sin aprobación; ajustado_por).
+- UI empleado: `_modal_ajuste_jornada.html` (botón "Ajustar" en historial + "Solicitar
+  día sin checar"). UI admin: `_modal_jornada_admin.html` en el drill-down de equipo
+  ("Editar" por jornada + "Registrar jornada"). Indicador "✎ ajustada por X".
+
+## Fix de transparencia/gobernanza (raíz del "¿quién aprobó?")
+- El badge del chat (`_correccion_chat_estado.html`) ahora muestra **"Aprobada/
+  Rechazada por {resuelto_por} · fecha"** (antes solo "Aprobada ✅" sin atribución).
+  El historial (mis solicitudes) también muestra quién resolvió + cuándo + comentario.
+- **Bug:** los botones Aprobar/Rechazar aparecían en el mensaje PROPIO del
+  solicitante (rama "enviado") → cualquiera podía aprobar su propia solicitud.
+  Ahora la rama propia pasa `puede_aprobar_corr=False` (solo estado).
+- `resolver_correccion` **bloquea auto-aprobación**: si `admin == solicitante`
+  levanta ValueError (un admin corrige lo suyo con edición directa).
+
+## Ubicación + dirección fiscal (cliente y proveedor)
+- `Cliente` y `Proveedor`: + `direccion_fiscal` (TextField) + `fiscal_igual`
+  (Bool default True). Migr. `cartera/0004` y `el_catalogo/0007`.
+- `checador.services.ultima_ubicacion_de(cliente=|proveedor=)` → última Visita
+  geolocalizada. La view `checador:mapa` se relajó a `@login_required` (reusable).
+- Partial `cartera/_ubicacion.html` (última ubicación con 📍 modal + dirección +
+  fiscal "✓ misma" o el texto fiscal). Incluido en el detalle de cliente y de
+  proveedor. Forms de Cliente/Proveedor con los 2 campos nuevos.
+
+## Tests
+- `test_checador_ajuste_jornada.py` (6: solicitud, aprobar crea día faltante,
+  no-autoaprobar, editar directo, gating admin, view empleado).
+- `test_ubicacion_perfil.py` (6: ultima_ubicacion, forms guardan fiscal, detalles
+  muestran ubicación). Tests viejos de correcciones verdes (guard no los rompe).
+- Migraciones reescritas a mano (espurios de BigAutoField/variacion).
+
+## Post-deploy
+- (sin pasos manuales nuevos; los crontabs del Checador ya están en §10).
+
+## Deuda diseñada
+- Ajuste de jornada/visita por separado sigue siendo "Corregir" (un dato); el de
+  jornada completa es el flujo nuevo. La solicitud sigue fan-out a un DM por
+  aprobador (con varios aprobadores se duplica en los DMs del solicitante).

@@ -43,6 +43,14 @@ class Jornada(models.Model):
     retardo_min = models.PositiveIntegerField(default=0)
     notas = models.TextField(blank=True, default="")
 
+    # Auditoría de ajuste manual (admin directo o corrección aprobada, V1.3):
+    # quién tocó la jornada por última vez y cuándo. NULL = nunca se ajustó.
+    ajustado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="jornadas_ajustadas",
+    )
+    ajustado_en = models.DateTimeField(null=True, blank=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

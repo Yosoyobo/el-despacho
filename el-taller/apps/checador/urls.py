@@ -21,6 +21,11 @@ urlpatterns = [
     path("historial/", views.historial, name="historial"),
     path("correccion/nueva", views.correccion_modal, name="correccion_modal"),
     path("correccion", views.correccion, name="correccion"),
+    # Ajuste de jornada completa (request del empleado + admin directo) — V1.3
+    path("jornada/ajuste/nueva", views.ajuste_jornada_modal, name="ajuste_jornada_modal"),
+    path("jornada/ajuste", views.ajuste_jornada, name="ajuste_jornada"),
+    path("equipo/<int:usuario_pk>/jornada/editar/modal", views.jornada_admin_modal, name="jornada_admin_modal"),
+    path("equipo/<int:usuario_pk>/jornada/editar", views.jornada_admin_editar, name="jornada_admin_editar"),
     path("correcciones/", views.correcciones, name="correcciones"),
     path("correcciones/<int:pk>/resolver/modal", views.correccion_resolver_modal, name="correccion_resolver_modal"),
     path("correcciones/<int:pk>/resolver", views.correccion_resolver, name="correccion_resolver"),

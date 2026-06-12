@@ -1791,6 +1791,35 @@ Google Maps.
   - **+8 tests** (`test_checador_horas.py` 5 + `test_horario_bulk.py` 3); 2 tests
     viejos de horario admin actualizados al alta masiva.
 
+### S-Checador-V1.3 + Ubicación cliente/proveedor ✅ (2026-06-12, VERSION 2026.06.42)
+
+Pedidos de Oscar + bug de transparencia visto en screenshot. Decisiones
+AskUserQuestion: **jornada completa + día faltante** y **admin edita directo +
+empleado solicita**.
+
+- **Ajuste de jornada**: `SolicitudCorreccion` gana tipo `jornada` + `fecha` +
+  `valor_entrada/salida` (`valor_propuesto` nullable); `Jornada` gana
+  `ajustado_por/ajustado_en` (migr. `checador/0005`). `services.solicitar_ajuste_jornada`
+  (empleado, entrada+salida juntas o día sin checar; misma vía de aprobación →
+  Recados + bandeja), `_aplicar_correccion` tipo jornada (crea el día si falta),
+  `editar_jornada_directo` (admin, sin aprobación). UI: `_modal_ajuste_jornada`
+  (historial: "Ajustar" + "Solicitar día sin checar") y `_modal_jornada_admin`
+  (drill-down de equipo: "Editar" + "Registrar jornada"). Evento
+  `checador.jornada_ajustada`.
+- **Transparencia/gobernanza** (raíz del "¿quién aprobó? yo no fui"): el badge
+  del chat y el historial ahora muestran **quién resolvió + cuándo**; los botones
+  Aprobar/Rechazar ya NO salen en el mensaje propio del solicitante; y
+  `resolver_correccion` **bloquea auto-aprobación** (admin == solicitante → error).
+- **Ubicación + dirección fiscal**: `Cliente` y `Proveedor` ganan `direccion_fiscal`
+  + `fiscal_igual` (migr. `cartera/0004`, `el_catalogo/0007`).
+  `checador.services.ultima_ubicacion_de` (última visita geolocalizada);
+  `checador:mapa` relajado a `@login_required` (reusable). Partial
+  `cartera/_ubicacion.html` (última ubicación 📍 modal + dirección + fiscal)
+  en el detalle de cliente y de proveedor; forms con los 2 campos.
+- **12 tests** (`test_checador_ajuste_jornada.py` 6 + `test_ubicacion_perfil.py` 6).
+  Migraciones reescritas a mano (espurios). **Deuda**: la solicitud sigue
+  fan-out a un DM por aprobador.
+
 ### S-UX-Dummy-Proof ✅ — 5 mejoras de UX (2026-05-21)
 
 Sprint dedicado a quitar fricción y tecnicismos del sistema para los

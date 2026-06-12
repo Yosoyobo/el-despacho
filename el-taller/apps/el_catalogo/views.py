@@ -492,9 +492,16 @@ def proveedor_detalle(request, pk: int):
     if (r := _gate(request, "ver_nombres")) is not None:
         return r
     prov = get_object_or_404(Proveedor, pk=pk)
+    ultima_visita = None
+    try:
+        from apps.checador.services import ultima_ubicacion_de
+        ultima_visita = ultima_ubicacion_de(proveedor=prov)
+    except Exception:  # noqa: BLE001
+        pass
     return render(request, "catalogo/proveedor_detalle.html", {
         "proveedor": prov,
         "servicios": prov.servicios.filter(activo=True),
+        "ultima_visita": ultima_visita,
         "puede_gestionar_servicios": puede(request.user, "catalogo", "editar"),
     })
 

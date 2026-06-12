@@ -14,10 +14,12 @@
                 <div><dt class="text-xs uppercase tracking-wide text-gray-500">Email</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.email_contacto|default:"—" }}</dd></div>
                 <div><dt class="text-xs uppercase tracking-wide text-gray-500">Teléfono</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.telefono|default:"—" }}</dd></div>
                 <div><dt class="text-xs uppercase tracking-wide text-gray-500">RFC</dt><dd class="font-mono text-gray-900 dark:text-gray-100">{{ proveedor.rfc|default:"—" }}</dd></div>
-                {% if proveedor.direccion %}<div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-gray-500">Dirección</dt><dd class="text-gray-900 dark:text-gray-100 whitespace-pre-line">{{ proveedor.direccion }}</dd></div>{% endif %}
                 {% if proveedor.notas %}<div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-gray-500">Notas</dt><dd class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ proveedor.notas }}</dd></div>{% endif %}
             </dl>
         </section>
+
+        {# Ubicación + dirección (última visita geolocalizada + fiscal). #}
+        {% include "cartera/_ubicacion.html" with nombre=proveedor.razon_social direccion=proveedor.direccion direccion_fiscal=proveedor.direccion_fiscal fiscal_igual=proveedor.fiscal_igual ultima_visita=ultima_visita %}
 
         <section class="ta-card">
             <div class="mb-3 flex items-center justify-between gap-2">

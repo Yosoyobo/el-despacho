@@ -24,6 +24,12 @@ class Cliente(models.Model):
     email_contacto = models.EmailField(blank=True, default="")
     telefono = models.CharField(max_length=40, blank=True, default="")
     direccion = models.TextField(blank=True, default="")
+    # Dirección fiscal: si `fiscal_igual`, coincide con `direccion`; si no, se
+    # captura en `direccion_fiscal` (S-Cliente-Ubicacion).
+    direccion_fiscal = models.TextField(blank=True, default="")
+    fiscal_igual = models.BooleanField(
+        default=True, help_text="La dirección fiscal es la misma que la dirección.",
+    )
     notas = models.TextField(blank=True, default="")
     estado = models.CharField(max_length=20, choices=ESTADOS_CLIENTE, default="prospecto", db_index=True)
 

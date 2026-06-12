@@ -10,7 +10,8 @@
         <a href="{% url 'recados:chat_adjunto' a.pk %}" target="_blank" rel="noopener" class="mt-1 flex items-center gap-1.5 text-xs underline decoration-white/50 hover:decoration-white">📎 <span class="truncate">{{ a.nombre }}</span></a>
         {% endif %}
         {% endfor %}
-        {% if m.correccion_id %}{% include "checador/_correccion_chat_estado.html" with sol=m.correccion mensaje_id=m.pk puede_aprobar_corr=puede_aprobar_corr %}{% endif %}
+        {# Mensaje PROPIO (soy el solicitante): solo estado, nunca botones de aprobar. #}
+        {% if m.correccion_id %}{% include "checador/_correccion_chat_estado.html" with sol=m.correccion mensaje_id=m.pk puede_aprobar_corr=False %}{% endif %}
         <p class="mt-1 text-right text-[10px] opacity-80">{{ m.creado_en|date:"H:i" }}</p>
     </div>
 </div>

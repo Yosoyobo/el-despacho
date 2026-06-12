@@ -17,6 +17,11 @@ class Proveedor(models.Model):
     telefono = models.CharField(max_length=40, blank=True, default="")
     rfc = models.CharField(max_length=20, blank=True, default="")
     direccion = models.TextField(blank=True, default="")
+    # Dirección fiscal: si `fiscal_igual`, coincide con `direccion` (S-Cliente-Ubicacion).
+    direccion_fiscal = models.TextField(blank=True, default="")
+    fiscal_igual = models.BooleanField(
+        default=True, help_text="La dirección fiscal es la misma que la dirección.",
+    )
     notas = models.TextField(blank=True, default="")
 
     activo = models.BooleanField(default=True, db_index=True)

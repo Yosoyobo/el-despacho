@@ -18,12 +18,30 @@ from django.views.decorators.http import require_POST
 from lib.permisos import (
     puede_aprobar_correcciones_checador,
     puede_checar,
+    puede_configurar_horarios_checador,
     puede_exportar_checador,
     puede_ver_equipo_checador,
 )
 
 from . import services
 from .models import Jornada, SolicitudCorreccion, Visita
+
+
+def _puede_ajustar_directo(user) -> bool:
+    """Puede editar/registrar jornadas de OTROS directamente (como un proyecto):
+    quien aprueba correcciones o configura horarios."""
+    return puede_aprobar_correcciones_checador(user) or puede_configurar_horarios_checador(user)
+
+
+def _combinar(fecha, hhmm):
+    """`fecha` (date) + 'HH:MM' → datetime aware; None si falta o es inválido."""
+    if not fecha or not hhmm:
+        return None
+    try:
+        h, m = (int(x) for x in str(hhmm).split(":")[:2])
+        return timezone.make_aware(datetime.datetime.combine(fecha, datetime.time(h, m)))
+    except (ValueError, TypeError):
+        return None
 
 
 def _requiere_checar(view):
@@ -107,11 +125,11 @@ def tablero(request):
 
 
 @login_required
-@_requiere_checar
 def mapa(request):
     """GET HTMX → modal con el mapa (OpenStreetMap) del punto recibido por
     query (lat, lng, etiqueta, cuando, precision). Solo renderiza coordenadas
-    que ya se muestran en la página que abrió el modal — no consulta DB."""
+    que ya se muestran en la página que abrió el modal — no consulta DB.
+    Reusable (Checador, perfiles de cliente/proveedor); solo requiere login."""
     def _num(v):
         try:
             return float(v)
@@ -426,6 +444,81 @@ def correccion_resolver_chat(request, pk: int):
     return render(request, "checador/_correccion_chat_estado.html", {
         "sol": sol, "mensaje_id": mensaje_id, "puede_aprobar_corr": True,
     })
+
+
+# ───────────── ajuste de jornada completa (V1.3) ─────────────
+
+@login_required
+@_requiere_checar
+def ajuste_jornada_modal(request):
+    """Empleado: modal para pedir ajuste de su jornada (entrada+salida) o
+    registrar un día que no checó. ?jornada=<pk> prefilla un día existente."""
+    jornada = None
+    jid = request.GET.get("jornada")
+    if jid:
+        jornada = Jornada.objects.filter(pk=jid, usuario=request.user).first()
+    return render(request, "checador/_modal_ajuste_jornada.html", {"jornada": jornada})
+
+
+@login_required
+@_requiere_checar
+@require_POST
+def ajuste_jornada(request):
+    fecha = _parse_date(request.POST.get("fecha"))
+    if fecha is None:
+        messages.error(request, "Indica el día de la jornada.")
+        return redirect("checador:historial")
+    entrada = _combinar(fecha, request.POST.get("entrada"))
+    salida = _combinar(fecha, request.POST.get("salida"))
+    motivo = (request.POST.get("motivo") or "").strip()
+    try:
+        services.solicitar_ajuste_jornada(
+            request.user, fecha=fecha, valor_entrada=entrada, valor_salida=salida, motivo=motivo,
+        )
+        messages.success(request, "Solicitud de ajuste enviada. Un administrador la revisará.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("checador:historial")
+
+
+@login_required
+def jornada_admin_modal(request, usuario_pk):
+    """Admin: modal para editar/registrar DIRECTO la jornada de un empleado."""
+    if not _puede_ajustar_directo(request.user):
+        return HttpResponseForbidden("Sin permiso para ajustar jornadas.")
+    from cuentas.models.usuario import Usuario
+    persona = get_object_or_404(Usuario, pk=usuario_pk)
+    jornada = None
+    jid = request.GET.get("jornada")
+    if jid:
+        jornada = Jornada.objects.filter(pk=jid, usuario=persona).first()
+    return render(request, "checador/_modal_jornada_admin.html", {
+        "persona": persona, "jornada": jornada,
+        "querystring": request.GET.get("q", ""),
+    })
+
+
+@login_required
+@require_POST
+def jornada_admin_editar(request, usuario_pk):
+    if not _puede_ajustar_directo(request.user):
+        return HttpResponseForbidden("Sin permiso para ajustar jornadas.")
+    from cuentas.models.usuario import Usuario
+    persona = get_object_or_404(Usuario, pk=usuario_pk)
+    fecha = _parse_date(request.POST.get("fecha"))
+    if fecha is None:
+        messages.error(request, "Indica el día.")
+        return redirect("checador:equipo_persona", pk=persona.pk)
+    entrada = _combinar(fecha, request.POST.get("entrada"))
+    salida = _combinar(fecha, request.POST.get("salida"))
+    if entrada is None and salida is None:
+        messages.error(request, "Indica al menos la hora de entrada o de salida.")
+        return redirect("checador:equipo_persona", pk=persona.pk)
+    services.editar_jornada_directo(
+        usuario=persona, fecha=fecha, valor_entrada=entrada, valor_salida=salida, admin=request.user,
+    )
+    messages.success(request, f"Jornada del {fecha:%d/%m} ajustada.")
+    return redirect("checador:equipo_persona", pk=persona.pk)
 
 
 # ───────────────────────── reporte de equipo + export (E6) ─────────────────────────

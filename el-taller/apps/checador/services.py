@@ -301,7 +301,15 @@ def _publicar_correccion_en_recados(sol: SolicitudCorreccion) -> None:
             from apps.recados import services_chat
             quien = getattr(sol.usuario, "nombre_completo", "") or getattr(sol.usuario, "email", "Alguien")
             from django.utils import timezone as _tz
-            valor = _tz.localtime(sol.valor_propuesto).strftime("%d/%m %H:%M")
+            if sol.tipo == "jornada":
+                partes = []
+                if sol.valor_entrada:
+                    partes.append("entrada " + _tz.localtime(sol.valor_entrada).strftime("%d/%m %H:%M"))
+                if sol.valor_salida:
+                    partes.append("salida " + _tz.localtime(sol.valor_salida).strftime("%H:%M"))
+                valor = " · ".join(partes) or (sol.fecha.strftime("%d/%m") if sol.fecha else "")
+            else:
+                valor = _tz.localtime(sol.valor_propuesto).strftime("%d/%m %H:%M") if sol.valor_propuesto else ""
             cuerpo = (f"🕐 Solicitud de corrección — {sol.get_tipo_display()} → {valor}\n"
                       f"Motivo: {sol.motivo}")
             for admin in _aprobadores():
@@ -358,6 +366,24 @@ def _aplicar_correccion(sol: SolicitudCorreccion) -> None:
     elif sol.tipo == "visita" and sol.visita:
         sol.visita.registrado_en = sol.valor_propuesto
         sol.visita.save(update_fields=["registrado_en"])
+    elif sol.tipo == "jornada":
+        # Ajusta entrada Y salida juntas; crea la jornada si el día no la tenía.
+        jornada = sol.jornada
+        if jornada is None and sol.fecha:
+            jornada, _ = Jornada.objects.get_or_create(usuario=sol.usuario, fecha=sol.fecha)
+        if jornada is None:
+            return
+        if sol.valor_entrada:
+            jornada.entrada_en = sol.valor_entrada
+            jornada.retardo_min = calcular_retardo(
+                horario_vigente(jornada.usuario, jornada.fecha), sol.valor_entrada,
+            )
+        if sol.valor_salida:
+            jornada.salida_en = sol.valor_salida
+            jornada.estado = "cerrada"
+        jornada.ajustado_por = sol.resuelto_por
+        jornada.ajustado_en = ahora_mx()
+        jornada.save()
 
 
 def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
@@ -365,6 +391,10 @@ def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
     """Aprueba o rechaza una corrección. Al aprobar aplica el valor."""
     if solicitud.estado != "pendiente":
         raise ValueError("Esta solicitud ya fue resuelta.")
+    # Nadie aprueba/rechaza su propia solicitud (gobernanza de asistencia): un
+    # admin que necesita corregir lo suyo usa la edición directa de jornada.
+    if getattr(admin, "pk", None) == solicitud.usuario_id:
+        raise ValueError("No puedes resolver tu propia solicitud; pídele a otro administrador.")
     with transaction.atomic():
         solicitud.estado = "aprobada" if aprobar else "rechazada"
         solicitud.resuelto_por = admin
@@ -626,3 +656,68 @@ def cerrar_jornadas_vencidas(*, ahora=None) -> int:
         })
         cerradas += 1
     return cerradas
+
+
+# ─────────────── ajuste de jornada completa (request + admin directo, V1.3) ───────────────
+
+def solicitar_ajuste_jornada(usuario, *, fecha, valor_entrada=None, valor_salida=None,
+                             motivo: str) -> SolicitudCorreccion:
+    """El empleado pide ajustar su jornada (entrada Y salida juntas) o registrar
+    un día que NO checó. Va a aprobación (misma vía que las correcciones:
+    Recados + bandeja). `fecha` es el día; `valor_entrada/salida` datetimes."""
+    if not (motivo or "").strip():
+        raise ValueError("Explica el motivo del ajuste.")
+    if valor_entrada is None and valor_salida is None:
+        raise ValueError("Indica al menos la hora de entrada o de salida.")
+    jornada = Jornada.objects.filter(usuario=usuario, fecha=fecha).first()
+    sol = SolicitudCorreccion.objects.create(
+        usuario=usuario, tipo="jornada", fecha=fecha,
+        valor_entrada=valor_entrada, valor_salida=valor_salida,
+        motivo=motivo.strip(), jornada=jornada,
+    )
+    _emitir("checador.correccion_solicitada", actor=usuario,
+            payload={"solicitud_id": sol.pk, "tipo": "jornada", "fecha": fecha.isoformat()})
+    quien = getattr(usuario, "nombre_completo", "") or getattr(usuario, "email", "Alguien")
+    for admin in _aprobadores():
+        if admin.pk != getattr(usuario, "pk", None):
+            _push(admin, "Ajuste de jornada pendiente",
+                  f"{quien} pide ajustar su jornada del {fecha:%d/%m}.",
+                  url="/checador/correcciones/")
+    _publicar_correccion_en_recados(sol)
+    return sol
+
+
+def editar_jornada_directo(*, usuario, fecha, valor_entrada=None, valor_salida=None,
+                           admin) -> Jornada:
+    """Ajuste DIRECTO por un admin (como se edita un proyecto): crea/edita la
+    jornada del día sin pasar por aprobación. Registra quién la ajustó."""
+    jornada, _ = Jornada.objects.get_or_create(usuario=usuario, fecha=fecha)
+    if valor_entrada is not None:
+        jornada.entrada_en = valor_entrada
+        jornada.retardo_min = calcular_retardo(horario_vigente(usuario, fecha), valor_entrada)
+    if valor_salida is not None:
+        jornada.salida_en = valor_salida
+        jornada.estado = "cerrada"
+    jornada.ajustado_por = admin if getattr(admin, "is_authenticated", False) else None
+    jornada.ajustado_en = ahora_mx()
+    jornada.save()
+    _emitir("checador.jornada_ajustada", actor=admin, payload={
+        "jornada_id": jornada.pk, "usuario_id": getattr(usuario, "pk", None),
+        "fecha": fecha.isoformat(),
+    })
+    return jornada
+
+
+# ─────────────── última ubicación conocida (perfiles cliente/proveedor) ───────────────
+
+def ultima_ubicacion_de(*, cliente=None, proveedor=None):
+    """Última visita geolocalizada a un cliente o proveedor (o None). La usan
+    los perfiles de Cartera/Catálogo para mostrar dónde está físicamente."""
+    qs = Visita.objects.filter(sin_geo=False, lat__isnull=False, lng__isnull=False)
+    if cliente is not None:
+        qs = qs.filter(cliente=cliente)
+    elif proveedor is not None:
+        qs = qs.filter(proveedor=proveedor)
+    else:
+        return None
+    return qs.order_by("-registrado_en").first()

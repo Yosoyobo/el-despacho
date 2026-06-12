@@ -9,12 +9,20 @@ class ClienteForm(forms.ModelForm):
             "razon_social",
             "rfc",
             "direccion",
+            "fiscal_igual",
+            "direccion_fiscal",
             "notas",
             "estado",
         ]
         labels = {
             "razon_social": "Nombre",
-            "direccion": "Ubicación",
+            "direccion": "Dirección",
+            "fiscal_igual": "La dirección fiscal es la misma",
+            "direccion_fiscal": "Dirección fiscal",
+        }
+        widgets = {
+            "direccion": forms.Textarea(attrs={"rows": 2}),
+            "direccion_fiscal": forms.Textarea(attrs={"rows": 2, "data-fiscal-box": "1"}),
         }
 
     def clean_rfc(self):

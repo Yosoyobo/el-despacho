@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — Ajustar jornada con aprobación, y ubicación + dirección fiscal en clientes/proveedores (12 de junio de 2026)
+
+- **Ajustar la jornada (con aprobación).** Desde tu historial puedes pedir
+  **ajustar tu jornada completa** (entrada y salida juntas) o **registrar un día
+  que olvidaste checar**. La solicitud le llega a un administrador, que la
+  **aprueba o rechaza**; ahora se ve **quién la resolvió y cuándo** (en el chat
+  de Recados y en tu historial). **Nadie puede aprobar su propia solicitud.**
+- **El administrador ajusta directo.** Quien tiene permiso puede **editar o
+  registrar** la jornada de cualquier empleado directamente (como se edita un
+  proyecto), desde *Checador del equipo → la persona*. Queda registrado que él lo
+  hizo.
+- **Ubicación y dirección fiscal en clientes y proveedores.** En el perfil de un
+  cliente o proveedor ahora ves su **última ubicación** (tomada de las visitas
+  del Checador, con botón 📍 al mapa) y tienes **dirección** + una casilla **"la
+  dirección fiscal es la misma"**; si la destildas, capturas la **dirección
+  fiscal** aparte.
+
+---
+
 ## Novedades — Checador: horarios por lote, hora 24h, balance de horas y cierre automático (12 de junio de 2026)
 
 Mejoras al control de horas:
@@ -1057,6 +1076,7 @@ Tus clientes B2B (restaurantes, heladerías, cafeterías, etc.).
 - **Lista:** filtra por nombre, ve quiénes tienen proyectos activos, marca "Mostrar archivados" para ver los inactivos.
 - **Nuevo cliente:** razón social, RFC, contacto, email y teléfono.
 - **Detalle:** ves todos sus proyectos. Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
+- **Ubicación y dirección fiscal:** el detalle muestra la **última ubicación** del cliente (tomada de las visitas del Checador, con botón 📍 al mapa) y su **dirección**. Al editar hay una casilla **"la dirección fiscal es la misma"**; si la destildas, capturas la **dirección fiscal** por separado.
 - **Crear cliente sin salir:** desde el form de un proyecto nuevo hay un botón "+ Nuevo" al lado del selector de cliente.
 
 ---
@@ -1188,12 +1208,12 @@ Registra tu día de trabajo desde el celular o la computadora. La ubicación se 
 - **Balance de horas del mes:** en el tablero ves si vas **a favor** o con **deuda** de horas (trabajadas vs. las esperadas según tu horario). En "Mi semana" se muestra también la columna de **horas en proyectos**. Si un día no abriste jornada pero registraste tiempo de proyecto, ese tiempo cuenta como tu jornada de ese día.
 - **Cierre automático:** si dejas tu jornada abierta, el sistema la cierra solo a las 5:00 a.m. del día siguiente, usando el horario de salida default de la empresa. Mejor ciérrala tú para que la hora sea exacta.
 - **Mi historial:** tus **jornadas**, **visitas** y **tiempo por proyecto**, con totales de horas y retardos. Arriba eliges el periodo: **Esta semana / Este mes / Últimos 30 días**.
-- **¿Marcaste mal?** Desde tu historial pides una **corrección** con el motivo. La solicitud le llega al administrador con permiso **por Recados** (una conversación), donde la aprueba o rechaza con botones en el chat; la respuesta te llega ahí mismo.
+- **¿Marcaste mal o se te pasó checar?** Desde tu historial, **Ajustar** una jornada pide cambiar tu entrada y salida juntas; **Solicitar día sin checar** registra un día que olvidaste. La solicitud le llega al administrador **por Recados** (una conversación), donde la aprueba o rechaza con botones en el chat; la respuesta te llega ahí mismo y verás **quién la resolvió y cuándo**. Para una marca suelta (solo entrada o solo salida, o una sesión de proyecto) sigue estando "Corregir". **Nadie puede aprobar su propia solicitud.**
 - **Sin internet:** si checas sin señal, se guarda en tu dispositivo y se envía solo al recuperar conexión (verás "N pendientes de sincronizar"). El cronómetro sí necesita conexión.
 
 ### Para administradores
 
-- **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV). Haz clic en una persona para ver el **detalle**: sus jornadas y visitas con el botón **📍 Mapa** de cada checada.
+- **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV). Haz clic en una persona para ver el **detalle**: sus jornadas y visitas con el botón **📍 Mapa** de cada checada. Ahí mismo puedes **Editar** una jornada o **Registrar** una de un día sin checar **directamente** (sin pedir aprobación; queda registrado que tú la ajustaste).
 - **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo. Al crear, eliges **varios días y varios empleados a la vez** (casillas) y la hora en **formato 24 h**. Los horarios configurados son la base del **balance de horas** de cada quien.
 - **Correcciones:** las solicitudes te llegan **por Recados** (con botones Aprobar/Rechazar en el chat) y también las tienes en la **bandeja** de correcciones. Resuelvas donde resuelvas, la respuesta se publica en la conversación del solicitante.
 
@@ -1214,7 +1234,7 @@ Lo que vendes/produces. Cada producto tiene:
 
 ### Proveedores
 
-CRM de quién te surte. Razón social, contacto, email, teléfono, RFC, dirección, notas. Su detalle muestra los productos que pueden surtirte.
+CRM de quién te surte. Razón social, contacto, email, teléfono, RFC, dirección, notas. Su detalle muestra los productos que pueden surtirte, su **última ubicación** (de las visitas del Checador, con botón 📍 al mapa) y su **dirección fiscal** (con la casilla "es la misma que la dirección").
 
 Desde el form de un producto puedes crear un proveedor nuevo sin salir: panel "+ Nuevo proveedor", lo creas y queda marcado. También hay un acceso directo "Nuevo proveedor" en el Dashboard.
 

@@ -78,11 +78,8 @@
             </ul>
         </section>
 
-        {# Ubicación (antes 'Dirección'). #}
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ubicación</h3>
-            <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cliente.direccion|default:"—" }}</p>
-        </section>
+        {# Ubicación + dirección (última visita geolocalizada + fiscal). #}
+        {% include "cartera/_ubicacion.html" with nombre=cliente.razon_social direccion=cliente.direccion direccion_fiscal=cliente.direccion_fiscal fiscal_igual=cliente.fiscal_igual ultima_visita=ultima_visita %}
 
         {# Identificación. #}
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

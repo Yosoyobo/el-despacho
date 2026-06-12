@@ -1,0 +1,33 @@
+{% comment %}
+Tarjeta de Ubicación + Dirección (cliente o proveedor). Reusada por el detalle
+de Cartera y de Catálogo. Params: nombre, direccion, direccion_fiscal,
+fiscal_igual, ultima_visita (Visita geolocalizada o None).
+La última ubicación sale de las visitas del Checador; el mapa abre en modal.
+{% endcomment %}
+<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ubicación y dirección</h2>
+
+    <div class="mb-3 flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
+        {% if ultima_visita %}
+        <span class="text-xs text-gray-500 dark:text-gray-400">Última ubicación · {{ ultima_visita.registrado_en|date:"d M Y H:i" }}</span>
+        {% include "checador/_boton_mapa.html" with lat=ultima_visita.lat lng=ultima_visita.lng etiqueta=nombre cuando=ultima_visita.registrado_en|date:"d M H:i" precision=ultima_visita.precision %}
+        {% else %}
+        <span class="text-xs text-gray-400 dark:text-gray-500">Sin ubicación todavía — se toma de las visitas del Checador.</span>
+        {% endif %}
+    </div>
+
+    <dl class="space-y-2 text-sm">
+        <div>
+            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Dirección</dt>
+            <dd class="text-gray-800 dark:text-gray-100">{% if direccion %}{{ direccion|linebreaksbr }}{% else %}<span class="text-gray-400">—</span>{% endif %}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Dirección fiscal</dt>
+            <dd class="text-gray-800 dark:text-gray-100">
+                {% if fiscal_igual %}<span class="text-success-600 dark:text-success-400">✓ Misma que la dirección</span>
+                {% elif direccion_fiscal %}{{ direccion_fiscal|linebreaksbr }}
+                {% else %}<span class="text-gray-400">—</span>{% endif %}
+            </dd>
+        </div>
+    </dl>
+</section>

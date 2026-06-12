@@ -163,9 +163,16 @@ def detalle(request, pk):
             reverse("cartera-archivar", args=[cliente.pk]),
             "Archivar" if cliente.activo else "Reactivar",
         )
+    ultima_visita = None
+    try:
+        from apps.checador.services import ultima_ubicacion_de
+        ultima_visita = ultima_ubicacion_de(cliente=cliente)
+    except Exception:  # noqa: BLE001 — la ubicación nunca tumba el perfil
+        pass
     return render(request, "cartera/detalle.html", {
         "cliente": cliente,
         "puede_editar": puede_editar,
+        "ultima_visita": ultima_visita,
         "contactos": list(cliente.contactos.all()),
         "proyectos_por_estado": proyectos_por_estado,
         "kpis_cliente": kpis_cliente,
