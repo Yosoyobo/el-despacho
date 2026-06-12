@@ -5,6 +5,23 @@
 
 ---
 
+## Novedades — El Chalán entiende mejor tus @personas, #proyectos y $clientes (11 de junio de 2026)
+
+Cuando le escribes a El Chalán o le dictas una instrucción, ahora puedes
+nombrar a una persona con `@`, un proyecto con `#` (por ejemplo `#LC-0001`)
+o un cliente con `$`, y El Chalán **ya sabe exactamente a quién o a qué te
+refieres** — no te vuelve a pedir "¿cuál es el código del proyecto?" si ya lo
+mencionaste.
+
+- Esto aplica tanto en el **chat de El Chalán** como cuando **dictas una
+  instrucción** desde el Dashboard, y también cuando El Chalán te hace una
+  pregunta para aclarar y tú le respondes nombrando un `#proyecto` o `$cliente`.
+- En todas esas cajas de texto, al escribir `@`, `#` o `$` aparece una lista
+  para elegir; con **Enter** seleccionas de la lista (ya no se manda el mensaje
+  a medias por accidente).
+
+---
+
 ## Novedades — Recados con 3 pestañas, conversación en el Buzón y avisos en el ícono de la app (9 de junio de 2026)
 
 **Recados ahora tiene 3 pestañas:**

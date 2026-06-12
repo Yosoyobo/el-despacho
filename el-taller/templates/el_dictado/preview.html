@@ -50,9 +50,9 @@
                 <label class="block text-xs font-medium text-warning-800 dark:text-warning-300" for="respuesta-clarificacion">
                     Tu respuesta
                 </label>
-                <textarea id="respuesta-clarificacion" name="respuesta" rows="2" required
+                <textarea id="respuesta-clarificacion" name="respuesta" rows="2" required data-referencias
                           class="w-full rounded-lg border border-warning-300 bg-white p-2 text-sm focus:border-warning-500 focus:ring-warning-500/30 dark:border-warning-500/30 dark:bg-gray-900"
-                          placeholder="Aclara la ambigüedad…"></textarea>
+                          placeholder="Aclara la ambigüedad… (usa @persona, #LC-0001, $cliente)"></textarea>
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     <a href="{% url 'taller-home' %}" class="btn-secundario">Cancelar</a>
                     <button type="submit" class="btn-primario">Enviar respuesta</button>

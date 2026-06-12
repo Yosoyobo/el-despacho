@@ -83,6 +83,17 @@ def interpretar(
     from chalanes.voz import preludio, reglas
     prompt_completo = preludio("dictado", usuario) + SYSTEM_PROMPT + reglas() + "\n\n" + user_prompt
 
+    # Resuelve los `@usuario/#proyecto/$cliente` del dictado + clarificaciones a
+    # entidades reales para que el LLM sepa el código/nombre exactos (mismo
+    # tratamiento que el chat de El Chalán). Reusa la fuente única compartida.
+    from referencias.bloque import bloque_prompt
+    texto_referencias = " ".join(
+        [texto or ""]
+        + [str(t.get("respuesta", "")) for t in (dictado.historial_clarificaciones or [])]
+        + ([aclaracion] if aclaracion else []),
+    )
+    prompt_completo += bloque_prompt(texto_referencias)
+
     t0 = time.monotonic()
     try:
         from lib.analistas import analizar
@@ -273,6 +284,13 @@ def _reinterpretar_con_otro_chalan(*, dictado, usuario, excluir: set):
     )
     from chalanes.voz import preludio, reglas
     prompt_completo = preludio("dictado", usuario) + SYSTEM_PROMPT + reglas() + "\n\n" + user_prompt
+
+    from referencias.bloque import bloque_prompt
+    texto_referencias = " ".join(
+        [dictado.texto_crudo or ""]
+        + [str(t.get("respuesta", "")) for t in (dictado.historial_clarificaciones or [])],
+    )
+    prompt_completo += bloque_prompt(texto_referencias)
 
     try:
         from lib.analistas import analizar

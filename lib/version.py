@@ -11,8 +11,8 @@ La fecha es legible para el usuario final; la versión es el ancla técnica.
 
 from __future__ import annotations
 
-VERSION = "2026.06.34"
-VERSION_FECHA = "9 de junio de 2026"
+VERSION = "2026.06.35"
+VERSION_FECHA = "11 de junio de 2026"
 
 
 def contexto_version(request) -> dict:
