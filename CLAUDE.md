@@ -1717,6 +1717,36 @@ ingresos, PTU off, IVA 16%) y **cada gasto por separado**.
 hace falta). ISR RESICO PF usa tasa fija configurable (no la tabla progresiva
 del SAT) — suficiente para la estimación informativa.
 
+### S-Checador-V1.1 ✅ — Cronómetros en vivo + historial completo + corrección por Recados (2026-06-12, VERSION 2026.06.40)
+
+Tres mejoras a El Checador (V1 ya en prod). Decisiones por AskUserQuestion:
+**solo jornada+proyecto** (visita queda puntual, sin timer) y **aprobar/rechazar
+dentro del chat** de Recados.
+
+- **C1 — Contadores en vivo**: `checador.js::cronometro()` generalizado a
+  `[data-cronometro]` (clase, antes `#cronometro` id único) → tickea N contadores
+  desde `data-inicio` (ISO servidor). Tablero: "Jornada corriendo" (entrada sin
+  salida) + "Proyecto corriendo".
+- **C2 — Corrección → Recados** (aprobar/rechazar en el chat): FK
+  `recados.Mensaje.correccion` → `checador.SolicitudCorreccion` (migr.
+  `recados/0006`, dep `checador/0002`, FK por string). `checador.services`:
+  `_publicar_correccion_en_recados` (en solicitar, on_commit → DM solicitante↔cada
+  aprobador con la solicitud ligada al FK) + `_publicar_resolucion_en_recados` (en
+  resolver → publica la respuesta de vuelta). Best-effort, no tumban el Checador;
+  el push del Interfón se conserva. Partial `checador/_correccion_chat_estado.html`
+  (botones gated `puede_aprobar_corr`+pendiente / badge) incluido en
+  `recados/_chat_mensajes.html` (`{% if m.correccion_id %}`). Endpoint
+  `checador:correccion_resolver_chat` (POST, `_requiere_aprobar`) resuelve +
+  devuelve el partial para swap inline; idempotente. `views_chat` pasa
+  `puede_aprobar_corr` + `select_related("correccion")`.
+- **C3 — Historial completo**: selector de periodo `?periodo=semana|mes|30d`
+  (default/ inválido → semana) + sección de Visitas siempre visible (empty state);
+  las sesiones de proyecto ya se mostraban.
+- **7 tests** (`tests/taller/test_checador_v11.py`). Migración `recados/0006`
+  reescrita a mano (espurios). **Deuda**: visita sin timer (decisión Oscar); con
+  varios aprobadores la solicitud va a un DM por admin; botones viejos en otra
+  sesión abierta caen graciosamente al reintentar.
+
 ### S-UX-Dummy-Proof ✅ — 5 mejoras de UX (2026-05-21)
 
 Sprint dedicado a quitar fricción y tecnicismos del sistema para los

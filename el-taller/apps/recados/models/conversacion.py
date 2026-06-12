@@ -63,6 +63,15 @@ class Mensaje(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True, db_index=True)
     editado_en = models.DateTimeField(null=True, blank=True)
 
+    # Si el mensaje es una solicitud de corrección del Checador, apunta a ella
+    # para renderizar botones Aprobar/Rechazar en la burbuja (S-Checador-V1.1).
+    # FK por string para no acoplar recados↔checador en import-time.
+    correccion = models.ForeignKey(
+        "checador.SolicitudCorreccion",
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="mensajes_chat",
+    )
+
     class Meta:
         db_table = "recados_mensaje"
         ordering = ["creado_en"]

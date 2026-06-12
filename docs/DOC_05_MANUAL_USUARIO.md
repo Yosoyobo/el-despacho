@@ -5,6 +5,23 @@
 
 ---
 
+## Novedades — El Checador: cronómetros en vivo, historial completo y correcciones por Recados (12 de junio de 2026)
+
+Tres mejoras a El Checador:
+
+- **Cronómetros en vivo.** En el tablero del Checador ahora ves el tiempo
+  **corriendo** de tu jornada (desde que checaste entrada) y del proyecto en el
+  que tienes el cronómetro activo, actualizándose segundo a segundo.
+- **Historial más completo.** Tu historial ya no muestra solo las jornadas:
+  también ves tus **visitas** y tu **tiempo por proyecto**, y puedes cambiar el
+  periodo entre **Esta semana / Este mes / Últimos 30 días**.
+- **Correcciones que se responden por Recados.** Cuando pides ajustar una hora
+  (entrada, salida, etc.), la solicitud le llega al administrador con permiso de
+  aprobar **como una conversación en Recados**, con botones **Aprobar** y
+  **Rechazar** dentro del chat. La respuesta te llega ahí mismo.
+
+---
+
 ## Novedades — Figuras fiscales configurables, gastos del proyecto al día y IVA en proveedores (12 de junio de 2026)
 
 Tres mejoras de contabilidad pensadas para que los números cuadren con tu
@@ -1128,17 +1145,18 @@ Registra tu día de trabajo desde el celular o la computadora. La ubicación se 
 ### Tu día a día
 
 - **Entrada / Salida:** un botón grande. Marca la hora y tu ubicación en ese instante. Si el GPS no está disponible, igual se registra (marcada "sin ubicación"). Si llegas tarde según tu horario, te dice cuántos minutos de retardo.
+- **Cronómetros en vivo:** mientras tu jornada está abierta, el tablero muestra el **tiempo corriendo** de tu jornada; y si tienes un cronómetro de proyecto activo, también ese, contando segundo a segundo.
 - **Visitas:** cuando vas con un cliente o proveedor, toca "Registrar visita", elige a quién y se guarda con la ubicación.
 - **Tiempo por proyecto:** un cronómetro (Iniciar / Detener) o captura el tiempo a mano. Solo puede haber un cronómetro activo a la vez.
-- **Mi historial:** tus jornadas, visitas y sesiones de la semana, con totales de horas y retardos.
-- **¿Marcaste mal?** Desde tu historial pides una **corrección** con el motivo; un administrador la aprueba o rechaza y te avisa.
+- **Mi historial:** tus **jornadas**, **visitas** y **tiempo por proyecto**, con totales de horas y retardos. Arriba eliges el periodo: **Esta semana / Este mes / Últimos 30 días**.
+- **¿Marcaste mal?** Desde tu historial pides una **corrección** con el motivo. La solicitud le llega al administrador con permiso **por Recados** (una conversación), donde la aprueba o rechaza con botones en el chat; la respuesta te llega ahí mismo.
 - **Sin internet:** si checas sin señal, se guarda en tu dispositivo y se envía solo al recuperar conexión (verás "N pendientes de sincronizar"). El cronómetro sí necesita conexión.
 
 ### Para administradores
 
 - **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV).
 - **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo.
-- **Correcciones:** bandeja para aprobar/rechazar las solicitudes del equipo.
+- **Correcciones:** las solicitudes te llegan **por Recados** (con botones Aprobar/Rechazar en el chat) y también las tienes en la **bandeja** de correcciones. Resuelvas donde resuelvas, la respuesta se publica en la conversación del solicitante.
 
 Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar depende de los permisos que te dé el super admin.
 

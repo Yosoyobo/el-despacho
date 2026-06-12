@@ -33,6 +33,11 @@
                     Salida: <span class="font-semibold">{{ jornada.salida_en|date:"H:i" }}</span>
                     · {{ jornada.horas_trabajadas }} h trabajadas
                 </p>
+                {% else %}
+                <div class="mt-3 inline-flex flex-col items-center gap-0.5 rounded-xl bg-success-50 px-5 py-2 dark:bg-success-500/10">
+                    <span class="text-[11px] font-medium uppercase tracking-wide text-success-600 dark:text-success-400">Jornada corriendo</span>
+                    <span data-cronometro data-inicio="{{ jornada.entrada_en|date:'c' }}" class="text-title-sm font-bold tabular-nums text-success-700 dark:text-success-300">00:00:00</span>
+                </div>
                 {% endif %}
             {% else %}
                 <p class="text-sm text-gray-500 dark:text-gray-400">Aún no has checado entrada hoy.</p>
@@ -81,7 +86,8 @@
         {% if timer %}
         <div class="flex flex-col items-center gap-3 rounded-xl bg-brand-50 p-4 dark:bg-brand-500/10">
             <p class="text-xs text-gray-600 dark:text-gray-300">{{ timer.proyecto.codigo }} · {{ timer.proyecto.nombre }}</p>
-            <p id="cronometro" data-inicio="{{ timer.inicio|date:'c' }}" class="text-title-md font-bold tabular-nums text-brand-700 dark:text-brand-300">00:00:00</p>
+            <span class="text-[11px] font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">Proyecto corriendo</span>
+            <p id="cronometro" data-cronometro data-inicio="{{ timer.inicio|date:'c' }}" class="text-title-md font-bold tabular-nums text-brand-700 dark:text-brand-300">00:00:00</p>
             <form method="post" action="{% url 'checador:timer_detener' %}">
                 {% csrf_token %}
                 <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600">

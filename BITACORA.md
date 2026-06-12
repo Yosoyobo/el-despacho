@@ -5686,3 +5686,59 @@ antes del sprint (no es su alcance; CI no corre makemigrations --check).
   un command de reconciliación lo resuelve.
 - ISR RESICO PF usa una tasa fija configurable (no la tabla progresiva del SAT).
   Suficiente para la estimación informativa.
+
+---
+
+# BITÁCORA — S-Checador-V1.1 (2026-06-12, VERSION 2026.06.40)
+
+Tres mejoras a El Checador pedidas por Oscar (sobre la screenshot del tablero).
+Decisiones por AskUserQuestion: **solo jornada + proyecto** (la visita queda
+puntual, sin timer) y **aprobar/rechazar dentro del chat** de Recados.
+
+## C1 — Contadores en vivo (jornada + proyecto)
+- `static/js/checador.js`: `cronometro()` generalizado de `#cronometro` (id único)
+  a `[data-cronometro]` (clase) → tickea N contadores desde su `data-inicio` (ISO
+  del servidor).
+- `tablero.html`: contador "Jornada corriendo" cuando hay entrada y no salida
+  (`data-cronometro data-inicio=entrada_en|date:'c'`); al de proyecto se le sumó
+  `data-cronometro` + etiqueta "Proyecto corriendo".
+
+## C2 — Corrección → Recados (aprobar/rechazar en el chat)
+- `recados.Mensaje.correccion` FK → `checador.SolicitudCorreccion` (migr.
+  `recados/0006`, depende de `checador/0002`). FK por string (sin acoplar import).
+- `checador.services`: `_publicar_correccion_en_recados(sol)` (en `solicitar_correccion`,
+  on_commit) abre DM solicitante↔cada admin con `aprobar_correcciones` y publica
+  la solicitud ligada al FK; `_publicar_resolucion_en_recados(sol, aprobar)` (en
+  `resolver_correccion`) publica la respuesta de vuelta en las conversaciones.
+  Ambos best-effort (try/except, nunca tumban el Checador). El push del Interfón
+  a los aprobadores ya existía y se conserva.
+- Partial `checador/_correccion_chat_estado.html`: botones Aprobar/Rechazar
+  (gated `puede_aprobar_corr` + estado pendiente) o badge. Incluido en
+  `recados/_chat_mensajes.html` (ambas burbujas) por `{% if m.correccion_id %}`.
+- Endpoint `checador:correccion_resolver_chat` (`_requiere_aprobar`, POST) →
+  resolver + devuelve el partial para swap inline (HTMX `outerHTML`); idempotente
+  si otro admin la resolvió. `views_chat` pasa `puede_aprobar_corr` +
+  `select_related("correccion")` en conversación y polling.
+
+## C3 — Historial completo
+- `historial` view: selector de periodo (`?periodo=semana|mes|30d`, default semana,
+  inválido→semana) vía `_rango_historial`. Template: segmented control + subtítulo
+  dinámico + sección de Visitas **siempre visible** (empty state cuando no hay).
+  Las sesiones de proyecto ya se mostraban; ahora todo es navegable por periodo.
+
+## Tests
+- `tests/taller/test_checador_v11.py` (7): cronómetro de jornada en tablero;
+  historial periodo mes + secciones + periodo inválido→semana; solicitar publica
+  en Recados (DM correcto + FK); resolver-chat aprueba (aplica valor + publica
+  respuesta); gating sin permiso. Existentes del Checador verdes. Ruff limpio.
+- Migración `recados/0006` reescrita a mano (makemigrations generó espurios de
+  índices/BigAutoField).
+
+## Deuda diseñada
+- Visita sigue siendo puntual (sin timer) — decisión de Oscar.
+- Si hay varios aprobadores, la solicitud se publica en un DM por admin; al
+  resolver, la respuesta va a todas esas conversaciones. Para LC (1-2 aprobadores)
+  es simple y correcto.
+- Los botones en el chat se reemplazan inline al resolver; en la vista de otro
+  admin que tenía la conversación abierta, los botones viejos siguen hasta el
+  próximo refresh (al reintentar, el endpoint cae graciosamente al estado actual).

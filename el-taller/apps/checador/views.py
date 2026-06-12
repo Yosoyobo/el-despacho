@@ -236,12 +236,30 @@ def _parse_dt(valor):
 
 # ───────────────────────── historial personal (E4) ─────────────────────────
 
+_PERIODOS_HISTORIAL = {
+    "semana": ("Esta semana", None),     # lunes de esta semana → hoy
+    "mes": ("Este mes", None),           # día 1 del mes → hoy
+    "30d": ("Últimos 30 días", 30),
+}
+
+
+def _rango_historial(periodo: str, hoy):
+    if periodo == "mes":
+        return hoy.replace(day=1)
+    if periodo == "30d":
+        return hoy - datetime.timedelta(days=29)
+    return hoy - datetime.timedelta(days=hoy.weekday())  # semana (default)
+
+
 @login_required
 @_requiere_checar
 def historial(request):
     from .models import SesionProyecto
     hoy = timezone.localdate()
-    desde = hoy - datetime.timedelta(days=hoy.weekday())  # lunes de esta semana
+    periodo = request.GET.get("periodo", "semana")
+    if periodo not in _PERIODOS_HISTORIAL:
+        periodo = "semana"
+    desde = _rango_historial(periodo, hoy)
     jornadas = list(
         Jornada.objects.filter(usuario=request.user, fecha__gte=desde, fecha__lte=hoy).order_by("-fecha"),
     )
@@ -260,6 +278,9 @@ def historial(request):
     return render(request, "checador/historial.html", {
         "desde": desde,
         "hoy": hoy,
+        "periodo": periodo,
+        "periodo_label": _PERIODOS_HISTORIAL[periodo][0],
+        "periodos": [(slug, etq) for slug, (etq, _) in _PERIODOS_HISTORIAL.items()],
         "jornadas": jornadas,
         "visitas": visitas,
         "sesiones": sesiones,
@@ -365,6 +386,27 @@ def correccion_resolver(request, pk: int):
         from django.http import HttpResponse
         return HttpResponse(status=204, headers={"HX-Redirect": "/checador/correcciones/"})
     return redirect("checador:correcciones")
+
+
+@login_required
+@_requiere_aprobar
+@require_POST
+def correccion_resolver_chat(request, pk: int):
+    """Aprueba/rechaza una corrección DESDE el chat de Recados. Devuelve el
+    partial de estado para swap inline en la burbuja (HTMX outerHTML)."""
+    sol = get_object_or_404(SolicitudCorreccion, pk=pk)
+    mensaje_id = request.POST.get("mensaje_id", "")
+    if sol.estado == "pendiente":
+        import contextlib
+        aprobar = request.POST.get("decision") == "aprobar"
+        comentario = (request.POST.get("comentario") or "").strip()
+        # Si otro admin la resolvió en paralelo, caemos al render del estado actual.
+        with contextlib.suppress(ValueError):
+            services.resolver_correccion(sol, admin=request.user, aprobar=aprobar, comentario=comentario)
+        sol.refresh_from_db()
+    return render(request, "checador/_correccion_chat_estado.html", {
+        "sol": sol, "mensaje_id": mensaje_id, "puede_aprobar_corr": True,
+    })
 
 
 # ───────────────────────── reporte de equipo + export (E6) ─────────────────────────

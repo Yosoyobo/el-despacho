@@ -2,9 +2,17 @@
 {% block title %}Mi historial — Checador{% endblock %}
 
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Mi historial" subtitulo="Esta semana" back_url="/checador/" back_label="Checador" %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Mi historial" subtitulo=periodo_label back_url="/checador/" back_label="Checador" %}
 
 <div class="mx-auto grid max-w-4xl grid-cols-1 gap-6">
+
+    {# ── Selector de periodo ────────────────────────────────────── #}
+    <div class="inline-flex w-fit rounded-lg border border-gray-200 bg-white p-0.5 text-sm shadow-theme-xs dark:border-gray-800 dark:bg-gray-900">
+        {% for slug, etq in periodos %}
+        <a href="?periodo={{ slug }}"
+           class="rounded-md px-3 py-1.5 font-medium transition {% if periodo == slug %}bg-brand-500 text-white{% else %}text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ etq }}</a>
+        {% endfor %}
+    </div>
 
     {% if puede_aprobar or puede_ver_equipo %}
     <div class="flex flex-wrap gap-2">
@@ -139,9 +147,9 @@
     {% endif %}
 
     {# ── Visitas ────────────────────────────────────────────────── #}
-    {% if visitas %}
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-100">Visitas</h2>
+        {% if visitas %}
         <ul class="space-y-2">
             {% for v in visitas %}
             <li class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800/50">
@@ -153,7 +161,9 @@
             </li>
             {% endfor %}
         </ul>
+        {% else %}
+        {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin visitas" descripcion="No registraste visitas en este periodo." icono="search" %}
+        {% endif %}
     </section>
-    {% endif %}
 </div>
 {% endblock %}

@@ -26,7 +26,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from cuentas.models.usuario import Usuario
-from lib.permisos import puede
+from lib.permisos import puede, puede_aprobar_correcciones_checador
 
 from . import services_chat
 from .models import Conversacion
@@ -87,7 +87,7 @@ def conversacion(request, pk: int):
         return r
     conv = _conv_o_404(request, pk)
     mensajes = list(
-        conv.mensajes.select_related("autor").prefetch_related("adjuntos").order_by("creado_en")
+        conv.mensajes.select_related("autor", "correccion").prefetch_related("adjuntos").order_by("creado_en")
     )
     if mensajes:
         services_chat.marcar_leido_hasta(usuario=request.user, conversacion=conv, mensaje_id=mensajes[-1].pk)
@@ -103,6 +103,7 @@ def conversacion(request, pk: int):
         "activa_pk": conv.pk,
         "puede_crear": puede(request.user, "recados", "crear"),
         "puede_adjuntar": puede(request.user, "recados", "adjuntar_drive"),
+        "puede_aprobar_corr": puede_aprobar_correcciones_checador(request.user),
     })
 
 
@@ -115,7 +116,7 @@ def partial_mensajes(request, pk: int):
         return r
     conv = _conv_o_404(request, pk)
     desde = int(request.GET.get("desde_id") or 0)
-    qs = conv.mensajes.select_related("autor").prefetch_related("adjuntos").order_by("creado_en")
+    qs = conv.mensajes.select_related("autor", "correccion").prefetch_related("adjuntos").order_by("creado_en")
     if desde:
         qs = qs.filter(id__gt=desde)
     mensajes = list(qs)
@@ -125,6 +126,7 @@ def partial_mensajes(request, pk: int):
     return render(request, "recados/_chat_mensajes.html", {
         "mensajes": mensajes, "conv": conv, "ultimo_id": ultimo_id,
         "fragmento": True,
+        "puede_aprobar_corr": puede_aprobar_correcciones_checador(request.user),
     })
 
 

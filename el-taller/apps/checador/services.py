@@ -288,7 +288,54 @@ def solicitar_correccion(usuario, *, tipo: str, valor_propuesto, motivo: str,
             _push(admin, "Corrección de checada pendiente",
                   f"{quien} pide corregir su {sol.get_tipo_display().lower()}.",
                   url="/checador/correcciones/")
+    _publicar_correccion_en_recados(sol)
     return sol
+
+
+def _publicar_correccion_en_recados(sol: SolicitudCorreccion) -> None:
+    """Abre/usa una conversación directa (solicitante ↔ cada admin con el
+    privilegio) y publica la solicitud con el FK para los botones en la
+    burbuja. Best-effort: nunca tumba la solicitud."""
+    def _post():
+        try:
+            from apps.recados import services_chat
+            quien = getattr(sol.usuario, "nombre_completo", "") or getattr(sol.usuario, "email", "Alguien")
+            from django.utils import timezone as _tz
+            valor = _tz.localtime(sol.valor_propuesto).strftime("%d/%m %H:%M")
+            cuerpo = (f"🕐 Solicitud de corrección — {sol.get_tipo_display()} → {valor}\n"
+                      f"Motivo: {sol.motivo}")
+            for admin in _aprobadores():
+                if admin.pk == sol.usuario_id:
+                    continue
+                conv = services_chat.obtener_o_crear_directa(sol.usuario, admin)
+                msg = services_chat.enviar_mensaje(conversacion=conv, autor=sol.usuario, cuerpo=cuerpo)
+                msg.correccion = sol
+                msg.save(update_fields=["correccion"])
+            _ = quien  # nombre disponible si se quiere enriquecer el cuerpo
+        except Exception:  # noqa: BLE001 — Recados no debe tumbar el Checador
+            pass
+
+    transaction.on_commit(_post)
+
+
+def _publicar_resolucion_en_recados(sol: SolicitudCorreccion, aprobar: bool) -> None:
+    """Publica la respuesta del admin en las conversaciones que llevan esta
+    corrección, para que el solicitante la vea en Recados. Best-effort."""
+    def _post():
+        try:
+            from apps.recados import services_chat
+            estado = "aprobada ✅" if aprobar else "rechazada ❌"
+            cuerpo = f"Tu corrección de {sol.get_tipo_display().lower()} fue {estado}."
+            if sol.comentario_admin:
+                cuerpo += f"\n{sol.comentario_admin}"
+            convs = {m.conversacion_id: m.conversacion for m in sol.mensajes_chat.select_related("conversacion").all()}
+            for conv in convs.values():
+                services_chat.enviar_mensaje(
+                    conversacion=conv, autor=sol.resuelto_por, cuerpo=cuerpo, permitir_vacio=True)
+        except Exception:  # noqa: BLE001
+            pass
+
+    transaction.on_commit(_post)
 
 
 def _aplicar_correccion(sol: SolicitudCorreccion) -> None:
@@ -334,6 +381,7 @@ def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
     _push(solicitud.usuario, f"Tu corrección fue {estado_txt}",
           f"La corrección de tu {solicitud.get_tipo_display().lower()} fue {estado_txt}.",
           url="/checador/historial/")
+    _publicar_resolucion_en_recados(solicitud, aprobar)
     return solicitud
 
 

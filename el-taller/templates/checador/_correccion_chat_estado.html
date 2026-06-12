@@ -1,0 +1,32 @@
+{% comment %}
+Estado de una solicitud de corrección dentro de una burbuja del chat.
+Pendiente + puede_aprobar_corr → botones Aprobar/Rechazar (hx-post, swap inline).
+Resuelta → badge. Reusado por _chat_mensajes.html y el endpoint resolver-chat.
+Params: sol (SolicitudCorreccion), mensaje_id, puede_aprobar_corr.
+{% endcomment %}
+<div id="corr-msg-{{ mensaje_id }}" class="mt-2">
+    {% if sol.estado == "pendiente" %}
+        {% if puede_aprobar_corr %}
+        <div class="flex gap-2">
+            <form hx-post="{% url 'checador:correccion_resolver_chat' sol.pk %}" hx-target="#corr-msg-{{ mensaje_id }}" hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="mensaje_id" value="{{ mensaje_id }}">
+                <input type="hidden" name="decision" value="aprobar">
+                <button type="submit" class="rounded-lg bg-success-500 px-3 py-1 text-xs font-semibold text-white hover:bg-success-600">Aprobar</button>
+            </form>
+            <form hx-post="{% url 'checador:correccion_resolver_chat' sol.pk %}" hx-target="#corr-msg-{{ mensaje_id }}" hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="mensaje_id" value="{{ mensaje_id }}">
+                <input type="hidden" name="decision" value="rechazar">
+                <button type="submit" class="rounded-lg border border-error-300 px-3 py-1 text-xs font-semibold text-error-600 hover:bg-error-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10">Rechazar</button>
+            </form>
+        </div>
+        {% else %}
+        <span class="inline-block rounded-full bg-warning-100 px-2 py-0.5 text-[11px] font-medium text-warning-700 dark:bg-warning-500/15 dark:text-warning-300">Pendiente de aprobación</span>
+        {% endif %}
+    {% elif sol.estado == "aprobada" %}
+        <span class="inline-block rounded-full bg-success-100 px-2 py-0.5 text-[11px] font-medium text-success-700 dark:bg-success-500/15 dark:text-success-300">Aprobada ✅</span>
+    {% else %}
+        <span class="inline-block rounded-full bg-error-100 px-2 py-0.5 text-[11px] font-medium text-error-700 dark:bg-error-500/15 dark:text-error-300">Rechazada ❌</span>
+    {% endif %}
+</div>
