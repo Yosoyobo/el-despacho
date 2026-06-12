@@ -57,6 +57,10 @@
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18M3 12h18M3 17h18" stroke-linecap="round"/><circle cx="6" cy="7" r="1.2" fill="currentColor"/><circle cx="9" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg>
             Estados de proyecto
         </a>
+        <a href="{% url 'estados-tarea-lista' %}" class="menu-item {% if '/catalogos/estados-tarea' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12M4 12h12M4 18h8" stroke-linecap="round"/><path d="m17 15 2 2 3.5-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Estados de tarea
+        </a>
         <a href="{% url 'estados-buzon-lista' %}" class="menu-item {% if '/catalogos/estados-buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v12H5.2L4 17.2V4Z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/><circle cx="15" cy="10" r="1.2" fill="currentColor"/></svg>
             Estados del Buzón

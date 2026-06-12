@@ -18,5 +18,8 @@ class LosProyectosConfig(AppConfig):
         def _invalidar(sender, **kwargs):
             invalidar_mapa_estados()
 
-        post_save.connect(_invalidar, sender=EstadoProyecto, dispatch_uid="proyectos_estado_cache")
-        post_delete.connect(_invalidar, sender=EstadoProyecto, dispatch_uid="proyectos_estado_cache_del")
+        # weak=False (fix V6): con el default (weak=True) la closure local se
+        # garbage-collectea al salir de ready() y la señal muere en silencio —
+        # el cache de 60s disimulaba el bug en prod.
+        post_save.connect(_invalidar, sender=EstadoProyecto, dispatch_uid="proyectos_estado_cache", weak=False)
+        post_delete.connect(_invalidar, sender=EstadoProyecto, dispatch_uid="proyectos_estado_cache_del", weak=False)

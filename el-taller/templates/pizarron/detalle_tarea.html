@@ -1,11 +1,13 @@
 {% extends "base.html" %}
+{% load tareas_extras %}
 {% block title %}{{ tarea.titulo }} — Tareas{% endblock %}
 {% block contenido %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=tarea.titulo subtitulo=tarea.proyecto.codigo|add:" · "|add:tarea.proyecto.nombre breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
-    {% include "_componentes_tailadmin/_badge_estado.html" with estado=tarea.estado etiqueta=tarea.get_estado_display %}
+    <span class="badge badge-hex" style="--ec: {{ tarea|color_estado_tarea_de }}">{{ tarea|estado_visible_tarea }}</span>
     <span class="badge {% if tarea.prioridad == 'alta' %}badge-error{% elif tarea.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">Prioridad: {{ tarea.get_prioridad_display }}</span>
+    {% if tarea.tipo and tarea.tipo != 'tarea' %}<span class="badge badge-gray">{{ tarea.tipo|tipo_tarea_emoji }} {{ tarea.tipo|tipo_tarea_label }}</span>{% endif %}
 </div>
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">

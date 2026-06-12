@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Estados de tarea — Catálogos{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Catálogos" "" "Estados de tarea" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Catálogos · Estados de tarea</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Estados de tarea</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Renombra los base o agrega tus propios estados. «Atrasada» no vive aquí: se calcula sola cuando una tarea vence sin cerrarse.</p>
+    </div>
+    <a href="{% url 'estados-tarea-nuevo' %}" class="btn-primario">+ Nuevo estado</a>
+</header>
+
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3 text-left">Nombre</th>
+                <th class="px-5 py-3 text-left">Slug</th>
+                <th class="px-5 py-3 text-left">Color</th>
+                <th class="px-5 py-3 text-right">Orden</th>
+                <th class="px-5 py-3 text-center">Terminal</th>
+                <th class="px-5 py-3 text-center">Activo</th>
+                <th class="px-5 py-3 text-right">Tareas</th>
+                <th class="px-5 py-3 text-right">—</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for e in estados %}
+            <tr>
+                <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ e.label }} {% if e.sistema %}<span class="ml-1 text-[10px] uppercase tracking-wider text-gray-400">sistema</span>{% endif %}</td>
+                <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{{ e.slug }}</td>
+                <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ e.color }}">{{ e.label }}</span> <span class="ml-1 font-mono text-[10px] uppercase text-gray-400 dark:text-gray-500">{{ e.color }}</span></td>
+                <td class="px-5 py-3 text-right tabular-nums">{{ e.orden }}</td>
+                <td class="px-5 py-3 text-center">{% if e.terminal %}<span class="badge badge-gray">Sí</span>{% else %}—{% endif %}</td>
+                <td class="px-5 py-3 text-center">{% if e.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}</td>
+                <td class="px-5 py-3 text-right tabular-nums">{{ e.tareas_usando }}</td>
+                <td class="px-5 py-3 text-right">
+                    <a href="{% url 'estados-tarea-editar' e.slug %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                    <form method="post" action="{% url 'estados-tarea-toggle' e.slug %}" class="ml-2 inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-xs font-medium text-gray-500 hover:underline dark:text-gray-400" title="{% if e.activo %}Ocúltalo del dropdown (las tareas que lo usan lo conservan){% else %}Vuélvelo a mostrar en el dropdown{% endif %}">{% if e.activo %}Ocultar{% else %}Mostrar{% endif %}</button>
+                    </form>
+                    {% if not e.sistema and e.tareas_usando == 0 %}
+                    <form method="post" action="{% url 'estados-tarea-borrar' e.slug %}" class="ml-2 inline" onsubmit="return confirm('¿Borrar el estado «{{ e.label|escapejs }}»?');">
+                        {% csrf_token %}
+                        <button type="submit" class="text-xs font-medium text-error-600 hover:underline dark:text-error-400">Borrar</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin estados configurados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

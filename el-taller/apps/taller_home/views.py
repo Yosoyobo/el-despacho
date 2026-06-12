@@ -197,8 +197,8 @@ def _mis_tareas(user):
 
 
 def _proximos_eventos(user):
-    """Entregas de proyectos + tareas con fecha, desde hoy. Excluye tareas
-    bloqueadas (la nota: el contador '+N' no cuenta Bloqueados)."""
+    """Entregas de proyectos + tareas con fecha, desde hoy. (V6: el estado
+    `bloqueada` ya no existe — sin exclusiones especiales.)"""
     from apps.calendario.services import eventos_por_dia
     hoy = date.today()
     fin = hoy + timedelta(days=90)
@@ -206,8 +206,6 @@ def _proximos_eventos(user):
     items = []
     for f in sorted(evmap.keys()):
         for ev in evmap[f]:
-            if ev.get("tipo") == "tarea" and ev.get("estado") == "bloqueada":
-                continue  # la nota: el contador '+N' no cuenta Bloqueados
             items.append({**ev, "fecha": f})
     return items[:4], max(0, len(items) - 4)
 

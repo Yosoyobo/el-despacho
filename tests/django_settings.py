@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "apps.los_chalanes.apps.LosChalanesConfig",
     "apps.centros_costo.apps.CentrosCostoConfig",
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
+    "apps.estados_tarea.apps.EstadosTareaConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
     "apps.tipos_buzon.apps.TiposBuzonConfig",
     "apps.checador_admin.apps.CheckadorAdminConfig",

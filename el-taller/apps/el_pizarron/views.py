@@ -47,8 +47,12 @@ def lista_tareas(request):
     Visibilidad: admins (super_admin/dueño) y contador ven todas; el diseñador
     ve sólo las suyas o las de proyectos donde está asignado.
     """
-    from apps.el_pizarron.models.tarea import ESTADOS_TAREA
+    from apps.el_pizarron.models.estado_tarea import (
+        EstadoTarea,
+        slugs_terminales_tarea,
+    )
     from django.db.models import Q
+    from django.utils import timezone
 
     user = request.user
     ve_todo = es_admin(user) or puede_ver_finanzas(user)
@@ -58,13 +62,17 @@ def lista_tareas(request):
             Q(asignada_a=user) | Q(proyecto__asignaciones__usuario=user)
         ).distinct()
 
+    # Estados dinámicos (configurables en Gerencia) — V6 Bloque 1.
+    estados = [(e.slug, e.label) for e in EstadoTarea.objects.filter(activo=True)]
+    terminales = slugs_terminales_tarea()
+
     qs = visibles
     estado = (request.GET.get("estado") or "").strip()
-    if estado in dict(ESTADOS_TAREA):
+    if estado in {s for s, _ in estados}:
         qs = qs.filter(estado=estado)
     elif not estado:
-        # Por defecto ocultamos las completadas (se ven con el filtro explícito).
-        qs = qs.exclude(estado="completada")
+        # Por defecto ocultamos las cerradas (se ven con el filtro explícito).
+        qs = qs.exclude(estado__in=terminales)
 
     solo_mias = request.GET.get("asignado") == "mio"
     if solo_mias:
@@ -72,15 +80,17 @@ def lista_tareas(request):
 
     qs = qs.order_by("fecha_compromiso", "-creado_en")
 
+    hoy = timezone.localdate()
     kpis = {
         "pendientes": visibles.filter(estado="pendiente").count(),
         "en_curso": visibles.filter(estado="en_curso").count(),
-        "bloqueadas": visibles.filter(estado="bloqueada").count(),
-        "mias": visibles.filter(asignada_a=user).exclude(estado="completada").count(),
+        # "Atrasadas" es derivado: compromiso vencido sin estado terminal.
+        "atrasadas": visibles.filter(fecha_compromiso__lt=hoy).exclude(estado__in=terminales).count(),
+        "mias": visibles.filter(asignada_a=user).exclude(estado__in=terminales).count(),
     }
     return render(request, "pizarron/lista.html", {
         "tareas": list(qs[:300]),
-        "estados": ESTADOS_TAREA,
+        "estados": estados,
         "estado_filtro": estado,
         "solo_mias": solo_mias,
         "kpis": kpis,

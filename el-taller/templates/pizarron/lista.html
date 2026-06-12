@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers %}
+{% load forms_helpers tareas_extras %}
 {% block title %}Tareas — El Taller{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Tareas" as breadcrumb_items %}
@@ -9,7 +9,7 @@
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Pendientes" valor=kpis.pendientes color="brand" %}
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="En curso" valor=kpis.en_curso color="blue-light" %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Bloqueadas" valor=kpis.bloqueadas color="error" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Atrasadas" valor=kpis.atrasadas color="warning" %}
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Mías abiertas" valor=kpis.mias color="warning" %}
 </div>
 
@@ -42,11 +42,7 @@
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.proyecto.codigo }} · {{ t.proyecto.nombre|truncatechars:30 }}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                     <td class="px-5 py-3">
-                        <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium
-                            {% if t.estado == 'completada' %}bg-success-100 text-success-700 dark:bg-success-500/15 dark:text-success-300
-                            {% elif t.estado == 'bloqueada' %}bg-error-100 text-error-700 dark:bg-error-500/15 dark:text-error-300
-                            {% elif t.estado == 'en_curso' %}bg-blue-light-100 text-blue-light-700 dark:bg-blue-light-500/15 dark:text-blue-light-300
-                            {% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300{% endif %}">{{ t.get_estado_display }}</span>
+                        <span class="badge badge-hex" style="--ec: {{ t|color_estado_tarea_de }}">{{ t|estado_visible_tarea }}</span>
                     </td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.fecha_compromiso %}{{ t.fecha_compromiso|date:"d M Y" }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                 </tr>

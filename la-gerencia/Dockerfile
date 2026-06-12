@@ -50,6 +50,9 @@ COPY el-taller/apps/contaduria/ /app/apps/contaduria/
 # S-Checador: Gerencia registra apps.checador para aplicar sus migraciones
 # en prod (única que corre migrate) + CRUD de horarios y correcciones (E5).
 COPY el-taller/apps/checador/ /app/apps/checador/
+# S-LC-Feedback-V6 Bloque 1: EstadoTarea (apps.el_pizarron) para el CRUD
+# admin de Estados de tarea + aplicar sus migraciones (Bug A/B §14).
+COPY el-taller/apps/el_pizarron/ /app/apps/el_pizarron/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ modo|capfirst }} estado de tarea{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Estados de tarea" "/catalogos/estados-tarea/" modo|capfirst as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Catálogos · Estados de tarea</p>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} estado{% if estado %} · {{ estado.label }}{% endif %}</h1>
+</header>
+
+<form method="post" class="max-w-xl">
+    {% csrf_token %}
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="grid grid-cols-1 gap-5">
+            {% for f in form %}
+                {% if f.name == "color" %}
+                    {% include "_componentes_tailadmin/_campo_color_hex.html" with campo=f %}
+                {% else %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if estado.sistema %}
+        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Este es un estado del sistema: puedes renombrarlo y reordenarlo, pero no se puede borrar.</p>
+        {% endif %}
+    </section>
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <a href="{% url 'estados-tarea-lista' %}" class="btn-secundario">Cancelar</a>
+        <button type="submit" class="btn-primario">Guardar</button>
+    </div>
+</form>
+{% endblock %}

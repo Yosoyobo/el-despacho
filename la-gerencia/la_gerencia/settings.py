@@ -67,6 +67,11 @@ INSTALLED_APPS = [
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
     "apps.tipos_buzon.apps.TiposBuzonConfig",
+    # S-LC-Feedback-V6 Bloque 1: EstadoTarea vive en El Taller
+    # (apps.el_pizarron); Gerencia lo registra para migrar la tabla
+    # (Bug B §14) y para el CRUD admin de Estados de tarea.
+    "apps.el_pizarron.apps.ElPizarronConfig",
+    "apps.estados_tarea.apps.EstadosTareaConfig",
     # S-Checador E5: CRUD de horarios + bandeja de correcciones (admin).
     "apps.checador_admin.apps.CheckadorAdminConfig",
     # S2b.cotizaciones-v1 + S2b.facturacion-v1 + S3.contaduria-v1/v2:

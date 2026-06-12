@@ -194,9 +194,14 @@ def _kpi_tareas_vencidas_equipo(user) -> dict:
 
 
 def _kpi_tareas_bloqueadas(user) -> dict:
-    """Tareas en `bloqueada` — cuellos de botella visibles."""
+    """Tareas atrasadas (derivado V6: compromiso vencido sin estado terminal).
+    El estado `bloqueada` se eliminó — esto reemplaza su semántica."""
     from apps.el_pizarron.models import Tarea
-    return _resultado(Tarea.objects.filter(estado="bloqueada").count())
+    from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
+    n = Tarea.objects.filter(fecha_compromiso__lt=_hoy()).exclude(
+        estado__in=slugs_terminales_tarea()
+    ).count()
+    return _resultado(n, nota=("alerta" if n > 0 else ""))
 
 
 def _kpi_tareas_sin_asignar(user) -> dict:
@@ -566,7 +571,9 @@ KPIS: list[KPI] = [
         "tareas", ROLES_TODOS, _kpi_mis_tareas_proximas),
     KPI("tareas-vencidas-equipo", "Tareas vencidas del equipo", "Vista cross-equipo para admins.",
         "tareas", ROLES_ADMIN, _kpi_tareas_vencidas_equipo),
-    KPI("tareas-bloqueadas", "Tareas bloqueadas", "Cuellos de botella visibles.",
+    # Slug preservado por compatibilidad con PreferenciaKPI; semántica V6 =
+    # atrasadas (el estado `bloqueada` ya no existe).
+    KPI("tareas-bloqueadas", "Tareas atrasadas", "Compromiso vencido sin cerrar.",
         "tareas", ROLES_TODOS, _kpi_tareas_bloqueadas),
     KPI("tareas-sin-asignar", "Tareas sin asignar", "Tareas activas sin owner.",
         "tareas", ROLES_ADMIN, _kpi_tareas_sin_asignar),
