@@ -111,3 +111,38 @@
   .menu-item-active   { @apply bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400; }
   .menu-item-inactive { @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5; }
 }
+
+/* ── V6 Bloque 8: PWA feel nativo (iOS/Android) ──────────────────────────── */
+@layer base {
+  /* iOS reescala texto en landscape y descuadra pantallas. */
+  html { -webkit-text-size-adjust: 100%; }
+  /* Sin flash gris al tocar + sin rebote/pull-to-refresh que delata browser. */
+  body {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+  /* El chrome de la app (menú, botones, dropdowns) no se selecciona ni abre
+     el callout de iOS — el CONTENIDO sí sigue seleccionable. */
+  .menu-item, button, [data-dropdown-trigger], summary {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Momentum scroll en contenedores con overflow (tablas, modales). */
+  .overflow-x-auto, .overflow-y-auto { -webkit-overflow-scrolling: touch; }
+  /* iOS hace ZOOM automático al enfocar inputs con fuente <16px — el delator
+     más obvio de PWA. En móvil, todo campo de captura usa mínimo 16px. */
+  @media (max-width: 640px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select, textarea { font-size: 16px !important; }
+  }
+}
+
+/* V6 Bloque 8B: 100vh en iOS Safari incluye la barra del navegador y corta o
+   empuja el contenido ("unas pantallas escalan y otras no"). dvh es dinámico.
+   Override progresivo de la utility — fuera de @layer y al final del archivo
+   para ganar por orden; los browsers sin dvh la ignoran y conservan 100vh. */
+@supports (min-height: 100dvh) {
+  .min-h-screen { min-height: 100dvh; }
+  .h-screen { height: 100dvh; }
+}
