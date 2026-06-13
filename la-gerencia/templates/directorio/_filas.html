@@ -9,7 +9,12 @@
         </div>
     </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ u.email }}</td>
-    <td class="px-5 py-3"><span class="badge badge-brand">{{ u.get_rol_display }}</span></td>
+    <td class="px-5 py-3">
+        <div class="flex flex-wrap items-center gap-1">
+            <span class="badge badge-brand">{{ u.get_rol_display }}</span>
+            {% for r in u.roles_extra_nombres %}<span class="badge badge-gray">{{ r }}</span>{% endfor %}
+        </div>
+    </td>
     <td class="px-5 py-3">
         {% if u.ia_efectivo == 'auto' %}
             <span class="badge badge-gray">Auto</span>

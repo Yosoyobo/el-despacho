@@ -62,9 +62,10 @@ def sidebar_orden(request):
         return {"sidebar_orden": {}}
     try:
         from cuentas.models.sidebar_orden import SidebarOrden, SidebarOrdenUsuario
-        mapa = {f.slug: {"orden": f.orden, "oculto": f.oculto} for f in SidebarOrden.objects.all()}
+        mapa = {f.slug: {"orden": f.orden, "oculto": f.oculto, "grupo": ""} for f in SidebarOrden.objects.all()}
         for f in SidebarOrdenUsuario.objects.filter(usuario=user):
-            mapa[f.slug] = {"orden": f.orden, "oculto": f.oculto}
+            # V9: el override del usuario también trae su carpeta/grupo.
+            mapa[f.slug] = {"orden": f.orden, "oculto": f.oculto, "grupo": f.grupo}
         return {"sidebar_orden": mapa}
     except Exception:
         return {"sidebar_orden": {}}

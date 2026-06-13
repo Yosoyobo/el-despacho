@@ -6,6 +6,18 @@
 
 <div class="mx-auto grid max-w-4xl grid-cols-1 gap-6">
 
+    {# ── Horario declarado de la semana (visible a todos) ───────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-100">Horario declarado de la semana</h2>
+        {% include "checador/_horario_semana.html" with horario_semana=horario_semana %}
+    </section>
+
+    {% if not ver_horas %}
+    <section class="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
+        🔒 Las horas trabajadas de {{ persona.nombre_completo|default:persona.email }} solo las ve su jefe directo.
+    </section>
+    {% else %}
+
     <p class="text-sm text-gray-500 dark:text-gray-400">
         {{ desde|date:"j N Y" }} – {{ hasta|date:"j N Y" }} ·
         {{ totales.jornada_horas }} h jornada · {{ totales.sesiones_horas }} h proyecto ·
@@ -79,5 +91,6 @@
         {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin visitas" descripcion="No hay visitas en el periodo." icono="search" %}
         {% endif %}
     </section>
+    {% endif %}
 </div>
 {% endblock %}

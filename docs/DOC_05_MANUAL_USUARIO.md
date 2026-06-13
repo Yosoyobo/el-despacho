@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — Menú con carpetas, horas privadas y ficha más completa (12 de junio de 2026)
+
+- **Carpetas en tu menú.** En **Personalizar menú** (abajo del menú lateral)
+  cada item tiene ahora un campo **"Carpeta…"**. Escribe el mismo nombre de
+  carpeta (ej. *"Mi día"*, *"Ventas"*) en varios items y se **agrupan juntos**
+  en una sección que se **abre y cierra** en tu menú. Déjalo vacío para que el
+  item quede suelto. Solo cambia *tu* menú, no el de los demás.
+- **Horas trabajadas privadas.** En la ficha de un compañero (Equipo) ahora se
+  ve el **horario de la semana** de cualquiera (días y bloques de horas), pero
+  las **horas realmente trabajadas** solo las ve **su jefe directo** (y el Super
+  Admin). El reporte del Checador respeta lo mismo.
+- **Balance del mes corregido.** Las **horas esperadas** del mes ahora se
+  calculan solo con los **días que cada quien tiene declarados** (ya no suma de
+  más días que la persona no trabaja).
+- **Ficha del usuario más completa.** La ficha del equipo se rediseñó (datos,
+  contacto, **todos los roles**, horario de la semana) y los **roles** ahora sí
+  aparecen tanto en la ficha del Taller como en El Directorio de La Gerencia.
+- **El Chalán en el celular.** En el chat de **El Chalán**, en móvil, el botón
+  **☰** arriba abre la lista de conversaciones para **abrir o crear** chats.
+- **"Nuevo cliente" en el inicio.** Se agregó el botón **Nuevo cliente** a las
+  acciones rápidas del Dashboard.
+- **Toggles arreglados.** Los interruptores de **"Incluir en el cálculo"** y de
+  **IVA** en los proyectos ya se ven y funcionan correctamente.
+- **El logo girando** solo aparece cuando haces una **acción** (enviar, guardar,
+  cambiar de sección) — ya no al escribir.
+
 ## Novedades — Ver como otro usuario, foto de perfil y gastos más claros (12 de junio de 2026)
 
 - **Ver como otro usuario (solo Super Admin).** En la ficha de un compañero

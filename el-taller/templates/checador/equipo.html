@@ -49,12 +49,16 @@
                         <td class="py-2 pr-3">
                             <a href="{% url 'checador:equipo_persona' f.usuario.pk %}?{{ querystring }}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ f.usuario.nombre_completo|default:f.usuario.email }}</a>
                         </td>
+                        {% if f.ver_horas %}
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.dias }}</td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada_horas }}</td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.sesiones_horas }}</td>
                         <td class="py-2 pr-3">{% if f.retardos %}<span class="text-warning-600 dark:text-warning-400">{{ f.retardos }}</span>{% else %}<span class="text-gray-400">0</span>{% endif %}</td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.visitas }}</td>
                         <td class="py-2">{% if f.sin_geo %}<span class="rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{{ f.sin_geo }}</span>{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                        {% else %}
+                        <td class="py-2 pr-3 text-xs text-gray-400 dark:text-gray-500" colspan="6" title="Solo su jefe directo ve las horas trabajadas">🔒 Solo horario · ver ficha</td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>

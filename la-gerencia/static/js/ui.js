@@ -45,6 +45,58 @@
   function escribirSidebarGrupos(estado) {
     try { localStorage.setItem(SIDEBAR_GRUPOS_KEY, JSON.stringify(estado)); } catch (e) { /* noop */ }
   }
+
+  // --- Carpetas personalizadas del usuario (V9) ---
+  // El usuario agrupa items del sidebar en carpetas (campo `grupo` por usuario).
+  // Reparenteamos por JS: creamos un botón + panel colapsable por carpeta y
+  // movemos los items adentro. El toggle lo cablea el handler de
+  // [data-sidebar-group] de abajo (corre justo después). Si el usuario no tiene
+  // carpetas, no hace nada (cero riesgo para el sidebar existente).
+  (function construirCarpetas() {
+    var nav = document.querySelector('[data-ta-sidebar] nav');
+    if (!nav) return;
+    var conGrupo = nav.querySelectorAll('[data-sidebar-grupo]');
+    if (!conGrupo.length) return;
+    var carpetas = {}; // nombre -> {orden, nodos:[]}
+    conGrupo.forEach(function (el) {
+      var g = (el.getAttribute('data-sidebar-grupo') || '').trim();
+      if (!g) return;
+      var ord = parseInt(el.style.order || '999', 10);
+      if (isNaN(ord)) ord = 999;
+      if (!carpetas[g]) carpetas[g] = { orden: ord, nodos: [] };
+      carpetas[g].orden = Math.min(carpetas[g].orden, ord);
+      carpetas[g].nodos.push(el);
+    });
+    Object.keys(carpetas).forEach(function (nombre) {
+      var info = carpetas[nombre];
+      var key = 'carpeta:' + nombre;
+      var activo = info.nodos.some(function (n) {
+        return n.classList.contains('menu-item-active') || n.querySelector('.menu-item-active');
+      });
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'menu-item menu-item-inactive w-full justify-between';
+      btn.style.order = info.orden;
+      btn.setAttribute('data-sidebar-group', key);
+      btn.setAttribute('aria-expanded', activo ? 'true' : 'false');
+      btn.innerHTML =
+        '<span class="flex items-center gap-3">' +
+          '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          '<span class="carpeta-nombre"></span>' +
+        '</span>' +
+        '<svg data-sidebar-group-chevron class="h-4 w-4 transition-transform' + (activo ? ' rotate-180' : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+      btn.querySelector('.carpeta-nombre').textContent = nombre; // textContent: nombre seguro
+      var panel = document.createElement('div');
+      panel.setAttribute('data-sidebar-group-panel', key);
+      panel.style.order = info.orden;
+      panel.className = 'ml-4 flex flex-col gap-1 border-l border-gray-200 pl-3 dark:border-gray-800' + (activo ? '' : ' hidden');
+      var ref = info.nodos[0];
+      nav.insertBefore(btn, ref);
+      nav.insertBefore(panel, ref);
+      info.nodos.forEach(function (n) { n.style.order = ''; panel.appendChild(n); });
+    });
+  })();
+
   document.querySelectorAll('[data-sidebar-group]').forEach(function (btn) {
     const grupo = btn.getAttribute('data-sidebar-group');
     const panel = document.querySelector('[data-sidebar-group-panel="' + grupo + '"]');
@@ -375,15 +427,20 @@
 })();
 
 // ── Indicador global "Procesando…" (LC logo girando) — S-LC-Feedback-V7 ──
-// Se enciende durante peticiones HTMX y envíos de formularios clásicos, y se
-// apaga al terminar. Debounce de 180 ms para que las respuestas rápidas no
-// hagan parpadear el badge. Contador de peticiones en vuelo para no apagarlo
-// mientras quede alguna activa.
+// V9: el spinner SOLO aparece tras una acción deliberada del usuario (enviar,
+// submit, clic de navegación / cambio de sección). NO debe salir al teclear ni
+// por autoguardados ni por polling de fondo. Por eso ignoramos las peticiones
+// HTMX disparadas por eventos de texto/cambio de campo (input/keyup/keydown/
+// change), las que no tienen evento disparador (hx-trigger="load"/"every Ns")
+// y las marcadas con [data-sin-indicador="1"]. Rastreamos las peticiones
+// "ruidosas" en un WeakSet para que una silenciosa que termina no apague el
+// spinner de una ruidosa en curso. Debounce de 180 ms para no parpadear.
 (function () {
   var el = document.getElementById('proc-indicador');
   if (!el) return;
   var enVuelo = 0;
   var timer = null;
+  var ruidosas = (typeof WeakSet !== 'undefined') ? new WeakSet() : null;
   function mostrar() {
     if (timer) return;
     timer = setTimeout(function () {
@@ -398,11 +455,32 @@
   function inicia() { enVuelo++; mostrar(); }
   function termina() { enVuelo = Math.max(0, enVuelo - 1); if (enVuelo === 0) ocultarSiVacio(); }
 
-  // HTMX: cada request en vuelo.
-  document.body.addEventListener('htmx:beforeRequest', inicia);
-  document.body.addEventListener('htmx:afterRequest', termina);
-  document.body.addEventListener('htmx:responseError', termina);
-  document.body.addEventListener('htmx:sendError', termina);
+  // ¿Esta petición HTMX es silenciosa (no debe encender el spinner)?
+  function esSilenciosa(evt) {
+    var cfg = evt.detail && evt.detail.requestConfig;
+    var elt = (evt.detail && evt.detail.elt) || (cfg && cfg.elt);
+    if (elt && elt.closest && elt.closest('[data-sin-indicador="1"]')) return true;
+    var te = cfg && cfg.triggeringEvent;
+    if (!te) return true; // polling / hx-trigger="load"/"every Ns" / revealed
+    var t = te.type;
+    if (t === 'input' || t === 'keyup' || t === 'keydown' || t === 'change') return true;
+    return false; // submit, click, etc. → acción del usuario
+  }
+
+  document.body.addEventListener('htmx:beforeRequest', function (evt) {
+    if (esSilenciosa(evt)) return;
+    var xhr = evt.detail && evt.detail.xhr;
+    if (ruidosas && xhr) ruidosas.add(xhr);
+    inicia();
+  });
+  function fin(evt) {
+    var xhr = evt.detail && evt.detail.xhr;
+    if (!ruidosas) { return; }
+    if (xhr && ruidosas.has(xhr)) { ruidosas.delete(xhr); termina(); }
+  }
+  document.body.addEventListener('htmx:afterRequest', fin);
+  document.body.addEventListener('htmx:responseError', fin);
+  document.body.addEventListener('htmx:sendError', fin);
 
   // Formularios clásicos (POST de página completa): mostrar hasta que navegue.
   document.addEventListener('submit', function (e) {

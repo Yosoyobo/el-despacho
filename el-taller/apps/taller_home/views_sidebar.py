@@ -20,10 +20,10 @@ from cuentas.models.sidebar_orden import (
 
 
 def _orden_efectivo(user):
-    """Mapa {slug: {orden, oculto}} efectivo: global pisado por el del usuario."""
-    mapa = {f.slug: {"orden": f.orden, "oculto": f.oculto} for f in SidebarOrden.objects.all()}
+    """Mapa {slug: {orden, oculto, grupo}} efectivo: global pisado por el del usuario."""
+    mapa = {f.slug: {"orden": f.orden, "oculto": f.oculto, "grupo": ""} for f in SidebarOrden.objects.all()}
     for f in SidebarOrdenUsuario.objects.filter(usuario=user):
-        mapa[f.slug] = {"orden": f.orden, "oculto": f.oculto}
+        mapa[f.slug] = {"orden": f.orden, "oculto": f.oculto, "grupo": f.grupo}
     return mapa
 
 
@@ -31,19 +31,25 @@ def _orden_efectivo(user):
 def sidebar_preferencias(request):
     efectivo = _orden_efectivo(request.user)
     items = []
+    grupos_existentes = set()
     for i, (slug, label) in enumerate(SLUGS_SIDEBAR_TALLER):
         fila = efectivo.get(slug)
+        grupo = (fila.get("grupo") if fila else "") or ""
+        if grupo:
+            grupos_existentes.add(grupo)
         items.append({
             "slug": slug,
             "label": label,
             "orden": fila["orden"] if fila else (i + 1) * 10,
             "oculto": fila["oculto"] if fila else False,
+            "grupo": grupo,
         })
     items.sort(key=lambda x: (x["orden"], x["slug"]))
     tiene_personal = SidebarOrdenUsuario.objects.filter(usuario=request.user).exists()
     return render(request, "taller_home/sidebar_preferencias.html", {
         "items": items,
         "tiene_personal": tiene_personal,
+        "grupos_existentes": sorted(grupos_existentes),
     })
 
 
@@ -54,13 +60,15 @@ def sidebar_guardar(request):
     for slug in slugs_validos:
         orden_raw = (request.POST.get(f"orden__{slug}") or "").strip()
         oculto = request.POST.get(f"oculto__{slug}") == "1"
+        # V9: carpeta/grupo (texto libre, opcional). Vacío = item suelto.
+        grupo = (request.POST.get(f"grupo__{slug}") or "").strip()[:40]
         try:
             orden = int(orden_raw)
         except (TypeError, ValueError):
             continue
         SidebarOrdenUsuario.objects.update_or_create(
             usuario=request.user, slug=slug,
-            defaults={"orden": orden, "oculto": oculto},
+            defaults={"orden": orden, "oculto": oculto, "grupo": grupo},
         )
     messages.success(request, "Tu menú quedó acomodado a tu gusto.")
     return redirect("perfil-sidebar")

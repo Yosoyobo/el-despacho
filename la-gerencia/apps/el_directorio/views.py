@@ -24,7 +24,7 @@ def lista(request):
 
     from lib.graficas import donut_desde_conteo
 
-    qs = Usuario.objects.all().order_by("nombre_completo")
+    qs = Usuario.objects.all().prefetch_related("roles_extra").order_by("nombre_completo")
     activos = Usuario.objects.filter(is_active=True).count()
     total = Usuario.objects.count()
     por_rol = dict(
@@ -57,6 +57,8 @@ def lista(request):
     gmes = gasto_mes_por_usuario()
     presup = {p.usuario_id: p for p in PresupuestoIA.objects.filter(activo=True)}
     for u in usuarios:
+        # V9: roles personalizados (roles_extra) para mostrarlos junto al primario.
+        u.roles_extra_nombres = sorted(r.nombre for r in u.roles_extra.all())
         ef = proveedor_efectivo(u)
         u.ia_efectivo = ef
         u.ia_efectivo_apodo = {"auto": "Auto", "mixto": "Mixto"}.get(ef) or _apodo(ef)
@@ -372,9 +374,12 @@ def _secciones_rol(permisos):
 @requires_role("super_admin")
 def panel(request, pk: int):
     """GET HTMX → modal de detalle con tabs. El tab Datos viene precargado."""
+    from lib.permisos import roles_display
     u = get_object_or_404(Usuario, pk=pk)
     return render(request, "directorio/_modal_panel.html", {
         "usuario": u, "form": UsuarioForm(instance=u),
+        # V9: roles legibles (primario + roles_extra) para mostrarlos en la ficha.
+        "roles": roles_display(u),
     })
 
 

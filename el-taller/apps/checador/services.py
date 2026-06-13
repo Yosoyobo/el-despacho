@@ -23,6 +23,7 @@ from django.utils import timezone
 from lib.fecha import ahora_mx
 
 from .models import HorarioLaboral, Jornada, SesionProyecto, SolicitudCorreccion, Visita
+from .models.horario import DIAS_SEMANA
 
 # ───────────────────────── helpers ─────────────────────────
 
@@ -114,13 +115,47 @@ def _aplicar_geo(obj, prefijo: str, geo: dict | None) -> None:
     setattr(obj, f"{prefijo}sin_geo", bool(geo.get("sin_geo")) or lat is None or lng is None)
 
 
+def tiene_horario_propio(usuario) -> bool:
+    """¿El usuario tiene su propio horario declarado (≥1 override activo)?"""
+    return HorarioLaboral.objects.filter(usuario=usuario, activo=True).exists()
+
+
 def horario_vigente(usuario, fecha) -> HorarioLaboral | None:
-    """Horario esperado para `usuario` en `fecha`: override del usuario > global."""
+    """Horario esperado para `usuario` en `fecha`.
+
+    V9 — semántica corregida ("no cuadran las horas"): si el usuario declaró su
+    propio horario (cualquier override activo), ese conjunto ES su horario
+    completo — los días sin override son días libres y NO heredan el global.
+    El horario global (usuario NULL) solo aplica a quien no tiene ningún horario
+    propio. Antes se heredaba el global en los días sin override, lo que inflaba
+    las horas esperadas del balance (p. ej. 60 h cuando el usuario solo declara
+    Jueves y Viernes 17–19 = 8 h en el mes)."""
     dia = fecha.weekday()  # 0=lunes
     override = HorarioLaboral.objects.filter(usuario=usuario, dia_semana=dia, activo=True).first()
     if override:
         return override
+    if tiene_horario_propio(usuario):
+        return None  # día libre del usuario: sin fallback al global
     return HorarioLaboral.objects.filter(usuario__isnull=True, dia_semana=dia, activo=True).first()
+
+
+def horario_semanal(usuario) -> list[dict]:
+    """Horario declarado de la semana (lun→dom) para mostrar a cualquiera.
+
+    Cada item: {dia, nombre, horario (HorarioLaboral|None), trabaja (bool)}.
+    Respeta la misma precedencia que `horario_vigente` (propio > global, sin
+    herencia del global si el usuario tiene horario propio). Es solo lectura del
+    horario CONFIGURADO — no expone horas trabajadas."""
+    propio = tiene_horario_propio(usuario)
+    overrides = {h.dia_semana: h for h in HorarioLaboral.objects.filter(usuario=usuario, activo=True)}
+    globales = {h.dia_semana: h for h in HorarioLaboral.objects.filter(usuario__isnull=True, activo=True)}
+    filas = []
+    for dia, nombre in DIAS_SEMANA:
+        h = overrides.get(dia)
+        if h is None and not propio:
+            h = globales.get(dia)
+        filas.append({"dia": dia, "nombre": nombre, "horario": h, "trabaja": h is not None})
+    return filas
 
 
 def calcular_retardo(horario: HorarioLaboral | None, entrada_dt) -> int:

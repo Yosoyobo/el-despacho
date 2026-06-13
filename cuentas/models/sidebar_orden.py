@@ -63,6 +63,11 @@ class SidebarOrdenUsuario(models.Model):
     slug = models.CharField(max_length=40, db_index=True)
     orden = models.PositiveIntegerField(default=100)
     oculto = models.BooleanField(default=False)
+    # V9 — carpeta/grupo personalizado del usuario. Vacío = item suelto (top
+    # level). Los items con el MISMO `grupo` se renderizan juntos en una carpeta
+    # colapsable en el sidebar (vía JS, ver static/js/ui.js). El nombre del
+    # grupo lo escribe el usuario en /perfil/sidebar/.
+    grupo = models.CharField(max_length=40, blank=True, default="")
 
     class Meta:
         db_table = "cuentas_sidebar_orden_usuario"

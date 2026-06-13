@@ -1,0 +1,18 @@
+{% comment %}
+Week-grid del HORARIO DECLARADO (días de la semana + bloques de horas). Solo
+lectura — no expone horas trabajadas. Visible para todo el equipo.
+Param: horario_semana = lista de {nombre, horario, trabaja} (lun→dom).
+{% endcomment %}
+<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+    {% for d in horario_semana %}
+    <div class="rounded-xl border p-3 text-center {% if d.trabaja %}border-brand-200 bg-brand-50 dark:border-brand-500/30 dark:bg-brand-500/10{% else %}border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40{% endif %}">
+        <p class="text-[11px] font-semibold uppercase tracking-wide {% if d.trabaja %}text-brand-600 dark:text-brand-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">{{ d.nombre|slice:":3" }}</p>
+        {% if d.trabaja %}
+        <p class="mt-1 text-sm font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ d.horario.hora_entrada|time:"H:i" }}</p>
+        <p class="text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ d.horario.hora_salida|time:"H:i" }}</p>
+        {% else %}
+        <p class="mt-2 text-xs text-gray-400 dark:text-gray-600">Descanso</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>

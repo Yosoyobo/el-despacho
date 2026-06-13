@@ -29,9 +29,12 @@
             <dt class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 <span>IVA (16%)</span>
                 {% if puede_editar and form %}
-                <label class="relative inline-flex cursor-pointer items-center" title="Activa o desactiva el IVA del cálculo">
-                    {{ form.aplicar_iva }}
-                    <span class="h-5 w-9 rounded-full bg-gray-300 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:bg-brand-500 peer-checked:after:translate-x-4 dark:bg-gray-700"></span>
+                <label class="inline-flex cursor-pointer items-center" title="Activa o desactiva el IVA del cálculo">
+                    <span class="relative inline-flex h-5 w-9 shrink-0 items-center">
+                        {{ form.aplicar_iva }}
+                        <span aria-hidden="true" class="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-brand-500 dark:bg-gray-700"></span>
+                        <span aria-hidden="true" class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-theme-xs transition peer-checked:translate-x-4"></span>
+                    </span>
                 </label>
                 {% elif proyecto.iva_exento %}
                 <span class="badge badge-gray">exento</span>

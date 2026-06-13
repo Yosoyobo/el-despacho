@@ -54,16 +54,18 @@ def perfil(request, pk: int):
 
     from lib.permisos import (
         puede_ver_equipo_checador,
-        roles_efectivos,
+        puede_ver_horas_trabajadas_de,
+        roles_display,
         tiene_rol,
     )
 
     es_self = request.user.pk == empleado.pk
     es_jefe = getattr(empleado, "jefe_directo_id", None) == request.user.pk
-    # Quién ve el detalle de asistencia: el propio, su jefe directo, super_admin
-    # o quien tenga permiso de ver equipo del Checador.
+    # V9 (decisión Oscar): las HORAS TRABAJADAS solo las ve el propio empleado,
+    # su jefe directo o super_admin. El resto solo ve el HORARIO de la semana.
+    ve_checador = puede_ver_horas_trabajadas_de(request.user, empleado)
+    # Acceso al reporte por-persona del Checador (link "ver detalle").
     ve_equipo = tiene_rol(request.user, "super_admin") or puede_ver_equipo_checador(request.user)
-    ve_checador = es_self or es_jefe or ve_equipo
     # El detalle por-persona del Checador exige permiso de ver equipo. Si el
     # propio usuario no lo tiene, lo mandamos a su historial personal; un jefe
     # sin ese permiso ve solo el resumen (sin link de detalle).
@@ -95,8 +97,15 @@ def perfil(request, pk: int):
         except Exception:  # noqa: BLE001 — el Checador nunca tumba la ficha
             resumen_checador = None
 
-    roles = sorted(roles_efectivos(empleado))
+    roles = roles_display(empleado)
     subordinados = list(empleado.subordinados.filter(is_active=True).order_by("nombre_completo"))
+
+    # Horario declarado de la semana (visible a todo el equipo) — week-grid.
+    try:
+        from apps.checador import services as ch
+        horario_semana = ch.horario_semanal(empleado)
+    except Exception:  # noqa: BLE001 — la ficha nunca se cae por el Checador
+        horario_semana = []
 
     osm_src = ""
     if empleado.tiene_pin:
@@ -110,6 +119,7 @@ def perfil(request, pk: int):
         "resumen_checador": resumen_checador,
         "ve_checador": ve_checador,
         "detalle_checador_url": detalle_checador_url,
+        "horario_semana": horario_semana,
         "puede_editar_ficha": puede_editar_ficha,
         "puede_ver_como": puede_ver_como,
         "osm_src": osm_src,

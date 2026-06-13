@@ -8,7 +8,11 @@ Los tabs IA y Permisos cargan perezosamente con hx-get; Datos viene precargado.{
                 <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-base font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ usuario.nombre_completo|default:usuario.email|slice:":1"|upper }}</span>
                 <div>
                     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ usuario.nombre_completo|default:usuario.email }}</h2>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ usuario.email }} · {{ usuario.get_rol_display }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ usuario.email }}</p>
+                    <div class="mt-1 flex flex-wrap items-center gap-1">
+                        {% for r in roles %}<span class="badge badge-brand">{{ r }}</span>{% empty %}<span class="badge badge-gray">Sin rol</span>{% endfor %}
+                        {% if not usuario.is_active %}<span class="badge badge-error">Inactivo</span>{% endif %}
+                    </div>
                 </div>
             </div>
             <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">

@@ -531,6 +531,8 @@ def _parse_date(valor):
 def equipo(request):
     from django.db.models import Q
 
+    from lib.permisos import puede_ver_horas_trabajadas_de
+
     from cuentas.models.usuario import Usuario
     hoy = timezone.localdate()
     desde = _parse_date(request.GET.get("desde")) or (hoy - datetime.timedelta(days=hoy.weekday()))
@@ -545,7 +547,12 @@ def equipo(request):
             Jornada.objects.filter(usuario=u, fecha__gte=desde, fecha__lte=hasta)
             .filter(Q(entrada_sin_geo=True) | Q(salida_sin_geo=True)).count()
         )
-        filas.append({"usuario": u, "sin_geo": sin_geo, **agg})
+        # V9: las horas trabajadas solo se muestran a su jefe directo / super_admin.
+        filas.append({
+            "usuario": u, "sin_geo": sin_geo,
+            "ver_horas": puede_ver_horas_trabajadas_de(request.user, u),
+            **agg,
+        })
 
     qs = request.GET.urlencode()
     return render(request, "checador/equipo.html", {
@@ -558,8 +565,11 @@ def equipo(request):
 @login_required
 @_requiere_ver_equipo
 def equipo_persona(request, pk):
-    """Detalle de un miembro del equipo (admin): sus jornadas (entrada/salida
-    con mapa) y visitas en el rango. El mapa se abre en modal."""
+    """Detalle de un miembro del equipo. Las HORAS TRABAJADAS (jornadas con
+    mapa, totales, visitas) solo las ve su jefe directo o super_admin (V9). El
+    resto solo ve el HORARIO DECLARADO de la semana."""
+    from lib.permisos import puede_ver_horas_trabajadas_de
+
     from cuentas.models.usuario import Usuario
 
     from .models import SesionProyecto
@@ -567,22 +577,30 @@ def equipo_persona(request, pk):
     hoy = timezone.localdate()
     desde = _parse_date(request.GET.get("desde")) or (hoy - datetime.timedelta(days=hoy.weekday()))
     hasta = _parse_date(request.GET.get("hasta")) or hoy
-    jornadas = list(
-        Jornada.objects.filter(usuario=persona, fecha__gte=desde, fecha__lte=hasta).order_by("-fecha"),
-    )
-    visitas = list(
-        Visita.objects.filter(usuario=persona, registrado_en__date__gte=desde, registrado_en__date__lte=hasta)
-        .select_related("cliente", "proveedor").order_by("-registrado_en"),
-    )
-    sesiones = list(
-        SesionProyecto.objects.filter(
-            usuario=persona, estado="cerrada", inicio__date__gte=desde, inicio__date__lte=hasta,
-        ).select_related("proyecto").order_by("-inicio"),
-    )
+    ver_horas = puede_ver_horas_trabajadas_de(request.user, persona)
+
+    jornadas, visitas, sesiones, totales = [], [], [], None
+    if ver_horas:
+        jornadas = list(
+            Jornada.objects.filter(usuario=persona, fecha__gte=desde, fecha__lte=hasta).order_by("-fecha"),
+        )
+        visitas = list(
+            Visita.objects.filter(usuario=persona, registrado_en__date__gte=desde, registrado_en__date__lte=hasta)
+            .select_related("cliente", "proveedor").order_by("-registrado_en"),
+        )
+        sesiones = list(
+            SesionProyecto.objects.filter(
+                usuario=persona, estado="cerrada", inicio__date__gte=desde, inicio__date__lte=hasta,
+            ).select_related("proyecto").order_by("-inicio"),
+        )
+        totales = services.horas_de(persona, desde, hasta)
+
     return render(request, "checador/equipo_persona.html", {
         "persona": persona, "desde": desde, "hasta": hasta,
         "jornadas": jornadas, "visitas": visitas, "sesiones": sesiones,
-        "totales": services.horas_de(persona, desde, hasta),
+        "totales": totales,
+        "ver_horas": ver_horas,
+        "horario_semana": services.horario_semanal(persona),
         "querystring": request.GET.urlencode(),
     })
 

@@ -39,6 +39,23 @@ def roles_efectivos(user) -> set[str]:
     return roles
 
 
+def roles_display(user) -> list[str]:
+    """S-LC-Feedback-V9 — lista LEGIBLE de roles para la ficha del usuario:
+    la etiqueta del rol primario (`get_rol_display`) + los nombres de los roles
+    personalizados (`roles_extra`). Evita mostrar slugs crudos como
+    "super_admin". Defensivo: nunca lanza."""
+    out: list[str] = []
+    try:
+        primario = user.get_rol_display()
+    except Exception:  # noqa: BLE001
+        primario = getattr(user, "rol", "") or ""
+    if primario:
+        out.append(primario)
+    with contextlib.suppress(Exception):
+        out.extend(sorted(user.roles_extra.values_list("nombre", flat=True)))
+    return out
+
+
 def tiene_rol(user, *nombres: str) -> bool:
     """V6 Bloque 10: check canónico por NOMBRE de rol. Reconoce tanto el rol
     primario como los roles personalizados (roles_extra). Reemplaza a los
@@ -219,6 +236,27 @@ def puede_aprobar_correccion_de(admin, empleado) -> bool:
     if not puede_aprobar_correcciones_checador(admin):
         return False
     return getattr(empleado, "jefe_directo_id", None) == getattr(admin, "pk", None)
+
+
+def puede_ver_horas_trabajadas_de(viewer, empleado) -> bool:
+    """S-LC-Feedback-V9 — privacidad de horas trabajadas (decisión Oscar).
+
+    Las HORAS TRABAJADAS (jornadas, retardos, tiempo de proyecto) de un empleado
+    solo las ve:
+      • el propio empleado,
+      • su `jefe_directo`, o
+      • super_admin (failsafe duro).
+    Cualquier otro (incluidos admins que no son su jefe) solo ve el HORARIO
+    DECLARADO de la semana — nunca las horas reales. El permiso `ver_equipo` da
+    acceso al reporte del Checador, pero NO a las horas de quien no es tu
+    subordinado directo."""
+    if viewer is None or empleado is None:
+        return False
+    if getattr(viewer, "pk", None) == getattr(empleado, "pk", None):
+        return True
+    if tiene_rol(viewer, "super_admin"):
+        return True
+    return getattr(empleado, "jefe_directo_id", None) == getattr(viewer, "pk", None)
 
 
 def puede_exportar_checador(user) -> bool:
