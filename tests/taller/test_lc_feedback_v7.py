@@ -50,9 +50,10 @@ def test_equipo_varias_personas_mismo_rol(client, usuario_factory, proyecto_fact
 # ───────────────────── Sidebar por usuario ─────────────────────
 
 def test_sidebar_usuario_pisa_global(usuario_factory):
-    from cuentas.models.sidebar_orden import SidebarOrden, SidebarOrdenUsuario
-    from cuentas.context_processors import sidebar_orden
     from django.test import RequestFactory
+
+    from cuentas.context_processors import sidebar_orden
+    from cuentas.models.sidebar_orden import SidebarOrden, SidebarOrdenUsuario
 
     u = usuario_factory()
     SidebarOrden.objects.update_or_create(slug="clientes", defaults={"orden": 20, "oculto": False})
@@ -77,10 +78,11 @@ def test_sidebar_usuario_guardar_y_restablecer(client, usuario_factory):
 # ───────────────────── jefe directo / aprobación ─────────────────────
 
 def test_solo_jefe_directo_o_superadmin_aprueba(usuario_factory):
+
     from apps.checador import services
-    from lib.permisos import puede_aprobar_correccion_de
-    from datetime import datetime
     from django.utils import timezone
+
+    from lib.permisos import puede_aprobar_correccion_de
 
     jefe = usuario_factory(rol="super_admin")  # super_admin como failsafe + permiso
     otro = usuario_factory(rol="super_admin")

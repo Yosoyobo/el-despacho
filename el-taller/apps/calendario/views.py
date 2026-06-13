@@ -118,6 +118,7 @@ def resumen_modal(request):
     `calendario_resumen`). Modal HTMX. No persiste. Gated por (chalan, usar)."""
     from django.http import HttpResponseForbidden
     from django.utils.html import format_html
+
     from lib.permisos import puede_usar_chalan
 
     from .resumen_ia import resumir_calendario
