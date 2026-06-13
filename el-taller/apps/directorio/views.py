@@ -60,7 +60,6 @@ def perfil(request, pk: int):
     )
 
     es_self = request.user.pk == empleado.pk
-    es_jefe = getattr(empleado, "jefe_directo_id", None) == request.user.pk
     # V9 (decisión Oscar): las HORAS TRABAJADAS solo las ve el propio empleado,
     # su jefe directo o super_admin. El resto solo ve el HORARIO de la semana.
     ve_checador = puede_ver_horas_trabajadas_de(request.user, empleado)

@@ -61,7 +61,8 @@ def test_sidebar_usuario_pisa_global(usuario_factory):
     req = RequestFactory().get("/")
     req.user = u
     mapa = sidebar_orden(req)["sidebar_orden"]
-    assert mapa["clientes"] == {"orden": 5, "oculto": True}  # ganó el del usuario
+    # V9: el mapa ahora incluye `grupo` (carpeta). El override del usuario gana.
+    assert mapa["clientes"] == {"orden": 5, "oculto": True, "grupo": ""}
 
 
 def test_sidebar_usuario_guardar_y_restablecer(client, usuario_factory):

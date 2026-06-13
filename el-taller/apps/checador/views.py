@@ -531,9 +531,8 @@ def _parse_date(valor):
 def equipo(request):
     from django.db.models import Q
 
-    from lib.permisos import puede_ver_horas_trabajadas_de
-
     from cuentas.models.usuario import Usuario
+    from lib.permisos import puede_ver_horas_trabajadas_de
     hoy = timezone.localdate()
     desde = _parse_date(request.GET.get("desde")) or (hoy - datetime.timedelta(days=hoy.weekday()))
     hasta = _parse_date(request.GET.get("hasta")) or hoy
@@ -568,9 +567,8 @@ def equipo_persona(request, pk):
     """Detalle de un miembro del equipo. Las HORAS TRABAJADAS (jornadas con
     mapa, totales, visitas) solo las ve su jefe directo o super_admin (V9). El
     resto solo ve el HORARIO DECLARADO de la semana."""
-    from lib.permisos import puede_ver_horas_trabajadas_de
-
     from cuentas.models.usuario import Usuario
+    from lib.permisos import puede_ver_horas_trabajadas_de
 
     from .models import SesionProyecto
     persona = get_object_or_404(Usuario, pk=pk)
