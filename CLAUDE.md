@@ -4235,6 +4235,13 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
      referencias correspondientes en el manual.
    El cache de `/ayuda/` se invalida automáticamente cuando cambia el
    mtime del archivo en el deploy; no hay paso manual.
+   **Regla nueva (S-LC-Feedback-V7, decisión Oscar):** todo **módulo o
+   herramienta nueva** que se entregue debe documentar, en el manual y/o
+   en `lib/dictado_catalogo.py` (`CONSULTAS_CHAT` / `COMANDOS_DICTADO`),
+   (a) **para qué sirve** y (b) **cómo se usa con El Chalán** (qué
+   pregunta/consulta/comando lo dispara). Si la feature no es accesible
+   por El Chalán, decláralo explícitamente. No se considera "entregada"
+   una feature sin su línea de utilidad + uso con El Chalán.
 7. **Crontab vigente en La Sede** (consulta de referencia):
 
    ```cron

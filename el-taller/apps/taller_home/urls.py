@@ -1,11 +1,15 @@
 from django.urls import path
 
-from . import views, views_kpi_custom
+from . import views, views_kpi_custom, views_sidebar
 
 urlpatterns = [
     path("", views.home, name="taller-home"),
     path("ping", views.ping, name="taller-ping"),
     path("perfil/dashboard/", views.dashboard_preferencias, name="perfil-dashboard"),
+    # S-LC-Feedback-V7: cada usuario acomoda su propio sidebar.
+    path("perfil/sidebar/", views_sidebar.sidebar_preferencias, name="perfil-sidebar"),
+    path("perfil/sidebar/guardar", views_sidebar.sidebar_guardar, name="perfil-sidebar-guardar"),
+    path("perfil/sidebar/restablecer", views_sidebar.sidebar_restablecer, name="perfil-sidebar-restablecer"),
     path("perfil/dashboard/guardar", views.dashboard_guardar, name="perfil-dashboard-guardar"),
     path("perfil/dashboard/reordenar", views.dashboard_reordenar, name="perfil-dashboard-reordenar"),
     path("perfil/dashboard/sugerencia/<int:sugerencia_id>/aceptar", views.sugerencia_aceptar, name="perfil-dashboard-sugerencia-aceptar"),

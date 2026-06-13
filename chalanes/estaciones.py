@@ -12,6 +12,7 @@ ESTACIONES: list[tuple[str, str, str, bool, str, str]] = [
     ("cotizaciones",       "Redactar cotización",         "Genera el cuerpo formal de una cotización para el cliente.", False, "anthropic", "claude-haiku-4-5"),
     ("gastos",             "Categorizar gasto",           "Asigna categoría contable a un gasto descrito en texto libre.", False, "deepseek", "deepseek-chat"),
     ("comunicacion",       "Resumir actividad de proyecto", "Resume la actividad reciente de un proyecto (eventos, comentarios y tareas) en un párrafo ejecutivo.", False, "anthropic", "claude-haiku-4-5"),
+    ("calendario_resumen", "Resumir calendario",          "Resume las entregas y tareas próximas del calendario: qué viene, qué urge y la carga del período.", False, "anthropic", "claude-haiku-4-5"),
     ("precio",             "Sugerir precio",              "Estima rango de precio con base en histórico de proyectos similares.", False, "anthropic", "claude-haiku-4-5"),
     ("cliente",            "Chat con cliente",            "Asistente conversacional para la Recepción (S5).", False, "anthropic", "claude-haiku-4-5"),
     ("dictado",            "Interpretar dictado",         "Convierte texto dictado en acciones estructuradas (proyectos, tareas).", False, "anthropic", "claude-haiku-4-5"),

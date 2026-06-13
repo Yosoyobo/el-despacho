@@ -112,6 +112,37 @@ def nuevo_evento_modal(request):
     })
 
 
+@login_required
+def resumen_modal(request):
+    """GET /calendario/resumen/ — El Chalán resume el calendario (estación
+    `calendario_resumen`). Modal HTMX. No persiste. Gated por (chalan, usar)."""
+    from django.http import HttpResponseForbidden
+    from django.utils.html import format_html
+    from lib.permisos import puede_usar_chalan
+
+    from .resumen_ia import resumir_calendario
+
+    if not puede_usar_chalan(request.user):
+        return HttpResponseForbidden("No tienes permiso para usar El Chalán.")
+    try:
+        dias = int(request.GET.get("dias") or 14)
+    except (TypeError, ValueError):
+        dias = 14
+    res = resumir_calendario(usuario=request.user, dias=dias)
+    if res.get("ok"):
+        cuerpo = format_html('<p class="whitespace-pre-line">{}</p>', res["resumen"])
+    else:
+        cuerpo = format_html(
+            '<p class="text-error-600 dark:text-error-400">{}</p>',
+            res.get("error") or "El Chalán no respondió.",
+        )
+    return render(request, "_componentes_tailadmin/_modal_htmx.html", {
+        "titulo": f"Resumen del calendario · próximos {res.get('dias', dias)} días",
+        "cuerpo": cuerpo,
+        "tamano": "lg",
+    })
+
+
 def proximos_eventos(request):
     """Lista de tareas/entregas desde hoy en adelante (para la página Calendario)."""
     hoy = date.today()

@@ -253,6 +253,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},
     {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
+    {"nombre": "resumen del calendario", "que": "En la página de Calendario, el botón '🤖 Resumir con El Chalán' arma un resumen ejecutivo de tus próximas entregas y tareas (qué viene, qué urge)."},
     {"nombre": "gasto_ia", "que": "Costo, llamadas y tokens de IA por proveedor."},
     {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},
     {"nombre": "📎 imagen", "que": "Adjunta una foto (recibo, ticket) y el Chalán la lee — si el Chalán activo tiene visión."},

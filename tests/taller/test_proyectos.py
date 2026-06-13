@@ -296,7 +296,7 @@ def test_detalle_editable_guarda_inline(client, usuario_factory, proyecto_factor
         "nombre": "Nombre nuevo", "cliente": p.cliente_id, "estado": "por_cotizar", "descripcion": "",
         "productos-TOTAL_FORMS": "0", "productos-INITIAL_FORMS": "0",
         "productos-MIN_NUM_FORMS": "0", "productos-MAX_NUM_FORMS": "1000",
-        f"equipo_{admin.pk}": "on", f"rol_{admin.pk}": "lider",
+        "equipo__lider": str(admin.pk),
     }, follow=True)
     p.refresh_from_db()
     assert p.nombre == "Nombre nuevo"

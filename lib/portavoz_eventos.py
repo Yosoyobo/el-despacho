@@ -134,6 +134,7 @@ EventoTipo = Literal[
     "checador.correccion_solicitada",
     "checador.correccion_resuelta",
     "checador.recordatorio_entrada",
+    "checador.checada_fuera_geocerca",
     "checador.jornada_ajustada",
     "checador.horario_actualizado",
     "checador.exportado",

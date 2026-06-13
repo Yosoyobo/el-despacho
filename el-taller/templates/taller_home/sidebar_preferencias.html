@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Mi menú — El Taller{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Dashboard" "/" "Mi menú" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Mi menú" subtitulo="Acomoda y oculta los items del menú a tu gusto. Solo te afecta a ti." breadcrumb_items=breadcrumb_items back_url="/" back_label="Dashboard" %}
+
+<section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Arrastra para reordenar, o usa los botones ↑↓. Marca "Ocultar" para que el item no aparezca en tu menú (no pierdes el acceso — sólo se esconde del sidebar). Esto es <strong>tuyo</strong>: no cambia el menú de nadie más.</p>
+
+    <form method="post" action="{% url 'perfil-sidebar-guardar' %}" id="sidebar-orden-form">
+        {% csrf_token %}
+        <ul id="sidebar-orden-lista" class="space-y-2">
+            {% for item in items %}
+            <li data-slug="{{ item.slug }}" draggable="true"
+                class="sidebar-item flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/50 p-3 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:bg-gray-800">
+                <span class="cursor-grab text-gray-400 dark:text-gray-500" title="Arrastrar">⋮⋮</span>
+                <span class="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{{ item.label }}</span>
+                <input type="number" name="orden__{{ item.slug }}" value="{{ item.orden }}" min="0" max="9999" class="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900">
+                <label class="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                    <input type="checkbox" name="oculto__{{ item.slug }}" value="1" {% if item.oculto %}checked{% endif %}>
+                    Ocultar
+                </label>
+                <div class="flex gap-1">
+                    <button type="button" class="sidebar-up rounded border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" title="Subir">↑</button>
+                    <button type="button" class="sidebar-down rounded border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" title="Bajar">↓</button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="mt-5 flex items-center justify-between gap-3">
+            {% if tiene_personal %}
+            <button type="submit" form="sidebar-restablecer-form" class="text-sm text-gray-500 underline hover:text-error-600 dark:text-gray-400">Restablecer al orden por defecto</button>
+            {% else %}
+            <span class="text-xs text-gray-400 dark:text-gray-500">Usando el orden por defecto.</span>
+            {% endif %}
+            <button type="submit" class="btn-primario">Guardar mi menú</button>
+        </div>
+    </form>
+    <form method="post" action="{% url 'perfil-sidebar-restablecer' %}" id="sidebar-restablecer-form" class="hidden">{% csrf_token %}</form>
+</section>
+
+<script>
+(function() {
+    const lista = document.getElementById('sidebar-orden-lista');
+    if (!lista) return;
+    function renumerar() {
+        Array.from(lista.querySelectorAll('.sidebar-item')).forEach(function(li, idx) {
+            const inp = li.querySelector('input[type=number]');
+            if (inp) inp.value = (idx + 1) * 10;
+        });
+    }
+    lista.addEventListener('click', function(e) {
+        const li = e.target.closest('.sidebar-item');
+        if (!li) return;
+        if (e.target.closest('.sidebar-up') && li.previousElementSibling) {
+            lista.insertBefore(li, li.previousElementSibling);
+            renumerar();
+        } else if (e.target.closest('.sidebar-down') && li.nextElementSibling) {
+            lista.insertBefore(li.nextElementSibling, li);
+            renumerar();
+        }
+    });
+    let arrastrando = null;
+    lista.addEventListener('dragstart', function(e) {
+        const li = e.target.closest('.sidebar-item');
+        if (!li) return;
+        arrastrando = li;
+        li.classList.add('opacity-50');
+    });
+    lista.addEventListener('dragend', function() {
+        if (arrastrando) arrastrando.classList.remove('opacity-50');
+        arrastrando = null;
+    });
+    lista.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        const li = e.target.closest('.sidebar-item');
+        if (!li || li === arrastrando) return;
+        const rect = li.getBoundingClientRect();
+        const middle = rect.top + rect.height / 2;
+        if (e.clientY < middle) {
+            lista.insertBefore(arrastrando, li);
+        } else {
+            lista.insertBefore(arrastrando, li.nextElementSibling);
+        }
+    });
+    lista.addEventListener('drop', function(e) { e.preventDefault(); renumerar(); });
+})();
+</script>
+{% endblock %}

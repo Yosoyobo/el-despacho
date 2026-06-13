@@ -55,6 +55,16 @@
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
                 Nuevo evento
             </button>
+            {% if permisos_modulos.chalan %}
+            <button type="button"
+                    hx-get="{% url 'calendario-resumen' %}?dias=14"
+                    hx-target="#modal-slot"
+                    hx-swap="innerHTML"
+                    class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50/60 px-4 py-2.5 text-sm font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300"
+                    title="El Chalán resume tus entregas y tareas de los próximos 14 días">
+                🤖 Resumir con El Chalán
+            </button>
+            {% endif %}
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Próximos eventos</h2>

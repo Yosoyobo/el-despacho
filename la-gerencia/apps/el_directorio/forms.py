@@ -20,11 +20,18 @@ class UsuarioForm(forms.ModelForm):
             "email", "nombre_completo", "rol", "is_active",
             "puesto", "telefono", "oficina", "modalidad",
             "horario_inicio", "horario_fin", "dias_trabajo",
+            # S-LC-Feedback-V7: jefe directo + dirección/pin/geocerca.
+            "jefe_directo", "direccion",
+            "geo_lat", "geo_lng", "geocerca_radio_m", "geocerca_activa",
         ]
         widgets = {
             "horario_inicio": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
             "horario_fin": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
             "dias_trabajo": forms.TextInput(attrs={"placeholder": "Ej. Lunes a viernes"}),
+            "direccion": forms.Textarea(attrs={"rows": 2, "placeholder": "Calle, número, colonia…"}),
+            "geo_lat": forms.NumberInput(attrs={"step": "any", "placeholder": "19.4326"}),
+            "geo_lng": forms.NumberInput(attrs={"step": "any", "placeholder": "-99.1332"}),
+            "geocerca_radio_m": forms.NumberInput(attrs={"min": 20, "max": 5000}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -33,6 +40,16 @@ class UsuarioForm(forms.ModelForm):
         # Sin esto, agregar `modalidad` (ChoiceField) rompería el alta/edición
         # de usuario que no la envíe.
         self.fields["modalidad"].required = False
+        # S-LC-Feedback-V7: jefe directo opcional, solo usuarios activos, y
+        # nunca uno mismo (se excluye del queryset cuando hay instancia).
+        qs = Usuario.objects.filter(is_active=True).order_by("nombre_completo")
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        self.fields["jefe_directo"].queryset = qs
+        self.fields["jefe_directo"].required = False
+        self.fields["jefe_directo"].empty_label = "— Sin jefe directo —"
+        for f in ("direccion", "geo_lat", "geo_lng", "geocerca_radio_m", "geocerca_activa"):
+            self.fields[f].required = False
         # V6 Bloque 10 (decisión Oscar): solo super_admin y miembro son
         # asignables — todo lo demás se modela con roles personalizados (tabla
         # Rol) + permisos granulares. Si el usuario editado conserva un rol
@@ -48,6 +65,15 @@ class UsuarioForm(forms.ModelForm):
 
     def clean_modalidad(self):
         return self.cleaned_data.get("modalidad") or "presencial"
+
+    def clean(self):
+        cleaned = super().clean()
+        jefe = cleaned.get("jefe_directo")
+        if jefe and self.instance.pk and jefe.pk == self.instance.pk:
+            self.add_error("jefe_directo", "Una persona no puede ser su propio jefe.")
+        if cleaned.get("geocerca_activa") and (cleaned.get("geo_lat") is None or cleaned.get("geo_lng") is None):
+            self.add_error("geocerca_activa", "Para activar la geocerca, captura primero el pin (lat/lng).")
+        return cleaned
 
     def save(self, commit=True):
         u = super().save(commit=False)

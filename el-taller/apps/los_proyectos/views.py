@@ -267,26 +267,33 @@ def kanban(request):
 
 
 def _reconciliar_equipo(request, proyecto):
-    """C7 S-LC-Feedback-V6: ajusta el equipo según los checkboxes `equipo_<id>`
-    y los selects `rol_<id>`. Marcado = asignado (crea/actualiza rol);
-    desmarcado = se quita del proyecto."""
+    """Equipo agrupado por rol (S-LC-Feedback-V7): una o varias personas por
+    rol. Checkbox `equipo__<rol>` con value=<userpk>. Si una persona queda
+    marcada en dos roles gana el último en ROLES_PROYECTO (la asignación es
+    1 fila por persona por el UniqueConstraint proyecto+usuario)."""
     from cuentas.models.usuario import Usuario
     roles_validos = dict(ROLES_PROYECTO)
+    activos = {u.pk: u for u in Usuario.objects.filter(is_active=True)}
+    deseado: dict[int, str] = {}
+    for slug in roles_validos:
+        for pk_s in request.POST.getlist(f"equipo__{slug}"):
+            try:
+                pk = int(pk_s)
+            except (TypeError, ValueError):
+                continue
+            if pk in activos:
+                deseado[pk] = slug
     actuales = {a.usuario_id: a for a in proyecto.asignaciones.all()}
-    for u in Usuario.objects.filter(is_active=True):
-        marcado = request.POST.get(f"equipo_{u.pk}") in ("on", "1", "true")
-        rol = request.POST.get(f"rol_{u.pk}") or "disenador"
-        if rol not in roles_validos:
-            rol = "disenador"
-        if marcado:
-            a = actuales.get(u.pk)
-            if a is None:
-                ProyectoAsignacion.objects.create(proyecto=proyecto, usuario=u, rol_en_proyecto=rol)
-            elif a.rol_en_proyecto != rol:
-                a.rol_en_proyecto = rol
-                a.save(update_fields=["rol_en_proyecto"])
-        elif u.pk in actuales:
-            actuales[u.pk].delete()
+    for pk, rol in deseado.items():
+        a = actuales.get(pk)
+        if a is None:
+            ProyectoAsignacion.objects.create(proyecto=proyecto, usuario=activos[pk], rol_en_proyecto=rol)
+        elif a.rol_en_proyecto != rol:
+            a.rol_en_proyecto = rol
+            a.save(update_fields=["rol_en_proyecto"])
+    for pk, a in actuales.items():
+        if pk not in deseado:
+            a.delete()
 
 
 def _comentarios_proyecto_visibles(user, proyecto):
@@ -297,8 +304,8 @@ def _comentarios_proyecto_visibles(user, proyecto):
 
 
 def _ctx_equipo(proyecto):
-    """Lista de todos los usuarios activos con su estado asignado/rol para el
-    widget de equipo del detalle."""
+    """Lista plana de usuarios activos con su estado asignado/rol — usada por la
+    vista de SOLO LECTURA del detalle (sidebar de equipo del diseñador)."""
     from cuentas.models.usuario import Usuario
     asignados = {a.usuario_id: a.rol_en_proyecto for a in proyecto.asignaciones.all()}
     opciones = []
@@ -309,6 +316,23 @@ def _ctx_equipo(proyecto):
             "rol": asignados.get(u.pk, "disenador"),
         })
     return opciones
+
+
+def _ctx_equipo_grupos(proyecto):
+    """Equipo AGRUPADO POR ROL para el widget editable del detalle
+    (S-LC-Feedback-V7). Para cada rol, todas las personas activas con un
+    checkbox; permite elegir una o varias personas por rol."""
+    from cuentas.models.usuario import Usuario
+    asignados = {a.usuario_id: a.rol_en_proyecto for a in proyecto.asignaciones.all()}
+    usuarios = list(Usuario.objects.filter(is_active=True).order_by("nombre_completo", "email"))
+    grupos = []
+    for slug, label in ROLES_PROYECTO:
+        grupos.append({
+            "slug": slug,
+            "label": label,
+            "personas": [{"usuario": u, "marcado": asignados.get(u.pk) == slug} for u in usuarios],
+        })
+    return grupos
 
 
 @login_required
@@ -397,6 +421,7 @@ def detalle(request, pk):
         "gastos_pendientes_total": sum((g["monto"] for g in gastos_pendientes), Decimal("0.00")),
         "pasos_undo": services_undo.pasos_disponibles(proyecto),
         "equipo_opciones": _ctx_equipo(proyecto),
+        "equipo_grupos": _ctx_equipo_grupos(proyecto),
         "roles_proyecto": ROLES_PROYECTO,
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
         "servicios_datos_json": _servicios_datos_json(),

@@ -65,6 +65,40 @@ def _aprobadores():
     return [u for u in Usuario.objects.filter(is_active=True) if puede_aprobar_correcciones_checador(u)]
 
 
+def _aprobadores_de(empleado):
+    """S-LC-Feedback-V7 — quiénes pueden aprobar los ajustes de `empleado`:
+    su jefe directo (si está activo y tiene el permiso) + los super_admin
+    (failsafe). Sin duplicados y sin el propio empleado. Si no tiene jefe,
+    cae sólo a super_admins."""
+    from lib.permisos import (
+        puede_aprobar_correcciones_checador,
+        usuarios_con_rol,
+    )
+    destinatarios = {}
+    jefe = getattr(empleado, "jefe_directo", None)
+    if jefe and getattr(jefe, "is_active", False) and puede_aprobar_correcciones_checador(jefe):
+        destinatarios[jefe.pk] = jefe
+    for sa in usuarios_con_rol("super_admin").filter(is_active=True):
+        destinatarios[sa.pk] = sa
+    destinatarios.pop(getattr(empleado, "pk", None), None)
+    return list(destinatarios.values())
+
+
+def bandeja_correcciones_para(admin):
+    """S-LC-Feedback-V7 — qué correcciones ve este admin en su bandeja:
+    super_admin ve todas; un jefe sólo las de sus subordinados directos.
+    Devuelve `(pendientes, resueltas[:20])`."""
+    from lib.permisos import tiene_rol
+    pend = (SolicitudCorreccion.objects.filter(estado="pendiente")
+            .select_related("usuario", "jornada", "sesion").order_by("creado_en"))
+    res = (SolicitudCorreccion.objects.exclude(estado="pendiente")
+           .select_related("usuario", "resuelto_por").order_by("-resuelto_en"))
+    if not tiene_rol(admin, "super_admin"):
+        pend = pend.filter(usuario__jefe_directo=admin)
+        res = res.filter(usuario__jefe_directo=admin)
+    return list(pend), list(res[:20])
+
+
 def _aplicar_geo(obj, prefijo: str, geo: dict | None) -> None:
     """Copia lat/lng/precision/sin_geo del dict `geo` a los campos del objeto.
 
@@ -134,7 +168,32 @@ def checar_entrada(usuario, *, geo=None, registrado_en=None, uuid: str = "", off
         _emitir("checador.retardo", actor=usuario, payload={
             "jornada_id": jornada.pk, "fecha": str(fecha), "retardo_min": jornada.retardo_min,
         })
+    _evaluar_geocerca(usuario, jornada)
     return jornada
+
+
+def _evaluar_geocerca(usuario, jornada) -> None:
+    """S-LC-Feedback-V7 — fase de geocerca (no bloqueante). Si el empleado tiene
+    la geocerca activa y la entrada trae coordenadas, evalúa si checó dentro del
+    radio. Si quedó fuera, anota la jornada y emite un evento para auditoría.
+    NUNCA bloquea ni anula la checada (decisión Oscar: solo activar la fase)."""
+    try:
+        if not getattr(usuario, "geocerca_activa", False) or not usuario.tiene_pin:
+            return
+        if jornada.entrada_sin_geo or jornada.entrada_lat is None or jornada.entrada_lng is None:
+            return
+        dentro = usuario.dentro_de_geocerca(jornada.entrada_lat, jornada.entrada_lng)
+        if dentro is False:
+            dist = usuario.distancia_a_m(jornada.entrada_lat, jornada.entrada_lng)
+            nota = f"⚠️ Checada fuera de la geocerca (~{int(dist)} m del punto)."
+            jornada.notas = (jornada.notas + "\n" + nota).strip() if jornada.notas else nota
+            jornada.save(update_fields=["notas"])
+            _emitir("checador.checada_fuera_geocerca", actor=usuario, payload={
+                "jornada_id": jornada.pk, "distancia_m": int(dist),
+                "radio_m": usuario.geocerca_radio_m,
+            })
+    except Exception:  # noqa: BLE001 — la geocerca jamás tumba la checada
+        pass
 
 
 def checar_salida(usuario, *, geo=None, registrado_en=None, uuid: str = "", offline: bool = False) -> Jornada:
@@ -283,11 +342,10 @@ def solicitar_correccion(usuario, *, tipo: str, valor_propuesto, motivo: str,
         "solicitud_id": sol.pk, "tipo": tipo,
     })
     quien = getattr(usuario, "nombre_completo", "") or getattr(usuario, "email", "Alguien")
-    for admin in _aprobadores():
-        if admin.pk != getattr(usuario, "pk", None):
-            _push(admin, "Corrección de checada pendiente",
-                  f"{quien} pide corregir su {sol.get_tipo_display().lower()}.",
-                  url="/checador/correcciones/")
+    for admin in _aprobadores_de(usuario):
+        _push(admin, "Corrección de checada pendiente",
+              f"{quien} pide corregir su {sol.get_tipo_display().lower()}.",
+              url="/checador/correcciones/")
     _publicar_correccion_en_recados(sol)
     return sol
 
@@ -312,9 +370,7 @@ def _publicar_correccion_en_recados(sol: SolicitudCorreccion) -> None:
                 valor = _tz.localtime(sol.valor_propuesto).strftime("%d/%m %H:%M") if sol.valor_propuesto else ""
             cuerpo = (f"🕐 Solicitud de corrección — {sol.get_tipo_display()} → {valor}\n"
                       f"Motivo: {sol.motivo}")
-            for admin in _aprobadores():
-                if admin.pk == sol.usuario_id:
-                    continue
+            for admin in _aprobadores_de(sol.usuario):
                 conv = services_chat.obtener_o_crear_directa(sol.usuario, admin)
                 msg = services_chat.enviar_mensaje(conversacion=conv, autor=sol.usuario, cuerpo=cuerpo)
                 msg.correccion = sol
@@ -395,6 +451,12 @@ def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
     # admin que necesita corregir lo suyo usa la edición directa de jornada.
     if getattr(admin, "pk", None) == solicitud.usuario_id:
         raise ValueError("No puedes resolver tu propia solicitud; pídele a otro administrador.")
+    # S-LC-Feedback-V7: sólo el jefe directo del solicitante (o un super_admin
+    # como failsafe) puede resolver. Evita que cualquier aprobador toque horas
+    # de gente que no le reporta.
+    from lib.permisos import puede_aprobar_correccion_de
+    if not puede_aprobar_correccion_de(admin, solicitud.usuario):
+        raise ValueError("Solo el jefe directo de esta persona (o un super admin) puede resolver esta solicitud.")
     with transaction.atomic():
         solicitud.estado = "aprobada" if aprobar else "rechazada"
         solicitud.resuelto_por = admin
@@ -678,11 +740,10 @@ def solicitar_ajuste_jornada(usuario, *, fecha, valor_entrada=None, valor_salida
     _emitir("checador.correccion_solicitada", actor=usuario,
             payload={"solicitud_id": sol.pk, "tipo": "jornada", "fecha": fecha.isoformat()})
     quien = getattr(usuario, "nombre_completo", "") or getattr(usuario, "email", "Alguien")
-    for admin in _aprobadores():
-        if admin.pk != getattr(usuario, "pk", None):
-            _push(admin, "Ajuste de jornada pendiente",
-                  f"{quien} pide ajustar su jornada del {fecha:%d/%m}.",
-                  url="/checador/correcciones/")
+    for admin in _aprobadores_de(usuario):
+        _push(admin, "Ajuste de jornada pendiente",
+              f"{quien} pide ajustar su jornada del {fecha:%d/%m}.",
+              url="/checador/correcciones/")
     _publicar_correccion_en_recados(sol)
     return sol
 

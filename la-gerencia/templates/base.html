@@ -83,6 +83,12 @@
 {% block scripts_graficas %}{# Páginas con charts cargan ApexCharts + site_charts.js #}{% endblock %}
 {% block body_extra %}{% endblock %}
 <div id="modal-slot"></div>
+
+{# Indicador global "procesando" (LC logo girando); lo enciende HTMX y submit de forms — ui.js. #}
+<div id="proc-indicador" class="pointer-events-none fixed bottom-5 right-5 z-[70] hidden items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3 py-2 shadow-theme-lg backdrop-blur dark:border-gray-700 dark:bg-gray-900/95">
+    <img src="{% static 'branding/Logo_LC-64.png' %}" alt="" class="h-5 w-5 animate-spin" style="animation-duration:1.1s">
+    <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Procesando…</span>
+</div>
 <script>
 // Caché offline del PWA (S4): registra el service worker para todos los usuarios.
 // Convive con interfono_suscribir.js (el navegador deduplica por scope).

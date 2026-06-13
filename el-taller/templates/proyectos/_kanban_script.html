@@ -45,7 +45,10 @@
                 const body = new FormData();
                 body.append('estado', nuevoEstado);
                 body.append('hx_kanban', '1');
-                const resp = await fetch(`/proyectos/${dragId}/cambiar-estado/`, {
+                // OJO: sin slash final — la ruta es `cambiar-estado` (no `/`).
+                // Django no hace APPEND_SLASH en POST, así que con `/` daba 404
+                // → "No se pudo cambiar el estado" (S-LC-Feedback-V7 fix).
+                const resp = await fetch(`/proyectos/${dragId}/cambiar-estado`, {
                     method: 'POST',
                     headers: {'X-CSRFToken': csrf || '', 'HX-Request': 'true'},
                     body: body,

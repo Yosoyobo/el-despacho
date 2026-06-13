@@ -5,6 +5,38 @@
 
 ---
 
+## Novedades — Equipo, menú a tu gusto, geocerca y más (12 de junio de 2026)
+
+- **Sección "Equipo".** El antiguo "Directorio" del Taller ahora es **Equipo**:
+  entra y haz clic en cualquier compañero para ver su **ficha completa** —
+  contacto, puesto, roles, **jefe directo**, horario y un **resumen de su
+  asistencia** (Checador). El detalle de horas solo lo ven la propia persona,
+  su jefe directo y los administradores. La edición de la ficha sigue en La
+  Gerencia.
+- **Jefe directo.** En La Gerencia → Directorio puedes asignar el **jefe
+  directo** de cada empleado. A partir de ahora, **solo el jefe directo** (o un
+  Super Admin) **aprueba los ajustes de horas** de esa persona en El Checador;
+  cada jefe ve en su bandeja únicamente a su gente.
+- **Dirección y pin para geocerca.** Cada empleado tiene ahora un espacio para
+  su **dirección** y un **pin en el mapa** (lat/lng + radio). Con eso queda
+  **activada la fase de geocerca**: si la persona checa entrada **fuera** de su
+  zona, queda anotado (no bloquea la checada, solo avisa).
+- **Acomoda tu menú.** En el menú lateral, abajo, **"⋮⋮ Personalizar menú"**:
+  reordena y oculta los items **a tu gusto** (solo te afecta a ti). Botón para
+  **restablecer** al orden por defecto.
+- **Proveedores en el menú.** Los **Proveedores** ya tienen su propio acceso en
+  el menú lateral (antes estaban dentro de Productos).
+- **Arrastrar tarjetas en el Kanban ya funciona** para cambiar el estado de un
+  proyecto (se corrigió el error "No se pudo cambiar el estado").
+- **Responsables por rol.** En el proyecto, el cuadro de **Equipo** ahora se
+  organiza **por rol**: marcas **una o varias personas** en cada rol (Líder,
+  Diseñador, Producción, Revisor).
+- **El Chalán resume tu calendario.** En la página **Calendario**, botón
+  **"🤖 Resumir con El Chalán"**: te dice qué entregas y tareas vienen y qué
+  urge en los próximos días.
+- **Indicador "Procesando…".** Cuando la plataforma está trabajando, aparece un
+  **logo de LC girando** abajo a la derecha, para que sepas que está procesando.
+
 ## Novedades — Chalanes más confiables, roles con casillas y campañas en El Taller (12 de junio de 2026)
 
 - **Los Chalanes ya no se "cruzan".** En La Gerencia → Chalanes, el **modelo**

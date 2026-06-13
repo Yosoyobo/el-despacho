@@ -204,6 +204,23 @@ def puede_configurar_horarios_checador(user) -> bool:
     return puede(user, "checador", "configurar_horarios")
 
 
+def puede_aprobar_correccion_de(admin, empleado) -> bool:
+    """S-LC-Feedback-V7 — gobernanza de ajustes de horas por jefe directo.
+
+    Sólo aprueba los ajustes de `empleado` quien sea:
+      • su `jefe_directo` (con permiso de aprobar correcciones), o
+      • super_admin (failsafe duro, siempre puede).
+    Nunca uno mismo (eso lo bloquea `resolver_correccion`).
+    """
+    if admin is None or empleado is None:
+        return False
+    if tiene_rol(admin, "super_admin"):
+        return True
+    if not puede_aprobar_correcciones_checador(admin):
+        return False
+    return getattr(empleado, "jefe_directo_id", None) == getattr(admin, "pk", None)
+
+
 def puede_exportar_checador(user) -> bool:
     return puede(user, "checador", "exportar")
 

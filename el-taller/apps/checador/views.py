@@ -385,15 +385,9 @@ def correccion(request):
 @login_required
 @_requiere_aprobar
 def correcciones(request):
-    """Bandeja de aprobación (Taller) para quien tiene aprobar_correcciones."""
-    pendientes = list(
-        SolicitudCorreccion.objects.filter(estado="pendiente")
-        .select_related("usuario", "jornada", "sesion").order_by("creado_en"),
-    )
-    resueltas = list(
-        SolicitudCorreccion.objects.exclude(estado="pendiente")
-        .select_related("usuario", "resuelto_por").order_by("-resuelto_en")[:20],
-    )
+    """Bandeja de aprobación (Taller). Cada jefe ve solo a sus subordinados;
+    super_admin ve todas (S-LC-Feedback-V7)."""
+    pendientes, resueltas = services.bandeja_correcciones_para(request.user)
     return render(request, "checador/correcciones.html", {
         "pendientes": pendientes,
         "resueltas": resueltas,

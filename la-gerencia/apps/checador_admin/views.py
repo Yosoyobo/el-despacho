@@ -118,14 +118,8 @@ def _emit_horario(request, obj, accion):
 def correcciones(request):
     if (r := _gate_correcciones(request)) is not None:
         return r
-    pendientes = list(
-        SolicitudCorreccion.objects.filter(estado="pendiente")
-        .select_related("usuario", "jornada", "sesion").order_by("creado_en"),
-    )
-    resueltas = list(
-        SolicitudCorreccion.objects.exclude(estado="pendiente")
-        .select_related("usuario", "resuelto_por").order_by("-resuelto_en")[:20],
-    )
+    # S-LC-Feedback-V7: cada jefe ve solo a sus subordinados; super_admin todas.
+    pendientes, resueltas = services.bandeja_correcciones_para(request.user)
     return render(request, "checador_admin/correcciones.html", {
         "pendientes": pendientes, "resueltas": resueltas,
     })

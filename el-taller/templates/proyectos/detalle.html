@@ -249,25 +249,28 @@
         </section>
         {% endif %}
 
-        {# ── Equipo: checkmark + nombre + rol en una sola línea ── #}
+        {# ── Equipo: agrupado por rol; una o varias personas por rol (S-LC-Feedback-V7) ── #}
         <section id="equipo-widget" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Equipo</h3>
-            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Marca quién participa y su rol.</p>
-            <ul class="mt-3 space-y-2">
-                {% for op in equipo_opciones %}
-                <li class="flex items-center gap-2">
-                    <input type="checkbox" name="equipo_{{ op.usuario.pk }}" value="on" {% if op.asignado %}checked{% endif %}
-                           id="equipo-{{ op.usuario.pk }}"
-                           class="h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
-                    <label for="equipo-{{ op.usuario.pk }}" class="min-w-0 flex-1 truncate text-sm text-gray-900 dark:text-gray-100">{{ op.usuario.nombre_completo|default:op.usuario.email }}</label>
-                    <select name="rol_{{ op.usuario.pk }}" class="shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
-                        {% for slug, label in roles_proyecto %}<option value="{{ slug }}" {% if op.rol == slug %}selected{% endif %}>{{ label }}</option>{% endfor %}
-                    </select>
-                </li>
-                {% empty %}
-                <li class="text-sm text-gray-500 dark:text-gray-400">No hay usuarios activos.</li>
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Marca a quién participa en cada rol. Puedes elegir una o varias personas por rol.</p>
+            <div class="mt-3 space-y-4">
+                {% for g in equipo_grupos %}
+                <div>
+                    <p class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">{{ g.label }}</p>
+                    <div class="grid grid-cols-1 gap-1">
+                        {% for p in g.personas %}
+                        <label class="flex items-center gap-2 rounded-lg px-1.5 py-1 text-sm has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="checkbox" name="equipo__{{ g.slug }}" value="{{ p.usuario.pk }}" {% if p.marcado %}checked{% endif %}
+                                   class="h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                            <span class="min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">{{ p.usuario.nombre_completo|default:p.usuario.email }}</span>
+                        </label>
+                        {% empty %}
+                        <p class="px-1.5 text-xs text-gray-500 dark:text-gray-400">No hay usuarios activos.</p>
+                        {% endfor %}
+                    </div>
+                </div>
                 {% endfor %}
-            </ul>
+            </div>
         </section>
     </aside>
 </form>

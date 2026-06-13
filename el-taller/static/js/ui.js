@@ -373,3 +373,44 @@
     if (e.key === 'Escape') { cerrarLightbox(); cerrarPopovers(); }
   });
 })();
+
+// ── Indicador global "Procesando…" (LC logo girando) — S-LC-Feedback-V7 ──
+// Se enciende durante peticiones HTMX y envíos de formularios clásicos, y se
+// apaga al terminar. Debounce de 180 ms para que las respuestas rápidas no
+// hagan parpadear el badge. Contador de peticiones en vuelo para no apagarlo
+// mientras quede alguna activa.
+(function () {
+  var el = document.getElementById('proc-indicador');
+  if (!el) return;
+  var enVuelo = 0;
+  var timer = null;
+  function mostrar() {
+    if (timer) return;
+    timer = setTimeout(function () {
+      if (enVuelo > 0) { el.classList.remove('hidden'); el.classList.add('flex'); }
+    }, 180);
+  }
+  function ocultarSiVacio() {
+    if (enVuelo > 0) return;
+    if (timer) { clearTimeout(timer); timer = null; }
+    el.classList.add('hidden'); el.classList.remove('flex');
+  }
+  function inicia() { enVuelo++; mostrar(); }
+  function termina() { enVuelo = Math.max(0, enVuelo - 1); if (enVuelo === 0) ocultarSiVacio(); }
+
+  // HTMX: cada request en vuelo.
+  document.body.addEventListener('htmx:beforeRequest', inicia);
+  document.body.addEventListener('htmx:afterRequest', termina);
+  document.body.addEventListener('htmx:responseError', termina);
+  document.body.addEventListener('htmx:sendError', termina);
+
+  // Formularios clásicos (POST de página completa): mostrar hasta que navegue.
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form || form.hasAttribute('hx-post') || form.hasAttribute('hx-get')) return;
+    if (form.getAttribute('data-sin-indicador') === '1') return;
+    enVuelo++; mostrar();
+  }, true);
+  // Si el usuario regresa con el botón atrás (bfcache), limpia el estado.
+  window.addEventListener('pageshow', function () { enVuelo = 0; ocultarSiVacio(); });
+})();

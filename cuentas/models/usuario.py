@@ -59,6 +59,27 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     dias_trabajo = models.CharField(max_length=80, blank=True, default="",
                                     help_text="Ej. Lunes a viernes.")
 
+    # S-LC-Feedback-V7: jefe directo. Es quien aprueba los ajustes de horas de
+    # este empleado en El Checador (el super_admin siempre puede como failsafe).
+    # SET_NULL para no perder al empleado si se borra al jefe; no se permite
+    # auto-referencia (se valida en el form).
+    jefe_directo = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="subordinados",
+        help_text="Aprueba los ajustes de horas de este empleado.")
+
+    # S-LC-Feedback-V7: dirección + pin geográfico del empleado. Base para la
+    # GEOCERCA del Checador (comparar la checada contra este punto + radio).
+    # `geocerca_activa` enciende la fase; sin lat/lng no aplica.
+    direccion = models.TextField(blank=True, default="",
+                                 help_text="Dirección del empleado (texto libre).")
+    geo_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    geo_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    geocerca_radio_m = models.PositiveIntegerField(
+        default=150, help_text="Radio de la geocerca en metros.")
+    geocerca_activa = models.BooleanField(
+        default=False, help_text="Activa la validación de geocerca para este empleado.")
+
     # S-Chalan-Voz-Usuario: voz/estilo personal del usuario para Los Chalanes.
     # Capa ADITIVA — se concatena DESPUÉS de la voz institucional (PromptVoz),
     # solo afecta tono en flujos conversacionales (Dictado, chat). Nunca toca
@@ -110,3 +131,27 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     @property
     def es_super_admin(self):
         return self.rol == "super_admin"
+
+    @property
+    def tiene_pin(self) -> bool:
+        """¿El empleado tiene un pin geográfico capturado?"""
+        return self.geo_lat is not None and self.geo_lng is not None
+
+    def distancia_a_m(self, lat, lng):
+        """Distancia en metros del pin del empleado a (lat, lng). None si no hay
+        pin o coords. Haversine — suficiente para una geocerca de oficina."""
+        if not self.tiene_pin or lat is None or lng is None:
+            return None
+        from math import asin, cos, radians, sin, sqrt
+        r = 6371000.0  # radio terrestre en metros
+        la1, lo1, la2, lo2 = map(radians, (float(self.geo_lat), float(self.geo_lng), float(lat), float(lng)))
+        h = sin((la2 - la1) / 2) ** 2 + cos(la1) * cos(la2) * sin((lo2 - lo1) / 2) ** 2
+        return 2 * r * asin(sqrt(h))
+
+    def dentro_de_geocerca(self, lat, lng):
+        """True/False si (lat,lng) cae dentro del radio de la geocerca, o None si
+        no hay pin/coords para evaluar."""
+        d = self.distancia_a_m(lat, lng)
+        if d is None:
+            return None
+        return d <= (self.geocerca_radio_m or 150)

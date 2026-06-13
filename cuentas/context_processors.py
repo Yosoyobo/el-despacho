@@ -50,18 +50,22 @@ def permisos_modulos(request):
 
 
 def sidebar_orden(request):
-    """S-LC-Feedback-V5 c6 — orden global del sidebar del Taller.
+    """Orden del sidebar del Taller — global (super_admin) + override por usuario.
 
-    Inyecta `sidebar_orden` = `{slug: {orden, oculto}}` para que el
-    template aplique `style="order: N"` (flexbox) y oculte items.
+    S-LC-Feedback-V5 c6: orden global en `SidebarOrden`.
+    S-LC-Feedback-V7: cada usuario acomoda el suyo en `SidebarOrdenUsuario`,
+    que PISA la fila global para ese usuario. Inyecta
+    `sidebar_orden` = `{slug: {orden, oculto}}`.
     """
     user = getattr(request, "user", None)
     if not user or not getattr(user, "is_authenticated", False):
         return {"sidebar_orden": {}}
     try:
-        from cuentas.models.sidebar_orden import SidebarOrden
-        filas = SidebarOrden.objects.all()
-        return {"sidebar_orden": {f.slug: {"orden": f.orden, "oculto": f.oculto} for f in filas}}
+        from cuentas.models.sidebar_orden import SidebarOrden, SidebarOrdenUsuario
+        mapa = {f.slug: {"orden": f.orden, "oculto": f.oculto} for f in SidebarOrden.objects.all()}
+        for f in SidebarOrdenUsuario.objects.filter(usuario=user):
+            mapa[f.slug] = {"orden": f.orden, "oculto": f.oculto}
+        return {"sidebar_orden": mapa}
     except Exception:
         return {"sidebar_orden": {}}
 

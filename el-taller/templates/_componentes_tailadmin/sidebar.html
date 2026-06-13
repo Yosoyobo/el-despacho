@@ -60,7 +60,7 @@
         {% if not sidebar_orden.directorio.oculto %}
         <a href="{% url 'directorio-lista' %}" style="order: {{ sidebar_orden.directorio.orden|default:45 }}" class="menu-item {% if '/directorio' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 20v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Directorio
+            Equipo
         </a>
         {% endif %}
 
@@ -93,6 +93,13 @@
         <a href="/catalogo/" style="order: {{ sidebar_orden.productos.orden|default:70 }}" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Productos
+        </a>
+        {% endif %}
+
+        {% if permisos_modulos.catalogo and not sidebar_orden.proveedores.oculto %}
+        <a href="/catalogo/proveedores/" style="order: {{ sidebar_orden.proveedores.orden|default:72 }}" class="menu-item {% if '/catalogo/proveedores' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M8 13h8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Proveedores
         </a>
         {% endif %}
 
@@ -186,7 +193,8 @@
     <div class="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
         <p class="font-medium text-gray-700 dark:text-gray-300">{{ request.user.nombre_completo|default:request.user.email }}</p>
         <p class="text-gray-500 dark:text-gray-400">{{ request.user.rol }}</p>
-        <a href="/sign-out" class="mt-2 inline-flex items-center gap-1 text-error-600 hover:underline">Salir →</a>
+        <a href="/perfil/sidebar/" class="mt-2 inline-flex items-center gap-1 text-gray-500 hover:text-brand-600 hover:underline dark:text-gray-400">⋮⋮ Personalizar menú</a>
+        <a href="/sign-out" class="mt-2 ml-3 inline-flex items-center gap-1 text-error-600 hover:underline">Salir →</a>
     </div>
 </aside>
 <div data-ta-sidebar-backdrop class="fixed inset-0 z-30 hidden bg-gray-900/50 lg:hidden"></div>

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}{{ empleado.nombre_completo }} — Equipo{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Equipo" "/directorio/" empleado.nombre_completo as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=empleado.nombre_completo subtitulo=empleado.puesto breadcrumb_items=breadcrumb_items back_url="/directorio/" back_label="Equipo" %}
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    {# ── Columna principal ── #}
+    <div class="space-y-6 xl:col-span-2">
+        {# Encabezado de identidad #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="flex items-start gap-4">
+                {% if empleado.avatar_url %}
+                <img src="{{ empleado.avatar_url }}" alt="{{ empleado.nombre_completo }}" class="h-16 w-16 shrink-0 rounded-full object-cover">
+                {% else %}
+                <div class="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xl font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ empleado.nombre_completo|slice:":1"|upper }}</div>
+                {% endif %}
+                <div class="min-w-0 flex-1">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ empleado.nombre_completo }}</h2>
+                    {% if empleado.puesto %}<p class="text-sm text-gray-500 dark:text-gray-400">{{ empleado.puesto }}</p>{% endif %}
+                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300">{{ empleado.get_modalidad_display }}</span>
+                        {% for r in roles %}<span class="badge badge-brand">{{ r }}</span>{% endfor %}
+                        {% if not empleado.is_active %}<span class="badge badge-error">Inactivo</span>{% endif %}
+                    </div>
+                </div>
+                {% if puede_editar_ficha %}
+                <a href="https://gerencia.learningcenter.mx/directorio/" target="_blank" rel="noopener" class="btn-secundario shrink-0 text-xs">Editar en Gerencia →</a>
+                {% endif %}
+            </div>
+        </section>
+
+        {# Resumen del Checador (solo a quien lo puede ver) #}
+        {% if ve_checador %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Asistencia (Checador)</h3>
+                {% if detalle_checador_url %}<a href="{{ detalle_checador_url }}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver detalle →</a>{% endif %}
+            </div>
+            {% if resumen_checador %}
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Horas esta semana</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ resumen_checador.semana.jornada_horas }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Días trabajados (sem)</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ resumen_checador.semana.dias }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Retardos (mes)</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ resumen_checador.mes.retardos }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Visitas (mes)</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ resumen_checador.mes.visitas }}</p>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Sin datos de asistencia todavía.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {# Subordinados (si es jefe) #}
+        {% if subordinados %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Equipo a su cargo</h3>
+            <ul class="space-y-2 text-sm">
+                {% for s in subordinados %}
+                <li><a href="{% url 'directorio-perfil' s.pk %}" class="text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ s.nombre_completo }}</a>{% if s.puesto %} · <span class="text-gray-500 dark:text-gray-400">{{ s.puesto }}</span>{% endif %}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+    </div>
+
+    {# ── Sidebar de ficha ── #}
+    <aside class="space-y-6">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Contacto</h3>
+            <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex gap-2"><dt class="w-24 shrink-0 text-gray-400 dark:text-gray-500">Correo</dt><dd class="min-w-0 flex-1 break-all text-gray-700 dark:text-gray-200"><a href="mailto:{{ empleado.email }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ empleado.email }}</a></dd></div>
+                {% if empleado.telefono %}<div class="flex gap-2"><dt class="w-24 shrink-0 text-gray-400 dark:text-gray-500">Teléfono</dt><dd class="flex-1 text-gray-700 dark:text-gray-200"><a href="tel:{{ empleado.telefono }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ empleado.telefono }}</a></dd></div>{% endif %}
+                {% if empleado.oficina %}<div class="flex gap-2"><dt class="w-24 shrink-0 text-gray-400 dark:text-gray-500">Oficina</dt><dd class="flex-1 text-gray-700 dark:text-gray-200">{{ empleado.oficina }}</dd></div>{% endif %}
+                {% if empleado.jefe_directo %}<div class="flex gap-2"><dt class="w-24 shrink-0 text-gray-400 dark:text-gray-500">Jefe directo</dt><dd class="flex-1"><a href="{% url 'directorio-perfil' empleado.jefe_directo.pk %}" class="text-gray-700 hover:text-brand-600 dark:text-gray-200 dark:hover:text-brand-400">{{ empleado.jefe_directo.nombre_completo }}</a></dd></div>{% endif %}
+            </dl>
+        </section>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Horario declarado</h3>
+            <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex gap-2"><dt class="w-24 shrink-0 text-gray-400 dark:text-gray-500">Horario</dt><dd class="flex-1 text-gray-700 dark:text-gray-200">{% if empleado.horario_inicio and empleado.horario_fin %}{{ empleado.horario_inicio|time:"H:i" }}–{{ empleado.horario_fin|time:"H:i" }}{% else %}—{% endif %}</dd></div>
+                <div class="flex gap-2"><dt class="w-24 shrink-0 text-gray-400 dark:text-gray-500">Días</dt><dd class="flex-1 text-gray-700 dark:text-gray-200">{{ empleado.dias_trabajo|default:"—" }}</dd></div>
+            </dl>
+            <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">El horario que valida el Checador se configura en La Gerencia.</p>
+        </section>
+
+        {# Dirección + pin de geocerca #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ubicación y geocerca</h3>
+            {% if empleado.direccion %}<p class="mt-3 text-sm text-gray-700 dark:text-gray-200">{{ empleado.direccion }}</p>{% endif %}
+            {% if empleado.tiene_pin %}
+            <div class="mt-3 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+                <iframe src="{{ osm_src }}" class="h-48 w-full" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Pin del empleado"></iframe>
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Geocerca:
+                {% if empleado.geocerca_activa %}<span class="font-medium text-success-600 dark:text-success-400">activa</span>{% else %}<span class="text-gray-400">inactiva</span>{% endif %}
+                · radio {{ empleado.geocerca_radio_m }} m
+            </p>
+            {% else %}
+            <p class="mt-3 text-sm text-gray-400 dark:text-gray-500">Sin pin capturado todavía.{% if puede_editar_ficha %} Captúralo en La Gerencia → El Directorio.{% endif %}</p>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+{% endblock %}

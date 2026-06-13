@@ -11,8 +11,47 @@
         {% if f.errors %}<ul class="mt-1 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
     </div>
     {% endfor %}
+    <div class="rounded-lg border border-gray-200 bg-gray-50/60 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">
+        <p class="mb-2 font-medium">📍 Pin de geocerca</p>
+        <p class="mb-2">El pin (lat/lng) + radio definen la geocerca del empleado para El Checador. Captura las coordenadas a mano, o párate en el lugar y usa el botón.</p>
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="button" id="geo-usar-ubicacion" class="btn-secundario text-xs">📍 Usar mi ubicación actual</button>
+            <a id="geo-ver-mapa" href="#" target="_blank" rel="noopener" class="text-brand-600 underline hover:text-brand-700 dark:text-brand-400" hidden>Ver pin en el mapa →</a>
+        </div>
+    </div>
     <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
         <button type="button" data-modal-slot-close class="btn-secundario">Cerrar</button>
         <button type="submit" class="btn-primario">Guardar</button>
     </div>
 </form>
+<script>
+(function () {
+    var lat = document.getElementById('id_geo_lat');
+    var lng = document.getElementById('id_geo_lng');
+    var btn = document.getElementById('geo-usar-ubicacion');
+    var ver = document.getElementById('geo-ver-mapa');
+    if (!lat || !lng) return;
+    function actualizarMapa() {
+        if (lat.value && lng.value && ver) {
+            ver.href = 'https://www.openstreetmap.org/?mlat=' + encodeURIComponent(lat.value) + '&mlon=' + encodeURIComponent(lng.value) + '#map=18/' + lat.value + '/' + lng.value;
+            ver.hidden = false;
+        } else if (ver) { ver.hidden = true; }
+    }
+    lat.addEventListener('input', actualizarMapa);
+    lng.addEventListener('input', actualizarMapa);
+    actualizarMapa();
+    if (btn) btn.addEventListener('click', function () {
+        if (!navigator.geolocation) { alert('Tu navegador no permite geolocalización.'); return; }
+        btn.disabled = true; btn.textContent = 'Obteniendo…';
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            lat.value = pos.coords.latitude.toFixed(6);
+            lng.value = pos.coords.longitude.toFixed(6);
+            actualizarMapa();
+            btn.disabled = false; btn.textContent = '📍 Usar mi ubicación actual';
+        }, function () {
+            alert('No se pudo obtener tu ubicación.');
+            btn.disabled = false; btn.textContent = '📍 Usar mi ubicación actual';
+        }, {enableHighAccuracy: true, timeout: 10000});
+    });
+})();
+</script>
