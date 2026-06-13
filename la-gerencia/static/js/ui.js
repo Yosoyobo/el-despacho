@@ -513,6 +513,58 @@
   document.body.addEventListener('htmx:responseError', fin);
   document.body.addEventListener('htmx:sendError', fin);
 
+  // --- Navegación de página completa (cambiar de sección con un link) ---
+  // El usuario hace clic en un item del menú / un link y la página tarda en
+  // cargar; queremos que el logo gire de inmediato. El documento nuevo reinicia
+  // el spinner solo. Si el clic NO termina en navegación (descarga de CSV/PDF,
+  // o nav cancelada) un temporizador de seguridad lo apaga.
+  var navTimer = null;
+  function esNavegacionReal(a, e) {
+    if (!a || a.tagName !== 'A') return false;
+    if (e.defaultPrevented) return false;                       // otro handler ya lo tomó
+    if (e.button && e.button !== 0) return false;               // no clic izquierdo
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return false;  // abre pestaña nueva
+    if (a.target && a.target !== '_self') return false;         // _blank, etc.
+    if (a.hasAttribute('download')) return false;
+    if (a.hasAttribute('hx-get') || a.hasAttribute('hx-post') || a.hasAttribute('hx-boost')) return false;
+    if (a.closest('[data-sin-indicador="1"]')) return false;
+    var href = a.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#') return false;
+    if (/^(mailto:|tel:|javascript:|blob:|data:)/i.test(href)) return false;
+    try {
+      var dest = new URL(a.href, window.location.href);
+      // Mismo documento, solo cambia el hash → no recarga.
+      if (dest.origin === window.location.origin &&
+          dest.pathname === window.location.pathname &&
+          dest.search === window.location.search && dest.hash) return false;
+    } catch (_) { /* href raro → asumimos navegación */ }
+    return true;
+  }
+  function arrancarNav() {
+    inicia();
+    // Seguridad: si en 4 s no hubo `pagehide` (fue descarga o se canceló),
+    // apaga el spinner para no dejarlo pegado.
+    if (navTimer) clearTimeout(navTimer);
+    navTimer = setTimeout(function () { termina(); navTimer = null; }, 4000);
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var a = e.target.closest('a[href]');
+    if (a) { if (esNavegacionReal(a, e)) arrancarNav(); return; }
+    // Filas clickeables [data-href] (navegan vía JS en el otro handler de ui.js).
+    var row = e.target.closest('[data-href]');
+    if (row && !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey
+        && !e.target.closest('a, button, input, label, select, textarea, [data-dropdown], [data-no-row-click]')
+        && row.getAttribute('href') !== '' && row.getAttribute('data-href')) {
+      arrancarNav();
+    }
+  }, false);
+  window.addEventListener('pagehide', function () {
+    // Navegación realmente en curso: el temporizador de seguridad ya no aplica
+    // (la página se va con el spinner encendido; el documento nuevo lo reinicia).
+    if (navTimer) { clearTimeout(navTimer); navTimer = null; }
+  });
+
   // Submit de CUALQUIER formulario (clásico o HTMX): bloquea doble envío +
   // enciende el spinner. El evento `submit` solo dispara cuando el form pasó la
   // validación nativa (required, etc.), así que es seguro marcarlo aquí.
