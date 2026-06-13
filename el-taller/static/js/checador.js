@@ -168,6 +168,53 @@
     (root || document).querySelectorAll("[data-checar-geo]").forEach(wire);
   }
 
+  // ── Vista previa de mi ubicación (mapa) antes de checar / al registrar ──
+  // Botón [data-ver-mi-ubicacion]: toma la ubicación actual y la muestra en el
+  // mapa (snapshot de dónde estás), para que veas la geocerca antes de checar.
+  // En la pantalla del Checador abre el modal del mapa (#modal-slot libre); si
+  // el botón vive DENTRO de un modal (p. ej. el de visita), abre Google Maps en
+  // otra pestaña para no reemplazar el modal abierto.
+  function verMiUbicacion(btn) {
+    var enModal = !!(btn.closest && btn.closest("#modal-slot"));
+    var original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = "Obteniendo tu ubicación…";
+    function restaurar() { btn.disabled = false; btn.innerHTML = original; }
+    function abrir(lat, lng, precision) {
+      if (enModal) {
+        if (lat == null) { if (typeof alert === "function") alert("No pudimos obtener tu ubicación."); restaurar(); return; }
+        window.open("https://www.google.com/maps/search/?api=1&query=" + lat + "," + lng, "_blank", "noopener");
+        restaurar();
+        return;
+      }
+      var p = new URLSearchParams();
+      if (lat != null) { p.set("lat", lat); p.set("lng", lng); }
+      if (precision != null && precision !== "") p.set("precision", precision);
+      p.set("etiqueta", "Mi ubicación ahora");
+      var url = "/checador/mapa?" + p.toString();
+      if (window.htmx) {
+        window.htmx.ajax("GET", url, { target: "#modal-slot", swap: "innerHTML" });
+        restaurar();
+      } else {
+        fetch(url, { credentials: "same-origin" })
+          .then(function (r) { return r.text(); })
+          .then(function (html) { var s = document.getElementById("modal-slot"); if (s) s.innerHTML = html; })
+          .catch(function () {})
+          .then(restaurar);
+      }
+    }
+    if (!navigator.geolocation) { abrir(null, null, null); return; }
+    navigator.geolocation.getCurrentPosition(
+      function (pos) { abrir(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy || ""); },
+      function () { abrir(null, null, null); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  }
+  document.body.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest("[data-ver-mi-ubicacion]");
+    if (btn) { e.preventDefault(); verMiUbicacion(btn); }
+  });
+
   function reloj() {
     var el = document.getElementById("reloj");
     if (!el) return;

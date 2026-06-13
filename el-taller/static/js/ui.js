@@ -426,29 +426,34 @@
   });
 })();
 
-// ── Indicador global "Procesando…" (LC logo girando) — S-LC-Feedback-V7 ──
-// V9: el spinner SOLO aparece tras una acción deliberada del usuario (enviar,
-// submit, clic de navegación / cambio de sección). NO debe salir al teclear ni
-// por autoguardados ni por polling de fondo. Por eso ignoramos las peticiones
-// HTMX disparadas por eventos de texto/cambio de campo (input/keyup/keydown/
-// change), las que no tienen evento disparador (hx-trigger="load"/"every Ns")
-// y las marcadas con [data-sin-indicador="1"]. Rastreamos las peticiones
-// "ruidosas" en un WeakSet para que una silenciosa que termina no apague el
-// spinner de una ruidosa en curso. Debounce de 180 ms para no parpadear.
+// ── Indicador global "Procesando…" (LC logo girando) + anti-doble-clic ──
+// S-LC-Feedback-V7 / V9 / S-Chalan-Equipo-UX (este sprint).
+//
+// Dos responsabilidades, una sola IIFE:
+//  1) SPINNER: el logo LC gira SIEMPRE que el usuario dispara una petición
+//     deliberada (submit, clic que hace request HTMX o navega un form clásico)
+//     o pide algo a El Chalán. NO sale al teclear, ni por autoguardados, ni por
+//     polling de fondo, ni en [data-sin-indicador="1"]. Debounce corto (90 ms)
+//     para que se sienta inmediato pero sin parpadear en respuestas instantáneas.
+//  2) ANTI-DOBLE-CLIC: al enviar un formulario lo marcamos "enviando" y
+//     bloqueamos en seco cualquier segundo submit hasta que termine (clave para
+//     El Chalán y cualquier POST: el usuario hace doble clic creyendo que no se
+//     registró). También deshabilitamos visualmente los botones de submit y los
+//     botones HTMX (hx-get/hx-post) mientras la petición está en vuelo.
+//     Opt-out por formulario/elemento con [data-sin-bloqueo="1"].
 (function () {
   var el = document.getElementById('proc-indicador');
-  if (!el) return;
   var enVuelo = 0;
   var timer = null;
   var ruidosas = (typeof WeakSet !== 'undefined') ? new WeakSet() : null;
   function mostrar() {
-    if (timer) return;
+    if (!el || timer) return;
     timer = setTimeout(function () {
       if (enVuelo > 0) { el.classList.remove('hidden'); el.classList.add('flex'); }
-    }, 180);
+    }, 90);
   }
   function ocultarSiVacio() {
-    if (enVuelo > 0) return;
+    if (enVuelo > 0 || !el) return;
     if (timer) { clearTimeout(timer); timer = null; }
     el.classList.add('hidden'); el.classList.remove('flex');
   }
@@ -467,28 +472,83 @@
     return false; // submit, click, etc. → acción del usuario
   }
 
+  // --- Anti-doble-clic: deshabilita un elemento y lo marca para reactivar. ---
+  function bloquear(elt) {
+    if (!elt || elt.disabled) return;
+    if (elt.closest && elt.closest('[data-sin-bloqueo="1"]')) return;
+    elt.disabled = true;
+    elt.setAttribute('data-autobloqueo', '1');
+  }
+  function reactivarTodo() {
+    document.querySelectorAll('[data-autobloqueo="1"]').forEach(function (b) {
+      b.disabled = false; b.removeAttribute('data-autobloqueo');
+    });
+    document.querySelectorAll('form[data-enviando="1"]').forEach(function (f) {
+      f.removeAttribute('data-enviando');
+    });
+  }
+
   document.body.addEventListener('htmx:beforeRequest', function (evt) {
     if (esSilenciosa(evt)) return;
     var xhr = evt.detail && evt.detail.xhr;
     if (ruidosas && xhr) ruidosas.add(xhr);
+    // Deshabilita el botón HTMX que disparó (hx-get/hx-post fuera de form) para
+    // que un segundo clic no dispare otra petición.
+    var elt = evt.detail && evt.detail.elt;
+    if (elt && (elt.tagName === 'BUTTON' || (elt.tagName === 'A' && elt.hasAttribute('hx-get')))) {
+      bloquear(elt);
+    }
     inicia();
   });
   function fin(evt) {
     var xhr = evt.detail && evt.detail.xhr;
-    if (!ruidosas) { return; }
-    if (xhr && ruidosas.has(xhr)) { ruidosas.delete(xhr); termina(); }
+    // Solo reactivamos/contamos en peticiones deliberadas — un poll de fondo
+    // que termina no debe desbloquear un formulario que apenas se envió.
+    if (!ruidosas || !xhr || !ruidosas.has(xhr)) return;
+    ruidosas.delete(xhr);
+    reactivarTodo();
+    termina();
   }
   document.body.addEventListener('htmx:afterRequest', fin);
   document.body.addEventListener('htmx:responseError', fin);
   document.body.addEventListener('htmx:sendError', fin);
 
-  // Formularios clásicos (POST de página completa): mostrar hasta que navegue.
+  // Submit de CUALQUIER formulario (clásico o HTMX): bloquea doble envío +
+  // enciende el spinner. El evento `submit` solo dispara cuando el form pasó la
+  // validación nativa (required, etc.), así que es seguro marcarlo aquí.
   document.addEventListener('submit', function (e) {
     var form = e.target;
-    if (!form || form.hasAttribute('hx-post') || form.hasAttribute('hx-get')) return;
-    if (form.getAttribute('data-sin-indicador') === '1') return;
-    enVuelo++; mostrar();
+    if (!form || form.tagName !== 'FORM') return;
+    if (form.getAttribute('data-sin-bloqueo') === '1') return;
+    // Segundo submit mientras el primero sigue en vuelo → cancélalo en seco.
+    if (form.getAttribute('data-enviando') === '1') {
+      e.preventDefault();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      return;
+    }
+    form.setAttribute('data-enviando', '1');
+    var esHtmx = form.hasAttribute('hx-post') || form.hasAttribute('hx-get');
+    // Deshabilita botones de submit (feedback inmediato). Diferido un tick para
+    // NO quitarle el valor del botón-submisor a un POST clásico (que se
+    // serializa al terminar este evento).
+    var btns = form.querySelectorAll('button:not([type="button"]):not([data-sin-bloqueo="1"]), input[type="submit"]');
+    // Diferido un tick: así un POST clásico ya serializó el botón-submisor antes
+    // de deshabilitarlo, y podemos ver si un validador en JS canceló el envío.
+    setTimeout(function () {
+      if (!esHtmx && e.defaultPrevented) {
+        // Submit clásico cancelado (validación) → no navega: deshaz el bloqueo
+        // para que el usuario reintente tras corregir.
+        form.removeAttribute('data-enviando');
+        return;
+      }
+      btns.forEach(bloquear);
+      // El spinner de los HTMX lo enciende htmx:beforeRequest; los clásicos aquí.
+      if (!esHtmx && form.getAttribute('data-sin-indicador') !== '1') inicia();
+    }, 0);
   }, true);
-  // Si el usuario regresa con el botón atrás (bfcache), limpia el estado.
-  window.addEventListener('pageshow', function () { enVuelo = 0; ocultarSiVacio(); });
+
+  // Si el usuario regresa con el botón atrás (bfcache), limpia todo el estado.
+  window.addEventListener('pageshow', function () {
+    enVuelo = 0; ocultarSiVacio(); reactivarTodo();
+  });
 })();

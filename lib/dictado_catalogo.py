@@ -168,6 +168,59 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "cliente_slug, tipo_plantilla (generico|bienvenida|cobranza), asunto?, mensaje?",
         "gating": "comunicacion",
     },
+    # ── El Checador (S-Chalan-Equipo-UX): el Chalán opera tu asistencia.
+    # El actor es siempre quien dicta. Sin GPS (corre en el servidor) → las
+    # checadas/visitas quedan sin ubicación; lo más útil es tiempo de proyecto
+    # y pedir ajustes de jornada.
+    {
+        "tipo": "checador_iniciar_jornada",
+        "titulo": "Checar entrada (jornada)",
+        "ejemplo": "Chécame la entrada.",
+        "payload": "(sin payload)",
+        "gating": "checador",
+    },
+    {
+        "tipo": "checador_cerrar_jornada",
+        "titulo": "Checar salida (jornada)",
+        "ejemplo": "Ya me voy, chécame la salida.",
+        "payload": "(sin payload)",
+        "gating": "checador",
+    },
+    {
+        "tipo": "checador_registrar_tiempo_proyecto",
+        "titulo": "Registrar tiempo de proyecto",
+        "ejemplo": "Registra 2 horas en #lc-0001 hoy de 10:00 a 12:00.",
+        "payload": "proyecto_slug, hora_inicio (HH:MM), hora_fin (HH:MM), fecha?, nota?",
+        "gating": "checador",
+    },
+    {
+        "tipo": "checador_iniciar_tiempo_proyecto",
+        "titulo": "Iniciar cronómetro de proyecto",
+        "ejemplo": "Arranca el cronómetro de #lc-0001.",
+        "payload": "proyecto_slug",
+        "gating": "checador",
+    },
+    {
+        "tipo": "checador_detener_tiempo_proyecto",
+        "titulo": "Detener cronómetro de proyecto",
+        "ejemplo": "Detén el cronómetro del proyecto.",
+        "payload": "(sin payload)",
+        "gating": "checador",
+    },
+    {
+        "tipo": "checador_registrar_visita",
+        "titulo": "Registrar visita",
+        "ejemplo": "Registra una visita a $karikari.",
+        "payload": "cliente_slug? | proveedor_nombre? | tipo? (cliente|proveedor|otro), nota?",
+        "gating": "checador",
+    },
+    {
+        "tipo": "checador_solicitar_ajuste_jornada",
+        "titulo": "Pedir ajuste de jornada",
+        "ejemplo": "Pide ajustar mi jornada de ayer: entré a las 9:00 y salí a las 18:00, olvidé checar.",
+        "payload": "fecha (YYYY-MM-DD), hora_entrada? (HH:MM), hora_salida? (HH:MM), motivo",
+        "gating": "checador",
+    },
 ]
 
 
@@ -185,6 +238,8 @@ def _gating_checks():
         "contaduria_capturar": permisos.puede_capturar_contaduria,
         # V6 Bloque 7B: correo a clientes — permiso granular (comunicacion).
         "comunicacion": permisos.puede_enviar_correo,
+        # S-Chalan-Equipo-UX: acciones del Checador (jornada/tiempo/visitas).
+        "checador": permisos.puede_checar,
     }
 
 
@@ -253,6 +308,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},
     {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
+    {"nombre": "mi_jornada_hoy / mis_horas_semana", "que": "Tu jornada de hoy (entrada/salida/retardo) y tus horas de los últimos 7 días (El Checador)."},
     {"nombre": "resumen del calendario", "que": "En la página de Calendario, el botón '🤖 Resumir con El Chalán' arma un resumen ejecutivo de tus próximas entregas y tareas (qué viene, qué urge)."},
     {"nombre": "gasto_ia", "que": "Costo, llamadas y tokens de IA por proveedor."},
     {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},

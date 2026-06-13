@@ -422,6 +422,42 @@ def _h_mis_tareas(args: dict, usuario) -> dict:
     return {"tareas": filas, "total": qs.count()}
 
 
+def _h_mi_jornada_hoy(args: dict, usuario) -> dict:
+    """Mi jornada de hoy: entrada/salida/retardo + si tengo cronómetro activo."""
+    from apps.checador.models.jornada import Jornada
+    from apps.checador.models.sesion import SesionProyecto
+
+    from lib.fecha import ahora_mx
+    hoy = ahora_mx().date()
+    j = Jornada.objects.filter(usuario=usuario, fecha=hoy).first()
+    timer = (
+        SesionProyecto.objects.filter(usuario=usuario, estado="activa")
+        .select_related("proyecto").first()
+    )
+    return {
+        "fecha": str(hoy),
+        "entrada": j.entrada_en.isoformat() if j and j.entrada_en else None,
+        "salida": j.salida_en.isoformat() if j and j.salida_en else None,
+        "retardo_min": (j.retardo_min if j else 0),
+        "estado": (j.estado if j else "sin_checar"),
+        "cronometro_activo": (
+            {"proyecto": timer.proyecto.codigo} if timer else None
+        ),
+    }
+
+
+def _h_mis_horas_semana(args: dict, usuario) -> dict:
+    """Mis horas trabajadas, retardos y visitas de los últimos 7 días."""
+    from datetime import timedelta
+
+    from apps.checador import services
+
+    from lib.fecha import ahora_mx
+    hoy = ahora_mx().date()
+    datos = services.horas_de(usuario, hoy - timedelta(days=6), hoy)
+    return {"periodo": "últimos 7 días", **datos}
+
+
 def _h_tareas_de_proyecto(args: dict, usuario) -> dict:
     from apps.el_pizarron.models.tarea import Tarea
     from apps.los_proyectos.models import Proyecto
@@ -665,6 +701,18 @@ HERRAMIENTAS: dict[str, Herramienta] = {
         ),
         args_schema={"texto": {"tipo": "str", "requerido": True}},
         gating="abierto", fn=_h_buscar,
+    ),
+    "mi_jornada_hoy": Herramienta(
+        nombre="mi_jornada_hoy",
+        descripcion="Tu jornada de hoy en El Checador: entrada, salida, retardo y si tienes un cronómetro de proyecto activo.",
+        args_schema={},
+        gating="abierto", fn=_h_mi_jornada_hoy,
+    ),
+    "mis_horas_semana": Herramienta(
+        nombre="mis_horas_semana",
+        descripcion="Tus horas trabajadas, días, retardos y visitas de los últimos 7 días (El Checador).",
+        args_schema={},
+        gating="abierto", fn=_h_mis_horas_semana,
     ),
 }
 

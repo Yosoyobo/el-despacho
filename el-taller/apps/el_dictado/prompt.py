@@ -49,8 +49,13 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - enviar_correo (V6: correo a UN cliente vía El Cartero; payload:
   cliente_slug, tipo_plantilla ∈ generico|bienvenida|cobranza, asunto?,
   mensaje? — solo al email registrado del cliente, nunca direcciones libres)
-  (todas las financieras y enviar_correo requieren permiso; el sistema
-  rechaza la acción si el usuario no lo tiene)
+- El Checador (registra TU asistencia; el actor siempre eres tú):
+  checador_iniciar_jornada, checador_cerrar_jornada (sin payload),
+  checador_registrar_tiempo_proyecto, checador_iniciar_tiempo_proyecto,
+  checador_detener_tiempo_proyecto, checador_registrar_visita,
+  checador_solicitar_ajuste_jornada
+  (todas las financieras, enviar_correo y las del Checador requieren permiso;
+  el sistema rechaza la acción si el usuario no lo tiene)
 
 FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
 {
@@ -97,6 +102,13 @@ PAYLOADS:
 - rechazar_cotizacion: {codigo, motivo}
 - capturar_traspaso: {cuenta_origen, cuenta_destino, monto, descripcion?, fecha?}  (cuenta = código, slot o nombre)
 - capturar_ajuste: {cuenta, direccion: 'sube'|'baja', monto, motivo, fecha?}
+- checador_iniciar_jornada: {}   (checa tu entrada del día)
+- checador_cerrar_jornada: {}    (checa tu salida del día)
+- checador_registrar_tiempo_proyecto: {proyecto_slug, hora_inicio: 'HH:MM', hora_fin: 'HH:MM', fecha?, nota?}
+- checador_iniciar_tiempo_proyecto: {proyecto_slug}
+- checador_detener_tiempo_proyecto: {}
+- checador_registrar_visita: {cliente_slug?, proveedor_nombre?, tipo?: 'cliente'|'proveedor'|'otro', nota?}
+- checador_solicitar_ajuste_jornada: {fecha: 'YYYY-MM-DD', hora_entrada?: 'HH:MM', hora_salida?: 'HH:MM', motivo}
 
 Si pregunta_clarificacion no es null, ignora `acciones` y devuelve la pregunta
 con candidatos cuando aplique.

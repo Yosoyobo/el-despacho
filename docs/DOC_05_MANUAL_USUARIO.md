@@ -5,6 +5,34 @@
 
 ---
 
+## Novedades — El Chalán checa por ti, mapa antes de checar y menos dobles clics (13 de junio de 2026)
+
+- **El Chalán opera El Checador.** Ahora puedes pedirle a **El Chalán** (chat o
+  dictado) que registre tu asistencia, por ejemplo:
+  - *"Chécame la entrada"* / *"Ya me voy, chécame la salida"*.
+  - *"Registra 2 horas en #LC-0001 hoy de 10:00 a 12:00"* (tiempo por proyecto),
+    o *"arranca/detén el cronómetro de #LC-0001"*.
+  - *"Registra una visita a $cliente"*.
+  - *"Pide ajustar mi jornada de ayer: entré 9:00 y salí 18:00, olvidé checar"*
+    (la solicitud va a tu **jefe directo** para aprobación).
+  - También le puedes preguntar *"¿cuántas horas llevo esta semana?"* o
+    *"¿ya ché hoy?"*.
+  Nota: cuando El Chalán checa por ti **no toma tu ubicación** (eso solo pasa
+  desde la pantalla del Checador con el botón). Para dejar tu ubicación, usa la
+  pantalla del Checador.
+- **Ver tu ubicación en el mapa antes de checar.** En la pantalla del Checador
+  (y al registrar una visita) hay un botón **"Ver mi ubicación en el mapa"** que
+  te muestra dónde estás parado, para confirmar tu punto antes de checar.
+- **Menos dobles clics.** Cuando envías algo (un mensaje a El Chalán, guardar un
+  formulario, etc.) el **logo gira** para avisarte que se está procesando y el
+  botón se **bloquea** un momento, así un segundo clic ya no manda la cosa dos
+  veces.
+- **Tarjetas del Equipo arregladas.** En **Equipo**, cada dato (correo,
+  teléfono, oficina, horario) ahora aparece **dentro de su propio recuadro**, ya
+  no como texto suelto fuera del campo.
+
+---
+
 ## Novedades — Menú con carpetas, horas privadas y ficha más completa (12 de junio de 2026)
 
 - **Carpetas en tu menú.** En **Personalizar menú** (abajo del menú lateral)

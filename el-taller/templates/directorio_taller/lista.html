@@ -39,11 +39,27 @@
                 </div>
             </div>
         </div>
-        <dl class="mt-4 space-y-1.5 text-sm">
-            <div class="flex gap-2"><dt class="w-20 shrink-0 text-gray-400 dark:text-gray-500">Correo</dt><dd class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200"><a href="mailto:{{ u.email }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ u.email }}</a></dd></div>
-            {% if u.telefono %}<div class="flex gap-2"><dt class="w-20 shrink-0 text-gray-400 dark:text-gray-500">Teléfono</dt><dd class="flex-1 text-gray-700 dark:text-gray-200"><a href="tel:{{ u.telefono }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ u.telefono }}</a></dd></div>{% endif %}
-            {% if u.oficina %}<div class="flex gap-2"><dt class="w-20 shrink-0 text-gray-400 dark:text-gray-500">Oficina</dt><dd class="flex-1 text-gray-700 dark:text-gray-200">{{ u.oficina }}</dd></div>{% endif %}
-            {% if u.horario_inicio and u.horario_fin %}<div class="flex gap-2"><dt class="w-20 shrink-0 text-gray-400 dark:text-gray-500">Horario</dt><dd class="flex-1 text-gray-700 dark:text-gray-200">{{ u.horario_inicio|time:"H:i" }}–{{ u.horario_fin|time:"H:i" }}{% if u.dias_trabajo %} · {{ u.dias_trabajo }}{% endif %}</dd></div>{% elif u.dias_trabajo %}<div class="flex gap-2"><dt class="w-20 shrink-0 text-gray-400 dark:text-gray-500">Días</dt><dd class="flex-1 text-gray-700 dark:text-gray-200">{{ u.dias_trabajo }}</dd></div>{% endif %}
+        {# Cada dato vive DENTRO de su propio recuadro delimitado (label arriba, valor abajo). #}
+        <dl class="mt-4 grid grid-cols-1 gap-2 text-sm">
+            <div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/40">
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Correo</dt>
+                <dd class="mt-0.5 truncate font-medium text-gray-700 dark:text-gray-200"><a href="mailto:{{ u.email }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ u.email }}</a></dd>
+            </div>
+            {% if u.telefono %}<div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/40">
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Teléfono</dt>
+                <dd class="mt-0.5 font-medium text-gray-700 dark:text-gray-200"><a href="tel:{{ u.telefono }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ u.telefono }}</a></dd>
+            </div>{% endif %}
+            {% if u.oficina %}<div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/40">
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Oficina</dt>
+                <dd class="mt-0.5 font-medium text-gray-700 dark:text-gray-200">{{ u.oficina }}</dd>
+            </div>{% endif %}
+            {% if u.horario_inicio and u.horario_fin %}<div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/40">
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Horario</dt>
+                <dd class="mt-0.5 font-medium text-gray-700 dark:text-gray-200">{{ u.horario_inicio|time:"H:i" }}–{{ u.horario_fin|time:"H:i" }}{% if u.dias_trabajo %} · {{ u.dias_trabajo }}{% endif %}</dd>
+            </div>{% elif u.dias_trabajo %}<div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/40">
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Días</dt>
+                <dd class="mt-0.5 font-medium text-gray-700 dark:text-gray-200">{{ u.dias_trabajo }}</dd>
+            </div>{% endif %}
         </dl>
         <div class="mt-3 border-t border-gray-100 pt-3 text-xs font-medium text-brand-600 dark:border-gray-800 dark:text-brand-400">
             Ver ficha completa →
