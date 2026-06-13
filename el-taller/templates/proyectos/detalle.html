@@ -183,8 +183,7 @@
             </div>
             {% endif %}
 
-            {# + Nuevo producto — modal atómico (S-LC-Feedback-V8): evita los
-               duplicados del clonado inline + autosave. #}
+            {# + Nuevo producto: modal atómico (V8) — evita los duplicados del clonado inline + autosave. #}
             <div class="mt-4 flex justify-center">
                 <button type="button" hx-get="{% url 'proyectos-agregar-producto' proyecto.pk %}"
                         hx-target="#modal-slot" hx-swap="innerHTML" class="btn-secundario">+ Nuevo producto</button>
