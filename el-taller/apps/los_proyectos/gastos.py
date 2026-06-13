@@ -28,6 +28,36 @@ logger = logging.getLogger(__name__)
 CENTRO_SLUG = "insumos-de-proyecto"
 CERO = Decimal("0.00")
 
+# S-LC-Feedback-V8 (Oscar): la alerta de gastos sin registrar solo aplica de
+# "En proceso de diseño" en adelante (antes de eso el proyecto aún se cotiza).
+ESTADOS_CON_GASTOS = {
+    "en_proceso_diseno", "en_proceso_produccion", "entregado", "cerrado",
+}
+
+
+def debe_mostrar_gastos(proyecto) -> bool:
+    return getattr(proyecto, "estado", None) in ESTADOS_CON_GASTOS
+
+
+def desglose_iva(proyecto, pendientes: list[dict]) -> dict:
+    """Subtotal + IVA = total de los gastos pendientes (S-LC-Feedback-V8).
+
+    El monto de cada unidad es el costo SIN IVA (es lo que cuesta producir);
+    el IVA que paga la empresa se calcula con la tasa efectiva del proyecto.
+    """
+    subtotal = sum((u["monto"] for u in pendientes), CERO)
+    try:
+        tasa = Decimal(str(proyecto.iva_tasa_efectiva))
+    except Exception:  # noqa: BLE001
+        tasa = Decimal("0.16")
+    iva = (subtotal * tasa).quantize(Decimal("0.01"))
+    return {
+        "subtotal": subtotal.quantize(Decimal("0.01")),
+        "iva": iva,
+        "total": (subtotal + iva).quantize(Decimal("0.01")),
+        "iva_label": f"{float(tasa * 100):g}%",
+    }
+
 
 def _registrado(egreso) -> bool:
     return egreso is not None and not egreso.anulado
@@ -92,10 +122,30 @@ def _datos_egreso(proyecto, clase: str, obj):
     return monto, proveedor, proveedor_nombre, descripcion
 
 
-def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None):
+def datos_para_modal(proyecto, clase: str, pk: int):
+    """Info de la unidad de gasto para precargar el modal 'Registrar'.
+    Devuelve `{monto, label, proveedor, ya_registrado}` o None."""
+    obj = _obj_de(proyecto, clase, pk)
+    if obj is None:
+        return None
+    monto, proveedor, proveedor_nombre, descripcion = _datos_egreso(proyecto, clase, obj)
+    return {
+        "monto": monto, "label": getattr(obj, "etiqueta", descripcion),
+        "proveedor": proveedor, "proveedor_nombre": proveedor_nombre,
+        "ya_registrado": _registrado(obj.egreso),
+    }
+
+
+def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None,
+                     centro=None, metodo="transferencia", estado_pago="pendiente",
+                     pagado_por=None, solicitado_por=None):
     """Crea el Egreso de una unidad de gasto y lo liga. Idempotente (si ya
     tiene egreso vigente, lo devuelve). Devuelve el Egreso o None si no se
-    pudo (catálogo incompleto / objeto inexistente / monto 0)."""
+    pudo (catálogo incompleto / objeto inexistente / monto 0).
+
+    Los parámetros opcionales (centro, metodo, estado_pago, pagado_por,
+    solicitado_por) vienen del modal "Registrar" (S-LC-Feedback-V8). Sin ellos
+    usa los defaults (centro `insumos-de-proyecto`, transferencia, pendiente)."""
     from apps.tesoreria.models import CentroDeCosto, Egreso
 
     obj = _obj_de(proyecto, clase, pk)
@@ -107,7 +157,8 @@ def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None):
     monto, proveedor, proveedor_nombre, descripcion = _datos_egreso(proyecto, clase, obj)
     if monto <= 0:
         return None
-    centro = CentroDeCosto.objects.filter(slug=CENTRO_SLUG).first()
+    if centro is None:
+        centro = CentroDeCosto.objects.filter(slug=CENTRO_SLUG).first()
     if centro is None:
         logger.warning("proyecto=%s: centro '%s' ausente — no se registra el gasto.",
                        proyecto.pk, CENTRO_SLUG)
@@ -118,7 +169,8 @@ def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None):
             monto=monto, fecha=date.today(), descripcion=descripcion,
             proveedor=proveedor, proveedor_nombre=proveedor_nombre,
             centro_de_costo=centro, proyecto=proyecto,
-            estado_pago="pendiente", metodo="transferencia", origen="proyecto",
+            estado_pago=estado_pago or "pendiente", metodo=metodo or "transferencia",
+            pagado_por=pagado_por, solicitado_por=solicitado_por, origen="proyecto",
         )
         obj.egreso = egreso
         obj.save(update_fields=["egreso"])
@@ -155,7 +207,7 @@ def proyectos_con_pendientes():
     from .models import Proyecto
     salida = []
     qs = (
-        Proyecto.objects.exclude(estado="cancelado")
+        Proyecto.objects.filter(estado__in=ESTADOS_CON_GASTOS)
         .prefetch_related("productos", "productos__procesos")
     )
     for proyecto in qs:

@@ -224,6 +224,14 @@ ProyectoProductoFormSetEdit = inlineformset_factory(
     Proyecto, ProyectoProducto, form=ProyectoProductoForm,
     extra=1, can_delete=True,
 )
+# S-LC-Feedback-V8: en el DETALLE (con autoguardado) NO se agregan productos
+# inline — se agregan por el modal atómico. extra=0 evita la tarjeta vacía que,
+# combinada con el autosave + hx-swap=none, duplicaba productos (el pk nuevo
+# nunca se sincronizaba al cliente). Aquí el formset solo EDITA/borra existentes.
+ProyectoProductoFormSetDetalle = inlineformset_factory(
+    Proyecto, ProyectoProducto, form=ProyectoProductoForm,
+    extra=0, can_delete=True,
+)
 
 
 class ProyectoProveedorForm(FechaHoraMixin, forms.ModelForm):

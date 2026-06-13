@@ -5,6 +5,30 @@
 
 ---
 
+## Novedades — Ver como otro usuario, foto de perfil y gastos más claros (12 de junio de 2026)
+
+- **Ver como otro usuario (solo Super Admin).** En la ficha de un compañero
+  (Equipo), botón **"👁 Ver como este usuario"**: navegas el sistema *como si
+  fueras esa persona* para reproducir un problema. Sale una barra amarilla
+  arriba con **"Volver a mi cuenta"**. No se puede ver como otro Super Admin.
+- **Tu foto de perfil.** En tu propia ficha (Equipo), el botón del lápiz sobre
+  el avatar te deja **subir tu foto**.
+- **Indicador "procesando".** Ahora es el **logo de Learning Center girando al
+  centro** de la pantalla cuando el sistema está trabajando.
+- **Responsables del proyecto por rol.** Cada rol (Líder, Diseñador, etc.) tiene
+  un **desplegable**: marcas a una o varias personas; al cerrarlo se ven los
+  **nombres separados por coma**.
+- **Gastos sin registrar, más claros.** En la página del proyecto, la alerta de
+  **"gastos sin registrar en Tesorería"** ahora: solo aparece de **"en proceso
+  de diseño"** en adelante; incluye las **piezas de merma** en el costo; muestra
+  el desglose **Subtotal + IVA = Total**; y al picar **"Registrar"** abre una
+  ventana que pide **categoría/centro de costo, método de pago, quién pagó y
+  quién solicitó** (lo demás ya viene cargado).
+- **Productos del proyecto sin duplicados.** Se corrigió el error por el que los
+  productos se agregaban varias veces y no se podían quitar. **"+ Nuevo
+  producto"** abre una ventana para agregarlo de forma segura, y cada tarjeta
+  tiene su **✕ para eliminarlo**.
+
 ## Novedades — Equipo, menú a tu gusto, geocerca y más (12 de junio de 2026)
 
 - **Sección "Equipo".** El antiguo "Directorio" del Taller ahora es **Equipo**:

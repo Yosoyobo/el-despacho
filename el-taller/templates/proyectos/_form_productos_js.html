@@ -279,6 +279,23 @@
                 const data = await resp.json();
                 if (!resp.ok || !data.ok) { msg(data.error || 'Error al crear.'); qcBtn.disabled = false; return; }
                 SERVICIOS_DATOS[data.id] = { precio: pre.value, costo: cos.value || '0', categoria: cat.value };
+                // En modo autoguardado (detalle) NO clonamos en cliente — eso
+                // duplicaba productos. Creamos el ProyectoProducto en el server
+                // (atómico) y recargamos. En Nuevo/Editar (sin autosave) sí clonamos.
+                const addUrl = form && form.getAttribute('data-agregar-producto-url');
+                const esAutosave = !!(form && form.getAttribute('hx-post'));
+                if (esAutosave && addUrl) {
+                    const body2 = new FormData();
+                    body2.append('servicio', data.id);
+                    body2.append('cantidad', cnt.value || '1');
+                    body2.append('precio_unitario', pre.value || '');
+                    body2.append('costo_unitario', cos.value || '');
+                    body2.append('merma', mer.value || '0');
+                    body2.append('incluir_en_calculo', 'on');
+                    await fetch(addUrl, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: body2 });
+                    window.location.reload();
+                    return;
+                }
                 document.querySelectorAll('select[name$="-servicio"]').forEach(sel => {
                     const opt = document.createElement('option'); opt.value = data.id; opt.textContent = data.label; sel.appendChild(opt);
                 });

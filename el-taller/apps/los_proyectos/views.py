@@ -10,6 +10,7 @@ from apps.los_proyectos.forms import (
     ProyectoForm,
     ProyectoProductoForm,
     ProyectoProductoFormSet,
+    ProyectoProductoFormSetDetalle,
     ProyectoProductoFormSetEdit,
 )
 from apps.los_proyectos.models import (
@@ -358,7 +359,7 @@ def detalle(request, pk):
 
     if request.method == "POST" and puede_ed:
         form = ProyectoForm(request.POST, instance=proyecto)
-        formset = ProyectoProductoFormSetEdit(request.POST, instance=proyecto)
+        formset = ProyectoProductoFormSetDetalle(request.POST, instance=proyecto)
         if form.is_valid() and formset.is_valid():
             # Render-V2: snapshot del estado ANTES de guardar, para el Undo
             # (Redis, coalescido). Se hace sobre una instancia fresca para no
@@ -401,7 +402,7 @@ def detalle(request, pk):
                            "proveedores_panel": _proveedores_panel(proyecto)}, status=200)
     else:
         form = ProyectoForm(instance=proyecto)
-        formset = ProyectoProductoFormSetEdit(instance=proyecto)
+        formset = ProyectoProductoFormSetDetalle(instance=proyecto)
 
     from apps.el_catalogo.models import CategoriaServicio, Proveedor
     proveedores_aplicables = list(
@@ -411,13 +412,17 @@ def detalle(request, pk):
     )
     _anotar_procesos(formset)
     from . import gastos, services_undo
-    gastos_pendientes = gastos.pendientes_de(proyecto)
+    # S-LC-Feedback-V8: la alerta de gastos solo aplica de "en proceso de diseño"
+    # en adelante. Antes de eso no se muestra (el proyecto aún se cotiza).
+    gastos_pendientes = gastos.pendientes_de(proyecto) if gastos.debe_mostrar_gastos(proyecto) else []
+    gastos_desglose = gastos.desglose_iva(proyecto, gastos_pendientes) if gastos_pendientes else None
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "form": form,
         "formset": formset,
         "puede_editar": puede_ed,
         "gastos_pendientes": gastos_pendientes,
+        "gastos_desglose": gastos_desglose,
         "gastos_pendientes_total": sum((g["monto"] for g in gastos_pendientes), Decimal("0.00")),
         "pasos_undo": services_undo.pasos_disponibles(proyecto),
         "equipo_opciones": _ctx_equipo(proyecto),
@@ -900,9 +905,57 @@ def _destino_registro(request, proyecto):
 
 
 @login_required
+def registrar_gasto_modal(request, pk, clase, obj_pk):
+    """GET/POST modal para registrar UN gasto pidiendo centro de costo, método,
+    quién pagó y quién solicitó (S-LC-Feedback-V8). Lo demás viene precargado."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not _puede_registrar_gastos(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
+    if clase not in ("producto", "proceso"):
+        return HttpResponseForbidden("Tipo de gasto inválido.")
+    from apps.tesoreria.models import CentroDeCosto
+    from apps.tesoreria.models.egreso import ESTADOS_PAGO, METODOS_EGRESO
+
+    from cuentas.models.usuario import Usuario
+
+    from . import gastos
+    info = gastos.datos_para_modal(proyecto, clase, obj_pk)
+    if info is None:
+        return HttpResponseForbidden("Gasto no encontrado.")
+
+    if request.method == "POST":
+        centro = CentroDeCosto.objects.filter(pk=request.POST.get("centro_de_costo") or 0).first()
+        pagado = Usuario.objects.filter(pk=request.POST.get("pagado_por") or 0).first()
+        solicito = Usuario.objects.filter(pk=request.POST.get("solicitado_por") or 0).first()
+        eg = gastos.registrar_egreso(
+            proyecto, clase, obj_pk, actor=request.user,
+            centro=centro, metodo=request.POST.get("metodo") or "transferencia",
+            estado_pago=request.POST.get("estado_pago") or "pendiente",
+            pagado_por=pagado, solicitado_por=solicito,
+        )
+        if eg is None:
+            messages.error(request, "No se pudo registrar el gasto (revisa el centro de costo).")
+        else:
+            messages.success(request, f"Gasto registrado como egreso {eg.codigo}.")
+        destino = _destino_registro(request, proyecto)
+        if request.headers.get("HX-Request") == "true":
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
+
+    return render(request, "proyectos/_modal_registrar_gasto.html", {
+        "proyecto": proyecto, "clase": clase, "obj_pk": obj_pk, "info": info,
+        "centros": CentroDeCosto.objects.filter(activo=True).order_by("nombre"),
+        "centro_default": CentroDeCosto.objects.filter(slug=gastos.CENTRO_SLUG).first(),
+        "metodos": METODOS_EGRESO, "estados_pago": ESTADOS_PAGO,
+        "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
+    })
+
+
+@login_required
 @require_POST
 def registrar_gasto(request, pk, clase, obj_pk):
-    """Registra UNA unidad de gasto del proyecto como egreso de Tesorería."""
+    """Registra UNA unidad de gasto del proyecto como egreso de Tesorería
+    (atajo POST directo, sin modal — usado por fallback/no-HTMX)."""
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not _puede_registrar_gastos(request.user, proyecto):
         return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")

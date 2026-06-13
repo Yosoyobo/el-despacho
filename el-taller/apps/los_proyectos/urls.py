@@ -24,6 +24,7 @@ urlpatterns = [
     # Render-V2: deshacer el último guardado (Undo en Redis).
     path("<int:pk>/deshacer", views.deshacer, name="proyectos-deshacer"),
     # Contabilidad en línea: registrar gastos del proyecto como egresos.
+    path("<int:pk>/gasto/<str:clase>/<int:obj_pk>/registrar-modal", views.registrar_gasto_modal, name="proyectos-registrar-gasto-modal"),
     path("<int:pk>/gasto/<str:clase>/<int:obj_pk>/registrar", views.registrar_gasto, name="proyectos-registrar-gasto"),
     path("<int:pk>/gastos/registrar-todos", views.registrar_gastos_todos, name="proyectos-registrar-gastos-todos"),
 ]

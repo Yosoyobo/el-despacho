@@ -1,0 +1,23 @@
+{% comment %}Modal para cambiar la foto del usuario. Fragmento HTMX (Wave 5).{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-gray-900/50" data-modal-slot-close></div>
+    <div class="relative z-10 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Cambiar mi foto</h3>
+            <button type="button" data-modal-slot-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+        </div>
+        {% if error_avatar %}<div class="mb-3 rounded-lg bg-error-50 p-3 text-sm text-error-700 dark:bg-error-500/10 dark:text-error-300">{{ error_avatar }}</div>{% endif %}
+        <form hx-post="{% url 'perfil-avatar' %}" hx-target="#modal-slot" hx-swap="innerHTML" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <label class="block">
+                <span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Imagen (PNG, JPG, WEBP · máx. 8 MB)</span>
+                <input type="file" name="avatar" accept="image/*" required
+                       class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100 dark:text-gray-300 dark:file:bg-brand-500/10 dark:file:text-brand-300">
+            </label>
+            <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">Guardar foto</button>
+            </div>
+        </form>
+    </div>
+</div>

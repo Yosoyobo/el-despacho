@@ -75,6 +75,11 @@ def perfil(request, pk: int):
         detalle_checador_url = ""
     # Quién puede editar la ficha (link a Gerencia): super_admin.
     puede_editar_ficha = tiene_rol(request.user, "super_admin")
+    # "Ver como" (impersonar): super_admin, no a uno mismo, no a otro super_admin.
+    puede_ver_como = (
+        tiene_rol(request.user, "super_admin") and not es_self
+        and not tiene_rol(empleado, "super_admin")
+    )
 
     resumen_checador = None
     if ve_checador:
@@ -106,6 +111,7 @@ def perfil(request, pk: int):
         "ve_checador": ve_checador,
         "detalle_checador_url": detalle_checador_url,
         "puede_editar_ficha": puede_editar_ficha,
+        "puede_ver_como": puede_ver_como,
         "osm_src": osm_src,
         "es_self": es_self,
     })

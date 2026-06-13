@@ -95,6 +95,8 @@ EventoTipo = Literal[
     "deploy.iniciado",
     "deploy.exitoso",
     "deploy.rollback",
+    "sesion.impersonacion_iniciada",
+    "sesion.impersonacion_terminada",
     "auth.google_vinculada",
     "auth.google_error",
     "auth.google_cuenta_no_registrada",

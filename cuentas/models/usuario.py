@@ -36,6 +36,10 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     # URLs no se benefician de un max_length arbitrario; TextField evita crashes
     # con URLs largas de Google Workspace que incluyen tokens/hashes (0004).
     avatar_url = models.TextField(blank=True, default="")
+    # S-LC-Feedback-V8: avatar subido por el usuario. Se guarda en Drive
+    # (privado) y se sirve por un proxy autenticado; `avatar_url` apunta a ese
+    # proxy. `avatar_drive_id` guarda el file_id para reemplazar/borrar.
+    avatar_drive_id = models.CharField(max_length=128, blank=True, default="")
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
