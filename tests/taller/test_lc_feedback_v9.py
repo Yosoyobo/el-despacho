@@ -142,3 +142,29 @@ def test_sidebar_guardar_persiste_grupo(client, usuario_factory):
     assert resp.status_code in (302, 200)
     fila = SidebarOrdenUsuario.objects.get(usuario=u, slug="clientes")
     assert fila.grupo == "Ventas"
+
+
+def test_sidebar_guardar_persiste_icono_carpeta(client, usuario_factory):
+    """S-LC-Feedback-V11: el icono elegido para una carpeta se persiste."""
+    from cuentas.models.sidebar_orden import SidebarCarpetaUsuario
+    u = usuario_factory(rol="miembro")
+    client.force_login(u)
+    resp = client.post("/perfil/sidebar/guardar", {
+        "orden__clientes": "20", "grupo__clientes": "Ventas",
+        "carpeta_nombre": "Ventas", "carpeta_icono": "money",
+    })
+    assert resp.status_code in (302, 200)
+    c = SidebarCarpetaUsuario.objects.get(usuario=u, nombre="Ventas")
+    assert c.icono == "money"
+
+
+def test_sidebar_guardar_icono_invalido_cae_a_folder(client, usuario_factory):
+    from cuentas.models.sidebar_orden import SidebarCarpetaUsuario
+    u = usuario_factory(rol="miembro")
+    client.force_login(u)
+    client.post("/perfil/sidebar/guardar", {
+        "orden__clientes": "20", "grupo__clientes": "Ventas",
+        "carpeta_nombre": "Ventas", "carpeta_icono": "<script>",
+    })
+    c = SidebarCarpetaUsuario.objects.get(usuario=u, nombre="Ventas")
+    assert c.icono == "folder"

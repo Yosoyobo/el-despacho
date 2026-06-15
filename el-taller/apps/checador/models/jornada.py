@@ -41,6 +41,12 @@ class Jornada(models.Model):
     estado = models.CharField(max_length=10, choices=ESTADO_JORNADA, default="abierta")
     # Minutos de retardo contra el HorarioLaboral vigente al checar entrada.
     retardo_min = models.PositiveIntegerField(default=0)
+    # Minutos acumulados de SEGMENTOS previos del mismo día (S-LC-Feedback-V11,
+    # decisión Oscar: "si hago más horas de trabajo cuéntalas"). Cuando alguien
+    # checa salida y vuelve a checar entrada el mismo día, el segmento cerrado se
+    # suma aquí y se abre uno nuevo: así NO se cuenta la pausa (comida) y las
+    # horas extra sí se acumulan. `minutos_trabajados` = extra + segmento actual.
+    minutos_extra = models.PositiveIntegerField(default=0)
     notas = models.TextField(blank=True, default="")
 
     # Auditoría de ajuste manual (admin directo o corrección aprobada, V1.3):
@@ -67,9 +73,21 @@ class Jornada(models.Model):
 
     @property
     def minutos_trabajados(self) -> int | None:
+        """Suma los segmentos previos (minutos_extra) + el segmento cerrado
+        actual. Si la jornada está abierta (sin salida) solo cuenta lo ya
+        acumulado de segmentos previos; el segmento en curso no cuenta hasta
+        que se checa salida."""
+        extra = self.minutos_extra or 0
         if self.entrada_en and self.salida_en:
-            return int((self.salida_en - self.entrada_en).total_seconds() // 60)
-        return None
+            seg = int((self.salida_en - self.entrada_en).total_seconds() // 60)
+            return extra + max(0, seg)
+        return extra or None
+
+    @property
+    def reabierta(self) -> bool:
+        """True si hay segmentos previos acumulados (la persona checó salida y
+        volvió a entrar el mismo día para sumar horas extra)."""
+        return bool(self.minutos_extra)
 
     @property
     def horas_trabajadas(self) -> float | None:

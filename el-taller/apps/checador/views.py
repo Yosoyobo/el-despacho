@@ -98,12 +98,16 @@ def tablero(request):
     hoy = timezone.localdate()
     jornada = Jornada.objects.filter(usuario=request.user, fecha=hoy).first()
 
+    # Decisión Oscar: tras checar salida, NO se bloquea el día. Si la persona
+    # trabaja más horas puede volver a checar entrada y se acumulan (el auto
+    # check-out solo aplica a quien no checó salida antes de las 05:00).
+    jornada_cerrada_hoy = bool(jornada and jornada.entrada_en and jornada.salida_en)
     if jornada is None or not jornada.entrada_en:
         accion = "entrada"
     elif not jornada.salida_en:
         accion = "salida"
     else:
-        accion = "completa"
+        accion = "entrada"  # jornada cerrada → permitir re-entrada (horas extra)
 
     desde = hoy - datetime.timedelta(days=6)
     filas = services.filas_semana(request.user, desde, hoy)
@@ -115,6 +119,7 @@ def tablero(request):
     return render(request, "checador/tablero.html", {
         "jornada": jornada,
         "accion": accion,
+        "jornada_cerrada_hoy": jornada_cerrada_hoy,
         "filas_semana": filas,
         "balance": services.balance_mensual(request.user),
         "visitas_hoy": visitas_hoy,
@@ -700,7 +705,9 @@ def checar(request):
             messages.success(request, "Registramos tu salida. ¡Buen descanso!")
         else:
             jornada = services.checar_entrada(request.user, geo=geo, uuid=uuid)
-            if jornada.retardo_min:
+            if jornada.reabierta:
+                messages.success(request, "Entrada registrada. Estas horas se suman a las de hoy.")
+            elif jornada.retardo_min:
                 messages.warning(request, f"Entrada registrada con {jornada.retardo_min} min de retardo.")
             else:
                 messages.success(request, "Entrada registrada. ¡A tiempo!")

@@ -129,6 +129,25 @@ def notificar_buzon_estado(mensaje, actor) -> None:
                     origen_id=mensaje.pk,
                 )
         transaction.on_commit(_hacer)
+    elif accion == "notificar_todos":
+        # Novedades para TODO el equipo (decisión Oscar: "que todos sepan"
+        # cuando algo se implementa). Configurable: el admin asigna esta acción
+        # al estado «implementado» (o cualquiera) desde el CRUD de estados.
+        def _hacer():
+            from cuentas.models.usuario import Usuario
+            etiqueta = mensaje.get_estado_display()
+            for u in Usuario.objects.filter(is_active=True):
+                _enviar(
+                    u,
+                    titulo=f"✅ {etiqueta}: {mensaje.asunto[:90]}",
+                    cuerpo=f"Novedad del Buzón #{mensaje.pk} — {etiqueta.lower()}.",
+                    url=f"/buzon/{mensaje.pk}/",
+                    tag=f"buzon-novedad-{mensaje.pk}",
+                    categoria="buzon",
+                    origen_modulo="buzon",
+                    origen_id=mensaje.pk,
+                )
+        transaction.on_commit(_hacer)
 
 
 def notificar_buzon_comentario(mensaje, autor_comentario) -> None:

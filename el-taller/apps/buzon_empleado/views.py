@@ -461,6 +461,12 @@ def accion_masiva(request):
     Espera POST con `ids[]` lista de PKs y `accion` string.
     """
     accion = (request.POST.get("accion") or "").strip()
+    # Selector de estado dinámico (cualquier estado activo, incl. los creados
+    # por el admin: ignorado / implementado / personalizados). El <select> manda
+    # `estado_destino`; lo normalizamos a `estado_<slug>` para el flujo de abajo.
+    if accion == "estado_destino":
+        destino = (request.POST.get("estado_destino") or "").strip()
+        accion = f"estado_{destino}" if destino else ""
 
     # ── "Marcar todo como leído" (yo) — no requiere selección ───────────────
     # Marca leído (por usuario) TODOS los mensajes visibles para el usuario.

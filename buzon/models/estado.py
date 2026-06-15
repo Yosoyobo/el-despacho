@@ -37,6 +37,7 @@ ACCION_CHOICES = (
     ("ninguna",          "Ninguna"),
     ("notificar_autor",  "Avisar al autor del mensaje (push)"),
     ("notificar_admins", "Avisar a los admins del Buzón (push)"),
+    ("notificar_todos",  "Avisar a TODO el equipo (push) — para «implementado» / novedades"),
 )
 
 

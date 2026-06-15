@@ -30,6 +30,7 @@ SLUGS_SIDEBAR_TALLER = [
     ("notificaciones", "Notificaciones"),
     ("chalanes", "Chalanes"),
     ("cotizaciones", "Cotizaciones"),
+    ("campanas", "Campañas de correo"),
     ("finanzas", "Finanzas (grupo: Tesorería/Facturación/Contaduría)"),
     ("ajustes", "Ajustes (atajo a Gerencia)"),
     ("ayuda", "Ayuda"),
@@ -79,3 +80,53 @@ class SidebarOrdenUsuario(models.Model):
 
     def __str__(self) -> str:
         return f"{self.usuario_id}:{self.slug} #{self.orden}{' (oculto)' if self.oculto else ''}"
+
+
+# Iconos disponibles para las carpetas del sidebar (S-LC-Feedback-V11). El
+# valor guardado es la CLAVE; el SVG lo pinta `static/js/ui.js` (registro
+# espejo `ICONOS_CARPETA`). El emoji es solo para el selector visual del editor.
+ICONOS_CARPETA = [
+    ("folder", "📁", "Carpeta"),
+    ("star", "⭐", "Estrella"),
+    ("rocket", "🚀", "Cohete"),
+    ("money", "💰", "Dinero"),
+    ("chart", "📊", "Gráfica"),
+    ("wrench", "🔧", "Herramienta"),
+    ("users", "👥", "Equipo"),
+    ("calendar", "📅", "Calendario"),
+    ("bell", "🔔", "Campana"),
+    ("box", "📦", "Caja"),
+    ("tag", "🏷️", "Etiqueta"),
+    ("chat", "💬", "Mensajes"),
+    ("heart", "❤️", "Corazón"),
+    ("bolt", "⚡", "Rayo"),
+    ("gear", "⚙️", "Engrane"),
+    ("pin", "📌", "Pin"),
+]
+ICONOS_CARPETA_CLAVES = {k for k, _e, _l in ICONOS_CARPETA}
+
+
+class SidebarCarpetaUsuario(models.Model):
+    """S-LC-Feedback-V11 — metadatos de una carpeta del sidebar POR USUARIO.
+
+    El orden de las carpetas se deriva del orden de sus items (ver
+    `SidebarOrdenUsuario.orden`); aquí solo persistimos el ICONO elegido por el
+    usuario para cada carpeta (identificada por su nombre). Sin fila → icono
+    `folder` por defecto.
+    """
+
+    usuario = models.ForeignKey(
+        "cuentas.Usuario", on_delete=models.CASCADE, related_name="sidebar_carpetas")
+    nombre = models.CharField(max_length=40)
+    icono = models.CharField(max_length=24, default="folder")
+
+    class Meta:
+        db_table = "cuentas_sidebar_carpeta_usuario"
+        ordering = ["nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["usuario", "nombre"], name="sidebar_carpeta_usuario_unico"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.usuario_id}:{self.nombre} ({self.icono})"

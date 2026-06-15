@@ -5,6 +5,33 @@
 
 ---
 
+## Novedades — Horas extra en el Checador, carpetas con icono y avisos de novedades (15 de junio de 2026)
+
+- **El Checador ya cuenta tus horas extra.** Si checas tu salida y más tarde
+  vuelves a trabajar, solo pica **«Volver a entrar»**: las horas se suman a las
+  de hoy y la pausa entre medias no cuenta. Ya no te deja bloqueado con
+  «jornada completa». El sistema **solo** cierra tu jornada por ti si olvidaste
+  checar la salida antes de las 5:00 a.m. del día siguiente.
+- **Buzón en cualquier pantalla.** El mensaje ya se abre a la derecha (o debajo,
+  en celular) aunque la ventana sea chica. Y desde la barra de selección puedes
+  **aplicar cualquier estado** a varios mensajes a la vez (Implementado,
+  Ignorado o los que tú hayas creado), no solo «leído/respondido/archivado».
+- **Avisar al equipo cuando algo se implementa.** Si marcas un estado del Buzón
+  con la acción **«Avisar a todo el equipo»** (se configura en Gerencia → Buzón →
+  Estados), al mover un mensaje a ese estado **todos** reciben una notificación.
+  Ideal para anunciar «Implementado» o novedades.
+- **Tu menú con carpetas movibles y con icono.** En **Mi menú** ahora puedes
+  **arrastrar las carpetas** (por su asita ⠿) para reordenarlas y **elegir un
+  icono** para cada una (📁 ⭐ 🚀 💰 📊 🔧 👥 📅 🔔 📦 🏷️ 💬 ❤️ ⚡ ⚙️ 📌).
+  **Campañas de correo** también aparece ya en la lista para acomodarlo.
+- **El Chalán en el Dashboard** abre su recuadro de escritura mucho más grande,
+  para que escribas cómodo desde la pantalla principal.
+- **El logo gira y los botones se ponen en gris** al enviar (incluido el Buzón),
+  y al adjuntar archivos verás una **barra de progreso** arriba mientras suben.
+- **Proyectos** ya no dice «Kanban»: el tablero se llama simplemente **Tablero**.
+
+---
+
 ## Novedades — Permisos para todo, notificaciones, móvil y tu propio menú (15 de junio de 2026)
 
 - **Permisos para todo.** Ahora el super admin puede dar acceso a **cualquier

@@ -182,16 +182,39 @@ def checar_entrada(usuario, *, geo=None, registrado_en=None, uuid: str = "", off
     fecha = timezone.localtime(registrado_en).date()
 
     with transaction.atomic():
-        jornada, _ = Jornada.objects.get_or_create(usuario=usuario, fecha=fecha)
-        if jornada.entrada_en:
+        jornada = Jornada.objects.select_for_update().filter(usuario=usuario, fecha=fecha).first()
+        if jornada is None:
+            jornada = Jornada.objects.create(usuario=usuario, fecha=fecha)
+        es_reentrada = False
+        if jornada.entrada_en and not jornada.salida_en:
+            # Segmento abierto en curso: no se puede re-entrar sin checar salida.
             if uuid and jornada.entrada_uuid == uuid:
                 return jornada  # reintento de la misma checada
-            raise ValueError("Ya checaste tu entrada hoy.")
+            raise ValueError("Ya checaste tu entrada y sigues dentro. Checa tu salida primero.")
+        if jornada.entrada_en and jornada.salida_en:
+            # RE-ENTRADA el mismo día (decisión Oscar: "si hago más horas de
+            # trabajo cuéntalas"). Acumula el segmento cerrado en minutos_extra y
+            # abre uno nuevo. La pausa entre salida y esta nueva entrada NO cuenta.
+            if uuid and jornada.entrada_uuid == uuid:
+                return jornada  # reintento de la misma checada
+            seg = int((jornada.salida_en - jornada.entrada_en).total_seconds() // 60)
+            jornada.minutos_extra = (jornada.minutos_extra or 0) + max(0, seg)
+            # Limpia el segmento anterior para arrancar uno nuevo.
+            jornada.salida_en = None
+            jornada.salida_uuid = ""
+            jornada.salida_sin_geo = False
+            jornada.salida_offline = False
+            jornada.salida_automatica = False
+            jornada.salida_lat = jornada.salida_lng = jornada.salida_precision = None
+            es_reentrada = True
         jornada.entrada_en = registrado_en
         jornada.entrada_offline = offline
         jornada.entrada_uuid = uuid
         _aplicar_geo(jornada, "entrada_", geo)
-        jornada.retardo_min = calcular_retardo(horario_vigente(usuario, fecha), registrado_en)
+        # El retardo se calcula solo en la PRIMERA entrada del día; las
+        # re-entradas (horas extra) no generan retardo nuevo.
+        if not es_reentrada:
+            jornada.retardo_min = calcular_retardo(horario_vigente(usuario, fecha), registrado_en)
         jornada.estado = "abierta"
         jornada.save()
 
@@ -642,6 +665,10 @@ def _trabajado_min_dia(usuario, dia, jornada=None) -> tuple[int, str]:
     if jornada and jornada.salida_en and jornada.entrada_en:
         return jornada.minutos_trabajados or 0, "jornada"
     if jornada and jornada.entrada_en and not jornada.salida_en:
+        # Segmento en curso: no cuenta aún. Pero si ya hubo segmentos cerrados
+        # hoy (re-entrada para horas extra), esos minutos sí cuentan.
+        if jornada.minutos_extra:
+            return jornada.minutos_extra, "jornada"
         return 0, "abierta"
     pmin = _proyecto_min_dia(usuario, dia)
     if pmin > 0:

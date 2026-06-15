@@ -68,14 +68,23 @@ def sidebar_orden(request):
     if not user or not getattr(user, "is_authenticated", False):
         return {"sidebar_orden": {}}
     try:
-        from cuentas.models.sidebar_orden import SidebarOrden, SidebarOrdenUsuario
+        import json
+
+        from cuentas.models.sidebar_orden import (
+            SidebarCarpetaUsuario,
+            SidebarOrden,
+            SidebarOrdenUsuario,
+        )
         mapa = {f.slug: {"orden": f.orden, "oculto": f.oculto, "grupo": ""} for f in SidebarOrden.objects.all()}
         for f in SidebarOrdenUsuario.objects.filter(usuario=user):
             # V9: el override del usuario también trae su carpeta/grupo.
             mapa[f.slug] = {"orden": f.orden, "oculto": f.oculto, "grupo": f.grupo}
-        return {"sidebar_orden": mapa}
+        # V11: icono por carpeta (nombre → clave de icono). El sidebar JS lo lee
+        # de un <script> JSON para pintar el SVG correcto en cada carpeta.
+        iconos = {c.nombre: c.icono for c in SidebarCarpetaUsuario.objects.filter(usuario=user)}
+        return {"sidebar_orden": mapa, "sidebar_carpetas_json": json.dumps(iconos)}
     except Exception:
-        return {"sidebar_orden": {}}
+        return {"sidebar_orden": {}, "sidebar_carpetas_json": "{}"}
 
 
 def novedades_badge(request):

@@ -3,7 +3,7 @@
 {% block title %}Tareas — El Taller{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Tareas" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Kanban por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a>' %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Tablero por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a>' %}
 
 {% comment %} Filtros de botones SIEMPRE visibles y combinables (V6 com. 6):
 estados + personas. Cada chip togglea su valor preservando el resto. {% endcomment %}

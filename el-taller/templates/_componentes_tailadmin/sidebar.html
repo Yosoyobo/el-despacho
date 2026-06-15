@@ -12,6 +12,8 @@
         </span>
     </a>
 
+    {# V11: iconos por carpeta (nombre → clave). ui.js los lee para pintar el SVG. #}
+    <script type="application/json" id="sidebar-carpetas-iconos">{{ sidebar_carpetas_json|default:"{}" }}</script>
     <nav class="flex flex-col gap-1 text-sm">
         <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú</h3>
 
@@ -103,8 +105,8 @@
         </a>
         {% endif %}
 
-        {% if request.user|puede:"comunicacion.campanas" %}
-        <a href="/campanas/" style="order: {{ sidebar_orden.campanas.orden|default:75 }}" class="menu-item {% if '/campanas' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% if request.user|puede:"comunicacion.campanas" and not sidebar_orden.campanas.oculto %}
+        <a href="/campanas/" data-sidebar-grupo="{{ sidebar_orden.campanas.grupo }}" style="order: {{ sidebar_orden.campanas.orden|default:75 }}" class="menu-item {% if '/campanas' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 11 18-7-7 18-2.5-7.5L3 11Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Campañas de correo
         </a>

@@ -8,27 +8,34 @@
 <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-gray-600 dark:text-gray-300">
-            <strong>Arrastra</strong> los items para reordenarlos o moverlos a una carpeta.
-            El 👁 oculta un item (no pierdes el acceso, sólo se esconde del menú).
+            <strong>Arrastra</strong> los items (y las carpetas con su asa <span class="select-none text-gray-400">⠿</span>) para acomodarlos.
+            Pica el icono de una carpeta para cambiarlo. El 👁 oculta un item del menú sin perder el acceso.
         </p>
         <button type="button" id="sb-nueva-carpeta" class="btn-secundario shrink-0">📁 Nueva carpeta</button>
     </div>
 
     {% comment %}Editor gráfico drag&drop (mismo motor que el Kanban). Cada zona es un
-    dropzone; los items son tarjetas arrastrables. Orden y carpeta se calculan de la
-    posición al guardar — sin números a la vista.{% endcomment %}
+    dropzone; los items son tarjetas arrastrables y las carpetas se reordenan por su
+    asa. Orden y carpeta se calculan de la posición al guardar — sin números a la vista.{% endcomment %}
     <div id="sb-zonas" class="space-y-4">
         {% for z in zonas %}
-        <section class="sb-zona rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700" data-grupo="{{ z.grupo }}">
+        <section class="sb-zona relative rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700" data-grupo="{{ z.grupo }}" data-icono="{{ z.icono|default:'folder' }}">
             <header class="mb-2 flex items-center gap-2">
                 {% if z.grupo %}
-                <span class="text-sm">📁</span>
+                <span class="sb-zona-asa cursor-grab select-none text-gray-400 active:cursor-grabbing" title="Arrastra para reordenar la carpeta" draggable="true">⠿</span>
+                <button type="button" data-icono-toggle title="Cambiar icono de la carpeta"
+                        class="sb-icono-btn inline-flex h-7 w-7 items-center justify-center rounded-md text-base hover:bg-gray-100 dark:hover:bg-gray-800"></button>
                 <input type="text" value="{{ z.grupo }}" maxlength="40" data-zona-nombre
                        class="sb-zona-nombre flex-1 rounded-md border border-gray-200 bg-transparent px-2 py-1 text-sm font-semibold text-gray-800 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-gray-100"/>
                 <button type="button" data-borrar-carpeta title="Quitar carpeta (sus items vuelven al menú principal)"
                         class="rounded-md p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
                 </button>
+                <div data-icono-picker class="absolute left-8 top-10 z-20 hidden grid w-56 grid-cols-8 gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900">
+                    {% for clave, emoji, etiqueta in iconos_carpeta %}
+                    <button type="button" data-icono-opcion="{{ clave }}" title="{{ etiqueta }}" class="flex h-7 w-7 items-center justify-center rounded-md text-base hover:bg-brand-50 dark:hover:bg-brand-500/10">{{ emoji }}</button>
+                    {% endfor %}
+                </div>
                 {% else %}
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú principal</span>
                 {% endif %}
@@ -64,23 +71,33 @@
     </div>
 </section>
 
+{# Catálogo de iconos (clave → emoji) para el picker dinámico de carpetas nuevas. #}
+<script type="application/json" id="sb-iconos">[{% for clave, emoji, etiqueta in iconos_carpeta %}{% if not forloop.first %},{% endif %}["{{ clave }}","{{ emoji }}","{{ etiqueta }}"]{% endfor %}]</script>
+
 <script>
 (function () {
     var zonas = document.getElementById('sb-zonas');
     var form = document.getElementById('sb-form');
     var hidden = document.getElementById('sb-hidden');
     if (!zonas || !form) return;
-    var arrastrado = null;
+    var ICONOS = [];
+    try { ICONOS = JSON.parse(document.getElementById('sb-iconos').textContent || '[]'); } catch (e) { ICONOS = [['folder', '📁', 'Carpeta']]; }
+    var emojiDe = {};
+    ICONOS.forEach(function (t) { emojiDe[t[0]] = t[1]; });
 
+    var arrastrado = null;   // tarjeta de item en arrastre
+    var zonaArr = null;      // carpeta en arrastre (reordenar carpetas)
+
+    // ── Items (tarjetas) ──────────────────────────────────────────────────
     function cardsInit(card) {
-        card.addEventListener('dragstart', function () { arrastrado = card; setTimeout(function () { card.classList.add('opacity-30'); }, 0); });
+        card.addEventListener('dragstart', function (e) { e.stopPropagation(); arrastrado = card; setTimeout(function () { card.classList.add('opacity-30'); }, 0); });
         card.addEventListener('dragend', function () { card.classList.remove('opacity-30'); arrastrado = null; zonas.querySelectorAll('[data-dropzone]').forEach(function (z) { z.classList.remove('ring-2', 'ring-brand-400'); }); });
     }
     function zonaInit(ul) {
         ul.addEventListener('dragover', function (e) {
+            if (!arrastrado) return;
             e.preventDefault();
             ul.classList.add('ring-2', 'ring-brand-400');
-            if (!arrastrado) return;
             var after = posicion(ul, e.clientY);
             if (after == null) ul.appendChild(arrastrado); else ul.insertBefore(arrastrado, after);
         });
@@ -95,10 +112,47 @@
         }
         return null;
     }
-    zonas.querySelectorAll('.sb-card').forEach(cardsInit);
-    zonas.querySelectorAll('[data-dropzone]').forEach(zonaInit);
 
-    // Mostrar/ocultar item
+    // ── Carpetas (reordenar zonas por su asa) ─────────────────────────────
+    function asaInit(asa) {
+        var zona = asa.closest('.sb-zona');
+        asa.addEventListener('dragstart', function (e) { e.stopPropagation(); zonaArr = zona; setTimeout(function () { zona.classList.add('opacity-40'); }, 0); });
+        asa.addEventListener('dragend', function () { zona.classList.remove('opacity-40'); zonaArr = null; });
+    }
+    function posicionZona(y) {
+        // Solo entre carpetas (las que tienen nombre). El "Menú principal" queda fijo arriba.
+        var folders = Array.prototype.slice.call(zonas.querySelectorAll('.sb-zona[data-grupo]:not([data-grupo=""])')).filter(function (z) { return z !== zonaArr; });
+        for (var i = 0; i < folders.length; i++) {
+            var r = folders[i].getBoundingClientRect();
+            if (y < r.top + r.height / 2) return folders[i];
+        }
+        return null;
+    }
+    zonas.addEventListener('dragover', function (e) {
+        if (!zonaArr) return;
+        e.preventDefault();
+        var after = posicionZona(e.clientY);
+        if (after == null) zonas.appendChild(zonaArr); else zonas.insertBefore(zonaArr, after);
+    });
+
+    function zonaPintarIcono(zona) {
+        var btn = zona.querySelector('[data-icono-toggle]');
+        if (!btn) return;
+        var clave = zona.getAttribute('data-icono') || 'folder';
+        btn.textContent = emojiDe[clave] || '📁';
+    }
+
+    function bind(zona) {
+        var asa = zona.querySelector('.sb-zona-asa');
+        if (asa) asaInit(asa);
+        zonaPintarIcono(zona);
+        var ul = zona.querySelector('[data-dropzone]');
+        if (ul) zonaInit(ul);
+        zona.querySelectorAll('.sb-card').forEach(cardsInit);
+    }
+    zonas.querySelectorAll('.sb-zona').forEach(bind);
+
+    // ── Clicks: ocultar item / borrar carpeta / picker de icono ───────────
     zonas.addEventListener('click', function (e) {
         var t = e.target.closest('[data-toggle-oculto]');
         if (t) {
@@ -110,39 +164,70 @@
             card.querySelector('.sb-ojo-off').classList.toggle('hidden', oculto);
             return;
         }
+        var ic = e.target.closest('[data-icono-toggle]');
+        if (ic) {
+            var picker = ic.closest('header').querySelector('[data-icono-picker]');
+            zonas.querySelectorAll('[data-icono-picker]').forEach(function (p) { if (p !== picker) p.classList.add('hidden'); });
+            if (picker) picker.classList.toggle('hidden');
+            return;
+        }
+        var op = e.target.closest('[data-icono-opcion]');
+        if (op) {
+            var zona = op.closest('.sb-zona');
+            zona.setAttribute('data-icono', op.getAttribute('data-icono-opcion'));
+            zonaPintarIcono(zona);
+            op.closest('[data-icono-picker]').classList.add('hidden');
+            return;
+        }
         var b = e.target.closest('[data-borrar-carpeta]');
         if (b) {
-            var zona = b.closest('.sb-zona');
+            var zona2 = b.closest('.sb-zona');
             var principal = zonas.querySelector('.sb-zona[data-grupo=""] [data-dropzone]');
-            // Devuelve los items de la carpeta al menú principal y elimina la zona.
-            zona.querySelectorAll('.sb-card').forEach(function (c) { principal.appendChild(c); });
-            zona.remove();
+            zona2.querySelectorAll('.sb-card').forEach(function (c) { principal.appendChild(c); });
+            zona2.remove();
         }
     });
+    // Cierra pickers al picar fuera.
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('[data-icono-picker]') || e.target.closest('[data-icono-toggle]')) return;
+        zonas.querySelectorAll('[data-icono-picker]').forEach(function (p) { p.classList.add('hidden'); });
+    });
 
-    // Nueva carpeta
+    // ── Nueva carpeta ─────────────────────────────────────────────────────
     document.getElementById('sb-nueva-carpeta').addEventListener('click', function () {
         var nombre = (prompt('Nombre de la carpeta:') || '').trim().slice(0, 40);
         if (!nombre) return;
         var sec = document.createElement('section');
-        sec.className = 'sb-zona rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700';
+        sec.className = 'sb-zona relative rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700';
         sec.setAttribute('data-grupo', nombre);
-        sec.innerHTML = '<header class="mb-2 flex items-center gap-2"><span class="text-sm">📁</span>'
+        sec.setAttribute('data-icono', 'folder');
+        var opciones = ICONOS.map(function (t) {
+            return '<button type="button" data-icono-opcion="' + t[0] + '" title="' + t[2] + '" class="flex h-7 w-7 items-center justify-center rounded-md text-base hover:bg-brand-50 dark:hover:bg-brand-500/10">' + t[1] + '</button>';
+        }).join('');
+        sec.innerHTML = '<header class="mb-2 flex items-center gap-2">'
+            + '<span class="sb-zona-asa cursor-grab select-none text-gray-400 active:cursor-grabbing" title="Arrastra para reordenar la carpeta" draggable="true">⠿</span>'
+            + '<button type="button" data-icono-toggle class="sb-icono-btn inline-flex h-7 w-7 items-center justify-center rounded-md text-base hover:bg-gray-100 dark:hover:bg-gray-800"></button>'
             + '<input type="text" maxlength="40" data-zona-nombre class="sb-zona-nombre flex-1 rounded-md border border-gray-200 bg-transparent px-2 py-1 text-sm font-semibold text-gray-800 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-gray-100"/>'
-            + '<button type="button" data-borrar-carpeta class="rounded-md p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button></header>'
+            + '<button type="button" data-borrar-carpeta class="rounded-md p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>'
+            + '<div data-icono-picker class="absolute left-8 top-10 z-20 hidden grid w-56 grid-cols-8 gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900">' + opciones + '</div>'
+            + '</header>'
             + '<ul class="sb-lista min-h-[3rem] space-y-2" data-dropzone></ul>';
         sec.querySelector('[data-zona-nombre]').value = nombre;
         zonas.appendChild(sec);
-        zonaInit(sec.querySelector('[data-dropzone]'));
+        bind(sec);
     });
 
-    // Al guardar: genera los inputs ocultos orden__/grupo__/oculto__ desde el DOM.
+    // ── Al guardar: genera inputs ocultos desde el DOM ────────────────────
     form.addEventListener('submit', function () {
         hidden.innerHTML = '';
         var n = 0;
         zonas.querySelectorAll('.sb-zona').forEach(function (zona) {
             var nombreInput = zona.querySelector('[data-zona-nombre]');
             var grupo = nombreInput ? nombreInput.value.trim().slice(0, 40) : '';
+            if (grupo) {
+                add('carpeta_nombre', grupo);
+                add('carpeta_icono', zona.getAttribute('data-icono') || 'folder');
+            }
             zona.querySelectorAll('.sb-card').forEach(function (card) {
                 n += 10;
                 var slug = card.getAttribute('data-slug');

@@ -52,11 +52,43 @@
   // movemos los items adentro. El toggle lo cablea el handler de
   // [data-sidebar-group] de abajo (corre justo después). Si el usuario no tiene
   // carpetas, no hace nada (cero riesgo para el sidebar existente).
+  // Registro de iconos de carpeta (V11). Espejo de cuentas.models.ICONOS_CARPETA.
+  // clave -> contenido interno de un <svg viewBox="0 0 24 24" stroke="currentColor">.
+  var ICONOS_CARPETA_SVG = {
+    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/>',
+    star: '<path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9L12 3Z" stroke-linecap="round" stroke-linejoin="round"/>',
+    rocket: '<path d="M4.5 16.5 3 21l4.5-1.5M14 4c2.5-1 5 0 6 1s2 3.5 1 6c-1.6 4-7 8-7 8l-3-3-3-3s4-5.4 8-7c.6-.2 1.3-.4 2-1Z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14.5" cy="9.5" r="1.5"/>',
+    money: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01" stroke-linecap="round"/>',
+    chart: '<path d="M3 3v18h18M8 14v4M13 9v9M18 5v13" stroke-linecap="round" stroke-linejoin="round"/>',
+    wrench: '<path d="M14.7 6.3a4 4 0 0 0-5 5l-6 6 3 3 6-6a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5 2.5-2.5Z" stroke-linecap="round" stroke-linejoin="round"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round" stroke-linejoin="round"/>',
+    bell: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" stroke-linecap="round" stroke-linejoin="round"/>',
+    box: '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7 12 12l8.7-5M12 22V12" stroke-linecap="round" stroke-linejoin="round"/>',
+    tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 3 12V4a1 1 0 0 1 1-1h8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.6Z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1"/>',
+    chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z" stroke-linecap="round" stroke-linejoin="round"/>',
+    heart: '<path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1Z" stroke-linecap="round" stroke-linejoin="round"/>',
+    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" stroke-linecap="round" stroke-linejoin="round"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 4.6V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z" stroke-linecap="round" stroke-linejoin="round"/>',
+    pin: '<path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.5"/>'
+  };
+  function svgCarpeta(clave) {
+    var inner = ICONOS_CARPETA_SVG[clave] || ICONOS_CARPETA_SVG.folder;
+    return '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' + inner + '</svg>';
+  }
+  function leerCarpetaIconos() {
+    try {
+      var nodo = document.getElementById('sidebar-carpetas-iconos');
+      return nodo ? (JSON.parse(nodo.textContent || '{}') || {}) : {};
+    } catch (e) { return {}; }
+  }
+
   (function construirCarpetas() {
     var nav = document.querySelector('[data-ta-sidebar] nav');
     if (!nav) return;
     var conGrupo = nav.querySelectorAll('[data-sidebar-grupo]');
     if (!conGrupo.length) return;
+    var iconosCarpeta = leerCarpetaIconos();
     var carpetas = {}; // nombre -> {orden, nodos:[]}
     conGrupo.forEach(function (el) {
       var g = (el.getAttribute('data-sidebar-grupo') || '').trim();
@@ -81,7 +113,7 @@
       btn.setAttribute('aria-expanded', activo ? 'true' : 'false');
       btn.innerHTML =
         '<span class="flex items-center gap-3">' +
-          '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          svgCarpeta(iconosCarpeta[nombre]) +
           '<span class="carpeta-nombre"></span>' +
         '</span>' +
         '<svg data-sidebar-group-chevron class="h-4 w-4 transition-transform' + (activo ? ' rotate-180' : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
@@ -603,28 +635,47 @@
     }
     form.setAttribute('data-enviando', '1');
     var esHtmx = form.hasAttribute('hx-post') || form.hasAttribute('hx-get');
-    // Deshabilita botones de submit (feedback inmediato). Diferido un tick para
-    // NO quitarle el valor del botón-submisor a un POST clásico (que se
-    // serializa al terminar este evento).
+    // Forms de subida con archivos: el IIFE de la barra de progreso (más abajo)
+    // hace preventDefault() para mandar por XHR. Eso NO es una validación
+    // cancelada — el envío SÍ está en curso. Lo detectamos para igual mostrar
+    // el spinner + botones en gris (reporte de Oscar: "al enviar al Buzón con
+    // adjunto no veo el logo ni el botón gris").
+    function formTieneArchivos(f) {
+      var ins = f.querySelectorAll('input[type="file"]');
+      for (var i = 0; i < ins.length; i++) { if (ins[i].files && ins[i].files.length) return true; }
+      return false;
+    }
+    var esSubidaXHR = !esHtmx && form.hasAttribute('data-upload-progress') && formTieneArchivos(form);
     var btns = form.querySelectorAll('button:not([type="button"]):not([data-sin-bloqueo="1"]), input[type="submit"]');
-    // Diferido un tick: así un POST clásico ya serializó el botón-submisor antes
-    // de deshabilitarlo, y podemos ver si un validador en JS canceló el envío.
+    // SPINNER SÍNCRONO para envíos clásicos. Se enciende YA (no diferido):
+    // un POST clásico empieza a navegar de inmediato y el setTimeout(0) puede
+    // perder la carrera contra el unload — por eso Oscar no veía el logo girar.
+    // El debounce de 90 ms de mostrar() evita el parpadeo si el submit se
+    // cancela enseguida. HTMX lo maneja por separado en htmx:beforeRequest.
+    var spinnerEncendido = false;
+    if (!esHtmx && form.getAttribute('data-sin-indicador') !== '1') {
+      inicia();
+      spinnerEncendido = true;
+    }
+    // Deshabilitar botones se DIFIERE un tick: así un POST clásico ya serializó
+    // el botón-submisor antes de deshabilitarlo, y podemos ver si un validador
+    // JS canceló el envío.
     setTimeout(function () {
-      if (!esHtmx && e.defaultPrevented) {
+      if (!esHtmx && e.defaultPrevented && !esSubidaXHR) {
         // Submit clásico cancelado (validación) → no navega: deshaz el bloqueo
-        // para que el usuario reintente tras corregir.
+        // y apaga el spinner que encendimos.
         form.removeAttribute('data-enviando');
+        if (spinnerEncendido) { spinnerEncendido = false; termina(); }
         return;
       }
       btns.forEach(bloquear);
-      // El spinner de los HTMX lo enciende htmx:beforeRequest; los clásicos aquí.
-      if (!esHtmx && form.getAttribute('data-sin-indicador') !== '1') {
-        inicia();
-        // Red de seguridad: si el submit clásico NO navega (descarga, error
-        // de red), libera botones + spinner tras 12 s para no dejarlos colgados.
+      if (spinnerEncendido) {
+        // Red de seguridad: si NO navega (descarga, error de red, subida a
+        // Drive lenta), libera botones + spinner. La subida por XHR puede
+        // tardar más, así que le damos más margen.
         setTimeout(function () {
           if (form.getAttribute('data-enviando') === '1') { reactivarTodo(); termina(); }
-        }, 12000);
+        }, esSubidaXHR ? 60000 : 12000);
       }
     }, 0);
   }, true);
