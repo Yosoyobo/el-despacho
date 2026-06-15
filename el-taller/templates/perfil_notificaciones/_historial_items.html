@@ -1,5 +1,6 @@
 {% for e in historial %}
-<li class="border-l-2 {% if e.clickeado_en %}border-success-500{% else %}border-gray-200 dark:border-gray-700{% endif %} pl-3 py-2">
+{# V10: cada aviso es su propia cápsula (outline) contra el fondo gris del panel. #}
+<li class="rounded-xl border bg-white p-3.5 shadow-theme-xs dark:bg-gray-900 {% if e.clickeado_en %}border-success-200 dark:border-success-500/30{% else %}border-gray-200 dark:border-gray-700{% endif %}">
     <div class="flex items-baseline justify-between gap-3">
         <span class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Hace {{ e.enviado_en|timesince }}

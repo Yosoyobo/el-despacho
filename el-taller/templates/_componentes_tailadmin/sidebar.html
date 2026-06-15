@@ -113,7 +113,8 @@
         {% if not sidebar_orden.notificaciones.oculto %}
         <a href="/perfil/notificaciones/" data-sidebar-grupo="{{ sidebar_orden.notificaciones.grupo }}" style="order: {{ sidebar_orden.notificaciones.orden|default:80 }}" class="menu-item {% if '/perfil/notificaciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.4-1.4A6 6 0 0 1 18 11V8a6 6 0 1 0-12 0v3a6 6 0 0 1-.6 4.6L4 17h5m6 0a3 3 0 1 1-6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Notificaciones
+            <span class="flex-1">Notificaciones</span>
+            {% if notificaciones_no_leidas %}<span title="Sin ver" class="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-error-500 px-1.5 text-[10px] font-semibold text-white">{{ notificaciones_no_leidas }}</span>{% endif %}
         </a>
         {% endif %}
 

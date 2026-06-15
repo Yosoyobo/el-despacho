@@ -10,12 +10,12 @@ from django.views.decorators.http import require_http_methods
 from cuentas.models.usuario import Usuario
 from interfono.models import InterfonoEnvio, InterfonoSuscripcion
 from lib.interfono import InterfonoConfig, enviar_a_audiencia
-from lib.permisos import requires_role
+from lib.permisos import requiere_permiso
 
 from .forms import EnvioInterfonoForm
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("interfono", "configurar")
 def tablero(request):
     form = EnvioInterfonoForm()
     envios = InterfonoEnvio.objects.select_related("autor").order_by("-creado_en")[:50]
@@ -28,7 +28,7 @@ def tablero(request):
     })
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("interfono", "configurar")
 @require_http_methods(["POST"])
 def enviar(request):
     form = EnvioInterfonoForm(request.POST)

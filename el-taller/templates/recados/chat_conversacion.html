@@ -6,10 +6,11 @@
 {% breadcrumb_items "Recados" "/recados/" titulo as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 
-<div class="flex h-[calc(100vh-10rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+<div class="flex flex-col h-[calc(100vh-9rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm md:flex-row dark:border-gray-800 dark:bg-gray-900">
 
-    {# ── Sidebar de conversaciones ───────────────────────────── #}
-    <aside class="hidden w-72 shrink-0 flex-col border-r border-gray-200 md:flex dark:border-gray-800">
+    {% comment %}Sidebar de conversaciones — V10: en móvil ARRIBA (lista corta con
+    scroll) y el hilo abajo, ambas visibles; en md+ columna fija a la izquierda.{% endcomment %}
+    <aside class="flex max-h-[32vh] w-full shrink-0 flex-col overflow-hidden border-b border-gray-200 md:max-h-none md:w-72 md:border-b-0 md:border-r dark:border-gray-800">
         <header class="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
             <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100">Recados</h1>
             {% if puede_crear %}
@@ -24,7 +25,7 @@
     </aside>
 
     {# ── Panel principal: hilo de la conversación ──────────── #}
-    <section class="flex min-w-0 flex-1 flex-col">
+    <section class="flex min-h-0 min-w-0 flex-1 flex-col">
 
         {# Header del hilo #}
         <header class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-800">

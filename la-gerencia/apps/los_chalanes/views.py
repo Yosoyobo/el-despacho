@@ -28,14 +28,14 @@ from lib.analistas.stats import (
     usuarios_top,
 )
 from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
-from lib.permisos import es_super_admin, requires_role
+from lib.permisos import es_super_admin, requiere_permiso
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
 from .forms import AprendizajeForm
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("chalanes", "ver")
 def panel(request):
     import json as _json
 
@@ -66,7 +66,7 @@ def panel(request):
 VENTANAS_CONSUMO = (7, 30, 90)
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("chalanes", "ver")
 def consumo(request):
     """Analítica de consumo de IA con selector de ventana (7/30/90 días):
     KPIs, por función, por proveedor, usuarios top, últimas 50 llamadas."""
@@ -90,7 +90,7 @@ def consumo(request):
 # ── Prompts (voz editable de Los Chalanes) ───────────────────────────
 
 
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def prompts_voz(request):
     """Edita la voz/tono de Los Chalanes (Prompt base + voces por estación).
 
@@ -155,7 +155,7 @@ def prompts_voz(request):
 
 
 @require_POST
-@requires_role("super_admin", "dueno")
+@requiere_permiso("chalanes", "ver")
 def consultar_saldo_chalan(request, nombre: str):
     """POST /chalanes/<nombre>/saldo — consulta saldo y muestra como flash."""
     adapter = adapter_de(nombre)
@@ -184,7 +184,7 @@ def consultar_saldo_chalan(request, nombre: str):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def probar_chalan(request, nombre: str):
     """POST /chalanes/<nombre>/probar — ping de 1 token y persiste resultado."""
     adapter = adapter_de(nombre)
@@ -214,7 +214,7 @@ def probar_chalan(request, nombre: str):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def borrar_llave(request, nombre: str):
     """POST /chalanes/<nombre>/borrar-llave — borra credencial del slot."""
     slot = f"chalan_{nombre}_api_key"
@@ -230,7 +230,7 @@ def borrar_llave(request, nombre: str):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def guardar_cuadro(request):
     estacion = request.POST.get("estacion") or ""
     proveedor = request.POST.get("proveedor") or ""
@@ -258,7 +258,7 @@ def guardar_cuadro(request):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def reordenar_cadena(request):
     proveedor = request.POST.get("proveedor") or ""
     direccion = request.POST.get("direccion") or "up"
@@ -281,7 +281,7 @@ def reordenar_cadena(request):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def toggle_cadena(request):
     proveedor = request.POST.get("proveedor") or ""
     fila = CadenaFallback.objects.filter(proveedor=proveedor).first()
@@ -296,7 +296,7 @@ def toggle_cadena(request):
 # ── Aprendizajes (S2b.2.1) ───────────────────────────────────────────
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("chalanes", "ver")
 def aprendizajes_lista(request):
     filtro = request.GET.get("filtro") or "activos"
     qs = Aprendizaje.objects.all()
@@ -327,7 +327,7 @@ def aprendizajes_lista(request):
     })
 
 
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def aprendizaje_nuevo(request):
     if request.method == "POST":
         form = AprendizajeForm(request.POST)
@@ -349,7 +349,7 @@ def aprendizaje_nuevo(request):
     })
 
 
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def aprendizaje_editar(request, pk: int):
     ap = get_object_or_404(Aprendizaje, pk=pk)
     if request.method == "POST":
@@ -368,7 +368,7 @@ def aprendizaje_editar(request, pk: int):
     })
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("chalanes", "ver")
 def kpis_pendientes(request):
     """Lista los KPICustom de equipo en estado pendiente_aprobacion."""
     from apps.taller_home.models import KPICustom
@@ -390,7 +390,7 @@ def kpis_pendientes(request):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def kpi_aprobar(request, pk: int):
     from apps.taller_home.models import KPICustom
     kpi = get_object_or_404(KPICustom, pk=pk, alcance="equipo", estado="pendiente_aprobacion")
@@ -406,7 +406,7 @@ def kpi_aprobar(request, pk: int):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def kpi_rechazar(request, pk: int):
     from apps.taller_home.models import KPICustom
     kpi = get_object_or_404(KPICustom, pk=pk, alcance="equipo", estado="pendiente_aprobacion")
@@ -424,7 +424,7 @@ def kpi_rechazar(request, pk: int):
 
 
 @require_POST
-@requires_role("super_admin")
+@requiere_permiso("chalanes", "configurar")
 def aprendizaje_toggle(request, pk: int):
     ap = get_object_or_404(Aprendizaje, pk=pk)
     ap.activo = not ap.activo

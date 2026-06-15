@@ -7,14 +7,14 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from buzon.models import MensajeBuzon
-from lib.permisos import requires_role
+from lib.permisos import requiere_permiso
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
 from .forms import RespuestaAdminForm
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("buzon", "ver_todos")
 def lista(request):
     qs = MensajeBuzon.objects.select_related("autor")
     estado = request.GET.get("estado") or ""
@@ -63,10 +63,16 @@ def lista(request):
         "archivados": base.filter(estado="archivado").count(),
     }
     por_tipo = dict(base.values_list("tipo").annotate(c=Count("id")).values_list("tipo", "c"))
+    from buzon.estados import estados_activos
+    from buzon.tipos import tipos_activos
     return render(request, "buzon_admin/lista.html", {
         "mensajes": qs,
         "estado_filtro": estado,
         "tipo_filtro": tipo,
+        # S-LC-Feedback-V10: filtros dinámicos — todo estado/tipo activo del
+        # catálogo aparece aquí en cuanto se crea (igual que el Buzón del Taller).
+        "estados_disponibles": estados_activos(),
+        "tipos_disponibles": tipos_activos(),
         "orden_actual": orden,
         "volver_qs": volver_qs,
         "link_orden_prioridad": _qs_con_orden("prioridad"),
@@ -85,7 +91,7 @@ def lista(request):
     })
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["GET", "POST"])
 def detalle(request, pk: int):
     msg = get_object_or_404(MensajeBuzon, pk=pk)
@@ -158,7 +164,7 @@ def detalle(request, pk: int):
     })
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["GET"])
 def adjunto_descargar(request, pk: int):
     """Sirve un adjunto del Buzón desde Drive (proxy autenticado para admins).
@@ -186,7 +192,7 @@ def adjunto_descargar(request, pk: int):
     return resp
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("buzon", "ver_todos")
 def exportar_a_claude(request, pk: int):
     """Devuelve el mensaje formateado en Markdown para pegar en una sesión de
     análisis. Texto plano, content-type para que el navegador no lo renderice."""

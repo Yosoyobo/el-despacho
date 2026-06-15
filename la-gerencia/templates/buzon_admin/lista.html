@@ -41,21 +41,21 @@
     {% if orden_actual != 'fecha' %}<input type="hidden" name="orden" value="{{ orden_actual }}">{% endif %}
     <div class="min-w-[180px]">
         <label for="bzn-estado" class="sr-only">Estado</label>
+        {% comment %}Dinámico: refleja TODOS los estados activos del catálogo, incluidos los personalizados creados en Gerencia.{% endcomment %}
         <select id="bzn-estado" name="estado">
             <option value="">— Todos los estados —</option>
-            <option value="nuevo" {% if estado_filtro == 'nuevo' %}selected{% endif %}>Nuevo</option>
-            <option value="leido" {% if estado_filtro == 'leido' %}selected{% endif %}>Leído</option>
-            <option value="respondido" {% if estado_filtro == 'respondido' %}selected{% endif %}>Respondido</option>
-            <option value="archivado" {% if estado_filtro == 'archivado' %}selected{% endif %}>Archivado</option>
+            {% for e in estados_disponibles %}
+            <option value="{{ e.slug }}" {% if estado_filtro == e.slug %}selected{% endif %}>{{ e.label }}</option>
+            {% endfor %}
         </select>
     </div>
     <div class="min-w-[180px]">
         <label for="bzn-tipo" class="sr-only">Tipo</label>
         <select id="bzn-tipo" name="tipo">
             <option value="">— Todos los tipos —</option>
-            <option value="sugerencia" {% if tipo_filtro == 'sugerencia' %}selected{% endif %}>Sugerencia</option>
-            <option value="problema" {% if tipo_filtro == 'problema' %}selected{% endif %}>Problema</option>
-            <option value="otro" {% if tipo_filtro == 'otro' %}selected{% endif %}>Otro</option>
+            {% for t in tipos_disponibles %}
+            <option value="{{ t.slug }}" {% if tipo_filtro == t.slug %}selected{% endif %}>{{ t.label }}</option>
+            {% endfor %}
         </select>
     </div>
     <button type="submit" class="btn-secundario">Filtrar</button>

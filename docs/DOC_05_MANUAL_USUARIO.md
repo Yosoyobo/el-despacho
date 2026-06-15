@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Permisos para todo, notificaciones, móvil y tu propio menú (15 de junio de 2026)
+
+- **Permisos para todo.** Ahora el super admin puede dar acceso a **cualquier
+  sección** (Ajustes, Directorio, Chalanes, El Site, catálogos de Estados/Tipos/
+  Centros de costo, El Interfón) a la persona que quiera, desde
+  **Directorio → (usuario) → Permisos**. Antes esas áreas eran solo del super
+  admin. Tu acceso no cambia salvo que te asignen permisos nuevos.
+- **Aprobar tus propios ajustes de horario (super admin).** Si eres super admin
+  ya puedes aprobar tu propia solicitud de corrección de jornada (antes te lo
+  bloqueaba). Para los demás sigue requiriéndose su jefe directo.
+- **Sin refrescar a mano.** Al cambiar un estado o terminar una acción la
+  pantalla se actualiza sola — ya no tienes que recargar.
+- **Notificaciones para todos.** Tu página de **Notificaciones** muestra cada
+  aviso como una tarjeta, con la configuración de dispositivos hasta abajo. El
+  número **rojo** en el menú indica avisos sin ver (se limpia al abrir la
+  página). Cuando un **pendiente con hora** llega a su fecha y hora, a los
+  asignados les llega *"Entrega: [Proyecto]"* o *"Vencido: …"*.
+- **Buzón:** al crear un estado nuevo aparece solito en los filtros (también en
+  Gerencia). Al enviar o adjuntar ves el **logo de carga** y una **barra de
+  progreso** arriba mientras sube el archivo.
+- **Móvil:** en **Recados** y en **El Chalán** ahora se ven *a la vez* la lista
+  de conversaciones (arriba) y el chat (abajo); ya no tienes que cambiar de
+  pantalla.
+- **Tu propio menú.** En **Mi menú** acomodas el sidebar **arrastrando** las
+  opciones y creas **carpetas** para agruparlas — sin números, todo visual.
+- **Productos en proyectos:** se muestran los primeros 2 y el resto se esconde
+  en *"Ver más"*; el botón de **incluir / no incluir** un producto quedó más
+  confiable.
+
 ## Novedades — El Chalán checa por ti, mapa antes de checar y menos dobles clics (13 de junio de 2026)
 
 - **El Chalán opera El Checador.** Ahora puedes pedirle a **El Chalán** (chat o

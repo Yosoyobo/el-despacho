@@ -44,6 +44,10 @@ class Tarea(models.Model):
     # Idempotencia del cron de recordatorios (S-Chalanes-UX #4): fecha del
     # último recordatorio enviado. Evita repetir el mismo día.
     ultimo_recordatorio = models.DateField(null=True, blank=True)
+    # S-LC-Feedback-V10: aviso del MOMENTO de cumplimiento (fecha+hora). Se manda
+    # una sola vez cuando el pendiente con `hora` llega a su datetime. NULL = aún
+    # no avisado.
+    aviso_cumplido_en = models.DateTimeField(null=True, blank=True)
 
     creado_en = models.DateTimeField(auto_now_add=True)
     creado_por = models.ForeignKey(

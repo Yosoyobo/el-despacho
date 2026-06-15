@@ -21,7 +21,7 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
-from lib.permisos import tiene_rol
+from lib.permisos import puede, tiene_rol
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 from lib.site import (
@@ -55,7 +55,7 @@ def _gate(request):
     if not request.user.is_authenticated:
         return redirect("/sign-in")
     # V6 Bloque 10: reconoce rol primario + roles personalizados (roles_extra).
-    if not tiene_rol(request.user, "super_admin", "dueno"):
+    if not (tiene_rol(request.user, "super_admin") or puede(request.user, "site", "ver")):
         return HttpResponseForbidden("Acceso restringido a super_admin y dueño.")
     return None
 

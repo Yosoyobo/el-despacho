@@ -264,7 +264,7 @@ def detalle(request, pk: int):
     # C1: regresa al listado con el filtro previo (si vino `volver`).
     url_lista = reverse("buzon-lista") + (f"?{volver}" if volver else "")
     if es_htmx:
-        return render(request, "buzon/_pane.html", {
+        resp = render(request, "buzon/_pane.html", {
             "mensaje": msg, "form": form,
             "es_admin_buzon": es_admin_buzon,
             "puede_responder": puede_responder,
@@ -273,6 +273,11 @@ def detalle(request, pk: int):
             "puede_comentar_hilo": puede_comentar_hilo,
             "volver_qs": volver,
         })
+        # Sin refresh manual: abrir/responder pudo cambiar el estado o el leído
+        # del mensaje; avisamos a la lista de la izquierda para que se recargue
+        # sola (la lista escucha `buzon:cambio from:body`).
+        resp["HX-Trigger"] = "buzon:cambio"
+        return resp
     return render(request, "buzon/detalle.html", {
         "mensaje": msg, "form": form,
         "es_admin_buzon": es_admin_buzon,

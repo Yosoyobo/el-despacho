@@ -71,6 +71,12 @@ def perfil(request):
     tiene_mas = (
         InterfonoEntrega.objects.filter(usuario=request.user).count() > HISTORIAL_PAGINA
     )
+    # S-LC-Feedback-V10: abrir esta página marca todo como visto → vacía el
+    # contador rojo del sidebar (no toca `clickeado_en`, que mide engagement).
+    from django.utils import timezone
+    InterfonoEntrega.objects.filter(usuario=request.user, visto_en__isnull=True).update(
+        visto_en=timezone.now()
+    )
     return render(request, "perfil_notificaciones/perfil.html", {
         "suscripciones": suscripciones,
         "configurado": InterfonoConfig.esta_configurado(),

@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
-from lib.permisos import es_super_admin
+from lib.permisos import es_super_admin, puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
@@ -22,8 +22,9 @@ from .forms import EstadoProyectoForm, EstadoProyectoNuevoForm
 
 
 def _gate(request):
-    if not es_super_admin(request.user):
-        return HttpResponseForbidden("Solo super_admin gestiona estados.")
+    u = request.user
+    if not (es_super_admin(u) or puede(u, "catalogos", "estados")):
+        return HttpResponseForbidden("Sin permiso para gestionar este catálogo.")
     return None
 
 

@@ -57,15 +57,34 @@ def test_aprobar_jornada_crea_dia_faltante(usuario_factory):
     assert j.ajustado_por_id == admin.pk
 
 
-def test_no_autoaprobar_propia_solicitud(usuario_factory):
+def test_super_admin_si_aprueba_propia_solicitud(usuario_factory):
+    """Oscar (super_admin) SÍ puede aprobar su propia corrección de horario —
+    es el failsafe duro del despacho y no tiene a quién pedírselo."""
     from apps.checador import services
-    admin = usuario_factory(rol="super_admin")  # es aprobador
+    from apps.checador.models import Jornada
+    admin = usuario_factory(rol="super_admin")
     sol = services.solicitar_ajuste_jornada(
         admin, fecha=datetime.date(2026, 6, 9),
+        valor_entrada=_aware(2026, 6, 9, 9, 0), valor_salida=_aware(2026, 6, 9, 17, 0),
+        motivo="olvidé checar",
+    )
+    services.resolver_correccion(sol, admin=admin, aprobar=True)
+    sol.refresh_from_db()
+    assert sol.estado == "aprobada"
+    assert Jornada.objects.filter(usuario=admin, fecha=datetime.date(2026, 6, 9)).exists()
+
+
+def test_no_super_admin_no_autoaprueba_propia(usuario_factory):
+    """Un jefe/aprobador que NO es super_admin sigue sin poder aprobar lo suyo."""
+    from apps.checador import services
+    usuario_factory(rol="super_admin")  # aprobador disponible en el sistema
+    jefe = usuario_factory(rol="contador")
+    sol = services.solicitar_ajuste_jornada(
+        jefe, fecha=datetime.date(2026, 6, 9),
         valor_entrada=_aware(2026, 6, 9, 9, 0), valor_salida=None, motivo="x",
     )
     with pytest.raises(ValueError, match="propia"):
-        services.resolver_correccion(sol, admin=admin, aprobar=True)
+        services.resolver_correccion(sol, admin=jefe, aprobar=True)
 
 
 # ── Admin edita directo ───────────────────────────────────────────────────

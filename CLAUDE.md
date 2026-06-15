@@ -132,6 +132,18 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 19. **Dark mode propio** — toggle, `localStorage('despacho-tema')`, anti-FOUC
     inline en `<head>` antes del primer paint. NO importar otro sistema
     de dark mode. NO usar `media (prefers-color-scheme)` sin el toggle.
+20. **TODO se gatea por permiso granular** (decisión Oscar, S-LC-Feedback-V10).
+    Ninguna feature/módulo/herramienta/pantalla se gatea por rol literal
+    (`@requires_role(...)`, `user.rol == "x"`). Toda área usa
+    `@requiere_permiso(modulo, accion)` en vistas (super_admin es failsafe
+    duro), `{% if permisos_modulos.X %}` / `{{ user|puede:"mod.accion" }}` en
+    plantillas, y registra su módulo+acciones en
+    `lib/permisos_defaults.CATALOGO_PERMISOS` + `DEFAULTS_POR_ROL` +
+    `cuentas/context_processors.MODULOS_VISIBLES`. **Al crear un módulo nuevo:**
+    (a) agrégalo al catálogo, (b) seedea super_admin (y los roles que deban
+    tenerlo) en una migración `seed_permisos_*`, (c) gatea vistas + sidebar,
+    (d) verifica que aparezca en `/directorio/<id>/permisos/` para delegarlo.
+    El único rol duro permitido es el failsafe `super_admin`.
 
 ---
 
@@ -4259,6 +4271,8 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    */30 7-12 * * 1-5 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py recordar_checada_entrada >> /var/log/checador_entrada.log 2>&1
    # S-Checador-V1.2 (2026-06-12): cierra jornadas abiertas no checadas antes de las 05:00 del día siguiente (al horario de salida default de la compañía)
    10 5 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py cerrar_jornadas_abiertas >> /var/log/checador_cierre.log 2>&1
+   # S-LC-Feedback-V10 (2026-06-15): avisa a los asignados cuando un pendiente CON HORA llega a su fecha+hora ("Entrega: [Proyecto]" / "Vencido: …"). Idempotente (Tarea.aviso_cumplido_en). Cada 15 min en horario laboral.
+   */15 7-20 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py avisar_pendientes_cumplidos >> /var/log/pendientes_cumplidos.log 2>&1
    ```
 
    Los dos comandos de "vencidas" son idempotentes (campo

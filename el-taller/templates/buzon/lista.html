@@ -115,8 +115,17 @@ En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
     {% endif %}
 </div>
 
-{# Lista compacta con scroll propio: ocupa ~la mitad de arriba sin empujar el detalle. #}
-<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+{% comment %}Lista compacta con scroll propio. Se recarga sola (sin refresh manual)
+cuando el panel de lectura avisa `buzon:cambio` tras abrir/responder un mensaje —
+así el badge de estado y el "no leído" quedan al día.{% endcomment %}
+<div id="buzon-lista-scroll"
+     class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900"
+     hx-get="{{ request.get_full_path }}"
+     hx-trigger="buzon:cambio from:body"
+     hx-select="#buzon-lista-scroll"
+     hx-target="#buzon-lista-scroll"
+     hx-swap="outerHTML"
+     data-sin-indicador="1">
     <div class="max-h-[calc(100vh-20rem)] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
         {% include "buzon/_filas.html" %}
     </div>

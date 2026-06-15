@@ -50,6 +50,28 @@ def _enviar(usuario, titulo: str, cuerpo: str, *, url: str, tag: str, categoria:
         logger.exception("push automatico %s falló para usuario=%s", categoria, usuario.pk)
 
 
+def notificar_pendiente_cumplido(tarea, usuario) -> None:
+    """S-LC-Feedback-V10 — aviso del MOMENTO de cumplimiento de un pendiente
+    (cuando su fecha+hora llega). Lo invoca el cron `avisar_pendientes_cumplidos`.
+    Texto según tipo: «Entrega: [Proyecto]» para entregas, «Vencido: …» para el
+    resto. Categoría `tareas` (mismo opt-out que los recordatorios)."""
+    if not usuario or not getattr(usuario, "is_active", False):
+        return
+    proyecto = getattr(getattr(tarea, "proyecto", None), "nombre", "") or (
+        getattr(getattr(tarea, "proyecto", None), "codigo", ""))
+    if tarea.tipo == "entrega":
+        titulo = f"📦 Entrega: {proyecto or tarea.titulo}"
+        cuerpo = tarea.titulo
+    else:
+        titulo = f"🔴 Vencido: {tarea.titulo[:70]}"
+        cuerpo = f"{proyecto}" if proyecto else "Pendiente vencido"
+    _enviar(
+        usuario, titulo=titulo, cuerpo=cuerpo,
+        url=f"/tareas/{tarea.pk}/", tag=f"tarea-cumplido-{tarea.pk}",
+        categoria="tareas", origen_modulo="tareas", origen_id=tarea.pk,
+    )
+
+
 # ── Buzón ──
 
 

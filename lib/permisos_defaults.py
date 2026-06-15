@@ -48,6 +48,20 @@ TODO_CHECADOR = ["checar", "ver_equipo", "aprobar_correcciones", "configurar_hor
 # masivas. Default SOLO super_admin (decisión Oscar: gating 100% granular,
 # el resto lo recibe vía la grilla de permisos o roles personalizados).
 TODO_COMUNICACION = ["enviar_correo", "campanas"]
+# S-LC-Feedback-V10 (decisión Oscar: "todo, TODO, debe tener permisos
+# granulares"): las áreas administrativas de La Gerencia dejan de gatearse por
+# rol literal y pasan a permisos delegables. super_admin sigue como failsafe
+# duro en código; los defaults preservan exactamente el alcance previo de cada
+# rol. `dueno` mantiene lo que ya alcanzaba (directorio básico, site, interfón,
+# lectura de Chalanes); las acciones que eran solo-super_admin se quedan así.
+TODO_AJUSTES = ["acceder"]
+# `ver` lista · `gestionar` alta/edición básica (lo que el dueño ya tenía) ·
+# `panel`/`ia`/`permisos`/`roles` son el panel avanzado de usuario, solo-super_admin.
+TODO_DIRECTORIO = ["ver", "gestionar", "panel", "ia", "permisos", "roles"]
+TODO_CHALANES = ["ver", "configurar"]
+TODO_SITE = ["ver"]
+TODO_CATALOGOS = ["estados", "tipos", "centros_costo"]
+TODO_INTERFONO = ["configurar"]
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -68,6 +82,13 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "comunicacion": list(TODO_COMUNICACION),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
         "gerencia": ["acceder"],
+        # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
+        "ajustes": list(TODO_AJUSTES),
+        "directorio": list(TODO_DIRECTORIO),
+        "chalanes": list(TODO_CHALANES),
+        "site": list(TODO_SITE),
+        "catalogos": list(TODO_CATALOGOS),
+        "interfono": list(TODO_INTERFONO),
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -86,6 +107,14 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "checador": list(TODO_CHECADOR),
         # S-LC-Feedback-V5 c5: dueno entra a La Gerencia por default.
         "gerencia": ["acceder"],
+        # S-LC-Feedback-V10: dueno conserva exactamente lo que ya alcanzaba —
+        # directorio (lista + alta/edición de usuarios), El Site, El Interfón y
+        # lectura del panel de Chalanes. IA/permisos/roles y Los Ajustes siguen
+        # siendo solo-super_admin.
+        "directorio": ["ver", "gestionar"],
+        "chalanes": ["ver"],
+        "site": list(TODO_SITE),
+        "interfono": list(TODO_INTERFONO),
     },
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
@@ -143,6 +172,13 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "checador": list(TODO_CHECADOR),
     "comunicacion": list(TODO_COMUNICACION),
     "gerencia": ["acceder"],
+    # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
+    "ajustes": list(TODO_AJUSTES),
+    "directorio": list(TODO_DIRECTORIO),
+    "chalanes": list(TODO_CHALANES),
+    "site": list(TODO_SITE),
+    "catalogos": list(TODO_CATALOGOS),
+    "interfono": list(TODO_INTERFONO),
 }
 
 

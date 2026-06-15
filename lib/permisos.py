@@ -336,3 +336,30 @@ def requires_role(*roles: str) -> Callable:
 
 def requires_any_role(roles: Iterable[str]) -> Callable:
     return requires_role(*roles)
+
+
+def requiere_permiso(modulo: str, accion: str) -> Callable:
+    """S-LC-Feedback-V10 — decorador de vista gateado por permiso GRANULAR.
+
+    Reemplaza a `@requires_role("super_admin", …)` en las áreas administrativas
+    para que el super_admin pueda DELEGAR el acceso desde
+    `/directorio/<id>/permisos/`. El super_admin es failsafe duro: siempre pasa,
+    aunque no exista la fila de permiso (evita lock-out del despacho). Para
+    cualquier otro usuario, exige `puede(user, modulo, accion)`.
+
+    Regla del proyecto (decisión Oscar): TODA feature/módulo/herramienta nueva
+    se gatea por permiso granular con este decorador (o el helper `puede()` en
+    plantillas), nunca por rol literal.
+    """
+    def wrap(view: Callable) -> Callable:
+        @wraps(view)
+        def inner(request: HttpRequest, *args, **kwargs):
+            user = getattr(request, "user", None)
+            if not user or not user.is_authenticated:
+                login_url = getattr(request, "_login_url", "/sign-in")
+                return redirect(login_url)
+            if tiene_rol(user, "super_admin") or puede(user, modulo, accion):
+                return view(request, *args, **kwargs)
+            return HttpResponseForbidden("Sin permisos para esta acción.")
+        return inner
+    return wrap

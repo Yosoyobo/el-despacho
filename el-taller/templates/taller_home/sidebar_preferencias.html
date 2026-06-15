@@ -3,94 +3,159 @@
 {% block title %}Mi menú — El Taller{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Dashboard" "/" "Mi menú" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Mi menú" subtitulo="Acomoda y oculta los items del menú a tu gusto. Solo te afecta a ti." breadcrumb_items=breadcrumb_items back_url="/" back_label="Dashboard" %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Mi menú" subtitulo="Acomoda tu menú arrastrando. Solo te afecta a ti." breadcrumb_items=breadcrumb_items back_url="/" back_label="Dashboard" %}
 
-<section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <p class="mb-2 text-sm text-gray-600 dark:text-gray-300">Arrastra para reordenar, o usa los botones ↑↓. Marca "Ocultar" para que el item no aparezca en tu menú (no pierdes el acceso — sólo se esconde del sidebar). Esto es <strong>tuyo</strong>: no cambia el menú de nadie más.</p>
-    <p class="mb-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">📁 <strong>Carpetas:</strong> escribe un nombre de carpeta en un item para meterlo en un grupo (ej. "Mi día", "Ventas"). Los items con la <strong>misma</strong> carpeta se agrupan juntos en una sección colapsable del menú. Déjalo vacío para que el item quede suelto.</p>
+<section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            <strong>Arrastra</strong> los items para reordenarlos o moverlos a una carpeta.
+            El 👁 oculta un item (no pierdes el acceso, sólo se esconde del menú).
+        </p>
+        <button type="button" id="sb-nueva-carpeta" class="btn-secundario shrink-0">📁 Nueva carpeta</button>
+    </div>
 
-    <datalist id="carpetas-existentes">
-        {% for g in grupos_existentes %}<option value="{{ g }}"></option>{% endfor %}
-    </datalist>
+    {% comment %}Editor gráfico drag&drop (mismo motor que el Kanban). Cada zona es un
+    dropzone; los items son tarjetas arrastrables. Orden y carpeta se calculan de la
+    posición al guardar — sin números a la vista.{% endcomment %}
+    <div id="sb-zonas" class="space-y-4">
+        {% for z in zonas %}
+        <section class="sb-zona rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700" data-grupo="{{ z.grupo }}">
+            <header class="mb-2 flex items-center gap-2">
+                {% if z.grupo %}
+                <span class="text-sm">📁</span>
+                <input type="text" value="{{ z.grupo }}" maxlength="40" data-zona-nombre
+                       class="sb-zona-nombre flex-1 rounded-md border border-gray-200 bg-transparent px-2 py-1 text-sm font-semibold text-gray-800 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-gray-100"/>
+                <button type="button" data-borrar-carpeta title="Quitar carpeta (sus items vuelven al menú principal)"
+                        class="rounded-md p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                </button>
+                {% else %}
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú principal</span>
+                {% endif %}
+            </header>
+            <ul class="sb-lista min-h-[3rem] space-y-2" data-dropzone>
+                {% for it in z.items %}
+                <li class="sb-card flex cursor-grab items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 shadow-theme-xs active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800{% if it.oculto %} opacity-50{% endif %}"
+                    draggable="true" data-slug="{{ it.slug }}" data-oculto="{% if it.oculto %}1{% else %}0{% endif %}">
+                    <span class="select-none text-gray-400">⠿</span>
+                    <span class="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">{{ it.label }}</span>
+                    <button type="button" data-toggle-oculto title="Mostrar / ocultar en mi menú"
+                            class="rounded-md p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <svg class="sb-ojo h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg class="sb-ojo-off hidden h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.1A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.1 6.1A17 17 0 0 0 2 12s3.5 7 10 7a9.8 9.8 0 0 0 2.1-.2" stroke-linecap="round"/></svg>
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endfor %}
+    </div>
 
-    <form method="post" action="{% url 'perfil-sidebar-guardar' %}" id="sidebar-orden-form">
-        {% csrf_token %}
-        <ul id="sidebar-orden-lista" class="space-y-2">
-            {% for item in items %}
-            <li data-slug="{{ item.slug }}" draggable="true"
-                class="sidebar-item flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/50 p-3 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:bg-gray-800">
-                <span class="cursor-grab text-gray-400 dark:text-gray-500" title="Arrastrar">⋮⋮</span>
-                <span class="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{{ item.label }}</span>
-                <input type="text" name="grupo__{{ item.slug }}" value="{{ item.grupo }}" list="carpetas-existentes" placeholder="Carpeta…" maxlength="40" title="Nombre de carpeta (opcional)" class="w-32 rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900">
-                <input type="number" name="orden__{{ item.slug }}" value="{{ item.orden }}" min="0" max="9999" class="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900">
-                <label class="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                    <input type="checkbox" name="oculto__{{ item.slug }}" value="1" {% if item.oculto %}checked{% endif %}>
-                    Ocultar
-                </label>
-                <div class="flex gap-1">
-                    <button type="button" class="sidebar-up rounded border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" title="Subir">↑</button>
-                    <button type="button" class="sidebar-down rounded border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" title="Bajar">↓</button>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        <div class="mt-5 flex items-center justify-between gap-3">
-            {% if tiene_personal %}
-            <button type="submit" form="sidebar-restablecer-form" class="text-sm text-gray-500 underline hover:text-error-600 dark:text-gray-400">Restablecer al orden por defecto</button>
-            {% else %}
-            <span class="text-xs text-gray-400 dark:text-gray-500">Usando el orden por defecto.</span>
-            {% endif %}
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <form method="post" action="{% url 'perfil-sidebar-restablecer' %}" onsubmit="return confirm('¿Volver al menú por defecto? Se borra tu personalización.');">
+            {% csrf_token %}
+            <button type="submit" class="text-sm font-medium text-gray-500 hover:text-error-600 dark:text-gray-400">Restablecer al menú por defecto</button>
+        </form>
+        <form method="post" action="{% url 'perfil-sidebar-guardar' %}" id="sb-form">
+            {% csrf_token %}
+            <div id="sb-hidden"></div>
             <button type="submit" class="btn-primario">Guardar mi menú</button>
-        </div>
-    </form>
-    <form method="post" action="{% url 'perfil-sidebar-restablecer' %}" id="sidebar-restablecer-form" class="hidden">{% csrf_token %}</form>
+        </form>
+    </div>
 </section>
 
 <script>
-(function() {
-    const lista = document.getElementById('sidebar-orden-lista');
-    if (!lista) return;
-    function renumerar() {
-        Array.from(lista.querySelectorAll('.sidebar-item')).forEach(function(li, idx) {
-            const inp = li.querySelector('input[type=number]');
-            if (inp) inp.value = (idx + 1) * 10;
-        });
+(function () {
+    var zonas = document.getElementById('sb-zonas');
+    var form = document.getElementById('sb-form');
+    var hidden = document.getElementById('sb-hidden');
+    if (!zonas || !form) return;
+    var arrastrado = null;
+
+    function cardsInit(card) {
+        card.addEventListener('dragstart', function () { arrastrado = card; setTimeout(function () { card.classList.add('opacity-30'); }, 0); });
+        card.addEventListener('dragend', function () { card.classList.remove('opacity-30'); arrastrado = null; zonas.querySelectorAll('[data-dropzone]').forEach(function (z) { z.classList.remove('ring-2', 'ring-brand-400'); }); });
     }
-    lista.addEventListener('click', function(e) {
-        const li = e.target.closest('.sidebar-item');
-        if (!li) return;
-        if (e.target.closest('.sidebar-up') && li.previousElementSibling) {
-            lista.insertBefore(li, li.previousElementSibling);
-            renumerar();
-        } else if (e.target.closest('.sidebar-down') && li.nextElementSibling) {
-            lista.insertBefore(li.nextElementSibling, li);
-            renumerar();
+    function zonaInit(ul) {
+        ul.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            ul.classList.add('ring-2', 'ring-brand-400');
+            if (!arrastrado) return;
+            var after = posicion(ul, e.clientY);
+            if (after == null) ul.appendChild(arrastrado); else ul.insertBefore(arrastrado, after);
+        });
+        ul.addEventListener('dragleave', function () { ul.classList.remove('ring-2', 'ring-brand-400'); });
+        ul.addEventListener('drop', function (e) { e.preventDefault(); ul.classList.remove('ring-2', 'ring-brand-400'); });
+    }
+    function posicion(ul, y) {
+        var cards = Array.prototype.slice.call(ul.querySelectorAll('.sb-card:not(.opacity-30)'));
+        for (var i = 0; i < cards.length; i++) {
+            var r = cards[i].getBoundingClientRect();
+            if (y < r.top + r.height / 2) return cards[i];
+        }
+        return null;
+    }
+    zonas.querySelectorAll('.sb-card').forEach(cardsInit);
+    zonas.querySelectorAll('[data-dropzone]').forEach(zonaInit);
+
+    // Mostrar/ocultar item
+    zonas.addEventListener('click', function (e) {
+        var t = e.target.closest('[data-toggle-oculto]');
+        if (t) {
+            var card = t.closest('.sb-card');
+            var oculto = card.getAttribute('data-oculto') === '1';
+            card.setAttribute('data-oculto', oculto ? '0' : '1');
+            card.classList.toggle('opacity-50', !oculto);
+            card.querySelector('.sb-ojo').classList.toggle('hidden', !oculto);
+            card.querySelector('.sb-ojo-off').classList.toggle('hidden', oculto);
+            return;
+        }
+        var b = e.target.closest('[data-borrar-carpeta]');
+        if (b) {
+            var zona = b.closest('.sb-zona');
+            var principal = zonas.querySelector('.sb-zona[data-grupo=""] [data-dropzone]');
+            // Devuelve los items de la carpeta al menú principal y elimina la zona.
+            zona.querySelectorAll('.sb-card').forEach(function (c) { principal.appendChild(c); });
+            zona.remove();
         }
     });
-    let arrastrando = null;
-    lista.addEventListener('dragstart', function(e) {
-        const li = e.target.closest('.sidebar-item');
-        if (!li) return;
-        arrastrando = li;
-        li.classList.add('opacity-50');
+
+    // Nueva carpeta
+    document.getElementById('sb-nueva-carpeta').addEventListener('click', function () {
+        var nombre = (prompt('Nombre de la carpeta:') || '').trim().slice(0, 40);
+        if (!nombre) return;
+        var sec = document.createElement('section');
+        sec.className = 'sb-zona rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700';
+        sec.setAttribute('data-grupo', nombre);
+        sec.innerHTML = '<header class="mb-2 flex items-center gap-2"><span class="text-sm">📁</span>'
+            + '<input type="text" maxlength="40" data-zona-nombre class="sb-zona-nombre flex-1 rounded-md border border-gray-200 bg-transparent px-2 py-1 text-sm font-semibold text-gray-800 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-gray-100"/>'
+            + '<button type="button" data-borrar-carpeta class="rounded-md p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button></header>'
+            + '<ul class="sb-lista min-h-[3rem] space-y-2" data-dropzone></ul>';
+        sec.querySelector('[data-zona-nombre]').value = nombre;
+        zonas.appendChild(sec);
+        zonaInit(sec.querySelector('[data-dropzone]'));
     });
-    lista.addEventListener('dragend', function() {
-        if (arrastrando) arrastrando.classList.remove('opacity-50');
-        arrastrando = null;
-    });
-    lista.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        const li = e.target.closest('.sidebar-item');
-        if (!li || li === arrastrando) return;
-        const rect = li.getBoundingClientRect();
-        const middle = rect.top + rect.height / 2;
-        if (e.clientY < middle) {
-            lista.insertBefore(arrastrando, li);
-        } else {
-            lista.insertBefore(arrastrando, li.nextElementSibling);
+
+    // Al guardar: genera los inputs ocultos orden__/grupo__/oculto__ desde el DOM.
+    form.addEventListener('submit', function () {
+        hidden.innerHTML = '';
+        var n = 0;
+        zonas.querySelectorAll('.sb-zona').forEach(function (zona) {
+            var nombreInput = zona.querySelector('[data-zona-nombre]');
+            var grupo = nombreInput ? nombreInput.value.trim().slice(0, 40) : '';
+            zona.querySelectorAll('.sb-card').forEach(function (card) {
+                n += 10;
+                var slug = card.getAttribute('data-slug');
+                add('orden__' + slug, n);
+                add('grupo__' + slug, grupo);
+                if (card.getAttribute('data-oculto') === '1') add('oculto__' + slug, '1');
+            });
+        });
+        function add(name, val) {
+            var i = document.createElement('input');
+            i.type = 'hidden'; i.name = name; i.value = val; hidden.appendChild(i);
         }
     });
-    lista.addEventListener('drop', function(e) { e.preventDefault(); renumerar(); });
 })();
 </script>
 {% endblock %}

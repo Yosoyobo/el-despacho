@@ -25,6 +25,13 @@ ACCION_VISIBLE_POR_MODULO = {
     "checador": "checar",
     # V6 Bloque 7: Comunicaciones (Chalán correo + campañas).
     "comunicacion": "enviar_correo",
+    # S-LC-Feedback-V10: áreas administrativas con gating granular delegable.
+    "ajustes": "acceder",
+    "directorio": "ver",
+    "chalanes": "ver",
+    "site": "ver",
+    "catalogos": "estados",   # cualquier acción de catálogo enciende el grupo
+    "interfono": "configurar",
     # los demás usan "ver"
 }
 
@@ -33,7 +40,7 @@ MODULOS_VISIBLES = (
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
     "facturacion", "chalan", "checador", "comunicacion",
     "directorio", "ajustes", "chalanes", "site",
-    "centros_costo", "tasas",
+    "catalogos", "interfono",
     "gerencia",
 )
 

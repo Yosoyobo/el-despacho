@@ -26,7 +26,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from cuentas.models.usuario import Usuario
-from lib.permisos import puede, puede_aprobar_correcciones_checador
+from lib.permisos import puede, puede_aprobar_correcciones_checador, tiene_rol
 
 from . import services_chat
 from .models import Conversacion
@@ -104,6 +104,8 @@ def conversacion(request, pk: int):
         "puede_crear": puede(request.user, "recados", "crear"),
         "puede_adjuntar": puede(request.user, "recados", "adjuntar_drive"),
         "puede_aprobar_corr": puede_aprobar_correcciones_checador(request.user),
+        # super_admin sí puede aprobar su propia solicitud (failsafe duro).
+        "puede_aprobar_corr_propio": tiene_rol(request.user, "super_admin"),
     })
 
 
@@ -127,6 +129,7 @@ def partial_mensajes(request, pk: int):
         "mensajes": mensajes, "conv": conv, "ultimo_id": ultimo_id,
         "fragmento": True,
         "puede_aprobar_corr": puede_aprobar_correcciones_checador(request.user),
+        "puede_aprobar_corr_propio": tiene_rol(request.user, "super_admin"),
     })
 
 

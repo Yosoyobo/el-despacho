@@ -92,6 +92,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "interfono.context_processors.vapid_public_key",
+                "interfono.context_processors.notificaciones_no_leidas",
                 "auth_google.context_processors.google_oauth_configurado",
                 "cuentas.context_processors.permisos_modulos",
                 "cuentas.context_processors.sidebar_orden",

@@ -1,4 +1,4 @@
-{% load static forms_helpers %}
+{% load static forms_helpers permisos %}
 {% comment %} Sidebar — La Gerencia (Pre-S2b.2: backend puro). Items operativos se
    movieron a El Taller. Aquí solo: Dashboard ejecutivo, Directorio,
    Site, Interfón, Chalanes, Ajustes, Tasas. {% endcomment %}
@@ -17,30 +17,36 @@
             Dashboard ejecutivo
         </a>
 
+        {% if permisos_modulos.directorio %}
         <a href="/directorio/" class="menu-item {% if '/directorio' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 19v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             El Directorio
         </a>
+        {% endif %}
 
-        {% if request.user|tiene_rol:"super_admin,dueno" %}
+        {% if permisos_modulos.site %}
         <a href="/site/" class="menu-item {% if '/site' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h18M3 12h18M3 19h18" stroke-linecap="round"/></svg>
             <span class="flex-1">El Site</span>
             {% if site_integraciones_rojas %}<span class="badge badge-error">⚠️ {{ site_integraciones_rojas }}</span>{% endif %}
         </a>
+        {% endif %}
 
+        {% if permisos_modulos.interfono %}
         <a href="/interfono/" class="menu-item {% if '/interfono' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.4-1.4A6 6 0 0 1 18 11V8a6 6 0 1 0-12 0v3a6 6 0 0 1-.6 4.6L4 17h5m6 0a3 3 0 1 1-6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
             El Interfón
         </a>
+        {% endif %}
 
+        {% if permisos_modulos.chalanes %}
         <a href="/chalanes/" class="menu-item {% if '/chalanes' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM12 3v4M9 12h.01M15 12h.01M9 15.5h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Chalanes
         </a>
         {% endif %}
 
-        {% if request.user.es_super_admin %}
+        {% if permisos_modulos.ajustes %}
         <a href="/ajustes/" class="menu-item {% if '/ajustes/' == request.path or request.path == '/ajustes' %}menu-item-active{% elif '/ajustes/' in request.path and '/ajustes/tasas' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1A2 2 0 1 1 4.3 17l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 1 1 7 4.3l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.2.6.7 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Los Ajustes
@@ -49,6 +55,9 @@
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h4l3-9 4 18 3-9h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Tasas
         </a>
+        {% endif %}
+
+        {% if permisos_modulos.catalogos %}
         <a href="{% url 'centros-costo-lista' %}" class="menu-item {% if '/catalogos/centros-costo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Centros de costo
@@ -69,10 +78,15 @@
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h10M7 12h10M7 17h6" stroke-linecap="round"/><path d="M3.5 7h.01M3.5 12h.01M3.5 17h.01" stroke-linecap="round"/></svg>
             Tipos del Buzón
         </a>
+        {% endif %}
+
+        {% if request.user|puede:"checador.configurar_horarios" %}
         <a href="{% url 'checador-admin-horarios' %}" class="menu-item {% if '/catalogos/horarios' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Horarios laborales
         </a>
+        {% endif %}
+        {% if request.user|puede:"checador.aprobar_correcciones" %}
         <a href="{% url 'checador-admin-correcciones' %}" class="menu-item {% if '/checador/correcciones' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Correcciones de checada

@@ -13,15 +13,12 @@
 </header>
 
 <div class="max-w-2xl space-y-6">
-    {% comment %} S-TailAdmin-3: panel unificado con La Gerencia (dos copias sincronizadas
-       de `interfono/_panel_suscripcion.html`). {% endcomment %}
-    {% include "interfono/_panel_suscripcion.html" %}
-
-    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    {% comment %}V10: el historial va PRIMERO; cada aviso es su propia cápsula con borde sobre fondo gris.{% endcomment %}
+    <section class="rounded-2xl border border-gray-200 bg-gray-50 p-5 shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.02]">
         <h2 class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Historial de notificaciones</h2>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Avisos que te han llegado recientemente.</p>
         {% if historial %}
-        <ul class="mt-4 space-y-1">
+        <ul class="mt-4 space-y-2.5">
             {% include "perfil_notificaciones/_historial_items.html" %}
         </ul>
         {% else %}
@@ -44,5 +41,10 @@
             </div>
         </form>
     </section>
+
+    {% comment %} V10: el panel de "este navegador / dispositivos activos" baja
+       AL FINAL (es configuración técnica, no lo primero que el usuario quiere ver).
+       Panel unificado con La Gerencia (dos copias de interfono/_panel_suscripcion.html). {% endcomment %}
+    {% include "interfono/_panel_suscripcion.html" %}
 </div>
 {% endblock %}

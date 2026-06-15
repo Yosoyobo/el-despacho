@@ -10,7 +10,7 @@ from django.views.decorators.http import require_http_methods
 
 from cuentas.models.permiso_usuario import PermisoUsuario
 from cuentas.models.usuario import Usuario
-from lib.permisos import requires_role, usuarios_con_rol
+from lib.permisos import requiere_permiso, usuarios_con_rol
 from lib.permisos_defaults import DEFAULTS_POR_ROL
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -18,7 +18,7 @@ from lib.portavoz_eventos import EventoPortavoz
 from .forms import UsuarioForm
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("directorio", "ver")
 def lista(request):
     from django.db.models import Count
 
@@ -84,7 +84,7 @@ def lista(request):
     })
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("directorio", "gestionar")
 @require_http_methods(["GET", "POST"])
 def crear(request):
     if request.method == "POST":
@@ -104,7 +104,7 @@ def crear(request):
     return render(request, "directorio/form.html", {"form": form, "modo": "crear"})
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("directorio", "gestionar")
 @require_http_methods(["GET", "POST"])
 def editar(request, pk: int):
     u = get_object_or_404(Usuario, pk=pk)
@@ -119,7 +119,7 @@ def editar(request, pk: int):
     return render(request, "directorio/form.html", {"form": form, "modo": "editar", "usuario": u})
 
 
-@requires_role("super_admin", "dueno")
+@requiere_permiso("directorio", "gestionar")
 @require_http_methods(["POST"])
 def bloquear(request, pk: int):
     u = get_object_or_404(Usuario, pk=pk)
@@ -142,7 +142,7 @@ def bloquear(request, pk: int):
 # ── Permisos granulares (Pre-S2b.1) ─────────────────────────────────────────
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "permisos")
 @require_http_methods(["GET", "POST"])
 def permisos(request, pk: int):
     """UI de gestión de PermisoUsuario para un usuario específico."""
@@ -199,14 +199,14 @@ def permisos(request, pk: int):
 # ── S-LC-Feedback-V5 c7: CRUD de Roles personalizados ─────────────
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "roles")
 def roles_lista(request):
     from cuentas.models.rol import Rol
     roles = Rol.objects.all().order_by("sistema", "nombre")
     return render(request, "directorio/roles_lista.html", {"roles": roles})
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "roles")
 @require_http_methods(["GET", "POST"])
 def rol_nuevo(request):
     from cuentas.models.rol import Rol
@@ -230,7 +230,7 @@ def rol_nuevo(request):
     return render(request, "directorio/rol_form.html", {"modo": "nuevo", "secciones": _secciones_rol({})})
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "roles")
 @require_http_methods(["GET", "POST"])
 def rol_editar(request, pk: int):
     from cuentas.models.rol import Rol
@@ -258,7 +258,7 @@ def rol_editar(request, pk: int):
     })
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "roles")
 @require_http_methods(["POST"])
 def rol_borrar(request, pk: int):
     from cuentas.models.rol import Rol
@@ -371,7 +371,7 @@ def _secciones_rol(permisos):
     return secciones
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "panel")
 def panel(request, pk: int):
     """GET HTMX → modal de detalle con tabs. El tab Datos viene precargado."""
     from lib.permisos import roles_display
@@ -383,7 +383,7 @@ def panel(request, pk: int):
     })
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "panel")
 @require_http_methods(["GET", "POST"])
 def panel_datos(request, pk: int):
     u = get_object_or_404(Usuario, pk=pk)
@@ -398,7 +398,7 @@ def panel_datos(request, pk: int):
     return render(request, "directorio/_tab_datos.html", {"usuario": u, "form": form})
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "ia")
 @require_http_methods(["GET", "POST"])
 def panel_ia(request, pk: int):
     u = get_object_or_404(Usuario, pk=pk)
@@ -414,7 +414,7 @@ def panel_ia(request, pk: int):
     return render(request, "directorio/_tab_ia.html", _ctx_ia(u))
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "ia")
 @require_http_methods(["POST"])
 def ia_forzar(request, pk: int):
     u = get_object_or_404(Usuario, pk=pk)
@@ -429,7 +429,7 @@ def ia_forzar(request, pk: int):
     return render(request, "directorio/_tab_ia.html", {**_ctx_ia(u), "guardado": True})
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "ia")
 @require_http_methods(["POST"])
 def presupuesto(request, pk: int):
     from decimal import Decimal, InvalidOperation
@@ -460,7 +460,7 @@ def presupuesto(request, pk: int):
     return render(request, "directorio/_tab_ia.html", {**_ctx_ia(u), "guardado": True})
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "permisos")
 @require_http_methods(["GET", "POST"])
 def panel_permisos(request, pk: int):
     from cuentas.models.rol import Rol
@@ -495,7 +495,7 @@ def panel_permisos(request, pk: int):
     })
 
 
-@requires_role("super_admin")
+@requiere_permiso("directorio", "permisos")
 @require_http_methods(["GET", "POST"])
 def asignar_roles_extra(request, pk: int):
     from cuentas.models.rol import Rol

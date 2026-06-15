@@ -9,7 +9,7 @@
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} egreso</h1>
 </header>
 
-<form method="post" enctype="multipart/form-data" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3"{% if form_action %} action="{{ form_action }}"{% endif %}>
+<form method="post" enctype="multipart/form-data" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3"{% if form_action %} action="{{ form_action }}"{% endif %} data-upload-progress>
     {% csrf_token %}
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
     {% if ocr_log_id %}<input type="hidden" name="ocr_log_id" value="{{ ocr_log_id }}">{% endif %}

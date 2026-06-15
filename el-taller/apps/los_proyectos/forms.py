@@ -188,7 +188,10 @@ class ProyectoProductoForm(forms.ModelForm):
     # Procesos (impresión + operativos) serializados en JSON por el front;
     # la vista los sincroniza a ProyectoProductoProceso tras guardar el form.
     procesos_json = forms.CharField(required=False, widget=forms.HiddenInput())
-    cantidad = forms.IntegerField(min_value=1, initial=1, label="Cantidad")
+    # required=False + clean (abajo): una cantidad vacía en CUALQUIER fila no debe
+    # invalidar todo el formset del detalle y bloquear silenciosamente el toggle
+    # "incluir" de otra fila (reporte Oscar: "el botón de incluir no jala").
+    cantidad = forms.IntegerField(required=False, min_value=1, initial=1, label="Cantidad")
     precio_unitario = forms.DecimalField(
         required=False, min_value=0, label="Precio unit.",
         widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "catálogo"}),
@@ -214,6 +217,10 @@ class ProyectoProductoForm(forms.ModelForm):
     def clean_merma(self):
         # merma es NOT NULL con default 0; el form vacío llega como None.
         return self.cleaned_data.get("merma") or 0
+
+    def clean_cantidad(self):
+        # cantidad es NOT NULL con default 1; vacío/None ⇒ 1 (no invalida la fila).
+        return self.cleaned_data.get("cantidad") or 1
 
 
 ProyectoProductoFormSet = inlineformset_factory(

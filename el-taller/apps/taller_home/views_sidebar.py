@@ -45,9 +45,22 @@ def sidebar_preferencias(request):
             "grupo": grupo,
         })
     items.sort(key=lambda x: (x["orden"], x["slug"]))
+    # V10: agrupa en ZONAS para el editor gráfico drag&drop — primero el nivel
+    # principal (sin carpeta) y luego una zona por carpeta, en orden de aparición.
+    zonas_map: dict[str, list] = {}
+    orden_grupos: list[str] = []
+    for it in items:
+        g = it["grupo"]
+        if g not in zonas_map:
+            zonas_map[g] = []
+            orden_grupos.append(g)
+        zonas_map[g].append(it)
+    zonas = [{"grupo": "", "items": zonas_map.get("", [])}]
+    zonas += [{"grupo": g, "items": zonas_map[g]} for g in orden_grupos if g]
     tiene_personal = SidebarOrdenUsuario.objects.filter(usuario=request.user).exists()
     return render(request, "taller_home/sidebar_preferencias.html", {
         "items": items,
+        "zonas": zonas,
         "tiene_personal": tiene_personal,
         "grupos_existentes": sorted(grupos_existentes),
     })

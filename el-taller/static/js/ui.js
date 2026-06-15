@@ -473,15 +473,38 @@
   }
 
   // --- Anti-doble-clic: deshabilita un elemento y lo marca para reactivar. ---
+  // Spinner inline en el propio botón mientras la acción está en vuelo. Cubre
+  // TODA pantalla (botones de submit clásicos y disparadores HTMX) sin tocar
+  // plantillas — el feedback aparece justo donde el usuario picó (reporte de
+  // Oscar: "al enviar al Buzón no veo el logo"). Usa currentColor: blanco en
+  // botones brand, gris en secundarios.
+  function ponerSpinnerBoton(elt) {
+    if (!elt || elt.tagName !== 'BUTTON') return;
+    if (elt.querySelector('[data-btn-spinner]')) return;
+    if (elt.closest && elt.closest('[data-sin-indicador="1"]')) return;
+    var s = document.createElement('span');
+    s.setAttribute('data-btn-spinner', '1');
+    s.className = 'mr-1.5 inline-flex shrink-0 align-[-2px]';
+    s.innerHTML = '<svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">'
+      + '<circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>'
+      + '<path class="opacity-90" fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2z"></path></svg>';
+    elt.insertBefore(s, elt.firstChild);
+  }
+  function quitarSpinnerBoton(elt) {
+    var s = elt && elt.querySelector && elt.querySelector('[data-btn-spinner]');
+    if (s) s.remove();
+  }
   function bloquear(elt) {
     if (!elt || elt.disabled) return;
     if (elt.closest && elt.closest('[data-sin-bloqueo="1"]')) return;
     elt.disabled = true;
     elt.setAttribute('data-autobloqueo', '1');
+    ponerSpinnerBoton(elt);
   }
   function reactivarTodo() {
     document.querySelectorAll('[data-autobloqueo="1"]').forEach(function (b) {
       b.disabled = false; b.removeAttribute('data-autobloqueo');
+      quitarSpinnerBoton(b);
     });
     document.querySelectorAll('form[data-enviando="1"]').forEach(function (f) {
       f.removeAttribute('data-enviando');
@@ -595,7 +618,14 @@
       }
       btns.forEach(bloquear);
       // El spinner de los HTMX lo enciende htmx:beforeRequest; los clásicos aquí.
-      if (!esHtmx && form.getAttribute('data-sin-indicador') !== '1') inicia();
+      if (!esHtmx && form.getAttribute('data-sin-indicador') !== '1') {
+        inicia();
+        // Red de seguridad: si el submit clásico NO navega (descarga, error
+        // de red), libera botones + spinner tras 12 s para no dejarlos colgados.
+        setTimeout(function () {
+          if (form.getAttribute('data-enviando') === '1') { reactivarTodo(); termina(); }
+        }, 12000);
+      }
     }, 0);
   }, true);
 
@@ -603,4 +633,83 @@
   window.addEventListener('pageshow', function () {
     enVuelo = 0; ocultarSiVacio(); reactivarTodo();
   });
+})();
+
+// ===========================================================================
+// Barra de progreso de subida de adjuntos (S-LC-Feedback-V10).
+// Muestra arriba del todo el progreso REAL del upload (xhr.upload.progress):
+//  • HTMX (Recados chat y cualquier hx-post con archivos): vía htmx:beforeSend.
+//  • Forms clásicos opt-in [data-upload-progress] (Buzón, Egreso): XHR propio.
+// Reporte de Oscar: "barra de progreso de los adjuntos para verificar que suba".
+// ===========================================================================
+(function () {
+  var barra = document.getElementById('barra-subida');
+  var fill = barra && barra.querySelector('[data-barra-subida-fill]');
+  if (!barra || !fill) return;
+  var ocultarTimer = null;
+  function set(p) { fill.style.width = Math.max(0, Math.min(100, p)) + '%'; }
+  function mostrar() { if (ocultarTimer) { clearTimeout(ocultarTimer); ocultarTimer = null; } barra.classList.remove('hidden'); }
+  function terminar() { set(100); ocultarTimer = setTimeout(function () { barra.classList.add('hidden'); set(0); }, 450); }
+  function reset() { if (ocultarTimer) { clearTimeout(ocultarTimer); ocultarTimer = null; } barra.classList.add('hidden'); set(0); }
+
+  function formConArchivos(elt) {
+    var form = elt && (elt.tagName === 'FORM' ? elt : (elt.closest && elt.closest('form')));
+    if (!form) return false;
+    var inputs = form.querySelectorAll('input[type="file"]');
+    for (var i = 0; i < inputs.length; i++) { if (inputs[i].files && inputs[i].files.length) return true; }
+    return false;
+  }
+
+  // --- HTMX: progreso real del upload ---
+  document.body.addEventListener('htmx:beforeSend', function (evt) {
+    var d = evt.detail || {};
+    var xhr = d.xhr;
+    if (!xhr || !xhr.upload || !formConArchivos(d.elt)) return;
+    mostrar(); set(3);
+    xhr.upload.addEventListener('progress', function (e) {
+      if (e.lengthComputable) set(Math.round((e.loaded / e.total) * 100));
+    });
+  });
+  document.body.addEventListener('htmx:afterRequest', function (evt) {
+    var d = evt.detail || {};
+    if (d.elt && formConArchivos(d.elt)) terminar();
+  });
+  document.body.addEventListener('htmx:sendError', reset);
+
+  // --- Forms clásicos opt-in: XHR con progreso, sigue el redirect de Django ---
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form || form.tagName !== 'FORM') return;
+    if (!form.hasAttribute('data-upload-progress')) return;
+    if (form.hasAttribute('hx-post') || form.hasAttribute('hx-get')) return;
+    if (form.getAttribute('data-upload-omitir') === '1') return; // fallback nativo en curso
+    if (!formConArchivos(form)) return; // sin archivos → submit normal del navegador
+    e.preventDefault();
+    var xhr = new XMLHttpRequest();
+    xhr.open(form.method || 'POST', form.action || window.location.href, true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    mostrar(); set(3);
+    xhr.upload.addEventListener('progress', function (ev) {
+      if (ev.lengthComputable) set(Math.round((ev.loaded / ev.total) * 100));
+    });
+    xhr.onload = function () {
+      terminar();
+      var destino = xhr.responseURL || '';
+      var origen = form.action || window.location.href;
+      if (destino && destino !== origen) {
+        window.location.href = destino;            // POST→redirect→GET (éxito)
+      } else {
+        document.open(); document.write(xhr.responseText); document.close(); // form con errores
+      }
+    };
+    xhr.onerror = function () {
+      reset();
+      form.setAttribute('data-upload-omitir', '1');
+      form.removeAttribute('data-enviando');
+      form.submit();                                // fallback: submit nativo (no re-intercepta)
+    };
+    xhr.send(new FormData(form));
+  }, true);
+
+  window.addEventListener('pageshow', reset);
 })();

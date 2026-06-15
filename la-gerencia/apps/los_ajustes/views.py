@@ -10,7 +10,7 @@ from ajustes.models import TasaImpositiva
 from ajustes.models.credencial import SLOTS_CREDENCIAL, Credencial
 from lib.analistas import analizar as analistas_analizar
 from lib.analistas.reemplazo import TodosLosAnalistasFallaron
-from lib.permisos import requires_role
+from lib.permisos import requiere_permiso
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
@@ -26,12 +26,12 @@ def _estado_slots():
     ]
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def panel(request):
     return render(request, "ajustes/panel.html", {"slots": _estado_slots()})
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["GET", "POST"])
 def recordatorios_panel(request):
     """Config global de recordatorios de tareas por vencer (S-Chalanes-UX #4)."""
@@ -57,7 +57,7 @@ def recordatorios_panel(request):
     return render(request, "ajustes/recordatorios.html", {"config": config})
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def guardar(request):
     clave = (request.POST.get("clave") or "").strip()
@@ -86,7 +86,7 @@ def guardar(request):
     return redirect("ajustes-panel")
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def probar(request, clave: str):
     """Stub de prueba — en S2+ cada slot tendrá su prueba real (ping a API, etc).
@@ -117,7 +117,7 @@ def _estado_smtp():
     return out
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def cartero_panel(request):
     """Asistente de El Cartero: elige canal (SMTP/n8n) + configura SMTP."""
     from ajustes.models import ConfiguracionCorreo
@@ -132,7 +132,7 @@ def cartero_panel(request):
     })
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def cartero_guardar(request):
     """Guarda el canal activo + nombre del remitente + slots SMTP."""
@@ -174,7 +174,7 @@ def cartero_guardar(request):
     return redirect("ajustes-cartero")
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def cartero_probar(request):
     """Manda un correo de prueba al super_admin por el canal activo."""
@@ -191,7 +191,7 @@ def cartero_probar(request):
 # ── Plantillas de correo (editor gráfico + IA) ────────────────────────────
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def cartero_plantillas(request):
     """Lista las plantillas editables de El Cartero."""
     from ajustes.models import PlantillaCorreo
@@ -200,7 +200,7 @@ def cartero_plantillas(request):
     return render(request, "ajustes/cartero_plantillas.html", {"plantillas": plantillas})
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def cartero_plantilla_editar(request, slug: str):
     """Editor gráfico (GrapesJS) de una plantilla. GET muestra; POST guarda."""
     from ajustes.models import PlantillaCorreo
@@ -219,7 +219,7 @@ def cartero_plantilla_editar(request, slug: str):
     })
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def cartero_plantilla_redactar(request, slug: str):
     """El Chalán redacta/mejora el HTML de la plantilla. Devuelve JSON."""
@@ -263,12 +263,12 @@ def _drive_contexto(request):
     }
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def google_drive_guia(request):
     return render(request, "ajustes/google_drive.html", _drive_contexto(request))
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def google_drive_guardar_cliente(request):
     """Recibe el JSON del cliente OAuth, extrae id/secret y los cifra en La Bóveda.
@@ -310,7 +310,7 @@ def google_drive_guardar_cliente(request):
     return redirect("ajustes-google-drive")
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def google_drive_conectar(request):
     """Arranca el consentimiento OAuth: redirige al admin a Google."""
@@ -332,7 +332,7 @@ def google_drive_conectar(request):
     return redirect(url)
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def google_drive_callback(request):
     """Recibe el `code` de Google, guarda el refresh token y crea la carpeta."""
     from lib.google_drive import drive, intercambiar_codigo_por_refresh_token
@@ -372,7 +372,7 @@ def google_drive_callback(request):
     return redirect("ajustes-google-drive")
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def google_drive_desconectar(request):
     """Borra el refresh token y el ID de carpeta (no borra la carpeta en Drive)."""
@@ -390,7 +390,7 @@ def google_drive_desconectar(request):
     return redirect("ajustes-google-drive")
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def google_drive_probar(request):
     """Llama de verdad a Drive y guarda el resultado para mostrar el semáforo."""
@@ -421,13 +421,13 @@ def google_drive_probar(request):
 
 # ── Tasas Impositivas ────────────────────────────────────────────────────────
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def tasas_lista(request):
     tasas = TasaImpositiva.objects.all()
     return render(request, "ajustes/tasas.html", {"tasas": tasas})
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def probar_google_oauth(request):
     """Valida credenciales Google OAuth haciendo un round-trip con code dummy
@@ -442,7 +442,7 @@ def probar_google_oauth(request):
     return redirect("ajustes-panel")
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def probar_analistas(request):
     """Smoke test: pide a la cadena DEFAULT (Anthropic → OpenAI) responder
@@ -464,7 +464,7 @@ def probar_analistas(request):
     return redirect("ajustes-panel")
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["GET", "POST"])
 def tasa_nueva(request):
     if request.method == "POST":
@@ -484,7 +484,7 @@ def tasa_nueva(request):
     return render(request, "ajustes/tasa_form.html", {"form": form, "modo": "nuevo"})
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["GET", "POST"])
 def tasa_editar(request, pk: int):
     t = get_object_or_404(TasaImpositiva, pk=pk)
@@ -508,7 +508,7 @@ def tasa_editar(request, pk: int):
 # ── S-LC-Feedback-V5 c6: orden global del sidebar del Taller ───────
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def sidebar_panel(request):
     from cuentas.models.sidebar_orden import SLUGS_SIDEBAR_TALLER, SidebarOrden
     existentes = {s.slug: s for s in SidebarOrden.objects.all()}
@@ -525,7 +525,7 @@ def sidebar_panel(request):
     return render(request, "ajustes/sidebar_panel.html", {"items": items})
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def sidebar_guardar(request):
     from cuentas.models.sidebar_orden import SLUGS_SIDEBAR_TALLER, SidebarOrden
@@ -553,7 +553,7 @@ def sidebar_guardar(request):
 # ── S-LC-Feedback-V5 c8: metas KPI ────────────────────────────────
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 def metas_kpi_panel(request):
     # Importamos perezosamente para evitar cargar `apps.taller_home` en
     # los tests de Gerencia (sus settings pueden no incluir esa app).
@@ -584,7 +584,7 @@ def metas_kpi_panel(request):
     return render(request, "ajustes/metas_kpi_panel.html", {"filas": filas})
 
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["POST"])
 def metas_kpi_guardar(request):
     from decimal import Decimal, InvalidOperation
@@ -626,7 +626,7 @@ def metas_kpi_guardar(request):
 
 # ── Configuración Fiscal (figuras fiscales editables) ────────────────────
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["GET", "POST"])
 def fiscal_panel(request):
     """Régimen + tasas de ISR/PTU/IVA editables. Las consume Contaduría
@@ -676,7 +676,7 @@ def fiscal_panel(request):
 
 # ── La Cobranza — recordatorios automáticos de pago (S3 resto) ───────────
 
-@requires_role("super_admin")
+@requiere_permiso("ajustes", "acceder")
 @require_http_methods(["GET", "POST"])
 def cobranza_panel(request):
     """Política de recordatorios de cobranza al cliente. Arranca apagada."""

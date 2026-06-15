@@ -482,14 +482,17 @@ def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
     """Aprueba o rechaza una corrección. Al aprobar aplica el valor."""
     if solicitud.estado != "pendiente":
         raise ValueError("Esta solicitud ya fue resuelta.")
-    # Nadie aprueba/rechaza su propia solicitud (gobernanza de asistencia): un
-    # admin que necesita corregir lo suyo usa la edición directa de jornada.
-    if getattr(admin, "pk", None) == solicitud.usuario_id:
+    from lib.permisos import puede_aprobar_correccion_de, tiene_rol
+    # Gobernanza de asistencia: nadie aprueba/rechaza su propia solicitud…
+    # EXCEPTO el super_admin, que es el failsafe duro del despacho y no tiene
+    # a quién pedírselo (reporte de Oscar: "soy super admin y no puedo aprobar
+    # mis ajustes de horario"). Un admin/jefe normal que necesita corregir lo
+    # suyo sigue usando la edición directa de jornada o pide a otro.
+    if getattr(admin, "pk", None) == solicitud.usuario_id and not tiene_rol(admin, "super_admin"):
         raise ValueError("No puedes resolver tu propia solicitud; pídele a otro administrador.")
     # S-LC-Feedback-V7: sólo el jefe directo del solicitante (o un super_admin
     # como failsafe) puede resolver. Evita que cualquier aprobador toque horas
     # de gente que no le reporta.
-    from lib.permisos import puede_aprobar_correccion_de
     if not puede_aprobar_correccion_de(admin, solicitud.usuario):
         raise ValueError("Solo el jefe directo de esta persona (o un super admin) puede resolver esta solicitud.")
     with transaction.atomic():
