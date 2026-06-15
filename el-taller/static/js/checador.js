@@ -219,7 +219,15 @@
     var el = document.getElementById("reloj");
     if (!el) return;
     var d = new Date();
-    el.textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    var h = d.getHours(), m = d.getMinutes();
+    // Respeta la preferencia de formato del usuario (data-formato="ampm"|"24h").
+    if (el.getAttribute("data-formato") === "ampm") {
+      var sufijo = h < 12 ? "a.m." : "p.m.";
+      var h12 = h % 12; if (h12 === 0) h12 = 12;
+      el.textContent = h12 + ":" + String(m).padStart(2, "0") + " " + sufijo;
+    } else {
+      el.textContent = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+    }
   }
 
   // Cronómetros que cuentan hacia arriba desde data-inicio (ISO del servidor —

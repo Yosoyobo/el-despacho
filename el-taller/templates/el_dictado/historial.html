@@ -18,7 +18,7 @@
             <div class="flex items-start justify-between gap-3">
                 <div class="flex-1">
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ d.creado_en|date:"d M Y H:i" }} · {{ d.chalan_apodo|default:"—" }} ·
+                        {{ d.creado_en|hfmt:"d M Y H:i" }} · {{ d.chalan_apodo|default:"—" }} ·
                         <span class="font-medium {% if d.estado == 'aplicado' %}text-success-600{% elif d.estado == 'aplicado_con_errores' %}text-warning-600{% elif d.estado == 'fallo_ia' %}text-error-600{% else %}text-gray-500{% endif %}">
                             {{ d.get_estado_display }}
                         </span>

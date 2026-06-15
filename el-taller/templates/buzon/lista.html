@@ -131,6 +131,7 @@ así el badge de estado y el "no leído" quedan al día.{% endcomment %}
      hx-select="#buzon-lista-scroll"
      hx-target="#buzon-lista-scroll"
      hx-swap="outerHTML"
+     hx-disinherit="*"
      data-sin-indicador="1">
     <div class="max-h-[45vh] divide-y divide-gray-100 overflow-y-auto md:max-h-[calc(100vh-16rem)] dark:divide-gray-800">
         {% include "buzon/_filas.html" %}

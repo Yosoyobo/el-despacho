@@ -49,12 +49,12 @@
                     <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
                         <td class="py-2 pr-3 capitalize text-gray-700 dark:text-gray-300">{{ j.fecha|date:"D j N" }}{% if j.ajustado_por_id %}<br><span class="text-[10px] text-gray-400" title="Ajustada por {{ j.ajustado_por.nombre_completo|default:j.ajustado_por.email }}{% if j.ajustado_en %} · {{ j.ajustado_en|date:'d/m H:i' }}{% endif %}">✎ ajustada</span>{% endif %}</td>
                         <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                            <span class="tabular-nums">{{ j.entrada_en|date:"H:i"|default:"—" }}</span>
-                            {% if j.entrada_en %}<br>{% include "checador/_boton_mapa.html" with lat=j.entrada_lat lng=j.entrada_lng etiqueta="Entrada" cuando=j.entrada_en|date:"D j H:i" precision=j.entrada_precision %}{% endif %}
+                            <span class="tabular-nums">{{ j.entrada_en|hfmt:"H:i"|default:"—" }}</span>
+                            {% if j.entrada_en %}<br>{% include "checador/_boton_mapa.html" with lat=j.entrada_lat lng=j.entrada_lng etiqueta="Entrada" cuando=j.entrada_en|hfmt:"D j H:i" precision=j.entrada_precision %}{% endif %}
                         </td>
                         <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                            <span class="tabular-nums">{{ j.salida_en|date:"H:i"|default:"—" }}</span>
-                            {% if j.salida_en %}<br>{% include "checador/_boton_mapa.html" with lat=j.salida_lat lng=j.salida_lng etiqueta="Salida" cuando=j.salida_en|date:"D j H:i" precision=j.salida_precision %}{% endif %}
+                            <span class="tabular-nums">{{ j.salida_en|hfmt:"H:i"|default:"—" }}</span>
+                            {% if j.salida_en %}<br>{% include "checador/_boton_mapa.html" with lat=j.salida_lat lng=j.salida_lng etiqueta="Salida" cuando=j.salida_en|hfmt:"D j H:i" precision=j.salida_precision %}{% endif %}
                         </td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{% if j.horas_trabajadas %}{{ j.horas_trabajadas }}{% else %}—{% endif %}</td>
                         <td class="py-2 pr-3">{% if j.retardo_min %}<span class="text-warning-600 dark:text-warning-400">{{ j.retardo_min }} min</span>{% else %}<span class="text-success-600 dark:text-success-400">a tiempo</span>{% endif %}</td>
@@ -81,9 +81,9 @@
             <li class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800/50">
                 <div class="min-w-0">
                     <p class="font-medium text-gray-800 dark:text-gray-100">{{ v.destino }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ v.get_tipo_display }} · {{ v.registrado_en|date:"D j H:i" }}{% if v.nota %} · {{ v.nota }}{% endif %}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ v.get_tipo_display }} · {{ v.registrado_en|hfmt:"D j H:i" }}{% if v.nota %} · {{ v.nota }}{% endif %}</p>
                 </div>
-                {% include "checador/_boton_mapa.html" with lat=v.lat lng=v.lng etiqueta=v.destino cuando=v.registrado_en|date:"D j H:i" precision=v.precision %}
+                {% include "checador/_boton_mapa.html" with lat=v.lat lng=v.lng etiqueta=v.destino cuando=v.registrado_en|hfmt:"D j H:i" precision=v.precision %}
             </li>
             {% endfor %}
         </ul>

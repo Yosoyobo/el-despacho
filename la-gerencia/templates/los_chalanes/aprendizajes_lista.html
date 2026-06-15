@@ -32,7 +32,7 @@
             <tr {% if ap.bajo_umbral %}class="opacity-60"{% endif %}>
                 <td class="px-5 py-3">
                     <p class="font-medium text-gray-900 dark:text-gray-100">{{ ap.frase_o_patron }}</p>
-                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">creado {{ ap.creado_en|date:"Y-m-d H:i" }}{% if ap.autor %} · por {{ ap.autor.nombre_completo|default:ap.autor.email }}{% endif %}</p>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">creado {{ ap.creado_en|hfmt:"Y-m-d H:i" }}{% if ap.autor %} · por {{ ap.autor.nombre_completo|default:ap.autor.email }}{% endif %}</p>
                 </td>
                 <td class="px-5 py-3 text-gray-700 dark:text-gray-300">{{ ap.interpretacion_correcta|truncatechars:120 }}</td>
                 <td class="px-5 py-3 text-center font-mono text-xs">

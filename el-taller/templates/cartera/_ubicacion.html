@@ -9,8 +9,8 @@ La última ubicación sale de las visitas del Checador; el mapa abre en modal.
 
     <div class="mb-3 flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
         {% if ultima_visita %}
-        <span class="text-xs text-gray-500 dark:text-gray-400">Última ubicación · {{ ultima_visita.registrado_en|date:"d M Y H:i" }}</span>
-        {% include "checador/_boton_mapa.html" with lat=ultima_visita.lat lng=ultima_visita.lng etiqueta=nombre cuando=ultima_visita.registrado_en|date:"d M H:i" precision=ultima_visita.precision %}
+        <span class="text-xs text-gray-500 dark:text-gray-400">Última ubicación · {{ ultima_visita.registrado_en|hfmt:"d M Y H:i" }}</span>
+        {% include "checador/_boton_mapa.html" with lat=ultima_visita.lat lng=ultima_visita.lng etiqueta=nombre cuando=ultima_visita.registrado_en|hfmt:"d M H:i" precision=ultima_visita.precision %}
         {% else %}
         <span class="text-xs text-gray-400 dark:text-gray-500">Sin ubicación todavía — se toma de las visitas del Checador.</span>
         {% endif %}

@@ -85,7 +85,22 @@ def perfil(request):
         "historial_pagina": HISTORIAL_PAGINA,
         "tiene_mas": tiene_mas,
         "offset_siguiente": HISTORIAL_PAGINA,
+        "formato_hora_actual": getattr(request.user, "formato_hora", "24h") or "24h",
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def guardar_formato_hora(request):
+    """S-LC-Feedback-V11: el usuario elige 24h o AM/PM para TODAS las horas."""
+    pref = request.POST.get("formato_hora")
+    if pref in ("24h", "ampm"):
+        request.user.formato_hora = pref
+        request.user.save(update_fields=["formato_hora", "actualizado_en"])
+        messages.success(request, "Listo, tu formato de hora quedó guardado.")
+    else:
+        messages.error(request, "Formato inválido.")
+    return redirect("perfil-notificaciones")
 
 
 @login_required

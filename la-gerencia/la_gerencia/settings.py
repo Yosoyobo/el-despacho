@@ -129,7 +129,9 @@ TEMPLATES = [
                 "cuentas.context_processors.permisos_modulos",
                 "lib.aviso_deploy.contexto_aviso_deploy",
                 "lib.version.contexto_version",
+                "cuentas.context_processors.formato_hora",
             ],
+            "builtins": ["cuentas.templatetags.horas"],
         },
     },
 ]

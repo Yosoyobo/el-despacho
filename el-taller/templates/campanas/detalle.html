@@ -3,7 +3,7 @@
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Campañas de correo" "/campanas/" "Detalle" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Campaña de correo" subtitulo=campana.creado_en|date:"d M Y H:i" breadcrumb_items=breadcrumb_items back_url="/campanas/" back_label="Campañas" %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Campaña de correo" subtitulo=campana.creado_en|hfmt:"d M Y H:i" breadcrumb_items=breadcrumb_items back_url="/campanas/" back_label="Campañas" %}
 
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Destinatarios" valor=campana.total_destinatarios color="brand" %}

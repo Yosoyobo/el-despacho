@@ -32,7 +32,7 @@
                            value="{{ jornada.entrada_en|date:'Y-m-d\TH:i' }}">
                 </div>
                 {% else %}
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ sesion.proyecto.codigo }} · sesión del {{ sesion.inicio|date:"D j H:i" }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ sesion.proyecto.codigo }} · sesión del {{ sesion.inicio|hfmt:"D j H:i" }}</p>
                 <div>
                     <label for="corr-valor" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Hora de fin correcta</label>
                     <input type="datetime-local" name="valor_propuesto" id="corr-valor" required

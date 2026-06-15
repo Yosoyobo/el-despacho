@@ -98,3 +98,21 @@ def novedades_badge(request):
         return {"novedades_no_vistas": _nov.no_vistas_para(user)}
     except Exception:
         return {"novedades_no_vistas": 0}
+
+
+def formato_hora(request):
+    """S-LC-Feedback-V11 — preferencia de formato de hora del usuario (24h/AM-PM).
+
+    Fija el thread-local que lee el filtro `hfmt` (aplica a TODAS las horas) y
+    expone `formato_hora` para el JS (reloj del Checador). Default 24h.
+    """
+    user = getattr(request, "user", None)
+    pref = "24h"
+    if user and getattr(user, "is_authenticated", False):
+        pref = getattr(user, "formato_hora", "24h") or "24h"
+    try:
+        from lib.formato_hora import set_formato
+        set_formato(pref)
+    except Exception:
+        pass
+    return {"formato_hora": pref}

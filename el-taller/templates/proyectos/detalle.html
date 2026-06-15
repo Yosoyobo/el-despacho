@@ -65,7 +65,7 @@
 {# ── Barra de acciones: indicador permanente + Undo + Guardar ── #}
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-        <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time></span>
+        <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|hfmt:"d M Y H:i" }}</time></span>
         {% include "proyectos/_guardado_indicador.html" with estado="guardado" %}
         <span id="autosave-error-detalle" class="text-xs text-error-600 dark:text-error-400"></span>
         {% if permisos_modulos.chalan %}

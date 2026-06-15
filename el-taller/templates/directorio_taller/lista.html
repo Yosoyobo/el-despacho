@@ -55,7 +55,7 @@
             </div>{% endif %}
             {% if u.horario_inicio and u.horario_fin %}<div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/40">
                 <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Horario</dt>
-                <dd class="mt-0.5 font-medium text-gray-700 dark:text-gray-200">{{ u.horario_inicio|time:"H:i" }}–{{ u.horario_fin|time:"H:i" }}{% if u.dias_trabajo %} · {{ u.dias_trabajo }}{% endif %}</dd>
+                <dd class="mt-0.5 font-medium text-gray-700 dark:text-gray-200">{{ u.horario_inicio|hfmt:"H:i" }}–{{ u.horario_fin|hfmt:"H:i" }}{% if u.dias_trabajo %} · {{ u.dias_trabajo }}{% endif %}</dd>
             </div>{% elif u.dias_trabajo %}<div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/40">
                 <dt class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Días</dt>
                 <dd class="mt-0.5 font-medium text-gray-700 dark:text-gray-200">{{ u.dias_trabajo }}</dd>

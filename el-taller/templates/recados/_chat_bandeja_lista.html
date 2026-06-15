@@ -15,7 +15,7 @@ para resaltar la conversación abierta.
             <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-2">
                     <p class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{{ it.titulo }}</p>
-                    {% if it.ultimo_mensaje %}<span class="flex-none text-[11px] text-gray-400 dark:text-gray-500">{{ it.ultimo_mensaje.creado_en|date:"H:i" }}</span>{% endif %}
+                    {% if it.ultimo_mensaje %}<span class="flex-none text-[11px] text-gray-400 dark:text-gray-500">{{ it.ultimo_mensaje.creado_en|hfmt:"H:i" }}</span>{% endif %}
                 </div>
                 {% if it.ultimo_mensaje %}
                 <p class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
@@ -39,7 +39,7 @@ para resaltar la conversación abierta.
             <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-2">
                     <p class="truncate text-sm {% if it.no_leidos %}font-semibold text-gray-900 dark:text-gray-100{% else %}text-gray-700 dark:text-gray-300{% endif %}">{{ it.titulo }}</p>
-                    {% if it.ultimo_mensaje %}<span class="flex-none text-[11px] text-gray-400 dark:text-gray-500">{{ it.ultimo_mensaje.creado_en|date:"H:i" }}</span>{% endif %}
+                    {% if it.ultimo_mensaje %}<span class="flex-none text-[11px] text-gray-400 dark:text-gray-500">{{ it.ultimo_mensaje.creado_en|hfmt:"H:i" }}</span>{% endif %}
                 </div>
                 {% if it.ultimo_mensaje %}
                 <p class="mt-0.5 truncate text-xs {% if it.no_leidos %}text-gray-700 dark:text-gray-300{% else %}text-gray-500 dark:text-gray-400{% endif %}">

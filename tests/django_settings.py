@@ -108,7 +108,9 @@ TEMPLATES = [
                 "apps.recados.context_processors.recados_no_leidos",
                 "apps.taller_home.context_processors.sidebar_grupos",
                 "lib.version.contexto_version",
+                "cuentas.context_processors.formato_hora",
             ],
+            "builtins": ["cuentas.templatetags.horas"],
         },
     },
 ]

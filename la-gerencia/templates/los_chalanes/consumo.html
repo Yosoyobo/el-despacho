@@ -103,7 +103,7 @@
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for l in ultimas %}
             <tr class="{% if not l.exito %}bg-error-25 dark:bg-error-500/5{% endif %}">
-                <td class="whitespace-nowrap px-4 py-2.5 text-gray-500 dark:text-gray-400">{{ l.creado_en|date:"d M Y, H:i" }}</td>
+                <td class="whitespace-nowrap px-4 py-2.5 text-gray-500 dark:text-gray-400">{{ l.creado_en|hfmt:"d M Y, H:i" }}</td>
                 <td class="px-4 py-2.5 text-gray-700 dark:text-gray-200">{{ l.etiqueta }}{% if not l.exito %} <span class="badge badge-error">falló</span>{% endif %}</td>
                 <td class="px-4 py-2.5 capitalize text-brand-600 dark:text-brand-400">{{ l.provider }}</td>
                 <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400">{{ l.modelo }}</td>

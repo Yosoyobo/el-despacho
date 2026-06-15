@@ -77,7 +77,7 @@
         <section class="rounded-2xl border border-error-300 bg-error-50 p-5 dark:border-error-500/30 dark:bg-error-500/10">
             <h2 class="text-xs font-medium uppercase tracking-wider text-error-700 dark:text-error-400">Motivo de rechazo</h2>
             <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cot.motivo_rechazo }}</p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Registrado {{ cot.rechazada_en|date:"Y-m-d H:i" }}</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Registrado {{ cot.rechazada_en|hfmt:"Y-m-d H:i" }}</p>
         </section>
         {% endif %}
 
@@ -85,7 +85,7 @@
         <section class="rounded-2xl border border-gray-300 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/50">
             <h2 class="text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300">Cotización anulada</h2>
             <p class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ cot.motivo_anulacion }}</p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Por {{ cot.anulada_por.nombre_completo|default:cot.anulada_por.email|default:"—" }} el {{ cot.anulada_en|date:"Y-m-d H:i" }}</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Por {{ cot.anulada_por.nombre_completo|default:cot.anulada_por.email|default:"—" }} el {{ cot.anulada_en|hfmt:"Y-m-d H:i" }}</p>
         </section>
         {% endif %}
     </div>

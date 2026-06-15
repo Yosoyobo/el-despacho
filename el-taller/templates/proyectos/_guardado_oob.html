@@ -8,7 +8,7 @@ estado del botón Deshacer (cuántos pasos quedan).{% endcomment %}
 "✕" mudo y el usuario creía que su cambio (p.ej. el toggle de incluir) quedó
 guardado.{% endcomment %}
 <span id="autosave-error-detalle" hx-swap-oob="true" class="text-xs text-error-600 dark:text-error-400">{% if not ok and error_detalle %}{{ error_detalle }}{% endif %}</span>
-<time id="ult-act" hx-swap-oob="true">{{ proyecto.actualizado_en|date:"d M Y H:i" }}</time>
+<time id="ult-act" hx-swap-oob="true">{{ proyecto.actualizado_en|hfmt:"d M Y H:i" }}</time>
 {% if ok %}
 <button id="btn-undo" hx-swap-oob="true"
         hx-post="{% url 'proyectos-deshacer' proyecto.pk %}"

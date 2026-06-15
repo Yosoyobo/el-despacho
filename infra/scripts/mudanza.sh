@@ -41,9 +41,18 @@ docker compose ps
 # usuarios (push masivo). Primera corrida = baseline silencioso. Best-effort:
 # si falla no aborta el deploy.
 echo "==> [Mudanza] anunciando novedades del manual"
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller \
-  python manage.py anunciar_novedades || \
-  echo "   (warn) anunciar_novedades falló — se reintenta en el próximo deploy"
+# Reintenta: justo tras `compose up` el-taller puede no estar listo aún (por eso
+# históricamente NUNCA corrió y la tabla quedó vacía → 0 push). 5 intentos.
+_anuncio_ok=0
+for _i in 1 2 3 4 5; do
+  if docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller \
+      python manage.py anunciar_novedades; then
+    _anuncio_ok=1; break
+  fi
+  echo "   (info) el-taller aún no listo para anunciar novedades (intento $_i/5)…"
+  sleep 6
+done
+[ "$_anuncio_ok" = 1 ] || echo "   (warn) anunciar_novedades no corrió — se reintenta en el próximo deploy"
 
 # S-Aviso-Deploy-V1: limpia la bandera tras un compose up exitoso.
 # El healthcheck post-arranque que corre desde GHA (§17) controla rollback;

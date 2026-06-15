@@ -25,7 +25,7 @@ el tipo (entregan/recogemos), el compromiso, contacto y ubicación.
             {% if fila.asignacion %}
             <p class="mt-1 text-xs">
                 <span class="badge {% if fila.asignacion.tipo == 'recogemos_nosotros' %}badge-orange{% else %}badge-brand{% endif %}">{{ fila.asignacion.get_tipo_display }}</span>
-                {% if fila.asignacion.compromiso %}<span class="ml-1 text-gray-600 dark:text-gray-300">{{ fila.asignacion.compromiso|date:"d M Y · H:i" }}</span>{% endif %}
+                {% if fila.asignacion.compromiso %}<span class="ml-1 text-gray-600 dark:text-gray-300">{{ fila.asignacion.compromiso|hfmt:"d M Y · H:i" }}</span>{% endif %}
             </p>
             {% if fila.asignacion.contacto %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">📞 {{ fila.asignacion.contacto }}</p>{% endif %}
             {% if fila.asignacion.ubicacion %}<p class="text-xs text-gray-500 dark:text-gray-400">📍 {{ fila.asignacion.ubicacion }}</p>{% endif %}

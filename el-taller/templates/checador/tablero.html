@@ -15,25 +15,25 @@
 
     {# ── Tarjeta principal de checada ───────────────────────────── #}
     <section class="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <p id="reloj" class="text-title-xl font-bold tabular-nums text-gray-900 dark:text-gray-100">--:--</p>
+        <p id="reloj" data-formato="{{ formato_hora }}" class="text-title-xl font-bold tabular-nums text-gray-900 dark:text-gray-100">--:--</p>
         <p class="mt-1 text-sm capitalize text-gray-500 dark:text-gray-400">{{ hoy|date:"l, j N Y" }}</p>
 
         <div class="mt-4">
             {% if jornada and jornada.entrada_en %}
                 <p class="text-sm text-gray-600 dark:text-gray-300">
-                    Entrada: <span class="font-semibold">{{ jornada.entrada_en|date:"H:i" }}</span>
+                    Entrada: <span class="font-semibold">{{ jornada.entrada_en|hfmt:"H:i" }}</span>
                     {% if jornada.retardo_min %}
                         · <span class="font-semibold text-warning-600 dark:text-warning-400">retardo {{ jornada.retardo_min }} min</span>
                     {% else %}
                         · <span class="font-semibold text-success-600 dark:text-success-400">a tiempo</span>
                     {% endif %}
-                    · {% include "checador/_boton_mapa.html" with lat=jornada.entrada_lat lng=jornada.entrada_lng etiqueta="Entrada" cuando=jornada.entrada_en|date:"D j H:i" precision=jornada.entrada_precision %}
+                    · {% include "checador/_boton_mapa.html" with lat=jornada.entrada_lat lng=jornada.entrada_lng etiqueta="Entrada" cuando=jornada.entrada_en|hfmt:"D j H:i" precision=jornada.entrada_precision %}
                 </p>
                 {% if jornada.salida_en %}
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Salida: <span class="font-semibold">{{ jornada.salida_en|date:"H:i" }}</span>
+                    Salida: <span class="font-semibold">{{ jornada.salida_en|hfmt:"H:i" }}</span>
                     · {{ jornada.horas_trabajadas }} h trabajadas{% if jornada.reabierta %} (acumuladas){% endif %}
-                    · {% include "checador/_boton_mapa.html" with lat=jornada.salida_lat lng=jornada.salida_lng etiqueta="Salida" cuando=jornada.salida_en|date:"D j H:i" precision=jornada.salida_precision %}
+                    · {% include "checador/_boton_mapa.html" with lat=jornada.salida_lat lng=jornada.salida_lng etiqueta="Salida" cuando=jornada.salida_en|hfmt:"D j H:i" precision=jornada.salida_precision %}
                 </p>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Si sigues trabajando, vuelve a checar entrada y las horas se suman.</p>
                 {% else %}
@@ -123,7 +123,7 @@
                 <div class="min-w-0">
                     <p class="font-medium text-gray-800 dark:text-gray-100">{{ v.destino }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ v.get_tipo_display }} · {{ v.registrado_en|date:"H:i" }}{% if v.nota %} · {{ v.nota }}{% endif %}
+                        {{ v.get_tipo_display }} · {{ v.registrado_en|hfmt:"H:i" }}{% if v.nota %} · {{ v.nota }}{% endif %}
                     </p>
                 </div>
                 {% if v.maps_url %}
@@ -174,8 +174,8 @@
                     {% for f in filas_semana %}
                     <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
                         <td class="py-2 pr-3 capitalize text-gray-700 dark:text-gray-300">{{ f.fecha|date:"D j" }}</td>
-                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada.entrada_en|date:"H:i"|default:"—" }}</td>
-                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada.salida_en|date:"H:i"|default:"—" }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada.entrada_en|hfmt:"H:i"|default:"—" }}</td>
+                        <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.jornada.salida_en|hfmt:"H:i"|default:"—" }}</td>
                         <td class="py-2 pr-3 tabular-nums text-gray-600 dark:text-gray-400">{% if f.proyecto_horas %}{{ f.proyecto_horas }}{% else %}—{% endif %}</td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">
                             {% if f.tipo == "abierta" %}<span class="text-xs text-gray-400">en curso</span>

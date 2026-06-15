@@ -91,6 +91,11 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     # = sin personalización. Se sanea al inyectarse (chalanes.voz).
     voz_chalan = models.TextField(blank=True, default="")
 
+    # S-LC-Feedback-V11: formato de hora preferido por el usuario, aplicado a
+    # TODAS las horas de la plataforma (filtro `hfmt`). Default 24h.
+    FORMATO_HORA = (("24h", "24 horas (14:30)"), ("ampm", "AM/PM (2:30 p.m.)"))
+    formato_hora = models.CharField(max_length=4, choices=FORMATO_HORA, default="24h")
+
     # S-LC-Feedback-V5 c7: roles personalizados adicionales (encima del
     # rol primario CharField). El user los puede tener N roles extra que
     # contribuyen permisos a la unión efectiva.

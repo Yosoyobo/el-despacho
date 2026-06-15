@@ -9,7 +9,7 @@
 
         <div class="space-y-2 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
             <p><span class="text-gray-500 dark:text-gray-400">Solicita:</span> {{ sol.usuario.nombre_completo|default:sol.usuario.email }}</p>
-            <p><span class="text-gray-500 dark:text-gray-400">Corrección:</span> {{ sol.get_tipo_display }} → <strong class="tabular-nums">{{ sol.valor_propuesto|date:"D j N H:i" }}</strong></p>
+            <p><span class="text-gray-500 dark:text-gray-400">Corrección:</span> {{ sol.get_tipo_display }} → <strong class="tabular-nums">{{ sol.valor_propuesto|hfmt:"D j N H:i" }}</strong></p>
             <p><span class="text-gray-500 dark:text-gray-400">Motivo:</span> {{ sol.motivo }}</p>
         </div>
 

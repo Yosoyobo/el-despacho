@@ -23,7 +23,7 @@
             <dt class="font-medium">Alcance</dt><dd>{{ kpi.get_alcance_display }}</dd>
             <dt class="font-medium">Estado</dt><dd>{{ kpi.get_estado_display }}</dd>
             <dt class="font-medium">Autor</dt><dd>{{ kpi.autor.nombre_completo|default:kpi.autor.email }}</dd>
-            <dt class="font-medium">Creado</dt><dd>{{ kpi.creado_en|date:"Y-m-d H:i" }}</dd>
+            <dt class="font-medium">Creado</dt><dd>{{ kpi.creado_en|hfmt:"Y-m-d H:i" }}</dd>
             {% if kpi.aprobado_por %}<dt class="font-medium">Aprobado por</dt><dd>{{ kpi.aprobado_por.nombre_completo|default:kpi.aprobado_por.email }}</dd>{% endif %}
         </dl>
     </section>

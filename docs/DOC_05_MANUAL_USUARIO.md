@@ -5,6 +5,21 @@
 
 ---
 
+## Novedades — Elige 24h o AM/PM, carpetas entre tus menús y aviso de novedades (15 de junio de 2026)
+
+- **Tú eliges cómo ver la hora.** En **Mis notificaciones** hay una sección
+  nueva, *Formato de hora*: ponlo en **24 horas** (14:30) o en **AM/PM**
+  (2:30 p.m.) y se aplica a **todas** las horas de la plataforma, solo para ti.
+  El default es 24 horas.
+- **Se arregló el Buzón**: al picar un mensaje vuelve a abrirse en su panel.
+- **Avisos de novedades.** Cuando publicamos cambios o mejoras nuevas en esta
+  página de **Ayuda**, ahora te llega una **notificación** para que las veas.
+- **Carpetas entre tus menús.** En **Mi menú** ya puedes dejar una carpeta
+  **entre** los accesos sueltos (no solo al final): arrástrala con su asita ⠿
+  a donde quieras.
+
+---
+
 ## Novedades — Horas extra en el Checador, carpetas con icono y avisos de novedades (15 de junio de 2026)
 
 - **El Checador ya cuenta tus horas extra.** Si checas tu salida y más tarde

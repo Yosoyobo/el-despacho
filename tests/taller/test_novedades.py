@@ -55,16 +55,30 @@ def test_pagina_ayuda_es_solo_manual(client, usuario_factory):
     assert "Ver novedades" in body  # link a la página de novedades
 
 
-def test_anunciar_baseline_no_notifica(monkeypatch, usuario_factory):
-    """Primera corrida (tabla vacía) = baseline silencioso."""
+def test_anunciar_forzar_baseline_silencioso(monkeypatch, usuario_factory):
+    """`--forzar-baseline` re-sincroniza SIN notificar (resync explícito)."""
     from cuentas.models import NovedadAnunciada
     usuario_factory(rol="super_admin")
     enviados = []
     import lib.interfono as interfono
     monkeypatch.setattr(interfono, "enviar_a_usuario", lambda u, **kw: enviados.append(u.pk))
-    call_command("anunciar_novedades", stdout=StringIO())
-    assert enviados == []                      # baseline no notifica
+    call_command("anunciar_novedades", "--forzar-baseline", stdout=StringIO())
+    assert enviados == []                      # baseline forzado no notifica
     assert NovedadAnunciada.objects.exists()   # pero registra todo
+
+
+def test_anunciar_primera_corrida_anuncia_la_mas_reciente(monkeypatch, usuario_factory):
+    """S-LC-Feedback-V11 (decisión Oscar): la primera corrida natural (tabla
+    vacía) registra el histórico PERO anuncia la novedad más reciente, para que
+    el equipo se entere de lo último."""
+    from cuentas.models import NovedadAnunciada
+    u = usuario_factory(rol="super_admin")
+    enviados = []
+    import lib.interfono as interfono
+    monkeypatch.setattr(interfono, "enviar_a_usuario", lambda u, **kw: enviados.append(u.pk))
+    call_command("anunciar_novedades", stdout=StringIO())
+    assert enviados == [u.pk]                   # 1 push (la más reciente) a cada usuario
+    assert NovedadAnunciada.objects.exists()    # registra todo el histórico
 
 
 def test_anunciar_notifica_solo_nuevas(monkeypatch, usuario_factory):

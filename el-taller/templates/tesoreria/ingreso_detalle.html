@@ -17,7 +17,7 @@
 
         {% if ingreso.anulado %}
         <section class="rounded-2xl border border-error-200 bg-error-50 px-5 py-4 text-sm text-error-700 dark:border-error-900/30 dark:bg-error-900/10 dark:text-error-300">
-            <p class="font-semibold">Anulado por {{ ingreso.anulado_por.nombre_completo|default:ingreso.anulado_por.email }} el {{ ingreso.anulado_en|date:"Y-m-d H:i" }}.</p>
+            <p class="font-semibold">Anulado por {{ ingreso.anulado_por.nombre_completo|default:ingreso.anulado_por.email }} el {{ ingreso.anulado_en|hfmt:"Y-m-d H:i" }}.</p>
             <p class="mt-1">{{ ingreso.motivo_anulacion }}</p>
         </section>
         {% endif %}

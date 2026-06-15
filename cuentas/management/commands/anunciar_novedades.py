@@ -57,6 +57,17 @@ class Command(BaseCommand):
             [NovedadAnunciada(clave=c) for c in nuevas], ignore_conflicts=True)
 
         if es_baseline:
+            # `--forzar-baseline` re-sincroniza en silencio. La PRIMERA corrida
+            # natural (tabla vacía) sí anuncia la novedad MÁS RECIENTE — así el
+            # equipo se entera de lo último aunque el resto del changelog quede
+            # como histórico silencioso (decisión Oscar: una novedad en Ayuda
+            # debe disparar push).
+            mas_reciente = actuales[0] if actuales else None
+            if not opts["forzar_baseline"] and mas_reciente and mas_reciente in nuevas:
+                self._notificar_a_todos(1)
+                self.stdout.write(
+                    f"Baseline: {len(nuevas)} registradas; anunciada la más reciente al equipo.")
+                return
             self.stdout.write(f"Baseline: {len(nuevas)} novedad(es) registradas sin notificar.")
             return
 

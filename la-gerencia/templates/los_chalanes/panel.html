@@ -335,7 +335,7 @@
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {% for log in logs %}
             <tr>
-                <td class="px-5 py-2 font-mono text-gray-600 dark:text-gray-400">{{ log.creado_en|date:"Y-m-d H:i" }}</td>
+                <td class="px-5 py-2 font-mono text-gray-600 dark:text-gray-400">{{ log.creado_en|hfmt:"Y-m-d H:i" }}</td>
                 <td class="px-5 py-2">{{ log.estacion }}</td>
                 <td class="px-5 py-2">
                     {{ log.provider }}

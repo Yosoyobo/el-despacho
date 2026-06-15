@@ -47,7 +47,7 @@
                         <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                             <span class="font-medium text-gray-700 dark:text-gray-200">{{ r.autor.nombre_completo|default:r.autor.email|default:"—" }}</span>
                             <span>·</span>
-                            <span>{{ r.creado_en|date:"d M Y H:i" }}</span>
+                            <span>{{ r.creado_en|hfmt:"d M Y H:i" }}</span>
                             {% if r.editado %}<span class="italic">(editado)</span>{% endif %}
                         </div>
                         <p class="mt-1 truncate text-sm text-gray-700 dark:text-gray-200">{{ r.cuerpo|truncatechars:120|renderizar_referencias }}</p>

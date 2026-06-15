@@ -48,29 +48,33 @@ def sidebar_preferencias(request):
             "grupo": grupo,
         })
     items.sort(key=lambda x: (x["orden"], x["slug"]))
-    # V10: agrupa en ZONAS para el editor gráfico drag&drop — primero el nivel
-    # principal (sin carpeta) y luego una zona por carpeta, en orden de aparición.
-    zonas_map: dict[str, list] = {}
-    orden_grupos: list[str] = []
-    for it in items:
-        g = it["grupo"]
-        if g not in zonas_map:
-            zonas_map[g] = []
-            orden_grupos.append(g)
-        zonas_map[g].append(it)
     # V11: icono guardado por carpeta (nombre → clave). Default "folder".
     iconos_guardados = {
         c.nombre: c.icono for c in SidebarCarpetaUsuario.objects.filter(usuario=request.user)
     }
-    zonas = [{"grupo": "", "items": zonas_map.get("", [])}]
-    zonas += [
-        {"grupo": g, "items": zonas_map[g], "icono": iconos_guardados.get(g, "folder")}
-        for g in orden_grupos if g
-    ]
+    # V11 (decisión Oscar: "las carpetas deben poder intercalarse entre las
+    # opciones fuera de una carpeta"). Construimos UNA secuencia ordenada donde
+    # cada elemento es un item suelto O una carpeta (con sus items). La carpeta
+    # se coloca en la posición de su PRIMER item (menor orden), así puede quedar
+    # entre dos items de nivel superior.
+    elementos: list[dict] = []
+    carpetas_por_nombre: dict[str, dict] = {}
+    for it in items:
+        g = it["grupo"]
+        if not g:
+            elementos.append({"tipo": "item", "item": it})
+        else:
+            carpeta = carpetas_por_nombre.get(g)
+            if carpeta is None:
+                carpeta = {"tipo": "carpeta", "grupo": g,
+                           "icono": iconos_guardados.get(g, "folder"), "items": []}
+                carpetas_por_nombre[g] = carpeta
+                elementos.append(carpeta)
+            carpeta["items"].append(it)
     tiene_personal = SidebarOrdenUsuario.objects.filter(usuario=request.user).exists()
     return render(request, "taller_home/sidebar_preferencias.html", {
         "items": items,
-        "zonas": zonas,
+        "elementos": elementos,
         "tiene_personal": tiene_personal,
         "grupos_existentes": sorted(grupos_existentes),
         "iconos_carpeta": ICONOS_CARPETA,

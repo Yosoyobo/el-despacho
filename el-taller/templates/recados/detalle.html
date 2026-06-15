@@ -32,7 +32,7 @@
             <ol class="mt-3 space-y-3">
                 {% for v in versiones %}
                 <li class="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
-                    <p class="text-xs text-gray-500 dark:text-gray-400">v{{ v.version }} · {{ v.editado_en|date:"d M Y H:i" }}{% if v.editado_por %} · {{ v.editado_por.nombre_completo }}{% endif %}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">v{{ v.version }} · {{ v.editado_en|hfmt:"d M Y H:i" }}{% if v.editado_por %} · {{ v.editado_por.nombre_completo }}{% endif %}</p>
                     <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ v.cuerpo }}</p>
                 </li>
                 {% endfor %}

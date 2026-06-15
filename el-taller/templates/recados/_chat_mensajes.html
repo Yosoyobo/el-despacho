@@ -12,7 +12,7 @@
         {% endfor %}
         {% comment %}Mensaje PROPIO: solo estado. El super_admin SÍ ve los botones de aprobar su propia solicitud (failsafe).{% endcomment %}
         {% if m.correccion_id %}{% include "checador/_correccion_chat_estado.html" with sol=m.correccion mensaje_id=m.pk puede_aprobar_corr=puede_aprobar_corr_propio %}{% endif %}
-        <p class="mt-1 text-right text-[10px] opacity-80">{{ m.creado_en|date:"H:i" }}</p>
+        <p class="mt-1 text-right text-[10px] opacity-80">{{ m.creado_en|hfmt:"H:i" }}</p>
     </div>
 </div>
 {% else %}
@@ -33,7 +33,7 @@
         {% endif %}
         {% endfor %}
         {% if m.correccion_id %}{% include "checador/_correccion_chat_estado.html" with sol=m.correccion mensaje_id=m.pk puede_aprobar_corr=puede_aprobar_corr %}{% endif %}
-        <p class="mt-1 text-right text-[10px] text-gray-500 dark:text-gray-400">{{ m.creado_en|date:"H:i" }}</p>
+        <p class="mt-1 text-right text-[10px] text-gray-500 dark:text-gray-400">{{ m.creado_en|hfmt:"H:i" }}</p>
     </div>
 </div>
 {% endif %}

@@ -26,9 +26,9 @@ Params: sol (SolicitudCorreccion), mensaje_id, puede_aprobar_corr.
         {% endif %}
     {% elif sol.estado == "aprobada" %}
         <span class="inline-block rounded-full bg-success-100 px-2 py-0.5 text-[11px] font-medium text-success-700 dark:bg-success-500/15 dark:text-success-300">Aprobada ✅</span>
-        {% if sol.resuelto_por %}<span class="ml-1 text-[11px] text-gray-500 dark:text-gray-400">por {{ sol.resuelto_por.nombre_completo|default:sol.resuelto_por.email }}{% if sol.resuelto_en %} · {{ sol.resuelto_en|date:"d/m H:i" }}{% endif %}</span>{% endif %}
+        {% if sol.resuelto_por %}<span class="ml-1 text-[11px] text-gray-500 dark:text-gray-400">por {{ sol.resuelto_por.nombre_completo|default:sol.resuelto_por.email }}{% if sol.resuelto_en %} · {{ sol.resuelto_en|hfmt:"d/m H:i" }}{% endif %}</span>{% endif %}
     {% else %}
         <span class="inline-block rounded-full bg-error-100 px-2 py-0.5 text-[11px] font-medium text-error-700 dark:bg-error-500/15 dark:text-error-300">Rechazada ❌</span>
-        {% if sol.resuelto_por %}<span class="ml-1 text-[11px] text-gray-500 dark:text-gray-400">por {{ sol.resuelto_por.nombre_completo|default:sol.resuelto_por.email }}{% if sol.resuelto_en %} · {{ sol.resuelto_en|date:"d/m H:i" }}{% endif %}</span>{% endif %}
+        {% if sol.resuelto_por %}<span class="ml-1 text-[11px] text-gray-500 dark:text-gray-400">por {{ sol.resuelto_por.nombre_completo|default:sol.resuelto_por.email }}{% if sol.resuelto_en %} · {{ sol.resuelto_en|hfmt:"d/m H:i" }}{% endif %}</span>{% endif %}
     {% endif %}
 </div>

@@ -13,7 +13,7 @@
         </div>
         {% if t.fecha_compromiso %}
         <span class="whitespace-nowrap text-[10px] font-medium {% if t.esta_atrasada %}text-warning-600 dark:text-warning-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">
-            {{ t.fecha_compromiso|date:"d M" }}{% if t.hora %} · {{ t.hora|time:"H:i" }}{% endif %}
+            {{ t.fecha_compromiso|date:"d M" }}{% if t.hora %} · {{ t.hora|hfmt:"H:i" }}{% endif %}
         </span>
         {% endif %}
     </div>

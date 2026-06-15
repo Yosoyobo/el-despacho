@@ -20,7 +20,7 @@
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {% for c in campanas %}
             <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" data-href="/campanas/{{ c.pk }}/">
-                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.creado_en|date:"d M Y H:i" }}</td>
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.creado_en|hfmt:"d M Y H:i" }}</td>
                 <td class="px-5 py-3"><span class="badge badge-brand">{{ c.plantilla_slug }}</span></td>
                 <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ c.asunto_custom|default:"—"|truncatechars:50 }}</td>
                 <td class="px-5 py-3 text-right tabular-nums text-success-600 dark:text-success-400">{{ c.enviados }}/{{ c.total_destinatarios }}</td>

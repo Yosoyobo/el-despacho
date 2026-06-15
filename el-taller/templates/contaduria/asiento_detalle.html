@@ -55,7 +55,7 @@
         <dl class="mt-3 space-y-2 text-sm">
             <div class="flex justify-between"><dt class="text-gray-500">Fecha</dt><dd>{{ asiento.fecha|date:"Y-m-d" }}</dd></div>
             <div class="flex justify-between"><dt class="text-gray-500">Por</dt><dd>{{ asiento.creado_por.nombre_completo|default:"—" }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500">Creado</dt><dd>{{ asiento.creado_en|date:"Y-m-d H:i" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Creado</dt><dd>{{ asiento.creado_en|hfmt:"Y-m-d H:i" }}</dd></div>
         </dl>
     </section>
     {% if asiento.anulado %}
@@ -64,7 +64,7 @@
         <dl class="mt-3 space-y-2 text-sm">
             <div class="flex justify-between"><dt class="text-gray-500">Motivo</dt><dd class="text-right">{{ asiento.motivo_anulacion }}</dd></div>
             <div class="flex justify-between"><dt class="text-gray-500">Por</dt><dd>{{ asiento.anulado_por.nombre_completo|default:"—" }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500">Fecha</dt><dd>{{ asiento.anulado_en|date:"Y-m-d H:i" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Fecha</dt><dd>{{ asiento.anulado_en|hfmt:"Y-m-d H:i" }}</dd></div>
         </dl>
     </section>
     {% endif %}
