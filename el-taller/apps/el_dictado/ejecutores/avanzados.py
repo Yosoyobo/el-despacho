@@ -20,7 +20,7 @@ import contextlib
 from datetime import date as _date
 from decimal import Decimal, InvalidOperation
 
-from . import registrar
+from . import _gate, registrar
 from .basicos import _limpiar_slug, _resolver_cliente, _resolver_proyecto
 
 # ── Helpers comunes ───────────────────────────────────────────────────────────
@@ -100,10 +100,94 @@ def _resolver_cuenta(clave: str):
     return cta
 
 
-def _gate(usuario, helper, accion_humana: str) -> None:
-    from lib import permisos
-    if not getattr(permisos, helper)(usuario):
-        raise ValueError(f"No tienes permiso para {accion_humana}.")
+# ── Documentos comerciales: líneas + impuestos (cotización / factura) ─────────
+
+def _servicio_por_nombre(nombre, contexto=None):
+    """Servicio del Catálogo por `@accion_N`, nombre exacto o icontains. None si
+    no se da nombre (línea libre sin FK a servicio)."""
+    if not nombre:
+        return None
+    from apps.el_catalogo.models import Servicio
+    nombre = _limpiar_slug(str(nombre).strip())
+    # Capa 1: referencia a un servicio creado en el mismo dictado.
+    from .basicos import _ref_anterior
+    ref_id = _ref_anterior(nombre, contexto, "servicio")
+    if ref_id:
+        srv = Servicio.objects.filter(pk=ref_id).first()
+        if srv:
+            return srv
+    return (
+        Servicio.objects.filter(nombre__iexact=nombre, activo=True).first()
+        or Servicio.objects.filter(nombre__icontains=nombre, activo=True).first()
+    )
+
+
+def _tasas_a_aplicar(payload: dict):
+    """Tasas impositivas a aplicar. `impuestos` puede ser:
+    - ausente / 'default' → las marcadas `aplicable_default`.
+    - lista vacía → ninguna.
+    - lista de nombres/ids → esas (las que existan).
+    """
+    from ajustes.models.tasa import TasaImpositiva
+    imp = payload.get("impuestos", "default")
+    if isinstance(imp, list):
+        out = []
+        for x in imp:
+            clave = str(x).strip()
+            t = TasaImpositiva.objects.filter(nombre__iexact=clave).first()
+            if t is None and clave.isdigit():
+                t = TasaImpositiva.objects.filter(pk=int(clave)).first()
+            if t:
+                out.append(t)
+        return out
+    return list(TasaImpositiva.objects.filter(aplicable_default=True))
+
+
+def _crear_lineas(modelo_item, *, parent_attr: str, parent, items: list, contexto=None) -> int:
+    """Crea las líneas de un documento (CotizacionItem / FacturaItem). Devuelve
+    cuántas creó. Cada item: {descripcion, precio_unitario, cantidad?, unidad?,
+    descuento_porcentaje?, servicio?}."""
+    creadas = 0
+    for orden, it in enumerate(items):
+        if not isinstance(it, dict):
+            continue
+        descripcion = (it.get("descripcion") or "").strip()
+        servicio = _servicio_por_nombre(it.get("servicio"), contexto)
+        if not descripcion and servicio:
+            descripcion = servicio.nombre
+        _exigir(bool(descripcion), f"La línea {orden + 1} necesita `descripcion`.")
+        precio = _monto(it, "precio_unitario")
+        cantidad = it.get("cantidad")
+        try:
+            cantidad = Decimal(str(cantidad if cantidad not in (None, "") else 1)).quantize(Decimal("0.01"))
+        except (TypeError, ValueError, InvalidOperation) as exc:
+            raise ValueError(f"`cantidad` inválida en la línea {orden + 1}.") from exc
+        _exigir(cantidad > 0, f"La `cantidad` de la línea {orden + 1} debe ser > 0.")
+        desc_pct = it.get("descuento_porcentaje") or 0
+        try:
+            desc_pct = Decimal(str(desc_pct)).quantize(Decimal("0.01"))
+        except (TypeError, ValueError, InvalidOperation):
+            desc_pct = Decimal("0.00")
+        modelo_item.objects.create(**{
+            parent_attr: parent, "orden": orden,
+            "servicio": servicio,
+            "descripcion": descripcion[:500],
+            "cantidad": cantidad,
+            "unidad": (it.get("unidad") or "pieza")[:30],
+            "precio_unitario": precio,
+            "descuento_porcentaje": desc_pct,
+        })
+        creadas += 1
+    _exigir(creadas > 0, "El documento necesita al menos una línea válida en `items`.")
+    return creadas
+
+
+def _descuento_global(payload: dict) -> Decimal:
+    valor = payload.get("descuento_global_porcentaje") or 0
+    try:
+        return Decimal(str(valor)).quantize(Decimal("0.01"))
+    except (TypeError, ValueError, InvalidOperation):
+        return Decimal("0.00")
 
 
 # ── Tesorería ───────────────────────────────────────────────────────────────
@@ -223,6 +307,43 @@ def cobrar_factura(accion, usuario, contexto=None):
     accion.entidad_id = fac.pk
 
 
+@registrar("crear_factura")
+def crear_factura(accion, usuario, contexto=None):
+    """Crea una factura comercial en BORRADOR con líneas e impuestos.
+
+    NO emite (queda en borrador para revisión) y NO es un CFDI (regla §16).
+    Payload: cliente_slug, titulo, items: [{descripcion, precio_unitario,
+    cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?,
+    descuento_global_porcentaje?, notas?, terminos?, impuestos?.
+    """
+    _gate(usuario, "puede_crear_facturacion", "crear facturas")
+    from apps.facturacion.models import Factura, FacturaImpuesto, FacturaItem
+    from django.db import transaction
+
+    payload = accion.payload or {}
+    cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower(), contexto)
+    titulo = (payload.get("titulo") or "").strip()
+    _exigir(bool(titulo), "Falta `titulo` de la factura.")
+    items = payload.get("items")
+    _exigir(isinstance(items, list) and bool(items), "Necesitas al menos una línea en `items`.")
+    proyecto = _resolver_proyecto(payload["proyecto_slug"], contexto) if payload.get("proyecto_slug") else None
+
+    with transaction.atomic():
+        fac = Factura(
+            cliente=cliente, proyecto=proyecto, titulo=titulo[:200], estado="borrador",
+            descuento_global_porcentaje=_descuento_global(payload),
+            notas=(payload.get("notas") or ""), terminos=(payload.get("terminos") or ""),
+            creado_por=usuario,
+        )
+        fac.save()  # genera codigo FAC-YYYY-NNNN bajo atomic
+        _crear_lineas(FacturaItem, parent_attr="factura", parent=fac, items=items, contexto=contexto)
+        for tasa in _tasas_a_aplicar(payload):
+            FacturaImpuesto.objects.get_or_create(factura=fac, tasa=tasa)
+
+    accion.entidad_tipo = "factura"
+    accion.entidad_id = fac.pk
+
+
 # ── Cotizaciones ──────────────────────────────────────────────────────────────
 
 @registrar("enviar_cotizacion")
@@ -268,6 +389,46 @@ def rechazar_cotizacion(accion, usuario, contexto=None):
     motivo = (payload.get("motivo") or "").strip()
     _exigir(bool(motivo), "`motivo` requerido para rechazar.")
     marcar_rechazada(cot, usuario, motivo=motivo)
+    accion.entidad_tipo = "cotizacion"
+    accion.entidad_id = cot.pk
+
+
+@registrar("crear_cotizacion")
+def crear_cotizacion(accion, usuario, contexto=None):
+    """Crea una cotización en BORRADOR con líneas e impuestos.
+
+    Payload: cliente_slug, titulo, items: [{descripcion, precio_unitario,
+    cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?,
+    descuento_global_porcentaje?, notas?, terminos?, impuestos? ('default' |
+    [nombres/ids]).
+    """
+    _gate(usuario, "puede_crear_cotizaciones", "crear cotizaciones")
+    from apps.cotizaciones.models import Cotizacion, CotizacionImpuesto, CotizacionItem
+    from apps.cotizaciones.services import emitir_creada
+    from django.db import transaction
+
+    payload = accion.payload or {}
+    cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower(), contexto)
+    titulo = (payload.get("titulo") or "").strip()
+    _exigir(bool(titulo), "Falta `titulo` de la cotización.")
+    items = payload.get("items")
+    _exigir(isinstance(items, list) and bool(items), "Necesitas al menos una línea en `items`.")
+    proyecto = _resolver_proyecto(payload["proyecto_slug"], contexto) if payload.get("proyecto_slug") else None
+
+    with transaction.atomic():
+        cot = Cotizacion(
+            cliente=cliente, proyecto=proyecto, titulo=titulo[:200], estado="borrador",
+            descuento_global_porcentaje=_descuento_global(payload),
+            notas=(payload.get("notas") or ""), terminos=(payload.get("terminos") or ""),
+            creado_por=usuario,
+        )
+        cot.save()  # genera codigo COT-YYYY-NNNN bajo atomic
+        _crear_lineas(CotizacionItem, parent_attr="cotizacion", parent=cot, items=items, contexto=contexto)
+        for tasa in _tasas_a_aplicar(payload):
+            CotizacionImpuesto.objects.get_or_create(cotizacion=cot, tasa=tasa)
+
+    with contextlib.suppress(Exception):
+        emitir_creada(cot, usuario)
     accion.entidad_tipo = "cotizacion"
     accion.entidad_id = cot.pk
 

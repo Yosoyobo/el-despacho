@@ -117,6 +117,16 @@ def puede_editar_cartera(user) -> bool:
     return es_admin(user)
 
 
+def puede_ver_catalogo(user) -> bool:
+    return puede(user, "catalogo", "ver")
+
+
+def puede_crear_catalogo(user) -> bool:
+    """Crear servicios/variaciones/proveedores del Catálogo (mismo permiso que
+    el botón 'Nuevo' de la UI). Lo usa El Chalán para crear productos."""
+    return puede(user, "catalogo", "crear")
+
+
 def puede_ver_tarea(user, tarea) -> bool:
     """Tareas: heredan la visibilidad del proyecto."""
     return puede_ver_proyecto(user, tarea.proyecto)

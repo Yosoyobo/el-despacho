@@ -27,30 +27,58 @@ COMANDOS_DICTADO: list[dict] = [
         "titulo": "Crear proyecto",
         "ejemplo": 'Crea un proyecto "branding" para $noko-devs.',
         "payload": "nombre, cliente_slug, descripcion?, estado?, fecha_compromiso?, monto_estimado?, monto_cotizado?",
+        "gating": "admin",
     },
     {
         "tipo": "actualizar_proyecto",
         "titulo": "Actualizar proyecto",
         "ejemplo": "Cambia el estado de #lc-0001 a entregado.",
         "payload": "proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}",
+        "gating": "admin",
     },
     {
         "tipo": "asignar_usuario_proyecto",
         "titulo": "Asignar usuario a proyecto",
         "ejemplo": "Asigna a @ana como líder de #lc-0001.",
         "payload": "proyecto_slug, usuario_slug, rol_en_proyecto? (lider|disenador|produccion|revisor)",
+        "gating": "admin",
     },
     {
         "tipo": "crear_cliente",
         "titulo": "Crear cliente",
         "ejemplo": 'Crea un cliente que se llame "NoKo Devs".',
         "payload": "razon_social, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?",
+        "gating": "cartera",
     },
     {
         "tipo": "actualizar_cliente",
         "titulo": "Actualizar cliente",
         "ejemplo": "Actualiza el teléfono de $noko-devs a 555-1234.",
         "payload": "cliente_slug, campos: {razon_social?, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}",
+        "gating": "cartera",
+    },
+    # ── Catálogo: crear productos/variaciones/proveedores (S-Chalan-Barrido).
+    # SOLO creación — editar/borrar sigue prohibido (`modificar_catalogo`).
+    {
+        "tipo": "crear_servicio",
+        "titulo": "Crear producto del Catálogo",
+        "ejemplo": 'Da de alta el producto "Playera promocional" en la categoría Producción, precio 120, costo 70.',
+        "payload": "nombre, precio_base, categoria? (nombre), costo?, unidad?, descripcion?",
+        "gating": "catalogo",
+    },
+    {
+        "tipo": "crear_variacion",
+        "titulo": "Crear variación de un producto",
+        "ejemplo": 'Agrega a "Playera promocional" la variación "Talla M · 1 tinta", costo 80, con impresión $25.',
+        "payload": "servicio (@accion_N o nombre), nombre, costo?, impresion_activa?, impresion_costo?, impresion_descripcion?, descripcion?",
+        "gating": "catalogo",
+    },
+    {
+        "tipo": "crear_proveedor",
+        "titulo": "Crear proveedor",
+        "ejemplo": 'Da de alta al proveedor "Telas del Norte", contacto Luis, tel 555-9090.',
+        "payload": "razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?",
+        "gating": "catalogo",
     },
     {
         "tipo": "crear_tarea",
@@ -133,6 +161,13 @@ COMANDOS_DICTADO: list[dict] = [
         "gating": "facturacion_cobrar",
     },
     {
+        "tipo": "crear_factura",
+        "titulo": "Crear factura (borrador)",
+        "ejemplo": 'Crea una factura para $karikari por #lc-0009: "Diseño de menú" 1 pieza a $4,500.',
+        "payload": "cliente_slug, titulo, items:[{descripcion, precio_unitario, cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
+        "gating": "facturacion_crear",
+    },
+    {
         "tipo": "enviar_cotizacion",
         "titulo": "Enviar cotización",
         "ejemplo": "Marca como enviada la cotización COT-2026-0005.",
@@ -152,6 +187,13 @@ COMANDOS_DICTADO: list[dict] = [
         "ejemplo": "Rechaza la cotización COT-2026-0005: el cliente eligió otra opción.",
         "payload": "codigo, motivo",
         "gating": "cotizaciones_rechazar",
+    },
+    {
+        "tipo": "crear_cotizacion",
+        "titulo": "Crear cotización (borrador)",
+        "ejemplo": 'Cotiza a $noko-devs: "Branding completo" — diseño de logo 1 pieza $8,000 y manual de marca 1 pieza $4,000.',
+        "payload": "cliente_slug, titulo, items:[{descripcion, precio_unitario, cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
+        "gating": "cotizaciones_crear",
     },
     {
         "tipo": "capturar_traspaso",
@@ -235,12 +277,18 @@ def _gating_checks():
     from lib import permisos
     return {
         "abierto": lambda u: True,
+        # S-Chalan-Barrido: gating granular para crear entidades.
+        "admin": permisos.es_admin,
+        "cartera": permisos.puede_editar_cartera,
+        "catalogo": permisos.puede_crear_catalogo,
         "finanzas": permisos.puede_ver_finanzas,
         "facturacion_emitir": permisos.puede_emitir_facturacion,
         "facturacion_cobrar": permisos.puede_cobrar_facturacion,
+        "facturacion_crear": permisos.puede_crear_facturacion,
         "cotizaciones_enviar": permisos.puede_enviar_cotizaciones,
         "cotizaciones_aprobar": permisos.puede_aprobar_cotizaciones,
         "cotizaciones_rechazar": permisos.puede_rechazar_cotizaciones,
+        "cotizaciones_crear": permisos.puede_crear_cotizaciones,
         "contaduria_capturar": permisos.puede_capturar_contaduria,
         # V6 Bloque 7B: correo a clientes — permiso granular (comunicacion).
         "comunicacion": permisos.puede_enviar_correo,

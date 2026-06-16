@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 
-from . import registrar
+from . import _gate, registrar
 
 
 def _fecha_compromiso_proyecto(fecha_str):
@@ -205,6 +205,7 @@ def crear_proyecto(accion, usuario, contexto=None):
     descripcion?, estado?, fecha_compromiso?, monto_estimado?,
     monto_cotizado?.
     """
+    _gate(usuario, "es_admin", "crear proyectos")
 
     from apps.los_proyectos.models import Proyecto
 
@@ -254,6 +255,7 @@ def crear_cliente(accion, usuario, contexto=None):
     """Crea un Cliente. Payload: razon_social (requerido), rfc?, nombre_contacto?,
     email_contacto?, telefono?, direccion?, notas?, estado?.
     """
+    _gate(usuario, "puede_editar_cartera", "crear clientes")
     from apps.la_cartera.models import Cliente
 
     payload = accion.payload or {}
@@ -280,6 +282,7 @@ def crear_cliente(accion, usuario, contexto=None):
 
 @registrar("actualizar_cliente")
 def actualizar_cliente(accion, usuario, contexto=None):
+    _gate(usuario, "puede_editar_cartera", "actualizar clientes")
     cliente = _resolver_cliente((accion.payload.get("cliente_slug") or "").lower(), contexto)
     campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_CLIENTE_PERMITIDOS)
     aplicado = []
@@ -295,6 +298,7 @@ def actualizar_cliente(accion, usuario, contexto=None):
 
 @registrar("actualizar_proyecto")
 def actualizar_proyecto(accion, usuario, contexto=None):
+    _gate(usuario, "es_admin", "actualizar proyectos")
     proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
     campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_PROYECTO_PERMITIDOS)
     aplicado = []
@@ -317,6 +321,7 @@ def actualizar_proyecto(accion, usuario, contexto=None):
 
 @registrar("asignar_usuario_proyecto")
 def asignar_usuario_proyecto(accion, usuario, contexto=None):
+    _gate(usuario, "es_admin", "asignar usuarios a proyectos")
     proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
     u = _resolver_usuario(accion.payload.get("usuario_slug", ""), contexto)
     rol_en_proyecto = (accion.payload.get("rol_en_proyecto") or "disenador").lower()
@@ -465,6 +470,7 @@ def registrar_egreso(accion, usuario, contexto=None):
     proveedor_nombre?, pagado_por_slug?, solicitado_por_slug?, estado_pago?,
     metodo?, fecha?.
     """
+    _gate(usuario, "puede_ver_finanzas", "registrar egresos")
     from datetime import date as _date
 
     from apps.tesoreria.models import CentroDeCosto, Egreso

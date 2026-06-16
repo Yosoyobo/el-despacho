@@ -25,6 +25,23 @@ def registrar(tipo: str):
     return deco
 
 
-from . import avanzados, basicos, checador  # noqa: F401, E402 — registra ejecutores al importar
+def _gate(usuario, helper: str, accion_humana: str) -> None:
+    """Defensa en profundidad: re-chequea el permiso del usuario antes de
+    escribir, aunque el prompt ya enumere solo lo permitido por rol
+    (`dictado_catalogo.comandos_para`). El Chalán nunca aplica sin
+    confirmación humana, pero esto garantiza que un rol sin permiso no escriba
+    aunque el LLM proponga la acción. `helper` es el nombre de la función en
+    `lib.permisos`."""
+    from lib import permisos
+    if not getattr(permisos, helper)(usuario):
+        raise ValueError(f"No tienes permiso para {accion_humana}.")
 
-__all__ = ["EJECUTORES", "registrar"]
+
+from . import (  # noqa: F401, E402 — registra ejecutores al importar
+    avanzados,
+    basicos,
+    catalogo,
+    checador,
+)
+
+__all__ = ["EJECUTORES", "registrar", "_gate"]

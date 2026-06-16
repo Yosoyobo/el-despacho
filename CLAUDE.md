@@ -3928,6 +3928,57 @@ Ronda de bugs + mejora de Oscar. Manual de deploy manual en
 - Tests nuevos: `tests/test_modelo_cuadro.py` (4) + `tests/gerencia/test_rol_checkboxes.py`
   (2). `tests/gerencia/test_campanas.py` actualizado a `from campanas.models`.
 
+### S-Chalan-Barrido ✅ — El Chalán crea Catálogo/cotización/factura + granularidad + Runner por cercanía (2026-06-16, VERSION 2026.06.57)
+
+Dos pendientes acordados (parcial el segundo). Decisión Oscar: deploy de esto
+**sin** la migración a entidad Mandado (que queda para su propio deploy).
+
+- **Sprint A — barrido del Chalán (cierra "no sabe crear productos")**:
+  - **Ejecutores de CREACIÓN nuevos** (5): `crear_servicio`, `crear_variacion`,
+    `crear_proveedor` en `apps/el_dictado/ejecutores/catalogo.py` (gate
+    `catalogo.crear`); `crear_cotizacion` y `crear_factura` en `avanzados.py`
+    (gate `cotizaciones.crear` / `facturacion.crear`) — crean el documento en
+    **borrador** con líneas libres (+ servicio opcional por nombre/`@accion_N`)
+    e impuestos `aplicable_default` por defecto. `modificar_catalogo` sigue
+    PROHIBIDO: solo se habilita CREAR, nunca editar/borrar.
+  - **Granularidad (defensa en profundidad)**: `_gate` centralizado en
+    `ejecutores/__init__.py`. Se agregó re-chequeo de permiso a los ejecutores
+    de `basicos.py` que mutaban admin/dinero sin gate — el gap crítico era
+    `registrar_egreso` (ahora `finanzas`); `crear/actualizar_proyecto` +
+    `asignar_usuario_proyecto` → `admin`; `crear/actualizar_cliente` →
+    `cartera`. Tareas/recados/buzón siguen abiertos.
+  - **3 lugares** tocados por ejecutor (regla del repo): ejecutores/,
+    `prompt.py` (tipos + payloads + nota "Catálogo solo crear"), y
+    `lib/dictado_catalogo.py` (`COMANDOS_DICTADO` + gating keys nuevas:
+    `admin`, `cartera`, `catalogo`, `cotizaciones_crear`, `facturacion_crear`).
+    `prompt_chat.py` se actualiza solo (lee `comandos_para`). Helper nuevo
+    `lib/permisos.puede_crear_catalogo`.
+  - Eventos: `catalogo.{servicio_creado,variacion_creada}`, `proveedor.creado`.
+  - 18 tests (`tests/taller/test_chalan_barrido.py`) + ajuste de
+    `test_chalan_ejecutores_fase_b.py` (crear_proyecto ya NO es "abierto").
+- **Sprint B parte 1 — Runner por cercanía** (la geo del Runner V1):
+  - `Tarea` gana `destino_lat/lng/etiqueta` (migración aditiva
+    `pizarron/0008_tarea_destino`).
+  - `runners.py`: `ubicacion_actual_de` (última visita geo del usuario o su
+    jornada de hoy), `ubicacion_destino_de_tarea` (pin explícito o última
+    visita geolocalizada al cliente del proyecto), `elegir_mas_cercano`
+    (haversine de `checador.models.sede.distancia_m`, desempata por carga) y
+    `elegir_runner_auto`. `asignar_runner_auto` ahora elige al **más cercano**
+    si hay destino+posiciones; si no, cae a **menos cargado**. **Sin
+    geocodificación de paga** — reusa snapshots de El Checador ("gratis o
+    abortamos").
+  - 5 tests (`tests/taller/test_runner_cercania.py`).
+
+**NO incluye / deuda diseñada**:
+- **Migración a entidad `Mandado` propia** (sigue siendo deuda): el Runner vive
+  en campos de `Tarea`. Es un cambio estructural (tabla + migración de datos +
+  recablear home/Kanban/Chalán) que amerita su propio deploy con rollback.
+- **Pin de destino en la UI (Leaflet)**: hoy el destino se hereda de la última
+  visita al cliente o se setea por API; falta el selector visual de pin.
+- **`crear_cotizacion`/`crear_factura`** crean en borrador; el LLM arma líneas
+  libres (no resuelve impuestos por línea ni descuentos por línea complejos
+  más allá de `descuento_porcentaje`).
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

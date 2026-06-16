@@ -60,7 +60,7 @@ def test_comandos_para_excluye_si_revocado(usuario_factory):
     _revocar_checar(u)
     tipos = {c["tipo"] for c in comandos_para(u)}
     assert "checador_registrar_tiempo_proyecto" not in tipos
-    assert "crear_proyecto" in tipos  # las abiertas siguen
+    assert "crear_tarea" in tipos  # las abiertas siguen (crear_proyecto ahora es admin)
 
 
 # ── Gating (defensa en profundidad) ────────────────────────────────────────────

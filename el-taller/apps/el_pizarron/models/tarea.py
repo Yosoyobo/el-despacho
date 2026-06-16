@@ -50,6 +50,13 @@ class Tarea(models.Model):
     requiere_runner = models.BooleanField(default=False)
     runner_auto = models.BooleanField(default=False)
     runner_asignado_en = models.DateTimeField(null=True, blank=True)
+    # S-Chalan-Barrido (Runner por cercanía): ubicación de DESTINO de la entrega/
+    # recolección. Si está, la auto-asignación elige al runner más cercano (vs
+    # "el menos cargado"). Se puede fijar con pin o se hereda de la última visita
+    # geolocalizada al cliente del proyecto. Mismo formato que Visita/Sede.
+    destino_lat = models.FloatField(null=True, blank=True)
+    destino_lng = models.FloatField(null=True, blank=True)
+    destino_etiqueta = models.CharField(max_length=200, blank=True, default="")
     fecha_compromiso = models.DateField(null=True, blank=True)
     hora = models.TimeField(null=True, blank=True, help_text="Hora opcional del compromiso.")
     completada_en = models.DateTimeField(null=True, blank=True)

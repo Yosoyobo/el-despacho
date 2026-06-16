@@ -61,10 +61,16 @@ def test_comandos_para_filtra_financieras(usuario_factory):
     diseñador = usuario_factory(rol="disenador")
     tipos = {c["tipo"] for c in comandos_para(diseñador)}
     assert "emitir_factura" not in tipos
-    assert "crear_proyecto" in tipos  # las abiertas sí
+    # S-Chalan-Barrido: crear_proyecto/crear_cliente ahora son admin/cartera;
+    # los abiertos siguen disponibles para diseñador.
+    assert "crear_proyecto" not in tipos
+    assert "crear_servicio" not in tipos
+    assert "crear_tarea" in tipos  # las abiertas sí
     admin = usuario_factory(rol="super_admin")
     tipos_admin = {c["tipo"] for c in comandos_para(admin)}
-    assert {"emitir_factura", "cobrar_factura", "capturar_traspaso"} <= tipos_admin
+    assert {"emitir_factura", "cobrar_factura", "capturar_traspaso",
+            "crear_proyecto", "crear_servicio", "crear_cotizacion",
+            "crear_factura"} <= tipos_admin
 
 
 # ── Happy path ────────────────────────────────────────────────────────────────

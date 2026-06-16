@@ -5,6 +5,41 @@
 
 ---
 
+## Novedades — El Chalán ya da de alta productos, cotizaciones y facturas; el Runner elige por cercanía (16 de junio de 2026)
+
+- **El Chalán ya sabe crear productos del Catálogo.** Antes no podía y por eso
+  decía que no sabía crear productos. Ahora puedes pedirle:
+  - *"Da de alta el producto **Playera promocional** en la categoría Producción,
+    precio 120, costo 70."* (crea el producto)
+  - *"Agrégale a la Playera promocional la variación **Talla M · 1 tinta**,
+    costo 80, con impresión $25."* (crea una variación)
+  - *"Da de alta al proveedor **Telas del Norte**, contacto Luis, tel 555-9090."*
+  - **Solo crea** — el Chalán nunca edita ni borra productos del Catálogo (eso
+    sigue siendo manual). Y como todo, **te muestra la propuesta y tú confirmas**
+    antes de que se aplique.
+- **El Chalán ya arma cotizaciones y facturas (en borrador).** Por ejemplo:
+  *"Cotiza a $noko-devs: Branding completo — diseño de logo 1 pieza $8,000 y
+  manual de marca 1 pieza $4,000."* Crea la cotización en **borrador** con sus
+  líneas e IVA por defecto, lista para que la revises y la envíes. Igual para
+  facturas: *"Crea una factura para $karikari por #LC-0009: Diseño de menú a
+  $4,500."* (la factura **no es un CFDI** — el contador timbra aparte).
+- **Cada acción del Chalán respeta tus permisos.** Si un usuario no tiene
+  permiso de Finanzas, Cotizaciones, Facturación o Catálogo, el Chalán ni
+  siquiera le ofrece esas acciones (y si acaso, el sistema las rechaza). Crear
+  proyectos y clientes ahora es solo para administradores, igual que en los
+  botones de la pantalla.
+- **El Runner se asigna por cercanía.** Cuando el sistema (o El Chalán) asigna
+  automáticamente una **entrega/recolección**, ahora elige al repartidor **más
+  cercano** al destino, no solo al menos cargado. La ubicación del destino se
+  toma de la **última visita registrada a ese cliente** en El Checador (sin
+  costo extra); si no se conoce ninguna ubicación, sigue eligiendo al **menos
+  cargado** como antes.
+  - **Con El Chalán:** *"crea una entrega de #LC-0009 y que el sistema asigne al
+    runner"* — elegirá al más cercano si ya hay visitas geolocalizadas al
+    cliente.
+
+---
+
 ## Novedades — Costos de impresión por pieza, runner para entregas y registrar gastos más completo (16 de junio de 2026)
 
 - **La impresión (y otros procesos) ahora puede ser "por pieza".** En la tarjeta
