@@ -5,6 +5,16 @@
 
 ---
 
+## Novedades — Corregida la hora (ya no aparece adelantada) (16 de junio de 2026)
+
+- **Las horas vuelven a mostrarse en hora de México.** Había un desfase que hacía
+  ver las horas **6 horas adelantadas** (hora UTC) en El Checador (entradas,
+  salidas, visitas, historial) y en el historial/uso de El Chalán. Ya quedó
+  corregido en todo el sistema: las horas se muestran en la zona horaria de
+  Ciudad de México.
+
+---
+
 ## Novedades — El Chalán ya da de alta productos, cotizaciones y facturas; el Runner elige por cercanía (16 de junio de 2026)
 
 - **El Chalán ya sabe crear productos del Catálogo.** Antes no podía y por eso

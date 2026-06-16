@@ -43,6 +43,14 @@ def test_hfmt_vacio():
     assert _render("H:i", None, "ampm") == ""
 
 
+def test_hfmt_localiza_utc_a_mexico():
+    """Bug 2026-06-16: hfmt mostraba la hora en UTC (+6h). Con expects_localtime,
+    un datetime aware en UTC se convierte a America/Mexico_City (UTC-6)."""
+    dt = datetime.datetime(2026, 6, 15, 20, 30, tzinfo=datetime.UTC)
+    assert _render("H:i", dt, "24h") == "14:30"
+    assert _render("Y-m-d H:i", dt, "24h") == "2026-06-15 14:30"
+
+
 def test_formato_hora_default_usuario(usuario_factory):
     u = usuario_factory(rol="disenador")
     assert u.formato_hora == "24h"

@@ -19,7 +19,11 @@ from lib.formato_hora import aplicar
 register = template.Library()
 
 
-@register.filter(name="hfmt")
+# `expects_localtime=True`: igual que los filtros nativos `date`/`time`, hace que
+# Django convierta los datetime aware (guardados en UTC) a la zona activa
+# (America/Mexico_City) ANTES de formatear. Sin esto, `hfmt` mostraba la hora en
+# UTC → +6h en El Checador, el historial del Dictado y demás (bug 2026-06-16).
+@register.filter(name="hfmt", expects_localtime=True)
 def hfmt(value, fmt: str = "H:i"):
     if value in (None, ""):
         return ""
