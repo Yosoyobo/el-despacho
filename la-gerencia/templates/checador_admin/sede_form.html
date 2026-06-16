@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}{{ modo|capfirst }} sede de LC{% endblock %}
+{% block head_extra %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Sedes de LC" "/catalogos/sedes/" modo|capfirst as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Catálogos · Sedes de LC</p>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} sede{% if obj %} · {{ obj.nombre }}{% endif %}</h1>
+</header>
+
+<form method="post" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    {% csrf_token %}
+    <section class="campo-form xl:col-span-1 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="grid grid-cols-1 gap-5">
+            {% for f in form %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+            {% endfor %}
+        </div>
+        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Haz clic en el mapa para colocar el pin, o arrástralo. El radio se ajusta con el campo «Radio de la geocerca».</p>
+    </section>
+    <section class="xl:col-span-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div id="mapa-sede" class="h-[28rem] w-full"></div>
+        <div class="flex items-center justify-between gap-2 border-t border-gray-200 px-4 py-2 dark:border-gray-800">
+            <button type="button" data-sede-localizar class="btn-secundario text-xs">📍 Usar mi ubicación</button>
+            <span class="text-xs text-gray-400">Tiles: OpenStreetMap</span>
+        </div>
+    </section>
+    <div class="xl:col-span-3 flex flex-wrap items-center justify-between gap-3">
+        <a href="{% url 'checador-admin-sedes' %}" class="btn-secundario">Cancelar</a>
+        <button type="submit" class="btn-primario">Guardar</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+(function init() {
+  var cont = document.getElementById('mapa-sede');
+  if (!cont || typeof L === 'undefined') { if (cont) setTimeout(init, 200); return; }
+  var inLat = document.querySelector('[data-sede-lat]');
+  var inLng = document.querySelector('[data-sede-lng]');
+  var inRad = document.querySelector('[data-sede-radio]');
+  function val(i) { var v = parseFloat(i && i.value); return isNaN(v) ? null : v; }
+  // Centro inicial: pin guardado, o CDMX por defecto.
+  var lat0 = val(inLat), lng0 = val(inLng);
+  var centro = (lat0 !== null && lng0 !== null) ? [lat0, lng0] : [19.4326, -99.1332];
+  var map = L.map(cont).setView(centro, (lat0 !== null) ? 16 : 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19,
+  }).addTo(map);
+
+  var marker = null, circ = null;
+  function radio() { var r = val(inRad); return (r && r > 0) ? r : 150; }
+  function pintar(lat, lng) {
+    if (!marker) {
+      marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      marker.on('dragend', function () {
+        var p = marker.getLatLng();
+        setCoords(p.lat, p.lng);
+      });
+    } else { marker.setLatLng([lat, lng]); }
+    if (!circ) {
+      circ = L.circle([lat, lng], { radius: radio(), color: '#465fff', fillColor: '#465fff', fillOpacity: 0.12, weight: 2 }).addTo(map);
+    } else { circ.setLatLng([lat, lng]); circ.setRadius(radio()); }
+  }
+  function setCoords(lat, lng) {
+    if (inLat) inLat.value = lat.toFixed(6);
+    if (inLng) inLng.value = lng.toFixed(6);
+    pintar(lat, lng);
+  }
+  if (lat0 !== null && lng0 !== null) pintar(lat0, lng0);
+
+  map.on('click', function (e) { setCoords(e.latlng.lat, e.latlng.lng); });
+  if (inRad) inRad.addEventListener('input', function () { if (circ) circ.setRadius(radio()); });
+  [inLat, inLng].forEach(function (i) {
+    if (i) i.addEventListener('change', function () {
+      var la = val(inLat), ln = val(inLng);
+      if (la !== null && ln !== null) { pintar(la, ln); map.setView([la, ln], 16); }
+    });
+  });
+  var btn = document.querySelector('[data-sede-localizar]');
+  if (btn && navigator.geolocation) {
+    btn.addEventListener('click', function () {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        setCoords(pos.coords.latitude, pos.coords.longitude);
+        map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+      });
+    });
+  }
+  setTimeout(function () { map.invalidateSize(); }, 250);
+})();
+</script>
+{% endblock %}

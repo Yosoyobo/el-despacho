@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Checador — El Taller{% endblock %}
+{% block head_extra %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endblock %}
 
 {% block contenido %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Checador" subtitulo="Registra tu entrada, salida y visitas." %}
@@ -45,6 +46,19 @@
             {% else %}
                 <p class="text-sm text-gray-500 dark:text-gray-400">Aún no has checado entrada hoy.</p>
             {% endif %}
+        </div>
+
+        {# ── Mapa de verificación: tu ubicación actual antes de checar (V12) ── #}
+        <div class="mt-5">
+            <div class="mb-1 flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    Geocerca: <span class="text-brand-600 dark:text-brand-400">{% if geocerca_modo == 'restringido' %}Modo Restringido{% else %}Modo Libre{% endif %}</span>
+                </span>
+                <span data-mapa-estado class="text-xs text-gray-400 dark:text-gray-500">Ubicando…</span>
+            </div>
+            <div id="mapa-checar" class="h-56 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"></div>
+            {{ sedes_mapa|json_script:"sedes-checar-data" }}
+            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Verifica que tu punto azul sea correcto antes de checar. La ubicación se toma de nuevo al confirmar.</p>
         </div>
 
         <form method="post" action="{% url 'checador:checar' %}" id="form-checar" class="mt-6">
@@ -137,19 +151,28 @@
     </section>
     {% endif %}
 
-    {# ── Balance de horas del mes (a favor / deuda) ─────────────── #}
-    <section class="rounded-2xl border p-5 shadow-theme-sm {% if balance.a_favor %}border-success-200 bg-success-50/50 dark:border-success-500/30 dark:bg-success-500/5{% else %}border-warning-300 bg-warning-50/50 dark:border-warning-500/40 dark:bg-warning-500/5{% endif %}">
-        <div class="flex flex-wrap items-end justify-between gap-2">
-            <div>
-                <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Balance del mes</p>
-                <p class="mt-1 text-title-sm font-bold {% if balance.a_favor %}text-success-700 dark:text-success-400{% else %}text-warning-700 dark:text-warning-400{% endif %}">
-                    {% if balance.a_favor %}+{% endif %}{{ balance.balance_horas }} h
-                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{% if balance.a_favor %}a favor{% else %}de deuda{% endif %}</span>
-                </p>
-            </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Trabajadas {{ balance.trabajadas_horas }} h · esperadas {{ balance.esperadas_horas }} h</p>
-        </div>
-    </section>
+    {# ── Horas: esta semana y este mes (a favor / deuda) ────────── #}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {# Esta semana #}
+        <section class="rounded-2xl border p-5 shadow-theme-sm {% if balance_semana.a_favor %}border-success-200 bg-success-50/50 dark:border-success-500/30 dark:bg-success-500/5{% else %}border-warning-300 bg-warning-50/50 dark:border-warning-500/40 dark:bg-warning-500/5{% endif %}">
+            <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Esta semana</p>
+            <p class="mt-1 text-title-md font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ balance_semana.trabajadas_horas }} h</p>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">de {{ balance_semana.esperadas_horas }} h esperadas</p>
+            <p class="mt-2 text-sm font-semibold {% if balance_semana.a_favor %}text-success-700 dark:text-success-400{% else %}text-warning-700 dark:text-warning-400{% endif %}">
+                {% if balance_semana.a_favor %}+{% endif %}{{ balance_semana.balance_horas }} h {% if balance_semana.a_favor %}a favor{% else %}de deuda{% endif %}
+            </p>
+        </section>
+        {# Este mes #}
+        <section class="rounded-2xl border p-5 shadow-theme-sm {% if balance.a_favor %}border-success-200 bg-success-50/50 dark:border-success-500/30 dark:bg-success-500/5{% else %}border-warning-300 bg-warning-50/50 dark:border-warning-500/40 dark:bg-warning-500/5{% endif %}">
+            <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Este mes</p>
+            <p class="mt-1 text-title-md font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ balance.trabajadas_horas }} h</p>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">de {{ balance.esperadas_horas }} h esperadas</p>
+            <p class="mt-2 text-sm font-semibold {% if balance.a_favor %}text-success-700 dark:text-success-400{% else %}text-warning-700 dark:text-warning-400{% endif %}">
+                {% if balance.a_favor %}+{% endif %}{{ balance.balance_horas }} h {% if balance.a_favor %}a favor{% else %}de deuda{% endif %}
+            </p>
+        </section>
+    </div>
+    <p class="-mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">La quincena y la catorcena llegan pronto.</p>
 
     {# ── Mi semana ──────────────────────────────────────────────── #}
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
@@ -200,4 +223,76 @@
 </div>
 
 <script src="{% static 'js/checador.js' %}" defer></script>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+// Mini-mapa de verificación de ubicación antes de checar (item 6). Muestra tu
+// punto azul (con precisión) y los círculos de las sedes de LC; te dice si
+// estás dentro de alguna. Informativo — no bloquea (la geocerca real se evalúa
+// en el servidor al checar). Leaflet + OpenStreetMap (sin API key).
+(function init() {
+  var cont = document.getElementById('mapa-checar');
+  if (!cont) return;
+  if (typeof L === 'undefined') { setTimeout(init, 200); return; }
+  var sedes = [];
+  try { sedes = JSON.parse(document.getElementById('sedes-checar-data').textContent || '[]'); } catch (e) {}
+  var estado = document.querySelector('[data-mapa-estado]');
+
+  var map = L.map(cont, { zoomControl: true }).setView([19.4326, -99.1332], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19,
+  }).addTo(map);
+
+  sedes.forEach(function (s) {
+    L.circle([s.lat, s.lng], { radius: s.r, color: '#12b76a', fillColor: '#12b76a', fillOpacity: 0.10, weight: 2 })
+      .addTo(map).bindPopup(s.n);
+  });
+
+  function distancia(aLat, aLng, bLat, bLng) {
+    var R = 6371000, rad = Math.PI / 180;
+    var dLa = (bLat - aLat) * rad, dLo = (bLng - aLng) * rad;
+    var h = Math.sin(dLa / 2) * Math.sin(dLa / 2) +
+            Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function evaluar(lat, lng) {
+    if (!sedes.length || !estado) { if (estado) estado.textContent = 'Sin sedes configuradas'; return; }
+    var mejor = null, md = Infinity;
+    sedes.forEach(function (s) {
+      var d = distancia(lat, lng, s.lat, s.lng);
+      if (d < md) { md = d; mejor = s; }
+    });
+    if (mejor && md <= mejor.r) {
+      estado.textContent = '✅ En ' + mejor.n;
+      estado.className = 'text-xs font-medium text-success-600 dark:text-success-400';
+    } else if (mejor) {
+      estado.textContent = '⚠️ A ~' + Math.round(md) + ' m de ' + mejor.n;
+      estado.className = 'text-xs font-medium text-warning-600 dark:text-warning-400';
+    }
+  }
+
+  var marker = null, prec = null, centrado = false;
+  function fijar(pos) {
+    var lat = pos.coords.latitude, lng = pos.coords.longitude, acc = pos.coords.accuracy || 0;
+    if (!marker) {
+      marker = L.circleMarker([lat, lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#465fff', fillOpacity: 1 }).addTo(map);
+      prec = L.circle([lat, lng], { radius: acc, color: '#465fff', fillColor: '#465fff', fillOpacity: 0.08, weight: 1 }).addTo(map);
+    } else { marker.setLatLng([lat, lng]); prec.setLatLng([lat, lng]); prec.setRadius(acc); }
+    if (!centrado) { map.setView([lat, lng], 16); centrado = true; }
+    evaluar(lat, lng);
+  }
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(fijar, function () {
+      if (estado) estado.textContent = 'No pudimos obtener tu ubicación';
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+    try {
+      navigator.geolocation.watchPosition(fijar, function () {}, { enableHighAccuracy: true, maximumAge: 15000 });
+    } catch (e) {}
+  } else if (estado) {
+    estado.textContent = 'Este dispositivo no comparte ubicación';
+  }
+  setTimeout(function () { map.invalidateSize(); }, 250);
+})();
+</script>
 {% endblock %}

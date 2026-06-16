@@ -140,6 +140,10 @@ EventoTipo = Literal[
     "checador.jornada_ajustada",
     "checador.horario_actualizado",
     "checador.exportado",
+    "checador.sede_creada",
+    "checador.sede_actualizada",
+    "checador.sede_borrada",
+    "checador.geocerca_configurada",
 ]
 
 

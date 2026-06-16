@@ -1,0 +1,6 @@
+{# Leaflet 1.9.4 vendoreado vía CDN pin (regla #1: lib gratuita, sin Node, sin
+   SPA). Mapas con tiles de OpenStreetMap — sin API key, sin costo recurrente
+   (regla "gratis o abortamos"). Incluir una vez por página que use mapas:
+   este partial en head_extra (CSS) NO — carga CSS+JS junto; el init va aparte. #}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

@@ -22,7 +22,15 @@ from django.utils import timezone
 
 from lib.fecha import ahora_mx
 
-from .models import HorarioLaboral, Jornada, SesionProyecto, SolicitudCorreccion, Visita
+from .models import (
+    ConfiguracionGeocerca,
+    HorarioLaboral,
+    Jornada,
+    SedeLC,
+    SesionProyecto,
+    SolicitudCorreccion,
+    Visita,
+)
 from .models.horario import DIAS_SEMANA
 
 # ───────────────────────── helpers ─────────────────────────
@@ -230,19 +238,71 @@ def checar_entrada(usuario, *, geo=None, registrado_en=None, uuid: str = "", off
     return jornada
 
 
-def _evaluar_geocerca(usuario, jornada) -> None:
-    """S-LC-Feedback-V7 — fase de geocerca (no bloqueante). Si el empleado tiene
-    la geocerca activa y la entrada trae coordenadas, evalúa si checó dentro del
-    radio. Si quedó fuera, anota la jornada y emite un evento para auditoría.
-    NUNCA bloquea ni anula la checada (decisión Oscar: solo activar la fase)."""
+def sedes_activas():
+    """Sedes de LC activas y con pin (para validar y para el mapa). Lista."""
+    return list(SedeLC.objects.filter(activa=True).exclude(lat=None).exclude(lng=None))
+
+
+def modo_geocerca() -> str:
+    """'libre' | 'restringido' (singleton ConfiguracionGeocerca)."""
     try:
-        if not getattr(usuario, "geocerca_activa", False) or not usuario.tiene_pin:
-            return
+        return ConfiguracionGeocerca.obtener().modo
+    except Exception:  # noqa: BLE001
+        return "libre"
+
+
+def evaluar_ubicacion(lat, lng):
+    """Contra el directorio de sedes activas, devuelve la sede más cercana, su
+    distancia en metros y si la checada cae dentro de su radio. Reutilizable por
+    el preview del tablero y por la evaluación al checar.
+
+    Devuelve dict {sede, distancia_m, dentro} o None si no hay sedes/coords."""
+    if lat is None or lng is None:
+        return None
+    sedes = sedes_activas()
+    if not sedes:
+        return None
+    pares = [(s, s.distancia_a_m(lat, lng)) for s in sedes]
+    pares = [(s, d) for s, d in pares if d is not None]
+    if not pares:
+        return None
+    sede, dist = min(pares, key=lambda t: t[1])
+    return {"sede": sede, "distancia_m": dist, "dentro": dist <= (sede.radio_m or 150)}
+
+
+def _evaluar_geocerca(usuario, jornada) -> None:
+    """Fase de geocerca (no bloqueante). Valida la checada de entrada contra el
+    DIRECTORIO de sedes de LC (S-LC-Feedback-V12). Si hay sedes activas, la
+    checada se mide contra la más cercana; si quedó fuera y el modo es
+    'restringido', se anota la jornada y se emite evento. En modo 'libre' no se
+    anota nada. Si NO hay sedes configuradas, cae al pin por-empleado de V7.
+    NUNCA bloquea ni anula la checada."""
+    try:
         if jornada.entrada_sin_geo or jornada.entrada_lat is None or jornada.entrada_lng is None:
             return
-        dentro = usuario.dentro_de_geocerca(jornada.entrada_lat, jornada.entrada_lng)
+        lat, lng = jornada.entrada_lat, jornada.entrada_lng
+
+        # Camino principal: directorio de sedes de LC.
+        eval_sede = evaluar_ubicacion(lat, lng)
+        if eval_sede is not None:
+            if not eval_sede["dentro"] and modo_geocerca() == "restringido":
+                sede = eval_sede["sede"]
+                dist = int(eval_sede["distancia_m"])
+                nota = f"⚠️ Checada fuera de las sedes de LC (~{dist} m de {sede.nombre})."
+                jornada.notas = (jornada.notas + "\n" + nota).strip() if jornada.notas else nota
+                jornada.save(update_fields=["notas"])
+                _emitir("checador.checada_fuera_geocerca", actor=usuario, payload={
+                    "jornada_id": jornada.pk, "distancia_m": dist,
+                    "sede": sede.nombre, "radio_m": sede.radio_m,
+                })
+            return
+
+        # Fallback V7: sin sedes configuradas, usa el pin por-empleado.
+        if not getattr(usuario, "geocerca_activa", False) or not usuario.tiene_pin:
+            return
+        dentro = usuario.dentro_de_geocerca(lat, lng)
         if dentro is False:
-            dist = usuario.distancia_a_m(jornada.entrada_lat, jornada.entrada_lng)
+            dist = usuario.distancia_a_m(lat, lng)
             nota = f"⚠️ Checada fuera de la geocerca (~{int(dist)} m del punto)."
             jornada.notas = (jornada.notas + "\n" + nota).strip() if jornada.notas else nota
             jornada.save(update_fields=["notas"])
@@ -739,6 +799,46 @@ def balance_mensual(usuario, *, year: int = None, month: int = None, ahora=None)
         "a_favor": balance >= 0,
         "year": year, "month": month,
     }
+
+
+def balance_rango(usuario, desde, hasta) -> dict:
+    """Horas esperadas (horarios configurados) vs trabajadas en [desde, hasta].
+    Misma regla que balance_mensual; base reutilizable para semana/quincena/
+    catorcena (S-LC-Feedback-V12)."""
+    import datetime as _dt
+
+    esperadas = 0
+    trabajadas = 0
+    dia = desde
+    while dia <= hasta:
+        horario = horario_vigente(usuario, dia)
+        if horario and horario.activo:
+            esperadas += _min_horario(horario)
+        trab, _tipo = _trabajado_min_dia(usuario, dia)
+        trabajadas += trab
+        dia += _dt.timedelta(days=1)
+    balance = trabajadas - esperadas
+    return {
+        "esperadas_horas": round(esperadas / 60, 2),
+        "trabajadas_horas": round(trabajadas / 60, 2),
+        "balance_horas": round(balance / 60, 2),
+        "a_favor": balance >= 0,
+        "desde": desde, "hasta": hasta,
+    }
+
+
+def balance_semana(usuario, *, ahora=None) -> dict:
+    """Balance de la SEMANA en curso (lunes → hoy). Pedido de Oscar: "quiero ver
+    las horas que llevo esta semana". La quincena/catorcena se sumarán después
+    reusando balance_rango con los anclajes de periodo."""
+    import datetime as _dt
+
+    hoy = (ahora or timezone.localtime()).date()
+    lunes = hoy - _dt.timedelta(days=hoy.weekday())
+    out = balance_rango(usuario, lunes, hoy)
+    out["lunes"] = lunes
+    out["hoy"] = hoy
+    return out
 
 
 # ─────────────── auto-cierre de jornadas abiertas (V1.2) ───────────────

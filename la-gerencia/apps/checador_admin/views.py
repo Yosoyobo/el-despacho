@@ -151,3 +151,99 @@ def correccion_resolver(request, pk):
         from django.urls import reverse
         return HttpResponse(status=204, headers={"HX-Redirect": reverse("checador-admin-correcciones")})
     return redirect("checador-admin-correcciones")
+
+
+# ───────────────────────── Sedes / POI de LC (V12) ─────────────────────────
+# Directorio de ubicaciones válidas de LC + modo de geocerca global. Reusa el
+# permiso `configurar_horarios` (misma capacidad: configurar El Checador).
+
+def _emit_sede(request, obj, accion):
+    emitir(EventoPortavoz(
+        tipo=f"checador.sede_{accion}",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"sede_id": obj.pk, "nombre": obj.nombre, "activa": obj.activa},
+    ))
+
+
+@login_required
+def sedes(request):
+    if (r := _gate_horarios(request)) is not None:
+        return r
+    from apps.checador.models import ConfiguracionGeocerca, SedeLC
+    return render(request, "checador_admin/sedes.html", {
+        "sedes": list(SedeLC.objects.all()),
+        "config": ConfiguracionGeocerca.obtener(),
+    })
+
+
+@login_required
+def sede_nuevo(request):
+    if (r := _gate_horarios(request)) is not None:
+        return r
+    from .forms import SedeLCForm
+    if request.method == "POST":
+        form = SedeLCForm(request.POST)
+        if form.is_valid():
+            obj = form.save()
+            _emit_sede(request, obj, "creada")
+            messages.success(request, f"Sede «{obj.nombre}» creada.")
+            return redirect("checador-admin-sedes")
+    else:
+        form = SedeLCForm()
+    return render(request, "checador_admin/sede_form.html", {"form": form, "modo": "nueva"})
+
+
+@login_required
+def sede_editar(request, pk):
+    if (r := _gate_horarios(request)) is not None:
+        return r
+    from apps.checador.models import SedeLC
+    from .forms import SedeLCForm
+    obj = get_object_or_404(SedeLC, pk=pk)
+    if request.method == "POST":
+        form = SedeLCForm(request.POST, instance=obj)
+        if form.is_valid():
+            form.save()
+            _emit_sede(request, obj, "actualizada")
+            messages.success(request, "Sede actualizada.")
+            return redirect("checador-admin-sedes")
+    else:
+        form = SedeLCForm(instance=obj)
+    return render(request, "checador_admin/sede_form.html", {"form": form, "modo": "editar", "obj": obj})
+
+
+@login_required
+def sede_borrar(request, pk):
+    if (r := _gate_horarios(request)) is not None:
+        return r
+    if request.method != "POST":
+        return redirect("checador-admin-sedes")
+    from apps.checador.models import SedeLC
+    obj = get_object_or_404(SedeLC, pk=pk)
+    _emit_sede(request, obj, "borrada")
+    obj.delete()
+    messages.success(request, "Sede eliminada.")
+    return redirect("checador-admin-sedes")
+
+
+@login_required
+def geocerca_config(request):
+    if (r := _gate_horarios(request)) is not None:
+        return r
+    from apps.checador.models import ConfiguracionGeocerca
+    from .forms import ConfiguracionGeocercaForm
+    config = ConfiguracionGeocerca.obtener()
+    if request.method == "POST":
+        form = ConfiguracionGeocercaForm(request.POST, instance=config)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="checador.geocerca_configurada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"modo": config.modo},
+            ))
+            messages.success(request, "Modo de geocerca guardado.")
+            return redirect("checador-admin-sedes")
+    else:
+        form = ConfiguracionGeocercaForm(instance=config)
+    return render(request, "checador_admin/geocerca_config.html", {"form": form, "config": config})

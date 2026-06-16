@@ -5,6 +5,37 @@
 
 ---
 
+## Novedades — Sedes de LC, mapa al checar, horas de la semana y cuadros de chat más grandes (15 de junio de 2026)
+
+- **Ya ves un mapa antes de checar.** En **El Checador**, arriba del botón de
+  entrada/salida aparece un mapa con tu **punto azul** (tu ubicación actual) y
+  los **círculos de las sedes** de LC. Así verificas que estás en el lugar
+  correcto antes de checar. Te dice si estás **dentro** de una sede o a cuántos
+  metros. (La ubicación se vuelve a tomar al confirmar; el mapa es solo para
+  verificar.)
+- **Horas de la semana y del mes a la vista.** El Checador ahora muestra dos
+  tarjetas: **Esta semana** y **Este mes**, con tus horas trabajadas, las
+  esperadas y tu saldo (a favor o de deuda). La quincena y la catorcena llegan
+  pronto.
+- **Sedes de LC (para administradores).** En **La Gerencia → Catálogos → Sedes
+  de LC** se da de alta cada oficina/taller con su dirección, su pin en el mapa
+  y el **radio** de su geocerca. Así quedan registradas todas las ubicaciones
+  válidas de LC. Hay un **modo** de geocerca: *Libre* (no valida ubicación, es
+  el default) o *Restringido* (anota en la jornada cuando alguien checa fuera de
+  toda sede; **nunca bloquea** la checada).
+- **Cuadros de texto más grandes en los chats.** En **El Chalán** y en
+  **Recados**, el cuadro para escribir ahora arranca más alto y **crece** solo
+  conforme escribes — se acabó el cuadrito diminuto.
+- **Estados con descripción.** En La Gerencia, *Estados de proyecto* y *Estados
+  de tarea* ahora muestran, igual que el Buzón, una columna **Acción** y una
+  **descripción** de lo que significa cada estado.
+
+> Estas funciones se usan desde sus pantallas (Checador, Gerencia); no se piden
+> por El Chalán. El Chalán sigue sirviendo para consultar y dictar acciones de
+> proyectos, tareas, clientes y finanzas.
+
+---
+
 ## Novedades — Elige 24h o AM/PM, carpetas entre tus menús y aviso de novedades (15 de junio de 2026)
 
 - **Tú eliges cómo ver la hora.** En **Mis notificaciones** hay una sección

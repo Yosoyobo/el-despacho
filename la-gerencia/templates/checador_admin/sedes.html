@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Sedes de LC — Catálogos{% endblock %}
+{% block head_extra %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Catálogos" "" "Sedes de LC" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Catálogos · Sedes de LC</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Sedes de LC (ubicaciones válidas)</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Las oficinas, talleres y sucursales de Learning Center con su ubicación y el radio de la geocerca. Una checada dentro del radio de cualquier sede activa cuenta como válida.</p>
+    </div>
+    <a href="{% url 'checador-admin-sede-nueva' %}" class="btn-primario">+ Nueva sede</a>
+</header>
+
+{# Modo de geocerca actual #}
+<section class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div>
+        <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Modo de geocerca: <span class="text-brand-600 dark:text-brand-400">{{ config.get_modo_display }}</span></p>
+        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{% if config.modo == 'restringido' %}Las checadas fuera de toda sede se anotan en la jornada (no se bloquean).{% else %}No se valida ubicación; las checadas no se anotan por estar fuera de sede.{% endif %}</p>
+    </div>
+    <a href="{% url 'checador-admin-geocerca' %}" class="btn-secundario">Cambiar modo</a>
+</section>
+
+{% if sedes %}
+<section class="mb-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div id="mapa-sedes" class="h-72 w-full" data-sedes='[{% for s in sedes %}{% if s.lat and s.lng %}{"n": "{{ s.nombre|escapejs }}", "lat": {{ s.lat }}, "lng": {{ s.lng }}, "r": {{ s.radio_m }}, "a": {{ s.activa|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]'></div>
+</section>
+{% endif %}
+
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3 text-left">Sede</th>
+                <th class="px-5 py-3 text-left">Ubicación</th>
+                <th class="px-5 py-3 text-right">Radio</th>
+                <th class="px-5 py-3 text-center">Activa</th>
+                <th class="px-5 py-3 text-right">Orden</th>
+                <th class="px-5 py-3 text-right">—</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for s in sedes %}
+            <tr>
+                <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ s.nombre }}{% if s.notas %}<p class="mt-0.5 text-xs font-normal text-gray-500 dark:text-gray-400">{{ s.notas }}</p>{% endif %}</td>
+                <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ s.direccion|default:"—" }}{% if s.lat and s.lng %}<br><span class="font-mono text-[10px] text-gray-400">{{ s.lat }}, {{ s.lng }}</span>{% else %}<br><span class="text-[10px] text-warning-600">Sin pin (no valida geocerca)</span>{% endif %}</td>
+                <td class="px-5 py-3 text-right tabular-nums">{{ s.radio_m }} m</td>
+                <td class="px-5 py-3 text-center">{% if s.activa %}<span class="badge badge-success">Activa</span>{% else %}<span class="badge badge-gray">Inactiva</span>{% endif %}</td>
+                <td class="px-5 py-3 text-right tabular-nums">{{ s.orden }}</td>
+                <td class="px-5 py-3 text-right">
+                    <a href="{% url 'checador-admin-sede-editar' s.pk %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                    <form method="post" action="{% url 'checador-admin-sede-borrar' s.pk %}" class="ml-2 inline" onsubmit="return confirm('¿Borrar la sede «{{ s.nombre|escapejs }}»?');">
+                        {% csrf_token %}
+                        <button type="submit" class="text-xs font-medium text-error-600 hover:underline dark:text-error-400">Borrar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Aún no hay sedes. Agrega la primera con «+ Nueva sede».</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+(function () {
+  var el = document.getElementById('mapa-sedes');
+  if (!el || typeof L === 'undefined') { if (el) setTimeout(arguments.callee, 200); return; }
+  var sedes = [];
+  try { sedes = JSON.parse(el.getAttribute('data-sedes') || '[]'); } catch (e) {}
+  if (!sedes.length) return;
+  var map = L.map(el);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19,
+  }).addTo(map);
+  var grupo = [];
+  sedes.forEach(function (s) {
+    var color = s.a ? '#12b76a' : '#98a2b3';
+    L.circle([s.lat, s.lng], { radius: s.r, color: color, fillColor: color, fillOpacity: 0.12, weight: 2 }).addTo(map);
+    L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.n + ' · ' + s.r + ' m');
+    grupo.push([s.lat, s.lng]);
+  });
+  if (grupo.length === 1) map.setView(grupo[0], 16);
+  else map.fitBounds(grupo, { padding: [40, 40] });
+})();
+</script>
+{% endblock %}

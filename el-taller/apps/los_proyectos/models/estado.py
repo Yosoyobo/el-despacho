@@ -30,6 +30,18 @@ ESTADOS_BASE = (
     ("cancelado",              "Cancelado",              "#f04438", 70, True),
 )
 
+# Acción prevista al mover un proyecto a este estado. Espejo del patrón del
+# Buzón (S-LC-Feedback-V6) para que las tres pantallas de Gerencia luzcan
+# igual. POR AHORA ES DOCUMENTAL — describe la intención y se muestra en la
+# columna "Acción"; el push automático al cambiar de estado se cablea después
+# (decisión Oscar: "solo descriptivas por ahora").
+ACCION_CHOICES = (
+    ("ninguna",            "Ninguna"),
+    ("notificar_equipo",   "Avisar al equipo del proyecto (push)"),
+    ("notificar_lider",    "Avisar al líder / responsable (push)"),
+    ("notificar_todos",    "Avisar a TODO el equipo (push)"),
+)
+
 
 class EstadoProyecto(models.Model):
     """Estado del ciclo de un Proyecto, configurable desde La Gerencia.
@@ -43,8 +55,17 @@ class EstadoProyecto(models.Model):
 
     slug = models.SlugField(max_length=32, unique=True, db_index=True)
     label = models.CharField(max_length=64)
+    descripcion = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Qué significa este estado (visible como ayuda al equipo).",
+    )
     color = models.CharField(max_length=7, default="#667085", validators=[HEX_COLOR],
                              help_text="Color HEX del badge, ej. #465fff.")
+    accion = models.CharField(
+        max_length=24, choices=ACCION_CHOICES, default="ninguna",
+        help_text="Acción prevista al mover un proyecto a este estado "
+                  "(documental por ahora; el push automático llega después).",
+    )
     orden = models.PositiveSmallIntegerField(default=100)
     terminal = models.BooleanField(default=False, help_text="Si está marcado, el proyecto se considera cerrado.")
     activo = models.BooleanField(default=True)

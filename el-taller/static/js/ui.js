@@ -764,3 +764,31 @@
 
   window.addEventListener('pageshow', reset);
 })();
+
+// ===========================================================================
+// Auto-grow de los cuadros de texto del chat (El Chalán + Los Recados).
+// Reporte de Oscar: "los cuadros de texto de chalán y recados, muy chico".
+// El textarea arranca en ~3 renglones y crece con el contenido hasta un tope
+// (data-autogrow-max, px); arriba del tope hace scroll interno. Vanilla, sin
+// libs (regla #1). Delegación para tolerar la conversación inyectada por HTMX.
+// ===========================================================================
+(function () {
+  function ajustar(ta) {
+    if (!ta) return;
+    var max = parseInt(ta.getAttribute('data-autogrow-max') || '200', 10);
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, max) + 'px';
+    ta.style.overflowY = ta.scrollHeight > max ? 'auto' : 'hidden';
+  }
+  function ajustarTodas(raiz) {
+    var nodo = (raiz && raiz.querySelectorAll) ? raiz : document;
+    nodo.querySelectorAll('textarea[data-autogrow]').forEach(ajustar);
+  }
+  document.body.addEventListener('input', function (e) {
+    if (e.target && e.target.matches && e.target.matches('textarea[data-autogrow]')) ajustar(e.target);
+  });
+  document.addEventListener('DOMContentLoaded', function () { ajustarTodas(); });
+  document.body.addEventListener('htmx:afterSwap', function (e) { ajustarTodas(e.target); });
+  // Tras enviar, el inline hx-on vacía el textarea; re-encoge en el siguiente tick.
+  document.body.addEventListener('htmx:afterRequest', function () { setTimeout(function () { ajustarTodas(); }, 0); });
+})();

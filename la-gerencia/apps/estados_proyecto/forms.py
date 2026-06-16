@@ -10,21 +10,32 @@ class EstadoProyectoForm(forms.ModelForm):
 
     class Meta:
         model = EstadoProyecto
-        fields = ["label", "color", "orden", "terminal", "activo"]
+        fields = ["label", "descripcion", "color", "accion", "orden", "terminal", "activo"]
         widgets = {
             "label": forms.TextInput(attrs={"placeholder": "Ej. En revisión interna"}),
+            "descripcion": forms.TextInput(attrs={"placeholder": "Ej. El equipo está armando la propuesta"}),
             "orden": forms.NumberInput(attrs={"min": 0, "max": 999}),
         }
         labels = {
             "label": "Nombre visible",
+            "descripcion": "Significado (ayuda para el equipo)",
             "color": "Color del badge",
+            "accion": "Acción prevista al entrar a este estado",
             "orden": "Orden",
             "terminal": "Es estado terminal (cierra el proyecto)",
             "activo": "Activo (visible en dropdowns)",
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # `accion`/`descripcion` opcionales: default ("ninguna"/"") sin invalidar.
+        self.fields["accion"].required = False
+
     def clean_color(self):
         return (self.cleaned_data.get("color") or "").strip() or "#667085"
+
+    def clean_accion(self):
+        return self.cleaned_data.get("accion") or "ninguna"
 
 
 class EstadoProyectoNuevoForm(EstadoProyectoForm):
@@ -37,7 +48,7 @@ class EstadoProyectoNuevoForm(EstadoProyectoForm):
     )
 
     class Meta(EstadoProyectoForm.Meta):
-        fields = ["slug", "label", "color", "orden", "terminal", "activo"]
+        fields = ["slug", "label", "descripcion", "color", "accion", "orden", "terminal", "activo"]
 
     def clean(self):
         cleaned = super().clean()

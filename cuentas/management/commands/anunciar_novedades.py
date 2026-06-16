@@ -76,18 +76,40 @@ class Command(BaseCommand):
 
     def _notificar_a_todos(self, cuantas: int):
         import contextlib
+        from collections import Counter
 
         from cuentas.models.usuario import Usuario
-        from lib.interfono import enviar_a_usuario
+        from interfono.models import InterfonoEntrega
+        from lib.interfono import InterfonoConfig, enviar_a_usuario
+
+        # Pista #1: si VAPID no está configurado, NINGÚN push sale (queda como
+        # entrega "no_configurado"). Lo decimos arriba para no diagnosticar a ciegas.
+        if not InterfonoConfig.esta_configurado():
+            self.stdout.write(self.style.WARNING(
+                "VAPID NO configurado en Los Ajustes → las novedades se registran "
+                "pero no se envía push. Configura las llaves VAPID en /ajustes/."))
 
         plural = "novedades" if cuantas != 1 else "novedad"
         titulo = f"🔔 {cuantas} {plural} en El Despacho"
         cuerpo = "Toca para ver qué hay de nuevo."
+        ids = []
         for u in Usuario.objects.filter(is_active=True):
             # Un push roto no aborta el resto.
             with contextlib.suppress(Exception):
-                enviar_a_usuario(
+                res = enviar_a_usuario(
                     u, titulo=titulo, cuerpo=cuerpo, url="/ayuda/novedades/",
                     tag="novedades", categoria="novedades",
                     origen_modulo="ayuda", origen_id=0,
                 )
+                if res and res.get("entrega_id"):
+                    ids.append(res["entrega_id"])
+
+        # Desglose por motivo: así el log de mudanza dice exactamente por qué
+        # llegó o no llegó (entregada / silenciada_categoria / sin_suscripciones
+        # / no_configurado / fallida). Sin esto el diagnóstico era a ciegas.
+        if ids:
+            conteo = Counter(
+                InterfonoEntrega.objects.filter(pk__in=ids)
+                .values_list("estado_despacho", flat=True))
+            desglose = " · ".join(f"{estado}={n}" for estado, n in sorted(conteo.items()))
+            self.stdout.write(f"Push novedades — desglose: {desglose}")

@@ -116,16 +116,26 @@ def tablero(request):
         .select_related("cliente", "proveedor").order_by("-registrado_en"),
     )
 
+    # Sedes activas con pin → para el mini-mapa de verificación antes de checar
+    # (item 6) y para que el usuario vea contra qué ubicaciones se valida.
+    sedes_mapa = [
+        {"n": s.nombre, "lat": float(s.lat), "lng": float(s.lng), "r": s.radio_m}
+        for s in services.sedes_activas()
+    ]
+
     return render(request, "checador/tablero.html", {
         "jornada": jornada,
         "accion": accion,
         "jornada_cerrada_hoy": jornada_cerrada_hoy,
         "filas_semana": filas,
         "balance": services.balance_mensual(request.user),
+        "balance_semana": services.balance_semana(request.user),
         "visitas_hoy": visitas_hoy,
         "hoy": hoy,
         "timer": services.timer_activo(request.user),
         "proyectos": _proyectos_para(request.user),
+        "geocerca_modo": services.modo_geocerca(),
+        "sedes_mapa": sedes_mapa,
     })
 
 

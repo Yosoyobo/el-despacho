@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apps.checador.models import HorarioLaboral
+from apps.checador.models import ConfiguracionGeocerca, HorarioLaboral, SedeLC
 from apps.checador.models.horario import DIAS_SEMANA
 from django import forms
 
@@ -97,3 +97,50 @@ class HorarioBulkForm(forms.Form):
                 )
                 n += 1
         return n
+
+
+# ───────────────────────── Sedes / POI de LC (V12) ─────────────────────────
+
+class SedeLCForm(forms.ModelForm):
+    """Alta/edición de una sede de LC. lat/lng se capturan con el mapa Leaflet
+    del template (o a mano); son opcionales: sin pin, la sede no participa en la
+    validación de geocerca pero queda en el directorio."""
+
+    class Meta:
+        model = SedeLC
+        fields = ["nombre", "direccion", "lat", "lng", "radio_m", "activa", "orden", "notas"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"placeholder": "Ej. Oficina 1"}),
+            "direccion": forms.Textarea(attrs={"rows": 2, "placeholder": "Calle, número, colonia, ciudad…"}),
+            # data-sede-* los cablea el mapa Leaflet (form_sede.html).
+            "lat": forms.NumberInput(attrs={"step": "any", "data-sede-lat": "1", "placeholder": "19.40"}),
+            "lng": forms.NumberInput(attrs={"step": "any", "data-sede-lng": "1", "placeholder": "-99.20"}),
+            "radio_m": forms.NumberInput(attrs={"min": 20, "max": 5000, "data-sede-radio": "1"}),
+            "orden": forms.NumberInput(attrs={"min": 0, "max": 999}),
+            "notas": forms.Textarea(attrs={"rows": 2}),
+        }
+        labels = {
+            "nombre": "Nombre de la sede",
+            "direccion": "Dirección",
+            "lat": "Latitud",
+            "lng": "Longitud",
+            "radio_m": "Radio de la geocerca (metros)",
+            "activa": "Activa (cuenta como ubicación válida)",
+            "orden": "Orden",
+            "notas": "Notas",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["direccion"].required = False
+        self.fields["lat"].required = False
+        self.fields["lng"].required = False
+        self.fields["notas"].required = False
+
+
+class ConfiguracionGeocercaForm(forms.ModelForm):
+    class Meta:
+        model = ConfiguracionGeocerca
+        fields = ["modo"]
+        widgets = {"modo": forms.RadioSelect}
+        labels = {"modo": "Modo de geocerca"}
