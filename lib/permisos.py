@@ -30,6 +30,11 @@ def roles_efectivos(user) -> set[str]:
     `puede_ver_finanzas`, etc.) los ignoraban — por eso "los roles no se
     aplicaban" al asignarlos. Defensivo: si el M2M no existe (modelo viejo
     o usuario sin guardar) devuelve solo el rol primario."""
+    # S-Roles-V2: "ver como rol" (debug/QA). Si el middleware marcó un rol
+    # simulado, el usuario se comporta COMO SI solo tuviera ese rol.
+    sim = getattr(user, "_rol_simulado", None)
+    if sim:
+        return {sim}
     roles: set[str] = set()
     primario = getattr(user, "rol", None)
     if primario:
@@ -73,6 +78,23 @@ def usuarios_con_rol(*nombres: str):
         Q(rol__in=nombres) | Q(roles_extra__nombre__in=nombres),
         is_active=True,
     ).distinct()
+
+
+def sincronizar_rol_primario(user) -> str:
+    """S-Roles-V2: tras unificar roles en UN solo selector (los roles asignados,
+    `roles_extra`), `Usuario.rol` se DERIVA de ese set — ya no se edita con un
+    dropdown aparte. super_admin si tiene ese rol; si no, miembro. Sincroniza
+    is_staff/is_superuser (failsafe + Django admin). Es el único punto que escribe
+    `Usuario.rol`. Devuelve el rol derivado."""
+    tiene_sa = False
+    with contextlib.suppress(Exception):
+        tiene_sa = user.roles_extra.filter(nombre="super_admin").exists()
+    nuevo = "super_admin" if tiene_sa else "miembro"
+    user.rol = nuevo
+    user.is_staff = tiene_sa
+    user.is_superuser = tiene_sa
+    user.save(update_fields=["rol", "is_staff", "is_superuser"])
+    return nuevo
 
 
 def es_admin(user) -> bool:
@@ -225,15 +247,16 @@ def puede_ser_runner(user) -> bool:
 
 
 def usuarios_runner():
-    """Usuarios activos elegibles como runner (permiso (runner, recibir)).
+    """Usuarios activos elegibles como runner — permiso (runner, recibir).
 
-    Si ninguno tiene el permiso configurado, cae a todos los activos para que
-    la auto-asignación nunca quede sin candidatos (la elegibilidad se curª
-    luego desde /directorio/<id>/permisos/)."""
+    S-Roles-V2 (Oscar): runner dejó de ser default; es OPT-IN vía el rol
+    "Runner". SIN fallback: si nadie es runner, devuelve lista vacía (el dropdown
+    de asignación queda sin gente y la auto-asignación no encuentra candidato,
+    que es el comportamiento correcto). La elegibilidad se cura asignando el rol
+    "Runner" desde /directorio/<id>/permisos/."""
     from cuentas.models.usuario import Usuario
-    activos = list(Usuario.objects.filter(is_active=True).order_by("nombre_completo"))
-    elegibles = [u for u in activos if puede_ser_runner(u)]
-    return elegibles or activos
+    activos = Usuario.objects.filter(is_active=True).order_by("nombre_completo")
+    return [u for u in activos if puede_ser_runner(u)]
 
 
 def puede_ver_equipo_checador(user) -> bool:
@@ -322,6 +345,16 @@ def puede(usuario, modulo: str, permiso: str) -> bool:
         return False
     if not getattr(usuario, "is_active", True):
         return False
+    # S-Roles-V2: "ver como rol" — evalúa SOLO contra los permisos del rol
+    # simulado (Rol.permisos JSON), ignorando el super_admin/permisos reales.
+    sim = getattr(usuario, "_rol_simulado", None)
+    if sim:
+        try:
+            from cuentas.models.rol import Rol
+            rol = Rol.objects.filter(nombre=sim).first()
+            return bool(rol and permiso in (rol.permisos.get(modulo) or []))
+        except Exception:
+            return False
     try:
         from cuentas.models.permiso_usuario import PermisoUsuario
         # Override individual (activo=False) revoca incluso permisos por rol extra.

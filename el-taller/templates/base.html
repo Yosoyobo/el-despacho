@@ -44,6 +44,15 @@
     </form>
 </div>
 {% endif %}
+{% if request.rol_simulado %}
+<div class="sticky top-0 z-[60] flex flex-wrap items-center justify-center gap-3 bg-brand-600 px-4 py-2 text-center text-sm font-medium text-white">
+    <span>👁 Viendo el sistema como el rol <strong>{{ request.rol_simulado }}</strong> (debug/QA).</span>
+    <form method="post" action="{% url 'ver-como-rol-salir' %}" class="inline" data-sin-indicador="1">
+        {% csrf_token %}
+        <button type="submit" class="rounded-md bg-white/20 px-2.5 py-1 text-xs font-semibold hover:bg-white/30">Volver a super admin</button>
+    </form>
+</div>
+{% endif %}
 {% if request.user.is_authenticated %}
 <div class="flex min-h-screen">
     {% include "_componentes_tailadmin/sidebar.html" %}

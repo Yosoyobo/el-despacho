@@ -1,6 +1,6 @@
 from django import forms
 
-from cuentas.models.usuario import ROLES, Usuario
+from cuentas.models.usuario import Usuario
 
 
 class UsuarioForm(forms.ModelForm):
@@ -10,14 +10,18 @@ class UsuarioForm(forms.ModelForm):
         min_length=10,
         help_text="Vacío = no cambia. Para alta nueva, obligatorio.",
     )
-    rol = forms.ChoiceField(choices=ROLES)
+    # S-Roles-V2 (Oscar): el dropdown de "rol primario" se eliminó. Los roles se
+    # asignan en UN solo lugar — los checkboxes de Roles (pestaña Permisos). El
+    # rol primario (`Usuario.rol`) se DERIVA de esos roles en
+    # `lib.permisos.sincronizar_rol_primario` (super_admin si tiene ese rol, si no
+    # miembro). Aquí solo se editan datos de la ficha.
 
     class Meta:
         model = Usuario
         # S-Directorio-V1: la ficha (puesto/teléfono/oficina/modalidad/horario)
         # se edita aquí en La Gerencia; el Taller solo la muestra read-only.
         fields = [
-            "email", "nombre_completo", "rol", "is_active",
+            "email", "nombre_completo", "is_active",
             "puesto", "telefono", "oficina", "modalidad",
             "horario_inicio", "horario_fin", "dias_trabajo",
             # S-LC-Feedback-V7: jefe directo + dirección/pin/geocerca.
@@ -50,15 +54,6 @@ class UsuarioForm(forms.ModelForm):
         self.fields["jefe_directo"].empty_label = "— Sin jefe directo —"
         for f in ("direccion", "geo_lat", "geo_lng", "geocerca_radio_m", "geocerca_activa"):
             self.fields[f].required = False
-        # V6 Bloque 10 (decisión Oscar): solo super_admin y miembro son
-        # asignables — todo lo demás se modela con roles personalizados (tabla
-        # Rol) + permisos granulares. Si el usuario editado conserva un rol
-        # legacy, se ofrece para no forzar el cambio en una edición ajena.
-        asignables = [("super_admin", "Super Admin"), ("miembro", "Miembro")]
-        actual = getattr(self.instance, "rol", None)
-        if self.instance.pk and actual and actual not in {r[0] for r in asignables}:
-            asignables.append((actual, dict(ROLES).get(actual, actual)))
-        self.fields["rol"].choices = asignables
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()
@@ -83,9 +78,12 @@ class UsuarioForm(forms.ModelForm):
         elif not u.pk:
             # alta nueva sin password: marca cuenta inutilizable hasta SSO o reset
             u.set_unusable_password()
-        # El rol super_admin gobierna los flags de Django. Hay que SET y CLEAR:
-        # si no se limpian al degradar, el usuario conserva poderes de
-        # superusuario aunque su rol ya no sea super_admin (bug del checkmark).
+        # S-Roles-V2: alta nueva arranca como "miembro" (neutro, sin permisos);
+        # los roles se asignan después en la pestaña Permisos, y eso DERIVA el rol
+        # vía sincronizar_rol_primario. En edición no se toca `rol` aquí (lo
+        # gobiernan los roles). is_staff/is_superuser siguen el rol vigente.
+        if not u.pk:
+            u.rol = "miembro"
         es_super = u.rol == "super_admin"
         u.is_staff = es_super
         u.is_superuser = es_super

@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 
 from cuentas.models.usuario import Usuario
 
-from .middleware import SESSION_KEY
+from .middleware import ROL_SIM_KEY, SESSION_KEY
 
 
 def _emitir(tipo, actor, payload):
@@ -44,6 +44,39 @@ def impersonar(request, pk):
     _emitir("sesion.impersonacion_iniciada", request.user,
             {"objetivo_id": objetivo.pk, "objetivo_email": objetivo.email})
     messages.info(request, f"Ahora ves el sistema como {objetivo.nombre_completo}.")
+    return redirect("/")
+
+
+@login_required
+@require_POST
+def ver_como_rol(request):
+    """S-Roles-V2: super_admin simula un ROL (debug/QA). Distinto de impersonar
+    un usuario — aquí sigue siendo él mismo, pero los permisos se evalúan como si
+    solo tuviera ese rol. La salida (`salir_ver_como_rol`) no se gatea."""
+    from lib.permisos import tiene_rol
+    if not tiene_rol(request.user, "super_admin"):
+        messages.error(request, "Solo un super admin puede ver como un rol.")
+        return redirect("/")
+    from cuentas.models.rol import Rol
+    nombre = (request.POST.get("rol") or "").strip()
+    if nombre == "super_admin" or not Rol.objects.filter(nombre=nombre).exists():
+        messages.error(request, "Rol inválido para simular.")
+        return redirect("/")
+    request.session[ROL_SIM_KEY] = nombre
+    _emitir("sesion.ver_como_rol_iniciado", request.user, {"rol": nombre})
+    messages.info(request, f"Ahora ves el sistema como el rol «{nombre}». Sal cuando termines.")
+    return redirect("/")
+
+
+@login_required
+@require_POST
+def salir_ver_como_rol(request):
+    # request.user es el super_admin real (marcado con _rol_simulado por el
+    # middleware). Esta vista NO se gatea por permiso → siempre puede volver.
+    rol = request.session.pop(ROL_SIM_KEY, None)
+    if rol:
+        _emitir("sesion.ver_como_rol_terminado", request.user, {"rol": rol})
+    messages.success(request, "Volviste a tu vista de super admin.")
     return redirect("/")
 
 

@@ -8,6 +8,9 @@ urlpatterns = [
     # S-LC-Feedback-V8: impersonación de super_admin.
     path("impersonar/<int:pk>", views_impersonar.impersonar, name="impersonar"),
     path("impersonar/salir", views_impersonar.salir_impersonacion, name="impersonar-salir"),
+    # S-Roles-V2: "ver como rol" (debug/QA) — simula un rol, no un usuario.
+    path("ver-como-rol", views_impersonar.ver_como_rol, name="ver-como-rol"),
+    path("ver-como-rol/salir", views_impersonar.salir_ver_como_rol, name="ver-como-rol-salir"),
     # S-LC-Feedback-V8: avatar del usuario (subida a Drive + proxy autenticado).
     path("perfil/avatar/", views_avatar.avatar_modal, name="perfil-avatar"),
     path("perfil/avatar-img/<str:file_id>", views_avatar.avatar_img, name="perfil-avatar-img"),

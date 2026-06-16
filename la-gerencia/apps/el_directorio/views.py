@@ -476,6 +476,9 @@ def panel_permisos(request, pk: int):
                               "modificado_por": request.user},
                 )
         u.roles_extra.set(Rol.objects.filter(pk__in=request.POST.getlist("roles_extra")))
+        # S-Roles-V2: el rol primario se DERIVA de los roles asignados.
+        from lib.permisos import sincronizar_rol_primario
+        sincronizar_rol_primario(u)
         with contextlib.suppress(Exception):
             emitir(EventoPortavoz(
                 tipo="permisos.actualizado",
@@ -503,6 +506,8 @@ def asignar_roles_extra(request, pk: int):
     if request.method == "POST":
         ids = request.POST.getlist("roles_extra")
         u.roles_extra.set(Rol.objects.filter(pk__in=ids))
+        from lib.permisos import sincronizar_rol_primario
+        sincronizar_rol_primario(u)
         emitir(EventoPortavoz(
             tipo="usuario.roles_extra_actualizados", actor_id=request.user.pk, actor_email=request.user.email,
             payload={"usuario_id": u.pk, "roles_ids": list(ids)},

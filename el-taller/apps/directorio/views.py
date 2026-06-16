@@ -96,6 +96,17 @@ def perfil(request, pk: int):
         except Exception:  # noqa: BLE001 — el Checador nunca tumba la ficha
             resumen_checador = None
 
+    # S-Roles-V2: toggle "ver como rol" (debug/QA) en el PROPIO perfil del
+    # super_admin. Lista los roles a simular (todos menos super_admin, que es
+    # simular "ser uno mismo").
+    puede_ver_como_rol = tiene_rol(request.user, "super_admin") and es_self
+    roles_simulables = []
+    if puede_ver_como_rol:
+        from cuentas.models.rol import Rol
+        roles_simulables = list(
+            Rol.objects.exclude(nombre="super_admin").order_by("sistema", "nombre")
+        )
+
     roles = roles_display(empleado)
     subordinados = list(empleado.subordinados.filter(is_active=True).order_by("nombre_completo"))
 
@@ -121,6 +132,8 @@ def perfil(request, pk: int):
         "horario_semana": horario_semana,
         "puede_editar_ficha": puede_editar_ficha,
         "puede_ver_como": puede_ver_como,
+        "puede_ver_como_rol": puede_ver_como_rol,
+        "roles_simulables": roles_simulables,
         "osm_src": osm_src,
         "es_self": es_self,
     })

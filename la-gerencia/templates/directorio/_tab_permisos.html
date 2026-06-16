@@ -3,7 +3,22 @@
 {% if guardado %}<div class="mb-3 rounded-lg bg-success-50 px-3 py-2 text-sm text-success-700 dark:bg-success-500/10 dark:text-success-300">✓ Guardado.</div>{% endif %}
 <form hx-post="{% url 'directorio-panel-permisos' usuario.pk %}" hx-target="#dir-tab-content" hx-swap="innerHTML" class="space-y-5">
     {% csrf_token %}
-    <p class="text-xs text-gray-500 dark:text-gray-400">Permisos base del rol <strong>{{ usuario.get_rol_display }}</strong>. Desmarca para revocar a este usuario; marca para conceder.</p>
+    <section class="rounded-xl border border-brand-200 bg-brand-50/50 p-4 dark:border-brand-500/30 dark:bg-brand-500/5">
+        <h3 class="mb-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Roles</h3>
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Asigna uno o varios roles. <strong>Super Admin</strong> da acceso total; sin roles, la persona es un <strong>miembro</strong> sin permisos. Los roles creados aparecen aquí.</p>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {% for rol in roles_disponibles %}
+            <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" name="roles_extra" value="{{ rol.pk }}" {% if rol.pk in roles_actuales_ids %}checked{% endif %}
+                       class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                <span>{{ rol.nombre }}{% if rol.sistema %} <span class="text-[10px] uppercase text-gray-400">sistema</span>{% endif %}{% if rol.descripcion %}<span class="block text-xs text-gray-400 dark:text-gray-500">{{ rol.descripcion }}</span>{% endif %}</span>
+            </label>
+            {% empty %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">No hay roles. Créalos en Directorio → Roles.</p>
+            {% endfor %}
+        </div>
+    </section>
+    <p class="text-xs text-gray-500 dark:text-gray-400">Permisos individuales (afinan lo que dan los roles). Desmarca para revocar a esta persona; marca para conceder.</p>
     {% for modulo, filas in secciones %}
     <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <h3 class="mb-2 text-sm font-semibold capitalize text-gray-800 dark:text-gray-100">{{ modulo }}</h3>
@@ -20,21 +35,6 @@
     {% empty %}
     <p class="text-sm text-gray-500 dark:text-gray-400">Este rol no tiene permisos base configurables.</p>
     {% endfor %}
-
-    <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-        <h3 class="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-100">Roles extra</h3>
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {% for rol in roles_disponibles %}
-            <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" name="roles_extra" value="{{ rol.pk }}" {% if rol.pk in roles_actuales_ids %}checked{% endif %}
-                       class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
-                <span>{{ rol.nombre }}{% if rol.sistema %} <span class="text-[10px] uppercase text-gray-400">sistema</span>{% endif %}{% if rol.descripcion %}<span class="block text-xs text-gray-400 dark:text-gray-500">{{ rol.descripcion }}</span>{% endif %}</span>
-            </label>
-            {% empty %}
-            <p class="text-sm text-gray-500 dark:text-gray-400">No hay roles personalizados.</p>
-            {% endfor %}
-        </div>
-    </section>
 
     <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
         <button type="button" data-modal-slot-close class="btn-secundario">Cerrar</button>

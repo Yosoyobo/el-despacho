@@ -5,6 +5,28 @@
 
 ---
 
+## Novedades — Roles unificados, "Ver como rol" y repartidores opt-in (16 de junio de 2026)
+
+- **Un solo lugar para los roles.** Se quitó el menú de "rol primario" de la
+  ficha del usuario. Ahora los roles se asignan en *Gerencia → Directorio →
+  (persona) → Permisos*, marcando las casillas de **Roles**. Una persona puede
+  tener varios roles; **Super Admin** da acceso total y, sin ningún rol, queda
+  como **miembro** (sin permisos). Los roles que crees aparecen automáticamente
+  en esas casillas. Nadie pierde acceso con el cambio: el rol que cada quien
+  tenía se conserva.
+- **Repartidores (runners) por rol.** Ser "runner" (recibir entregas/
+  recolecciones) dejó de estar activo para todos. Ahora es **opt-in**: asígnale
+  a la persona el rol **Runner** en sus Permisos. En el formulario de una entrega/
+  recoger, el menú "elige un runner" solo lista a quienes tengan ese rol; si nadie
+  lo tiene, queda vacío (el sistema no asigna a cualquiera).
+- **"Ver como rol" (para el Super Admin).** En tu propia ficha del Equipo, el
+  super admin tiene un botón **👁 Ver como rol**: elige un rol y verás el sistema
+  con los permisos de ese rol, para probar/depurar. Aparece una barra azul arriba;
+  pica **"Volver a super admin"** para salir. Es solo para pruebas — no cambia
+  nada de la cuenta.
+
+---
+
 ## Novedades — Pantalla "Sin conexión", runners filtrados y detalle de Chalanes (16 de junio de 2026)
 
 - **Pantalla "Sin conexión".** Si abres El Despacho desde el celular (instalado

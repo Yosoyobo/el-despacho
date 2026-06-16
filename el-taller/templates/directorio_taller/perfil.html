@@ -47,6 +47,17 @@
                 </button>
             </form>
             {% endif %}
+            {% if puede_ver_como_rol %}
+            <form method="post" action="{% url 'ver-como-rol' %}" data-sin-indicador="1" class="inline-flex items-center gap-1">
+                {% csrf_token %}
+                <select name="rol" class="rounded-lg border border-brand-300 bg-brand-50 px-2 py-2 text-xs font-medium text-brand-800 focus:ring-brand-500/30 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300">
+                    {% for r in roles_simulables %}<option value="{{ r.nombre }}">{{ r.nombre }}</option>{% empty %}<option value="" disabled>No hay roles</option>{% endfor %}
+                </select>
+                <button type="submit" class="inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-800 hover:bg-brand-100 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300" title="Ver el sistema como tendría ese rol (debug/QA)">
+                    👁 Ver como rol
+                </button>
+            </form>
+            {% endif %}
         </div>
     </div>
 </section>

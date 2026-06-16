@@ -44,15 +44,26 @@ def test_usuarios_con_rol_excluye_inactivos(usuario_factory):
     assert u.pk not in set(usuarios_con_rol("dueno").values_list("pk", flat=True))
 
 
-def test_form_directorio_solo_ofrece_super_admin_y_miembro(usuario_factory):
+def test_form_directorio_sin_dropdown_de_rol():
+    # S-Roles-V2: el dropdown de "rol primario" se eliminó. Los roles se asignan
+    # en UN solo lugar (los checkboxes de Roles del panel de permisos).
     from apps.el_directorio.forms import UsuarioForm
-    form = UsuarioForm()
-    valores = {c[0] for c in form.fields["rol"].choices}
-    assert valores == {"super_admin", "miembro"}
-    # Editar a un usuario legacy conserva su rol como opción (no lo fuerza).
-    legacy = usuario_factory(rol="contador")
-    form2 = UsuarioForm(instance=legacy)
-    assert "contador" in {c[0] for c in form2.fields["rol"].choices}
+    assert "rol" not in UsuarioForm().fields
+
+
+def test_sincronizar_rol_primario_deriva_de_roles(usuario_factory):
+    # Asignar el rol super_admin deriva Usuario.rol; quitarlo lo baja a miembro.
+    from cuentas.models.rol import Rol
+    from lib.permisos import sincronizar_rol_primario
+    u = usuario_factory(rol="miembro")
+    u.roles_extra.add(Rol.objects.get(nombre="super_admin"))
+    assert sincronizar_rol_primario(u) == "super_admin"
+    u.refresh_from_db()
+    assert u.rol == "super_admin" and u.is_superuser is True
+    u.roles_extra.clear()
+    assert sincronizar_rol_primario(u) == "miembro"
+    u.refresh_from_db()
+    assert u.rol == "miembro" and u.is_superuser is False
 
 
 def test_rol_miembro_sin_defaults_de_permisos(usuario_factory):

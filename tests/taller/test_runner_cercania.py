@@ -30,6 +30,14 @@ def _visita(usuario, lat, lng, *, cliente=None):
     )
 
 
+def _hacer_runner(*usuarios):
+    """S-Roles-V2: runner es opt-in vía el rol "Runner" (sembrado en cuentas/0033)."""
+    from cuentas.models.rol import Rol
+    r = Rol.objects.get(nombre="Runner")
+    for u in usuarios:
+        u.roles_extra.add(r)
+
+
 def test_ubicacion_actual_de_usa_ultima_visita(usuario_factory):
     from apps.el_pizarron import runners
     u = usuario_factory(rol="disenador", email="pos@lc.mx")
@@ -65,6 +73,7 @@ def test_auto_asigna_mas_cercano(proyecto_factory, usuario_factory):
     p = proyecto_factory(estado="en_proceso_diseno")
     lejos = usuario_factory(rol="disenador", email="lejos@lc.mx")
     cerca = usuario_factory(rol="disenador", email="cerca@lc.mx")
+    _hacer_runner(lejos, cerca)
     _visita(lejos, 19.50, -99.30)   # ~16 km del destino
     _visita(cerca, 19.405, -99.165)  # ~ pocos cientos de metros
     t = _tarea(p, destino_lat=19.40, destino_lng=-99.16)
@@ -80,7 +89,8 @@ def test_auto_cae_a_menos_cargado_sin_posiciones(proyecto_factory, usuario_facto
     from apps.el_pizarron import runners
     p = proyecto_factory(estado="en_proceso_diseno")
     a = usuario_factory(rol="disenador", email="na@lc.mx")
-    usuario_factory(rol="disenador", email="nb@lc.mx")  # otro candidato con 0 carga
+    b = usuario_factory(rol="disenador", email="nb@lc.mx")  # otro candidato con 0 carga
+    _hacer_runner(a, b)
     _tarea(p, runner=a)  # a ya carga 1
     t = _tarea(p, destino_lat=19.40, destino_lng=-99.16)
     elegido = runners.asignar_runner_auto(t)

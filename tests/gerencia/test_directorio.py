@@ -44,49 +44,50 @@ def test_admin_crea_usuario(client, usuario_factory):
     assert u.is_active is True
 
 
-def test_admin_edita_rol(client, usuario_factory):
+def _rol_pk(nombre):
+    from cuentas.models.rol import Rol
+    return Rol.objects.get(nombre=nombre).pk
+
+
+def test_editar_datos_no_toca_rol(client, usuario_factory):
+    # S-Roles-V2: el form de Datos ya no edita el rol (se deriva de los roles).
     target = usuario_factory(rol="disenador", email="t@x.com")
     client.force_login(usuario_factory(rol="dueno"))
     resp = client.post(f"/directorio/{target.pk}/editar", {
-        "email": "t@x.com",
-        "nombre_completo": "Editado",
-        "rol": "miembro",
-        "is_active": "on",
-        "password": "",
+        "email": "t@x.com", "nombre_completo": "Editado", "is_active": "on", "password": "",
     })
     assert resp.status_code == 302
     target.refresh_from_db()
-    assert target.rol == "miembro"
     assert target.nombre_completo == "Editado"
+    assert target.rol == "disenador"  # intacto
 
 
-def test_promover_a_super_admin_activa_flags(client, usuario_factory):
+def test_promover_a_super_admin_via_roles(client, usuario_factory):
+    # S-Roles-V2: promover = asignar el rol super_admin en el panel de permisos.
     target = usuario_factory(rol="contador", email="t@x.com")
     assert target.is_superuser is False
     client.force_login(usuario_factory(rol="super_admin"))
-    resp = client.post(f"/directorio/{target.pk}/editar", {
-        "email": "t@x.com", "nombre_completo": "T", "rol": "super_admin",
-        "is_active": "on", "password": "",
+    resp = client.post(f"/directorio/{target.pk}/panel/permisos", {
+        "roles_extra": [_rol_pk("super_admin")],
     })
-    assert resp.status_code == 302
+    assert resp.status_code == 200
     target.refresh_from_db()
     assert target.rol == "super_admin"
     assert target.is_superuser is True
     assert target.is_staff is True
 
 
-def test_degradar_de_super_admin_limpia_flags(client, usuario_factory):
-    # Bug del checkmark: degradar dejaba is_superuser/is_staff pegados en True.
+def test_degradar_de_super_admin_via_roles(client, usuario_factory):
+    # Quitar el rol super_admin → se deriva miembro y se limpian los flags.
     target = usuario_factory(rol="super_admin", email="t@x.com")
     target.is_staff = True
     target.is_superuser = True
     target.save(update_fields=["is_staff", "is_superuser"])
     client.force_login(usuario_factory(rol="super_admin", email="admin@x.com"))
-    resp = client.post(f"/directorio/{target.pk}/editar", {
-        "email": "t@x.com", "nombre_completo": "T", "rol": "miembro",
-        "is_active": "on", "password": "",
+    resp = client.post(f"/directorio/{target.pk}/panel/permisos", {
+        "roles_extra": [],  # sin roles → miembro
     })
-    assert resp.status_code == 302
+    assert resp.status_code == 200
     target.refresh_from_db()
     assert target.rol == "miembro"
     assert target.is_superuser is False
