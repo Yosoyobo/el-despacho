@@ -126,11 +126,13 @@
         const arr = [];
         const impProv = card.querySelector('.imp-proveedor');
         const impCosto = card.querySelector('.imp-costo');
-        if (impProv && impProv.value) arr.push({ tipo: 'impresion', proveedor_id: parseInt(impProv.value, 10), costo: num(impCosto && impCosto.value) });
+        const impPP = card.querySelector('.imp-por-pieza');
+        if (impProv && impProv.value) arr.push({ tipo: 'impresion', proveedor_id: parseInt(impProv.value, 10), costo: num(impCosto && impCosto.value), por_pieza: !!(impPP && impPP.checked) });
         card.querySelectorAll('.proceso-fila').forEach(fila => {
             const d = (fila.querySelector('.proc-desc') || {}).value || '';
             const c = num((fila.querySelector('.proc-costo') || {}).value);
-            if (d.trim() || c) arr.push({ tipo: 'operativo', descripcion: d.trim(), costo: c });
+            const pp = fila.querySelector('.proc-por-pieza');
+            if (d.trim() || c) arr.push({ tipo: 'operativo', descripcion: d.trim(), costo: c, por_pieza: !!(pp && pp.checked) });
         });
         hidden.value = JSON.stringify(arr);
     }
@@ -140,10 +142,11 @@
     function agregarProceso(card) {
         const lista = card.querySelector('.proceso-lista');
         const fila = document.createElement('div');
-        fila.className = 'proceso-fila grid grid-cols-[auto_1fr_120px_auto] items-center gap-2';
+        fila.className = 'proceso-fila grid grid-cols-[auto_1fr_120px_auto_auto] items-center gap-2';
         fila.innerHTML = '<span class="proceso-num text-xs font-medium text-gray-400"></span>' +
             '<input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento, viáticos, embalaje">' +
             '<input type="number" step="0.01" min="0" class="proc-costo w-full" placeholder="0.00">' +
+            '<label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma)."><input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">por pieza</label>' +
             '<button type="button" class="proceso-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>';
         lista.appendChild(fila);
         renumerar(card);
@@ -165,7 +168,7 @@
         if (t.matches && t.matches('select[name$="-servicio"]')) { prellenarServicio(t); }
         else if (card && t.matches && t.matches('[data-cat-filtro]')) { aplicarCatFiltro(card); }
         else if (card && t.matches && t.matches('input[name$="-incluir_en_calculo"], input[name$="-cantidad"], input[name$="-precio_unitario"]')) { recalcular(card); }
-        if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .proc-desc, .proc-costo')) { serializar(card); }
+        if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .imp-por-pieza, .proc-desc, .proc-costo, .proc-por-pieza')) { serializar(card); }
         // Sync del estado oculto cuando se cambia desde la barra de status.
         const chip = t.closest && t.closest('[data-estado-slug]');
         if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }

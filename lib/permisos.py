@@ -209,6 +209,23 @@ def puede_checar(user) -> bool:
     return puede(user, "checador", "checar")
 
 
+def puede_ser_runner(user) -> bool:
+    """S-LC-Proyecto-V2: elegible para recibir entregas/recolecciones (runner)."""
+    return puede(user, "runner", "recibir")
+
+
+def usuarios_runner():
+    """Usuarios activos elegibles como runner (permiso (runner, recibir)).
+
+    Si ninguno tiene el permiso configurado, cae a todos los activos para que
+    la auto-asignación nunca quede sin candidatos (la elegibilidad se curª
+    luego desde /directorio/<id>/permisos/)."""
+    from cuentas.models.usuario import Usuario
+    activos = list(Usuario.objects.filter(is_active=True).order_by("nombre_completo"))
+    elegibles = [u for u in activos if puede_ser_runner(u)]
+    return elegibles or activos
+
+
 def puede_ver_equipo_checador(user) -> bool:
     return puede(user, "checador", "ver_equipo")
 

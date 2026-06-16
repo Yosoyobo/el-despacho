@@ -133,9 +133,15 @@ class ProyectoProducto(models.Model):
 
     @property
     def costo_procesos(self) -> Decimal:
-        """Suma FIJA de los procesos de esta línea (impresión + operativos).
-        No se multiplica por cantidad. Usa los procesos precargados si los hay."""
-        return sum((Decimal(str(p.costo or 0)) for p in self.procesos.all()), CERO)
+        """Suma de los procesos de esta línea (impresión + operativos). Cada
+        proceso es fijo o por pieza (× cantidad + merma) según `por_pieza`.
+        Usa los procesos precargados si los hay."""
+        piezas = self.cantidad + self.merma
+        total = CERO
+        for p in self.procesos.all():
+            c = Decimal(str(p.costo or 0))
+            total += (c * piezas) if p.por_pieza else c
+        return total
 
     @property
     def costo_total_con_procesos(self) -> Decimal:

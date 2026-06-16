@@ -4,9 +4,13 @@ S-LC-Proyecto-Render-V1. El front serializa los procesos de cada tarjeta de
 producto en un campo oculto `procesos_json`. Tras guardar el formset, la
 vista llama a `sincronizar_procesos(producto, json_str)` por cada línea.
 
-Estrategia simple e idempotente: se borran los procesos actuales del producto
-y se recrean desde el JSON validado (son pocos por producto). Se ignoran
-filas sin costo y sin contenido. Defensivo: JSON inválido ⇒ no toca nada.
+Estrategia (S-LC-Proyecto-V2): reconciliación en sitio preservando el FK
+`egreso`. Antes se borraban y recreaban TODOS los procesos en cada autosave,
+lo que perdía el vínculo con el egreso ya registrado — un gasto registrado
+"reaparecía" como pendiente y se podía duplicar. Ahora los procesos existentes
+se emparejan por tipo + orden de aparición y se ACTUALIZAN en sitio (sin tocar
+su columna `egreso`); solo se crean/borran los sobrantes. Defensivo: JSON
+inválido ⇒ no toca nada.
 """
 
 from __future__ import annotations
@@ -49,8 +53,8 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
         Proveedor.objects.filter(activo=True).values_list("pk", flat=True)
     )
 
-    nuevos = []
-    orden = 0
+    # 1) Normaliza el JSON a la lista de procesos deseados.
+    deseados = []
     for fila in data:
         if not isinstance(fila, dict):
             continue
@@ -60,6 +64,7 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
         costo = _to_decimal(fila.get("costo"))
         proveedor_id = fila.get("proveedor_id")
         descripcion = (fila.get("descripcion") or "").strip()[:200]
+        por_pieza = bool(fila.get("por_pieza"))
         if tipo == "impresion":
             if proveedor_id not in ids_validos:
                 proveedor_id = None
@@ -72,16 +77,41 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
             # Operativo sin descripción ni costo: nada que guardar.
             if not descripcion and costo == 0:
                 continue
-        nuevos.append(ProyectoProductoProceso(
-            producto=producto,
-            tipo=tipo,
-            orden=orden,
-            proveedor_id=proveedor_id,
-            descripcion=descripcion,
-            costo=costo,
-        ))
-        orden += 1
+        deseados.append({
+            "tipo": tipo, "proveedor_id": proveedor_id,
+            "descripcion": descripcion, "costo": costo, "por_pieza": por_pieza,
+        })
 
-    producto.procesos.all().delete()
-    if nuevos:
-        ProyectoProductoProceso.objects.bulk_create(nuevos)
+    # 2) Reconcilia contra los existentes (emparejados por tipo + orden de
+    #    aparición), actualizando en sitio para PRESERVAR el FK `egreso`.
+    existentes = list(producto.procesos.all().order_by("orden", "creado_en"))
+    cola = {"impresion": [], "operativo": []}
+    for p in existentes:
+        cola.get(p.tipo, cola["operativo"]).append(p)
+    idx = {"impresion": 0, "operativo": 0}
+    conservados = set()
+    for orden, d in enumerate(deseados):
+        tipo = d["tipo"]
+        pendientes = cola[tipo]
+        i = idx[tipo]
+        if i < len(pendientes):
+            p = pendientes[i]
+            p.orden = orden
+            p.proveedor_id = d["proveedor_id"]
+            p.descripcion = d["descripcion"]
+            p.costo = d["costo"]
+            p.por_pieza = d["por_pieza"]
+            p.save(update_fields=["orden", "proveedor_id", "descripcion", "costo", "por_pieza"])
+            conservados.add(p.pk)
+            idx[tipo] = i + 1
+        else:
+            ProyectoProductoProceso.objects.create(
+                producto=producto, tipo=tipo, orden=orden,
+                proveedor_id=d["proveedor_id"], descripcion=d["descripcion"],
+                costo=d["costo"], por_pieza=d["por_pieza"],
+            )
+
+    # 3) Borra los existentes que ya no aparecen en el JSON.
+    for p in existentes:
+        if p.pk not in conservados:
+            p.delete()

@@ -343,13 +343,26 @@ def crear_tarea(accion, usuario, contexto=None):
     prioridad = (accion.payload.get("prioridad") or "media").lower()
     if prioridad not in {"baja", "media", "alta"}:
         prioridad = "media"
+    tipo = (accion.payload.get("tipo") or "tarea").lower()
+    if tipo not in {"tarea", "entrega", "junta", "recoger"}:
+        tipo = "tarea"
     from apps.el_pizarron.models import Tarea
     t = Tarea.objects.create(
         proyecto=proyecto, titulo=titulo[:200], asignada_a=asignada_a,
-        fecha_compromiso=fecha, prioridad=prioridad, creado_por=usuario,
+        fecha_compromiso=fecha, prioridad=prioridad, tipo=tipo, creado_por=usuario,
     )
     accion.entidad_tipo = "tarea"
     accion.entidad_id = t.pk
+
+    # S-LC-Proyecto-V2: si es entrega/recoger, resuelve el runner (manual por
+    # `runner_slug`, o auto "el menos cargado" si `runner_auto`/sin slug).
+    from apps.el_pizarron import runners
+    if runners.requiere_runner(t):
+        runner_slug = (accion.payload.get("runner_slug") or "").strip()
+        if runner_slug:
+            runners.asignar_runner(t, _resolver_usuario(runner_slug, contexto), actor=usuario)
+        else:
+            runners.asignar_runner_auto(t, actor=usuario)
 
     # Dispara push automático (S2b.4) si hay asignado.
     if asignada_a:
@@ -378,6 +391,31 @@ def actualizar_tarea(accion, usuario, contexto=None):
     if not aplicado:
         raise ValueError("Sin campos válidos para actualizar.")
     tarea.save(update_fields=aplicado)
+    accion.entidad_tipo = "tarea"
+    accion.entidad_id = tarea.pk
+
+
+@registrar("asignar_runner")
+def asignar_runner_ejec(accion, usuario, contexto=None):
+    """S-LC-Proyecto-V2: asigna un runner (repartidor) a una tarea de entrega/
+    recolección. `runner_slug` lo fija manualmente; sin él (o con `auto`) lo
+    designa el sistema (el menos cargado)."""
+    from apps.el_pizarron import runners
+    from apps.el_pizarron.models import Tarea
+    tarea_id = accion.payload.get("tarea_id")
+    if not tarea_id:
+        raise ValueError("Falta `tarea_id`.")
+    tarea = Tarea.objects.filter(pk=tarea_id).select_related("proyecto", "proyecto__cliente").first()
+    if not tarea:
+        raise ValueError(f"Tarea {tarea_id} no encontrada.")
+    if not runners.requiere_runner(tarea):
+        raise ValueError("Solo las tareas de tipo entrega/recoger llevan runner.")
+    runner_slug = (accion.payload.get("runner_slug") or "").strip()
+    if runner_slug:
+        runners.asignar_runner(tarea, _resolver_usuario(runner_slug, contexto), actor=usuario)
+    else:
+        if runners.asignar_runner_auto(tarea, actor=usuario) is None:
+            raise ValueError("No hay runners disponibles para asignar.")
     accion.entidad_tipo = "tarea"
     accion.entidad_id = tarea.pk
 

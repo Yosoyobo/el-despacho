@@ -5,6 +5,40 @@
 
 ---
 
+## Novedades — Costos de impresión por pieza, runner para entregas y registrar gastos más completo (16 de junio de 2026)
+
+- **La impresión (y otros procesos) ahora puede ser "por pieza".** En la tarjeta
+  de un producto del proyecto, junto al costo de **Impresión** y de cada
+  **proceso/gasto** hay una casilla **"por pieza"**. Si la marcas, ese costo se
+  multiplica por las piezas que vas a producir (**cantidad + merma**); si la
+  dejas sin marcar, es un costo **fijo** (una sola vez, como viáticos o renta de
+  equipo). Ejemplo: playera con costo 145 + impresión 47.75 "por pieza", 35 + 10
+  de merma = 45 piezas → costo de producción **8,673.75**. La impresión que ya
+  tenías quedó marcada "por pieza" automáticamente.
+- **El costo de producción, la utilidad y la deuda a proveedores ahora cuadran
+  con las piezas de merma.** En el recuadro económico del proyecto, el desglose
+  muestra el **precio unitario** de cada producto (ya no el multiplicado), y la
+  caja de **Proveedores** muestra el **total que se le debe** a cada uno (con
+  IVA), no el precio unitario.
+- **Quita productos desde el resumen.** En el recuadro económico, cada producto
+  tiene una **✕** para quitarlo al instante; el resumen y las tarjetas quedan
+  siempre sincronizados (se acabaron los productos repetidos que no se podían
+  borrar).
+- **Registrar un gasto pide el proveedor.** Al tocar **"Registrar"** en la
+  alerta de "gastos sin registrar en Tesorería", el modal ahora incluye
+  **Proveedor** (con opción **"+ Nuevo proveedor"** sin salir de la ventana),
+  además de centro de costo, método de pago y quién pagó/solicitó. La etiqueta
+  del gasto muestra las **piezas a producir** (ej. *"45 pz (35 + 10 merma)"*).
+- **El Runner: delega entregas y recolecciones.** Cuando creas una tarea de tipo
+  **Entrega** o **Recoger** (en *Nueva tarea* o desde el proyecto), puedes elegir
+  un **runner** (quien lleva o recoge). Marca **"Que el sistema asigne al runner
+  más libre"** y el sistema (o **El Chalán**) elige automáticamente al repartidor
+  con menos entregas pendientes; o elígelo tú a mano. La entrega le aparece al
+  runner en **sus pendientes** (Tareas y "Mis tareas"). Quién puede ser runner se
+  controla en *Directorio → permisos* (todos pueden por defecto).
+  - **Con El Chalán:** *"crea una entrega de #LC-0009 para el viernes y asigna al
+    runner más libre"* o *"asigna la entrega de la tarea 87 a @beto"*.
+
 ## Novedades — Registrar visitas a POI, detalles del Checador y sede esperada (15 de junio de 2026)
 
 - **Botón grande para registrar visitas.** En **El Checador**, además de los

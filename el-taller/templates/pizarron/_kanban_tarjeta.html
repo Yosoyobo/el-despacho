@@ -18,7 +18,7 @@
         {% endif %}
     </div>
     <div class="mt-1.5 flex items-center justify-between gap-1">
-        <span class="truncate text-[10px] text-gray-500 dark:text-gray-400">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}Sin asignar{% endif %}</span>
+        <span class="truncate text-[10px] text-gray-500 dark:text-gray-400">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}Sin asignar{% endif %}{% if t.runner_id %} · 🛵 {{ t.runner.get_short_name|default:t.runner.email }}{% elif t.requiere_runner %} · <span class="text-warning-600 dark:text-warning-400">🛵 sin runner</span>{% endif %}</span>
         {% if t.esta_atrasada %}<span class="badge badge-hex text-[9px]" style="--ec: #f79009">Atrasada</span>{% endif %}
     </div>
 </a>

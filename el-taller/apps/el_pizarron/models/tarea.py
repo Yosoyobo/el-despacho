@@ -38,6 +38,18 @@ class Tarea(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True,
         on_delete=models.SET_NULL, related_name="tareas_asignadas",
     )
+    # S-LC-Proyecto-V2 (Oscar): runner = quien LLEVA (entrega) o RECOGE las
+    # cosas. Distinto del responsable (`asignada_a`). Aparece en SUS pendientes.
+    # `requiere_runner` lo enciende el tipo entrega/recoger; `runner_auto` marca
+    # "que el sistema/El Chalán designe al menos cargado". Diseñado para migrar
+    # luego a una entidad propia (Mandado) sin romper este contrato.
+    runner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="tareas_para_repartir",
+    )
+    requiere_runner = models.BooleanField(default=False)
+    runner_auto = models.BooleanField(default=False)
+    runner_asignado_en = models.DateTimeField(null=True, blank=True)
     fecha_compromiso = models.DateField(null=True, blank=True)
     hora = models.TimeField(null=True, blank=True, help_text="Hora opcional del compromiso.")
     completada_en = models.DateTimeField(null=True, blank=True)

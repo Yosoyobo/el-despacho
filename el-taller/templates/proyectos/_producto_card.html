@@ -73,7 +73,7 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
 
         {# Impresión + procesos operativos — sin recuadro punteado #}
         <div data-procesos>
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_120px_auto] md:items-end" data-impresion>
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_120px_auto_auto] md:items-end" data-impresion>
                 <div>
                     <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
                     <select class="imp-proveedor w-full">
@@ -87,23 +87,33 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
                     <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo</label>
                     <input type="number" step="0.01" min="0" class="imp-costo w-full" placeholder="0.00" value="{% if f.proc_impresion %}{{ f.proc_impresion.costo|stringformat:'.2f' }}{% endif %}">
                 </div>
+                <div class="flex items-end pb-2">
+                    <label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma).">
+                        <input type="checkbox" class="imp-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" {% if f.proc_impresion and f.proc_impresion.por_pieza %}checked{% endif %}>
+                        por pieza
+                    </label>
+                </div>
                 <div class="flex items-end">
                     <button type="button" class="proceso-add inline-flex h-9 items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]" title="Agregar proceso / gasto">+ Proceso</button>
                 </div>
             </div>
             <div class="proceso-lista mt-2 space-y-2">
                 {% for p in f.procs_operativos %}
-                <div class="proceso-fila grid grid-cols-[auto_1fr_120px_auto] items-center gap-2">
+                <div class="proceso-fila grid grid-cols-[auto_1fr_120px_auto_auto] items-center gap-2">
                     <span class="proceso-num text-xs font-medium text-gray-400">{{ forloop.counter }}</span>
                     <input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento, viáticos, embalaje" value="{{ p.descripcion }}">
                     <input type="number" step="0.01" min="0" class="proc-costo w-full" placeholder="0.00" value="{{ p.costo|stringformat:'.2f' }}">
+                    <label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma).">
+                        <input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" {% if p.por_pieza %}checked{% endif %}>
+                        por pieza
+                    </label>
                     <button type="button" class="proceso-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar proceso">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
                     </button>
                 </div>
                 {% endfor %}
             </div>
-            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Impresión se liga a un proveedor. Los procesos numerados son gastos operativos sin proveedor (materiales, viáticos…). Suman al costo, no al precio.</p>
+            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Impresión se liga a un proveedor. Los procesos numerados son gastos operativos sin proveedor (materiales, viáticos…). Suman al costo, no al precio. Marca <strong>«por pieza»</strong> para multiplicar por las piezas producidas.</p>
         </div>
     </div>
 

@@ -412,11 +412,14 @@ def _fila_tarea(t) -> dict:
 
 def _h_mis_tareas(args: dict, usuario) -> dict:
     from apps.el_pizarron.models.tarea import Tarea
+    from django.db.models import Q
+    # S-LC-Proyecto-V2: incluye las entregas/recogidas donde soy el runner.
     qs = (
-        Tarea.objects.filter(asignada_a=usuario)
+        Tarea.objects.filter(Q(asignada_a=usuario) | Q(runner=usuario))
         .exclude(estado="completada")
         .select_related("proyecto")
         .order_by("fecha_compromiso", "-prioridad")
+        .distinct()
     )
     filas = [_fila_tarea(t) for t in qs[:_TOP_N * 2]]
     return {"tareas": filas, "total": qs.count()}

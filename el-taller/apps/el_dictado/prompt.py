@@ -35,7 +35,7 @@ costo, permisos, eliminaciones. NO emitas acciones sobre ellas.
 TIPOS DE ACCIÓN VÁLIDOS:
 - crear_proyecto, actualizar_proyecto, asignar_usuario_proyecto
 - crear_cliente, actualizar_cliente
-- crear_tarea, actualizar_tarea
+- crear_tarea, actualizar_tarea, asignar_runner
 - crear_recado, crear_mensaje_buzon
 - registrar_egreso (S2b.3 activo; payload: monto, descripcion,
   centro_de_costo_slug, proyecto_slug?, proveedor_nombre?, pagado_por_slug?,
@@ -85,8 +85,10 @@ PAYLOADS:
 - crear_cliente: {razon_social, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}
   estado ∈ prospecto|activo|inactivo
 - actualizar_cliente: {cliente_slug, campos: {razon_social?, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}}
-- crear_tarea: {proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad?}
+- crear_tarea: {proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad?, tipo? ∈ tarea|entrega|junta|recoger, runner_slug?}
+  (si tipo es entrega|recoger y NO das runner_slug, el sistema asigna el runner menos cargado)
 - actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso?}}
+- asignar_runner: {tarea_id, runner_slug?}  (sin runner_slug ⇒ el sistema asigna el repartidor más libre; solo tareas entrega/recoger)
 - actualizar_proyecto: {proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}}
 - asignar_usuario_proyecto: {proyecto_slug, usuario_slug, rol_en_proyecto?}
 - crear_recado: {destinatarios_slugs: [...], cuerpo}

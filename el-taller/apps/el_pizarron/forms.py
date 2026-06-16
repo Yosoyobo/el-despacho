@@ -43,6 +43,18 @@ class TareaForm(forms.ModelForm):
         initial="tarea",
         label="Tipo",
     )
+    # S-LC-Proyecto-V2: runner para entregas/recolecciones. `runner` vacío +
+    # `runner_auto` ⇒ el sistema asigna el menos cargado. Solo aplica si el
+    # tipo es entrega/recoger (se ignora en tareas normales).
+    runner = forms.ModelChoiceField(
+        queryset=Usuario.objects.none(), required=False,
+        empty_label="— El sistema asigna (menos cargado) —",
+        label="Runner (entrega/recoger)",
+    )
+    runner_auto = forms.BooleanField(
+        required=False, initial=True,
+        label="Que el sistema/El Chalán asigne al runner más libre",
+    )
 
     def clean_tipo(self):
         return self.cleaned_data.get("tipo") or "tarea"
@@ -59,6 +71,7 @@ class TareaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["runner"].queryset = Usuario.objects.filter(is_active=True).order_by("nombre_completo")
         # Estado dinámico (el campo del modelo ya no tiene choices). Si la
         # tarea está en un slug inactivo/huérfano, se conserva como opción
         # para no romper la edición. El form global (sin "estado" en fields)

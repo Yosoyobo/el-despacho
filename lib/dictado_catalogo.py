@@ -54,15 +54,21 @@ COMANDOS_DICTADO: list[dict] = [
     },
     {
         "tipo": "crear_tarea",
-        "titulo": "Crear tarea",
-        "ejemplo": 'Crea una tarea en #lc-0001: "diseñar logo", asignada a @ana, vence el 30 de mayo.',
-        "payload": "proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad? (baja|media|alta)",
+        "titulo": "Crear tarea (o entrega/recolección)",
+        "ejemplo": 'Crea una tarea en #lc-0001: "diseñar logo", asignada a @ana, vence el 30 de mayo. O: "agenda una entrega de #lc-0009 el viernes y que el sistema asigne al runner".',
+        "payload": "proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad? (baja|media|alta), tipo? (tarea|entrega|junta|recoger), runner_slug?",
     },
     {
         "tipo": "actualizar_tarea",
         "titulo": "Actualizar tarea",
         "ejemplo": "Marca como completa la tarea 42.",
         "payload": "tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso?}",
+    },
+    {
+        "tipo": "asignar_runner",
+        "titulo": "Asignar runner (entrega/recolección)",
+        "ejemplo": "Asigna la entrega de la tarea 87 a @beto. O: 'asigna el runner más libre a la tarea 87'.",
+        "payload": "tarea_id, runner_slug? (sin él, el sistema asigna el runner menos cargado)",
     },
     {
         "tipo": "crear_recado",

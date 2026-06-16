@@ -48,6 +48,11 @@ TODO_CHECADOR = ["checar", "ver_equipo", "aprobar_correcciones", "configurar_hor
 # masivas. Default SOLO super_admin (decisión Oscar: gating 100% granular,
 # el resto lo recibe vía la grilla de permisos o roles personalizados).
 TODO_COMUNICACION = ["enviar_correo", "campanas"]
+# S-LC-Proyecto-V2 (Oscar): El Runner — entregas/recolecciones. `recibir` marca
+# a quién puede asignarse como repartidor (manual o auto "el menos cargado").
+# Default activo para los 4 roles base (todos pueden ser runner); el
+# super_admin lo revoca por usuario desde /directorio/<id>/permisos/.
+TODO_RUNNER = ["recibir"]
 # S-LC-Feedback-V10 (decisión Oscar: "todo, TODO, debe tener permisos
 # granulares"): las áreas administrativas de La Gerencia dejan de gatearse por
 # rol literal y pasan a permisos delegables. super_admin sigue como failsafe
@@ -80,6 +85,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "chalan": list(TODO_CHALAN),
         "checador": list(TODO_CHECADOR),
         "comunicacion": list(TODO_COMUNICACION),
+        "runner": list(TODO_RUNNER),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
@@ -105,6 +111,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "facturacion": list(TODO_FACTURACION),
         "chalan": list(TODO_CHALAN),
         "checador": list(TODO_CHECADOR),
+        "runner": list(TODO_RUNNER),
         # S-LC-Feedback-V5 c5: dueno entra a La Gerencia por default.
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: dueno conserva exactamente lo que ya alcanzaba —
@@ -135,6 +142,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # Contador checa, ve al equipo y exporta (insumo para nómina/costos);
         # no aprueba correcciones ni configura horarios.
         "checador": ["checar", "ver_equipo", "exportar"],
+        "runner": list(TODO_RUNNER),
     },
     "disenador": {
         # Diseñador NO ve cartera (DOC_01 §4.4).
@@ -148,6 +156,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "chalan": list(TODO_CHALAN),
         # Diseñador solo checa su propia jornada/visitas/tiempo.
         "checador": ["checar"],
+        "runner": list(TODO_RUNNER),
     },
 }
 
@@ -171,6 +180,7 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "chalan": list(TODO_CHALAN),
     "checador": list(TODO_CHECADOR),
     "comunicacion": list(TODO_COMUNICACION),
+    "runner": list(TODO_RUNNER),
     "gerencia": ["acceder"],
     # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
     "ajustes": list(TODO_AJUSTES),

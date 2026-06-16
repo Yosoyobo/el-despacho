@@ -63,6 +63,35 @@ def _registrado(egreso) -> bool:
     return egreso is not None and not egreso.anulado
 
 
+def _nombre_base(pp) -> str:
+    return pp.variacion.nombre if pp.variacion_id else pp.servicio.nombre
+
+
+def _label_produccion(pp) -> str:
+    """Etiqueta del gasto del producto que refleja las piezas a PRODUCIR
+    (cantidad + merma), no solo la cantidad vendida. Reporte Oscar: el gasto
+    decía '35x' cuando se producen 45 (35 + 10 merma)."""
+    base = _nombre_base(pp)
+    piezas = pp.cantidad + pp.merma
+    if pp.merma:
+        return f"{base} · {piezas} pz ({pp.cantidad} + {pp.merma} merma)"
+    return f"{base} · {piezas} pz"
+
+
+def _monto_proceso(proc, pp) -> Decimal:
+    """Costo del proceso: fijo o × piezas producidas según `por_pieza`."""
+    c = Decimal(str(proc.costo or 0))
+    if proc.por_pieza:
+        c = c * (pp.cantidad + pp.merma)
+    return c.quantize(Decimal("0.01"))
+
+
+def _label_proceso(proc, pp) -> str:
+    piezas = pp.cantidad + pp.merma
+    suf = f" (× {piezas} pz)" if proc.por_pieza else ""
+    return f"{_nombre_base(pp)} · {proc.etiqueta}{suf}"
+
+
 def iter_unidades(proyecto):
     """Genera dicts de unidad de gasto del proyecto (solo con monto > 0)."""
     lineas = (
@@ -76,17 +105,17 @@ def iter_unidades(proyecto):
         if monto > 0:
             yield {
                 "clase": "producto", "pk": pp.pk, "tipo": "producto",
-                "label": pp.etiqueta, "monto": monto,
+                "label": _label_produccion(pp), "monto": monto,
                 "proveedor": pp.proveedor, "egreso": pp.egreso,
                 "registrado": _registrado(pp.egreso),
             }
         for proc in pp.procesos.all():
-            c = Decimal(str(proc.costo or 0)).quantize(Decimal("0.01"))
+            c = _monto_proceso(proc, pp)
             if c <= 0:
                 continue
             yield {
                 "clase": "proceso", "pk": proc.pk, "tipo": proc.tipo,
-                "label": f"{pp.etiqueta} · {proc.etiqueta}", "monto": c,
+                "label": _label_proceso(proc, pp), "monto": c,
                 "proveedor": proc.proveedor if proc.tipo == "impresion" else None,
                 "egreso": proc.egreso,
                 "registrado": _registrado(proc.egreso),
@@ -112,11 +141,11 @@ def _datos_egreso(proyecto, clase: str, obj):
     if clase == "producto":
         monto = Decimal(str(obj.costo_total_linea)).quantize(Decimal("0.01"))
         proveedor = obj.proveedor
-        etiqueta = obj.etiqueta
+        etiqueta = _label_produccion(obj)
     else:  # proceso
-        monto = Decimal(str(obj.costo or 0)).quantize(Decimal("0.01"))
+        monto = _monto_proceso(obj, obj.producto)
         proveedor = obj.proveedor if obj.tipo == "impresion" else None
-        etiqueta = obj.etiqueta
+        etiqueta = _label_proceso(obj, obj.producto)
     proveedor_nombre = (proveedor.razon_social if proveedor else "Gasto de proyecto")[:200]
     descripcion = f"Proyecto {proyecto.codigo} · {etiqueta}"[:300]
     return monto, proveedor, proveedor_nombre, descripcion
@@ -138,14 +167,16 @@ def datos_para_modal(proyecto, clase: str, pk: int):
 
 def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None,
                      centro=None, metodo="transferencia", estado_pago="pendiente",
-                     pagado_por=None, solicitado_por=None):
+                     pagado_por=None, solicitado_por=None, proveedor=None):
     """Crea el Egreso de una unidad de gasto y lo liga. Idempotente (si ya
     tiene egreso vigente, lo devuelve). Devuelve el Egreso o None si no se
     pudo (catálogo incompleto / objeto inexistente / monto 0).
 
     Los parámetros opcionales (centro, metodo, estado_pago, pagado_por,
-    solicitado_por) vienen del modal "Registrar" (S-LC-Feedback-V8). Sin ellos
-    usa los defaults (centro `insumos-de-proyecto`, transferencia, pendiente)."""
+    solicitado_por, proveedor) vienen del modal "Registrar" (S-LC-Feedback-V8 /
+    V2). Sin ellos usa los defaults (centro `insumos-de-proyecto`,
+    transferencia, pendiente, proveedor derivado del gasto). `proveedor`
+    permite elegir/corregir el proveedor desde el modal."""
     from apps.tesoreria.models import CentroDeCosto, Egreso
 
     obj = _obj_de(proyecto, clase, pk)
@@ -154,7 +185,11 @@ def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None,
     if _registrado(obj.egreso):
         return obj.egreso
 
-    monto, proveedor, proveedor_nombre, descripcion = _datos_egreso(proyecto, clase, obj)
+    monto, proveedor_def, proveedor_nombre, descripcion = _datos_egreso(proyecto, clase, obj)
+    if proveedor is not None:
+        proveedor_def = proveedor
+        proveedor_nombre = (proveedor.razon_social or proveedor_nombre)[:200]
+    proveedor = proveedor_def
     if monto <= 0:
         return None
     if centro is None:

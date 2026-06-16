@@ -18,6 +18,24 @@
         <form hx-post="{% url 'proyectos-registrar-gasto-modal' proyecto.pk clase obj_pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form space-y-3">
             {% csrf_token %}
             <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
+                <select name="proveedor" id="rg-proveedor">
+                    <option value="">— Sin proveedor —</option>
+                    {% for p in proveedores %}<option value="{{ p.pk }}" {% if info.proveedor and p.pk == info.proveedor.pk %}selected{% endif %}>{{ p.razon_social }}</option>{% endfor %}
+                </select>
+                <details class="mt-2 rounded-lg border border-dashed border-gray-300 p-2 dark:border-gray-700">
+                    <summary class="cursor-pointer text-xs font-medium text-brand-600 dark:text-brand-400">+ Nuevo proveedor</summary>
+                    <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <input id="rg-nuevo-razon" type="text" placeholder="Razón social *" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input id="rg-nuevo-contacto" type="text" placeholder="Contacto" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input id="rg-nuevo-email" type="email" placeholder="Email" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input id="rg-nuevo-tel" type="text" placeholder="Teléfono" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+                    </div>
+                    <button type="button" id="rg-nuevo-crear" class="btn-secundario mt-2 text-xs">Crear y seleccionar</button>
+                    <p id="rg-nuevo-msg" class="mt-1 hidden text-xs text-error-600 dark:text-error-400"></p>
+                </details>
+            </div>
+            <div>
                 <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Categoría / centro de costo</label>
                 <select name="centro_de_costo">
                     {% for c in centros %}<option value="{{ c.pk }}" {% if centro_default and c.pk == centro_default.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
@@ -60,3 +78,33 @@
         </form>
     </div>
 </div>
+<script>
+(function () {
+    var btn = document.getElementById('rg-nuevo-crear');
+    if (!btn) return;
+    btn.addEventListener('click', async function () {
+        var msg = document.getElementById('rg-nuevo-msg');
+        var razon = document.getElementById('rg-nuevo-razon');
+        if (!razon.value.trim()) { msg.textContent = 'La razón social es obligatoria.'; msg.classList.remove('hidden'); return; }
+        msg.classList.add('hidden');
+        btn.disabled = true;
+        try {
+            var csrf = document.querySelector('#modal-slot input[name="csrfmiddlewaretoken"]').value;
+            var body = new FormData();
+            body.append('razon_social', razon.value.trim());
+            body.append('nombre_contacto', (document.getElementById('rg-nuevo-contacto').value || ''));
+            body.append('email_contacto', (document.getElementById('rg-nuevo-email').value || ''));
+            body.append('telefono', (document.getElementById('rg-nuevo-tel').value || ''));
+            var resp = await fetch('{% url "catalogo-proveedor-quick-create" %}', { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: body });
+            var data = await resp.json();
+            if (!resp.ok || !data.ok) { msg.textContent = data.error || 'No se pudo crear.'; msg.classList.remove('hidden'); btn.disabled = false; return; }
+            var sel = document.getElementById('rg-proveedor');
+            var opt = document.createElement('option');
+            opt.value = data.id; opt.textContent = data.razon_social; opt.selected = true;
+            sel.appendChild(opt);
+            var det = btn.closest('details'); if (det) det.open = false;
+        } catch (e) { msg.textContent = 'Error de red. Intenta otra vez.'; msg.classList.remove('hidden'); }
+        btn.disabled = false;
+    });
+})();
+</script>

@@ -214,7 +214,8 @@ class Proyecto(models.Model):
 
         Suma, de los productos INCLUIDOS:
         - costo del proveedor principal del producto = costo_total_linea
-        - costo de cada proceso de impresión ligado a un proveedor (fijo)
+        - costo de cada proceso de impresión ligado a un proveedor (fijo o por
+          pieza según `por_pieza`)
 
         Retorna lista de dicts {proveedor, total} ordenada por total desc.
         Los gastos operativos (sin proveedor) NO entran aquí — ver
@@ -228,13 +229,15 @@ class Proyecto(models.Model):
                     pp.proveedor_id, {"proveedor": pp.proveedor, "total": Decimal("0.00")}
                 )
                 slot["total"] += pp.costo_total_linea
+            piezas = pp.cantidad + pp.merma
             for proc in pp.procesos.all():
                 if proc.tipo == "impresion" and proc.proveedor_id:
                     slot = acumulado.setdefault(
                         proc.proveedor_id,
                         {"proveedor": proc.proveedor, "total": Decimal("0.00")},
                     )
-                    slot["total"] += Decimal(str(proc.costo or 0))
+                    c = Decimal(str(proc.costo or 0))
+                    slot["total"] += (c * piezas) if proc.por_pieza else c
         return sorted(acumulado.values(), key=lambda d: d["total"], reverse=True)
 
     def gastos_operativos(self):
@@ -244,11 +247,13 @@ class Proyecto(models.Model):
         gastos del proyecto (clavos, pegamento, viáticos, embalaje…)."""
         filas = []
         for pp in self._productos_incluidos():
+            piezas = pp.cantidad + pp.merma
             for proc in pp.procesos.all():
                 if proc.tipo == "operativo":
+                    c = Decimal(str(proc.costo or 0))
                     filas.append({
                         "descripcion": proc.descripcion or "Gasto operativo",
-                        "costo": Decimal(str(proc.costo or 0)),
+                        "costo": (c * piezas) if proc.por_pieza else c,
                         "producto": pp,
                     })
         return filas

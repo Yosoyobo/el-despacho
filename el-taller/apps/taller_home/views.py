@@ -184,13 +184,15 @@ def _compact_kpis(user, rol) -> list[dict]:
 
 
 def _mis_tareas(user):
-    """Tareas asignadas a mí, sin completadas. (No existe estado 'cancelada'.)"""
+    """Tareas asignadas a mí (o donde soy el runner), sin completadas."""
     from apps.el_pizarron.models import Tarea
+    from django.db.models import Q
     qs = (
-        Tarea.objects.filter(asignada_a=user)
+        Tarea.objects.filter(Q(asignada_a=user) | Q(runner=user))
         .exclude(estado="completada")
         .select_related("proyecto")
         .order_by("fecha_compromiso")
+        .distinct()
     )
     total = qs.count()
     return list(qs[:4]), total

@@ -79,6 +79,19 @@
             </div>
         </div>
 
+        {# 5b. Runner — solo visible si el tipo es entrega/recoger. #}
+        <div class="mt-5 hidden rounded-xl border border-dashed border-gray-300 p-4 dark:border-gray-700" id="runner-block">
+            <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">🛵 Runner (quién lleva / recoge)</label>
+            <label class="mb-3 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input type="checkbox" name="runner_auto" id="id_runner_auto" {% if form.runner_auto.value|default:True %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                Que el sistema/El Chalán asigne al runner más libre
+            </label>
+            <div id="runner-manual">
+                <label class="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">O elige uno manualmente:</label>
+                {{ form.runner }}
+            </div>
+        </div>
+
         {# Descripción opcional, compacta. #}
         <div class="mt-5">
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción (opcional)</label>
@@ -104,6 +117,21 @@
             ch.classList.toggle('hidden', q && !ch.getAttribute('data-chip-proyecto').includes(q));
         });
     });
+})();
+(function () {
+    // Muestra el bloque de runner solo para tipo entrega/recoger.
+    const block = document.getElementById('runner-block');
+    const auto = document.getElementById('id_runner_auto');
+    const manual = document.getElementById('runner-manual');
+    if (!block) return;
+    function sync() {
+        const tipo = (document.querySelector('input[name="tipo"]:checked') || {}).value || 'tarea';
+        block.classList.toggle('hidden', !(tipo === 'entrega' || tipo === 'recoger'));
+        if (manual) manual.classList.toggle('hidden', !!(auto && auto.checked));
+    }
+    document.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', sync));
+    if (auto) auto.addEventListener('change', sync);
+    sync();
 })();
 </script>
 {% endblock %}

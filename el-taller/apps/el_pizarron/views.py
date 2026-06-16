@@ -100,10 +100,11 @@ def lista_tareas(request):
 
 def _tareas_visibles(user):
     from django.db.models import Q
-    visibles = Tarea.objects.select_related("proyecto", "asignada_a", "proyecto__cliente")
+    visibles = Tarea.objects.select_related("proyecto", "asignada_a", "runner", "proyecto__cliente")
     if not (es_admin(user) or puede_ver_finanzas(user)):
+        # S-LC-Proyecto-V2: incluye tareas donde el usuario es el runner.
         visibles = visibles.filter(
-            Q(asignada_a=user) | Q(proyecto__asignaciones__usuario=user)
+            Q(asignada_a=user) | Q(runner=user) | Q(proyecto__asignaciones__usuario=user)
         ).distinct()
     return visibles
 
@@ -138,7 +139,13 @@ def kanban_tareas(request):
 
     qs = visibles
     if personas_sel:
-        qs = qs.filter(asignada_a__pk__in=[int(p) for p in personas_sel])
+        from django.db.models import Q
+        cond = Q(asignada_a__pk__in=[int(p) for p in personas_sel])
+        # S-LC-Proyecto-V2: "mis tareas" también muestra las entregas/recogidas
+        # donde soy el runner.
+        if str(user.pk) in personas_sel:
+            cond |= Q(runner=user)
+        qs = qs.filter(cond).distinct()
     if estados_sel:
         qs = qs.filter(estado__in=estados_sel)
 
@@ -228,6 +235,8 @@ def nueva_tarea_global(request):
             tarea = form.save(commit=False)
             tarea.creado_por = request.user
             tarea.save()
+            from apps.el_pizarron import runners
+            runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             emitir(EventoPortavoz(
                 tipo="tarea.creada",
                 actor_id=request.user.pk,

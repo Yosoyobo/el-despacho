@@ -754,8 +754,10 @@ def agregar_tarea_modal(request, pk):
         if form.is_valid():
             tarea = form.save(commit=False)
             tarea.proyecto = proyecto
-            tarea.creada_por = request.user
+            tarea.creado_por = request.user
             tarea.save()
+            from apps.el_pizarron import runners
+            runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             emitir(EventoPortavoz(
                 tipo="tarea.creada",
                 actor_id=request.user.pk, actor_email=request.user.email,
@@ -819,7 +821,12 @@ def quitar_producto(request, pk, prod_pk):
     ProyectoProducto.objects.filter(proyecto=proyecto, pk=prod_pk).delete()
     proyecto.recalcular_monto_estimado()  # C4
     messages.success(request, "Producto quitado.")
-    return redirect(_redir_detalle(proyecto))
+    destino = _redir_detalle(proyecto)
+    # V2: la X del desglose económico usa HTMX → recarga consistente (la página
+    # se re-renderiza desde la DB, sin desincronizar el sidebar con las tarjetas).
+    if _es_htmx(request):
+        return HttpResponse(status=204, headers={"HX-Redirect": destino})
+    return redirect(destino)
 
 
 @login_required
@@ -913,6 +920,7 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
     if clase not in ("producto", "proceso"):
         return HttpResponseForbidden("Tipo de gasto inválido.")
+    from apps.el_catalogo.models import Proveedor
     from apps.tesoreria.models import CentroDeCosto
     from apps.tesoreria.models.egreso import ESTADOS_PAGO, METODOS_EGRESO
 
@@ -927,11 +935,15 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         centro = CentroDeCosto.objects.filter(pk=request.POST.get("centro_de_costo") or 0).first()
         pagado = Usuario.objects.filter(pk=request.POST.get("pagado_por") or 0).first()
         solicito = Usuario.objects.filter(pk=request.POST.get("solicitado_por") or 0).first()
+        # V2: el proveedor se puede elegir/corregir desde el modal (incluye los
+        # creados al vuelo con "Nuevo proveedor", ya activos en el catálogo).
+        proveedor = Proveedor.objects.filter(
+            pk=request.POST.get("proveedor") or 0, activo=True).first()
         eg = gastos.registrar_egreso(
             proyecto, clase, obj_pk, actor=request.user,
             centro=centro, metodo=request.POST.get("metodo") or "transferencia",
             estado_pago=request.POST.get("estado_pago") or "pendiente",
-            pagado_por=pagado, solicitado_por=solicito,
+            pagado_por=pagado, solicitado_por=solicito, proveedor=proveedor,
         )
         if eg is None:
             messages.error(request, "No se pudo registrar el gasto (revisa el centro de costo).")
@@ -948,6 +960,7 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         "centro_default": CentroDeCosto.objects.filter(slug=gastos.CENTRO_SLUG).first(),
         "metodos": METODOS_EGRESO, "estados_pago": ESTADOS_PAGO,
         "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
+        "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
     })
 
 

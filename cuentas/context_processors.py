@@ -32,13 +32,15 @@ ACCION_VISIBLE_POR_MODULO = {
     "site": "ver",
     "catalogos": "estados",   # cualquier acción de catálogo enciende el grupo
     "interfono": "configurar",
+    # S-LC-Proyecto-V2: El Runner — elegibilidad como repartidor.
+    "runner": "recibir",
     # los demás usan "ver"
 }
 
 MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
-    "facturacion", "chalan", "checador", "comunicacion",
+    "facturacion", "chalan", "checador", "comunicacion", "runner",
     "directorio", "ajustes", "chalanes", "site",
     "catalogos", "interfono",
     "gerencia",
