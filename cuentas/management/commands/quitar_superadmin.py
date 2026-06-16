@@ -57,7 +57,7 @@ class Command(BaseCommand):
         cambios = []
 
         if u.rol == "super_admin":
-            cambios.append(f"rol primario super_admin → miembro")
+            cambios.append("rol primario super_admin → miembro")
             if not opts["dry_run"]:
                 u.rol = "miembro"
                 u.save(update_fields=["rol"])

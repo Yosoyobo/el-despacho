@@ -198,6 +198,7 @@ def sede_editar(request, pk):
     if (r := _gate_horarios(request)) is not None:
         return r
     from apps.checador.models import SedeLC
+
     from .forms import SedeLCForm
     obj = get_object_or_404(SedeLC, pk=pk)
     if request.method == "POST":
@@ -231,6 +232,7 @@ def geocerca_config(request):
     if (r := _gate_horarios(request)) is not None:
         return r
     from apps.checador.models import ConfiguracionGeocerca
+
     from .forms import ConfiguracionGeocercaForm
     config = ConfiguracionGeocerca.obtener()
     if request.method == "POST":

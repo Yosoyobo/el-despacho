@@ -59,7 +59,7 @@ class Command(BaseCommand):
         w(f"  usuarios activos: {activos.count()}")
         w(f"  con ≥1 dispositivo suscrito: {len(con)}")
         if sin:
-            w(warn(f"  SIN dispositivo (no recibirán push):"))
+            w(warn("  SIN dispositivo (no recibirán push):"))
             for u in sin:
                 w(f"    · {u.email} ({u.nombre_completo})")
             w("  (En iPhone: instalar la PWA a la pantalla de inicio y permitir "
@@ -73,7 +73,7 @@ class Command(BaseCommand):
             for p in silenciados:
                 w(warn(f"  · {p.usuario.email} silenció '{cat}'"))
         else:
-            w(f"  nadie la silenció (default: activa).")
+            w("  nadie la silenció (default: activa).")
 
         w(f"\n=== 4. Últimas entregas de '{cat}' ===")
         entregas = InterfonoEntrega.objects.filter(categoria=cat).order_by("-enviado_en")[:200]

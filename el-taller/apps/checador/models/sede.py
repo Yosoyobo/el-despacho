@@ -97,6 +97,6 @@ class ConfiguracionGeocerca(models.Model):
         return self.get_modo_display()
 
     @classmethod
-    def obtener(cls) -> "ConfiguracionGeocerca":
+    def obtener(cls) -> ConfiguracionGeocerca:
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
