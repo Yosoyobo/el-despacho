@@ -28,9 +28,10 @@
   le asigna un mandado, y quien lo creó (más el asignado) recibe avisos cuando
   el mandado avanza (**en camino / entregado / cancelado**). Puedes activar o
   silenciar estos avisos en *Notificaciones → Mandados (envíos)*.
-- **Protagonismo para repartidores.** Si tienes el rol **Runner**, ves la
-  pantalla **🛵 Mandados** en tu menú y un recuadro **"Mis mandados"** en tu
-  Dashboard con tus pendientes. Quien no es repartidor no ve esa sección.
+- **Mandados en el menú para todos.** La pantalla **🛵 Mandados** aparece en
+  el menú lateral de todos; cada quien ve los mandados que le tocan (y los
+  administradores, todos). Además, si tienes el rol **Runner**, te aparece un
+  recuadro **"Mis mandados"** en tu Dashboard con tus pendientes.
 - **Ponle a los roles el nombre que quieras.** En *Gerencia → Directorio →
   Roles* ya puedes **renombrar cualquier rol** (incluidos los de base) sin
   romper sus permisos. Se quitó la etiqueta "Sistema". Solo el rol del

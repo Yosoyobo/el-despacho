@@ -45,7 +45,7 @@
         </a>
         {% endif %}
 
-        {% if permisos_modulos.mandados and not sidebar_orden.mandados.oculto %}
+        {% if not sidebar_orden.mandados.oculto %}
         <a href="/mandados/" data-sidebar-grupo="{{ sidebar_orden.mandados.grupo }}" style="order: {{ sidebar_orden.mandados.orden|default:36 }}" class="menu-item {% if '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13h11V6H3zM14 9h4l3 3v4h-7M5.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="flex-1">Mandados</span>

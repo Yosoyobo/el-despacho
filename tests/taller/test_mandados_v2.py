@@ -103,16 +103,11 @@ def test_completar_tarea_notifica_involucrados(proyecto_factory, usuario_factory
     assert any(pk == creador.pk for (pk, _cat) in enviados)
 
 
-# ── Gating del item de Mandados (solo runners) ────────────────────────────────
+# ── El item de Mandados en el sidebar es para TODOS ───────────────────────────
 
-def test_permisos_modulos_mandados_solo_runner(usuario_factory, rf):
-    from cuentas.context_processors import permisos_modulos
-    admin = usuario_factory(rol="super_admin", email="a@lc.mx")
-    req = rf.get("/")
-    req.user = admin
-    assert permisos_modulos(req)["permisos_modulos"]["mandados"] is False  # admin no, solo runner
-
-    runner = _runner(usuario_factory)
-    req2 = rf.get("/")
-    req2.user = runner
-    assert permisos_modulos(req2)["permisos_modulos"]["mandados"] is True
+def test_sidebar_mandados_visible_para_todos(client, usuario_factory):
+    # Un usuario sin rol Runner igual ve el atajo a /mandados/ en el sidebar.
+    u = usuario_factory(rol="disenador", email="nrunner@lc.mx")
+    client.force_login(u)
+    body = client.get("/").content.decode()
+    assert 'href="/mandados/"' in body
