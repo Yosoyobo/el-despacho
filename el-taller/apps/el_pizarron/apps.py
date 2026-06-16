@@ -23,3 +23,14 @@ class ElPizarronConfig(AppConfig):
         # garbage-collectea al salir de ready() y la señal muere en silencio.
         post_save.connect(_invalidar, sender=EstadoTarea, dispatch_uid="pizarron_estado_cache", weak=False)
         post_delete.connect(_invalidar, sender=EstadoTarea, dispatch_uid="pizarron_estado_cache_del", weak=False)
+
+        # S-Chalan-Barrido: cada Tarea de entrega/recoger lleva un Mandado 1:1
+        # que sincroniza su ciclo de reparto. weak=False por el mismo motivo.
+        from apps.el_pizarron.mandados import TIPOS_RUNNER, sincronizar_mandado
+        from apps.el_pizarron.models.tarea import Tarea
+
+        def _sync_mandado(sender, instance, **kwargs):
+            if instance.tipo in TIPOS_RUNNER:
+                sincronizar_mandado(instance)
+
+        post_save.connect(_sync_mandado, sender=Tarea, dispatch_uid="pizarron_sync_mandado", weak=False)

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Mandados — El Taller{% endblock %}
+{% block head_extra %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Tareas" "Mandados" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="🛵 Mandados" subtitulo="Entregas y recolecciones — el repartidor más cercano se asigna solo" breadcrumb_items=breadcrumb_items back_url="/tareas/" back_label="Tareas" %}
+
+<div class="mb-5 flex flex-wrap items-center gap-2">
+    {% for ch in chips %}
+    <a href="{{ ch.url }}" class="rounded-lg border px-3 py-1.5 text-sm transition {% if ch.activo %}border-transparent text-white{% else %}border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300{% endif %}"
+       {% if ch.activo and ch.color %}style="background-color: {{ ch.color }}"{% elif ch.activo %}style="background-color:#465fff"{% endif %}>{{ ch.label }}</a>
+    {% endfor %}
+    <span class="ml-auto text-xs text-gray-400 dark:text-gray-500">{{ total }} mandado{{ total|pluralize }}</span>
+</div>
+
+{% if mandados %}
+<div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-[820px] md:min-w-full text-sm">
+        <thead class="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            <tr>
+                <th class="px-4 py-3">Mandado</th>
+                <th class="px-4 py-3">Proyecto · Cliente</th>
+                <th class="px-4 py-3">Runner</th>
+                <th class="px-4 py-3">Estado</th>
+                <th class="px-4 py-3">Compromiso</th>
+                <th class="px-4 py-3">Destino</th>
+                <th class="px-4 py-3 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for m in mandados %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                <td class="px-4 py-3">
+                    <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">{% if m.tipo == "recoger" %}Recoger{% else %}Entrega{% endif %}</span>
+                    <a href="/tareas/{{ m.tarea_id }}/" class="ml-1 font-medium text-gray-900 hover:underline dark:text-gray-100">{{ m.titulo|truncatechars:48 }}</a>
+                </td>
+                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                    <a href="/proyectos/{{ m.proyecto.id }}/" class="hover:underline">{{ m.proyecto.codigo }}</a>
+                    {% if m.cliente %}<br><span class="text-xs">{{ m.cliente.razon_social|truncatechars:30 }}</span>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{% if m.runner %}{{ m.runner.nombre_completo|default:m.runner.email }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                <td class="px-4 py-3"><span class="badge badge-hex" style="--ec: {{ m.color }}">{{ m.get_estado_display }}</span></td>
+                <td class="px-4 py-3 tabular-nums text-gray-600 dark:text-gray-400">{% if m.fecha_compromiso %}{{ m.fecha_compromiso|date:"d M Y" }}{% else %}—{% endif %}</td>
+                <td class="px-4 py-3">
+                    {% if m.destino_lat and m.destino_lng %}
+                        {% include "checador/_boton_mapa.html" with lat=m.destino_lat lng=m.destino_lng etiqueta=m.destino_etiqueta|default:"Destino" %}
+                    {% endif %}
+                    <button type="button" hx-get="{% url 'mandado-destino' m.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                            class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:underline dark:text-gray-400 dark:hover:bg-gray-800">📌 {% if m.destino_lat %}Cambiar{% else %}Fijar{% endif %}</button>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-end gap-1.5">
+                        {% if not m.es_terminal %}
+                        {% if m.estado != "en_camino" %}
+                        <form method="post" action="{% url 'mandado-avanzar' m.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="en_camino"><button class="rounded-md border border-brand-200 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/30 dark:text-brand-300 dark:hover:bg-brand-500/10">En camino</button></form>
+                        {% endif %}
+                        <form method="post" action="{% url 'mandado-avanzar' m.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="entregado"><button class="rounded-md border border-success-200 px-2 py-1 text-xs font-medium text-success-700 hover:bg-success-50 dark:border-success-500/30 dark:text-success-300 dark:hover:bg-success-500/10">Entregado</button></form>
+                        <form method="post" action="{% url 'mandado-avanzar' m.pk %}" onsubmit="return confirm('¿Cancelar este mandado?');">{% csrf_token %}<input type="hidden" name="accion" value="cancelar"><button class="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">Cancelar</button></form>
+                        {% else %}
+                        <span class="text-xs text-gray-400 dark:text-gray-500">cerrado</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin mandados" descripcion="Cuando crees una tarea de entrega o recolección aparecerá aquí con su repartidor." icono="folder" %}
+{% endif %}
+{% endblock %}

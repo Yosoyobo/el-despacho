@@ -3970,14 +3970,35 @@ Dos pendientes acordados (parcial el segundo). Decisión Oscar: deploy de esto
   - 5 tests (`tests/taller/test_runner_cercania.py`).
 
 **NO incluye / deuda diseñada**:
-- **Migración a entidad `Mandado` propia** (sigue siendo deuda): el Runner vive
-  en campos de `Tarea`. Es un cambio estructural (tabla + migración de datos +
-  recablear home/Kanban/Chalán) que amerita su propio deploy con rollback.
-- **Pin de destino en la UI (Leaflet)**: hoy el destino se hereda de la última
-  visita al cliente o se setea por API; falta el selector visual de pin.
 - **`crear_cotizacion`/`crear_factura`** crean en borrador; el LLM arma líneas
   libres (no resuelve impuestos por línea ni descuentos por línea complejos
   más allá de `descuento_porcentaje`).
+
+### S-Chalan-Barrido cierre ✅ — Fix hora (+6h) + entidad Mandado + pin Leaflet (2026-06-16, VERSION 2026.06.59)
+
+Cierra "ambos sprints". Tres deploys el mismo día (2026.06.57 barrido+cercanía;
+2026.06.58 fix hora; 2026.06.59 Mandado).
+
+- **Fix +6h (VERSION 2026.06.58)**: el filtro `hfmt` (`cuentas/templatetags/horas.py`)
+  no declaraba `expects_localtime=True`, así que formateaba los datetime aware
+  **en UTC** (a diferencia de `date`/`time` nativos) → +6h en El Checador
+  (entradas/salidas/visitas/historial) y en el historial/uso de El Chalán. Fix
+  de una línea + test de regresión (aware UTC → America/Mexico_City).
+- **Entidad Mandado (companion 1:1, decisión Oscar)** — VERSION 2026.06.59:
+  `el_pizarron.Mandado` (tabla `pizarron_mandado`, migración `0009_mandado` con
+  backfill). 1:1 con `Tarea`: la entrega/recoger **sigue siendo Tarea** (Kanban,
+  "Mis tareas", `Visita.tarea`, comentarios sin tocar — cero regresión);
+  `Mandado` aporta el **ciclo logístico** (`por_asignar→asignado→en_camino→
+  entregado/cancelado`) y expone runner/destino vía propiedades (la fuente
+  sigue en `Tarea`). Se crea/sincroniza por señal `post_save` de Tarea
+  (`el_pizarron/apps.py`, `weak=False`); transiciones manuales + `mandados_visibles`
+  en `el_pizarron/mandados.py`. Lista propia `/mandados/` (filtro por estado,
+  acciones En camino/Entregado/Cancelar, row-level por rol) + link "🛵 Mandados"
+  en el header de Tareas. Eventos `mandado.estado_cambiado/destino_fijado`.
+- **Pin de destino con Leaflet**: modal HTMX (`mandados/_modal_destino.html`,
+  Wave 5) con mapa OSM/Leaflet (ya vendoreado) para fijar el destino del mandado
+  (escribe `Tarea.destino_lat/lng/etiqueta` → alimenta la asignación por cercanía).
+- **18 tests nuevos** (`test_mandados.py` 11 + `test_formato_hora.py` regresión).
 
 ### S5 — La Recepción
 

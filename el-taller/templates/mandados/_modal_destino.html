@@ -1,0 +1,61 @@
+{% comment %}
+Modal HTMX (Wave 5) para fijar el pin de destino de un Mandado con Leaflet.
+Inyectado en #modal-slot; Leaflet (L) ya está cargado por la página de lista.
+POST exitoso → 204 + HX-Redirect a la lista.
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-2xl rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Fijar destino · {{ m.titulo|truncatechars:40 }}</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <form hx-post="{% url 'mandado-destino' m.pk %}" hx-swap="none">
+            {% csrf_token %}
+            <div class="px-5 py-4">
+                <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Pica el mapa (o arrastra el pin) donde se entrega/recoge. El runner más cercano se asignará por esta ubicación.</p>
+                <div id="mapa-mandado" class="h-72 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700" style="min-height:18rem"></div>
+                <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label class="text-sm">
+                        <span class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Etiqueta (opcional)</span>
+                        <input type="text" name="etiqueta" value="{{ m.destino_etiqueta }}" maxlength="200" placeholder="Ej. Sucursal Centro"
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
+                    </label>
+                    <p class="self-end text-xs tabular-nums text-gray-400 dark:text-gray-500" id="md-coords">{% if m.destino_lat %}{{ m.destino_lat }}, {{ m.destino_lng }}{% else %}sin coordenadas{% endif %}</p>
+                </div>
+                <input type="hidden" name="lat" id="md-lat" value="{{ m.destino_lat|default:'' }}">
+                <input type="hidden" name="lng" id="md-lng" value="{{ m.destino_lng|default:'' }}">
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">Guardar destino</button>
+            </footer>
+        </form>
+    </div>
+</div>
+<script>
+(function () {
+    if (typeof L === "undefined") return;
+    var lat0 = {% if m.destino_lat %}{{ m.destino_lat }}{% else %}null{% endif %};
+    var lng0 = {% if m.destino_lng %}{{ m.destino_lng }}{% else %}null{% endif %};
+    var centro = (lat0 !== null) ? [lat0, lng0] : [19.4326, -99.1332];  // CDMX por defecto
+    var cont = document.getElementById("mapa-mandado");
+    if (!cont) return;
+    var map = L.map(cont).setView(centro, (lat0 !== null) ? 15 : 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19, attribution: "© OpenStreetMap"
+    }).addTo(map);
+    setTimeout(function () { map.invalidateSize(); }, 120);
+    var marker = (lat0 !== null) ? L.marker(centro, { draggable: true }).addTo(map) : null;
+    function set(lat, lng) {
+        document.getElementById("md-lat").value = lat.toFixed(6);
+        document.getElementById("md-lng").value = lng.toFixed(6);
+        document.getElementById("md-coords").textContent = lat.toFixed(6) + ", " + lng.toFixed(6);
+        if (!marker) { marker = L.marker([lat, lng], { draggable: true }).addTo(map); marker.on("dragend", function () { var p = marker.getLatLng(); set(p.lat, p.lng); }); }
+        else { marker.setLatLng([lat, lng]); }
+    }
+    if (marker) marker.on("dragend", function () { var p = marker.getLatLng(); set(p.lat, p.lng); });
+    map.on("click", function (e) { set(e.latlng.lat, e.latlng.lng); });
+})();
+</script>

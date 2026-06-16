@@ -14,4 +14,8 @@ urlpatterns = [
     path("tareas/<int:pk>/comentar", views.comentar_tarea, name="pizarron-comentar-tarea"),
     path("tareas/<int:pk>/completar", views.completar_tarea, name="pizarron-completar-tarea"),
     path("tareas/<int:pk>/cambiar-estado", views.cambiar_estado_tarea, name="pizarron-cambiar-estado"),
+    # El Runner — Mandados (entregas/recolecciones como entidad logística).
+    path("mandados/", views.mandados_lista, name="mandados-lista"),
+    path("mandados/<int:pk>/avanzar", views.mandado_avanzar, name="mandado-avanzar"),
+    path("mandados/<int:pk>/destino", views.mandado_destino, name="mandado-destino"),
 ]

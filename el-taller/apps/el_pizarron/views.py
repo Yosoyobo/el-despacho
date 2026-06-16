@@ -439,3 +439,111 @@ def comentar_proyecto(request, proyecto_id):
         )
         messages.success(request, "Comentario agregado al proyecto.")
     return redirect("proyectos-detalle", pk=proyecto.pk)
+
+
+# ── El Runner — Mandados (S-Chalan-Barrido parte 2) ───────────────────────────
+
+def _mandado_visible_o_404(request, pk):
+    from apps.el_pizarron.mandados import mandados_visibles
+    m = mandados_visibles(request.user).filter(pk=pk).first()
+    if m is None:
+        from django.http import Http404
+        raise Http404("Mandado no encontrado o sin acceso.")
+    return m
+
+
+@login_required
+def mandados_lista(request):
+    """Lista propia de El Runner: entregas/recolecciones como entidad logística,
+    filtrables por estado de reparto. Cada fila enlaza a su proyecto y permite
+    avanzar el estado o fijar el destino (pin)."""
+    from apps.el_pizarron.mandados import mandados_visibles
+    from apps.el_pizarron.models.mandado import ESTADOS_MANDADO
+
+    qs = mandados_visibles(request.user)
+    estados_validos = {s for s, _, _ in ESTADOS_MANDADO}
+    estado_sel = request.GET.get("estado", "")
+    if estado_sel in estados_validos:
+        qs = qs.filter(estado=estado_sel)
+
+    mandados = list(qs.order_by("estado", "tarea__fecha_compromiso", "-creado_en")[:300])
+
+    base = reverse("mandados-lista")
+    chips = [{
+        "slug": "", "label": "Todos",
+        "url": base, "activo": estado_sel == "",
+    }]
+    for slug, label, color in ESTADOS_MANDADO:
+        chips.append({
+            "slug": slug, "label": label, "color": color,
+            "url": f"{base}?estado={slug}", "activo": estado_sel == slug,
+        })
+
+    return render(request, "mandados/lista.html", {
+        "mandados": mandados,
+        "chips": chips,
+        "total": len(mandados),
+        "puede_admin": es_admin(request.user),
+    })
+
+
+@login_required
+def mandado_avanzar(request, pk):
+    """POST: avanza el estado de reparto (en_camino | entregado | cancelar)."""
+    if request.method != "POST":
+        return HttpResponseForbidden("Solo POST.")
+    from apps.el_pizarron import mandados as svc
+    m = _mandado_visible_o_404(request, pk)
+    accion = (request.POST.get("accion") or "").strip()
+    try:
+        if accion == "en_camino":
+            svc.marcar_en_camino(m)
+            messages.success(request, "Mandado marcado en camino.")
+        elif accion == "entregado":
+            svc.marcar_entregado(m)
+            messages.success(request, "Mandado entregado. ✅")
+        elif accion == "cancelar":
+            svc.cancelar(m, motivo=(request.POST.get("motivo") or "").strip())
+            messages.success(request, "Mandado cancelado.")
+        else:
+            messages.error(request, "Acción no válida.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    _emitir_mandado("mandado.estado_cambiado", request.user, m, {"accion": accion})
+    return redirect("mandados-lista")
+
+
+@login_required
+def mandado_destino(request, pk):
+    """Fija el destino (pin Leaflet). GET (HTMX) → modal con mapa; POST → guarda
+    lat/lng/etiqueta en la Tarea subyacente."""
+    from apps.el_pizarron import mandados as svc
+    m = _mandado_visible_o_404(request, pk)
+
+    if request.method == "POST":
+        try:
+            lat = float(request.POST.get("lat"))
+            lng = float(request.POST.get("lng"))
+        except (TypeError, ValueError):
+            messages.error(request, "Coordenadas inválidas.")
+            return redirect("mandados-lista")
+        svc.fijar_destino(m, lat=lat, lng=lng, etiqueta=(request.POST.get("etiqueta") or "").strip())
+        _emitir_mandado("mandado.destino_fijado", request.user, m, {"lat": lat, "lng": lng})
+        if request.headers.get("HX-Request") == "true":
+            from django.http import HttpResponse
+            return HttpResponse(status=204, headers={"HX-Redirect": reverse("mandados-lista")})
+        messages.success(request, "Destino del mandado actualizado.")
+        return redirect("mandados-lista")
+
+    return render(request, "mandados/_modal_destino.html", {"m": m})
+
+
+def _emitir_mandado(tipo, usuario, mandado, extra=None):
+    import contextlib
+    with contextlib.suppress(Exception):
+        emitir(EventoPortavoz(
+            tipo=tipo,  # type: ignore[arg-type]
+            actor_id=getattr(usuario, "pk", None),
+            actor_email=getattr(usuario, "email", None),
+            payload={"mandado_id": mandado.pk, "tarea_id": mandado.tarea_id, **(extra or {})},
+        ))

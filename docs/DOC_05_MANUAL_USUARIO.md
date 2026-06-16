@@ -5,6 +5,26 @@
 
 ---
 
+## Novedades — Mandados: las entregas y recolecciones, en su propia pantalla (16 de junio de 2026)
+
+- **Nueva pantalla "🛵 Mandados".** Las tareas de tipo **Entrega** o **Recoger**
+  ahora también aparecen en su lista propia, en *Tareas → 🛵 Mandados*. Ahí ves
+  cada mandado con su **estado de reparto**: *Por asignar → Asignado → En camino
+  → Entregado* (o *Cancelado*). Sigue siendo la misma tarea de siempre (no se
+  duplica nada): solo le agregamos el seguimiento del reparto.
+- **Botones para avanzar el reparto.** En cada mandado puedes marcar **"En
+  camino"**, **"Entregado"** (que además completa la tarea) o **"Cancelar"**.
+- **Fijar el destino en un mapa.** Con **"📌 Fijar"** abres un mapa y picas (o
+  arrastras el pin) dónde se entrega/recoge. Con eso, cuando el sistema asigna
+  el runner automáticamente, elige al **más cercano** a ese punto. Si no fijas
+  el pin, se usa la última visita registrada a ese cliente.
+- **Con El Chalán:** crea la entrega y deja que asigne el runner —
+  *"crea una entrega de #LC-0009 para el viernes y que el sistema asigne al
+  runner"*. El Chalán elegirá al repartidor más cercano si ya hay ubicación
+  conocida del cliente.
+
+---
+
 ## Novedades — Corregida la hora (ya no aparece adelantada) (16 de junio de 2026)
 
 - **Las horas vuelven a mostrarse en hora de México.** Había un desfase que hacía
