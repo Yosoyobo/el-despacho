@@ -106,6 +106,7 @@ def test_form_runner_dropdown_solo_elegibles(usuario_factory):
     """El <select> de runner del TareaForm solo lista usuarios con el permiso
     (runner, recibir). Revocar el permiso a alguien lo saca del dropdown."""
     from apps.el_pizarron.forms import TareaForm
+
     from cuentas.models.permiso_usuario import PermisoUsuario
     elegible = usuario_factory(rol="disenador", email="elig@lc.mx")
     no_runner = usuario_factory(rol="disenador", email="norun@lc.mx")
