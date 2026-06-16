@@ -8,11 +8,13 @@ La Gerencia (La Recepción solo expone `/sw.js`).
 
 from django.urls import path
 
+from interfono.offline_view import offline
 from interfono.sw_js import sw_js
 from interfono.views_compartidas import desuscribir, marcar_clickeado, prueba, suscribir
 
 urlpatterns_sw = [
     path("sw.js", sw_js, name="interfono-sw"),
+    path("offline/", offline, name="interfono-offline"),
 ]
 
 urlpatterns_suscripcion = [

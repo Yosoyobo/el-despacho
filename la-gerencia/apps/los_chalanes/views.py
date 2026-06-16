@@ -41,7 +41,7 @@ def panel(request):
 
     cuadro = CuadroChalanes.objects.all().order_by("estacion")
     cadena = CadenaFallback.objects.all().order_by("prioridad")
-    logs = AnalistaLog.objects.all().order_by("-creado_en")[:50]
+    logs = AnalistaLog.objects.select_related("actor").order_by("-creado_en")[:50]
     # Mapa {proveedor: [modelos]} para el dropdown dependiente del Chalán.
     # forzar=1 (solo super_admin) re-consulta las APIs ignorando el cache.
     forzar = request.GET.get("refrescar_modelos") == "1" and es_super_admin(request.user)
@@ -61,6 +61,19 @@ def panel(request):
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
         "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
     })
+
+
+@requiere_permiso("chalanes", "ver")
+def auditoria_detalle(request, pk):
+    """Detalle de un intento de la auditoría (modal HTMX, patrón Wave 5).
+
+    Hash-only por diseño: NO se guarda el prompt ni la respuesta en claro
+    (solo el SHA-256 del prompt). El detalle muestra quién/cuándo/cuánto:
+    actor, hora exacta, tiempo de respuesta (latencia), tokens, costo,
+    modelo, estación, fallback y resultado/error.
+    """
+    log = get_object_or_404(AnalistaLog.objects.select_related("actor"), pk=pk)
+    return render(request, "los_chalanes/_modal_auditoria.html", {"log": log})
 
 
 VENTANAS_CONSUMO = (7, 30, 90)

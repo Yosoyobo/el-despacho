@@ -71,7 +71,16 @@ class TareaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["runner"].queryset = Usuario.objects.filter(is_active=True).order_by("nombre_completo")
+        # El dropdown de runner solo lista usuarios elegibles como runner
+        # (permiso `(runner, recibir)`), igual que el de responsables filtra
+        # por rol. `usuarios_runner()` cae a todos los activos si nadie tiene
+        # el permiso configurado, así que nunca queda vacío; el super_admin
+        # cura la elegibilidad desde /directorio/<id>/permisos/.
+        from lib.permisos import usuarios_runner
+        elegibles = usuarios_runner()
+        self.fields["runner"].queryset = (
+            Usuario.objects.filter(pk__in=[u.pk for u in elegibles]).order_by("nombre_completo")
+        )
         # Estado dinámico (el campo del modelo ya no tiene choices). Si la
         # tarea está en un slug inactivo/huérfano, se conserva como opción
         # para no romper la edición. El form global (sin "estado" en fields)

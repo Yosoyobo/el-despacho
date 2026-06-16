@@ -5,6 +5,28 @@
 
 ---
 
+## Novedades — Pantalla "Sin conexión", runners filtrados y detalle de Chalanes (16 de junio de 2026)
+
+- **Pantalla "Sin conexión".** Si abres El Despacho desde el celular (instalado
+  como app) y te quedas sin internet, en vez de la pantalla de error del
+  navegador verás una página propia con el logo y un botón **"Reintentar"**.
+  Las pantallas que ya visitaste siguen abriendo aunque no haya red. *(Nota: las
+  checadas de El Checador ya se guardaban solas sin conexión y se sincronizan al
+  reconectar — eso no cambia.)*
+- **El repartidor (runner) ahora solo lista a quien puede serlo.** Al crear una
+  tarea de **Entrega/Recoger**, el menú "elige uno manualmente" muestra
+  únicamente a las personas habilitadas como runner. El super admin habilita o
+  quita a quién puede repartir desde *Gerencia → Directorio → (persona) →
+  Permisos*.
+- **Auditoría de Chalanes: ahora se ve quién y el detalle.** En *Gerencia →
+  Chalanes → Auditoría reciente* hay una columna nueva **"Quién"** (qué usuario
+  hizo cada llamada a la IA) y, al **picar cualquier fila**, se abre el detalle:
+  usuario, hora exacta, **tiempo de respuesta**, modelo, tokens y costo. *(Por
+  privacidad El Despacho nunca guarda el texto enviado ni la respuesta de la IA
+  — solo un código (hash) que lo identifica.)*
+
+---
+
 ## Novedades — Mandados: las entregas y recolecciones, en su propia pantalla (16 de junio de 2026)
 
 - **Nueva pantalla "🛵 Mandados".** Las tareas de tipo **Entrega** o **Recoger**

@@ -102,6 +102,23 @@ def test_ejecutor_asignar_runner_rechaza_tarea_normal(proyecto_factory, usuario_
         asignar_runner_ejec(accion, actor)
 
 
+def test_form_runner_dropdown_solo_elegibles(usuario_factory):
+    """El <select> de runner del TareaForm solo lista usuarios con el permiso
+    (runner, recibir). Revocar el permiso a alguien lo saca del dropdown."""
+    from apps.el_pizarron.forms import TareaForm
+    from cuentas.models.permiso_usuario import PermisoUsuario
+    elegible = usuario_factory(rol="disenador", email="elig@lc.mx")
+    no_runner = usuario_factory(rol="disenador", email="norun@lc.mx")
+    # Override individual: revoca (runner, recibir) — gana sobre el default del rol.
+    PermisoUsuario.objects.update_or_create(
+        usuario=no_runner, modulo="runner", permiso="recibir",
+        defaults={"activo": False},
+    )
+    qs = TareaForm().fields["runner"].queryset
+    assert elegible in qs
+    assert no_runner not in qs
+
+
 def test_runner_ve_en_sus_pendientes(proyecto_factory, usuario_factory):
     from apps.el_dictado.herramientas import _h_mis_tareas
     from apps.taller_home.views import _mis_tareas

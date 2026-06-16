@@ -7,6 +7,7 @@ app_name = "los_chalanes"
 urlpatterns = [
     path("", views.panel, name="panel"),
     path("consumo/", views.consumo, name="consumo"),
+    path("auditoria/<int:pk>/", views.auditoria_detalle, name="auditoria-detalle"),
     path("cuadro/guardar", views.guardar_cuadro, name="guardar_cuadro"),
     # Prompts — voz editable (Prompt base + voces por estación)
     path("prompts/", views.prompts_voz, name="prompts-voz"),

@@ -114,11 +114,15 @@ self.addEventListener('fetch', function(event) {
     try { url = new URL(req.url); } catch (e) { return; }
     if (url.origin !== self.location.origin) return;  // cross-origin passthrough (CDN/fonts)
 
-    // Navegación: network-first; offline → caché de la ruta o el shell '/'.
+    // Navegación: network-first; offline → caché de la ruta, si no la página
+    // dedicada '/offline/', y como último recurso el shell '/'.
     if (req.mode === 'navigate') {
         event.respondWith(
             fetch(req).catch(function() {
-                return caches.match(req).then(function(r) { return r || caches.match('/'); });
+                return caches.match(req).then(function(r) {
+                    if (r) return r;
+                    return caches.match(DESPACHO_OFFLINE).then(function(o) { return o || caches.match('/'); });
+                });
             })
         );
         return;
@@ -158,8 +162,10 @@ def _cabecera() -> str:
         except Exception:  # noqa: BLE001 — asset ausente en esta app: se omite
             continue
     assets.append("/")
+    assets.append("/offline/")  # página dedicada de "sin conexión" (fallback de navegación)
     return (
         f'const DESPACHO_CACHE = "despacho-shell-{VERSION}";\n'
+        f'const DESPACHO_OFFLINE = "/offline/";\n'
         f"const DESPACHO_PRECACHE = {json.dumps(assets)};\n\n"
     )
 

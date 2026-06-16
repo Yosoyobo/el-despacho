@@ -1,0 +1,91 @@
+{% load horas %}{% comment %}
+Detalle de un intento de la auditoría de Chalanes (modal HTMX, Wave 5).
+Hash-only: no hay prompt/respuesta en claro, solo el SHA-256 del prompt.
+Se inyecta en #modal-slot. Cierra con close X / backdrop / Escape (ui.js).
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Detalle del intento</h2>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {{ log.estacion }} · {{ log.provider }}
+                    {% if log.exito %}<span class="ml-1 text-success-600">✓ Exitoso</span>{% else %}<span class="ml-1 text-error-600">✗ Falló</span>{% endif %}
+                </p>
+            </div>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+
+        <div class="px-5 py-4">
+            <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Quién hizo el llamado</dt>
+                    <dd class="mt-0.5 font-medium text-gray-900 dark:text-gray-100">
+                        {% if log.actor %}{{ log.actor.nombre_completo|default:log.actor.email }}{% if log.actor.email and log.actor.nombre_completo %} <span class="text-gray-400">· {{ log.actor.email }}</span>{% endif %}{% else %}<span class="text-gray-400">Sistema / sin usuario</span>{% endif %}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Cuándo</dt>
+                    <dd class="mt-0.5 font-mono text-gray-800 dark:text-gray-200">{{ log.creado_en|hfmt:"Y-m-d H:i:s" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Tiempo de respuesta</dt>
+                    <dd class="mt-0.5 font-mono text-gray-800 dark:text-gray-200">{{ log.latencia_ms }} ms</dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Estación</dt>
+                    <dd class="mt-0.5 text-gray-800 dark:text-gray-200">{{ log.estacion }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Chalán</dt>
+                    <dd class="mt-0.5 text-gray-800 dark:text-gray-200">
+                        {{ log.provider }}
+                        {% if log.es_fallback %}<span class="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">fallback de {{ log.proveedor_original }}</span>{% endif %}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Modelo</dt>
+                    <dd class="mt-0.5 font-mono text-xs text-gray-800 dark:text-gray-200">{{ log.modelo|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Costo estimado</dt>
+                    <dd class="mt-0.5 font-mono text-gray-800 dark:text-gray-200">${{ log.costo_usd_estimado }} USD</dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Tokens entrada</dt>
+                    <dd class="mt-0.5 font-mono text-gray-800 dark:text-gray-200">{{ log.prompt_tokens }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Tokens salida</dt>
+                    <dd class="mt-0.5 font-mono text-gray-800 dark:text-gray-200">{{ log.completion_tokens }}</dd>
+                </div>
+
+                <div class="sm:col-span-2">
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Hash del prompt (SHA-256)</dt>
+                    <dd class="mt-0.5 break-all font-mono text-[11px] text-gray-500 dark:text-gray-400">{{ log.prompt_hash|default:"—" }}</dd>
+                </div>
+
+                {% if not log.exito %}
+                <div class="sm:col-span-2">
+                    <dt class="text-xs font-medium uppercase tracking-wide text-error-500">Error</dt>
+                    <dd class="mt-0.5 rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-xs text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ log.mensaje_error|default:"(sin mensaje)" }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+
+            <p class="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+                Por privacidad, El Despacho guarda solo el <span class="font-medium">hash</span> del prompt — nunca el texto enviado ni la respuesta del Chalán. Aquí ves quién, cuándo y cuánto costó cada llamada, no su contenido.
+            </p>
+        </div>
+
+        <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <button type="button" data-modal-slot-close class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Cerrar</button>
+        </footer>
+    </div>
+</div>
