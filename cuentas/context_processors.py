@@ -55,6 +55,10 @@ def permisos_modulos(request):
     for m in MODULOS_VISIBLES:
         accion = ACCION_VISIBLE_POR_MODULO.get(m, "ver")
         accesos[m] = _puede(user, m, accion)
+    # S-Mandados-V2: el item de Mandados en el sidebar es SOLO para repartidores
+    # (rol Runner / privilegio runner) — decisión Oscar. Los admins lo gestionan
+    # desde la tarea/proyecto, no necesitan el atajo.
+    accesos["mandados"] = bool(accesos.get("runner"))
     return {"permisos_modulos": accesos}
 
 

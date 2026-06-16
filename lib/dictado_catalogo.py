@@ -99,6 +99,12 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "tarea_id, runner_slug? (sin él, el sistema asigna el runner menos cargado)",
     },
     {
+        "tipo": "crear_mandado",
+        "titulo": "Crear mandado (envío/recolección con dirección o lugar)",
+        "ejemplo": 'Manda recoger el material de #LC-0001 en "Av. Reforma 222, CDMX". O: "envía la entrega de #LC-0009 a la Sucursal Centro" (lugar conocido).',
+        "payload": "proyecto_slug, titulo, tipo? (entrega|recoger), asignado_slug?, fecha_compromiso?, runner_slug?, y el destino: destino_texto (dirección) | poi (nombre de lugar conocido) | destino_lat+destino_lng. Sin runner_slug se asigna al MÁS CERCANO al destino.",
+    },
+    {
         "tipo": "crear_recado",
         "titulo": "Crear recado",
         "ejemplo": "Mándale a @ana un recado: que revise #lc-0001 mañana.",

@@ -58,13 +58,15 @@ def ver_como_rol(request):
         messages.error(request, "Solo un super admin puede ver como un rol.")
         return redirect("/")
     from cuentas.models.rol import Rol
-    nombre = (request.POST.get("rol") or "").strip()
-    if nombre == "super_admin" or not Rol.objects.filter(nombre=nombre).exists():
+    # El form envía la `clave` estable del rol (no el nombre editable).
+    clave = (request.POST.get("rol") or "").strip()
+    rol = Rol.objects.filter(clave=clave).first()
+    if clave == "super_admin" or rol is None:
         messages.error(request, "Rol inválido para simular.")
         return redirect("/")
-    request.session[ROL_SIM_KEY] = nombre
-    _emitir("sesion.ver_como_rol_iniciado", request.user, {"rol": nombre})
-    messages.info(request, f"Ahora ves el sistema como el rol «{nombre}». Sal cuando termines.")
+    request.session[ROL_SIM_KEY] = clave
+    _emitir("sesion.ver_como_rol_iniciado", request.user, {"rol": clave})
+    messages.info(request, f"Ahora ves el sistema como el rol «{rol.nombre}». Sal cuando termines.")
     return redirect("/")
 
 

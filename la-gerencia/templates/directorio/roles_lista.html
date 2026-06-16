@@ -16,7 +16,6 @@
                 <th class="px-5 py-3 text-left">Nombre</th>
                 <th class="px-5 py-3 text-left">Descripción</th>
                 <th class="px-5 py-3 text-left">Módulos</th>
-                <th class="px-5 py-3 text-left">Tipo</th>
                 <th class="px-5 py-3 text-right">Acciones</th>
             </tr>
         </thead>
@@ -26,14 +25,11 @@
                 <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ rol.nombre }}</td>
                 <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ rol.descripcion|default:"—" }}</td>
                 <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ rol.permisos.keys|join:", "|default:"—" }}</td>
-                <td class="px-5 py-3">
-                    {% if rol.sistema %}<span class="badge badge-gray">Sistema</span>{% else %}<span class="badge badge-success">Custom</span>{% endif %}
-                </td>
                 <td class="px-5 py-3 text-right">
                     <div class="inline-flex items-center gap-2">
-                        {% if not rol.sistema or rol.nombre != "super_admin" %}<a href="{% url 'directorio-rol-editar' rol.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>{% endif %}
-                        {% if not rol.sistema %}
-                        <form method="post" action="{% url 'directorio-rol-borrar' rol.pk %}" class="inline" onsubmit="return confirm('¿Borrar el rol {{ rol.nombre }}? Los usuarios con este rol extra lo pierden.');">{% csrf_token %}
+                        <a href="{% url 'directorio-rol-editar' rol.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                        {% if not rol.protegido %}
+                        <form method="post" action="{% url 'directorio-rol-borrar' rol.pk %}" class="inline" onsubmit="return confirm('¿Borrar el rol {{ rol.nombre }}? Los usuarios con este rol lo pierden.');">{% csrf_token %}
                             <button type="submit" class="text-sm font-medium text-error-600 hover:underline dark:text-error-400">Borrar</button>
                         </form>
                         {% endif %}

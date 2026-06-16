@@ -198,6 +198,23 @@ def _mis_tareas(user):
     return list(qs[:4]), total
 
 
+def _es_runner(user) -> bool:
+    from lib.permisos import puede_ser_runner
+    return puede_ser_runner(user)
+
+
+def _mis_mandados(user):
+    """Mandados abiertos donde soy el runner (para el widget del dashboard)."""
+    from apps.el_pizarron.mandados import mandados_visibles
+    qs = (
+        mandados_visibles(user)
+        .filter(tarea__runner=user)
+        .exclude(estado__in=("entregado", "cancelado"))
+        .order_by("tarea__fecha_compromiso")
+    )
+    return list(qs[:5])
+
+
 def _proximos_eventos(user):
     """Entregas de proyectos + tareas con fecha, desde hoy. (V6: el estado
     `bloqueada` ya no existe — sin exclusiones especiales.)"""
@@ -271,6 +288,9 @@ def home(request):
     compact_kpis = _safe("compact_kpis", lambda: _compact_kpis(user, rol), [])
     calendarios = _safe("calendarios", lambda: _calendarios(user),
                         {"actual": None, "siguiente": None})
+    # S-Mandados-V2: protagonismo para repartidores — widget de sus mandados.
+    es_runner = _safe("es_runner", lambda: _es_runner(user), False)
+    mis_mandados = _safe("mis_mandados", lambda: _mis_mandados(user), []) if es_runner else []
 
     return render(request, "taller_home/home.html", {
         "titulo": "LEARNING CENTER",
@@ -284,6 +304,8 @@ def home(request):
         "hero_kpis": hero_kpis,
         "compact_kpis": compact_kpis,
         "calendarios": calendarios,
+        "es_runner": es_runner,
+        "mis_mandados": mis_mandados,
     })
 
 

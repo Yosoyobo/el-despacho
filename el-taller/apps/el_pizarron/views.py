@@ -495,21 +495,28 @@ def mandado_avanzar(request, pk):
     from apps.el_pizarron import mandados as svc
     m = _mandado_visible_o_404(request, pk)
     accion = (request.POST.get("accion") or "").strip()
+    evento = None
     try:
         if accion == "en_camino":
             svc.marcar_en_camino(m)
+            evento = "en_camino"
             messages.success(request, "Mandado marcado en camino.")
         elif accion == "entregado":
             svc.marcar_entregado(m)
+            evento = "entregado"
             messages.success(request, "Mandado entregado. ✅")
         elif accion == "cancelar":
             svc.cancelar(m, motivo=(request.POST.get("motivo") or "").strip())
+            evento = "cancelado"
             messages.success(request, "Mandado cancelado.")
         else:
             messages.error(request, "Acción no válida.")
     except ValueError as exc:
         messages.error(request, str(exc))
-    _emitir_mandado("mandado.estado_cambiado", request.user, m, {"accion": accion})
+    if evento:
+        # Push a los involucrados (quien lo mandó, asignado, runner) — A8.
+        svc.notificar_involucrados(m, evento, actor=request.user)
+        _emitir_mandado("mandado.estado_cambiado", request.user, m, {"accion": accion})
     return redirect("mandados-lista")
 
 
@@ -535,7 +542,25 @@ def mandado_destino(request, pk):
         messages.success(request, "Destino del mandado actualizado.")
         return redirect("mandados-lista")
 
-    return render(request, "mandados/_modal_destino.html", {"m": m})
+    from apps.el_pizarron.poi import pois_para_destino
+    return render(request, "mandados/_modal_destino.html", {
+        "m": m,
+        "pois": pois_para_destino(),
+    })
+
+
+@login_required
+def geocoding_buscar(request):
+    """Proxy server-side a Nominatim (OSM). Reusado por el modal de destino y por
+    El Chalán. Con `?q=` busca direcciones/POIs (`{resultados: [...]}`); con
+    `?lat=&lng=` identifica el punto al picar el mapa (`{punto: {...}}`)."""
+    from django.http import JsonResponse
+    lat, lng = request.GET.get("lat"), request.GET.get("lng")
+    if lat and lng:
+        from lib.geocoding import identificar
+        return JsonResponse({"punto": identificar(lat, lng)})
+    from lib.geocoding import buscar
+    return JsonResponse({"resultados": buscar(request.GET.get("q", ""))})
 
 
 def _emitir_mandado(tipo, usuario, mandado, extra=None):

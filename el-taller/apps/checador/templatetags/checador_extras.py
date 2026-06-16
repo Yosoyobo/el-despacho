@@ -53,3 +53,13 @@ def gmaps_link(lat, lng) -> str:
         return ""
     la, lo = c
     return f"https://www.google.com/maps/search/?api=1&query={la},{lo}"
+
+
+@register.simple_tag
+def gmaps_dir_link(lat, lng) -> str:
+    """Enlace de NAVEGACIÓN ("Cómo llegar") en Google Maps hacia el punto."""
+    c = _coords(lat, lng)
+    if c is None:
+        return ""
+    la, lo = c
+    return f"https://www.google.com/maps/dir/?api=1&destination={la},{lo}"

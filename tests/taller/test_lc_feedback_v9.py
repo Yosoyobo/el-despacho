@@ -122,7 +122,7 @@ def test_roles_display_incluye_extra(usuario_factory):
     from cuentas.models.rol import Rol
     from lib.permisos import roles_display
     u = usuario_factory(rol="miembro")
-    rol = Rol.objects.create(nombre="Cobranza")
+    rol = Rol.objects.create(clave="cobranza", nombre="Cobranza")
     u.roles_extra.add(rol)
     nombres = roles_display(u)
     assert "Miembro" in nombres

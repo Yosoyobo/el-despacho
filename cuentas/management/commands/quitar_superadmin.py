@@ -62,7 +62,7 @@ class Command(BaseCommand):
                 u.rol = "miembro"
                 u.save(update_fields=["rol"])
 
-        extras = list(u.roles_extra.filter(nombre="super_admin"))
+        extras = list(u.roles_extra.filter(clave="super_admin"))
         if extras:
             cambios.append(f"quitar {len(extras)} rol(es) extra 'super_admin'")
             if not opts["dry_run"]:

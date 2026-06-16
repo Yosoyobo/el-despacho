@@ -39,8 +39,11 @@ def roles_efectivos(user) -> set[str]:
     primario = getattr(user, "rol", None)
     if primario:
         roles.add(primario)
+    # S-Mandados-V2: la identidad de un rol es su `clave` estable (no el `nombre`,
+    # que el usuario puede renombrar libremente). Todos los checks por nombre de
+    # rol comparan claves.
     with contextlib.suppress(Exception):
-        roles.update(user.roles_extra.values_list("nombre", flat=True))
+        roles.update(user.roles_extra.values_list("clave", flat=True))
     return roles
 
 
@@ -75,7 +78,7 @@ def usuarios_con_rol(*nombres: str):
 
     from cuentas.models.usuario import Usuario
     return Usuario.objects.filter(
-        Q(rol__in=nombres) | Q(roles_extra__nombre__in=nombres),
+        Q(rol__in=nombres) | Q(roles_extra__clave__in=nombres),
         is_active=True,
     ).distinct()
 
@@ -88,7 +91,7 @@ def sincronizar_rol_primario(user) -> str:
     `Usuario.rol`. Devuelve el rol derivado."""
     tiene_sa = False
     with contextlib.suppress(Exception):
-        tiene_sa = user.roles_extra.filter(nombre="super_admin").exists()
+        tiene_sa = user.roles_extra.filter(clave="super_admin").exists()
     nuevo = "super_admin" if tiene_sa else "miembro"
     user.rol = nuevo
     user.is_staff = tiene_sa
@@ -351,7 +354,7 @@ def puede(usuario, modulo: str, permiso: str) -> bool:
     if sim:
         try:
             from cuentas.models.rol import Rol
-            rol = Rol.objects.filter(nombre=sim).first()
+            rol = Rol.objects.filter(clave=sim).first()
             return bool(rol and permiso in (rol.permisos.get(modulo) or []))
         except Exception:
             return False

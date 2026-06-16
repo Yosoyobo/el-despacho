@@ -39,7 +39,7 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - crear_proyecto, actualizar_proyecto, asignar_usuario_proyecto
 - crear_cliente, actualizar_cliente
 - crear_servicio, crear_variacion, crear_proveedor (Catálogo: solo crear)
-- crear_tarea, actualizar_tarea, asignar_runner
+- crear_tarea, actualizar_tarea, asignar_runner, crear_mandado
 - crear_recado, crear_mensaje_buzon
 - crear_cotizacion, crear_factura (se crean en BORRADOR para revisión)
 - registrar_egreso (S2b.3 activo; payload: monto, descripcion,
@@ -99,6 +99,8 @@ PAYLOADS:
   (si tipo es entrega|recoger y NO das runner_slug, el sistema asigna el runner menos cargado)
 - actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso?}}
 - asignar_runner: {tarea_id, runner_slug?}  (sin runner_slug ⇒ el sistema asigna el repartidor más libre; solo tareas entrega/recoger)
+- crear_mandado: {proyecto_slug, titulo, tipo? ∈ entrega|recoger (default recoger), asignado_slug?, fecha_compromiso?, runner_slug?, destino_texto? | poi? | destino_lat?+destino_lng?}
+  Es un envío/recolección con destino. Da la dirección en `destino_texto` (se geolocaliza) o el nombre de un lugar conocido en `poi`. Sin runner_slug, el sistema asigna al repartidor MÁS CERCANO al destino. Ej.: "manda recoger el material de #LC-0001 en Av. Reforma 222, CDMX".
 - actualizar_proyecto: {proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}}
 - asignar_usuario_proyecto: {proyecto_slug, usuario_slug, rol_en_proyecto?}
 - crear_recado: {destinatarios_slugs: [...], cuerpo}

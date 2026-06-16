@@ -16,6 +16,7 @@ urlpatterns = [
     path("tareas/<int:pk>/cambiar-estado", views.cambiar_estado_tarea, name="pizarron-cambiar-estado"),
     # El Runner — Mandados (entregas/recolecciones como entidad logística).
     path("mandados/", views.mandados_lista, name="mandados-lista"),
+    path("mandados/geocoding", views.geocoding_buscar, name="mandados-geocoding"),
     path("mandados/<int:pk>/avanzar", views.mandado_avanzar, name="mandado-avanzar"),
     path("mandados/<int:pk>/destino", views.mandado_destino, name="mandado-destino"),
 ]

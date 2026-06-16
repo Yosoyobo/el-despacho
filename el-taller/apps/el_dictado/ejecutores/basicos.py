@@ -425,6 +425,72 @@ def asignar_runner_ejec(accion, usuario, contexto=None):
     accion.entidad_id = tarea.pk
 
 
+def _resolver_destino(payload, contexto=None):
+    """Resuelve el destino de un mandado a (lat, lng, etiqueta). Acepta, en orden:
+    `destino_lat`+`destino_lng`, `poi` (lugar conocido por nombre) o `destino_texto`
+    (dirección libre → Nominatim). Devuelve None si no se pudo resolver."""
+    lat = payload.get("destino_lat")
+    lng = payload.get("destino_lng")
+    if lat is not None and lng is not None:
+        try:
+            return (float(lat), float(lng), (payload.get("destino_texto") or "").strip()[:200])
+        except (TypeError, ValueError):
+            pass
+    poi_txt = (payload.get("poi") or "").strip()
+    if poi_txt:
+        from apps.el_pizarron.poi import resolver_poi
+        p = resolver_poi(poi_txt)
+        if p:
+            return (p["lat"], p["lng"], p["label"][:200])
+    texto = (payload.get("destino_texto") or "").strip()
+    if texto:
+        from lib.geocoding import primer_resultado
+        r = primer_resultado(texto)
+        if r:
+            return (r["lat"], r["lng"], (r["nombre"] or texto)[:200])
+    return None
+
+
+@registrar("crear_mandado")
+def crear_mandado(accion, usuario, contexto=None):
+    """S-Mandados-V2: crea una entrega/recolección con destino resuelto desde una
+    dirección o el nombre de un lugar conocido (POI). Internamente es una Tarea de
+    tipo entrega/recoger con destino fijado → el signal crea el Mandado y se
+    auto-asigna el runner más cercano. Mismo nivel de acceso que crear_tarea."""
+    payload = accion.payload or {}
+    proyecto = _resolver_proyecto(payload.get("proyecto_slug", ""), contexto)
+    titulo = (payload.get("titulo") or "").strip()
+    if not titulo:
+        raise ValueError("Falta `titulo` del mandado.")
+    tipo = (payload.get("tipo") or "recoger").lower()
+    if tipo not in {"entrega", "recoger"}:
+        tipo = "recoger"
+    asignado_slug = (payload.get("asignado_slug") or "").strip()
+    asignada_a = _resolver_usuario(asignado_slug, contexto) if asignado_slug else None
+    fecha = payload.get("fecha_compromiso") or None
+
+    from apps.el_pizarron.models import Tarea
+    t = Tarea.objects.create(
+        proyecto=proyecto, titulo=titulo[:200], asignada_a=asignada_a,
+        fecha_compromiso=fecha, tipo=tipo, creado_por=usuario,
+    )
+    # Fija el destino ANTES de auto-asignar para que la cercanía aplique.
+    destino = _resolver_destino(payload, contexto)
+    if destino:
+        t.destino_lat, t.destino_lng, t.destino_etiqueta = destino
+        t.save(update_fields=["destino_lat", "destino_lng", "destino_etiqueta"])
+
+    accion.entidad_tipo = "tarea"
+    accion.entidad_id = t.pk
+
+    from apps.el_pizarron import runners
+    runner_slug = (payload.get("runner_slug") or "").strip()
+    if runner_slug:
+        runners.asignar_runner(t, _resolver_usuario(runner_slug, contexto), actor=usuario)
+    else:
+        runners.asignar_runner_auto(t, actor=usuario)
+
+
 @registrar("crear_recado")
 def crear_recado_ejec(accion, usuario, contexto=None):
     from apps.recados.services import crear_recado

@@ -202,8 +202,22 @@ def permisos(request, pk: int):
 @requiere_permiso("directorio", "roles")
 def roles_lista(request):
     from cuentas.models.rol import Rol
-    roles = Rol.objects.all().order_by("sistema", "nombre")
+    roles = Rol.objects.all().order_by("nombre")
     return render(request, "directorio/roles_lista.html", {"roles": roles})
+
+
+def _clave_unica(nombre: str) -> str:
+    """Genera una clave estable y única para un rol nuevo a partir del nombre."""
+    from django.utils.text import slugify
+
+    from cuentas.models.rol import Rol
+    base = slugify(nombre) or "rol"
+    clave = base
+    i = 2
+    while Rol.objects.filter(clave=clave).exists():
+        clave = f"{base}-{i}"
+        i += 1
+    return clave
 
 
 @requiere_permiso("directorio", "roles")
@@ -220,10 +234,10 @@ def rol_nuevo(request):
         if Rol.objects.filter(nombre=nombre).exists():
             messages.error(request, f"Ya existe un rol llamado «{nombre}».")
             return render(request, "directorio/rol_form.html", {"modo": "nuevo", "nombre": nombre, "descripcion": descripcion, "secciones": _secciones_rol(permisos)})
-        rol = Rol.objects.create(nombre=nombre, descripcion=descripcion, permisos=permisos, sistema=False)
+        rol = Rol.objects.create(clave=_clave_unica(nombre), nombre=nombre, descripcion=descripcion, permisos=permisos, sistema=False)
         emitir(EventoPortavoz(
             tipo="rol.creado", actor_id=request.user.pk, actor_email=request.user.email,
-            payload={"rol_id": rol.pk, "nombre": rol.nombre},
+            payload={"rol_id": rol.pk, "nombre": rol.nombre, "clave": rol.clave},
         ))
         messages.success(request, f"Rol «{rol.nombre}» creado.")
         return redirect("directorio-roles")
@@ -236,17 +250,25 @@ def rol_editar(request, pk: int):
     from cuentas.models.rol import Rol
     rol = get_object_or_404(Rol, pk=pk)
     if request.method == "POST":
-        if rol.sistema and rol.nombre == "super_admin":
-            messages.error(request, "El rol super_admin del sistema no se puede editar.")
-            return redirect("directorio-roles")
+        # El `nombre` es libremente editable (la identidad la lleva `clave`, que
+        # nunca cambia). Solo super_admin queda protegido contra cambios de
+        # permisos para no neutralizar el failsafe.
+        nombre = (request.POST.get("nombre") or "").strip()
         descripcion = (request.POST.get("descripcion") or "").strip()
-        permisos = _permisos_desde_checkboxes(request)
+        if not nombre:
+            messages.error(request, "El nombre del rol es obligatorio.")
+            return render(request, "directorio/rol_form.html", {"modo": "editar", "rol": rol, "nombre": rol.nombre, "descripcion": descripcion, "secciones": _secciones_rol(rol.permisos)})
+        if Rol.objects.filter(nombre=nombre).exclude(pk=rol.pk).exists():
+            messages.error(request, f"Ya existe un rol llamado «{nombre}».")
+            return render(request, "directorio/rol_form.html", {"modo": "editar", "rol": rol, "nombre": nombre, "descripcion": descripcion, "secciones": _secciones_rol(rol.permisos)})
+        rol.nombre = nombre
         rol.descripcion = descripcion
-        rol.permisos = permisos
+        if rol.clave != "super_admin":
+            rol.permisos = _permisos_desde_checkboxes(request)
         rol.save()
         emitir(EventoPortavoz(
             tipo="rol.actualizado", actor_id=request.user.pk, actor_email=request.user.email,
-            payload={"rol_id": rol.pk, "nombre": rol.nombre},
+            payload={"rol_id": rol.pk, "nombre": rol.nombre, "clave": rol.clave},
         ))
         messages.success(request, f"Rol «{rol.nombre}» actualizado.")
         return redirect("directorio-roles")
@@ -263,8 +285,8 @@ def rol_editar(request, pk: int):
 def rol_borrar(request, pk: int):
     from cuentas.models.rol import Rol
     rol = get_object_or_404(Rol, pk=pk)
-    if rol.sistema:
-        messages.error(request, f"El rol sistema «{rol.nombre}» no se puede borrar.")
+    if rol.protegido:
+        messages.error(request, f"El rol «{rol.nombre}» no se puede borrar.")
         return redirect("directorio-roles")
     nombre = rol.nombre
     rol.delete()

@@ -5,6 +5,47 @@
 
 ---
 
+## Novedades — Mandados con dirección/lugar, nombres de rol editables y menú más limpio (16 de junio de 2026)
+
+- **Fijar el destino de un mandado de 3 formas.** Al abrir un mandado y tocar
+  *Fijar destino* puedes: **(1)** picar el mapa, **(2)** escribir una dirección
+  y elegirla de las sugerencias (se busca sola mientras escribes), o **(3)**
+  elegir un **lugar conocido** (una sede, o un cliente/proveedor que ya visitaste)
+  del menú desplegable. Al picar el mapa, el sistema intenta ponerle nombre al
+  lugar automáticamente.
+- **El Chalán crea mandados hablando.** Puedes pedirle, por ejemplo:
+  *"manda recoger el material de #LC-0001 en Av. Reforma 222, CDMX"* o
+  *"envía la entrega de #LC-0009 a la Sucursal Centro"*. El Chalán ubica la
+  dirección o el lugar y crea el mandado; si no indicas repartidor, asigna al
+  **más cercano**.
+- **Al completar la tarea, el mandado se cierra solo.** Cuando marcas como
+  completada una **entrega/recolección**, su mandado pasa automáticamente a
+  **Entregado**.
+- **Mapa y "Cómo llegar" en la tarea.** El detalle de una entrega/recolección
+  muestra una **miniatura del destino** y un botón **🧭 Cómo llegar** que abre
+  la ruta en Google Maps.
+- **Avisos a todos los involucrados.** El repartidor recibe un aviso cuando se
+  le asigna un mandado, y quien lo creó (más el asignado) recibe avisos cuando
+  el mandado avanza (**en camino / entregado / cancelado**). Puedes activar o
+  silenciar estos avisos en *Notificaciones → Mandados (envíos)*.
+- **Protagonismo para repartidores.** Si tienes el rol **Runner**, ves la
+  pantalla **🛵 Mandados** en tu menú y un recuadro **"Mis mandados"** en tu
+  Dashboard con tus pendientes. Quien no es repartidor no ve esa sección.
+- **Ponle a los roles el nombre que quieras.** En *Gerencia → Directorio →
+  Roles* ya puedes **renombrar cualquier rol** (incluidos los de base) sin
+  romper sus permisos. Se quitó la etiqueta "Sistema". Solo el rol del
+  super administrador queda protegido de borrarse.
+- **El menú lateral oculta lo que no usas.** Las secciones a las que no tienes
+  acceso ya no aparecen en tu menú: queda más limpio y enfocado a tu trabajo.
+
+### Cómo se usa con El Chalán
+- *"manda recoger el material de #LC-0001 en Calle Tal 123, Guadalajara"* →
+  crea el mandado y lo ubica por dirección.
+- *"agenda una entrega de #LC-0009 a la Sucursal Centro"* → lo ubica por el
+  nombre del lugar conocido.
+
+---
+
 ## Novedades — Roles unificados, "Ver como rol" y repartidores opt-in (16 de junio de 2026)
 
 - **Un solo lugar para los roles.** Se quitó el menú de "rol primario" de la

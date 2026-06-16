@@ -25,9 +25,19 @@ from django.db import models
 
 
 class Rol(models.Model):
+    # `clave` es la IDENTIDAD ESTABLE e interna del rol (oculta del GUI). Todo el
+    # sistema de permisos identifica roles por la clave —
+    # `lib.permisos.tiene_rol(user, "super_admin")`, `usuarios_con_rol("dueno")`,
+    # `sincronizar_rol_primario` filtra `clave="super_admin"`, etc. NUNCA cambia
+    # tras crearse, así que el usuario puede renombrar `nombre` libremente sin
+    # romper ningún check. Claves de sistema: super_admin/dueno/contador/disenador.
+    clave = models.SlugField(max_length=60, unique=True, editable=False)
+    # `nombre` es la ETIQUETA visible y EDITABLE por el usuario en La Gerencia.
     nombre = models.CharField(max_length=60, unique=True, db_index=True)
     descripcion = models.CharField(max_length=200, blank=True, default="")
     permisos = models.JSONField(default=dict, blank=True)
+    # `sistema` solo marca roles protegidos de borrado (super_admin failsafe). No
+    # se muestra como etiqueta en el GUI (decisión Oscar S-Mandados-V2).
     sistema = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
@@ -37,8 +47,12 @@ class Rol(models.Model):
         ordering = ["nombre"]
 
     def __str__(self) -> str:
-        sufijo = " (sistema)" if self.sistema else ""
-        return f"{self.nombre}{sufijo}"
+        return self.nombre
+
+    @property
+    def protegido(self) -> bool:
+        """Solo el super_admin es failsafe duro y no se puede borrar."""
+        return self.clave == "super_admin"
 
     def tiene_permiso(self, modulo: str, accion: str) -> bool:
         return accion in (self.permisos.get(modulo) or [])

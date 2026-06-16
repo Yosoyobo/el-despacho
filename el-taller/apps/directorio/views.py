@@ -104,7 +104,7 @@ def perfil(request, pk: int):
     if puede_ver_como_rol:
         from cuentas.models.rol import Rol
         roles_simulables = list(
-            Rol.objects.exclude(nombre="super_admin").order_by("sistema", "nombre")
+            Rol.objects.exclude(clave="super_admin").order_by("nombre")
         )
 
     roles = roles_display(empleado)

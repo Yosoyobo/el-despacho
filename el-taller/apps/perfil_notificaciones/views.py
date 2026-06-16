@@ -24,6 +24,7 @@ CATEGORIAS = [
     ("proyectos", "Mis proyectos", "Push cuando se crea un proyecto o cambia el estado de uno donde participo.",
      None),
     ("tareas", "Mis tareas", "Push cuando me asignan una tarea nueva o está por vencer.", None),
+    ("mandados", "Mandados (envíos)", "Push cuando me asignan un mandado o cuando uno mío avanza (en camino, entregado, cancelado).", None),
     ("novedades", "Novedades del sistema", "Push cuando hay cambios y mejoras nuevas en El Despacho.", None),
     ("tesoreria_reembolso", "Reembolsos pendientes",
      "Push cuando se captura un egreso por reembolsar (contador + pagador).",

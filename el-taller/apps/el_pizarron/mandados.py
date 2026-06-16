@@ -53,6 +53,10 @@ def sincronizar_mandado(tarea):
         elif target == "entregado" and not mandado.entregado_en:
             mandado.entregado_en = ahora
         mandado.save(update_fields=["estado", "asignado_en", "entregado_en", "actualizado_en"])
+        # Al completar la tarea de entrega/recoger, el mandado pasa a "entregado":
+        # avisa a los involucrados (A5+A8). El alta del runner ya notifica aparte.
+        if target == "entregado":
+            notificar_involucrados(mandado, "entregado", actor=None)
     return mandado
 
 
@@ -106,6 +110,52 @@ def fijar_destino(mandado, *, lat, lng, etiqueta: str = ""):
         tarea.destino_etiqueta = etiqueta[:200]
     tarea.save(update_fields=["destino_lat", "destino_lng", "destino_etiqueta"])
     return mandado
+
+
+# ── Notificaciones a los involucrados (A8) ───────────────────────────────────
+
+def _involucrados(mandado, *, excluir=None):
+    """Personas a notificar sobre un mandado: quien lo creó, el asignado y el
+    runner (deduplicado, excluyendo al actor de la acción)."""
+    tarea = mandado.tarea
+    excluir_id = getattr(excluir, "pk", None)
+    vistos: set[int] = set()
+    out = []
+    for u in (tarea.creado_por, tarea.asignada_a, tarea.runner):
+        if u and u.pk not in vistos and u.pk != excluir_id:
+            vistos.add(u.pk)
+            out.append(u)
+    return out
+
+
+_TITULOS_EVENTO = {
+    "en_camino": "Mandado en camino 🛵",
+    "entregado": "Mandado entregado ✅",
+    "cancelado": "Mandado cancelado",
+}
+
+
+def notificar_involucrados(mandado, evento: str, *, actor=None):
+    """Push (categoría `mandados`) a los involucrados cuando un mandado avanza.
+    Best-effort y diferido a `on_commit` — nunca tumba la transición."""
+    import contextlib
+
+    from django.db import transaction
+
+    def _enviar():
+        with contextlib.suppress(Exception):
+            from lib.interfono import enviar_a_usuario
+            tarea = mandado.tarea
+            titulo = _TITULOS_EVENTO.get(evento, "Mandado actualizado")
+            cuerpo = f"{tarea.titulo[:50]} · {tarea.proyecto.codigo}"
+            for u in _involucrados(mandado, excluir=actor):
+                enviar_a_usuario(
+                    u, titulo=titulo, cuerpo=cuerpo,
+                    url="/mandados/", categoria="mandados",
+                )
+
+    with contextlib.suppress(Exception):
+        transaction.on_commit(_enviar)
 
 
 def mandados_visibles(user):

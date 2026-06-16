@@ -11,13 +11,8 @@
         <div class="space-y-5">
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre <span class="text-error-500">*</span></label>
-                {% if modo == 'editar' %}
-                <input type="text" value="{{ nombre }}" readonly disabled class="w-full cursor-not-allowed rounded-lg border-gray-300 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">El nombre no se puede cambiar después de creado.</p>
-                {% else %}
-                <input type="text" name="nombre" value="{{ nombre|default:'' }}" required placeholder="ej. supervisor_produccion" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Identificador único (snake_case recomendado).</p>
-                {% endif %}
+                <input type="text" name="nombre" value="{{ nombre|default:'' }}" required placeholder="ej. Supervisor de producción" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Ponle el nombre que quieras. Lo puedes cambiar cuando quieras.</p>
             </div>
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>

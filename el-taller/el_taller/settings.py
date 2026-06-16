@@ -99,6 +99,7 @@ TEMPLATES = [
                 "cuentas.context_processors.novedades_badge",
                 "buzon.context_processors.buzon_no_leidos",
                 "apps.recados.context_processors.recados_no_leidos",
+                "apps.el_pizarron.context_processors.mandados_badge",
                 "lib.aviso_deploy.contexto_aviso_deploy",
                 "lib.version.contexto_version",
                 "apps.taller_home.context_processors.sidebar_grupos",

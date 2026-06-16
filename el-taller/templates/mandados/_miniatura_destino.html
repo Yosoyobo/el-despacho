@@ -1,0 +1,30 @@
+{% comment %}
+Miniatura de la ubicación del destino + botón "Cómo llegar" (A6).
+Reusa los helpers OSM/Google Maps de El Checador (sin API key, gratis).
+Params:
+  lat, lng    — coordenadas del destino (si faltan, muestra empty-state).
+  etiqueta    — texto del lugar (opcional).
+  fijar_url   — (opcional) URL HTMX que abre el modal de fijar destino.
+{% endcomment %}
+{% load checador_extras %}
+<div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+    <div class="mb-2 flex items-center justify-between gap-2">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">📍 Destino</h3>
+        {% if fijar_url %}
+        <button type="button" hx-get="{{ fijar_url }}" hx-target="#modal-slot" hx-swap="innerHTML"
+                class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">{% if lat %}Cambiar{% else %}Fijar destino{% endif %}</button>
+        {% endif %}
+    </div>
+    {% if lat and lng %}
+    {% if etiqueta %}<p class="mb-2 text-sm font-medium text-gray-800 dark:text-gray-200">{{ etiqueta }}</p>{% endif %}
+    <iframe src="{% osm_embed_src lat lng %}" class="h-40 w-full rounded-lg border border-gray-200 dark:border-gray-700" loading="lazy" referrerpolicy="no-referrer"></iframe>
+    <div class="mt-2 flex flex-wrap gap-2">
+        <a href="{% gmaps_dir_link lat lng %}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">🧭 Cómo llegar</a>
+        <a href="{% osm_link lat lng %}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Ver en OSM</a>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 dark:text-gray-400">Sin ubicación fijada todavía.</p>
+    {% endif %}
+</div>

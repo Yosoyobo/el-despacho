@@ -73,6 +73,39 @@
     {% endif %}
 </section>
 
+{# ── Mis Mandados (S-Mandados-V2): protagonismo para repartidores. Solo si es runner. ── #}
+{% if es_runner %}
+<section class="mb-6">
+    <div class="ta-card border-brand-200 dark:border-brand-500/30">
+        <div class="mb-3 flex items-center justify-between">
+            <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">🛵 Mis mandados</h2>
+            <a href="/mandados/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver todos →</a>
+        </div>
+        {% if mis_mandados %}
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for m in mis_mandados %}
+            <li class="flex items-center justify-between gap-3 py-2.5">
+                <div class="min-w-0">
+                    <a href="/tareas/{{ m.tarea_id }}/" class="block truncate text-sm font-medium text-gray-900 hover:underline dark:text-gray-100">
+                        <span class="mr-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">{% if m.tipo == "recoger" %}Recoger{% else %}Entrega{% endif %}</span>
+                        {{ m.titulo|truncatechars:44 }}
+                    </a>
+                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">{% if m.proyecto %}{{ m.proyecto.codigo }}{% endif %}{% if m.destino_etiqueta %} · {{ m.destino_etiqueta|truncatechars:30 }}{% endif %}</p>
+                </div>
+                <div class="flex shrink-0 items-center gap-2">
+                    <span class="badge badge-hex" style="--ec: {{ m.color }}">{{ m.get_estado_display }}</span>
+                    {% if m.destino_lat %}<a href="https://www.google.com/maps/dir/?api=1&destination={{ m.destino_lat }},{{ m.destino_lng }}" target="_blank" rel="noopener" class="text-xs text-brand-600 hover:underline dark:text-brand-400">🧭</a>{% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="py-4 text-sm text-gray-500 dark:text-gray-400">No tienes mandados pendientes. 🎉</p>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
 {# ── 2) Fila de 3 widgets del MISMO ancho (2/6 c/u, V6): Mis tareas · Próximos eventos · El Chalán. ── #}
 <section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-6">
     {# Mis tareas #}

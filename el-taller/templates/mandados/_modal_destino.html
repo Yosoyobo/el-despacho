@@ -14,7 +14,24 @@ POST exitoso → 204 + HX-Redirect a la lista.
         <form hx-post="{% url 'mandado-destino' m.pk %}" hx-swap="none">
             {% csrf_token %}
             <div class="px-5 py-4">
-                <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Pica el mapa (o arrastra el pin) donde se entrega/recoge. El runner más cercano se asignará por esta ubicación.</p>
+                <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Busca una dirección, elige un lugar conocido o pica el mapa. El runner más cercano se asignará por esta ubicación.</p>
+
+                <div class="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {# Búsqueda de dirección (Nominatim, con debounce) #}
+                    <div class="relative">
+                        <input type="text" id="md-search" autocomplete="off" placeholder="Buscar dirección o lugar…"
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
+                        <ul id="md-search-res" class="absolute z-10 mt-1 hidden max-h-56 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white text-sm shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"></ul>
+                    </div>
+                    {# POIs internos (sedes / clientes / proveedores con ubicación) #}
+                    <select id="md-poi" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
+                        <option value="">— Lugar conocido —</option>
+                        {% for p in pois %}
+                        <option value="{{ p.lat }},{{ p.lng }}" data-label="{{ p.label }}">{{ p.label }}{% if p.fuente != 'sede' %} ({{ p.fuente }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <div id="mapa-mandado" class="h-72 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700" style="min-height:18rem"></div>
                 <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label class="text-sm">
@@ -48,14 +65,69 @@ POST exitoso → 204 + HX-Redirect a la lista.
     }).addTo(map);
     setTimeout(function () { map.invalidateSize(); }, 120);
     var marker = (lat0 !== null) ? L.marker(centro, { draggable: true }).addTo(map) : null;
-    function set(lat, lng) {
+    var etiq = document.querySelector("input[name=etiqueta]");
+    function set(lat, lng, centrar) {
         document.getElementById("md-lat").value = lat.toFixed(6);
         document.getElementById("md-lng").value = lng.toFixed(6);
         document.getElementById("md-coords").textContent = lat.toFixed(6) + ", " + lng.toFixed(6);
         if (!marker) { marker = L.marker([lat, lng], { draggable: true }).addTo(map); marker.on("dragend", function () { var p = marker.getLatLng(); set(p.lat, p.lng); }); }
         else { marker.setLatLng([lat, lng]); }
+        if (centrar) map.setView([lat, lng], 16);
     }
     if (marker) marker.on("dragend", function () { var p = marker.getLatLng(); set(p.lat, p.lng); });
-    map.on("click", function (e) { set(e.latlng.lat, e.latlng.lng); });
+
+    // Picar el mapa: fija el pin y, si no hay etiqueta, identifica el lugar (reverse).
+    map.on("click", function (e) {
+        set(e.latlng.lat, e.latlng.lng);
+        if (etiq && !etiq.value.trim()) {
+            fetch("{% url 'mandados-geocoding' %}?lat=" + e.latlng.lat.toFixed(6) + "&lng=" + e.latlng.lng.toFixed(6))
+                .then(function (r) { return r.json(); })
+                .then(function (d) { if (d.punto && d.punto.nombre && !etiq.value.trim()) etiq.value = d.punto.nombre; })
+                .catch(function () {});  // identificación es opcional
+        }
+    });
+
+    // Dropdown de POIs internos.
+    var poi = document.getElementById("md-poi");
+    if (poi) poi.addEventListener("change", function () {
+        if (!poi.value) return;
+        var parts = poi.value.split(",");
+        set(parseFloat(parts[0]), parseFloat(parts[1]), true);
+        var opt = poi.options[poi.selectedIndex];
+        if (etiq && !etiq.value.trim() && opt && opt.dataset.label) etiq.value = opt.dataset.label;
+    });
+
+    // Búsqueda de dirección (Nominatim vía proxy) con debounce.
+    var box = document.getElementById("md-search");
+    var lista = document.getElementById("md-search-res");
+    var t = null;
+    function pintar(items) {
+        lista.innerHTML = "";
+        if (!items || !items.length) { lista.classList.add("hidden"); return; }
+        items.forEach(function (r) {
+            var li = document.createElement("li");
+            li.className = "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800";
+            li.textContent = r.direccion || r.nombre;
+            li.addEventListener("click", function () {
+                set(r.lat, r.lng, true);
+                if (etiq && !etiq.value.trim()) etiq.value = r.nombre || "";
+                lista.classList.add("hidden");
+                box.value = r.nombre || r.direccion || "";
+            });
+            lista.appendChild(li);
+        });
+        lista.classList.remove("hidden");
+    }
+    if (box) box.addEventListener("input", function () {
+        var q = box.value.trim();
+        if (t) clearTimeout(t);
+        if (q.length < 4) { lista.classList.add("hidden"); return; }
+        t = setTimeout(function () {
+            fetch("{% url 'mandados-geocoding' %}?q=" + encodeURIComponent(q))
+                .then(function (r) { return r.json(); })
+                .then(function (d) { pintar(d.resultados); })
+                .catch(function () { lista.classList.add("hidden"); });
+        }, 600);  // debounce: cumple la política de uso de Nominatim
+    });
 })();
 </script>

@@ -171,6 +171,6 @@ def _notificar_runner(tarea, actor):
             tarea.runner,
             titulo=f"{verbo}: {tarea.titulo[:60]}",
             cuerpo=f"{tarea.proyecto.codigo} · {tarea.proyecto.cliente.razon_social}",
-            url=f"/proyectos/{tarea.proyecto_id}/",
-            categoria="tareas",
+            url="/mandados/",
+            categoria="mandados",
         )

@@ -11,9 +11,11 @@ import pytest
 pytestmark = [pytest.mark.django_db, pytest.mark.taller]
 
 
-def _rol(nombre, permisos):
+def _rol(nombre, permisos, clave="qa"):
+    # S-Mandados-V2: la identidad del rol es la `clave` (estable, oculta); el
+    # nombre es libre. "Ver como rol" opera sobre la clave.
     from cuentas.models.rol import Rol
-    return Rol.objects.create(nombre=nombre, permisos=permisos, sistema=False)
+    return Rol.objects.create(clave=clave, nombre=nombre, permisos=permisos, sistema=False)
 
 
 def test_puede_honra_rol_simulado(usuario_factory):
@@ -22,9 +24,9 @@ def test_puede_honra_rol_simulado(usuario_factory):
     sa = usuario_factory(rol="super_admin", email="sa@lc.mx")
     # Sin simular: super_admin failsafe + permisos reales.
     assert tiene_rol(sa, "super_admin")
-    # Simulando el rol QA: solo ve lo que QA permite.
-    sa._rol_simulado = "QA"
-    assert roles_efectivos(sa) == {"QA"}
+    # Simulando el rol QA (clave "qa"): solo ve lo que QA permite.
+    sa._rol_simulado = "qa"
+    assert roles_efectivos(sa) == {"qa"}
     assert not tiene_rol(sa, "super_admin")  # failsafe apagado durante la simulación
     assert puede(sa, "cartera", "ver") is True
     assert puede(sa, "tesoreria", "ver") is False
@@ -34,9 +36,9 @@ def test_superadmin_ver_como_rol_y_sale(client, usuario_factory):
     _rol("QA", {"cartera": ["ver"]})
     sa = usuario_factory(rol="super_admin", email="sa@lc.mx")
     client.force_login(sa)
-    r = client.post("/ver-como-rol", {"rol": "QA"}, follow=True)
+    r = client.post("/ver-como-rol", {"rol": "qa"}, follow=True)
     assert r.status_code == 200
-    assert client.session.get("ver_como_rol") == "QA"
+    assert client.session.get("ver_como_rol") == "qa"
     body = client.get("/").content.decode()
     assert "Viendo el sistema como el rol" in body
     client.post("/ver-como-rol/salir", follow=True)
@@ -56,5 +58,5 @@ def test_no_superadmin_no_ver_como_rol(client, usuario_factory):
     _rol("QA", {"cartera": ["ver"]})
     u = usuario_factory(rol="disenador", email="d@lc.mx")
     client.force_login(u)
-    client.post("/ver-como-rol", {"rol": "QA"}, follow=True)
+    client.post("/ver-como-rol", {"rol": "qa"}, follow=True)
     assert client.session.get("ver_como_rol") is None
