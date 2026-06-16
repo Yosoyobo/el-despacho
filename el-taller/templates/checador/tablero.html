@@ -83,9 +83,9 @@
             Ver ubicación en Google Maps
         </button>
 
-        {# Registrar visita/tarea en un POI: botón prominente, SIEMPRE visible.
-           Decisión Oscar (item 5): los POI NO checan entrada/salida — solo
-           visita o tarea cumplida; por eso no depende de la jornada. #}
+        {% comment %}Registrar visita/tarea en un POI: botón prominente, SIEMPRE
+        visible. Decisión Oscar (item 5): los POI NO checan entrada/salida — solo
+        visita o tarea cumplida; por eso no depende de la jornada.{% endcomment %}
         <button type="button" hx-get="{% url 'checador:visita_modal' %}" hx-target="#modal-slot" hx-swap="innerHTML"
                 class="mx-auto mt-6 flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 text-base font-semibold text-white shadow-theme-md transition hover:bg-brand-600 active:scale-95">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
