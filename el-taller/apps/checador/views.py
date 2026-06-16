@@ -159,15 +159,68 @@ def mapa(request):
     })
 
 
+def _puede_ver_registro_de(viewer, dueno) -> bool:
+    """Puede ver el detalle de un registro: es suyo, o ve las horas de esa
+    persona (jefe directo / super_admin, V9)."""
+    if getattr(viewer, "pk", None) == getattr(dueno, "pk", None):
+        return True
+    from lib.permisos import puede_ver_horas_trabajadas_de
+    return puede_ver_horas_trabajadas_de(viewer, dueno)
+
+
+@login_required
+@_requiere_checar
+def jornada_detalle(request, pk):
+    """GET HTMX → modal con el detalle de una jornada (chequeo)."""
+    jornada = get_object_or_404(Jornada.objects.select_related("sede", "ajustado_por", "usuario"), pk=pk)
+    if not _puede_ver_registro_de(request.user, jornada.usuario):
+        return HttpResponseForbidden("Sin acceso a este registro.")
+    return render(request, "checador/_modal_jornada_detalle.html", {
+        "j": jornada, "es_propia": jornada.usuario_id == request.user.pk,
+    })
+
+
+@login_required
+@_requiere_checar
+def visita_detalle(request, pk):
+    """GET HTMX → modal con el detalle de una visita/registro de POI."""
+    visita = get_object_or_404(
+        Visita.objects.select_related("cliente", "proveedor", "contacto", "contacto__cliente", "tarea", "usuario"),
+        pk=pk)
+    if not _puede_ver_registro_de(request.user, visita.usuario):
+        return HttpResponseForbidden("Sin acceso a este registro.")
+    return render(request, "checador/_modal_visita_detalle.html", {"v": visita})
+
+
+@login_required
+@_requiere_checar
+def sesion_detalle(request, pk):
+    """GET HTMX → modal con el detalle de una sesión de proyecto."""
+    from .models import SesionProyecto
+    sesion = get_object_or_404(SesionProyecto.objects.select_related("proyecto", "usuario"), pk=pk)
+    if not _puede_ver_registro_de(request.user, sesion.usuario):
+        return HttpResponseForbidden("Sin acceso a este registro.")
+    return render(request, "checador/_modal_sesion_detalle.html", {
+        "s": sesion, "es_propia": sesion.usuario_id == request.user.pk,
+    })
+
+
 @login_required
 @_requiere_checar
 def visita_modal(request):
-    """GET HTMX → fragmento del modal para registrar una visita."""
+    """GET HTMX → fragmento del modal para registrar una visita/tarea en un POI."""
     from apps.el_catalogo.models import Proveedor
-    from apps.la_cartera.models import Cliente
+    from apps.el_pizarron.models import Tarea
+    from apps.la_cartera.models import Cliente, ClienteContacto
     return render(request, "checador/_modal_visita.html", {
         "clientes": Cliente.objects.filter(activo=True).order_by("razon_social"),
         "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
+        "contactos": (ClienteContacto.objects.select_related("cliente")
+                      .filter(cliente__activo=True).order_by("cliente__razon_social", "nombre")),
+        # Tareas abiertas asignadas a la persona (para ligar una tarea cumplida).
+        "tareas": (Tarea.objects.select_related("proyecto")
+                   .filter(asignada_a=request.user, completada_en__isnull=True)
+                   .order_by("fecha_compromiso")[:50]),
     })
 
 
@@ -176,27 +229,38 @@ def visita_modal(request):
 @require_POST
 def visita(request):
     from apps.el_catalogo.models import Proveedor
-    from apps.la_cartera.models import Cliente
+    from apps.el_pizarron.models import Tarea
+    from apps.la_cartera.models import Cliente, ClienteContacto
 
     tipo = request.POST.get("tipo", "cliente")
+    proposito = request.POST.get("proposito", "visita")
     nota = (request.POST.get("nota") or "").strip()
     geo = _geo_de_request(request)
     uuid = (request.POST.get("uuid") or "")[:64]
 
-    cliente = proveedor = None
+    cliente = proveedor = contacto = None
     if tipo == "cliente":
         cid = request.POST.get("cliente")
         cliente = Cliente.objects.filter(pk=cid).first() if cid else None
     elif tipo == "proveedor":
         pid = request.POST.get("proveedor")
         proveedor = Proveedor.objects.filter(pk=pid).first() if pid else None
+    elif tipo == "contacto":
+        coid = request.POST.get("contacto")
+        contacto = ClienteContacto.objects.filter(pk=coid).select_related("cliente").first() if coid else None
+
+    tarea = None
+    tid = request.POST.get("tarea")
+    if tid:
+        tarea = Tarea.objects.filter(pk=tid, asignada_a=request.user).first()
 
     try:
         services.registrar_visita(
             request.user, tipo=tipo, cliente=cliente, proveedor=proveedor,
+            contacto=contacto, tarea=tarea, proposito=proposito,
             geo=geo, nota=nota, uuid=uuid,
         )
-        messages.success(request, "Visita registrada.")
+        messages.success(request, "Registro guardado.")
     except ValueError as exc:
         messages.error(request, str(exc))
 
@@ -225,7 +289,7 @@ def timer_iniciar(request):
     if proyecto is None:
         messages.error(request, "Selecciona un proyecto válido.")
         return redirect("checador:tablero")
-    services.iniciar_timer(request.user, proyecto)
+    services.iniciar_timer(request.user, proyecto, geo=_geo_de_request(request))
     messages.success(request, f"Cronómetro iniciado en {proyecto.codigo}.")
     return redirect("checador:tablero")
 
@@ -268,6 +332,7 @@ def sesion(request):
         services.capturar_sesion_manual(
             request.user, proyecto, inicio=inicio, fin=fin,
             nota=(request.POST.get("nota") or "").strip(),
+            geo=_geo_de_request(request),
         )
         messages.success(request, "Tiempo registrado.")
     except ValueError as exc:
@@ -413,7 +478,9 @@ def correcciones(request):
 @_requiere_aprobar
 def correccion_resolver_modal(request, pk: int):
     sol = get_object_or_404(SolicitudCorreccion, pk=pk)
-    return render(request, "checador/_modal_resolver.html", {"sol": sol})
+    return render(request, "checador/_modal_resolver.html", {
+        "sol": sol, "sedes": services.sedes_todas(),
+    })
 
 
 @login_required
@@ -424,7 +491,10 @@ def correccion_resolver(request, pk: int):
     aprobar = request.POST.get("decision") == "aprobar"
     comentario = (request.POST.get("comentario") or "").strip()
     try:
-        services.resolver_correccion(sol, admin=request.user, aprobar=aprobar, comentario=comentario)
+        services.resolver_correccion(
+            sol, admin=request.user, aprobar=aprobar, comentario=comentario,
+            sede=_sede_de_request(request), sede_texto=request.POST.get("sede_texto"),
+        )
         messages.success(request, "Corrección aprobada." if aprobar else "Corrección rechazada.")
     except ValueError as exc:
         messages.error(request, str(exc))
@@ -480,9 +550,11 @@ def ajuste_jornada(request):
     entrada = _combinar(fecha, request.POST.get("entrada"))
     salida = _combinar(fecha, request.POST.get("salida"))
     motivo = (request.POST.get("motivo") or "").strip()
+    sede_texto = (request.POST.get("sede_texto") or "").strip()
     try:
         services.solicitar_ajuste_jornada(
-            request.user, fecha=fecha, valor_entrada=entrada, valor_salida=salida, motivo=motivo,
+            request.user, fecha=fecha, valor_entrada=entrada, valor_salida=salida,
+            motivo=motivo, sede_texto=sede_texto,
         )
         messages.success(request, "Solicitud de ajuste enviada. Un administrador la revisará.")
     except ValueError as exc:
@@ -503,6 +575,7 @@ def jornada_admin_modal(request, usuario_pk):
         jornada = Jornada.objects.filter(pk=jid, usuario=persona).first()
     return render(request, "checador/_modal_jornada_admin.html", {
         "persona": persona, "jornada": jornada,
+        "sedes": services.sedes_todas(),
         "querystring": request.GET.get("q", ""),
     })
 
@@ -523,8 +596,10 @@ def jornada_admin_editar(request, usuario_pk):
     if entrada is None and salida is None:
         messages.error(request, "Indica al menos la hora de entrada o de salida.")
         return redirect("checador:equipo_persona", pk=persona.pk)
+    sede = _sede_de_request(request)
     services.editar_jornada_directo(
-        usuario=persona, fecha=fecha, valor_entrada=entrada, valor_salida=salida, admin=request.user,
+        usuario=persona, fecha=fecha, valor_entrada=entrada, valor_salida=salida,
+        admin=request.user, sede=sede, sede_texto=(request.POST.get("sede_texto") or "").strip(),
     )
     messages.success(request, f"Jornada del {fecha:%d/%m} ajustada.")
     return redirect("checador:equipo_persona", pk=persona.pk)
@@ -539,6 +614,15 @@ def _parse_date(valor):
         return datetime.date.fromisoformat(valor)
     except (TypeError, ValueError):
         return None
+
+
+def _sede_de_request(request):
+    """SedeLC del POST (`sede`), o None si no se eligió/es inválida."""
+    sid = request.POST.get("sede")
+    if not sid:
+        return None
+    from .models import SedeLC
+    return SedeLC.objects.filter(pk=sid).first()
 
 
 @login_required
@@ -682,14 +766,18 @@ def api_sync(request):
             elif tipo == "salida":
                 services.checar_salida(request.user, geo=geo, registrado_en=reg, uuid=uuid, offline=True)
             elif tipo == "visita":
+                from apps.la_cartera.models import ClienteContacto
                 vtipo = it.get("visita_tipo", "cliente")
-                cliente = proveedor = None
+                cliente = proveedor = contacto = None
                 if vtipo == "cliente" and it.get("cliente"):
                     cliente = Cliente.objects.filter(pk=it.get("cliente")).first()
                 elif vtipo == "proveedor" and it.get("proveedor"):
                     proveedor = Proveedor.objects.filter(pk=it.get("proveedor")).first()
+                elif vtipo == "contacto" and it.get("contacto"):
+                    contacto = ClienteContacto.objects.filter(pk=it.get("contacto")).select_related("cliente").first()
                 services.registrar_visita(
                     request.user, tipo=vtipo, cliente=cliente, proveedor=proveedor,
+                    contacto=contacto, proposito=it.get("proposito", "visita"),
                     geo=geo, registrado_en=reg, nota=(it.get("nota") or ""), uuid=uuid, offline=True,
                 )
             else:

@@ -1,0 +1,48 @@
+{% comment %}
+Detalle de una visita / registro de POI en modal HTMX. `v` = Visita.
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{% if v.proposito_efectivo == "tarea" %}Tarea cumplida{% else %}Visita{% endif %}</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Destino</span>
+                <span class="font-medium text-right">{{ v.destino }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Tipo</span>
+                <span>{{ v.get_tipo_display }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Cuándo</span>
+                <span class="flex items-center gap-2">
+                    <span class="tabular-nums">{{ v.registrado_en|hfmt:"D j N H:i" }}</span>
+                    {% include "checador/_boton_mapa.html" with lat=v.lat lng=v.lng etiqueta=v.destino cuando=v.registrado_en|hfmt:"D j H:i" precision=v.precision %}
+                </span>
+            </div>
+            {% if v.tarea %}
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Tarea ligada</span>
+                <span class="text-right font-medium">{{ v.tarea.titulo }}</span>
+            </div>
+            {% endif %}
+            {% if v.nota %}
+            <div>
+                <p class="mb-1 text-gray-500 dark:text-gray-400">Nota</p>
+                <p class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">{{ v.nota|linebreaksbr }}</p>
+            </div>
+            {% endif %}
+            {% if v.ia_verificado_en %}
+            <div class="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 text-xs dark:border-brand-500/20 dark:bg-brand-500/10">
+                <p class="font-medium text-brand-700 dark:text-brand-300">🤖 El Chalán: {% if v.ia_proposito == "tarea" %}Tarea{% else %}Visita{% endif %}{% if v.ia_completada is not None %} · {% if v.ia_completada %}parece completada{% else %}sin confirmar completada{% endif %}{% endif %}{% if v.ia_confianza %} · {{ v.ia_confianza|floatformat:2 }} confianza{% endif %}</p>
+                {% if v.ia_resumen %}<p class="mt-0.5 text-gray-600 dark:text-gray-300">{{ v.ia_resumen }}</p>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>

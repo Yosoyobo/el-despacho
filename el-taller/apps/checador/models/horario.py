@@ -29,6 +29,15 @@ class HorarioLaboral(models.Model):
     tolerancia_min = models.PositiveIntegerField(default=15, help_text="Minutos antes de marcar retardo")
     activo = models.BooleanField(default=True)
 
+    # Sede esperada para ese día (S-Checador-V14). La asigna el admin/jefe; si no
+    # está en el catálogo, se escribe a mano en `sede_texto`. Informativa: dice
+    # dónde se espera que la persona cheque ese día.
+    sede = models.ForeignKey(
+        "checador.SedeLC", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="horarios",
+    )
+    sede_texto = models.CharField(max_length=160, blank=True, default="")
+
     class Meta:
         db_table = "checador_horario"
         ordering = ["usuario_id", "dia_semana"]
@@ -44,3 +53,10 @@ class HorarioLaboral(models.Model):
     def __str__(self) -> str:
         quien = f"usuario {self.usuario_id}" if self.usuario_id else "global"
         return f"Horario {quien} · {self.get_dia_semana_display()} {self.hora_entrada}-{self.hora_salida}"
+
+    @property
+    def sede_label(self) -> str:
+        """Sede esperada legible: la del catálogo o el texto libre."""
+        if self.sede_id:
+            return getattr(self.sede, "nombre", "")
+        return self.sede_texto or ""

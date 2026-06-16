@@ -9,12 +9,22 @@
 
         <div class="space-y-2 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
             <p><span class="text-gray-500 dark:text-gray-400">Solicita:</span> {{ sol.usuario.nombre_completo|default:sol.usuario.email }}</p>
-            <p><span class="text-gray-500 dark:text-gray-400">Corrección:</span> {{ sol.get_tipo_display }} → <strong class="tabular-nums">{{ sol.valor_propuesto|hfmt:"D j N H:i" }}</strong></p>
+            <p><span class="text-gray-500 dark:text-gray-400">Corrección:</span> {{ sol.get_tipo_display }} →
+                <strong class="tabular-nums">{% if sol.tipo == "jornada" %}{{ sol.fecha|date:"j N" }}{% if sol.valor_entrada %} · entra {{ sol.valor_entrada|hfmt:"H:i" }}{% endif %}{% if sol.valor_salida %} · sale {{ sol.valor_salida|hfmt:"H:i" }}{% endif %}{% else %}{{ sol.valor_propuesto|hfmt:"D j N H:i" }}{% endif %}</strong>
+            </p>
+            {% if sol.sede_texto %}<p><span class="text-gray-500 dark:text-gray-400">Sede (empleado):</span> {{ sol.sede_texto }}</p>{% endif %}
             <p><span class="text-gray-500 dark:text-gray-400">Motivo:</span> {{ sol.motivo }}</p>
         </div>
 
         <form hx-post="{% url 'checador-admin-correccion-resolver' sol.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
             {% csrf_token %}
+            <div class="px-5 pb-2">
+                <label for="resolver-sede" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Sede esperada (asignar)</label>
+                <select name="sede" id="resolver-sede">
+                    <option value="">— Sin asignar —</option>
+                    {% for s in sedes %}<option value="{{ s.pk }}" {% if sol.sede_id == s.pk %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+                </select>
+            </div>
             <div class="px-5 pb-2">
                 <label for="resolver-comentario" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Comentario (opcional)</label>
                 <textarea name="comentario" id="resolver-comentario" rows="2" placeholder="Nota para el solicitante"></textarea>

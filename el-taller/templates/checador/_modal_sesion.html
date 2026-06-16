@@ -9,6 +9,11 @@
 
         <form method="post" action="{% url 'checador:sesion' %}" class="campo-form">
             {% csrf_token %}
+            {# Snapshot de ubicación al capturar (item 6) — lo llena data-geo-submit. #}
+            <input type="hidden" name="lat">
+            <input type="hidden" name="lng">
+            <input type="hidden" name="precision">
+            <input type="hidden" name="sin_geo" value="0">
             <div class="space-y-4 px-5 py-4 text-sm">
                 <div>
                     <label for="sesion-proyecto" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
@@ -34,7 +39,7 @@
             </div>
             <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
                 <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
-                <button type="submit" class="btn-primario">Guardar</button>
+                <button type="button" data-geo-submit class="btn-primario">Guardar</button>
             </footer>
         </form>
     </div>

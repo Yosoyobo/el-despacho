@@ -46,6 +46,14 @@ class SolicitudCorreccion(models.Model):
     fecha = models.DateField(null=True, blank=True, help_text="Día de la jornada (tipo jornada)")
     valor_entrada = models.DateTimeField(null=True, blank=True)
     valor_salida = models.DateTimeField(null=True, blank=True)
+    # Sede donde debió hacerse el registro (S-Checador-V14). El empleado la
+    # escribe a mano al solicitar; el admin la confirma/asigna del catálogo al
+    # resolver. Se copia a la Jornada al aprobar.
+    sede = models.ForeignKey(
+        "checador.SedeLC", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="correcciones",
+    )
+    sede_texto = models.CharField(max_length=160, blank=True, default="")
     motivo = models.TextField()
 
     estado = models.CharField(max_length=10, choices=ESTADO_CORRECCION, default="pendiente")

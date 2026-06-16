@@ -50,6 +50,23 @@ def test_horario_override_se_crea(client, usuario_factory):
     assert h.hora_entrada == datetime.time(10, 0)
 
 
+def test_horario_alta_asigna_sede(client, usuario_factory):
+    # S-Checador-V14: el admin asigna la sede esperada al configurar el horario.
+    from apps.checador.models import HorarioLaboral, SedeLC
+    admin = usuario_factory(rol="super_admin")
+    empleado = usuario_factory(rol="disenador")
+    sede = SedeLC.objects.create(nombre="Oficina 1")
+    client.force_login(admin)
+    resp = client.post("/catalogos/horarios/nuevo/", {
+        "usuarios": [str(empleado.pk)], "dias": ["1"],
+        "hora_entrada": "09:00", "hora_salida": "18:00", "tolerancia_min": "15",
+        "sede": str(sede.pk), "activo": "on",
+    })
+    assert resp.status_code == 302
+    h = HorarioLaboral.objects.get(usuario=empleado, dia_semana=1)
+    assert h.sede_id == sede.pk and h.sede_label == "Oficina 1"
+
+
 @GERENCIA
 def test_horario_global_alta_es_idempotente(client, usuario_factory):
     # S-Checador-V1.2: el alta masiva usa update_or_create — re-crear el global

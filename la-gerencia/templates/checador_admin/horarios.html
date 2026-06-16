@@ -58,6 +58,7 @@
                         <th class="py-2 pr-3 font-medium">Día</th>
                         <th class="py-2 pr-3 font-medium">Entrada</th>
                         <th class="py-2 pr-3 font-medium">Salida</th>
+                        <th class="py-2 pr-3 font-medium">Sede</th>
                         <th class="py-2 pr-3 font-medium">Tolerancia</th>
                         <th class="py-2 font-medium"></th>
                     </tr>
@@ -69,6 +70,7 @@
                         <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ h.get_dia_semana_display }}</td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ h.hora_entrada|hfmt:"H:i" }}</td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ h.hora_salida|hfmt:"H:i" }}</td>
+                        <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">{{ h.sede_label|default:"—" }}</td>
                         <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ h.tolerancia_min }} min</td>
                         <td class="py-2 text-right">
                             <a href="{% url 'checador-admin-horario-editar' h.pk %}" class="text-xs text-brand-600 hover:underline dark:text-brand-400">Editar</a>

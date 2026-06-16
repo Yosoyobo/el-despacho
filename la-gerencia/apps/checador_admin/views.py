@@ -130,7 +130,9 @@ def correccion_resolver_modal(request, pk):
     if (r := _gate_correcciones(request)) is not None:
         return r
     sol = get_object_or_404(SolicitudCorreccion, pk=pk)
-    return render(request, "checador_admin/_modal_resolver.html", {"sol": sol})
+    return render(request, "checador_admin/_modal_resolver.html", {
+        "sol": sol, "sedes": services.sedes_todas(),
+    })
 
 
 @login_required
@@ -142,8 +144,14 @@ def correccion_resolver(request, pk):
     sol = get_object_or_404(SolicitudCorreccion, pk=pk)
     aprobar = request.POST.get("decision") == "aprobar"
     comentario = (request.POST.get("comentario") or "").strip()
+    sede = None
+    if request.POST.get("sede"):
+        from apps.checador.models import SedeLC
+        sede = SedeLC.objects.filter(pk=request.POST.get("sede")).first()
     try:
-        services.resolver_correccion(sol, admin=request.user, aprobar=aprobar, comentario=comentario)
+        services.resolver_correccion(
+            sol, admin=request.user, aprobar=aprobar, comentario=comentario,
+            sede=sede, sede_texto=request.POST.get("sede_texto"))
         messages.success(request, "Corrección aprobada." if aprobar else "Corrección rechazada.")
     except ValueError as exc:
         messages.error(request, str(exc))

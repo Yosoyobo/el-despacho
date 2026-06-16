@@ -17,16 +17,32 @@
             <input type="hidden" name="uuid">
 
             <div class="space-y-4 px-5 py-4 text-sm">
+                {# Propósito: visita o tarea cumplida (item 5). El Chalán lo verifica después. #}
                 <div>
-                    <label class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Tipo de visita</label>
-                    <div class="flex gap-2" data-visita-tipo>
+                    <label class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">¿Qué registras?</label>
+                    <div class="flex gap-2" data-visita-proposito>
                         <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="proposito" value="visita" checked class="accent-brand-500"> Visita
+                        </label>
+                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="proposito" value="tarea" class="accent-brand-500"> Tarea cumplida
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">¿A quién?</label>
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" data-visita-tipo>
+                        <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
                             <input type="radio" name="tipo" value="cliente" checked class="accent-brand-500"> Cliente
                         </label>
-                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                        <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
                             <input type="radio" name="tipo" value="proveedor" class="accent-brand-500"> Proveedor
                         </label>
-                        <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                        <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="tipo" value="contacto" class="accent-brand-500"> Contacto
+                        </label>
+                        <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
                             <input type="radio" name="tipo" value="otro" class="accent-brand-500"> Otro
                         </label>
                     </div>
@@ -48,9 +64,26 @@
                     </select>
                 </div>
 
+                <div data-campo="contacto" class="hidden">
+                    <label for="visita-contacto" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Contacto</label>
+                    <select name="contacto" id="visita-contacto">
+                        <option value="">— Selecciona —</option>
+                        {% for co in contactos %}<option value="{{ co.pk }}">{{ co.nombre }} ({{ co.cliente.razon_social }})</option>{% endfor %}
+                    </select>
+                </div>
+
+                {# Tarea opcional que el registro cumple (para que El Chalán la verifique). #}
+                <div>
+                    <label for="visita-tarea" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Tarea ligada (opcional)</label>
+                    <select name="tarea" id="visita-tarea">
+                        <option value="">— Ninguna —</option>
+                        {% for t in tareas %}<option value="{{ t.pk }}">{{ t.proyecto.codigo }} · {{ t.titulo }}</option>{% endfor %}
+                    </select>
+                </div>
+
                 <div>
                     <label for="visita-nota" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Nota (opcional)</label>
-                    <textarea name="nota" id="visita-nota" rows="2" placeholder="¿Qué fuiste a hacer?"></textarea>
+                    <textarea name="nota" id="visita-nota" rows="2" placeholder="¿Qué fuiste a hacer? (El Chalán la usa para verificar)"></textarea>
                 </div>
 
                 <p data-geo-estado class="text-xs text-gray-400 dark:text-gray-500">Tomamos tu ubicación al registrar la visita.</p>
@@ -73,11 +106,16 @@
   (function () {
     var wrap = document.querySelector("[data-visita-tipo]");
     if (!wrap) return;
-    var campos = { cliente: document.querySelector("[data-campo=cliente]"), proveedor: document.querySelector("[data-campo=proveedor]") };
+    var campos = {
+      cliente: document.querySelector("[data-campo=cliente]"),
+      proveedor: document.querySelector("[data-campo=proveedor]"),
+      contacto: document.querySelector("[data-campo=contacto]"),
+    };
     function sync() {
       var tipo = (document.querySelector("[data-visita-tipo] input:checked") || {}).value;
-      campos.cliente.classList.toggle("hidden", tipo !== "cliente");
-      campos.proveedor.classList.toggle("hidden", tipo !== "proveedor");
+      Object.keys(campos).forEach(function (k) {
+        if (campos[k]) campos[k].classList.toggle("hidden", tipo !== k);
+      });
     }
     wrap.addEventListener("change", sync);
     sync();

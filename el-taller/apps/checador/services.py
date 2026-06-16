@@ -243,6 +243,11 @@ def sedes_activas():
     return list(SedeLC.objects.filter(activa=True).exclude(lat=None).exclude(lng=None))
 
 
+def sedes_todas():
+    """Todas las sedes activas (con o sin pin) — para selectores de sede."""
+    return list(SedeLC.objects.filter(activa=True))
+
+
 def modo_geocerca() -> str:
     """'libre' | 'restringido' (singleton ConfiguracionGeocerca)."""
     try:
@@ -346,22 +351,34 @@ def checar_salida(usuario, *, geo=None, registrado_en=None, uuid: str = "", offl
 
 # ───────────────────────── visitas ─────────────────────────
 
-def registrar_visita(usuario, *, tipo: str, cliente=None, proveedor=None, geo=None,
+def registrar_visita(usuario, *, tipo: str, cliente=None, proveedor=None, contacto=None,
+                     tarea=None, proposito: str = "visita", geo=None,
                      registrado_en=None, nota: str = "", uuid: str = "", offline: bool = False) -> Visita:
-    """Registra una visita puntual. Valida cliente XOR proveedor según `tipo`.
-    Idempotente por `uuid`."""
+    """Registra un check-in en un POI. Liga a cliente, proveedor o contacto según
+    `tipo` (S-Checador-V14). `proposito` ∈ {visita, tarea}; El Chalán lo verifica
+    después. Idempotente por `uuid`.
+
+    Decisión Oscar (item 5): los POI NO sirven para checar entrada/salida — solo
+    para registrar visita o tarea cumplida. Por eso este flujo es independiente
+    de la jornada (se liga a la del día si existe, pero no la requiere)."""
     registrado_en = registrado_en or ahora_mx()
+    proposito = "tarea" if proposito == "tarea" else "visita"
 
     if tipo == "cliente":
         if cliente is None:
             raise ValueError("Selecciona el cliente de la visita.")
-        proveedor = None
+        proveedor = contacto = None
     elif tipo == "proveedor":
         if proveedor is None:
             raise ValueError("Selecciona el proveedor de la visita.")
-        cliente = None
+        cliente = contacto = None
+    elif tipo == "contacto":
+        if contacto is None:
+            raise ValueError("Selecciona el contacto de la visita.")
+        cliente = getattr(contacto, "cliente", None)  # deriva el cliente del contacto
+        proveedor = None
     else:  # otro
-        cliente = proveedor = None
+        cliente = proveedor = contacto = None
 
     if uuid:
         existente = Visita.objects.filter(usuario=usuario, uuid_cliente=uuid).first()
@@ -373,24 +390,40 @@ def registrar_visita(usuario, *, tipo: str, cliente=None, proveedor=None, geo=No
 
     visita = Visita(
         usuario=usuario, jornada=jornada, registrado_en=registrado_en,
-        tipo=tipo, cliente=cliente, proveedor=proveedor, nota=nota,
+        tipo=tipo, cliente=cliente, proveedor=proveedor, contacto=contacto,
+        tarea=tarea, proposito=proposito, nota=nota,
         capturada_offline=offline, uuid_cliente=uuid,
     )
     _aplicar_geo(visita, "", geo)
     visita.save()
 
     _emitir("checador.visita", actor=usuario, payload={
-        "visita_id": visita.pk, "tipo": tipo, "destino": visita.destino,
-        "sin_geo": visita.sin_geo,
+        "visita_id": visita.pk, "tipo": tipo, "proposito": proposito,
+        "destino": visita.destino, "sin_geo": visita.sin_geo,
     })
+
+    # El Chalán clasifica/verifica el registro cuando hay algo que leer (nota o
+    # tarea ligada). Best-effort tras el commit — nunca tumba el registro.
+    if (nota or "").strip() or tarea is not None:
+        def _verificar(_pk=visita.pk):
+            try:
+                from .verificacion import verificar_visita_ia
+                v = Visita.objects.select_related("contacto", "contacto__cliente",
+                                                  "cliente", "proveedor", "tarea").get(pk=_pk)
+                verificar_visita_ia(v, usuario=usuario)
+            except Exception:  # noqa: BLE001
+                pass
+        transaction.on_commit(_verificar)
+
     return visita
 
 
 # ───────────────────────── timer de proyecto ─────────────────────────
 
-def iniciar_timer(usuario, proyecto, *, inicio=None) -> SesionProyecto:
+def iniciar_timer(usuario, proyecto, *, inicio=None, geo=None) -> SesionProyecto:
     """Inicia un cronómetro. Si hay otro activo, lo cierra automáticamente
-    (un solo timer activo por usuario — decisión #2 del handoff)."""
+    (un solo timer activo por usuario — decisión #2 del handoff). Guarda el
+    snapshot de ubicación al iniciar (S-Checador-V14)."""
     inicio = inicio or ahora_mx()
     with transaction.atomic():
         activa = SesionProyecto.objects.select_for_update().filter(
@@ -399,11 +432,13 @@ def iniciar_timer(usuario, proyecto, *, inicio=None) -> SesionProyecto:
         if activa:
             activa.cerrar(fin=inicio)
             activa.save()
-        sesion = SesionProyecto.objects.create(
+        sesion = SesionProyecto(
             usuario=usuario, proyecto=proyecto, inicio=inicio, origen="timer", estado="activa",
         )
+        _aplicar_geo(sesion, "", geo)
+        sesion.save()
     _emitir("checador.sesion_iniciada", actor=usuario, payload={
-        "sesion_id": sesion.pk, "proyecto_id": proyecto.pk,
+        "sesion_id": sesion.pk, "proyecto_id": proyecto.pk, "sin_geo": sesion.sin_geo,
     })
     return sesion
 
@@ -429,13 +464,15 @@ def timer_activo(usuario) -> SesionProyecto | None:
     return SesionProyecto.objects.filter(usuario=usuario, estado="activa").select_related("proyecto").first()
 
 
-def capturar_sesion_manual(usuario, proyecto, *, inicio, fin, nota: str = "") -> SesionProyecto:
-    """Captura manual de tiempo por proyecto (sin cronómetro)."""
+def capturar_sesion_manual(usuario, proyecto, *, inicio, fin, nota: str = "", geo=None) -> SesionProyecto:
+    """Captura manual de tiempo por proyecto (sin cronómetro). Guarda el snapshot
+    de ubicación al capturar (S-Checador-V14)."""
     if fin <= inicio:
         raise ValueError("La hora de fin debe ser posterior a la de inicio.")
     sesion = SesionProyecto(
         usuario=usuario, proyecto=proyecto, inicio=inicio, origen="manual", nota=nota,
     )
+    _aplicar_geo(sesion, "", geo)
     sesion.cerrar(fin=fin)
     sesion.save()
     _emitir("checador.sesion_cerrada", actor=usuario, payload={
@@ -555,14 +592,19 @@ def _aplicar_correccion(sol: SolicitudCorreccion) -> None:
         if sol.valor_salida:
             jornada.salida_en = sol.valor_salida
             jornada.estado = "cerrada"
+        if sol.sede_id:
+            jornada.sede = sol.sede
+        if sol.sede_texto:
+            jornada.sede_texto = sol.sede_texto
         jornada.ajustado_por = sol.resuelto_por
         jornada.ajustado_en = ahora_mx()
         jornada.save()
 
 
 def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
-                        comentario: str = "") -> SolicitudCorreccion:
-    """Aprueba o rechaza una corrección. Al aprobar aplica el valor."""
+                        comentario: str = "", sede=None, sede_texto=None) -> SolicitudCorreccion:
+    """Aprueba o rechaza una corrección. Al aprobar aplica el valor. El admin
+    puede asignar/confirmar la sede esperada (item 3) que se copia a la jornada."""
     if solicitud.estado != "pendiente":
         raise ValueError("Esta solicitud ya fue resuelta.")
     from lib.permisos import puede_aprobar_correccion_de, tiene_rol
@@ -583,6 +625,10 @@ def resolver_correccion(solicitud: SolicitudCorreccion, *, admin, aprobar: bool,
         solicitud.resuelto_por = admin
         solicitud.resuelto_en = ahora_mx()
         solicitud.comentario_admin = comentario
+        if sede is not None:
+            solicitud.sede = sede
+        if sede_texto is not None:
+            solicitud.sede_texto = (sede_texto or "").strip()
         if aprobar:
             _aplicar_correccion(solicitud)
         solicitud.save()
@@ -888,10 +934,12 @@ def cerrar_jornadas_vencidas(*, ahora=None) -> int:
 # ─────────────── ajuste de jornada completa (request + admin directo, V1.3) ───────────────
 
 def solicitar_ajuste_jornada(usuario, *, fecha, valor_entrada=None, valor_salida=None,
-                             motivo: str) -> SolicitudCorreccion:
+                             motivo: str, sede=None, sede_texto: str = "") -> SolicitudCorreccion:
     """El empleado pide ajustar su jornada (entrada Y salida juntas) o registrar
     un día que NO checó. Va a aprobación (misma vía que las correcciones:
-    Recados + bandeja). `fecha` es el día; `valor_entrada/salida` datetimes."""
+    Recados + bandeja). `fecha` es el día; `valor_entrada/salida` datetimes.
+    `sede_texto`: el empleado escribe en qué sede debió ser (item 3); el admin la
+    confirma/asigna del catálogo al resolver."""
     if not (motivo or "").strip():
         raise ValueError("Explica el motivo del ajuste.")
     if valor_entrada is None and valor_salida is None:
@@ -901,6 +949,7 @@ def solicitar_ajuste_jornada(usuario, *, fecha, valor_entrada=None, valor_salida
         usuario=usuario, tipo="jornada", fecha=fecha,
         valor_entrada=valor_entrada, valor_salida=valor_salida,
         motivo=motivo.strip(), jornada=jornada,
+        sede=sede, sede_texto=(sede_texto or "").strip(),
     )
     _emitir("checador.correccion_solicitada", actor=usuario,
             payload={"solicitud_id": sol.pk, "tipo": "jornada", "fecha": fecha.isoformat()})
@@ -914,9 +963,10 @@ def solicitar_ajuste_jornada(usuario, *, fecha, valor_entrada=None, valor_salida
 
 
 def editar_jornada_directo(*, usuario, fecha, valor_entrada=None, valor_salida=None,
-                           admin) -> Jornada:
+                           admin, sede=None, sede_texto: str = "") -> Jornada:
     """Ajuste DIRECTO por un admin (como se edita un proyecto): crea/edita la
-    jornada del día sin pasar por aprobación. Registra quién la ajustó."""
+    jornada del día sin pasar por aprobación. Registra quién la ajustó. El admin
+    asigna la sede esperada (item 3)."""
     jornada, _ = Jornada.objects.get_or_create(usuario=usuario, fecha=fecha)
     if valor_entrada is not None:
         jornada.entrada_en = valor_entrada
@@ -924,6 +974,10 @@ def editar_jornada_directo(*, usuario, fecha, valor_entrada=None, valor_salida=N
     if valor_salida is not None:
         jornada.salida_en = valor_salida
         jornada.estado = "cerrada"
+    if sede is not None:
+        jornada.sede = sede
+    if sede_texto:
+        jornada.sede_texto = sede_texto.strip()
     jornada.ajustado_por = admin if getattr(admin, "is_authenticated", False) else None
     jornada.ajustado_en = ahora_mx()
     jornada.save()

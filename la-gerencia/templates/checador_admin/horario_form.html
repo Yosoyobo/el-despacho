@@ -53,6 +53,10 @@
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.hora_salida %}
             </div>
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.tolerancia_min %}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.sede %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.sede_texto %}
+            </div>
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.activo %}
         </div>
         {% else %}

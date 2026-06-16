@@ -30,6 +30,13 @@ class SesionProyecto(models.Model):
     nota = models.TextField(blank=True, default="")
     estado = models.CharField(max_length=8, choices=ESTADO_SESION, default="activa")
 
+    # Snapshot de ubicación al iniciar/capturar (S-Checador-V14). Puntual, no
+    # tracking; si el GPS falla se marca sin_geo y NO se bloquea.
+    lat = models.FloatField(null=True, blank=True)
+    lng = models.FloatField(null=True, blank=True)
+    precision = models.FloatField(null=True, blank=True, help_text="Metros")
+    sin_geo = models.BooleanField(default=False)
+
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -49,3 +56,9 @@ class SesionProyecto(models.Model):
         delta = (fin - self.inicio).total_seconds() / 60
         self.duracion_min = max(0, int(delta))
         self.estado = "cerrada"
+
+    @property
+    def maps_url(self) -> str:
+        if self.lat is not None and self.lng is not None:
+            return f"https://maps.google.com/?q={self.lat},{self.lng}"
+        return ""

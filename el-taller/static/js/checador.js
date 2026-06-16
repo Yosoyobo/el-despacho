@@ -66,6 +66,37 @@
     });
   }
 
+  // ── Captura de geo + submit SIN cola offline (timer / captura manual) ──
+  // El cronómetro y la captura de tiempo son verdad del servidor — no se
+  // encolan offline (a diferencia de las checadas). Este botón toma la
+  // ubicación, llena los hidden y envía el form normal; si el GPS falla,
+  // marca sin_geo=1 y envía igual.
+  function wireGeoSubmit(btn) {
+    if (btn.__geoSubmitWired) return;
+    btn.__geoSubmitWired = true;
+    btn.addEventListener("click", function () {
+      var form = btn.closest("form");
+      if (!form) return;
+      if (!form.reportValidity || form.reportValidity()) {
+        btn.disabled = true;
+        btn.classList.add("opacity-60");
+        function enviar() { form.submit(); }
+        function sinGeo() { setVal(form, "sin_geo", "1"); enviar(); }
+        if (!navigator.geolocation) { sinGeo(); return; }
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            setVal(form, "lat", pos.coords.latitude);
+            setVal(form, "lng", pos.coords.longitude);
+            setVal(form, "precision", pos.coords.accuracy || "");
+            enviar();
+          },
+          sinGeo,
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        );
+      }
+    });
+  }
+
   // ── Cola offline (IndexedDB) ──────────────────────────────────────────
   var DB_NOMBRE = "checador", STORE = "cola", SYNC_URL = "/checador/api/sync";
 
@@ -108,8 +139,12 @@
       item.tipo = "visita";
       var tipoSel = form.querySelector("[name=tipo]:checked") || form.querySelector("[name=tipo]");
       item.visita_tipo = tipoSel ? tipoSel.value : "cliente";
+      var propSel = form.querySelector("[name=proposito]:checked");
+      item.proposito = propSel ? propSel.value : "visita";
       item.cliente = get("cliente") || null;
       item.proveedor = get("proveedor") || null;
+      item.contacto = get("contacto") || null;
+      item.tarea = get("tarea") || null;
       item.nota = get("nota") || "";
     }
     return item;
@@ -165,7 +200,9 @@
   }
 
   function montar(root) {
-    (root || document).querySelectorAll("[data-checar-geo]").forEach(wire);
+    var r = root || document;
+    r.querySelectorAll("[data-checar-geo]").forEach(wire);
+    r.querySelectorAll("[data-geo-submit]").forEach(wireGeoSubmit);
   }
 
   // ── Vista previa de mi ubicación (mapa) antes de checar / al registrar ──
@@ -175,13 +212,17 @@
   // el botón vive DENTRO de un modal (p. ej. el de visita), abre Google Maps en
   // otra pestaña para no reemplazar el modal abierto.
   function verMiUbicacion(btn) {
-    var enModal = !!(btn.closest && btn.closest("#modal-slot"));
+    // Abre Google Maps directo si el botón lo pide (data-ubicacion-gmaps) o si
+    // vive dentro de un modal (no podemos reemplazar el modal abierto). En el
+    // tablero el mini-mapa ya está arriba, así que el link va directo a Google.
+    var aGmaps = !!(btn.closest && btn.closest("#modal-slot")) ||
+                 (btn.getAttribute && btn.getAttribute("data-ubicacion-gmaps") === "1");
     var original = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = "Obteniendo tu ubicación…";
     function restaurar() { btn.disabled = false; btn.innerHTML = original; }
     function abrir(lat, lng, precision) {
-      if (enModal) {
+      if (aGmaps) {
         if (lat == null) { if (typeof alert === "function") alert("No pudimos obtener tu ubicación."); restaurar(); return; }
         window.open("https://www.google.com/maps/search/?api=1&query=" + lat + "," + lng, "_blank", "noopener");
         restaurar();

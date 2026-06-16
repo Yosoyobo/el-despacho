@@ -23,14 +23,17 @@ class HorarioLaboralForm(forms.ModelForm):
 
     class Meta:
         model = HorarioLaboral
-        fields = ["usuario", "dia_semana", "hora_entrada", "hora_salida", "tolerancia_min", "activo"]
+        fields = ["usuario", "dia_semana", "hora_entrada", "hora_salida",
+                  "tolerancia_min", "sede", "sede_texto", "activo"]
         widgets = {
             "hora_entrada": _TIME_WIDGET,
             "hora_salida": _TIME_WIDGET,
+            "sede_texto": forms.TextInput(attrs={"placeholder": "Ej. Oficina 1 (si no está en el catálogo)"}),
         }
         labels = {
             "usuario": "Usuario", "dia_semana": "Día", "hora_entrada": "Entrada",
-            "hora_salida": "Salida", "tolerancia_min": "Tolerancia (min)", "activo": "Activo",
+            "hora_salida": "Salida", "tolerancia_min": "Tolerancia (min)",
+            "sede": "Sede esperada", "sede_texto": "Sede (texto libre)", "activo": "Activo",
         }
 
     def __init__(self, *args, **kwargs):
@@ -39,6 +42,10 @@ class HorarioLaboralForm(forms.ModelForm):
         self.fields["usuario"].empty_label = "— Global (todo el staff) —"
         self.fields["usuario"].queryset = Usuario.objects.filter(is_active=True).order_by("nombre_completo")
         self.fields["usuario"].help_text = "Vacío = horario global para todo el staff."
+        self.fields["sede"].required = False
+        self.fields["sede"].empty_label = "— Sin asignar —"
+        self.fields["sede"].queryset = SedeLC.objects.filter(activa=True).order_by("orden", "nombre")
+        self.fields["sede_texto"].required = False
 
     def clean(self):
         cleaned = super().clean()
@@ -72,6 +79,14 @@ class HorarioBulkForm(forms.Form):
     hora_entrada = forms.TimeField(label="Entrada", widget=_TIME_WIDGET, input_formats=["%H:%M"])
     hora_salida = forms.TimeField(label="Salida", widget=_TIME_WIDGET, input_formats=["%H:%M"])
     tolerancia_min = forms.IntegerField(label="Tolerancia (min)", min_value=0, initial=15)
+    sede = forms.ModelChoiceField(
+        queryset=SedeLC.objects.filter(activa=True).order_by("orden", "nombre"),
+        required=False, label="Sede esperada", empty_label="— Sin asignar —",
+    )
+    sede_texto = forms.CharField(
+        required=False, label="Sede (texto libre)", max_length=160,
+        widget=forms.TextInput(attrs={"placeholder": "Si no está en el catálogo"}),
+    )
     activo = forms.BooleanField(required=False, initial=True, label="Activo")
 
     def clean(self):
@@ -88,6 +103,7 @@ class HorarioBulkForm(forms.Form):
         defaults = {
             "hora_entrada": d["hora_entrada"], "hora_salida": d["hora_salida"],
             "tolerancia_min": d["tolerancia_min"], "activo": d["activo"],
+            "sede": d.get("sede"), "sede_texto": (d.get("sede_texto") or "").strip(),
         }
         n = 0
         for usuario in objetivos:

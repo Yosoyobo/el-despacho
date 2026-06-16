@@ -88,8 +88,12 @@
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{% if j.horas_trabajadas %}{{ j.horas_trabajadas }}{% else %}—{% endif %}</td>
                         <td class="py-2 pr-3">{% if j.retardo_min %}<span class="text-warning-600 dark:text-warning-400">{{ j.retardo_min }} min</span>{% else %}<span class="text-success-600 dark:text-success-400">a tiempo</span>{% endif %}</td>
                         <td class="py-2 text-right">
-                            <button type="button" hx-get="{% url 'checador:ajuste_jornada_modal' %}?jornada={{ j.pk }}" hx-target="#modal-slot" hx-swap="innerHTML"
-                                    class="text-xs text-brand-600 hover:underline dark:text-brand-400">Ajustar</button>
+                            <div class="flex items-center justify-end gap-3">
+                                <button type="button" hx-get="{% url 'checador:jornada_detalle' j.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                                        class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver</button>
+                                <button type="button" hx-get="{% url 'checador:ajuste_jornada_modal' %}?jornada={{ j.pk }}" hx-target="#modal-slot" hx-swap="innerHTML"
+                                        class="text-xs text-gray-500 hover:underline dark:text-gray-400">Ajustar</button>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -121,8 +125,12 @@
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">
                     <span class="font-medium tabular-nums text-gray-700 dark:text-gray-300">{{ s.duracion_min }} min</span>
-                    <button type="button" hx-get="{% url 'checador:correccion_modal' %}?sesion={{ s.pk }}" hx-target="#modal-slot" hx-swap="innerHTML"
-                            class="text-xs text-brand-600 hover:underline dark:text-brand-400">Corregir</button>
+                    <div class="flex items-center gap-3">
+                        <button type="button" hx-get="{% url 'checador:sesion_detalle' s.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                                class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver</button>
+                        <button type="button" hx-get="{% url 'checador:correccion_modal' %}?sesion={{ s.pk }}" hx-target="#modal-slot" hx-swap="innerHTML"
+                                class="text-xs text-gray-500 hover:underline dark:text-gray-400">Corregir</button>
+                    </div>
                 </div>
             </li>
             {% endfor %}
@@ -170,12 +178,17 @@
         {% if visitas %}
         <ul class="space-y-2">
             {% for v in visitas %}
-            <li class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800/50">
+            <li hx-get="{% url 'checador:visita_detalle' v.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" title="Ver detalle"
+                class="flex cursor-pointer items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm transition hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800">
                 <div class="min-w-0">
-                    <p class="font-medium text-gray-800 dark:text-gray-100">{{ v.destino }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ v.get_tipo_display }} · {{ v.registrado_en|hfmt:"D j H:i" }}{% if v.nota %} · {{ v.nota }}{% endif %}</p>
+                    <p class="font-medium text-gray-800 dark:text-gray-100">
+                        {{ v.destino }}
+                        {% if v.proposito_efectivo == "tarea" %}<span class="ml-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">Tarea</span>{% endif %}
+                        {% if v.ia_verificado_en %}<span class="ml-1 text-[10px] text-gray-400" title="Verificado por El Chalán">🤖</span>{% endif %}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ v.get_tipo_display }} · {{ v.registrado_en|hfmt:"D j H:i" }}{% if v.nota %} · {{ v.nota|truncatechars:50 }}{% endif %}</p>
                 </div>
-                {% if v.maps_url %}<a href="{{ v.maps_url }}" target="_blank" rel="noopener" class="shrink-0 text-xs text-brand-600 hover:underline dark:text-brand-400">Mapa</a>{% endif %}
+                {% if v.maps_url %}<span class="shrink-0 text-xs text-brand-600 dark:text-brand-400">📍 Mapa</span>{% endif %}
             </li>
             {% endfor %}
         </ul>

@@ -49,6 +49,15 @@ class Jornada(models.Model):
     minutos_extra = models.PositiveIntegerField(default=0)
     notas = models.TextField(blank=True, default="")
 
+    # Sede donde debió/ocurrió la jornada (S-Checador-V14). La fija el admin al
+    # ajustar/registrar la jornada (o se hereda del horario); el empleado puede
+    # escribirla a mano al pedir un ajuste.
+    sede = models.ForeignKey(
+        "checador.SedeLC", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="jornadas",
+    )
+    sede_texto = models.CharField(max_length=160, blank=True, default="")
+
     # Auditoría de ajuste manual (admin directo o corrección aprobada, V1.3):
     # quién tocó la jornada por última vez y cuándo. NULL = nunca se ajustó.
     ajustado_por = models.ForeignKey(
@@ -97,3 +106,9 @@ class Jornada(models.Model):
     @property
     def a_tiempo(self) -> bool:
         return self.retardo_min == 0
+
+    @property
+    def sede_label(self) -> str:
+        if self.sede_id:
+            return getattr(self.sede, "nombre", "")
+        return self.sede_texto or ""

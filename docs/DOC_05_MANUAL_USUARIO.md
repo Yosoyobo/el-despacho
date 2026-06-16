@@ -5,6 +5,41 @@
 
 ---
 
+## Novedades — Registrar visitas a POI, detalles del Checador y sede esperada (15 de junio de 2026)
+
+- **Botón grande para registrar visitas.** En **El Checador**, además de los
+  botones de entrada/salida, ahora hay un botón azul **"Registrar visita /
+  tarea"** siempre disponible. Sirve para dejar constancia de que llegaste a un
+  **cliente, proveedor o contacto** (un POI). Los POI **no** cuentan como
+  entrada o salida — son solo para visitas o tareas cumplidas (por ejemplo,
+  *"el runner fue a recoger muestras a un proveedor"*).
+- **¿Visita o tarea cumplida?** Al registrar eliges si fue una **visita** o una
+  **tarea cumplida**, puedes ligarla a una **tarea** tuya y escribir una nota.
+  **El Chalán revisa tu nota y la clasifica solo** (visita o tarea, y si quedó
+  cumplida), para que no dependa de marcarlo a mano. Verás un 🤖 en los registros
+  que El Chalán revisó.
+- **Ligar a contactos.** Las visitas ahora se pueden ligar a un **contacto** de
+  un cliente (no solo al cliente o proveedor).
+- **Clic en cada registro para ver el detalle.** En **Mi semana** y en **Mi
+  historial**, da clic en cualquier día, visita o tiempo de proyecto para abrir
+  su **detalle**: horas, mapa de la ubicación, retardo, sede y la nota. Los
+  administradores también lo ven en *Checador del equipo*.
+- **El mapa abre directo en Google Maps.** El enlace para ver tu ubicación ahora
+  se llama **"Ver ubicación en Google Maps"** y abre Google Maps directo (el
+  mapa de verificación ya está arriba en la pantalla).
+- **El tiempo por proyecto guarda tu ubicación.** Al iniciar el cronómetro o
+  capturar tiempo manual, también se toma un **snapshot** de dónde estabas.
+- **Sede esperada en el horario y en los ajustes.** Al configurar el horario de
+  alguien (La Gerencia → Horarios), el admin/jefe puede asignar la **sede**
+  donde se espera que cheque ese día. Y al pedir un ajuste de jornada, el
+  empleado puede **escribir** en qué sede debió ser; el admin la confirma del
+  catálogo al aprobar.
+
+> El registro de visitas, los detalles y la sede se usan desde la pantalla de El
+> Checador y de La Gerencia. El Chalán revisa las visitas en automático.
+
+---
+
 ## Novedades — Sedes de LC, mapa al checar, horas de la semana y cuadros de chat más grandes (15 de junio de 2026)
 
 - **Ya ves un mapa antes de checar.** En **El Checador**, arriba del botón de

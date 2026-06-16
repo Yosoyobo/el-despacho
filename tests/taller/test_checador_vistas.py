@@ -80,13 +80,14 @@ def test_checar_get_no_permitido(client, usuario_factory):
 
 # ───────────────────────── visitas (E3) ─────────────────────────
 
-def test_boton_visita_solo_tras_entrada(client, usuario_factory):
+def test_boton_visita_siempre_visible(client, usuario_factory):
+    # S-Checador-V14: el botón de visita/tarea a POI NO depende de la jornada
+    # (los POI no checan entrada/salida); está siempre disponible.
     u = usuario_factory(rol="disenador")
     client.force_login(u)
-    # Sin entrada: no aparece el botón de visita.
-    assert b"Registrar visita" not in client.get("/checador/").content
+    assert b"Registrar visita / tarea" in client.get("/checador/").content
     client.post("/checador/checar", {"accion": "entrada", "sin_geo": "1", "uuid": "e-1"})
-    assert b"Registrar visita" in client.get("/checador/").content
+    assert b"Registrar visita / tarea" in client.get("/checador/").content
 
 
 def test_visita_modal_lista_clientes(client, usuario_factory, cliente_factory):

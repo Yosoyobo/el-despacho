@@ -8,7 +8,16 @@ from django.db import models
 TIPO_VISITA = (
     ("cliente", "Cliente"),
     ("proveedor", "Proveedor"),
+    ("contacto", "Contacto"),
     ("otro", "Otro"),
+)
+
+# Qué fue a hacer la persona al POI (S-Checador-V14). Lo distingue de `tipo`
+# (a quién). El Chalán puede inferirlo de la nota/evidencia para no depender de
+# que el runner lo marque (ver `apps.checador.verificacion`).
+PROPOSITO_VISITA = (
+    ("visita", "Visita"),
+    ("tarea", "Tarea/entrega completada"),
 )
 
 
@@ -41,7 +50,27 @@ class Visita(models.Model):
         "el_catalogo.Proveedor", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="visitas_checador",
     )
+    contacto = models.ForeignKey(
+        "cartera.ClienteContacto", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="visitas_checador",
+    )
+    # Tarea opcional que el registro completa (p. ej. "recoger muestras"). Permite
+    # que El Chalán verifique contra el pendiente asignado.
+    tarea = models.ForeignKey(
+        "pizarron.Tarea", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="visitas_checador",
+    )
+    proposito = models.CharField(max_length=10, choices=PROPOSITO_VISITA, default="visita")
     nota = models.TextField(blank=True, default="")
+
+    # Verificación por El Chalán (S-Checador-V14). El AI clasifica el propósito y
+    # valora si la tarea quedó cumplida, para no depender de que el runner lo
+    # marque. Best-effort; si no corre, los campos quedan vacíos/None.
+    ia_proposito = models.CharField(max_length=10, blank=True, default="")
+    ia_completada = models.BooleanField(null=True, blank=True)
+    ia_confianza = models.FloatField(null=True, blank=True)
+    ia_resumen = models.TextField(blank=True, default="")
+    ia_verificado_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "checador_visita"
@@ -56,11 +85,20 @@ class Visita(models.Model):
 
     @property
     def destino(self) -> str:
+        if self.contacto_id:
+            nombre = getattr(self.contacto, "nombre", "Contacto")
+            cli = getattr(getattr(self.contacto, "cliente", None), "razon_social", "")
+            return f"{nombre} ({cli})" if cli else nombre
         if self.cliente_id:
             return getattr(self.cliente, "razon_social", "Cliente")
         if self.proveedor_id:
             return getattr(self.proveedor, "razon_social", "Proveedor")
         return self.nota or "Otro"
+
+    @property
+    def proposito_efectivo(self) -> str:
+        """Propósito confirmado por el AI si lo hay; si no, el que se marcó."""
+        return self.ia_proposito or self.proposito
 
     @property
     def maps_url(self) -> str:

@@ -1,0 +1,53 @@
+{% comment %}
+Detalle de una jornada (chequeo) en modal HTMX. `j` = Jornada, `es_propia`.
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold capitalize text-gray-900 dark:text-gray-100">Jornada · {{ j.fecha|date:"l j N Y" }}</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Entrada</span>
+                <span class="flex items-center gap-2">
+                    <span class="tabular-nums font-medium">{{ j.entrada_en|hfmt:"H:i"|default:"—" }}</span>
+                    {% if j.retardo_min %}<span class="text-warning-600 dark:text-warning-400">retardo {{ j.retardo_min }} min</span>{% elif j.entrada_en %}<span class="text-success-600 dark:text-success-400">a tiempo</span>{% endif %}
+                    {% if j.entrada_en %}{% include "checador/_boton_mapa.html" with lat=j.entrada_lat lng=j.entrada_lng etiqueta="Entrada" cuando=j.entrada_en|hfmt:"D j H:i" precision=j.entrada_precision %}{% endif %}
+                </span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Salida</span>
+                <span class="flex items-center gap-2">
+                    <span class="tabular-nums font-medium">{{ j.salida_en|hfmt:"H:i"|default:"—" }}</span>
+                    {% if j.salida_automatica %}<span class="text-[11px] text-gray-400" title="Cierre automático del sistema">auto</span>{% endif %}
+                    {% if j.salida_en %}{% include "checador/_boton_mapa.html" with lat=j.salida_lat lng=j.salida_lng etiqueta="Salida" cuando=j.salida_en|hfmt:"D j H:i" precision=j.salida_precision %}{% endif %}
+                </span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Horas trabajadas</span>
+                <span class="tabular-nums font-medium">{% if j.horas_trabajadas %}{{ j.horas_trabajadas }} h{% if j.reabierta %} (acumuladas){% endif %}{% else %}—{% endif %}</span>
+            </div>
+            {% if j.sede_label %}
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Sede esperada</span>
+                <span class="font-medium">{{ j.sede_label }}</span>
+            </div>
+            {% endif %}
+            {% if j.notas %}
+            <div class="rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-800 dark:bg-warning-500/10 dark:text-warning-300">{{ j.notas|linebreaksbr }}</div>
+            {% endif %}
+            {% if j.ajustado_por %}
+            <p class="text-xs text-gray-400 dark:text-gray-500">Ajustada por {{ j.ajustado_por.nombre_completo|default:j.ajustado_por.email }}{% if j.ajustado_en %} · {{ j.ajustado_en|hfmt:"d/m H:i" }}{% endif %}</p>
+            {% endif %}
+        </div>
+        {% if es_propia %}
+        <footer class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <button type="button" hx-get="{% url 'checador:ajuste_jornada_modal' %}?jornada={{ j.pk }}" hx-target="#modal-slot" hx-swap="innerHTML"
+                    class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Solicitar ajuste</button>
+        </footer>
+        {% endif %}
+    </div>
+</div>

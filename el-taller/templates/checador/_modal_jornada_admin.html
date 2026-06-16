@@ -24,6 +24,14 @@
                         <input type="time" name="salida" id="ja-salida" value="{{ jornada.salida_en|date:'H:i' }}">
                     </div>
                 </div>
+                <div>
+                    <label for="ja-sede" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Sede esperada</label>
+                    <select name="sede" id="ja-sede">
+                        <option value="">— Sin asignar —</option>
+                        {% for s in sedes %}<option value="{{ s.pk }}" {% if jornada.sede_id == s.pk %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+                    </select>
+                    {% if jornada.sede_texto %}<p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">El empleado escribió: «{{ jornada.sede_texto }}»</p>{% endif %}
+                </div>
             </div>
             <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
                 <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
