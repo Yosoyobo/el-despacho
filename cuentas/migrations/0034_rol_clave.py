@@ -50,8 +50,10 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name="rol",
+            # db_index=False evita crear el índice `_like` (varchar_pattern_ops)
+            # de Postgres aquí; el AlterField a unique=True lo crea una sola vez.
             name="clave",
-            field=models.SlugField(default="", editable=False, max_length=60),
+            field=models.SlugField(default="", editable=False, max_length=60, db_index=False),
             preserve_default=False,
         ),
         migrations.RunPython(poblar_clave, reverse_noop),
