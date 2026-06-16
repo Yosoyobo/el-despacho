@@ -20,17 +20,98 @@
     if (el) el.value = value;
   }
 
+  // ── Posición conocida + watch continuo ───────────────────────────────────
+  // El mayor problema reportado: checar tardaba ~8 s (un getCurrentPosition
+  // por click) y a veces expiraba → "sin ubicación". Solución: arrancamos un
+  // watchPosition al cargar; cuando el usuario checa, usamos el último fix si
+  // es reciente (instantáneo y CON ubicación). Si no hay fix aún, esperamos
+  // uno con timeout amplio antes de caer a sin_geo.
+  var POS_FRESCA_MS = 90000;       // un fix de <90 s se considera vigente
+  var ESPERA_FIX_MS = 20000;       // espera máxima por un fix nuevo al checar
+  var ultimaPos = null;            // {lat, lng, acc, t}
+
+  function guardarPos(pos) {
+    ultimaPos = {
+      lat: pos.coords.latitude, lng: pos.coords.longitude,
+      acc: pos.coords.accuracy || "", t: Date.now(),
+    };
+    // Compartida con el mini-mapa del tablero (que también la pinta).
+    try { window.__checadorPos = ultimaPos; } catch (e) {}
+  }
+
+  function posFresca() {
+    // Toma la más reciente entre la del watch local y la del mini-mapa.
+    var ext = (typeof window !== "undefined") ? window.__checadorPos : null;
+    var p = ultimaPos;
+    if (ext && (!p || (ext.t || 0) > (p.t || 0))) p = ext;
+    if (p && p.lat != null && (Date.now() - (p.t || 0)) < POS_FRESCA_MS) return p;
+    return null;
+  }
+
+  function iniciarWatch() {
+    if (!navigator.geolocation || !navigator.geolocation.watchPosition) return;
+    try {
+      navigator.geolocation.watchPosition(guardarPos, function () {},
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 25000 });
+    } catch (e) {}
+  }
+
+  // Spinner visible mientras se checa (Oscar: "no veo el logo girando").
+  function spinnerHTML(texto) {
+    return '<svg class="h-7 w-7 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+      '<path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path></svg>' +
+      (texto ? '<span>' + texto + '</span>' : '');
+  }
+  function cargando(btn, texto) {
+    if (btn.__orig == null) btn.__orig = btn.innerHTML;
+    btn.innerHTML = spinnerHTML(texto);
+    btn.disabled = true;
+    btn.classList.add("opacity-90");
+  }
+  function restaurar(btn) {
+    if (btn.__orig != null) { btn.innerHTML = btn.__orig; btn.__orig = null; }
+    btn.disabled = false;
+    btn.classList.remove("opacity-90", "opacity-60");
+  }
+
+  // Llena lat/lng/precision del form desde un fix; si no hay, marca sin_geo.
+  function aplicarPos(form, p) {
+    if (p) {
+      setVal(form, "lat", p.lat);
+      setVal(form, "lng", p.lng);
+      setVal(form, "precision", p.acc);
+      setVal(form, "sin_geo", "0");
+    } else {
+      setVal(form, "sin_geo", "1");
+    }
+  }
+
+  // Obtiene una posición rápido: usa el último fix si es fresco; si no, pide
+  // uno nuevo con timeout amplio. Llama cb(pos|null) — nunca bloquea el flujo.
+  function obtenerPos(cb) {
+    var fresca = posFresca();
+    if (fresca) { cb(fresca); return; }
+    if (!navigator.geolocation) { cb(null); return; }
+    var hecho = false;
+    function fin(p) { if (hecho) return; hecho = true; cb(p); }
+    navigator.geolocation.getCurrentPosition(
+      function (pos) { guardarPos(pos); fin(ultimaPos); },
+      function () { fin(posFresca()); },  // último recurso: un fix viejo si lo hay
+      { enableHighAccuracy: true, timeout: ESPERA_FIX_MS, maximumAge: 60000 }
+    );
+  }
+
   function wire(btn) {
     if (btn.__checadorWired) return;
     btn.__checadorWired = true;
     btn.addEventListener("click", function () {
       var form = btn.closest("form");
       if (!form) return;
-      btn.disabled = true;
-      btn.classList.add("opacity-60");
       var estado = form.querySelector("[data-geo-estado]");
       var uf = form.querySelector("[name=uuid]");
       if (uf && !uf.value) uf.value = uuid();
+      cargando(btn, "Checando…");
       if (estado) estado.textContent = "Tomando tu ubicación…";
 
       function finalizar() {
@@ -39,30 +120,18 @@
           encolar(itemDeForm(form)).then(function () {
             if (estado) estado.textContent = "Guardado sin conexión. Se enviará al reconectar.";
             actualizarBadge();
-            btn.disabled = false;
-            btn.classList.remove("opacity-60");
+            restaurar(btn);
           });
           return;
         }
         form.submit();
       }
-      function sinGeo(msg) {
-        setVal(form, "sin_geo", "1");
-        if (estado && msg) estado.textContent = msg;
-        finalizar();
-      }
 
-      if (!navigator.geolocation) { sinGeo("Sin ubicación — se registrará igual."); return; }
-      navigator.geolocation.getCurrentPosition(
-        function (pos) {
-          setVal(form, "lat", pos.coords.latitude);
-          setVal(form, "lng", pos.coords.longitude);
-          setVal(form, "precision", pos.coords.accuracy || "");
-          finalizar();
-        },
-        function () { sinGeo("Sin ubicación — se registrará igual."); },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-      );
+      obtenerPos(function (p) {
+        aplicarPos(form, p);
+        if (!p && estado) estado.textContent = "Sin ubicación — se registrará igual.";
+        finalizar();
+      });
     });
   }
 
@@ -77,23 +146,12 @@
     btn.addEventListener("click", function () {
       var form = btn.closest("form");
       if (!form) return;
-      if (!form.reportValidity || form.reportValidity()) {
-        btn.disabled = true;
-        btn.classList.add("opacity-60");
-        function enviar() { form.submit(); }
-        function sinGeo() { setVal(form, "sin_geo", "1"); enviar(); }
-        if (!navigator.geolocation) { sinGeo(); return; }
-        navigator.geolocation.getCurrentPosition(
-          function (pos) {
-            setVal(form, "lat", pos.coords.latitude);
-            setVal(form, "lng", pos.coords.longitude);
-            setVal(form, "precision", pos.coords.accuracy || "");
-            enviar();
-          },
-          sinGeo,
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-        );
-      }
+      if (form.reportValidity && !form.reportValidity()) return;
+      cargando(btn, "Guardando…");
+      obtenerPos(function (p) {
+        aplicarPos(form, p);
+        form.submit();
+      });
     });
   }
 
@@ -289,6 +347,7 @@
 
   function init() {
     montar();
+    iniciarWatch();  // calienta la ubicación para que checar sea instantáneo
     reloj();
     setInterval(reloj, 10000);
     cronometro();

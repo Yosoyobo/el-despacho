@@ -283,6 +283,9 @@
   var marker = null, prec = null, centrado = false;
   function fijar(pos) {
     var lat = pos.coords.latitude, lng = pos.coords.longitude, acc = pos.coords.accuracy || 0;
+    // Comparte el fix con checador.js para que checar sea instantáneo y CON
+    // ubicación (sin esperar un segundo getCurrentPosition que expiraba).
+    try { window.__checadorPos = { lat: lat, lng: lng, acc: acc, t: Date.now() }; } catch (e) {}
     if (!marker) {
       marker = L.circleMarker([lat, lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#465fff', fillOpacity: 1 }).addTo(map);
       prec = L.circle([lat, lng], { radius: acc, color: '#465fff', fillColor: '#465fff', fillOpacity: 0.08, weight: 1 }).addTo(map);
