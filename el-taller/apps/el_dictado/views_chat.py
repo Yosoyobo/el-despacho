@@ -208,6 +208,23 @@ def adjunto_descargar(request, pk: int):
 
 
 @login_required
+@require_http_methods(["POST"])
+def propuesta_descartar(request, pk: int):
+    """POST /chalan/propuesta/<pk>/descartar — el usuario descarta una sugerencia
+    proactiva de El Chalán. Solo login (la propuesta ya es suya); no exige el
+    permiso del chat para que siempre se pueda quitar del Dashboard."""
+    from django.utils import timezone
+
+    from .models import PropuestaChalan
+    prop = get_object_or_404(PropuestaChalan, pk=pk, usuario=request.user)
+    if prop.estado == "pendiente":
+        prop.estado = "descartada"
+        prop.resuelta_en = timezone.now()
+        prop.save(update_fields=["estado", "resuelta_en"])
+    return redirect(request.META.get("HTTP_REFERER") or "taller-home")
+
+
+@login_required
 @_requiere_chalan
 def lista(request):
     """GET /chalan/partial/lista — refresca la sidebar de conversaciones."""

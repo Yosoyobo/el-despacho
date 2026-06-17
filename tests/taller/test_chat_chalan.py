@@ -435,3 +435,105 @@ def test_enviar_con_imagen_htmx(client, monkeypatch, usuario_factory):
                        HTTP_HX_REQUEST="true")
     assert resp.status_code == 200
     assert b"Recibo le" in resp.content
+
+
+# ── Fase 2: planeación multi-paso (modo tool-use NATIVO) ─────────────────────────
+# Los tests anteriores ejercen `_conversar_texto` (degradación) porque en CI no
+# hay adapter con FUNCTION_CALLING. Estos fuerzan el modo nativo y mockean
+# `chatear` para validar el loop más largo + el cap de costo por turno.
+
+def _res(texto="", tool_calls=(), costo=0.0):
+    return SimpleNamespace(
+        texto=texto, provider="anthropic", modelo="claude-haiku-4-5",
+        prompt_tokens=1, completion_tokens=1, costo_usd=costo, latencia_ms=1,
+        tool_calls=tuple(tool_calls), stop_reason="",
+    )
+
+
+def _tc(nombre, args, id="t1"):
+    from lib.analistas import ToolCall
+    return ToolCall(id=id, nombre=nombre, args=args)
+
+
+def _fake_chatear(respuestas):
+    estado = {"i": 0}
+
+    def fake(*a, **kw):
+        i = estado["i"]
+        estado["i"] += 1
+        item = respuestas[i] if i < len(respuestas) else respuestas[-1]
+        return item(i) if callable(item) else item
+
+    return fake, estado
+
+
+def _forzar_nativo(monkeypatch):
+    import apps.el_dictado.services_chat as sc
+    monkeypatch.setattr(sc, "_cadena_soporta_tools", lambda u: True)
+
+
+def test_plan_multipaso_un_solo_preview(monkeypatch, usuario_factory, proyecto_factory):
+    """El agente lee primero y propone TODO el plan en una sola llamada a
+    `proponer_acciones` → un Dictado con N acciones, sin auto-aplicar."""
+    from apps.el_dictado.services_chat import conversar
+
+    import lib.analistas as la
+    _forzar_nativo(monkeypatch)
+    u = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    fake, estado = _fake_chatear([
+        # 1) investiga con una herramienta read-only
+        _res(tool_calls=[_tc("buscar", {"texto": "logo"})]),
+        # 2) propone el plan COMPLETO (2 escrituras) en un solo proponer_acciones
+        _res(texto="Te propongo el plan:", tool_calls=[_tc("proponer_acciones", {
+            "texto": "Plan de 2 pasos",
+            "acciones": [
+                {"tipo": "crear_tarea", "descripcion": "diseñar logo",
+                 "payload": {"proyecto_slug": p.slug, "titulo": "logo"}, "confianza": 0.9},
+                {"tipo": "crear_tarea", "descripcion": "revisar arte",
+                 "payload": {"proyecto_slug": p.slug, "titulo": "revisión"}, "confianza": 0.8},
+            ],
+        })]),
+    ])
+    monkeypatch.setattr(la, "chatear", fake)
+    res = conversar(mensaje="organiza el proyecto", usuario=u, conversacion=_conv(u))
+    assert estado["i"] == 2  # 1 lectura + 1 propuesta
+    d = res["dictado"]
+    assert d is not None and d.estado == "esperando_confirmacion"
+    assert d.acciones.count() == 2
+    assert not d.acciones.filter(aplicada=True).exists()  # nunca auto-aplica
+    # corrió una herramienta de lectura ANTES de proponer
+    assert any(m.tipo == "herramienta" for m in res["mensajes"])
+
+
+def test_cap_costo_por_turno_corta(monkeypatch, usuario_factory):
+    """Acumula costo por iteración; al rebasar MAX_COSTO_TURNO_USD corta el turno
+    aunque queden iteraciones (protege a usuarios sin tope de IA)."""
+    from apps.el_dictado.services_chat import MAX_COSTO_TURNO_USD, conversar
+
+    import lib.analistas as la
+    _forzar_nativo(monkeypatch)
+    u = usuario_factory(rol="super_admin")
+    # Cada llamada cuesta la mitad del tope → la 3a verificación corta.
+    fake, estado = _fake_chatear([
+        lambda i: _res(tool_calls=[_tc("buscar", {"texto": f"consulta{i}"})],
+                       costo=MAX_COSTO_TURNO_USD * 0.6),
+    ])
+    monkeypatch.setattr(la, "chatear", fake)
+    res = conversar(mensaje="dame todo", usuario=u, conversacion=_conv(u))
+    assert estado["i"] == 2  # 2 llamadas (0.6+0.6=1.2 ≥ 0.5) y al tope corta antes de la 3a
+    assert "muy larga" in res["mensajes"][-1].cuerpo
+
+
+def test_nativo_responde_sin_tools(monkeypatch, usuario_factory):
+    """chatear sin tool_calls → respuesta final del bot, cierra el turno."""
+    from apps.el_dictado.services_chat import conversar
+
+    import lib.analistas as la
+    _forzar_nativo(monkeypatch)
+    u = usuario_factory(rol="super_admin")
+    fake, estado = _fake_chatear([_res(texto="Hay 5 proyectos activos.")])
+    monkeypatch.setattr(la, "chatear", fake)
+    res = conversar(mensaje="¿cuántos proyectos?", usuario=u, conversacion=_conv(u))
+    assert estado["i"] == 1
+    assert "5 proyectos" in res["mensajes"][-1].cuerpo

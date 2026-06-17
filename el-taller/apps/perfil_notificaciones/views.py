@@ -34,6 +34,8 @@ CATEGORIAS = [
      ("super_admin", "dueno", "contador")),
     ("checador", "El Checador",
      "Push de correcciones de checada: solicitudes (a quien aprueba) y resoluciones (a quien solicitó).", None),
+    ("chalan_sugerencia", "Sugerencias de El Chalán",
+     "Push cuando El Chalán detecta algo que conviene revisar (facturas vencidas, proyectos estancados, mandados sin avance) o te manda el resumen del día.", None),
 ]
 
 

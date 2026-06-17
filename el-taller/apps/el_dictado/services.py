@@ -254,6 +254,13 @@ def aplicar(*, dictado, usuario, _reintentos: int = 0, _proveedores_intentados: 
     dictado.aplicado_en = timezone.now()
     dictado.save(update_fields=["estado", "aplicado_en"])
 
+    # Fase 3: cierra la propuesta proactiva ligada (si la hay) al aplicarse.
+    if aplicadas > 0:
+        import contextlib
+        with contextlib.suppress(Exception):
+            dictado.propuestas.filter(estado="pendiente").update(
+                estado="aplicada", resuelta_en=timezone.now())
+
     _emitir_evento(
         "dictado.aplicado_con_errores" if fallidas else "dictado.aplicado",
         usuario,

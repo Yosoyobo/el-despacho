@@ -19,6 +19,7 @@ ORIGENES = (
     ("sala_juntas", "Sala de Juntas del Taller"),
     ("tesoreria_gasto", "Dictado de gasto en Tesorería"),
     ("taller_chat", "Chat conversacional del Taller"),
+    ("chalan_proactivo", "Sugerencia proactiva de El Chalán"),
 )
 
 

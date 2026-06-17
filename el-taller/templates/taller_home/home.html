@@ -73,6 +73,32 @@
     {% endif %}
 </section>
 
+{# ── Propuestas de El Chalán (Fase 3): sugerencias proactivas. El Chalán propone, tú confirmas. ── #}
+{% if propuestas_chalan %}
+<section class="mb-6">
+    <div class="ta-card border-brand-200 dark:border-brand-500/30">
+        <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">💡 El Chalán sugiere</h2>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for p in propuestas_chalan %}
+            <li class="flex items-start justify-between gap-3 py-2.5">
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ p.titulo }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ p.cuerpo|truncatechars:160 }}</p>
+                </div>
+                <div class="flex shrink-0 items-center gap-2">
+                    <a href="{{ p.url }}" class="rounded-lg bg-brand-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-600">{% if p.dictado_id %}Revisar{% else %}Abrir{% endif %}</a>
+                    <form method="post" action="{% url 'chalan-propuesta-descartar' p.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Descartar</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+{% endif %}
+
 {# ── Mis Mandados (S-Mandados-V2): protagonismo para repartidores. Solo si es runner. ── #}
 {% if es_runner %}
 <section class="mb-6">

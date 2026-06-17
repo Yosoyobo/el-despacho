@@ -5,6 +5,38 @@
 
 ---
 
+## Novedades — El Chalán planea trabajos completos y ahora te avisa solo (16 de junio de 2026)
+
+- **Planea varios pasos y te propone todo junto.** Cuando le pides algo que
+  implica varios cambios ("organiza el proyecto LC-0007: crea las tareas de
+  diseño y producción y asígnalas"), El Chalán primero consulta lo que necesita
+  (códigos, estado actual) y luego te presenta **un solo plan con todas las
+  acciones**. Las revisas con sus casillas y confirmas todo de una vez —
+  desmarca las que no quieras. Como siempre: **nada se aplica hasta que tú
+  confirmas.**
+- **El Chalán ahora te busca a ti (proactivo).** Sin que se lo pidas, revisa el
+  negocio y, cuando detecta algo que conviene atender, te manda una **sugerencia**:
+  - **Facturas vencidas**, **proyectos estancados** (sin movimiento >14 días) y
+    **mandados sin avance** → te llega un aviso con una propuesta concreta.
+  - **Resumen del día** (digest matutino): a primera hora, los administradores
+    reciben un resumen de entregas de hoy, vencidos, por cobrar y pendientes.
+  - Las sugerencias aparecen en el **Tablero**, bajo *"💡 El Chalán sugiere"*, y
+    como notificación. Cada una trae **Revisar/Abrir** y **Descartar**.
+  - Si la sugerencia implica un cambio, al abrirla verás el plan listo para
+    confirmar — **El Chalán propone, nunca ejecuta solo.**
+- **Lo controlas tú.** Puedes apagar estos avisos en **Perfil → Notificaciones →
+  "Sugerencias de El Chalán"**.
+
+### Cómo se usa con El Chalán
+
+- Para un trabajo de varios pasos, pídeselo en una sola frase ("crea estas 3
+  tareas y asígnalas a @persona"); él arma el plan completo y tú confirmas.
+- Las sugerencias proactivas llegan solas: revísalas en el Tablero o en la
+  notificación, y confirma o descarta. No hay que activarlas (vienen encendidas;
+  se apagan desde Perfil → Notificaciones).
+
+---
+
 ## Novedades — El Chalán ahora es un agente: piensa por pasos y escoge el mejor modelo (16 de junio de 2026)
 
 - **El Chalán es más confiable.** Antes, para consultar un dato (un proyecto,

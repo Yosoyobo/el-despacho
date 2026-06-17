@@ -28,9 +28,16 @@ from lib.analistas import PresupuestoIAExcedido
 logger = logging.getLogger(__name__)
 
 MAX_ITERACIONES = 4          # loop del modo texto (degradación)
-MAX_ITERACIONES_TOOLS = 8    # loop del modo tool-use nativo (más cabeza)
+MAX_ITERACIONES_TOOLS = 10   # loop del modo tool-use nativo (Fase 2: planeación multi-paso)
 MAX_TURNOS_PROMPT = 6
 MAX_TITULO = 60
+
+# Cap DURO de costo por turno (Fase 2). El gate de PresupuestoIA ya frena a los
+# usuarios con política `topar` por-iteración (gasto del mes es agregado vivo,
+# sin cache), pero NO protege a los `alertar`/sin tope contra un loop desbocado
+# ahora que sube a 10 iteraciones. Acumulamos `res.costo_usd` por iteración y
+# cortamos el turno si rebasa este techo (proveedores gratis nunca lo alcanzan).
+MAX_COSTO_TURNO_USD = 0.50
 
 # Tools "especiales" del agente (no son consultas read-only del registry):
 #  - proponer_acciones → crea un Dictado con preview/confirm humano.
@@ -299,8 +306,19 @@ def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
     cerrado = False
     vistos: set[tuple] = set()
     pasos = 0
+    costo_turno = 0.0
 
     for _ in range(MAX_ITERACIONES_TOOLS):
+        if costo_turno >= MAX_COSTO_TURNO_USD:
+            # Cinturón de seguridad: el turno ya consumió demasiado. Cerramos
+            # con lo que haya en lugar de seguir llamando al LLM.
+            nuevos.append(_crear_mensaje(
+                conversacion, rol="bot", chalan=chalan_provider,
+                cuerpo="Esta consulta se volvió muy larga. Te respondo con lo que "
+                "ya reuní; si necesitas más, pregúntame algo más acotado.",
+            ))
+            cerrado = True
+            break
         try:
             res = chatear(
                 estacion=estacion, mensajes=mensajes, herramientas=specs,
@@ -320,6 +338,7 @@ def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
             break
 
         chalan_provider = res.provider
+        costo_turno += float(res.costo_usd or 0)
 
         if not res.tool_calls:
             # Sin tool-calls → respuesta final del agente.

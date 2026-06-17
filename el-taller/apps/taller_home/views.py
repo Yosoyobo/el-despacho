@@ -270,6 +270,15 @@ def _calendarios(user):
     }
 
 
+def _propuestas_chalan(user):
+    """Propuestas proactivas pendientes de El Chalán para este usuario (Fase 3)."""
+    from apps.el_dictado.models import PropuestaChalan
+    return list(
+        PropuestaChalan.objects.filter(usuario=user, estado="pendiente")
+        .select_related("dictado")[:5]
+    )
+
+
 @login_required
 def home(request):
     user = request.user
@@ -291,10 +300,12 @@ def home(request):
     # S-Mandados-V2: protagonismo para repartidores — widget de sus mandados.
     es_runner = _safe("es_runner", lambda: _es_runner(user), False)
     mis_mandados = _safe("mis_mandados", lambda: _mis_mandados(user), []) if es_runner else []
+    propuestas_chalan = _safe("propuestas_chalan", lambda: _propuestas_chalan(user), [])
 
     return render(request, "taller_home/home.html", {
         "titulo": "LEARNING CENTER",
         "hoy": date.today(),
+        "propuestas_chalan": propuestas_chalan,
         "mis_tareas": mis_tareas,
         "mis_tareas_total": mis_tareas_total,
         "mis_tareas_mas": max(0, mis_tareas_total - len(mis_tareas)),

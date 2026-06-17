@@ -4345,6 +4345,9 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    10 5 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py cerrar_jornadas_abiertas >> /var/log/checador_cierre.log 2>&1
    # S-LC-Feedback-V10 (2026-06-15): avisa a los asignados cuando un pendiente CON HORA llega a su fecha+hora ("Entrega: [Proyecto]" / "Vencido: …"). Idempotente (Tarea.aviso_cumplido_en). Cada 15 min en horario laboral.
    */15 7-20 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py avisar_pendientes_cumplidos >> /var/log/pendientes_cumplidos.log 2>&1
+   # S-Chalan-Fase-2-3 (2026-06-16): El Chalán PROACTIVO. Digest matutino (resumen del día a admins) + scouts (facturas vencidas, proyectos estancados, mandados sin avance). Generan PropuestaChalan idempotentes (clave_dedup); las que implican cambios quedan como Dictado PENDIENTE — nunca se aplican solas. Costo IA al destinatario (si está topado, no genera y reintenta la próxima). --dry-run disponible.
+   20 7 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_digest_matutino >> /var/log/chalan_proactivo.log 2>&1
+   40 7 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_scouts >> /var/log/chalan_proactivo.log 2>&1
    ```
 
    Los dos comandos de "vencidas" son idempotentes (campo
