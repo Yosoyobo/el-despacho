@@ -518,6 +518,33 @@ def _resolver_destino(payload, contexto=None):
     return None
 
 
+def _destino_de_cliente(cliente):
+    """Destino de respaldo cuando el mandado no trae uno explícito: la dirección
+    del cliente (geocodificada) o, si no, su última ubicación geolocalizada (de
+    una visita de El Checador). Devuelve (lat, lng, etiqueta) o None. Best-effort,
+    nunca lanza — un mandado sin destino sigue siendo válido (se fija a mano)."""
+    if not cliente:
+        return None
+    direccion = (getattr(cliente, "direccion", "") or "").strip()
+    if direccion:
+        try:
+            from lib.geocoding import primer_resultado
+            r = primer_resultado(direccion)
+            if r:
+                return (r["lat"], r["lng"], direccion[:200])
+        except Exception:  # noqa: BLE001 — geocoder caído no debe romper la creación
+            pass
+    try:
+        from apps.checador.services import ultima_ubicacion_de
+        v = ultima_ubicacion_de(cliente=cliente)
+        if v and v.lat is not None and v.lng is not None:
+            etiqueta = (getattr(cliente, "razon_social", "") or "Cliente")[:200]
+            return (float(v.lat), float(v.lng), etiqueta)
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 @registrar("crear_mandado")
 def crear_mandado(accion, usuario, contexto=None):
     """S-Mandados-V2: crea una entrega/recolección con destino resuelto desde una
@@ -542,7 +569,8 @@ def crear_mandado(accion, usuario, contexto=None):
         fecha_compromiso=fecha, hora=hora, tipo=tipo, creado_por=usuario,
     )
     # Fija el destino ANTES de auto-asignar para que la cercanía aplique.
-    destino = _resolver_destino(payload, contexto)
+    # Si no vino destino explícito, cae a la dirección/ubicación del cliente.
+    destino = _resolver_destino(payload, contexto) or _destino_de_cliente(getattr(proyecto, "cliente", None))
     if destino:
         t.destino_lat, t.destino_lng, t.destino_etiqueta = destino
         t.save(update_fields=["destino_lat", "destino_lng", "destino_etiqueta"])

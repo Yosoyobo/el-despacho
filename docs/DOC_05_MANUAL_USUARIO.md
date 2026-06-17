@@ -19,6 +19,9 @@ Correcciones a partir de tu uso real de El Chalán:
 - **Las entregas asignan repartidor solas.** Al crear una entrega o recolección,
   El Chalán ya le pone el repartidor más adecuado automáticamente; no hace falta
   un paso extra.
+- **Destino automático del mandado.** Si no le das una dirección, El Chalán usa
+  la **dirección registrada del cliente** como destino de la entrega (o su última
+  ubicación conocida). Igual puedes fijar/cambiar el punto en el mapa después.
 - **Entregas por cliente.** Si pides una entrega para un cliente sin decir el
   proyecto (*"entregar players para NoKo Devs"*), El Chalán usa el **proyecto
   activo** de ese cliente. Si tiene varios, te pregunta en cuál; si no tiene

@@ -107,6 +107,42 @@ def test_chat_persiste_entrega_como_mandado(usuario_factory, cliente_factory, pr
     assert t.proyecto_id == p.pk and t.tipo == "entrega"
 
 
+def test_mandado_usa_direccion_del_cliente(monkeypatch, usuario_factory, cliente_factory, proyecto_factory):
+    """Sin destino explícito, el mandado toma la dirección del cliente (geocodeada)."""
+    from apps.el_dictado.ejecutores import basicos
+    from apps.el_pizarron.models import Tarea
+
+    import lib.geocoding as geo
+    monkeypatch.setattr(geo, "primer_resultado",
+                        lambda texto, **k: {"lat": 19.36, "lng": -99.29, "nombre": "Carr. México-Toluca"})
+    u = usuario_factory(rol="super_admin")
+    c = cliente_factory(direccion="Carr. México - Toluca 5860, CDMX")
+    proyecto_factory(cliente=c, estado="en_proceso_produccion")
+    acc = SimpleNamespace(payload={"cliente_slug": c.slug, "titulo": "Entregar players", "tipo": "entrega"})
+    basicos.crear_mandado(acc, u, {"entidades_creadas": {}})
+    t = Tarea.objects.get(pk=acc.entidad_id)
+    assert float(t.destino_lat) == 19.36 and float(t.destino_lng) == -99.29
+    assert t.destino_etiqueta
+
+
+def test_mandado_destino_explicito_gana_sobre_cliente(monkeypatch, usuario_factory, cliente_factory, proyecto_factory):
+    from apps.el_dictado.ejecutores import basicos
+    from apps.el_pizarron.models import Tarea
+
+    import lib.geocoding as geo
+    # Si lo llamaran para la dirección del cliente daría otra cosa; el explícito manda.
+    monkeypatch.setattr(geo, "primer_resultado",
+                        lambda texto, **k: {"lat": 1.0, "lng": 2.0, "nombre": texto})
+    u = usuario_factory(rol="super_admin")
+    c = cliente_factory(direccion="Dirección del cliente")
+    proyecto_factory(cliente=c, estado="en_proceso_produccion")
+    acc = SimpleNamespace(payload={"cliente_slug": c.slug, "titulo": "x", "tipo": "entrega",
+                                   "destino_lat": 40.0, "destino_lng": -3.0})
+    basicos.crear_mandado(acc, u, {"entidades_creadas": {}})
+    t = Tarea.objects.get(pk=acc.entidad_id)
+    assert float(t.destino_lat) == 40.0 and float(t.destino_lng) == -3.0
+
+
 def test_resolver_proyecto_por_cliente_unico(cliente_factory, proyecto_factory):
     """'entregar para $cliente' sin proyecto → usa el único proyecto activo."""
     from apps.el_dictado.ejecutores.basicos import _resolver_proyecto_para
