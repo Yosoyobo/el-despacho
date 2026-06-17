@@ -156,11 +156,4 @@ def cadena_de(estacion: str, usuario_id: int | None = None) -> list[Adapter]:
         adapter = adapter_de(n, modelo=modelo)
         if adapter:
             cadena.append(adapter)
-    # El sistema es "consciente" de qué Chalanes están disponibles: descarta los
-    # que no tienen credencial configurada para NO intentarlos (ni siquiera el
-    # primario). Así, si el super_admin quita la llave de un proveedor, deja de
-    # usarse de inmediato sin llenar la auditoría de errores FaltaCredencial.
-    # Si NINGUNO está configurado, regresa la cadena completa para que el caller
-    # reciba un error claro en vez de "no hay adapters".
-    configurados = [a for a in cadena if a.esta_configurado()]
-    return configurados or cadena
+    return cadena

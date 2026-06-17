@@ -189,19 +189,30 @@ def test_borrar_llave_desactiva_en_cadena():
 
 
 @pytest.mark.django_db
-def test_cadena_de_descarta_proveedor_sin_llave():
-    """`cadena_de` salta proveedores sin credencial (incluido el primario), así
-    El Relevo no intenta un Chalán sin llave en cada turno."""
+def test_analizar_salta_primario_sin_llave_sin_loguear():
+    """El primario SIN credencial se salta en silencio (no se intenta ni se
+    loguea en rojo): El Relevo usa el siguiente Chalán configurado."""
+    from unittest.mock import patch
+
+    from ajustes.models.analistas_log import AnalistaLog
     from ajustes.models.credencial import Credencial
     from chalanes.models import CuadroChalanes
-    from lib.analistas.registry import cadena_de
+    from lib.analistas.adapters import AnthropicAdapter
+    from lib.analistas.base import Resultado
+    from lib.analistas.reemplazo import analizar
 
-    Credencial.guardar("chalan_deepseek_api_key", "x" * 30)  # único configurado
+    Credencial.guardar("chalan_anthropic_api_key", "sk-ant")  # configurado (entra al fallback)
     CuadroChalanes.objects.update_or_create(
-        estacion="taller_chat",
+        estacion="estacion_w",
         defaults={"proveedor": "gemini", "modelo": "gemini-2.5-flash"},  # primario SIN llave
     )
-    nombres = [a.nombre for a in cadena_de("taller_chat")]
-    assert "gemini" not in nombres            # primario sin llave: descartado
-    assert "deepseek" in nombres              # el configurado sí entra
-    assert nombres, "la cadena no debe quedar vacía"
+    AnalistaLog.objects.all().delete()
+
+    def ok(self, prompt, **kw):  # noqa: ARG001
+        return Resultado(texto="hola", provider="anthropic", modelo="x",
+                         prompt_tokens=1, completion_tokens=1, costo_usd=0.0, latencia_ms=1)
+
+    with patch.object(AnthropicAdapter, "_invocar", ok):
+        res = analizar("estacion_w", "hola")
+    assert res.provider == "anthropic"  # saltó gemini sin llave y usó el configurado
+    assert not AnalistaLog.objects.filter(provider="gemini").exists()  # no ensucia la auditoría

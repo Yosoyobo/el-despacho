@@ -85,7 +85,11 @@ def analizar(
 
     for i, adapter in enumerate(cadena):
         es_fallback = i > 0
-        if es_fallback and not adapter.esta_configurado():
+        # Un Chalán sin credencial se SALTA en silencio (también el primario):
+        # no se intenta ni se loguea en rojo. Así, quitar la llave de un
+        # proveedor lo retira del relevo de inmediato sin ensuciar la auditoría.
+        # Si NINGUNO tiene llave, la cadena se agota → TodosFallaron (error claro).
+        if not adapter.esta_configurado():
             intentos_fallidos.append((adapter.nombre, "sin credencial — saltado"))
             continue
         try:
@@ -194,7 +198,9 @@ def chatear(
 
     for i, adapter in enumerate(cadena):
         es_fallback = i > 0
-        if es_fallback and not adapter.esta_configurado():
+        # Igual que `analizar`: salta en silencio a quien no tenga llave (incl.
+        # el primario) para no intentar/loguear un Chalán sin credencial.
+        if not adapter.esta_configurado():
             intentos_fallidos.append((adapter.nombre, "sin credencial — saltado"))
             continue
         try:
