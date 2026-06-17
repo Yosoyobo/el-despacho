@@ -1,11 +1,12 @@
 """Signals de Los Chalanes.
 
 Cuando se guarda una `Credencial` con clave `chalan_<proveedor>_api_key` y un
-valor no vacío, se asegura que el proveedor tenga una fila en
-`CadenaFallback` con la siguiente prioridad disponible y `activo=True`. Si la
-credencial se borra (signal post_delete), la fila NO se quita automáticamente
-— el super_admin puede dejarla inactiva manualmente. La razón: borrar la fila
-perdería el orden histórico que el equipo configuró.
+valor no vacío, se asegura que el proveedor tenga una fila en `CadenaFallback`
+con la siguiente prioridad disponible y `activo=True` (reactivándola si estaba
+apagada). Cuando la credencial se borra (post_delete), la fila se **desactiva**
+(`activo=False`) — NO se elimina, para preservar el orden histórico que el
+equipo configuró; al volver a pegar la llave se reactiva sola. Así el proveedor
+sin llave sale del relevo/fallback de inmediato (S-Chalan-Agente fix).
 """
 
 from __future__ import annotations
@@ -24,43 +25,62 @@ _PATRON_SLOT = re.compile(r"^chalan_([a-z0-9]+)_api_key$")
 _NO_REGISTRAR: set[str] = set()
 
 
-@receiver(post_save, sender="ajustes.Credencial")
-def auto_agregar_a_cadena_fallback(sender, instance, created, **kwargs):  # noqa: ARG001
-    """Si la credencial es un slot de Chalán con valor, ensure fila en cadena."""
-    match = _PATRON_SLOT.match(instance.clave or "")
+def _proveedor_de_slot(clave: str | None) -> str | None:
+    """Devuelve el proveedor soportado del slot `chalan_<prov>_api_key`, o None."""
+    match = _PATRON_SLOT.match(clave or "")
     if not match:
-        return
+        return None
     proveedor = match.group(1)
     if proveedor in _NO_REGISTRAR:
-        return
-
-    # Sólo registrar el adapter en `_FACTORIES` cuenta como "soportado".
+        return None
     try:
         from lib.analistas.registry import _FACTORIES
         if proveedor not in _FACTORIES:
-            return
+            return None
     except Exception:  # noqa: BLE001
-        return
+        return None
+    return proveedor
 
-    # Si el valor está vacío (la API de Credencial.guardar borra antes de llegar
-    # a post_save en ese caso, así que aquí siempre hay valor), seguimos.
+
+@receiver(post_save, sender="ajustes.Credencial")
+def auto_agregar_a_cadena_fallback(sender, instance, created, **kwargs):  # noqa: ARG001
+    """Al guardar la llave de un Chalán: crea su fila en la cadena (si falta) o
+    la **reactiva** si estaba apagada por un borrado previo."""
+    proveedor = _proveedor_de_slot(instance.clave)
+    if not proveedor:
+        return
     try:
         from .models import CadenaFallback
     except Exception:  # noqa: BLE001
         return
 
-    if CadenaFallback.objects.filter(proveedor=proveedor).exists():
+    fila = CadenaFallback.objects.filter(proveedor=proveedor).first()
+    if fila is not None:
+        if not fila.activo:
+            fila.activo = True
+            fila.save(update_fields=["activo"])
         return
 
     siguiente = (
         CadenaFallback.objects.order_by("-prioridad").values_list("prioridad", flat=True).first()
         or 0
     ) + 1
-
     with contextlib.suppress(Exception):
         CadenaFallback.objects.create(
             proveedor=proveedor, prioridad=siguiente, activo=True,
         )
+
+
+@receiver(post_delete, sender="ajustes.Credencial")
+def auto_desactivar_de_cadena_fallback(sender, instance, **kwargs):  # noqa: ARG001
+    """Al borrar la llave de un Chalán: lo desactiva del relevo/fallback (no
+    borra la fila, para conservar el orden)."""
+    proveedor = _proveedor_de_slot(instance.clave)
+    if not proveedor:
+        return
+    with contextlib.suppress(Exception):
+        from .models import CadenaFallback
+        CadenaFallback.objects.filter(proveedor=proveedor, activo=True).update(activo=False)
 
 
 @receiver(post_save, sender="chalanes.PromptVoz", dispatch_uid="prompt_voz_cache_save")

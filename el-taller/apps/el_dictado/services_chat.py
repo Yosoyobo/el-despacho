@@ -67,6 +67,21 @@ _SCHEMA_ESCALAR = {
 }
 
 
+def _schema_proponer(usuario) -> dict:
+    """Copia de `_SCHEMA_PROPONER` con el `enum` de los tipos de acción que el
+    usuario puede ejecutar. Constreñir `tipo` evita que el modelo proponga una
+    acción sin tipo válido (que `_persistir_acciones_chat` filtraría, dejando un
+    dictado vacío que al aplicar daba 0/0 → el bug "propone pero no aplica")."""
+    import copy
+
+    from lib.dictado_catalogo import comandos_para
+    tipos = [c["tipo"] for c in comandos_para(usuario)]
+    schema = copy.deepcopy(_SCHEMA_PROPONER)
+    if tipos:
+        schema["properties"]["acciones"]["items"]["properties"]["tipo"]["enum"] = tipos
+    return schema
+
+
 def crear_conversacion(*, usuario, mensaje_inicial: str | None = None):
     """Crea una conversación vacía (el título se deriva del primer mensaje)."""
     from .models import ConversacionChat
@@ -233,12 +248,12 @@ def _tool_specs(usuario) -> list[dict]:
     specs.append({
         "nombre": TOOL_PROPONER,
         "descripcion": (
-            "Propón cambios al sistema (crear/editar proyectos, tareas, recados, "
-            "egresos, etc.). El usuario los revisa y confirma antes de aplicarse — "
-            "tú solo propones, nunca se aplican solos. Usa SOLO los tipos de acción "
-            "permitidos del system prompt."
+            "Propón cambios al sistema (crear/editar proyectos, tareas, mandados, "
+            "recados, egresos, etc.). El usuario los revisa y confirma antes de "
+            "aplicarse — tú solo propones, nunca se aplican solos. Cada acción DEBE "
+            "llevar un `tipo` de la lista permitida (campo enum) y su `payload`."
         ),
-        "json_schema": _SCHEMA_PROPONER,
+        "json_schema": _schema_proponer(usuario),
     })
     specs.append({
         "nombre": TOOL_ESCALAR,
@@ -353,6 +368,21 @@ def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
                 acciones_raw=args.get("acciones") or [], usuario=usuario, chalan=chalan_provider,
             )
             preambulo = (args.get("texto") or res.texto or "").strip()
+            if dictado_creado.acciones.count() == 0:
+                # El modelo propuso algo pero no estructuró ninguna acción
+                # aplicable (p.ej. omitió el `tipo`). No dejamos un dictado vacío
+                # que al aplicar dé 0/0 y se vea como "fallo".
+                dictado_creado.estado = "cancelado"
+                dictado_creado.save(update_fields=["estado"])
+                dictado_creado = None
+                nuevos.append(_crear_mensaje(
+                    conversacion, rol="bot", chalan=chalan_provider,
+                    cuerpo=((preambulo + "\n\n") if preambulo else "")
+                    + "No pude estructurar la acción para aplicarla. Dame un poco "
+                    "más de detalle (qué, para quién, cuándo) y lo intento de nuevo.",
+                ))
+                cerrado = True
+                break
             nuevos.append(_crear_mensaje(
                 conversacion, rol="bot", tipo="accion", chalan=chalan_provider,
                 cuerpo=preambulo or "Te propongo estas acciones. Revísalas y confírmalas.",

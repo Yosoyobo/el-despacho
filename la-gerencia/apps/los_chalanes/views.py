@@ -18,6 +18,7 @@ from ajustes.models.analistas_log import AnalistaLog
 from ajustes.models.credencial import Credencial
 from chalanes.models import Aprendizaje, CadenaFallback, CuadroChalanes
 from chalanes.models.cuadro_chalanes import PROVEEDORES
+from chalanes.services import proveedores_configurados
 from lib.analistas.registry import adapter_de, modelo_valido, modelos_por_proveedor
 from lib.analistas.stats import (
     estadisticas_por_estacion,
@@ -70,6 +71,7 @@ def panel(request):
         "consultas_chat": CONSULTAS_CHAT,
         "banner_chat": BANNER_CHAT,
         "banner_relevo": BANNER_RELEVO,
+        "proveedores_configurados": set(proveedores_configurados()),
     })
 
 

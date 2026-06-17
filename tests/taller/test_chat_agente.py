@@ -112,8 +112,10 @@ def test_nativo_proponer_filtra_prohibidos(monkeypatch, usuario_factory):
     monkeypatch.setattr(la, "chatear", fake)
 
     res = conversar(mensaje="cambia la llave de anthropic", usuario=u, conversacion=_conv(u))
-    # La acción prohibida se filtra: el Dictado queda sin acciones.
-    assert res["dictado"].acciones.count() == 0
+    # La acción prohibida se filtra → 0 acciones → NO deja dictado fantasma:
+    # responde con texto en vez de una tarjeta de acción vacía.
+    assert res["dictado"] is None
+    assert res["mensajes"][-1].tipo == "texto"
 
 
 def test_relevo_escala_a_modelo_profundo(monkeypatch, usuario_factory):
@@ -178,3 +180,33 @@ def test_degrada_a_texto_cuando_no_hay_function_calling(monkeypatch, usuario_fac
     monkeypatch.setattr(la, "analizar", fake_analizar)
     res = conversar(mensaje="hola", usuario=u, conversacion=_conv(u))
     assert res["mensajes"][-1].cuerpo == "Hola desde texto."
+
+
+# ── Bug fix: propone pero no aplica (acciones sin tipo válido) ─────────────────
+
+def test_schema_proponer_constrine_tipo_a_enum(usuario_factory):
+    from apps.el_dictado.services_chat import _schema_proponer
+    u = usuario_factory(rol="super_admin")
+    enum = _schema_proponer(u)["properties"]["acciones"]["items"]["properties"]["tipo"]["enum"]
+    assert "crear_mandado" in enum and "crear_tarea" in enum
+
+
+def test_proponer_sin_tipo_valido_no_deja_dictado_fantasma(monkeypatch, usuario_factory):
+    """Si el modelo propone una acción sin `tipo` válido, se filtra → 0 acciones.
+    No debe quedar una tarjeta de acción que al aplicar dé 0/0 (el bug); el bot
+    responde con un texto pidiendo más detalle y no devuelve dictado."""
+    from apps.el_dictado.services_chat import TOOL_PROPONER, conversar
+
+    import lib.analistas as la
+    _forzar_nativo(monkeypatch)
+    u = usuario_factory(rol="super_admin")
+    fake, _ = _fake_chatear([_res(tool_calls=[ToolCall("c1", TOOL_PROPONER, {
+        "texto": "Propongo crear un mandado de entrega",
+        "acciones": [{"descripcion": "entrega de playeras", "payload": {}}],  # SIN tipo
+    })])])
+    monkeypatch.setattr(la, "chatear", fake)
+
+    res = conversar(mensaje="llevar playeras a Noko mañana", usuario=u, conversacion=_conv(u))
+    assert res["dictado"] is None
+    assert res["mensajes"][-1].tipo == "texto"
+    assert "No pude estructurar" in res["mensajes"][-1].cuerpo

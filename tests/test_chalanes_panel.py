@@ -163,3 +163,45 @@ def test_borrar_llave_elimina_credencial():
         resp = client.post("/chalanes/mimo/borrar-llave")
     assert resp.status_code == 302
     assert not Credencial.objects.filter(clave="chalan_mimo_api_key").exists()
+
+
+# ── S-Chalan-Agente fix: Chalán sin llave sale del relevo/cadena ──────────────
+
+@pytest.mark.django_db
+def test_borrar_llave_desactiva_en_cadena():
+    """Al borrar la credencial, el proveedor se desactiva en la CadenaFallback
+    (no se elimina la fila) y al re-pegar la llave se reactiva."""
+    from ajustes.models.credencial import Credencial
+    from chalanes.models import CadenaFallback
+
+    Credencial.guardar("chalan_mimo_api_key", "x" * 30)  # post_save → fila activa
+    fila = CadenaFallback.objects.get(proveedor="mimo")
+    assert fila.activo
+
+    Credencial.objects.filter(clave="chalan_mimo_api_key").delete()  # post_delete
+    fila.refresh_from_db()
+    assert fila.activo is False  # desactivada, no borrada
+    assert CadenaFallback.objects.filter(proveedor="mimo").exists()
+
+    Credencial.guardar("chalan_mimo_api_key", "y" * 30)  # re-pegar → reactiva
+    fila.refresh_from_db()
+    assert fila.activo is True
+
+
+@pytest.mark.django_db
+def test_cadena_de_descarta_proveedor_sin_llave():
+    """`cadena_de` salta proveedores sin credencial (incluido el primario), así
+    El Relevo no intenta un Chalán sin llave en cada turno."""
+    from ajustes.models.credencial import Credencial
+    from chalanes.models import CuadroChalanes
+    from lib.analistas.registry import cadena_de
+
+    Credencial.guardar("chalan_deepseek_api_key", "x" * 30)  # único configurado
+    CuadroChalanes.objects.update_or_create(
+        estacion="taller_chat",
+        defaults={"proveedor": "gemini", "modelo": "gemini-2.5-flash"},  # primario SIN llave
+    )
+    nombres = [a.nombre for a in cadena_de("taller_chat")]
+    assert "gemini" not in nombres            # primario sin llave: descartado
+    assert "deepseek" in nombres              # el configurado sí entra
+    assert nombres, "la cadena no debe quedar vacía"

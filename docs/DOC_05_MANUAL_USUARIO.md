@@ -27,6 +27,15 @@
 - **Sigue siendo seguro.** Cualquier cambio que El Chalán proponga (crear,
   editar, registrar) lo sigues confirmando tú antes de que se aplique — el
   agente nunca ejecuta nada solo.
+- **Las propuestas ahora sí se aplican.** Se corrigió un caso en el que El
+  Chalán proponía una acción (p. ej. crear un mandado) pero al confirmarla no
+  pasaba nada. Ahora la acción se arma bien y se aplica al confirmar; si por
+  algo no logra estructurarla, te lo dice y te pide más detalle en vez de
+  quedar en blanco.
+- **Chalanes sin llave se apagan solos.** Si un proveedor de IA se queda sin su
+  credencial (en Gerencia → Chalanes), deja de usarse automáticamente y El
+  Relevo lo ignora hasta que vuelvas a configurarlo — ya no se intenta en vano
+  ni ensucia la auditoría. En el panel aparece marcado **"sin llave"**.
 
 ### Cómo se usa con El Chalán
 
