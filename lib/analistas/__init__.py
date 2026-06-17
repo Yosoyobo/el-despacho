@@ -13,7 +13,7 @@ En S2a.1 las estaciones aún no están en uso real — el smoke test desde
 `/ajustes/` valida que ambos providers respondan a un prompt mínimo.
 """
 
-from .base import PresupuestoIAExcedido, Resultado
-from .reemplazo import analizar
+from .base import PresupuestoIAExcedido, Resultado, ToolCall
+from .reemplazo import analizar, chatear
 
-__all__ = ["analizar", "Resultado", "PresupuestoIAExcedido"]
+__all__ = ["analizar", "chatear", "Resultado", "ToolCall", "PresupuestoIAExcedido"]

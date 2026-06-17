@@ -27,9 +27,44 @@ from lib.analistas import PresupuestoIAExcedido
 
 logger = logging.getLogger(__name__)
 
-MAX_ITERACIONES = 4
+MAX_ITERACIONES = 4          # loop del modo texto (degradación)
+MAX_ITERACIONES_TOOLS = 8    # loop del modo tool-use nativo (más cabeza)
 MAX_TURNOS_PROMPT = 6
 MAX_TITULO = 60
+
+# Tools "especiales" del agente (no son consultas read-only del registry):
+#  - proponer_acciones → crea un Dictado con preview/confirm humano.
+#  - escalar_razonamiento → El Relevo: el agente se cambia a un modelo más fuerte.
+TOOL_PROPONER = "proponer_acciones"
+TOOL_ESCALAR = "escalar_razonamiento"
+
+_SCHEMA_PROPONER = {
+    "type": "object",
+    "properties": {
+        "texto": {"type": "string", "description": "Preámbulo humano breve para el usuario."},
+        "acciones": {
+            "type": "array",
+            "description": "Lista de acciones propuestas (cada una con un tipo permitido).",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tipo": {"type": "string", "description": "Uno de los tipos de acción permitidos."},
+                    "descripcion": {"type": "string"},
+                    "payload": {"type": "object"},
+                    "confianza": {"type": "number"},
+                },
+                "required": ["tipo", "descripcion"],
+            },
+        },
+    },
+    "required": ["acciones"],
+}
+
+_SCHEMA_ESCALAR = {
+    "type": "object",
+    "properties": {"motivo": {"type": "string", "description": "Por qué la tarea necesita un modelo más potente."}},
+    "required": ["motivo"],
+}
 
 
 def crear_conversacion(*, usuario, mensaje_inicial: str | None = None):
@@ -120,24 +155,230 @@ def _persistir_adjunto_chat(mensaje, usuario, archivo) -> None:
         )
 
 
+def _preparar_turno(*, mensaje, usuario, conversacion, imagenes, archivo_adjunto):
+    """Saneo + persistencia del turno del usuario + historial. Común a ambos
+    modos (nativo y texto). Devuelve `None` si no hay nada que procesar."""
+    from lib.sanear import sanear_contexto
+    mensaje = sanear_contexto((mensaje or "").strip(), max_len=4000)
+    if not mensaje and not imagenes:
+        return None
+    if not mensaje and imagenes:  # imagen sin texto
+        mensaje = "Lee esta imagen y dime qué información trae."
+
+    cuerpo_user = mensaje + (" 📎 (imagen adjunta)" if imagenes else "")
+    msg_user = _crear_mensaje(conversacion, rol="user", cuerpo=cuerpo_user)
+    if archivo_adjunto is not None:
+        _persistir_adjunto_chat(msg_user, usuario, archivo_adjunto)
+    if not conversacion.titulo:
+        conversacion.titulo = mensaje.replace("\n", " ")[:MAX_TITULO]
+        conversacion.save(update_fields=["titulo"])
+
+    historial = _historial_para_prompt(conversacion)
+    # El último turno es el recién creado; lo quitamos (va aparte como mensaje nuevo).
+    if historial and historial[-1]["rol"] == "user" and historial[-1]["texto"] == cuerpo_user:
+        historial = historial[:-1]
+    return {"mensaje": mensaje, "msg_user": msg_user, "historial": historial}
+
+
+def _cadena_soporta_tools(usuario) -> bool:
+    """True si la estación `taller_chat` tiene un Chalán con FUNCTION_CALLING
+    configurado → usamos tool-use NATIVO. Si no, degradamos al protocolo de
+    sobre-JSON sobre texto (comportamiento previo, sin regresión)."""
+    try:
+        from lib.analistas.capacidades import Capability
+        from lib.analistas.registry import cadena_de
+        cadena = cadena_de("taller_chat", usuario_id=getattr(usuario, "pk", None))
+        return any(
+            Capability.FUNCTION_CALLING in (a.capacidades or ()) and a.esta_configurado()
+            for a in cadena
+        )
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = None,
               archivo_adjunto=None) -> dict:
     """Procesa un mensaje del usuario. Persiste turnos y devuelve los nuevos.
 
-    `imagenes` (opcional, S-Chalán-Scope-OCR C2): lista de dicts
-    `{base64, media_type}` que se pasan al LLM en la primera iteración del
-    loop (la imagen es la entrada del usuario; no se re-manda en las llamadas
-    de herramienta). El Reemplazo exige VISION cuando hay imágenes.
+    Modo NATIVO (S-Chalan-Agente F1): function-calling real del proveedor +
+    El Relevo (rutea el pensamiento al mejor modelo). Si la cadena no tiene un
+    Chalán con FUNCTION_CALLING configurado, DEGRADA al protocolo de sobre-JSON
+    sobre texto (comportamiento previo, sin regresión).
 
-    `archivo_adjunto` (opcional, S-Drive-Cierre): el UploadedFile original de
-    la imagen, para PERSISTIRLO en Drive y dejarlo en el historial del chat
-    (antes la imagen solo se pasaba al LLM y se descartaba).
+    `imagenes` (opcional): lista de dicts `{base64, media_type}` — van en el
+    turno del usuario; El Reemplazo exige VISION cuando las hay.
+    `archivo_adjunto` (opcional): UploadedFile para persistir la imagen en Drive.
 
-    Nunca lanza — errores del LLM o de parseo terminan en un mensaje de error
-    suave del bot. Retorna `{"mensajes": [MensajeChat, ...], "dictado": Dictado|None}`.
+    Nunca lanza. Retorna `{"mensajes": [MensajeChat, ...], "dictado": Dictado|None}`.
     """
-    from lib.sanear import sanear_contexto
+    prep = _preparar_turno(
+        mensaje=mensaje, usuario=usuario, conversacion=conversacion,
+        imagenes=imagenes, archivo_adjunto=archivo_adjunto,
+    )
+    if prep is None:
+        return {"mensajes": [], "dictado": None}
+    if _cadena_soporta_tools(usuario):
+        return _conversar_nativo(usuario=usuario, conversacion=conversacion, prep=prep, imagenes=imagenes)
+    return _conversar_texto(usuario=usuario, conversacion=conversacion, prep=prep, imagenes=imagenes)
 
+
+def _tool_specs(usuario) -> list[dict]:
+    """Specs de herramientas para el modo nativo: las read-only del registry
+    (filtradas por rol) + las 2 especiales del agente."""
+    from .herramientas import herramientas_para
+    specs = [
+        {"nombre": h.nombre, "descripcion": h.descripcion, "args_schema": h.args_schema}
+        for h in herramientas_para(usuario)
+    ]
+    specs.append({
+        "nombre": TOOL_PROPONER,
+        "descripcion": (
+            "Propón cambios al sistema (crear/editar proyectos, tareas, recados, "
+            "egresos, etc.). El usuario los revisa y confirma antes de aplicarse — "
+            "tú solo propones, nunca se aplican solos. Usa SOLO los tipos de acción "
+            "permitidos del system prompt."
+        ),
+        "json_schema": _SCHEMA_PROPONER,
+    })
+    specs.append({
+        "nombre": TOOL_ESCALAR,
+        "descripcion": (
+            "El Relevo. Llama esto UNA vez cuando la tarea pida análisis, "
+            "comparación, planeación o redacción cuidada, para pensar el resto con "
+            "un modelo más potente. No lo uses para datos simples."
+        ),
+        "json_schema": _SCHEMA_ESCALAR,
+    })
+    return specs
+
+
+def _mensajes_canonicos(usuario, historial, mensaje, imagenes) -> list[dict]:
+    """Arma la conversación canónica para `chatear`: system + historial + turno
+    nuevo del usuario (con el bloque de referencias @#$ resuelto)."""
+    from .prompt_chat import construir_system_prompt_nativo
+    msgs: list[dict] = [{"rol": "system", "texto": construir_system_prompt_nativo(usuario)}]
+    for turno in (historial or []):
+        rol = "user" if turno.get("rol") == "user" else "assistant"
+        msgs.append({"rol": rol, "texto": turno.get("texto", "")})
+    nuevo = {"rol": "user", "texto": mensaje + _bloque_referencias(mensaje)}
+    if imagenes:
+        nuevo["imagenes"] = imagenes
+    msgs.append(nuevo)
+    return msgs
+
+
+def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
+    """Loop de tool-use NATIVO con El Relevo (ruteo activo al mejor modelo)."""
+    from lib.analistas import chatear, relevo
+
+    from .herramientas import ejecutar_herramienta
+
+    mensaje = prep["mensaje"]
+    nuevos = [prep["msg_user"]]
+    specs = _tool_specs(usuario)
+    mensajes = _mensajes_canonicos(usuario, prep["historial"], mensaje, imagenes)
+
+    estacion = relevo.estacion(relevo.nivel(mensaje))  # pre-ruteo heurístico ($0)
+    chalan_provider = ""
+    dictado_creado = None
+    cerrado = False
+    vistos: set[tuple] = set()
+    pasos = 0
+
+    for _ in range(MAX_ITERACIONES_TOOLS):
+        try:
+            res = chatear(
+                estacion=estacion, mensajes=mensajes, herramientas=specs,
+                max_tokens=900, temperatura=0.3, actor_id=getattr(usuario, "pk", None),
+            )
+        except PresupuestoIAExcedido as exc:
+            nuevos.append(_crear_mensaje(conversacion, rol="bot", cuerpo=str(exc)))
+            cerrado = True
+            break
+        except Exception as exc:  # noqa: BLE001 — TodosFallaron, red, etc.
+            logger.warning("chat conv=%s tool-use falló: %s", conversacion.pk, exc)
+            nuevos.append(_crear_mensaje(
+                conversacion, rol="bot",
+                cuerpo="Los Chalanes no están disponibles ahora mismo. Intenta de nuevo en un momento.",
+            ))
+            cerrado = True
+            break
+
+        chalan_provider = res.provider
+
+        if not res.tool_calls:
+            # Sin tool-calls → respuesta final del agente.
+            nuevos.append(_crear_mensaje(
+                conversacion, rol="bot", chalan=chalan_provider,
+                cuerpo=(res.texto or "").strip() or "Listo.",
+            ))
+            cerrado = True
+            break
+
+        # Eco del turno assistant (con sus tool_calls) en la conversación canónica.
+        mensajes.append({"rol": "assistant", "texto": res.texto or "", "tool_calls": list(res.tool_calls)})
+
+        accion_tc = None
+        for tc in res.tool_calls:
+            if tc.nombre == TOOL_PROPONER:
+                accion_tc = tc  # se procesa al final del turno (es terminal)
+                continue
+            if tc.nombre == TOOL_ESCALAR:
+                estacion = relevo.ESTACION_PROFUNDA
+                nuevos.append(_crear_mensaje(
+                    conversacion, rol="bot", tipo="herramienta", chalan=chalan_provider,
+                    nombre_herramienta="relevo", cuerpo=str(tc.args.get("motivo", "")),
+                ))
+                mensajes.append({"rol": "tool", "tool_call_id": tc.id, "nombre": tc.nombre,
+                                 "texto": json.dumps({"ok": True, "nivel": "profundo"})})
+                continue
+            # Herramienta read-only del registry.
+            clave = (tc.nombre, json.dumps(tc.args, sort_keys=True, default=str))
+            if clave in vistos:
+                salida = {"error": "consulta_repetida", "nota": "Ya consultaste esto; usa lo que tienes."}
+            else:
+                vistos.add(clave)
+                salida = ejecutar_herramienta(tc.nombre, tc.args, usuario)
+            nuevos.append(_crear_mensaje(
+                conversacion, rol="bot", tipo="herramienta", chalan=chalan_provider,
+                nombre_herramienta=tc.nombre, cuerpo=_resumen_herramienta(tc.nombre, salida),
+            ))
+            mensajes.append({"rol": "tool", "tool_call_id": tc.id, "nombre": tc.nombre,
+                             "texto": json.dumps(salida, ensure_ascii=False, default=str)})
+            pasos += 1
+
+        if accion_tc is not None:
+            args = accion_tc.args or {}
+            dictado_creado = _persistir_acciones_chat(
+                acciones_raw=args.get("acciones") or [], usuario=usuario, chalan=chalan_provider,
+            )
+            preambulo = (args.get("texto") or res.texto or "").strip()
+            nuevos.append(_crear_mensaje(
+                conversacion, rol="bot", tipo="accion", chalan=chalan_provider,
+                cuerpo=preambulo or "Te propongo estas acciones. Revísalas y confírmalas.",
+                dictado=dictado_creado,
+            ))
+            cerrado = True
+            break
+
+        # Re-ruteo: tras recabar varios datos, sube a profundo para sintetizar.
+        if pasos >= 2 and estacion == relevo.ESTACION_RAPIDA:
+            estacion = relevo.ESTACION_PROFUNDA
+
+    if not cerrado:
+        nuevos.append(_crear_mensaje(
+            conversacion, rol="bot", chalan=chalan_provider,
+            cuerpo="Consulté varias fuentes pero no pude cerrar la respuesta. Intenta una pregunta más específica.",
+        ))
+
+    conversacion.save(update_fields=["actualizado_en"])
+    return {"mensajes": nuevos, "dictado": dictado_creado}
+
+
+def _conversar_texto(*, usuario, conversacion, prep, imagenes) -> dict:
+    """Loop de DEGRADACIÓN: protocolo de sobre-JSON sobre texto (comportamiento
+    previo a S-Chalan-Agente, usado cuando ningún Chalán de la cadena soporta
+    function-calling nativo)."""
     from .prompt_chat import (
         construir_prompt_con_resultado,
         construir_system_prompt,
@@ -145,30 +386,9 @@ def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = No
     )
     from .services import _parsear_json  # heurística tolerante {…}
 
-    mensaje = sanear_contexto((mensaje or "").strip(), max_len=4000)
-    if not mensaje and not imagenes:
-        return {"mensajes": [], "dictado": None}
-    # Imagen sin texto: el usuario solo adjuntó una foto.
-    if not mensaje and imagenes:
-        mensaje = "Lee esta imagen y dime qué información trae."
-
-    nuevos = []
-    cuerpo_user = mensaje + (" 📎 (imagen adjunta)" if imagenes else "")
-    msg_user = _crear_mensaje(conversacion, rol="user", cuerpo=cuerpo_user)
-    nuevos.append(msg_user)
-    if archivo_adjunto is not None:
-        _persistir_adjunto_chat(msg_user, usuario, archivo_adjunto)
-
-    # Título desde el primer mensaje del usuario.
-    if not conversacion.titulo:
-        conversacion.titulo = mensaje.replace("\n", " ")[:MAX_TITULO]
-        conversacion.save(update_fields=["titulo"])
-
-    historial = _historial_para_prompt(conversacion)
-    # El último turno del historial es el mensaje recién creado; lo quitamos
-    # para no duplicarlo (va aparte como [MENSAJE NUEVO]).
-    if historial and historial[-1]["rol"] == "user" and historial[-1]["texto"] == cuerpo_user:
-        historial = historial[:-1]
+    mensaje = prep["mensaje"]
+    historial = prep["historial"]
+    nuevos = [prep["msg_user"]]
 
     system = construir_system_prompt(usuario)
     user_prompt = construir_user_prompt_chat(usuario=usuario, historial=historial, mensaje=mensaje)

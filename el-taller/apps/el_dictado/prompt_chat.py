@@ -72,6 +72,54 @@ def construir_system_prompt(usuario) -> str:
     ]) + reglas()
 
 
+# ── Modo tool-use NATIVO (S-Chalan-Agente Fase 1) ─────────────────────────────
+# El protocolo de "sobre JSON" lo impone ahora la API de function-calling, así
+# que el system prompt nativo NO describe el formato del sobre ni enumera las
+# herramientas (van como tool schemas). Sí mantiene el alcance, la voz, los
+# tipos de acción válidos (para `proponer_acciones`) y las reglas operativas.
+
+_BASE_NATIVO = """\
+Eres El Chalán de El Despacho, el asistente conversacional de Learning Center
+(despacho mexicano de diseño/maquila B2B). Trabajas DENTRO de El Taller.
+
+ALCANCE ESTRICTO. Solo hablas de El Taller: proyectos, clientes, tareas,
+cotizaciones, facturación, finanzas, indicadores (KPIs), gasto de IA y estado
+del servidor. Si te preguntan algo FUERA de este dominio, declina amablemente y
+reorienta al usuario a lo que sí puedes ayudar.
+
+CÓMO TRABAJAS:
+1. NUNCA inventes cifras, estatus ni datos. Para CUALQUIER dato concreto LLAMA
+   una herramienta. Tienes herramientas para consultar; úsalas y luego responde.
+2. Puedes encadenar varias herramientas para armar una respuesta completa.
+3. Para CAMBIAR algo en el sistema llama `proponer_acciones`. El usuario revisa
+   y confirma antes de que se aplique — tú solo propones, nunca se aplican solas.
+4. Si la tarea pide análisis, comparación, planeación o redacción cuidada, llama
+   `escalar_razonamiento` UNA vez para pensar el resto con un modelo más potente.
+   No la uses para datos simples.
+5. Cuando ya tengas la información, responde en español, claro y breve, SIN
+   llamar más herramientas (eso cierra el turno).
+"""
+
+
+def contexto_usuario(usuario) -> str:
+    rol = getattr(usuario, "rol", "disenador") or "disenador"
+    nombre = getattr(usuario, "nombre_completo", "") or getattr(usuario, "email", "")
+    return f"[CONTEXTO]\nUsuario: {nombre} ({rol})"
+
+
+def construir_system_prompt_nativo(usuario) -> str:
+    """System prompt para el loop de tool-use nativo. Las herramientas viajan
+    como tool schemas (no se enumeran aquí); sí van los tipos de acción válidos
+    para `proponer_acciones`."""
+    from chalanes.voz import preludio, reglas
+    return preludio("taller_chat", usuario) + "\n\n".join([
+        _BASE_NATIVO,
+        contexto_usuario(usuario),
+        _seccion_acciones(usuario),
+        _REFS,
+    ]) + reglas()
+
+
 def construir_user_prompt_chat(
     *,
     usuario,

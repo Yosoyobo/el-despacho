@@ -113,6 +113,49 @@ class GeminiAdapter(Adapter):
             latencia_ms=latencia,
         )
 
+    def _invocar_chat(self, mensajes, *, max_tokens, temperatura, herramientas=None,
+                      imagenes=None) -> Resultado:
+        from ..herramientas_formato import (
+            herramientas_gemini,
+            mensajes_gemini,
+            parsear_gemini,
+            separar_system,
+        )
+        llave = self._llave()
+        system, resto = separar_system(mensajes)
+        body = {
+            "contents": mensajes_gemini(resto),
+            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": temperatura},
+        }
+        if system:
+            body["systemInstruction"] = {"parts": [{"text": system}]}
+        if herramientas:
+            body["tools"] = herramientas_gemini(herramientas)
+        url = f"{API_URL_BASE}/{self.modelo}:generateContent"
+        t0 = time.monotonic()
+        try:
+            resp = httpx.post(
+                url, params={"key": llave}, headers={"content-type": "application/json"},
+                json=body, timeout=self.timeout,
+            )
+        except httpx.RequestError as exc:
+            raise ErrorTransitorio(f"gemini: red/timeout — {exc}") from exc
+        latencia = int((time.monotonic() - t0) * 1000)
+
+        if resp.status_code in (401, 403):
+            raise ErrorPermanente(f"gemini: auth {resp.status_code}")
+        if resp.status_code == 400:
+            raise ErrorPermanente(f"gemini: 400 {resp.text[:200]}")
+        if resp.status_code == 429 or 500 <= resp.status_code < 600:
+            raise ErrorTransitorio(f"gemini: {resp.status_code} {resp.text[:200]}")
+        if resp.status_code >= 400:
+            raise ErrorPermanente(f"gemini: {resp.status_code} {resp.text[:200]}")
+
+        return parsear_gemini(
+            resp.json(), provider=self.nombre, modelo=self.modelo, latencia_ms=latencia,
+            precio_in=PRECIO_IN, precio_out=PRECIO_OUT,
+        )
+
     def listar_modelos(self) -> list[str]:
         try:
             llave = self._llave()

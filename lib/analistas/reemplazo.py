@@ -121,4 +121,103 @@ def analizar(
     raise TodosFallaron(intentos_fallidos)
 
 
-__all__ = ["analizar", "TodosLosAnalistasFallaron", "TodosFallaron"]
+def _texto_para_hash(mensajes: list[dict]) -> str:
+    """Hash de la conversación = último turno de usuario (suficiente para
+    agrupar el log; no necesitamos el prompt completo)."""
+    for m in reversed(mensajes):
+        if m.get("rol") == "user" and m.get("texto"):
+            return m["texto"]
+    return "(chat)"
+
+
+def _tiene_imagenes(mensajes: list[dict]) -> bool:
+    return any(m.get("imagenes") for m in mensajes)
+
+
+def chatear(
+    estacion: str,
+    mensajes: list[dict],
+    *,
+    herramientas: list | None = None,
+    max_tokens: int = 700,
+    temperatura: float = 0.3,
+    actor_id: int | None = None,
+    requiere: set | None = None,
+    excluir: set[str] | None = None,
+) -> Resultado:
+    """Modo conversación con tool-use NATIVO (S-Chalan-Agente Fase 1).
+
+    Paralelo a `analizar()` pero recibe una conversación canónica + specs de
+    herramientas. Reusa la misma cadena DB-aware, el gate de presupuesto y el
+    log. Cuando se pasan `herramientas`, EXIGE adapters con FUNCTION_CALLING; si
+    la conversación trae imágenes, EXIGE VISION (igual que `analizar`).
+
+    Devuelve el `Resultado` del primer adapter que respondió — con `tool_calls`
+    lleno si el modelo pidió herramientas. El orquestador las ejecuta y vuelve
+    a llamar con los `tool_result` agregados a `mensajes`."""
+    from .capacidades import Capability
+
+    if actor_id:
+        debe = False
+        try:
+            from cuentas.servicios_presupuesto import debe_topar
+            debe = debe_topar(actor_id)
+        except Exception:
+            debe = False
+        if debe:
+            from .base import PresupuestoIAExcedido
+            raise PresupuestoIAExcedido(
+                "Alcanzaste tu tope de IA del mes. Pídele al admin que lo amplíe "
+                "en El Directorio."
+            )
+
+    cadena = cadena_de(estacion, usuario_id=actor_id)
+    if not cadena:
+        raise RuntimeError(f"No hay adapters configurados para estación '{estacion}'")
+
+    requiere = set(requiere or set())
+    if herramientas:
+        requiere |= {Capability.FUNCTION_CALLING}
+    if _tiene_imagenes(mensajes):
+        requiere |= {Capability.VISION}
+
+    if excluir:
+        cadena = [a for a in cadena if a.nombre not in excluir]
+    if requiere:
+        cadena = [a for a in cadena if set(requiere).issubset(set(a.capacidades or ()))]
+    if not cadena:
+        raise TodosFallaron([("(filtro_capacidad)", f"ninguno soporta {requiere}")])
+
+    ph = hash_prompt(_texto_para_hash(mensajes))
+    intentos_fallidos: list[tuple[str, str]] = []
+    primario = cadena[0].nombre
+
+    for i, adapter in enumerate(cadena):
+        es_fallback = i > 0
+        if es_fallback and not adapter.esta_configurado():
+            intentos_fallidos.append((adapter.nombre, "sin credencial — saltado"))
+            continue
+        try:
+            res = adapter.chatear(
+                mensajes, herramientas=herramientas,
+                max_tokens=max_tokens, temperatura=temperatura,
+            )
+        except (ErrorPermanente, ErrorTransitorio) as exc:
+            registrar_intento(
+                estacion=estacion, prompt_hash=ph, provider=adapter.nombre,
+                modelo=getattr(adapter, "modelo", ""), exito=False,
+                mensaje_error=str(exc), actor_id=actor_id,
+                es_fallback=es_fallback, proveedor_original=primario if es_fallback else None,
+            )
+            intentos_fallidos.append((adapter.nombre, str(exc)))
+            continue
+        registrar_intento(
+            estacion=estacion, prompt_hash=ph, provider=res.provider, modelo=res.modelo,
+            exito=True, resultado=res, actor_id=actor_id,
+            es_fallback=es_fallback, proveedor_original=primario if es_fallback else None,
+        )
+        return res
+    raise TodosFallaron(intentos_fallidos)
+
+
+__all__ = ["analizar", "chatear", "TodosLosAnalistasFallaron", "TodosFallaron"]

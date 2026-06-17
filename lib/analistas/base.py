@@ -7,9 +7,26 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class ToolCall:
+    """Una llamada a herramienta que el modelo pidió (function-calling nativo).
+
+    `id` es el identificador del proveedor (necesario para casar el
+    `tool_result` de vuelta); `nombre` es el nombre de la herramienta;
+    `args` son los argumentos ya parseados a dict."""
+
+    id: str
+    nombre: str
+    args: dict
+
+
+@dataclass(frozen=True)
 class Resultado:
     """Respuesta normalizada de un adapter. `texto` es la salida principal;
-    el resto sirve para Los Analistas Log y para reportes de costo."""
+    el resto sirve para Los Analistas Log y para reportes de costo.
+
+    `tool_calls` y `stop_reason` solo se llenan en el modo de tool-use nativo
+    (`chatear`); en el modo texto→texto clásico (`analizar`) quedan vacíos, así
+    que todos los callers existentes siguen funcionando sin cambios."""
 
     texto: str
     provider: str
@@ -18,6 +35,8 @@ class Resultado:
     completion_tokens: int
     costo_usd: float
     latencia_ms: int
+    tool_calls: tuple = ()
+    stop_reason: str = ""
 
 
 class ErrorTransitorio(Exception):
@@ -78,6 +97,46 @@ class Adapter(ABC):
         los salta cuando se pide `requiere={Capability.VISION}`."""
         return self._invocar(prompt, max_tokens=max_tokens, temperatura=temperatura,
                              imagenes=imagenes)
+
+    @property
+    def soporta_tools(self) -> bool:
+        """True si el adapter declara FUNCTION_CALLING — habilita `chatear`."""
+        from .capacidades import Capability
+        return Capability.FUNCTION_CALLING in (self.capacidades or ())
+
+    def chatear(self, mensajes: list[dict], *, herramientas: list | None = None,
+                max_tokens: int = 700, temperatura: float = 0.3,
+                imagenes: list | None = None) -> Resultado:
+        """Modo conversación con tool-use NATIVO (S-Chalan-Agente Fase 1).
+
+        `mensajes` es una lista canónica de turnos:
+            {"rol": "system"|"user"|"assistant"|"tool", "texto": str,
+             "tool_calls": [ToolCall|dict], "tool_call_id": str, "nombre": str}
+        `herramientas` es una lista de specs `{nombre, descripcion, args_schema}`.
+
+        Devuelve un `Resultado` cuyo `tool_calls` (si no está vacío) indica que
+        el modelo pidió ejecutar herramientas; el orquestador (services_chat) las
+        ejecuta, agrega los `tool_result` a `mensajes` y vuelve a llamar."""
+        return self._invocar_chat(
+            mensajes, max_tokens=max_tokens, temperatura=temperatura,
+            herramientas=herramientas, imagenes=imagenes,
+        )
+
+    def _invocar_chat(self, mensajes: list[dict], *, max_tokens: int, temperatura: float,
+                      herramientas: list | None = None,
+                      imagenes: list | None = None) -> Resultado:
+        """Default: DEGRADA a texto. Aplana la conversación a un solo prompt y
+        llama `_invocar` SIN herramientas (devuelve solo texto, sin tool_calls).
+
+        Los adapters con FUNCTION_CALLING overridean esto con la API nativa de
+        su proveedor. El Reemplazo (`chatear`) filtra la cadena a adapters con
+        FUNCTION_CALLING cuando se piden herramientas, así que este default es
+        una red de seguridad, no el camino normal."""
+        from .herramientas_formato import aplanar_a_prompt
+        return self._invocar(
+            aplanar_a_prompt(mensajes), max_tokens=max_tokens,
+            temperatura=temperatura, imagenes=imagenes,
+        )
 
     def esta_configurado(self) -> bool:
         """Default: intenta cargar la llave; subclases sin `_llave` retornan False."""

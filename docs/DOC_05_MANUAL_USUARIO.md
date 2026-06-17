@@ -5,6 +5,37 @@
 
 ---
 
+## Novedades — El Chalán ahora es un agente: piensa por pasos y escoge el mejor modelo (16 de junio de 2026)
+
+- **El Chalán es más confiable.** Antes, para consultar un dato (un proyecto,
+  un saldo, tus tareas) seguía un mecanismo improvisado que a veces fallaba con
+  un *"No te entendí"*. Ahora usa la forma nativa de las herramientas del
+  proveedor de IA: consulta los datos por su cuenta, encadena varios pasos y
+  recién entonces te responde. Tú no haces nada distinto — solo le preguntas en
+  lenguaje normal, igual que siempre.
+- **El Relevo: usa el modelo correcto para cada tarea.** Para preguntas simples
+  ("¿cuántos proyectos activos hay?") usa un modelo rápido y económico. Cuando
+  le pides algo que requiere pensar — analizar, comparar, planear o redactar —
+  cambia solo a un modelo más potente para darte una mejor respuesta. Si en
+  medio de la conversación se da cuenta de que la tarea se puso difícil, hace el
+  "relevo" al modelo fuerte; lo verás con un pequeño aviso **🧠 El Relevo:
+  pensando más a fondo**.
+- **Distintivo de "escribiendo".** Mientras El Chalán trabaja, ahora ves una
+  burbuja animada con tres puntos y un texto que cambia entre *"está pensando…",
+  "está consultando…"* y *"está escribiendo…"*, para que sepas que sigue
+  trabajando en tu respuesta.
+- **Sigue siendo seguro.** Cualquier cambio que El Chalán proponga (crear,
+  editar, registrar) lo sigues confirmando tú antes de que se aplique — el
+  agente nunca ejecuta nada solo.
+
+### Cómo se usa con El Chalán
+
+Igual que siempre: escríbele en el chat (**El Chalán** en el menú) o dícta una
+acción en el Tablero. No hay comandos nuevos que aprender — el cambio es interno
+y hace que conteste mejor y más rápido. Si eres administrador, en **Gerencia →
+Chalanes** puedes elegir qué modelo usa el chat rápido (estación
+`taller_chat`) y el chat profundo del Relevo (estación `taller_chat_profundo`).
+
 ## Novedades — Mandados con dirección/lugar, nombres de rol editables y menú más limpio (16 de junio de 2026)
 
 - **Fijar el destino de un mandado de 3 formas.** Al abrir un mandado y tocar

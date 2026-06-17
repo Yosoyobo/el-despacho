@@ -19,10 +19,17 @@
 
 {% elif m.tipo == "herramienta" %}
 <div class="mb-3 flex items-center gap-2 pl-9" data-mensaje-id="{{ m.pk }}">
+    {% if m.nombre_herramienta == "relevo" %}
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"
+          {% if m.cuerpo %}title="{{ m.cuerpo }}"{% endif %}>
+        🧠 El Relevo: pensando más a fondo
+    </span>
+    {% else %}
     <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">
         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L5 16v3h3l4.3-4.3a4 4 0 0 1 5.4-5.4l-2.3 2.3-1.7-1.7 2.3-2.3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Consulté: {{ m.nombre_herramienta }}
     </span>
+    {% endif %}
 </div>
 
 {% elif m.tipo == "accion" %}

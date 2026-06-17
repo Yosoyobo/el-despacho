@@ -27,7 +27,14 @@ from lib.analistas.stats import (
     ultimas_llamadas,
     usuarios_top,
 )
-from lib.dictado_catalogo import COMANDOS_DICTADO, COMANDOS_PROHIBIDOS, REFERENCIAS_ENTRE_ACCIONES
+from lib.dictado_catalogo import (
+    BANNER_CHAT,
+    BANNER_RELEVO,
+    COMANDOS_DICTADO,
+    COMANDOS_PROHIBIDOS,
+    CONSULTAS_CHAT,
+    REFERENCIAS_ENTRE_ACCIONES,
+)
 from lib.permisos import es_super_admin, requiere_permiso
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -60,6 +67,9 @@ def panel(request):
         "comandos_dictado": COMANDOS_DICTADO,
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
         "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
+        "consultas_chat": CONSULTAS_CHAT,
+        "banner_chat": BANNER_CHAT,
+        "banner_relevo": BANNER_RELEVO,
     })
 
 

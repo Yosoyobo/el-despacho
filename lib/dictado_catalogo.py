@@ -381,6 +381,19 @@ BANNER_CHAT = (
     "nada sin confirmación ni responde fuera del contexto del Taller."
 )
 
+# S-Chalan-Agente F1: El Chalán es un agente con tool-use nativo + El Relevo
+# (ruteo activo al mejor modelo). Texto único para la UI de Gerencia y Taller.
+BANNER_RELEVO = (
+    "El Chalán es un AGENTE: usa function-calling nativo del proveedor para "
+    "consultar datos y encadenar varios pasos por sí mismo antes de responder "
+    "(más confiable que el modo anterior). EL RELEVO rutea el pensamiento al "
+    "mejor modelo: usa el Chalán rápido (estación «taller_chat») para datos "
+    "simples y escala solo al Chalán potente (estación «taller_chat_profundo») "
+    "cuando la tarea pide analizar, comparar, planear o redactar. Configura "
+    "ambas estaciones en El Cuadro. Las escrituras siguen pasando por "
+    "confirmación humana — el agente nunca aplica nada solo."
+)
+
 
 __all__ = [
     "COMANDOS_DICTADO",
@@ -388,5 +401,6 @@ __all__ = [
     "REFERENCIAS_ENTRE_ACCIONES",
     "CONSULTAS_CHAT",
     "BANNER_CHAT",
+    "BANNER_RELEVO",
     "comandos_para",
 ]

@@ -88,6 +88,54 @@ class AnthropicAdapter(Adapter):
             latencia_ms=latencia,
         )
 
+    def _invocar_chat(self, mensajes, *, max_tokens, temperatura, herramientas=None,
+                      imagenes=None) -> Resultado:
+        from ..herramientas_formato import (
+            herramientas_anthropic,
+            mensajes_anthropic,
+            parsear_anthropic,
+            separar_system,
+        )
+        llave = self._llave()
+        system, resto = separar_system(mensajes)
+        body = {
+            "model": self.modelo,
+            "max_tokens": max_tokens,
+            "temperature": temperatura,
+            "messages": mensajes_anthropic(resto),
+        }
+        if system:
+            body["system"] = system
+        if herramientas:
+            body["tools"] = herramientas_anthropic(herramientas)
+        t0 = time.monotonic()
+        try:
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": llave,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json=body,
+                timeout=self.timeout,
+            )
+        except httpx.RequestError as exc:
+            raise ErrorTransitorio(f"anthropic: red/timeout — {exc}") from exc
+        latencia = int((time.monotonic() - t0) * 1000)
+
+        if resp.status_code in (401, 403):
+            raise ErrorPermanente(f"anthropic: auth {resp.status_code}")
+        if resp.status_code == 429 or 500 <= resp.status_code < 600:
+            raise ErrorTransitorio(f"anthropic: {resp.status_code} {resp.text[:200]}")
+        if resp.status_code >= 400:
+            raise ErrorPermanente(f"anthropic: {resp.status_code} {resp.text[:200]}")
+
+        return parsear_anthropic(
+            resp.json(), provider=self.nombre, modelo=self.modelo, latencia_ms=latencia,
+            precio_in=PRECIO_IN, precio_out=PRECIO_OUT,
+        )
+
     def listar_modelos(self) -> list[str]:
         try:
             llave = self._llave()

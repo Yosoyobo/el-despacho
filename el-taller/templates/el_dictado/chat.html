@@ -66,8 +66,8 @@
               hx-target="#chat-mensajes"
               hx-swap="beforeend"
               {% if chat_vision_ok %}hx-encoding="multipart/form-data"{% endif %}
-              hx-on::before-request="var b=this.querySelector('button'),t=this.querySelector('textarea'); if(b)b.disabled=true; if(t)t.disabled=true; var c=document.getElementById('chat-mensajes'); if(c&&!document.getElementById('chat-pensando')){var d=document.createElement('div'); d.id='chat-pensando'; d.className='mb-3 flex items-center gap-2 text-xs italic text-gray-500 dark:text-gray-400'; d.textContent='El Chalán está pensando…'; c.appendChild(d);} var s=document.getElementById('chat-scroll'); if(s)s.scrollTop=s.scrollHeight;"
-              hx-on::after-request="var p=document.getElementById('chat-pensando'); if(p)p.remove(); var b=this.querySelector('button'),t=this.querySelector('textarea'); if(b)b.disabled=false; if(t){t.disabled=false; t.value=''; t.focus();} var fi=document.getElementById('chat-imagen'); if(fi){fi.value='';} var fn=document.getElementById('chat-imagen-nombre'); if(fn){fn.textContent='';} var s=document.getElementById('chat-scroll'); if(s)s.scrollTop=s.scrollHeight;"
+              hx-on::before-request="window.chatPensando&&window.chatPensando(this)"
+              hx-on::after-request="window.chatListo&&window.chatListo(this)"
               class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
         {% else %}
         <form method="post" action="{% url 'chalan-nuevo' %}"
@@ -95,6 +95,21 @@
     </section>
 </div>
 
+{# Distintivo de "escribiendo": burbuja con 3 puntos animados + etiqueta que cicla pensando→consultando→escribiendo. #}
+<template id="tpl-pensando">
+    <div id="chat-pensando" class="mb-3 flex items-end gap-2">
+        {% include "_componentes_tailadmin/_avatar_chalan.html" with tamano="xs" %}
+        <div class="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-gray-100 px-4 py-2.5 shadow-theme-xs dark:bg-gray-800">
+            <span class="flex gap-1" aria-hidden="true">
+                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500"></span>
+                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms] dark:bg-gray-500"></span>
+                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms] dark:bg-gray-500"></span>
+            </span>
+            <span data-pensando-label class="text-xs italic text-gray-500 dark:text-gray-400">El Chalán está pensando…</span>
+        </div>
+    </div>
+</template>
+
 <script>
   (function(){
     // Drawer de conversaciones en móvil — V9.
@@ -105,6 +120,43 @@
     document.querySelectorAll('[data-chat-aside-toggle]').forEach(function(b){ b.addEventListener('click', abrirAside); });
     document.querySelectorAll('[data-chat-aside-close]').forEach(function(b){ b.addEventListener('click', cerrarAside); });
     if(bd) bd.addEventListener('click', cerrarAside);
+  })();
+  (function(){
+    // Distintivo de "escribiendo": clona la burbuja animada y cicla la etiqueta
+    // (pensando → consultando → escribiendo) mientras el agente corre el loop.
+    var _ip = null;
+    function mostrarPensando(){
+      var c = document.getElementById('chat-mensajes');
+      var tpl = document.getElementById('tpl-pensando');
+      if (!c || !tpl || document.getElementById('chat-pensando')) return;
+      c.appendChild(tpl.content.cloneNode(true));
+      var fases = ['El Chalán está pensando…', 'El Chalán está consultando…', 'El Chalán está escribiendo…'];
+      var i = 0;
+      _ip = setInterval(function(){
+        i = (i + 1) % fases.length;
+        var l = document.querySelector('#chat-pensando [data-pensando-label]');
+        if (l) l.textContent = fases[i];
+      }, 1800);
+    }
+    function ocultarPensando(){
+      if (_ip) { clearInterval(_ip); _ip = null; }
+      var p = document.getElementById('chat-pensando');
+      if (p) p.remove();
+    }
+    function scrollAbajo(){ var s=document.getElementById('chat-scroll'); if(s) s.scrollTop=s.scrollHeight; }
+    window.chatPensando = function(form){
+      var b = form.querySelector('button'), t = form.querySelector('textarea');
+      if (b) b.disabled = true; if (t) t.disabled = true;
+      mostrarPensando(); scrollAbajo();
+    };
+    window.chatListo = function(form){
+      ocultarPensando();
+      var b = form.querySelector('button'), t = form.querySelector('textarea');
+      if (b) b.disabled = false; if (t){ t.disabled = false; t.value = ''; t.focus(); }
+      var fi = document.getElementById('chat-imagen'); if (fi) fi.value = '';
+      var fn = document.getElementById('chat-imagen-nombre'); if (fn) fn.textContent = '';
+      scrollAbajo();
+    };
   })();
   (function(){
     function scrollAbajo(){ var s=document.getElementById('chat-scroll'); if(s) s.scrollTop=s.scrollHeight; }

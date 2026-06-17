@@ -182,6 +182,19 @@
 {% endif %}
 {% endif %}
 
+{# S-Chalan-Agente F1: El Chalán es un agente + El Relevo (ruteo al mejor modelo). #}
+{% if banner_relevo %}
+<section class="mt-8 rounded-2xl border border-brand-200 bg-brand-50/60 p-5 dark:border-brand-500/30 dark:bg-brand-500/10">
+    <div class="flex items-start gap-3">
+        <span class="text-2xl leading-none">🧠</span>
+        <div class="min-w-0">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">El Chalán es un agente · El Relevo</h2>
+            <p class="mt-1 text-sm text-brand-800 dark:text-brand-200">{{ banner_relevo }}</p>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 {# S-LC-Feedback-V3: catálogo de comandos del Dictado en acordeón. #}
 <details class="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <summary class="cursor-pointer list-none border-b border-gray-200 px-5 py-3 dark:border-gray-800">
@@ -226,5 +239,19 @@
             </ul>
         </div>
     </div>
+    {% if consultas_chat %}
+    <div class="border-t border-gray-200 px-5 py-4 dark:border-gray-800">
+        <h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">🔎 Qué consulta el chat (solo lectura)</h3>
+        {% if banner_chat %}<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">{{ banner_chat }}</p>{% endif %}
+        <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {% for c in consultas_chat %}
+            <li class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
+                <code class="text-[11px] text-brand-600 dark:text-brand-400">{{ c.nombre }}</code>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ c.que }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </details>
 {% endblock %}
