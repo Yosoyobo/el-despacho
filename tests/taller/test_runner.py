@@ -167,7 +167,6 @@ def test_aplicar_desde_form_idempotente_no_repickea(proyecto_factory, usuario_fa
 def test_editar_tarea_guarda_runner(client, proyecto_factory, usuario_factory):
     """Bug 1: editar la tarea aplica el runner elegido (antes form.save() lo
     descartaba porque no está en Meta.fields)."""
-    from apps.el_pizarron.models import Tarea
     p = proyecto_factory(estado="en_proceso_diseno")
     admin = usuario_factory(rol="super_admin", email="ed@lc.mx")
     runner = usuario_factory(rol="disenador", email="elegido@lc.mx")
