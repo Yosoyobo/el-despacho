@@ -153,10 +153,20 @@ def aplicar_accion(request, pk: int):
 
     resultado = aplicar(dictado=dictado, usuario=request.user)
     if conv is not None:
-        _crear_mensaje(
-            conv, rol="bot", chalan=dictado.chalan,
-            cuerpo=f"Listo: {resultado['aplicadas']} acción(es) aplicada(s), {resultado['fallidas']} con error.",
-        )
+        if resultado["fallidas"]:
+            # Surface el error CONCRETO de cada acción fallida (no un "con error"
+            # mudo). Así el usuario sabe qué faltó y puede reformular.
+            detalles = "\n".join(
+                f"• {a.descripcion or a.tipo}: {a.error_al_aplicar}"
+                for a in dictado.acciones.filter(confirmada=True, aplicada=False)
+                if (a.error_al_aplicar or "").strip()
+            )
+            cuerpo = f"Apliqué {resultado['aplicadas']} y {resultado['fallidas']} no se pudieron:"
+            if detalles:
+                cuerpo += "\n" + detalles
+        else:
+            cuerpo = f"Listo: {resultado['aplicadas']} acción(es) aplicada(s)."
+        _crear_mensaje(conv, rol="bot", chalan=dictado.chalan, cuerpo=cuerpo)
         conv.save(update_fields=["actualizado_en"])
         return redirect("chalan-conversacion", pk=conv.pk)
     return redirect("chalan-chat")

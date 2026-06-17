@@ -209,6 +209,37 @@ def _resolver_proyecto(slug: str, contexto: dict | None = None):
     raise ValueError(f"Proyecto `{slug}` no encontrado.{sugerencia}")
 
 
+def _resolver_proyecto_para(payload: dict, contexto: dict | None = None):
+    """Resuelve el proyecto de una tarea/mandado.
+
+    Toda tarea/entrega cuelga de un proyecto (FK obligatoria). Si el usuario solo
+    dio un cliente ('entregar players para $noko-devs'), no hay proyecto_slug:
+    caemos al cliente y usamos su ÚNICO proyecto activo. Si tiene varios o ninguno,
+    levantamos un error claro y accionable (que el chat le muestra al usuario)."""
+    slug = (payload.get("proyecto_slug") or "").strip()
+    if slug:
+        return _resolver_proyecto(slug, contexto)
+    cli_slug = (payload.get("cliente_slug") or "").strip()
+    if not cli_slug:
+        raise ValueError("Falta el proyecto: dime de qué proyecto es (ej. #LC-0001).")
+    cliente = _resolver_cliente(cli_slug, contexto)
+    from apps.los_proyectos.models import Proyecto
+    activos = list(
+        Proyecto.objects.filter(cliente=cliente)
+        .exclude(estado__in=("entregado", "cancelado"))
+        .order_by("-creado_en")
+    )
+    if len(activos) == 1:
+        return activos[0]
+    if not activos:
+        raise ValueError(
+            f"{cliente.razon_social} no tiene proyectos activos. Crea uno primero "
+            "o dime el proyecto.")
+    codigos = ", ".join(f"#{p.codigo}" for p in activos[:6])
+    raise ValueError(
+        f"{cliente.razon_social} tiene varios proyectos ({codigos}). ¿En cuál lo registro?")
+
+
 def _resolver_cliente(slug: str, contexto: dict | None = None):
     from apps.la_cartera.models import Cliente
     if not slug:
@@ -379,7 +410,7 @@ def asignar_usuario_proyecto(accion, usuario, contexto=None):
 
 @registrar("crear_tarea")
 def crear_tarea(accion, usuario, contexto=None):
-    proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
+    proyecto = _resolver_proyecto_para(accion.payload, contexto)
     titulo = (accion.payload.get("titulo") or "").strip()
     if not titulo:
         raise ValueError("Falta `titulo` en payload.")
@@ -494,7 +525,7 @@ def crear_mandado(accion, usuario, contexto=None):
     tipo entrega/recoger con destino fijado → el signal crea el Mandado y se
     auto-asigna el runner más cercano. Mismo nivel de acceso que crear_tarea."""
     payload = accion.payload or {}
-    proyecto = _resolver_proyecto(payload.get("proyecto_slug", ""), contexto)
+    proyecto = _resolver_proyecto_para(payload, contexto)
     titulo = (payload.get("titulo") or "").strip()
     if not titulo:
         raise ValueError("Falta `titulo` del mandado.")

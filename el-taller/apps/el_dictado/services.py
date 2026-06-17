@@ -234,6 +234,11 @@ def aplicar(*, dictado, usuario, _reintentos: int = 0, _proveedores_intentados: 
         and fallidas > 0
         and _reintentos < MAX_REINTENTOS_CHALAN
         and len(acciones) > 0
+        # Solo el flujo clásico (Sala de Juntas) re-interpreta solo. En el chat el
+        # re-interpret con la estación `dictado` borra el error real (p. ej. "falta
+        # el proyecto") y lo convierte en un `fallo_ia` mudo; ahí preferimos
+        # mostrarle al usuario el error concreto y que reformule.
+        and dictado.origen not in ("taller_chat", "chalan_proactivo")
     ):
         siguiente = _reinterpretar_con_otro_chalan(
             dictado=dictado,

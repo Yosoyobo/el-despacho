@@ -84,7 +84,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_tarea",
         "titulo": "Crear tarea (o entrega/recolección)",
         "ejemplo": 'Crea una tarea en #lc-0001: "diseñar logo", asignada a @ana, vence el 30 de mayo. O: "agenda una entrega de #lc-0009 el viernes y que el sistema asigne al runner".',
-        "payload": "proyecto_slug, titulo, asignado_slug?, fecha_compromiso? (SOLO fecha YYYY-MM-DD), hora? (HH:MM aparte — NUNCA metas la hora en fecha_compromiso), prioridad? (baja|media|alta), tipo? (tarea|entrega|junta|recoger), runner_slug?. Si tipo es entrega|recoger el runner se asigna SOLO al crearla (no agregues una acción asignar_runner aparte).",
+        "payload": "proyecto_slug (o cliente_slug si solo sabes el cliente: usa su proyecto activo), titulo, asignado_slug?, fecha_compromiso? (SOLO fecha YYYY-MM-DD), hora? (HH:MM aparte — NUNCA metas la hora en fecha_compromiso), prioridad? (baja|media|alta), tipo? (tarea|entrega|junta|recoger), runner_slug?. Si tipo es entrega|recoger el runner se asigna SOLO al crearla (no agregues una acción asignar_runner aparte).",
     },
     {
         "tipo": "actualizar_tarea",
@@ -102,7 +102,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_mandado",
         "titulo": "Crear mandado (envío/recolección con dirección o lugar)",
         "ejemplo": 'Manda recoger el material de #LC-0001 en "Av. Reforma 222, CDMX". O: "envía la entrega de #LC-0009 a la Sucursal Centro" (lugar conocido).',
-        "payload": "proyecto_slug (OBLIGATORIO — un mandado siempre cuelga de un proyecto, no solo de un cliente), titulo, tipo? (entrega|recoger), asignado_slug?, fecha_compromiso? (YYYY-MM-DD), hora? (HH:MM), runner_slug?, y el destino: destino_texto (dirección) | poi (nombre de lugar conocido) | destino_lat+destino_lng. Sin runner_slug se asigna al MÁS CERCANO al destino.",
+        "payload": "proyecto_slug (un mandado cuelga de un proyecto; si solo sabes el cliente pon cliente_slug y el sistema usa su proyecto activo — si tiene varios te pedirá cuál), titulo, tipo? (entrega|recoger), asignado_slug?, fecha_compromiso? (YYYY-MM-DD), hora? (HH:MM), runner_slug?, y el destino: destino_texto (dirección) | poi (nombre de lugar conocido) | destino_lat+destino_lng. Sin runner_slug se asigna al MÁS CERCANO al destino.",
     },
     {
         "tipo": "crear_recado",

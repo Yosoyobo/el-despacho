@@ -62,6 +62,63 @@ def test_resolver_tarea_por_referencia_y_pk(usuario_factory, proyecto_factory):
 
 # ── cadena completa vía aplicar: crear_tarea(entrega) → asignar_runner @accion_0 ──
 
+def test_resolver_proyecto_por_cliente_unico(cliente_factory, proyecto_factory):
+    """'entregar para $cliente' sin proyecto → usa el único proyecto activo."""
+    from apps.el_dictado.ejecutores.basicos import _resolver_proyecto_para
+    c = cliente_factory()
+    p = proyecto_factory(cliente=c, estado="en_proceso_diseno")
+    assert _resolver_proyecto_para({"cliente_slug": c.slug}, {}).pk == p.pk
+
+
+def test_resolver_proyecto_cliente_varios_pide_cual(cliente_factory, proyecto_factory):
+    from apps.el_dictado.ejecutores.basicos import _resolver_proyecto_para
+    c = cliente_factory()
+    proyecto_factory(cliente=c, estado="en_proceso_diseno")
+    proyecto_factory(cliente=c, estado="por_cotizar")
+    with pytest.raises(ValueError, match="varios proyectos"):
+        _resolver_proyecto_para({"cliente_slug": c.slug}, {})
+
+
+def test_resolver_proyecto_cliente_sin_proyectos(cliente_factory):
+    from apps.el_dictado.ejecutores.basicos import _resolver_proyecto_para
+    c = cliente_factory()
+    with pytest.raises(ValueError, match="no tiene proyectos activos"):
+        _resolver_proyecto_para({"cliente_slug": c.slug}, {})
+
+
+def test_crear_mandado_por_cliente(usuario_factory, cliente_factory, proyecto_factory):
+    from apps.el_dictado.ejecutores import basicos
+    from apps.el_pizarron.models import Tarea
+    u = usuario_factory(rol="super_admin")
+    c = cliente_factory()
+    p = proyecto_factory(cliente=c, estado="en_proceso_produccion")
+    acc = SimpleNamespace(payload={
+        "cliente_slug": c.slug, "titulo": "Entregar players", "tipo": "entrega",
+        "fecha_compromiso": "2026-06-18", "hora": "15:00",
+    })
+    basicos.crear_mandado(acc, u, {"entidades_creadas": {}})
+    t = Tarea.objects.get(pk=acc.entidad_id)
+    assert t.proyecto_id == p.pk and t.tipo == "entrega" and t.hora == time(15, 0)
+
+
+def test_chat_dictado_no_reinterpreta_y_preserva_error(usuario_factory, cliente_factory):
+    """Fix 2: un dictado del chat con acción fallida NO se re-interpreta (que
+    borraría el error y daría fallo_ia mudo). El error concreto se preserva."""
+    from apps.el_dictado.models import Dictado, DictadoAccion
+    from apps.el_dictado.services import aplicar
+    u = usuario_factory(rol="super_admin")
+    c = cliente_factory()  # cliente SIN proyectos activos
+    d = Dictado.objects.create(autor=u, texto_crudo="(chat)", origen="taller_chat",
+                               estado="esperando_confirmacion")
+    DictadoAccion.objects.create(dictado=d, orden=0, tipo="crear_mandado", descripcion="entrega",
+                                 payload={"cliente_slug": c.slug, "titulo": "Entregar players",
+                                          "tipo": "entrega"}, confirmada=True)
+    res = aplicar(dictado=d, usuario=u)
+    assert res["aplicadas"] == 0 and res["fallidas"] == 1
+    assert d.acciones.count() == 1  # NO se borró por re-interpret
+    assert "no tiene proyectos activos" in d.acciones.get(orden=0).error_al_aplicar
+
+
 def test_cadena_crear_tarea_entrega_y_asignar_runner(usuario_factory, proyecto_factory):
     from apps.el_dictado.models import Dictado, DictadoAccion
     from apps.el_dictado.services import aplicar

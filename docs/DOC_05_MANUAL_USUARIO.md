@@ -19,6 +19,14 @@ Correcciones a partir de tu uso real de El Chalán:
 - **Las entregas asignan repartidor solas.** Al crear una entrega o recolección,
   El Chalán ya le pone el repartidor más adecuado automáticamente; no hace falta
   un paso extra.
+- **Entregas por cliente.** Si pides una entrega para un cliente sin decir el
+  proyecto (*"entregar players para NoKo Devs"*), El Chalán usa el **proyecto
+  activo** de ese cliente. Si tiene varios, te pregunta en cuál; si no tiene
+  ninguno, te lo dice para que crees uno.
+- **Te dice por qué cuando algo no se puede.** Antes, si una acción no se podía
+  aplicar, veías "0 con error" sin explicación (o un cuadro "Los Chalanes no
+  disponibles"). Ahora El Chalán te muestra **el motivo concreto** de cada
+  acción que no salió, para que lo corrijas y reintentes.
 - **Menos avisos confusos.** Si El Chalán describe algo pero no logra estructurar
   la acción, en vez de mostrar un cuadro vacío que parecía "fallo", ahora te pide
   un poco más de detalle (qué, para quién, cuándo).
