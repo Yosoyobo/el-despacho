@@ -280,6 +280,8 @@ def nueva_tarea(request, proyecto_id):
             tarea.proyecto = proyecto
             tarea.creado_por = request.user
             tarea.save()
+            from apps.el_pizarron import runners
+            runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             emitir(EventoPortavoz(
                 tipo="tarea.creada",
                 actor_id=request.user.pk,
@@ -356,6 +358,8 @@ def editar_tarea(request, pk):
         form = TareaForm(request.POST, instance=tarea)
         if form.is_valid():
             form.save()
+            from apps.el_pizarron import runners
+            runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             messages.success(request, "Tarea actualizada.")
             return redirect("pizarron-detalle-tarea", pk=tarea.pk)
     else:

@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — Arreglos en pendientes de entrega/recolección (17 de junio de 2026)
+
+Tres correcciones en los pendientes de tipo **Entrega** y **Recoger** (los que
+llevan un *runner*, quien lleva o recoge):
+
+- **El runner ya se guarda.** Antes, al editar un pendiente de entrega/recolección
+  y cambiar el runner, el cambio no se aplicaba. Ahora se guarda correctamente, lo
+  asignes a mano o lo dejes en automático.
+- **La fecha ya no se borra.** Antes, al volver a abrir un pendiente para editarlo,
+  la **fecha de compromiso** aparecía vacía y había que volver a escribirla. Ahora
+  se conserva la fecha que ya habías puesto.
+- **Puedes mandar a quien sea.** Para una entrega o recolección, ahora puedes
+  asignar **manualmente** a cualquier persona del equipo, aunque no tenga el rol de
+  Runner (lo mismo aplica si se lo pides a El Chalán por chat). El rol de Runner
+  solo decide a quién elige el sistema **cuando no especificas a nadie** y dejas la
+  asignación en automático.
+
+---
+
 ## Novedades — El Chalán aprende de lo que ve (17 de junio de 2026)
 
 El Chalán ahora puede **aprender de su propio historial** para entenderte mejor

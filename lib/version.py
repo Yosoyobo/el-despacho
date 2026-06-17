@@ -11,7 +11,7 @@ La fecha es legible para el usuario final; la versión es el ancla técnica.
 
 from __future__ import annotations
 
-VERSION = "2026.06.72"
+VERSION = "2026.06.73"
 VERSION_FECHA = "17 de junio de 2026"
 
 

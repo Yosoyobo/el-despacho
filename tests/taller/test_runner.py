@@ -6,9 +6,11 @@ runner ve la tarea en SUS pendientes.
 
 from __future__ import annotations
 
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
+from django.urls import reverse
 
 pytestmark = [pytest.mark.django_db, pytest.mark.taller]
 
@@ -111,24 +113,88 @@ def test_ejecutor_asignar_runner_rechaza_tarea_normal(proyecto_factory, usuario_
         asignar_runner_ejec(accion, actor)
 
 
-def test_form_runner_dropdown_solo_elegibles(usuario_factory):
-    """El <select> de runner del TareaForm solo lista usuarios con el rol Runner
-    (opt-in). Quien no lo tenga NO aparece."""
+def test_form_runner_dropdown_lista_a_todos(usuario_factory):
+    """Bug Oscar 2026-06-17: la asignación MANUAL puede caer en cualquier usuario
+    activo, tenga o no el rol Runner. El permiso solo gobierna la auto-asignación,
+    así que el <select> lista a todos (incluido quien no es runner)."""
     from apps.el_pizarron.forms import TareaForm
     elegible = usuario_factory(rol="disenador", email="elig@lc.mx")
     no_runner = usuario_factory(rol="disenador", email="norun@lc.mx")
-    _hacer_runner(elegible)  # solo este es runner
+    _hacer_runner(elegible)  # solo este es runner elegible
     qs = TareaForm().fields["runner"].queryset
     assert elegible in qs
-    assert no_runner not in qs
+    assert no_runner in qs  # ← ahora SÍ aparece para asignación manual
 
 
-def test_form_runner_vacio_si_no_hay_runners(usuario_factory):
-    """Sin nadie con el rol Runner, el dropdown no lista a nadie (sin fallback)."""
+def test_form_runner_dropdown_no_vacio_sin_runners(usuario_factory):
+    """Sin nadie con el rol Runner el dropdown SIGUE listando a todos (para
+    asignar a mano), pero la auto-asignación no tiene a quién elegir."""
+    from apps.el_pizarron import runners
     from apps.el_pizarron.forms import TareaForm
-    usuario_factory(rol="disenador", email="x1@lc.mx")
-    usuario_factory(rol="super_admin", email="x2@lc.mx")
-    assert list(TareaForm().fields["runner"].queryset) == []
+    a = usuario_factory(rol="disenador", email="x1@lc.mx")
+    b = usuario_factory(rol="super_admin", email="x2@lc.mx")
+    qs = TareaForm().fields["runner"].queryset
+    assert a in qs and b in qs
+    assert runners.usuarios_runner() == []  # auto no tiene candidato
+
+
+def test_aplicar_desde_form_runner_manual_no_elegible(proyecto_factory, usuario_factory):
+    """Asignar a mano a alguien SIN permiso de runner debe funcionar (Bug 3)."""
+    from apps.el_pizarron import runners
+    p = proyecto_factory(estado="en_proceso_diseno")
+    no_runner = usuario_factory(rol="disenador", email="manual@lc.mx")
+    t = _tarea(p)  # tipo entrega
+    runners.aplicar_desde_form(t, {"runner": no_runner, "runner_auto": False})
+    t.refresh_from_db()
+    assert t.runner_id == no_runner.pk
+    assert t.runner_auto is False
+    assert no_runner not in runners.usuarios_runner()  # no elegible para auto
+
+
+def test_aplicar_desde_form_idempotente_no_repickea(proyecto_factory, usuario_factory):
+    """Reaplicar el form sin cambios no reasigna (evita re-push en cada edición)."""
+    from apps.el_pizarron import runners
+    p = proyecto_factory(estado="en_proceso_diseno")
+    manual = usuario_factory(rol="disenador", email="fijo@lc.mx")
+    t = _tarea(p, runner=manual, runner_auto=False, requiere_runner=True)
+    antes = t.runner_asignado_en
+    runners.aplicar_desde_form(t, {"runner": manual, "runner_auto": False})
+    t.refresh_from_db()
+    assert t.runner_id == manual.pk
+    assert t.runner_asignado_en == antes  # no se reasignó
+
+
+def test_editar_tarea_guarda_runner(client, proyecto_factory, usuario_factory):
+    """Bug 1: editar la tarea aplica el runner elegido (antes form.save() lo
+    descartaba porque no está en Meta.fields)."""
+    from apps.el_pizarron.models import Tarea
+    p = proyecto_factory(estado="en_proceso_diseno")
+    admin = usuario_factory(rol="super_admin", email="ed@lc.mx")
+    runner = usuario_factory(rol="disenador", email="elegido@lc.mx")
+    t = _tarea(p, asignada_a=admin, fecha_compromiso=date(2026, 6, 18))
+    client.force_login(admin)
+    resp = client.post(reverse("pizarron-editar-tarea", args=[t.pk]), {
+        "titulo": t.titulo, "descripcion": "", "estado": t.estado,
+        "prioridad": "media", "tipo": "entrega",
+        "asignada_a": admin.pk, "fecha_compromiso": "2026-06-18",
+        "runner": runner.pk,  # runner_auto NO enviado ⇒ False
+    })
+    assert resp.status_code == 302
+    t.refresh_from_db()
+    assert t.runner_id == runner.pk
+    assert t.runner_auto is False
+    assert t.fecha_compromiso == date(2026, 6, 18)
+
+
+def test_form_fecha_compromiso_render_iso(proyecto_factory, usuario_factory):
+    """Bug 2: al editar, la fecha guardada se rendea como ISO (YYYY-MM-DD) para
+    que `<input type=date>` la muestre, en vez de quedar en blanco."""
+    from apps.el_pizarron.forms import TareaForm
+    p = proyecto_factory(estado="en_proceso_diseno")
+    admin = usuario_factory(rol="super_admin", email="iso@lc.mx")
+    t = _tarea(p, asignada_a=admin, fecha_compromiso=date(2026, 6, 18))
+    html = str(TareaForm(instance=t)["fecha_compromiso"])
+    assert 'value="2026-06-18"' in html
 
 
 def test_runner_ve_en_sus_pendientes(proyecto_factory, usuario_factory):

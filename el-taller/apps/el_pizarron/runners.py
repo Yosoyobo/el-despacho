@@ -146,15 +146,28 @@ def asignar_runner(tarea, runner, *, actor=None):
 
 
 def aplicar_desde_form(tarea, cleaned, *, actor=None):
-    """Aplica la elección de runner del form a una tarea recién guardada.
-    Solo hace algo si el tipo es entrega/recoger."""
+    """Aplica la elección de runner del form a una tarea ya guardada (alta o
+    edición). Solo hace algo si el tipo es entrega/recoger.
+
+    Idempotente: si la elección coincide con el estado actual NO reasigna ni
+    re-notifica (evita un push en cada edición de la tarea). El runner elegido a
+    mano puede ser CUALQUIER usuario activo; la auto-asignación elige solo entre
+    los elegibles (permiso runner)."""
     if not requiere_runner(tarea):
         return
     elegido = cleaned.get("runner")
     if elegido:
-        asignar_runner(tarea, elegido, actor=actor)
+        # Manual y explícito: respeta a quien el usuario eligió aunque no tenga
+        # el permiso de runner. Solo reasigna si cambió (runner distinto o
+        # venía en auto).
+        ya_fijo = tarea.runner_id == elegido.pk and not tarea.runner_auto
+        if not ya_fijo:
+            asignar_runner(tarea, elegido, actor=actor)
     elif cleaned.get("runner_auto"):
-        asignar_runner_auto(tarea, actor=actor)
+        # Sin runner específico: el sistema designa entre los elegibles. No
+        # re-pickea si ya hay una auto-asignación vigente.
+        if tarea.runner_id is None or not tarea.runner_auto:
+            asignar_runner_auto(tarea, actor=actor)
     elif not tarea.requiere_runner:
         tarea.requiere_runner = True
         tarea.save(update_fields=["requiere_runner"])

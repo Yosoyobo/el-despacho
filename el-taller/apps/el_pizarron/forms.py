@@ -26,15 +26,21 @@ class TareaForm(forms.ModelForm):
         label="Asignada a",
         error_messages={"required": "Asigna la tarea a alguien."},
     )
+    # `<input type="date">` SOLO acepta ISO (YYYY-MM-DD) para mostrar y enviar.
+    # Sin `format="%Y-%m-%d"` el widget rendea "18/06/2026" (locale es-mx), el
+    # navegador lo rechaza y el campo queda en blanco al reabrir la edición —
+    # por eso "hay que volver a escribir la fecha cada vez" (Bug Oscar 2026-06-17).
     fecha_compromiso = forms.DateField(
         required=True,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
         label="Fecha de compromiso",
         error_messages={"required": "Pon una fecha de compromiso."},
     )
     hora = forms.TimeField(
         required=False,
-        widget=forms.TimeInput(attrs={"type": "time"}),
+        widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+        input_formats=["%H:%M", "%H:%M:%S"],
         label="Hora (opcional)",
     )
     tipo = forms.ChoiceField(
@@ -48,7 +54,7 @@ class TareaForm(forms.ModelForm):
     # tipo es entrega/recoger (se ignora en tareas normales).
     runner = forms.ModelChoiceField(
         queryset=Usuario.objects.none(), required=False,
-        empty_label="— El sistema asigna (menos cargado) —",
+        empty_label="— El sistema asigna (más cercano / menos cargado) —",
         label="Runner (entrega/recoger)",
     )
     runner_auto = forms.BooleanField(
@@ -71,16 +77,20 @@ class TareaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # El dropdown de runner solo lista usuarios elegibles como runner
-        # (permiso `(runner, recibir)`), igual que el de responsables filtra
-        # por rol. `usuarios_runner()` cae a todos los activos si nadie tiene
-        # el permiso configurado, así que nunca queda vacío; el super_admin
-        # cura la elegibilidad desde /directorio/<id>/permisos/.
-        from lib.permisos import usuarios_runner
-        elegibles = usuarios_runner()
+        # El dropdown de runner lista a CUALQUIER usuario activo: la asignación
+        # manual debe poder caer en quien sea, aunque no tenga el permiso de
+        # runner (decisión Oscar 2026-06-17). La elegibilidad por permiso
+        # `(runner, recibir)` solo gobierna la AUTO-asignación (cuando no se
+        # especifica nadie) — ver runners.aplicar_desde_form / elegir_runner_auto.
         self.fields["runner"].queryset = (
-            Usuario.objects.filter(pk__in=[u.pk for u in elegibles]).order_by("nombre_completo")
+            Usuario.objects.filter(is_active=True).order_by("nombre_completo")
         )
+        # Al editar, refleja el estado actual del runner para que un guardado
+        # sin tocar el bloque NO reasigne ni re-notifique (los campos no están
+        # en Meta.fields, así que el ModelForm no los inicializa solo).
+        if self.instance and self.instance.pk:
+            self.fields["runner"].initial = self.instance.runner_id
+            self.fields["runner_auto"].initial = self.instance.runner_auto
         # Estado dinámico (el campo del modelo ya no tiene choices). Si la
         # tarea está en un slug inactivo/huérfano, se conserva como opción
         # para no romper la edición. El form global (sin "estado" en fields)
