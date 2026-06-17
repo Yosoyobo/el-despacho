@@ -33,6 +33,9 @@ class Aprendizaje(models.Model):
     interpretacion_correcta = models.TextField()
     activo = models.BooleanField(default=True)
     peso = models.FloatField(default=1.0)
+    # `manual` (enseñado a mano) o `chalan_destilado` (el Chalán lo propuso
+    # de su historial — nace inactivo, se revisa aquí antes de activarlo).
+    origen = models.CharField(max_length=20, default="manual")
     creado_en = models.DateTimeField(auto_now_add=True)
     desactivado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,

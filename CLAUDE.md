@@ -4000,6 +4000,55 @@ Cierra "ambos sprints". Tres deploys el mismo día (2026.06.57 barrido+cercanía
   (escribe `Tarea.destino_lat/lng/etiqueta` → alimenta la asignación por cercanía).
 - **18 tests nuevos** (`test_mandados.py` 11 + `test_formato_hora.py` regresión).
 
+### S-Chalan-Aprende-V1 ✅ — El Chalán aprende de su historial (destilador de aprendizajes) (2026-06-17, VERSION 2026.06.72)
+
+Pedido de Oscar: "ya que el Chalán es un agente, ¿cómo lo hacemos aprender de lo
+que va viendo?". Hallazgo clave: el Chalán **NO aprendía solo** — `DictadoAprendizaje`
+existía desde S2b.2.1 pero las filas eran 100% manuales (super_admin en Gerencia);
+el docstring decía "el sistema captura cuando el usuario clarifica…" pero nunca se
+implementó. La materia prima SÍ estaba capturada en cada `Dictado`
+(`historial_clarificaciones`, `estado='confirmado_parcial'`, `interpretacion_raw`,
+acciones con `confirmada=False`). Decisiones Oscar (AskUserQuestion): **revisar
+primero** (propuestas inactivas) + **datos de producción**.
+
+- **Destilador** [`apps/el_dictado/destilar.py`](el-taller/apps/el_dictado/destilar.py):
+  `recolectar_evidencia()` lee dictados recientes priorizando señales de CORRECCIÓN
+  (clarificaciones donde el usuario lo reorientó + acciones que desmarcó antes de
+  aplicar); `destilar_aprendizajes()` se las resume al propio Chalán (UNA llamada,
+  sin loop) y le pide aprendizajes reutilizables `{frase_o_patron, interpretacion_correcta,
+  peso, razon}` en JSON estricto. Dedup por frase normalizada contra TODOS los
+  aprendizajes existentes (descartar = dejar inactivo basta para que no vuelva).
+  **Defensivo**: IA caída / presupuesto topado / JSON inválido → no crea nada,
+  nunca lanza.
+- **Propone, no actúa**: los aprendizajes nacen `activo=False`,
+  `origen='chalan_destilado'`. Campo nuevo `DictadoAprendizaje.origen`
+  (manual|chalan_destilado, migración `el_dictado/0006`, espejado en el shadow
+  `chalanes.Aprendizaje` sin migración por `managed=False`). El super_admin los
+  revisa en La Gerencia → Chalanes → Aprendizajes → pestaña **"🤖 Propuestas del
+  Chalán"** (filtro nuevo + badge) y los activa con el toggle existente. NO entran
+  al prompt del Dictado hasta activarse.
+- **Estación nueva** `aprendizaje_destilado` (`chalanes/estaciones.py` + seed
+  `chalanes/0016`, anthropic/claude-sonnet-4-6 por ser síntesis de calidad que
+  corre rara vez; el super_admin la cambia en `/chalanes/`). Evento Portavoz
+  `chalan.aprendizaje_destilado`.
+- **Trigger**: management command `chalan_destilar_aprendizajes` (`--dias`,
+  `--limite`, `--dry-run`). Cron semanal (lunes 7:50, §10) + corrida manual para
+  "forzar el análisis ahora". NO es invocable por el usuario vía El Chalán — es
+  back-office; el super_admin lo dispara y revisa en Gerencia (declarado así por
+  la regla §10).
+- **9 tests** en `tests/taller/test_destilar_aprendizajes.py` (priorización de
+  señales, dry-run sin escribir, propuestas inactivas, dedup case-insensitive,
+  IA caída / topado / JSON inválido). Suite de regresión verde (gerencia
+  aprendizajes + dictado + proactivo + chalanes/estaciones = 116 pass).
+
+**Deuda diseñada**: la `razon` del candidato se reporta en el command/evento pero
+NO se persiste (no hay campo; el reviewer juzga por frase→interpretación). El
+"forzar ahora" es vía command (no botón en UI) porque la lógica vive en
+`apps.el_dictado` (Taller) y la revisión en Gerencia (apps separadas); un botón
+de disparo requeriría puente cross-app. El destilador no aprende de las
+conversaciones del chat (`MensajeChat`) todavía — solo de Dictados. Los
+aprendizajes rechazados quedan inactivos (el dedup por frase evita re-proponerlos).
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
@@ -4348,6 +4397,8 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    # S-Chalan-Fase-2-3 (2026-06-16): El Chalán PROACTIVO. Digest matutino (resumen del día a admins) + scouts (facturas vencidas, proyectos estancados, mandados sin avance). Generan PropuestaChalan idempotentes (clave_dedup); las que implican cambios quedan como Dictado PENDIENTE — nunca se aplican solas. Costo IA al destinatario (si está topado, no genera y reintenta la próxima). --dry-run disponible.
    20 7 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_digest_matutino >> /var/log/chalan_proactivo.log 2>&1
    40 7 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_scouts >> /var/log/chalan_proactivo.log 2>&1
+   # S-Chalan-Aprende-V1 (2026-06-17): El Chalán DESTILA aprendizajes de su historial (clarificaciones + acciones desmarcadas). Semanal (lunes 7:50). Crea propuestas INACTIVAS para revisar en Gerencia → Chalanes → Aprendizajes → "Propuestas del Chalán". Nunca entran al prompt sin que el super_admin las active. --dry-run disponible.
+   50 7 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_destilar_aprendizajes >> /var/log/chalan_proactivo.log 2>&1
    ```
 
    Los dos comandos de "vencidas" son idempotentes (campo

@@ -329,6 +329,9 @@ def aprendizajes_lista(request):
         qs = qs.filter(activo=True)
     elif filtro == "inactivos":
         qs = qs.filter(activo=False)
+    elif filtro == "propuestos":
+        # Propuestas que el Chalán destiló de su historial, aún sin revisar.
+        qs = qs.filter(activo=False, origen="chalan_destilado")
     aprendizajes = list(qs.order_by("-creado_en")[:200])
     # Pre-calcula peso_efectivo para la UI.
     for ap in aprendizajes:
@@ -342,6 +345,7 @@ def aprendizajes_lista(request):
             "todos": Aprendizaje.objects.count(),
             "activos": Aprendizaje.objects.filter(activo=True).count(),
             "inactivos": Aprendizaje.objects.filter(activo=False).count(),
+            "propuestos": Aprendizaje.objects.filter(activo=False, origen="chalan_destilado").count(),
         },
         "breadcrumb_items": [
             {"url": "/chalanes/", "label": "Chalanes"},

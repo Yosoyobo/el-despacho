@@ -6,12 +6,21 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+ORIGEN_APRENDIZAJE = (
+    ("manual", "Enseñado a mano"),
+    ("chalan_destilado", "Destilado por el Chalán"),
+)
+
 
 class DictadoAprendizaje(models.Model):
     """Frase/patrón que el equipo le enseñó al Chalán Claudio.
 
-    El sistema captura cuando el usuario clarifica una ambigüedad o desmarca
-    una acción. El super_admin gestiona (UI llega en sub-sprint S2b.2.1).
+    Dos orígenes (`origen`):
+    - `manual`: el super_admin lo enseñó a mano en La Gerencia.
+    - `chalan_destilado`: el Chalán lo destiló de su propio historial
+      (clarificaciones + acciones que el usuario desmarcó). Estos nacen
+      INACTIVOS y el super_admin los revisa antes de que entren al prompt
+      (ver `apps.el_dictado.destilar`).
 
     Decaimiento temporal: peso_efectivo decae linealmente a lo largo del
     año; bajo 0.3 el aprendizaje no se inyecta en el prompt.
@@ -29,6 +38,7 @@ class DictadoAprendizaje(models.Model):
     interpretacion_correcta = models.TextField()
     activo = models.BooleanField(default=True)
     peso = models.FloatField(default=1.0)
+    origen = models.CharField(max_length=20, choices=ORIGEN_APRENDIZAJE, default="manual")
     creado_en = models.DateTimeField(auto_now_add=True)
     desactivado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,

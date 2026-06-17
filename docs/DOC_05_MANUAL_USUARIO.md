@@ -5,6 +5,33 @@
 
 ---
 
+## Novedades — El Chalán aprende de lo que ve (17 de junio de 2026)
+
+El Chalán ahora puede **aprender de su propio historial** para entenderte mejor
+con el tiempo. ¿Cómo funciona?
+
+- **De dónde aprende.** Repasa los dictados recientes y se fija sobre todo en dos
+  cosas: cuando **lo corregiste** (le aclaraste a qué te referías) y cuando
+  **desmarcaste** alguna acción que te propuso mal. Eso es justo lo que necesita
+  para no volver a equivocarse en lo mismo.
+- **Qué hace con eso.** De esos ejemplos saca **aprendizajes** cortos del estilo
+  *"la heladería" → "$heladeria-michoacana (cliente)"*: la jerga del despacho y a
+  qué corresponde de verdad.
+- **Tú apruebas, nunca se activa solo.** Cada aprendizaje que destila el Chalán
+  nace **apagado**. Aparece en **La Gerencia → Chalanes → Aprendizajes**, en la
+  pestaña **"🤖 Propuestas del Chalán"**. Ahí lo revisas y, si está bien, lo
+  **activas** con un clic (o lo dejas apagado para descartarlo). Solo cuando lo
+  activas empieza a influir en cómo interpreta tus dictados.
+- **Cómo se dispara.** Corre solo una vez por semana, pero el administrador puede
+  pedirle un análisis cuando quiera. No le pierde el rastro a nada: lo que ya
+  enseñaste a mano y lo que propone el Chalán conviven en la misma lista, con sus
+  pesos (los aprendizajes "pesan" más o menos y se van desvaneciendo con el tiempo
+  si no se refrescan).
+
+> En resumen: el Chalán **propone** lo que aprendió; tú decides qué se queda.
+
+---
+
 ## Novedades — El Chalán crea tareas/entregas con hora y encadena pasos sin fallar (17 de junio de 2026)
 
 Correcciones a partir de tu uso real de El Chalán:

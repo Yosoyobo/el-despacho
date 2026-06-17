@@ -26,6 +26,7 @@ EventoTipo = Literal[
     "chalan.voz_actualizada",
     "chalan.voz_personal_actualizada",
     "chalan.propuesta_generada",
+    "chalan.aprendizaje_destilado",
     "tarea.creada",
     "tarea.completada",
     "tarea.recordatorio",
