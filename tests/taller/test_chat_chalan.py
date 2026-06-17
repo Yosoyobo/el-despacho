@@ -174,6 +174,28 @@ def test_accion_crea_dictado_pendiente(monkeypatch, usuario_factory, proyecto_fa
     assert Dictado.objects.filter(pk=d.pk, origen="taller_chat").exists()
 
 
+def test_accion_cero_acciones_no_deja_dictado_vacio(monkeypatch, usuario_factory):
+    """Regresión del 'Los Chalanes no disponibles': el modelo propone en prosa
+    pero con acciones=[] → no debe crear un dictado vacío (que al aplicar daría
+    0/0 → fallo_ia). Debe pedir más detalle. (Modo texto = default en tests.)"""
+    from apps.el_dictado.models import Dictado
+    from apps.el_dictado.services_chat import conversar
+
+    import lib.analistas as la
+    u = usuario_factory(rol="super_admin")
+    fake, _ = _fake_analizar([{
+        "tipo": "accion", "texto": "Propuesta para crear un mandado de entrega.",
+        "acciones": [],
+    }])
+    monkeypatch.setattr(la, "analizar", fake)
+    res = conversar(mensaje="entrega players mañana", usuario=u, conversacion=_conv(u))
+    assert res["dictado"] is None
+    assert "No pude estructurar" in res["mensajes"][-1].cuerpo
+    # No queda un dictado APLICABLE (el vacío se marca cancelado, no pendiente).
+    assert not Dictado.objects.filter(
+        autor=u, origen="taller_chat").exclude(estado="cancelado").exists()
+
+
 def test_accion_filtra_tipos_prohibidos(monkeypatch, usuario_factory):
     from apps.el_dictado.services_chat import conversar
 
@@ -185,7 +207,8 @@ def test_accion_filtra_tipos_prohibidos(monkeypatch, usuario_factory):
     }])
     monkeypatch.setattr(la, "analizar", fake)
     res = conversar(mensaje="borra", usuario=u, conversacion=_conv(u))
-    assert res["dictado"].acciones.count() == 0
+    # La única acción era prohibida → 0 acciones → no se deja dictado aplicable.
+    assert res["dictado"] is None
 
 
 # ── Herramientas: gating, whitelist, recorte ────────────────────────────────────

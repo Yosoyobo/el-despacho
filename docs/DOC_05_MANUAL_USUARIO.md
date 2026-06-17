@@ -5,6 +5,26 @@
 
 ---
 
+## Novedades — El Chalán crea tareas/entregas con hora y encadena pasos sin fallar (17 de junio de 2026)
+
+Correcciones a partir de tu uso real de El Chalán:
+
+- **Tareas y entregas con hora.** Antes, si le pedías algo como *"entregar players
+  mañana a las 15:00"*, fallaba al crear la tarea. Ahora separa bien la **fecha** y
+  la **hora** y la crea sin problema.
+- **Planes encadenados.** Cuando un plan crea algo y un paso siguiente lo usa
+  (p. ej. "crea la entrega y asígnale repartidor"), ahora el segundo paso
+  encuentra correctamente lo que creó el primero — ya no se queda en "no
+  encontrado".
+- **Las entregas asignan repartidor solas.** Al crear una entrega o recolección,
+  El Chalán ya le pone el repartidor más adecuado automáticamente; no hace falta
+  un paso extra.
+- **Menos avisos confusos.** Si El Chalán describe algo pero no logra estructurar
+  la acción, en vez de mostrar un cuadro vacío que parecía "fallo", ahora te pide
+  un poco más de detalle (qué, para quién, cuándo).
+
+---
+
 ## Novedades — El Chalán planea trabajos completos y ahora te avisa solo (16 de junio de 2026)
 
 - **Planea varios pasos y te propone todo junto.** Cuando le pides algo que

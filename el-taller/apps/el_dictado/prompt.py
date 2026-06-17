@@ -95,11 +95,11 @@ PAYLOADS:
 - crear_proveedor: {razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?}
 - crear_cotizacion: {cliente_slug, titulo, items: [{descripcion, precio_unitario, cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (impuestos: omite o 'default' = IVA por defecto; o lista de nombres de tasas)
 - crear_factura: {cliente_slug, titulo, items: [...igual que cotización...], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (se crea en borrador; NO es CFDI)
-- crear_tarea: {proyecto_slug, titulo, asignado_slug?, fecha_compromiso?, prioridad?, tipo? ∈ tarea|entrega|junta|recoger, runner_slug?}
-  (si tipo es entrega|recoger y NO das runner_slug, el sistema asigna el runner menos cargado)
-- actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso?}}
-- asignar_runner: {tarea_id, runner_slug?}  (sin runner_slug ⇒ el sistema asigna el repartidor más libre; solo tareas entrega/recoger)
-- crear_mandado: {proyecto_slug, titulo, tipo? ∈ entrega|recoger (default recoger), asignado_slug?, fecha_compromiso?, runner_slug?, destino_texto? | poi? | destino_lat?+destino_lng?}
+- crear_tarea: {proyecto_slug, titulo, asignado_slug?, fecha_compromiso? (SOLO fecha 'YYYY-MM-DD'), hora? ('HH:MM' aparte, NUNCA la metas en fecha_compromiso), prioridad?, tipo? ∈ tarea|entrega|junta|recoger, runner_slug?}
+  (si tipo es entrega|recoger, el runner se asigna AUTOMÁTICAMENTE al crearla — NO agregues una acción `asignar_runner` aparte; solo da runner_slug si quieres uno específico)
+- actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso? ('YYYY-MM-DD'), hora? ('HH:MM'), tipo?}}  (tarea_id puede ser `@accion_N` si la tarea la creaste en una acción previa del mismo plan)
+- asignar_runner: {tarea_id, runner_slug?}  (sin runner_slug ⇒ el sistema asigna el repartidor más libre; solo tareas entrega/recoger. tarea_id acepta `@accion_N`. NO lo uses tras crear_tarea/crear_mandado de tipo entrega/recoger — esas YA asignan runner solas)
+- crear_mandado: {proyecto_slug, titulo, tipo? ∈ entrega|recoger (default recoger), asignado_slug?, fecha_compromiso? ('YYYY-MM-DD'), hora? ('HH:MM'), runner_slug?, destino_texto? | poi? | destino_lat?+destino_lng?}
   Es un envío/recolección con destino. Da la dirección en `destino_texto` (se geolocaliza) o el nombre de un lugar conocido en `poi`. Sin runner_slug, el sistema asigna al repartidor MÁS CERCANO al destino. Ej.: "manda recoger el material de #LC-0001 en Av. Reforma 222, CDMX".
 - actualizar_proyecto: {proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}}
 - asignar_usuario_proyecto: {proyecto_slug, usuario_slug, rol_en_proyecto?}

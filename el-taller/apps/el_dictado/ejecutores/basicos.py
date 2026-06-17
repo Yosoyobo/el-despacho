@@ -35,7 +35,7 @@ def _fecha_compromiso_proyecto(fecha_str):
 
 
 CAMPOS_PROYECTO_PERMITIDOS = {"estado", "monto_cotizado", "fecha_compromiso", "descripcion"}
-CAMPOS_TAREA_PERMITIDOS = {"estado", "prioridad", "asignado_slug", "fecha_compromiso"}
+CAMPOS_TAREA_PERMITIDOS = {"estado", "prioridad", "asignado_slug", "fecha_compromiso", "hora", "tipo"}
 CAMPOS_CLIENTE_PERMITIDOS = {
     "razon_social", "rfc", "nombre_contacto", "email_contacto",
     "telefono", "direccion", "notas", "estado",
@@ -142,6 +142,47 @@ def _campos_a_actualizar(payload: dict, permitidos: set[str]) -> dict:
     if isinstance(campos, dict) and any(k in permitidos for k in campos):
         return {k: v for k, v in campos.items() if k in permitidos}
     return {k: v for k, v in (payload or {}).items() if k in permitidos}
+
+
+def _fecha_hora_de(payload: dict) -> tuple[str | None, str | None]:
+    """Devuelve (fecha 'YYYY-MM-DD'|None, hora 'HH:MM[:SS]'|None).
+
+    `Tarea.fecha_compromiso` es DateField y `Tarea.hora` es TimeField aparte,
+    pero el LLM a veces mete la hora dentro de `fecha_compromiso`
+    ('2026-06-18T15:00:00' o '2026-06-18 15:00'). Aquí la separamos: la parte de
+    fecha va a `fecha_compromiso` y la de hora a `hora` (si no vino ya un `hora`
+    explícito). Cierra el bug 'el valor tiene un formato de fecha inválido'.
+    """
+    fecha = (str(payload.get("fecha_compromiso")).strip() if payload.get("fecha_compromiso") else None)
+    hora = (str(payload.get("hora")).strip() if payload.get("hora") else None)
+    if fecha and ("T" in fecha or " " in fecha):
+        sep = "T" if "T" in fecha else " "
+        parte_fecha, _, parte_hora = fecha.partition(sep)
+        fecha = parte_fecha.strip() or None
+        if not hora and parte_hora.strip():
+            hora = parte_hora.strip()
+    if hora:
+        hora = hora.replace("hrs", "").replace("h", "").strip()[:8]  # HH:MM o HH:MM:SS
+    return fecha or None, hora or None
+
+
+def _resolver_tarea(tarea_id, contexto: dict | None = None):
+    """Resuelve una Tarea por id numérico o por `@accion_N` (Capa 1 — referencia
+    a una tarea creada en una acción anterior del mismo dictado)."""
+    from apps.el_pizarron.models import Tarea
+    if tarea_id in (None, ""):
+        raise ValueError("Falta `tarea_id`.")
+    s = _limpiar_slug(str(tarea_id))
+    ref = _ref_anterior(s, contexto, "tarea")
+    if ref:
+        t = Tarea.objects.filter(pk=ref).select_related("proyecto", "proyecto__cliente").first()
+        if t:
+            return t
+    if s.isdigit():
+        t = Tarea.objects.filter(pk=int(s)).select_related("proyecto", "proyecto__cliente").first()
+        if t:
+            return t
+    raise ValueError(f"Tarea `{tarea_id}` no encontrada.")
 
 
 def _resolver_proyecto(slug: str, contexto: dict | None = None):
@@ -344,7 +385,7 @@ def crear_tarea(accion, usuario, contexto=None):
         raise ValueError("Falta `titulo` en payload.")
     asignado_slug = (accion.payload.get("asignado_slug") or "").strip()
     asignada_a = _resolver_usuario(asignado_slug, contexto) if asignado_slug else None
-    fecha = accion.payload.get("fecha_compromiso") or None
+    fecha, hora = _fecha_hora_de(accion.payload)
     prioridad = (accion.payload.get("prioridad") or "media").lower()
     if prioridad not in {"baja", "media", "alta"}:
         prioridad = "media"
@@ -354,7 +395,7 @@ def crear_tarea(accion, usuario, contexto=None):
     from apps.el_pizarron.models import Tarea
     t = Tarea.objects.create(
         proyecto=proyecto, titulo=titulo[:200], asignada_a=asignada_a,
-        fecha_compromiso=fecha, prioridad=prioridad, tipo=tipo, creado_por=usuario,
+        fecha_compromiso=fecha, hora=hora, prioridad=prioridad, tipo=tipo, creado_por=usuario,
     )
     accion.entidad_tipo = "tarea"
     accion.entidad_id = t.pk
@@ -377,14 +418,15 @@ def crear_tarea(accion, usuario, contexto=None):
 
 @registrar("actualizar_tarea")
 def actualizar_tarea(accion, usuario, contexto=None):
-    from apps.el_pizarron.models import Tarea
-    tarea_id = accion.payload.get("tarea_id")
-    if not tarea_id:
-        raise ValueError("Falta `tarea_id`.")
-    tarea = Tarea.objects.filter(pk=tarea_id).first()
-    if not tarea:
-        raise ValueError(f"Tarea {tarea_id} no encontrada.")
+    tarea = _resolver_tarea(accion.payload.get("tarea_id"), contexto)
     campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_TAREA_PERMITIDOS)
+    # Normaliza fecha/hora si vienen (el LLM puede meter la hora en la fecha).
+    if "fecha_compromiso" in campos or "hora" in campos:
+        fecha, hora = _fecha_hora_de(accion.payload)
+        if "fecha_compromiso" in campos:
+            campos["fecha_compromiso"] = fecha
+        if hora is not None:
+            campos["hora"] = hora
     aplicado: list[str] = []
     for k, v in campos.items():
         if k == "asignado_slug":
@@ -406,13 +448,7 @@ def asignar_runner_ejec(accion, usuario, contexto=None):
     recolección. `runner_slug` lo fija manualmente; sin él (o con `auto`) lo
     designa el sistema (el menos cargado)."""
     from apps.el_pizarron import runners
-    from apps.el_pizarron.models import Tarea
-    tarea_id = accion.payload.get("tarea_id")
-    if not tarea_id:
-        raise ValueError("Falta `tarea_id`.")
-    tarea = Tarea.objects.filter(pk=tarea_id).select_related("proyecto", "proyecto__cliente").first()
-    if not tarea:
-        raise ValueError(f"Tarea {tarea_id} no encontrada.")
+    tarea = _resolver_tarea(accion.payload.get("tarea_id"), contexto)
     if not runners.requiere_runner(tarea):
         raise ValueError("Solo las tareas de tipo entrega/recoger llevan runner.")
     runner_slug = (accion.payload.get("runner_slug") or "").strip()
@@ -467,12 +503,12 @@ def crear_mandado(accion, usuario, contexto=None):
         tipo = "recoger"
     asignado_slug = (payload.get("asignado_slug") or "").strip()
     asignada_a = _resolver_usuario(asignado_slug, contexto) if asignado_slug else None
-    fecha = payload.get("fecha_compromiso") or None
+    fecha, hora = _fecha_hora_de(payload)
 
     from apps.el_pizarron.models import Tarea
     t = Tarea.objects.create(
         proyecto=proyecto, titulo=titulo[:200], asignada_a=asignada_a,
-        fecha_compromiso=fecha, tipo=tipo, creado_por=usuario,
+        fecha_compromiso=fecha, hora=hora, tipo=tipo, creado_por=usuario,
     )
     # Fija el destino ANTES de auto-asignar para que la cercanía aplique.
     destino = _resolver_destino(payload, contexto)

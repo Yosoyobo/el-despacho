@@ -496,6 +496,21 @@ def _conversar_texto(*, usuario, conversacion, prep, imagenes) -> dict:
             acciones_raw = sobre.get("acciones") or []
             dictado_creado = _persistir_acciones_chat(acciones_raw=acciones_raw, usuario=usuario, chalan=chalan_provider)
             preambulo = (sobre.get("texto") or "").strip()
+            if dictado_creado.acciones.count() == 0:
+                # Mismo guard que el modo nativo: el modelo propuso algo en prosa
+                # pero no estructuró ninguna acción aplicable. No dejamos un
+                # dictado vacío que al aplicar dé 0/0 y se vea como "fallo".
+                dictado_creado.estado = "cancelado"
+                dictado_creado.save(update_fields=["estado"])
+                dictado_creado = None
+                nuevos.append(_crear_mensaje(
+                    conversacion, rol="bot", chalan=chalan_provider,
+                    cuerpo=((preambulo + "\n\n") if preambulo else "")
+                    + "No pude estructurar la acción para aplicarla. Dame un poco "
+                    "más de detalle (qué, para quién, cuándo) y lo intento de nuevo.",
+                ))
+                cerrado = True
+                break
             nuevos.append(_crear_mensaje(
                 conversacion, rol="bot", tipo="accion", chalan=chalan_provider,
                 cuerpo=preambulo or "Te propongo estas acciones. Revísalas y confírmalas.",
