@@ -62,6 +62,51 @@ def test_resolver_tarea_por_referencia_y_pk(usuario_factory, proyecto_factory):
 
 # ── cadena completa vía aplicar: crear_tarea(entrega) → asignar_runner @accion_0 ──
 
+@pytest.mark.parametrize("tipo_in,payload_in,esperado_tipo,esperado_subtipo", [
+    ("entrega", {"cliente_slug": "x"}, "crear_mandado", "entrega"),
+    ("recoger", {}, "crear_mandado", "recoger"),
+    ("envío", {}, "crear_mandado", "entrega"),
+    ("tarea", {}, "crear_tarea", "tarea"),
+    ("junta", {}, "crear_tarea", "junta"),
+])
+def test_normalizar_accion_alias(tipo_in, payload_in, esperado_tipo, esperado_subtipo):
+    from apps.el_dictado.services import _normalizar_accion
+    tipo, payload = _normalizar_accion(tipo_in, payload_in)
+    assert tipo == esperado_tipo
+    assert payload["tipo"] == esperado_subtipo
+
+
+def test_normalizar_accion_sin_alias_no_toca():
+    from apps.el_dictado.services import _normalizar_accion
+    assert _normalizar_accion("crear_tarea", {"x": 1}) == ("crear_tarea", {"x": 1})
+
+
+def test_chat_persiste_entrega_como_mandado(usuario_factory, cliente_factory, proyecto_factory):
+    """tipo='entrega' (que el LLM usó como acción) → se persiste como crear_mandado
+    y se aplica creando la entrega para el proyecto activo del cliente."""
+    from apps.el_dictado.services import aplicar
+    from apps.el_dictado.services_chat import _persistir_acciones_chat
+    from apps.el_pizarron.models import Tarea
+    u = usuario_factory(rol="super_admin")
+    c = cliente_factory()
+    p = proyecto_factory(cliente=c, estado="en_proceso_produccion")
+    d = _persistir_acciones_chat(
+        acciones_raw=[{"tipo": "entrega", "descripcion": "Entregar players",
+                       "payload": {"cliente_slug": c.slug, "titulo": "Entregar players",
+                                   "fecha_compromiso": "2026-06-18", "hora": "15:00"}}],
+        usuario=u, chalan="openai",
+    )
+    a = d.acciones.get(orden=0)
+    assert a.tipo == "crear_mandado"
+    a.confirmada = True
+    a.save(update_fields=["confirmada"])
+    aplicar(dictado=d, usuario=u)
+    a.refresh_from_db()
+    assert a.aplicada is True
+    t = Tarea.objects.get(pk=a.entidad_id)
+    assert t.proyecto_id == p.pk and t.tipo == "entrega"
+
+
 def test_resolver_proyecto_por_cliente_unico(cliente_factory, proyecto_factory):
     """'entregar para $cliente' sin proyecto → usa el único proyecto activo."""
     from apps.el_dictado.ejecutores.basicos import _resolver_proyecto_para

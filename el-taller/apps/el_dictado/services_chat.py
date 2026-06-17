@@ -575,7 +575,7 @@ def _persistir_acciones_chat(*, acciones_raw, usuario, chalan: str):
     NUNCA se auto-aplican. Reusa los modelos auditados de El Dictado.
     """
     from .models import Dictado, DictadoAccion
-    from .services import TIPOS_PROHIBIDOS, _apodo_de
+    from .services import TIPOS_PROHIBIDOS, _apodo_de, _normalizar_accion
 
     with transaction.atomic():
         dictado = Dictado.objects.create(
@@ -593,10 +593,11 @@ def _persistir_acciones_chat(*, acciones_raw, usuario, chalan: str):
             tipo = (raw.get("tipo") or "").strip()
             if not tipo or tipo in TIPOS_PROHIBIDOS:
                 continue
+            tipo, payload = _normalizar_accion(tipo, raw.get("payload") or {})
             DictadoAccion.objects.create(
                 dictado=dictado, orden=orden, tipo=tipo,
                 descripcion=(raw.get("descripcion") or "")[:300],
-                payload=raw.get("payload") or {},
+                payload=payload,
                 confianza=float(raw.get("confianza") or 1.0),
             )
             orden += 1

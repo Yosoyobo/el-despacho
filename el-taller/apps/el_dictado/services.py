@@ -35,6 +35,34 @@ TIPOS_PROHIBIDOS = {
     "modificar_centro_costo", "modificar_permisos", "eliminar_entidad",
 }
 
+# El LLM a veces usa el SUB-tipo de tarea ('entrega', 'recoger', 'junta') como si
+# fuera el tipo de ACCIÓN → "Sin ejecutor para tipo `entrega`". Lo normalizamos al
+# ejecutor real e inyectamos el sub-tipo en el payload. (alias → (ejecutor, subtipo))
+_ALIAS_ACCION = {
+    "entrega": ("crear_mandado", "entrega"),
+    "recoger": ("crear_mandado", "recoger"),
+    "recoleccion": ("crear_mandado", "recoger"),
+    "recolección": ("crear_mandado", "recoger"),
+    "mandado": ("crear_mandado", None),
+    "envio": ("crear_mandado", "entrega"),
+    "envío": ("crear_mandado", "entrega"),
+    "tarea": ("crear_tarea", "tarea"),
+    "junta": ("crear_tarea", "junta"),
+}
+
+
+def _normalizar_accion(tipo: str, payload: dict):
+    """Mapea un tipo de acción inventado (sub-tipo usado como acción) al ejecutor
+    real, copiando el sub-tipo al payload. Si no hay alias, deja todo igual."""
+    alias = _ALIAS_ACCION.get((tipo or "").strip().lower())
+    if not alias:
+        return tipo, (payload or {})
+    real, subtipo = alias
+    payload = dict(payload or {})
+    if subtipo and not payload.get("tipo"):
+        payload["tipo"] = subtipo
+    return real, payload
+
 
 def interpretar(
     *,
@@ -332,10 +360,11 @@ def _reinterpretar_con_otro_chalan(*, dictado, usuario, excluir: set):
         tipo = (raw.get("tipo") or "").strip()
         if not tipo or tipo in TIPOS_PROHIBIDOS:
             continue
+        tipo, payload = _normalizar_accion(tipo, raw.get("payload") or {})
         DictadoAccion.objects.create(
             dictado=dictado, orden=orden, tipo=tipo,
             descripcion=(raw.get("descripcion") or "")[:300],
-            payload=raw.get("payload") or {},
+            payload=payload,
             confianza=float(raw.get("confianza") or 1.0),
             confirmada=True,
         )
