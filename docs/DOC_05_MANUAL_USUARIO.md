@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — El Chalán ahora opina del negocio (17 de junio de 2026)
+
+Además de aprender tu jerga, El Chalán ya **analiza y opina del negocio**:
+economía, cobranza, ventas y los márgenes de tus productos. Dos formas de usarlo:
+
+- **Pregúntale en el chat.** Escríbele cosas como *"¿cómo va la cobranza?"*,
+  *"¿qué opinas de las ventas este mes?"* o *"¿qué productos dejan poco margen?"*
+  y El Chalán jala los números reales del sistema y te da su lectura. (Solo ve los
+  temas para los que tengas permiso: las opiniones de dinero requieren acceso a
+  Finanzas; las de ventas, a Cotizaciones.)
+- **Te avisa solo (análisis periódico).** Cada semana El Chalán prepara un
+  análisis del negocio y te lo deja como **notificación**. Al tocarla, se abre una
+  ventanita con su opinión y recomendaciones — sin sacarte de donde estés. Puedes
+  silenciar estos avisos en *Perfil → Notificaciones* ("Opiniones del negocio").
+- **Aprende del negocio con el tiempo.** El Chalán también va anotando
+  observaciones durables ("estos clientes pagan tarde", "este producto deja poco
+  margen") y te las **propone para aprobar** (igual que los aprendizajes). El
+  administrador las revisa en *Gerencia → Chalanes → Conocimiento del negocio* y
+  activa las que sean ciertas; solo entonces el Chalán las usa para opinar mejor.
+
+> Nota: este despacho no maneja inventario/almacén, así que cuando hablamos de
+> "productos" El Chalán opina de **costos y márgenes** del Catálogo, no de
+> existencias.
+
+---
+
 ## Novedades — Arreglos en pendientes de entrega/recolección (17 de junio de 2026)
 
 Tres correcciones en los pendientes de tipo **Entrega** y **Recoger** (los que

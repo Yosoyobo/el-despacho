@@ -62,14 +62,21 @@ def _seccion_acciones(usuario) -> str:
     return "\n".join(lineas)
 
 
+def _seccion_contexto_negocio() -> str:
+    """Conocimiento del negocio aprobado (review-first) que funda las opiniones."""
+    from .conocimiento import bloque_contexto_negocio
+    return bloque_contexto_negocio()
+
+
 def construir_system_prompt(usuario) -> str:
     from chalanes.voz import preludio, reglas
-    return preludio("taller_chat", usuario) + "\n\n".join([
+    return preludio("taller_chat", usuario) + "\n\n".join(p for p in [
         _BASE,
+        _seccion_contexto_negocio(),
         _seccion_herramientas(usuario),
         _seccion_acciones(usuario),
         _REFS,
-    ]) + reglas()
+    ] if p) + reglas()
 
 
 # ── Modo tool-use NATIVO (S-Chalan-Agente Fase 1) ─────────────────────────────
@@ -118,12 +125,13 @@ def construir_system_prompt_nativo(usuario) -> str:
     como tool schemas (no se enumeran aquí); sí van los tipos de acción válidos
     para `proponer_acciones`."""
     from chalanes.voz import preludio, reglas
-    return preludio("taller_chat", usuario) + "\n\n".join([
+    return preludio("taller_chat", usuario) + "\n\n".join(p for p in [
         _BASE_NATIVO,
+        _seccion_contexto_negocio(),
         contexto_usuario(usuario),
         _seccion_acciones(usuario),
         _REFS,
-    ]) + reglas()
+    ] if p) + reglas()
 
 
 def construir_user_prompt_chat(

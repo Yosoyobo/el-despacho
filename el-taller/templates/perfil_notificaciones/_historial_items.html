@@ -19,7 +19,13 @@
     <p class="mt-1 text-sm font-medium text-gray-800 dark:text-gray-100">{{ e.titulo }}</p>
     <p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">{{ e.cuerpo|truncatechars:140 }}</p>
     {% if e.url %}
-    <a href="{{ e.url }}" class="mt-1 inline-block text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir →</a>
+        {% if e.categoria == 'chalan_analisis' %}
+        {# El análisis del negocio se abre en un modal, no navega. #}
+        <button type="button" hx-get="{{ e.url }}" hx-target="#modal-slot" hx-swap="innerHTML"
+                class="mt-1 inline-block text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver análisis →</button>
+        {% else %}
+        <a href="{{ e.url }}" class="mt-1 inline-block text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir →</a>
+        {% endif %}
     {% endif %}
 </li>
 {% endfor %}

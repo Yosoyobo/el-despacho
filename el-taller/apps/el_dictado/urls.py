@@ -16,6 +16,8 @@ urlpatterns = [
     path("chalan/adjunto/<int:pk>", views_chat.adjunto_descargar, name="chalan-adjunto"),
     # Propuestas proactivas de El Chalán (Fase 3).
     path("chalan/propuesta/<int:pk>/descartar", views_chat.propuesta_descartar, name="chalan-propuesta-descartar"),
+    # Análisis del negocio: modal con la opinión del Chalán (S-Chalan-Negocio-V1).
+    path("chalan/analisis/<int:pk>/", views_chat.analisis_modal, name="chalan-analisis"),
     # El Dictado (flujo clásico de acciones).
     path("dictado/interpretar", views.interpretar_view, name="dictado-interpretar"),
     path("dictado/historial/", views.historial, name="dictado-historial"),

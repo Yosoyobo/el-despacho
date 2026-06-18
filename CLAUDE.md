@@ -4049,6 +4049,53 @@ de disparo requeriría puente cross-app. El destilador no aprende de las
 conversaciones del chat (`MensajeChat`) todavía — solo de Dictados. Los
 aprendizajes rechazados quedan inactivos (el dedup por frase evita re-proponerlos).
 
+### S-Chalan-Negocio-V1 ✅ — El Chalán aprende y opina del negocio (2026-06-17, VERSION 2026.06.74)
+
+Continuación de S-Chalan-Aprende-V1. Oscar: "que el Chalán también aprenda y
+opine del negocio — económicos, cobranza, ventas, inventario". Decisiones
+(AskUserQuestion): **inventario = costos/márgenes del Catálogo** (no hay stock
+real); **aprender = memoria + análisis**; **entrega = proactivo (notificación
+clickeable → modal) + chat on-demand**. 4 fases, todas review-first/defensivas.
+
+- **Fase 1 — lecturas de negocio** ([taller_home/negocio.py](el-taller/apps/taller_home/negocio.py)):
+  `hechos_finanzas/cobranza/ventas/margenes()` reúnen datos REALES reutilizando
+  contaduría (`reportes.estado_resultados`, `services.kpis_landing`), tesorería
+  (`cxc_unificado`, `series_mensuales_6m`), facturación/cotizaciones
+  (`kpis_landing`) y catálogo (`Servicio.margen_porcentaje`). Devuelven
+  `{titulo, hechos, metricas}`. Fuente única para chat + proactivo + destilador.
+- **Fase 2 — opina en el chat**: 4 herramientas read-only nuevas en
+  [herramientas.py](el-taller/apps/el_dictado/herramientas.py)
+  (`resumen_finanzas/cobranza/ventas/margenes`, gating `finanzas`/`cotizaciones`).
+  El chat las enumera solo desde el registry. Inyección del bloque
+  `[CONTEXTO DEL NEGOCIO]` (memoria aprobada) en los dos builders de
+  `prompt_chat.py`. Catálogo en `lib/dictado_catalogo.CONSULTAS_CHAT`.
+- **Fase 3 — opina proactivo** ([analisis_negocio.py](el-taller/apps/el_dictado/analisis_negocio.py)):
+  estación nueva `analisis_negocio` (sonnet, `chalanes/0017`). UNA llamada IA por
+  dominio (actor de sistema, sin tope) → reparte como `PropuestaChalan`
+  (`tipo=analisis_<dominio>`, idempotente por semana) a usuarios con permiso del
+  dominio → push Interfón. La fila en la tabla de notificaciones es **clickeable
+  → modal HTMX** (`/chalan/analisis/<pk>/`, vista `analisis_modal` con markdown).
+  Command `chalan_analizar_negocio [--dominio] [--dry-run]` + cron. Categoría
+  opt-out `chalan_analisis`.
+- **Fase 4 — aprende del negocio** (memoria review-first): modelo
+  `ConocimientoNegocio` ([models/conocimiento_negocio.py](el-taller/apps/el_dictado/models/conocimiento_negocio.py),
+  migr. `el_dictado/0007`, shadow `chalanes` managed=False) con `peso_efectivo()`.
+  Destilador [destilar_negocio.py](el-taller/apps/el_dictado/destilar_negocio.py)
+  saca observaciones durables (review-first, `activo=False`,
+  `origen=chalan_destilado`, dedup). `conocimiento.bloque_contexto_negocio()`
+  inyecta las aprobadas en chat + análisis. Revisión en Gerencia → Chalanes →
+  **Conocimiento del negocio** (lista + toggle, espejo de Aprendizajes). Command
+  `chalan_destilar_negocio [--dry-run]` + cron.
+- Eventos Portavoz: `chalan.analisis_negocio`, `chalan.conocimiento_destilado`.
+- **19 tests nuevos** (`tests/taller/test_negocio_chalan.py` 16 +
+  `tests/gerencia/test_conocimiento_negocio.py` 3). Regresión verde.
+
+**Deuda diseñada**: NO hay inventario/stock real (márgenes del Catálogo es lo
+más cercano); el análisis proactivo es informativo (no propone acciones — se
+podría con el flujo Dictado existente); el destilador y el analizador corren en
+crons separados (comparten Fase 1 pero hacen 2 llamadas IA/semana); la memoria
+de negocio no se inyecta al Dictado (solo a opiniones — chat + análisis).
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
@@ -4399,6 +4446,10 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    40 7 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_scouts >> /var/log/chalan_proactivo.log 2>&1
    # S-Chalan-Aprende-V1 (2026-06-17): El Chalán DESTILA aprendizajes de su historial (clarificaciones + acciones desmarcadas). Semanal (lunes 7:50). Crea propuestas INACTIVAS para revisar en Gerencia → Chalanes → Aprendizajes → "Propuestas del Chalán". Nunca entran al prompt sin que el super_admin las active. --dry-run disponible.
    50 7 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_destilar_aprendizajes >> /var/log/chalan_proactivo.log 2>&1
+   # S-Chalan-Negocio-V1 (2026-06-17): El Chalán OPINA del negocio (finanzas/cobranza/ventas/márgenes) → notificación clickeable que abre un modal con el análisis. Semanal (lunes 7:55). Reparte a usuarios con permiso del dominio; idempotente por semana. --dry-run disponible.
+   55 7 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_analizar_negocio >> /var/log/chalan_proactivo.log 2>&1
+   # S-Chalan-Negocio-V1 (2026-06-17): El Chalán APRENDE del negocio — destila observaciones durables (review-first) que alimentan sus opiniones. Semanal (lunes 8:00). Propuestas INACTIVAS en Gerencia → Chalanes → Conocimiento del negocio. --dry-run disponible.
+   0 8 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_destilar_negocio >> /var/log/chalan_proactivo.log 2>&1
    ```
 
    Los dos comandos de "vencidas" son idempotentes (campo

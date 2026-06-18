@@ -12,6 +12,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_http_methods
 
 from lib.permisos import puede
@@ -232,6 +234,39 @@ def propuesta_descartar(request, pk: int):
         prop.resuelta_en = timezone.now()
         prop.save(update_fields=["estado", "resuelta_en"])
     return redirect(request.META.get("HTTP_REFERER") or "taller-home")
+
+
+@login_required
+def analisis_modal(request, pk: int):
+    """GET /chalan/analisis/<pk>/ — modal HTMX (Wave 5) con el análisis del
+    negocio que El Chalán dejó como notificación. Solo el dueño lo ve; al abrirlo
+    se marca como visto."""
+    from django.utils import timezone
+
+    from .models import PropuestaChalan
+    prop = get_object_or_404(PropuestaChalan, pk=pk, usuario=request.user)
+    if prop.estado == "pendiente":
+        prop.estado = "vista"
+        prop.resuelta_en = timezone.now()
+        prop.save(update_fields=["estado", "resuelta_en"])
+
+    cuerpo_html = f"<p class='whitespace-pre-line'>{escape(prop.cuerpo)}</p>"
+    try:
+        import markdown as _md
+        cuerpo_html = _md.markdown(prop.cuerpo or "", extensions=["nl2br"])
+    except Exception:  # noqa: BLE001 — si falla markdown, queda el texto escapado
+        pass
+    sello = prop.creada_en.strftime("%Y-%m-%d %H:%M") if prop.creada_en else ""
+    cuerpo = (
+        f"<div class='space-y-2 leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 "
+        f"[&_li]:mt-1'>{cuerpo_html}</div>"
+        f"<p class='mt-4 text-xs text-gray-400'>Análisis de El Chalán · {sello}</p>"
+    )
+    return render(request, "_componentes_tailadmin/_modal_htmx.html", {
+        "titulo": prop.titulo,
+        "cuerpo": mark_safe(cuerpo),  # noqa: S308 — markdown + escape fallback
+        "tamano": "lg",
+    })
 
 
 @login_required

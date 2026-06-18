@@ -16,7 +16,7 @@ from django.views.decorators.http import require_POST
 
 from ajustes.models.analistas_log import AnalistaLog
 from ajustes.models.credencial import Credencial
-from chalanes.models import Aprendizaje, CadenaFallback, CuadroChalanes
+from chalanes.models import Aprendizaje, CadenaFallback, ConocimientoNegocio, CuadroChalanes
 from chalanes.models.cuadro_chalanes import PROVEEDORES
 from chalanes.services import proveedores_configurados
 from lib.analistas.registry import adapter_de, modelo_valido, modelos_por_proveedor
@@ -472,3 +472,63 @@ def aprendizaje_toggle(request, pk: int):
                 "actor_id": request.user.pk})
     messages.success(request, f"Aprendizaje {'activado' if ap.activo else 'desactivado'}.")
     return redirect("los_chalanes:aprendizajes-lista")
+
+
+# ── Conocimiento del negocio (S-Chalan-Negocio-V1) ───────────────────
+
+
+@requiere_permiso("chalanes", "ver")
+def conocimiento_lista(request):
+    """Observaciones durables del negocio que el Chalán destiló (review-first)."""
+    filtro = request.GET.get("filtro") or "propuestos"
+    qs = ConocimientoNegocio.objects.all()
+    if filtro == "activos":
+        qs = qs.filter(activo=True)
+    elif filtro == "inactivos":
+        qs = qs.filter(activo=False)
+    elif filtro == "propuestos":
+        qs = qs.filter(activo=False, origen="chalan_destilado")
+    items = list(qs.order_by("ambito", "-creado_en")[:200])
+    for it in items:
+        it.peso_efectivo_calc = round(it.peso_efectivo(), 2)
+        it.bajo_umbral = it.peso_efectivo_calc < 0.3
+    return render(request, "los_chalanes/conocimiento_lista.html", {
+        "items": items,
+        "filtro": filtro,
+        "puede_modificar": es_super_admin(request.user),
+        "totales": {
+            "todos": ConocimientoNegocio.objects.count(),
+            "activos": ConocimientoNegocio.objects.filter(activo=True).count(),
+            "inactivos": ConocimientoNegocio.objects.filter(activo=False).count(),
+            "propuestos": ConocimientoNegocio.objects.filter(
+                activo=False, origen="chalan_destilado").count(),
+        },
+        "breadcrumb_items": [
+            {"url": "/chalanes/", "label": "Chalanes"},
+            {"label": "Conocimiento del negocio"},
+        ],
+        "back_url": "/chalanes/",
+        "back_label": "Chalanes",
+    })
+
+
+@require_POST
+@requiere_permiso("chalanes", "configurar")
+def conocimiento_toggle(request, pk: int):
+    item = get_object_or_404(ConocimientoNegocio, pk=pk)
+    item.activo = not item.activo
+    if item.activo:
+        item.desactivado_en = None
+        item.desactivado_por = None
+        item.motivo_desactivacion = ""
+    else:
+        item.desactivado_en = timezone.now()
+        item.desactivado_por = request.user
+        item.motivo_desactivacion = (request.POST.get("motivo") or "")[:200]
+    item.save(update_fields=["activo", "desactivado_en", "desactivado_por", "motivo_desactivacion"])
+    with contextlib.suppress(Exception):
+        emitir({"tipo": "chalanes.conocimiento_toggled",
+                "conocimiento_id": item.pk, "activo": item.activo,
+                "actor_id": request.user.pk})
+    messages.success(request, f"Conocimiento {'activado' if item.activo else 'desactivado'}.")
+    return redirect("los_chalanes:conocimiento-lista")

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Conocimiento del negocio · El Chalán{% endblock %}
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Conocimiento del negocio" subtitulo="Observaciones durables que El Chalán destiló del negocio. Las que apruebes alimentan sus opiniones (finanzas, cobranza, ventas, márgenes)." breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <nav class="flex flex-wrap gap-1 text-sm">
+        {% with totales as t %}
+        <a href="?filtro=propuestos" class="rounded-lg px-3 py-1 {% if filtro == 'propuestos' %}bg-brand-500 text-white{% else %}border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">🤖 Propuestas del Chalán ({{ t.propuestos }})</a>
+        <a href="?filtro=activos"    class="rounded-lg px-3 py-1 {% if filtro == 'activos' %}bg-brand-500 text-white{% else %}border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">Activos ({{ t.activos }})</a>
+        <a href="?filtro=inactivos"  class="rounded-lg px-3 py-1 {% if filtro == 'inactivos' %}bg-brand-500 text-white{% else %}border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">Inactivos ({{ t.inactivos }})</a>
+        <a href="?filtro=todos"      class="rounded-lg px-3 py-1 {% if filtro == 'todos' %}bg-brand-500 text-white{% else %}border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">Todos ({{ t.todos }})</a>
+        {% endwith %}
+    </nav>
+</div>
+
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-2">Ámbito</th>
+                <th class="px-5 py-2">Observación</th>
+                <th class="px-5 py-2 text-center">Peso</th>
+                <th class="px-5 py-2 text-center">Estado</th>
+                <th class="px-5 py-2 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for it in items %}
+            <tr {% if it.bajo_umbral %}class="opacity-60"{% endif %}>
+                <td class="px-5 py-3 align-top">
+                    <span class="inline-flex items-center rounded-full bg-blue-light-50 px-2 py-0.5 text-xs font-medium text-blue-light-600 dark:bg-blue-light-500/10 dark:text-blue-light-400">{{ it.ambito }}</span>
+                </td>
+                <td class="px-5 py-3">
+                    <p class="font-medium text-gray-900 dark:text-gray-100">
+                        {{ it.observacion }}
+                        {% if it.origen == 'chalan_destilado' %}<span class="ml-1 inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">🤖 Propuesto por el Chalán</span>{% endif %}
+                    </p>
+                    {% if it.evidencia %}<p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ it.evidencia|truncatechars:160 }}</p>{% endif %}
+                    <p class="mt-0.5 text-[11px] text-gray-400">creado {{ it.creado_en|hfmt:"Y-m-d H:i" }}</p>
+                </td>
+                <td class="px-5 py-3 text-center font-mono text-xs">
+                    {{ it.peso|floatformat:2 }}
+                    <span class="ml-1 text-gray-400">→ {{ it.peso_efectivo_calc }}</span>
+                    {% if it.bajo_umbral and it.activo %}<p class="mt-1 text-[10px] text-warning-600">Bajo umbral 0.3.</p>{% endif %}
+                </td>
+                <td class="px-5 py-3 text-center">
+                    {% if it.activo %}
+                    <span class="inline-flex items-center rounded-full bg-success-50 px-2 py-0.5 text-xs text-success-700 dark:bg-success-500/10 dark:text-success-400">activo</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400" title="{{ it.motivo_desactivacion }}">inactivo</span>
+                    {% endif %}
+                </td>
+                <td class="px-5 py-3 text-right">
+                    {% if puede_modificar %}
+                    <form method="post" action="{% url 'los_chalanes:conocimiento-toggle' it.pk %}" class="inline">{% csrf_token %}
+                        <button class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
+                            {% if it.activo %}Desactivar{% else %}Activar{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-5 py-12">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin conocimiento del negocio aún" descripcion="Cuando el destilador corra (semanal o a mano con chalan_destilar_negocio), El Chalán propondrá aquí observaciones durables del negocio para que las apruebes." icono="sparkles" %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+    Las observaciones activas se inyectan como <code>[CONTEXTO DEL NEGOCIO]</code> en las opiniones del Chalán (chat + análisis proactivo). El peso decae con el tiempo; bajo 0.3 deja de inyectarse.
+</p>
+{% endblock %}

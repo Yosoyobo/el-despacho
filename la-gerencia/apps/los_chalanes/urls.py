@@ -22,6 +22,9 @@ urlpatterns = [
     path("aprendizajes/nuevo", views.aprendizaje_nuevo, name="aprendizaje-nuevo"),
     path("aprendizajes/<int:pk>/editar", views.aprendizaje_editar, name="aprendizaje-editar"),
     path("aprendizajes/<int:pk>/toggle", views.aprendizaje_toggle, name="aprendizaje-toggle"),
+    # Conocimiento del negocio (S-Chalan-Negocio-V1)
+    path("conocimiento/", views.conocimiento_lista, name="conocimiento-lista"),
+    path("conocimiento/<int:pk>/toggle", views.conocimiento_toggle, name="conocimiento-toggle"),
     # KPIs custom pendientes de aprobación (S2b.5)
     path("kpis-pendientes/", views.kpis_pendientes, name="kpis-pendientes"),
     path("kpis-pendientes/<int:pk>/aprobar", views.kpi_aprobar, name="kpi-aprobar"),

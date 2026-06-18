@@ -21,6 +21,7 @@ ESTACIONES: list[tuple[str, str, str, bool, str, str]] = [
     ("ocr_recibo",         "OCR de recibo",                "Extrae monto, fecha y concepto de la foto de un recibo.", True,  "openai",    "gpt-4o-mini"),
     ("checador_visita",    "Verificar visita/POI",         "Clasifica un registro del Checador (visita vs tarea cumplida) a partir de la nota, el destino y la tarea ligada.", False, "anthropic", "claude-haiku-4-5"),
     ("aprendizaje_destilado", "Aprender del historial",     "El Chalán destila aprendizajes reutilizables de su propio historial de Dictados (clarificaciones y acciones desmarcadas). Corre por cron; las propuestas se revisan antes de entrar al prompt.", False, "anthropic", "claude-sonnet-4-6"),
+    ("analisis_negocio",   "Opinar del negocio",           "El Chalán analiza y opina del negocio (económicos, cobranza, ventas, márgenes) con datos reales: lo usa el chat y el análisis proactivo que llega como notificación clickeable.", False, "anthropic", "claude-sonnet-4-6"),
     ("correo_redaccion",   "Redactar correo (El Cartero)", "Redacta/mejora el HTML de las plantillas de correo respetando las variables.", False, "anthropic", "claude-haiku-4-5"),
     ("redaccion_asistida", "Redactar texto (widget 🤖)",   "El botón 🤖 redacta comentarios, notas y respuestas; resuelve @#$ a datos reales.", False, "anthropic", "claude-haiku-4-5"),
     ("smoke",              "Smoke test",                   "Prueba mínima desde Los Ajustes — un saludo.", False, "anthropic", "claude-haiku-4-5"),

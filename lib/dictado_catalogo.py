@@ -371,6 +371,10 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "mi_jornada_hoy / mis_horas_semana", "que": "Tu jornada de hoy (entrada/salida/retardo) y tus horas de los últimos 7 días (El Checador)."},
     {"nombre": "resumen del calendario", "que": "En la página de Calendario, el botón '🤖 Resumir con El Chalán' arma un resumen ejecutivo de tus próximas entregas y tareas (qué viene, qué urge)."},
     {"nombre": "gasto_ia", "que": "Costo, llamadas y tokens de IA por proveedor."},
+    {"nombre": "resumen_finanzas", "que": "Cómo va el negocio en dinero: ingresos/egresos/utilidad del mes, margen y saldos (requiere permiso de Finanzas). Pregunta informal: «¿cómo vamos de finanzas?»."},
+    {"nombre": "resumen_cobranza", "que": "Cómo va la cobranza: CxC total, vencido por antigüedad y top deudores (requiere permiso de Finanzas). Pregunta: «¿cómo va la cobranza?»."},
+    {"nombre": "resumen_ventas", "que": "Cómo van las ventas: cotizaciones, conversión y pipeline de proyectos (requiere permiso de Cotizaciones). Pregunta: «¿qué opinas de las ventas este mes?»."},
+    {"nombre": "resumen_margenes", "que": "Costos y márgenes del Catálogo: margen promedio y los productos con peor margen (requiere permiso de Finanzas). Pregunta: «¿qué productos dejan poco margen?»."},
     {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},
     {"nombre": "📎 imagen", "que": "Adjunta una foto (recibo, ticket) y el Chalán la lee — si el Chalán activo tiene visión."},
 ]

@@ -308,6 +308,30 @@ def _h_gasto_ia(args: dict, usuario) -> dict:
     }
 
 
+def _h_resumen_finanzas(args: dict, usuario) -> dict:
+    from apps.taller_home.negocio import hechos_finanzas
+    h = hechos_finanzas()
+    return {"dominio": "finanzas", "titulo": h["titulo"], "resumen": h["hechos"] or "Sin datos."}
+
+
+def _h_resumen_cobranza(args: dict, usuario) -> dict:
+    from apps.taller_home.negocio import hechos_cobranza
+    h = hechos_cobranza()
+    return {"dominio": "cobranza", "titulo": h["titulo"], "resumen": h["hechos"] or "Sin datos."}
+
+
+def _h_resumen_ventas(args: dict, usuario) -> dict:
+    from apps.taller_home.negocio import hechos_ventas
+    h = hechos_ventas()
+    return {"dominio": "ventas", "titulo": h["titulo"], "resumen": h["hechos"] or "Sin datos."}
+
+
+def _h_resumen_margenes(args: dict, usuario) -> dict:
+    from apps.taller_home.negocio import hechos_margenes
+    h = hechos_margenes()
+    return {"dominio": "margenes", "titulo": h["titulo"], "resumen": h["hechos"] or "Sin datos."}
+
+
 def _h_estado_servidor(args: dict, usuario) -> dict:
     salida: dict = {}
     try:
@@ -640,6 +664,30 @@ HERRAMIENTAS: dict[str, Herramienta] = {
         descripcion="Gasto en IA (costo USD, llamadas, tokens) por proveedor. Arg opcional: dias (default 30).",
         args_schema={"dias": {"tipo": "int", "requerido": False}},
         gating="abierto", fn=_h_gasto_ia,
+    ),
+    "resumen_finanzas": Herramienta(
+        nombre="resumen_finanzas",
+        descripcion="Foto económica del negocio: ingresos/egresos/utilidad del mes, margen, saldos (caja/banco/CxC) y utilidad de los últimos 6 meses. Úsala para opinar de finanzas.",
+        args_schema={},
+        gating="finanzas", fn=_h_resumen_finanzas,
+    ),
+    "resumen_cobranza": Herramienta(
+        nombre="resumen_cobranza",
+        descripcion="Estado de la cobranza: CxC total, vencido por antigüedad (1-30/31-60/+60 días), top deudores y conteo de facturas. Úsala para opinar de cobranza.",
+        args_schema={},
+        gating="finanzas", fn=_h_resumen_cobranza,
+    ),
+    "resumen_ventas": Herramienta(
+        nombre="resumen_ventas",
+        descripcion="Pulso de ventas: cotizaciones por estado, conversión aproximada, anticipos por facturar, pipeline de proyectos por estado y facturas cobradas del mes.",
+        args_schema={},
+        gating="cotizaciones", fn=_h_resumen_ventas,
+    ),
+    "resumen_margenes": Herramienta(
+        nombre="resumen_margenes",
+        descripcion="Costos y márgenes del Catálogo: margen promedio, productos/servicios con peor margen y los que no tienen costo capturado. (Este despacho no maneja stock.)",
+        args_schema={},
+        gating="finanzas", fn=_h_resumen_margenes,
     ),
     "estado_servidor": Herramienta(
         nombre="estado_servidor",
