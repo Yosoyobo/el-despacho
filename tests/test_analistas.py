@@ -10,6 +10,7 @@ import pytest
 from lib.analistas.adapters.anthropic import AnthropicAdapter
 from lib.analistas.adapters.gemini import GeminiAdapter
 from lib.analistas.adapters.mimo import MimoAdapter
+from lib.analistas.adapters.ollama import OllamaAdapter
 from lib.analistas.adapters.openai import OpenAIAdapter
 from lib.analistas.base import (
     ErrorPermanente,
@@ -204,6 +205,99 @@ class TestAdaptersUnitarios:
         assert adapter is not None
         assert adapter.nombre == "gemini"
         assert adapter.apodo == "Chalán Gemini"
+
+    # ── Ollama / Chalán Llama (Test) ──
+
+    _BASE = "http://100.120.28.93:11434"
+
+    def test_ollama_sin_base_url_lanza_falta(self, db):
+        # Sin el slot chalan_ollama_base_url → FaltaCredencial (la cadena lo salta).
+        with pytest.raises(FaltaCredencial):
+            OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_ollama_esta_configurado_segun_slot(self, db):
+        from ajustes.models.credencial import Credencial
+        assert OllamaAdapter().esta_configurado() is False
+        Credencial.guardar("chalan_ollama_base_url", self._BASE)
+        assert OllamaAdapter().esta_configurado() is True
+
+    def test_ollama_200_devuelve_resultado(self, db):
+        from ajustes.models.credencial import Credencial
+        # El slot guarda el base URL con slash final — debe normalizarse.
+        Credencial.guardar("chalan_ollama_base_url", self._BASE + "/")
+        payload = {
+            "model": "llama3.2",
+            "choices": [{"message": {"role": "assistant", "content": "ok"}}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 2},
+        }
+        with patch("httpx.post", return_value=_RespFalsa(200, payload)) as mock_post:
+            res = OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+        args, kw = mock_post.call_args
+        # URL apunta al endpoint compatible-OpenAI del base configurado (sin doble slash).
+        assert args[0] == self._BASE + "/v1/chat/completions"
+        # Ollama no usa auth: ni Bearer ni api-key.
+        assert "Authorization" not in kw["headers"]
+        assert "api-key" not in kw["headers"]
+        # Usa max_tokens (endpoint estilo OpenAI).
+        assert kw["json"]["max_tokens"] == 10
+        assert res.texto == "ok"
+        assert res.provider == "ollama"
+        assert res.prompt_tokens == 5
+        assert res.completion_tokens == 2
+        # Local → costo 0 (el conteo de tokens sigue siendo exacto).
+        assert res.costo_usd == 0
+
+    def test_ollama_401_es_permanente(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_ollama_base_url", self._BASE)
+        with patch("httpx.post", return_value=_RespFalsa(401, text="no auth")), \
+             pytest.raises(ErrorPermanente):
+            OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_ollama_503_es_transitorio(self, db):
+        from ajustes.models.credencial import Credencial
+        Credencial.guardar("chalan_ollama_base_url", self._BASE)
+        with patch("httpx.post", return_value=_RespFalsa(503, text="cargando modelo")), \
+             pytest.raises(ErrorTransitorio):
+            OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+
+    def test_ollama_listar_modelos_desde_api_tags(self, db):
+        from ajustes.models.credencial import Credencial
+        # Sin base URL → cae a la lista curada.
+        assert OllamaAdapter().listar_modelos() == list(OllamaAdapter.modelos_curados)
+        # Con base URL → consulta /api/tags y devuelve los modelos descargados.
+        Credencial.guardar("chalan_ollama_base_url", self._BASE)
+        tags = {"models": [{"name": "llama3.2:latest"}, {"name": "qwen2.5:7b"}]}
+        with patch("httpx.get", return_value=_RespFalsa(200, tags)) as mock_get:
+            modelos = OllamaAdapter().listar_modelos()
+        assert mock_get.call_args[0][0] == self._BASE + "/api/tags"
+        assert modelos == ["llama3.2:latest", "qwen2.5:7b"]
+
+    def test_ollama_registrado_en_factories(self):
+        from lib.analistas.registry import _FACTORIES, adapter_de
+        assert "ollama" in _FACTORIES
+        adapter = adapter_de("ollama")
+        assert adapter is not None
+        assert adapter.nombre == "ollama"
+        assert adapter.apodo == "Chalán Llama"
+
+    def test_ollama_NO_entra_solo_al_fallback(self, db):
+        """El slot es chalan_ollama_base_url (no chalan_*_api_key), así que el
+        signal de auto-fallback NO lo engancha — un servidor local de pruebas no
+        debe inyectarse solo en el relevo de producción."""
+        from ajustes.models.credencial import Credencial
+        from chalanes.models import CadenaFallback
+        Credencial.guardar("chalan_ollama_base_url", self._BASE)
+        assert not CadenaFallback.objects.filter(proveedor="ollama").exists()
+
+    def test_ollama_panel_lo_reconoce_por_su_slot(self, db):
+        """tarjetas_chalanes lee slot_credencial (base URL) en vez de api_key."""
+        from ajustes.models.credencial import Credencial
+        from lib.analistas.stats import tarjetas_chalanes
+        Credencial.guardar("chalan_ollama_base_url", self._BASE)
+        tarjetas = {t["nombre"]: t for t in tarjetas_chalanes()}
+        assert tarjetas["ollama"]["slot"] == "chalan_ollama_base_url"
+        assert tarjetas["ollama"]["configurado"] is True
 
 
 def _post_routed(*, anthropic_resp, openai_resp):

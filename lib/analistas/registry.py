@@ -16,18 +16,21 @@ from .adapters import (
     DeepseekAdapter,
     GeminiAdapter,
     MimoAdapter,
+    OllamaAdapter,
     OpenAIAdapter,
 )
 from .base import Adapter
 
-# Map nombre → factory. Los 5 Chalanes están activos a partir de
-# S-Demo-Pre-Showcase (2026-05-24).
+# Map nombre → factory. Los 5 Chalanes cloud están activos a partir de
+# S-Demo-Pre-Showcase (2026-05-24). 'ollama' es el Chalán Llama (Test): servidor
+# local/self-hosted (Tailscale), no entra solo al fallback global.
 _FACTORIES: dict[str, type[Adapter]] = {
     "anthropic": AnthropicAdapter,
     "openai": OpenAIAdapter,
     "deepseek": DeepseekAdapter,
     "mimo": MimoAdapter,
     "gemini": GeminiAdapter,
+    "ollama": OllamaAdapter,
 }
 
 # Fallback de seguridad si las tablas chalanes_* no existen aún.
