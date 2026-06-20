@@ -27,6 +27,7 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("chalan_deepseek_api_key", "Chalán Chino — API Key", "API key del Chalán Chino (Deepseek). NO soporta visión."),
     ("chalan_gemini_api_key", "Chalán Gemini — API Key (reservado)", "Reservado; el adapter se activa en un sprint posterior."),
     ("chalan_mimo_api_key", "Chalán MiMo — API Key", "API key del Chalán MiMo (Xiaomi). Soporta visión. Header `api-key`, no Bearer."),
+    ("chalan_ollama_base_url", "Chalán Llama (Test) — Base URL", "URL del servidor Ollama local/Tailscale (ej. http://100.120.28.93:11434). NO es API key; sin esto el Chalán Llama queda inactivo. No entra solo al fallback."),
     # Legacy — reemplazados por chalan_* arriba (pre-S2b.1). El super_admin
     # los puede borrar manualmente desde la UI tras validar la migración.
     ("anthropic_api_key", "Legacy: Anthropic — API Key", "Slot legacy. Usa chalan_anthropic_api_key."),

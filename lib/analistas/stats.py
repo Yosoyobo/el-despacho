@@ -152,7 +152,9 @@ def tarjetas_chalanes(dias: int = 30) -> list[dict]:
     salida: list[dict] = []
     for nombre, factory in _FACTORIES.items():
         adapter = factory()
-        slot = f"chalan_{nombre}_api_key"
+        # La mayoría de Chalanes usan `chalan_<nombre>_api_key`; los que tienen
+        # otro tipo de credencial (ej. Ollama → base URL) declaran su slot.
+        slot = getattr(adapter, "slot_credencial", "") or f"chalan_{nombre}_api_key"
         cred = Credencial.objects.filter(clave=slot).first()
         llave = Credencial.obtener(slot) if cred else None
         configurado = bool(llave)

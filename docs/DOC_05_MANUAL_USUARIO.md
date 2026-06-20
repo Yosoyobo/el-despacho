@@ -5,6 +5,24 @@
 
 ---
 
+## Novedades — Un Chalán nuevo de pruebas: "Llama" (20 de junio de 2026)
+
+Sumamos un **sexto Chalán llamado "Llama (Test)"**. A diferencia de los otros
+(Claudio, GPT, Chino, MiMo, Gemini), Llama **no vive en internet**: corre en una
+computadora propia de la red de la oficina y usa modelos de inteligencia
+artificial abiertos y **gratuitos**. Es para **hacer pruebas** sin gastar.
+
+- **¿Para qué sirve?** Es un Chalán más. Una vez configurado, se le puede asignar
+  a alguna tarea de El Chalán (por ejemplo, redactar o consultar) para comparar
+  cómo responde frente a los demás, sin costo.
+- **¿Cómo se activa?** Lo configura el administrador: en **Gerencia → Ajustes**
+  pega la dirección de la computadora que corre los modelos, y en
+  **Gerencia → Chalanes** lo elige para la tarea que quiera probar. Si esa
+  computadora está apagada o sin modelos cargados, El Despacho simplemente usa
+  otro Chalán — nunca se cae nada.
+- **Nota:** por ser de prueba, **no entra solo** al "relevo" automático de
+  Chalanes; sólo trabaja donde el administrador lo asigna a propósito.
+
 ## Novedades — El Chalán ahora opina del negocio (17 de junio de 2026)
 
 Además de aprender tu jerga, El Chalán ya **analiza y opina del negocio**:

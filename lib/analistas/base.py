@@ -76,6 +76,10 @@ class Adapter(ABC):
     modelo_default: str = ""
     # Lista corta de modelos conocidos — fallback cuando la API no responde.
     modelos_curados: tuple = ()
+    # Slot de Credencial que activa al Chalán. Vacío → el caller asume el
+    # patrón estándar `chalan_<nombre>_api_key`. Los adapters cuyo "secreto" no
+    # es una API key (ej. Ollama, que usa un base URL) lo overridean.
+    slot_credencial: str = ""
 
     @abstractmethod
     def _invocar(self, prompt: str, *, max_tokens: int, temperatura: float,

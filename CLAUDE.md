@@ -4096,6 +4096,73 @@ podría con el flujo Dictado existente); el destilador y el analizador corren en
 crons separados (comparten Fase 1 pero hacen 2 llamadas IA/semana); la memoria
 de negocio no se inyecta al Dictado (solo a opiniones — chat + análisis).
 
+### S-Chalan-Ollama ✅ — Chalán Llama (Test): Ollama local vía Tailscale (2026-06-20, VERSION 2026.06.75)
+
+Pedido de Oscar: sumar Ollama como **6º Chalán de pruebas** ("Chalán Llama
+(Test)"). Sirve modelos abiertos (llama/qwen/mistral) desde un servidor
+local/self-hosted en la red Tailscale (la NUC `http://100.120.28.93:11434`).
+Sigue el checklist del sprint S-Chalan-MiMo, con **dos desviaciones deliberadas**
+por ser local y de prueba:
+
+- **El "secreto" es un base URL, no una API key.** Slot nuevo
+  `chalan_ollama_base_url` en `SLOTS_CREDENCIAL` (se pega la URL del servidor en
+  Los Ajustes). Sin el slot, `OllamaAdapter` lanza `FaltaCredencial` y El
+  Reemplazo lo salta. Para que el panel (`stats.tarjetas_chalanes`) y
+  `esta_configurado` no asuman el patrón `chalan_<nombre>_api_key`, se agregó el
+  atributo `Adapter.slot_credencial` (default `""` → patrón estándar; Ollama lo
+  overridea). El panel ahora lee `getattr(adapter, "slot_credencial", ...)`.
+- **NO entra solo a la cadena de fallback.** Como el slot no matchea
+  `chalan_<prov>_api_key`, el signal `auto_agregar_a_cadena_fallback` no lo
+  engancha — un servidor local que puede estar apagado no debe inyectarse solo
+  en el relevo de producción. El super_admin lo asigna a una estación a mano
+  desde `/chalanes/` (o lo suma a `CadenaFallback` manualmente).
+
+- **`lib/analistas/adapters/ollama.py`**: `OllamaAdapter` (nombre `ollama`,
+  apodo "Chalán Llama"). Endpoint compatible-OpenAI `{base}/v1/chat/completions`
+  (sin header de auth — Ollama no lo requiere), `max_tokens` estilo OpenAI,
+  `timeout=60` (carga en frío del modelo). `capacidades = {TEXTO,
+  FUNCTION_CALLING}` (espejo de Deepseek; soporta `chatear`/tool-use vía
+  `parsear_openai`). **Costo $0** (`PRECIO_IN = PRECIO_OUT = 0.0`) — local; el
+  conteo de tokens de `AnalistaLog` sigue exacto. `listar_modelos()` consulta el
+  endpoint nativo `GET {base}/api/tags` (muestra los modelos REALMENTE
+  descargados en el servidor en el dropdown del Cuadro) y cae a los curados
+  (`llama3.2`, `llama3.1`, `qwen2.5`, `mistral`, `gemma2`) si no hay URL o el
+  servidor no responde. `consultar_saldo` → `soportado=False` ("Local, sin
+  costo"). Errores: 401/403 y otros 4xx → `ErrorPermanente` (modelo no
+  descargado da 404 → permanente; la cadena salta al siguiente); 429/5xx →
+  `ErrorTransitorio`.
+- Registrado en `_FACTORIES`, `adapters/__init__.py` y `PROVEEDORES`
+  (`cuadro_chalanes.py`). Migración `chalanes/0018_ollama_proveedor` — sólo
+  `AlterField` de choices (verificado: `makemigrations --check` no reporta el
+  cambio como pendiente; los `Alter field id` que sí salen son los espurios
+  conocidos de BigAutoField, no de este sprint). **No** siembra fila en
+  `CadenaFallback`.
+- **9 tests nuevos** en `tests/test_analistas.py` (sin base URL → falta,
+  `esta_configurado` por slot, 200 con normalización de slash + URL correcta +
+  sin auth + `max_tokens` + costo 0, 401 permanente, 503 transitorio,
+  `listar_modelos` vía `/api/tags` con fallback, registrado en factories, NO
+  entra al fallback, panel lo reconoce por su slot). Actualizado el test de
+  conteo del panel a `set(_FACTORIES)`. Suite analistas+panel: 54 verdes, Ruff
+  limpio.
+
+**Pasos post-deploy (manuales):**
+1. **En la NUC: `ollama pull llama3.2`** (o el modelo que se quiera probar) —
+   hoy el servidor no tiene modelos (`/api/tags` → `{"models":[]}`), así que el
+   Chalán no responde hasta bajar uno.
+2. Ollama debe escuchar en la interfaz Tailscale (`OLLAMA_HOST=0.0.0.0:11434`),
+   no solo en `127.0.0.1` (ajuste ya hecho en la NUC).
+3. super_admin → `/ajustes/` pega `http://100.120.28.93:11434` en *"Chalán Llama
+   (Test) — Base URL"*; luego `/chalanes/` para asignarlo a una estación de
+   prueba (o `/chalanes/cadena/` para sumarlo al fallback si así se decide).
+
+**Deuda diseñada:** tarifa $0 fija (es local; si algún día se quiere imputar
+costo de cómputo, ajustar `PRECIO_*`); no declara `VISION` (depende del modelo
+cargado — para OCR con un modelo de visión habría que declararla y asignar un
+modelo llava/qwen-vl); el adapter no monitorea el servidor en El Site (un
+servidor local apagado saldría en rojo — se omitió a propósito por ser de
+prueba); el base URL se enmascara en el panel como si fuera llave (cosmético,
+no es secreto).
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
