@@ -4,14 +4,15 @@
 	email oscar@bautista.mx
 }
 
-# Dominio raíz: splash estático con el logo de Learning Center centrado
-# sobre el color de fondo de marca. Servido por file_server desde el bind
-# mount ./infra/landing (ver docker-compose.yml). No es una app Django.
+# Dominio raíz: sitio de marketing de Learning Center (Next.js export +
+# HeroUI, desarrollado por Jorge). Corre en HAL servido por launchd
+# (mx.learningcenter.web, puerto 8088) y se alcanza vía Tailscale.
+# No es una app Django; El Despacho solo hace de reverse proxy.
 learningcenter.mx {
 	encode gzip
-	root * /srv/landing
 	respond /ping "ok" 200
-	file_server
+	# Sitio de marketing (Next export) servido desde HAL vía Tailscale.
+	reverse_proxy 100.107.38.26:8088
 }
 
 # www → apex (redirect permanente).
