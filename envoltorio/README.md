@@ -1,6 +1,6 @@
 # El Envoltorio — app Android nativa (TWA) de El Taller
 
-> Desarrollado por **NoKo Devs** ([noko.mx](https://www.noko.mx)) · © 2026 Learning Center.
+> Desarrollado por **NoKo Devs** ([devs.noko.mx](https://devs.noko.mx)) · © 2026 Learning Center.
 
 Wrapper nativo **gratuito** ($0) de la PWA de El Taller para Android, vía
 **TWA (Trusted Web Activity)**. La TWA corre sobre Chrome: conserva **push del

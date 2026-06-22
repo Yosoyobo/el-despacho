@@ -1,8 +1,12 @@
 # CLAUDE.md — Memoria del agente para El Despacho
 
-> Desarrollado por **NoKo Devs** ([noko.mx](https://www.noko.mx)) ·
-> © 2026 Learning Center. Cualquier footer / documentación visible al
-> usuario final debe preservar la línea "Desarrollado por NoKo Devs".
+> Desarrollado por **NoKo Devs** ([devs.noko.mx](https://devs.noko.mx)) ·
+> © 2026 Learning Center. **REGLA CANÓNICA INVIOLABLE (ver §4 #21):**
+> todo footer / documentación visible al usuario final debe preservar la
+> línea "Desarrollado por NoKo Devs", con **NoKo Devs** como hipervínculo a
+> `https://devs.noko.mx`. Aplica a TODAS las apps (Taller, Gerencia,
+> Recepción, marketing) y a toda página nueva por default. NADIE puede
+> cambiarla.
 
 > Léeme **primero** en cualquier sesión nueva. Aquí está el contexto del proyecto,
 > reglas inviolables, decisiones tomadas y qué viene en cada sesión.
@@ -144,6 +148,18 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
     tenerlo) en una migración `seed_permisos_*`, (c) gatea vistas + sidebar,
     (d) verifica que aparezca en `/directorio/<id>/permisos/` para delegarlo.
     El único rol duro permitido es el failsafe `super_admin`.
+21. **Footer "Desarrollado por NoKo Devs" — REGLA CANÓNICA INVIOLABLE
+    (decisión Oscar, 2026-06-22).** TODO footer y TODA documentación
+    visible al usuario final debe preservar la leyenda **"Desarrollado por
+    NoKo Devs"**, con el texto **NoKo Devs** como hipervínculo a
+    **`https://devs.noko.mx`** (`target="_blank" rel="noopener"`). Aplica
+    sin excepción a El Taller, La Gerencia, La Recepción, el sitio de
+    marketing (`learningcenter.mx`) y a CUALQUIER página nueva — el footer
+    por default ya la incluye. **NADIE NUNCA puede quitarla, alterar el
+    texto ni cambiar la URL.** Toda página nueva nace con este footer. Si
+    algún sprint introduce un layout/base nuevo, hereda esta línea desde el
+    inicio. (URL anterior `www.noko.mx` reemplazada por `devs.noko.mx` el
+    2026-06-22 en los 7 footers + README + DOC_05 + envoltorio.)
 
 ---
 
@@ -4206,7 +4222,7 @@ agrupado en main:
   claro.
 - **Footer NoKo Devs**: las 3 apps (Taller, Gerencia, Recepción)
   muestran "© 2026 Learning Center · Privacidad · Términos · Desarrollado
-  por NoKo Devs" con link a noko.mx. README.md, CLAUDE.md y
+  por NoKo Devs" con link a devs.noko.mx. README.md, CLAUDE.md y
   DOC_05 también marcan el crédito.
 
 Cero migraciones de schema, cero pasos manuales post-deploy.

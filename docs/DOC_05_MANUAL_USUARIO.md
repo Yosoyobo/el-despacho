@@ -1,7 +1,16 @@
 # Manual de Usuario — El Despacho
 
 > Sistema interno de Learning Center.
-> Desarrollado por **[NoKo Devs](https://www.noko.mx)** · © 2026.
+> Desarrollado por **[NoKo Devs](https://devs.noko.mx)** · © 2026.
+
+---
+
+## Novedades — Crédito de NoKo Devs en el pie de página (22 de junio de 2026)
+
+El enlace **"Desarrollado por NoKo Devs"** que aparece en el pie de página de
+todo el sistema ahora lleva a la dirección **devs.noko.mx**. No cambia nada de
+cómo usas el sistema: es solo el crédito de quien desarrolla El Despacho, y
+seguirá apareciendo en todas las pantallas.
 
 ---
 
