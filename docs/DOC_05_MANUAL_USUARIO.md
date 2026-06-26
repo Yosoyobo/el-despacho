@@ -5,6 +5,26 @@
 
 ---
 
+## Novedades — El recordatorio para checar tu entrada ya está activo (26 de junio de 2026)
+
+Si llega tu hora de entrada y **aún no has checado**, El Checador te manda una
+**notificación** recordándote que la registres ("Recuerda checar tu entrada").
+Esta función ya existía, pero el aviso automático **no se estaba enviando**; con
+esta actualización **ya queda activo**.
+
+- **¿Cuándo llega?** En la mañana, una vez que pasó tu hora de entrada (más tu
+  tolerancia) y mientras siga siendo razonable que llegues. **Solo una vez al
+  día** — si ya checaste, no te molesta.
+- **¿A quién?** A quien tiene un horario de trabajo configurado y suele usar El
+  Checador. Si no tienes horario asignado, no recibes el aviso.
+- **¿Cómo lo apago?** Como cualquier otra notificación, desde **Perfil →
+  Notificaciones**, en la categoría del Checador.
+- **Con El Chalán:** no es un comando; es un aviso automático. Puedes preguntarle
+  a El Chalán cosas como *"¿quién no ha checado entrada hoy?"* si tienes permiso
+  para ver al equipo.
+
+---
+
 ## Novedades — Crédito de NoKo Devs en el pie de página (22 de junio de 2026)
 
 El enlace **"Desarrollado por NoKo Devs"** que aparece en el pie de página de

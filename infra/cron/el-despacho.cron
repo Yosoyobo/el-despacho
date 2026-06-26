@@ -1,0 +1,54 @@
+# >>> El Despacho (gestionado por mudanza.sh) >>>
+# ──────────────────────────────────────────────────────────────────────────
+# Fuente ÚNICA de verdad de los cron jobs de La Sede. NO editar a mano en el
+# servidor: mudanza.sh reinstala este bloque en el crontab del usuario
+# `despacho` en CADA deploy (idempotente — reemplaza solo lo que hay entre los
+# marcadores >>> / <<<). Si cambias un horario o agregas un job, edítalo AQUÍ
+# y vuelve a desplegar; el cambio llega solo. Espejo de CLAUDE.md §10.
+#
+# Zona horaria: el host del Droplet suele estar en UTC; cron de Debian/Ubuntu
+# soporta CRON_TZ, así que fijamos los horarios a hora de México. Todos los
+# horarios de abajo se leen en America/Mexico_City (lo que dicen los comentarios).
+# ──────────────────────────────────────────────────────────────────────────
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=America/Mexico_City
+
+# Backup (El Archivo): cada 3 días a las 03:00. Incluye replicación a HAL + La Optimización.
+0 3 */3 * * /opt/el-despacho/infra/scripts/archivo.sh >> /var/log/archivo.log 2>&1
+
+# Cotizaciones / Facturas vencidas (idempotente por entidad).
+0 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_cotizaciones_vencidas >> /var/log/vencidas.log 2>&1
+5 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_facturas_vencidas >> /var/log/vencidas.log 2>&1
+
+# El Site — chequeo diario de integraciones (stackea docker-compose.site.yml).
+30 3 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml exec -T la-gerencia python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
+
+# Recordatorios de tareas por vencer (config en Gerencia → Ajustes → Recordatorios).
+10 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py recordar_tareas_por_vencer >> /var/log/recordatorios.log 2>&1
+
+# La Cobranza — recordatorios de pago a clientes (ARRANCA APAGADA: no envía hasta activarla en Gerencia → Ajustes → La Cobranza).
+15 6 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py enviar_recordatorios_cobranza >> /var/log/cobranza.log 2>&1
+
+# El Checador — recuerda checar entrada a quien ya es tarde y no ha checado (idempotente por día). Cada 30 min en la franja matutina L-V.
+*/30 7-12 * * 1-5 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py recordar_checada_entrada >> /var/log/checador_entrada.log 2>&1
+
+# El Checador — cierra jornadas abiertas no checadas antes de las 05:00 del día siguiente.
+10 5 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py cerrar_jornadas_abiertas >> /var/log/checador_cierre.log 2>&1
+
+# Pendientes CON HORA que llegan a su fecha+hora → aviso a los asignados (idempotente). Cada 15 min en horario laboral L-S.
+*/15 7-20 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py avisar_pendientes_cumplidos >> /var/log/pendientes_cumplidos.log 2>&1
+
+# El Chalán PROACTIVO — digest matutino + scouts (facturas vencidas, proyectos estancados, mandados sin avance). Generan PropuestaChalan; nunca aplican solos.
+20 7 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_digest_matutino >> /var/log/chalan_proactivo.log 2>&1
+40 7 * * 1-6 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_scouts >> /var/log/chalan_proactivo.log 2>&1
+
+# El Chalán DESTILA aprendizajes de su historial (review-first). Lunes 7:50.
+50 7 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_destilar_aprendizajes >> /var/log/chalan_proactivo.log 2>&1
+
+# El Chalán OPINA del negocio (finanzas/cobranza/ventas/márgenes) → notificación clickeable. Lunes 7:55.
+55 7 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_analizar_negocio >> /var/log/chalan_proactivo.log 2>&1
+
+# El Chalán APRENDE del negocio — destila observaciones durables (review-first). Lunes 8:00.
+0 8 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_destilar_negocio >> /var/log/chalan_proactivo.log 2>&1
+# <<< El Despacho <<<

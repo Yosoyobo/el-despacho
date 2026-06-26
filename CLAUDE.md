@@ -4505,7 +4505,16 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    pregunta/consulta/comando lo dispara). Si la feature no es accesible
    por El Chalán, decláralo explícitamente. No se considera "entregada"
    una feature sin su línea de utilidad + uso con El Chalán.
-7. **Crontab vigente en La Sede** (consulta de referencia):
+7. **Crontab vigente en La Sede** — **YA NO es paso manual** (S-Cron-Sync,
+   2026-06-26). La fuente única de verdad es **`infra/cron/el-despacho.cron`**
+   (incluye `CRON_TZ=America/Mexico_City` para que los horarios se lean en hora
+   de México aunque el host del Droplet esté en UTC). **`mudanza.sh` reinstala
+   ese bloque en el crontab del usuario `despacho` en CADA deploy** (idempotente:
+   reemplaza solo lo que está entre los marcadores `# >>> El Despacho … >>>` /
+   `# <<< El Despacho <<<`, sin tocar otros crons del usuario). Para cambiar un
+   horario o sumar un job: edita `infra/cron/el-despacho.cron` y vuelve a
+   desplegar — llega solo. El bloque de abajo es el espejo de referencia (lo que
+   queda instalado):
 
    ```cron
    # /etc/cron.d/el-despacho — agregadas en S-Deuda-V1 (2026-05-24)
