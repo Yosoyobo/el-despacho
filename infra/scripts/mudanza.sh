@@ -11,31 +11,14 @@ git pull --ff-only origin main
 COMMIT_SHA=$(git rev-parse --short HEAD)
 COMMIT_MSG=$(git log -1 --format="%s" HEAD | head -c 200)
 
-# Sincroniza los cron jobs de La Sede desde infra/cron/el-despacho.cron (fuente
-# única de verdad, espejo de CLAUDE.md §10). Reemplaza SOLO el bloque entre los
-# marcadores >>> / <<< en el crontab del usuario `despacho`; lo demás queda
-# intacto. Idempotente — correrlo en cada deploy no duplica líneas. Así los
-# avisos programados (recordatorio de entrada del Checador, cobranza, El Chalán
-# proactivo, backups…) ya NO dependen de un paso manual por SSH. Best-effort:
-# un fallo de crontab nunca debe abortar el deploy.
+# Sincroniza los cron jobs de La Sede (recordatorio de entrada del Checador,
+# cobranza, El Chalán proactivo, backups…). La lógica canónica vive en
+# sync_crons.sh; aquí solo se delega para no duplicarla. Best-effort.
+# NOTA: el deploy real corre el script inline de .github/workflows/el-mensajero.yml,
+# NO este archivo (legacy). El sync de crons vive en AMBOS para mantenerlos
+# consistentes si algún día este script vuelve a usarse a mano.
 echo "==> [Mudanza] sincronizando crons (infra/cron/el-despacho.cron)"
-CRON_FUENTE="/opt/el-despacho/infra/cron/el-despacho.cron"
-if [ -f "$CRON_FUENTE" ]; then
-  CRON_TMP=$(mktemp)
-  # crontab -l falla si no hay crontab previo → || true para no abortar.
-  { crontab -l 2>/dev/null || true; } \
-    | sed '/# >>> El Despacho (gestionado por mudanza.sh) >>>/,/# <<< El Despacho <<</d' \
-    > "$CRON_TMP"
-  cat "$CRON_FUENTE" >> "$CRON_TMP"
-  if crontab "$CRON_TMP"; then
-    echo "   crons sincronizados ($(grep -cvE '^\s*(#|$)' "$CRON_FUENTE") líneas)"
-  else
-    echo "   (warn) no se pudo instalar el crontab — revisar manualmente"
-  fi
-  rm -f "$CRON_TMP"
-else
-  echo "   (warn) $CRON_FUENTE no existe — ¿pull incompleto? — omito sync de crons"
-fi
+bash /opt/el-despacho/infra/scripts/sync_crons.sh || echo "   (warn) sync de crons falló — revisar manualmente"
 
 # S-Aviso-Deploy-V1: marca bandera en Redis ANTES de tocar containers.
 # Tolerante a fallo — el banner es nice-to-have, no debe abortar el deploy.

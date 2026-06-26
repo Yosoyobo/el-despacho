@@ -335,6 +335,14 @@ jobs:
             fi
 
             rm -f docker-compose.prod.yml.previo
+
+            # Sincroniza el crontab de La Sede desde infra/cron/el-despacho.cron
+            # (idempotente, bloque gestionado). El repo ya está en el commit
+            # nuevo por el `git reset --hard` de arriba. Best-effort: un fallo
+            # de crontab no debe tumbar un deploy ya verde.
+            echo "=== Sincronizando crons (infra/cron/el-despacho.cron) ==="
+            bash infra/scripts/sync_crons.sh || echo "⚠️  sync de crons falló — revisar manualmente en La Sede"
+
             echo "=== Estado final ==="
             docker compose $COMPOSE_FILES ps
             docker compose $COMPOSE_FILES exec -T la-gerencia \
