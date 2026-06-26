@@ -11,6 +11,7 @@ import contextlib
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -354,6 +355,62 @@ def aprendizajes_lista(request):
         "back_url": "/chalanes/",
         "back_label": "Chalanes",
     })
+
+
+@require_POST
+@requiere_permiso("chalanes", "configurar")
+def aprendizajes_barrido(request):
+    """Dispara un BARRIDO de aprendizaje AHORA (botón "forzar análisis").
+
+    El Chalán lee su historial de Dictados — sobre todo donde el usuario lo
+    CORRIGIÓ (clarificaciones) o DESMARCÓ acciones mal propuestas — y destila
+    aprendizajes reutilizables que nacen INACTIVOS (`origen='chalan_destilado'`)
+    para revisión aquí mismo. Cierra la deuda de S-Chalan-Aprende-V1: antes
+    esto solo corría por cron semanal, sin disparador en la UI.
+
+    Síncrono (1 sola llamada IA), facturado al super_admin que lo dispara.
+    Redirige a las "Propuestas del Chalán" con un resumen del resultado.
+    """
+    from chalanes.destilar import destilar_aprendizajes
+
+    r = destilar_aprendizajes(creado_por=request.user)
+    analizados = r.get("analizados", 0)
+    creados = r.get("creados", 0)
+    motivo = r.get("motivo", "")
+    plural = "" if creados == 1 else "s"
+
+    if not r.get("ok"):
+        if motivo == "presupuesto_topado":
+            messages.warning(
+                request, "Tu presupuesto de IA del mes está topado; no se pudo correr el barrido.",
+            )
+        elif motivo == "json_invalido":
+            messages.warning(
+                request, "El Chalán respondió en un formato inesperado; no se creó nada. Intenta de nuevo.",
+            )
+        else:
+            messages.error(
+                request, "Los Chalanes no están disponibles ahora mismo. Intenta más tarde.",
+            )
+    elif motivo == "sin_evidencia":
+        messages.info(
+            request,
+            "Aún no hay dictados recientes que analizar. El Chalán aprende del uso "
+            "del Dictado y el chat — vuelve cuando haya más historial.",
+        )
+    elif creados:
+        messages.success(
+            request,
+            f"Barrido listo: analicé {analizados} dictados y propuse {creados} "
+            f"aprendizaje{plural} nuevo{plural}. Revísalos abajo y activa los buenos.",
+        )
+    else:
+        messages.info(
+            request,
+            f"Barrido listo: analicé {analizados} dictados, pero no encontré "
+            "patrones nuevos que valga la pena aprender.",
+        )
+    return redirect(f"{reverse('los_chalanes:aprendizajes-lista')}?filtro=propuestos")
 
 
 @requiere_permiso("chalanes", "configurar")

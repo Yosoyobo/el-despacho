@@ -13,9 +13,22 @@
         {% endwith %}
     </nav>
     {% if puede_modificar %}
-    <a href="{% url 'los_chalanes:aprendizaje-nuevo' %}" class="btn-primario">+ Enseñar al Chalán</a>
+    <div class="flex flex-wrap gap-2">
+        <form method="post" action="{% url 'los_chalanes:aprendizajes-barrido' %}" class="inline">{% csrf_token %}
+            <button type="submit" class="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20" title="El Chalán revisa su historial reciente (tus correcciones y las acciones que desmarcaste) y propone aprendizajes nuevos para entender mejor las próximas tareas.">
+                🧠 Aprender de mi historial ahora
+            </button>
+        </form>
+        <a href="{% url 'los_chalanes:aprendizaje-nuevo' %}" class="btn-primario">+ Enseñar al Chalán</a>
+    </div>
     {% endif %}
 </div>
+
+{% if filtro == 'propuestos' %}
+<div class="mb-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200">
+    🤖 Estas son propuestas que <strong>el Chalán destiló de su propio historial</strong> (donde lo corregiste o desmarcaste acciones). Nacen <strong>inactivas</strong> — revísalas y pulsa <strong>Activar</strong> en las correctas para que las use en los próximos dictados. ¿No ves nuevas? Pulsa <strong>🧠 Aprender de mi historial ahora</strong>.
+</div>
+{% endif %}
 
 <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <table class="w-full text-sm">

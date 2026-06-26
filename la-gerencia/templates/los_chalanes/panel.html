@@ -20,6 +20,13 @@
         <a href="{% url 'los_chalanes:aprendizajes-lista' %}" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
             📚 Aprendizajes <span class="ml-1 text-xs text-gray-400">({{ aprendizajes_activos_count }}/{{ total_aprendizajes }})</span>
         </a>
+        {% if puede_modificar %}
+        <form method="post" action="{% url 'los_chalanes:aprendizajes-barrido' %}" class="inline">{% csrf_token %}
+            <button type="submit" class="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20" title="El Chalán revisa su historial reciente (tus correcciones y las acciones que desmarcaste) y propone aprendizajes nuevos para entender mejor las próximas tareas. Tú revisas y activas los buenos.">
+                🧠 Aprender de mi historial ahora
+            </button>
+        </form>
+        {% endif %}
         <a href="{% url 'los_chalanes:conocimiento-lista' %}" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
             🧠 Conocimiento del negocio
         </a>

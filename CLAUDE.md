@@ -4065,6 +4065,48 @@ de disparo requeriría puente cross-app. El destilador no aprende de las
 conversaciones del chat (`MensajeChat`) todavía — solo de Dictados. Los
 aprendizajes rechazados quedan inactivos (el dedup por frase evita re-proponerlos).
 
+### S-Chalan-Aprende-Boton ✅ — Botón "Aprender ahora" + puente cross-app (2026-06-26, VERSION 2026.06.78)
+
+Cierra la deuda de S-Chalan-Aprende-V1: el destilado de aprendizajes ya tiene
+**disparador en la UI**, no solo el cron semanal. Pedido de Oscar ("un botón en
+la Gerencia en los Chalanes que haga un barrido para que el AI aprenda; hay
+problemas con el entendimiento de las tareas"). Decisiones por AskUserQuestion:
+**solo aprendizajes** ahora (el botón de Conocimiento de negocio queda para otro
+sprint) + **review-first** (propone inactivo, el super_admin activa de un clic).
+
+- **Puente cross-app vía shadow models** (mismo patrón que `chalanes.Aprendizaje`
+  / `ConocimientoNegocio`): nuevos `chalanes.Dictado` + `chalanes.DictadoAccion`
+  (`managed=False` → tablas `el_dictado_dictado` / `el_dictado_accion`, sin
+  migración). Así La Gerencia (que NO instala `apps.el_dictado`) puede leer el
+  historial de Dictados.
+- **Orquestación movida a `chalanes/destilar.py`** (compartida, self-contained,
+  no importa `apps.el_dictado`): lee/escribe vía shadow models + `lib.analistas`.
+  `apps/el_dictado/destilar.py` queda como **wrapper delgado que reexporta**
+  (`destilar_aprendizajes`, `recolectar_evidencia`) — el cron y los tests de
+  Taller siguen funcionando sin cambios (fuente única, sin copias que deriven).
+- **Botón + vista en Gerencia** (`los_chalanes`): `aprendizajes_barrido` (POST,
+  `@requiere_permiso("chalanes","configurar")`) corre el barrido **síncrono**
+  (1 llamada IA, indicador global "Procesando…" de `ui.js`, costo al super_admin)
+  y redirige a Aprendizajes con `?filtro=propuestos` + mensaje de resultado
+  (creados / sin patrones / sin evidencia / IA caída / topado). Botón
+  "🧠 Aprender de mi historial ahora" en `panel.html` y en la lista de
+  Aprendizajes; banner explicativo en la pestaña "Propuestas del Chalán".
+- **El cron semanal `chalan_destilar_aprendizajes` sigue igual** (ya está en
+  `infra/cron/el-despacho.cron`); el botón solo lo complementa con "forzar ahora".
+- **Tests**: `tests/gerencia/test_aprendizajes_barrido.py` (6: crea propuesta
+  inactiva + redirige a propuestos, sin-evidencia no llama IA, GET→405,
+  diseñador bloqueado, botón visible super_admin / oculto dueño). Los 9 tests de
+  `tests/taller/test_destilar_aprendizajes.py` (sin tocar) son **regresión del
+  refactor** — crean filas con los modelos reales y el destilador las lee vía
+  shadow models. 86 verdes en la corrida (barrido + destilar + aprendizajes +
+  panel + negocio + chat), Ruff limpio.
+
+**Deuda diseñada**: el botón de "barrido" para **Conocimiento del negocio**
+(`destilar_negocio`) queda pendiente — mismo patrón cuando se priorice (Oscar:
+"un botón para cada una, documentamos el otro para otro sprint"). El barrido es
+back-office (botón super_admin), **NO invocable por El Chalán** vía chat (igual
+que el cron). El destilado sigue sin aprender de `MensajeChat` (solo Dictados).
+
 ### S-Chalan-Negocio-V1 ✅ — El Chalán aprende y opina del negocio (2026-06-17, VERSION 2026.06.74)
 
 Continuación de S-Chalan-Aprende-V1. Oscar: "que el Chalán también aprenda y
@@ -4508,10 +4550,14 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
 7. **Crontab vigente en La Sede** — **YA NO es paso manual** (S-Cron-Sync,
    2026-06-26). La fuente única de verdad es **`infra/cron/el-despacho.cron`**
    (incluye `CRON_TZ=America/Mexico_City` para que los horarios se lean en hora
-   de México aunque el host del Droplet esté en UTC). **`mudanza.sh` reinstala
-   ese bloque en el crontab del usuario `despacho` en CADA deploy** (idempotente:
-   reemplaza solo lo que está entre los marcadores `# >>> El Despacho … >>>` /
-   `# <<< El Despacho <<<`, sin tocar otros crons del usuario). Para cambiar un
+   de México aunque el host del Droplet esté en UTC). **El deploy lo reinstala en
+   el crontab del usuario `despacho` en CADA push verde**: el script inline de
+   La Mudanza (`.github/workflows/el-mensajero.yml`, NO el legacy
+   `infra/scripts/mudanza.sh`) llama a **`infra/scripts/sync_crons.sh`**, que
+   reemplaza idempotentemente solo el bloque entre los marcadores
+   `# >>> El Despacho … >>>` / `# <<< El Despacho <<<` sin tocar otros crons del
+   usuario. **Ojo:** `infra/scripts/mudanza.sh` es legacy y no se ejecuta en el
+   deploy (igual delega a `sync_crons.sh` por si se corre a mano). Para cambiar un
    horario o sumar un job: edita `infra/cron/el-despacho.cron` y vuelve a
    desplegar — llega solo. El bloque de abajo es el espejo de referencia (lo que
    queda instalado):

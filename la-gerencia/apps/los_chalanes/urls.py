@@ -19,6 +19,8 @@ urlpatterns = [
     path("<slug:nombre>/borrar-llave", views.borrar_llave, name="borrar_llave"),
     # Aprendizajes (S2b.2.1)
     path("aprendizajes/", views.aprendizajes_lista, name="aprendizajes-lista"),
+    # Barrido manual: El Chalán destila aprendizajes de su historial AHORA
+    path("aprendizajes/barrido", views.aprendizajes_barrido, name="aprendizajes-barrido"),
     path("aprendizajes/nuevo", views.aprendizaje_nuevo, name="aprendizaje-nuevo"),
     path("aprendizajes/<int:pk>/editar", views.aprendizaje_editar, name="aprendizaje-editar"),
     path("aprendizajes/<int:pk>/toggle", views.aprendizaje_toggle, name="aprendizaje-toggle"),

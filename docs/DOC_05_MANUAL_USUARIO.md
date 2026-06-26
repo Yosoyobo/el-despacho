@@ -5,6 +5,30 @@
 
 ---
 
+## Novedades — Botón "Aprender de mi historial ahora" (26 de junio de 2026)
+
+¿Sientes que El Chalán no entiende bien algunas tareas? Ahora puedes pedirle que
+**aprenda en el momento**, sin esperar a su repaso semanal.
+
+- **Dónde está.** En **La Gerencia → Chalanes**, el botón **🧠 Aprender de mi
+  historial ahora** (también dentro de Chalanes → Aprendizajes). Solo lo ve el
+  administrador.
+- **Qué hace.** El Chalán repasa al instante los dictados recientes —sobre todo
+  donde **lo corregiste** o le **desmarcaste acciones**— y **propone aprendizajes
+  nuevos** para entenderte mejor la próxima vez. Tarda unos segundos (verás el
+  indicador "Procesando…").
+- **Tú apruebas, nunca se activa solo.** Las propuestas nacen **apagadas** y el
+  botón te deja directo en la pestaña **"🤖 Propuestas del Chalán"**: revísalas y
+  **activa** con un clic las que estén bien. Hasta entonces no influyen en nada.
+- **Si no salen propuestas nuevas.** Puede ser que no haya dictados recientes que
+  analizar, o que no encontró patrones que valga la pena aprender — el mensaje te
+  lo dice. Mientras más uses el Dictado y el chat (y lo corrijas cuando se
+  equivoque), más tiene de dónde aprender.
+- **Con El Chalán:** no es un comando de chat; es un botón de administración. El
+  barrido automático semanal sigue corriendo igual.
+
+---
+
 ## Novedades — El recordatorio para checar tu entrada ya está activo (26 de junio de 2026)
 
 Si llega tu hora de entrada y **aún no has checado**, El Checador te manda una
@@ -114,8 +138,9 @@ con el tiempo. ¿Cómo funciona?
   pestaña **"🤖 Propuestas del Chalán"**. Ahí lo revisas y, si está bien, lo
   **activas** con un clic (o lo dejas apagado para descartarlo). Solo cuando lo
   activas empieza a influir en cómo interpreta tus dictados.
-- **Cómo se dispara.** Corre solo una vez por semana, pero el administrador puede
-  pedirle un análisis cuando quiera. No le pierde el rastro a nada: lo que ya
+- **Cómo se dispara.** Corre solo una vez por semana, y el administrador puede
+  **forzar un análisis cuando quiera** con el botón **🧠 Aprender de mi historial
+  ahora** (en La Gerencia → Chalanes). No le pierde el rastro a nada: lo que ya
   enseñaste a mano y lo que propone el Chalán conviven en la misma lista, con sus
   pesos (los aprendizajes "pesan" más o menos y se van desvaneciendo con el tiempo
   si no se refrescan).
