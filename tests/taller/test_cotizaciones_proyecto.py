@@ -208,3 +208,27 @@ def test_nombre_pdf_usa_nombre_proyecto(entorno):
     cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     # Nombre del proyecto + _V{version} (decisión Oscar).
     assert cot.nombre_pdf == "Branding Optimist_V1"
+
+
+def test_pdf_descarga_con_nombre_de_proyecto(client, entorno, monkeypatch):
+    """La descarga del PDF usa `attachment` (no `inline`) + el nombre del
+    proyecto, para que Chrome no lo nombre según el segmento `.../pdf/` de la
+    URL (raíz de «no se aplicaron los nombres»)."""
+    from apps.cotizaciones import services
+
+    from lib.documentos import ResultadoPdf
+
+    cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    monkeypatch.setattr(
+        services, "generar_pdf",
+        lambda c, actor: ResultadoPdf(ok=True, data={"id": "x"}, pdf_bytes=b"%PDF-1.4 fake"),
+    )
+    client.force_login(entorno["admin"])
+    resp = client.get(reverse("cotizaciones:pdf", args=[cot.pk]))
+    assert resp.status_code == 200
+    assert resp["Content-Type"] == "application/pdf"
+    cd = resp["Content-Disposition"]
+    assert cd.startswith("attachment")
+    # El nombre del proyecto + versión va tanto en filename como en filename*.
+    assert "Branding Optimist_V1.pdf" in cd
+    assert "filename*=UTF-8''" in cd

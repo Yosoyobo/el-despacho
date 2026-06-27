@@ -804,8 +804,9 @@ window.abrirRickroll = function () {
   ov.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.92);';
   ov.innerHTML =
     '<div style="position:relative;width:92%;max-width:900px;aspect-ratio:16/9;">'
-    + '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1" '
+    + '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1&playsinline=1" '
     +   'allow="autoplay; encrypted-media; fullscreen" allowfullscreen '
+    +   'referrerpolicy="strict-origin-when-cross-origin" '
     +   'style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.6);"></iframe>'
     + '<span aria-hidden="true" style="position:absolute;top:-16px;right:-12px;font-size:46px;line-height:1;font-weight:700;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.85);pointer-events:none;user-select:none;">&times;</span>'
     + '<button type="button" aria-label="Cerrar" data-rickroll-close '

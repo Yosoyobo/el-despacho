@@ -62,10 +62,10 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
         {% endfor %}
     </ul>
 
-    {# ── Pizza-tracker: pasos configurados en Gerencia, crece/encoge ── #}
+    {# ── Termómetro de estatus: barra de pasos que se llena (cabe siempre) ── #}
     {% if cot_tracker %}
-    <div class="mt-4 overflow-x-auto pb-1">
-        <div class="cot-tracker w-full">
+    <div class="mt-4">
+        <div class="cot-tracker">
             {% for s in cot_tracker %}
             {% if puede_estado %}
             <button type="button"
@@ -75,12 +75,12 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
                     hx-swap="outerHTML"
                     class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}"
                     title="Marcar como {{ s.label }}">
-                <span class="cot-step-num">{{ s.num }}</span>
+                <span class="cot-step-seg"></span>
                 <span class="cot-step-label">{{ s.label }}</span>
             </button>
             {% else %}
             <div class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}">
-                <span class="cot-step-num">{{ s.num }}</span>
+                <span class="cot-step-seg"></span>
                 <span class="cot-step-label">{{ s.label }}</span>
             </div>
             {% endif %}

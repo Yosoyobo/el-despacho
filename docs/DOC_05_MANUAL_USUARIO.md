@@ -29,9 +29,9 @@
   renombrarlos, recolorearlos, reordenarlos, agregar pasos nuevos o esconder los
   que no use. Vienen 4 por defecto: **Generada · Enviada · Aprobada · Pagada**. El
   termómetro crece o se encoge según cuántos pasos haya.
-- **PDF con nombre del proyecto.** Cada versión tiene su enlace **"PDF →"**; el
-  archivo se nombra con el **nombre del proyecto + la versión** (ej.
-  `Branding Optimist_V2.pdf`).
+- **PDF con nombre del proyecto.** Cada versión tiene su enlace **"PDF →"**; al
+  picarlo se **descarga** el archivo ya nombrado con el **nombre del proyecto + la
+  versión** (ej. `Branding Optimist_V2.pdf`).
 - **Estas cotizaciones también salen en el módulo Cotizaciones** (en el menú
   lateral), por si quieres buscarlas o filtrarlas junto con las demás.
 - **El botón "Enviar"** (mandar la cotización por correo al contacto del cliente)

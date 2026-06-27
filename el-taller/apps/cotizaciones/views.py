@@ -626,6 +626,16 @@ def generar_pdf(request, pk):
     if not res.ok or not res.pdf_bytes:
         messages.error(request, f"No se pudo generar el PDF: {res.error}")
         return redirect("cotizaciones:detalle", pk=cot.pk)
+    # `attachment` (no `inline`): el visor PDF de Chrome ignora el filename de
+    # un `inline` y nombra la descarga según el último segmento de la URL
+    # (.../pdf/). Con `attachment` + RFC 5987 el archivo se guarda SIEMPRE como
+    # «NombreDelProyecto_Vn.pdf» (decisión Oscar — tolera espacios y acentos).
+    from urllib.parse import quote
+    nombre = f"{cot.nombre_pdf}.pdf"
+    nombre_ascii = nombre.encode("ascii", "ignore").decode() or f"{cot.codigo}.pdf"
     resp = HttpResponse(res.pdf_bytes, content_type="application/pdf")
-    resp["Content-Disposition"] = f'inline; filename="{cot.nombre_pdf}.pdf"'
+    resp["Content-Disposition"] = (
+        f'attachment; filename="{nombre_ascii}"; '
+        f"filename*=UTF-8''{quote(nombre)}"
+    )
     return resp
