@@ -25,6 +25,11 @@ class ClienteForm(forms.ModelForm):
             "direccion_fiscal": forms.Textarea(attrs={"rows": 2, "data-fiscal-box": "1"}),
         }
 
+    def clean_razon_social(self):
+        # Nombre (razón social) siempre en MAYÚSCULAS. str.upper() respeta
+        # acentos en español ("josé" → "JOSÉ").
+        return (self.cleaned_data.get("razon_social") or "").strip().upper()
+
     def clean_rfc(self):
         rfc = (self.cleaned_data.get("rfc") or "").strip().upper()
         if rfc and not (12 <= len(rfc) <= 13):

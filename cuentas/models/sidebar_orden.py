@@ -24,7 +24,7 @@ SLUGS_SIDEBAR_TALLER = [
     ("checador", "Checador"),
     ("directorio", "Equipo / Directorio"),
     ("buzon", "Buzón"),
-    ("recados", "Recados"),
+    ("recados", "Mensajes"),
     ("chat", "El Chalán (chat IA)"),
     ("productos", "Productos"),
     ("proveedores", "Proveedores"),

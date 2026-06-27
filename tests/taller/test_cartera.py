@@ -73,7 +73,8 @@ def test_editar_cliente(client, usuario_factory, cliente_factory):
     )
     assert resp.status_code == 200
     cli.refresh_from_db()
-    assert cli.razon_social == "Nueva S.A."
+    # El nombre (razón social) se fuerza a MAYÚSCULAS al guardar.
+    assert cli.razon_social == "NUEVA S.A."
 
 
 def test_crea_cliente_con_contacto(client, usuario_factory):
@@ -92,7 +93,8 @@ def test_crea_cliente_con_contacto(client, usuario_factory):
     )
     assert resp.status_code == 200
     from apps.la_cartera.models import Cliente
-    c = Cliente.objects.get(razon_social="Optimist")
+    # El nombre (razón social) se fuerza a MAYÚSCULAS al guardar.
+    c = Cliente.objects.get(razon_social="OPTIMIST")
     assert c.contactos.count() == 1
     assert c.contacto_principal.nombre == "Juan Pérez"
     assert c.contacto_principal.principal is True

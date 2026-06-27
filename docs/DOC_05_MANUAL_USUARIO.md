@@ -5,6 +5,53 @@
 
 ---
 
+## Novedades — Mejoras a proyectos, mensajes y El Chalán (26 de junio de 2026)
+
+Una tanda de ajustes pedidos por el equipo:
+
+- **"Recados" ahora se llama "Mensajes".** Es el mismo lugar (chat interno del
+  equipo + tu buzón), solo cambió el nombre en el menú y los títulos.
+- **El Buzón es solo para soporte.** La bandeja completa del **Buzón** (todos los
+  mensajes que el equipo manda al administrador) ahora solo la ve el
+  **administrador**. Tú sigues viendo **tus propios mensajes** en
+  **Mensajes → Mi Buzón**, donde puedes leer las respuestas y darles seguimiento.
+- **Productos del proyecto, más claros.** En la página de un proyecto:
+  - El botón **"+ Nuevo producto"** ahora agrega una **tarjeta vacía ahí mismo**
+    (ya no abre una pantalla aparte).
+  - Cada tarjeta de producto muestra abajo su **costo de producción** (por pieza
+    y el total producción + merma).
+  - El interruptor **"Incluir en el cálculo"** se movió abajo, junto a la ❌, para
+    ahorrar espacio.
+  - En el resumen de la derecha, cada producto muestra **cuánto suma al proyecto**
+    (todas las piezas) y, como subtítulo, el precio unitario en formato
+    **"$95 x 10 pz"**. La ❌ para quitar un producto ya **no pide confirmación ni
+    recarga la página**.
+- **Tarjeta de proveedores rediseñada.** Por cada proveedor del proyecto ves: el
+  **monto + IVA y el total con IVA en una línea**, **qué producto te provee**, las
+  **piezas "X (Y)"** (cobradas / con merma) y el **precio unitario sin IVA**. Toda
+  la tarjeta es **clickeable**. Nuevo: un **interruptor de IVA por proveedor**
+  (encendido por defecto, aplica solo a ese proyecto).
+- **El nombre del proyecto manda.** En "Mis tareas", el calendario, los tableros
+  y los mandados, ahora se ve primero el **nombre del proyecto y el cliente**
+  (antes salía el código LC-####). El código queda para la página del proyecto,
+  tablas y reportes.
+- **Calendario.** Los eventos cuya fecha **ya pasó** se ven **en gris** (sin
+  importar su tipo). La página de Calendario y el Dashboard muestran la **fecha y
+  hora** en vivo.
+- **Nombres de cliente en MAYÚSCULAS.** Al crear o editar un cliente, su nombre se
+  guarda en mayúsculas (y los existentes se actualizaron).
+- **Buscar dirección en los mapas.** Donde fijas una ubicación (sedes, geocerca)
+  ahora puedes **escribir una dirección o colonia** y elegir de las sugerencias
+  para colocar el pin.
+- **Con El Chalán:**
+  - Ahora entiende **agregar productos a un proyecto**: di *"agrega 100 playeras a
+    #LC-0001"* y aparecen en la página del proyecto **sin importar su estado**
+    (ya no necesitas una cotización primero).
+  - **Sabe la fecha y hora reales:** cuando le pides una **entrega**, la entiende
+    siempre **a futuro** (si dices "el viernes", toma el próximo viernes).
+
+---
+
 ## Novedades — Botón "Aprender de mi historial ahora" (26 de junio de 2026)
 
 ¿Sientes que El Chalán no entiende bien algunas tareas? Ahora puedes pedirle que

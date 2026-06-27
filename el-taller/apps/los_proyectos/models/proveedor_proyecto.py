@@ -44,3 +44,29 @@ class ProyectoProveedor(models.Model):
 
     def __str__(self) -> str:
         return f"{self.proveedor.razon_social} · {self.get_tipo_display()}"
+
+
+class ProyectoProveedorIva(models.Model):
+    """Toggle de IVA por proveedor, SOLO para este proyecto (reporte Oscar).
+
+    Sin fila ⇒ aplica IVA (default prendido). Se persiste una fila únicamente
+    cuando el usuario lo cambia (mismo patrón opt-out de las preferencias de
+    push). No toca la deuda derivada de los productos; solo decide si el monto
+    de ese proveedor en ESTE proyecto se muestra con IVA."""
+
+    proyecto = models.ForeignKey(
+        "proyectos.Proyecto", on_delete=models.CASCADE, related_name="proveedores_iva"
+    )
+    proveedor = models.ForeignKey(
+        "el_catalogo.Proveedor", on_delete=models.CASCADE, related_name="+"
+    )
+    aplica_iva = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "proyectos_proveedor_iva"
+        unique_together = [("proyecto", "proveedor")]
+        verbose_name = "IVA de proveedor en proyecto"
+        verbose_name_plural = "IVA de proveedores en proyecto"
+
+    def __str__(self) -> str:
+        return f"{self.proveedor_id}@{self.proyecto_id}: IVA={'sí' if self.aplica_iva else 'no'}"

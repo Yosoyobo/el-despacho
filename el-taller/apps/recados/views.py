@@ -184,7 +184,7 @@ def detalle(request, pk: int):
         "info_recado": info_recado,
         "action_bar_acciones": action_bar_acciones,
         "breadcrumb_items": [
-            {"url": reverse("recados:legacy_bandeja"), "label": "Recados (legacy)"},
+            {"url": reverse("recados:legacy_bandeja"), "label": "Mensajes (legacy)"},
             {"label": f"#{recado.pk}"},
         ],
         "back_url": reverse("recados:legacy_bandeja"),

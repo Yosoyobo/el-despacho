@@ -18,7 +18,7 @@ from lib.permisos import puede
 
 def _gate(request):
     if not puede(request.user, "recados", "ver"):
-        return HttpResponse("Sin acceso a Recados.", status=403)
+        return HttpResponse("Sin acceso a Mensajes.", status=403)
     return None
 
 

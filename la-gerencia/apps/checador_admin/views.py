@@ -35,6 +35,24 @@ def _gate_correcciones(request):
     return None
 
 
+# ───────────────────────── geocoding (Nominatim) ─────────────────────────
+
+@login_required
+def geocoding_buscar(request):
+    """Proxy server-side a Nominatim (OSM) para La Gerencia. Reusa
+    `lib.geocoding`. Con `?q=` busca direcciones/colonias
+    (`{resultados: [...]}`); con `?lat=&lng=` identifica el punto al picar el
+    mapa (`{punto: {...}}`). Espejo del endpoint `mandados-geocoding` del Taller
+    (los Django projects no comparten urlconf, por eso vive aquí también)."""
+    from django.http import JsonResponse
+    lat, lng = request.GET.get("lat"), request.GET.get("lng")
+    if lat and lng:
+        from lib.geocoding import identificar
+        return JsonResponse({"punto": identificar(lat, lng)})
+    from lib.geocoding import buscar
+    return JsonResponse({"resultados": buscar(request.GET.get("q", ""))})
+
+
 # ───────────────────────── horarios ─────────────────────────
 
 @login_required

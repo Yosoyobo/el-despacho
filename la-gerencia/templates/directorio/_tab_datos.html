@@ -13,7 +13,13 @@
     {% endfor %}
     <div class="rounded-lg border border-gray-200 bg-gray-50/60 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">
         <p class="mb-2 font-medium">📍 Pin de geocerca</p>
-        <p class="mb-2">El pin (lat/lng) + radio definen la geocerca del empleado para El Checador. Captura las coordenadas a mano, o párate en el lugar y usa el botón.</p>
+        <p class="mb-2">El pin (lat/lng) + radio definen la geocerca del empleado para El Checador. Busca una dirección, captura las coordenadas a mano, o párate en el lugar y usa el botón.</p>
+        {# Buscador de dirección (Nominatim, con debounce). Al elegir, rellena lat/lng. #}
+        <div class="relative mb-3">
+            <input type="text" id="geo-buscar" autocomplete="off" placeholder="Buscar dirección o colonia…"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+            <ul id="geo-buscar-res" class="absolute left-0 right-0 z-20 mt-1 hidden max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white text-sm shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"></ul>
+        </div>
         <div class="flex flex-wrap items-center gap-3">
             <button type="button" id="geo-usar-ubicacion" class="btn-secundario text-xs">📍 Usar mi ubicación actual</button>
             <a id="geo-ver-mapa" href="#" target="_blank" rel="noopener" class="text-brand-600 underline hover:text-brand-700 dark:text-brand-400" hidden>Ver pin en el mapa →</a>
@@ -52,6 +58,48 @@
             alert('No se pudo obtener tu ubicación.');
             btn.disabled = false; btn.textContent = '📍 Usar mi ubicación actual';
         }, {enableHighAccuracy: true, timeout: 10000});
+    });
+
+    // Buscador de dirección (Nominatim vía proxy de Gerencia) con debounce.
+    var box = document.getElementById('geo-buscar');
+    var lista = document.getElementById('geo-buscar-res');
+    var t = null;
+    function fijar(la, ln) {
+        lat.value = Number(la).toFixed(6);
+        lng.value = Number(ln).toFixed(6);
+        // Dispara los listeners existentes (actualizarMapa, etc.).
+        lat.dispatchEvent(new Event('input', { bubbles: true }));
+        lng.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function pintar(items) {
+        lista.innerHTML = '';
+        if (!items || !items.length) { lista.classList.add('hidden'); return; }
+        items.forEach(function (r) {
+            var li = document.createElement('li');
+            li.className = 'cursor-pointer px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800';
+            li.textContent = r.direccion || r.nombre;
+            li.addEventListener('click', function () {
+                fijar(r.lat, r.lng);
+                lista.classList.add('hidden');
+                box.value = r.nombre || r.direccion || '';
+            });
+            lista.appendChild(li);
+        });
+        lista.classList.remove('hidden');
+    }
+    if (box) box.addEventListener('input', function () {
+        var q = box.value.trim();
+        if (t) clearTimeout(t);
+        if (q.length < 4) { lista.classList.add('hidden'); return; }
+        t = setTimeout(function () {
+            fetch("{% url 'gerencia-geocoding' %}?q=" + encodeURIComponent(q))
+                .then(function (r) { return r.json(); })
+                .then(function (d) { pintar(d.resultados); })
+                .catch(function () { lista.classList.add('hidden'); });
+        }, 600);  // debounce: cumple la política de uso de Nominatim
+    });
+    document.addEventListener('click', function (e) {
+        if (box && lista && e.target !== box && !lista.contains(e.target)) lista.classList.add('hidden');
     });
 })();
 </script>

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load forms_helpers buzon_extras %}
-{% block title %}Mi Buzón — Recados{% endblock %}
+{% block title %}Mi Buzón — Mensajes{% endblock %}
 {% block contenido %}
-{% breadcrumb_items "Recados" "/recados/" "Mi Buzón" as breadcrumb_items %}
+{% breadcrumb_items "Mensajes" "/recados/" "Mi Buzón" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 {% include "recados/_tabs.html" %}
 

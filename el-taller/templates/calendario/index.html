@@ -5,6 +5,29 @@
 {% breadcrumb_items "Calendario" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Calendario" subtitulo="Entregas de proyectos y tareas con fecha." breadcrumb_items=breadcrumb_items %}
 
+{# Fecha de hoy + reloj en vivo (24h), mismo patrón que el Dashboard. #}
+<p class="-mt-3 mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+    <span id="cal-fecha"></span>
+    <span class="text-gray-300 dark:text-gray-600">·</span>
+    <span id="cal-reloj" class="tabular-nums"></span>
+</p>
+<script>
+(function () {
+    const f = document.getElementById('cal-fecha');
+    const r = document.getElementById('cal-reloj');
+    if (!f || !r) return;
+    const fmtF = new Intl.DateTimeFormat('es-MX', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+    const fmtR = new Intl.DateTimeFormat('es-MX', {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+    function tick() {
+        const ahora = new Date();
+        f.textContent = fmtF.format(ahora);
+        r.textContent = fmtR.format(ahora);
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
+
 <div class="grid gap-6 lg:grid-cols-4">
     {# Columna izquierda 75% — calendario con navegación + meses apilados. #}
     <div class="lg:col-span-3 space-y-4">

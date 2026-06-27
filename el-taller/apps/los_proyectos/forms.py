@@ -222,6 +222,17 @@ class ProyectoProductoForm(forms.ModelForm):
         # cantidad es NOT NULL con default 1; vacío/None ⇒ 1 (no invalida la fila).
         return self.cleaned_data.get("cantidad") or 1
 
+    def clean(self):
+        cleaned = super().clean()
+        # El modelo exige servicio (NOT NULL). Una tarjeta nueva inline que se
+        # llenó parcialmente (cantidad/precio) pero sin producto truena al
+        # guardar; un error claro es mejor que un 500. Las filas intactas/vacías
+        # las ignora el formset (has_changed=False), y las marcadas DELETE no se
+        # validan.
+        if not cleaned.get("servicio") and not self.cleaned_data.get("DELETE") and self.has_changed():
+            self.add_error("servicio", "Elige un producto del catálogo.")
+        return cleaned
+
 
 ProyectoProductoFormSet = inlineformset_factory(
     Proyecto, ProyectoProducto, form=ProyectoProductoForm,

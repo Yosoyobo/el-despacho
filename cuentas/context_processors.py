@@ -15,7 +15,11 @@ from lib.permisos import puede as _puede
 # sidebar aparece. Default es "ver"; los módulos que usan otra acción
 # (porque no tienen "ver" en sus defaults) la declaran aquí.
 ACCION_VISIBLE_POR_MODULO = {
-    "buzon": "ver_propios",        # admin lo ve por ver_propios también
+    # El Buzón del sidebar es la bandeja de SOPORTE (todos los mensajes): solo
+    # quien puede ver TODO (super_admin por default). Los usuarios ven sus
+    # propios mensajes en Mensajes → Mi Buzón, no necesitan este item (reporte
+    # Oscar). Granular: se delega activando (buzon, ver_todos) a un usuario/rol.
+    "buzon": "ver_todos",
     "catalogo": "ver_nombres",
     # S-LC-Feedback-V5 c5: acceso a Gerencia heredable por permiso granular.
     "gerencia": "acceder",

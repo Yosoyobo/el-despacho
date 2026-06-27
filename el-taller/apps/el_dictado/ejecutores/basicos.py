@@ -331,7 +331,8 @@ def crear_cliente(accion, usuario, contexto=None):
     from apps.la_cartera.models import Cliente
 
     payload = accion.payload or {}
-    razon = (payload.get("razon_social") or "").strip()
+    # Reporte Oscar: los nombres de cliente se guardan SIEMPRE en MAYÚSCULAS.
+    razon = (payload.get("razon_social") or "").strip().upper()
     if not razon:
         raise ValueError("Falta `razon_social` en payload.")
     estado = (payload.get("estado") or "prospecto").lower()
@@ -359,6 +360,9 @@ def actualizar_cliente(accion, usuario, contexto=None):
     campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_CLIENTE_PERMITIDOS)
     aplicado = []
     for k, v in campos.items():
+        # Reporte Oscar: el nombre del cliente se guarda en MAYÚSCULAS.
+        if k == "razon_social" and isinstance(v, str):
+            v = v.strip().upper()
         setattr(cliente, k, v)
         aplicado.append(k)
     if not aplicado:
@@ -389,6 +393,86 @@ def actualizar_proyecto(accion, usuario, contexto=None):
     proyecto.save(update_fields=[*aplicado, "actualizado_en"])
     accion.entidad_tipo = "proyecto"
     accion.entidad_id = proyecto.pk
+
+
+@registrar("agregar_producto_proyecto")
+def agregar_producto_proyecto(accion, usuario, contexto=None):
+    """Agrega un producto/servicio del catálogo a un proyecto (línea
+    ProyectoProducto). Funciona SIN IMPORTAR el estado del proyecto — los
+    productos del proyecto se ven siempre en su página (reporte Oscar).
+
+    Payload: proyecto_slug (o cliente_slug → único proyecto activo), servicio
+    (nombre del catálogo o @accion_N de un crear_servicio previo), cantidad?,
+    precio_unitario?, costo_unitario?, merma?, proveedor?, nota?,
+    incluir_en_calculo?.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from apps.los_proyectos.models import ProyectoProducto
+
+    from lib.permisos import puede_editar_proyecto
+
+    from .catalogo import _resolver_servicio
+
+    payload = accion.payload or {}
+    proyecto = _resolver_proyecto_para(payload, contexto)
+    if not puede_editar_proyecto(usuario, proyecto):
+        raise ValueError("No tienes permiso para editar este proyecto.")
+    servicio = _resolver_servicio(
+        payload.get("servicio") or payload.get("servicio_slug") or payload.get("producto"),
+        contexto,
+    )
+
+    def _entero(clave, default, minimo):
+        try:
+            n = int(payload.get(clave) or default)
+        except (TypeError, ValueError):
+            n = default
+        return max(minimo, n)
+
+    def _dec_opt(clave):
+        v = payload.get(clave)
+        if v in (None, ""):
+            return None
+        try:
+            d = Decimal(str(v)).quantize(Decimal("0.01"))
+        except (TypeError, ValueError, InvalidOperation) as exc:
+            raise ValueError(f"`{clave}` inválido: {v}") from exc
+        if d < 0:
+            raise ValueError(f"`{clave}` no puede ser negativo.")
+        return d
+
+    proveedor = None
+    prov_txt = _limpiar_slug((payload.get("proveedor") or payload.get("proveedor_nombre") or "").strip())
+    if prov_txt:
+        from apps.el_catalogo.models import Proveedor
+        proveedor = (
+            Proveedor.objects.filter(razon_social__iexact=prov_txt, activo=True).first()
+            or Proveedor.objects.filter(razon_social__icontains=prov_txt, activo=True).first()
+        )
+
+    incluir = payload.get("incluir_en_calculo")
+    incluir = True if incluir in (None, "") else bool(incluir)
+
+    pp = ProyectoProducto.objects.create(
+        proyecto=proyecto, servicio=servicio,
+        cantidad=_entero("cantidad", 1, 1), merma=_entero("merma", 0, 0),
+        precio_unitario=_dec_opt("precio_unitario"), costo_unitario=_dec_opt("costo_unitario"),
+        proveedor=proveedor, nota=(payload.get("nota") or "")[:200],
+        incluir_en_calculo=incluir,
+    )
+    proyecto.recalcular_monto_estimado()
+    accion.entidad_tipo = "producto"
+    accion.entidad_id = pp.pk
+    import contextlib
+    with contextlib.suppress(Exception):
+        from lib.portavoz import emitir
+        from lib.portavoz_eventos import EventoPortavoz
+        emitir(EventoPortavoz(
+            tipo="proyecto.actualizado",
+            actor_id=getattr(usuario, "pk", None), actor_email=getattr(usuario, "email", None),
+            payload={"proyecto_id": proyecto.pk, "campo": "producto_agregado", "producto_id": pp.pk},
+        ))
 
 
 @registrar("asignar_usuario_proyecto")

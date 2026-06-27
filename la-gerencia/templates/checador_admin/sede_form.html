@@ -21,6 +21,12 @@
         <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Haz clic en el mapa para colocar el pin, o arrástralo. El radio se ajusta con el campo «Radio de la geocerca».</p>
     </section>
     <section class="xl:col-span-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {# Buscador de dirección (Nominatim, con debounce). Al elegir, centra el mapa y rellena lat/lng. #}
+        <div class="relative border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+            <input type="text" id="sede-buscar" autocomplete="off" placeholder="Buscar dirección o colonia…"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+            <ul id="sede-buscar-res" class="absolute left-4 right-4 z-[1000] mt-1 hidden max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white text-sm shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"></ul>
+        </div>
         <div id="mapa-sede" class="h-[28rem] w-full"></div>
         <div class="flex items-center justify-between gap-2 border-t border-gray-200 px-4 py-2 dark:border-gray-800">
             <button type="button" data-sede-localizar class="btn-secundario text-xs">📍 Usar mi ubicación</button>
@@ -89,6 +95,43 @@
       });
     });
   }
+
+  // Buscador de dirección (Nominatim vía proxy de Gerencia) con debounce.
+  var box = document.getElementById('sede-buscar');
+  var lista = document.getElementById('sede-buscar-res');
+  var t = null;
+  function pintar(items) {
+    lista.innerHTML = '';
+    if (!items || !items.length) { lista.classList.add('hidden'); return; }
+    items.forEach(function (r) {
+      var li = document.createElement('li');
+      li.className = 'cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800';
+      li.textContent = r.direccion || r.nombre;
+      li.addEventListener('click', function () {
+        setCoords(r.lat, r.lng);
+        map.setView([r.lat, r.lng], 16);
+        lista.classList.add('hidden');
+        box.value = r.nombre || r.direccion || '';
+      });
+      lista.appendChild(li);
+    });
+    lista.classList.remove('hidden');
+  }
+  if (box) box.addEventListener('input', function () {
+    var q = box.value.trim();
+    if (t) clearTimeout(t);
+    if (q.length < 4) { lista.classList.add('hidden'); return; }
+    t = setTimeout(function () {
+      fetch("{% url 'gerencia-geocoding' %}?q=" + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (d) { pintar(d.resultados); })
+        .catch(function () { lista.classList.add('hidden'); });
+    }, 600);  // debounce: cumple la política de uso de Nominatim
+  });
+  document.addEventListener('click', function (e) {
+    if (box && lista && e.target !== box && !lista.contains(e.target)) lista.classList.add('hidden');
+  });
+
   setTimeout(function () { map.invalidateSize(); }, 250);
 })();
 </script>

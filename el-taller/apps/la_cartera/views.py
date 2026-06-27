@@ -194,7 +194,7 @@ def cliente_quick_create(request):
     if request.method != "POST" or not puede_editar_cartera(request.user):
         return HttpResponseForbidden("No autorizado.")
     from django.http import JsonResponse
-    razon = (request.POST.get("razon_social") or "").strip()
+    razon = (request.POST.get("razon_social") or "").strip().upper()
     if not razon:
         return JsonResponse({"ok": False, "error": "La razón social es obligatoria."})
     nombre_c = (request.POST.get("nombre_contacto") or "").strip()

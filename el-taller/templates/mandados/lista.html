@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers %}
+{% load forms_helpers proyectos_extras %}
 {% block title %}Mandados — El Taller{% endblock %}
 {% block head_extra %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endblock %}
 {% block contenido %}
@@ -36,8 +36,12 @@
                     <a href="/tareas/{{ m.tarea_id }}/" class="ml-1 font-medium text-gray-900 hover:underline dark:text-gray-100">{{ m.titulo|truncatechars:48 }}</a>
                 </td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                    <a href="/proyectos/{{ m.proyecto.id }}/" class="hover:underline">{{ m.proyecto.codigo }}</a>
-                    {% if m.cliente %}<br><span class="text-xs">{{ m.cliente.razon_social|truncatechars:30 }}</span>{% endif %}
+                    {% if m.proyecto %}
+                    <a href="/proyectos/{{ m.proyecto.id }}/" class="font-medium text-gray-900 hover:underline dark:text-gray-100">{{ m.proyecto|nombre_cliente|truncatechars:40 }}</a>
+                    <br><span class="text-[11px] text-gray-400 dark:text-gray-500">{{ m.proyecto.codigo }}</span>
+                    {% else %}
+                    <span class="text-gray-400">—</span>
+                    {% endif %}
                 </td>
                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{% if m.runner %}{{ m.runner.nombre_completo|default:m.runner.email }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                 <td class="px-4 py-3"><span class="badge badge-hex" style="--ec: {{ m.color }}">{{ m.get_estado_display }}</span></td>

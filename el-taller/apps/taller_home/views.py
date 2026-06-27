@@ -190,7 +190,7 @@ def _mis_tareas(user):
     qs = (
         Tarea.objects.filter(Q(asignada_a=user) | Q(runner=user))
         .exclude(estado="completada")
-        .select_related("proyecto")
+        .select_related("proyecto__cliente")
         .order_by("fecha_compromiso")
         .distinct()
     )

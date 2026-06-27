@@ -46,20 +46,27 @@ def _tareas_visibles_qs(user):
 
 
 def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
-    """Devuelve un dict {fecha: [{tipo, titulo, url, color}]} para el rango."""
+    """Devuelve un dict {fecha: [{tipo, titulo, url, color}]} para el rango.
+
+    Regla de color: si el día del evento YA PASÓ (anterior a hoy), el color
+    siempre es "gray" sin importar la categoría — así los eventos vencidos se
+    apagan visualmente en TODOS los calendarios (página + mini-cal del home).
+    """
     eventos: dict[date, list[dict]] = defaultdict(list)
+    hoy = timezone.localdate()
 
     # C6 S-LC-Feedback-V6: Proyecto.fecha_compromiso ahora es datetime → se
     # filtra y agrupa por su componente de fecha (`__date` / .date()).
     for p in _proyectos_visibles_qs(user).filter(
         fecha_compromiso__date__gte=inicio, fecha_compromiso__date__lte=fin
     ):
-        eventos[timezone.localtime(p.fecha_compromiso).date()].append({
+        dia_evento = timezone.localtime(p.fecha_compromiso).date()
+        eventos[dia_evento].append({
             "tipo": "entrega",
             "titulo": p.nombre,
             "subtitulo": p.cliente.razon_social,
             "url": f"/proyectos/{p.pk}/",
-            "color": "brand",
+            "color": "gray" if dia_evento < hoy else "brand",
         })
 
     # V6 Bloque 2: el tipo de la tarea (Entrega/Junta/Recoger) se refleja en
@@ -70,13 +77,14 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
     ):
         pre = _emoji.get(t.tipo)
         hora = t.hora.strftime("%H:%M") + " · " if t.hora else ""
+        color = "gray" if t.fecha_compromiso < hoy else ("warning" if t.prioridad == "alta" else "gray")
         eventos[t.fecha_compromiso].append({
             "tipo": "tarea",
             "tipo_tarea": t.tipo,
             "titulo": f"{pre} {hora}{t.titulo}" if pre else f"{hora}{t.titulo}",
             "subtitulo": t.proyecto.codigo,
             "url": f"/tareas/{t.pk}/",
-            "color": "warning" if t.prioridad == "alta" else "gray",
+            "color": color,
             "estado": t.estado,
         })
 

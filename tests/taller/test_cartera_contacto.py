@@ -55,7 +55,8 @@ def test_nuevo_cliente_con_contacto_espeja(client, usuario_factory):
         follow=True,
     )
     from apps.la_cartera.models import Cliente
-    cli = Cliente.objects.get(razon_social="Espejo S.A.")
+    # El nombre (razón social) se fuerza a MAYÚSCULAS al guardar.
+    cli = Cliente.objects.get(razon_social="ESPEJO S.A.")
     assert cli.telefono == "555 123 4567"
     assert cli.nombre_contacto == "Ana"
 

@@ -12,6 +12,24 @@ from __future__ import annotations
 
 from typing import Any
 
+_DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+_MESES_ES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+def _ahora_es() -> str:
+    """Fecha y hora actual en español (zona del proyecto). Da contexto temporal
+    real al Chalán para interpretar 'mañana'/'el viernes' como FUTURO."""
+    from django.utils import timezone
+    ahora = timezone.localtime()
+    return (
+        f"{_DIAS_ES[ahora.weekday()]} {ahora.day} de {_MESES_ES[ahora.month - 1]} "
+        f"de {ahora.year}, {ahora.strftime('%H:%M')}"
+    )
+
+
 SYSTEM_PROMPT = """\
 Eres El Chalán de El Despacho, asistente del CRM/ERP de Learning Center
 (despacho de diseño/maquila B2B mexicano).
@@ -37,6 +55,8 @@ NUNCA edites ni borres servicios/variaciones existentes.
 
 TIPOS DE ACCIÓN VÁLIDOS:
 - crear_proyecto, actualizar_proyecto, asignar_usuario_proyecto
+- agregar_producto_proyecto (agrega un producto del catálogo a un proyecto;
+  se ve SIEMPRE en la página del proyecto, sin importar su estado)
 - crear_cliente, actualizar_cliente
 - crear_servicio, crear_variacion, crear_proveedor (Catálogo: solo crear)
 - crear_tarea, actualizar_tarea, asignar_runner, crear_mandado
@@ -102,6 +122,7 @@ PAYLOADS:
 - crear_mandado: {proyecto_slug (o cliente_slug si solo sabes el cliente → su proyecto activo), titulo, tipo? ∈ entrega|recoger (default recoger), asignado_slug?, fecha_compromiso? ('YYYY-MM-DD'), hora? ('HH:MM'), runner_slug?, destino_texto? | poi? | destino_lat?+destino_lng?}
   Es un envío/recolección con destino. Da la dirección en `destino_texto` (se geolocaliza) o el nombre de un lugar conocido en `poi`. Sin runner_slug, el sistema asigna al repartidor MÁS CERCANO al destino. Ej.: "manda recoger el material de #LC-0001 en Av. Reforma 222, CDMX".
 - actualizar_proyecto: {proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}}
+- agregar_producto_proyecto: {proyecto_slug (o cliente_slug → su proyecto activo), servicio (nombre del catálogo o @accion_N de un crear_servicio previo), cantidad?, precio_unitario?, costo_unitario?, merma?, proveedor?, nota?}
 - asignar_usuario_proyecto: {proyecto_slug, usuario_slug, rol_en_proyecto?}
 - crear_recado: {destinatarios_slugs: [...], cuerpo}
 - crear_mensaje_buzon: {tipo: 'sugerencia'|'problema'|'otro', asunto, cuerpo}
@@ -144,7 +165,13 @@ def construir_user_prompt(
             partes.append(f"- {ap['frase']} → {ap['interpretacion']} (peso: {ap['peso']:.2f})")
         partes.append("")
     rol = getattr(usuario, "rol", "disenador") or "disenador"
-    partes.append(f"[CONTEXTO]\nUsuario: {getattr(usuario, 'nombre_completo', '')} ({rol})")
+    partes.append(
+        f"[CONTEXTO]\nFecha y hora actual: {_ahora_es()}.\n"
+        f"Usuario: {getattr(usuario, 'nombre_completo', '')} ({rol})")
+    partes.append(
+        "Las fechas de entrega/compromiso son SIEMPRE a futuro: interpreta días "
+        "relativos ('mañana', 'el viernes', 'en 2 semanas') a partir de la fecha "
+        "actual y NUNCA uses una fecha pasada para una entrega.")
     partes.append("")
     partes.append("[DICTADO]")
     partes.append(texto_crudo)

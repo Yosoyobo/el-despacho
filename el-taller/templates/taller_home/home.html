@@ -116,7 +116,7 @@
                         <span class="mr-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">{% if m.tipo == "recoger" %}Recoger{% else %}Entrega{% endif %}</span>
                         {{ m.titulo|truncatechars:44 }}
                     </a>
-                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">{% if m.proyecto %}{{ m.proyecto.codigo }}{% endif %}{% if m.destino_etiqueta %} · {{ m.destino_etiqueta|truncatechars:30 }}{% endif %}</p>
+                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">{% if m.proyecto %}{{ m.proyecto|nombre_cliente|truncatechars:28 }}{% endif %}{% if m.destino_etiqueta %} · {{ m.destino_etiqueta|truncatechars:30 }}{% endif %}</p>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
                     <span class="badge badge-hex" style="--ec: {{ m.color }}">{{ m.get_estado_display }}</span>
@@ -147,7 +147,7 @@
                     {% bloque_fecha t.fecha_compromiso %}
                     <div class="min-w-0 flex-1">
                         <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ t.titulo }}</p>
-                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ t.tipo|tipo_tarea_label }} · {{ t.proyecto.codigo }}</p>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">{% if t.proyecto %}{{ t.proyecto|nombre_cliente|truncatechars:28 }}{% else %}{{ t.tipo|tipo_tarea_label }}{% endif %}</p>
                     </div>
                 </a>
             </li>

@@ -21,6 +21,7 @@ urlpatterns = [
     # C5 S-LC-Feedback-V6: proveedores asignados al proyecto.
     path("<int:pk>/agregar-proveedor", views.agregar_proveedor_modal, name="proyectos-agregar-proveedor"),
     path("<int:pk>/quitar-proveedor/<int:prov_pk>", views.quitar_proveedor, name="proyectos-quitar-proveedor"),
+    path("<int:pk>/proveedor-iva/<int:prov_pk>", views.toggle_proveedor_iva, name="proyectos-proveedor-iva"),
     # Render-V2: deshacer el último guardado (Undo en Redis).
     path("<int:pk>/deshacer", views.deshacer, name="proyectos-deshacer"),
     # Contabilidad en línea: registrar gastos del proyecto como egresos.

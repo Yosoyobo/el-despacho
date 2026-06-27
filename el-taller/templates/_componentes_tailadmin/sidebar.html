@@ -85,7 +85,7 @@
         {% if permisos_modulos.recados and not sidebar_orden.recados.oculto %}
         <a href="/recados/" data-sidebar-grupo="{{ sidebar_orden.recados.grupo }}" style="order: {{ sidebar_orden.recados.orden|default:60 }}" class="menu-item {% if '/recados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16v14H4zM4 7l8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="flex-1">Recados</span>
+            <span class="flex-1">Mensajes</span>
             {% if recados_no_leidos_count %}
             <span class="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white">{{ recados_no_leidos_count }}</span>
             {% endif %}

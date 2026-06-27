@@ -68,39 +68,71 @@ def _proveedores_activos():
 
 
 def _proveedores_panel(proyecto):
-    """Deuda por proveedor (auto-sumada de los productos) fusionada con la
-    asignación explícita (tipo entregan/recogemos, compromiso, contacto).
+    """Panel de proveedores del proyecto (reporte Oscar, redISEÑO):
 
-    Cada fila trae `total` (subtotal sin IVA), `iva` y `total_con_iva`: los
-    proveedores facturan con IVA, así cuadra con los egresos pagados. La tasa
-    sale de la Configuración Fiscal (editable en Gerencia)."""
+    Por proveedor: total sin IVA, toggle de IVA propio del proyecto (default
+    prendido), total con IVA, y los CONCEPTOS que nos provee (producto o
+    impresión) con `cantidad (piezas-con-merma)` y costo unitario. Fusiona la
+    asignación explícita (tipo entregan/recogemos, compromiso, contacto)."""
     iva_fraccion = proyecto.iva_tasa_efectiva
-
-    def _con_iva(subtotal):
-        iva = (subtotal * iva_fraccion).quantize(Decimal("0.01"))
-        return iva, (subtotal + iva).quantize(Decimal("0.01"))
-
+    # Toggle de IVA por proveedor — solo este proyecto. Sin fila ⇒ True.
+    iva_map = {r.proveedor_id: r.aplica_iva for r in proyecto.proveedores_iva.all()}
     asignados = {
         pv.proveedor_id: pv
         for pv in proyecto.proveedores_asignados.select_related("proveedor").all()
     }
+    acc: dict[int, dict] = {}
+
+    def _slot(prov):
+        return acc.setdefault(
+            prov.pk, {"proveedor": prov, "total": Decimal("0.00"), "conceptos": []}
+        )
+
+    for pp in proyecto.productos_incluidos:
+        piezas = pp.cantidad + pp.merma
+        nombre_prod = pp.servicio.nombre if pp.servicio_id else "Producto"
+        if pp.proveedor_id:
+            s = _slot(pp.proveedor)
+            s["total"] += pp.costo_total_linea
+            s["conceptos"].append({
+                "nombre": nombre_prod, "cantidad": pp.cantidad, "piezas": piezas,
+                "costo_unit": pp.costo_efectivo, "fijo": None,
+            })
+        for proc in pp.procesos.all():
+            if proc.tipo == "impresion" and proc.proveedor_id:
+                s = _slot(proc.proveedor)
+                c = Decimal(str(proc.costo or 0))
+                nombre = f"Impresión · {nombre_prod}"
+                if proc.por_pieza:
+                    s["total"] += c * piezas
+                    s["conceptos"].append({
+                        "nombre": nombre, "cantidad": pp.cantidad, "piezas": piezas,
+                        "costo_unit": c, "fijo": None,
+                    })
+                else:
+                    s["total"] += c
+                    s["conceptos"].append({
+                        "nombre": nombre, "cantidad": None, "piezas": None,
+                        "costo_unit": None, "fijo": c,
+                    })
+
+    def _fila(prov, total, conceptos, asignacion):
+        aplica = iva_map.get(prov.pk, True)
+        total = total.quantize(Decimal("0.01"))
+        iva = (total * iva_fraccion).quantize(Decimal("0.01")) if aplica else Decimal("0.00")
+        return {
+            "proveedor": prov, "total": total, "aplica_iva": aplica, "iva": iva,
+            "total_con_iva": (total + iva).quantize(Decimal("0.01")),
+            "conceptos": conceptos, "asignacion": asignacion,
+        }
+
     filas, vistos = [], set()
-    for d in proyecto.deuda_por_proveedor():
-        pid = d["proveedor"].pk
+    for pid, s in sorted(acc.items(), key=lambda kv: kv[1]["total"], reverse=True):
         vistos.add(pid)
-        iva, total_iva = _con_iva(d["total"])
-        filas.append({
-            "proveedor": d["proveedor"], "total": d["total"],
-            "iva": iva, "total_con_iva": total_iva,
-            "asignacion": asignados.get(pid),
-        })
+        filas.append(_fila(s["proveedor"], s["total"], s["conceptos"], asignados.get(pid)))
     for pid, pv in asignados.items():
         if pid not in vistos:
-            filas.append({
-                "proveedor": pv.proveedor, "total": Decimal("0.00"),
-                "iva": Decimal("0.00"), "total_con_iva": Decimal("0.00"),
-                "asignacion": pv,
-            })
+            filas.append(_fila(pv.proveedor, Decimal("0.00"), [], pv))
     return filas
 
 
@@ -373,6 +405,10 @@ def detalle(request, pk):
             form.save()
             formset.save()
             _sync_procesos_formset(formset)
+            # ¿Se creó algún producto inline? Entonces hay que re-renderizar el
+            # formset por OOB para que la tarjeta nueva traiga su pk y NO se
+            # duplique en el siguiente autosave (bug que motivó el modal en V8).
+            hubo_nuevos = bool(getattr(formset, "new_objects", None))
             _reconciliar_equipo(request, proyecto)
             proyecto.recalcular_monto_estimado()
             proyecto.refresh_from_db()
@@ -384,11 +420,21 @@ def detalle(request, pk):
             # C7: autoguardado HTMX → refresca panel económico + proveedores +
             # indicador + estado del Undo (OOB).
             if es_htmx:
-                return render(request, "proyectos/_guardado_oob.html",
-                              {"proyecto": proyecto, "ok": True,
-                               "form": ProyectoForm(instance=proyecto), "puede_editar": True,
-                               "proveedores_panel": _proveedores_panel(proyecto),
-                               "pasos_undo": services_undo.pasos_disponibles(proyecto)})
+                ctx = {"proyecto": proyecto, "ok": True,
+                       "form": ProyectoForm(instance=proyecto), "puede_editar": True,
+                       "proveedores_panel": _proveedores_panel(proyecto),
+                       "pasos_undo": services_undo.pasos_disponibles(proyecto)}
+                if hubo_nuevos:
+                    from apps.el_catalogo.models import CategoriaServicio
+                    nuevo_fs = ProyectoProductoFormSetDetalle(instance=proyecto)
+                    _anotar_procesos(nuevo_fs)
+                    ctx.update({
+                        "rerender_productos": True,
+                        "formset": nuevo_fs,
+                        "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+                        "proveedores_activos": _proveedores_activos(),
+                    })
+                return render(request, "proyectos/_guardado_oob.html", ctx)
             messages.success(request, "Proyecto guardado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
         if es_htmx:
@@ -827,6 +873,32 @@ def quitar_producto(request, pk, prod_pk):
     if _es_htmx(request):
         return HttpResponse(status=204, headers={"HX-Redirect": destino})
     return redirect(destino)
+
+
+@login_required
+def toggle_proveedor_iva(request, pk, prov_pk):
+    """Prende/apaga el IVA de un proveedor, SOLO en este proyecto (reporte Oscar).
+
+    Sin fila = IVA prendido (default). Primer toggle crea la fila en False; los
+    siguientes la voltean. Devuelve el panel de proveedores por OOB."""
+    from apps.el_catalogo.models import Proveedor
+    from apps.los_proyectos.models import ProyectoProveedorIva
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    if request.method != "POST":
+        return HttpResponseForbidden("Solo POST.")
+    prov = get_object_or_404(Proveedor, pk=prov_pk)
+    obj, creado = ProyectoProveedorIva.objects.get_or_create(
+        proyecto=proyecto, proveedor=prov, defaults={"aplica_iva": False},
+    )
+    if not creado:
+        obj.aplica_iva = not obj.aplica_iva
+        obj.save(update_fields=["aplica_iva"])
+    return render(request, "proyectos/_proveedores_panel.html", {
+        "proyecto": proyecto, "proveedores_panel": _proveedores_panel(proyecto),
+        "puede_editar": True, "oob": True,
+    })
 
 
 @login_required

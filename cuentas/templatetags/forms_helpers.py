@@ -134,3 +134,14 @@ def dinero_sin_signo(valor) -> str:
     if formato.startswith("-$"):
         return "-" + formato[2:]
     return formato
+
+
+@register.filter
+def dinero_corto(valor) -> str:
+    """Como `dinero` pero oculta los centavos cuando son .00.
+    `95` → `$95`; `95.5` → `$95.50`. Para subtítulos compactos (Oscar V-feedback:
+    precio unitario en '$95 x 10 pz' sin .00 salvo que haya centavos)."""
+    formato = dinero(valor)
+    if formato.endswith(".00"):
+        return formato[:-3]
+    return formato

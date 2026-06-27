@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Recados{% endblock %}
+{% block title %}Mensajes{% endblock %}
 
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Recados" as breadcrumb_items %}
+{% breadcrumb_items "Mensajes" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 {% include "recados/_tabs.html" %}
 
@@ -12,7 +12,7 @@
     {# ── Sidebar de conversaciones (lista completa en móvil) ──── #}
     <aside class="flex w-full shrink-0 flex-col border-r border-gray-200 md:w-72 dark:border-gray-800">
         <header class="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100">Recados</h1>
+            <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100">Mensajes</h1>
             {% if puede_crear %}
             <a href="{% url 'recados:nueva' %}" class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600" title="Nueva conversación">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>

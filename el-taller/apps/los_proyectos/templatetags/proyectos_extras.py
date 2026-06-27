@@ -5,6 +5,27 @@ from django import template
 register = template.Library()
 
 
+@register.filter(name="nombre_cliente")
+def nombre_cliente(proyecto):
+    """Decisión Oscar: en widgets/listas el protagonista es el NOMBRE del
+    proyecto + el NOMBRE del cliente (en esa prioridad), no el código LC-NNNN.
+
+    Devuelve "Nombre · Cliente" tolerando nulos (proyecto, cliente, campos
+    vacíos). Si no hay proyecto, devuelve "". Si falta el cliente, devuelve
+    solo el nombre del proyecto (con fallback al código si tampoco hay nombre).
+    """
+    if not proyecto:
+        return ""
+    nombre = (getattr(proyecto, "nombre", "") or "").strip()
+    cliente = getattr(proyecto, "cliente", None)
+    razon = (getattr(cliente, "razon_social", "") or "").strip() if cliente else ""
+    if not nombre:
+        nombre = (getattr(proyecto, "codigo", "") or "").strip()
+    if nombre and razon:
+        return f"{nombre} · {razon}"
+    return nombre or razon
+
+
 @register.filter(name="dentro_de")
 def dentro_de(fecha):
     """Devuelve 'dentro de N días' / 'hoy' / 'vencido hace N días' para una fecha."""

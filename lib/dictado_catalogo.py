@@ -44,6 +44,12 @@ COMANDOS_DICTADO: list[dict] = [
         "gating": "admin",
     },
     {
+        "tipo": "agregar_producto_proyecto",
+        "titulo": "Agregar producto a un proyecto",
+        "ejemplo": 'Agrega 100 playeras a #lc-0001. Los productos se ven SIEMPRE en la página del proyecto, sin importar su estado.',
+        "payload": "proyecto_slug (o cliente_slug → su proyecto activo), servicio (nombre del catálogo o @accion_N de un crear_servicio previo), cantidad?, precio_unitario?, costo_unitario?, merma?, proveedor?, nota?",
+    },
+    {
         "tipo": "crear_cliente",
         "titulo": "Crear cliente",
         "ejemplo": 'Crea un cliente que se llame "NoKo Devs".',

@@ -3,6 +3,11 @@ panel de proveedores, indicador permanente (✓/✕), marca de última actualiza
 estado del botón Deshacer (cuántos pasos quedan).{% endcomment %}
 {% include "proyectos/_economico_panel.html" with proyecto=proyecto form=form puede_editar=puede_editar oob=True %}
 {% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=True oob=True %}
+{% if rerender_productos %}
+{% comment %}Tras crear un producto inline: re-renderiza el formset con la tarjeta nueva
+ya con su pk (acordeon omitido = todas visibles, el usuario está agregando).{% endcomment %}
+<div id="formset-productos" class="space-y-4" hx-swap-oob="true">{% include "proyectos/_formset_productos.html" %}</div>
+{% endif %}
 {% include "proyectos/_guardado_indicador.html" with estado=ok|yesno:"guardado,error" oob=True %}
 {% comment %}V6 Bloque 5: error legible del autosave — antes el fallo era un
 "✕" mudo y el usuario creía que su cambio (p.ej. el toggle de incluir) quedó

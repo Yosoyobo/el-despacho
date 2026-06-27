@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Nueva conversación — Recados{% endblock %}
+{% block title %}Nueva conversación — Mensajes{% endblock %}
 
 {% block contenido %}
 <div class="mx-auto max-w-2xl">
     {% load forms_helpers %}
-    {% breadcrumb_items "Recados" "/recados/" "Nueva conversación" as breadcrumb_items %}
+    {% breadcrumb_items "Mensajes" "/recados/" "Nueva conversación" as breadcrumb_items %}
     <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
     <header class="mb-6">
         <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Nueva conversación</h1>

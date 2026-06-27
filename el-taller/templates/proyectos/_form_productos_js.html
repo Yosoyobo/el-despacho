@@ -78,12 +78,43 @@
         if (sel && SERVICIOS_DATOS[sel.value]) return num(SERVICIOS_DATOS[sel.value].precio);
         return 0;
     }
+    function costoEfectivo(card) {
+        const sel = card.querySelector('select[name$="-servicio"]');
+        const cIn = card.querySelector('input[name$="-costo_unitario"]');
+        if (cIn && cIn.value !== '') return num(cIn.value);
+        if (sel && SERVICIOS_DATOS[sel.value]) return num(SERVICIOS_DATOS[sel.value].costo);
+        return 0;
+    }
+    function costoProcesos(card, piezas) {
+        let t = 0;
+        const impProv = card.querySelector('.imp-proveedor');
+        const impCosto = card.querySelector('.imp-costo');
+        const impPP = card.querySelector('.imp-por-pieza');
+        if (impProv && impProv.value) { const c = num(impCosto && impCosto.value); t += (impPP && impPP.checked) ? c * piezas : c; }
+        card.querySelectorAll('.proceso-fila').forEach(fila => {
+            const c = num((fila.querySelector('.proc-costo') || {}).value);
+            const d = ((fila.querySelector('.proc-desc') || {}).value || '').trim();
+            const pp = fila.querySelector('.proc-por-pieza');
+            if (d || c) t += (pp && pp.checked) ? c * piezas : c;
+        });
+        return t;
+    }
     function recalcular(card) {
         const inc = card.querySelector('input[name$="-incluir_en_calculo"]');
         const cant = num((card.querySelector('input[name$="-cantidad"]') || {}).value);
+        const merma = num((card.querySelector('input[name$="-merma"]') || {}).value);
         const incluido = !inc || inc.checked;
         const monto = card.querySelector('[data-monto]');
         if (monto) monto.textContent = fmt(incluido ? precioEfectivo(card) * cant : 0);
+        // Costo de producción (reporte Oscar): por pieza (costo unitario) y total
+        // producción + merma + procesos.
+        const cu = costoEfectivo(card);
+        const piezas = cant + merma;
+        const total = cu * piezas + costoProcesos(card, piezas);
+        const cpp = card.querySelector('[data-costo-pp]');
+        const ctot = card.querySelector('[data-costo-total]');
+        if (cpp) cpp.textContent = cu ? fmt(cu) : '—';
+        if (ctot) ctot.textContent = total ? fmt(total) : '—';
         const cuerpo = card.querySelector('[data-cuerpo]');
         if (cuerpo) cuerpo.classList.toggle('opacity-40', !incluido), cuerpo.classList.toggle('pointer-events-none', !incluido);
     }
@@ -158,8 +189,15 @@
         recalcular(card);
         serializar(card);
         renumerar(card);
+        card._inited = true;
     }
-    document.querySelectorAll('#formset-productos [data-card]').forEach(initCard);
+    function initCards() {
+        document.querySelectorAll('#formset-productos [data-card]').forEach(c => { if (!c._inited) initCard(c); });
+    }
+    initCards();
+    // Tras cada swap HTMX (autosave OOB, re-render del formset al crear producto)
+    // inicializa las tarjetas nuevas (idempotente: ignora las ya inicializadas).
+    document.body.addEventListener('htmx:afterSettle', initCards);
 
     // ── Delegación de eventos ─────────────────────────────────────────────────
     document.addEventListener('change', function (e) {
@@ -167,8 +205,8 @@
         const card = t.closest && t.closest('[data-card]');
         if (t.matches && t.matches('select[name$="-servicio"]')) { prellenarServicio(t); }
         else if (card && t.matches && t.matches('[data-cat-filtro]')) { aplicarCatFiltro(card); }
-        else if (card && t.matches && t.matches('input[name$="-incluir_en_calculo"], input[name$="-cantidad"], input[name$="-precio_unitario"]')) { recalcular(card); }
-        if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .imp-por-pieza, .proc-desc, .proc-costo, .proc-por-pieza')) { serializar(card); }
+        else if (card && t.matches && t.matches('input[name$="-incluir_en_calculo"], input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) { recalcular(card); }
+        if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .imp-por-pieza, .proc-desc, .proc-costo, .proc-por-pieza')) { serializar(card); recalcular(card); }
         // Sync del estado oculto cuando se cambia desde la barra de status.
         const chip = t.closest && t.closest('[data-estado-slug]');
         if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }
@@ -177,8 +215,8 @@
         const t = e.target;
         const card = t.closest && t.closest('[data-card]');
         if (!card) return;
-        if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"]')) recalcular(card);
-        if (t.matches('.imp-costo, .proc-desc, .proc-costo')) serializar(card);
+        if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) recalcular(card);
+        if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { serializar(card); recalcular(card); }
     });
     document.addEventListener('click', function (e) {
         // Botón "Hoy" debajo del calendario de inicio.
@@ -199,12 +237,27 @@
         const chip = e.target.closest && e.target.closest('[data-estado-slug]');
         if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }
 
+        // Quitar producto desde el desglose económico del sidebar (reporte Oscar:
+        // sin confirmación ni recarga). Encuentra la tarjeta del formset por su pk,
+        // marca DELETE y la oculta; el autosave borra y refresca el panel por OOB.
+        const quitarSidebar = e.target.closest && e.target.closest('[data-quitar-producto]');
+        if (quitarSidebar) {
+            const pk = quitarSidebar.getAttribute('data-quitar-producto');
+            const idInput = Array.from(document.querySelectorAll('#formset-productos input[name$="-id"]')).find(i => i.value === pk);
+            if (idInput) {
+                const tarjeta = idInput.closest('[data-card]');
+                const cb = tarjeta && tarjeta.querySelector('input[name$="-DELETE"]');
+                if (cb) { cb.checked = true; tarjeta.style.display = 'none'; autosave(); }
+            }
+            return;
+        }
+
         const card = e.target.closest && e.target.closest('[data-card]');
         const add = e.target.closest && e.target.closest('.proceso-add');
         if (add && card) { agregarProceso(card); return; }
         const del = e.target.closest && e.target.closest('.proceso-del');
-        if (del && card) { del.closest('.proceso-fila').remove(); renumerar(card); serializar(card); autosave(); return; }
-        // Quitar producto.
+        if (del && card) { del.closest('.proceso-fila').remove(); renumerar(card); serializar(card); recalcular(card); autosave(); return; }
+        // Quitar producto (X de la tarjeta).
         const elim = e.target.closest && e.target.closest('.producto-eliminar');
         if (elim) {
             const fila = elim.closest('[data-card]');
@@ -215,38 +268,64 @@
         }
     });
 
-    // ── Clonar tarjeta ────────────────────────────────────────────────────────
-    function clonarUltima(servId, cantVal, precioVal, costoVal, mermaVal) {
+    // ── Nueva tarjeta de producto (inline) ────────────────────────────────────
+    // En el DETALLE existe `#producto-empty-template` (formset.empty_form): se
+    // clona desde ahí con índice nuevo (extra form). Al llenarla y autoguardar,
+    // el servidor la crea y RE-RENDERIZA el formset por OOB con su pk ya puesto
+    // (evita el bug de duplicados que motivó el modal en V8). En Nuevo/Editar
+    // (sin template ni autosave) se cae al clonado de la última tarjeta.
+    function construirTarjeta(servId, cantVal, precioVal, costoVal, mermaVal) {
         const tf = document.querySelector('input[name$="-TOTAL_FORMS"]');
         const cont = document.getElementById('formset-productos');
+        if (!tf || !cont) return null;
         const idx = parseInt(tf.value, 10);
-        const clon = cont.lastElementChild.cloneNode(true);
-        clon.innerHTML = clon.innerHTML
-            .replace(new RegExp('productos-' + (idx - 1) + '-', 'g'), 'productos-' + idx + '-')
-            .replace(new RegExp('id_productos-' + (idx - 1) + '-', 'g'), 'id_productos-' + idx + '-');
-        const lista = clon.querySelector('.proceso-lista'); if (lista) lista.innerHTML = '';
-        clon.querySelectorAll('input, select, textarea').forEach(el => {
-            if (el.type === 'checkbox') { el.checked = !!(el.name && el.name.endsWith('-incluir_en_calculo')); }
-            else if (el.tagName === 'SELECT') {
-                if (el.name && el.name.endsWith('-servicio') && servId) el.value = String(servId);
-                else el.selectedIndex = 0;
-            }
-            else if (el.name && el.name.endsWith('-cantidad')) el.value = cantVal || '1';
-            else if (el.name && el.name.endsWith('-precio_unitario')) el.value = precioVal || '';
-            else if (el.name && el.name.endsWith('-costo_unitario')) el.value = costoVal || '';
-            else if (el.name && el.name.endsWith('-merma')) el.value = mermaVal || '0';
-            else el.value = '';
-        });
-        clon.querySelectorAll('.producto-eliminar').forEach(b => b.removeAttribute('data-delete-checkbox'));
-        clon.querySelectorAll('span.hidden').forEach(s => { if (s.querySelector('input[name$="-DELETE"]')) s.remove(); });
-        clon.style.display = '';
-        cont.appendChild(clon);
+        let card;
+        const tpl = document.getElementById('producto-empty-template');
+        if (tpl) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = tpl.innerHTML.replace(/__prefix__/g, idx).trim();
+            card = wrap.firstElementChild;
+            const setv = (sfx, v) => { if (v != null && v !== '') { const el = card.querySelector('[name$="-' + sfx + '"]'); if (el) el.value = v; } };
+            if (servId) setv('servicio', String(servId));
+            setv('cantidad', cantVal || '1');
+            setv('precio_unitario', precioVal);
+            setv('costo_unitario', costoVal);
+            setv('merma', mermaVal || '0');
+            cont.appendChild(card);
+        } else {
+            if (!cont.lastElementChild) return null;
+            card = cont.lastElementChild.cloneNode(true);
+            card.innerHTML = card.innerHTML
+                .replace(new RegExp('productos-' + (idx - 1) + '-', 'g'), 'productos-' + idx + '-')
+                .replace(new RegExp('id_productos-' + (idx - 1) + '-', 'g'), 'id_productos-' + idx + '-');
+            const lista = card.querySelector('.proceso-lista'); if (lista) lista.innerHTML = '';
+            card.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type === 'checkbox') { el.checked = !!(el.name && el.name.endsWith('-incluir_en_calculo')); }
+                else if (el.tagName === 'SELECT') {
+                    if (el.name && el.name.endsWith('-servicio') && servId) el.value = String(servId);
+                    else el.selectedIndex = 0;
+                }
+                else if (el.name && el.name.endsWith('-cantidad')) el.value = cantVal || '1';
+                else if (el.name && el.name.endsWith('-precio_unitario')) el.value = precioVal || '';
+                else if (el.name && el.name.endsWith('-costo_unitario')) el.value = costoVal || '';
+                else if (el.name && el.name.endsWith('-merma')) el.value = mermaVal || '0';
+                else el.value = '';
+            });
+            card.querySelectorAll('.producto-eliminar').forEach(b => b.removeAttribute('data-delete-checkbox'));
+            card.querySelectorAll('span.hidden').forEach(s => { if (s.querySelector('input[name$="-DELETE"]')) s.remove(); });
+            card.classList.remove('hidden');
+            card.removeAttribute('data-acordeon-oculto');
+            card.style.display = '';
+            cont.appendChild(card);
+        }
         tf.value = idx + 1;
-        initCard(clon);
-        return clon;
+        initCard(card);
+        if (card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return card;
     }
+    const clonarUltima = construirTarjeta;  // alias retro-compat (quick-create del catálogo)
     const addBtn = document.getElementById('add-producto');
-    if (addBtn) addBtn.addEventListener('click', () => clonarUltima(null, '1'));
+    if (addBtn) addBtn.addEventListener('click', () => construirTarjeta(null, '1'));
 
     // ── Acordeón de productos (V6 Bloque 5) ──────────────────────────────────
     // Muestra/oculta las tarjetas 3+ guardadas. display:none NO excluye los

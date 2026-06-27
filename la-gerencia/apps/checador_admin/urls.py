@@ -3,6 +3,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("gerencia/geocoding", views.geocoding_buscar, name="gerencia-geocoding"),
     path("catalogos/horarios/", views.horarios, name="checador-admin-horarios"),
     path("catalogos/horarios/nuevo/", views.horario_nuevo, name="checador-admin-horario-nuevo"),
     path("catalogos/horarios/<int:pk>/editar/", views.horario_editar, name="checador-admin-horario-editar"),

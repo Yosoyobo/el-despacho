@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ titulo }} — Recados{% endblock %}
+{% block title %}{{ titulo }} — Mensajes{% endblock %}
 
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Recados" "/recados/" titulo as breadcrumb_items %}
+{% breadcrumb_items "Mensajes" "/recados/" titulo as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 
 <div class="flex flex-col h-[calc(100vh-9rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm md:flex-row dark:border-gray-800 dark:bg-gray-900">
@@ -12,7 +12,7 @@
     scroll) y el hilo abajo, ambas visibles; en md+ columna fija a la izquierda.{% endcomment %}
     <aside class="flex max-h-[32vh] w-full shrink-0 flex-col overflow-hidden border-b border-gray-200 md:max-h-none md:w-72 md:border-b-0 md:border-r dark:border-gray-800">
         <header class="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100">Recados</h1>
+            <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100">Mensajes</h1>
             {% if puede_crear %}
             <a href="{% url 'recados:nueva' %}" class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600" title="Nueva conversación">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>

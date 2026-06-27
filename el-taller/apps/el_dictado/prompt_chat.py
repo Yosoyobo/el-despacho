@@ -115,9 +115,14 @@ CÓMO TRABAJAS:
 
 
 def contexto_usuario(usuario) -> str:
+    from .prompt import _ahora_es
     rol = getattr(usuario, "rol", "disenador") or "disenador"
     nombre = getattr(usuario, "nombre_completo", "") or getattr(usuario, "email", "")
-    return f"[CONTEXTO]\nUsuario: {nombre} ({rol})"
+    return (
+        f"[CONTEXTO]\nFecha y hora actual: {_ahora_es()}. Las fechas de entrega/"
+        f"compromiso son SIEMPRE a futuro (interpreta días relativos a partir de hoy).\n"
+        f"Usuario: {nombre} ({rol})"
+    )
 
 
 def construir_system_prompt_nativo(usuario) -> str:
@@ -142,9 +147,7 @@ def construir_user_prompt_chat(
 ) -> str:
     """Arma el bloque de usuario: contexto + historial capado + mensaje nuevo."""
     partes: list[str] = []
-    rol = getattr(usuario, "rol", "disenador") or "disenador"
-    nombre = getattr(usuario, "nombre_completo", "") or getattr(usuario, "email", "")
-    partes.append(f"[CONTEXTO]\nUsuario: {nombre} ({rol})")
+    partes.append(contexto_usuario(usuario))
     if historial:
         partes.append("")
         partes.append("[CONVERSACIÓN PREVIA]")
