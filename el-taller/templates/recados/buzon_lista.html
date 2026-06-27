@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load forms_helpers buzon_extras %}
+{% block title %}Mi Buzón — Mensajes{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Mensajes" "/recados/" "Mi Buzón" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+{% include "recados/_tabs.html" %}
+
+<header class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="flex items-center gap-2 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+            Mis mensajes al Buzón
+            {% if no_leidos_mio %}<span title="Sin leer (tú)" class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-500 px-2 text-xs font-semibold text-white">{{ no_leidos_mio }}</span>{% endif %}
+        </h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lo que has enviado al equipo y sus respuestas.</p>
+    </div>
+    <a href="{% url 'recados:buzon_nuevo' %}" class="btn-primario">+ Nuevo mensaje al Buzón</a>
+</header>
+
+{# KPIs clickeables como filtro (toggle estado). #}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Nuevos" valor=kpis.nuevos color="blue-light" link=kpi_links.nuevo activo=kpi_activos.nuevo icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Leídos" valor=kpis.leidos color="brand" link=kpi_links.leido activo=kpi_activos.leido icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Respondidos" valor=kpis.respondidos color="success" link=kpi_links.respondido activo=kpi_activos.respondido icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 17 8-8M4 12l3 3 13-13" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Archivados" valor=kpis.archivados color="purple" link=kpi_links.archivado activo=kpi_activos.archivado icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+</div>
+
+{# Filtros tipo-botón (estado / tipo) + buscador — reutiliza los elementos del Buzón. #}
+<div class="mb-3 space-y-2.5 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <form method="get" class="campo-form flex items-center gap-2">
+        {% if estado_filtro %}<input type="hidden" name="estado" value="{{ estado_filtro }}">{% endif %}
+        {% if tipo_filtro %}<input type="hidden" name="tipo" value="{{ tipo_filtro }}">{% endif %}
+        <div class="min-w-0 flex-1">
+            <label for="mibzn-q" class="sr-only">Buscar</label>
+            <input type="search" id="mibzn-q" name="q" value="{{ q }}" placeholder="Buscar en asunto o texto…">
+        </div>
+        <button type="submit" class="btn-secundario shrink-0">Buscar</button>
+    </form>
+    <div class="flex flex-wrap items-center gap-1.5">
+        <span class="mr-1 w-12 text-xs font-medium text-gray-400 dark:text-gray-500">Estado</span>
+        {% for c in estado_chips %}
+        <a href="{{ c.link }}" class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition {% if c.activo %}border-brand-500 bg-brand-500 text-white{% else %}border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">
+            {% if c.color %}<span class="h-2 w-2 rounded-full" style="background:{{ c.color }}"></span>{% endif %}{{ c.label }}
+        </a>
+        {% endfor %}
+    </div>
+    <div class="flex flex-wrap items-center gap-1.5">
+        <span class="mr-1 w-12 text-xs font-medium text-gray-400 dark:text-gray-500">Tipo</span>
+        {% for c in tipo_chips %}
+        <a href="{{ c.link }}" class="rounded-full border px-3 py-1 text-xs font-medium transition {% if c.activo %}border-brand-500 bg-brand-500 text-white{% else %}border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ c.label }}</a>
+        {% endfor %}
+        {% if tiene_filtros %}<a href="?" class="ml-auto text-xs text-gray-500 hover:text-brand-600 dark:text-gray-400">Limpiar</a>{% endif %}
+    </div>
+</div>
+
+{% if no_leidos_mio %}
+<div class="mb-2 flex items-center px-1">
+    <form method="post" action="{% url 'recados:buzon_masivo' %}" class="ml-auto">
+        {% csrf_token %}
+        <button type="submit" name="accion" value="marcar_todo_leido_mio" class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">✓ Marcar todo como leído</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="space-y-3">
+    {% for m in mensajes %}
+    <div class="relative rounded-2xl border bg-white p-4 shadow-theme-sm transition hover:border-brand-300 dark:bg-gray-900 dark:hover:border-brand-500/40 {% if m.leido_para_mi %}border-gray-200 dark:border-gray-800{% else %}border-brand-200 dark:border-brand-500/30{% endif %}">
+        <a href="{% url 'recados:buzon_detalle' m.pk %}" class="block">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="flex min-w-0 items-center gap-1.5 truncate {% if m.leido_para_mi %}font-medium text-gray-900 dark:text-gray-100{% else %}font-bold text-gray-900 dark:text-gray-50{% endif %}">
+                        {% if not m.leido_para_mi %}<span class="inline-flex h-2 w-2 shrink-0 rounded-full bg-brand-500" title="No leído"></span>{% endif %}
+                        <span class="truncate">{{ m.asunto|default:"(sin asunto)" }}</span>
+                    </p>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">#{{ m.pk }} · {{ m.get_tipo_display }} · {{ m.creado_en|hfmt:"d M Y H:i" }}{% if m.num_adjuntos %} · 📎 {{ m.num_adjuntos }}{% endif %}</p>
+                </div>
+                <span class="badge badge-hex shrink-0" style="--ec: {{ m.estado|color_estado_buzon }}">{{ m.estado|estado_label_buzon }}</span>
+            </div>
+            <p class="mt-2 line-clamp-2 text-sm text-gray-600 dark:text-gray-300">{{ m.cuerpo }}</p>
+            {% if m.respuesta_publica %}
+            <div class="mt-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-500/30 dark:bg-brand-500/5">
+                <p class="text-[11px] font-medium uppercase tracking-wide text-brand-600 dark:text-brand-300">Respuesta del equipo</p>
+                <p class="mt-0.5 line-clamp-2 text-sm text-gray-700 dark:text-gray-200">{{ m.respuesta_publica }}</p>
+            </div>
+            {% endif %}
+        </a>
+        <div class="mt-2 flex justify-end">
+            <form method="post" action="{% url 'recados:buzon_toggle_leido' m.pk %}">
+                {% csrf_token %}
+                {% if volver_qs %}<input type="hidden" name="volver" value="{{ volver_qs }}">{% endif %}
+                <button type="submit" class="text-[11px] font-medium text-gray-400 hover:text-brand-600 dark:hover:text-brand-400">
+                    {% if m.leido_para_mi %}Marcar no leído{% else %}Marcar leído{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    {% include "_componentes_tailadmin/_empty_state.html" with titulo="No has enviado mensajes al Buzón" descripcion="Usa el botón de arriba para mandar una sugerencia, reportar un problema o cualquier tema al equipo." icono="chat" cta_url="/recados/buzon/nuevo/" cta_label="Escribir al Buzón" %}
+    {% endfor %}
+</div>
+{% include "_componentes_tailadmin/_paginacion.html" with page_obj=page_obj querystring=querystring_paginacion %}
+{% endblock %}

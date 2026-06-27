@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Escribir al Buzón — Mensajes{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Mensajes" "/recados/" "Mi Buzón" "/recados/buzon/" "Nuevo" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Escribir al Buzón" subtitulo="Sugerencia, problema o lo que quieras decirle a la administración." breadcrumb_items=breadcrumb_items back_url="/recados/buzon/" back_label="Mi Buzón" %}
+
+<form method="post" enctype="multipart/form-data" class="max-w-3xl" data-upload-progress>
+    {% csrf_token %}
+    {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="space-y-5">
+            {% for f in form %}
+            <div>
+                {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}{% if f.field.required %} <span class="text-error-500">*</span>{% endif %}</label>{% endif %}
+                {{ f }}
+                {% if f.help_text %}<p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ f.help_text }}</p>{% endif %}
+                {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            {% endfor %}
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">📎 Adjuntar archivos (opcional)</label>
+                {% include "_componentes_tailadmin/_file_upload.html" with name="adjuntos" multiple=True accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hint="Imágenes o PDF, hasta 25 MB c/u. Se guardan en Google Drive." %}
+            </div>
+        </div>
+    </section>
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <a href="{% url 'recados:zona_buzon' %}" class="btn-secundario">Cancelar</a>
+        <button type="submit" class="btn-primario">Enviar mensaje</button>
+    </div>
+</form>
+{% endblock %}

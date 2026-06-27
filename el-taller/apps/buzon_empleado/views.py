@@ -1,14 +1,20 @@
-"""Buzón unificado en El Taller (Pre-S2b.2).
+"""Buzón de SOPORTE en El Taller (la bandeja de TODOS los mensajes).
 
-Antes había dos apps: `buzon_admin` en Gerencia (super_admin/dueno veían
-todos los mensajes con form de respuesta) y `buzon_empleado` en Taller
-(empleado solo veía los suyos). Pre-S2b.2 las unifica: una sola bandeja
-en Taller que adapta su contenido según `puede(user, "buzon", "ver_todos")`.
+Esta app es 100% la vista de administración del Buzón. **Solo super_admin
+(failsafe) o quien tenga delegado `(buzon, ver_todos)` la alcanza** — TODAS las
+vistas se gatean con `@requiere_permiso("buzon", "ver_todos")`. Decisión Oscar
+(S-Buzon-SuperAdmin): los usuarios sin ese permiso NO deben llegar al Buzón ni
+por URL ni por breadcrumb.
+
+La experiencia del USUARIO (ver sus propios tickets, escribir al Buzón y
+responder dentro de su ticket) vive en **Mensajes → "Mi Buzón"**
+(`apps.recados.views_zonas`, rutas `/recados/buzon/*`), que reutiliza los
+componentes de filtro/búsqueda/marcar de aquí pero sin acciones de admin.
 
 Permisos:
-  buzon.ver_propios  → ve sus mensajes (todos los autenticados lo tienen)
-  buzon.ver_todos    → ve TODOS los mensajes + form de respuesta (admin)
+  buzon.ver_todos    → ve TODOS los mensajes + form de respuesta (= esta app)
   buzon.responder    → puede escribir respuesta_admin
+  buzon.ver_propios  → ve sus mensajes (se consume en Mensajes → Mi Buzón)
 """
 
 from urllib.parse import urlencode
@@ -25,7 +31,7 @@ from django.views.decorators.http import require_http_methods
 from buzon.estados import estados_activos, label_de
 from buzon.models import MensajeBuzon
 from lib.colador import colar_reporte
-from lib.permisos import es_admin, puede
+from lib.permisos import es_admin, puede, requiere_permiso
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 from lib.sanear import sanear_contexto
@@ -35,9 +41,9 @@ from .forms import NuevoMensajeForm, RespuestaAdminForm
 # ── Lista unificada ──────────────────────────────────────────────────────────
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 def lista(request):
-    """Bandeja adaptativa: admin (ver_todos) o empleado (ver_propios)."""
+    """Bandeja de soporte (TODOS los mensajes). Solo super_admin / ver_todos."""
     user = request.user
     es_admin_buzon = puede(user, "buzon", "ver_todos")
     qs = MensajeBuzon.objects.select_related("autor").annotate(num_adjuntos=Count("adjuntos"))
@@ -170,10 +176,10 @@ def lista(request):
     })
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["GET", "POST"])
 def detalle(request, pk: int):
-    """Detalle adaptativo: admin ve todo + form respuesta; empleado solo si es autor."""
+    """Detalle de administración: ver todo + form de respuesta. Solo ver_todos."""
     msg = get_object_or_404(MensajeBuzon, pk=pk)
     user = request.user
     es_admin_buzon = puede(user, "buzon", "ver_todos")
@@ -263,6 +269,8 @@ def detalle(request, pk: int):
         msg.autor_id == user.pk and ConfiguracionBuzon.obtener().empleado_puede_responder)
     # C1: regresa al listado con el filtro previo (si vino `volver`).
     url_lista = reverse("buzon-lista") + (f"?{volver}" if volver else "")
+    # `_hilo.html` postea aquí (lado admin). El usuario usa recados:buzon_comentar.
+    comentar_url = reverse("buzon-comentar", args=[msg.pk])
     if es_htmx:
         resp = render(request, "buzon/_pane.html", {
             "mensaje": msg, "form": form,
@@ -271,6 +279,7 @@ def detalle(request, pk: int):
             "info_buzon": info_buzon,
             "comentarios": comentarios,
             "puede_comentar_hilo": puede_comentar_hilo,
+            "comentar_url": comentar_url,
             "volver_qs": volver,
         })
         # Sin refresh manual: abrir/responder pudo cambiar el estado o el leído
@@ -285,6 +294,7 @@ def detalle(request, pk: int):
         "info_buzon": info_buzon,
         "comentarios": comentarios,
         "puede_comentar_hilo": puede_comentar_hilo,
+        "comentar_url": comentar_url,
         "volver_qs": volver,
         "breadcrumb_items": [
             {"url": url_lista, "label": "Buzón"},
@@ -322,11 +332,11 @@ def _procesar_adjuntos_buzon(request, msg) -> None:
             messages.warning(request, f"Adjunto no subido: {res.error}")
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["POST"])
 def toggle_leido(request, pk: int):
-    """Alterna leído/no leído POR USUARIO (S-Chalanes-UX #3). Cualquier usuario
-    sobre un mensaje que pueda ver."""
+    """Alterna leído/no leído POR USUARIO (admin). El usuario marca los suyos
+    desde Mensajes → Mi Buzón (`recados:buzon_toggle_leido`)."""
     msg = get_object_or_404(MensajeBuzon, pk=pk)
     if not puede(request.user, "buzon", "ver_todos") and msg.autor_id != request.user.pk:
         raise Http404
@@ -344,11 +354,11 @@ def toggle_leido(request, pk: int):
     return redirect(destino)
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["POST"])
 def comentar(request, pk: int):
-    """C5d S-LC-Buzon-V2: hilo de comentarios autor↔admin. Admins (responder)
-    siempre; el autor solo si ConfiguracionBuzon.empleado_puede_responder."""
+    """Hilo de comentarios del lado admin. El autor responde en su propio ticket
+    desde Mensajes → Mi Buzón (`recados:buzon_comentar`)."""
     from buzon.models import ConfiguracionBuzon, MensajeBuzonComentario
     msg = get_object_or_404(MensajeBuzon, pk=pk)
     user = request.user
@@ -381,11 +391,11 @@ def comentar(request, pk: int):
     return redirect(destino)
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["GET"])
 def adjunto_descargar(request, pk: int):
-    """Sirve un adjunto del Buzón desde Drive (proxy autenticado). Lo bajan el
-    autor del mensaje o los admins del Buzón (ver_todos)."""
+    """Sirve un adjunto del Buzón desde Drive (proxy admin). El autor baja los
+    de sus tickets desde Mensajes → Mi Buzón (`recados:buzon_adjunto`)."""
     from urllib.parse import quote
 
     from buzon.models import MensajeBuzonAdjunto
@@ -407,7 +417,7 @@ def adjunto_descargar(request, pk: int):
     return resp
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["GET", "POST"])
 def nuevo(request):
     inicial = {
@@ -446,7 +456,7 @@ def nuevo(request):
     return render(request, "buzon/nuevo.html", {"form": form})
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 @require_http_methods(["POST"])
 def accion_masiva(request):
     """POST /buzon/masivo — acción sobre múltiples mensajes a la vez.
@@ -560,11 +570,9 @@ def accion_masiva(request):
     return redirect("buzon-lista")
 
 
-@login_required
+@requiere_permiso("buzon", "ver_todos")
 def exportar_a_claude(request, pk: int):
     """Solo admins (buzon.ver_todos). Mantiene comportamiento del antiguo buzon_admin."""
-    if not puede(request.user, "buzon", "ver_todos"):
-        return HttpResponse("Sin acceso.", status=403)
     msg = get_object_or_404(MensajeBuzon, pk=pk)
     contenido = (
         f"# Buzón #{msg.pk} — {msg.tipo}\n\n"
@@ -581,14 +589,16 @@ def exportar_a_claude(request, pk: int):
     return resp
 
 
-# ── Compatibilidad con URLs viejas — redirigir a las nuevas ─────────────────
+# ── Compatibilidad con URLs viejas ──────────────────────────────────────────
+# "Mis mensajes" del empleado ahora vive en Mensajes → Mi Buzón (recados). Las
+# rutas legacy redirigen ahí para no dejar enlaces rotos a no-super_admin.
 
 
 @login_required
 def mios_lista(request):
-    return redirect("buzon-lista")
+    return redirect("recados:zona_buzon")
 
 
 @login_required
 def mios_detalle(request, pk: int):
-    return redirect("buzon-detalle", pk=pk)
+    return redirect("recados:buzon_detalle", pk=pk)

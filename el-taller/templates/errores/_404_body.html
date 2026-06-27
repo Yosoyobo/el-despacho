@@ -6,7 +6,7 @@
     <h1 class="mb-2 text-title-xs font-semibold text-gray-900 dark:text-gray-100">No encontramos esa página</h1>
     <p class="mb-6 text-sm text-gray-600 dark:text-gray-300">La URL <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">{{ request.path }}</code> no existe en El Taller.</p>
     <div class="flex flex-wrap items-center justify-center gap-2">
-        <a href="{% url 'buzon-empleado-nuevo' %}?tipo=problema&asunto=404+en+{{ request.path|urlencode }}" class="btn-secundario">Reportar al Buzón</a>
+        <a href="{% url 'recados:buzon_nuevo' %}?tipo=problema&asunto=404+en+{{ request.path|urlencode }}" class="btn-secundario">Reportar al Buzón</a>
         <a href="/" class="btn-primario">← Inicio</a>
     </div>
 </div>

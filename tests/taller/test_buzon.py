@@ -6,15 +6,16 @@ pytestmark = [pytest.mark.taller, pytest.mark.django_db]
 
 
 def test_anonimo_redirigido(client):
-    resp = client.get("/buzon/nuevo")
+    resp = client.get("/recados/buzon/nuevo/")
     assert resp.status_code in (302, 403)
 
 
 def test_empleado_envia_mensaje(client, usuario_factory):
+    # S-Buzon-SuperAdmin: el usuario escribe al Buzón desde Mensajes → Mi Buzón.
     from buzon.models import MensajeBuzon
     u = usuario_factory(rol="disenador")
     client.force_login(u)
-    resp = client.post("/buzon/nuevo", {
+    resp = client.post("/recados/buzon/nuevo/", {
         "tipo": "sugerencia",
         "asunto": "Mejorar el filtro de Proyectos",
         "cuerpo": "Sería útil filtrar por cliente y por estado al mismo tiempo.",
@@ -34,7 +35,7 @@ def test_problema_se_pasa_por_el_colador(client, usuario_factory):
     u = usuario_factory(rol="contador")
     client.force_login(u)
     cuerpo = "Error en /opt/el-despacho/.env con key sk-ant-test-abcdefghijklmnopqrstuvwxyz01234567"
-    client.post("/buzon/nuevo", {"tipo": "problema", "asunto": "Bug", "cuerpo": cuerpo, "prioridad": "7"})
+    client.post("/recados/buzon/nuevo/", {"tipo": "problema", "asunto": "Bug", "cuerpo": cuerpo, "prioridad": "7"})
     msg = MensajeBuzon.objects.get(autor=u)
     assert "/opt/el-despacho/.env" not in msg.cuerpo
     assert "sk-ant-test-" not in msg.cuerpo
@@ -42,30 +43,31 @@ def test_problema_se_pasa_por_el_colador(client, usuario_factory):
 
 
 def test_mios_solo_ve_los_propios(client, usuario_factory):
-    """Pre-S2b.2: URL unificada es /buzon/. Legacy /buzon/mios/ redirige."""
+    """S-Buzon-SuperAdmin: el usuario ve SOLO sus tickets en Mensajes → Mi Buzón.
+    Legacy /buzon/mios/ redirige ahí."""
     from buzon.models import MensajeBuzon
     u1 = usuario_factory(rol="disenador")
     u2 = usuario_factory(rol="disenador")
     MensajeBuzon.objects.create(autor=u1, tipo="otro", asunto="A1", cuerpo="x"*20)
     MensajeBuzon.objects.create(autor=u2, tipo="otro", asunto="A2", cuerpo="y"*20)
     client.force_login(u1)
-    resp = client.get("/buzon/")
+    resp = client.get("/recados/buzon/")
     assert resp.status_code == 200
     assert b"A1" in resp.content
     assert b"A2" not in resp.content
-    # URL vieja redirige a la nueva.
+    # URL vieja redirige a la nueva (Mi Buzón).
     resp_legacy = client.get("/buzon/mios/")
     assert resp_legacy.status_code == 302
 
 
 def test_detalle_ajeno_404(client, usuario_factory):
-    """Pre-S2b.2: detalle unificado en /buzon/<id>/."""
+    """El usuario no puede abrir el ticket de otro en Mi Buzón."""
     from buzon.models import MensajeBuzon
     u1 = usuario_factory(rol="disenador")
     u2 = usuario_factory(rol="disenador")
     m = MensajeBuzon.objects.create(autor=u2, tipo="otro", asunto="A", cuerpo="z"*20)
     client.force_login(u1)
-    resp = client.get(f"/buzon/{m.pk}/")
+    resp = client.get(f"/recados/buzon/{m.pk}/")
     assert resp.status_code == 404
 
 

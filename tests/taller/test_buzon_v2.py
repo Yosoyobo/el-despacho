@@ -56,7 +56,7 @@ def test_marcar_todo_leido(client, usuario_factory):
     m1 = _msg(u)
     m2 = _msg(u)
     client.force_login(u)
-    client.post("/buzon/masivo", data={"accion": "marcar_todo_leido_mio"})
+    client.post("/recados/buzon/masivo/", data={"accion": "marcar_todo_leido_mio"})
     assert LecturaBuzon.objects.filter(usuario=u, mensaje__in=[m1, m2]).count() == 2
 
 
@@ -94,7 +94,7 @@ def test_tipo_configurable_en_form(client, usuario_factory):
     invalidar_cache()  # cache de proceso es compartido entre tests
     u = usuario_factory(rol="disenador")
     client.force_login(u)
-    resp = client.get("/buzon/nuevo")
+    resp = client.get("/recados/buzon/nuevo/")
     assert b"Felicitaci" in resp.content
 
 

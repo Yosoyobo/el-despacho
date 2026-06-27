@@ -5,6 +5,27 @@
 
 ---
 
+## Novedades — Tu Buzón vive en Mensajes y quedó más completo (27 de junio de 2026)
+
+- **El Buzón de soporte es 100 % del administrador.** La bandeja con *todos* los
+  mensajes que el equipo le manda al administrador ya **solo la abre el
+  administrador** — nadie más llega ahí, ni escribiendo la dirección a mano ni por
+  los enlaces (migas de pan) de las pantallas.
+- **Todo lo tuyo está en Mensajes → "Mi Buzón".** Ahí escribes un mensaje nuevo al
+  equipo, ves los que has mandado, lees las respuestas y les das seguimiento. Ya no
+  necesitas (ni puedes) entrar al Buzón completo del administrador.
+- **Mi Buzón ahora trae las mismas herramientas que el Buzón:**
+  - **Buscador** por asunto o texto.
+  - **Filtros** por estado y por tipo, y **tarjetas** arriba (Nuevos · Leídos ·
+    Respondidos · Archivados) que al picarlas filtran al instante.
+  - **Marcar leído / no leído** cada mensaje, y **"Marcar todo como leído"**.
+- **Dentro de un ticket solo hay un lugar para conversar.** Tu mensaje, la respuesta
+  del equipo y un **único cuadro de conversación** para seguir el hilo (si el
+  administrador habilitó que respondas). Se quitaron los cuadros de texto que eran
+  para uso interno del administrador.
+
+---
+
 ## Novedades — Mejoras a proyectos, mensajes y El Chalán (26 de junio de 2026)
 
 Una tanda de ajustes pedidos por el equipo:

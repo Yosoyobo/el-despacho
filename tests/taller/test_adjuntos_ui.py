@@ -26,10 +26,11 @@ def _mensaje_con_adjuntos(usuario_factory, autor=None):
 
 
 def test_buzon_detalle_muestra_trigger_de_popover(client, usuario_factory):
+    # S-Buzon-SuperAdmin: el detalle del usuario vive en Mensajes → Mi Buzón.
     autor = usuario_factory(rol="disenador")
     msg = _mensaje_con_adjuntos(usuario_factory, autor=autor)
     client.force_login(autor)
-    resp = client.get(f"/buzon/{msg.pk}/")
+    resp = client.get(f"/recados/buzon/{msg.pk}/")
     assert resp.status_code == 200
     html = resp.content.decode()
     # Trigger del bottom pop-over (no la lista inline vieja).
@@ -43,14 +44,14 @@ def test_buzon_popover_imagen_abre_lightbox(client, usuario_factory):
     msg = _mensaje_con_adjuntos(usuario_factory, autor=autor)
     adj_img = msg.adjuntos.get(mime_type="image/png")
     client.force_login(autor)
-    resp = client.get(f"/buzon/{msg.pk}/")
+    resp = client.get(f"/recados/buzon/{msg.pk}/")
     html = resp.content.decode()
-    # La imagen es un thumbnail con data-lightbox apuntando al proxy.
+    # La imagen es un thumbnail con data-lightbox apuntando al proxy (de Mi Buzón).
     assert "data-lightbox=" in html
-    assert f"/buzon/adjunto/{adj_img.pk}/" in html
+    assert f"/recados/buzon/adjunto/{adj_img.pk}/" in html
     # El PDF (no imagen) queda como link de descarga.
     adj_pdf = msg.adjuntos.get(mime_type="application/pdf")
-    assert f"/buzon/adjunto/{adj_pdf.pk}/" in html
+    assert f"/recados/buzon/adjunto/{adj_pdf.pk}/" in html
 
 
 def test_buzon_sin_adjuntos_no_renderiza_popover(client, usuario_factory):
@@ -58,7 +59,7 @@ def test_buzon_sin_adjuntos_no_renderiza_popover(client, usuario_factory):
     autor = usuario_factory(rol="disenador")
     msg = MensajeBuzon.objects.create(autor=autor, tipo="otro", asunto="Pelado", cuerpo="y" * 30)
     client.force_login(autor)
-    resp = client.get(f"/buzon/{msg.pk}/")
+    resp = client.get(f"/recados/buzon/{msg.pk}/")
     assert b"data-adjuntos-popover-trigger" not in resp.content
 
 

@@ -15,14 +15,19 @@ URLs legacy (mantienen compat — redirects):
 from django.urls import path
 from django.views.generic import TemplateView
 
+from lib.permisos import requiere_permiso
+
 from . import views
 
 urlpatterns = [
-    # Layout unificado.
+    # Layout unificado. TODO /buzon/* es solo super_admin (ver_todos) — la
+    # experiencia del usuario vive en Mensajes → Mi Buzón (/recados/buzon/*).
     path("buzon/", views.lista, name="buzon-lista"),
     path("buzon/nuevo", views.nuevo, name="buzon-nuevo"),
     path("buzon/masivo", views.accion_masiva, name="buzon-masivo"),
-    path("buzon/clientes/", TemplateView.as_view(template_name="buzon/clientes_proximamente.html"),
+    path("buzon/clientes/",
+         requiere_permiso("buzon", "ver_todos")(
+             TemplateView.as_view(template_name="buzon/clientes_proximamente.html")),
          name="buzon-clientes-proximamente"),
     path("buzon/<int:pk>/", views.detalle, name="buzon-detalle"),
     path("buzon/<int:pk>/toggle-leido", views.toggle_leido, name="buzon-toggle-leido"),

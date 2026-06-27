@@ -24,11 +24,12 @@ def test_admin_comenta(client, usuario_factory):
 
 
 def test_autor_no_comenta_con_toggle_off(client, usuario_factory):
+    # S-Buzon-SuperAdmin: el autor responde su ticket desde Mensajes → Mi Buzón.
     from buzon.models import MensajeBuzonComentario
     autor = usuario_factory(rol="disenador")
     m = _msg(autor)
     client.force_login(autor)
-    resp = client.post(f"/buzon/{m.pk}/comentar", data={"cuerpo": "gracias"})
+    resp = client.post(f"/recados/buzon/{m.pk}/comentar/", data={"cuerpo": "gracias"})
     assert resp.status_code == 403
     assert not MensajeBuzonComentario.objects.filter(mensaje=m).exists()
 
@@ -41,7 +42,7 @@ def test_autor_comenta_con_toggle_on(client, usuario_factory):
     autor = usuario_factory(rol="disenador")
     m = _msg(autor)
     client.force_login(autor)
-    resp = client.post(f"/buzon/{m.pk}/comentar", data={"cuerpo": "gracias"})
+    resp = client.post(f"/recados/buzon/{m.pk}/comentar/", data={"cuerpo": "gracias"})
     assert resp.status_code in (302, 200)
     assert MensajeBuzonComentario.objects.filter(mensaje=m, autor=autor).exists()
 
@@ -51,5 +52,5 @@ def test_ajeno_no_comenta(client, usuario_factory):
     ajeno = usuario_factory(rol="disenador")
     m = _msg(autor)
     client.force_login(ajeno)
-    resp = client.post(f"/buzon/{m.pk}/comentar", data={"cuerpo": "intruso"})
+    resp = client.post(f"/recados/buzon/{m.pk}/comentar/", data={"cuerpo": "intruso"})
     assert resp.status_code == 404

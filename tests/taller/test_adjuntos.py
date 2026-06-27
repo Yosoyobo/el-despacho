@@ -262,7 +262,7 @@ def test_buzon_nuevo_con_adjunto(client, usuario_factory, monkeypatch):
         ),
     )
     archivo = SimpleUploadedFile("doc.pdf", b"%PDF", content_type="application/pdf")
-    resp = client.post("/buzon/nuevo", {
+    resp = client.post("/recados/buzon/nuevo/", {
         "tipo": "sugerencia", "asunto": "Idea", "cuerpo": "una idea", "prioridad": "5",
         "adjuntos": archivo,
     })
@@ -280,5 +280,5 @@ def test_buzon_proxy_adjunto_ajeno_404(client, usuario_factory):
     msg = MensajeBuzon.objects.create(autor=autor, tipo="sugerencia", asunto="x", cuerpo="y")
     adj = MensajeBuzonAdjunto.objects.create(mensaje=msg, drive_file_id="bz-1", nombre="f.pdf")
     client.force_login(intruso)
-    resp = client.get(f"/buzon/adjunto/{adj.pk}/")
+    resp = client.get(f"/recados/buzon/adjunto/{adj.pk}/")
     assert resp.status_code == 404

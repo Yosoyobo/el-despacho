@@ -11,6 +11,14 @@ urlpatterns = [
     path("nueva/", views_chat.nueva, name="nueva"),
     # ── Zonas S-Recados-V2 (C5c) ────────────────────────────────────────────
     path("buzon/", views_zonas.zona_buzon, name="zona_buzon"),
+    # Mi Buzón — experiencia del usuario (S-Buzon-SuperAdmin). /buzon/* es solo
+    # super_admin; aquí el usuario ve y atiende SOLO sus propios tickets.
+    path("buzon/nuevo/", views_zonas.buzon_nuevo, name="buzon_nuevo"),
+    path("buzon/masivo/", views_zonas.buzon_masivo, name="buzon_masivo"),
+    path("buzon/adjunto/<int:pk>/", views_zonas.buzon_adjunto, name="buzon_adjunto"),
+    path("buzon/<int:pk>/", views_zonas.buzon_detalle, name="buzon_detalle"),
+    path("buzon/<int:pk>/comentar/", views_zonas.buzon_comentar, name="buzon_comentar"),
+    path("buzon/<int:pk>/leido/", views_zonas.buzon_toggle_leido, name="buzon_toggle_leido"),
     path("actividad/", views_zonas.zona_actividad, name="zona_actividad"),
     path("c/<int:pk>/", views_chat.conversacion, name="conversacion"),
     path("c/<int:pk>/mensajes", views_chat.partial_mensajes, name="partial_mensajes"),

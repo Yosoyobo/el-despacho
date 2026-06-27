@@ -90,5 +90,5 @@ def test_empleado_no_puede_toggle_ajeno(client, usuario_factory):
     b = usuario_factory(rol="disenador")
     m = _msg(b)
     client.force_login(a)
-    resp = client.post(f"/buzon/{m.pk}/toggle-leido")
+    resp = client.post(f"/recados/buzon/{m.pk}/leido/")
     assert resp.status_code == 404
