@@ -313,6 +313,9 @@
             });
         })();
         </script>
+
+        {# ── Cotizaciones del proyecto (versionadas) — debajo de Equipo ── #}
+        {% if permisos_modulos.cotizaciones %}{% include "proyectos/_cotizaciones_panel.html" %}{% endif %}
     </aside>
 </form>
 
@@ -345,6 +348,8 @@
                 {% for op in equipo_opciones %}{% if op.asignado %}<li class="flex items-center justify-between gap-3"><span class="text-gray-900 dark:text-gray-100">{{ op.usuario.nombre_completo|default:op.usuario.email }}</span><span class="badge badge-brand">{{ op.rol }}</span></li>{% endif %}{% endfor %}
             </ul>
         </section>
+        {# ── Cotizaciones del proyecto (versionadas) — debajo de Equipo ── #}
+        {% if permisos_modulos.cotizaciones %}{% include "proyectos/_cotizaciones_panel.html" %}{% endif %}
     </aside>
 </div>
 {% endif %}

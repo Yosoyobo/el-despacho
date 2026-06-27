@@ -493,6 +493,8 @@ def detalle(request, pk):
         ],
         "back_url": reverse("proyectos-lista"),
         "back_label": "Proyectos",
+        # Recuadro «Cotizaciones» (versionado, render Oscar 2026-06-27).
+        **_ctx_cotizaciones(proyecto, request.user),
     })
 
 
@@ -873,6 +875,75 @@ def quitar_producto(request, pk, prod_pk):
     if _es_htmx(request):
         return HttpResponse(status=204, headers={"HX-Redirect": destino})
     return redirect(destino)
+
+
+# ── Cotizaciones del proyecto (recuadro versionado, render Oscar 2026-06-27) ──
+
+# El botón "Enviar" del recuadro aún no manda correo real (El Cartero ya existe,
+# se cablea después). Por ahora es placeholder → rickroll (decisión Oscar).
+RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+
+def _ctx_cotizaciones(proyecto, user) -> dict:
+    """Contexto del recuadro «Cotizaciones» del detalle de proyecto."""
+    from apps.cotizaciones.models import estados_cot_proyecto
+
+    from lib.permisos import puede_crear_cotizaciones, puede_ver_cotizaciones
+    cots = list(proyecto.cotizaciones.filter(version__gt=0).order_by("version"))
+    return {
+        "proyecto": proyecto,
+        "cotizaciones_proyecto": cots,
+        "cot_estados_opciones": estados_cot_proyecto(),
+        "cot_next_version": (cots[-1].version + 1) if cots else 1,
+        "puede_cotizar": puede_crear_cotizaciones(user),
+        "ver_cotizaciones": puede_ver_cotizaciones(user),
+        "rickroll_url": RICKROLL_URL,
+    }
+
+
+@login_required
+@require_POST
+def generar_cotizacion(request, pk):
+    """Genera la siguiente versión de cotización del proyecto desde los
+    Productos involucrados actuales (snapshot). Devuelve el recuadro re-render."""
+    from lib.permisos import puede_crear_cotizaciones
+    proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    if not puede_crear_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para crear cotizaciones.")
+    from apps.cotizaciones import services as cot_services
+    cot = cot_services.generar_desde_proyecto(proyecto, request.user)
+    messages.success(request, f"Cotización {cot.version_label} generada ({cot.codigo}).")
+    if _es_htmx(request):
+        return render(request, "proyectos/_cotizaciones_panel.html",
+                      _ctx_cotizaciones(proyecto, request.user))
+    return redirect(_redir_detalle(proyecto))
+
+
+@login_required
+@require_POST
+def cotizacion_estado(request, pk, cot_pk):
+    """Cambia el estado de una cotización del proyecto desde el dropdown del
+    recuadro (generada/enviada/aprobada/pagada). Devuelve el recuadro re-render."""
+    from apps.cotizaciones import services as cot_services
+    from apps.cotizaciones.models import Cotizacion
+
+    from lib.permisos import puede_editar_cotizaciones
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    if not puede_editar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para editar cotizaciones.")
+    cot = get_object_or_404(Cotizacion, pk=cot_pk, proyecto=proyecto)
+    try:
+        cot_services.marcar_estado_proyecto(cot, request.POST.get("estado", ""), request.user)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    if _es_htmx(request):
+        return render(request, "proyectos/_cotizaciones_panel.html",
+                      _ctx_cotizaciones(proyecto, request.user))
+    return redirect(_redir_detalle(proyecto))
 
 
 @login_required

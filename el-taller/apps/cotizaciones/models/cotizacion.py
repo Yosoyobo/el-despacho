@@ -8,13 +8,37 @@ from django.db import models, transaction
 
 ESTADOS_COTIZACION = (
     ("borrador", "Borrador"),
+    ("generada", "Generada"),
     ("enviada", "Enviada"),
     ("aprobada", "Aprobada"),
+    ("pagada", "Pagada"),
     ("rechazada", "Rechazada"),
     ("anulada", "Anulada"),
 )
 
 ESTADOS_TERMINAL = {"aprobada", "rechazada", "anulada"}
+
+# Cotizaciones generadas DESDE un proyecto (versionadas, v1/v2/v3). El flujo
+# del render: generada → enviada → aprobada → pagada. Estos son los estados
+# que el dropdown del recuadro "Cotizaciones" de la página de proyecto ofrece,
+# con su clase de badge del sistema visual (input.css).
+ESTADOS_COT_PROYECTO = (
+    ("generada", "Generada", "badge-warning"),
+    ("enviada", "Enviada", "badge-brand"),
+    ("aprobada", "Aprobada", "badge-success"),
+    ("pagada", "Pagada", "badge-blue"),
+)
+_BADGE_POR_ESTADO = {slug: cls for slug, _, cls in ESTADOS_COT_PROYECTO}
+
+
+def estados_cot_proyecto() -> list[dict]:
+    """Lista de los 4 estados del flujo de proyecto, lista para el template."""
+    return [{"slug": s, "label": lbl, "cls": cls} for s, lbl, cls in ESTADOS_COT_PROYECTO]
+
+
+def badge_estado_cot(slug: str) -> str:
+    """Clase de badge para un estado de cotización (fallback gris)."""
+    return _BADGE_POR_ESTADO.get(slug, "badge-gray")
 
 CERO = Decimal("0.00")
 
@@ -71,6 +95,11 @@ class Cotizacion(models.Model):
         db_index=True,
     )
 
+    # Versión dentro de un proyecto (v1, v2, v3…). 0 = cotización standalone
+    # (creada a mano desde el módulo Cotizaciones, no generada desde proyecto).
+    # Las generadas desde la página del proyecto llevan version ≥ 1.
+    version = models.PositiveIntegerField(default=0, db_index=True)
+
     fecha_emision = models.DateField(default=date.today)
     fecha_validez = models.DateField(default=_validez_default)
 
@@ -109,6 +138,9 @@ class Cotizacion(models.Model):
     # Envío
     enviada_en = models.DateTimeField(null=True, blank=True)
     enviada_a_email = models.CharField(max_length=200, blank=True, default="")
+
+    # Pagada (flujo de proyecto: generada → enviada → aprobada → pagada).
+    pagada_en = models.DateTimeField(null=True, blank=True)
 
     # Aprobación / rechazo (lado cliente — texto libre)
     aprobada_en = models.DateTimeField(null=True, blank=True)
@@ -189,6 +221,16 @@ class Cotizacion(models.Model):
         if self.esta_vencida:
             return "vencida"
         return self.estado
+
+    @property
+    def version_label(self) -> str:
+        """'v1', 'v2'… para el recuadro de Cotizaciones del proyecto."""
+        return f"v{self.version}" if self.version else "—"
+
+    @property
+    def badge_estado_cls(self) -> str:
+        """Clase de badge del estado actual (recuadro del proyecto)."""
+        return badge_estado_cot(self.estado)
 
     # --- Anticipo (S-Finanzas-V2 #E) -------------------------------------
 

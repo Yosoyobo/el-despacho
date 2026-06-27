@@ -1,0 +1,71 @@
+{% load forms_helpers %}
+{% comment %}
+Recuadro «Cotizaciones» del detalle de proyecto (render Oscar 2026-06-27).
+Lista las cotizaciones versionadas del proyecto (v1, v2…). Cada una tiene
+link a su PDF y un badge de estado clickeable: al picarlo se revelan los 4
+estados del flujo (generada → enviada → aprobada → pagada) como chips —
+puro CSS (peer-checked), sin JS, así sobrevive a los swaps de HTMX.
+"Generar vN" toma un snapshot de los Productos involucrados actuales.
+"Enviar" es placeholder por ahora (decisión Oscar).
+{% endcomment %}
+<section id="cotizaciones-panel-{{ proyecto.pk }}"
+         {% if puede_cotizar %}hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}
+         class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cotizaciones</h3>
+
+    {% if cotizaciones_proyecto %}
+    <ul class="mt-3 space-y-2 text-sm">
+        {% for cot in cotizaciones_proyecto %}
+        <li class="rounded-lg border border-gray-200 p-2.5 dark:border-gray-800">
+            {% if puede_cotizar %}<input type="checkbox" id="cotdd-{{ cot.pk }}" class="peer sr-only">{% endif %}
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex min-w-0 items-center gap-2">
+                    <span class="font-semibold text-gray-900 dark:text-gray-100">{{ cot.version_label }}</span>
+                    {% if ver_cotizaciones %}
+                    <a href="{% url 'cotizaciones:pdf' cot.pk %}" target="_blank" rel="noopener"
+                       class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">PDF →</a>
+                    {% endif %}
+                </div>
+                {% if puede_cotizar %}
+                <label for="cotdd-{{ cot.pk }}"
+                       class="badge {{ cot.badge_estado_cls }} inline-flex cursor-pointer select-none items-center gap-1"
+                       title="Cambiar estado de la cotización">
+                    {{ cot.get_estado_display }}
+                    <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </label>
+                {% else %}
+                <span class="badge {{ cot.badge_estado_cls }}">{{ cot.get_estado_display }}</span>
+                {% endif %}
+            </div>
+            {% if puede_cotizar %}
+            {# Opciones de estado: aparecen al picar el badge (peer-checked, sin JS). #}
+            <div class="mt-2 hidden flex-wrap gap-2 peer-checked:flex">
+                {% for e in cot_estados_opciones %}
+                <button type="button"
+                        hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk cot.pk %}"
+                        hx-vals='{"estado": "{{ e.slug }}"}'
+                        hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
+                        hx-swap="outerHTML"
+                        class="badge {{ e.cls }} cursor-pointer {% if e.slug == cot.estado %}ring-2 ring-current/40{% else %}opacity-60 transition hover:opacity-100{% endif %}">{{ e.label }}</button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Aún no hay cotizaciones. Arma los productos del proyecto y genera la primera versión.</p>
+    {% endif %}
+
+    {% if puede_cotizar %}
+    <div class="mt-4 grid grid-cols-2 gap-2">
+        <button type="button"
+                hx-post="{% url 'proyectos-generar-cotizacion' proyecto.pk %}"
+                hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
+                hx-swap="outerHTML"
+                class="btn-secundario">Generar v{{ cot_next_version }}</button>
+        {# "Enviar" es placeholder por ahora — abre rickroll (decisión Oscar). #}
+        <a href="{{ rickroll_url }}" target="_blank" rel="noopener" class="btn-secundario text-center">Enviar</a>
+    </div>
+    {% endif %}
+</section>

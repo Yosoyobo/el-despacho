@@ -284,6 +284,102 @@ def crear_factura_anticipo(cot: Cotizacion, actor) -> Factura:  # noqa: F821
     return factura
 
 
+# --- Cotizaciones versionadas POR PROYECTO -------------------------------
+# Recuadro "Cotizaciones" del detalle de proyecto (render Oscar 2026-06-27).
+# El usuario arma los Productos involucrados en la página del proyecto y pica
+# "Generar": se crea una Cotizacion real (aparece también en /cotizaciones/)
+# tomando un SNAPSHOT de los productos incluidos actuales, como v1, v2, v3…
+
+ESTADOS_PROYECTO_VALIDOS = {"generada", "enviada", "aprobada", "pagada"}
+
+
+def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
+    """Genera la siguiente versión de cotización del proyecto.
+
+    Toma los Productos involucrados INCLUIDOS actuales (cantidad + precio
+    efectivo) y los congela como líneas de una Cotizacion nueva en estado
+    'generada'. Suma las tasas `aplicable_default` salvo que el proyecto sea
+    IVA exento, para que el total calce con `proyecto.monto_a_facturar`.
+    """
+    from decimal import Decimal
+
+    from django.db.models import Max
+
+    from ajustes.models.tasa import TasaImpositiva
+
+    from .models import CotizacionImpuesto, CotizacionItem
+
+    with transaction.atomic():
+        ultima = (
+            Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+            .aggregate(m=Max("version"))["m"]
+            or 0
+        )
+        cot = Cotizacion.objects.create(
+            cliente=proyecto.cliente,
+            proyecto=proyecto,
+            titulo=(proyecto.nombre or proyecto.codigo)[:200],
+            estado="generada",
+            version=ultima + 1,
+            descuento_global_porcentaje=Decimal("0.00"),
+            creado_por=actor if getattr(actor, "is_authenticated", False) else None,
+        )
+        for i, pp in enumerate(proyecto.productos_incluidos):
+            nombre = pp.servicio.nombre if pp.servicio_id else "Producto"
+            if pp.variacion_id:
+                nombre = f"{nombre} · {pp.variacion.nombre}"
+            if pp.nota:
+                nombre = f"{nombre} — {pp.nota}"
+            CotizacionItem.objects.create(
+                cotizacion=cot,
+                orden=i,
+                servicio=pp.servicio if pp.servicio_id else None,
+                variacion=pp.variacion if pp.variacion_id else None,
+                descripcion=nombre,
+                cantidad=Decimal(str(pp.cantidad)),
+                precio_unitario=pp.precio_efectivo,
+            )
+        if not proyecto.iva_exento:
+            for tasa in TasaImpositiva.objects.filter(aplicable_default=True, activa=True):
+                CotizacionImpuesto.objects.create(cotizacion=cot, tasa=tasa)
+    _emitir("cotizacion.generada", cot, actor, {
+        "proyecto_id": proyecto.pk, "version": cot.version,
+        "total": float(cot.calcular_totales()["total"]),
+    })
+    return cot
+
+
+def marcar_estado_proyecto(cot: Cotizacion, estado: str, actor) -> Cotizacion:
+    """Setter LIBRE de estado para el dropdown del recuadro del proyecto
+    (generada → enviada → aprobada → pagada, en cualquier orden — como la
+    barra de status del proyecto). No exige nombre/motivo; sella el timestamp
+    correspondiente y emite el evento Portavoz adecuado."""
+    from django.utils import timezone
+
+    if estado not in ESTADOS_PROYECTO_VALIDOS:
+        raise ValueError(f"Estado de cotización inválido: {estado}")
+    cot.estado = estado
+    updates = ["estado", "actualizado_en"]
+    ahora = timezone.now()
+    if estado == "enviada" and not cot.enviada_en:
+        cot.enviada_en = ahora
+        updates.append("enviada_en")
+    elif estado == "aprobada" and not cot.aprobada_en:
+        cot.aprobada_en = ahora
+        updates.append("aprobada_en")
+    elif estado == "pagada" and not cot.pagada_en:
+        cot.pagada_en = ahora
+        updates.append("pagada_en")
+    cot.save(update_fields=updates)
+    evento = {
+        "enviada": "cotizacion.enviada",
+        "aprobada": "cotizacion.aprobada",
+        "pagada": "cotizacion.pagada",
+    }.get(estado, "cotizacion.actualizada")
+    _emitir(evento, cot, actor, {"version": cot.version})
+    return cot
+
+
 # --- KPIs ----------------------------------------------------------------
 
 def kpis_landing() -> dict:

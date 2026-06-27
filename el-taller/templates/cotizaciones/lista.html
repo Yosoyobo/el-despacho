@@ -29,8 +29,10 @@
         <select name="estado" id="cot-estado">
             <option value="">Vigentes (sin anuladas)</option>
             <option value="borrador" {% if estado_filtro == 'borrador' %}selected{% endif %}>Borrador</option>
+            <option value="generada" {% if estado_filtro == 'generada' %}selected{% endif %}>Generada</option>
             <option value="enviada" {% if estado_filtro == 'enviada' %}selected{% endif %}>Enviada</option>
             <option value="aprobada" {% if estado_filtro == 'aprobada' %}selected{% endif %}>Aprobada</option>
+            <option value="pagada" {% if estado_filtro == 'pagada' %}selected{% endif %}>Pagada</option>
             <option value="rechazada" {% if estado_filtro == 'rechazada' %}selected{% endif %}>Rechazada</option>
             <option value="anulada" {% if estado_filtro == 'anulada' %}selected{% endif %}>Anuladas</option>
         </select>

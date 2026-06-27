@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — Cotizaciones desde la página del proyecto (27 de junio de 2026)
+
+- **Nuevo recuadro "Cotizaciones" en cada proyecto.** En la página de un proyecto,
+  debajo de **Equipo**, ahora aparece un recuadro que lista las cotizaciones que
+  has generado para ese proyecto (v1, v2, v3…).
+- **Así funciona:** la página del proyecto es tu mesa de trabajo — agregas, quitas
+  y ajustas los **Productos involucrados**, sus cantidades y precios. Cuando ya
+  está como quieres, picas **"Generar"**: el sistema toma una *foto* de los
+  productos de ese momento y crea la cotización **v1** con estado **Generada**.
+  Si después cambias productos y vuelves a picar **"Generar"**, se crea la **v2**
+  con lo que haya en ese momento (la v1 se conserva tal cual quedó).
+- **Cambiar el estado es un clic.** Cada cotización trae a la derecha su estado;
+  al picarlo aparecen las opciones **Generada · Enviada · Aprobada · Pagada** y
+  eliges la que toca. El estado se guarda al instante.
+- **PDF.** Cada versión tiene su enlace **"PDF →"** para verla/descargarla.
+- **Estas cotizaciones también salen en el módulo Cotizaciones** (en el menú
+  lateral), por si quieres buscarlas o filtrarlas junto con las demás.
+- **El botón "Enviar"** (mandar la cotización por correo al contacto del cliente)
+  todavía está en construcción.
+- **Con El Chalán:** este recuadro se opera a mano desde la página del proyecto.
+  Si quieres que **El Chalán** te arme una cotización por su cuenta, dícelo en el
+  chat (por ejemplo: *"crea una cotización para #LC-0001 con 100 playseras a $80"*);
+  El Chalán la deja en borrador para que la revises.
+
+---
+
 ## Novedades — Tu Buzón vive en Mensajes y quedó más completo (27 de junio de 2026)
 
 - **El Buzón de soporte es 100 % del administrador.** La bandeja con *todos* los

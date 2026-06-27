@@ -56,7 +56,7 @@ def lista(request):
     q = (request.GET.get("q") or "").strip()
     estado_filtro = (request.GET.get("estado") or "").strip()
     qs = Cotizacion.objects.select_related("cliente", "proyecto").exclude(estado="anulada")
-    if estado_filtro in {"borrador", "enviada", "aprobada", "rechazada", "anulada"}:
+    if estado_filtro in {"borrador", "generada", "enviada", "aprobada", "pagada", "rechazada", "anulada"}:
         if estado_filtro == "anulada":
             qs = Cotizacion.objects.select_related("cliente", "proyecto").filter(estado="anulada")
         else:
