@@ -792,3 +792,32 @@
   // Tras enviar, el inline hx-on vacía el textarea; re-encoge en el siguiente tick.
   document.body.addEventListener('htmx:afterRequest', function () { setTimeout(function () { ajustarTodas(); }, 0); });
 })();
+
+/* Rickroll placeholder (decisión Oscar): el botón "Enviar" del recuadro de
+   Cotizaciones aún no manda correo. Mientras tanto abre este modal con autoplay.
+   La "X" se ve grande pero su área clickeable real es de 1×1 px; solo Esc o
+   refrescar cierran (el backdrop NO cierra). */
+window.abrirRickroll = function () {
+  if (document.getElementById('rickroll-overlay')) return;
+  var ov = document.createElement('div');
+  ov.id = 'rickroll-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.92);';
+  ov.innerHTML =
+    '<div style="position:relative;width:92%;max-width:900px;aspect-ratio:16/9;">'
+    + '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1" '
+    +   'allow="autoplay; encrypted-media; fullscreen" allowfullscreen '
+    +   'style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.6);"></iframe>'
+    + '<span aria-hidden="true" style="position:absolute;top:-16px;right:-12px;font-size:46px;line-height:1;font-weight:700;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.85);pointer-events:none;user-select:none;">&times;</span>'
+    + '<button type="button" aria-label="Cerrar" data-rickroll-close '
+    +   'style="position:absolute;top:0;right:0;width:1px;height:1px;padding:0;margin:0;border:0;background:transparent;cursor:pointer;overflow:hidden;"></button>'
+    + '</div>';
+  function cerrar() {
+    document.removeEventListener('keydown', onKey);
+    var n = document.getElementById('rickroll-overlay');
+    if (n) n.remove();
+  }
+  function onKey(e) { if (e.key === 'Escape') cerrar(); }
+  ov.querySelector('[data-rickroll-close]').addEventListener('click', cerrar);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(ov);
+};

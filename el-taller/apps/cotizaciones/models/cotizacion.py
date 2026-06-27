@@ -18,27 +18,9 @@ ESTADOS_COTIZACION = (
 
 ESTADOS_TERMINAL = {"aprobada", "rechazada", "anulada"}
 
-# Cotizaciones generadas DESDE un proyecto (versionadas, v1/v2/v3). El flujo
-# del render: generada → enviada → aprobada → pagada. Estos son los estados
-# que el dropdown del recuadro "Cotizaciones" de la página de proyecto ofrece,
-# con su clase de badge del sistema visual (input.css).
-ESTADOS_COT_PROYECTO = (
-    ("generada", "Generada", "badge-warning"),
-    ("enviada", "Enviada", "badge-brand"),
-    ("aprobada", "Aprobada", "badge-success"),
-    ("pagada", "Pagada", "badge-blue"),
-)
-_BADGE_POR_ESTADO = {slug: cls for slug, _, cls in ESTADOS_COT_PROYECTO}
-
-
-def estados_cot_proyecto() -> list[dict]:
-    """Lista de los 4 estados del flujo de proyecto, lista para el template."""
-    return [{"slug": s, "label": lbl, "cls": cls} for s, lbl, cls in ESTADOS_COT_PROYECTO]
-
-
-def badge_estado_cot(slug: str) -> str:
-    """Clase de badge para un estado de cotización (fallback gris)."""
-    return _BADGE_POR_ESTADO.get(slug, "badge-gray")
+# El flujo de las cotizaciones de proyecto (generada → enviada → aprobada →
+# pagada) es CONFIGURABLE desde La Gerencia (modelo EstadoCotizacion). El
+# label/color de cada estado se lee del catálogo vía `mapa_estados_cot()`.
 
 CERO = Decimal("0.00")
 
@@ -227,10 +209,33 @@ class Cotizacion(models.Model):
         """'v1', 'v2'… para el recuadro de Cotizaciones del proyecto."""
         return f"v{self.version}" if self.version else "—"
 
+    def get_estado_display(self) -> str:
+        """Override: el label sale del catálogo configurable (EstadoCotizacion)
+        si el slug está ahí; si no, cae a los choices legacy del módulo
+        standalone (borrador/rechazada/anulada) y por último al slug crudo."""
+        from .estado_cotizacion import mapa_estados_cot
+        m = mapa_estados_cot()
+        if self.estado in m:
+            return m[self.estado]["label"]
+        return dict(ESTADOS_COTIZACION).get(self.estado, self.estado)
+
     @property
-    def badge_estado_cls(self) -> str:
-        """Clase de badge del estado actual (recuadro del proyecto)."""
-        return badge_estado_cot(self.estado)
+    def estado_color(self) -> str:
+        """Color HEX del estado actual (del catálogo; fallback gris)."""
+        from .estado_cotizacion import mapa_estados_cot
+        return (mapa_estados_cot().get(self.estado) or {}).get("color", "#667085")
+
+    @property
+    def nombre_pdf(self) -> str:
+        """Nombre del archivo PDF. Para cotizaciones de proyecto (version ≥ 1)
+        usa «NombreDelProyecto_Vn» (decisión Oscar); para las standalone usa el
+        código COT-YYYY-NNNN."""
+        import re
+        if self.version and self.proyecto_id:
+            base = (self.proyecto.nombre or self.proyecto.codigo or self.codigo).strip()
+            base = re.sub(r'[\\/:"*?<>|\n\r]+', " ", base).strip()
+            return f"{base}_V{self.version}"
+        return self.codigo
 
     # --- Anticipo (S-Finanzas-V2 #E) -------------------------------------
 

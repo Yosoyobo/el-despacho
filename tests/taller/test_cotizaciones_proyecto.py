@@ -127,11 +127,13 @@ def test_vista_generar_crea_y_pinta_recuadro(client, entorno):
 
 
 def test_vista_cambiar_estado(client, entorno):
+    """El estatus es ÚNICO de la cotización del proyecto: el endpoint opera
+    sobre la versión más reciente (sin cot_pk)."""
     from apps.cotizaciones import services
     cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     client.force_login(entorno["admin"])
     resp = client.post(
-        reverse("proyectos-cotizacion-estado", args=[entorno["p"].pk, cot.pk]),
+        reverse("proyectos-cotizacion-estado", args=[entorno["p"].pk]),
         {"estado": "aprobada"},
         HTTP_HX_REQUEST="true",
     )
@@ -150,9 +152,8 @@ def test_disenador_sin_permiso_no_genera(client, usuario_factory, entorno):
     assert resp.status_code == 403
 
 
-def test_detalle_pinta_recuadro_y_boton_enviar_placeholder(client, entorno):
+def test_detalle_pinta_recuadro_y_tracker(client, entorno):
     from apps.cotizaciones import services
-    from apps.los_proyectos.views import RICKROLL_URL
     services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     client.force_login(entorno["admin"])
     resp = client.get(reverse("proyectos-detalle", args=[entorno["p"].pk]))
@@ -160,5 +161,50 @@ def test_detalle_pinta_recuadro_y_boton_enviar_placeholder(client, entorno):
     cuerpo = resp.content.decode()
     assert "Cotizaciones" in cuerpo
     assert "v1" in cuerpo
-    # El botón Enviar es placeholder → apunta al rickroll (decisión Oscar).
-    assert RICKROLL_URL in cuerpo
+    # Pizza-tracker + línea de estatus.
+    assert "cot-step" in cuerpo
+    assert "Estatus:" in cuerpo
+    # El botón Enviar abre el rickroll vía JS (placeholder, decisión Oscar).
+    assert "abrirRickroll" in cuerpo
+
+
+# ── Catálogo configurable (EstadoCotizacion) ─────────────────────────────
+
+def test_seed_estados_cotizacion():
+    from apps.cotizaciones.models import EstadoCotizacion
+    base = EstadoCotizacion.objects.filter(sistema=True)
+    slugs = set(base.values_list("slug", flat=True))
+    assert {"generada", "enviada", "aprobada", "pagada"} <= slugs
+    assert base.get(slug="pagada").terminal is True
+
+
+def test_dropdown_y_tracker_usan_catalogo(client, entorno):
+    """Agregar un paso en el catálogo lo hace aparecer en el recuadro."""
+    from apps.cotizaciones import services
+    from apps.cotizaciones.models import EstadoCotizacion, invalidar_cache_estados_cot
+    EstadoCotizacion.objects.create(
+        slug="revision_cliente", label="Revisión cliente", color="#f79009", orden=15,
+    )
+    invalidar_cache_estados_cot()
+    services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    client.force_login(entorno["admin"])
+    resp = client.get(reverse("proyectos-detalle", args=[entorno["p"].pk]))
+    assert "Revisión cliente" in resp.content.decode()
+
+
+def test_estatus_unico_se_arrastra_al_generar(entorno):
+    """El estatus NO se reinicia al generar una versión nueva (decisión Oscar):
+    la v2 arrastra el estatus de la v1."""
+    from apps.cotizaciones import services
+    v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    services.marcar_estado_proyecto(v1, "enviada", entorno["admin"])
+    v2 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    assert v2.version == 2
+    assert v2.estado == "enviada"  # arrastrado, no reseteado a "generada"
+
+
+def test_nombre_pdf_usa_nombre_proyecto(entorno):
+    from apps.cotizaciones import services
+    cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    # Nombre del proyecto + _V{version} (decisión Oscar).
+    assert cot.nombre_pdf == "Branding Optimist_V1"

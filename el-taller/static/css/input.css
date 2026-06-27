@@ -106,6 +106,45 @@
   .dark .estado-chip { color: color-mix(in srgb, var(--ec, #667085) 52%, #ffffff); }
   .estado-chip[data-activo] { background-color: color-mix(in srgb, var(--ec, #667085) 12%, transparent); }
 
+  /* ── Pizza-tracker de Cotizaciones (recuadro del proyecto, render Oscar) ──
+     Pasos estilo Domino's adaptados a TailAdmin. El color de cada paso va en
+     --ec (HEX configurado en Gerencia). El tracker crece/encoge según cuántos
+     pasos haya. done = pastilla tenue del color · current = color vivo +
+     realce · future = gris. Chevron vía clip-path; en móvil scrollea. */
+  .cot-tracker { @apply flex items-stretch; gap: 2px; }
+  .cot-step {
+    @apply relative flex flex-col items-center justify-center gap-0.5 text-center;
+    flex: 1 1 84px;
+    min-width: 84px;
+    padding: 0.5rem 0.85rem 0.5rem 1.15rem;
+    border: 0;
+    clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%, 11px 50%);
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .cot-step:first-child { clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%); padding-left: 0.95rem; }
+  .cot-step:last-child  { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 11px 50%); }
+  .cot-step:only-child  { clip-path: none; @apply rounded-lg; }
+  .cot-step-num { @apply text-base font-bold leading-none tabular-nums; }
+  .cot-step-label { @apply text-[10px] font-medium uppercase leading-tight; word-break: break-word; }
+  .cot-step[data-fase="future"] { @apply bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500; }
+  .cot-step[data-fase="done"] {
+    background-color: color-mix(in srgb, var(--ec, #667085) 16%, #ffffff);
+    color: color-mix(in srgb, var(--ec, #667085) 74%, #000000);
+  }
+  .dark .cot-step[data-fase="done"] {
+    background-color: color-mix(in srgb, var(--ec, #667085) 26%, transparent);
+    color: color-mix(in srgb, var(--ec, #667085) 52%, #ffffff);
+  }
+  .cot-step[data-fase="current"] {
+    background-color: var(--ec, #465fff);
+    color: #ffffff;
+    transform: scale(1.05);
+    z-index: 2;
+    box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--ec, #465fff) 65%, transparent);
+  }
+  button.cot-step { @apply cursor-pointer; }
+  button.cot-step:hover { filter: brightness(1.06); }
+
   /* Sidebar / nav del shell — TailAdmin patrones */
   .menu-item        { @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium; }
   .menu-item-active   { @apply bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400; }

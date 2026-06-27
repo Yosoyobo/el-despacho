@@ -100,7 +100,7 @@ def generar_pdf(cot: Cotizacion, actor):
     from lib.google_drive import drive
 
     html = construir_html_pdf(cot)
-    res = _gen(html=html, nombre=cot.codigo, subcarpeta="Cotizaciones")
+    res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones")
     if not res.ok:
         return res
 
@@ -290,37 +290,43 @@ def crear_factura_anticipo(cot: Cotizacion, actor) -> Factura:  # noqa: F821
 # "Generar": se crea una Cotizacion real (aparece también en /cotizaciones/)
 # tomando un SNAPSHOT de los productos incluidos actuales, como v1, v2, v3…
 
-ESTADOS_PROYECTO_VALIDOS = {"generada", "enviada", "aprobada", "pagada"}
+# Fallback si el catálogo EstadoCotizacion aún no está sembrado.
+ESTADOS_PROYECTO_FALLBACK = {"generada", "enviada", "aprobada", "pagada"}
 
 
 def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
     """Genera la siguiente versión de cotización del proyecto.
 
     Toma los Productos involucrados INCLUIDOS actuales (cantidad + precio
-    efectivo) y los congela como líneas de una Cotizacion nueva en estado
-    'generada'. Suma las tasas `aplicable_default` salvo que el proyecto sea
-    IVA exento, para que el total calce con `proyecto.monto_a_facturar`.
+    efectivo) y los congela como líneas de una Cotizacion nueva. Suma las
+    tasas `aplicable_default` salvo que el proyecto sea IVA exento, para que el
+    total calce con `proyecto.monto_a_facturar`.
+
+    **El estatus es de "las cotizaciones", no de cada versión** (decisión
+    Oscar): generar NO reinicia ni duplica el estatus — la versión nueva
+    ARRASTRA el estatus de la anterior. La primera arranca en 'generada'. Si
+    el cliente rechaza, el estatus se resetea a mano desde el dropdown.
     """
     from decimal import Decimal
-
-    from django.db.models import Max
 
     from ajustes.models.tasa import TasaImpositiva
 
     from .models import CotizacionImpuesto, CotizacionItem
 
     with transaction.atomic():
-        ultima = (
+        ultima_cot = (
             Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
-            .aggregate(m=Max("version"))["m"]
-            or 0
+            .order_by("-version")
+            .first()
         )
+        estado_inicial = ultima_cot.estado if ultima_cot else "generada"
+        version = (ultima_cot.version + 1) if ultima_cot else 1
         cot = Cotizacion.objects.create(
             cliente=proyecto.cliente,
             proyecto=proyecto,
             titulo=(proyecto.nombre or proyecto.codigo)[:200],
-            estado="generada",
-            version=ultima + 1,
+            estado=estado_inicial,
+            version=version,
             descuento_global_porcentaje=Decimal("0.00"),
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
@@ -350,13 +356,16 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
 
 
 def marcar_estado_proyecto(cot: Cotizacion, estado: str, actor) -> Cotizacion:
-    """Setter LIBRE de estado para el dropdown del recuadro del proyecto
-    (generada → enviada → aprobada → pagada, en cualquier orden — como la
-    barra de status del proyecto). No exige nombre/motivo; sella el timestamp
-    correspondiente y emite el evento Portavoz adecuado."""
+    """Setter LIBRE de estado para el recuadro del proyecto (los pasos
+    configurados en Gerencia, en cualquier orden — como la barra de status del
+    proyecto). No exige nombre/motivo; sella el timestamp de los pasos conocidos
+    (enviada/aprobada/pagada) y emite el evento Portavoz adecuado."""
     from django.utils import timezone
 
-    if estado not in ESTADOS_PROYECTO_VALIDOS:
+    from .models import estados_cot_activos
+
+    validos = {e["slug"] for e in estados_cot_activos()} or ESTADOS_PROYECTO_FALLBACK
+    if estado not in validos:
         raise ValueError(f"Estado de cotización inválido: {estado}")
     cot.estado = estado
     updates = ["estado", "actualizado_en"]

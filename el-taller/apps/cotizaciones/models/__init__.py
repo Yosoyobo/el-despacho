@@ -1,11 +1,15 @@
 from .cotizacion import (
-    ESTADOS_COT_PROYECTO,
     ESTADOS_COTIZACION,
     Cotizacion,
     CotizacionImpuesto,
     CotizacionItem,
-    badge_estado_cot,
-    estados_cot_proyecto,
+)
+from .estado_cotizacion import (
+    ESTADOS_COT_SEED,
+    EstadoCotizacion,
+    estados_cot_activos,
+    invalidar_cache_estados_cot,
+    mapa_estados_cot,
 )
 
 __all__ = [
@@ -13,7 +17,9 @@ __all__ = [
     "CotizacionItem",
     "CotizacionImpuesto",
     "ESTADOS_COTIZACION",
-    "ESTADOS_COT_PROYECTO",
-    "estados_cot_proyecto",
-    "badge_estado_cot",
+    "EstadoCotizacion",
+    "ESTADOS_COT_SEED",
+    "estados_cot_activos",
+    "mapa_estados_cot",
+    "invalidar_cache_estados_cot",
 ]

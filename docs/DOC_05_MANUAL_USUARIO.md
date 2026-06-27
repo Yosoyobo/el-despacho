@@ -5,7 +5,7 @@
 
 ---
 
-## Novedades — Cotizaciones desde la página del proyecto (27 de junio de 2026)
+## Novedades — Cotizaciones desde la página del proyecto, con tracker (27 de junio de 2026)
 
 - **Nuevo recuadro "Cotizaciones" en cada proyecto.** En la página de un proyecto,
   debajo de **Equipo**, ahora aparece un recuadro que lista las cotizaciones que
@@ -13,20 +13,32 @@
 - **Así funciona:** la página del proyecto es tu mesa de trabajo — agregas, quitas
   y ajustas los **Productos involucrados**, sus cantidades y precios. Cuando ya
   está como quieres, picas **"Generar"**: el sistema toma una *foto* de los
-  productos de ese momento y crea la cotización **v1** con estado **Generada**.
-  Si después cambias productos y vuelves a picar **"Generar"**, se crea la **v2**
-  con lo que haya en ese momento (la v1 se conserva tal cual quedó).
-- **Cambiar el estado es un clic.** Cada cotización trae a la derecha su estado;
-  al picarlo aparecen las opciones **Generada · Enviada · Aprobada · Pagada** y
-  eliges la que toca. El estado se guarda al instante.
-- **PDF.** Cada versión tiene su enlace **"PDF →"** para verla/descargarla.
+  productos de ese momento y crea la cotización **v1**. Si después cambias
+  productos y vuelves a picar **"Generar"**, se crea la **v2** con lo que haya en
+  ese momento (la v1 se conserva tal cual quedó).
+- **Un solo estatus para la cotización.** El estatus es de *la cotización* del
+  proyecto, no de cada versión: vive en la versión más reciente. Generar una
+  versión nueva **no** reinicia el estatus (lo arrastra). Si el cliente rechaza,
+  tú lo regresas a mano. Lo cambias picando el badge de la última versión.
+- **Termómetro de avance (tipo "pizza tracker").** Abajo del recuadro hay una
+  barra de pasos que muestra en qué etapa va la cotización (los previos en color
+  tenue, el actual resaltado, los siguientes en gris) y una línea "Estatus: …".
+  También puedes picar un paso para mover el estatus ahí.
+- **Los pasos son configurables.** El administrador define los pasos del
+  termómetro desde **La Gerencia → Catálogos → Estados de cotización**: puede
+  renombrarlos, recolorearlos, reordenarlos, agregar pasos nuevos o esconder los
+  que no use. Vienen 4 por defecto: **Generada · Enviada · Aprobada · Pagada**. El
+  termómetro crece o se encoge según cuántos pasos haya.
+- **PDF con nombre del proyecto.** Cada versión tiene su enlace **"PDF →"**; el
+  archivo se nombra con el **nombre del proyecto + la versión** (ej.
+  `Branding Optimist_V2.pdf`).
 - **Estas cotizaciones también salen en el módulo Cotizaciones** (en el menú
   lateral), por si quieres buscarlas o filtrarlas junto con las demás.
 - **El botón "Enviar"** (mandar la cotización por correo al contacto del cliente)
   todavía está en construcción.
 - **Con El Chalán:** este recuadro se opera a mano desde la página del proyecto.
   Si quieres que **El Chalán** te arme una cotización por su cuenta, dícelo en el
-  chat (por ejemplo: *"crea una cotización para #LC-0001 con 100 playseras a $80"*);
+  chat (por ejemplo: *"crea una cotización para #LC-0001 con 100 playeras a $80"*);
   El Chalán la deja en borrador para que la revises.
 
 ---

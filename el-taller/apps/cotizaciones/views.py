@@ -627,5 +627,5 @@ def generar_pdf(request, pk):
         messages.error(request, f"No se pudo generar el PDF: {res.error}")
         return redirect("cotizaciones:detalle", pk=cot.pk)
     resp = HttpResponse(res.pdf_bytes, content_type="application/pdf")
-    resp["Content-Disposition"] = f'inline; filename="{cot.codigo}.pdf"'
+    resp["Content-Disposition"] = f'inline; filename="{cot.nombre_pdf}.pdf"'
     return resp

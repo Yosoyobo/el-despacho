@@ -65,6 +65,9 @@ INSTALLED_APPS = [
     "apps.tesoreria.apps.TesoreriaConfig",
     "apps.centros_costo.apps.CentrosCostoConfig",
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
+    # CRUD admin de Estados de cotización (los modelos viven en apps.cotizaciones,
+    # ya instalada abajo; esta app solo aporta la UI de Gerencia).
+    "apps.estados_cotizacion.apps.EstadosCotizacionConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
     "apps.tipos_buzon.apps.TiposBuzonConfig",
     # S-LC-Feedback-V6 Bloque 1: EstadoTarea vive en El Taller

@@ -28,6 +28,7 @@ urlpatterns = [
     path("buzon/", include("apps.buzon_admin.urls")),
     path("catalogos/", include("apps.centros_costo.urls")),
     path("catalogos/", include("apps.estados_proyecto.urls")),
+    path("catalogos/", include("apps.estados_cotizacion.urls")),
     path("catalogos/", include("apps.estados_tarea.urls")),
     path("", include("campanas.urls")),
     path("catalogos/", include("apps.estados_buzon.urls")),
