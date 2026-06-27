@@ -27,6 +27,14 @@ def test_contador_sin_acceso(client, usuario_factory):
     assert resp.status_code == 403
 
 
+def test_dueno_sin_acceso(client, usuario_factory):
+    # El Buzón de soporte es SOLO super_admin por default (decisión Oscar).
+    # Sigue siendo delegable granularmente, pero el dueño no lo trae de fábrica.
+    client.force_login(usuario_factory(rol="dueno"))
+    resp = client.get("/buzon/")
+    assert resp.status_code == 403
+
+
 def test_admin_ve_lista(client, usuario_factory, mensaje):
     client.force_login(usuario_factory(rol="super_admin"))
     resp = client.get("/buzon/")
@@ -35,7 +43,7 @@ def test_admin_ve_lista(client, usuario_factory, mensaje):
 
 
 def test_filtrar_por_estado(client, usuario_factory, mensaje):
-    client.force_login(usuario_factory(rol="dueno"))
+    client.force_login(usuario_factory(rol="super_admin"))
     resp = client.get("/buzon/?estado=archivado")
     assert resp.status_code == 200
     assert b"Test asunto" not in resp.content
@@ -79,7 +87,7 @@ def test_exportar_md(client, usuario_factory, mensaje):
 
 
 def test_clientes_proximamente(client, usuario_factory):
-    client.force_login(usuario_factory(rol="dueno"))
+    client.force_login(usuario_factory(rol="super_admin"))
     resp = client.get("/buzon/clientes/")
     assert resp.status_code == 200
     assert b"Pr\xc3\xb3ximamente" in resp.content

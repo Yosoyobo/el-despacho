@@ -101,7 +101,12 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "cartera": list(TODO_CARTERA),
         "proyectos": list(TODO_PROYECTOS),
         "pizarron": list(TODO_PIZARRON),
-        "buzon": list(TODO_BUZON),
+        # El Buzón de SOPORTE (todos los mensajes, `ver_todos`) es SOLO super_admin
+        # por default (decisión Oscar). Sigue siendo granular/delegable: el
+        # super_admin puede conceder `ver_todos` a quien quiera desde
+        # /directorio/<id>/permisos/. El dueño conserva su propio buzón
+        # (`ver_propios` + `responder`), no la bandeja de soporte completa.
+        "buzon": ["ver_propios", "responder"],
         "recados": list(TODO_RECADOS),
         "tesoreria": list(TODO_TESORERIA),
         "dictado": list(TODO_DICTADO),
