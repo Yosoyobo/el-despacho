@@ -169,8 +169,8 @@
             {# Plantilla de tarjeta vacía (formset.empty_form) para "+ Nuevo producto" inline. #}
             <template id="producto-empty-template">{% include "proyectos/_producto_card.html" with f=formset.empty_form categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color="brand" %}</template>
 
-            {# + Nuevo producto: agrega una tarjeta vacía inline (reporte Oscar). El bug de
-               duplicados de V8 se evita re-renderizando el formset por OOB tras crear. #}
+            {% comment %}+ Nuevo producto: agrega una tarjeta vacía inline (reporte Oscar).
+            El bug de duplicados de V8 se evita re-renderizando el formset por OOB tras crear.{% endcomment %}
             <div class="mt-4 flex justify-center">
                 <button type="button" id="add-producto" class="btn-secundario">+ Nuevo producto</button>
             </div>
