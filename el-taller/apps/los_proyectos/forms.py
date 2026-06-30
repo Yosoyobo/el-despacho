@@ -2,7 +2,6 @@ from datetime import datetime, time
 from decimal import Decimal
 
 from apps.el_catalogo.models import Proveedor, Servicio, Variacion
-from apps.tesoreria.models.ingreso import METODOS_INGRESO
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
@@ -12,6 +11,7 @@ from apps.los_proyectos.models import (
     ProyectoProducto,
     ProyectoProveedor,
 )
+from apps.tesoreria.models.ingreso import METODOS_INGRESO
 from django import forms
 from django.db.models import Q
 from django.forms import inlineformset_factory
