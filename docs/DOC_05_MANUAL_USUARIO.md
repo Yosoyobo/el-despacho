@@ -17,6 +17,10 @@
   eliges una sugerencia, **se queda el 40** y solo se le agrega el contexto (colonia,
   ciudad, CP). El número es indispensable para las entregas, así que ya **no se pierde**
   al elegir de la lista.
+- **Clientes y Proveedores con mini-mapa.** En la ficha de un **cliente** o **proveedor**,
+  el cuadro de **Dirección** ahora trae un **mini-mapa con el pin**: al elegir una
+  dirección (o pegarla) el pin se coloca solo, y puedes **arrastrarlo o picar el mapa**
+  para afinarlo. La ubicación se guarda con el cliente/proveedor.
 - **El mapa pone el pin solo.** Donde hay mapa (sedes, geocerca del empleado, destino de
   un mandado), al elegir una sugerencia el **pin se coloca automáticamente** y el mapa se
   centra ahí. También puedes **arrastrar el pin**, **picar el mapa** o usar **"📍 Mi

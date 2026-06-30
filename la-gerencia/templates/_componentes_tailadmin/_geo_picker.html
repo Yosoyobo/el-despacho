@@ -3,36 +3,34 @@ Geo-picker unificado (S-Geo-Picker-V1) — cuadro de resultados en vivo + auto-p
 Dual-copy (regla §18): idéntico en el-taller y la-gerencia. Lo cablea geo_picker.js.
 
 Parámetros (vía {% include with %}):
-  modo            "completo" (mapa + lat/lng + etiqueta) | "texto" (el propio campo
-                  de dirección se vuelve el buscador). Default "texto".
-  objetivo_texto  id del <input/textarea> que se rellena/convierte en buscador.
-  lat_id, lng_id  ids de los inputs (hidden) de coordenadas (modo completo).
-  etiqueta_id     id del input de etiqueta a autocompletar (opcional, modo completo).
-  radio_id        id del input de radio en metros (dibuja un círculo, opcional).
-  con_geoloc      bool — muestra el botón "Mi ubicación" (modo completo).
-  con_pois        bool — incluye POIs internos (sedes/clientes/proveedores) en la lista.
-  mapa_abierto    bool — el mapa arranca visible (forms dedicados / modales de mapa).
-  zoom            int — zoom al fijar un punto (default 16).
-  placeholder     texto del buscador (modo completo).
-  label           etiqueta corta opcional sobre el buscador (modo completo).
-  ayuda           texto de ayuda opcional bajo el buscador (modo completo).
-  alto            clase de alto del mapa (default "h-64"; p. ej. "h-[28rem]").
+  objetivo_texto     id del campo de dirección. Si NO hay buscador dedicado, ESTE
+                     campo se vuelve el buscador (un solo campo).
+  buscador_dedicado  bool — renderiza un <input> de búsqueda aparte (sedes,
+                     geocerca, destino de mandado). Default: el campo es el buscador.
+  lat_id, lng_id     ids de inputs de coordenadas → activa el mini-mapa con pin.
+  etiqueta_id        id de un input de etiqueta a autocompletar (opcional).
+  radio_id           id del input de radio en metros (dibuja un círculo, opcional).
+  con_geoloc         bool — botón "Mi ubicación" (solo con mapa).
+  con_pois           bool — incluye POIs internos (sedes/clientes/proveedores).
+  mapa_abierto       bool — el mapa arranca visible.
+  zoom               int — zoom al fijar un punto (default 16).
+  placeholder        texto del <input> dedicado.
+  label, ayuda       textos opcionales (solo con buscador dedicado).
+  alto               clase de alto del mapa (default "h-64").
 
-  En modo "texto" NO se dibuja una caja extra: geo_picker.js engancha el dropdown
-  de sugerencias al campo `objetivo_texto` y este <div> de config se autodestruye.
+  geo_picker.js arma el componente según el DOM: si hay [data-geo-buscar] ese
+  input busca; si no, engancha el dropdown al campo objetivo. Si hay [data-geo-mapa]
+  maneja el mini-mapa. En modo texto puro (campo-buscador sin mapa) este <div> se
+  autodestruye tras enganchar el dropdown (no deja hueco).
 {% endcomment %}
-{% if modo == 'completo' %}
 <div class="geo-picker" data-geo-picker
-     data-modo="completo"
      data-endpoint="{% url 'geo-buscar' %}"
      data-con-pois="{{ con_pois|yesno:'1,0' }}"
-     data-zoom="{{ zoom|default:16 }}"
      {% if objetivo_texto %}data-objetivo-texto="{{ objetivo_texto }}"{% endif %}
-     {% if lat_id %}data-lat-input="{{ lat_id }}"{% endif %}
-     {% if lng_id %}data-lng-input="{{ lng_id }}"{% endif %}
+     {% if lat_id %}data-lat-input="{{ lat_id }}" data-lng-input="{{ lng_id }}" data-mapa-abierto="{{ mapa_abierto|yesno:'1,0' }}" data-zoom="{{ zoom|default:16 }}"{% endif %}
      {% if etiqueta_id %}data-etiqueta-input="{{ etiqueta_id }}"{% endif %}
-     {% if radio_id %}data-radio-input="{{ radio_id }}"{% endif %}
-     data-mapa-abierto="{{ mapa_abierto|yesno:'1,0' }}">
+     {% if radio_id %}data-radio-input="{{ radio_id }}"{% endif %}>
+    {% if buscador_dedicado %}
     {% if label %}<label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">{{ label }}</label>{% endif %}
     <div class="relative">
         <input type="text" data-geo-buscar autocomplete="off"
@@ -41,6 +39,8 @@ Parámetros (vía {% include with %}):
         <ul data-geo-resultados class="absolute left-0 right-0 z-[1000] mt-1 hidden max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white text-sm shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"></ul>
     </div>
     {% if ayuda %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ ayuda }}</p>{% endif %}
+    {% endif %}
+    {% if lat_id %}
     <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         {% if con_geoloc %}<button type="button" data-geo-localizar class="text-brand-600 hover:underline dark:text-brand-400">📍 Mi ubicación</button>{% endif %}
         <button type="button" data-geo-toggle-mapa data-abrir="Ver / fijar en el mapa" data-cerrar="Ocultar mapa"
@@ -48,13 +48,5 @@ Parámetros (vía {% include with %}):
         <span data-geo-coords class="tabular-nums text-gray-400 dark:text-gray-500"></span>
     </div>
     <div data-geo-mapa class="{% if not mapa_abierto %}hidden {% endif %}mt-2 {{ alto|default:'h-64' }} w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700"></div>
+    {% endif %}
 </div>
-{% else %}
-{# Modo texto: el propio campo es el buscador. geo_picker.js lee esta config,
-   engancha el dropdown al campo y elimina este <div> (no deja hueco). #}
-<div class="geo-picker" data-geo-picker
-     data-modo="texto"
-     data-endpoint="{% url 'geo-buscar' %}"
-     data-con-pois="{{ con_pois|yesno:'1,0' }}"
-     data-objetivo-texto="{{ objetivo_texto }}"></div>
-{% endif %}

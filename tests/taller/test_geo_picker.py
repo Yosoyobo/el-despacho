@@ -94,28 +94,27 @@ def test_buscar_pois_defensivo(monkeypatch):
 
 # ───────────────────────── partial _geo_picker.html ─────────────────────────
 
-def test_partial_modo_texto():
+def test_partial_texto_campo_unico():
+    """Modo texto (campo es el buscador): sin caja extra y sin mapa."""
     from django.template.loader import render_to_string
     html = render_to_string("_componentes_tailadmin/_geo_picker.html", {
-        "modo": "texto", "objetivo_texto": "id_direccion", "con_pois": False,
+        "objetivo_texto": "id_direccion", "con_pois": False,
     })
     assert "data-geo-picker" in html
-    assert 'data-modo="texto"' in html
     assert 'data-objetivo-texto="id_direccion"' in html
     assert 'data-con-pois="0"' in html
-    assert "data-geo-mapa" not in html  # modo texto no dibuja mapa
-    # Campo único: NO se renderiza una segunda caja de búsqueda; el JS engancha
-    # el dropdown al propio campo objetivo.
-    assert "data-geo-buscar" not in html
+    assert "data-geo-buscar" not in html  # el propio campo es el buscador
+    assert "data-geo-mapa" not in html    # sin coordenadas → sin mapa
 
 
-def test_partial_modo_completo():
+def test_partial_dedicado_con_mapa():
+    """Buscador dedicado + mapa (sedes/geocerca/mandado)."""
     from django.template.loader import render_to_string
     html = render_to_string("_componentes_tailadmin/_geo_picker.html", {
-        "modo": "completo", "lat_id": "id_lat", "lng_id": "id_lng",
+        "buscador_dedicado": True, "lat_id": "id_lat", "lng_id": "id_lng",
         "etiqueta_id": "id_etiq", "con_geoloc": True, "con_pois": True, "mapa_abierto": True,
     })
-    assert 'data-modo="completo"' in html
+    assert "data-geo-buscar" in html
     assert 'data-lat-input="id_lat"' in html
     assert 'data-lng-input="id_lng"' in html
     assert 'data-etiqueta-input="id_etiq"' in html
@@ -123,6 +122,18 @@ def test_partial_modo_completo():
     assert "data-geo-mapa" in html
     assert "data-geo-localizar" in html
     assert "data-geo-toggle-mapa" in html
+
+
+def test_partial_campo_con_mapa():
+    """Cliente/Proveedor: el campo es el buscador Y hay mini-mapa (sin caja extra)."""
+    from django.template.loader import render_to_string
+    html = render_to_string("_componentes_tailadmin/_geo_picker.html", {
+        "objetivo_texto": "id_direccion", "lat_id": "id_lat", "lng_id": "id_lng",
+        "con_pois": False,
+    })
+    assert "data-geo-mapa" in html              # tiene mini-mapa
+    assert 'data-lat-input="id_lat"' in html
+    assert "data-geo-buscar" not in html        # un solo campo (sin caja extra)
 
 
 # ───────────────────────── integración en pantallas ─────────────────────────
@@ -143,14 +154,45 @@ def test_modal_mandado_usa_picker(client, proyecto_factory, usuario_factory):
     resp = client.get(f"/mandados/{m.pk}/destino")
     assert resp.status_code == 200
     assert b"data-geo-picker" in resp.content
-    assert b'data-modo="completo"' in resp.content
+    assert b"data-geo-buscar" in resp.content  # buscador dedicado
     assert b'data-lat-input="md-lat"' in resp.content
+    assert b"data-geo-mapa" in resp.content
 
 
-def test_cliente_form_tiene_picker(client, usuario_factory):
+def test_cliente_form_tiene_picker_con_mapa(client, usuario_factory):
     from django.urls import reverse
     client.force_login(usuario_factory(rol="super_admin"))
     resp = client.get(reverse("cartera-nuevo"))
     assert resp.status_code == 200
     assert b"data-geo-picker" in resp.content
     assert b'data-objetivo-texto="id_direccion"' in resp.content
+    assert b"data-geo-mapa" in resp.content        # mini-mapa con pin
+    assert b'data-lat-input="id_lat"' in resp.content
+
+
+def test_cliente_guarda_coordenadas(client, usuario_factory):
+    """El form de cliente persiste lat/lng (el pin del mini-mapa)."""
+    from apps.la_cartera.models import Cliente
+    from django.urls import reverse
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.post(reverse("cartera-nuevo"), data={
+        "razon_social": "Geo Cliente",
+        "rfc": "", "direccion": "Calle 1 #40", "fiscal_igual": "on",
+        "direccion_fiscal": "", "lat": "19.432600", "lng": "-99.133200",
+        "notas": "", "estado": "prospecto",
+        # formset de contactos vacío
+        "contactos-TOTAL_FORMS": "0", "contactos-INITIAL_FORMS": "0",
+        "contactos-MIN_NUM_FORMS": "0", "contactos-MAX_NUM_FORMS": "1000",
+    })
+    assert resp.status_code in (301, 302)
+    c = Cliente.objects.get(razon_social="GEO CLIENTE")
+    assert round(c.lat, 4) == 19.4326
+    assert round(c.lng, 4) == -99.1332
+
+
+def test_form_cliente_lat_lng_hidden():
+    from apps.la_cartera.forms import ClienteForm
+    from django import forms
+    f = ClienteForm()
+    assert "lat" in f.fields and "lng" in f.fields
+    assert isinstance(f.fields["lat"].widget, forms.HiddenInput)

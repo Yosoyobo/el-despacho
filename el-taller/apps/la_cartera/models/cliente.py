@@ -30,6 +30,10 @@ class Cliente(models.Model):
     fiscal_igual = models.BooleanField(
         default=True, help_text="La dirección fiscal es la misma que la dirección.",
     )
+    # Ubicación del cliente (S-Geo-Picker): el pin del mini-mapa de su dirección.
+    # Alimenta el mapeo y la asignación de runner por cercanía (cero costo, OSM).
+    lat = models.FloatField(null=True, blank=True)
+    lng = models.FloatField(null=True, blank=True)
     notas = models.TextField(blank=True, default="")
     estado = models.CharField(max_length=20, choices=ESTADOS_CLIENTE, default="prospecto", db_index=True)
 

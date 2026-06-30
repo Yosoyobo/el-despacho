@@ -22,6 +22,9 @@ class Proveedor(models.Model):
     fiscal_igual = models.BooleanField(
         default=True, help_text="La dirección fiscal es la misma que la dirección.",
     )
+    # Ubicación del proveedor (S-Geo-Picker): el pin del mini-mapa de su dirección.
+    lat = models.FloatField(null=True, blank=True)
+    lng = models.FloatField(null=True, blank=True)
     notas = models.TextField(blank=True, default="")
 
     activo = models.BooleanField(default=True, db_index=True)

@@ -18,7 +18,7 @@ POST exitoso → 204 + HX-Redirect a la lista.
             <div class="px-5 py-4">
                 <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Escribe o pega una dirección, elige un lugar conocido o pica el mapa. El runner más cercano se asignará por esta ubicación.</p>
 
-                {% include "_componentes_tailadmin/_geo_picker.html" with modo="completo" lat_id="md-lat" lng_id="md-lng" etiqueta_id="md-etiqueta" con_pois=True con_geoloc=True mapa_abierto=True placeholder="Buscar o pegar una dirección…" %}
+                {% include "_componentes_tailadmin/_geo_picker.html" with buscador_dedicado=True lat_id="md-lat" lng_id="md-lng" etiqueta_id="md-etiqueta" con_pois=True con_geoloc=True mapa_abierto=True placeholder="Buscar o pegar una dirección…" %}
 
                 <div class="mt-3">
                     <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" for="md-etiqueta">Etiqueta del lugar (opcional)</label>

@@ -11,7 +11,7 @@ class ProveedorForm(forms.ModelForm):
         fields = [
             "razon_social", "nombre_contacto", "email_contacto",
             "telefono", "rfc", "direccion", "fiscal_igual", "direccion_fiscal",
-            "notas", "activo",
+            "lat", "lng", "notas", "activo",
         ]
         # Render LC 2026-06-30: "Razón social" → "Nombre" (solo etiqueta; el
         # campo en DB sigue siendo `razon_social`, igual que Cliente).
@@ -32,6 +32,9 @@ class ProveedorForm(forms.ModelForm):
             "direccion": forms.Textarea(attrs={"rows": 2}),
             "direccion_fiscal": forms.Textarea(attrs={"rows": 2, "data-fiscal-box": "1"}),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
+            # Coordenadas del pin (geo-picker) — ocultas, las llena el mini-mapa.
+            "lat": forms.HiddenInput(),
+            "lng": forms.HiddenInput(),
         }
 
     def __init__(self, *args, inline: bool = False, **kwargs):

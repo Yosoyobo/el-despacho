@@ -16,7 +16,7 @@
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {% for f in form %}
-                    {% if f.name != 'direccion' and f.name != 'fiscal_igual' and f.name != 'direccion_fiscal' and f.name != 'notas' %}
+                    {% if f.name != 'direccion' and f.name != 'fiscal_igual' and f.name != 'direccion_fiscal' and f.name != 'notas' and f.name != 'lat' and f.name != 'lng' %}
                         {% if f.name == 'razon_social' %}
                             {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
                         {% else %}
@@ -65,7 +65,8 @@
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dirección</h3>
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
-            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto="id_direccion" con_pois=False %}
+            {{ form.lat }}{{ form.lng }}
+            {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-56" %}
         </section>
 
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

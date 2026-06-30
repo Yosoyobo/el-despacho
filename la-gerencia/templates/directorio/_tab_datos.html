@@ -14,7 +14,7 @@
     <div class="rounded-lg border border-gray-200 bg-gray-50/60 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">
         <p class="mb-2 font-medium">📍 Pin de geocerca</p>
         <p class="mb-3">El pin (lat/lng) + radio definen la geocerca del empleado para El Checador. Busca o pega una dirección y el pin se coloca solo; también puedes arrastrarlo en el mapa, capturar las coordenadas a mano, o pararte en el lugar y usar «Mi ubicación».</p>
-        {% include "_componentes_tailadmin/_geo_picker.html" with modo="completo" lat_id="id_geo_lat" lng_id="id_geo_lng" radio_id="id_geocerca_radio_m" objetivo_texto="id_direccion" con_geoloc=True con_pois=False placeholder="Buscar o pegar la dirección del empleado…" %}
+        {% include "_componentes_tailadmin/_geo_picker.html" with buscador_dedicado=True lat_id="id_geo_lat" lng_id="id_geo_lng" radio_id="id_geocerca_radio_m" objetivo_texto="id_direccion" con_geoloc=True con_pois=False placeholder="Buscar o pegar la dirección del empleado…" %}
     </div>
     <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
         <button type="button" data-modal-slot-close class="btn-secundario">Cerrar</button>

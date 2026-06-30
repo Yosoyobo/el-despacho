@@ -20,7 +20,7 @@
         <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Busca o pega la dirección y el pin se coloca solo; también puedes arrastrarlo o picar el mapa. El radio se ajusta con el campo «Radio de la geocerca».</p>
     </section>
     <section class="xl:col-span-2 overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        {% include "_componentes_tailadmin/_geo_picker.html" with modo="completo" lat_id="id_lat" lng_id="id_lng" radio_id="id_radio_m" objetivo_texto="id_direccion" con_geoloc=True con_pois=False mapa_abierto=True alto="h-[28rem]" placeholder="Buscar o pegar la dirección de la sede…" %}
+        {% include "_componentes_tailadmin/_geo_picker.html" with buscador_dedicado=True lat_id="id_lat" lng_id="id_lng" radio_id="id_radio_m" objetivo_texto="id_direccion" con_geoloc=True con_pois=False mapa_abierto=True alto="h-[28rem]" placeholder="Buscar o pegar la dirección de la sede…" %}
     </section>
     <div class="xl:col-span-3 flex flex-wrap items-center justify-between gap-3">
         <a href="{% url 'checador-admin-sedes' %}" class="btn-secundario">Cancelar</a>

@@ -11,6 +11,8 @@ class ClienteForm(forms.ModelForm):
             "direccion",
             "fiscal_igual",
             "direccion_fiscal",
+            "lat",
+            "lng",
             "notas",
             "estado",
         ]
@@ -23,6 +25,9 @@ class ClienteForm(forms.ModelForm):
         widgets = {
             "direccion": forms.Textarea(attrs={"rows": 2}),
             "direccion_fiscal": forms.Textarea(attrs={"rows": 2, "data-fiscal-box": "1"}),
+            # Coordenadas del pin (geo-picker) — ocultas, las llena el mini-mapa.
+            "lat": forms.HiddenInput(),
+            "lng": forms.HiddenInput(),
         }
 
     def clean_razon_social(self):

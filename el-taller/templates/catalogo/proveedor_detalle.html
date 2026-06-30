@@ -43,11 +43,12 @@
             </div>
             <div class="space-y-4">
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
+                {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-56" %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fiscal_igual %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion_fiscal %}
             </div>
-            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto="id_direccion" con_pois=False %}
-            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto="id_direccion_fiscal" con_pois=False %}
+            {{ form.lat }}{{ form.lng }}
+            {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion_fiscal" con_pois=False %}
         </section>
 
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
