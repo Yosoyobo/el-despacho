@@ -39,17 +39,13 @@
         {% endif %}
 
         {% if permisos_modulos.pizarron and not sidebar_orden.tareas.oculto %}
-        <a href="/tareas/" data-sidebar-grupo="{{ sidebar_orden.tareas.grupo }}" style="order: {{ sidebar_orden.tareas.orden|default:35 }}" class="menu-item {% if '/tareas' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {# S-LC-Feedback-V13: Mandados se fusionó en Tareas. Dos badges:
+           azul = tareas generales pendientes · rojo = mandados pendientes. #}
+        <a href="/tareas/" data-sidebar-grupo="{{ sidebar_orden.tareas.grupo }}" style="order: {{ sidebar_orden.tareas.orden|default:35 }}" class="menu-item {% if '/tareas' in request.path or '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Tareas
-        </a>
-        {% endif %}
-
-        {% if not sidebar_orden.mandados.oculto %}
-        <a href="/mandados/" data-sidebar-grupo="{{ sidebar_orden.mandados.grupo }}" style="order: {{ sidebar_orden.mandados.orden|default:36 }}" class="menu-item {% if '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13h11V6H3zM14 9h4l3 3v4h-7M5.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="flex-1">Mandados</span>
-            {% if mandados_pendientes_count %}<span class="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white">{{ mandados_pendientes_count }}</span>{% endif %}
+            <span class="flex-1">Tareas</span>
+            {% if tareas_general_pendientes_count %}<span class="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white" title="Tareas pendientes">{{ tareas_general_pendientes_count }}</span>{% endif %}
+            {% if mandados_pendientes_count %}<span class="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-error-500 px-1.5 text-[10px] font-semibold text-white" title="Mandados pendientes">{{ mandados_pendientes_count }}</span>{% endif %}
         </a>
         {% endif %}
 

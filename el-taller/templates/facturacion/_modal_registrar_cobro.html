@@ -7,29 +7,49 @@
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
             </button>
         </header>
-        <form hx-post="{% url 'facturacion:cobrar' fac.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
+        <form hx-post="{% url 'facturacion:cobrar' fac.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
             {% csrf_token %}
-            <div class="px-5 py-4 text-sm space-y-3 text-gray-700 dark:text-gray-300">
+            <div class="px-5 py-4 text-sm space-y-4 text-gray-700 dark:text-gray-300">
                 <p>Saldo pendiente: <span class="font-semibold text-gray-900 dark:text-gray-100">{{ fac.saldo_pendiente|dinero }} {{ fac.moneda }}</span></p>
-                {% if form.non_field_errors %}<p class="text-xs text-error-600">{{ form.non_field_errors|join:" " }}</p>{% endif %}
-                <div>
-                    <label class="block text-sm font-medium mb-1">Monto <span class="text-error-500">*</span></label>
-                    {{ form.monto }}
-                    {% if form.monto.errors %}<p class="text-xs text-error-600 mt-1">{{ form.monto.errors|join:" " }}</p>{% endif %}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Fecha <span class="text-error-500">*</span></label>
-                    {{ form.fecha }}
-                    {% if form.fecha.errors %}<p class="text-xs text-error-600 mt-1">{{ form.fecha.errors|join:" " }}</p>{% endif %}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Método</label>
-                    {{ form.metodo }}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Cuenta destino</label>
-                    {{ form.banco_o_caja }}
-                </div>
+                {% if form.non_field_errors %}<p class="rounded-lg bg-error-50 px-3 py-2 text-xs text-error-600 dark:bg-error-500/10 dark:text-error-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+
+                {# ── Datos del cobro ── #}
+                <fieldset class="space-y-3">
+                    <legend class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Datos del cobro</legend>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Monto <span class="text-error-500">*</span></label>
+                        {{ form.monto }}
+                        {% if form.monto.errors %}<p class="mt-1 text-xs text-error-600">{{ form.monto.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Fecha <span class="text-error-500">*</span></label>
+                        {{ form.fecha }}
+                        {% if form.fecha.errors %}<p class="mt-1 text-xs text-error-600">{{ form.fecha.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Método</label>
+                            {{ form.metodo }}
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Cuenta destino</label>
+                            {{ form.banco_o_caja }}
+                        </div>
+                    </div>
+                </fieldset>
+
+                {# ── Referencia ── #}
+                <fieldset class="space-y-3 border-t border-gray-100 pt-3 dark:border-gray-800">
+                    <legend class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Referencia (opcional)</legend>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Folio / referencia</label>
+                        {{ form.folio }}
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Nota</label>
+                        {{ form.nota }}
+                    </div>
+                </fieldset>
             </div>
             <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
                 <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>

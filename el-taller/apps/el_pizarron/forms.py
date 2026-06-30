@@ -61,13 +61,28 @@ class TareaForm(forms.ModelForm):
         required=False, initial=True,
         label="Que el sistema/El Chalán asigne al runner más libre",
     )
+    # S-LC-Feedback-V13: "Lugar" (destino) de la entrega/recolección. Texto libre
+    # (dirección o nombre de un lugar conocido). Obligatorio si tipo entrega/recoger.
+    destino_etiqueta = forms.CharField(
+        required=False, max_length=200, label="Lugar (destino)",
+        widget=forms.TextInput(attrs={
+            "placeholder": "Dirección o lugar de entrega/recolección",
+        }),
+    )
 
     def clean_tipo(self):
         return self.cleaned_data.get("tipo") or "tarea"
 
+    def clean(self):
+        cleaned = super().clean()
+        tipo = cleaned.get("tipo") or "tarea"
+        if tipo in ("entrega", "recoger") and not (cleaned.get("destino_etiqueta") or "").strip():
+            self.add_error("destino_etiqueta", "Indica el lugar (destino) de la entrega/recolección.")
+        return cleaned
+
     class Meta:
         model = Tarea
-        fields = ["titulo", "descripcion", "estado", "prioridad", "tipo", "asignada_a", "fecha_compromiso", "hora"]
+        fields = ["titulo", "descripcion", "estado", "prioridad", "tipo", "asignada_a", "fecha_compromiso", "hora", "destino_etiqueta"]
         widgets = {
             # S-LC-Feedback-V4: autocomplete @#$ en título y descripción.
             "titulo": forms.TextInput(attrs={"data-referencias": "1"}),
@@ -111,7 +126,7 @@ class TareaGlobalForm(TareaForm):
 
     class Meta(TareaForm.Meta):
         fields = ["proyecto", "titulo", "descripcion", "prioridad", "tipo",
-                  "asignada_a", "fecha_compromiso", "hora"]
+                  "asignada_a", "fecha_compromiso", "hora", "destino_etiqueta"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

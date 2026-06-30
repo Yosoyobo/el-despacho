@@ -88,6 +88,27 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
             "estado": t.estado,
         })
 
+    # S-LC-Feedback-V13: eventos genéricos (feriados, vacaciones, operativos).
+    # No ligados a proyecto; visibles para todo el Taller. Multi-día: se pinta
+    # un chip en CADA día de su rango dentro de la ventana.
+    from apps.el_pizarron.models import Evento
+    for ev in Evento.objects.filter(fecha_inicio__lte=fin, fecha_fin__gte=inicio):
+        d = max(ev.fecha_inicio, inicio)
+        ultimo = min(ev.fecha_fin, fin)
+        while d <= ultimo:
+            eventos[d].append({
+                "tipo": "evento",
+                "titulo": ev.titulo,
+                "subtitulo": "",
+                "url": f"/calendario/evento/{ev.pk}/",
+                "color_hex": ev.color,
+                "es_multidia": ev.es_multidia,
+                "es_inicio": d == ev.fecha_inicio,
+                "es_fin": d == ev.fecha_fin,
+                "evento_id": ev.pk,
+            })
+            d += timedelta(days=1)
+
     return eventos
 
 

@@ -125,7 +125,7 @@ PAYLOADS:
 - agregar_producto_proyecto: {proyecto_slug (o cliente_slug → su proyecto activo), servicio (nombre del catálogo o @accion_N de un crear_servicio previo), cantidad?, precio_unitario?, costo_unitario?, merma?, proveedor?, nota?}
 - asignar_usuario_proyecto: {proyecto_slug, usuario_slug, rol_en_proyecto?}
 - crear_recado: {destinatarios_slugs: [...], cuerpo}
-- crear_mensaje_buzon: {tipo: 'sugerencia'|'problema'|'otro', asunto, cuerpo}
+- crear_mensaje_buzon: {tipo: 'sugerencia'|'problema'|'otro', asunto, cuerpo, prioridad? (entero 0-10, default 5; 10 = más urgente)}
 - registrar_ingreso: {monto, descripcion, cliente_slug?, proyecto_slug?, metodo?, fecha?}
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}
 - anular_egreso: {codigo, motivo}

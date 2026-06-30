@@ -7,6 +7,7 @@ urlpatterns = [
     path("nuevo", views.nuevo, name="catalogo-nuevo"),
     path("<int:pk>/editar", views.editar, name="catalogo-editar"),
     path("<int:pk>/archivar", views.archivar, name="catalogo-archivar"),
+    path("<int:pk>/eliminar", views.servicio_eliminar, name="catalogo-eliminar"),
     path("<int:pk>/variaciones/", views.variaciones_lista, name="catalogo-variaciones"),
     path("<int:pk>/variaciones/nueva", views.variacion_nueva, name="catalogo-variacion-nueva"),
     path("<int:pk>/variaciones/<int:vpk>/editar", views.variacion_editar, name="catalogo-variacion-editar"),
@@ -33,4 +34,5 @@ urlpatterns = [
     path("proveedores/<int:pk>/editar", views.proveedor_editar, name="catalogo-proveedor-editar"),
     path("proveedores/<int:pk>/servicios", views.proveedor_servicios, name="catalogo-proveedor-servicios"),
     path("proveedores/<int:pk>/archivar", views.proveedor_archivar, name="catalogo-proveedor-archivar"),
+    path("proveedores/<int:pk>/eliminar", views.proveedor_eliminar, name="catalogo-proveedor-eliminar"),
 ]

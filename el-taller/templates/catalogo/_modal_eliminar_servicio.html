@@ -1,0 +1,35 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-error-600 dark:text-error-400">Eliminar producto</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+            {% if error %}
+            <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ error }}</div>
+            {% elif usos_proyectos %}
+            <div class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+                «{{ servicio.nombre }}» está usado en <strong>{{ usos_proyectos }}</strong> producto(s) de proyecto, así que <strong>no se puede eliminar permanentemente</strong> (rompería esos proyectos). Si ya no lo usas, <strong>archívalo</strong> en su lugar: deja de aparecer en los listados pero conserva el histórico.
+            </div>
+            {% else %}
+            <p>Vas a <strong>eliminar permanentemente</strong> el producto «<strong>{{ servicio.nombre }}</strong>». Esta acción <strong>no se puede deshacer</strong>.</p>
+            <ul class="list-disc space-y-1 pl-5 text-xs text-gray-500 dark:text-gray-400">
+                <li>Se borra del catálogo junto con sus variaciones.</li>
+                <li>Las cotizaciones o facturas que lo usaron conservan su línea (solo pierden el vínculo).</li>
+            </ul>
+            <p class="text-xs text-gray-500 dark:text-gray-400">¿Solo quieres ocultarlo? Mejor <strong>archívalo</strong> (botón «Archivar»).</p>
+            {% endif %}
+        </div>
+        <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <button type="button" data-modal-slot-close class="btn-secundario">{% if usos_proyectos %}Entendido{% else %}Cancelar{% endif %}</button>
+            {% if not usos_proyectos %}
+            <form hx-post="{% url 'catalogo-eliminar' servicio.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-700">Sí, eliminar permanentemente</button>
+            </form>
+            {% endif %}
+        </footer>
+    </div>
+</div>

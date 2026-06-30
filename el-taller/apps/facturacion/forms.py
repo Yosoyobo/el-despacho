@@ -51,6 +51,7 @@ class FacturaItemForm(forms.ModelForm):
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
             "orden": forms.NumberInput(attrs={"min": 0}),
         }
+        labels = {"servicio": "Producto"}
 
     def clean_cantidad(self):
         v = self.cleaned_data.get("cantidad")
@@ -97,4 +98,13 @@ class RegistrarCobroForm(forms.Form):
     banco_o_caja = forms.ChoiceField(
         choices=(("banco", "Banco"), ("caja", "Caja")),
         initial="banco",
+    )
+    # Ticket LC 2026-06-29 — sección "Referencia" del cobro.
+    folio = forms.CharField(
+        required=False, max_length=100, label="Folio / referencia",
+        widget=forms.TextInput(attrs={"placeholder": "N.º de operación, folio…"}),
+    )
+    nota = forms.CharField(
+        required=False, max_length=200, label="Nota",
+        widget=forms.TextInput(attrs={"placeholder": "Observación opcional"}),
     )

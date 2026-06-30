@@ -13,8 +13,9 @@ toggleables individualmente via tabla `cuentas_permiso_usuario`:
 """
 
 from django.contrib import messages
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from lib.permisos import puede
@@ -42,6 +43,7 @@ def lista(request):
     puede_crear = puede(user, "catalogo", "crear")
     puede_editar = puede(user, "catalogo", "editar")
     puede_archivar = puede(user, "catalogo", "archivar")
+    puede_eliminar = puede(user, "catalogo", "eliminar")
     puede_gestionar_cats = puede(user, "catalogo", "gestionar_categorias")
 
     q = (request.GET.get("q") or "").strip()
@@ -61,7 +63,7 @@ def lista(request):
         cabeceras.append({"label": "Margen", "align": "right"})
     cabeceras.append({"label": "Proveedores"})
     cabeceras.append({"label": "Estado"})
-    if puede_editar or puede_archivar:
+    if puede_editar or puede_archivar or puede_eliminar:
         cabeceras.append({"label": "", "align": "right"})
     return render(request, "catalogo/lista.html", {
         "servicios": qs,
@@ -73,9 +75,50 @@ def lista(request):
         "puede_crear": puede_crear,
         "puede_editar": puede_editar,
         "puede_archivar": puede_archivar,
+        "puede_eliminar": puede_eliminar,
         "puede_gestionar_cats": puede_gestionar_cats,
         "cabeceras_catalogo": cabeceras,
     })
+
+
+@require_http_methods(["GET", "POST"])
+def servicio_eliminar(request, pk: int):
+    """Borrado PERMANENTE de un producto (≠ archivar). S-LC-Feedback-V13.
+
+    Bloqueado si el producto se usa en algún proyecto (ProyectoProducto tiene
+    FK PROTECT): en ese caso se sugiere archivar. CotizacionItem/FacturaItem
+    son SET_NULL (la línea conserva su descripción) y las variaciones caen en
+    cascada. GET HTMX → modal de confirmación; POST → borra o reinyecta error.
+    """
+    if (r := _gate(request, "eliminar")) is not None:
+        return r
+    srv = get_object_or_404(Servicio, pk=pk)
+    es_htmx = request.headers.get("HX-Request") == "true"
+    usos_proyectos = srv.en_proyectos.count()
+    ctx = {"servicio": srv, "usos_proyectos": usos_proyectos}
+    if request.method == "POST":
+        if usos_proyectos:
+            msg = (f"No se puede eliminar «{srv.nombre}»: está usado en "
+                   f"{usos_proyectos} producto(s) de proyecto. Archívalo en su lugar.")
+            if es_htmx:
+                return render(request, "catalogo/_modal_eliminar_servicio.html",
+                              {**ctx, "error": msg})
+            messages.error(request, msg)
+            return redirect("catalogo-lista")
+        nombre = srv.nombre
+        emitir(EventoPortavoz(
+            tipo="catalogo.servicio_eliminado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"servicio_id": srv.pk, "nombre": nombre},
+        ))
+        srv.delete()
+        messages.success(request, f"Producto «{nombre}» eliminado permanentemente.")
+        if es_htmx:
+            return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-lista")})
+        return redirect("catalogo-lista")
+    if es_htmx:
+        return render(request, "catalogo/_modal_eliminar_servicio.html", ctx)
+    return redirect("catalogo-lista")
 
 
 @require_http_methods(["GET", "POST"])
@@ -94,7 +137,7 @@ def nuevo(request):
                 actor_email=request.user.email,
                 payload={"servicio_id": srv.pk, "nombre": srv.nombre, "categoria": srv.categoria.nombre},
             ))
-            messages.success(request, f"Servicio «{srv.nombre}» creado.")
+            messages.success(request, f"Producto «{srv.nombre}» creado.")
             return redirect("catalogo-lista")
     else:
         form = ServicioForm()
@@ -124,7 +167,7 @@ def editar(request, pk: int):
                 actor_email=request.user.email,
                 payload={"servicio_id": srv.pk},
             ))
-            messages.success(request, "Servicio actualizado.")
+            messages.success(request, "Producto actualizado.")
             return redirect("catalogo-lista")
     else:
         form = ServicioForm(instance=srv)
@@ -141,7 +184,7 @@ def archivar(request, pk: int):
     srv = get_object_or_404(Servicio, pk=pk)
     srv.activo = not srv.activo
     srv.save(update_fields=["activo", "actualizado_en"])
-    messages.success(request, "Servicio " + ("archivado." if not srv.activo else "reactivado."))
+    messages.success(request, "Producto " + ("archivado." if not srv.activo else "reactivado."))
     return redirect("catalogo-lista")
 
 
@@ -503,6 +546,7 @@ def proveedor_detalle(request, pk: int):
         "servicios": prov.servicios.filter(activo=True),
         "ultima_visita": ultima_visita,
         "puede_gestionar_servicios": puede(request.user, "catalogo", "editar"),
+        "puede_eliminar": puede(request.user, "catalogo", "eliminar"),
     })
 
 
@@ -590,3 +634,33 @@ def proveedor_archivar(request, pk: int):
     ))
     messages.success(request, f"Proveedor '{prov.razon_social}' " + ("desactivado." if not prov.activo else "reactivado."))
     return redirect("catalogo-proveedores")
+
+
+@require_http_methods(["GET", "POST"])
+def proveedor_eliminar(request, pk: int):
+    """Borrado PERMANENTE de un proveedor (≠ archivar). S-LC-Feedback-V13.
+
+    Sin FK PROTECT: ProyectoProducto.proveedor es SET_NULL y la M2M con
+    Servicio se limpia sola. Informamos cuántos vínculos a productos se
+    desharán. GET HTMX → modal de confirmación; POST → borra.
+    """
+    if (r := _gate(request, "eliminar")) is not None:
+        return r
+    prov = get_object_or_404(Proveedor, pk=pk)
+    es_htmx = request.headers.get("HX-Request") == "true"
+    ctx = {"proveedor": prov, "usos_servicios": prov.servicios.count()}
+    if request.method == "POST":
+        nombre = prov.razon_social
+        emitir(EventoPortavoz(
+            tipo="proveedor.eliminado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"proveedor_id": prov.pk, "razon_social": nombre},
+        ))
+        prov.delete()
+        messages.success(request, f"Proveedor «{nombre}» eliminado permanentemente.")
+        if es_htmx:
+            return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-proveedores")})
+        return redirect("catalogo-proveedores")
+    if es_htmx:
+        return render(request, "catalogo/_modal_eliminar_proveedor.html", ctx)
+    return redirect("catalogo-proveedor-detalle", pk=prov.pk)

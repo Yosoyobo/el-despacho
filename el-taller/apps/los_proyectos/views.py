@@ -556,7 +556,13 @@ def nuevo(request):
             messages.success(request, f"Proyecto {proyecto.codigo} creado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
     else:
-        form = ProyectoForm()
+        # Fecha de compromiso precargada desde el Calendario
+        # (?fecha_compromiso=YYYY-MM-DD). LC 2026-06-29.
+        initial = {}
+        f = request.GET.get("fecha_compromiso")
+        if f:
+            initial["fecha_compromiso_dia"] = f
+        form = ProyectoForm(initial=initial)
         formset = ProyectoProductoFormSet(instance=Proyecto())
     from apps.el_catalogo.models import CategoriaServicio
     _anotar_procesos(formset)
@@ -937,6 +943,12 @@ def _ctx_cotizaciones(proyecto, user) -> dict:
         "puede_cotizar": puede_crear_cotizaciones(user),
         "puede_estado": puede_editar_cotizaciones(user),
         "ver_cotizaciones": puede_ver_cotizaciones(user),
+        # S-LC-Feedback-V13: cuando el estatus es «anticipo» se ofrece registrar
+        # el ingreso del anticipo (botón en el recuadro). cot_total alimenta los
+        # atajos de 50%/etc. del modal.
+        "cot_es_anticipo": estado_actual == "anticipo",
+        "cot_total": (latest.calcular_totales()["total"] if latest else 0),
+        "puede_anticipo": puede_ver_finanzas(user),
         "rickroll_url": RICKROLL_URL,
     }
 
@@ -993,6 +1005,58 @@ def cotizacion_estado(request, pk):
         return render(request, "proyectos/_cotizaciones_panel.html",
                       _ctx_cotizaciones(proyecto, request.user))
     return redirect(_redir_detalle(proyecto))
+
+
+@login_required
+def registrar_anticipo_modal(request, pk):
+    """S-LC-Feedback-V13 — modal para registrar el INGRESO del anticipo de la
+    cotización del proyecto. Sin monto predeterminado: la UI ofrece botones
+    rápidos (25/50/100% del total) o monto personalizado. El ingreso queda
+    ligado al proyecto. Gated por finanzas (mismo permiso que Tesorería)."""
+    from apps.cotizaciones.models import Cotizacion
+    from django.utils import timezone
+
+    from .forms import RegistrarAnticipoForm
+    proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    if not puede_ver_finanzas(request.user):
+        return HttpResponseForbidden("Sin permiso para registrar ingresos.")
+    latest = (
+        Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+        .order_by("-version")
+        .first()
+    )
+    total = latest.calcular_totales()["total"] if latest else Decimal("0.00")
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        form = RegistrarAnticipoForm(request.POST)
+        if form.is_valid():
+            from apps.tesoreria.models import Ingreso
+            ref = latest.codigo if latest else proyecto.codigo
+            ing = Ingreso.objects.create(
+                proyecto=proyecto,
+                cliente=proyecto.cliente,
+                monto=form.cleaned_data["monto"],
+                fecha=form.cleaned_data["fecha"],
+                metodo=form.cleaned_data["metodo"],
+                descripcion=f"Anticipo · {ref}",
+                referencia_externa=f"Anticipo {ref}"[:100],
+                creado_por=request.user if request.user.is_authenticated else None,
+            )
+            emitir(EventoPortavoz(
+                tipo="tesoreria.ingreso_registrado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"ingreso_id": ing.pk, "proyecto_id": proyecto.pk, "origen": "anticipo"},
+            ))
+            messages.success(request, f"Anticipo registrado en {proyecto.codigo}.")
+            destino = _redir_detalle(proyecto)
+            return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
+        return render(request, "proyectos/_modal_registrar_anticipo.html",
+                      {"proyecto": proyecto, "form": form, "cot_total": total, "cot": latest})
+    form = RegistrarAnticipoForm(initial={"fecha": timezone.localdate(), "metodo": "transferencia"})
+    return render(request, "proyectos/_modal_registrar_anticipo.html",
+                  {"proyecto": proyecto, "form": form, "cot_total": total, "cot": latest})
 
 
 @login_required

@@ -93,6 +93,16 @@ class Tarea(models.Model):
         return dict(ESTADOS_TAREA).get(self.estado, self.estado)
 
     @property
+    def duracion_completado(self) -> str:
+        """Tiempo que tomó la tarea, de creación → completado (string humano).
+        Vacío si aún no está completada. Pedido LC 2026-06-29 (orden y tiempos
+        de tareas cerradas)."""
+        if not (self.completada_en and self.creado_en):
+            return ""
+        from django.utils.timesince import timesince
+        return timesince(self.creado_en, self.completada_en)
+
+    @property
     def esta_atrasada(self) -> bool:
         """Derivado, NO almacenado: fecha (y hora, si existe) de compromiso ya
         pasó y el estado no es terminal. Se pinta en amarillo como 'Atrasada'."""

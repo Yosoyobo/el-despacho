@@ -1,6 +1,8 @@
 from datetime import datetime, time
+from decimal import Decimal
 
 from apps.el_catalogo.models import Proveedor, Servicio, Variacion
+from apps.tesoreria.models.ingreso import METODOS_INGRESO
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
@@ -11,6 +13,7 @@ from apps.los_proyectos.models import (
     ProyectoProveedor,
 )
 from django import forms
+from django.db.models import Q
 from django.forms import inlineformset_factory
 from django.utils import timezone
 
@@ -169,8 +172,8 @@ class ProyectoProductoForm(forms.ModelForm):
     servicio = forms.ModelChoiceField(
         queryset=Servicio.activos.all().select_related("categoria"),
         required=False,
-        empty_label="— Producto del catálogo —",
-        label="Producto / servicio",
+        empty_label="— Elige un producto —",
+        label="Producto",
     )
     variacion = forms.ModelChoiceField(
         queryset=Variacion.objects.filter(disponible=True).select_related("servicio"),
@@ -213,6 +216,43 @@ class ProyectoProductoForm(forms.ModelForm):
         model = ProyectoProducto
         fields = ["servicio", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota"]
         labels = {"nota": "Nota corta (opcional)"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Bug Oscar 2026-06-29: al abrir un proyecto existente, las tarjetas
+        # mostraban "— Producto del catálogo —" en vez del nombre, y "catálogo"
+        # (placeholder) en vez del precio/costo. Dos causas:
+        #  (a) el queryset de `servicio`/`variacion`/`proveedor` solo trae los
+        #      ACTIVOS; si la línea apunta a uno archivado/inactivo, el valor
+        #      guardado no es una opción seleccionable y cae al empty_label.
+        #  (b) precio/costo vacíos (= "usa el del catálogo") muestran el
+        #      placeholder en vez del número real.
+        # Para líneas EXISTENTES garantizamos que el valor actual sea una opción
+        # válida y que el precio/costo efectivo se muestre.
+        inst = getattr(self, "instance", None)
+        if inst is not None and inst.pk:
+            if inst.servicio_id:
+                self.fields["servicio"].queryset = (
+                    Servicio.objects.filter(Q(activo=True) | Q(pk=inst.servicio_id))
+                    .select_related("categoria")
+                )
+            if inst.variacion_id:
+                self.fields["variacion"].queryset = (
+                    Variacion.objects.filter(Q(disponible=True) | Q(pk=inst.variacion_id))
+                    .select_related("servicio")
+                )
+            if inst.proveedor_id:
+                self.fields["proveedor"].queryset = (
+                    Proveedor.objects.filter(Q(activo=True) | Q(pk=inst.proveedor_id))
+                    .order_by("razon_social")
+                )
+            # Muestra el precio/costo EFECTIVO (override de la línea o, si está
+            # vacío, el del catálogo) para que el usuario siempre vea el número.
+            if inst.servicio_id:
+                if inst.precio_unitario is None:
+                    self.initial["precio_unitario"] = inst.precio_efectivo
+                if inst.costo_unitario is None:
+                    self.initial["costo_unitario"] = inst.costo_efectivo
 
     def clean_merma(self):
         # merma es NOT NULL con default 0; el form vacío llega como None.
@@ -291,3 +331,24 @@ class AsignacionForm(forms.ModelForm):
     class Meta:
         model = ProyectoAsignacion
         fields = ["usuario", "rol_en_proyecto"]
+
+
+class RegistrarAnticipoForm(forms.Form):
+    """S-LC-Feedback-V13 — registro rápido del ingreso de un anticipo desde el
+    recuadro de Cotizaciones del proyecto. SIN monto predeterminado; la UI
+    ofrece botones rápidos (25/50/100%) o monto personalizado. El ingreso queda
+    ligado al proyecto."""
+
+    monto = forms.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal("0.01"),
+        label="Monto del anticipo",
+        widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
+    )
+    fecha = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}), label="Fecha",
+    )
+    metodo = forms.ChoiceField(choices=METODOS_INGRESO, initial="transferencia", label="Método")
+    banco_o_caja = forms.ChoiceField(
+        choices=(("banco", "Banco"), ("caja", "Caja")), initial="banco",
+        label="Cuenta destino",
+    )

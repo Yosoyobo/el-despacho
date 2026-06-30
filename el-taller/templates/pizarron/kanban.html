@@ -3,10 +3,28 @@
 {% block title %}Tareas — El Taller{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Tareas" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Tablero por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a> <a href="/mandados/" class="btn-secundario">🛵 Mandados</a>' %}
+{% if es_runner_only %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Mis mandados" subtitulo="Tus entregas y recolecciones" breadcrumb_items=breadcrumb_items %}
+{% else %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Tablero por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a>' %}
+{% endif %}
 
-{% comment %} Filtros de botones SIEMPRE visibles y combinables (V6 com. 6):
-estados + personas. Cada chip togglea su valor preservando el resto. {% endcomment %}
+{# S-LC-Feedback-V13: filtro de categoría — Mandados se fusionó en Tareas. #}
+<div class="mb-3 flex flex-wrap items-center gap-2">
+    {% if not es_runner_only %}
+    <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Categoría</span>
+    {% for c in cat_pills %}
+    <a href="{{ c.url }}" class="rounded-lg border px-3 py-1.5 text-sm transition {% if c.activo %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ c.label }}</a>
+    {% endfor %}
+    {% endif %}
+    {% if cat == 'mandados' %}
+    <a href="/mandados/" class="ml-auto text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Tablero de reparto (en camino / entregado) →</a>
+    {% endif %}
+</div>
+
+{% comment %} Filtros de botones combinables: estados + personas. Ocultos para
+runners (solo ven sus mandados). {% endcomment %}
+{% if not es_runner_only %}
 <div class="mb-2 flex flex-wrap items-center gap-2">
     <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Estado</span>
     {% for ch in chips_estado %}
@@ -24,6 +42,9 @@ estados + personas. Cada chip togglea su valor preservando el resto. {% endcomme
     {% endif %}
     <span class="ml-auto text-xs text-gray-400 dark:text-gray-500">{{ total }} tarea{{ total|pluralize }}</span>
 </div>
+{% else %}
+<div class="mb-5 text-xs text-gray-400 dark:text-gray-500">{{ total }} mandado{{ total|pluralize }}</div>
+{% endif %}
 
 {% comment %} Fila 1: estados activos. Fila 2: cerrados (terminal).
    Flex adaptativo: N columnas configurables sin clases de grid dinámicas

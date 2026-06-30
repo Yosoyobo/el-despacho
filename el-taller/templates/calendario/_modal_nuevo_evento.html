@@ -1,32 +1,39 @@
 {% comment %}
-Modal "Nuevo evento" — patrón Wave 5. Sin modelo Evento; redirige al form
-de Tarea o Proyecto con la fecha pre-cargada. Decisión S-LC-Feedback-V2.
+Modal "Nuevo evento" (chooser) — patrón Wave 5. Tres opciones: evento genérico
+(feriado/vacaciones/operativo), tarea o proyecto. Si viene ?fecha, se precarga.
+S-LC-Feedback-V13.
 {% endcomment %}
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" data-modal-slot-close>
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900" data-no-row-click onclick="event.stopPropagation()">
         <div class="mb-4 flex items-start justify-between">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Nuevo evento</h3>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Agregar al calendario</h3>
             <button type="button" data-modal-slot-close
-                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                    aria-label="Cerrar">✕</button>
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Cerrar">✕</button>
         </div>
-        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">¿Qué tipo de evento quieres crear?</p>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <a href="{% url 'proyectos-lista' %}"
-               class="group rounded-xl border border-gray-200 p-4 hover:border-brand-400 hover:bg-brand-25 dark:border-gray-800 dark:hover:bg-brand-500/5">
-                <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <p class="text-sm font-semibold text-gray-900 group-hover:text-brand-700 dark:text-gray-100">Tarea</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Elige el proyecto al que va, ahí la agregas.</p>
+        <div class="grid grid-cols-1 gap-3">
+            <button type="button" hx-get="{% url 'calendario-evento-nuevo' %}{% if fecha_default %}?fecha={{ fecha_default }}{% endif %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                    class="group flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-brand-400 hover:bg-brand-50/40 dark:border-gray-800 dark:hover:bg-brand-500/5">
+                <span class="text-xl">📌</span>
+                <span>
+                    <span class="block text-sm font-semibold text-gray-900 group-hover:text-brand-700 dark:text-gray-100">Evento</span>
+                    <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Feriado, vacaciones, evento operativo. Puede durar varios días.</span>
+                </span>
+            </button>
+            <a href="{% url 'pizarron-nueva-tarea-global' %}{% if fecha_default %}?fecha={{ fecha_default }}{% endif %}"
+               class="group flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-brand-400 hover:bg-brand-50/40 dark:border-gray-800 dark:hover:bg-brand-500/5">
+                <span class="text-xl">✅</span>
+                <span>
+                    <span class="block text-sm font-semibold text-gray-900 group-hover:text-brand-700 dark:text-gray-100">Tarea</span>
+                    <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Un pendiente asignado a alguien, ligado a un proyecto.</span>
+                </span>
             </a>
-            <a href="{% url 'proyectos-nuevo' %}"
-               class="group rounded-xl border border-gray-200 p-4 hover:border-brand-400 hover:bg-brand-25 dark:border-gray-800 dark:hover:bg-brand-500/5">
-                <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <p class="text-sm font-semibold text-gray-900 group-hover:text-brand-700 dark:text-gray-100">Proyecto</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Un trabajo completo con cliente y entregables.</p>
+            <a href="{% url 'proyectos-nuevo' %}{% if fecha_default %}?fecha_compromiso={{ fecha_default }}{% endif %}"
+               class="group flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-brand-400 hover:bg-brand-50/40 dark:border-gray-800 dark:hover:bg-brand-500/5">
+                <span class="text-xl">📁</span>
+                <span>
+                    <span class="block text-sm font-semibold text-gray-900 group-hover:text-brand-700 dark:text-gray-100">Proyecto</span>
+                    <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Un trabajo completo con cliente y entregables.</span>
+                </span>
             </a>
         </div>
     </div>

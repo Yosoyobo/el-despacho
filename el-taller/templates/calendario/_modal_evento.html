@@ -1,0 +1,60 @@
+{% comment %}Modal crear/editar Evento genérico (feriado, vacaciones, operativo).
+Patrón Wave 5 (hx-post → #modal-slot → 204 + HX-Redirect). S-LC-Feedback-V13.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{% if evento %}Editar evento{% else %}Nuevo evento{% endif %}</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <form hx-post="{% if evento %}{% url 'calendario-evento-editar' evento.pk %}{% else %}{% url 'calendario-evento-nuevo' %}{% endif %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
+            {% csrf_token %}
+            <div class="space-y-4 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                <p class="text-xs text-gray-500 dark:text-gray-400">Eventos generales del taller: feriados, vacaciones, eventos operativos. No se ligan a un proyecto y pueden durar varios días.</p>
+                {% if form.non_field_errors %}<p class="rounded-lg bg-error-50 px-3 py-2 text-xs text-error-600 dark:bg-error-500/10 dark:text-error-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Título <span class="text-error-500">*</span></label>
+                    {{ form.titulo }}
+                    {% if form.titulo.errors %}<p class="mt-1 text-xs text-error-600">{{ form.titulo.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Desde <span class="text-error-500">*</span></label>
+                        {{ form.fecha_inicio }}
+                        {% if form.fecha_inicio.errors %}<p class="mt-1 text-xs text-error-600">{{ form.fecha_inicio.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Hasta</label>
+                        {{ form.fecha_fin }}
+                        {% if form.fecha_fin.errors %}<p class="mt-1 text-xs text-error-600">{{ form.fecha_fin.errors|join:" " }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="flex items-end gap-3">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Color</label>
+                        {{ form.color }}
+                    </div>
+                    <div class="flex-1">
+                        <label class="mb-1 block text-sm font-medium">Descripción</label>
+                        {{ form.descripcion }}
+                    </div>
+                </div>
+            </div>
+            <footer class="flex items-center justify-between gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <div>
+                    {% if evento %}
+                    <button type="button"
+                            hx-post="{% url 'calendario-evento-eliminar' evento.pk %}"
+                            hx-confirm="¿Eliminar el evento «{{ evento.titulo }}»?"
+                            class="text-sm font-medium text-error-600 hover:underline dark:text-error-400">Eliminar</button>
+                    {% endif %}
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                    <button type="submit" class="btn-primario">{% if evento %}Guardar{% else %}Crear evento{% endif %}</button>
+                </div>
+            </footer>
+        </form>
+    </div>
+</div>

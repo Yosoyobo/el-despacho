@@ -87,6 +87,7 @@ class CotizacionItemForm(forms.ModelForm):
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
             "orden": forms.NumberInput(attrs={"min": 0}),
         }
+        labels = {"servicio": "Producto"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -5,8 +5,12 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
-from django.shortcuts import render
+from django.http import Http404, HttpResponse, HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+
+from lib.portavoz import emitir
+from lib.portavoz_eventos import EventoPortavoz
 
 from .services import eventos_por_dia, grid_mes
 
@@ -110,6 +114,63 @@ def nuevo_evento_modal(request):
     return render(request, "calendario/_modal_nuevo_evento.html", {
         "fecha_default": fecha_default,
     })
+
+
+@login_required
+def evento_form(request, pk: int | None = None):
+    """Crear/editar un Evento genérico del calendario (feriado, vacaciones,
+    evento operativo). GET HTMX → modal; POST → guarda y refresca el calendario.
+    S-LC-Feedback-V13.
+    """
+    from apps.el_pizarron.models import Evento
+
+    from .forms import EventoForm
+    evento = get_object_or_404(Evento, pk=pk) if pk else None
+    es_htmx = request.headers.get("HX-Request") == "true"
+    if request.method == "POST":
+        form = EventoForm(request.POST, instance=evento)
+        if form.is_valid():
+            nuevo = evento is None
+            ev = form.save(commit=False)
+            if nuevo:
+                ev.creado_por = request.user
+            ev.save()
+            emitir(EventoPortavoz(
+                tipo="evento.creado" if nuevo else "evento.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"evento_id": ev.pk, "titulo": ev.titulo},
+            ))
+            destino = reverse("calendario-index") + f"?year={ev.fecha_inicio.year}&month={ev.fecha_inicio.month}"
+            return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
+        return render(request, "calendario/_modal_evento.html", {"form": form, "evento": evento})
+    # GET → modal con fecha precargada (?fecha=YYYY-MM-DD) si es nuevo.
+    initial = {}
+    if evento is None:
+        f = request.GET.get("fecha") or ""
+        if f:
+            initial = {"fecha_inicio": f, "fecha_fin": f}
+    form = EventoForm(instance=evento, initial=initial)
+    return render(request, "calendario/_modal_evento.html", {"form": form, "evento": evento})
+
+
+@login_required
+def evento_eliminar(request, pk: int):
+    """Borra un Evento genérico. POST. S-LC-Feedback-V13."""
+    from apps.el_pizarron.models import Evento
+    evento = get_object_or_404(Evento, pk=pk)
+    if request.method != "POST":
+        return HttpResponseForbidden("Solo POST.")
+    anio, mes = evento.fecha_inicio.year, evento.fecha_inicio.month
+    emitir(EventoPortavoz(
+        tipo="evento.eliminado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"evento_id": evento.pk, "titulo": evento.titulo},
+    ))
+    evento.delete()
+    destino = reverse("calendario-index") + f"?year={anio}&month={mes}"
+    if request.headers.get("HX-Request") == "true":
+        return HttpResponse(status=204, headers={"HX-Redirect": destino})
+    return redirect(destino)
 
 
 @login_required

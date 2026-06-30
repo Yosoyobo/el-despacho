@@ -1,26 +1,44 @@
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
     <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
         <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Cancelar · {{ fac.codigo }}</h2>
+            <h2 class="text-base font-semibold text-error-600 dark:text-error-400">Cancelar factura · {{ fac.codigo }}</h2>
             <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Cerrar">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
             </button>
         </header>
-        <form hx-post="{% url 'facturacion:cancelar' fac.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
+        {% if tiene_cobros %}
+        {# La factura tiene cobros (dinero real recibido). No se cancela hasta
+           anular esos Ingresos — así Contaduría no queda descuadrada. #}
+        <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+            <div class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+                Esta factura ya tiene <strong>cobros registrados</strong> ({{ fac.monto_cobrado|default:0 }} cobrado). Como es dinero real recibido, primero <strong>anula los cobros (Ingresos)</strong> en Tesorería y luego cancela la factura. Así tus cuentas no se descuadran.
+            </div>
+        </div>
+        <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <button type="button" data-modal-slot-close class="btn-secundario">Entendido</button>
+        </footer>
+        {% else %}
+        <form hx-post="{% url 'facturacion:cancelar' fac.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
             {% csrf_token %}
-            <div class="px-5 py-4 text-sm space-y-3 text-gray-700 dark:text-gray-300">
-                <p>Al cancelar se genera el asiento reverso. La factura sale de los listados vigentes. No se puede cancelar si ya tiene cobros — anula primero los Ingresos.</p>
-                {% if form.non_field_errors %}<p class="text-xs text-error-600">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+            <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                <p>Al cancelar esta factura:</p>
+                <ul class="list-disc space-y-1 pl-5 text-gray-600 dark:text-gray-300">
+                    <li>Cambiará su estado a <strong>Cancelada</strong>.</li>
+                    <li>Ya no contará en tus cuentas por cobrar ni en tus ingresos.</li>
+                    <li>Quedará visible en el historial con estatus «cancelada» (no se borra).</li>
+                </ul>
+                {% if form.non_field_errors %}<p class="rounded-lg bg-error-50 px-3 py-2 text-xs text-error-600 dark:bg-error-500/10 dark:text-error-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}
                 <div>
-                    <label for="id_motivo" class="block text-sm font-medium mb-1">Motivo <span class="text-error-500">*</span></label>
+                    <label for="id_motivo" class="mb-1 block text-sm font-medium">¿Por qué la cancelas? <span class="text-error-500">*</span></label>
                     {{ form.motivo }}
-                    {% if form.motivo.errors %}<p class="text-xs text-error-600 mt-1">{{ form.motivo.errors|join:" " }}</p>{% endif %}
+                    {% if form.motivo.errors %}<p class="mt-1 text-xs text-error-600">{{ form.motivo.errors|join:" " }}</p>{% endif %}
                 </div>
             </div>
             <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
                 <button type="button" data-modal-slot-close class="btn-secundario">Volver</button>
-                <button type="submit" class="btn-destructivo">Sí, cancelar</button>
+                <button type="submit" class="inline-flex items-center rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-700">Sí, cancelar factura</button>
             </footer>
         </form>
+        {% endif %}
     </div>
 </div>

@@ -16,20 +16,26 @@ anillo + dot, eventos con badges coloreados de fondo suave.
         {% endfor %}
         {% for semana in mes_grid.semanas %}
             {% for celda in semana %}
-            <div class="group relative min-h-[104px] bg-white px-1.5 py-1.5 text-xs transition hover:bg-brand-50/30 dark:bg-gray-900 dark:hover:bg-brand-500/5 {% if celda.es_finde %}bg-gray-50/70 dark:bg-white/[0.02]{% endif %} {% if not celda.mes_actual %}opacity-40{% endif %}">
+            {# Celda clickeable: abre el modal del día (crear evento/tarea/proyecto
+               con la fecha precargada). LC 2026-06-29. #}
+            <div role="button" tabindex="0"
+                 hx-get="{% url 'calendario-dia' celda.fecha|date:'Y-m-d' %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                 class="group relative min-h-[104px] cursor-pointer bg-white px-1.5 py-1.5 text-xs transition hover:bg-brand-50/30 dark:bg-gray-900 dark:hover:bg-brand-500/5 {% if celda.es_finde %}bg-gray-50/70 dark:bg-white/[0.02]{% endif %} {% if not celda.mes_actual %}opacity-40{% endif %}">
                 <div class="mb-1.5 flex items-center justify-between">
                     {% if celda.es_hoy %}
                     <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white shadow-theme-sm">{{ celda.fecha.day }}</span>
                     {% else %}
                     <span class="text-sm font-semibold {% if celda.es_finde %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %}">{{ celda.fecha.day }}</span>
                     {% endif %}
-                    {% if celda.eventos|length > 0 %}
-                    <span class="h-1.5 w-1.5 rounded-full bg-brand-500 group-hover:scale-150 transition-transform"></span>
-                    {% endif %}
+                    <span class="text-base font-bold text-gray-300 opacity-0 transition group-hover:opacity-100 dark:text-gray-600" aria-hidden="true">+</span>
                 </div>
                 <div class="space-y-0.5">
                     {% for ev in celda.eventos|slice:":3" %}
-                    <a href="{{ ev.url }}" class="block line-clamp-2 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-tight {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 hover:bg-warning-100 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }}">{{ ev.titulo }}</a>
+                    {% if ev.tipo == "evento" %}
+                    <span class="block line-clamp-2 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-tight" style="background-color: {{ ev.color_hex }}22; color: {{ ev.color_hex }}; border-color: {{ ev.color_hex }}55" title="{{ ev.titulo }}">{% if ev.es_multidia and not ev.es_inicio %}↔ {% endif %}{{ ev.titulo }}</span>
+                    {% else %}
+                    <span class="block line-clamp-2 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-tight {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }}">{{ ev.titulo }}</span>
+                    {% endif %}
                     {% endfor %}
                     {% if celda.eventos|length > 3 %}<div class="px-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">+{{ celda.eventos|length|add:"-3" }} más</div>{% endif %}
                 </div>

@@ -12,7 +12,7 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400">Pide ajustar tu entrada y salida del día, o registrar un día que olvidaste checar. Un administrador lo aprueba.</p>
                 <div>
                     <label for="aj-fecha" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Día</label>
-                    <input type="date" name="fecha" id="aj-fecha" required value="{{ jornada.fecha|date:'Y-m-d' }}">
+                    <input type="date" name="fecha" id="aj-fecha" required value="{{ jornada.fecha|date:'Y-m-d'|default:fecha_prefill }}">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>

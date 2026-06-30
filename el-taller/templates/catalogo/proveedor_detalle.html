@@ -59,6 +59,10 @@
                 {% csrf_token %}
                 <button type="submit" class="btn-secundario w-full text-sm">{% if proveedor.activo %}Desactivar{% else %}Reactivar{% endif %}</button>
             </form>
+            {% if puede_eliminar %}
+            <button type="button" hx-get="{% url 'catalogo-proveedor-eliminar' proveedor.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                    class="w-full rounded-lg border border-error-200 bg-white py-2 text-sm font-medium text-error-600 transition hover:bg-error-50 dark:border-error-500/30 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10">Eliminar permanentemente</button>
+            {% endif %}
         </section>
     </aside>
 </div>

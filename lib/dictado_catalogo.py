@@ -119,8 +119,8 @@ COMANDOS_DICTADO: list[dict] = [
     {
         "tipo": "crear_mensaje_buzon",
         "titulo": "Crear mensaje en El Buzón",
-        "ejemplo": "Sugerencia para el Buzón: agregar export de tareas a CSV.",
-        "payload": "tipo (sugerencia|problema|otro), asunto, cuerpo",
+        "ejemplo": "Sugerencia urgente para el Buzón (prioridad 9): agregar export de tareas a CSV.",
+        "payload": "tipo (sugerencia|problema|otro), asunto, cuerpo, prioridad? (0-10, default 5)",
     },
     {
         "tipo": "registrar_egreso",

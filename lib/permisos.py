@@ -152,6 +152,12 @@ def puede_crear_catalogo(user) -> bool:
     return puede(user, "catalogo", "crear")
 
 
+def puede_eliminar_catalogo(user) -> bool:
+    """Borrado PERMANENTE de productos/proveedores (≠ archivar). Acción
+    destructiva — default solo super_admin (S-LC-Feedback-V13)."""
+    return puede(user, "catalogo", "eliminar")
+
+
 def puede_ver_tarea(user, tarea) -> bool:
     """Tareas: heredan la visibilidad del proyecto."""
     return puede_ver_proyecto(user, tarea.proyecto)

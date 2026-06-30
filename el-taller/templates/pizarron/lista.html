@@ -38,7 +38,7 @@
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 {% for t in tareas %}
                 <tr data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}</td>
+                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}{% if t.completada_en %}<span class="mt-0.5 block text-[11px] font-normal text-success-600 dark:text-success-400">✓ Completada {{ t.completada_en|date:"d M Y H:i" }} · tardó {{ t.duracion_completado }}</span>{% endif %}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.proyecto.codigo }} · {{ t.proyecto.nombre|truncatechars:30 }}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                     <td class="px-5 py-3">

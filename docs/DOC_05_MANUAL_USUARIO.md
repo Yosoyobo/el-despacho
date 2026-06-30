@@ -5,6 +5,60 @@
 
 ---
 
+## Novedades — Calendario interactivo, Mandados dentro de Tareas y más (29 de junio de 2026)
+
+- **Calendario que responde al clic.** En el **Calendario** (y en el mini-calendario
+  del Dashboard), ahora **pica cualquier día** y se abre una ventanita con los
+  eventos de ese día y tres botones para **agregar con esa fecha ya puesta**:
+  **Nuevo evento**, **Nueva tarea** o **Nuevo proyecto** (el proyecto nace con esa
+  fecha como **compromiso**).
+- **Eventos generales (que no son de un proyecto).** Puedes anotar **días feriados,
+  vacaciones, eventos operativos** o lo que sea. Pueden **durar varios días** y se
+  ven marcados en **todos** los días que abarcan. Elige un color para distinguirlos.
+  Se editan o borran picando el evento en el día.
+- **Mandados ahora viven dentro de Tareas.** Se quitó la página separada "Mandados".
+  En **Tareas** hay un filtro arriba: **Todas · General · 🛵 Mandados**. En el menú
+  lateral, el ítem **Tareas** muestra **dos globos**: azul = tareas pendientes,
+  rojo = mandados pendientes. Los **runners** que entren a Tareas ven **solo sus
+  mandados**. El tablero de reparto (en camino / entregado) sigue disponible desde
+  el filtro de Mandados.
+- **Lugar en las entregas/recolecciones.** Al crear una tarea de tipo **entrega** o
+  **recoger**, ahora pones el **Lugar (destino)** — es obligatorio para ese tipo.
+- **Tareas cerradas ordenadas por cuándo se terminaron.** En Tareas, las cerradas
+  se ordenan con **las más recientes arriba** y cada una muestra **cuánto tardó**
+  (desde que se creó hasta que se marcó como completada).
+- **Quitar fechas en proyectos.** En la página del proyecto, los calendarios de
+  **Inicio** y **Entrega** tienen un botón **"Quitar fecha"** para dejar el proyecto
+  **sin** fecha de compromiso (antes solo se podía cambiar, no borrar).
+- **Productos involucrados se ven completos.** Se corrigió que a veces apareciera
+  "— Producto del catálogo —" o "catálogo" en lugar del nombre y el precio: ahora
+  siempre se muestran, incluso si el producto fue archivado.
+- **Anticipos más fáciles.** Cuando muevas la cotización de un proyecto al paso
+  **Anticipo**, llega un aviso y aparece un botón **"Registrar ingreso del
+  anticipo"** con atajos rápidos (**25% · 50% · Total**) o monto a tu gusto; el
+  ingreso queda **ligado al proyecto** automáticamente.
+- **Facturas — cancelar más claro.** En el detalle de una factura, un solo botón
+  rojo **"Cancelar factura"** (siempre visible) con una ventana que explica qué
+  pasa y pide el **motivo**. Si la factura ya tiene cobros, te avisa que primero
+  anules esos cobros.
+- **Facturas — registrar cobro mejorado.** El monto viene pre-cargado con el saldo
+  pendiente, la fecha trae botón **"Hoy"**, y ahora hay una sección de
+  **Referencia** para anotar **folio** y una **nota**.
+- **Borrar productos y proveedores de verdad.** El administrador puede **eliminar
+  permanentemente** un producto o un proveedor (por duplicados, pruebas o errores)
+  — distinto de archivar. Si un producto está usado en proyectos, el sistema lo
+  impide y sugiere archivarlo.
+- **"Servicios" ahora se llaman "Productos"** en todo el sistema (es lo que
+  realmente son la mayoría de las veces).
+- **El Chalán y el Buzón.** Al pedirle a El Chalán que cree un mensaje del Buzón,
+  ahora puedes indicarle la **prioridad** (0 a 10). Ej.: *"Sugerencia urgente para
+  el Buzón, prioridad 9: …"*.
+- **Checador — Jornadas completas.** La tabla de **Jornadas** muestra **todos los
+  días** del periodo; los días que no checaste salen como **"Pendiente"** (día
+  laboral) o **"Sin información"** (descanso), con opción de **solicitar** ese día.
+
+---
+
 ## Novedades — Cotizaciones desde la página del proyecto, con tracker (27 de junio de 2026)
 
 - **Nuevo recuadro "Cotizaciones" en cada proyecto.** En la página de un proyecto,

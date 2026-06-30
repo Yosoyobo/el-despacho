@@ -384,8 +384,19 @@ def marcar_estado_proyecto(cot: Cotizacion, estado: str, actor) -> Cotizacion:
         "enviada": "cotizacion.enviada",
         "aprobada": "cotizacion.aprobada",
         "pagada": "cotizacion.pagada",
+        "anticipo": "cotizacion.anticipo_requerido",
     }.get(estado, "cotizacion.actualizada")
     _emitir(evento, cot, actor, {"version": cot.version})
+    # S-LC-Feedback-V13: al pasar a «Anticipo» se avisa a finanzas para que
+    # registren el ingreso del anticipo ligado al proyecto. Best-effort.
+    if estado == "anticipo" and cot.proyecto_id:
+        try:
+            from apps.taller_home.push_handlers import (
+                notificar_anticipo_por_registrar,
+            )
+            notificar_anticipo_por_registrar(cot)
+        except Exception:  # noqa: BLE001 — un push roto no rompe el cambio de estatus
+            pass
     return cot
 
 

@@ -75,6 +75,30 @@ def notificar_pendiente_cumplido(tarea, usuario) -> None:
 # ── Buzón ──
 
 
+def notificar_anticipo_por_registrar(cotizacion) -> None:
+    """S-LC-Feedback-V13 — la cotización del proyecto pasó a «Anticipo».
+    Avisa al equipo de finanzas (admins + contador) que hay que registrar el
+    ingreso del anticipo, con link al proyecto. Best-effort (on_commit)."""
+    proyecto = getattr(cotizacion, "proyecto", None)
+    if proyecto is None:
+        return
+
+    def _hacer():
+        url = f"/proyectos/{proyecto.pk}/"
+        for u in _cobranza_activos():
+            _enviar(
+                u,
+                titulo=f"💰 Registra el anticipo · {proyecto.codigo}",
+                cuerpo=f"La cotización {cotizacion.codigo} quedó en anticipo. Registra el ingreso del anticipo.",
+                url=url,
+                tag=f"anticipo-{cotizacion.pk}",
+                categoria="cobranza",
+                origen_modulo="cotizaciones",
+                origen_id=cotizacion.pk,
+            )
+    transaction.on_commit(_hacer)
+
+
 def notificar_buzon_nuevo(mensaje, autor) -> None:
     """Push a admins activos cuando un empleado crea un mensaje."""
     def _hacer():

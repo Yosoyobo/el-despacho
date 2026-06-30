@@ -233,6 +233,20 @@
             }
             return;
         }
+        // Botón "Quitar fecha": limpia el input oculto + repinta + autosave
+        // (pedido LC 2026-06-29: dejar el proyecto sin fecha de compromiso).
+        const limpiarBtn = e.target.closest && e.target.closest('[data-limpiar-cal]');
+        if (limpiarBtn) {
+            const id = limpiarBtn.getAttribute('data-limpiar-cal');
+            const input = document.getElementById(id);
+            if (input && input.value) {
+                input.value = '';
+                const cont = document.querySelector('[data-calendario="' + id + '"]');
+                if (cont && cont._render) cont._render();
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+        }
         // Sync inmediato del estado oculto al clickear un chip de status.
         const chip = e.target.closest && e.target.closest('[data-estado-slug]');
         if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }

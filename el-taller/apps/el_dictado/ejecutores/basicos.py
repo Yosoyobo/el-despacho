@@ -699,7 +699,16 @@ def crear_mensaje_buzon_ejec(accion, usuario, contexto=None):
     cuerpo = (accion.payload.get("cuerpo") or "").strip()
     if not (asunto and cuerpo):
         raise ValueError("Mensaje del Buzón necesita `asunto` + `cuerpo`.")
-    msg = MensajeBuzon.objects.create(autor=usuario, tipo=tipo, asunto=asunto[:200], cuerpo=cuerpo)
+    # Prioridad opcional 0-10 (slider del Buzón). Default 5 si no viene o es
+    # inválida. Se acota al rango para no romper el orden por prioridad.
+    prioridad = accion.payload.get("prioridad", 5)
+    try:
+        prioridad = int(prioridad)
+    except (TypeError, ValueError):
+        prioridad = 5
+    prioridad = max(0, min(10, prioridad))
+    msg = MensajeBuzon.objects.create(
+        autor=usuario, tipo=tipo, asunto=asunto[:200], cuerpo=cuerpo, prioridad=prioridad)
     accion.entidad_tipo = "buzon"
     accion.entidad_id = msg.pk
     # Push automático S2b.4

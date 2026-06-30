@@ -78,7 +78,12 @@ def lista_tareas(request):
     if solo_mias:
         qs = qs.filter(asignada_a=user)
 
-    qs = qs.order_by("fecha_compromiso", "-creado_en")
+    # Tareas cerradas: orden cronológico por completado, las más recientes
+    # arriba (pedido LC 2026-06-29). Las abiertas, por compromiso.
+    if estado in terminales:
+        qs = qs.order_by("-completada_en", "-creado_en")
+    else:
+        qs = qs.order_by("fecha_compromiso", "-creado_en")
 
     hoy = timezone.localdate()
     kpis = {
@@ -109,11 +114,13 @@ def _tareas_visibles(user):
     return visibles
 
 
-def _qs_filtros(estados_sel, personas_sel):
+def _qs_filtros(estados_sel, personas_sel, cat="todas"):
     """Querystring canónico de los filtros combinables del Kanban."""
     partes = ["f=1"]
     partes += [f"estado={s}" for s in sorted(estados_sel)]
     partes += [f"persona={p}" for p in sorted(personas_sel)]
+    if cat and cat != "todas":
+        partes.append(f"cat={cat}")
     return "?" + "&".join(partes)
 
 
@@ -123,7 +130,11 @@ def kanban_tareas(request):
     Filtros de botones siempre visibles y COMBINABLES: estados + personas.
     Estados activos en una fila arriba; terminales (cerradas) en una fila abajo.
     """
+    from apps.el_pizarron.mandados import TIPOS_RUNNER
     from apps.el_pizarron.models.estado_tarea import EstadoTarea
+    from django.db.models import Q
+
+    from lib.permisos import puede_ser_runner, roles_efectivos
 
     user = request.user
     visibles = _tareas_visibles(user)
@@ -137,9 +148,22 @@ def kanban_tareas(request):
     if "f" not in request.GET and not personas_sel and not estados_sel:
         personas_sel = {str(user.pk)}
 
+    # S-LC-Feedback-V13: filtro de categoría [Todas · General · Mandados].
+    cat = (request.GET.get("cat") or "todas").lower()
+    if cat not in {"todas", "general", "mandados"}:
+        cat = "todas"
+
+    # Runner sin rol amplio: SOLO ve sus mandados (entrega/recoger asignados a él).
+    roles = roles_efectivos(user)
+    es_runner_only = puede_ser_runner(user) and not (
+        roles & {"super_admin", "dueno", "contador", "disenador"}
+    )
+    if es_runner_only:
+        cat = "mandados"
+        visibles = visibles.filter(Q(asignada_a=user) | Q(runner=user)).distinct()
+
     qs = visibles
-    if personas_sel:
-        from django.db.models import Q
+    if personas_sel and not es_runner_only:
         cond = Q(asignada_a__pk__in=[int(p) for p in personas_sel])
         # S-LC-Proyecto-V2: "mis tareas" también muestra las entregas/recogidas
         # donde soy el runner.
@@ -148,6 +172,11 @@ def kanban_tareas(request):
         qs = qs.filter(cond).distinct()
     if estados_sel:
         qs = qs.filter(estado__in=estados_sel)
+    # Categoría: General = no-mandados; Mandados = entrega/recoger.
+    if cat == "general":
+        qs = qs.exclude(tipo__in=TIPOS_RUNNER)
+    elif cat == "mandados":
+        qs = qs.filter(tipo__in=TIPOS_RUNNER)
 
     tareas = list(qs.order_by("fecha_compromiso", "-creado_en")[:500])
     por_estado: dict[str, list] = {}
@@ -162,12 +191,17 @@ def kanban_tareas(request):
 
     cols_activas = _cols([e for e in estados_def if not e.terminal])
     cols_cerradas = _cols([e for e in estados_def if e.terminal])
+    # Las columnas cerradas se ordenan por cuándo se marcaron como completadas
+    # (más recientes arriba), no por fecha de compromiso (pedido LC 2026-06-29).
+    for col in cols_cerradas:
+        col["tareas"].sort(
+            key=lambda t: t.completada_en or t.creado_en, reverse=True)
 
-    # Chips de filtros: cada uno togglea su valor preservando el resto.
+    # Chips de filtros: cada uno togglea su valor preservando el resto (incl. cat).
     chips_estado = [{
         "slug": e.slug, "label": e.label, "color": e.color,
         "activo": e.slug in estados_sel,
-        "url": _qs_filtros(estados_sel ^ {e.slug}, personas_sel),
+        "url": _qs_filtros(estados_sel ^ {e.slug}, personas_sel, cat),
     } for e in estados_def]
 
     from cuentas.models.usuario import Usuario
@@ -175,15 +209,28 @@ def kanban_tareas(request):
         "pk": u.pk,
         "nombre": u.get_short_name() or u.email,
         "activo": str(u.pk) in personas_sel,
-        "url": _qs_filtros(estados_sel, personas_sel ^ {str(u.pk)}),
+        "url": _qs_filtros(estados_sel, personas_sel ^ {str(u.pk)}, cat),
     } for u in Usuario.objects.filter(is_active=True).order_by("nombre_completo")]
+
+    # Pills de categoría (Todas · General · Mandados). Preservan estado/persona.
+    cat_pills = [
+        {"slug": "todas", "label": "Todas", "activo": cat == "todas",
+         "url": _qs_filtros(estados_sel, personas_sel, "todas")},
+        {"slug": "general", "label": "General", "activo": cat == "general",
+         "url": _qs_filtros(estados_sel, personas_sel, "general")},
+        {"slug": "mandados", "label": "🛵 Mandados", "activo": cat == "mandados",
+         "url": _qs_filtros(estados_sel, personas_sel, "mandados")},
+    ]
 
     return render(request, "pizarron/kanban.html", {
         "cols_activas": cols_activas,
         "cols_cerradas": cols_cerradas,
         "chips_estado": chips_estado,
         "chips_persona": chips_persona,
-        "url_limpiar": "?f=1",
+        "cat_pills": cat_pills,
+        "cat": cat,
+        "es_runner_only": es_runner_only,
+        "url_limpiar": "?f=1" + ("&cat=" + cat if cat != "todas" else ""),
         "hay_filtros": bool(estados_sel or personas_sel),
         "total": len(tareas),
     })
@@ -254,7 +301,12 @@ def nueva_tarea_global(request):
             messages.success(request, "Tarea creada.")
             return redirect("tareas-kanban")
     else:
-        form = TareaGlobalForm()
+        # Fecha precargada desde el Calendario (?fecha=YYYY-MM-DD). LC 2026-06-29.
+        initial = {}
+        f = request.GET.get("fecha")
+        if f:
+            initial["fecha_compromiso"] = f
+        form = TareaGlobalForm(initial=initial)
     from cuentas.models.usuario import Usuario
     proyectos_chips = list(
         Proyecto.objects.exclude(estado__in=TERMINALES_PRY)

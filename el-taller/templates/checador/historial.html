@@ -60,7 +60,7 @@
     {# ── Jornadas ───────────────────────────────────────────────── #}
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-100">Jornadas</h2>
-        {% if jornadas %}
+        {% if filas_jornadas %}
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead>
@@ -74,7 +74,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for j in jornadas %}
+                    {% for fila in filas_jornadas %}{% with j=fila.jornada %}
+                    {% if j %}
                     <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
                         <td class="py-2 pr-3 capitalize text-gray-700 dark:text-gray-300">{{ j.fecha|date:"D j N" }}</td>
                         <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
@@ -96,7 +97,26 @@
                             </div>
                         </td>
                     </tr>
-                    {% endfor %}
+                    {% else %}
+                    {# Día sin checada: 'Pendiente' (laboral) o 'Sin información' (descanso). #}
+                    <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
+                        <td class="py-2 pr-3 capitalize text-gray-500 dark:text-gray-400">{{ fila.fecha|date:"D j N" }}</td>
+                        <td class="py-2 pr-3" colspan="4">
+                            {% if fila.estado == "pendiente" %}
+                            <span class="badge badge-hex" style="--ec: #f79009" title="Día laboral sin checada ni ajuste">Pendiente</span>
+                            {% else %}
+                            <span class="text-xs text-gray-400 dark:text-gray-500">Sin información (descanso)</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 text-right">
+                            {% if fila.estado == "pendiente" %}
+                            <button type="button" hx-get="{% url 'checador:ajuste_jornada_modal' %}?fecha={{ fila.fecha|date:'Y-m-d' }}" hx-target="#modal-slot" hx-swap="innerHTML"
+                                    class="text-xs text-gray-500 hover:underline dark:text-gray-400">Solicitar día</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endwith %}{% endfor %}
                 </tbody>
             </table>
         </div>

@@ -25,7 +25,7 @@
     <td class="px-5 py-3">
         {% if s.activo %}<span class="badge badge-success">Disponible</span>{% else %}<span class="badge badge-gray">No disponible</span>{% endif %}
     </td>
-    {% if puede_editar or puede_archivar %}
+    {% if puede_editar or puede_archivar or puede_eliminar %}
     <td class="px-5 py-3 text-right">
         <div class="inline-flex items-center gap-2">
             <a href="{% url 'catalogo-variaciones' s.pk %}" class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300">Variaciones</a>
@@ -35,10 +35,13 @@
                 <button type="submit" class="text-sm font-medium text-warning-700 hover:underline dark:text-warning-400">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>
             </form>
             {% endif %}
+            {% if puede_eliminar %}
+            <button type="button" hx-get="{% url 'catalogo-eliminar' s.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm font-medium text-error-600 hover:underline dark:text-error-400" title="Eliminar permanentemente">Eliminar</button>
+            {% endif %}
         </div>
     </td>
     {% endif %}
 </tr>
 {% empty %}
-<tr><td colspan="9" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin servicios" descripcion="Agrega el primer servicio para empezar a cotizar más rápido." icono="folder" %}</div></td></tr>
+<tr><td colspan="9" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Agrega el primer producto para empezar a cotizar más rápido." icono="folder" %}</div></td></tr>
 {% endfor %}

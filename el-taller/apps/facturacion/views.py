@@ -304,10 +304,13 @@ def detalle(request, pk):
         puede_cobrar_facturacion(request.user)
         and fac.estado in {"emitida", "cobrada_parcial"}
     )
+    # Ticket LC 2026-06-29: el botón "Cancelar factura" es ÚNICO y SIEMPRE
+    # visible (cualquier estado salvo ya-cancelada). El modal explica el efecto
+    # y, si la factura tiene cobros, bloquea con un mensaje claro (hay dinero
+    # real recibido — primero se anulan los Ingresos).
     puede_cancelar_ = (
         puede_cancelar_facturacion(request.user)
         and fac.estado != "cancelada"
-        and (fac.monto_cobrado or 0) == 0
     )
     puede_duplicar = puede_crear_facturacion(request.user)
 
@@ -344,7 +347,10 @@ def detalle(request, pk):
         ))
     if puede_cancelar_:
         acciones_html.append(format_html(
-            '<button type="button" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm text-error-600 hover:underline">Cancelar</button>',
+            '<button type="button" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML" '
+            'class="inline-flex items-center rounded-lg border border-error-300 px-4 py-2 text-sm font-medium '
+            'text-error-600 transition hover:bg-error-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10">'
+            'Cancelar factura</button>',
             reverse("facturacion:cancelar", args=[fac.pk]),
         ))
 
@@ -433,6 +439,8 @@ def registrar_cobro(request, pk):
                     metodo=form.cleaned_data["metodo"],
                     actor=request.user,
                     banco_o_caja=form.cleaned_data["banco_o_caja"],
+                    folio=form.cleaned_data.get("folio", ""),
+                    nota=form.cleaned_data.get("nota", ""),
                 )
                 messages.success(request, f"Cobro registrado en {fac.codigo}.")
                 destino = reverse("facturacion:detalle", args=[fac.pk])
@@ -457,6 +465,7 @@ def cancelar(request, pk):
         messages.error(request, "La factura ya estaba cancelada.")
         return redirect("facturacion:detalle", pk=fac.pk)
     es_htmx = _es_htmx(request)
+    tiene_cobros = (fac.monto_cobrado or 0) > 0
     if request.method == "POST":
         form = CancelarForm(request.POST)
         if form.is_valid():
@@ -468,9 +477,9 @@ def cancelar(request, pk):
             except ValueError as e:
                 form.add_error(None, str(e))
         return _modal(request, "facturacion/_modal_cancelar.html",
-                      {"fac": fac, "form": form})
+                      {"fac": fac, "form": form, "tiene_cobros": tiene_cobros})
     return _modal(request, "facturacion/_modal_cancelar.html",
-                  {"fac": fac, "form": CancelarForm()})
+                  {"fac": fac, "form": CancelarForm(), "tiene_cobros": tiene_cobros})
 
 
 @login_required

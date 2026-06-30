@@ -310,7 +310,8 @@
   // que setea el valor al día actual y dispara `change`. Además al hacer
   // focus se invoca showPicker() (soporte en Chrome/Safari modernos) para
   // que el calendario se despliegue sin necesidad de tocar el ícono.
-  document.querySelectorAll('input[type="date"]:not([data-hoy-listo])').forEach(function (input) {
+  function realzarFechas(root) {
+  (root || document).querySelectorAll('input[type="date"]:not([data-hoy-listo])').forEach(function (input) {
     input.dataset.hoyListo = '1';
     // 1) Auto-mostrar el picker al focus / click (graceful si el browser no soporta).
     var openPicker = function () {
@@ -366,6 +367,10 @@
       anchor.parentNode.insertBefore(holder, anchor.nextSibling);
     }
   });
+  }
+  realzarFechas(document);
+  // Re-realza inputs date inyectados por HTMX (modales del #modal-slot, etc.).
+  document.body.addEventListener('htmx:afterSwap', function (e) { realzarFechas(e.target || document); });
 
   // --- Filas <tr data-href="..."> clickeables ---
   // Cualquier <tr> con data-href se vuelve navegable. No dispara cuando el

@@ -811,6 +811,37 @@ def filas_semana(usuario, desde, hasta) -> list[dict]:
     return filas
 
 
+def jornadas_por_dia(usuario, desde, hasta) -> list[dict]:
+    """Una fila POR CADA día del rango (más reciente arriba), tenga o no
+    jornada registrada. Pedido LC 2026-06-29: la tabla de Jornadas debe mostrar
+    TODOS los días del periodo; los días sin checada ni ajuste salen como
+    'Pendiente' (día laboral según el horario configurado) o 'Sin información'
+    (día sin horario = descanso). Los días futuros se omiten.
+
+    Estado por fila: 'registrada' | 'pendiente' | 'descanso'.
+    """
+    import datetime as _dt
+    hoy = timezone.localdate()
+    fin = min(hasta, hoy)
+    jornadas = {
+        j.fecha: j
+        for j in Jornada.objects.filter(usuario=usuario, fecha__gte=desde, fecha__lte=fin)
+    }
+    filas: list[dict] = []
+    dia = fin
+    while dia >= desde:
+        jornada = jornadas.get(dia)
+        if jornada:
+            estado = "registrada"
+        elif horario_vigente(usuario, dia) is not None:
+            estado = "pendiente"  # día laboral sin checar
+        else:
+            estado = "descanso"  # sin horario ese día → sin información
+        filas.append({"fecha": dia, "jornada": jornada, "estado": estado})
+        dia -= _dt.timedelta(days=1)
+    return filas
+
+
 def balance_mensual(usuario, *, year: int = None, month: int = None, ahora=None) -> dict:
     """Horas esperadas (de los horarios configurados) vs trabajadas en el mes,
     hasta hoy. Devuelve {esperadas, trabajadas, balance} en horas. Positivo =

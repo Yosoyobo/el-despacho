@@ -399,6 +399,9 @@ def historial(request):
         "periodo_label": _PERIODOS_HISTORIAL[periodo][0],
         "periodos": [(slug, etq) for slug, (etq, _) in _PERIODOS_HISTORIAL.items()],
         "jornadas": jornadas,
+        # LC 2026-06-29: la tabla muestra TODOS los días del periodo (con
+        # 'Pendiente'/'Sin información' para los días sin checada).
+        "filas_jornadas": services.jornadas_por_dia(request.user, desde, hoy),
         "visitas": visitas,
         "sesiones": sesiones,
         "totales": services.horas_de(request.user, desde, hoy),
@@ -536,7 +539,11 @@ def ajuste_jornada_modal(request):
     jid = request.GET.get("jornada")
     if jid:
         jornada = Jornada.objects.filter(pk=jid, usuario=request.user).first()
-    return render(request, "checador/_modal_ajuste_jornada.html", {"jornada": jornada})
+    # ?fecha=YYYY-MM-DD prefilla un día sin checar (botón "Solicitar día" del
+    # historial, LC 2026-06-29).
+    fecha_prefill = request.GET.get("fecha") or ""
+    return render(request, "checador/_modal_ajuste_jornada.html",
+                  {"jornada": jornada, "fecha_prefill": fecha_prefill})
 
 
 @login_required

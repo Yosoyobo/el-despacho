@@ -1,18 +1,31 @@
 {% comment %}
-Modal HTMX para popover de día — patrón Wave 5. Eventos del día clickeado
-desde el mini-calendario del Dashboard.
+Modal HTMX de día — patrón Wave 5. Lista los eventos del día y ofrece crear un
+evento genérico, una tarea o un proyecto con la fecha precargada.
+S-LC-Feedback-V13.
 {% endcomment %}
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" data-modal-slot-close>
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900" data-no-row-click onclick="event.stopPropagation()">
         <div class="mb-4 flex items-start justify-between">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ fecha_etiqueta }}</h3>
+            <h3 class="text-base font-semibold capitalize text-gray-900 dark:text-gray-100">{{ fecha_etiqueta }}</h3>
             <button type="button" data-modal-slot-close
-                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                    aria-label="Cerrar">✕</button>
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Cerrar">✕</button>
         </div>
+
         {% if eventos %}
         <ul class="space-y-2">
             {% for e in eventos %}
+            {% if e.tipo == "evento" %}
+            <li>
+                <button type="button" hx-get="{% url 'calendario-evento-editar' e.evento_id %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                        class="flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-left hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800">
+                    <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {{ e.color_hex }}"></span>
+                    <span class="min-w-0">
+                        <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ e.titulo }}</span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">Evento{% if e.es_multidia %} · varios días{% endif %}</span>
+                    </span>
+                </button>
+            </li>
+            {% else %}
             <li>
                 <a href="{{ e.url }}" class="block rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800">
                     <p class="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-100">
@@ -22,10 +35,24 @@ desde el mini-calendario del Dashboard.
                     <p class="ml-4 text-xs text-gray-500 dark:text-gray-400">{{ e.tipo|capfirst }} · {{ e.subtitulo }}</p>
                 </a>
             </li>
+            {% endif %}
             {% endfor %}
         </ul>
         {% else %}
-        <p class="py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin eventos este día.</p>
+        <p class="py-4 text-center text-sm text-gray-400 dark:text-gray-500">Sin eventos este día.</p>
         {% endif %}
+
+        {# ── Crear con la fecha precargada ── #}
+        <div class="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Agregar este día</p>
+            <div class="grid grid-cols-1 gap-2">
+                <button type="button" hx-get="{% url 'calendario-evento-nuevo' %}?fecha={{ fecha|date:'Y-m-d' }}" hx-target="#modal-slot" hx-swap="innerHTML"
+                        class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-brand-500/5">📌 Nuevo evento</button>
+                <a href="{% url 'pizarron-nueva-tarea-global' %}?fecha={{ fecha|date:'Y-m-d' }}"
+                   class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-brand-500/5">✅ Nueva tarea</a>
+                <a href="{% url 'proyectos-nuevo' %}?fecha_compromiso={{ fecha|date:'Y-m-d' }}"
+                   class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-brand-500/5">📁 Nuevo proyecto</a>
+            </div>
+        </div>
     </div>
 </div>

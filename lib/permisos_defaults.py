@@ -29,6 +29,9 @@ TODO_CONTADURIA = ["ver", "capturar", "anular", "reportes"]
 TODO_CATALOGO = [
     "ver_nombres", "ver_precios", "crear", "editar", "editar_precios",
     "archivar", "gestionar_categorias",
+    # S-LC-Feedback-V13: borrado PERMANENTE de productos/proveedores (≠ archivar).
+    # Default solo super_admin (acción destructiva); delegable por usuario.
+    "eliminar",
 ]
 # S2b.cotizaciones-v1: Las Cotizaciones. Aprobar/rechazar/anular son del jefe;
 # el contador puede armar y enviar pero no cerrar el ciclo.

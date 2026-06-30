@@ -184,9 +184,14 @@ def registrar_cobro(
     metodo: str,
     actor,
     banco_o_caja: str = "banco",  # noqa: ARG001 (futuro: forzar slot caja vs banco)
+    folio: str = "",
+    nota: str = "",
 ):
     """Crea un `tesoreria.Ingreso` vinculado y recalcula `monto_cobrado`.
     Transiciona a cobrada_parcial / cobrada_total según corresponda.
+
+    `folio` se guarda en `referencia_externa`; `nota` se anexa a la descripción
+    (sección "Referencia" del modal de cobro, ticket LC 2026-06-29).
     """
     if fac.estado not in {"emitida", "cobrada_parcial"}:
         raise ValueError("Solo se puede cobrar una factura emitida o parcialmente cobrada.")
@@ -199,13 +204,18 @@ def registrar_cobro(
 
     from apps.tesoreria.models import Ingreso
 
+    descripcion = f"Cobro de {fac.codigo}"
+    if (nota or "").strip():
+        descripcion = f"{descripcion} · {nota.strip()}"[:300]
+
     with transaction.atomic():
         Ingreso.objects.create(
             factura=fac,
             monto=monto,
             fecha=fecha,
             metodo=metodo,
-            descripcion=f"Cobro de {fac.codigo}",
+            descripcion=descripcion,
+            referencia_externa=(folio or "").strip()[:100],
             cliente=fac.cliente,
             proyecto=fac.proyecto,
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,

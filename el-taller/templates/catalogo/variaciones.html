@@ -10,7 +10,7 @@
         {% if servicio.descripcion_default %}{{ servicio.descripcion_default }}{% else %}Sin descripción.{% endif %}
     </div>
     <div class="flex gap-2">
-        {% if puede_editar %}<a href="{% url 'catalogo-editar' servicio.pk %}" class="btn-secundario">Editar servicio</a>{% endif %}
+        {% if puede_editar %}<a href="{% url 'catalogo-editar' servicio.pk %}" class="btn-secundario">Editar producto</a>{% endif %}
         <a href="{% url 'catalogo-variacion-nueva' servicio.pk %}" class="btn-primario">+ Nueva variación</a>
     </div>
 </div>
