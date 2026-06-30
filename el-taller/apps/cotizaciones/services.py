@@ -302,10 +302,11 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
     tasas `aplicable_default` salvo que el proyecto sea IVA exento, para que el
     total calce con `proyecto.monto_a_facturar`.
 
-    **Render LC 2026-06-30: el estatus es POR VERSIÓN.** Cada versión nueva
-    ARRANCA en el primer estado del flujo (Generada), independiente de las
-    demás — el usuario avanza cada una desde su propio dropdown. La numeración
-    continúa aunque haya versiones anuladas (no se reutilizan números).
+    **Render LC 2026-06-30: al generar, el estatus se reinicia al primer paso
+    del flujo (Generada).** El estatus es único de la cotización (vive en la
+    versión más reciente, la única editable); generar una versión nueva la pone
+    en 'generada' y el pizza-tracker vuelve al inicio. Las versiones anteriores
+    conservan, en solo lectura, el último estado que tuvieron.
     """
     from decimal import Decimal
 

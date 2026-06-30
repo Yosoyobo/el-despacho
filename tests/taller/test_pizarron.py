@@ -173,3 +173,39 @@ def test_comentar_proyecto_persiste_y_se_ve(client, usuario_factory, proyecto_fa
     assert resp.status_code == 200
     assert Comentario.objects.filter(proyecto=p, cuerpo="Nota del proyecto").exists()
     assert "Nota del proyecto" in resp.content.decode()
+
+
+def test_badge_tareas_involucrado_vs_otras(proyecto_factory, usuario_factory):
+    """LC 2026-06-30: el globo azul cuenta las tareas que INVOLUCRAN a quien mira
+    (asignadas a él o de sus proyectos); el gris, las demás pendientes."""
+    from apps.el_pizarron.context_processors import mandados_badge
+    from apps.el_pizarron.models import Tarea
+    from django.test import RequestFactory
+    admin = usuario_factory(rol="super_admin")
+    dis = usuario_factory(rol="disenador")
+    p = proyecto_factory(creado_por=admin)
+    Tarea.objects.create(proyecto=p, titulo="Mía", creado_por=admin, asignada_a=dis)
+    Tarea.objects.create(proyecto=p, titulo="De otro", creado_por=admin, asignada_a=admin)
+    req = RequestFactory().get("/")
+    req.user = dis
+    ctx = mandados_badge(req)
+    assert ctx["tareas_involucrado_count"] == 1   # azul = la asignada al diseñador
+    assert ctx["tareas_otras_count"] == 1          # gris = la otra (no lo involucra)
+
+
+def test_badge_tareas_no_involucrado_solo_gris(proyecto_factory, usuario_factory):
+    """Si no está involucrado en ninguna, el azul queda en 0 y solo se ve el gris
+    con el total."""
+    from apps.el_pizarron.context_processors import mandados_badge
+    from apps.el_pizarron.models import Tarea
+    from django.test import RequestFactory
+    admin = usuario_factory(rol="super_admin")
+    ajeno = usuario_factory(rol="disenador")
+    p = proyecto_factory(creado_por=admin)
+    Tarea.objects.create(proyecto=p, titulo="A", creado_por=admin, asignada_a=admin)
+    Tarea.objects.create(proyecto=p, titulo="B", creado_por=admin, asignada_a=admin)
+    req = RequestFactory().get("/")
+    req.user = ajeno
+    ctx = mandados_badge(req)
+    assert ctx["tareas_involucrado_count"] == 0
+    assert ctx["tareas_otras_count"] == 2

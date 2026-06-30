@@ -23,17 +23,24 @@
   ya **no hay botón "Editar"** — cambias cualquier campo y se **guarda solo** (verás
   "✓ Guardado"). El apartado "Productos que surte" ahora se llama simplemente
   **"Productos"**.
-- **Cotizaciones del proyecto: cada versión con su propio estatus.** En el recuadro
-  **Cotizaciones** de un proyecto, **cada versión (v1, v2…) tiene su propio estatus**
-  (Generada · Enviada · Aprobada · Pagada) que cambias picando el globo de esa versión.
-  Cada versión nueva arranca en **Generada**.
-- **Eliminar una cotización.** Cada versión tiene un **ícono de bote de basura**. Al
-  eliminarla, se **oculta** del recuadro pero **conserva su número de versión**: la
-  siguiente cotización **continúa la numeración** (no se reutilizan los números).
+- **Cotizaciones del proyecto: solo la última versión cambia de estatus.** En el
+  recuadro **Cotizaciones** de un proyecto sigue el **pizza-tracker** (Generada ·
+  Enviada · Aprobada · Pagada). **Solo la versión más reciente** puede cambiar de
+  estatus (con el tracker o el globo). Las **versiones pasadas** muestran un
+  **círculo de color** con el último estado que tuvieron, pero **ya no se cambian**
+  (si quieres retomar una versión, vuelve a generar desde el proyecto).
+- **Al generar, el estatus se reinicia a "Generada".** Cuando generas una versión
+  nueva, el pizza-tracker y el estatus regresan automáticamente al **primer paso**
+  (Generada).
 - **La lista de Cotizaciones quedó más simple.** En el módulo **Cotizaciones**, la tabla
   ahora muestra, en este orden: **Fecha** (formateada, ej. "Vie 26 Jun 2026"), **Cliente**,
   **Proyecto**, **Versión**, **Subtotal (sin IVA)** y **Estado**. Se quitaron las columnas
   de código y de acciones: **toda la fila es clickeable** para abrir el detalle.
+- **Globos de Tareas en el menú: lo tuyo en azul, lo demás en gris.** El ítem **Tareas**
+  del menú muestra en **azul** el número de tareas pendientes **que te involucran** (las
+  asignadas a ti o de tus proyectos) y en **gris** las **demás** tareas pendientes. Si no
+  estás involucrado en ninguna, solo verás el globo **gris** con el total. (El globo
+  **rojo** sigue siendo los **mandados** pendientes.)
 
 ---
 
