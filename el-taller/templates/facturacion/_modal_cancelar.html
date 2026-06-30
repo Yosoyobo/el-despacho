@@ -7,8 +7,7 @@
             </button>
         </header>
         {% if tiene_cobros %}
-        {# La factura tiene cobros (dinero real recibido). No se cancela hasta
-           anular esos Ingresos — así Contaduría no queda descuadrada. #}
+        {# Con cobros: anular antes los Ingresos para no descuadrar Contaduría. #}
         <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
             <div class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
                 Esta factura ya tiene <strong>cobros registrados</strong> ({{ fac.monto_cobrado|default:0 }} cobrado). Como es dinero real recibido, primero <strong>anula los cobros (Ingresos)</strong> en Tesorería y luego cancela la factura. Así tus cuentas no se descuadran.

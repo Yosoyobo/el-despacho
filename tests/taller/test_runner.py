@@ -174,7 +174,7 @@ def test_editar_tarea_guarda_runner(client, proyecto_factory, usuario_factory):
     client.force_login(admin)
     resp = client.post(reverse("pizarron-editar-tarea", args=[t.pk]), {
         "titulo": t.titulo, "descripcion": "", "estado": t.estado,
-        "prioridad": "media", "tipo": "entrega",
+        "prioridad": "media", "tipo": "entrega", "destino_etiqueta": "Bodega Sur",
         "asignada_a": admin.pk, "fecha_compromiso": "2026-06-18",
         "runner": runner.pk,  # runner_auto NO enviado ⇒ False
     })

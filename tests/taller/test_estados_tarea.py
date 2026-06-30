@@ -75,7 +75,7 @@ def test_alta_con_tipo_y_hora(client, usuario_factory, proyecto):
         f"/proyectos/{proyecto.pk}/tareas/nueva",
         {"titulo": "Entregar lonas", "descripcion": "", "estado": "pendiente",
          "prioridad": "media", "tipo": "entrega",
-         "asignada_a": admin.pk,
+         "asignada_a": admin.pk, "destino_etiqueta": "Sucursal Centro",
          "fecha_compromiso": date.today().isoformat(), "hora": "14:30"},
         follow=True,
     )

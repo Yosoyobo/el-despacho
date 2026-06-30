@@ -103,11 +103,13 @@ def test_completar_tarea_notifica_involucrados(proyecto_factory, usuario_factory
     assert any(pk == creador.pk for (pk, _cat) in enviados)
 
 
-# ── El item de Mandados en el sidebar es para TODOS ───────────────────────────
+# ── S-LC-Feedback-V13: Mandados se fusionó en Tareas (ya no es item del menú) ──
 
-def test_sidebar_mandados_visible_para_todos(client, usuario_factory):
-    # Un usuario sin rol Runner igual ve el atajo a /mandados/ en el sidebar.
+def test_sidebar_mandados_fusionado_en_tareas(client, usuario_factory):
+    # El atajo a /mandados/ desaparece del sidebar: ahora se llega vía Tareas
+    # (filtro [Mandados]). El item de Tareas sí está visible para todos.
     u = usuario_factory(rol="disenador", email="nrunner@lc.mx")
     client.force_login(u)
     body = client.get("/").content.decode()
-    assert 'href="/mandados/"' in body
+    assert 'href="/mandados/"' not in body
+    assert 'href="/tareas/"' in body

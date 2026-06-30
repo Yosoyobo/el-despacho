@@ -19,8 +19,7 @@ fin de semana en gris medio; días pasados en gris claro.
         <button type="button" data-hoy="{{ campo.id_for_label }}"
                 class="flex-1 rounded-lg border border-gray-300 bg-white py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.04]">Hoy</button>
         {% endif %}
-        {# Quitar la fecha (dejar el proyecto sin fecha de compromiso/inicio).
-           Pedido LC 2026-06-29: antes solo se podía cambiar, no limpiar. #}
+        {# Quitar la fecha: deja el proyecto sin fecha de compromiso/inicio (LC 2026-06-29). #}
         <button type="button" data-limpiar-cal="{{ campo.id_for_label }}"
                 class="flex-1 rounded-lg border border-gray-300 bg-white py-1.5 text-xs font-medium text-gray-500 hover:bg-error-50 hover:text-error-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-error-500/10 dark:hover:text-error-400">Quitar fecha</button>
     </div>

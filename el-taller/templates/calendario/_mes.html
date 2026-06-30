@@ -16,8 +16,7 @@ anillo + dot, eventos con badges coloreados de fondo suave.
         {% endfor %}
         {% for semana in mes_grid.semanas %}
             {% for celda in semana %}
-            {# Celda clickeable: abre el modal del día (crear evento/tarea/proyecto
-               con la fecha precargada). LC 2026-06-29. #}
+            {# Celda clickeable: abre el modal del día (crear evento/tarea/proyecto con fecha precargada, LC 2026-06-29). #}
             <div role="button" tabindex="0"
                  hx-get="{% url 'calendario-dia' celda.fecha|date:'Y-m-d' %}" hx-target="#modal-slot" hx-swap="innerHTML"
                  class="group relative min-h-[104px] cursor-pointer bg-white px-1.5 py-1.5 text-xs transition hover:bg-brand-50/30 dark:bg-gray-900 dark:hover:bg-brand-500/5 {% if celda.es_finde %}bg-gray-50/70 dark:bg-white/[0.02]{% endif %} {% if not celda.mes_actual %}opacity-40{% endif %}">
