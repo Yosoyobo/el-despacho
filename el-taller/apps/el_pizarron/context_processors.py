@@ -1,16 +1,16 @@
-"""Badges del sidebar para Tareas/Mandados.
+"""Badges del sidebar para Tareas (incluye Mandados, fusionados en V13).
 
-S-LC-Feedback-V13: el item «Tareas» del sidebar muestra badges —
-rojo (mandados pendientes) + tareas generales pendientes.
+LC 2026-06-30 (decisión Oscar, 2ª pasada): SE CONSERVAN los tres globos, pero
+las cuentas ahora SÍ tienen sentido — antes el azul contaba tareas del equipo del
+proyecto (no suyas) y el rojo contaba TODOS los mandados visibles (no los suyos),
+así que Oscar veía 1/7/3 sin tener nada propio. Definición coherente:
 
-LC 2026-06-30 (decisión Oscar): los globos de TAREAS distinguen involucramiento.
-- **Azul** = tareas pendientes donde el que mira está INVOLUCRADO (asignado o en
-  el equipo del proyecto).
-- **Gris** = las DEMÁS tareas pendientes (no lo involucran). Así, quien no está
-  involucrado solo ve un globo gris con el total; quien sí, ve el azul (sus
-  tareas) y el gris (el resto).
+- **Azul** = tareas pendientes **asignadas a mí** (lo que YO tengo que hacer).
+- **Gris** = las **demás** tareas pendientes del despacho (conciencia del resto).
+- **Rojo** = mandados pendientes **míos** (soy el runner o están asignados a mí).
 
-Defensivo: ante cualquier error devuelve 0.
+Quien no tiene nada propio (caso Oscar) ve solo el gris con el total del equipo.
+Defensivo: ante cualquier error, 0.
 """
 
 from __future__ import annotations
@@ -20,46 +20,48 @@ import contextlib
 
 def mandados_badge(request):
     user = getattr(request, "user", None)
+    cero = {
+        "tareas_involucrado_count": 0,
+        "tareas_otras_count": 0,
+        "mandados_pendientes_count": 0,
+        # back-compat por si algún template/test viejo aún los lee.
+        "tareas_total_count": 0,
+        "tareas_general_pendientes_count": 0,
+    }
     if not user or not getattr(user, "is_authenticated", False):
-        return {
-            "mandados_pendientes_count": 0,
-            "tareas_involucrado_count": 0,
-            "tareas_otras_count": 0,
-            # back-compat por si algún template viejo aún lo lee.
-            "tareas_general_pendientes_count": 0,
-        }
+        return cero
 
+    mias = 0
+    otras = 0
     mandados = 0
     with contextlib.suppress(Exception):
-        from apps.el_pizarron.mandados import mandados_visibles
-        mandados = (
-            mandados_visibles(user)
-            .exclude(estado__in=("entregado", "cancelado"))
-            .count()
-        )
-
-    involucrado = 0
-    otras = 0
-    with contextlib.suppress(Exception):
-        from apps.el_pizarron.mandados import TIPOS_RUNNER
+        from apps.el_pizarron.mandados import TIPOS_RUNNER, mandados_visibles
         from apps.el_pizarron.models import Tarea
         from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
         from django.db.models import Q
 
-        base = (
-            Tarea.objects.exclude(estado__in=slugs_terminales_tarea())
-            .exclude(tipo__in=TIPOS_RUNNER)
-        )
+        terminales = slugs_terminales_tarea()
+
+        # Tareas (no-runner): azul = asignadas a mí; gris = el resto.
+        base = Tarea.objects.exclude(estado__in=terminales).exclude(tipo__in=TIPOS_RUNNER)
         total = base.count()
-        involucrado = base.filter(
-            Q(asignada_a=user) | Q(proyecto__asignaciones__usuario=user)
-        ).distinct().count()
-        otras = max(0, total - involucrado)
+        mias = base.filter(asignada_a=user).count()
+        otras = max(0, total - mias)
+
+        # Rojo = mandados pendientes MÍOS (soy runner o están asignados a mí).
+        mandados = (
+            mandados_visibles(user)
+            .exclude(estado__in=("entregado", "cancelado"))
+            .filter(Q(tarea__runner=user) | Q(tarea__asignada_a=user))
+            .distinct()
+            .count()
+        )
 
     return {
-        "mandados_pendientes_count": mandados,
-        "tareas_involucrado_count": involucrado,
+        "tareas_involucrado_count": mias,
         "tareas_otras_count": otras,
-        # back-compat: el azul de antes era "mis tareas / las del despacho".
-        "tareas_general_pendientes_count": involucrado,
+        "mandados_pendientes_count": mandados,
+        # back-compat:
+        "tareas_total_count": mias + otras,
+        "tareas_general_pendientes_count": mias,
     }

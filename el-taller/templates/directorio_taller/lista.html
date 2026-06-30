@@ -3,7 +3,7 @@
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Equipo" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Equipo" subtitulo="Conoce a tus compañeros: contacto, puesto, horario y asistencia. Clic en una persona para ver su ficha completa." breadcrumb_items=breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Equipo" subtitulo="Conoce a tus compañeros: contacto, puesto, horario y asistencia. Expande una persona para ver su horario; abre su ficha para el detalle completo." breadcrumb_items=breadcrumb_items %}
 
 <div class="mb-5 flex flex-wrap items-center gap-3">
     <form method="get" class="campo-form flex flex-1 items-center gap-2">
@@ -20,33 +20,67 @@
     </div>
 </div>
 
-{# Render LC 2026-06-30: lista simple (nombre + puesto + badge de rol); el detalle vive en la ficha. #}
-<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <ul class="divide-y divide-gray-100 dark:divide-gray-800">
-        {% for u in usuarios %}
-        <li>
-            <a href="{% url 'directorio-perfil' u.pk %}"
-               class="flex items-center justify-between gap-3 px-5 py-3.5 transition hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not u.is_active %}opacity-60{% endif %}">
-                <div class="flex min-w-0 items-center gap-3">
-                    {% if u.avatar_url %}
-                    <img src="{{ u.avatar_url }}" alt="{{ u.nombre_completo }}" class="h-10 w-10 shrink-0 rounded-full object-cover">
-                    {% else %}
-                    <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ u.nombre_completo|slice:":1"|upper }}</div>
-                    {% endif %}
-                    <div class="min-w-0">
-                        <p class="truncate font-medium text-gray-900 dark:text-gray-100">{{ u.nombre_completo }}</p>
-                        {% if u.puesto %}<p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ u.puesto }}</p>{% endif %}
+{# Render LC 2026-06-30: acordeón de Equipo. Colapsado = avatar + nombre + puesto·dirección + badges; expandido = contacto + horario de la semana + link a la ficha. #}
+<div class="space-y-3">
+    {% for item in equipo %}
+    {% with u=item.u %}
+    <details class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 {% if not u.is_active %}opacity-60{% endif %}">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 transition hover:bg-gray-50 [&::-webkit-details-marker]:hidden dark:hover:bg-white/[0.02]">
+            <div class="flex min-w-0 items-center gap-4">
+                {% if u.avatar_url %}
+                <img src="{{ u.avatar_url }}" alt="{{ u.nombre_completo }}" class="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800">
+                {% else %}
+                <div class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ u.nombre_completo|slice:":1"|upper }}</div>
+                {% endif %}
+                <div class="min-w-0">
+                    <p class="font-semibold text-gray-900 dark:text-gray-100">{{ u.nombre_completo }}</p>
+                    <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ u.puesto|default:"Sin puesto" }}{% if u.direccion %} <span class="px-0.5 text-gray-300 dark:text-gray-600">·</span> {{ u.direccion }}{% endif %}</p>
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300">{{ u.get_modalidad_display }}</span>
+                        {% for r in item.roles %}<span class="badge badge-brand">{{ r }}</span>{% empty %}<span class="badge badge-gray">Sin rol</span>{% endfor %}
+                        {% if not u.is_active %}<span class="badge badge-error">Inactivo</span>{% endif %}
                     </div>
                 </div>
-                <div class="flex shrink-0 items-center gap-1.5">
-                    <span class="badge badge-brand">{{ u.get_rol_display }}</span>
-                    {% if not u.is_active %}<span class="badge badge-error">Inactivo</span>{% endif %}
+            </div>
+            <svg class="h-5 w-5 shrink-0 text-gray-400 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="border-t border-gray-100 px-5 py-5 dark:border-gray-800">
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+                <div>
+                    <dt class="text-xs text-gray-400 dark:text-gray-500">Modalidad</dt>
+                    <dd class="mt-0.5 font-medium text-gray-800 dark:text-gray-100">{{ u.get_modalidad_display }}</dd>
                 </div>
-            </a>
-        </li>
-        {% empty %}
-        <li class="px-5 py-12">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin resultados" descripcion="Nadie coincide con la búsqueda." icono="search" %}</li>
-        {% endfor %}
-    </ul>
+                <div class="min-w-0">
+                    <dt class="text-xs text-gray-400 dark:text-gray-500">Correo</dt>
+                    <dd class="mt-0.5 break-all font-medium text-gray-800 dark:text-gray-100"><a href="mailto:{{ u.email }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ u.email }}</a></dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-gray-400 dark:text-gray-500">Teléfono</dt>
+                    <dd class="mt-0.5 font-medium text-gray-800 dark:text-gray-100">{% if u.telefono %}<a href="tel:{{ u.telefono }}" class="hover:text-brand-600 dark:hover:text-brand-400">{{ u.telefono }}</a>{% else %}—{% endif %}</dd>
+                </div>
+                <div class="min-w-0">
+                    <dt class="text-xs text-gray-400 dark:text-gray-500">Jefe directo</dt>
+                    <dd class="mt-0.5 truncate font-medium text-gray-800 dark:text-gray-100">{% if u.jefe_directo %}{{ u.jefe_directo.nombre_completo }}{% else %}—{% endif %}</dd>
+                </div>
+            </dl>
+
+            {% if item.horario %}
+            <div class="mt-5">
+                <p class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Horario de la semana</p>
+                {% include "checador/_horario_semana.html" with horario_semana=item.horario %}
+            </div>
+            {% endif %}
+
+            <div class="mt-5">
+                <a href="{% url 'directorio-perfil' u.pk %}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Ver ficha completa →</a>
+            </div>
+        </div>
+    </details>
+    {% endwith %}
+    {% empty %}
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-12 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin resultados" descripcion="Nadie coincide con la búsqueda." icono="search" %}
+    </div>
+    {% endfor %}
 </div>
 {% endblock %}

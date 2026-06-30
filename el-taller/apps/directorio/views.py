@@ -34,13 +34,32 @@ def lista(request):
             Q(nombre_completo__icontains=q) | Q(email__icontains=q)
             | Q(puesto__icontains=q) | Q(oficina__icontains=q)
         )
+
+    # Render LC 2026-06-30: la lista es un ACORDEÓN. Cada renglón colapsado
+    # muestra nombre + puesto·dirección + badges; al expandir, contacto + horario
+    # de la semana. Adjuntamos roles y horario por persona (el equipo es chico —
+    # el costo de N consultas es despreciable y la ficha nunca se cae).
+    from lib.permisos import roles_display
+    try:
+        from apps.checador import services as ch
+    except Exception:  # noqa: BLE001
+        ch = None
+
+    equipo = []
+    for u in usuarios:
+        try:
+            horario = ch.horario_semanal(u) if ch else []
+        except Exception:  # noqa: BLE001 — el horario nunca tumba la lista
+            horario = []
+        equipo.append({"u": u, "roles": roles_display(u), "horario": horario})
+
     # Template namespaced (directorio_taller/) para no colisionar con el
     # `directorio/lista.html` de La Gerencia en el settings combinado de tests.
     return render(request, "directorio_taller/lista.html", {
-        "usuarios": usuarios,
+        "equipo": equipo,
         "q": q,
         "incluir_inactivos": incluir_inactivos,
-        "total": usuarios.count(),
+        "total": len(equipo),
     })
 
 
@@ -122,7 +141,26 @@ def perfil(request, pk: int):
         from apps.checador.templatetags.checador_extras import osm_embed_src
         osm_src = osm_embed_src(empleado.geo_lat, empleado.geo_lng)
 
+    # Pendientes de la persona (LC 2026-06-30): hasta 10 tareas pendientes
+    # asignadas a ella, ordenadas por vencimiento (la más pronta arriba, sin
+    # fecha al final). Defensivo — la ficha nunca se cae por esto.
+    tareas_pendientes = []
+    try:
+        from apps.el_pizarron.models import Tarea
+        from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
+        from django.db.models import F
+
+        tareas_pendientes = list(
+            Tarea.objects.filter(asignada_a=empleado)
+            .exclude(estado__in=slugs_terminales_tarea())
+            .select_related("proyecto", "proyecto__cliente")
+            .order_by(F("fecha_compromiso").asc(nulls_last=True), "hora", "-creado_en")[:10]
+        )
+    except Exception:  # noqa: BLE001
+        tareas_pendientes = []
+
     return render(request, "directorio_taller/perfil.html", {
+        "tareas_pendientes": tareas_pendientes,
         "empleado": empleado,
         "roles": roles,
         "subordinados": subordinados,

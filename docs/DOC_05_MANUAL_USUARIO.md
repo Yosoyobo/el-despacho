@@ -5,7 +5,7 @@
 
 ---
 
-## Novedades — Proveedores en tarjetas, cotizaciones por versión y lista más limpia (30 de junio de 2026)
+## Novedades — Proveedores en tarjetas, Equipo en acordeón y globos de Tareas claros (30 de junio de 2026)
 
 - **Proveedores ahora se ven como tarjetas.** La página de **Proveedores** (dentro de
   **Productos**) muestra una **tarjeta por proveedor** con su nombre, ubicación, las
@@ -36,14 +36,17 @@
   ahora muestra, en este orden: **Fecha** (formateada, ej. "Vie 26 Jun 2026"), **Cliente**,
   **Proyecto**, **Versión**, **Subtotal (sin IVA)** y **Estado**. Se quitaron las columnas
   de código y de acciones: **toda la fila es clickeable** para abrir el detalle.
-- **Globos de Tareas en el menú: lo tuyo en azul, lo demás en gris.** El ítem **Tareas**
-  del menú muestra en **azul** el número de tareas pendientes **que te involucran** (las
-  asignadas a ti o de tus proyectos) y en **gris** las **demás** tareas pendientes. Si no
-  estás involucrado en ninguna, solo verás el globo **gris** con el total. (El globo
-  **rojo** sigue siendo los **mandados** pendientes.)
-- **La página de Equipo es ahora una lista limpia.** En **Equipo** ves a tus compañeros
-  en una **lista** simple: nombre, puesto y su rol. Al **picar una persona** entras a su
-  **ficha completa** (con correo, teléfono, oficina, horario y asistencia), igual que antes.
+- **Globos de Tareas en el menú: ahora con sentido.** El ítem **Tareas** muestra hasta
+  tres globos: **azul** = tareas pendientes **asignadas a ti** (lo que tú tienes que
+  hacer), **gris** = las **demás** tareas pendientes del despacho (para que sepas la
+  carga del equipo), y **rojo** = **tus mandados** pendientes. Si no tienes nada propio,
+  solo verás el **gris** con el total — ya no aparecen globos por tareas que no son tuyas.
+- **La página de Equipo es un acordeón.** En **Equipo** ves a tus compañeros en tarjetas;
+  cada una muestra nombre, puesto, dirección y sus roles. **Pícala para desplegar** su
+  **modalidad, correo, teléfono, jefe directo y horario de la semana** sin salir de la
+  lista. El enlace **"Ver ficha completa →"** abre el detalle de siempre, donde —**debajo
+  del mapa**— ahora también ves un cuadro con sus **pendientes** (hasta 10, el de
+  vencimiento más próximo arriba).
 
 ---
 

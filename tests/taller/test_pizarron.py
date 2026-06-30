@@ -176,8 +176,8 @@ def test_comentar_proyecto_persiste_y_se_ve(client, usuario_factory, proyecto_fa
 
 
 def test_badge_tareas_involucrado_vs_otras(proyecto_factory, usuario_factory):
-    """LC 2026-06-30: el globo azul cuenta las tareas que INVOLUCRAN a quien mira
-    (asignadas a él o de sus proyectos); el gris, las demás pendientes."""
+    """LC 2026-06-30 (2ª pasada): el globo azul cuenta SOLO las tareas asignadas a
+    quien mira; el gris, las demás pendientes del despacho."""
     from apps.el_pizarron.context_processors import mandados_badge
     from apps.el_pizarron.models import Tarea
     from django.test import RequestFactory
@@ -190,12 +190,12 @@ def test_badge_tareas_involucrado_vs_otras(proyecto_factory, usuario_factory):
     req.user = dis
     ctx = mandados_badge(req)
     assert ctx["tareas_involucrado_count"] == 1   # azul = la asignada al diseñador
-    assert ctx["tareas_otras_count"] == 1          # gris = la otra (no lo involucra)
+    assert ctx["tareas_otras_count"] == 1          # gris = la otra (no es suya)
 
 
 def test_badge_tareas_no_involucrado_solo_gris(proyecto_factory, usuario_factory):
-    """Si no está involucrado en ninguna, el azul queda en 0 y solo se ve el gris
-    con el total."""
+    """Si no tiene ninguna asignada, el azul queda en 0 y solo se ve el gris con
+    el total."""
     from apps.el_pizarron.context_processors import mandados_badge
     from apps.el_pizarron.models import Tarea
     from django.test import RequestFactory
@@ -209,3 +209,25 @@ def test_badge_tareas_no_involucrado_solo_gris(proyecto_factory, usuario_factory
     ctx = mandados_badge(req)
     assert ctx["tareas_involucrado_count"] == 0
     assert ctx["tareas_otras_count"] == 2
+
+
+def test_badge_estar_en_el_equipo_no_infla_el_azul(proyecto_factory, usuario_factory):
+    """Regresión del caso Oscar: estar en el EQUIPO de un proyecto (asignación)
+    NO cuenta como tarea propia. Sin tareas asignadas a él ni mandados suyos, el
+    azul y el rojo quedan en 0 — solo ve el gris con el total del despacho."""
+    from apps.el_pizarron.context_processors import mandados_badge
+    from apps.el_pizarron.models import Tarea
+    from apps.los_proyectos.models.asignacion import ProyectoAsignacion
+    from django.test import RequestFactory
+    jefe = usuario_factory(rol="super_admin")
+    otro = usuario_factory(rol="disenador")
+    p = proyecto_factory(creado_por=jefe)
+    # `jefe` está en el equipo del proyecto, pero la tarea es de `otro`.
+    ProyectoAsignacion.objects.create(proyecto=p, usuario=jefe, rol_en_proyecto="lider")
+    Tarea.objects.create(proyecto=p, titulo="De otro", creado_por=jefe, asignada_a=otro)
+    req = RequestFactory().get("/")
+    req.user = jefe
+    ctx = mandados_badge(req)
+    assert ctx["tareas_involucrado_count"] == 0   # azul: no tiene tareas propias
+    assert ctx["tareas_otras_count"] == 1          # gris: la del despacho
+    assert ctx["mandados_pendientes_count"] == 0   # rojo: no tiene mandados suyos

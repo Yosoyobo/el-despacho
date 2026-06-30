@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers %}
+{% load forms_helpers tareas_extras %}
 {% block title %}{{ empleado.nombre_completo }} — Equipo{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Equipo" "/directorio/" empleado.nombre_completo as breadcrumb_items %}
@@ -179,6 +179,31 @@
             Sin dirección ni pin de ubicación registrados.
         </section>
         {% endif %}
+
+        {# Pendientes de la persona — hasta 10 por vencimiento, el más pronto arriba (LC 2026-06-30) #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Pendientes</h3>
+            {% if tareas_pendientes %}
+            <ul class="space-y-2">
+                {% for t in tareas_pendientes %}
+                <li>
+                    <a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="block rounded-xl border border-gray-100 p-3 transition hover:border-brand-200 hover:bg-gray-50 dark:border-gray-800 dark:hover:border-brand-500/30 dark:hover:bg-white/[0.02]">
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="min-w-0 flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">{{ t.tipo|tipo_tarea_emoji }} {{ t.titulo }}</p>
+                            <span class="badge-hex shrink-0" style="--ec: {{ t|color_estado_tarea_de }}">{{ t|estado_visible_tarea }}</span>
+                        </div>
+                        <div class="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span class="min-w-0 flex-1 truncate">{{ t.proyecto.codigo }}{% if t.proyecto.cliente %} <span class="text-gray-300 dark:text-gray-600">·</span> {{ t.proyecto.cliente.razon_social }}{% endif %}</span>
+                            <span class="shrink-0 tabular-nums {% if t.esta_atrasada %}font-medium text-warning-600 dark:text-warning-400{% endif %}">{% if t.fecha_compromiso %}{{ t.fecha_compromiso|fecha_corta }}{% if t.hora %} {{ t.hora|hfmt:"H:i" }}{% endif %}{% else %}Sin fecha{% endif %}</span>
+                        </div>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Sin pendientes asignados.</p>
+            {% endif %}
+        </section>
     </aside>
 </div>
 {% endblock %}

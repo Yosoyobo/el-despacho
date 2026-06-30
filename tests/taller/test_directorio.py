@@ -15,8 +15,9 @@ def _set(u, **kw):
 
 
 def test_lista_visible_para_disenador(client, usuario_factory):
-    """Render LC 2026-06-30: la lista de Equipo es simple (nombre + puesto +
-    badge de rol). El detalle (oficina/correo/horario) ya solo vive en la ficha."""
+    """Render LC 2026-06-30 (2ª pasada): la lista de Equipo es un ACORDEÓN —
+    colapsado muestra nombre + puesto + badges; expandido, contacto + horario; y
+    cada tarjeta enlaza a la ficha completa."""
     u = usuario_factory(rol="disenador")
     otro = _set(usuario_factory(rol="contador"),
                 nombre_completo="Caro Campos", puesto="Contadora", oficina="Santa Fe")
@@ -26,8 +27,30 @@ def test_lista_visible_para_disenador(client, usuario_factory):
     body = resp.content.decode()
     assert "Caro Campos" in body       # nombre
     assert "Contadora" in body         # puesto (subtítulo)
-    # Cada renglón enlaza a la ficha (donde sí se ve oficina/correo/horario).
+    assert "Ver ficha completa" in body  # acordeón expandible con link a la ficha
+    # Cada renglón enlaza a la ficha (donde se ve el detalle completo).
     assert f"/directorio/{otro.pk}" in body
+
+
+def test_perfil_lista_pendientes_por_vencimiento(client, usuario_factory, proyecto_factory):
+    """LC 2026-06-30: bajo el mapa, la ficha lista los pendientes de la persona
+    ordenados por vencimiento (el más próximo arriba)."""
+    from datetime import date, timedelta
+
+    from apps.el_pizarron.models import Tarea
+    jefe = usuario_factory(rol="super_admin")
+    empleado = _set(usuario_factory(rol="disenador"), nombre_completo="Empleado Pruebas")
+    p = proyecto_factory(creado_por=jefe)
+    hoy = date.today()
+    Tarea.objects.create(proyecto=p, titulo="Vence ya", creado_por=jefe,
+                         asignada_a=empleado, fecha_compromiso=hoy)
+    Tarea.objects.create(proyecto=p, titulo="Vence luego", creado_por=jefe,
+                         asignada_a=empleado, fecha_compromiso=hoy + timedelta(days=10))
+    client.force_login(jefe)
+    body = client.get(f"/directorio/{empleado.pk}/").content.decode()
+    assert "Pendientes" in body
+    assert "Vence ya" in body and "Vence luego" in body
+    assert body.index("Vence ya") < body.index("Vence luego")  # más próximo arriba
 
 
 def test_busqueda_filtra(client, usuario_factory):
