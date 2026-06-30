@@ -41,6 +41,9 @@
   asignadas a ti o de tus proyectos) y en **gris** las **demás** tareas pendientes. Si no
   estás involucrado en ninguna, solo verás el globo **gris** con el total. (El globo
   **rojo** sigue siendo los **mandados** pendientes.)
+- **La página de Equipo es ahora una lista limpia.** En **Equipo** ves a tus compañeros
+  en una **lista** simple: nombre, puesto y su rol. Al **picar una persona** entras a su
+  **ficha completa** (con correo, teléfono, oficina, horario y asistencia), igual que antes.
 
 ---
 

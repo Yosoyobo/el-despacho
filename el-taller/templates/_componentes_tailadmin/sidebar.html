@@ -39,8 +39,7 @@
         {% endif %}
 
         {% if permisos_modulos.pizarron and not sidebar_orden.tareas.oculto %}
-        {# V13: Mandados se fusionó en Tareas. LC 2026-06-30: azul=tareas que te
-           involucran · gris=las demás (total de las que no te involucran) · rojo=mandados. #}
+        {# V13: Mandados se fusionó en Tareas. LC 2026-06-30: azul=tareas que te involucran · gris=las demás · rojo=mandados. #}
         <a href="/tareas/" data-sidebar-grupo="{{ sidebar_orden.tareas.grupo }}" style="order: {{ sidebar_orden.tareas.orden|default:35 }}" class="menu-item {% if '/tareas' in request.path or '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="flex-1">Tareas</span>

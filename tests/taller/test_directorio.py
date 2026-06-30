@@ -15,15 +15,19 @@ def _set(u, **kw):
 
 
 def test_lista_visible_para_disenador(client, usuario_factory):
+    """Render LC 2026-06-30: la lista de Equipo es simple (nombre + puesto +
+    badge de rol). El detalle (oficina/correo/horario) ya solo vive en la ficha."""
     u = usuario_factory(rol="disenador")
-    _set(usuario_factory(rol="contador"),
-         nombre_completo="Caro Campos", puesto="Contadora", oficina="Santa Fe")
+    otro = _set(usuario_factory(rol="contador"),
+                nombre_completo="Caro Campos", puesto="Contadora", oficina="Santa Fe")
     client.force_login(u)
     resp = client.get("/directorio/")
     assert resp.status_code == 200
-    assert b"Caro Campos" in resp.content
-    assert b"Contadora" in resp.content
-    assert b"Santa Fe" in resp.content
+    body = resp.content.decode()
+    assert "Caro Campos" in body       # nombre
+    assert "Contadora" in body         # puesto (subtítulo)
+    # Cada renglón enlaza a la ficha (donde sí se ve oficina/correo/horario).
+    assert f"/directorio/{otro.pk}" in body
 
 
 def test_busqueda_filtra(client, usuario_factory):
