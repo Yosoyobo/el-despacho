@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Buscar direcciones y lugares con el pin automático, en todos lados (30 de junio de 2026)
+
+- **Un buscador de direcciones igual en todo el sistema.** En **cualquier lugar donde
+  capturas una dirección, ubicación o lugar** —dirección de un **cliente**, de un
+  **proveedor**, el **lugar (destino)** de una entrega/recolección, una **sede** o la
+  **geocerca** de un empleado— ahora aparece un **cuadro de resultados en vivo**:
+  conforme escribes te va sugiriendo **lugares conocidos** (sedes, clientes o proveedores
+  que ya visitaste) y **direcciones**. Picas una de la lista y listo.
+- **El mapa pone el pin solo.** Donde hay mapa (sedes, geocerca del empleado, destino de
+  un mandado), al elegir una sugerencia el **pin se coloca automáticamente** y el mapa se
+  centra ahí. También puedes **arrastrar el pin**, **picar el mapa** o usar **"📍 Mi
+  ubicación"**.
+- **Pega una dirección y se ubica sola.** Si **copias y pegas** una dirección en el
+  buscador (o escribes y das **Enter**), el sistema la busca y **coloca el pin** en el
+  primer resultado. También puedes pegar **coordenadas** tipo `19.4326, -99.1332` y van
+  directo al mapa.
+- **El mapa no estorba.** En los formularios el mapa empieza **escondido**: aparece
+  cuando das **"Ver / fijar en el mapa"** o cuando eliges una dirección. En las pantallas
+  donde el mapa es el centro (sedes, fijar destino de un mandado) sigue **abierto**.
+- **Con El Chalán.** Cuando le dictas una entrega o recolección (p. ej. *"entrega la lona
+  en Reforma 222"*), El Chalán **ubica la dirección y pone el destino** del mandado solo;
+  si no la das, usa la **dirección del cliente** o su última ubicación conocida. Siempre
+  puedes ajustar el pin después desde **Mandados → Fijar**.
+
+> Todo es **gratis** (usa mapas de OpenStreetMap, sin costo). Si en algún momento la
+> búsqueda no responde, puedes seguir capturando la dirección a mano o picando el mapa.
+
+---
+
 ## Novedades — Proveedores en tarjetas, Equipo en acordeón y globos de Tareas claros (30 de junio de 2026)
 
 - **Proveedores ahora se ven como tarjetas.** La página de **Proveedores** (dentro de

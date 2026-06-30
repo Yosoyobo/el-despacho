@@ -1,0 +1,48 @@
+{% comment %}
+Geo-picker unificado (S-Geo-Picker-V1) — cuadro de resultados en vivo + auto-pin.
+Dual-copy (regla §18): idéntico en el-taller y la-gerencia. Lo cablea geo_picker.js.
+
+Parámetros (vía {% include with %}):
+  modo            "completo" (mapa + lat/lng + etiqueta) | "texto" (solo rellena un campo). Default "texto".
+  objetivo_texto  id del <input/textarea> que se rellena con la dirección elegida.
+  lat_id, lng_id  ids de los inputs (hidden) de coordenadas (modo completo).
+  etiqueta_id     id del input de etiqueta a autocompletar (opcional, modo completo).
+  radio_id        id del input de radio en metros (dibuja un círculo, opcional).
+  con_geoloc      bool — muestra el botón "Mi ubicación".
+  con_pois        bool — incluye POIs internos (sedes/clientes/proveedores) en la lista.
+  mapa_abierto    bool — el mapa arranca visible (forms dedicados / modales de mapa).
+  zoom            int — zoom al fijar un punto (default 16).
+  placeholder     texto del buscador.
+  label           etiqueta corta opcional sobre el buscador.
+  ayuda           texto de ayuda opcional bajo el buscador.
+  alto            clase de alto del mapa (default "h-64"; p. ej. "h-[28rem]").
+{% endcomment %}
+<div class="geo-picker" data-geo-picker
+     data-modo="{{ modo|default:'texto' }}"
+     data-endpoint="{% url 'geo-buscar' %}"
+     data-con-pois="{{ con_pois|yesno:'1,0' }}"
+     data-zoom="{{ zoom|default:16 }}"
+     {% if objetivo_texto %}data-objetivo-texto="{{ objetivo_texto }}"{% endif %}
+     {% if lat_id %}data-lat-input="{{ lat_id }}"{% endif %}
+     {% if lng_id %}data-lng-input="{{ lng_id }}"{% endif %}
+     {% if etiqueta_id %}data-etiqueta-input="{{ etiqueta_id }}"{% endif %}
+     {% if radio_id %}data-radio-input="{{ radio_id }}"{% endif %}
+     data-mapa-abierto="{{ mapa_abierto|yesno:'1,0' }}">
+    {% if label %}<label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">{{ label }}</label>{% endif %}
+    <div class="relative">
+        <input type="text" data-geo-buscar autocomplete="off"
+               placeholder="{{ placeholder|default:'Buscar o pegar una dirección…' }}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+        <ul data-geo-resultados class="absolute left-0 right-0 z-[1000] mt-1 hidden max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white text-sm shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"></ul>
+    </div>
+    {% if ayuda %}<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ ayuda }}</p>{% endif %}
+    {% if modo == 'completo' %}
+    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        {% if con_geoloc %}<button type="button" data-geo-localizar class="text-brand-600 hover:underline dark:text-brand-400">📍 Mi ubicación</button>{% endif %}
+        <button type="button" data-geo-toggle-mapa data-abrir="Ver / fijar en el mapa" data-cerrar="Ocultar mapa"
+                class="text-brand-600 hover:underline dark:text-brand-400">{% if mapa_abierto %}Ocultar mapa{% else %}Ver / fijar en el mapa{% endif %}</button>
+        <span data-geo-coords class="tabular-nums text-gray-400 dark:text-gray-500"></span>
+    </div>
+    <div data-geo-mapa class="{% if not mapa_abierto %}hidden {% endif %}mt-2 {{ alto|default:'h-64' }} w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700"></div>
+    {% endif %}
+</div>

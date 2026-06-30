@@ -37,20 +37,51 @@ def _gate_correcciones(request):
 
 # ───────────────────────── geocoding (Nominatim) ─────────────────────────
 
+def _sedes_poi(texto: str = "", limite: int = 8) -> list[dict]:
+    """POIs internos para La Gerencia = sedes activas con pin, filtradas por
+    `texto` (sin acentos). Defensivo: `[]` si el catálogo no está disponible."""
+    import contextlib
+    import unicodedata
+
+    def _na(s: str) -> str:
+        return "".join(
+            c for c in unicodedata.normalize("NFD", (s or "").lower())
+            if unicodedata.category(c) != "Mn"
+        )
+
+    out: list[dict] = []
+    with contextlib.suppress(Exception):
+        from apps.checador.models.sede import SedeLC
+        q = _na(texto.strip())
+        for s in SedeLC.objects.filter(
+            activa=True, lat__isnull=False, lng__isnull=False,
+        ).order_by("orden", "nombre"):
+            if q and q not in _na(s.nombre):
+                continue
+            out.append({
+                "label": s.nombre, "lat": float(s.lat), "lng": float(s.lng),
+                "fuente": "sede", "clave": f"sede:{s.pk}",
+            })
+            if len(out) >= max(1, limite):
+                break
+    return out
+
+
 @login_required
 def geocoding_buscar(request):
-    """Proxy server-side a Nominatim (OSM) para La Gerencia. Reusa
-    `lib.geocoding`. Con `?q=` busca direcciones/colonias
-    (`{resultados: [...]}`); con `?lat=&lng=` identifica el punto al picar el
-    mapa (`{punto: {...}}`). Espejo del endpoint `mandados-geocoding` del Taller
-    (los Django projects no comparten urlconf, por eso vive aquí también)."""
+    """Proxy server-side a Nominatim (OSM) + POIs (sedes) para La Gerencia.
+    Reusa `lib.geocoding`. Con `?q=` → `{pois, resultados}` (sedes + direcciones;
+    `&pois=0` omite las sedes); con `?lat=&lng=` → `{punto}` (al picar el mapa).
+    Espejo del endpoint del Taller (los Django projects no comparten urlconf)."""
     from django.http import JsonResponse
     lat, lng = request.GET.get("lat"), request.GET.get("lng")
     if lat and lng:
         from lib.geocoding import identificar
         return JsonResponse({"punto": identificar(lat, lng)})
     from lib.geocoding import buscar
-    return JsonResponse({"resultados": buscar(request.GET.get("q", ""))})
+    q = request.GET.get("q", "")
+    pois = [] if request.GET.get("pois") == "0" else _sedes_poi(q)
+    return JsonResponse({"pois": pois, "resultados": buscar(q)})
 
 
 # ───────────────────────── horarios ─────────────────────────

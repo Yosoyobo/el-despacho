@@ -42,8 +42,10 @@
                 {% endif %}
             </div>
             <div class="space-y-4">
+                {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto="id_direccion" con_pois=False placeholder="Buscar o pegar una dirección…" %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fiscal_igual %}
+                {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto="id_direccion_fiscal" con_pois=False placeholder="Buscar o pegar la dirección fiscal…" %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion_fiscal %}
             </div>
         </section>

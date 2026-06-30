@@ -14,6 +14,8 @@ urlpatterns = [
     path("tareas/<int:pk>/comentar", views.comentar_tarea, name="pizarron-comentar-tarea"),
     path("tareas/<int:pk>/completar", views.completar_tarea, name="pizarron-completar-tarea"),
     path("tareas/<int:pk>/cambiar-estado", views.cambiar_estado_tarea, name="pizarron-cambiar-estado"),
+    # Geo-picker compartido (cuadro de resultados en vivo + POIs + Nominatim).
+    path("geo/buscar", views.geocoding_buscar, name="geo-buscar"),
     # El Runner — Mandados (entregas/recolecciones como entidad logística).
     path("mandados/", views.mandados_lista, name="mandados-lista"),
     path("mandados/geocoding", views.geocoding_buscar, name="mandados-geocoding"),

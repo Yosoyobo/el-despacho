@@ -80,3 +80,28 @@ def resolver_poi(texto: str) -> dict | None:
         if texto in p["label"].lower():
             return p
     return None
+
+
+def _sin_acentos(s: str) -> str:
+    import unicodedata
+    return "".join(
+        c for c in unicodedata.normalize("NFD", (s or "").lower())
+        if unicodedata.category(c) != "Mn"
+    )
+
+
+def buscar_pois(texto: str = "", limite: int = 8) -> list[dict]:
+    """POIs internos (sedes + clientes/proveedores con ubicación conocida) que
+    coinciden con `texto`, para el cuadro de resultados en vivo del geo-picker.
+
+    Sin texto devuelve las primeras `limite` (sedes primero). Con texto filtra
+    por substring sin acentos sobre la etiqueta. Defensivo: `[]` si algo falla.
+    """
+    try:
+        pois = pois_para_destino()
+    except Exception:  # noqa: BLE001 — nunca tumba el endpoint
+        return []
+    q = _sin_acentos(texto.strip())
+    if q:
+        pois = [p for p in pois if q in _sin_acentos(p.get("label", ""))]
+    return pois[: max(1, limite)]

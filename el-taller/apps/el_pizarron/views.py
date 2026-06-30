@@ -598,25 +598,33 @@ def mandado_destino(request, pk):
         messages.success(request, "Destino del mandado actualizado.")
         return redirect("mandados-lista")
 
-    from apps.el_pizarron.poi import pois_para_destino
-    return render(request, "mandados/_modal_destino.html", {
-        "m": m,
-        "pois": pois_para_destino(),
-    })
+    # Los POIs ya no se precargan: el geo-picker los trae en vivo desde
+    # /geo/buscar conforme el usuario escribe (cuadro de resultados).
+    return render(request, "mandados/_modal_destino.html", {"m": m})
 
 
 @login_required
 def geocoding_buscar(request):
-    """Proxy server-side a Nominatim (OSM). Reusado por el modal de destino y por
-    El Chalán. Con `?q=` busca direcciones/POIs (`{resultados: [...]}`); con
-    `?lat=&lng=` identifica el punto al picar el mapa (`{punto: {...}}`)."""
+    """Proxy server-side a Nominatim (OSM) + POIs internos. Reusado por el
+    geo-picker (cuadro de resultados en vivo), el modal de destino y El Chalán.
+
+    - `?q=` → `{pois: [...], resultados: [...]}` (lugares conocidos + direcciones).
+      Pasa `&pois=0` para omitir los POIs (modo "solo direcciones", p. ej. el
+      autocompletado de la dirección de un cliente/proveedor).
+    - `?lat=&lng=` → `{punto: {...}}` (identifica el punto al picar el mapa).
+    """
     from django.http import JsonResponse
     lat, lng = request.GET.get("lat"), request.GET.get("lng")
     if lat and lng:
         from lib.geocoding import identificar
         return JsonResponse({"punto": identificar(lat, lng)})
     from lib.geocoding import buscar
-    return JsonResponse({"resultados": buscar(request.GET.get("q", ""))})
+    q = request.GET.get("q", "")
+    pois: list[dict] = []
+    if request.GET.get("pois") != "0":
+        from apps.el_pizarron.poi import buscar_pois
+        pois = buscar_pois(q)
+    return JsonResponse({"pois": pois, "resultados": buscar(q)})
 
 
 def _emitir_mandado(tipo, usuario, mandado, extra=None):

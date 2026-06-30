@@ -84,7 +84,8 @@
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">📍 Lugar (destino)</label>
             {% if form.destino_etiqueta.errors %}<p class="mb-1 text-xs text-error-600 dark:text-error-400">{{ form.destino_etiqueta.errors.0 }}</p>{% endif %}
             {{ form.destino_etiqueta }}
-            <p class="mt-1 mb-4 text-xs text-gray-400 dark:text-gray-500">Dirección o lugar de la entrega/recolección. Después puedes fijar el pin exacto en el mapa.</p>
+            <div class="mt-2">{% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto=form.destino_etiqueta.id_for_label con_pois=True placeholder="Buscar un lugar conocido o una dirección…" %}</div>
+            <p class="mt-1 mb-4 text-xs text-gray-400 dark:text-gray-500">Escribe y elige un lugar conocido o una dirección. Después puedes fijar el pin exacto en el mapa desde Mandados.</p>
             <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">🛵 Runner (quién lleva / recoge)</label>
             <label class="mb-3 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                 <input type="checkbox" name="runner_auto" id="id_runner_auto" {% if form.runner_auto.value|default:True %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
