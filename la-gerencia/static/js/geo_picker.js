@@ -7,13 +7,16 @@
  * el mapa pone el pin en automático.
  *
  * Dos modos (atributo `data-modo`):
- *   - "completo": rellena lat/lng (hidden) + etiqueta + mapa Leaflet con pin
- *     arrastrable, clic en el mapa, "mi ubicación" y círculo de radio opcional.
- *   - "texto": sólo rellena un campo de dirección (sin coordenadas ni mapa).
+ *   - "completo": buscador dedicado + mapa Leaflet con pin arrastrable, clic en
+ *     el mapa, "mi ubicación" y círculo de radio opcional. Rellena lat/lng
+ *     (hidden) + etiqueta. El buscador es una herramienta APARTE del dato.
+ *   - "texto": NO dibuja una caja extra; el PROPIO campo de dirección
+ *     (`data-objetivo-texto`) se vuelve el buscador y las sugerencias aparecen
+ *     justo debajo de él. Sin coordenadas ni mapa.
  *
- * Leaflet se carga PEREZOSAMENTE (sólo cuando se abre un mapa) para no inflar
- * las páginas sin mapa. Se re-inicializa en `htmx:afterSwap` (modales/tabs).
- * "gratis o abortamos": Nominatim + OSM, debounce 600 ms, sin API key.
+ * Leaflet se carga PEREZOSAMENTE (sólo cuando se abre un mapa). Se re-inicializa
+ * en `htmx:afterSwap` (modales/tabs). "gratis o abortamos": Nominatim + OSM,
+ * debounce 600 ms, sin API key.
  *
  * Dual-copy (regla §18): este archivo es idéntico en el-taller y la-gerencia.
  */
@@ -23,6 +26,10 @@
   var LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
   var LEAFLET_JS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
   var leafletPedido = false;
+
+  var UL_CLASS = "absolute left-0 right-0 z-[1000] mt-1 hidden max-h-56 overflow-y-auto " +
+    "rounded-lg border border-gray-200 bg-white text-sm shadow-theme-lg " +
+    "dark:border-gray-700 dark:bg-gray-900";
 
   function ensureLeaflet(cb) {
     if (window.L) { cb(); return; }
@@ -50,17 +57,111 @@
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
   function byId(id) { return id ? document.getElementById(id) : null; }
   function num(i) { var v = i ? parseFloat(i.value) : NaN; return isNaN(v) ? null : v; }
+  function deburr(s) { return (s == null ? "" : "" + s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
 
-  function initPicker(root) {
-    if (root.getAttribute("data-geo-init") === "1") return;
-    root.setAttribute("data-geo-init", "1");
+  // Conserva el NÚMERO de calle que el usuario escribió (Nominatim suele devolver
+  // la calle sin número, y para una entrega el número es indispensable). Si el
+  // texto del usuario empieza con la calle de la dirección elegida y trae algo
+  // más (el número), conserva su calle+número y le añade el contexto
+  // (colonia/ciudad/CP) de la sugerencia. Si no, usa la dirección tal cual.
+  function fusionarNumero(textoUsuario, direccion) {
+    textoUsuario = (textoUsuario || "").trim();
+    if (!direccion) return textoUsuario;
+    if (!textoUsuario) return direccion;
+    var segs = direccion.split(",").map(function (s) { return s.trim(); });
+    var calle = segs[0] || "";
+    var u = deburr(textoUsuario), c = deburr(calle);
+    if (c && u.indexOf(c) === 0 && u.length > c.length) {
+      return [textoUsuario].concat(segs.slice(1)).join(", ");
+    }
+    return direccion;
+  }
 
-    var modo = root.getAttribute("data-modo") || "texto";
-    var endpoint = root.getAttribute("data-endpoint");
+  // Pinta la lista combinada (POIs + direcciones). `onElegir(r)` aplica la
+  // selección; `autoaplicar` toma el primer resultado solo (pegar/Enter en mapa).
+  function pintarLista(lista, data, conPois, onElegir, autoaplicar) {
+    lista.innerHTML = "";
+    var items = [];
+    if (conPois && data && data.pois) {
+      data.pois.forEach(function (p) {
+        items.push({ nombre: p.label, direccion: p.label, lat: p.lat, lng: p.lng, _poi: p.fuente });
+      });
+    }
+    ((data && data.resultados) || []).forEach(function (r) { items.push(r); });
+    if (!items.length) { lista.classList.add("hidden"); return; }
+    items.forEach(function (r) {
+      var li = document.createElement("li");
+      li.className = "cursor-pointer px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800";
+      if (r._poi) {
+        li.innerHTML = '<span class="mr-1.5 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">' + esc(r._poi) + "</span>" + esc(r.nombre);
+      } else {
+        li.textContent = r.direccion || r.nombre;
+      }
+      li.addEventListener("click", function () { onElegir(r); });
+      lista.appendChild(li);
+    });
+    lista.classList.remove("hidden");
+    if (autoaplicar && items.length) onElegir(items[0]);
+  }
+
+  // Devuelve un buscador con debounce contra el endpoint.
+  function hacerBuscador(lista, endpoint, conPois, onElegir) {
+    var t = null;
+    function go(q, auto) {
+      fetch(endpoint + "?q=" + encodeURIComponent(q) + (conPois ? "" : "&pois=0"))
+        .then(function (r) { return r.json(); })
+        .then(function (d) { pintarLista(lista, d, conPois, onElegir, auto); })
+        .catch(function () { lista.classList.add("hidden"); });
+    }
+    return {
+      go: go,
+      debounce: function (q) { if (t) clearTimeout(t); t = setTimeout(function () { go(q, false); }, 600); },
+      cancel: function () { if (t) clearTimeout(t); },
+    };
+  }
+
+  // ───────────── modo texto: el propio campo es el buscador ─────────────
+  function initTexto(root, endpoint) {
+    var campo = byId(root.getAttribute("data-objetivo-texto"));
+    if (!campo) return;  // el campo objetivo no está en esta pantalla
+    var conPois = root.getAttribute("data-con-pois") === "1";
+
+    // Envuelve el campo en un contenedor relativo y cuelga el dropdown debajo.
+    var wrap = document.createElement("div");
+    wrap.className = "relative";
+    campo.parentNode.insertBefore(wrap, campo);
+    wrap.appendChild(campo);
+    var lista = document.createElement("ul");
+    lista.className = UL_CLASS;
+    lista.setAttribute("data-geo-resultados", "");
+    wrap.appendChild(lista);
+    root.remove();  // el contenedor de config ya no se necesita (no deja hueco)
+
+    function onElegir(r) {
+      // Conserva el número de calle que el usuario ya escribió en el campo.
+      campo.value = fusionarNumero(campo.value, r.direccion || r.nombre);
+      campo.dispatchEvent(new Event("input", { bubbles: true }));
+      campo.dispatchEvent(new Event("change", { bubbles: true }));
+      lista.classList.add("hidden");
+    }
+    var b = hacerBuscador(lista, endpoint, conPois, onElegir);
+    campo.setAttribute("autocomplete", "off");
+    campo.addEventListener("input", function () {
+      var q = campo.value.trim();
+      if (q.length < 4) { b.cancel(); lista.classList.add("hidden"); return; }
+      b.debounce(q);
+    });
+    // Pegar muestra sugerencias (sin sobreescribir lo pegado).
+    campo.addEventListener("paste", function () {
+      setTimeout(function () { var q = campo.value.trim(); if (q.length >= 3) { b.cancel(); b.go(q, false); } }, 30);
+    });
+  }
+
+  // ───────────── modo completo: buscador dedicado + mapa ─────────────
+  function initCompleto(root, endpoint) {
     var box = root.querySelector("[data-geo-buscar]");
     var lista = root.querySelector("[data-geo-resultados]");
-    if (!box || !lista || !endpoint) return;
-
+    if (!box || !lista) return;
     var conPois = root.getAttribute("data-con-pois") === "1";
     var latI = byId(root.getAttribute("data-lat-input"));
     var lngI = byId(root.getAttribute("data-lng-input"));
@@ -100,7 +201,7 @@
     }
 
     function reverseEtiqueta(lat, lng) {
-      var destino = etiqI || (modo !== "texto" ? textoI : null);
+      var destino = etiqI || textoI;
       if (!destino || destino.value.trim()) return;
       fetch(endpoint + "?lat=" + lat.toFixed(6) + "&lng=" + lng.toFixed(6))
         .then(function (r) { return r.json(); })
@@ -137,7 +238,6 @@
       if (toggle) toggle.textContent = toggle.getAttribute("data-cerrar") || "Ocultar mapa";
     }
 
-    if (root.getAttribute("data-mapa-abierto") === "1") abrirMapa();
     if (toggle && mapaEl) toggle.addEventListener("click", function () {
       var oculto = mapaEl.classList.toggle("hidden");
       if (oculto) { toggle.textContent = toggle.getAttribute("data-abrir") || "Ver / fijar en el mapa"; }
@@ -147,97 +247,63 @@
     if (btnLoc && navigator.geolocation) btnLoc.addEventListener("click", function () {
       btnLoc.disabled = true;
       navigator.geolocation.getCurrentPosition(function (pos) {
-        if (modo !== "texto") { abrirMapa(); setCoords(pos.coords.latitude, pos.coords.longitude, true); }
+        abrirMapa(); setCoords(pos.coords.latitude, pos.coords.longitude, true);
         btnLoc.disabled = false;
       }, function () { btnLoc.disabled = false; }, { enableHighAccuracy: true, timeout: 10000 });
     });
 
-    function elegir(r) {
-      if (modo === "texto") {
-        if (textoI) {
-          textoI.value = r.direccion || r.nombre || "";
-          textoI.dispatchEvent(new Event("input", { bubbles: true }));
-          textoI.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-      } else {
-        if (r.lat != null && r.lng != null) { abrirMapa(); setCoords(r.lat, r.lng, true); }
-        var destino = etiqI || textoI;
-        if (destino && !destino.value.trim()) {
-          destino.value = (destino === textoI) ? (r.direccion || r.nombre || "") : (r.nombre || r.direccion || "");
-          destino.dispatchEvent(new Event("input", { bubbles: true }));
-        }
+    function onElegir(r) {
+      if (r.lat != null && r.lng != null) { abrirMapa(); setCoords(r.lat, r.lng, true); }
+      var destino = etiqI || textoI;
+      if (destino && !destino.value.trim()) {
+        // Para un campo de dirección, conserva el número escrito en el buscador.
+        destino.value = (destino === textoI) ? fusionarNumero(box.value, r.direccion || r.nombre) : (r.nombre || r.direccion || "");
+        destino.dispatchEvent(new Event("input", { bubbles: true }));
       }
       lista.classList.add("hidden");
       box.value = r.nombre || r.direccion || "";
     }
 
-    function pintar(data, autoaplicar) {
-      lista.innerHTML = "";
-      var items = [];
-      if (conPois && data && data.pois) {
-        data.pois.forEach(function (p) {
-          items.push({ nombre: p.label, direccion: p.label, lat: p.lat, lng: p.lng, _poi: p.fuente });
-        });
-      }
-      ((data && data.resultados) || []).forEach(function (r) { items.push(r); });
-      if (!items.length) { lista.classList.add("hidden"); return; }
-      items.forEach(function (r) {
-        var li = document.createElement("li");
-        li.className = "cursor-pointer px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800";
-        if (r._poi) {
-          li.innerHTML = '<span class="mr-1.5 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">' + esc(r._poi) + "</span>" + esc(r.nombre);
-        } else {
-          li.textContent = r.direccion || r.nombre;
-        }
-        li.addEventListener("click", function () { elegir(r); });
-        lista.appendChild(li);
-      });
-      lista.classList.remove("hidden");
-      // Pegar/buscar una dirección: el mapa pone el pin en automático (1er match).
-      if (autoaplicar && items.length) { elegir(items[0]); }
-    }
+    var b = hacerBuscador(lista, endpoint, conPois, onElegir);
 
-    function buscar(q, autoaplicar) {
-      fetch(endpoint + "?q=" + encodeURIComponent(q) + (conPois ? "" : "&pois=0"))
-        .then(function (r) { return r.json(); })
-        .then(function (d) { pintar(d, autoaplicar); })
-        .catch(function () { lista.classList.add("hidden"); });
-    }
-
-    // "lat, lng" pegado → fija el pin directo (sólo modo completo).
+    // "lat, lng" pegado → fija el pin directo.
     function tryCoords(q) {
       var m = q.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
-      if (m && modo !== "texto") {
-        abrirMapa(); setCoords(parseFloat(m[1]), parseFloat(m[2]), true);
-        lista.classList.add("hidden"); return true;
-      }
+      if (m) { abrirMapa(); setCoords(parseFloat(m[1]), parseFloat(m[2]), true); lista.classList.add("hidden"); return true; }
       return false;
     }
 
-    var t = null;
     box.addEventListener("input", function () {
       var q = box.value.trim();
-      if (t) clearTimeout(t);
-      if (tryCoords(q)) return;
-      if (q.length < 4) { lista.classList.add("hidden"); return; }
-      t = setTimeout(function () { buscar(q, false); }, 600);  // debounce Nominatim
+      if (tryCoords(q)) { b.cancel(); return; }
+      if (q.length < 4) { b.cancel(); lista.classList.add("hidden"); return; }
+      b.debounce(q);
     });
     box.addEventListener("keydown", function (e) {
       if (e.key !== "Enter") return;
       e.preventDefault();
       var q = box.value.trim();
       if (tryCoords(q) || q.length < 3) return;
-      if (t) clearTimeout(t);
-      buscar(q, true);  // Enter = aplica el primer resultado (auto-pin)
+      b.cancel(); b.go(q, true);  // Enter aplica el primer resultado (auto-pin)
     });
     box.addEventListener("paste", function () {
       setTimeout(function () {
         var q = box.value.trim();
         if (tryCoords(q) || q.length < 3) return;
-        if (t) clearTimeout(t);
-        buscar(q, true);  // pegar dirección = auto-pin
+        b.cancel(); b.go(q, true);  // pegar dirección = auto-pin
       }, 30);
     });
+
+    if (root.getAttribute("data-mapa-abierto") === "1") abrirMapa();
+  }
+
+  function initPicker(root) {
+    if (root.getAttribute("data-geo-init") === "1") return;
+    root.setAttribute("data-geo-init", "1");
+    var endpoint = root.getAttribute("data-endpoint");
+    if (!endpoint) return;
+    if ((root.getAttribute("data-modo") || "texto") === "texto") initTexto(root, endpoint);
+    else initCompleto(root, endpoint);
   }
 
   function scan() {
@@ -247,12 +313,11 @@
   document.addEventListener("DOMContentLoaded", scan);
   document.addEventListener("htmx:afterSwap", scan);
 
-  // Cierra cualquier lista de resultados al hacer clic afuera de su picker.
+  // Cierra cualquier lista de resultados al hacer clic afuera de su buscador.
   document.addEventListener("click", function (e) {
-    document.querySelectorAll(".geo-picker[data-geo-picker]").forEach(function (root) {
-      var box = root.querySelector("[data-geo-buscar]");
-      var lista = root.querySelector("[data-geo-resultados]");
-      if (lista && e.target !== box && !lista.contains(e.target)) lista.classList.add("hidden");
+    document.querySelectorAll("[data-geo-resultados]").forEach(function (lista) {
+      var box = lista.previousElementSibling;
+      if (e.target !== box && !lista.contains(e.target)) lista.classList.add("hidden");
     });
   });
 })();

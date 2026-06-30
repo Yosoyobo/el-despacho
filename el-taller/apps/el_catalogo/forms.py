@@ -27,7 +27,9 @@ class ProveedorForm(forms.ModelForm):
             "notas": "Notas",
         }
         widgets = {
-            "direccion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
+            # La dirección usa el buscador de direcciones (geo-picker), no las
+            # referencias @#$ — y así no hay dos dropdowns en el mismo campo.
+            "direccion": forms.Textarea(attrs={"rows": 2}),
             "direccion_fiscal": forms.Textarea(attrs={"rows": 2, "data-fiscal-box": "1"}),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }

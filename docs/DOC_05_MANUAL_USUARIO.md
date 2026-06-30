@@ -10,9 +10,13 @@
 - **Un buscador de direcciones igual en todo el sistema.** En **cualquier lugar donde
   capturas una dirección, ubicación o lugar** —dirección de un **cliente**, de un
   **proveedor**, el **lugar (destino)** de una entrega/recolección, una **sede** o la
-  **geocerca** de un empleado— ahora aparece un **cuadro de resultados en vivo**:
-  conforme escribes te va sugiriendo **lugares conocidos** (sedes, clientes o proveedores
-  que ya visitaste) y **direcciones**. Picas una de la lista y listo.
+  **geocerca** de un empleado— al **escribir en el propio campo** te va sugiriendo
+  **lugares conocidos** (sedes, clientes o proveedores que ya visitaste) y **direcciones**
+  justo debajo. Picas una de la lista y listo — **un solo campo**, sin cajas extra.
+- **Conserva el número de la calle.** Si escribes "Calle Juan Salvador Agraz **40**" y
+  eliges una sugerencia, **se queda el 40** y solo se le agrega el contexto (colonia,
+  ciudad, CP). El número es indispensable para las entregas, así que ya **no se pierde**
+  al elegir de la lista.
 - **El mapa pone el pin solo.** Donde hay mapa (sedes, geocerca del empleado, destino de
   un mandado), al elegir una sugerencia el **pin se coloca automáticamente** y el mapa se
   centra ahí. También puedes **arrastrar el pin**, **picar el mapa** o usar **"📍 Mi

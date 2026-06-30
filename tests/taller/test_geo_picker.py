@@ -104,6 +104,9 @@ def test_partial_modo_texto():
     assert 'data-objetivo-texto="id_direccion"' in html
     assert 'data-con-pois="0"' in html
     assert "data-geo-mapa" not in html  # modo texto no dibuja mapa
+    # Campo único: NO se renderiza una segunda caja de búsqueda; el JS engancha
+    # el dropdown al propio campo objetivo.
+    assert "data-geo-buscar" not in html
 
 
 def test_partial_modo_completo():
