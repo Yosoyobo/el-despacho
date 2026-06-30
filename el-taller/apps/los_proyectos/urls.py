@@ -21,6 +21,7 @@ urlpatterns = [
     # Recuadro «Cotizaciones» del proyecto (versionado, render Oscar 2026-06-27).
     path("<int:pk>/cotizacion/generar", views.generar_cotizacion, name="proyectos-generar-cotizacion"),
     path("<int:pk>/cotizacion/estado", views.cotizacion_estado, name="proyectos-cotizacion-estado"),
+    path("<int:pk>/cotizacion/eliminar", views.cotizacion_eliminar, name="proyectos-cotizacion-eliminar"),
     path("<int:pk>/cotizacion/anticipo", views.registrar_anticipo_modal, name="proyectos-registrar-anticipo"),
     # C5 S-LC-Feedback-V6: proveedores asignados al proyecto.
     path("<int:pk>/agregar-proveedor", views.agregar_proveedor_modal, name="proyectos-agregar-proveedor"),

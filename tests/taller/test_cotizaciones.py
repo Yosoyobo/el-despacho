@@ -324,3 +324,20 @@ def test_anular_oculta_de_vigentes(client, usuario_factory, cot_borrador):
     services.marcar_anulada(cot_borrador, admin, motivo="test")
     assert Cotizacion.objects.filter(pk=cot_borrador.pk).exists()
     assert not Cotizacion.vigentes.filter(pk=cot_borrador.pk).exists()
+
+
+def test_lista_columnas_render_lc(client, usuario_factory, cot_borrador):
+    """Render LC 2026-06-30: la tabla muestra fecha formateada + Versión, sin
+    columna de Código ni de Acciones (la fila entera es clickeable)."""
+    from cuentas.templatetags.forms_helpers import fecha_corta
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    body = client.get("/cotizaciones/").content.decode()
+    # Fecha formateada estilo "Vie 26 Jun 2026".
+    assert fecha_corta(cot_borrador.fecha_emision) in body
+    # Encabezados nuevos presentes, viejos ausentes.
+    assert "Versión" in body
+    assert "Subtotal" in body
+    assert "Acciones" not in body
+    # La fila lleva data-href (clickeable completa).
+    assert f"/cotizaciones/{cot_borrador.pk}/" in body

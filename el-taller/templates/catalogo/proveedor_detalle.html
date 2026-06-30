@@ -5,27 +5,61 @@
 {% breadcrumb_items "Productos" "/catalogo/" "Proveedores" "/catalogo/proveedores/" proveedor.razon_social as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=proveedor.razon_social breadcrumb_items=breadcrumb_items back_url="/catalogo/proveedores/" back_label="Proveedores" %}
 
+{% if puede_editar %}
+{# ── Barra de acciones: última actualización + indicador + Guardar (autoguardado, igual que Proyecto) ── #}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+        <span>Última actualización <time id="prov-ult-act" class="text-gray-700 dark:text-gray-200">{{ proveedor.actualizado_en|hfmt:"d M Y H:i" }}</time></span>
+        <span id="prov-guardado" class="inline-flex items-center gap-1 text-xs font-medium text-success-600 dark:text-success-400">✓ Guardado</span>
+    </div>
+    <button type="submit" form="form-proveedor" class="btn-primario">Guardar</button>
+</div>
+
 <div class="grid gap-6 xl:grid-cols-3">
-    <main class="space-y-6 xl:col-span-2">
-        <section class="ta-card">
-            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Información de contacto</h2>
-            <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
-                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Contacto</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.nombre_contacto|default:"—" }}</dd></div>
-                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Email</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.email_contacto|default:"—" }}</dd></div>
-                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Teléfono</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.telefono|default:"—" }}</dd></div>
-                <div><dt class="text-xs uppercase tracking-wide text-gray-500">RFC</dt><dd class="font-mono text-gray-900 dark:text-gray-100">{{ proveedor.rfc|default:"—" }}</dd></div>
-                {% if proveedor.notas %}<div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-gray-500">Notas</dt><dd class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ proveedor.notas }}</dd></div>{% endif %}
-            </dl>
+    <form id="form-proveedor" method="post" action="{% url 'catalogo-proveedor-detalle' proveedor.pk %}"
+          hx-post="{% url 'catalogo-proveedor-detalle' proveedor.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
+          class="campo-form space-y-6 xl:col-span-2">
+        {% csrf_token %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Información de contacto</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.razon_social ancho_completo=True %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.nombre_contacto %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.email_contacto %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.telefono %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.rfc %}
+            </div>
         </section>
 
-        {# Ubicación + dirección (última visita geolocalizada + fiscal). #}
-        {% include "cartera/_ubicacion.html" with nombre=proveedor.razon_social direccion=proveedor.direccion direccion_fiscal=proveedor.direccion_fiscal fiscal_igual=proveedor.fiscal_igual ultima_visita=ultima_visita %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Ubicación y dirección</h2>
+            <div class="mb-4 flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
+                {% if ultima_visita %}
+                <span class="text-xs text-gray-500 dark:text-gray-400">Última ubicación · {{ ultima_visita.registrado_en|hfmt:"d M Y H:i" }}</span>
+                {% include "checador/_boton_mapa.html" with lat=ultima_visita.lat lng=ultima_visita.lng etiqueta=proveedor.razon_social cuando=ultima_visita.registrado_en|hfmt:"d M H:i" precision=ultima_visita.precision %}
+                {% else %}
+                <span class="text-xs text-gray-400 dark:text-gray-500">Sin ubicación todavía — se toma de las visitas del Checador.</span>
+                {% endif %}
+            </div>
+            <div class="space-y-4">
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fiscal_igual %}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion_fiscal %}
+            </div>
+        </section>
 
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
+        </section>
+    </form>
+
+    <aside class="space-y-6">
+        {# ── Productos (M2M editor aparte) ── #}
         <section class="ta-card">
             <div class="mb-3 flex items-center justify-between gap-2">
-                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos que surte</h2>
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos</h2>
                 {% if puede_gestionar_servicios %}
-                <a href="{% url 'catalogo-proveedor-servicios' proveedor.pk %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar productos →</a>
+                <a href="{% url 'catalogo-proveedor-servicios' proveedor.pk %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar →</a>
                 {% endif %}
             </div>
             {% if servicios %}
@@ -33,28 +67,24 @@
                 {% for s in servicios %}
                 <li class="flex items-center justify-between gap-2 py-2">
                     <a href="{% url 'catalogo-variaciones' s.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ s.nombre }}</a>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ s.categoria.nombre }} · $ {{ s.precio_base|floatformat:2 }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ s.categoria.nombre }}</span>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no surte ningún producto" descripcion="Asigna productos desde aquí o márcalo en el form de un producto del catálogo." icono="folder" %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Asigna productos desde aquí o márcalo en el form de un producto del catálogo." icono="folder" %}
             {% if puede_gestionar_servicios %}
-            <div class="mt-3 text-center">
-                <a href="{% url 'catalogo-proveedor-servicios' proveedor.pk %}" class="btn-primario inline-block text-sm">Asignar productos</a>
-            </div>
+            <div class="mt-3 text-center"><a href="{% url 'catalogo-proveedor-servicios' proveedor.pk %}" class="btn-primario inline-block text-sm">Asignar productos</a></div>
             {% endif %}
             {% endif %}
         </section>
-    </main>
 
-    <aside class="space-y-4">
-        <section class="ta-card">
-            <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Estado</h3>
-            {% if proveedor.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}
-        </section>
-        <section class="ta-card flex flex-col gap-2">
-            <a href="{% url 'catalogo-proveedor-editar' proveedor.pk %}" class="btn-primario text-sm">Editar</a>
+        {# ── Estado + acciones (fuera del form de autoguardado) ── #}
+        <section class="ta-card flex flex-col gap-3">
+            <div class="flex items-center justify-between gap-2">
+                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Estado</h3>
+                {% if proveedor.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}
+            </div>
             <form method="post" action="{% url 'catalogo-proveedor-archivar' proveedor.pk %}">
                 {% csrf_token %}
                 <button type="submit" class="btn-secundario w-full text-sm">{% if proveedor.activo %}Desactivar{% else %}Reactivar{% endif %}</button>
@@ -66,4 +96,52 @@
         </section>
     </aside>
 </div>
+
+{# Indicador "● Sin guardar" al editar; el OOB del autoguardado lo regresa a ✓/✕. #}
+<script>
+(function () {
+    var form = document.getElementById('form-proveedor');
+    var ind = document.getElementById('prov-guardado');
+    if (!form || !ind) return;
+    form.addEventListener('input', function () {
+        ind.textContent = '● Cambios sin guardar';
+        ind.className = 'inline-flex items-center gap-1 text-xs font-medium text-warning-600 dark:text-warning-400';
+    });
+})();
+</script>
+
+{% else %}
+{# ── Solo lectura (sin permiso de edición) ── #}
+<div class="grid gap-6 xl:grid-cols-3">
+    <main class="space-y-6 xl:col-span-2">
+        <section class="ta-card">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Información de contacto</h2>
+            <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Contacto</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.nombre_contacto|default:"—" }}</dd></div>
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Email</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.email_contacto|default:"—" }}</dd></div>
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">Teléfono</dt><dd class="text-gray-900 dark:text-gray-100">{{ proveedor.telefono|default:"—" }}</dd></div>
+                <div><dt class="text-xs uppercase tracking-wide text-gray-500">RFC</dt><dd class="font-mono text-gray-900 dark:text-gray-100">{{ proveedor.rfc|default:"—" }}</dd></div>
+                {% if proveedor.notas %}<div class="sm:col-span-2"><dt class="text-xs uppercase tracking-wide text-gray-500">Notas</dt><dd class="whitespace-pre-line text-gray-700 dark:text-gray-300">{{ proveedor.notas }}</dd></div>{% endif %}
+            </dl>
+        </section>
+        {% include "cartera/_ubicacion.html" with nombre=proveedor.razon_social direccion=proveedor.direccion direccion_fiscal=proveedor.direccion_fiscal fiscal_igual=proveedor.fiscal_igual ultima_visita=ultima_visita %}
+        <section class="ta-card">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Productos</h2>
+            {% if servicios %}
+            <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for s in servicios %}<li class="flex items-center justify-between gap-2 py-2"><span class="text-sm text-gray-900 dark:text-gray-100">{{ s.nombre }}</span><span class="text-xs text-gray-500 dark:text-gray-400">{{ s.categoria.nombre }}</span></li>{% endfor %}
+            </ul>
+            {% else %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Aún no surte ningún producto." icono="folder" %}
+            {% endif %}
+        </section>
+    </main>
+    <aside class="space-y-4">
+        <section class="ta-card">
+            <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Estado</h3>
+            {% if proveedor.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}
+        </section>
+    </aside>
+</div>
+{% endif %}
 {% endblock %}

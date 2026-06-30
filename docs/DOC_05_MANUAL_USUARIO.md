@@ -5,6 +5,38 @@
 
 ---
 
+## Novedades — Proveedores en tarjetas, cotizaciones por versión y lista más limpia (30 de junio de 2026)
+
+- **Proveedores ahora se ven como tarjetas.** La página de **Proveedores** (dentro de
+  **Productos**) muestra una **tarjeta por proveedor** con su nombre, ubicación, las
+  **categorías y servicios** que maneja y tres números: **Proyectos totales**,
+  **Productos** y **Proyectos activos**.
+- **Dos filtros encadenados.** Arriba hay un filtro de **Categorías** y, debajo, uno de
+  **Servicios**. Al picar una **categoría**, el filtro de servicios se acota a esa
+  categoría y abajo solo quedan los proveedores que la manejan. Al picar un **servicio**,
+  se filtran los proveedores que lo dan. Un proveedor puede tener **varias** categorías y
+  **varios** servicios. La **búsqueda** (por nombre, contacto, categoría, servicio o
+  proyecto) también muestra los resultados como tarjetas.
+- **"Razón social" se llama ahora "Nombre".** En los proveedores el campo se renombró a
+  **Nombre** (es solo la etiqueta; nada cambia por dentro).
+- **La ficha del proveedor se edita en línea.** Igual que en la página de un proyecto:
+  ya **no hay botón "Editar"** — cambias cualquier campo y se **guarda solo** (verás
+  "✓ Guardado"). El apartado "Productos que surte" ahora se llama simplemente
+  **"Productos"**.
+- **Cotizaciones del proyecto: cada versión con su propio estatus.** En el recuadro
+  **Cotizaciones** de un proyecto, **cada versión (v1, v2…) tiene su propio estatus**
+  (Generada · Enviada · Aprobada · Pagada) que cambias picando el globo de esa versión.
+  Cada versión nueva arranca en **Generada**.
+- **Eliminar una cotización.** Cada versión tiene un **ícono de bote de basura**. Al
+  eliminarla, se **oculta** del recuadro pero **conserva su número de versión**: la
+  siguiente cotización **continúa la numeración** (no se reutilizan los números).
+- **La lista de Cotizaciones quedó más simple.** En el módulo **Cotizaciones**, la tabla
+  ahora muestra, en este orden: **Fecha** (formateada, ej. "Vie 26 Jun 2026"), **Cliente**,
+  **Proyecto**, **Versión**, **Subtotal (sin IVA)** y **Estado**. Se quitaron las columnas
+  de código y de acciones: **toda la fila es clickeable** para abrir el detalle.
+
+---
+
 ## Novedades — Calendario interactivo, Mandados dentro de Tareas y más (29 de junio de 2026)
 
 - **Calendario que responde al clic.** En el **Calendario** (y en el mini-calendario

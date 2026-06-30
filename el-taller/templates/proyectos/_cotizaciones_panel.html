@@ -1,17 +1,17 @@
 {% load forms_helpers %}
 {% comment %}
-Recuadro «Cotizaciones» del detalle de proyecto (render Oscar 2026-06-27).
+Recuadro «Cotizaciones» del detalle de proyecto (render LC 2026-06-30).
 
-· Lista las versiones (v1, v2…). El estatus es ÚNICO de la cotización (no por
-  versión): vive en la versión más reciente y se muestra como badge + dropdown
-  en su renglón (opción B). Las versiones anteriores solo listan «vN · PDF →».
-· Abajo, un pizza-tracker (estilo Domino's, adaptado a TailAdmin) pinta los
-  pasos CONFIGURADOS en Gerencia (EstadoCotizacion): crece/encoge según cuántos
-  haya, resalta el actual, los previos van 'done' y los siguientes 'future'.
-  Cada paso es clickeable (cambia el estatus) si tienes permiso.
-· "Generar vN" congela los Productos involucrados actuales. "Enviar" es
-  placeholder por ahora → rickroll (decisión Oscar).
+· Lista las versiones VISIBLES (las anuladas se ocultan, pero su número de
+  versión NO se reutiliza — la siguiente continúa la numeración).
+· Cada versión tiene su PROPIO estatus: badge + dropdown por renglón
+  (generada/enviada/aprobada/pagada, configurables en Gerencia).
+· Cada versión tiene un ícono 🗑 que la ELIMINA = la anula (queda oculta,
+  conserva su número de versión).
+· Abajo, "Generar vN" congela los Productos involucrados actuales y "Enviar"
+  (placeholder por ahora → rickroll, decisión Oscar).
 El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
+Se retiró el pizza-tracker y la línea de estatus único (simplificación pedida).
 {% endcomment %}
 <section id="cotizaciones-panel-{{ proyecto.pk }}"
          {% if puede_estado or puede_cotizar %}hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}
@@ -22,7 +22,7 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
     <ul class="mt-3 space-y-2 text-sm">
         {% for cot in cotizaciones_proyecto %}
         <li class="rounded-lg border border-gray-200 p-2.5 dark:border-gray-800">
-            {% if cot.pk == cot_latest_pk and puede_estado %}<input type="checkbox" id="cotdd-{{ cot.pk }}" class="peer sr-only">{% endif %}
+            {% if puede_estado %}<input type="checkbox" id="cotdd-{{ cot.pk }}" class="peer sr-only">{% endif %}
             <div class="flex items-center justify-between gap-2">
                 <div class="flex min-w-0 items-center gap-2">
                     <span class="font-semibold text-gray-900 dark:text-gray-100">{{ cot.version_label }}</span>
@@ -31,29 +31,39 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
                        class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">PDF →</a>
                     {% endif %}
                 </div>
-                {% if cot.pk == cot_latest_pk %}
+                <div class="flex shrink-0 items-center gap-1.5">
                     {% if puede_estado %}
                     <label for="cotdd-{{ cot.pk }}"
                            class="badge badge-hex inline-flex cursor-pointer select-none items-center gap-1"
-                           style="--ec: {{ cot.estado_color }}" title="Cambiar estatus de la cotización">
+                           style="--ec: {{ cot.estado_color }}" title="Cambiar estatus de esta versión">
                         {{ cot.get_estado_display }}
                         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </label>
+                    <button type="button"
+                            hx-post="{% url 'proyectos-cotizacion-eliminar' proyecto.pk %}"
+                            hx-vals='{"cot": "{{ cot.pk }}"}'
+                            hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
+                            hx-swap="outerHTML"
+                            hx-confirm="¿Eliminar {{ cot.version_label }}? Se anula y se oculta, pero conserva su número de versión."
+                            class="rounded-md p-1 text-gray-400 transition hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10 dark:hover:text-error-400"
+                            title="Eliminar cotización" aria-label="Eliminar {{ cot.version_label }}">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 5v6m4-6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
                     {% else %}
                     <span class="badge badge-hex" style="--ec: {{ cot.estado_color }}">{{ cot.get_estado_display }}</span>
                     {% endif %}
-                {% endif %}
+                </div>
             </div>
-            {% if cot.pk == cot_latest_pk and puede_estado %}
-            {# Opciones de estatus: aparecen al picar el badge (peer-checked, sin JS). #}
+            {% if puede_estado %}
+            {# Opciones de estatus de ESTA versión (aparecen al picar el badge, peer-checked, sin JS). #}
             <div class="mt-2 hidden flex-wrap gap-2 peer-checked:flex">
                 {% for e in cot_estados_activos %}
                 <button type="button"
                         hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk %}"
-                        hx-vals='{"estado": "{{ e.slug }}"}'
+                        hx-vals='{"cot": "{{ cot.pk }}", "estado": "{{ e.slug }}"}'
                         hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
                         hx-swap="outerHTML"
-                        class="badge badge-hex cursor-pointer {% if e.slug == cot_estado_actual %}ring-2 ring-current/50{% else %}opacity-60 transition hover:opacity-100{% endif %}"
+                        class="badge badge-hex cursor-pointer {% if e.slug == cot.estado %}ring-2 ring-current/50{% else %}opacity-60 transition hover:opacity-100{% endif %}"
                         style="--ec: {{ e.color }}">{{ e.label }}</button>
                 {% endfor %}
             </div>
@@ -61,38 +71,6 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
         </li>
         {% endfor %}
     </ul>
-
-    {# ── Termómetro de estatus: barra de pasos que se llena (cabe siempre) ── #}
-    {% if cot_tracker %}
-    <div class="mt-4">
-        <div class="cot-tracker">
-            {% for s in cot_tracker %}
-            {% if puede_estado %}
-            <button type="button"
-                    hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk %}"
-                    hx-vals='{"estado": "{{ s.slug }}"}'
-                    hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
-                    hx-swap="outerHTML"
-                    class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}"
-                    title="Marcar como {{ s.label }}">
-                <span class="cot-step-seg"></span>
-                <span class="cot-step-label">{{ s.label }}</span>
-            </button>
-            {% else %}
-            <div class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}">
-                <span class="cot-step-seg"></span>
-                <span class="cot-step-label">{{ s.label }}</span>
-            </div>
-            {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    {# Línea de estatus (estilo "YOUR ORDER IS IN THE OVEN!") #}
-    <div class="mt-3 flex items-center gap-2 text-sm">
-        <svg class="h-5 w-5 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v4a1 1 0 0 0 1 1h4" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="font-semibold text-gray-900 dark:text-gray-100">Estatus: {{ cot_estado_label }}</span>
-        {% if cot_estado_ts_fmt and cot_estado_ts_fmt != "—" %}<span class="text-xs text-gray-500 dark:text-gray-400">· {{ cot_estado_ts_fmt }}</span>{% endif %}
-    </div>
 
     {# ── Anticipo: requerimiento de registrar el ingreso (LC 2026-06-29) ── #}
     {% if cot_es_anticipo and puede_anticipo %}
@@ -102,7 +80,6 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
         <button type="button" hx-get="{% url 'proyectos-registrar-anticipo' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
                 class="btn-primario mt-2 w-full text-sm">Registrar ingreso del anticipo</button>
     </div>
-    {% endif %}
     {% endif %}
 
     {% else %}

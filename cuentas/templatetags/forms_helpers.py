@@ -145,3 +145,25 @@ def dinero_corto(valor) -> str:
     if formato.endswith(".00"):
         return formato[:-3]
     return formato
+
+
+# Abreviaturas en español capitalizadas (no dependemos de la locale de Django,
+# que las da en minúsculas con punto). Lunes=0.
+_DIAS_ABR = ("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+_MESES_ABR = ("Ene", "Feb", "Mar", "Abr", "May", "Jun",
+              "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+
+
+@register.filter
+def fecha_corta(valor) -> str:
+    """Fecha legible en español: `Vie 26 Jun 2026` (día de semana + día + mes + año).
+
+    Acepta `date`/`datetime`; None/"" → `—`. Usado en la lista de Cotizaciones
+    (reporte LC: fecha formateada en lugar de ISO)."""
+    if valor is None or valor == "":
+        return "—"
+    try:
+        dia_semana = _DIAS_ABR[valor.weekday()]
+        return f"{dia_semana} {valor.day:02d} {_MESES_ABR[valor.month - 1]} {valor.year}"
+    except (AttributeError, IndexError, TypeError):
+        return str(valor)

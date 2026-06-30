@@ -35,7 +35,7 @@ from .forms import (
 )
 from .models import Cotizacion, CotizacionImpuesto
 
-ORDEN_PERMITIDO = {"codigo", "titulo", "estado", "fecha_emision", "creado_en"}
+ORDEN_PERMITIDO = {"codigo", "titulo", "estado", "fecha_emision", "creado_en", "version"}
 
 
 def _gate_ver(request):
@@ -93,14 +93,16 @@ def lista(request):
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_paginacion),
+        # Render LC 2026-06-30: sin columna de código ni de acciones (la fila
+        # entera es clickeable). Orden: fecha · cliente · proyecto · versión ·
+        # subtotal (sin IVA) · estado.
         "cabeceras_cotizaciones": [
-            {"label": "Código", "sort_key": "codigo"},
-            {"label": "Título", "sort_key": "titulo"},
+            {"label": "Fecha", "sort_key": "fecha_emision"},
             {"label": "Cliente"},
+            {"label": "Proyecto"},
+            {"label": "Versión", "sort_key": "version"},
+            {"label": "Subtotal", "align": "right"},
             {"label": "Estado", "sort_key": "estado"},
-            {"label": "Emisión", "sort_key": "fecha_emision"},
-            {"label": "Total", "align": "right"},
-            {"label": "Acciones", "align": "right"},
         ],
         "kpis": services.kpis_landing(),
         "puede_crear": puede_crear_cotizaciones(request.user),

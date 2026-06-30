@@ -302,16 +302,16 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
     tasas `aplicable_default` salvo que el proyecto sea IVA exento, para que el
     total calce con `proyecto.monto_a_facturar`.
 
-    **El estatus es de "las cotizaciones", no de cada versión** (decisión
-    Oscar): generar NO reinicia ni duplica el estatus — la versión nueva
-    ARRASTRA el estatus de la anterior. La primera arranca en 'generada'. Si
-    el cliente rechaza, el estatus se resetea a mano desde el dropdown.
+    **Render LC 2026-06-30: el estatus es POR VERSIÓN.** Cada versión nueva
+    ARRANCA en el primer estado del flujo (Generada), independiente de las
+    demás — el usuario avanza cada una desde su propio dropdown. La numeración
+    continúa aunque haya versiones anuladas (no se reutilizan números).
     """
     from decimal import Decimal
 
     from ajustes.models.tasa import TasaImpositiva
 
-    from .models import CotizacionImpuesto, CotizacionItem
+    from .models import CotizacionImpuesto, CotizacionItem, estados_cot_activos
 
     with transaction.atomic():
         ultima_cot = (
@@ -319,7 +319,8 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             .order_by("-version")
             .first()
         )
-        estado_inicial = ultima_cot.estado if ultima_cot else "generada"
+        _activos = estados_cot_activos()
+        estado_inicial = _activos[0]["slug"] if _activos else "generada"
         version = (ultima_cot.version + 1) if ultima_cot else 1
         cot = Cotizacion.objects.create(
             cliente=proyecto.cliente,

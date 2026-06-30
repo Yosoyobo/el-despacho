@@ -447,18 +447,112 @@ def servicio_quick_create(request):
 
 # ── Proveedores (S-LC-Feedback-V3) ──────────────────────────────────────────
 
+# Estados de proyecto que se consideran "cerrados" para el conteo de proyectos
+# activos de un proveedor (entregado/cancelado son terminal=True). El resto
+# (por cotizar, en proceso, en pausa, esperando respuesta) cuenta como activo.
+_ESTADOS_PROYECTO_CERRADOS = {"entregado", "cancelado"}
+
+
 def proveedores_lista(request):
+    """Render LC 2026-06-30 — tarjetas de proveedor + filtro de dos niveles.
+
+    Nivel 1 = Categorías (CategoriaServicio); nivel 2 = Servicios/productos
+    (Servicio, cada uno con su categoría). Un proveedor surte ≥1 servicios
+    (M2M `Servicio.proveedores`), de los que derivan sus categorías. Picar una
+    categoría acota los chips de servicio Y los proveedores; picar un servicio
+    acota los proveedores. La búsqueda y los resultados salen en el mismo
+    formato de tarjetas.
+    """
+    from apps.los_proyectos.models import Proyecto
+    from django.db.models import Q
+
     if (r := _gate(request, "ver_nombres")) is not None:
         return r
+
     incluir_archivados = request.GET.get("archivados") == "1"
-    qs = Proveedor.objects.all() if incluir_archivados else Proveedor.objects.filter(activo=True)
     q = (request.GET.get("q") or "").strip()
+    categoria_id = (request.GET.get("categoria") or "").strip()
+    servicio_id = (request.GET.get("servicio") or "").strip()
+
+    # ── Chips de filtro ──────────────────────────────────────────────────
+    categorias = list(
+        CategoriaServicio.objects.filter(activa=True).order_by("orden", "nombre")
+    )
+    servicios_chips_qs = (
+        Servicio.objects.filter(activo=True)
+        .select_related("categoria")
+        .order_by("categoria__orden", "nombre")
+    )
+    # El segundo filtro (servicios) se acota a la categoría elegida en el primero.
+    if categoria_id.isdigit():
+        servicios_chips_qs = servicios_chips_qs.filter(categoria_id=categoria_id)
+    servicios_chips = list(servicios_chips_qs)
+
+    # ── Proveedores filtrados ────────────────────────────────────────────
+    qs = Proveedor.objects.all() if incluir_archivados else Proveedor.objects.filter(activo=True)
+    if servicio_id.isdigit():
+        qs = qs.filter(servicios__id=servicio_id)
+    elif categoria_id.isdigit():
+        qs = qs.filter(servicios__categoria_id=categoria_id)
     if q:
-        qs = qs.filter(razon_social__icontains=q)
+        qs = qs.filter(
+            Q(razon_social__icontains=q)
+            | Q(nombre_contacto__icontains=q)
+            | Q(email_contacto__icontains=q)
+            | Q(telefono__icontains=q)
+            | Q(servicios__nombre__icontains=q)
+            | Q(servicios__categoria__nombre__icontains=q)
+            | Q(productos_proyecto__proyecto__codigo__icontains=q)
+            | Q(productos_proyecto__proyecto__nombre__icontains=q)
+        )
+    qs = qs.distinct().order_by("razon_social").prefetch_related("servicios__categoria")
+
+    # ── Arma una tarjeta por proveedor (categorías + servicios + stats) ──
+    tarjetas = []
+    for prov in qs:
+        srv_activos = [s for s in prov.servicios.all() if s.activo]
+        cats_vistas: dict[int, dict] = {}
+        servicios_badges = []
+        for s in srv_activos:
+            cat = s.categoria
+            cats_vistas.setdefault(cat.id, {"nombre": cat.nombre, "color": cat.color})
+            servicios_badges.append({"nombre": s.nombre, "color": cat.color})
+        # Proyectos ligados vía ProyectoProducto.proveedor (proveedor principal).
+        estados = list(
+            Proyecto.objects.filter(productos__proveedor=prov)
+            .distinct()
+            .values_list("estado", flat=True)
+        )
+        ubic = next((ln.strip() for ln in (prov.direccion or "").splitlines() if ln.strip()), "")
+        tarjetas.append({
+            "obj": prov,
+            "categorias": list(cats_vistas.values()),
+            "servicios": servicios_badges,
+            "productos": len(srv_activos),
+            "proyectos_totales": len(estados),
+            "proyectos_activos": sum(1 for e in estados if e not in _ESTADOS_PROYECTO_CERRADOS),
+            "ubicacion": ubic[:40],
+        })
+
+    # Params a preservar en los links de los chips (búsqueda + desactivados).
+    from urllib.parse import urlencode
+    preserva = []
+    if q:
+        preserva.append(("q", q))
+    if incluir_archivados:
+        preserva.append(("archivados", "1"))
+    qs_preserva = urlencode(preserva)
+
     return render(request, "catalogo/proveedores_lista.html", {
-        "proveedores": qs.order_by("razon_social"),
+        "tarjetas": tarjetas,
         "q": q,
         "incluir_archivados": incluir_archivados,
+        "categorias": categorias,
+        "servicios_chips": servicios_chips,
+        "categoria_id": categoria_id if categoria_id.isdigit() else "",
+        "servicio_id": servicio_id if servicio_id.isdigit() else "",
+        "qs_preserva": qs_preserva,
+        "puede_crear_prov": puede(request.user, "catalogo", "gestionar_categorias"),
     })
 
 
@@ -531,10 +625,47 @@ def proveedor_nuevo(request):
     return render(request, "catalogo/proveedor_form.html", {"form": form, "modo": "nuevo"})
 
 
+@require_http_methods(["GET", "POST"])
 def proveedor_detalle(request, pk: int):
+    """Detalle del proveedor con campos editables EN LÍNEA (render LC 2026-06-30,
+    igual que la página de proyecto: sin botón «Editar», autoguardado HTMX).
+
+    GET → ficha con el form inline. POST (HTMX) → valida + guarda + devuelve el
+    indicador por OOB. El campo `activo` se excluye del form inline (lo maneja
+    el botón Desactivar) para que el autoguardado no apague al proveedor.
+    """
     if (r := _gate(request, "ver_nombres")) is not None:
         return r
     prov = get_object_or_404(Proveedor, pk=pk)
+    puede_editar = puede(request.user, "catalogo", "gestionar_categorias")
+    es_htmx = request.headers.get("HX-Request") == "true"
+
+    if request.method == "POST":
+        if not puede_editar:
+            return HttpResponseForbidden("Sin permiso para editar proveedores.")
+        form = ProveedorForm(request.POST, instance=prov, inline=True)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="proveedor.actualizado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proveedor_id": prov.pk, "campo": "detalle_inline"},
+            ))
+            if es_htmx:
+                return render(request, "catalogo/_proveedor_guardado_oob.html",
+                              {"proveedor": prov, "ok": True})
+            messages.success(request, "Proveedor guardado.")
+            return redirect("catalogo-proveedor-detalle", pk=prov.pk)
+        if es_htmx:
+            primer = next(
+                (f"{form.fields[c].label or c}: {e[0]}" for c, e in form.errors.items() if e),
+                "Revisa los campos.",
+            )
+            return render(request, "catalogo/_proveedor_guardado_oob.html",
+                          {"proveedor": prov, "ok": False, "error_detalle": primer})
+    else:
+        form = ProveedorForm(instance=prov, inline=True)
+
     ultima_visita = None
     try:
         from apps.checador.services import ultima_ubicacion_de
@@ -543,7 +674,9 @@ def proveedor_detalle(request, pk: int):
         pass
     return render(request, "catalogo/proveedor_detalle.html", {
         "proveedor": prov,
-        "servicios": prov.servicios.filter(activo=True),
+        "form": form,
+        "puede_editar": puede_editar,
+        "servicios": prov.servicios.filter(activo=True).select_related("categoria"),
         "ultima_visita": ultima_visita,
         "puede_gestionar_servicios": puede(request.user, "catalogo", "editar"),
         "puede_eliminar": puede(request.user, "catalogo", "eliminar"),

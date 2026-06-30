@@ -13,8 +13,10 @@ class ProveedorForm(forms.ModelForm):
             "telefono", "rfc", "direccion", "fiscal_igual", "direccion_fiscal",
             "notas", "activo",
         ]
+        # Render LC 2026-06-30: "Razón social" → "Nombre" (solo etiqueta; el
+        # campo en DB sigue siendo `razon_social`, igual que Cliente).
         labels = {
-            "razon_social": "Razón social",
+            "razon_social": "Nombre",
             "nombre_contacto": "Persona de contacto",
             "email_contacto": "Email",
             "telefono": "Teléfono",
@@ -29,6 +31,15 @@ class ProveedorForm(forms.ModelForm):
             "direccion_fiscal": forms.Textarea(attrs={"rows": 2, "data-fiscal-box": "1"}),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
+
+    def __init__(self, *args, inline: bool = False, **kwargs):
+        """`inline=True` quita el campo `activo` para el detalle editable en
+        línea (el alta/baja vive en su propio botón). Al no estar en
+        `self.fields`, `construct_instance` no toca `instance.activo`, así que
+        el autoguardado no desactiva al proveedor por accidente."""
+        super().__init__(*args, **kwargs)
+        if inline and "activo" in self.fields:
+            self.fields.pop("activo")
 
 
 class UnidadForm(forms.ModelForm):

@@ -127,8 +127,8 @@ def test_vista_generar_crea_y_pinta_recuadro(client, entorno):
 
 
 def test_vista_cambiar_estado(client, entorno):
-    """El estatus es ÚNICO de la cotización del proyecto: el endpoint opera
-    sobre la versión más reciente (sin cot_pk)."""
+    """Sin `cot` en el POST, el endpoint cae a la versión más reciente
+    (retro-compat). Render LC 2026-06-30: el estatus es por versión."""
     from apps.cotizaciones import services
     cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     client.force_login(entorno["admin"])
@@ -143,6 +143,50 @@ def test_vista_cambiar_estado(client, entorno):
     assert cot.aprobada_en is not None
 
 
+def test_cambiar_estado_por_version(client, entorno):
+    """Render LC 2026-06-30: el dropdown manda `cot` (pk de esa versión) y solo
+    esa cambia; las demás quedan intactas."""
+    from apps.cotizaciones import services
+    v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    v2 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    client.force_login(entorno["admin"])
+    resp = client.post(
+        reverse("proyectos-cotizacion-estado", args=[entorno["p"].pk]),
+        {"cot": v1.pk, "estado": "aprobada"},
+        HTTP_HX_REQUEST="true",
+    )
+    assert resp.status_code == 200
+    v1.refresh_from_db()
+    v2.refresh_from_db()
+    assert v1.estado == "aprobada"
+    assert v2.estado == "generada"  # intacta
+
+
+def test_eliminar_anula_oculta_y_conserva_numero(client, entorno):
+    """El ícono 🗑 anula la versión: queda oculta del recuadro pero conserva su
+    número (la numeración NO se reutiliza)."""
+    from apps.cotizaciones import services
+    from apps.cotizaciones.models import Cotizacion
+    v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    services.generar_desde_proyecto(entorno["p"], entorno["admin"])  # v2
+    client.force_login(entorno["admin"])
+    resp = client.post(
+        reverse("proyectos-cotizacion-eliminar", args=[entorno["p"].pk]),
+        {"cot": v1.pk},
+        HTTP_HX_REQUEST="true",
+    )
+    assert resp.status_code == 200
+    v1.refresh_from_db()
+    assert v1.estado == "anulada"
+    cuerpo = resp.content.decode()
+    assert "v2" in cuerpo
+    # La siguiente versión continúa la numeración (v3), no reutiliza el 1.
+    assert "Generar v3" in cuerpo
+    v3 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    assert v3.version == 3
+    assert Cotizacion.objects.filter(proyecto=entorno["p"], version__gt=0).count() == 3
+
+
 def test_disenador_sin_permiso_no_genera(client, usuario_factory, entorno):
     diseñador = usuario_factory(rol="disenador")
     client.force_login(diseñador)
@@ -152,7 +196,9 @@ def test_disenador_sin_permiso_no_genera(client, usuario_factory, entorno):
     assert resp.status_code == 403
 
 
-def test_detalle_pinta_recuadro_y_tracker(client, entorno):
+def test_detalle_pinta_recuadro(client, entorno):
+    """Render LC 2026-06-30: recuadro simplificado — versión + estatus por
+    renglón + ícono de eliminar. Sin pizza-tracker ni línea de estatus único."""
     from apps.cotizaciones import services
     services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     client.force_login(entorno["admin"])
@@ -161,9 +207,12 @@ def test_detalle_pinta_recuadro_y_tracker(client, entorno):
     cuerpo = resp.content.decode()
     assert "Cotizaciones" in cuerpo
     assert "v1" in cuerpo
-    # Pizza-tracker + línea de estatus.
-    assert "cot-step" in cuerpo
-    assert "Estatus:" in cuerpo
+    # Estatus por versión (badge con el label del catálogo) + ícono eliminar.
+    assert "Generada" in cuerpo
+    assert "Eliminar cotización" in cuerpo
+    # Se retiraron el pizza-tracker y la línea "Estatus:".
+    assert "cot-step" not in cuerpo
+    assert "Estatus:" not in cuerpo
     # El botón Enviar abre el rickroll vía JS (placeholder, decisión Oscar).
     assert "abrirRickroll" in cuerpo
 
@@ -178,8 +227,8 @@ def test_seed_estados_cotizacion():
     assert base.get(slug="pagada").terminal is True
 
 
-def test_dropdown_y_tracker_usan_catalogo(client, entorno):
-    """Agregar un paso en el catálogo lo hace aparecer en el recuadro."""
+def test_dropdown_usa_catalogo(client, entorno):
+    """Agregar un paso en el catálogo lo hace aparecer en el dropdown del recuadro."""
     from apps.cotizaciones import services
     from apps.cotizaciones.models import EstadoCotizacion, invalidar_cache_estados_cot
     EstadoCotizacion.objects.create(
@@ -192,15 +241,17 @@ def test_dropdown_y_tracker_usan_catalogo(client, entorno):
     assert "Revisión cliente" in resp.content.decode()
 
 
-def test_estatus_unico_se_arrastra_al_generar(entorno):
-    """El estatus NO se reinicia al generar una versión nueva (decisión Oscar):
-    la v2 arrastra el estatus de la v1."""
+def test_cada_version_arranca_en_su_primer_estado(entorno):
+    """Render LC 2026-06-30: el estatus es POR VERSIÓN. Cada versión nueva
+    arranca en el primer paso del flujo (Generada), independiente de las demás."""
     from apps.cotizaciones import services
     v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     services.marcar_estado_proyecto(v1, "enviada", entorno["admin"])
     v2 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     assert v2.version == 2
-    assert v2.estado == "enviada"  # arrastrado, no reseteado a "generada"
+    assert v2.estado == "generada"  # arranca fresca, no arrastra el de v1
+    v1.refresh_from_db()
+    assert v1.estado == "enviada"  # v1 conserva su propio estatus
 
 
 def test_nombre_pdf_usa_nombre_proyecto(entorno):

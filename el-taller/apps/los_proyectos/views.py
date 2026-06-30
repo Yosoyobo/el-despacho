@@ -893,61 +893,36 @@ RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 def _ctx_cotizaciones(proyecto, user) -> dict:
     """Contexto del recuadro «Cotizaciones» del detalle de proyecto.
 
-    El estatus es ÚNICO para la cotización del proyecto (vive en la versión más
-    reciente). El pizza-tracker pinta los pasos CONFIGURADOS en Gerencia
-    (EstadoCotizacion activos, ordenados): los previos como 'done', el actual
-    'current' y los siguientes 'future'. Crece/encoge según cuántos pasos haya.
+    Render LC 2026-06-30: cada versión tiene su PROPIO estatus (dropdown por
+    renglón) y su ícono de eliminar. Eliminar = anular (se oculta pero conserva
+    su número de versión; la numeración no se reutiliza). El pizza-tracker y la
+    línea de estatus único se retiraron (simplificación pedida).
     """
-    from apps.cotizaciones.models import estados_cot_activos, mapa_estados_cot
+    from apps.cotizaciones.models import estados_cot_activos
 
     from lib.permisos import (
         puede_crear_cotizaciones,
         puede_editar_cotizaciones,
         puede_ver_cotizaciones,
     )
-    cots = list(proyecto.cotizaciones.filter(version__gt=0).order_by("version"))
-    latest = cots[-1] if cots else None
-    activos = estados_cot_activos()
-    mapa = mapa_estados_cot()
-    estado_actual = latest.estado if latest else None
-    idx_actual = next((i for i, e in enumerate(activos) if e["slug"] == estado_actual), None)
-    tracker = []
-    for i, e in enumerate(activos):
-        if idx_actual is None:
-            fase = "future"
-        elif i < idx_actual:
-            fase = "done"
-        elif i == idx_actual:
-            fase = "current"
-        else:
-            fase = "future"
-        tracker.append({**e, "fase": fase, "num": i + 1})
-    ts = None
-    if latest:
-        ts = {
-            "enviada": latest.enviada_en,
-            "aprobada": latest.aprobada_en,
-            "pagada": latest.pagada_en,
-        }.get(estado_actual) or latest.creado_en
+    # Todas las versiones (incl. anuladas) para numerar; visibles = no anuladas.
+    todas = list(proyecto.cotizaciones.filter(version__gt=0).order_by("version"))
+    visibles = [c for c in todas if c.estado != "anulada"]
+    max_version = max((c.version for c in todas), default=0)
+    latest_visible = visibles[-1] if visibles else None
     return {
         "proyecto": proyecto,
-        "cotizaciones_proyecto": cots,
-        "cot_latest_pk": latest.pk if latest else None,
-        "cot_estado_actual": estado_actual,
-        "cot_estado_label": (mapa.get(estado_actual) or {}).get("label", estado_actual or ""),
-        "cot_estado_color": (mapa.get(estado_actual) or {}).get("color", "#667085"),
-        "cot_estados_activos": activos,
-        "cot_tracker": tracker,
-        "cot_estado_ts_fmt": _fmt_fechahora(ts),
-        "cot_next_version": (latest.version + 1) if latest else 1,
+        "cotizaciones_proyecto": visibles,
+        "cot_estados_activos": estados_cot_activos(),
+        # La numeración CONTINÚA aunque haya versiones anuladas (no se reutiliza).
+        "cot_next_version": max_version + 1,
         "puede_cotizar": puede_crear_cotizaciones(user),
         "puede_estado": puede_editar_cotizaciones(user),
         "ver_cotizaciones": puede_ver_cotizaciones(user),
-        # S-LC-Feedback-V13: cuando el estatus es «anticipo» se ofrece registrar
-        # el ingreso del anticipo (botón en el recuadro). cot_total alimenta los
-        # atajos de 50%/etc. del modal.
-        "cot_es_anticipo": estado_actual == "anticipo",
-        "cot_total": (latest.calcular_totales()["total"] if latest else 0),
+        # Cuando la versión más reciente está en «anticipo» se ofrece registrar
+        # el ingreso del anticipo (botón en el recuadro).
+        "cot_es_anticipo": bool(latest_visible and latest_visible.estado == "anticipo"),
+        "cot_total": (latest_visible.calcular_totales()["total"] if latest_visible else 0),
         "puede_anticipo": puede_ver_finanzas(user),
         "rickroll_url": RICKROLL_URL,
     }
@@ -973,15 +948,30 @@ def generar_cotizacion(request, pk):
     return redirect(_redir_detalle(proyecto))
 
 
+def _cot_objetivo(proyecto, request):
+    """Cotización sobre la que opera el dropdown/ícono: la versión indicada en
+    `cot` (POST), si pertenece al proyecto; si no, la más reciente. Render LC
+    2026-06-30: el estatus es POR VERSIÓN, así que el dropdown manda su pk."""
+    from apps.cotizaciones.models import Cotizacion
+    cot_pk = (request.POST.get("cot") or "").strip()
+    if cot_pk.isdigit():
+        cot = Cotizacion.objects.filter(pk=cot_pk, proyecto=proyecto, version__gt=0).first()
+        if cot is not None:
+            return cot
+    return (
+        Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+        .order_by("-version")
+        .first()
+    )
+
+
 @login_required
 @require_POST
 def cotizacion_estado(request, pk):
-    """Cambia el estatus ÚNICO de la cotización del proyecto (decisión Oscar:
-    el estatus es de «las cotizaciones», no por versión). Opera sobre la versión
-    más reciente. Lo dispara el dropdown de la última versión o el pizza-tracker.
-    Devuelve el recuadro re-renderizado."""
+    """Cambia el estatus de UNA versión de cotización del proyecto (render LC
+    2026-06-30: cada versión tiene su propio estatus). El dropdown del renglón
+    manda `cot` (pk de esa versión) + `estado`. Devuelve el recuadro re-render."""
     from apps.cotizaciones import services as cot_services
-    from apps.cotizaciones.models import Cotizacion
 
     from lib.permisos import puede_editar_cotizaciones
     proyecto = get_object_or_404(Proyecto, pk=pk)
@@ -989,18 +979,41 @@ def cotizacion_estado(request, pk):
         return HttpResponseForbidden("Sin acceso a este proyecto.")
     if not puede_editar_cotizaciones(request.user):
         return HttpResponseForbidden("Sin permiso para editar cotizaciones.")
-    latest = (
-        Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
-        .order_by("-version")
-        .first()
-    )
-    if latest is None:
+    cot = _cot_objetivo(proyecto, request)
+    if cot is None:
         messages.error(request, "No hay cotizaciones generadas todavía.")
     else:
         try:
-            cot_services.marcar_estado_proyecto(latest, request.POST.get("estado", ""), request.user)
+            cot_services.marcar_estado_proyecto(cot, request.POST.get("estado", ""), request.user)
         except ValueError as exc:
             messages.error(request, str(exc))
+    if _es_htmx(request):
+        return render(request, "proyectos/_cotizaciones_panel.html",
+                      _ctx_cotizaciones(proyecto, request.user))
+    return redirect(_redir_detalle(proyecto))
+
+
+@login_required
+@require_POST
+def cotizacion_eliminar(request, pk):
+    """Elimina (anula) UNA versión de cotización del proyecto (render LC
+    2026-06-30). Se anula (no se borra): queda oculta del recuadro pero CONSERVA
+    su número de versión, así la numeración no se reutiliza. El ícono 🗑 del
+    renglón manda `cot` (pk). Devuelve el recuadro re-render."""
+    from apps.cotizaciones import services as cot_services
+
+    from lib.permisos import puede_editar_cotizaciones
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    if not puede_editar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para editar cotizaciones.")
+    cot = _cot_objetivo(proyecto, request)
+    if cot is None or cot.estado == "anulada":
+        messages.error(request, "No se encontró la cotización a eliminar.")
+    else:
+        cot_services.marcar_anulada(cot, request.user, "Eliminada desde el proyecto")
+        messages.success(request, f"Cotización {cot.version_label} eliminada.")
     if _es_htmx(request):
         return render(request, "proyectos/_cotizaciones_panel.html",
                       _ctx_cotizaciones(proyecto, request.user))

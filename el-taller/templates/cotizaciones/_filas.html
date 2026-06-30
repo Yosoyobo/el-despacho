@@ -1,40 +1,24 @@
 {% load forms_helpers %}
+{% comment %}Render LC 2026-06-30: fila clickeable, sin columna de código ni de
+acciones. Columnas: Fecha · Cliente · Proyecto · Versión · Subtotal (sin IVA) · Estado.{% endcomment %}
 {% for c in cotizaciones %}
 {% with totales=c.calcular_totales %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if c.estado == 'anulada' %}opacity-60{% endif %}"
     data-href="{% url 'cotizaciones:detalle' c.pk %}">
-    <td class="px-5 py-3">
-        <a href="{% url 'cotizaciones:detalle' c.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ c.codigo }}</a>
-    </td>
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.titulo|truncatechars:60 }}</td>
+    <td class="px-5 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">{{ c.fecha_emision|fecha_corta }}</td>
+    <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ c.cliente.razon_social|truncatechars:44 }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
-        {{ c.cliente.razon_social|truncatechars:40 }}{% if c.proyecto %} · <span class="text-brand-600 dark:text-brand-400">{{ c.proyecto.codigo }}</span>{% endif %}
+        {% if c.proyecto %}<span class="text-brand-600 dark:text-brand-400">{{ c.proyecto.codigo }}</span>{% else %}—{% endif %}
     </td>
+    <td class="px-5 py-3 tabular-nums text-gray-600 dark:text-gray-300">{{ c.version_label }}</td>
+    <td class="px-5 py-3 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ totales.subtotal_items|dinero }}</td>
     <td class="px-5 py-3">
         {% with estado=c.estado_visible %}
         <span class="badge {% if estado == 'aprobada' %}badge-success{% elif estado == 'rechazada' or estado == 'anulada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'enviada' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
         {% endwith %}
     </td>
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.fecha_emision|date:"Y-m-d" }}</td>
-    <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">{{ totales.total|dinero }}</td>
-    <td class="px-5 py-3 text-right">
-        <div class="relative inline-block text-left" data-dropdown>
-            <button type="button" data-dropdown-trigger
-                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-                    aria-label="Acciones">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-            </button>
-            <div data-dropdown-menu id="acc-cot-{{ c.pk }}" hidden
-                 class="absolute right-0 z-30 mt-2 w-44 origin-top-right overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
-                <ul class="py-1.5 text-sm">
-                    <li><a href="{% url 'cotizaciones:detalle' c.pk %}" class="block px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80">Ver detalle</a></li>
-                    {% if c.es_editable %}<li><a href="{% url 'cotizaciones:editar' c.pk %}" class="block px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80">Editar</a></li>{% endif %}
-                </ul>
-            </div>
-        </div>
-    </td>
 </tr>
 {% endwith %}
 {% empty %}
-<tr><td colspan="7" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin cotizaciones.</td></tr>
+<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin cotizaciones.</td></tr>
 {% endfor %}
