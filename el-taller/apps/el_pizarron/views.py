@@ -308,8 +308,9 @@ def nueva_tarea_global(request):
             initial["fecha_compromiso"] = f
         form = TareaGlobalForm(initial=initial)
     from cuentas.models.usuario import Usuario
+    proyectos_mgr = getattr(Proyecto, "activos", Proyecto.objects)
     proyectos_chips = list(
-        Proyecto.objects.exclude(estado__in=TERMINALES_PRY)
+        proyectos_mgr.exclude(estado__in=TERMINALES_PRY)
         .select_related("cliente").order_by("-creado_en")[:60]
     )
     return render(request, "pizarron/form_tarea_global.html", {

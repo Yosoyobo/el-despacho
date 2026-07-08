@@ -96,6 +96,20 @@ def costo_ia(valor) -> str:
     return f"${v.quantize(_D('0.0001'))}"
 
 
+@register.filter
+def url_segura(valor) -> str:
+    """Devuelve `valor` si es una ruta relativa segura (empieza con '/' y no
+    con '//'), si no cadena vacía. Usado por el «← Volver» contextual para
+    respetar el `?volver=` de dónde viene el usuario sin abrir redirect a
+    dominios externos ni inyección (LC 2026-07)."""
+    if not valor:
+        return ""
+    v = str(valor).strip()
+    if v.startswith("/") and not v.startswith("//") and "\n" not in v and "\r" not in v:
+        return v
+    return ""
+
+
 @register.simple_tag
 def breadcrumb_items(*args):
     """Construye una lista de items para `_breadcrumb.html` a partir de

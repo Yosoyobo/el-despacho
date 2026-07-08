@@ -34,7 +34,9 @@ from .forms import (
 )
 from .models import Factura, FacturaImpuesto
 
-ORDEN_PERMITIDO = {"codigo", "fecha_emision", "fecha_vencimiento", "estado", "creado_en"}
+ORDEN_PERMITIDO = {"folio", "codigo", "fecha_emision", "fecha_vencimiento", "estado", "creado_en"}
+# Máx. de filas fantasma a inyectar por huecos de folio (defensa anti-runaway).
+_MAX_GHOSTS = 2000
 
 
 def _gate_ver(request):
@@ -74,13 +76,38 @@ def lista(request):
             | Q(cliente__razon_social__icontains=q)
         )
 
-    orden = (request.GET.get("orden") or "-creado_en").strip()
+    orden = (request.GET.get("orden") or "-folio").strip()
     base = orden.lstrip("-")
     if base not in ORDEN_PERMITIDO:
-        orden = "-creado_en"
-    qs = qs.order_by(orden, "-pk")
+        orden = "-folio"
+        base = "folio"
+    campo = {"folio": "folio_numero"}.get(base, base)
+    orden_db = ("-" if orden.startswith("-") else "") + campo
+    qs = qs.order_by(orden_db, "-pk")
 
-    paginator = Paginator(qs, 25)
+    # Filas fantasma «Sin información» para huecos en la secuencia de folios
+    # (LC 2026-07). Solo al ordenar por folio y sin filtros/búsqueda.
+    usa_ghosts = base == "folio" and not q and not estado_filtro
+    if usa_ghosts:
+        reales = list(qs)
+        con_folio = [f for f in reales if f.folio_numero]
+        sin_folio = [f for f in reales if not f.folio_numero]
+        combinada: list = []
+        if con_folio:
+            por_num = {f.folio_numero: f for f in con_folio}
+            lo, hi = min(por_num), max(por_num)
+            if (hi - lo) <= _MAX_GHOSTS:
+                rango = range(hi, lo - 1, -1) if orden.startswith("-") else range(lo, hi + 1)
+                for n in rango:
+                    combinada.append(por_num.get(n) or {"ghost": True, "folio_numero": n})
+            else:
+                combinada = con_folio
+        combinada.extend(sin_folio)
+        objetos = combinada
+    else:
+        objetos = qs
+
+    paginator = Paginator(objetos, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
 
     qs_filtros = []
@@ -89,7 +116,7 @@ def lista(request):
     if estado_filtro:
         qs_filtros.append(f"estado={estado_filtro}")
     querystring_base = "&".join(qs_filtros)
-    qs_paginacion = qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])
+    qs_paginacion = qs_filtros + ([f"orden={orden}"] if orden != "-folio" else [])
 
     return render(request, "facturacion/lista.html", {
         "page_obj": page_obj,
@@ -100,11 +127,11 @@ def lista(request):
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_paginacion),
         "cabeceras_facturas": [
-            {"label": "Código", "sort_key": "codigo"},
+            {"label": "Factura", "sort_key": "folio"},
             {"label": "Cliente"},
             {"label": "Concepto"},
             {"label": "Emisión", "sort_key": "fecha_emision"},
-            {"label": "Total con IVA", "align": "right"},
+            {"label": "Total pagable", "align": "right"},
             {"label": "Estado", "sort_key": "estado"},
         ],
         "kpis": services.kpis_landing(),
@@ -117,9 +144,6 @@ def lista(request):
 
 def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,
               tasas_qs=None, tasas_seleccionadas=None):
-    # S-LC-Feedback-V5 c3: categorías para el quick-create de servicio inline.
-    from apps.el_catalogo.models import CategoriaServicio
-    categorias = CategoriaServicio.objects.filter(activa=True).order_by("orden", "nombre")
     return {
         "form": form,
         "formset": formset,
@@ -127,7 +151,6 @@ def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,
         "fac": fac,
         "tasas": tasas_qs if tasas_qs is not None else TasaImpositiva.objects.filter(activa=True),
         "tasas_seleccionadas": set(tasas_seleccionadas or []),
-        "categorias_disponibles": categorias,
     }
 
 
@@ -183,7 +206,12 @@ def nueva(request):
                         tasas_seleccionadas=ids)
         return render(request, "facturacion/factura_form.html", ctx)
 
-    form = FacturaForm()
+    from .models.factura import sugerir_folio_numero
+    form = FacturaForm(initial={
+        "folio_numero": sugerir_folio_numero(),
+        "estado": "borrador",
+        "porcentaje_a_facturar": 100,
+    })
     formset = ItemFormSet(instance=Factura())
     ctx = _ctx_form(form, formset, modo="nuevo", tasas_qs=tasas_qs,
                     tasas_seleccionadas=default_ids)
@@ -499,11 +527,32 @@ def duplicar(request, pk):
 # ── API JSON para autocompletar en factura_form ──────────────────────────
 
 @login_required
+def api_cliente_proyectos(request, pk):
+    """Proyectos vigentes de un cliente, para la cascada Cliente → Proyecto.
+
+    GET /facturacion/api/cliente/<pk>/proyectos/
+    → {proyectos: [{id, label}]}
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    from apps.los_proyectos.models import Proyecto
+    mgr = getattr(Proyecto, "activos", Proyecto.objects)
+    proys = mgr.filter(cliente_id=pk).order_by("-creado_en")[:200]
+    return JsonResponse({
+        "proyectos": [{"id": p.pk, "label": f"{p.codigo} · {p.nombre}"} for p in proys],
+    })
+
+
+@login_required
 def api_proyecto_datos(request, pk):
-    """Devuelve datos del proyecto para auto-llenar el form de factura.
+    """Datos del proyecto para la cascada Proyecto → Cotización + concepto.
 
     GET /facturacion/api/proyecto/<pk>/datos/
-    → {cliente_id, cliente_nombre, codigo, cotizaciones: [{id, codigo, titulo, estado}]}
+    → {cliente_id, cliente_nombre, codigo, nombre,
+       cotizaciones: [{id, codigo, titulo, estado, label}]}
+
+    La etiqueta de cada cotización sigue el formato pedido por LC:
+    «Nombre proyecto - vN - $subtotal +IVA».
     """
     if (r := _gate_ver(request)) is not None:
         return r
@@ -513,16 +562,23 @@ def api_proyecto_datos(request, pk):
         Proyecto.objects.select_related("cliente"), pk=pk,
     )
     cots = Cotizacion.vigentes.filter(proyecto=proyecto).order_by("-creado_en")[:20]
+    cots_data = []
+    for c in cots:
+        tot = c.calcular_totales()
+        etiqueta = f"{proyecto.nombre} - {c.version_label} - ${tot['subtotal_items']:,.2f}"
+        if tot["trasladados"] > 0:
+            etiqueta += " +IVA"
+        cots_data.append({
+            "id": c.pk, "codigo": c.codigo, "titulo": c.titulo,
+            "estado": c.estado, "label": etiqueta,
+        })
     return JsonResponse({
         "id": proyecto.pk,
         "codigo": proyecto.codigo,
         "nombre": proyecto.nombre,
         "cliente_id": proyecto.cliente_id,
         "cliente_nombre": proyecto.cliente.razon_social if proyecto.cliente else "",
-        "cotizaciones": [
-            {"id": c.pk, "codigo": c.codigo, "titulo": c.titulo, "estado": c.estado}
-            for c in cots
-        ],
+        "cotizaciones": cots_data,
     })
 
 

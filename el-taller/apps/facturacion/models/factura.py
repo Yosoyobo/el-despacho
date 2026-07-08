@@ -47,6 +47,35 @@ def _generar_codigo(anio: int) -> str:
     return f"{prefijo}{n:04d}"
 
 
+def _siguiente_folio_numero() -> int:
+    """Máximo folio existente + 1 (arranca en 101 si no hay). Usar dentro de atomic.
+
+    El folio «F###» es la foliación oficial de Learning Center (visible en
+    tabla/detalle/PDF). Editable en el form; esto solo sugiere el siguiente.
+    """
+    ultimo = (
+        Factura.objects.select_for_update()
+        .exclude(folio_numero__isnull=True)
+        .order_by("-folio_numero")
+        .first()
+    )
+    if ultimo and ultimo.folio_numero:
+        return ultimo.folio_numero + 1
+    return 101
+
+
+def sugerir_folio_numero() -> int:
+    """Siguiente folio sugerido para el formulario (sin lock — solo lectura)."""
+    ultimo = (
+        Factura.objects.exclude(folio_numero__isnull=True)
+        .order_by("-folio_numero")
+        .first()
+    )
+    if ultimo and ultimo.folio_numero:
+        return ultimo.folio_numero + 1
+    return 101
+
+
 def _vencimiento_default() -> date:
     return date.today() + timedelta(days=30)
 
@@ -58,6 +87,13 @@ class FacturaVigentesManager(models.Manager):
 
 class Factura(models.Model):
     codigo = models.CharField(max_length=20, unique=True, db_index=True)
+
+    # Folio oficial visible de Learning Center: «F###». Editable, autollena
+    # máx+1. Nullable para facturas viejas/importadas sin folio (se muestran
+    # como "Sin información"). La secuencia con huecos se delata en la tabla.
+    folio_numero = models.PositiveIntegerField(
+        null=True, blank=True, unique=True, db_index=True
+    )
 
     cliente = models.ForeignKey(
         "cartera.Cliente",
@@ -79,8 +115,11 @@ class Factura(models.Model):
         related_name="facturas",
     )
 
-    titulo = models.CharField(max_length=200)
-    # Concepto corto para identificar la factura en listas (S-LC-Buzon).
+    # El título se retiró del formulario (LC 2026-07): se autollena con el
+    # Concepto. Se conserva el campo para no romper datos/PDF existentes.
+    titulo = models.CharField(max_length=200, blank=True, default="")
+    # Concepto corto que identifica la factura en listas y PDF. Obligatorio en
+    # el form, pre-rellenado según los productos (LC 2026-07).
     concepto = models.CharField(max_length=200, blank=True, default="")
     estado = models.CharField(
         max_length=20,
@@ -95,6 +134,11 @@ class Factura(models.Model):
     moneda = models.CharField(max_length=3, default="MXN")
     descuento_global_porcentaje = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
+    # Parcialidad a facturar (LC 2026-07): 100 = total; 50 = medio anticipo.
+    # Escala el monto SIN tocar las líneas (pill 100%/50% del formulario).
+    porcentaje_a_facturar = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("100.00")
     )
 
     notas = models.TextField(blank=True, default="")
@@ -159,15 +203,32 @@ class Factura(models.Model):
         return f"{self.codigo} · {self.titulo}"
 
     def save(self, *args, **kwargs):
-        if not self.codigo:
-            anio = (self.fecha_emision or date.today()).year
+        # Título se retiró del form: si viene vacío, hereda el Concepto.
+        if not (self.titulo or "").strip():
+            self.titulo = (self.concepto or "").strip()[:200] or "Factura"
+        necesita_codigo = not self.codigo
+        necesita_folio = self.folio_numero is None and "update_fields" not in kwargs
+        if necesita_codigo or necesita_folio:
             with transaction.atomic():
-                self.codigo = _generar_codigo(anio)
+                if necesita_codigo:
+                    anio = (self.fecha_emision or date.today()).year
+                    self.codigo = _generar_codigo(anio)
+                if necesita_folio:
+                    self.folio_numero = _siguiente_folio_numero()
                 super().save(*args, **kwargs)
             return
         super().save(*args, **kwargs)
 
     # --- propiedades derivadas -------------------------------------------
+
+    @property
+    def folio(self) -> str:
+        """Folio oficial visible, ej. «F101». Vacío si aún no tiene."""
+        return f"F{self.folio_numero}" if self.folio_numero else ""
+
+    @property
+    def folio_display(self) -> str:
+        return self.folio or "Sin información"
 
     @property
     def es_editable(self) -> bool:
@@ -199,7 +260,11 @@ class Factura(models.Model):
 
         desc_pct = self.descuento_global_porcentaje or CERO
         descuento_global = (subtotal_items * desc_pct / Decimal("100")).quantize(Decimal("0.01"))
-        base_impuestos = (subtotal_items - descuento_global).quantize(Decimal("0.01"))
+        # Parcialidad (pill 100%/50%): escala la base sin tocar las líneas.
+        factor = (self.porcentaje_a_facturar or Decimal("100")) / Decimal("100")
+        base_bruta = (subtotal_items - descuento_global)
+        base_impuestos = (base_bruta * factor).quantize(Decimal("0.01"))
+        parcialidad_descuento = (base_bruta - base_impuestos).quantize(Decimal("0.01"))
 
         trasladados = CERO
         retenciones = CERO
@@ -225,6 +290,8 @@ class Factura(models.Model):
         return {
             "subtotal_items": subtotal_items.quantize(Decimal("0.01")),
             "descuento_global": descuento_global,
+            "porcentaje_a_facturar": (self.porcentaje_a_facturar or Decimal("100")),
+            "parcialidad_descuento": parcialidad_descuento,
             "base_impuestos": base_impuestos,
             "trasladados": trasladados.quantize(Decimal("0.01")),
             "retenciones": retenciones.quantize(Decimal("0.01")),

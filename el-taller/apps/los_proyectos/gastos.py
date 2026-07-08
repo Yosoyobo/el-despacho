@@ -34,9 +34,17 @@ ESTADOS_CON_GASTOS = {
     "en_proceso_diseno", "en_proceso_produccion", "entregado", "cerrado",
 }
 
+# LC 2026-07 (Oscar): el recuadro de egresos sale en TODOS los estados, pero la
+# alerta de "pagos pendientes sin registrar" solo de PRODUCCIÓN en adelante.
+ESTADOS_ALERTA_PAGOS = {"en_proceso_produccion", "entregado", "cerrado"}
+
 
 def debe_mostrar_gastos(proyecto) -> bool:
     return getattr(proyecto, "estado", None) in ESTADOS_CON_GASTOS
+
+
+def debe_mostrar_alerta_pagos(proyecto) -> bool:
+    return getattr(proyecto, "estado", None) in ESTADOS_ALERTA_PAGOS
 
 
 def desglose_iva(proyecto, pendientes: list[dict]) -> dict:
@@ -61,6 +69,17 @@ def desglose_iva(proyecto, pendientes: list[dict]) -> dict:
 
 def _registrado(egreso) -> bool:
     return egreso is not None and not egreso.anulado
+
+
+def _pagado(egreso) -> bool:
+    """Un gasto está PAGADO cuando su egreso vigente ya se saldó o quedó por
+    reembolsar (LC 2026-07: solo se registra un egreso al realizarse). Un egreso
+    'pendiente' (cuenta por pagar auto-generada) todavía cuenta como pendiente."""
+    return (
+        egreso is not None
+        and not egreso.anulado
+        and egreso.estado_pago in ("pagado", "por_reembolsar")
+    )
 
 
 def _nombre_base(pp) -> str:
@@ -108,6 +127,7 @@ def iter_unidades(proyecto):
                 "label": _label_produccion(pp), "monto": monto,
                 "proveedor": pp.proveedor, "egreso": pp.egreso,
                 "registrado": _registrado(pp.egreso),
+                "pagado": _pagado(pp.egreso),
             }
         for proc in pp.procesos.all():
             c = _monto_proceso(proc, pp)
@@ -119,12 +139,21 @@ def iter_unidades(proyecto):
                 "proveedor": proc.proveedor if proc.tipo == "impresion" else None,
                 "egreso": proc.egreso,
                 "registrado": _registrado(proc.egreso),
+                "pagado": _pagado(proc.egreso),
             }
 
 
 def pendientes_de(proyecto) -> list[dict]:
-    """Unidades de gasto del proyecto SIN egreso vigente."""
+    """Unidades de gasto del proyecto SIN egreso vigente (para la vista global
+    de Tesorería «Gastos no registrados» y la auto-generación)."""
     return [u for u in iter_unidades(proyecto) if not u["registrado"]]
+
+
+def pagos_pendientes_de(proyecto) -> list[dict]:
+    """Unidades de gasto cuyo PAGO aún no se registra: sin egreso, egreso
+    anulado, o egreso todavía en «Pendiente» (cuenta por pagar auto-generada).
+    Alimenta la alerta del detalle del proyecto (LC 2026-07)."""
+    return [u for u in iter_unidades(proyecto) if not u["pagado"]]
 
 
 def _obj_de(proyecto, clase: str, pk: int):
@@ -158,16 +187,21 @@ def datos_para_modal(proyecto, clase: str, pk: int):
     if obj is None:
         return None
     monto, proveedor, proveedor_nombre, descripcion = _datos_egreso(proyecto, clase, obj)
+    eg = obj.egreso
+    pendiente = eg is not None and not eg.anulado and eg.estado_pago == "pendiente"
     return {
         "monto": monto, "label": getattr(obj, "etiqueta", descripcion),
         "proveedor": proveedor, "proveedor_nombre": proveedor_nombre,
         "ya_registrado": _registrado(obj.egreso),
+        "pagado": _pagado(obj.egreso),
+        "egreso": eg,
+        "pendiente": pendiente,
     }
 
 
 def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None,
                      centro=None, metodo="transferencia", estado_pago="pendiente",
-                     pagado_por=None, solicitado_por=None, proveedor=None):
+                     pagado_por=None, solicitado_por=None, proveedor=None, fecha=None):
     """Crea el Egreso de una unidad de gasto y lo liga. Idempotente (si ya
     tiene egreso vigente, lo devuelve). Devuelve el Egreso o None si no se
     pudo (catálogo incompleto / objeto inexistente / monto 0).
@@ -201,7 +235,7 @@ def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None,
 
     with transaction.atomic():
         egreso = Egreso.objects.create(
-            monto=monto, fecha=date.today(), descripcion=descripcion,
+            monto=monto, fecha=fecha or date.today(), descripcion=descripcion,
             proveedor=proveedor, proveedor_nombre=proveedor_nombre,
             centro_de_costo=centro, proyecto=proyecto,
             estado_pago=estado_pago or "pendiente", metodo=metodo or "transferencia",

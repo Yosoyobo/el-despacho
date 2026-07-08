@@ -48,6 +48,10 @@ class CotizacionForm(forms.ModelForm):
         # cotizaciones legacy, pero el form bloquea.
         self.fields["proyecto"].required = True
         self.fields["proyecto"].empty_label = None
+        # LC 2026-07: no ofrecer proyectos archivados en el selector.
+        from apps.los_proyectos.models import Proyecto
+        _mgr = getattr(Proyecto, "activos", Proyecto.objects)
+        self.fields["proyecto"].queryset = _mgr.all()
         # S-LC-Feedback-V4 hotfix: defaults del modelo NO los aplica Django a
         # un ModelForm unbound. Si no hay instancia, pre-llenamos los campos
         # para que el usuario no tenga que escribir MXN / 0.00 / fecha hoy.

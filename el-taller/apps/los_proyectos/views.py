@@ -34,7 +34,9 @@ from django.views.decorators.http import require_POST
 
 from lib.permisos import (
     es_admin,
+    puede_archivar_proyecto,
     puede_editar_proyecto,
+    puede_eliminar_proyecto,
     puede_ver_finanzas,
     puede_ver_proyecto,
     roles_efectivos,
@@ -173,12 +175,14 @@ def _fmt_fechahora(dt):
     return timezone.localtime(dt).strftime("%d %b %Y · %H:%M")
 
 
-def _proyectos_visibles(user):
-    """Queryset filtrado por rol."""
+def _proyectos_visibles(user, *, solo_archivados=False):
+    """Queryset filtrado por rol. Por default EXCLUYE archivados (LC 2026-07);
+    con `solo_archivados=True` devuelve únicamente los archivados."""
     # V6 Bloque 10: roles efectivos (rol primario + roles_extra) en lugar de
     # user.rol duro — un "miembro" con rol personalizado "dueno" ve lo mismo.
     roles = roles_efectivos(user)
-    qs = Proyecto.objects.select_related("cliente")
+    base = Proyecto.objects.filter(archivado=True) if solo_archivados else Proyecto.activos.all()
+    qs = base.select_related("cliente")
     if roles & {"super_admin", "dueno", "contador"}:
         return qs
     if "disenador" in roles:
@@ -198,7 +202,8 @@ def lista(request):
         "pausa": ("en_pausa",),
         "entregados": ("entregado",),
     }
-    qs = _proyectos_visibles(request.user)
+    ver_archivados = request.GET.get("archivados") == "1"
+    qs = _proyectos_visibles(request.user, solo_archivados=ver_archivados)
     if q:
         qs = qs.filter(Q(nombre__icontains=q) | Q(codigo__icontains=q) | Q(cliente__razon_social__icontains=q))
     if estado:
@@ -226,7 +231,10 @@ def lista(request):
         qs_filtros.append(f"estado={estado}")
     if kpi_activo in KPI_MAP and not estado:
         qs_filtros.append(f"kpi={kpi_activo}")
+    if ver_archivados:
+        qs_filtros.append("archivados=1")
     querystring_base = "&".join(qs_filtros)
+    archivados_count = _proyectos_visibles(request.user, solo_archivados=True).count()
 
     def _kpi_link(slug):
         if kpi_activo == slug and not estado:
@@ -254,6 +262,8 @@ def lista(request):
         ],
         "puede_crear": puede_editar_proyecto(request.user, None),
         "es_admin": es_admin(request.user),
+        "ver_archivados": ver_archivados,
+        "archivados_count": archivados_count,
         "kpis": kpis,
         "kpi_links": {
             "prospectos": _kpi_link("prospectos"),
@@ -458,18 +468,18 @@ def detalle(request, pk):
     )
     _anotar_procesos(formset)
     from . import gastos, services_undo
-    # S-LC-Feedback-V8: la alerta de gastos solo aplica de "en proceso de diseño"
-    # en adelante. Antes de eso no se muestra (el proyecto aún se cotiza).
-    gastos_pendientes = gastos.pendientes_de(proyecto) if gastos.debe_mostrar_gastos(proyecto) else []
-    gastos_desglose = gastos.desglose_iva(proyecto, gastos_pendientes) if gastos_pendientes else None
+    # LC 2026-07: la alerta pasa a "pagos pendientes sin registrar" y vive
+    # abajo, en el recuadro de egresos. Sale de producción en adelante.
+    pagos_pendientes = gastos.pagos_pendientes_de(proyecto) if gastos.debe_mostrar_alerta_pagos(proyecto) else []
+    pagos_desglose = gastos.desglose_iva(proyecto, pagos_pendientes) if pagos_pendientes else None
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "form": form,
         "formset": formset,
         "puede_editar": puede_ed,
-        "gastos_pendientes": gastos_pendientes,
-        "gastos_desglose": gastos_desglose,
-        "gastos_pendientes_total": sum((g["monto"] for g in gastos_pendientes), Decimal("0.00")),
+        "pagos_pendientes": pagos_pendientes,
+        "pagos_desglose": pagos_desglose,
+        "pagos_pendientes_total": sum((g["monto"] for g in pagos_pendientes), Decimal("0.00")),
         "pasos_undo": services_undo.pasos_disponibles(proyecto),
         "equipo_opciones": _ctx_equipo(proyecto),
         "equipo_grupos": _ctx_equipo_grupos(proyecto),
@@ -485,6 +495,8 @@ def detalle(request, pk):
         "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
         "comentarios": _comentarios_proyecto_visibles(request.user, proyecto),
         "es_admin": es_admin(request.user),
+        "puede_archivar_proyecto": puede_archivar_proyecto(request.user),
+        "puede_eliminar_proyecto": puede_eliminar_proyecto(request.user),
         "ingresos_proyecto": proyecto.ingresos.filter(anulado=False).order_by("-fecha")[:50],
         "egresos_proyecto": proyecto.egresos.filter(anulado=False).select_related("proveedor").order_by("-fecha")[:50],
         "breadcrumb_items": [
@@ -745,6 +757,80 @@ def _es_htmx(request):
 
 def _redir_detalle(proyecto):
     return reverse("proyectos-detalle", args=[proyecto.pk])
+
+
+def _proyecto_tiene_movimientos(proyecto) -> bool:
+    """True si el proyecto tiene facturas/ingresos/egresos ligados (no se puede
+    borrar permanentemente; solo archivar)."""
+    return (
+        proyecto.facturas.exists()
+        or proyecto.ingresos.exists()
+        or proyecto.egresos.exists()
+    )
+
+
+@login_required
+def archivar(request, pk):
+    """Archiva/reactiva un proyecto (soft, reversible). Oculta de listas, kanban
+    y selectores. Distinto de «Cancelado» (estado real). Patrón Wave 5."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_archivar_proyecto(request.user):
+        return HttpResponseForbidden("Sin permiso para archivar proyectos.")
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        proyecto.archivado = not proyecto.archivado
+        if proyecto.archivado:
+            proyecto.archivado_en = timezone.now()
+            proyecto.archivado_por = request.user
+        else:
+            proyecto.archivado_en = None
+            proyecto.archivado_por = None
+        proyecto.save(update_fields=["archivado", "archivado_en", "archivado_por", "actualizado_en"])
+        emitir(EventoPortavoz(
+            tipo="proyecto.archivado" if proyecto.archivado else "proyecto.reactivado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"proyecto_id": proyecto.pk, "codigo": proyecto.codigo},
+        ))
+        if proyecto.archivado:
+            messages.success(request, f"Proyecto {proyecto.codigo} archivado.")
+            destino = reverse("proyectos-lista")
+        else:
+            messages.success(request, f"Proyecto {proyecto.codigo} reactivado.")
+            destino = _redir_detalle(proyecto)
+        return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
+    if es_htmx:
+        return render(request, "proyectos/_modal_archivar.html", {"proyecto": proyecto})
+    return redirect(_redir_detalle(proyecto))
+
+
+@login_required
+def eliminar(request, pk):
+    """Borrado PERMANENTE (super_admin, solo proyectos sin movimientos
+    financieros). Para proyectos de prueba/duplicados. Patrón Wave 5."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_eliminar_proyecto(request.user):
+        return HttpResponseForbidden("Solo un super administrador puede eliminar proyectos.")
+    es_htmx = _es_htmx(request)
+    tiene_mov = _proyecto_tiene_movimientos(proyecto)
+    if request.method == "POST":
+        if tiene_mov:
+            messages.error(request, "No se puede eliminar: el proyecto tiene facturas/ingresos/egresos ligados. Archívalo en su lugar.")
+            destino = _redir_detalle(proyecto)
+            return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
+        codigo = proyecto.codigo
+        emitir(EventoPortavoz(
+            tipo="proyecto.eliminado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"codigo": codigo, "nombre": proyecto.nombre},
+        ))
+        proyecto.delete()
+        messages.success(request, f"Proyecto {codigo} eliminado permanentemente.")
+        destino = reverse("proyectos-lista")
+        return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
+    if es_htmx:
+        return render(request, "proyectos/_modal_eliminar.html",
+                      {"proyecto": proyecto, "tiene_movimientos": tiene_mov})
+    return redirect(_redir_detalle(proyecto))
 
 
 @login_required
@@ -1170,8 +1256,14 @@ def _destino_registro(request, proyecto):
 
 @login_required
 def registrar_gasto_modal(request, pk, clase, obj_pk):
-    """GET/POST modal para registrar UN gasto pidiendo centro de costo, método,
-    quién pagó y quién solicitó (S-LC-Feedback-V8). Lo demás viene precargado."""
+    """GET/POST modal «Registrar pago» de un gasto del proyecto (LC 2026-07).
+
+    Pide FECHA, proveedor (OBLIGATORIO), método y estado (Pagado por default,
+    solo Pagado/Por reembolsar — un egreso solo se registra al realizarse).
+    Si el gasto ya tiene un egreso «Pendiente» (cuenta por pagar auto-generada)
+    lo LIQUIDA; si no tiene egreso, lo crea ya pagado."""
+    from datetime import date as _date
+
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not _puede_registrar_gastos(request.user, proyecto):
         return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
@@ -1179,7 +1271,7 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         return HttpResponseForbidden("Tipo de gasto inválido.")
     from apps.el_catalogo.models import Proveedor
     from apps.tesoreria.models import CentroDeCosto
-    from apps.tesoreria.models.egreso import ESTADOS_PAGO, METODOS_EGRESO
+    from apps.tesoreria.models.egreso import METODOS_EGRESO
 
     from cuentas.models.usuario import Usuario
 
@@ -1188,37 +1280,76 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
     if info is None:
         return HttpResponseForbidden("Gasto no encontrado.")
 
+    # Solo dos estados: Pagado (default) y Por reembolsar.
+    ESTADOS_PAGO_UI = [("pagado", "Pagado (saldado)"),
+                       ("por_reembolsar", "Por reembolsar al empleado")]
+
+    def _ctx(error=None):
+        return {
+            "proyecto": proyecto, "clase": clase, "obj_pk": obj_pk, "info": info,
+            "centros": CentroDeCosto.objects.filter(activo=True).order_by("nombre"),
+            "centro_default": CentroDeCosto.objects.filter(slug=gastos.CENTRO_SLUG).first(),
+            "metodos": METODOS_EGRESO, "estados_pago": ESTADOS_PAGO_UI,
+            "hoy": _date.today().isoformat(),
+            "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
+            "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
+            "error": error,
+        }
+
     if request.method == "POST":
         centro = CentroDeCosto.objects.filter(pk=request.POST.get("centro_de_costo") or 0).first()
         pagado = Usuario.objects.filter(pk=request.POST.get("pagado_por") or 0).first()
-        solicito = Usuario.objects.filter(pk=request.POST.get("solicitado_por") or 0).first()
-        # V2: el proveedor se puede elegir/corregir desde el modal (incluye los
-        # creados al vuelo con "Nuevo proveedor", ya activos en el catálogo).
         proveedor = Proveedor.objects.filter(
             pk=request.POST.get("proveedor") or 0, activo=True).first()
-        eg = gastos.registrar_egreso(
-            proyecto, clase, obj_pk, actor=request.user,
-            centro=centro, metodo=request.POST.get("metodo") or "transferencia",
-            estado_pago=request.POST.get("estado_pago") or "pendiente",
-            pagado_por=pagado, solicitado_por=solicito, proveedor=proveedor,
-        )
-        if eg is None:
-            messages.error(request, "No se pudo registrar el gasto (revisa el centro de costo).")
+        estado_pago = request.POST.get("estado_pago") or "pagado"
+        if estado_pago not in ("pagado", "por_reembolsar"):
+            estado_pago = "pagado"
+        metodo = request.POST.get("metodo") or "transferencia"
+        # Fecha del pago (nuevo campo).
+        fecha = _date.today()
+        raw_fecha = (request.POST.get("fecha") or "").strip()
+        if raw_fecha:
+            with contextlib.suppress(ValueError):
+                fecha = _date.fromisoformat(raw_fecha)
+        # Proveedor OBLIGATORIO (LC 2026-07).
+        if proveedor is None:
+            return render(request, "proyectos/_modal_registrar_gasto.html",
+                          _ctx(error="Elige un proveedor: todo egreso debe ir ligado a uno."),
+                          status=200)
+
+        egreso_pend = info.get("egreso") if info.get("pendiente") else None
+        if egreso_pend is not None:
+            # Liquidar la cuenta por pagar auto-generada.
+            if proveedor is not None and egreso_pend.proveedor_id != proveedor.pk:
+                egreso_pend.proveedor = proveedor
+                egreso_pend.proveedor_nombre = (proveedor.razon_social or "")[:200]
+                egreso_pend.save(update_fields=["proveedor", "proveedor_nombre", "actualizado_en"])
+            from apps.tesoreria.services import liquidar_egreso_pendiente
+            banco_o_caja = "caja" if metodo == "efectivo" else "banco"
+            liquidar_egreso_pendiente(
+                egreso_pend, estado_destino=estado_pago, metodo=metodo,
+                banco_o_caja=banco_o_caja, fecha=fecha, pagado_por=pagado,
+                actor=request.user,
+            )
+            messages.success(request, f"Pago registrado en el egreso {egreso_pend.codigo}.")
         else:
-            messages.success(request, f"Gasto registrado como egreso {eg.codigo}.")
+            eg = gastos.registrar_egreso(
+                proyecto, clase, obj_pk, actor=request.user,
+                centro=centro, metodo=metodo, estado_pago=estado_pago,
+                pagado_por=pagado, proveedor=proveedor, fecha=fecha,
+            )
+            if eg is None:
+                return render(request, "proyectos/_modal_registrar_gasto.html",
+                              _ctx(error="No se pudo registrar (revisa el centro de costo)."),
+                              status=200)
+            messages.success(request, f"Pago registrado como egreso {eg.codigo}.")
+
         destino = _destino_registro(request, proyecto)
         if request.headers.get("HX-Request") == "true":
             return HttpResponse(status=204, headers={"HX-Redirect": destino})
         return redirect(destino)
 
-    return render(request, "proyectos/_modal_registrar_gasto.html", {
-        "proyecto": proyecto, "clase": clase, "obj_pk": obj_pk, "info": info,
-        "centros": CentroDeCosto.objects.filter(activo=True).order_by("nombre"),
-        "centro_default": CentroDeCosto.objects.filter(slug=gastos.CENTRO_SLUG).first(),
-        "metodos": METODOS_EGRESO, "estados_pago": ESTADOS_PAGO,
-        "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
-        "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
-    })
+    return render(request, "proyectos/_modal_registrar_gasto.html", _ctx())
 
 
 @login_required

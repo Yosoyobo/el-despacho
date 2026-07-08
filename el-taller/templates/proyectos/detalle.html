@@ -6,61 +6,41 @@
 {# ── Encabezado: nombre + código juntos (Render-V2) ── #}
 <header class="mb-5">
     {% if breadcrumb_items %}<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>{% endif %}
-    {% if back_url %}
-    <a href="{{ back_url }}" class="mb-2 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
+    {% with urlvolver=request.GET.volver|url_segura %}
+    {% if urlvolver or back_url %}
+    <a href="{% if urlvolver %}{{ urlvolver }}{% else %}{{ back_url }}{% endif %}" class="mb-2 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m0 0 6-6m-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        {{ back_label|default:"Proyectos" }}
+        {% if urlvolver %}Volver{% else %}{{ back_label|default:"Proyectos" }}{% endif %}
     </a>
     {% endif %}
-    <div class="flex flex-wrap items-center gap-3">
-        <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ proyecto.nombre }}</h1>
-        <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-semibold tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ proyecto.codigo }}</span>
+    {% endwith %}
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+            <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ proyecto.nombre }}</h1>
+            <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-semibold tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ proyecto.codigo }}</span>
+            {% if proyecto.archivado %}<span class="rounded-lg bg-gray-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">Archivado</span>{% endif %}
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            {% if puede_archivar_proyecto %}
+            <button type="button" hx-get="{% url 'proyectos-archivar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                    class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                {% if proyecto.archivado %}Reactivar{% else %}Archivar{% endif %}
+            </button>
+            {% endif %}
+            {% if puede_eliminar_proyecto %}
+            <button type="button" hx-get="{% url 'proyectos-eliminar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                    class="inline-flex items-center gap-1 rounded-lg border border-error-300 px-3 py-1.5 text-sm font-medium text-error-600 hover:bg-error-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10">
+                Eliminar
+            </button>
+            {% endif %}
+        </div>
     </div>
 </header>
 
 {# ── Barra de status full-width: chips repartidos, seleccionado con outline grueso a color ── #}
 {% include "proyectos/_barra_status.html" with proyecto=proyecto estados_barra=estados_barra puede_editar=puede_editar %}
 
-{# ── Alerta: gastos del proyecto sin registrar como egreso (contabilidad en línea) ── #}
-{% if gastos_pendientes %}
-<div class="mb-5 rounded-2xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-500/40 dark:bg-warning-500/10">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-            <p class="text-sm font-semibold text-warning-800 dark:text-warning-300">⚠️ {{ gastos_pendientes|length }} gasto{{ gastos_pendientes|length|pluralize:"s" }} sin registrar en Tesorería</p>
-            <p class="mt-0.5 text-xs text-warning-700 dark:text-warning-400">Liga cada gasto a un egreso para tener la contabilidad al día.</p>
-        </div>
-        {% if puede_editar %}
-        <form method="post" action="{% url 'proyectos-registrar-gastos-todos' proyecto.pk %}">
-            {% csrf_token %}
-            <button type="submit" class="btn-primario">Registrar todos</button>
-        </form>
-        {% endif %}
-    </div>
-    <ul class="mt-3 divide-y divide-warning-200/60 text-sm dark:divide-warning-500/20">
-        {% for g in gastos_pendientes %}
-        <li class="flex items-center justify-between gap-2 py-1.5">
-            <span class="min-w-0 truncate text-gray-700 dark:text-gray-200">
-                {{ g.label }}{% if g.proveedor %} <span class="text-xs text-gray-500">· {{ g.proveedor.razon_social }}</span>{% endif %}
-            </span>
-            <span class="flex shrink-0 items-center gap-2">
-                <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ g.monto|dinero }}</span>
-                {% if puede_editar %}
-                <button type="button" hx-get="{% url 'proyectos-registrar-gasto-modal' proyecto.pk g.clase g.pk %}"
-                        hx-target="#modal-slot" hx-swap="innerHTML"
-                        class="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">Registrar</button>
-                {% endif %}
-            </span>
-        </li>
-        {% endfor %}
-    </ul>
-    {% if gastos_desglose %}
-    <div class="mt-3 border-t border-warning-200/60 pt-2 text-right text-xs text-warning-800 dark:border-warning-500/20 dark:text-warning-300">
-        Subtotal {{ gastos_desglose.subtotal|dinero }} + IVA ({{ gastos_desglose.iva_label }}) {{ gastos_desglose.iva|dinero }} =
-        <span class="text-sm font-semibold">Total con IVA {{ gastos_desglose.total|dinero }}</span>
-    </div>
-    {% endif %}
-</div>
-{% endif %}
+{# LC 2026-07: la alerta de pagos pendientes se movió ABAJO, al recuadro de egresos. #}
 
 {# ── Barra de acciones: indicador permanente + Undo + Guardar ── #}
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
@@ -192,7 +172,7 @@
                     <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
                         {% for i in ingresos_proyecto %}
                         <li class="flex items-center justify-between gap-2 py-1.5">
-                            <a href="{% url 'tesoreria:ingreso-detalle' i.pk %}" class="truncate text-gray-700 hover:text-brand-600 dark:text-gray-300">{{ i.fecha|date:"d/m" }} · {{ i.descripcion|truncatechars:28 }}</a>
+                            <a href="{% url 'tesoreria:ingreso-detalle' i.pk %}?volver={{ request.path|urlencode }}" class="truncate text-gray-700 hover:text-brand-600 dark:text-gray-300">{{ i.fecha|date:"d/m" }} · {{ i.descripcion|truncatechars:28 }}</a>
                             <span class="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ i.monto|dinero }}</span>
                         </li>
                         {% empty %}
@@ -205,7 +185,7 @@
                     <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
                         {% for e in egresos_proyecto %}
                         <li class="flex items-center justify-between gap-2 py-1.5">
-                            <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="truncate text-gray-700 hover:text-brand-600 dark:text-gray-300">{{ e.fecha|date:"d/m" }} · {{ e.proveedor_nombre|default:e.descripcion|truncatechars:28 }}</a>
+                            <a href="{% url 'tesoreria:egreso-detalle' e.pk %}?volver={{ request.path|urlencode }}" class="truncate text-gray-700 hover:text-brand-600 dark:text-gray-300">{{ e.fecha|date:"d/m" }} · {{ e.proveedor_nombre|default:e.descripcion|truncatechars:28 }}</a>
                             <span class="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ e.monto|dinero }}</span>
                         </li>
                         {% empty %}
@@ -214,6 +194,37 @@
                     </ul>
                 </div>
             </div>
+
+            {# ── Pagos pendientes sin registrar (de producción en adelante) ── #}
+            {% if pagos_pendientes %}
+            <div class="mt-4 rounded-xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-500/40 dark:bg-warning-500/10">
+                <p class="text-sm font-semibold text-warning-800 dark:text-warning-300">⚠️ {{ pagos_pendientes|length }} pago{{ pagos_pendientes|length|pluralize:"s" }} pendiente{{ pagos_pendientes|length|pluralize:"s" }} sin registrar</p>
+                <p class="mt-0.5 text-xs text-warning-700 dark:text-warning-400">Registra cada pago cuando lo realices (queda ligado a un egreso y a un proveedor).</p>
+                <ul class="mt-3 divide-y divide-warning-200/60 text-sm dark:divide-warning-500/20">
+                    {% for g in pagos_pendientes %}
+                    <li class="flex items-center justify-between gap-2 py-1.5">
+                        <span class="min-w-0 truncate text-gray-700 dark:text-gray-200">
+                            {{ g.label }}{% if g.proveedor %} <span class="text-xs text-gray-500">· {{ g.proveedor.razon_social }}</span>{% endif %}
+                        </span>
+                        <span class="flex shrink-0 items-center gap-2">
+                            <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ g.monto|dinero }}</span>
+                            {% if puede_editar %}
+                            <button type="button" hx-get="{% url 'proyectos-registrar-gasto-modal' proyecto.pk g.clase g.pk %}"
+                                    hx-target="#modal-slot" hx-swap="innerHTML"
+                                    class="rounded-lg border border-warning-400 bg-white px-2.5 py-1 text-xs font-medium text-warning-700 hover:bg-warning-50 dark:border-warning-500/40 dark:bg-gray-900 dark:text-warning-300 dark:hover:bg-warning-500/10">Registrar pago</button>
+                            {% endif %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if pagos_desglose %}
+                <div class="mt-3 border-t border-warning-200/60 pt-2 text-right text-xs text-warning-800 dark:border-warning-500/20 dark:text-warning-300">
+                    Subtotal {{ pagos_desglose.subtotal|dinero }} + IVA ({{ pagos_desglose.iva_label }}) {{ pagos_desglose.iva|dinero }} =
+                    <span class="text-sm font-semibold">Total {{ pagos_desglose.total|dinero }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
         </section>
         {% endif %}
     </div>

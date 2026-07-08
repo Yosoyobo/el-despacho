@@ -1,10 +1,18 @@
 {% load forms_helpers %}
 {% for f in facturas %}
+{% if f.ghost %}
+{# Fila fantasma: folio que falta en la secuencia (LC 2026-07). #}
+<tr class="bg-gray-50/50 dark:bg-white/[0.02]">
+    <td class="px-5 py-3"><span class="font-mono text-sm text-gray-400 dark:text-gray-500">F{{ f.folio_numero }}</span></td>
+    <td class="px-5 py-3 text-sm italic text-gray-400 dark:text-gray-500" colspan="5">Sin información</td>
+</tr>
+{% else %}
 {% with totales=f.calcular_totales %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if f.estado == 'cancelada' %}opacity-60{% endif %}"
     data-href="{% url 'facturacion:detalle' f.pk %}">
     <td class="px-5 py-3">
-        <a href="{% url 'facturacion:detalle' f.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ f.codigo }}</a>
+        <a href="{% url 'facturacion:detalle' f.pk %}" class="font-semibold {% if f.folio_numero %}text-gray-900 dark:text-gray-100{% else %}text-gray-400 italic dark:text-gray-500{% endif %} hover:text-brand-600 dark:hover:text-brand-400">{{ f.folio_display }}</a>
+        <div class="mt-0.5 font-mono text-[11px] text-gray-400 dark:text-gray-500">{{ f.codigo }}</div>
     </td>
     <td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ f.cliente.razon_social|truncatechars:40 }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.concepto|default:f.titulo|truncatechars:40 }}</td>
@@ -17,6 +25,7 @@
     </td>
 </tr>
 {% endwith %}
+{% endif %}
 {% empty %}
 <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin facturas.</td></tr>
 {% endfor %}

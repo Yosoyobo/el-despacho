@@ -151,10 +151,12 @@ def test_egreso_con_comprobante_popula_campos(client, usuario_factory, centro, m
             ok=True, data={"id": "cmp-1", "name": "recibo.pdf", "webViewLink": "https://drive/x"}
         ),
     )
+    from apps.el_catalogo.models import Proveedor
+    prov = Proveedor.objects.create(razon_social="Prov comprobante", creado_por=actor)
     archivo = SimpleUploadedFile("recibo.pdf", b"%PDF-1.4", content_type="application/pdf")
     resp = client.post("/tesoreria/egresos/nuevo/", {
         "subtotal": "100", "fecha": "2026-05-19", "descripcion": "Con comprobante",
-        "proveedor": "", "centro_de_costo": centro.pk, "proyecto": "",
+        "proveedor": prov.pk, "centro_de_costo": centro.pk, "proyecto": "",
         "pagado_por": actor.pk, "solicitado_por": "",
         "estado_pago": "pagado", "metodo": "transferencia", "moneda": "MXN",
         "comprobante": archivo,

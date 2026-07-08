@@ -85,8 +85,9 @@ def test_editar_concepto_y_estado_en_cualquier_estado(client, cliente_factory, u
     fac.estado = "emitida"
     fac.save(update_fields=["estado"])
     resp = client.post(f"/facturacion/{fac.pk}/editar/", {
+        "folio_numero": fac.folio_numero, "porcentaje_a_facturar": "100",
         "cliente": cli.pk, "proyecto": "", "cotizacion_origen": "",
-        "titulo": "Factura mayo", "concepto": "Lona gran formato", "estado": "emitida",
+        "concepto": "Lona gran formato", "estado": "emitida",
         "fecha_emision": fac.fecha_emision.isoformat(),
         "fecha_vencimiento": fac.fecha_vencimiento.isoformat(),
         "moneda": "MXN", "descuento_global_porcentaje": "0",

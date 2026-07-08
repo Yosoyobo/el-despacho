@@ -443,6 +443,106 @@ def reembolsar_egreso(egreso: Egreso, *, metodo: str, banco_o_caja: str,
     return egreso
 
 
+def liquidar_egreso_pendiente(
+    egreso: Egreso, *, estado_destino: str = "pagado",
+    metodo: str = "transferencia", banco_o_caja: str = "banco",
+    fecha=None, pagado_por=None, actor=None,
+) -> Egreso:
+    """Liquida un Egreso en estado 'pendiente' (cuenta por pagar).
+
+    - estado_destino='pagado' → asiento 'D Proveedores(CxP) / H Banco|Caja'.
+    - estado_destino='por_reembolsar' → reclasifica la deuda:
+      'D Proveedores(CxP) / H Reembolsos por pagar' (el reembolso se salda
+      después con `reembolsar_egreso`).
+
+    Idempotente vía referencia_externa `tesoreria.egreso.pago:<pk>`. Nunca
+    tumba la transacción por un fallo contable (silent-skip con motivo).
+    Emite evento Portavoz `tesoreria.egreso_pagado`.
+    """
+    from apps.contaduria.services import (
+        AsientoInvalido,
+        crear_asiento,
+        cuenta_por_slot,
+    )
+
+    if egreso.anulado:
+        raise ValueError("No se puede liquidar un egreso anulado.")
+    if egreso.estado_pago != "pendiente":
+        raise ValueError(
+            f"El egreso {egreso.codigo} no está en 'Pendiente' "
+            f"(actual: {egreso.estado_pago})."
+        )
+    if estado_destino not in ("pagado", "por_reembolsar"):
+        raise ValueError("estado_destino debe ser 'pagado' o 'por_reembolsar'.")
+    if banco_o_caja not in ("banco", "caja"):
+        banco_o_caja = "banco"
+
+    fecha = fecha or date.today()
+    asiento_creado = False
+    motivo_no_asiento = ""
+
+    with transaction.atomic():
+        egreso.estado_pago = estado_destino
+        egreso.metodo = metodo
+        if estado_destino == "pagado":
+            egreso.pagado_en = fecha
+            egreso.pagado_desde = banco_o_caja
+        if pagado_por is not None:
+            egreso.pagado_por = pagado_por
+        egreso.save(update_fields=[
+            "estado_pago", "metodo", "pagado_en", "pagado_desde",
+            "pagado_por", "actualizado_en",
+        ])
+
+        cxp = cuenta_por_slot("cxp")
+        if estado_destino == "pagado":
+            destino = cuenta_por_slot(banco_o_caja)
+            desc_destino = f"{metodo} desde {banco_o_caja}"
+        else:  # por_reembolsar
+            destino = cuenta_por_slot("reembolsos")
+            desc_destino = "Reclasifica a reembolso por pagar"
+        if cxp is None:
+            motivo_no_asiento = "Catálogo incompleto: falta cuenta con slot 'cxp'."
+        elif destino is None:
+            motivo_no_asiento = "Catálogo incompleto: falta cuenta destino."
+        else:
+            try:
+                crear_asiento(
+                    descripcion=f"Pago de {egreso.codigo} · {egreso.proveedor_nombre}"[:200],
+                    fecha=fecha,
+                    origen="auto_egreso",
+                    referencia_externa=f"tesoreria.egreso.pago:{egreso.pk}",
+                    creado_por=actor,
+                    partidas=[
+                        {"cuenta": cxp, "cargo": egreso.monto, "orden": 0,
+                         "descripcion": "Cancela cuenta por pagar"},
+                        {"cuenta": destino, "abono": egreso.monto, "orden": 1,
+                         "descripcion": desc_destino},
+                    ],
+                    idempotente=True,
+                )
+                asiento_creado = True
+            except AsientoInvalido as e:
+                motivo_no_asiento = f"Asiento inválido: {e}"
+
+    from lib.portavoz import emitir
+    from lib.portavoz_eventos import EventoPortavoz
+    emitir(EventoPortavoz(
+        tipo="tesoreria.egreso_pagado",
+        actor_id=getattr(actor, "id", None),
+        actor_email=getattr(actor, "email", None),
+        payload={
+            "egreso_id": egreso.pk, "codigo": egreso.codigo,
+            "monto": float(egreso.monto), "estado_destino": estado_destino,
+            "metodo": metodo, "banco_o_caja": banco_o_caja,
+            "asiento_creado": asiento_creado, "motivo_no_asiento": motivo_no_asiento,
+        },
+    ))
+    egreso._pago_asiento_creado = asiento_creado
+    egreso._pago_motivo_no_asiento = motivo_no_asiento
+    return egreso
+
+
 def anular_egreso(egreso: Egreso, usuario, motivo: str) -> Egreso:
     if egreso.anulado:
         return egreso

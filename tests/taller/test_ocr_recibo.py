@@ -133,9 +133,11 @@ def test_egreso_nuevo_vincula_log_y_correcciones(client, monkeypatch, usuario_fa
         creado_por=u,
     )
     centro = CentroDeCosto.objects.filter(activo=True).first()
+    from apps.el_catalogo.models import Proveedor
+    prov = Proveedor.objects.create(razon_social="Prov OCR", creado_por=u)
     resp = client.post("/tesoreria/egresos/nuevo/", {
         "fecha": date.today().isoformat(), "subtotal": "500.00", "moneda": "MXN",
-        "descripcion": "Gasto corregido", "centro_de_costo": centro.pk,
+        "descripcion": "Gasto corregido", "centro_de_costo": centro.pk, "proveedor": prov.pk,
         "metodo": "transferencia", "estado_pago": "pagado", "ocr_log_id": log.pk,
     })
     assert resp.status_code in (302, 200)

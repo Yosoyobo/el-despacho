@@ -132,6 +132,18 @@ def puede_editar_proyecto(user, proyecto) -> bool:
     return es_admin(user)
 
 
+def puede_archivar_proyecto(user) -> bool:
+    """Archivar/reactivar proyectos (ocultar de prueba/duplicados): admins.
+    Distinto de «Cancelado» (estado real del ciclo)."""
+    return es_admin(user)
+
+
+def puede_eliminar_proyecto(user) -> bool:
+    """Borrado PERMANENTE de un proyecto: solo super_admin (failsafe), y la
+    vista además exige que no tenga movimientos financieros ligados (LC 2026-07)."""
+    return es_super_admin(user)
+
+
 def puede_ver_cartera(user) -> bool:
     """Listar y ver clientes: admins + contador (read-only); diseñadores no."""
     return bool(roles_efectivos(user) & {"super_admin", "dueno", "contador"})

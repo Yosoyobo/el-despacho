@@ -142,13 +142,16 @@ def test_registrar_pendientes_y_conteo(proyecto_factory, catalogo):
 
 
 def test_alerta_en_detalle_proyecto(client, usuario_factory, proyecto_factory, catalogo):
+    # LC 2026-07: la alerta de "pagos pendientes sin registrar" sale de
+    # PRODUCCIÓN en adelante, dentro del recuadro de egresos.
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
-    p = proyecto_factory(estado="en_proceso_diseno")
+    p = proyecto_factory(estado="en_proceso_produccion")
     _producto(p, catalogo)
     resp = client.get(f"/proyectos/{p.pk}/")
     assert resp.status_code == 200
-    assert "sin registrar en Tesorería" in resp.content.decode()
+    cuerpo = resp.content.decode()
+    assert "pendiente" in cuerpo and "sin registrar" in cuerpo
 
 
 def test_registrar_gasto_via_view(client, usuario_factory, proyecto_factory, catalogo):

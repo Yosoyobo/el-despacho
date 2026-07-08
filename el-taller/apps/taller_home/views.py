@@ -103,7 +103,7 @@ def _hero_kpis(user, rol) -> list[dict]:
     )
     mes = _NOMBRES_MESES[date.today().month - 1]
 
-    en_produccion = Proyecto.objects.filter(estado="en_proceso_produccion")
+    en_produccion = Proyecto.activos.filter(estado="en_proceso_produccion")
     if rol == "disenador":
         en_produccion = en_produccion.filter(asignaciones__usuario=user).distinct()
     tareas_urgentes = Tarea.objects.filter(prioridad="alta").exclude(estado="completada")

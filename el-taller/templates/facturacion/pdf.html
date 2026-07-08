@@ -11,7 +11,8 @@
       </td>
       <td style="vertical-align:top; text-align:right;">
         <div style="font-size:16pt; font-weight:bold;">FACTURA</div>
-        <div style="font-size:12pt; color:#475467;">{{ fac.codigo }}</div>
+        <div style="font-size:15pt; font-weight:bold; color:#101828;">{{ fac.folio_display }}</div>
+        <div style="font-size:9pt; color:#98a2b3;">{{ fac.codigo }}</div>
         <div style="font-size:8pt; color:#98a2b3;">Documento comercial — no es un CFDI</div>
       </td>
     </tr>
@@ -35,7 +36,7 @@
     </tr>
   </table>
 
-  <div style="font-size:13pt; font-weight:bold; margin-bottom:8pt;">{{ fac.titulo }}</div>
+  <div style="font-size:13pt; font-weight:bold; margin-bottom:8pt;">{{ fac.concepto|default:fac.titulo }}</div>
 
   <table style="width:100%; border-collapse:collapse; margin-bottom:14pt; font-size:10pt;">
     <thead>
@@ -77,6 +78,12 @@
           <tr>
             <td style="padding:3pt;">Descuento global ({{ fac.descuento_global_porcentaje|floatformat:2 }}%)</td>
             <td style="padding:3pt; text-align:right;">-{{ totales.descuento_global|dinero }}</td>
+          </tr>
+          {% endif %}
+          {% if totales.parcialidad_descuento %}
+          <tr>
+            <td style="padding:3pt;">Facturado al {{ totales.porcentaje_a_facturar|floatformat:0 }}% (parcialidad)</td>
+            <td style="padding:3pt; text-align:right;">-{{ totales.parcialidad_descuento|dinero }}</td>
           </tr>
           {% endif %}
           {% for imp in totales.impuestos_detalle %}

@@ -10,6 +10,9 @@ urlpatterns = [
     path("<int:pk>/", views.detalle, name="proyectos-detalle"),
     path("<int:pk>/editar", views.editar, name="proyectos-editar"),
     path("<int:pk>/cambiar-estado", views.cambiar_estado, name="proyectos-cambiar-estado"),
+    # LC 2026-07: archivar (reversible) y eliminar (permanente, super_admin, sin movimientos).
+    path("<int:pk>/archivar", views.archivar, name="proyectos-archivar"),
+    path("<int:pk>/eliminar", views.eliminar, name="proyectos-eliminar"),
     path("<int:pk>/resumir-actividad", views.resumen_actividad, name="proyectos-resumir-actividad"),
     path("<int:pk>/asignar", views.asignar, name="proyectos-asignar"),
     # S-LC-Feedback-V5 c4: quick-edits inline desde el detalle.

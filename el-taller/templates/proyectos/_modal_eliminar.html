@@ -1,0 +1,28 @@
+{% comment %}Modal eliminar proyecto PERMANENTE (super_admin, sin movimientos). LC 2026-07.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-gray-900/50" data-modal-slot-close></div>
+    <div class="relative z-10 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-base font-semibold text-error-700 dark:text-error-400">Eliminar proyecto</h3>
+            <button type="button" data-modal-slot-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+        </div>
+        {% if tiene_movimientos %}
+        <div class="mb-4 rounded-lg border border-warning-300 bg-warning-50 p-3 text-sm text-warning-800 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
+            <strong>{{ proyecto.codigo }}</strong> tiene facturas, ingresos o egresos ligados, así que <strong>no se puede eliminar</strong> (borraría historial financiero). Si ya no lo necesitas, <strong>archívalo</strong> en su lugar.
+        </div>
+        <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+            <button type="button" data-modal-slot-close class="btn-secundario">Cerrar</button>
+            <button type="button" hx-get="{% url 'proyectos-archivar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="btn-primario">Archivar en su lugar</button>
+        </div>
+        {% else %}
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+            Vas a eliminar <strong>{{ proyecto.codigo }} · {{ proyecto.nombre }}</strong> de forma <strong>permanente</strong>. Esta acción no se puede deshacer. Úsala solo para proyectos de prueba o duplicados.
+        </p>
+        <form hx-post="{% url 'proyectos-eliminar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+            {% csrf_token %}
+            <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+            <button type="submit" class="inline-flex items-center rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-700">Eliminar permanentemente</button>
+        </form>
+        {% endif %}
+    </div>
+</div>

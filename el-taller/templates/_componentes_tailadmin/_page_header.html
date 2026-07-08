@@ -10,17 +10,24 @@ Params:
 - back_url (str, opcional) — si se pasa, renderiza link "← Volver" antes del título
 - back_label (str, opcional) — texto del botón Volver (default "Volver")
 - acciones (html, opcional) — bloque HTML con botones/links
+
+El «← Volver» respeta el `?volver=` de la URL (de dónde vino el usuario)
+por encima del back_url por-vista, para que regrese a la pantalla real
+anterior (LC 2026-07). Fallback: back_url por-vista.
 {% endcomment %}
+{% load forms_helpers %}
 <header class="mb-6">
     {% if breadcrumb_items %}
     <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
     {% endif %}
-    {% if back_url %}
-    <a href="{{ back_url }}" class="mb-2 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
+    {% with urlvolver=request.GET.volver|url_segura %}
+    {% if urlvolver or back_url %}
+    <a href="{% if urlvolver %}{{ urlvolver }}{% else %}{{ back_url }}{% endif %}" class="mb-2 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m0 0 6-6m-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        {{ back_label|default:"Volver" }}
+        {% if urlvolver %}Volver{% else %}{{ back_label|default:"Volver" }}{% endif %}
     </a>
     {% endif %}
+    {% endwith %}
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
             <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ titulo }}</h1>

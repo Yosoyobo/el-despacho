@@ -59,7 +59,8 @@ class IngresoForm(forms.ModelForm):
         from apps.la_cartera.models import Cliente
         from apps.los_proyectos.models import Proyecto
         self.fields["cliente"].queryset = Cliente.activos.all()
-        self.fields["proyecto"].queryset = Proyecto.objects.exclude(estado__in=["cancelado", "cerrado"])
+        proyectos_mgr = getattr(Proyecto, "activos", Proyecto.objects)
+        self.fields["proyecto"].queryset = proyectos_mgr.exclude(estado__in=["cancelado", "cerrado"])
         # Métodos de captura manual (Tarjeta default). Los demás los ponen
         # integraciones (Stripe/MP) o llegan como legacy.
         metodos = [(v, etiqueta) for v, etiqueta in METODOS_INGRESO if v in METODOS_INGRESO_FORM]
@@ -116,11 +117,20 @@ class EgresoForm(forms.ModelForm):
 
         from cuentas.models.usuario import Usuario
         self.fields["centro_de_costo"].queryset = CentroDeCosto.objects.filter(activo=True)
-        self.fields["proyecto"].queryset = Proyecto.objects.exclude(estado__in=["cancelado", "cerrado"])
-        # Proveedor opcional; vacío = "Gasto operativo" (viáticos, operación).
+        proyectos_mgr = getattr(Proyecto, "activos", Proyecto.objects)
+        self.fields["proyecto"].queryset = proyectos_mgr.exclude(estado__in=["cancelado", "cerrado"])
+        # LC 2026-07: TODO egreso debe ir ligado a un proveedor (obligatorio).
         self.fields["proveedor"].queryset = Proveedor.objects.filter(activo=True).order_by("razon_social")
-        self.fields["proveedor"].required = False
-        self.fields["proveedor"].empty_label = "— Gasto operativo (viáticos, operación) —"
+        self.fields["proveedor"].required = True
+        self.fields["proveedor"].empty_label = "— Elige un proveedor —"
+        # LC 2026-07: un egreso solo se registra al realizarse → sin "Pendiente".
+        # Solo Pagado (saldado) o Por reembolsar; default Pagado.
+        self.fields["estado_pago"].choices = [
+            ("pagado", "Pagado (saldado)"),
+            ("por_reembolsar", "Por reembolsar al empleado"),
+        ]
+        if not self.instance.pk and not self.initial.get("estado_pago"):
+            self.initial["estado_pago"] = "pagado"
         usuarios_activos = Usuario.objects.filter(is_active=True)
         self.fields["pagado_por"].queryset = usuarios_activos
         self.fields["solicitado_por"].queryset = usuarios_activos

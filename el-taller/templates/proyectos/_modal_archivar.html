@@ -1,0 +1,22 @@
+{% comment %}Modal archivar/reactivar proyecto (LC 2026-07). Patrón Wave 5.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-gray-900/50" data-modal-slot-close></div>
+    <div class="relative z-10 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{% if proyecto.archivado %}Reactivar proyecto{% else %}Archivar proyecto{% endif %}</h3>
+            <button type="button" data-modal-slot-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+        </div>
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+            {% if proyecto.archivado %}
+                <strong>{{ proyecto.codigo }} · {{ proyecto.nombre }}</strong> volverá a aparecer en listas, kanban y selectores.
+            {% else %}
+                <strong>{{ proyecto.codigo }} · {{ proyecto.nombre }}</strong> se ocultará de listas, kanban y selectores. No se borra nada y puedes reactivarlo cuando quieras. Úsalo para proyectos de prueba o duplicados (no confundir con «Cancelado», que es para proyectos reales que no se realizaron).
+            {% endif %}
+        </p>
+        <form hx-post="{% url 'proyectos-archivar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+            {% csrf_token %}
+            <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+            <button type="submit" class="btn-primario">{% if proyecto.archivado %}Reactivar{% else %}Archivar{% endif %}</button>
+        </form>
+    </div>
+</div>

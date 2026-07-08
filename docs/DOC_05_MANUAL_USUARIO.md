@@ -2104,9 +2104,16 @@ El corazón del negocio. Cada proyecto tiene código `LC-NNNN`, cliente, product
 ### Dos vistas
 
 - **Lista:** tabla ordenable con código, nombre, cliente, estado, fecha de compromiso.
-- **Kanban:** columnas por estado — útil para ver de un vistazo qué tienes en cada fase.
+- **Kanban:** columnas por estado — útil para ver de un vistazo qué tienes en cada fase. Cada tarjeta muestra **todos sus productos con nombre completo y cantidad** (por ejemplo "Paliacates ×70, Pines/Insignias ×700, Etiquetas para Mandiles Infantiles ×30"), sin recortes, para tener la información completa de un vistazo. El mini-tablero del inicio (Dashboard) hace lo mismo.
 
 Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clickeables como filtros.
+
+### Archivar o eliminar un proyecto
+
+Para proyectos de **prueba o duplicados** (distinto de "Cancelado", que se reserva para proyectos reales que no se hicieron), en el detalle hay dos botones arriba a la derecha:
+
+- **Archivar** (reversible): oculta el proyecto de listas, tablero, calendario y selectores. No borra nada; puedes **Reactivarlo** cuando quieras. En la lista, el botón **"Archivados"** muestra los que archivaste.
+- **Eliminar** (solo super administrador): borra el proyecto **de forma permanente**. Solo funciona si el proyecto **no tiene facturas, ingresos ni egresos** ligados; si los tiene, el sistema te pide archivarlo en su lugar.
 
 ### Detalle del proyecto
 
@@ -2136,12 +2143,16 @@ A la derecha:
   desglose **Subtotal + IVA + Total** (los proveedores facturan con IVA, así
   cuadra con lo que realmente pagas).
 
-Si el proyecto tiene **gastos sin registrar en Tesorería**, arriba aparece una
-**alerta amarilla** con la lista de esos gastos (cada producto, impresión o
-gasto operativo) y su monto. Usa **"Registrar"** en cada uno, o **"Registrar
-todos"**, para crear el egreso correspondiente y mantener la contabilidad al
-día. (Al pasar el proyecto a *En producción* esto se hace solo; la alerta cubre
-lo que agregues después.)
+**Ingresos y egresos del proyecto:** más abajo hay un recuadro con los
+ingresos y egresos ligados al proyecto (aparece en cualquier estado). De
+**producción en adelante**, dentro del recuadro de egresos sale una **alerta
+amarilla** de *"N pago(s) pendiente(s) sin registrar"* con cada costo del
+proyecto (producto, impresión o gasto operativo) que aún no se paga. Cada uno
+tiene un botón **"Registrar pago"** que abre una ventana pidiendo **fecha,
+proveedor (obligatorio), método y estado** (Pagado por default, o Por
+reembolsar). Al confirmar, ese gasto queda registrado como egreso pagado (o,
+si ya existía como cuenta por pagar, se salda). Registra cada pago **cuando lo
+realices**.
 
 Abajo está la tabla de **Tareas** del Pizarrón con "+ Nueva tarea".
 
@@ -2333,15 +2344,30 @@ Mismo patrón que en Proyectos: panel desplegable "+ Crear producto nuevo" abajo
 
 > **Importante:** el sistema **no emite CFDI ni se conecta a un PAC**. Esto es para tu gestión de cuentas por cobrar. Tu contador externo timbra las facturas fiscales aparte.
 
-- Código `FAC-YYYY-NNNN`
-- Origen opcional: una cotización aprobada (la clona)
+### El folio de la factura (F###)
+
+Cada factura tiene un **folio** propio: la letra **F** seguida de un número (F101, F102, F103…). Es el identificador que ves en toda la plataforma: la tabla, el detalle y el PDF.
+
+- Es **obligatorio**. Al crear una factura nueva, el sistema te propone el **siguiente número disponible**, pero lo puedes cambiar.
+- En la tabla de facturas, si en la secuencia falta un número (por ejemplo tienes F101, F102 y F104), aparece una fila **"Sin información"** en el lugar del F103 para que sepas que ese folio no existe.
+
+### Cómo llenar una factura
+
+El formulario se llena de arriba hacia abajo y se ayuda solo:
+
+1. **Cliente:** al elegirlo, el selector de **Proyecto** solo te muestra los proyectos de ese cliente.
+2. **Proyecto:** al elegirlo, el selector de **Cotización origen** solo te muestra las cotizaciones de ese proyecto, con el formato `Proyecto - versión - subtotal`.
+3. **Cotización origen (opcional):** al elegirla, se copian sus productos como líneas de la factura.
+4. **Concepto (obligatorio):** se pre-llena solo. Si la factura tiene un solo producto dice *"Producción de [producto] para [proyecto]"*; si tiene varios dice *"Producción de elementos para [proyecto]"*. Lo puedes editar.
+5. **Estado:** botones (Borrador / Emitida). El cobro y la cancelación se hacen desde el detalle de la factura.
+6. **Vencimiento:** botones rápidos **Fin de mes · 30 días · 45 días · 60 días** además de la fecha manual.
+7. **Monto a facturar:** botones **100%** (default) y **50%**. El 50% factura la mitad del total (parcialidad / anticipo), sin tocar las líneas.
+8. **Líneas:** con **"+ Agregar línea"** agregas cada concepto (descripción, cantidad, unidad, precio, descuento).
+
 - Estados: Borrador → Emitida → Cobrada parcial / Cobrada total / Cancelada
 - "Emitir" genera el asiento contable automáticamente (cuentas por cobrar a cargo, ingresos por ventas al abono)
 - "Cobrar" registra un ingreso en Tesorería y abona contra la CxC
-
-### Crear producto desde la factura
-
-Igual que en Cotizaciones.
+- En la tabla, la columna final **"Total pagable"** es el monto neto que te van a pagar (ya con IVA y menos las retenciones RESICO).
 
 ---
 
@@ -2359,7 +2385,7 @@ El dinero que entra y sale.
 ### Lo que puedes hacer
 
 - **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`.
-- **Egresos:** qué gastaste, centro de costo, proveedor opcional, quién pagó (caja chica vs tarjeta personal), estado de pago. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción.
+- **Egresos:** qué gastaste, centro de costo, **proveedor (obligatorio — todo egreso va ligado a un proveedor)**, quién pagó, fecha. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción. Un egreso **solo se registra cuando el pago se realiza**: los estados posibles son **Pagado (saldado)** o **Por reembolsar**; ya no se registran egresos "por pagar" a mano.
 - **Por cobrar (CxC):** vista unificada de facturas pendientes + anticipos por generar + proyectos legacy con saldo, ordenado por vencimiento.
 - **Por pagar (CxP):** egresos pendientes de pagar + reembolsos pendientes por empleado.
 - **Gastos no registrados:** lista de gastos de proyectos que aún no tienen un

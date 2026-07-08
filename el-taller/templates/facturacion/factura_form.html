@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}{% if modo == 'nuevo' %}Nueva factura{% else %}Editar {{ fac.codigo }}{% endif %} — El Taller{% endblock %}
+{% block title %}{% if modo == 'nuevo' %}Nueva factura{% else %}Editar {{ fac.folio_display }}{% endif %} — El Taller{% endblock %}
 {% block contenido %}
 
-{% if modo == 'nuevo' %}{% breadcrumb_items "Facturación" "/facturacion/" "Nueva" as breadcrumb_items %}{% else %}{% breadcrumb_items "Facturación" "/facturacion/" fac.codigo "/facturacion/"|add:fac.pk|stringformat:"s"|add:"/" "Editar" as breadcrumb_items %}{% endif %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|stringformat:'s'|title subtitulo=fac.codigo|default:"Factura nueva" breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
+{% if modo == 'nuevo' %}{% breadcrumb_items "Facturación" "/facturacion/" "Nueva" as breadcrumb_items %}{% else %}{% breadcrumb_items "Facturación" "/facturacion/" fac.folio_display "/facturacion/"|add:fac.pk|stringformat:"s"|add:"/" "Editar" as breadcrumb_items %}{% endif %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|stringformat:'s'|title subtitulo=fac.folio_display|default:"Factura nueva" breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
 
-<form method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3" id="fac-form">
+<form method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3" id="fac-form"
+      data-proyecto-nombre="{% if fac.proyecto %}{{ fac.proyecto.nombre }}{% endif %}">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -21,16 +22,63 @@
     <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos generales</h2>
         <div class="grid gap-4 md:grid-cols-2">
+
+            {# Folio F — obligatorio, editable, autollena máx+1 #}
+            <div class="md:col-span-2">
+                <label for="{{ form.folio_numero.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Factura (folio) <span class="text-error-500">*</span></label>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex h-11 items-center rounded-lg border border-gray-300 bg-gray-50 px-3 text-base font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">F</span>
+                    <div class="flex-1">{{ form.folio_numero }}</div>
+                </div>
+                {% if form.folio_numero.errors %}<p class="mt-1 text-xs text-error-600">{{ form.folio_numero.errors|join:" " }}</p>{% endif %}
+                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Número de folio de la factura. Se sugiere el siguiente disponible; puedes cambiarlo.</p>
+            </div>
+
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cliente %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cotizacion_origen %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.titulo ancho_completo=True %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cotizacion_origen ancho_completo=True %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.concepto ancho_completo=True %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.estado %}
+
+            {# Estado → pills (Borrador / Emitida). Cobro y cancelación viven en el detalle. #}
+            <div class="md:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Estado</label>
+                {{ form.estado }}
+                {% if not fac or fac.estado == 'borrador' or fac.estado == 'emitida' %}
+                <div class="flex flex-wrap gap-2" data-estado-pills>
+                    <button type="button" data-val="borrador" class="pill rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition dark:border-gray-700 dark:text-gray-300">Borrador</button>
+                    <button type="button" data-val="emitida" class="pill rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition dark:border-gray-700 dark:text-gray-300">Emitida</button>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-600 dark:text-gray-300"><span class="badge badge-brand">{{ fac.get_estado_display }}</span> <span class="text-xs text-gray-400">· el cobro y la cancelación se gestionan desde el detalle</span></p>
+                {% endif %}
+            </div>
+
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_emision %}
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_vencimiento %}
+
+            {# Vencimiento + botones rápidos #}
+            <div>
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fecha_vencimiento %}
+                <div class="mt-2 flex flex-wrap gap-1.5" data-venc-pills>
+                    <button type="button" data-venc="fin_mes" class="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Fin de mes</button>
+                    <button type="button" data-venc="30" class="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">30 días</button>
+                    <button type="button" data-venc="45" class="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">45 días</button>
+                    <button type="button" data-venc="60" class="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">60 días</button>
+                </div>
+            </div>
+
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descuento_global_porcentaje %}
+
+            {# Monto — pills de parcialidad (100% / 50%). Escala el total sin tocar líneas. #}
+            <div class="md:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Monto a facturar</label>
+                {{ form.porcentaje_a_facturar }}
+                <div class="flex flex-wrap items-center gap-2" data-monto-pills>
+                    <button type="button" data-val="100" class="pill rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition dark:border-gray-700 dark:text-gray-300">100%</button>
+                    <button type="button" data-val="50" class="pill rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition dark:border-gray-700 dark:text-gray-300">50%</button>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">50% factura la mitad del total (parcialidad / anticipo).</span>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -47,7 +95,7 @@
         <table class="min-w-[720px] md:min-w-full text-sm" id="fac-items-tabla">
             <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">
                 <tr>
-                    <th class="px-3 py-2">Descripción</th>
+                    <th class="px-3 py-2">Concepto</th>
                     <th class="px-3 py-2">Cantidad</th>
                     <th class="px-3 py-2">Unidad</th>
                     <th class="px-3 py-2">P. unitario</th>
@@ -60,9 +108,7 @@
                 <tr class="fac-item-row align-top" {% if f.instance.pk %}data-existing="1"{% endif %}>
                     <td class="px-3 py-2">
                         {{ f.id }}{{ f.descripcion }}
-                        <div class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
-                            {{ f.servicio.label_tag }} {{ f.servicio }}
-                        </div>
+                        <input type="hidden" name="{{ f.servicio.html_name }}" value="{{ f.servicio.value|default_if_none:'' }}">
                         {% if f.descripcion.errors %}<p class="text-xs text-error-600">{{ f.descripcion.errors|join:" " }}</p>{% endif %}
                     </td>
                     <td class="px-3 py-2 w-24">{{ f.cantidad }}{% if f.cantidad.errors %}<p class="text-xs text-error-600">{{ f.cantidad.errors|join:" " }}</p>{% endif %}</td>
@@ -84,6 +130,7 @@
             </tbody>
         </table>
         </div>
+        <p id="fac-items-vacio" class="mt-3 text-sm text-gray-400 dark:text-gray-500">Aún no hay líneas. Usa «+ Agregar línea» o elige una cotización origen.</p>
 
         <template id="fac-item-template">
             <tr class="fac-item-row align-top">
@@ -104,40 +151,6 @@
                 </td>
             </tr>
         </template>
-
-        {# Quick-create de servicio inline (S-LC-Feedback-V5 c3) #}
-        <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
-            <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Crear producto nuevo en el catálogo</summary>
-            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_110px_110px_90px_auto]">
-                <div class="col-span-2 md:col-span-1">
-                    <label for="fac-qc-categoria" class="text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
-                    <select id="fac-qc-categoria" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <option value="">— Tipo de producto —</option>
-                        {% for c in categorias_disponibles %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div class="col-span-2 md:col-span-1">
-                    <label for="fac-qc-nombre" class="text-xs font-medium text-gray-600 dark:text-gray-300">Nombre</label>
-                    <input id="fac-qc-nombre" type="text" placeholder="ej. Playera bordada" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                </div>
-                <div>
-                    <label for="fac-qc-costo" class="text-xs font-medium text-gray-600 dark:text-gray-300">Costo</label>
-                    <input id="fac-qc-costo" type="number" step="0.01" min="0" placeholder="0.00" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                </div>
-                <div>
-                    <label for="fac-qc-precio" class="text-xs font-medium text-gray-600 dark:text-gray-300">Precio unit.</label>
-                    <input id="fac-qc-precio" type="number" step="0.01" min="0" placeholder="0.00" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                </div>
-                <div>
-                    <label for="fac-qc-cantidad" class="text-xs font-medium text-gray-600 dark:text-gray-300">Cantidad</label>
-                    <input id="fac-qc-cantidad" type="number" min="1" value="1" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                </div>
-                <div class="flex items-end">
-                    <button type="button" id="fac-qc-agregar" class="btn-primario whitespace-nowrap">Crear y agregar</button>
-                </div>
-            </div>
-            <p id="fac-qc-msg" class="mt-2 text-xs hidden"></p>
-        </details>
     </section>
 
     {% else %}
@@ -186,23 +199,50 @@
 
 <script>
 (function () {
-    const tpl = document.getElementById('fac-item-template');
+    const form = document.getElementById('fac-form');
+    if (!form) return;
     const body = document.getElementById('fac-items-body');
     const total = document.querySelector('input[name="items-TOTAL_FORMS"]');
-    const btn = document.getElementById('fac-agregar-linea');
-    if (!tpl || !body || !total || !btn) return;
-    btn.addEventListener('click', () => {
+    const tpl = document.getElementById('fac-item-template');
+    const btnAgregar = document.getElementById('fac-agregar-linea');
+    const vacio = document.getElementById('fac-items-vacio');
+
+    const $cliente = form.querySelector('[name="cliente"]');
+    const $proyecto = form.querySelector('[name="proyecto"]');
+    const $cot = form.querySelector('[name="cotizacion_origen"]');
+    const $concepto = form.querySelector('[name="concepto"]');
+    const $descGlobal = form.querySelector('[name="descuento_global_porcentaje"]');
+    const $notas = form.querySelector('[name="notas"]');
+    const $terminos = form.querySelector('[name="terminos"]');
+    const $estado = form.querySelector('input[name="estado"]');
+    const $porcentaje = form.querySelector('input[name="porcentaje_a_facturar"]');
+    const $venc = form.querySelector('[name="fecha_vencimiento"]');
+    const $emision = form.querySelector('[name="fecha_emision"]');
+
+    let proyectoNombre = form.dataset.proyectoNombre || '';
+
+    // ── Líneas: agregar / quitar ──────────────────────────────────────────
+    function actualizarVacio() {
+        if (!vacio || !body) return;
+        const visibles = [...body.querySelectorAll('tr.fac-item-row')].filter(r => r.style.display !== 'none');
+        vacio.style.display = visibles.length ? 'none' : '';
+    }
+    function nuevaFila() {
         const idx = parseInt(total.value, 10);
         const html = tpl.innerHTML.replace(/__prefix__/g, idx);
         const tmp = document.createElement('tbody');
         tmp.innerHTML = html;
-        body.appendChild(tmp.firstElementChild);
+        const tr = tmp.firstElementChild;
+        body.appendChild(tr);
         total.value = idx + 1;
-    });
-    // S-LC-Feedback-V3: botón "x" para quitar línea.
+        actualizarVacio();
+        return tr;
+    }
+    if (btnAgregar) btnAgregar.addEventListener('click', () => { nuevaFila(); maybeSetConcepto(); });
+
     document.addEventListener('click', function (e) {
         const x = e.target.closest('.fac-item-eliminar');
-        if (!x) return;
+        if (!x || !form.contains(x)) return;
         const fila = x.closest('.fac-item-row');
         const checkboxId = x.getAttribute('data-delete-checkbox');
         if (checkboxId) {
@@ -213,294 +253,182 @@
             fila.remove();
             total.value = parseInt(total.value, 10) - 1;
         }
+        actualizarVacio();
+        maybeSetConcepto();
     });
 
-    // ── Auto-completar al seleccionar proyecto o cotización origen ────
-    // S-Finanzas-V2: cambiar/quitar cliente o proyecto limpia los campos
-    // que fueron auto-completados (marcados con data-autocompletado-de).
-    // Lo escrito a mano (sin ese marker) se respeta.
-    const $cliente = document.querySelector('[name="cliente"]');
-    const $proyecto = document.querySelector('[name="proyecto"]');
-    const $cot = document.querySelector('[name="cotizacion_origen"]');
-    const $titulo = document.querySelector('[name="titulo"]');
-    const $descGlobal = document.querySelector('[name="descuento_global_porcentaje"]');
-    const $notas = document.querySelector('[name="notas"]');
-    const $terminos = document.querySelector('[name="terminos"]');
-
-    function marcarAutoLleno(input, fuente) {
-        if (!input) return;
-        input.dataset.autocompletadoDe = fuente;
+    // ── Concepto auto (1 producto vs varios) ──────────────────────────────
+    function filasVisibles() {
+        return [...body.querySelectorAll('tr.fac-item-row')].filter(r => r.style.display !== 'none');
     }
-
-    function limpiarSiAutoLleno(input, fuenteEsperada) {
-        if (!input) return;
-        if (input.dataset.autocompletadoDe === fuenteEsperada) {
-            input.value = '';
-            delete input.dataset.autocompletadoDe;
+    function computeConcepto() {
+        if (!proyectoNombre) return null;
+        const rows = filasVisibles();
+        if (!rows.length) return null;
+        if (rows.length === 1) {
+            const d = rows[0].querySelector('[name$="-descripcion"]');
+            const nombre = (d && d.value.trim()) || 'producto';
+            return `Producción de ${nombre} para ${proyectoNombre}`;
+        }
+        return `Producción de elementos para ${proyectoNombre}`;
+    }
+    function maybeSetConcepto() {
+        if (!$concepto) return;
+        const c = computeConcepto();
+        if (!c) return;
+        if (!$concepto.value.trim() || $concepto.dataset.auto === '1') {
+            $concepto.value = c;
+            $concepto.dataset.auto = '1';
         }
     }
+    if ($concepto) $concepto.addEventListener('input', () => { delete $concepto.dataset.auto; });
+    if (body) body.addEventListener('input', (e) => {
+        if (e.target.name && e.target.name.endsWith('-descripcion')) maybeSetConcepto();
+    });
 
-    function setSiVacio(input, value, fuente) {
-        if (!input) return;
-        if (value === null || value === undefined || value === '') return;
-        const current = String(input.value || '').trim();
-        if (current === '' || current === '0' || current === '0.00') {
-            input.value = value;
-            marcarAutoLleno(input, fuente);
+    // ── Pills (estado / monto) ────────────────────────────────────────────
+    function initPills(container, hidden) {
+        if (!container || !hidden) return;
+        function marcar() {
+            container.querySelectorAll('.pill').forEach(b => {
+                const on = String(b.dataset.val) === String(hidden.value);
+                b.classList.toggle('border-brand-500', on);
+                b.classList.toggle('bg-brand-50', on);
+                b.classList.toggle('text-brand-700', on);
+                b.classList.toggle('dark:bg-brand-500/10', on);
+                b.classList.toggle('dark:text-brand-300', on);
+            });
         }
-    }
-
-    function setSelectSiPosible(select, value, fuente) {
-        if (!select || value == null) return false;
-        const target = String(value);
-        if (String(select.value) === target) return false;
-        const opt = Array.from(select.options).find(o => o.value === target);
-        if (!opt) return false;
-        select.value = target;
-        if (fuente) marcarAutoLleno(select, fuente);
-        return true;
-    }
-
-    function clearItemRows() {
-        body.querySelectorAll('tr.fac-item-row').forEach(row => {
-            if (row.dataset.existing === '1') return;  // No tocar líneas guardadas
-            row.remove();
+        container.querySelectorAll('.pill').forEach(b => {
+            b.addEventListener('click', () => { hidden.value = b.dataset.val; marcar(); });
         });
-        const existentes = body.querySelectorAll('tr[data-existing="1"]').length;
-        total.value = String(existentes);
+        marcar();
+    }
+    initPills(form.querySelector('[data-estado-pills]'), $estado);
+    initPills(form.querySelector('[data-monto-pills]'), $porcentaje);
+
+    // ── Vencimiento rápido ────────────────────────────────────────────────
+    function baseFecha() {
+        const v = ($emision && $emision.value) ? $emision.value : null;
+        return v ? new Date(v + 'T00:00:00') : new Date();
+    }
+    function fmt(d) {
+        const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    }
+    const vencPills = form.querySelector('[data-venc-pills]');
+    if (vencPills && $venc) {
+        vencPills.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-venc]');
+            if (!b) return;
+            const base = baseFecha();
+            let d;
+            if (b.dataset.venc === 'fin_mes') {
+                d = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+            } else {
+                d = new Date(base); d.setDate(d.getDate() + parseInt(b.dataset.venc, 10));
+            }
+            $venc.value = fmt(d);
+            $venc.dispatchEvent(new Event('change', { bubbles: true }));
+        });
     }
 
-    function addItemRow(item, fuente) {
-        const idx = parseInt(total.value, 10);
-        const html = tpl.innerHTML.replace(/__prefix__/g, idx);
-        const tmp = document.createElement('tbody');
-        tmp.innerHTML = html;
-        const tr = tmp.firstElementChild;
-        if (fuente) tr.dataset.autocompletadoDe = fuente;
-        body.appendChild(tr);
-        total.value = idx + 1;
+    // ── Cascada: cliente → proyecto → cotización ──────────────────────────
+    function setOptions(select, items, placeholder, seleccion) {
+        if (!select) return;
+        const prev = seleccion != null ? String(seleccion) : String(select.value || '');
+        select.innerHTML = '';
+        const opt0 = document.createElement('option');
+        opt0.value = ''; opt0.textContent = placeholder;
+        select.appendChild(opt0);
+        (items || []).forEach(it => {
+            const o = document.createElement('option');
+            o.value = String(it.id); o.textContent = it.label;
+            if (String(it.id) === prev) o.selected = true;
+            select.appendChild(o);
+        });
+    }
+
+    async function cargarProyectosDe(clienteId, seleccion) {
+        if (!$proyecto) return;
+        if (!clienteId) { setOptions($proyecto, [], '— Elige un proyecto —'); setOptions($cot, [], '— Elige una cotización —'); return; }
+        try {
+            const r = await fetch(`/facturacion/api/cliente/${clienteId}/proyectos/`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+            if (!r.ok) return;
+            const d = await r.json();
+            setOptions($proyecto, d.proyectos, '— Elige un proyecto —', seleccion);
+        } catch (e) { /* silent */ }
+    }
+
+    async function cargarCotizacionesDe(proyectoId, seleccion) {
+        if (!$cot) return;
+        if (!proyectoId) { setOptions($cot, [], '— Elige una cotización —'); return; }
+        try {
+            const r = await fetch(`/facturacion/api/proyecto/${proyectoId}/datos/`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+            if (!r.ok) return;
+            const d = await r.json();
+            proyectoNombre = d.nombre || proyectoNombre;
+            setOptions($cot, d.cotizaciones, '— Elige una cotización (opcional) —', seleccion);
+            maybeSetConcepto();
+        } catch (e) { /* silent */ }
+    }
+
+    if ($cliente) {
+        $cliente.addEventListener('change', () => {
+            cargarProyectosDe($cliente.value, null);
+            setOptions($cot, [], '— Elige una cotización —');
+        });
+    }
+    if ($proyecto) {
+        $proyecto.addEventListener('change', () => { cargarCotizacionesDe($proyecto.value, null); });
+    }
+
+    // Cargar líneas + datos al elegir cotización.
+    function limpiarItemsAuto() {
+        body.querySelectorAll('tr.fac-item-row').forEach(row => {
+            if (row.dataset.auto === 'cot') { row.remove(); }
+        });
+        total.value = String(body.querySelectorAll('tr.fac-item-row').length);
+    }
+    function addItemFromCot(item) {
+        const tr = nuevaFila();
+        tr.dataset.auto = 'cot';
+        const idx = parseInt(total.value, 10) - 1;
         tr.querySelector(`[name="items-${idx}-descripcion"]`).value = item.descripcion || '';
         tr.querySelector(`[name="items-${idx}-cantidad"]`).value = item.cantidad || '1';
         tr.querySelector(`[name="items-${idx}-unidad"]`).value = item.unidad || 'pieza';
         tr.querySelector(`[name="items-${idx}-precio_unitario"]`).value = item.precio_unitario || '0';
         tr.querySelector(`[name="items-${idx}-descuento_porcentaje"]`).value = item.descuento_porcentaje || '0';
     }
-
-    function limpiarItemsAutoLleno(fuente) {
-        body.querySelectorAll('tr.fac-item-row').forEach(row => {
-            if (row.dataset.autocompletadoDe === fuente) row.remove();
-        });
-        // Re-numera el TOTAL_FORMS contando filas restantes
-        const restantes = body.querySelectorAll('tr.fac-item-row').length;
-        total.value = String(restantes);
-    }
-
-    function limpiarChecksAutoLleno(fuente) {
-        document.querySelectorAll('input[name="tasas"]').forEach(cb => {
-            if (cb.dataset.autocompletadoDe === fuente) {
-                cb.checked = false;
-                delete cb.dataset.autocompletadoDe;
-            }
-        });
-    }
-
-    function limpiarRastroDe(fuente) {
-        // Limpia título/descuento/notas/términos si fueron auto-llenados por `fuente`
-        [$titulo, $notas, $terminos].forEach(i => limpiarSiAutoLleno(i, fuente));
-        if ($descGlobal && $descGlobal.dataset.autocompletadoDe === fuente) {
-            $descGlobal.value = '0';
-            delete $descGlobal.dataset.autocompletadoDe;
-        }
-        limpiarItemsAutoLleno(fuente);
-        limpiarChecksAutoLleno(fuente);
-    }
-
-    if ($proyecto) {
-        $proyecto.addEventListener('change', async () => {
-            const pk = $proyecto.value;
-            if (!pk) {
-                // Quitó el proyecto → limpiar todo lo heredado del proyecto y de cualquier cotización
-                limpiarRastroDe('proyecto');
-                limpiarRastroDe('cotizacion');
-                if ($cot) {
-                    $cot.value = '';
-                    delete $cot.dataset.autocompletadoDe;
-                }
-                limpiarSiAutoLleno($cliente, 'proyecto');
-                return;
-            }
-            // Si la cotización seleccionada ya no corresponde al nuevo proyecto, limpiarla.
-            if ($cot && $cot.value) {
-                try {
-                    const r = await fetch(`/facturacion/api/cotizacion/${$cot.value}/datos/`, {
-                        headers: {'Accept': 'application/json'},
-                        credentials: 'same-origin',
-                    });
-                    if (r.ok) {
-                        const dc = await r.json();
-                        if (String(dc.proyecto_id || '') !== String(pk)) {
-                            $cot.value = '';
-                            delete $cot.dataset.autocompletadoDe;
-                            limpiarRastroDe('cotizacion');
-                        }
-                    }
-                } catch (e) { /* silent */ }
-            }
-            try {
-                const r = await fetch(`/facturacion/api/proyecto/${pk}/datos/`, {
-                    headers: {'Accept': 'application/json'},
-                    credentials: 'same-origin',
-                });
-                if (!r.ok) return;
-                const d = await r.json();
-                // Si el cliente actual fue puesto a mano y NO coincide, NO lo cambies.
-                // Si está vacío o fue auto-llenado, prelletar.
-                const clienteCurrent = $cliente ? String($cliente.value || '') : '';
-                if (!clienteCurrent || ($cliente && $cliente.dataset.autocompletadoDe)) {
-                    setSelectSiPosible($cliente, d.cliente_id, 'proyecto');
-                }
-                if ($titulo && !$titulo.value.trim()) {
-                    $titulo.value = `Factura · ${d.codigo}${d.nombre ? ' — ' + d.nombre : ''}`;
-                    marcarAutoLleno($titulo, 'proyecto');
-                }
-            } catch (e) { /* silent */ }
-        });
-    }
-
-    if ($cliente) {
-        $cliente.addEventListener('change', () => {
-            // Si el cliente cambia o se vacía, lo escrito a mano sobre el cliente queda,
-            // pero proyecto/cotización heredados de "proyecto" o "cotizacion" se vuelven
-            // potencialmente inconsistentes — los limpiamos.
-            delete $cliente.dataset.autocompletadoDe;
-            // Si proyecto fue auto-llenado por una cotización con otro cliente, limpiarlo.
-            if ($proyecto && $proyecto.dataset.autocompletadoDe === 'cotizacion') {
-                $proyecto.value = '';
-                delete $proyecto.dataset.autocompletadoDe;
-            }
-            // Si la cotización seleccionada no corresponde al nuevo cliente, limpiarla.
-            // Asumimos que cualquier cambio de cliente potencialmente invalida la cotización;
-            // limpiamos para evitar inconsistencia silenciosa.
-            if ($cot && $cot.value) {
-                $cot.value = '';
-                delete $cot.dataset.autocompletadoDe;
-                limpiarRastroDe('cotizacion');
-            }
-        });
-    }
-
     if ($cot) {
         $cot.addEventListener('change', async () => {
             const pk = $cot.value;
-            if (!pk) {
-                // Quitó la cotización → limpiar lo heredado de la cotización
-                limpiarRastroDe('cotizacion');
-                return;
-            }
-            const hayManuales = Array.from(body.querySelectorAll('tr.fac-item-row'))
-                .some(row => !row.dataset.autocompletadoDe && row.dataset.existing !== '1');
-            const confirmar = hayManuales
-                ? window.confirm('Tienes líneas escritas a mano. Si copias datos de la cotización, las líneas a mano se conservan pero se agregan las de la cotización debajo. ¿Continuar?')
-                : true;
-            if (!confirmar) { $cot.value = ''; return; }
+            if (!pk) return;
             try {
-                const r = await fetch(`/facturacion/api/cotizacion/${pk}/datos/`, {
-                    headers: {'Accept': 'application/json'},
-                    credentials: 'same-origin',
-                });
+                const r = await fetch(`/facturacion/api/cotizacion/${pk}/datos/`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
                 if (!r.ok) return;
                 const d = await r.json();
-                setSelectSiPosible($cliente, d.cliente_id, 'cotizacion');
-                setSelectSiPosible($proyecto, d.proyecto_id, 'cotizacion');
-                if ($titulo && !$titulo.value.trim()) {
-                    $titulo.value = d.titulo || '';
-                    marcarAutoLleno($titulo, 'cotizacion');
-                }
-                setSiVacio($descGlobal, d.descuento_global_porcentaje, 'cotizacion');
-                if ($notas && !$notas.value.trim()) {
-                    $notas.value = d.notas || '';
-                    marcarAutoLleno($notas, 'cotizacion');
-                }
-                if ($terminos && !$terminos.value.trim()) {
-                    $terminos.value = d.terminos || '';
-                    marcarAutoLleno($terminos, 'cotizacion');
-                }
-                // Limpiar líneas previamente auto-llenadas por otra cotización
-                limpiarItemsAutoLleno('cotizacion');
-                (d.items || []).forEach(item => addItemRow(item, 'cotizacion'));
-                // Marcar checkboxes de impuestos según los de la cotización
+                if ($descGlobal && (!$descGlobal.value || $descGlobal.value === '0' || $descGlobal.value === '0.00')) $descGlobal.value = d.descuento_global_porcentaje;
+                if ($notas && !$notas.value.trim()) $notas.value = d.notas || '';
+                if ($terminos && !$terminos.value.trim()) $terminos.value = d.terminos || '';
+                limpiarItemsAuto();
+                (d.items || []).forEach(addItemFromCot);
                 const ids = new Set((d.impuestos || []).map(String));
-                document.querySelectorAll('input[name="tasas"]').forEach(cb => {
-                    if (ids.has(String(cb.value))) {
-                        cb.checked = true;
-                        cb.dataset.autocompletadoDe = 'cotizacion';
-                    } else if (cb.dataset.autocompletadoDe === 'cotizacion') {
-                        cb.checked = false;
-                        delete cb.dataset.autocompletadoDe;
-                    }
-                });
+                form.querySelectorAll('input[name="tasas"]').forEach(cb => { cb.checked = ids.has(String(cb.value)); });
+                actualizarVacio();
+                maybeSetConcepto();
             } catch (e) { /* silent */ }
         });
     }
-})();
 
-// Quick-create de servicio (S-LC-Feedback-V5 c3) — crea Servicio y agrega nueva línea pre-llenada.
-(function () {
-    const btn = document.getElementById('fac-qc-agregar');
-    if (!btn) return;
-    const csrf = document.querySelector('input[name=csrfmiddlewaretoken]').value;
-    const inputs = {
-        categoria: document.getElementById('fac-qc-categoria'),
-        nombre: document.getElementById('fac-qc-nombre'),
-        costo: document.getElementById('fac-qc-costo'),
-        precio: document.getElementById('fac-qc-precio'),
-        cantidad: document.getElementById('fac-qc-cantidad'),
-    };
-    const msg = document.getElementById('fac-qc-msg');
-    const tpl = document.getElementById('fac-item-template');
-    const body = document.getElementById('fac-items-body');
-    const total = document.querySelector('input[name="items-TOTAL_FORMS"]');
-
-    function mostrarMsg(t, esErr) {
-        msg.textContent = t;
-        msg.className = 'mt-2 text-xs ' + (esErr ? 'text-error-600 dark:text-error-400' : 'text-success-600 dark:text-success-400');
+    // ── Init ──────────────────────────────────────────────────────────────
+    actualizarVacio();
+    // Al abrir: si ya hay proyecto (edición), poblar la cascada preservando selección.
+    if ($proyecto && $proyecto.value) {
+        cargarCotizacionesDe($proyecto.value, $cot ? $cot.value : null);
+    } else if ($cot) {
+        setOptions($cot, [], '— Elige una cotización —');
     }
-
-    btn.addEventListener('click', async function () {
-        const nombre = (inputs.nombre.value || '').trim();
-        const categoria_id = inputs.categoria.value;
-        const precio = (inputs.precio.value || '').trim();
-        const cantidad = parseInt(inputs.cantidad.value || '1', 10);
-        if (!nombre || !categoria_id || !precio) { mostrarMsg('Faltan tipo, nombre o precio.', true); return; }
-        btn.disabled = true;
-        const fd = new FormData();
-        fd.append('nombre', nombre);
-        fd.append('categoria_id', categoria_id);
-        fd.append('precio_base', precio);
-        fd.append('costo', inputs.costo.value || '0');
-        try {
-            const r = await fetch('{% url "catalogo-quick-create" %}', {method: 'POST', headers: {'X-CSRFToken': csrf}, body: fd});
-            const data = await r.json();
-            if (!r.ok || !data.ok) { mostrarMsg(data.error || 'Error', true); btn.disabled = false; return; }
-            const idx = parseInt(total.value, 10);
-            const html = tpl.innerHTML.replace(/__prefix__/g, idx);
-            const tmp = document.createElement('tbody');
-            tmp.innerHTML = html;
-            const tr = tmp.firstElementChild;
-            tr.querySelector(`[name="items-${idx}-descripcion"]`).value = data.nombre;
-            tr.querySelector(`[name="items-${idx}-cantidad"]`).value = cantidad;
-            tr.querySelector(`[name="items-${idx}-precio_unitario"]`).value = data.precio || precio;
-            const hidServ = tr.querySelector(`[name="items-${idx}-servicio"]`);
-            if (hidServ) hidServ.value = data.id;
-            body.appendChild(tr);
-            total.value = idx + 1;
-            inputs.nombre.value = ''; inputs.precio.value = ''; inputs.costo.value = ''; inputs.cantidad.value = '1';
-            mostrarMsg('Producto «' + data.nombre + '» creado y agregado.', false);
-            btn.disabled = false;
-        } catch (err) {
-            mostrarMsg('Error de red.', true); btn.disabled = false;
-        }
-    });
 })();
 </script>
 {% endblock %}

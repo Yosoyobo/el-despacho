@@ -1,10 +1,10 @@
 {% load forms_helpers %}
-{% comment %}Modal "Registrar gasto" — pide centro, método, quién pagó/solicitó. Wave 5.{% endcomment %}
+{% comment %}Modal "Registrar pago" — fecha, proveedor obligatorio, método, estado (Pagado/Por reembolsar). Wave 5.{% endcomment %}
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-gray-900/50" data-modal-slot-close></div>
     <div class="relative z-10 w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
         <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Registrar gasto en Tesorería</h3>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Registrar pago</h3>
             <button type="button" data-modal-slot-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
         </div>
 
@@ -15,12 +15,18 @@
             </p>
         </div>
 
+        {% if error %}<div class="mb-3 rounded-lg border border-error-300 bg-error-50 p-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ error }}</div>{% endif %}
+
         <form hx-post="{% url 'proyectos-registrar-gasto-modal' proyecto.pk clase obj_pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form space-y-3">
             {% csrf_token %}
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
-                <select name="proveedor" id="rg-proveedor">
-                    <option value="">— Sin proveedor —</option>
+                <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha del pago</label>
+                <input type="date" name="fecha" value="{{ hoy }}" required>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor <span class="text-error-500">*</span></label>
+                <select name="proveedor" id="rg-proveedor" required>
+                    <option value="">— Elige un proveedor —</option>
                     {% for p in proveedores %}<option value="{{ p.pk }}" {% if info.proveedor and p.pk == info.proveedor.pk %}selected{% endif %}>{{ p.razon_social }}</option>{% endfor %}
                 </select>
                 <details class="mt-2 rounded-lg border border-dashed border-gray-300 p-2 dark:border-gray-700">
@@ -51,29 +57,20 @@
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Estado del pago</label>
                     <select name="estado_pago">
-                        {% for v, l in estados_pago %}<option value="{{ v }}" {% if v == 'pendiente' %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                        {% for v, l in estados_pago %}<option value="{{ v }}" {% if v == 'pagado' %}selected{% endif %}>{{ l }}</option>{% endfor %}
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">¿Quién pagó?</label>
-                    <select name="pagado_por">
-                        <option value="">— Nadie / N/A —</option>
-                        {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.nombre_completo|default:u.email }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">¿Quién solicitó?</label>
-                    <select name="solicitado_por">
-                        <option value="">— Nadie / N/A —</option>
-                        {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.nombre_completo|default:u.email }}</option>{% endfor %}
-                    </select>
-                </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">¿Quién pagó? <span class="text-xs font-normal text-gray-400">(para reembolsos)</span></label>
+                <select name="pagado_por">
+                    <option value="">— Nadie / N/A —</option>
+                    {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.nombre_completo|default:u.email }}</option>{% endfor %}
+                </select>
             </div>
             <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
                 <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
-                <button type="submit" class="btn-primario">Registrar egreso</button>
+                <button type="submit" class="btn-primario">Registrar pago</button>
             </div>
         </form>
     </div>

@@ -1,15 +1,16 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}{{ fac.codigo }} — Facturación{% endblock %}
+{% block title %}{{ fac.folio_display }} — Facturación{% endblock %}
 {% block contenido %}
 
-{% breadcrumb_items "Facturación" "/facturacion/" fac.codigo as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=fac.codigo subtitulo=fac.titulo breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
+{% breadcrumb_items "Facturación" "/facturacion/" fac.folio_display as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=fac.folio_display subtitulo=fac.concepto|default:fac.titulo breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
     {% with estado=fac.estado_visible %}
     <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
     {% endwith %}
+    <span class="badge badge-gray font-mono">{{ fac.codigo }}</span>
     {% if fac.proyecto %}<span class="badge badge-gray">{{ fac.proyecto.codigo }}</span>{% endif %}
     {% if fac.cotizacion_origen %}<span class="badge badge-gray">desde {{ fac.cotizacion_origen.codigo }}</span>{% endif %}
 </div>
@@ -49,6 +50,7 @@
                 <dl class="w-full max-w-sm space-y-1 text-sm">
                     <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Subtotal</dt><dd class="text-gray-900 dark:text-gray-100">{{ totales.subtotal_items|dinero }}</dd></div>
                     {% if totales.descuento_global %}<div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Descuento global ({{ fac.descuento_global_porcentaje|floatformat:2 }}%)</dt><dd class="text-error-600 dark:text-error-400">−{{ totales.descuento_global|dinero }}</dd></div>{% endif %}
+                    {% if totales.parcialidad_descuento %}<div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Facturado al {{ totales.porcentaje_a_facturar|floatformat:0 }}% (parcialidad)</dt><dd class="text-error-600 dark:text-error-400">−{{ totales.parcialidad_descuento|dinero }}</dd></div>{% endif %}
                     {% for imp in totales.impuestos_detalle %}
                     <div class="flex justify-between">
                         <dt class="text-gray-500 dark:text-gray-400">{{ imp.nombre }} ({{ imp.porcentaje|floatformat:2 }}%)</dt>

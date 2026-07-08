@@ -12,18 +12,39 @@ class FacturaForm(forms.ModelForm):
     class Meta:
         model = Factura
         fields = [
-            "cliente", "proyecto", "cotizacion_origen", "titulo", "concepto",
+            "folio_numero",
+            "cliente", "proyecto", "cotizacion_origen", "concepto",
             "estado",
             "fecha_emision", "fecha_vencimiento",
-            "moneda", "descuento_global_porcentaje",
+            "moneda", "descuento_global_porcentaje", "porcentaje_a_facturar",
             "notas", "terminos",
         ]
         widgets = {
+            "folio_numero": forms.NumberInput(attrs={"min": 1, "class": "folio-input"}),
+            "estado": forms.HiddenInput(),
+            "porcentaje_a_facturar": forms.HiddenInput(),
             "fecha_emision": forms.DateInput(attrs={"type": "date"}),
             "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
             "terminos": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
+        labels = {"folio_numero": "Factura (folio)"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Concepto es obligatorio (LC 2026-07); el modelo lo deja blank.
+        self.fields["concepto"].required = True
+        # Folio obligatorio; se sugiere el siguiente disponible en la vista.
+        self.fields["folio_numero"].required = True
+        # Solo cotizaciones vigentes (no anuladas) como origen.
+        from apps.cotizaciones.models import Cotizacion
+        self.fields["cotizacion_origen"].queryset = (
+            Cotizacion.vigentes.select_related("proyecto").order_by("-creado_en")
+        )
+        # Solo proyectos vigentes (no archivados) en el selector.
+        from apps.los_proyectos.models import Proyecto
+        mgr = getattr(Proyecto, "activos", Proyecto.objects)
+        self.fields["proyecto"].queryset = mgr.order_by("-creado_en")
 
     def clean(self):
         cleaned = super().clean()
@@ -37,7 +58,17 @@ class FacturaForm(forms.ModelForm):
         if desc is not None and (desc < 0 or desc > Decimal("100")):
             self.add_error("descuento_global_porcentaje",
                            "El descuento debe estar entre 0 y 100.")
+        pf = cleaned.get("porcentaje_a_facturar")
+        if pf is not None and (pf <= 0 or pf > Decimal("100")):
+            self.add_error("porcentaje_a_facturar",
+                           "El porcentaje a facturar debe estar entre 1 y 100.")
         return cleaned
+
+    def clean_folio_numero(self):
+        v = self.cleaned_data.get("folio_numero")
+        if v is None or v < 1:
+            raise forms.ValidationError("Captura el número de folio de la factura.")
+        return v
 
 
 class FacturaItemForm(forms.ModelForm):
@@ -72,11 +103,13 @@ class FacturaItemForm(forms.ModelForm):
         return v
 
 
+# extra=0: las líneas arrancan ocultas; aparecen con "+ Agregar línea" o al
+# cargar una cotización (LC 2026-07).
 ItemFormSet = forms.inlineformset_factory(
     Factura,
     FacturaItem,
     form=FacturaItemForm,
-    extra=1,
+    extra=0,
     can_delete=True,
     min_num=0,
     validate_min=False,

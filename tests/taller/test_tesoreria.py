@@ -132,13 +132,15 @@ def test_form_egreso_tarjeta_personal_sugiere_reembolso(centro):
     assert "estado_pago" in form.errors
 
 
-def test_egreso_con_iva_calcula_total_y_gasto_operativo(client, usuario_factory, centro):
-    """incluye_iva → monto = subtotal×1.16; proveedor vacío → 'Gasto operativo'."""
+def test_egreso_con_iva_calcula_total(client, usuario_factory, centro):
+    """incluye_iva → monto = subtotal×1.16. LC 2026-07: proveedor obligatorio."""
+    from apps.el_catalogo.models import Proveedor
     actor = usuario_factory(rol="dueno")
     client.force_login(actor)
+    prov = Proveedor.objects.create(razon_social="Papelería SA", creado_por=actor)
     resp = client.post("/tesoreria/egresos/nuevo/", {
         "subtotal": "100", "incluye_iva": "on", "fecha": "2026-05-19",
-        "descripcion": "Con IVA", "proveedor": "",
+        "descripcion": "Con IVA", "proveedor": prov.pk,
         "centro_de_costo": centro.pk, "proyecto": "",
         "pagado_por": actor.pk, "solicitado_por": "",
         "estado_pago": "pagado", "metodo": "transferencia", "moneda": "MXN",
@@ -149,7 +151,22 @@ def test_egreso_con_iva_calcula_total_y_gasto_operativo(client, usuario_factory,
     assert e.subtotal == Decimal("100")
     assert e.incluye_iva is True
     assert e.monto == Decimal("116.00")
-    assert e.proveedor_nombre == "Gasto operativo"
+    assert e.proveedor_nombre == "Papelería SA"
+
+
+def test_egreso_sin_proveedor_rechazado(client, usuario_factory, centro):
+    """LC 2026-07: un egreso sin proveedor ya no se acepta (form inválido)."""
+    actor = usuario_factory(rol="dueno")
+    client.force_login(actor)
+    resp = client.post("/tesoreria/egresos/nuevo/", {
+        "subtotal": "100", "fecha": "2026-05-19", "descripcion": "Sin prov",
+        "proveedor": "", "centro_de_costo": centro.pk, "proyecto": "",
+        "pagado_por": actor.pk, "solicitado_por": "",
+        "estado_pago": "pagado", "metodo": "transferencia", "moneda": "MXN",
+    })
+    assert resp.status_code == 200  # re-render con error, no redirect
+    from apps.tesoreria.models import Egreso
+    assert Egreso.objects.count() == 0
 
 
 def test_egreso_desde_proyecto_liga_y_asigna_proveedor(client, usuario_factory, centro, cliente_factory):
@@ -242,11 +259,13 @@ def test_crear_egreso_por_reembolsar_dispara_evento(
     import apps.tesoreria.views as _views
     monkeypatch.setattr(_views, "emitir", lambda evt: emisiones.append(evt))
 
+    from apps.el_catalogo.models import Proveedor
     actor = usuario_factory(rol="dueno")
     client.force_login(actor)
+    prov = Proveedor.objects.create(razon_social="Insumos SA", creado_por=actor)
     resp = client.post("/tesoreria/egresos/nuevo/", {
         "subtotal": "300", "fecha": "2026-05-19",
-        "descripcion": "Insumos", "proveedor": "",
+        "descripcion": "Insumos", "proveedor": prov.pk,
         "centro_de_costo": centro.pk, "proyecto": "",
         "pagado_por": actor.pk, "solicitado_por": "",
         "estado_pago": "por_reembolsar", "metodo": "tarjeta_personal",

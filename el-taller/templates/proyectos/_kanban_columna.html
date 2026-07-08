@@ -24,11 +24,11 @@
                 <span class="whitespace-nowrap text-[10px] {{ p.fecha_compromiso|dentro_de_clase }}">{{ p.fecha_compromiso|dentro_de }}</span>
             </div>
             {% if p.productos.all %}
+            {# Items COMPLETOS siempre (LC 2026-07): nombre + cantidad, sin recorte, para ver todo de un vistazo. #}
             <div class="mt-1.5 flex flex-wrap gap-1 text-[10px] text-gray-500 dark:text-gray-400">
-                {% for pp in p.productos.all|slice:":2" %}
-                    <span class="inline-flex items-center truncate rounded-full bg-gray-100 px-1.5 py-0.5 dark:bg-white/[0.05]">{{ pp.etiqueta|truncatechars:18 }}</span>
+                {% for pp in p.productos.all %}
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 dark:bg-white/[0.05]">{{ pp.etiqueta }}</span>
                 {% endfor %}
-                {% if p.productos.all|length > 2 %}<span>+{{ p.productos.all|length|add:"-2" }}</span>{% endif %}
             </div>
             {% endif %}
         </a>

@@ -123,11 +123,13 @@ def test_registrar_gasto_modal_get_y_post(client, usuario_factory, proyecto_fact
     r = client.get(f"/proyectos/{p.pk}/gasto/producto/{prod.pk}/registrar-modal", HTTP_HX_REQUEST="true")
     assert r.status_code == 200
     assert b"Categor" in r.content
-    # POST registra el egreso con quién pagó/solicitó.
+    # POST registra el pago. LC 2026-07: proveedor obligatorio.
+    from apps.el_catalogo.models import Proveedor
+    prov = Proveedor.objects.create(razon_social="Prov SA", creado_por=sa)
     r = client.post(
         f"/proyectos/{p.pk}/gasto/producto/{prod.pk}/registrar-modal",
-        {"centro_de_costo": centro.pk, "metodo": "efectivo", "estado_pago": "pagado",
-         "pagado_por": sa.pk, "solicitado_por": sa.pk},
+        {"proveedor": prov.pk, "centro_de_costo": centro.pk, "metodo": "efectivo",
+         "estado_pago": "pagado", "fecha": "2026-07-08", "pagado_por": sa.pk},
         HTTP_HX_REQUEST="true",
     )
     assert r.status_code in (200, 204)
@@ -135,3 +137,4 @@ def test_registrar_gasto_modal_get_y_post(client, usuario_factory, proyecto_fact
     assert prod.egreso is not None
     assert prod.egreso.metodo == "efectivo"
     assert prod.egreso.pagado_por_id == sa.pk
+    assert prod.egreso.estado_pago == "pagado"

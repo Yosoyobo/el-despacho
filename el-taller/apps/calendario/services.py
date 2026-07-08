@@ -21,7 +21,7 @@ def _proyectos_visibles_qs(user):
     # V6 Bloque 10: roles efectivos (rol primario + roles_extra) en lugar de
     # user.rol duro — un "miembro" con rol personalizado "dueno" ve lo mismo.
     roles = roles_efectivos(user)
-    qs = Proyecto.objects.select_related("cliente")
+    qs = Proyecto.activos.select_related("cliente")  # LC 2026-07: sin archivados
     if roles & {"super_admin", "dueno", "contador"}:
         return qs
     if "disenador" in roles:

@@ -19,6 +19,15 @@ ESTADOS_PROYECTO = (
 ESTADOS_TERMINALES = {"entregado", "cerrado", "cancelado"}
 
 
+class ProyectoActivosManager(models.Manager):
+    """Proyectos NO archivados. Para listas, kanban, dashboard y selectores
+    (LC 2026-07: archivar oculta proyectos de prueba/duplicados sin borrarlos,
+    distinto de «Cancelado» que es un estado real del ciclo)."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(archivado=False)
+
+
 def generar_codigo_proyecto() -> str:
     """Genera LC-NNNN correlativo (atómico vía select_for_update).
 
@@ -88,6 +97,17 @@ class Proyecto(models.Model):
     # C7 S-LC-Feedback-V6: IVA del proyecto. False = 16% (default); True = exento.
     iva_exento = models.BooleanField(default=False)
 
+    # LC 2026-07: soft-archive (proyectos de prueba/duplicados). Distinto de
+    # «Cancelado» (estado real). Se oculta de listas/kanban/selectores.
+    archivado = models.BooleanField(default=False, db_index=True)
+    archivado_en = models.DateTimeField(null=True, blank=True)
+    archivado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="proyectos_archivados",
+    )
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     creado_por = models.ForeignKey(
@@ -96,6 +116,9 @@ class Proyecto(models.Model):
         null=True, blank=True,
         related_name="proyectos_creados",
     )
+
+    objects = models.Manager()
+    activos = ProyectoActivosManager()
 
     class Meta:
         db_table = "proyectos_proyecto"
