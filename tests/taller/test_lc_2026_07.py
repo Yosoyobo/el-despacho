@@ -42,7 +42,7 @@ def test_folio_autoasignado_y_correlativo(cliente_factory, usuario_factory):
 
 
 def test_folio_display_sin_informacion(cliente_factory, usuario_factory):
-    from apps.facturacion.models import Factura, FacturaItem
+    from apps.facturacion.models import Factura
     autor = usuario_factory(rol="super_admin")
     cli = cliente_factory(creado_por=autor)
     fac = Factura(cliente=cli, concepto="X", creado_por=autor, folio_numero=None)
