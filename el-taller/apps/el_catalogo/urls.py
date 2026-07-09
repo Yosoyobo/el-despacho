@@ -16,6 +16,9 @@ urlpatterns = [
     path("categorias/nueva", views.categoria_nueva, name="catalogo-categoria-nueva"),
     path("categorias/<int:pk>/editar", views.categoria_editar, name="catalogo-categoria-editar"),
     path("categorias/<int:pk>/borrar", views.categoria_borrar, name="catalogo-categoria-borrar"),
+    # LC 2026-07: categorías CORE de proveedor (6, editables — color heredado por subcategorías)
+    path("categorias-proveedor/", views.categorias_proveedor_lista, name="catalogo-categorias-proveedor"),
+    path("categorias-proveedor/<int:pk>/editar", views.categoria_proveedor_editar, name="catalogo-categoria-proveedor-editar"),
     # S-LC-Feedback-V2: catálogo de unidades de medida
     path("unidades/", views.unidades_lista, name="catalogo-unidades"),
     path("unidades/nueva", views.unidad_nueva, name="catalogo-unidad-nueva"),

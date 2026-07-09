@@ -46,3 +46,27 @@ def test_lista_muestra_subcategoria(client, usuario_factory):
     resp = client.get("/catalogo/proveedores/")
     assert resp.status_code == 200
     assert b"Serigraf\xc3\xada" in resp.content  # el nombre de la subcategoría aparece como pill
+
+
+def test_admin_lista_categorias_core(client, usuario_factory):
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    resp = client.get("/catalogo/categorias-proveedor/")
+    assert resp.status_code == 200
+    assert b"Materiales" in resp.content and b"Impresi" in resp.content
+
+
+def test_admin_editar_color_hereda_a_subcategorias(client, usuario_factory):
+    from apps.el_catalogo.models import CategoriaProveedor, SubcategoriaProveedor
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    cat = CategoriaProveedor.objects.get(slug="impresion")
+    resp = client.post(f"/catalogo/categorias-proveedor/{cat.pk}/editar", {
+        "nombre": cat.nombre, "color": "#123456", "orden": cat.orden, "activa": "on",
+    })
+    assert resp.status_code in (301, 302)
+    cat.refresh_from_db()
+    assert cat.color == "#123456"
+    # La subcategoría hereda el nuevo color.
+    sub = SubcategoriaProveedor.objects.get(slug="serigrafia")
+    assert sub.color == "#123456"

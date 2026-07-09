@@ -22,7 +22,14 @@ from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
-from .forms import CategoriaForm, ProveedorForm, ServicioForm, UnidadForm, VariacionForm
+from .forms import (
+    CategoriaForm,
+    CategoriaProveedorForm,
+    ProveedorForm,
+    ServicioForm,
+    UnidadForm,
+    VariacionForm,
+)
 from .models import CategoriaServicio, Proveedor, Servicio, Unidad, Variacion
 
 
@@ -555,6 +562,7 @@ def proveedores_lista(request):
         "servicio_id": servicio_id if servicio_id.isdigit() else "",
         "qs_preserva": qs_preserva,
         "puede_crear_prov": puede(request.user, "catalogo", "gestionar_categorias"),
+        "puede_gestionar_categorias_prov": puede(request.user, "catalogo", "gestionar_categorias"),
     })
 
 
@@ -812,3 +820,38 @@ def proveedor_eliminar(request, pk: int):
     if es_htmx:
         return render(request, "catalogo/_modal_eliminar_proveedor.html", ctx)
     return redirect("catalogo-proveedor-detalle", pk=prov.pk)
+
+
+# ── Categorías CORE de proveedor (LC 2026-07) ────────────────────────────────
+
+@require_http_methods(["GET"])
+def categorias_proveedor_lista(request):
+    """Las 6 categorías core del proveedor (con sus subcategorías). Editar
+    nombre + color (que heredan las subcategorías). Gated por gestionar_categorias."""
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    from .models import CategoriaProveedor
+    cats = CategoriaProveedor.objects.prefetch_related("subcategorias").order_by("orden", "nombre")
+    return render(request, "catalogo/categorias_proveedor.html", {"categorias": cats})
+
+
+@require_http_methods(["GET", "POST"])
+def categoria_proveedor_editar(request, pk: int):
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    from .models import CategoriaProveedor
+    cat = get_object_or_404(CategoriaProveedor, pk=pk)
+    if request.method == "POST":
+        form = CategoriaProveedorForm(request.POST, instance=cat)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="catalogo.categoria_proveedor_actualizada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"categoria_id": cat.pk, "nombre": cat.nombre, "color": cat.color},
+            ))
+            messages.success(request, f"Categoría «{cat.nombre}» actualizada.")
+            return redirect("catalogo-categorias-proveedor")
+    else:
+        form = CategoriaProveedorForm(instance=cat)
+    return render(request, "catalogo/categoria_proveedor_form.html", {"form": form, "categoria": cat})

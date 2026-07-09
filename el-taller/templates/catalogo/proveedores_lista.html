@@ -19,6 +19,7 @@
         Incluir desactivados
     </label>
     <button type="submit" class="btn-secundario">Filtrar</button>
+    {% if puede_gestionar_categorias_prov %}<a href="{% url 'catalogo-categorias-proveedor' %}" class="btn-secundario">Categorías</a>{% endif %}
     {% if puede_crear_prov %}<a href="{% url 'catalogo-proveedor-nuevo' %}" class="btn-primario">+ Nuevo proveedor</a>{% endif %}
 </form>
 

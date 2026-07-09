@@ -88,6 +88,21 @@ class CategoriaForm(forms.ModelForm):
         return (self.cleaned_data.get("color") or "").strip() or "#667085"
 
 
+class CategoriaProveedorForm(forms.ModelForm):
+    """Edición de una de las 6 categorías CORE de proveedor (nombre + color).
+    Las subcategorías heredan su color (LC 2026-07)."""
+    color = forms.CharField(required=False, label="Color")
+
+    class Meta:
+        from .models import CategoriaProveedor  # noqa: PLC0415
+        model = CategoriaProveedor
+        fields = ["nombre", "color", "orden", "activa"]
+        labels = {"color": "Color", "activa": "Activa"}
+
+    def clean_color(self):
+        return (self.cleaned_data.get("color") or "").strip() or "#667085"
+
+
 class ServicioForm(forms.ModelForm):
     activo = forms.BooleanField(required=False, label="Disponible", initial=True)
     # S-LC-Feedback-V3: costo opcional con default 0 (margen 100% si no se captura).

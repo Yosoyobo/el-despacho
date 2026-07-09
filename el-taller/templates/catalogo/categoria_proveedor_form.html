@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Editar categoría de proveedor{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Productos" "/catalogo/" "Proveedores" "/catalogo/proveedores/" "Categorías" "/catalogo/categorias-proveedor/" categoria.nombre as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Proveedores · Categorías</p>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Editar «{{ categoria.nombre }}»</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">El color se aplica a todas sus subcategorías.</p>
+</header>
+
+<form method="post" class="max-w-3xl">
+    {% csrf_token %}
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="space-y-5">
+            {% for f in form %}
+                {% if f.name == "color" %}
+                    {% include "_componentes_tailadmin/_campo_color_hex.html" with campo=f %}
+                {% else %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <a href="{% url 'catalogo-categorias-proveedor' %}" class="btn-secundario">Cancelar</a>
+        <button type="submit" class="btn-primario">Guardar categoría</button>
+    </div>
+</form>
+{% endblock %}
