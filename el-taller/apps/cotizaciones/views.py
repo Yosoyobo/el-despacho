@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -655,13 +655,14 @@ def estado_inline(request, pk):
         return HttpResponseForbidden("Sin permiso para cambiar el estado.")
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
+    import contextlib
+
     from apps.cotizaciones.models import estados_cot_activos
     cot = get_object_or_404(Cotizacion, pk=pk)
     nuevo = (request.POST.get("estado") or "").strip()
-    try:
+    # Estado inválido → se devuelve la celda sin cambiar.
+    with contextlib.suppress(ValueError):
         services.marcar_estado_proyecto(cot, nuevo, request.user)
-    except ValueError:
-        pass  # estado inválido → devuelve la celda sin cambiar
     return render(request, "cotizaciones/_estado_celda.html",
                   {"c": cot, "estados_cot": estados_cot_activos()})
 

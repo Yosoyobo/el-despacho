@@ -52,8 +52,7 @@ def hay_falla(usar_cache: bool = True) -> dict:
     except Exception:  # noqa: BLE001 — la salud nunca debe tumbar la UI
         res = {"falla": False, "motivo": ""}
 
-    try:
+    import contextlib
+    with contextlib.suppress(Exception):
         cache.set(_CACHE_KEY, res, 60)
-    except Exception:  # noqa: BLE001
-        pass
     return res

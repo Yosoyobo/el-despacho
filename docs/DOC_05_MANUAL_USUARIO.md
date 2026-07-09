@@ -5,6 +5,46 @@
 
 ---
 
+## Novedades — Honorarios con retenciones, tarjetas de producto con margen, ver PDF al instante y más (8 de julio de 2026)
+
+- **Facturas y cotizaciones con retenciones (honorarios/RESICO).** Cada proyecto tiene
+  ahora un selector de impuestos: **IVA (16%)**, **IVA y Retenciones** (para honorarios
+  profesionales: suma el IVA y resta la retención de ISR y la de IVA) o **Exento**. Lo que
+  elijas en el proyecto lo heredan sus cotizaciones y facturas, y las cuentas cuadran al
+  centavo (ejemplo real: importe $33,770 → total neto **$35,148.94**). Las tasas se
+  configuran en La Gerencia → Ajustes → Fiscal.
+- **Ver el PDF al instante.** El botón **👁 Ver** abre la cotización o factura de inmediato
+  en una pestaña (se acabó la "pantalla azul" de espera). El botón **⬇ Descargar PDF**
+  genera el archivo con el formato de Learning Center cuando lo necesitas.
+- **Registrar un gasto desde el proyecto es más rápido.** El formulario ya viene lleno: el
+  proveedor del insumo queda fijo, "quién solicitó" es el líder del proyecto, y el método de
+  pago y estado usan **pastillas** (Tarjeta empresa por defecto). Si eliges *Efectivo
+  personal* o *Tarjeta personal*, el estado cambia solo a **"Por reembolsar"**.
+- **Tarjetas de producto mejoradas.** Cada producto muestra su **% de margen** (ya
+  descontando la merma) y el **costo de producción** se suma en vivo al agregar impresión o
+  procesos. La opción **"por pieza"** nace encendida, hay una **✕** para quitar la impresión,
+  y el buscador de productos muestra **"Producto - Proveedor"** y rellena el proveedor solo.
+- **Duplicar un proyecto.** Botón **⧉ Duplicar**: clona cliente, fechas, productos,
+  proveedores, costos y precios con un nombre nuevo. **No** copia pagos, cobros,
+  cotizaciones ni facturas.
+- **Tareas con varios responsables.** Una tarea puede asignarse a **más de una persona** (un
+  responsable principal + los demás) y aparece en "Mis tareas" de todos ellos. Ahora también
+  puedes **eliminar** una tarea de forma permanente (antes solo se completaba).
+- **Calendario más claro.** Los eventos automáticos del proyecto llevan el prefijo
+  **"Compromiso:"**, cada tipo tiene su emoji (🛵 recoger · 💻 tarea · 📦 entrega), los días
+  se ven a dos letras (Lu Ma Mi…), y en el minicalendario tienes botones **Hoy** y
+  **Mañana** (y al volver a picar el día elegido, se borra).
+- **Cotizaciones más ágiles.** Filtros por estado con **pastillas**, se muestra el **nombre**
+  del proyecto (no el código), y puedes **cambiar el estado desde la misma lista** en un
+  clic. Las notas internas ya **no** salen en el PDF que ve el cliente.
+- **Proveedores por categoría.** Los proveedores se etiquetan con **subcategorías**
+  (Serigrafía, Bordado, Telas, Gran Formato…) agrupadas en 6 categorías con color; sus
+  tarjetas muestran esas etiquetas de un vistazo.
+- **Aviso de fallas del sistema.** Si algo falla en segundo plano (un token o un Chalán
+  caído), a todos les aparece un **⚠️ "Alerta del sistema"** en el menú, junto a Ajustes.
+- **Aviso de novedades.** Cuando publiquemos cambios como estos, recibirás una
+  **notificación** para que te enteres de lo nuevo.
+
 ## Novedades — Facturación más rápida, pagos al momento y proyectos que puedes archivar (8 de julio de 2026)
 
 - **Cada factura tiene su folio "F".** Ahora las facturas se identifican con un folio

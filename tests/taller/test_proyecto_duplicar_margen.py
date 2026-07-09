@@ -80,13 +80,13 @@ def test_duplicar_copia_productos_y_procesos(cliente_factory, usuario_factory):
     # Productos + procesos copiados con proveedor/costo/precio.
     lineas = list(nuevo.productos.all())
     assert len(lineas) == 1
-    l = lineas[0]
-    assert l.servicio_id == serv.pk
-    assert l.proveedor_id == prov.pk
-    assert l.precio_unitario == Decimal("120")
-    assert l.costo_unitario == Decimal("50")
-    assert l.procesos.count() == 1
-    proc = l.procesos.first()
+    linea = lineas[0]
+    assert linea.servicio_id == serv.pk
+    assert linea.proveedor_id == prov.pk
+    assert linea.precio_unitario == Decimal("120")
+    assert linea.costo_unitario == Decimal("50")
+    assert linea.procesos.count() == 1
+    proc = linea.procesos.first()
     assert proc.tipo == "impresion" and proc.por_pieza is True and proc.costo == Decimal("15")
 
 

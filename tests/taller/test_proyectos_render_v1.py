@@ -159,7 +159,8 @@ def test_sincronizar_procesos_json_invalido_no_rompe(proyecto_factory, catalogo)
 def test_form_inicial_regimen_refleja_instancia(proyecto_factory, catalogo):
     from apps.los_proyectos.forms import ProyectoForm
     p = proyecto_factory()
-    p.regimen_fiscal = "honorarios"; p.save()
+    p.regimen_fiscal = "honorarios"
+    p.save()
     assert ProyectoForm(instance=p).fields["regimen_fiscal"].initial == "honorarios"
 
 

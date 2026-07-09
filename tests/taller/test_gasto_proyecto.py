@@ -7,8 +7,6 @@ desde un proyecto (líder → solicitó, centro insumos-de-proyecto).
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 import pytest
 
 pytestmark = [pytest.mark.django_db, pytest.mark.taller]

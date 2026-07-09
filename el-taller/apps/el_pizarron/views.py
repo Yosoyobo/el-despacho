@@ -3,7 +3,7 @@ from apps.el_pizarron.models import Tarea
 from apps.los_proyectos.models import Proyecto
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
