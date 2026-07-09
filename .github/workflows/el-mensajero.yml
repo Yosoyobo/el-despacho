@@ -348,4 +348,12 @@ jobs:
             docker compose $COMPOSE_FILES exec -T la-gerencia \
               python manage.py notificar_deploy --estado ok --commit "$COMMIT_NUEVO" \
               2>/dev/null || true
+
+            # LC 2026-07: push global de Novedades ~1 min DESPUÉS de que la nueva
+            # versión ya está viva (idempotente por NovedadAnunciada — solo dispara
+            # si hay bloques de Novedades nuevos). Best-effort, no tumba el deploy.
+            echo "=== Novedades: aviso global al equipo (en ~60s) ==="
+            ( sleep 60 && docker compose $COMPOSE_FILES exec -T el-taller \
+                python manage.py anunciar_novedades >> /var/log/novedades.log 2>&1 ) || true
+
             echo "✅ Deploy verde."

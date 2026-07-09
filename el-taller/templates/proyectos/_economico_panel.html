@@ -32,8 +32,7 @@
 
     {% with d=proyecto.desglose_fiscal %}
     {% if puede_editar and form %}
-    {# Selector de régimen fiscal (LC 2026-07): IVA 16% / IVA y Retenciones / Exento.
-       Pills has-[:checked]. El autosave lo persiste y refresca este panel por OOB. #}
+    {# Selector de régimen fiscal (LC 2026-07): IVA / IVA y Retenciones / Exento. Pills has-[:checked]; el autosave lo persiste. #}
     <div class="mt-3 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Impuestos">
         {% for radio in form.regimen_fiscal %}
         <label class="cursor-pointer rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition

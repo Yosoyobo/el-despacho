@@ -103,6 +103,7 @@ TEMPLATES = [
                 "lib.aviso_deploy.contexto_aviso_deploy",
                 "lib.version.contexto_version",
                 "apps.taller_home.context_processors.sidebar_grupos",
+                "apps.taller_home.context_processors.salud_sistema",
                 "cuentas.context_processors.formato_hora",
             ],
             "builtins": ["cuentas.templatetags.horas"],

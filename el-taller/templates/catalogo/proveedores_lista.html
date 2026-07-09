@@ -55,8 +55,7 @@
             {% if t.ubicacion %}<p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ t.ubicacion }}</p>{% endif %}
             {% if not t.obj.activo %}<p class="mt-1 text-xs font-medium text-gray-400">Desactivado</p>{% endif %}
         </div>
-        {# LC 2026-07: la tarjeta muestra SOLO las subcategorías (heredan color de
-           su core), omitiendo el texto de la categoría principal. #}
+        {# LC 2026-07: la tarjeta muestra SOLO subcategorías (heredan color de su core); omite la categoría principal. #}
         {% with subs=t.obj.subcategorias.all %}
         {% if subs %}
         <div class="mt-4 flex flex-wrap justify-center gap-2">

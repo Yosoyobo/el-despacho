@@ -125,6 +125,16 @@
         </a>
         {% endif %}
 
+        {# LC 2026-07: badge de falla del sistema, visible a TODOS junto a Ajustes (El Site lo enciende). #}
+        {% if sistema_falla %}
+        <div style="order: {{ sidebar_orden.ajustes.orden|default:120 }}"
+             class="menu-item menu-item-inactive cursor-default text-warning-600 dark:text-warning-400"
+             title="{{ sistema_falla_motivo }}">
+            <span class="text-lg leading-none">⚠️</span>
+            <span class="flex-1">Alerta del sistema</span>
+        </div>
+        {% endif %}
+
         {% if permisos_modulos.gerencia and not sidebar_orden.ajustes.oculto %}
         <a href="https://gerencia.learningcenter.mx/ajustes/" data-sidebar-grupo="{{ sidebar_orden.ajustes.grupo }}" style="order: {{ sidebar_orden.ajustes.orden|default:120 }}" class="menu-item menu-item-inactive">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
