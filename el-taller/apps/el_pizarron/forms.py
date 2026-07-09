@@ -150,6 +150,33 @@ class TareaGlobalForm(TareaForm):
         return self.cleaned_data.get("prioridad") or "media"
 
 
+class TareaRapidaForm(forms.ModelForm):
+    """Edición CORTA de una tarea (D6 LC 2026-07): campos clave para el modal
+    del calendario, sin runner/destino/comentarios. `asignada_a` opcional aquí
+    (no re-obliga en una edición rápida)."""
+    asignada_a = forms.ModelChoiceField(
+        queryset=Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
+        required=False, empty_label="— Sin responsable —", label="Responsable",
+    )
+    fecha_compromiso = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"], label="Fecha",
+    )
+    hora = forms.TimeField(
+        required=False, widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+        input_formats=["%H:%M", "%H:%M:%S"], label="Hora",
+    )
+
+    class Meta:
+        model = Tarea
+        fields = ["titulo", "estado", "prioridad", "asignada_a", "fecha_compromiso", "hora"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["estado"] = forms.ChoiceField(choices=_choices_estado_tarea(), label="Estado")
+
+
 class ComentarioForm(forms.ModelForm):
     class Meta:
         model = Comentario

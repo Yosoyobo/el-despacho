@@ -68,6 +68,7 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
             "titulo": f"📦 Compromiso: {p.nombre}",
             "subtitulo": p.cliente.razon_social,
             "url": f"/proyectos/{p.pk}/",
+            "obj_id": p.pk,  # D6: modal corto de edición al clicar el evento
             "color": "gray" if dia_evento < hoy else "brand",
         })
 
@@ -87,6 +88,7 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
             "titulo": f"{pre} {hora}{t.titulo}" if pre else f"{hora}{t.titulo}",
             "subtitulo": t.proyecto.codigo,
             "url": f"/tareas/{t.pk}/",
+            "obj_id": t.pk,  # D6: modal corto de edición al clicar el evento
             "color": color,
             "estado": t.estado,
         })

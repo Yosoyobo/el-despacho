@@ -453,6 +453,36 @@ def editar_tarea(request, pk):
 
 
 @login_required
+def editar_tarea_rapido(request, pk):
+    """D6 (LC 2026-07): modal CORTO de edición de tarea (desde el calendario).
+    GET HTMX → modal compacto; POST → guarda campos clave y refresca (HX-Redirect).
+    Sin comentarios. Fallback no-HTMX al detalle completo."""
+    from .forms import TareaRapidaForm
+    tarea = get_object_or_404(Tarea.objects.select_related("proyecto"), pk=pk)
+    if not puede_ver_tarea(request.user, tarea):
+        return HttpResponseForbidden()
+    es_htmx = request.headers.get("HX-Request") == "true"
+    if request.method == "POST":
+        form = TareaRapidaForm(request.POST, instance=tarea)
+        if form.is_valid():
+            form.save()
+            emitir(EventoPortavoz(
+                tipo="tarea.creada", actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"tarea_id": tarea.pk, "proyecto_id": tarea.proyecto_id, "editada_rapido": True},
+            ))
+            destino = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse("calendario-index")
+            if es_htmx:
+                from django.http import HttpResponse
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
+        return render(request, "pizarron/_modal_tarea_rapida.html",
+                      {"form": form, "tarea": tarea, "next": request.POST.get("next", "")})
+    form = TareaRapidaForm(instance=tarea)
+    return render(request, "pizarron/_modal_tarea_rapida.html",
+                  {"form": form, "tarea": tarea, "next": request.GET.get("next", "")})
+
+
+@login_required
 def completar_tarea(request, pk):
     if request.method != "POST":
         return redirect("pizarron-detalle-tarea", pk=pk)
