@@ -94,6 +94,9 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["estado"].choices = _choices_estado_activos()
+        # Opcional en el POST: el autoguardado del detalle no siempre manda el
+        # régimen (se conserva el actual si no llega).
+        self.fields["regimen_fiscal"].required = False
         inst = getattr(self, "instance", None)
         if inst is not None and inst.pk:
             self.fields["regimen_fiscal"].initial = inst.regimen_fiscal
@@ -106,7 +109,7 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
 
     def save(self, commit=True):
         obj = super().save(commit=False)  # FechaHoraMixin: setea fechas, no guarda
-        reg = self.cleaned_data.get("regimen_fiscal", "iva")
+        reg = self.cleaned_data.get("regimen_fiscal") or (obj.regimen_fiscal or "iva")
         obj.regimen_fiscal = reg
         obj.iva_exento = reg == "exento"  # sincroniza el campo legacy
         if commit:
@@ -174,7 +177,7 @@ class EditarEconomicoForm(forms.ModelForm):
 
 class ProyectoProductoForm(forms.ModelForm):
     servicio = forms.ModelChoiceField(
-        queryset=Servicio.activos.all().select_related("categoria"),
+        queryset=Servicio.activos.all().select_related("categoria").prefetch_related("proveedores"),
         required=False,
         empty_label="— Elige un producto —",
         label="Producto",
@@ -223,6 +226,11 @@ class ProyectoProductoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # LC 2026-07: el dropdown de Producto muestra «Nombre - Proveedor».
+        def _etiqueta_servicio(s):
+            prov = next((p for p in s.proveedores.all() if p.activo), None)
+            return f"{s.nombre} - {prov.razon_social}" if prov else s.nombre
+        self.fields["servicio"].label_from_instance = _etiqueta_servicio
         # Bug Oscar 2026-06-29: al abrir un proyecto existente, las tarjetas
         # mostraban "— Producto del catálogo —" en vez del nombre, y "catálogo"
         # (placeholder) en vez del precio/costo. Dos causas:
@@ -238,7 +246,7 @@ class ProyectoProductoForm(forms.ModelForm):
             if inst.servicio_id:
                 self.fields["servicio"].queryset = (
                     Servicio.objects.filter(Q(activo=True) | Q(pk=inst.servicio_id))
-                    .select_related("categoria")
+                    .select_related("categoria").prefetch_related("proveedores")
                 )
             if inst.variacion_id:
                 self.fields["variacion"].queryset = (

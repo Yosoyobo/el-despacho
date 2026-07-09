@@ -152,3 +152,12 @@ class ProyectoProducto(models.Model):
     def utilidad(self) -> Decimal:
         """Subtotal menos el costo real (merma + procesos)."""
         return self.subtotal - self.costo_total_con_procesos
+
+    @property
+    def margen_porcentaje(self) -> Decimal:
+        """% de margen de la línea (LC 2026-07): utilidad ÷ subtotal × 100.
+        La merma ya está restada como pérdida directa dentro de `utilidad`."""
+        sub = self.subtotal
+        if sub <= 0:
+            return CERO
+        return (self.utilidad / sub * Decimal("100")).quantize(Decimal("0.1"))

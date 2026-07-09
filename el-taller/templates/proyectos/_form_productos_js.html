@@ -115,6 +115,20 @@
         const ctot = card.querySelector('[data-costo-total]');
         if (cpp) cpp.textContent = cu ? fmt(cu) : '—';
         if (ctot) ctot.textContent = total ? fmt(total) : '—';
+        // LC 2026-07: % de margen en vivo (utilidad ÷ venta), la merma ya está
+        // dentro del costo total. Verde ≥0, rojo <0.
+        const margen = card.querySelector('[data-margen]');
+        if (margen) {
+            const venta = incluido ? precioEfectivo(card) * cant : 0;
+            if (venta > 0) {
+                const pct = (venta - total) / venta * 100;
+                margen.textContent = pct.toFixed(1) + '%';
+                margen.classList.toggle('text-success-600', pct >= 0);
+                margen.classList.toggle('dark:text-success-400', pct >= 0);
+                margen.classList.toggle('text-error-600', pct < 0);
+                margen.classList.toggle('dark:text-error-400', pct < 0);
+            } else { margen.textContent = '—'; margen.className = 'tabular-nums font-semibold text-gray-400'; }
+        }
         const cuerpo = card.querySelector('[data-cuerpo]');
         if (cuerpo) cuerpo.classList.toggle('opacity-40', !incluido), cuerpo.classList.toggle('pointer-events-none', !incluido);
     }
@@ -128,6 +142,9 @@
             if (costo && !costo.value) costo.value = datos.costo;
             const cat = card.querySelector('[data-cat-filtro]');
             if (cat && datos.categoria) cat.value = datos.categoria;
+            // LC 2026-07: autocompletar proveedor (el 1º del catálogo) si está vacío.
+            const prov = card.querySelector('select[name$="-proveedor"]');
+            if (prov && !prov.value && datos.proveedor_id) prov.value = datos.proveedor_id;
         }
         recalcular(card);
     }
@@ -177,10 +194,12 @@
         fila.innerHTML = '<span class="proceso-num text-xs font-medium text-gray-400"></span>' +
             '<input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento, viáticos, embalaje">' +
             '<input type="number" step="0.01" min="0" class="proc-costo w-full" placeholder="0.00">' +
-            '<label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma)."><input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">por pieza</label>' +
+            '<label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma)."><input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" checked>por pieza</label>' +
             '<button type="button" class="proceso-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>';
         lista.appendChild(fila);
         renumerar(card);
+        // LC 2026-07: recalcular/serializar al agregar (costo prod suma en vivo).
+        serializar(card); recalcular(card);
     }
 
     function initCard(card) {
@@ -271,6 +290,14 @@
         if (add && card) { agregarProceso(card); return; }
         const del = e.target.closest && e.target.closest('.proceso-del');
         if (del && card) { del.closest('.proceso-fila').remove(); renumerar(card); serializar(card); recalcular(card); autosave(); return; }
+        // Reset de impresión (LC 2026-07): vuelve a «Sin impresión».
+        const impReset = e.target.closest && e.target.closest('.imp-reset');
+        if (impReset && card) {
+            const prov = card.querySelector('.imp-proveedor'); if (prov) prov.value = '';
+            const costo = card.querySelector('.imp-costo'); if (costo) costo.value = '';
+            const pp = card.querySelector('.imp-por-pieza'); if (pp) pp.checked = false;
+            serializar(card); recalcular(card); autosave(); return;
+        }
         // Quitar producto (X de la tarjeta).
         const elim = e.target.closest && e.target.closest('.producto-eliminar');
         if (elim) {
@@ -333,6 +360,8 @@
             cont.appendChild(card);
         }
         tf.value = idx + 1;
+        // LC 2026-07: «por pieza» nace encendida al añadir un producto.
+        const _ipp = card.querySelector('.imp-por-pieza'); if (_ipp) _ipp.checked = true;
         initCard(card);
         if (card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return card;

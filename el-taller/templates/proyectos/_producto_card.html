@@ -10,7 +10,7 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
   no nulificar el dato de proyectos existentes al autoguardar.
 - Impresión + procesos operativos: SIN recuadro punteado (un nivel arriba).
 {% endcomment %}
-<div class="producto-fila rounded-xl p-4 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}{% if acordeon_oculto and not f.errors %} hidden{% endif %}" data-card{% if acordeon_oculto and not f.errors %} data-acordeon-oculto{% endif %}>
+<div class="producto-fila rounded-xl border-2 border-white p-4 shadow-theme-sm dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}{% if acordeon_oculto and not f.errors %} hidden{% endif %}" data-card{% if acordeon_oculto and not f.errors %} data-acordeon-oculto{% endif %}>
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
     <div class="hidden">{{ f.procesos_json }}{{ f.variacion }}</div>
@@ -81,7 +81,10 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
                         por pieza
                     </label>
                 </div>
-                <div class="flex items-end">
+                <div class="flex items-end gap-1.5">
+                    <button type="button" class="imp-reset inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-400 hover:bg-error-50 hover:text-error-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-error-500/10" title="Quitar impresión (dejar «Sin impresión»)" aria-label="Quitar impresión">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
                     <button type="button" class="proceso-add inline-flex h-9 items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]" title="Agregar proceso / gasto">+ Proceso</button>
                 </div>
             </div>
@@ -123,8 +126,8 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
             </label>
         </div>
         <div class="text-right">
-            <span class="block tabular-nums text-gray-900 dark:text-gray-100"><span class="mr-1 text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Monto</span><span class="text-base font-semibold" data-monto>$0.00</span></span>
-            <span class="block text-[11px] text-gray-400 dark:text-gray-500">Costo prod. <span class="tabular-nums" data-costo-pp>—</span>/pz · prod+merma <span class="tabular-nums" data-costo-total>—</span></span>
+            <span class="block tabular-nums text-gray-900 dark:text-gray-100"><span class="mr-1 text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Monto</span><span class="text-base font-semibold" data-monto>$0.00</span><span class="ml-2 text-xs" data-margen>—</span></span>
+            <span class="block text-[11px] text-gray-400 dark:text-gray-500">Costo prod. <span class="tabular-nums" data-costo-total>—</span> · unit. <span class="tabular-nums" data-costo-pp>—</span>/pz</span>
         </div>
     </div>
 </div>

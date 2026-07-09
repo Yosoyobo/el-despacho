@@ -154,31 +154,30 @@ def test_sincronizar_procesos_json_invalido_no_rompe(proyecto_factory, catalogo)
     assert pp.procesos.count() == 0
 
 
-# ── Toggle de IVA (aplicar_iva ⇄ iva_exento) ─────────────────────────────────
+# ── Régimen fiscal (LC 2026-07: reemplaza el toggle aplicar_iva) ─────────────
 
-def test_form_inicial_aplicar_iva_refleja_no_exento(proyecto_factory, catalogo):
+def test_form_inicial_regimen_refleja_instancia(proyecto_factory, catalogo):
     from apps.los_proyectos.forms import ProyectoForm
-    p = proyecto_factory(iva_exento=False)
-    form = ProyectoForm(instance=p)
-    assert form.fields["aplicar_iva"].initial is True
-    p2 = proyecto_factory(iva_exento=True)
-    assert ProyectoForm(instance=p2).fields["aplicar_iva"].initial is False
+    p = proyecto_factory()
+    p.regimen_fiscal = "honorarios"; p.save()
+    assert ProyectoForm(instance=p).fields["regimen_fiscal"].initial == "honorarios"
 
 
-def test_form_guarda_iva_exento_segun_toggle(proyecto_factory, catalogo):
+def test_form_guarda_regimen_y_sincroniza_exento(proyecto_factory, catalogo):
     from apps.los_proyectos.forms import ProyectoForm
-    p = proyecto_factory(iva_exento=False)
-    # Sin aplicar_iva en el POST (checkbox apagado) → exento.
+    p = proyecto_factory()
     data = {
         "nombre": p.nombre, "cliente": str(p.cliente_id),
         "descripcion": "", "estado": p.estado,
         "fecha_inicio_dia": "", "fecha_inicio_hora": "12:00",
         "fecha_compromiso_dia": "", "fecha_compromiso_hora": "12:00",
+        "regimen_fiscal": "exento",
     }
     form = ProyectoForm(data, instance=p)
     assert form.is_valid(), form.errors
     form.save()
     p.refresh_from_db()
+    assert p.regimen_fiscal == "exento"
     assert p.iva_exento is True
     assert p.iva_monto == Decimal("0.00")
 

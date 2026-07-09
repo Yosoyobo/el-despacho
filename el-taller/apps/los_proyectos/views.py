@@ -46,20 +46,28 @@ from lib.portavoz_eventos import EventoPortavoz
 
 
 def _servicios_datos_json():
-    """Mapa {servicio_id: {precio, costo, categoria}} para que el form de
-    Proyecto pre-llene precio/costo al elegir un producto y filtre el
-    selector de Producto por Categoría (Render-V1)."""
+    """Mapa {servicio_id: {precio, costo, categoria, proveedor_id, proveedor}}
+    para que el form de Proyecto pre-llene precio/costo + PROVEEDOR al elegir un
+    producto y filtre el selector por Categoría. El proveedor es el primero
+    asignado al producto en el catálogo (LC 2026-07: autocompletar proveedor)."""
     import json
 
     from apps.el_catalogo.models import Servicio
-    datos = {
-        str(s.pk): {
+    datos = {}
+    qs = (
+        Servicio.objects.filter(activo=True)
+        .only("pk", "precio_base", "costo", "categoria_id")
+        .prefetch_related("proveedores")
+    )
+    for s in qs:
+        prov = next((p for p in s.proveedores.all() if p.activo), None)
+        datos[str(s.pk)] = {
             "precio": str(s.precio_base or 0),
             "costo": str(s.costo or 0),
             "categoria": str(s.categoria_id or ""),
+            "proveedor_id": str(prov.pk) if prov else "",
+            "proveedor": prov.razon_social if prov else "",
         }
-        for s in Servicio.objects.filter(activo=True).only("pk", "precio_base", "costo", "categoria_id")
-    }
     return json.dumps(datos)
 
 
@@ -650,6 +658,24 @@ def cliente_inline(request):
     else:
         form = ClienteInlineForm()
     return render(request, "proyectos/_modal_cliente.html", {"form": form})
+
+
+@login_required
+def duplicar(request, pk):
+    """Clona un proyecto completo con nombre nuevo (LC 2026-07). Patrón Wave 5:
+    GET HTMX → modal; POST → crea y redirige al nuevo proyecto."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, None):
+        return HttpResponseForbidden("Sin permiso para crear proyectos.")
+    es_htmx = request.headers.get("HX-Request") == "true"
+    if request.method == "POST":
+        from .services_duplicar import duplicar_proyecto
+        nombre = (request.POST.get("nombre") or "").strip() or f"Copia de {proyecto.nombre}"
+        nuevo = duplicar_proyecto(proyecto, nombre=nombre, actor=request.user)
+        messages.success(request, f"Proyecto duplicado como {nuevo.codigo} · {nuevo.nombre}.")
+        destino = reverse("proyectos-detalle", args=[nuevo.pk])
+        return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
+    return render(request, "proyectos/_modal_duplicar.html", {"proyecto": proyecto})
 
 
 @login_required

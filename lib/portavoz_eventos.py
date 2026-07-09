@@ -18,6 +18,7 @@ EventoTipo = Literal[
     "proyecto.creado",
     "proyecto.status_cambiado",
     "proyecto.codigo_renumerado",
+    "proyecto.duplicado",
     "proyecto.estado_creado",
     "proyecto.estado_actualizado",
     "proyecto.estado_borrado",

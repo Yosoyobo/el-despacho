@@ -267,6 +267,14 @@ class Proyecto(models.Model):
         """Monto calculado menos el costo de producción (con merma)."""
         return self.monto_calculado - self.costo_produccion
 
+    @property
+    def margen_porcentaje(self):
+        """% de margen global del proyecto (LC 2026-07): utilidad ÷ monto × 100."""
+        base = self.monto_calculado
+        if base <= 0:
+            return Decimal("0.0")
+        return (self.utilidad_productos / base * Decimal("100")).quantize(Decimal("0.1"))
+
     # ── Proveedores y gastos derivados de los productos (Render-V1) ───────────
 
     def deuda_por_proveedor(self):

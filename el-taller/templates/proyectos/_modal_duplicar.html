@@ -1,0 +1,38 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div>
+                <p class="font-mono text-xs uppercase tracking-wider text-brand-500 dark:text-brand-400">{{ proyecto.codigo }}</p>
+                <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">Duplicar proyecto</h2>
+            </div>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <form hx-post="{% url 'proyectos-duplicar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
+            {% csrf_token %}
+            <div class="space-y-5 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                <div>
+                    <label for="dup-nombre" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del nuevo proyecto <span class="text-error-500">*</span></label>
+                    <input type="text" id="dup-nombre" name="nombre" required maxlength="200"
+                           value="Copia de {{ proyecto.nombre }}"
+                           class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Versión de productos a copiar</label>
+                    <select name="version" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <option value="actual" selected>Productos actuales (más reciente)</option>
+                    </select>
+                </div>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-gray-800 dark:bg-white/[0.02] dark:text-gray-400">
+                    Se copian cliente, fechas, régimen fiscal y todos los productos (proveedores, costos, precios y procesos).
+                    <strong>No</strong> se copian pagos, cobros, cotizaciones ni facturas.
+                </div>
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">Duplicar</button>
+            </footer>
+        </form>
+    </div>
+</div>
