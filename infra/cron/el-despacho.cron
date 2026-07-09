@@ -51,4 +51,8 @@ CRON_TZ=America/Mexico_City
 
 # El Chalán APRENDE del negocio — destila observaciones durables (review-first). Lunes 8:00.
 0 8 * * 1 cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_destilar_negocio >> /var/log/chalan_proactivo.log 2>&1
+# LC 2026-07: RESPALDO del push de Novedades. El deploy ya lo dispara ~1 min
+# después de publicar; este cron garantiza que llegue aunque el hook del deploy
+# falle. Idempotente (NovedadAnunciada) — solo notifica bloques NUEVOS, sin spam.
+*/30 7-22 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py anunciar_novedades >> /var/log/novedades.log 2>&1
 # <<< El Despacho <<<
