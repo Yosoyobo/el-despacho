@@ -28,7 +28,7 @@
         {% comment %} "Lugar (destino)" a ancho completo + geo-picker en vivo. {% endcomment %}
         <div class="mt-5">
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.destino_etiqueta ancho_completo=True %}
-            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto=form.destino_etiqueta.id_for_label con_pois=True %}
+            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto=form.destino_etiqueta.id_for_label con_pois=True acotado=True %}
         </div>
     </section>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">

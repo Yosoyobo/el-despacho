@@ -26,6 +26,7 @@ Parámetros (vía {% include with %}):
 <div class="geo-picker" data-geo-picker
      data-endpoint="{% url 'geo-buscar' %}"
      data-con-pois="{{ con_pois|yesno:'1,0' }}"
+     {% if acotado %}data-geo-acotado="1"{% endif %}
      {% if objetivo_texto %}data-objetivo-texto="{{ objetivo_texto }}"{% endif %}
      {% if lat_id %}data-lat-input="{{ lat_id }}" data-lng-input="{{ lng_id }}" data-mapa-abierto="{{ mapa_abierto|yesno:'1,0' }}" data-zoom="{{ zoom|default:16 }}"{% endif %}
      {% if etiqueta_id %}data-etiqueta-input="{{ etiqueta_id }}"{% endif %}

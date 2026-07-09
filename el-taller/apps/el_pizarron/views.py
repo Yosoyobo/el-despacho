@@ -653,11 +653,45 @@ def geocoding_buscar(request):
         return JsonResponse({"punto": identificar(lat, lng)})
     from lib.geocoding import buscar
     q = request.GET.get("q", "")
+    # LC 2026-07 (D4): modo ACOTADO — para mandados/tareas el buscador se limita
+    # a direcciones GUARDADAS (clientes/proveedores) + POIs internos, SIN abrir la
+    # API del mapa mundial. El mapa (Nominatim) solo entra con `&mapa=1` ("mapa
+    # opcional", decisión Oscar Q2).
+    acotado = request.GET.get("acotado") == "1"
+    con_mapa = request.GET.get("mapa") == "1"
     pois: list[dict] = []
     if request.GET.get("pois") != "0":
         from apps.el_pizarron.poi import buscar_pois
         pois = buscar_pois(q)
-    return JsonResponse({"pois": pois, "resultados": buscar(q)})
+    if acotado:
+        pois = _direcciones_guardadas(q) + pois
+        resultados = buscar(q) if con_mapa else []
+    else:
+        resultados = buscar(q)
+    return JsonResponse({"pois": pois, "resultados": resultados})
+
+
+def _direcciones_guardadas(q: str, limite: int = 8) -> list[dict]:
+    """Direcciones GUARDADAS de clientes/proveedores que matchean `q` (razón
+    social o dirección/fiscal). Formato POI: {label, direccion, lat, lng, fuente}.
+    Sin visita geolocalizada: usa la dirección fiscal (o la normal) como texto."""
+    q = (q or "").strip()
+    if len(q) < 2:
+        return []
+    from django.db.models import Q as _Q
+    from apps.el_catalogo.models import Proveedor
+    from apps.la_cartera.models import Cliente
+    filtro = _Q(razon_social__icontains=q) | _Q(direccion__icontains=q) | _Q(direccion_fiscal__icontains=q)
+    out: list[dict] = []
+    for c in Cliente.activos.filter(filtro)[:limite]:
+        d = (c.direccion_fiscal or c.direccion or "").strip()
+        out.append({"label": c.razon_social, "direccion": d or c.razon_social,
+                    "lat": c.lat, "lng": c.lng, "fuente": "cliente"})
+    for p in Proveedor.objects.filter(filtro, activo=True)[:limite]:
+        d = (p.direccion_fiscal or p.direccion or "").strip()
+        out.append({"label": p.razon_social, "direccion": d or p.razon_social,
+                    "lat": p.lat, "lng": p.lng, "fuente": "proveedor"})
+    return out[:limite]
 
 
 def _emitir_mandado(tipo, usuario, mandado, extra=None):

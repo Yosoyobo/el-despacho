@@ -76,16 +76,18 @@
   }
 
   // Pinta la lista combinada (POIs + direcciones). `autoaplicar` toma el primero.
-  function pintarLista(lista, data, conPois, onElegir, autoaplicar) {
+  // `footer` (opcional) = {label, onClick} → item especial al final (p. ej. el
+  // toggle "buscar en el mapa" del modo acotado).
+  function pintarLista(lista, data, conPois, onElegir, autoaplicar, footer) {
     lista.innerHTML = "";
     var items = [];
     if (conPois && data && data.pois) {
       data.pois.forEach(function (p) {
-        items.push({ nombre: p.label, direccion: p.label, lat: p.lat, lng: p.lng, _poi: p.fuente });
+        items.push({ nombre: p.label, direccion: p.direccion || p.label, lat: p.lat, lng: p.lng, _poi: p.fuente });
       });
     }
     ((data && data.resultados) || []).forEach(function (r) { items.push(r); });
-    if (!items.length) { lista.classList.add("hidden"); return; }
+    if (!items.length && !footer) { lista.classList.add("hidden"); return; }
     items.forEach(function (r) {
       var li = document.createElement("li");
       li.className = "cursor-pointer px-3 py-2 text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800";
@@ -97,16 +99,37 @@
       li.addEventListener("click", function () { onElegir(r); });
       lista.appendChild(li);
     });
+    if (footer) {
+      var lf = document.createElement("li");
+      lf.className = "cursor-pointer border-t border-gray-100 px-3 py-2 text-xs font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-800 dark:text-brand-400 dark:hover:bg-gray-800";
+      lf.textContent = footer.label;
+      lf.addEventListener("click", function (e) { e.stopPropagation(); footer.onClick(); });
+      lista.appendChild(lf);
+    }
     lista.classList.remove("hidden");
     if (autoaplicar && items.length) onElegir(items[0]);
   }
 
-  function hacerBuscador(lista, endpoint, conPois, onElegir) {
-    var t = null;
+  // opts.acotado (bool): limita la búsqueda a direcciones guardadas + POIs (sin
+  // Nominatim) hasta que el usuario pida "buscar en el mapa" (mapa opcional).
+  function hacerBuscador(lista, endpoint, conPois, onElegir, opts) {
+    opts = opts || {};
+    var t = null, mapaHab = false, ultimaQ = "";
+    function url(q) {
+      var u = endpoint + "?q=" + encodeURIComponent(q) + (conPois ? "" : "&pois=0");
+      if (opts.acotado) { u += "&acotado=1"; if (mapaHab) u += "&mapa=1"; }
+      return u;
+    }
     function go(q, auto) {
-      fetch(endpoint + "?q=" + encodeURIComponent(q) + (conPois ? "" : "&pois=0"))
+      ultimaQ = q;
+      fetch(url(q))
         .then(function (r) { return r.json(); })
-        .then(function (d) { pintarLista(lista, d, conPois, onElegir, auto); })
+        .then(function (d) {
+          var footer = (opts.acotado && !mapaHab)
+            ? { label: "🌐 Buscar en el mapa…", onClick: function () { mapaHab = true; go(ultimaQ, false); } }
+            : null;
+          pintarLista(lista, d, conPois, onElegir, auto, footer);
+        })
         .catch(function () { lista.classList.add("hidden"); });
     }
     return {
@@ -260,7 +283,8 @@
       lista.classList.add("hidden");
     }
 
-    var b = hacerBuscador(lista, endpoint, conPois, onElegir);
+    var acotado = root.getAttribute("data-geo-acotado") === "1";
+    var b = hacerBuscador(lista, endpoint, conPois, onElegir, { acotado: acotado });
     var autoPaste = !!mapa;  // con mapa, pegar/Enter aplica el 1er resultado (auto-pin)
 
     function tryCoords(q) {
