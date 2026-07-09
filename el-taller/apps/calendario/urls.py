@@ -11,4 +11,6 @@ urlpatterns = [
     path("evento/<int:pk>/", views.evento_form, name="calendario-evento-editar"),
     path("evento/<int:pk>/eliminar", views.evento_eliminar, name="calendario-evento-eliminar"),
     path("resumen/", views.resumen_modal, name="calendario-resumen"),
+    # D7 (LC 2026-07): recolocar evento por drag&drop.
+    path("mover/", views.mover_evento, name="calendario-mover-evento"),
 ]

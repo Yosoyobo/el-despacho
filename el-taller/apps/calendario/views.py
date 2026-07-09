@@ -215,3 +215,48 @@ def proximos_eventos(request):
         for ev in evs[f]:
             items.append({**ev, "fecha": f})
     return items
+
+
+@login_required
+def mover_evento(request):
+    """D7 (LC 2026-07): recolocar un evento a otro día por drag&drop en el grid.
+    POST {tipo, id, fecha}. Devuelve JSON; el front recarga. Respeta permisos."""
+    from django.http import JsonResponse
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "método"}, status=405)
+    tipo = request.POST.get("tipo", "")
+    obj_id = request.POST.get("id", "")
+    try:
+        nueva = date.fromisoformat(request.POST.get("fecha", ""))
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "Fecha inválida."}, status=400)
+
+    if tipo == "tarea":
+        from apps.el_pizarron.models import Tarea
+        from lib.permisos import puede_ver_tarea
+        t = get_object_or_404(Tarea, pk=obj_id)
+        if not puede_ver_tarea(request.user, t):
+            return JsonResponse({"ok": False, "error": "Sin permiso."}, status=403)
+        t.fecha_compromiso = nueva
+        t.save(update_fields=["fecha_compromiso"])
+    elif tipo == "entrega":  # entrega/cierre de proyecto
+        from django.utils import timezone as _tz
+        from apps.los_proyectos.models import Proyecto
+        from lib.permisos import puede_editar_proyecto
+        p = get_object_or_404(Proyecto, pk=obj_id)
+        if not puede_editar_proyecto(request.user, p):
+            return JsonResponse({"ok": False, "error": "Sin permiso."}, status=403)
+        hora = _tz.localtime(p.fecha_compromiso).time() if p.fecha_compromiso else datetime.min.time().replace(hour=12)
+        dt_ = datetime.combine(nueva, hora)
+        p.fecha_compromiso = _tz.make_aware(dt_) if _tz.is_naive(dt_) else dt_
+        p.save(update_fields=["fecha_compromiso"])
+    elif tipo == "evento":
+        from apps.el_pizarron.models import Evento
+        ev = get_object_or_404(Evento, pk=obj_id)
+        delta = (ev.fecha_fin - ev.fecha_inicio) if ev.fecha_fin else timedelta(0)
+        ev.fecha_inicio = nueva
+        ev.fecha_fin = nueva + delta
+        ev.save()
+    else:
+        return JsonResponse({"ok": False, "error": "Tipo desconocido."}, status=400)
+    return JsonResponse({"ok": True})
