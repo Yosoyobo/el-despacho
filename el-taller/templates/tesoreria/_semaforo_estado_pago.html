@@ -4,21 +4,20 @@ blanco, texto de color: Pendiente (rojo) · Por reembolsar (naranja) · Pagado
 (verde). Radios con name="estado_pago"; reemplaza el <select> del egreso.
 Espera `form`. El valor seleccionado sale de form.estado_pago.value.
 {% endcomment %}
+{% comment %}LC 2026-07: solo Pagado / Por reembolsar (un egreso se registra al
+realizarse). La lógica defensiva del método (efectivo/tarjeta personal) fuerza
+«Por reembolsar» vía JS + backend (data-estado-pago).{% endcomment %}
 {% with sel=form.estado_pago.value|default:"pagado" %}
-<div class="md:col-span-2">
+<div class="md:col-span-2" data-estado-pago-grupo>
     <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Estado de pago</span>
-    <div class="grid gap-2">
-        <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-gray-200 bg-white px-4 py-3 transition has-[:checked]:border-error-400 has-[:checked]:bg-error-50 dark:border-gray-700 dark:bg-gray-900 dark:has-[:checked]:bg-error-500/10">
-            <input type="radio" name="estado_pago" value="pendiente" class="h-4 w-4 text-error-600 focus:ring-error-500/30" {% if sel == "pendiente" %}checked{% endif %}>
-            <span class="text-sm font-semibold text-error-600 dark:text-error-400">Pendiente de pago</span>
+    <div class="grid gap-2 sm:grid-cols-2">
+        <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-gray-200 bg-white px-4 py-3 transition has-[:checked]:border-success-400 has-[:checked]:bg-success-50 dark:border-gray-700 dark:bg-gray-900 dark:has-[:checked]:bg-success-500/10">
+            <input type="radio" name="estado_pago" value="pagado" data-estado-pago="pagado" class="h-4 w-4 text-success-600 focus:ring-success-500/30" {% if sel == "pagado" %}checked{% endif %}>
+            <span class="text-sm font-semibold text-success-600 dark:text-success-400">Pagado</span>
         </label>
         <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-gray-200 bg-white px-4 py-3 transition has-[:checked]:border-orange-400 has-[:checked]:bg-orange-50 dark:border-gray-700 dark:bg-gray-900 dark:has-[:checked]:bg-orange-500/10">
-            <input type="radio" name="estado_pago" value="por_reembolsar" class="h-4 w-4 text-orange-600 focus:ring-orange-500/30" {% if sel == "por_reembolsar" %}checked{% endif %}>
+            <input type="radio" name="estado_pago" value="por_reembolsar" data-estado-pago="por_reembolsar" class="h-4 w-4 text-orange-600 focus:ring-orange-500/30" {% if sel == "por_reembolsar" %}checked{% endif %}>
             <span class="text-sm font-semibold text-orange-600 dark:text-orange-400">Por reembolsar</span>
-        </label>
-        <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-gray-200 bg-white px-4 py-3 transition has-[:checked]:border-success-400 has-[:checked]:bg-success-50 dark:border-gray-700 dark:bg-gray-900 dark:has-[:checked]:bg-success-500/10">
-            <input type="radio" name="estado_pago" value="pagado" class="h-4 w-4 text-success-600 focus:ring-success-500/30" {% if sel == "pagado" %}checked{% endif %}>
-            <span class="text-sm font-semibold text-success-600 dark:text-success-400">Pagado</span>
         </label>
     </div>
     {% for e in form.estado_pago.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}

@@ -13,6 +13,7 @@
     {% csrf_token %}
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
     {% if ocr_log_id %}<input type="hidden" name="ocr_log_id" value="{{ ocr_log_id }}">{% endif %}
+    {% if gasto_proyecto %}<input type="hidden" name="es_gasto_proyecto" value="1">{% endif %}
 
     {% comment %} Columna principal: dinero + clasificación. {% endcomment %}
     <div class="min-w-0 space-y-6 xl:col-span-2">
@@ -36,6 +37,18 @@
                 </div>
                 {% endif %}
 
+                {# Proveedor: bloqueado si viene predefinido por el insumo del proyecto (LC 2026-07). #}
+                {% if proveedor_bloqueado %}
+                <div class="min-w-0 md:col-span-2">
+                    <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</span>
+                    <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/[0.02]">
+                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">🏭</span>
+                        <span class="font-medium text-gray-800 dark:text-gray-100">{{ proveedor_bloqueado.razon_social }}</span>
+                        <span class="ml-auto text-xs text-gray-400 dark:text-gray-500">predefinido por el insumo</span>
+                    </div>
+                    <input type="hidden" name="proveedor" value="{{ proveedor_bloqueado.pk }}">
+                </div>
+                {% else %}
                 {# Proveedor: select del catálogo (vacío = Gasto operativo) + alta inline. #}
                 <div class="campo-form min-w-0 md:col-span-2">
                     <label for="{{ form.proveedor.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
@@ -52,12 +65,30 @@
                         </div>
                     </details>
                 </div>
+                {% endif %}
 
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.centro_de_costo %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.pagado_por %}
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.solicitado_por %}
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.metodo %}
+
+                {# Método de pago como pastillas (LC 2026-07). #}
+                <div class="md:col-span-2" data-metodo-grupo>
+                    <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método de pago</span>
+                    <div class="flex flex-wrap gap-2">
+                        {% for value, etiqueta in form.metodo.field.choices %}
+                        <label class="cursor-pointer rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 transition
+                                      has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700
+                                      dark:border-gray-700 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                            <input type="radio" name="metodo" value="{{ value }}" class="sr-only"
+                                   data-metodo{% if value == "tarjeta_personal" or value == "efectivo_personal" %} data-metodo-reembolso="1"{% endif %}
+                                   {% if form.metodo.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+                            <span aria-hidden="true">{{ etiqueta }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% for e in form.metodo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+                </div>
 
                 {% include "tesoreria/_semaforo_estado_pago.html" with form=form %}
             </div>
@@ -174,6 +205,28 @@
             btn.disabled = false;
         }
     });
+})();
+
+(() => {
+    // Lógica defensiva de reembolso (LC 2026-07): al elegir un método personal
+    // (efectivo/tarjeta personal), el estado muta a «Por reembolsar» y se
+    // bloquea «Pagado» mientras siga ese método. El backend lo reafirma.
+    const metodos = document.querySelectorAll('[data-metodo]');
+    if (!metodos.length) return;
+    const aplicar = () => {
+        const sel = document.querySelector('[data-metodo]:checked');
+        const esReembolso = !!(sel && sel.dataset.metodoReembolso === "1");
+        document.querySelectorAll('[data-estado-pago]').forEach(r => {
+            if (esReembolso) {
+                r.checked = r.dataset.estadoPago === "por_reembolsar";
+                r.disabled = r.dataset.estadoPago !== "por_reembolsar";
+            } else {
+                r.disabled = false;
+            }
+        });
+    };
+    metodos.forEach(m => m.addEventListener("change", aplicar));
+    aplicar();
 })();
 </script>
 {% endblock %}

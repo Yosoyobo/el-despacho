@@ -2,6 +2,8 @@ from .centro_de_costo import CentroDeCosto
 from .egreso import (
     ESTADOS_PAGO,
     METODOS_EGRESO,
+    METODOS_EGRESO_FORM,
+    METODOS_REEMBOLSO,
     ORIGEN_EGRESO,
     Egreso,
 )
@@ -15,6 +17,8 @@ __all__ = [
     "ESTADOS_PAGO",
     "Ingreso",
     "METODOS_EGRESO",
+    "METODOS_EGRESO_FORM",
+    "METODOS_REEMBOLSO",
     "METODOS_INGRESO",
     "METODOS_INGRESO_FORM",
     "ORIGEN_EGRESO",

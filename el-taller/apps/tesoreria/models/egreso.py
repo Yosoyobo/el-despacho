@@ -15,10 +15,18 @@ METODOS_EGRESO = (
     ("transferencia", "Transferencia empresa"),
     ("tarjeta_empresa", "Tarjeta empresa"),
     ("tarjeta_personal", "Tarjeta personal (reembolso)"),
+    ("efectivo_personal", "Efectivo personal (reembolso)"),
     ("efectivo", "Efectivo"),
     ("cheque", "Cheque"),
     ("otro", "Otro"),
 )
+
+# Métodos ofrecidos en el formulario de egreso (LC 2026-07): Tarjeta empresa
+# (default), transferencia, y los dos personales reembolsables. Sin cheque.
+METODOS_EGRESO_FORM = ("tarjeta_empresa", "transferencia", "efectivo_personal", "tarjeta_personal")
+
+# Métodos que implican dinero puesto por el empleado → estado "por reembolsar".
+METODOS_REEMBOLSO = frozenset({"tarjeta_personal", "efectivo_personal"})
 
 ORIGEN_EGRESO = (
     ("manual", "Captura manual"),

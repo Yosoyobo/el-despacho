@@ -6,8 +6,10 @@ from django.utils.text import slugify
 
 from .models import (
     METODOS_EGRESO,
+    METODOS_EGRESO_FORM,
     METODOS_INGRESO,
     METODOS_INGRESO_FORM,
+    METODOS_REEMBOLSO,
     CentroDeCosto,
     Egreso,
     Ingreso,
@@ -138,6 +140,17 @@ class EgresoForm(forms.ModelForm):
             self.initial["fecha"] = date.today()
         if self.instance.pk and self.initial.get("subtotal") is None:
             self.initial["subtotal"] = self.instance.subtotal or self.instance.monto
+        # LC 2026-07: métodos curados en el orden pedido (Tarjeta empresa default,
+        # luego transferencia, personales reembolsables; sin cheque). Preserva un
+        # método legacy al editar.
+        etiquetas = dict(METODOS_EGRESO)
+        metodos = [(v, etiquetas.get(v, v)) for v in METODOS_EGRESO_FORM]
+        actual = self.instance.metodo if self.instance.pk else None
+        if actual and actual not in METODOS_EGRESO_FORM:
+            metodos.append((actual, dict(METODOS_EGRESO).get(actual, actual)))
+        self.fields["metodo"].choices = metodos
+        if not self.instance.pk and not self.initial.get("metodo"):
+            self.initial["metodo"] = "tarjeta_empresa"
         _aplicar_css(self)
         # El checkbox de IVA no debe llevar el CSS de input full-width.
         self.fields["incluye_iva"].widget.attrs["class"] = (
@@ -157,13 +170,12 @@ class EgresoForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        metodo = cleaned.get("metodo")
-        estado = cleaned.get("estado_pago")
-        if metodo == "tarjeta_personal" and estado == "pagado":
-            self.add_error(
-                "estado_pago",
-                "Pagos con tarjeta personal normalmente quedan como «Por reembolsar».",
-            )
+        # Lógica defensiva de reembolso (LC 2026-07): si el método implica que
+        # el empleado puso el dinero (efectivo/tarjeta personal), el estado muta
+        # automáticamente a «Por reembolsar» (sin error — se corrige solo, igual
+        # que el JS de las pastillas).
+        if cleaned.get("metodo") in METODOS_REEMBOLSO:
+            cleaned["estado_pago"] = "por_reembolsar"
         return cleaned
 
 

@@ -121,15 +121,19 @@ def test_form_ingreso_rechaza_monto_cero():
     assert "subtotal" in form.errors
 
 
-def test_form_egreso_tarjeta_personal_sugiere_reembolso(centro):
+def test_form_egreso_tarjeta_personal_fuerza_reembolso(centro):
+    """LC 2026-07: método personal muta el estado a «Por reembolsar» solo
+    (coerción defensiva), sin error."""
+    from apps.el_catalogo.models import Proveedor
     from apps.tesoreria.forms import EgresoForm
+    prov = Proveedor.objects.create(razon_social="Insumos SA", activo=True)
     form = EgresoForm(data={
-        "monto": "100", "fecha": "2026-05-19", "descripcion": "x",
-        "moneda": "MXN", "centro_de_costo": centro.pk,
+        "subtotal": "100", "fecha": "2026-05-19", "descripcion": "x",
+        "moneda": "MXN", "proveedor": prov.pk, "centro_de_costo": centro.pk,
         "estado_pago": "pagado", "metodo": "tarjeta_personal",
     })
-    assert not form.is_valid()
-    assert "estado_pago" in form.errors
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data["estado_pago"] == "por_reembolsar"
 
 
 def test_egreso_con_iva_calcula_total(client, usuario_factory, centro):

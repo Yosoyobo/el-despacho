@@ -565,6 +565,8 @@ def _vincular_ocr_log(request, egreso) -> None:
 def egreso_nuevo(request):
     if (r := _gate(request)) is not None:
         return r
+    proveedor_bloqueado = None
+    gasto_proyecto = False
     if request.method == "POST":
         form = EgresoForm(request.POST, request.FILES)
         if form.is_valid():
@@ -572,6 +574,9 @@ def egreso_nuevo(request):
             egreso.creado_por = request.user
             if not egreso.pagado_por:
                 egreso.pagado_por = request.user
+            # LC 2026-07: gasto capturado desde un proyecto → origen 'proyecto'.
+            if request.POST.get("es_gasto_proyecto") == "1" and egreso.proyecto_id:
+                egreso.origen = "proyecto"
             egreso.save()
             _vincular_proveedor_a_proyecto(egreso)
             _vincular_ocr_log(request, egreso)
@@ -594,16 +599,49 @@ def egreso_nuevo(request):
         initial = {}
         pk = request.GET.get("proyecto")
         if pk:
-            initial["proyecto"] = pk
             from apps.el_catalogo.models import Proveedor
-            prov = Proveedor.objects.filter(
-                activo=True, servicios__en_proyectos__proyecto_id=pk,
-            ).first()
-            if prov:
-                initial["proveedor"] = prov.pk
+            from apps.los_proyectos.models import Proyecto, ProyectoAsignacion
+
+            from .models import CentroDeCosto
+            proyecto = Proyecto.objects.filter(pk=pk).first()
+            if proyecto:
+                gasto_proyecto = True
+                initial["proyecto"] = proyecto.pk
+                # Centro por default: insumos de proyecto.
+                centro = CentroDeCosto.objects.filter(
+                    slug="insumos-de-proyecto", activo=True).first()
+                if centro:
+                    initial["centro_de_costo"] = centro.pk
+                # "Quién solicitó" = líder del proyecto (LC 2026-07).
+                lider = (
+                    ProyectoAsignacion.objects
+                    .filter(proyecto=proyecto, rol_en_proyecto="lider")
+                    .select_related("usuario").first()
+                )
+                if lider:
+                    initial["solicitado_por"] = lider.usuario_id
+                # Proveedor: del parámetro (línea del insumo) o el 1º del proyecto.
+                prov_pk = request.GET.get("proveedor")
+                prov = (
+                    Proveedor.objects.filter(pk=prov_pk, activo=True).first()
+                    if prov_pk else
+                    Proveedor.objects.filter(
+                        activo=True, servicios__en_proyectos__proyecto_id=pk).first()
+                )
+                if prov:
+                    initial["proveedor"] = prov.pk
+                    # Bloqueado si el parámetro lo pide (viene de un insumo concreto).
+                    if request.GET.get("bloquear_proveedor") == "1":
+                        proveedor_bloqueado = prov
+                for campo in ("descripcion", "subtotal"):
+                    if request.GET.get(campo):
+                        initial[campo] = request.GET.get(campo)
         form = EgresoForm(initial=initial)
-    return render(request, "tesoreria/egreso_form.html",
-                  {"form": form, "modo": "nuevo", "next_url": _next_seguro(request)})
+    return render(request, "tesoreria/egreso_form.html", {
+        "form": form, "modo": "nuevo", "next_url": _next_seguro(request),
+        "gasto_proyecto": gasto_proyecto,
+        "proveedor_bloqueado": proveedor_bloqueado,
+    })
 
 
 def _vincular_proveedor_a_proyecto(egreso):
