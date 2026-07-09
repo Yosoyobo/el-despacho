@@ -5,6 +5,43 @@
 
 ---
 
+## Novedades — Facturación más rápida, pagos al momento y proyectos que puedes archivar (8 de julio de 2026)
+
+- **Cada factura tiene su folio "F".** Ahora las facturas se identifican con un folio
+  propio —la letra **F** y un número (F101, F102, F103…)— que ves en la tabla, el detalle
+  y el PDF. Al crear una factura el sistema te propone el **siguiente número libre**, pero
+  lo puedes cambiar. Si en la lista falta un número de la secuencia, aparece una fila
+  **"Sin información"** en su lugar para que sepas que ese folio no existe.
+- **El formulario de factura se llena solo, en cascada.** Eliges el **Cliente** y el
+  selector de **Proyecto** se limita a los proyectos de ese cliente; eliges el **Proyecto**
+  y el de **Cotización** se limita a las cotizaciones de ese proyecto (con el formato
+  *Proyecto - versión - subtotal*). El **Concepto** se pre-llena solo (*"Producción de
+  [producto] para [proyecto]"*, o *"Producción de elementos…"* si son varios) y lo puedes
+  editar. Ya **no** hay que capturar un "Título" aparte.
+- **Estado, vencimiento y monto con botones.** El **estado** se elige con pastillas
+  (Borrador / Emitida). El **vencimiento** tiene botones rápidos **Fin de mes · 30 · 45 ·
+  60 días**. Y el **monto** tiene **100%** (por defecto) y **50%**, para facturar una
+  parcialidad o anticipo sin tener que tocar las líneas. La columna de la tabla ahora dice
+  **"Total pagable"** (por las retenciones de RESICO).
+- **Los egresos se registran al pagarse.** En la página del proyecto, el recuadro de
+  egresos muestra —de *En producción* en adelante— una alerta amarilla de *"N pago(s)
+  pendiente(s) sin registrar"*. Cada pendiente tiene un botón **"Registrar pago"** que pide
+  **fecha, proveedor (obligatorio), método y estado** (Pagado por default, o Por
+  reembolsar). Registra cada pago **cuando lo hagas**. Todo egreso lleva **proveedor**.
+- **Archivar o eliminar proyectos de prueba.** En el detalle de un proyecto, arriba a la
+  derecha, hay dos botones nuevos: **Archivar** (reversible — lo oculta de listas, tablero
+  y calendario, y lo puedes reactivar) y **Eliminar** (solo super administrador, permanente,
+  solo si el proyecto no tiene facturas ni movimientos de dinero). Sirven para limpiar
+  duplicados o pruebas, distinto de "Cancelado".
+- **El tablero muestra los productos completos.** Las tarjetas del **Kanban** (en Proyectos
+  y en el inicio) ahora muestran **todos los productos con su nombre completo y cantidad**
+  (por ejemplo "Paliacates ×70, Pines/Insignias ×700…"), sin recortes.
+- **El botón "← Volver" te regresa a donde venías.** Si entras a un egreso o ingreso desde
+  un proyecto, el botón de volver te regresa **al proyecto**; si llegaste desde Tesorería,
+  te regresa **a Tesorería**.
+
+---
+
 ## Novedades — Buscar direcciones y lugares con el pin automático, en todos lados (30 de junio de 2026)
 
 - **Un buscador de direcciones igual en todo el sistema.** En **cualquier lugar donde
