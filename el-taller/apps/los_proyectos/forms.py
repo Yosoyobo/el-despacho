@@ -18,6 +18,7 @@ from django.forms import inlineformset_factory
 from django.utils import timezone
 
 from cuentas.models.usuario import Usuario
+from lib.fiscal import REGIMENES_FISCALES
 
 # C6 S-LC-Feedback-V6: hora por default en los campos fecha+hora del proyecto.
 HORA_DEFAULT = time(12, 0)
@@ -82,11 +83,12 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
     cliente = forms.ModelChoiceField(queryset=Cliente.activos.all())
     estado = forms.ChoiceField(choices=[])
     pares_fecha_hora = (("fecha_inicio", "Inicio"), ("fecha_compromiso", "Entrega"))
-    # Render-V1: toggle "Aplicar IVA (16%)" = inverso de iva_exento. ON = se
-    # cobra IVA. Más natural para el usuario que un check "exento".
-    aplicar_iva = forms.BooleanField(
-        required=False, initial=True, label="Aplicar IVA (16%)",
-        widget=forms.CheckboxInput(attrs={"class": "peer sr-only"}),
+    # LC 2026-07: el toggle IVA/exento pasa a un selector de régimen fiscal
+    # (IVA 16% / IVA y Retenciones / Exento). Las cotizaciones y facturas del
+    # proyecto lo heredan. Se sincroniza `iva_exento` por compatibilidad.
+    regimen_fiscal = forms.ChoiceField(
+        choices=REGIMENES_FISCALES, initial="iva", label="Impuestos",
+        widget=forms.RadioSelect(attrs={"class": "sr-only"}),
     )
 
     def __init__(self, *args, **kwargs):
@@ -94,17 +96,19 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
         self.fields["estado"].choices = _choices_estado_activos()
         inst = getattr(self, "instance", None)
         if inst is not None and inst.pk:
-            self.fields["aplicar_iva"].initial = not inst.iva_exento
+            self.fields["regimen_fiscal"].initial = inst.regimen_fiscal
         self.order_fields([
             "nombre", "cliente", "descripcion", "estado",
             "fecha_inicio_dia", "fecha_inicio_hora",
             "fecha_compromiso_dia", "fecha_compromiso_hora",
-            "aplicar_iva",
+            "regimen_fiscal",
         ])
 
     def save(self, commit=True):
         obj = super().save(commit=False)  # FechaHoraMixin: setea fechas, no guarda
-        obj.iva_exento = not self.cleaned_data.get("aplicar_iva", True)
+        reg = self.cleaned_data.get("regimen_fiscal", "iva")
+        obj.regimen_fiscal = reg
+        obj.iva_exento = reg == "exento"  # sincroniza el campo legacy
         if commit:
             obj.save()
             self.save_m2m()

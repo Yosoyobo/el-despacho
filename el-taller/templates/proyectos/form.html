@@ -115,15 +115,21 @@
                     {{ form.estado }}
                     {% if form.estado.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.estado.errors|join:" · " }}</p>{% endif %}
                 </div>
-                {# Toggle de IVA #}
-                <label class="inline-flex cursor-pointer items-center gap-2">
-                    <span class="relative inline-flex h-5 w-9 shrink-0 items-center">
-                        {{ form.aplicar_iva }}
-                        <span aria-hidden="true" class="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-brand-500 dark:bg-gray-700"></span>
-                        <span aria-hidden="true" class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-theme-xs transition peer-checked:translate-x-4"></span>
-                    </span>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Aplicar IVA (16%)</span>
-                </label>
+                {# Régimen fiscal (LC 2026-07): IVA 16% / IVA y Retenciones / Exento #}
+                <div class="min-w-0">
+                    <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Impuestos</span>
+                    <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Impuestos">
+                        {% for radio in form.regimen_fiscal %}
+                        <label class="cursor-pointer rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition
+                                      has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700
+                                      dark:border-gray-700 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                            <span class="sr-only">{{ radio.choice_label }}</span>
+                            {{ radio.tag }}
+                            <span aria-hidden="true">{{ radio.choice_label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </section>
     </aside>

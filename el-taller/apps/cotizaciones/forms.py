@@ -16,12 +16,13 @@ class CotizacionForm(forms.ModelForm):
         fields = [
             "cliente", "proyecto", "titulo",
             "fecha_emision",
-            "moneda", "descuento_global_porcentaje",
+            "moneda", "regimen_fiscal", "descuento_global_porcentaje",
             "anticipo_porcentaje", "anticipo_monto_override",
             "notas", "terminos",
         ]
         widgets = {
             "fecha_emision": forms.DateInput(attrs={"type": "date"}),
+            "regimen_fiscal": forms.RadioSelect(attrs={"class": "sr-only"}),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
             "terminos": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
@@ -43,6 +44,8 @@ class CotizacionForm(forms.ModelForm):
         # Anticipo es opcional en el form (modelo tiene default 0 / null).
         self.fields["anticipo_porcentaje"].required = False
         self.fields["anticipo_monto_override"].required = False
+        # Régimen fiscal opcional: si no llega en el POST, conserva el actual.
+        self.fields["regimen_fiscal"].required = False
         # S-LC-Feedback-V2: Proyecto es obligatorio (toda cotización debe ir
         # ligada a un proyecto). El modelo aún acepta null para no migrar
         # cotizaciones legacy, pero el form bloquea.
@@ -62,6 +65,10 @@ class CotizacionForm(forms.ModelForm):
             self.fields["moneda"].initial = "MXN"
             self.fields["descuento_global_porcentaje"].initial = _D("0.00")
             self.fields["anticipo_porcentaje"].initial = _D("0.00")
+
+    def clean_regimen_fiscal(self):
+        v = self.cleaned_data.get("regimen_fiscal")
+        return v or (self.instance.regimen_fiscal or "iva")
 
     def clean(self):
         cleaned = super().clean()

@@ -140,6 +140,7 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
             fecha_emision=date.today(),
             fecha_vencimiento=date.today() + timedelta(days=30),
             moneda=cotizacion.moneda,
+            regimen_fiscal=cotizacion.regimen_fiscal,
             descuento_global_porcentaje=cotizacion.descuento_global_porcentaje,
             notas=cotizacion.notas,
             terminos=cotizacion.terminos,
@@ -264,6 +265,26 @@ def cancelar(fac: Factura, actor, motivo: str) -> Factura:
     return fac
 
 
+def eliminar(fac: Factura, actor) -> str:
+    """Elimina PERMANENTEMENTE una factura CANCELADA (limpieza de pruebas o
+    errores de captura, ticket LC 2026-07). Solo si estado='cancelada'.
+
+    Los asientos contables (emisión + cancelación) ya se compensan a cero al
+    cancelar, así que borrar la factura no descuadra la contabilidad. Los
+    Ingresos anulados que aún la referencien (FK PROTECT) se desligan primero.
+    Devuelve el código para el mensaje flash. Idempotencia: no aplica (destruye).
+    """
+    if fac.estado != "cancelada":
+        raise ValueError("Solo se puede eliminar una factura cancelada.")
+    codigo = fac.codigo
+    _emitir("factura.eliminada", fac, actor, {"codigo": codigo})
+    with transaction.atomic():
+        from apps.tesoreria.models import Ingreso
+        Ingreso.objects.filter(factura=fac).update(factura=None)
+        fac.delete()
+    return codigo
+
+
 def duplicar(fac: Factura, actor) -> Factura:
     """Crea copia en borrador con los mismos items e impuestos."""
     with transaction.atomic():
@@ -273,6 +294,7 @@ def duplicar(fac: Factura, actor) -> Factura:
             titulo=f"Copia de {fac.titulo}"[:200],
             estado="borrador",
             moneda=fac.moneda,
+            regimen_fiscal=fac.regimen_fiscal,
             descuento_global_porcentaje=fac.descuento_global_porcentaje,
             notas=fac.notas,
             terminos=fac.terminos,

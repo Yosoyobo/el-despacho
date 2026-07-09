@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models, transaction
 
+from lib.fiscal import REGIMENES_FISCALES, desglose_honorarios, q2
+
 # Enum reflejando el ciclo real del despacho (LC, 2026-05-22).
 ESTADOS_PROYECTO = (
     ("por_cotizar", "Por cotizar"),
@@ -95,7 +97,14 @@ class Proyecto(models.Model):
         help_text="Fecha en la que se espera cobrar el grueso del proyecto. Usada para proyecciones.",
     )
     # C7 S-LC-Feedback-V6: IVA del proyecto. False = 16% (default); True = exento.
+    # Se conserva por compatibilidad; la fuente real es `regimen_fiscal`.
     iva_exento = models.BooleanField(default=False)
+    # LC 2026-07: régimen fiscal del proyecto — reemplaza el toggle IVA/exento por
+    # un selector IVA (16%) / IVA y Retenciones (honorarios) / Exento. Las
+    # cotizaciones y facturas del proyecto lo heredan.
+    regimen_fiscal = models.CharField(
+        max_length=12, choices=REGIMENES_FISCALES, default="iva", db_index=True
+    )
 
     # LC 2026-07: soft-archive (proyectos de prueba/duplicados). Distinto de
     # «Cancelado» (estado real). Se oculta de listas/kanban/selectores.
@@ -210,16 +219,44 @@ class Proyecto(models.Model):
         return self.costo_produccion
 
     @property
+    def regimen_fiscal_label(self) -> str:
+        return dict(REGIMENES_FISCALES).get(self.regimen_fiscal, self.regimen_fiscal)
+
+    @property
+    def desglose_fiscal(self) -> dict:
+        """Desglose de impuestos del proyecto según su régimen fiscal, para el
+        panel Económico del sidebar. Devuelve base/iva/ret_isr/ret_iva/
+        retenciones/trasladados/total (todos Decimal a 2 decimales)."""
+        base = self.monto_calculado
+        reg = self.regimen_fiscal
+        cero = Decimal("0.00")
+        if reg == "exento" or self.iva_exento:
+            return {"regimen": "exento", "base": q2(base), "iva": cero,
+                    "ret_isr": cero, "ret_iva": cero, "retenciones": cero,
+                    "trasladados": cero, "total": q2(base)}
+        if reg == "honorarios":
+            d = desglose_honorarios(base)
+            return {"regimen": "honorarios", "base": q2(base), **d}
+        iva = q2(base * self.iva_tasa_efectiva)
+        return {"regimen": "iva", "base": q2(base), "iva": iva,
+                "ret_isr": cero, "ret_iva": cero, "retenciones": cero,
+                "trasladados": iva, "total": q2(base + iva)}
+
+    @property
     def iva_monto(self):
-        """IVA sobre el monto calculado. 0 si el proyecto es exento (C7)."""
-        if self.iva_exento:
-            return Decimal("0.00")
-        return (self.monto_calculado * self.iva_tasa_efectiva).quantize(Decimal("0.01"))
+        """IVA trasladado sobre el monto calculado. 0 si es exento (C7)."""
+        return self.desglose_fiscal["iva"]
+
+    @property
+    def retenciones_monto(self):
+        """Total de retenciones (honorarios). 0 en IVA/exento."""
+        return self.desglose_fiscal["retenciones"]
 
     @property
     def monto_a_facturar(self):
-        """Monto calculado + IVA — lo que se le facturaría al cliente."""
-        return self.monto_calculado + self.iva_monto
+        """Total neto — lo que se le facturaría al cliente (con retenciones si
+        el régimen es honorarios)."""
+        return self.desglose_fiscal["total"]
 
     @property
     def merma_total(self) -> int:

@@ -16,12 +16,14 @@ class FacturaForm(forms.ModelForm):
             "cliente", "proyecto", "cotizacion_origen", "concepto",
             "estado",
             "fecha_emision", "fecha_vencimiento",
-            "moneda", "descuento_global_porcentaje", "porcentaje_a_facturar",
+            "moneda", "regimen_fiscal",
+            "descuento_global_porcentaje", "porcentaje_a_facturar",
             "notas", "terminos",
         ]
         widgets = {
             "folio_numero": forms.NumberInput(attrs={"min": 1, "class": "folio-input"}),
             "estado": forms.HiddenInput(),
+            "regimen_fiscal": forms.RadioSelect(attrs={"class": "sr-only"}),
             "porcentaje_a_facturar": forms.HiddenInput(),
             "fecha_emision": forms.DateInput(attrs={"type": "date"}),
             "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
@@ -36,6 +38,13 @@ class FacturaForm(forms.ModelForm):
         self.fields["concepto"].required = True
         # Folio obligatorio; se sugiere el siguiente disponible en la vista.
         self.fields["folio_numero"].required = True
+        # Régimen fiscal opcional en el POST: si no llega, conserva el valor
+        # actual (facturas editadas fuera de borrador no envían el campo).
+        self.fields["regimen_fiscal"].required = False
+
+    def clean_regimen_fiscal(self):
+        v = self.cleaned_data.get("regimen_fiscal")
+        return v or (self.instance.regimen_fiscal or "iva")
         # Solo cotizaciones vigentes (no anuladas) como origen.
         from apps.cotizaciones.models import Cotizacion
         self.fields["cotizacion_origen"].queryset = (

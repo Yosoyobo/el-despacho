@@ -135,6 +135,14 @@ def lista(request):
             {"label": "Estado", "sort_key": "estado"},
         ],
         "kpis": services.kpis_landing(),
+        "pills_estados": [
+            ("", "Vigentes"),
+            ("borrador", "Borradores"),
+            ("emitida", "Emitidas"),
+            ("cobrada_parcial", "Cobro parcial"),
+            ("cobrada_total", "Cobradas"),
+            ("cancelada", "Canceladas"),
+        ],
         "puede_crear": puede_crear_facturacion(request.user),
     })
 
@@ -381,6 +389,18 @@ def detalle(request, pk):
             'Cancelar factura</button>',
             reverse("facturacion:cancelar", args=[fac.pk]),
         ))
+    # Eliminar PERMANENTE: solo facturas ya canceladas (limpieza de pruebas).
+    if fac.estado == "cancelada" and puede_cancelar_facturacion(request.user):
+        from django.middleware.csrf import get_token
+        token = get_token(request)
+        acciones_html.append(format_html(
+            '<form method="post" action="{}" class="inline" '
+            'onsubmit="return confirm(\'¿Eliminar PERMANENTEMENTE {}? Esta acción no se puede deshacer.\');">'
+            '<input type="hidden" name="csrfmiddlewaretoken" value="{}">'
+            '<button type="submit" class="inline-flex items-center rounded-lg border border-error-500 bg-error-500 '
+            'px-4 py-2 text-sm font-medium text-white transition hover:bg-error-600">Eliminar</button></form>',
+            reverse("facturacion:eliminar", args=[fac.pk]), fac.codigo, token,
+        ))
 
     action_bar_acciones = mark_safe("".join(str(a) for a in acciones_html))
     action_bar_meta = format_html(
@@ -522,6 +542,26 @@ def duplicar(request, pk):
     nueva = services.duplicar(fac, request.user)
     messages.success(request, f"Factura duplicada como {nueva.codigo}.")
     return redirect("facturacion:editar", pk=nueva.pk)
+
+
+@login_required
+def eliminar(request, pk):
+    """Elimina permanentemente una factura cancelada (limpieza). POST puro.
+    Gateado por el permiso de cancelar (quien puede cancelar puede limpiar)."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_cancelar_facturacion(request.user):
+        return HttpResponseForbidden("Sin permiso para eliminar facturas.")
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    fac = get_object_or_404(Factura, pk=pk)
+    try:
+        codigo = services.eliminar(fac, request.user)
+        messages.success(request, f"Factura {codigo} eliminada permanentemente.")
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect("facturacion:detalle", pk=fac.pk)
+    return redirect("facturacion:lista")
 
 
 # ── API JSON para autocompletar en factura_form ──────────────────────────

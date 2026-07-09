@@ -164,6 +164,20 @@
     {% comment %} ── Aside: impuestos + notas como ventanas chicas ── {% endcomment %}
     <aside class="min-w-0 space-y-6">
         {% if formset %}
+        {# Régimen fiscal (LC 2026-07): IVA / IVA y Retenciones / Exento. Solo en borrador. #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Régimen fiscal</h3>
+            <div class="mt-3 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Régimen fiscal">
+                {% for radio in form.regimen_fiscal %}
+                <label class="cursor-pointer rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition
+                              has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700
+                              dark:border-gray-700 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                    <span class="sr-only">{{ radio.choice_label }}</span>{{ radio.tag }}<span aria-hidden="true">{{ radio.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">«IVA y Retenciones» aplica el desglose RESICO honorarios (ret. ISR + ret. IVA). Las tasas de abajo solo aplican en régimen IVA.</p>
+        </section>
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Impuestos</h3>
             <div class="mt-3 grid grid-cols-1 gap-2">
@@ -180,6 +194,9 @@
                 {% endfor %}
             </div>
         </section>
+        {% else %}
+        {# No borrador: régimen no editable pero se preserva en el POST del header. #}
+        <input type="hidden" name="regimen_fiscal" value="{{ fac.regimen_fiscal }}">
         {% endif %}
 
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

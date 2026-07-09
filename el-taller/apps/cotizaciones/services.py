@@ -259,6 +259,9 @@ def crear_factura_anticipo(cot: Cotizacion, actor) -> Factura:  # noqa: F821
             estado="borrador",
             fecha_emision=_date.today(),
             moneda=cot.moneda,
+            # El anticipo es un monto plano (ya se calculó del total); sin
+            # recomputar impuestos encima para no doble-contabilizar.
+            regimen_fiscal="exento",
             descuento_global_porcentaje=_Decimal("0"),
             notas=f"Anticipo del {cot.anticipo_porcentaje}% sobre {cot.codigo}.\n\n{cot.notas}".strip(),
             terminos=cot.terminos,
@@ -329,6 +332,7 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             titulo=(proyecto.nombre or proyecto.codigo)[:200],
             estado=estado_inicial,
             version=version,
+            regimen_fiscal=proyecto.regimen_fiscal,
             descuento_global_porcentaje=Decimal("0.00"),
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
@@ -347,7 +351,9 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
                 cantidad=Decimal(str(pp.cantidad)),
                 precio_unitario=pp.precio_efectivo,
             )
-        if not proyecto.iva_exento:
+        # Solo el régimen 'iva' usa las tasas de la M2M; 'honorarios' y 'exento'
+        # se calculan con lógica dedicada (lib.fiscal) y no dependen de tasas.
+        if proyecto.regimen_fiscal == "iva":
             for tasa in TasaImpositiva.objects.filter(aplicable_default=True, activa=True):
                 CotizacionImpuesto.objects.create(cotizacion=cot, tasa=tasa)
     _emitir("cotizacion.generada", cot, actor, {

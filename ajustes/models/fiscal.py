@@ -63,6 +63,23 @@ class ConfiguracionFiscal(models.Model):
         help_text="% de IVA aplicable (estándar 16% en México).",
     )
 
+    # ── Régimen de honorarios / Actividad Profesional (retenciones) ──────
+    # Se usan cuando un proyecto/factura/cotización está en régimen
+    # 'honorarios' (IVA y Retenciones). Defaults exactos de RESICO PF
+    # profesional: ISR 1.25% del importe, IVA retenido = ⅔ del IVA trasladado.
+    ret_isr_honorarios = models.DecimalField(
+        max_digits=6, decimal_places=3, default=Decimal("1.250"),
+        help_text="% de retención de ISR sobre el importe (RESICO/honorarios: 1.25%).",
+    )
+    ret_iva_honorarios_num = models.PositiveSmallIntegerField(
+        default=2,
+        help_text="Numerador de la retención de IVA como fracción del IVA trasladado (⅔ → 2).",
+    )
+    ret_iva_honorarios_den = models.PositiveSmallIntegerField(
+        default=3,
+        help_text="Denominador de la retención de IVA como fracción del IVA trasladado (⅔ → 3).",
+    )
+
     actualizado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
         on_delete=models.SET_NULL, related_name="config_fiscal_actualizadas",

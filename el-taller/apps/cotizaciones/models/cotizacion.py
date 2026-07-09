@@ -6,6 +6,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models, transaction
 
+from lib.fiscal import REGIMENES_FISCALES, desglose_honorarios, q2
+
 ESTADOS_COTIZACION = (
     ("borrador", "Borrador"),
     ("generada", "Generada"),
@@ -86,6 +88,10 @@ class Cotizacion(models.Model):
     fecha_validez = models.DateField(default=_validez_default)
 
     moneda = models.CharField(max_length=3, default="MXN")
+    # Régimen fiscal (LC 2026-07). Hereda del proyecto al generar la cotización.
+    regimen_fiscal = models.CharField(
+        max_length=12, choices=REGIMENES_FISCALES, default="iva", db_index=True
+    )
     descuento_global_porcentaje = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("0.00")
     )
@@ -268,36 +274,45 @@ class Cotizacion(models.Model):
         subtotal_items = sum((it.subtotal for it in items), CERO)
 
         desc_pct = self.descuento_global_porcentaje or CERO
-        descuento_global = (subtotal_items * desc_pct / Decimal("100")).quantize(Decimal("0.01"))
-        base_impuestos = (subtotal_items - descuento_global).quantize(Decimal("0.01"))
+        descuento_global = q2(subtotal_items * desc_pct / Decimal("100"))
+        base_impuestos = q2(subtotal_items - descuento_global)
 
         trasladados = CERO
         retenciones = CERO
-        impuestos_detalle = []
-        for ci in self.impuestos.select_related("tasa").all():
-            tasa = ci.tasa
-            monto = (base_impuestos * tasa.porcentaje / Decimal("100")).quantize(Decimal("0.01"))
-            if tasa.tipo == "retencion":
-                retenciones += monto
-            else:
-                trasladados += monto
-            impuestos_detalle.append({
-                "id": ci.id,
-                "tasa_id": tasa.id,
-                "nombre": tasa.nombre,
-                "tipo": tasa.tipo,
-                "porcentaje": tasa.porcentaje,
-                "monto": monto,
-            })
+        impuestos_detalle: list = []
 
-        total = (base_impuestos + trasladados - retenciones).quantize(Decimal("0.01"))
+        if self.regimen_fiscal == "honorarios":
+            d = desglose_honorarios(base_impuestos)
+            trasladados = d["trasladados"]
+            retenciones = d["retenciones"]
+            impuestos_detalle = d["impuestos_detalle"]
+            total = d["total"]
+        elif self.regimen_fiscal == "exento":
+            total = base_impuestos
+        else:
+            for ci in self.impuestos.select_related("tasa").all():
+                tasa = ci.tasa
+                monto = q2(base_impuestos * tasa.porcentaje / Decimal("100"))
+                if tasa.tipo == "retencion":
+                    retenciones += monto
+                else:
+                    trasladados += monto
+                impuestos_detalle.append({
+                    "id": ci.id,
+                    "tasa_id": tasa.id,
+                    "nombre": tasa.nombre,
+                    "tipo": tasa.tipo,
+                    "porcentaje": tasa.porcentaje,
+                    "monto": monto,
+                })
+            total = q2(base_impuestos + trasladados - retenciones)
 
         return {
-            "subtotal_items": subtotal_items.quantize(Decimal("0.01")),
+            "subtotal_items": q2(subtotal_items),
             "descuento_global": descuento_global,
             "base_impuestos": base_impuestos,
-            "trasladados": trasladados.quantize(Decimal("0.01")),
-            "retenciones": retenciones.quantize(Decimal("0.01")),
+            "trasladados": q2(trasladados),
+            "retenciones": q2(retenciones),
             "total": total,
             "impuestos_detalle": impuestos_detalle,
         }

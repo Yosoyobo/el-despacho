@@ -17,6 +17,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models, transaction
 
+from lib.fiscal import REGIMENES_FISCALES, desglose_honorarios, q2
+
 ESTADOS_FACTURA = (
     ("borrador", "Borrador"),
     ("emitida", "Emitida"),
@@ -132,6 +134,12 @@ class Factura(models.Model):
     fecha_vencimiento = models.DateField(default=_vencimiento_default)
 
     moneda = models.CharField(max_length=3, default="MXN")
+    # Régimen fiscal del documento (LC 2026-07). Hereda del proyecto al crear.
+    # 'iva' = solo IVA vía tasas (M2M); 'honorarios' = IVA + retenciones RESICO;
+    # 'exento' = sin impuestos.
+    regimen_fiscal = models.CharField(
+        max_length=12, choices=REGIMENES_FISCALES, default="iva", db_index=True
+    )
     descuento_global_porcentaje = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("0.00")
     )
@@ -259,42 +267,53 @@ class Factura(models.Model):
         subtotal_items = sum((it.subtotal for it in items), CERO)
 
         desc_pct = self.descuento_global_porcentaje or CERO
-        descuento_global = (subtotal_items * desc_pct / Decimal("100")).quantize(Decimal("0.01"))
+        descuento_global = q2(subtotal_items * desc_pct / Decimal("100"))
         # Parcialidad (pill 100%/50%): escala la base sin tocar las líneas.
         factor = (self.porcentaje_a_facturar or Decimal("100")) / Decimal("100")
         base_bruta = (subtotal_items - descuento_global)
-        base_impuestos = (base_bruta * factor).quantize(Decimal("0.01"))
-        parcialidad_descuento = (base_bruta - base_impuestos).quantize(Decimal("0.01"))
+        base_impuestos = q2(base_bruta * factor)
+        parcialidad_descuento = q2(base_bruta - base_impuestos)
 
         trasladados = CERO
         retenciones = CERO
-        impuestos_detalle = []
-        for fi in self.impuestos.select_related("tasa").all():
-            tasa = fi.tasa
-            monto = (base_impuestos * tasa.porcentaje / Decimal("100")).quantize(Decimal("0.01"))
-            if tasa.tipo == "retencion":
-                retenciones += monto
-            else:
-                trasladados += monto
-            impuestos_detalle.append({
-                "id": fi.id,
-                "tasa_id": tasa.id,
-                "nombre": tasa.nombre,
-                "tipo": tasa.tipo,
-                "porcentaje": tasa.porcentaje,
-                "monto": monto,
-            })
+        impuestos_detalle: list = []
 
-        total = (base_impuestos + trasladados - retenciones).quantize(Decimal("0.01"))
+        if self.regimen_fiscal == "honorarios":
+            # RESICO / honorarios: cálculo dedicado (IVA + ret ISR + ret IVA ⅔).
+            d = desglose_honorarios(base_impuestos)
+            trasladados = d["trasladados"]
+            retenciones = d["retenciones"]
+            impuestos_detalle = d["impuestos_detalle"]
+            total = d["total"]
+        elif self.regimen_fiscal == "exento":
+            total = base_impuestos
+        else:
+            # 'iva' — mecanismo genérico vía tasas de la M2M (HALF_UP).
+            for fi in self.impuestos.select_related("tasa").all():
+                tasa = fi.tasa
+                monto = q2(base_impuestos * tasa.porcentaje / Decimal("100"))
+                if tasa.tipo == "retencion":
+                    retenciones += monto
+                else:
+                    trasladados += monto
+                impuestos_detalle.append({
+                    "id": fi.id,
+                    "tasa_id": tasa.id,
+                    "nombre": tasa.nombre,
+                    "tipo": tasa.tipo,
+                    "porcentaje": tasa.porcentaje,
+                    "monto": monto,
+                })
+            total = q2(base_impuestos + trasladados - retenciones)
 
         return {
-            "subtotal_items": subtotal_items.quantize(Decimal("0.01")),
+            "subtotal_items": q2(subtotal_items),
             "descuento_global": descuento_global,
             "porcentaje_a_facturar": (self.porcentaje_a_facturar or Decimal("100")),
             "parcialidad_descuento": parcialidad_descuento,
             "base_impuestos": base_impuestos,
-            "trasladados": trasladados.quantize(Decimal("0.01")),
-            "retenciones": retenciones.quantize(Decimal("0.01")),
+            "trasladados": q2(trasladados),
+            "retenciones": q2(retenciones),
             "total": total,
             "impuestos_detalle": impuestos_detalle,
         }

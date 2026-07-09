@@ -99,6 +99,7 @@ def snapshot_estado(proyecto) -> dict:
             "fecha_inicio": _iso(proyecto.fecha_inicio),
             "fecha_compromiso": _iso(proyecto.fecha_compromiso),
             "iva_exento": proyecto.iva_exento,
+            "regimen_fiscal": proyecto.regimen_fiscal,
         },
         "productos": productos,
         "equipo": equipo,
@@ -169,6 +170,7 @@ def _restaurar(proyecto, datos: dict) -> None:
         proyecto.fecha_inicio = _parse_dt(p.get("fecha_inicio"))
         proyecto.fecha_compromiso = _parse_dt(p.get("fecha_compromiso"))
         proyecto.iva_exento = p.get("iva_exento", proyecto.iva_exento)
+        proyecto.regimen_fiscal = p.get("regimen_fiscal", proyecto.regimen_fiscal)
         proyecto.save()
 
         # Productos: borrar y recrear (los PKs cambian; para undo da igual).

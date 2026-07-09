@@ -19,24 +19,17 @@
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Cobradas (mes)" valor=kpis.cobradas_mes color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
 </div>
 
-<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="flex-1 min-w-[220px]">
-        <label for="fac-q" class="sr-only">Buscar</label>
-        <input id="fac-q" type="search" name="q" value="{{ q }}" placeholder="Buscar código, título o cliente…">
-    </div>
-    <div>
-        <label class="sr-only" for="fac-estado">Estado</label>
-        <select name="estado" id="fac-estado">
-            <option value="">Vigentes (sin canceladas)</option>
-            <option value="borrador" {% if estado_filtro == 'borrador' %}selected{% endif %}>Borrador</option>
-            <option value="emitida" {% if estado_filtro == 'emitida' %}selected{% endif %}>Emitida</option>
-            <option value="cobrada_parcial" {% if estado_filtro == 'cobrada_parcial' %}selected{% endif %}>Cobrada parcial</option>
-            <option value="cobrada_total" {% if estado_filtro == 'cobrada_total' %}selected{% endif %}>Cobrada total</option>
-            <option value="cancelada" {% if estado_filtro == 'cancelada' %}selected{% endif %}>Canceladas</option>
-        </select>
-    </div>
-    <button type="submit" class="btn-secundario">Buscar</button>
-</form>
+{# LC 2026-07: filtros por estado como pastillas segmentadas (sin buscador ni dropdown). #}
+<nav class="mb-5 flex flex-wrap gap-2" aria-label="Filtrar por estado">
+    {% for slug, label in pills_estados %}
+    <a href="?{% if slug %}estado={{ slug }}{% endif %}"
+       class="inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition
+              {% if estado_filtro == slug %}border-brand-500 bg-brand-500 text-white shadow-theme-xs
+              {% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">
+        {{ label }}
+    </a>
+    {% endfor %}
+</nav>
 
 {% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_facturas filas_template="facturacion/_filas.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
 {% endblock %}

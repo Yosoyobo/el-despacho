@@ -656,6 +656,17 @@ def fiscal_panel(request):
         cfg.isr_tasa = _tasa("isr_tasa", cfg.isr_tasa)
         cfg.ptu_tasa = _tasa("ptu_tasa", cfg.ptu_tasa)
         cfg.iva_tasa = _tasa("iva_tasa", cfg.iva_tasa)
+        cfg.ret_isr_honorarios = _tasa("ret_isr_honorarios", cfg.ret_isr_honorarios)
+
+        def _entero(nombre, actual):
+            try:
+                v = int(request.POST.get(nombre) or actual)
+            except (TypeError, ValueError):
+                return actual
+            return max(1, min(v, 100))
+
+        cfg.ret_iva_honorarios_num = _entero("ret_iva_honorarios_num", cfg.ret_iva_honorarios_num)
+        cfg.ret_iva_honorarios_den = _entero("ret_iva_honorarios_den", cfg.ret_iva_honorarios_den)
         cfg.actualizado_por = request.user
         cfg.save()
         emitir(EventoPortavoz(
