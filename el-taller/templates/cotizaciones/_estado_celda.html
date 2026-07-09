@@ -1,0 +1,21 @@
+{% comment %}LC 2026-07: celda de estado con badge + cambio en un clic (dropdown
+inline). Se auto-swap por HTMX. Reusado por _filas.html y por la vista
+estado_inline (POST). Espera `c` (cotización) y `estados_cot` (ciclo activo).
+Funciona para cualquier versión, aunque otra esté anulada.{% endcomment %}
+<span id="cot-estado-{{ c.pk }}" class="inline-flex flex-wrap items-center gap-2">
+    {% with estado=c.estado_visible %}
+    <span class="badge {% if estado == 'aprobada' or estado == 'pagada' %}badge-success{% elif estado == 'rechazada' or estado == 'anulada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'enviada' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
+    {% endwith %}
+    {% if c.estado != 'anulada' and c.estado != 'rechazada' and estados_cot %}
+    <select name="estado" aria-label="Cambiar estado"
+            class="rounded-lg border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            hx-post="{% url 'cotizaciones:estado-inline' c.pk %}"
+            hx-trigger="change" hx-target="#cot-estado-{{ c.pk }}" hx-swap="outerHTML"
+            hx-include="#csrf-cot-{{ c.pk }}">
+        {% for e in estados_cot %}
+        <option value="{{ e.slug }}" {% if e.slug == c.estado %}selected{% endif %}>{{ e.label }}</option>
+        {% endfor %}
+    </select>
+    <input type="hidden" id="csrf-cot-{{ c.pk }}" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    {% endif %}
+</span>

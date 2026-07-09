@@ -351,9 +351,16 @@ def detalle(request, pk):
     puede_duplicar = puede_crear_facturacion(request.user)
 
     acciones_html: list = []
+    # LC 2026-07: "Ver" abre el documento inline al instante (HTML); "Descargar
+    # PDF" genera el PDF real en Drive.
     acciones_html.append(format_html(
         '<a href="{}" target="_blank" rel="noopener" class="btn-secundario" '
-        'title="Genera el PDF con el formato de Learning Center y lo abre en una pestaña nueva.">📄 PDF</a>',
+        'title="Abre el documento al instante en una pestaña nueva.">👁 Ver</a>',
+        reverse("facturacion:ver", args=[fac.pk]),
+    ))
+    acciones_html.append(format_html(
+        '<a href="{}" class="btn-secundario" '
+        'title="Genera y descarga el PDF con el formato de Learning Center.">⬇ Descargar PDF</a>',
         reverse("facturacion:pdf", args=[fac.pk]),
     ))
     if puede_editar:
@@ -661,6 +668,16 @@ def api_cotizacion_datos(request, pk):
         ],
         "impuestos": list(cot.impuestos.values_list("tasa_id", flat=True)),
     })
+
+
+@login_required
+def pdf_ver(request, pk):
+    """Vista RÁPIDA del documento (HTML imprimible inline, sin Drive) — arregla
+    la «pantalla azul» del visor. El PDF real se baja con «Descargar». LC 2026-07."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    fac = get_object_or_404(Factura, pk=pk)
+    return HttpResponse(services.construir_html_pdf(fac))
 
 
 @login_required

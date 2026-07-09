@@ -7,15 +7,14 @@ acciones. Columnas: Fecha · Cliente · Proyecto · Versión · Subtotal (sin IV
     data-href="{% url 'cotizaciones:detalle' c.pk %}">
     <td class="px-5 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">{{ c.fecha_emision|fecha_corta }}</td>
     <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ c.cliente.razon_social|truncatechars:44 }}</td>
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
-        {% if c.proyecto %}<span class="text-brand-600 dark:text-brand-400">{{ c.proyecto.codigo }}</span>{% else %}—{% endif %}
+    {# LC 2026-07: se muestra el NOMBRE del proyecto (no el código LC-XXXX). #}
+    <td class="px-5 py-3 text-gray-700 dark:text-gray-200">
+        {% if c.proyecto %}{{ c.proyecto.nombre|truncatechars:60 }}{% else %}—{% endif %}
     </td>
     <td class="px-5 py-3 tabular-nums text-gray-600 dark:text-gray-300">{{ c.version_label }}</td>
     <td class="px-5 py-3 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ totales.subtotal_items|dinero }}</td>
-    <td class="px-5 py-3">
-        {% with estado=c.estado_visible %}
-        <span class="badge {% if estado == 'aprobada' %}badge-success{% elif estado == 'rechazada' or estado == 'anulada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'enviada' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
-        {% endwith %}
+    <td class="px-5 py-3" data-no-row-click onclick="event.stopPropagation()">
+        {% include "cotizaciones/_estado_celda.html" with c=c estados_cot=estados_cot %}
     </td>
 </tr>
 {% endwith %}

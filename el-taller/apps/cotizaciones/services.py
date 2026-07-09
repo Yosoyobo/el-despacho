@@ -340,8 +340,8 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             nombre = pp.servicio.nombre if pp.servicio_id else "Producto"
             if pp.variacion_id:
                 nombre = f"{nombre} · {pp.variacion.nombre}"
-            if pp.nota:
-                nombre = f"{nombre} — {pp.nota}"
+            # LC 2026-07: la NOTA interna del producto NO se copia a la línea de
+            # la cotización (no debe salir en el documento final al cliente).
             CotizacionItem.objects.create(
                 cotizacion=cot,
                 orden=i,
@@ -353,7 +353,8 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             )
         # Solo el régimen 'iva' usa las tasas de la M2M; 'honorarios' y 'exento'
         # se calculan con lógica dedicada (lib.fiscal) y no dependen de tasas.
-        if proyecto.regimen_fiscal == "iva":
+        # `iva_exento` legacy sigue vetando las tasas (back-compat).
+        if proyecto.regimen_fiscal == "iva" and not proyecto.iva_exento:
             for tasa in TasaImpositiva.objects.filter(aplicable_default=True, activa=True):
                 CotizacionImpuesto.objects.create(cotizacion=cot, tasa=tasa)
     _emitir("cotizacion.generada", cot, actor, {

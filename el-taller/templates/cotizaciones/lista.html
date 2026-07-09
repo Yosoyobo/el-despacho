@@ -19,26 +19,17 @@
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Vencidas" valor=kpis.vencidas color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke-linecap="round"/></svg>' %}
 </div>
 
-<form method="get" class="campo-form mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="flex-1 min-w-[220px]">
-        <label for="cot-q" class="sr-only">Buscar</label>
-        <input id="cot-q" type="search" name="q" value="{{ q }}" placeholder="Buscar código, título o cliente…">
-    </div>
-    <div>
-        <label class="sr-only" for="cot-estado">Estado</label>
-        <select name="estado" id="cot-estado">
-            <option value="">Vigentes (sin anuladas)</option>
-            <option value="borrador" {% if estado_filtro == 'borrador' %}selected{% endif %}>Borrador</option>
-            <option value="generada" {% if estado_filtro == 'generada' %}selected{% endif %}>Generada</option>
-            <option value="enviada" {% if estado_filtro == 'enviada' %}selected{% endif %}>Enviada</option>
-            <option value="aprobada" {% if estado_filtro == 'aprobada' %}selected{% endif %}>Aprobada</option>
-            <option value="pagada" {% if estado_filtro == 'pagada' %}selected{% endif %}>Pagada</option>
-            <option value="rechazada" {% if estado_filtro == 'rechazada' %}selected{% endif %}>Rechazada</option>
-            <option value="anulada" {% if estado_filtro == 'anulada' %}selected{% endif %}>Anuladas</option>
-        </select>
-    </div>
-    <button type="submit" class="btn-secundario">Buscar</button>
-</form>
+{# LC 2026-07: filtros por estado como pastillas segmentadas (sin buscador ni dropdown). #}
+<nav class="mb-5 flex flex-wrap gap-2" aria-label="Filtrar por estado">
+    {% for slug, label in pills_estados %}
+    <a href="?{% if slug %}estado={{ slug }}{% endif %}"
+       class="inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition
+              {% if estado_filtro == slug %}border-brand-500 bg-brand-500 text-white shadow-theme-xs
+              {% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">
+        {{ label }}
+    </a>
+    {% endfor %}
+</nav>
 
 {% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_cotizaciones filas_template="cotizaciones/_filas.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
 {% endblock %}

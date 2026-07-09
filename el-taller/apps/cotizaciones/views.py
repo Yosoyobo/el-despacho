@@ -97,16 +97,33 @@ def lista(request):
         # entera es clickeable). Orden: fecha · cliente · proyecto · versión ·
         # subtotal (sin IVA) · estado.
         "cabeceras_cotizaciones": [
-            {"label": "Fecha", "sort_key": "fecha_emision"},
-            {"label": "Cliente"},
-            {"label": "Proyecto"},
-            {"label": "Versión", "sort_key": "version"},
-            {"label": "Subtotal", "align": "right"},
-            {"label": "Estado", "sort_key": "estado"},
+            {"label": "Fecha", "sort_key": "fecha_emision", "clase_th": "w-24"},
+            {"label": "Cliente", "clase_th": "w-40"},
+            {"label": "Proyecto", "clase_th": "w-auto"},
+            {"label": "Versión", "sort_key": "version", "clase_th": "w-16"},
+            {"label": "Subtotal", "align": "right", "clase_th": "w-28"},
+            {"label": "Estado", "sort_key": "estado", "clase_th": "w-44"},
         ],
         "kpis": services.kpis_landing(),
+        "pills_estados": [
+            ("", "Vigentes"),
+            ("borrador", "Borradores"),
+            ("generada", "Generadas"),
+            ("enviada", "Enviadas"),
+            ("aprobada", "Aprobadas"),
+            ("pagada", "Pagadas"),
+            ("rechazada", "Rechazadas"),
+            ("anulada", "Anuladas"),
+        ],
+        "estados_cot": _estados_cot_ciclo(),
         "puede_crear": puede_crear_cotizaciones(request.user),
     })
+
+
+def _estados_cot_ciclo():
+    """Ciclo configurable de cotización (para el dropdown inline de estado)."""
+    from apps.cotizaciones.models import estados_cot_activos
+    return estados_cot_activos()
 
 
 def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
@@ -317,9 +334,16 @@ def detalle(request, pk):
     puede_duplicar = puede_crear_cotizaciones(request.user)
 
     acciones_html: list = []
+    # LC 2026-07: "Ver" abre el documento inline al instante (HTML, sin round-trip
+    # a Drive → adiós pantalla azul). "Descargar PDF" genera el PDF real en Drive.
     acciones_html.append(format_html(
         '<a href="{}" target="_blank" rel="noopener" class="btn-secundario" '
-        'title="Genera el PDF con el formato de Learning Center y lo abre en una pestaña nueva.">📄 PDF</a>',
+        'title="Abre el documento al instante en una pestaña nueva.">👁 Ver</a>',
+        reverse("cotizaciones:ver", args=[cot.pk]),
+    ))
+    acciones_html.append(format_html(
+        '<a href="{}" class="btn-secundario" '
+        'title="Genera y descarga el PDF con el formato de Learning Center.">⬇ Descargar PDF</a>',
         reverse("cotizaciones:pdf", args=[cot.pk]),
     ))
     if puede_editar:
@@ -612,6 +636,45 @@ def factura_anticipo(request, pk):
         f"Revisa los datos y emítela cuando estés listo.",
     )
     return redirect("facturacion:editar", pk=factura.pk)
+
+
+@login_required
+def estado_inline(request, pk):
+    """Cambia el estado de UNA cotización (versión) desde la celda de la lista,
+    en un clic (LC 2026-07). Setter libre por el ciclo configurable — funciona
+    para cualquier versión, aunque otra versión del proyecto esté anulada."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    from lib.permisos import puede_aprobar_cotizaciones
+    puede = (
+        puede_editar_cotizaciones(request.user)
+        or puede_enviar_cotizaciones(request.user)
+        or puede_aprobar_cotizaciones(request.user)
+    )
+    if not puede:
+        return HttpResponseForbidden("Sin permiso para cambiar el estado.")
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    from apps.cotizaciones.models import estados_cot_activos
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    nuevo = (request.POST.get("estado") or "").strip()
+    try:
+        services.marcar_estado_proyecto(cot, nuevo, request.user)
+    except ValueError:
+        pass  # estado inválido → devuelve la celda sin cambiar
+    return render(request, "cotizaciones/_estado_celda.html",
+                  {"c": cot, "estados_cot": estados_cot_activos()})
+
+
+@login_required
+def pdf_ver(request, pk):
+    """Vista RÁPIDA del documento: el HTML imprimible inline, sin round-trip a
+    Google Drive (arregla la «pantalla azul» del visor). El PDF real (Drive) se
+    baja con «Descargar». LC 2026-07."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    return HttpResponse(services.construir_html_pdf(cot))
 
 
 @login_required
