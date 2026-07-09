@@ -19,84 +19,54 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
     <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cotizaciones</h3>
 
     {% if cotizaciones_proyecto %}
-    <ul class="mt-3 space-y-2 text-sm">
+    {# LC 2026-07 (D3): cada versión es un desplegable con SU tracker dentro. La
+       activa (más reciente) abre por default; las pasadas quedan cerradas. #}
+    <div class="mt-3 space-y-2 text-sm">
         {% for cot in cotizaciones_proyecto %}
-        <li class="rounded-lg border border-gray-200 p-2.5 dark:border-gray-800">
-            {% if cot.pk == cot_latest_pk and puede_estado %}<input type="checkbox" id="cotdd-{{ cot.pk }}" class="peer sr-only">{% endif %}
-            <div class="flex items-center justify-between gap-2">
-                <div class="flex min-w-0 items-center gap-2">
+        <details class="group rounded-lg border border-gray-200 p-2.5 dark:border-gray-800" {% if cot.pk == cot_latest_pk %}open{% endif %}>
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2">
+                <span class="flex min-w-0 items-center gap-2">
                     <span class="font-semibold text-gray-900 dark:text-gray-100">{{ cot.version_label }}</span>
                     {% if ver_cotizaciones %}
-                    <a href="{% url 'cotizaciones:pdf' cot.pk %}" target="_blank" rel="noopener"
+                    <a href="{% url 'cotizaciones:pdf' cot.pk %}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
                        class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">PDF →</a>
                     {% endif %}
-                </div>
-                {% if cot.pk == cot_latest_pk %}
-                    {% if puede_estado %}
-                    <label for="cotdd-{{ cot.pk }}"
-                           class="badge badge-hex inline-flex cursor-pointer select-none items-center gap-1"
-                           style="--ec: {{ cot.estado_color }}" title="Cambiar estatus de la cotización">
-                        {{ cot.get_estado_display }}
-                        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                    </label>
-                    {% else %}
+                </span>
+                <span class="inline-flex items-center gap-1.5">
                     <span class="badge badge-hex" style="--ec: {{ cot.estado_color }}">{{ cot.get_estado_display }}</span>
+                    <svg class="h-3.5 w-3.5 text-gray-400 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+            </summary>
+            {# Tracker de ESTA versión (indicador unificado). Clic = cambia su estatus. #}
+            <div class="mt-3">
+                <div class="cot-tracker">
+                    {% for s in cot.tracker_steps %}
+                    {% if puede_estado %}
+                    <button type="button"
+                            hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk %}"
+                            hx-vals='{"estado": "{{ s.slug }}", "cot_pk": "{{ cot.pk }}"}'
+                            hx-target="#cotizaciones-panel-{{ proyecto.pk }}" hx-swap="outerHTML"
+                            class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}"
+                            title="Marcar {{ cot.version_label }} como {{ s.label }}">
+                        <span class="cot-step-seg"></span><span class="cot-step-label">{{ s.label }}</span>
+                    </button>
+                    {% else %}
+                    <div class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}">
+                        <span class="cot-step-seg"></span><span class="cot-step-label">{{ s.label }}</span>
+                    </div>
                     {% endif %}
-                {% else %}
-                    {# Versión pasada (LC 2026-06-30): círculo con el color de su último estado, SOLO LECTURA. #}
-                    <span class="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400" title="Último estado de {{ cot.version_label }}: {{ cot.get_estado_display }}">
-                        <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {{ cot.estado_color }}"></span>
-                        {{ cot.get_estado_display }}
-                    </span>
-                {% endif %}
+                    {% endfor %}
+                </div>
             </div>
-            {% if cot.pk == cot_latest_pk and puede_estado %}
-            {# Opciones de estatus: aparecen al picar el badge (peer-checked, sin JS). #}
-            <div class="mt-2 hidden flex-wrap gap-2 peer-checked:flex">
-                {% for e in cot_estados_activos %}
-                <button type="button"
-                        hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk %}"
-                        hx-vals='{"estado": "{{ e.slug }}"}'
-                        hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
-                        hx-swap="outerHTML"
-                        class="badge badge-hex cursor-pointer {% if e.slug == cot_estado_actual %}ring-2 ring-current/50{% else %}opacity-60 transition hover:opacity-100{% endif %}"
-                        style="--ec: {{ e.color }}">{{ e.label }}</button>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </li>
+        </details>
         {% endfor %}
-    </ul>
-
-    {# ── Termómetro de estatus: barra de pasos que se llena (cabe siempre) ── #}
-    {% if cot_tracker %}
-    <div class="mt-4">
-        <div class="cot-tracker">
-            {% for s in cot_tracker %}
-            {% if puede_estado %}
-            <button type="button"
-                    hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk %}"
-                    hx-vals='{"estado": "{{ s.slug }}"}'
-                    hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
-                    hx-swap="outerHTML"
-                    class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}"
-                    title="Marcar como {{ s.label }}">
-                <span class="cot-step-seg"></span>
-                <span class="cot-step-label">{{ s.label }}</span>
-            </button>
-            {% else %}
-            <div class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}">
-                <span class="cot-step-seg"></span>
-                <span class="cot-step-label">{{ s.label }}</span>
-            </div>
-            {% endif %}
-            {% endfor %}
-        </div>
     </div>
-    {# Línea de estatus (estilo "YOUR ORDER IS IN THE OVEN!") #}
+
+    {% if cot_tracker %}
+    {# Línea de estatus de la versión activa (estilo "YOUR ORDER IS IN THE OVEN!") #}
     <div class="mt-3 flex items-center gap-2 text-sm">
         <svg class="h-5 w-5 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v4a1 1 0 0 0 1 1h4" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="font-semibold text-gray-900 dark:text-gray-100">Estatus: {{ cot_estado_label }}</span>
+        <span class="font-semibold text-gray-900 dark:text-gray-100">Estatus (activa): {{ cot_estado_label }}</span>
         {% if cot_estado_ts_fmt and cot_estado_ts_fmt != "—" %}<span class="text-xs text-gray-500 dark:text-gray-400">· {{ cot_estado_ts_fmt }}</span>{% endif %}
     </div>
 

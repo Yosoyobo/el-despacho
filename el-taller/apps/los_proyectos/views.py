@@ -1024,18 +1024,22 @@ def _ctx_cotizaciones(proyecto, user) -> dict:
     activos = estados_cot_activos()
     mapa = mapa_estados_cot()
     estado_actual = latest.estado if latest else None
-    idx_actual = next((i for i, e in enumerate(activos) if e["slug"] == estado_actual), None)
-    tracker = []
-    for i, e in enumerate(activos):
-        if idx_actual is None:
-            fase = "future"
-        elif i < idx_actual:
-            fase = "done"
-        elif i == idx_actual:
-            fase = "current"
-        else:
-            fase = "future"
-        tracker.append({**e, "fase": fase, "num": i + 1})
+
+    def _tracker_de(estado):
+        """Pasos configurados con fase done/current/future según `estado`."""
+        idx = next((i for i, e in enumerate(activos) if e["slug"] == estado), None)
+        out = []
+        for i, e in enumerate(activos):
+            fase = ("future" if idx is None else
+                    ("done" if i < idx else ("current" if i == idx else "future")))
+            out.append({**e, "fase": fase, "num": i + 1})
+        return out
+
+    # LC 2026-07 (D3): CADA versión lleva su propio tracker (dentro de su
+    # desplegable). La versión activa abre por default; las pasadas, cerradas.
+    for c in cots:
+        c.tracker_steps = _tracker_de(c.estado)
+    tracker = _tracker_de(estado_actual)  # compat con el resto del contexto
     ts = None
     if latest:
         ts = {
@@ -1102,16 +1106,21 @@ def cotizacion_estado(request, pk):
         return HttpResponseForbidden("Sin acceso a este proyecto.")
     if not puede_editar_cotizaciones(request.user):
         return HttpResponseForbidden("Sin permiso para editar cotizaciones.")
-    latest = (
-        Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
-        .order_by("-version")
-        .first()
-    )
-    if latest is None:
+    # LC 2026-07 (D3): puede venir `cot_pk` para cambiar el estado de UNA versión
+    # concreta (cada versión tiene su tracker). Sin él, opera sobre la más reciente.
+    cot_pk = request.POST.get("cot_pk")
+    if cot_pk:
+        objetivo = Cotizacion.objects.filter(proyecto=proyecto, pk=cot_pk, version__gt=0).first()
+    else:
+        objetivo = (
+            Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+            .order_by("-version").first()
+        )
+    if objetivo is None:
         messages.error(request, "No hay cotizaciones generadas todavía.")
     else:
         try:
-            cot_services.marcar_estado_proyecto(latest, request.POST.get("estado", ""), request.user)
+            cot_services.marcar_estado_proyecto(objetivo, request.POST.get("estado", ""), request.user)
         except ValueError as exc:
             messages.error(request, str(exc))
     if _es_htmx(request):

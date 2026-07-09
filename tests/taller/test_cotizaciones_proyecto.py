@@ -181,16 +181,16 @@ def test_detalle_pinta_recuadro_y_tracker(client, entorno):
     cuerpo = resp.content.decode()
     assert "Cotizaciones" in cuerpo
     assert "v1" in cuerpo
-    # Pizza-tracker + línea de estatus.
+    # Pizza-tracker + línea de estatus de la versión activa (D3, LC 2026-07).
     assert "cot-step" in cuerpo
-    assert "Estatus:" in cuerpo
+    assert "Estatus (activa):" in cuerpo
     # El botón Enviar abre el rickroll vía JS (placeholder, decisión Oscar).
     assert "abrirRickroll" in cuerpo
 
 
-def test_version_pasada_muestra_circulo_solo_lectura(client, entorno):
-    """LC 2026-06-30: las versiones pasadas muestran un círculo con el color de
-    su último estado, SOLO LECTURA (no su dropdown editable)."""
+def test_cada_version_tiene_su_desplegable_con_tracker(client, entorno):
+    """D3 (LC 2026-07): cada versión es un desplegable con SU tracker dentro.
+    La activa abre por default; cada versión cambia su propio estatus."""
     from apps.cotizaciones import services
     v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     services.marcar_estado_proyecto(v1, "enviada", entorno["admin"])
@@ -198,8 +198,25 @@ def test_version_pasada_muestra_circulo_solo_lectura(client, entorno):
     client.force_login(entorno["admin"])
     resp = client.get(reverse("proyectos-detalle", args=[entorno["p"].pk]))
     cuerpo = resp.content.decode()
-    # El círculo de la versión pasada lleva su color y su tooltip de "Último estado".
-    assert "Último estado de v1" in cuerpo
+    assert "v1" in cuerpo and "v2" in cuerpo
+    # Dos desplegables (uno por versión), cada uno con su tracker.
+    assert cuerpo.count("<details") >= 2
+    assert cuerpo.count("cot-tracker") >= 2
+
+
+def test_cambiar_estado_de_una_version_pasada(client, entorno):
+    """D3: el endpoint acepta cot_pk → cambia el estado de UNA versión concreta,
+    no solo la más reciente."""
+    from apps.cotizaciones import services
+    v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    services.generar_desde_proyecto(entorno["p"], entorno["admin"])  # v2 más reciente
+    client.force_login(entorno["admin"])
+    resp = client.post(reverse("proyectos-cotizacion-estado", args=[entorno["p"].pk]),
+                       {"estado": "enviada", "cot_pk": str(v1.pk)},
+                       HTTP_HX_REQUEST="true")
+    assert resp.status_code == 200
+    v1.refresh_from_db()
+    assert v1.estado == "enviada"
 
 
 # ── Catálogo configurable (EstadoCotizacion) ─────────────────────────────
