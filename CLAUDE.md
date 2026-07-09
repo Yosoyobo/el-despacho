@@ -4531,13 +4531,30 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
 6. **Actualiza el manual de usuario ANTES de cada deploy.**
    `docs/DOC_05_MANUAL_USUARIO.md` es la fuente única de verdad
    consumida por usuarios no técnicos vía `/ayuda/` (S-LC-Feedback-V3
-   commit 10). Antes de push a `main`:
-   - agrega un bloque "Novedades al <fecha> (<nombre del sprint>)"
-     arriba de las novedades existentes,
-   - escribe en español llano (no jerga técnica) describiendo cambios
-     visibles para el usuario final,
-   - si removiste o renombraste una sección de UI, actualiza las
-     referencias correspondientes en el manual.
+   commit 10). **OJO — el archivo tiene DOS partes** separadas por el
+   marcador `## Bienvenida` (`lib/novedades.py` las parte):
+   - **Antes de `## Bienvenida`** viven los bloques `## Novedades — …
+     (fecha)` → se muestran en **Ayuda → Novedades** + alimentan el
+     **badge del sidebar**. Esta es "la sección de Ayuda" que ve el
+     usuario primero.
+   - **Desde `## Bienvenida`** vive el manual propiamente → se muestra
+     en `/ayuda/`.
+
+   Antes de push a `main`, en el MISMO commit que sube VERSION:
+   - **(a)** agrega hasta arriba un bloque
+     `## Novedades — <resumen corto> (<VERSION_FECHA>)` en español
+     llano (no jerga técnica) describiendo lo visible para el usuario.
+     La fecha del bloque **debe coincidir con `lib.version.VERSION_FECHA`**.
+   - **(b)** actualiza el **cuerpo** del manual (después de
+     `## Bienvenida`) para reflejar el nuevo comportamiento; si
+     removiste/renombraste UI, corrige sus referencias.
+
+   **Los dos pasos son obligatorios.** Actualizar solo el cuerpo (b) y
+   olvidar el bloque de Novedades (a) deja la sección de Ayuda "sin
+   cambios" para el usuario — el error de 2026.07.01 que Oscar señaló
+   ("que no vuelva a ocurrir"). El candado
+   `tests/test_ayuda_novedades.py` **falla en CI** si bumpeas
+   `VERSION_FECHA` a una fecha sin su bloque de Novedades hasta arriba.
    El cache de `/ayuda/` se invalida automáticamente cuando cambia el
    mtime del archivo en el deploy; no hay paso manual.
    **Regla nueva (S-LC-Feedback-V7, decisión Oscar):** todo **módulo o
