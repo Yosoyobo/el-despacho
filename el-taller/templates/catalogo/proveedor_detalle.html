@@ -15,67 +15,22 @@
     <button type="submit" form="form-proveedor" class="btn-primario">Guardar</button>
 </div>
 
+{# LC 2026-07 (Wave 4): main (2col) = productos + proyectos; sidebar (1col) = datos. #}
 <div class="grid gap-6 xl:grid-cols-3">
-    <form id="form-proveedor" method="post" action="{% url 'catalogo-proveedor-detalle' proveedor.pk %}"
-          hx-post="{% url 'catalogo-proveedor-detalle' proveedor.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
-          class="campo-form space-y-6 xl:col-span-2">
-        {% csrf_token %}
-        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Información de contacto</h2>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.razon_social ancho_completo=True %}
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.nombre_contacto %}
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.email_contacto %}
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.telefono %}
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.rfc %}
-            </div>
-        </section>
-
-        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Ubicación y dirección</h2>
-            <div class="mb-4 flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
-                {% if ultima_visita %}
-                <span class="text-xs text-gray-500 dark:text-gray-400">Última ubicación · {{ ultima_visita.registrado_en|hfmt:"d M Y H:i" }}</span>
-                {% include "checador/_boton_mapa.html" with lat=ultima_visita.lat lng=ultima_visita.lng etiqueta=proveedor.razon_social cuando=ultima_visita.registrado_en|hfmt:"d M H:i" precision=ultima_visita.precision %}
-                {% else %}
-                <span class="text-xs text-gray-400 dark:text-gray-500">Sin ubicación todavía — se toma de las visitas del Checador.</span>
-                {% endif %}
-            </div>
-            <div class="space-y-4">
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
-                {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-56" %}
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fiscal_igual %}
-                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion_fiscal %}
-            </div>
-            {{ form.lat }}{{ form.lng }}
-            {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion_fiscal" con_pois=False %}
-        </section>
-
-        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
-        </section>
-        {% if puede_editar %}
-        <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">¿Qué surte? (subcategorías)</h3>
-            {% include "catalogo/_subcategorias_checkboxes.html" %}
-        </section>
-        {% endif %}
-    </form>
-
-    <aside class="space-y-6">
-        {# ── Productos (M2M editor aparte) ── #}
+    <main class="space-y-6 xl:col-span-2">
+        {# ── Productos que surte (clic → editar el producto) ── #}
         <section class="ta-card">
             <div class="mb-3 flex items-center justify-between gap-2">
-                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos</h2>
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Productos que surte</h2>
                 {% if puede_gestionar_servicios %}
-                <a href="{% url 'catalogo-proveedor-servicios' proveedor.pk %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar →</a>
+                <a href="{% url 'catalogo-proveedor-servicios' proveedor.pk %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar lista →</a>
                 {% endif %}
             </div>
             {% if servicios %}
             <ul class="divide-y divide-gray-100 dark:divide-gray-800">
                 {% for s in servicios %}
                 <li class="flex items-center justify-between gap-2 py-2">
-                    <a href="{% url 'catalogo-variaciones' s.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ s.nombre }}</a>
+                    <a href="{% url 'catalogo-editar' s.pk %}?volver={{ request.path|urlencode }}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ s.nombre }}</a>
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ s.categoria.nombre }}</span>
                 </li>
                 {% endfor %}
@@ -87,6 +42,70 @@
             {% endif %}
             {% endif %}
         </section>
+
+        {# ── Proyectos vigentes en los que está involucrado ── #}
+        <section class="ta-card">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Proyectos vigentes</h2>
+            {% if proyectos_involucrados %}
+            <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for p in proyectos_involucrados %}
+                <li class="flex items-center justify-between gap-2 py-2">
+                    <a href="{% url 'proyectos-detalle' p.pk %}?volver={{ request.path|urlencode }}" class="min-w-0 flex-1 truncate text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.nombre }}</a>
+                    <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ p.cliente.razon_social|truncatechars:24 }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos vigentes" descripcion="Este proveedor no está en ningún proyecto activo ahora mismo." icono="folder" %}
+            {% endif %}
+        </section>
+    </main>
+
+    <aside class="space-y-6">
+        <form id="form-proveedor" method="post" action="{% url 'catalogo-proveedor-detalle' proveedor.pk %}"
+              hx-post="{% url 'catalogo-proveedor-detalle' proveedor.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
+              class="campo-form space-y-6">
+            {% csrf_token %}
+            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos de contacto</h2>
+                <div class="grid grid-cols-1 gap-4">
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.razon_social %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.nombre_contacto %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.email_contacto %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.telefono %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.rfc %}
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Ubicación y dirección</h2>
+                <div class="mb-4 flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
+                    {% if ultima_visita %}
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Última ubicación · {{ ultima_visita.registrado_en|hfmt:"d M Y H:i" }}</span>
+                    {% include "checador/_boton_mapa.html" with lat=ultima_visita.lat lng=ultima_visita.lng etiqueta=proveedor.razon_social cuando=ultima_visita.registrado_en|hfmt:"d M H:i" precision=ultima_visita.precision %}
+                    {% else %}
+                    <span class="text-xs text-gray-400 dark:text-gray-500">Sin ubicación todavía — se toma de las visitas del Checador.</span>
+                    {% endif %}
+                </div>
+                <div class="space-y-4">
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
+                    {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-48" %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fiscal_igual %}
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion_fiscal %}
+                </div>
+                {{ form.lat }}{{ form.lng }}
+                {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion_fiscal" con_pois=False %}
+            </section>
+
+            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
+            </section>
+
+            <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">¿Qué surte? (subcategorías)</h3>
+                {% include "catalogo/_subcategorias_checkboxes.html" %}
+            </section>
+        </form>
 
         {# ── Estado + acciones (fuera del form de autoguardado) ── #}
         <section class="ta-card flex flex-col gap-3">

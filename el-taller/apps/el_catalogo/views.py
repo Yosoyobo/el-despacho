@@ -693,11 +693,24 @@ def proveedor_detalle(request, pk: int):
         ultima_visita = ultima_ubicacion_de(proveedor=prov)
     except Exception:  # noqa: BLE001
         pass
+    # LC 2026-07 (Wave 4): proyectos vigentes donde el proveedor está involucrado
+    # (asignado formalmente o porque surte un producto del proyecto).
+    from django.db.models import Q as _Q
+    from apps.los_proyectos.models import Proyecto as _Proyecto
+    _mgr = getattr(_Proyecto, "activos", _Proyecto.objects)
+    proyectos_involucrados = (
+        _mgr.filter(_Q(proveedores_asignados__proveedor=prov) | _Q(productos__proveedor=prov))
+        .exclude(estado__in=["cancelado", "cerrado"])
+        .select_related("cliente")
+        .distinct().order_by("-creado_en")[:50]
+    )
+
     return render(request, "catalogo/proveedor_detalle.html", {
         "proveedor": prov,
         "form": form,
         "puede_editar": puede_editar,
         "servicios": prov.servicios.filter(activo=True).select_related("categoria"),
+        "proyectos_involucrados": proyectos_involucrados,
         "ultima_visita": ultima_visita,
         "categorias_prov": _categorias_prov(),
         "subcats_sel": set(prov.subcategorias.values_list("pk", flat=True)),
