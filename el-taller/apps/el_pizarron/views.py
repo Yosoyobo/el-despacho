@@ -708,9 +708,9 @@ def _direcciones_guardadas(q: str, limite: int = 8) -> list[dict]:
     q = (q or "").strip()
     if len(q) < 2:
         return []
-    from django.db.models import Q as _Q
     from apps.el_catalogo.models import Proveedor
     from apps.la_cartera.models import Cliente
+    from django.db.models import Q as _Q
     filtro = _Q(razon_social__icontains=q) | _Q(direccion__icontains=q) | _Q(direccion_fiscal__icontains=q)
     out: list[dict] = []
     for c in Cliente.activos.filter(filtro)[:limite]:

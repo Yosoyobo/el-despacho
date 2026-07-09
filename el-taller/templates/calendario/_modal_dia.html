@@ -26,8 +26,7 @@ S-LC-Feedback-V13.
                 </button>
             </li>
             {% else %}
-            {# D6 (LC 2026-07): clic al evento abre su modal CORTO editable (no la
-               página completa). Proyecto → editar fechas; tarea → edición rápida. #}
+            {# D6 (LC 2026-07): clic al evento abre su modal CORTO editable (proyecto → fechas; tarea → rápido). #}
             <li>
                 <button type="button"
                         {% if e.tipo == "entrega" %}hx-get="{% url 'proyectos-editar-fechas' e.obj_id %}"{% else %}hx-get="{% url 'pizarron-editar-tarea-rapido' e.obj_id %}"{% endif %}

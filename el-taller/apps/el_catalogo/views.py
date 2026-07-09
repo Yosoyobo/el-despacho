@@ -695,8 +695,8 @@ def proveedor_detalle(request, pk: int):
         pass
     # LC 2026-07 (Wave 4): proyectos vigentes donde el proveedor está involucrado
     # (asignado formalmente o porque surte un producto del proyecto).
-    from django.db.models import Q as _Q
     from apps.los_proyectos.models import Proyecto as _Proyecto
+    from django.db.models import Q as _Q
     _mgr = getattr(_Proyecto, "activos", _Proyecto.objects)
     proyectos_involucrados = (
         _mgr.filter(_Q(proveedores_asignados__proveedor=prov) | _Q(productos__proveedor=prov))

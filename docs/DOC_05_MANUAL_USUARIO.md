@@ -5,6 +5,29 @@
 
 ---
 
+## Novedades — Proveedores por categoría, calendario que arrastras, pegar imágenes y más pulido (9 de julio de 2026)
+
+- **Categorías de proveedor editables.** En Productos → Proveedores → **Categorías**
+  puedes cambiar el nombre y el **color** de las 6 categorías principales; sus
+  subcategorías heredan ese color automáticamente.
+- **Ficha de proveedor rediseñada.** Ahora ves de un lado sus datos y del otro los
+  **productos que surte** y los **proyectos vigentes** en los que participa; al tocar
+  un producto o proyecto saltas a él y puedes regresar.
+- **Cotizaciones: cada versión con su propio semáforo.** En el proyecto, cada versión
+  de la cotización es un desplegable con su tracker de estatus adentro (la versión
+  activa abierta, las anteriores cerradas). Cambias el estatus de la versión que
+  quieras.
+- **Buscar ubicación más simple.** Al poner el lugar de una tarea o mandado, el
+  buscador te sugiere primero las **direcciones guardadas** de tus clientes y
+  proveedores (o escribes libremente); si necesitas el mapa completo, tocas
+  **"🌐 Buscar en el mapa…"**.
+- **Imagen del producto pegando una captura.** En la ficha del producto ya puedes
+  **pegar (Ctrl/Cmd+V)** una captura o elegir un archivo; se guarda en Drive.
+- **Editar eventos del calendario sin salir.** Al tocar un evento del calendario se
+  abre un **modal corto** para editarlo al momento (sin abrir la página completa).
+- **Arrastra para mover de día.** En el calendario puedes **arrastrar** una tarea,
+  entrega o evento a otro día para cambiarle la fecha.
+
 ## Novedades — Honorarios con retenciones, tarjetas de producto con margen, ver PDF al instante y más (8 de julio de 2026)
 
 - **Facturas y cotizaciones con retenciones (honorarios/RESICO).** Cada proyecto tiene

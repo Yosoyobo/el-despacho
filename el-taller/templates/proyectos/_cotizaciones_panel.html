@@ -19,8 +19,7 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
     <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cotizaciones</h3>
 
     {% if cotizaciones_proyecto %}
-    {# LC 2026-07 (D3): cada versión es un desplegable con SU tracker dentro. La
-       activa (más reciente) abre por default; las pasadas quedan cerradas. #}
+    {# LC 2026-07 (D3): cada versión es un desplegable con SU tracker; la activa abre por default. #}
     <div class="mt-3 space-y-2 text-sm">
         {% for cot in cotizaciones_proyecto %}
         <details class="group rounded-lg border border-gray-200 p-2.5 dark:border-gray-800" {% if cot.pk == cot_latest_pk %}open{% endif %}>

@@ -233,6 +233,7 @@ def mover_evento(request):
 
     if tipo == "tarea":
         from apps.el_pizarron.models import Tarea
+
         from lib.permisos import puede_ver_tarea
         t = get_object_or_404(Tarea, pk=obj_id)
         if not puede_ver_tarea(request.user, t):
@@ -240,8 +241,9 @@ def mover_evento(request):
         t.fecha_compromiso = nueva
         t.save(update_fields=["fecha_compromiso"])
     elif tipo == "entrega":  # entrega/cierre de proyecto
-        from django.utils import timezone as _tz
         from apps.los_proyectos.models import Proyecto
+        from django.utils import timezone as _tz
+
         from lib.permisos import puede_editar_proyecto
         p = get_object_or_404(Proyecto, pk=obj_id)
         if not puede_editar_proyecto(request.user, p):

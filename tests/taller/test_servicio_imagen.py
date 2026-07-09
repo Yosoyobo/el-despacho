@@ -17,8 +17,9 @@ def _servicio():
 
 
 def test_subir_imagen_guarda_file_id(client, usuario_factory, monkeypatch):
-    import lib.adjuntos as adj
     from django.core.files.uploadedfile import SimpleUploadedFile
+
+    import lib.adjuntos as adj
     monkeypatch.setattr(
         adj, "subir",
         lambda archivo, subcarpeta=None: SimpleNamespace(
@@ -46,8 +47,9 @@ def test_subir_sin_imagen_400(client, usuario_factory):
 
 
 def test_drive_falla_es_gracioso(client, usuario_factory, monkeypatch):
-    import lib.adjuntos as adj
     from django.core.files.uploadedfile import SimpleUploadedFile
+
+    import lib.adjuntos as adj
     monkeypatch.setattr(
         adj, "subir",
         lambda archivo, subcarpeta=None: SimpleNamespace(ok=False, data={}, error="Drive no conectado"),
