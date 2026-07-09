@@ -45,7 +45,7 @@ def mandados_badge(request):
         # Tareas (no-runner): azul = asignadas a mí; gris = el resto.
         base = Tarea.objects.exclude(estado__in=terminales).exclude(tipo__in=TIPOS_RUNNER)
         total = base.count()
-        mias = base.filter(asignada_a=user).count()
+        mias = base.filter(Q(asignada_a=user) | Q(responsables=user)).distinct().count()
         otras = max(0, total - mias)
 
         # Rojo = mandados pendientes MÍOS (soy runner o están asignados a mí).

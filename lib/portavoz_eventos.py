@@ -32,6 +32,7 @@ EventoTipo = Literal[
     "chalan.conocimiento_destilado",
     "tarea.creada",
     "tarea.completada",
+    "tarea.eliminada",
     "tarea.recordatorio",
     "tarea.estado_creado",
     "tarea.estado_actualizado",

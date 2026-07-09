@@ -59,7 +59,7 @@ def lista_tareas(request):
     visibles = Tarea.objects.select_related("proyecto", "asignada_a", "proyecto__cliente")
     if not ve_todo:
         visibles = visibles.filter(
-            Q(asignada_a=user) | Q(proyecto__asignaciones__usuario=user)
+            Q(asignada_a=user) | Q(responsables=user) | Q(proyecto__asignaciones__usuario=user)
         ).distinct()
 
     # Estados dinámicos (configurables en Gerencia) — V6 Bloque 1.
@@ -76,7 +76,7 @@ def lista_tareas(request):
 
     solo_mias = request.GET.get("asignado") == "mio"
     if solo_mias:
-        qs = qs.filter(asignada_a=user)
+        qs = qs.filter(Q(asignada_a=user) | Q(responsables=user)).distinct()
 
     # Tareas cerradas: orden cronológico por completado, las más recientes
     # arriba (pedido LC 2026-06-29). Las abiertas, por compromiso.
@@ -91,7 +91,7 @@ def lista_tareas(request):
         "en_curso": visibles.filter(estado="en_curso").count(),
         # "Atrasadas" es derivado: compromiso vencido sin estado terminal.
         "atrasadas": visibles.filter(fecha_compromiso__lt=hoy).exclude(estado__in=terminales).count(),
-        "mias": visibles.filter(asignada_a=user).exclude(estado__in=terminales).count(),
+        "mias": visibles.filter(Q(asignada_a=user) | Q(responsables=user)).distinct().exclude(estado__in=terminales).count(),
     }
     return render(request, "pizarron/lista.html", {
         "tareas": list(qs[:300]),
@@ -109,7 +109,8 @@ def _tareas_visibles(user):
     if not (es_admin(user) or puede_ver_finanzas(user)):
         # S-LC-Proyecto-V2: incluye tareas donde el usuario es el runner.
         visibles = visibles.filter(
-            Q(asignada_a=user) | Q(runner=user) | Q(proyecto__asignaciones__usuario=user)
+            Q(asignada_a=user) | Q(responsables=user) | Q(runner=user)
+            | Q(proyecto__asignaciones__usuario=user)
         ).distinct()
     return visibles
 
@@ -164,7 +165,8 @@ def kanban_tareas(request):
 
     qs = visibles
     if personas_sel and not es_runner_only:
-        cond = Q(asignada_a__pk__in=[int(p) for p in personas_sel])
+        _pks = [int(p) for p in personas_sel]
+        cond = Q(asignada_a__pk__in=_pks) | Q(responsables__pk__in=_pks)
         # S-LC-Proyecto-V2: "mis tareas" también muestra las entregas/recogidas
         # donde soy el runner.
         if str(user.pk) in personas_sel:
@@ -358,7 +360,10 @@ def nueva_tarea(request, proyecto_id):
 
 @login_required
 def detalle_tarea(request, pk):
-    tarea = get_object_or_404(Tarea.objects.select_related("proyecto", "asignada_a"), pk=pk)
+    tarea = get_object_or_404(
+        Tarea.objects.select_related("proyecto", "asignada_a").prefetch_related("responsables"),
+        pk=pk,
+    )
     if not puede_ver_tarea(request.user, tarea):
         return HttpResponseForbidden()
     comentarios = _comentarios_visibles(
@@ -366,10 +371,14 @@ def detalle_tarea(request, pk):
         tarea.comentarios.select_related("autor"),
     )
     puede_ed = puede_ver_proyecto(request.user, tarea.proyecto)
+    puede_eliminar = es_admin(request.user) or tarea.creado_por_id == request.user.pk
+    responsables = tarea.responsables_todos
+    responsables_txt = ", ".join(u.nombre_completo for u in responsables) or "—"
     info_clasificacion = [
         {"label": "Estado", "value": tarea.get_estado_display()},
+        {"label": "Tipo", "value": f"{tarea.emoji_tipo} {tarea.get_tipo_display()}"},
         {"label": "Prioridad", "value": tarea.get_prioridad_display()},
-        {"label": "Asignada a", "value": tarea.asignada_a.nombre_completo if tarea.asignada_a else "—"},
+        {"label": "Responsables", "value": responsables_txt},
         {"label": "Compromiso", "value": tarea.fecha_compromiso.strftime("%d %b %Y") if tarea.fecha_compromiso else "—"},
     ]
     info_proyecto = [
@@ -388,6 +397,7 @@ def detalle_tarea(request, pk):
         "proyecto": tarea.proyecto,
         "comentarios": comentarios,
         "puede_editar": puede_ed,
+        "puede_eliminar": puede_eliminar,
         "es_admin": es_admin(request.user),
         "info_clasificacion": info_clasificacion,
         "info_proyecto": info_proyecto,
@@ -400,6 +410,28 @@ def detalle_tarea(request, pk):
         "back_url": reverse("proyectos-detalle", args=[tarea.proyecto.pk]),
         "back_label": tarea.proyecto.codigo,
     })
+
+
+@login_required
+def eliminar_tarea(request, pk):
+    """Elimina PERMANENTEMENTE una tarea (LC 2026-07). Antes solo se archivaba
+    (completaba). Gate: admin (super_admin/dueño) o quien la creó. POST puro."""
+    tarea = get_object_or_404(Tarea.objects.select_related("proyecto"), pk=pk)
+    if not (es_admin(request.user) or tarea.creado_por_id == request.user.pk):
+        return HttpResponseForbidden("Sin permiso para eliminar la tarea.")
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    proyecto_pk = tarea.proyecto_id
+    titulo = tarea.titulo
+    tarea.delete()
+    emitir(EventoPortavoz(
+        tipo="tarea.eliminada",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"titulo": titulo[:120], "proyecto_id": proyecto_pk},
+    ))
+    messages.success(request, f"Tarea «{titulo[:60]}» eliminada.")
+    destino = request.POST.get("next") or reverse("proyectos-detalle", args=[proyecto_pk])
+    return redirect(destino)
 
 
 @login_required

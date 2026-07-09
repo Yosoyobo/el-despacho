@@ -30,15 +30,22 @@ Patrón Wave 5 (hx-post → #modal-slot → 204 + HX-Redirect). S-LC-Feedback-V1
                         {% if form.fecha_fin.errors %}<p class="mt-1 text-xs text-error-600">{{ form.fecha_fin.errors|join:" " }}</p>{% endif %}
                     </div>
                 </div>
-                <div class="flex items-end gap-3">
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Color</label>
-                        {{ form.color }}
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Color</label>
+                    {# LC 2026-07: paleta cerrada de 7 colores (swatches), sin RGB libre. #}
+                    <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
+                        {% for radio in form.color %}
+                        <label class="relative h-8 w-8 cursor-pointer rounded-full ring-offset-2 ring-offset-white transition has-[:checked]:ring-2 has-[:checked]:ring-gray-900 dark:ring-offset-gray-900 dark:has-[:checked]:ring-white"
+                               style="background: {{ radio.choice_value }}" title="{{ radio.choice_label }}">
+                            <span class="sr-only">{{ radio.choice_label }}</span>{{ radio.tag }}
+                        </label>
+                        {% endfor %}
                     </div>
-                    <div class="flex-1">
-                        <label class="mb-1 block text-sm font-medium">Descripción</label>
-                        {{ form.descripcion }}
-                    </div>
+                    {% if form.color.errors %}<p class="mt-1 text-xs text-error-600">{{ form.color.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Descripción</label>
+                    {{ form.descripcion }}
                 </div>
             </div>
             <footer class="flex items-center justify-between gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">

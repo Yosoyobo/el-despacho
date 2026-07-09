@@ -63,15 +63,18 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
         dia_evento = timezone.localtime(p.fecha_compromiso).date()
         eventos[dia_evento].append({
             "tipo": "entrega",
-            "titulo": p.nombre,
+            # LC 2026-07: los eventos automáticos del ciclo del proyecto llevan
+            # el prefijo fijo «Compromiso:» + 📦 (entrega/cierre).
+            "titulo": f"📦 Compromiso: {p.nombre}",
             "subtitulo": p.cliente.razon_social,
             "url": f"/proyectos/{p.pk}/",
             "color": "gray" if dia_evento < hoy else "brand",
         })
 
     # V6 Bloque 2: el tipo de la tarea (Entrega/Junta/Recoger) se refleja en
-    # el calendario con emoji + hora si existe.
-    _emoji = {"entrega": "📦", "junta": "📅", "recoger": "🚚"}
+    # el calendario con emoji tipado (LC 2026-07): 🛵 recoger/logística ·
+    # 💻 tarea operativa · 📦 entrega/producción · 📅 junta.
+    _emoji = {"entrega": "📦", "junta": "📅", "recoger": "🛵", "tarea": "💻"}
     for t in _tareas_visibles_qs(user).filter(
         fecha_compromiso__gte=inicio, fecha_compromiso__lte=fin
     ):

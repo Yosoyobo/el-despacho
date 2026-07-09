@@ -11,9 +11,14 @@ anillo + dot, eventos con badges coloreados de fondo suave.
         </h2>
     </header>
     <div class="grid grid-cols-7 gap-px overflow-hidden bg-gray-200 dark:bg-gray-800">
-        {% for dia in "LMXJVSD" %}
-        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">{{ dia }}</div>
-        {% endfor %}
+        {% comment %}LC 2026-07: encabezado a dos caracteres (Ma / Mi, sin la «X» heredada).{% endcomment %}
+        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Lu</div>
+        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Ma</div>
+        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Mi</div>
+        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Ju</div>
+        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Vi</div>
+        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Sá</div>
+        <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Do</div>
         {% for semana in mes_grid.semanas %}
             {% for celda in semana %}
             {# Celda clickeable: abre el modal del día (crear evento/tarea/proyecto con fecha precargada, LC 2026-06-29). #}

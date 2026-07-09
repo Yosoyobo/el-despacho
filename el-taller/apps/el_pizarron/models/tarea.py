@@ -38,6 +38,12 @@ class Tarea(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True,
         on_delete=models.SET_NULL, related_name="tareas_asignadas",
     )
+    # LC 2026-07: una tarea puede tener VARIOS responsables. `asignada_a` es el
+    # principal (para «Mis tareas», avisos y el runner); `responsables` son los
+    # demás. El principal se incluye siempre en `responsables` al guardar.
+    responsables = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="tareas_corresponsable",
+    )
     # S-LC-Proyecto-V2 (Oscar): runner = quien LLEVA (entrega) o RECOGE las
     # cosas. Distinto del responsable (`asignada_a`). Aparece en SUS pendientes.
     # `requiere_runner` lo enciende el tipo entrega/recoger; `runner_auto` marca
@@ -82,6 +88,28 @@ class Tarea(models.Model):
 
     def __str__(self):
         return self.titulo
+
+    @property
+    def emoji_tipo(self) -> str:
+        """Emoji tipado (LC 2026-07): 🛵 recoger/logística · 💻 tarea operativa ·
+        📦 entrega/producción · 📅 junta."""
+        return {"recoger": "🛵", "tarea": "💻", "entrega": "📦", "junta": "📅"}.get(self.tipo, "💻")
+
+    @property
+    def responsables_todos(self):
+        """Responsables efectivos: el principal (`asignada_a`) + los M2M, deduplicados.
+        Sirve para display y para las notificaciones."""
+        vistos, out = set(), []
+        for u in [self.asignada_a] + list(self.responsables.all()):
+            if u and u.pk not in vistos:
+                vistos.add(u.pk)
+                out.append(u)
+        return out
+
+    def sincronizar_responsable_principal(self):
+        """Garantiza que el principal esté en la M2M (LC 2026-07)."""
+        if self.asignada_a_id and not self.responsables.filter(pk=self.asignada_a_id).exists():
+            self.responsables.add(self.asignada_a)
 
     def get_estado_display(self):
         """Label del estado desde EstadoTarea (configurable), con fallback a

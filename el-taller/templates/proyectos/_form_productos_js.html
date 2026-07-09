@@ -36,7 +36,7 @@
             h += '<span class="text-base font-semibold text-gray-800 dark:text-gray-100">' + MESES[m] + ' ' + y + '</span>';
             h += '<button type="button" data-nav="1" class="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">&#8250;</button></div>';
             h += '<div class="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-gray-400">';
-            ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(d => h += '<span>' + d + '</span>');
+            ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].forEach(d => h += '<span>' + d + '</span>');
             h += '</div><div class="mt-0.5 grid grid-cols-7 gap-0.5">';
             for (let i = 0; i < startW; i++) h += '<span></span>';
             for (let d = 1; d <= dim; d++) {
@@ -62,7 +62,8 @@
             }
             const day = e.target.closest('[data-iso]');
             if (day) {
-                input.value = day.dataset.iso;
+                // LC 2026-07: toggle — clic al día ya elegido lo borra.
+                input.value = (input.value === day.dataset.iso) ? '' : day.dataset.iso;
                 render();
                 input.dispatchEvent(new Event('change', { bubbles: true }));
             }
@@ -245,6 +246,20 @@
             const input = document.getElementById(id);
             if (input) {
                 const n = new Date();
+                input.value = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate());
+                const cont = document.querySelector('[data-calendario="' + id + '"]');
+                if (cont && cont._render) { cont._view = { y: n.getFullYear(), m: n.getMonth() }; cont._render(); }
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+        }
+        // Botón "Mañana": setea el input al día siguiente (LC 2026-07).
+        const mananaBtn = e.target.closest && e.target.closest('[data-manana]');
+        if (mananaBtn) {
+            const id = mananaBtn.getAttribute('data-manana');
+            const input = document.getElementById(id);
+            if (input) {
+                const n = new Date(); n.setDate(n.getDate() + 1);
                 input.value = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate());
                 const cont = document.querySelector('[data-calendario="' + id + '"]');
                 if (cont && cont._render) { cont._view = { y: n.getFullYear(), m: n.getMonth() }; cont._render(); }

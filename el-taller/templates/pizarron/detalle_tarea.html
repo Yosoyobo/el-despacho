@@ -84,6 +84,17 @@
                 </form>
                 {% endif %}
             {% endif %}
+            {% if puede_eliminar %}
+            <form method="post" action="{% url 'pizarron-eliminar-tarea' tarea.pk %}" class="inline"
+                  onsubmit="return confirm('¿Eliminar PERMANENTEMENTE esta tarea? No se puede deshacer.');">
+                {% csrf_token %}
+                <button type="submit" title="Eliminar permanentemente"
+                        class="inline-flex items-center gap-1 rounded-lg border border-error-300 px-3 py-2 text-sm font-medium text-error-600 hover:bg-error-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    Eliminar
+                </button>
+            </form>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -23,8 +23,15 @@ class TareaForm(forms.ModelForm):
         queryset=Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
         required=True,
         empty_label="— Elige una persona —",
-        label="Asignada a",
+        label="Responsable principal",
         error_messages={"required": "Asigna la tarea a alguien."},
+    )
+    # LC 2026-07: responsables adicionales (multi-select con checkboxes, regla
+    # del proyecto). El principal (`asignada_a`) se agrega solo al guardar.
+    responsables = forms.ModelMultipleChoiceField(
+        queryset=Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
+        required=False, widget=forms.CheckboxSelectMultiple,
+        label="Otros responsables",
     )
     # `<input type="date">` SOLO acepta ISO (YYYY-MM-DD) para mostrar y enviar.
     # Sin `format="%Y-%m-%d"` el widget rendea "18/06/2026" (locale es-mx), el
@@ -80,9 +87,15 @@ class TareaForm(forms.ModelForm):
             self.add_error("destino_etiqueta", "Indica el lugar (destino) de la entrega/recolección.")
         return cleaned
 
+    def save(self, commit=True):
+        tarea = super().save(commit=commit)
+        if commit:
+            tarea.sincronizar_responsable_principal()
+        return tarea
+
     class Meta:
         model = Tarea
-        fields = ["titulo", "descripcion", "estado", "prioridad", "tipo", "asignada_a", "fecha_compromiso", "hora", "destino_etiqueta"]
+        fields = ["titulo", "descripcion", "estado", "prioridad", "tipo", "asignada_a", "responsables", "fecha_compromiso", "hora", "destino_etiqueta"]
         widgets = {
             # S-LC-Feedback-V4: autocomplete @#$ en título y descripción.
             "titulo": forms.TextInput(attrs={"data-referencias": "1"}),
@@ -126,7 +139,7 @@ class TareaGlobalForm(TareaForm):
 
     class Meta(TareaForm.Meta):
         fields = ["proyecto", "titulo", "descripcion", "prioridad", "tipo",
-                  "asignada_a", "fecha_compromiso", "hora", "destino_etiqueta"]
+                  "asignada_a", "responsables", "fecha_compromiso", "hora", "destino_etiqueta"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
