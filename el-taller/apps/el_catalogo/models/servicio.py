@@ -23,6 +23,10 @@ class Servicio(models.Model):
         related_name="servicios",
     )
     activo = models.BooleanField(default=True, db_index=True)
+    # LC 2026-07: imagen del producto (guardada en Google Drive, subcarpeta
+    # "Productos"). Se sube por archivo o pegando desde el portapapeles.
+    imagen_file_id = models.CharField(max_length=100, blank=True, default="")
+    imagen_url = models.URLField(max_length=500, blank=True, default="")
     # S-LC-Feedback-V3: proveedores aplicables a este servicio.
     proveedores = models.ManyToManyField(
         "el_catalogo.Proveedor",

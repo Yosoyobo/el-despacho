@@ -868,3 +868,32 @@ def categoria_proveedor_editar(request, pk: int):
     else:
         form = CategoriaProveedorForm(instance=cat)
     return render(request, "catalogo/categoria_proveedor_form.html", {"form": form, "categoria": cat})
+
+
+# ── Imagen de producto (Drive) — pegar/subir (LC 2026-07) ────────────────────
+
+@require_http_methods(["POST"])
+def servicio_imagen(request, pk: int):
+    """Sube (o reemplaza) la imagen del producto a Drive (subcarpeta «Productos»).
+    Acepta un archivo `imagen` (de <input> o del portapapeles). Devuelve JSON.
+    Gated por `catalogo.editar`. Fallback gracioso si Drive falla."""
+    if (r := _gate(request, "editar")) is not None:
+        return r
+    from django.http import JsonResponse
+    srv = get_object_or_404(Servicio, pk=pk)
+    archivo = request.FILES.get("imagen")
+    if not archivo:
+        return JsonResponse({"ok": False, "error": "No llegó ninguna imagen."}, status=400)
+    from lib.adjuntos import subir
+    res = subir(archivo, subcarpeta="Productos")
+    if not res.ok:
+        return JsonResponse({"ok": False, "error": res.error})
+    srv.imagen_file_id = res.data.get("id", "")
+    srv.imagen_url = res.data.get("webViewLink", "") or res.data.get("thumbnailLink", "")
+    srv.save(update_fields=["imagen_file_id", "imagen_url", "actualizado_en"])
+    emitir(EventoPortavoz(
+        tipo="catalogo.servicio_imagen",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"servicio_id": srv.pk, "file_id": srv.imagen_file_id},
+    ))
+    return JsonResponse({"ok": True, "url": srv.imagen_url, "file_id": srv.imagen_file_id})

@@ -92,6 +92,7 @@ EventoTipo = Literal[
     "proveedor.quick_creado",
     "proveedor.servicios_actualizados",
     "catalogo.categoria_proveedor_actualizada",
+    "catalogo.servicio_imagen",
     "catalogo.variacion_creada",
     "mandado.estado_cambiado",
     "mandado.destino_fijado",

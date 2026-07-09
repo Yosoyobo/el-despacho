@@ -6,6 +6,7 @@ urlpatterns = [
     path("", views.lista, name="catalogo-lista"),
     path("nuevo", views.nuevo, name="catalogo-nuevo"),
     path("<int:pk>/editar", views.editar, name="catalogo-editar"),
+    path("<int:pk>/imagen", views.servicio_imagen, name="catalogo-servicio-imagen"),
     path("<int:pk>/archivar", views.archivar, name="catalogo-archivar"),
     path("<int:pk>/eliminar", views.servicio_eliminar, name="catalogo-eliminar"),
     path("<int:pk>/variaciones/", views.variaciones_lista, name="catalogo-variaciones"),
