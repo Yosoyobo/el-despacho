@@ -9,8 +9,13 @@
     {% csrf_token %}
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="space-y-5">
-            {% for f in form %}{% if f.name == 'lat' or f.name == 'lng' %}{% else %}{% include "_componentes_tailadmin/_form_campo.html" with campo=f %}{% if f.name == 'direccion' %}{{ form.lat }}{{ form.lng }}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-56" %}{% elif f.name == 'direccion_fiscal' %}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion_fiscal" con_pois=False %}{% endif %}{% if f.name == 'notas' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label instruccion_ph="Ej. resume con quién conviene este proveedor y sus tiempos" %}{% endif %}{% endif %}{% endfor %}
+            {% for f in form %}{% if f.name == 'lat' or f.name == 'lng' or f.name == 'subcategorias' %}{% else %}{% include "_componentes_tailadmin/_form_campo.html" with campo=f %}{% if f.name == 'direccion' %}{{ form.lat }}{{ form.lng }}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-56" %}{% elif f.name == 'direccion_fiscal' %}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion_fiscal" con_pois=False %}{% endif %}{% if f.name == 'notas' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label instruccion_ph="Ej. resume con quién conviene este proveedor y sus tiempos" %}{% endif %}{% endif %}{% endfor %}
         </div>
+    </section>
+    {# LC 2026-07: clasificación por subcategorías (heredan color de su core). #}
+    <section class="campo-form mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">¿Qué surte? (subcategorías)</h3>
+        {% include "catalogo/_subcategorias_checkboxes.html" %}
     </section>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
         <a href="{% url 'catalogo-proveedores' %}" class="btn-secundario">Cancelar</a>

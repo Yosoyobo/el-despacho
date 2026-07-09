@@ -55,13 +55,16 @@
             {% if t.ubicacion %}<p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ t.ubicacion }}</p>{% endif %}
             {% if not t.obj.activo %}<p class="mt-1 text-xs font-medium text-gray-400">Desactivado</p>{% endif %}
         </div>
-        {% if t.categorias or t.servicios %}
+        {# LC 2026-07: la tarjeta muestra SOLO las subcategorías (heredan color de
+           su core), omitiendo el texto de la categoría principal. #}
+        {% with subs=t.obj.subcategorias.all %}
+        {% if subs %}
         <div class="mt-4 flex flex-wrap justify-center gap-2">
-            {% for c in t.categorias %}<span class="badge badge-hex" style="--ec: {{ c.color }}">{{ c.nombre }}</span>{% endfor %}
-            {% for s in t.servicios|slice:":4" %}<span class="badge badge-hex" style="--ec: {{ s.color }}">{{ s.nombre }}</span>{% endfor %}
-            {% if t.servicios|length > 4 %}<span class="badge badge-gray">+{{ t.servicios|length|add:"-4" }}</span>{% endif %}
+            {% for s in subs|slice:":6" %}<span class="badge badge-hex" style="--ec: {{ s.color }}">{{ s.nombre }}</span>{% endfor %}
+            {% if subs|length > 6 %}<span class="badge badge-gray">+{{ subs|length|add:"-6" }}</span>{% endif %}
         </div>
         {% endif %}
+        {% endwith %}
         <div class="mt-5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-4 text-center dark:border-gray-800">
             <div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">Proyectos totales</p>

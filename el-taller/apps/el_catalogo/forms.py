@@ -1,17 +1,30 @@
 from django import forms
 
-from .models import CategoriaServicio, Proveedor, Servicio, Unidad, Variacion
+from .models import (
+    CategoriaServicio,
+    Proveedor,
+    Servicio,
+    SubcategoriaProveedor,
+    Unidad,
+    Variacion,
+)
 
 
 class ProveedorForm(forms.ModelForm):
     activo = forms.BooleanField(required=False, label="Activo", initial=True)
+    # LC 2026-07: clasificación por subcategorías (checkboxes en el template,
+    # agrupadas por categoría core).
+    subcategorias = forms.ModelMultipleChoiceField(
+        queryset=SubcategoriaProveedor.objects.filter(activa=True),
+        required=False, widget=forms.CheckboxSelectMultiple, label="Subcategorías",
+    )
 
     class Meta:
         model = Proveedor
         fields = [
             "razon_social", "nombre_contacto", "email_contacto",
             "telefono", "rfc", "direccion", "fiscal_igual", "direccion_fiscal",
-            "lat", "lng", "notas", "activo",
+            "lat", "lng", "notas", "subcategorias", "activo",
         ]
         # Render LC 2026-06-30: "Razón social" → "Nombre" (solo etiqueta; el
         # campo en DB sigue siendo `razon_social`, igual que Cliente).

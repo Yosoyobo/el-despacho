@@ -1,0 +1,25 @@
+{% comment %}LC 2026-07: clasificación del proveedor por subcategorías, agrupadas
+por categoría core con su color heredado. Espera `categorias_prov` (cada una con
+.subcategorias) y `subcats_sel` (set de pks marcadas). name="subcategorias".{% endcomment %}
+<div class="space-y-3">
+    {% for cat in categorias_prov %}
+    <div>
+        <p class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <span class="inline-block h-2.5 w-2.5 rounded-full" style="background: {{ cat.color }}"></span>{{ cat.nombre }}
+        </p>
+        <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {% for sub in cat.subcategorias.all %}
+            {% if sub.activa %}
+            <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm transition
+                          has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                <input type="checkbox" name="subcategorias" value="{{ sub.pk }}"
+                       class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500/30 dark:border-gray-600"
+                       {% if sub.pk in subcats_sel %}checked{% endif %}>
+                <span class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">{{ sub.nombre }}</span>
+            </label>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>

@@ -27,6 +27,12 @@ class Proveedor(models.Model):
     lng = models.FloatField(null=True, blank=True)
     notas = models.TextField(blank=True, default="")
 
+    # LC 2026-07: clasificación por subcategorías (heredan color de su categoría
+    # core). Un proveedor puede tener varias.
+    subcategorias = models.ManyToManyField(
+        "el_catalogo.SubcategoriaProveedor", blank=True, related_name="proveedores",
+    )
+
     activo = models.BooleanField(default=True, db_index=True)
 
     creado_en = models.DateTimeField(auto_now_add=True)

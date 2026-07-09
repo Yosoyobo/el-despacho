@@ -96,7 +96,8 @@
         {% endif %}
 
         {% if permisos_modulos.catalogo and not sidebar_orden.productos.oculto %}
-        <a href="/catalogo/" data-sidebar-grupo="{{ sidebar_orden.productos.grupo }}" style="order: {{ sidebar_orden.productos.orden|default:70 }}" class="menu-item {% if '/catalogo' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {# LC 2026-07: Productos NO se ilumina en /catalogo/proveedores (módulos separados). #}
+        <a href="/catalogo/" data-sidebar-grupo="{{ sidebar_orden.productos.grupo }}" style="order: {{ sidebar_orden.productos.orden|default:70 }}" class="menu-item {% if '/catalogo' in request.path and '/catalogo/proveedores' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Productos
         </a>

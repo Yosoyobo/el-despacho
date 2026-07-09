@@ -505,7 +505,9 @@ def proveedores_lista(request):
             | Q(productos_proyecto__proyecto__codigo__icontains=q)
             | Q(productos_proyecto__proyecto__nombre__icontains=q)
         )
-    qs = qs.distinct().order_by("razon_social").prefetch_related("servicios__categoria")
+    qs = qs.distinct().order_by("razon_social").prefetch_related(
+        "servicios__categoria", "subcategorias__categoria",
+    )
 
     # ── Arma una tarjeta por proveedor (categorías + servicios + stats) ──
     tarjetas = []
@@ -613,6 +615,7 @@ def proveedor_nuevo(request):
             prov = form.save(commit=False)
             prov.creado_por = request.user
             prov.save()
+            form.save_m2m()  # persiste subcategorías (LC 2026-07)
             emitir(EventoPortavoz(
                 tipo="proveedor.creado",
                 actor_id=request.user.pk, actor_email=request.user.email,
@@ -622,7 +625,17 @@ def proveedor_nuevo(request):
             return redirect("catalogo-proveedores")
     else:
         form = ProveedorForm()
-    return render(request, "catalogo/proveedor_form.html", {"form": form, "modo": "nuevo"})
+    return render(request, "catalogo/proveedor_form.html", {
+        "form": form, "modo": "nuevo",
+        "categorias_prov": _categorias_prov(),
+        "subcats_sel": {int(x) for x in request.POST.getlist("subcategorias")},
+    })
+
+
+def _categorias_prov():
+    """Categorías core de proveedor (con sus subcategorías) para los checkboxes."""
+    from .models import CategoriaProveedor
+    return CategoriaProveedor.objects.filter(activa=True).prefetch_related("subcategorias")
 
 
 @require_http_methods(["GET", "POST"])
@@ -678,6 +691,8 @@ def proveedor_detalle(request, pk: int):
         "puede_editar": puede_editar,
         "servicios": prov.servicios.filter(activo=True).select_related("categoria"),
         "ultima_visita": ultima_visita,
+        "categorias_prov": _categorias_prov(),
+        "subcats_sel": set(prov.subcategorias.values_list("pk", flat=True)),
         "puede_gestionar_servicios": puede(request.user, "catalogo", "editar"),
         "puede_eliminar": puede(request.user, "catalogo", "eliminar"),
     })
