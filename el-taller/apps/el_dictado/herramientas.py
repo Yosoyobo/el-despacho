@@ -52,6 +52,9 @@ def _gate_ok(gating: str, usuario) -> bool:
         "cotizaciones": permisos.puede_ver_cotizaciones,
         "facturacion": permisos.puede_ver_facturacion,
         "contaduria": permisos.puede_ver_contaduria,
+        # LC #153: búsqueda read-only del Catálogo. La acción canónica de lectura
+        # del catálogo es `ver_nombres` (no existe una acción "ver").
+        "catalogo": lambda u: permisos.puede(u, "catalogo", "ver_nombres"),
     }.get(gating)
     return bool(fn(usuario)) if fn else False
 
@@ -595,6 +598,37 @@ def _h_buscar(args: dict, usuario) -> dict:
     return out
 
 
+def _h_buscar_catalogo(args: dict, usuario) -> dict:
+    """LC #153: busca productos (Servicio) y proveedores del Catálogo por nombre.
+    Read-only. Devuelve precio/costo/margen + quién surte cada producto."""
+    texto = args["texto"].strip()
+    if len(texto) < 2:
+        return {"error": "texto_muy_corto"}
+    from apps.el_catalogo.models import Proveedor, Servicio
+    productos = []
+    for s in (
+        Servicio.activos.filter(nombre__icontains=texto)
+        .select_related("categoria").prefetch_related("proveedores")[:_TOP_N]
+    ):
+        productos.append({
+            "nombre": s.nombre,
+            "categoria": s.categoria.nombre if s.categoria_id else None,
+            "precio": float(s.precio_base or 0),
+            "costo": float(s.costo or 0),
+            "margen_pct": round(s.margen_porcentaje, 1),
+            "proveedores": [p.razon_social for p in s.proveedores.all() if p.activo][:5],
+        })
+    proveedores = [
+        {"razon_social": p.razon_social, "contacto": p.nombre_contacto or None,
+         "surte": [srv.nombre for srv in p.servicios.all() if srv.activo][:5]}
+        for p in (
+            Proveedor.objects.filter(activo=True, razon_social__icontains=texto)
+            .prefetch_related("servicios")[:_TOP_N]
+        )
+    ]
+    return {"productos": productos, "proveedores": proveedores}
+
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 HERRAMIENTAS: dict[str, Herramienta] = {
@@ -752,6 +786,16 @@ HERRAMIENTAS: dict[str, Herramienta] = {
         ),
         args_schema={"texto": {"tipo": "str", "requerido": True}},
         gating="abierto", fn=_h_buscar,
+    ),
+    "buscar_catalogo": Herramienta(
+        nombre="buscar_catalogo",
+        descripcion=(
+            "Busca productos y proveedores del Catálogo por nombre. Devuelve "
+            "precio, costo, margen y quién surte cada producto. Arg: texto "
+            "(mínimo 2 caracteres)."
+        ),
+        args_schema={"texto": {"tipo": "str", "requerido": True}},
+        gating="catalogo", fn=_h_buscar_catalogo,
     ),
     "mi_jornada_hoy": Herramienta(
         nombre="mi_jornada_hoy",

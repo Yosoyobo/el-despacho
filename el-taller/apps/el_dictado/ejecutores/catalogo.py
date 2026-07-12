@@ -100,6 +100,44 @@ def crear_servicio(accion, usuario, contexto=None):
     _emitir("catalogo.servicio_creado", usuario, {"servicio_id": srv.pk, "nombre": srv.nombre})
 
 
+@registrar("actualizar_servicio")
+def actualizar_servicio(accion, usuario, contexto=None):
+    """Edita un producto del Catálogo (LC #153). El Chalán solo edita productos
+    ya existentes — modificar el catálogo requiere permiso `catalogo.editar`.
+
+    Payload: servicio (nombre o @accion_N), y los campos a cambiar:
+    nombre_nuevo?, precio_base?, costo?, unidad?, descripcion?, disponible?.
+    """
+    _gate(usuario, "puede_editar_catalogo", "editar productos del Catálogo")
+    payload = accion.payload or {}
+    srv = _resolver_servicio(payload.get("servicio") or payload.get("nombre") or "", contexto)
+    cambios = []
+    if payload.get("nombre_nuevo"):
+        srv.nombre = str(payload["nombre_nuevo"])[:150]
+        cambios.append("nombre")
+    if payload.get("precio_base") not in (None, ""):
+        srv.precio_base = _decimal(payload.get("precio_base"), "precio_base")
+        cambios.append("precio_base")
+    if payload.get("costo") not in (None, ""):
+        srv.costo = _decimal(payload.get("costo"), "costo")
+        cambios.append("costo")
+    if payload.get("unidad"):
+        srv.unidad = str(payload["unidad"])[:30]
+        cambios.append("unidad")
+    if "descripcion" in payload:
+        srv.descripcion_default = str(payload.get("descripcion") or "")
+        cambios.append("descripcion_default")
+    if "disponible" in payload:
+        srv.activo = bool(payload["disponible"])
+        cambios.append("activo")
+    if not cambios:
+        raise ValueError("No indicaste qué cambiar del producto (precio, costo, nombre…).")
+    srv.save(update_fields=[*cambios, "actualizado_en"])
+    accion.entidad_tipo = "servicio"
+    accion.entidad_id = srv.pk
+    _emitir("catalogo.servicio_actualizado", usuario, {"servicio_id": srv.pk, "cambios": cambios})
+
+
 @registrar("crear_variacion")
 def crear_variacion(accion, usuario, contexto=None):
     """Crea una variación de un servicio existente.

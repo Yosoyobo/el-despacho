@@ -64,7 +64,8 @@ COMANDOS_DICTADO: list[dict] = [
         "gating": "cartera",
     },
     # ── Catálogo: crear productos/variaciones/proveedores (S-Chalan-Barrido).
-    # SOLO creación — editar/borrar sigue prohibido (`modificar_catalogo`).
+    # LC #153: crear + EDITAR productos. Borrar/archivar sigue fuera del Chalán
+    # (destructivo) — `modificar_catalogo` (genérico) sigue prohibido.
     {
         "tipo": "crear_servicio",
         "titulo": "Crear producto del Catálogo",
@@ -85,6 +86,13 @@ COMANDOS_DICTADO: list[dict] = [
         "ejemplo": 'Da de alta al proveedor "Telas del Norte", contacto Luis, tel 555-9090.',
         "payload": "razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?",
         "gating": "catalogo",
+    },
+    {
+        "tipo": "actualizar_servicio",
+        "titulo": "Editar un producto del Catálogo",
+        "ejemplo": 'Sube el precio de "Playera promocional" a 150. O: "cambia el costo de las tazas a 45".',
+        "payload": "servicio (nombre o @accion_N), y lo que cambie: nombre_nuevo?, precio_base?, costo?, unidad?, descripcion?, disponible?",
+        "gating": "catalogo_editar",
     },
     {
         "tipo": "crear_tarea",
@@ -293,6 +301,8 @@ def _gating_checks():
         "admin": permisos.es_admin,
         "cartera": permisos.puede_editar_cartera,
         "catalogo": permisos.puede_crear_catalogo,
+        # LC #153: editar productos del Catálogo (además de crear).
+        "catalogo_editar": permisos.puede_editar_catalogo,
         "finanzas": permisos.puede_ver_finanzas,
         "facturacion_emitir": permisos.puede_emitir_facturacion,
         "facturacion_cobrar": permisos.puede_cobrar_facturacion,
@@ -368,6 +378,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "listar_kpis / consultar_kpi", "que": "Indicadores del tablero (según el rol)."},
     {"nombre": "consultar_metrica", "que": "Conteos/sumas acotadas (proyectos, tareas, clientes, ingresos/egresos)."},
     {"nombre": "buscar", "que": "Búsqueda libre por texto en proyectos, clientes, facturas y cotizaciones."},
+    {"nombre": "buscar_catalogo", "que": "Busca productos y proveedores del Catálogo por nombre (precio, costo, margen, quién los surte). Requiere permiso de Productos. Pregunta: «busca el producto Playera» o «¿qué productos surte Telas del Norte?»."},
     {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
     {"nombre": "tareas_de_proyecto / mis_tareas / detalle_tarea", "que": "Tareas de un proyecto, tus tareas abiertas, o el detalle de una."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},

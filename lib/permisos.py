@@ -164,6 +164,12 @@ def puede_crear_catalogo(user) -> bool:
     return puede(user, "catalogo", "crear")
 
 
+def puede_editar_catalogo(user) -> bool:
+    """Editar productos del Catálogo (mismo permiso que el botón 'Editar' de la
+    UI). Lo usa El Chalán para actualizar precio/costo/nombre (LC #153)."""
+    return puede(user, "catalogo", "editar")
+
+
 def puede_eliminar_catalogo(user) -> bool:
     """Borrado PERMANENTE de productos/proveedores (≠ archivar). Acción
     destructiva — default solo super_admin (S-LC-Feedback-V13)."""
