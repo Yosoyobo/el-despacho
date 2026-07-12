@@ -332,7 +332,8 @@
       var iso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
       input.value = iso;
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      input.focus();
+      // LC revisión buzón: "Hoy" SOLO aplica la fecha; no enfocar el input para
+      // no reabrir el mini-calendario nativo (como "Fin de mes" del otro lado).
     });
     // 3) Botón "Quitar" (V6 Bloque 4): limpia la fecha y dispara change. El
     // picker nativo del SO no permite des-seleccionar desde adentro — esta es

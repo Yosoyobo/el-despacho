@@ -120,10 +120,6 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  function esTactil() {
-    return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  }
-
   function aplica(sel) {
     return sel && sel.tagName === 'SELECT' && sel.hasAttribute('data-select-buscable') &&
       !sel.disabled && !sel.multiple && sel.options.length >= UMBRAL;
@@ -132,7 +128,7 @@
   function cerrar() {
     if (!abierto) return;
     var a = abierto; abierto = null;
-    document.removeEventListener('mousedown', a.onDoc, true);
+    document.removeEventListener('pointerdown', a.onDoc, true);
     window.removeEventListener('resize', a.onRepos, true);
     window.removeEventListener('scroll', a.onRepos, true);
     if (a.panel.parentNode) a.panel.parentNode.removeChild(a.panel);
@@ -187,7 +183,7 @@
         li.textContent = op.textContent.trim() || '—';
         li.dataset.idx = i;
         if (!op.disabled) {
-          li.addEventListener('mousedown', function (e) { e.preventDefault(); elegir(i); });
+          li.addEventListener('pointerdown', function (e) { e.preventDefault(); elegir(i); });
           vis++;
         }
         lista.appendChild(li);
@@ -239,14 +235,16 @@
     setTimeout(function () { input.focus(); }, 0);
 
     function onDoc(e) { if (!panel.contains(e.target) && e.target !== select) cerrar(); }
-    document.addEventListener('mousedown', onDoc, true);
+    document.addEventListener('pointerdown', onDoc, true);
     window.addEventListener('resize', repos, true);
     window.addEventListener('scroll', repos, true);
     abierto = { select: select, panel: panel, onDoc: onDoc, onRepos: repos };
   }
 
-  document.addEventListener('mousedown', function (e) {
-    if (esTactil()) return;
+  // LC revisión buzón: el buscador también aplica en MÓVIL. Usamos `pointerdown`
+  // (mouse + touch + pen) y prevenimos el picker nativo para abrir el panel
+  // filtrable en todos los dispositivos.
+  document.addEventListener('pointerdown', function (e) {
     var sel = e.target.closest && e.target.closest('select[data-select-buscable]');
     if (!aplica(sel)) return;
     e.preventDefault();
@@ -255,7 +253,6 @@
   }, true);
 
   document.addEventListener('keydown', function (e) {
-    if (esTactil()) return;
     var sel = document.activeElement;
     if (!aplica(sel)) return;
     if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') &&
