@@ -4752,7 +4752,7 @@ portapapeles (Ctrl/Cmd+V)** o subir → Drive. **D6** modal corto de edición al
 clicar un evento del calendario. **D7** **drag&drop** de eventos en el grid
 del calendario para recolocar fecha. + fix Bug C (`{# #}` multilínea).
 
-**S-Buzon-140-164 ✅ — arco consolidado del buzón #140–164 (2026-07-11, VERSION 2026.07.05 — release actual).**
+**S-Buzon-140-164 ✅ — arco consolidado del buzón #140–164 (2026-07-11, VERSION 2026.07.05).**
 8 secciones del handoff `SPRINT-Buzon-140-164.md`, un commit por sección.
 Decisiones §0 de Oscar: **#162 = SÍ** (la factura solo almacena PDF+XML del
 PAC), **#153 = habilitar** búsqueda + edición de catálogo por El Chalán,
@@ -4815,6 +4815,56 @@ producto ya guardado); las tareas archivadas aún pueden aparecer en el
 Calendario (soft-hide se aplicó a Kanban/lista/Dashboard, no al calendario); el
 combobox usa picker nativo en móvil (decisión, no bug); el toggle IVA del modal
 de pago es informativo (no cambia el monto almacenado del egreso).
+
+### S-Revision-Buzon-R1 ✅ — Ronda 1 de la revisión del buzón (2026-07-12, VERSION 2026.07.06)
+
+Primera de **2 rondas** acordadas con Oscar (agrupar por riesgo/coherencia para
+optimizar CI+deploy). Ronda 1 = fixes y pulido de bajo riesgo; Ronda 2 (pendiente)
+= modal de acciones rápidas del render + tabla editable en Productos. 5 commits +
+release. Rama `sprint/buzon-140-164` (sin push — Oscar coordina el deploy).
+
+- **Facturación (fix + UX):** **bug del $0.00 resuelto** —
+  `facturacion.services.asegurar_lineas_desde_origen(fac)` (llamado en `nueva`
+  y `editar`): si la factura no tiene líneas, copia las de la cotización origen
+  (hereda impuestos en régimen `iva`) o sintetiza UNA línea con el subtotal del
+  proyecto (`Proyecto.monto_calculado`). El form deja `concepto` **opcional** y
+  lo autollena en `clean()` ("Producción de elementos para [proyecto]" o el
+  título de la cotización). **Subidor de CFDI dentro del propio form** (sin modal
+  aparte): un solo `<input type=file multiple accept=".pdf,.xml">` con lista de
+  estatus + ✕ (borrado vía checkbox oculto `cfdi_borrar_pdf/xml` procesado en
+  `_procesar_cfdi`); el botón del detalle ahora lleva a Editar (el modal
+  `_modal_cfdi`/endpoint `cfdi` quedan sin enlazar, no removidos). **Dropdowns**
+  con cliente vacío muestran TODOS los proyectos/cotizaciones (snapshot de las
+  listas completas en JS). **Preview "Total a facturar" en vivo** (inyecta las
+  tasas de `ConfiguracionFiscal` como data-attrs y replica el cálculo por
+  régimen). `nueva` GET lee `?proyecto=`/`?cliente=` (precarga). Botón **"Ligar"**
+  (`facturacion:ligar/<proyecto_pk>`, modal Wave 5 `_modal_ligar.html`) vincula
+  una factura existente al proyecto.
+- **Combobox buscable en MÓVIL** (`form_widgets.js` dual): `pointerdown` en vez
+  de `mousedown` + se quitó el gate `esTactil` → el panel filtrable abre en
+  touch. **Botón "Hoy"** de inputs date (`ui.js` dual) ya no reenfoca el input,
+  así que no reabre el mini-calendario nativo.
+- **Kanban** (`_kanban_script`/`_kanban_columna`, compartido proyectos+Dashboard):
+  colapsar picando **todo el `<header>`** (no solo la flecha ▾); `data-buscar`
+  ampliado a producto/proveedor/equipo/contacto (prefetch `productos__proveedor`,
+  `asignaciones__usuario`, `cliente__contactos` en ambas vistas); buscador
+  agregado al kanban del **Dashboard** (lo activa el JS compartido).
+- **Pills unificadas** (`input.css` dual): `.pill-filtro`/`.pill-filtro-on`
+  (look "picado" tenue-brand de los 100%/50%) aplicada a los filtros de
+  Cotizaciones; `.subpill` (pill-toggle de color por categoría vía `--ec` +
+  `:has(:checked)`) para las subcategorías del proveedor (reemplaza checkboxes).
+  Filtro `color_hash` (forms_helpers) da color estable por id → el **cliente**
+  se muestra como pastilla de color chica en tarjetas y tabla de Cotizaciones.
+- **Proyecto:** el calendario de **Entrega** ya no ofrece "Hoy", solo **"Mañana"**
+  (form + detalle). **Sidebar:** emojis fuera del nombre "Tareas"; cada badge
+  con su emoji (🙋 mías · 👥 despacho · 🛵 mandados).
+- **8 tests** (5 nuevos `test_revision_buzon_r1.py` + guardados); módulos
+  afectados verdes (307 pass del subset cotiz/proyecto/catálogo/factura/home/kanban).
+
+**Deuda diseñada R1:** el subidor de CFDI es sync-al-guardar (no async per-file
+con progreso real — "subiendo/error" se ven al Guardar); el preview del total es
+estimado (el definitivo lo calcula el server al guardar); `color_hash` usa una
+paleta fija de 10 colores (colisiones posibles con >10 clientes en pantalla).
 
 ---
 

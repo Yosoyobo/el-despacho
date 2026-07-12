@@ -6117,3 +6117,46 @@ de pago es informativo (no cambia el monto del egreso).
   del 11-jul (= `VERSION_FECHA`); cuerpo de Facturación actualizado a CFDI.
 - **Deuda abierta pendiente de repro:** bug #1 de LC-Feedback-V13 (fecha de tarea
   → compromiso del proyecto) — sin código que lo cause; esperar caso de Oscar.
+
+---
+
+## Revisión del buzón — Ronda 1 (2026-07-12, VERSION 2026.07.06)
+
+Oscar revisó el sprint #140–164 y mandó ~12 comentarios + el render de "Nueva
+Tarea". Decisión: partir en **2 rondas** de deploy (agrupar por riesgo para
+optimizar CI). **Ronda 1 = fixes/pulido** (esta entrada). **Ronda 2 pendiente**
+= modal de acciones rápidas del render + tabla editable en Productos.
+
+**Entregado (5 commits en `sprint/buzon-140-164`, sin push):**
+
+- **Facturación** — se resolvió el **bug del $0.00** (facturar cotización/proyecto
+  sin líneas): `services.asegurar_lineas_desde_origen` copia líneas de la
+  cotización o sintetiza una del subtotal del proyecto; concepto automático;
+  subidor de CFDI (PDF+XML) en el propio form sin modal; dropdowns muestran todo
+  con cliente vacío; preview del total en vivo; precarga `?proyecto`; botón
+  **"Ligar"** factura existente al proyecto.
+- **Combobox buscable en móvil** (pointerdown, dual §18) + **botón "Hoy"** solo
+  aplica fecha (no reabre el calendario nativo, dual §18).
+- **Kanban** — colapsar picando todo el título; buscador ampliado
+  (producto/proveedor/equipo/contacto, con prefetch) + agregado al Dashboard.
+- **Pills** — `.pill-filtro`/`.subpill` canónicas en input.css (dual §18);
+  proveedor con pills de color; cotizaciones con filtros unificados + cliente en
+  pastilla de color (`color_hash`).
+- **Entrega** usa "Mañana"; **sidebar** con emoji junto a cada badge de tareas.
+
+**Tests:** 5 nuevos (`test_revision_buzon_r1.py`) + 307 verdes del subset de
+módulos afectados. Ruff limpio. Guards de comentarios (`{# #}` multilínea) verdes
+tras corregir 2 comentarios míos.
+
+**Deuda diseñada R1:** subidor CFDI es sync-al-guardar (no async per-file);
+preview del total es estimado (definitivo al guardar); `color_hash` = paleta fija
+de 10 (colisiones con >10 clientes en pantalla).
+
+## Estado al cierre (2026-07-12)
+
+- `lib/version.py`: **`VERSION = 2026.07.06`** · `VERSION_FECHA = "12 de julio de 2026"`.
+- **En rama `sprint/buzon-140-164`** (los 8 commits del arco #140–164 + 6 de la
+  Ronda 1). **Sin push** — Oscar coordina merge a `main` + deploy. Ronda 2 queda
+  para la siguiente tanda de trabajo sobre la misma rama.
+- `docs/DOC_05_MANUAL_USUARIO.md`: **al día** — bloque `## Novedades` del 12-jul
+  (= `VERSION_FECHA`) arriba de todo.

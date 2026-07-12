@@ -5,6 +5,42 @@
 
 ---
 
+## Novedades — Ajustes de la revisión: facturas que no se quedan en $0, buscador en el celular y detalles del tablero (12 de julio de 2026)
+
+- **Las facturas ya no se quedan en $0.00.** Si eliges una **cotización** o un
+  **proyecto** y no capturas líneas a mano, la factura **toma el monto solo**:
+  copia las líneas de la cotización, o usa el subtotal del proyecto. Además el
+  **concepto** se llena solo ("Producción de elementos para [proyecto]") y arriba
+  a la derecha ves el **"Total a facturar"** actualizándose en vivo mientras la
+  armas.
+- **Subir el PDF y el XML del CFDI, más fácil.** Ahora se suben **en la misma
+  pantalla de la factura** (ya no hay una ventanita aparte): un **solo campo**
+  acepta los dos archivos juntos; ves la lista con su estado y una **✕** para
+  quitarlos. Se guardan al presionar **Guardar**.
+- **Al crear una factura desde un proyecto** el proyecto (y su cliente) llegan
+  **precargados**; y si dejas el **cliente vacío**, los menús de Proyecto y
+  Cotización muestran **todo** para que elijas libremente.
+- **"Ligar" una factura existente al proyecto.** En el recuadro de "Facturas
+  ligadas" del proyecto, junto a **"+ Nueva"**, hay un botón **"Ligar"** para
+  vincular una factura que ya existía.
+- **El buscador de los menús también funciona en el celular.** Antes solo en
+  computadora; ahora al abrir un menú largo puedes **escribir para filtrar** en
+  cualquier dispositivo.
+- **Tablero de Proyectos: colapsar picando todo el título** (ya no solo la
+  flechita chiquita), y el **buscador ahora encuentra más**: por nombre, cliente,
+  código, **producto, proveedor, gente del equipo y contacto del cliente**. Ese
+  mismo buscador se agregó al tablero del **Inicio**.
+- **Proveedores: elegir qué surten con pastillas de color.** En la ficha de cada
+  proveedor las subcategorías se marcan/desmarcan como **pastillas** de color
+  (igual que en "editar categorías"), en vez de casillas.
+- **Cotizaciones más parejas.** Los botones de **tabla/tarjetas** y las
+  **pastillas** de filtro quedaron con un estilo unificado, y el **cliente** se
+  muestra como una **pastilla de color** chica.
+- **En un proyecto, el botón de fecha de Entrega dice "Mañana"** (no "Hoy"), que
+  es lo normal para una entrega.
+- **Los globos de Tareas del menú** ya no llevan emojis pegados al nombre; ahora
+  **cada globo** trae su emoji (🙋 tuyas · 👥 del despacho · 🛵 mandados).
+
 ## Novedades — Buzón #140–164: buscar en todos lados, CFDI en Facturación, cotizaciones en tarjetas y más (11 de julio de 2026)
 
 - **Buscador para escribir en los dropdowns.** En los menús largos (Cliente,
