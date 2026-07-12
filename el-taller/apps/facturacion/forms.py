@@ -34,8 +34,10 @@ class FacturaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Concepto es obligatorio (LC 2026-07); el modelo lo deja blank.
-        self.fields["concepto"].required = True
+        # Concepto OPCIONAL: si viene vacío se autollena en clean() del proyecto
+        # o la cotización ("Producción de elementos para [proyecto]"). LC revisión
+        # buzón — el usuario ya no tiene que escribirlo a mano.
+        self.fields["concepto"].required = False
         # Folio obligatorio; se sugiere el siguiente disponible en la vista.
         self.fields["folio_numero"].required = True
         # Régimen fiscal opcional en el POST: si no llega, conserva el valor
@@ -67,6 +69,19 @@ class FacturaForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # Concepto automático (LC revisión buzón): si no se escribió, se deriva
+        # del proyecto ("Producción de elementos para [proyecto]") o del título
+        # de la cotización. Solo exige captura manual si no hay ni proyecto ni
+        # cotización de dónde derivarlo.
+        if not (cleaned.get("concepto") or "").strip():
+            proy = cleaned.get("proyecto")
+            cot = cleaned.get("cotizacion_origen")
+            if proy is not None:
+                cleaned["concepto"] = f"Producción de elementos para {proy.nombre}"[:200]
+            elif cot is not None:
+                cleaned["concepto"] = (cot.titulo or "Facturación")[:200]
+            else:
+                self.add_error("concepto", "Escribe un concepto o elige un proyecto.")
         emi = cleaned.get("fecha_emision")
         venc = cleaned.get("fecha_vencimiento")
         if emi and venc and venc < emi:

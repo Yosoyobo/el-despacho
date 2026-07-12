@@ -219,6 +219,81 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
     return fac
 
 
+def asegurar_lineas_desde_origen(fac: Factura) -> bool:
+    """Si la factura NO tiene líneas, deriva su monto del origen. Arregla el
+    bug (LC revisión buzón) de facturas en $0.00 al ligar una cotización o un
+    proyecto sin capturar líneas a mano:
+
+    - Con cotización origen → copia sus líneas (y hereda sus impuestos si la
+      factura no tiene ninguno y el régimen es 'iva').
+    - Solo con proyecto → sintetiza UNA línea con el subtotal del proyecto y el
+      concepto "Producción de elementos para [proyecto]".
+
+    Idempotente: no hace nada si ya hay líneas. Devuelve True si agregó líneas.
+    """
+    if fac.items.exists():
+        return False
+    cot = fac.cotizacion_origen
+    if cot is not None and cot.items.exists():
+        with transaction.atomic():
+            for it in cot.items.all():
+                FacturaItem.objects.create(
+                    factura=fac,
+                    orden=it.orden,
+                    servicio=it.servicio,
+                    descripcion=it.descripcion,
+                    cantidad=it.cantidad,
+                    unidad=it.unidad,
+                    precio_unitario=it.precio_unitario,
+                    descuento_porcentaje=it.descuento_porcentaje,
+                )
+            if fac.regimen_fiscal == "iva" and not fac.impuestos.exists():
+                for ci in cot.impuestos.all():
+                    FacturaImpuesto.objects.get_or_create(factura=fac, tasa=ci.tasa)
+        return True
+    proy = fac.proyecto
+    if proy is not None:
+        base = getattr(proy, "monto_calculado", None) or CERO
+        base = Decimal(str(base)).quantize(Decimal("0.01"))
+        if base > CERO:
+            concepto = (fac.concepto or "").strip() or f"Producción de elementos para {proy.nombre}"
+            FacturaItem.objects.create(
+                factura=fac,
+                orden=0,
+                descripcion=concepto[:500],
+                cantidad=Decimal("1.00"),
+                unidad="servicio",
+                precio_unitario=base,
+                descuento_porcentaje=CERO,
+            )
+            return True
+    return False
+
+
+def borrar_cfdi_archivo(fac: Factura, tipo: str) -> None:
+    """Borra el PDF o XML del CFDI (Drive + campos de la factura). Best-effort;
+    nunca lanza. `tipo` ∈ {'pdf', 'xml'}."""
+    import contextlib
+
+    from lib.google_drive import drive
+
+    campos: list[str] = []
+    if tipo == "pdf" and fac.pdf_file_id:
+        with contextlib.suppress(Exception):
+            drive.borrar(fac.pdf_file_id)
+        fac.pdf_file_id = ""
+        fac.pdf_url = ""
+        campos = ["pdf_file_id", "pdf_url"]
+    elif tipo == "xml" and fac.xml_file_id:
+        with contextlib.suppress(Exception):
+            drive.borrar(fac.xml_file_id)
+        fac.xml_file_id = ""
+        fac.xml_url = ""
+        campos = ["xml_file_id", "xml_url"]
+    if campos:
+        fac.save(update_fields=campos)
+
+
 def emitir_factura(fac: Factura, actor) -> Factura:
     """borrador → emitida. Dispara el asiento via signal post_save."""
     if fac.estado != "borrador":

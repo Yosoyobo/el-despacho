@@ -4,7 +4,12 @@ Requiere que la vista exponga `facturas_proyecto` (lista) y `puede_facturar`.{% 
 <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="mb-3 flex items-center justify-between gap-2">
         <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Facturas ligadas</h3>
-        {% if puede_facturar %}<a href="{% url 'facturacion:nueva' %}?proyecto={{ proyecto.pk }}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nueva</a>{% endif %}
+        {% if puede_facturar %}
+        <div class="flex shrink-0 items-center gap-3">
+            <button type="button" hx-get="{% url 'facturacion:ligar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ligar</button>
+            <a href="{% url 'facturacion:nueva' %}?proyecto={{ proyecto.pk }}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nueva</a>
+        </div>
+        {% endif %}
     </div>
     {% if facturas_proyecto %}
     <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">

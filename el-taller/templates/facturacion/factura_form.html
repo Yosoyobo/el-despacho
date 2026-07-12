@@ -6,8 +6,10 @@
 {% if modo == 'nuevo' %}{% breadcrumb_items "Facturación" "/facturacion/" "Nueva" as breadcrumb_items %}{% else %}{% breadcrumb_items "Facturación" "/facturacion/" fac.folio_display "/facturacion/"|add:fac.pk|stringformat:"s"|add:"/" "Editar" as breadcrumb_items %}{% endif %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=modo|stringformat:'s'|title subtitulo=fac.folio_display|default:"Factura nueva" breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
 
-<form method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3" id="fac-form"
-      data-proyecto-nombre="{% if fac.proyecto %}{{ fac.proyecto.nombre }}{% endif %}">
+<form method="post" enctype="multipart/form-data" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3" id="fac-form"
+      data-proyecto-nombre="{% if fac.proyecto %}{{ fac.proyecto.nombre }}{% endif %}"
+      data-iva-tasa="{{ cfg_fiscal.iva_tasa }}" data-ret-isr="{{ cfg_fiscal.ret_isr }}"
+      data-ret-iva-num="{{ cfg_fiscal.ret_iva_num }}" data-ret-iva-den="{{ cfg_fiscal.ret_iva_den }}">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -161,8 +163,21 @@
 
     </div>{% comment %} /columna principal {% endcomment %}
 
-    {% comment %} ── Aside: impuestos + notas como ventanas chicas ── {% endcomment %}
+    {% comment %} ── Aside: total + impuestos + notas + CFDI como ventanas chicas ── {% endcomment %}
     <aside class="min-w-0 space-y-6">
+
+        {# Total a facturar en vivo (LC revisión buzón: «montar el monto»). #}
+        <section class="rounded-2xl border border-brand-200 bg-brand-50/40 p-5 shadow-theme-sm dark:border-brand-500/30 dark:bg-brand-500/5" data-total-box>
+            <h3 class="text-xs font-medium uppercase tracking-wider text-brand-600 dark:text-brand-300">Total a facturar</h3>
+            <p class="mt-1 text-title-sm font-bold text-gray-900 dark:text-gray-100" data-total-monto>$0.00</p>
+            <dl class="mt-2 space-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+                <div class="flex justify-between"><dt>Subtotal</dt><dd data-total-subtotal>$0.00</dd></div>
+                <div class="flex justify-between" data-total-fila-traslado hidden><dt>+ Impuestos</dt><dd data-total-traslado>$0.00</dd></div>
+                <div class="flex justify-between" data-total-fila-retencion hidden><dt>− Retenciones</dt><dd data-total-retencion>$0.00</dd></div>
+            </dl>
+            <p class="mt-2 text-[11px] text-gray-400 dark:text-gray-500">Estimado con el régimen y el % seleccionados. El monto definitivo se calcula al guardar.</p>
+        </section>
+
         {% if formset %}
         {# Régimen fiscal (LC 2026-07): IVA / IVA y Retenciones / Exento. Solo en borrador. #}
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
@@ -186,7 +201,7 @@
             <div class="mt-3 grid grid-cols-1 gap-2">
                 {% for t in tasas %}
                 <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10">
-                    <input type="checkbox" name="tasas" value="{{ t.id }}" {% if t.id in tasas_seleccionadas %}checked{% endif %} class="peer sr-only">
+                    <input type="checkbox" name="tasas" value="{{ t.id }}" data-pct="{{ t.porcentaje }}" data-tipo="{{ t.tipo }}" {% if t.id in tasas_seleccionadas %}checked{% endif %} class="peer sr-only">
                     <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-gray-300 text-transparent transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:text-white dark:border-gray-600">
                         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </span>
@@ -225,6 +240,99 @@
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.terminos %}
             </div>
         </section>
+
+        {% comment %}CFDI del PAC en el propio form (LC revisión buzón: sin modal
+        aparte, un solo campo multi-archivo PDF+XML con lista de estatus).{% endcomment %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" data-cfdi>
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante fiscal (CFDI)</h3>
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Sube el PDF y el XML timbrados por el PAC. Un solo campo acepta ambos; se guardan al presionar «Guardar».</p>
+
+            <ul class="mt-3 space-y-1.5" data-cfdi-lista>
+                {% if fac and fac.pdf_file_id %}
+                <li data-cfdi-stored="pdf" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700">
+                    <span class="text-success-500">✓</span>
+                    <span class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">PDF del CFDI <span class="text-xs text-success-600 dark:text-success-400">· subido</span></span>
+                    <button type="button" data-cfdi-del="pdf" class="text-gray-400 hover:text-error-600" title="Quitar PDF" aria-label="Quitar PDF">✕</button>
+                </li>
+                {% endif %}
+                {% if fac and fac.xml_file_id %}
+                <li data-cfdi-stored="xml" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700">
+                    <span class="text-success-500">✓</span>
+                    <span class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">XML del CFDI <span class="text-xs text-success-600 dark:text-success-400">· subido</span></span>
+                    <button type="button" data-cfdi-del="xml" class="text-gray-400 hover:text-error-600" title="Quitar XML" aria-label="Quitar XML">✕</button>
+                </li>
+                {% endif %}
+            </ul>
+
+            <label class="mt-3 flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition hover:border-brand-300 hover:bg-brand-50/40 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-brand-700 dark:hover:bg-brand-500/5">
+                <svg class="h-7 w-7 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 4v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Subir PDF y XML</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">Click o arrastra los archivos (.pdf, .xml)</span>
+                <input type="file" name="cfdi_archivos" multiple accept=".pdf,application/pdf,.xml,text/xml,application/xml" class="sr-only" data-cfdi-input>
+            </label>
+
+            <label for="fac-cfdi-uuid" class="mt-3 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Folio fiscal (UUID) <span class="normal-case text-gray-400">— opcional</span></label>
+            <input type="text" id="fac-cfdi-uuid" name="cfdi_uuid" value="{% if fac %}{{ fac.cfdi_uuid }}{% endif %}" maxlength="40" placeholder="XXXXXXXX-XXXX-…"
+                   class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+
+            <input type="hidden" name="cfdi_borrar_pdf" value="" data-cfdi-borrar="pdf">
+            <input type="hidden" name="cfdi_borrar_xml" value="" data-cfdi-borrar="xml">
+        </section>
+        <script>
+        (function () {
+            var box = document.querySelector('[data-cfdi]');
+            if (!box) return;
+            var input = box.querySelector('[data-cfdi-input]');
+            var lista = box.querySelector('[data-cfdi-lista]');
+            var zona = box.querySelector('label.cursor-pointer');
+            var pend = [];
+            function pintar() {
+                lista.querySelectorAll('[data-cfdi-pend]').forEach(function (li) { li.remove(); });
+                pend.forEach(function (f, i) {
+                    var badge = /\.xml$/i.test(f.name) ? 'XML' : (/\.pdf$/i.test(f.name) ? 'PDF' : '?');
+                    var li = document.createElement('li');
+                    li.setAttribute('data-cfdi-pend', '');
+                    li.className = 'flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700';
+                    var span = document.createElement('span'); span.className = 'text-gray-400'; span.textContent = '•';
+                    var nom = document.createElement('span'); nom.className = 'min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200';
+                    nom.textContent = f.name; nom.title = f.name;
+                    var meta = document.createElement('span'); meta.className = 'text-xs text-gray-400'; meta.textContent = ' · ' + badge + ' · se sube al guardar';
+                    nom.appendChild(meta);
+                    var x = document.createElement('button'); x.type = 'button'; x.textContent = '✕';
+                    x.className = 'text-gray-400 hover:text-error-600'; x.title = 'Quitar';
+                    x.addEventListener('click', function () { pend.splice(i, 1); sync(); });
+                    li.appendChild(span); li.appendChild(nom); li.appendChild(x);
+                    lista.appendChild(li);
+                });
+            }
+            function sync() {
+                var dt = new DataTransfer();
+                pend.forEach(function (f) { dt.items.add(f); });
+                input.files = dt.files;
+                pintar();
+            }
+            function agregar(files) {
+                Array.prototype.forEach.call(files, function (f) {
+                    if (!pend.some(function (p) { return p.name === f.name && p.size === f.size; })) pend.push(f);
+                });
+                sync();
+            }
+            input.addEventListener('change', function () { agregar(input.files); });
+            box.querySelectorAll('[data-cfdi-del]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var tipo = b.getAttribute('data-cfdi-del');
+                    var h = box.querySelector('[data-cfdi-borrar="' + tipo + '"]');
+                    var li = b.closest('li');
+                    var activo = h.value !== '1';
+                    h.value = activo ? '1' : '';
+                    if (li) { li.classList.toggle('opacity-40', activo); li.classList.toggle('line-through', activo); }
+                });
+            });
+            ['dragenter', 'dragover'].forEach(function (ev) { zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.add('border-brand-400'); }); });
+            ['dragleave', 'drop'].forEach(function (ev) { zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.remove('border-brand-400'); }); });
+            zona.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files) agregar(e.dataTransfer.files); });
+        })();
+        </script>
     </aside>
 
     <div class="flex flex-wrap items-center justify-end gap-2 xl:col-span-3">
@@ -256,6 +364,15 @@
     const $emision = form.querySelector('[name="fecha_emision"]');
 
     let proyectoNombre = form.dataset.proyectoNombre || '';
+
+    // Snapshot de las listas COMPLETAS que renderizó el server (todas las
+    // opciones). Sirve para restaurar «todos los proyectos / todas las
+    // cotizaciones» cuando el cliente queda vacío (LC revisión buzón).
+    function snapshot(sel) {
+        return sel ? [...sel.options].filter(o => o.value).map(o => ({ id: o.value, label: o.textContent })) : [];
+    }
+    const proyectosFull = snapshot($proyecto);
+    const cotsFull = snapshot($cot);
 
     // ── Líneas: agregar / quitar ──────────────────────────────────────────
     function actualizarVacio() {
@@ -322,6 +439,58 @@
         if (e.target.name && e.target.name.endsWith('-descripcion')) maybeSetConcepto();
     });
 
+    // ── Total a facturar en vivo (LC revisión buzón: «montar el monto») ───
+    const totalBox = form.querySelector('[data-total-box]');
+    const ivaTasa = parseFloat(form.dataset.ivaTasa) || 0;
+    const retIsr = parseFloat(form.dataset.retIsr) || 0;
+    const retIvaNum = parseFloat(form.dataset.retIvaNum) || 2;
+    const retIvaDen = parseFloat(form.dataset.retIvaDen) || 3;
+    function money(n) {
+        return '$' + (n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function regimenActual() {
+        const marcado = form.querySelector('input[name="regimen_fiscal"]:checked');
+        if (marcado) return marcado.value;
+        const oculto = form.querySelector('input[name="regimen_fiscal"]');
+        return oculto ? oculto.value : 'iva';
+    }
+    function calcTotal() {
+        if (!totalBox) return;
+        let subtotal = 0;
+        filasVisibles().forEach(row => {
+            const c = parseFloat((row.querySelector('[name$="-cantidad"]') || {}).value) || 0;
+            const p = parseFloat((row.querySelector('[name$="-precio_unitario"]') || {}).value) || 0;
+            const d = parseFloat((row.querySelector('[name$="-descuento_porcentaje"]') || {}).value) || 0;
+            subtotal += c * p * (1 - d / 100);
+        });
+        const descG = parseFloat($descGlobal && $descGlobal.value) || 0;
+        const factor = (parseFloat($porcentaje && $porcentaje.value) || 100) / 100;
+        const base = (subtotal - subtotal * descG / 100) * factor;
+        const reg = regimenActual();
+        let tras = 0, ret = 0;
+        if (reg === 'honorarios') {
+            const iva = base * ivaTasa / 100;
+            tras = iva;
+            ret = (base * retIsr / 100) + (retIvaDen ? iva * retIvaNum / retIvaDen : 0);
+        } else if (reg === 'exento') {
+            tras = 0; ret = 0;
+        } else {
+            form.querySelectorAll('input[name="tasas"]:checked').forEach(cb => {
+                const m = base * (parseFloat(cb.dataset.pct) || 0) / 100;
+                if (cb.dataset.tipo === 'retencion') ret += m; else tras += m;
+            });
+        }
+        const total = base + tras - ret;
+        totalBox.querySelector('[data-total-monto]').textContent = money(total);
+        totalBox.querySelector('[data-total-subtotal]').textContent = money(base);
+        const ft = totalBox.querySelector('[data-total-fila-traslado]');
+        const fr = totalBox.querySelector('[data-total-fila-retencion]');
+        ft.hidden = !(tras > 0); ft.querySelector('[data-total-traslado]').textContent = money(tras);
+        fr.hidden = !(ret > 0); fr.querySelector('[data-total-retencion]').textContent = money(ret);
+    }
+    form.addEventListener('input', calcTotal);
+    form.addEventListener('change', calcTotal);
+
     // ── Pills (estado / monto) ────────────────────────────────────────────
     function initPills(container, hidden) {
         if (!container || !hidden) return;
@@ -336,7 +505,7 @@
             });
         }
         container.querySelectorAll('.pill').forEach(b => {
-            b.addEventListener('click', () => { hidden.value = b.dataset.val; marcar(); });
+            b.addEventListener('click', () => { hidden.value = b.dataset.val; marcar(); calcTotal(); });
         });
         marcar();
     }
@@ -387,18 +556,26 @@
 
     async function cargarProyectosDe(clienteId, seleccion) {
         if (!$proyecto) return;
-        if (!clienteId) { setOptions($proyecto, [], '— Elige un proyecto —'); setOptions($cot, [], '— Elige una cotización —'); return; }
+        // Sin cliente → mostrar TODOS los proyectos y TODAS las cotizaciones
+        // (LC revisión buzón). Antes se vaciaban.
+        if (!clienteId) {
+            setOptions($proyecto, proyectosFull, '— Todos los proyectos —', seleccion);
+            setOptions($cot, cotsFull, '— Todas las cotizaciones (opcional) —', $cot ? $cot.value : null);
+            return;
+        }
         try {
             const r = await fetch(`/facturacion/api/cliente/${clienteId}/proyectos/`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
             if (!r.ok) return;
             const d = await r.json();
             setOptions($proyecto, d.proyectos, '— Elige un proyecto —', seleccion);
         } catch (e) { /* silent */ }
+        // Al cambiar de cliente, las cotizaciones vuelven a "todas" hasta elegir proyecto.
+        setOptions($cot, cotsFull, '— Todas las cotizaciones (opcional) —');
     }
 
     async function cargarCotizacionesDe(proyectoId, seleccion) {
         if (!$cot) return;
-        if (!proyectoId) { setOptions($cot, [], '— Elige una cotización —'); return; }
+        if (!proyectoId) { setOptions($cot, cotsFull, '— Todas las cotizaciones (opcional) —', $cot.value); return; }
         try {
             const r = await fetch(`/facturacion/api/proyecto/${proyectoId}/datos/`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
             if (!r.ok) return;
@@ -417,7 +594,6 @@
     if ($cliente) {
         $cliente.addEventListener('change', () => {
             cargarProyectosDe($cliente.value, null);
-            setOptions($cot, [], '— Elige una cotización —');
         });
     }
     if ($proyecto) {
@@ -458,18 +634,20 @@
                 form.querySelectorAll('input[name="tasas"]').forEach(cb => { cb.checked = ids.has(String(cb.value)); });
                 actualizarVacio();
                 maybeSetConcepto();
+                calcTotal();
             } catch (e) { /* silent */ }
         });
     }
 
     // ── Init ──────────────────────────────────────────────────────────────
     actualizarVacio();
-    // Al abrir: si ya hay proyecto (edición), poblar la cascada preservando selección.
+    // Al abrir: si ya hay proyecto, poblar cotizaciones preservando selección.
+    // Si NO hay proyecto se dejan las listas COMPLETAS que renderizó el server
+    // (todos los proyectos y todas las cotizaciones — LC revisión buzón).
     if ($proyecto && $proyecto.value) {
         cargarCotizacionesDe($proyecto.value, $cot ? $cot.value : null);
-    } else if ($cot) {
-        setOptions($cot, [], '— Elige una cotización —');
     }
+    calcTotal();
 })();
 </script>
 {% endblock %}

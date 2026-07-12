@@ -151,6 +151,21 @@ def lista(request):
 # ── Form helpers ─────────────────────────────────────────────────────────
 
 
+def _cfg_fiscal_ctx() -> dict:
+    """Tasas del régimen (para el preview en vivo del total). Nunca lanza."""
+    try:
+        from ajustes.models import ConfiguracionFiscal
+        cfg = ConfiguracionFiscal.obtener()
+        return {
+            "iva_tasa": str(cfg.iva_tasa),
+            "ret_isr": str(cfg.ret_isr_honorarios),
+            "ret_iva_num": str(cfg.ret_iva_honorarios_num or 2),
+            "ret_iva_den": str(cfg.ret_iva_honorarios_den or 3),
+        }
+    except Exception:  # noqa: BLE001
+        return {"iva_tasa": "16", "ret_isr": "1.25", "ret_iva_num": "2", "ret_iva_den": "3"}
+
+
 def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,
               tasas_qs=None, tasas_seleccionadas=None):
     return {
@@ -160,7 +175,34 @@ def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,
         "fac": fac,
         "tasas": tasas_qs if tasas_qs is not None else TasaImpositiva.objects.filter(activa=True),
         "tasas_seleccionadas": set(tasas_seleccionadas or []),
+        "cfg_fiscal": _cfg_fiscal_ctx(),
     }
+
+
+def _procesar_cfdi(request, fac: Factura):
+    """Adjunta / borra el CFDI (PDF + XML) desde el propio form de la factura
+    (LC revisión buzón — sin modal aparte). Un solo campo multi-archivo:
+    clasifica cada archivo por extensión. Best-effort; nunca tumba el guardado."""
+    if request.POST.get("cfdi_borrar_pdf") and fac.pdf_file_id:
+        services.borrar_cfdi_archivo(fac, "pdf")
+    if request.POST.get("cfdi_borrar_xml") and fac.xml_file_id:
+        services.borrar_cfdi_archivo(fac, "xml")
+    pdf_file = xml_file = None
+    for f in request.FILES.getlist("cfdi_archivos"):
+        nombre = (getattr(f, "name", "") or "").lower()
+        if nombre.endswith(".xml") and xml_file is None:
+            xml_file = f
+        elif nombre.endswith(".pdf") and pdf_file is None:
+            pdf_file = f
+    uuid = (request.POST.get("cfdi_uuid") or "").strip()
+    if pdf_file or xml_file or uuid:
+        res = services.almacenar_cfdi(
+            fac, pdf_file=pdf_file, xml_file=xml_file, cfdi_uuid=uuid, actor=request.user,
+        )
+        if res["guardados"]:
+            messages.success(request, "CFDI: " + ", ".join(res["guardados"]) + " almacenado(s).")
+        if res["errores"]:
+            messages.warning(request, "CFDI: " + " · ".join(res["errores"]))
 
 
 def _persistir_impuestos(fac: Factura, ids_seleccionadas: list[int]):
@@ -208,6 +250,10 @@ def nueva(request):
             formset.instance = fac
             formset.save()
             _persistir_impuestos(fac, ids)
+            # Fix del bug $0.00 (LC revisión buzón): si no se capturaron líneas,
+            # el monto se toma del origen (cotización o subtotal del proyecto).
+            services.asegurar_lineas_desde_origen(fac)
+            _procesar_cfdi(request, fac)
             services.emitir_creada(fac, request.user)
             messages.success(request, f"Factura {fac.codigo} creada.")
             return redirect("facturacion:detalle", pk=fac.pk)
@@ -216,11 +262,25 @@ def nueva(request):
         return render(request, "facturacion/factura_form.html", ctx)
 
     from .models.factura import sugerir_folio_numero
-    form = FacturaForm(initial={
+    initial = {
         "folio_numero": sugerir_folio_numero(),
         "estado": "borrador",
         "porcentaje_a_facturar": 100,
-    })
+    }
+    # Precarga al llegar desde el proyecto ("+ Nueva" del recuadro de facturas
+    # ligadas — LC revisión buzón). El querystring antes se ignoraba.
+    proy_pre = (request.GET.get("proyecto") or "").strip()
+    if proy_pre.isdigit():
+        from apps.los_proyectos.models import Proyecto
+        proy = Proyecto.objects.filter(pk=int(proy_pre)).select_related("cliente").first()
+        if proy is not None:
+            initial["proyecto"] = proy.pk
+            if proy.cliente_id:
+                initial["cliente"] = proy.cliente_id
+    cli_pre = (request.GET.get("cliente") or "").strip()
+    if cli_pre.isdigit() and "cliente" not in initial:
+        initial["cliente"] = int(cli_pre)
+    form = FacturaForm(initial=initial)
     formset = ItemFormSet(instance=Factura())
     ctx = _ctx_form(form, formset, modo="nuevo", tasas_qs=tasas_qs,
                     tasas_seleccionadas=default_ids)
@@ -250,6 +310,8 @@ def editar(request, pk):
             if formset is not None:
                 formset.save()
                 _persistir_impuestos(fac, ids)
+                services.asegurar_lineas_desde_origen(fac)
+            _procesar_cfdi(request, fac)
             services.emitir_actualizada(fac, request.user)
             messages.success(request, f"Factura {fac.codigo} actualizada.")
             return redirect("facturacion:detalle", pk=fac.pk)
@@ -279,6 +341,47 @@ def desde_cotizacion(request, cot_pk):
     fac = services.crear_desde_cotizacion(cot, request.user)
     messages.success(request, f"Factura {fac.codigo} creada desde {cot.codigo}.")
     return redirect("facturacion:editar", pk=fac.pk)
+
+
+def _facturas_ligables(proyecto):
+    """Facturas vigentes que se pueden ligar al proyecto (todas menos las que
+    ya están en él). Las del mismo cliente primero."""
+    return list(
+        Factura.vigentes.exclude(proyecto=proyecto)
+        .select_related("cliente")
+        .order_by("-folio_numero", "-creado_en")[:500]
+    )
+
+
+@login_required
+def ligar_proyecto(request, proyecto_pk):
+    """Liga una factura EXISTENTE a un proyecto (LC revisión buzón — botón
+    «Ligar» junto a «+ Nueva» en el recuadro de facturas del proyecto). Modal
+    HTMX (patrón Wave 5): GET → partial; POST → 204 + HX-Redirect al detalle."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_crear_facturacion(request.user):
+        return HttpResponseForbidden("Sin permiso para ligar facturas.")
+    from apps.los_proyectos.models import Proyecto
+    proyecto = get_object_or_404(Proyecto, pk=proyecto_pk)
+    es_htmx = _es_htmx(request)
+    destino = reverse("proyectos-detalle", args=[proyecto.pk])
+    if request.method == "POST":
+        fid = (request.POST.get("factura") or "").strip()
+        fac = Factura.vigentes.filter(pk=int(fid)).first() if fid.isdigit() else None
+        if fac is None:
+            ctx = {"proyecto": proyecto, "facturas": _facturas_ligables(proyecto),
+                   "error": "Elige una factura de la lista."}
+            return _modal(request, "facturacion/_modal_ligar.html", ctx)
+        fac.proyecto = proyecto
+        fac.save(update_fields=["proyecto", "actualizado_en"])
+        services.emitir_actualizada(fac, request.user)
+        messages.success(request, f"Factura {fac.folio_display} ligada al proyecto {proyecto.codigo}.")
+        return _hx_redirect(destino) if es_htmx else redirect(destino)
+    if not es_htmx:
+        return redirect(destino)
+    return _modal(request, "facturacion/_modal_ligar.html",
+                  {"proyecto": proyecto, "facturas": _facturas_ligables(proyecto)})
 
 
 # ── Detalle ──────────────────────────────────────────────────────────────
@@ -370,10 +473,11 @@ def detalle(request, pk):
             reverse("facturacion:xml", args=[fac.pk]),
         ))
     if puede_emitir_facturacion(request.user):
+        # LC revisión buzón: la carga del CFDI vive en el propio form (sin modal
+        # aparte); el botón lleva a Editar, donde está el recuadro de subida.
         acciones_html.append(format_html(
-            '<button type="button" class="btn-secundario" hx-get="{}" '
-            'hx-target="#modal-slot" hx-swap="innerHTML">{}</button>',
-            reverse("facturacion:cfdi", args=[fac.pk]),
+            '<a href="{}" class="btn-secundario">{}</a>',
+            reverse("facturacion:editar", args=[fac.pk]),
             "📎 Reemplazar CFDI" if fac.tiene_cfdi else "📎 Cargar CFDI",
         ))
     if puede_editar:
