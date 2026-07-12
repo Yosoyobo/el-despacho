@@ -5888,3 +5888,180 @@ empleado solicita**.
 - Ajuste de jornada/visita por separado sigue siendo "Corregir" (un dato); el de
   jornada completa es el flujo nuevo. La solicitud sigue fan-out a un DM por
   aprobador (con varios aprobadores se duplica en los DMs del solicitante).
+
+---
+---
+
+# BITÁCORA — Puesta al día Junio–Julio 2026 (documentado 2026-07-09)
+
+> **Contexto:** al abrir sesión el 2026-07-09 (Jorge) se detectó que esta
+> bitácora y `CLAUDE.md §8` estaban ~1 mes atrasados: cerraban el 2026-06-12
+> (`VERSION 2026.06.42`) mientras producción iba en **`VERSION 2026.07.04`**
+> (~50 bumps de versión / muchos deploys después). Se documentó todo el hueco
+> de golpe y se agregó la **regla §10 item 8 de CLAUDE.md** (docs + Novedades +
+> memoria SIEMPRE al día en el mismo commit del deploy) para que no vuelva a
+> pasar. Fuentes de esta reconstrucción: `git log` (mensajes de release con la
+> VERSION), bloques de Novedades de `docs/DOC_05_MANUAL_USUARIO.md` y los
+> `memory/sprint-*.md`. El detalle vive también en `CLAUDE.md §8` (arco
+> Junio–Julio 2026); aquí queda el cierre cronológico por sesión.
+
+## Sesión 2026-06-12 — Arco S-LC-Feedback V7/V8/V9 (VERSION 2026.06.45→47)
+
+Tres sprints de feedback de Oscar en el día, un deploy por versión.
+
+- **V7 (06.45):** Sección **Equipo** en El Taller; `Usuario.jefe_directo` FK
+  (`cuentas/0026`, restringe aprobación de correcciones del Checador); sidebar
+  **por-usuario** (`SidebarOrdenUsuario`, `cuentas/0025`, `/perfil/sidebar/`);
+  **geocerca** en el perfil (no bloqueante, anota `checada_fuera_geocerca`); AI
+  en Calendario (estación `calendario_resumen`, `chalanes/0013`); indicador
+  global "Procesando…"; fix Kanban drag&drop (404 por slash en POST);
+  Proveedores en el sidebar. Tests `test_lc_feedback_v7.py` (9).
+- **V8 (06.46):** Impersonación super_admin ("ver como", `ImpersonacionMiddleware`
+  + banner); avatar → **Drive privado + proxy autenticado**
+  (`Usuario.avatar_drive_id`, `cuentas/0027`); responsables por rol en dropdown;
+  gastos sin registrar (gate por estado + IVA + modal atómico); **fix
+  duplicación de productos** (formset del detalle `extra=0`, alta por modal);
+  spinner = solo logo centrado. Tests `test_lc_feedback_v8.py` (9).
+- **V9 (06.47):** **Horario propio = completo** (arregla balance de horas);
+  **horas trabajadas privadas** (`puede_ver_horas_trabajadas_de`);
+  `roles_display`; **carpetas del sidebar** por usuario
+  (`SidebarOrdenUsuario.grupo`, `cuentas/0028`, JS reparenting); spinner
+  solo-acción; Chalán móvil drawer. Tests `test_lc_feedback_v9.py` (8).
+
+**Decisiones durables:** ver `memory/sprint-lc-feedback-{v7,v8,v9}`. Patrón
+avatar = Drive privado + proxy (nunca links públicos). Formsets con autosave: NO
+alta de filas nuevas inline.
+
+## Sesión 2026-06-13/15 — Checador + permisos granulares totales (VERSION 2026.06.48→55)
+
+- **06.48–49:** El Chalán opera el Checador (checar por voz), mapa antes de
+  checar, anti-doble-clic, ficha en recuadros; spinner también al navegar de
+  sección.
+- **S-LC-Feedback-V10 (06.50):** **decisión inviolable de Oscar** — TODO se
+  gatea por permiso granular, nunca por rol literal (solo `super_admin`
+  failsafe); ahora es la regla #20 de §4. Áreas admin convertidas: ajustes,
+  directorio, chalanes, site, catalogos, interfono. + no-refresh, spinner/
+  progreso, notificaciones, móvil, sidebar drag&drop. Ver
+  `memory/regla-permisos-granulares`.
+- **S-Checador horas extra (06.51):** re-entrada suma horas
+  (`Jornada.minutos_extra`, la pausa no cuenta), auto-checkout solo 05:00; Buzón
+  `notificar_todos` + two-pane; carpetas del sidebar con icono
+  (`SidebarCarpetaUsuario`). Gotcha: spinner síncrono en submit. (+ fixes 06.52.)
+- **S-LC-Feedback-V12 (06.53):** Sedes/POI + geocerca **global** (`SedeLC` +
+  `ConfiguracionGeocerca`, `checador/0007`, modo Libre/Restringido, nunca
+  bloquea); mapa **Leaflet** (OSM sin API key); horas semana/mes; estados con
+  `descripcion`+`accion` (sin push); `diagnostico_push`; `quitar_superadmin`.
+  Tests: `test_geocerca_sedes.py`, `test_sedes_admin.py`, `test_diagnostico_push.py`.
+- **S-Checador-V14 (06.54):** visitas a POI (cliente/proveedor/contacto); El
+  Chalán **verifica** visita/tarea (estación `checador_visita`, `chalanes/0014`);
+  sede esperada; snapshot de ubicación en tiempo de proyecto; detalles
+  clickeables. `test_checador_v14.py` (15). (+ fix checada instantánea 06.55.)
+
+Ver `memory/sprint-checador-horas-extra`, `sprint-lc-feedback-v12`,
+`sprint-checador-v14`.
+
+## Sesión 2026-06-16/17 — El Runner + El Chalán agente + Mandados + Roles V2 (VERSION 2026.06.56→73)
+
+- **06.56:** Introducción de **El Runner** (asignación de mandados); impresión
+  cobrada **por pieza** + cálculos de gastos corregidos.
+- **S-Offline/Runner/Auditoría (06.60):** el SW offline YA existía (roadmap
+  stale); se agregó la página `/offline/`. Runner dropdown filtrado por permiso.
+  **Auditoría de Chalanes HASH-ONLY** (SHA-256 del prompt, sin texto ni
+  respuesta — decisión Oscar reafirmada); detalle clickeable con "Quién". Ver
+  `memory/sprint-offline-runner-auditoria`.
+- **S-Roles-V2 (06.61):** roles **unificados** (dropdown de rol primario
+  eliminado; `Usuario.rol` derivado vía `sincronizar_rol_primario`; anti-lockout
+  `cuentas/0033`); **Runner opt-in** vía rol "Runner"; **"ver como rol"**
+  (debug/QA para super_admin). Ver `memory/sprint-roles-v2`.
+- **S-Mandados-V2 (06.62–63):** mandados con dirección/POI (**Nominatim** gratis,
+  `lib/geocoding.py`); El Chalán crea mandados; **roles renombrables** vía
+  `Rol.clave` estable (`cuentas/0034`); sidebar Mandados/widget solo runners;
+  sidebar oculta lo inaccesible. Ver `memory/sprint-mandados-v2`.
+- **S-Chalan-Agente-F1 (06.64–66):** El Chalán a **tool-use nativo**
+  (function-calling en los 5 adapters, `herramientas_formato.py` + `chatear()`,
+  con degradación a texto); **El Relevo** (ruteo activo al mejor modelo,
+  `taller_chat` ↔ `taller_chat_profundo`, `chalanes/0015`); typing animado; GUI.
+  Hotfix: propone→aplica (enum de `tipo`), Gemini sin llave fuera del relevo. Ver
+  `memory/sprint-chalan-agente-f1`.
+- **S-Chalan-Fase-2-3 (06.67, fixes …73):** planeación multi-paso (cap 10
+  iteraciones + $0.50/turno) + **proactividad por cron** (`PropuestaChalan`
+  `el_dictado/0005`, scouts + digest matutino; propone, nunca actúa). Fixes de
+  El Chalán/Runner (hora, `@accion_N`, alias de acción, destino cae a la
+  dirección del cliente). Ver `memory/sprint-chalan-fase-2-3`.
+
+**Ya documentados en §8 desde antes** (se mencionan para completar el hilo):
+S-Chalan-Barrido (06.56–59, crear Catálogo/cotización/factura + Runner por
+cercanía + fix hora +6h + entidad Mandado), S-Chalan-Aprende-V1 (06.72),
+fixes runner (06.73).
+
+## Sesión 2026-06-20/26/27 — Ollama, footer, cron-sync, Aprende-Botón, mini-arco (VERSION 2026.06.75→84)
+
+- **06.75** S-Chalan-Ollama (Chalán Llama de pruebas), **06.76** footer
+  `devs.noko.mx` (regla canónica §4 #21), **06.77** S-Cron-Sync (crons se
+  reinstalan solos en cada deploy vía `sync_crons.sh` — §10), **06.78**
+  S-Chalan-Aprende-Botón — **ya estaban en §8/memoria.**
+- **Mini-arco 06.79–84:** rename **"Recados" → "Mensajes"**; **Buzón de soporte
+  = solo super_admin** (lo del usuario en "Mi Buzón" dentro de Mensajes, con
+  buscador/filtros/tarjetas); recuadro **"Cotizaciones" versionado** en el
+  proyecto (pizza-tracker con pasos configurables en Gerencia → Catálogos →
+  Estados de cotización; PDF nombrado por proyecto+versión); productos/
+  proveedores + mapas con búsqueda; fix rickroll "Error 153".
+
+## Sesión 2026-06-29/30 — LC-Feedback-V13 + proveedores/equipo + Geo-Picker (VERSION 2026.06.85→92)
+
+- **S-LC-Feedback-V13 (06.85):** 12 comentarios de LC — calendario interactivo +
+  modelo **`Evento`** multi-día (en `apps.el_pizarron` por §14 Bug B);
+  **Mandados→Tareas** (filtro + 2 badges + runner-only + campo Lugar);
+  **anticipo→ingreso** (paso `anticipo` → push finanzas + modal 25/50/100%);
+  facturación cancelar (mantiene asiento reverso) / cobro con folio; **borrado
+  permanente** de productos/proveedores (`(catalogo, eliminar)`, `cuentas/0036`);
+  **"Servicios"→"Productos"**; Jornadas todos los días; `crear_mensaje_buzon` con
+  prioridad. **Bug #1** (fecha tarea→proyecto): no existe tal código; test de
+  regresión puesto, falta repro de Oscar. Ver `memory/sprint-lc-feedback-v13`.
+- **Mini-arco 06.86–89:** proveedores en **tarjetas** + filtro 2 niveles + ficha
+  editable inline; cotización por versión (solo la última cambia estatus); página
+  **Equipo** acordeón + pendientes en la ficha; globos de Tareas con sentido.
+- **S-Geo-Picker-V1 (06.90–92):** **componente único** `_geo_picker.html` +
+  `geo_picker.js` (dual-copy, data-attr, Leaflet perezoso) para TODO input de
+  dirección; endpoint `/geo/buscar`; Cliente/Proveedor con mini-mapa+pin
+  (`cartera/0006`, `el_catalogo/0008`); conserva el número de calle; pegar
+  dirección/coords → auto-pin. **Lección CI:** `{# … #}` multilínea (Bug C §14)
+  tumbó el deploy 06.91 — correr `test_no_renderiza_comentarios` al tocar
+  templates. Ver `memory/sprint-geo-picker-v1`.
+
+## Sesión 2026-07-08/09 — Facturación LC + arco 7 fases + deuda D1–D7 (VERSION 2026.07.01→04)
+
+- **S-LC-julio (07.01):** Facturación **folio «F###»** (auto máx+1, filas
+  fantasma, se conserva `codigo` FAC interno, `facturacion/0007`); cascada
+  Cliente→Proyecto→Cotización; concepto autollena; estado en pills; monto
+  **100%/50%** (`porcentaje_a_facturar`); "Total pagable". **Egresos SOLO al
+  pagarse** (proveedor obligatorio en todo egreso; modal "Registrar pago"
+  liquida el pendiente). **Archivar/eliminar** proyecto (`Proyecto.archivado` +
+  manager `activos`, `proyectos/0021`). Kanban items completos. Botón Atrás
+  contextual (`?volver=`). Ojo: variables de template no empiezan con `_`. Ver
+  `memory/sprint-lc-jul-2026`. Tests `test_lc_2026_07.py` (16).
+- **Arco LC 7 fases (07.03):** F1 régimen **RESICO honorarios** (IVA +
+  retenciones al centavo; selector por proyecto heredado a cotización/factura;
+  tasas en Ajustes → Fiscal); F2 Registrar Gasto desde el proyecto; F3 tarjetas
+  de producto (costo/margen, "por pieza") + **duplicar proyecto**; F4
+  responsables **múltiples** + eliminar físico de tareas + emojis + calendario;
+  F5 pills + estado inline + **PDF ver-rápido (👁)** + notas internas fuera del
+  PDF; F6 taxonomía de proveedores core/subcategorías; F7 **badge ⚠️ global de
+  falla** + push global de Novedades. + candado CI `test_ayuda_novedades.py`.
+- **Sprint deuda D1–D7 (07.04 — release actual):** D1 admin de 6 categorías core
+  de proveedor (nombre+color); D2 detalle de proveedor a 3 columnas + proyectos +
+  ruta; D3 tracker de versiones dentro del desplegable de cada versión; D4 picker
+  de ubicación acotado a direcciones guardadas (mapa opcional); D5 imagen de
+  producto (pegar del portapapeles / subir → Drive); D6 modal corto de edición al
+  clicar un evento; D7 drag&drop de eventos en el calendario para recolocar fecha;
+  fix Bug C.
+
+## Estado al cierre (2026-07-09)
+
+- `lib/version.py`: **`VERSION = 2026.07.04`** · `VERSION_FECHA = "9 de julio de 2026"`.
+- Árbol git limpio; último commit `ee8fdfb` (release D1–D7).
+- `docs/DOC_05_MANUAL_USUARIO.md`: **al día** — un bloque `## Novedades` por
+  release desde el 12-jun, el más reciente = `VERSION_FECHA`; blindado por
+  `tests/test_ayuda_novedades.py` en CI.
+- **Deuda abierta pendiente de repro:** bug #1 de LC-Feedback-V13 (fecha de tarea
+  → compromiso del proyecto) — sin código que lo cause; esperar caso de Oscar.

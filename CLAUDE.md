@@ -4495,6 +4495,265 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
 
 ---
 
+### Arco Junio–Julio 2026 — puesta al día (documentado 2026-07-09)
+
+> Este bloque cierra el hueco de §8 entre `VERSION 2026.06.44` y
+> `2026.07.04` (se documentó de golpe el 2026-07-09 tras detectar que §8 y
+> BITACORA iban ~1 mes atrasados — ver §10 item 8, la regla que evita que
+> vuelva a pasar). Fuentes: `git log` + bloques de Novedades de `DOC_05` +
+> `memory/sprint-*.md`. Detalle por sesión en `BITACORA.md`.
+
+**S-LC-Feedback-V7 ✅ — Equipo + sidebar por-usuario + geocerca + AI calendario (2026-06-12, VERSION 2026.06.45).**
+Ronda de feedback de Oscar. Sección **Equipo** en El Taller (todos ven,
+edición admin en Gerencia): perfil consolidado (contacto, puesto, roles,
+jefe, subordinados, resumen Checador gated). `Usuario.jefe_directo` FK
+(migr. `cuentas/0026`) — la aprobación de correcciones del Checador se
+restringe al jefe directo o super_admin (`puede_aprobar_correccion_de`).
+**Sidebar por-usuario** (`SidebarOrdenUsuario`, `cuentas/0025`, reordenar
++ ocultar) en `/perfil/sidebar/`. **Geocerca** en el perfil
+(`Usuario.direccion/geo_lat/geo_lng/geocerca_radio_m/geocerca_activa`):
+el check-in la evalúa **sin bloquear** (anota + emite
+`checada_fuera_geocerca`). AI en Calendario (estación `calendario_resumen`,
+`chalanes/0013`, botón "🤖 Resumir con El Chalán"). Indicador global
+"Procesando…" (logo LC girando, `ui.js` dual). Fix Kanban drag&drop (404
+por slash final en POST). Proveedores como item propio del sidebar.
+
+**S-LC-Feedback-V8 ✅ — Impersonación + avatar a Drive + gastos + fix duplicación (2026-06-12, VERSION 2026.06.46).**
+Segunda ronda sobre V7. **Impersonación** super_admin "ver como" otro
+usuario para reproducir bugs (`ImpersonacionMiddleware`, banner amarillo
+sticky, botón "👁 Ver como" en el Equipo). **Avatar editable**
+(`Usuario.avatar_drive_id`, `cuentas/0027`) → sube a Google Drive privado
++ se sirve por **proxy autenticado** `/perfil/avatar-img/<file_id>` (patrón
+del repo: NO links públicos). Responsables del proyecto de checkboxes a
+**dropdown colapsable por rol**. **Gastos sin registrar**: gate por estado
+(de `en_proceso_diseno` en adelante), desglose IVA en la alerta, "Registrar"
+→ modal atómico. **Fix duplicación de productos** (raíz: el formset con
+autosave no sincronizaba pk de filas nuevas → cada autosave recreaba): el
+formset del detalle pasa a `extra=0` y el alta va por modal atómico. Spinner
+= solo logo LC girando al centro (sin texto).
+
+**S-LC-Feedback-V9 ✅ — Horario propio, horas privadas, carpetas de sidebar (2026-06-12, VERSION 2026.06.47).**
+10 fixes. **Decisiones durables:** (1) **Horario propio = horario
+completo** — si un usuario tiene CUALQUIER override en `HorarioLaboral`,
+los días sin override son libres (NO hereda el global); el global solo
+aplica a quien no tiene horario propio. Arregló el balance de horas
+inflado. (2) **Horas trabajadas = privadas**
+(`puede_ver_horas_trabajadas_de`: uno mismo, su `jefe_directo` o
+super_admin; `ver_equipo` NO alcanza las horas de no-subordinados; el
+horario declarado sí es visible). (3) `roles_display(user)` para mostrar
+roles legibles en fichas. **Carpetas del sidebar por usuario**
+(`SidebarOrdenUsuario.grupo`, `cuentas/0028`, render por JS reparenting en
+`ui.js` dual). Spinner **solo-acción** (ignora typing/autosave/polling).
+Chalán móvil = drawer.
+
+**El Chalán opera el Checador + spinner en navegación ✅ (2026-06-13, VERSION 2026.06.48–49).**
+Ejecutores para checar por voz desde El Chalán, mapa antes de checar,
+anti-doble-clic, ficha del Equipo en recuadros. El spinner del logo también
+se enciende al navegar de sección (links + filas clickeables), no en
+texto/arrastre.
+
+**S-LC-Feedback-V10 ✅ — Permisos granulares TOTAL + no-refresh + móvil (2026-06-15, VERSION 2026.06.50).**
+**Decisión durable e inviolable de Oscar** (ahora regla #20 de §4): **TODO**
+—feature, herramienta, módulo o pantalla— se gatea por **permiso granular**,
+nunca por rol literal; el único rol duro permitido es `super_admin`
+(failsafe). Áreas admin convertidas en este sprint: ajustes, directorio,
+chalanes, site, catalogos, interfono. También: no-refresh (HTMX), spinner/
+progreso, notificaciones, mejoras móvil, sidebar drag&drop.
+Ver `memory/regla-permisos-granulares`.
+
+**S-Checador horas extra + UX ✅ (2026-06-15, VERSION 2026.06.51).**
+**Decisión durable:** tras checar salida NO se bloquea el día — si la
+persona vuelve a trabajar pica **«Volver a entrar»** y las horas se SUMAN
+(la pausa NO cuenta), vía `Jornada.minutos_extra`; el retardo se fija solo
+en la 1ª entrada; el auto-checkout solo aplica si no se checó salida antes
+de las 05:00 del día siguiente. Buzón: estado-acción `notificar_todos`
+(push a todo el equipo) + two-pane responsive. Carpetas del sidebar
+reordenables por asa + icono (`SidebarCarpetaUsuario`, 16 iconos).
+**Gotcha:** el spinner del logo en envíos clásicos debe encenderse
+**síncrono** en el handler de submit (diferirlo pierde la carrera contra el
+unload). Fixes menores (06.52): click del buzón, push de novedades, carpetas
+intercaladas, 24h/AM-PM.
+
+**S-LC-Feedback-V12 ✅ — Sedes/geocerca global + mapa al checar (2026-06-15, VERSION 2026.06.53).**
+7 pedidos de Oscar. **Sedes/POI + geocerca** como **directorio global**:
+modelos `SedeLC` + `ConfiguracionGeocerca` singleton (modo
+**Libre**(default)/**Restringido**, `checador/0007`); la geocerca **nunca
+bloquea** (modo restringido solo ANOTA fuera-de-sede). CRUD en Gerencia con
+mapa **Leaflet** (vendoreado, OSM sin API key — regla "gratis o abortamos").
+Mapa al checar + horas de la semana/mes en el tablero. Estados de
+proyecto/tarea ganan `descripcion` + `accion` (solo descriptiva, **sin
+push**). Comando `diagnostico_push`. Comando `quitar_superadmin`.
+
+**S-Checador-V14 ✅ — Visitas a POI + verificación IA + sede esperada (2026-06-15, VERSION 2026.06.54).**
+Visitas a **POI = cliente/proveedor/contacto** (sin catálogo POI nuevo;
+`Visita` gana `contacto`/`tarea`/`proposito`). El Chalán **verifica** visita
+vs tarea cumplida automáticamente (estación `checador_visita`,
+`chalanes/0014`, `verificacion.py` defensivo). **Sede esperada** en horario
++ jornada + corrección. Snapshot de ubicación en el tiempo de proyecto
+(`SesionProyecto` gana lat/lng). Detalles clickeables
+(jornada/visita/sesión). Fix (06.55): checada instantánea + spinner al
+checar. **Ojo:** el `app_label` de las tareas es `pizarron` (no
+`el_pizarron`).
+
+**El Runner + impresión por pieza ✅ (2026-06-16, VERSION 2026.06.56).**
+Introducción de **El Runner** (asignación de mandados/repartos). Fix de
+costos: impresión cobrada **por pieza** y cálculos de gastos correctos.
+
+**S-Offline/Runner/Auditoría ✅ (2026-06-16, VERSION 2026.06.60).**
+El **SW offline YA estaba implementado** (`interfono/sw_js.py`) — el roadmap
+que lo listaba pendiente estaba desactualizado; se agregó solo la página
+dedicada `/offline/`. Runner dropdown filtrado por permiso `(runner,
+recibir)` (no es rol, es módulo granular; `usuarios_runner()` cae a todos si
+nadie lo tiene). **Auditoría de Chalanes HASH-ONLY (decisión Oscar
+reafirmada):** el log de IA guarda solo SHA-256 del prompt, NUNCA el texto
+ni la respuesta; el detalle clickeable muestra quién/hora/latencia/tokens/
+costo/modelo, sin contenido. **NO agregar campos de prompt/respuesta crudos
+a `AnalistaLog`.**
+
+**S-Roles-V2 ✅ — Roles unificados + "ver como rol" (2026-06-16, VERSION 2026.06.61).**
+**Durable:** se eliminó el dropdown "rol primario" del Directorio; los roles
+se asignan en UN solo lugar (los checkboxes de Roles del panel de permisos).
+`Usuario.rol` se **DERIVA** vía `sincronizar_rol_primario(user)`
+(super_admin si tiene ese rol, si no `miembro`; es el único punto que
+escribe `Usuario.rol`). Migración anti-lockout `cuentas/0033`. **Runner
+opt-in:** `(runner, recibir)` deja de ser default; se siembra el rol
+**"Runner"** (único que lo concede); `usuarios_runner()` sin fallback.
+**"Ver como rol"** (debug/QA): el super_admin simula un ROL desde su ficha;
+el failsafe de super_admin se APAGA durante la simulación.
+
+**S-Mandados-V2 ✅ — Dirección/POI + Chalán crea mandados + roles renombrables (2026-06-16, VERSION 2026.06.62–63).**
+**A** — Geocoding gratis **Nominatim** (`lib/geocoding.py`, defensivo, cache
+1h); POIs sin catálogo nuevo; ejecutor `crear_mandado` del Chalán; miniatura
+OSM + "🧭 Cómo llegar"; categoría push `mandados`; item Mandados/widget
+**solo runners** (decisión Oscar, no admins). **B** — **Roles renombrables:**
+`Rol.clave` (SlugField unique, oculta) es la IDENTIDAD estable; `nombre` es
+libre/editable en GUI; migr. `cuentas/0034`; todos los literales del código
+(`tiene_rol(user,"dueno")`, etc.) ahora son CLAVES (mismos valores, cero
+cambios en callers); sin etiqueta "Sistema". **C** — el sidebar oculta lo
+inaccesible.
+
+**S-Chalan-Agente-F1 ✅ — El Chalán a tool-use NATIVO + El Relevo (2026-06-16, VERSION 2026.06.64–66).**
+Decisión de Oscar: "convertir El Chalán en agente" (descartó auto-ejecutar
+sin confirmación, respeta §20). El Chalán pasa a **function-calling nativo**
+en los 5 adapters (capa `lib/analistas/herramientas_formato.py` +
+`chatear()`), con **degradación a texto sin regresión** si la cadena no
+soporta tools. **El Relevo** (`lib/analistas/relevo.py`) = ruteo ACTIVO al
+mejor modelo (≠ El Reemplazo, que es fallback ante fallos): estaciones
+`taller_chat` (rápido, haiku) ↔ `taller_chat_profundo` (sonnet,
+`chalanes/0015`); el agente auto-escala con el tool `escalar_razonamiento`.
+Distintivo de typing animado + GUI con banner El Relevo (Gerencia + Taller).
+Hotfix 06.65: "propone pero no aplica" (el `enum` de `tipo` en
+`proponer_acciones` se limita a `comandos_para(usuario)`) + Gemini sin llave
+fuera del relevo (`registry.cadena_de` filtra adapters sin `esta_configurado`).
+
+**S-Chalan-Fase-2-3 ✅ — Planeación multi-paso + proactividad (2026-06-16/17, VERSION 2026.06.67, fixes …73).**
+**Fase 2** (afinación): `MAX_ITERACIONES_TOOLS` 8→10, `MAX_COSTO_TURNO_USD=0.50`,
+prompt que instruye investiga→plan completo→propón TODO en un solo
+`proponer_acciones`. **Fase 3** (proactividad por **cron**, porque en Django
+no hay bus de eventos — Portavoz solo encola a n8n): modelo `PropuestaChalan`
+(`el_dictado/0005`, idempotente por `clave_dedup`); `scouts.py` (facturas
+vencidas, proyectos estancados, mandados sin avance) + digest matutino;
+commands `chalan_scouts`/`chalan_digest_matutino`; surface "💡 El Chalán
+sugiere" en el Dashboard. **Regla de oro intacta:** propone, nunca actúa
+solo (todo pasa por preview+confirm + re-valida permisos en los ejecutores;
+costo IA al destinatario). Fixes 68–73: tareas/entregas con hora +
+`@accion_N` en runner, entregas por cliente, alias de tipo de acción, destino
+del mandado cae a la dirección/ubicación del cliente, el mandado guarda
+runner al editar.
+
+**Mini-arco de feedback de Oscar ✅ — Mensajes, Buzón de soporte, Cotizaciones versionadas (2026-06-26/27, VERSION 2026.06.79–84).**
+Rename **"Recados" → "Mensajes"** (chat interno). **Buzón de soporte = 100%
+super_admin** (nadie más entra, ni a mano ni por migas); lo del usuario vive
+en **Mensajes → "Mi Buzón"** con buscador/filtros/tarjetas. Recuadro
+**"Cotizaciones" versionado** en el detalle del proyecto: "Generar" toma una
+foto de los productos y crea v1/v2/…; **pizza-tracker** de estatus con pasos
+**configurables en Gerencia → Catálogos → Estados de cotización**; PDF
+nombrado con el proyecto+versión. Productos/proveedores y mapas con búsqueda.
+Fix rickroll "Error 153" en cotizaciones.
+
+**S-LC-Feedback-V13 ✅ — 12 comentarios de LC (2026-06-29, VERSION 2026.06.85).**
+Calendario **interactivo** (celdas clickeables → modal del día) + modelo
+**`Evento`** genérico multi-día (en `apps.el_pizarron` por §14 Bug B — solo
+Gerencia migra). **Mandados→Tareas** (filtro `?cat=todas|general|mandados`,
+2 badges en sidebar, runner-only ve solo lo suyo, campo "Lugar" obligatorio
+para entrega/recoger). **Anticipo→ingreso** (paso `anticipo` en el tracker →
+push a finanzas + modal "Registrar ingreso del anticipo" 25/50/100%).
+Facturación: cancelar (siempre visible + motivo, **mantiene el asiento
+reverso** — decisión Oscar) + cobro con folio/nota. **Borrado permanente** de
+productos/proveedores (permiso `(catalogo, eliminar)` solo super_admin,
+`cuentas/0036`). **"Servicios" → "Productos"** (strings). Jornadas muestra
+todos los días. `crear_mensaje_buzon` acepta `prioridad`. **Bug #1** (fecha
+de tarea → compromiso del proyecto): NO existe tal código; test de regresión
+puesto, falta repro de Oscar.
+
+**Mini-arco proveedores/equipo/cotizaciones ✅ (2026-06-30, VERSION 2026.06.86–89).**
+Proveedores en **tarjetas** con **filtro de 2 niveles** (categoría→servicio)
++ ficha **editable inline** (autosave, sin botón Editar). Cotización por
+versión: solo la **última versión** cambia de estatus; las pasadas muestran
+círculo del último estado; lista de Cotizaciones más simple (fila clickeable).
+Página **Equipo** como acordeón (tarjetas desplegables) + cuadro de
+**pendientes** en la ficha. **Globos de Tareas con sentido** (azul = mías,
+gris = del despacho, rojo = mis mandados).
+
+**S-Geo-Picker-V1 ✅ — Buscador de direcciones + auto-pin en todo el sistema (2026-06-30, VERSION 2026.06.90–92).**
+**Componente canónico reutilizable** (NO escribir más mapas/buscadores a
+mano): partial dual-copy `_componentes_tailadmin/_geo_picker.html` +
+`static/js/geo_picker.js` (data-attr-driven, escanea en `DOMContentLoaded`
+y `htmx:afterSwap`, **Leaflet perezoso**). Dos modos: `completo` (buscador +
+mapa + hidden lat/lng) y `texto` (el propio campo se vuelve el buscador).
+Endpoint compartido `/geo/buscar` → `{pois, resultados}`/`{punto}` (Nominatim
++ POIs del repo, defensivo). Cliente y Proveedor ganan **mini-mapa con pin**
+(`cartera/0006`, `el_catalogo/0008`). Conserva el **número de calle** que
+escribió el usuario. Pegar dirección/coords → auto-pin. **Lección CI:** un
+`{# … #}` MULTILÍNEA (Bug C §14) tumbó el deploy 06.91 — correr
+`test_no_renderiza_comentarios` (ambas apps) al tocar templates.
+Ver `memory/sprint-geo-picker-v1`.
+
+**S-LC-julio ✅ — Facturación folio F + egresos al pagarse + archivar proyectos (2026-07-08, VERSION 2026.07.01).**
+Lote de feedback de LC. **Facturación:** folio **«F###»** oficial visible
+(auto máx+1 en `save()`, editable, filas fantasma "Sin información" para
+huecos de secuencia; se conserva `codigo` FAC interno); cascada
+Cliente→Proyecto→Cotización; concepto autollena (título retirado); estado en
+pills; monto **100%/50%** (`porcentaje_a_facturar` escala la base sin tocar
+líneas); columna "Total pagable". **Egresos SOLO al pagarse** (decisión
+Oscar "conservar cuentas por pagar"): **proveedor OBLIGATORIO en todo
+egreso** de usuario; modal "Registrar pago" crea el egreso pagado o
+**liquida** el pendiente auto-generado. **Archivar** proyecto
+(`Proyecto.archivado` + manager `activos`, `proyectos/0021`, reversible,
+oculto de todo) + **eliminar** permanente (solo super_admin, sin
+facturas/movimientos). Kanban con items completos (sin truncar). **Botón
+Atrás contextual** (`?volver=` sobre `back_url`). **Ojo:** variables de
+template no pueden empezar con `_`.
+
+**Arco LC — 7 fases ✅ (2026-07-08, VERSION 2026.07.03).**
+Fase 1: régimen **RESICO honorarios** (IVA + retenciones de ISR e IVA, al
+centavo; selector por proyecto IVA/IVA+Retenciones/Exento heredado a
+cotización y factura; tasas en Gerencia → Ajustes → Fiscal). Fase 2:
+Registrar Gasto desde el proyecto (pills + defaults + reembolso). Fase 3:
+tarjetas de producto (costo/margen en vivo, "por pieza" default), buscador
+"Producto - Proveedor", **duplicar proyecto**. Fase 4: responsables
+**múltiples** por tarea, **eliminar** físico de tareas, emojis por tipo,
+calendario. Fase 5: pills, estado inline en la lista, **PDF "ver rápido"**
+(👁), notas internas fuera del PDF del cliente. Fase 6: **taxonomía de
+proveedores** core/subcategorías + tarjetas. Fase 7: **badge ⚠️ global de
+falla del sistema** + push global de Novedades. Se agregó el **candado CI**
+`test_ayuda_novedades.py` (una `VERSION_FECHA` sin su bloque de Novedades
+rompe el build).
+
+**Sprint deuda D1–D7 ✅ (2026-07-09, VERSION 2026.07.04 — release actual).**
+Barrido de deuda diseñada, un commit por punto: **D1** pantalla admin de las
+**6 categorías core** de proveedor (nombre + color; las subcategorías heredan
+el color). **D2** detalle de proveedor a **3 columnas** (Wave 4) + productos
+que surte + proyectos vigentes + ruta. **D3** tracker de versiones **dentro
+del desplegable** de cada versión de cotización. **D4** picker de ubicación
+**acotado a direcciones guardadas** de clientes/proveedores (mapa completo
+opcional con "🌐 Buscar en el mapa…"). **D5** imagen de producto: **pegar del
+portapapeles (Ctrl/Cmd+V)** o subir → Drive. **D6** modal corto de edición al
+clicar un evento del calendario. **D7** **drag&drop** de eventos en el grid
+del calendario para recolocar fecha. + fix Bug C (`{# #}` multilínea).
+
+---
+
 ## 9. Decisiones operativas tomadas
 
 - **Repo:** `Yosoyobo/el-despacho` (privado). Imágenes en GHCR
@@ -4611,6 +4870,30 @@ Sprint dirigido por feedback del usuario y rondas de demo próximas.
    `vencida_notificada_en`) — correr varias veces al día no duplica
    eventos. Si necesitas dry-run: añadir `--dry-run` al final del
    manage.py call.
+8. **Bitácora + CLAUDE.md §8 SIEMPRE al día con el deploy — REGLA
+   INVIOLABLE (decisión Jorge/Oscar, 2026-07-09).** Se encontró que
+   `CLAUDE.md §8` y `BITACORA.md` estaban atrasados ~1 mes (llegaban al
+   12-jun mientras prod iba en `VERSION 2026.07.04`, ~50 bumps después).
+   **NO puede volver a ocurrir que uno o varios deploys pasen sin
+   actualizar estos documentos.** En el MISMO commit que sube `VERSION`
+   (junto con el manual/Novedades del item 6), los CUATRO artefactos van
+   juntos, nunca uno sin los otros:
+   - **(a) `CLAUDE.md §8`** (Plan de sesiones): agrega la entrada del
+     sprint — nombre, `VERSION`, fecha, qué se entregó, decisiones
+     durables y deuda diseñada. Es el índice canónico que lee el próximo
+     agente.
+   - **(b) `BITACORA.md`**: agrega el cierre de sesión (entregas +
+     decisiones + tests + deuda), con fecha y `VERSION`.
+   - **(c) Manual / Novedades** (item 6): bloque `## Novedades` + cuerpo
+     de `DOC_05`.
+   - **(d) Memoria** (`memory/sprint-*.md` + una línea en
+     `memory/MEMORY.md`): es la fuente que permite reconstruir §8/BITACORA
+     si se atrasaran.
+   **Chequeo de arranque de sesión:** al empezar, si `git log` muestra
+   releases (bumps de `VERSION`) posteriores a la última entrada de §8 o
+   de BITACORA, **pon los docs al día ANTES de empezar trabajo nuevo**.
+   La verdad la reconstruyes de `git log` (mensajes de commit con la
+   VERSION), los bloques de Novedades de `DOC_05` y los `memory/sprint-*.md`.
 
 ---
 
