@@ -1,10 +1,13 @@
 {% comment %}
 Mini-calendario de fecha (S-LC-Buzon). Reemplaza el <input type=date>: muestra
 el mes, hoy seleccionado por default, botón Hoy, flechas ◀ ▶ de mes, y un input
-de texto sincronizado. Params: `valor` (ISO YYYY-MM-DD o ''), `nombre`
-(default "fecha"), `label` (default "Fecha"). Vanilla JS, sin librerías.
+hidden sincronizado. La lógica vive en `ui.js` (`initMinical`, corre en load y
+htmx:afterSwap → funciona también dentro de modales del #modal-slot).
+Params: `valor` (ISO YYYY-MM-DD o ''), `nombre` (default "fecha"),
+`label` (default "Fecha"), `con_quitar` (bool → botón "Quitar fecha"),
+`sin_default_hoy` (bool → NO preseleccionar hoy; arranca vacío).
 {% endcomment %}
-<div class="campo-form md:col-span-2" data-minical>
+<div class="campo-form md:col-span-2" data-minical{% if sin_default_hoy %} data-mc-default-hoy="0"{% endif %}>
     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ label|default:"Fecha" }}</label>
     <div class="rounded-lg border border-gray-300 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
         <div class="mb-2 flex items-center justify-between gap-2">
@@ -23,45 +26,9 @@ de texto sincronizado. Params: `valor` (ISO YYYY-MM-DD o ''), `nombre`
             <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
         </div>
         <div data-mc-grid class="grid grid-cols-7 gap-1"></div>
+        {% if con_quitar %}
+        <button type="button" data-mc-quitar class="mt-2 w-full rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-error-600 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">Quitar fecha</button>
+        {% endif %}
         <input type="hidden" name="{{ nombre|default:'fecha' }}" data-mc-input value="{{ valor }}">
     </div>
 </div>
-<script>
-(() => {
-    const root = document.currentScript.previousElementSibling;
-    if (!root || !root.matches("[data-minical]")) return;
-    const input  = root.querySelector("[data-mc-input]");
-    const grid   = root.querySelector("[data-mc-grid]");
-    const titulo = root.querySelector("[data-mc-titulo]");
-    const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-    const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
-    if (!input.value) input.value = hoyISO();
-    let [vy, vm] = input.value.split("-").map(Number);  // mes visible (vm 1-12)
-    const render = () => {
-        const sel = input.value;
-        titulo.textContent = `${MESES[vm-1]} ${vy}`;
-        const primero = new Date(vy, vm-1, 1);
-        let dow = primero.getDay();          // 0=Dom
-        const offset = (dow + 6) % 7;        // semana inicia lunes
-        const dias = new Date(vy, vm, 0).getDate();
-        grid.innerHTML = "";
-        for (let i = 0; i < offset; i++) grid.appendChild(document.createElement("span"));
-        for (let d = 1; d <= dias; d++) {
-            const iso = `${vy}-${String(vm).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-            const b = document.createElement("button");
-            b.type = "button"; b.textContent = d; b.dataset.iso = iso;
-            b.className = "h-8 rounded-lg text-sm transition " + (iso === sel
-                ? "bg-brand-500 font-semibold text-white"
-                : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800")
-                + (iso === hoyISO() && iso !== sel ? " ring-1 ring-brand-300" : "");
-            // V6 Bloque 4: re-picar el día activo lo deselecciona (toggle).
-            b.addEventListener("click", () => { input.value = (input.value === iso) ? "" : iso; render(); });
-            grid.appendChild(b);
-        }
-    };
-    root.querySelector("[data-mc-prev]").addEventListener("click", () => { vm--; if (vm < 1){vm=12; vy--;} render(); });
-    root.querySelector("[data-mc-next]").addEventListener("click", () => { vm++; if (vm > 12){vm=1; vy++;} render(); });
-    root.querySelector("[data-mc-hoy]").addEventListener("click", () => { input.value = hoyISO(); [vy, vm] = input.value.split("-").map(Number); render(); });
-    render();
-})();
-</script>

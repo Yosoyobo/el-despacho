@@ -373,6 +373,71 @@
   // Re-realza inputs date inyectados por HTMX (modales del #modal-slot, etc.).
   document.body.addEventListener('htmx:afterSwap', function (e) { realzarFechas(e.target || document); });
 
+  // --- Mini-calendario inline [data-minical] ---
+  // Init GLOBAL (antes vivía en un <script> inline con document.currentScript,
+  // frágil al inyectarse por HTMX). Aquí es idempotente y corre también en
+  // htmx:afterSwap, así funciona dentro de los modales del #modal-slot.
+  // El <input hidden data-mc-input> lleva el valor ISO (fuente de verdad).
+  var MC_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  function mcHoyISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function initMinical(root) {
+    (root || document).querySelectorAll('[data-minical]:not([data-minical-listo])').forEach(function (mc) {
+      mc.setAttribute('data-minical-listo', '1');
+      var input = mc.querySelector('[data-mc-input]');
+      var grid = mc.querySelector('[data-mc-grid]');
+      var titulo = mc.querySelector('[data-mc-titulo]');
+      if (!input || !grid || !titulo) return;
+      // Por default arranca en HOY si viene vacío; data-mc-default-hoy="0" lo evita.
+      if (!input.value && mc.getAttribute('data-mc-default-hoy') !== '0') input.value = mcHoyISO();
+      var base = (input.value || mcHoyISO()).split('-').map(Number);
+      var vy = base[0], vm = base[1];
+      function render() {
+        var sel = input.value;
+        titulo.textContent = MC_MESES[vm - 1] + ' ' + vy;
+        var primero = new Date(vy, vm - 1, 1);
+        var offset = (primero.getDay() + 6) % 7;  // semana inicia lunes
+        var dias = new Date(vy, vm, 0).getDate();
+        grid.innerHTML = '';
+        for (var i = 0; i < offset; i++) grid.appendChild(document.createElement('span'));
+        for (var d = 1; d <= dias; d++) {
+          var iso = vy + '-' + String(vm).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+          var b = document.createElement('button');
+          b.type = 'button'; b.textContent = d; b.dataset.iso = iso;
+          b.className = 'h-8 rounded-lg text-sm transition ' + (iso === sel
+            ? 'bg-brand-500 font-semibold text-white'
+            : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800')
+            + (iso === mcHoyISO() && iso !== sel ? ' ring-1 ring-brand-300' : '');
+          (function (isoDia) {
+            b.addEventListener('click', function () { input.value = (input.value === isoDia) ? '' : isoDia; render(); });
+          })(iso);
+          grid.appendChild(b);
+        }
+      }
+      var prev = mc.querySelector('[data-mc-prev]'); if (prev) prev.addEventListener('click', function () { vm--; if (vm < 1) { vm = 12; vy--; } render(); });
+      var next = mc.querySelector('[data-mc-next]'); if (next) next.addEventListener('click', function () { vm++; if (vm > 12) { vm = 1; vy++; } render(); });
+      var hoy = mc.querySelector('[data-mc-hoy]'); if (hoy) hoy.addEventListener('click', function () { input.value = mcHoyISO(); var p = input.value.split('-').map(Number); vy = p[0]; vm = p[1]; render(); });
+      var quitar = mc.querySelector('[data-mc-quitar]'); if (quitar) quitar.addEventListener('click', function () { input.value = ''; render(); });
+      render();
+    });
+  }
+  initMinical(document);
+  document.body.addEventListener('htmx:afterSwap', function (e) { initMinical(e.target || document); });
+
+  // --- Pills de acceso rápido que fijan un <select> (modales de acciones
+  //     rápidas): <button data-set-select="valor" data-set-select-target="#sel">.
+  //     Delegado → funciona en contenido inyectado por HTMX sin re-init.
+  document.body.addEventListener('click', function (e) {
+    var pill = e.target.closest && e.target.closest('[data-set-select]');
+    if (!pill) return;
+    var sel = document.querySelector(pill.getAttribute('data-set-select-target'));
+    if (!sel) return;
+    sel.value = pill.getAttribute('data-set-select');
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
   // --- Filas <tr data-href="..."> clickeables ---
   // Cualquier <tr> con data-href se vuelve navegable. No dispara cuando el
   // click cae sobre un <a>, <button>, <input>, <label>, <select> u otro

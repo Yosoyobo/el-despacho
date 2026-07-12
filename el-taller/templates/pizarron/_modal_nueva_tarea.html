@@ -1,0 +1,116 @@
+{% load forms_helpers %}
+{% comment %}Form-in-modal "Nueva Tarea" (revisión buzón R2 — render de Oscar).
+Se inyecta en #modal-slot. Header con título + Guardar + ✕; título grande;
+Proyecto/Asignar a como combobox buscable + pills de acceso rápido; fecha con
+mini-calendario inline; tipo en pills; detalles opcional. POST HTMX → 204 +
+HX-Redirect (ver vista nueva_tarea_global).{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
+    <div data-nueva-tarea class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <form hx-post="{% url 'pizarron-nueva-tarea-global' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
+            {% csrf_token %}
+            <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Nueva Tarea</h2>
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="btn-primario">Guardar</button>
+                    <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                {% if form.non_field_errors %}
+                <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                {# Título grande #}
+                <div>
+                    {{ form.titulo }}
+                    {% if form.titulo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.titulo.errors.0 }}</p>{% endif %}
+                </div>
+
+                {# Proyecto + Asignar a (combobox buscable) #}
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Proyecto <span class="text-error-500">*</span></label>
+                        {{ form.proyecto }}
+                        {% if form.proyecto.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.proyecto.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.asignada_a.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Asignar a <span class="text-error-500">*</span></label>
+                        {{ form.asignada_a }}
+                        {% if form.asignada_a.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.asignada_a.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+                {# Pills de proyectos recientes → fijan el <select> de arriba #}
+                {% if proyectos_chips %}
+                <div class="flex flex-wrap gap-1.5">
+                    {% for p in proyectos_chips|slice:":8" %}
+                    <button type="button" class="pill-filtro !px-3 !py-1 !text-xs" data-set-select="{{ p.pk }}" data-set-select-target="#{{ form.proyecto.id_for_label }}" title="{{ p.cliente.razon_social }} · {{ p.nombre }}">{{ p.cliente.razon_social|truncatechars:16 }} · {{ p.nombre|truncatechars:22 }}</button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {# Fecha (mini-calendario inline) + hora opcional #}
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        {% include "tesoreria/_fecha_minical.html" with nombre="fecha_compromiso" valor=form.fecha_compromiso.value|default:"" label="Fecha *" con_quitar=True sin_default_hoy=True %}
+                        {% if form.fecha_compromiso.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.fecha_compromiso.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.hora.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Hora (opcional)</label>
+                        {{ form.hora }}
+                    </div>
+                </div>
+
+                {# Tipo (pills) #}
+                <div>
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo</label>
+                    <div class="flex flex-wrap gap-2">
+                        {% for valor, etiqueta in tipos_chips %}
+                        <label class="cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-sm transition hover:border-gray-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:font-medium dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                            <input type="radio" name="tipo" value="{{ valor }}" class="sr-only" {% if form.tipo.value|default:"tarea" == valor %}checked{% endif %}>
+                            {{ etiqueta }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# Runner + Lugar — solo para entrega/recoger #}
+                <div data-nt-runner class="hidden rounded-xl border border-dashed border-gray-300 p-4 dark:border-gray-700">
+                    <label for="{{ form.destino_etiqueta.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">📍 Lugar (destino)</label>
+                    {{ form.destino_etiqueta }}
+                    {% if form.destino_etiqueta.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.destino_etiqueta.errors.0 }}</p>{% endif %}
+                    <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input type="checkbox" name="runner_auto" {% if form.runner_auto.value|default:True %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                        Que el sistema asigne al runner más libre
+                    </label>
+                </div>
+
+                {# Detalles #}
+                <div>
+                    <label for="{{ form.descripcion.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Detalles (opcional)</label>
+                    {{ form.descripcion }}
+                </div>
+                {{ form.prioridad.as_hidden }}
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function () {
+    var slot = document.getElementById('modal-slot');
+    if (!slot) return;
+    var root = slot.querySelector('[data-nueva-tarea]');
+    if (!root) return;
+    var runnerBlock = root.querySelector('[data-nt-runner]');
+    function syncTipo() {
+        var sel = root.querySelector('input[name="tipo"]:checked');
+        var t = sel ? sel.value : 'tarea';
+        if (runnerBlock) runnerBlock.classList.toggle('hidden', !(t === 'entrega' || t === 'recoger'));
+    }
+    root.querySelectorAll('input[name="tipo"]').forEach(function (r) { r.addEventListener('change', syncTipo); });
+    syncTipo();
+})();
+</script>

@@ -292,8 +292,13 @@ def cambiar_estado_tarea(request, pk):
 @login_required
 def nueva_tarea_global(request):
     """Form "Nueva Tarea" sin proyecto fijo (V6 Bloque 2B) — accesible desde
-    el Dashboard y la página Tareas. Proyecto/persona/tipo con un click."""
+    el Dashboard y la página Tareas. Proyecto/persona/tipo con un click.
+
+    Revisión buzón R2: si la petición es HTMX se sirve como **form-in-modal**
+    (render de Oscar) en el #modal-slot; POST HTMX → 204 + HX-Redirect. La
+    página full se conserva como fallback (navegación directa a la URL)."""
     TERMINALES_PRY = {"entregado", "cerrado", "cancelado"}
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = TareaGlobalForm(request.POST)
         if form.is_valid():
@@ -317,7 +322,12 @@ def nueva_tarea_global(request):
                 url=f"/proyectos/{tarea.proyecto_id}/",
             )
             messages.success(request, "Tarea creada.")
+            if es_htmx:
+                from django.http import HttpResponse
+                from django.urls import reverse
+                return HttpResponse(status=204, headers={"HX-Redirect": reverse("tareas-kanban")})
             return redirect("tareas-kanban")
+        # inválido → cae al render de abajo (con errores). Modal si es HTMX.
     else:
         # Fecha precargada desde el Calendario (?fecha=YYYY-MM-DD). LC 2026-06-29.
         initial = {}
@@ -327,16 +337,27 @@ def nueva_tarea_global(request):
         form = TareaGlobalForm(initial=initial)
     from cuentas.models.usuario import Usuario
     proyectos_mgr = getattr(Proyecto, "activos", Proyecto.objects)
-    proyectos_chips = list(
+    proyectos_activos = (
         proyectos_mgr.exclude(estado__in=TERMINALES_PRY)
-        .select_related("cliente").order_by("-creado_en")[:60]
+        .select_related("cliente").order_by("-creado_en")
     )
-    return render(request, "pizarron/form_tarea_global.html", {
+    proyectos_chips = list(proyectos_activos[:60])
+    ctx = {
         "form": form,
         "proyectos_chips": proyectos_chips,
         "usuarios_chips": list(Usuario.objects.filter(is_active=True).order_by("nombre_completo")),
         "tipos_chips": Tarea._meta.get_field("tipo").choices,
-    })
+    }
+    if es_htmx:
+        # Prepara el form para el modal (render de Oscar): combobox buscable en
+        # Proyecto/Asignar a + placeholder del título.
+        form.fields["titulo"].widget.attrs["placeholder"] = "¿Qué hay que hacer?"
+        form.fields["proyecto"].queryset = proyectos_activos
+        form.fields["proyecto"].empty_label = "— Elige un proyecto —"
+        for campo in ("proyecto", "asignada_a"):
+            form.fields[campo].widget.attrs["data-select-buscable"] = "1"
+        return render(request, "pizarron/_modal_nueva_tarea.html", ctx)
+    return render(request, "pizarron/form_tarea_global.html", ctx)
 
 
 @login_required
