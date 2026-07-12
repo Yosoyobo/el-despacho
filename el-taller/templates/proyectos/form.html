@@ -36,7 +36,8 @@
                 <div class="hidden">{{ form.fecha_inicio_hora }}{{ form.fecha_compromiso_hora }}</div>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_inicio_dia titulo="Inicio" con_hoy=True %}
-                    {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_compromiso_dia titulo="Entrega" con_hoy=True %}
+                    {# Entrega: sin "Hoy" — solo "Mañana" (una entrega no suele ser el mismo día). LC revisión buzón. #}
+                    {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_compromiso_dia titulo="Entrega" %}
                 </div>
             </div>
         </section>

@@ -42,10 +42,11 @@
         {# V13: Mandados se fusionó en Tareas. LC 2026-06-30 (2ª pasada): azul=tareas asignadas a mí · gris=las demás del despacho · rojo=mis mandados. #}
         <a href="/tareas/" data-sidebar-grupo="{{ sidebar_orden.tareas.grupo }}" style="order: {{ sidebar_orden.tareas.orden|default:35 }}" class="menu-item {% if '/tareas' in request.path or '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="flex-1">💻 Tareas <span class="text-gray-400" title="Incluye Mandados (entregas/recolecciones)">🛵</span></span>
-            {% if tareas_involucrado_count %}<span class="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white" title="Tareas asignadas a ti">{{ tareas_involucrado_count }}</span>{% endif %}
-            {% if tareas_otras_count %}<span class="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-300 px-1.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200" title="Otras tareas pendientes del despacho">{{ tareas_otras_count }}</span>{% endif %}
-            {% if mandados_pendientes_count %}<span class="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-error-500 px-1.5 text-[10px] font-semibold text-white" title="Tus mandados pendientes">{{ mandados_pendientes_count }}</span>{% endif %}
+            <span class="flex-1">Tareas</span>
+            {% comment %}LC revisión buzón: cada badge lleva su emoji JUNTO (no alrededor del nombre). 🙋 mías (azul) · 👥 del despacho (gris) · 🛵 mis mandados (rojo).{% endcomment %}
+            {% if tareas_involucrado_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white" title="Tareas asignadas a ti">🙋 {{ tareas_involucrado_count }}</span>{% endif %}
+            {% if tareas_otras_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-gray-300 px-1.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200" title="Otras tareas pendientes del despacho">👥 {{ tareas_otras_count }}</span>{% endif %}
+            {% if mandados_pendientes_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-error-500 px-1.5 text-[10px] font-semibold text-white" title="Tus mandados pendientes">🛵 {{ mandados_pendientes_count }}</span>{% endif %}
         </a>
         {% endif %}
 
