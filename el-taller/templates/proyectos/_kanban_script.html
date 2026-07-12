@@ -103,14 +103,18 @@
         var slug = col.getAttribute('data-estado');
         var zona = col.querySelector('.kanban-dropzone');
         var btn = col.querySelector('.kanban-colapsar');
-        if (!btn || !zona) return;
+        var header = col.querySelector('header');
+        if (!btn || !zona || !header) return;
+        // LC revisión buzón: colapsar picando TODO el encabezado (no solo la
+        // flechita chiquita). El botón ▾ queda como afordancia visual.
+        header.classList.add('cursor-pointer', 'select-none');
         var pintar = function () {
             var oculto = colapsadas.indexOf(slug) !== -1;
             zona.classList.toggle('hidden', oculto);
             btn.textContent = oculto ? '▸' : '▾';
         };
         pintar();
-        btn.addEventListener('click', function (e) {
+        header.addEventListener('click', function (e) {
             e.preventDefault(); e.stopPropagation();
             var i = colapsadas.indexOf(slug);
             if (i === -1) colapsadas.push(slug); else colapsadas.splice(i, 1);

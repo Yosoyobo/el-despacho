@@ -223,13 +223,18 @@
 
 {# ── 4) Kanban de 4 columnas activas. Reusa el partial canónico + el JS compartido. ── #}
 <section class="mb-8">
-    <div class="mb-3 flex items-center justify-between">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos</h2>
         <a href="{% url 'proyectos-kanban' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver tablero completo →</a>
     </div>
+    {# LC revisión buzón: mismo buscador que la página Kanban (lo activa el JS compartido). #}
+    <input type="search" id="kanban-buscar" autocomplete="off"
+           placeholder="Buscar por nombre, cliente, código, producto, proveedor, equipo o contacto…"
+           class="mb-3 w-full max-w-md rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
     <div id="kanban-grid" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {% for col in kanban_cols %}{% include "proyectos/_kanban_columna.html" with col=col %}{% endfor %}
     </div>
+    <p id="kanban-sin-resultados" class="hidden mt-3 text-sm text-gray-400 dark:text-gray-500">Ningún proyecto coincide con la búsqueda.</p>
 </section>
 {% include "proyectos/_kanban_script.html" %}
 

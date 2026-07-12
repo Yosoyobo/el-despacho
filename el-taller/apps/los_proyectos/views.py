@@ -300,6 +300,8 @@ def kanban(request):
     """
     qs = _proyectos_visibles(request.user).prefetch_related(
         "productos__servicio", "productos__variacion",
+        # LC revisión buzón: buscador ampliado (producto/proveedor/equipo/contacto).
+        "productos__proveedor", "asignaciones__usuario", "cliente__contactos",
     )
     # C3 S-LC-Feedback-V6: dos filas. Arriba el flujo activo; abajo los
     # estados de cierre/pausa. Estados custom nuevos caen arriba por default.

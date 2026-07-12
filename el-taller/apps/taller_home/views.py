@@ -235,6 +235,8 @@ def _kanban_cols(user):
     from apps.los_proyectos.views import _proyectos_visibles
     qs = _proyectos_visibles(user).prefetch_related(
         "productos__servicio", "productos__variacion",
+        # LC revisión buzón: buscador ampliado del kanban (mismo en Dashboard).
+        "productos__proveedor", "asignaciones__usuario", "cliente__contactos",
     )
     labels = dict(ESTADOS_PROYECTO)
     cols = []

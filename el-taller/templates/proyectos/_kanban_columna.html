@@ -16,7 +16,7 @@
            draggable="true"
            data-proyecto-id="{{ p.pk }}"
            data-estado-actual="{{ p.estado }}"
-           data-buscar="{{ p.nombre|lower }} {{ p.cliente.razon_social|lower }} {{ p.codigo|lower }}"
+           data-buscar="{{ p.nombre|lower }} {{ p.cliente.razon_social|lower }} {{ p.codigo|lower }} {% for pp in p.productos.all %}{{ pp.etiqueta|lower }} {% if pp.proveedor %}{{ pp.proveedor.razon_social|lower }} {% endif %}{% endfor %}{% for a in p.asignaciones.all %}{{ a.usuario.nombre_completo|default:a.usuario.email|lower }} {% endfor %}{{ p.cliente.nombre_contacto|lower }} {% for c in p.cliente.contactos.all %}{{ c.nombre|lower }} {% endfor %}"
            style="border-left-color: {{ p.estado|color_estado }}"
            class="kanban-card block min-w-0 cursor-grab rounded-xl border border-l-4 border-gray-200 bg-white p-2.5 shadow-theme-xs transition hover:border-brand-300 hover:shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500 active:cursor-grabbing">
             {% comment %}V6 Bloque 3: nombre prominente, CLIENTE en la posición del código (el código sigue visible en lista/detalle).{% endcomment %}
