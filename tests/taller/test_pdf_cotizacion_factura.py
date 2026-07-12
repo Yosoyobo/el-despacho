@@ -103,6 +103,7 @@ def test_factura_construir_html_pdf_renderiza(fac_borrador):
 def test_factura_almacenar_cfdi(fac_borrador, monkeypatch):
     """LC #162: la factura ALMACENA el CFDI (PDF+XML del PAC) en Drive, no lo genera."""
     from apps.facturacion import services
+
     from lib.adjuntos import ResultadoAdjunto
     monkeypatch.setattr(
         "lib.adjuntos.subir",
