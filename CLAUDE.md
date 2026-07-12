@@ -4816,12 +4816,14 @@ Calendario (soft-hide se aplicó a Kanban/lista/Dashboard, no al calendario); el
 combobox usa picker nativo en móvil (decisión, no bug); el toggle IVA del modal
 de pago es informativo (no cambia el monto almacenado del egreso).
 
-### S-Revision-Buzon-R1 ✅ — Ronda 1 de la revisión del buzón (2026-07-12, VERSION 2026.07.06)
+### S-Revision-Buzon-R1 ✅ + inicio R2 — Revisión del buzón (2026-07-12, VERSION 2026.07.07, deployado)
 
-Primera de **2 rondas** acordadas con Oscar (agrupar por riesgo/coherencia para
-optimizar CI+deploy). Ronda 1 = fixes y pulido de bajo riesgo; Ronda 2 (pendiente)
-= modal de acciones rápidas del render + tabla editable en Productos. 5 commits +
-release. Rama `sprint/buzon-140-164` (sin push — Oscar coordina el deploy).
+Revisión de Oscar al arco #140-164 (~12 comentarios + render de "Nueva Tarea").
+Se acordaron **2 rondas** de deploy. **Este release deployado (2026.07.07)
+lleva TODO lo que quedó listo**: la Ronda 1 completa (fixes/pulido) + los 2
+primeros entregables de la Ronda 2 (modal "Nueva Tarea" + tabla editable de
+Productos). El resto de la Ronda 2 (5 modales + mini Chalán) se difirió a una
+conversación nueva con handoff en **`docs/SPRINT-Revision-Buzon-R2-resto.md`**.
 
 - **Facturación (fix + UX):** **bug del $0.00 resuelto** —
   `facturacion.services.asegurar_lineas_desde_origen(fac)` (llamado en `nueva`
@@ -4865,6 +4867,28 @@ release. Rama `sprint/buzon-140-164` (sin push — Oscar coordina el deploy).
 con progreso real — "subiendo/error" se ven al Guardar); el preview del total es
 estimado (el definitivo lo calcula el server al guardar); `color_hash` usa una
 paleta fija de 10 colores (colisiones posibles con >10 clientes en pantalla).
+
+**R2 en este release (2 de los N entregables):**
+- **Modal "Nueva Tarea"** (`pizarron/_modal_nueva_tarea.html` + `nueva_tarea_global`
+  con branch HTMX): calcado del render de Oscar (título grande, Proyecto/Asignar a
+  como combobox + pills, calendario inline, tipo en pills, detalles). GET HTMX →
+  modal; POST HTMX → 204 + HX-Redirect; la página full queda de fallback. **Infra
+  reusable creada**: el mini-calendario `[data-minical]` movió su init a `ui.js`
+  (`initMinical`, global + `htmx:afterSwap`) — antes era `<script>` inline con
+  `document.currentScript`, frágil al inyectarse; `_fecha_minical.html` gana
+  `con_quitar`/`sin_default_hoy`. Handler delegado `data-set-select` (pills que
+  fijan un `<select>`, sirve en modales inyectados). Botón "Nueva tarea" del
+  Dashboard → hx-get.
+- **Tabla editable en Productos** (solo ahí, decisión Oscar): botón "✎ Edición
+  rápida" (`?editar=1`, gated `catalogo.editar`) → `_filas_editable.html` con
+  celdas que autoguardan (`hx-post` a `catalogo-servicio-celda`, whitelist de
+  campos, 204) + margen recalculado en vivo. Vista normal intacta (cero regresión).
+
+**Pendiente R2 (handoff `docs/SPRINT-Revision-Buzon-R2-resto.md`):** aplicar el
+chrome del modal a Cliente/Producto/Proveedor/Ingreso/Egreso (cada uno con su
+complejidad: formset de contactos + geo, calculadora costo/margen, subcategorías +
+geo, método+minical); y **Nuevo Proyecto = quick-create + mini Chalán** para meter
+productos por lenguaje natural (reusa el ejecutor `agregar_producto_proyecto`).
 
 ---
 

@@ -6152,11 +6152,24 @@ tras corregir 2 comentarios míos.
 preview del total es estimado (definitivo al guardar); `color_hash` = paleta fija
 de 10 (colisiones con >10 clientes en pantalla).
 
+### Consolidación + deploy (2026-07-12, VERSION 2026.07.07)
+
+Oscar pidió "manda a productivo lo que ya tienes listo + dame handoff para lo
+siguiente". Al revisar git: `origin/main` YA tenía el arco #140-164 (`58de4f2`) +
+el auto-commit de digests de El Mensajero (`950f5bb`) → **el arco #140-164 ya
+estaba en producción**. Lo único nuevo eran mis 8 commits (R1 + R2 exemplar + R2
+tabla editable). Rebase limpio sobre `origin/main`, VERSION → **2026.07.07**,
+Novedades del 12-jul ampliada (modal + tabla editable), y push a `main` →
+El Mensajero deploya. El resto de R2 → handoff `docs/SPRINT-Revision-Buzon-R2-resto.md`.
+
 ## Estado al cierre (2026-07-12)
 
-- `lib/version.py`: **`VERSION = 2026.07.06`** · `VERSION_FECHA = "12 de julio de 2026"`.
-- **En rama `sprint/buzon-140-164`** (los 8 commits del arco #140–164 + 6 de la
-  Ronda 1). **Sin push** — Oscar coordina merge a `main` + deploy. Ronda 2 queda
-  para la siguiente tanda de trabajo sobre la misma rama.
+- `lib/version.py`: **`VERSION = 2026.07.07`** · `VERSION_FECHA = "12 de julio de 2026"`.
+- **Deployado a `main`**: arco #140-164 (ya estaba) + Ronda 1 (fixes/pulido) +
+  Ronda 2 parcial (modal "Nueva Tarea" + tabla editable de Productos). Rama de
+  trabajo: `sprint/revision-buzon-r2` (rebaseada sobre origin/main y pusheada a main).
+- **Pendiente (nueva conversación):** resto de la Ronda 2 — 5 modales de acciones
+  rápidas + Nuevo Proyecto (quick-create + mini Chalán). Handoff completo en
+  `docs/SPRINT-Revision-Buzon-R2-resto.md`.
 - `docs/DOC_05_MANUAL_USUARIO.md`: **al día** — bloque `## Novedades` del 12-jul
-  (= `VERSION_FECHA`) arriba de todo.
+  (= `VERSION_FECHA`) arriba de todo, ya incluye modal + tabla editable.

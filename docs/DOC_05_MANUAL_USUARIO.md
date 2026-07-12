@@ -5,7 +5,7 @@
 
 ---
 
-## Novedades — Ajustes de la revisión: facturas que no se quedan en $0, buscador en el celular y detalles del tablero (12 de julio de 2026)
+## Novedades — Revisión del buzón: facturas que no se quedan en $0, buscador en el celular, "Nueva Tarea" en ventana y productos editables (12 de julio de 2026)
 
 - **Las facturas ya no se quedan en $0.00.** Si eliges una **cotización** o un
   **proyecto** y no capturas líneas a mano, la factura **toma el monto solo**:
@@ -40,6 +40,14 @@
   es lo normal para una entrega.
 - **Los globos de Tareas del menú** ya no llevan emojis pegados al nombre; ahora
   **cada globo** trae su emoji (🙋 tuyas · 👥 del despacho · 🛵 mandados).
+- **"Nueva Tarea" ahora abre en una ventana** (sin salir de donde estás): título
+  grande, Proyecto y Asignar a con buscador + accesos rápidos, un **calendario**
+  para la fecha y el tipo (Tarea/Entrega/Junta/Recoger) en pastillas. Es el
+  primer paso de rediseñar así todos los botones de "acciones rápidas".
+- **Productos editables en la misma lista.** En Productos hay un botón
+  **"✎ Edición rápida"**: escribes directo en las celdas (nombre, unidad,
+  categoría, costo, precio, disponible) y **se guardan solas**; el **margen** se
+  recalcula al momento.
 
 ## Novedades — Buzón #140–164: buscar en todos lados, CFDI en Facturación, cotizaciones en tarjetas y más (11 de julio de 2026)
 
