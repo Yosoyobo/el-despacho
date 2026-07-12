@@ -4740,7 +4740,7 @@ falla del sistema** + push global de Novedades. Se agregó el **candado CI**
 `test_ayuda_novedades.py` (una `VERSION_FECHA` sin su bloque de Novedades
 rompe el build).
 
-**Sprint deuda D1–D7 ✅ (2026-07-09, VERSION 2026.07.04 — release actual).**
+**Sprint deuda D1–D7 ✅ (2026-07-09, VERSION 2026.07.04).**
 Barrido de deuda diseñada, un commit por punto: **D1** pantalla admin de las
 **6 categorías core** de proveedor (nombre + color; las subcategorías heredan
 el color). **D2** detalle de proveedor a **3 columnas** (Wave 4) + productos
@@ -4751,6 +4751,70 @@ opcional con "🌐 Buscar en el mapa…"). **D5** imagen de producto: **pegar de
 portapapeles (Ctrl/Cmd+V)** o subir → Drive. **D6** modal corto de edición al
 clicar un evento del calendario. **D7** **drag&drop** de eventos en el grid
 del calendario para recolocar fecha. + fix Bug C (`{# #}` multilínea).
+
+**S-Buzon-140-164 ✅ — arco consolidado del buzón #140–164 (2026-07-11, VERSION 2026.07.05 — release actual).**
+8 secciones del handoff `SPRINT-Buzon-140-164.md`, un commit por sección.
+Decisiones §0 de Oscar: **#162 = SÍ** (la factura solo almacena PDF+XML del
+PAC), **#153 = habilitar** búsqueda + edición de catálogo por El Chalán,
+**#146a = ya hecho** (M2M libre en catálogo; un proveedor principal por línea
+de proyecto — sin cambio de modelo).
+- **§3 Proveedores (#164):** el filtro de 2.º nivel migró de la M2M vieja
+  `Servicio.proveedores` a `Proveedor.subcategorias` (nivel 1 =
+  `CategoriaProveedor`, nivel 2 = `SubcategoriaProveedor`); búsqueda `?q`
+  incluye subcategorías. **CRUD de las 19 subcategorías** en
+  `/catalogo/categorias-proveedor/`.
+- **§4 Combobox global:** `form_widgets.js` (dual) — combobox delegado sobre
+  cualquier `<select data-select-buscable>` (panel filtrable en escritorio,
+  picker nativo en móvil; NO reestructura el DOM → inmune a clones de formset
+  y swaps HTMX). Aplicado a Cliente/Producto/Proveedor/Impresión de
+  proyectos, cotizaciones y facturas. **Kanban de Proyectos (#156):** buscador
+  client-side con debounce + columnas colapsables (localStorage) + grid a 4
+  columnas ambas filas + «En pausa» primero.
+- **§1 Facturación (#162, +#148, #9, #6, #7, #1, bug):** la factura deja de
+  GENERAR PDF y ahora ALMACENA el CFDI del PAC — campos `xml_file_id/xml_url/
+  cfdi_uuid/cfdi_almacenado_en` (migr. `facturacion/0009`), `services.almacenar_cfdi`
+  + `pdf_bytes_almacenado`, vistas `descargar_pdf/descargar_xml` (proxy Drive) +
+  modal `almacenar_cfdi` (Wave 5, permitido con proyecto CERRADO). `enviar_por_correo`
+  y La Cobranza adjuntan el PDF almacenado. `construir_html_pdf` queda como
+  «vista rápida» no fiscal. `lib/adjuntos` acepta XML. **#9** panel «Facturas
+  ligadas» en el detalle del proyecto. **#6** autoselecciona la cotización más
+  reciente al elegir proyecto. **#7** etiqueta «Pagada»/«Pago parcial»
+  (`estado_etiqueta`). **#1/#161.3** régimen «IVA y Retenciones» por default;
+  el recuadro de tasas manuales solo aparece en régimen «IVA» (cero cambio de
+  cálculo). **Bug latente:** querysets de proyecto/cotizacion_origen estaban tras
+  un `return` (código muerto) → movidos a `__init__`.
+- **§2 Modal Registrar pago (#16/#163/#157):** hero con monto + toggle IVA;
+  proveedor de solo lectura cuando el gasto lo trae; método/estado como
+  pastillas; método default «Tarjeta empresa»; método personal ⇒ «Por
+  reembolsar» (front + `METODOS_REEMBOLSO` server-side); «¿Quién solicitó?»
+  pre-poblado con el Líder; la caja amarilla muestra IVA por línea. El
+  mini-calendario NO se usó (no re-inicializa en modales HTMX) — se dejó
+  `<input type=date>` con el botón «Hoy» de `ui.js`.
+- **§5 Cotizaciones (#160):** vista default = TARJETAS (proyecto protagonista)
+  con toggle a tabla; filtros de estado + cliente como pastillas HTMX (swap de
+  `#cot-panel`); prefetch para totales sin N+1. **#144h** el enlace del panel
+  del proyecto abre «Ver» (HTML inline) en vez de forzar la descarga.
+- **§6 Archivar tareas (#154):** `Tarea.archivada` (migr. `pizarron/0012`) —
+  soft-hide reversible del Kanban/listas/Dashboard, sigue en métricas; toggle
+  «Ver archivadas (N)» + botón Archivar/Desarchivar en el detalle.
+- **§7 Calendario (#140.5):** se quitó «Quitar fecha» (el toggle del día ya lo
+  hace); «Hoy» también en el calendario de Entrega.
+- **§8 El Chalán y el Catálogo (#153):** herramienta read-only `buscar_catalogo`
+  + ejecutor `actualizar_servicio` (gating `catalogo.editar`, helper nuevo
+  `puede_editar_catalogo`); borrar/archivar sigue fuera del Chalán
+  (`modificar_catalogo` genérico sigue prohibido).
+- **~26 tests nuevos** (proveedor subcategorías, combobox/kanban, PDF/CFDI +
+  almacenar, modal gasto, cotizaciones tarjetas, archivar tareas, chalán
+  catálogo). Fix transversal Bug C en varios templates nuevos.
+
+**NO incluye / deuda diseñada del arco:** el §4 combobox no se aplicó a TODOS
+los selects del sistema (solo a los de proyectos/cotizaciones/facturas — otros
+se pueden marcar `data-select-buscable` cuando se pidan); la imagen del producto
+sigue apareciendo solo al EDITAR, no al crear (el upload a Drive necesita el
+producto ya guardado); las tareas archivadas aún pueden aparecer en el
+Calendario (soft-hide se aplicó a Kanban/lista/Dashboard, no al calendario); el
+combobox usa picker nativo en móvil (decisión, no bug); el toggle IVA del modal
+de pago es informativo (no cambia el monto almacenado del egreso).
 
 ---
 

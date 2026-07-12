@@ -5,6 +5,50 @@
 
 ---
 
+## Novedades — Buzón #140–164: buscar en todos lados, CFDI en Facturación, cotizaciones en tarjetas y más (11 de julio de 2026)
+
+- **Buscador para escribir en los dropdowns.** En los menús largos (Cliente,
+  Producto, Proveedor, Impresión) ahora al abrirlos aparece una cajita para
+  **escribir y filtrar** al instante en vez de bajar con el mouse. En el celular
+  se sigue usando el selector de siempre.
+- **Tablero de Proyectos con buscador y columnas que se colapsan.** Arriba del
+  Kanban hay una **búsqueda** por nombre/cliente/código; cada columna tiene una
+  flecha **▾** para colapsarla (se recuerda). Las 8 columnas ahora caben en una
+  sola fila; "En pausa" quedó primero abajo.
+- **Proveedores: el 2.º filtro ahora sí son subcategorías.** El filtro de abajo
+  en Proveedores muestra las **subcategorías** (Serigrafía, Bordado, Telas…), no
+  los productos. Además, en Productos → Proveedores → **Categorías** puedes
+  crear y editar las **subcategorías** (nombre, categoría, orden, activar).
+- **Facturación guarda el CFDI del PAC (ya no genera el PDF).** La factura ya no
+  crea su propio PDF: el contador te entrega el **PDF y el XML timbrados** y los
+  **subes** con el botón **"Cargar CFDI"** (también puedes guardar el folio
+  fiscal). Desde el detalle descargas el PDF y el XML cuando quieras. La "Vista
+  rápida" sigue existiendo, pero es solo un borrador imprimible (no es el CFDI).
+  Puedes cargar el CFDI aunque el proyecto ya esté cerrado.
+- **Factura más rápida de llenar.** Al elegir el proyecto se **preselecciona la
+  cotización más reciente**; el régimen por defecto es **"IVA y Retenciones"**;
+  el estado se muestra como **"Pagada" / "Pago parcial"**; y en el proyecto hay
+  un recuadro nuevo de **"Facturas ligadas"** debajo de las Cotizaciones.
+- **Modal "Registrar pago" rediseñado.** Monto grande arriba con **toggle de
+  IVA** que recalcula al momento; el **proveedor** se muestra fijo (no se puede
+  cambiar por error); **método** y **estado** son pastillas; el método por
+  defecto es **"Tarjeta empresa"** y si eliges un método personal el estado pasa
+  solo a **"Por reembolsar"**; "¿Quién solicitó?" viene con el **Líder** del
+  proyecto. La caja de pagos pendientes muestra el **IVA por línea**.
+- **Cotizaciones en tarjetas.** La lista de Cotizaciones ahora se ve en
+  **tarjetas** (con el nombre del proyecto grande), con filtros de **estado** y
+  **cliente** en pastillas que se combinan sin recargar. Puedes cambiar a **tabla**
+  con el botón de arriba.
+- **Archivar tareas.** En una tarea puedes **📦 Archivar** para esconderla del
+  tablero sin borrarla (es reversible con **Desarchivar** y sigue contando en los
+  reportes). En el tablero hay un enlace **"Ver archivadas (N)"**.
+- **El Chalán ya busca y edita productos.** Puedes pedirle *"busca el producto
+  Playera"* o *"¿qué productos surte Telas del Norte?"*, y también *"súbele el
+  precio a las tazas a 45"* — edita el producto (según tu permiso de Productos).
+- **Calendario:** se quitó el botón **"Quitar fecha"** (basta con volver a tocar
+  el día ya elegido para quitarla) y el botón **"Hoy"** ahora aparece también en
+  el calendario de Entrega.
+
 ## Novedades — Proveedores por categoría, calendario que arrastras, pegar imágenes y más pulido (9 de julio de 2026)
 
 - **Categorías de proveedor editables.** En Productos → Proveedores → **Categorías**
@@ -36,9 +80,12 @@
   elijas en el proyecto lo heredan sus cotizaciones y facturas, y las cuentas cuadran al
   centavo (ejemplo real: importe $33,770 → total neto **$35,148.94**). Las tasas se
   configuran en La Gerencia → Ajustes → Fiscal.
-- **Ver el PDF al instante.** El botón **👁 Ver** abre la cotización o factura de inmediato
-  en una pestaña (se acabó la "pantalla azul" de espera). El botón **⬇ Descargar PDF**
-  genera el archivo con el formato de Learning Center cuando lo necesitas.
+- **Ver el documento al instante.** El botón **👁 Vista rápida** abre la cotización o
+  factura de inmediato en una pestaña (se acabó la "pantalla azul" de espera). En
+  **cotizaciones**, **⬇ Descargar PDF** genera el archivo con el formato de Learning
+  Center. En **facturas**, el PDF y el XML son los del **CFDI que timbra tu contador**:
+  se suben con **"Cargar CFDI"** y se descargan desde el detalle (la Vista rápida de la
+  factura es solo un borrador imprimible, no el comprobante fiscal).
 - **Registrar un gasto desde el proyecto es más rápido.** El formulario ya viene lleno: el
   proveedor del insumo queda fijo, "quién solicitó" es el líder del proyecto, y el método de
   pago y estado usan **pastillas** (Tarjeta empresa por defecto). Si eliges *Efectivo

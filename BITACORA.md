@@ -6056,12 +6056,64 @@ fixes runner (06.73).
   clicar un evento; D7 drag&drop de eventos en el calendario para recolocar fecha;
   fix Bug C.
 
-## Estado al cierre (2026-07-09)
+## Sesión 2026-07-11 — Buzón #140–164 (S-Buzon-140-164, VERSION 2026.07.05)
 
-- `lib/version.py`: **`VERSION = 2026.07.04`** · `VERSION_FECHA = "9 de julio de 2026"`.
-- Árbol git limpio; último commit `ee8fdfb` (release D1–D7).
-- `docs/DOC_05_MANUAL_USUARIO.md`: **al día** — un bloque `## Novedades` por
-  release desde el 12-jun, el más reciente = `VERSION_FECHA`; blindado por
-  `tests/test_ayuda_novedades.py` en CI.
+Arco consolidado del handoff `SPRINT-Buzon-140-164.md` (8 secciones, un commit
+por sección). Decisiones §0 de Oscar: **#162 SÍ** (factura solo almacena
+PDF+XML del PAC), **#153 habilitar** búsqueda + edición de catálogo por El
+Chalán, **#146a ya hecho** (sin cambio de modelo).
+
+- **§3 Proveedores (#164, `a6c750d`):** filtro de 2.º nivel migrado de la M2M
+  vieja `Servicio.proveedores` a `Proveedor.subcategorias` (nivel 1
+  `CategoriaProveedor`, nivel 2 `SubcategoriaProveedor`); búsqueda `?q` incluye
+  subcategorías; **CRUD de las 19 subcategorías** en Gerencia-style dentro de
+  El Taller (`/catalogo/categorias-proveedor/`).
+- **§4 Combobox + Kanban (`168314e`):** combobox delegado
+  `[data-select-buscable]` en `form_widgets.js` (dual) — panel filtrable en
+  escritorio, picker nativo en móvil, sin reestructurar DOM (inmune a clones /
+  swaps). Aplicado a cliente/producto/proveedor/impresión. Kanban de Proyectos
+  con buscador debounce + columnas colapsables (localStorage) + grid 4-col +
+  «En pausa» primero.
+- **§1 Facturación (`46afcb2`):** #162 la factura ALMACENA el CFDI del PAC
+  (migr. `facturacion/0009`, `almacenar_cfdi`, proxy descarga PDF/XML, modal
+  Wave 5, permitido con proyecto cerrado #148); `enviar_por_correo`/Cobranza
+  adjuntan el PDF almacenado; `lib/adjuntos` acepta XML. #9 panel «Facturas
+  ligadas», #6 autoselect cotización reciente, #7 etiqueta «Pagada», #1 régimen
+  IVA+Ret default + recuadro de tasas solo en régimen «IVA», bug de querysets
+  código-muerto (movidos a `__init__`).
+- **§2 Modal Registrar pago (`89b0f46`):** hero + toggle IVA, proveedor
+  read-only, método/estado en pastillas, default «Tarjeta empresa», personal ⇒
+  «Por reembolsar» (front + `METODOS_REEMBOLSO`), «¿Quién solicitó?» = Líder,
+  IVA por línea en la caja amarilla (#157). Minical NO usado en modal HTMX
+  (usa `<input type=date>` + «Hoy» de ui.js).
+- **§5 Cotizaciones (`8887ea9`):** vista tarjetas default + toggle tabla +
+  filtros estado/cliente en pastillas HTMX (swap `#cot-panel`) + prefetch
+  totales; #144h enlace del panel del proyecto abre «Ver» inline.
+- **§6 Archivar tareas (`c277dfd`):** `Tarea.archivada` (migr. `pizarron/0012`)
+  soft-hide reversible (Kanban/lista/Dashboard), sigue en métricas; toggle «Ver
+  archivadas (N)» + botón en el detalle.
+- **§7 Calendario (`92ad5eb`):** #140.5 quitado «Quitar fecha» (toggle del día
+  lo hace) + «Hoy» en el calendario de Entrega.
+- **§8 El Chalán + Catálogo (`8754f17`):** herramienta read-only
+  `buscar_catalogo` + ejecutor `actualizar_servicio` (gating `catalogo.editar`);
+  borrar/archivar sigue prohibido para el Chalán.
+
+**Tests:** ~26 nuevos, todos verdes en local por bloque. Fix transversal Bug C
+(comentarios `{# #}` multilínea) en varios templates nuevos. Migraciones a mano
+(app_label de tareas = `pizarron`, no `el_pizarron`).
+
+**Deuda diseñada:** combobox no aplicado a TODOS los selects del sistema (solo
+proyectos/cotizaciones/facturas); imagen de producto sigue solo al editar (no
+al crear); tareas archivadas aún visibles en el Calendario; toggle IVA del modal
+de pago es informativo (no cambia el monto del egreso).
+
+## Estado al cierre (2026-07-11)
+
+- `lib/version.py`: **`VERSION = 2026.07.05`** · `VERSION_FECHA = "11 de julio de 2026"`.
+- **En rama `sprint/buzon-140-164`** (8 commits de feature + docs). **Pendiente
+  de revisión de Oscar (Novedades vs. checklist) + merge a `main` + push.** No
+  se hizo push ni deploy — El Mensajero despliega al llegar a `main`.
+- `docs/DOC_05_MANUAL_USUARIO.md`: **al día** — nuevo bloque `## Novedades`
+  del 11-jul (= `VERSION_FECHA`); cuerpo de Facturación actualizado a CFDI.
 - **Deuda abierta pendiente de repro:** bug #1 de LC-Feedback-V13 (fecha de tarea
   → compromiso del proyecto) — sin código que lo cause; esperar caso de Oscar.
