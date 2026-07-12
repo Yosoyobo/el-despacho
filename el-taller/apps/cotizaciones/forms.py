@@ -55,6 +55,10 @@ class CotizacionForm(forms.ModelForm):
         from apps.los_proyectos.models import Proyecto
         _mgr = getattr(Proyecto, "activos", Proyecto.objects)
         self.fields["proyecto"].queryset = _mgr.all()
+        # LC Buzón §4: combobox type-to-search en Cliente y Proyecto.
+        for _c in ("cliente", "proyecto"):
+            if _c in self.fields:
+                self.fields[_c].widget.attrs["data-select-buscable"] = "1"
         # S-LC-Feedback-V4 hotfix: defaults del modelo NO los aplica Django a
         # un ModelForm unbound. Si no hay instancia, pre-llenamos los campos
         # para que el usuario no tenga que escribir MXN / 0.00 / fecha hoy.
@@ -106,6 +110,9 @@ class CotizacionItemForm(forms.ModelForm):
         self.fields["servicio"].required = False
         self.fields["variacion"].required = False
         self.fields["descripcion"].required = False
+        # LC Buzón §4: combobox type-to-search en el Producto de cada línea.
+        if "servicio" in self.fields:
+            self.fields["servicio"].widget.attrs["data-select-buscable"] = "1"
         # S-LC-Feedback-V4 hotfix: defaults visibles en filas nuevas. El default
         # del modelo es "pieza" (lowercase, legacy) — usamos "Piezas" del
         # catálogo para evitar el "(legacy)" en el dropdown.

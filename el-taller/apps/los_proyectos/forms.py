@@ -80,7 +80,10 @@ class FechaHoraMixin:
 
 
 class ProyectoForm(FechaHoraMixin, forms.ModelForm):
-    cliente = forms.ModelChoiceField(queryset=Cliente.activos.all())
+    cliente = forms.ModelChoiceField(
+        queryset=Cliente.activos.all(),
+        widget=forms.Select(attrs={"data-select-buscable": "1"}),
+    )
     estado = forms.ChoiceField(choices=[])
     pares_fecha_hora = (("fecha_inicio", "Inicio"), ("fecha_compromiso", "Entrega"))
     # LC 2026-07: el toggle IVA/exento pasa a un selector de régimen fiscal
@@ -226,6 +229,10 @@ class ProyectoProductoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # LC Buzón §4: combobox type-to-search en Producto y Proveedor.
+        for _c in ("servicio", "proveedor"):
+            if _c in self.fields:
+                self.fields[_c].widget.attrs["data-select-buscable"] = "1"
         # LC 2026-07: el dropdown de Producto muestra «Nombre - Proveedor».
         def _etiqueta_servicio(s):
             prov = next((p for p in s.proveedores.all() if p.activo), None)

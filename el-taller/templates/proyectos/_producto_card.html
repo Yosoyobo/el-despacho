@@ -64,7 +64,7 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
             <div class="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_120px_auto_auto] md:items-end" data-impresion>
                 <div>
                     <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
-                    <select class="imp-proveedor w-full">
+                    <select class="imp-proveedor w-full" data-select-buscable>
                         <option value="">— Sin impresión —</option>
                         {% for prov in proveedores_activos %}
                         <option value="{{ prov.pk }}" {% if f.proc_impresion and f.proc_impresion.proveedor_id == prov.pk %}selected{% endif %}>{{ prov.razon_social }}</option>

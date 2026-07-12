@@ -4,8 +4,11 @@
      style="border-top-color: {{ col.slug|color_estado }}"
      data-estado="{{ col.slug }}">
     <header class="mb-3 flex items-center justify-between gap-2 px-1">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ col.label }}</h2>
-        <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-2 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700">{{ col.total }}</span>
+        <h2 class="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200">
+            {% if colapsable %}<button type="button" class="kanban-colapsar shrink-0 text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-200" aria-label="Colapsar/expandir columna" title="Colapsar/expandir">▾</button>{% endif %}
+            <span class="truncate">{{ col.label }}</span>
+        </h2>
+        <span class="kanban-contador inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-white px-2 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700" data-total="{{ col.total }}">{{ col.total }}</span>
     </header>
     <div class="kanban-dropzone space-y-2.5 min-h-[20px]">
         {% for p in col.proyectos %}
@@ -13,6 +16,7 @@
            draggable="true"
            data-proyecto-id="{{ p.pk }}"
            data-estado-actual="{{ p.estado }}"
+           data-buscar="{{ p.nombre|lower }} {{ p.cliente.razon_social|lower }} {{ p.codigo|lower }}"
            style="border-left-color: {{ p.estado|color_estado }}"
            class="kanban-card block min-w-0 cursor-grab rounded-xl border border-l-4 border-gray-200 bg-white p-2.5 shadow-theme-xs transition hover:border-brand-300 hover:shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500 active:cursor-grabbing">
             {% comment %}V6 Bloque 3: nombre prominente, CLIENTE en la posición del código (el código sigue visible en lista/detalle).{% endcomment %}

@@ -67,6 +67,58 @@
             dragId = null; dragSrc = null;
         });
     });
+    // --- Buscador del Kanban (LC Buzón §156) — filtrado client-side, debounce ---
+    var buscar = document.getElementById('kanban-buscar');
+    if (buscar) {
+        var norm = function (s) { return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); };
+        var sinRes = document.getElementById('kanban-sin-resultados');
+        var t = null;
+        var aplicar = function () {
+            var q = norm(buscar.value.trim());
+            var totalVis = 0;
+            document.querySelectorAll('.kanban-columna').forEach(function (col) {
+                var vis = 0;
+                col.querySelectorAll('.kanban-card').forEach(function (card) {
+                    var hay = !q || norm(card.getAttribute('data-buscar') || '').indexOf(q) !== -1;
+                    card.classList.toggle('hidden', !hay);
+                    if (hay) vis++;
+                });
+                totalVis += vis;
+                var cont = col.querySelector('.kanban-contador');
+                if (cont) {
+                    var tot = cont.getAttribute('data-total') || String(vis);
+                    cont.textContent = q ? (vis + '/' + tot) : tot;
+                }
+            });
+            if (sinRes) sinRes.classList.toggle('hidden', !(q && totalVis === 0));
+        };
+        buscar.addEventListener('input', function () { clearTimeout(t); t = setTimeout(aplicar, 150); });
+    }
+
+    // --- Columnas colapsables (LC Buzón §158/159) — persistido en localStorage ---
+    var LS_COL = 'kanban-colapsadas';
+    var leerCol = function () { try { return JSON.parse(localStorage.getItem(LS_COL) || '[]'); } catch (_) { return []; } };
+    var colapsadas = leerCol();
+    document.querySelectorAll('.kanban-columna').forEach(function (col) {
+        var slug = col.getAttribute('data-estado');
+        var zona = col.querySelector('.kanban-dropzone');
+        var btn = col.querySelector('.kanban-colapsar');
+        if (!btn || !zona) return;
+        var pintar = function () {
+            var oculto = colapsadas.indexOf(slug) !== -1;
+            zona.classList.toggle('hidden', oculto);
+            btn.textContent = oculto ? '▸' : '▾';
+        };
+        pintar();
+        btn.addEventListener('click', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            var i = colapsadas.indexOf(slug);
+            if (i === -1) colapsadas.push(slug); else colapsadas.splice(i, 1);
+            try { localStorage.setItem(LS_COL, JSON.stringify(colapsadas)); } catch (_) {}
+            pintar();
+        });
+    });
+
     // Token CSRF oculto para la página (necesario porque no hay <form> visible).
     if (!document.querySelector('input[name="csrfmiddlewaretoken"]')) {
         const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
