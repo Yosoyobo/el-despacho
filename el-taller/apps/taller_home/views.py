@@ -190,6 +190,7 @@ def _mis_tareas(user):
     qs = (
         Tarea.objects.filter(Q(asignada_a=user) | Q(responsables=user) | Q(runner=user))
         .exclude(estado="completada")
+        .filter(archivada=False)  # LC #154: las archivadas no saturan el Dashboard
         .select_related("proyecto__cliente")
         .order_by("fecha_compromiso")
         .distinct()

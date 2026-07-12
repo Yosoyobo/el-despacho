@@ -40,6 +40,10 @@ runners (solo ven sus mandados). {% endcomment %}
     {% if hay_filtros %}
     <a href="{{ url_limpiar }}" class="ml-1 text-xs text-gray-400 underline hover:text-gray-600 dark:hover:text-gray-300">Limpiar filtros</a>
     {% endif %}
+    {# LC #154: toggle «Ver archivadas» con contador. #}
+    {% if archivadas_count or mostrar_archivadas %}
+    <a href="{{ url_toggle_archivadas }}" class="ml-1 text-xs {% if mostrar_archivadas %}font-medium text-brand-600 dark:text-brand-400{% else %}text-gray-400 hover:text-gray-600 dark:hover:text-gray-300{% endif %}">{% if mostrar_archivadas %}← Volver al tablero{% else %}📦 Ver archivadas ({{ archivadas_count }}){% endif %}</a>
+    {% endif %}
     <span class="ml-auto text-xs text-gray-400 dark:text-gray-500">{{ total }} tarea{{ total|pluralize }}</span>
 </div>
 {% else %}

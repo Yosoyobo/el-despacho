@@ -74,6 +74,11 @@ class Tarea(models.Model):
     # no avisado.
     aviso_cumplido_en = models.DateTimeField(null=True, blank=True)
 
+    # LC #154: soft-hide del Kanban / listas (reversible, un clic). NO borra —
+    # la tarea sigue contando en métricas históricas. Es ortogonal al estado del
+    # flujo (pendiente/en_curso/completada); archivar solo la esconde de la vista.
+    archivada = models.BooleanField(default=False, db_index=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,

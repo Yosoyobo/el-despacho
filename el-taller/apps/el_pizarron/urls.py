@@ -12,6 +12,7 @@ urlpatterns = [
     path("tareas/<int:pk>/", views.detalle_tarea, name="pizarron-detalle-tarea"),
     path("tareas/<int:pk>/editar", views.editar_tarea, name="pizarron-editar-tarea"),
     path("tareas/<int:pk>/eliminar", views.eliminar_tarea, name="pizarron-eliminar-tarea"),
+    path("tareas/<int:pk>/archivar", views.archivar_tarea, name="pizarron-archivar-tarea"),
     path("tareas/<int:pk>/editar-rapido", views.editar_tarea_rapido, name="pizarron-editar-tarea-rapido"),
     path("tareas/<int:pk>/comentar", views.comentar_tarea, name="pizarron-comentar-tarea"),
     path("tareas/<int:pk>/completar", views.completar_tarea, name="pizarron-completar-tarea"),

@@ -83,6 +83,14 @@
                     <button type="submit" class="btn-primario">Marcar completada</button>
                 </form>
                 {% endif %}
+                {# LC #154: archivar (soft-hide reversible) — no borra, sigue en métricas. #}
+                <form method="post" action="{% url 'pizarron-archivar-tarea' tarea.pk %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'pizarron-detalle-tarea' tarea.pk %}">
+                    <button type="submit" class="btn-secundario" title="{% if tarea.archivada %}Volver a mostrarla en el tablero{% else %}Esconder del tablero (reversible; sigue contando en métricas){% endif %}">
+                        {% if tarea.archivada %}📤 Desarchivar{% else %}📦 Archivar{% endif %}
+                    </button>
+                </form>
             {% endif %}
             {% if puede_eliminar %}
             <form method="post" action="{% url 'pizarron-eliminar-tarea' tarea.pk %}" class="inline"

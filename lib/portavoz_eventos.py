@@ -33,6 +33,7 @@ EventoTipo = Literal[
     "tarea.creada",
     "tarea.completada",
     "tarea.eliminada",
+    "tarea.archivada",
     "tarea.recordatorio",
     "tarea.estado_creado",
     "tarea.estado_actualizado",

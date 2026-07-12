@@ -74,6 +74,10 @@ def lista_tareas(request):
         # Por defecto ocultamos las cerradas (se ven con el filtro explícito).
         qs = qs.exclude(estado__in=terminales)
 
+    # LC #154: el listado oculta las archivadas (las métricas de abajo, que usan
+    # `visibles`, sí las siguen contando).
+    qs = qs.filter(archivada=False)
+
     solo_mias = request.GET.get("asignado") == "mio"
     if solo_mias:
         qs = qs.filter(Q(asignada_a=user) | Q(responsables=user)).distinct()
@@ -140,6 +144,11 @@ def kanban_tareas(request):
     user = request.user
     visibles = _tareas_visibles(user)
 
+    # LC #154: por default se ocultan las archivadas; «Ver archivadas» las
+    # muestra solas (para desarchivar). El contador viene del total visible.
+    mostrar_archivadas = request.GET.get("archivadas") == "1"
+    archivadas_count = visibles.filter(archivada=True).count()
+
     estados_def = list(EstadoTarea.objects.filter(activo=True))
     slugs_validos = {e.slug for e in estados_def}
 
@@ -179,6 +188,8 @@ def kanban_tareas(request):
         qs = qs.exclude(tipo__in=TIPOS_RUNNER)
     elif cat == "mandados":
         qs = qs.filter(tipo__in=TIPOS_RUNNER)
+    # LC #154: soft-hide de archivadas (o vista dedicada de archivadas).
+    qs = qs.filter(archivada=mostrar_archivadas)
 
     tareas = list(qs.order_by("fecha_compromiso", "-creado_en")[:500])
     por_estado: dict[str, list] = {}
@@ -235,6 +246,11 @@ def kanban_tareas(request):
         "url_limpiar": "?f=1" + ("&cat=" + cat if cat != "todas" else ""),
         "hay_filtros": bool(estados_sel or personas_sel),
         "total": len(tareas),
+        # LC #154: toggle «Ver archivadas» + contador.
+        "mostrar_archivadas": mostrar_archivadas,
+        "archivadas_count": archivadas_count,
+        "url_toggle_archivadas": _qs_filtros(estados_sel, personas_sel, cat)
+            + ("" if mostrar_archivadas else "&archivadas=1"),
     })
 
 
@@ -431,6 +447,30 @@ def eliminar_tarea(request, pk):
     ))
     messages.success(request, f"Tarea «{titulo[:60]}» eliminada.")
     destino = request.POST.get("next") or reverse("proyectos-detalle", args=[proyecto_pk])
+    return redirect(destino)
+
+
+@login_required
+def archivar_tarea(request, pk):
+    """LC #154: archiva/desarchiva una tarea (soft-hide reversible). NO borra —
+    sigue en métricas. POST puro. Cualquiera que pueda ver la tarea la archiva."""
+    tarea = get_object_or_404(Tarea.objects.select_related("proyecto"), pk=pk)
+    if not puede_ver_tarea(request.user, tarea):
+        return HttpResponseForbidden()
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    tarea.archivada = not tarea.archivada
+    tarea.save(update_fields=["archivada"])
+    emitir(EventoPortavoz(
+        tipo="tarea.archivada",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"tarea_id": tarea.pk, "archivada": tarea.archivada,
+                 "proyecto_id": tarea.proyecto_id},
+    ))
+    messages.success(
+        request,
+        f"Tarea «{tarea.titulo[:60]}» {'archivada' if tarea.archivada else 'desarchivada'}.")
+    destino = request.POST.get("next") or reverse("tareas-kanban")
     return redirect(destino)
 
 
