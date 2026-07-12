@@ -60,8 +60,14 @@ def test_archivar_proveedor_toggle(client, usuario_factory):
 
 @pytest.fixture
 def _taxonomia():
-    """Dos categorías con un servicio cada una, y un proveedor por categoría."""
-    from apps.el_catalogo.models import CategoriaServicio, Proveedor, Servicio
+    """Dos servicios (M2M viejo, para stats/Productos) + subcategorías de
+    proveedor (taxonomía nueva #164) que alimentan los filtros de la lista."""
+    from apps.el_catalogo.models import (
+        CategoriaServicio,
+        Proveedor,
+        Servicio,
+        SubcategoriaProveedor,
+    )
     impr, _ = CategoriaServicio.objects.get_or_create(nombre="ImpresiónTest", defaults={"orden": 200})
     conf, _ = CategoriaServicio.objects.get_or_create(nombre="ConfecciónTest", defaults={"orden": 210})
     srv_serig = Servicio.objects.create(nombre="SerigrafíaTest", categoria=impr, precio_base=100, costo=40)
@@ -70,28 +76,36 @@ def _taxonomia():
     prov_b = Proveedor.objects.create(razon_social="TextilesDos", activo=True)
     srv_serig.proveedores.add(prov_a)
     srv_telas.proveedores.add(prov_b)
+    # #164: los filtros de la lista usan Proveedor.subcategorias (taxonomía
+    # nueva sembrada). prov_a → Impresión·Serigrafía; prov_b → Materiales·Telas.
+    sub_serig = SubcategoriaProveedor.objects.get(slug="serigrafia")
+    sub_telas = SubcategoriaProveedor.objects.get(slug="telas")
+    prov_a.subcategorias.add(sub_serig)
+    prov_b.subcategorias.add(sub_telas)
     return {"impr": impr, "conf": conf, "srv_serig": srv_serig, "srv_telas": srv_telas,
-            "prov_a": prov_a, "prov_b": prov_b}
+            "prov_a": prov_a, "prov_b": prov_b,
+            "cat_impr": sub_serig.categoria, "sub_serig": sub_serig, "sub_telas": sub_telas}
 
 
-def test_filtro_categoria_acota_servicios_y_proveedores(client, usuario_factory, _taxonomia):
+def test_filtro_categoria_acota_subcategorias_y_proveedores(client, usuario_factory, _taxonomia):
+    """#164: nivel 1 = CategoriaProveedor; nivel 2 = subcategorías (no productos)."""
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
-    resp = client.get(f"/catalogo/proveedores/?categoria={_taxonomia['impr'].pk}")
+    resp = client.get(f"/catalogo/proveedores/?categoria={_taxonomia['cat_impr'].pk}")
     assert resp.status_code == 200
     body = resp.content.decode()
-    # Proveedor de Impresión sí, el de Confección no.
+    # Proveedor con subcategoría de Impresión sí; el de Materiales no.
     assert "ImprentaUno" in body
     assert "TextilesDos" not in body
-    # El 2º filtro (servicios) se acota a la categoría: SerigrafíaTest sí, TelasTest no.
-    assert "SerigrafíaTest" in body
-    assert "TelasTest" not in body
+    # El 2º filtro muestra la subcategoría de la categoría elegida.
+    assert _taxonomia["sub_serig"].nombre in body
 
 
-def test_filtro_servicio_acota_proveedores(client, usuario_factory, _taxonomia):
+def test_filtro_subcategoria_acota_proveedores(client, usuario_factory, _taxonomia):
+    """#164: filtrar por subcategoría acota los proveedores."""
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
-    resp = client.get(f"/catalogo/proveedores/?servicio={_taxonomia['srv_telas'].pk}")
+    resp = client.get(f"/catalogo/proveedores/?subcategoria={_taxonomia['sub_telas'].pk}")
     assert resp.status_code == 200
     body = resp.content.decode()
     assert "TextilesDos" in body
