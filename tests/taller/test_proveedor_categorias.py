@@ -70,3 +70,71 @@ def test_admin_editar_color_hereda_a_subcategorias(client, usuario_factory):
     # La subcategoría hereda el nuevo color.
     sub = SubcategoriaProveedor.objects.get(slug="serigrafia")
     assert sub.color == "#123456"
+
+
+# ── LC #164: el 2º filtro migra de productos (M2M vieja) a subcategorías ──────
+
+def test_filtro_por_subcategoria(client, usuario_factory):
+    from apps.el_catalogo.models import Proveedor, SubcategoriaProveedor
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    serig = SubcategoriaProveedor.objects.get(slug="serigrafia")
+    telas = SubcategoriaProveedor.objects.get(slug="telas")
+    p_serig = Proveedor.objects.create(razon_social="Impresos ACME", activo=True)
+    p_serig.subcategorias.add(serig)
+    p_telas = Proveedor.objects.create(razon_social="Telas SA", activo=True)
+    p_telas.subcategorias.add(telas)
+    resp = client.get(f"/catalogo/proveedores/?subcategoria={serig.pk}")
+    assert resp.status_code == 200
+    assert b"Impresos ACME" in resp.content
+    assert b"Telas SA" not in resp.content
+
+
+def test_filtro_por_categoria_core(client, usuario_factory):
+    from apps.el_catalogo.models import CategoriaProveedor, Proveedor, SubcategoriaProveedor
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    impresion = CategoriaProveedor.objects.get(slug="impresion")
+    serig = SubcategoriaProveedor.objects.get(slug="serigrafia")
+    telas = SubcategoriaProveedor.objects.get(slug="telas")
+    p1 = Proveedor.objects.create(razon_social="Solo Impresion", activo=True)
+    p1.subcategorias.add(serig)
+    p2 = Proveedor.objects.create(razon_social="Solo Telas", activo=True)
+    p2.subcategorias.add(telas)
+    resp = client.get(f"/catalogo/proveedores/?categoria={impresion.pk}")
+    assert resp.status_code == 200
+    assert b"Solo Impresion" in resp.content
+    assert b"Solo Telas" not in resp.content
+
+
+def test_chips_2do_nivel_son_subcategorias(client, usuario_factory):
+    """LC #164: el segundo filtro muestra SUBcategorías, no productos del catálogo."""
+    from apps.el_catalogo.models import CategoriaProveedor
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    impresion = CategoriaProveedor.objects.get(slug="impresion")
+    resp = client.get(f"/catalogo/proveedores/?categoria={impresion.pk}")
+    assert resp.status_code == 200
+    assert b"Serigraf\xc3\xada" in resp.content        # subcategoría de Impresión → chip
+    assert b"Subcategor\xc3\xadas" in resp.content     # encabezado del 2º filtro
+
+
+def test_crud_subcategoria_crear_y_editar(client, usuario_factory):
+    from apps.el_catalogo.models import CategoriaProveedor, SubcategoriaProveedor
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    core = CategoriaProveedor.objects.get(slug="materiales")
+    # Crear (slug autogenerado)
+    resp = client.post("/catalogo/categorias-proveedor/subcategorias/nueva", {
+        "categoria": core.pk, "nombre": "Vinil adhesivo", "orden": 50, "activa": "on",
+    })
+    assert resp.status_code in (301, 302)
+    sub = SubcategoriaProveedor.objects.get(nombre="Vinil adhesivo")
+    assert sub.slug and sub.categoria_id == core.pk
+    # Editar: cambia orden y desactiva (sin enviar 'activa')
+    resp = client.post(f"/catalogo/categorias-proveedor/subcategorias/{sub.pk}/editar", {
+        "categoria": core.pk, "nombre": "Vinil adhesivo", "orden": 60,
+    })
+    assert resp.status_code in (301, 302)
+    sub.refresh_from_db()
+    assert sub.orden == 60 and sub.activa is False

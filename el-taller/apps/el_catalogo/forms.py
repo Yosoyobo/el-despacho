@@ -1,6 +1,7 @@
 from django import forms
 
 from .models import (
+    CategoriaProveedor,
     CategoriaServicio,
     Proveedor,
     Servicio,
@@ -101,6 +102,27 @@ class CategoriaProveedorForm(forms.ModelForm):
 
     def clean_color(self):
         return (self.cleaned_data.get("color") or "").strip() or "#667085"
+
+
+class SubcategoriaProveedorForm(forms.ModelForm):
+    """Alta/edición de una subcategoría de proveedor. Hereda el color de su
+    categoría CORE (LC #164). El `slug` se autogenera en la vista."""
+    activa = forms.BooleanField(required=False, label="Activa", initial=True)
+
+    class Meta:
+        model = SubcategoriaProveedor
+        fields = ["categoria", "nombre", "orden", "activa"]
+        labels = {
+            "categoria": "Categoría principal",
+            "nombre": "Nombre",
+            "orden": "Orden (menor = primero)",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["categoria"].queryset = (
+            CategoriaProveedor.objects.filter(activa=True).order_by("orden", "nombre")
+        )
 
 
 class ServicioForm(forms.ModelForm):

@@ -9,11 +9,11 @@
 <form method="get" class="campo-form mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="flex-1 min-w-[240px]">
         <label for="prov-q" class="sr-only">Buscar</label>
-        <input id="prov-q" name="q" type="search" value="{{ q }}" placeholder="Buscar por nombre, contacto, categoría, servicio, o proyecto…">
+        <input id="prov-q" name="q" type="search" value="{{ q }}" placeholder="Buscar por nombre, contacto, categoría, subcategoría, producto o proyecto…">
     </div>
-    {# preserva filtros de categoría/servicio al buscar #}
+    {# preserva filtros de categoría/subcategoría al buscar #}
     {% if categoria_id %}<input type="hidden" name="categoria" value="{{ categoria_id }}">{% endif %}
-    {% if servicio_id %}<input type="hidden" name="servicio" value="{{ servicio_id }}">{% endif %}
+    {% if subcategoria_id %}<input type="hidden" name="subcategoria" value="{{ subcategoria_id }}">{% endif %}
     <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
         <input type="checkbox" name="archivados" value="1" {% if incluir_archivados %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
         Incluir desactivados
@@ -34,13 +34,13 @@
         {% endfor %}
     </div>
     <div class="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-        <span class="mr-1 w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Servicios</span>
-        <a href="?{{ qs_preserva }}{% if qs_preserva %}&{% endif %}{% if categoria_id %}categoria={{ categoria_id }}{% endif %}" class="rounded-full px-3.5 py-1.5 text-sm transition {% if not servicio_id %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300{% endif %}">Todos</a>
-        {% for s in servicios_chips %}
-        <a href="?{{ qs_preserva }}{% if qs_preserva %}&{% endif %}categoria={{ s.categoria_id }}&servicio={{ s.id }}"
-           class="rounded-full px-3.5 py-1.5 text-sm transition {% if servicio_id == s.id|stringformat:'s' %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ s.nombre }}</a>
+        <span class="mr-1 w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Subcategorías</span>
+        <a href="?{{ qs_preserva }}{% if qs_preserva %}&{% endif %}{% if categoria_id %}categoria={{ categoria_id }}{% endif %}" class="rounded-full px-3.5 py-1.5 text-sm transition {% if not subcategoria_id %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300{% endif %}">Todas</a>
+        {% for s in subcategorias_chips %}
+        <a href="?{{ qs_preserva }}{% if qs_preserva %}&{% endif %}categoria={{ s.categoria_id }}&subcategoria={{ s.id }}"
+           class="rounded-full px-3.5 py-1.5 text-sm transition {% if subcategoria_id == s.id|stringformat:'s' %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ s.nombre }}</a>
         {% empty %}
-        <span class="text-sm text-gray-400 dark:text-gray-500">Sin servicios en esta categoría.</span>
+        <span class="text-sm text-gray-400 dark:text-gray-500">Sin subcategorías{% if categoria_id %} en esta categoría{% endif %}.</span>
         {% endfor %}
     </div>
 </div>

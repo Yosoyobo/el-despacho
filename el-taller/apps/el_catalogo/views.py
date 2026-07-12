@@ -27,10 +27,19 @@ from .forms import (
     CategoriaProveedorForm,
     ProveedorForm,
     ServicioForm,
+    SubcategoriaProveedorForm,
     UnidadForm,
     VariacionForm,
 )
-from .models import CategoriaServicio, Proveedor, Servicio, Unidad, Variacion
+from .models import (
+    CategoriaProveedor,
+    CategoriaServicio,
+    Proveedor,
+    Servicio,
+    SubcategoriaProveedor,
+    Unidad,
+    Variacion,
+)
 
 
 def _gate(request, accion: str):
@@ -479,36 +488,40 @@ def proveedores_lista(request):
     incluir_archivados = request.GET.get("archivados") == "1"
     q = (request.GET.get("q") or "").strip()
     categoria_id = (request.GET.get("categoria") or "").strip()
-    servicio_id = (request.GET.get("servicio") or "").strip()
+    subcategoria_id = (request.GET.get("subcategoria") or "").strip()
 
-    # ── Chips de filtro ──────────────────────────────────────────────────
+    # ── Chips de filtro: taxonomía de PROVEEDOR (6 core → 19 subcategorías) ──
+    # LC #164 (re-reporte): el 2º nivel muestra SUBCATEGORÍAS de proveedor, NO
+    # productos del catálogo. Nivel 1 = CategoriaProveedor; nivel 2 =
+    # SubcategoriaProveedor (lo mismo que ya pintan las tarjetas).
     categorias = list(
-        CategoriaServicio.objects.filter(activa=True).order_by("orden", "nombre")
+        CategoriaProveedor.objects.filter(activa=True).order_by("orden", "nombre")
     )
-    servicios_chips_qs = (
-        Servicio.objects.filter(activo=True)
+    subcats_qs = (
+        SubcategoriaProveedor.objects.filter(activa=True)
         .select_related("categoria")
-        .order_by("categoria__orden", "nombre")
+        .order_by("categoria__orden", "orden", "nombre")
     )
-    # El segundo filtro (servicios) se acota a la categoría elegida en el primero.
+    # El segundo filtro se acota a la categoría elegida en el primero.
     if categoria_id.isdigit():
-        servicios_chips_qs = servicios_chips_qs.filter(categoria_id=categoria_id)
-    servicios_chips = list(servicios_chips_qs)
+        subcats_qs = subcats_qs.filter(categoria_id=categoria_id)
+    subcategorias_chips = list(subcats_qs)
 
-    # ── Proveedores filtrados ────────────────────────────────────────────
+    # ── Proveedores filtrados por la taxonomía ───────────────────────────
     qs = Proveedor.objects.all() if incluir_archivados else Proveedor.objects.filter(activo=True)
-    if servicio_id.isdigit():
-        qs = qs.filter(servicios__id=servicio_id)
+    if subcategoria_id.isdigit():
+        qs = qs.filter(subcategorias__id=subcategoria_id)
     elif categoria_id.isdigit():
-        qs = qs.filter(servicios__categoria_id=categoria_id)
+        qs = qs.filter(subcategorias__categoria_id=categoria_id)
     if q:
         qs = qs.filter(
             Q(razon_social__icontains=q)
             | Q(nombre_contacto__icontains=q)
             | Q(email_contacto__icontains=q)
             | Q(telefono__icontains=q)
+            | Q(subcategorias__nombre__icontains=q)
+            | Q(subcategorias__categoria__nombre__icontains=q)
             | Q(servicios__nombre__icontains=q)
-            | Q(servicios__categoria__nombre__icontains=q)
             | Q(productos_proyecto__proyecto__codigo__icontains=q)
             | Q(productos_proyecto__proyecto__nombre__icontains=q)
         )
@@ -516,16 +529,12 @@ def proveedores_lista(request):
         "servicios__categoria", "subcategorias__categoria",
     )
 
-    # ── Arma una tarjeta por proveedor (categorías + servicios + stats) ──
+    # ── Arma una tarjeta por proveedor (subcategorías + stats) ──
+    # Las subcategorías (con su color heredado) se leen en el template desde
+    # `t.obj.subcategorias.all` (ya prefetcheadas). Aquí sólo van los stats.
     tarjetas = []
     for prov in qs:
-        srv_activos = [s for s in prov.servicios.all() if s.activo]
-        cats_vistas: dict[int, dict] = {}
-        servicios_badges = []
-        for s in srv_activos:
-            cat = s.categoria
-            cats_vistas.setdefault(cat.id, {"nombre": cat.nombre, "color": cat.color})
-            servicios_badges.append({"nombre": s.nombre, "color": cat.color})
+        productos = sum(1 for s in prov.servicios.all() if s.activo)
         # Proyectos ligados vía ProyectoProducto.proveedor (proveedor principal).
         estados = list(
             Proyecto.objects.filter(productos__proveedor=prov)
@@ -535,9 +544,7 @@ def proveedores_lista(request):
         ubic = next((ln.strip() for ln in (prov.direccion or "").splitlines() if ln.strip()), "")
         tarjetas.append({
             "obj": prov,
-            "categorias": list(cats_vistas.values()),
-            "servicios": servicios_badges,
-            "productos": len(srv_activos),
+            "productos": productos,
             "proyectos_totales": len(estados),
             "proyectos_activos": sum(1 for e in estados if e not in _ESTADOS_PROYECTO_CERRADOS),
             "ubicacion": ubic[:40],
@@ -557,9 +564,9 @@ def proveedores_lista(request):
         "q": q,
         "incluir_archivados": incluir_archivados,
         "categorias": categorias,
-        "servicios_chips": servicios_chips,
+        "subcategorias_chips": subcategorias_chips,
         "categoria_id": categoria_id if categoria_id.isdigit() else "",
-        "servicio_id": servicio_id if servicio_id.isdigit() else "",
+        "subcategoria_id": subcategoria_id if subcategoria_id.isdigit() else "",
         "qs_preserva": qs_preserva,
         "puede_crear_prov": puede(request.user, "catalogo", "gestionar_categorias"),
         "puede_gestionar_categorias_prov": puede(request.user, "catalogo", "gestionar_categorias"),
@@ -868,6 +875,76 @@ def categoria_proveedor_editar(request, pk: int):
     else:
         form = CategoriaProveedorForm(instance=cat)
     return render(request, "catalogo/categoria_proveedor_form.html", {"form": form, "categoria": cat})
+
+
+def _slug_subcategoria(nombre: str, exclude_pk: int | None = None) -> str:
+    """Slug único para una SubcategoriaProveedor (autogenerado, no visible)."""
+    from django.utils.text import slugify
+    base = slugify(nombre)[:80] or "subcategoria"
+    slug = base
+    i = 2
+    qs = SubcategoriaProveedor.objects.all()
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    while qs.filter(slug=slug).exists():
+        slug = f"{base[:85]}-{i}"
+        i += 1
+    return slug
+
+
+@require_http_methods(["GET", "POST"])
+def subcategoria_proveedor_nueva(request):
+    """Alta de subcategoría de proveedor (LC #164 — CRUD de las 19 subcats).
+    Gated por gestionar_categorias. Hereda el color de su categoría core."""
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    inicial = {}
+    cat_id = request.GET.get("categoria")
+    if cat_id and cat_id.isdigit():
+        inicial["categoria"] = cat_id
+    if request.method == "POST":
+        form = SubcategoriaProveedorForm(request.POST)
+        if form.is_valid():
+            sub = form.save(commit=False)
+            sub.slug = _slug_subcategoria(sub.nombre)
+            sub.save()
+            emitir(EventoPortavoz(
+                tipo="catalogo.subcategoria_proveedor_creada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"subcategoria_id": sub.pk, "nombre": sub.nombre,
+                         "categoria": sub.categoria.nombre},
+            ))
+            messages.success(request, f"Subcategoría «{sub.nombre}» creada.")
+            return redirect("catalogo-categorias-proveedor")
+    else:
+        form = SubcategoriaProveedorForm(initial=inicial)
+    return render(request, "catalogo/subcategoria_proveedor_form.html",
+                  {"form": form, "modo": "nueva"})
+
+
+@require_http_methods(["GET", "POST"])
+def subcategoria_proveedor_editar(request, pk: int):
+    """Edición de subcategoría: nombre, categoría, orden y activa/inactiva.
+    El slug se conserva estable (no se regenera al renombrar)."""
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    sub = get_object_or_404(SubcategoriaProveedor, pk=pk)
+    if request.method == "POST":
+        form = SubcategoriaProveedorForm(request.POST, instance=sub)
+        if form.is_valid():
+            form.save()  # slug no está en el form → se mantiene el existente
+            emitir(EventoPortavoz(
+                tipo="catalogo.subcategoria_proveedor_actualizada",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"subcategoria_id": sub.pk, "nombre": sub.nombre,
+                         "activa": sub.activa},
+            ))
+            messages.success(request, f"Subcategoría «{sub.nombre}» actualizada.")
+            return redirect("catalogo-categorias-proveedor")
+    else:
+        form = SubcategoriaProveedorForm(instance=sub)
+    return render(request, "catalogo/subcategoria_proveedor_form.html",
+                  {"form": form, "modo": "editar", "subcategoria": sub})
 
 
 # ── Imagen de producto (Drive) — pegar/subir (LC 2026-07) ────────────────────
