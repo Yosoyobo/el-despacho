@@ -327,12 +327,13 @@ def test_anular_oculta_de_vigentes(client, usuario_factory, cot_borrador):
 
 
 def test_lista_columnas_render_lc(client, usuario_factory, cot_borrador):
-    """Render LC 2026-06-30: la tabla muestra fecha formateada + Versión, sin
-    columna de Código ni de Acciones (la fila entera es clickeable)."""
+    """Render LC 2026-06-30: la TABLA (vista=tabla) muestra fecha formateada +
+    Versión, sin columna de Código ni de Acciones (la fila entera es clickeable).
+    LC #160: la vista por default ahora es tarjetas; la tabla es alterna."""
     from cuentas.templatetags.forms_helpers import fecha_corta
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
-    body = client.get("/cotizaciones/").content.decode()
+    body = client.get("/cotizaciones/?vista=tabla").content.decode()
     # Fecha formateada estilo "Vie 26 Jun 2026".
     assert fecha_corta(cot_borrador.fecha_emision) in body
     # Encabezados nuevos presentes, viejos ausentes.
@@ -341,3 +342,17 @@ def test_lista_columnas_render_lc(client, usuario_factory, cot_borrador):
     assert "Acciones" not in body
     # La fila lleva data-href (clickeable completa).
     assert f"/cotizaciones/{cot_borrador.pk}/" in body
+
+
+def test_lista_default_tarjetas_y_filtros(client, usuario_factory, cot_borrador):
+    """LC #160: default = tarjetas; pastillas de estado/cliente + toggle; el
+    panel HTMX responde parcial."""
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    body = client.get("/cotizaciones/").content.decode()
+    assert 'id="cot-panel"' in body                 # contenedor del swap
+    assert "Tarjetas" in body and "Tabla" in body    # toggle
+    assert cot_borrador.cliente.razon_social in body  # tarjeta con cliente
+    # HTMX devuelve solo el panel (sin <html>).
+    parcial = client.get("/cotizaciones/?estado=borrador", HTTP_HX_REQUEST="true").content.decode()
+    assert "<html" not in parcial and 'id="cot-panel"' not in parcial

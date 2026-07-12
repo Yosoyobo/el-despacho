@@ -1,0 +1,36 @@
+{% load forms_helpers %}
+{% comment %}LC #160: panel de filtros HTMX (estado + cliente) + toggle tarjetas/tabla.
+Es el destino del swap (#cot-panel); las pastillas devuelven este partial.{% endcomment %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <nav class="flex flex-wrap gap-2" aria-label="Filtrar por estado">
+        {% for slug, label in pills_estados %}
+        <a hx-get="{% url 'cotizaciones:lista' %}?estado={{ slug }}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
+           hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
+           class="inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition {% if estado_filtro == slug %}border-brand-500 bg-brand-500 text-white shadow-theme-xs{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </nav>
+    <div class="inline-flex shrink-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        <a hx-get="{% url 'cotizaciones:lista' %}?vista=cards{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}"
+           hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
+           class="cursor-pointer px-3 py-1.5 text-sm {% if vista == 'cards' %}bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300{% else %}text-gray-600 dark:text-gray-300{% endif %}">▦ Tarjetas</a>
+        <a hx-get="{% url 'cotizaciones:lista' %}?vista=tabla{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}"
+           hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
+           class="cursor-pointer border-l border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700 {% if vista == 'tabla' %}bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300{% else %}text-gray-600 dark:text-gray-300{% endif %}">☰ Tabla</a>
+    </div>
+</div>
+
+{% if clientes_pills %}
+<nav class="mb-5 flex flex-wrap items-center gap-2" aria-label="Filtrar por cliente">
+    <span class="mr-1 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Cliente</span>
+    <a hx-get="{% url 'cotizaciones:lista' %}?{% if estado_filtro %}estado={{ estado_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
+       hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
+       class="cursor-pointer rounded-full px-3 py-1 text-sm transition {% if not cliente_filtro %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300{% endif %}">Todos</a>
+    {% for c in clientes_pills %}
+    <a hx-get="{% url 'cotizaciones:lista' %}?cliente={{ c.pk }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
+       hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
+       class="cursor-pointer rounded-full px-3 py-1 text-sm transition {% if cliente_filtro == c.pk|stringformat:'s' %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ c.razon_social|truncatechars:24 }}</a>
+    {% endfor %}
+</nav>
+{% endif %}
+
+{% include "cotizaciones/_resultado.html" %}

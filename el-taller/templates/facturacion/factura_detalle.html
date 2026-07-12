@@ -66,8 +66,8 @@
             </div>
         </section>
 
-        {# LC #162: CFDI del PAC almacenado (PDF + XML timbrados). La factura ya
-           NO genera el PDF; el contador/PAC lo emite y aquí se guarda. #}
+        {% comment %}LC #162: CFDI del PAC almacenado (PDF + XML timbrados). La
+        factura ya NO genera el PDF; el contador/PAC lo emite y aquí se guarda.{% endcomment %}
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h2 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante fiscal (CFDI)</h2>
             {% if fac.tiene_cfdi %}

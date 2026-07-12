@@ -1,0 +1,8 @@
+{% load forms_helpers %}
+{# LC #160: resultados en tarjetas (default) o tabla. #}
+{% if vista == 'tabla' %}
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_cotizaciones filas_template="cotizaciones/_filas.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
+{% else %}
+{% include "cotizaciones/_tarjetas.html" %}
+{% include "_componentes_tailadmin/_paginacion.html" with page_obj=page_obj querystring=querystring_paginacion %}
+{% endif %}

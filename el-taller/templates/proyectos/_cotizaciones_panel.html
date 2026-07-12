@@ -27,8 +27,9 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
                 <span class="flex min-w-0 items-center gap-2">
                     <span class="font-semibold text-gray-900 dark:text-gray-100">{{ cot.version_label }}</span>
                     {% if ver_cotizaciones %}
-                    <a href="{% url 'cotizaciones:pdf' cot.pk %}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
-                       class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">PDF →</a>
+                    {# LC #144h: «Ver» abre el HTML imprimible al instante (sin round-trip a Drive). #}
+                    <a href="{% url 'cotizaciones:ver' cot.pk %}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+                       class="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">Ver →</a>
                     {% endif %}
                 </span>
                 <span class="inline-flex items-center gap-1.5">

@@ -55,12 +55,19 @@ def lista(request):
 
     q = (request.GET.get("q") or "").strip()
     estado_filtro = (request.GET.get("estado") or "").strip()
+    # LC #160: vista de tarjetas (default) o tabla; filtro por cliente.
+    vista = (request.GET.get("vista") or "cards").strip()
+    if vista not in ("cards", "tabla"):
+        vista = "cards"
+    cliente_filtro = (request.GET.get("cliente") or "").strip()
     qs = Cotizacion.objects.select_related("cliente", "proyecto").exclude(estado="anulada")
     if estado_filtro in {"borrador", "generada", "enviada", "aprobada", "pagada", "rechazada", "anulada"}:
         if estado_filtro == "anulada":
             qs = Cotizacion.objects.select_related("cliente", "proyecto").filter(estado="anulada")
         else:
             qs = qs.filter(estado=estado_filtro)
+    if cliente_filtro.isdigit():
+        qs = qs.filter(cliente_id=cliente_filtro)
     if q:
         qs = qs.filter(
             Q(codigo__icontains=q)
@@ -72,7 +79,8 @@ def lista(request):
     base = orden.lstrip("-")
     if base not in ORDEN_PERMITIDO:
         orden = "-creado_en"
-    qs = qs.order_by(orden, "-pk")
+    # Prefetch para totales sin N+1 (tarjetas + tabla llaman calcular_totales).
+    qs = qs.order_by(orden, "-pk").prefetch_related("items", "impuestos__tasa")
 
     paginator = Paginator(qs, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -82,14 +90,29 @@ def lista(request):
         qs_filtros.append(f"q={q}")
     if estado_filtro:
         qs_filtros.append(f"estado={estado_filtro}")
+    if cliente_filtro.isdigit():
+        qs_filtros.append(f"cliente={cliente_filtro}")
+    if vista != "cards":
+        qs_filtros.append(f"vista={vista}")
     querystring_base = "&".join(qs_filtros)
     qs_paginacion = qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])
 
-    return render(request, "cotizaciones/lista.html", {
+    # LC #160: clientes con cotizaciones vigentes → pastillas de filtro.
+    from apps.la_cartera.models import Cliente
+    clientes_pills = list(
+        Cliente.objects.filter(
+            pk__in=Cotizacion.objects.exclude(estado="anulada").values("cliente_id")
+        ).order_by("razon_social")[:40]
+    )
+
+    ctx = {
         "page_obj": page_obj,
         "cotizaciones": page_obj.object_list,
         "q": q,
         "estado_filtro": estado_filtro,
+        "cliente_filtro": cliente_filtro if cliente_filtro.isdigit() else "",
+        "vista": vista,
+        "clientes_pills": clientes_pills,
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_paginacion),
@@ -117,7 +140,11 @@ def lista(request):
         ],
         "estados_cot": _estados_cot_ciclo(),
         "puede_crear": puede_crear_cotizaciones(request.user),
-    })
+    }
+    # HTMX (pills/toggle) → devuelve solo el panel; navegación directa → página.
+    if _es_htmx(request):
+        return render(request, "cotizaciones/_panel.html", ctx)
+    return render(request, "cotizaciones/lista.html", ctx)
 
 
 def _estados_cot_ciclo():
