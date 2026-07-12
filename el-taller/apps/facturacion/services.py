@@ -69,10 +69,10 @@ def enviar_por_correo(fac: Factura, actor):
         return cartero.ResultadoCorreo(ok=False, error="El cliente no tiene correo.")
 
     adjuntos = []
-    res_pdf = generar_pdf(fac, actor)
-    if res_pdf.ok and res_pdf.pdf_bytes:
+    pdf_bytes = pdf_bytes_almacenado(fac)
+    if pdf_bytes:
         adjuntos.append(cartero.Adjunto(
-            nombre=f"{fac.codigo}.pdf", contenido=res_pdf.pdf_bytes, mime="application/pdf"))
+            nombre=f"{fac.codigo}.pdf", contenido=pdf_bytes, mime="application/pdf"))
 
     asunto, html = _render_correo(fac)
     return cartero.enviar(destinatario=destino, asunto=asunto, html=html, adjuntos=adjuntos)
@@ -102,29 +102,84 @@ def _render_correo(fac: Factura) -> tuple[str, str]:
         return f"Factura {fac.codigo} · Learning Center", html
 
 
-def generar_pdf(fac: Factura, actor):
-    """Genera (o regenera) el PDF de la factura vía Google Docs y lo guarda en
-    Drive. Devuelve `lib.documentos.ResultadoPdf`. Borra el PDF anterior si lo
-    había. Fallback gracioso (nunca lanza)."""
-    from lib.documentos import generar_pdf as _gen
+# --- CFDI del PAC (LC #162): almacenar PDF + XML, no generar --------------
+
+def _bytes_de_drive(file_id: str) -> bytes | None:
+    """Descarga los bytes de un archivo de Drive por id, o None. Nunca lanza."""
+    if not file_id:
+        return None
+    try:
+        from lib.google_drive import drive
+        contenido, _mime, _nombre = drive.descargar(file_id)
+        return contenido
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def pdf_bytes_almacenado(fac: Factura) -> bytes | None:
+    """Bytes del PDF del CFDI almacenado (para adjuntar en correos). Nunca lanza."""
+    return _bytes_de_drive(fac.pdf_file_id)
+
+
+def almacenar_cfdi(fac: Factura, *, pdf_file=None, xml_file=None,
+                   cfdi_uuid: str = "", actor=None) -> dict:
+    """Almacena el CFDI del PAC (PDF y/o XML) en Drive (subcarpeta «Facturas»)
+    y lo liga a la factura. Reemplaza el archivo previo del mismo tipo y guarda
+    el folio fiscal (UUID) si se provee. Best-effort por archivo — nunca lanza.
+    Devuelve {ok, guardados: [...], errores: [...]}."""
+    import contextlib
+
+    from lib.adjuntos import subir
     from lib.google_drive import drive
 
-    html = construir_html_pdf(fac)
-    res = _gen(html=html, nombre=fac.codigo, subcarpeta="Facturas")
-    if not res.ok:
-        return res
+    guardados: list[str] = []
+    errores: list[str] = []
+    update_fields: list[str] = []
 
-    if fac.pdf_file_id and fac.pdf_file_id != res.data.get("id"):
-        import contextlib
-        with contextlib.suppress(Exception):
-            drive.borrar(fac.pdf_file_id)
+    def _reemplazar(prev_id: str):
+        if prev_id:
+            with contextlib.suppress(Exception):
+                drive.borrar(prev_id)
 
-    fac.pdf_file_id = res.data.get("id", "")
-    fac.pdf_url = res.data.get("webViewLink", "")
-    fac.pdf_generado_en = timezone.now()
-    fac.save(update_fields=["pdf_file_id", "pdf_url", "pdf_generado_en"])
-    _emitir("factura.pdf_generado", fac, actor, {"pdf_file_id": fac.pdf_file_id})
-    return res
+    if pdf_file is not None:
+        res = subir(pdf_file, subcarpeta="Facturas")
+        if res.ok and res.data:
+            _reemplazar(fac.pdf_file_id)
+            fac.pdf_file_id = res.data.get("id", "")
+            fac.pdf_url = res.data.get("webViewLink", "")
+            update_fields += ["pdf_file_id", "pdf_url"]
+            guardados.append("PDF")
+        else:
+            errores.append(f"PDF: {res.error}")
+
+    if xml_file is not None:
+        res = subir(xml_file, subcarpeta="Facturas")
+        if res.ok and res.data:
+            _reemplazar(fac.xml_file_id)
+            fac.xml_file_id = res.data.get("id", "")
+            fac.xml_url = res.data.get("webViewLink", "")
+            update_fields += ["xml_file_id", "xml_url"]
+            guardados.append("XML")
+        else:
+            errores.append(f"XML: {res.error}")
+
+    cfdi_uuid = (cfdi_uuid or "").strip()
+    if cfdi_uuid:
+        fac.cfdi_uuid = cfdi_uuid[:40]
+        update_fields.append("cfdi_uuid")
+
+    if guardados or cfdi_uuid:
+        fac.cfdi_almacenado_en = timezone.now()
+        update_fields.append("cfdi_almacenado_en")
+        fac.save(update_fields=list(dict.fromkeys(update_fields)))
+        _emitir("factura.cfdi_almacenado", fac, actor,
+                {"guardados": guardados, "cfdi_uuid": fac.cfdi_uuid})
+
+    return {
+        "ok": bool(guardados or cfdi_uuid) and not errores,
+        "guardados": guardados,
+        "errores": errores,
+    }
 
 
 def crear_desde_cotizacion(cotizacion, actor) -> Factura:

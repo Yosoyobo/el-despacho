@@ -8,7 +8,7 @@
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
     {% with estado=fac.estado_visible %}
-    <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
+    <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{{ fac.estado_etiqueta }}</span>
     {% endwith %}
     <span class="badge badge-gray font-mono">{{ fac.codigo }}</span>
     {% if fac.proyecto %}<span class="badge badge-gray">{{ fac.proyecto.codigo }}</span>{% endif %}
@@ -64,6 +64,22 @@
                     {% endif %}
                 </dl>
             </div>
+        </section>
+
+        {# LC #162: CFDI del PAC almacenado (PDF + XML timbrados). La factura ya
+           NO genera el PDF; el contador/PAC lo emite y aquí se guarda. #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante fiscal (CFDI)</h2>
+            {% if fac.tiene_cfdi %}
+            <div class="flex flex-wrap items-center gap-3 text-sm">
+                {% if fac.pdf_file_id %}<a href="{% url 'facturacion:pdf' fac.pk %}" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-gray-700 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:text-gray-200">📄 PDF</a>{% else %}<span class="text-xs text-gray-400">Sin PDF</span>{% endif %}
+                {% if fac.xml_file_id %}<a href="{% url 'facturacion:xml' fac.pk %}" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-gray-700 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:text-gray-200">🧾 XML</a>{% else %}<span class="text-xs text-gray-400">Sin XML</span>{% endif %}
+            </div>
+            {% if fac.cfdi_uuid %}<p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Folio fiscal (UUID): <span class="font-mono">{{ fac.cfdi_uuid }}</span></p>{% endif %}
+            {% if fac.cfdi_almacenado_en %}<p class="mt-1 text-xs text-gray-400">Almacenado el {{ fac.cfdi_almacenado_en|hfmt:"Y-m-d H:i" }}</p>{% endif %}
+            {% else %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Aún no se ha cargado el CFDI (PDF + XML) que emite el contador/PAC. Usa <strong>«Cargar CFDI»</strong> en la barra de acciones.</p>
+            {% endif %}
         </section>
 
         {% if cobros %}

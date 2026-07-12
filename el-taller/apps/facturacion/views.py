@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_http_methods
 
 from ajustes.models.tasa import TasaImpositiva
 from lib.permisos import (
@@ -351,18 +352,30 @@ def detalle(request, pk):
     puede_duplicar = puede_crear_facturacion(request.user)
 
     acciones_html: list = []
-    # LC 2026-07: "Ver" abre el documento inline al instante (HTML); "Descargar
-    # PDF" genera el PDF real en Drive.
+    # LC #162: "Vista rápida" = HTML imprimible interno (NO es el CFDI). El CFDI
+    # fiscal (PDF + XML del PAC) se almacena y se descarga aparte.
     acciones_html.append(format_html(
         '<a href="{}" target="_blank" rel="noopener" class="btn-secundario" '
-        'title="Abre el documento al instante en una pestaña nueva.">👁 Ver</a>',
+        'title="Vista rápida del documento. NO es el CFDI fiscal.">👁 Vista rápida</a>',
         reverse("facturacion:ver", args=[fac.pk]),
     ))
-    acciones_html.append(format_html(
-        '<a href="{}" class="btn-secundario" '
-        'title="Genera y descarga el PDF con el formato de Learning Center.">⬇ Descargar PDF</a>',
-        reverse("facturacion:pdf", args=[fac.pk]),
-    ))
+    if fac.pdf_file_id:
+        acciones_html.append(format_html(
+            '<a href="{}" class="btn-secundario" title="PDF del CFDI timbrado por el PAC.">⬇ PDF (CFDI)</a>',
+            reverse("facturacion:pdf", args=[fac.pk]),
+        ))
+    if fac.xml_file_id:
+        acciones_html.append(format_html(
+            '<a href="{}" class="btn-secundario" title="XML del CFDI timbrado por el PAC.">⬇ XML</a>',
+            reverse("facturacion:xml", args=[fac.pk]),
+        ))
+    if puede_emitir_facturacion(request.user):
+        acciones_html.append(format_html(
+            '<button type="button" class="btn-secundario" hx-get="{}" '
+            'hx-target="#modal-slot" hx-swap="innerHTML">{}</button>',
+            reverse("facturacion:cfdi", args=[fac.pk]),
+            "📎 Reemplazar CFDI" if fac.tiene_cfdi else "📎 Cargar CFDI",
+        ))
     if puede_editar:
         acciones_html.append(format_html(
             '<a href="{}" class="btn-secundario">Editar</a>',
@@ -672,27 +685,90 @@ def api_cotizacion_datos(request, pk):
 
 @login_required
 def pdf_ver(request, pk):
-    """Vista RÁPIDA del documento (HTML imprimible inline, sin Drive) — arregla
-    la «pantalla azul» del visor. El PDF real se baja con «Descargar». LC 2026-07."""
+    """Vista RÁPIDA del documento (HTML imprimible inline, NO es el CFDI). El
+    CFDI fiscal (PDF + XML del PAC) se almacena y se descarga aparte. LC #162."""
     if (r := _gate_ver(request)) is not None:
         return r
     fac = get_object_or_404(Factura, pk=pk)
     return HttpResponse(services.construir_html_pdf(fac))
 
 
-@login_required
-def generar_pdf(request, pk):
-    """Genera/regenera el PDF de la factura (vía Google Docs) y lo descarga.
+def _servir_drive(file_id: str, nombre_sugerido: str):
+    """Proxy autenticado: baja el archivo de Drive por id y lo sirve inline/
+    adjunto. 404 si Drive falla (sin liga pública)."""
+    from urllib.parse import quote
 
-    GET puro — cualquiera que pueda ver Facturación puede descargar el PDF.
-    Fallback gracioso: si Drive falla, mensaje y vuelve al detalle."""
+    from django.http import Http404
+    from lib.google_drive import drive
+    try:
+        contenido, mime, nombre = drive.descargar(file_id)
+    except Exception:  # noqa: BLE001
+        raise Http404("No se pudo obtener el archivo de Drive.") from None
+    resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
+    disp = "inline" if (mime or "").startswith(("application/pdf", "text/")) else "attachment"
+    resp["Content-Disposition"] = f"{disp}; filename*=UTF-8''{quote(nombre or nombre_sugerido)}"
+    return resp
+
+
+@login_required
+def descargar_pdf(request, pk):
+    """Sirve el PDF del CFDI ALMACENADO (del PAC) desde Drive (proxy). LC #162."""
     if (r := _gate_ver(request)) is not None:
         return r
     fac = get_object_or_404(Factura, pk=pk)
-    res = services.generar_pdf(fac, request.user)
-    if not res.ok or not res.pdf_bytes:
-        messages.error(request, f"No se pudo generar el PDF: {res.error}")
+    if not fac.pdf_file_id:
+        messages.info(request, "Esta factura aún no tiene PDF del CFDI cargado.")
         return redirect("facturacion:detalle", pk=fac.pk)
-    resp = HttpResponse(res.pdf_bytes, content_type="application/pdf")
-    resp["Content-Disposition"] = f'inline; filename="{fac.codigo}.pdf"'
-    return resp
+    return _servir_drive(fac.pdf_file_id, f"{fac.codigo}.pdf")
+
+
+@login_required
+def descargar_xml(request, pk):
+    """Sirve el XML del CFDI ALMACENADO (del PAC) desde Drive (proxy). LC #162."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    fac = get_object_or_404(Factura, pk=pk)
+    if not fac.xml_file_id:
+        messages.info(request, "Esta factura aún no tiene XML del CFDI cargado.")
+        return redirect("facturacion:detalle", pk=fac.pk)
+    return _servir_drive(fac.xml_file_id, f"{fac.codigo}.xml")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def almacenar_cfdi(request, pk):
+    """Carga/reemplaza el CFDI del PAC (PDF + XML + folio fiscal). Modal HTMX
+    (patrón Wave 5). Permitido en cualquier estado y aunque el PROYECTO esté
+    CERRADO (#148 — el cierre del proyecto no bloquea la carga). Gated `emitir`."""
+    if not puede_emitir_facturacion(request.user):
+        return HttpResponseForbidden("Sin permiso para cargar el CFDI.")
+    fac = get_object_or_404(Factura, pk=pk)
+    es_htmx = request.headers.get("HX-Request") == "true"
+    if request.method == "POST":
+        res = services.almacenar_cfdi(
+            fac,
+            pdf_file=request.FILES.get("pdf"),
+            xml_file=request.FILES.get("xml"),
+            cfdi_uuid=request.POST.get("cfdi_uuid", ""),
+            actor=request.user,
+        )
+        if res["guardados"] or res["ok"]:
+            if res["guardados"]:
+                messages.success(request, "CFDI almacenado: " + ", ".join(res["guardados"]) + ".")
+            else:
+                messages.success(request, "Folio fiscal guardado.")
+            if res["errores"]:
+                messages.warning(request, " · ".join(res["errores"]))
+            if es_htmx:
+                return HttpResponse(status=204, headers={
+                    "HX-Redirect": reverse("facturacion:detalle", args=[fac.pk])})
+            return redirect("facturacion:detalle", pk=fac.pk)
+        error = " · ".join(res["errores"]) or "No se cargó ningún archivo ni folio."
+        if es_htmx:
+            return render(request, "facturacion/_modal_cfdi.html", {"fac": fac, "error": error})
+        messages.error(request, error)
+        return redirect("facturacion:detalle", pk=fac.pk)
+    # GET: sólo tiene sentido inyectado por HTMX en #modal-slot.
+    if not es_htmx:
+        return redirect("facturacion:detalle", pk=fac.pk)
+    return render(request, "facturacion/_modal_cfdi.html", {"fac": fac})

@@ -334,6 +334,8 @@
 
         {# ── Cotizaciones del proyecto (versionadas) — debajo de Equipo ── #}
         {% if permisos_modulos.cotizaciones %}{% include "proyectos/_cotizaciones_panel.html" %}{% endif %}
+        {# ── Facturas ligadas (LC #9) — debajo de Cotizaciones ── #}
+        {% if permisos_modulos.facturacion %}{% include "proyectos/_facturas_panel.html" %}{% endif %}
     </aside>
 </form>
 
@@ -368,6 +370,8 @@
         </section>
         {# ── Cotizaciones del proyecto (versionadas) — debajo de Equipo ── #}
         {% if permisos_modulos.cotizaciones %}{% include "proyectos/_cotizaciones_panel.html" %}{% endif %}
+        {# ── Facturas ligadas (LC #9) — debajo de Cotizaciones ── #}
+        {% if permisos_modulos.facturacion %}{% include "proyectos/_facturas_panel.html" %}{% endif %}
     </aside>
 </div>
 {% endif %}

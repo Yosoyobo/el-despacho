@@ -100,21 +100,44 @@ def test_factura_construir_html_pdf_renderiza(fac_borrador):
     assert "no es un CFDI" in html  # aviso de documento no fiscal
 
 
-def test_factura_generar_pdf_actualiza_modelo(fac_borrador, monkeypatch):
+def test_factura_almacenar_cfdi(fac_borrador, monkeypatch):
+    """LC #162: la factura ALMACENA el CFDI (PDF+XML del PAC) en Drive, no lo genera."""
     from apps.facturacion import services
-    monkeypatch.setattr("lib.documentos.generar_pdf",
-                        lambda **kw: _resultado_fake())
-    res = services.generar_pdf(fac_borrador, fac_borrador.creado_por)
-    assert res.ok
+    from lib.adjuntos import ResultadoAdjunto
+    monkeypatch.setattr(
+        "lib.adjuntos.subir",
+        lambda archivo, subcarpeta=None: ResultadoAdjunto(
+            ok=True, data={"id": "DRIVE-PDF", "webViewLink": "http://drive/pdf"}),
+    )
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    pdf = SimpleUploadedFile("cfdi.pdf", b"%PDF-1.4", content_type="application/pdf")
+    res = services.almacenar_cfdi(
+        fac_borrador, pdf_file=pdf, cfdi_uuid="ABC-123", actor=fac_borrador.creado_por)
+    assert res["ok"] and "PDF" in res["guardados"]
     fac_borrador.refresh_from_db()
-    assert fac_borrador.pdf_file_id == "DRIVEPDF1"
-    assert fac_borrador.pdf_generado_en is not None
+    assert fac_borrador.pdf_file_id == "DRIVE-PDF"
+    assert fac_borrador.cfdi_uuid == "ABC-123"
+    assert fac_borrador.cfdi_almacenado_en is not None
+    assert fac_borrador.tiene_cfdi
 
 
-def test_factura_vista_pdf_descarga(client, fac_borrador, monkeypatch):
-    from apps.facturacion import services
-    monkeypatch.setattr(services, "generar_pdf", lambda fac, actor: _resultado_fake())
+def test_factura_descargar_pdf_almacenado(client, fac_borrador, monkeypatch):
+    """La vista sirve el PDF ALMACENADO desde Drive (proxy autenticado)."""
+    fac_borrador.pdf_file_id = "DRIVE-PDF"
+    fac_borrador.save(update_fields=["pdf_file_id"])
+    monkeypatch.setattr(
+        "lib.google_drive.drive.descargar",
+        lambda fid: (b"%PDF-1.4 stored", "application/pdf", "cfdi.pdf"))
     client.force_login(fac_borrador.creado_por)
     resp = client.get(f"/facturacion/{fac_borrador.pk}/pdf/")
     assert resp.status_code == 200
     assert resp["Content-Type"] == "application/pdf"
+    assert resp.content.startswith(b"%PDF")
+
+
+def test_factura_pdf_sin_cargar_redirige(client, fac_borrador):
+    """Sin CFDI cargado la vista NO genera nada: redirige al detalle con aviso."""
+    client.force_login(fac_borrador.creado_por)
+    resp = client.get(f"/facturacion/{fac_borrador.pk}/pdf/")
+    assert resp.status_code == 302
+    assert f"/facturacion/{fac_borrador.pk}/" in resp["Location"]

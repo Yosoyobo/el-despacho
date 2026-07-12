@@ -516,6 +516,8 @@ def detalle(request, pk):
         "back_label": "Proyectos",
         # Recuadro «Cotizaciones» (versionado, render Oscar 2026-06-27).
         **_ctx_cotizaciones(proyecto, request.user),
+        # Recuadro «Facturas ligadas» (LC #9).
+        **_ctx_facturas(proyecto, request.user),
     })
 
 
@@ -1001,6 +1003,19 @@ def quitar_producto(request, pk, prod_pk):
 # El botón "Enviar" del recuadro aún no manda correo real (El Cartero ya existe,
 # se cablea después). Por ahora es placeholder → rickroll (decisión Oscar).
 RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+
+def _ctx_facturas(proyecto, user) -> dict:
+    """Contexto del recuadro «Facturas ligadas» del detalle de proyecto (LC #9).
+
+    Lista las facturas del proyecto (incl. canceladas, atenuadas), más recientes
+    primero. `puede_facturar` habilita el botón «+ Nueva»."""
+    from lib.permisos import puede_crear_facturacion
+    facturas = list(proyecto.facturas.select_related("cliente").order_by("-creado_en")[:20])
+    return {
+        "facturas_proyecto": facturas,
+        "puede_facturar": puede_crear_facturacion(user),
+    }
 
 
 def _ctx_cotizaciones(proyecto, user) -> dict:

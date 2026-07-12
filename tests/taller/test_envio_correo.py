@@ -107,7 +107,8 @@ def test_factura_enviar_por_correo_adjunta_pdf(fac, monkeypatch):
     from apps.facturacion import services
 
     from lib import cartero
-    monkeypatch.setattr(services, "generar_pdf", lambda f, a: _pdf_ok())
+    # LC #162: el correo adjunta el PDF del CFDI ALMACENADO (del PAC).
+    monkeypatch.setattr(services, "pdf_bytes_almacenado", lambda f: b"%PDF")
     capt = {}
     monkeypatch.setattr(
         cartero, "enviar",

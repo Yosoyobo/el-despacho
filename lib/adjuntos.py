@@ -33,6 +33,10 @@ MIME_PERMITIDOS = {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "text/plain",
     "text/csv",
+    # LC #162: XML del CFDI timbrado (PAC). El navegador lo manda como
+    # application/xml o text/xml según el SO.
+    "application/xml",
+    "text/xml",
 }
 
 

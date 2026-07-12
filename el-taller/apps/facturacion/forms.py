@@ -41,19 +41,29 @@ class FacturaForm(forms.ModelForm):
         # Régimen fiscal opcional en el POST: si no llega, conserva el valor
         # actual (facturas editadas fuera de borrador no envían el campo).
         self.fields["regimen_fiscal"].required = False
-
-    def clean_regimen_fiscal(self):
-        v = self.cleaned_data.get("regimen_fiscal")
-        return v or (self.instance.regimen_fiscal or "iva")
-        # Solo cotizaciones vigentes (no anuladas) como origen.
+        # LC #1/#161.3: el default de una factura nueva es «IVA y Retenciones»
+        # (honorarios / RESICO — el régimen real de LC). Existentes conservan el
+        # suyo.
+        if not (self.instance and self.instance.pk) and not self.initial.get("regimen_fiscal"):
+            self.fields["regimen_fiscal"].initial = "honorarios"
+        # LC #162 (fix del bug latente): estos querysets estaban DESPUÉS de un
+        # `return` en clean_regimen_fiscal → CÓDIGO MUERTO; los selects mostraban
+        # proyectos archivados / cotizaciones anuladas. Aquí sí se aplican.
         from apps.cotizaciones.models import Cotizacion
         self.fields["cotizacion_origen"].queryset = (
             Cotizacion.vigentes.select_related("proyecto").order_by("-creado_en")
         )
-        # Solo proyectos vigentes (no archivados) en el selector.
         from apps.los_proyectos.models import Proyecto
         mgr = getattr(Proyecto, "activos", Proyecto.objects)
         self.fields["proyecto"].queryset = mgr.order_by("-creado_en")
+        # LC Buzón §4: combobox type-to-search en Cliente / Proyecto / Cotización.
+        for _c in ("cliente", "proyecto", "cotizacion_origen"):
+            if _c in self.fields:
+                self.fields[_c].widget.attrs["data-select-buscable"] = "1"
+
+    def clean_regimen_fiscal(self):
+        v = self.cleaned_data.get("regimen_fiscal")
+        return v or (self.instance.regimen_fiscal or "iva")
 
     def clean(self):
         cleaned = super().clean()

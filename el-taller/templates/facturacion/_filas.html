@@ -20,7 +20,7 @@
     <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">{{ totales.total|dinero }}</td>
     <td class="px-5 py-3">
         {% with estado=f.estado_visible %}
-        <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{% if estado == 'cobrada_total' %}COBRADA{% elif estado == 'cobrada_parcial' %}PARCIAL{% else %}{{ estado|upper }}{% endif %}</span>
+        <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{{ f.estado_etiqueta|upper }}</span>
         {% endwith %}
     </td>
 </tr>

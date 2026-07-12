@@ -97,10 +97,11 @@ def enviar_recordatorio(fac: Factura, *, config=None, tipo: str = "mora",
     if config.incluir_pdf:
         try:
             from . import services
-            res_pdf = services.generar_pdf(fac, actor)
-            if getattr(res_pdf, "ok", False) and getattr(res_pdf, "pdf_bytes", None):
+            # LC #162: adjunta el PDF del CFDI ALMACENADO (del PAC), no uno generado.
+            pdf_bytes = services.pdf_bytes_almacenado(fac)
+            if pdf_bytes:
                 adjuntos.append(cartero.Adjunto(
-                    nombre=f"{fac.codigo}.pdf", contenido=res_pdf.pdf_bytes, mime="application/pdf"))
+                    nombre=f"{fac.codigo}.pdf", contenido=pdf_bytes, mime="application/pdf"))
         except Exception:  # noqa: BLE001 — el PDF no debe tumbar el recordatorio
             pass
 

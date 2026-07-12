@@ -430,3 +430,27 @@ def test_kpi_monto_por_cobrar(cliente_factory, usuario_factory):
     services.emitir_factura(fac, autor)
     res = _kpi_monto_por_cobrar(autor)
     assert "750" in res["valor"]
+
+
+# ── LC Buzón §1: CFDI almacenado + etiqueta amigable ────────────────────────
+
+def test_estado_etiqueta_amigable(cliente_factory, usuario_factory):
+    from apps.facturacion.models import Factura
+    autor = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=autor)
+    fac = Factura.objects.create(cliente=cli, titulo="X", creado_por=autor, estado="cobrada_total")
+    assert fac.estado_etiqueta == "Pagada"
+    fac.estado = "cobrada_parcial"
+    assert fac.estado_etiqueta == "Pago parcial"
+
+
+def test_modal_cfdi_get_htmx(client, cliente_factory, usuario_factory):
+    from apps.facturacion.models import Factura
+    autor = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=autor)
+    fac = Factura.objects.create(cliente=cli, titulo="X", creado_por=autor)
+    client.force_login(autor)
+    resp = client.get(f"/facturacion/{fac.pk}/cfdi/", HTTP_HX_REQUEST="true")
+    assert resp.status_code == 200
+    assert b"CFDI del PAC" in resp.content
+    assert not fac.tiene_cfdi

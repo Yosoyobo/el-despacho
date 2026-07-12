@@ -58,6 +58,7 @@ EventoTipo = Literal[
     "factura.emitida",
     "factura.vencida",
     "factura.pdf_generado",
+    "factura.cfdi_almacenado",
     "factura.eliminada",
     "pago.recibido",
     "pago.recordatorio",

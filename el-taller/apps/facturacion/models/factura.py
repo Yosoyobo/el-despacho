@@ -152,11 +152,20 @@ class Factura(models.Model):
     notas = models.TextField(blank=True, default="")
     terminos = models.TextField(blank=True, default="")
 
-    # PDF generado vía Google Docs (regla §8). Se regenera al pedirlo y se
-    # guarda en Drive (subcarpeta "Facturas"). Vacío = aún no se generó.
+    # LC #162: la factura YA NO genera el PDF fiscal — el contador/PAC entrega
+    # el CFDI (PDF + XML timbrado) y aquí se ALMACENA como registro contable.
+    # `pdf_*` guardan el PDF del PAC subido a Drive; `xml_*` el XML timbrado.
+    # (El HTML imprimible interno queda sólo como "vista rápida", no fiscal.)
     pdf_file_id = models.CharField(max_length=100, blank=True, default="")
     pdf_url = models.URLField(max_length=500, blank=True, default="")
     pdf_generado_en = models.DateTimeField(null=True, blank=True)
+    xml_file_id = models.CharField(max_length=100, blank=True, default="")
+    xml_url = models.URLField(max_length=500, blank=True, default="")
+    cfdi_uuid = models.CharField(
+        max_length=40, blank=True, default="",
+        help_text="Folio fiscal (UUID) del CFDI timbrado por el PAC.",
+    )
+    cfdi_almacenado_en = models.DateTimeField(null=True, blank=True)
 
     # Denormalizado — se recalcula desde Ingresos vinculados.
     monto_cobrado = models.DecimalField(
@@ -239,6 +248,11 @@ class Factura(models.Model):
         return self.folio or "Sin información"
 
     @property
+    def tiene_cfdi(self) -> bool:
+        """Se ha almacenado al menos un archivo del CFDI (PDF o XML del PAC)."""
+        return bool(self.pdf_file_id or self.xml_file_id)
+
+    @property
     def es_editable(self) -> bool:
         return self.estado == "borrador"
 
@@ -254,6 +268,21 @@ class Factura(models.Model):
         if self.esta_vencida:
             return "vencida"
         return self.estado
+
+    # LC #7: etiquetas amigables — "Pagada" / "Pago parcial" en vez de los
+    # slugs técnicos cobrada_total / cobrada_parcial.
+    ETIQUETAS_ESTADO = {
+        "borrador": "Borrador",
+        "emitida": "Emitida",
+        "cobrada_parcial": "Pago parcial",
+        "cobrada_total": "Pagada",
+        "cancelada": "Cancelada",
+        "vencida": "Vencida",
+    }
+
+    @property
+    def estado_etiqueta(self) -> str:
+        return self.ETIQUETAS_ESTADO.get(self.estado_visible, self.estado_visible)
 
     @property
     def saldo_pendiente(self) -> Decimal:

@@ -1,0 +1,40 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">CFDI del PAC · {{ fac.codigo }}</h2>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <form hx-post="{% url 'facturacion:cfdi' fac.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+              hx-encoding="multipart/form-data" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="space-y-4 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                <p class="text-gray-500 dark:text-gray-400">Sube el <strong>PDF</strong> y el <strong>XML</strong> timbrados que emitió el contador/PAC. La factura los guarda como su comprobante fiscal. Puedes subir solo uno y completar el otro después.</p>
+                {% if error %}<p class="rounded-lg bg-error-50 px-3 py-2 text-error-700 dark:bg-error-500/10 dark:text-error-400">{{ error }}</p>{% endif %}
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">PDF del CFDI</label>
+                    <input type="file" name="pdf" accept="application/pdf" class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-brand-700 dark:text-gray-300 dark:file:bg-brand-500/15 dark:file:text-brand-300">
+                    {% if fac.pdf_file_id %}<p class="mt-1 text-xs text-success-600 dark:text-success-400">✓ Ya hay un PDF cargado — subir uno nuevo lo reemplaza.</p>{% endif %}
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">XML del CFDI</label>
+                    <input type="file" name="xml" accept="text/xml,application/xml,.xml" class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-brand-700 dark:text-gray-300 dark:file:bg-brand-500/15 dark:file:text-brand-300">
+                    {% if fac.xml_file_id %}<p class="mt-1 text-xs text-success-600 dark:text-success-400">✓ Ya hay un XML cargado — subir uno nuevo lo reemplaza.</p>{% endif %}
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Folio fiscal (UUID) <span class="text-gray-400">— opcional</span></label>
+                    <input type="text" name="cfdi_uuid" value="{{ fac.cfdi_uuid }}" maxlength="40" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                </div>
+            </div>
+            <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">Guardar CFDI</button>
+            </footer>
+        </form>
+    </div>
+</div>

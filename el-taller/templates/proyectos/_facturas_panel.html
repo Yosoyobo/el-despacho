@@ -1,0 +1,24 @@
+{% load forms_helpers %}
+{# LC #9: facturas ligadas al proyecto, debajo de Cotizaciones. Requiere que la
+   vista exponga `facturas_proyecto` (lista) y `puede_facturar` (bool). #}
+<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="mb-3 flex items-center justify-between gap-2">
+        <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Facturas ligadas</h3>
+        {% if puede_facturar %}<a href="{% url 'facturacion:nueva' %}?proyecto={{ proyecto.pk }}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nueva</a>{% endif %}
+    </div>
+    {% if facturas_proyecto %}
+    <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
+        {% for f in facturas_proyecto %}
+        <li class="flex items-center justify-between gap-2 py-2 {% if f.estado == 'cancelada' %}opacity-60{% endif %}">
+            <a href="{% url 'facturacion:detalle' f.pk %}" class="min-w-0 flex-1 truncate text-gray-700 hover:text-brand-600 dark:text-gray-300">
+                <span class="font-medium">{{ f.folio_display }}</span>
+                <span class="text-xs text-gray-400">· {{ f.concepto|default:f.titulo|truncatechars:26 }}</span>
+            </a>
+            <span class="shrink-0 badge {% with e=f.estado_visible %}{% if e == 'cobrada_total' %}badge-success{% elif e == 'cancelada' %}badge-error{% elif e == 'vencida' %}badge-warning{% elif e == 'emitida' or e == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}{% endwith %}">{{ f.estado_etiqueta }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-gray-500 dark:text-gray-400">Sin facturas para este proyecto.</p>
+    {% endif %}
+</section>
