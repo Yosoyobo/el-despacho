@@ -114,7 +114,7 @@
                 <div class="hidden">{{ form.fecha_inicio_hora }}{{ form.fecha_compromiso_hora }}</div>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_inicio_dia titulo="Inicio" con_hoy=True %}
-                    {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_compromiso_dia titulo="Entrega" %}
+                    {% include "proyectos/_calendario_fechas.html" with campo=form.fecha_compromiso_dia titulo="Entrega" con_hoy=True %}
                 </div>
             </div>
         </section>
