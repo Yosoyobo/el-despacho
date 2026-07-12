@@ -168,6 +168,29 @@ _MESES_ABR = ("Ene", "Feb", "Mar", "Abr", "May", "Jun",
               "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
 
 
+# Paleta estable para pastillas de color por entidad (cliente, etc.). Se usa
+# con `.badge badge-hex` vía la custom property --ec. LC revisión buzón:
+# «clientes en pastillas de colores chicas». Colores legibles claro/oscuro
+# (color-mix los suaviza), variados y deterministas por id.
+_PALETA_HASH = (
+    "#465fff", "#12b76a", "#f79009", "#f04438", "#7a5af8",
+    "#0ba5ec", "#ee46bc", "#eaaa08", "#4e5ba6", "#15b79e",
+)
+
+
+@register.filter
+def color_hash(valor) -> str:
+    """Hex estable derivado de un id/cadena (LC revisión buzón). Mismo valor →
+    mismo color siempre (no usa hash() aleatorio de Python). Vacío → gris."""
+    if valor is None or valor == "":
+        return "#667085"
+    try:
+        n = int(valor)
+    except (ValueError, TypeError):
+        n = sum(ord(c) for c in str(valor))
+    return _PALETA_HASH[n % len(_PALETA_HASH)]
+
+
 @register.filter
 def fecha_corta(valor) -> str:
     """Fecha legible en español: `Vie 26 Jun 2026` (día de semana + día + mes + año).

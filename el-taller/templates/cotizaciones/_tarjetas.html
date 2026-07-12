@@ -10,7 +10,8 @@ secundario, código chico, versión, total y estado con color del catálogo.{% e
         <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
                 <h3 class="truncate font-semibold text-gray-900 dark:text-gray-100">{% if c.proyecto %}{{ c.proyecto.nombre }}{% else %}{{ c.titulo|default:c.codigo }}{% endif %}</h3>
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ c.cliente.razon_social }}</p>
+                {# LC revisión buzón: cliente como pastilla de color chica. #}
+                <span class="badge badge-hex mt-1 max-w-full truncate" style="--ec: {{ c.cliente_id|color_hash }}">{{ c.cliente.razon_social }}</span>
             </div>
             <span class="badge badge-hex shrink-0" style="--ec: {{ c.estado_color }}">{{ c.get_estado_display }}</span>
         </div>

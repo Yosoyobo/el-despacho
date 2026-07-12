@@ -6,7 +6,7 @@ Es el destino del swap (#cot-panel); las pastillas devuelven este partial.{% end
         {% for slug, label in pills_estados %}
         <a hx-get="{% url 'cotizaciones:lista' %}?estado={{ slug }}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
            hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
-           class="inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition {% if estado_filtro == slug %}border-brand-500 bg-brand-500 text-white shadow-theme-xs{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ label }}</a>
+           class="pill-filtro {% if estado_filtro == slug %}pill-filtro-on{% endif %}">{{ label }}</a>
         {% endfor %}
     </nav>
     <div class="inline-flex shrink-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
@@ -24,11 +24,11 @@ Es el destino del swap (#cot-panel); las pastillas devuelven este partial.{% end
     <span class="mr-1 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Cliente</span>
     <a hx-get="{% url 'cotizaciones:lista' %}?{% if estado_filtro %}estado={{ estado_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
        hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
-       class="cursor-pointer rounded-full px-3 py-1 text-sm transition {% if not cliente_filtro %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300{% endif %}">Todos</a>
+       class="pill-filtro {% if not cliente_filtro %}pill-filtro-on{% endif %}">Todos</a>
     {% for c in clientes_pills %}
     <a hx-get="{% url 'cotizaciones:lista' %}?cliente={{ c.pk }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
        hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
-       class="cursor-pointer rounded-full px-3 py-1 text-sm transition {% if cliente_filtro == c.pk|stringformat:'s' %}bg-brand-500 font-medium text-white{% else %}border border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ c.razon_social|truncatechars:24 }}</a>
+       class="pill-filtro {% if cliente_filtro == c.pk|stringformat:'s' %}pill-filtro-on{% endif %}">{{ c.razon_social|truncatechars:24 }}</a>
     {% endfor %}
 </nav>
 {% endif %}

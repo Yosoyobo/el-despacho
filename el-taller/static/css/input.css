@@ -106,6 +106,36 @@
   .dark .estado-chip { color: color-mix(in srgb, var(--ec, #667085) 52%, #ffffff); }
   .estado-chip[data-activo] { background-color: color-mix(in srgb, var(--ec, #667085) 12%, transparent); }
 
+  /* ── Pastilla-filtro/toggle CANÓNICA (LC revisión buzón: unificar el estilo
+     de los botones "picados"). El estado activo usa el mismo look tenue-brand
+     de los botones 100%/50% de la factura, para que todo se vea consistente. */
+  .pill-filtro {
+    @apply inline-flex cursor-pointer items-center rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800;
+  }
+  .pill-filtro-on {
+    @apply border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300;
+  }
+
+  /* Pastilla-toggle de subcategoría de proveedor (LC revisión buzón). Mismo
+     look de color que `.badge-hex` pero clickeable: encierra un checkbox
+     oculto y `:has(:checked)` prende el color de la categoría (--ec). */
+  .subpill {
+    @apply inline-flex cursor-pointer select-none items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition;
+    border-color: color-mix(in srgb, var(--ec, #667085) 32%, transparent);
+    color: color-mix(in srgb, var(--ec, #667085) 70%, #000000);
+  }
+  .subpill:hover { border-color: color-mix(in srgb, var(--ec, #667085) 55%, transparent); }
+  .subpill:has(:checked) {
+    background-color: color-mix(in srgb, var(--ec, #667085) 16%, #ffffff);
+    border-color: var(--ec, #667085);
+    color: color-mix(in srgb, var(--ec, #667085) 82%, #000000);
+  }
+  .dark .subpill { color: color-mix(in srgb, var(--ec, #667085) 55%, #ffffff); }
+  .dark .subpill:has(:checked) {
+    background-color: color-mix(in srgb, var(--ec, #667085) 26%, transparent);
+    color: color-mix(in srgb, var(--ec, #667085) 66%, #ffffff);
+  }
+
   /* ── Termómetro de estatus de Cotizaciones (recuadro del proyecto) ──
      Pizza-tracker estilo Domino's reinterpretado como BARRA DE PASOS que se
      llena de izquierda a derecha (menos chevron, más termómetro — render Oscar).
