@@ -1320,9 +1320,15 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
     if clase not in ("producto", "proceso"):
         return HttpResponseForbidden("Tipo de gasto inválido.")
+    from decimal import Decimal
+
     from apps.el_catalogo.models import Proveedor
     from apps.tesoreria.models import CentroDeCosto
-    from apps.tesoreria.models.egreso import METODOS_EGRESO
+    from apps.tesoreria.models.egreso import (
+        METODOS_EGRESO,
+        METODOS_EGRESO_FORM,
+        METODOS_REEMBOLSO,
+    )
 
     from cuentas.models.usuario import Usuario
 
@@ -1331,19 +1337,41 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
     if info is None:
         return HttpResponseForbidden("Gasto no encontrado.")
 
+    # LC #16: método por defecto «Tarjeta empresa»; métodos personales que, al
+    # elegirse, mutan el estado a «Por reembolsar» (front + back).
+    METODO_DEFAULT = "tarjeta_empresa"
+    METODOS_PERSONALES = set(METODOS_REEMBOLSO)
+    # Pares (valor, etiqueta) del subconjunto del form (METODOS_EGRESO_FORM son
+    # sólo valores; las etiquetas viven en METODOS_EGRESO).
+    _labels_metodo = dict(METODOS_EGRESO)
+    METODOS_FORM_PARES = [(v, _labels_metodo.get(v, v)) for v in METODOS_EGRESO_FORM]
     # Solo dos estados: Pagado (default) y Por reembolsar.
     ESTADOS_PAGO_UI = [("pagado", "Pagado (saldado)"),
                        ("por_reembolsar", "Por reembolsar al empleado")]
+
+    # LC #163: desglose de IVA para el hero (informativo — la tasa efectiva del
+    # proyecto sobre la base del gasto).
+    _tasa = Decimal(str(getattr(proyecto, "iva_tasa_efectiva", 0) or 0))
+    _base = Decimal(str(info["monto"] or 0))
+    _iva = (_base * _tasa).quantize(Decimal("0.01"))
+    # LC #16: «¿Quién solicitó?» se pre-puebla con el Líder del proyecto.
+    _lider = (proyecto.asignaciones.filter(rol_en_proyecto="lider")
+              .select_related("usuario").first())
 
     def _ctx(error=None):
         return {
             "proyecto": proyecto, "clase": clase, "obj_pk": obj_pk, "info": info,
             "centros": CentroDeCosto.objects.filter(activo=True).order_by("nombre"),
             "centro_default": CentroDeCosto.objects.filter(slug=gastos.CENTRO_SLUG).first(),
-            "metodos": METODOS_EGRESO, "estados_pago": ESTADOS_PAGO_UI,
+            "metodos": METODOS_FORM_PARES, "estados_pago": ESTADOS_PAGO_UI,
+            "metodo_default": METODO_DEFAULT,
+            "metodos_personales": list(METODOS_PERSONALES),
             "hoy": _date.today().isoformat(),
             "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
             "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
+            "iva_monto": _iva, "iva_label": f"{float(_tasa * 100):g}%",
+            "total_con_iva": (_base + _iva).quantize(Decimal("0.01")),
+            "solicitado_por_default": _lider.usuario_id if _lider else None,
             "error": error,
         }
 
@@ -1352,10 +1380,15 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         pagado = Usuario.objects.filter(pk=request.POST.get("pagado_por") or 0).first()
         proveedor = Proveedor.objects.filter(
             pk=request.POST.get("proveedor") or 0, activo=True).first()
+        metodo = request.POST.get("metodo") or METODO_DEFAULT
         estado_pago = request.POST.get("estado_pago") or "pagado"
         if estado_pago not in ("pagado", "por_reembolsar"):
             estado_pago = "pagado"
-        metodo = request.POST.get("metodo") or "transferencia"
+        # LC #16: método personal ⇒ el gasto queda «Por reembolsar» (defensa
+        # server-side; el front también lo muta).
+        if metodo in METODOS_PERSONALES:
+            estado_pago = "por_reembolsar"
+        solicitado = Usuario.objects.filter(pk=request.POST.get("solicitado_por") or 0).first()
         # Fecha del pago (nuevo campo).
         fecha = _date.today()
         raw_fecha = (request.POST.get("fecha") or "").strip()
@@ -1371,10 +1404,16 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         egreso_pend = info.get("egreso") if info.get("pendiente") else None
         if egreso_pend is not None:
             # Liquidar la cuenta por pagar auto-generada.
+            campos_pend = []
             if proveedor is not None and egreso_pend.proveedor_id != proveedor.pk:
                 egreso_pend.proveedor = proveedor
                 egreso_pend.proveedor_nombre = (proveedor.razon_social or "")[:200]
-                egreso_pend.save(update_fields=["proveedor", "proveedor_nombre", "actualizado_en"])
+                campos_pend += ["proveedor", "proveedor_nombre"]
+            if solicitado is not None and egreso_pend.solicitado_por_id != solicitado.pk:
+                egreso_pend.solicitado_por = solicitado
+                campos_pend.append("solicitado_por")
+            if campos_pend:
+                egreso_pend.save(update_fields=campos_pend + ["actualizado_en"])
             from apps.tesoreria.services import liquidar_egreso_pendiente
             banco_o_caja = "caja" if metodo == "efectivo" else "banco"
             liquidar_egreso_pendiente(
@@ -1388,6 +1427,7 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
                 proyecto, clase, obj_pk, actor=request.user,
                 centro=centro, metodo=metodo, estado_pago=estado_pago,
                 pagado_por=pagado, proveedor=proveedor, fecha=fecha,
+                solicitado_por=solicitado,
             )
             if eg is None:
                 return render(request, "proyectos/_modal_registrar_gasto.html",

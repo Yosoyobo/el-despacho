@@ -152,8 +152,20 @@ def pendientes_de(proyecto) -> list[dict]:
 def pagos_pendientes_de(proyecto) -> list[dict]:
     """Unidades de gasto cuyo PAGO aún no se registra: sin egreso, egreso
     anulado, o egreso todavía en «Pendiente» (cuenta por pagar auto-generada).
-    Alimenta la alerta del detalle del proyecto (LC 2026-07)."""
-    return [u for u in iter_unidades(proyecto) if not u["pagado"]]
+    Alimenta la alerta del detalle del proyecto (LC 2026-07). Cada unidad trae
+    su IVA por línea (LC #157): base, `iva` y `total_con_iva`."""
+    try:
+        tasa = Decimal(str(proyecto.iva_tasa_efectiva))
+    except Exception:  # noqa: BLE001
+        tasa = Decimal("0.16")
+    out = []
+    for u in iter_unidades(proyecto):
+        if u["pagado"]:
+            continue
+        base = Decimal(str(u["monto"]))
+        iva = (base * tasa).quantize(Decimal("0.01"))
+        out.append({**u, "iva": iva, "total_con_iva": (base + iva).quantize(Decimal("0.01"))})
+    return out
 
 
 def _obj_de(proyecto, clase: str, pk: int):

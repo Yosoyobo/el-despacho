@@ -214,7 +214,11 @@
                             {{ g.label }}{% if g.proveedor %} <span class="text-xs text-gray-500">· {{ g.proveedor.razon_social }}</span>{% endif %}
                         </span>
                         <span class="flex shrink-0 items-center gap-2">
-                            <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ g.monto|dinero }}</span>
+                            {# LC #157: IVA por línea — base +IVA y total con IVA. #}
+                            <span class="text-right leading-tight">
+                                <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ g.total_con_iva|dinero }}</span>
+                                <span class="block text-[10px] tabular-nums text-gray-500 dark:text-gray-400">{{ g.monto|dinero }} + IVA</span>
+                            </span>
                             {% if puede_editar %}
                             <button type="button" hx-get="{% url 'proyectos-registrar-gasto-modal' proyecto.pk g.clase g.pk %}"
                                     hx-target="#modal-slot" hx-swap="innerHTML"
