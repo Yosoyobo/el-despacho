@@ -49,3 +49,58 @@ def test_nueva_tarea_pagina_full_sigue_de_fallback(client, usuario_factory, proy
     assert resp.status_code == 200
     # La página full extiende base.html (trae el shell), el modal no.
     assert b"modal-slot" in resp.content or b"Nueva tarea" in resp.content
+
+
+# ── Tabla editable en Productos ────────────────────────────────────────────
+
+
+def _servicio(nombre="Playera", precio="100.00", costo="40.00"):
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import CategoriaServicio, Servicio
+    cat = CategoriaServicio.objects.filter(activa=True).first()
+    if cat is None:
+        cat = CategoriaServicio.objects.create(nombre="General", color="#667085", orden=1)
+    return Servicio.objects.create(
+        nombre=nombre, precio_base=Decimal(precio), costo=Decimal(costo), categoria=cat,
+    )
+
+
+def test_catalogo_editar_inline_render(client, usuario_factory):
+    autor = usuario_factory(rol="super_admin")
+    client.force_login(autor)
+    _servicio()
+    resp = client.get("/catalogo/?editar=1")
+    assert resp.status_code == 200
+    cuerpo = resp.content.decode()
+    assert "catalogo-servicio-celda" not in cuerpo or "hx-post" in cuerpo  # inputs con hx-post
+    assert 'hx-vals' in cuerpo and 'Edición rápida activa' in cuerpo
+
+
+def test_catalogo_celda_guarda_precio(client, usuario_factory):
+    autor = usuario_factory(rol="super_admin")
+    client.force_login(autor)
+    s = _servicio(precio="100.00")
+    resp = client.post(f"/catalogo/{s.pk}/celda", {"campo": "precio_base", "valor": "250.50"})
+    assert resp.status_code == 204
+    s.refresh_from_db()
+    from decimal import Decimal
+    assert s.precio_base == Decimal("250.50")
+
+
+def test_catalogo_celda_nombre_vacio_rechaza(client, usuario_factory):
+    autor = usuario_factory(rol="super_admin")
+    client.force_login(autor)
+    s = _servicio(nombre="Gorra")
+    resp = client.post(f"/catalogo/{s.pk}/celda", {"campo": "nombre", "valor": "  "})
+    assert resp.status_code == 400
+    s.refresh_from_db()
+    assert s.nombre == "Gorra"  # no se guardó vacío
+
+
+def test_catalogo_celda_campo_no_whitelist_rechaza(client, usuario_factory):
+    autor = usuario_factory(rol="super_admin")
+    client.force_login(autor)
+    s = _servicio()
+    resp = client.post(f"/catalogo/{s.pk}/celda", {"campo": "creado_por", "valor": "1"})
+    assert resp.status_code == 400

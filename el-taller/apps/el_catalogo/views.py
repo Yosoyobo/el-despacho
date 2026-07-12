@@ -13,7 +13,7 @@ toggleables individualmente via tabla `cuentas_permiso_usuario`:
 """
 
 from django.contrib import messages
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -72,6 +72,8 @@ def lista(request):
         qs = qs.filter(nombre__icontains=q)
     if categoria_id:
         qs = qs.filter(categoria_id=categoria_id)
+    # LC revisión buzón R2: modo edición inline (celdas editables) opt-in.
+    editar_inline = request.GET.get("editar") == "1" and puede_editar
     cabeceras = [{"label": "Nombre"}, {"label": "Categoría"}, {"label": "Unidad"}]
     if ve_precios:
         cabeceras.append({"label": "Costo", "align": "right"})
@@ -79,7 +81,7 @@ def lista(request):
         cabeceras.append({"label": "Margen", "align": "right"})
     cabeceras.append({"label": "Proveedores"})
     cabeceras.append({"label": "Estado"})
-    if puede_editar or puede_archivar or puede_eliminar:
+    if editar_inline or puede_editar or puede_archivar or puede_eliminar:
         cabeceras.append({"label": "", "align": "right"})
     return render(request, "catalogo/lista.html", {
         "servicios": qs,
@@ -94,7 +96,57 @@ def lista(request):
         "puede_eliminar": puede_eliminar,
         "puede_gestionar_cats": puede_gestionar_cats,
         "cabeceras_catalogo": cabeceras,
+        "editar_inline": editar_inline,
+        "filas_template": "catalogo/_filas_editable.html" if editar_inline else "catalogo/_filas.html",
     })
+
+
+@require_http_methods(["POST"])
+def servicio_celda(request, pk: int):
+    """Edición inline de UNA celda del producto (revisión buzón R2 — «tablas con
+    celdas editables», por ahora solo en Productos). Whitelist de campos; guarda
+    y responde 204 (el margen se recalcula en el cliente). Gated catalogo.editar.
+    """
+    if (r := _gate(request, "editar")) is not None:
+        return r
+    srv = get_object_or_404(Servicio, pk=pk)
+    campo = (request.POST.get("campo") or "").strip()
+    valor = request.POST.get("valor", "")
+    if campo in {"costo", "precio_base"} and not puede(request.user, "catalogo", "ver_precios"):
+        return HttpResponseForbidden("Sin permiso para editar precios.")
+    if campo == "nombre":
+        v = (valor or "").strip()
+        if not v:
+            return HttpResponseBadRequest("El nombre no puede quedar vacío.")
+        srv.nombre = v[:150]
+    elif campo == "unidad":
+        srv.unidad = (valor or "").strip()[:30] or "pieza"
+    elif campo in {"costo", "precio_base"}:
+        from decimal import Decimal, InvalidOperation
+        try:
+            v = Decimal(str(valor).replace(",", "").strip() or "0")
+        except InvalidOperation:
+            return HttpResponseBadRequest("Número inválido.")
+        if v < 0:
+            return HttpResponseBadRequest("No puede ser negativo.")
+        setattr(srv, campo, v)
+    elif campo == "categoria":
+        cat = CategoriaServicio.objects.filter(pk=valor if valor.isdigit() else 0).first()
+        if not cat:
+            return HttpResponseBadRequest("Categoría inválida.")
+        srv.categoria = cat
+    elif campo == "activo":
+        srv.activo = str(valor) in {"1", "true", "on", "True", "si"}
+    else:
+        return HttpResponseBadRequest("Campo no editable.")
+    srv.save(update_fields=[campo, "actualizado_en"])
+    emitir(EventoPortavoz(
+        tipo="catalogo.servicio_actualizado",
+        actor_id=request.user.pk,
+        actor_email=request.user.email,
+        payload={"servicio_id": srv.pk, "campo": campo, "origen": "celda_inline"},
+    ))
+    return HttpResponse(status=204)
 
 
 @require_http_methods(["GET", "POST"])

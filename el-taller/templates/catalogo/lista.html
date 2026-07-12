@@ -13,6 +13,8 @@
         {% if puede_gestionar_cats %}<a href="{% url 'catalogo-categorias' %}" class="btn-secundario">Categorías</a>{% endif %}
         {% if puede_gestionar_cats %}<a href="{% url 'catalogo-unidades' %}" class="btn-secundario">Unidades</a>{% endif %}
         <a href="{% url 'catalogo-proveedores' %}" class="btn-secundario">Proveedores</a>
+        {# LC revisión buzón R2: edición inline de celdas (solo Productos, por ahora). #}
+        {% if puede_editar %}{% if editar_inline %}<a href="?{% if q %}q={{ q }}&{% endif %}{% if categoria_filtro %}categoria={{ categoria_filtro }}&{% endif %}{% if incluir_archivados %}archivados=1{% endif %}" class="btn-secundario">Salir de edición</a>{% else %}<a href="?editar=1{% if q %}&q={{ q }}{% endif %}{% if categoria_filtro %}&categoria={{ categoria_filtro }}{% endif %}{% if incluir_archivados %}&archivados=1{% endif %}" class="btn-secundario">✎ Edición rápida</a>{% endif %}{% endif %}
         {% if puede_crear %}<a href="{% url 'catalogo-nuevo' %}" class="btn-primario">+ Nuevo producto</a>{% endif %}
     </div>
 </header>
@@ -38,5 +40,6 @@
     <button type="submit" class="btn-secundario">Filtrar</button>
 </form>
 
-{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_catalogo filas_template="catalogo/_filas.html" sin_scroll_vertical=True %}
+{% if editar_inline %}<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">✎ Edición rápida activa — escribe en las celdas y se guardan solas al salir del campo. El margen se recalcula al momento.</p>{% endif %}
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_catalogo filas_template=filas_template sin_scroll_vertical=True %}
 {% endblock %}

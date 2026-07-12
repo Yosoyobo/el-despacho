@@ -1,0 +1,86 @@
+{% comment %}Filas EDITABLES del Catálogo (revisión buzón R2 — «tablas con celdas
+editables»). Cada celda autoguarda al salir del campo (hx-post a la celda,
+hx-swap=none). El margen se recalcula en el cliente. CSRF va en hx-headers del
+<tr> (heredado por los inputs). Solo se usa con ?editar=1 y permiso catalogo.editar.{% endcomment %}
+{% for s in servicios %}
+<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <td class="px-3 py-1.5">
+        <input type="text" name="valor" value="{{ s.nombre }}" aria-label="Nombre"
+               hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "nombre"}' hx-swap="none"
+               class="w-full min-w-[10rem] rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-gray-900 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-100 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+    </td>
+    <td class="px-3 py-1.5">
+        <select name="valor" aria-label="Categoría"
+                hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "categoria"}' hx-swap="none"
+                class="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-gray-700 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-200 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+            {% for c in categorias %}<option value="{{ c.pk }}" {% if s.categoria_id == c.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+        </select>
+    </td>
+    <td class="px-3 py-1.5">
+        <input type="text" name="valor" value="{{ s.unidad }}" aria-label="Unidad"
+               hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "unidad"}' hx-swap="none"
+               class="w-24 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-gray-600 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-300 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+    </td>
+    {% if ve_precios %}
+    <td class="px-3 py-1.5 text-right">
+        <input type="number" step="0.01" min="0" name="valor" value="{{ s.costo|floatformat:2 }}" aria-label="Costo" data-celda-num="costo"
+               hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "costo"}' hx-swap="none"
+               class="w-24 rounded-md border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums text-gray-500 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-400 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+    </td>
+    <td class="px-3 py-1.5 text-right">
+        <input type="number" step="0.01" min="0" name="valor" value="{{ s.precio_base|floatformat:2 }}" aria-label="Precio" data-celda-num="precio"
+               hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "precio_base"}' hx-swap="none"
+               class="w-24 rounded-md border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums text-gray-900 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-100 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+    </td>
+    <td class="px-3 py-1.5 text-right">
+        <span data-margen class="text-sm tabular-nums {% if s.margen_porcentaje >= 50 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 20 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:1 }}%</span>
+    </td>
+    {% endif %}
+    <td class="px-3 py-1.5">
+        {% with proveedores=s.proveedores.all %}
+            {% if proveedores %}
+                <div class="flex flex-wrap gap-1">
+                    {% for p in proveedores|slice:":2" %}<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.razon_social }}</span>{% endfor %}
+                    {% if proveedores|length > 2 %}<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">+{{ proveedores|length|add:"-2" }}</span>{% endif %}
+                </div>
+            {% else %}<span class="text-xs text-gray-400 dark:text-gray-500">—</span>{% endif %}
+        {% endwith %}
+    </td>
+    <td class="px-3 py-1.5">
+        <select name="valor" aria-label="Estado"
+                hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "activo"}' hx-swap="none"
+                class="rounded-md border border-transparent bg-transparent px-2 py-1 text-sm hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+            <option value="1" {% if s.activo %}selected{% endif %}>Disponible</option>
+            <option value="0" {% if not s.activo %}selected{% endif %}>No disponible</option>
+        </select>
+    </td>
+    <td class="px-3 py-1.5 text-right">
+        <a href="{% url 'catalogo-variaciones' s.pk %}" class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300">Variaciones →</a>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="9" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Agrega el primer producto para empezar a cotizar más rápido." icono="folder" %}</div></td></tr>
+{% endfor %}
+<script>
+(function () {
+    // Recalcula el margen en vivo al editar costo/precio (revisión buzón R2).
+    function recalc(input) {
+        var tr = input.closest('tr');
+        if (!tr) return;
+        var costoEl = tr.querySelector('[data-celda-num="costo"]');
+        var precioEl = tr.querySelector('[data-celda-num="precio"]');
+        var span = tr.querySelector('[data-margen]');
+        if (!span || !precioEl) return;
+        var costo = parseFloat(costoEl && costoEl.value) || 0;
+        var precio = parseFloat(precioEl.value) || 0;
+        var m = precio > 0 ? (precio - costo) / precio * 100 : 0;
+        span.textContent = m.toFixed(1) + '%';
+        span.className = 'text-sm tabular-nums ' + (m >= 50
+            ? 'text-success-600 dark:text-success-400'
+            : (m >= 20 ? 'text-warning-600 dark:text-warning-400' : 'text-error-600 dark:text-error-400'));
+    }
+    document.addEventListener('input', function (e) {
+        if (e.target.matches && e.target.matches('[data-celda-num]')) recalc(e.target);
+    });
+})();
+</script>
