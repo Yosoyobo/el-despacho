@@ -30,9 +30,12 @@ como efectivo (operación informal). JS calcula IVA 16% y total en vivo.
     </div>
 </div>
 <script>
+{% comment %}Rooteado por selector (no `currentScript`) para funcionar también
+inyectado por HTMX en un modal (revisión buzón R2). Marca cada bloque para no
+re-inicializar.{% endcomment %}
 (() => {
-    const block = document.currentScript.previousElementSibling;
-    if (!block || !block.matches("[data-iva-block]")) return;
+  document.querySelectorAll("[data-iva-block]:not([data-iva-listo])").forEach((block) => {
+    block.dataset.ivaListo = "1";
     const sub    = block.querySelector('[name="subtotal"]');
     const chk     = block.querySelector('[name="incluye_iva"]');
     const ivaOut  = block.querySelector('[data-iva-monto]');
@@ -50,5 +53,6 @@ como efectivo (operación informal). JS calcula IVA 16% y total en vivo.
     if (sub) sub.addEventListener("input", recalc);
     if (chk) chk.addEventListener("change", recalc);
     recalc();
+  });
 })();
 </script>

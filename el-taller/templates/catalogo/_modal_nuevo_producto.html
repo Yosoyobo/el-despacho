@@ -1,0 +1,187 @@
+{% load forms_helpers %}
+{% comment %}Form-in-modal "Nuevo producto" (revisión buzón R2 — render de Oscar).
+Se inyecta en #modal-slot. En alta la imagen NO se puede subir todavía (Drive
+necesita el producto guardado) — se avisa y queda disponible al editar, igual
+que la página completa. Proveedores: pills + quick-create inline + 🤖 Sugerir
+(scripts rooteados por id → corren al inyectarse). POST HTMX → 204 +
+HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
+    <div data-modal-producto class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <form hx-post="{% url 'catalogo-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
+            {% csrf_token %}
+            <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Nuevo producto</h2>
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="btn-primario">Guardar</button>
+                    <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                {% if form.non_field_errors %}
+                <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                {# Datos del producto (proveedores y descripción van abajo) #}
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    {% for f in form %}
+                        {% if f.name == 'proveedores' or f.name == 'descripcion_default' %}
+                        {% elif f.name == 'precio_base' and precio_readonly %}
+                        <div class="min-w-0">
+                            <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }} <span class="text-xs font-normal text-gray-400">(solo lectura)</span></label>
+                            <input type="number" step="0.01" value="{{ f.value|default_if_none:'' }}" readonly disabled class="w-full cursor-not-allowed rounded-lg border-gray-300 bg-gray-50 tabular-nums text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
+                        </div>
+                        {% elif f.name == 'nombre' %}
+                            {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
+                        {% else %}
+                            {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                {# Descripción + El Chalán #}
+                <div>
+                    <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción</h3>
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion_default ancho_completo=True %}
+                    {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.descripcion_default.id_for_label instruccion_ph="Ej. describe este producto para una cotización" %}
+                </div>
+
+                {# Imagen: solo al editar (Drive necesita el producto guardado). #}
+                <div class="rounded-xl border border-dashed border-gray-300 p-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                    🖼️ Guarda el producto primero; luego, al editarlo, podrás pegar (Ctrl/Cmd+V) o subir su imagen.
+                </div>
+
+                {# Proveedores aplicables — pills + quick-create + 🤖 Sugerir #}
+                <div>
+                    <div class="flex items-baseline justify-between gap-3">
+                        <div class="min-w-0">
+                            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ form.proveedores.label }}</h3>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.proveedores.help_text }}</p>
+                        </div>
+                        {% if permisos_modulos.chalan %}
+                        <button type="button" id="prov-sugerir" class="shrink-0 inline-flex items-center gap-1 rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-60 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10">🤖 Sugerir</button>
+                        {% endif %}
+                    </div>
+                    <p id="prov-sugerir-msg" class="mt-2 hidden text-xs text-gray-500 dark:text-gray-400"></p>
+                    <div id="proveedores-lista" class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {% for choice in form.proveedores %}
+                        <label class="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10">
+                            {{ choice.tag }}
+                            <span class="min-w-0 flex-1 break-words text-gray-800 dark:text-gray-200">{{ choice.choice_label }}</span>
+                        </label>
+                        {% empty %}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Aún no hay proveedores registrados.</p>
+                        {% endfor %}
+                    </div>
+                    {% if form.proveedores.errors %}<p class="mt-2 text-xs text-error-600 dark:text-error-400">{{ form.proveedores.errors|join:" " }}</p>{% endif %}
+
+                    <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+                        <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Nuevo proveedor</summary>
+                        <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="prov-razon" class="text-xs font-medium text-gray-600 dark:text-gray-300">Razón social *</label>
+                                <input id="prov-razon" type="text" placeholder="ej. Maracas Don José" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            </div>
+                            <div>
+                                <label for="prov-contacto" class="text-xs font-medium text-gray-600 dark:text-gray-300">Persona de contacto</label>
+                                <input id="prov-contacto" type="text" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            </div>
+                            <div>
+                                <label for="prov-email" class="text-xs font-medium text-gray-600 dark:text-gray-300">Email</label>
+                                <input id="prov-email" type="email" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            </div>
+                            <div>
+                                <label for="prov-telefono" class="text-xs font-medium text-gray-600 dark:text-gray-300">Teléfono</label>
+                                <input id="prov-telefono" type="text" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center gap-3">
+                            <button type="button" id="prov-agregar" class="btn-primario whitespace-nowrap">Crear y marcar</button>
+                            <p id="prov-msg" class="text-xs hidden"></p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function() {
+    var slot = document.getElementById('modal-slot');
+    if (!slot) return;
+    var btn = slot.querySelector('#prov-agregar');
+    var csrfEl = slot.querySelector('input[name=csrfmiddlewaretoken]');
+    if (btn && csrfEl) {
+        var csrf = csrfEl.value;
+        var inputs = {
+            razon: slot.querySelector('#prov-razon'),
+            contacto: slot.querySelector('#prov-contacto'),
+            email: slot.querySelector('#prov-email'),
+            telefono: slot.querySelector('#prov-telefono'),
+        };
+        var msg = slot.querySelector('#prov-msg');
+        var lista = slot.querySelector('#proveedores-lista');
+        function mostrarMsg(t, err) {
+            msg.textContent = t;
+            msg.className = 'text-xs ' + (err ? 'text-error-600 dark:text-error-400' : 'text-success-600 dark:text-success-400');
+        }
+        btn.addEventListener('click', async function() {
+            var razon = (inputs.razon.value || '').trim();
+            if (!razon) { mostrarMsg('La razón social es obligatoria.', true); return; }
+            btn.disabled = true;
+            var body = new FormData();
+            body.append('razon_social', razon);
+            body.append('nombre_contacto', inputs.contacto.value || '');
+            body.append('email_contacto', inputs.email.value || '');
+            body.append('telefono', inputs.telefono.value || '');
+            try {
+                var resp = await fetch('{% url "catalogo-proveedor-quick-create" %}', { method: 'POST', headers: {'X-CSRFToken': csrf}, body: body });
+                var data = await resp.json();
+                if (!resp.ok || !data.ok) { mostrarMsg(data.error || 'Error al crear proveedor.', true); btn.disabled = false; return; }
+                var placeholder = lista.querySelector('p');
+                if (placeholder) placeholder.remove();
+                var label = document.createElement('label');
+                label.className = 'flex cursor-pointer items-center gap-2 rounded-lg border border-brand-500 bg-brand-50 px-3 py-2 text-sm transition hover:bg-brand-100 dark:border-brand-500 dark:bg-brand-500/10 dark:hover:bg-brand-500/20';
+                label.innerHTML = '<input type="checkbox" name="proveedores" value="' + data.id + '" checked class="rounded text-brand-600 focus:ring-brand-500"><span class="flex-1 text-gray-800 dark:text-gray-200">' + data.razon_social + '</span>';
+                lista.appendChild(label);
+                Object.values(inputs).forEach(function(i) { i.value = ''; });
+                mostrarMsg('Proveedor "' + data.razon_social + '" creado y marcado.', false);
+                btn.disabled = false;
+            } catch (e) { mostrarMsg('Error de red.', true); btn.disabled = false; }
+        });
+    }
+
+    var sug = slot.querySelector('#prov-sugerir');
+    if (sug && csrfEl) {
+        var csrf2 = csrfEl.value;
+        var smsg = slot.querySelector('#prov-sugerir-msg');
+        var setMsg = function(t, err) {
+            smsg.textContent = t || '';
+            smsg.classList.toggle('hidden', !t);
+            smsg.classList.toggle('text-error-600', !!err);
+        };
+        sug.addEventListener('click', async function() {
+            var nombre = (slot.querySelector('[name=nombre]') && slot.querySelector('[name=nombre]').value || '').trim();
+            var descripcion = (slot.querySelector('[name=descripcion_default]') && slot.querySelector('[name=descripcion_default]').value || '').trim();
+            if (!nombre) { setMsg('Escribe primero el nombre del producto.', true); return; }
+            sug.disabled = true; setMsg('El Chalán está pensando…');
+            try {
+                var body = new URLSearchParams({ nombre: nombre, descripcion: descripcion });
+                var resp = await fetch('{% url "catalogo-sugerir-proveedores" %}', { method: 'POST', headers: { 'X-CSRFToken': csrf2, 'Content-Type': 'application/x-www-form-urlencoded' }, credentials: 'same-origin', body: body.toString() });
+                var data = await resp.json();
+                if (!data.ok) { setMsg(data.error || 'No se pudo sugerir.', true); sug.disabled = false; return; }
+                if (!data.sugeridos.length) { setMsg('El Chalán no encontró proveedores que encajen.'); sug.disabled = false; return; }
+                var nombres = [];
+                data.sugeridos.forEach(function(s) {
+                    var chk = slot.querySelector('input[name=proveedores][value="' + s.id + '"]');
+                    if (chk) { chk.checked = true; nombres.push(s.razon_social); }
+                });
+                setMsg('Sugeridos: ' + nombres.join(', ') + '. Revísalos antes de guardar.');
+            } catch (e) { setMsg('Error de red.', true); }
+            sug.disabled = false;
+        });
+    }
+})();
+</script>

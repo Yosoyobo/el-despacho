@@ -223,6 +223,9 @@ def cliente_quick_create(request):
 def nuevo(request):
     if not puede_editar_cartera(request.user):
         return HttpResponseForbidden("Solo admins pueden crear clientes.")
+    # Revisión buzón R2: form-in-modal si es HTMX (#modal-slot); POST HTMX → 204
+    # + HX-Redirect al detalle. La página full queda de fallback.
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = ClienteForm(request.POST)
         formset = ClienteContactoFormSet(request.POST)
@@ -241,11 +244,16 @@ def nuevo(request):
                 payload={"cliente_id": cliente.pk, "razon_social": cliente.razon_social, "rfc": cliente.rfc},
             ))
             messages.success(request, f"Cliente «{cliente.razon_social}» creado.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": reverse("cartera-detalle", args=[cliente.pk])})
             return redirect("cartera-detalle", pk=cliente.pk)
+        # inválido → cae al render (modal si es HTMX).
     else:
         form = ClienteForm()
         formset = ClienteContactoFormSet()
-    return render(request, "cartera/form.html", {"form": form, "formset": formset, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"label": "Nuevo cliente"}], "back_url": "/cartera/", "back_label": "Clientes"})
+    ctx = {"form": form, "formset": formset, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"label": "Nuevo cliente"}], "back_url": "/cartera/", "back_label": "Clientes"}
+    tmpl = "cartera/_modal_nuevo_cliente.html" if es_htmx else "cartera/form.html"
+    return render(request, tmpl, ctx)
 
 
 @login_required

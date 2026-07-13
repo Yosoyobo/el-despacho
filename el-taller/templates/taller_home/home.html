@@ -40,37 +40,38 @@
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nueva tarea
     </button>
+    {% comment %}Revisión buzón R2: acciones rápidas como form-in-modal (hx-get → #modal-slot).{% endcomment %}
     {% if permisos_modulos.cartera %}
-    <a href="{% url 'cartera-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-light-500 bg-blue-light-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-blue-light-600 transition hover:bg-blue-light-100 dark:border-blue-light-500/50 dark:bg-blue-light-500/10 dark:text-blue-light-400 dark:hover:bg-blue-light-500/20">
+    <button type="button" hx-get="{% url 'cartera-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-light-500 bg-blue-light-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-blue-light-600 transition hover:bg-blue-light-100 dark:border-blue-light-500/50 dark:bg-blue-light-500/10 dark:text-blue-light-400 dark:hover:bg-blue-light-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo cliente
-    </a>
+    </button>
     {% endif %}
     {% if permisos_modulos.proyectos %}
-    <a href="{% url 'proyectos-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-success-500 bg-success-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-success-600 transition hover:bg-success-100 dark:border-success-500/50 dark:bg-success-500/10 dark:text-success-400 dark:hover:bg-success-500/20">
+    <button type="button" hx-get="{% url 'proyectos-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex w-full items-center justify-center gap-2 rounded-xl border border-success-500 bg-success-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-success-600 transition hover:bg-success-100 dark:border-success-500/50 dark:bg-success-500/10 dark:text-success-400 dark:hover:bg-success-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo proyecto
-    </a>
+    </button>
     {% endif %}
     {% if permisos_modulos.catalogo %}
-    <a href="{% url 'catalogo-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-500 bg-brand-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-brand-600 transition hover:bg-brand-100 dark:border-brand-500/50 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20">
+    <button type="button" hx-get="{% url 'catalogo-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-500 bg-brand-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-brand-600 transition hover:bg-brand-100 dark:border-brand-500/50 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo producto
-    </a>
-    <a href="{% url 'catalogo-proveedor-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-purple-500 bg-purple-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-purple-600 transition hover:bg-purple-100 dark:border-purple-500/50 dark:bg-purple-500/10 dark:text-purple-400 dark:hover:bg-purple-500/20">
+    </button>
+    <button type="button" hx-get="{% url 'catalogo-proveedor-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex w-full items-center justify-center gap-2 rounded-xl border border-purple-500 bg-purple-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-purple-600 transition hover:bg-purple-100 dark:border-purple-500/50 dark:bg-purple-500/10 dark:text-purple-400 dark:hover:bg-purple-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo proveedor
-    </a>
+    </button>
     {% endif %}
     {% if permisos_modulos.tesoreria %}
-    <a href="{% url 'tesoreria:ingreso-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-light-500 bg-blue-light-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-blue-light-600 transition hover:bg-blue-light-100 dark:border-blue-light-500/50 dark:bg-blue-light-500/10 dark:text-blue-light-400 dark:hover:bg-blue-light-500/20">
+    <button type="button" hx-get="{% url 'tesoreria:ingreso-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-light-500 bg-blue-light-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-blue-light-600 transition hover:bg-blue-light-100 dark:border-blue-light-500/50 dark:bg-blue-light-500/10 dark:text-blue-light-400 dark:hover:bg-blue-light-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo ingreso
-    </a>
-    <a href="{% url 'tesoreria:egreso-nuevo' %}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500 bg-orange-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-orange-600 transition hover:bg-orange-100 dark:border-orange-500/50 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20">
+    </button>
+    <button type="button" hx-get="{% url 'tesoreria:egreso-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500 bg-orange-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-orange-600 transition hover:bg-orange-100 dark:border-orange-500/50 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         Nuevo egreso
-    </a>
+    </button>
     {% endif %}
 </section>
 

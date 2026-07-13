@@ -1,0 +1,78 @@
+{% load forms_helpers %}
+{% comment %}Form-in-modal "Nuevo proyecto" — quick-create + mini-Chalán (revisión
+buzón R2, decisión de Oscar). Se inyecta en #modal-slot. Pide lo esencial
+(nombre, cliente, fechas) y, opcionalmente, una descripción de los productos en
+lenguaje natural que El Chalán interpreta y muestra en un preview para confirmar
+(regla §20: propone, tú confirmas). Cliente = combobox buscable + pills de
+recientes. Entrega usa "Mañana" (no "Hoy"). POST HTMX → crea el proyecto y, si
+hay productos, muestra el preview; si no, 204 + HX-Redirect al detalle. Ver
+vista `_nuevo_modal`.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
+    <div data-modal-proyecto class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <form hx-post="{% url 'proyectos-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
+            {% csrf_token %}
+            <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Nuevo proyecto</h2>
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="btn-primario">Guardar</button>
+                    <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                {% if form.non_field_errors %}
+                <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ form.non_field_errors|join:" · " }}</div>
+                {% endif %}
+
+                <div>
+                    <label for="{{ form.nombre.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nombre <span class="text-error-500">*</span></label>
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.nombre.errors|join:" · " }}</p>{% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="min-w-0">
+                        <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cliente <span class="text-error-500">*</span></label>
+                        {{ form.cliente }}
+                        {% if form.cliente.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.cliente.errors|join:" · " }}</p>{% endif %}
+                    </div>
+                    <div class="min-w-0">
+                        <label for="{{ form.estado.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Estado</label>
+                        {{ form.estado }}
+                        {% if form.estado.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.estado.errors|join:" · " }}</p>{% endif %}
+                    </div>
+                </div>
+
+                {% if clientes_recientes %}
+                <div class="flex flex-wrap gap-1.5">
+                    {% for c in clientes_recientes %}
+                    <button type="button" class="pill-filtro !px-3 !py-1 !text-xs" data-set-select="{{ c.pk }}" data-set-select-target="#{{ form.cliente.id_for_label }}" title="{{ c.razon_social }}">{{ c.razon_social|truncatechars:22 }}</button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {# Fechas (Entrega usa "Mañana", no "Hoy" — R1). Los mini-calendarios se re-inicializan en htmx:afterSwap. #}
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>{% include "tesoreria/_fecha_minical.html" with nombre="fecha_inicio_dia" valor=form.fecha_inicio_dia.value|default:"" label="Inicio" con_quitar=True sin_default_hoy=True %}</div>
+                    <div>{% include "tesoreria/_fecha_minical.html" with nombre="fecha_compromiso_dia" valor=form.fecha_compromiso_dia.value|default:"" label="Entrega" con_quitar=True sin_default_hoy=True sin_hoy=True con_manana=True %}</div>
+                </div>
+
+                <div>
+                    <label for="{{ form.descripcion.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción (opcional)</label>
+                    {{ form.descripcion }}
+                </div>
+
+                {# Mini-Chalán: describe los productos en lenguaje natural. #}
+                {% if puede_chalan %}
+                <div class="rounded-xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-500/30 dark:bg-brand-500/10">
+                    <label for="pry-productos-texto" class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-brand-700 dark:text-brand-300">🤖 Productos con El Chalán (opcional)</label>
+                    <textarea id="pry-productos-texto" name="productos_texto" rows="3" placeholder="Ej. 100 playeras blancas bordadas, 2 lonas de 2×1 m, 50 tazas con logo…" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></textarea>
+                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">El Chalán los interpreta y te muestra un preview para confirmar antes de agregarlos. Déjalo vacío si prefieres agregarlos después.</p>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>

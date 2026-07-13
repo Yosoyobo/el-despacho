@@ -419,6 +419,7 @@
       var prev = mc.querySelector('[data-mc-prev]'); if (prev) prev.addEventListener('click', function () { vm--; if (vm < 1) { vm = 12; vy--; } render(); });
       var next = mc.querySelector('[data-mc-next]'); if (next) next.addEventListener('click', function () { vm++; if (vm > 12) { vm = 1; vy++; } render(); });
       var hoy = mc.querySelector('[data-mc-hoy]'); if (hoy) hoy.addEventListener('click', function () { input.value = mcHoyISO(); var p = input.value.split('-').map(Number); vy = p[0]; vm = p[1]; render(); });
+      var manana = mc.querySelector('[data-mc-manana]'); if (manana) manana.addEventListener('click', function () { var t = new Date(); t.setDate(t.getDate() + 1); input.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); var p = input.value.split('-').map(Number); vy = p[0]; vm = p[1]; render(); });
       var quitar = mc.querySelector('[data-mc-quitar]'); if (quitar) quitar.addEventListener('click', function () { input.value = ''; render(); });
       render();
     });

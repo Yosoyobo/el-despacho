@@ -6173,3 +6173,52 @@ El Mensajero deploya. El resto de R2 → handoff `docs/SPRINT-Revision-Buzon-R2-
   `docs/SPRINT-Revision-Buzon-R2-resto.md`.
 - `docs/DOC_05_MANUAL_USUARIO.md`: **al día** — bloque `## Novedades` del 12-jul
   (= `VERSION_FECHA`) arriba de todo, ya incluye modal + tabla editable.
+
+---
+
+# BITÁCORA — Revisión del buzón, Ronda 2 (resto) (2026-07-12, VERSION 2026.07.08)
+
+Continuación en conversación nueva del handoff `docs/SPRINT-Revision-Buzon-R2-resto.md`.
+Se ejecutó "todo en un deploy" (decisión Oscar por AskUserQuestion). Rama
+`sprint/revision-buzon-r2-resto` desde `origin/main` (== `2026.07.07`).
+
+## Qué se entregó
+
+- **5 acciones rápidas del Dashboard → form-in-modal HTMX** (patrón exemplar de
+  "Nueva Tarea"): Proveedor, Producto, Cliente, Ingreso, Egreso. Cada una:
+  partial `_modal_nuevo_*.html` + branch `es_htmx` en su vista (GET HTMX → modal,
+  POST HTMX éxito → 204 + `HX-Redirect`, POST inválido → re-render del modal,
+  no-HTMX → página full de fallback intacta) + botón `hx-get` en `home.html`.
+- **Nuevo Proyecto = quick-create + mini-Chalán**: modal con lo esencial +
+  textarea "describe los productos". Guardar crea el proyecto y, con texto +
+  permiso de Chalán, El Chalán interpreta los productos → **preview con
+  checkboxes** para confirmar (§20: propone, no aplica). Módulo
+  `apps/los_proyectos/productos_ia.py` (interpretar defensivo + aplicar con
+  gating) + endpoint `proyectos-productos-ia-aplicar`.
+- **Infra reusable**: `_fecha_minical` gana `sin_hoy`/`con_manana` (+ wiring
+  `data-mc-manana` en `ui.js`, dual-copy §18) para la Entrega con "Mañana";
+  `_iva_campos.html` hecho swap-safe (scan por selector, no `currentScript`).
+
+## Decisiones / caveats
+
+- Imagen de producto: solo al editar (Drive necesita el producto guardado) —
+  el modal de alta lo avisa. Comprobante de egreso: `<input type=file>` simple +
+  `hx-encoding="multipart/form-data"` (el dropzone estilizado no re-inicializa en
+  modal). "+ Nuevo cliente" inline omitido en el quick-create de proyecto
+  (reemplazaría el modal del `#modal-slot`).
+- **Gotcha (raíz):** `document.currentScript === null` en scripts inyectados por
+  HTMX → rootear en `#modal-slot` o escanear con flag `:not([data-x-listo])`.
+  `form_widgets.js` (dropzone) escanea solo al parse-time; geo-picker, minical,
+  combobox y `_ia_bar` sí re-inicializan en `htmx:afterSwap`.
+
+## Tests
+
+- `tests/taller/test_revision_buzon_r2_resto.py` (18): por modal GET/POST HTMX +
+  fallback; Nuevo Proyecto sin/con productos (preview mock) + aplicar. Ruff
+  limpio, `test_no_renderiza_comentarios` (ambas apps) verde.
+
+## Estado al cierre (2026-07-12, R2-resto)
+
+- `lib/version.py`: **`VERSION = 2026.07.08`** · `VERSION_FECHA = "12 de julio de 2026"`.
+- Ronda 2 de la revisión del buzón **cerrada** (los 2 pedazos de R2 ya estaban en
+  `2026.07.07`; este release cierra los 5 modales + Nuevo Proyecto mini-Chalán).

@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — Los botones de "acciones rápidas" del Inicio ahora abren en ventana, y Nuevo Proyecto arma sus productos con El Chalán (12 de julio de 2026)
+
+- **Nuevo cliente, Nuevo producto, Nuevo proveedor, Nuevo ingreso y Nuevo
+  egreso** ahora **abren en una ventana** desde el Inicio (igual que "Nueva
+  Tarea"): las llenas sin salir de donde estás y, al **Guardar**, te lleva a
+  donde corresponde. Todo lo que hacían antes sigue igual (contactos del
+  cliente, mapa de la dirección, calculadora de IVA, método de pago, subir el
+  comprobante del egreso, etc.) — solo que en ventana.
+- **Nuevo Proyecto: crea rápido y mete los productos hablándole a El Chalán.**
+  La ventana pide lo esencial (nombre, cliente, fechas — la Entrega usa
+  **"Mañana"**) y trae un recuadro donde **describes los productos en palabras**
+  (ej. *"100 playeras blancas bordadas, 2 lonas de 2×1 m, 50 tazas con logo"*).
+  El Chalán los interpreta y te muestra una **lista para revisar y confirmar**
+  cuáles agregar — **nunca los mete solo**. Los productos que ya están en tu
+  catálogo los reconoce; los nuevos los crea al agregarlos (si tienes permiso).
+  Si prefieres, dejas el recuadro vacío y agregas los productos después.
+- **El comprobante del egreso** en la ventana se sube con un campo de archivo
+  sencillo (imagen o PDF, hasta 25 MB, se guarda en Google Drive).
+
 ## Novedades — Revisión del buzón: facturas que no se quedan en $0, buscador en el celular, "Nueva Tarea" en ventana y productos editables (12 de julio de 2026)
 
 - **Las facturas ya no se quedan en $0.00.** Si eliges una **cotización** o un

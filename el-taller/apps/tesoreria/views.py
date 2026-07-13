@@ -234,6 +234,9 @@ def _ingreso_pickers(request):
 def ingreso_nuevo(request):
     if (r := _gate(request)) is not None:
         return r
+    # Revisión buzón R2: form-in-modal si es HTMX (#modal-slot); POST HTMX → 204
+    # + HX-Redirect. La página full queda de fallback.
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = IngresoForm(request.POST)
         if form.is_valid():
@@ -246,14 +249,19 @@ def ingreso_nuevo(request):
                 "origen": "manual",
             })
             messages.success(request, f"Ingreso {ingreso.codigo} registrado.")
-            return redirect(_next_seguro(request) or "tesoreria:landing")
+            destino = _next_seguro(request) or reverse("tesoreria:landing")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
+        # inválido → cae al render (modal si es HTMX).
     else:
         initial = {}
         if request.GET.get("proyecto"):
             initial["proyecto"] = request.GET.get("proyecto")
         form = IngresoForm(initial=initial)
-    return render(request, "tesoreria/ingreso_form.html",
-                  {"form": form, "modo": "nuevo", "next_url": _next_seguro(request), **_ingreso_pickers(request)})
+    ctx = {"form": form, "modo": "nuevo", "next_url": _next_seguro(request), **_ingreso_pickers(request)}
+    tmpl = "tesoreria/_modal_nuevo_ingreso.html" if es_htmx else "tesoreria/ingreso_form.html"
+    return render(request, tmpl, ctx)
 
 
 @login_required
@@ -565,6 +573,10 @@ def _vincular_ocr_log(request, egreso) -> None:
 def egreso_nuevo(request):
     if (r := _gate(request)) is not None:
         return r
+    # Revisión buzón R2: form-in-modal si es HTMX (#modal-slot). El comprobante
+    # sube por HTMX multipart (hx-encoding). POST HTMX → 204 + HX-Redirect. La
+    # página full queda de fallback.
+    es_htmx = request.headers.get("HX-Request") == "true"
     proveedor_bloqueado = None
     gasto_proyecto = False
     if request.method == "POST":
@@ -594,7 +606,11 @@ def egreso_nuevo(request):
                 })
                 notificar_reembolso_pendiente(egreso, request.user)
             messages.success(request, f"Egreso {egreso.codigo} registrado.")
-            return redirect(_next_seguro(request) or "tesoreria:landing")
+            destino = _next_seguro(request) or reverse("tesoreria:landing")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
+        # inválido → cae al render (modal si es HTMX).
     else:
         initial = {}
         pk = request.GET.get("proyecto")
@@ -637,11 +653,13 @@ def egreso_nuevo(request):
                     if request.GET.get(campo):
                         initial[campo] = request.GET.get(campo)
         form = EgresoForm(initial=initial)
-    return render(request, "tesoreria/egreso_form.html", {
+    ctx = {
         "form": form, "modo": "nuevo", "next_url": _next_seguro(request),
         "gasto_proyecto": gasto_proyecto,
         "proveedor_bloqueado": proveedor_bloqueado,
-    })
+    }
+    tmpl = "tesoreria/_modal_nuevo_egreso.html" if es_htmx else "tesoreria/egreso_form.html"
+    return render(request, tmpl, ctx)
 
 
 def _vincular_proveedor_a_proyecto(egreso):

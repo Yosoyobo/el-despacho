@@ -5,7 +5,9 @@ hidden sincronizado. La lógica vive en `ui.js` (`initMinical`, corre en load y
 htmx:afterSwap → funciona también dentro de modales del #modal-slot).
 Params: `valor` (ISO YYYY-MM-DD o ''), `nombre` (default "fecha"),
 `label` (default "Fecha"), `con_quitar` (bool → botón "Quitar fecha"),
-`sin_default_hoy` (bool → NO preseleccionar hoy; arranca vacío).
+`sin_default_hoy` (bool → NO preseleccionar hoy; arranca vacío),
+`sin_hoy` (bool → oculta el botón "Hoy"), `con_manana` (bool → botón "Mañana",
+para fechas de Entrega — LC revisión buzón R1).
 {% endcomment %}
 <div class="campo-form md:col-span-2" data-minical{% if sin_default_hoy %} data-mc-default-hoy="0"{% endif %}>
     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ label|default:"Fecha" }}</label>
@@ -16,7 +18,8 @@ Params: `valor` (ISO YYYY-MM-DD o ''), `nombre` (default "fecha"),
             </button>
             <span data-mc-titulo class="text-sm font-semibold text-gray-800 dark:text-gray-100"></span>
             <div class="flex items-center gap-1">
-                <button type="button" data-mc-hoy class="inline-flex h-8 items-center rounded-lg border border-gray-200 px-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Hoy</button>
+                {% if not sin_hoy %}<button type="button" data-mc-hoy class="inline-flex h-8 items-center rounded-lg border border-gray-200 px-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Hoy</button>{% endif %}
+                {% if con_manana %}<button type="button" data-mc-manana class="inline-flex h-8 items-center rounded-lg border border-gray-200 px-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Mañana</button>{% endif %}
                 <button type="button" data-mc-next class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" aria-label="Mes siguiente">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>

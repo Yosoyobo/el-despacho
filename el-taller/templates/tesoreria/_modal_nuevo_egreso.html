@@ -1,0 +1,215 @@
+{% load forms_helpers %}
+{% comment %}Form-in-modal "Nuevo egreso" (revisión buzón R2 — render de Oscar).
+Se inyecta en #modal-slot. Conserva IVA, mini-calendario, proveedor obligatorio
+(select + alta inline o bloqueado), 🤖 Sugerir categoría, método en pastillas
+atado al semáforo de estado de pago, y el comprobante (sube por HTMX multipart
+vía hx-encoding). El dropzone estilizado no se re-inicializa dentro de un modal,
+así que aquí el comprobante es un input de archivo simple. Los scripts están
+rooteados en #modal-slot para sobrevivir el swap. POST HTMX → 204 + HX-Redirect;
+inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
+    <div data-modal-egreso class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <form hx-post="{% url 'tesoreria:egreso-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" hx-encoding="multipart/form-data" enctype="multipart/form-data" class="campo-form flex min-h-0 flex-col">
+            {% csrf_token %}
+            {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+            {% if ocr_log_id %}<input type="hidden" name="ocr_log_id" value="{{ ocr_log_id }}">{% endif %}
+            {% if gasto_proyecto %}<input type="hidden" name="es_gasto_proyecto" value="1">{% endif %}
+            <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Nuevo egreso</h2>
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="btn-primario">Guardar</button>
+                    <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                {% if ocr_log_id %}
+                <div class="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm dark:border-brand-500/30 dark:bg-brand-500/10">
+                    <p class="text-xs font-medium uppercase tracking-wider text-brand-700 dark:text-brand-300">📸 Datos leídos del recibo</p>
+                    <p class="mt-1 min-w-0 break-words text-gray-600 dark:text-gray-300">Revisa y corrige lo que haga falta antes de guardar.{% if ocr_datos.proveedor %} Proveedor detectado: <strong>{{ ocr_datos.proveedor }}</strong> (selecciónalo abajo o créalo).{% endif %}</p>
+                </div>
+                {% endif %}
+
+                {# Dinero #}
+                <div>
+                    <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
+                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        {% include "tesoreria/_iva_campos.html" with form=form %}
+                        {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
+                    </div>
+                </div>
+
+                {# Clasificación #}
+                <div>
+                    <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Clasificación</h3>
+                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion ancho_completo=True %}
+                        {% if permisos_modulos.chalan %}
+                        <div class="sm:col-span-2 -mt-3">
+                            <button type="button" id="egreso-cat-ia" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400" title="El Chalán sugiere el centro de costo según la descripción">🤖 Sugerir categoría</button>
+                            <span id="egreso-cat-ia-estado" class="ml-2 text-xs text-gray-500 dark:text-gray-400"></span>
+                        </div>
+                        {% endif %}
+
+                        {% if proveedor_bloqueado %}
+                        <div class="min-w-0 sm:col-span-2">
+                            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</span>
+                            <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/[0.02]">
+                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">🏭</span>
+                                <span class="font-medium text-gray-800 dark:text-gray-100">{{ proveedor_bloqueado.razon_social }}</span>
+                                <span class="ml-auto text-xs text-gray-400 dark:text-gray-500">predefinido por el insumo</span>
+                            </div>
+                            <input type="hidden" name="proveedor" value="{{ proveedor_bloqueado.pk }}">
+                        </div>
+                        {% else %}
+                        <div class="campo-form min-w-0 sm:col-span-2">
+                            <label for="{{ form.proveedor.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
+                            {{ form.proveedor }}
+                            {% for e in form.proveedor.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+                            <details class="mt-2 text-sm">
+                                <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proveedor</summary>
+                                <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
+                                    <input type="text" id="prov-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                    <input type="text" id="prov-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                    <input type="email" id="prov-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                    <input type="text" id="prov-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                    <button type="button" id="prov-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
+                                </div>
+                            </details>
+                        </div>
+                        {% endif %}
+
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.centro_de_costo %}
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.pagado_por %}
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.solicitado_por %}
+
+                        <div class="sm:col-span-2" data-metodo-grupo>
+                            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método de pago</span>
+                            <div class="flex flex-wrap gap-2">
+                                {% for value, etiqueta in form.metodo.field.choices %}
+                                <label class="cursor-pointer rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:border-gray-700 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                                    <input type="radio" name="metodo" value="{{ value }}" class="sr-only" data-metodo{% if value == "tarjeta_personal" or value == "efectivo_personal" %} data-metodo-reembolso="1"{% endif %} {% if form.metodo.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+                                    <span aria-hidden="true">{{ etiqueta }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            {% for e in form.metodo.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+                        </div>
+
+                        {% include "tesoreria/_semaforo_estado_pago.html" with form=form %}
+                    </div>
+                    {% if form.non_field_errors %}<ul class="mt-4 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                {# Comprobante (input simple → sube por HTMX multipart) + moneda #}
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div>
+                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">📎 Comprobante (opcional)</h3>
+                        <input type="file" name="comprobante" accept="image/*,application/pdf" class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 dark:text-gray-300 dark:file:bg-brand-500/10 dark:file:text-brand-300">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Imagen o PDF, hasta 25 MB. Se guarda en Google Drive.</p>
+                    </div>
+                    <div>
+                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Configuración</h3>
+                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(() => {
+    const root = document.getElementById('modal-slot');
+    if (!root) return;
+    const csrfEl = root.querySelector('[name="csrfmiddlewaretoken"]');
+    const csrf = csrfEl ? csrfEl.value : "";
+
+    // Alta inline de proveedor → inyecta opción en el select y la selecciona.
+    const btn = root.querySelector("#prov-crear");
+    const sel = root.querySelector('[name="proveedor"]');
+    if (btn && sel) {
+        btn.addEventListener("click", async () => {
+            const razon = root.querySelector("#prov-razon").value.trim();
+            if (!razon) { root.querySelector("#prov-razon").focus(); return; }
+            const body = new URLSearchParams({
+                razon_social: razon,
+                nombre_contacto: root.querySelector("#prov-contacto").value.trim(),
+                email_contacto: root.querySelector("#prov-email").value.trim(),
+                telefono: root.querySelector("#prov-tel").value.trim(),
+            });
+            btn.disabled = true;
+            try {
+                const r = await fetch("{% url 'catalogo-proveedor-quick-create' %}", {
+                    method: "POST",
+                    headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded"},
+                    body,
+                });
+                const data = await r.json();
+                if (data.ok) {
+                    sel.add(new Option(data.razon_social, data.id, true, true));
+                    sel.value = String(data.id);
+                    ["#prov-razon","#prov-contacto","#prov-email","#prov-tel"].forEach(id => root.querySelector(id).value = "");
+                } else { alert(data.error || "No se pudo crear el proveedor."); }
+            } catch (e) { alert("Error de red al crear el proveedor."); }
+            finally { btn.disabled = false; }
+        });
+    }
+
+    // Sugerir centro de costo con El Chalán (estación `gastos`).
+    const btnIA = root.querySelector("#egreso-cat-ia");
+    if (btnIA) {
+        const desc = root.querySelector('[name="descripcion"]');
+        const selCentro = root.querySelector('[name="centro_de_costo"]');
+        const estado = root.querySelector("#egreso-cat-ia-estado");
+        const setEstado = (t, err) => {
+            if (!estado) return;
+            estado.textContent = t || "";
+            estado.className = "ml-2 text-xs " + (err ? "text-error-600 dark:text-error-400" : "text-success-600 dark:text-success-400");
+        };
+        btnIA.addEventListener("click", async () => {
+            const d = ((desc && desc.value) || "").trim();
+            if (!d) { setEstado("Escribe primero la descripción del gasto.", true); if (desc) desc.focus(); return; }
+            btnIA.disabled = true; setEstado("El Chalán está pensando…");
+            try {
+                const r = await fetch("{% url 'tesoreria:egreso-sugerir-categoria' %}", {
+                    method: "POST",
+                    headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+                    credentials: "same-origin",
+                    body: new URLSearchParams({ descripcion: d }).toString(),
+                });
+                const data = await r.json();
+                if (data && data.ok && data.centro_de_costo_id && selCentro) {
+                    selCentro.value = String(data.centro_de_costo_id);
+                    selCentro.dispatchEvent(new Event("change", { bubbles: true }));
+                    setEstado("Sugerido: " + data.centro_de_costo_nombre, false);
+                } else if (data && data.ok) {
+                    setEstado("El Chalán no encontró una categoría clara, elige a mano.", true);
+                } else {
+                    setEstado((data && data.error) || "El Chalán no respondió.", true);
+                }
+            } catch (e) { setEstado("No se pudo contactar a El Chalán.", true); }
+            finally { btnIA.disabled = false; }
+        });
+    }
+
+    // Reembolso defensivo: método personal → fuerza «Por reembolsar» y bloquea «Pagado».
+    const metodos = root.querySelectorAll('[data-metodo]');
+    if (metodos.length) {
+        const aplicar = () => {
+            const s = root.querySelector('[data-metodo]:checked');
+            const esReembolso = !!(s && s.dataset.metodoReembolso === "1");
+            root.querySelectorAll('[data-estado-pago]').forEach(r => {
+                if (esReembolso) {
+                    r.checked = r.dataset.estadoPago === "por_reembolsar";
+                    r.disabled = r.dataset.estadoPago !== "por_reembolsar";
+                } else { r.disabled = false; }
+            });
+        };
+        metodos.forEach(m => m.addEventListener("change", aplicar));
+        aplicar();
+    }
+})();
+</script>

@@ -1,0 +1,36 @@
+{% load forms_helpers %}
+{% comment %}Form-in-modal "Nuevo proveedor" (revisión buzón R2 — render de Oscar).
+Se inyecta en #modal-slot. Chrome estándar: header con título + Guardar + ✕;
+body scrollable con los mismos campos del form completo. POST HTMX → 204 +
+HX-Redirect (ver vista proveedor_nuevo); inválido → re-render del modal con
+errores. Los geo-pickers (direccion/fiscal) y el _ia_bar de notas se
+re-inicializan solos en htmx:afterSwap; las subcategorías son pills CSS puro.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
+    <div data-modal-proveedor class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <form hx-post="{% url 'catalogo-proveedor-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
+            {% csrf_token %}
+            <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Nuevo proveedor</h2>
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="btn-primario">Guardar</button>
+                    <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                {% if form.non_field_errors %}
+                <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                {% for f in form %}{% if f.name == 'lat' or f.name == 'lng' or f.name == 'subcategorias' %}{% else %}{% include "_componentes_tailadmin/_form_campo.html" with campo=f %}{% if f.name == 'direccion' %}{{ form.lat }}{{ form.lng }}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-48" %}{% elif f.name == 'direccion_fiscal' %}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion_fiscal" con_pois=False %}{% endif %}{% if f.name == 'notas' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label instruccion_ph="Ej. resume con quién conviene este proveedor y sus tiempos" %}{% endif %}{% endif %}{% endfor %}
+
+                <div>
+                    <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">¿Qué surte? (subcategorías)</h3>
+                    {% include "catalogo/_subcategorias_checkboxes.html" %}
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

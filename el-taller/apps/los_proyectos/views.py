@@ -558,6 +558,11 @@ def resumen_actividad(request, pk):
 def nuevo(request):
     if not puede_editar_proyecto(request.user, None):
         return HttpResponseForbidden("Solo admins pueden crear proyectos.")
+    # Revisión buzón R2: si es HTMX se sirve como quick-create modal con
+    # mini-Chalán para meter productos (#modal-slot). La página full (con el
+    # formset de productos) queda de fallback.
+    if request.headers.get("HX-Request") == "true":
+        return _nuevo_modal(request)
     if request.method == "POST":
         form = ProyectoForm(request.POST)
         formset = ProyectoProductoFormSet(request.POST, instance=Proyecto())
@@ -597,6 +602,96 @@ def nuevo(request):
         "servicios_datos_json": _servicios_datos_json(),
         "proveedores_activos": _proveedores_activos(),
     })
+
+
+def _nuevo_modal(request):
+    """Quick-create de proyecto + mini-Chalán de productos (revisión buzón R2).
+
+    GET → modal quick-create (nombre, cliente, fechas, textarea de productos).
+    POST válido → crea el proyecto y, si hay descripción de productos y permiso
+    de Chalán, muestra el preview del Chalán (confirmar/omitir, regla §20); si no,
+    204 + HX-Redirect al detalle. POST inválido → re-render del modal con errores.
+    """
+    from lib.permisos import puede_usar_chalan
+
+    from . import productos_ia
+
+    def _ctx(form):
+        return {
+            "form": form,
+            "clientes_recientes": list(Cliente.activos.all().order_by("-actualizado_en")[:8]),
+            "puede_chalan": puede_usar_chalan(request.user),
+        }
+
+    if request.method == "POST":
+        form = ProyectoForm(request.POST)
+        if form.is_valid():
+            proyecto = form.save(commit=False)
+            proyecto.creado_por = request.user
+            proyecto.save()
+            emitir(EventoPortavoz(
+                tipo="proyecto.creado",
+                actor_id=request.user.pk, actor_email=request.user.email,
+                payload={"proyecto_id": proyecto.pk, "codigo": proyecto.codigo,
+                         "cliente_id": proyecto.cliente_id, "estado": proyecto.estado},
+            ))
+            from apps.taller_home.push_handlers import notificar_proyecto_creado
+            notificar_proyecto_creado(proyecto, request.user)
+            texto = (request.POST.get("productos_texto") or "").strip()
+            if texto and puede_usar_chalan(request.user):
+                import json as _json
+                resultado = productos_ia.interpretar_productos(
+                    proyecto=proyecto, texto=texto, usuario=request.user)
+                return render(request, "proyectos/_modal_productos_ia.html", {
+                    "proyecto": proyecto, "resultado": resultado,
+                    "productos_json": _json.dumps(resultado.get("productos") or [], ensure_ascii=False),
+                })
+            messages.success(request, f"Proyecto {proyecto.codigo} creado.")
+            return HttpResponse(status=204, headers={
+                "HX-Redirect": reverse("proyectos-detalle", args=[proyecto.pk])})
+        return render(request, "proyectos/_modal_nuevo_proyecto.html", _ctx(form))
+
+    initial = {}
+    f = request.GET.get("fecha_compromiso")
+    if f:
+        initial["fecha_compromiso_dia"] = f
+    form = ProyectoForm(initial=initial)
+    # Estado por default: el primero activo (el quick-create no obliga a elegirlo).
+    if not form.fields["estado"].initial:
+        primero = next(iter(form.fields["estado"].choices), None)
+        if primero:
+            form.fields["estado"].initial = primero[0]
+    return render(request, "proyectos/_modal_nuevo_proyecto.html", _ctx(form))
+
+
+@login_required
+@require_POST
+def proyecto_productos_ia_aplicar(request, pk):
+    """Aplica los productos que el usuario confirmó del preview del mini-Chalán
+    (revisión buzón R2). Solo agrega las líneas marcadas; re-valida permisos."""
+    import json as _json
+
+    from . import productos_ia
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden()
+    try:
+        productos = _json.loads(request.POST.get("productos_json") or "[]")
+    except (ValueError, TypeError):
+        productos = []
+    if not isinstance(productos, list):
+        productos = []
+    seleccion = set(request.POST.getlist("sel"))
+    lineas = [p for i, p in enumerate(productos) if str(i) in seleccion and isinstance(p, dict)]
+    res = productos_ia.aplicar_productos(proyecto=proyecto, lineas=lineas, usuario=request.user)
+    if res["agregados"]:
+        messages.success(request, f"{res['agregados']} producto(s) agregado(s) al proyecto {proyecto.codigo}.")
+    if res["omitidos"]:
+        messages.warning(request, " ".join(res["mensajes"])[:300])
+    if not res["agregados"] and not res["omitidos"]:
+        messages.info(request, f"Proyecto {proyecto.codigo} creado.")
+    return HttpResponse(status=204, headers={
+        "HX-Redirect": reverse("proyectos-detalle", args=[proyecto.pk])})
 
 
 @login_required

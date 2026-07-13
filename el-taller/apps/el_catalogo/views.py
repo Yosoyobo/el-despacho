@@ -193,6 +193,10 @@ def servicio_eliminar(request, pk: int):
 def nuevo(request):
     if (r := _gate(request, "crear")) is not None:
         return r
+    # Revisión buzón R2: form-in-modal si es HTMX (#modal-slot); POST HTMX → 204
+    # + HX-Redirect. La imagen sigue disponible solo al editar (Drive necesita
+    # el producto guardado). La página full queda de fallback.
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = ServicioForm(request.POST)
         if form.is_valid():
@@ -206,13 +210,18 @@ def nuevo(request):
                 payload={"servicio_id": srv.pk, "nombre": srv.nombre, "categoria": srv.categoria.nombre},
             ))
             messages.success(request, f"Producto «{srv.nombre}» creado.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-lista")})
             return redirect("catalogo-lista")
+        # inválido → cae al render (modal si es HTMX).
     else:
         form = ServicioForm()
-    return render(request, "catalogo/form.html", {
+    ctx = {
         "form": form, "modo": "nuevo",
         "precio_readonly": not puede(request.user, "catalogo", "editar_precios"),
-    })
+    }
+    tmpl = "catalogo/_modal_nuevo_producto.html" if es_htmx else "catalogo/form.html"
+    return render(request, tmpl, ctx)
 
 
 @require_http_methods(["GET", "POST"])
@@ -676,6 +685,9 @@ def sugerir_proveedores(request):
 def proveedor_nuevo(request):
     if (r := _gate(request, "gestionar_categorias")) is not None:
         return r
+    # Revisión buzón R2: si es HTMX se sirve como form-in-modal (#modal-slot);
+    # POST HTMX → 204 + HX-Redirect. La página full queda de fallback.
+    es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = ProveedorForm(request.POST)
         if form.is_valid():
@@ -689,14 +701,19 @@ def proveedor_nuevo(request):
                 payload={"proveedor_id": prov.pk, "razon_social": prov.razon_social},
             ))
             messages.success(request, f"Proveedor '{prov.razon_social}' creado.")
+            if es_htmx:
+                return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-proveedores")})
             return redirect("catalogo-proveedores")
+        # inválido → cae al render (modal si es HTMX).
     else:
         form = ProveedorForm()
-    return render(request, "catalogo/proveedor_form.html", {
+    ctx = {
         "form": form, "modo": "nuevo",
         "categorias_prov": _categorias_prov(),
         "subcats_sel": {int(x) for x in request.POST.getlist("subcategorias")},
-    })
+    }
+    tmpl = "catalogo/_modal_nuevo_proveedor.html" if es_htmx else "catalogo/proveedor_form.html"
+    return render(request, tmpl, ctx)
 
 
 def _categorias_prov():

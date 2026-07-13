@@ -4890,6 +4890,83 @@ complejidad: formset de contactos + geo, calculadora costo/margen, subcategoría
 geo, método+minical); y **Nuevo Proyecto = quick-create + mini Chalán** para meter
 productos por lenguaje natural (reusa el ejecutor `agregar_producto_proyecto`).
 
+### S-Revision-Buzon-R2-resto ✅ — 5 modales de acciones rápidas + Nuevo Proyecto quick-create con mini-Chalán (2026-07-12, VERSION 2026.07.08)
+
+Cierra la Ronda 2 de la revisión del buzón (handoff `docs/SPRINT-Revision-Buzon-R2-resto.md`).
+Convierte los 6 botones restantes de "acciones rápidas" del Dashboard de páginas
+full a **form-in-modal HTMX** (patrón exemplar de "Nueva Tarea" de R1: branch
+`es_htmx` en la vista, GET HTMX → partial modal, POST HTMX → 204 + `HX-Redirect`,
+POST inválido → re-render del modal, no-HTMX → página full de fallback intacta).
+Todos los modales son Taller-only (NO dual-copy). Un solo deploy.
+
+- **5 modales de alta** (partial `_modal_nuevo_*.html` + branch en la vista +
+  botón `hx-get` en `home.html`):
+  - **Proveedor** ([catalogo/_modal_nuevo_proveedor.html]) — el más limpio:
+    geo-pickers (dirección/fiscal) + subcategorías en pills CSS + `_ia_bar` de
+    notas; todos re-inicializan en `htmx:afterSwap`.
+  - **Producto** ([catalogo/_modal_nuevo_producto.html]) — imagen **solo al
+    editar** (Drive necesita el producto guardado — se avisa en el modal, igual
+    que la página full). Conserva pills de proveedores + quick-create inline +
+    🤖 Sugerir; scripts rooteados por `id` (no `currentScript`).
+  - **Cliente** ([cartera/_modal_nuevo_cliente.html]) — formset de Contactos
+    (clonado de filas, script rooteado en `#modal-slot`) + 2 geo-pickers.
+    Sin "+ Nuevo cliente" (no aplica). Redirige al detalle.
+  - **Ingreso** ([tesoreria/_modal_nuevo_ingreso.html]) — IVA + mini-calendario +
+    método en pills (Otro revela referencia) + chips de recientes + quick-create
+    de cliente + autollenado desde proyecto; script rooteado en `#modal-slot`.
+  - **Egreso** ([tesoreria/_modal_nuevo_egreso.html]) — el más pesado: IVA +
+    minical + proveedor obligatorio (select+quick-create o bloqueado) + 🤖
+    Sugerir categoría + método/semáforo de reembolso + **comprobante que sube
+    por HTMX multipart** (`hx-encoding="multipart/form-data"` + `<input type=file>`
+    simple: el dropzone estilizado NO se re-inicializa en un modal, ver Gotcha).
+- **Nuevo Proyecto = quick-create + mini-Chalán** (decisión Oscar): modal
+  ([proyectos/_modal_nuevo_proyecto.html]) con lo esencial (nombre, cliente
+  combobox + pills, Inicio/Entrega — **Entrega usa "Mañana"**, R1) + textarea
+  "describe los productos". Al **Guardar** crea el proyecto y, si hay texto +
+  permiso de Chalán, **El Chalán interpreta los productos** y muestra un
+  **preview con checkboxes** ([proyectos/_modal_productos_ia.html]) para
+  confirmar cuáles agregar (**regla §20: propone, el humano confirma — nunca
+  auto-aplica**). Sin texto → 204 + HX-Redirect al detalle.
+  - `apps/los_proyectos/productos_ia.py`: `interpretar_productos` (defensivo,
+    nunca lanza; `estacion="dictado"`, sin voz personal; captura
+    `PresupuestoIAExcedido`; resuelve nombres contra el catálogo, marca `es_nuevo`)
+    + `aplicar_productos` (re-valida `puede_editar_proyecto`; productos nuevos
+    requieren `catalogo.crear`, si no se omiten con aviso; crea `Servicio` mínimo
+    con categoría default + `ProyectoProducto`).
+  - Endpoint nuevo `proyectos-productos-ia-aplicar` (POST, lee `productos_json` +
+    checkboxes `sel`, aplica solo lo seleccionado → 204 + HX-Redirect).
+- **Infra reusable nueva**: `_fecha_minical.html` gana params **`sin_hoy`** y
+  **`con_manana`** (+ wiring `data-mc-manana` en `initMinical` de `ui.js`,
+  **dual-copy §18**) para que la Entrega del quick-create ofrezca "Mañana" sin
+  "Hoy". `_iva_campos.html` se hizo **swap-safe** (escanea `[data-iva-block]:not([data-iva-listo])`
+  en vez de `document.currentScript`, beneficia a los modales de Ingreso/Egreso
+  y no rompe las páginas full).
+- **18 tests** (`tests/taller/test_revision_buzon_r2_resto.py`): por cada modal
+  GET HTMX→modal, POST HTMX→204+HX-Redirect+objeto creado, fallback full; Nuevo
+  Proyecto sin/con productos (preview mockeando el Chalán) + aplicar
+  seleccionados/ignorar no-seleccionados. Ruff limpio; `test_no_renderiza_comentarios`
+  (ambas apps) verde.
+
+**Gotcha clave (documentar):** los `<script>` inline inyectados por HTMX
+re-ejecutan con **`document.currentScript === null`** — cualquier wiring que
+dependa de `currentScript.parentElement`/`previousElementSibling` NO inicializa
+en un modal. Patrón correcto: rootear en `document.getElementById('modal-slot')`
+(como el exemplar "Nueva Tarea") **o** escanear por selector con un flag
+`:not([data-x-listo])`. Además, `form_widgets.js` escanea `[data-file-upload]`
+**solo al parse-time** (sin `htmx:afterSwap`) → el dropzone estilizado no sirve
+en modales (por eso el egreso usa `<input type=file>` simple); geo-picker,
+mini-calendario (`initMinical`), combobox (`data-select-buscable`) y `_ia_bar`
+(`textarea_ia.js`) **sí** se re-inicializan en `htmx:afterSwap`.
+
+**Deuda diseñada R2-resto:** la imagen de producto sigue solo al editar (no en
+alta); el "+ Nuevo cliente" inline se omitió en el quick-create de proyecto
+(reemplazaría el modal en `#modal-slot`); el mini-Chalán crea productos nuevos
+solo si el usuario tiene `catalogo.crear` (si no, los omite con aviso); el
+preview del mini-Chalán no permite editar cantidades/precios inline (se ajustan
+en el detalle del proyecto después). El sweep de acciones rápidas cubre solo el
+Dashboard — las páginas de listas/sidebar siguen navegando a la página full
+(fallback), lo cual es correcto.
+
 ---
 
 ## 9. Decisiones operativas tomadas

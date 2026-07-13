@@ -1,0 +1,57 @@
+{% load forms_helpers %}
+{% comment %}Preview del mini-Chalán tras crear el proyecto (revisión buzón R2).
+El proyecto YA existe; aquí El Chalán PROPONE los productos y el usuario CONFIRMA
+cuáles agregar (regla §20 — nunca se aplican solos). Se inyecta en #modal-slot.
+"Agregar seleccionados" → POST a proyectos-productos-ia-aplicar → 204 +
+HX-Redirect al detalle. "Ir al proyecto" navega sin agregar nada.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
+    <div data-modal-productos-ia class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div class="min-w-0">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Productos del proyecto</h2>
+                <p class="text-xs text-success-600 dark:text-success-400">✓ Proyecto {{ proyecto.codigo }} creado.</p>
+            </div>
+            <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+
+        {% if resultado.ok and resultado.productos %}
+        <form hx-post="{% url 'proyectos-productos-ia-aplicar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex min-h-0 flex-col">
+            {% csrf_token %}
+            <input type="hidden" name="productos_json" value="{{ productos_json }}">
+            <div class="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 py-5">
+                <p class="mb-2 text-sm text-gray-600 dark:text-gray-300">El Chalán entendió estos productos. Revisa y confirma cuáles agregar:</p>
+                {% for p in resultado.productos %}
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:has-[:checked]:bg-brand-500/10">
+                    <input type="checkbox" name="sel" value="{{ forloop.counter0 }}" checked class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500/30">
+                    <span class="min-w-0 flex-1">
+                        <span class="flex flex-wrap items-center gap-2">
+                            <span class="font-medium text-gray-800 dark:text-gray-100">{{ p.nombre }}</span>
+                            {% if p.es_nuevo %}<span class="rounded-full bg-warning-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-700 dark:bg-warning-500/20 dark:text-warning-300">Nuevo</span>{% endif %}
+                        </span>
+                        <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                            Cantidad: {{ p.cantidad }}{% if p.precio_unitario %} · Precio unit.: {{ p.precio_unitario|dinero }}{% endif %}{% if p.nota %} · {{ p.nota }}{% endif %}
+                        </span>
+                    </span>
+                </label>
+                {% endfor %}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Los que aparecen como «Nuevo» se crearán en el Catálogo al agregarlos (si tienes permiso).</p>
+            </div>
+            <footer class="flex shrink-0 items-center justify-between gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-800">
+                <a href="{% url 'proyectos-detalle' proyecto.pk %}" class="btn-secundario">Ir al proyecto</a>
+                <button type="submit" class="btn-primario">Agregar seleccionados</button>
+            </footer>
+        </form>
+        {% else %}
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+            <div class="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+                {{ resultado.error|default:"El Chalán no identificó productos. Agrégalos en la página del proyecto." }}
+            </div>
+        </div>
+        <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-800">
+            <a href="{% url 'proyectos-detalle' proyecto.pk %}" class="btn-primario">Ir al proyecto</a>
+        </footer>
+        {% endif %}
+    </div>
+</div>
