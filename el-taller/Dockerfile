@@ -29,6 +29,7 @@ COPY referencias/ /app/referencias/
 COPY chalanes/ /app/chalanes/
 COPY campanas/ /app/campanas/
 COPY mcp_despacho/ /app/mcp_despacho/
+COPY capacidades/ /app/capacidades/
 # S-LC-Feedback-V3: docs/ se copia al contenedor para que /ayuda/ pueda
 # leer el manual de usuario en runtime.
 COPY docs/ /app/docs/
