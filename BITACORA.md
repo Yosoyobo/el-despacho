@@ -6263,3 +6263,49 @@ Se ejecutó "todo en un deploy" (decisión Oscar por AskUserQuestion). Rama
 
 - Streamable HTTP + OAuth 2.1 para acceso remoto.
 - Tools de escritura con confirmación, idempotencia y bitácora de auditoría.
+
+---
+
+# BITÁCORA — S-Chalan-MCP-V1 (2026-07-16, VERSION 2026.07.10)
+
+## Qué se entregó
+
+MCP como **contrato interno único de capacidades** del Chalán. Nuevo registro
+`capacidades/` (paquete raíz Taller-scoped). 5 commits en `agent/mcp-despacho`
+(sin push a main):
+
+- `a673cbd` — registro `capacidades/` + ~25 lecturas migradas (shim de compat en
+  `el_dictado/herramientas.py`).
+- `c4ded0c` — servidor MCP stdio delega en `capacidades/mcp_lecturas.py` (fachada
+  de identidad+gate).
+- `017e72c` — escrituras como tools de propuesta (buffer → UN Dictado, §20; mata
+  el bug "propone pero no aplica" porque `tipo == nombre del tool`).
+- `e38d827` — Ola 1 CUI: 8 ejecutores (duplicar/archivar proyecto, quitar
+  producto, archivar cliente/tarea, cambiar_estado_mandado, duplicar_cotizacion,
+  generar_factura_anticipo).
+- (este) — docs (§8 + BITÁCORA + Novedades/manual + memoria) + `VERSION 2026.07.10`.
+
+## Decisiones (Oscar)
+
+- **Fuera Codex** como consumidor (solo su herramienta de VSCode) → MCP interno.
+- **Escrituras como tools de propuesta** por acción (no el genérico
+  `proponer_acciones`).
+- **Archivar SÍ vía Chalán**, como propuesta reversible; borrado duro sigue
+  prohibido.
+- Alcance: **Ola 1 CUI + docs + deploy**.
+
+## Verificación
+
+- `ruff` verde en todo lo tocado.
+- Sets verdes por commit: 96 / 41 / 83 / 56.
+- Invariantes §20 preservadas y testeadas: preview/confirm, doble gating,
+  `TIPOS_PROHIBIDOS`, `sanear_contexto`, recorte, auditoría hash-only, El
+  Relevo/Reemplazo, y el **destilador de aprendizajes** (regresión dedicada).
+
+## Deuda diseñada
+
+- Barrido CUI completo (Facturación, Contaduría, Catálogo, Checador, Calendario,
+  Buzón, Mensajes, Equipo) → olas siguientes.
+- Escalado de #tools (agrupar/namespacear cuando degrade la selección del LLM).
+- Recorte de salida (top-N/1200) sub-óptimo para clientes MCP externos genéricos.
+- Servidor externo read-only en V1 (los tools de propuesta no se exponen afuera).
