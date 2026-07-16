@@ -82,8 +82,8 @@ def construir_system_prompt(usuario) -> str:
 # ── Modo tool-use NATIVO (S-Chalan-Agente Fase 1) ─────────────────────────────
 # El protocolo de "sobre JSON" lo impone ahora la API de function-calling, así
 # que el system prompt nativo NO describe el formato del sobre ni enumera las
-# herramientas (van como tool schemas). Sí mantiene el alcance, la voz, los
-# tipos de acción válidos (para `proponer_acciones`) y las reglas operativas.
+# herramientas (lecturas Y propuestas de escritura viajan como tool schemas). Sí
+# mantiene el alcance, la voz y las reglas operativas.
 
 _BASE_NATIVO = """\
 Eres El Chalán de El Despacho, el asistente conversacional de Learning Center
