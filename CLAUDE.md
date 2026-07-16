@@ -5000,6 +5000,65 @@ público de Django. Vive en `mcp_despacho/`, arranca El Taller mediante
 tool de escritura quedan fuera de V1; antes de agregar escrituras se requiere
 confirmación humana explícita y auditoría de cada acción.
 
+### S-Chalan-MCP-V1 ✅ — MCP como contrato único de capacidades del Chalán (2026-07-16, VERSION 2026.07.10)
+
+Pedido de Oscar: llevar Los Chalanes "al siguiente nivel" con estructura MCP (su
+equivalencia a APIs/SQL/HTTP). Hallazgo: la capa de tool-use YA tenía forma MCP
+(spec canónico `{nombre, args_schema}` → JSON Schema → function-calling por
+proveedor en `lib/analistas/herramientas_formato`), pero el contrato de tools
+estaba fragmentado en 3 superficies que divergían. Se unificó en un **registro
+único** `capacidades/` (paquete raíz Taller-scoped, `COPY` en el Dockerfile de El
+Taller). **Codex se descartó como consumidor** (Oscar lo usa solo para programar
+en VSCode) → MCP queda como contrato **interno**. 5 commits, verde en cada uno;
+**NO mergeado a main aún** (rama `agent/mcp-despacho`).
+
+- **Commit 1 (`a673cbd`)** — `capacidades/{registro,gating,mcp_schema,__init__}.py`
+  + las ~25 lecturas movidas de `apps/el_dictado/herramientas.py` (vía `git mv`,
+  impls intactas) a `capacidades/lecturas.py`, registradas como
+  `Capacidad(modo="lectura")`. `el_dictado/herramientas.py` queda como **shim** de
+  compat (re-exporta `HERRAMIENTAS`/`herramientas_para`/`ejecutar_herramienta`/
+  `recortar`/`validar_args`/`_gate_ok`/`Herramienta`/`_h_*`). Cero cambio de
+  comportamiento (96 tests).
+- **Commit 2 (`c4ded0c`)** — las 5 lecturas del servidor MCP stdio a
+  `capacidades/mcp_lecturas.py` (un solo hogar); `mcp_despacho/herramientas.py` =
+  **fachada delgada** (identidad por env + gate `mcp.usar` + permiso de módulo,
+  con semántica de excepción) que delega. Servidor + contrato de tests intactos (41).
+- **Commit 3 (`017e72c`)** — **escrituras como tools de propuesta**: cada acción
+  de `COMANDOS_DICTADO` es una `Capacidad(modo="propuesta")` con nombre = `tipo`
+  en `capacidades/propuestas.py`; el gating reusa `_gating_checks()` del catálogo
+  (mismo SoT) vía `gate_ok(..., modo="propuesta")`. El orquestador
+  (`_conversar_nativo`) reemplaza el genérico `proponer_acciones`: el Chalán llama
+  el tool de CADA acción, se **bufferean** y se materializan como **UN** Dictado al
+  cerrar el turno (preview/confirm §20 — nunca se auto-aplican). Como
+  `tipo == nombre del tool`, siempre es válido → ataca de raíz el bug "propone pero
+  no aplica". Modo degradación (sobre-JSON) intacto; destilador de aprendizajes
+  conserva su materia prima (83 tests).
+- **Commit 4 (`e38d827`)** — **Ola 1 CUI**: 8 ejecutores nuevos en
+  `ejecutores/cui_v1.py` (`duplicar_proyecto`, `quitar_producto_proyecto`,
+  `archivar_proyecto`, `archivar_cliente`, `archivar_tarea`,
+  `cambiar_estado_mandado`, `duplicar_cotizacion`, `generar_factura_anticipo`).
+  `archivar_*` = soft-delete **reversible** (`restaurar: true`); el borrado duro
+  sigue en `COMANDOS_PROHIBIDOS` (decisión Oscar: archivar SÍ, como propuesta).
+  Cada acción se agrega a `COMANDOS_DICTADO` (fluye solo a chat + Dictado) y al
+  prompt estándar (hardcodeado). 5 tests (56).
+
+**Decisiones durables**: (1) MCP es el contrato interno de capacidades; sumar un
+ejecutor fluye AUTOMÁTICO al chat (auto-derivado del catálogo) y al Dictado. (2)
+Separación por `modo` (lectura|propuesta), no por superficie. (3) El servidor
+stdio externo se mantiene (sin peso); su hogar de impls es
+`capacidades/mcp_lecturas.py`. (4) Cliente y servidor comparten el registro, pero
+el servidor NO expone escrituras en V1 (read-only). **Patrón nuevo**: para sumar
+una capacidad, defínela en `capacidades/` (lectura) o agrega el ejecutor + entrada
+de catálogo (propuesta) — el registro es la fuente única.
+
+**Deuda diseñada**: `capacidades.ejecutar` recorta salidas (top-N/1200 chars) —
+bien para el LLM, sub-óptimo para un cliente MCP externo genérico; con muchísimos
+tools la selección del LLM se degrada (agrupar/namespacear en olas CUI futuras);
+el barrido CUI completo (Facturación, Contaduría, Catálogo, Checador, Calendario,
+Buzón, Mensajes, Equipo) queda como olas siguientes;
+`duplicar_cotizacion`/`generar_factura_anticipo`/`cambiar_estado_mandado` envuelven
+servicios ya testeados (cobertura V1 = registro + gating).
+
 ---
 
 ## 9. Decisiones operativas tomadas

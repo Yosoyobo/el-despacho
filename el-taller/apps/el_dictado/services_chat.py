@@ -39,54 +39,18 @@ MAX_TITULO = 60
 # cortamos el turno si rebasa este techo (proveedores gratis nunca lo alcanzan).
 MAX_COSTO_TURNO_USD = 0.50
 
-# Tools "especiales" del agente (no son consultas read-only del registry):
-#  - proponer_acciones → crea un Dictado con preview/confirm humano.
+# Tool "especial" del agente (no es una capacidad del registro):
 #  - escalar_razonamiento → El Relevo: el agente se cambia a un modelo más fuerte.
-TOOL_PROPONER = "proponer_acciones"
+# Las ESCRITURAS ya no usan un tool genérico `proponer_acciones`: cada acción es
+# su propio tool de propuesta (modo="propuesta" en `capacidades`); el orquestador
+# las bufferea y materializa como UN Dictado al cerrar el turno.
 TOOL_ESCALAR = "escalar_razonamiento"
-
-_SCHEMA_PROPONER = {
-    "type": "object",
-    "properties": {
-        "texto": {"type": "string", "description": "Preámbulo humano breve para el usuario."},
-        "acciones": {
-            "type": "array",
-            "description": "Lista de acciones propuestas (cada una con un tipo permitido).",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "tipo": {"type": "string", "description": "Uno de los tipos de acción permitidos."},
-                    "descripcion": {"type": "string"},
-                    "payload": {"type": "object"},
-                    "confianza": {"type": "number"},
-                },
-                "required": ["tipo", "descripcion"],
-            },
-        },
-    },
-    "required": ["acciones"],
-}
 
 _SCHEMA_ESCALAR = {
     "type": "object",
     "properties": {"motivo": {"type": "string", "description": "Por qué la tarea necesita un modelo más potente."}},
     "required": ["motivo"],
 }
-
-
-def _schema_proponer(usuario) -> dict:
-    """Copia de `_SCHEMA_PROPONER` con el `enum` de los tipos de acción que el
-    usuario puede ejecutar. Constreñir `tipo` evita que el modelo proponga una
-    acción sin tipo válido (que `_persistir_acciones_chat` filtraría, dejando un
-    dictado vacío que al aplicar daba 0/0 → el bug "propone pero no aplica")."""
-    import copy
-
-    from lib.dictado_catalogo import comandos_para
-    tipos = [c["tipo"] for c in comandos_para(usuario)]
-    schema = copy.deepcopy(_SCHEMA_PROPONER)
-    if tipos:
-        schema["properties"]["acciones"]["items"]["properties"]["tipo"]["enum"] = tipos
-    return schema
 
 
 def crear_conversacion(*, usuario, mensaje_inicial: str | None = None):
@@ -245,23 +209,11 @@ def conversar(*, mensaje: str, usuario, conversacion, imagenes: list | None = No
 
 
 def _tool_specs(usuario) -> list[dict]:
-    """Specs de herramientas para el modo nativo: las read-only del registry
-    (filtradas por rol) + las 2 especiales del agente."""
-    from .herramientas import herramientas_para
-    specs = [
-        {"nombre": h.nombre, "descripcion": h.descripcion, "args_schema": h.args_schema}
-        for h in herramientas_para(usuario)
-    ]
-    specs.append({
-        "nombre": TOOL_PROPONER,
-        "descripcion": (
-            "Propón cambios al sistema (crear/editar proyectos, tareas, mandados, "
-            "recados, egresos, etc.). El usuario los revisa y confirma antes de "
-            "aplicarse — tú solo propones, nunca se aplican solos. Cada acción DEBE "
-            "llevar un `tipo` de la lista permitida (campo enum) y su `payload`."
-        ),
-        "json_schema": _schema_proponer(usuario),
-    })
+    """Specs de tools para el modo nativo: lecturas (read-only) + una tool de
+    PROPUESTA por acción de escritura permitida + escalar_razonamiento."""
+    from capacidades import specs_chat
+    specs = specs_chat(usuario, modos=("lectura",))
+    specs += specs_chat(usuario, modos=("propuesta",))
     specs.append({
         "nombre": TOOL_ESCALAR,
         "descripcion": (
@@ -290,7 +242,10 @@ def _mensajes_canonicos(usuario, historial, mensaje, imagenes) -> list[dict]:
 
 
 def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
-    """Loop de tool-use NATIVO con El Relevo (ruteo activo al mejor modelo)."""
+    """Loop de tool-use NATIVO con El Relevo. Las escrituras se llaman como tools
+    de PROPUESTA (una por acción), se bufferean y se materializan como UN Dictado
+    al cerrar el turno (preview/confirm humano — nunca se auto-aplican)."""
+    import capacidades
     from lib.analistas import chatear, relevo
 
     from .herramientas import ejecutar_herramienta
@@ -305,18 +260,20 @@ def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
     dictado_creado = None
     cerrado = False
     vistos: set[tuple] = set()
+    propuestas: list[dict] = []
     pasos = 0
     costo_turno = 0.0
 
     for _ in range(MAX_ITERACIONES_TOOLS):
         if costo_turno >= MAX_COSTO_TURNO_USD:
-            # Cinturón de seguridad: el turno ya consumió demasiado. Cerramos
-            # con lo que haya en lugar de seguir llamando al LLM.
-            nuevos.append(_crear_mensaje(
-                conversacion, rol="bot", chalan=chalan_provider,
-                cuerpo="Esta consulta se volvió muy larga. Te respondo con lo que "
-                "ya reuní; si necesitas más, pregúntame algo más acotado.",
-            ))
+            # Cinturón de seguridad: el turno ya consumió demasiado. Cerramos con
+            # lo que haya (incluidas propuestas bufferadas) en vez de seguir.
+            dictado_creado, msg = _cerrar_turno_nativo(
+                conversacion, usuario, propuestas, chalan_provider,
+                "Esta consulta se volvió muy larga. Te respondo con lo que ya reuní; "
+                "si necesitas más, pregúntame algo más acotado.",
+            )
+            nuevos.append(msg)
             cerrado = True
             break
         try:
@@ -341,22 +298,18 @@ def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
         costo_turno += float(res.costo_usd or 0)
 
         if not res.tool_calls:
-            # Sin tool-calls → respuesta final del agente.
-            nuevos.append(_crear_mensaje(
-                conversacion, rol="bot", chalan=chalan_provider,
-                cuerpo=(res.texto or "").strip() or "Listo.",
-            ))
+            # Sin tool-calls → cierre del turno (respuesta o propuestas bufferadas).
+            dictado_creado, msg = _cerrar_turno_nativo(
+                conversacion, usuario, propuestas, chalan_provider, (res.texto or "").strip(),
+            )
+            nuevos.append(msg)
             cerrado = True
             break
 
         # Eco del turno assistant (con sus tool_calls) en la conversación canónica.
         mensajes.append({"rol": "assistant", "texto": res.texto or "", "tool_calls": list(res.tool_calls)})
 
-        accion_tc = None
         for tc in res.tool_calls:
-            if tc.nombre == TOOL_PROPONER:
-                accion_tc = tc  # se procesa al final del turno (es terminal)
-                continue
             if tc.nombre == TOOL_ESCALAR:
                 estacion = relevo.ESTACION_PROFUNDA
                 nuevos.append(_crear_mensaje(
@@ -365,6 +318,17 @@ def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
                 ))
                 mensajes.append({"rol": "tool", "tool_call_id": tc.id, "nombre": tc.nombre,
                                  "texto": json.dumps({"ok": True, "nivel": "profundo"})})
+                continue
+            if capacidades.es_propuesta(tc.nombre):
+                # Escritura: se PROPONE (no se aplica). Se bufferea y se
+                # materializa como UN Dictado al cerrar el turno.
+                propuestas.append(_propuesta_de_toolcall(tc))
+                nuevos.append(_crear_mensaje(
+                    conversacion, rol="bot", tipo="herramienta", chalan=chalan_provider,
+                    nombre_herramienta=tc.nombre, cuerpo=f"propuesta · {tc.nombre}",
+                ))
+                mensajes.append({"rol": "tool", "tool_call_id": tc.id, "nombre": tc.nombre,
+                                 "texto": json.dumps({"propuesta_registrada": True, "accion": tc.nombre})})
                 continue
             # Herramienta read-only del registry.
             clave = (tc.nombre, json.dumps(tc.args, sort_keys=True, default=str))
@@ -381,44 +345,16 @@ def _conversar_nativo(*, usuario, conversacion, prep, imagenes) -> dict:
                              "texto": json.dumps(salida, ensure_ascii=False, default=str)})
             pasos += 1
 
-        if accion_tc is not None:
-            args = accion_tc.args or {}
-            dictado_creado = _persistir_acciones_chat(
-                acciones_raw=args.get("acciones") or [], usuario=usuario, chalan=chalan_provider,
-            )
-            preambulo = (args.get("texto") or res.texto or "").strip()
-            if dictado_creado.acciones.count() == 0:
-                # El modelo propuso algo pero no estructuró ninguna acción
-                # aplicable (p.ej. omitió el `tipo`). No dejamos un dictado vacío
-                # que al aplicar dé 0/0 y se vea como "fallo".
-                dictado_creado.estado = "cancelado"
-                dictado_creado.save(update_fields=["estado"])
-                dictado_creado = None
-                nuevos.append(_crear_mensaje(
-                    conversacion, rol="bot", chalan=chalan_provider,
-                    cuerpo=((preambulo + "\n\n") if preambulo else "")
-                    + "No pude estructurar la acción para aplicarla. Dame un poco "
-                    "más de detalle (qué, para quién, cuándo) y lo intento de nuevo.",
-                ))
-                cerrado = True
-                break
-            nuevos.append(_crear_mensaje(
-                conversacion, rol="bot", tipo="accion", chalan=chalan_provider,
-                cuerpo=preambulo or "Te propongo estas acciones. Revísalas y confírmalas.",
-                dictado=dictado_creado,
-            ))
-            cerrado = True
-            break
-
         # Re-ruteo: tras recabar varios datos, sube a profundo para sintetizar.
         if pasos >= 2 and estacion == relevo.ESTACION_RAPIDA:
             estacion = relevo.ESTACION_PROFUNDA
 
     if not cerrado:
-        nuevos.append(_crear_mensaje(
-            conversacion, rol="bot", chalan=chalan_provider,
-            cuerpo="Consulté varias fuentes pero no pude cerrar la respuesta. Intenta una pregunta más específica.",
-        ))
+        dictado_creado, msg = _cerrar_turno_nativo(
+            conversacion, usuario, propuestas, chalan_provider,
+            "Consulté varias fuentes pero no pude cerrar la respuesta. Intenta una pregunta más específica.",
+        )
+        nuevos.append(msg)
 
     conversacion.save(update_fields=["actualizado_en"])
     return {"mensajes": nuevos, "dictado": dictado_creado}
@@ -565,6 +501,49 @@ def _resumen_herramienta(nombre: str, salida) -> str:
     if isinstance(salida, dict) and salida.get("error"):
         return f"{nombre}: {salida.get('error')}"
     return nombre
+
+
+def _propuesta_de_toolcall(tc) -> dict:
+    """Convierte una llamada a un tool de propuesta en la acción cruda que
+    consume `_persistir_acciones_chat`. Robusto a que el LLM ponga los campos
+    bajo `payload` o directamente al nivel superior."""
+    from capacidades.propuestas import titulo_de
+    args = tc.args if isinstance(tc.args, dict) else {}
+    payload = args.get("payload")
+    if not isinstance(payload, dict):
+        payload = {k: v for k, v in args.items() if k not in ("payload", "descripcion", "confianza")}
+    return {
+        "tipo": tc.nombre,
+        "payload": payload,
+        "descripcion": (args.get("descripcion") or titulo_de(tc.nombre)),
+        "confianza": args.get("confianza", 1.0),
+    }
+
+
+def _cerrar_turno_nativo(conversacion, usuario, propuestas, chalan, texto):
+    """Cierra el turno nativo. Si hay propuestas bufferadas crea UN Dictado
+    (preview/confirm, regla §20) y devuelve `(dictado, mensaje_accion)`; si no,
+    devuelve `(None, mensaje_respuesta)`. Preserva el guard de dictado vacío."""
+    texto = (texto or "").strip()
+    if not propuestas:
+        return None, _crear_mensaje(conversacion, rol="bot", chalan=chalan, cuerpo=texto or "Listo.")
+    dictado = _persistir_acciones_chat(acciones_raw=propuestas, usuario=usuario, chalan=chalan)
+    if dictado.acciones.count() == 0:
+        # Todas las propuestas quedaron filtradas (p.ej. tipos prohibidos). No
+        # dejamos un dictado vacío que al aplicar diera 0/0 y se viera como fallo.
+        dictado.estado = "cancelado"
+        dictado.save(update_fields=["estado"])
+        return None, _crear_mensaje(
+            conversacion, rol="bot", chalan=chalan,
+            cuerpo=((texto + "\n\n") if texto else "")
+            + "No pude estructurar la acción para aplicarla. Dame un poco más de "
+            "detalle (qué, para quién, cuándo) y lo intento de nuevo.",
+        )
+    return dictado, _crear_mensaje(
+        conversacion, rol="bot", tipo="accion", chalan=chalan,
+        cuerpo=texto or "Te propongo estas acciones. Revísalas y confírmalas.",
+        dictado=dictado,
+    )
 
 
 def _persistir_acciones_chat(*, acciones_raw, usuario, chalan: str):

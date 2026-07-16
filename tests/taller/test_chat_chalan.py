@@ -496,8 +496,9 @@ def _forzar_nativo(monkeypatch):
 
 
 def test_plan_multipaso_un_solo_preview(monkeypatch, usuario_factory, proyecto_factory):
-    """El agente lee primero y propone TODO el plan en una sola llamada a
-    `proponer_acciones` → un Dictado con N acciones, sin auto-aplicar."""
+    """El agente lee primero y propone el plan llamando el tool de CADA acción
+    (crear_tarea ×2); las propuestas se bufferean y se materializan como UN
+    Dictado al cerrar el turno, sin auto-aplicar."""
     from apps.el_dictado.services_chat import conversar
 
     import lib.analistas as la
@@ -507,26 +508,56 @@ def test_plan_multipaso_un_solo_preview(monkeypatch, usuario_factory, proyecto_f
     fake, estado = _fake_chatear([
         # 1) investiga con una herramienta read-only
         _res(tool_calls=[_tc("buscar", {"texto": "logo"})]),
-        # 2) propone el plan COMPLETO (2 escrituras) en un solo proponer_acciones
-        _res(texto="Te propongo el plan:", tool_calls=[_tc("proponer_acciones", {
-            "texto": "Plan de 2 pasos",
-            "acciones": [
-                {"tipo": "crear_tarea", "descripcion": "diseñar logo",
-                 "payload": {"proyecto_slug": p.slug, "titulo": "logo"}, "confianza": 0.9},
-                {"tipo": "crear_tarea", "descripcion": "revisar arte",
-                 "payload": {"proyecto_slug": p.slug, "titulo": "revisión"}, "confianza": 0.8},
-            ],
-        })]),
+        # 2) propone 2 escrituras llamando el tool de cada acción (por-acción)
+        _res(texto="Te propongo el plan:", tool_calls=[
+            _tc("crear_tarea", {"proyecto_slug": p.slug, "titulo": "logo"}, id="a1"),
+            _tc("crear_tarea", {"proyecto_slug": p.slug, "titulo": "revisión"}, id="a2"),
+        ]),
+        # 3) cierra con texto (sin tools) → materializa el buffer en UN Dictado
+        _res(texto="Ese es el plan."),
     ])
     monkeypatch.setattr(la, "chatear", fake)
     res = conversar(mensaje="organiza el proyecto", usuario=u, conversacion=_conv(u))
-    assert estado["i"] == 2  # 1 lectura + 1 propuesta
+    assert estado["i"] == 3  # 1 lectura + 1 turno de propuestas + cierre
     d = res["dictado"]
     assert d is not None and d.estado == "esperando_confirmacion"
     assert d.acciones.count() == 2
     assert not d.acciones.filter(aplicada=True).exists()  # nunca auto-aplica
     # corrió una herramienta de lectura ANTES de proponer
     assert any(m.tipo == "herramienta" for m in res["mensajes"])
+
+
+def test_nativo_una_propuesta_materializa_dictado(monkeypatch, usuario_factory, proyecto_factory):
+    """Una sola llamada a un tool de propuesta se bufferea y, al cerrar el turno,
+    crea UN Dictado (origen taller_chat) con la acción sin aplicar — materia
+    prima intacta para el destilador de aprendizajes."""
+    from apps.el_dictado.services_chat import conversar
+
+    import lib.analistas as la
+    _forzar_nativo(monkeypatch)
+    u = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    fake, estado = _fake_chatear([
+        _res(texto="Va la tarea:", tool_calls=[
+            _tc("crear_tarea", {"proyecto_slug": p.slug, "titulo": "logo"}, id="x1")]),
+        _res(texto="Listo."),
+    ])
+    monkeypatch.setattr(la, "chatear", fake)
+    res = conversar(mensaje="crea una tarea", usuario=u, conversacion=_conv(u))
+    d = res["dictado"]
+    assert d is not None and d.origen == "taller_chat"
+    assert d.acciones.count() == 1
+    assert not d.acciones.filter(aplicada=True).exists()  # nunca se auto-aplica
+
+
+def test_nativo_gating_excluye_escritura_sin_permiso(usuario_factory):
+    """Las tools de propuesta se gatean por permiso de escritura: un diseñador ve
+    crear_tarea (abierto) pero NO registrar_egreso (finanzas)."""
+    import capacidades
+    d = usuario_factory(rol="disenador")
+    nombres = {s["nombre"] for s in capacidades.specs_chat(d, modos=("propuesta",))}
+    assert "crear_tarea" in nombres
+    assert "registrar_egreso" not in nombres
 
 
 def test_cap_costo_por_turno_corta(monkeypatch, usuario_factory):

@@ -80,17 +80,19 @@ def test_nativo_herramienta_y_responde(monkeypatch, usuario_factory):
     assert tipos == [("user", "texto"), ("bot", "herramienta"), ("bot", "texto")]
 
 
-def test_nativo_proponer_acciones_crea_dictado(monkeypatch, usuario_factory):
-    from apps.el_dictado.services_chat import TOOL_PROPONER, conversar
+def test_nativo_propuesta_por_accion_crea_dictado(monkeypatch, usuario_factory):
+    """El Chalán propone llamando el tool de la acción (crear_recado); se bufferea
+    y al cerrar el turno se materializa como UN Dictado (preview/confirm §20)."""
+    from apps.el_dictado.services_chat import conversar
 
     import lib.analistas as la
     _forzar_nativo(monkeypatch)
     u = usuario_factory(rol="super_admin")
-    fake, _ = _fake_chatear([_res(tool_calls=[ToolCall("c1", TOOL_PROPONER, {
-        "texto": "Te propongo esto",
-        "acciones": [{"tipo": "crear_recado", "descripcion": "Recado a Ana",
-                      "payload": {"destinatarios_slugs": [], "cuerpo": "hola"}, "confianza": 0.9}],
-    })])])
+    fake, _ = _fake_chatear([
+        _res(texto="Te propongo esto", tool_calls=[
+            ToolCall("c1", "crear_recado", {"destinatarios_slugs": [], "cuerpo": "hola"})]),
+        _res("Listo."),
+    ])
     monkeypatch.setattr(la, "chatear", fake)
 
     res = conversar(mensaje="mándale un recado a @ana", usuario=u, conversacion=_conv(u))
@@ -100,22 +102,21 @@ def test_nativo_proponer_acciones_crea_dictado(monkeypatch, usuario_factory):
     assert res["mensajes"][-1].tipo == "accion"
 
 
-def test_nativo_proponer_filtra_prohibidos(monkeypatch, usuario_factory):
-    from apps.el_dictado.services_chat import TOOL_PROPONER, conversar
+def test_prohibidos_no_son_tools_de_propuesta(usuario_factory):
+    """Los tipos prohibidos NO se exponen como tools de propuesta; y
+    `_persistir_acciones_chat` los filtra aunque llegaran (defensa en profundidad)."""
+    from apps.el_dictado.services_chat import _persistir_acciones_chat
 
-    import lib.analistas as la
-    _forzar_nativo(monkeypatch)
+    import capacidades
+    from lib.dictado_catalogo import COMANDOS_PROHIBIDOS
     u = usuario_factory(rol="super_admin")
-    fake, _ = _fake_chatear([_res(tool_calls=[ToolCall("c1", TOOL_PROPONER, {
-        "acciones": [{"tipo": "modificar_ajustes", "descripcion": "cambiar llave", "payload": {}}],
-    })])])
-    monkeypatch.setattr(la, "chatear", fake)
-
-    res = conversar(mensaje="cambia la llave de anthropic", usuario=u, conversacion=_conv(u))
-    # La acción prohibida se filtra → 0 acciones → NO deja dictado fantasma:
-    # responde con texto en vez de una tarjeta de acción vacía.
-    assert res["dictado"] is None
-    assert res["mensajes"][-1].tipo == "texto"
+    nombres = {s["nombre"] for s in capacidades.specs_chat(u, modos=("propuesta",))}
+    for prohibido in COMANDOS_PROHIBIDOS:
+        assert prohibido["tipo"] not in nombres
+    d = _persistir_acciones_chat(
+        acciones_raw=[{"tipo": "modificar_ajustes", "descripcion": "x", "payload": {}}],
+        usuario=u, chalan="anthropic")
+    assert d.acciones.count() == 0
 
 
 def test_relevo_escala_a_modelo_profundo(monkeypatch, usuario_factory):
@@ -182,31 +183,32 @@ def test_degrada_a_texto_cuando_no_hay_function_calling(monkeypatch, usuario_fac
     assert res["mensajes"][-1].cuerpo == "Hola desde texto."
 
 
-# ── Bug fix: propone pero no aplica (acciones sin tipo válido) ─────────────────
+# ── "propone pero no aplica" ahora es estructuralmente imposible ───────────────
+# Cada propuesta llama un tool cuyo nombre ES un tipo válido (nombre == tipo), así
+# que el modelo no puede proponer una acción con tipo inválido o ausente.
 
-def test_schema_proponer_constrine_tipo_a_enum(usuario_factory):
-    from apps.el_dictado.services_chat import _schema_proponer
+def test_tools_de_propuesta_cubren_las_acciones(usuario_factory):
+    """Las acciones de escritura son tools de propuesta cuyo nombre ES el tipo."""
+    import capacidades
     u = usuario_factory(rol="super_admin")
-    enum = _schema_proponer(u)["properties"]["acciones"]["items"]["properties"]["tipo"]["enum"]
-    assert "crear_mandado" in enum and "crear_tarea" in enum
+    specs = capacidades.specs_chat(u, modos=("propuesta",))
+    nombres = {s["nombre"] for s in specs}
+    assert "crear_mandado" in nombres and "crear_tarea" in nombres
+    for s in specs:
+        assert capacidades.es_propuesta(s["nombre"])
 
 
-def test_proponer_sin_tipo_valido_no_deja_dictado_fantasma(monkeypatch, usuario_factory):
-    """Si el modelo propone una acción sin `tipo` válido, se filtra → 0 acciones.
-    No debe quedar una tarjeta de acción que al aplicar dé 0/0 (el bug); el bot
-    responde con un texto pidiendo más detalle y no devuelve dictado."""
-    from apps.el_dictado.services_chat import TOOL_PROPONER, conversar
+def test_sin_propuestas_cierra_con_texto_no_dictado(monkeypatch, usuario_factory):
+    """Si el turno no bufferea ninguna propuesta, cierra con texto — nunca deja una
+    tarjeta de acción vacía (el viejo bug 0/0 ya no puede ocurrir)."""
+    from apps.el_dictado.services_chat import conversar
 
     import lib.analistas as la
     _forzar_nativo(monkeypatch)
     u = usuario_factory(rol="super_admin")
-    fake, _ = _fake_chatear([_res(tool_calls=[ToolCall("c1", TOOL_PROPONER, {
-        "texto": "Propongo crear un mandado de entrega",
-        "acciones": [{"descripcion": "entrega de playeras", "payload": {}}],  # SIN tipo
-    })])])
+    fake, _ = _fake_chatear([_res("Necesito más detalle para proponerte algo.")])
     monkeypatch.setattr(la, "chatear", fake)
 
-    res = conversar(mensaje="llevar playeras a Noko mañana", usuario=u, conversacion=_conv(u))
+    res = conversar(mensaje="haz algo", usuario=u, conversacion=_conv(u))
     assert res["dictado"] is None
     assert res["mensajes"][-1].tipo == "texto"
-    assert "No pude estructurar" in res["mensajes"][-1].cuerpo

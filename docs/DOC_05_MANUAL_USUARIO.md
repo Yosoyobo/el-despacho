@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — El Chalán ahora hace más cosas por conversación (16 de julio de 2026)
+
+- **El Chalán puede proponer más acciones.** Además de crear proyectos, tareas,
+  clientes, cotizaciones y demás, ahora también puedes pedirle —siempre con tu
+  confirmación antes de aplicar— que:
+  - **Archive o restaure** un proyecto, un cliente o una tarea (se ocultan de las
+    listas pero **no se borran**; se revierte diciéndole "restaura…").
+  - **Duplique** un proyecto o una cotización.
+  - **Quite un producto** de un proyecto.
+  - **Cambie el estado de un mandado** (en camino / entregado / cancelado).
+  - **Genere la factura del anticipo** de una cotización aprobada.
+- Como siempre: **El Chalán propone, tú confirmas.** Nada se aplica solo y sólo
+  puede hacer lo que tu rol permite. El borrado permanente sigue reservado a la
+  interfaz — El Chalán no borra.
+- Por dentro, Los Chalanes ahora corren sobre un **motor unificado de
+  herramientas**: hace más fácil y confiable sumarles capacidades nuevas. La meta
+  es que, con el tiempo, todo lo que haces con clics lo puedas hacer también
+  conversando.
+
 ## Novedades — Acceso seguro de sólo lectura para asistentes externos con MCP (15 de julio de 2026)
 
 - El Despacho ahora puede conectarse con **asistentes compatibles con MCP** para

@@ -71,6 +71,10 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - emitir_factura, cobrar_factura
 - enviar_cotizacion, aprobar_cotizacion, rechazar_cotizacion
 - capturar_traspaso, capturar_ajuste
+- duplicar_proyecto, quitar_producto_proyecto, archivar_proyecto
+- archivar_cliente, archivar_tarea, cambiar_estado_mandado
+- duplicar_cotizacion, generar_factura_anticipo
+  (archivar_* es soft-delete REVERSIBLE: `restaurar: true` lo revierte; NUNCA borra)
 - enviar_correo (V6: correo a UN cliente vía El Cartero; payload:
   cliente_slug, tipo_plantilla ∈ generico|bienvenida|cobranza, asunto?,
   mensaje? — solo al email registrado del cliente, nunca direcciones libres)
@@ -138,6 +142,14 @@ PAYLOADS:
 - rechazar_cotizacion: {codigo, motivo}
 - capturar_traspaso: {cuenta_origen, cuenta_destino, monto, descripcion?, fecha?}  (cuenta = código, slot o nombre)
 - capturar_ajuste: {cuenta, direccion: 'sube'|'baja', monto, motivo, fecha?}
+- duplicar_proyecto: {proyecto_slug, nombre?}
+- quitar_producto_proyecto: {proyecto_slug, producto (nombre) | producto_id}
+- archivar_proyecto: {proyecto_slug, restaurar?}  (reversible; no borra)
+- archivar_cliente: {cliente_slug, restaurar?}  (reversible; no borra)
+- archivar_tarea: {tarea_id (acepta @accion_N), restaurar?}  (reversible; no borra)
+- cambiar_estado_mandado: {tarea_id, estado: 'en_camino'|'entregado'|'cancelado', motivo? (al cancelar)}
+- duplicar_cotizacion: {codigo}
+- generar_factura_anticipo: {codigo}  (cotización aprobada con anticipo configurado)
 - checador_iniciar_jornada: {}   (checa tu entrada del día)
 - checador_cerrar_jornada: {}    (checa tu salida del día)
 - checador_registrar_tiempo_proyecto: {proyecto_slug, hora_inicio: 'HH:MM', hora_fin: 'HH:MM', fecha?, nota?}

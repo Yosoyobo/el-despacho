@@ -82,8 +82,8 @@ def construir_system_prompt(usuario) -> str:
 # ── Modo tool-use NATIVO (S-Chalan-Agente Fase 1) ─────────────────────────────
 # El protocolo de "sobre JSON" lo impone ahora la API de function-calling, así
 # que el system prompt nativo NO describe el formato del sobre ni enumera las
-# herramientas (van como tool schemas). Sí mantiene el alcance, la voz, los
-# tipos de acción válidos (para `proponer_acciones`) y las reglas operativas.
+# herramientas (lecturas Y propuestas de escritura viajan como tool schemas). Sí
+# mantiene el alcance, la voz y las reglas operativas.
 
 _BASE_NATIVO = """\
 Eres El Chalán de El Despacho, el asistente conversacional de Learning Center
@@ -98,14 +98,16 @@ CÓMO TRABAJAS:
 1. NUNCA inventes cifras, estatus ni datos. Para CUALQUIER dato concreto LLAMA
    una herramienta. Tienes herramientas para consultar; úsalas y luego responde.
 2. Puedes encadenar varias herramientas para armar una respuesta completa.
-3. Para CAMBIAR algo en el sistema llama `proponer_acciones`. El usuario revisa
-   y confirma antes de que se aplique — tú solo propones, nunca se aplican solas.
+3. Para CAMBIAR algo en el sistema llama la herramienta de esa acción
+   (crear_tarea, registrar_egreso, crear_cliente, etc.). NO se aplica: el usuario
+   revisa y confirma después — tú solo propones. Todas las propuestas de un turno
+   se juntan en UNA sola confirmación.
 4. PLANEA ANTES DE PROPONER. Si la petición implica VARIOS cambios, primero
    investiga con las herramientas de consulta lo que necesites (códigos reales,
-   ids, estado actual) y LUEGO arma el plan completo: pon TODAS las acciones en
-   UNA SOLA llamada a `proponer_acciones` para que el usuario confirme todo el
-   plan de una vez. No lo hagas en goteo (una acción, esperar, otra). Si una
-   acción depende de otra del mismo plan, usa `@accion_N` (N = índice 0-based).
+   ids, estado actual) y LUEGO llama la herramienta de CADA acción del plan
+   (puedes llamar varias en el mismo turno). Si una acción depende de otra del
+   mismo plan, usa `@accion_N` (N = índice 0-based, en el orden en que la
+   propusiste).
 5. Si la tarea pide análisis, comparación, planeación o redacción cuidada, llama
    `escalar_razonamiento` UNA vez para pensar el resto con un modelo más potente.
    No la uses para datos simples.
@@ -126,15 +128,13 @@ def contexto_usuario(usuario) -> str:
 
 
 def construir_system_prompt_nativo(usuario) -> str:
-    """System prompt para el loop de tool-use nativo. Las herramientas viajan
-    como tool schemas (no se enumeran aquí); sí van los tipos de acción válidos
-    para `proponer_acciones`."""
+    """System prompt para el loop de tool-use nativo. TODAS las tools (lecturas y
+    propuestas de escritura) viajan como tool schemas; aquí no se enumeran."""
     from chalanes.voz import preludio, reglas
     return preludio("taller_chat", usuario) + "\n\n".join(p for p in [
         _BASE_NATIVO,
         _seccion_contexto_negocio(),
         contexto_usuario(usuario),
-        _seccion_acciones(usuario),
         _REFS,
     ] if p) + reglas()
 
