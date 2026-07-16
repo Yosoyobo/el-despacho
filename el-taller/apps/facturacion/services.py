@@ -219,6 +219,16 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
     return fac
 
 
+def ligar_a_proyecto(fac: Factura, proyecto, actor) -> Factura:
+    """Liga una factura EXISTENTE a un proyecto (botón «Ligar» del recuadro de
+    facturas del proyecto). Fuente única del flujo — la usa el view HTMX y el
+    ejecutor del Chalán (Ola 2 CUI)."""
+    fac.proyecto = proyecto
+    fac.save(update_fields=["proyecto", "actualizado_en"])
+    emitir_actualizada(fac, actor)
+    return fac
+
+
 def asegurar_lineas_desde_origen(fac: Factura) -> bool:
     """Si la factura NO tiene líneas, deriva su monto del origen. Arregla el
     bug (LC revisión buzón) de facturas en $0.00 al ligar una cotización o un

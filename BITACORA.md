@@ -6309,3 +6309,102 @@ MCP como **contrato interno único de capacidades** del Chalán. Nuevo registro
 - Escalado de #tools (agrupar/namespacear cuando degrade la selección del LLM).
 - Recorte de salida (top-N/1200) sub-óptimo para clientes MCP externos genéricos.
 - Servidor externo read-only en V1 (los tools de propuesta no se exponen afuera).
+
+---
+
+# BITÁCORA — S-Chalan-MCP-V1 · Ola 2 CUI (Facturación) (2026-07-16, VERSION 2026.07.11)
+
+## Qué se entregó
+
+Segunda ola del barrido CUI — el **hilo comercial** (cotización → factura → cobro
+→ cierre) por conversación. 4 ejecutores nuevos en
+`el-taller/apps/el_dictado/ejecutores/cui_v2.py`, cada uno envuelve un service ya
+testeado de `apps.facturacion.services` y re-chequea permiso antes de escribir
+(defensa en profundidad). Crear/emitir/cobrar factura ya existían (Fase B /
+S-Chalan-Barrido); esta ola cierra el resto:
+
+- **`crear_factura_desde_cotizacion`** (gating `facturacion_crear`) → clona una
+  cotización en factura BORRADOR (no CFDI, §16). Acción central del hilo.
+- **`cancelar_factura`** (gating **nuevo** `facturacion_cancelar` →
+  `puede_cancelar_facturacion`) → `services.cancelar`; el service bloquea cancelar
+  una factura con cobros (alinea con `cancelar_factura_cobrada`, prohibido). Exige
+  `motivo`.
+- **`duplicar_factura`** (gating `facturacion_crear`) → `services.duplicar`.
+- **`ligar_factura_proyecto`** (gating `facturacion_crear`) → service **nuevo**
+  `services.ligar_a_proyecto` (fuente única; el view `ligar_proyecto` ahora delega,
+  refactor DRY).
+
+3 lugares por ejecutor: `cui_v2.py` (+ import en `ejecutores/__init__.py`),
+`prompt.py`, `lib/dictado_catalogo.py` (`COMANDOS_DICTADO` + gating key
+`facturacion_cancelar`). El registro `capacidades/propuestas.py` y `prompt_chat.py`
+fluyen solos desde el catálogo (nombre == tipo → buffer → UN Dictado, §20).
+
+## Decisiones
+
+- Alcance de esta ola = **Facturación** ("continuación natural del hilo comercial").
+- `almacenar_cfdi` NO se expone (file-driven, sin payload conversacional natural);
+  borrado permanente de factura sigue vetado (super_admin por UI).
+
+## Verificación
+
+- `ruff` verde en todo lo tocado.
+- `tests/taller/test_cui_v2.py`: 9 pass. Regresión (cui_v1 + chat/agente + chat_chalan
+  + fase_b + facturación + MCP): 89 pass. Candado de novedades verde (VERSION_FECHA
+  sin cambio; bloque de 16-jul extendido con Facturación).
+- Sin migraciones (los modelos de Facturación ya existían).
+
+## Deuda diseñada Ola 2
+
+- `_factura_por_codigo` resuelve por `codigo` FAC interno, no por folio F###
+  (consistente con los ejecutores previos).
+- Barrido CUI restante (Contaduría, Catálogo, Checador, Calendario, Buzón,
+  Mensajes, Equipo) → olas siguientes.
+
+---
+
+# BITÁCORA — S-Chalan-MCP-V1 · Ola 3 CUI (anular + editar) (2026-07-16, VERSION 2026.07.12)
+
+## Qué se entregó
+
+Tercera ola del barrido CUI — **completar los verbos que le faltaban al Chalán**
+(ya CREA mucho en Olas 1-2): **anular** del ciclo comercial-contable y **editar**
+del Catálogo. 4 ejecutores nuevos en `el-taller/apps/el_dictado/ejecutores/cui_v3.py`,
+cada uno envuelve un service ya testeado (o replica `actualizar_servicio`) +
+re-chequea permiso:
+
+- **`anular_cotizacion`** (gating **nuevo** `cotizaciones_anular` →
+  `puede_anular_cotizaciones`) → `services.marcar_anulada`. Exige `motivo`.
+- **`anular_asiento`** (gating **nuevo** `contaduria_anular` →
+  `puede_anular_contaduria`) → `services.anular_asiento` (NO crea reverso; corrige
+  captura). Exige `motivo`. Helper `_asiento_por_codigo`.
+- **`actualizar_proveedor`** (gating `catalogo_editar`) → edición inline de campos
+  del proveedor. Contraparte de `crear_proveedor`.
+- **`actualizar_variacion`** (gating `catalogo_editar`) → edición de variación;
+  resuelve por `variacion_id` o (`servicio` + `variacion`).
+
+3 lugares por ejecutor: `cui_v3.py` (+ import en `ejecutores/__init__.py`),
+`prompt.py`, `lib/dictado_catalogo.py` (`COMANDOS_DICTADO` + 2 gating keys nuevas).
+`capacidades/propuestas.py` y `prompt_chat.py` fluyen solos.
+
+## Decisiones
+
+- Tema de la ola elegido por el agente (Oscar delegó): "completar verbos que
+  faltaban" (anular + editar) — cierra simetría con los `crear_*` de Olas 1-2.
+- `crear_categoria`/`crear_unidad` NO se exponen (categorías = Gerencia).
+- `cerrar_periodo`/`reabrir_periodo` fuera del Chalán (operación sensible del
+  contador, UI-only por diseño).
+
+## Verificación
+
+- `ruff` verde. `tests/taller/test_cui_v3.py`: 9 pass. Regresión (cui_v1/v2/v3 +
+  chat/agente + fase_b + barrido + MCP): 62 pass. Sin migraciones.
+
+## Estado
+
+- Rama `agent/mcp-despacho`. Ola 2 + Ola 3 se **commitean juntas** (VERSION final
+  del commit: 2026.07.12).
+
+## Deuda diseñada Ola 3
+
+- Barrido CUI restante (Checador, Calendario, Buzón, Mensajes, Equipo) → olas
+  siguientes.

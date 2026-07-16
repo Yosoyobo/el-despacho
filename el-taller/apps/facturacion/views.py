@@ -373,9 +373,7 @@ def ligar_proyecto(request, proyecto_pk):
             ctx = {"proyecto": proyecto, "facturas": _facturas_ligables(proyecto),
                    "error": "Elige una factura de la lista."}
             return _modal(request, "facturacion/_modal_ligar.html", ctx)
-        fac.proyecto = proyecto
-        fac.save(update_fields=["proyecto", "actualizado_en"])
-        services.emitir_actualizada(fac, request.user)
+        services.ligar_a_proyecto(fac, proyecto, request.user)
         messages.success(request, f"Factura {fac.folio_display} ligada al proyecto {proyecto.codigo}.")
         return _hx_redirect(destino) if es_htmx else redirect(destino)
     if not es_htmx:

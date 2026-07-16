@@ -16,6 +16,16 @@
   - **Quite un producto** de un proyecto.
   - **Cambie el estado de un mandado** (en camino / entregado / cancelado).
   - **Genere la factura del anticipo** de una cotización aprobada.
+  - **Facturación** (el hilo comercial completo por conversación): **facturar una
+    cotización** ("genera la factura de la COT-2026-0005"), **cancelar** una
+    factura con su motivo, **duplicarla** o **ligarla a un proyecto**. Requiere
+    permiso de Facturación; una factura con cobros no se cancela (primero se anula
+    el ingreso).
+  - **Anular** lo que se capturó mal: una **cotización** o un **movimiento
+    contable** (siempre con su motivo).
+  - **Editar el Catálogo**: cambiar los datos de un **proveedor** (teléfono,
+    correo, RFC, dirección…) o de una **variación** de producto (costo, nombre,
+    impresión…). Requiere permiso de Productos.
 - Como siempre: **El Chalán propone, tú confirmas.** Nada se aplica solo y sólo
   puede hacer lo que tu rol permite. El borrado permanente sigue reservado a la
   interfaz — El Chalán no borra.

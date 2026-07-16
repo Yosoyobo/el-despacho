@@ -346,6 +346,67 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo (cotización aprobada con anticipo configurado)",
         "gating": "facturacion_crear",
     },
+    # ── Ola 2 CUI (S-Chalan-MCP-V1): Facturación — hilo comercial
+    # (cotización → factura → cobro → cierre). Crear/emitir/cobrar factura ya
+    # viven arriba; esto cierra facturar-una-cotización, cancelar, duplicar y ligar.
+    {
+        "tipo": "crear_factura_desde_cotizacion",
+        "titulo": "Facturar una cotización",
+        "ejemplo": "Genera la factura de la cotización COT-2026-0005.",
+        "payload": "codigo (de la cotización; clona sus líneas en una factura borrador, NO es CFDI)",
+        "gating": "facturacion_crear",
+    },
+    {
+        "tipo": "cancelar_factura",
+        "titulo": "Cancelar factura",
+        "ejemplo": "Cancela la factura FAC-2026-0012: se capturó dos veces.",
+        "payload": "codigo, motivo (una factura con cobros no se cancela; primero anula el ingreso)",
+        "gating": "facturacion_cancelar",
+    },
+    {
+        "tipo": "duplicar_factura",
+        "titulo": "Duplicar factura",
+        "ejemplo": "Duplica la factura FAC-2026-0012.",
+        "payload": "codigo",
+        "gating": "facturacion_crear",
+    },
+    {
+        "tipo": "ligar_factura_proyecto",
+        "titulo": "Ligar factura a un proyecto",
+        "ejemplo": "Liga la factura FAC-2026-0012 al proyecto #lc-0001.",
+        "payload": "codigo (de la factura), proyecto_slug",
+        "gating": "facturacion_crear",
+    },
+    # ── Ola 3 CUI (S-Chalan-MCP-V1): completar verbos que faltaban — anular del
+    # ciclo comercial-contable y editar del Catálogo (los crear_* ya existen).
+    {
+        "tipo": "anular_cotizacion",
+        "titulo": "Anular cotización",
+        "ejemplo": "Anula la cotización COT-2026-0005: el cliente ya no la quiere.",
+        "payload": "codigo, motivo",
+        "gating": "cotizaciones_anular",
+    },
+    {
+        "tipo": "anular_asiento",
+        "titulo": "Anular movimiento contable",
+        "ejemplo": "Anula el movimiento AST-2026-0012: se capturó dos veces.",
+        "payload": "codigo (AST-YYYY-NNNN), motivo (anular NO crea reverso; para neutralizar captura un ajuste)",
+        "gating": "contaduria_anular",
+    },
+    {
+        "tipo": "actualizar_proveedor",
+        "titulo": "Editar proveedor",
+        "ejemplo": "Actualiza el teléfono del proveedor Telas del Norte a 555-9090.",
+        "payload": "proveedor (razón social), y lo que cambie: razon_social?, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?",
+        "gating": "catalogo_editar",
+    },
+    {
+        "tipo": "actualizar_variacion",
+        "titulo": "Editar variación de un producto",
+        "ejemplo": 'Sube el costo de la variación "Talla M" de la Playera a 90.',
+        "payload": "variacion_id | (servicio + variacion), y lo que cambie: nombre_nuevo?, costo?, impresion_activa?, impresion_costo?, impresion_descripcion?, descripcion?, disponible?",
+        "gating": "catalogo_editar",
+    },
 ]
 
 
@@ -364,6 +425,9 @@ def _gating_checks():
         "facturacion_emitir": permisos.puede_emitir_facturacion,
         "facturacion_cobrar": permisos.puede_cobrar_facturacion,
         "facturacion_crear": permisos.puede_crear_facturacion,
+        "facturacion_cancelar": permisos.puede_cancelar_facturacion,
+        "cotizaciones_anular": permisos.puede_anular_cotizaciones,
+        "contaduria_anular": permisos.puede_anular_contaduria,
         "cotizaciones_enviar": permisos.puede_enviar_cotizaciones,
         "cotizaciones_aprobar": permisos.puede_aprobar_cotizaciones,
         "cotizaciones_rechazar": permisos.puede_rechazar_cotizaciones,

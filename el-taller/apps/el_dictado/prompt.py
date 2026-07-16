@@ -75,6 +75,11 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - archivar_cliente, archivar_tarea, cambiar_estado_mandado
 - duplicar_cotizacion, generar_factura_anticipo
   (archivar_* es soft-delete REVERSIBLE: `restaurar: true` lo revierte; NUNCA borra)
+- crear_factura_desde_cotizacion, cancelar_factura, duplicar_factura, ligar_factura_proyecto
+  (Facturación: facturar una cotización, cancelar, duplicar o ligar a un proyecto;
+  requieren permiso de facturación)
+- anular_cotizacion, anular_asiento (anular del ciclo comercial-contable; requieren permiso)
+- actualizar_proveedor, actualizar_variacion (editar el Catálogo; requieren permiso de Productos)
 - enviar_correo (V6: correo a UN cliente vía El Cartero; payload:
   cliente_slug, tipo_plantilla ∈ generico|bienvenida|cobranza, asunto?,
   mensaje? — solo al email registrado del cliente, nunca direcciones libres)
@@ -150,6 +155,14 @@ PAYLOADS:
 - cambiar_estado_mandado: {tarea_id, estado: 'en_camino'|'entregado'|'cancelado', motivo? (al cancelar)}
 - duplicar_cotizacion: {codigo}
 - generar_factura_anticipo: {codigo}  (cotización aprobada con anticipo configurado)
+- crear_factura_desde_cotizacion: {codigo}  (codigo = de la cotización; crea factura borrador con sus líneas, NO es CFDI)
+- cancelar_factura: {codigo, motivo}  (una factura con cobros NO se cancela; primero anula el ingreso)
+- duplicar_factura: {codigo}
+- ligar_factura_proyecto: {codigo (de la factura), proyecto_slug}
+- anular_cotizacion: {codigo, motivo}
+- anular_asiento: {codigo, motivo}  (AST-YYYY-NNNN; anular NO crea reverso, es para corregir capturas)
+- actualizar_proveedor: {proveedor (razón social), razon_social?, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?}  (solo incluye los campos a cambiar)
+- actualizar_variacion: {variacion_id | (servicio + variacion), nombre_nuevo?, costo?, impresion_activa?, impresion_costo?, impresion_descripcion?, descripcion?, disponible?}
 - checador_iniciar_jornada: {}   (checa tu entrada del día)
 - checador_cerrar_jornada: {}    (checa tu salida del día)
 - checador_registrar_tiempo_proyecto: {proyecto_slug, hora_inicio: 'HH:MM', hora_fin: 'HH:MM', fecha?, nota?}
