@@ -24,6 +24,12 @@ Python 3.12 · Django 5.1 (gunicorn + UvicornWorker) · PostgreSQL 16 · Redis 7
 · Tailwind CSS (CLI standalone, sin Node) · HTMX · Docker Compose · Caddy 2 ·
 GitHub Actions (**El Mensajero**) · GHCR.
 
+## MCP
+
+El proyecto expone un servidor MCP local de sólo lectura para clientes,
+proyectos y tareas, con identidad y permisos granulares. Instalación y
+configuración: [`docs/MCP.md`](docs/MCP.md).
+
 ## Estado por sesión
 
 - **S1a** ✅ Cimientos: infra + `lib/` + auth + El Directorio + Los Ajustes

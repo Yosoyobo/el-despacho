@@ -5,6 +5,20 @@
 
 ---
 
+## Novedades — Acceso seguro de sólo lectura para asistentes externos con MCP (15 de julio de 2026)
+
+- El Despacho ahora puede conectarse con **asistentes compatibles con MCP** para
+  consultar clientes, proyectos y tareas sin abrir otra pantalla.
+- El acceso nace **apagado para todos salvo el super admin**. Al habilitar a
+  alguien, conserva exactamente sus permisos: solo ve los módulos autorizados y,
+  en proyectos y tareas, únicamente lo que ya podía consultar dentro del sistema.
+- Esta primera versión es de **sólo lectura**: no crea, edita, envía ni elimina
+  información. Los montos de un proyecto permanecen ocultos si la persona no
+  tiene acceso a Tesorería.
+- Es una integración técnica local: el administrador configura el cliente MCP y
+  concede **MCP → usar** desde Directorio → Permisos. **No se usa hablando con El
+  Chalán** y no agrega botones nuevos dentro de El Taller.
+
 ## Novedades — Los botones de "acciones rápidas" del Inicio ahora abren en ventana, y Nuevo Proyecto arma sus productos con El Chalán (12 de julio de 2026)
 
 - **Nuevo cliente, Nuevo producto, Nuevo proveedor, Nuevo ingreso y Nuevo
@@ -2730,6 +2744,23 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Directorio** (usuarios, sus permisos individuales, roles extra personalizados).
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
+
+### Acceso MCP para asistentes externos
+
+MCP permite que un asistente externo compatible consulte información de El
+Despacho con las mismas restricciones del usuario configurado. La primera
+versión ofrece búsquedas de **Clientes**, **Proyectos** y **Tareas**, además del
+detalle básico de un proyecto.
+
+- El super admin habilita **MCP → usar** en Directorio → usuario → Permisos.
+- También deben permanecer activos los permisos de lectura del módulo que se
+  quiera consultar (`cartera.ver`, `proyectos.ver` o `pizarron.ver`).
+- Es de **sólo lectura** y no está publicado como servicio web: el responsable
+  técnico lo conecta localmente siguiendo la guía de instalación.
+- Los importes de proyecto requieren además permiso de Tesorería.
+- **El Chalán no usa esta conexión.** MCP se invoca desde el asistente externo
+  configurado por el administrador; no existe un comando de chat dentro de El
+  Taller para activarlo.
 
 ### Fiscal (régimen, ISR, PTU, IVA)
 

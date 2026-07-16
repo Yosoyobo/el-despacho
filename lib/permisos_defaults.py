@@ -72,6 +72,9 @@ TODO_CHALANES = ["ver", "configurar"]
 TODO_SITE = ["ver"]
 TODO_CATALOGOS = ["estados", "tipos", "centros_costo"]
 TODO_INTERFONO = ["configurar"]
+# MCP local: habilita el acceso al servidor; cada herramienta exige además
+# el permiso de lectura del módulo de negocio que consulta.
+TODO_MCP = ["usar"]
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -99,6 +102,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "site": list(TODO_SITE),
         "catalogos": list(TODO_CATALOGOS),
         "interfono": list(TODO_INTERFONO),
+        "mcp": list(TODO_MCP),
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -197,6 +201,7 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "site": list(TODO_SITE),
     "catalogos": list(TODO_CATALOGOS),
     "interfono": list(TODO_INTERFONO),
+    "mcp": list(TODO_MCP),
 }
 
 
