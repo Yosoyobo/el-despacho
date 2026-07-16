@@ -6222,3 +6222,44 @@ Se ejecutó "todo en un deploy" (decisión Oscar por AskUserQuestion). Rama
 - `lib/version.py`: **`VERSION = 2026.07.08`** · `VERSION_FECHA = "12 de julio de 2026"`.
 - Ronda 2 de la revisión del buzón **cerrada** (los 2 pedazos de R2 ya estaban en
   `2026.07.07`; este release cierra los 5 modales + Nuevo Proyecto mini-Chalán).
+
+---
+
+# BITÁCORA — MCP V1 (2026-07-15, VERSION 2026.07.09)
+
+## Qué se entregó
+
+- Servidor MCP local por `stdio` en `mcp_despacho/`, basado en el SDK oficial
+  `mcp==1.27.2` y cargando el ORM de El Taller.
+- Cinco herramientas de sólo lectura: identidad, búsqueda de clientes, búsqueda
+  de proyectos, detalle de proyecto y listado de tareas.
+- Identidad por `DESPACHO_MCP_USUARIO_EMAIL`, con rechazo si falta el usuario o
+  está inactivo. Cada llamada exige `mcp.usar` y el permiso granular de lectura
+  del módulo.
+- Conserva el alcance por asignación de proyectos/tareas; oculta finanzas sin
+  `tesoreria.ver`. Límites defensivos de 100 filas y entradas acotadas.
+- Migración `cuentas.0037_seed_permiso_mcp`: permiso nuevo cerrado por default,
+  concedido al rol/usuarios super_admin y delegable desde La Gerencia.
+- Dockerfile de El Taller copia el paquete. `docs/MCP.md` documenta ejecución y
+  configuración completa de clientes MCP locales.
+
+## Decisiones
+
+- V1 no abre HTTP: `stdio` evita publicar datos sin OAuth.
+- No hay herramientas mutantes; crear/editar/enviar/eliminar queda fuera hasta
+  diseñar confirmación humana y auditoría.
+- MCP no forma parte del chat de El Chalán; es una entrada técnica externa.
+
+## Verificación
+
+- `tests/test_mcp_despacho.py`: 6/6 verdes.
+- Introspección FastMCP: anuncia exactamente las cinco tools documentadas.
+- `ruff check .`: verde.
+- Suite completa local: 1,823 pass, 9 skip y 3 fallos ambientales de
+  `tests/test_aviso_deploy.py` porque Redis no estaba publicado en localhost;
+  GitHub Actions sí provee Redis en `6379`.
+
+## Deuda diseñada
+
+- Streamable HTTP + OAuth 2.1 para acceso remoto.
+- Tools de escritura con confirmación, idempotencia y bitácora de auditoría.

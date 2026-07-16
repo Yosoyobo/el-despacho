@@ -4967,6 +4967,39 @@ en el detalle del proyecto después). El sweep de acciones rápidas cubre solo e
 Dashboard — las páginas de listas/sidebar siguen navegando a la página full
 (fallback), lo cual es correcto.
 
+### S-MCP-V1 ✅ — servidor MCP local de sólo lectura (2026-07-15, VERSION 2026.07.09)
+
+El Despacho incorpora un servidor MCP oficial por `stdio`, separado del HTTP
+público de Django. Vive en `mcp_despacho/`, arranca El Taller mediante
+`django.setup()` y expone cinco tools: `identidad_actual`, `buscar_clientes`,
+`buscar_proyectos`, `obtener_proyecto` y `listar_tareas`.
+
+- **Seguridad:** identidad explícita por `DESPACHO_MCP_USUARIO_EMAIL`; fail-closed
+  si falta, no existe o está inactiva. Doble gating: `mcp.usar` + permiso de
+  lectura del dominio. Super admin es failsafe según §4 #20.
+- **Alcance por objeto:** dueño/contador/super_admin conservan la visibilidad
+  amplia actual; el resto sólo ve proyectos asignados y tareas propias,
+  corresponsables, de runner o de proyectos asignados. Montos sólo con
+  `tesoreria.ver`.
+- **Transporte:** exclusivamente `stdio`. No se publica Streamable HTTP sin
+  OAuth 2.1. El correo selecciona identidad dentro de un proceso local confiable;
+  no es una credencial remota.
+- **Permisos:** `mcp.usar` se agrega al catálogo canónico y la migración
+  `cuentas.0037_seed_permiso_mcp` lo concede únicamente al super_admin, tanto al
+  rol de sistema como a su override individual. Es delegable desde Directorio.
+- **SDK:** `mcp==1.27.2`, rama estable v1; la imagen de El Taller copia el paquete.
+- **Documentación:** `docs/MCP.md` contiene comandos local/Docker y configuración
+  de cliente. No se integra con El Chalán y no expone tools de escritura.
+- **Tests:** 6 casos MCP verdes (catálogo/default, identidad ausente, permiso MCP,
+  permiso por módulo, consultas super_admin y aislamiento asignado/no asignado),
+  Ruff completo verde. Suite general: 1,823 pass + 9 skip; los únicos 3 fallos
+  locales fueron `test_aviso_deploy` por Redis no disponible en el host (CI sí
+  levanta Redis como servicio).
+
+**Deuda diseñada MCP:** OAuth 2.1 + Streamable HTTP para acceso remoto y cualquier
+tool de escritura quedan fuera de V1; antes de agregar escrituras se requiere
+confirmación humana explícita y auditoría de cada acción.
+
 ---
 
 ## 9. Decisiones operativas tomadas
