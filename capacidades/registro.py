@@ -46,6 +46,10 @@ class Capacidad:
     gating: str
     fn: Callable[[dict, Any], dict] = field(repr=False)
     modo: str = MODO_LECTURA
+    # JSON Schema crudo del input (opcional). Si está, tiene prioridad sobre
+    # `args_schema` al construir el spec del tool. Lo usan las capacidades de
+    # propuesta (payload de forma libre por acción).
+    json_schema: dict | None = None
 
 
 CAPACIDADES: dict[str, Capacidad] = {}

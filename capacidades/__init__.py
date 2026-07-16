@@ -12,7 +12,10 @@ exista, las de propuesta (`propuestas`).
 
 from __future__ import annotations
 
-from . import lecturas  # noqa: F401,E402 — registra capacidades de lectura
+from . import (
+    lecturas,  # noqa: F401,E402 — registra capacidades de lectura
+    propuestas,  # noqa: F401,E402 — registra capacidades de escritura (propuesta)
+)
 from .gating import gate_ok
 from .registro import (
     CAPACIDADES,
@@ -28,7 +31,7 @@ from .registro import (
 
 def listar(usuario, modos: tuple[str, ...] = (MODO_LECTURA,)) -> list[Capacidad]:
     """Capacidades del/los `modos` pedidos, filtradas por gating del usuario."""
-    return [c for c in CAPACIDADES.values() if c.modo in modos and gate_ok(c.gating, usuario)]
+    return [c for c in CAPACIDADES.values() if c.modo in modos and gate_ok(c.gating, usuario, c.modo)]
 
 
 def ejecutar(nombre: str, args: dict, usuario) -> dict:
@@ -39,7 +42,7 @@ def ejecutar(nombre: str, args: dict, usuario) -> dict:
     cap = CAPACIDADES.get(nombre)
     if cap is None:
         return {"error": "herramienta_inexistente", "nombre": nombre}
-    if not gate_ok(cap.gating, usuario):
+    if not gate_ok(cap.gating, usuario, cap.modo):
         return {"error": "sin_permiso", "nombre": nombre}
     try:
         limpios = validar_args(cap, args or {})
@@ -57,8 +60,14 @@ def specs_chat(usuario, modos: tuple[str, ...] = (MODO_LECTURA,)) -> list[dict]:
     return [spec_chat(c) for c in listar(usuario, modos)]
 
 
+def es_propuesta(nombre: str) -> bool:
+    """True si `nombre` es una capacidad de escritura (modo propuesta)."""
+    cap = CAPACIDADES.get(nombre)
+    return bool(cap and cap.modo == MODO_PROPUESTA)
+
+
 __all__ = [
     "CAPACIDADES", "Capacidad", "MODO_LECTURA", "MODO_PROPUESTA",
     "gate_ok", "registrar", "validar_args", "recortar", "MAX_CHARS_TOOL",
-    "listar", "ejecutar", "specs_chat",
+    "listar", "ejecutar", "specs_chat", "es_propuesta",
 ]

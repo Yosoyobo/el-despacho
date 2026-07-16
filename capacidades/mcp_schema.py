@@ -16,6 +16,8 @@ from .registro import Capacidad
 
 
 def spec_chat(cap: Capacidad) -> dict:
+    if cap.json_schema:
+        return {"nombre": cap.nombre, "descripcion": cap.descripcion, "json_schema": cap.json_schema}
     return {"nombre": cap.nombre, "descripcion": cap.descripcion, "args_schema": cap.args_schema}
 
 

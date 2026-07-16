@@ -6,9 +6,15 @@ helper de `lib.permisos` (regla §20)."""
 from __future__ import annotations
 
 
-def gate_ok(gating: str, usuario) -> bool:
+def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
     if gating == "abierto":
         return True
+    if modo == "propuesta":
+        # Las ESCRITURAS reusan el mapa de gating del catálogo del Dictado
+        # (fuente única de la política de escritura — no se duplica aquí).
+        from lib.dictado_catalogo import _gating_checks
+        fn = _gating_checks().get(gating)
+        return bool(fn(usuario)) if fn else False
     from lib import permisos
     fn = {
         "finanzas": permisos.puede_ver_finanzas,
