@@ -289,6 +289,63 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "fecha (YYYY-MM-DD), hora_entrada? (HH:MM), hora_salida? (HH:MM), motivo",
         "gating": "checador",
     },
+    # ── Ola 1 CUI (S-Chalan-MCP-V1): huecos de "lo que se hace con clicks".
+    # `archivar_*` es soft-delete REVERSIBLE (restaurar? lo revierte); el borrado
+    # permanente sigue en COMANDOS_PROHIBIDOS.
+    {
+        "tipo": "duplicar_proyecto",
+        "titulo": "Duplicar proyecto",
+        "ejemplo": 'Duplica #lc-0001 como "Campaña 2".',
+        "payload": "proyecto_slug, nombre? (del duplicado)",
+        "gating": "admin",
+    },
+    {
+        "tipo": "quitar_producto_proyecto",
+        "titulo": "Quitar producto de un proyecto",
+        "ejemplo": "Quita las playeras de #lc-0001.",
+        "payload": "proyecto_slug, producto (nombre del servicio) | producto_id (pk de la línea)",
+        "gating": "admin",
+    },
+    {
+        "tipo": "archivar_proyecto",
+        "titulo": "Archivar (o restaurar) proyecto",
+        "ejemplo": 'Archiva #lc-0001. O: "restaura #lc-0001".',
+        "payload": "proyecto_slug, restaurar? (bool: true = desarchiva). Reversible; NO borra.",
+        "gating": "admin",
+    },
+    {
+        "tipo": "archivar_cliente",
+        "titulo": "Archivar (o reactivar) cliente",
+        "ejemplo": "Archiva a $karikari. O: \"reactiva a $karikari\".",
+        "payload": "cliente_slug, restaurar? (bool: true = reactiva). Reversible; NO borra.",
+        "gating": "cartera",
+    },
+    {
+        "tipo": "archivar_tarea",
+        "titulo": "Archivar (o desarchivar) tarea",
+        "ejemplo": "Archiva la tarea 42.",
+        "payload": "tarea_id (acepta @accion_N), restaurar? (bool). Reversible; NO borra.",
+    },
+    {
+        "tipo": "cambiar_estado_mandado",
+        "titulo": "Cambiar estado de un mandado (entrega/recolección)",
+        "ejemplo": 'Marca en camino el mandado de la tarea 87. O: "márcalo entregado", "cancélalo: dirección equivocada".',
+        "payload": "tarea_id (la entrega/recolección), estado (en_camino|entregado|cancelado), motivo? (al cancelar)",
+    },
+    {
+        "tipo": "duplicar_cotizacion",
+        "titulo": "Duplicar cotización",
+        "ejemplo": "Duplica la cotización COT-2026-0005.",
+        "payload": "codigo",
+        "gating": "cotizaciones_crear",
+    },
+    {
+        "tipo": "generar_factura_anticipo",
+        "titulo": "Generar la factura del anticipo",
+        "ejemplo": "Genera la factura del anticipo de COT-2026-0005.",
+        "payload": "codigo (cotización aprobada con anticipo configurado)",
+        "gating": "facturacion_crear",
+    },
 ]
 
 
