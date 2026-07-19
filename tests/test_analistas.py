@@ -9,8 +9,8 @@ import pytest
 
 from lib.analistas.adapters.anthropic import AnthropicAdapter
 from lib.analistas.adapters.gemini import GeminiAdapter
+from lib.analistas.adapters.grok import GrokAdapter
 from lib.analistas.adapters.mimo import MimoAdapter
-from lib.analistas.adapters.ollama import OllamaAdapter
 from lib.analistas.adapters.openai import OpenAIAdapter
 from lib.analistas.base import (
     ErrorPermanente,
@@ -206,98 +206,74 @@ class TestAdaptersUnitarios:
         assert adapter.nombre == "gemini"
         assert adapter.apodo == "Chalán Gemini"
 
-    # ── Ollama / Chalán Llama (Test) ──
+    # ── Grok (xAI) — S-Chalan-Grok ──
 
-    _BASE = "http://100.120.28.93:11434"
-
-    def test_ollama_sin_base_url_lanza_falta(self, db):
-        # Sin el slot chalan_ollama_base_url → FaltaCredencial (la cadena lo salta).
+    def test_grok_sin_credencial_lanza_falta(self, db):
         with pytest.raises(FaltaCredencial):
-            OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+            GrokAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
 
-    def test_ollama_esta_configurado_segun_slot(self, db):
+    def test_grok_200_devuelve_resultado(self, db):
         from ajustes.models.credencial import Credencial
-        assert OllamaAdapter().esta_configurado() is False
-        Credencial.guardar("chalan_ollama_base_url", self._BASE)
-        assert OllamaAdapter().esta_configurado() is True
-
-    def test_ollama_200_devuelve_resultado(self, db):
-        from ajustes.models.credencial import Credencial
-        # El slot guarda el base URL con slash final — debe normalizarse.
-        Credencial.guardar("chalan_ollama_base_url", self._BASE + "/")
+        Credencial.guardar("chalan_grok_api_key", "xai-test-xxxx")
         payload = {
-            "model": "llama3.2",
+            "model": "grok-4.5",
             "choices": [{"message": {"role": "assistant", "content": "ok"}}],
             "usage": {"prompt_tokens": 5, "completion_tokens": 2},
         }
         with patch("httpx.post", return_value=_RespFalsa(200, payload)) as mock_post:
-            res = OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+            res = GrokAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
         args, kw = mock_post.call_args
-        # URL apunta al endpoint compatible-OpenAI del base configurado (sin doble slash).
-        assert args[0] == self._BASE + "/v1/chat/completions"
-        # Ollama no usa auth: ni Bearer ni api-key.
-        assert "Authorization" not in kw["headers"]
+        # Endpoint compatible-OpenAI de xAI, auth Bearer estándar.
+        assert args[0] == "https://api.x.ai/v1/chat/completions"
+        assert kw["headers"]["Authorization"] == "Bearer xai-test-xxxx"
         assert "api-key" not in kw["headers"]
-        # Usa max_tokens (endpoint estilo OpenAI).
+        # Usa max_tokens (estilo OpenAI), no max_completion_tokens.
         assert kw["json"]["max_tokens"] == 10
+        assert "max_completion_tokens" not in kw["json"]
         assert res.texto == "ok"
-        assert res.provider == "ollama"
+        assert res.provider == "grok"
         assert res.prompt_tokens == 5
         assert res.completion_tokens == 2
-        # Local → costo 0 (el conteo de tokens sigue siendo exacto).
-        assert res.costo_usd == 0
+        from lib.analistas.adapters.grok import PRECIO_IN, PRECIO_OUT
+        assert res.costo_usd == round(5 * PRECIO_IN + 2 * PRECIO_OUT, 6)
+        assert res.costo_usd > 0
 
-    def test_ollama_401_es_permanente(self, db):
+    def test_grok_401_es_permanente(self, db):
         from ajustes.models.credencial import Credencial
-        Credencial.guardar("chalan_ollama_base_url", self._BASE)
-        with patch("httpx.post", return_value=_RespFalsa(401, text="no auth")), \
+        Credencial.guardar("chalan_grok_api_key", "xai-test-xxxx")
+        with patch("httpx.post", return_value=_RespFalsa(401, text="bad key")), \
              pytest.raises(ErrorPermanente):
-            OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+            GrokAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
 
-    def test_ollama_503_es_transitorio(self, db):
+    def test_grok_429_es_transitorio(self, db):
         from ajustes.models.credencial import Credencial
-        Credencial.guardar("chalan_ollama_base_url", self._BASE)
-        with patch("httpx.post", return_value=_RespFalsa(503, text="cargando modelo")), \
+        Credencial.guardar("chalan_grok_api_key", "xai-test-xxxx")
+        with patch("httpx.post", return_value=_RespFalsa(429, text="rate")), \
              pytest.raises(ErrorTransitorio):
-            OllamaAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
+            GrokAdapter()._invocar("hola", max_tokens=10, temperatura=0.0)
 
-    def test_ollama_listar_modelos_desde_api_tags(self, db):
-        from ajustes.models.credencial import Credencial
-        # Sin base URL → cae a la lista curada.
-        assert OllamaAdapter().listar_modelos() == list(OllamaAdapter.modelos_curados)
-        # Con base URL → consulta /api/tags y devuelve los modelos descargados.
-        Credencial.guardar("chalan_ollama_base_url", self._BASE)
-        tags = {"models": [{"name": "llama3.2:latest"}, {"name": "qwen2.5:7b"}]}
-        with patch("httpx.get", return_value=_RespFalsa(200, tags)) as mock_get:
-            modelos = OllamaAdapter().listar_modelos()
-        assert mock_get.call_args[0][0] == self._BASE + "/api/tags"
-        assert modelos == ["llama3.2:latest", "qwen2.5:7b"]
-
-    def test_ollama_registrado_en_factories(self):
+    def test_grok_registrado_en_factories(self):
         from lib.analistas.registry import _FACTORIES, adapter_de
-        assert "ollama" in _FACTORIES
-        adapter = adapter_de("ollama")
+        assert "grok" in _FACTORIES
+        adapter = adapter_de("grok")
         assert adapter is not None
-        assert adapter.nombre == "ollama"
-        assert adapter.apodo == "Chalán Llama"
+        assert adapter.nombre == "grok"
+        assert adapter.apodo == "Chalán Grok"
 
-    def test_ollama_NO_entra_solo_al_fallback(self, db):
-        """El slot es chalan_ollama_base_url (no chalan_*_api_key), así que el
-        signal de auto-fallback NO lo engancha — un servidor local de pruebas no
-        debe inyectarse solo en el relevo de producción."""
+    def test_grok_entra_solo_al_fallback_al_guardar_llave(self, db):
+        """Grok es cloud estándar: su slot es chalan_grok_api_key, así que el
+        signal de auto-fallback lo engancha al guardar la llave (igual que
+        MiMo/Gemini/Deepseek)."""
         from ajustes.models.credencial import Credencial
         from chalanes.models import CadenaFallback
-        Credencial.guardar("chalan_ollama_base_url", self._BASE)
-        assert not CadenaFallback.objects.filter(proveedor="ollama").exists()
+        Credencial.guardar("chalan_grok_api_key", "xai-test-xxxx")
+        assert CadenaFallback.objects.filter(proveedor="grok", activo=True).exists()
 
-    def test_ollama_panel_lo_reconoce_por_su_slot(self, db):
-        """tarjetas_chalanes lee slot_credencial (base URL) en vez de api_key."""
-        from ajustes.models.credencial import Credencial
-        from lib.analistas.stats import tarjetas_chalanes
-        Credencial.guardar("chalan_ollama_base_url", self._BASE)
-        tarjetas = {t["nombre"]: t for t in tarjetas_chalanes()}
-        assert tarjetas["ollama"]["slot"] == "chalan_ollama_base_url"
-        assert tarjetas["ollama"]["configurado"] is True
+    def test_ollama_ya_no_existe(self):
+        """Ollama se eliminó por completo: fuera del registry y sin adapter."""
+        from lib.analistas.registry import _FACTORIES, adapter_de
+        assert "ollama" not in _FACTORIES
+        assert adapter_de("ollama") is None
 
 
 def _post_routed(*, anthropic_resp, openai_resp):

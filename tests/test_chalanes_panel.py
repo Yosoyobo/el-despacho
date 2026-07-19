@@ -94,9 +94,10 @@ def test_tarjetas_incluye_todos_los_chalanes_registrados():
     from lib.analistas.stats import tarjetas_chalanes
     tarjetas = tarjetas_chalanes(dias=30)
     nombres = {t["nombre"] for t in tarjetas}
-    # Incluye los 5 cloud + ollama (Chalán Llama, Test).
+    # Incluye los 6 Chalanes cloud (Grok agregado, Ollama eliminado).
     assert nombres == set(_FACTORIES)
-    assert {"anthropic", "openai", "deepseek", "mimo", "gemini", "ollama"} <= nombres
+    assert {"anthropic", "openai", "deepseek", "mimo", "gemini", "grok"} <= nombres
+    assert "ollama" not in nombres
 
 
 @pytest.mark.django_db

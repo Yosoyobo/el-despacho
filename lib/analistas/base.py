@@ -78,7 +78,7 @@ class Adapter(ABC):
     modelos_curados: tuple = ()
     # Slot de Credencial que activa al Chalán. Vacío → el caller asume el
     # patrón estándar `chalan_<nombre>_api_key`. Los adapters cuyo "secreto" no
-    # es una API key (ej. Ollama, que usa un base URL) lo overridean.
+    # es una API key (ej. un base URL de un servidor propio) lo overridean.
     slot_credencial: str = ""
 
     @abstractmethod

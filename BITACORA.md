@@ -6556,3 +6556,55 @@ Follow-up del mismo día (feedback de Oscar sobre la página del proyecto).
   operativos con proveedor → el proveedor ligado por @ aparece en el recuadro
   Proveedores con su costo.
 - Tests: +4 en `test_ux_ticket_jul.py`; regresión verde; Ruff limpio.
+
+---
+
+# BITÁCORA — S-Chalan-Grok (2026-07-19, VERSION 2026.07.18)
+
+Sprint rápido pedido por Oscar: integrar un Chalán más (Grok, xAI) con el mismo
+patrón cloud y forma de ingresar credenciales que los demás; y de paso **quitar
+Ollama por completo** ("ya no se usa").
+
+## Qué se entregó
+
+- **`lib/analistas/adapters/grok.py`** — `GrokAdapter` (`grok`, "Chalán Grok").
+  Endpoint compatible OpenAI `https://api.x.ai/v1/chat/completions` (Bearer +
+  `max_tokens` + `messages`/`choices`); reutiliza `contenido_openai` y
+  `herramientas_formato`. Se prefirió chat/completions sobre `/v1/responses`
+  (uniformidad con el resto de adapters). Capacidades TEXTO+VISION+
+  FUNCTION_CALLING. Default `grok-4.5`; curados grok-4.5/4/3/3-mini. Precios
+  **placeholder** ($3/$15 MTok — confirmar con xAI). 401/403 permanente,
+  429/5xx transitorio, sin llave FaltaCredencial. `listar_modelos` vía
+  `/v1/models`. `consultar_saldo` no soportado (link a console.x.ai).
+- **Registro**: `adapters/__init__`, `registry._FACTORIES`, slot
+  `chalan_grok_api_key` en `SLOTS_CREDENCIAL`, choice en `PROVEEDORES`.
+- **Fallback**: slot estándar → el signal `auto_agregar_a_cadena_fallback` lo
+  agrega al guardar la llave (sin migración de siembra).
+- **Ollama eliminado**: adapter borrado, fuera de __init__/registry, slot y
+  choice retirados, comentarios en base.py/stats.py genericados (el seam
+  genérico `slot_credencial` se conserva). Migración
+  `chalanes/0019_grok_quitar_ollama`: AlterField choices + limpieza
+  (CuadroChalanes ollama→anthropic modelo="", ChalanAsignado/CadenaFallback
+  ollama→delete, Credencial chalan_ollama_base_url→delete).
+
+## Decisiones (Oscar)
+
+- Grok como cloud estándar, credenciales por Los Ajustes (igual que MiMo/Gemini).
+- Eliminar Ollama por completo.
+
+## Verificación
+
+- `tests/test_analistas.py`: −9 tests de Ollama, +6 de Grok + `test_ollama_ya_no_existe`.
+  `tests/test_chalanes_panel.py` actualizado. **48 pass** en analistas+panel.
+- `makemigrations --check`: 0019 capturó el cambio de choices; solo espurios
+  conocidos (BigAutoField + shadow models managed=False, §14).
+
+## Post-deploy (1 paso manual)
+
+- super_admin → `/ajustes/` pega la API key en "Chalán Grok — API Key".
+  Opcional `/chalanes/` para asignarlo a una estación o reordenar la cadena.
+
+## Deuda diseñada
+
+- Tarifa real en `PRECIO_IN/OUT` (placeholder hasta confirmar con xAI).
+- Se usa chat/completions, no `/v1/responses` (decisión de uniformidad).
