@@ -6608,3 +6608,21 @@ Ollama por completo** ("ya no se usa").
 
 - Tarifa real en `PRECIO_IN/OUT` (placeholder hasta confirmar con xAI).
 - Se usa chat/completions, no `/v1/responses` (decisión de uniformidad).
+
+---
+
+# BITÁCORA — S-Chalan-Grok seed de fallback (2026-07-19, VERSION 2026.07.19)
+
+Corrección al deploy 07.18: se me pasó sembrar Grok en `CadenaFallback` por data
+migration. El precedente/regla (MiMo `0003_seed_mimo_cadena`, Gemini
+`0004_seed_gemini_cadena`) es que TODO Chalán cloud nuevo entra al fallback por
+migración, no solo por el signal `auto_agregar_a_cadena_fallback` (que dispara al
+guardar la llave). Yo me apoyé solo en el signal y documenté la desviación — error.
+
+- **`chalanes/0020_seed_grok_cadena`** — espejo exacto de la de Gemini: crea la
+  fila `grok` con la siguiente prioridad libre, idempotente, activa. El Reemplazo
+  la salta mientras Grok no tenga API key (documentado en el modelo CadenaFallback).
+- CLAUDE.md §8 corregido (la línea que decía "NO se siembra por migración").
+- Test candado `test_grok_sembrado_en_fallback_por_migracion` (sin guardar llave,
+  la fila viene de la migración).
+- VERSION 2026.07.18 → 2026.07.19.
