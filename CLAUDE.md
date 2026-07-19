@@ -5359,6 +5359,65 @@ Segunda tanda del mismo día (feedback de Oscar sobre la página del proyecto):
   eliminado. Regresión verde (proyectos, pizarrón, egresos, render_v1, por_pieza,
   estados). Ruff limpio.
 
+### S-Chalan-Grok ✅ — Sexto Chalán: Grok (xAI) + retiro de Ollama (2026-07-19, VERSION 2026.07.18)
+
+Sprint quirúrgico siguiendo el checklist §5 de S-Chalan-MiMo. Grok entra como
+Chalán cloud estándar (API key en Los Ajustes, patrón idéntico a MiMo/Gemini);
+Ollama se elimina por completo (decisión Oscar: "ya no se usa").
+
+- **`lib/analistas/adapters/grok.py`** — `GrokAdapter` (nombre `grok`, apodo
+  "Chalán Grok"). API compatible con OpenAI en
+  `https://api.x.ai/v1/chat/completions` — **Bearer auth estándar** +
+  `max_tokens` + formato `messages`/`choices`, así que reutiliza toda la
+  plomería OpenAI del repo (`contenido_openai`, `herramientas_formato`). Se
+  eligió el endpoint chat/completions sobre el `/v1/responses` que trae el
+  ejemplo de xAI porque todos los adapters del repo hablan chat/completions
+  (tool-use, visión, parseo de `usage`). `capacidades = {TEXTO, VISION,
+  FUNCTION_CALLING}`. Modelo default `grok-4.5`; curados `grok-4.5/grok-4/
+  grok-3/grok-3-mini`. **Precios placeholder** ($3/$15 por MTok, marcados —
+  confirmar tarifa oficial en la consola de xAI; el conteo de tokens de
+  `AnalistaLog` es exacto sin importar el precio). Errores 401/403 →
+  `ErrorPermanente`; 429/5xx → `ErrorTransitorio`; sin llave → `FaltaCredencial`
+  (la cadena salta al siguiente Chalán). `listar_modelos()` vía
+  `GET /v1/models` (OpenAI-compatible) con fallback a curados.
+  `consultar_saldo` → `soportado=False` (xAI no expone saldo por API; link a
+  console.x.ai).
+- **Registro**: `adapters/__init__.py` + `registry._FACTORIES` (`grok` reemplaza
+  a `ollama`). Slot `chalan_grok_api_key` en `SLOTS_CREDENCIAL`. Choice
+  `("grok", "Chalán Grok (xAI)")` en `PROVEEDORES`.
+- **Cadena de fallback**: como el slot ES `chalan_grok_api_key`, el signal
+  `auto_agregar_a_cadena_fallback` lo engancha al guardar la llave (igual que
+  MiMo/Gemini/Deepseek) — NO se siembra por migración.
+- **Ollama eliminado por completo**: borrado `adapters/ollama.py`, fuera de
+  `__init__`/`registry`, slot `chalan_ollama_base_url` retirado de
+  `SLOTS_CREDENCIAL`, choice `ollama` fuera de `PROVEEDORES`, comentarios que
+  lo mencionaban en `base.py`/`stats.py` genericados (el mecanismo genérico
+  `slot_credencial` se conserva — es un seam reutilizable, ya no ligado a
+  Ollama). La migración **`chalanes/0019_grok_quitar_ollama`** hace el
+  `AlterField` de choices (quita ollama, agrega grok) + limpieza de datos:
+  `CuadroChalanes(proveedor='ollama')` → reasigna a `anthropic` (modelo="",
+  usa su default); `ChalanAsignado`/`CadenaFallback` con ollama → delete;
+  `Credencial('chalan_ollama_base_url')` → delete. `makemigrations --check`
+  confirma que 0019 capturó el cambio de choices (solo quedan los espurios
+  conocidos de BigAutoField + shadow models `managed=False`, §14).
+- **Tests**: `tests/test_analistas.py` — quitados los 9 tests de Ollama, +6 de
+  Grok (sin credencial → falta, 200 con Bearer + `max_tokens` + `provider=grok`
+  + costo>0, 401 permanente, 429 transitorio, registrado en factories, entra
+  solo al fallback al guardar llave) + `test_ollama_ya_no_existe` (fuera del
+  registry). `tests/test_chalanes_panel.py` actualizado (set con grok, sin
+  ollama). **48 pass** en analistas+panel.
+
+**Configuración prod post-deploy** (1 paso manual): El Mensajero corre
+`migrate` (aplica `chalanes.0019`, limpia ollama). super_admin → `/ajustes/`
+pega la API key en el slot **Chalán Grok — API Key**; opcional `/chalanes/`
+para asignarlo a una estación o reordenar la cadena.
+
+**Deuda diseñada**: tarifa real en `PRECIO_IN/OUT` (placeholder hasta confirmar
+con xAI); se usa el endpoint chat/completions, no el `/v1/responses` más nuevo
+(decisión: uniformidad con el resto de adapters); el chequeo diario de El Site
+usa los adapters vía `_chequear_via_adapter`, así que Grok aparece solo en
+Plataformas cuando tenga llave.
+
 ---
 
 ## 9. Decisiones operativas tomadas

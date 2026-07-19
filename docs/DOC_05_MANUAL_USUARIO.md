@@ -5,6 +5,18 @@
 
 ---
 
+## Novedades — Nuevo Chalán "Grok" y retiro de "Llama" (19 de julio de 2026)
+
+- **Se sumó un Chalán nuevo: "Grok" (xAI)**. Ya son seis asistentes de IA
+  disponibles (Claudio, GPT, Chino, MiMo, Gemini y ahora Grok). Como los demás,
+  para activarlo el administrador pega su **API key** en La Gerencia →
+  **Ajustes** (slot *"Chalán Grok — API Key"*). Una vez con llave, entra solo a
+  la cadena de relevo y se puede asignar a cualquier estación desde
+  **Chalanes**.
+- **Se retiró el Chalán "Llama (Test)"** (Ollama): era un servidor de pruebas
+  que ya no se usa. Si alguna estación lo tenía asignado, vuelve
+  automáticamente a Claudio.
+
 ## Novedades — Tareas del proyecto editables al vuelo y proveedores más claros (19 de julio de 2026)
 
 - En la página de cada proyecto, la **tabla de Tareas** ahora se edita sin salir:
@@ -2626,13 +2638,14 @@ Listas de referencia que sólo super admin gestiona (Gerencia → Catálogos).
 
 ## Chalanes (IA)
 
-Cinco asistentes virtuales conectados a proveedores de IA:
+Seis asistentes virtuales conectados a proveedores de IA:
 
 - **Claudio** (Anthropic)
 - **GPT** (OpenAI)
 - **Chino** (Deepseek)
 - **MiMo** (Xiaomi)
 - **Gemini** (Google)
+- **Grok** (xAI)
 
 Cada estación del sistema (cotizaciones, dictado, OCR de recibos, etc.) tiene un Chalán asignado. Si el primario falla, automáticamente intenta con el siguiente en la cadena de fallback.
 
