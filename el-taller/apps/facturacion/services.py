@@ -219,7 +219,7 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
     return fac
 
 
-def asegurar_lineas_desde_origen(fac: Factura) -> bool:
+def asegurar_lineas_desde_origen(fac: Factura, *, monto_fallback=None) -> bool:
     """Si la factura NO tiene líneas, deriva su monto del origen. Arregla el
     bug (LC revisión buzón) de facturas en $0.00 al ligar una cotización o un
     proyecto sin capturar líneas a mano:
@@ -228,6 +228,11 @@ def asegurar_lineas_desde_origen(fac: Factura) -> bool:
       factura no tiene ninguno y el régimen es 'iva').
     - Solo con proyecto → sintetiza UNA línea con el subtotal del proyecto y el
       concepto "Producción de elementos para [proyecto]".
+    - Fase 3 (guardrail de vaciado manual): si NO hay cotización ni proyecto de
+      dónde derivar y se pasa `monto_fallback` > 0 (p. ej. el subtotal que la
+      factura tenía ANTES de que el usuario borrara todas las líneas al editar),
+      sintetiza UNA línea con ese monto y el concepto de la factura. Así una
+      factura editada nunca queda en $0.00 aunque se vacíe a mano.
 
     Idempotente: no hace nada si ya hay líneas. Devuelve True si agregó líneas.
     """
@@ -256,18 +261,35 @@ def asegurar_lineas_desde_origen(fac: Factura) -> bool:
         base = getattr(proy, "monto_calculado", None) or CERO
         base = Decimal(str(base)).quantize(Decimal("0.01"))
         if base > CERO:
-            concepto = (fac.concepto or "").strip() or f"Producción de elementos para {proy.nombre}"
-            FacturaItem.objects.create(
-                factura=fac,
-                orden=0,
-                descripcion=concepto[:500],
-                cantidad=Decimal("1.00"),
-                unidad="servicio",
-                precio_unitario=base,
-                descuento_porcentaje=CERO,
-            )
+            _sintetizar_linea(fac, base)
+            return True
+    # Guardrail de vaciado manual (Fase 3): sin origen del cual derivar, usa el
+    # monto que tenía la factura antes de quedarse sin líneas.
+    if monto_fallback is not None:
+        base = Decimal(str(monto_fallback)).quantize(Decimal("0.01"))
+        if base > CERO:
+            _sintetizar_linea(fac, base)
             return True
     return False
+
+
+def _sintetizar_linea(fac: Factura, base: Decimal) -> None:
+    """Crea UNA línea cantidad=1 con el concepto de la factura como descripción."""
+    concepto = (fac.concepto or "").strip()
+    if not concepto:
+        concepto = (
+            f"Producción de elementos para {fac.proyecto.nombre}"
+            if fac.proyecto_id else "Facturación"
+        )
+    FacturaItem.objects.create(
+        factura=fac,
+        orden=0,
+        descripcion=concepto[:500],
+        cantidad=Decimal("1.00"),
+        unidad="servicio",
+        precio_unitario=base,
+        descuento_porcentaje=CERO,
+    )
 
 
 def borrar_cfdi_archivo(fac: Factura, tipo: str) -> None:

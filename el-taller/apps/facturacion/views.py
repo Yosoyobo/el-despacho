@@ -305,12 +305,15 @@ def editar(request, pk):
         form = FacturaForm(request.POST, instance=fac)
         formset = ItemFormSet(request.POST, instance=fac) if editable_items else None
         ids = _ids_tasas(request)
+        # Guardrail de $0.00 (Fase 3): captura el subtotal ANTES de que el
+        # formset borre líneas, para reinyectar una línea si se vacía a mano.
+        subtotal_previo = fac.calcular_totales()["subtotal_items"] if editable_items else None
         if form.is_valid() and (formset is None or formset.is_valid()):
             form.save()
             if formset is not None:
                 formset.save()
                 _persistir_impuestos(fac, ids)
-                services.asegurar_lineas_desde_origen(fac)
+                services.asegurar_lineas_desde_origen(fac, monto_fallback=subtotal_previo)
             _procesar_cfdi(request, fac)
             services.emitir_actualizada(fac, request.user)
             messages.success(request, f"Factura {fac.codigo} actualizada.")

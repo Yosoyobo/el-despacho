@@ -6415,3 +6415,68 @@ desde `main` (Fase 1 ya mergeada, PR #6). Solo Fase 2 + un pedido extra de Oscar
   reordena visualmente sin persistir.
 - Fase 3 (guardrail líneas cero en Facturación, breadcrumb proveedores, form avanzado
   de producto, cotizaciones) → `handoff_fase2.md` §2 / `handoff_fase3.md`.
+
+---
+
+# BITÁCORA — S-Ajustes-UI-Fase3 (2026-07-19, VERSION 2026.07.15)
+
+> Última fase del plan maestro de ajustes de UI de LC (handoff `handoff_fase3.md`).
+> Rama `agent/ui-fase3-forms` desde `main` (Fase 1 PR #6 + Fase 2 PR #7 ya mergeadas).
+> **Cierra el arco S-Ajustes-UI** (Fases 1-3).
+
+## Entregado
+
+- **1.1 Facturación — guardrail de $0.00**: `services.asegurar_lineas_desde_origen(fac,
+  monto_fallback=None)` + helper `_sintetizar_linea`. La vista `editar` captura el
+  subtotal ANTES de que el formset borre líneas y lo pasa como fallback → una factura
+  vaciada a mano nunca queda en $0.00.
+- **1.2 Breadcrumb de proveedores**: `_navegacion_producto(request)` lee
+  `?desde=proveedor:<pk>` → miga *Productos › Proveedores › [Proveedor] › [Producto]*
+  + botón ← Volver; el detalle del proveedor pasa `?desde=`; el POST de `editar`
+  regresa a la ficha.
+- **1.3 Form avanzado de producto**: buscador sobre los checkboxes de proveedores
+  (lista scrollable) + botón Guardar arriba (`form="producto-form"`); Unidad y
+  disponibilidad conservadas (decisión Oscar).
+- **1.4 Cotizaciones**: estado en un `<select>` coloreado único (`.estado-chip` + `--ec`);
+  buscador de clientes sobre todo el padrón (combobox `data-select-buscable` en form
+  `hx-get`); nombre de proyecto como enlace (`_filas` `<a>`, `_tarjetas` `<div data-href>`);
+  higiene de descripciones (el sub-renglón del producto solo sale si el nombre no está
+  ya en la descripción; builders sin "X · X").
+- **§2a Ingreso: pegar comprobante**: campos Drive en `Ingreso` (migración
+  `tesoreria/0008`), `_procesar_comprobante_ingreso`, proxy `ingreso-comprobante`,
+  paste Ctrl/Cmd+V + `hx-encoding` multipart en modal y form full, enlace en el detalle.
+- **§2b DnD productos persistente en Nuevo/Editar**: campo oculto `orden` en
+  `ProyectoProductoForm`; `sincronizarOrdenDOM()` escribe la posición del DOM en el
+  `-orden` de cada fila real (salta las extra vacías), llamado en drag/toggle y en un
+  listener `submit` de captura. Sin migración de modelo (`orden` existe desde `proyectos/0023`).
+
+## Decisiones (Oscar, AskUserQuestion)
+
+- 1.3: conservar Unidad + disponibilidad en el form avanzado (el modal de Fase 2 los quita).
+- 1.4: estado de cotización = dropdown coloreado único (no pastilla-clickeable).
+- §2: de la deuda de Fase 2 entran Ingreso-pegar-comprobante + DnD-persistir-en-alta
+  (NO "Productos que surte" en alta de proveedor).
+
+## Verificación
+
+- Ruff limpio en lo tocado. `makemigrations --check` (tesoreria/proyectos): sin
+  cambios propios pendientes — solo los espurios documentados (BigAutoField id,
+  rename de índice, `metodo`). Migración `tesoreria/0008` captura los campos del
+  comprobante.
+- Tests: suite taller + gerencia + `test_ayuda_novedades` verde;
+  `test_no_renderiza_comentarios` (ambas apps) verde (se corrigió un `{# … #}`
+  multilínea, Bug C §14). Los 3 `test_aviso_deploy` fallan solo en local por Redis.
+- `tests/taller/test_ajustes_ui_fase3.py` nuevo.
+
+## Deuda diseñada
+
+- Estado "vencida" de cotización: solo se marca con `⚠` junto al select (que muestra
+  el estado real editable).
+- "Productos que surte + Nuevo producto" en el alta rápida de Proveedor sigue pendiente.
+- DnD de productos persiste `orden` solo para filas reales (las extra vacías se ignoran
+  a propósito para no disparar validación).
+
+## Cierre del arco S-Ajustes-UI
+
+Fase 1 (2026.07.13, PR #6) · Fase 2 (2026.07.14, PR #7) · Fase 3 (2026.07.15, este).
+Los `handoff_fase{2,3}.md` quedan como referencia histórica.

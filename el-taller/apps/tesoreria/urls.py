@@ -12,6 +12,7 @@ urlpatterns = [
     path("ingresos/<int:pk>/", views.ingreso_detalle, name="ingreso-detalle"),
     path("ingresos/<int:pk>/editar/", views.ingreso_editar, name="ingreso-editar"),
     path("ingresos/<int:pk>/anular/", views.ingreso_anular, name="ingreso-anular"),
+    path("ingresos/<int:pk>/comprobante/", views.ingreso_comprobante, name="ingreso-comprobante"),
     # Egresos
     path("egresos/", views.egresos_lista, name="egresos-lista"),
     path("egresos/nuevo/", views.egreso_nuevo, name="egreso-nuevo"),

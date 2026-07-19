@@ -221,10 +221,14 @@ class ProyectoProductoForm(forms.ModelForm):
         required=False, initial=True, label="Incluir en cálculo",
         widget=forms.CheckboxInput(attrs={"class": "peer sr-only", "data-incluir": "1"}),
     )
+    # Fase 3 §2: orden del drag & drop. El front lo renumera por posición del DOM
+    # al arrastrar / al enviar; así el orden persiste también en Nuevo/Editar (en
+    # el detalle además está el endpoint de reordenado). Oculto y opcional.
+    orden = forms.IntegerField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = ProyectoProducto
-        fields = ["servicio", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota"]
+        fields = ["servicio", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota", "orden"]
         labels = {"nota": "Nota corta (opcional)"}
 
     def __init__(self, *args, **kwargs):
@@ -280,6 +284,10 @@ class ProyectoProductoForm(forms.ModelForm):
     def clean_cantidad(self):
         # cantidad es NOT NULL con default 1; vacío/None ⇒ 1 (no invalida la fila).
         return self.cleaned_data.get("cantidad") or 1
+
+    def clean_orden(self):
+        # orden es NOT NULL con default 0; vacío/None ⇒ 0 (Fase 3 §2).
+        return self.cleaned_data.get("orden") or 0
 
     def clean(self):
         cleaned = super().clean()

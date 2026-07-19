@@ -94,6 +94,12 @@ class Ingreso(models.Model):
         on_delete=models.PROTECT, related_name="cobros",
     )
 
+    # Fase 3 (§2): comprobante del ingreso en Drive (espejo de Egreso) — permite
+    # pegar la imagen (Ctrl/Cmd+V) o subir un archivo desde el form/modal.
+    drive_file_id = models.CharField(max_length=100, blank=True, default="")
+    drive_url_view = models.URLField(max_length=500, blank=True, default="")
+    tiene_comprobante = models.BooleanField(default=False)
+
     objects = models.Manager()
     vigentes = IngresoNoAnuladoManager()
 

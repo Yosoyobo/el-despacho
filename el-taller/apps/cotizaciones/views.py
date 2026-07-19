@@ -97,13 +97,17 @@ def lista(request):
     querystring_base = "&".join(qs_filtros)
     qs_paginacion = qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])
 
-    # LC #160: clientes con cotizaciones vigentes → pastillas de filtro.
+    # LC #160: clientes con cotizaciones vigentes → pastillas de filtro (recientes).
     from apps.la_cartera.models import Cliente
     clientes_pills = list(
         Cliente.objects.filter(
             pk__in=Cotizacion.objects.exclude(estado="anulada").values("cliente_id")
         ).order_by("razon_social")[:40]
     )
+    # Fase 3 §1.4: buscador sobre TODO el padrón (combobox). El padrón está
+    # acotado (Clientes sin paginación, Fase 1), así que cargarlos todos es OK.
+    _cli_mgr = getattr(Cliente, "activos", None) or Cliente.objects
+    clientes_todos = list(_cli_mgr.order_by("razon_social"))
 
     ctx = {
         "page_obj": page_obj,
@@ -113,6 +117,7 @@ def lista(request):
         "cliente_filtro": cliente_filtro if cliente_filtro.isdigit() else "",
         "vista": vista,
         "clientes_pills": clientes_pills,
+        "clientes_todos": clientes_todos,
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_paginacion),
@@ -186,10 +191,14 @@ def _autocompletar_lineas_desde_catalogo(formset):
         servicio = form.cleaned_data.get("servicio")
         variacion = form.cleaned_data.get("variacion")
         if servicio and not (form.cleaned_data.get("descripcion") or "").strip():
-            partes = [servicio.nombre]
-            if variacion:
-                partes.append(variacion.nombre)
-            form.instance.descripcion = " · ".join(partes)
+            # Fase 3 §1.4 (higiene): "Producto · Variación", pero sin duplicar el
+            # nombre si la variación ya lo repite (evita "Playera · Playera Roja"
+            # cíclico).
+            nombre = servicio.nombre
+            vnom = (variacion.nombre if variacion else "") or ""
+            if vnom and vnom.lower() not in nombre.lower():
+                nombre = f"{nombre} · {vnom}"
+            form.instance.descripcion = nombre
         precio = form.cleaned_data.get("precio_unitario") or Decimal("0")
         if precio == 0 and variacion is not None:
             costo = getattr(variacion, "costo", None)
