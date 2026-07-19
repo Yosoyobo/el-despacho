@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply font-outfit;
+    @apply font-inter;
   }
 
   /* Inputs numéricos: ocultar las flechas/spinners nativos del browser.

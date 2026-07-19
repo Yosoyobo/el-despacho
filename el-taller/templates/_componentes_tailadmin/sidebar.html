@@ -43,10 +43,10 @@
         <a href="/tareas/" data-sidebar-grupo="{{ sidebar_orden.tareas.grupo }}" style="order: {{ sidebar_orden.tareas.orden|default:35 }}" class="menu-item {% if '/tareas' in request.path or '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="flex-1">Tareas</span>
-            {% comment %}LC revisión buzón: cada badge lleva su emoji JUNTO (no alrededor del nombre). 🙋 mías (azul) · 👥 del despacho (gris) · 🛵 mis mandados (rojo).{% endcomment %}
-            {% if tareas_involucrado_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white" title="Tareas asignadas a ti">🙋 {{ tareas_involucrado_count }}</span>{% endif %}
-            {% if tareas_otras_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-gray-300 px-1.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200" title="Otras tareas pendientes del despacho">👥 {{ tareas_otras_count }}</span>{% endif %}
-            {% if mandados_pendientes_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-error-500 px-1.5 text-[10px] font-semibold text-white" title="Tus mandados pendientes">🛵 {{ mandados_pendientes_count }}</span>{% endif %}
+            {% comment %}LC Fase 1: cada badge lleva su emoji JUNTO. 📋 pendientes+en proceso de todo el despacho (gris) · 💻 mis tareas pendientes (azul) · 🛵 mandados activos de todos (rojo).{% endcomment %}
+            {% if tareas_despacho_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-gray-300 px-1.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200" title="Tareas del despacho pendientes y en proceso">📋 {{ tareas_despacho_count }}</span>{% endif %}
+            {% if tareas_mias_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white" title="Tus tareas pendientes">💻 {{ tareas_mias_count }}</span>{% endif %}
+            {% if mandados_activos_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-error-500 px-1.5 text-[10px] font-semibold text-white" title="Mandados activos de todos">🛵 {{ mandados_activos_count }}</span>{% endif %}
         </a>
         {% endif %}
 
@@ -67,7 +67,7 @@
         {% if not sidebar_orden.directorio.oculto %}
         <a href="{% url 'directorio-lista' %}" data-sidebar-grupo="{{ sidebar_orden.directorio.grupo }}" style="order: {{ sidebar_orden.directorio.orden|default:45 }}" class="menu-item {% if '/directorio' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 20v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            🧑‍🤝‍🧑 Equipo
+            Equipo
         </a>
         {% endif %}
 
@@ -126,14 +126,15 @@
         </a>
         {% endif %}
 
-        {# LC 2026-07: badge de falla del sistema, visible a TODOS junto a Ajustes (El Site lo enciende). #}
+        {# LC Fase 1: badge de falla del sistema, ahora CLICKABLE → El Site en La Gerencia (la zona origen de la falla). Visible a TODOS junto a Ajustes (El Site lo enciende). #}
         {% if sistema_falla %}
-        <div style="order: {{ sidebar_orden.ajustes.orden|default:120 }}"
-             class="menu-item menu-item-inactive cursor-default text-warning-600 dark:text-warning-400"
-             title="{{ sistema_falla_motivo }}">
+        <a href="https://gerencia.learningcenter.mx/site/"
+           style="order: {{ sidebar_orden.ajustes.orden|default:120 }}"
+           class="menu-item menu-item-inactive text-warning-600 hover:bg-warning-50 dark:text-warning-400 dark:hover:bg-warning-500/10"
+           title="{{ sistema_falla_motivo }} — abre El Site para ver el detalle">
             <span class="text-lg leading-none">⚠️</span>
             <span class="flex-1">Alerta del sistema</span>
-        </div>
+        </a>
         {% endif %}
 
         {% if permisos_modulos.gerencia and not sidebar_orden.ajustes.oculto %}

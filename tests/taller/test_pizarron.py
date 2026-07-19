@@ -175,9 +175,9 @@ def test_comentar_proyecto_persiste_y_se_ve(client, usuario_factory, proyecto_fa
     assert "Nota del proyecto" in resp.content.decode()
 
 
-def test_badge_tareas_involucrado_vs_otras(proyecto_factory, usuario_factory):
-    """LC 2026-06-30 (2ª pasada): el globo azul cuenta SOLO las tareas asignadas a
-    quien mira; el gris, las demás pendientes del despacho."""
+def test_badge_tareas_despacho_vs_mias(proyecto_factory, usuario_factory):
+    """LC Fase 1 (2026-07): 📋 cuenta TODAS las tareas pendientes/en proceso del
+    despacho; 💻 solo las asignadas a quien mira."""
     from apps.el_pizarron.context_processors import mandados_badge
     from apps.el_pizarron.models import Tarea
     from django.test import RequestFactory
@@ -189,13 +189,13 @@ def test_badge_tareas_involucrado_vs_otras(proyecto_factory, usuario_factory):
     req = RequestFactory().get("/")
     req.user = dis
     ctx = mandados_badge(req)
-    assert ctx["tareas_involucrado_count"] == 1   # azul = la asignada al diseñador
-    assert ctx["tareas_otras_count"] == 1          # gris = la otra (no es suya)
+    assert ctx["tareas_despacho_count"] == 2   # 📋 = todo el despacho
+    assert ctx["tareas_mias_count"] == 1        # 💻 = la asignada al diseñador
 
 
-def test_badge_tareas_no_involucrado_solo_gris(proyecto_factory, usuario_factory):
-    """Si no tiene ninguna asignada, el azul queda en 0 y solo se ve el gris con
-    el total."""
+def test_badge_tareas_sin_asignadas_solo_despacho(proyecto_factory, usuario_factory):
+    """Si no tiene ninguna asignada, 💻 queda en 0 y 📋 muestra el total del
+    despacho."""
     from apps.el_pizarron.context_processors import mandados_badge
     from apps.el_pizarron.models import Tarea
     from django.test import RequestFactory
@@ -207,14 +207,14 @@ def test_badge_tareas_no_involucrado_solo_gris(proyecto_factory, usuario_factory
     req = RequestFactory().get("/")
     req.user = ajeno
     ctx = mandados_badge(req)
-    assert ctx["tareas_involucrado_count"] == 0
-    assert ctx["tareas_otras_count"] == 2
+    assert ctx["tareas_mias_count"] == 0
+    assert ctx["tareas_despacho_count"] == 2
 
 
-def test_badge_estar_en_el_equipo_no_infla_el_azul(proyecto_factory, usuario_factory):
+def test_badge_estar_en_el_equipo_no_infla_las_mias(proyecto_factory, usuario_factory):
     """Regresión del caso Oscar: estar en el EQUIPO de un proyecto (asignación)
-    NO cuenta como tarea propia. Sin tareas asignadas a él ni mandados suyos, el
-    azul y el rojo quedan en 0 — solo ve el gris con el total del despacho."""
+    NO cuenta como tarea propia. Sin tareas asignadas a él ni mandados suyos, 💻 y
+    🛵 quedan en 0 — solo ve 📋 con el total del despacho."""
     from apps.el_pizarron.context_processors import mandados_badge
     from apps.el_pizarron.models import Tarea
     from apps.los_proyectos.models.asignacion import ProyectoAsignacion
@@ -228,6 +228,6 @@ def test_badge_estar_en_el_equipo_no_infla_el_azul(proyecto_factory, usuario_fac
     req = RequestFactory().get("/")
     req.user = jefe
     ctx = mandados_badge(req)
-    assert ctx["tareas_involucrado_count"] == 0   # azul: no tiene tareas propias
-    assert ctx["tareas_otras_count"] == 1          # gris: la del despacho
-    assert ctx["mandados_pendientes_count"] == 0   # rojo: no tiene mandados suyos
+    assert ctx["tareas_mias_count"] == 0        # 💻: no tiene tareas propias
+    assert ctx["tareas_despacho_count"] == 1    # 📋: la del despacho
+    assert ctx["mandados_activos_count"] == 0   # 🛵: no hay mandados activos

@@ -3,7 +3,7 @@
 {% block title %}{{ proyecto.codigo }} — {{ proyecto.nombre }}{% endblock %}
 {% block contenido %}
 
-{# ── Encabezado: nombre + código juntos (Render-V2) ── #}
+{# ── Encabezado (LC Fase 1): nombre GRANDE + código a la izquierda; persistencia (Deshacer/Guardar) a la derecha en el mismo eje. Metadata + Resumir justo debajo del título. Archivar/Duplicar/Eliminar se movieron al pie de página. ── #}
 <header class="mb-5">
     {% if breadcrumb_items %}<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>{% endif %}
     {% with urlvolver=request.GET.volver|url_segura %}
@@ -14,33 +14,40 @@
     </a>
     {% endif %}
     {% endwith %}
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-3">
-            <h1 class="text-title-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ proyecto.nombre }}</h1>
-            <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-semibold tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ proyecto.codigo }}</span>
-            {% if proyecto.archivado %}<span class="rounded-lg bg-gray-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">Archivado</span>{% endif %}
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-title-md font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-title-lg">{{ proyecto.nombre }}</h1>
+                <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-semibold tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ proyecto.codigo }}</span>
+                {% if proyecto.archivado %}<span class="rounded-lg bg-gray-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">Archivado</span>{% endif %}
+            </div>
+            {# Metadata + Resumir actividad, justo debajo del título. #}
+            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
+                <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|hfmt:"d M Y H:i" }}</time></span>
+                {% include "proyectos/_guardado_indicador.html" with estado="guardado" %}
+                <span id="autosave-error-detalle" class="text-xs text-error-600 dark:text-error-400"></span>
+                {% if permisos_modulos.chalan %}
+                <button type="button"
+                        hx-get="{% url 'proyectos-resumir-actividad' proyecto.pk %}"
+                        hx-target="#modal-slot" hx-swap="innerHTML"
+                        class="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50/60 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300"
+                        title="El Chalán resume la actividad reciente del proyecto">
+                    🤖 Resumir actividad
+                </button>
+                {% endif %}
+            </div>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-            {% if puede_editar %}
-            <button type="button" hx-get="{% url 'proyectos-duplicar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
-                    class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                    title="Clonar este proyecto con un nombre nuevo (sin flujos de dinero)">
-                ⧉ Duplicar
-            </button>
-            {% endif %}
-            {% if puede_archivar_proyecto %}
-            <button type="button" hx-get="{% url 'proyectos-archivar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
-                    class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-                {% if proyecto.archivado %}Reactivar{% else %}Archivar{% endif %}
-            </button>
-            {% endif %}
-            {% if puede_eliminar_proyecto %}
-            <button type="button" hx-get="{% url 'proyectos-eliminar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
-                    class="inline-flex items-center gap-1 rounded-lg border border-error-300 px-3 py-1.5 text-sm font-medium text-error-600 hover:bg-error-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10">
-                Eliminar
-            </button>
-            {% endif %}
+        {% if puede_editar %}
+        <div class="flex shrink-0 gap-2">
+            <button type="button" id="btn-undo"
+                    hx-post="{% url 'proyectos-deshacer' proyecto.pk %}"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-confirm="¿Deshacer el último cambio guardado?"
+                    class="btn-secundario disabled:cursor-not-allowed disabled:opacity-40"
+                    {% if not pasos_undo %}disabled{% endif %}>↶ Deshacer{% if pasos_undo %} ({{ pasos_undo }}){% endif %}</button>
+            <button type="submit" form="form-proyecto" class="btn-primario">Guardar</button>
         </div>
+        {% endif %}
     </div>
 </header>
 
@@ -48,35 +55,6 @@
 {% include "proyectos/_barra_status.html" with proyecto=proyecto estados_barra=estados_barra puede_editar=puede_editar %}
 
 {# LC 2026-07: la alerta de pagos pendientes se movió ABAJO, al recuadro de egresos. #}
-
-{# ── Barra de acciones: indicador permanente + Undo + Guardar ── #}
-<div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-        <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|hfmt:"d M Y H:i" }}</time></span>
-        {% include "proyectos/_guardado_indicador.html" with estado="guardado" %}
-        <span id="autosave-error-detalle" class="text-xs text-error-600 dark:text-error-400"></span>
-        {% if permisos_modulos.chalan %}
-        <button type="button"
-                hx-get="{% url 'proyectos-resumir-actividad' proyecto.pk %}"
-                hx-target="#modal-slot" hx-swap="innerHTML"
-                class="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50/60 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300"
-                title="El Chalán resume la actividad reciente del proyecto">
-            🤖 Resumir actividad
-        </button>
-        {% endif %}
-    </div>
-    {% if puede_editar %}
-    <div class="flex gap-2">
-        <button type="button" id="btn-undo"
-                hx-post="{% url 'proyectos-deshacer' proyecto.pk %}"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                hx-confirm="¿Deshacer el último cambio guardado?"
-                class="btn-secundario disabled:cursor-not-allowed disabled:opacity-40"
-                {% if not pasos_undo %}disabled{% endif %}>↶ Deshacer{% if pasos_undo %} ({{ pasos_undo }}){% endif %}</button>
-        <button type="submit" form="form-proyecto" class="btn-primario">Guardar</button>
-    </div>
-    {% endif %}
-</div>
 
 {% if puede_editar %}
 <form id="form-proyecto" method="post" action="{% url 'proyectos-detalle' proyecto.pk %}"
@@ -383,6 +361,31 @@
 
 {# ── Comentarios del proyecto (fuera del form de edición) ── #}
 {% include "proyectos/_comentarios_panel.html" %}
+
+{# ── Acciones de proyecto (LC Fase 1): Duplicar/Archivar/Eliminar movidas al pie de página, lejos de la edición diaria. ── #}
+{% if puede_editar or puede_archivar_proyecto or puede_eliminar_proyecto %}
+<div class="mt-10 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-5 dark:border-gray-800">
+    {% if puede_editar %}
+    <button type="button" hx-get="{% url 'proyectos-duplicar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+            class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            title="Clonar este proyecto con un nombre nuevo (sin flujos de dinero)">
+        ⧉ Duplicar
+    </button>
+    {% endif %}
+    {% if puede_archivar_proyecto %}
+    <button type="button" hx-get="{% url 'proyectos-archivar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+            class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+        {% if proyecto.archivado %}Reactivar{% else %}Archivar{% endif %}
+    </button>
+    {% endif %}
+    {% if puede_eliminar_proyecto %}
+    <button type="button" hx-get="{% url 'proyectos-eliminar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+            class="inline-flex items-center gap-1 rounded-lg border border-error-300 px-3 py-1.5 text-sm font-medium text-error-600 hover:bg-error-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10">
+        Eliminar
+    </button>
+    {% endif %}
+</div>
+{% endif %}
 
 {% if puede_editar %}{% include "proyectos/_form_productos_js.html" %}{% endif %}
 {% endblock %}

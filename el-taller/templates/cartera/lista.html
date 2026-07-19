@@ -54,7 +54,7 @@
         </table>
     </div>
 </div>
-{% if page_obj %}<div class="mt-4">{% include "_componentes_tailadmin/_paginacion.html" with page_obj=page_obj querystring=querystring_paginacion %}</div>{% endif %}
+{# LC Fase 1: sin paginación — la tabla lista TODOS los clientes de una vez. #}
 
 {# Archivados — sección desplegable (solo sin búsqueda). #}
 {% if archivados_lista %}

@@ -2,7 +2,6 @@ from apps.la_cartera.forms import ClienteContactoFormSet, ClienteForm
 from apps.la_cartera.models import Cliente
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -67,8 +66,10 @@ def lista(request):
 
     qs = qs.order_by("nombre_contacto", "razon_social") if ver == "contacto" else qs.order_by("razon_social", "pk")
 
-    paginator = Paginator(qs, 25)
-    page_obj = paginator.get_page(request.GET.get("page"))
+    # LC Fase 1 (2026-07, decisión Oscar): sin paginación — mostramos TODOS los
+    # clientes en una sola página. El padrón de Learning Center es acotado y ver
+    # el listado completo de un vistazo pesa más que segmentar por páginas.
+    clientes = list(qs)
 
     # Clientes archivados — sección desplegable (solo cuando NO se busca).
     archivados_lista = []
@@ -88,8 +89,8 @@ def lista(request):
     if ver != "nombre":
         qs_filtros.append(f"ver={ver}")
     return render(request, "cartera/lista.html", {
-        "clientes": page_obj.object_list,
-        "page_obj": page_obj,
+        "clientes": clientes,
+        "page_obj": None,
         "q": q,
         "ver_actual": ver,
         "archivados_lista": archivados_lista,

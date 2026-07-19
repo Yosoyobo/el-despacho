@@ -6309,3 +6309,55 @@ MCP como **contrato interno único de capacidades** del Chalán. Nuevo registro
 - Escalado de #tools (agrupar/namespacear cuando degrade la selección del LLM).
 - Recorte de salida (top-N/1200) sub-óptimo para clientes MCP externos genéricos.
 - Servidor externo read-only en V1 (los tools de propuesta no se exponen afuera).
+
+---
+
+# BITÁCORA — S-Ajustes-UI-Fase1 (2026-07-18, VERSION 2026.07.13)
+
+> Primera de tres fases de un **plan maestro de ajustes de UI** que trajo Learning
+> Center (documento con 3 fases). Instrucción explícita: **ejecutar SOLO la Fase 1**,
+> desplegar, y dejar `handoff_fase2.md` como relevo. Rama nueva `agent/ui-fase1-estilos`
+> desde `main` (decisión Oscar por AskUserQuestion — las Olas 2+3 del Chalán quedan
+> pendientes por separado en `agent/mcp-despacho`, sin arrastrarse a este deploy).
+
+## Qué se entregó (solo Fase 1)
+
+- **Dark mode neutro.** La paleta `gray` de TailAdmin es fría (900=#101828, 950=#0c111d).
+  Se retunearon SOLO los tonos oscuros `gray {700,800,900,950,dark}` a grises
+  achromáticos de la MISMA luminancia (`#3f3f3f · #272727 · #171717 · #111111 · #212121`)
+  en los 3 `tailwind.config.js` (tri-copia §18). Sin tocar 25-600 ni nombres de clase.
+- **Fuente Outfit → Inter.** Google Fonts link en los 2 `base.html`, `@apply font-inter`
+  en los 2 `input.css`, `fontFamily.inter` en los 3 configs.
+- **Clientes sin paginación.** `la_cartera/views.py::lista` deja de paginar (se quitó
+  `Paginator` + import); lista TODOS los clientes de una. Plantilla sin controles de página.
+- **Sidebar.** (a) emoji fuera de "Equipo"; (b) badge ⚠️ ahora es `<a>` clickable → El
+  Site (`gerencia.learningcenter.mx/site/`); (c) los 3 globos de Tareas redefinidos y
+  reordenados — 📋 despacho (pendientes+en proceso de todos) · 💻 mías · 🛵 mandados
+  activos de todos. Context processor `mandados_badge` reescrito con keys nuevas
+  (`tareas_despacho_count` / `tareas_mias_count` / `mandados_activos_count`).
+- **Detalle de proyecto.** Nombre más grande (`title-md sm:title-lg`); cabecera
+  reordenada (Deshacer+Guardar a la derecha del título; metadata + Resumir bajo el
+  título); Archivar/Duplicar/Eliminar eyectados al pie de página. Se preservaron los
+  IDs del JS de autosave (`ult-act`, `autosave-error-detalle`, `btn-undo`).
+
+## Decisiones (Oscar / plan)
+
+- Rama nueva desde `main`, aislada de las Olas 2+3 del Chalán.
+- Dark mode: neutralizar la paleta `gray` oscura (no un override por-superficie) — la
+  forma más limpia dado que TODO el dark UI es `dark:bg-gray-*`.
+- Clientes: todos en una sola página (padrón acotado de LC).
+- ⚠️ clickable → El Site (fuente de la falla), como pide el plan.
+
+## Verificación
+
+- `ruff` verde en lo tocado. Tests dirigidos verdes (pizarron badges, no-renderiza-
+  comentarios ambas apps, cartera, proyectos, sidebar). Suite completa verde (salvo los
+  3 tests de `test_aviso_deploy` que fallan en local por falta de Redis y pasan en CI).
+- Sin migraciones. Tailwind recompila en el build de Docker (El Mensajero).
+
+## Deuda diseñada
+
+- Fases 2 y 3 del plan → `handoff_fase2.md` (NO se tocaron).
+- `static/css/tailwind.css` commiteado queda stale hasta el build de Docker (patrón del repo).
+- Recepción (stub/off) no tiene `input.css`; su `base.html` conserva el link de Outfit (no sirve).
+- El ⚠️ clickable manda a El Site a todos, aunque sea admin-gated (muro de permisos para no-admins).
