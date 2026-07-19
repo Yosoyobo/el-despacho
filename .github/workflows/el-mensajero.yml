@@ -59,7 +59,7 @@ jobs:
   smoke_docker:
     name: 🧪 Smoke test del stack en Docker
     needs: [pruebas, lint]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -137,7 +137,7 @@ jobs:
   build:
     name: Build & push
     needs: [smoke_docker]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -177,7 +177,7 @@ jobs:
   actualizar_digests:
     name: Pin digests en docker-compose.prod.yml
     needs: [build]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -240,7 +240,7 @@ jobs:
   mudanza:
     name: 🚚 La Mudanza (deploy a La Sede con rollback automático)
     needs: [actualizar_digests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     steps:
       - name: SSH a La Sede y deploy
