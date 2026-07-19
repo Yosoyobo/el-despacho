@@ -260,9 +260,17 @@ class TestAdaptersUnitarios:
         assert adapter.nombre == "grok"
         assert adapter.apodo == "Chalán Grok"
 
+    def test_grok_sembrado_en_fallback_por_migracion(self, db):
+        """REGLA: todo Chalán cloud nuevo se siembra en CadenaFallback por data
+        migration (0020_seed_grok_cadena), como MiMo (0003) y Gemini (0004) —
+        no basta el signal. Aquí NO guardamos llave: la fila viene de la
+        migración."""
+        from chalanes.models import CadenaFallback
+        assert CadenaFallback.objects.filter(proveedor="grok").exists()
+
     def test_grok_entra_solo_al_fallback_al_guardar_llave(self, db):
         """Grok es cloud estándar: su slot es chalan_grok_api_key, así que el
-        signal de auto-fallback lo engancha al guardar la llave (igual que
+        signal de auto-fallback lo reactiva al guardar la llave (igual que
         MiMo/Gemini/Deepseek)."""
         from ajustes.models.credencial import Credencial
         from chalanes.models import CadenaFallback

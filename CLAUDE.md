@@ -5359,7 +5359,7 @@ Segunda tanda del mismo día (feedback de Oscar sobre la página del proyecto):
   eliminado. Regresión verde (proyectos, pizarrón, egresos, render_v1, por_pieza,
   estados). Ruff limpio.
 
-### S-Chalan-Grok ✅ — Sexto Chalán: Grok (xAI) + retiro de Ollama (2026-07-19, VERSION 2026.07.18)
+### S-Chalan-Grok ✅ — Sexto Chalán: Grok (xAI) + retiro de Ollama (2026-07-19, VERSION 2026.07.18 → seed de fallback en 2026.07.19)
 
 Sprint quirúrgico siguiendo el checklist §5 de S-Chalan-MiMo. Grok entra como
 Chalán cloud estándar (API key en Los Ajustes, patrón idéntico a MiMo/Gemini);
@@ -5385,9 +5385,14 @@ Ollama se elimina por completo (decisión Oscar: "ya no se usa").
 - **Registro**: `adapters/__init__.py` + `registry._FACTORIES` (`grok` reemplaza
   a `ollama`). Slot `chalan_grok_api_key` en `SLOTS_CREDENCIAL`. Choice
   `("grok", "Chalán Grok (xAI)")` en `PROVEEDORES`.
-- **Cadena de fallback**: como el slot ES `chalan_grok_api_key`, el signal
-  `auto_agregar_a_cadena_fallback` lo engancha al guardar la llave (igual que
-  MiMo/Gemini/Deepseek) — NO se siembra por migración.
+- **Cadena de fallback**: **se siembra por data migration**
+  `chalanes/0020_seed_grok_cadena` (mismo patrón que MiMo `0003` y Gemini
+  `0004` — REGLA: todo Chalán cloud nuevo entra a `CadenaFallback` por
+  migración, no solo por el signal). La fila nace activa; El Reemplazo la salta
+  mientras Grok no tenga llave. Además, el signal `auto_agregar_a_cadena_fallback`
+  la reactiva al guardar la API key (el slot ES `chalan_grok_api_key`).
+  *(VERSION 2026.07.19: se agregó `0020`; el 2026.07.18 salió sin este seed —
+  error corregido en el deploy siguiente.)*
 - **Ollama eliminado por completo**: borrado `adapters/ollama.py`, fuera de
   `__init__`/`registry`, slot `chalan_ollama_base_url` retirado de
   `SLOTS_CREDENCIAL`, choice `ollama` fuera de `PROVEEDORES`, comentarios que
