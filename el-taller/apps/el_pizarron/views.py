@@ -488,6 +488,11 @@ def archivar_tarea(request, pk):
         payload={"tarea_id": tarea.pk, "archivada": tarea.archivada,
                  "proyecto_id": tarea.proyecto_id},
     ))
+    # Archivado inline desde la tabla de tareas del proyecto (ticket UX 2026-07):
+    # HTMX → respuesta vacía para que la fila (hx-target) desaparezca sin recargar.
+    if request.headers.get("HX-Request") == "true":
+        from django.http import HttpResponse
+        return HttpResponse("")
     messages.success(
         request,
         f"Tarea «{tarea.titulo[:60]}» {'archivada' if tarea.archivada else 'desarchivada'}.")

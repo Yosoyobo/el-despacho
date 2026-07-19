@@ -5333,6 +5333,32 @@ servicio → desglose); el resumen de la tarjeta usa el nombre del catálogo (si
 producto no está en `SERVICIOS_DATOS` cae al texto del `<option>` sin el sufijo
 "- Proveedor").
 
+### S-UX-Ticket-Jul cont. ✅ — Tabla de tareas inline + limpieza de proveedores (2026-07-19, VERSION 2026.07.17)
+
+Segunda tanda del mismo día (feedback de Oscar sobre la página del proyecto):
+
+- **Tabla de tareas — edición inline** (`_tareas_panel.html`): la pastilla de
+  Estado es un `<select>` coloreado (`.estado-chip` + `--ec`) que cambia el estado
+  vía `pizarron-cambiar-estado` (hx-post, 204) sin salir; actualiza su color
+  client-side. Botón **✕ archivar** a la derecha (`pizarron-archivar-tarea`).
+  **Clave**: el panel vive DENTRO del form de autosave del proyecto → los controles
+  usan `hx-params="none"` (no envían el form del proyecto) + `name` ausente + el
+  select hace `event.stopPropagation()` en change (no dispara el autoguardado ni
+  colisiona con el hidden `form.estado`). `archivar_tarea` gana rama HTMX (devuelve
+  cuerpo vacío → `hx-target` la fila `#tarea-fila-<pk>` desaparece). `detalle` pasa
+  `estados_tarea` (EstadoTarea activos) y filtra `tareas` a `archivada=False`.
+- **Quitado el recuadro "Proveedores aplicables"** del detalle (era redundante —
+  la info de proveedores ya está en el panel de arriba). Se eliminó su bloque en
+  `detalle.html`, el contexto `proveedores_aplicables` y su test.
+- **@proveedor → panel del proyecto**: `_proveedores_panel` ahora incluye los
+  procesos **operativos con proveedor** (no solo impresión), así el proveedor
+  ligado por @ aparece en el recuadro Proveedores con su costo (además de la deuda
+  y el egreso que ya se generaban).
+- Tests: +4 en `test_ux_ticket_jul.py` (estado inline + botón archivar render,
+  archivar HTMX quita fila, @proveedor en el panel); se retiró el test del recuadro
+  eliminado. Regresión verde (proyectos, pizarrón, egresos, render_v1, por_pieza,
+  estados). Ruff limpio.
+
 ---
 
 ## 9. Decisiones operativas tomadas

@@ -6535,3 +6535,24 @@ AskUserQuestion: factura = **una línea automática** con monto ligado a botones
 - @proveedor solo en gastos operativos (impresión ya tenía su select).
 - Modo monto/desglose inicial por heurística (>1 línea o alguna con servicio →
   desglose).
+
+---
+
+# BITÁCORA — S-UX-Ticket-Jul cont. (2026-07-19, VERSION 2026.07.17)
+
+Follow-up del mismo día (feedback de Oscar sobre la página del proyecto).
+
+- **Tabla de tareas — edición inline** (`_tareas_panel.html`): pastilla de Estado
+  = `<select>` coloreado (`.estado-chip` + `--ec`) → `pizarron-cambiar-estado`
+  (hx-post, 204, color client-side); botón **✕ archivar** → `pizarron-archivar-tarea`.
+  El panel vive dentro del form de autosave del proyecto: los controles usan
+  `hx-params="none"` + sin `name` + `event.stopPropagation()` en el change del
+  select (no colisiona con el hidden `form.estado` ni dispara el autoguardado).
+  `archivar_tarea` gana rama HTMX (cuerpo vacío → la fila `#tarea-fila-<pk>` se
+  quita). `detalle` pasa `estados_tarea` y filtra `tareas` a `archivada=False`.
+- **Quitado "Proveedores aplicables"** del detalle (redundante); se eliminó bloque
+  + contexto `proveedores_aplicables` + su test.
+- **@proveedor en el panel del proyecto**: `_proveedores_panel` incluye procesos
+  operativos con proveedor → el proveedor ligado por @ aparece en el recuadro
+  Proveedores con su costo.
+- Tests: +4 en `test_ux_ticket_jul.py`; regresión verde; Ruff limpio.

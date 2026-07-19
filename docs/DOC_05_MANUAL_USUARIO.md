@@ -5,6 +5,17 @@
 
 ---
 
+## Novedades — Tareas del proyecto editables al vuelo y proveedores más claros (19 de julio de 2026)
+
+- En la página de cada proyecto, la **tabla de Tareas** ahora se edita sin salir:
+  la **pastilla de Estado es un menú** (la cambias con un clic) y a la derecha hay
+  una **✕ para archivar** la tarea (sigue en métricas, se puede recuperar).
+- Se quitó el recuadro **"Proveedores aplicables"** del proyecto: era redundante,
+  la información de proveedores ya está en el recuadro **Proveedores** de arriba.
+- Cuando ligas un proveedor con **@** en un gasto/proceso adicional, ese proveedor
+  ahora **aparece también en el recuadro de Proveedores** del proyecto (con su
+  costo), además de sumarse a lo que le debes.
+
 ## Novedades — Facturas por concepto y monto, y ajustes de comodidad (19 de julio de 2026)
 
 - **Facturar por concepto y monto** (lo más pedido). Al crear o editar una

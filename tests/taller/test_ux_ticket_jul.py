@@ -60,6 +60,31 @@ def test_operativo_liga_proveedor_suma_a_deuda(proyecto_factory):
     assert all("Fletes" not in g["descripcion"] for g in p.gastos_operativos())
 
 
+def test_proveedor_arroba_aparece_en_panel_del_proyecto(client, proyecto_factory, usuario_factory):
+    """El proveedor ligado por @ a un gasto operativo aparece en el recuadro de
+    Proveedores del proyecto (con su costo), no solo en la deuda."""
+    from apps.el_catalogo.models import Proveedor
+    from apps.los_proyectos.models import ProyectoProducto
+    from apps.los_proyectos.services_procesos import sincronizar_procesos
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    prov = Proveedor.objects.create(razon_social="Empaques ARROBA", activo=True)
+    p = proyecto_factory(creado_por=u)
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=_servicio(), cantidad=1, incluir_en_calculo=True,
+    )
+    sincronizar_procesos(pp, json.dumps([
+        {"tipo": "operativo", "descripcion": "Embalaje", "costo": "200.00",
+         "por_pieza": False, "proveedor_id": prov.pk},
+    ]))
+    resp = client.get(f"/proyectos/{p.pk}/")
+    assert resp.status_code == 200
+    assert b"Empaques ARROBA" in resp.content
+    # Y ya NO existe el recuadro "Proveedores aplicables".
+    assert b"Proveedores aplicables" not in resp.content
+
+
 def test_operativo_sin_proveedor_sigue_en_gastos_operativos(proyecto_factory):
     from apps.los_proyectos.models import ProyectoProducto
     from apps.los_proyectos.services_procesos import sincronizar_procesos
@@ -87,6 +112,38 @@ def test_proveedor_buscar_endpoint(client, usuario_factory):
     nombres = [r["nombre"] for r in resp.json()["resultados"]]
     assert "Karhim Textil" in nombres
     assert "Otro Distinto" not in nombres
+
+
+# ── Tabla de tareas: estado inline + archivar (ticket UX 2026-07) ────────
+
+
+def test_tabla_tareas_estado_inline_y_boton_archivar(client, proyecto_factory, usuario_factory):
+    from apps.el_pizarron.models import Tarea
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    p = proyecto_factory(creado_por=u)
+    t = Tarea.objects.create(proyecto=p, titulo="Diseñar logo", creado_por=u)
+    body = client.get(f"/proyectos/{p.pk}/").content.decode()
+    assert f"/tareas/{t.pk}/cambiar-estado" in body   # pastilla-select inline
+    assert "estado-chip" in body
+    assert f"/tareas/{t.pk}/archivar" in body          # botón X archivar
+
+
+def test_archivar_tarea_htmx_quita_fila(client, proyecto_factory, usuario_factory):
+    from apps.el_pizarron.models import Tarea
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    p = proyecto_factory(creado_por=u)
+    t = Tarea.objects.create(proyecto=p, titulo="Archívame", creado_por=u)
+    resp = client.post(f"/tareas/{t.pk}/archivar", HTTP_HX_REQUEST="true")
+    assert resp.status_code == 200
+    assert resp.content == b""  # cuerpo vacío → HTMX quita la fila
+    t.refresh_from_db()
+    assert t.archivada is True
+    # Ya no aparece en el detalle del proyecto.
+    assert "Archívame" not in client.get(f"/proyectos/{p.pk}/").content.decode()
 
 
 # ── #1: Kanban muestra solo productos incluidos con cantidad ─────────────

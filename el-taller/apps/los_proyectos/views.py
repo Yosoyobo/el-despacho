@@ -112,10 +112,15 @@ def _proveedores_panel(proyecto):
                 "costo_unit": pp.costo_efectivo, "fijo": None,
             })
         for proc in pp.procesos.all():
-            if proc.tipo == "impresion" and proc.proveedor_id:
+            # Impresión (siempre con proveedor) u operativo con proveedor ligado
+            # por @ (ticket UX 2026-07): ambos suman a su proveedor en el panel.
+            if proc.proveedor_id:
                 s = _slot(proc.proveedor)
                 c = Decimal(str(proc.costo or 0))
-                nombre = f"Impresión · {nombre_prod}"
+                if proc.tipo == "impresion":
+                    nombre = f"Impresión · {nombre_prod}"
+                else:
+                    nombre = proc.descripcion or f"Gasto · {nombre_prod}"
                 if proc.por_pieza:
                     s["total"] += c * piezas
                     s["conceptos"].append({
@@ -474,12 +479,8 @@ def detalle(request, pk):
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetDetalle(instance=proyecto)
 
-    from apps.el_catalogo.models import CategoriaServicio, Proveedor
-    proveedores_aplicables = list(
-        Proveedor.objects.filter(
-            activo=True, servicios__en_proyectos__proyecto=proyecto,
-        ).distinct().order_by("razon_social")
-    )
+    from apps.el_catalogo.models import CategoriaServicio
+    from apps.el_pizarron.models.estado_tarea import EstadoTarea
     _anotar_procesos(formset)
     from . import gastos, services_undo
     # LC 2026-07: la alerta pasa a "pagos pendientes sin registrar" y vive
@@ -500,13 +501,14 @@ def detalle(request, pk):
         "roles_proyecto": ROLES_PROYECTO,
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
         "servicios_datos_json": _servicios_datos_json(),
-        "proveedores_aplicables": proveedores_aplicables,
         "proveedores_panel": _proveedores_panel(proyecto),
         "proveedores_activos": _proveedores_activos(),
         "estados_barra": list(
             EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
         ),
-        "tareas": proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en"),
+        # Estados de tarea activos para la pastilla-select inline (ticket UX 2026-07).
+        "estados_tarea": list(EstadoTarea.objects.filter(activo=True)),
+        "tareas": proyecto.tareas.filter(archivada=False).select_related("asignada_a").order_by("estado", "-creado_en"),
         "comentarios": _comentarios_proyecto_visibles(request.user, proyecto),
         "es_admin": es_admin(request.user),
         "puede_archivar_proyecto": puede_archivar_proyecto(request.user),
