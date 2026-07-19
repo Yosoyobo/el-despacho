@@ -22,6 +22,8 @@ urlpatterns = [
     path("<int:pk>/agregar-tarea", views.agregar_tarea_modal, name="proyectos-agregar-tarea"),
     path("<int:pk>/agregar-producto", views.agregar_producto_modal, name="proyectos-agregar-producto"),
     path("<int:pk>/quitar-producto/<int:prod_pk>", views.quitar_producto, name="proyectos-quitar-producto"),
+    # LC Fase 2: persistir el orden (drag & drop) de las tarjetas de producto.
+    path("<int:pk>/reordenar-productos", views.reordenar_productos, name="proyectos-reordenar-productos"),
     # Revisión buzón R2: mini-Chalán del quick-create aplica los productos confirmados.
     path("<int:pk>/productos-ia-aplicar", views.proyecto_productos_ia_aplicar, name="proyectos-productos-ia-aplicar"),
     # Recuadro «Cotizaciones» del proyecto (versionado, render Oscar 2026-06-27).

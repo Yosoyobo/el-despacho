@@ -93,16 +93,10 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
                     </div>
                 </div>
 
-                {# Notas + moneda #}
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div>
-                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</h3>
-                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion %}
-                    </div>
-                    <div>
-                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Configuración</h3>
-                        {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
-                    </div>
+                {# Notas (sistema fijo en MXN — sin selector de moneda, LC Fase 2). #}
+                <div>
+                    <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</h3>
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion %}
                 </div>
             </div>
         </form>

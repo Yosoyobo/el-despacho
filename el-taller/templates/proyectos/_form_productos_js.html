@@ -132,6 +132,17 @@
         }
         const cuerpo = card.querySelector('[data-cuerpo]');
         if (cuerpo) cuerpo.classList.toggle('opacity-40', !incluido), cuerpo.classList.toggle('pointer-events-none', !incluido);
+        // LC Fase 2: resumen compacto de la cabecera (cantidad · producto · precio).
+        const resumen = card.querySelector('[data-resumen]');
+        if (resumen) {
+            const sel = card.querySelector('select[name$="-servicio"]');
+            let nombre = 'Nuevo producto';
+            if (sel && sel.value && sel.selectedIndex >= 0) {
+                const txt = (sel.options[sel.selectedIndex].text || '').trim();
+                if (txt) nombre = txt;
+            }
+            resumen.textContent = (cant || 0) + ' · ' + nombre + ' · ' + fmt(precioEfectivo(card));
+        }
     }
     function prellenarServicio(sel) {
         const card = sel.closest('[data-card]'); if (!card) return;
@@ -370,13 +381,16 @@
             card.querySelectorAll('.producto-eliminar').forEach(b => b.removeAttribute('data-delete-checkbox'));
             card.querySelectorAll('span.hidden').forEach(s => { if (s.querySelector('input[name$="-DELETE"]')) s.remove(); });
             card.classList.remove('hidden');
-            card.removeAttribute('data-acordeon-oculto');
             card.style.display = '';
             cont.appendChild(card);
         }
         tf.value = idx + 1;
         // LC 2026-07: «por pieza» nace encendida al añadir un producto.
         const _ipp = card.querySelector('.imp-por-pieza'); if (_ipp) _ipp.checked = true;
+        // LC Fase 2: las tarjetas nuevas nacen EXPANDIDAS (hay que llenarlas).
+        const _body = card.querySelector('[data-card-body]'); if (_body) _body.classList.remove('hidden');
+        const _chev = card.querySelector('[data-chevron]'); if (_chev) _chev.classList.remove('-rotate-90');
+        const _tog = card.querySelector('[data-card-toggle]'); if (_tog) _tog.setAttribute('aria-expanded', 'true');
         initCard(card);
         if (card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return card;
@@ -384,18 +398,6 @@
     const clonarUltima = construirTarjeta;  // alias retro-compat (quick-create del catálogo)
     const addBtn = document.getElementById('add-producto');
     if (addBtn) addBtn.addEventListener('click', () => construirTarjeta(null, '1'));
-
-    // ── Acordeón de productos (V6 Bloque 5) ──────────────────────────────────
-    // Muestra/oculta las tarjetas 3+ guardadas. display:none NO excluye los
-    // inputs del submit, así que el autosave sigue posteando todo el formset.
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('[data-acordeon-productos]');
-        if (!btn) return;
-        const abierto = btn.getAttribute('data-abierto') === '1';
-        document.querySelectorAll('[data-acordeon-oculto]').forEach(c => c.classList.toggle('hidden', abierto));
-        btn.setAttribute('data-abierto', abierto ? '0' : '1');
-        btn.textContent = abierto ? btn.getAttribute('data-label-mas') : 'Ver menos';
-    });
 
     // ── Quick-create de Servicio ──────────────────────────────────────────────
     const qcBtn = document.getElementById('qc-agregar');
@@ -454,5 +456,109 @@
     }
 
     cargando = false;
+})();
+</script>
+<script>
+{% comment %}LC Fase 2 — Tarjetas de producto: colapsar/expandir individual,
+drag & drop para reordenar (asa) y "toggle On sube al tope". Delegado en
+`document` para sobrevivir a los swaps HTMX del formset. Solo mueve nodos del
+DOM (no toca los names del formset → autosave intacto) y persiste el `orden`
+por un endpoint aparte.{% endcomment %}
+(function () {
+    const CONT = 'formset-productos';
+    const cont = () => document.getElementById(CONT);
+    const form = () => document.getElementById('form-proyecto') || document.querySelector('form');
+    let dragging = null;
+
+    function persistirOrden() {
+        const f = form(), c = cont();
+        if (!f || !c) return;
+        const url = f.getAttribute('data-reordenar-url');
+        if (!url) return;  // Nuevo/Editar (sin pk): solo reordena en el DOM.
+        const ids = Array.from(c.querySelectorAll('[data-card] input[name$="-id"]'))
+            .map(i => i.value).filter(Boolean);
+        if (!ids.length) return;
+        const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        const body = new URLSearchParams();
+        ids.forEach(id => body.append('orden', id));
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf ? csrf.value : '', 'Content-Type': 'application/x-www-form-urlencoded' },
+            body,
+        }).catch(() => {});
+    }
+    window.__persistirOrdenProductos = persistirOrden;
+
+    // Colapsar / expandir una tarjeta.
+    document.addEventListener('click', function (e) {
+        const tog = e.target.closest && e.target.closest('#' + CONT + ' [data-card-toggle]');
+        if (!tog) return;
+        const card = tog.closest('[data-card]');
+        const body = card && card.querySelector('[data-card-body]');
+        if (!body) return;
+        const abierto = !body.classList.contains('hidden');
+        body.classList.toggle('hidden', abierto);
+        tog.setAttribute('aria-expanded', abierto ? 'false' : 'true');
+        const chev = tog.querySelector('[data-chevron]');
+        if (chev) chev.classList.toggle('-rotate-90', abierto);
+    });
+
+    // Drag & drop por el asa (solo la tarjeta se vuelve draggable al presionar
+    // el asa, para no romper la selección de texto en los inputs).
+    document.addEventListener('mousedown', function (e) {
+        const h = e.target.closest && e.target.closest('#' + CONT + ' [data-drag-handle]');
+        if (!h) return;
+        const card = h.closest('[data-card]');
+        if (card) card.draggable = true;
+    });
+    document.addEventListener('mouseup', function () {
+        if (dragging) return;
+        const c = cont(); if (!c) return;
+        c.querySelectorAll('[data-card][draggable="true"]').forEach(card => { card.draggable = false; });
+    });
+    document.addEventListener('dragstart', function (e) {
+        const card = e.target.closest && e.target.closest('#' + CONT + ' [data-card]');
+        if (!card || !card.draggable) return;
+        dragging = card;
+        card.classList.add('opacity-50');
+        if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} }
+    });
+    document.addEventListener('dragover', function (e) {
+        if (!dragging) return;
+        const c = cont();
+        if (!c || !c.contains(e.target)) return;
+        e.preventDefault();
+        const otras = Array.from(c.querySelectorAll('[data-card]')).filter(x => x !== dragging);
+        const despues = otras.find(x => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+        if (despues) c.insertBefore(dragging, despues); else c.appendChild(dragging);
+    });
+    document.addEventListener('drop', function (e) { if (dragging) e.preventDefault(); });
+    document.addEventListener('dragend', function () {
+        if (!dragging) return;
+        dragging.classList.remove('opacity-50');
+        dragging.draggable = false;
+        dragging = null;
+        persistirOrden();
+    });
+
+    // Toggle "incluir en el cálculo" → On sube la tarjeta al tope; Off al fondo.
+    // Diferido para no interferir con el evento change en curso (autosave).
+    document.addEventListener('change', function (e) {
+        const t = e.target;
+        if (!(t.matches && t.matches('#' + CONT + ' input[name$="-incluir_en_calculo"]'))) return;
+        const card = t.closest('[data-card]');
+        const c = cont();
+        if (!card || !c) return;
+        const encendido = t.checked;
+        setTimeout(function () {
+            if (encendido) {
+                const primera = c.querySelector('[data-card]');
+                if (primera && primera !== card) c.insertBefore(card, primera);
+            } else {
+                c.appendChild(card);
+            }
+            persistirOrden();
+        }, 0);
+    });
 })();
 </script>

@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — Productos en tarjetas, tableros y captura más simples (18 de julio de 2026)
+
+- **Productos del proyecto en tarjetas plegables.** En el detalle del proyecto,
+  cada producto se muestra compacto —**cantidad · nombre · precio**— y lo abres
+  solo cuando quieres editarlo. Ya no hay botón "ver más": se ven **todos** y
+  puedes **arrastrarlos del asa (⠿) para reordenarlos**. Cuando enciendes
+  "incluir en el cálculo" de un producto, ese **sube al principio** de la lista.
+- **Tareas: por defecto ves las de todo el despacho.** El tablero de Tareas
+  arranca mostrando **todo el despacho** (antes empezaba filtrado a "mis tareas").
+  Filtras a las tuyas con el chip de tu nombre cuando quieras.
+- **Globos de Tareas del menú, más exactos:** ya **no cuentan tareas archivadas**,
+  y **🛵 Mandados** cuenta las entregas/recolecciones **pendientes o en proceso**.
+- **Captura de dinero más simple (Tesorería):** el campo de **Monto** ahora es el
+  **total**. Con el **IVA encendido** (así viene por defecto) el total ya lo
+  incluye y el sistema calcula el subtotal solo; apágalo si el gasto no llevó IVA.
+  Se quitó el selector de moneda: todo es en **pesos (MXN)**.
+- **Ventanas de "Nuevo …" más rápidas** (los botones azules del inicio):
+  - **Nuevo cliente / Nuevo proveedor:** piden lo mínimo (nombre y poco más); el
+    RFC, direcciones y contactos se capturan luego en la ficha.
+  - **Nuevo proyecto:** el estado se elige con el **semáforo de colores**, igual
+    que en el detalle.
+  - **Nuevo producto:** sin campos de sobra; la **categoría** se elige con
+    pastillas de color y los **proveedores** tienen buscador.
+  - **Nuevo ingreso / egreso:** cliente y proyecto con **buscador integrado**; en
+    egresos puedes **pegar** una captura del comprobante con **Ctrl/Cmd + V**.
+
 ## Novedades — Cambios de apariencia y menús más claros (18 de julio de 2026)
 
 - **Modo oscuro más neutro.** El fondo oscuro dejó su tono azulado por un gris
@@ -2387,7 +2413,11 @@ La página es **editable directo** (los cambios se guardan solos; verás
   resaltado; haz clic en otro para cambiarlo al instante.
 - **Datos del proyecto:** nombre, cliente (con "+ Nuevo cliente"), descripción
   y dos **calendarios** (Inicio y Entrega) para elegir las fechas.
-- **Productos involucrados:** cada producto es una **tarjeta** con:
+- **Productos involucrados:** se listan **todos** como **tarjetas plegables**.
+  Cada una se ve compacta (**cantidad · nombre · precio**); ábrela con su título
+  cuando quieras editarla. Arrástralas del **asa (⠿)** para reordenarlas; al
+  encender el interruptor de "incluir" de una, esa **sube al principio**. Dentro
+  de cada tarjeta:
   - Interruptor para **incluirlo o no** en el total (apagado = se atenúa y su
     monto queda en $0.00).
   - Categoría · Producto · Cantidad · Merma · Precio unitario.
@@ -2431,6 +2461,8 @@ Si el cliente quiere algo que no tienes en el catálogo, despliega "+ Crear prod
 
 Cada tarea pertenece a un proyecto. Tiene título, descripción, estado, prioridad, **asignada a (obligatorio)** y **fecha de compromiso (obligatoria)**.
 
+- El **tablero de Tareas** arranca mostrando **todo el despacho**; filtra a las
+  tuyas con el chip de tu nombre cuando quieras.
 - La persona asignada recibe push automático.
 - Diseñadores solo ven tareas de proyectos donde están asignados.
 - Las completas marcando "Completar".
@@ -2646,6 +2678,12 @@ El dinero que entra y sale.
 - **Cuentas por pagar** (egresos pendientes + reembolsos)
 
 ### Lo que puedes hacer
+
+Al capturar un ingreso o egreso, el **Monto es el total**: con el **IVA
+encendido** (así viene por defecto) el total ya lo incluye y el sistema saca el
+subtotal solo; apágalo si el movimiento no llevó IVA. Todo es en **pesos (MXN)**
+(ya no hay selector de moneda). Cliente y proyecto tienen **buscador**, y en los
+egresos puedes **pegar** el comprobante con **Ctrl/Cmd + V**.
 
 - **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`.
 - **Egresos:** qué gastaste, centro de costo, **proveedor (obligatorio — todo egreso va ligado a un proveedor)**, quién pagó, fecha. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción. Un egreso **solo se registra cuando el pago se realiza**: los estados posibles son **Pagado (saldado)** o **Por reembolsar**; ya no se registran egresos "por pagar" a mano.

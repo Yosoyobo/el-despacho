@@ -621,6 +621,11 @@ def _nuevo_modal(request):
             "form": form,
             "clientes_recientes": list(Cliente.activos.all().order_by("-actualizado_en")[:8]),
             "puede_chalan": puede_usar_chalan(request.user),
+            # LC Fase 2: estado como semáforo interactivo (mismos colores que el
+            # detalle) en vez de dropdown.
+            "estados_barra": list(
+                EstadoProyecto.objects.filter(activo=True)
+                .order_by("orden").values("slug", "label", "color")),
         }
 
     if request.method == "POST":
@@ -1093,6 +1098,26 @@ def quitar_producto(request, pk, prod_pk):
     if _es_htmx(request):
         return HttpResponse(status=204, headers={"HX-Redirect": destino})
     return redirect(destino)
+
+
+@require_POST
+def reordenar_productos(request, pk):
+    """LC Fase 2: persiste el orden manual (drag & drop) de las tarjetas de
+    producto. Recibe `orden` = lista de pks de ProyectoProducto en el nuevo
+    orden. Solo escribe `orden` (no toca el formset ni sus campos), así que el
+    autoguardado sigue intacto. Idempotente; ignora pks ajenos al proyecto."""
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    validos = set(proyecto.productos.values_list("pk", flat=True))
+    for indice, crudo in enumerate(request.POST.getlist("orden")):
+        try:
+            prod_pk = int(crudo)
+        except (TypeError, ValueError):
+            continue
+        if prod_pk in validos:
+            ProyectoProducto.objects.filter(pk=prod_pk).update(orden=indice)
+    return HttpResponse(status=204)
 
 
 # ── Cotizaciones del proyecto (recuadro versionado, render Oscar 2026-06-27) ──

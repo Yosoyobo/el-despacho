@@ -1,25 +1,27 @@
 {% comment %}
-Bloque de captura de monto con IVA (S-LC-Buzon). Reusado por ingreso_form y
-egreso_form. Espera `form` con campos `subtotal` (DecimalField) e
-`incluye_iva` (checkbox). El IVA es la excepción: por default OFF, se registra
-como efectivo (operación informal). JS calcula IVA 16% y total en vivo.
+Bloque de captura de monto con IVA. Reusado por ingreso_form / egreso_form y
+sus modales. LC Fase 2 (decisión Oscar): el número que se escribe es el TOTAL.
+Con el toggle ON (default) el total INCLUYE IVA → el subtotal = total ÷ 1.16;
+con el toggle OFF es un total sin IVA (operación informal, efectivo). Espera
+`form` con campos `subtotal` (DecimalField que ahora captura el TOTAL) e
+`incluye_iva` (checkbox). JS calcula el IVA contenido y el subtotal en vivo.
 {% endcomment %}
 <div data-iva-block class="md:col-span-2">
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div class="campo-form">
-            <label for="{{ form.subtotal.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Monto (sin IVA)</label>
+            <label for="{{ form.subtotal.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Monto</label>
             {{ form.subtotal }}
             {% for e in form.subtotal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
         </div>
         <div class="flex items-end">
             <div class="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-white/[0.03]">
                 <label for="{{ form.incluye_iva.id_for_label }}" class="flex cursor-pointer items-center justify-between gap-3">
-                    <span class="text-sm text-gray-600 dark:text-gray-300">IVA 16% · <span data-iva-monto class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">$0.00</span></span>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">IVA 16% incluido · <span data-iva-monto class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">$0.00</span></span>
                     {{ form.incluye_iva }}
                 </label>
                 <div class="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
-                    <span class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Total</span>
-                    <span data-iva-total class="text-base font-bold tabular-nums text-gray-900 dark:text-gray-100">$0.00</span>
+                    <span class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Subtotal</span>
+                    <span data-iva-base class="text-base font-bold tabular-nums text-gray-900 dark:text-gray-100">$0.00</span>
                 </div>
             </div>
         </div>
@@ -31,26 +33,27 @@ como efectivo (operación informal). JS calcula IVA 16% y total en vivo.
 </div>
 <script>
 {% comment %}Rooteado por selector (no `currentScript`) para funcionar también
-inyectado por HTMX en un modal (revisión buzón R2). Marca cada bloque para no
-re-inicializar.{% endcomment %}
+inyectado por HTMX en un modal. Marca cada bloque para no re-inicializar.
+LC Fase 2: el input ES el total; derivamos el IVA contenido y el subtotal.{% endcomment %}
 (() => {
   document.querySelectorAll("[data-iva-block]:not([data-iva-listo])").forEach((block) => {
     block.dataset.ivaListo = "1";
-    const sub    = block.querySelector('[name="subtotal"]');
+    const inp     = block.querySelector('[name="subtotal"]');
     const chk     = block.querySelector('[name="incluye_iva"]');
     const ivaOut  = block.querySelector('[data-iva-monto]');
-    const totOut  = block.querySelector('[data-iva-total]');
+    const baseOut = block.querySelector('[data-iva-base]');
     const ribbon  = block.querySelector('[data-iva-ribbon]');
     const fmt = (n) => "$" + (n || 0).toLocaleString("es-MX", {minimumFractionDigits: 2, maximumFractionDigits: 2});
     const recalc = () => {
-        const base = parseFloat(sub && sub.value) || 0;
+        const total = parseFloat(inp && inp.value) || 0;
         const con = chk && chk.checked;
-        const iva = con ? base * 0.16 : 0;
+        const base = con ? total / 1.16 : total;
+        const iva = total - base;
         if (ivaOut) ivaOut.textContent = fmt(iva);
-        if (totOut) totOut.textContent = fmt(base + iva);
+        if (baseOut) baseOut.textContent = fmt(base);
         if (ribbon) ribbon.classList.toggle("hidden", !!con);
     };
-    if (sub) sub.addEventListener("input", recalc);
+    if (inp) inp.addEventListener("input", recalc);
     if (chk) chk.addEventListener("change", recalc);
     recalc();
   });

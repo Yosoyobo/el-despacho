@@ -1,10 +1,10 @@
 {% load forms_helpers %}
-{% comment %}Form-in-modal "Nuevo proveedor" (revisión buzón R2 — render de Oscar).
-Se inyecta en #modal-slot. Chrome estándar: header con título + Guardar + ✕;
-body scrollable con los mismos campos del form completo. POST HTMX → 204 +
-HX-Redirect (ver vista proveedor_nuevo); inválido → re-render del modal con
-errores. Los geo-pickers (direccion/fiscal) y el _ia_bar de notas se
-re-inicializan solos en htmx:afterSwap; las subcategorías son pills CSS puro.{% endcomment %}
+{% comment %}Form-in-modal "Nuevo proveedor" (LC Fase 2 — alta rápida). Se inyecta
+en #modal-slot. Solo pide Nombre + Dirección (con geo) + ¿Qué surte?
+(subcategorías) + Notas al fondo; Email, Teléfono, RFC y dirección fiscal se
+capturan luego en la ficha. El proveedor nace activo. El geo-picker y el _ia_bar
+de notas se re-inicializan en htmx:afterSwap. POST HTMX → 204 + HX-Redirect (ver
+vista proveedor_nuevo); inválido → re-render del modal con errores.{% endcomment %}
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
     <div data-modal-proveedor class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
         <form hx-post="{% url 'catalogo-proveedor-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
@@ -24,12 +24,33 @@ re-inicializan solos en htmx:afterSwap; las subcategorías son pills CSS puro.{%
                 <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ form.non_field_errors }}</div>
                 {% endif %}
 
-                {% for f in form %}{% if f.name == 'lat' or f.name == 'lng' or f.name == 'subcategorias' %}{% else %}{% include "_componentes_tailadmin/_form_campo.html" with campo=f %}{% if f.name == 'direccion' %}{{ form.lat }}{{ form.lng }}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-48" %}{% elif f.name == 'direccion_fiscal' %}{% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion_fiscal" con_pois=False %}{% endif %}{% if f.name == 'notas' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label instruccion_ph="Ej. resume con quién conviene este proveedor y sus tiempos" %}{% endif %}{% endif %}{% endfor %}
+                {# El proveedor nace activo — sin toggle visible en el alta rápida. #}
+                <input type="hidden" name="activo" value="on">
 
+                {# Nombre #}
+                {% include "_componentes_tailadmin/_form_campo.html" with campo=form.razon_social ancho_completo=True %}
+
+                {# Dirección + geo-picker #}
                 <div>
-                    <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">¿Qué surte? (subcategorías)</h3>
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
+                    {{ form.lat }}{{ form.lng }}
+                    {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-48" %}
+                </div>
+
+                {# ¿Qué surte? (subcategorías) #}
+                <div>
+                    <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">¿Qué surte?</h3>
                     {% include "catalogo/_subcategorias_checkboxes.html" %}
                 </div>
+
+                {# Notas — al fondo #}
+                <div>
+                    <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</h3>
+                    {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
+                    {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.notas.id_for_label instruccion_ph="Ej. resume con quién conviene este proveedor y sus tiempos" %}
+                </div>
+
+                <p class="text-xs text-gray-400 dark:text-gray-500">Email, teléfono, RFC y dirección fiscal se capturan después en la ficha del proveedor.</p>
             </div>
         </form>
     </div>

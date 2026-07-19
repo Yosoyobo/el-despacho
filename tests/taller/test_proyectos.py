@@ -233,6 +233,30 @@ def test_producto_override_precio_costo(proyecto_factory):
     assert pp.costo_total_linea == Decimal("100")   # 25 × 4
 
 
+def test_reordenar_productos_persiste_orden(client, usuario_factory, proyecto_factory):
+    """LC Fase 2: el endpoint de drag & drop guarda `orden` por fila y el
+    ordering del modelo lo respeta (incluidas primero)."""
+    from apps.el_catalogo.models import CategoriaServicio, Servicio
+    from apps.los_proyectos.models import ProyectoProducto
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Producción", defaults={"orden": 10})
+    srv = Servicio.objects.create(nombre="Playera", precio_base="100", categoria=cat)
+    p = proyecto_factory(creado_por=admin)
+    a = ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=1)
+    b = ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=2)
+    resp = client.post(
+        reverse("proyectos-reordenar-productos", args=[p.pk]),
+        {"orden": [str(b.pk), str(a.pk)]},
+    )
+    assert resp.status_code == 204
+    a.refresh_from_db()
+    b.refresh_from_db()
+    assert b.orden == 0 and a.orden == 1
+    assert list(p.productos.values_list("pk", flat=True)) == [b.pk, a.pk]
+
+
 def test_monto_estimado_se_autollena_de_productos(client, usuario_factory, cliente_factory):
     """C4: al guardar productos, monto_estimado = suma de subtotales."""
     from decimal import Decimal

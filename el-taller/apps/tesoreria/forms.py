@@ -18,11 +18,16 @@ from .models import (
 IVA_FACTOR = Decimal("1.16")
 
 
-def _total_con_iva(subtotal: Decimal, incluye_iva: bool) -> Decimal:
-    """subtotal → total que va a Contaduría (×1.16 si incluye_iva)."""
-    base = subtotal or Decimal("0")
-    total = base * IVA_FACTOR if incluye_iva else base
-    return total.quantize(Decimal("0.01"))
+def _desglosar_total(capturado: Decimal, incluye_iva: bool) -> tuple[Decimal, Decimal]:
+    """El número capturado es el TOTAL (LC Fase 2, decisión Oscar). Devuelve
+    `(monto, subtotal_base)`:
+      - IVA on  → monto = total capturado; subtotal = total ÷ 1.16 (base sin IVA).
+      - IVA off → monto = subtotal = total capturado (operación sin IVA).
+    El `monto` (lo que va a Contaduría) sigue siendo el total en ambos casos —
+    solo cambia lo que el usuario escribe (antes la base, ahora el total)."""
+    total = (capturado or Decimal("0")).quantize(Decimal("0.01"))
+    base = (total / IVA_FACTOR).quantize(Decimal("0.01")) if incluye_iva else total
+    return total, base
 
 CSS_INPUT = (
     "block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm "
@@ -39,16 +44,18 @@ def _aplicar_css(form: forms.Form) -> None:
 
 
 class IngresoForm(forms.ModelForm):
-    # S-LC-Buzon: se captura el subtotal (sin IVA); el total (monto) se computa.
+    # LC Fase 2: se captura el TOTAL; el subtotal (base sin IVA) se computa.
     subtotal = forms.DecimalField(
         max_digits=12, decimal_places=2, min_value=Decimal("0.01"),
-        label="Monto (sin IVA)",
+        label="Monto",
     )
 
     class Meta:
         model = Ingreso
+        # LC Fase 2: `moneda` sale del form (sistema fijo en MXN; el modelo la
+        # deja por default). Los registros existentes conservan la suya.
         fields = [
-            "fecha", "subtotal", "incluye_iva", "moneda", "descripcion",
+            "fecha", "subtotal", "incluye_iva", "descripcion",
             "cliente", "proyecto", "metodo", "referencia_externa",
         ]
         widgets = {
@@ -74,9 +81,15 @@ class IngresoForm(forms.ModelForm):
             self.initial["metodo"] = "tarjeta"
         if not self.instance.pk and not self.initial.get("fecha"):
             self.initial["fecha"] = date.today()
-        # Edición: pre-llena subtotal desde el guardado (o el monto si es legacy).
+        # LC Fase 2: el campo capturado es el TOTAL → al editar se pre-llena con
+        # el monto (total) guardado. IVA ON por default en registros nuevos.
         if self.instance.pk and self.initial.get("subtotal") is None:
-            self.initial["subtotal"] = self.instance.subtotal or self.instance.monto
+            self.initial["subtotal"] = self.instance.monto
+        if not self.instance.pk and "incluye_iva" not in self.initial:
+            self.initial["incluye_iva"] = True
+        # LC Fase 2: cliente/proyecto con buscador integrado (combobox).
+        for campo in ("cliente", "proyecto"):
+            self.fields[campo].widget.attrs["data-select-buscable"] = ""
         _aplicar_css(self)
         # El checkbox de IVA no debe llevar el CSS de input full-width.
         self.fields["incluye_iva"].widget.attrs["class"] = (
@@ -86,23 +99,25 @@ class IngresoForm(forms.ModelForm):
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        obj.subtotal = self.cleaned_data["subtotal"]
-        obj.monto = _total_con_iva(obj.subtotal, self.cleaned_data.get("incluye_iva"))
+        obj.monto, obj.subtotal = _desglosar_total(
+            self.cleaned_data["subtotal"], self.cleaned_data.get("incluye_iva"))
         if commit:
             obj.save()
         return obj
 
 
 class EgresoForm(forms.ModelForm):
+    # LC Fase 2: se captura el TOTAL; el subtotal (base sin IVA) se computa.
     subtotal = forms.DecimalField(
         max_digits=12, decimal_places=2, min_value=Decimal("0.01"),
-        label="Monto (sin IVA)",
+        label="Monto",
     )
 
     class Meta:
         model = Egreso
+        # LC Fase 2: `moneda` sale del form (sistema fijo en MXN).
         fields = [
-            "fecha", "subtotal", "incluye_iva", "moneda", "descripcion", "proveedor",
+            "fecha", "subtotal", "incluye_iva", "descripcion", "proveedor",
             "centro_de_costo", "proyecto",
             "pagado_por", "solicitado_por",
             "estado_pago", "metodo",
@@ -138,8 +153,12 @@ class EgresoForm(forms.ModelForm):
         self.fields["solicitado_por"].queryset = usuarios_activos
         if not self.instance.pk and not self.initial.get("fecha"):
             self.initial["fecha"] = date.today()
+        # LC Fase 2: el campo capturado es el TOTAL → al editar se pre-llena con
+        # el monto (total) guardado. IVA ON por default en registros nuevos.
         if self.instance.pk and self.initial.get("subtotal") is None:
-            self.initial["subtotal"] = self.instance.subtotal or self.instance.monto
+            self.initial["subtotal"] = self.instance.monto
+        if not self.instance.pk and "incluye_iva" not in self.initial:
+            self.initial["incluye_iva"] = True
         # LC 2026-07: métodos curados en el orden pedido (Tarjeta empresa default,
         # luego transferencia, personales reembolsables; sin cheque). Preserva un
         # método legacy al editar.
@@ -151,6 +170,9 @@ class EgresoForm(forms.ModelForm):
         self.fields["metodo"].choices = metodos
         if not self.instance.pk and not self.initial.get("metodo"):
             self.initial["metodo"] = "tarjeta_empresa"
+        # LC Fase 2: selects largos con buscador integrado (combobox).
+        for campo in ("proveedor", "proyecto", "centro_de_costo", "pagado_por", "solicitado_por"):
+            self.fields[campo].widget.attrs["data-select-buscable"] = ""
         _aplicar_css(self)
         # El checkbox de IVA no debe llevar el CSS de input full-width.
         self.fields["incluye_iva"].widget.attrs["class"] = (
@@ -160,8 +182,8 @@ class EgresoForm(forms.ModelForm):
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        obj.subtotal = self.cleaned_data["subtotal"]
-        obj.monto = _total_con_iva(obj.subtotal, self.cleaned_data.get("incluye_iva"))
+        obj.monto, obj.subtotal = _desglosar_total(
+            self.cleaned_data["subtotal"], self.cleaned_data.get("incluye_iva"))
         prov = self.cleaned_data.get("proveedor")
         obj.proveedor_nombre = prov.razon_social if prov else "Gasto operativo"
         if commit:

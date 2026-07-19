@@ -129,7 +129,7 @@ class ServicioForm(forms.ModelForm):
     activo = forms.BooleanField(required=False, label="Disponible", initial=True)
     # S-LC-Feedback-V3: costo opcional con default 0 (margen 100% si no se captura).
     costo = forms.DecimalField(required=False, initial=0, min_value=0,
-                                label="Costo (lo que te cuesta)",
+                                label="Costo",
                                 help_text="Lo que te cuesta producir o comprar. Usado para calcular margen.")
 
     class Meta:
@@ -139,7 +139,7 @@ class ServicioForm(forms.ModelForm):
             "nombre": "Nombre",
             "descripcion_default": "Descripción",
             "unidad": "Unidad",
-            "costo": "Costo (lo que te cuesta)",
+            "costo": "Costo",
             "precio_base": "Precio de venta",
             "categoria": "Categoría",
         }

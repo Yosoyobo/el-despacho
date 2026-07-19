@@ -70,19 +70,19 @@ def _normalizar(crudo: dict) -> dict:
     total = _a_decimal(crudo.get("total"))
     subtotal = _a_decimal(crudo.get("subtotal"))
     iva = _a_decimal(crudo.get("iva"))
-    # El form de Egreso captura `subtotal` y deriva el total (×1.16 si IVA).
-    # Si el recibo trae subtotal explícito + IVA, usamos subtotal e incluye_iva;
-    # si solo trae total, lo ponemos como subtotal sin IVA (el usuario ajusta).
+    # LC Fase 2: el form de Egreso captura el TOTAL y deriva el subtotal (÷1.16
+    # si IVA). Sugerimos el total con IVA cuando el recibo desglosa base + IVA;
+    # si solo trae total, va tal cual sin marcar IVA (el usuario ajusta).
     if subtotal and iva:
-        sugerido_subtotal, incluye_iva = subtotal, True
+        sugerido_total, incluye_iva = (total or (subtotal + iva)), True
     else:
-        sugerido_subtotal, incluye_iva = (total or subtotal), False
+        sugerido_total, incluye_iva = (total or subtotal), False
     moneda = (crudo.get("moneda") or "MXN").upper()
     if moneda not in {"MXN", "USD"}:
         moneda = "MXN"
     return {
         "total": float(total) if total else None,
-        "subtotal_sugerido": float(sugerido_subtotal) if sugerido_subtotal else None,
+        "total_sugerido": float(sugerido_total) if sugerido_total else None,
         "incluye_iva": incluye_iva,
         "fecha": fecha,
         "proveedor": (crudo.get("proveedor") or "").strip()[:200] or None,

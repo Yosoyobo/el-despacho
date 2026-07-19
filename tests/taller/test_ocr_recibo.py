@@ -45,7 +45,7 @@ def test_extraer_recibo_happy(monkeypatch, usuario_factory):
                              nombre_original="ticket.png", usuario=u)
     assert out["ok"]
     d = out["datos"]
-    assert d["subtotal_sugerido"] == 1000.0 and d["incluye_iva"] is True
+    assert d["total_sugerido"] == 1160.0 and d["incluye_iva"] is True
     assert d["fecha"] == "2026-06-01" and d["proveedor"] == "Office Depot"
     log = EgresoOcrLog.objects.get(pk=out["log_id"])
     assert log.chalan_usado == "gemini" and log.raw_extraccion["total"] == 1160
@@ -58,7 +58,7 @@ def test_extraer_recibo_solo_total_sin_iva(monkeypatch, usuario_factory):
     monkeypatch.setattr(la, "analizar", _fake('{"total": 450, "fecha": null, "proveedor": "Uber"}'))
     out = ocr.extraer_recibo(contenido=b"x", media_type="image/jpeg", usuario=usuario_factory())
     assert out["ok"]
-    assert out["datos"]["subtotal_sugerido"] == 450.0
+    assert out["datos"]["total_sugerido"] == 450.0
     assert out["datos"]["incluye_iva"] is False
 
 

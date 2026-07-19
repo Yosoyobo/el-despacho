@@ -5107,6 +5107,78 @@ de Docker (patrón del repo — el Dockerfile recompila con `--minify`); Recepci
 (no sirve); el ⚠️ clickable manda a todos a El Site aunque sea admin-gated (a un
 usuario sin acceso a Gerencia le sale el muro de permisos — aceptable, es la fuente).
 
+### S-Ajustes-UI-Fase2 ✅ — Modales de acciones rápidas + lógica de listas + captura (2026-07-18, VERSION 2026.07.14)
+
+Fase 2 del plan maestro de UI de LC (handoff `handoff_fase2.md`). Rama nueva
+`agent/ui-fase2-modales` desde `main` (ya con Fase 1 mergeada, PR #6). Solo Fase 2;
+la Fase 3 queda para su propia sesión. **Pedido extra de Oscar en el mismo sprint:**
+los globos de Tareas del sidebar NO deben contar tareas archivadas, y 🛵 = tareas
+tipo mandado en estados pendiente/en proceso.
+
+- **Sidebar — globos de Tareas** ([el_pizarron/context_processors.py](el-taller/apps/el_pizarron/context_processors.py)):
+  los tres cuentan solo tareas **no archivadas**; 🛵 = tareas tipo entrega/recoger
+  (`TIPOS_RUNNER`) cuyo **estado sigue no-terminal** (pendiente/en proceso), no
+  canceladas ni archivadas (vía `mandados_visibles` filtrado por `tarea__estado`
+  + `tarea__archivada`). Claves de contexto sin cambio (`tareas_despacho_count`,
+  `tareas_mias_count`, `mandados_activos_count`).
+- **Tareas Kanban** ([el_pizarron/views.py::kanban_tareas](el-taller/apps/el_pizarron/views.py)):
+  el **default** ya no preselecciona "mis tareas" — arranca mostrando TODAS las
+  vigentes del despacho. El chip de persona filtra a uno mismo. Runner-only sigue
+  acotado a sus mandados.
+- **1.1 Productos involucrados** (detalle de proyecto): sin acordeón "ver más"
+  (se listan todas), **tarjetas plegables individuales** con resumen compacto
+  `cantidad · producto · precio`, **drag & drop** por asa para reordenar, y
+  **toggle "incluir" → sube al tope**. Modelo `ProyectoProducto` gana `orden`
+  (`PositiveIntegerField`, migr. `proyectos/0023`) + `Meta.ordering =
+  ["-incluir_en_calculo", "orden", "creado_en"]` (incluidas primero). Endpoint
+  nuevo `proyectos-reordenar-productos` (POST `orden[]=pk…`, escribe solo `orden`,
+  no toca el formset → autosave intacto). El DnD **solo mueve nodos del DOM**
+  (los names del formset no cambian) — clave para no reintroducir el bug de
+  duplicación de V8. JS en `_form_productos_js.html` (colapsar + DnD + persistir,
+  delegado en `document` para sobrevivir swaps HTMX); tarjetas nuevas nacen
+  expandidas.
+- **IVA — el número capturado es el TOTAL** (decisión Oscar, Ingreso + Egreso):
+  `_desglosar_total()` en [tesoreria/forms.py](el-taller/apps/tesoreria/forms.py)
+  — con IVA on (default en registros nuevos) `subtotal = total ÷ 1.16`, `monto =
+  total`; con IVA off `monto = subtotal = total`. El `monto` (lo que va a
+  Contaduría) sigue siendo el total en ambos casos, así que **Contaduría no se
+  ve afectada**. Partial `_iva_campos.html` re-etiquetado ("Monto", muestra IVA
+  contenido + subtotal derivado). Al editar se pre-llena el campo con el `monto`
+  guardado (round-trip correcto también con registros viejos). El OCR
+  (`ocr._normalizar`) ahora sugiere el **total** (clave `total_sugerido`) para
+  ser consistente.
+- **1.3 Modales de "Nuevo …"** (Taller-only, patrón Wave 5): Nueva Tarea (sin
+  chips de proyectos recientes; hora bajo el minical; Detalles compacto al lado),
+  Nuevo Cliente (ultra-compacto: solo **Nombre + estado en pastillas**; la vista
+  `cartera.nuevo` omite el formset de Contactos cuando es HTMX y usa
+  `asegurar_contacto_principal`), Nuevo Proyecto (estado como **semáforo
+  interactivo** de colores, no dropdown), Nuevo Producto (sin Unidad ni toggle de
+  disponibilidad —nace activo por hidden—, **categoría en pastillas de color**,
+  proveedores con **buscador filtrable**; label "Costo (lo que te cuesta)" →
+  "Costo"), Nuevo Proveedor (sin Email/Teléfono/RFC/dirección fiscal; Nombre +
+  Dirección con geo + ¿Qué surte? + Notas al fondo), Ingreso/Egreso (cliente/
+  proyecto/proveedor **searchable** vía `data-select-buscable`; **sin selector de
+  moneda** —fuera de `Meta.fields`, sistema fijo en MXN—; el egreso permite
+  **pegar el comprobante con Ctrl/Cmd+V**).
+- **Tests**: +5 nuevos (2 badges archived/mandado-estado en `test_pizarron.py`,
+  1 reorder-endpoint en `test_proyectos.py`, 2 IVA-total on/off en
+  `test_tesoreria.py`) + actualizados (`test_ocr_recibo` a `total_sugerido`,
+  `test_revision_buzon_r2_resto` cliente modal ultra-compacto). Ruff limpio;
+  `test_no_renderiza_comentarios` (ambas apps) verde.
+
+**Deuda diseñada Fase 2**: **Nuevo Proveedor** conserva las **subcategorías**
+como "¿Qué surte?" pero NO se agregó una sub-sección de "Productos que surte" con
+"+ Nuevo producto" (el enlace producto↔proveedor se opera desde el lado del
+producto y desde la ficha del proveedor — se dejó fuera del alta rápida para
+mantenerla ligera). **Ingreso sin adjunto**: el paste-de-imagen se implementó
+solo en Egreso (que ya tenía la tubería a Drive `comprobante`); Ingreso no tiene
+campo de comprobante (agregarlo sería modelo + migración + Drive) — pendiente si
+LC lo pide. El DnD de productos persiste `orden` solo en el detalle (autosave con
+`data-reordenar-url`); en Nuevo/Editar reordena visualmente sin persistir. La
+Fase 3 (guardrail de líneas cero en Facturación, breadcrumb de proveedores, form
+avanzado de producto, cotizaciones) queda en `handoff_fase2.md` §2 / su
+`handoff_fase3.md`.
+
 ---
 
 ## 9. Decisiones operativas tomadas
