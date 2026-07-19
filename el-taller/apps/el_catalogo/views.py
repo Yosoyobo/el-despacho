@@ -219,9 +219,35 @@ def nuevo(request):
     ctx = {
         "form": form, "modo": "nuevo",
         "precio_readonly": not puede(request.user, "catalogo", "editar_precios"),
+        **_navegacion_producto(request),
     }
     tmpl = "catalogo/_modal_nuevo_producto.html" if es_htmx else "catalogo/form.html"
     return render(request, tmpl, ctx)
+
+
+def _navegacion_producto(request) -> dict:
+    """Breadcrumb + back_url del form de producto según `?desde=` (Fase 3 §1.2).
+
+    Cuando se llega DESDE un proveedor (`?desde=proveedor:<pk>`) la miga preserva
+    el tramo `Productos › Proveedores › [Proveedor] › [Producto]` en vez de
+    colapsar a `Productos › [Producto]`. Sin `desde`, la miga es la normal.
+    """
+    trail = [{"label": "Productos", "url": reverse("catalogo-lista")}]
+    back_url = ""
+    desde = (request.GET.get("desde") or "").strip()
+    if desde.startswith("proveedor:"):
+        pid = desde.split(":", 1)[1]
+        if pid.isdigit():
+            prov = Proveedor.objects.filter(pk=int(pid)).first()
+            if prov is not None:
+                url_prov = reverse("catalogo-proveedor-detalle", args=[prov.pk])
+                trail += [
+                    {"label": "Proveedores", "url": reverse("catalogo-proveedores")},
+                    {"label": prov.razon_social, "url": url_prov},
+                ]
+                back_url = url_prov
+    trail.append({"label": "Producto"})
+    return {"breadcrumb_trail": trail, "back_url_producto": back_url}
 
 
 @require_http_methods(["GET", "POST"])
@@ -245,12 +271,15 @@ def editar(request, pk: int):
                 payload={"servicio_id": srv.pk},
             ))
             messages.success(request, "Producto actualizado.")
-            return redirect("catalogo-lista")
+            # Fase 3 §1.2: si venía de un proveedor, regresa a su ficha.
+            destino = _navegacion_producto(request).get("back_url_producto")
+            return redirect(destino or reverse("catalogo-lista"))
     else:
         form = ServicioForm(instance=srv)
     return render(request, "catalogo/form.html", {
         "form": form, "modo": "editar", "servicio": srv,
         "precio_readonly": not puede_editar_precios,
+        **_navegacion_producto(request),
     })
 
 

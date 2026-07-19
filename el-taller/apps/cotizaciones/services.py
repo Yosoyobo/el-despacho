@@ -339,7 +339,11 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
         for i, pp in enumerate(proyecto.productos_incluidos):
             nombre = pp.servicio.nombre if pp.servicio_id else "Producto"
             if pp.variacion_id:
-                nombre = f"{nombre} · {pp.variacion.nombre}"
+                # Fase 3 §1.4 (higiene): no duplicar el nombre si la variación
+                # ya lo contiene.
+                vnom = pp.variacion.nombre or ""
+                if vnom and vnom.lower() not in nombre.lower():
+                    nombre = f"{nombre} · {vnom}"
             # LC 2026-07: la NOTA interna del producto NO se copia a la línea de
             # la cotización (no debe salir en el documento final al cliente).
             CotizacionItem.objects.create(

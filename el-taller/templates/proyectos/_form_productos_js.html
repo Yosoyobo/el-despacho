@@ -470,11 +470,33 @@ por un endpoint aparte.{% endcomment %}
     const form = () => document.getElementById('form-proyecto') || document.querySelector('form');
     let dragging = null;
 
+    // Fase 3 §2: escribe el `orden` (posición en el DOM) en el hidden `-orden`
+    // de cada tarjeta REAL (con producto o ya guardada); las filas extra vacías
+    // se dejan intactas para no disparar validación. Así el orden del drag & drop
+    // persiste al ENVIAR el form (Nuevo/Editar) y también mantiene sincronizado
+    // el valor que viaja en el autosave del detalle (para que no pise el orden
+    // que ya fijó el endpoint de reordenado).
+    function sincronizarOrdenDOM() {
+        const c = cont(); if (!c) return;
+        let i = 0;
+        c.querySelectorAll('[data-card]').forEach(card => {
+            const ordenInput = card.querySelector('input[name$="-orden"]');
+            if (!ordenInput) return;
+            const serv = card.querySelector('select[name$="-servicio"]');
+            const idInput = card.querySelector('input[name$="-id"]');
+            const esReal = (idInput && idInput.value) || (serv && serv.value);
+            if (!esReal) return;
+            ordenInput.value = i++;
+        });
+    }
+    window.__sincronizarOrdenProductos = sincronizarOrdenDOM;
+
     function persistirOrden() {
+        sincronizarOrdenDOM();
         const f = form(), c = cont();
         if (!f || !c) return;
         const url = f.getAttribute('data-reordenar-url');
-        if (!url) return;  // Nuevo/Editar (sin pk): solo reordena en el DOM.
+        if (!url) return;  // Nuevo/Editar (sin endpoint): el orden viaja en el submit.
         const ids = Array.from(c.querySelectorAll('[data-card] input[name$="-id"]'))
             .map(i => i.value).filter(Boolean);
         if (!ids.length) return;
@@ -488,6 +510,13 @@ por un endpoint aparte.{% endcomment %}
         }).catch(() => {});
     }
     window.__persistirOrdenProductos = persistirOrden;
+
+    // Sincroniza el orden justo antes de enviar (captura, para correr antes de
+    // que HTMX/el navegador serialicen el form). Cubre Nuevo/Editar (POST nativo)
+    // y el submit del detalle.
+    document.addEventListener('submit', function (e) {
+        if (e.target === form()) sincronizarOrdenDOM();
+    }, true);
 
     // Colapsar / expandir una tarjeta.
     document.addEventListener('click', function (e) {

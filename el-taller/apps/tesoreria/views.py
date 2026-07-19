@@ -243,6 +243,7 @@ def ingreso_nuevo(request):
             ingreso = form.save(commit=False)
             ingreso.creado_por = request.user
             ingreso.save()
+            _procesar_comprobante_ingreso(request, ingreso)
             _emitir("tesoreria.ingreso_registrado", request, {
                 "ingreso_id": ingreso.pk, "monto": str(ingreso.monto),
                 "cliente_id": ingreso.cliente_id, "proyecto_id": ingreso.proyecto_id,
@@ -276,6 +277,7 @@ def ingreso_editar(request, pk):
         form = IngresoForm(request.POST, instance=ingreso)
         if form.is_valid():
             form.save()
+            _procesar_comprobante_ingreso(request, ingreso)
             messages.success(request, "Ingreso actualizado.")
             return redirect("tesoreria:ingreso-detalle", pk=ingreso.pk)
     else:
@@ -441,6 +443,51 @@ def egreso_detalle(request, pk):
         "back_url": reverse("tesoreria:egresos-lista"),
         "back_label": "Egresos",
     })
+
+
+def _procesar_comprobante_ingreso(request, ingreso) -> None:
+    """Sube el comprobante del ingreso a Drive (espejo del de egreso, Fase 3 §2).
+
+    Fallback gracioso: si Drive cae o el archivo es inválido, el ingreso ya
+    quedó guardado; sólo avisamos con messages.
+    """
+    archivo = request.FILES.get("comprobante")
+    if not archivo:
+        return
+    from lib.adjuntos import subir
+    res = subir(archivo, subcarpeta="Comprobantes")
+    if res.ok and res.data:
+        ingreso.drive_file_id = res.data["id"]
+        ingreso.drive_url_view = res.data.get("webViewLink", "")
+        ingreso.tiene_comprobante = True
+        ingreso.save(update_fields=["drive_file_id", "drive_url_view", "tiene_comprobante"])
+        messages.success(request, "Comprobante guardado en Drive.")
+    else:
+        messages.warning(request, f"Comprobante no subido: {res.error}")
+
+
+@login_required
+def ingreso_comprobante(request, pk):
+    """Sirve el comprobante del ingreso desde Drive (proxy autenticado, sin liga
+    pública). Lo ve cualquiera con acceso a Tesorería. Fase 3 §2."""
+    if (r := _gate(request)) is not None:
+        return r
+    from urllib.parse import quote
+
+    ingreso = get_object_or_404(Ingreso, pk=pk)
+    if not (ingreso.tiene_comprobante and ingreso.drive_file_id):
+        raise Http404("Este ingreso no tiene comprobante.")
+
+    from lib.google_drive import drive
+    try:
+        contenido, mime, nombre = drive.descargar(ingreso.drive_file_id)
+    except Exception:  # noqa: BLE001
+        raise Http404("No se pudo obtener el comprobante de Drive.") from None
+
+    resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
+    disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
+    resp["Content-Disposition"] = f"{disposicion}; filename*=UTF-8''{quote(nombre)}"
+    return resp
 
 
 def _procesar_comprobante(request, egreso) -> None:

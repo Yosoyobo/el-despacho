@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Facturas sin $0, cotizaciones más limpias y comprobantes pegables (19 de julio de 2026)
+
+- **Las facturas ya no se quedan en $0.00.** Si al editar una factura borras
+  todas sus líneas, el sistema vuelve a poner **una línea** con el concepto y el
+  monto del proyecto/cotización de origen, para que nunca quede una factura vacía
+  por accidente.
+- **Migas de pan al abrir un producto desde un proveedor.** Si entras a un
+  producto **desde la ficha de un proveedor**, arriba verás la ruta completa
+  *Inicio › Productos › Proveedores › [Proveedor] › [Producto]* y un botón
+  **← Volver** que te regresa al proveedor.
+- **Editar producto (pantalla completa): más cómodo.** Los **proveedores** tienen
+  un **buscador** para encontrarlos rápido (marcas los que apliquen con
+  palomita), y el botón **Guardar** ahora también está **arriba**, junto al
+  título. Se conservan **Unidad** y **Disponible** en esta pantalla.
+- **Cotizaciones, más claras:**
+  - El **estado** de cada cotización se cambia con **un solo control** (un menú de
+    color) en lugar de la pastilla + el menú que agrandaban el renglón.
+  - **Buscas cualquier cliente** con el buscador de clientes (ya no solo los que
+    tienen cotización); las pastillas de recientes siguen ahí.
+  - El **nombre del proyecto** es un **enlace** que abre el proyecto.
+  - Se quitó la **repetición** del nombre del producto en la descripción de cada
+    línea.
+- **Ingresos: pega el comprobante.** Al registrar o editar un **ingreso** puedes
+  **pegar** una captura con **Ctrl/Cmd + V** o subir un archivo; se guarda en
+  Drive igual que en los egresos.
+- **Ordenar productos también al crear/editar el proyecto.** El orden en que
+  **arrastras** los productos (asa ⠿) ahora **se guarda** también en las
+  pantallas de *Nuevo proyecto* y *Editar proyecto*, no solo en el detalle.
+
 ## Novedades — Productos en tarjetas, tableros y captura más simples (18 de julio de 2026)
 
 - **Productos del proyecto en tarjetas plegables.** En el detalle del proyecto,
@@ -2625,6 +2654,11 @@ Propuestas comerciales para tus clientes.
 - Anticipo: porcentaje o monto fijo
 - Estados: Borrador → Enviada → Aprobada / Rechazada / Anulada
 
+En la **lista** de cotizaciones (tarjetas o tabla): el **estado** se cambia con un
+**menú de color único** por renglón; hay un **buscador de clientes** que abarca
+**todo el padrón** (además de las pastillas de clientes recientes); y el **nombre
+del proyecto** es un **enlace** que abre el proyecto.
+
 Cuando una cotización está aprobada y tiene anticipo, aparece un botón **"Generar factura del anticipo"** que crea una factura borrador con el monto del anticipo.
 
 **El Chalán te ayuda:** botón **🤖 Redactar** junto a **Notas** y **Términos**, y **🤖 Sugerir** en cada línea para proponer el precio (ver *Chalanes (IA)*).
@@ -2657,7 +2691,7 @@ El formulario se llena de arriba hacia abajo y se ayuda solo:
 5. **Estado:** botones (Borrador / Emitida). El cobro y la cancelación se hacen desde el detalle de la factura.
 6. **Vencimiento:** botones rápidos **Fin de mes · 30 días · 45 días · 60 días** además de la fecha manual.
 7. **Monto a facturar:** botones **100%** (default) y **50%**. El 50% factura la mitad del total (parcialidad / anticipo), sin tocar las líneas.
-8. **Líneas:** con **"+ Agregar línea"** agregas cada concepto (descripción, cantidad, unidad, precio, descuento).
+8. **Líneas:** con **"+ Agregar línea"** agregas cada concepto (descripción, cantidad, unidad, precio, descuento). Si borras **todas** las líneas al editar, el sistema repone **una línea** con el concepto y el monto del proyecto/cotización de origen, para que la factura **nunca quede en $0.00**.
 
 - Estados: Borrador → Emitida → Cobrada parcial / Cobrada total / Cancelada
 - "Emitir" genera el asiento contable automáticamente (cuentas por cobrar a cargo, ingresos por ventas al abono)
@@ -2682,8 +2716,9 @@ El dinero que entra y sale.
 Al capturar un ingreso o egreso, el **Monto es el total**: con el **IVA
 encendido** (así viene por defecto) el total ya lo incluye y el sistema saca el
 subtotal solo; apágalo si el movimiento no llevó IVA. Todo es en **pesos (MXN)**
-(ya no hay selector de moneda). Cliente y proyecto tienen **buscador**, y en los
-egresos puedes **pegar** el comprobante con **Ctrl/Cmd + V**.
+(ya no hay selector de moneda). Cliente y proyecto tienen **buscador**, y tanto en
+**ingresos como en egresos** puedes **pegar** el comprobante con **Ctrl/Cmd + V**
+(o subir un archivo); se guarda en Drive.
 
 - **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`.
 - **Egresos:** qué gastaste, centro de costo, **proveedor (obligatorio — todo egreso va ligado a un proveedor)**, quién pagó, fecha. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción. Un egreso **solo se registra cuando el pago se realiza**: los estados posibles son **Pagado (saldado)** o **Por reembolsar**; ya no se registran egresos "por pagar" a mano.

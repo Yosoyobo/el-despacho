@@ -5179,6 +5179,89 @@ Fase 3 (guardrail de líneas cero en Facturación, breadcrumb de proveedores, fo
 avanzado de producto, cotizaciones) queda en `handoff_fase2.md` §2 / su
 `handoff_fase3.md`.
 
+### S-Ajustes-UI-Fase3 ✅ — Facturación, proveedores y cotizaciones + CIERRE del arco de UI (2026-07-19, VERSION 2026.07.15)
+
+Última fase del plan maestro de ajustes de UI de LC (handoff `handoff_fase3.md`).
+Rama `agent/ui-fase3-forms` desde `main` (con Fase 1 PR #6 + Fase 2 PR #7 ya
+mergeadas). Cierra el **arco S-Ajustes-UI** (Fases 1-3). Decisiones por
+AskUserQuestion: (1.3) **conservar Unidad + disponibilidad** en el form avanzado de
+producto; (1.4) estado de cotización = **dropdown coloreado único**; (§2) de la
+deuda de Fase 2 entran **Ingreso: pegar comprobante** + **DnD productos: persistir
+en alta**.
+
+- **1.1 Facturación — guardrail de líneas cero**: `services.asegurar_lineas_desde_origen(fac, monto_fallback=None)`
+  gana un tercer caso — sin cotización ni proyecto de dónde derivar, sintetiza UNA
+  línea con `monto_fallback` (helper `_sintetizar_linea` con el concepto de la
+  factura). La vista `editar` captura `subtotal_previo = fac.calcular_totales()["subtotal_items"]`
+  ANTES de que el formset borre líneas y lo pasa como fallback → una factura editada
+  nunca queda en $0.00 aunque se vacíe a mano.
+- **1.2 Breadcrumb trail de proveedores**: helper `_navegacion_producto(request)` en
+  `el_catalogo/views.py` lee `?desde=proveedor:<pk>` → arma la miga *Productos ›
+  Proveedores › [Proveedor] › [Producto]* + `back_url_producto`. El detalle del
+  proveedor enlaza a `catalogo-editar` con `?desde=proveedor:<pk>&volver=…`; el form
+  de producto usa `breadcrumb_trail` (fallback al tag normal si no viene), muestra
+  botón **← Volver** y el POST de `editar` regresa a la ficha del proveedor.
+- **1.3 Form avanzado de producto** (`catalogo/form.html`, página completa, no el
+  modal): **buscador** type-to-search sobre los checkboxes de proveedores (patrón
+  filtro-sobre-checkboxes de Fase 2 + lista `max-h-64` scrollable = compacta);
+  botón **Guardar arriba** (franja superior, `form="producto-form"`); **Unidad y
+  disponibilidad se conservan** (decisión Oscar — ya salen del loop de campos).
+- **1.4 Cotizaciones — higiene visual**:
+  - **Estado en un control único** (`_estado_celda.html`): un `<select>` que toma el
+    color del estado (clase `.estado-chip` + `--ec` inline + `border-color`
+    color-mix) reemplaza la pastilla + dropdown que deformaban el renglón; las no
+    editables (anulada/rechazada) → pastilla estática; hint `⚠` si vencida.
+  - **Selector de clientes global** (`_panel.html`): combobox `data-select-buscable`
+    (form `hx-get` con `hx-trigger="change"` + hidden estado/vista) que busca sobre
+    **todo el padrón** (`clientes_todos` = `Cliente.activos`), además de las pastillas
+    de recientes.
+  - **Higiene de descripciones**: la repetición era en `detalle.html` — la línea
+    mostraba `it.descripcion` (armada como "Producto · Variación") **y** el
+    `servicio.nombre` debajo. Ahora el sub-renglón solo sale si el nombre NO está ya
+    en la descripción (`{% if it.servicio.nombre not in it.descripcion %}`). Los
+    builders (`_autocompletar_lineas_desde_catalogo` y `generar_desde_proyecto`)
+    evitan el degenerado "X · X".
+  - **Nombre de proyecto como enlace**: en `_filas.html` el nombre es `<a>` a
+    `proyectos-detalle` (ui.js ignora clics sobre `<a>`, la fila sigue navegando a la
+    cotización); en `_tarjetas.html` la tarjeta pasó de `<a>` a `<div data-href>`
+    para permitir el `<a>` anidado del proyecto sin HTML inválido.
+- **§2a Ingreso: pegar comprobante**: `Ingreso` gana `drive_file_id` / `drive_url_view`
+  / `tiene_comprobante` (espejo de Egreso, migración `tesoreria/0008_ingreso_comprobante`);
+  vista `_procesar_comprobante_ingreso` + proxy `ingreso_comprobante` (URL
+  `tesoreria:ingreso-comprobante`); modal + form full con `<input type=file>` +
+  **paste (Ctrl/Cmd+V)** + `hx-encoding="multipart/form-data"`; el detalle muestra
+  "📎 Ver comprobante".
+- **§2b DnD productos: persistir orden en Nuevo/Editar**: `ProyectoProductoForm` gana
+  un campo oculto `orden` (a `Meta.fields`, `clean_orden`→0); `_producto_card.html`
+  lo renderiza; `_form_productos_js.html` tiene `sincronizarOrdenDOM()` que escribe la
+  posición del DOM en el `-orden` de cada tarjeta **real** (con producto o guardada;
+  las filas extra vacías se saltan para no disparar validación), llamado en
+  `persistirOrden()` (drag/toggle) y en un listener `submit` de captura. Así el orden
+  persiste en el POST de Nuevo/Editar y mantiene sincronizado el valor que viaja en el
+  autosave del detalle (no pisa el orden que ya fijó el endpoint de reordenado). Sin
+  migración de modelo (el campo `orden` existe desde Fase 2 `proyectos/0023`).
+- **Tests**: `tests/taller/test_ajustes_ui_fase3.py` nuevo; suite taller+gerencia +
+  `test_ayuda_novedades` verde; ruff limpio; `test_no_renderiza_comentarios` (ambas
+  apps) verde (se cazó y corrigió un `{# … #}` multilínea, Bug C §14).
+
+**Deuda diseñada Fase 3 / arco**: el estado "vencida" de cotización solo se marca con
+un `⚠` junto al select (el select muestra el estado real editable); la "deuda de Fase
+2" restante NO tomada (**Nuevo Proveedor → "Productos que surte"** en el alta rápida)
+sigue pendiente si LC la pide. El DnD de productos solo persiste `orden` para filas
+reales (las extra vacías se ignoran a propósito).
+
+### Arco S-Ajustes-UI — ✅ CERRADO 2026-07-19
+
+Las 3 fases del plan maestro de ajustes de UI de Learning Center quedan entregadas:
+
+| Fase | VERSION | Commit/PR | Foco |
+|---|---|---|---|
+| 1 | 2026.07.13 | PR #6 | Estilos globales (dark mode neutro, Inter), sidebar, maquetación del detalle |
+| 2 | 2026.07.14 | PR #7 | Modales de acciones rápidas, productos plegables/DnD, IVA=total |
+| 3 | 2026.07.15 | _este_ | Facturación (guardrail $0), breadcrumb proveedores, form producto, cotizaciones + comprobante ingreso + DnD persistente |
+
+Los `handoff_fase{2,3}.md` quedan como referencia histórica (fases entregadas).
+
 ---
 
 ## 9. Decisiones operativas tomadas

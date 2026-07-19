@@ -1,14 +1,14 @@
-{% comment %}LC 2026-07: celda de estado con badge + cambio en un clic (dropdown
-inline). Se auto-swap por HTMX. Reusado por _filas.html y por la vista
-estado_inline (POST). Espera `c` (cotización) y `estados_cot` (ciclo activo).
-Funciona para cualquier versión, aunque otra esté anulada.{% endcomment %}
-<span id="cot-estado-{{ c.pk }}" class="inline-flex flex-wrap items-center gap-2">
-    {% with estado=c.estado_visible %}
-    <span class="badge {% if estado == 'aprobada' or estado == 'pagada' %}badge-success{% elif estado == 'rechazada' or estado == 'anulada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'enviada' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
-    {% endwith %}
+{% comment %}Fase 3 §1.4: UN solo control de estado (dropdown coloreado) que
+muestra Y cambia el estado — antes convivían pastilla + select y deformaban el
+alto de la fila. El <select> toma el color del estado (clase .estado-chip +
+--ec). Versiones no editables (anulada/rechazada) → pastilla estática. Se
+auto-swap por HTMX. Espera `c` (cotización) y `estados_cot` (ciclo activo).{% endcomment %}
+<span id="cot-estado-{{ c.pk }}" class="inline-flex items-center gap-1 whitespace-nowrap">
+    {% if c.estado_visible == 'vencida' %}<span title="Vencida" aria-label="Vencida" class="text-warning-500">⚠</span>{% endif %}
     {% if c.estado != 'anulada' and c.estado != 'rechazada' and estados_cot %}
-    <select name="estado" aria-label="Cambiar estado"
-            class="rounded-lg border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+    <select name="estado" aria-label="Cambiar estado" data-activo
+            style="--ec: {{ c.estado_color }}; border-color: color-mix(in srgb, {{ c.estado_color }} 40%, transparent);"
+            class="estado-chip cursor-pointer rounded-lg border px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand-400"
             hx-post="{% url 'cotizaciones:estado-inline' c.pk %}"
             hx-trigger="change" hx-target="#cot-estado-{{ c.pk }}" hx-swap="outerHTML"
             hx-include="#csrf-cot-{{ c.pk }}">
@@ -17,5 +17,7 @@ Funciona para cualquier versión, aunque otra esté anulada.{% endcomment %}
         {% endfor %}
     </select>
     <input type="hidden" id="csrf-cot-{{ c.pk }}" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    {% else %}
+    <span class="badge badge-hex" style="--ec: {{ c.estado_color }}">{{ c.get_estado_display }}</span>
     {% endif %}
 </span>

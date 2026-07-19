@@ -31,7 +31,11 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         {% for it in items %}
                         <tr>
-                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{{ it.descripcion }}{% if it.servicio %}<div class="text-xs text-gray-400 dark:text-gray-500">{{ it.servicio.nombre }}</div>{% endif %}</td>
+                            {% comment %}Fase 3 §1.4: la descripción se arma como
+                               "Producto · Variación", así que el nombre del producto ya
+                               está adentro. Solo mostramos el sub-renglón del producto
+                               cuando NO se repite (evita la repetición cíclica).{% endcomment %}
+                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{{ it.descripcion }}{% if it.servicio and it.servicio.nombre not in it.descripcion %}<div class="text-xs text-gray-400 dark:text-gray-500">{{ it.servicio.nombre }}</div>{% endif %}</td>
                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.cantidad|floatformat:2 }} {{ it.unidad_label }}</td>
                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.precio_unitario|dinero }}</td>
                             <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ it.descuento_porcentaje|floatformat:2 }}%</td>

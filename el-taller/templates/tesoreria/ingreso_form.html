@@ -9,7 +9,7 @@
     <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{{ modo|capfirst }} ingreso</h1>
 </header>
 
-<form method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
+<form method="post" enctype="multipart/form-data" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
@@ -93,6 +93,18 @@
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</h3>
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion %}
+        </section>
+
+        {# Comprobante (Fase 3 §2): pegar (Ctrl/Cmd+V) o elegir archivo → Drive. #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">📎 Comprobante</h3>
+            {% if ingreso.tiene_comprobante %}
+            <a href="{% url 'tesoreria:ingreso-comprobante' ingreso.pk %}" target="_blank" rel="noopener" class="mb-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">✓ Ver comprobante actual →</a>
+            <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">Sube o pega otro para reemplazarlo.</p>
+            {% endif %}
+            <input type="file" name="comprobante" id="ingreso-comprobante" accept="image/*,application/pdf" class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 dark:text-gray-300 dark:file:bg-brand-500/10 dark:file:text-brand-300">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Imagen o PDF, hasta 25 MB. También puedes <strong>pegar</strong> una captura con Ctrl/Cmd+V.</p>
+            <p id="ingreso-comprobante-pegado" class="mt-1 hidden text-xs font-medium text-brand-600 dark:text-brand-400"></p>
         </section>
     </aside>
 
@@ -196,6 +208,28 @@
     if (clienteSel) {
         clienteSel.addEventListener("change", () => {
             if (clienteSel.dataset.autollenado === "proyecto") delete clienteSel.dataset.autollenado;
+        });
+    }
+
+    // Fase 3 §2: pegar el comprobante del portapapeles (Ctrl/Cmd+V).
+    const fileInput = document.getElementById('ingreso-comprobante');
+    const pegadoMsg = document.getElementById('ingreso-comprobante-pegado');
+    if (fileInput) {
+        document.addEventListener('paste', (e) => {
+            const items = (e.clipboardData && e.clipboardData.items) || [];
+            for (const it of items) {
+                if (it.kind === 'file' && it.type && it.type.indexOf('image/') === 0) {
+                    const blob = it.getAsFile();
+                    if (!blob) continue;
+                    const ext = (it.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                    const dt = new DataTransfer();
+                    dt.items.add(new File([blob], 'comprobante-pegado.' + ext, { type: it.type }));
+                    fileInput.files = dt.files;
+                    if (pegadoMsg) { pegadoMsg.textContent = '📎 Comprobante pegado del portapapeles.'; pegadoMsg.classList.remove('hidden'); }
+                    e.preventDefault();
+                    break;
+                }
+            }
         });
     }
 })();

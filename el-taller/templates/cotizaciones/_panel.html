@@ -19,7 +19,11 @@ Es el destino del swap (#cot-panel); las pastillas devuelven este partial.{% end
     </div>
 </div>
 
-{% if clientes_pills %}
+{% comment %}Fase 3 §1.4: pastillas de clientes recientes (con cotización) +
+buscador sobre TODO el padrón (combobox data-select-buscable). El buscador es
+un form hx-get: al elegir un cliente serializa `cliente` + estado + vista y
+reemplaza el panel.{% endcomment %}
+{% if clientes_pills or clientes_todos %}
 <nav class="mb-5 flex flex-wrap items-center gap-2" aria-label="Filtrar por cliente">
     <span class="mr-1 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Cliente</span>
     <a hx-get="{% url 'cotizaciones:lista' %}?{% if estado_filtro %}estado={{ estado_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
@@ -30,6 +34,20 @@ Es el destino del swap (#cot-panel); las pastillas devuelven este partial.{% end
        hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
        class="pill-filtro {% if cliente_filtro == c.pk|stringformat:'s' %}pill-filtro-on{% endif %}">{{ c.razon_social|truncatechars:24 }}</a>
     {% endfor %}
+    {% if clientes_todos %}
+    <form hx-get="{% url 'cotizaciones:lista' %}" hx-target="#cot-panel" hx-swap="innerHTML"
+          hx-push-url="true" hx-trigger="change" class="ml-auto">
+        <input type="hidden" name="estado" value="{{ estado_filtro }}">
+        <input type="hidden" name="vista" value="{{ vista }}">
+        <select name="cliente" data-select-buscable aria-label="Buscar cliente en todo el padrón"
+                class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+            <option value="">Buscar cliente…</option>
+            {% for cli in clientes_todos %}
+            <option value="{{ cli.pk }}" {% if cliente_filtro == cli.pk|stringformat:'s' %}selected{% endif %}>{{ cli.razon_social }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
 </nav>
 {% endif %}
 

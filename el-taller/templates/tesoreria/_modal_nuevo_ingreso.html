@@ -7,7 +7,7 @@ cliente y autollenado desde proyecto. El script está rooteado en #modal-slot
 HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% endcomment %}
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
     <div data-modal-ingreso class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
-        <form hx-post="{% url 'tesoreria:ingreso-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
+        <form hx-post="{% url 'tesoreria:ingreso-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" hx-encoding="multipart/form-data" enctype="multipart/form-data" class="campo-form flex min-h-0 flex-col">
             {% csrf_token %}
             {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
             <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
@@ -97,6 +97,16 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
                 <div>
                     <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</h3>
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion %}
+                </div>
+
+                {% comment %}Comprobante (HTMX multipart, Fase 3 §2). Se pega con
+                Ctrl/Cmd+V. El dropzone estilizado no se re-inicializa en un modal,
+                así que aquí es un input de archivo simple.{% endcomment %}
+                <div>
+                    <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">📎 Comprobante (opcional)</h3>
+                    <input type="file" name="comprobante" id="ingreso-comprobante" accept="image/*,application/pdf" class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 dark:text-gray-300 dark:file:bg-brand-500/10 dark:file:text-brand-300">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Imagen o PDF, hasta 25 MB. Se guarda en Google Drive. También puedes <strong>pegar</strong> una captura con Ctrl/Cmd+V.</p>
+                    <p id="ingreso-comprobante-pegado" class="mt-1 hidden text-xs font-medium text-brand-600 dark:text-brand-400"></p>
                 </div>
             </div>
         </form>
@@ -194,6 +204,30 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
     if (clienteSel) {
         clienteSel.addEventListener("change", () => {
             if (clienteSel.dataset.autollenado === "proyecto") delete clienteSel.dataset.autollenado;
+        });
+    }
+
+    // Fase 3 §2: pegar el comprobante del portapapeles (Ctrl/Cmd+V) → lo mete en
+    // el <input type=file> vía DataTransfer (mismo patrón que el egreso).
+    const fileInput = root.querySelector('#ingreso-comprobante');
+    const pegadoMsg = root.querySelector('#ingreso-comprobante-pegado');
+    if (fileInput) {
+        const modal = root.querySelector('[data-modal-ingreso]') || root;
+        modal.addEventListener('paste', (e) => {
+            const items = (e.clipboardData && e.clipboardData.items) || [];
+            for (const it of items) {
+                if (it.kind === 'file' && it.type && it.type.indexOf('image/') === 0) {
+                    const blob = it.getAsFile();
+                    if (!blob) continue;
+                    const ext = (it.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                    const dt = new DataTransfer();
+                    dt.items.add(new File([blob], 'comprobante-pegado.' + ext, { type: it.type }));
+                    fileInput.files = dt.files;
+                    if (pegadoMsg) { pegadoMsg.textContent = '📎 Comprobante pegado del portapapeles.'; pegadoMsg.classList.remove('hidden'); }
+                    e.preventDefault();
+                    break;
+                }
+            }
         });
     }
 })();
