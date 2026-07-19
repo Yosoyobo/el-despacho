@@ -36,6 +36,7 @@ urlpatterns = [
     path("proveedores/nuevo", views.proveedor_nuevo, name="catalogo-proveedor-nuevo"),
     # S-LC-Feedback-V5: quick-create inline desde el form de Servicio
     path("proveedores/quick-create/", views.proveedor_quick_create, name="catalogo-proveedor-quick-create"),
+    path("proveedores/buscar/", views.proveedor_buscar, name="catalogo-proveedor-buscar"),
     # S-Chalanes-UX hotfix: El Chalán sugiere proveedores por historial.
     path("sugerir-proveedores/", views.sugerir_proveedores, name="catalogo-sugerir-proveedores"),
     path("proveedores/<int:pk>/", views.proveedor_detalle, name="catalogo-proveedor-detalle"),

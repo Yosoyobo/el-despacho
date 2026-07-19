@@ -692,6 +692,24 @@ def proveedor_quick_create(request):
     return JsonResponse({"ok": True, "id": prov.pk, "razon_social": prov.razon_social})
 
 
+def proveedor_buscar(request):
+    """Autocomplete de proveedores para el disparador @ en gastos/procesos del
+    proyecto (ticket UX 2026-07). GET ?q=<prefijo> → {resultados:[{id,nombre}]}.
+    Solo requiere sesión: los nombres de proveedor ya se exponen en la tarjeta
+    de producto (select de impresión) a quien edita el proyecto."""
+    from django.http import JsonResponse
+    if not getattr(request.user, "is_authenticated", False):
+        return HttpResponseForbidden("No autenticado.")
+    q = (request.GET.get("q") or "").strip()
+    qs = Proveedor.objects.filter(activo=True)
+    if q:
+        qs = qs.filter(razon_social__icontains=q)
+    qs = qs.order_by("razon_social")[:8]
+    return JsonResponse({"resultados": [
+        {"id": p.pk, "nombre": p.razon_social} for p in qs
+    ]})
+
+
 @require_http_methods(["POST"])
 def sugerir_proveedores(request):
     """POST /catalogo/sugerir-proveedores/ — El Chalán propone proveedores para

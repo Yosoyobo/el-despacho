@@ -27,14 +27,12 @@
                 </div>
                 <span class="whitespace-nowrap text-[10px] {{ p.fecha_compromiso|dentro_de_clase }}">{{ p.fecha_compromiso|dentro_de }}</span>
             </div>
-            {% if p.productos.all %}
-            {# Items COMPLETOS siempre (LC 2026-07): nombre + cantidad, sin recorte, para ver todo de un vistazo. #}
+            {% comment %}Solo productos INCLUIDOS (toggle On) con su cantidad (ticket UX 2026-07): se omiten los desactivados; se muestra la cantidad.{% endcomment %}
             <div class="mt-1.5 flex flex-wrap gap-1 text-[10px] text-gray-500 dark:text-gray-400">
-                {% for pp in p.productos.all %}
-                    <span class="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 dark:bg-white/[0.05]">{{ pp.etiqueta }}</span>
-                {% endfor %}
+                {% for pp in p.productos.all %}{% if pp.incluir_en_calculo %}
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 dark:bg-white/[0.05]">{{ pp.cantidad }}× {% firstof pp.variacion.nombre pp.servicio.nombre %}</span>
+                {% endif %}{% endfor %}
             </div>
-            {% endif %}
         </a>
         {% empty %}
         <div class="kanban-empty rounded-lg border border-dashed border-gray-300 p-4 text-center text-xs text-gray-400 dark:border-gray-700">Sin proyectos.</div>

@@ -136,7 +136,8 @@ def iter_unidades(proyecto):
             yield {
                 "clase": "proceso", "pk": proc.pk, "tipo": proc.tipo,
                 "label": _label_proceso(proc, pp), "monto": c,
-                "proveedor": proc.proveedor if proc.tipo == "impresion" else None,
+                # Ticket UX 2026-07: los operativos pueden ligar proveedor (@).
+                "proveedor": proc.proveedor,
                 "egreso": proc.egreso,
                 "registrado": _registrado(proc.egreso),
                 "pagado": _pagado(proc.egreso),
@@ -185,7 +186,7 @@ def _datos_egreso(proyecto, clase: str, obj):
         etiqueta = _label_produccion(obj)
     else:  # proceso
         monto = _monto_proceso(obj, obj.producto)
-        proveedor = obj.proveedor if obj.tipo == "impresion" else None
+        proveedor = obj.proveedor  # impresión u operativo con proveedor (@)
         etiqueta = _label_proceso(obj, obj.producto)
     proveedor_nombre = (proveedor.razon_social if proveedor else "Gasto de proyecto")[:200]
     descripcion = f"Proyecto {proyecto.codigo} · {etiqueta}"[:300]

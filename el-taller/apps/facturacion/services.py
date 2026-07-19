@@ -219,57 +219,55 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
     return fac
 
 
-def asegurar_lineas_desde_origen(fac: Factura, *, monto_fallback=None) -> bool:
-    """Si la factura NO tiene líneas, deriva su monto del origen. Arregla el
-    bug (LC revisión buzón) de facturas en $0.00 al ligar una cotización o un
-    proyecto sin capturar líneas a mano:
-
-    - Con cotización origen → copia sus líneas (y hereda sus impuestos si la
-      factura no tiene ninguno y el régimen es 'iva').
-    - Solo con proyecto → sintetiza UNA línea con el subtotal del proyecto y el
-      concepto "Producción de elementos para [proyecto]".
-    - Fase 3 (guardrail de vaciado manual): si NO hay cotización ni proyecto de
-      dónde derivar y se pasa `monto_fallback` > 0 (p. ej. el subtotal que la
-      factura tenía ANTES de que el usuario borrara todas las líneas al editar),
-      sintetiza UNA línea con ese monto y el concepto de la factura. Así una
-      factura editada nunca queda en $0.00 aunque se vacíe a mano.
-
-    Idempotente: no hace nada si ya hay líneas. Devuelve True si agregó líneas.
-    """
-    if fac.items.exists():
-        return False
+def _resolver_monto_base(fac: Factura, monto=None) -> Decimal:
+    """Monto base (subtotal sin impuestos) de una factura por CONCEPTO. Prioridad:
+    `monto` explícito → subtotal de la cotización origen → monto calculado del
+    proyecto. NUNCA copia el desglose de la cotización (decisión Oscar 2026-07:
+    la factura es por concepto + monto global; para traer las líneas de la
+    cotización se usa el botón «Sustituir» del formulario)."""
+    if monto is not None:
+        base = Decimal(str(monto)).quantize(Decimal("0.01"))
+        if base > CERO:
+            return base
     cot = fac.cotizacion_origen
-    if cot is not None and cot.items.exists():
-        with transaction.atomic():
-            for it in cot.items.all():
-                FacturaItem.objects.create(
-                    factura=fac,
-                    orden=it.orden,
-                    servicio=it.servicio,
-                    descripcion=it.descripcion,
-                    cantidad=it.cantidad,
-                    unidad=it.unidad,
-                    precio_unitario=it.precio_unitario,
-                    descuento_porcentaje=it.descuento_porcentaje,
-                )
-            if fac.regimen_fiscal == "iva" and not fac.impuestos.exists():
-                for ci in cot.impuestos.all():
-                    FacturaImpuesto.objects.get_or_create(factura=fac, tasa=ci.tasa)
-        return True
+    if cot is not None:
+        sub = cot.calcular_totales().get("subtotal_items") or CERO
+        base = Decimal(str(sub)).quantize(Decimal("0.01"))
+        if base > CERO:
+            return base
     proy = fac.proyecto
     if proy is not None:
-        base = getattr(proy, "monto_calculado", None) or CERO
-        base = Decimal(str(base)).quantize(Decimal("0.01"))
+        base = Decimal(str(getattr(proy, "monto_calculado", None) or 0)).quantize(Decimal("0.01"))
+        if base > CERO:
+            return base
+    return CERO
+
+
+def fijar_linea_concepto(fac: Factura, *, monto=None) -> Decimal:
+    """Modo «monto» (LC 2026-07, decisión Oscar «una línea automática»): deja la
+    factura con UNA sola línea-concepto (descripción = concepto, precio = monto
+    base). REEMPLAZA todas las líneas previas. El monto se resuelve con
+    `_resolver_monto_base` (anti-$0). Devuelve el monto base aplicado."""
+    base = _resolver_monto_base(fac, monto)
+    with transaction.atomic():
+        fac.items.all().delete()
         if base > CERO:
             _sintetizar_linea(fac, base)
-            return True
-    # Guardrail de vaciado manual (Fase 3): sin origen del cual derivar, usa el
-    # monto que tenía la factura antes de quedarse sin líneas.
-    if monto_fallback is not None:
-        base = Decimal(str(monto_fallback)).quantize(Decimal("0.01"))
-        if base > CERO:
-            _sintetizar_linea(fac, base)
-            return True
+    return base
+
+
+def asegurar_lineas_desde_origen(fac: Factura, *, monto_fallback=None) -> bool:
+    """Anti-$0 para el modo «desglose»: si la factura quedó SIN líneas, sintetiza
+    UNA línea-concepto con su monto base (`monto_fallback` explícito → subtotal
+    de la cotización → monto del proyecto). NO copia múltiples líneas de la
+    cotización (para eso está el botón «Sustituir»). Idempotente: no toca nada si
+    ya hay líneas. Devuelve True si agregó la línea."""
+    if fac.items.exists():
+        return False
+    base = _resolver_monto_base(fac, monto_fallback)
+    if base > CERO:
+        _sintetizar_linea(fac, base)
+        return True
     return False
 
 

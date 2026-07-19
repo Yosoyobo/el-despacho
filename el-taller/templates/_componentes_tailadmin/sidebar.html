@@ -40,13 +40,17 @@
 
         {% if permisos_modulos.pizarron and not sidebar_orden.tareas.oculto %}
         {# V13: Mandados se fusionó en Tareas. LC 2026-06-30 (2ª pasada): azul=tareas asignadas a mí · gris=las demás del despacho · rojo=mis mandados. #}
-        <a href="/tareas/" data-sidebar-grupo="{{ sidebar_orden.tareas.grupo }}" style="order: {{ sidebar_orden.tareas.orden|default:35 }}" class="menu-item {% if '/tareas' in request.path or '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="flex-1">Tareas</span>
-            {% comment %}LC Fase 1: cada badge lleva su emoji JUNTO. 📋 pendientes+en proceso de todo el despacho (gris) · 💻 mis tareas pendientes (azul) · 🛵 mandados activos de todos (rojo).{% endcomment %}
-            {% if tareas_despacho_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-gray-300 px-1.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200" title="Tareas del despacho pendientes y en proceso">📋 {{ tareas_despacho_count }}</span>{% endif %}
-            {% if tareas_mias_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white" title="Tus tareas pendientes">💻 {{ tareas_mias_count }}</span>{% endif %}
-            {% if mandados_activos_count %}<span class="ml-1 inline-flex h-5 items-center justify-center gap-0.5 rounded-full bg-error-500 px-1.5 text-[10px] font-semibold text-white" title="Mandados activos de todos">🛵 {{ mandados_activos_count }}</span>{% endif %}
+        <a href="/tareas/" data-sidebar-grupo="{{ sidebar_orden.tareas.grupo }}" style="order: {{ sidebar_orden.tareas.orden|default:35 }}" class="menu-item flex-nowrap {% if '/tareas' in request.path or '/mandados' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="min-w-0 flex-1 truncate">Tareas</span>
+            {% comment %}Ticket UX 2026-07: los 3 badges en un contenedor nowrap+shrink-0
+            para que NUNCA salten a 2 líneas (a ningún zoom); el label se trunca antes.
+            📋 pendientes+en proceso del despacho (gris) · 💻 mis tareas (azul) · 🛵 mandados activos (rojo).{% endcomment %}
+            <span class="ml-auto flex shrink-0 flex-nowrap items-center gap-1">
+                {% if tareas_despacho_count %}<span class="inline-flex h-5 shrink-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-gray-300 px-1.5 text-[10px] font-semibold leading-none text-gray-700 dark:bg-gray-700 dark:text-gray-200" title="Tareas del despacho pendientes y en proceso">📋 {{ tareas_despacho_count }}</span>{% endif %}
+                {% if tareas_mias_count %}<span class="inline-flex h-5 shrink-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold leading-none text-white" title="Tus tareas pendientes">💻 {{ tareas_mias_count }}</span>{% endif %}
+                {% if mandados_activos_count %}<span class="inline-flex h-5 shrink-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-error-500 px-1.5 text-[10px] font-semibold leading-none text-white" title="Mandados activos de todos">🛵 {{ mandados_activos_count }}</span>{% endif %}
+            </span>
         </a>
         {% endif %}
 

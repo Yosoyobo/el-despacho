@@ -56,12 +56,15 @@ def _servicios_datos_json():
     datos = {}
     qs = (
         Servicio.objects.filter(activo=True)
-        .only("pk", "precio_base", "costo", "categoria_id")
+        .only("pk", "nombre", "precio_base", "costo", "categoria_id")
         .prefetch_related("proveedores")
     )
     for s in qs:
         prov = next((p for p in s.proveedores.all() if p.activo), None)
         datos[str(s.pk)] = {
+            # `nombre` limpio del producto (sin el sufijo "- Proveedor" que trae
+            # la etiqueta del <option>) para el resumen compacto de la tarjeta.
+            "nombre": s.nombre,
             "precio": str(s.precio_base or 0),
             "costo": str(s.costo or 0),
             "categoria": str(s.categoria_id or ""),

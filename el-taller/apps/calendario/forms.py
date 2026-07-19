@@ -6,21 +6,23 @@ from apps.el_pizarron.models import Evento
 from django import forms
 
 # LC 2026-07: paleta cerrada de 7 colores para eventos/tareas (reemplaza el
-# selector RGB libre). HEX de la paleta TailAdmin del repo.
+# selector RGB libre). HEX de la paleta TailAdmin del repo. En minúsculas para
+# coincidir con el default del modelo (`#465fff`) y que el swatch actual quede
+# marcado al editar (ticket UX 2026-07).
 COLORES_EVENTO = (
-    ("#465FFF", "Azul"),
-    ("#12B76A", "Verde"),
-    ("#F79009", "Ámbar"),
-    ("#F04438", "Rojo"),
-    ("#0BA5EC", "Cielo"),
-    ("#EE46BC", "Rosa"),
+    ("#465fff", "Azul"),
+    ("#12b76a", "Verde"),
+    ("#f79009", "Ámbar"),
+    ("#f04438", "Rojo"),
+    ("#0ba5ec", "Cielo"),
+    ("#ee46bc", "Rosa"),
     ("#667085", "Gris"),
 )
 
 
 class EventoForm(forms.ModelForm):
     color = forms.ChoiceField(
-        choices=COLORES_EVENTO, initial="#465FFF", label="Color",
+        choices=COLORES_EVENTO, initial="#465fff", label="Color",
         widget=forms.RadioSelect(attrs={"class": "sr-only"}),
     )
 
@@ -54,6 +56,12 @@ class EventoForm(forms.ModelForm):
         actual = (self.initial.get("color") or getattr(self.instance, "color", "")) or ""
         if actual and actual not in dict(COLORES_EVENTO):
             self.fields["color"].choices = [*COLORES_EVENTO, (actual, "Actual")]
+
+    def clean_color(self):
+        # Normaliza a minúsculas para que el color HEX persista consistente
+        # (el modelo y la paleta usan minúsculas). Ticket UX 2026-07.
+        v = (self.cleaned_data.get("color") or "").strip().lower()
+        return v or "#465fff"
 
     def clean(self):
         cleaned = super().clean()

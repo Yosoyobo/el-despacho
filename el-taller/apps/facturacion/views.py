@@ -243,16 +243,24 @@ def nueva(request):
         form = FacturaForm(request.POST)
         formset = ItemFormSet(request.POST, instance=Factura())
         ids = _ids_tasas(request)
-        if form.is_valid() and formset.is_valid():
+        usar_desglose = (request.POST.get("modo_lineas") or "monto").strip() == "desglose"
+        # En modo "monto" el formset se ignora (la factura es por concepto +
+        # monto global); solo se valida/guarda en modo "desglose".
+        formset_ok = (not usar_desglose) or formset.is_valid()
+        if form.is_valid() and formset_ok:
             fac = form.save(commit=False)
             fac.creado_por = request.user
             fac.save()
-            formset.instance = fac
-            formset.save()
-            _persistir_impuestos(fac, ids)
-            # Fix del bug $0.00 (LC revisión buzón): si no se capturaron líneas,
-            # el monto se toma del origen (cotización o subtotal del proyecto).
-            services.asegurar_lineas_desde_origen(fac)
+            monto = form.cleaned_data.get("monto")
+            if usar_desglose:
+                formset.instance = fac
+                formset.save()
+                _persistir_impuestos(fac, ids)
+                # Anti-$0: si el desglose quedó vacío, cae a monto/origen.
+                services.asegurar_lineas_desde_origen(fac, monto_fallback=monto)
+            else:
+                _persistir_impuestos(fac, ids)
+                services.fijar_linea_concepto(fac, monto=monto)
             _procesar_cfdi(request, fac)
             services.emitir_creada(fac, request.user)
             messages.success(request, f"Factura {fac.codigo} creada.")
@@ -266,6 +274,7 @@ def nueva(request):
         "folio_numero": sugerir_folio_numero(),
         "estado": "borrador",
         "porcentaje_a_facturar": 100,
+        "modo_lineas": "monto",
     }
     # Precarga al llegar desde el proyecto ("+ Nueva" del recuadro de facturas
     # ligadas — LC revisión buzón). El querystring antes se ignoraba.
@@ -305,15 +314,21 @@ def editar(request, pk):
         form = FacturaForm(request.POST, instance=fac)
         formset = ItemFormSet(request.POST, instance=fac) if editable_items else None
         ids = _ids_tasas(request)
-        # Guardrail de $0.00 (Fase 3): captura el subtotal ANTES de que el
-        # formset borre líneas, para reinyectar una línea si se vacía a mano.
-        subtotal_previo = fac.calcular_totales()["subtotal_items"] if editable_items else None
-        if form.is_valid() and (formset is None or formset.is_valid()):
+        usar_desglose = editable_items and (request.POST.get("modo_lineas") or "monto").strip() == "desglose"
+        formset_ok = (formset is None) or (not usar_desglose) or formset.is_valid()
+        if form.is_valid() and formset_ok:
             form.save()
-            if formset is not None:
-                formset.save()
-                _persistir_impuestos(fac, ids)
-                services.asegurar_lineas_desde_origen(fac, monto_fallback=subtotal_previo)
+            if editable_items:
+                monto = form.cleaned_data.get("monto")
+                if usar_desglose:
+                    formset.save()
+                    _persistir_impuestos(fac, ids)
+                    # Anti-$0: si el desglose quedó vacío, cae a monto/origen.
+                    services.asegurar_lineas_desde_origen(fac, monto_fallback=monto)
+                else:
+                    # Modo «monto»: una sola línea-concepto (reemplaza las previas).
+                    _persistir_impuestos(fac, ids)
+                    services.fijar_linea_concepto(fac, monto=monto)
             _procesar_cfdi(request, fac)
             services.emitir_actualizada(fac, request.user)
             messages.success(request, f"Factura {fac.codigo} actualizada.")
@@ -323,7 +338,14 @@ def editar(request, pk):
         ctx["editable_items"] = editable_items
         return render(request, "facturacion/factura_form.html", ctx)
 
-    form = FacturaForm(instance=fac)
+    # Prefill: monto = subtotal actual; modo = "desglose" solo si ya hay un
+    # desglose real (líneas con producto o más de una línea), si no "monto".
+    sub = fac.calcular_totales()["subtotal_items"]
+    tiene_desglose = fac.items.filter(servicio__isnull=False).exists() or fac.items.count() > 1
+    form = FacturaForm(instance=fac, initial={
+        "monto": sub if sub and sub > 0 else None,
+        "modo_lineas": "desglose" if tiene_desglose else "monto",
+    })
     formset = ItemFormSet(instance=fac) if editable_items else None
     ctx = _ctx_form(form, formset, modo="editar", fac=fac, tasas_qs=tasas_qs,
                     tasas_seleccionadas=ids_actuales)
@@ -401,13 +423,11 @@ def detalle(request, pk):
     totales = fac.calcular_totales()
     items = list(fac.items.select_related("servicio").all())
 
-    from apps.tesoreria.models import Egreso, Ingreso
+    from apps.tesoreria.models import Ingreso
+    # LC 2026-07 (revisión): en el detalle de la factura solo mostramos los
+    # INGRESOS LIGADOS A LA FACTURA (los cobros). Se quitó la sección de
+    # "ingresos y egresos del proyecto" (ruido no relacionado con la factura).
     cobros = list(Ingreso.vigentes.filter(factura=fac).order_by("-fecha", "-pk"))
-    # Movimientos del proyecto ligado (S-LC-Buzon): se muestran abajo del detalle.
-    ingresos_proyecto, egresos_proyecto = [], []
-    if fac.proyecto_id:
-        ingresos_proyecto = list(Ingreso.vigentes.filter(proyecto_id=fac.proyecto_id).order_by("-fecha")[:50])
-        egresos_proyecto = list(Egreso.vigentes.filter(proyecto_id=fac.proyecto_id).select_related("proveedor").order_by("-fecha")[:50])
 
     info_cliente = [
         {"label": "Razón social", "value": fac.cliente.razon_social},
@@ -541,8 +561,6 @@ def detalle(request, pk):
         "totales": totales,
         "cobros": cobros,
         "recordatorios": list(fac.recordatorios.order_by("-enviado_en")[:10]),
-        "ingresos_proyecto": ingresos_proyecto,
-        "egresos_proyecto": egresos_proyecto,
         "info_cliente": info_cliente,
         "info_fechas": info_fechas,
         "info_totales": info_totales,

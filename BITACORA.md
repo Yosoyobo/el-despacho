@@ -6480,3 +6480,58 @@ desde `main` (Fase 1 ya mergeada, PR #6). Solo Fase 2 + un pedido extra de Oscar
 
 Fase 1 (2026.07.13, PR #6) · Fase 2 (2026.07.14, PR #7) · Fase 3 (2026.07.15, este).
 Los `handoff_fase{2,3}.md` quedan como referencia histórica.
+
+---
+
+# BITÁCORA — S-UX-Ticket-Jul (2026-07-19, VERSION 2026.07.16)
+
+Dos tandas de feedback de Oscar en una sesión: el flujo de **facturación** "no
+está funcionando" + un **ticket de UX** (Kanban, tarjetas de producto, gastos,
+dashboard, calendario, sidebar). Rama `agent/ui-fase3-forms`. Decisiones por
+AskUserQuestion: factura = **una línea automática** con monto ligado a botones
+**[100%]/[50%]/[Otro]**; **disparador @** para ligar proveedor a un gasto.
+
+## Facturación (bug F-108) — raíces confirmadas
+
+- **Fechas no se guardaban**: el widget `DateInput(type=date)` renderizaba el
+  valor localizado `dd/mm/aaaa` (es-mx) que `<input type=date>` muestra **en
+  blanco**. Fix: `format="%Y-%m-%d"` + `input_formats=["%Y-%m-%d","%d/%m/%Y"]`.
+- **Líneas borradas volvían**: `asegurar_lineas_desde_origen` re-copiaba TODAS
+  las líneas de la cotización al vaciar. Reescrito → sintetiza **UNA** línea-
+  concepto (`_resolver_monto_base`); nunca copia varias.
+- **Factura por concepto+monto**: campo `monto` (no-modelo) + hidden
+  `modo_lineas` (monto|desglose). `fijar_linea_concepto` en modo monto reemplaza
+  por 1 línea. Pills parcialidad **[100/50/Otro]** sobre `porcentaje_a_facturar`.
+  Desglose por producto en `<details>` opcional. Preview de total en vivo por modo.
+- **Cotización origen → botón "Sustituir"** (no auto-agrega líneas; reemplaza).
+- **Detalle**: quitada "Ingresos y egresos del proyecto"; cobros retitulado
+  **"Ingresos ligados a la factura"**.
+
+## Ticket UX
+
+- **Kanban** (`_kanban_columna`, Inicio + Proyectos): chips SOLO de productos
+  incluidos con su cantidad.
+- **Tarjetas de producto**: toggle Off ⇒ tarjeta atenuada completa; resumen
+  `«[cant] pz - producto - precio»` sin proveedor; se oculta al expandir. Se
+  agregó `nombre` a `SERVICIOS_DATOS`.
+- **@proveedor en gastos operativos**: endpoint `catalogo-proveedor-buscar` +
+  autocompletar + chip; `services_procesos` acepta `proveedor_id` en operativos;
+  `deuda_por_proveedor` cuenta cualquier proceso con proveedor; `gastos_operativos`
+  excluye los que ya tienen proveedor (sin doble conteo). Sin migración.
+- **Dashboard Próximos eventos**: cada fila enlaza a `ev.url` (proyecto/tarea/evento).
+- **Calendario color roto**: `radio.choice_value` → `radio.data.value` (Django 5);
+  paleta en minúsculas + `clean_color`.
+- **Sidebar**: badges de Tareas en contenedor nowrap+shrink-0 (no envuelven).
+
+## Tests
+
+- `tests/taller/test_ux_ticket_jul.py` (7) + `test_ajustes_ui_fase3` reescrito
+  (modo monto reemplaza por 1 línea y guarda fechas; sin monto/origen queda sin
+  líneas). Regresión verde en facturación/cotizaciones/tesorería/proyectos/
+  pizarrón/egresos/calendario + candados Bug C y Novedades. Ruff limpio.
+
+## Deuda diseñada
+
+- @proveedor solo en gastos operativos (impresión ya tenía su select).
+- Modo monto/desglose inicial por heurística (>1 línea o alguna con servicio →
+  desglose).

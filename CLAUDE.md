@@ -5262,6 +5262,77 @@ Las 3 fases del plan maestro de ajustes de UI de Learning Center quedan entregad
 
 Los `handoff_fase{2,3}.md` quedan como referencia histórica (fases entregadas).
 
+### S-UX-Ticket-Jul ✅ — Factura por concepto+monto + 6 ajustes de UX (2026-07-19, VERSION 2026.07.16)
+
+Dos tandas de feedback de Oscar en una sesión: (1) el flujo de facturación
+"no está funcionando" + (2) un ticket de UX (Kanban, tarjetas, gastos,
+dashboard, calendario, sidebar). Rama `agent/ui-fase3-forms` (continúa tras el
+cierre del arco S-Ajustes-UI). Decisiones por AskUserQuestion: **factura = una
+línea automática con monto ligado a botones [100%]/[50%]/[Otro]** + **disparador
+@ para ligar proveedor a un gasto**.
+
+- **Facturación (bug reportado F-108) — raíces confirmadas y corregidas:**
+  - **Fechas no se guardaban**: el widget de fecha renderizaba el valor
+    localizado `dd/mm/aaaa` y `<input type=date>` lo mostraba **en blanco** (no
+    tenía `format="%Y-%m-%d"`). Fix en `FacturaForm` (widget `format` ISO +
+    `input_formats=["%Y-%m-%d","%d/%m/%Y"]`, el patrón de los_proyectos/el_pizarron).
+  - **Líneas borradas volvían**: `services.asegurar_lineas_desde_origen`
+    re-copiaba TODAS las líneas de la cotización al vaciar (guardrail de Fase 3)
+    → peleaba contra "quedarnos sin líneas". Reescrito: el anti-$0 ahora sintetiza
+    **UNA línea-concepto** (`_resolver_monto_base` prioridad monto → subtotal
+    cotización → monto proyecto); **nunca** copia múltiples líneas (para eso está
+    "Sustituir"). Nueva `fijar_linea_concepto` (modo monto: reemplaza por 1 línea).
+  - **Factura por CONCEPTO + MONTO** (decisión Oscar): campo `monto` (no-modelo)
+    + hidden `modo_lineas` (monto|desglose) en `FacturaForm`. Modo "monto" (default)
+    = una línea automática desde concepto+monto; "desglose" = líneas de producto
+    en un `<details>` "Desglosar por producto (opcional)". Pills de parcialidad
+    **[100%] [50%] [Otro…]** (Otro revela input de % libre) sobre
+    `porcentaje_a_facturar`. Preview "Total a facturar" en vivo usa monto o líneas
+    según el modo. Vistas `nueva`/`editar` rehechas (validan/guardan el formset
+    solo en modo desglose; prefill `monto`=subtotal y `modo` según si ya había
+    desglose).
+  - **Cotización origen → botón "Sustituir"** (#3): al cambiar la cotización ya
+    NO se vuelcan sus líneas solas; aparece un aviso con botón "Sustituir líneas"
+    que abre el desglose y reemplaza (no acumula).
+  - **Detalle**: se quitó la sección "Ingresos y egresos del proyecto"; la de
+    cobros se retituló **"Ingresos ligados a la factura"**.
+- **Kanban (Inicio + Proyectos, partial compartido `_kanban_columna`)**: los chips
+  muestran SOLO productos con `incluir_en_calculo=True` y su cantidad (`{{cant}}× nombre`).
+- **Tarjetas de producto del proyecto** (`_producto_card` + `_form_productos_js`):
+  toggle Off ⇒ tarjeta **atenuada completa** (opacity+grayscale); resumen compacto
+  `«[cant] pz - producto - precio»` sin el proveedor (usa `SERVICIOS_DATOS[id].nombre`,
+  se le agregó `nombre` al JSON); el resumen se **oculta al expandir**.
+- **Gastos/procesos con @proveedor** (#3, ticket 2): un gasto operativo puede
+  ligar un proveedor (opcional) tecleando **@** → autocompletar (endpoint nuevo
+  `catalogo-proveedor-buscar`), chip con ×, `data-proc-prov` serializado al JSON.
+  Backend: `services_procesos` acepta `proveedor_id` en operativos; `gastos.py`
+  usa `proc.proveedor` para ambos tipos; `Proyecto.deuda_por_proveedor` cuenta
+  cualquier proceso con proveedor y `gastos_operativos` excluye los que ya tienen
+  proveedor (sin doble conteo). **Sin migración** (el FK `proveedor` ya existía).
+- **Dashboard "Próximos eventos"**: cada evento enlaza a SU destino (`ev.url`:
+  proyecto → el proyecto; tarea/evento → su página); la tarjeta dejó de ser un
+  solo enlace al calendario.
+- **Calendario — selector de color roto** (#5): el modal usaba
+  `{{ radio.choice_value }}` (no existe en Django 5) → swatches sin color. Fix a
+  `{{ radio.data.value }}`; paleta `COLORES_EVENTO` a minúsculas + `clean_color`
+  normaliza a minúsculas (coincide con el default del modelo → swatch actual queda
+  marcado al editar y el HEX persiste).
+- **Sidebar**: los 3 badges de Tareas (📋/💻/🛵) van en un contenedor
+  `nowrap+shrink-0` con el label `truncate` → ya no se parten en 2 renglones a
+  ningún zoom.
+- **Tests**: `tests/taller/test_ux_ticket_jul.py` (7: @proveedor+deuda, endpoint,
+  kanban incluidos, calendario color×3) + `test_ajustes_ui_fase3` reescrito
+  (modo monto reemplaza por 1 línea + guarda fechas; sin monto/origen queda sin
+  líneas). Regresión verde (facturación, cotizaciones, tesorería, proyectos,
+  pizarrón, egresos, calendario, comentarios Bug C). Ruff limpio.
+
+**Deuda diseñada**: el @proveedor solo aplica a gastos **operativos** (la
+impresión ya tenía su propio select); el modo monto/desglose se decide por si la
+factura ya tenía líneas de producto al abrir (heurística: >1 línea o alguna con
+servicio → desglose); el resumen de la tarjeta usa el nombre del catálogo (si el
+producto no está en `SERVICIOS_DATOS` cae al texto del `<option>` sin el sufijo
+"- Proveedor").
+
 ---
 
 ## 9. Decisiones operativas tomadas

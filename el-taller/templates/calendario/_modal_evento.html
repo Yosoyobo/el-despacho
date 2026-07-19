@@ -35,8 +35,9 @@ Patrón Wave 5 (hx-post → #modal-slot → 204 + HX-Redirect). S-LC-Feedback-V1
                     {# LC 2026-07: paleta cerrada de 7 colores (swatches), sin RGB libre. #}
                     <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
                         {% for radio in form.color %}
+                        {% comment %}Fix (ticket UX 2026-07): en Django 5 el valor del radio está en radio.data.value (no existe radio.choice_value) — antes los círculos salían SIN color y el selector parecía "roto".{% endcomment %}
                         <label class="relative h-8 w-8 cursor-pointer rounded-full ring-offset-2 ring-offset-white transition has-[:checked]:ring-2 has-[:checked]:ring-gray-900 dark:ring-offset-gray-900 dark:has-[:checked]:ring-white"
-                               style="background: {{ radio.choice_value }}" title="{{ radio.choice_label }}">
+                               style="background: {{ radio.data.value }}" title="{{ radio.choice_label }}">
                             <span class="sr-only">{{ radio.choice_label }}</span>{{ radio.tag }}
                         </label>
                         {% endfor %}
