@@ -9,6 +9,22 @@ from .models import Factura, FacturaItem
 
 
 class FacturaForm(forms.ModelForm):
+    # LC 2026-07 (revisión): la factura se hace por CONCEPTO + MONTO global
+    # (no por producto/cantidad). `monto` es la base sin impuestos; si no se
+    # desglosa por producto, en el guardado se sintetiza UNA línea con el
+    # concepto + este monto. Los impuestos/retenciones se aplican encima según
+    # el régimen. Campo no-modelo (la factura sigue siendo por líneas).
+    monto = forms.DecimalField(
+        max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"),
+        label="Monto", widget=forms.NumberInput(attrs={
+            "step": "0.01", "min": "0", "placeholder": "0.00", "inputmode": "decimal",
+        }),
+    )
+    # Modo de captura de las líneas: "monto" (una línea automática desde el
+    # concepto + monto) | "desglose" (líneas de producto del formset). Se
+    # controla desde el toggle "Desglosar por producto" del formulario.
+    modo_lineas = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = Factura
         fields = [
@@ -25,8 +41,12 @@ class FacturaForm(forms.ModelForm):
             "estado": forms.HiddenInput(),
             "regimen_fiscal": forms.RadioSelect(attrs={"class": "sr-only"}),
             "porcentaje_a_facturar": forms.HiddenInput(),
-            "fecha_emision": forms.DateInput(attrs={"type": "date"}),
-            "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
+            # LC 2026-07 (fix "fechas no se guardan"): sin `format` el widget
+            # renderiza la fecha localizada (dd/mm/aaaa) y el <input type=date>
+            # la muestra EN BLANCO. Forzamos ISO para render y aceptamos ambos
+            # formatos al validar (patrón de los_proyectos / el_pizarron).
+            "fecha_emision": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
             "terminos": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
         }
@@ -34,6 +54,8 @@ class FacturaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        for campo in ("fecha_emision", "fecha_vencimiento"):
+            self.fields[campo].input_formats = ["%Y-%m-%d", "%d/%m/%Y"]
         # Concepto OPCIONAL: si viene vacío se autollena en clean() del proyecto
         # o la cotización ("Producción de elementos para [proyecto]"). LC revisión
         # buzón — el usuario ya no tiene que escribirlo a mano.

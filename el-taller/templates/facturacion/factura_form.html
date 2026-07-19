@@ -39,7 +39,30 @@
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cliente %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.proyecto %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.cotizacion_origen ancho_completo=True %}
+
+            {# Sustituir: al elegir cotización NO se agregan líneas solas; se ofrece un botón. #}
+            <div class="md:col-span-2 hidden" data-cot-sustituir>
+                <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2 text-sm dark:border-brand-500/30 dark:bg-brand-500/10">
+                    <span data-cot-msg class="min-w-0 flex-1 text-gray-700 dark:text-gray-200"></span>
+                    <button type="button" data-cot-sustituir-btn class="btn-secundario shrink-0 text-xs">Sustituir líneas</button>
+                </div>
+            </div>
+
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.concepto ancho_completo=True %}
+
+            {% if formset %}
+            {% comment %}Monto global (LC 2026-07): la factura se hace por CONCEPTO + MONTO. Si desglosas por producto (abajo) el monto se calcula de las líneas.{% endcomment %}
+            <div class="md:col-span-2" data-monto-wrap>
+                <label for="{{ form.monto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Monto <span class="text-xs font-normal text-gray-400">(base, sin impuestos)</span></label>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex h-11 items-center rounded-lg border border-gray-300 bg-gray-50 px-3 text-base font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">$</span>
+                    <div class="flex-1">{{ form.monto }}</div>
+                </div>
+                {% if form.monto.errors %}<p class="mt-1 text-xs text-error-600">{{ form.monto.errors|join:" " }}</p>{% endif %}
+                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500" data-monto-hint>El IVA / retenciones se calculan encima según el régimen. Para itemizar por producto usa «Desglosar por producto» más abajo.</p>
+            </div>
+            {% endif %}
+            {{ form.modo_lineas }}
 
             {# Estado → pills (Borrador / Emitida). Cobro y cancelación viven en el detalle. #}
             <div class="md:col-span-2">
@@ -71,23 +94,35 @@
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.moneda %}
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descuento_global_porcentaje %}
 
-            {# Monto — pills de parcialidad (100% / 50%). Escala el total sin tocar líneas. #}
+            {# Parcialidad — pills 100% / 50% / Otro. Escala el monto sin tocar líneas. #}
             <div class="md:col-span-2">
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Monto a facturar</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Parcialidad a facturar</label>
                 {{ form.porcentaje_a_facturar }}
                 <div class="flex flex-wrap items-center gap-2" data-monto-pills>
                     <button type="button" data-val="100" class="pill rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition dark:border-gray-700 dark:text-gray-300">100%</button>
                     <button type="button" data-val="50" class="pill rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition dark:border-gray-700 dark:text-gray-300">50%</button>
-                    <span class="text-xs text-gray-400 dark:text-gray-500">50% factura la mitad del total (parcialidad / anticipo).</span>
+                    <button type="button" data-otro-toggle class="pill rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition dark:border-gray-700 dark:text-gray-300">Otro…</button>
+                    <span class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 dark:border-gray-700" data-otro-wrap hidden>
+                        <input type="number" min="1" max="100" step="1" data-otro-input class="!h-8 !w-16 !border-0 !bg-transparent !p-0 text-center text-sm !ring-0 !shadow-none" placeholder="%">
+                        <span class="text-xs text-gray-400">%</span>
+                    </span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">Ej. 50% = anticipo de la mitad.</span>
                 </div>
             </div>
         </div>
     </section>
 
     {% if formset %}
-    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="min-w-0 truncate text-sm font-semibold text-gray-700 dark:text-gray-200">Líneas</h2>
+    <details class="group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" data-desglose>
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-6 [&::-webkit-details-marker]:hidden">
+            <span class="min-w-0">
+                <span class="block text-sm font-semibold text-gray-700 dark:text-gray-200">Desglosar por producto <span class="text-xs font-normal text-gray-400">(opcional)</span></span>
+                <span class="block text-xs text-gray-400 dark:text-gray-500">Normalmente la factura va por concepto + monto. Ábrelo solo si necesitas líneas por producto/cantidad.</span>
+            </span>
+            <svg class="h-5 w-5 shrink-0 text-gray-400 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="border-t border-gray-200 p-6 dark:border-gray-800">
+        <div class="mb-4 flex items-center justify-end gap-3">
             <button type="button" id="fac-agregar-linea" class="btn-secundario shrink-0 text-sm">+ Agregar línea</button>
         </div>
 
@@ -153,7 +188,8 @@
                 </td>
             </tr>
         </template>
-    </section>
+        </div>
+    </details>
 
     {% else %}
     <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 dark:border-gray-700 dark:bg-white/[0.02] dark:text-gray-400">
@@ -362,8 +398,21 @@
     const $porcentaje = form.querySelector('input[name="porcentaje_a_facturar"]');
     const $venc = form.querySelector('[name="fecha_vencimiento"]');
     const $emision = form.querySelector('[name="fecha_emision"]');
+    const $monto = form.querySelector('[name="monto"]');
+    const $modo = form.querySelector('input[name="modo_lineas"]');
+    const $desglose = form.querySelector('[data-desglose]');
+    const $montoWrap = form.querySelector('[data-monto-wrap]');
 
     let proyectoNombre = form.dataset.proyectoNombre || '';
+
+    // ── Modo de captura: monto (una línea automática) vs desglose (líneas) ──
+    function modoActual() { return ($desglose && $desglose.open) ? 'desglose' : 'monto'; }
+    function syncModo() {
+        const m = modoActual();
+        if ($modo) $modo.value = m;
+        if ($montoWrap) $montoWrap.classList.toggle('hidden', m === 'desglose');
+    }
+    if ($desglose) $desglose.addEventListener('toggle', function () { syncModo(); calcTotal(); });
 
     // Snapshot de las listas COMPLETAS que renderizó el server (todas las
     // opciones). Sirve para restaurar «todos los proyectos / todas las
@@ -457,12 +506,17 @@
     function calcTotal() {
         if (!totalBox) return;
         let subtotal = 0;
-        filasVisibles().forEach(row => {
-            const c = parseFloat((row.querySelector('[name$="-cantidad"]') || {}).value) || 0;
-            const p = parseFloat((row.querySelector('[name$="-precio_unitario"]') || {}).value) || 0;
-            const d = parseFloat((row.querySelector('[name$="-descuento_porcentaje"]') || {}).value) || 0;
-            subtotal += c * p * (1 - d / 100);
-        });
+        // Modo desglose → suma de líneas; modo monto → el campo Monto (base).
+        if (modoActual() === 'desglose') {
+            filasVisibles().forEach(row => {
+                const c = parseFloat((row.querySelector('[name$="-cantidad"]') || {}).value) || 0;
+                const p = parseFloat((row.querySelector('[name$="-precio_unitario"]') || {}).value) || 0;
+                const d = parseFloat((row.querySelector('[name$="-descuento_porcentaje"]') || {}).value) || 0;
+                subtotal += c * p * (1 - d / 100);
+            });
+        } else {
+            subtotal = parseFloat($monto && $monto.value) || 0;
+        }
         const descG = parseFloat($descGlobal && $descGlobal.value) || 0;
         const factor = (parseFloat($porcentaje && $porcentaje.value) || 100) / 100;
         const base = (subtotal - subtotal * descG / 100) * factor;
@@ -496,6 +550,7 @@
         if (!container || !hidden) return;
         function marcar() {
             container.querySelectorAll('.pill').forEach(b => {
+                if (b.dataset.val === undefined) return;  // p.ej. el botón "Otro…"
                 const on = String(b.dataset.val) === String(hidden.value);
                 b.classList.toggle('border-brand-500', on);
                 b.classList.toggle('bg-brand-50', on);
@@ -505,12 +560,47 @@
             });
         }
         container.querySelectorAll('.pill').forEach(b => {
+            if (b.dataset.val === undefined) return;
             b.addEventListener('click', () => { hidden.value = b.dataset.val; marcar(); calcTotal(); });
         });
         marcar();
     }
     initPills(form.querySelector('[data-estado-pills]'), $estado);
     initPills(form.querySelector('[data-monto-pills]'), $porcentaje);
+
+    // ── Parcialidad "Otro…": input de % personalizado ────────────────────
+    (function () {
+        const wrapPills = form.querySelector('[data-monto-pills]');
+        if (!wrapPills || !$porcentaje) return;
+        const otroToggle = wrapPills.querySelector('[data-otro-toggle]');
+        const otroWrap = wrapPills.querySelector('[data-otro-wrap]');
+        const otroInput = wrapPills.querySelector('[data-otro-input]');
+        const ON = ['border-brand-500', 'bg-brand-50', 'text-brand-700', 'dark:bg-brand-500/10', 'dark:text-brand-300'];
+        function marcarOtro(on) { if (otroToggle) ON.forEach(c => otroToggle.classList.toggle(c, on)); }
+        function limpiarEstandar() { wrapPills.querySelectorAll('.pill[data-val]').forEach(b => ON.forEach(c => b.classList.remove(c))); }
+        const esEstandar = v => String(v) === '100' || String(v) === '50';
+        if (!esEstandar($porcentaje.value)) {
+            if (otroWrap) otroWrap.hidden = false;
+            if (otroInput) otroInput.value = $porcentaje.value;
+            marcarOtro(true);
+        }
+        if (otroToggle) otroToggle.addEventListener('click', function () {
+            if (otroWrap) otroWrap.hidden = false;
+            limpiarEstandar(); marcarOtro(true);
+            if (otroInput) { otroInput.focus(); if (otroInput.value) { $porcentaje.value = otroInput.value; calcTotal(); } }
+        });
+        if (otroInput) otroInput.addEventListener('input', function () {
+            let v = parseFloat(otroInput.value);
+            if (isNaN(v)) return;
+            v = Math.max(1, Math.min(100, v));
+            $porcentaje.value = v;
+            limpiarEstandar(); marcarOtro(true); calcTotal();
+        });
+        wrapPills.querySelectorAll('.pill[data-val]').forEach(b => b.addEventListener('click', function () {
+            if (otroWrap) otroWrap.hidden = true;
+            marcarOtro(false);
+        }));
+    })();
 
     // ── Vencimiento rápido ────────────────────────────────────────────────
     function baseFecha() {
@@ -617,29 +707,69 @@
         tr.querySelector(`[name="items-${idx}-precio_unitario"]`).value = item.precio_unitario || '0';
         tr.querySelector(`[name="items-${idx}-descuento_porcentaje"]`).value = item.descuento_porcentaje || '0';
     }
+    // ── Cotización origen → botón "Sustituir" (NO auto-agrega líneas) ─────
+    // #3 LC 2026-07: al cambiar la cotización ya NO se vuelcan sus productos
+    // como líneas automáticamente (eso "sumaba de más"). Se detecta la
+    // diferencia y se ofrece un botón "Sustituir líneas"; al pulsarlo se abre
+    // el desglose y se REEMPLAZAN las líneas por las de la cotización.
+    const cotBox = form.querySelector('[data-cot-sustituir]');
+    const cotMsg = cotBox && cotBox.querySelector('[data-cot-msg]');
+    const cotBtn = cotBox && cotBox.querySelector('[data-cot-sustituir-btn]');
+    let cotPendiente = null;
+    function money2(n) { return '$' + (n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function ocultarCotBox() { if (cotBox) cotBox.classList.add('hidden'); }
+    function vaciarLineas() {
+        body.querySelectorAll('tr.fac-item-row').forEach(row => {
+            const x = row.querySelector('.fac-item-eliminar');
+            const cid = x && x.getAttribute('data-delete-checkbox');
+            const del = cid && document.getElementById(cid);
+            if (del) { del.checked = true; row.style.display = 'none'; }  // existente → DELETE
+            else { row.remove(); }                                        // nueva → fuera
+        });
+        total.value = String(body.querySelectorAll('tr.fac-item-row').length);
+    }
+    function aplicarSustitucion() {
+        if (!cotPendiente) return;
+        const d = cotPendiente;
+        if ($desglose) { $desglose.open = true; syncModo(); }
+        if ($descGlobal) $descGlobal.value = d.descuento_global_porcentaje || $descGlobal.value;
+        if ($notas && !$notas.value.trim()) $notas.value = d.notas || '';
+        if ($terminos && !$terminos.value.trim()) $terminos.value = d.terminos || '';
+        vaciarLineas();
+        (d.items || []).forEach(addItemFromCot);
+        const ids = new Set((d.impuestos || []).map(String));
+        form.querySelectorAll('input[name="tasas"]').forEach(cb => { cb.checked = ids.has(String(cb.value)); });
+        actualizarVacio();
+        maybeSetConcepto();
+        calcTotal();
+        ocultarCotBox();
+    }
+    if (cotBtn) cotBtn.addEventListener('click', aplicarSustitucion);
     if ($cot) {
         $cot.addEventListener('change', async () => {
             const pk = $cot.value;
+            cotPendiente = null;
+            ocultarCotBox();
             if (!pk) return;
             try {
                 const r = await fetch(`/facturacion/api/cotizacion/${pk}/datos/`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
                 if (!r.ok) return;
                 const d = await r.json();
-                if ($descGlobal && (!$descGlobal.value || $descGlobal.value === '0' || $descGlobal.value === '0.00')) $descGlobal.value = d.descuento_global_porcentaje;
-                if ($notas && !$notas.value.trim()) $notas.value = d.notas || '';
-                if ($terminos && !$terminos.value.trim()) $terminos.value = d.terminos || '';
-                limpiarItemsAuto();
-                (d.items || []).forEach(addItemFromCot);
-                const ids = new Set((d.impuestos || []).map(String));
-                form.querySelectorAll('input[name="tasas"]').forEach(cb => { cb.checked = ids.has(String(cb.value)); });
-                actualizarVacio();
-                maybeSetConcepto();
-                calcTotal();
+                cotPendiente = d;
+                const n = (d.items || []).length;
+                let sub = 0;
+                (d.items || []).forEach(it => { sub += (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0) * (1 - (parseFloat(it.descuento_porcentaje) || 0) / 100); });
+                if (cotMsg) cotMsg.textContent = `${d.codigo || 'La cotización'} tiene ${n} línea${n === 1 ? '' : 's'} (${money2(sub)}). ¿Sustituir el desglose por producto?`;
+                if (cotBox) cotBox.classList.remove('hidden');
             } catch (e) { /* silent */ }
         });
     }
 
     // ── Init ──────────────────────────────────────────────────────────────
+    // Estado inicial del desglose según el modo (server: monto por default,
+    // desglose si la factura ya traía líneas de producto).
+    if ($desglose && $modo && $modo.value === 'desglose') $desglose.open = true;
+    syncModo();
     actualizarVacio();
     // Al abrir: si ya hay proyecto, poblar cotizaciones preservando selección.
     // Si NO hay proyecto se dejan las listas COMPLETAS que renderizó el server

@@ -5,6 +5,34 @@
 
 ---
 
+## Novedades — Facturas por concepto y monto, y ajustes de comodidad (19 de julio de 2026)
+
+- **Facturar por concepto y monto** (lo más pedido). Al crear o editar una
+  factura capturas un **Concepto** y un **Monto** global — ya no tienes que
+  desglosar por producto y cantidad. Si de veras necesitas el desglose, ábrelo
+  con **«Desglosar por producto»**.
+- Botones **100% / 50% / Otro** para facturar el total, la mitad (anticipo) o
+  el porcentaje que tú decidas.
+- **Se arregló que las fechas de la factura no se guardaban.** El calendario de
+  Emisión y Vencimiento ahora conserva lo que eliges.
+- **Al elegir una «Cotización de origen» ya no se agregan solas las líneas.**
+  Aparece un botón **«Sustituir líneas»** para que tú decidas cuándo traer el
+  desglose de la cotización (antes se iban acumulando).
+- En la factura, la sección de movimientos muestra sólo los **ingresos ligados
+  a la factura** (se quitó el ruido de ingresos y egresos del proyecto).
+- **Tableros (Kanban) de Inicio y Proyectos:** las tarjetas muestran sólo los
+  productos **activos** con su cantidad; los desactivados ya no aparecen.
+- **Productos del proyecto:** una tarjeta desactivada se ve **atenuada**; el
+  resumen compacto dice «cantidad pz - producto - precio» (sin el proveedor) y
+  se oculta al abrir la tarjeta.
+- **Gastos adicionales:** al escribir **@** en un gasto puedes **ligar un
+  proveedor**; su costo se suma automáticamente a lo que le debes.
+- **Próximos eventos** (Inicio): cada evento te lleva directo a su proyecto o a
+  su tarea/evento.
+- **Calendario:** se reparó el **selector de color** del modal de eventos (los
+  colores ya se ven y se guardan).
+- Los **avisos de tareas** del menú lateral ya no se parten en dos renglones.
+
 ## Novedades — Facturas sin $0, cotizaciones más limpias y comprobantes pegables (19 de julio de 2026)
 
 - **Las facturas ya no se quedan en $0.00.** Si al editar una factura borras
@@ -2682,16 +2710,20 @@ Cada factura tiene un **folio** propio: la letra **F** seguida de un número (F1
 
 ### Cómo llenar una factura
 
-El formulario se llena de arriba hacia abajo y se ayuda solo:
+La factura se hace normalmente **por concepto y monto global** (no por producto y
+cantidad). El formulario se llena de arriba hacia abajo y se ayuda solo:
 
 1. **Cliente:** al elegirlo, el selector de **Proyecto** solo te muestra los proyectos de ese cliente.
 2. **Proyecto:** al elegirlo, el selector de **Cotización origen** solo te muestra las cotizaciones de ese proyecto, con el formato `Proyecto - versión - subtotal`.
-3. **Cotización origen (opcional):** al elegirla, se copian sus productos como líneas de la factura.
-4. **Concepto (obligatorio):** se pre-llena solo. Si la factura tiene un solo producto dice *"Producción de [producto] para [proyecto]"*; si tiene varios dice *"Producción de elementos para [proyecto]"*. Lo puedes editar.
-5. **Estado:** botones (Borrador / Emitida). El cobro y la cancelación se hacen desde el detalle de la factura.
-6. **Vencimiento:** botones rápidos **Fin de mes · 30 días · 45 días · 60 días** además de la fecha manual.
-7. **Monto a facturar:** botones **100%** (default) y **50%**. El 50% factura la mitad del total (parcialidad / anticipo), sin tocar las líneas.
-8. **Líneas:** con **"+ Agregar línea"** agregas cada concepto (descripción, cantidad, unidad, precio, descuento). Si borras **todas** las líneas al editar, el sistema repone **una línea** con el concepto y el monto del proyecto/cotización de origen, para que la factura **nunca quede en $0.00**.
+3. **Cotización origen (opcional):** al elegirla, **ya no se agregan solas** las líneas. Aparece un botón **«Sustituir líneas»**: pícalo cuando quieras traer el desglose de la cotización a la factura (así no se van acumulando por accidente).
+4. **Concepto (obligatorio):** describe la factura (se pre-llena con el proyecto/cotización; lo puedes editar).
+5. **Monto:** el importe global **sin impuestos** (base). El IVA y las retenciones se calculan encima según el régimen. Con esto la factura queda con **una sola línea** = tu concepto + monto.
+6. **Parcialidad a facturar:** botones **100%** (default), **50%** (anticipo) y **Otro…** (escribe el porcentaje que quieras). Escala el monto sin tocar el concepto.
+7. **Estado:** botones (Borrador / Emitida). El cobro y la cancelación se hacen desde el detalle de la factura.
+8. **Vencimiento:** botones rápidos **Fin de mes · 30 días · 45 días · 60 días** además de la fecha manual.
+9. **Desglosar por producto (opcional):** si de veras necesitas itemizar por producto/cantidad, abre esta sección y captura líneas con **"+ Agregar línea"**. Mientras esté abierta, la factura usa esas líneas en lugar del monto.
+
+En el detalle de la factura, la sección de movimientos muestra sólo los **ingresos ligados a la factura** (los cobros).
 
 - Estados: Borrador → Emitida → Cobrada parcial / Cobrada total / Cancelada
 - "Emitir" genera el asiento contable automáticamente (cuentas por cobrar a cargo, ingresos por ventas al abono)

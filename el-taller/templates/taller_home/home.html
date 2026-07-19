@@ -162,16 +162,18 @@
         {% endif %}
     </div>
 
-    {# Próximos eventos — toda la tarjeta lleva al calendario. #}
-    <a href="/calendario/" class="ta-card block lg:col-span-2 transition hover:border-brand-300 dark:hover:border-brand-500/40">
+    {% comment %}Próximos eventos — cada evento enlaza a SU destino (ticket UX 2026-07): entrega de proyecto → el proyecto; tarea/evento → su página.{% endcomment %}
+    <div class="ta-card lg:col-span-2">
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Próximos eventos</h2>
-            <svg class="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <a href="/calendario/" class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver calendario
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
         </div>
         <ul class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for ev in proximos_eventos %}
-            <li class="py-2">
-                <div class="flex items-start gap-2">
+            <li>
+                <a href="{{ ev.url|default:'/calendario/' }}" class="-mx-2 flex items-start gap-2 rounded-lg px-2 py-2 transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">
                     <div class="flex flex-col items-center text-center leading-none" style="min-width:30px">
                         <span class="text-[9px] font-semibold uppercase tracking-wider {% if ev.color == 'brand' %}text-brand-600 dark:text-brand-400{% elif ev.color == 'warning' %}text-warning-600 dark:text-warning-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">{{ ev.fecha|date:"M" }}</span>
                         <span class="text-base font-bold text-gray-800 dark:text-gray-100">{{ ev.fecha|date:"d" }}</span>
@@ -180,16 +182,16 @@
                         <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ ev.titulo }}</p>
                         <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ ev.tipo|capfirst }} · {{ ev.subtitulo }}</p>
                     </div>
-                </div>
+                </a>
             </li>
             {% empty %}
             <li class="py-4 text-center text-xs text-gray-400 dark:text-gray-500">Sin eventos próximos.</li>
             {% endfor %}
         </ul>
         {% if proximos_eventos_mas %}
-        <p class="mt-2 text-center text-[11px] font-medium text-gray-400 dark:text-gray-500">{{ proximos_eventos_mas }} más</p>
+        <a href="/calendario/" class="mt-2 block text-center text-[11px] font-medium text-gray-400 hover:text-brand-600 dark:text-gray-500">{{ proximos_eventos_mas }} más</a>
         {% endif %}
-    </a>
+    </div>
 
     {# Chatbot — El Dictado, mismo ancho que los otros widgets (2/6, V6). Gateado por (chalan, usar). #}
     {% if permisos_modulos.chalan %}

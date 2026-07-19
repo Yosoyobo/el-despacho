@@ -299,7 +299,9 @@ class Proyecto(models.Model):
                 slot["total"] += pp.costo_total_linea
             piezas = pp.cantidad + pp.merma
             for proc in pp.procesos.all():
-                if proc.tipo == "impresion" and proc.proveedor_id:
+                # Impresión (siempre con proveedor) u operativo con proveedor
+                # ligado por @ (ticket UX 2026-07): suma a la deuda de ese proveedor.
+                if proc.proveedor_id:
                     slot = acumulado.setdefault(
                         proc.proveedor_id,
                         {"proveedor": proc.proveedor, "total": Decimal("0.00")},
@@ -317,7 +319,9 @@ class Proyecto(models.Model):
         for pp in self._productos_incluidos():
             piezas = pp.cantidad + pp.merma
             for proc in pp.procesos.all():
-                if proc.tipo == "operativo":
+                # Solo operativos SIN proveedor: los que ligan proveedor (@) ya
+                # cuentan en `deuda_por_proveedor` (evita doble conteo).
+                if proc.tipo == "operativo" and not proc.proveedor_id:
                     c = Decimal(str(proc.costo or 0))
                     filas.append({
                         "descripcion": proc.descripcion or "Gasto operativo",

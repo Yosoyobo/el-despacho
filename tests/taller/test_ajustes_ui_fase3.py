@@ -64,41 +64,66 @@ def test_guardrail_sin_origen_ni_fallback_no_crea(cliente_factory, usuario_facto
     assert fac.items.count() == 0
 
 
-def test_editar_vaciar_lineas_reinyecta(client, cliente_factory, usuario_factory):
-    """Al EDITAR borrando todas las líneas, el guardrail reinyecta una línea con
-    el subtotal previo → la factura no queda en $0.00."""
+def _post_editar_monto(client, fac, cli, *, monto, extra=None):
+    """Helper: POST al form de editar en modo «monto» (una línea automática)."""
+    data = {
+        "folio_numero": fac.folio_numero, "porcentaje_a_facturar": "100",
+        "cliente": cli.pk, "proyecto": "", "cotizacion_origen": "",
+        "concepto": "Producción", "estado": "borrador",
+        "modo_lineas": "monto", "monto": monto,
+        "fecha_emision": "2026-07-10", "fecha_vencimiento": "2026-08-09",
+        "moneda": "MXN", "regimen_fiscal": "iva",
+        "descuento_global_porcentaje": "0", "notas": "", "terminos": "",
+        "items-TOTAL_FORMS": "0", "items-INITIAL_FORMS": "0",
+        "items-MIN_NUM_FORMS": "0", "items-MAX_NUM_FORMS": "1000",
+    }
+    if extra:
+        data.update(extra)
+    return client.post(f"/facturacion/{fac.pk}/editar/", data)
+
+
+def test_editar_modo_monto_reemplaza_por_una_linea(client, cliente_factory, usuario_factory):
+    """LC 2026-07 (revisión): en modo «monto» la factura queda con UNA sola
+    línea-concepto igual al monto capturado, reemplazando las que tuviera (ya no
+    se re-copian las líneas de la cotización de origen)."""
     from apps.facturacion.models import Factura, FacturaItem
 
     autor = usuario_factory(rol="super_admin")
     client.force_login(autor)
     cli = cliente_factory(creado_por=autor)
     fac = Factura.objects.create(cliente=cli, concepto="Producción", creado_por=autor)
-    it = FacturaItem.objects.create(
+    for i in range(3):  # 3 líneas de producto que el usuario quiere sustituir
+        FacturaItem.objects.create(
+            factura=fac, orden=i, descripcion=f"Paliacate {i}", cantidad=Decimal("1"),
+            unidad="pieza", precio_unitario=Decimal("500.00"),
+        )
+    resp = _post_editar_monto(client, fac, cli, monto="7500.00")
+    assert resp.status_code == 302
+    fac.refresh_from_db()
+    assert fac.items.count() == 1
+    assert fac.calcular_totales()["subtotal_items"] == Decimal("7500.00")
+    # Las fechas elegidas SÍ se guardan (fix del widget de fecha).
+    assert fac.fecha_emision == date(2026, 7, 10)
+    assert fac.fecha_vencimiento == date(2026, 8, 9)
+
+
+def test_editar_modo_monto_sin_monto_ni_origen_queda_sin_lineas(client, cliente_factory, usuario_factory):
+    """Decisión Oscar: poder «quedarnos sin líneas». Sin monto ni origen del cual
+    derivar, la factura queda con 0 líneas (no se fuerza una)."""
+    from apps.facturacion.models import Factura, FacturaItem
+
+    autor = usuario_factory(rol="super_admin")
+    client.force_login(autor)
+    cli = cliente_factory(creado_por=autor)
+    fac = Factura.objects.create(cliente=cli, concepto="Producción", creado_por=autor)
+    FacturaItem.objects.create(
         factura=fac, orden=0, descripcion="Servicio", cantidad=Decimal("1"),
         unidad="pieza", precio_unitario=Decimal("1000.00"),
     )
-    resp = client.post(f"/facturacion/{fac.pk}/editar/", {
-        "folio_numero": fac.folio_numero, "porcentaje_a_facturar": "100",
-        "cliente": cli.pk, "proyecto": "", "cotizacion_origen": "",
-        "concepto": "Producción", "estado": "borrador",
-        "fecha_emision": fac.fecha_emision.isoformat(),
-        "fecha_vencimiento": fac.fecha_vencimiento.isoformat(),
-        "moneda": "MXN", "regimen_fiscal": "iva",
-        "descuento_global_porcentaje": "0", "notas": "", "terminos": "",
-        # Formset: la única línea marcada DELETE.
-        "items-TOTAL_FORMS": "1", "items-INITIAL_FORMS": "1",
-        "items-MIN_NUM_FORMS": "0", "items-MAX_NUM_FORMS": "1000",
-        "items-0-id": str(it.pk), "items-0-orden": "0",
-        "items-0-servicio": "", "items-0-descripcion": "Servicio",
-        "items-0-cantidad": "1", "items-0-unidad": "pieza",
-        "items-0-precio_unitario": "1000.00", "items-0-descuento_porcentaje": "0",
-        "items-0-DELETE": "on",
-    })
+    resp = _post_editar_monto(client, fac, cli, monto="")
     assert resp.status_code == 302
     fac.refresh_from_db()
-    # Se borró la original pero el guardrail metió una nueva con el subtotal previo.
-    assert fac.items.count() == 1
-    assert fac.calcular_totales()["subtotal_items"] == Decimal("1000.00")
+    assert fac.items.count() == 0
 
 
 # ── 1.2 Breadcrumb trail de proveedores ──────────────────────────────────

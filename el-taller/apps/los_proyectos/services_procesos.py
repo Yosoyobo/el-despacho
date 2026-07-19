@@ -73,7 +73,11 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
                 continue
             descripcion = ""
         else:  # operativo
-            proveedor_id = None
+            # Ticket UX 2026-07 (@proveedor): un gasto operativo PUEDE ligar un
+            # proveedor (opcional) vía el disparador @; su costo se suma a la
+            # deuda de ese proveedor. Se valida contra proveedores activos.
+            if proveedor_id not in ids_validos:
+                proveedor_id = None
             # Operativo sin descripción ni costo: nada que guardar.
             if not descripcion and costo == 0:
                 continue

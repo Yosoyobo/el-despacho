@@ -132,16 +132,25 @@
         }
         const cuerpo = card.querySelector('[data-cuerpo]');
         if (cuerpo) cuerpo.classList.toggle('opacity-40', !incluido), cuerpo.classList.toggle('pointer-events-none', !incluido);
-        // LC Fase 2: resumen compacto de la cabecera (cantidad · producto · precio).
+        // Ticket UX 2026-07: toggle Off ⇒ atenúa la tarjeta COMPLETA (gris),
+        // no solo el cuerpo. El footer (incluir/eliminar) sigue clickeable.
+        card.classList.toggle('opacity-60', !incluido);
+        card.classList.toggle('grayscale', !incluido);
+        // Resumen compacto de la cabecera: «[cant] pz - producto - precio»
+        // (ticket UX 2026-07: con «pz» y SIN el proveedor del nombre).
         const resumen = card.querySelector('[data-resumen]');
         if (resumen) {
             const sel = card.querySelector('select[name$="-servicio"]');
             let nombre = 'Nuevo producto';
-            if (sel && sel.value && sel.selectedIndex >= 0) {
-                const txt = (sel.options[sel.selectedIndex].text || '').trim();
-                if (txt) nombre = txt;
+            if (sel && sel.value) {
+                const d = SERVICIOS_DATOS[sel.value];
+                if (d && d.nombre) nombre = d.nombre;
+                else if (sel.selectedIndex >= 0) {
+                    const txt = (sel.options[sel.selectedIndex].text || '').trim();
+                    if (txt) nombre = txt.split(' - ')[0].trim();  // sin " - Proveedor"
+                }
             }
-            resumen.textContent = (cant || 0) + ' · ' + nombre + ' · ' + fmt(precioEfectivo(card));
+            resumen.textContent = (cant || 0) + ' pz - ' + nombre + ' - ' + fmt(precioEfectivo(card));
         }
     }
     function prellenarServicio(sel) {
@@ -192,7 +201,13 @@
             const d = (fila.querySelector('.proc-desc') || {}).value || '';
             const c = num((fila.querySelector('.proc-costo') || {}).value);
             const pp = fila.querySelector('.proc-por-pieza');
-            if (d.trim() || c) arr.push({ tipo: 'operativo', descripcion: d.trim(), costo: c, por_pieza: !!(pp && pp.checked) });
+            // Ticket UX 2026-07: proveedor opcional ligado por @ (data-proc-prov).
+            const provId = parseInt(fila.getAttribute('data-proc-prov'), 10);
+            if (d.trim() || c) arr.push({
+                tipo: 'operativo', descripcion: d.trim(), costo: c,
+                por_pieza: !!(pp && pp.checked),
+                proveedor_id: isNaN(provId) ? null : provId,
+            });
         });
         hidden.value = JSON.stringify(arr);
     }
@@ -204,7 +219,8 @@
         const fila = document.createElement('div');
         fila.className = 'proceso-fila grid grid-cols-[auto_1fr_120px_auto_auto] items-center gap-2';
         fila.innerHTML = '<span class="proceso-num text-xs font-medium text-gray-400"></span>' +
-            '<input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento, viáticos, embalaje">' +
+            '<div class="min-w-0"><input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" autocomplete="off">' +
+            '<span data-proc-prov-chip class="mt-1 hidden inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300"><span aria-hidden="true">@</span><span data-proc-prov-nombre></span><button type="button" data-proc-prov-clear class="text-brand-500 hover:text-error-600" aria-label="Quitar proveedor">×</button></span></div>' +
             '<input type="number" step="0.01" min="0" class="proc-costo w-full" placeholder="0.00">' +
             '<label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma)."><input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" checked>por pieza</label>' +
             '<button type="button" class="proceso-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>';
@@ -449,6 +465,95 @@
         });
     }
 
+    // ── @proveedor en gastos operativos (ticket UX 2026-07) ─────────────────
+    // Al teclear "@" en la descripción de un gasto operativo se abre un
+    // autocompletar de proveedores; al elegir uno se liga a ese gasto
+    // (data-proc-prov) y su costo suma a la deuda del proveedor. Popup único.
+    (function () {
+        let pop = null, activeInput = null, items = [], hi = 0, tmr = null;
+        function cerrar() { if (pop) { pop.remove(); pop = null; } activeInput = null; items = []; }
+        function posicionar(input) {
+            const r = input.getBoundingClientRect();
+            pop.style.left = r.left + 'px';
+            pop.style.top = (r.bottom + 4) + 'px';
+            pop.style.width = Math.max(200, r.width) + 'px';
+        }
+        function render() {
+            if (!pop) return;
+            if (!items.length) { pop.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400">Sin proveedores…</div>'; return; }
+            pop.innerHTML = items.map((it, i) =>
+                '<button type="button" data-i="' + i + '" class="block w-full truncate px-3 py-1.5 text-left text-sm ' +
+                (i === hi ? 'bg-brand-50 dark:bg-brand-500/10 ' : '') +
+                'text-gray-700 hover:bg-brand-50 dark:text-gray-200 dark:hover:bg-brand-500/10">@ ' +
+                String(it.nombre).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) + '</button>'
+            ).join('');
+        }
+        function ligar(fila, id, nombre) {
+            if (!fila) return;
+            fila.setAttribute('data-proc-prov', id == null ? '' : String(id));
+            const chip = fila.querySelector('[data-proc-prov-chip]');
+            const nom = fila.querySelector('[data-proc-prov-nombre]');
+            if (nom) nom.textContent = nombre || '';
+            if (chip) chip.classList.toggle('hidden', id == null);
+        }
+        function elegir(i) {
+            const it = items[i];
+            if (!it || !activeInput) return;
+            const fila = activeInput.closest('.proceso-fila');
+            const card = activeInput.closest('[data-card]');
+            activeInput.value = activeInput.value.replace(/@[^@]*$/, '').trim();  // quita "@query"
+            ligar(fila, it.id, it.nombre);
+            cerrar();
+            if (card) { serializar(card); recalcular(card); }
+            autosave();
+        }
+        function query(input) { const m = /@([^@]*)$/.exec(input.value); return m ? m[1] : null; }
+        async function buscar(q, input) {
+            try {
+                const r = await fetch('{% url "catalogo-proveedor-buscar" %}?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+                if (!r.ok || activeInput !== input) return;
+                const d = await r.json();
+                if (activeInput !== input) return;
+                items = d.resultados || []; hi = 0;
+                if (!pop) { pop = document.createElement('div'); pop.className = 'fixed z-[60] max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-800'; document.body.appendChild(pop); }
+                posicionar(input); render();
+            } catch (e) { /* silent */ }
+        }
+        document.addEventListener('input', function (e) {
+            const input = e.target;
+            if (!(input.classList && input.classList.contains('proc-desc'))) return;
+            const q = query(input);
+            if (q === null) { cerrar(); return; }
+            activeInput = input;
+            clearTimeout(tmr);
+            tmr = setTimeout(() => buscar(q, input), 180);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (!pop || !activeInput) return;
+            if (e.key === 'ArrowDown') { hi = Math.min(items.length - 1, hi + 1); render(); e.preventDefault(); }
+            else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); render(); e.preventDefault(); }
+            else if (e.key === 'Enter') { if (items.length) { elegir(hi); e.preventDefault(); } }
+            else if (e.key === 'Escape') { cerrar(); }
+        });
+        document.addEventListener('click', function (e) {
+            if (pop && pop.contains(e.target)) {
+                const b = e.target.closest('[data-i]');
+                if (b) elegir(parseInt(b.getAttribute('data-i'), 10));
+                return;
+            }
+            const clr = e.target.closest && e.target.closest('[data-proc-prov-clear]');
+            if (clr) {
+                const fila = clr.closest('.proceso-fila');
+                const card = clr.closest('[data-card]');
+                ligar(fila, null, '');
+                if (card) { serializar(card); recalcular(card); }
+                autosave(); e.preventDefault(); return;
+            }
+            if (pop && e.target !== activeInput) cerrar();
+        });
+        window.addEventListener('scroll', cerrar, true);
+    })();
+
     // Indicador permanente: marca "● Nuevos cambios" al editar; el OOB del
     // autoguardado lo regresa a "✓ Guardado" / "✕ No se pudo guardar".
     if (form) {
@@ -530,6 +635,10 @@ por un endpoint aparte.{% endcomment %}
         tog.setAttribute('aria-expanded', abierto ? 'false' : 'true');
         const chev = tog.querySelector('[data-chevron]');
         if (chev) chev.classList.toggle('-rotate-90', abierto);
+        // Ticket UX 2026-07: ocultar el resumen compacto cuando se EXPANDE (para
+        // no repetir datos); mostrarlo al colapsar.
+        const resumen = card.querySelector('[data-resumen]');
+        if (resumen) resumen.classList.toggle('hidden', !abierto);
     });
 
     // Drag & drop por el asa (solo la tarjeta se vuelve draggable al presionar
