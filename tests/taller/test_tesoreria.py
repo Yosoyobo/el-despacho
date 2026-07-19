@@ -137,13 +137,14 @@ def test_form_egreso_tarjeta_personal_fuerza_reembolso(centro):
 
 
 def test_egreso_con_iva_calcula_total(client, usuario_factory, centro):
-    """incluye_iva → monto = subtotal×1.16. LC 2026-07: proveedor obligatorio."""
+    """LC Fase 2: el número capturado es el TOTAL. Con IVA on el total incluye
+    IVA → subtotal = total ÷ 1.16 (monto = total). Proveedor obligatorio."""
     from apps.el_catalogo.models import Proveedor
     actor = usuario_factory(rol="dueno")
     client.force_login(actor)
     prov = Proveedor.objects.create(razon_social="Papelería SA", creado_por=actor)
     resp = client.post("/tesoreria/egresos/nuevo/", {
-        "subtotal": "100", "incluye_iva": "on", "fecha": "2026-05-19",
+        "subtotal": "116", "incluye_iva": "on", "fecha": "2026-05-19",
         "descripcion": "Con IVA", "proveedor": prov.pk,
         "centro_de_costo": centro.pk, "proyecto": "",
         "pagado_por": actor.pk, "solicitado_por": "",
@@ -152,10 +153,32 @@ def test_egreso_con_iva_calcula_total(client, usuario_factory, centro):
     assert resp.status_code == 302
     from apps.tesoreria.models import Egreso
     e = Egreso.objects.get()
-    assert e.subtotal == Decimal("100")
+    assert e.monto == Decimal("116.00")        # el total capturado
+    assert e.subtotal == Decimal("100.00")     # base = 116 ÷ 1.16
     assert e.incluye_iva is True
-    assert e.monto == Decimal("116.00")
     assert e.proveedor_nombre == "Papelería SA"
+
+
+def test_egreso_sin_iva_total_es_base(client, usuario_factory, centro):
+    """LC Fase 2: con IVA off el número capturado es un total sin IVA →
+    monto = subtotal = total capturado."""
+    from apps.el_catalogo.models import Proveedor
+    actor = usuario_factory(rol="dueno")
+    client.force_login(actor)
+    prov = Proveedor.objects.create(razon_social="Efectivo SA", creado_por=actor)
+    resp = client.post("/tesoreria/egresos/nuevo/", {
+        "subtotal": "100", "fecha": "2026-05-19",
+        "descripcion": "Sin IVA", "proveedor": prov.pk,
+        "centro_de_costo": centro.pk, "proyecto": "",
+        "pagado_por": actor.pk, "solicitado_por": "",
+        "estado_pago": "pagado", "metodo": "transferencia", "moneda": "MXN",
+    })
+    assert resp.status_code == 302
+    from apps.tesoreria.models import Egreso
+    e = Egreso.objects.get()
+    assert e.monto == Decimal("100.00")
+    assert e.subtotal == Decimal("100.00")
+    assert e.incluye_iva is False
 
 
 def test_egreso_sin_proveedor_rechazado(client, usuario_factory, centro):

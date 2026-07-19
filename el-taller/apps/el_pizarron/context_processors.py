@@ -7,8 +7,13 @@ que comuniquen el estado del despacho de un vistazo:
   terminales), de todos. Es el pulso general del taller.
 - **💻 mías** = tareas pendientes **asignadas al usuario autenticado** (lo que YO
   tengo que hacer).
-- **🛵 mandados** = mandados **activos de todos** (dentro de lo que el usuario puede
-  ver: los runner-only siguen viendo solo los suyos por `mandados_visibles`).
+- **🛵 mandados** = tareas marcadas como mandado (tipo entrega/recoger) **en
+  estados pendiente y en proceso** (no terminales, no canceladas), dentro de lo
+  que el usuario puede ver (los runner-only siguen viendo solo los suyos por
+  `mandados_visibles`).
+
+**Ninguno cuenta tareas archivadas** (LC Fase 2): archivar esconde la tarea de
+la vista, así que tampoco debe inflar los globos del sidebar.
 
 Defensivo: ante cualquier error, 0.
 """
@@ -40,15 +45,24 @@ def mandados_badge(request):
         terminales = slugs_terminales_tarea()
 
         # 📋 = todas las tareas (no-runner) pendientes y en proceso del despacho.
-        base = Tarea.objects.exclude(estado__in=terminales).exclude(tipo__in=TIPOS_RUNNER)
+        # NO cuenta archivadas (LC Fase 2).
+        base = (
+            Tarea.objects.filter(archivada=False)
+            .exclude(estado__in=terminales)
+            .exclude(tipo__in=TIPOS_RUNNER)
+        )
         despacho = base.count()
         # 💻 = las que están asignadas a mí.
         mias = base.filter(Q(asignada_a=user) | Q(responsables=user)).distinct().count()
 
-        # 🛵 = mandados activos de TODOS (acotado a lo que el usuario puede ver).
+        # 🛵 = tareas de tipo mandado (entrega/recoger) en pendiente/en proceso:
+        # su Tarea sigue no-terminal y no está archivada; el mandado no está
+        # cancelado. Acotado a lo que el usuario puede ver.
         mandados = (
             mandados_visibles(user)
-            .exclude(estado__in=("entregado", "cancelado"))
+            .exclude(estado="cancelado")
+            .exclude(tarea__estado__in=terminales)
+            .filter(tarea__archivada=False)
             .distinct()
             .count()
         )

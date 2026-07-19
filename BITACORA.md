@@ -6361,3 +6361,57 @@ MCP como **contrato interno único de capacidades** del Chalán. Nuevo registro
 - `static/css/tailwind.css` commiteado queda stale hasta el build de Docker (patrón del repo).
 - Recepción (stub/off) no tiene `input.css`; su `base.html` conserva el link de Outfit (no sirve).
 - El ⚠️ clickable manda a El Site a todos, aunque sea admin-gated (muro de permisos para no-admins).
+
+# BITÁCORA — S-Ajustes-UI-Fase2 (2026-07-18, VERSION 2026.07.14)
+
+Fase 2 del plan maestro de UI de LC (`handoff_fase2.md`). Rama `agent/ui-fase2-modales`
+desde `main` (Fase 1 ya mergeada, PR #6). Solo Fase 2 + un pedido extra de Oscar.
+
+## Qué se entregó
+
+- **Sidebar — globos de Tareas** (pedido extra de Oscar): los tres dejan de contar
+  tareas archivadas; 🛵 = tareas tipo entrega/recoger cuyo ESTADO sigue no-terminal
+  (pendiente/en proceso), no canceladas ni archivadas. Claves de contexto intactas.
+- **Tareas Kanban**: el default deja de preseleccionar "mis tareas" — arranca con
+  todo el despacho vigente; el chip de persona filtra a uno mismo. Runner-only intacto.
+- **Productos involucrados (1.1)**: sin acordeón "ver más"; tarjetas plegables con
+  resumen compacto (cantidad · producto · precio); drag & drop por asa (persiste
+  `orden` vía endpoint nuevo, solo mueve nodos del DOM → no rompe el autosave/formset);
+  toggle "incluir" sube la tarjeta al tope. Migración `proyectos/0023` (campo `orden`
+  + `Meta.ordering` incluidas-primero).
+- **IVA (decisión Oscar)**: el número capturado en Ingreso/Egreso es el TOTAL. IVA on
+  (default) → subtotal = total/1.16; off → subtotal = monto = total. `monto` sigue
+  siendo el total en ambos casos ⇒ Contaduría no cambia. `_iva_campos.html` y OCR
+  (`total_sugerido`) alineados.
+- **Modales de "Nuevo …" (1.3)**: Nueva Tarea (sin chips recientes; hora bajo minical;
+  Detalles compacto), Cliente (solo Nombre + estado en pastillas; vista omite formset
+  de Contactos en HTMX), Proyecto (estado = semáforo interactivo), Producto (sin
+  Unidad ni disponibilidad; categoría en pastillas de color; proveedores filtrables;
+  label "Costo"), Proveedor (sin Email/Tel/RFC/fiscal; Nombre + Dirección + ¿Qué
+  surte? + Notas al fondo), Ingreso/Egreso (cliente/proyecto/proveedor con buscador;
+  sin selector de moneda —MXN fijo—; egreso permite pegar comprobante con Ctrl/Cmd+V).
+
+## Decisiones (Oscar)
+
+- IVA: el monto capturado es el total (con IVA on incluye IVA; off es total sin IVA).
+- Globos de Tareas: no contar archivadas; 🛵 = tareas mandado en pendiente/en proceso.
+
+## Verificación
+
+- Ruff limpio en lo tocado. Tests dirigidos + regresión verdes (pizarron, proyectos,
+  cartera, catálogo, tesorería, OCR, contaduría, facturación, S3, revisión-buzón-R2,
+  modal-gasto, no-renderiza-comentarios ambas apps, ayuda-novedades). Los 3
+  `test_aviso_deploy` fallan solo en local por Redis (pasan en CI).
+- +5 tests nuevos; migración `proyectos/0023` aplicada por los tests.
+
+## Deuda diseñada
+
+- Nuevo Proveedor: se conservan subcategorías como "¿Qué surte?"; NO se agregó
+  "Productos que surte + Nuevo producto" en el alta rápida (el enlace se opera desde
+  el producto y la ficha del proveedor).
+- Ingreso sin adjunto: el paste-de-imagen solo en Egreso (que ya tenía Drive); Ingreso
+  no tiene campo de comprobante (agregarlo = modelo + migración + Drive).
+- DnD de productos persiste `orden` solo en el detalle (autosave); en Nuevo/Editar
+  reordena visualmente sin persistir.
+- Fase 3 (guardrail líneas cero en Facturación, breadcrumb proveedores, form avanzado
+  de producto, cotizaciones) → `handoff_fase2.md` §2 / `handoff_fase3.md`.

@@ -58,6 +58,9 @@ class ProyectoProducto(models.Model):
     # cálculos de dinero del proyecto (monto calculado / IVA / costo).
     incluir_en_calculo = models.BooleanField(default=True)
     nota = models.CharField(max_length=200, blank=True, default="")
+    # LC Fase 2: orden manual (drag & drop) de las tarjetas en el detalle. Las
+    # incluidas se muestran primero; entre iguales, por este `orden` ascendente.
+    orden = models.PositiveIntegerField(default=0, db_index=True)
 
     # B (2026-06-07): Egreso generado en Tesorería cuando el proyecto pasa a
     # producción. Marca de idempotencia — una línea con egreso no vuelve a
@@ -74,7 +77,9 @@ class ProyectoProducto(models.Model):
 
     class Meta:
         db_table = "proyectos_producto"
-        ordering = ["creado_en"]
+        # LC Fase 2: incluidas primero (toggle On sube al tope), luego por el
+        # orden manual del drag & drop, y por antigüedad al final.
+        ordering = ["-incluir_en_calculo", "orden", "creado_en"]
         verbose_name = "producto del proyecto"
         verbose_name_plural = "productos del proyecto"
 

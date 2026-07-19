@@ -25,12 +25,14 @@ def entorno(usuario_factory, cliente_factory):
             "t_mia": t_mia, "t_otro": t_otro, "t_cerrada": t_cerrada}
 
 
-def test_default_es_mis_tareas(client, entorno):
+def test_default_muestra_todo_el_despacho(client, entorno):
+    """LC Fase 2: el default del tablero ya NO filtra a 'mis tareas' — muestra
+    todas las tareas vigentes del despacho."""
     client.force_login(entorno["admin"])
     body = client.get("/tareas/").content.decode()
     assert "Mía" in body
-    assert "De otro" not in body          # default filtra a mis tareas
-    assert "Cerrada" in body              # mis cerradas sí, en la fila de abajo
+    assert "De otro" in body              # ahora el default muestra todo el despacho
+    assert "Cerrada" in body              # las cerradas siguen en la fila de abajo
 
 
 def test_filtros_combinables(client, entorno):

@@ -521,8 +521,8 @@ def egreso_escanear(request):
             return render(request, "tesoreria/egreso_escanear.html", {})
         datos = resultado["datos"]
         initial = {"moneda": datos["moneda"], "incluye_iva": datos["incluye_iva"]}
-        if datos["subtotal_sugerido"] is not None:
-            initial["subtotal"] = datos["subtotal_sugerido"]
+        if datos["total_sugerido"] is not None:
+            initial["subtotal"] = datos["total_sugerido"]
         if datos["fecha"]:
             initial["fecha"] = datos["fecha"]
         if datos["concepto"]:

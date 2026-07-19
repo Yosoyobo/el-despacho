@@ -231,3 +231,45 @@ def test_badge_estar_en_el_equipo_no_infla_las_mias(proyecto_factory, usuario_fa
     assert ctx["tareas_mias_count"] == 0        # 💻: no tiene tareas propias
     assert ctx["tareas_despacho_count"] == 1    # 📋: la del despacho
     assert ctx["mandados_activos_count"] == 0   # 🛵: no hay mandados activos
+
+
+def test_badge_no_cuenta_tareas_archivadas(proyecto_factory, usuario_factory):
+    """LC Fase 2: archivar una tarea la saca de TODOS los globos del sidebar."""
+    from apps.el_pizarron.context_processors import mandados_badge
+    from apps.el_pizarron.models import Tarea
+    from django.test import RequestFactory
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory(creado_por=admin)
+    Tarea.objects.create(proyecto=p, titulo="Viva", creado_por=admin, asignada_a=admin)
+    Tarea.objects.create(proyecto=p, titulo="Archivada", creado_por=admin,
+                         asignada_a=admin, archivada=True)
+    req = RequestFactory().get("/")
+    req.user = admin
+    ctx = mandados_badge(req)
+    assert ctx["tareas_despacho_count"] == 1   # 📋: solo la viva
+    assert ctx["tareas_mias_count"] == 1       # 💻: solo la viva
+
+
+def test_badge_mandados_por_estado(proyecto_factory, usuario_factory):
+    """LC Fase 2: 🛵 cuenta tareas de tipo mandado (entrega/recoger) en pendiente
+    y en proceso; ignora las completadas, las archivadas y las de tipo normal."""
+    from apps.el_pizarron.context_processors import mandados_badge
+    from apps.el_pizarron.models import Tarea
+    from django.test import RequestFactory
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory(creado_por=admin)
+    Tarea.objects.create(proyecto=p, titulo="Entregar 10 menús", tipo="entrega",
+                         estado="pendiente", creado_por=admin, asignada_a=admin)
+    Tarea.objects.create(proyecto=p, titulo="Recoger arte", tipo="recoger",
+                         estado="en_curso", creado_por=admin, asignada_a=admin)
+    Tarea.objects.create(proyecto=p, titulo="Entrega hecha", tipo="entrega",
+                         estado="completada", creado_por=admin, asignada_a=admin)
+    Tarea.objects.create(proyecto=p, titulo="Entrega archivada", tipo="entrega",
+                         estado="pendiente", archivada=True, creado_por=admin, asignada_a=admin)
+    Tarea.objects.create(proyecto=p, titulo="Tarea normal", tipo="tarea",
+                         estado="pendiente", creado_por=admin, asignada_a=admin)
+    req = RequestFactory().get("/")
+    req.user = admin
+    ctx = mandados_badge(req)
+    assert ctx["mandados_activos_count"] == 2   # 🛵: entrega pendiente + recoger en_curso
+    assert ctx["tareas_despacho_count"] == 1    # 📋: solo la tarea normal (no mandados ni archivadas)

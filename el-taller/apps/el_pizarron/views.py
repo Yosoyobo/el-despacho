@@ -154,9 +154,9 @@ def kanban_tareas(request):
 
     estados_sel = {s for s in request.GET.getlist("estado") if s in slugs_validos}
     personas_sel = {p for p in request.GET.getlist("persona") if p.isdigit()}
-    # Sin interacción previa (sin flag f) → default "mis tareas".
-    if "f" not in request.GET and not personas_sel and not estados_sel:
-        personas_sel = {str(user.pk)}
+    # LC Fase 2: el default ahora es TODAS las tareas vigentes del despacho (sin
+    # preseleccionar "mis tareas"). El usuario filtra a sí mismo con el chip de
+    # persona si quiere. (Los runner-only siguen acotados abajo a sus mandados.)
 
     # S-LC-Feedback-V13: filtro de categoría [Todas · General · Mandados].
     cat = (request.GET.get("cat") or "todas").lower()

@@ -116,7 +116,10 @@ def test_cliente_modal_get_htmx(client, usuario_factory):
     cuerpo = resp.content.decode()
     assert "data-modal-cliente" in cuerpo
     assert "Nuevo cliente" in cuerpo
-    assert "Contactos" in cuerpo  # formset presente
+    # LC Fase 2: ultra-compacto — Nombre + estado (pastillas); sin formset de Contactos.
+    assert "Nombre" in cuerpo
+    assert "Prospecto" in cuerpo
+    assert "Contactos" not in cuerpo
 
 
 def test_cliente_modal_post_htmx_crea(client, usuario_factory):

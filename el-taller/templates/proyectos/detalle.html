@@ -61,6 +61,7 @@
       hx-post="{% url 'proyectos-detalle' proyecto.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
       data-servicios='{{ servicios_datos_json|safe }}'
       data-agregar-producto-url="{% url 'proyectos-agregar-producto' proyecto.pk %}"
+      data-reordenar-url="{% url 'proyectos-reordenar-productos' proyecto.pk %}"
       class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
     <div class="hidden">{{ form.estado }}</div>
@@ -125,11 +126,12 @@
                 <p id="qc-msg" class="mt-2 text-xs text-error-600 dark:text-error-400 hidden"></p>
             </details>
 
-            {% comment %} El acordeón (muestra 2, oculta 3+) y el management form viven en
-            el partial _formset_productos para poder re-renderizar #formset-productos por OOB
-            cuando se crea un producto inline (la tarjeta nueva trae su pk → no se duplica). {% endcomment %}
-            <div id="formset-productos" class="space-y-4">
-                {% include "proyectos/_formset_productos.html" with acordeon=True %}
+            {% comment %} LC Fase 2: sin acordeón (todas las tarjetas se listan, colapsadas
+            e individualmente expandibles). El management form vive en _formset_productos
+            para poder re-renderizar #formset-productos por OOB cuando se crea un producto
+            inline (la tarjeta nueva trae su pk → no se duplica). {% endcomment %}
+            <div id="formset-productos" class="space-y-3">
+                {% include "proyectos/_formset_productos.html" %}
             </div>
 
             {# Plantilla de tarjeta vacía (formset.empty_form) para "+ Nuevo producto" inline. #}

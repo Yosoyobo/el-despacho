@@ -229,15 +229,25 @@ def nuevo(request):
     es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
         form = ClienteForm(request.POST)
-        formset = ClienteContactoFormSet(request.POST)
-        if form.is_valid() and formset.is_valid():
-            from apps.la_cartera.services import espejar_contacto_principal
+        # LC Fase 2: el quick-create (HTMX) es ultra-compacto — solo Nombre +
+        # estado. Sin el formset de Contactos (se capturan luego en la ficha);
+        # `asegurar_contacto_principal` deja un contacto principal si más tarde
+        # se llenan los datos legacy.
+        formset = None if es_htmx else ClienteContactoFormSet(request.POST)
+        if form.is_valid() and (formset is None or formset.is_valid()):
+            from apps.la_cartera.services import (
+                asegurar_contacto_principal,
+                espejar_contacto_principal,
+            )
             cliente = form.save(commit=False)
             cliente.creado_por = request.user
             cliente.save()
-            formset.instance = cliente
-            formset.save()
-            espejar_contacto_principal(cliente)
+            if formset is not None:
+                formset.instance = cliente
+                formset.save()
+                espejar_contacto_principal(cliente)
+            else:
+                asegurar_contacto_principal(cliente)
             emitir(EventoPortavoz(
                 tipo="cliente.creado",
                 actor_id=request.user.pk,

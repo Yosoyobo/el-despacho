@@ -43,24 +43,21 @@ HX-Redirect (ver vista nueva_tarea_global).{% endcomment %}
                     </div>
                 </div>
 
-                {# Pills de proyectos recientes → fijan el <select> de arriba #}
-                {% if proyectos_chips %}
-                <div class="flex flex-wrap gap-1.5">
-                    {% for p in proyectos_chips|slice:":8" %}
-                    <button type="button" class="pill-filtro !px-3 !py-1 !text-xs" data-set-select="{{ p.pk }}" data-set-select-target="#{{ form.proyecto.id_for_label }}" title="{{ p.cliente.razon_social }} · {{ p.nombre }}">{{ p.cliente.razon_social|truncatechars:16 }} · {{ p.nombre|truncatechars:22 }}</button>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                {# Fecha (mini-calendario inline) + hora opcional #}
+                {# Fecha (minical) con la hora debajo · Detalles compacto al lado (LC Fase 2). #}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        {% include "tesoreria/_fecha_minical.html" with nombre="fecha_compromiso" valor=form.fecha_compromiso.value|default:"" label="Fecha *" con_quitar=True sin_default_hoy=True %}
-                        {% if form.fecha_compromiso.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.fecha_compromiso.errors.0 }}</p>{% endif %}
+                    <div class="space-y-3">
+                        <div>
+                            {% include "tesoreria/_fecha_minical.html" with nombre="fecha_compromiso" valor=form.fecha_compromiso.value|default:"" label="Fecha *" con_quitar=True sin_default_hoy=True %}
+                            {% if form.fecha_compromiso.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.fecha_compromiso.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.hora.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Hora (opcional)</label>
+                            {{ form.hora }}
+                        </div>
                     </div>
                     <div>
-                        <label for="{{ form.hora.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Hora (opcional)</label>
-                        {{ form.hora }}
+                        <label for="{{ form.descripcion.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Detalles (opcional)</label>
+                        <div class="[&_textarea]:!h-24 [&_textarea]:min-h-0">{{ form.descripcion }}</div>
                     </div>
                 </div>
 
@@ -88,11 +85,6 @@ HX-Redirect (ver vista nueva_tarea_global).{% endcomment %}
                     </label>
                 </div>
 
-                {# Detalles #}
-                <div>
-                    <label for="{{ form.descripcion.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Detalles (opcional)</label>
-                    {{ form.descripcion }}
-                </div>
                 {{ form.prioridad.as_hidden }}
             </div>
         </form>

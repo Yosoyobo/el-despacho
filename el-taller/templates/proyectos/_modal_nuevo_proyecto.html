@@ -32,17 +32,24 @@ vista `_nuevo_modal`.{% endcomment %}
                     {% if form.nombre.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.nombre.errors|join:" · " }}</p>{% endif %}
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div class="min-w-0">
-                        <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cliente <span class="text-error-500">*</span></label>
-                        {{ form.cliente }}
-                        {% if form.cliente.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.cliente.errors|join:" · " }}</p>{% endif %}
+                <div class="min-w-0">
+                    <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cliente <span class="text-error-500">*</span></label>
+                    {{ form.cliente }}
+                    {% if form.cliente.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.cliente.errors|join:" · " }}</p>{% endif %}
+                </div>
+
+                {# Estado: semáforo interactivo (mismos colores que el detalle) — LC Fase 2. #}
+                <div>
+                    <span class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Estado</span>
+                    <div class="flex w-full flex-wrap gap-2">
+                        {% for e in estados_barra %}
+                        <label class="estado-chip flex flex-1 cursor-pointer items-center justify-center rounded-xl border-2 border-transparent px-3 py-2 text-center text-sm font-medium opacity-50 transition hover:opacity-100 has-[:checked]:border-current has-[:checked]:font-semibold has-[:checked]:opacity-100 has-[:checked]:ring-2 has-[:checked]:ring-current/30" style="--ec: {{ e.color }}">
+                            <input type="radio" name="{{ form.estado.html_name }}" value="{{ e.slug }}" class="sr-only" {% if form.estado.value|stringformat:'s' == e.slug %}checked{% endif %}>
+                            {{ e.label }}
+                        </label>
+                        {% endfor %}
                     </div>
-                    <div class="min-w-0">
-                        <label for="{{ form.estado.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Estado</label>
-                        {{ form.estado }}
-                        {% if form.estado.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.estado.errors|join:" · " }}</p>{% endif %}
-                    </div>
+                    {% if form.estado.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.estado.errors|join:" · " }}</p>{% endif %}
                 </div>
 
                 {% if clientes_recientes %}

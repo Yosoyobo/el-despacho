@@ -77,9 +77,9 @@ def test_detalle_muestra_excluida_opaca(client, entorno):
     assert "checked" not in m.group(0)
 
 
-def test_acordeon_oculta_despues_de_dos(client, entorno):
-    """V6: con >2 productos, el detalle muestra 2 y esconde el resto tras
-    'Ver más (+N)'."""
+def test_productos_sin_acordeon_todos_visibles(client, entorno):
+    """LC Fase 2: sin acordeón — con >2 productos se listan TODAS las tarjetas
+    (plegables individualmente), sin botón 'Ver más' ni tarjetas ocultas."""
     from apps.los_proyectos.models import ProyectoProducto
     for _i in range(3):
         ProyectoProducto.objects.create(
@@ -87,10 +87,9 @@ def test_acordeon_oculta_despues_de_dos(client, entorno):
         )
     client.force_login(entorno["admin"])
     body = client.get(f"/proyectos/{entorno['p'].pk}/").content.decode()
-    assert "Ver más (+2)" in body          # 4 guardados − 2 visibles
-    # 2 tarjetas ocultas (el JS usa [data-acordeon-oculto] entre corchetes,
-    # por eso el marcador de tarjeta se busca con el cierre de tag).
-    assert body.count("data-acordeon-oculto>") == 2
+    assert "Ver más (+" not in body            # ya no hay acordeón
+    assert "data-acordeon-oculto" not in body  # ninguna tarjeta oculta
+    assert "data-card-toggle" in body          # tarjetas plegables (cabecera nueva)
 
 
 def test_acordeon_no_aparece_con_pocos(client, entorno):

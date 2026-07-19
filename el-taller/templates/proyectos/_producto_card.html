@@ -1,20 +1,39 @@
+{% load forms_helpers %}
 {% comment %}
-Render-V2 — Tarjeta de producto del proyecto. Vive directamente sobre el fondo
-gris (sin contenedor blanco envolvente). Cada tarjeta toma un color tenue
-rotado vía `card_color` (brand/success/warning/blue-light/orange/purple).
+Render-V2 + LC Fase 2 — Tarjeta de producto del proyecto. Vive directamente
+sobre el fondo gris (sin contenedor blanco). Color tenue rotado vía `card_color`.
 Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
 `card_color`. La vista anota `f.proc_impresion` y `f.procs_operativos`.
 
-- Toggle "Incluir en el cálculo": apagado ⇒ cuerpo al 40% + bloqueado.
-- Variación: se conserva oculta (no se usa en la UI por ahora, pedido LC) para
-  no nulificar el dato de proyectos existentes al autoguardar.
-- Impresión + procesos operativos: SIN recuadro punteado (un nivel arriba).
+LC Fase 2:
+- Cabecera SIEMPRE visible: asa de arrastre (drag & drop para reordenar) +
+  resumen compacto `[cantidad] · [producto] · [precio]` + botón colapsar.
+- El cuerpo (`[data-card-body]`) arranca COLAPSADO para tarjetas ya guardadas
+  (se expande individualmente); las nuevas y las que tienen errores arrancan
+  abiertas. Sin acordeón "ver más/menos": todas se listan.
+- Toggle "Incluir en el cálculo": apagado ⇒ cuerpo al 40% + bloqueado. Al
+  encenderlo, la tarjeta sube al tope (JS en _form_productos_js).
+- Variación oculta (no se usa en la UI por ahora, pedido LC).
 {% endcomment %}
-<div class="producto-fila rounded-xl border-2 border-white p-4 shadow-theme-sm dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}{% if acordeon_oculto and not f.errors %} hidden{% endif %}" data-card{% if acordeon_oculto and not f.errors %} data-acordeon-oculto{% endif %}>
+<div class="producto-fila rounded-xl border-2 border-white p-4 shadow-theme-sm dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card>
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
     <div class="hidden">{{ f.procesos_json }}{{ f.variacion }}</div>
 
+    {# ── Cabecera: asa de arrastre · resumen compacto · colapsar ── #}
+    <div class="flex items-center gap-2">
+        <button type="button" data-drag-handle title="Arrastra para reordenar" aria-label="Reordenar"
+                class="shrink-0 cursor-grab touch-none rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.06]">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>
+        </button>
+        <button type="button" data-card-toggle aria-expanded="{% if f.instance.pk and not f.errors %}false{% else %}true{% endif %}"
+                class="flex flex-1 items-center justify-between gap-2 rounded-lg py-1 text-left">
+            <span data-resumen class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ f.instance.cantidad|default:1 }} · {% if f.instance.pk and f.instance.servicio_id %}{{ f.instance.servicio.nombre }}{% else %}Nuevo producto{% endif %} · {{ f.instance.precio_efectivo|dinero }}</span>
+            <svg data-chevron class="h-4 w-4 shrink-0 text-gray-400 transition-transform{% if f.instance.pk and not f.errors %} -rotate-90{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </div>
+
+    <div data-card-body class="mt-3{% if f.instance.pk and not f.errors %} hidden{% endif %}">
     <div data-cuerpo class="space-y-3">
         {# Fila 1: categoría · producto · cantidad · merma · precio #}
         <div class="grid grid-cols-2 gap-3 md:grid-cols-[1fr_1.4fr_72px_72px_120px] md:items-end">
@@ -129,5 +148,6 @@ Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
             <span class="block tabular-nums text-gray-900 dark:text-gray-100"><span class="mr-1 text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Monto</span><span class="text-base font-semibold" data-monto>$0.00</span><span class="ml-2 text-xs" data-margen>—</span></span>
             <span class="block text-[11px] text-gray-400 dark:text-gray-500">Costo prod. <span class="tabular-nums" data-costo-total>—</span> · unit. <span class="tabular-nums" data-costo-pp>—</span>/pz</span>
         </div>
+    </div>
     </div>
 </div>
