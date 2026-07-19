@@ -1,25 +1,62 @@
+{% load tareas_extras %}
 {% comment %}
 Render-V2 — Panel de Tareas del proyecto. Va ARRIBA de Productos involucrados.
 El botón "+ Nueva tarea" va centrado DEBAJO de la lista (no en el header).
-Params: proyecto, tareas, puede_editar.
+Params: proyecto, tareas, puede_editar, estados_tarea (lista de EstadoTarea activos).
+
+Edición inline (ticket UX 2026-07): la pastilla de Estado es un <select> coloreado
+que cambia el estado sin salir de la página, y una "X" a la derecha archiva la
+tarea. Ambos controles NO envían el form del proyecto (hx-params="none") y no
+disparan el autoguardado (el <select> hace stopPropagation en change).
 {% endcomment %}
 <section>
     <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas</h2>
     <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <table class="min-w-[520px] text-sm md:min-w-full">
+        <table class="min-w-[560px] text-sm md:min-w-full">
             <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                <tr><th class="px-5 py-3 text-left">Tarea</th><th class="px-5 py-3 text-left">Asignada a</th><th class="px-5 py-3 text-left">Estado</th><th class="px-5 py-3 text-left">Prioridad</th></tr>
+                <tr><th class="px-5 py-3 text-left">Tarea</th><th class="px-5 py-3 text-left">Asignada a</th><th class="px-5 py-3 text-left">Estado</th><th class="px-5 py-3 text-left">Prioridad</th>{% if puede_editar %}<th class="px-3 py-3 text-right"><span class="sr-only">Archivar</span></th>{% endif %}</tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                 {% for t in tareas %}
-                <tr data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <tr id="tarea-fila-{{ t.pk }}" data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
                     <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
-                    <td class="px-5 py-3 text-sm">{% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}</td>
+                    <td class="px-5 py-3 text-sm">
+                        {% if puede_editar and estados_tarea %}
+                        {% with color=t.estado|color_estado_tarea %}
+                        <select aria-label="Cambiar estado de la tarea"
+                                style="--ec: {{ color }}; border-color: color-mix(in srgb, {{ color }} 40%, transparent);"
+                                class="estado-chip cursor-pointer rounded-lg border px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand-400"
+                                hx-post="{% url 'pizarron-cambiar-estado' t.pk %}"
+                                hx-trigger="change" hx-swap="none" hx-params="none"
+                                hx-vals='js:{estado: event.target.value}'
+                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                hx-on:change="event.stopPropagation(); this.style.setProperty('--ec', this.selectedOptions[0].dataset.color); this.style.borderColor='color-mix(in srgb, '+this.selectedOptions[0].dataset.color+' 40%, transparent)';">
+                            {% for e in estados_tarea %}
+                            <option value="{{ e.slug }}" data-color="{{ e.color }}" {% if e.slug == t.estado %}selected{% endif %}>{{ e.label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% endwith %}
+                        {% else %}
+                        {% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}
+                        {% endif %}
+                    </td>
                     <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
+                    {% if puede_editar %}
+                    <td class="px-3 py-3 text-right">
+                        <button type="button" title="Archivar tarea" aria-label="Archivar tarea"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition hover:border-error-300 hover:bg-error-50 hover:text-error-600 dark:border-gray-700 dark:hover:bg-error-500/10 dark:hover:text-error-400"
+                                hx-post="{% url 'pizarron-archivar-tarea' t.pk %}"
+                                hx-target="#tarea-fila-{{ t.pk }}" hx-swap="outerHTML" hx-params="none"
+                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                hx-confirm="¿Archivar la tarea «{{ t.titulo|truncatechars:40 }}»? Sigue en métricas y se puede desarchivar.">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                        </button>
+                    </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
-                <tr><td colspan="4" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
+                <tr><td colspan="{% if puede_editar %}5{% else %}4{% endif %}" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
                 {% endfor %}
             </tbody>
         </table>

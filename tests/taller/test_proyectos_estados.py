@@ -69,32 +69,9 @@ def test_diseñador_no_puede_cambiar_estado(client, usuario_factory, proyecto_fa
     assert p.estado == "por_cotizar"
 
 
-def test_proveedores_aplicables_derivados_de_productos(
-    client, usuario_factory, proyecto_factory
-):
-    """Verifica que el detalle muestra proveedores vinculados via productos."""
-    from apps.el_catalogo.models import (
-        CategoriaServicio,
-        Proveedor,
-        Servicio,
-    )
-    from apps.los_proyectos.models import ProyectoProducto
-
-    admin = usuario_factory(rol="super_admin")
-    p = proyecto_factory()
-    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Diseño", defaults={"orden": 10})
-    serv = Servicio.objects.create(nombre="Logo", categoria=cat, precio_base=1000, activo=True)
-    prov_a = Proveedor.objects.create(razon_social="ImprentaMX", activo=True)
-    prov_b = Proveedor.objects.create(razon_social="GrabadosSA", activo=True)
-    serv.proveedores.add(prov_a, prov_b)
-    ProyectoProducto.objects.create(proyecto=p, servicio=serv, cantidad=1)
-
-    client.force_login(admin)
-    resp = client.get(f"/proyectos/{p.pk}/")
-    assert resp.status_code == 200
-    assert b"Proveedores aplicables" in resp.content
-    assert b"ImprentaMX" in resp.content
-    assert b"GrabadosSA" in resp.content
+# Nota (ticket UX 2026-07): el recuadro "Proveedores aplicables" se retiró del
+# detalle del proyecto (la info relevante ya vive en el panel de Proveedores de
+# arriba). El test que lo verificaba se eliminó con la feature.
 
 
 def test_proveedor_inactivo_no_aparece(client, usuario_factory, proyecto_factory):
