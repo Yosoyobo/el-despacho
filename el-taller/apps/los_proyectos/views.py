@@ -1056,6 +1056,14 @@ def agregar_tarea_modal(request, pk):
     return render(request, "proyectos/_modal_agregar_tarea.html", {"form": form, "proyecto": proyecto})
 
 
+def _siguiente_orden_producto(proyecto) -> int:
+    """S-Finanzas-UX: un producto nuevo se agrega SIEMPRE al final (append).
+    `orden` = max(orden existente) + 1 (default 0 lo mandaba al tope)."""
+    from django.db.models import Max
+    ultimo = proyecto.productos.aggregate(m=Max("orden"))["m"]
+    return (ultimo or 0) + 1
+
+
 @login_required
 def agregar_producto_modal(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
@@ -1067,6 +1075,8 @@ def agregar_producto_modal(request, pk):
         if form.is_valid():
             prod = form.save(commit=False)
             prod.proyecto = proyecto
+            if not prod.orden:
+                prod.orden = _siguiente_orden_producto(proyecto)
             prod.save()
             proyecto.recalcular_monto_estimado()  # C4
             emitir(EventoPortavoz(
@@ -1267,9 +1277,42 @@ def cotizacion_estado(request, pk):
         except ValueError as exc:
             messages.error(request, str(exc))
     if _es_htmx(request):
-        return render(request, "proyectos/_cotizaciones_panel.html",
-                      _ctx_cotizaciones(proyecto, request.user))
+        panel = render(request, "proyectos/_cotizaciones_panel.html",
+                       _ctx_cotizaciones(proyecto, request.user))
+        # S-Finanzas-UX (gancho de anticipos): al pasar a «anticipo», si el
+        # proyecto YA tiene ingresos, se abre el modal (OOB) para ofrecer ligar
+        # uno existente en vez de duplicar. Solo con permiso de finanzas.
+        if (request.POST.get("estado") == "anticipo"
+                and puede_ver_finanzas(request.user)
+                and proyecto.ingresos.filter(anulado=False).exists()):
+            oob = render(request, "proyectos/_modal_registrar_anticipo_oob.html",
+                         _ctx_anticipo(proyecto))
+            return HttpResponse(panel.content + b"\n" + oob.content)
+        return panel
     return redirect(_redir_detalle(proyecto))
+
+
+def _ctx_anticipo(proyecto, form=None):
+    """Contexto del modal de anticipo. S-Finanzas-UX: incluye los ingresos ya
+    registrados en el proyecto para OFRECER ligar uno como el anticipo (en vez
+    de crear un duplicado)."""
+    from apps.cotizaciones.models import Cotizacion
+    from django.utils import timezone
+
+    from .forms import RegistrarAnticipoForm
+    latest = (
+        Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+        .order_by("-version").first()
+    )
+    total = latest.calcular_totales()["total"] if latest else Decimal("0.00")
+    if form is None:
+        form = RegistrarAnticipoForm(initial={"fecha": timezone.localdate(), "metodo": "transferencia"})
+    return {
+        "proyecto": proyecto, "form": form, "cot_total": total, "cot": latest,
+        "ingresos_existentes": list(
+            proyecto.ingresos.filter(anulado=False).order_by("-fecha")[:10]
+        ),
+    }
 
 
 @login_required
@@ -1278,26 +1321,22 @@ def registrar_anticipo_modal(request, pk):
     cotización del proyecto. Sin monto predeterminado: la UI ofrece botones
     rápidos (25/50/100% del total) o monto personalizado. El ingreso queda
     ligado al proyecto. Gated por finanzas (mismo permiso que Tesorería)."""
-    from apps.cotizaciones.models import Cotizacion
-    from django.utils import timezone
-
     from .forms import RegistrarAnticipoForm
     proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
     if not puede_ver_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Sin acceso a este proyecto.")
     if not puede_ver_finanzas(request.user):
         return HttpResponseForbidden("Sin permiso para registrar ingresos.")
-    latest = (
-        Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
-        .order_by("-version")
-        .first()
-    )
-    total = latest.calcular_totales()["total"] if latest else Decimal("0.00")
     es_htmx = _es_htmx(request)
     if request.method == "POST":
         form = RegistrarAnticipoForm(request.POST)
         if form.is_valid():
+            from apps.cotizaciones.models import Cotizacion
             from apps.tesoreria.models import Ingreso
+            latest = (
+                Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+                .order_by("-version").first()
+            )
             ref = latest.codigo if latest else proyecto.codigo
             ing = Ingreso.objects.create(
                 proyecto=proyecto,
@@ -1317,11 +1356,47 @@ def registrar_anticipo_modal(request, pk):
             messages.success(request, f"Anticipo registrado en {proyecto.codigo}.")
             destino = _redir_detalle(proyecto)
             return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
-        return render(request, "proyectos/_modal_registrar_anticipo.html",
-                      {"proyecto": proyecto, "form": form, "cot_total": total, "cot": latest})
-    form = RegistrarAnticipoForm(initial={"fecha": timezone.localdate(), "metodo": "transferencia"})
-    return render(request, "proyectos/_modal_registrar_anticipo.html",
-                  {"proyecto": proyecto, "form": form, "cot_total": total, "cot": latest})
+        return render(request, "proyectos/_modal_registrar_anticipo.html", _ctx_anticipo(proyecto, form))
+    return render(request, "proyectos/_modal_registrar_anticipo.html", _ctx_anticipo(proyecto))
+
+
+@login_required
+@require_POST
+def vincular_ingreso_anticipo(request, pk):
+    """S-Finanzas-UX: liga un ingreso YA registrado como el anticipo de la
+    cotización (evita duplicar). Marca su descripción/referencia y cierra."""
+    from apps.cotizaciones.models import Cotizacion
+    from apps.tesoreria.models import Ingreso
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    if not puede_ver_finanzas(request.user):
+        return HttpResponseForbidden("Sin permiso para registrar ingresos.")
+    ing = Ingreso.objects.filter(
+        pk=request.POST.get("ingreso_id"), proyecto=proyecto, anulado=False,
+    ).first()
+    if ing:
+        latest = (
+            Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+            .order_by("-version").first()
+        )
+        ref = latest.codigo if latest else proyecto.codigo
+        marca = f"Anticipo · {ref}"
+        if marca.lower() not in (ing.descripcion or "").lower():
+            ing.descripcion = (f"{marca} — {ing.descripcion}".rstrip(" —"))[:300]
+        ing.referencia_externa = f"Anticipo {ref}"[:100]
+        ing.save()
+        emitir(EventoPortavoz(
+            tipo="tesoreria.ingreso_registrado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"ingreso_id": ing.pk, "proyecto_id": proyecto.pk,
+                     "origen": "anticipo_vinculado"},
+        ))
+        messages.success(request, f"Ingreso {ing.codigo} ligado como anticipo de {ref}.")
+    else:
+        messages.error(request, "No se encontró el ingreso a ligar.")
+    destino = _redir_detalle(proyecto)
+    return HttpResponse(status=204, headers={"HX-Redirect": destino}) if _es_htmx(request) else redirect(destino)
 
 
 @login_required

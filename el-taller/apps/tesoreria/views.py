@@ -215,6 +215,20 @@ def _next_seguro(request):
     return nxt if nxt.startswith("/") and "//" not in nxt[1:3] else ""
 
 
+def _proyecto_desde_request(request):
+    """S-Finanzas-UX: resuelve el proyecto de origen (GET al abrir el modal,
+    POST al re-render por error) para ocultar el cliente y calcular el saldo."""
+    pk = request.POST.get("proyecto") or request.GET.get("proyecto")
+    if not pk:
+        return None
+    from apps.los_proyectos.models import Proyecto
+    return Proyecto.objects.filter(pk=pk).first()
+
+
+def _es_desde_proyecto(request) -> bool:
+    return (request.GET.get("desde") or request.POST.get("desde")) == "proyecto"
+
+
 def _ingreso_pickers(request):
     """Quick-pick: 6 clientes/proyectos más recientes + flag de alta inline."""
     from apps.la_cartera.models import Cliente
@@ -260,7 +274,16 @@ def ingreso_nuevo(request):
         if request.GET.get("proyecto"):
             initial["proyecto"] = request.GET.get("proyecto")
         form = IngresoForm(initial=initial)
-    ctx = {"form": form, "modo": "nuevo", "next_url": _next_seguro(request), **_ingreso_pickers(request)}
+    # S-Finanzas-UX: si se abre desde un proyecto, ocultamos el cliente y damos
+    # el saldo por cobrar para los botones rápidos [100%]/[50%].
+    desde_proyecto = _es_desde_proyecto(request)
+    proy = _proyecto_desde_request(request) if desde_proyecto else None
+    ctx = {
+        "form": form, "modo": "nuevo", "next_url": _next_seguro(request),
+        "desde_proyecto": desde_proyecto,
+        "saldo_proyecto": proy.saldo_por_cobrar if proy else None,
+        **_ingreso_pickers(request),
+    }
     tmpl = "tesoreria/_modal_nuevo_ingreso.html" if es_htmx else "tesoreria/ingreso_form.html"
     return render(request, tmpl, ctx)
 
@@ -700,10 +723,16 @@ def egreso_nuevo(request):
                     if request.GET.get(campo):
                         initial[campo] = request.GET.get(campo)
         form = EgresoForm(initial=initial)
+    # S-Finanzas-UX: saldo por pagar del proyecto para los botones rápidos
+    # (también en el re-render por error de validación, vía es_gasto_proyecto).
+    _desde_pry = gasto_proyecto or _es_desde_proyecto(request) or request.POST.get("es_gasto_proyecto") == "1"
+    proy_eg = _proyecto_desde_request(request) if _desde_pry else None
     ctx = {
         "form": form, "modo": "nuevo", "next_url": _next_seguro(request),
         "gasto_proyecto": gasto_proyecto,
         "proveedor_bloqueado": proveedor_bloqueado,
+        "desde_proyecto": _es_desde_proyecto(request) or gasto_proyecto,
+        "saldo_proyecto": proy_eg.saldo_por_pagar if proy_eg else None,
     }
     tmpl = "tesoreria/_modal_nuevo_egreso.html" if es_htmx else "tesoreria/egreso_form.html"
     return render(request, tmpl, ctx)
@@ -973,13 +1002,18 @@ def api_proyecto_datos(request, pk):
     proyecto = get_object_or_404(
         Proyecto.objects.select_related("cliente"), pk=pk,
     )
-    monto_pendiente = (proyecto.monto_facturado or Decimal("0")) - (proyecto.monto_cobrado or Decimal("0"))
+    # S-Finanzas-UX: el saldo por cobrar = total a facturar − ingresos ligados.
+    saldo_cobrar = proyecto.saldo_por_cobrar
+    saldo_pagar = proyecto.saldo_por_pagar
+    monto_pendiente = saldo_cobrar if saldo_cobrar > 0 else Decimal("0")
     return JsonResponse({
         "id": proyecto.pk,
         "codigo": proyecto.codigo,
         "nombre": proyecto.nombre,
         "cliente_id": proyecto.cliente_id,
         "cliente_nombre": proyecto.cliente.razon_social if proyecto.cliente else "",
-        "monto_pendiente": str(monto_pendiente if monto_pendiente > 0 else 0),
+        "monto_pendiente": str(monto_pendiente),
+        "saldo_por_cobrar": str(saldo_cobrar if saldo_cobrar > 0 else 0),
+        "saldo_por_pagar": str(saldo_pagar if saldo_pagar > 0 else 0),
         "descripcion_sugerida": f"Cobro de {proyecto.codigo} · {proyecto.nombre}",
     })

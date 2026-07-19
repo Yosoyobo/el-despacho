@@ -7,6 +7,7 @@ urlpatterns = [
     # Alias canónico del geo-picker (cuadro de resultados en vivo + POIs).
     path("geo/buscar", views.geocoding_buscar, name="geo-buscar"),
     path("catalogos/horarios/", views.horarios, name="checador-admin-horarios"),
+    path("catalogos/horarios/formato-hora/", views.guardar_formato_hora, name="checador-admin-formato-hora"),
     path("catalogos/horarios/nuevo/", views.horario_nuevo, name="checador-admin-horario-nuevo"),
     path("catalogos/horarios/<int:pk>/editar/", views.horario_editar, name="checador-admin-horario-editar"),
     path("catalogos/horarios/<int:pk>/borrar/", views.horario_borrar, name="checador-admin-horario-borrar"),

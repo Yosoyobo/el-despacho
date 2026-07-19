@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — Finanzas más rápidas y ajustes de comodidad (19 de julio de 2026)
+
+- **Cobrar y pagar sin salir del proyecto.** Los botones **+ Nuevo ingreso** y
+  **+ Nuevo egreso** del proyecto ahora abren una ventana rápida (igual que en el
+  Tablero), sin cambiar de página. Al abrirla desde un proyecto ya no pide el
+  cliente (lo toma del proyecto) y deja solo el buscador de proyecto.
+- **Botones rápidos de monto [100%] · [50%] · [Otro].** En Ingreso y Egreso,
+  al elegir un proyecto aparecen atajos que llenan el monto según el **saldo**
+  del proyecto (lo que falta cobrar o pagar).
+- **Historial de cobros en el proyecto.** El recuadro económico ahora lista los
+  pagos recibidos (Pago 1, Pago 2…) y muestra el **Monto restante** por cobrar.
+- **Los productos nuevos se agregan al final** de la lista del proyecto (antes
+  a veces saltaban hasta arriba).
+- **Anticipos más inteligentes.** Al marcar la cotización como *anticipo*, si el
+  proyecto ya tiene ingresos, el sistema ofrece **ligar uno existente** como el
+  anticipo en vez de duplicarlo.
+- **Calendarios arreglados** dentro de las ventanas emergentes: ya no salen
+  vacíos, muy anchos ni con "NaN".
+- **Tasas con decimales finos.** Las tasas de impuestos aceptan hasta 4
+  decimales (por ejemplo la retención de IVA de honorarios, 10.6667%).
+- **Formato de hora (24 h / AM-PM)** se movió de *Mis notificaciones* a
+  **La Gerencia → Catálogos → Horarios laborales** (junto a la configuración de
+  horas). Sigue siendo una preferencia personal de cada quien.
+- **Notificaciones más limpias:** la tarjeta completa es clickeable (se quitó
+  el botón "Abrir").
+
 ## Novedades — Nuevo Chalán "Grok" y retiro de "Llama" (19 de julio de 2026)
 
 - **Se sumó un Chalán nuevo: "Grok" (xAI)**. Ya son seis asistentes de IA
@@ -2606,7 +2632,7 @@ Registra tu día de trabajo desde el celular o la computadora. La ubicación se 
 ### Para administradores
 
 - **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV). Haz clic en una persona para ver el **detalle**: sus jornadas y visitas con el botón **📍 Mapa** de cada checada. Ahí mismo puedes **Editar** una jornada o **Registrar** una de un día sin checar **directamente** (sin pedir aprobación; queda registrado que tú la ajustaste).
-- **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo. Al crear, eliges **varios días y varios empleados a la vez** (casillas) y la hora en **formato 24 h**. Los horarios configurados son la base del **balance de horas** de cada quien.
+- **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo. Al crear, eliges **varios días y varios empleados a la vez** (casillas) y la hora en **formato 24 h**. Los horarios configurados son la base del **balance de horas** de cada quien. En esta misma pantalla eliges tu **Formato de hora** personal (24 h o AM/PM) para ver TODAS las horas del sistema.
 - **Correcciones:** las solicitudes te llegan **por Recados** (con botones Aprobar/Rechazar en el chat) y también las tienes en la **bandeja** de correcciones. Resuelvas donde resuelvas, la respuesta se publica en la conversación del solicitante.
 
 Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar depende de los permisos que te dé el super admin.

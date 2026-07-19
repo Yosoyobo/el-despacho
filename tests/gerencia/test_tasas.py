@@ -48,7 +48,28 @@ class TestTasasUI:
         })
         assert resp.status_code == 302
         t.refresh_from_db()
-        assert str(t.porcentaje) == "1.25"
+        # S-Finanzas-UX: el campo ahora guarda 4 decimales (1.25 → 1.2500).
+        assert t.porcentaje == Decimal("1.25")
+        assert t.porcentaje_str == "1.25"
+
+    def test_editar_tasa_fraccionada_4_decimales(self, client, usuario_factory):
+        """S-Finanzas-UX: tasas como 10.6667% (ret. IVA honorarios) se guardan
+        con 4 decimales (antes el step=0.01 las bloqueaba)."""
+        from decimal import Decimal
+
+        from ajustes.models import TasaImpositiva
+        t = TasaImpositiva.objects.create(
+            nombre="Ret. IVA", porcentaje=Decimal("10.00"), tipo="retencion", orden=40,
+        )
+        client.force_login(usuario_factory(rol="super_admin"))
+        resp = client.post(f"/ajustes/tasas/{t.pk}/editar", {
+            "nombre": "Ret. IVA", "porcentaje": "10.6667", "tipo": "retencion",
+            "activa": "on", "orden": "40",
+        })
+        assert resp.status_code == 302
+        t.refresh_from_db()
+        assert t.porcentaje == Decimal("10.6667")
+        assert t.porcentaje_str == "10.6667"
 
 
 def test_seed_tasas_idempotente(db):

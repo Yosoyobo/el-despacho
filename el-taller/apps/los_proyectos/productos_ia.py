@@ -149,6 +149,9 @@ def aplicar_productos(*, proyecto, lineas: list[dict], usuario) -> dict:
     puede_crear = puede_crear_catalogo(usuario)
     agregados, omitidos, mensajes = 0, 0, []
     categoria_default = CategoriaServicio.objects.filter(activa=True).order_by("orden").first()
+    # S-Finanzas-UX: los nuevos productos se agregan al final (append).
+    from django.db.models import Max
+    orden_base = proyecto.productos.aggregate(m=Max("orden"))["m"] or 0
 
     for linea in lineas:
         nombre = (linea.get("nombre") or "").strip()[:150]
@@ -180,9 +183,11 @@ def aplicar_productos(*, proyecto, lineas: list[dict], usuario) -> dict:
             )
             _emitir_servicio_creado(servicio, usuario)
 
+        # S-Finanzas-UX: los productos nuevos se agregan al final (append).
+        orden_base += 1
         ProyectoProducto.objects.create(
             proyecto=proyecto, servicio=servicio, cantidad=cantidad,
-            precio_unitario=precio, nota=nota,
+            precio_unitario=precio, nota=nota, orden=orden_base,
         )
         agregados += 1
 

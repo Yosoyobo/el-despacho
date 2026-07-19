@@ -10,6 +10,7 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
         <form hx-post="{% url 'tesoreria:ingreso-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" hx-encoding="multipart/form-data" enctype="multipart/form-data" class="campo-form flex min-h-0 flex-col">
             {% csrf_token %}
             {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+            {% if desde_proyecto %}<input type="hidden" name="desde" value="proyecto">{% endif %}
             <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Nuevo ingreso</h2>
                 <div class="flex items-center gap-2">
@@ -30,6 +31,7 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
                     <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         {% include "tesoreria/_iva_campos.html" with form=form %}
+                        {% include "tesoreria/_monto_rapido.html" with saldo=saldo_proyecto %}
                         {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
                         <div class="sm:col-span-2" data-metodo-group>
                             <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método</span>
@@ -54,9 +56,11 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
                 <div>
                     <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Clasificación</h3>
                     <div class="space-y-5">
-                        <div class="campo-form min-w-0">
+                        {% comment %}S-Finanzas-UX: desde un proyecto el cliente es redundante — se
+                        oculta el bloque completo (el proyecto ya define al cliente).{% endcomment %}
+                        <div class="campo-form min-w-0{% if desde_proyecto %} hidden{% endif %}">
                             <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
-                            {% if clientes_recientes %}
+                            {% if clientes_recientes and not desde_proyecto %}
                             <div class="mb-2 flex flex-wrap gap-1.5">
                                 {% for c in clientes_recientes %}
                                 <button type="button" data-pick-select="id_cliente" data-val="{{ c.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ c.razon_social|truncatechars:24 }}</button>
@@ -80,7 +84,9 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
 
                         <div class="campo-form min-w-0">
                             <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
-                            {% if proyectos_recientes %}
+                            {% comment %}S-Finanzas-UX: desde un proyecto se dejan solo el dropdown con
+                            buscador (sin pastillas legacy).{% endcomment %}
+                            {% if proyectos_recientes and not desde_proyecto %}
                             <div class="mb-2 flex flex-wrap gap-1.5">
                                 {% for p in proyectos_recientes %}
                                 <button type="button" data-pick-select="id_proyecto" data-val="{{ p.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.codigo }} · {{ p.nombre|truncatechars:20 }}</button>
@@ -187,10 +193,15 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
         if (sel.value && sel.dataset.autollenado !== "proyecto") return;
         sel.value = String(val); sel.dataset.autollenado = "proyecto";
     };
+    const mrBox = root.querySelector('[data-monto-rapido]');
     if (proyectoSel) {
         proyectoSel.addEventListener("change", async () => {
             const pk = proyectoSel.value;
-            if (!pk) { clearAuto(clienteSel); clearAuto(descInput); clearAuto(subInput); return; }
+            if (!pk) {
+                clearAuto(clienteSel); clearAuto(descInput); clearAuto(subInput);
+                if (mrBox) mrBox.dataset.saldo = "";
+                return;
+            }
             try {
                 const resp = await fetch(`{% url 'tesoreria:api-proyecto-datos' 0 %}`.replace("/0/", `/${pk}/`));
                 if (!resp.ok) return;
@@ -198,6 +209,8 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
                 setSelIfExists(clienteSel, data.cliente_id);
                 setIfFree(descInput, data.descripcion_sugerida);
                 if (parseFloat(data.monto_pendiente) > 0) setIfFree(subInput, data.monto_pendiente);
+                // S-Finanzas-UX: activa/actualiza los botones rápidos [100%]/[50%].
+                if (mrBox) mrBox.dataset.saldo = data.saldo_por_cobrar || "";
             } catch (e) { /* el usuario teclea a mano */ }
         });
     }

@@ -1,0 +1,7 @@
+{% comment %}S-Finanzas-UX: inyecta el modal de anticipo en #modal-slot vía OOB
+cuando la cotización pasa a «anticipo» y el proyecto ya tiene ingresos (para
+ofrecer ligar uno como el anticipo). Se agrega a la respuesta del cambio de
+estatus sin reemplazar el panel principal.{% endcomment %}
+<div id="modal-slot" hx-swap-oob="innerHTML">
+    {% include "proyectos/_modal_registrar_anticipo.html" %}
+</div>

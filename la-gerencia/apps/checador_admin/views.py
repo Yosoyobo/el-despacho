@@ -97,7 +97,25 @@ def horarios(request):
     )
     return render(request, "checador_admin/horarios.html", {
         "globales": globales, "overrides": overrides,
+        "formato_hora_actual": getattr(request.user, "formato_hora", "24h") or "24h",
     })
+
+
+@login_required
+def guardar_formato_hora(request):
+    """S-Finanzas-UX: el formato de hora del usuario (24h / AM-PM) se mudó aquí
+    desde 'Mis notificaciones'. Es una preferencia personal — cada usuario que
+    entra a Horarios laborales elige la suya. POST → guarda y vuelve."""
+    if request.method != "POST":
+        return HttpResponse(status=405)
+    pref = request.POST.get("formato_hora")
+    if pref in ("24h", "ampm"):
+        request.user.formato_hora = pref
+        request.user.save(update_fields=["formato_hora", "actualizado_en"])
+        messages.success(request, "Listo, tu formato de hora quedó guardado.")
+    else:
+        messages.error(request, "Formato inválido.")
+    return redirect("checador-admin-horarios")
 
 
 @login_required

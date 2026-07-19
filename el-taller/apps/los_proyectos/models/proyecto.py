@@ -275,6 +275,36 @@ class Proyecto(models.Model):
             return Decimal("0.0")
         return (self.utilidad_productos / base * Decimal("100")).quantize(Decimal("0.1"))
 
+    # ── Saldos de cobro/pago (S-Finanzas-UX) ──────────────────────────────────
+    # Los ingresos/egresos se capturan con el monto = TOTAL (con IVA). El
+    # "total del proyecto" comparable es `monto_a_facturar` (total con IVA /
+    # retenciones según régimen).
+
+    @property
+    def ingresos_ligados(self):
+        """Ingresos vigentes ligados al proyecto, del más antiguo al más nuevo."""
+        return self.ingresos.filter(anulado=False).order_by("fecha", "pk")
+
+    @property
+    def total_cobrado_ingresos(self) -> Decimal:
+        return sum((i.monto for i in self.ingresos_ligados), Decimal("0.00"))
+
+    @property
+    def saldo_por_cobrar(self) -> Decimal:
+        """Total a facturar − suma de ingresos ligados (lo que falta cobrar)."""
+        return (self.monto_a_facturar - self.total_cobrado_ingresos).quantize(Decimal("0.01"))
+
+    @property
+    def total_pagado_egresos(self) -> Decimal:
+        return sum(
+            (e.monto for e in self.egresos.filter(anulado=False)), Decimal("0.00"),
+        )
+
+    @property
+    def saldo_por_pagar(self) -> Decimal:
+        """Costo de producción − suma de egresos ligados (lo que falta pagar)."""
+        return (self.costo_produccion - self.total_pagado_egresos).quantize(Decimal("0.01"))
+
     # ── Proveedores y gastos derivados de los productos (Render-V1) ───────────
 
     def deuda_por_proveedor(self):

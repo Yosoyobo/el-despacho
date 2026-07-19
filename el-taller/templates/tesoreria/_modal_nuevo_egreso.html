@@ -37,6 +37,7 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
                     <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         {% include "tesoreria/_iva_campos.html" with form=form %}
+                        {% include "tesoreria/_monto_rapido.html" with saldo=saldo_proyecto %}
                         {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
                     </div>
                 </div>
@@ -211,6 +212,23 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
                     break;
                 }
             }
+        });
+    }
+
+    // S-Finanzas-UX: al elegir proyecto, trae el saldo por pagar para activar
+    // los botones rápidos [100%]/[50%] del monto.
+    const mrBox = root.querySelector('[data-monto-rapido]');
+    const proyectoSel = root.querySelector('[name="proyecto"]');
+    if (mrBox && proyectoSel) {
+        proyectoSel.addEventListener("change", async () => {
+            const pk = proyectoSel.value;
+            if (!pk) { mrBox.dataset.saldo = ""; return; }
+            try {
+                const resp = await fetch(`{% url 'tesoreria:api-proyecto-datos' 0 %}`.replace("/0/", `/${pk}/`));
+                if (!resp.ok) return;
+                const data = await resp.json();
+                mrBox.dataset.saldo = data.saldo_por_pagar || "";
+            } catch (e) { /* el usuario teclea a mano */ }
         });
     }
 
