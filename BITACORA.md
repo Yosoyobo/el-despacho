@@ -6636,3 +6636,48 @@ del seed 0020 dejaron de crear runs push de El Mensajero durante una ventana:
 Aprendizaje: para re-disparar el deploy hay que empujar a `main` un **cambio
 real** (no vacío) con merge de token de usuario (no `--auto`). Este commit lleva
 la migración `0020_seed_grok_cadena` a producción.
+
+---
+
+## Cierre S-Finanzas-UX (2026-07-19, VERSION 2026.07.20)
+
+Sprint único "Consolidación Financiera y UX Quirúrgica" (handoff
+`SPRINT_FINANZAS_UX.md`), 4 bloques en un ciclo, rama `agent/ui-fase3-forms`.
+
+**B1 — Base de datos + reubicación:**
+- `TasaImpositiva.porcentaje` a `max_digits=7, decimal_places=4` (migr.
+  `ajustes/0012`). El `ModelForm` hereda `step=0.0001` → desbloquea tasas
+  fraccionadas (ret. IVA honorarios 10.6667%). Property `porcentaje_str`
+  (trima ceros) en lista de tasas + checkboxes de impuestos.
+- Selector **Formato de hora** (24h/AM-PM) movido de El Taller *Mis
+  notificaciones* a La Gerencia → Catálogos → **Horarios laborales**
+  (`checador_admin.guardar_formato_hora` + URL `checador-admin-formato-hora`).
+  Tradeoff documentado: queda tras el permiso `configurar_horarios`.
+
+**B2 — Modales financieros + fix de fechas:**
+- Raíz del "calendario NaN/ancho/vacío" en modales: `es-mx` localizaba
+  `{{ form.fecha.value }}` a texto ("19 de julio de 2026") y el minical lo
+  parseaba con `.split('-')` → NaN. Fix: `_fecha_minical` usa `|unlocalize`
+  (ISO) + `max-w-sm`; `initMinical` (ui.js dual) gana `mcNormalizarISO()`.
+- Ingreso/Egreso del proyecto abren el form-in-modal (`hx-get&desde=proyecto`),
+  el de ingreso oculta Cliente + pastillas legacy (solo dropdown buscable).
+- Botones rápidos `[100%]/[50%]/[Otro]` (`tesoreria/_monto_rapido.html`)
+  basados en el saldo; `api_proyecto_datos` expone `saldo_por_cobrar` y
+  `saldo_por_pagar`.
+
+**B3 — Negocio + tracking del proyecto:**
+- `Proyecto.saldo_por_cobrar/saldo_por_pagar` + `ingresos_ligados`.
+- Productos nuevos SIEMPRE al final: `_siguiente_orden_producto` (max+1) en
+  `agregar_producto_modal` y `productos_ia` (antes `orden=0` iba al tope).
+- `_economico_panel` lista los cobros (Pago 1, 2…) + **Monto restante**.
+- Gancho de anticipos: al pasar cotización a `anticipo`, si el proyecto ya
+  tiene ingresos, se abre (OOB) el modal que ofrece **ligar** uno existente
+  (`vincular_ingreso_anticipo`) en vez de duplicar.
+
+**B4 — Notificaciones:** tarjeta ENTERA clickeable (`data-href` / `hx-get`),
+se quitó el botón "Abrir →".
+
+**Tests:** `tests/taller/test_finanzas_ux.py` (10) +
+`tests/gerencia/test_formato_hora_horarios.py` (3) + `test_tasas` ampliado.
+Blast-radius verde; ruff limpio; `test_no_renderiza_comentarios` (2 Bug C
+cazados y corregidos durante el sprint).

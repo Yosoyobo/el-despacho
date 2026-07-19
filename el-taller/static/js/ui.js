@@ -383,6 +383,15 @@
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  // Normaliza cualquier valor a ISO YYYY-MM-DD. Defensivo: una fecha localizada
+  // ("19 de julio de 2026") producía NaN y dejaba el calendario vacío/ancho.
+  function mcNormalizarISO(v) {
+    v = (v || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+    var m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);  // dd/mm/yyyy
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return '';  // formato no reconocido → sin valor (cae a hoy o queda vacío)
+  }
   function initMinical(root) {
     (root || document).querySelectorAll('[data-minical]:not([data-minical-listo])').forEach(function (mc) {
       mc.setAttribute('data-minical-listo', '1');
@@ -390,6 +399,7 @@
       var grid = mc.querySelector('[data-mc-grid]');
       var titulo = mc.querySelector('[data-mc-titulo]');
       if (!input || !grid || !titulo) return;
+      input.value = mcNormalizarISO(input.value);
       // Por default arranca en HOY si viene vacío; data-mc-default-hoy="0" lo evita.
       if (!input.value && mc.getAttribute('data-mc-default-hoy') !== '0') input.value = mcHoyISO();
       var base = (input.value || mcHoyISO()).split('-').map(Number);

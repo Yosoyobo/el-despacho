@@ -5423,6 +5423,59 @@ con xAI); se usa el endpoint chat/completions, no el `/v1/responses` más nuevo
 usa los adapters vía `_chequear_via_adapter`, así que Grok aparece solo en
 Plataformas cuando tenga llave.
 
+### S-Finanzas-UX ✅ — Consolidación financiera + UX quirúrgica (2026-07-19, VERSION 2026.07.20)
+
+Handoff `SPRINT_FINANZAS_UX.md` (4 bloques, un ciclo). Rama `agent/ui-fase3-forms`.
+
+- **B1 — Tasas con 4 decimales**: `ajustes.TasaImpositiva.porcentaje`
+  `max_digits 5→7, decimal_places 2→4` (migr. `ajustes/0012`). El widget del
+  ModelForm hereda `step=0.0001` → desbloquea tasas fraccionadas (ret. IVA
+  honorarios 10.6667%). Property `porcentaje_str` trima ceros (16.0000→"16");
+  aplicada en la lista de tasas y los checkboxes de impuestos (cotización +
+  factura). `data-pct` de la factura queda crudo para el JS.
+- **B1 — Formato de hora mudado**: el selector 24h/AM-PM salió de El Taller →
+  *Mis notificaciones* y vive ahora en La Gerencia → Catálogos → **Horarios
+  laborales** (`checador_admin`, view+URL `checador-admin-formato-hora`, guarda
+  `request.user.formato_hora`). Sigue siendo preferencia personal. **Deuda/tradeoff**:
+  la página de Horarios está gateada por `configurar_horarios`, así que un
+  usuario sin ese permiso ya no cambia su formato (queda en 24h). El endpoint
+  viejo de El Taller (`perfil-formato-hora`) queda sin UI (inofensivo).
+- **B2 — Fix del minical en modales**: raíz = `es-mx` localiza `{{ form.fecha.value }}`
+  (date) a "19 de julio de 2026" → `.split('-')` daba NaN + grid vacío + ancho.
+  Fix: `_fecha_minical.html` usa `{{ valor|unlocalize }}` (ISO) + `max-w-sm`;
+  `initMinical` (ui.js **dual-copy**) gana `mcNormalizarISO()` defensivo (ISO /
+  dd-mm-yyyy / fallback hoy).
+- **B2 — Captura ingreso/egreso desde el proyecto**: los botones del detalle
+  abren el form-in-modal (`hx-get` + `desde=proyecto`), ya no páginas full. El
+  modal de ingreso oculta el bloque Cliente y las pastillas legacy cuando
+  `desde_proyecto` (deja solo el dropdown buscable).
+- **B2 — Botones rápidos [100%]/[50%]/[Otro]**: partial nuevo
+  `tesoreria/_monto_rapido.html` (swap-safe, `data-saldo` con `unlocalize`,
+  MutationObserver). En el proyecto el saldo llega server-side; en el Dashboard
+  se activa al elegir proyecto (fetch a `api-proyecto-datos`, que ahora expone
+  `saldo_por_cobrar`/`saldo_por_pagar`).
+- **B3 — Productos al final (append)**: `Proyecto.saldo_por_cobrar`/`saldo_por_pagar`
+  (+ `ingresos_ligados`, `total_cobrado_ingresos`). Helper
+  `_siguiente_orden_producto` (max(orden)+1) en `agregar_producto_modal` y el
+  loop de `productos_ia` — antes `orden=0` los mandaba al tope.
+- **B3 — Tracking de saldos**: `_economico_panel.html` lista los cobros (Pago 1,
+  2…) + **Monto restante** (= total a facturar − ingresos). Se refresca por OOB.
+- **B3 — Gancho de anticipos**: al pasar la cotización a `anticipo`, si el
+  proyecto ya tiene ingresos, `cotizacion_estado` inyecta (OOB) el modal de
+  anticipo que ahora LISTA los ingresos existentes con "Ligar como anticipo"
+  (endpoint `vincular_ingreso_anticipo`) — evita duplicar.
+- **B4 — Notificaciones**: la tarjeta ENTERA es clickeable (`data-href`, o
+  `hx-get` para el análisis del Chalán); se quitó el botón "Abrir →".
+- **Tests**: `tests/taller/test_finanzas_ux.py` (10) +
+  `tests/gerencia/test_formato_hora_horarios.py` (3) + `test_tasas` ampliado
+  (tasa fraccionada 4 decimales). Blast-radius verde (tesorería, proyectos,
+  pizarrón, cotizaciones, facturación, comentarios Bug C, novedades).
+
+**Deuda diseñada**: formato de hora restringido a quien entra a Horarios (ver
+arriba); los botones rápidos no se agregaron a los forms full-page (solo modales
++ dashboard); el saldo del egreso usa `costo_produccion − egresos` (aproximación
+del "por pagar").
+
 ---
 
 ## 9. Decisiones operativas tomadas

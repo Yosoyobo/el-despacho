@@ -241,7 +241,7 @@
                     <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-gray-300 text-transparent transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:text-white dark:border-gray-600">
                         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </span>
-                    <span class="min-w-0 flex-1 break-words text-gray-800 dark:text-gray-200">{{ t.nombre }} <span class="text-xs text-gray-500 dark:text-gray-400">({{ t.porcentaje }}% · {{ t.get_tipo_display }})</span></span>
+                    <span class="min-w-0 flex-1 break-words text-gray-800 dark:text-gray-200">{{ t.nombre }} <span class="text-xs text-gray-500 dark:text-gray-400">({{ t.porcentaje_str }}% · {{ t.get_tipo_display }})</span></span>
                 </label>
                 {% empty %}
                 <p class="text-sm text-gray-500 dark:text-gray-400">No hay tasas activas en La Gerencia.</p>

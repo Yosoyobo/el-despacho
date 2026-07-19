@@ -1,0 +1,52 @@
+{% load forms_helpers l10n %}
+{% comment %}
+Botones rápidos de monto (S-Finanzas-UX): [100%] [50%] [Otro] que llenan el
+Monto (input [name=subtotal]) con base en el saldo del proyecto.
+Params: `saldo` = número (saldo por cobrar/pagar) o None. Si no hay saldo (>0),
+el bloque arranca oculto; los modales lo activan actualizando `data-saldo` tras
+el fetch del proyecto (MutationObserver repinta). Script rooteado por selector
++ flag `data-mr-listo` → swap-safe dentro de #modal-slot.
+{% endcomment %}
+{# unlocalize: el número queda "1000.00" (no "1,000.00") para parseFloat/asserts. #}
+<div data-monto-rapido data-saldo="{{ saldo|default_if_none:''|unlocalize }}"
+     class="md:col-span-2 -mt-2 {% if not saldo %}hidden{% endif %}">
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs text-gray-500 dark:text-gray-400">Saldo del proyecto:
+            <span data-mr-saldo class="font-semibold tabular-nums text-gray-700 dark:text-gray-200">$0.00</span>
+        </span>
+        <button type="button" data-mr-pct="100" class="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300 dark:hover:border-brand-500/50">100%</button>
+        <button type="button" data-mr-pct="50" class="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300 dark:hover:border-brand-500/50">50%</button>
+        <button type="button" data-mr-otro class="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300 dark:hover:border-brand-500/50">Otro</button>
+    </div>
+</div>
+<script>
+(() => {
+  document.querySelectorAll('[data-monto-rapido]:not([data-mr-listo])').forEach((box) => {
+    box.dataset.mrListo = '1';
+    const root = box.closest('form') || document;
+    const inp = root.querySelector('[name="subtotal"]');
+    const saldoOut = box.querySelector('[data-mr-saldo]');
+    const fmt = (n) => '$' + (n || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const saldo = () => parseFloat(box.dataset.saldo) || 0;
+    const pintar = () => {
+      const s = saldo();
+      box.classList.toggle('hidden', !(s > 0));
+      if (saldoOut) saldoOut.textContent = fmt(s);
+    };
+    const set = (v) => {
+      if (!inp) return;
+      inp.value = (Math.round(v * 100) / 100).toFixed(2);
+      inp.dispatchEvent(new Event('input'));
+    };
+    box.querySelectorAll('[data-mr-pct]').forEach((b) =>
+      b.addEventListener('click', () => set(saldo() * (parseFloat(b.dataset.mrPct) / 100))));
+    const otro = box.querySelector('[data-mr-otro]');
+    if (otro) otro.addEventListener('click', () => {
+      if (inp) { inp.value = ''; inp.focus(); inp.dispatchEvent(new Event('input')); }
+    });
+    // Los modales cambian data-saldo tras el fetch del proyecto → repintar.
+    new MutationObserver(pintar).observe(box, {attributes: true, attributeFilter: ['data-saldo']});
+    pintar();
+  });
+})();
+</script>

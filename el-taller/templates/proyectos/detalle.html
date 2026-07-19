@@ -149,9 +149,14 @@
         <section>
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Ingresos y egresos</h2>
+                {# S-Finanzas-UX: abren el form-in-modal (como en el Dashboard), sin salir del proyecto. #}
                 <div class="flex gap-2">
-                    <a href="{% url 'tesoreria:ingreso-nuevo' %}?proyecto={{ proyecto.pk }}&next={{ request.path|urlencode }}" class="inline-flex items-center gap-1.5 rounded-lg bg-success-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-success-600">+ Nuevo ingreso</a>
-                    <a href="{% url 'tesoreria:egreso-nuevo' %}?proyecto={{ proyecto.pk }}&next={{ request.path|urlencode }}" class="inline-flex items-center gap-1.5 rounded-lg bg-error-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-error-600">+ Nuevo egreso</a>
+                    <button type="button" hx-get="{% url 'tesoreria:ingreso-nuevo' %}?proyecto={{ proyecto.pk }}&desde=proyecto&next={{ request.path|urlencode }}"
+                            hx-target="#modal-slot" hx-swap="innerHTML"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-success-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-success-600">+ Nuevo ingreso</button>
+                    <button type="button" hx-get="{% url 'tesoreria:egreso-nuevo' %}?proyecto={{ proyecto.pk }}&desde=proyecto&next={{ request.path|urlencode }}"
+                            hx-target="#modal-slot" hx-swap="innerHTML"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-error-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-error-600">+ Nuevo egreso</button>
                 </div>
             </div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
