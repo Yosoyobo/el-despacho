@@ -44,7 +44,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        outfit: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        inter: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'title-2xl': ['72px', { lineHeight: '90px' }],
@@ -70,11 +70,11 @@ module.exports = {
           400: '#98a2b3',
           500: '#667085',
           600: '#475467',
-          700: '#344054',
-          800: '#1d2939',
-          900: '#101828',
-          950: '#0c111d',
-          dark: '#1a2231',
+          700: '#3f3f3f',
+          800: '#272727',
+          900: '#171717',
+          950: '#111111',
+          dark: '#212121',
         },
         brand: {
           25:  '#f2f7ff',

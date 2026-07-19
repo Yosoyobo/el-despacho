@@ -5059,6 +5059,54 @@ Buzón, Mensajes, Equipo) queda como olas siguientes;
 `duplicar_cotizacion`/`generar_factura_anticipo`/`cambiar_estado_mandado` envuelven
 servicios ya testeados (cobertura V1 = registro + gating).
 
+### S-Ajustes-UI-Fase1 ✅ — Estilos globales + menús + maquetación base del detalle (2026-07-18, VERSION 2026.07.13)
+
+Primera de tres fases de un **plan maestro de ajustes de UI** de Learning Center.
+Rama nueva `agent/ui-fase1-estilos` desde `main` (decisión Oscar — las Olas 2+3 del
+Chalán quedan pendientes por separado en `agent/mcp-despacho`, sin arrastrarse a este
+deploy). **Solo Fase 1**; Fases 2 (modales + listas) y 3 (facturación + navegación
+cruzada) se documentan en `handoff_fase2.md` y NO se tocaron.
+
+- **Dark mode neutro**: la paleta `gray` de TailAdmin es fría/azulada
+  (`900=#101828`, `950=#0c111d`…). Se retunearon SOLO los tonos oscuros
+  `gray {700,800,900,950,dark}` a **grises neutros achromáticos** de la MISMA
+  luminancia (`700=#3f3f3f · 800=#272727 · 900=#171717 · 950=#111111 · dark=#212121`)
+  en los **3 `tailwind.config.js`** (tri-copia §18). Sin tocar 25-600 (texto/bordes
+  claros) ni cambiar nombres de clase — Tailwind recompila en el build de Docker y
+  todas las superficies `dark:bg-gray-*` quedan neutras. Reversible (solo hex).
+- **Fuente Outfit → Inter**: link de Google Fonts en los 2 `base.html`
+  (`family=Inter:wght@100..900`), `@apply font-outfit` → `font-inter` en los 2
+  `input.css`, y `fontFamily.outfit` → `fontFamily.inter` en los 3 configs. `font-outfit`
+  solo lo usaban esos 2 input.css (verificado).
+- **Clientes sin paginación** (`la_cartera/views.py::lista`): se quitó `Paginator`
+  (import incluido) — `clientes = list(qs)`, `page_obj=None`; la plantilla ya no
+  renderiza controles de página. Se listan TODOS de una (padrón acotado, decisión Oscar).
+- **Sidebar** (`_componentes_tailadmin/sidebar.html`):
+  - Emoji removido del ítem **Equipo**.
+  - Badge **⚠️ de falla del sistema** ahora es `<a>` **clickable** → `https://gerencia.learningcenter.mx/site/`
+    (El Site, la fuente de la falla) con hover; antes era un `<div cursor-default>`.
+  - Los **3 globos de Tareas** se redefinieron y reordenaron (context processor
+    `el_pizarron.context_processors.mandados_badge` reescrito, keys nuevas):
+    **📋 `tareas_despacho_count`** = todas las tareas (no-runner) pendientes+en
+    proceso del despacho · **💻 `tareas_mias_count`** = pendientes asignadas a mí ·
+    **🛵 `mandados_activos_count`** = mandados activos de todos (acotado a
+    `mandados_visibles`). Antes eran 🙋 mías / 👥 otras (total−mías) / 🛵 solo mis
+    mandados. Tests de `test_pizarron.py` actualizados a la nueva semántica.
+- **Detalle de proyecto** (`proyectos/detalle.html`): **nombre más grande**
+  (`text-title-md sm:text-title-lg`, antes `title-sm`); la cabecera se reordenó —
+  **Deshacer + Guardar** a la derecha en el eje del título, y la **metadata**
+  (Última actualización + ✓ Guardado + error de autosave) + **🤖 Resumir actividad**
+  bajaron justo debajo del título (se eliminó la vieja "barra de acciones"). Las
+  acciones **Archivar / Duplicar / Eliminar** se **eyectaron al pie de página** (bajo
+  Comentarios). Se preservaron los IDs que usa el JS de autosave (`ult-act`,
+  `autosave-error-detalle`, `btn-undo`) y el `_guardado_indicador`.
+
+**Deuda diseñada**: `static/css/tailwind.css` commiteado queda stale hasta el build
+de Docker (patrón del repo — el Dockerfile recompila con `--minify`); Recepción
+(stub, off) no tiene `input.css` ni se le cambió el link de Outfit en su `base.html`
+(no sirve); el ⚠️ clickable manda a todos a El Site aunque sea admin-gated (a un
+usuario sin acceso a Gerencia le sale el muro de permisos — aceptable, es la fuente).
+
 ---
 
 ## 9. Decisiones operativas tomadas

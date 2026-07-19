@@ -5,6 +5,26 @@
 
 ---
 
+## Novedades — Cambios de apariencia y menús más claros (18 de julio de 2026)
+
+- **Modo oscuro más neutro.** El fondo oscuro dejó su tono azulado por un gris
+  neutro y descansado a la vista. El resto de los colores no cambia.
+- **Nueva tipografía.** Todo el sistema ahora usa la fuente **Inter**, más nítida y
+  legible en pantalla.
+- **Clientes en una sola página.** La lista de Clientes ya no se parte en páginas:
+  ves a **todos** tus clientes de corrido, sin botones de "siguiente" ni "anterior".
+- **Menú lateral más claro:**
+  - La alerta **⚠️ del sistema** ahora es un **atajo clickable**: al tocarla te
+    lleva directo a **El Site** (en La Gerencia), donde se ve el detalle de la
+    falla.
+  - Los **globos de Tareas** se ordenaron con su significado a la vista:
+    **📋** tareas pendientes y en proceso de **todo el despacho** · **💻** **tus**
+    tareas pendientes · **🛵** mandados activos.
+- **Detalle de proyecto más ordenado:** el **nombre del proyecto se ve más
+  grande**; los botones de **Guardar** y **Deshacer** quedaron junto al título; y
+  las acciones de **Archivar, Duplicar y Eliminar** se movieron al **pie de la
+  página**, lejos de la edición del día a día.
+
 ## Novedades — El Chalán ahora hace más cosas por conversación (16 de julio de 2026)
 
 - **El Chalán puede proponer más acciones.** Además de crear proyectos, tareas,

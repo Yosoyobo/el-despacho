@@ -1,15 +1,15 @@
 """Badges del sidebar para Tareas (incluye Mandados, fusionados en V13).
 
-LC 2026-06-30 (decisión Oscar, 2ª pasada): SE CONSERVAN los tres globos, pero
-las cuentas ahora SÍ tienen sentido — antes el azul contaba tareas del equipo del
-proyecto (no suyas) y el rojo contaba TODOS los mandados visibles (no los suyos),
-así que Oscar veía 1/7/3 sin tener nada propio. Definición coherente:
+LC Fase 1 (2026-07, plan de ajustes): los tres globos de Tareas se redefinen para
+que comuniquen el estado del despacho de un vistazo:
 
-- **Azul** = tareas pendientes **asignadas a mí** (lo que YO tengo que hacer).
-- **Gris** = las **demás** tareas pendientes del despacho (conciencia del resto).
-- **Rojo** = mandados pendientes **míos** (soy el runner o están asignados a mí).
+- **📋 despacho** = TODAS las tareas del despacho pendientes y en proceso (no
+  terminales), de todos. Es el pulso general del taller.
+- **💻 mías** = tareas pendientes **asignadas al usuario autenticado** (lo que YO
+  tengo que hacer).
+- **🛵 mandados** = mandados **activos de todos** (dentro de lo que el usuario puede
+  ver: los runner-only siguen viendo solo los suyos por `mandados_visibles`).
 
-Quien no tiene nada propio (caso Oscar) ve solo el gris con el total del equipo.
 Defensivo: ante cualquier error, 0.
 """
 
@@ -21,18 +21,15 @@ import contextlib
 def mandados_badge(request):
     user = getattr(request, "user", None)
     cero = {
-        "tareas_involucrado_count": 0,
-        "tareas_otras_count": 0,
-        "mandados_pendientes_count": 0,
-        # back-compat por si algún template/test viejo aún los lee.
-        "tareas_total_count": 0,
-        "tareas_general_pendientes_count": 0,
+        "tareas_despacho_count": 0,
+        "tareas_mias_count": 0,
+        "mandados_activos_count": 0,
     }
     if not user or not getattr(user, "is_authenticated", False):
         return cero
 
+    despacho = 0
     mias = 0
-    otras = 0
     mandados = 0
     with contextlib.suppress(Exception):
         from apps.el_pizarron.mandados import TIPOS_RUNNER, mandados_visibles
@@ -42,26 +39,22 @@ def mandados_badge(request):
 
         terminales = slugs_terminales_tarea()
 
-        # Tareas (no-runner): azul = asignadas a mí; gris = el resto.
+        # 📋 = todas las tareas (no-runner) pendientes y en proceso del despacho.
         base = Tarea.objects.exclude(estado__in=terminales).exclude(tipo__in=TIPOS_RUNNER)
-        total = base.count()
+        despacho = base.count()
+        # 💻 = las que están asignadas a mí.
         mias = base.filter(Q(asignada_a=user) | Q(responsables=user)).distinct().count()
-        otras = max(0, total - mias)
 
-        # Rojo = mandados pendientes MÍOS (soy runner o están asignados a mí).
+        # 🛵 = mandados activos de TODOS (acotado a lo que el usuario puede ver).
         mandados = (
             mandados_visibles(user)
             .exclude(estado__in=("entregado", "cancelado"))
-            .filter(Q(tarea__runner=user) | Q(tarea__asignada_a=user))
             .distinct()
             .count()
         )
 
     return {
-        "tareas_involucrado_count": mias,
-        "tareas_otras_count": otras,
-        "mandados_pendientes_count": mandados,
-        # back-compat:
-        "tareas_total_count": mias + otras,
-        "tareas_general_pendientes_count": mias,
+        "tareas_despacho_count": despacho,
+        "tareas_mias_count": mias,
+        "mandados_activos_count": mandados,
     }
