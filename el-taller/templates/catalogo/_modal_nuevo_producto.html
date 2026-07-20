@@ -24,12 +24,10 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
                 <div class="rounded-lg border border-error-300 bg-error-50 p-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ form.non_field_errors }}</div>
                 {% endif %}
 
-                {# Datos del producto (LC Fase 2: sin Unidad ni toggle de disponibilidad; Categoría en pastillas abajo). #}
-                {# El producto nace disponible — sin toggle visible. #}
-                <input type="hidden" name="activo" value="on">
+                {# Datos del producto: sin Unidad (consolidada a pz) ni estado; Categoría en pastillas abajo. #}
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {% for f in form %}
-                        {% if f.name == 'proveedores' or f.name == 'descripcion_default' or f.name == 'unidad' or f.name == 'activo' or f.name == 'categoria' %}
+                        {% if f.name == 'proveedores' or f.name == 'descripcion_default' or f.name == 'categoria' %}
                         {% elif f.name == 'precio_base' and precio_readonly %}
                         <div class="min-w-0">
                             <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }} <span class="text-xs font-normal text-gray-400">solo lectura</span></label>

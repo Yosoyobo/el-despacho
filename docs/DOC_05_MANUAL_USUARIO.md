@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — Retenciones de IVA al centavo y catálogo de productos más simple (19 de julio de 2026)
+
+- **Retención de IVA (honorarios) alineada al SAT.** El sistema ahora calcula la
+  retención de IVA aplicando su tasa directamente sobre la base (10.6667%), igual
+  que la factura del PAC — antes se calculaba como ⅔ del IVA y podía diferir un
+  centavo. La tasa es editable en **La Gerencia → Ajustes → Fiscal** (Retención
+  IVA %). Ejemplo: sobre $33,770.00 la retención de IVA es **$3,602.14** y el
+  total neto **$35,148.93**.
+- **Una sola unidad: piezas (pz).** Se quitó el selector y la columna de
+  "unidad" de productos, cotizaciones y facturas — todo el sistema trabaja en
+  piezas. También se retiró el catálogo de Unidades (ya no hace falta).
+- **Se jubiló el estado "Disponible / No disponible" de los productos.** La lista
+  de Productos ya no muestra esa columna ni ese switch. Para sacar un producto de
+  circulación sigue estando el botón **Archivar** (y **Reactivar**).
+- **"Variaciones" ahora es "Usos".** En la ficha de un producto verás su
+  **historial real de usos**: en qué proyectos se usó, con qué cantidad, costo,
+  precio, proveedor e impresión/procesos. La lista de Productos gana una columna
+  **"Usos"** con las veces que cada producto ha aparecido en proyectos.
+
 ## Novedades — Finanzas más rápidas y ajustes de comodidad (19 de julio de 2026)
 
 - **Cobrar y pagar sin salir del proyecto.** Los botones **+ Nuevo ingreso** y
@@ -2323,8 +2342,8 @@ mensuales por usuario.
   productos involucrados, equipo, proveedores y panel económico por proyecto.
 - **Tareas (Pizarrón)** y **Calendario** — pendientes con responsable y fecha.
 - **Buzón** y **Recados (chat interno)** — comunicación del equipo.
-- **Productos (Catálogo)** — servicios, variaciones, costos, márgenes,
-  proveedores y unidades.
+- **Productos (Catálogo)** — servicios, costos, márgenes, proveedores y su
+  historial de usos.
 - **Cotizaciones** — propuestas comerciales con cálculo de impuestos y
   anticipos.
 - **Facturación interna** (comercial, no fiscal) — control de cuentas por
@@ -2443,7 +2462,7 @@ Toda la operación del negocio vive en **El Taller**. La Gerencia es para config
 | **Buzón** | Mensajes que llegan a la empresa o reportes internos |
 | **Recados** | Chat interno entre el equipo |
 | **Checador** | Tu jornada, visitas a clientes/proveedores y tiempo por proyecto |
-| **Productos** | Catálogo de servicios + sus variaciones + proveedores que los surten |
+| **Productos** | Catálogo de servicios + su historial de usos + proveedores que los surten |
 | **Notificaciones** | Tus alertas push y preferencias |
 | **Chalanes** | Tus asistentes de IA |
 | **Cotizaciones** | Propuestas comerciales para clientes |
@@ -2643,12 +2662,16 @@ Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar
 
 Lo que vendes/produces. Cada producto tiene:
 
-- Nombre, descripción, **unidad** (Piezas, Metros, etc.)
+- Nombre y descripción (todo se maneja en **piezas**).
 - **Categoría** (Diseño, Impresión, Producción, Maquila, Bordado, Otros, etc.)
 - **Costo** (lo que te cuesta) + **Precio de venta** → el margen se calcula solo
 - **Proveedores aplicables** (checkmarks) — quién te puede surtir este producto
-- **Disponible** sí/no
-- **Variaciones:** tallas, colores, tintas, lo que aplique. Cada variación tiene su propio costo y descripción.
+- **Usos:** la columna "Usos" de la lista cuenta las veces que el producto se
+  ha usado en proyectos; al abrir el producto ves su **bitácora de Usos** (en
+  qué proyectos se usó, con cantidad, costo, precio, proveedor e impresión).
+
+Para sacar un producto de circulación usa **Archivar** (se puede **Reactivar**);
+el borrado permanente sólo lo hace super admin y sólo si no se ha usado.
 
 ### Proveedores
 
@@ -2656,7 +2679,7 @@ CRM de quién te surte. Razón social, contacto, email, teléfono, RFC, direcci�
 
 Desde el form de un producto puedes crear un proveedor nuevo sin salir: panel "+ Nuevo proveedor", lo creas y queda marcado. También hay un acceso directo "Nuevo proveedor" en el Dashboard.
 
-### Categorías y unidades
+### Categorías
 
 Listas de referencia que sólo super admin gestiona (Gerencia → Catálogos).
 
@@ -2932,7 +2955,7 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Fiscal** (régimen, ISR, PTU, IVA) — ver abajo.
 - **Tasas e impuestos** (IVA, retenciones, ISR para cotizaciones/facturas).
 - **La Cobranza** (recordatorios de pago automáticos a clientes).
-- **Catálogos** (categorías, unidades, centros de costo).
+- **Catálogos** (categorías, centros de costo).
 - **Orden del sidebar** para todo el equipo.
 - **Metas KPI** (ingresos/egresos/utilidad del mes con barra de progreso).
 - **Directorio** (usuarios, sus permisos individuales, roles extra personalizados).

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ servicio.nombre }} — Usos{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Productos" "/catalogo/" servicio.nombre as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=servicio.nombre subtitulo="Usos del producto — historial real en proyectos" breadcrumb_items=breadcrumb_items back_url="/catalogo/" back_label="Productos" %}
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div class="text-sm text-gray-600 dark:text-gray-300">
+        {% if servicio.descripcion_default %}{{ servicio.descripcion_default }}{% else %}{{ servicio.categoria.nombre }}{% endif %}
+    </div>
+    <div class="flex items-center gap-2">
+        <span class="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ usos|length }} uso{{ usos|length|pluralize }}</span>
+        {% if puede_editar %}<a href="{% url 'catalogo-editar' servicio.pk %}" class="btn-secundario">Editar producto</a>{% endif %}
+    </div>
+</div>
+
+<div class="rounded-2xl border border-gray-200 bg-white p-0 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+    <table class="min-w-[720px] md:min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3">Proyecto</th>
+                <th class="px-5 py-3">Fecha</th>
+                <th class="px-5 py-3 text-right">Cantidad</th>
+                {% if ve_precios %}
+                <th class="px-5 py-3 text-right">Costo unitario</th>
+                <th class="px-5 py-3 text-right">Precio unitario</th>
+                {% endif %}
+                <th class="px-5 py-3">Proveedor</th>
+                <th class="px-5 py-3">Impresión / procesos</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for u in usos %}
+            <tr class="align-top hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <td class="px-5 py-3">
+                    {% if u.proyecto_id %}
+                    <a href="{% url 'proyectos-detalle' u.proyecto.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ u.proyecto.nombre|default:u.proyecto.codigo }}</a>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ u.proyecto.codigo }}{% if u.proyecto.cliente_id %} · {{ u.proyecto.cliente.razon_social }}{% endif %}</div>
+                    {% if u.variacion_id %}<div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Variación: {{ u.variacion.nombre }}</div>{% endif %}
+                    {% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}
+                </td>
+                <td class="px-5 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">{{ u.creado_en|date:"Y-m-d" }}</td>
+                <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">{{ u.cantidad }}{% if u.merma %} <span class="text-xs text-gray-400" title="Merma (piezas extra que no se cobran)">+{{ u.merma }}</span>{% endif %}</td>
+                {% if ve_precios %}
+                <td class="px-5 py-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ u.costo_efectivo|dinero }}</td>
+                <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">{{ u.precio_efectivo|dinero }}</td>
+                {% endif %}
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if u.proveedor_id %}{{ u.proveedor.razon_social }}{% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}</td>
+                <td class="px-5 py-3">
+                    {% with procesos=u.procesos.all %}
+                        {% if procesos %}
+                        <div class="flex flex-col gap-1">
+                            {% for p in procesos %}
+                            <span class="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {% if p.tipo == 'impresion' %}bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/20 dark:text-blue-light-300{% else %}bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300{% endif %}">
+                                {{ p.etiqueta }}{% if ve_precios %} · {{ p.costo_total|dinero }}{% endif %}{% if p.por_pieza %} <span class="opacity-70">/pz</span>{% endif %}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% else %}<span class="text-xs text-gray-400 dark:text-gray-500">—</span>{% endif %}
+                    {% endwith %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="{% if ve_precios %}7{% else %}5{% endif %}" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin usos todavía" descripcion="Este producto aún no se ha usado en ningún proyecto. Aparecerá aquí en cuanto se agregue a uno." icono="folder" %}</div></td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

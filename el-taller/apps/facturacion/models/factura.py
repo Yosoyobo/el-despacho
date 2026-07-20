@@ -363,7 +363,8 @@ class FacturaItem(models.Model):
     descripcion = models.TextField()
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
-    unidad = models.CharField(max_length=30, default="pieza")
+    # #12: unidad consolidada a 'pz' (sin selector). Columnas conservadas por back-compat.
+    unidad = models.CharField(max_length=30, default="pz")
     unidad_fk = models.ForeignKey(
         "el_catalogo.Unidad",
         null=True, blank=True,

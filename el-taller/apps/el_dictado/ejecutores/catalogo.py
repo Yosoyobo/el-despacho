@@ -74,8 +74,8 @@ def _resolver_servicio(clave: str, contexto=None):
 def crear_servicio(accion, usuario, contexto=None):
     """Crea un servicio/producto del Catálogo.
 
-    Payload: nombre, precio_base, categoria? (nombre), costo?, unidad?,
-    descripcion?.
+    Payload: nombre, precio_base, categoria? (nombre), costo?, descripcion?.
+    (La unidad se consolidó a 'pz' — ya no se captura, #12.)
     """
     _gate(usuario, "puede_crear_catalogo", "crear productos del Catálogo")
     from apps.el_catalogo.models import Servicio
@@ -91,7 +91,7 @@ def crear_servicio(accion, usuario, contexto=None):
         categoria=categoria,
         precio_base=_decimal(payload.get("precio_base"), "precio_base"),
         costo=_decimal(payload.get("costo"), "costo"),
-        unidad=(payload.get("unidad") or "pieza")[:30],
+        unidad="pz",  # #12: unidad única consolidada.
         descripcion_default=(payload.get("descripcion") or ""),
         creado_por=usuario,
     )
@@ -106,7 +106,8 @@ def actualizar_servicio(accion, usuario, contexto=None):
     ya existentes — modificar el catálogo requiere permiso `catalogo.editar`.
 
     Payload: servicio (nombre o @accion_N), y los campos a cambiar:
-    nombre_nuevo?, precio_base?, costo?, unidad?, descripcion?, disponible?.
+    nombre_nuevo?, precio_base?, costo?, descripcion?, disponible?.
+    (`disponible: false` archiva el producto — la unidad ya no se edita, #12.)
     """
     _gate(usuario, "puede_editar_catalogo", "editar productos del Catálogo")
     payload = accion.payload or {}
@@ -121,9 +122,6 @@ def actualizar_servicio(accion, usuario, contexto=None):
     if payload.get("costo") not in (None, ""):
         srv.costo = _decimal(payload.get("costo"), "costo")
         cambios.append("costo")
-    if payload.get("unidad"):
-        srv.unidad = str(payload["unidad"])[:30]
-        cambios.append("unidad")
     if "descripcion" in payload:
         srv.descripcion_default = str(payload.get("descripcion") or "")
         cambios.append("descripcion_default")

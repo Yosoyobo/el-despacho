@@ -94,9 +94,11 @@ class CotizacionForm(forms.ModelForm):
 class CotizacionItemForm(forms.ModelForm):
     class Meta:
         model = CotizacionItem
+        # Sprint Fiscal 2026-07 (#12): unidad consolidada a 'pz' (default del
+        # modelo) — sin selector por línea.
         fields = [
             "orden", "servicio", "variacion", "descripcion",
-            "cantidad", "unidad", "precio_unitario", "descuento_porcentaje",
+            "cantidad", "precio_unitario", "descuento_porcentaje",
         ]
         widgets = {
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
@@ -121,7 +123,6 @@ class CotizacionItemForm(forms.ModelForm):
             self.fields["cantidad"].initial = _D("1.00")
             self.fields["precio_unitario"].initial = _D("0.00")
             self.fields["descuento_porcentaje"].initial = _D("0.00")
-            self.fields["unidad"].initial = "Piezas"
 
     def clean(self):
         cleaned = super().clean()

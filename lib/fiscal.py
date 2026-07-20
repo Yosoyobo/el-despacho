@@ -15,13 +15,23 @@ Dos regímenes de documento (campo `regimen_fiscal` en Factura/Cotización/Proye
 - ``exento``    — sin impuestos.
 
 **Redondeo:** convención fiscal/contable mexicana = ROUND_HALF_UP (no el
-HALF_EVEN por defecto de Python). Caso de auditoría (LC 2026-07):
+HALF_EVEN por defecto de Python).
 
-    Importe          33,770.00
-    + IVA 16%         5,403.20
-    - Ret. ISR 1.25%    422.13   (33,770 × 1.25% = 422.125 → HALF_UP → 422.13)
-    - Ret. IVA ⅔        3,602.13   (⅔ × 5,403.20 = 3,602.1333… → 3,602.13)
-    = Total neto     35,148.94
+**Anexo 20 SAT (Sprint Fiscal 2026-07):** cada impuesto se calcula de forma
+100% INDEPENDIENTE = Base × (tasa nominal / 100), y se redondea al final. La
+retención de IVA dejó de calcularse como fracción (⅔) del IVA ya redondeado —
+que no cuadraba con el PAC — y ahora usa su tasa nominal (10.6667% = ⅔ de 16%)
+directamente sobre la Base. Caso de auditoría (importe 33,770.00):
+
+    Importe               33,770.00
+    + IVA 16%              5,403.20   (33,770 × 16%      = 5,403.20)
+    - Ret. ISR 1.25%         422.13   (33,770 × 1.25%    = 422.125  → 422.13)
+    - Ret. IVA 10.6667%    3,602.14   (33,770 × 10.6667% = 3,602.1446 → 3,602.14)
+    = Total neto          35,148.93
+
+Facturas reales verificadas (Base → Ret. IVA → Total):
+    16,000.00  → 1,706.67 → 16,653.33
+    40,184.22  → 4,286.33 → 41,825.07
 """
 
 from __future__ import annotations
@@ -63,13 +73,12 @@ def desglose_honorarios(base, cfg=None) -> dict:
     cfg = cfg or _config()
     base = q2(base)
 
+    # Anexo 20: cada impuesto es independiente = Base × tasa nominal / 100,
+    # redondeado al final. (No se calcula la retención como fracción del IVA.)
+    ret_iva_tasa = cfg.ret_iva_honorarios or Decimal("10.6667")
     iva = q2(base * cfg.iva_tasa / CIEN)
     ret_isr = q2(base * cfg.ret_isr_honorarios / CIEN)
-    # Retención de IVA = fracción exacta (num/den, típico ⅔) del IVA trasladado.
-    # Se calcula del IVA ya redondeado (= "IVA trasladado calculado", pedido LC).
-    num = Decimal(cfg.ret_iva_honorarios_num or 2)
-    den = Decimal(cfg.ret_iva_honorarios_den or 3)
-    ret_iva = q2(iva * num / den) if den else Decimal("0.00")
+    ret_iva = q2(base * ret_iva_tasa / CIEN)
 
     trasladados = iva
     retenciones = q2(ret_isr + ret_iva)
@@ -77,14 +86,15 @@ def desglose_honorarios(base, cfg=None) -> dict:
 
     iva_lbl = f"{cfg.iva_tasa:g}"
     isr_lbl = f"{cfg.ret_isr_honorarios:g}"
+    ret_iva_lbl = f"{ret_iva_tasa:g}"
     impuestos_detalle = [
         {"id": None, "tasa_id": None, "nombre": f"IVA trasladado ({iva_lbl}%)",
          "tipo": "trasladado", "porcentaje": cfg.iva_tasa, "monto": iva},
         {"id": None, "tasa_id": None, "nombre": f"Retención de ISR ({isr_lbl}%)",
          "tipo": "retencion", "porcentaje": cfg.ret_isr_honorarios, "monto": ret_isr},
         {"id": None, "tasa_id": None,
-         "nombre": f"Retención de IVA ({cfg.ret_iva_honorarios_num}/{cfg.ret_iva_honorarios_den} del IVA)",
-         "tipo": "retencion", "porcentaje": None, "monto": ret_iva},
+         "nombre": f"Retención de IVA ({ret_iva_lbl}%)",
+         "tipo": "retencion", "porcentaje": ret_iva_tasa, "monto": ret_iva},
     ]
     return {
         "iva": iva,

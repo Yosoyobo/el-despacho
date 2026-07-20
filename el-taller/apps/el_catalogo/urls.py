@@ -10,10 +10,8 @@ urlpatterns = [
     path("<int:pk>/imagen", views.servicio_imagen, name="catalogo-servicio-imagen"),
     path("<int:pk>/archivar", views.archivar, name="catalogo-archivar"),
     path("<int:pk>/eliminar", views.servicio_eliminar, name="catalogo-eliminar"),
-    path("<int:pk>/variaciones/", views.variaciones_lista, name="catalogo-variaciones"),
-    path("<int:pk>/variaciones/nueva", views.variacion_nueva, name="catalogo-variacion-nueva"),
-    path("<int:pk>/variaciones/<int:vpk>/editar", views.variacion_editar, name="catalogo-variacion-editar"),
-    path("<int:pk>/variaciones/<int:vpk>/archivar", views.variacion_archivar, name="catalogo-variacion-archivar"),
+    # Sprint Fiscal 2026-07 (#8): "Variaciones" pasó a bitácora de "Usos".
+    path("<int:pk>/usos/", views.usos_lista, name="catalogo-usos"),
     path("categorias/", views.categorias_lista, name="catalogo-categorias"),
     path("categorias/nueva", views.categoria_nueva, name="catalogo-categoria-nueva"),
     path("categorias/<int:pk>/editar", views.categoria_editar, name="catalogo-categoria-editar"),
@@ -24,11 +22,6 @@ urlpatterns = [
     # LC #164: CRUD de las 19 subcategorías de proveedor.
     path("categorias-proveedor/subcategorias/nueva", views.subcategoria_proveedor_nueva, name="catalogo-subcategoria-proveedor-nueva"),
     path("categorias-proveedor/subcategorias/<int:pk>/editar", views.subcategoria_proveedor_editar, name="catalogo-subcategoria-proveedor-editar"),
-    # S-LC-Feedback-V2: catálogo de unidades de medida
-    path("unidades/", views.unidades_lista, name="catalogo-unidades"),
-    path("unidades/nueva", views.unidad_nueva, name="catalogo-unidad-nueva"),
-    path("unidades/<int:pk>/editar", views.unidad_editar, name="catalogo-unidad-editar"),
-    path("unidades/<int:pk>/archivar", views.unidad_archivar, name="catalogo-unidad-archivar"),
     # S-LC-Feedback-V2: quick-create de Servicio desde el form de Proyecto
     path("quick-create/", views.servicio_quick_create, name="catalogo-quick-create"),
     # S-LC-Feedback-V3: CRM de proveedores
