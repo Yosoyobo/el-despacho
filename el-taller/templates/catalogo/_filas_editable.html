@@ -16,6 +16,17 @@ hx-swap=none). El margen se recalcula en el cliente. CSRF va en hx-headers del
             {% for c in categorias %}<option value="{{ c.pk }}" {% if s.categoria_id == c.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
         </select>
     </td>
+    {# Proveedores (item 11: 3er lugar) #}
+    <td class="px-3 py-1.5">
+        {% with proveedores=s.proveedores.all %}
+            {% if proveedores %}
+                <div class="flex flex-wrap gap-1">
+                    {% for p in proveedores|slice:":2" %}<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.razon_social }}</span>{% endfor %}
+                    {% if proveedores|length > 2 %}<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">+{{ proveedores|length|add:"-2" }}</span>{% endif %}
+                </div>
+            {% else %}<span class="text-xs text-gray-400 dark:text-gray-500">—</span>{% endif %}
+        {% endwith %}
+    </td>
     <td class="px-3 py-1.5 text-right tabular-nums">
         <a href="{% url 'catalogo-usos' s.pk %}" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" title="Veces que se ha usado en proyectos">{{ s.usos_count|default:0 }}</a>
     </td>
@@ -34,16 +45,6 @@ hx-swap=none). El margen se recalcula en el cliente. CSRF va en hx-headers del
         <span data-margen class="text-sm tabular-nums {% if s.margen_porcentaje >= 50 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 20 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:1 }}%</span>
     </td>
     {% endif %}
-    <td class="px-3 py-1.5">
-        {% with proveedores=s.proveedores.all %}
-            {% if proveedores %}
-                <div class="flex flex-wrap gap-1">
-                    {% for p in proveedores|slice:":2" %}<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.razon_social }}</span>{% endfor %}
-                    {% if proveedores|length > 2 %}<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">+{{ proveedores|length|add:"-2" }}</span>{% endif %}
-                </div>
-            {% else %}<span class="text-xs text-gray-400 dark:text-gray-500">—</span>{% endif %}
-        {% endwith %}
-    </td>
     <td class="px-3 py-1.5 text-right">
         <a href="{% url 'catalogo-usos' s.pk %}" class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300">Usos →</a>
     </td>

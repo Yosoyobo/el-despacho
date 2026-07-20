@@ -11,7 +11,8 @@
     </div>
     <div class="flex items-center gap-2">
         <span class="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ usos|length }} uso{{ usos|length|pluralize }}</span>
-        {% if puede_editar %}<a href="{% url 'catalogo-editar' servicio.pk %}" class="btn-secundario">Editar producto</a>{% endif %}
+        {% comment %}Sprint 2 UX (item 7): la edición se unificó en el panel del
+        producto (la fila de la lista navega ahí); se quitó el botón «Editar producto».{% endcomment %}
     </div>
 </div>
 

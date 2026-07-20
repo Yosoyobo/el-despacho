@@ -62,7 +62,10 @@ def test_lista_catalogo_columnas(client, usuario_factory, categoria):
     Servicio.objects.create(nombre="Logo", precio_base="1500.00", categoria=categoria)
     client.force_login(usuario_factory(rol="super_admin"))
     html = client.get("/catalogo/").content.decode()
-    assert ">Usos<" in html            # #9 columna Usos
+    # #9 columna Usos (badge por fila con su tooltip; Sprint 2 UX quitó el link
+    # de texto «Usos» del renglón — la fila entera navega al panel de edición).
+    assert "Usos" in html
+    assert "Veces que se ha usado en proyectos" in html
     assert ">Unidad<" not in html      # #12 sin columna Unidad
     assert ">Estado<" not in html      # #10 sin columna Estado
     assert "Disponible" not in html    # #10 sin badge Disponible

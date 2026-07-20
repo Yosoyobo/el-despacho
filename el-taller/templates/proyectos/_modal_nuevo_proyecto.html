@@ -52,14 +52,6 @@ vista `_nuevo_modal`.{% endcomment %}
                     {% if form.estado.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.estado.errors|join:" · " }}</p>{% endif %}
                 </div>
 
-                {% if clientes_recientes %}
-                <div class="flex flex-wrap gap-1.5">
-                    {% for c in clientes_recientes %}
-                    <button type="button" class="pill-filtro !px-3 !py-1 !text-xs" data-set-select="{{ c.pk }}" data-set-select-target="#{{ form.cliente.id_for_label }}" title="{{ c.razon_social }}">{{ c.razon_social|truncatechars:22 }}</button>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
                 {# Fechas (Entrega usa "Mañana", no "Hoy" — R1). Los mini-calendarios se re-inicializan en htmx:afterSwap. #}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>{% include "tesoreria/_fecha_minical.html" with nombre="fecha_inicio_dia" valor=form.fecha_inicio_dia.value|default:"" label="Inicio" con_quitar=True sin_default_hoy=True %}</div>

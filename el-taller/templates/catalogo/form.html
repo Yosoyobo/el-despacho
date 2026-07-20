@@ -20,6 +20,9 @@
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Productos</p>
         {% endif %}
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{% if modo == 'editar' %}Editar producto{% else %}Nuevo producto{% endif %}</h1>
+        {% if modo == 'editar' and servicio %}
+        <a href="#usos-historial" class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">🧾 {{ usos|length }} uso{{ usos|length|pluralize }} · ver historial ↓</a>
+        {% endif %}
     </div>
     {% comment %}Fase 3 §1.3: Guardar también arriba (franja superior).{% endcomment %}
     <button type="submit" form="producto-form" class="btn-primario">Guardar producto</button>
@@ -142,6 +145,69 @@
             </details>
         </section>
     </aside>
+
+    {% comment %}Sprint 2 UX (item 7): historial de usos EN el panel — el detalle y
+    la edición quedan unificados en una sola pantalla. Solo lectura.{% endcomment %}
+    {% if modo == 'editar' and servicio %}
+    <section id="usos-historial" class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Historial de usos</h2>
+            <span class="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ usos|length }} uso{{ usos|length|pluralize }}</span>
+        </div>
+        <div class="overflow-x-auto">
+        <table class="min-w-[720px] md:min-w-full text-sm">
+            <thead class="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <tr>
+                    <th class="py-3 pr-4">Proyecto</th>
+                    <th class="py-3 pr-4">Fecha</th>
+                    <th class="py-3 pr-4 text-right">Cantidad</th>
+                    {% if ve_precios %}
+                    <th class="py-3 pr-4 text-right">Costo unitario</th>
+                    <th class="py-3 pr-4 text-right">Precio unitario</th>
+                    {% endif %}
+                    <th class="py-3 pr-4">Proveedor</th>
+                    <th class="py-3">Impresión / procesos</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for u in usos %}
+                <tr class="align-top">
+                    <td class="py-3 pr-4">
+                        {% if u.proyecto_id %}
+                        <a href="{% url 'proyectos-detalle' u.proyecto.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ u.proyecto.nombre|default:u.proyecto.codigo }}</a>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ u.proyecto.codigo }}{% if u.proyecto.cliente_id %} · {{ u.proyecto.cliente.razon_social }}{% endif %}</div>
+                        {% if u.variacion_id %}<div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Variación: {{ u.variacion.nombre }}</div>{% endif %}
+                        {% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}
+                    </td>
+                    <td class="py-3 pr-4 whitespace-nowrap text-gray-600 dark:text-gray-300">{{ u.creado_en|date:"Y-m-d" }}</td>
+                    <td class="py-3 pr-4 text-right tabular-nums text-gray-900 dark:text-gray-100">{{ u.cantidad }}{% if u.merma %} <span class="text-xs text-gray-400" title="Merma">+{{ u.merma }}</span>{% endif %}</td>
+                    {% if ve_precios %}
+                    <td class="py-3 pr-4 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ u.costo_efectivo|dinero }}</td>
+                    <td class="py-3 pr-4 text-right tabular-nums text-gray-900 dark:text-gray-100">{{ u.precio_efectivo|dinero }}</td>
+                    {% endif %}
+                    <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{% if u.proveedor_id %}{{ u.proveedor.razon_social }}{% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}</td>
+                    <td class="py-3">
+                        {% with procesos=u.procesos.all %}
+                            {% if procesos %}
+                            <div class="flex flex-col gap-1">
+                                {% for p in procesos %}
+                                <span class="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {% if p.tipo == 'impresion' %}bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/20 dark:text-blue-light-300{% else %}bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300{% endif %}">
+                                    {{ p.etiqueta }}{% if ve_precios %} · {{ p.costo_total|dinero }}{% endif %}{% if p.por_pieza %} <span class="opacity-70">/pz</span>{% endif %}
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% else %}<span class="text-xs text-gray-400 dark:text-gray-500">—</span>{% endif %}
+                        {% endwith %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="{% if ve_precios %}7{% else %}5{% endif %}" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Este producto aún no se ha usado en ningún proyecto.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+    {% endif %}
 
     <div class="flex flex-wrap items-center justify-between gap-3 xl:col-span-3">
         <a href="{% if back_url_producto %}{{ back_url_producto }}{% else %}{% url 'catalogo-lista' %}{% endif %}" class="btn-secundario">Cancelar</a>

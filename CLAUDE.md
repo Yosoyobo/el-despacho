@@ -5538,6 +5538,57 @@ seleccionable en el form de Proyecto (no se retiró de ahí, sólo su CRUD de
 catálogo); num/den de `ConfiguracionFiscal` quedan dormidos (limpiar en un sprint
 futuro si el contador lo pide).
 
+### S-UX-Captura (Sprint 2) ✅ — UX, modales y flujos de captura (2026-07-19, VERSION 2026.07.22)
+
+Sprint `Sprint_2_UX_y_Captura.md` de Oscar — 9 items de UX. Rama
+`agent/sprint2-ux-captura` desde `main`. **Sin migraciones.** Dos items ya
+estaban implementados en sprints previos (verificados con test).
+
+- **item 1 — cifras sin `.00`**: `cuentas/templatetags/forms_helpers.dinero`
+  trunca los centavos cuando son `.00` (`$1,234`) y los conserva si no
+  (`$1,234.50`). Aplica GLOBAL vía `|dinero`/`|dinero_sin_signo`. `dinero_corto`
+  queda redundante pero válido.
+- **item 2 — descripción de ingreso opcional**: `IngresoForm.descripcion`
+  `required=False` + label **"Notas"**.
+- **item 5 — modal Nuevo ingreso** (`tesoreria/_modal_nuevo_ingreso.html`): se
+  retiró el selector de cliente + las pastillas legacy + el alta inline de
+  cliente + JS muerto. El cliente se **hereda del proyecto** en
+  `IngresoForm.save()` (solo si no se puso a mano). El modal de egreso ya estaba
+  limpio.
+- **item 4 — modal Nuevo proyecto**: se quitaron las pastillas de clientes
+  recientes (queda el combobox). El semáforo de estado (bloques de color) ya
+  existía desde R2.
+- **item 3 — mini-calendario** (`tesoreria/_fecha_minical.html` +
+  `proyectos/_form_productos_js.html`): título del mes **centrado**
+  (`flex-1 text-center`); se quitó el botón "Quitar fecha" (`con_quitar`
+  obsoleto). El toggle de deselección al re-picar el día ya estaba en
+  `ui.js/initMinical`.
+- **item 6 — orden por Categoría** (`el_catalogo/views.lista`): cabecera
+  "Categoría" con `sort_key` (toggle asc/desc vía `_tabla_datos`), whitelist,
+  default alfabético, `querystring_base` preserva filtros.
+- **item 11 — columna Proveedor al 3er lugar** (`views.lista` + `_filas.html` +
+  `_filas_editable.html`): Nombre · Categoría · Proveedores · Usos · [Costo/
+  Precio/Margen] · acciones.
+- **item 7 — panel de edición inline** (`_filas.html`, `views.editar`,
+  `form.html`, `usos.html`): se quitó el botón "Editar" (y el link "Usos") del
+  renglón; la **fila navega al panel de edición** (editores) o al historial
+  (solo-lectura). El panel embebe el **Historial de usos** (`#usos-historial`,
+  solo lectura), unificando detalle + edición. `usos.html` sin botón "Editar
+  producto".
+- **item 13 — producto nuevo al final (append)**: **ya implementado** en
+  S-Finanzas-UX (`_siguiente_orden_producto`=max+1) + Fase 3 (`sincronizarOrdenDOM`)
+  + `ProyectoProducto.Meta.ordering`. Blindado con test.
+
+**Tests:** `tests/taller/test_sprint2_ux_captura.py` (13). Se ajustó
+`test_sprint_fiscal_estructura.py::test_lista_catalogo_columnas` (su `>Usos<`
+matcheaba por coincidencia el link de texto "Usos" del renglón que el item 7
+retiró; ahora verifica la columna por su tooltip). Ruff limpio;
+`test_no_renderiza_comentarios` (ambas apps) verde.
+
+**Deuda diseñada:** el título del mes se centra dentro de su celda flex (no
+geométrico absoluto); `con_quitar` queda como param obsoleto (no-op) en
+`_fecha_minical.html`.
+
 ---
 
 ## 9. Decisiones operativas tomadas

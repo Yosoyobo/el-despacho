@@ -1,18 +1,14 @@
+{% comment %}Filas del Catálogo. Sprint 2 UX: Proveedores al 3er lugar (item 11);
+la fila navega al PANEL de edición (item 7 — se quitó el botón «Editar»; el panel
+unifica detalle + edición e incluye el historial de usos). Los usuarios sin
+permiso de edición navegan al historial de usos (solo lectura).{% endcomment %}
 {% for s in servicios %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not s.activo %}opacity-60{% endif %}"
-    data-href="{% url 'catalogo-usos' s.pk %}">
+    data-href="{% if puede_editar %}{% url 'catalogo-editar' s.pk %}{% else %}{% url 'catalogo-usos' s.pk %}{% endif %}">
     <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">
-        <a href="{% url 'catalogo-usos' s.pk %}" class="hover:underline">{{ s.nombre }}</a>
+        <a href="{% if puede_editar %}{% url 'catalogo-editar' s.pk %}{% else %}{% url 'catalogo-usos' s.pk %}{% endif %}" class="hover:underline">{{ s.nombre }}</a>
     </td>
     <td class="px-5 py-3">{% if s.categoria %}<span class="badge badge-hex" style="--ec: {{ s.categoria.color }}">{{ s.categoria.nombre }}</span>{% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}</td>
-    <td class="px-5 py-3 text-right tabular-nums">
-        <a href="{% url 'catalogo-usos' s.pk %}" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" title="Veces que se ha usado en proyectos">{{ s.usos_count|default:0 }}</a>
-    </td>
-    {% if ve_precios %}
-    <td class="px-5 py-3 text-right tabular-nums text-gray-500 dark:text-gray-400">$ {{ s.costo|floatformat:2 }}</td>
-    <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base|floatformat:2 }}</td>
-    <td class="px-5 py-3 text-right tabular-nums {% if s.margen_porcentaje >= 50 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 20 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:1 }}%</td>
-    {% endif %}
     <td class="px-5 py-3">
         {% with proveedores=s.proveedores.all %}
             {% if proveedores %}
@@ -23,11 +19,17 @@
             {% else %}<span class="text-xs text-gray-400 dark:text-gray-500">—</span>{% endif %}
         {% endwith %}
     </td>
+    <td class="px-5 py-3 text-right tabular-nums">
+        <a href="{% url 'catalogo-usos' s.pk %}" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" title="Veces que se ha usado en proyectos">{{ s.usos_count|default:0 }}</a>
+    </td>
+    {% if ve_precios %}
+    <td class="px-5 py-3 text-right tabular-nums text-gray-500 dark:text-gray-400">$ {{ s.costo|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base|floatformat:2 }}</td>
+    <td class="px-5 py-3 text-right tabular-nums {% if s.margen_porcentaje >= 50 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 20 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:1 }}%</td>
+    {% endif %}
     {% if puede_editar or puede_archivar or puede_eliminar %}
     <td class="px-5 py-3 text-right">
         <div class="inline-flex items-center gap-2">
-            <a href="{% url 'catalogo-usos' s.pk %}" class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300">Usos</a>
-            {% if puede_editar %}<a href="{% url 'catalogo-editar' s.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>{% endif %}
             {% if puede_archivar %}
             <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}
                 <button type="submit" class="text-sm font-medium text-warning-700 hover:underline dark:text-warning-400">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>

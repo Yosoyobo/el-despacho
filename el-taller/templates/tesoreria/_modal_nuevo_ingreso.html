@@ -1,10 +1,10 @@
 {% load forms_helpers %}
-{% comment %}Form-in-modal "Nuevo ingreso" (revisión buzón R2 — render de Oscar).
-Se inyecta en #modal-slot. Conserva la calculadora de IVA, el mini-calendario,
-método en pills (Otro revela referencia), chips de recientes, alta inline de
-cliente y autollenado desde proyecto. El script está rooteado en #modal-slot
-(no `currentScript`) para sobrevivir el swap de HTMX. POST HTMX → 204 +
-HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% endcomment %}
+{% comment %}Form-in-modal "Nuevo ingreso". Se inyecta en #modal-slot. Sprint 2 UX
+(item 5, decisión Oscar): SIN selector de cliente (se hereda del proyecto) y SIN
+pastillas legacy de proyectos/clientes — solo el dropdown buscable de proyecto,
+IVA, mini-calendario, método en pills y comprobante. El script está rooteado en
+#modal-slot (no `currentScript`) para sobrevivir el swap de HTMX. POST HTMX → 204
++ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% endcomment %}
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
     <div data-modal-ingreso class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
         <form hx-post="{% url 'tesoreria:ingreso-nuevo' %}" hx-target="#modal-slot" hx-swap="innerHTML" hx-encoding="multipart/form-data" enctype="multipart/form-data" class="campo-form flex min-h-0 flex-col">
@@ -52,50 +52,14 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
                     </div>
                 </div>
 
-                {# Clasificación #}
+                {# Clasificación — solo proyecto (el cliente se hereda de él, item 5). #}
                 <div>
                     <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Clasificación</h3>
-                    <div class="space-y-5">
-                        {% comment %}S-Finanzas-UX: desde un proyecto el cliente es redundante — se
-                        oculta el bloque completo (el proyecto ya define al cliente).{% endcomment %}
-                        <div class="campo-form min-w-0{% if desde_proyecto %} hidden{% endif %}">
-                            <label for="{{ form.cliente.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
-                            {% if clientes_recientes and not desde_proyecto %}
-                            <div class="mb-2 flex flex-wrap gap-1.5">
-                                {% for c in clientes_recientes %}
-                                <button type="button" data-pick-select="id_cliente" data-val="{{ c.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ c.razon_social|truncatechars:24 }}</button>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            {{ form.cliente }}
-                            {% if puede_crear_cliente %}
-                            <details class="mt-2 text-sm">
-                                <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo cliente</summary>
-                                <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
-                                    <input type="text" id="cli-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                                    <input type="text" id="cli-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                                    <input type="email" id="cli-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                                    <input type="text" id="cli-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                                    <button type="button" id="cli-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
-                                </div>
-                            </details>
-                            {% endif %}
-                        </div>
-
-                        <div class="campo-form min-w-0">
-                            <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
-                            {% comment %}S-Finanzas-UX: desde un proyecto se dejan solo el dropdown con
-                            buscador (sin pastillas legacy).{% endcomment %}
-                            {% if proyectos_recientes and not desde_proyecto %}
-                            <div class="mb-2 flex flex-wrap gap-1.5">
-                                {% for p in proyectos_recientes %}
-                                <button type="button" data-pick-select="id_proyecto" data-val="{{ p.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.codigo }} · {{ p.nombre|truncatechars:20 }}</button>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            {{ form.proyecto }}
-                            <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
-                        </div>
+                    <div class="campo-form min-w-0">
+                        <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
+                        {{ form.proyecto }}
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">El cliente se toma automáticamente del proyecto elegido.</p>
+                        <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
                     </div>
                 </div>
 
@@ -123,15 +87,6 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
     const root = document.getElementById('modal-slot');
     if (!root) return;
 
-    root.querySelectorAll("[data-pick-select]").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const sel = document.getElementById(btn.dataset.pickSelect);
-            if (!sel) return;
-            sel.value = btn.dataset.val;
-            sel.dispatchEvent(new Event("change"));
-        });
-    });
-
     const refWrap = root.querySelector("[data-ref-wrap]");
     root.querySelectorAll("[data-metodo-radio]").forEach(r => {
         r.addEventListener("change", () => {
@@ -139,40 +94,9 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
         });
     });
 
-    const btnCli = document.getElementById("cli-crear");
-    const selCli = document.getElementById("id_cliente");
-    if (btnCli && selCli) {
-        const csrfEl = root.querySelector('[name="csrfmiddlewaretoken"]');
-        const csrf = csrfEl ? csrfEl.value : "";
-        btnCli.addEventListener("click", async () => {
-            const razon = document.getElementById("cli-razon").value.trim();
-            if (!razon) { document.getElementById("cli-razon").focus(); return; }
-            const body = new URLSearchParams({
-                razon_social: razon,
-                nombre_contacto: document.getElementById("cli-contacto").value.trim(),
-                email_contacto: document.getElementById("cli-email").value.trim(),
-                telefono: document.getElementById("cli-tel").value.trim(),
-            });
-            btnCli.disabled = true;
-            try {
-                const r = await fetch("{% url 'cartera-quick-create' %}", {
-                    method: "POST",
-                    headers: {"X-CSRFToken": csrf, "Content-Type": "application/x-www-form-urlencoded"},
-                    body,
-                });
-                const data = await r.json();
-                if (data.ok) {
-                    selCli.add(new Option(data.razon_social, data.id, true, true));
-                    selCli.value = String(data.id);
-                    ["cli-razon","cli-contacto","cli-email","cli-tel"].forEach(id => document.getElementById(id).value = "");
-                } else { alert(data.error || "No se pudo crear el cliente."); }
-            } catch (e) { alert("Error de red al crear el cliente."); }
-            finally { btnCli.disabled = false; }
-        });
-    }
-
+    // Autollenado desde el proyecto (descripción sugerida + monto pendiente +
+    // saldo para los botones rápidos). El cliente se hereda en el servidor.
     const proyectoSel = document.getElementById("id_proyecto");
-    const clienteSel  = document.getElementById("id_cliente");
     const descInput   = root.querySelector('[name="descripcion"]');
     const subInput    = root.querySelector('[name="subtotal"]');
     const setIfFree = (input, valor) => {
@@ -187,18 +111,12 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
             input.dispatchEvent(new Event("input"));
         }
     };
-    const setSelIfExists = (sel, val) => {
-        if (!sel || !val) return;
-        if (!sel.querySelector(`option[value="${val}"]`)) return;
-        if (sel.value && sel.dataset.autollenado !== "proyecto") return;
-        sel.value = String(val); sel.dataset.autollenado = "proyecto";
-    };
     const mrBox = root.querySelector('[data-monto-rapido]');
     if (proyectoSel) {
         proyectoSel.addEventListener("change", async () => {
             const pk = proyectoSel.value;
             if (!pk) {
-                clearAuto(clienteSel); clearAuto(descInput); clearAuto(subInput);
+                clearAuto(descInput); clearAuto(subInput);
                 if (mrBox) mrBox.dataset.saldo = "";
                 return;
             }
@@ -206,17 +124,10 @@ HX-Redirect; inválido → re-render del modal. Ver vista `ingreso_nuevo`.{% end
                 const resp = await fetch(`{% url 'tesoreria:api-proyecto-datos' 0 %}`.replace("/0/", `/${pk}/`));
                 if (!resp.ok) return;
                 const data = await resp.json();
-                setSelIfExists(clienteSel, data.cliente_id);
                 setIfFree(descInput, data.descripcion_sugerida);
                 if (parseFloat(data.monto_pendiente) > 0) setIfFree(subInput, data.monto_pendiente);
-                // S-Finanzas-UX: activa/actualiza los botones rápidos [100%]/[50%].
                 if (mrBox) mrBox.dataset.saldo = data.saldo_por_cobrar || "";
             } catch (e) { /* el usuario teclea a mano */ }
-        });
-    }
-    if (clienteSel) {
-        clienteSel.addEventListener("change", () => {
-            if (clienteSel.dataset.autollenado === "proyecto") delete clienteSel.dataset.autollenado;
         });
     }
 

@@ -90,6 +90,10 @@ class IngresoForm(forms.ModelForm):
         # LC Fase 2: cliente/proyecto con buscador integrado (combobox).
         for campo in ("cliente", "proyecto"):
             self.fields[campo].widget.attrs["data-select-buscable"] = ""
+        # Sprint 2 UX (item 2): la descripción del ingreso es opcional y se
+        # rotula «Notas» (el número que importa es el monto, no el texto).
+        self.fields["descripcion"].required = False
+        self.fields["descripcion"].label = "Notas"
         _aplicar_css(self)
         # El checkbox de IVA no debe llevar el CSS de input full-width.
         self.fields["incluye_iva"].widget.attrs["class"] = (
@@ -101,6 +105,11 @@ class IngresoForm(forms.ModelForm):
         obj = super().save(commit=False)
         obj.monto, obj.subtotal = _desglosar_total(
             self.cleaned_data["subtotal"], self.cleaned_data.get("incluye_iva"))
+        # Sprint 2 UX (item 5): el cliente se HEREDA del proyecto elegido (el
+        # selector de cliente se retiró de la captura). Solo cuando no se eligió
+        # a mano — respeta un cliente ya puesto (form full-page / edición).
+        if obj.proyecto_id and not obj.cliente_id:
+            obj.cliente = obj.proyecto.cliente
         if commit:
             obj.save()
         return obj

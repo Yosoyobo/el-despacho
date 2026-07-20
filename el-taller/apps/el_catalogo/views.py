@@ -76,18 +76,44 @@ def lista(request):
         qs = qs.filter(nombre__icontains=q)
     if categoria_id:
         qs = qs.filter(categoria_id=categoria_id)
+    # Sprint 2 UX (item 6): orden por Categoría con toggle asc/desc; el default
+    # es alfabético por nombre (estable). El whitelist evita order_by arbitrario.
+    orden = (request.GET.get("orden") or "").strip()
+    _orden_permitido = {"categoria": "categoria__nombre", "-categoria": "-categoria__nombre"}
+    if orden in _orden_permitido:
+        qs = qs.order_by(_orden_permitido[orden], "nombre")
+    else:
+        orden = ""
+        qs = qs.order_by("nombre")
     # LC revisión buzón R2: modo edición inline (celdas editables) opt-in.
     editar_inline = request.GET.get("editar") == "1" and puede_editar
     # #12 unidad consolidada a 'pz' (columna retirada) · #9 columna "Usos"
     # (veces que el producto ha aparecido en proyectos) · #10 sin "Estado".
-    cabeceras = [{"label": "Nombre"}, {"label": "Categoría"}, {"label": "Usos", "align": "right"}]
+    # Sprint 2 UX: Categoría ordenable (item 6) · Proveedores al 3er lugar (item 11).
+    cabeceras = [
+        {"label": "Nombre"},
+        {"label": "Categoría", "sort_key": "categoria"},
+        {"label": "Proveedores"},
+        {"label": "Usos", "align": "right"},
+    ]
     if ve_precios:
         cabeceras.append({"label": "Costo", "align": "right"})
         cabeceras.append({"label": "Precio", "align": "right"})
         cabeceras.append({"label": "Margen", "align": "right"})
-    cabeceras.append({"label": "Proveedores"})
     if editar_inline or puede_editar or puede_archivar or puede_eliminar:
         cabeceras.append({"label": "", "align": "right"})
+    # querystring_base: preserva filtros al cambiar el orden (item 6).
+    from urllib.parse import urlencode
+    _params = []
+    if q:
+        _params.append(("q", q))
+    if categoria_id:
+        _params.append(("categoria", categoria_id))
+    if incluir_archivados:
+        _params.append(("archivados", "1"))
+    if editar_inline:
+        _params.append(("editar", "1"))
+    querystring_base = urlencode(_params)
     return render(request, "catalogo/lista.html", {
         "servicios": qs,
         "categorias": CategoriaServicio.objects.filter(activa=True),
@@ -101,6 +127,8 @@ def lista(request):
         "puede_eliminar": puede_eliminar,
         "puede_gestionar_cats": puede_gestionar_cats,
         "cabeceras_catalogo": cabeceras,
+        "orden_actual": orden,
+        "querystring_base": querystring_base,
         "editar_inline": editar_inline,
         "filas_template": "catalogo/_filas_editable.html" if editar_inline else "catalogo/_filas.html",
     })
@@ -277,9 +305,19 @@ def editar(request, pk: int):
             return redirect(destino or reverse("catalogo-lista"))
     else:
         form = ServicioForm(instance=srv)
+    # Sprint 2 UX (item 7): el detalle y la edición se unifican en este panel;
+    # abajo mostramos el historial de usos (solo lectura).
+    usos = (
+        srv.en_proyectos
+        .select_related("proyecto", "proyecto__cliente", "variacion", "proveedor")
+        .prefetch_related("procesos__proveedor")
+        .order_by("-creado_en")
+    )
     return render(request, "catalogo/form.html", {
         "form": form, "modo": "editar", "servicio": srv,
         "precio_readonly": not puede_editar_precios,
+        "usos": usos,
+        "ve_precios": puede(request.user, "catalogo", "ver_precios"),
         **_navegacion_producto(request),
     })
 
