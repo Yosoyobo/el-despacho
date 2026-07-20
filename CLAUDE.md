@@ -5476,6 +5476,68 @@ arriba); los botones rápidos no se agregaron a los forms full-page (solo modale
 + dashboard); el saldo del egreso usa `costo_produccion − egresos` (aproximación
 del "por pagar").
 
+### S-Fiscal-Estructura ✅ — Retención IVA al centavo + refactor del catálogo (2026-07-19, VERSION 2026.07.21)
+
+Sprint `Sprint_1_Fiscal_y_Estructura.md` de Oscar (4 puntos). Rama
+`agent/ui-fase3-forms`. Decisiones por AskUserQuestion + corrección fiscal de
+Oscar. **Deuda: NINGÚN drop de columnas/modelos** (todo retirado de UI, columnas
+dormidas) por decisión explícita (opción "retirar de UI, reversible").
+
+- **Fiscal — Retención de IVA por tasa nominal (Anexo 20 SAT).** Se erradicó el
+  atajo `ret_iva = ⅔ × IVA_redondeado` de `lib/fiscal.desglose_honorarios`; ahora
+  **cada impuesto es Base × tasa nominal / 100, independiente y redondeado al
+  final** (HALF_UP). La retención de IVA usa una **tasa nominal editable** nueva
+  `ConfiguracionFiscal.ret_iva_honorarios` (default **10.6667%**, migr.
+  `ajustes/0013`; las columnas num/den quedan **dormidas**, no se usan ni se
+  dropean). GUI Gerencia → Ajustes → Fiscal: los dos inputs num/den se
+  reemplazaron por un solo campo "Retención IVA (%)". **Cambio de números
+  productivos** (corregido por Oscar): 33,770 × 10.6667% = **3,602.14** → total
+  **35,148.93** (antes 3,602.13 / 35,148.94). El asiento de Contaduría sigue
+  cuadrando (cargos==abonos==39,173.20; sólo cambia el centavo de CxC y de la ret.
+  IVA). `test_resico_honorarios.py` reescrito + **3 facturas reales de Oscar** como
+  red de seguridad (16,000→1,706.67→16,653.33 · 40,184.22→4,286.33→41,825.07). El
+  caso auditado del docstring se actualizó. `impuestos_detalle` de la ret. IVA
+  ahora lleva `porcentaje=10.6667` y etiqueta "Retención de IVA (10.6667%)" — no
+  toca el mapeo de slots de Contaduría (sin "ISR" → `iva_retenido_pagar`).
+- **#12 Unidad consolidada a 'pz'.** Retirada de TODA la UI (forms de
+  producto/cotización/factura, columna del catálogo, selectores por línea,
+  columna "Unidad" en detalle+PDF de cotización y factura) y del **mantenimiento
+  de Unidades** (rutas/vistas/plantillas `catalogo-unidades*` + botón + UnidadForm
+  eliminados). Default del modelo `unidad` cambiado "pieza"→**"pz"** en Servicio /
+  CotizacionItem / FacturaItem (migr. `el_catalogo/0011`, `cotizaciones/0011`,
+  `facturacion/0010` — sólo AlterField de default, no toca datos). Ejecutores del
+  Chalán y quick-create fuerzan "pz". **Modelo `Unidad` y columnas `unidad`/
+  `unidad_fk` conservados** (dormidos, back-compat). El `unidad_label` ya no se
+  renderiza (columnas retiradas).
+- **#10 Estado «Disponible» jubilado.** Se quitó la columna/badge/filtro "Estado"
+  (Disponible/No disponible) y el toggle `activo` del form de producto y de la
+  edición inline. **`Servicio.activo` se CONSERVA** como mecanismo de Archivar/
+  Reactivar (botón + filtro "Incluir archivados" + manager `activos` + los ~11
+  querysets `filter(activo=True)` intactos). El Chalán aún puede archivar vía
+  `disponible: false` (mapea a `activo`).
+- **#8/#9 «Variaciones» → «Usos».** La página `/catalogo/<pk>/variaciones/` pasó a
+  `/catalogo/<pk>/usos/` (`catalogo-usos`, `usos_lista`, `usos.html`): **bitácora
+  histórica de solo lectura** derivada de `srv.en_proyectos` (proyecto, fecha,
+  cantidad, costo/precio efectivo, proveedor, impresión/procesos). Columna **"Usos"**
+  nueva en la lista del catálogo (`Count("en_proyectos")`, reemplaza el badge "N
+  variaciones"). **CRUD manual de variaciones retirado** (rutas/vistas/VariacionForm/
+  `variacion_form.html`); **modelo `Variacion` conservado** (proyectos/cotizaciones
+  lo siguen usando; el ejecutor `crear_variacion` del Chalán sigue vivo).
+- **#14** `test_no_renderiza_comentarios` (ambas apps) verde.
+- **Tests**: `test_resico_honorarios.py` (13, incl. 3 facturas reales) +
+  `test_sprint_fiscal_estructura.py` (8 nuevos: forms sin unidad/activo, alta en
+  pz, columnas de la lista, archivar sigue, página Usos con historial + empty
+  state, URL vieja retirada) + `test_unidades_quickcreate.py` actualizado (CRUD
+  retirado, quick-create fija pz). Migraciones espurias del repo (BigAutoField id,
+  drift de Variacion) NO tocadas.
+
+**Deuda diseñada**: columnas `unidad`/`unidad_fk` + modelo `Unidad` quedan
+dormidos (reversible); documentos comerciales históricos conservan su `unidad`
+almacenada (invisible; sólo el default nuevo es "pz"); el modelo `Variacion` sigue
+seleccionable en el form de Proyecto (no se retiró de ahí, sólo su CRUD de
+catálogo); num/den de `ConfiguracionFiscal` quedan dormidos (limpiar en un sprint
+futuro si el contador lo pide).
+
 ---
 
 ## 9. Decisiones operativas tomadas

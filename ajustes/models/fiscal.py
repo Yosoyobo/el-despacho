@@ -66,11 +66,27 @@ class ConfiguracionFiscal(models.Model):
     # ── Régimen de honorarios / Actividad Profesional (retenciones) ──────
     # Se usan cuando un proyecto/factura/cotización está en régimen
     # 'honorarios' (IVA y Retenciones). Defaults exactos de RESICO PF
-    # profesional: ISR 1.25% del importe, IVA retenido = ⅔ del IVA trasladado.
+    # profesional: ISR 1.25% del importe, retención de IVA 10.6667% del importe.
+    #
+    # Sprint Fiscal 2026-07 (Anexo 20 SAT): CADA impuesto se calcula de forma
+    # 100% independiente = Base × tasa nominal / 100, y se redondea al final.
+    # La retención de IVA dejó de calcularse como fracción (⅔) del IVA ya
+    # redondeado (que no cuadraba con el PAC) y ahora usa su TASA NOMINAL sobre
+    # la Base (10.6667% = ⅔ de 16%). Ej. 33,770 × 10.6667% = 3,602.14 (antes
+    # 3,602.13). Ver lib/fiscal.desglose_honorarios.
     ret_isr_honorarios = models.DecimalField(
         max_digits=6, decimal_places=3, default=Decimal("1.250"),
         help_text="% de retención de ISR sobre el importe (RESICO/honorarios: 1.25%).",
     )
+    ret_iva_honorarios = models.DecimalField(
+        max_digits=7, decimal_places=4, default=Decimal("10.6667"),
+        help_text="% de retención de IVA sobre el importe/Base (RESICO/honorarios: 10.6667% = ⅔ del IVA 16%).",
+    )
+    # DEPRECADOS (Sprint Fiscal 2026-07): la retención de IVA ya no se calcula
+    # como fracción num/den del IVA. Se conservan las columnas para no romper
+    # migraciones/históricos; NO se usan en el cálculo ni en la GUI.
+    # DEPRECADOS: ya no se usan en el cálculo (ver comentario arriba). El
+    # help_text se conserva idéntico para no generar migración de estado.
     ret_iva_honorarios_num = models.PositiveSmallIntegerField(
         default=2,
         help_text="Numerador de la retención de IVA como fracción del IVA trasladado (⅔ → 2).",

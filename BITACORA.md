@@ -6681,3 +6681,44 @@ se quitó el botón "Abrir →".
 `tests/gerencia/test_formato_hora_horarios.py` (3) + `test_tasas` ampliado.
 Blast-radius verde; ruff limpio; `test_no_renderiza_comentarios` (2 Bug C
 cazados y corregidos durante el sprint).
+
+
+## Cierre S-Fiscal-Estructura (2026-07-19, VERSION 2026.07.21)
+
+Sprint `Sprint_1_Fiscal_y_Estructura.md` de Oscar (Estabilización Fiscal +
+Refactor del Modelo de Datos del catálogo). Rama `agent/ui-fase3-forms`.
+4 decisiones vía AskUserQuestion + corrección fiscal de Oscar antes de ejecutar.
+
+**Decisiones (Oscar):**
+- Fiscal: adoptar **Base × tasa nominal 10.6667%** (Anexo 20/PAC). Oscar
+  corrigió mi aritmética: 33,770 × 0.106667 = **3,602.14** (no 3,602.18) →
+  total **35,148.93**. Verificó 2 facturas reales más (16,000 y 40,184.22).
+- Unidad y "Disponible": **retirar de UI, reversible** (NO drop de columnas).
+- "Disponible": **conservar Archivar** (solo quitar la etiqueta/badge).
+- Variaciones→Usos: **solo historial** (retirar el CRUD manual del catálogo).
+
+**Entregado:**
+- **Fiscal** (`lib/fiscal.py`, `ajustes/models/fiscal.py`, migr. `ajustes/0013`,
+  GUI `la-gerencia .../fiscal_panel` + `fiscal.html`): retención de IVA = Base ×
+  `ConfiguracionFiscal.ret_iva_honorarios` (default 10.6667%, editable). num/den
+  dormidos. Docstring del caso auditado + `test_resico_honorarios.py` reescritos;
+  +3 facturas reales parametrizadas. Asiento de Contaduría intacto (cargos==abonos
+  ==39,173.20; sólo cambia CxC/ret.IVA por 1¢).
+- **#12 Unidad → pz** (`el_catalogo/forms|views|urls`, `cotizaciones/forms|views`,
+  `facturacion/forms`, plantillas de producto/cotización/factura + detalle/PDF):
+  selectores/columnas/mantenimiento de Unidades retirados; default `unidad`
+  "pieza"→"pz" (migr. `el_catalogo/0011`, `cotizaciones/0011`, `facturacion/0010`);
+  ejecutores del Chalán + quick-create fuerzan "pz". Modelo `Unidad` y columnas
+  conservados dormidos.
+- **#10 Disponible jubilado** (`_filas.html`, `_filas_editable.html`, `lista.html`,
+  `ServicioForm`, `servicio_celda`, cabeceras de `lista`): sin columna/badge/toggle;
+  `activo`/Archivar + managers/querysets conservados.
+- **#8/#9 Variaciones→Usos** (`views.usos_lista`, `usos.html`, url `catalogo-usos`,
+  columna "Usos" con `Count("en_proyectos")`): bitácora histórica de solo lectura;
+  CRUD manual + `VariacionForm` + `variacion_form.html`/`variaciones.html`/
+  `unidades.html`/`unidad_form.html` eliminados; modelo `Variacion` conservado.
+
+**Tests:** `test_resico_honorarios.py` (13) + `test_sprint_fiscal_estructura.py`
+(8 nuevos) + `test_unidades_quickcreate.py` actualizado. `test_no_renderiza_comentarios`
+(ambas apps) verde. Migraciones espurias del repo (BigAutoField, drift Variacion)
+NO tocadas. Deploy pendiente del GO de Oscar (dijo "con mi go vas a productivo").

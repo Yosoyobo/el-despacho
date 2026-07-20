@@ -13,7 +13,9 @@ class Servicio(models.Model):
 
     nombre = models.CharField(max_length=150, db_index=True)
     descripcion_default = models.TextField(blank=True, default="")
-    unidad = models.CharField(max_length=30, default="pieza")
+    # #12 (Sprint Fiscal 2026-07): unidad consolidada a 'pz'. Sin selector en
+    # la UI; se conserva la columna por back-compat.
+    unidad = models.CharField(max_length=30, default="pz")
     precio_base = models.DecimalField(max_digits=12, decimal_places=2)
     # S-LC-Feedback-V3: costo para cálculo de margen en proyectos/cotizaciones.
     costo = models.DecimalField(max_digits=12, decimal_places=2, default=0)

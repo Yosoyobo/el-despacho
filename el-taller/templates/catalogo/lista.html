@@ -7,11 +7,10 @@
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
         <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Productos</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Productos frecuentes — nombre, unidad{% if ve_precios %}, precio base{% endif %} y categoría.</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Productos frecuentes — nombre{% if ve_precios %}, precio base{% endif %} y categoría.</p>
     </div>
     <div class="flex flex-wrap gap-2">
         {% if puede_gestionar_cats %}<a href="{% url 'catalogo-categorias' %}" class="btn-secundario">Categorías</a>{% endif %}
-        {% if puede_gestionar_cats %}<a href="{% url 'catalogo-unidades' %}" class="btn-secundario">Unidades</a>{% endif %}
         <a href="{% url 'catalogo-proveedores' %}" class="btn-secundario">Proveedores</a>
         {# LC revisión buzón R2: edición inline de celdas (solo Productos, por ahora). #}
         {% if puede_editar %}{% if editar_inline %}<a href="?{% if q %}q={{ q }}&{% endif %}{% if categoria_filtro %}categoria={{ categoria_filtro }}&{% endif %}{% if incluir_archivados %}archivados=1{% endif %}" class="btn-secundario">Salir de edición</a>{% else %}<a href="?editar=1{% if q %}&q={{ q }}{% endif %}{% if categoria_filtro %}&categoria={{ categoria_filtro }}{% endif %}{% if incluir_archivados %}&archivados=1{% endif %}" class="btn-secundario">✎ Edición rápida</a>{% endif %}{% endif %}

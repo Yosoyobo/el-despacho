@@ -70,7 +70,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_servicio",
         "titulo": "Crear producto del Catálogo",
         "ejemplo": 'Da de alta el producto "Playera promocional" en la categoría Producción, precio 120, costo 70.',
-        "payload": "nombre, precio_base, categoria? (nombre), costo?, unidad?, descripcion?",
+        "payload": "nombre, precio_base, categoria? (nombre), costo?, descripcion?",
         "gating": "catalogo",
     },
     {
@@ -91,7 +91,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "actualizar_servicio",
         "titulo": "Editar un producto del Catálogo",
         "ejemplo": 'Sube el precio de "Playera promocional" a 150. O: "cambia el costo de las tazas a 45".',
-        "payload": "servicio (nombre o @accion_N), y lo que cambie: nombre_nuevo?, precio_base?, costo?, unidad?, descripcion?, disponible?",
+        "payload": "servicio (nombre o @accion_N), y lo que cambie: nombre_nuevo?, precio_base?, costo?, descripcion?, disponible?",
         "gating": "catalogo_editar",
     },
     {
@@ -184,7 +184,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_factura",
         "titulo": "Crear factura (borrador)",
         "ejemplo": 'Crea una factura para $karikari por #lc-0009: "Diseño de menú" 1 pieza a $4,500.',
-        "payload": "cliente_slug, titulo, items:[{descripcion, precio_unitario, cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
+        "payload": "cliente_slug, titulo, items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
         "gating": "facturacion_crear",
     },
     {
@@ -212,7 +212,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_cotizacion",
         "titulo": "Crear cotización (borrador)",
         "ejemplo": 'Cotiza a $noko-devs: "Branding completo" — diseño de logo 1 pieza $8,000 y manual de marca 1 pieza $4,000.',
-        "payload": "cliente_slug, titulo, items:[{descripcion, precio_unitario, cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
+        "payload": "cliente_slug, titulo, items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
         "gating": "cotizaciones_crear",
     },
     {

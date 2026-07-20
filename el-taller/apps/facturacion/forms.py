@@ -130,9 +130,10 @@ class FacturaForm(forms.ModelForm):
 class FacturaItemForm(forms.ModelForm):
     class Meta:
         model = FacturaItem
+        # Sprint Fiscal 2026-07 (#12): unidad consolidada a 'pz' — sin selector.
         fields = [
             "orden", "servicio", "descripcion",
-            "cantidad", "unidad", "precio_unitario", "descuento_porcentaje",
+            "cantidad", "precio_unitario", "descuento_porcentaje",
         ]
         widgets = {
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),

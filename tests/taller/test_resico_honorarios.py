@@ -1,16 +1,19 @@
-"""Fase 1 (LC 2026-07) — Régimen de honorarios RESICO (IVA + retenciones).
+"""Régimen de honorarios RESICO (IVA + retenciones) — Anexo 20 SAT.
 
-Valida al CENTAVO el caso de auditoría de Oscar:
+Valida al CENTAVO el caso de auditoría de Oscar. Sprint Fiscal 2026-07: cada
+impuesto se calcula INDEPENDIENTE = Base × tasa nominal / 100, redondeado al
+final (la retención de IVA ya NO es fracción ⅔ del IVA redondeado):
 
     Importe (subtotal)     33,770.00
-    + IVA 16%               5,403.20
-    - Ret. ISR 1.25%          422.13
-    - Ret. IVA (⅔ del IVA)  3,602.13
-    = Total neto           35,148.94
+    + IVA 16%               5,403.20   (33,770 × 16%      = 5,403.20)
+    - Ret. ISR 1.25%          422.13   (33,770 × 1.25%    = 422.125  → 422.13)
+    - Ret. IVA 10.6667%     3,602.14   (33,770 × 10.6667% = 3,602.14…)
+    = Total neto           35,148.93
 
 Cubre: motor puro (lib.fiscal), factura y cotización en régimen honorarios,
 redondeo HALF_UP (no HALF_EVEN), herencia proyecto→cotización→factura, el
-asiento contable de emisión cuadra, y eliminar factura cancelada.
+asiento contable de emisión cuadra, y eliminar factura cancelada. Incluye
+3 facturas reales de Oscar como red de seguridad del método nominal.
 """
 
 from __future__ import annotations
@@ -24,8 +27,8 @@ pytestmark = [pytest.mark.django_db, pytest.mark.taller]
 BASE = Decimal("33770.00")
 IVA = Decimal("5403.20")
 RET_ISR = Decimal("422.13")
-RET_IVA = Decimal("3602.13")
-TOTAL = Decimal("35148.94")
+RET_IVA = Decimal("3602.14")
+TOTAL = Decimal("35148.93")
 
 
 @pytest.fixture(autouse=True)
@@ -57,15 +60,37 @@ def test_q2_redondea_half_up():
     assert q2(Decimal("0.135")) == Decimal("0.14")
 
 
-def test_ret_iva_es_dos_tercios_exactos():
-    """La retención de IVA es ⅔ EXACTAS del IVA (no un % de 2 decimales sobre
-    la base, que daría 3,603.26 o 3,599.88 — ambos incorrectos)."""
+def test_ret_iva_es_tasa_nominal_sobre_base():
+    """Anexo 20 SAT: la retención de IVA = Base × 10.6667% (tasa nominal),
+    independiente y redondeada al final. NO es fracción del IVA redondeado
+    (⅔ × 5,403.20 = 3,602.13, que no cuadra con el PAC), ni un % de 2 decimales
+    sobre la base (10.67% = 3,603.26 / 10.66% = 3,599.88)."""
     from lib.fiscal import desglose_honorarios
     d = desglose_honorarios(BASE)
-    # ⅔ de 5,403.20 = 3,602.1333… → 3,602.13
+    # 33,770 × 10.6667% = 3,602.1446… → 3,602.14
     assert d["ret_iva"] == RET_IVA
-    assert d["ret_iva"] != Decimal("3603.26")
-    assert d["ret_iva"] != Decimal("3599.88")
+    assert d["ret_iva"] == Decimal("3602.14")
+    assert d["ret_iva"] != Decimal("3602.13")  # el viejo método ⅔ del IVA
+    assert d["ret_iva"] != Decimal("3603.26")  # 10.67% (2 decimales)
+    assert d["ret_iva"] != Decimal("3599.88")  # 10.66% (2 decimales)
+
+
+@pytest.mark.parametrize(
+    ("base", "ret_iva", "total"),
+    [
+        # Facturas reales verificadas por Oscar (Base → Ret. IVA → Total neto).
+        (Decimal("33770.00"), Decimal("3602.14"), Decimal("35148.93")),
+        (Decimal("16000.00"), Decimal("1706.67"), Decimal("16653.33")),
+        (Decimal("40184.22"), Decimal("4286.33"), Decimal("41825.07")),
+    ],
+)
+def test_facturas_reales_al_centavo(base, ret_iva, total):
+    """Base × 10.6667% (ret. IVA) e importe neto, verificados contra facturas
+    reales del despacho. Total = Base + IVA 16% − ISR 1.25% − ret. IVA."""
+    from lib.fiscal import desglose_honorarios
+    d = desglose_honorarios(base)
+    assert d["ret_iva"] == ret_iva
+    assert d["total"] == total
 
 
 # ── Factura ────────────────────────────────────────────────────────────────

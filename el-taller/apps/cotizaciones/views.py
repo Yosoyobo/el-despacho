@@ -160,10 +160,8 @@ def _estados_cot_ciclo():
 
 def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
               tasas_qs=None, tasas_seleccionadas=None):
-    # S-LC-Feedback-V2: unidades del catálogo para poblar el <select> de cada
-    # línea (en lugar de un text input libre).
-    from apps.el_catalogo.models import CategoriaServicio, Unidad
-    unidades = list(Unidad.objects.filter(activa=True).values_list("nombre", flat=True))
+    # #12: la unidad se consolidó a 'pz' (sin selector por línea).
+    from apps.el_catalogo.models import CategoriaServicio
     categorias = CategoriaServicio.objects.filter(activa=True).order_by("orden", "nombre")
     titulo_pagina = "Nueva cotización" if modo == "nuevo" else f"Editar {cot.codigo if cot else ''}".strip()
     return {
@@ -174,7 +172,6 @@ def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
         "titulo_pagina": titulo_pagina,
         "tasas": tasas_qs if tasas_qs is not None else TasaImpositiva.objects.filter(activa=True),
         "tasas_seleccionadas": set(tasas_seleccionadas or []),
-        "unidades_disponibles": unidades,
         "categorias_disponibles": categorias,
     }
 

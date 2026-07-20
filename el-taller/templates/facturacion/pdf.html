@@ -43,7 +43,6 @@
       <tr style="background-color:#f2f4f7;">
         <th style="border:1px solid #d0d5dd; padding:6pt; text-align:left;">Descripción</th>
         <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">Cant.</th>
-        <th style="border:1px solid #d0d5dd; padding:6pt; text-align:left;">Unidad</th>
         <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">P. unitario</th>
         <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">Desc.</th>
         <th style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">Importe</th>
@@ -54,7 +53,6 @@
       <tr>
         <td style="border:1px solid #d0d5dd; padding:6pt;">{{ it.descripcion|default:"—" }}</td>
         <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{{ it.cantidad|floatformat:2 }}</td>
-        <td style="border:1px solid #d0d5dd; padding:6pt;">{{ it.unidad_label }}</td>
         <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{{ it.precio_unitario|dinero }}</td>
         <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{% if it.descuento_porcentaje %}{{ it.descuento_porcentaje|floatformat:2 }}%{% else %}—{% endif %}</td>
         <td style="border:1px solid #d0d5dd; padding:6pt; text-align:right;">{{ it.subtotal|dinero }}</td>

@@ -6,8 +6,6 @@ from .models import (
     Proveedor,
     Servicio,
     SubcategoriaProveedor,
-    Unidad,
-    Variacion,
 )
 
 
@@ -59,19 +57,6 @@ class ProveedorForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if inline and "activo" in self.fields:
             self.fields.pop("activo")
-
-
-class UnidadForm(forms.ModelForm):
-    activa = forms.BooleanField(required=False, label="Disponible", initial=True)
-
-    class Meta:
-        model = Unidad
-        fields = ["nombre", "abreviacion", "orden", "activa"]
-        labels = {
-            "nombre": "Nombre",
-            "abreviacion": "Abreviación",
-            "orden": "Orden",
-        }
 
 
 class CategoriaForm(forms.ModelForm):
@@ -126,7 +111,6 @@ class SubcategoriaProveedorForm(forms.ModelForm):
 
 
 class ServicioForm(forms.ModelForm):
-    activo = forms.BooleanField(required=False, label="Disponible", initial=True)
     # S-LC-Feedback-V3: costo opcional con default 0 (margen 100% si no se captura).
     costo = forms.DecimalField(required=False, initial=0, min_value=0,
                                 label="Costo",
@@ -134,11 +118,14 @@ class ServicioForm(forms.ModelForm):
 
     class Meta:
         model = Servicio
-        fields = ["nombre", "descripcion_default", "unidad", "costo", "precio_base", "categoria", "proveedores", "activo"]
+        # Sprint Fiscal 2026-07 (#12 unidad, #10 disponible): la unidad se
+        # consolidó a 'pz' (fija por dentro, sin selector) y el estado
+        # «Disponible» se jubiló (archivar vive en su propio botón). Ambos
+        # campos salen del form.
+        fields = ["nombre", "descripcion_default", "costo", "precio_base", "categoria", "proveedores"]
         labels = {
             "nombre": "Nombre",
             "descripcion_default": "Descripción",
-            "unidad": "Unidad",
             "costo": "Costo",
             "precio_base": "Precio de venta",
             "categoria": "Categoría",
@@ -170,23 +157,3 @@ class ServicioForm(forms.ModelForm):
     def clean_costo(self):
         v = self.cleaned_data.get("costo")
         return v if v is not None else 0
-
-
-class VariacionForm(forms.ModelForm):
-    disponible = forms.BooleanField(required=False, label="Disponible", initial=True)
-    impresion_activa = forms.BooleanField(required=False, label="Lleva impresión", initial=False)
-
-    class Meta:
-        model = Variacion
-        fields = [
-            "nombre", "descripcion", "costo",
-            "impresion_activa", "impresion_costo", "impresion_descripcion",
-            "disponible",
-        ]
-        labels = {
-            "nombre": "Variación",
-            "descripcion": "Detalles (tela, tamaño, color, tintas)",
-            "costo": "Costo (sin IVA)",
-            "impresion_costo": "Costo de impresión",
-            "impresion_descripcion": "Detalle de impresión",
-        }

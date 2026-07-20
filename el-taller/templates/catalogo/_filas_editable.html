@@ -16,10 +16,8 @@ hx-swap=none). El margen se recalcula en el cliente. CSRF va en hx-headers del
             {% for c in categorias %}<option value="{{ c.pk }}" {% if s.categoria_id == c.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
         </select>
     </td>
-    <td class="px-3 py-1.5">
-        <input type="text" name="valor" value="{{ s.unidad }}" aria-label="Unidad"
-               hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "unidad"}' hx-swap="none"
-               class="w-24 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-gray-600 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-300 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+    <td class="px-3 py-1.5 text-right tabular-nums">
+        <a href="{% url 'catalogo-usos' s.pk %}" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" title="Veces que se ha usado en proyectos">{{ s.usos_count|default:0 }}</a>
     </td>
     {% if ve_precios %}
     <td class="px-3 py-1.5 text-right">
@@ -46,20 +44,12 @@ hx-swap=none). El margen se recalcula en el cliente. CSRF va en hx-headers del
             {% else %}<span class="text-xs text-gray-400 dark:text-gray-500">—</span>{% endif %}
         {% endwith %}
     </td>
-    <td class="px-3 py-1.5">
-        <select name="valor" aria-label="Estado"
-                hx-post="{% url 'catalogo-servicio-celda' s.pk %}" hx-trigger="change" hx-vals='{"campo": "activo"}' hx-swap="none"
-                class="rounded-md border border-transparent bg-transparent px-2 py-1 text-sm hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:hover:border-gray-700 dark:focus:bg-gray-900">
-            <option value="1" {% if s.activo %}selected{% endif %}>Disponible</option>
-            <option value="0" {% if not s.activo %}selected{% endif %}>No disponible</option>
-        </select>
-    </td>
     <td class="px-3 py-1.5 text-right">
-        <a href="{% url 'catalogo-variaciones' s.pk %}" class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300">Variaciones →</a>
+        <a href="{% url 'catalogo-usos' s.pk %}" class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300">Usos →</a>
     </td>
 </tr>
 {% empty %}
-<tr><td colspan="9" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Agrega el primer producto para empezar a cotizar más rápido." icono="folder" %}</div></td></tr>
+<tr><td colspan="8" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Agrega el primer producto para empezar a cotizar más rápido." icono="folder" %}</div></td></tr>
 {% endfor %}
 <script>
 (function () {

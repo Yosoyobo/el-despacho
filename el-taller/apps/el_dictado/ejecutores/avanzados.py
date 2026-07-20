@@ -145,7 +145,7 @@ def _tasas_a_aplicar(payload: dict):
 
 def _crear_lineas(modelo_item, *, parent_attr: str, parent, items: list, contexto=None) -> int:
     """Crea las líneas de un documento (CotizacionItem / FacturaItem). Devuelve
-    cuántas creó. Cada item: {descripcion, precio_unitario, cantidad?, unidad?,
+    cuántas creó. Cada item: {descripcion, precio_unitario, cantidad?,
     descuento_porcentaje?, servicio?}."""
     creadas = 0
     for orden, it in enumerate(items):
@@ -173,7 +173,7 @@ def _crear_lineas(modelo_item, *, parent_attr: str, parent, items: list, context
             "servicio": servicio,
             "descripcion": descripcion[:500],
             "cantidad": cantidad,
-            "unidad": (it.get("unidad") or "pieza")[:30],
+            "unidad": "pz",  # #12: unidad única consolidada.
             "precio_unitario": precio,
             "descuento_porcentaje": desc_pct,
         })
@@ -313,7 +313,7 @@ def crear_factura(accion, usuario, contexto=None):
 
     NO emite (queda en borrador para revisión) y NO es un CFDI (regla §16).
     Payload: cliente_slug, titulo, items: [{descripcion, precio_unitario,
-    cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?,
+    cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?,
     descuento_global_porcentaje?, notas?, terminos?, impuestos?.
     """
     _gate(usuario, "puede_crear_facturacion", "crear facturas")
@@ -398,7 +398,7 @@ def crear_cotizacion(accion, usuario, contexto=None):
     """Crea una cotización en BORRADOR con líneas e impuestos.
 
     Payload: cliente_slug, titulo, items: [{descripcion, precio_unitario,
-    cantidad?, unidad?, descuento_porcentaje?, servicio?}], proyecto_slug?,
+    cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?,
     descuento_global_porcentaje?, notas?, terminos?, impuestos? ('default' |
     [nombres/ids]).
     """

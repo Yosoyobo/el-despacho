@@ -28,8 +28,6 @@ from .forms import (
     ProveedorForm,
     ServicioForm,
     SubcategoriaProveedorForm,
-    UnidadForm,
-    VariacionForm,
 )
 from .models import (
     CategoriaProveedor,
@@ -37,8 +35,6 @@ from .models import (
     Proveedor,
     Servicio,
     SubcategoriaProveedor,
-    Unidad,
-    Variacion,
 )
 
 
@@ -62,10 +58,18 @@ def lista(request):
     puede_eliminar = puede(user, "catalogo", "eliminar")
     puede_gestionar_cats = puede(user, "catalogo", "gestionar_categorias")
 
+    from django.db.models import Count
+
     q = (request.GET.get("q") or "").strip()
     categoria_id = request.GET.get("categoria") or ""
     incluir_archivados = request.GET.get("archivados") == "1" and puede_archivar
-    qs = Servicio.objects.select_related("categoria").prefetch_related("proveedores")
+    qs = (
+        Servicio.objects.select_related("categoria")
+        .prefetch_related("proveedores")
+        .annotate(usos_count=Count("en_proyectos", distinct=True))
+    )
+    # `activo` sigue siendo el mecanismo de ARCHIVADO (se conserva); solo se
+    # jubiló su presentación como "Disponible/No disponible" (#10).
     if not incluir_archivados:
         qs = qs.filter(activo=True)
     if q:
@@ -74,13 +78,14 @@ def lista(request):
         qs = qs.filter(categoria_id=categoria_id)
     # LC revisión buzón R2: modo edición inline (celdas editables) opt-in.
     editar_inline = request.GET.get("editar") == "1" and puede_editar
-    cabeceras = [{"label": "Nombre"}, {"label": "Categoría"}, {"label": "Unidad"}]
+    # #12 unidad consolidada a 'pz' (columna retirada) · #9 columna "Usos"
+    # (veces que el producto ha aparecido en proyectos) · #10 sin "Estado".
+    cabeceras = [{"label": "Nombre"}, {"label": "Categoría"}, {"label": "Usos", "align": "right"}]
     if ve_precios:
         cabeceras.append({"label": "Costo", "align": "right"})
         cabeceras.append({"label": "Precio", "align": "right"})
         cabeceras.append({"label": "Margen", "align": "right"})
     cabeceras.append({"label": "Proveedores"})
-    cabeceras.append({"label": "Estado"})
     if editar_inline or puede_editar or puede_archivar or puede_eliminar:
         cabeceras.append({"label": "", "align": "right"})
     return render(request, "catalogo/lista.html", {
@@ -119,8 +124,6 @@ def servicio_celda(request, pk: int):
         if not v:
             return HttpResponseBadRequest("El nombre no puede quedar vacío.")
         srv.nombre = v[:150]
-    elif campo == "unidad":
-        srv.unidad = (valor or "").strip()[:30] or "pieza"
     elif campo in {"costo", "precio_base"}:
         from decimal import Decimal, InvalidOperation
         try:
@@ -135,8 +138,6 @@ def servicio_celda(request, pk: int):
         if not cat:
             return HttpResponseBadRequest("Categoría inválida.")
         srv.categoria = cat
-    elif campo == "activo":
-        srv.activo = str(valor) in {"1", "true", "on", "True", "si"}
     else:
         return HttpResponseBadRequest("Campo no editable.")
     srv.save(update_fields=[campo, "actualizado_en"])
@@ -294,83 +295,31 @@ def archivar(request, pk: int):
     return redirect("catalogo-lista")
 
 
-# ── Variaciones ──────────────────────────────────────────────────────────────
+# ── Usos (bitácora histórica del producto) ───────────────────────────────────
+# Sprint Fiscal 2026-07 (#8): la vieja página de "Variaciones" (sub-catálogo
+# manual) pasa a ser una bitácora de USOS derivada del historial real: cada vez
+# que el producto se usó en un proyecto, con su costo, precio, proveedor,
+# impresión y procesos extras. Solo lectura. El modelo Variacion se conserva
+# (proyectos/cotizaciones lo siguen usando); ya no se crea/edita desde aquí.
 
-def variaciones_lista(request, pk: int):
-    """Detalle del servicio + listado de variaciones."""
+def usos_lista(request, pk: int):
+    """Bitácora histórica de usos del producto en proyectos (solo lectura)."""
     if (r := _gate(request, "ver_nombres")) is not None:
         return r
     srv = get_object_or_404(Servicio, pk=pk)
-    variaciones = srv.variaciones.all()
-    return render(request, "catalogo/variaciones.html", {
+    ve_precios = puede(request.user, "catalogo", "ver_precios")
+    usos = (
+        srv.en_proyectos
+        .select_related("proyecto", "proyecto__cliente", "variacion", "proveedor")
+        .prefetch_related("procesos__proveedor")
+        .order_by("-creado_en")
+    )
+    return render(request, "catalogo/usos.html", {
         "servicio": srv,
-        "variaciones": variaciones,
+        "usos": usos,
+        "ve_precios": ve_precios,
         "puede_editar": puede(request.user, "catalogo", "editar"),
-        "puede_archivar": puede(request.user, "catalogo", "archivar"),
     })
-
-
-@require_http_methods(["GET", "POST"])
-def variacion_nueva(request, pk: int):
-    if (r := _gate(request, "crear")) is not None:
-        return r
-    srv = get_object_or_404(Servicio, pk=pk)
-    if request.method == "POST":
-        form = VariacionForm(request.POST)
-        if form.is_valid():
-            v = form.save(commit=False)
-            v.servicio = srv
-            v.save()
-            emitir(EventoPortavoz(
-                tipo="catalogo.variacion_creada",
-                actor_id=request.user.pk,
-                actor_email=request.user.email,
-                payload={"servicio_id": srv.pk, "variacion_id": v.pk, "nombre": v.nombre},
-            ))
-            messages.success(request, f"Variación «{v.nombre}» creada.")
-            return redirect("catalogo-variaciones", pk=srv.pk)
-    else:
-        form = VariacionForm()
-    return render(request, "catalogo/variacion_form.html", {
-        "form": form, "servicio": srv, "modo": "nueva",
-    })
-
-
-@require_http_methods(["GET", "POST"])
-def variacion_editar(request, pk: int, vpk: int):
-    if (r := _gate(request, "editar")) is not None:
-        return r
-    srv = get_object_or_404(Servicio, pk=pk)
-    v = get_object_or_404(Variacion, pk=vpk, servicio=srv)
-    if request.method == "POST":
-        form = VariacionForm(request.POST, instance=v)
-        if form.is_valid():
-            form.save()
-            emitir(EventoPortavoz(
-                tipo="catalogo.variacion_actualizada",
-                actor_id=request.user.pk,
-                actor_email=request.user.email,
-                payload={"servicio_id": srv.pk, "variacion_id": v.pk},
-            ))
-            messages.success(request, "Variación actualizada.")
-            return redirect("catalogo-variaciones", pk=srv.pk)
-    else:
-        form = VariacionForm(instance=v)
-    return render(request, "catalogo/variacion_form.html", {
-        "form": form, "servicio": srv, "variacion": v, "modo": "editar",
-    })
-
-
-@require_http_methods(["POST"])
-def variacion_archivar(request, pk: int, vpk: int):
-    if (r := _gate(request, "archivar")) is not None:
-        return r
-    srv = get_object_or_404(Servicio, pk=pk)
-    v = get_object_or_404(Variacion, pk=vpk, servicio=srv)
-    v.disponible = not v.disponible
-    v.save(update_fields=["disponible", "actualizado_en"])
-    messages.success(request, "Variación " + ("ocultada." if not v.disponible else "disponible."))
-    return redirect("catalogo-variaciones", pk=srv.pk)
 
 
 # ── Categorías ───────────────────────────────────────────────────────────────
@@ -432,71 +381,6 @@ def categoria_borrar(request, pk: int):
     return redirect("catalogo-categorias")
 
 
-# ── Unidades (S-LC-Feedback-V2) ─────────────────────────────────────────────
-
-def unidades_lista(request):
-    if (r := _gate(request, "gestionar_categorias")) is not None:
-        return r
-    incluir_archivadas = request.GET.get("archivadas") == "1"
-    qs = Unidad.objects.all() if incluir_archivadas else Unidad.objects.filter(activa=True)
-    return render(request, "catalogo/unidades.html", {
-        "unidades": qs,
-        "incluir_archivadas": incluir_archivadas,
-    })
-
-
-@require_http_methods(["GET", "POST"])
-def unidad_nueva(request):
-    if (r := _gate(request, "gestionar_categorias")) is not None:
-        return r
-    if request.method == "POST":
-        form = UnidadForm(request.POST)
-        if form.is_valid():
-            u = form.save()
-            emitir(EventoPortavoz(
-                tipo="catalogo.unidad_creada",
-                actor_id=request.user.pk, actor_email=request.user.email,
-                payload={"unidad_id": u.pk, "nombre": u.nombre},
-            ))
-            messages.success(request, f"Unidad '{u.nombre}' creada.")
-            return redirect("catalogo-unidades")
-    else:
-        form = UnidadForm()
-    return render(request, "catalogo/unidad_form.html", {"form": form, "modo": "nuevo"})
-
-
-@require_http_methods(["GET", "POST"])
-def unidad_editar(request, pk: int):
-    if (r := _gate(request, "gestionar_categorias")) is not None:
-        return r
-    u = get_object_or_404(Unidad, pk=pk)
-    if request.method == "POST":
-        form = UnidadForm(request.POST, instance=u)
-        if form.is_valid():
-            form.save()
-            emitir(EventoPortavoz(
-                tipo="catalogo.unidad_actualizada",
-                actor_id=request.user.pk, actor_email=request.user.email,
-                payload={"unidad_id": u.pk, "nombre": u.nombre},
-            ))
-            messages.success(request, "Unidad actualizada.")
-            return redirect("catalogo-unidades")
-    else:
-        form = UnidadForm(instance=u)
-    return render(request, "catalogo/unidad_form.html", {"form": form, "modo": "editar", "unidad": u})
-
-
-@require_http_methods(["POST"])
-def unidad_archivar(request, pk: int):
-    if (r := _gate(request, "gestionar_categorias")) is not None:
-        return r
-    u = get_object_or_404(Unidad, pk=pk)
-    u.activa = not u.activa
-    u.save(update_fields=["activa"])
-    messages.success(request, f"Unidad '{u.nombre}' " + ("desactivada." if not u.activa else "activada."))
-    return redirect("catalogo-unidades")
-
-
 # ── Quick-create de Servicio (S-LC-Feedback-V2) ─────────────────────────────
 
 @require_http_methods(["POST"])
@@ -514,7 +398,8 @@ def servicio_quick_create(request):
     categoria_id = request.POST.get("categoria_id")
     precio_raw = (request.POST.get("precio_base") or "").strip()
     costo_raw = (request.POST.get("costo") or "0").strip() or "0"
-    unidad = (request.POST.get("unidad") or "pieza").strip() or "pieza"
+    # #12: unidad consolidada a 'pz' (no hay selector; se ignora lo que llegue).
+    unidad = "pz"
     if not nombre or not categoria_id or not precio_raw:
         return JsonResponse({"ok": False, "error": "Faltan campos requeridos."}, status=400)
     try:
