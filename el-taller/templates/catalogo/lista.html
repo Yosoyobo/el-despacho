@@ -40,5 +40,5 @@
 </form>
 
 {% if editar_inline %}<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">✎ Edición rápida activa — escribe en las celdas y se guardan solas al salir del campo. El margen se recalcula al momento.</p>{% endif %}
-{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_catalogo filas_template=filas_template sin_scroll_vertical=True %}
+{% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_catalogo filas_template=filas_template sin_scroll_vertical=True orden_actual=orden_actual querystring_base=querystring_base %}
 {% endblock %}

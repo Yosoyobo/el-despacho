@@ -6722,3 +6722,61 @@ Refactor del Modelo de Datos del catálogo). Rama `agent/ui-fase3-forms`.
 (8 nuevos) + `test_unidades_quickcreate.py` actualizado. `test_no_renderiza_comentarios`
 (ambas apps) verde. Migraciones espurias del repo (BigAutoField, drift Variacion)
 NO tocadas. Deploy pendiente del GO de Oscar (dijo "con mi go vas a productivo").
+
+## Cierre S-UX-Captura (Sprint 2) (2026-07-19, VERSION 2026.07.22)
+
+Sprint `Sprint_2_UX_y_Captura.md` de Oscar — 9 items de UX, modales y flujos de
+captura. Rama nueva `agent/sprint2-ux-captura` desde `main` (con la Fase Fiscal
+07.21 ya mergeada). Deploy "en mi go". Sin migraciones. Dos items resultaron ya
+implementados en sprints previos (se verifican con test).
+
+**Entregado (numeración del handoff):**
+- **item 1 — cifras sin `.00`** (`cuentas/templatetags/forms_helpers.dinero`):
+  trunca los centavos cuando son `.00` (`$1,234`), los conserva si no
+  (`$1,234.50`). Global vía `|dinero`/`|dinero_sin_signo`. `dinero_corto` queda
+  redundante pero válido. Ningún test asserteaba `.00` sobre `|dinero`.
+- **item 2 — descripción de ingreso opcional** (`tesoreria/forms.IngresoForm`):
+  `descripcion` `required=False` + label **"Notas"**.
+- **item 5 — modal Nuevo ingreso** (`tesoreria/_modal_nuevo_ingreso.html`):
+  se retiró el selector de cliente + las pastillas legacy de proyectos/clientes
+  + el alta inline de cliente + el JS muerto. El cliente se **hereda del
+  proyecto** en `IngresoForm.save()` (solo si no se eligió a mano → respeta el
+  form full-page). El egreso ya estaba limpio (sin cliente ni pastillas).
+- **item 4 — modal Nuevo proyecto** (`proyectos/_modal_nuevo_proyecto.html`):
+  se quitaron las pastillas de clientes recientes (queda el combobox). El
+  semáforo de estado (bloques de color centrados) ya existía desde R2.
+- **item 3 — mini-calendario** (`tesoreria/_fecha_minical.html` +
+  `proyectos/_form_productos_js.html::montarCalendario`): título del mes
+  **centrado** (`flex-1 text-center`) y se quitó el botón "Quitar fecha"
+  (`con_quitar` quedó obsoleto/no-op). El toggle de deselección al re-picar el
+  día ya estaba en `ui.js/initMinical` y en el calendario del formset.
+- **item 6 — orden por Categoría** (`el_catalogo/views.lista` + `lista.html`):
+  cabecera "Categoría" con `sort_key` (toggle asc/desc vía `_tabla_datos`),
+  whitelist `categoria`/`-categoria`, default alfabético por nombre;
+  `querystring_base` preserva filtros.
+- **item 11 — columna Proveedor al 3er lugar** (`views.lista` cabeceras +
+  `_filas.html` + `_filas_editable.html`): orden Nombre · Categoría ·
+  Proveedores · Usos · [Costo/Precio/Margen] · acciones.
+- **item 7 — panel de edición inline** (`_filas.html`, `views.editar`,
+  `form.html`, `usos.html`): se quitó el botón "Editar" (y el link de texto
+  "Usos") del renglón; la **fila navega al panel de edición** (editores) o al
+  historial de usos (solo-lectura). El panel (`form.html`) ahora embebe el
+  **Historial de usos** (`#usos-historial`, solo lectura) + link en el header,
+  unificando detalle + edición. `usos.html` conserva su función pero sin botón
+  "Editar producto".
+- **item 13 — producto nuevo al final (append)**: **ya implementado** en
+  S-Finanzas-UX (`_siguiente_orden_producto` = max+1 en `agregar_producto_modal`
+  y en el loop de `productos_ia`) + Fase 3 (`sincronizarOrdenDOM`) +
+  `ProyectoProducto.Meta.ordering = ["-incluir_en_calculo","orden","creado_en"]`.
+  Se blindó con test.
+
+**Tests:** `tests/taller/test_sprint2_ux_captura.py` (13 nuevos, 9 items).
+`test_sprint_fiscal_estructura.py::test_lista_catalogo_columnas` ajustado (su
+`>Usos<` matcheaba por coincidencia el link de texto "Usos" del renglón que el
+item 7 retiró; ahora verifica el badge/columna por su tooltip). Ruff limpio;
+`test_no_renderiza_comentarios` (ambas apps) verde.
+
+**Deuda diseñada:** el centrado del título del mes es `text-center` dentro de su
+celda flex (no centrado geométrico absoluto respecto al grupo de botones de la
+derecha); `con_quitar` queda como param obsoleto en `_fecha_minical.html` (no-op,
+lo pasan varios callers). El item 5 no afecta al egreso (ya estaba limpio).

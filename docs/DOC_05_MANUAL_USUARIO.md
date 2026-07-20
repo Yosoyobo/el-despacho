@@ -5,6 +5,28 @@
 
 ---
 
+## Novedades — Captura más simple y catálogo más ágil (19 de julio de 2026)
+
+- **Cifras sin ".00" de relleno.** Los montos enteros ya se muestran limpios
+  (`$1,234` en vez de `$1,234.00`); si hay centavos, se conservan (`$1,234.50`).
+- **Ingreso: la nota es opcional.** El campo de descripción del ingreso pasó a
+  llamarse **"Notas"** y ya no es obligatorio — lo que importa es el monto.
+- **Captura de ingreso más directa.** La ventana de **Nuevo ingreso** ya no pide
+  cliente ni muestra pastillas de proyectos/clientes viejos: solo eliges el
+  **proyecto** y el cliente se toma automáticamente de él.
+- **Nuevo proyecto más limpio.** Se quitaron las pastillas de clientes recientes
+  (queda el buscador) y el estado se elige con un **semáforo de bloques de
+  color**.
+- **Calendarios más claros.** El título del mes va **centrado** y se quitó el
+  botón "Quitar fecha": para dejar una fecha en blanco, vuelve a tocar el día ya
+  elegido y se deselecciona.
+- **Productos: ordena por categoría.** En la lista de Productos puedes hacer clic
+  en la cabecera **"Categoría"** para ordenar (un clic asciende, otro desciende).
+- **Columna de Proveedor más a la vista** (ahora en la 3ª posición de la tabla).
+- **Editar un producto es más rápido.** Se quitó el botón "Editar" de cada
+  renglón: **al hacer clic en el producto entras directo a su panel**, donde
+  editas todo y además ves su **historial de usos** en la misma pantalla.
+
 ## Novedades — Retenciones de IVA al centavo y catálogo de productos más simple (19 de julio de 2026)
 
 - **Retención de IVA (honorarios) alineada al SAT.** El sistema ahora calcula la

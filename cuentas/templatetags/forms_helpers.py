@@ -41,7 +41,11 @@ def tiene_rol(user, nombres: str) -> bool:
 
 @register.filter
 def dinero(valor) -> str:
-    """Formatea un monto como `$1,234.56`. None / vacío → `—`."""
+    """Formatea un monto como `$1,234.56`. None / vacío → `—`.
+
+    Sprint 2 UX (item 1, decisión Oscar): trunca los centavos cuando son `.00`
+    (`$1,234`); los conserva solo si son distintos de cero (`$1,234.50`). Aplica
+    global a todas las cifras del sistema vía `|dinero`/`|dinero_sin_signo`."""
     if valor is None or valor == "":
         return "—"
     try:
@@ -56,7 +60,10 @@ def dinero(valor) -> str:
         entero = entero[:-3]
     if entero:
         grupos.insert(0, entero)
-    return f"{signo}${','.join(grupos)}.{decimales or '00':<02}"[:32]
+    entero_fmt = ",".join(grupos)
+    if decimales and decimales != "00":
+        return f"{signo}${entero_fmt}.{decimales}"[:32]
+    return f"{signo}${entero_fmt}"[:32]
 
 
 @register.filter

@@ -5,7 +5,8 @@ el mes, hoy seleccionado por default, botón Hoy, flechas ◀ ▶ de mes, y un i
 hidden sincronizado. La lógica vive en `ui.js` (`initMinical`, corre en load y
 htmx:afterSwap → funciona también dentro de modales del #modal-slot).
 Params: `valor` (ISO YYYY-MM-DD o ''), `nombre` (default "fecha"),
-`label` (default "Fecha"), `con_quitar` (bool → botón "Quitar fecha"),
+`label` (default "Fecha"), `con_quitar` (bool → OBSOLETO desde Sprint 2 UX: ya
+no pinta botón; el toggle del día deselecciona),
 `sin_default_hoy` (bool → NO preseleccionar hoy; arranca vacío),
 `sin_hoy` (bool → oculta el botón "Hoy"), `con_manana` (bool → botón "Mañana",
 para fechas de Entrega — LC revisión buzón R1).
@@ -18,7 +19,7 @@ para fechas de Entrega — LC revisión buzón R1).
             <button type="button" data-mc-prev class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" aria-label="Mes anterior">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <span data-mc-titulo class="text-sm font-semibold text-gray-800 dark:text-gray-100"></span>
+            <span data-mc-titulo class="flex-1 text-center text-sm font-semibold text-gray-800 dark:text-gray-100"></span>
             <div class="flex items-center gap-1">
                 {% if not sin_hoy %}<button type="button" data-mc-hoy class="inline-flex h-8 items-center rounded-lg border border-gray-200 px-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Hoy</button>{% endif %}
                 {% if con_manana %}<button type="button" data-mc-manana class="inline-flex h-8 items-center rounded-lg border border-gray-200 px-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Mañana</button>{% endif %}
@@ -31,9 +32,8 @@ para fechas de Entrega — LC revisión buzón R1).
             <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
         </div>
         <div data-mc-grid class="grid grid-cols-7 gap-1"></div>
-        {% if con_quitar %}
-        <button type="button" data-mc-quitar class="mt-2 w-full rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-error-600 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">Quitar fecha</button>
-        {% endif %}
+        {% comment %}Sprint 2 UX (item 3): se quitó el botón "Quitar fecha" — el clic
+        sobre el día ya elegido lo deselecciona (toggle en ui.js/initMinical).{% endcomment %}
         {% comment %}unlocalize: fuerza ISO YYYY-MM-DD aunque `valor` sea un date
         (es-mx lo renderizaría "19 de julio de 2026" y rompía el minical con NaN).{% endcomment %}
         <input type="hidden" name="{{ nombre|default:'fecha' }}" data-mc-input value="{{ valor|unlocalize }}">
