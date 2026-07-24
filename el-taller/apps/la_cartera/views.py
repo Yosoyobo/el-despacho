@@ -13,7 +13,11 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods
 
-from lib.permisos import puede_editar_cartera, puede_ver_cartera
+from lib.permisos import (
+    puede_editar_cartera,
+    puede_eliminar_cartera,
+    puede_ver_cartera,
+)
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
@@ -109,6 +113,7 @@ def lista(request):
         "querystring_base": "&".join(qs_filtros),
         "querystring_paginacion": "&".join(qs_filtros),
         "puede_editar": puede_editar,
+        "puede_eliminar": puede_eliminar_cartera(request.user),
         "editar_inline": editar_inline,
         "estados_cliente": ESTADOS_CLIENTE,
         "kpi_activo_con_proyectos": ver == "con_proyectos",
@@ -221,6 +226,9 @@ def cliente_celda(request, pk):
             return HttpResponseBadRequest("El nombre no puede quedar vacío.")
         cliente.razon_social = valor
         cliente.save(update_fields=["razon_social", "actualizado_en"])
+    elif campo == "razon_social_fiscal":
+        cliente.razon_social_fiscal = valor.upper()[:200]
+        cliente.save(update_fields=["razon_social_fiscal", "actualizado_en"])
     elif campo == "telefono":
         valor = valor[:40]
         cliente.telefono = valor
@@ -244,6 +252,40 @@ def cliente_celda(request, pk):
         payload={"cliente_id": cliente.pk, "campo": campo, "origen": "celda_inline"},
     ))
     return HttpResponse(status=204)
+
+
+@login_required
+@require_http_methods(["POST"])
+def cliente_eliminar(request, pk):
+    """Borrado PERMANENTE de un cliente ARCHIVADO (limpieza). Destructivo:
+    solo con permiso `cartera.eliminar` (super_admin por default). Se exige que
+    el cliente esté archivado y NO tenga proyectos ligados (FK PROTECT / historial)."""
+    if not puede_eliminar_cartera(request.user):
+        return HttpResponseForbidden("Sin permiso para eliminar clientes.")
+    cliente = get_object_or_404(Cliente, pk=pk)
+    if cliente.activo:
+        messages.error(request, "Archiva el cliente antes de eliminarlo permanentemente.")
+        return redirect("cartera-detalle", pk=cliente.pk)
+    if cliente.proyectos.exists():
+        messages.error(request, "No se puede eliminar: el cliente tiene proyectos ligados. Archívalo en su lugar.")
+        return redirect("cartera-detalle", pk=cliente.pk)
+    from django.db.models import ProtectedError
+    razon = cliente.razon_social
+    cliente_id = cliente.pk
+    try:
+        cliente.delete()
+    except ProtectedError:
+        # Otras referencias con FK PROTECT (facturas, ingresos, etc.).
+        messages.error(request, "No se puede eliminar: el cliente tiene facturas u otros movimientos ligados. Archívalo en su lugar.")
+        return redirect("cartera-detalle", pk=cliente_id)
+    emitir(EventoPortavoz(
+        tipo="cliente.eliminado",
+        actor_id=request.user.pk,
+        actor_email=request.user.email,
+        payload={"cliente_id": cliente_id, "razon_social": razon},
+    ))
+    messages.success(request, f"Cliente «{razon}» eliminado permanentemente.")
+    return redirect("cartera-lista")
 
 
 @login_required

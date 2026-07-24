@@ -297,20 +297,16 @@ def editar(request, pk: int):
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
             # Calculadora de costos (proveedores como Simil Cuero Plymouth): si el
             # producto la usa, guardamos los insumos y el Subtotal (antes de IVA)
-            # alimenta el precio de venta.
+            # alimenta el COSTO del producto (el precio de venta lo pone el usuario).
             from apps.el_catalogo.calculadora import (
                 calcular,
                 parsear_detalles,
                 servicio_usa_calculadora,
             )
             if servicio_usa_calculadora(obj):
-                from ajustes.models.fiscal import ConfiguracionFiscal
                 obj.detalles_costo = parsear_detalles(request.POST)
-                if puede_editar_precios:
-                    obj.precio_base = calcular(
-                        obj.detalles_costo, ConfiguracionFiscal.obtener().iva_tasa,
-                    )["subtotal"]
-                obj.save(update_fields=["detalles_costo", "precio_base", "actualizado_en"])
+                obj.costo = calcular(obj.detalles_costo)["subtotal"]
+                obj.save(update_fields=["detalles_costo", "costo", "actualizado_en"])
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_actualizado",
                 actor_id=request.user.pk,

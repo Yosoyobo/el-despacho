@@ -15,6 +15,7 @@ from .fecha import ahora_mx
 EventoTipo = Literal[
     "cliente.creado",
     "cliente.actualizado",
+    "cliente.eliminado",
     "proyecto.creado",
     "proyecto.status_cambiado",
     "proyecto.codigo_renumerado",

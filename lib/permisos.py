@@ -154,6 +154,12 @@ def puede_editar_cartera(user) -> bool:
     return es_admin(user)
 
 
+def puede_eliminar_cartera(user) -> bool:
+    """Borrado PERMANENTE de un cliente archivado (destructivo). Por default solo
+    super_admin (failsafe); delegable por usuario desde /directorio/."""
+    return puede(user, "cartera", "eliminar")
+
+
 def puede_ver_catalogo(user) -> bool:
     return puede(user, "catalogo", "ver")
 

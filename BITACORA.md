@@ -6847,3 +6847,48 @@ renombre — decisión de Oscar; el nombre vive como constante); requiere crear 
 proveedor "Simil Cuero Plymouth" y ligarlo a los productos (paso manual, no hay
 seed). El `factor` 2.2 es constante. La edición rápida de teléfono actualiza el
 contacto principal si existe, pero no lo crea si no hay ninguno.
+
+---
+
+## Cierre S-Ajustes-Jul23 R2 (2026-07-23, VERSION 2026.07.24)
+
+Refinamientos de Oscar sobre el R1 (mismo día). Rama `agent/ajustes-jul23-r2`.
+
+- **Calculadora → Costo (no Precio):** el Subtotal alimentaba `precio_base` y
+  sobreescribía el precio del usuario. Ahora alimenta `Servicio.costo`
+  (`obj.costo = calcular(...)["subtotal"]` en `editar`; el JS escribe en
+  `[name="costo"]`). El precio lo pone el usuario y no se toca.
+- **Edición rápida de Clientes (columnas):** se recuperó **Contacto** (se
+  perdía en modo edición), se agregó **Razón social** editable
+  (`razon_social_fiscal`, sumado a la whitelist de `cliente_celda`), se quitó
+  **nº de proyectos**, y el **Estado** pasó de `<select>` a **pastillas de
+  color** clickeables (badge-success/blue/gray con `opacity-40` en las no
+  seleccionadas; hx-post por pastilla + JS de toggle). El botón **"Ver →"** se
+  removió de la lista (normal + editable) por redundante.
+- **Eliminar clientes archivados:** **✕** por fila solo en la sección de
+  archivados. Vista `cliente_eliminar` (POST, `require_http_methods`) exige
+  cliente archivado (`activo=False`) + sin proyectos, y captura `ProtectedError`
+  (facturas/otros FK PROTECT) con mensaje amable. Permiso nuevo
+  **`cartera.eliminar`**: en `CATALOGO_PERMISOS["cartera"]` (delegable) y en
+  `DEFAULTS_POR_ROL["super_admin"]["cartera"]` (SOLO super_admin, NO `dueno`);
+  migración `cuentas/0038_seed_permiso_cartera_eliminar` (patrón 0036, seed a
+  super_admins existentes). Helper `puede_eliminar_cartera`. Evento
+  `cliente.eliminado` (registrado en el Literal). Botón X con `data-no-row-click`
+  + `confirm()`.
+
+**Aprendizaje clave (documentar):** `lib.permisos.puede()` **NO** tiene failsafe
+automático de super_admin — evalúa PermisoUsuario + roles_extra. Una acción nueva
+solo la tiene super_admin si está en su `DEFAULTS_POR_ROL` (que el signal
+`auto_seedear_permisos` seedea al crear el usuario, también en tests) o vía
+migración; agregarla solo a `CATALOGO_PERMISOS` la hace delegable pero NO se la
+concede a nadie. (Por eso el 403 inicial de super_admin en los tests de eliminar.)
+
+**Tests:** 7 nuevos en `test_ajustes_clientes_factura_jul23.py` (25 total): celda
+razón social fiscal, columnas+pastillas de edición rápida, sin botón Ver,
+eliminar archivado/activo/con-proyectos/sin-permiso. Regresión (cartera,
+catálogo, facturación, fiscal, sprint2, permisos ×85, comentarios, novedades) +
+ruff verdes.
+
+**Deuda diseñada R2:** la ✕ de eliminar solo aparece en archivados (hay que
+archivar primero); el borrado se bloquea si hay proyectos o facturas ligadas
+(por diseño — se conserva el historial financiero).

@@ -8,10 +8,15 @@
 ## Novedades — Clientes editables, factura cancelable y calculadora de costos (23 de julio de 2026)
 
 - **Clientes: edición rápida.** En la lista de Clientes hay un botón **"✎ Edición
-  rápida"**: al activarlo escribes el **Nombre**, el **Teléfono** y el **Estado**
-  directamente en la tabla y cada cambio se guarda solo. Sal con "Salir de
-  edición".
-- **Nueva columna Teléfono** en la lista de Clientes.
+  rápida"**: al activarlo editas **Nombre**, **Razón social**, **Teléfono** y el
+  **Estado** (pastillas de color) directamente en la tabla; cada cambio se guarda
+  solo. Sal con "Salir de edición".
+- **Nueva columna Teléfono** en la lista de Clientes. Se quitó el botón "Ver"
+  (redundante — la fila completa ya abre el cliente).
+- **Eliminar clientes archivados.** En la sección de archivados, cada cliente
+  tiene una **✕** para borrarlo **permanentemente** (solo super administrador, y
+  solo si no tiene proyectos ni facturas ligadas; si los tiene, mejor déjalo
+  archivado).
 - **Razón social para facturación.** El cliente tiene ahora un campo aparte de
   **"Razón social"** (el nombre legal del CFDI), separado del "Nombre" con el que
   operas. Aparece como subtítulo bajo el nombre y en el recuadro
@@ -32,7 +37,7 @@
   campos), **material de sublimación** (4 campos) y **mano de obra**. El sistema
   calcula el **Subtotal** = (sublimación + mano de obra) × 2.2 + material (el
   material nunca se multiplica), muestra **IVA** y **Gran total**, y copia el
-  Subtotal al **precio de venta** del producto.
+  Subtotal al **Costo** del producto (el **precio de venta lo pones tú**).
 
 ## Novedades — Captura más simple y catálogo más ágil (19 de julio de 2026)
 
@@ -2545,7 +2550,8 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 Tus clientes B2B (restaurantes, heladerías, cafeterías, etc.).
 
 - **Lista:** filtra por nombre, ve quiénes tienen proyectos activos, marca "Mostrar archivados" para ver los inactivos. La tabla incluye una columna de **Teléfono**.
-- **Edición rápida:** el botón **"✎ Edición rápida"** de la lista te deja escribir el **Nombre**, el **Teléfono** y el **Estado** de cada cliente directo en la tabla; cada cambio se guarda solo. El teléfono que capturas aquí también actualiza el del contacto principal.
+- **Edición rápida:** el botón **"✎ Edición rápida"** de la lista te deja editar **Nombre**, **Razón social**, **Teléfono** y **Estado** (pastillas de color) de cada cliente directo en la tabla; cada cambio se guarda solo. El teléfono que capturas aquí también actualiza el del contacto principal. Se quitó el botón "Ver" (la fila entera ya abre el cliente).
+- **Eliminar archivados:** en la sección de clientes archivados hay una **✕** para borrar un cliente **permanentemente** (solo super admin; bloqueado si tiene proyectos o facturas ligadas).
 - **Nuevo cliente:** nombre, RFC, contacto, email y teléfono.
 - **Nombre vs. Razón social:** el **"Nombre"** es con el que operas día a día; la **"Razón social"** (opcional) es el nombre legal para el CFDI/facturación. El **Estado** (prospecto / activo / inactivo) se elige con pastillas.
 - **Detalle:** ves todos sus proyectos (con el **nombre en azul** para abrir y el **código** en gris). La **Razón social** aparece como subtítulo bajo el nombre y en el recuadro **"Identificación"** junto al RFC. Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
@@ -2738,10 +2744,10 @@ editarlos, un recuadro **"🧮 Calculadora de costos"** con tres grupos:
 
 El sistema calcula en vivo:
 **Subtotal (antes de IVA) = (sublimación + mano de obra) × 2.2 + material**,
-luego el **IVA** y el **Gran total**. El **Subtotal** se copia al **precio de
-venta** del producto (el IVA se aplica después en la cotización/factura, así que
-el precio se guarda sin IVA). Para que aparezca la calculadora, el producto debe
-tener marcado a "Simil Cuero Plymouth" en sus **Proveedores aplicables**.
+luego el **IVA** y el **Gran total**. El **Subtotal** se copia al **Costo** del
+producto; el **precio de venta lo pones tú** (la calculadora no lo toca). Para
+que aparezca la calculadora, el producto debe tener marcado a "Simil Cuero
+Plymouth" en sus **Proveedores aplicables**.
 
 ### Proveedores
 
