@@ -1,11 +1,17 @@
 from apps.la_cartera.forms import ClienteContactoFormSet, ClienteForm
 from apps.la_cartera.models import Cliente
+from apps.la_cartera.models.cliente import ESTADOS_CLIENTE
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
+from django.views.decorators.http import require_http_methods
 
 from lib.permisos import puede_editar_cartera, puede_ver_cartera
 from lib.portavoz import emitir
@@ -26,6 +32,7 @@ def _buscar_clientes(qs, q):
     from django.db.models import Q
     return qs.filter(
         Q(razon_social__icontains=q)
+        | Q(razon_social_fiscal__icontains=q)
         | Q(rfc__icontains=q)
         | Q(email_contacto__icontains=q)
         | Q(nombre_contacto__icontains=q)
@@ -47,6 +54,11 @@ def lista(request):
     ver = (request.GET.get("ver") or "nombre").strip()
     if ver not in {"nombre", "contacto", "activos", "con_proyectos", "prospectos"}:
         ver = "nombre"
+
+    # Edición rápida (mismo patrón que Productos): opt-in por ?editar=1 y gated
+    # por permiso. En este modo cada celda autoguarda vía hx-post a la celda.
+    puede_editar = puede_editar_cartera(request.user)
+    editar_inline = request.GET.get("editar") == "1" and puede_editar
 
     def _anota(qs):
         return qs.annotate(num_proyectos=Count("proyectos", distinct=True))
@@ -96,7 +108,9 @@ def lista(request):
         "archivados_lista": archivados_lista,
         "querystring_base": "&".join(qs_filtros),
         "querystring_paginacion": "&".join(qs_filtros),
-        "puede_editar": puede_editar_cartera(request.user),
+        "puede_editar": puede_editar,
+        "editar_inline": editar_inline,
+        "estados_cliente": ESTADOS_CLIENTE,
         "kpi_activo_con_proyectos": ver == "con_proyectos",
         "kpi_activo_activos": ver == "activos",
         "ver_opciones": [
@@ -186,6 +200,50 @@ def detalle(request, pk):
         "back_url": reverse("cartera-lista"),
         "back_label": "Clientes",
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def cliente_celda(request, pk):
+    """Guardado por celda de la edición rápida (mismo patrón que Productos).
+    Whitelist: nombre (razon_social), teléfono, estado. Responde 204 (sin swap).
+    El teléfono se sincroniza también en el contacto principal (fuente de verdad),
+    así el espejo legacy no lo revierte en el siguiente guardado del formulario."""
+    if not puede_editar_cartera(request.user):
+        return HttpResponseForbidden("Sin permiso para editar clientes.")
+    cliente = get_object_or_404(Cliente, pk=pk)
+    campo = (request.POST.get("campo") or "").strip()
+    valor = (request.POST.get("valor") or "").strip()
+
+    if campo == "razon_social":
+        valor = valor.upper()[:200]
+        if not valor:
+            return HttpResponseBadRequest("El nombre no puede quedar vacío.")
+        cliente.razon_social = valor
+        cliente.save(update_fields=["razon_social", "actualizado_en"])
+    elif campo == "telefono":
+        valor = valor[:40]
+        cliente.telefono = valor
+        cliente.save(update_fields=["telefono", "actualizado_en"])
+        cp = cliente.contacto_principal
+        if cp is not None:
+            cp.telefono = valor
+            cp.save(update_fields=["telefono"])
+    elif campo == "estado":
+        if valor not in {c[0] for c in ESTADOS_CLIENTE}:
+            return HttpResponseBadRequest("Estado no válido.")
+        cliente.estado = valor
+        cliente.save(update_fields=["estado", "actualizado_en"])
+    else:
+        return HttpResponseBadRequest("Campo no editable.")
+
+    emitir(EventoPortavoz(
+        tipo="cliente.actualizado",
+        actor_id=request.user.pk,
+        actor_email=request.user.email,
+        payload={"cliente_id": cliente.pk, "campo": campo, "origen": "celda_inline"},
+    ))
+    return HttpResponse(status=204)
 
 
 @login_required

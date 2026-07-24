@@ -10,6 +10,9 @@
         {% if cp %}{{ cp.nombre }}{% if c.contactos.count > 1 %} <span class="text-xs text-gray-400">+{{ c.contactos.count|add:"-1" }}</span>{% endif %}{% else %}{{ c.nombre_contacto|default:"—" }}{% endif %}
         {% endwith %}
     </td>
+    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
+        {% with cp=c.contacto_principal %}{{ cp.telefono|default:c.telefono|default:"—" }}{% endwith %}
+    </td>
     <td class="px-5 py-3 text-right tabular-nums text-gray-700 dark:text-gray-200">{{ c.num_proyectos }}</td>
     <td class="px-5 py-3">
         <span class="badge {% if c.estado == 'activo' %}badge-success{% elif c.estado == 'prospecto' %}badge-blue{% else %}badge-gray{% endif %}">{{ c.get_estado_display }}</span>
@@ -19,5 +22,5 @@
     </td>
 </tr>
 {% empty %}
-<tr><td colspan="5" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin clientes" descripcion="Agrega el primer cliente desde + Nuevo." icono="inbox" %}</div></td></tr>
+<tr><td colspan="6" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin clientes" descripcion="Agrega el primer cliente desde + Nuevo." icono="inbox" %}</div></td></tr>
 {% endfor %}

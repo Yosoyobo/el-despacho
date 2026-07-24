@@ -35,6 +35,12 @@ class Servicio(models.Model):
         blank=True,
         related_name="servicios",
     )
+    # 2026-07: calculadora de costos por producto (usada solo por productos de
+    # ciertos proveedores, p. ej. "Simil Cuero Plymouth"). Guarda los insumos
+    # capturados: {"materiales": [4 montos], "sublimacion": [4 montos],
+    # "mano_obra": monto, "factor": 2.2}. El subtotal (antes de IVA) alimenta
+    # `precio_base`. Vacío = sin calculadora.
+    detalles_costo = models.JSONField(default=dict, blank=True)
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)

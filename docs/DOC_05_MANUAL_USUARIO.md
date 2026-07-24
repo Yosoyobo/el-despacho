@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Clientes editables, factura cancelable y calculadora de costos (23 de julio de 2026)
+
+- **Clientes: edición rápida.** En la lista de Clientes hay un botón **"✎ Edición
+  rápida"**: al activarlo escribes el **Nombre**, el **Teléfono** y el **Estado**
+  directamente en la tabla y cada cambio se guarda solo. Sal con "Salir de
+  edición".
+- **Nueva columna Teléfono** en la lista de Clientes.
+- **Razón social para facturación.** El cliente tiene ahora un campo aparte de
+  **"Razón social"** (el nombre legal del CFDI), separado del "Nombre" con el que
+  operas. Aparece como subtítulo bajo el nombre y en el recuadro
+  **"Identificación"** de su ficha. El **Estado** se elige con **pastillas**
+  siempre visibles.
+- **En la ficha del cliente, sus proyectos** muestran el **nombre en azul**
+  (clic para abrir) y el **código** en gris.
+- **El recuadro de "Mis mandados" del Dashboard** solo aparece cuando **tienes
+  mandados pendientes** (antes salía siempre, aunque estuviera vacío).
+- **Cancelar una factura ya no te deja atorado.** Si una factura marcaba "tiene
+  cobros" que no encontrabas, ahora: (1) el sistema **se auto-corrige** si esos
+  cobros ya estaban anulados y te deja cancelar; (2) la ficha de la factura
+  muestra una lista de **todos los cobros ligados (incluidos los anulados)** para
+  que siempre los veas; y (3) si de verdad hay cobros vigentes, puedes
+  **"Cancelar y anular los cobros"** de un solo paso.
+- **Calculadora de costos en productos de "Simil Cuero Plymouth".** Al editar uno
+  de esos productos aparece un recuadro para capturar **costos de material** (4
+  campos), **material de sublimación** (4 campos) y **mano de obra**. El sistema
+  calcula el **Subtotal** = (sublimación + mano de obra) × 2.2 + material (el
+  material nunca se multiplica), muestra **IVA** y **Gran total**, y copia el
+  Subtotal al **precio de venta** del producto.
+
 ## Novedades — Captura más simple y catálogo más ágil (19 de julio de 2026)
 
 - **Cifras sin ".00" de relleno.** Los montos enteros ya se muestran limpios
@@ -2515,9 +2544,11 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 
 Tus clientes B2B (restaurantes, heladerías, cafeterías, etc.).
 
-- **Lista:** filtra por nombre, ve quiénes tienen proyectos activos, marca "Mostrar archivados" para ver los inactivos.
-- **Nuevo cliente:** razón social, RFC, contacto, email y teléfono.
-- **Detalle:** ves todos sus proyectos. Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
+- **Lista:** filtra por nombre, ve quiénes tienen proyectos activos, marca "Mostrar archivados" para ver los inactivos. La tabla incluye una columna de **Teléfono**.
+- **Edición rápida:** el botón **"✎ Edición rápida"** de la lista te deja escribir el **Nombre**, el **Teléfono** y el **Estado** de cada cliente directo en la tabla; cada cambio se guarda solo. El teléfono que capturas aquí también actualiza el del contacto principal.
+- **Nuevo cliente:** nombre, RFC, contacto, email y teléfono.
+- **Nombre vs. Razón social:** el **"Nombre"** es con el que operas día a día; la **"Razón social"** (opcional) es el nombre legal para el CFDI/facturación. El **Estado** (prospecto / activo / inactivo) se elige con pastillas.
+- **Detalle:** ves todos sus proyectos (con el **nombre en azul** para abrir y el **código** en gris). La **Razón social** aparece como subtítulo bajo el nombre y en el recuadro **"Identificación"** junto al RFC. Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
 - **Ubicación y dirección fiscal:** el detalle muestra la **última ubicación** del cliente (tomada de las visitas del Checador, con botón 📍 al mapa) y su **dirección**. Al editar hay una casilla **"la dirección fiscal es la misma"**; si la destildas, capturas la **dirección fiscal** por separado.
 - **Crear cliente sin salir:** desde el form de un proyecto nuevo hay un botón "+ Nuevo" al lado del selector de cliente.
 
@@ -2695,6 +2726,23 @@ Lo que vendes/produces. Cada producto tiene:
 Para sacar un producto de circulación usa **Archivar** (se puede **Reactivar**);
 el borrado permanente sólo lo hace super admin y sólo si no se ha usado.
 
+### Calculadora de costos (productos de Simil Cuero Plymouth)
+
+Los productos ligados al proveedor **"Simil Cuero Plymouth"** muestran, al
+editarlos, un recuadro **"🧮 Calculadora de costos"** con tres grupos:
+
+1. **Costos de material** — 4 campos que se **suman** (opcionales). Este total
+   **nunca** se multiplica.
+2. **Costo de material de sublimación** — 4 campos que se suman.
+3. **Costo de mano de obra** — un campo que capturas.
+
+El sistema calcula en vivo:
+**Subtotal (antes de IVA) = (sublimación + mano de obra) × 2.2 + material**,
+luego el **IVA** y el **Gran total**. El **Subtotal** se copia al **precio de
+venta** del producto (el IVA se aplica después en la cotización/factura, así que
+el precio se guarda sin IVA). Para que aparezca la calculadora, el producto debe
+tener marcado a "Simil Cuero Plymouth" en sus **Proveedores aplicables**.
+
 ### Proveedores
 
 CRM de quién te surte. Razón social, contacto, email, teléfono, RFC, dirección, notas. Su detalle muestra los productos que pueden surtirte, su **última ubicación** (de las visitas del Checador, con botón 📍 al mapa) y su **dirección fiscal** (con la casilla "es la misma que la dirección").
@@ -2818,12 +2866,20 @@ cantidad). El formulario se llena de arriba hacia abajo y se ayuda solo:
 8. **Vencimiento:** botones rápidos **Fin de mes · 30 días · 45 días · 60 días** además de la fecha manual.
 9. **Desglosar por producto (opcional):** si de veras necesitas itemizar por producto/cantidad, abre esta sección y captura líneas con **"+ Agregar línea"**. Mientras esté abierta, la factura usa esas líneas en lugar del monto.
 
-En el detalle de la factura, la sección de movimientos muestra sólo los **ingresos ligados a la factura** (los cobros).
+En el detalle de la factura, la sección de movimientos muestra los **ingresos ligados a la factura** (los cobros), **incluyendo los anulados** (marcados como tal) para que nunca se te "pierda" un cobro que impedía cancelar.
 
 - Estados: Borrador → Emitida → Cobrada parcial / Cobrada total / Cancelada
 - "Emitir" genera el asiento contable automáticamente (cuentas por cobrar a cargo, ingresos por ventas al abono)
 - "Cobrar" registra un ingreso en Tesorería y abona contra la CxC
 - En la tabla, la columna final **"Total pagable"** es el monto neto que te van a pagar (ya con IVA y menos las retenciones RESICO).
+
+### Cancelar una factura
+
+Desde el detalle, el botón **"Cancelar factura"** abre una ventana:
+
+- Si **no tiene cobros**, capturas el motivo y listo.
+- Si el sistema decía que tenía cobros pero ya estaban anulados, **se corrige solo** y te deja cancelar.
+- Si de verdad tiene **cobros vigentes**, la ventana te los **lista** y te ofrece el botón **"Cancelar y anular los cobros"**: en un solo paso anula esos ingresos (con su reverso contable) y cancela la factura, sin tener que ir a Tesorería a anularlos uno por uno.
 
 ---
 

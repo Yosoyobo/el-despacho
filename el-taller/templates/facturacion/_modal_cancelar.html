@@ -1,3 +1,4 @@
+{% load forms_helpers %}
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
     <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
         <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
@@ -7,15 +8,38 @@
             </button>
         </header>
         {% if tiene_cobros %}
-        {# Con cobros: anular antes los Ingresos para no descuadrar Contaduría. #}
-        <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
-            <div class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
-                Esta factura ya tiene <strong>cobros registrados</strong> ({{ fac.monto_cobrado|default:0 }} cobrado). Como es dinero real recibido, primero <strong>anula los cobros (Ingresos)</strong> en Tesorería y luego cancela la factura. Así tus cuentas no se descuadran.
+        {# Con cobros vigentes: se listan y se ofrece la cancelación EN CASCADA (anula los cobros y cancela). #}
+        <form hx-post="{% url 'facturacion:cancelar' fac.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
+            {% csrf_token %}
+            <input type="hidden" name="forzar" value="1">
+            <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                <div class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+                    Esta factura tiene <strong>{{ cobros_vigentes|length }} cobro{{ cobros_vigentes|length|pluralize }}</strong> por <strong>{{ fac.monto_cobrado|dinero }}</strong>. Si cancelas, se <strong>anularán esos cobros</strong> (se genera su reverso en Contaduría, no se pierde el historial).
+                </div>
+                {% if cobros_vigentes %}
+                <ul class="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs dark:divide-gray-800 dark:border-gray-800">
+                    {% for c in cobros_vigentes %}
+                    <li class="flex items-center justify-between gap-2 px-3 py-2">
+                        <span class="font-mono text-gray-600 dark:text-gray-300">{{ c.codigo }}</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ c.fecha|date:"Y-m-d" }}</span>
+                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ c.monto|dinero }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% if form.non_field_errors %}<p class="rounded-lg bg-error-50 px-3 py-2 text-xs text-error-600 dark:bg-error-500/10 dark:text-error-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+                <div>
+                    <label for="id_motivo" class="mb-1 block text-sm font-medium">¿Por qué la cancelas? <span class="text-error-500">*</span></label>
+                    {{ form.motivo }}
+                    {% if form.motivo.errors %}<p class="mt-1 text-xs text-error-600">{{ form.motivo.errors|join:" " }}</p>{% endif %}
+                </div>
+                <p class="text-xs text-gray-400 dark:text-gray-500">¿Prefieres hacerlo a mano? Anula cada Ingreso en Tesorería y luego regresa a cancelar.</p>
             </div>
-        </div>
-        <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
-            <button type="button" data-modal-slot-close class="btn-secundario">Entendido</button>
-        </footer>
+            <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Volver</button>
+                <button type="submit" class="inline-flex items-center rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-700">Cancelar y anular los cobros</button>
+            </footer>
+        </form>
         {% else %}
         <form hx-post="{% url 'facturacion:cancelar' fac.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
             {% csrf_token %}

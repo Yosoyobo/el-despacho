@@ -428,6 +428,10 @@ def detalle(request, pk):
     # INGRESOS LIGADOS A LA FACTURA (los cobros). Se quitó la sección de
     # "ingresos y egresos del proyecto" (ruido no relacionado con la factura).
     cobros = list(Ingreso.vigentes.filter(factura=fac).order_by("-fecha", "-pk"))
+    # 2026-07: TODOS los movimientos ligados (incluyendo anulados) — para que el
+    # usuario siempre pueda VER qué cobros existen/existieron y no le pase el
+    # "dice que hay cobros pero no los encuentro".
+    movimientos_ligados = list(Ingreso.objects.filter(factura=fac).order_by("-fecha", "-pk"))
 
     info_cliente = [
         {"label": "Razón social", "value": fac.cliente.razon_social},
@@ -560,6 +564,7 @@ def detalle(request, pk):
         "items": items,
         "totales": totales,
         "cobros": cobros,
+        "movimientos_ligados": movimientos_ligados,
         "recordatorios": list(fac.recordatorios.order_by("-enviado_en")[:10]),
         "info_cliente": info_cliente,
         "info_fechas": info_fechas,
@@ -658,21 +663,35 @@ def cancelar(request, pk):
         messages.error(request, "La factura ya estaba cancelada.")
         return redirect("facturacion:detalle", pk=fac.pk)
     es_htmx = _es_htmx(request)
+
+    from apps.tesoreria.models import Ingreso
+    # Auto-sanamos el denormalizado antes de decidir si hay cobros (evita el
+    # "fantasma": monto_cobrado > 0 pero sin Ingresos vigentes que lo respalden).
+    services.recalcular_monto_cobrado(fac)
+    fac.save(update_fields=["monto_cobrado", "actualizado_en"])
+    cobros_vigentes = list(Ingreso.vigentes.filter(factura=fac).order_by("-fecha", "-pk"))
     tiene_cobros = (fac.monto_cobrado or 0) > 0
+
     if request.method == "POST":
         form = CancelarForm(request.POST)
+        # "forzar" = cancelación en cascada (anula los cobros y cancela).
+        forzar = request.POST.get("forzar") == "1"
         if form.is_valid():
             try:
-                services.cancelar(fac, request.user, form.cleaned_data["motivo"])
-                messages.success(request, f"Factura {fac.codigo} cancelada.")
+                if forzar:
+                    services.cancelar_con_cobros(fac, request.user, form.cleaned_data["motivo"])
+                    messages.success(request, f"Factura {fac.codigo} cancelada (se anularon sus cobros).")
+                else:
+                    services.cancelar(fac, request.user, form.cleaned_data["motivo"])
+                    messages.success(request, f"Factura {fac.codigo} cancelada.")
                 destino = reverse("facturacion:detalle", args=[fac.pk])
                 return _hx_redirect(destino) if es_htmx else redirect(destino)
             except ValueError as e:
                 form.add_error(None, str(e))
         return _modal(request, "facturacion/_modal_cancelar.html",
-                      {"fac": fac, "form": form, "tiene_cobros": tiene_cobros})
+                      {"fac": fac, "form": form, "tiene_cobros": tiene_cobros, "cobros_vigentes": cobros_vigentes})
     return _modal(request, "facturacion/_modal_cancelar.html",
-                  {"fac": fac, "form": CancelarForm(), "tiene_cobros": tiene_cobros})
+                  {"fac": fac, "form": CancelarForm(), "tiene_cobros": tiene_cobros, "cobros_vigentes": cobros_vigentes})
 
 
 @login_required

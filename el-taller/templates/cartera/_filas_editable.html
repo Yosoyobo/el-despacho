@@ -1,0 +1,34 @@
+{% comment %}Filas EDITABLES de Clientes (edición rápida, mismo patrón que el
+Catálogo). Cada celda autoguarda al salir del campo (hx-post a la celda,
+hx-swap=none). CSRF va en hx-headers del <tr> (heredado por los inputs). Solo se
+usa con ?editar=1 y permiso de editar Clientes.{% endcomment %}
+{% for c in clientes %}
+<tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not c.activo %}opacity-70{% endif %}"
+    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <td class="px-3 py-1.5">
+        <input type="text" name="valor" value="{{ c.razon_social }}" aria-label="Nombre"
+               hx-post="{% url 'cartera-cliente-celda' c.pk %}" hx-trigger="change" hx-vals='{"campo": "razon_social"}' hx-swap="none"
+               class="w-full min-w-[10rem] rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium uppercase text-gray-900 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-100 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+    </td>
+    <td class="px-3 py-1.5">
+        {% with cp=c.contacto_principal %}
+        <input type="text" name="valor" value="{{ cp.telefono|default:c.telefono }}" aria-label="Teléfono" placeholder="—"
+               hx-post="{% url 'cartera-cliente-celda' c.pk %}" hx-trigger="change" hx-vals='{"campo": "telefono"}' hx-swap="none"
+               class="w-full min-w-[8rem] rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-gray-700 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-200 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+        {% endwith %}
+    </td>
+    <td class="px-3 py-1.5">
+        <select name="valor" aria-label="Estado"
+                hx-post="{% url 'cartera-cliente-celda' c.pk %}" hx-trigger="change" hx-vals='{"campo": "estado"}' hx-swap="none"
+                class="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-gray-700 hover:border-gray-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:text-gray-200 dark:hover:border-gray-700 dark:focus:bg-gray-900">
+            {% for val, etiqueta in estados_cliente %}<option value="{{ val }}" {% if c.estado == val %}selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
+        </select>
+    </td>
+    <td class="px-3 py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-200">{{ c.num_proyectos }}</td>
+    <td class="px-3 py-1.5 text-right">
+        <a href="{% url 'cartera-detalle' c.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Ver →</a>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="5" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin clientes" descripcion="Agrega el primer cliente desde + Nuevo." icono="inbox" %}</div></td></tr>
+{% endfor %}

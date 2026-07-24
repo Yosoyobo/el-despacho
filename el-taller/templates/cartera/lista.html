@@ -6,8 +6,22 @@
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Clientes</h1>
-    {% if puede_editar %}<a href="{% url 'cartera-nuevo' %}" class="btn-primario">+ Nuevo cliente</a>{% endif %}
+    {% if puede_editar %}
+    <div class="flex flex-wrap items-center gap-2">
+        {% if editar_inline %}
+        <a href="{% url 'cartera-lista' %}{% if querystring_base %}?{{ querystring_base }}{% endif %}" class="btn-secundario">Salir de edición</a>
+        {% else %}
+        <a href="{% url 'cartera-lista' %}?{% if querystring_base %}{{ querystring_base }}&{% endif %}editar=1" class="btn-secundario">✎ Edición rápida</a>
+        {% endif %}
+        <a href="{% url 'cartera-nuevo' %}" class="btn-primario">+ Nuevo cliente</a>
+    </div>
+    {% endif %}
 </header>
+{% if editar_inline %}
+<div class="mb-4 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300">
+    Edición rápida activa — escribe directamente en las celdas; cada cambio se guarda solo.
+</div>
+{% endif %}
 
 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes con proyectos activos" valor=kpis.con_proyectos color="brand" link="?ver=con_proyectos" activo=kpi_activo_con_proyectos %}
@@ -18,6 +32,7 @@
 {# Búsqueda grande — busca por nombre, contacto y proyecto (incluye archivados). #}
 <form method="get" class="mb-4">
     {% if ver_actual != 'nombre' %}<input type="hidden" name="ver" value="{{ ver_actual }}">{% endif %}
+    {% if editar_inline %}<input type="hidden" name="editar" value="1">{% endif %}
     <div class="relative">
         <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
@@ -31,7 +46,7 @@
 {# Segmented control: ordenar/filtrar. #}
 <div class="mb-5 flex flex-wrap gap-1.5">
     {% for val, etiqueta in ver_opciones %}
-    <a href="?ver={{ val }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+    <a href="?ver={{ val }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if editar_inline %}&editar=1{% endif %}"
        class="rounded-lg border px-3 py-1.5 text-xs font-medium transition {% if ver_actual == val %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800{% endif %}">{{ etiqueta }}</a>
     {% endfor %}
 </div>
@@ -40,16 +55,27 @@
     <div class="overflow-x-auto">
         <table class="min-w-[640px] md:min-w-full text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                {% if editar_inline %}
+                <tr>
+                    <th class="px-3 py-3 text-left">Nombre</th>
+                    <th class="px-3 py-3 text-left">Teléfono</th>
+                    <th class="px-3 py-3 text-left">Estado</th>
+                    <th class="px-3 py-3 text-right">Proyectos</th>
+                    <th class="px-3 py-3 text-right"></th>
+                </tr>
+                {% else %}
                 <tr>
                     <th class="px-5 py-3 text-left">Nombre</th>
                     <th class="px-5 py-3 text-left">Contacto</th>
+                    <th class="px-5 py-3 text-left">Teléfono</th>
                     <th class="px-5 py-3 text-right">Proyectos</th>
                     <th class="px-5 py-3 text-left">Estado</th>
                     <th class="px-5 py-3 text-right"></th>
                 </tr>
+                {% endif %}
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                {% include "cartera/_filas.html" %}
+                {% if editar_inline %}{% include "cartera/_filas_editable.html" %}{% else %}{% include "cartera/_filas.html" %}{% endif %}
             </tbody>
         </table>
     </div>
