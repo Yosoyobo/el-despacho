@@ -148,12 +148,12 @@
 
     {% comment %}Calculadora de costos (2026-07) — solo productos de Simil Cuero
     Plymouth. El material (fila 1) se suma tal cual; sublimación + mano de obra
-    se multiplican por el factor. El Subtotal (antes de IVA) alimenta el Precio.{% endcomment %}
+    se multiplican por el factor. El Subtotal (antes de IVA) alimenta el COSTO.{% endcomment %}
     {% if mostrar_calculadora %}
     <section data-calc-box data-factor="{{ calc_resultado.factor }}" data-iva="{{ iva_tasa|stringformat:'s' }}"
              class="rounded-2xl border border-brand-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-brand-500/30 dark:bg-gray-900">
         <h2 class="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">🧮 Calculadora de costos</h2>
-        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">El material se suma tal cual; la sublimación y la mano de obra se multiplican por {{ calc_resultado.factor }}. El Subtotal (antes de IVA) se copia al precio de venta.</p>
+        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">El material se suma tal cual; la sublimación y la mano de obra se multiplican por {{ calc_resultado.factor }}. El Subtotal (antes de IVA) se copia al <strong>Costo</strong> del producto (el precio de venta lo pones tú).</p>
 
         <div class="space-y-4">
             {% comment %}(1) Costos de material — 4 campos, suma sin factor.{% endcomment %}
@@ -434,7 +434,7 @@
     if (!box) return;
     const factor = parseFloat(box.getAttribute('data-factor')) || 2.2;
     const iva = parseFloat(box.getAttribute('data-iva')) || 16;
-    const precioInput = document.querySelector('[name="precio_base"]');
+    const costoInput = document.querySelector('[name="costo"]');
     const subEl = box.querySelector('[data-calc-subtotal]');
     const ivaEl = box.querySelector('[data-calc-iva]');
     const totEl = box.querySelector('[data-calc-total]');
@@ -450,9 +450,9 @@
         if (subEl) subEl.textContent = money(subtotal);
         if (ivaEl) ivaEl.textContent = money(ivaMonto);
         if (totEl) totEl.textContent = money(subtotal + ivaMonto);
-        // El Subtotal (antes de IVA) alimenta el Precio de venta (si es editable).
-        if (precioInput && !precioInput.disabled && !precioInput.readOnly) {
-            precioInput.value = subtotal.toFixed(2);
+        // El Subtotal (antes de IVA) alimenta el COSTO del producto (el precio lo pone el usuario).
+        if (costoInput && !costoInput.disabled && !costoInput.readOnly) {
+            costoInput.value = subtotal.toFixed(2);
         }
     }
     // Solo al editar un campo (NO al cargar: evita pisar el precio con 0 si aún

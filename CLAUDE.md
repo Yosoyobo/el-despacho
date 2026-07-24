@@ -5638,6 +5638,30 @@ renombre — es lo que pidió Oscar; el nombre vive como constante
 ligarlo a los productos (paso manual). El `factor` 2.2 es constante. La edición
 rápida de teléfono actualiza el contacto principal pero no crea uno si no existe.
 
+**R2 (VERSION 2026.07.24, mismo día — refinamientos de Oscar):**
+- **Calculadora → Costo (no Precio):** el Subtotal ahora alimenta `Servicio.costo`,
+  NO `precio_base` (el usuario pone el precio; se estaba sobreescribiendo). Cambio
+  en la vista `editar` (`obj.costo = calcular(...)["subtotal"]`) y en el JS
+  (escribe en `[name="costo"]`).
+- **Edición rápida de Clientes:** se recuperó la columna **Contacto** (se perdía),
+  se agregó columna **Razón social** editable (`razon_social_fiscal`, whitelist
+  del endpoint), el **Estado** pasó de `<select>` a **pastillas de color**
+  clickeables (verde/azul/gris con `opacity-40` en las no elegidas), y se
+  **quitó** la columna de nº de proyectos. El botón **"Ver →"** se removió de la
+  lista (normal + editable) por redundante con la fila clickeable.
+- **Eliminar clientes archivados:** botón **✕** por fila SOLO en la sección de
+  archivados. Vista `cliente_eliminar` (POST) exige archivado + sin proyectos +
+  captura `ProtectedError` (facturas u otros FK PROTECT). Permiso nuevo
+  **`cartera.eliminar`** (destructivo): en `CATALOGO_PERMISOS` (delegable) y en
+  `DEFAULTS_POR_ROL` SOLO para super_admin (NO `dueno`); migración
+  `cuentas/0038_seed_permiso_cartera_eliminar` (seed super_admins existentes,
+  patrón 0036). Helper `puede_eliminar_cartera`. Evento `cliente.eliminado`.
+  **OJO:** `lib.permisos.puede()` NO tiene failsafe automático de super_admin —
+  depende de filas `PermisoUsuario` seedeadas por rol; una acción nueva solo la
+  tiene super_admin si está en su `DEFAULTS_POR_ROL` (o migración), no solo en
+  `CATALOGO_PERMISOS`.
+- **7 tests R2** sumados a `test_ajustes_clientes_factura_jul23.py` (25 en total).
+
 ---
 
 ## 9. Decisiones operativas tomadas

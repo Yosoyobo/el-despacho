@@ -17,10 +17,18 @@
     <td class="px-5 py-3">
         <span class="badge {% if c.estado == 'activo' %}badge-success{% elif c.estado == 'prospecto' %}badge-blue{% else %}badge-gray{% endif %}">{{ c.get_estado_display }}</span>
     </td>
-    <td class="px-5 py-3 text-right">
-        <a href="{% url 'cartera-detalle' c.pk %}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Ver →</a>
+    {% if not c.activo and puede_eliminar %}
+    {# Solo en archivados: X para eliminar PERMANENTEMENTE (destructivo). #}
+    <td class="px-5 py-3 text-right" data-no-row-click>
+        <form method="post" action="{% url 'cartera-cliente-eliminar' c.pk %}" onsubmit="return confirm('¿Eliminar PERMANENTEMENTE a «{{ c.razon_social|escapejs }}»? No se puede deshacer.');" class="inline">
+            {% csrf_token %}
+            <button type="submit" title="Eliminar permanentemente" class="inline-flex h-7 w-7 items-center justify-center rounded-full text-error-500 transition hover:bg-error-50 hover:text-error-700 dark:hover:bg-error-500/10">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </form>
     </td>
+    {% endif %}
 </tr>
 {% empty %}
-<tr><td colspan="6" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin clientes" descripcion="Agrega el primer cliente desde + Nuevo." icono="inbox" %}</div></td></tr>
+<tr><td colspan="5" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin clientes" descripcion="Agrega el primer cliente desde + Nuevo." icono="inbox" %}</div></td></tr>
 {% endfor %}

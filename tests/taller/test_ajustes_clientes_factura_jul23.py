@@ -281,7 +281,7 @@ def test_editar_guarda_insumos_y_alimenta_precio(client, usuario_factory):
     client.force_login(admin)
     data = {
         "nombre": "Portafolios", "descripcion_default": "",
-        "costo": "0", "precio_base": "0", "categoria": str(srv.categoria_id),
+        "costo": "0", "precio_base": "500", "categoria": str(srv.categoria_id),
         "proveedores": str(prov.pk),  # el vínculo debe ir en el POST (save_m2m)
         "calc_material_0": "30", "calc_material_1": "", "calc_material_2": "", "calc_material_3": "",
         "calc_sublimacion_0": "10", "calc_sublimacion_1": "", "calc_sublimacion_2": "", "calc_sublimacion_3": "",
@@ -290,8 +290,10 @@ def test_editar_guarda_insumos_y_alimenta_precio(client, usuario_factory):
     r = client.post(reverse("catalogo-editar", args=[srv.pk]), data)
     assert r.status_code in (302, 200)
     srv.refresh_from_db()
-    # Subtotal = (10 + 50) × 2.2 + 30 = 162 → alimenta el precio.
-    assert srv.precio_base == Decimal("162.00")
+    # Subtotal = (10 + 50) × 2.2 + 30 = 162 → alimenta el COSTO (R2).
+    assert srv.costo == Decimal("162.00")
+    # El PRECIO lo pone el usuario y NO se sobreescribe.
+    assert srv.precio_base == Decimal("500.00")
     assert srv.detalles_costo.get("mano_obra") == "50"
     assert srv.detalles_costo.get("sublimacion")[0] == "10"
 
@@ -313,3 +315,84 @@ def test_editar_save_m2m_persiste_proveedores(client, usuario_factory):
     assert r.status_code in (302, 200)
     srv.refresh_from_db()
     assert list(srv.proveedores.values_list("pk", flat=True)) == [prov.pk]
+
+
+# ── R2 — refinamientos ───────────────────────────────────────────────────
+
+
+def test_celda_razon_social_fiscal(client, cliente_factory, usuario_factory):
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin)
+    client.force_login(admin)
+    r = client.post(reverse("cartera-cliente-celda", args=[cli.pk]),
+                    {"campo": "razon_social_fiscal", "valor": "acme sa de cv"})
+    assert r.status_code == 204
+    cli.refresh_from_db()
+    assert cli.razon_social_fiscal == "ACME SA DE CV"
+
+
+def test_edicion_rapida_columnas_y_pills(client, cliente_factory, usuario_factory):
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    cliente_factory(creado_por=admin)
+    client.force_login(admin)
+    html = client.get(reverse("cartera-lista") + "?editar=1").content.decode()
+    assert "Razón social" in html          # columna nueva
+    assert "Contacto" in html              # se recuperó
+    assert "data-estado-pill" in html      # estado como pastillas de color
+    assert 'hx-vals=\'{"campo": "razon_social_fiscal"}\'' in html
+    assert "Ver →" not in html             # botón "Ver" removido
+
+
+def test_lista_normal_sin_boton_ver(client, cliente_factory, usuario_factory):
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    cliente_factory(creado_por=admin)
+    client.force_login(admin)
+    html = client.get(reverse("cartera-lista")).content.decode()
+    assert "Ver →" not in html
+
+
+def test_eliminar_archivado_sin_proyectos(client, cliente_factory, usuario_factory):
+    from apps.la_cartera.models import Cliente
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin, activo=False)
+    client.force_login(admin)
+    r = client.post(reverse("cartera-cliente-eliminar", args=[cli.pk]))
+    assert r.status_code == 302
+    assert not Cliente.objects.filter(pk=cli.pk).exists()
+
+
+def test_eliminar_activo_bloqueado(client, cliente_factory, usuario_factory):
+    from apps.la_cartera.models import Cliente
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin, activo=True)
+    client.force_login(admin)
+    r = client.post(reverse("cartera-cliente-eliminar", args=[cli.pk]))
+    assert r.status_code == 302
+    assert Cliente.objects.filter(pk=cli.pk).exists()  # no se borró (hay que archivar antes)
+
+
+def test_eliminar_con_proyectos_bloqueado(client, cliente_factory, proyecto_factory, usuario_factory):
+    from apps.la_cartera.models import Cliente
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin, activo=False)
+    proyecto_factory(cliente=cli, creado_por=admin)
+    client.force_login(admin)
+    r = client.post(reverse("cartera-cliente-eliminar", args=[cli.pk]))
+    assert r.status_code == 302
+    assert Cliente.objects.filter(pk=cli.pk).exists()  # bloqueado por proyecto ligado
+
+
+def test_eliminar_sin_permiso_403(client, cliente_factory, usuario_factory):
+    from django.urls import reverse
+    admin = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=admin, activo=False)
+    disenador = usuario_factory(rol="disenador")
+    client.force_login(disenador)
+    r = client.post(reverse("cartera-cliente-eliminar", args=[cli.pk]))
+    assert r.status_code == 403

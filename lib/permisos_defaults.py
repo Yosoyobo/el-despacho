@@ -79,7 +79,9 @@ TODO_MCP = ["usar"]
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
     "super_admin": {
-        "cartera": list(TODO_CARTERA),
+        # "eliminar" (borrado permanente de cliente) SOLO para super_admin
+        # (destructivo); `dueno` conserva TODO_CARTERA sin eliminar.
+        "cartera": [*TODO_CARTERA, "eliminar"],
         "proyectos": list(TODO_PROYECTOS),
         "pizarron": list(TODO_PIZARRON),
         "buzon": list(TODO_BUZON),
@@ -176,7 +178,10 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
 # cada módulo — independiente del rol primario, para poder conceder cualquier
 # permiso a cualquier usuario (incluido `miembro`, que no tiene defaults).
 CATALOGO_PERMISOS: dict[str, list[str]] = {
-    "cartera": list(TODO_CARTERA),
+    # "eliminar" (borrado permanente de cliente archivado) NO está en TODO_CARTERA
+    # a propósito: destructivo, solo super_admin lo trae por default (failsafe) +
+    # delegable por usuario. Se lista aquí para que aparezca en la grilla.
+    "cartera": [*TODO_CARTERA, "eliminar"],
     "proyectos": list(TODO_PROYECTOS),
     "pizarron": list(TODO_PIZARRON),
     "buzon": list(TODO_BUZON),
