@@ -7,6 +7,7 @@ class ClienteForm(forms.ModelForm):
         model = Cliente
         fields = [
             "razon_social",
+            "razon_social_fiscal",
             "rfc",
             "direccion",
             "fiscal_igual",
@@ -18,9 +19,13 @@ class ClienteForm(forms.ModelForm):
         ]
         labels = {
             "razon_social": "Nombre",
+            "razon_social_fiscal": "Razón social (facturación)",
             "direccion": "Dirección",
             "fiscal_igual": "La dirección fiscal es la misma",
             "direccion_fiscal": "Dirección fiscal",
+        }
+        help_texts = {
+            "razon_social_fiscal": "Nombre legal para el CFDI. Opcional; se usa en los datos de facturación.",
         }
         widgets = {
             "direccion": forms.Textarea(attrs={"rows": 2}),
@@ -34,6 +39,10 @@ class ClienteForm(forms.ModelForm):
         # Nombre (razón social) siempre en MAYÚSCULAS. str.upper() respeta
         # acentos en español ("josé" → "JOSÉ").
         return (self.cleaned_data.get("razon_social") or "").strip().upper()
+
+    def clean_razon_social_fiscal(self):
+        # Razón social fiscal en MAYÚSCULAS (como aparece en el CFDI). Opcional.
+        return (self.cleaned_data.get("razon_social_fiscal") or "").strip().upper()
 
     def clean_rfc(self):
         rfc = (self.cleaned_data.get("rfc") or "").strip().upper()

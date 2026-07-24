@@ -101,8 +101,8 @@
 </section>
 {% endif %}
 
-{# ── Mis Mandados (S-Mandados-V2): protagonismo para repartidores. Solo si es runner. ── #}
-{% if es_runner %}
+{# Mis Mandados (S-Mandados-V2): solo runner y solo cuando hay pendientes (si no, se oculta). #}
+{% if es_runner and mis_mandados %}
 <section class="mb-6">
     <div class="ta-card border-brand-200 dark:border-brand-500/30">
         <div class="mb-3 flex items-center justify-between">

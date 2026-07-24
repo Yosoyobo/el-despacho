@@ -146,6 +146,56 @@
         </section>
     </aside>
 
+    {% comment %}Calculadora de costos (2026-07) — solo productos de Simil Cuero
+    Plymouth. El material (fila 1) se suma tal cual; sublimación + mano de obra
+    se multiplican por el factor. El Subtotal (antes de IVA) alimenta el Precio.{% endcomment %}
+    {% if mostrar_calculadora %}
+    <section data-calc-box data-factor="{{ calc_resultado.factor }}" data-iva="{{ iva_tasa|stringformat:'s' }}"
+             class="rounded-2xl border border-brand-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-brand-500/30 dark:bg-gray-900">
+        <h2 class="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">🧮 Calculadora de costos</h2>
+        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">El material se suma tal cual; la sublimación y la mano de obra se multiplican por {{ calc_resultado.factor }}. El Subtotal (antes de IVA) se copia al precio de venta.</p>
+
+        <div class="space-y-4">
+            {% comment %}(1) Costos de material — 4 campos, suma sin factor.{% endcomment %}
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costos de material <span class="text-xs font-normal text-gray-400">(se suman, sin multiplicar)</span></label>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {% for v in calc_materiales %}
+                    <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_material_{{ forloop.counter0 }}" value="{{ v }}" data-calc placeholder="0.00"
+                           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% comment %}(2) Material de sublimación — 4 campos, entran al factor.{% endcomment %}
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costo de material de sublimación</label>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {% for v in calc_sublimacion %}
+                    <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_sublimacion_{{ forloop.counter0 }}" value="{{ v }}" data-calc placeholder="0.00"
+                           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% comment %}(3) Mano de obra — campo capturado, entra al factor.{% endcomment %}
+            <div class="sm:max-w-xs">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costo de mano de obra</label>
+                <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_mano_obra" value="{{ calc_mano_obra }}" data-calc placeholder="0.00"
+                       class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+            </div>
+        </div>
+
+        <div class="mt-5 flex justify-end">
+            <dl class="w-full max-w-xs space-y-1.5 text-sm">
+                <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Subtotal (antes de IVA)</dt><dd class="font-medium text-gray-900 dark:text-gray-100" data-calc-subtotal>{{ calc_resultado.subtotal|dinero }}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">IVA ({{ iva_tasa|floatformat:"-2" }}%)</dt><dd class="text-gray-600 dark:text-gray-300" data-calc-iva>{{ calc_resultado.iva|dinero }}</dd></div>
+                <div class="flex justify-between border-t border-gray-200 pt-1.5 text-base font-semibold dark:border-gray-800"><dt class="text-gray-900 dark:text-gray-100">Gran total</dt><dd class="text-gray-900 dark:text-gray-100" data-calc-total>{{ calc_resultado.total|dinero }}</dd></div>
+            </dl>
+        </div>
+    </section>
+    {% endif %}
+
     {% comment %}Sprint 2 UX (item 7): historial de usos EN el panel — el detalle y
     la edición quedan unificados en una sola pantalla. Solo lectura.{% endcomment %}
     {% if modo == 'editar' and servicio %}
@@ -374,6 +424,41 @@
                 return;
             }
         }
+    });
+})();
+
+// Calculadora de costos (Simil Cuero Plymouth): recálculo en vivo.
+// Subtotal = (Σ sublimación + mano de obra) × factor + Σ material.
+(function () {
+    const box = document.querySelector('[data-calc-box]');
+    if (!box) return;
+    const factor = parseFloat(box.getAttribute('data-factor')) || 2.2;
+    const iva = parseFloat(box.getAttribute('data-iva')) || 16;
+    const precioInput = document.querySelector('[name="precio_base"]');
+    const subEl = box.querySelector('[data-calc-subtotal]');
+    const ivaEl = box.querySelector('[data-calc-iva]');
+    const totEl = box.querySelector('[data-calc-total]');
+    const money = (n) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const val = (el) => parseFloat(el && el.value) || 0;
+    function recalc() {
+        let m1 = 0, m2 = 0;
+        box.querySelectorAll('input[name^="calc_material_"]').forEach((el) => { m1 += val(el); });
+        box.querySelectorAll('input[name^="calc_sublimacion_"]').forEach((el) => { m2 += val(el); });
+        const mo = val(box.querySelector('input[name="calc_mano_obra"]'));
+        const subtotal = (m2 + mo) * factor + m1;
+        const ivaMonto = subtotal * iva / 100;
+        if (subEl) subEl.textContent = money(subtotal);
+        if (ivaEl) ivaEl.textContent = money(ivaMonto);
+        if (totEl) totEl.textContent = money(subtotal + ivaMonto);
+        // El Subtotal (antes de IVA) alimenta el Precio de venta (si es editable).
+        if (precioInput && !precioInput.disabled && !precioInput.readOnly) {
+            precioInput.value = subtotal.toFixed(2);
+        }
+    }
+    // Solo al editar un campo (NO al cargar: evita pisar el precio con 0 si aún
+    // no se capturan insumos).
+    box.addEventListener('input', function (e) {
+        if (e.target.matches('[data-calc]')) recalc();
     });
 })();
 </script>

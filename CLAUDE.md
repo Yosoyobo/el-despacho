@@ -5589,6 +5589,55 @@ retiró; ahora verifica la columna por su tooltip). Ruff limpio;
 geométrico absoluto); `con_quitar` queda como param obsoleto (no-op) en
 `_fecha_minical.html`.
 
+### S-Ajustes-Jul23 ✅ — Clientes editables, factura cancelable y calculadora de costos (2026-07-23, VERSION 2026.07.23)
+
+6 pedidos de Jorge/Oscar en 4 bloques. Rama `agent/sprint2-ux-captura`.
+Decisiones por AskUserQuestion: calculadora con **mano de obra = campo
+capturado** (Subtotal = (Σ sublimación + mano de obra) × 2.2 + Σ material; el
+material nunca ×2.2), **guardar + alimentar precio**, gating **por nombre de
+proveedor** "Simil Cuero Plymouth"; razón social = **campo nuevo en
+Identificación + subtítulo** (no sección fiscal nueva).
+
+- **Bloque A — Clientes** (migr. `cartera/0007_cliente_razon_social_fiscal`):
+  (1) **Edición rápida** calcada del Catálogo — `?editar=1` + botón, filas
+  editables `cartera/_filas_editable.html`, endpoint `cartera-cliente-celda`
+  (whitelist nombre/teléfono/estado, 204). El teléfono se sincroniza al
+  **contacto principal** (fuente de verdad) además del legacy, para que el
+  espejo no lo revierta. (2) Columna **Teléfono** en la lista. (3) Campo nuevo
+  `Cliente.razon_social_fiscal` (nombre legal del CFDI, MAYÚSCULAS, opcional,
+  buscable) — subtítulo bajo el nombre en el detalle + en el recuadro
+  **Identificación** junto al RFC. (4) **Estado → pastillas** siempre visibles
+  en el form (radios `has-[:checked]`). (5) Lista de proyectos del cliente:
+  **nombre en azul (link)**, código en gris.
+- **Bloque B — Dashboard**: el widget "Mis mandados" solo aparece con pendientes
+  (`{% if es_runner and mis_mandados %}`), antes salía siempre para runners.
+- **Bloque C — Factura** (raíz del "dice cobros 11,598.84 pero no los encuentro"):
+  `services.cancelar` **auto-sana** `monto_cobrado` (recalcula desde Ingresos
+  vigentes y persiste antes de bloquear) → si los cobros ya estaban anulados,
+  deja cancelar. Nuevo `services.cancelar_con_cobros` (**cascada**: anula los
+  cobros vigentes vía `tesoreria.anular_ingreso` — dispara reverso contable — y
+  cancela, atómico). El modal ofrece la cascada + **lista los cobros vigentes**;
+  el detalle muestra **todos los movimientos ligados incluyendo anulados**
+  (`movimientos_ligados = Ingreso.objects.filter(factura=fac)`).
+- **Bloque D — Calculadora de costos** (migr. `el_catalogo/0012_servicio_detalles_costo`):
+  `Servicio.detalles_costo` (JSONField) + `apps/el_catalogo/calculadora.py`
+  (`servicio_usa_calculadora` por `razon_social__icontains="Simil Cuero
+  Plymouth"`, `parsear_detalles`, `calcular`). Recuadro en `catalogo/form.html`
+  (solo al editar productos de ese proveedor) con 4+4+1 campos y JS de recálculo
+  en vivo; el Subtotal (antes de IVA, tasa de `ConfiguracionFiscal`) se escribe
+  en `precio_base`. **Fix preexistente**: `nuevo`/`editar` de producto NO
+  llamaban `form.save_m2m()`, así que los **proveedores marcados no se
+  guardaban** — se agregó (necesario para ligar el proveedor y que aparezca la
+  calculadora).
+- **18 tests** en `tests/taller/test_ajustes_clientes_factura_jul23.py`. Ruff +
+  `test_no_renderiza_comentarios` (ambas apps) + `test_ayuda_novedades` verdes.
+
+**Deuda diseñada**: la calculadora se gatea por nombre de proveedor (frágil ante
+renombre — es lo que pidió Oscar; el nombre vive como constante
+`PROVEEDOR_CALCULADORA`); requiere crear el proveedor "Simil Cuero Plymouth" y
+ligarlo a los productos (paso manual). El `factor` 2.2 es constante. La edición
+rápida de teléfono actualiza el contacto principal pero no crea uno si no existe.
+
 ---
 
 ## 9. Decisiones operativas tomadas

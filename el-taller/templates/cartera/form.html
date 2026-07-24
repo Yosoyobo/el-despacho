@@ -16,14 +16,28 @@
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {% for f in form %}
-                    {% if f.name != 'direccion' and f.name != 'fiscal_igual' and f.name != 'direccion_fiscal' and f.name != 'notas' and f.name != 'lat' and f.name != 'lng' %}
-                        {% if f.name == 'razon_social' %}
+                    {% if f.name != 'direccion' and f.name != 'fiscal_igual' and f.name != 'direccion_fiscal' and f.name != 'notas' and f.name != 'lat' and f.name != 'lng' and f.name != 'estado' %}
+                        {% if f.name == 'razon_social' or f.name == 'razon_social_fiscal' %}
                             {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
                         {% else %}
                             {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
                         {% endif %}
                     {% endif %}
                 {% endfor %}
+
+                {% comment %}Estado como pastillas siempre visibles (item 2).{% endcomment %}
+                <div class="md:col-span-2">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Estado</label>
+                    <div class="flex flex-wrap gap-2">
+                        {% for val, etiqueta in form.estado.field.choices %}
+                        <label class="cursor-pointer rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:has-[:checked]:border-brand-500 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                            <input type="radio" name="estado" value="{{ val }}" class="sr-only" {% if form.estado.value|stringformat:'s' == val %}checked{% endif %}>
+                            {{ etiqueta }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.estado.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.estado.errors|join:" " }}</p>{% endif %}
+                </div>
             </div>
         </section>
 

@@ -395,8 +395,14 @@ def recalcular_monto_cobrado(fac: Factura) -> Decimal:
 
 
 def cancelar(fac: Factura, actor, motivo: str) -> Factura:
+    # Auto-sanar el denormalizado: `monto_cobrado` puede quedar > 0 si algún
+    # Ingreso se anuló sin recalcular. Recalculamos desde los cobros VIGENTES y
+    # persistimos antes de decidir; así una factura sin cobros reales sí se puede
+    # cancelar (evita el "dice que hay cobros ligados pero no aparecen").
     if fac.estado == "cancelada":
         raise ValueError("La factura ya estaba cancelada.")
+    recalcular_monto_cobrado(fac)
+    fac.save(update_fields=["monto_cobrado", "actualizado_en"])
     if (fac.monto_cobrado or CERO) > 0:
         raise ValueError("Anula primero los cobros antes de cancelar la factura.")
     motivo = (motivo or "").strip()
@@ -412,6 +418,38 @@ def cancelar(fac: Factura, actor, motivo: str) -> Factura:
             "actualizado_en",
         ])
     _emitir("factura.cancelada", fac, actor, {"motivo": motivo[:200]})
+    return fac
+
+
+def cancelar_con_cobros(fac: Factura, actor, motivo: str) -> Factura:
+    """Cancelación EN CASCADA: anula primero los cobros (Ingresos) vigentes de la
+    factura y luego la cancela, en una sola operación atómica. Es el "forzar" del
+    modal — evita obligar al usuario a ir a Tesorería a anular uno por uno.
+
+    Anular cada Ingreso (anulado=True) dispara su asiento reverso en La
+    Contaduría vía signal, así que la contabilidad no se descuadra."""
+    if fac.estado == "cancelada":
+        raise ValueError("La factura ya estaba cancelada.")
+    motivo = (motivo or "").strip()
+    if not motivo:
+        raise ValueError("Debe registrarse el motivo de cancelación.")
+
+    from apps.tesoreria.models import Ingreso
+    from apps.tesoreria.services import anular_ingreso
+
+    with transaction.atomic():
+        for ing in Ingreso.vigentes.filter(factura=fac):
+            anular_ingreso(ing, actor, f"Cancelación de factura {fac.codigo}: {motivo}"[:300])
+        recalcular_monto_cobrado(fac)  # ya no debe quedar ninguno vigente
+        fac.estado = "cancelada"
+        fac.cancelada_en = timezone.now()
+        fac.cancelada_por = actor if getattr(actor, "is_authenticated", False) else None
+        fac.motivo_cancelacion = motivo[:300]
+        fac.save(update_fields=[
+            "estado", "cancelada_en", "cancelada_por", "motivo_cancelacion",
+            "monto_cobrado", "actualizado_en",
+        ])
+    _emitir("factura.cancelada", fac, actor, {"motivo": motivo[:200], "cobros_anulados": True})
     return fac
 
 

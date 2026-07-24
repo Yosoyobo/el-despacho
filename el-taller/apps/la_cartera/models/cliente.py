@@ -17,6 +17,11 @@ class ClienteActivosManager(models.Manager):
 
 class Cliente(models.Model):
     razon_social = models.CharField(max_length=200, db_index=True)
+    # Nombre legal / razón social fiscal (para facturación). Es SECUNDARIO al
+    # `razon_social` de arriba, que funge como "Nombre" (comercial/display). Se
+    # captura aparte porque el nombre con el que operamos rara vez coincide con
+    # la razón social del CFDI. Opcional.
+    razon_social_fiscal = models.CharField(max_length=200, blank=True, default="")
     # Slug para el Sistema de Referencias ($). Auto-generado en save().
     slug = models.CharField(max_length=80, unique=True)
     rfc = models.CharField(max_length=13, blank=True, default="", db_index=True)

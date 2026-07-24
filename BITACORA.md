@@ -6780,3 +6780,70 @@ item 7 retiró; ahora verifica el badge/columna por su tooltip). Ruff limpio;
 celda flex (no centrado geométrico absoluto respecto al grupo de botones de la
 derecha); `con_quitar` queda como param obsoleto en `_fecha_minical.html` (no-op,
 lo pasan varios callers). El item 5 no afecta al egreso (ya estaba limpio).
+
+---
+
+## Cierre S-Ajustes-Jul23 (2026-07-23, VERSION 2026.07.23)
+
+6 pedidos de Jorge/Oscar en 4 bloques, un solo commit + deploy. Rama
+`agent/sprint2-ux-captura`. Decisiones por AskUserQuestion: calculadora con
+**mano de obra = campo capturado** (Subtotal = (Σ sublimación + mano de obra) ×
+2.2 + Σ material; el material nunca se multiplica), **guardar + alimentar
+precio**, gating **por nombre de proveedor "Simil Cuero Plymouth"**; razón social
+= **campo nuevo en Identificación + subtítulo** (no sección fiscal nueva, ajuste
+de Oscar a mitad de la plática).
+
+**Bloque A — Clientes** (migr. `cartera/0007_cliente_razon_social_fiscal`):
+- **Edición rápida** calcada del Catálogo: `?editar=1` + botón "✎ Edición
+  rápida"/"Salir de edición", thead condicional en `cartera/lista.html`, filas
+  editables nuevas `cartera/_filas_editable.html`, endpoint `cartera-cliente-celda`
+  (POST, whitelist nombre/teléfono/estado, responde 204). El teléfono se
+  sincroniza al **contacto principal** (fuente de verdad) además del legacy, para
+  que `espejar_contacto_principal` no lo revierta en el siguiente guardado.
+- Columna **Teléfono** en la lista normal (contacto_principal.telefono ‖ legacy).
+- Campo nuevo `Cliente.razon_social_fiscal` (nombre legal del CFDI, opcional,
+  MAYÚSCULAS vía `clean_`, buscable). Se muestra como **subtítulo** bajo el nombre
+  (`_page_header` subtitulo) y en el recuadro **Identificación** junto al RFC.
+- **Estado → pastillas** siempre visibles en el form (radios `has-[:checked]`,
+  excluido del loop de campos). El modal de alta rápida ya usaba pastillas.
+- Lista de proyectos del cliente: **nombre en azul (link)**, código en gris
+  (antes al revés).
+
+**Bloque B — Dashboard**: el widget "Mis mandados" ahora es
+`{% if es_runner and mis_mandados %}` (antes salía siempre para runners, con
+estado vacío "🎉"). Una línea en `taller_home/home.html`.
+
+**Bloque C — Factura** (raíz confirmada por Oscar: "dice cobros 11,598.84 pero no
+los encuentro" = mensaje "ya tiene cobros registrados"):
+- `facturacion.services.cancelar` **auto-sana** `monto_cobrado` (recalcula desde
+  `Ingreso.vigentes` y persiste ANTES de bloquear) → si el cobro ya estaba
+  anulado sin recalcular (fantasma), ahora sí cancela. `cancelar_con_cobros`
+  nuevo (**cascada**): `anular_ingreso` por cada vigente (dispara reverso en
+  Contaduría) + cancela, atómico.
+- Vista `cancelar`: recalcula+persiste al abrir el modal, pasa `cobros_vigentes`;
+  POST con `forzar=1` → cascada. Modal `_modal_cancelar.html`: cuando hay cobros
+  **los lista** y ofrece "Cancelar y anular los cobros" (además del camino
+  manual). Detalle: `movimientos_ligados = Ingreso.objects.filter(factura=fac)`
+  (TODOS, incl. anulados con badge) para que nada quede oculto.
+
+**Bloque D — Calculadora de costos** (migr. `el_catalogo/0012_servicio_detalles_costo`):
+- `Servicio.detalles_costo` (JSONField) + `apps/el_catalogo/calculadora.py`
+  (`PROVEEDOR_CALCULADORA="Simil Cuero Plymouth"`, `servicio_usa_calculadora` por
+  `razon_social__icontains`, `parsear_detalles`, `calcular`).
+- Recuadro en `catalogo/form.html` (solo al editar productos de ese proveedor):
+  4 campos material (suma sin factor) + 4 sublimación + 1 mano de obra; JS de
+  recálculo en vivo (Subtotal/IVA/Gran total) que escribe el Subtotal en
+  `precio_base`. IVA de `ConfiguracionFiscal.iva_tasa`. Precio se guarda SIN IVA.
+- **Fix preexistente**: `nuevo`/`editar` de producto NO llamaban `form.save_m2m()`
+  → los proveedores marcados en el form **no se guardaban**. Se agregó (necesario
+  para ligar el proveedor y que aparezca la calculadora).
+
+**Tests**: `tests/taller/test_ajustes_clientes_factura_jul23.py` (18). Ruff +
+`test_no_renderiza_comentarios` (ambas apps, cacé 2 comentarios `{# #}` multilínea
+que había metido, Bug C §14) + `test_ayuda_novedades` verdes.
+
+**Deuda diseñada**: la calculadora se gatea por nombre de proveedor (frágil ante
+renombre — decisión de Oscar; el nombre vive como constante); requiere crear el
+proveedor "Simil Cuero Plymouth" y ligarlo a los productos (paso manual, no hay
+seed). El `factor` 2.2 es constante. La edición rápida de teléfono actualiza el
+contacto principal si existe, pero no lo crea si no hay ninguno.

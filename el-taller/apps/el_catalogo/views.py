@@ -232,6 +232,7 @@ def nuevo(request):
             srv = form.save(commit=False)
             srv.creado_por = request.user
             srv.save()
+            form.save_m2m()  # persiste proveedores marcados (antes se perdían)
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_creado",
                 actor_id=request.user.pk,
@@ -293,6 +294,23 @@ def editar(request, pk: int):
             if not puede_editar_precios:
                 obj.precio_base = srv.precio_base
             obj.save()
+            form.save_m2m()  # persiste proveedores marcados (antes se perdían)
+            # Calculadora de costos (proveedores como Simil Cuero Plymouth): si el
+            # producto la usa, guardamos los insumos y el Subtotal (antes de IVA)
+            # alimenta el precio de venta.
+            from apps.el_catalogo.calculadora import (
+                calcular,
+                parsear_detalles,
+                servicio_usa_calculadora,
+            )
+            if servicio_usa_calculadora(obj):
+                from ajustes.models.fiscal import ConfiguracionFiscal
+                obj.detalles_costo = parsear_detalles(request.POST)
+                if puede_editar_precios:
+                    obj.precio_base = calcular(
+                        obj.detalles_costo, ConfiguracionFiscal.obtener().iva_tasa,
+                    )["subtotal"]
+                obj.save(update_fields=["detalles_costo", "precio_base", "actualizado_en"])
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_actualizado",
                 actor_id=request.user.pk,
@@ -313,11 +331,32 @@ def editar(request, pk: int):
         .prefetch_related("procesos__proveedor")
         .order_by("-creado_en")
     )
+    # Calculadora de costos (Simil Cuero Plymouth): prefill + resultado en vivo.
+    from apps.el_catalogo.calculadora import calcular, servicio_usa_calculadora
+
+    from ajustes.models.fiscal import ConfiguracionFiscal
+    mostrar_calc = servicio_usa_calculadora(srv)
+    iva_tasa = ConfiguracionFiscal.obtener().iva_tasa
+
+    def _pad4(lst):
+        return (list(lst or []) + ["", "", "", ""])[:4]
+
+    def _disp(v):
+        return "" if (not v or str(v) in {"0", "0.0", "0.00"}) else str(v)
+
+    det = srv.detalles_costo or {}
+    calc_mano_obra = _disp(det.get("mano_obra"))
     return render(request, "catalogo/form.html", {
         "form": form, "modo": "editar", "servicio": srv,
         "precio_readonly": not puede_editar_precios,
         "usos": usos,
         "ve_precios": puede(request.user, "catalogo", "ver_precios"),
+        "mostrar_calculadora": mostrar_calc,
+        "calc_materiales": [_disp(x) for x in _pad4(det.get("materiales"))],
+        "calc_sublimacion": [_disp(x) for x in _pad4(det.get("sublimacion"))],
+        "calc_mano_obra": calc_mano_obra,
+        "calc_resultado": calcular(det, iva_tasa) if mostrar_calc else None,
+        "iva_tasa": iva_tasa,
         **_navegacion_producto(request),
     })
 
