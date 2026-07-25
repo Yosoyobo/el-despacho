@@ -162,6 +162,11 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
 
+# URL pública de El Taller. La usa `lib.imagen_publica` para armar los enlaces
+# absolutos de las imágenes que Google baja al convertir un PDF (no hay
+# `request` en el generador del documento). Mismo patrón que en La Gerencia.
+TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
