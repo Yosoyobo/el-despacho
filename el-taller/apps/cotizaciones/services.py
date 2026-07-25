@@ -340,16 +340,21 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             version=version,
             regimen_fiscal=proyecto.regimen_fiscal,
             descuento_global_porcentaje=Decimal("0.00"),
+            # LC 2026-07: los interruptores del documento se HEREDAN de la
+            # versión anterior — si ya decidiste incluir desglose y cobrar de
+            # un solo pago, la v+1 no te lo vuelve a preguntar.
+            incluir_desglose=(ultima_cot.incluir_desglose if ultima_cot else False),
+            forma_pago=(ultima_cot.forma_pago if ultima_cot else Cotizacion.FORMA_ANTICIPO),
+            anticipo_porcentaje=(
+                ultima_cot.anticipo_porcentaje if ultima_cot else Decimal("0.00")
+            ),
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
         for i, pp in enumerate(proyecto.productos_incluidos):
-            nombre = pp.servicio.nombre if pp.servicio_id else "Producto"
-            if pp.variacion_id:
-                # Fase 3 §1.4 (higiene): no duplicar el nombre si la variación
-                # ya lo contiene.
-                vnom = pp.variacion.nombre or ""
-                if vnom and vnom.lower() not in nombre.lower():
-                    nombre = f"{nombre} · {vnom}"
+            # LC 2026-07: el cliente ve el nombre del producto EN ESTE PROYECTO
+            # (el alias, si se le puso); el FK al catálogo se conserva aparte.
+            # La higiene de «Servicio · Variación» vive en `nombre_catalogo`.
+            nombre = pp.nombre_visible
             # LC 2026-07: la NOTA interna del producto NO se copia a la línea de
             # la cotización (no debe salir en el documento final al cliente).
             CotizacionItem.objects.create(

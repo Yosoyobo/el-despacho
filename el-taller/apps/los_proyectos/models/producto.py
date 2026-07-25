@@ -37,6 +37,15 @@ class ProyectoProducto(models.Model):
         null=True, blank=True,
         related_name="productos_proyecto",
     )
+    # LC 2026-07 (Oscar): nombre del producto DENTRO de este proyecto. El
+    # despacho compra «TShirt Oversize Color» a Crea Blanks y la vende como
+    # «TShirt Modelo Janet» — el alias es lo que ve el cliente en el proyecto y
+    # en la cotización, mientras el FK a `servicio` y sus procesos conservan de
+    # qué está hecha. Vacío = se usa el nombre del catálogo.
+    nombre_proyecto = models.CharField(
+        max_length=150, blank=True, default="",
+        help_text="Cómo se llama este producto en este proyecto. Vacío = el nombre del catálogo.",
+    )
     cantidad = models.PositiveIntegerField(default=1)
     # C4 S-LC-Feedback-V6: precio/costo por proyecto (override). Si quedan en
     # null, se heredan del catálogo (servicio.precio_base / costo de la
@@ -84,14 +93,35 @@ class ProyectoProducto(models.Model):
         verbose_name_plural = "productos del proyecto"
 
     def __str__(self) -> str:
+        return f"{self.nombre_visible} ×{self.cantidad}"
+
+    @property
+    def nombre_catalogo(self) -> str:
+        """Cómo se llama en el catálogo (lo que realmente se compra)."""
+        nombre = self.servicio.nombre if self.servicio_id else "Producto"
         if self.variacion_id:
-            return f"{self.servicio.nombre} · {self.variacion.nombre} ×{self.cantidad}"
-        return f"{self.servicio.nombre} ×{self.cantidad}"
+            # Higiene (Fase 3 §1.4): nunca «X · X». Si uno de los dos ya
+            # contiene al otro, se queda el más informativo.
+            vnom = (self.variacion.nombre or "").strip()
+            if not vnom or vnom.lower() in nombre.lower():
+                pass
+            elif nombre.lower() in vnom.lower():
+                nombre = vnom
+            else:
+                nombre = f"{nombre} · {vnom}"
+        return nombre
+
+    @property
+    def nombre_visible(self) -> str:
+        """El nombre con el que se presenta: el alias del proyecto si lo hay,
+        si no el del catálogo. **Fuente única** — de aquí lo toman la tarjeta,
+        la lista, el Kanban y la cotización."""
+        return (self.nombre_proyecto or "").strip() or self.nombre_catalogo
 
     @property
     def etiqueta(self) -> str:
         """Etiqueta compacta para el resumen de lista de proyectos."""
-        base = self.variacion.nombre if self.variacion_id else self.servicio.nombre
+        base = self.nombre_visible
         if self.cantidad > 1:
             return f"{base} ×{self.cantidad}"
         return base

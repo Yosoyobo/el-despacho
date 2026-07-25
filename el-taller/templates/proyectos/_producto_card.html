@@ -29,7 +29,7 @@ LC Fase 2:
         <button type="button" data-card-toggle aria-expanded="{% if f.instance.pk and not f.errors %}false{% else %}true{% endif %}"
                 class="flex flex-1 items-center justify-between gap-2 rounded-lg py-1 text-left">
             {% comment %}Resumen compacto (colapsado): «[cant] pz - producto - precio», sin proveedor. Se OCULTA al expandir (data-resumen queda hidden por el JS).{% endcomment %}
-            <span data-resumen class="truncate text-sm font-medium text-gray-800 dark:text-gray-100{% if not f.instance.pk or f.errors %} hidden{% endif %}">{{ f.instance.cantidad|default:1 }} pz - {% if f.instance.pk and f.instance.servicio_id %}{{ f.instance.servicio.nombre }}{% else %}Nuevo producto{% endif %} - {{ f.instance.precio_efectivo|dinero }}</span>
+            <span data-resumen class="truncate text-sm font-medium text-gray-800 dark:text-gray-100{% if not f.instance.pk or f.errors %} hidden{% endif %}">{{ f.instance.cantidad|default:1 }} pz - {% if f.instance.pk and f.instance.servicio_id %}{{ f.instance.nombre_visible }}{% else %}Nuevo producto{% endif %} - {{ f.instance.precio_efectivo|dinero }}</span>
             <svg data-chevron class="h-4 w-4 shrink-0 text-gray-400 transition-transform{% if f.instance.pk and not f.errors %} -rotate-90{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
     </div>

@@ -117,6 +117,29 @@ class Cotizacion(models.Model):
     notas = models.TextField(blank=True, default="")
     terminos = models.TextField(blank=True, default="")
 
+    # LC 2026-07 (Oscar) — dos interruptores del documento que se le manda al
+    # cliente. Se prenden desde la página de la cotización y cada versión
+    # guarda los suyos (la siguiente versión los hereda).
+    #
+    # `incluir_desglose`: apagado, el PDF lleva la tablita de montos de cada
+    # producto y nada más. Prendido, agrega al final el «Desglose de Elementos»
+    # (todos los conceptos juntos) y el cálculo de impuestos con el total.
+    incluir_desglose = models.BooleanField(
+        default=False,
+        help_text="Incluir al final del PDF el desglose de conceptos y el cálculo de impuestos.",
+    )
+    # `forma_pago`: elige el texto de la última nota del PDF.
+    FORMA_ANTICIPO = "anticipo"
+    FORMA_CONTADO = "contado"
+    FORMAS_PAGO = (
+        (FORMA_ANTICIPO, "Anticipo"),
+        (FORMA_CONTADO, "Un solo pago"),
+    )
+    forma_pago = models.CharField(
+        max_length=12, choices=FORMAS_PAGO, default=FORMA_ANTICIPO,
+        help_text="Define la nota de forma de pago del PDF.",
+    )
+
     # PDF generado vía Google Docs (regla §8). Se regenera al pedirlo y se
     # guarda en Drive (subcarpeta "Cotizaciones"). Vacío = aún no se generó.
     pdf_file_id = models.CharField(max_length=100, blank=True, default="")
@@ -255,6 +278,22 @@ class Cotizacion(models.Model):
             return Decimal("0.00")
         total = self.calcular_totales()["total"]
         return (Decimal(total) * pct / Decimal("100")).quantize(Decimal("0.01"))
+
+    @property
+    def nota_forma_pago(self) -> str:
+        """Última nota del PDF, según el interruptor Anticipo / Un solo pago.
+
+        En modo anticipo respeta el porcentaje capturado en la cotización (por
+        si un cliente va al 40%); si no hay ninguno, el default de LC es 50%.
+        """
+        if self.forma_pago == self.FORMA_CONTADO:
+            return "Forma de pago: Un sólo pago."
+        pct = self.anticipo_porcentaje or Decimal("0")
+        if pct <= 0:
+            pct = Decimal("50")
+        # 50.00 → «50»; 33.50 → «33.5» (sin ceros de relleno).
+        texto = f"{pct.normalize():f}" if isinstance(pct, Decimal) else str(pct)
+        return f"Forma de pago: Anticipo {texto}%."
 
     @property
     def anticipo_pendiente(self) -> bool:
