@@ -87,14 +87,13 @@ def _nombre_base(pp) -> str:
 
 
 def _label_produccion(pp) -> str:
-    """Etiqueta del gasto del producto que refleja las piezas a PRODUCIR
-    (cantidad + merma), no solo la cantidad vendida. Reporte Oscar: el gasto
-    decía '35x' cuando se producen 45 (35 + 10 merma)."""
-    base = _nombre_base(pp)
-    piezas = pp.cantidad + pp.merma
-    if pp.merma:
-        return f"{base} · {piezas} pz ({pp.cantidad} + {pp.merma} merma)"
-    return f"{base} · {piezas} pz"
+    """Etiqueta del gasto del producto con las piezas a PRODUCIR (cantidad +
+    merma), no la cantidad vendida.
+
+    LC 2026-07-25 (Oscar): siempre en el formato «× 35 pz» — sin el desglose
+    «(30 + 5 merma)», que confundía en la lista de pagos pendientes.
+    """
+    return f"{_nombre_base(pp)} · × {pp.cantidad + pp.merma} pz"
 
 
 def _monto_proceso(proc, pp) -> Decimal:
@@ -106,8 +105,9 @@ def _monto_proceso(proc, pp) -> Decimal:
 
 
 def _label_proceso(proc, pp) -> str:
-    piezas = pp.cantidad + pp.merma
-    suf = f" (× {piezas} pz)" if proc.por_pieza else ""
+    # Mismo formato «× N pz» que el gasto del producto (LC 2026-07-25). El
+    # proceso fijo no lleva piezas: su costo no depende de la producción.
+    suf = f" · × {pp.cantidad + pp.merma} pz" if proc.por_pieza else ""
     return f"{_nombre_base(pp)} · {proc.etiqueta}{suf}"
 
 

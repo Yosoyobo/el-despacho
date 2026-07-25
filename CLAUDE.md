@@ -5662,6 +5662,71 @@ rápida de teléfono actualiza el contacto principal pero no crea uno si no exis
   `CATALOGO_PERMISOS`.
 - **7 tests R2** sumados a `test_ajustes_clientes_factura_jul23.py` (25 en total).
 
+### S-Ajustes-Jul25 ✅ — Productos con impresión/procesos, búsqueda por proveedor, Proyectos→Kanban (2026-07-25, VERSION 2026.07.25)
+
+8 puntos de Oscar. Decisiones por AskUserQuestion: los procesos del producto son
+**defaults que se copian al proyecto** (no solo costeo informativo) y el proveedor
+en la ficha del producto usa **buscador que agrega varios** (sigue multi-selección,
+regla de checkboxes preservada por dentro).
+
+- **#1 Buscar productos por proveedor**: la lista del catálogo filtra
+  `Q(nombre) | Q(proveedores__razon_social)` con `distinct()`. En **cotizaciones**
+  el `<option>` del Producto ahora lleva `data-buscar` con sus proveedores (widget
+  nuevo `apps/el_catalogo/widgets.SelectProductoBuscable` + `prefetch_related`) —
+  el combobox canónico ya matchea ese atributo, así que se encuentra por proveedor
+  **sin** ensuciar la etiqueta visible. En Facturación el `servicio` es un
+  `<input hidden>` (no select) → no aplica.
+- **#2 Proveedores del producto con dropdown-buscador + pastillas**: el filtro
+  type-to-search sobre checkboxes de Fase 3 ("no sirve" — Oscar) se reemplazó por
+  `#prov-picker` (`data-select-buscable`, solo AGREGA) + `#prov-chips` (pastilla
+  con ✕) + los checkboxes reales **ocultos** en `#proveedores-lista` (siguen
+  siendo lo que se postea → cero cambio de contrato del form). Los ya elegidos
+  quedan `disabled` en el dropdown (el combobox NO respeta `option.hidden`).
+  `window.provRefrescar()` / `provAgregarOpcion()` los reusan el quick-create y
+  el botón 🤖 Sugerir.
+- **#3 Crear producto abre SU página** (`catalogo-editar`), no la lista — en
+  full-page y en el modal HTMX (`HX-Redirect`).
+- **#4 «× 35 pz»**: `gastos._label_produccion` siempre muestra las piezas a
+  producir (cantidad + merma) sin el desglose «(30 + 5 merma)»; `_label_proceso`
+  homologado a ` · × N pz`. Alcanza al proyecto y a `/tesoreria/gastos-no-registrados/`
+  (ambos leen `u["label"]`).
+- **#5 «Proyectos» siempre al Kanban**: breadcrumb + `back_url` del detalle
+  (`los_proyectos`), breadcrumb del detalle de tarea (`el_pizarron`), migas de
+  form/asignar/cambiar_estado/kanban, y los redirects post-archivar/eliminar. El
+  sidebar ya apuntaba a `/proyectos/kanban/`. La lista sigue accesible por su
+  toggle "Lista" (y `?archivados=1`).
+- **#6 Orden por cliente** en la lista: `ORDEN_CAMPO = {"cliente": "cliente__razon_social"}`
+  (el whitelist sigue siendo de llaves, el mapa traduce a campo de DB) + `sort_key`
+  en la cabecera.
+- **#7 Ligado eficaz para eliminar proyecto** (raíz del "no hay nada ligado"):
+  `_proyecto_tiene_movimientos` (booleano sobre TODO, incluidos cancelados) →
+  `_ligados_del_proyecto`, que cuenta **solo vigentes** (facturas
+  `exclude(estado="cancelada")`, ingresos/egresos `anulado=False`) y devuelve la
+  lista concreta con enlace; el modal la enlista y el mensaje de error nombra los
+  primeros 5. Todos los FK son SET_NULL, así que el guard es regla de negocio, no
+  restricción de DB.
+- **#8 Impresión + procesos adicionales del producto** (plantilla):
+  `Servicio.procesos_default` JSONField (migr. `el_catalogo/0013`) con la **misma
+  forma** que el `procesos_json` de la línea de proyecto → el JS del proyecto los
+  aplica sin traducción. Sanitizador `apps/el_catalogo/procesos.py`
+  (`parsear`/`normalizados`/`costo_extra`, defensivo: JSON inválido, proveedor
+  inexistente o monto negativo se descartan sin lanzar; impresión sin proveedor no
+  se guarda; máx 20). Recuadro nuevo en `catalogo/form.html` (hidden
+  `procesos_default_json` + impresión con `data-select-buscable` + filas de
+  procesos + total informativo). `_servicios_datos_json` expone `procesos` y
+  `prellenarServicio` → `aplicarProcesosDefault` los copia **solo si la tarjeta
+  está en blanco** (no pisa lo capturado). **NO se suman a `Servicio.costo`** — el
+  proyecto los cuenta aparte (`gastos.py`), sumarlos duplicaría el gasto.
+- **17 tests** en `tests/taller/test_ajustes_jul25.py`. Se actualizó
+  `test_ajustes_ui_fase3::test_form_producto_tiene_buscador_y_guardar_arriba`
+  (afirmaba el `#prov-filtro` que Oscar mandó quitar).
+
+**Deuda diseñada**: los procesos operativos default NO ligan proveedor (el `@` del
+proyecto sí; el sanitizador ya acepta el campo si algún día se agrega la UI); el
+modal de alta rápida de producto sigue ligero (los procesos se capturan al abrir
+la ficha); El Chalán no edita `procesos_default` (declarado en el manual);
+`costo_extra` es informativo (1 pz en la ficha).
+
 ---
 
 ## 9. Decisiones operativas tomadas

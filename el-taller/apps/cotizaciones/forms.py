@@ -113,8 +113,14 @@ class CotizacionItemForm(forms.ModelForm):
         self.fields["variacion"].required = False
         self.fields["descripcion"].required = False
         # LC Buzón §4: combobox type-to-search en el Producto de cada línea.
+        # LC 2026-07-25: el widget además marca cada opción con sus proveedores
+        # (`data-buscar`) para poder encontrar el producto escribiendo el
+        # proveedor. `prefetch_related` evita el N+1 al pintar las opciones.
         if "servicio" in self.fields:
-            self.fields["servicio"].widget.attrs["data-select-buscable"] = "1"
+            from apps.el_catalogo.widgets import SelectProductoBuscable
+            campo = self.fields["servicio"]
+            campo.widget = SelectProductoBuscable()
+            campo.queryset = campo.queryset.prefetch_related("proveedores")
         # S-LC-Feedback-V4 hotfix: defaults visibles en filas nuevas. El default
         # del modelo es "pieza" (lowercase, legacy) — usamos "Piezas" del
         # catálogo para evitar el "(legacy)" en el dropdown.

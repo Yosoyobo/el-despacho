@@ -41,6 +41,15 @@ class Servicio(models.Model):
     # "mano_obra": monto, "factor": 2.2}. El subtotal (antes de IVA) alimenta
     # `precio_base`. Vacío = sin calculadora.
     detalles_costo = models.JSONField(default=dict, blank=True)
+    # LC 2026-07-25 (Oscar): impresión + procesos adicionales del producto como
+    # PLANTILLA. Misma forma que el `procesos_json` de la línea de proyecto:
+    # [{"tipo": "impresion", "proveedor_id": N, "costo": "12.00", "por_pieza": true},
+    #  {"tipo": "operativo", "descripcion": "Clavos", "costo": "30.00",
+    #   "por_pieza": false, "proveedor_id": null}]
+    # Al elegir el producto en un proyecto, la tarjeta se pre-llena con esto
+    # (editable ahí). NO se suma a `costo` — el proyecto los cuenta aparte, así
+    # que sumarlos aquí duplicaría el gasto.
+    procesos_default = models.JSONField(default=list, blank=True)
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)

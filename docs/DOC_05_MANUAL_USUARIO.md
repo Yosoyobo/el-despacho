@@ -5,6 +5,40 @@
 
 ---
 
+## Novedades — Productos con impresión y procesos, búsqueda por proveedor y Proyectos siempre en Kanban (25 de julio de 2026)
+
+- **Buscas productos por proveedor.** En la lista de Productos, el buscador ahora
+  también encuentra escribiendo el **nombre del proveedor** (escribe "Plymouth" y
+  salen todos sus productos). En las **cotizaciones**, el dropdown de Producto
+  también los encuentra por proveedor, aunque en pantalla siga mostrando solo el
+  nombre del producto.
+- **Proveedores del producto con dropdown y buscador.** En la ficha del producto,
+  la lista larga de casillas se cambió por un **dropdown con buscador**: escribes,
+  eliges, y el proveedor queda como **pastilla con ✕** para quitarlo. Puedes
+  agregar todos los que te surtan ese producto.
+- **Al crear un producto se abre su página** (antes regresabas a la lista), para
+  que sigas de una vez con su imagen, sus proveedores y sus procesos.
+- **Impresión y procesos adicionales en el producto.** En la ficha del producto
+  hay un recuadro nuevo **"🖨️ Impresión y procesos adicionales"**: capturas su
+  impresión (proveedor + costo + "por pieza") y los gastos extra que siempre
+  lleva (embalaje, clavos, pegamento…). Cuando agregas ese producto a un
+  proyecto, **la tarjeta se llena sola con esos procesos** y ahí los puedes
+  ajustar. Ojo: **no cambian el Costo del producto** — el proyecto los cuenta
+  aparte, así el gasto no se duplica.
+- **Pagos pendientes más claros.** En "pagos pendientes sin registrar" las
+  cantidades se muestran siempre como **"× 35 pz"** (el total a producir), en vez
+  de "30 + 5 merma".
+- **"Proyectos" siempre te lleva al Tablero (Kanban)**, tanto en el menú como en
+  las migas de pan y al volver de un proyecto. La vista de Lista sigue disponible
+  con el botón "Lista".
+- **En la lista de Proyectos puedes ordenar por Cliente** (clic en la cabecera
+  "Cliente", alfabético; otro clic invierte el orden).
+- **Eliminar un proyecto ya no se traba de más.** Antes bastaba una factura
+  cancelada o un ingreso anulado para bloquearlo. Ahora **solo bloquean los
+  movimientos vigentes**, y el aviso te **enlista exactamente cuáles son, con
+  enlace** para abrirlos y resolverlos (o archivar el proyecto, que es
+  reversible).
+
 ## Novedades — Clientes editables, factura cancelable y calculadora de costos (23 de julio de 2026)
 
 - **Clientes: edición rápida.** En la lista de Clientes hay un botón **"✎ Edición
@@ -2576,17 +2610,19 @@ El corazón del negocio. Cada proyecto tiene código `LC-NNNN`, cliente, product
 
 ### Dos vistas
 
-- **Lista:** tabla ordenable con código, nombre, cliente, estado, fecha de compromiso.
+- **Lista:** tabla ordenable con código, nombre, cliente, estado, fecha de compromiso. Puedes ordenar por **Cliente** (alfabético) haciendo clic en esa cabecera; otro clic invierte el orden.
 - **Kanban:** columnas por estado — útil para ver de un vistazo qué tienes en cada fase. Cada tarjeta muestra **todos sus productos con nombre completo y cantidad** (por ejemplo "Paliacates ×70, Pines/Insignias ×700, Etiquetas para Mandiles Infantiles ×30"), sin recortes, para tener la información completa de un vistazo. El mini-tablero del inicio (Dashboard) hace lo mismo.
 
 Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clickeables como filtros.
+
+**"Proyectos" siempre abre el Kanban.** El menú, las migas de pan y el botón de "volver" de un proyecto te dejan en el **Tablero**; para la tabla usa el botón **"Lista"** del encabezado.
 
 ### Archivar o eliminar un proyecto
 
 Para proyectos de **prueba o duplicados** (distinto de "Cancelado", que se reserva para proyectos reales que no se hicieron), en el detalle hay dos botones arriba a la derecha:
 
 - **Archivar** (reversible): oculta el proyecto de listas, tablero, calendario y selectores. No borra nada; puedes **Reactivarlo** cuando quieras. En la lista, el botón **"Archivados"** muestra los que archivaste.
-- **Eliminar** (solo super administrador): borra el proyecto **de forma permanente**. Solo funciona si el proyecto **no tiene facturas, ingresos ni egresos** ligados; si los tiene, el sistema te pide archivarlo en su lugar.
+- **Eliminar** (solo super administrador): borra el proyecto **de forma permanente**. Solo lo impiden los movimientos **vigentes**: una factura **cancelada** o un ingreso/egreso **anulado** ya no bloquean. Si algo lo bloquea, el aviso te **enlista exactamente qué es (con enlace)** para que lo abras, lo anules o lo canceles; si prefieres conservar el historial, archívalo.
 
 ### Detalle del proyecto
 
@@ -2624,7 +2660,9 @@ A la derecha:
 ingresos y egresos ligados al proyecto (aparece en cualquier estado). De
 **producción en adelante**, dentro del recuadro de egresos sale una **alerta
 amarilla** de *"N pago(s) pendiente(s) sin registrar"* con cada costo del
-proyecto (producto, impresión o gasto operativo) que aún no se paga. Cada uno
+proyecto (producto, impresión o gasto operativo) que aún no se paga. Las
+cantidades salen siempre como **"× 35 pz"** — el total de piezas a producir
+(cantidad + merma), sin desglosarlo. Cada uno
 tiene un botón **"Registrar pago"** que abre una ventana pidiendo **fecha,
 proveedor (obligatorio), método y estado** (Pagado por default, o Por
 reembolsar). Al confirmar, ese gasto queda registrado como egreso pagado (o,
@@ -2724,13 +2762,46 @@ Lo que vendes/produces. Cada producto tiene:
 - Nombre y descripción (todo se maneja en **piezas**).
 - **Categoría** (Diseño, Impresión, Producción, Maquila, Bordado, Otros, etc.)
 - **Costo** (lo que te cuesta) + **Precio de venta** → el margen se calcula solo
-- **Proveedores aplicables** (checkmarks) — quién te puede surtir este producto
+- **Proveedores aplicables** — quién te puede surtir este producto. Se eligen con
+  un **dropdown con buscador**: escribes el nombre, lo eliges y queda como
+  **pastilla con ✕**. Puedes agregar todos los que te surtan.
+- **Impresión y procesos adicionales** (ver abajo).
 - **Usos:** la columna "Usos" de la lista cuenta las veces que el producto se
   ha usado en proyectos; al abrir el producto ves su **bitácora de Usos** (en
   qué proyectos se usó, con cantidad, costo, precio, proveedor e impresión).
 
+El **buscador** de la lista encuentra productos por su nombre **y también por el
+nombre del proveedor** (escribe "Plymouth" y salen todos los suyos). Cuando
+**creas** un producto, el sistema te deja en **su página** para que sigas con la
+imagen, los proveedores y los procesos.
+
 Para sacar un producto de circulación usa **Archivar** (se puede **Reactivar**);
 el borrado permanente sólo lo hace super admin y sólo si no se ha usado.
+
+### Impresión y procesos adicionales del producto
+
+En la ficha del producto, el recuadro **"🖨️ Impresión y procesos adicionales"**
+guarda lo que ese producto **siempre** lleva:
+
+- **Impresión:** el proveedor que la hace, su costo y si es **por pieza** (se
+  multiplica por las piezas a producir) o un costo fijo.
+- **Procesos / gastos adicionales:** los que quieras (embalaje, clavos,
+  pegamento, maniobras…), cada uno con su costo y su "por pieza".
+
+Es una **plantilla**: cuando agregas ese producto a un proyecto, su tarjeta se
+**llena sola** con esos procesos y ahí los ajustas (o los borras) sin afectar al
+catálogo. Solo se copian si la tarjeta todavía no tiene procesos capturados, para
+no pisar tu trabajo.
+
+**No cambian el Costo del producto.** El proyecto cuenta los procesos aparte (los
+verás en "pagos pendientes sin registrar" y en la deuda por proveedor); si además
+se sumaran al costo, el gasto se contaría doble. Arriba del recuadro se muestra la
+suma de los procesos solo como referencia.
+
+**Con El Chalán:** puede dar de alta y actualizar productos (nombre, precio,
+costo, categoría) — por ejemplo *"crea el producto Playera lisa a 200 con costo
+80 en Producción"*. La **impresión y los procesos adicionales se capturan aquí en
+la ficha**: El Chalán todavía no los edita.
 
 ### Calculadora de costos (productos de Simil Cuero Plymouth)
 
@@ -2753,7 +2824,7 @@ Plymouth" en sus **Proveedores aplicables**.
 
 CRM de quién te surte. Razón social, contacto, email, teléfono, RFC, dirección, notas. Su detalle muestra los productos que pueden surtirte, su **última ubicación** (de las visitas del Checador, con botón 📍 al mapa) y su **dirección fiscal** (con la casilla "es la misma que la dirección").
 
-Desde el form de un producto puedes crear un proveedor nuevo sin salir: panel "+ Nuevo proveedor", lo creas y queda marcado. También hay un acceso directo "Nuevo proveedor" en el Dashboard.
+Desde el form de un producto puedes crear un proveedor nuevo sin salir: panel "+ Nuevo proveedor", lo creas y queda marcado como pastilla. También hay un acceso directo "Nuevo proveedor" en el Dashboard.
 
 ### Categorías
 

@@ -83,14 +83,18 @@ def test_deuda_por_proveedor_impresion_por_pieza(proyecto_factory, catalogo):
 
 
 def test_gasto_label_refleja_produccion(proyecto_factory, catalogo):
-    """El gasto del producto dice las piezas a producir (45), no la cantidad (35)."""
+    """El gasto del producto dice las piezas a producir (45), no la cantidad (35).
+
+    LC 2026-07-25 (Oscar): el formato es «× 45 pz» — el desglose «35 + 10 merma»
+    se quitó de la lista de pagos pendientes por confuso.
+    """
     from apps.los_proyectos import gastos
     p = proyecto_factory(estado="en_proceso_diseno")
     _producto(p, catalogo)
     unidades = list(gastos.iter_unidades(p))
     prod = next(u for u in unidades if u["clase"] == "producto")
-    assert "45 pz" in prod["label"]
-    assert "35 + 10 merma" in prod["label"]
+    assert "× 45 pz" in prod["label"]
+    assert "merma" not in prod["label"]
 
 
 def test_gasto_proceso_por_pieza_monto(proyecto_factory, catalogo):

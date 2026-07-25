@@ -7,8 +7,16 @@
             <button type="button" data-modal-slot-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
         </div>
         {% if tiene_movimientos %}
+        {% comment %}LC 2026-07-25: se enlista EXACTAMENTE qué lo bloquea (solo
+        movimientos vigentes; los anulados/cancelados ya no cuentan).{% endcomment %}
         <div class="mb-4 rounded-lg border border-warning-300 bg-warning-50 p-3 text-sm text-warning-800 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
-            <strong>{{ proyecto.codigo }}</strong> tiene facturas, ingresos o egresos ligados, así que <strong>no se puede eliminar</strong> (borraría historial financiero). Si ya no lo necesitas, <strong>archívalo</strong> en su lugar.
+            <p><strong>{{ proyecto.codigo }}</strong> sigue ligado a {{ ligados|length }} movimiento{{ ligados|length|pluralize:"s" }} vigente{{ ligados|length|pluralize:"s" }}, así que <strong>no se puede eliminar</strong> (borraría historial financiero).</p>
+            <ul class="mt-2 space-y-1">
+                {% for l in ligados %}
+                <li>· {{ l.tipo }} <a href="{{ l.url }}" class="font-medium underline hover:no-underline">{{ l.label }}</a></li>
+                {% endfor %}
+            </ul>
+            <p class="mt-2 text-xs">Anula o cancela esos movimientos y vuelve a intentar, o <strong>archiva</strong> el proyecto (reversible).</p>
         </div>
         <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
             <button type="button" data-modal-slot-close class="btn-secundario">Cerrar</button>
