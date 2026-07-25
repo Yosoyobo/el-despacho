@@ -6,7 +6,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    HttpResponseNotAllowed,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -363,6 +368,9 @@ def detalle(request, pk):
             })
 
     puede_editar = puede_editar_cotizaciones(request.user) and cot.es_editable
+    # LC 2026-07: el TEXTO del documento se corrige mientras la cotización esté
+    # viva (redactar no mueve dinero); cerrada queda en solo lectura.
+    puede_editar_texto = puede_editar_cotizaciones(request.user) and cot.permite_editar_texto
     puede_enviar = puede_enviar_cotizaciones(request.user) and cot.estado == "borrador"
     puede_aprobar = puede_aprobar_cotizaciones(request.user) and cot.estado == "enviada"
     puede_rechazar = puede_rechazar_cotizaciones(request.user) and cot.estado == "enviada"
@@ -460,6 +468,7 @@ def detalle(request, pk):
         "action_bar_meta": action_bar_meta,
         "action_bar_acciones": action_bar_acciones,
         "puede_editar": puede_editar,
+        "puede_editar_texto": puede_editar_texto,
         "puede_enviar": puede_enviar,
         "puede_aprobar": puede_aprobar,
         "puede_rechazar": puede_rechazar,
@@ -752,6 +761,88 @@ def estado_inline(request, pk):
         services.marcar_estado_proyecto(cot, nuevo, request.user)
     return render(request, "cotizaciones/_estado_celda.html",
                   {"c": cot, "estados_cot": estados_cot_activos()})
+
+
+@login_required
+def item_celda(request, pk):
+    """Corrige el TEXTO de una línea desde la página de la cotización.
+
+    El esqueleto de la descripción lo genera el sistema al crear la versión,
+    pero el detalle fino (piezas por color, medidas del bordado, acabados) lo
+    escribe una persona — y aquí es donde lo escribe. Autoguarda al salir del
+    campo y responde 204.
+
+    Whitelist de dos campos: `concepto` (el nombre que titula la línea) y
+    `descripcion` (el bloque de especificaciones). Nada de dinero se toca desde
+    aquí, por eso alcanza con `permite_editar_texto` en vez de `es_editable`.
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    if not puede_editar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para editar cotizaciones.")
+    from .models import CotizacionItem
+    it = get_object_or_404(
+        CotizacionItem.objects.select_related("cotizacion"), pk=pk)
+    if not it.cotizacion.permite_editar_texto:
+        return HttpResponseForbidden(
+            "Esta cotización ya está cerrada: su texto no se modifica.")
+    campo = (request.POST.get("campo") or "").strip()
+    valor = request.POST.get("valor", "")
+    if campo == "concepto":
+        it.concepto = (valor or "").strip()[:150]
+    elif campo == "descripcion":
+        # Normaliza saltos y recorta renglones — el PDF los pinta uno por línea.
+        renglones = [r.rstrip() for r in (valor or "").replace("\r\n", "\n").split("\n")]
+        while renglones and not renglones[0].strip():
+            renglones.pop(0)
+        while renglones and not renglones[-1].strip():
+            renglones.pop()
+        it.descripcion = "\n".join(renglones)[:4000]
+    else:
+        return HttpResponseBadRequest("Campo no editable.")
+    it.save(update_fields=[campo])
+    services.emitir_actualizada(it.cotizacion, request.user)
+    return HttpResponse(status=204)
+
+
+@login_required
+def documento_opciones(request, pk):
+    """Los dos interruptores del documento, desde la página de la cotización.
+
+    - `incluir_desglose`: agrega al PDF el «Desglose de Elementos» y el cálculo
+      de impuestos. Un checkbox apagado no viaja en el POST, así que la ausencia
+      del valor ES el apagado.
+    - `forma_pago`: cambia la última nota («Anticipo N%» / «Un sólo pago»).
+
+    No mueve dinero — sólo cómo se presenta —, así que basta con
+    `permite_editar_texto`.
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    if not puede_editar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para editar cotizaciones.")
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    if not cot.permite_editar_texto:
+        return HttpResponseForbidden(
+            "Esta cotización ya está cerrada: su documento no se modifica.")
+    campo = (request.POST.get("campo") or "").strip()
+    valor = request.POST.get("valor", "")
+    if campo == "incluir_desglose":
+        cot.incluir_desglose = str(valor).lower() in ("on", "1", "true", "si", "sí")
+    elif campo == "forma_pago":
+        validas = {c for c, _ in Cotizacion.FORMAS_PAGO}
+        if valor not in validas:
+            return HttpResponseBadRequest("Forma de pago inválida.")
+        cot.forma_pago = valor
+    else:
+        return HttpResponseBadRequest("Campo no editable.")
+    cot.save(update_fields=[campo, "actualizado_en"])
+    services.emitir_actualizada(cot, request.user)
+    return HttpResponse(status=204)
 
 
 @login_required

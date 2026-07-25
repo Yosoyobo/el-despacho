@@ -18,6 +18,10 @@ urlpatterns = [
     path("<int:pk>/ver/", views.pdf_ver, name="ver"),
     path("<int:pk>/pdf/", views.generar_pdf, name="pdf"),
     path("<int:pk>/estado-inline/", views.estado_inline, name="estado-inline"),
+    # LC 2026-07: corregir el texto del documento (concepto/especificaciones)
+    # desde la página de la cotización. `pk` es de la LÍNEA, no de la cotización.
+    path("items/<int:pk>/celda/", views.item_celda, name="item-celda"),
+    path("<int:pk>/documento/", views.documento_opciones, name="documento-opciones"),
     path("<int:pk>/factura-anticipo/", views.factura_anticipo, name="factura-anticipo"),
     path("api/proyecto/<int:pk>/datos/", views.api_proyecto_datos, name="api-proyecto-datos"),
     path("api/sugerir-precio/", views.sugerir_precio, name="api-sugerir-precio"),

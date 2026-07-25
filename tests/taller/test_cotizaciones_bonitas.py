@@ -277,6 +277,94 @@ class TestDescripcion:
         assert it.detalle_lineas == ["105 pz", "Color: Beige"]
 
 
+# ── Editar el texto en la página de la cotización ─────────────────────────
+
+class TestEdicionTexto:
+
+    def _cot(self, entorno):
+        from apps.cotizaciones import services
+        return services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+
+    def test_la_pagina_trae_los_campos_editables(self, client, entorno):
+        cot = self._cot(entorno)
+        client.force_login(entorno["admin"])
+        html = client.get(f"/cotizaciones/{cot.pk}/").content.decode()
+        assert f"/cotizaciones/items/{cot.items.first().pk}/celda/" in html
+        assert 'hx-vals=\'{"campo": "descripcion"}\'' in html
+
+    def test_guarda_las_especificaciones(self, client, entorno):
+        cot = self._cot(entorno)
+        it = cot.items.first()
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/items/{it.pk}/celda/", {
+            "campo": "descripcion",
+            "valor": "25 pz (2 tallas)\r\nCon bordado frontal\r\n",
+        })
+        assert resp.status_code == 204
+        it.refresh_from_db()
+        # Normaliza CRLF y recorta los renglones sobrantes del final.
+        assert it.descripcion == "25 pz (2 tallas)\nCon bordado frontal"
+
+    def test_guarda_el_concepto(self, client, entorno):
+        cot = self._cot(entorno)
+        it = cot.items.first()
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/items/{it.pk}/celda/",
+                           {"campo": "concepto", "valor": "  Gorras Terracota  "})
+        assert resp.status_code == 204
+        it.refresh_from_db()
+        assert it.concepto == "Gorras Terracota"
+
+    def test_campo_fuera_del_whitelist_se_rechaza(self, client, entorno):
+        cot = self._cot(entorno)
+        it = cot.items.first()
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/items/{it.pk}/celda/",
+                           {"campo": "precio_unitario", "valor": "1"})
+        assert resp.status_code == 400
+        it.refresh_from_db()
+        assert it.precio_unitario == Decimal("510.00")
+
+    def test_cotizacion_aprobada_queda_en_solo_lectura(self, client, entorno):
+        """Aprobada/pagada/rechazada/anulada son testimonio de lo que se mandó."""
+        cot = self._cot(entorno)
+        cot.estado = "aprobada"
+        cot.save(update_fields=["estado"])
+        it = cot.items.first()
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/items/{it.pk}/celda/",
+                           {"campo": "concepto", "valor": "Otro nombre"})
+        assert resp.status_code == 403
+        it.refresh_from_db()
+        assert it.concepto == "TShirt Oversize Color"
+        # Y la página ya no ofrece los campos.
+        html = client.get(f"/cotizaciones/{cot.pk}/").content.decode()
+        assert f"/cotizaciones/items/{it.pk}/celda/" not in html
+
+    def test_enviada_si_se_puede_editar(self, client, entorno):
+        cot = self._cot(entorno)
+        cot.estado = "enviada"
+        cot.save(update_fields=["estado"])
+        it = cot.items.first()
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/items/{it.pk}/celda/",
+                           {"campo": "concepto", "valor": "Ajuste tardío"})
+        assert resp.status_code == 204
+
+    def test_get_no_permitido(self, client, entorno):
+        cot = self._cot(entorno)
+        client.force_login(entorno["admin"])
+        resp = client.get(f"/cotizaciones/items/{cot.items.first().pk}/celda/")
+        assert resp.status_code == 405
+
+    def test_sin_permiso_de_cotizaciones_no_entra(self, client, entorno, usuario_factory):
+        cot = self._cot(entorno)
+        client.force_login(usuario_factory(rol="disenador"))
+        resp = client.post(f"/cotizaciones/items/{cot.items.first().pk}/celda/",
+                           {"campo": "concepto", "valor": "x"})
+        assert resp.status_code == 403
+
+
 # ── Interruptores del documento ──────────────────────────────────────────
 
 class TestToggles:
@@ -310,6 +398,69 @@ class TestToggles:
         cot.anticipo_porcentaje = Decimal("33.50")
         assert cot.nota_forma_pago == "Forma de pago: Anticipo 33.5%."
 
+    def test_la_pagina_ofrece_los_interruptores(self, client, entorno):
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        client.force_login(entorno["admin"])
+        html = client.get(f"/cotizaciones/{cot.pk}/").content.decode()
+        assert f"/cotizaciones/{cot.pk}/documento/" in html
+        assert "Incluir desglose y montos" in html
+        assert "Un solo pago" in html
+
+    def test_prender_el_desglose(self, client, entorno):
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
+                           {"campo": "incluir_desglose", "valor": "on"})
+        assert resp.status_code == 204
+        cot.refresh_from_db()
+        assert cot.incluir_desglose is True
+
+    def test_apagar_el_desglose_sin_valor(self, client, entorno):
+        """Un checkbox desmarcado NO viaja en el POST: su ausencia es el apagado."""
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        cot.incluir_desglose = True
+        cot.save(update_fields=["incluir_desglose"])
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
+                           {"campo": "incluir_desglose"})
+        assert resp.status_code == 204
+        cot.refresh_from_db()
+        assert cot.incluir_desglose is False
+
+    def test_cambiar_forma_de_pago(self, client, entorno):
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
+                           {"campo": "forma_pago", "valor": "contado"})
+        assert resp.status_code == 204
+        cot.refresh_from_db()
+        assert cot.forma_pago == "contado"
+        assert cot.nota_forma_pago == "Forma de pago: Un sólo pago."
+
+    def test_forma_de_pago_invalida_se_rechaza(self, client, entorno):
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
+                           {"campo": "forma_pago", "valor": "trueque"})
+        assert resp.status_code == 400
+        cot.refresh_from_db()
+        assert cot.forma_pago == "anticipo"
+
+    def test_cotizacion_cerrada_no_cambia_su_documento(self, client, entorno):
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        cot.estado = "aprobada"
+        cot.save(update_fields=["estado"])
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
+                           {"campo": "incluir_desglose", "valor": "on"})
+        assert resp.status_code == 403
+
     def test_la_siguiente_version_hereda_los_interruptores(self, entorno):
         """Si ya decidiste desglose + un solo pago, la v2 no lo vuelve a preguntar."""
         from apps.cotizaciones import services
@@ -323,3 +474,116 @@ class TestToggles:
         assert v2.incluir_desglose is True
         assert v2.forma_pago == "contado"
         assert v2.anticipo_porcentaje == Decimal("40.00")
+
+
+# ── El documento (PDF) ───────────────────────────────────────────────────
+
+class TestDocumento:
+
+    def _cot_lista(self, entorno):
+        """Cotización con imagen de producto y especificaciones escritas."""
+        from apps.cotizaciones import services
+        srv = entorno["srv"]
+        srv.imagen_file_id = "drive-foto-1"
+        srv.save(update_fields=["imagen_file_id"])
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it = cot.items.first()
+        it.concepto = "T-Shirts Gris Oscuro"
+        it.descripcion = (
+            "25 pz (2 tallas)\n"
+            "100% algodón, calidad oversize heavyweight 250 gsm\n"
+            "Color: por definir"
+        )
+        it.save(update_fields=["concepto", "descripcion"])
+        return cot
+
+    def test_layout_del_encabezado_y_conceptos(self, entorno, settings):
+        from apps.cotizaciones import services
+        settings.TALLER_URL = "https://taller.learningcenter.mx/"
+        cot = self._cot_lista(entorno)
+        html = services.construir_html_pdf(cot)
+        # Encabezado: fecha, logotipo y cliente en mayúsculas.
+        assert cot.cliente.razon_social.upper() in html
+        assert "/static/branding/Logo_LC-256.png" in html
+        # Título del proyecto y concepto numerado con sus especificaciones.
+        assert cot.titulo in html
+        assert "<u>T-Shirts Gris Oscuro</u>" in html
+        assert "100% algodón, calidad oversize heavyweight 250 gsm" in html
+        assert "Color: por definir" in html
+
+    def test_la_imagen_va_con_url_publica_firmada(self, entorno, settings):
+        """Sin URL absoluta y firmada, Google no puede bajarla al convertir."""
+        from apps.cotizaciones import services
+
+        from lib.imagen_publica import verificar
+        settings.TALLER_URL = "https://taller.learningcenter.mx/"
+        html = services.construir_html_pdf(self._cot_lista(entorno))
+        assert "https://taller.learningcenter.mx/catalogo/img/" in html
+        token = html.split("/catalogo/img/")[1].split('"')[0]
+        assert verificar(token) == "drive-foto-1"
+
+    def test_producto_sin_imagen_no_deja_hueco(self, entorno):
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        html = services.construir_html_pdf(cot)
+        assert "/catalogo/img/" not in html
+
+    def test_montos_sin_signo_y_sin_centavos_de_relleno(self, entorno):
+        from apps.cotizaciones import services
+        cot = self._cot_lista(entorno)
+        html = services.construir_html_pdf(cot)
+        assert "12,750" in html   # 25 × 510, sin «$» y sin «.00»
+        assert "$12,750" not in html
+
+    def test_las_notas_van_siempre(self, entorno):
+        from apps.cotizaciones import services
+        from apps.cotizaciones.notas import NOTAS_FIJAS
+        html = services.construir_html_pdf(self._cot_lista(entorno))
+        assert "Notas:" in html
+        for nota in NOTAS_FIJAS:
+            assert nota in html
+        assert "Forma de pago: Anticipo 50%." in html
+
+    def test_la_nota_de_pago_sigue_al_interruptor(self, entorno):
+        from apps.cotizaciones import services
+        cot = self._cot_lista(entorno)
+        cot.forma_pago = "contado"
+        cot.save(update_fields=["forma_pago"])
+        html = services.construir_html_pdf(cot)
+        assert "Forma de pago: Un sólo pago." in html
+        assert "Anticipo" not in html
+
+    def test_sin_desglose_no_sale_la_tabla_ni_los_totales(self, entorno):
+        from apps.cotizaciones import services
+        html = services.construir_html_pdf(self._cot_lista(entorno))
+        assert "Desglose de Elementos" not in html
+        assert "Total" not in html
+
+    def test_con_desglose_sale_la_tabla_con_casilla_y_los_totales(
+        self, entorno, tasa_iva_default
+    ):
+        from apps.cotizaciones import services
+        cot = self._cot_lista(entorno)
+        cot.incluir_desglose = True
+        cot.save(update_fields=["incluir_desglose"])
+        html = services.construir_html_pdf(cot)
+        assert "Desglose de Elementos" in html
+        assert "&#10004;" in html   # la casilla para que el cliente vaya marcando
+        assert "Subtotal" in html
+        assert "Total" in html
+
+    def test_la_vista_rapida_usa_el_layout_nuevo(self, client, entorno):
+        client.force_login(entorno["admin"])
+        cot = self._cot_lista(entorno)
+        resp = client.get(f"/cotizaciones/{cot.pk}/ver/")
+        assert resp.status_code == 200
+        assert b"<u>T-Shirts Gris Oscuro</u>" in resp.content
+
+
+@pytest.fixture
+def tasa_iva_default():
+    from ajustes.models.tasa import TasaImpositiva
+    return TasaImpositiva.objects.create(
+        nombre="IVA 16%", porcentaje=Decimal("16.00"),
+        tipo="trasladado", aplicable_default=True, activa=True, orden=10,
+    )

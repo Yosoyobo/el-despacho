@@ -44,12 +44,35 @@ def emitir_eliminada(cot: Cotizacion, actor):
 
 
 def construir_html_pdf(cot: Cotizacion) -> str:
-    """Renderiza el HTML imprimible de la cotización (template `pdf.html`)."""
+    """Renderiza el HTML imprimible de la cotización (template `pdf.html`).
+
+    Las imágenes van con **URL absoluta, pública y firmada**: el PDF lo genera
+    Google convirtiendo este HTML, y Google baja las imágenes desde sus
+    servidores de forma anónima (ver `lib.imagen_publica`). Una ruta relativa o
+    el proxy autenticado dejarían huecos en el documento.
+    """
     from django.template.loader import render_to_string
+
+    from lib.imagen_publica import base_publica, url_absoluta
+
+    from .notas import notas_para
+
+    items = list(cot.items.select_related("servicio", "unidad_fk").all())
+    filas = [
+        {
+            "it": it,
+            # La foto sale del catálogo (decisión Oscar: una sola por producto).
+            "imagen": url_absoluta(getattr(it.servicio, "imagen_file_id", "") or ""),
+        }
+        for it in items
+    ]
     return render_to_string("cotizaciones/pdf.html", {
         "cot": cot,
-        "items": list(cot.items.select_related("servicio", "unidad_fk").all()),
+        "items": items,
+        "filas": filas,
         "totales": cot.calcular_totales(),
+        "notas": notas_para(cot),
+        "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
     })
 
 

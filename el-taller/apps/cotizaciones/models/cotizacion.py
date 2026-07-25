@@ -222,6 +222,18 @@ class Cotizacion(models.Model):
         return self.estado in ESTADOS_TERMINAL
 
     @property
+    def permite_editar_texto(self) -> bool:
+        """Si se puede corregir el TEXTO del documento (concepto y
+        especificaciones) desde la página de la cotización.
+
+        Es más permisivo que `es_editable` —que solo abarca borrador— porque
+        redactar no cambia dinero: mientras la cotización esté viva se puede
+        pulir la descripción. Una vez aprobada, pagada, rechazada o anulada
+        queda como testimonio de lo que se le mandó al cliente.
+        """
+        return self.estado in ("borrador", "generada", "enviada")
+
+    @property
     def esta_vencida(self) -> bool:
         """Vencida = enviada sin respuesta y fecha_validez < hoy."""
         return self.estado == "enviada" and self.fecha_validez < date.today()
@@ -430,6 +442,13 @@ class CotizacionItem(models.Model):
         if not (self.concepto or "").strip():
             renglones = renglones[1:]
         return [r.strip() for r in renglones if r.strip()]
+
+    @property
+    def filas_textarea(self) -> int:
+        """Alto del cuadro de especificaciones en la página de la cotización:
+        que quepa lo escrito más un renglón libre, sin desbordar la tabla."""
+        n = len((self.descripcion or "").splitlines())
+        return max(3, min(n + 1, 12))
 
     @property
     def unidad_label(self) -> str:
