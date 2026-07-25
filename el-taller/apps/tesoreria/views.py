@@ -55,7 +55,9 @@ def _emitir(tipo: str, request, payload: dict) -> None:
 def landing(request):
     if (r := _gate(request)) is not None:
         return r
-    kpis = services.kpis_landing(request.user)
+    # LC 2026-07-25: botones de periodo (año en curso + meses con información).
+    periodo = services.resolver_periodo(request.GET.get("periodo"))
+    kpis = services.kpis_landing(request.user, desde=periodo["desde"], hasta=periodo["hasta"])
     kpis_fmt = {
         "ingresos_mes_fmt": f"${kpis['ingresos_mes']:,.2f}",
         "egresos_mes_fmt": f"${kpis['egresos_mes']:,.2f}",
@@ -63,11 +65,15 @@ def landing(request):
         "cxp_total_fmt": f"${kpis['cxp_total']:,.2f}",
         **kpis,
     }
-    # S-LC-Feedback-V5 c8: metas KPI con barra de progreso.
+    # S-LC-Feedback-V5 c8: metas KPI con barra de progreso. Las metas son
+    # mensuales, así que solo aplican cuando se está viendo el mes en curso.
     from apps.taller_home.services_meta_kpi import enriquecer_con_meta
-    meta_ingresos = enriquecer_con_meta({"valor": kpis_fmt["ingresos_mes_fmt"]}, "ingresos-mes", valor_numerico=float(kpis["ingresos_mes"]))
-    meta_egresos = enriquecer_con_meta({"valor": kpis_fmt["egresos_mes_fmt"]}, "egresos-mes", valor_numerico=float(kpis["egresos_mes"]))
-    meta_utilidad = enriquecer_con_meta({"valor": kpis_fmt["utilidad_mes_fmt"]}, "utilidad-mes", valor_numerico=float(kpis["utilidad_mes"]))
+    if periodo["es_mes_actual"]:
+        meta_ingresos = enriquecer_con_meta({"valor": kpis_fmt["ingresos_mes_fmt"]}, "ingresos-mes", valor_numerico=float(kpis["ingresos_mes"]))
+        meta_egresos = enriquecer_con_meta({"valor": kpis_fmt["egresos_mes_fmt"]}, "egresos-mes", valor_numerico=float(kpis["egresos_mes"]))
+        meta_utilidad = enriquecer_con_meta({"valor": kpis_fmt["utilidad_mes_fmt"]}, "utilidad-mes", valor_numerico=float(kpis["utilidad_mes"]))
+    else:
+        meta_ingresos = meta_egresos = meta_utilidad = {}
     # Sparklines 30 días — JSON inline en data-series del partial.
     import json as _json
     series = services.series_diarias_30d()
@@ -86,6 +92,8 @@ def landing(request):
         "spark_egresos": spark_egresos,
         "spark_utilidad": spark_utilidad,
         "gastos_no_registrados": _conteo_gastos_no_registrados(),
+        "periodo": periodo,
+        "periodos": services.periodos_disponibles(),
     })
 
 
@@ -160,6 +168,23 @@ def ingresos_lista(request):
     })
 
 
+def _item_proyecto(proyecto) -> dict:
+    """Item de info card con el proyecto como HIPERVÍNCULO (LC 2026-07-25).
+
+    Se lee el nombre; el código queda como referencia pequeña. Ambos llevan al
+    proyecto — desde un ingreso/egreso quieres saltar a él de un clic.
+    """
+    if proyecto is None:
+        return {"label": "Proyecto", "value": "—"}
+    return {"label": "Proyecto", "value_html": format_html(
+        '<a href="{}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{}</a>'
+        ' <span class="font-mono text-xs text-gray-400">{}</span>',
+        reverse("proyectos-detalle", args=[proyecto.pk]),
+        proyecto.nombre or proyecto.codigo,
+        proyecto.codigo,
+    )}
+
+
 @login_required
 def ingreso_detalle(request, pk):
     if (r := _gate(request)) is not None:
@@ -167,7 +192,7 @@ def ingreso_detalle(request, pk):
     ingreso = get_object_or_404(Ingreso, pk=pk)
     info_clasificacion = [
         {"label": "Cliente", "value": ingreso.cliente.razon_social if ingreso.cliente else "—"},
-        {"label": "Proyecto", "value": f"{ingreso.proyecto.codigo} · {ingreso.proyecto.nombre}" if ingreso.proyecto else "—"},
+        _item_proyecto(ingreso.proyecto),
         {"label": "Método", "value": ingreso.get_metodo_display()},
         {"label": "Ref. externa", "value": ingreso.referencia_externa or "—"},
     ]
@@ -407,7 +432,7 @@ def egreso_detalle(request, pk):
     }.get(egreso.estado_pago, "badge-gray")
     info_clasificacion = [
         {"label": "Centro de costo", "value": egreso.centro_de_costo.nombre},
-        {"label": "Proyecto", "value": f"{egreso.proyecto.codigo} · {egreso.proyecto.nombre}" if egreso.proyecto else "—"},
+        _item_proyecto(egreso.proyecto),
         {"label": "Origen", "value": egreso.get_origen_display() + (f" · confianza {egreso.confianza_ia:.2f}" if egreso.confianza_ia else "")},
     ]
     info_pago = [
@@ -887,7 +912,10 @@ def por_pagar(request):
     if (r := _gate(request)) is not None:
         return r
     estado = request.GET.get("estado_pago") or ""
-    qs = services.cuentas_por_pagar_qs().select_related("pagado_por")
+    # `proyecto`/`centro_de_costo` van en el select_related porque la lista
+    # muestra el NOMBRE del proyecto (LC 2026-07-25) — evita N+1.
+    qs = services.cuentas_por_pagar_qs().select_related(
+        "pagado_por", "proyecto", "centro_de_costo", "proveedor")
     if estado:
         qs = qs.filter(estado_pago=estado)
     qs = qs.order_by("fecha")

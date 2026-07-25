@@ -35,9 +35,19 @@
         <ul class="divide-y divide-gray-200 dark:divide-gray-800">
             {% for e in egresos %}
             <li class="flex items-center justify-between px-5 py-3 text-sm">
-                <div>
-                    <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.codigo }}</a>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ e.fecha|date:"Y-m-d" }} · {{ e.proveedor_nombre|default:e.centro_de_costo.nombre }} · <span class="badge {% if e.estado_pago == 'por_reembolsar' %}badge-warning{% else %}badge-gray{% endif %}">{{ e.get_estado_pago_display }}</span></p>
+                {% comment %}LC 2026-07-25 (Oscar): se lee el NOMBRE del proyecto
+                (el código del egreso baja a la línea de detalle).{% endcomment %}
+                <div class="min-w-0">
+                    {% if e.proyecto_id %}
+                    <a href="{% url 'proyectos-detalle' e.proyecto_id %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ e.proyecto.nombre|default:e.proyecto.codigo }}</a>
+                    {% else %}
+                    <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ e.descripcion|truncatechars:40 }}</a>
+                    {% endif %}
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        <a href="{% url 'tesoreria:egreso-detalle' e.pk %}" class="font-mono hover:text-brand-600 dark:hover:text-brand-400">{{ e.codigo }}</a>
+                        · {{ e.fecha|date:"Y-m-d" }} · {{ e.proveedor_nombre|default:e.centro_de_costo.nombre }}
+                        · <span class="badge {% if e.estado_pago == 'por_reembolsar' %}badge-warning{% else %}badge-gray{% endif %}">{{ e.get_estado_pago_display }}</span>
+                    </p>
                 </div>
                 <span class="font-semibold text-error-600 dark:text-error-400">{{ e.monto|dinero }}</span>
             </li>

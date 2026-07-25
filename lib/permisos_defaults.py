@@ -90,7 +90,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "dictado": list(TODO_DICTADO),
         "contaduria": list(TODO_CONTADURIA),
         "catalogo": list(TODO_CATALOGO),
-        "cotizaciones": list(TODO_COTIZACIONES),
+        "cotizaciones": [*TODO_COTIZACIONES, "eliminar"],
         "facturacion": list(TODO_FACTURACION),
         "chalan": list(TODO_CHALAN),
         "checador": list(TODO_CHECADOR),
@@ -190,7 +190,10 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "dictado": list(TODO_DICTADO),
     "contaduria": list(TODO_CONTADURIA),
     "catalogo": list(TODO_CATALOGO),
-    "cotizaciones": list(TODO_COTIZACIONES),
+    # "eliminar" (borrado permanente de una cotización anulada o en borrador) NO
+    # está en TODO_COTIZACIONES a propósito: destructivo, solo super_admin lo trae
+    # por default (failsafe) + delegable por usuario.
+    "cotizaciones": [*TODO_COTIZACIONES, "eliminar"],
     "facturacion": list(TODO_FACTURACION),
     "chalan": list(TODO_CHALAN),
     "checador": list(TODO_CHECADOR),

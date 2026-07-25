@@ -37,6 +37,12 @@ def emitir_creada(cot: Cotizacion, actor):
     _emitir("cotizacion.creada", cot, actor, {"titulo": cot.titulo})
 
 
+def emitir_eliminada(cot: Cotizacion, actor):
+    """Borrado permanente (LC 2026-07-25). Se emite ANTES del delete para que el
+    payload conserve código/cliente/estado."""
+    _emitir("cotizacion.eliminada", cot, actor, {"titulo": cot.titulo})
+
+
 def construir_html_pdf(cot: Cotizacion) -> str:
     """Renderiza el HTML imprimible de la cotización (template `pdf.html`)."""
     from django.template.loader import render_to_string

@@ -46,8 +46,10 @@ def enviar_campana(campana: CampanaCorreo, clientes, actor) -> CampanaCorreo:
         except Exception as exc:  # noqa: BLE001 — un destinatario no aborta el lote
             ok, error = False, str(exc)[:300]
         CampanaEnvio.objects.create(
-            campana=campana, cliente=cliente, email=email,
-            estado="enviado" if ok else "fallido", error=error,
+            # `cliente_nombre` es snapshot: el registro del envío sobrevive
+            # aunque el cliente se elimine después (LC 2026-07-25).
+            campana=campana, cliente=cliente, cliente_nombre=cliente.razon_social,
+            email=email, estado="enviado" if ok else "fallido", error=error,
         )
         if ok:
             enviados += 1

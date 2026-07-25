@@ -40,7 +40,16 @@ class CampanaCorreo(models.Model):
 
 class CampanaEnvio(models.Model):
     campana = models.ForeignKey(CampanaCorreo, on_delete=models.CASCADE, related_name="envios")
-    cliente = models.ForeignKey("cartera.Cliente", on_delete=models.PROTECT, related_name="envios_campana")
+    # LC 2026-07-25 (Oscar): el registro del envío se CONSERVA aunque el cliente
+    # se elimine — por eso `SET_NULL` + `cliente_nombre` como texto. Antes era
+    # PROTECT y dejaba clientes archivados imposibles de borrar, sin pantalla
+    # alguna para tocar estos registros.
+    cliente = models.ForeignKey(
+        "cartera.Cliente", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="envios_campana",
+    )
+    # Nombre del cliente al momento del envío (snapshot). Sobrevive al borrado.
+    cliente_nombre = models.CharField(max_length=200, blank=True, default="")
     email = models.EmailField()
     estado = models.CharField(max_length=10, choices=ESTADOS_ENVIO, default="enviado")
     error = models.CharField(max_length=300, blank=True, default="")

@@ -65,7 +65,14 @@
                     <a href="{{ f.url_detalle }}" class="text-brand-600 hover:underline dark:text-brand-400">{{ f.codigo }}</a>
                 </td>
                 <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ f.cliente }}</td>
-                <td class="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ f.proyecto_codigo|default:"—" }}</td>
+                {% comment %}LC 2026-07-25 (Oscar): el NOMBRE del proyecto es lo
+                que se lee; el código queda como referencia pequeña.{% endcomment %}
+                <td class="px-3 py-2 text-gray-700 dark:text-gray-200">
+                    {% if f.proyecto_nombre %}
+                        {% if f.proyecto_url %}<a href="{{ f.proyecto_url }}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ f.proyecto_nombre }}</a>{% else %}{{ f.proyecto_nombre }}{% endif %}
+                        {% if f.proyecto_codigo and f.proyecto_codigo != f.proyecto_nombre %}<span class="ml-1 font-mono text-[11px] text-gray-400 dark:text-gray-500">{{ f.proyecto_codigo }}</span>{% endif %}
+                    {% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}
+                </td>
                 <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ f.fecha_emision|date:"Y-m-d"|default:"—" }}</td>
                 <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{{ f.fecha_vencimiento|date:"Y-m-d"|default:"—" }}</td>
                 <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{{ f.saldo|dinero }}</td>

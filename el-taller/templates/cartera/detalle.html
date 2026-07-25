@@ -58,6 +58,75 @@
             <div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos todavía" descripcion="Este cliente aún no tiene proyectos asignados." icono="folder" %}</div>
             {% endfor %}
         </section>
+
+        {% comment %}LC 2026-07-25 (Oscar): en la ficha del cliente se ve TODO lo
+        que tiene ligado — cotizaciones, facturas e ingresos. Antes no se veían en
+        ningún lado, y eran justo lo que impedía eliminar al cliente.{% endcomment %}
+        <section>
+            <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Cotizaciones <span class="text-sm font-normal text-gray-400">{{ ligado.cotizaciones|length }}</span></h2>
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <div class="overflow-x-auto">
+                    <table class="min-w-[520px] text-sm md:min-w-full">
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                            {% for c in ligado.cotizaciones %}
+                            <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" data-href="{% url 'cotizaciones:detalle' c.pk %}">
+                                <td class="px-5 py-3"><a href="{% url 'cotizaciones:detalle' c.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ c.codigo }}</a>{% if c.version %} <span class="text-xs text-gray-400">v{{ c.version }}</span>{% endif %}</td>
+                                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if c.proyecto_id %}{{ c.proyecto.nombre|default:c.proyecto.codigo }}{% else %}{{ c.titulo|default:"—" }}{% endif %}</td>
+                                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ c.get_estado_display }}</td>
+                                <td class="px-5 py-3 text-right text-gray-500 dark:text-gray-400">{{ c.fecha_emision|date:"d M Y"|default:"—" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td class="px-5 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin cotizaciones.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Facturas <span class="text-sm font-normal text-gray-400">{{ ligado.facturas|length }}</span></h2>
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <div class="overflow-x-auto">
+                    <table class="min-w-[520px] text-sm md:min-w-full">
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                            {% for f in ligado.facturas %}
+                            <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" data-href="{% url 'facturacion:detalle' f.pk %}">
+                                <td class="px-5 py-3"><a href="{% url 'facturacion:detalle' f.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ f.folio|default:f.codigo }}</a></td>
+                                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if f.proyecto_id %}{{ f.proyecto.nombre|default:f.proyecto.codigo }}{% else %}{{ f.concepto|default:"—"|truncatechars:40 }}{% endif %}</td>
+                                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.get_estado_display }}</td>
+                                <td class="px-5 py-3 text-right tabular-nums text-gray-800 dark:text-gray-100">{{ f.total|dinero }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td class="px-5 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin facturas.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Ingresos <span class="text-sm font-normal text-gray-400">{{ ligado.ingresos|length }}</span></h2>
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <div class="overflow-x-auto">
+                    <table class="min-w-[520px] text-sm md:min-w-full">
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                            {% for i in ligado.ingresos %}
+                            <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if i.anulado %}opacity-50{% endif %}" data-href="{% url 'tesoreria:ingreso-detalle' i.pk %}">
+                                <td class="px-5 py-3"><a href="{% url 'tesoreria:ingreso-detalle' i.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ i.codigo }}</a>{% if i.anulado %} <span class="text-xs text-gray-400">(anulado)</span>{% endif %}</td>
+                                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if i.proyecto_id %}{{ i.proyecto.nombre|default:i.proyecto.codigo }}{% else %}{{ i.descripcion|default:"—"|truncatechars:40 }}{% endif %}</td>
+                                <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ i.fecha|date:"d M Y" }}</td>
+                                <td class="px-5 py-3 text-right tabular-nums text-gray-800 dark:text-gray-100">{{ i.monto|dinero }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td class="px-5 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Sin ingresos registrados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </div>
 
     <aside class="space-y-6">

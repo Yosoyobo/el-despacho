@@ -29,7 +29,7 @@
                 <td class="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">{{ c.desde|date:"Y-m-d" }} → {{ c.hasta|date:"Y-m-d" }}</td>
                 <td class="px-3 py-2 text-right {% if c.utilidad < 0 %}text-error-700 dark:text-error-400{% else %}text-success-700 dark:text-success-400{% endif %}">{{ c.utilidad|dinero }}</td>
                 <td class="px-3 py-2">{% if c.asiento %}<a href="{% url 'contaduria:asiento-detalle' c.asiento.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ c.asiento.codigo }}</a>{% else %}—{% endif %}</td>
-                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ c.creado_por.nombre_completo|default:c.creado_por.email|default:"—" }}</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{% firstof c.creado_por.nombre_completo c.creado_por.email "—" %}</td>
                 <td class="px-3 py-2">
                     {% if c.reabierto %}
                         <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">Reabierto</span>
