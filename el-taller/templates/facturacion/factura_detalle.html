@@ -4,14 +4,14 @@
 {% block contenido %}
 
 {% breadcrumb_items "Facturación" "/facturacion/" fac.folio_display as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=fac.folio_display subtitulo=fac.concepto|default:fac.titulo breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=fac.folio_display subtitulo=fac.proyecto.nombre|default:fac.concepto|default:fac.titulo breadcrumb_items=breadcrumb_items back_url="/facturacion/" back_label="Facturación" %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
     {% with estado=fac.estado_visible %}
     <span class="badge {% if estado == 'cobrada_total' %}badge-success{% elif estado == 'cancelada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'emitida' or estado == 'cobrada_parcial' %}badge-brand{% else %}badge-gray{% endif %}">{{ fac.estado_etiqueta }}</span>
     {% endwith %}
     <span class="badge badge-gray font-mono">{{ fac.codigo }}</span>
-    {% if fac.proyecto %}<span class="badge badge-gray">{{ fac.proyecto.codigo }}</span>{% endif %}
+    {% if fac.proyecto %}<a href="{% url 'proyectos-detalle' fac.proyecto.pk %}" class="badge badge-gray hover:text-brand-600 dark:hover:text-brand-400">{{ fac.proyecto.nombre|default:fac.proyecto.codigo }}</a>{% endif %}
     {% if fac.cotizacion_origen %}<span class="badge badge-gray">desde {{ fac.cotizacion_origen.codigo }}</span>{% endif %}
 </div>
 

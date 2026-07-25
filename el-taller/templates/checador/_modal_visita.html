@@ -77,7 +77,7 @@
                     <label for="visita-tarea" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Tarea ligada (opcional)</label>
                     <select name="tarea" id="visita-tarea">
                         <option value="">— Ninguna —</option>
-                        {% for t in tareas %}<option value="{{ t.pk }}">{{ t.proyecto.codigo }} · {{ t.titulo }}</option>{% endfor %}
+                        {% for t in tareas %}<option value="{{ t.pk }}">{{ t.proyecto.nombre|default:t.proyecto.codigo }} · {{ t.titulo }}</option>{% endfor %}
                     </select>
                 </div>
 

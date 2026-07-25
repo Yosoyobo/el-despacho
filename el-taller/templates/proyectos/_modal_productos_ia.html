@@ -9,7 +9,7 @@ HX-Redirect al detalle. "Ir al proyecto" navega sin agregar nada.{% endcomment %
         <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
             <div class="min-w-0">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Productos del proyecto</h2>
-                <p class="text-xs text-success-600 dark:text-success-400">✓ Proyecto {{ proyecto.codigo }} creado.</p>
+                <p class="text-xs text-success-600 dark:text-success-400">✓ Proyecto {{ proyecto.nombre|default:proyecto.codigo }} creado.</p>
             </div>
             <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>

@@ -5,6 +5,33 @@
 
 ---
 
+## Novedades — Resumen de actividad del taller en un clic (25 de julio de 2026 — tercera entrega)
+
+- **Nuevo botón «Resumir actividad» en el recuadro de El Chalán** (Dashboard).
+  Ábrelo y te muestra, sin salir de la página, **todo lo que está pendiente**
+  del taller, en texto simple y listo para copiar y pegar:
+  - **URGENTES** — pendientes de todo el equipo marcados como prioridad alta o
+    que ya se pasaron de fecha, con las fechas más cercanas hasta arriba.
+  - **Una sección por persona** (ALEX, JORGE…) con lo que trae asignado.
+  - **MISIONES** — las entregas y recolecciones que siguen abiertas, con su
+    runner (o "sin runner" si falta asignarlo).
+  - **TIZAYUCA** — proyectos vigentes que llevan producto de Simil Cuero Plymouth.
+  - **FACTURAS X EMITIR** — proyectos ya confirmados que todavía no tienen
+    factura ligada.
+  - **COTIZACIONES** — proyectos que siguen en "por cotizar".
+  - **FACTURAS X COBRAR** — facturas emitidas con saldo pendiente.
+
+  El reporte se arma con datos del sistema (no es una opinión de la IA, así que
+  no cuesta nada y es exacto) y respeta tus permisos: si no ves Facturación,
+  esas secciones no aparecen. El botón **Copiar** se lo lleva completo al
+  portapapeles.
+- **El recuadro de El Chalán quedó más limpio:** el texto de ayuda explica mejor
+  para qué sirve, el botón de mandar ahora dice simplemente **Enviar**, y el
+  enlace al chat completo se redujo a un **ícono de globo** en la esquina.
+- **El nombre del proyecto manda sobre el código.** En cotizaciones, facturas,
+  ingresos, egresos, El Checador y las ventanas de proyecto verás el **nombre**
+  del proyecto por delante; el código (LC-####) queda como referencia chica.
+
 ## Novedades — Clientes que por fin se pueden eliminar, ficha completa y Tesorería por mes (25 de julio de 2026 — segunda entrega)
 
 - **Ya se puede eliminar una cotización.** Las cotizaciones **anuladas** (y los
@@ -2600,7 +2627,9 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
 - **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
 - **Próximos eventos:** las siguientes entregas y tareas con fecha. Click en la tarjeta te lleva al calendario completo.
-- **Chatbot (Dictado al asistente):** una caja de texto donde le cuentas al asistente qué pasó (usa `@persona`, `#LC-0001` para un proyecto y `$cliente`). Él interpreta y te propone acciones a revisar antes de aplicarlas. Abajo tienes "Mi historial".
+- **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. El botón **Enviar** manda lo que escribiste; el **ícono de globo** de la esquina abre el chat completo.
+  - **Resumir actividad:** abre una ventana con **todo lo pendiente del taller** en texto simple, listo para copiar: **URGENTES** (prioridad alta o ya vencidos, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (proyectos con producto de Simil Cuero Plymouth), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada), **COTIZACIONES** (proyectos por cotizar) y **FACTURAS X COBRAR** (facturas emitidas con saldo). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
+  - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (se arma con datos, sin IA). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
 - **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. "Ver Kanban completo" abre el tablero con todas las columnas.
 - **Calendario:** el mes actual y el siguiente lado a lado, igual que la página de Calendario, con los eventos del día visibles.

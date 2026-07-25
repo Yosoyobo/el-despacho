@@ -1,10 +1,12 @@
 from django.urls import path
 
-from . import views, views_avatar, views_impersonar, views_kpi_custom, views_sidebar
+from . import views, views_avatar, views_impersonar, views_kpi_custom, views_resumen, views_sidebar
 
 urlpatterns = [
     path("", views.home, name="taller-home"),
     path("ping", views.ping, name="taller-ping"),
+    # «Resumir actividad» del recuadro de El Chalán en el Dashboard (LC 2026-07).
+    path("resumen/actividad/", views_resumen.resumen_actividad, name="taller-resumen-actividad"),
     # S-LC-Feedback-V8: impersonación de super_admin.
     path("impersonar/<int:pk>", views_impersonar.impersonar, name="impersonar"),
     path("impersonar/salir", views_impersonar.salir_impersonacion, name="impersonar-salir"),

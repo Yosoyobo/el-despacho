@@ -1,16 +1,20 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}{{ cot.codigo }} — Cotizaciones{% endblock %}
+{% block title %}{{ cot.proyecto.nombre|default:cot.codigo }} — Cotizaciones{% endblock %}
 {% block contenido %}
 
-{% breadcrumb_items "Cotizaciones" "/cotizaciones/" cot.codigo as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=cot.codigo subtitulo=cot.titulo breadcrumb_items=breadcrumb_items back_url="/cotizaciones/" back_label="Cotizaciones" %}
+{% comment %}LC 2026-07: el NOMBRE del proyecto es el titular; el código de la
+cotización baja a subtítulo (decisión Oscar: nombre > código, siempre).{% endcomment %}
+{% with titular=cot.proyecto.nombre|default:cot.titulo|default:cot.codigo %}
+{% breadcrumb_items "Cotizaciones" "/cotizaciones/" titular as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=titular subtitulo=cot.codigo breadcrumb_items=breadcrumb_items back_url="/cotizaciones/" back_label="Cotizaciones" %}
+{% endwith %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
     {% with estado=cot.estado_visible %}
     <span class="badge {% if estado == 'aprobada' %}badge-success{% elif estado == 'rechazada' or estado == 'anulada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'enviada' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
     {% endwith %}
-    {% if cot.proyecto %}<span class="badge badge-gray">{{ cot.proyecto.codigo }}</span>{% endif %}
+    {% if cot.proyecto %}<a href="{% url 'proyectos-detalle' cot.proyecto.pk %}" class="badge badge-gray hover:text-brand-600 dark:hover:text-brand-400">{{ cot.proyecto.nombre|default:cot.proyecto.codigo }}</a>{% endif %}
 </div>
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
