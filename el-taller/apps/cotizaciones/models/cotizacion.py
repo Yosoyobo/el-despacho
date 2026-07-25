@@ -375,6 +375,14 @@ class CotizacionItem(models.Model):
         on_delete=models.SET_NULL,
         related_name="lineas_cotizacion",
     )
+    # LC 2026-07: el NOMBRE del concepto tal como se congeló al generar la
+    # versión (el alias del proyecto si lo hubo). Es el título numerado del PDF
+    # y la columna «Concepto» del desglose. Vacío en las líneas viejas, que
+    # guardaban el nombre dentro de `descripcion` — ver `concepto_visible`.
+    concepto = models.CharField(max_length=150, blank=True, default="")
+    # Bloque multilínea con las especificaciones que lee el cliente (piezas,
+    # material, color, detalles de branding). Se genera al crear la versión y
+    # se edita a mano en la página de la cotización.
     descripcion = models.TextField(blank=True, default="")
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
@@ -397,7 +405,31 @@ class CotizacionItem(models.Model):
         ordering = ["cotizacion", "orden", "pk"]
 
     def __str__(self) -> str:
-        return f"{self.cotizacion.codigo} · {self.descripcion[:40]}"
+        return f"{self.cotizacion.codigo} · {self.concepto_visible[:40]}"
+
+    @property
+    def concepto_visible(self) -> str:
+        """Nombre del concepto. Retro-compatible: las líneas viejas guardaban el
+        nombre como primer (y único) renglón de `descripcion`."""
+        propio = (self.concepto or "").strip()
+        if propio:
+            return propio
+        return ((self.descripcion or "").strip().splitlines() or [""])[0].strip()
+
+    @property
+    def detalle_lineas(self) -> list[str]:
+        """Renglones de especificaciones que van bajo el título en el PDF.
+
+        Si la línea no tiene `concepto` propio (formato viejo), el primer
+        renglón de `descripcion` ES el nombre y no se repite como detalle.
+        """
+        crudo = (self.descripcion or "").strip()
+        if not crudo:
+            return []
+        renglones = crudo.splitlines()
+        if not (self.concepto or "").strip():
+            renglones = renglones[1:]
+        return [r.strip() for r in renglones if r.strip()]
 
     @property
     def unidad_label(self) -> str:

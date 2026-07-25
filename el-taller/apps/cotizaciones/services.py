@@ -217,6 +217,7 @@ def duplicar(cot: Cotizacion, actor) -> Cotizacion:
                 cotizacion=nueva,
                 orden=it.orden,
                 servicio=it.servicio,
+                concepto=it.concepto,
                 descripcion=it.descripcion,
                 cantidad=it.cantidad,
                 unidad=it.unidad,
@@ -321,6 +322,7 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
 
     from ajustes.models.tasa import TasaImpositiva
 
+    from . import descripcion
     from .models import CotizacionImpuesto, CotizacionItem, estados_cot_activos
 
     with transaction.atomic():
@@ -350,19 +352,22 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             ),
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
+        # LC 2026-07: las descripciones escritas a mano en la versión anterior
+        # se HEREDAN (nadie quiere reescribir el branding en cada versión).
+        indice = descripcion.indice_previo(ultima_cot)
         for i, pp in enumerate(proyecto.productos_incluidos):
-            # LC 2026-07: el cliente ve el nombre del producto EN ESTE PROYECTO
-            # (el alias, si se le puso); el FK al catálogo se conserva aparte.
-            # La higiene de «Servicio · Variación» vive en `nombre_catalogo`.
-            nombre = pp.nombre_visible
-            # LC 2026-07: la NOTA interna del producto NO se copia a la línea de
-            # la cotización (no debe salir en el documento final al cliente).
+            # El cliente ve el nombre del producto EN ESTE PROYECTO (el alias, si
+            # se le puso); el FK al catálogo se conserva aparte. La higiene de
+            # «Servicio · Variación» vive en `nombre_catalogo`.
+            # La NOTA interna del producto NO se copia (no sale en el documento).
             CotizacionItem.objects.create(
                 cotizacion=cot,
                 orden=i,
                 servicio=pp.servicio if pp.servicio_id else None,
                 variacion=pp.variacion if pp.variacion_id else None,
-                descripcion=nombre,
+                concepto=pp.nombre_visible[:150],
+                descripcion=descripcion.descripcion_para(
+                    pp, descripcion.heredado(indice, pp)),
                 cantidad=Decimal(str(pp.cantidad)),
                 precio_unitario=pp.precio_efectivo,
             )

@@ -188,7 +188,7 @@ def _autocompletar_lineas_desde_catalogo(formset):
             continue
         servicio = form.cleaned_data.get("servicio")
         variacion = form.cleaned_data.get("variacion")
-        if servicio and not (form.cleaned_data.get("descripcion") or "").strip():
+        if servicio and not (form.cleaned_data.get("concepto") or "").strip():
             # Fase 3 §1.4 (higiene): "Producto · Variación", pero sin duplicar el
             # nombre si la variación ya lo repite (evita "Playera · Playera Roja"
             # cíclico).
@@ -196,7 +196,9 @@ def _autocompletar_lineas_desde_catalogo(formset):
             vnom = (variacion.nombre if variacion else "") or ""
             if vnom and vnom.lower() not in nombre.lower():
                 nombre = f"{nombre} · {vnom}"
-            form.instance.descripcion = nombre
+            # LC 2026-07: el nombre va al `concepto`; `descripcion` queda para
+            # las especificaciones que lee el cliente.
+            form.instance.concepto = nombre[:150]
         precio = form.cleaned_data.get("precio_unitario") or Decimal("0")
         if precio == 0 and variacion is not None:
             costo = getattr(variacion, "costo", None)

@@ -82,7 +82,7 @@ class TestAlias:
         linea.save(update_fields=["nombre_proyecto"])
         cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
         assert cot.items.count() == 1
-        assert "TShirt Modelo 'Janet'" in cot.items.first().descripcion
+        assert cot.items.first().concepto == "TShirt Modelo 'Janet'"
 
     def test_kanban_busca_por_alias_y_por_nombre_de_catalogo(self, client, entorno):
         """Renombrar no debe romper «¿dónde uso la playera de Crea Blanks?».
@@ -172,6 +172,109 @@ class TestBotonAlias:
         linea.refresh_from_db()
         assert linea.nombre_proyecto == ""
         assert linea.nombre_visible == "TShirt Oversize Color"
+
+
+# ── Descripción: esqueleto, congelado y herencia ─────────────────────────
+
+class TestDescripcion:
+
+    def test_esqueleto_lleva_piezas_y_lo_del_catalogo(self, entorno):
+        from apps.cotizaciones import descripcion
+        srv = entorno["srv"]
+        srv.descripcion_default = "100% algodón, oversize heavyweight 250 gsm"
+        srv.save(update_fields=["descripcion_default"])
+        texto = descripcion.esqueleto(entorno["linea"])
+        assert texto.splitlines() == [
+            "25 pz",
+            "100% algodón, oversize heavyweight 250 gsm",
+        ]
+
+    def test_esqueleto_sin_descripcion_de_catalogo_es_solo_piezas(self, entorno):
+        from apps.cotizaciones import descripcion
+        assert descripcion.esqueleto(entorno["linea"]) == "25 pz"
+
+    def test_la_merma_no_se_cotiza(self, entorno):
+        """Las piezas del documento son las que se cobran, sin merma."""
+        from apps.cotizaciones import descripcion
+        linea = entorno["linea"]
+        linea.merma = 5
+        assert descripcion.esqueleto(linea).startswith("25 pz")
+
+    def test_refrescar_piezas_preserva_el_parentesis(self, entorno):
+        """Lo que Oscar escribió a mano entre paréntesis se respeta."""
+        from apps.cotizaciones import descripcion
+        linea = entorno["linea"]
+        linea.cantidad = 110
+        texto = descripcion.refrescar_piezas(
+            "105 pz (3 colores, 35 pz c/u)\nGorras de gabardina", linea)
+        assert texto.splitlines()[0] == "110 pz (3 colores, 35 pz c/u)"
+        assert "Gorras de gabardina" in texto
+
+    def test_refrescar_piezas_antepone_si_no_habia_conteo(self, entorno):
+        from apps.cotizaciones import descripcion
+        texto = descripcion.refrescar_piezas("Gorras de gabardina", entorno["linea"])
+        assert texto.splitlines() == ["25 pz", "Gorras de gabardina"]
+
+    def test_la_siguiente_version_hereda_el_texto_editado(self, entorno):
+        """El branding escrito a mano en la v1 no se reescribe en la v2."""
+        from apps.cotizaciones import services
+        v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it1 = v1.items.first()
+        it1.descripcion = (
+            "25 pz (2 tallas)\n"
+            "100% algodón oversize\n"
+            "Con impresión en serigrafía 7 x 4 con tintas de descarga"
+        )
+        it1.save(update_fields=["descripcion"])
+        v2 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it2 = v2.items.first()
+        assert "serigrafía 7 x 4" in it2.descripcion
+        assert "(2 tallas)" in it2.descripcion
+
+    def test_al_heredar_se_refrescan_las_piezas(self, entorno):
+        from apps.cotizaciones import services
+        from apps.los_proyectos.models import ProyectoProducto
+        v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it1 = v1.items.first()
+        it1.descripcion = "25 pz (2 tallas)\nCon bordado frontal"
+        it1.save(update_fields=["descripcion"])
+        ProyectoProducto.objects.filter(pk=entorno["linea"].pk).update(cantidad=40)
+        v2 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        texto = v2.items.first().descripcion
+        assert texto.splitlines()[0] == "40 pz (2 tallas)"
+        assert "Con bordado frontal" in texto
+
+    def test_el_texto_de_una_version_no_cambia_al_generar_otra(self, entorno):
+        """Congelado por versión: la v1 queda tal cual quedó."""
+        from apps.cotizaciones import services
+        v1 = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it1 = v1.items.first()
+        it1.descripcion = "25 pz\nTexto de la v1"
+        it1.save(update_fields=["descripcion"])
+        services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it1.refresh_from_db()
+        assert it1.descripcion == "25 pz\nTexto de la v1"
+
+    def test_concepto_visible_es_retrocompatible(self, entorno):
+        """Líneas viejas: el nombre vivía como único renglón de descripcion."""
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it = cot.items.first()
+        it.concepto = ""
+        it.descripcion = "Gorras"
+        it.save(update_fields=["concepto", "descripcion"])
+        assert it.concepto_visible == "Gorras"
+        # Y no se repite como especificación debajo del título.
+        assert it.detalle_lineas == []
+
+    def test_detalle_lineas_ignora_renglones_vacios(self, entorno):
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it = cot.items.first()
+        it.concepto = "Gorras"
+        it.descripcion = "105 pz\n\n  Color: Beige  \n"
+        it.save(update_fields=["concepto", "descripcion"])
+        assert it.detalle_lineas == ["105 pz", "Color: Beige"]
 
 
 # ── Interruptores del documento ──────────────────────────────────────────

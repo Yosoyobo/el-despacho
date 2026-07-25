@@ -97,14 +97,20 @@ class CotizacionItemForm(forms.ModelForm):
         # Sprint Fiscal 2026-07 (#12): unidad consolidada a 'pz' (default del
         # modelo) — sin selector por línea.
         fields = [
-            "orden", "servicio", "variacion", "descripcion",
+            "orden", "servicio", "variacion", "concepto", "descripcion",
             "cantidad", "precio_unitario", "descuento_porcentaje",
         ]
         widgets = {
+            "concepto": forms.TextInput(attrs={"placeholder": "Nombre del concepto"}),
             "descripcion": forms.Textarea(attrs={"data-referencias": "1", "rows": 2}),
             "orden": forms.NumberInput(attrs={"min": 0}),
         }
-        labels = {"servicio": "Producto"}
+        labels = {
+            "servicio": "Producto",
+            "concepto": "Concepto",
+            # LC 2026-07: el bloque multilínea que lee el cliente en el PDF.
+            "descripcion": "Especificaciones",
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -132,9 +138,18 @@ class CotizacionItemForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        # Si no hay servicio elegido, exige descripción libre.
-        if not cleaned.get("servicio") and not (cleaned.get("descripcion") or "").strip():
-            self.add_error("descripcion", "Elige un producto del catálogo o escribe una descripción.")
+        # Sin producto del catálogo hace falta al menos un nombre. Se acepta en
+        # `concepto` (nuevo) o en `descripcion` (formato viejo, que guardaba el
+        # nombre ahí) para no invalidar las cotizaciones capturadas antes.
+        sin_nombre = (
+            not (cleaned.get("concepto") or "").strip()
+            and not (cleaned.get("descripcion") or "").strip()
+        )
+        if not cleaned.get("servicio") and sin_nombre:
+            self.add_error(
+                "concepto",
+                "Elige un producto del catálogo o escribe el nombre del concepto.",
+            )
         return cleaned
 
     def clean_cantidad(self):
