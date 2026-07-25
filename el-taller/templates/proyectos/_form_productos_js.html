@@ -140,18 +140,39 @@
         // (ticket UX 2026-07: con «pz» y SIN el proveedor del nombre).
         const resumen = card.querySelector('[data-resumen]');
         if (resumen) {
-            const sel = card.querySelector('select[name$="-servicio"]');
-            let nombre = 'Nuevo producto';
-            if (sel && sel.value) {
-                const d = SERVICIOS_DATOS[sel.value];
-                if (d && d.nombre) nombre = d.nombre;
-                else if (sel.selectedIndex >= 0) {
-                    const txt = (sel.options[sel.selectedIndex].text || '').trim();
-                    if (txt) nombre = txt.split(' - ')[0].trim();  // sin " - Proveedor"
-                }
-            }
-            resumen.textContent = (cant || 0) + ' pz - ' + nombre + ' - ' + fmt(precioEfectivo(card));
+            resumen.textContent = (cant || 0) + ' pz - ' + nombreVisible(card) + ' - ' + fmt(precioEfectivo(card));
         }
+        sincronizarOrigenAlias(card);
+    }
+    // Nombre del producto tal como está en el CATÁLOGO (lo que se compra).
+    function nombreCatalogo(card) {
+        const sel = card.querySelector('select[name$="-servicio"]');
+        if (!sel || !sel.value) return '';
+        const d = SERVICIOS_DATOS[sel.value];
+        if (d && d.nombre) return d.nombre;
+        if (sel.selectedIndex >= 0) {
+            const txt = (sel.options[sel.selectedIndex].text || '').trim();
+            if (txt) return txt.split(' - ')[0].trim();  // sin " - Proveedor"
+        }
+        return '';
+    }
+    // LC 2026-07: lo que se muestra = el alias del proyecto si lo hay, si no el
+    // del catálogo. Espeja `ProyectoProducto.nombre_visible` del backend.
+    function nombreVisible(card) {
+        const alias = card.querySelector('[data-alias-input]');
+        const propio = alias ? (alias.value || '').trim() : '';
+        return propio || nombreCatalogo(card) || 'Nuevo producto';
+    }
+    // La línea chica «usa: X» solo aparece cuando hay alias — es la que deja ver
+    // de qué está hecho el producto renombrado.
+    function sincronizarOrigenAlias(card) {
+        const origen = card.querySelector('[data-alias-origen]');
+        if (!origen) return;
+        const alias = card.querySelector('[data-alias-input]');
+        const propio = alias ? (alias.value || '').trim() : '';
+        const cat = nombreCatalogo(card);
+        origen.textContent = cat ? ('usa: ' + cat) : '';
+        origen.classList.toggle('hidden', !propio || !cat);
     }
     function prellenarServicio(sel) {
         const card = sel.closest('[data-card]'); if (!card) return;
@@ -295,8 +316,48 @@
         if (!card) return;
         if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) recalcular(card);
         if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { serializar(card); recalcular(card); }
+        // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
+        if (t.matches('[data-alias-input]')) recalcular(card);
     });
     document.addEventListener('click', function (e) {
+        // LC 2026-07 (Oscar): renombrar el producto SOLO para este proyecto.
+        // El botón revela el campo y lo prellena con el nombre del catálogo,
+        // que es el punto de partida natural para editarlo.
+        const aliasBtn = e.target.closest && e.target.closest('[data-alias-toggle]');
+        if (aliasBtn) {
+            const card = aliasBtn.closest('[data-card]');
+            const bloque = aliasBtn.closest('[data-alias-bloque]');
+            if (!card || !bloque) return;
+            const campo = bloque.querySelector('[data-alias-campo]');
+            const input = bloque.querySelector('[data-alias-input]');
+            if (!campo || !input) return;
+            const abierto = !campo.classList.contains('hidden');
+            if (abierto && !(input.value || '').trim()) {
+                campo.classList.add('hidden');  // se abrió sin escribir nada: recoger
+            } else if (!abierto) {
+                campo.classList.remove('hidden');
+                if (!(input.value || '').trim()) input.value = nombreCatalogo(card);
+                input.focus();
+                input.select();
+            }
+            recalcular(card);
+            autosave();
+            return;
+        }
+        // Volver al nombre del catálogo: limpia el alias y esconde el campo.
+        const aliasQuitar = e.target.closest && e.target.closest('[data-alias-quitar]');
+        if (aliasQuitar) {
+            const card = aliasQuitar.closest('[data-card]');
+            const bloque = aliasQuitar.closest('[data-alias-bloque]');
+            if (!card || !bloque) return;
+            const campo = bloque.querySelector('[data-alias-campo]');
+            const input = bloque.querySelector('[data-alias-input]');
+            if (input) input.value = '';
+            if (campo) campo.classList.add('hidden');
+            recalcular(card);
+            autosave();
+            return;
+        }
         // Botón "Hoy" debajo del calendario de inicio.
         const hoyBtn = e.target.closest && e.target.closest('[data-hoy]');
         if (hoyBtn) {
@@ -434,6 +495,11 @@
         tf.value = idx + 1;
         // LC 2026-07: «por pieza» nace encendida al añadir un producto.
         const _ipp = card.querySelector('.imp-por-pieza'); if (_ipp) _ipp.checked = true;
+        // Una tarjeta nueva nace SIN alias (si se clonó de una que sí lo tenía,
+        // el campo vendría visible con el nombre de la otra).
+        const _ali = card.querySelector('[data-alias-input]'); if (_ali) _ali.value = '';
+        const _alc = card.querySelector('[data-alias-campo]'); if (_alc) _alc.classList.add('hidden');
+        const _alo = card.querySelector('[data-alias-origen]'); if (_alo) _alo.classList.add('hidden');
         // LC Fase 2: las tarjetas nuevas nacen EXPANDIDAS (hay que llenarlas).
         const _body = card.querySelector('[data-card-body]'); if (_body) _body.classList.remove('hidden');
         const _chev = card.querySelector('[data-chevron]'); if (_chev) _chev.classList.remove('-rotate-90');

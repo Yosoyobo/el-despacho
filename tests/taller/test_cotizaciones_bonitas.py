@@ -101,6 +101,79 @@ class TestAlias:
         assert "tshirt oversize color" in html.lower()
 
 
+# ── El botón que renombra, en la tarjeta del proyecto ────────────────────
+
+def _post_autosave(client, p, pp, srv, alias=""):
+    """Simula el autosave HTMX del detalle (el formset de productos completo)."""
+    return client.post(f"/proyectos/{p.pk}/", {
+        "nombre": p.nombre, "cliente": p.cliente_id, "estado": p.estado,
+        "descripcion": "",
+        "productos-TOTAL_FORMS": "1", "productos-INITIAL_FORMS": "1",
+        "productos-MIN_NUM_FORMS": "0", "productos-MAX_NUM_FORMS": "1000",
+        "productos-0-id": pp.pk,
+        "productos-0-servicio": srv.pk,
+        "productos-0-nombre_proyecto": alias,
+        "productos-0-cantidad": "25",
+        "productos-0-merma": "0",
+        "productos-0-precio_unitario": "",
+        "productos-0-costo_unitario": "",
+        "productos-0-nota": "",
+        "productos-0-procesos_json": "[]",
+        "productos-0-incluir_en_calculo": "on",
+    }, follow=True, HTTP_HX_REQUEST="true")
+
+
+class TestBotonAlias:
+
+    def test_la_tarjeta_trae_el_boton_y_el_campo(self, client, entorno):
+        client.force_login(entorno["admin"])
+        resp = client.get(f"/proyectos/{entorno['p'].pk}/")
+        assert resp.status_code == 200
+        html = resp.content.decode()
+        assert "data-alias-toggle" in html
+        assert "data-alias-input" in html
+        assert "productos-0-nombre_proyecto" in html
+
+    # Ojo: el <template> de la tarjeta vacía siempre aporta un bloque con
+    # `hidden`, así que la señal fiable es la AUSENCIA/PRESENCIA de un bloque
+    # SIN `hidden` (que solo puede venir de una línea que ya tiene alias).
+    VISIBLE = 'data-alias-campo class="mb-1.5"'
+
+    def test_el_campo_nace_oculto_si_no_hay_alias(self, client, entorno):
+        client.force_login(entorno["admin"])
+        html = client.get(f"/proyectos/{entorno['p'].pk}/").content.decode()
+        assert 'data-alias-campo class="hidden' in html
+        assert self.VISIBLE not in html
+
+    def test_el_campo_nace_visible_si_ya_hay_alias(self, client, entorno):
+        linea = entorno["linea"]
+        linea.nombre_proyecto = "Janet"
+        linea.save(update_fields=["nombre_proyecto"])
+        client.force_login(entorno["admin"])
+        html = client.get(f"/proyectos/{entorno['p'].pk}/").content.decode()
+        assert self.VISIBLE in html
+        assert "usa: TShirt Oversize Color" in html
+
+    def test_el_autosave_guarda_el_alias(self, client, entorno):
+        client.force_login(entorno["admin"])
+        resp = _post_autosave(client, entorno["p"], entorno["linea"],
+                              entorno["srv"], alias="TShirt Modelo Janet")
+        assert resp.status_code == 200
+        entorno["linea"].refresh_from_db()
+        assert entorno["linea"].nombre_proyecto == "TShirt Modelo Janet"
+        assert entorno["linea"].nombre_visible == "TShirt Modelo Janet"
+
+    def test_el_autosave_puede_limpiar_el_alias(self, client, entorno):
+        linea = entorno["linea"]
+        linea.nombre_proyecto = "Janet"
+        linea.save(update_fields=["nombre_proyecto"])
+        client.force_login(entorno["admin"])
+        _post_autosave(client, entorno["p"], linea, entorno["srv"], alias="")
+        linea.refresh_from_db()
+        assert linea.nombre_proyecto == ""
+        assert linea.nombre_visible == "TShirt Oversize Color"
+
+
 # ── Interruptores del documento ──────────────────────────────────────────
 
 class TestToggles:
