@@ -166,8 +166,39 @@
             // LC 2026-07: autocompletar proveedor (el 1º del catálogo) si está vacío.
             const prov = card.querySelector('select[name$="-proveedor"]');
             if (prov && !prov.value && datos.proveedor_id) prov.value = datos.proveedor_id;
+            aplicarProcesosDefault(card, datos.procesos);
         }
         recalcular(card);
+    }
+    // LC 2026-07-25: el producto del catálogo puede traer su impresión y sus
+    // procesos adicionales como plantilla. Se copian SOLO si la tarjeta está
+    // "en blanco" (sin impresión ni procesos), para no pisar lo capturado.
+    function aplicarProcesosDefault(card, procesos) {
+        if (!procesos || !procesos.length) return;
+        const impProv = card.querySelector('.imp-proveedor');
+        const yaTiene = (impProv && impProv.value) || card.querySelectorAll('.proceso-fila').length > 0;
+        if (yaTiene) return;
+        procesos.forEach(p => {
+            if (p.tipo === 'impresion') {
+                if (!impProv) return;
+                impProv.value = String(p.proveedor_id || '');
+                const c = card.querySelector('.imp-costo');
+                if (c) c.value = num(p.costo) ? num(p.costo).toFixed(2) : '';
+                const pp = card.querySelector('.imp-por-pieza');
+                if (pp) pp.checked = !!p.por_pieza;
+            } else {
+                agregarProceso(card);
+                const fila = card.querySelector('.proceso-lista .proceso-fila:last-child');
+                if (!fila) return;
+                const d = fila.querySelector('.proc-desc');
+                if (d) d.value = p.descripcion || '';
+                const c = fila.querySelector('.proc-costo');
+                if (c) c.value = num(p.costo) ? num(p.costo).toFixed(2) : '';
+                const pp = fila.querySelector('.proc-por-pieza');
+                if (pp) pp.checked = !!p.por_pieza;
+            }
+        });
+        serializar(card);
     }
     function aplicarCatFiltro(card) {
         const cat = card.querySelector('[data-cat-filtro]');

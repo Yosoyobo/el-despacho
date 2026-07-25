@@ -173,7 +173,9 @@ def test_form_producto_tiene_buscador_y_guardar_arriba(client, usuario_factory):
     resp = client.get(f"/catalogo/{srv.pk}/editar")
     assert resp.status_code == 200
     html = resp.content.decode()
-    assert 'id="prov-filtro"' in html          # buscador de proveedores
+    # LC 2026-07-25: el filtro sobre checkboxes (que no servía) se reemplazó por
+    # el dropdown con buscador canónico + pastillas.
+    assert 'id="prov-picker"' in html           # buscador de proveedores
     assert 'form="producto-form"' in html       # botón Guardar arriba
 
 

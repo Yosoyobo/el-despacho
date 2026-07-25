@@ -12,6 +12,8 @@ toggleables individualmente via tabla `cuentas_permiso_usuario`:
   catalogo.gestionar_categorias → Submenú de categorías + CRUD
 """
 
+import json
+
 from django.contrib import messages
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -22,6 +24,7 @@ from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
+from . import procesos as procesos_default
 from .forms import (
     CategoriaForm,
     CategoriaProveedorForm,
@@ -36,6 +39,11 @@ from .models import (
     Servicio,
     SubcategoriaProveedor,
 )
+
+
+def _proveedores_activos():
+    """Proveedores activos para los selects de impresión / procesos."""
+    return list(Proveedor.objects.filter(activo=True).order_by("razon_social"))
 
 
 def _gate(request, accion: str):
@@ -58,7 +66,7 @@ def lista(request):
     puede_eliminar = puede(user, "catalogo", "eliminar")
     puede_gestionar_cats = puede(user, "catalogo", "gestionar_categorias")
 
-    from django.db.models import Count
+    from django.db.models import Count, Q
 
     q = (request.GET.get("q") or "").strip()
     categoria_id = request.GET.get("categoria") or ""
@@ -73,7 +81,12 @@ def lista(request):
     if not incluir_archivados:
         qs = qs.filter(activo=True)
     if q:
-        qs = qs.filter(nombre__icontains=q)
+        # LC 2026-07-25: el buscador también encuentra por PROVEEDOR (escribes
+        # "Plymouth" y salen sus productos). `distinct` porque el join M2M
+        # duplicaría filas cuando varios proveedores hacen match.
+        qs = qs.filter(
+            Q(nombre__icontains=q) | Q(proveedores__razon_social__icontains=q)
+        ).distinct()
     if categoria_id:
         qs = qs.filter(categoria_id=categoria_id)
     # Sprint 2 UX (item 6): orden por Categoría con toggle asc/desc; el default
@@ -231,6 +244,8 @@ def nuevo(request):
         if form.is_valid():
             srv = form.save(commit=False)
             srv.creado_por = request.user
+            # LC 2026-07-25: impresión + procesos adicionales (plantilla).
+            srv.procesos_default = procesos_default.parsear(request.POST)
             srv.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
             emitir(EventoPortavoz(
@@ -240,15 +255,24 @@ def nuevo(request):
                 payload={"servicio_id": srv.pk, "nombre": srv.nombre, "categoria": srv.categoria.nombre},
             ))
             messages.success(request, f"Producto «{srv.nombre}» creado.")
+            # LC 2026-07-25 (Oscar): al crear se abre la PÁGINA DEL PRODUCTO
+            # (para seguir con imagen, procesos, proveedores), no la lista.
+            destino = reverse("catalogo-editar", args=[srv.pk])
             if es_htmx:
-                return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-lista")})
-            return redirect("catalogo-lista")
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
         # inválido → cae al render (modal si es HTMX).
     else:
         form = ServicioForm()
     ctx = {
         "form": form, "modo": "nuevo",
         "precio_readonly": not puede(request.user, "catalogo", "editar_precios"),
+        # Impresión + procesos adicionales (la página completa los captura; el
+        # modal de alta rápida sigue ligero — se capturan al abrir el producto).
+        "proveedores_activos": _proveedores_activos(),
+        "procesos_default_json": json.dumps(
+            procesos_default.parsear(request.POST) if request.method == "POST" else []
+        ),
         **_navegacion_producto(request),
     }
     tmpl = "catalogo/_modal_nuevo_producto.html" if es_htmx else "catalogo/form.html"
@@ -293,6 +317,11 @@ def editar(request, pk: int):
             # Si no tiene editar_precios, restauramos el precio original.
             if not puede_editar_precios:
                 obj.precio_base = srv.precio_base
+            # LC 2026-07-25: impresión + procesos adicionales (plantilla). Solo
+            # se reescriben si el form los mandó — un POST sin el campo (otro
+            # flujo) NO debe borrar lo capturado.
+            if "procesos_default_json" in request.POST:
+                obj.procesos_default = procesos_default.parsear(request.POST)
             obj.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
             # Calculadora de costos (proveedores como Simil Cuero Plymouth): si el
@@ -353,6 +382,11 @@ def editar(request, pk: int):
         "calc_mano_obra": calc_mano_obra,
         "calc_resultado": calcular(det, iva_tasa) if mostrar_calc else None,
         "iva_tasa": iva_tasa,
+        # LC 2026-07-25: impresión + procesos adicionales del producto (plantilla
+        # que se copia al proyecto). El JSON alimenta el JS del recuadro.
+        "proveedores_activos": _proveedores_activos(),
+        "procesos_default_json": json.dumps(procesos_default.normalizados(srv)),
+        "procesos_costo_extra": procesos_default.costo_extra(srv),
         **_navegacion_producto(request),
     })
 

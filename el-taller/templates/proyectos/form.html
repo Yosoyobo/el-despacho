@@ -2,8 +2,8 @@
 {% block title %}{{ modo|capfirst }} proyecto — Proyectos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
-{% breadcrumb_items "Proyectos" "/proyectos/" "Proyecto" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|capfirst|add:" proyecto" subtitulo="Datos del proyecto + productos involucrados" breadcrumb_items=breadcrumb_items back_url="/proyectos/" back_label="Proyectos" %}
+{% breadcrumb_items "Proyectos" "/proyectos/kanban/" "Proyecto" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=modo|capfirst|add:" proyecto" subtitulo="Datos del proyecto + productos involucrados" breadcrumb_items=breadcrumb_items back_url="/proyectos/kanban/" back_label="Proyectos" %}
 
 <form id="form-proyecto" method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
@@ -136,7 +136,7 @@
     </aside>
 
     <div class="flex flex-wrap items-center justify-between gap-3 xl:col-span-3">
-        <a href="{% if proyecto %}{% url 'proyectos-detalle' proyecto.pk %}{% else %}{% url 'proyectos-lista' %}{% endif %}" class="btn-secundario">Cancelar</a>
+        <a href="{% if proyecto %}{% url 'proyectos-detalle' proyecto.pk %}{% else %}{% url 'proyectos-kanban' %}{% endif %}" class="btn-secundario">Cancelar</a>
         <button type="submit" class="btn-primario">Guardar proyecto</button>
     </div>
 </form>

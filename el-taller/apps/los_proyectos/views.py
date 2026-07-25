@@ -54,9 +54,10 @@ def _servicios_datos_json():
 
     from apps.el_catalogo.models import Servicio
     datos = {}
+    from apps.el_catalogo import procesos as procesos_catalogo
     qs = (
         Servicio.objects.filter(activo=True)
-        .only("pk", "nombre", "precio_base", "costo", "categoria_id")
+        .only("pk", "nombre", "precio_base", "costo", "categoria_id", "procesos_default")
         .prefetch_related("proveedores")
     )
     for s in qs:
@@ -70,6 +71,10 @@ def _servicios_datos_json():
             "categoria": str(s.categoria_id or ""),
             "proveedor_id": str(prov.pk) if prov else "",
             "proveedor": prov.razon_social if prov else "",
+            # LC 2026-07-25: impresión + procesos adicionales que el producto
+            # trae del catálogo. La tarjeta los pre-llena al elegir el producto
+            # (solo si aún no tiene procesos capturados).
+            "procesos": procesos_catalogo.normalizados(s),
         }
     return json.dumps(datos)
 
@@ -226,11 +231,16 @@ def lista(request):
         qs = qs.filter(estado=estado)
     elif kpi_activo in KPI_MAP:
         qs = qs.filter(estado__in=KPI_MAP[kpi_activo])
-    orden_permitido = {"codigo", "nombre", "estado", "fecha_compromiso", "creado_en"}
+    # LC 2026-07-25: «Cliente» también ordena (alfabético por razón social). El
+    # mapa traduce la llave de la cabecera al campo real de DB.
+    ORDEN_CAMPO = {"cliente": "cliente__razon_social"}
+    orden_permitido = {"codigo", "nombre", "estado", "fecha_compromiso", "creado_en", "cliente"}
     orden = (request.GET.get("orden") or "-creado_en").strip()
     if orden.lstrip("-") not in orden_permitido:
         orden = "-creado_en"
-    qs = qs.order_by(orden, "pk").prefetch_related("productos__servicio", "productos__variacion")
+    campo = orden.lstrip("-")
+    orden_db = ("-" if orden.startswith("-") else "") + ORDEN_CAMPO.get(campo, campo)
+    qs = qs.order_by(orden_db, "pk").prefetch_related("productos__servicio", "productos__variacion")
     paginator = Paginator(qs, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
     base = _proyectos_visibles(request.user)
@@ -272,7 +282,7 @@ def lista(request):
         "cabeceras_proyectos": [
             # S-LC-Feedback-V4: nombre es lo principal, código secundario.
             {"label": "Proyecto", "sort_key": "nombre"},
-            {"label": "Cliente"},
+            {"label": "Cliente", "sort_key": "cliente"},
             {"label": "Estado", "sort_key": "estado"},
             {"label": "Compromiso", "sort_key": "fecha_compromiso"},
         ],
@@ -516,10 +526,10 @@ def detalle(request, pk):
         "ingresos_proyecto": proyecto.ingresos.filter(anulado=False).order_by("-fecha")[:50],
         "egresos_proyecto": proyecto.egresos.filter(anulado=False).select_related("proveedor").order_by("-fecha")[:50],
         "breadcrumb_items": [
-            {"url": reverse("proyectos-lista"), "label": "Proyectos"},
+            {"url": reverse("proyectos-kanban"), "label": "Proyectos"},
             {"label": proyecto.codigo},
         ],
-        "back_url": reverse("proyectos-lista"),
+        "back_url": reverse("proyectos-kanban"),
         "back_label": "Proyectos",
         # Recuadro «Cotizaciones» (versionado, render Oscar 2026-06-27).
         **_ctx_cotizaciones(proyecto, request.user),
@@ -895,14 +905,38 @@ def _redir_detalle(proyecto):
     return reverse("proyectos-detalle", args=[proyecto.pk])
 
 
-def _proyecto_tiene_movimientos(proyecto) -> bool:
-    """True si el proyecto tiene facturas/ingresos/egresos ligados (no se puede
-    borrar permanentemente; solo archivar)."""
-    return (
-        proyecto.facturas.exists()
-        or proyecto.ingresos.exists()
-        or proyecto.egresos.exists()
-    )
+def _ligados_del_proyecto(proyecto) -> list[dict]:
+    """Movimientos financieros VIGENTES ligados al proyecto, uno por uno.
+
+    LC 2026-07-25 (Oscar): antes bastaba con que existiera CUALQUIER factura,
+    ingreso o egreso — incluidos los cancelados/anulados — para bloquear el
+    borrado, así que salía «tiene facturas, ingresos o egresos ligados» aunque
+    en realidad no quedara nada vivo. Ahora:
+
+    - solo cuentan facturas **no canceladas** e ingresos/egresos **no anulados**;
+    - se devuelve la lista concreta (con enlace) para mostrarla en el modal, así
+      el usuario ve exactamente qué lo bloquea en vez de adivinar.
+    """
+    ligados: list[dict] = []
+    for fac in proyecto.facturas.exclude(estado="cancelada"):
+        ligados.append({
+            "tipo": "Factura",
+            "label": f"{fac.folio or fac.codigo} · {fac.get_estado_display()}",
+            "url": reverse("facturacion:detalle", args=[fac.pk]),
+        })
+    for ing in proyecto.ingresos.filter(anulado=False):
+        ligados.append({
+            "tipo": "Ingreso",
+            "label": f"{ing.codigo} · {ing.monto}",
+            "url": reverse("tesoreria:ingreso-detalle", args=[ing.pk]),
+        })
+    for egr in proyecto.egresos.filter(anulado=False):
+        ligados.append({
+            "tipo": "Egreso",
+            "label": f"{egr.codigo} · {egr.monto}",
+            "url": reverse("tesoreria:egreso-detalle", args=[egr.pk]),
+        })
+    return ligados
 
 
 @login_required
@@ -929,7 +963,7 @@ def archivar(request, pk):
         ))
         if proyecto.archivado:
             messages.success(request, f"Proyecto {proyecto.codigo} archivado.")
-            destino = reverse("proyectos-lista")
+            destino = reverse("proyectos-kanban")
         else:
             messages.success(request, f"Proyecto {proyecto.codigo} reactivado.")
             destino = _redir_detalle(proyecto)
@@ -947,10 +981,11 @@ def eliminar(request, pk):
     if not puede_eliminar_proyecto(request.user):
         return HttpResponseForbidden("Solo un super administrador puede eliminar proyectos.")
     es_htmx = _es_htmx(request)
-    tiene_mov = _proyecto_tiene_movimientos(proyecto)
+    ligados = _ligados_del_proyecto(proyecto)
     if request.method == "POST":
-        if tiene_mov:
-            messages.error(request, "No se puede eliminar: el proyecto tiene facturas/ingresos/egresos ligados. Archívalo en su lugar.")
+        if ligados:
+            detalle_lig = ", ".join(f"{x['tipo']} {x['label'].split(' · ')[0]}" for x in ligados[:5])
+            messages.error(request, f"No se puede eliminar: sigue ligado a {detalle_lig}. Anúlalos/cancélalos primero o archiva el proyecto.")
             destino = _redir_detalle(proyecto)
             return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
         codigo = proyecto.codigo
@@ -961,11 +996,12 @@ def eliminar(request, pk):
         ))
         proyecto.delete()
         messages.success(request, f"Proyecto {codigo} eliminado permanentemente.")
-        destino = reverse("proyectos-lista")
+        destino = reverse("proyectos-kanban")
         return HttpResponse(status=204, headers={"HX-Redirect": destino}) if es_htmx else redirect(destino)
     if es_htmx:
         return render(request, "proyectos/_modal_eliminar.html",
-                      {"proyecto": proyecto, "tiene_movimientos": tiene_mov})
+                      {"proyecto": proyecto, "ligados": ligados,
+                       "tiene_movimientos": bool(ligados)})
     return redirect(_redir_detalle(proyecto))
 
 
