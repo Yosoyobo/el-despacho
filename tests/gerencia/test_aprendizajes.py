@@ -109,12 +109,16 @@ def test_filtro_activos_inactivos(client, usuario_factory):
     Aprendizaje.objects.all().delete()
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
-    _crear_aprendizaje(autor=u, frase_o_patron="aA", activo=True)
-    _crear_aprendizaje(autor=u, frase_o_patron="iI", activo=False)
+    # Marcadores LARGOS y únicos a propósito: con frases de 2 letras ("aA"/"iI")
+    # el test era FLAKY — esa secuencia aparece por azar dentro del token CSRF
+    # (64 chars aleatorios A-Za-z0-9) y el `not in` fallaba ~1 de cada 40 corridas.
+    ACTIVO, INACTIVO = "ZZAPRENDIZAJEACTIVOZZ", "ZZAPRENDIZAJEINACTIVOZZ"
+    _crear_aprendizaje(autor=u, frase_o_patron=ACTIVO, activo=True)
+    _crear_aprendizaje(autor=u, frase_o_patron=INACTIVO, activo=False)
     resp = client.get("/chalanes/aprendizajes/?filtro=activos")
-    assert b"aA" in resp.content and b"iI" not in resp.content
+    assert ACTIVO.encode() in resp.content and INACTIVO.encode() not in resp.content
     resp = client.get("/chalanes/aprendizajes/?filtro=inactivos")
-    assert b"iI" in resp.content and b"aA" not in resp.content
+    assert INACTIVO.encode() in resp.content and ACTIVO.encode() not in resp.content
 
 
 def test_modelo_compartido_visible_desde_taller(usuario_factory):
