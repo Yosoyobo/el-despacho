@@ -6986,3 +6986,73 @@ proyecto sí; el sanitizador ya acepta el campo si algún día se agrega UI); el
 modal de alta rápida de producto sigue ligero (los procesos se capturan al abrir
 la ficha); El Chalán no edita `procesos_default` (declarado explícitamente en el
 manual, regla §10); `costo_extra` en la ficha se muestra para 1 pz.
+
+---
+
+# BITÁCORA — S-Ajustes-Jul25 R2 (2026-07-25, VERSION 2026.07.26)
+
+Segunda entrega del día. Arranca con un reporte de Oscar («¿por qué no puedo
+eliminar a los clientes PXNDX y LEARNING CENTER? dice que tienen facturas ligadas
+pero no es cierto») y se le suman 4 notas de UX que pidió aprovechar en el mismo
+deploy.
+
+**Diagnóstico (antes de tocar código).** Consulta read-only a la DB de La Sede:
+ambos clientes tenían 0 proyectos y 0 facturas… y **cotizaciones** (PXNDX 1,
+LEARNING CENTER 5, una de ellas anulada). `Cotizacion.cliente` es PROTECT ⇒
+cualquier fila truena el `delete()`; el `except ProtectedError` genérico decía
+"facturas u otros movimientos", que para el usuario **es mentira**. Y no existía
+borrado de cotizaciones, así que anularlas (lo que Oscar intentó) no soltaba nada:
+callejón sin salida.
+
+**Decisiones de Oscar (AskUserQuestion):** (1) **botón explícito** para eliminar
+cotizaciones anuladas/borrador, no cascada silenciosa al borrar el cliente;
+(2) campañas: **borrar al cliente y conservar los registros de envío**, mencionando
+al cliente solo como texto.
+
+**Entregas:**
+
+- **Borrado de cotización** — permiso destructivo nuevo `(cotizaciones, eliminar)`
+  (no entra a `TODO_COTIZACIONES`; sí a `CATALOGO_PERMISOS` para delegar y a
+  `DEFAULTS_POR_ROL["super_admin"]`) + migración `cuentas/0039`. Vista
+  `cotizaciones:eliminar` con modal Wave 5; solo `anulada`/`borrador` y solo si no
+  hay `cot.facturas` (si generó factura, se conserva por trazabilidad). El evento
+  `cotizacion.eliminada` se emite ANTES del delete (si no, el payload queda sin
+  código/cliente). Botón en el action bar solo cuando aplica.
+- **Campañas** — `CampanaEnvio.cliente` PROTECT → **SET_NULL** + `cliente_nombre`
+  (snapshot al enviar), migr. `campanas/0002` con backfill. `services.enviar_campana`
+  llena el snapshot; el detalle muestra «(cliente eliminado)» si el FK quedó nulo.
+  Así el historial de a quién se le mandó correo se conserva sin atorar el borrado.
+- **Cliente** — `_ligado_del_cliente()` centraliza TODO lo ligado (proyectos,
+  cotizaciones, facturas, ingresos) + `bloqueos` (solo PROTECT). El aviso de borrado
+  enlista con código lo que bloquea; la ficha gana 3 recuadros (Cotizaciones ·
+  Facturas · Ingresos) que antes no existían — que era justo por qué "no es cierto":
+  el usuario no tenía dónde ver las cotizaciones del cliente.
+- **Notas de LC** (mismo deploy): (a) proyectos entregados/cerrados/cancelados sin
+  «vencido hace N días» — filtros nuevos `compromiso_nota`/`compromiso_kanban`/
+  `compromiso_clase` que reciben el proyecto, y `_mapa_estados` gana `terminal`
+  (cache a v2) para evitar N+1; en el kanban los entregados dicen «entregado
+  {fecha}». (b) Tesorería con botones de periodo: `resolver_periodo` +
+  `periodos_disponibles` (año en curso primero, luego meses con movimientos) y
+  `kpis_landing(desde=, hasta=)` retrocompatible; las metas solo en el mes en curso.
+  (c) CxC/CxP muestran el **nombre** del proyecto (código en chico) y enlazan;
+  `cxc_unificado` expone `proyecto_nombre`/`proyecto_url`. (d) En el detalle de
+  ingreso/egreso el proyecto es hipervínculo (`_item_proyecto`).
+
+**Bug latente cazado por los tests (valía el sprint):** `{{ fk.attr|default:fk.otro }}`
+con `fk=None` levanta `VariableDoesNotExist` — Django silencia la variable
+principal pero **no los argumentos de filtro** — así que el detalle de una
+cotización anulada **sin** `anulada_por` daba 500. Corregido con `{% firstof %}` en
+5 templates (cotizaciones/detalle, contaduria/conciliacion_lista,
+contaduria/cierre_lista, taller_home/kpi_custom_detalle y kpi_custom_lista).
+**Patrón a evitar: nunca pasar `fk.attr` como argumento de `default`.**
+
+**Tests:** 18 nuevos en `test_ajustes_jul25_r2.py` (borrado de cotización en sus 4
+variantes + visibilidad del botón, campaña que sobrevive al borrado, cliente
+bloqueado por cotización con el código en el mensaje, cliente limpio que sí se
+borra, ficha con lo ligado, 3 de proyectos terminales, periodos + rango de KPIs +
+botones, CxC con nombre/URL, CxP con nombre, ingreso/egreso enlazando).
+
+**Deuda diseñada R2:** una **factura** (aunque cancelada) sigue bloqueando el
+borrado del cliente y no hay borrado de facturas (por diseño fiscal) — ese caso se
+resuelve archivando; los botones de periodo no afectan los charts (siguen a 6 meses
+/ mes) ni los exports CSV; `periodos_disponibles` corta a 14 meses.

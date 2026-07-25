@@ -25,7 +25,11 @@
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
             {% for e in envios %}
             <tr>
-                <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ e.cliente.razon_social }}</td>
+                {% comment %}LC 2026-07-25: si el cliente se eliminó, el registro
+                conserva su nombre como texto (snapshot del envío).{% endcomment %}
+                <td class="px-5 py-3 text-gray-900 dark:text-gray-100">
+                    {% if e.cliente_id %}{{ e.cliente.razon_social }}{% else %}{{ e.cliente_nombre|default:"—" }} <span class="text-xs text-gray-400">(cliente eliminado)</span>{% endif %}
+                </td>
                 <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ e.email }}</td>
                 <td class="px-5 py-3">{% if e.estado == 'enviado' %}<span class="badge badge-success">Enviado</span>{% else %}<span class="badge badge-error">Fallido</span>{% endif %}</td>
                 <td class="px-5 py-3 text-xs text-gray-500 dark:text-gray-400">{{ e.error|default:"—"|truncatechars:60 }}</td>

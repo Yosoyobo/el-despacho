@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Clientes que por fin se pueden eliminar, ficha completa y Tesorería por mes (25 de julio de 2026 — segunda entrega)
+
+- **Ya se puede eliminar una cotización.** Las cotizaciones **anuladas** (y los
+  borradores) tienen un botón **Eliminar** en su página, para super administrador.
+  Es lo que faltaba: como una cotización "amarra" al cliente, sin poder borrarla
+  el cliente archivado se quedaba atorado para siempre. No se pueden eliminar las
+  vigentes (anúlalas primero) ni las que ya generaron una factura.
+- **El aviso de "no se puede eliminar" ahora te dice qué es.** Antes decía
+  "facturas u otros movimientos" aunque no hubiera facturas; ahora **enlista
+  exactamente** qué lo bloquea (proyecto, factura o cotización, con su código) y
+  puedes abrir cada uno desde el aviso.
+- **La ficha del cliente muestra TODO lo que tiene ligado**: además de sus
+  proyectos, ahora ves sus **cotizaciones**, sus **facturas** y sus **ingresos**,
+  cada uno clickeable.
+- **Las campañas de correo ya no atoran a nadie.** El registro del envío se
+  conserva (con el nombre del cliente como texto) aunque después elimines al
+  cliente.
+- **Proyectos terminados sin alarma falsa.** Un proyecto **entregado, cerrado o
+  cancelado** ya no dice "vencido hace N días": solo muestra su fecha. En el
+  tablero, los entregados dicen **"entregado {fecha}"**.
+- **Tesorería por periodo.** Debajo de "Flujo de dinero real del despacho" hay
+  botones para ver **cada mes con información** (hacia atrás) y uno de **"Todo
+  {año}"** al principio para el año en curso. Los KPIs de arriba se recalculan
+  con lo que elijas.
+- **Cuentas por cobrar y por pagar más legibles:** se muestra el **nombre del
+  proyecto** (con su código en chico) en vez de solo el código, y se puede abrir
+  el proyecto desde ahí.
+- **En un ingreso o egreso, el proyecto es un enlace**: un clic y estás en él.
+
 ## Novedades — Productos con impresión y procesos, búsqueda por proveedor y Proyectos siempre en Kanban (25 de julio de 2026)
 
 - **Buscas productos por proveedor.** En la lista de Productos, el buscador ahora
@@ -2615,6 +2644,11 @@ El corazón del negocio. Cada proyecto tiene código `LC-NNNN`, cliente, product
 
 Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clickeables como filtros.
 
+**Proyectos terminados.** Cuando un proyecto está **entregado**, **cerrado** o
+**cancelado** ya no se le corre el reloj: en la lista se ve **solo su fecha** (sin
+"vencido hace N días") y en el tablero los entregados dicen **"entregado
+{fecha}"**. La alerta de vencimiento se reserva para los proyectos en curso.
+
 **"Proyectos" siempre abre el Kanban.** El menú, las migas de pan y el botón de "volver" de un proyecto te dejan en el **Tablero**; para la tabla usa el botón **"Lista"** del encabezado.
 
 ### Archivar o eliminar un proyecto
@@ -2754,6 +2788,28 @@ Registra tu día de trabajo desde el celular o la computadora. La ubicación se 
 Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar depende de los permisos que te dé el super admin.
 
 ---
+
+### Todo lo que un cliente tiene ligado
+
+La ficha del cliente muestra, además de sus **proyectos** (agrupados por estado):
+
+- **Cotizaciones** — código, versión, proyecto, estado y fecha.
+- **Facturas** — folio, proyecto, estado y total.
+- **Ingresos** — código, proyecto, fecha y monto (los anulados se ven en gris).
+
+Todo es clickeable. Sirve para dos cosas: ver de un golpe la relación completa con
+ese cliente, y entender qué lo **amarra** si quieres eliminarlo.
+
+### Archivar o eliminar un cliente
+
+- **Archivar** es lo normal y es reversible: el cliente sale de listas y
+  selectores, y su historial queda intacto.
+- **Eliminar** (permanente, solo super administrador) requiere que el cliente esté
+  **archivado** y que no le quede nada ligado. Si algo lo bloquea, el aviso te
+  **enlista exactamente qué** (proyecto, factura o cotización) con su código, para
+  que lo abras y decidas. Las cotizaciones anuladas se eliminan desde su propia
+  página; los registros de **campañas de correo** ya no bloquean (se conservan con
+  el nombre del cliente como texto).
 
 ## Productos (Catálogo)
 
@@ -2907,6 +2963,12 @@ En la **lista** de cotizaciones (tarjetas o tabla): el **estado** se cambia con 
 **todo el padrón** (además de las pastillas de clientes recientes); y el **nombre
 del proyecto** es un **enlace** que abre el proyecto.
 
+**Eliminar una cotización.** Las cotizaciones **anuladas** o en **borrador**
+tienen un botón **Eliminar** (permanente, solo super administrador) en su página.
+Sirve para limpiar: mientras una cotización exista, el cliente al que pertenece no
+se puede eliminar. No se eliminan las vigentes (anúlalas primero) ni las que ya
+generaron una factura — esas conservan la trazabilidad del documento.
+
 Cuando una cotización está aprobada y tiene anticipo, aparece un botón **"Generar factura del anticipo"** que crea una factura borrador con el monto del anticipo.
 
 **El Chalán te ayuda:** botón **🤖 Redactar** junto a **Notas** y **Términos**, y **🤖 Sugerir** en cada línea para proponer el precio (ver *Chalanes (IA)*).
@@ -2964,12 +3026,24 @@ Desde el detalle, el botón **"Cancelar factura"** abre una ventana:
 
 El dinero que entra y sale.
 
+### Elegir el periodo
+
+Debajo de *"Flujo de dinero real del despacho"* hay una fila de botones:
+
+- **Todo {año}** — suma el año en curso completo.
+- Luego **cada mes con información**, del más reciente hacia atrás (solo aparecen
+  los meses donde de verdad hubo movimientos).
+
+Lo que elijas recalcula los tres KPIs de arriba (ingresos, egresos y utilidad), y
+el título de cada tarjeta te dice qué periodo estás viendo. Las **metas** son
+mensuales, así que la barra de progreso solo aparece en el **mes en curso**.
+
 ### KPIs principales del header
 
-- **Ingresos del mes** (con barra de progreso si tiene meta)
-- **Egresos del mes** (con barra de progreso si tiene meta)
-- **Utilidad bruta** (con barra de progreso si tiene meta)
-- **Cuentas por pagar** (egresos pendientes + reembolsos)
+- **Ingresos** del periodo elegido (con barra de progreso si tiene meta)
+- **Egresos** del periodo elegido (con barra de progreso si tiene meta)
+- **Utilidad** del periodo elegido (con barra de progreso si tiene meta)
+- **Cuentas por pagar** (egresos pendientes + reembolsos) — siempre al día de hoy
 
 ### Lo que puedes hacer
 
@@ -2982,8 +3056,11 @@ subtotal solo; apágalo si el movimiento no llevó IVA. Todo es en **pesos (MXN)
 
 - **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`.
 - **Egresos:** qué gastaste, centro de costo, **proveedor (obligatorio — todo egreso va ligado a un proveedor)**, quién pagó, fecha. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción. Un egreso **solo se registra cuando el pago se realiza**: los estados posibles son **Pagado (saldado)** o **Por reembolsar**; ya no se registran egresos "por pagar" a mano.
-- **Por cobrar (CxC):** vista unificada de facturas pendientes + anticipos por generar + proyectos legacy con saldo, ordenado por vencimiento.
-- **Por pagar (CxP):** egresos pendientes de pagar + reembolsos pendientes por empleado.
+- **Por cobrar (CxC):** vista unificada de facturas pendientes + anticipos por generar + proyectos legacy con saldo, ordenado por vencimiento. Se muestra el **nombre del proyecto** (con su código en chico) y es un enlace al proyecto.
+- **Por pagar (CxP):** egresos pendientes de pagar + reembolsos pendientes por empleado. Cada egreso pendiente se lee por el **nombre de su proyecto**; el código del egreso queda en la línea de detalle.
+
+En la página de un **ingreso** o un **egreso**, el proyecto es un **enlace**: un
+clic y estás en él.
 - **Gastos no registrados:** lista de gastos de proyectos que aún no tienen un
   egreso (por producto, impresión o gasto operativo), agrupados por proyecto,
   con un botón para registrarlos (uno o todos). Es la misma alerta que ves en

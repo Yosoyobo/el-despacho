@@ -49,6 +49,7 @@ EventoTipo = Literal[
     "cotizacion.aprobada",
     "cotizacion.rechazada",
     "cotizacion.anulada",
+    "cotizacion.eliminada",
     "cotizacion.vencida",
     "cotizacion.pdf_generado",
     "cotizacion.generada",

@@ -13,6 +13,7 @@ urlpatterns = [
     path("<int:pk>/aprobar/", views.aprobar, name="aprobar"),
     path("<int:pk>/rechazar/", views.rechazar, name="rechazar"),
     path("<int:pk>/anular/", views.anular, name="anular"),
+    path("<int:pk>/eliminar/", views.eliminar, name="eliminar"),
     path("<int:pk>/duplicar/", views.duplicar, name="duplicar"),
     path("<int:pk>/ver/", views.pdf_ver, name="ver"),
     path("<int:pk>/pdf/", views.generar_pdf, name="pdf"),

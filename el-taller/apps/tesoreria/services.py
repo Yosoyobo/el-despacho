@@ -45,7 +45,11 @@ def cxc_unificado():
             "codigo": "FAC-2026-0001" | "COT-2026-0001" | "PRY-000123",
             "cliente": "...",
             "cliente_id": int | None,
-            "proyecto_codigo": "PRY-000123" | "",
+            "proyecto_codigo": "LC-0001" | "",
+            # LC 2026-07-25: el nombre es lo que se muestra en la tabla; el
+            # código queda como referencia secundaria.
+            "proyecto_nombre": "Correas para las perras" | "",
+            "proyecto_url": "/proyectos/7/" | "",
             "monto_total": Decimal,
             "monto_cobrado": Decimal,
             "saldo": Decimal,
@@ -93,6 +97,8 @@ def cxc_unificado():
             "cliente": fac.cliente.razon_social if fac.cliente else "—",
             "cliente_id": fac.cliente_id,
             "proyecto_codigo": fac.proyecto.codigo if fac.proyecto else "",
+            "proyecto_nombre": (fac.proyecto.nombre or fac.proyecto.codigo) if fac.proyecto else "",
+            "proyecto_url": f"/proyectos/{fac.proyecto_id}/" if fac.proyecto_id else "",
             "monto_total": Decimal(totales["total"]),
             "monto_cobrado": Decimal(fac.monto_cobrado or 0),
             "saldo": saldo,
@@ -113,6 +119,8 @@ def cxc_unificado():
             "cliente": cot.cliente.razon_social if cot.cliente else "—",
             "cliente_id": cot.cliente_id,
             "proyecto_codigo": cot.proyecto.codigo if cot.proyecto else "",
+            "proyecto_nombre": (cot.proyecto.nombre or cot.proyecto.codigo) if cot.proyecto else "",
+            "proyecto_url": f"/proyectos/{cot.proyecto_id}/" if cot.proyecto_id else "",
             "monto_total": saldo,
             "monto_cobrado": Decimal("0.00"),
             "saldo": saldo,
@@ -135,6 +143,8 @@ def cxc_unificado():
             "cliente": p.cliente.razon_social if p.cliente else "—",
             "cliente_id": p.cliente_id if p.cliente else None,
             "proyecto_codigo": p.codigo,
+            "proyecto_nombre": p.nombre or p.codigo,
+            "proyecto_url": f"/proyectos/{p.pk}/",
             "monto_total": Decimal(p.monto_facturado or 0),
             "monto_cobrado": Decimal(p.monto_cobrado or 0),
             "saldo": saldo,
@@ -260,12 +270,21 @@ def series_mensuales_6m() -> dict[str, list[float]]:
     return {"ingresos": ingresos, "egresos": egresos, "utilidad": utilidad}
 
 
-def kpis_landing(usuario) -> dict[str, Any]:
+def kpis_landing(usuario, desde: date | None = None, hasta: date | None = None) -> dict[str, Any]:
+    """KPIs del landing. Por default el MES en curso.
+
+    LC 2026-07-25: acepta un rango (`desde` inclusive, `hasta` exclusivo) para
+    poder ver las cifras de un mes anterior o del año completo desde los botones
+    de periodo. CxP, reembolsos y saldos son a la fecha (no dependen del rango).
+    """
     hoy = date.today()
-    inicio_mes = hoy.replace(day=1)
-    ingresos_mes = Ingreso.vigentes.filter(fecha__gte=inicio_mes).aggregate(
+    desde = desde or hoy.replace(day=1)
+    filtro = {"fecha__gte": desde}
+    if hasta is not None:
+        filtro["fecha__lt"] = hasta
+    ingresos_mes = Ingreso.vigentes.filter(**filtro).aggregate(
         s=Sum("monto"))["s"] or Decimal("0")
-    egresos_mes = Egreso.vigentes.filter(fecha__gte=inicio_mes).aggregate(
+    egresos_mes = Egreso.vigentes.filter(**filtro).aggregate(
         s=Sum("monto"))["s"] or Decimal("0")
     cxp_total = cuentas_por_pagar_qs().aggregate(s=Sum("monto"))["s"] or Decimal("0")
     cxp_num = cuentas_por_pagar_qs().count()
@@ -300,6 +319,75 @@ def kpis_landing(usuario) -> dict[str, Any]:
         "saldo_stripe": saldo_stripe,
         "saldo_mp": saldo_mp,
     }
+
+
+_MESES_ES = (
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+)
+
+
+def resolver_periodo(valor: str | None) -> dict[str, Any]:
+    """Traduce `?periodo=` a un rango + etiqueta (LC 2026-07-25).
+
+    Formatos: `YYYY-MM` (un mes), `YYYY` (año completo) o vacío/inválido → mes en
+    curso. Devuelve `{clave, etiqueta, desde, hasta, es_mes_actual}`; `hasta` es
+    exclusivo.
+    """
+    hoy = date.today()
+    crudo = (valor or "").strip()
+    anio = mes = None
+    if len(crudo) == 7 and crudo[4] == "-" and crudo[:4].isdigit() and crudo[5:].isdigit():
+        anio, mes = int(crudo[:4]), int(crudo[5:])
+        if not (1 <= mes <= 12 and 2000 <= anio <= hoy.year + 1):
+            anio = mes = None
+    elif len(crudo) == 4 and crudo.isdigit():
+        a = int(crudo)
+        if 2000 <= a <= hoy.year + 1:
+            return {
+                "clave": f"{a}", "etiqueta": f"{a}",
+                "desde": date(a, 1, 1), "hasta": date(a + 1, 1, 1),
+                "es_mes_actual": False,
+            }
+    if anio is None:
+        anio, mes = hoy.year, hoy.month
+    desde = date(anio, mes, 1)
+    hasta = date(anio + 1, 1, 1) if mes == 12 else date(anio, mes + 1, 1)
+    return {
+        "clave": f"{anio}-{mes:02d}",
+        "etiqueta": f"{_MESES_ES[mes - 1]} {anio}",
+        "desde": desde, "hasta": hasta,
+        "es_mes_actual": (anio, mes) == (hoy.year, hoy.month),
+    }
+
+
+def periodos_disponibles(limite: int = 14) -> list[dict[str, Any]]:
+    """Meses con movimientos (más reciente primero) + el año en curso al inicio.
+
+    Alimenta los botones de periodo del landing: solo se ofrecen meses donde
+    realmente hay información (ingresos o egresos vigentes).
+    """
+    from django.db.models.functions import TruncMonth
+    meses: set[date] = set()
+    for modelo in (Ingreso, Egreso):
+        meses.update(
+            fila["m"].date() if hasattr(fila["m"], "date") else fila["m"]
+            for fila in modelo.vigentes.annotate(m=TruncMonth("fecha")).values("m").distinct()
+            if fila["m"]
+        )
+    hoy = date.today()
+    meses.add(hoy.replace(day=1))  # el mes en curso siempre se ofrece
+    ordenados = sorted(meses, reverse=True)[:limite]
+    salida = [{
+        "clave": f"{hoy.year}", "etiqueta": f"Todo {hoy.year}", "es_anio": True,
+    }]
+    salida += [{
+        "clave": f"{m.year}-{m.month:02d}",
+        "etiqueta": (f"{_MESES_ES[m.month - 1][:3]}" if m.year == hoy.year
+                     else f"{_MESES_ES[m.month - 1][:3]} {str(m.year)[2:]}"),
+        "es_anio": False,
+    } for m in ordenados]
+    return salida
 
 
 def reporte_mes(anio: int, mes: int) -> dict[str, Any]:

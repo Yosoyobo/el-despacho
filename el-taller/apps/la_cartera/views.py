@@ -133,6 +133,52 @@ def lista(request):
     })
 
 
+def _ligado_del_cliente(cliente) -> dict:
+    """TODO lo que el cliente tiene ligado (LC 2026-07-25, Oscar).
+
+    Sirve para dos cosas: (a) mostrarlo en su ficha —cotizaciones, facturas e
+    ingresos, que antes no se veían en ningún lado— y (b) explicar con precisión
+    qué impide su borrado permanente. Los tres modelos apuntan al cliente con FK
+    PROTECT (proyectos, facturas, cotizaciones), así que cualquier fila —incluso
+    anulada o cancelada— bloquea el `delete()`; por eso el aviso las enlista.
+    """
+    from apps.cotizaciones.models import Cotizacion
+    from apps.facturacion.models import Factura
+    from apps.tesoreria.models import Ingreso
+
+    proyectos = list(
+        cliente.proyectos.all().only("pk", "codigo", "nombre", "estado").order_by("-pk")
+    )
+    cotizaciones = list(
+        Cotizacion.objects.filter(cliente=cliente)
+        .select_related("proyecto").order_by("-pk")
+    )
+    facturas = list(
+        Factura.objects.filter(cliente=cliente)
+        .select_related("proyecto").order_by("-pk")
+    )
+    ingresos = list(
+        Ingreso.objects.filter(cliente=cliente)
+        .select_related("proyecto").order_by("-fecha", "-pk")
+    )
+    return {
+        "proyectos": proyectos,
+        "cotizaciones": cotizaciones,
+        "facturas": facturas,
+        "ingresos": ingresos,
+        # Lo que impide el borrado permanente (FK PROTECT). Los ingresos son
+        # SET_NULL, así que NO bloquean.
+        "bloqueos": (
+            [{"tipo": "Proyecto", "etiqueta": f"{p.nombre or p.codigo} ({p.codigo})",
+              "url": reverse("proyectos-detalle", args=[p.pk])} for p in proyectos]
+            + [{"tipo": "Factura", "etiqueta": f"{f.folio or f.codigo} · {f.get_estado_display()}",
+                "url": reverse("facturacion:detalle", args=[f.pk])} for f in facturas]
+            + [{"tipo": "Cotización", "etiqueta": f"{c.codigo} · {c.get_estado_display()}",
+                "url": reverse("cotizaciones:detalle", args=[c.pk])} for c in cotizaciones]
+        ),
+    }
+
+
 @login_required
 def detalle(request, pk):
     if (r := _gate(request)) is not None:
@@ -195,6 +241,8 @@ def detalle(request, pk):
         "ultima_visita": ultima_visita,
         "contactos": list(cliente.contactos.all()),
         "proyectos_por_estado": proyectos_por_estado,
+        # LC 2026-07-25: en la ficha se ve TODO lo ligado al cliente.
+        "ligado": _ligado_del_cliente(cliente),
         "kpis_cliente": kpis_cliente,
         "action_bar_meta": action_bar_meta,
         "action_bar_acciones": action_bar_acciones,
@@ -266,8 +314,19 @@ def cliente_eliminar(request, pk):
     if cliente.activo:
         messages.error(request, "Archiva el cliente antes de eliminarlo permanentemente.")
         return redirect("cartera-detalle", pk=cliente.pk)
-    if cliente.proyectos.exists():
-        messages.error(request, "No se puede eliminar: el cliente tiene proyectos ligados. Archívalo en su lugar.")
+    # LC 2026-07-25: el aviso dice EXACTAMENTE qué lo bloquea (antes era un
+    # genérico "facturas u otros movimientos" que parecía falso, porque quien
+    # bloqueaba eran cotizaciones que no se veían en ningún lado).
+    bloqueos = _ligado_del_cliente(cliente)["bloqueos"]
+    if bloqueos:
+        detalle_txt = "; ".join(f"{b['tipo']} {b['etiqueta']}" for b in bloqueos[:6])
+        extra = f" y {len(bloqueos) - 6} más" if len(bloqueos) > 6 else ""
+        messages.error(
+            request,
+            f"No se puede eliminar: sigue ligado a {detalle_txt}{extra}. "
+            f"Elimina o suelta esos registros (las cotizaciones anuladas se pueden "
+            f"eliminar desde su página) o déjalo archivado.",
+        )
         return redirect("cartera-detalle", pk=cliente.pk)
     from django.db.models import ProtectedError
     razon = cliente.razon_social
@@ -275,8 +334,8 @@ def cliente_eliminar(request, pk):
     try:
         cliente.delete()
     except ProtectedError:
-        # Otras referencias con FK PROTECT (facturas, ingresos, etc.).
-        messages.error(request, "No se puede eliminar: el cliente tiene facturas u otros movimientos ligados. Archívalo en su lugar.")
+        # Red de seguridad: algún FK PROTECT que no esté en `bloqueos`.
+        messages.error(request, "No se puede eliminar: el cliente tiene movimientos ligados que lo protegen. Archívalo en su lugar.")
         return redirect("cartera-detalle", pk=cliente_id)
     emitir(EventoPortavoz(
         tipo="cliente.eliminado",

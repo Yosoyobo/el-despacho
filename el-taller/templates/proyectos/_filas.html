@@ -16,10 +16,12 @@
     </td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social }}</td>
     <td class="px-5 py-3"><span class="badge badge-hex" style="--ec: {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span></td>
-    <td class="px-5 py-3 {{ p.fecha_compromiso|dentro_de_clase }}">
+    {% comment %}LC 2026-07-25: entregado/cerrado/cancelado NO llevan «vencido hace
+    N días» — solo la fecha (la nota viene vacía desde `compromiso_nota`).{% endcomment %}
+    <td class="px-5 py-3 {{ p|compromiso_clase }}">
         {% if p.fecha_compromiso %}
             <div>{{ p.fecha_compromiso|date:"d M Y" }}</div>
-            <div class="text-xs">{{ p.fecha_compromiso|dentro_de }}</div>
+            {% with nota=p|compromiso_nota %}{% if nota %}<div class="text-xs">{{ nota }}</div>{% endif %}{% endwith %}
         {% else %}—{% endif %}
     </td>
 </tr>

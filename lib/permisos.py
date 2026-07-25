@@ -160,6 +160,16 @@ def puede_eliminar_cartera(user) -> bool:
     return puede(user, "cartera", "eliminar")
 
 
+def puede_eliminar_cotizaciones(user) -> bool:
+    """Borrado PERMANENTE de una cotización anulada o en borrador (destructivo).
+
+    LC 2026-07-25: sin esto, una cotización anulada dejaba al cliente archivado
+    imposible de eliminar (`Cotizacion.cliente` es PROTECT). Por default solo
+    super_admin; delegable por usuario desde /directorio/.
+    """
+    return puede(user, "cotizaciones", "eliminar")
+
+
 def puede_ver_catalogo(user) -> bool:
     return puede(user, "catalogo", "ver")
 

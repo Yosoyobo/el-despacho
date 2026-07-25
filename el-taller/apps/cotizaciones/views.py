@@ -19,6 +19,7 @@ from lib.permisos import (
     puede_aprobar_cotizaciones,
     puede_crear_cotizaciones,
     puede_editar_cotizaciones,
+    puede_eliminar_cotizaciones,
     puede_enviar_cotizaciones,
     puede_rechazar_cotizaciones,
     puede_ver_cotizaciones,
@@ -414,6 +415,15 @@ def detalle(request, pk):
             '<button type="button" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm text-error-600 hover:underline">Anular</button>',
             reverse("cotizaciones:anular", args=[cot.pk]),
         ))
+    # LC 2026-07-25: borrado permanente de anuladas/borradores (limpieza; sin
+    # esto un cliente archivado con cotizaciones no se podía eliminar).
+    if puede_eliminar_cotizaciones(request.user) and cot.estado in ("anulada", "borrador"):
+        acciones_html.append(format_html(
+            '<button type="button" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML" '
+            'class="text-sm text-error-600 hover:underline" '
+            'title="Borra la cotización de forma permanente (limpieza).">Eliminar</button>',
+            reverse("cotizaciones:eliminar", args=[cot.pk]),
+        ))
 
     # Botón "Generar factura del anticipo" — sólo si aprobada y anticipo
     # configurado pero aún no facturado.
@@ -580,6 +590,48 @@ def anular(request, pk):
                                {"cot": cot, "form": form})
     return _modal_response(request, "cotizaciones/_modal_anular.html",
                            {"cot": cot, "form": AnularForm()})
+
+
+@login_required
+def eliminar(request, pk):
+    """Borrado PERMANENTE de una cotización anulada o en borrador (LC 2026-07-25).
+
+    Existe porque `Cotizacion.cliente` es PROTECT: sin poder borrar la cotización,
+    un cliente archivado con cotizaciones —aunque estuvieran anuladas— quedaba
+    imposible de eliminar y no había pantalla para soltarlas. Se limita a
+    anuladas/borradores y a cotizaciones sin factura generada (esas conservan la
+    trazabilidad del documento).
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_eliminar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para eliminar cotizaciones.")
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    bloqueo = ""
+    if cot.estado not in ("anulada", "borrador"):
+        bloqueo = (
+            f"Solo se eliminan cotizaciones anuladas o en borrador. «{cot.codigo}» "
+            f"está en «{cot.get_estado_display()}»: anúlala primero."
+        )
+    elif cot.facturas.exists():
+        bloqueo = (
+            f"«{cot.codigo}» tiene facturas generadas a partir de ella; se conserva "
+            f"para no perder la trazabilidad del documento."
+        )
+    es_htmx = _es_htmx(request)
+    if request.method == "POST":
+        if bloqueo:
+            messages.error(request, bloqueo)
+            destino = reverse("cotizaciones:detalle", args=[cot.pk])
+            return _hx_redirect(destino) if es_htmx else redirect(destino)
+        codigo = cot.codigo
+        services.emitir_eliminada(cot, request.user)  # antes del delete (payload)
+        cot.delete()
+        messages.success(request, f"Cotización {codigo} eliminada permanentemente.")
+        destino = reverse("cotizaciones:lista")
+        return _hx_redirect(destino) if es_htmx else redirect(destino)
+    return _modal_response(request, "cotizaciones/_modal_eliminar.html",
+                           {"cot": cot, "bloqueo": bloqueo})
 
 
 @login_required

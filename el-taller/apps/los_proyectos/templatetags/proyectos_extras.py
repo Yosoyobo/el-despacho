@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from django import template
+from django.utils import formats
 
 register = template.Library()
 
@@ -46,6 +47,65 @@ def dentro_de(fecha):
     return f"vencido hace {-delta} días"
 
 
+def _es_terminal(slug: str) -> bool:
+    """¿El estado cierra el proyecto? Lee del mapa cacheado (sin N+1)."""
+    mapa = _mapa_estados()
+    if slug in mapa and "terminal" in mapa[slug]:
+        return bool(mapa[slug]["terminal"])
+    from apps.los_proyectos.models.proyecto import ESTADOS_TERMINALES
+    return slug in ESTADOS_TERMINALES
+
+
+def _fecha_entrega(proyecto):
+    """La fecha con la que se cerró: la real si se capturó, si no el compromiso."""
+    return getattr(proyecto, "fecha_real_entrega", None) or proyecto.fecha_compromiso
+
+
+@register.filter(name="compromiso_nota")
+def compromiso_nota(proyecto) -> str:
+    """Nota relativa del compromiso para LISTAS (que ya muestran la fecha arriba).
+
+    LC 2026-07-25 (Oscar): un proyecto entregado, cerrado o cancelado ya no dice
+    «vencido hace N días» — no tiene sentido correrle el reloj a algo terminado.
+    En esos estados la nota queda vacía y solo se ve la fecha.
+    """
+    if not proyecto or not proyecto.fecha_compromiso:
+        return ""
+    if _es_terminal(getattr(proyecto, "estado", "")):
+        return ""
+    return dentro_de(proyecto.fecha_compromiso)
+
+
+@register.filter(name="compromiso_kanban")
+def compromiso_kanban(proyecto) -> str:
+    """Texto de fecha para la tarjeta del Kanban (una sola línea).
+
+    - entregado → «entregado 12 Jul 2026»
+    - otro terminal (cerrado/cancelado) → solo la fecha
+    - activo → nota relativa («en 3 días», «vencido hace 2 días»)
+    """
+    if not proyecto:
+        return "—"
+    estado = getattr(proyecto, "estado", "")
+    if estado == "entregado":
+        f = _fecha_entrega(proyecto)
+        return f"entregado {formats.date_format(f, 'd M Y')}" if f else "entregado"
+    if _es_terminal(estado):
+        f = _fecha_entrega(proyecto)
+        return formats.date_format(f, "d M Y") if f else "—"
+    return dentro_de(proyecto.fecha_compromiso)
+
+
+@register.filter(name="compromiso_clase")
+def compromiso_clase(proyecto) -> str:
+    """Color del texto de fecha. Los terminales van en gris (sin alarma)."""
+    if not proyecto:
+        return "text-gray-400"
+    if _es_terminal(getattr(proyecto, "estado", "")):
+        return "text-gray-500 dark:text-gray-400"
+    return dentro_de_clase(proyecto.fecha_compromiso)
+
+
 @register.filter(name="dentro_de_clase")
 def dentro_de_clase(fecha):
     """Color del texto según urgencia: rojo si vencido, naranja ≤3d, gris."""
@@ -82,14 +142,15 @@ def _mapa_estados():
     (tests aislados, primer boot).
     """
     from django.core.cache import cache
-    clave = "proyectos:mapa_estados:v1"
+    # v2: el mapa ahora incluye `terminal` (LC 2026-07-25).
+    clave = "proyectos:mapa_estados:v2"
     cacheado = cache.get(clave)
     if cacheado is not None:
         return cacheado
     from apps.los_proyectos.models import EstadoProyecto
     try:
         mapa = {
-            e.slug: {"label": e.label, "color": e.color}
+            e.slug: {"label": e.label, "color": e.color, "terminal": e.terminal}
             for e in EstadoProyecto.objects.all()
         }
         cache.set(clave, mapa, 60)
@@ -101,7 +162,7 @@ def _mapa_estados():
 def invalidar_mapa_estados():
     """Llamado desde signals al guardar/borrar EstadoProyecto."""
     from django.core.cache import cache
-    cache.delete("proyectos:mapa_estados:v1")
+    cache.delete_many(["proyectos:mapa_estados:v2", "proyectos:mapa_estados:v1"])
 
 
 @register.filter(name="color_estado")
