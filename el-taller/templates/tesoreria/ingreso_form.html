@@ -77,7 +77,7 @@
                     {% if proyectos_recientes %}
                     <div class="mb-2 flex flex-wrap gap-1.5">
                         {% for p in proyectos_recientes %}
-                        <button type="button" data-pick-select="id_proyecto" data-val="{{ p.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.codigo }} · {{ p.nombre|truncatechars:20 }}</button>
+                        <button type="button" data-pick-select="id_proyecto" data-val="{{ p.pk }}" class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ p.nombre|default:p.codigo|truncatechars:26 }}</button>
                         {% endfor %}
                     </div>
                     {% endif %}

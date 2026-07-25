@@ -1,6 +1,6 @@
 {% load forms_helpers %}<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="utf-8"><title>{{ cot.codigo }}</title></head>
+<head><meta charset="utf-8"><title>{{ cot.proyecto.nombre|default:cot.codigo }}</title></head>
 <body style="font-family: Arial, sans-serif; color: #1d2939; font-size: 11pt;">
 
   <table style="width:100%; border-collapse:collapse; margin-bottom:18pt;">
@@ -28,7 +28,7 @@
       <td style="vertical-align:top; text-align:right;">
         <div><strong>Emisión:</strong> {{ cot.fecha_emision|date:"d/m/Y" }}</div>
         <div><strong>Validez:</strong> {{ cot.fecha_validez|date:"d/m/Y" }}</div>
-        {% if cot.proyecto %}<div><strong>Proyecto:</strong> {{ cot.proyecto.codigo }}</div>{% endif %}
+        {% if cot.proyecto %}<div><strong>Proyecto:</strong> {{ cot.proyecto.nombre|default:cot.proyecto.codigo }}</div>{% endif %}
         <div><strong>Moneda:</strong> {{ cot.moneda }}</div>
       </td>
     </tr>

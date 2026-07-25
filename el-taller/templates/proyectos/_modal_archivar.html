@@ -8,9 +8,9 @@
         </div>
         <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
             {% if proyecto.archivado %}
-                <strong>{{ proyecto.codigo }} · {{ proyecto.nombre }}</strong> volverá a aparecer en listas, kanban y selectores.
+                <strong>{{ proyecto.nombre|default:proyecto.codigo }}</strong> volverá a aparecer en listas, kanban y selectores.
             {% else %}
-                <strong>{{ proyecto.codigo }} · {{ proyecto.nombre }}</strong> se ocultará de listas, kanban y selectores. No se borra nada y puedes reactivarlo cuando quieras. Úsalo para proyectos de prueba o duplicados (no confundir con «Cancelado», que es para proyectos reales que no se realizaron).
+                <strong>{{ proyecto.nombre|default:proyecto.codigo }}</strong> se ocultará de listas, kanban y selectores. No se borra nada y puedes reactivarlo cuando quieras. Úsalo para proyectos de prueba o duplicados (no confundir con «Cancelado», que es para proyectos reales que no se realizaron).
             {% endif %}
         </p>
         <form hx-post="{% url 'proyectos-archivar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">

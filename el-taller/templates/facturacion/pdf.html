@@ -30,7 +30,7 @@
       <td style="vertical-align:top; text-align:right;">
         <div><strong>Emisión:</strong> {{ fac.fecha_emision|date:"d/m/Y" }}</div>
         <div><strong>Vencimiento:</strong> {{ fac.fecha_vencimiento|date:"d/m/Y" }}</div>
-        {% if fac.proyecto %}<div><strong>Proyecto:</strong> {{ fac.proyecto.codigo }}</div>{% endif %}
+        {% if fac.proyecto %}<div><strong>Proyecto:</strong> {{ fac.proyecto.nombre|default:fac.proyecto.codigo }}</div>{% endif %}
         <div><strong>Moneda:</strong> {{ fac.moneda }}</div>
       </td>
     </tr>

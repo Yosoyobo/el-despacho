@@ -12,7 +12,7 @@ Detalle de una sesión de proyecto en modal HTMX. `s` = SesionProyecto, `es_prop
         <div class="space-y-3 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
             <div class="flex items-center justify-between gap-3">
                 <span class="text-gray-500 dark:text-gray-400">Proyecto</span>
-                <span class="text-right font-medium">{{ s.proyecto.codigo }} · {{ s.proyecto.nombre }}</span>
+                <span class="text-right font-medium">{{ s.proyecto.nombre|default:s.proyecto.codigo }}</span>
             </div>
             <div class="flex items-center justify-between gap-3">
                 <span class="text-gray-500 dark:text-gray-400">Inicio</span>

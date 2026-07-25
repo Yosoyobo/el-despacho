@@ -5786,6 +5786,59 @@ ese caso archiva el cliente; los botones de periodo de Tesorería no afectan los
 charts (siguen siendo «últimos 6 meses» / «del mes») ni el CSV; `periodos_disponibles`
 corta a 14 meses.
 
+### S-Resumen-Actividad ✅ — «Resumir actividad» en el recuadro del Chalán + nombre > código (2026-07-25, VERSION 2026.07.27)
+
+Herramienta nueva pedida por Oscar. Aclaración suya a mitad del sprint: **UN
+solo botón** («Resumir actividad»), que hace todo el reporte descrito — se
+descartó el segundo botón y el resumen narrativo global con IA que se había
+empezado (`resumen_taller.py`, borrado antes del commit).
+
+- **`apps/taller_home/pendientes.py`** — el reporte es **determinista** (queries,
+  cero IA: un reporte operativo tiene que ser exacto y gratis; el resumen
+  narrativo con IA sigue viviendo por proyecto en `los_proyectos/resumen_ia.py`).
+  `secciones_pendientes(usuario)` devuelve `[{titulo, lineas}]` en orden fijo:
+  **URGENTES** (prioridad alta **o** compromiso vencido, de todo el equipo) ·
+  **una sección por persona** (nombre de pila en MAYÚSCULAS; nombre completo si
+  dos comparten pila) · **MISIONES** (mandados no entregados/cancelados, con su
+  runner o «sin runner») · **TIZAYUCA** (proyectos vigentes con el proveedor
+  `PROVEEDOR_CALCULADORA` = Simil Cuero Plymouth, ligado por línea **o** por
+  catálogo) · **FACTURAS X EMITIR** (`ESTADOS_CONFIRMADOS` = diseño/producción/
+  entregado/cerrado, sin factura no-cancelada ligada) · **COTIZACIONES**
+  (proyectos `por_cotizar`) · **FACTURAS X COBRAR** (emitida/cobrada_parcial con
+  `saldo_pendiente > 0`). Orden dentro de sección: fecha más cercana arriba,
+  empate por orden de captura (pk). `texto_pendientes()` da la versión en texto
+  plano. `_fecha()` pasa los datetime aware a **hora local** antes de leer el día
+  (el bug +6h de S-Chalan-Barrido).
+- **Visibilidad y permisos**: reusa `_tareas_visibles` (Pizarrón),
+  `mandados_visibles` (Runner) y `_proyectos_visibles` (Proyectos); las secciones
+  de Facturación solo salen con `puede_ver_facturacion`, y COTIZACIONES con
+  `puede_ver_cotizaciones` (§4 #20 — nada gateado por rol literal).
+- **`views_resumen.resumen_actividad`** (`/resumen/actividad/`, patrón Wave 5:
+  GET HTMX → `#modal-slot`): arma el HTML **escapando** cada renglón, títulos en
+  `<b>`, `<br>` entre líneas y una línea en blanco entre secciones. Botón
+  **Copiar** (usa `innerText`, así que se lleva los saltos de línea limpios).
+- **Recuadro del Chalán (Dashboard)**: placeholder nuevo, el botón de envío ahora
+  dice **Enviar** (antes «Preguntar al Chalán»), «Abrir el Chat →» se redujo a un
+  **ícono de globo** abajo a la izquierda, y se sumó el botón «Resumir actividad»
+  (`type="button"` — no envía el textarea).
+- **Nombre del proyecto > código (decisión Oscar, sweep)**: detalle de cotización
+  titula con el **nombre del proyecto** (el código de la cotización baja a
+  subtítulo) y el badge del proyecto enlaza por nombre; la factura muestra el
+  nombre como subtítulo y el badge enlazado (el folio F### se queda de titular —
+  es su identidad fiscal); PDFs de cotización/factura, filas de ingresos/egresos,
+  chips del form de ingreso, gastos no registrados, los 10 modales de proyecto,
+  `cambiar_estado`/`asignar`, `_modal_ligar` y las 6 pantallas de El Checador
+  ahora anteponen `nombre|default:codigo`.
+- **12 tests** en `tests/taller/test_resumen_pendientes.py` (cada sección, orden,
+  exclusión de archivadas/cerradas, gating del diseñador, modal con `<b>`/`<br>`,
+  botón en el Dashboard, titular de la cotización).
+
+**Deuda diseñada**: el reporte no es invocable desde el chat de El Chalán (es un
+botón; así está declarado en el manual); «URGENTES» y las secciones por persona se
+solapan a propósito (lectura literal del pedido); las secciones se cortan a 40
+renglones (`LIMITE_SECCION`); TIZAYUCA se ata al **nombre** del proveedor (misma
+fragilidad que la calculadora, constante compartida).
+
 ---
 
 ## 9. Decisiones operativas tomadas

@@ -137,7 +137,7 @@
             {% for s in sesiones %}
             <li class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800/50">
                 <div class="min-w-0">
-                    <p class="font-medium text-gray-800 dark:text-gray-100">{{ s.proyecto.codigo }} · {{ s.proyecto.nombre }}</p>
+                    <p class="font-medium text-gray-800 dark:text-gray-100">{{ s.proyecto.nombre|default:s.proyecto.codigo }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         {{ s.inicio|hfmt:"D j H:i" }} – {{ s.fin|hfmt:"H:i" }}
                         · {{ s.get_origen_display }}{% if s.nota %} · {{ s.nota }}{% endif %}

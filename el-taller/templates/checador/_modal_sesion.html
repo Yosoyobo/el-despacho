@@ -19,7 +19,7 @@
                     <label for="sesion-proyecto" class="mb-1.5 block font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
                     <select name="proyecto" id="sesion-proyecto" required>
                         <option value="">— Elige un proyecto —</option>
-                        {% for p in proyectos %}<option value="{{ p.pk }}">{{ p.codigo }} · {{ p.nombre }}</option>{% endfor %}
+                        {% for p in proyectos %}<option value="{{ p.pk }}">{{ p.nombre|default:p.codigo }}</option>{% endfor %}
                     </select>
                 </div>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

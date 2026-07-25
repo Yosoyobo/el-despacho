@@ -7056,3 +7056,55 @@ botones, CxC con nombre/URL, CxP con nombre, ingreso/egreso enlazando).
 borrado del cliente y no hay borrado de facturas (por diseño fiscal) — ese caso se
 resuelve archivando; los botones de periodo no afectan los charts (siguen a 6 meses
 / mes) ni los exports CSV; `periodos_disponibles` corta a 14 meses.
+
+---
+
+## S-Resumen-Actividad — «Resumir actividad» del Chalán + nombre > código (2026-07-25, VERSION 2026.07.27)
+
+**Pedido de Oscar:** una herramienta nueva en el recuadro azul de El Chalán del
+Dashboard que resuma, en texto simple y sin emojis, todos los pendientes del
+taller. A mitad del sprint aclaró: **un solo botón**, «Resumir actividad», que
+hace todo lo descrito. Se descartó (y se borró antes del commit) el segundo
+botón con resumen narrativo global por IA.
+
+**Entregas**
+
+1. **`apps/taller_home/pendientes.py`** — reporte **determinista** (queries, sin
+   IA). 7 tipos de sección en orden fijo: URGENTES · una por persona · MISIONES ·
+   TIZAYUCA · FACTURAS X EMITIR · COTIZACIONES · FACTURAS X COBRAR. Orden interno:
+   fecha más cercana arriba, empate por orden de captura. `texto_pendientes()`
+   da la versión plana.
+2. **`views_resumen.resumen_actividad`** + URL `/resumen/actividad/` — modal
+   Wave 5 con títulos en `<b>`, renglones con `<br>`, línea en blanco entre
+   secciones y botón **Copiar**.
+3. **Recuadro del Chalán** — placeholder nuevo, botón **Enviar**, enlace al chat
+   reducido a un ícono de globo, botón «Resumir actividad».
+4. **Sweep nombre > código** — cotización, factura, PDFs, Tesorería, Checador y
+   los modales de proyecto anteponen el nombre del proyecto.
+
+**Decisiones**
+
+- **Determinista, no IA:** un reporte operativo debe ser exacto y gratis. El
+  resumen narrativo con El Chalán sigue existiendo, pero por proyecto.
+- **Secciones por persona dinámicas:** no se hardcodean ALEX/JORGE — sale una
+  sección por cada quien con pendientes asignados (nombre de pila en mayúsculas,
+  nombre completo si hay dos con la misma pila).
+- **URGENTES = prioridad alta O vencida**, de todo el equipo; se solapa a
+  propósito con las secciones por persona (lectura literal del pedido).
+- **Permisos por sección** (§4 #20): sin `facturacion.ver` no salen las dos
+  secciones de facturas; sin `cotizaciones.ver` no sale COTIZACIONES.
+- **El folio F### se queda como titular de la factura** (identidad fiscal); el
+  nombre del proyecto entra como subtítulo y badge enlazado.
+
+**Cuidados técnicos:** `_fecha()` localiza los datetime aware antes de leer el
+día (`Proyecto.fecha_compromiso` es DateTimeField — el bug +6h); el botón de
+resumen es `type="button"` para no enviar el textarea del Chalán; el HTML del
+reporte se escapa renglón por renglón y solo entonces se marca seguro.
+
+**Tests:** 12 nuevos en `tests/taller/test_resumen_pendientes.py`. Regresión de
+proyectos, cotizaciones, facturación, tesorería, pizarrón y los dos
+`test_no_renderiza_comentarios`: verde. Ruff limpio.
+
+**Deuda diseñada:** el reporte no se pide por chat (es un botón, declarado así en
+el manual); tope de 40 renglones por sección; TIZAYUCA se ata al nombre del
+proveedor (misma constante que la calculadora).
