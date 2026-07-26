@@ -327,9 +327,10 @@ def test_anular_oculta_de_vigentes(client, usuario_factory, cot_borrador):
 
 
 def test_lista_columnas_render_lc(client, usuario_factory, cot_borrador):
-    """Render LC 2026-06-30: la TABLA (vista=tabla) muestra fecha formateada +
-    Versión, sin columna de Código ni de Acciones (la fila entera es clickeable).
-    LC #160: la vista por default ahora es tarjetas; la tabla es alterna."""
+    """Render LC 2026-06-30: la TABLA (vista=tabla) muestra fecha formateada,
+    sin columna de Código ni de Acciones (la fila entera es clickeable).
+    LC 2026-07-25: la tabla es la vista por default y la Versión dejó de ser
+    columna propia (va pegada al nombre del proyecto)."""
     from cuentas.templatetags.forms_helpers import fecha_corta
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
@@ -337,7 +338,7 @@ def test_lista_columnas_render_lc(client, usuario_factory, cot_borrador):
     # Fecha formateada estilo "Vie 26 Jun 2026".
     assert fecha_corta(cot_borrador.fecha_emision) in body
     # Encabezados nuevos presentes, viejos ausentes.
-    assert "Versión" in body
+    assert ">Versión<" not in body
     assert "Subtotal" in body
     assert "Acciones" not in body
     # La fila lleva data-href (clickeable completa).
@@ -345,8 +346,8 @@ def test_lista_columnas_render_lc(client, usuario_factory, cot_borrador):
 
 
 def test_lista_default_tarjetas_y_filtros(client, usuario_factory, cot_borrador):
-    """LC #160: default = tarjetas; pastillas de estado/cliente + toggle; el
-    panel HTMX responde parcial."""
+    """LC #160 + 2026-07-25: pastillas de estado/cliente + toggle tarjetas/tabla
+    (la tabla es el default); el panel HTMX responde parcial."""
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
     body = client.get("/cotizaciones/").content.decode()

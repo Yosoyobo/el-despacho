@@ -41,7 +41,23 @@ from .forms import (
 )
 from .models import Cotizacion, CotizacionImpuesto
 
-ORDEN_PERMITIDO = {"codigo", "titulo", "estado", "fecha_emision", "creado_en", "version"}
+ORDEN_PERMITIDO = {"codigo", "titulo", "estado", "fecha_emision", "creado_en", "version", "proyecto"}
+
+# LC 2026-07-25: ordenar por «Proyecto» = alfabético por nombre y, dentro de
+# cada proyecto, la versión más reciente hasta arriba.
+ORDEN_CAMPO: dict[str, list[str]] = {
+    "proyecto": ["proyecto__nombre", "-version"],
+    "-proyecto": ["-proyecto__nombre", "-version"],
+}
+
+# Colores de las pastillas de filtro por estado. Los estados del ciclo
+# configurable (generada/enviada/aprobada/pagada) traen el suyo desde Gerencia;
+# estos son los de los estados legacy que no viven en esa tabla.
+COLOR_ESTADO_LEGACY = {
+    "borrador": "#98a2b3",
+    "rechazada": "#f04438",
+    "anulada": "#667085",
+}
 
 
 def _gate_ver(request):
@@ -61,10 +77,11 @@ def lista(request):
 
     q = (request.GET.get("q") or "").strip()
     estado_filtro = (request.GET.get("estado") or "").strip()
-    # LC #160: vista de tarjetas (default) o tabla; filtro por cliente.
-    vista = (request.GET.get("vista") or "cards").strip()
+    # LC #160: tarjetas o tabla; filtro por cliente. Desde 2026-07-25 la vista
+    # por default es TABLA (decisión Oscar).
+    vista = (request.GET.get("vista") or "tabla").strip()
     if vista not in ("cards", "tabla"):
-        vista = "cards"
+        vista = "tabla"
     cliente_filtro = (request.GET.get("cliente") or "").strip()
     qs = Cotizacion.objects.select_related("cliente", "proyecto").exclude(estado="anulada")
     if estado_filtro in {"borrador", "generada", "enviada", "aprobada", "pagada", "rechazada", "anulada"}:
@@ -86,7 +103,8 @@ def lista(request):
     if base not in ORDEN_PERMITIDO:
         orden = "-creado_en"
     # Prefetch para totales sin N+1 (tarjetas + tabla llaman calcular_totales).
-    qs = qs.order_by(orden, "-pk").prefetch_related("items", "impuestos__tasa")
+    campos = ORDEN_CAMPO.get(orden, [orden])
+    qs = qs.order_by(*campos, "-pk").prefetch_related("items", "impuestos__tasa")
 
     paginator = Paginator(qs, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -98,17 +116,18 @@ def lista(request):
         qs_filtros.append(f"estado={estado_filtro}")
     if cliente_filtro.isdigit():
         qs_filtros.append(f"cliente={cliente_filtro}")
-    if vista != "cards":
+    if vista != "tabla":
         qs_filtros.append(f"vista={vista}")
     querystring_base = "&".join(qs_filtros)
     qs_paginacion = qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])
 
     # LC #160: clientes con cotizaciones vigentes → pastillas de filtro (recientes).
+    # 2026-07-25: caben en UNA sola línea, así que se acotan a las más recientes.
     from apps.la_cartera.models import Cliente
     clientes_pills = list(
         Cliente.objects.filter(
             pk__in=Cotizacion.objects.exclude(estado="anulada").values("cliente_id")
-        ).order_by("razon_social")[:40]
+        ).order_by("razon_social")[:12]
     )
     # Fase 3 §1.4: buscador sobre TODO el padrón (combobox). El padrón está
     # acotado (Clientes sin paginación, Fase 1), así que cargarlos todos es OK.
@@ -127,30 +146,24 @@ def lista(request):
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_paginacion),
-        # Render LC 2026-06-30: sin columna de código ni de acciones (la fila
-        # entera es clickeable). Orden: fecha · cliente · proyecto · versión ·
-        # subtotal (sin IVA) · estado.
+        # Render LC 2026-06-30 + ajuste 2026-07-25: la versión ya no es columna
+        # propia (va pegada al nombre del proyecto) y al final hay una columna
+        # angosta con el botón ✕ (anular / eliminar si ya está anulada).
+        # Orden: fecha · cliente · proyecto vN · subtotal (sin IVA) · estado · ✕.
         "cabeceras_cotizaciones": [
             {"label": "Fecha", "sort_key": "fecha_emision", "clase_th": "w-24"},
             {"label": "Cliente", "clase_th": "w-40"},
-            {"label": "Proyecto", "clase_th": "w-auto"},
-            {"label": "Versión", "sort_key": "version", "clase_th": "w-16"},
+            {"label": "Proyecto", "sort_key": "proyecto", "clase_th": "w-auto"},
             {"label": "Subtotal", "align": "right", "clase_th": "w-28"},
             {"label": "Estado", "sort_key": "estado", "clase_th": "w-44"},
+            {"label": "", "align": "right", "clase_th": "w-10"},
         ],
         "kpis": services.kpis_landing(),
-        "pills_estados": [
-            ("", "Vigentes"),
-            ("borrador", "Borradores"),
-            ("generada", "Generadas"),
-            ("enviada", "Enviadas"),
-            ("aprobada", "Aprobadas"),
-            ("pagada", "Pagadas"),
-            ("rechazada", "Rechazadas"),
-            ("anulada", "Anuladas"),
-        ],
+        "pills_estados": _pills_estados(),
         "estados_cot": _estados_cot_ciclo(),
         "puede_crear": puede_crear_cotizaciones(request.user),
+        "puede_anular": puede_anular_cotizaciones(request.user),
+        "puede_eliminar": puede_eliminar_cotizaciones(request.user),
     }
     # HTMX (pills/toggle) → devuelve solo el panel; navegación directa → página.
     if _es_htmx(request):
@@ -162,6 +175,33 @@ def _estados_cot_ciclo():
     """Ciclo configurable de cotización (para el dropdown inline de estado)."""
     from apps.cotizaciones.models import estados_cot_activos
     return estados_cot_activos()
+
+
+def _pills_estados() -> list[dict]:
+    """Pastillas de filtro por estado, cada una con SU color (Oscar 2026-07-25).
+
+    El color sale del catálogo configurable de Gerencia y, para los estados
+    legacy que no viven ahí (borrador/rechazada/anulada), de `COLOR_ESTADO_LEGACY`.
+    «Vigentes» (todos) no tiene color: es el filtro neutro.
+    """
+    from apps.cotizaciones.models import mapa_estados_cot
+    mapa = mapa_estados_cot()
+
+    def color(slug: str) -> str:
+        return (mapa.get(slug) or {}).get("color") or COLOR_ESTADO_LEGACY.get(slug, "#667085")
+
+    etiquetas = [
+        ("borrador", "Borradores"),
+        ("generada", "Generadas"),
+        ("enviada", "Enviadas"),
+        ("aprobada", "Aprobadas"),
+        ("pagada", "Pagadas"),
+        ("rechazada", "Rechazadas"),
+        ("anulada", "Anuladas"),
+    ]
+    pills = [{"slug": "", "label": "Vigentes", "color": ""}]
+    pills += [{"slug": s, "label": lbl, "color": color(s)} for s, lbl in etiquetas]
+    return pills
 
 
 def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
