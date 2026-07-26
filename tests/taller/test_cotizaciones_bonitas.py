@@ -351,6 +351,26 @@ class TestEdicionTexto:
                            {"campo": "concepto", "valor": "Ajuste tardío"})
         assert resp.status_code == 204
 
+    def test_cada_control_manda_su_propio_nombre(self, client, entorno):
+        """Los controles usan `valor_<campo>`, no un `valor` genérico.
+
+        Si algún día quedan dentro de un `<form>`, HTMX manda el formulario
+        completo: con un nombre compartido el concepto pisaría las
+        especificaciones. Aquí llegan los dos y cada campo toma el suyo.
+        """
+        cot = self._cot(entorno)
+        it = cot.items.first()
+        client.force_login(entorno["admin"])
+        resp = client.post(f"/cotizaciones/items/{it.pk}/celda/", {
+            "campo": "descripcion",
+            "valor_concepto": "NO debe guardarse como descripción",
+            "valor_descripcion": "25 pz\nCon bordado",
+        })
+        assert resp.status_code == 204
+        it.refresh_from_db()
+        assert it.descripcion == "25 pz\nCon bordado"
+        assert it.concepto == "TShirt Oversize Color"
+
     def test_get_no_permitido(self, client, entorno):
         cot = self._cot(entorno)
         client.force_login(entorno["admin"])

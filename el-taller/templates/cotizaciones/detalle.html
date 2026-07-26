@@ -38,11 +38,11 @@ cotización baja a subtítulo (decisión Oscar: nombre > código, siempre).{% en
                             {% comment %}LC 2026-07: el CONCEPTO titula la línea en el PDF y las ESPECIFICACIONES son los renglones que lee el cliente. El sistema los genera al crear la versión; aquí se corrigen (autoguardan al salir del campo). Con la cotización cerrada se muestran en solo lectura.{% endcomment %}
                             <td class="px-3 py-2 align-top text-gray-700 dark:text-gray-200">
                                 {% if puede_editar_texto %}
-                                <input type="text" name="valor" value="{{ it.concepto_visible }}" maxlength="150"
+                                <input type="text" name="valor_concepto" value="{{ it.concepto_visible }}" maxlength="150"
                                        aria-label="Concepto"
                                        hx-post="{% url 'cotizaciones:item-celda' it.pk %}" hx-trigger="change" hx-vals='{"campo": "concepto"}' hx-swap="none"
                                        class="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-medium text-gray-900 hover:border-gray-300 focus:border-brand-400 dark:text-gray-100 dark:hover:border-gray-700">
-                                <textarea name="valor" rows="{{ it.filas_textarea }}"
+                                <textarea name="valor_descripcion" rows="{{ it.filas_textarea }}"
                                           aria-label="Especificaciones"
                                           placeholder="Un renglón por especificación: piezas, material, color, detalles de branding…"
                                           hx-post="{% url 'cotizaciones:item-celda' it.pk %}" hx-trigger="change" hx-vals='{"campo": "descripcion"}' hx-swap="none"
@@ -122,7 +122,7 @@ cotización baja a subtítulo (decisión Oscar: nombre > código, siempre).{% en
                  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
             <h2 class="mb-3 text-sm font-medium text-gray-800 dark:text-gray-100">Documento</h2>
             <label class="flex cursor-pointer items-start gap-2.5">
-                <input type="checkbox" name="valor" value="on" {% if cot.incluir_desglose %}checked{% endif %}
+                <input type="checkbox" name="valor_incluir_desglose" value="on" {% if cot.incluir_desglose %}checked{% endif %}
                        hx-post="{% url 'cotizaciones:documento-opciones' cot.pk %}" hx-trigger="change" hx-vals='{"campo": "incluir_desglose"}' hx-swap="none"
                        class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 dark:border-gray-700">
                 <span class="text-sm text-gray-700 dark:text-gray-200">
@@ -135,7 +135,7 @@ cotización baja a subtítulo (decisión Oscar: nombre > código, siempre).{% en
                 <div class="flex flex-wrap gap-2">
                     {% for valor, etiqueta in cot.FORMAS_PAGO %}
                     <label class="pill-filtro {% if cot.forma_pago == valor %}pill-filtro-on{% endif %} cursor-pointer">
-                        <input type="radio" name="valor" value="{{ valor }}" class="sr-only" {% if cot.forma_pago == valor %}checked{% endif %}
+                        <input type="radio" name="valor_forma_pago" value="{{ valor }}" class="sr-only" {% if cot.forma_pago == valor %}checked{% endif %}
                                hx-post="{% url 'cotizaciones:documento-opciones' cot.pk %}" hx-trigger="change" hx-vals='{"campo": "forma_pago"}' hx-swap="none">
                         {{ etiqueta }}
                     </label>

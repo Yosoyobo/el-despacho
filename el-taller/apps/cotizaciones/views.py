@@ -763,6 +763,21 @@ def estado_inline(request, pk):
                   {"c": cot, "estados_cot": estados_cot_activos()})
 
 
+def _valor_del_post(request, campo: str) -> str:
+    """Valor de un control de autoguardado, tolerante al nombre que use el HTML.
+
+    Los controles llevan `name="valor_<campo>"` (no un `valor` genérico) porque
+    varios conviven en la misma página: si algún día quedan dentro de un `<form>`,
+    HTMX manda el formulario completo y dos campos llamados igual se pisarían —
+    el concepto sobreescribiría las especificaciones. Se acepta `valor` como
+    respaldo para llamadas simples.
+    """
+    clave = f"valor_{campo}"
+    if clave in request.POST:
+        return request.POST[clave]
+    return request.POST.get("valor", "")
+
+
 @login_required
 def item_celda(request, pk):
     """Corrige el TEXTO de una línea desde la página de la cotización.
@@ -789,7 +804,7 @@ def item_celda(request, pk):
         return HttpResponseForbidden(
             "Esta cotización ya está cerrada: su texto no se modifica.")
     campo = (request.POST.get("campo") or "").strip()
-    valor = request.POST.get("valor", "")
+    valor = _valor_del_post(request, campo)
     if campo == "concepto":
         it.concepto = (valor or "").strip()[:150]
     elif campo == "descripcion":
@@ -830,7 +845,7 @@ def documento_opciones(request, pk):
         return HttpResponseForbidden(
             "Esta cotización ya está cerrada: su documento no se modifica.")
     campo = (request.POST.get("campo") or "").strip()
-    valor = request.POST.get("valor", "")
+    valor = _valor_del_post(request, campo)
     if campo == "incluir_desglose":
         cot.incluir_desglose = str(valor).lower() in ("on", "1", "true", "si", "sí")
     elif campo == "forma_pago":
