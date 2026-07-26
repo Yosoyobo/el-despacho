@@ -145,6 +145,28 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "monto, descripcion, cliente_slug?, proyecto_slug?, metodo?, fecha?",
         "gating": "finanzas",
     },
+    # LC 2026-07-25 (Oscar): el Chalán también EDITA/SOBREESCRIBE lo capturado.
+    {
+        "tipo": "actualizar_ingreso",
+        "titulo": "Editar un ingreso (sin cambiar el monto)",
+        "ejemplo": "Liga el ingreso ING-2026-0003 al proyecto #lc-0009 y corrige la descripción.",
+        "payload": "codigo, campos: {descripcion?, fecha?, metodo?, cliente_slug?, proyecto_slug?}. El MONTO no se puede cambiar (su asiento contable ya existe): para corregirlo se anula el ingreso y se captura de nuevo",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "actualizar_egreso",
+        "titulo": "Editar un egreso (sin cambiar el monto)",
+        "ejemplo": "Cámbiale el proveedor al egreso EGR-2026-0007 y ponlo como pendiente de pago.",
+        "payload": "codigo, campos: {descripcion?, fecha?, metodo?, estado_pago?, centro_de_costo_slug?, proveedor?, proyecto_slug?, solicitado_por_slug?}. El MONTO no se puede cambiar (su asiento contable ya existe): para corregirlo se anula el egreso y se captura de nuevo",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "actualizar_factura",
+        "titulo": "Editar una factura en borrador",
+        "ejemplo": "La factura F-108 va por $33,770 y vence el 15 de agosto.",
+        "payload": "codigo, campos: {concepto?, monto?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}. Solo en borrador; `monto` deja UNA línea-concepto con ese importe",
+        "gating": "facturacion_editar",
+    },
     {
         "tipo": "reembolsar_egreso",
         "titulo": "Reembolsar egreso",
@@ -362,6 +384,8 @@ def _gating_checks():
         "catalogo_editar": permisos.puede_editar_catalogo,
         "finanzas": permisos.puede_ver_finanzas,
         "facturacion_emitir": permisos.puede_emitir_facturacion,
+        # LC 2026-07-25: editar/sobreescribir facturas en borrador.
+        "facturacion_editar": permisos.puede_editar_facturacion,
         "facturacion_cobrar": permisos.puede_cobrar_facturacion,
         "facturacion_crear": permisos.puede_crear_facturacion,
         "cotizaciones_enviar": permisos.puede_enviar_cotizaciones,
