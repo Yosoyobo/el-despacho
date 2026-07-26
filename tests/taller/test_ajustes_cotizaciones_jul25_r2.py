@@ -80,14 +80,16 @@ class TestDocumento:
         v2 = services.generar_desde_proyecto(entorno["proy"], entorno["admin"])
         assert v2.titulo_documento_manual == "Uniformes Marriott"
 
-    def test_las_tablas_no_llevan_lineas(self, entorno):
+    def test_las_tablas_de_layout_no_llevan_lineas(self, entorno):
         from apps.cotizaciones import services
         html = services.construir_html_pdf(entorno["cot"])
         # Google Docs pinta bordes negros si el HTML no los apaga a la brava.
         assert 'border="0"' in html
         assert "border:none" in html
-        # La única línea a propósito: la casilla ✔ del desglose.
-        assert html.count("border:1px solid #999999") <= 1
+        # El encabezado (fecha/logo/cliente) va sin líneas; las tablas de
+        # conceptos SÍ llevan recuadro desde la tercera ronda (2026-07-25).
+        encabezado = html.split("<u>", 1)[0]
+        assert "border:1px solid" not in encabezado
 
     def test_la_tabla_de_montos_va_centrada_y_con_encabezados_cortos(self, entorno):
         from apps.cotizaciones import services

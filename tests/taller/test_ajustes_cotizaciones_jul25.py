@@ -504,9 +504,12 @@ def test_pdf_sin_lineas_encabezado_gris_logo_chico_y_notas_al_pie(
     # (5) título fijo
     assert "Producción de elementos para proyecto &#x27;Ted Lasso&#x27;" in html \
         or "Producción de elementos para proyecto 'Ted Lasso'" in html
-    # (1) sin líneas de tabla — salvo la casilla ✔ del desglose
+    # (1) las tablas de conceptos llevan recuadro negro delgado; el encabezado,
+    # los totales y las notas van sin líneas (Oscar 2026-07-25, tercera ronda:
+    # antes la única línea era la casilla ✔ del desglose, en gris).
     assert "1px solid #d9d9d9; padding:5pt" not in html
-    assert "border:1px solid #999999" in html          # la casilla del cliente
+    assert "border:1px solid #999999" not in html
+    assert html.count("border:1px solid #000000") >= 8
     # (3) encabezados con fondo gris clarito
     assert html.count("background-color:#f2f2f2") >= 4
     # (2) logo más chico

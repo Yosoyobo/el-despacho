@@ -213,23 +213,40 @@ def cotizacion(entorno):
 
 
 def test_tabla_de_conceptos_lleva_linea_negra_delgada(cotizacion):
-    """Es la única con línea negra en el documento (Oscar, tercera ronda)."""
+    """Las tablas de conceptos llevan línea negra; el resto del documento no."""
     from apps.cotizaciones.services import construir_html_pdf
 
     html = construir_html_pdf(cotizacion)
     assert html.count("border:1px solid #000000") >= 8  # 4 encabezados + 4 celdas
-    # El encabezado (fecha/logo/cliente) y las notas siguen sin líneas.
+    # El encabezado (fecha/logo/cliente), los totales y las notas van sin líneas.
+    encabezado = html.split("Bufandas")[0]
+    assert "border:1px solid" not in encabezado
     assert "Notas:" in html
 
 
-def test_tabla_de_conceptos_va_centrada_y_sin_thead(cotizacion):
+def test_tabla_del_desglose_tambien_lleva_recuadro(cotizacion):
+    """Oscar 2026-07-25 (tercera ronda): «tabla desglose sí recuadro»."""
+    from apps.cotizaciones.services import construir_html_pdf
+
+    cotizacion.incluir_desglose = True
+    cotizacion.save(update_fields=["incluir_desglose"])
+    desglose = construir_html_pdf(cotizacion).split("Desglose de Elementos", 1)[1]
+    tabla = desglose.split("</table>", 1)[0]
+    assert tabla.count("border:1px solid #000000") >= 10  # 5 encabezados + 5 celdas
+    assert "#999999" not in tabla  # la casilla ✔ ya va en negro, como el resto
+
+
+def test_tablas_de_conceptos_centrada_y_sin_thead(cotizacion):
     """Docs ignora `margin:0 auto` y mete un renglón en blanco entre
     `<thead>` y `<tbody>`: se centra con atributos y sin esas etiquetas."""
     from apps.cotizaciones.services import construir_html_pdf
 
+    cotizacion.incluir_desglose = True
+    cotizacion.save(update_fields=["incluir_desglose"])
     html = construir_html_pdf(cotizacion)
     assert 'align="center" width="78%"' in html
-    assert "<thead>" not in html.split("Desglose de Elementos")[0]
+    assert "<thead>" not in html
+    assert "<tbody>" not in html
 
 
 def test_fecha_y_cliente_al_ras_del_logotipo(cotizacion):

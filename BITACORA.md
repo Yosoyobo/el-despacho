@@ -7504,11 +7504,14 @@ Regla de Oscar, ya no se pregunta: **una sola cifra = importe FINAL de pago**
 
 ## 4. El documento de la cotización
 
-- **Tabla de montos = la única con línea negra delgada**, celda por celda (Docs
-  no dibuja un borde declarado sólo en la tabla). Se le quitaron
-  `<thead>/<tbody>`: el convertidor los trata como bloques y metía un renglón en
-  blanco entre el encabezado gris y la cifra. Se centra con
-  `align="center" width="78%"` como **atributos**; cifras centradas bajo su
+- **Las dos tablas de conceptos con línea negra delgada, celda por celda**
+  (Docs no dibuja un borde declarado sólo en la tabla). La de montos y la del
+  «Desglose de Elementos» — ésta a pedido expreso de Oscar en la misma sesión
+  («tabla desglose sí recuadro»), y su casilla ✔ pasó de gris a negro. El resto
+  del documento (encabezado, totales, notas) va sin líneas. A las dos se les
+  quitaron `<thead>/<tbody>`: el convertidor los trata como bloques y metía un
+  renglón en blanco entre el encabezado gris y la cifra. La de montos se centra
+  con `align="center" width="78%"` como **atributos**; cifras centradas bajo su
   encabezado; filas más compactas (3pt).
 - Fecha y cliente a `vertical-align:top` (al ras del logotipo).
 - **Las notas ya no dejan el último renglón en otra hoja.** La estimación de
@@ -7541,10 +7544,6 @@ totales del régimen nuevo.
 
 ## 7. Deuda diseñada
 
-- La tabla del **«Desglose de Elementos»** se dejó **sin** línea negra (sólo la
-  casilla ✔, como Oscar pidió en la ronda anterior) aunque tiene los mismos
-  encabezados que la tabla de montos. Si la quiere igual, es un cambio de una
-  línea.
 - El hueco de las notas sigue siendo **estimación** (Docs pagina, no nosotros).
   Si la foto no está precalentada, `proporcion` devuelve 0 y se vuelve a asumir
   cuadrada — lado seguro: notas más arriba.

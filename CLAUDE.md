@@ -6153,13 +6153,16 @@ aclaración de la semántica del monto al dictar facturas. Sin cambios de schema
   pregunta: es regla. `crear_factura` acepta `monto` pelón como total y
   `actualizar_factura` gana `monto_base` (su `monto` pasó de fijar la base a
   fijar el total).
-- **Documento de la cotización** (`pdf.html`): la **tabla de montos** es la
-  ÚNICA con **línea negra delgada**, celda por celda (Docs no dibuja el borde
-  declarado sólo en la tabla); se le quitaron `<thead>/<tbody>` — el convertidor
+- **Documento de la cotización** (`pdf.html`): las **dos tablas de conceptos**
+  (montos y «Desglose de Elementos», ésta a pedido expreso: «tabla desglose sí
+  recuadro») llevan **línea negra delgada celda por celda** — Docs no dibuja el
+  borde declarado sólo en la tabla, y el resto del documento (encabezado,
+  totales, notas) va limpio. Se les quitaron `<thead>/<tbody>` — el convertidor
   los trata como bloques y metía un renglón en blanco entre el encabezado gris y
-  la cifra —; se centra con `align="center" width="78%"` como **atributos**; las
-  cifras van centradas bajo su encabezado y las filas más compactas (3pt). La
-  fecha y el cliente pasaron a `vertical-align:top` (al ras del logo).
+  la cifra —; la de montos se centra con `align="center" width="78%"` como
+  **atributos**; las cifras van centradas bajo su encabezado y las filas más
+  compactas (3pt). La casilla ✔ del desglose pasó de gris a negro, como el resto.
+  La fecha y el cliente pasaron a `vertical-align:top` (al ras del logo).
 - **Las notas ya no dejan el último renglón en otra hoja**: la estimación de
   `_espacio_antes_de_notas` sobreestimaba el contenido porque asumía la foto
   **cuadrada** (118pt) — una foto banner 4:1 mide 37pt. Helper nuevo
@@ -6181,10 +6184,7 @@ aclaración de la semántica del monto al dictar facturas. Sin cambios de schema
   ahora declaran `regimen_fiscal="iva"` explícito, y los que dictaban facturas/
   cotizaciones se actualizaron a los totales del régimen nuevo.
 
-**Deuda diseñada**: la tabla del «Desglose de Elementos» se dejó **sin** línea
-negra (sólo la casilla ✔, como Oscar pidió en la ronda anterior) aunque tiene los
-mismos encabezados que la tabla de montos — si la quiere igual, es un cambio de
-una línea. El hueco de las notas sigue siendo estimación (Docs pagina, no
+**Deuda diseñada**: el hueco de las notas sigue siendo estimación (Docs pagina, no
 nosotros); si la foto no está precalentada, `proporcion` devuelve 0 y se vuelve a
 asumir cuadrada (lado seguro: notas más arriba). El preview del total en el
 formulario sigue siendo una réplica en JS del cálculo de `lib/fiscal` (el

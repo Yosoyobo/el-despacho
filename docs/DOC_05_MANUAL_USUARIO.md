@@ -22,10 +22,11 @@
   **importe final de pago**, el del CFDI. Si le dices **«+ IVA»** («20,700 más
   IVA») entiende que ése es el **subtotal** y le suma el IVA y las retenciones
   encima.
-- **La tabla de precios del documento lleva su recuadro negro delgado**, como
-  debe verse. Es la única tabla del documento con líneas; el resto va limpio. Se
-  quitó también el renglón en blanco que aparecía entre el encabezado gris y la
-  cifra, y la fecha y el nombre del cliente quedaron a la altura del logotipo.
+- **Las tablas del documento llevan su recuadro negro delgado**: la de precios
+  de cada producto y la del «Desglose de Elementos». Son las únicas con líneas;
+  el encabezado, los totales y las notas van limpios. Se quitó también el
+  renglón en blanco que aparecía entre el encabezado gris y la cifra, y la fecha
+  y el nombre del cliente quedaron a la altura del logotipo.
 - **Las notas del documento ya no dejan el último punto en otra hoja.** El
   espacio que las empuja al pie ahora considera el tamaño real de la foto del
   producto y deja un margen de seguridad abajo.
@@ -3273,9 +3274,9 @@ se mueve aunque generes la v2.
 El PDF lleva el formato de Learning Center: fecha, logotipo y cliente arriba; el
 nombre del proyecto centrado; cada producto **numerado** con sus
 especificaciones, **la foto del producto** (la del catálogo) y su tabla de
-Cantidad / Precio Unitario / Subtotal (esa tabla es la única del documento con
-recuadro negro delgado). Los montos van sin IVA y sin centavos cuando terminan
-en `.00`.
+Cantidad / Precio Unitario / Subtotal (con recuadro negro delgado, igual que la
+tabla del Desglose; son las únicas del documento con líneas). Los montos van sin
+IVA y sin centavos cuando terminan en `.00`.
 
 El **Título del documento** (el encabezado centrado del PDF) se edita hasta
 arriba de la página de la cotización, en la columna principal: viene con el
