@@ -205,8 +205,8 @@ COMANDOS_DICTADO: list[dict] = [
     {
         "tipo": "crear_factura",
         "titulo": "Crear factura (borrador)",
-        "ejemplo": 'Crea una factura para $karikari por #lc-0009: "Diseño de menú" 1 pieza a $4,500.',
-        "payload": "cliente_slug, titulo, items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
+        "ejemplo": 'Registra la factura F-106 de MARKETING VEINTITRES GRADOS del 15/04/2026: "Bordado de mandiles proyecto Marriott Bonvoy" por $2,341.87.',
+        "payload": "cliente_slug (nombre comercial o razón social fiscal), concepto, monto_total (importe FINAL, ya con impuestos y retenciones) | monto_base (antes de impuestos, se le suman encima) | items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, fecha_emision?, fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
         "gating": "facturacion_crear",
     },
     {
@@ -460,6 +460,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "consultar_metrica", "que": "Conteos/sumas acotadas (proyectos, tareas, clientes, ingresos/egresos)."},
     {"nombre": "buscar", "que": "Búsqueda libre por texto en proyectos, clientes, facturas y cotizaciones."},
     {"nombre": "buscar_catalogo", "que": "Busca productos y proveedores del Catálogo por nombre (precio, costo, margen, quién los surte). Requiere permiso de Productos. Pregunta: «busca el producto Playera» o «¿qué productos surte Telas del Norte?»."},
+    {"nombre": "buscar_proveedor", "que": "Ficha completa de un proveedor: contacto, qué surte con precios y costos, en qué proyectos anda, cuánto se le debe y qué se le ha pagado (el dinero, sólo con permiso de finanzas). Pregunta: «háblame de Simil Cuero Plymouth» o «¿cuánto le debemos a Telas del Norte?»."},
     {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
     {"nombre": "tareas_de_proyecto / mis_tareas / detalle_tarea", "que": "Tareas de un proyecto, tus tareas abiertas, o el detalle de una."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},

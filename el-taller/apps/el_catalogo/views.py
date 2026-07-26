@@ -808,16 +808,20 @@ def proveedor_detalle(request, pk: int):
         ultima_visita = ultima_ubicacion_de(proveedor=prov)
     except Exception:  # noqa: BLE001
         pass
-    # LC 2026-07 (Wave 4): proyectos vigentes donde el proveedor está involucrado
-    # (asignado formalmente o porque surte un producto del proyecto).
+    # Proyectos donde el proveedor está involucrado — asignado formalmente o
+    # porque surte un producto del proyecto.
+    #
+    # Oscar 2026-07-25: aquí va el HISTORIAL COMPLETO, no sólo lo vigente.
+    # Antes se excluían los cerrados/cancelados y el manager `activos` dejaba
+    # fuera los archivados, así que en cuanto un proyecto se entregaba
+    # desaparecía de la ficha del proveedor y ya no había dónde consultarlo.
     from apps.los_proyectos.models import Proyecto as _Proyecto
     from django.db.models import Q as _Q
-    _mgr = getattr(_Proyecto, "activos", _Proyecto.objects)
     proyectos_involucrados = (
-        _mgr.filter(_Q(proveedores_asignados__proveedor=prov) | _Q(productos__proveedor=prov))
-        .exclude(estado__in=["cancelado", "cerrado"])
+        _Proyecto.objects
+        .filter(_Q(proveedores_asignados__proveedor=prov) | _Q(productos__proveedor=prov))
         .select_related("cliente")
-        .distinct().order_by("-creado_en")[:50]
+        .distinct().order_by("-creado_en")[:100]
     )
 
     return render(request, "catalogo/proveedor_detalle.html", {
@@ -1099,19 +1103,27 @@ def imagen_producto_publica(request, token: str):
     3. sólo responde si Drive devuelve un `image/*`.
 
     Cualquier fallo es un 404 seco (no filtra si el archivo existe o no).
+
+    Sirve de la caché cuando la imagen viene precalentada (lo normal al generar
+    un PDF): Google no espera mucho y bajar de Drive en caliente tarda lo
+    suficiente como para que la conversión se rinda y deje el hueco.
     """
-    from lib.imagen_publica import verificar
+    from lib.imagen_publica import desde_cache, verificar
 
     file_id = verificar(token)
     if not file_id:
         return HttpResponse(status=404)
     if not Servicio.objects.filter(imagen_file_id=file_id).exists():
         return HttpResponse(status=404)
-    try:
-        from lib.google_drive import drive
-        contenido, mime, _ = drive.descargar(file_id)
-    except Exception:  # noqa: BLE001 — Drive caído o sin permisos
-        return HttpResponse(status=404)
+    cacheada = desde_cache(file_id)
+    if cacheada is not None:
+        contenido, mime = cacheada
+    else:
+        try:
+            from lib.google_drive import drive
+            contenido, mime, _ = drive.descargar(file_id)
+        except Exception:  # noqa: BLE001 — Drive caído o sin permisos
+            return HttpResponse(status=404)
     if not (mime or "").startswith("image/"):
         return HttpResponse(status=404)
     resp = HttpResponse(contenido, content_type=mime)

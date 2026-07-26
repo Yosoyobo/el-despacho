@@ -240,6 +240,34 @@ def _resolver_proyecto_para(payload: dict, contexto: dict | None = None):
         f"{cliente.razon_social} tiene varios proyectos ({codigos}). ¿En cuál lo registro?")
 
 
+def _cliente_por_razon_social(texto: str):
+    """Cliente cuyo nombre comercial o RAZÓN SOCIAL FISCAL coincide con `texto`.
+
+    Oscar 2026-07-25: al capturar facturas se dicta el nombre que aparece en el
+    CFDI («MARKETING VEINTITRES GRADOS»), que casi nunca es el nombre con el que
+    llamamos al cliente («Optimist»). Sin esto el Chalán no lo encontraba y
+    dejaba la factura sin ligar.
+
+    Orden: coincidencia exacta (razón social fiscal primero, que es la del
+    documento) → coincidencia parcial. La parcial sólo cuenta si es
+    inequívoca: dos clientes que peguen con el mismo texto no se adivinan.
+    """
+    from apps.la_cartera.models import Cliente
+
+    texto = (texto or "").strip()
+    if len(texto) < 3:
+        return None
+    for campo in ("razon_social_fiscal", "razon_social"):
+        exacto = Cliente.objects.filter(**{f"{campo}__iexact": texto}).first()
+        if exacto:
+            return exacto
+    for campo in ("razon_social_fiscal", "razon_social"):
+        parciales = list(Cliente.objects.filter(**{f"{campo}__icontains": texto})[:2])
+        if len(parciales) == 1:
+            return parciales[0]
+    return None
+
+
 def _resolver_cliente(slug: str, contexto: dict | None = None):
     from apps.la_cartera.models import Cliente
     if not slug:
@@ -251,6 +279,9 @@ def _resolver_cliente(slug: str, contexto: dict | None = None):
         if obj:
             return obj
     cliente = Cliente.objects.filter(slug=slug.lower()).first()
+    if cliente:
+        return cliente
+    cliente = _cliente_por_razon_social(slug)
     if cliente:
         return cliente
     fuzzy = _fuzzy_recientes(slug, contexto, "cliente", Cliente)

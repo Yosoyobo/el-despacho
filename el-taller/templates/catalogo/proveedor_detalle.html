@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ proveedor.razon_social }} — Proveedores{% endblock %}
 {% block contenido %}
-{% load forms_helpers %}
+{% load forms_helpers proyectos_extras %}
 {% breadcrumb_items "Productos" "/catalogo/" "Proveedores" "/catalogo/proveedores/" proveedor.razon_social as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=proveedor.razon_social breadcrumb_items=breadcrumb_items back_url="/catalogo/proveedores/" back_label="Proveedores" %}
 
@@ -15,9 +15,23 @@
     <button type="submit" form="form-proveedor" class="btn-primario">Guardar</button>
 </div>
 
-{# LC 2026-07 (Wave 4): main (2col) = productos + proyectos; sidebar (1col) = datos. #}
+{% comment %}Main (2col) = qué surte + productos + proyectos; sidebar (1col) = datos.
+Oscar 2026-07-25: «¿Qué surte?» se subió a la columna grande (es lo primero que
+se consulta de un proveedor). Para que siga dentro del autoguardado, el <form>
+ahora envuelve TODA la rejilla; las acciones de Estado quedan al pie porque
+llevan sus propios <form> y no se pueden anidar.{% endcomment %}
+<form id="form-proveedor" method="post" action="{% url 'catalogo-proveedor-detalle' proveedor.pk %}"
+      hx-post="{% url 'catalogo-proveedor-detalle' proveedor.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
+      class="campo-form">
+    {% csrf_token %}
 <div class="grid gap-6 xl:grid-cols-3">
     <main class="space-y-6 xl:col-span-2">
+        {# ── ¿Qué surte? (subcategorías) — lo primero que se consulta ── #}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">¿Qué surte?</h2>
+            {% include "catalogo/_subcategorias_checkboxes.html" %}
+        </section>
+
         {# ── Productos que surte (clic → editar el producto) ── #}
         <section class="ta-card">
             <div class="mb-3 flex items-center justify-between gap-2">
@@ -43,29 +57,26 @@
             {% endif %}
         </section>
 
-        {# ── Proyectos vigentes en los que está involucrado ── #}
+        {# ── Historial completo de proyectos (Oscar 2026-07-25) ── #}
         <section class="ta-card">
-            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Proyectos vigentes</h2>
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Proyectos <span class="font-normal text-gray-400">(historial completo)</span></h2>
             {% if proyectos_involucrados %}
             <ul class="divide-y divide-gray-100 dark:divide-gray-800">
                 {% for p in proyectos_involucrados %}
                 <li class="flex items-center justify-between gap-2 py-2">
-                    <a href="{% url 'proyectos-detalle' p.pk %}?volver={{ request.path|urlencode }}" class="min-w-0 flex-1 truncate text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.nombre }}</a>
-                    <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ p.cliente.razon_social|truncatechars:24 }}</span>
+                    <a href="{% url 'proyectos-detalle' p.pk %}?volver={{ request.path|urlencode }}" class="min-w-0 flex-1 truncate text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.nombre|default:p.codigo }}</a>
+                    <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ p.cliente.razon_social|truncatechars:22 }}</span>
+                    <span class="badge badge-hex shrink-0" style="--ec: {{ p.estado|color_estado }}">{{ p.estado|estado_label }}</span>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos vigentes" descripcion="Este proveedor no está en ningún proyecto activo ahora mismo." icono="folder" %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos" descripcion="Este proveedor no ha participado en ningún proyecto todavía." icono="folder" %}
             {% endif %}
         </section>
     </main>
 
     <aside class="space-y-6">
-        <form id="form-proveedor" method="post" action="{% url 'catalogo-proveedor-detalle' proveedor.pk %}"
-              hx-post="{% url 'catalogo-proveedor-detalle' proveedor.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
-              class="campo-form space-y-6">
-            {% csrf_token %}
             <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
                 <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">Datos de contacto</h2>
                 <div class="grid grid-cols-1 gap-4">
@@ -101,29 +112,28 @@
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
             </section>
 
-            <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-                <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">¿Qué surte? (subcategorías)</h3>
-                {% include "catalogo/_subcategorias_checkboxes.html" %}
-            </section>
-        </form>
-
-        {# ── Estado + acciones (fuera del form de autoguardado) ── #}
-        <section class="ta-card flex flex-col gap-3">
-            <div class="flex items-center justify-between gap-2">
-                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Estado</h3>
-                {% if proveedor.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}
-            </div>
-            <form method="post" action="{% url 'catalogo-proveedor-archivar' proveedor.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn-secundario w-full text-sm">{% if proveedor.activo %}Desactivar{% else %}Reactivar{% endif %}</button>
-            </form>
-            {% if puede_eliminar %}
-            <button type="button" hx-get="{% url 'catalogo-proveedor-eliminar' proveedor.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
-                    class="w-full rounded-lg border border-error-200 bg-white py-2 text-sm font-medium text-error-600 transition hover:bg-error-50 dark:border-error-500/30 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10">Eliminar permanentemente</button>
-            {% endif %}
-        </section>
     </aside>
 </div>
+</form>
+
+{% comment %}Estado + acciones: al pie, fuera del form de autoguardado (los
+botones llevan sus propios <form> y no se pueden anidar).{% endcomment %}
+<section class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex items-center gap-2">
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Estado</span>
+        {% if proveedor.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <form method="post" action="{% url 'catalogo-proveedor-archivar' proveedor.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-secundario text-sm">{% if proveedor.activo %}Desactivar{% else %}Reactivar{% endif %}</button>
+        </form>
+        {% if puede_eliminar %}
+        <button type="button" hx-get="{% url 'catalogo-proveedor-eliminar' proveedor.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                class="rounded-lg border border-error-200 bg-white px-4 py-2 text-sm font-medium text-error-600 transition hover:bg-error-50 dark:border-error-500/30 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10">Eliminar permanentemente</button>
+        {% endif %}
+    </div>
+</section>
 
 {# Indicador "● Sin guardar" al editar; el OOB del autoguardado lo regresa a ✓/✕. #}
 <script>
@@ -161,6 +171,21 @@
             </ul>
             {% else %}
             {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Aún no surte ningún producto." icono="folder" %}
+            {% endif %}
+        </section>
+        <section class="ta-card">
+            <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Proyectos <span class="font-normal text-gray-400">(historial completo)</span></h2>
+            {% if proyectos_involucrados %}
+            <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for p in proyectos_involucrados %}
+                <li class="flex items-center justify-between gap-2 py-2">
+                    <a href="{% url 'proyectos-detalle' p.pk %}?volver={{ request.path|urlencode }}" class="min-w-0 flex-1 truncate text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">{{ p.nombre|default:p.codigo }}</a>
+                    <span class="badge badge-hex shrink-0" style="--ec: {{ p.estado|color_estado }}">{{ p.estado|estado_label }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos" descripcion="Este proveedor no ha participado en ningún proyecto todavía." icono="folder" %}
             {% endif %}
         </section>
     </main>

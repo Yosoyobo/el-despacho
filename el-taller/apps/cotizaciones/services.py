@@ -67,6 +67,7 @@ def construir_html_pdf(cot: Cotizacion) -> str:
         for it in items
     ]
     totales = cot.calcular_totales()
+    notas = notas_para(cot)
     return render_to_string("cotizaciones/pdf.html", {
         "cot": cot,
         "items": items,
@@ -80,9 +81,74 @@ def construir_html_pdf(cot: Cotizacion) -> str:
             {**imp, "nombre": _sin_porcentaje(imp.get("nombre", ""))}
             for imp in totales.get("impuestos_detalle", [])
         ],
-        "notas": notas_para(cot),
+        "notas": notas,
         "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
+        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items, notas),
     })
+
+
+# Hoja carta con márgenes de una pulgada: 792pt − 144pt de márgenes.
+_ALTO_UTIL_PT = 648
+
+
+def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
+    """Hueco (en puntos) que empuja el bloque de notas al pie de la hoja.
+
+    Oscar 2026-07-25: el espacio debe ser DINÁMICO — si las notas caben en lo
+    que queda de la página, se van hasta abajo; si ya no caben, no se estira
+    nada y pasan enteras a la hoja siguiente (el `page-break-inside:avoid` del
+    template impide que se partan).
+
+    Es una **estimación**: el HTML lo pagina Google, no nosotros, así que aquí
+    se suman altos aproximados por bloque. Peor caso, el hueco queda un poco
+    más corto o más largo que el ideal — nunca rompe el documento. Por eso el
+    resultado se limita a `_ALTO_UTIL_PT / 2`: mejor quedarse corto que empujar
+    las notas a una hoja de más.
+    """
+    alto = 60 + 46  # encabezado (fecha/logo/cliente) + título centrado
+
+    for fila in filas:
+        cuerpo = 0
+        renglones = len(getattr(fila["it"], "detalle_lineas", []) or [])
+        if renglones:
+            cuerpo = renglones * 14
+        if fila.get("imagen"):
+            cuerpo = max(cuerpo, 118)  # la foto va a 150pt de ancho
+        alto += 22 + cuerpo + 8 + 48 + 26  # nombre + cuerpo + tabla de montos
+
+    if cot.incluir_desglose:
+        impuestos = len(cot.calcular_totales().get("impuestos_detalle", []))
+        alto += 46 + 24 + len(items) * 22 + 18  # título + encabezados + filas
+        alto += (2 + impuestos) * 18 + 24       # subtotal + impuestos + total
+
+    alto_notas = 22 + len(notas) * 15
+    if getattr(cot, "terminos", ""):
+        alto_notas += 26 + len(cot.terminos.splitlines()) * 13
+
+    # Lo que queda libre en la última hoja que ya se empezó a llenar.
+    libre = _ALTO_UTIL_PT - (alto % _ALTO_UTIL_PT)
+    hueco = libre - alto_notas
+    if hueco <= 0:
+        return 0
+    return int(min(hueco, _ALTO_UTIL_PT // 2))
+
+
+def _precalentar_imagenes(cot: Cotizacion) -> None:
+    """Deja las fotos de los productos listas en caché ANTES de que Google baje
+    el HTML (ver `lib.imagen_publica.precalentar`).
+
+    Sin esto, Google pide la imagen, el endpoint se pone a bajarla de Drive en
+    caliente y la conversión se cansa: el PDF sale sin foto aunque la vista
+    previa la muestre bien. Best-effort — nunca lanza.
+    """
+    from lib.imagen_publica import precalentar
+
+    vistos = set()
+    for it in cot.items.select_related("servicio").all():
+        file_id = getattr(it.servicio, "imagen_file_id", "") or ""
+        if file_id and file_id not in vistos:
+            vistos.add(file_id)
+            precalentar(file_id)
 
 
 def _sin_porcentaje(nombre: str) -> str:
@@ -143,6 +209,7 @@ def generar_pdf(cot: Cotizacion, actor):
     from lib.documentos import generar_pdf as _gen
     from lib.google_drive import drive
 
+    _precalentar_imagenes(cot)
     html = construir_html_pdf(cot)
     res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones")
     if not res.ok:
@@ -385,6 +452,11 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             # un solo pago, la v+1 no te lo vuelve a preguntar.
             incluir_desglose=(ultima_cot.incluir_desglose if ultima_cot else False),
             forma_pago=(ultima_cot.forma_pago if ultima_cot else Cotizacion.FORMA_ANTICIPO),
+            # Igual con el encabezado escrito a mano: si ya se corrigió en la
+            # v1, la v2 no vuelve a salir con el título automático.
+            titulo_documento_manual=(
+                ultima_cot.titulo_documento_manual if ultima_cot else ""
+            ),
             anticipo_porcentaje=(
                 ultima_cot.anticipo_porcentaje if ultima_cot else Decimal("0.00")
             ),
