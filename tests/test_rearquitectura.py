@@ -176,8 +176,10 @@ def test_sala_juntas_taller_super_admin(client, usuario_factory):
     assert "Tu tablero" in body
     assert "Editar tablero" in body
     # Chat (El Chalán) + Kanban de 4 columnas activas. El botón de envío pasó
-    # de «Preguntar al Chalán» a «Enviar» y se sumó «Resumir actividad» (2026-07).
-    assert "Resumir actividad" in body
+    # de «Preguntar al Chalán» a «Enviar» y se sumó el reporte de pendientes,
+    # que en la tercera ronda de LC se llamó «Resumir pendientes» (2026-07).
+    assert "Resumir pendientes" in body
+    assert "Resumir actividad" not in body
     assert ">Enviar<" in body
     assert "Por cotizar" in body
 

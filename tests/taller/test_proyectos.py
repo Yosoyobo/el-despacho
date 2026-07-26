@@ -294,7 +294,10 @@ def test_iva_y_monto_calculado_solo_incluidos(proyecto_factory):
     from apps.los_proyectos.models import ProyectoProducto
     cat, _ = CategoriaServicio.objects.get_or_create(nombre="Producción", defaults={"orden": 10})
     srv = Servicio.objects.create(nombre="Pin", precio_base="100", costo="30", categoria=cat)
-    p = proyecto_factory()
+    # Régimen `iva`: lo que se prueba aquí es que el monto y el IVA usen sólo
+    # las líneas incluidas. (El default del modelo es «IVA y Retenciones» desde
+    # 2026-07-25, que además resta las dos retenciones.)
+    p = proyecto_factory(regimen_fiscal="iva")
     ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=2, incluir_en_calculo=True)   # 200
     ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=5, incluir_en_calculo=False)  # excluida
     assert p.monto_calculado == Decimal("200")

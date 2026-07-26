@@ -182,13 +182,15 @@ def actualizar_egreso(accion, usuario, contexto=None):
 
 @registrar("actualizar_factura")
 def actualizar_factura(accion, usuario, contexto=None):
-    """Payload: codigo (FAC-… o folio), campos: {concepto?, monto?,
-    fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?,
+    """Payload: codigo (FAC-… o folio), campos: {concepto?, monto? |
+    monto_base?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?,
     descuento_global_porcentaje?, notas?, terminos?, cliente_slug?,
     proyecto_slug?}.
 
-    Solo en borrador. `monto` REEMPLAZA las líneas por una línea-concepto
-    (modo «monto» del form, decisión Oscar LC 2026-07).
+    Solo en borrador. Cualquiera de los dos montos REEMPLAZA las líneas por una
+    línea-concepto (modo «monto» del form, decisión Oscar LC 2026-07):
+    `monto` es el importe FINAL con impuestos (se despeja la base) y
+    `monto_base` el importe antes de impuestos.
     """
     _gate(usuario, "puede_editar_facturacion", "editar facturas")
     from decimal import Decimal, InvalidOperation
@@ -238,10 +240,19 @@ def actualizar_factura(accion, usuario, contexto=None):
         factura.proyecto = _resolver_proyecto(campos["proyecto_slug"], contexto)
         cambios.append("proyecto")
 
-    monto = campos.get("monto")
-    if monto not in (None, ""):
+    # Una sola cifra dictada = importe FINAL de pago; solo `monto_base` es la
+    # base a la que se le suman los impuestos (Oscar 2026-07-25).
+    total = campos.get("monto_total")
+    if total in (None, ""):
+        total = campos.get("monto")
+    base = campos.get("monto_base")
+    if base not in (None, ""):
         factura.save()  # el monto se resuelve contra la factura ya actualizada
-        fac_services.fijar_linea_concepto(factura, monto=_monto(campos))
+        fac_services.fijar_linea_concepto(factura, monto=_monto({"monto": base}))
+        cambios.append("monto")
+    elif total not in (None, ""):
+        factura.save()
+        fac_services.fijar_total_con_impuestos(factura, _monto({"monto": total}))
         cambios.append("monto")
     else:
         _exigir(bool(cambios), "No mandaste ningún campo a cambiar de la factura.")

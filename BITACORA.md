@@ -7436,3 +7436,117 @@ candado de Bug C (§14) volvió a cazar un `{# … #}` multilínea, esta vez en
   rango de fechas.
 - La factura dictada nace en **borrador**; emitirla y cobrarla siguen siendo
   acciones aparte (`emitir_factura` / `cobrar_factura`).
+
+---
+
+# BITÁCORA — S-Cotizacion-Documento-R3 (2026-07-25, VERSION 2026.07.31)
+
+> Tercera ronda de Oscar sobre lo deployado el mismo día (2026.07.29/30), más su
+> aclaración de cómo se lee el monto al dictarle una factura al Chalán.
+> Sin cambios de schema: las 3 migraciones son sólo `AlterField` de un default.
+
+## 1. El centavo de las facturas — cómo se diagnosticó
+
+Oscar mandó 13 facturas reales en el formato
+`[folio, subtotal, monto del despacho (mal), monto del CFDI]`: **9 diferían por
+un centavo y 4 coincidían**. Con ese patrón se pudieron descartar hipótesis por
+cálculo, sin adivinar:
+
+| Hipótesis | ¿Reproduce la columna del CFDI? | ¿Reproduce la columna «mal»? |
+|---|---|---|
+| Tasa nominal, **redondeo por impuesto** (Anexo 20) | **13/13** | — |
+| Tasa nominal, redondeo sólo al final | 8/13 | 4/13 |
+| Ret. IVA = **⅔ del IVA**, redondeo al final | — | **13/13** |
+| Ret. IVA = ⅔ del IVA, redondeo por impuesto | 5/13 | 6/13 |
+
+Conclusión: la cuenta buena ya vivía en `lib.fiscal.desglose_honorarios` (desde
+S-Fiscal-Estructura) y la columna «mal» era **la fórmula anterior a ese sprint**.
+El backend estaba bien; lo que engañaba era **el preview en vivo del formulario
+de factura**: `facturacion.views._cfg_fiscal_ctx` seguía pasándole al JS
+`ret_iva_honorarios_num/den` (los campos **deprecados**), y el JS calculaba la
+retención como fracción del IVA redondeando una sola vez al final.
+
+**Fix**: la vista pasa la **tasa nominal** (`ret_iva`), el JS redondea cada
+impuesto con un helper `c2()` (espejo de `q2()` de `lib/fiscal`) antes de sumar,
+y la base también se cuantiza como en el backend. Verificado en node contra los
+13 casos antes de tocar el template.
+
+**Lección para el repo:** una réplica de un cálculo fiscal en JS es deuda. Si se
+toca `lib/fiscal`, hay que tocar su espejo — quedó anotado en el docstring de
+`_cfg_fiscal_ctx` y en el comentario del JS.
+
+## 2. Régimen «IVA y Retenciones» por default
+
+Decisión de Oscar: es el default del despacho, **también al registrar facturas
+vía el Chalán**. El formulario ya lo ofrecía marcado, pero el default del MODELO
+era `iva`, así que todo lo programático (en especial los ejecutores) nacía sin
+retenciones.
+
+- `Proyecto`, `Cotizacion` y `Factura`: default `iva` → `honorarios`
+  (migraciones `proyectos/0025`, `cotizaciones/0015`, `facturacion/0011`; sólo el
+  default, las filas existentes no se tocan). **Ojo**: el `app_label` de
+  `los_proyectos` es **`proyectos`** — la dependencia de la migración se escribe
+  con ese nombre.
+- Fallbacks `or "iva"` de los tres forms alineados a `honorarios`.
+- `crear_factura` y `crear_cotizacion` **heredan el régimen del proyecto** si
+  viene uno (`_regimen_fiscal(proyecto)`), si no `honorarios`.
+
+## 3. Semántica del monto dictado
+
+Regla de Oscar, ya no se pregunta: **una sola cifra = importe FINAL de pago**
+(el del CFDI) y **«+ IVA» = subtotal**.
+
+- `crear_factura` acepta `monto` pelón y lo trata como total
+  (`fijar_total_con_impuestos`); `monto_base` sigue siendo la base.
+- `actualizar_factura` gana `monto_base`; su `monto` pasó de fijar la **base** a
+  fijar el **total** (cambio de comportamiento, test actualizado).
+- Los 3 lugares del contrato: ejecutor + `lib/dictado_catalogo` + `prompt.py`.
+
+## 4. El documento de la cotización
+
+- **Tabla de montos = la única con línea negra delgada**, celda por celda (Docs
+  no dibuja un borde declarado sólo en la tabla). Se le quitaron
+  `<thead>/<tbody>`: el convertidor los trata como bloques y metía un renglón en
+  blanco entre el encabezado gris y la cifra. Se centra con
+  `align="center" width="78%"` como **atributos**; cifras centradas bajo su
+  encabezado; filas más compactas (3pt).
+- Fecha y cliente a `vertical-align:top` (al ras del logotipo).
+- **Las notas ya no dejan el último renglón en otra hoja.** La estimación de
+  `_espacio_antes_de_notas` sobreestimaba el contenido porque asumía la foto
+  **cuadrada** (118pt) — un banner 4:1 mide 37pt, y por eso el hueco salía corto
+  y el bloque quedaba pegado al borde. Helper nuevo
+  `lib.imagen_publica.proporcion(file_id)` (Pillow, **sólo lee de caché**, nunca
+  lanza) → alto real = `150pt × proporción`; y se resta
+  `_MARGEN_SEGURIDAD_PT = 28`.
+
+## 5. UI
+
+- Botón del Dashboard: «Resumir actividad» → **«Resumir pendientes»** (se
+  confundía con el resumen con IA del detalle del proyecto, que sí se llama
+  «Resumir actividad» y no se tocó). Título del modal: «Resumen de pendientes».
+- **Título del documento** movido del `<aside>` al **tope de la columna
+  principal**, con el **texto real precargado** (`value="{{ cot.titulo_documento }}"`:
+  como placeholder desaparecía con la primera tecla). Para no congelar la
+  herencia, `documento_opciones` guarda **vacío** si lo devuelven igual a
+  `titulo_documento_auto`.
+
+## 6. Tests
+
+`tests/taller/test_ajustes_cotizaciones_jul25_r3.py` (31), con **las 13 facturas
+reales parametrizadas** como red de seguridad permanente. Regresión ajustada:
+los tests de `calcular_totales` que prueban el **mecanismo genérico de tasas**
+ahora declaran `regimen_fiscal="iva"` explícito (dicen qué prueban y no dependen
+del default), y los que dictaban facturas/cotizaciones se actualizaron a los
+totales del régimen nuevo.
+
+## 7. Deuda diseñada
+
+- La tabla del **«Desglose de Elementos»** se dejó **sin** línea negra (sólo la
+  casilla ✔, como Oscar pidió en la ronda anterior) aunque tiene los mismos
+  encabezados que la tabla de montos. Si la quiere igual, es un cambio de una
+  línea.
+- El hueco de las notas sigue siendo **estimación** (Docs pagina, no nosotros).
+  Si la foto no está precalentada, `proporcion` devuelve 0 y se vuelve a asumir
+  cuadrada — lado seguro: notas más arriba.
+- El preview del total del formulario sigue siendo una **réplica en JS** del
+  cálculo de `lib/fiscal`; el definitivo lo calcula el servidor al guardar.

@@ -320,7 +320,10 @@ class TestFacturaDictada:
         fac = Factura.objects.get(pk=accion.entidad_id)
         totales = fac.calcular_totales()
         assert totales["subtotal_items"] == Decimal("1000.00")
-        assert totales["total"] == Decimal("1160.00")
+        # Desde 2026-07-25 la factura dictada nace en «IVA y Retenciones»
+        # (default del despacho): 1000 + IVA 160 − ISR 12.50 − ret. IVA 106.67.
+        assert fac.regimen_fiscal == "honorarios"
+        assert totales["total"] == Decimal("1040.83")
 
     def test_sin_monto_ni_items_pide_el_dato(self, entorno):
         from apps.el_dictado.ejecutores.avanzados import crear_factura

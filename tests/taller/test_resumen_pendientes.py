@@ -1,4 +1,4 @@
-"""Botón «Resumir actividad» del recuadro de El Chalán en el Dashboard (2026-07).
+"""Botón «Resumir pendientes» del recuadro de El Chalán en el Dashboard (2026-07).
 
 - El reporte es DETERMINISTA (queries, no IA) y respeta permisos por sección.
 - El modal sale en texto simple: títulos en negritas, renglones con <br>.
@@ -218,7 +218,7 @@ def test_dashboard_muestra_el_boton_de_resumen(client, usuario_factory):
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
     html = client.get("/").content.decode()
-    assert "Resumir actividad" in html
+    assert "Resumir pendientes" in html
     assert "Reporta updates, consulta finanzas" in html
     assert ">Enviar<" in html
 

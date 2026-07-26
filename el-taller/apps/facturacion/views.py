@@ -152,18 +152,25 @@ def lista(request):
 
 
 def _cfg_fiscal_ctx() -> dict:
-    """Tasas del régimen (para el preview en vivo del total). Nunca lanza."""
+    """Tasas del régimen (para el preview en vivo del total). Nunca lanza.
+
+    Las TRES tasas van como porcentaje NOMINAL sobre la base, igual que
+    `lib.fiscal.desglose_honorarios`. Hasta 2026-07-25 aquí viajaban los campos
+    `ret_iva_honorarios_num/den` (⅔ del IVA) — deprecados desde el sprint
+    fiscal — y el preview del formulario quedaba un centavo arriba del CFDI en
+    las bases con centavo impar. Si cambias esto, cambia también el JS de
+    `factura_form.html`: son la misma cuenta y tienen que dar lo mismo.
+    """
     try:
         from ajustes.models import ConfiguracionFiscal
         cfg = ConfiguracionFiscal.obtener()
         return {
             "iva_tasa": str(cfg.iva_tasa),
             "ret_isr": str(cfg.ret_isr_honorarios),
-            "ret_iva_num": str(cfg.ret_iva_honorarios_num or 2),
-            "ret_iva_den": str(cfg.ret_iva_honorarios_den or 3),
+            "ret_iva": str(cfg.ret_iva_honorarios or "10.6667"),
         }
     except Exception:  # noqa: BLE001
-        return {"iva_tasa": "16", "ret_isr": "1.25", "ret_iva_num": "2", "ret_iva_den": "3"}
+        return {"iva_tasa": "16", "ret_isr": "1.25", "ret_iva": "10.6667"}
 
 
 def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,

@@ -6118,6 +6118,78 @@ rango de fechas (es una ficha, no un reporte); la factura dictada nace en
 borrador — emitirla y cobrarla siguen siendo acciones aparte
 (`emitir_factura` / `cobrar_factura`).
 
+### S-Cotizacion-Documento-R3 ✅ — El centavo de las facturas, régimen default y el documento (2026-07-25, VERSION 2026.07.31)
+
+Tercera ronda de Oscar sobre lo deployado el mismo día (2026.07.29/30), más su
+aclaración de la semántica del monto al dictar facturas. Sin cambios de schema
+(las 3 migraciones son sólo `AlterField` de un default).
+
+- **El centavo de las facturas — diagnóstico.** Oscar mandó 13 facturas reales
+  con `[base, monto del despacho, monto del CFDI]`: 9 diferían por **un centavo**
+  y 4 coincidían. Probando hipótesis contra los 13 casos, el patrón salió exacto
+  y sin ambigüedad: la columna del CFDI = **cada impuesto con su tasa nominal,
+  redondeado por separado** (lo que ya hacía `lib.fiscal.desglose_honorarios`
+  desde S-Fiscal-Estructura), y la columna «mal» = **retención de IVA como ⅔ del
+  IVA con redondeo sólo al final** — la fórmula anterior a ese sprint. O sea que
+  el backend estaba bien y lo que engañaba era **el preview en vivo del
+  formulario de factura**: `facturacion.views._cfg_fiscal_ctx` seguía pasándole
+  al JS `ret_iva_honorarios_num/den` (los campos **deprecados**) y el JS hacía la
+  cuenta vieja. Fix: la vista pasa la **tasa nominal** (`ret_iva`) y el JS
+  redondea cada impuesto con un helper `c2()` (espejo de `q2()`) antes de sumar
+  — verificado en node contra los 13 casos. **Lección: una réplica de un cálculo
+  fiscal en JS es deuda; si se toca `lib/fiscal`, hay que tocar su espejo.**
+- **Régimen «IVA y Retenciones» por default** (decisión Oscar: «también al
+  registrar facturas vía el Chalán»): el default del MODELO en `Proyecto`,
+  `Cotizacion` y `Factura` pasó de `iva` a `honorarios` (migraciones
+  `proyectos/0025`, `cotizaciones/0015`, `facturacion/0011` — sólo el default,
+  las filas existentes no se tocan) + los fallbacks `or "iva"` de los tres forms.
+  El formulario ya lo ofrecía marcado; lo que nacía en `iva` era todo lo
+  programático, en especial los ejecutores del Chalán. Ahora `crear_factura` y
+  `crear_cotizacion` **heredan el régimen del proyecto** si viene uno
+  (`_regimen_fiscal(proyecto)`), si no `honorarios`.
+- **Semántica del monto dictado** (los 3 lugares del contrato + `edicion_financiera`):
+  **una sola cifra = importe FINAL de pago** (el del CFDI → `fijar_total_con_impuestos`),
+  **«+ IVA» = subtotal** (`monto_base`, los impuestos se suman encima). Ya no se
+  pregunta: es regla. `crear_factura` acepta `monto` pelón como total y
+  `actualizar_factura` gana `monto_base` (su `monto` pasó de fijar la base a
+  fijar el total).
+- **Documento de la cotización** (`pdf.html`): la **tabla de montos** es la
+  ÚNICA con **línea negra delgada**, celda por celda (Docs no dibuja el borde
+  declarado sólo en la tabla); se le quitaron `<thead>/<tbody>` — el convertidor
+  los trata como bloques y metía un renglón en blanco entre el encabezado gris y
+  la cifra —; se centra con `align="center" width="78%"` como **atributos**; las
+  cifras van centradas bajo su encabezado y las filas más compactas (3pt). La
+  fecha y el cliente pasaron a `vertical-align:top` (al ras del logo).
+- **Las notas ya no dejan el último renglón en otra hoja**: la estimación de
+  `_espacio_antes_de_notas` sobreestimaba el contenido porque asumía la foto
+  **cuadrada** (118pt) — una foto banner 4:1 mide 37pt. Helper nuevo
+  `lib.imagen_publica.proporcion(file_id)` (lee la imagen ya precalentada con
+  Pillow, sólo de caché, nunca lanza) → alto real = `150pt × proporción`; y se
+  resta `_MARGEN_SEGURIDAD_PT = 28` para no pegar el bloque al borde.
+- **Botón del Dashboard**: «Resumir actividad» → **«Resumir pendientes»** (se
+  confundía con el resumen con IA del detalle del proyecto, que sí se llama
+  «Resumir actividad» y no se tocó). Título del modal: «Resumen de pendientes».
+- **Título del documento** movido del `<aside>` al **tope de la columna
+  principal** del detalle de la cotización, con el **texto real precargado**
+  (`value="{{ cot.titulo_documento }}"`, ya no placeholder: desaparecía con la
+  primera tecla y había que reescribirlo). Para no congelar la herencia,
+  `documento_opciones` guarda **vacío** si lo devuelven igual a
+  `titulo_documento_auto`.
+- **31 tests** en `tests/taller/test_ajustes_cotizaciones_jul25_r3.py` (las 13
+  facturas reales parametrizadas como red de seguridad permanente). Regresión:
+  los tests de `calcular_totales` que probaban el **mecanismo genérico de tasas**
+  ahora declaran `regimen_fiscal="iva"` explícito, y los que dictaban facturas/
+  cotizaciones se actualizaron a los totales del régimen nuevo.
+
+**Deuda diseñada**: la tabla del «Desglose de Elementos» se dejó **sin** línea
+negra (sólo la casilla ✔, como Oscar pidió en la ronda anterior) aunque tiene los
+mismos encabezados que la tabla de montos — si la quiere igual, es un cambio de
+una línea. El hueco de las notas sigue siendo estimación (Docs pagina, no
+nosotros); si la foto no está precalentada, `proporcion` devuelve 0 y se vuelve a
+asumir cuadrada (lado seguro: notas más arriba). El preview del total en el
+formulario sigue siendo una réplica en JS del cálculo de `lib/fiscal` (el
+definitivo lo calcula el servidor al guardar).
+
 ---
 
 ## 9. Decisiones operativas tomadas

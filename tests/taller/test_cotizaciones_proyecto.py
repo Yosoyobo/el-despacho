@@ -86,6 +86,10 @@ def test_generar_incrementa_version_y_conserva_la_previa(entorno):
 def test_generar_agrega_iva_default_salvo_exento(entorno, tasa_iva_default):
     from apps.cotizaciones import services
     p = entorno["p"]
+    # La tasa de la M2M sólo aplica en régimen `iva`; en «IVA y Retenciones»
+    # (el default desde 2026-07-25) el cálculo es dedicado y no se agrega.
+    p.regimen_fiscal = "iva"
+    p.save(update_fields=["regimen_fiscal"])
     cot = services.generar_desde_proyecto(p, entorno["admin"])
     assert cot.impuestos.count() == 1
 
@@ -93,6 +97,15 @@ def test_generar_agrega_iva_default_salvo_exento(entorno, tasa_iva_default):
     p.save(update_fields=["iva_exento"])
     cot_exento = services.generar_desde_proyecto(p, entorno["admin"])
     assert cot_exento.impuestos.count() == 0
+
+
+def test_generar_en_honorarios_no_agrega_la_tasa_de_la_m2m(entorno, tasa_iva_default):
+    """En «IVA y Retenciones» los impuestos los calcula `lib.fiscal`."""
+    from apps.cotizaciones import services
+    cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    assert cot.regimen_fiscal == "honorarios"
+    assert cot.impuestos.count() == 0
+    assert cot.calcular_totales()["retenciones"] > 0
 
 
 # ── Service: marcar_estado_proyecto ──────────────────────────────────────

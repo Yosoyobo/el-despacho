@@ -90,7 +90,7 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
     # (IVA 16% / IVA y Retenciones / Exento). Las cotizaciones y facturas del
     # proyecto lo heredan. Se sincroniza `iva_exento` por compatibilidad.
     regimen_fiscal = forms.ChoiceField(
-        choices=REGIMENES_FISCALES, initial="iva", label="Impuestos",
+        choices=REGIMENES_FISCALES, initial="honorarios", label="Impuestos",
         widget=forms.RadioSelect(attrs={"class": "sr-only"}),
     )
 
@@ -112,7 +112,7 @@ class ProyectoForm(FechaHoraMixin, forms.ModelForm):
 
     def save(self, commit=True):
         obj = super().save(commit=False)  # FechaHoraMixin: setea fechas, no guarda
-        reg = self.cleaned_data.get("regimen_fiscal") or (obj.regimen_fiscal or "iva")
+        reg = self.cleaned_data.get("regimen_fiscal") or (obj.regimen_fiscal or "honorarios")
         obj.regimen_fiscal = reg
         obj.iva_exento = reg == "exento"  # sincroniza el campo legacy
         if commit:
