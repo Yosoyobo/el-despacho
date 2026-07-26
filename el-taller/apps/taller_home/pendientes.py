@@ -42,6 +42,11 @@ from datetime import date, datetime
 # `esperando_respuesta` aún no son venta; `en_pausa`/`cancelado` no se facturan.
 ESTADOS_CONFIRMADOS = ("en_proceso_diseno", "en_proceso_produccion", "entregado", "cerrado")
 
+# Estados en los que YA NO se produce nada (Oscar 2026-07-26): lo que está en
+# pausa, entregado, cerrado o cancelado no genera trabajo de taller, así que no
+# aparece en las secciones de producción (TIZAYUCA).
+ESTADOS_SIN_PRODUCCION = ("en_pausa", "entregado", "cerrado", "cancelado")
+
 # Nombres completos (Oscar 2026-07-25): «sábado 26 de julio», no «26 jul».
 _MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio",
           "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
@@ -197,6 +202,10 @@ def _seccion_tizayuca(proyectos_qs) -> dict:
     lleva varios productos de ese proveedor, cada uno va en su propio renglón.
     Solo cuentan las líneas incluidas en el cálculo (las apagadas no se
     producen — mismo criterio que los chips del Kanban).
+
+    **Solo proyectos VIVOS** (Oscar 2026-07-26): un proyecto en pausa, entregado,
+    cerrado o cancelado ya no se produce, así que sus productos no tienen nada
+    que hacer en la lista de pendientes.
     """
     from apps.el_catalogo.calculadora import PROVEEDOR_CALCULADORA
     from apps.los_proyectos.models import ProyectoProducto
@@ -206,6 +215,7 @@ def _seccion_tizayuca(proyectos_qs) -> dict:
         ProyectoProducto.objects.filter(
             proyecto__in=proyectos_qs, incluir_en_calculo=True,
         )
+        .exclude(proyecto__estado__in=ESTADOS_SIN_PRODUCCION)
         .filter(
             Q(proveedor__razon_social__icontains=PROVEEDOR_CALCULADORA)
             | Q(servicio__proveedores__razon_social__icontains=PROVEEDOR_CALCULADORA)

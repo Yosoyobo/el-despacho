@@ -179,7 +179,7 @@ class Proyecto(models.Model):
         return list(
             self.productos
             .select_related("servicio", "variacion", "proveedor")
-            .prefetch_related("procesos__proveedor")
+            .prefetch_related("procesos__proveedor", "ventas")
             .all()
         )
 
@@ -195,9 +195,14 @@ class Proyecto(models.Model):
 
     @property
     def monto_calculado(self):
-        """C7: suma de subtotales de los productos INCLUIDOS (lo que se cobra,
-        antes de IVA). Reemplaza al 'monto estimado' manual en la UI."""
-        return sum((pp.subtotal for pp in self._productos_incluidos()), Decimal("0.00"))
+        """C7: suma de lo cobrable de los productos INCLUIDOS (antes de IVA).
+        Reemplaza al 'monto estimado' manual en la UI.
+
+        LC 2026-07-26: cada línea aporta el producto **más sus procesos de venta**
+        (Ponchado, arte…), que se le cobran al cliente como líneas propias de la
+        cotización — de ahí `subtotal_con_ventas`."""
+        return sum((pp.subtotal_con_ventas for pp in self._productos_incluidos()),
+                   Decimal("0.00"))
 
     # Alias retro-compatible: 'valor_productos' = monto calculado.
     @property
@@ -370,7 +375,8 @@ class Proyecto(models.Model):
         productos = self._productos_incluidos()
         if not self._productos_calc():
             return
-        self.monto_estimado = sum((pp.subtotal for pp in productos), Decimal("0.00"))
+        self.monto_estimado = sum(
+            (pp.subtotal_con_ventas for pp in productos), Decimal("0.00"))
         if guardar:
             self.save(update_fields=["monto_estimado", "actualizado_en"])
 

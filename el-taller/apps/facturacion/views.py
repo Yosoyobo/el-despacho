@@ -129,11 +129,17 @@ def lista(request):
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_paginacion),
+        # LC 2026-07-26 (Oscar): «Emisión» al 2.º lugar; tres columnas angostas
+        # con ✓/✕ — PDF y XML del CFDI subidos, y si la factura ya tiene proyecto
+        # ligado. Se leen de un vistazo para ver qué falta.
         "cabeceras_facturas": [
             {"label": "Factura", "sort_key": "folio"},
+            {"label": "Emisión", "sort_key": "fecha_emision"},
             {"label": "Cliente"},
             {"label": "Concepto"},
-            {"label": "Emisión", "sort_key": "fecha_emision"},
+            {"label": "PDF", "align": "center", "clase_th": "w-12"},
+            {"label": "XML", "align": "center", "clase_th": "w-12"},
+            {"label": "Proyecto", "align": "center", "clase_th": "w-16"},
             {"label": "Total pagable", "align": "right"},
             {"label": "Estado", "sort_key": "estado"},
         ],
@@ -298,6 +304,12 @@ def nueva(request):
     cli_pre = (request.GET.get("cliente") or "").strip()
     if cli_pre.isdigit() and "cliente" not in initial:
         initial["cliente"] = int(cli_pre)
+    # LC 2026-07-26 (Oscar): el botón «Agregar +» de una fila «Sin información»
+    # de la lista trae el folio del hueco, para registrar la factura que falta
+    # en la secuencia sin tener que teclear el número.
+    folio_pre = (request.GET.get("folio") or "").strip()
+    if folio_pre.isdigit() and int(folio_pre) > 0:
+        initial["folio_numero"] = int(folio_pre)
     form = FacturaForm(initial=initial)
     formset = ItemFormSet(instance=Factura())
     ctx = _ctx_form(form, formset, modo="nuevo", tasas_qs=tasas_qs,

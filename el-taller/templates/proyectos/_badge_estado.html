@@ -17,5 +17,9 @@
         </select>
     </form>
     {% endif %}
-    {% include "_componentes_tailadmin/_chip_referencia.html" with tipo="proyecto" slug=proyecto.codigo|lower variante="badge" %}
+    {% comment %}El slug REAL del proyecto (basado en el nombre, ver lib/slug.py),
+    no el código en minúsculas: es la referencia con la que se le menciona con
+    `#` y en El Chalán. `activo=True` evita el tachado (mismo arreglo que la
+    ficha del cliente, LC 2026-07-26).{% endcomment %}
+    {% include "_componentes_tailadmin/_chip_referencia.html" with tipo="proyecto" slug=proyecto.slug variante="badge" activo=True %}
 </div>

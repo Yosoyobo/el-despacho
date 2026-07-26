@@ -29,8 +29,16 @@
                 cancelado → solo la fecha; activos → la nota relativa.{% endcomment %}
                 <span class="whitespace-nowrap text-[10px] {{ p|compromiso_clase }}">{{ p|compromiso_kanban }}</span>
             </div>
-            {% comment %}Solo productos INCLUIDOS (toggle On) con su cantidad (ticket UX 2026-07): se omiten los desactivados; se muestra la cantidad.{% endcomment %}
-            <div class="mt-1.5 flex flex-wrap gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+            {% comment %}Solo productos INCLUIDOS (toggle On) con su cantidad (ticket UX 2026-07): se omiten los desactivados; se muestra la cantidad.
+
+            LC 2026-07-26 (Oscar): en las columnas de cierre (en pausa, entregado,
+            cerrado, cancelado) las pastillas NO se pintan — esas columnas se leen
+            de un vistazo y el desglose las ensuciaba. `sin_productos` las oculta,
+            y el buscador del Kanban las vuelve a mostrar en los resultados (ver
+            _kanban_script.html): al buscar un producto quieres ver dónde está,
+            aunque el proyecto ya esté cerrado.{% endcomment %}
+            <div class="mt-1.5 flex flex-wrap gap-1 text-[10px] text-gray-500 dark:text-gray-400{% if sin_productos %} hidden{% endif %}"
+                 {% if sin_productos %}data-productos-colapsado{% endif %}>
                 {% for pp in p.productos.all %}{% if pp.incluir_en_calculo %}
                     <span class="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 dark:bg-white/[0.05]">{{ pp.cantidad }}× {{ pp.nombre_visible }}</span>
                 {% endif %}{% endfor %}

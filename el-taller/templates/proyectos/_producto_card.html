@@ -18,7 +18,7 @@ LC Fase 2:
 <div class="producto-fila rounded-xl border-2 border-white p-4 shadow-theme-sm transition dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card>
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
-    <div class="hidden">{{ f.procesos_json }}{{ f.variacion }}{{ f.orden }}</div>
+    <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.variacion }}{{ f.orden }}</div>
 
     {# ── Cabecera: asa de arrastre · resumen compacto · colapsar ── #}
     <div class="flex items-center gap-2">
@@ -83,6 +83,33 @@ LC Fase 2:
             </div>
         </div>
 
+        {% comment %}LC 2026-07-26 (Oscar): procesos de VENTA — el «subproducto» que
+        se le cobra al cliente APARTE del producto (Bordado → Ponchado). No es el
+        «+ Proceso» de abajo, que es de producción y cuesta: éste SUMA al precio y
+        viaja a la cotización como su propia línea, impresa en la misma tablita del
+        producto.{% endcomment %}
+        <div data-ventas>
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Procesos que se le cobran al cliente</span>
+                <button type="button" class="venta-add inline-flex h-8 items-center gap-1 rounded-lg border border-brand-300 bg-white px-2.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/40 dark:bg-gray-900 dark:text-brand-300 dark:hover:bg-brand-500/10"
+                        title="Agrega un cobro extra ligado a este producto (ej. Ponchado). Se cobra por separado en la cotización.">+ Proceso</button>
+            </div>
+            <div class="venta-lista mt-2 space-y-2">
+                {% for v in f.procs_venta %}
+                <div class="venta-fila grid grid-cols-[auto_1fr_72px_120px_auto] items-center gap-2">
+                    <span class="venta-num text-xs font-medium text-gray-400">{{ forloop.counter }}</span>
+                    <input type="text" class="venta-desc w-full" placeholder="Ej. Ponchado, diseño de arte…" value="{{ v.descripcion }}" autocomplete="off">
+                    <input type="number" min="1" step="1" class="venta-cant w-full" placeholder="1" value="{{ v.cantidad }}" title="Cantidad">
+                    <input type="number" step="0.01" min="0" class="venta-precio w-full" placeholder="0.00" value="{{ v.precio_unitario|stringformat:'.2f' }}" title="Precio unitario que se le cobra">
+                    <button type="button" class="venta-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar proceso de venta">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Cada uno se le cobra al cliente como <strong>línea aparte</strong> de la cotización (dentro de la tabla de este producto). Si además cuesta producirlo, captura ese costo abajo, en los procesos de producción.</p>
+        </div>
+
         {# Fila 2: proveedor principal · costo unitario · notas #}
         <div class="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_120px_1.6fr] md:items-end">
             <div>
@@ -107,7 +134,8 @@ LC Fase 2:
         <div class="grid grid-cols-[auto_1fr] items-start gap-3">
             {% if f.instance.pk %}
             <div data-img-slot data-url="{% url 'proyectos-producto-imagen' f.instance.pk %}"
-                 title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo"
+                 {% if f.instance.imagen_efectiva_file_id and not f.instance.imagen_es_propia %}data-img-compartida{% endif %}
+                 title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo · Supr para quitarla"
                  class="flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white/60 outline-none transition hover:border-brand-400 focus:border-brand-400 dark:border-gray-600 dark:bg-gray-900/40">
                 <img data-img-preview alt="" class="max-h-[76px] max-w-[76px] rounded-md object-contain{% if not f.instance.imagen_efectiva_file_id %} hidden{% endif %}"
                      {% if f.instance.imagen_efectiva_file_id %}src="{% url 'catalogo-imagen-producto' f.instance.imagen_efectiva_file_id %}"{% endif %}>
@@ -119,6 +147,7 @@ LC Fase 2:
                 <p class="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
                     Pica el recuadro y pega (Ctrl/Cmd+V), o <button type="button" data-img-elegir class="underline hover:text-brand-600 dark:hover:text-brand-400">elige un archivo</button>.
                     Con otro nombre en este proyecto la foto queda para <strong>este uso</strong>; si no, para el <strong>producto del catálogo</strong>.
+                    Con el recuadro seleccionado, <strong>Supr</strong> la quita.
                 </p>
                 <p data-img-estado class="mt-1 text-xs"></p>
             </div>

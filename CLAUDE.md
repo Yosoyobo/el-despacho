@@ -6289,6 +6289,77 @@ elige TODAVÍA con cuál razón social se emite (el CFDI se sube del PAC, así q
 guardarlas en la cartera alcanza); y el centrado/los cortes de página del PDF solo
 se pueden confirmar **con el código en La Sede** (la conversión la hace Google).
 
+### S-Ajustes-Jul26-R2 ✅ — Cobros por producto, pagos por proveedor y quirk #6 de Docs (2026-07-26, VERSION 2026.07.33)
+
+Segunda ronda de Oscar el mismo día (9 puntos). El punto **2 (d)** llegó vacío en
+el ticket; se entregaron (a), (b) y (c) y se le preguntó qué era (d).
+
+- **Procesos de VENTA por producto** (item 6, el grande): modelo nuevo
+  **`ProyectoProductoVenta`** (migr. `proyectos/0027`, tabla
+  `proyectos_producto_venta`; descripcion + cantidad + precio_unitario). Se eligió
+  modelo aparte y NO un `tipo="venta"` en `ProyectoProductoProceso` porque ése es
+  de **costo** de punta a punta (`costo_procesos`, `gastos.py`, `signals_egresos`,
+  `deuda_por_proveedor`, egresos): un `filter` olvidado convertiría un cobro al
+  cliente en gasto propio. `ProyectoProducto.subtotal_ventas` /
+  **`subtotal_con_ventas`** (fuente única de lo cobrable; `subtotal` sigue siendo
+  sólo el producto) alimentan `Proyecto.monto_calculado`,
+  `recalcular_monto_estimado`, `utilidad` y `margen_porcentaje`. En la cotización
+  cada proceso es **su propia línea** con **`CotizacionItem.agrupado=True`**
+  (migr. `cotizaciones/0017`, default False ⇒ líneas viejas intactas);
+  `construir_html_pdf` agrupa por esa bandera y las imprime como renglones extra
+  DENTRO de la tabla de montos de su producto (la numeración sigue contando
+  productos); `duplicar` la conserva. UI: `ventas_json` + `sincronizar_ventas`
+  (reconciliación en sitio, `MAX_VENTAS=20`, defensivo), botón «+ Proceso» de
+  venta ARRIBA (bajo Categoría · Producto · Cantidad · Merma · Precio) y el de
+  producción abajo, con textos que dicen cuál cobra y cuál cuesta.
+- **Pagos pendientes agrupados por proveedor** (item 9): `gastos.grupos_pagos_pendientes_de`
+  + `grupo_pago_de` + **`registrar_pago_grupo`**, que crea **UN solo Egreso** con
+  la suma y liga todas las unidades (el FK `egreso` es muchos-a-uno, así que
+  varias pueden compartirlo). Las unidades que ya traían un egreso «Pendiente»
+  (CxP auto-generada al entrar a producción) se **liquidan** una por una — ya
+  existen en contabilidad y no se fusionan; el mensaje nombra todos los códigos.
+  Vista `registrar_pago_proveedor_modal` (`/proyectos/<pk>/pago-proveedor/<clave>/registrar`,
+  clave 0 = sin proveedor) reusando el MISMO modal vía `_ctx_modal_pago` +
+  `_datos_pago_post` + `accion_url`.
+- **Quirk #6 de Google Docs**: **`page-break-inside:avoid` se IGNORA** en la
+  conversión (el navegador sí lo respeta — de ahí que la vista previa se viera
+  bien). Lo único que Docs no corta entre páginas es una **fila de tabla**, así
+  que cada bloque de producto y el desglose van dentro de una **tabla envoltorio
+  de una sola celda**. El título «Desglose de Elementos» pasó a ser la **primera
+  fila de su propia tabla** (colspan, sin borde) y hay `<br>` entre el logotipo y
+  el título (los márgenes de un `<p>` no siempre sobreviven).
+- **Delete desliga la imagen** (item 1): `imagen_pegar.js` + `quitar=1` en los dos
+  endpoints. Prefiere la foto PROPIA del uso (la línea vuelve a heredar la del
+  catálogo); si la que se ve es la del catálogo pide **confirmación**
+  (`data-img-compartida`). **El archivo NO se borra de Drive**: el file_id puede
+  estar congelado en una cotización enviada. El listener global sólo actúa si el
+  evento viene DEL recuadro (Backspace en un campo nunca borra).
+- **Slug del cliente** (item 3): la pastilla usaba `razon_social|slugify`
+  (inventaba `$tessa-studio`) y sin `activo` el partial la pintaba **tachada**. El
+  mismo bug estaba en la del proyecto (`codigo|lower`, cuando el slug real viene
+  del nombre) y en la de usuario de Recados — los tres arreglados.
+- **Facturación** (items 4-5): fila «Sin información» con **«Agregar +»** →
+  `?folio=N` (precarga el hueco); «Emisión» al 2.º lugar + tres columnas angostas
+  ✓/✕ (PDF y XML del CFDI, proyecto ligado) con tooltip de qué falta.
+- **Kanban** (item 7): `sin_productos=True` en la fila de abajo oculta las
+  pastillas con `data-productos-colapsado`; el buscador las **revela en los
+  resultados**.
+- **TIZAYUCA** (item 8): `ESTADOS_SIN_PRODUCCION` excluye en pausa / entregado /
+  cerrado / cancelado.
+- **27 tests nuevos** (`tests/taller/test_ajustes_jul26_r2.py`). Actualizado
+  `test_finanzas_v3::test_alerta_en_detalle_proyecto` (el encabezado del recuadro
+  ya no dice «pendiente» sino «N proveedor(es) por pagar · N concepto(s) sin
+  registrar»).
+
+**Deuda diseñada**: la página **«Gastos no registrados» de Tesorería** sigue
+agrupada por PROYECTO con una fila por unidad (Oscar señaló el recuadro del
+proyecto; aplicar ahí `grupos_pagos_pendientes_de` es el paso natural); un proceso
+de venta no lleva foto ni especificaciones propias en el documento; los procesos de
+venta no se editan desde El Chalán (como la impresión y los de producción); si un
+concepto ya tenía CxP auto-generada el pago del proveedor produce **más de un
+egreso** (inherente a conservar las cuentas por pagar); y los cortes de página del
+PDF sólo se confirman **con el código en La Sede**.
+
 ---
 
 ## 9. Decisiones operativas tomadas

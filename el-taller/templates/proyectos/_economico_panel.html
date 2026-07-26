@@ -27,6 +27,19 @@
             </button>
             {% endif %}
         </li>
+        {% comment %}LC 2026-07-26: los procesos de VENTA del producto se cobran
+        aparte, así que van como su propio renglón (sangrado bajo su producto) —
+        igual que en la cotización.{% endcomment %}
+        {% for v in pp.ventas.all %}
+        <li class="flex items-start justify-between gap-2 pl-3">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate text-gray-600 dark:text-gray-300">↳ {{ v.descripcion }}</span>
+                <span class="block text-xs text-gray-400 dark:text-gray-500">{{ v.precio_unitario|dinero_corto }} x {{ v.cantidad }}</span>
+            </span>
+            <span class="shrink-0 pt-0.5 text-right font-medium tabular-nums text-gray-600 dark:text-gray-300">{{ v.subtotal|dinero }}</span>
+            {% if puede_editar %}<span class="mt-0.5 h-6 w-6 shrink-0"></span>{% endif %}
+        </li>
+        {% endfor %}
         {% endfor %}
     </ul>
     {% endif %}

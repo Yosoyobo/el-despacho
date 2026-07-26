@@ -181,9 +181,24 @@ class ProyectoProducto(models.Model):
 
     @property
     def subtotal(self) -> Decimal:
-        """Lo que se le cobra al cliente por esta línea (precio × cantidad).
-        La merma NO se cobra, por eso no entra aquí."""
+        """Lo que se le cobra al cliente por el PRODUCTO (precio × cantidad).
+        La merma NO se cobra, por eso no entra aquí; los procesos de venta
+        tampoco — van aparte en `subtotal_ventas`."""
         return self.precio_efectivo * self.cantidad
+
+    # ── Procesos de VENTA (LC 2026-07-26) ────────────────────────────────────
+
+    @property
+    def subtotal_ventas(self) -> Decimal:
+        """Suma de los procesos de venta de la línea (Ponchado, arte…). Son cobros
+        al cliente que se facturan como líneas propias de la cotización."""
+        return sum((v.subtotal for v in self.ventas.all()), CERO)
+
+    @property
+    def subtotal_con_ventas(self) -> Decimal:
+        """TODO lo que se le cobra al cliente por esta línea: el producto más sus
+        procesos de venta. **Fuente única** del monto del proyecto."""
+        return self.subtotal + self.subtotal_ventas
 
     @property
     def merma_costo(self) -> Decimal:
@@ -217,14 +232,15 @@ class ProyectoProducto(models.Model):
 
     @property
     def utilidad(self) -> Decimal:
-        """Subtotal menos el costo real (merma + procesos)."""
-        return self.subtotal - self.costo_total_con_procesos
+        """Lo cobrado (producto + procesos de venta) menos el costo real
+        (merma + procesos de producción)."""
+        return self.subtotal_con_ventas - self.costo_total_con_procesos
 
     @property
     def margen_porcentaje(self) -> Decimal:
-        """% de margen de la línea (LC 2026-07): utilidad ÷ subtotal × 100.
+        """% de margen de la línea (LC 2026-07): utilidad ÷ cobrado × 100.
         La merma ya está restada como pérdida directa dentro de `utilidad`."""
-        sub = self.subtotal
+        sub = self.subtotal_con_ventas
         if sub <= 0:
             return CERO
         return (self.utilidad / sub * Decimal("100")).quantize(Decimal("0.1"))
