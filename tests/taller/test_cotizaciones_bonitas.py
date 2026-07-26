@@ -256,16 +256,32 @@ class TestDescripcion:
         assert it1.descripcion == "25 pz\nTexto de la v1"
 
     def test_concepto_visible_es_retrocompatible(self, entorno):
-        """Líneas viejas: el nombre vivía como único renglón de descripcion."""
+        """Líneas viejas SIN producto: el nombre vivía como único renglón de
+        descripcion. (Con producto manda el nombre del catálogo — ver abajo.)"""
         from apps.cotizaciones import services
         cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
         it = cot.items.first()
         it.concepto = ""
+        it.servicio = None
+        it.variacion = None
         it.descripcion = "Gorras"
-        it.save(update_fields=["concepto", "descripcion"])
+        it.save(update_fields=["concepto", "servicio", "variacion", "descripcion"])
         assert it.concepto_visible == "Gorras"
         # Y no se repite como especificación debajo del título.
         assert it.detalle_lineas == []
+
+    def test_concepto_visible_prefiere_el_nombre_del_producto(self, entorno):
+        """LC 2026-07-25: el título numerado se jala del NOMBRE del producto,
+        no de la primera línea de las especificaciones."""
+        from apps.cotizaciones import services
+        cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+        it = cot.items.first()
+        nombre_catalogo = it.servicio.nombre
+        it.concepto = ""
+        it.descripcion = "105 pz (3 colores)\nColor: Beige"
+        it.save(update_fields=["concepto", "descripcion"])
+        assert it.concepto_visible == nombre_catalogo
+        assert it.detalle_lineas == ["105 pz (3 colores)", "Color: Beige"]
 
     def test_detalle_lineas_ignora_renglones_vacios(self, entorno):
         from apps.cotizaciones import services

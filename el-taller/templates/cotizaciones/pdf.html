@@ -12,26 +12,26 @@ servidores, sin nuestra sesión (ver lib/imagen_publica.py).
 Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
 {% endcomment %}
 <html lang="es">
-<head><meta charset="utf-8"><title>{{ cot.proyecto.nombre|default:cot.titulo }}</title></head>
+<head><meta charset="utf-8"><title>{{ cot.titulo_documento }}</title></head>
 <body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt;">
 
-  {# Encabezado: fecha · logotipo · cliente #}
+  {# Encabezado: fecha · logotipo (chico y al centro) · cliente #}
   <table style="width:100%; border-collapse:collapse; margin-bottom:24pt;">
     <tr>
-      <td style="width:33%; vertical-align:top; text-align:left;">
+      <td style="width:33%; vertical-align:middle; text-align:left;">
         {{ cot.fecha_emision|date:"j" }} {{ cot.fecha_emision|date:"F"|capfirst }} {{ cot.fecha_emision|date:"Y" }}
       </td>
-      <td style="width:34%; vertical-align:top; text-align:center;">
-        {% if logo_url %}<img src="{{ logo_url }}" alt="Learning Center" style="width:78pt; height:78pt;">{% endif %}
+      <td style="width:34%; vertical-align:middle; text-align:center;">
+        {% if logo_url %}<img src="{{ logo_url }}" alt="Learning Center" style="width:48pt; height:48pt;">{% endif %}
       </td>
-      <td style="width:33%; vertical-align:top; text-align:right;">
+      <td style="width:33%; vertical-align:middle; text-align:right;">
         {{ cot.cliente.razon_social|upper }}
       </td>
     </tr>
   </table>
 
-  {# Título del proyecto, centrado #}
-  <p style="text-align:center; font-size:13pt; margin:0 0 28pt 0;">{{ cot.titulo }}</p>
+  {# Título fijo del documento: «Producción de elementos para proyecto '…'» #}
+  <p style="text-align:center; font-size:13pt; margin:0 0 28pt 0;">{{ cot.titulo_documento }}</p>
 
   {# Un bloque numerado por concepto: nombre, especificaciones, imagen y su tabla de montos #}
   {% for fila in filas %}
@@ -41,6 +41,10 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
       <td style="vertical-align:top;"><u>{{ fila.it.concepto_visible }}</u></td>
     </tr>
   </table>
+  {% comment %}Especificaciones + foto. Si el concepto no trae ninguna de las
+  dos, esta tabla NO se pinta: vacía solo abría un hueco entre el nombre
+  numerado y la tabla de montos (Oscar 2026-07-25).{% endcomment %}
+  {% if fila.it.detalle_lineas or fila.imagen %}
   <table style="width:100%; border-collapse:collapse; margin-bottom:10pt;">
     <tr>
       <td style="width:64%; vertical-align:top; padding-left:34pt;">
@@ -51,21 +55,25 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
       </td>
     </tr>
   </table>
-  <table style="width:88%; border-collapse:collapse; margin:0 0 26pt 34pt; font-size:10pt;">
+  {% endif %}
+  {% comment %}Tabla sin líneas (Oscar 2026-07-25): solo la fila de encabezados
+  lleva fondo gris clarito. Los encabezados van en UN solo renglón
+  (`white-space:nowrap` + anchos fijos en las columnas numéricas).{% endcomment %}
+  <table style="width:68%; border-collapse:collapse; margin:0 auto 26pt auto; font-size:10pt;">
     <thead>
       <tr>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Concepto</th>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Cantidad</th>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Precio Unitario</th>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Subtotal</th>
+        <th style="background-color:#f2f2f2; padding:4pt 5pt; text-align:center; font-style:italic; font-weight:normal; white-space:nowrap;">Concepto</th>
+        <th style="background-color:#f2f2f2; padding:4pt 5pt; width:52pt; text-align:center; font-style:italic; font-weight:normal; white-space:nowrap;">Cantidad</th>
+        <th style="background-color:#f2f2f2; padding:4pt 5pt; width:82pt; text-align:center; font-style:italic; font-weight:normal; white-space:nowrap;">Precio Unitario</th>
+        <th style="background-color:#f2f2f2; padding:4pt 5pt; width:70pt; text-align:center; font-style:italic; font-weight:normal; white-space:nowrap;">Subtotal</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td style="border:1px solid #d9d9d9; padding:5pt; font-style:italic;">{{ fila.it.concepto_visible }}</td>
-        <td style="border:1px solid #d9d9d9; padding:5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
-        <td style="border:1px solid #d9d9d9; padding:5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
-        <td style="border:1px solid #d9d9d9; padding:5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
+        <td style="padding:5pt; font-style:italic;">{{ fila.it.concepto_visible }}</td>
+        <td style="padding:5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
+        <td style="padding:5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
+        <td style="padding:5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
       </tr>
     </tbody>
   </table>
@@ -79,22 +87,24 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
   <table style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
     <thead>
       <tr>
-        <th style="border:1px solid #d9d9d9; padding:5pt; width:22pt; text-align:center;">&#10004;</th>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Concepto</th>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Cantidad</th>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Precio Unitario</th>
-        <th style="border:1px solid #d9d9d9; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Subtotal</th>
+        <th style="background-color:#f2f2f2; padding:5pt; width:22pt; text-align:center;">&#10004;</th>
+        <th style="background-color:#f2f2f2; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Concepto</th>
+        <th style="background-color:#f2f2f2; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Cantidad</th>
+        <th style="background-color:#f2f2f2; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Precio Unitario</th>
+        <th style="background-color:#f2f2f2; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Subtotal</th>
       </tr>
     </thead>
     <tbody>
       {% for it in items %}
       <tr>
-        {# Casilla vacía a propósito: es para que el cliente vaya marcando. #}
-        <td style="border:1px solid #d9d9d9; padding:5pt; background-color:#f5f5f5;">&nbsp;</td>
-        <td style="border:1px solid #d9d9d9; padding:5pt; font-style:italic;">{{ it.concepto_visible }}</td>
-        <td style="border:1px solid #d9d9d9; padding:5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
-        <td style="border:1px solid #d9d9d9; padding:5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
-        <td style="border:1px solid #d9d9d9; padding:5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
+        {% comment %}Casilla vacía a propósito: es para que el cliente vaya
+        marcando. Es el ÚNICO recuadro con línea — el resto de la tabla va sin
+        bordes (Oscar 2026-07-25).{% endcomment %}
+        <td style="border:1px solid #999999; padding:5pt;">&nbsp;</td>
+        <td style="padding:5pt; font-style:italic;">{{ it.concepto_visible }}</td>
+        <td style="padding:5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
+        <td style="padding:5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
+        <td style="padding:5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -107,13 +117,15 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
     </tr>
     {% if totales.descuento_global %}
     <tr>
-      <td style="padding:2pt 5pt 2pt 20pt;">Descuento global ({{ cot.descuento_global_porcentaje|floatformat:"-2" }}%)</td>
+      <td style="padding:2pt 5pt 2pt 20pt;">Descuento global</td>
       <td style="padding:2pt 5pt; text-align:right;">- {{ totales.descuento_global|dinero_sin_signo }}</td>
     </tr>
     {% endif %}
-    {% for imp in totales.impuestos_detalle %}
+    {% comment %}Oscar 2026-07-25: en el desglose van los nombres y los montos,
+    sin los porcentajes.{% endcomment %}
+    {% for imp in impuestos_pdf %}
     <tr>
-      <td style="padding:2pt 5pt 2pt 20pt;">{% if imp.tipo == "retencion" %}- {% endif %}{{ imp.nombre }}{% if imp.porcentaje and imp.tipo != "retencion" %} {{ imp.porcentaje|floatformat:"-2" }}%{% endif %}</td>
+      <td style="padding:2pt 5pt 2pt 20pt;">{% if imp.tipo == "retencion" %}- {% endif %}{{ imp.nombre }}</td>
       <td style="padding:2pt 5pt; text-align:right;">{{ imp.monto|dinero_sin_signo }}</td>
     </tr>
     {% endfor %}
@@ -124,16 +136,22 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
   </table>
   {% endif %}
 
-  {# Notas: van siempre, tal cual (ver apps/cotizaciones/notas.py) #}
-  <p style="margin:34pt 0 4pt 0; font-size:10pt;">Notas:</p>
-  <table style="width:100%; border-collapse:collapse; font-size:10pt;">
-    {% for nota in notas %}
-    <tr>
-      <td style="width:20pt; vertical-align:top; padding:1pt 0;">{{ forloop.counter }}.</td>
-      <td style="vertical-align:top; padding:1pt 0;">{{ nota }}</td>
-    </tr>
-    {% endfor %}
-  </table>
+  {% comment %}Notas: van siempre, tal cual (ver apps/cotizaciones/notas.py).
+  Oscar 2026-07-25: al pie del documento, casi como footer de la última página —
+  se empujan con un margen alto y se separan con una línea. Google Docs no toma
+  footers del HTML, así que «al pie» se logra con espacio, no con posición.
+  {% endcomment %}
+  <div style="margin-top:108pt; border-top:1px solid #d9d9d9; padding-top:8pt;">
+    <p style="margin:0 0 4pt 0; font-size:9pt;">Notas:</p>
+    <table style="width:100%; border-collapse:collapse; font-size:9pt;">
+      {% for nota in notas %}
+      <tr>
+        <td style="width:18pt; vertical-align:top; padding:1pt 0;">{{ forloop.counter }}.</td>
+        <td style="vertical-align:top; padding:1pt 0;">{{ nota }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
 
   {% if cot.terminos %}
   <p style="margin:18pt 0 4pt 0; font-size:10pt; font-weight:bold;">Condiciones adicionales</p>
