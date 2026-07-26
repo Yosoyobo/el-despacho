@@ -329,7 +329,7 @@
                     <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400"><tr><th class="px-4 py-3 text-left">Producto</th><th class="px-4 py-3 text-right">Cant.</th><th class="px-4 py-3 text-right">Subtotal</th></tr></thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                         {% for pp in proyecto.productos.all %}
-                        <tr class="{% if not pp.incluir_en_calculo %}opacity-50{% endif %}"><td class="px-4 py-3">{{ pp.servicio.nombre }}</td><td class="px-4 py-3 text-right">{{ pp.cantidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ pp.subtotal|dinero }}</td></tr>
+                        <tr class="{% if not pp.incluir_en_calculo %}opacity-50{% endif %}"><td class="px-4 py-3">{{ pp.nombre_visible }}</td><td class="px-4 py-3 text-right">{{ pp.cantidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ pp.subtotal|dinero }}</td></tr>
                         {% empty %}<tr><td colspan="3" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Sin productos.</td></tr>{% endfor %}
                     </tbody>
                 </table>

@@ -43,6 +43,7 @@ from . import (  # noqa: F401, E402 — registra ejecutores al importar
     catalogo,
     checador,
     cui_v1,
+    edicion_financiera,
 )
 
 __all__ = ["EJECUTORES", "registrar", "_gate"]

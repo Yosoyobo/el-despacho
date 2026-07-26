@@ -68,6 +68,9 @@ TIPOS DE ACCIÓN VÁLIDOS:
   transferencia|tarjeta_empresa|tarjeta_personal|efectivo|cheque|otro,
   fecha? YYYY-MM-DD)
 - registrar_ingreso, reembolsar_egreso, anular_egreso, anular_ingreso
+- actualizar_ingreso, actualizar_egreso, actualizar_factura
+  (editar/sobreescribir lo ya capturado; la factura solo si sigue en borrador.
+  El MONTO de ingresos/egresos NO es editable — se anula y se recaptura)
 - emitir_factura, cobrar_factura
 - enviar_cotizacion, aprobar_cotizacion, rechazar_cotizacion
 - capturar_traspaso, capturar_ajuste
@@ -132,6 +135,13 @@ PAYLOADS:
 - crear_recado: {destinatarios_slugs: [...], cuerpo}
 - crear_mensaje_buzon: {tipo: 'sugerencia'|'problema'|'otro', asunto, cuerpo, prioridad? (entero 0-10, default 5; 10 = más urgente)}
 - registrar_ingreso: {monto, descripcion, cliente_slug?, proyecto_slug?, metodo?, fecha?}
+- actualizar_ingreso: {codigo, campos: {descripcion?, fecha?, metodo?, cliente_slug?, proyecto_slug?}}
+- actualizar_egreso: {codigo, campos: {descripcion?, fecha?, metodo?, estado_pago?, centro_de_costo_slug?, proveedor?, proyecto_slug?, solicitado_por_slug?}}
+  (el MONTO de un ingreso/egreso NO se puede editar: su asiento contable ya está
+  registrado. Si el importe está mal, propón anular_ingreso/anular_egreso y
+  volver a capturarlo con registrar_ingreso/registrar_egreso)
+- actualizar_factura: {codigo, campos: {concepto?, monto?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}}
+  (solo facturas en BORRADOR; `monto` reemplaza las líneas por una sola línea-concepto con ese importe)
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}
 - anular_egreso: {codigo, motivo}
 - anular_ingreso: {codigo, motivo}

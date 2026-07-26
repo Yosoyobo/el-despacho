@@ -261,6 +261,20 @@ class Cotizacion(models.Model):
         return dict(ESTADOS_COTIZACION).get(self.estado, self.estado)
 
     @property
+    def titulo_documento(self) -> str:
+        """Título centrado del PDF, en el formato fijo de LC (Oscar 2026-07-25):
+        «Producción de elementos para proyecto 'Ted Lasso'».
+
+        Se deriva SIEMPRE del proyecto para que ninguna versión salga con otro
+        encabezado; sin proyecto (cotización standalone) cae al título capturado.
+        """
+        if self.proyecto_id:
+            nombre = (self.proyecto.nombre or self.proyecto.codigo or "").strip()
+            if nombre:
+                return f"Producción de elementos para proyecto '{nombre}'"
+        return (self.titulo or self.codigo or "").strip()
+
+    @property
     def estado_color(self) -> str:
         """Color HEX del estado actual (del catálogo; fallback gris)."""
         from .estado_cotizacion import mapa_estados_cot
@@ -421,25 +435,40 @@ class CotizacionItem(models.Model):
 
     @property
     def concepto_visible(self) -> str:
-        """Nombre del concepto. Retro-compatible: las líneas viejas guardaban el
-        nombre como primer (y único) renglón de `descripcion`."""
+        """Nombre del concepto — el título numerado y subrayado del PDF.
+
+        Orden (Oscar 2026-07-25: «que se jale del NOMBRE, no de la primera línea
+        de las especificaciones»): el `concepto` congelado → el nombre del
+        producto del catálogo (+ variación) → y solo si no hay ninguno, el primer
+        renglón de `descripcion` (formato viejo, donde el nombre vivía ahí).
+        """
         propio = (self.concepto or "").strip()
         if propio:
             return propio
+        if self.variacion_id and (vnom := (self.variacion.nombre or "").strip()):
+            base = (self.servicio.nombre or "").strip() if self.servicio_id else ""
+            if not base or vnom.lower() in base.lower():
+                return base or vnom
+            return vnom if base.lower() in vnom.lower() else f"{base} · {vnom}"
+        if self.servicio_id and (nom := (self.servicio.nombre or "").strip()):
+            return nom
         return ((self.descripcion or "").strip().splitlines() or [""])[0].strip()
 
     @property
     def detalle_lineas(self) -> list[str]:
         """Renglones de especificaciones que van bajo el título en el PDF.
 
-        Si la línea no tiene `concepto` propio (formato viejo), el primer
-        renglón de `descripcion` ES el nombre y no se repite como detalle.
+        En el formato viejo (sin `concepto`) el primer renglón de `descripcion`
+        ERA el nombre: se quita solo si efectivamente coincide con el título que
+        se está imprimiendo, para no comerse una especificación real ahora que
+        el título puede venir del producto del catálogo.
         """
         crudo = (self.descripcion or "").strip()
         if not crudo:
             return []
         renglones = crudo.splitlines()
-        if not (self.concepto or "").strip():
+        if (not (self.concepto or "").strip() and renglones
+                and renglones[0].strip().lower() == self.concepto_visible.strip().lower()):
             renglones = renglones[1:]
         return [r.strip() for r in renglones if r.strip()]
 

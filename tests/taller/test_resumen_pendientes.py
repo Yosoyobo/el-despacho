@@ -35,22 +35,29 @@ def _tarea(proyecto, titulo, **kw):
 # ── URGENTES ─────────────────────────────────────────────────────────────
 
 
-def test_urgentes_junta_prioridad_alta_y_vencidas_ordenadas(proyecto_factory, usuario_factory):
+def test_urgentes_junta_prioridad_alta_y_sin_fecha(proyecto_factory, usuario_factory):
+    """LC 2026-07-25: URGENTES = prioridad alta + lo que NO tiene fecha. Lo
+    vencido ya no entra al reporte (mira hacia adelante)."""
     from apps.taller_home.pendientes import secciones_pendientes
 
     admin = usuario_factory(rol="super_admin")
     p = proyecto_factory(nombre="Correas")
     hoy = dt.date.today()
     _tarea(p, "Alta lejana", prioridad="alta", fecha_compromiso=hoy + dt.timedelta(days=10))
-    _tarea(p, "Vencida", prioridad="media", fecha_compromiso=hoy - dt.timedelta(days=2))
+    _tarea(p, "Alta hoy", prioridad="alta", fecha_compromiso=hoy)
+    _tarea(p, "Sin fecha", prioridad="media")
+    _tarea(p, "Vencida", prioridad="alta", fecha_compromiso=hoy - dt.timedelta(days=2))
     _tarea(p, "Normal futura", prioridad="media", fecha_compromiso=hoy + dt.timedelta(days=3))
 
     urg = _seccion(secciones_pendientes(admin), "URGENTES")
     assert urg is not None
     texto = "\n".join(urg["lineas"])
-    assert "Vencida" in texto and "Alta lejana" in texto
-    assert "Normal futura" not in texto           # ni alta ni vencida
-    assert urg["lineas"][0].startswith("Vencida")  # fecha más cercana arriba
+    assert "Alta hoy" in texto and "Alta lejana" in texto
+    assert "Sin fecha" in texto                    # sin fecha = urgente
+    assert "Vencida" not in texto                  # ya pasó de fecha: fuera
+    assert "Normal futura" not in texto            # ni alta ni sin fecha
+    assert urg["lineas"][0].startswith("Alta hoy")  # fecha más cercana arriba
+    assert urg["lineas"][-1].startswith("Sin fecha")  # sin fecha, al final
     assert p.cliente.razon_social in urg["lineas"][0]
 
 
@@ -109,7 +116,7 @@ def test_misiones_lista_mandados_abiertos(proyecto_factory, usuario_factory):
 # ── TIZAYUCA · FACTURAS X EMITIR · COTIZACIONES · FACTURAS X COBRAR ──────
 
 
-def test_tizayuca_lista_proyectos_con_el_proveedor(proyecto_factory, usuario_factory):
+def test_tizayuca_lista_un_renglon_por_producto(proyecto_factory, usuario_factory):
     from apps.el_catalogo.calculadora import PROVEEDOR_CALCULADORA
     from apps.el_catalogo.models import CategoriaServicio, Proveedor, Servicio
     from apps.los_proyectos.models import ProyectoProducto

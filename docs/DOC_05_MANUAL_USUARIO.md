@@ -5,6 +5,67 @@
 
 ---
 
+## Novedades — Cotizaciones más claras, resumen del día y El Chalán corrige dinero (25 de julio de 2026 — quinta entrega)
+
+- **La lista de Cotizaciones abre en tabla.** Es la vista por default (las
+  tarjetas siguen a un clic, con el botón «▦ Tarjetas»). La columna «Versión»
+  desapareció: ahora la versión va **pegada al nombre del proyecto** —el nombre
+  en blanco y el `v2` en azul—, así se lee de corrido. Puedes **ordenar picando
+  el encabezado «Proyecto»**: quedan alfabéticas y, dentro de cada proyecto, la
+  versión más nueva hasta arriba.
+- **Las pastillas de estado ya traen su color** (el mismo que configuraste en
+  Gerencia → Catálogos → Estados de cotización), así identificas de un vistazo
+  si estás filtrando Generadas, Enviadas, Aprobadas o Pagadas.
+- **Buscar un cliente es lo primero de la barra.** El buscador de todo el padrón
+  quedó al inicio y las pastillas de clientes recientes ocupan una sola línea
+  (ya no llenan media pantalla).
+- **Botón ✕ para cerrar cotizaciones que no van.** En la tabla, cada renglón
+  tiene una ✕ que la **anula**; si ya está anulada y entras al filtro
+  «Anuladas», la ✕ la **elimina definitivamente**. Es el mismo permiso de
+  siempre: anular quien puede anular, eliminar solo quien puede eliminar.
+- **En la página del proyecto, «Ver →» abre la cotización, no el PDF.** Entras
+  a la página de la cotización (donde editas el texto, el desglose y la forma de
+  pago); el documento imprimible se sigue abriendo desde ahí.
+- **El recuadro de El Chalán ya cabe en un renglón**: «Abrir chat», «Resumir
+  actividad» y «Enviar» quedaron juntos, en la misma línea.
+- **El resumen de actividad ahora mira hacia adelante.** Cambios al reporte del
+  botón «Resumir actividad»:
+  - Hasta arriba sale **el día, la fecha y la hora** en que lo generaste.
+  - Solo lista **lo de hoy y lo que viene**: nada que ya se haya pasado de fecha.
+  - Las fechas se leen completas: «sábado 26 de julio», no «26 jul».
+  - Los **pendientes sin fecha entran en URGENTES**, para que no se pierdan.
+  - **TIZAYUCA** ahora es un renglón **por producto**: proyecto · cliente ·
+    fecha · producto x piezas (contando la merma). Si un proyecto lleva varios
+    productos de Simil Cuero Plymouth, cada uno va en su renglón.
+  - **Excepción a lo anterior: FACTURAS X COBRAR sale completa**, vencidas
+    incluidas, hasta que se marquen cobradas o se les ligue el cobro.
+- **El nombre que le pusiste al producto dentro del proyecto se usa en todos
+  lados**: además de la tarjeta y la cotización, ahora también en los recuadros
+  **Desglose** y **Proveedores** del proyecto y en la tabla de Productos
+  involucrados.
+- **El Chalán ya puede corregir dinero, no solo capturarlo.** Además de
+  registrar ingresos, egresos y facturas, ahora le puedes dictar cambios sobre
+  lo ya capturado: «liga el ingreso ING-2026-0003 al proyecto LC-0009»,
+  «cámbiale el proveedor al egreso EGR-2026-0007 y ponlo como pendiente», «la
+  factura F-108 va por $33,770 y vence el 15 de agosto». Como siempre, **te
+  muestra el cambio y tú lo confirmas**; solo lo hace si tienes permiso de
+  Finanzas o Facturación, y las facturas solo se pueden editar mientras están
+  en borrador. Dos candados: un ingreso o egreso **anulado** no se toca (se
+  captura uno nuevo) y **el monto de un ingreso o egreso no se puede cambiar**
+  —su movimiento contable ya quedó registrado—, así que para corregir un
+  importe se anula y se vuelve a capturar.
+- **El documento de la cotización quedó más limpio.** Las tablas ya no llevan
+  líneas (solo el renglón de encabezados va con un gris clarito y la casilla ✔
+  del desglose conserva su recuadro), el logotipo es más chico, el título
+  siempre dice «Producción de elementos para proyecto '…'», el nombre numerado
+  de cada producto se toma del **nombre del producto** (ya no de la primera
+  línea de las especificaciones), la tabla de Concepto / Cantidad / Precio
+  Unitario / Subtotal ocupa el centro de la hoja (68 % del ancho, encabezados en
+  un solo renglón), el desglose de impuestos ya no repite los porcentajes y las
+  notas bajaron al pie, separadas con una línea.
+
+---
+
 ## Novedades — Cotizaciones con imagen, especificaciones y nombre propio (25 de julio de 2026 — cuarta entrega)
 
 - **Las cotizaciones ya salen con el formato de Learning Center.** El PDF
@@ -2673,8 +2734,8 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
 - **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
 - **Próximos eventos:** las siguientes entregas y tareas con fecha. Click en la tarjeta te lleva al calendario completo.
-- **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. El botón **Enviar** manda lo que escribiste; el **ícono de globo** de la esquina abre el chat completo.
-  - **Resumir actividad:** abre una ventana con **todo lo pendiente del taller** en texto simple, listo para copiar: **URGENTES** (prioridad alta o ya vencidos, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (proyectos con producto de Simil Cuero Plymouth), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada), **COTIZACIONES** (proyectos por cotizar) y **FACTURAS X COBRAR** (facturas emitidas con saldo). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
+- **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están los tres botones: **Abrir chat** (el chat completo), **Resumir actividad** y **Enviar** (manda lo que escribiste).
+  - **Resumir actividad:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada), **COTIZACIONES** (proyectos por cotizar) y **FACTURAS X COBRAR** (facturas emitidas con saldo). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **FACTURAS X COBRAR sale completa** (vencidas incluidas) hasta que se marquen cobradas o se les ligue el cobro. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
   - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (se arma con datos, sin IA). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
 - **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. "Ver Kanban completo" abre el tablero con todas las columnas.
@@ -3013,7 +3074,22 @@ Abajo, una sección "Qué pueden hacer Los Chalanes" lista las acciones que el C
 - Crear proyecto · Actualizar proyecto · Asignar usuario a proyecto
 - Crear tarea · Actualizar tarea
 - Crear recado · Crear mensaje del buzón
-- Registrar egreso
+- Registrar egreso · Registrar ingreso · Crear factura (borrador)
+- **Editar un ingreso · Editar un egreso · Editar una factura en borrador**
+
+**Corregir lo que ya se capturó** (requiere permiso de Finanzas o de
+Facturación). Le dictas el cambio con el código del movimiento y él te lo
+propone para confirmar:
+
+> "Liga el ingreso ING-2026-0003 al proyecto LC-0009 y corrige la descripción."
+> "Cámbiale el proveedor al egreso EGR-2026-0007 a Telas del Norte y ponlo como pendiente de pago."
+> "La factura F-108 va por $33,770 y vence el 15 de agosto."
+
+Tres reglas: una **factura solo se edita en borrador** (ya emitida es el
+documento que mandaste); un ingreso o egreso **anulado no se toca** —se captura
+uno nuevo—; y **el monto de un ingreso o egreso no se puede cambiar**, porque su
+movimiento contable ya quedó registrado y no se reajusta solo. Si el importe
+está mal, anúlalo y captúralo de nuevo (así queda la huella de la corrección).
 
 Y lo que NO puede hacer (por seguridad): borrar entidades, mover dinero entre cuentas sin tu autorización, mandar emails externos, modificar facturación fiscal.
 
@@ -3042,6 +3118,24 @@ Propuestas comerciales para tus clientes.
 - Impuestos: marca los que aplican (IVA, retenciones)
 - Anticipo: porcentaje o monto fijo
 - Estados: Borrador → Enviada → Aprobada / Rechazada / Anulada
+
+### La lista de Cotizaciones
+
+Abre en **tabla** (el botón «▦ Tarjetas» cambia a la vista de tarjetas):
+
+- Columnas: Fecha · Cliente · **Proyecto vN** (la versión va pegada al nombre,
+  en azul) · Subtotal sin IVA · Estado · **✕**.
+- **Ordena picando «Proyecto»**: alfabético y, dentro de cada proyecto, la
+  versión más nueva hasta arriba. «Fecha» y «Estado» también ordenan.
+- Las **pastillas de estado** traen el color que configuraste en Gerencia →
+  Catálogos → Estados de cotización.
+- El **buscador de cliente** está al inicio de la barra de clientes (busca en
+  todo el padrón); a su derecha, los clientes recientes en una sola línea.
+- La **✕** de cada renglón **anula** la cotización. Si ya está anulada, entra al
+  filtro «Anuladas» y la ✕ la **elimina definitivamente** (solo si nadie generó
+  una factura a partir de ella). Cada acción respeta su permiso.
+- Desde la página del proyecto, el enlace «Ver →» de cada versión abre **la
+  página de la cotización**; el documento imprimible se abre desde ahí.
 
 ### Concepto y especificaciones de cada producto
 

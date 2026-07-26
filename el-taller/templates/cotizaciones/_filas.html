@@ -1,22 +1,38 @@
 {% load forms_helpers %}
-{% comment %}Render LC 2026-06-30: fila clickeable, sin columna de código ni de
-acciones. Columnas: Fecha · Cliente · Proyecto · Versión · Subtotal (sin IVA) · Estado.{% endcomment %}
+{% comment %}Render LC 2026-06-30 + ajuste 2026-07-25: fila clickeable, sin columna
+de código. La VERSIÓN ya no es columna: va pegada al nombre del proyecto (nombre
+en tono normal, «vN» en azul). Al final, una columna angosta con el botón ✕:
+anular si está vigente, eliminar definitivo si ya está anulada.
+Columnas: Fecha · Cliente · Proyecto vN · Subtotal (sin IVA) · Estado · ✕.{% endcomment %}
 {% for c in cotizaciones %}
 {% with totales=c.calcular_totales %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if c.estado == 'anulada' %}opacity-60{% endif %}"
     data-href="{% url 'cotizaciones:detalle' c.pk %}">
     <td class="px-5 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">{{ c.fecha_emision|fecha_corta }}</td>
     <td class="px-5 py-3"><span class="badge badge-hex max-w-[220px] truncate align-middle" style="--ec: {{ c.cliente_id|color_hash }}">{{ c.cliente.razon_social|truncatechars:44 }}</span></td>
-    {% comment %}LC 2026-07: NOMBRE del proyecto (no el código). Fase 3 §1.4:
-       enlace al detalle del proyecto (ui.js ignora clics sobre <a>, así que no
-       dispara la navegación de la fila a la cotización).{% endcomment %}
+    {% comment %}LC 2026-07: NOMBRE del proyecto (no el código) + su versión al lado.
+       Fase 3 §1.4: enlace al detalle del proyecto (ui.js ignora clics sobre <a>,
+       así que no dispara la navegación de la fila a la cotización).{% endcomment %}
     <td class="px-5 py-3 text-gray-700 dark:text-gray-200">
-        {% if c.proyecto %}<a href="{% url 'proyectos-detalle' c.proyecto.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ c.proyecto.nombre|truncatechars:60 }}</a>{% else %}—{% endif %}
+        {% if c.proyecto %}<a href="{% url 'proyectos-detalle' c.proyecto.pk %}" class="font-medium text-gray-900 hover:underline dark:text-white">{{ c.proyecto.nombre|truncatechars:60 }}</a>{% else %}—{% endif %}
+        {% if c.version %}<span class="ml-1.5 font-semibold tabular-nums text-brand-600 dark:text-brand-400">{{ c.version_label }}</span>{% endif %}
     </td>
-    <td class="px-5 py-3 tabular-nums text-gray-600 dark:text-gray-300">{{ c.version_label }}</td>
     <td class="px-5 py-3 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ totales.subtotal_items|dinero }}</td>
     <td class="px-5 py-3" data-no-row-click onclick="event.stopPropagation()">
         {% include "cotizaciones/_estado_celda.html" with c=c estados_cot=estados_cot %}
+    </td>
+    <td class="px-5 py-3 text-right" data-no-row-click onclick="event.stopPropagation()">
+        {% if c.estado == 'anulada' %}
+            {% if puede_eliminar %}
+            <button type="button" title="Eliminar definitivamente" aria-label="Eliminar cotización"
+                    hx-get="{% url 'cotizaciones:eliminar' c.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                    class="rounded-md px-1.5 py-0.5 text-sm text-gray-400 transition hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10 dark:hover:text-error-400">✕</button>
+            {% endif %}
+        {% elif puede_anular %}
+        <button type="button" title="Anular" aria-label="Anular cotización"
+                hx-get="{% url 'cotizaciones:anular' c.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                class="rounded-md px-1.5 py-0.5 text-sm text-gray-400 transition hover:bg-warning-50 hover:text-warning-600 dark:hover:bg-warning-500/10 dark:hover:text-warning-400">✕</button>
+        {% endif %}
     </td>
 </tr>
 {% endwith %}

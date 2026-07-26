@@ -116,6 +116,26 @@
     @apply border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300;
   }
 
+  /* Pastilla-filtro teñida con el color del ESTADO (LC 2026-07-25, Cotizaciones).
+     Mismo tamaño que `.pill-filtro`, pero el color sale de `--ec` (el HEX que
+     el super_admin configuró en Gerencia) en vez de brand. */
+  .pill-estado {
+    @apply inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition;
+    border-color: color-mix(in srgb, var(--ec, #667085) 32%, transparent);
+    color: color-mix(in srgb, var(--ec, #667085) 72%, #000000);
+  }
+  .pill-estado:hover { border-color: color-mix(in srgb, var(--ec, #667085) 55%, transparent); }
+  .pill-estado-on {
+    background-color: color-mix(in srgb, var(--ec, #667085) 16%, #ffffff);
+    border-color: var(--ec, #667085);
+    color: color-mix(in srgb, var(--ec, #667085) 82%, #000000);
+  }
+  .dark .pill-estado { color: color-mix(in srgb, var(--ec, #667085) 58%, #ffffff); }
+  .dark .pill-estado-on {
+    background-color: color-mix(in srgb, var(--ec, #667085) 26%, transparent);
+    color: color-mix(in srgb, var(--ec, #667085) 66%, #ffffff);
+  }
+
   /* Pastilla-toggle de subcategoría de proveedor (LC revisión buzón). Mismo
      look de color que `.badge-hex` pero clickeable: encierra un checkbox
      oculto y `:has(:checked)` prende el color de la categoría (--ec). */

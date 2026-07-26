@@ -1,12 +1,15 @@
 {% load forms_helpers %}
 {% comment %}LC #160: panel de filtros HTMX (estado + cliente) + toggle tarjetas/tabla.
-Es el destino del swap (#cot-panel); las pastillas devuelven este partial.{% endcomment %}
+Es el destino del swap (#cot-panel); las pastillas devuelven este partial.
+Ajustes 2026-07-25 (Oscar): cada pastilla de estado lleva SU color; el buscador
+de cliente va primero y los clientes recientes caben en UNA sola línea.{% endcomment %}
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <nav class="flex flex-wrap gap-2" aria-label="Filtrar por estado">
-        {% for slug, label in pills_estados %}
-        <a hx-get="{% url 'cotizaciones:lista' %}?estado={{ slug }}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
+        {% for p in pills_estados %}
+        <a hx-get="{% url 'cotizaciones:lista' %}?estado={{ p.slug }}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}{% if vista != 'tabla' %}&vista={{ vista }}{% endif %}"
            hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
-           class="pill-filtro {% if estado_filtro == slug %}pill-filtro-on{% endif %}">{{ label }}</a>
+           {% if p.color %}style="--ec: {{ p.color }}"{% endif %}
+           class="{% if p.color %}pill-estado {% if estado_filtro == p.slug %}pill-estado-on{% endif %}{% else %}pill-filtro {% if not estado_filtro %}pill-filtro-on{% endif %}{% endif %}">{{ p.label }}</a>
         {% endfor %}
     </nav>
     <div class="inline-flex shrink-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
@@ -19,24 +22,15 @@ Es el destino del swap (#cot-panel); las pastillas devuelven este partial.{% end
     </div>
 </div>
 
-{% comment %}Fase 3 §1.4: pastillas de clientes recientes (con cotización) +
-buscador sobre TODO el padrón (combobox data-select-buscable). El buscador es
-un form hx-get: al elegir un cliente serializa `cliente` + estado + vista y
-reemplaza el panel.{% endcomment %}
+{% comment %}Barra de cliente: PRIMERO el buscador sobre todo el padrón (combobox
+data-select-buscable, form hx-get que serializa cliente + estado + vista) y
+después las pastillas de los recientes, en una sola línea (`flex-nowrap` +
+`overflow-hidden`: las que no caben simplemente no se ven).{% endcomment %}
 {% if clientes_pills or clientes_todos %}
-<nav class="mb-5 flex flex-wrap items-center gap-2" aria-label="Filtrar por cliente">
-    <span class="mr-1 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Cliente</span>
-    <a hx-get="{% url 'cotizaciones:lista' %}?{% if estado_filtro %}estado={{ estado_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
-       hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
-       class="pill-filtro {% if not cliente_filtro %}pill-filtro-on{% endif %}">Todos</a>
-    {% for c in clientes_pills %}
-    <a hx-get="{% url 'cotizaciones:lista' %}?cliente={{ c.pk }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if vista != 'cards' %}&vista={{ vista }}{% endif %}"
-       hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
-       class="pill-filtro {% if cliente_filtro == c.pk|stringformat:'s' %}pill-filtro-on{% endif %}">{{ c.razon_social|truncatechars:24 }}</a>
-    {% endfor %}
+<nav class="mb-5 flex flex-nowrap items-center gap-2 overflow-hidden" aria-label="Filtrar por cliente">
     {% if clientes_todos %}
     <form hx-get="{% url 'cotizaciones:lista' %}" hx-target="#cot-panel" hx-swap="innerHTML"
-          hx-push-url="true" hx-trigger="change" class="ml-auto">
+          hx-push-url="true" hx-trigger="change" class="shrink-0">
         <input type="hidden" name="estado" value="{{ estado_filtro }}">
         <input type="hidden" name="vista" value="{{ vista }}">
         <select name="cliente" data-select-buscable aria-label="Buscar cliente en todo el padrón"
@@ -48,6 +42,14 @@ reemplaza el panel.{% endcomment %}
         </select>
     </form>
     {% endif %}
+    <a hx-get="{% url 'cotizaciones:lista' %}?{% if estado_filtro %}estado={{ estado_filtro }}{% endif %}{% if vista != 'tabla' %}&vista={{ vista }}{% endif %}"
+       hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
+       class="pill-filtro shrink-0 whitespace-nowrap {% if not cliente_filtro %}pill-filtro-on{% endif %}">Todos</a>
+    {% for c in clientes_pills %}
+    <a hx-get="{% url 'cotizaciones:lista' %}?cliente={{ c.pk }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if vista != 'tabla' %}&vista={{ vista }}{% endif %}"
+       hx-target="#cot-panel" hx-swap="innerHTML" hx-push-url="true"
+       class="pill-filtro shrink-0 whitespace-nowrap {% if cliente_filtro == c.pk|stringformat:'s' %}pill-filtro-on{% endif %}">{{ c.razon_social|truncatechars:24 }}</a>
+    {% endfor %}
 </nav>
 {% endif %}
 

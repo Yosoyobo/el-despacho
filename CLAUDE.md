@@ -5935,6 +5935,110 @@ de los procesos de la tarjeta (Oscar: «será mucho desmadre agregarlo en la
 tarjeta, editar en pág. de cotización»); una sola imagen por producto (frente y
 trasero van en la misma foto).
 
+### S-Ajustes-Cotizaciones-Jul25 ✅ — Lista de cotizaciones, resumen hacia adelante y El Chalán edita dinero (2026-07-25, VERSION 2026.07.29)
+
+Ronda de ajustes de Oscar sobre lo que se estaba deployando (2026.07.27 y
+2026.07.28). Cinco bloques, sin migraciones.
+
+- **Panel de Cotizaciones del proyecto**: «Ver →» apunta a `cotizaciones:detalle`
+  (la PÁGINA), ya no a `cotizaciones:ver` (el HTML imprimible) ni abre pestaña
+  nueva. El documento se sigue abriendo desde la página.
+- **Recuadro de El Chalán (Dashboard)**: los tres controles en un solo renglón
+  (`flex-nowrap`) — **Abrir chat** (antes era un ícono suelto en un bloque
+  aparte, bajo un `border-t`) · **Resumir actividad** · **Enviar**.
+- **Reporte «Resumir actividad»** (`apps/taller_home/pendientes.py`):
+  - `encabezado_fecha()` nuevo — «sábado 25 de julio de 2026 · 14:30»; lo
+    antepone el modal (`views_resumen`) y `texto_pendientes`. La hora respeta
+    la preferencia 24h/AM-PM vía `lib.formato_hora.aplicar` (thread-local del
+    context processor; fuera de request cae a 24h).
+  - **Regla de fechas nueva (decisión Oscar): el reporte mira HACIA ADELANTE.**
+    Nada con fecha pasada entra — tareas, mandados y proyectos (Tizayuca,
+    Facturas x emitir, Cotizaciones) se filtran con `fecha >= hoy` (o sin
+    fecha). **Única excepción, confirmada por Oscar: FACTURAS X COBRAR** sale
+    completa (vencidas incluidas) hasta que se marquen cobradas o se les ligue
+    el cobro.
+  - **URGENTES = prioridad alta + TODO lo que no tiene fecha** (antes era alta
+    + vencidas). Las sin fecha quedan al final del bloque (orden por fecha).
+  - Fechas legibles: `_DIAS`/`_MESES` completos → «sábado 26 de julio»
+    (+ « de 2027» si es otro año). `_a_date()` sigue pasando los datetime aware
+    a hora local antes de leer el día (bug +6h).
+  - **TIZAYUCA pasó de proyecto a PRODUCTO**: itera `ProyectoProducto`
+    (`incluir_en_calculo=True`) con proveedor de la línea **o** del catálogo →
+    «proyecto · cliente · fecha · producto x (cantidad + merma) pz», un renglón
+    por producto.
+- **Página de Cotizaciones** (`apps/cotizaciones/views.py` + `_panel/_filas`):
+  - **Default `vista=tabla`** (antes `cards`); el querystring ahora omite
+    `vista` cuando es tabla (`vista != "tabla"` en el view y en los 4 links).
+  - **Pastillas de estado con SU color**: `_pills_estados()` arma dicts
+    `{slug,label,color}` desde `mapa_estados_cot()` + `COLOR_ESTADO_LEGACY`
+    (borrador/rechazada/anulada no viven en la tabla configurable). Clase nueva
+    **`.pill-estado` / `.pill-estado-on`** en `input.css` (dual-copy §18),
+    teñida por `--ec` con `color-mix` — mismo sistema que `.badge-hex`.
+    «Vigentes» queda neutra con `.pill-filtro`.
+  - **Buscador de cliente primero** en la barra de clientes + recientes en UNA
+    línea (`flex-nowrap overflow-hidden`, `clientes_pills` de 40 → 12).
+  - **Columna «Versión» eliminada**: el `vN` va pegado al nombre del proyecto
+    (nombre `text-gray-900 dark:text-white`, versión `text-brand-600`).
+  - **Orden por «Proyecto»**: `ORDEN_CAMPO` mapea `proyecto` →
+    `["proyecto__nombre", "-version"]` (alfabético y la versión más nueva
+    arriba de cada proyecto); `-proyecto` invierte solo el nombre.
+  - **Botón ✕ por fila**: `hx-get` al modal Wave 5 de **anular**; si la
+    cotización ya está anulada (filtro «Anuladas»), al de **eliminar**. Gateado
+    con `puede_anular` / `puede_eliminar` nuevos en el contexto.
+- **El Chalán edita/sobreescribe dinero** (`ejecutores/edicion_financiera.py`
+  nuevo — se evitó el nombre `cui_v2` porque ese ya existe en la rama
+  `agent/mcp-despacho`): `actualizar_ingreso`, `actualizar_egreso`,
+  `actualizar_factura`. Los **3 lugares** del contrato: ejecutor +
+  `lib/dictado_catalogo.COMANDOS_DICTADO` + `prompt.py` (el chat y las
+  capacidades de propuesta se derivan solos del catálogo). Gating nuevo
+  **`facturacion_editar` → `puede_editar_facturacion`** en `_gating_checks()`.
+  Reglas: ingreso/egreso **anulado** no se edita; **el MONTO de un
+  ingreso/egreso NO es editable** (decisión Oscar: los signals de Contaduría
+  solo corren al crear/anular, así que permitirlo descuadraría el asiento en
+  silencio — `_prohibir_monto` lanza un error que dice «anula y captura de
+  nuevo»); factura solo en **borrador** (`es_editable`), y ahí el `monto` SÍ se
+  fija vía `services.fijar_linea_concepto` (modo «monto», UNA línea-concepto)
+  porque su asiento nace al emitir. Payload acepta `campos: {...}` o aplanado.
+- **21 tests nuevos** (`tests/taller/test_ajustes_cotizaciones_jul25.py`);
+  actualizados `test_resumen_pendientes` (URGENTES sin vencidas) y
+  `test_cotizaciones::test_lista_columnas_render_lc` (sin columna Versión).
+
+- **Segunda tanda del mismo deploy — formato del documento** (`pdf.html` +
+  `Cotizacion.titulo_documento` + `CotizacionItem.concepto_visible`):
+  - **Título fijo**: `titulo_documento` deriva SIEMPRE del proyecto →
+    «Producción de elementos para proyecto 'Ted Lasso'» (fallback al título
+    capturado en las standalone). Lo usan el `<title>` y el encabezado centrado.
+  - **Nombre del concepto desde el NOMBRE, no de las especificaciones**:
+    `concepto_visible` ahora es `concepto` → nombre del servicio (+ variación,
+    con la higiene anti «X · X») → primer renglón de `descripcion` (solo si no
+    hay producto). `detalle_lineas` dejó de comerse el primer renglón a ciegas:
+    lo quita únicamente si coincide con el título impreso.
+  - **Tablas sin líneas**, encabezados con `background-color:#f2f2f2` y en UN
+    renglón (`white-space:nowrap` + anchos fijos en las columnas numéricas). La
+    casilla ✔ del desglose conserva su recuadro (`#999999`) — es para marcar.
+  - Tabla de montos al **68 % centrada** (`margin:0 auto`); logo a 48pt; la
+    tabla de especificaciones+foto **no se pinta** si el concepto no trae
+    ninguna de las dos (era el hueco entre el nombre y la tabla de montos).
+  - **Desglose de impuestos sin porcentajes**: `_sin_porcentaje()` limpia el
+    «(10.6667%)» que arma `lib.fiscal` — solo para el documento; Contaduría y la
+    UI los siguen viendo completos (`impuestos_pdf` en el contexto).
+  - **Notas al pie**: `margin-top:108pt` + línea divisoria + 9pt. Google Docs no
+    toma footers del HTML, así que «al pie» se logra con espacio, no posición.
+- **El alias del producto manda en TODO el proyecto**: `_proveedores_panel`, el
+  recuadro Desglose (`_economico_panel`) y la tabla de Productos involucrados
+  pasaron de `servicio.nombre` a `pp.nombre_visible`. `gastos._nombre_base`
+  (etiquetas de egresos) se queda con el nombre del catálogo a propósito: es lo
+  que se le compra al proveedor.
+
+**Deuda diseñada**: las pastillas de clientes recientes se **recortan** al ancho
+(las que no caben simplemente no se ven, sin indicador de «+N»); el ✕ de anular
+redirige al detalle de la cotización (comportamiento del modal existente), no
+de vuelta a la lista; el «al pie» de las notas es espaciado, no un footer real
+(limitación de la conversión de Google Docs); `concepto_visible` con producto
+ignora un `concepto` vacío aunque la línea vieja tuviera el nombre en la
+descripción (es justo lo pedido, pero cambia el título de documentos históricos
+sin `concepto`).
+
 ---
 
 ## 9. Decisiones operativas tomadas

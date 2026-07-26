@@ -66,14 +66,29 @@ def construir_html_pdf(cot: Cotizacion) -> str:
         }
         for it in items
     ]
+    totales = cot.calcular_totales()
     return render_to_string("cotizaciones/pdf.html", {
         "cot": cot,
         "items": items,
         "filas": filas,
-        "totales": cot.calcular_totales(),
+        "totales": totales,
+        # Oscar 2026-07-25: el desglose de impuestos va SIN porcentajes. El
+        # nombre que arma `lib.fiscal` los trae entre paréntesis («Retención de
+        # IVA (10.6667%)»), así que aquí se limpian solo para el documento —
+        # Contaduría y la UI los siguen viendo completos.
+        "impuestos_pdf": [
+            {**imp, "nombre": _sin_porcentaje(imp.get("nombre", ""))}
+            for imp in totales.get("impuestos_detalle", [])
+        ],
         "notas": notas_para(cot),
         "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
     })
+
+
+def _sin_porcentaje(nombre: str) -> str:
+    """«Retención de IVA (10.6667%)» → «Retención de IVA»."""
+    import re
+    return re.sub(r"\s*\([^)]*%\s*\)\s*$", "", nombre or "").strip()
 
 
 def enviar_por_correo(cot: Cotizacion, actor, email_destino: str = ""):

@@ -7212,3 +7212,107 @@ El PDF no numera páginas (Docs no lo toma del HTML) · el alias no se ofrece en
 alta rápida de producto (se pone al abrir la tarjeta) · una sola imagen por
 producto, del catálogo · el `tipo` de producto y la receta (`ComponenteServicio`)
 quedan sin construir, con el diseño ya platicado por si se retoman.
+
+---
+
+# BITÁCORA — S-Ajustes-Cotizaciones-Jul25 (2026-07-25, VERSION 2026.07.29)
+
+> Ronda de ajustes de Oscar sobre lo que se estaba deployando (2026.07.27 y
+> 2026.07.28). Rama `agent/cotizaciones-bonitas`. Sin migraciones.
+> **Oscar pidió expresamente NO hacer push en esta vuelta: código + plan.**
+
+## Entregas
+
+1. **Panel de Cotizaciones del proyecto** — «Ver →» abre la PÁGINA de la
+   cotización (`cotizaciones:detalle`), no el PDF, y en la misma pestaña.
+2. **Recuadro de El Chalán (Dashboard)** — «Abrir chat», «Resumir actividad» y
+   «Enviar» en un solo renglón (`flex-nowrap`). El ícono de globo suelto que
+   vivía en un bloque aparte desapareció.
+3. **Reporte «Resumir actividad»**:
+   - Encabezado nuevo con día, fecha y hora (`encabezado_fecha()`), con la hora
+     en la preferencia 24h/AM-PM del usuario.
+   - **Solo hoy y lo que viene**: se filtra por `fecha >= hoy` (o sin fecha) en
+     tareas, mandados, proyectos y facturas por cobrar.
+   - URGENTES = prioridad alta **+ lo que no tiene fecha** (antes: alta +
+     vencidas).
+   - Fechas completas: «sábado 26 de julio».
+   - TIZAYUCA por **producto**: «proyecto · cliente · fecha · producto x
+     (cantidad+merma) pz», un renglón por producto de Simil Cuero Plymouth.
+4. **Página de Cotizaciones** — tabla por default; pastillas de estado con su
+   color (`.pill-estado`, dual-copy); buscador de cliente al inicio y recientes
+   en una línea; columna «Versión» fusionada al nombre del proyecto (nombre
+   blanco, `vN` azul); orden por «Proyecto» (alfabético + versión más nueva
+   arriba); botón ✕ que anula y, en «Anuladas», elimina.
+5. **El Chalán edita dinero** — `actualizar_ingreso`, `actualizar_egreso`,
+   `actualizar_factura` en `ejecutores/edicion_financiera.py`, con su entrada de
+   catálogo y de prompt (los 3 lugares) y gating nuevo `facturacion_editar`.
+
+## Decisiones
+
+- **El reporte mira hacia adelante, con UNA excepción**: se levantó el caso a
+  Oscar y confirmó que **FACTURAS X COBRAR debe salir completa** —vencidas
+  incluidas— hasta que se marquen cobradas o se les ligue el cobro. El resto
+  (tareas, mandados, proyectos) sí se corta por fecha.
+- **El monto de un ingreso/egreso NO se puede editar** (Oscar, al enterarse de
+  que el asiento no se reajusta): «si no se ajusta, no debemos poder ajustarlo».
+  El ejecutor rechaza el intento con un mensaje que dice qué hacer (anular y
+  capturar de nuevo) en vez de aceptar el cambio a medias. En la factura en
+  borrador el monto SÍ se fija: su asiento nace al emitir.
+- **Archivo `edicion_financiera.py`, no `cui_v2.py`**: ese nombre ya está usado
+  por las Olas 2+3 de la rama `agent/mcp-despacho`; evitamos el choque futuro.
+- **Nombre del proyecto en blanco y la versión en azul** en la tabla — lectura
+  del pedido «cambiar el nombre a color blanco y poner la v en el azul»: el
+  nombre deja de ser el único elemento azul (link) y la versión toma el acento.
+
+## Cuidados técnicos
+
+- `Proyecto.fecha_compromiso` es **DateTimeField**, no DateField: el filtro
+  `__gte=date.today()` lo interpreta como medianoche local (correcto) y `_fecha`
+  ya normaliza a hora local antes de leer el día.
+- Bug C (§14) cazado en el commit: el comentario nuevo de `_cotizaciones_panel`
+  era `{# … #}` multilínea → se cambió a `{% comment %}`.
+- Editar un ingreso/egreso NO reajusta su asiento (los signals de Contaduría
+  corren al crear/anular). Es el mismo comportamiento del form de la UI.
+
+## Tests
+
+21 nuevos (`tests/taller/test_ajustes_cotizaciones_jul25.py`). Actualizados:
+`test_resumen_pendientes::test_urgentes_*` (sin vencidas) y
+`test_cotizaciones::test_lista_columnas_render_lc` (sin columna Versión).
+Regresión verde: cotizaciones, proyectos, tesorería, facturación, dictado, chat,
+MCP, panel de Chalanes y los dos `test_no_renderiza_comentarios`. Ruff (0.8.4,
+el pin de CI) limpio.
+
+## Segunda tanda del mismo deploy — formato del documento
+
+Notas de Oscar sobre el PDF nuevo, todas en `pdf.html` + dos propiedades:
+
+1. **Tablas sin líneas** (solo la casilla ✔ del desglose conserva recuadro).
+2. **Logo más chico** (48pt) y centrado.
+3. **Fila de encabezados con fondo gris clarito** (`#f2f2f2`) y de **un solo
+   renglón** (`white-space:nowrap` + anchos fijos en las columnas numéricas).
+4. **Notas al pie** de la última página (108pt de aire + línea divisoria). Google
+   Docs no toma footers del HTML: «al pie» se logra con espacio, no con posición.
+5. **Título asegurado**: `Cotizacion.titulo_documento` → «Producción de elementos
+   para proyecto '…'», derivado siempre del proyecto.
+6. **El nombre numerado se jala del NOMBRE del producto**, no de la primera línea
+   de las especificaciones (`concepto_visible`: concepto → servicio/variación →
+   legacy). `detalle_lineas` ya no se come el primer renglón salvo que sea el
+   título mismo.
+7. **Desglose de impuestos sin porcentajes** (`_sin_porcentaje`, solo para el
+   documento — Contaduría los sigue viendo completos).
+8. **Tabla de montos al 68 %, centrada**, y la tabla de especificaciones+foto no
+   se pinta cuando el concepto no trae ninguna de las dos (era el hueco entre el
+   nombre y la tabla de precios).
+
+Y el **alias del producto** (nombre propio dentro del proyecto) ahora manda
+también en los recuadros **Desglose** y **Proveedores** y en la tabla de
+Productos involucrados.
+
+## Deuda diseñada
+
+Las pastillas de clientes recientes se recortan al ancho sin indicador «+N» · el
+✕ de anular regresa al detalle de la cotización (comportamiento del modal
+existente), no a la lista · el «al pie» de las notas es espaciado, no un footer
+real · `gastos._nombre_base` (etiquetas de egresos) se queda con el nombre del
+catálogo a propósito: es lo que se le compra al proveedor.

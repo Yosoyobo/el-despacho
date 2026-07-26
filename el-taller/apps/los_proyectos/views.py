@@ -108,7 +108,10 @@ def _proveedores_panel(proyecto):
 
     for pp in proyecto.productos_incluidos:
         piezas = pp.cantidad + pp.merma
-        nombre_prod = pp.servicio.nombre if pp.servicio_id else "Producto"
+        # LC 2026-07-25: si le pusiste un nombre propio al producto DENTRO del
+        # proyecto, ése es el que se lee aquí también (`nombre_visible` es la
+        # fuente única del nombre del producto en el proyecto).
+        nombre_prod = pp.nombre_visible
         if pp.proveedor_id:
             s = _slot(pp.proveedor)
             s["total"] += pp.costo_total_linea
