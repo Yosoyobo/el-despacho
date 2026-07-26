@@ -7,18 +7,24 @@ Se convierte a PDF vía Google Docs (regla §8), así que el HTML es a propósit
 antiguo y conservador: TABLAS para el layout, estilos inline, nada de flex/grid
 ni hojas externas — la conversión de Docs descarta casi todo lo demás.
 
-Tres cosas que la conversión NO perdona (Oscar 2026-07-25, segunda ronda):
+Cinco cosas que la conversión NO perdona (Oscar 2026-07-25, rondas 2 y 3):
 
 1. Una tabla sin borde declarado sale del convertidor con las líneas negras
    por default. Hay que apagarlas por partida doble: atributo `border="0"` +
-   `border:none` en la tabla Y en cada celda. La única celda con línea a
-   propósito es la casilla ✔ del desglose.
-2. `margin:0 auto` no centra tablas en Docs: se centra con `align="center"`.
-   Un `<img>` tampoco hereda el `text-align` de su `<td>`: va envuelto en un
-   `<p align="center">`.
+   `border:none` en la tabla Y en cada celda. Al revés pasa lo mismo: un borde
+   declarado SÓLO en la tabla no se dibuja — la línea de las DOS tablas de
+   conceptos (montos y desglose) va celda por celda. El encabezado, los
+   totales y las notas van sin líneas.
+2. `margin:0 auto` no centra tablas en Docs: se centra con `align="center"` y
+   `width` como ATRIBUTOS, no en el style. Un `<img>` tampoco hereda el
+   `text-align` de su `<td>`: va envuelto en un `<p align="center">`.
 3. `white-space:nowrap` se ignora, así que un encabezado largo parte el
    renglón y deja la fila al doble de alto. Por eso los encabezados son
    cortos y las columnas llevan ancho en %.
+4. `<thead>`/`<tbody>` se tratan como bloques distintos y meten un renglón en
+   blanco entre el encabezado y las filas. Las tablas van planas, con `<tr>`.
+5. Docs mete su propio espacio entre dos tablas seguidas y no hay forma de
+   quitarlo: lo que deba ir junto va en UNA sola tabla.
 
 Las imágenes llevan URL absoluta pública y firmada porque Google las baja
 desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py).
@@ -32,13 +38,16 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
   {# Encabezado: fecha · logotipo (chico y al centro) · cliente #}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">
     <tr>
-      <td style="border:none; width:33%; vertical-align:middle; text-align:left;">
+      {% comment %}Fecha y cliente al RAS del logotipo (arriba), no centrados
+      con él: así el encabezado se lee como una sola línea (render de Oscar,
+      2026-07-25 tercera ronda).{% endcomment %}
+      <td style="border:none; width:33%; vertical-align:top; text-align:left;">
         {{ cot.fecha_emision|date:"j" }} {{ cot.fecha_emision|date:"F"|capfirst }} {{ cot.fecha_emision|date:"Y" }}
       </td>
-      <td style="border:none; width:34%; vertical-align:middle;">
+      <td style="border:none; width:34%; vertical-align:top;">
         {% if logo_url %}<p align="center" style="margin:0; text-align:center;"><img src="{{ logo_url }}" alt="Learning Center" style="width:48pt; height:48pt;"></p>{% endif %}
       </td>
-      <td style="border:none; width:33%; vertical-align:middle; text-align:right;">
+      <td style="border:none; width:33%; vertical-align:top; text-align:right;">
         {{ cot.cliente.razon_social|upper }}
       </td>
     </tr>
@@ -69,24 +78,25 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
     </tr>
     {% endif %}
   </table>
-  {# Tabla de montos: centrada con `align`, sin líneas y con encabezados cortos #}
-  <table align="center" border="0" cellspacing="0" cellpadding="0" style="width:78%; border-collapse:collapse; border:none; margin:0 auto 26pt auto; font-size:10pt;">
-    <thead>
-      <tr>
-        <th style="border:none; background-color:#f2f2f2; padding:4pt 5pt; width:46%; text-align:center; font-style:italic; font-weight:normal;">Concepto</th>
-        <th style="border:none; background-color:#f2f2f2; padding:4pt 5pt; width:14%; text-align:center; font-style:italic; font-weight:normal;">Cantidad</th>
-        <th style="border:none; background-color:#f2f2f2; padding:4pt 5pt; width:20%; text-align:center; font-style:italic; font-weight:normal;">P. Unitario</th>
-        <th style="border:none; background-color:#f2f2f2; padding:4pt 5pt; width:20%; text-align:center; font-style:italic; font-weight:normal;">Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="border:none; padding:5pt; font-style:italic;">{{ fila.it.concepto_visible }}</td>
-        <td style="border:none; padding:5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
-        <td style="border:none; padding:5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
-        <td style="border:none; padding:5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
-      </tr>
-    </tbody>
+  {% comment %}Tabla de montos: es la ÚNICA con línea negra en todo el
+  documento (Oscar 2026-07-25, tercera ronda). Va celda por celda —
+  `border-collapse` sin borde en la tabla no dibuja nada en Docs. Sin
+  `<thead>/<tbody>`: el convertidor los trata como bloques y metía un renglón
+  en blanco entre el encabezado gris y la fila. Se centra con `align` +
+  `width` como ATRIBUTOS (el `margin:0 auto` del style lo ignora).{% endcomment %}
+  <table align="center" width="78%" border="0" cellspacing="0" cellpadding="0" style="width:78%; border-collapse:collapse; margin:0 auto 26pt auto; font-size:10pt;">
+    <tr>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:46%; text-align:center; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:16%; text-align:center; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">Subtotal</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #000000; padding:3pt 5pt; font-style:italic;">{{ fila.it.concepto_visible }}</td>
+      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
+    </tr>
   </table>
   {% empty %}
   <p style="color:#666666;">Sin conceptos.</p>
@@ -95,30 +105,27 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
   {# Desglose y cálculo de impuestos: solo si el interruptor está prendido #}
   {% if cot.incluir_desglose %}
   <p style="text-align:center; font-size:12pt; margin:34pt 0 14pt 0;">Desglose de Elementos</p>
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:18pt; font-size:10pt;">
-    <thead>
-      <tr>
-        <th style="border:none; background-color:#f2f2f2; padding:5pt; width:22pt; text-align:center;">&#10004;</th>
-        <th style="border:none; background-color:#f2f2f2; padding:5pt; text-align:center; font-style:italic; font-weight:normal;">Concepto</th>
-        <th style="border:none; background-color:#f2f2f2; padding:5pt; width:14%; text-align:center; font-style:italic; font-weight:normal;">Cantidad</th>
-        <th style="border:none; background-color:#f2f2f2; padding:5pt; width:18%; text-align:center; font-style:italic; font-weight:normal;">P. Unitario</th>
-        <th style="border:none; background-color:#f2f2f2; padding:5pt; width:18%; text-align:center; font-style:italic; font-weight:normal;">Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for it in items %}
-      <tr>
-        {% comment %}Casilla vacía a propósito: es para que el cliente vaya
-        marcando. Es el ÚNICO recuadro con línea — el resto de la tabla va sin
-        bordes (Oscar 2026-07-25).{% endcomment %}
-        <td style="border:1px solid #999999; padding:5pt;">&nbsp;</td>
-        <td style="border:none; padding:5pt; font-style:italic;">{{ it.concepto_visible }}</td>
-        <td style="border:none; padding:5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
-        <td style="border:none; padding:5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
-        <td style="border:none; padding:5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
+  {% comment %}Igual que la tabla de montos: recuadro negro delgado celda por
+  celda y sin `<thead>/<tbody>` (Oscar 2026-07-25, tercera ronda — «tabla
+  desglose sí recuadro»). La primera columna es la casilla que el cliente va
+  marcando, así que va vacía a propósito.{% endcomment %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
+    <tr>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:22pt; text-align:center;">&#10004;</td>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; text-align:center; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:16%; text-align:center; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">Subtotal</td>
+    </tr>
+    {% for it in items %}
+    <tr>
+      <td style="border:1px solid #000000; padding:3pt 5pt;">&nbsp;</td>
+      <td style="border:1px solid #000000; padding:3pt 5pt; font-style:italic;">{{ it.concepto_visible }}</td>
+      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ it.subtotal|dinero_sin_signo }}</td>
+    </tr>
+    {% endfor %}
   </table>
 
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">

@@ -60,7 +60,11 @@ def _factura(cliente, *, autor, titulo="Factura mayo", items=None, impuestos=Non
         {"descripcion": "Servicio", "cantidad": Decimal("1"),
          "precio_unitario": Decimal("1000.00")},
     ]
-    fac = Factura.objects.create(cliente=cliente, titulo=titulo, creado_por=autor)
+    # Régimen `iva` explícito: estos casos prueban el mecanismo genérico de
+    # tasas (la M2M). El default del modelo es «IVA y Retenciones» desde
+    # 2026-07-25, que trae su propio cálculo dedicado.
+    fac = Factura.objects.create(cliente=cliente, titulo=titulo,
+                                 regimen_fiscal="iva", creado_por=autor)
     for i, it in enumerate(items):
         FacturaItem.objects.create(
             factura=fac, orden=i,

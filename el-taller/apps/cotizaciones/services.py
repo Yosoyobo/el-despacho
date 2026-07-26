@@ -53,7 +53,7 @@ def construir_html_pdf(cot: Cotizacion) -> str:
     """
     from django.template.loader import render_to_string
 
-    from lib.imagen_publica import base_publica, url_absoluta
+    from lib.imagen_publica import base_publica, proporcion, url_absoluta
 
     from .notas import notas_para
 
@@ -63,6 +63,10 @@ def construir_html_pdf(cot: Cotizacion) -> str:
             "it": it,
             # La foto sale del catálogo (decisión Oscar: una sola por producto).
             "imagen": url_absoluta(getattr(it.servicio, "imagen_file_id", "") or ""),
+            # Proporción real de la foto: el ancho es fijo en el documento, así
+            # que de aquí sale su alto para estimar la página (ver el hueco de
+            # las notas más abajo).
+            "proporcion": proporcion(getattr(it.servicio, "imagen_file_id", "") or ""),
         }
         for it in items
     ]
@@ -90,6 +94,16 @@ def construir_html_pdf(cot: Cotizacion) -> str:
 # Hoja carta con márgenes de una pulgada: 792pt − 144pt de márgenes.
 _ALTO_UTIL_PT = 648
 
+# Ancho con el que va la foto del producto en el documento (ver pdf.html). Su
+# ALTO sale de la proporción real de la imagen.
+_ANCHO_FOTO_PT = 150
+
+# Colchón al pie: la paginación real la hace Google, no nosotros, así que el
+# bloque de notas se deja un poco arriba del borde. Sin este colchón, un error
+# de estimación de unos milímetros manda el último renglón a una hoja nueva
+# (Oscar 2026-07-25: «no debe de suceder así»).
+_MARGEN_SEGURIDAD_PT = 28
+
 
 def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
     """Hueco (en puntos) que empuja el bloque de notas al pie de la hoja.
@@ -102,8 +116,9 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
     Es una **estimación**: el HTML lo pagina Google, no nosotros, así que aquí
     se suman altos aproximados por bloque. Peor caso, el hueco queda un poco
     más corto o más largo que el ideal — nunca rompe el documento. Por eso el
-    resultado se limita a `_ALTO_UTIL_PT / 2`: mejor quedarse corto que empujar
-    las notas a una hoja de más.
+    resultado se limita a `_ALTO_UTIL_PT / 2` y se le resta
+    `_MARGEN_SEGURIDAD_PT`: mejor quedarse corto que empujar un renglón de las
+    notas a una hoja de más.
     """
     alto = 60 + 46  # encabezado (fecha/logo/cliente) + título centrado
 
@@ -113,7 +128,12 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
         if renglones:
             cuerpo = renglones * 14
         if fila.get("imagen"):
-            cuerpo = max(cuerpo, 118)  # la foto va a 150pt de ancho
+            # Alto real de la foto = ancho fijo × su proporción. Si no se pudo
+            # medir (no estaba precalentada), se asume cuadrada: sobreestimar el
+            # contenido deja las notas más arriba, que es el lado seguro.
+            prop = fila.get("proporcion") or 0
+            alto_foto = int(_ANCHO_FOTO_PT * prop) if prop else _ANCHO_FOTO_PT
+            cuerpo = max(cuerpo, alto_foto)
         alto += 22 + cuerpo + 8 + 48 + 26  # nombre + cuerpo + tabla de montos
 
     if cot.incluir_desglose:
@@ -127,7 +147,7 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
 
     # Lo que queda libre en la última hoja que ya se empezó a llenar.
     libre = _ALTO_UTIL_PT - (alto % _ALTO_UTIL_PT)
-    hueco = libre - alto_notas
+    hueco = libre - alto_notas - _MARGEN_SEGURIDAD_PT
     if hueco <= 0:
         return 0
     return int(min(hueco, _ALTO_UTIL_PT // 2))

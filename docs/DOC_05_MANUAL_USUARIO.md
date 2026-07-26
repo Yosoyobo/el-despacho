@@ -5,6 +5,40 @@
 
 ---
 
+## Novedades — Los centavos de las facturas, el documento con su recuadro y «Resumir pendientes» (25 de julio de 2026 — séptima entrega)
+
+- **Los totales de las facturas ya cuadran al centavo con el CFDI.** Al capturar
+  una factura, el «Total a facturar» que se veía en el formulario salía **un
+  centavo arriba** del que trae el CFDI (por ejemplo $2,341.88 en lugar de
+  $2,341.87). Ya está corregido: cada impuesto se calcula y se redondea por
+  separado, tal como lo pide el SAT. Las facturas guardadas nunca estuvieron
+  mal — lo que engañaba era ese avance en pantalla.
+- **Toda factura, cotización y proyecto nuevo nace en «IVA y Retenciones».**
+  Antes había que elegirlo a mano y lo que creaba El Chalán salía con IVA
+  solamente. Si un proyecto está en otro régimen, sus cotizaciones y facturas lo
+  heredan.
+- **Al dictarle un monto a El Chalán ya no pregunta cuál es.** Si le dices una
+  sola cifra («la factura de Optimist es de $2,341.87») entiende que es el
+  **importe final de pago**, el del CFDI. Si le dices **«+ IVA»** («20,700 más
+  IVA») entiende que ése es el **subtotal** y le suma el IVA y las retenciones
+  encima.
+- **Las tablas del documento llevan su recuadro negro delgado**: la de precios
+  de cada producto y la del «Desglose de Elementos». Son las únicas con líneas;
+  el encabezado, los totales y las notas van limpios. Se quitó también el
+  renglón en blanco que aparecía entre el encabezado gris y la cifra, y la fecha
+  y el nombre del cliente quedaron a la altura del logotipo.
+- **Las notas del documento ya no dejan el último punto en otra hoja.** El
+  espacio que las empuja al pie ahora considera el tamaño real de la foto del
+  producto y deja un margen de seguridad abajo.
+- **El «Título del documento» se subió a la columna principal** de la página de
+  la cotización, hasta arriba, y **viene con el texto real ya escrito** para que
+  lo corrijas encima. Si lo dejas igual, sigue tomándose del nombre del proyecto.
+- **El botón «Resumir actividad» del Inicio ahora se llama «Resumir
+  pendientes».** Es el mismo reporte; el nombre confundía con el resumen del
+  proyecto que escribe El Chalán.
+
+---
+
 ## Novedades — El documento de la cotización, ficha del proveedor y facturas al dictado (25 de julio de 2026 — sexta entrega)
 
 - **El PDF que descargas ya se ve como la vista previa.** Se corrigió lo que la
@@ -2779,8 +2813,8 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
 - **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
 - **Próximos eventos:** las siguientes entregas y tareas con fecha. Click en la tarjeta te lleva al calendario completo.
-- **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están los tres botones: **Abrir chat** (el chat completo), **Resumir actividad** y **Enviar** (manda lo que escribiste).
-  - **Resumir actividad:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada), **COTIZACIONES** (proyectos por cotizar) y **FACTURAS X COBRAR** (facturas emitidas con saldo). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **FACTURAS X COBRAR sale completa** (vencidas incluidas) hasta que se marquen cobradas o se les ligue el cobro. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
+- **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están los dos botones: **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
+  - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada), **COTIZACIONES** (proyectos por cotizar) y **FACTURAS X COBRAR** (facturas emitidas con saldo). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **FACTURAS X COBRAR sale completa** (vencidas incluidas) hasta que se marquen cobradas o se les ligue el cobro. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
   - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (se arma con datos, sin IA). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
 - **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. "Ver Kanban completo" abre el tablero con todas las columnas.
@@ -3136,10 +3170,12 @@ Dos cosas que ya sabe hacer:
   CFDI—, no sólo por el nombre con el que lo llamamos. En el ejemplo entiende
   que MARKETING VEINTITRES GRADOS es Optimist y lo liga. (Captura la razón
   social fiscal del cliente en su ficha, en *Clientes*.)
-- **Leer el monto de las dos formas**: si le das el **total final** (lo que dice
-  la factura, ya con IVA y retenciones) despeja solo la base para que el total
-  cuadre al centavo; si le dices que el monto va **antes de impuestos**, les suma
-  el IVA y las retenciones encima. Cuando no quede claro cuál es, te pregunta.
+- **Leer el monto sin preguntarte cuál es.** Una sola cifra («$2,341.87») es el
+  **importe final de pago**, el que dice el CFDI: despeja solo la base para que
+  el total cuadre al centavo. Si le dices **«+ IVA»** («20,700 más IVA»), esa
+  cifra es el **subtotal** y le suma el IVA y las retenciones encima. La factura
+  nace en régimen **«IVA y Retenciones»** (si la ligas a un proyecto, hereda el
+  régimen del proyecto).
 
 También guarda el **folio**, la **fecha de emisión** y el **concepto**. Queda en
 borrador: revísala y emítela desde la página de la factura.
@@ -3238,18 +3274,23 @@ se mueve aunque generes la v2.
 El PDF lleva el formato de Learning Center: fecha, logotipo y cliente arriba; el
 nombre del proyecto centrado; cada producto **numerado** con sus
 especificaciones, **la foto del producto** (la del catálogo) y su tabla de
-Cantidad / Precio Unitario / Subtotal. Los montos van sin IVA y sin centavos
-cuando terminan en `.00`.
+Cantidad / Precio Unitario / Subtotal (con recuadro negro delgado, igual que la
+tabla del Desglose; son las únicas del documento con líneas). Los montos van sin
+IVA y sin centavos cuando terminan en `.00`.
+
+El **Título del documento** (el encabezado centrado del PDF) se edita hasta
+arriba de la página de la cotización, en la columna principal: viene con el
+texto real ya escrito para que lo corrijas encima. Si lo dejas igual, sigue
+tomándose del nombre del proyecto; si lo cambias, manda lo tuyo.
 
 En el recuadro **Documento** (a la derecha, en la página de la cotización):
 
 | Control | Qué hace |
 |---|---|
-| **Título del documento** | El encabezado centrado del PDF. Viene lleno solo («Producción de elementos para proyecto '…'»); escribe otro y manda el tuyo. Déjalo vacío para volver al automático. |
 | **Incluir desglose y montos** | Apagado, el PDF sólo lleva la tabla de montos de cada producto. Prendido, agrega al final el **Desglose de Elementos** (todos los conceptos juntos, con una casilla para que el cliente vaya marcando) y el cálculo de impuestos con el total. |
 | **Forma de pago** | **Anticipo** (usa el porcentaje que hayas capturado; si no hay, 50%) o **Un solo pago**. Cambia la última nota del PDF; el recuadro te muestra cómo va a quedar. |
 
-Los tres se heredan a la siguiente versión.
+El título y los dos controles se heredan a la siguiente versión.
 
 **Las notas van al pie, siempre completas** (precios de producción, imágenes
 ilustrativas, variaciones por proceso manual, existencias, precios sin IVA y la

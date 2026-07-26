@@ -98,6 +98,29 @@ def desde_cache(file_id: str):
     return None
 
 
+def proporcion(file_id: str) -> float:
+    """Alto ÷ ancho de la imagen ya precalentada (0.0 si no se puede saber).
+
+    Sirve para estimar cuánto ocupa la foto en la hoja: en el documento va con
+    ANCHO fijo, así que su alto depende de la proporción. Sin esto, una foto
+    apaisada (un banner 4:1) se contaba como si fuera cuadrada y el hueco que
+    empuja las notas al pie salía corto de más. Solo lee de caché — nunca baja
+    de Drive ni lanza.
+    """
+    guardado = desde_cache(file_id)
+    if not guardado:
+        return 0.0
+    try:
+        import io
+
+        from PIL import Image
+
+        ancho, alto = Image.open(io.BytesIO(guardado[0])).size
+        return (alto / ancho) if ancho else 0.0
+    except Exception:  # noqa: BLE001 — Pillow no pudo con el archivo
+        return 0.0
+
+
 def _reducir(contenido: bytes, mime: str):
     """Baja la resolución a `LADO_MAX` para que la descarga sea de pocos KB.
 
@@ -176,4 +199,5 @@ __all__ = [
     "url_absoluta",
     "desde_cache",
     "precalentar",
+    "proporcion",
 ]

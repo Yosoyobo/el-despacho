@@ -62,7 +62,8 @@ def test_dashboard_tiene_los_controles_del_chalan_en_una_linea(
     html = client.get("/").content.decode()
 
     assert "flex-nowrap" in html
-    assert "Resumir actividad" in html
+    # Tercera ronda: el botón se renombró a «Resumir pendientes».
+    assert "Resumir pendientes" in html
     assert ">Enviar<" in html
     # Oscar 2026-07-25 (segunda ronda): el atajo «Abrir chat» se quitó — el
     # acceso al chat vive en el sidebar («El Chalán»).
@@ -378,6 +379,9 @@ def test_actualizar_factura_borrador_fija_monto_en_una_linea(proyecto_factory,
     )
     accion = _accion("actualizar_factura", {
         "codigo": fac.codigo,
+        # Oscar 2026-07-25 (tercera ronda): una sola cifra dictada es el importe
+        # FINAL de pago, así que `monto` fija el TOTAL y el sistema despeja la
+        # base. Para dictar la base va `monto_base` (ver el test de abajo).
         "campos": {"monto": "33770", "concepto": "Producción de elementos"},
     })
     EJECUTORES["actualizar_factura"](accion, admin, {})
@@ -385,6 +389,28 @@ def test_actualizar_factura_borrador_fija_monto_en_una_linea(proyecto_factory,
     fac.refresh_from_db()
     assert fac.concepto == "Producción de elementos"
     assert fac.items.count() == 1
+    assert fac.calcular_totales()["total"] == Decimal("33770.00")
+
+
+def test_actualizar_factura_monto_base_no_lleva_impuestos_dentro(proyecto_factory,
+                                                                 usuario_factory):
+    """`monto_base` es el subtotal: los impuestos se suman encima."""
+    from apps.el_dictado.ejecutores import EJECUTORES
+    from apps.facturacion.models import Factura
+
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    fac = Factura.objects.create(
+        cliente=p.cliente, proyecto=p, estado="borrador", concepto="Producción",
+        fecha_emision=dt.date.today(), fecha_vencimiento=dt.date.today(),
+        creado_por=admin,
+    )
+    accion = _accion("actualizar_factura", {
+        "codigo": fac.codigo, "campos": {"monto_base": "33770"},
+    })
+    EJECUTORES["actualizar_factura"](accion, admin, {})
+
+    fac.refresh_from_db()
     assert fac.calcular_totales()["subtotal_items"] == Decimal("33770.00")
 
 
@@ -478,9 +504,12 @@ def test_pdf_sin_lineas_encabezado_gris_logo_chico_y_notas_al_pie(
     # (5) título fijo
     assert "Producción de elementos para proyecto &#x27;Ted Lasso&#x27;" in html \
         or "Producción de elementos para proyecto 'Ted Lasso'" in html
-    # (1) sin líneas de tabla — salvo la casilla ✔ del desglose
+    # (1) las tablas de conceptos llevan recuadro negro delgado; el encabezado,
+    # los totales y las notas van sin líneas (Oscar 2026-07-25, tercera ronda:
+    # antes la única línea era la casilla ✔ del desglose, en gris).
     assert "1px solid #d9d9d9; padding:5pt" not in html
-    assert "border:1px solid #999999" in html          # la casilla del cliente
+    assert "border:1px solid #999999" not in html
+    assert html.count("border:1px solid #000000") >= 8
     # (3) encabezados con fondo gris clarito
     assert html.count("background-color:#f2f2f2") >= 4
     # (2) logo más chico
@@ -596,6 +625,9 @@ def test_sin_especificaciones_ni_foto_no_queda_tabla_vacia(proyecto_factory,
                                   cantidad=1, precio_unitario=Decimal("100.00"))
 
     html = construir_html_pdf(cot)
-    # Del nombre subrayado se pasa directo a la tabla de montos.
-    entre = html.split("<u>Gorras</u>", 1)[1].split("Concepto", 1)[0]
+    # Del nombre subrayado se pasa directo a la tabla de montos: en medio se
+    # cierra la celda del nombre y arranca la tabla, sin una fila de
+    # especificaciones vacía. (La tabla de montos ya no lleva `<thead>`, así que
+    # el corte se hace en su etiqueta `<table`.)
+    entre = html.split("<u>Gorras</u>", 1)[1].split("<table", 1)[0]
     assert "<td" not in entre

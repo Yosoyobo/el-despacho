@@ -164,7 +164,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "actualizar_factura",
         "titulo": "Editar una factura en borrador",
         "ejemplo": "La factura F-108 va por $33,770 y vence el 15 de agosto.",
-        "payload": "codigo, campos: {concepto?, monto?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}. Solo en borrador; `monto` deja UNA línea-concepto con ese importe",
+        "payload": "codigo, campos: {concepto?, monto? (importe FINAL con impuestos) | monto_base? (antes de impuestos), fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}. Solo en borrador; el monto deja UNA línea-concepto",
         "gating": "facturacion_editar",
     },
     {
@@ -206,7 +206,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_factura",
         "titulo": "Crear factura (borrador)",
         "ejemplo": 'Registra la factura F-106 de MARKETING VEINTITRES GRADOS del 15/04/2026: "Bordado de mandiles proyecto Marriott Bonvoy" por $2,341.87.',
-        "payload": "cliente_slug (nombre comercial o razón social fiscal), concepto, monto_total (importe FINAL, ya con impuestos y retenciones) | monto_base (antes de impuestos, se le suman encima) | items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, fecha_emision?, fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres])",
+        "payload": "cliente_slug (nombre comercial o razón social fiscal), concepto, monto_total (una sola cifra dictada = importe FINAL de pago, ya con IVA y retenciones) | monto_base (cuando dicen «+ IVA» = subtotal, los impuestos se suman encima) | items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, fecha_emision?, fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres]). Nace en régimen «IVA y Retenciones».",
         "gating": "facturacion_crear",
     },
     {

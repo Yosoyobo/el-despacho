@@ -124,10 +124,11 @@ PAYLOADS:
 - crear_cotizacion: {cliente_slug, titulo, items: [{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (impuestos: omite o 'default' = IVA por defecto; o lista de nombres de tasas)
 - crear_factura: {cliente_slug, concepto, monto_total? | monto_base? | items?: [...igual que cotización...], proyecto_slug?, fecha_emision? ('YYYY-MM-DD'), fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (se crea en borrador; NO es CFDI)
   `cliente_slug` acepta el nombre con el que llamamos al cliente O su RAZÓN SOCIAL FISCAL (la del CFDI, ej. "MARKETING VEINTITRES GRADOS"): el sistema la resuelve y liga al cliente correcto.
-  El monto va en UNO de los dos campos, según cómo te lo digan:
-  · `monto_total` = el importe FINAL del documento, YA con IVA y retenciones (lo normal al registrar una factura que ya existe: es la cifra del CFDI). El sistema despeja la base solo.
-  · `monto_base` = el importe ANTES de impuestos, cuando te dicen que hay que agregarle IVA y retenciones encima.
-  Si no queda claro cuál es, pregunta. Al registrar una factura que ya existe agrega también `fecha_emision` y `folio` si los traes, y NO inventes `items` desglosados.
+  El régimen fiscal de toda factura nueva es «IVA y Retenciones» (IVA + retención de ISR + retención de IVA). No lo declares: es el default.
+  El monto va en UNO de los dos campos, y la regla para elegirlo NO se pregunta, se aplica:
+  · Te dicen SOLO una cifra («factura de 2,341.87 a Optimist») ⇒ es el importe FINAL de pago, el que dice el CFDI ⇒ `monto_total`. El sistema despeja la base solo.
+  · Te dicen la cifra «+ IVA» / «más IVA» / «más impuestos» («20,700 + IVA») ⇒ es el SUBTOTAL antes de impuestos ⇒ `monto_base`. El IVA y las retenciones se calculan encima.
+  Al registrar una factura que ya existe agrega también `fecha_emision` y `folio` si los traes, y NO inventes `items` desglosados.
 - crear_tarea: {proyecto_slug (o cliente_slug si solo sabes el cliente → su proyecto activo), titulo, asignado_slug?, fecha_compromiso? (SOLO fecha 'YYYY-MM-DD'), hora? ('HH:MM' aparte, NUNCA la metas en fecha_compromiso), prioridad?, tipo? ∈ tarea|entrega|junta|recoger, runner_slug?}
   (si tipo es entrega|recoger, el runner se asigna AUTOMÁTICAMENTE al crearla — NO agregues una acción `asignar_runner` aparte; solo da runner_slug si quieres uno específico)
 - actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso? ('YYYY-MM-DD'), hora? ('HH:MM'), tipo?}}  (tarea_id puede ser `@accion_N` si la tarea la creaste en una acción previa del mismo plan)
@@ -145,8 +146,8 @@ PAYLOADS:
   (el MONTO de un ingreso/egreso NO se puede editar: su asiento contable ya está
   registrado. Si el importe está mal, propón anular_ingreso/anular_egreso y
   volver a capturarlo con registrar_ingreso/registrar_egreso)
-- actualizar_factura: {codigo, campos: {concepto?, monto?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}}
-  (solo facturas en BORRADOR; `monto` reemplaza las líneas por una sola línea-concepto con ese importe)
+- actualizar_factura: {codigo, campos: {concepto?, monto? | monto_base?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}}
+  (solo facturas en BORRADOR; el monto reemplaza las líneas por una sola línea-concepto. Igual que en crear_factura: `monto` = importe FINAL de pago con impuestos, `monto_base` = antes de impuestos)
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}
 - anular_egreso: {codigo, motivo}
 - anular_ingreso: {codigo, motivo}

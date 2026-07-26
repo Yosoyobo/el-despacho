@@ -52,6 +52,10 @@ def _crear_cotizacion(
         titulo="Servicio X",
         estado=estado,
         moneda="MXN",
+        # Régimen `iva` sin tasas asignadas ⇒ total == subtotal: estos casos
+        # prueban la aritmética del ANTICIPO, no el cálculo fiscal. (El default
+        # del modelo es «IVA y Retenciones» desde 2026-07-25.)
+        regimen_fiscal="iva",
         anticipo_porcentaje=anticipo_porcentaje,
         anticipo_monto_override=anticipo_monto_override,
         creado_por=usuario,

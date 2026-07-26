@@ -1,4 +1,4 @@
-"""Botón «Resumir actividad» del recuadro de El Chalán en el Dashboard (2026-07).
+"""Botón «Resumir pendientes» del recuadro de El Chalán en el Dashboard (2026-07).
 
 Abre un modal (patrón Wave 5: GET HTMX → `#modal-slot`) con el reporte de
 pendientes del taller que arma `pendientes.py`: texto simple, sin emojis,
@@ -55,7 +55,7 @@ def resumen_actividad(request):
         '<button type="button" data-modal-slot-close class="btn-primario">Cerrar</button>'
     )
     return render(request, "_componentes_tailadmin/_modal_htmx.html", {
-        "titulo": "Resumen de actividad",
+        "titulo": "Resumen de pendientes",
         "cuerpo": cuerpo,
         "footer": footer,
         "tamano": "lg",

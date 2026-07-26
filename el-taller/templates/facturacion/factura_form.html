@@ -9,7 +9,7 @@
 <form method="post" enctype="multipart/form-data" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3" id="fac-form"
       data-proyecto-nombre="{% if fac.proyecto %}{{ fac.proyecto.nombre }}{% endif %}"
       data-iva-tasa="{{ cfg_fiscal.iva_tasa }}" data-ret-isr="{{ cfg_fiscal.ret_isr }}"
-      data-ret-iva-num="{{ cfg_fiscal.ret_iva_num }}" data-ret-iva-den="{{ cfg_fiscal.ret_iva_den }}">
+      data-ret-iva="{{ cfg_fiscal.ret_iva }}">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -489,8 +489,14 @@
     const totalBox = form.querySelector('[data-total-box]');
     const ivaTasa = parseFloat(form.dataset.ivaTasa) || 0;
     const retIsr = parseFloat(form.dataset.retIsr) || 0;
-    const retIvaNum = parseFloat(form.dataset.retIvaNum) || 2;
-    const retIvaDen = parseFloat(form.dataset.retIvaDen) || 3;
+    const retIva = parseFloat(form.dataset.retIva) || 0;
+    // Anexo 20 SAT: cada impuesto se redondea al centavo POR SEPARADO (media
+    // hacia arriba) y luego se suman. Esta función es el espejo de `q2()` de
+    // lib/fiscal.py — sin ella el preview sale un centavo arriba del CFDI en
+    // toda base con centavo impar (2,250 → 2,341.88 en vez de 2,341.87).
+    function c2(n) {
+        return Math.round((n || 0) * 100 + 1e-6) / 100;
+    }
     function money(n) {
         return '$' + (n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
@@ -498,7 +504,7 @@
         const marcado = form.querySelector('input[name="regimen_fiscal"]:checked');
         if (marcado) return marcado.value;
         const oculto = form.querySelector('input[name="regimen_fiscal"]');
-        return oculto ? oculto.value : 'iva';
+        return oculto ? oculto.value : 'honorarios';
     }
     function calcTotal() {
         if (!totalBox) return;
@@ -516,22 +522,23 @@
         }
         const descG = parseFloat($descGlobal && $descGlobal.value) || 0;
         const factor = (parseFloat($porcentaje && $porcentaje.value) || 100) / 100;
-        const base = (subtotal - subtotal * descG / 100) * factor;
+        const base = c2((subtotal - c2(subtotal * descG / 100)) * factor);
         const reg = regimenActual();
         let tras = 0, ret = 0;
         if (reg === 'honorarios') {
-            const iva = base * ivaTasa / 100;
-            tras = iva;
-            ret = (base * retIsr / 100) + (retIvaDen ? iva * retIvaNum / retIvaDen : 0);
+            // Las tres tasas son NOMINALES sobre la base y cada monto se
+            // redondea solo (nunca la retención de IVA como ⅔ del IVA).
+            tras = c2(base * ivaTasa / 100);
+            ret = c2(base * retIsr / 100) + c2(base * retIva / 100);
         } else if (reg === 'exento') {
             tras = 0; ret = 0;
         } else {
             form.querySelectorAll('input[name="tasas"]:checked').forEach(cb => {
-                const m = base * (parseFloat(cb.dataset.pct) || 0) / 100;
+                const m = c2(base * (parseFloat(cb.dataset.pct) || 0) / 100);
                 if (cb.dataset.tipo === 'retencion') ret += m; else tras += m;
             });
         }
-        const total = base + tras - ret;
+        const total = c2(base + tras - ret);
         totalBox.querySelector('[data-total-monto]').textContent = money(total);
         totalBox.querySelector('[data-total-subtotal]').textContent = money(base);
         const ft = totalBox.querySelector('[data-total-fila-traslado]');

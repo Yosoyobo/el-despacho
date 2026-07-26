@@ -138,7 +138,7 @@ class Factura(models.Model):
     # 'iva' = solo IVA vía tasas (M2M); 'honorarios' = IVA + retenciones RESICO;
     # 'exento' = sin impuestos.
     regimen_fiscal = models.CharField(
-        max_length=12, choices=REGIMENES_FISCALES, default="iva", db_index=True
+        max_length=12, choices=REGIMENES_FISCALES, default="honorarios", db_index=True
     )
     descuento_global_porcentaje = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("0.00")

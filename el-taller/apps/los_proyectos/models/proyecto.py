@@ -103,7 +103,7 @@ class Proyecto(models.Model):
     # un selector IVA (16%) / IVA y Retenciones (honorarios) / Exento. Las
     # cotizaciones y facturas del proyecto lo heredan.
     regimen_fiscal = models.CharField(
-        max_length=12, choices=REGIMENES_FISCALES, default="iva", db_index=True
+        max_length=12, choices=REGIMENES_FISCALES, default="honorarios", db_index=True
     )
 
     # LC 2026-07: soft-archive (proyectos de prueba/duplicados). Distinto de

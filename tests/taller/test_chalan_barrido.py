@@ -136,7 +136,10 @@ def test_crear_cotizacion_happy(usuario_factory, cliente_factory, _on_commit_inm
     assert cot.impuestos.count() == 1  # IVA default aplicado
     totales = cot.calcular_totales()
     assert totales["subtotal_items"] == Decimal("12000.00")
-    assert totales["total"] == Decimal("13920.00")  # +16% IVA
+    # Desde 2026-07-25 nace en «IVA y Retenciones» (default del despacho), que
+    # trae su propio cálculo: IVA 1,920 − ISR 150 − ret. IVA 1,280.
+    assert cot.regimen_fiscal == "honorarios"
+    assert totales["total"] == Decimal("12490.00")
 
 
 def test_crear_cotizacion_rechaza_sin_items(usuario_factory, cliente_factory):
@@ -168,14 +171,17 @@ def test_crear_factura_happy(usuario_factory, cliente_factory, _on_commit_inmedi
     accion = _accion({
         "cliente_slug": cli.slug, "titulo": "Servicios de diseño",
         "items": [{"descripcion": "Diseño de menú", "precio_unitario": 4500}],
-        "impuestos": [],  # sin impuestos para simplificar
+        "impuestos": [],  # sin tasas de la M2M
     })
     EJECUTORES["crear_factura"](accion, admin, {})
     fac = Factura.objects.get(pk=accion.entidad_id)
     assert fac.estado == "borrador"
     assert fac.codigo.startswith("FAC-")
     assert fac.items.count() == 1
-    assert fac.calcular_totales()["total"] == Decimal("4500.00")
+    # Desde 2026-07-25 nace en «IVA y Retenciones» (default del despacho), que
+    # ignora la M2M y calcula solo: IVA 720 − ISR 56.25 − ret. IVA 480.
+    assert fac.regimen_fiscal == "honorarios"
+    assert fac.calcular_totales()["total"] == Decimal("4683.75")
 
 
 # ── Granularidad de los ejecutores básicos (re-chequeo de permiso) ────────────

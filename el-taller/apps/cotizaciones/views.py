@@ -909,7 +909,12 @@ def documento_opciones(request, pk):
             return HttpResponseBadRequest("Forma de pago inválida.")
         cot.forma_pago = valor
     elif campo == "titulo_documento_manual":
-        cot.titulo_documento_manual = (valor or "").strip()[:200]
+        titulo = (valor or "").strip()[:200]
+        # El campo se muestra con el texto REAL ya cargado (Oscar 2026-07-25,
+        # tercera ronda: con placeholder había que reescribirlo todo). Si lo
+        # devuelven igual al automático, se guarda vacío para que la cotización
+        # siga heredando el nombre del proyecto en lugar de congelarlo.
+        cot.titulo_documento_manual = "" if titulo == cot.titulo_documento_auto else titulo
     else:
         return HttpResponseBadRequest("Campo no editable.")
     cot.save(update_fields=[campo, "actualizado_en"])

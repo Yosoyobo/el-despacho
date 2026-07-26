@@ -46,6 +46,10 @@ def cot_borrador(cliente_factory, usuario_factory):
     cot = Cotizacion.objects.create(
         cliente=cli,
         titulo="Servicios mayo 2026",
+        # Régimen `iva` explícito: estos casos prueban el mecanismo genérico de
+        # tasas (la M2M). El default del modelo es «IVA y Retenciones» desde
+        # 2026-07-25, que trae su propio cálculo dedicado.
+        regimen_fiscal="iva",
         creado_por=autor,
     )
     CotizacionItem.objects.create(

@@ -183,6 +183,16 @@ def _crear_lineas(modelo_item, *, parent_attr: str, parent, items: list, context
     return creadas
 
 
+def _regimen_fiscal(proyecto=None) -> str:
+    """Régimen fiscal del documento que se está dictando.
+
+    Hereda el del proyecto si viene uno; si no, «IVA y Retenciones», que es el
+    default del despacho (Oscar 2026-07-25) y también el del modelo.
+    """
+    regimen = getattr(proyecto, "regimen_fiscal", "") or ""
+    return regimen or "honorarios"
+
+
 def _descuento_global(payload: dict) -> Decimal:
     valor = payload.get("descuento_global_porcentaje") or 0
     try:
@@ -339,12 +349,18 @@ def crear_factura(accion, usuario, contexto=None):
     _exigir(bool(concepto), "Falta el `concepto` de la factura.")
     items = payload.get("items")
     tiene_items = isinstance(items, list) and bool(items)
-    tiene_total = payload.get("monto_total") not in (None, "")
+    # Una sola cifra dictada = importe FINAL de pago (Oscar 2026-07-25). Por eso
+    # un `monto` pelón se trata como `monto_total`, no como base.
+    total_crudo = payload.get("monto_total")
+    if total_crudo in (None, ""):
+        total_crudo = payload.get("monto")
+    tiene_total = total_crudo not in (None, "")
     tiene_base = payload.get("monto_base") not in (None, "")
     _exigir(
         tiene_items or tiene_total or tiene_base,
-        "Dime el monto de la factura (`monto_total` si ya trae impuestos, "
-        "`monto_base` si van encima) o pásame sus `items`.",
+        "Dime el monto de la factura (una sola cifra = importe final con "
+        "impuestos; `monto_base` si los impuestos van encima) o pásame sus "
+        "`items`.",
     )
     proyecto = _resolver_proyecto(payload["proyecto_slug"], contexto) if payload.get("proyecto_slug") else None
 
@@ -352,6 +368,7 @@ def crear_factura(accion, usuario, contexto=None):
         fac = Factura(
             cliente=cliente, proyecto=proyecto,
             concepto=concepto[:200], titulo=concepto[:200], estado="borrador",
+            regimen_fiscal=_regimen_fiscal(proyecto),
             fecha_emision=_fecha(payload, "fecha_emision"),
             descuento_global_porcentaje=_descuento_global(payload),
             notas=(payload.get("notas") or ""), terminos=(payload.get("terminos") or ""),
@@ -378,7 +395,7 @@ def crear_factura(accion, usuario, contexto=None):
                           items=items, contexto=contexto)
         elif tiene_total:
             # El monto dictado ya trae impuestos: se despeja la base.
-            fijar_total_con_impuestos(fac, _monto(payload, "monto_total"))
+            fijar_total_con_impuestos(fac, _monto({"monto": total_crudo}))
         else:
             # El monto dictado es la base: los impuestos se suman encima.
             fijar_linea_concepto(fac, monto=_monto(payload, "monto_base"))
@@ -470,6 +487,7 @@ def crear_cotizacion(accion, usuario, contexto=None):
     with transaction.atomic():
         cot = Cotizacion(
             cliente=cliente, proyecto=proyecto, titulo=titulo[:200], estado="borrador",
+            regimen_fiscal=_regimen_fiscal(proyecto),
             descuento_global_porcentaje=_descuento_global(payload),
             notas=(payload.get("notas") or ""), terminos=(payload.get("terminos") or ""),
             creado_por=usuario,

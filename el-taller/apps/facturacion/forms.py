@@ -87,7 +87,7 @@ class FacturaForm(forms.ModelForm):
 
     def clean_regimen_fiscal(self):
         v = self.cleaned_data.get("regimen_fiscal")
-        return v or (self.instance.regimen_fiscal or "iva")
+        return v or (self.instance.regimen_fiscal or "honorarios")
 
     def clean(self):
         cleaned = super().clean()

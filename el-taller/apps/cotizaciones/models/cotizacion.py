@@ -90,7 +90,7 @@ class Cotizacion(models.Model):
     moneda = models.CharField(max_length=3, default="MXN")
     # Régimen fiscal (LC 2026-07). Hereda del proyecto al generar la cotización.
     regimen_fiscal = models.CharField(
-        max_length=12, choices=REGIMENES_FISCALES, default="iva", db_index=True
+        max_length=12, choices=REGIMENES_FISCALES, default="honorarios", db_index=True
     )
     descuento_global_porcentaje = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("0.00")
