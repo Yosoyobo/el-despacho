@@ -206,7 +206,10 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
                 factura=fac,
                 orden=it.orden,
                 servicio=it.servicio,
-                descripcion=it.descripcion,
+                # LC 2026-07: la factura lleva el NOMBRE del concepto, no el
+                # bloque de especificaciones de la cotización (material, color,
+                # branding) — eso es material de venta, no de facturación.
+                descripcion=it.concepto_visible or it.descripcion,
                 cantidad=it.cantidad,
                 unidad=it.unidad,
                 precio_unitario=it.precio_unitario,

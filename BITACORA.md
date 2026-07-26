@@ -7108,3 +7108,107 @@ proyectos, cotizaciones, facturación, tesorería, pizarrón y los dos
 **Deuda diseñada:** el reporte no se pide por chat (es un botón, declarado así en
 el manual); tope de 40 renglones por sección; TIZAYUCA se ata al nombre del
 proveedor (misma constante que la calculadora).
+
+---
+
+# BITÁCORA — S-Cotizaciones-Bonitas (2026-07-25, VERSION 2026.07.28)
+
+> Cierre de sesión. Rama `agent/cotizaciones-bonitas` desde `origin/main`
+> (`cfe7d0f`, que ya traía los dos fixes de tests que rescataron el 2026.07.27).
+> Pedido de Oscar tras dos screenshots de cotizaciones reales (Gorras MAU y el
+> desglose de TESSA STUDIO). 7 commits de código + este de docs.
+
+**Contexto: qué NO se hizo, a propósito.** La conversación arrancó como «dos
+tipos de producto» (lo que compro vs. lo que vendo) con receta/bill-of-materials.
+Al revisar su catálogo, Oscar decidió que su lista **ya funciona** y cambió el
+pedido: en vez de un filtro por tipo y una receta, que **cada proyecto pueda
+renombrar** el producto que compra. Así que este sprint entrega la Fase 1
+(cotizaciones bonitas) + el alias, y `tipo`/`ComponenteServicio` quedan sin
+construir.
+
+## Entregas
+
+1. **Enlace público firmado para las imágenes del PDF** (`lib/imagen_publica.py`
+   + `/catalogo/img/<token>`).
+2. **Alias del producto por proyecto** — `ProyectoProducto.nombre_proyecto`,
+   botón de etiqueta en la tarjeta, `nombre_visible` como fuente única.
+3. **Concepto ≠ especificaciones** — `CotizacionItem.concepto` + properties
+   retro-compatibles.
+4. **Generador de descripción** con congelado por versión y herencia.
+5. **Texto editable en la página de la cotización** (celda HTMX).
+6. **PDF rehecho** con el formato de Oscar + notas fijas.
+7. **Dos interruptores** del documento (desglose y forma de pago).
+
+## Decisiones
+
+- **La raíz del problema de la imagen:** el PDF lo genera **Google**, no El
+  Despacho (regla §8), y al convertir **baja las imágenes anónimamente desde sus
+  servidores**. Eso descarta de golpe el proxy autenticado, la URL de contenido
+  de Drive y `insertInlineImage` — las tres exigen acceso sin contraseña. De ahí
+  el token firmado con caducidad servido desde nuestro propio dominio: Drive
+  nunca se comparte y el enlace muere solo.
+- **Tres candados en el único endpoint sin login:** firma vigente · el `file_id`
+  tiene que ser la imagen de un `Servicio` (un token no abre Drive a placer) ·
+  sólo `image/*`. Todo lo demás, 404 seco.
+- **El buscador del Kanban indexa alias Y nombre de catálogo.** Renombrar la
+  playera a «Janet» no puede romper «¿en qué proyectos uso la de Crea Blanks?» —
+  para eso se guarda el vínculo.
+- **Herencia del texto entre versiones** (decisión de Oscar: «sí heredar, siempre
+  editable»). Sin esto habría que reescribir el branding en cada versión. Sólo se
+  refresca el conteo de piezas, **preservando el paréntesis** escrito a mano.
+- **`permite_editar_texto` es más permisivo que `es_editable`**, a propósito:
+  redactar no mueve dinero, así que se corrige en borrador/generada/enviada y
+  queda en solo lectura al cerrarse (testimonio de lo que se mandó al cliente).
+- **Las notas van siempre, tal cual** (Oscar). No editables: son las condiciones
+  con las que LC cotiza. `terminos` se conserva como bloque aparte para lo
+  puntual.
+- **La casilla ✔ del desglose se replica vacía** — es para que el cliente vaya
+  marcando (le gustó del formato original).
+- **El PDF ya no lleva «COTIZACIÓN» ni el código COT-YYYY-NNNN**, en línea con la
+  decisión de 2026.07.27 («el nombre del proyecto antes que el código»).
+- **Las fotos salen del catálogo** y son una sola por producto (frente y trasero
+  van en la misma imagen) — «por ahora que salga del catálogo».
+- **Los detalles de branding NO se derivan de los procesos** de la tarjeta:
+  «será mucho desmadre agregarlo en la tarjeta, editar en pág. de cotización».
+  Eso simplificó el sprint — se cayeron los campos `color`/`tamano`/
+  `especificacion` que el plan v1 iba a agregar al proyecto.
+
+## Cuidados técnicos
+
+- Migraciones **escritas a mano** (`proyectos/0024`, `cotizaciones/0012` y
+  `0013`); `makemigrations --check` sólo reporta los espurios conocidos del repo.
+- `CotizacionItem` **no migra datos**: las líneas viejas guardaban el nombre
+  dentro de `descripcion`, y `concepto_visible`/`detalle_lineas` las leen bien
+  sin repetirlo. Partir ese texto a ciegas habría roto descripciones a mano.
+- HTML del PDF deliberadamente antiguo (tablas + estilos inline): la conversión
+  de Docs descarta flex/grid y hojas externas.
+- Un **checkbox desmarcado no viaja en el POST** → la ausencia del valor ES el
+  apagado (así funciona el interruptor del desglose).
+- Bug viejo cazado al pasar: la higiene que evita «Playera · Playera» sólo
+  detectaba el caso en un sentido; ahora en los dos.
+- Dos tests fallaron por el TEST, no por el código: el HTML escapa los apóstrofes
+  (`&#x27;`) y el `<template>` de tarjeta vacía siempre aporta un bloque con
+  `hidden` (un assert negativo sobre eso era imposible).
+
+## Riesgo abierto — verificar al deployar
+
+Que Google Docs respete el `<img>` remoto **sólo se puede comprobar con el código
+en La Sede**: el endpoint tiene que ser alcanzable desde internet, así que no hay
+manera de probarlo en local ni en CI. Al desplegar: generar el PDF de una
+cotización cuyo producto tenga foto. El template usa `{% if fila.imagen %}`, así
+que el peor caso es un PDF **sin la foto y con todo lo demás intacto**; el
+fallback (insertar la imagen con `batchUpdate`/`insertInlineImage` de la API de
+Docs) reusa el mismo endpoint firmado.
+
+## Tests
+
+64 nuevos (52 en `test_cotizaciones_bonitas.py` + 12 en `test_imagen_publica.py`).
+Regresión de cotizaciones, facturación, proyectos, pizarrón, catálogo, PDF y los
+dos `test_no_renderiza_comentarios`: verde. Ruff limpio.
+
+## Deuda diseñada
+
+El PDF no numera páginas (Docs no lo toma del HTML) · el alias no se ofrece en el
+alta rápida de producto (se pone al abrir la tarjeta) · una sola imagen por
+producto, del catálogo · el `tipo` de producto y la receta (`ComponenteServicio`)
+quedan sin construir, con el diseño ya platicado por si se retoman.

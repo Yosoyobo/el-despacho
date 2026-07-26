@@ -225,10 +225,20 @@ class ProyectoProductoForm(forms.ModelForm):
     # al arrastrar / al enviar; así el orden persiste también en Nuevo/Editar (en
     # el detalle además está el endpoint de reordenado). Oculto y opcional.
     orden = forms.IntegerField(required=False, widget=forms.HiddenInput())
+    # LC 2026-07: alias del producto para ESTE proyecto («TShirt Modelo Janet»).
+    # Se revela con el botón de la etiqueta en la tarjeta abierta; viaja con el
+    # autosave del detalle como cualquier otro campo del formset.
+    nombre_proyecto = forms.CharField(
+        required=False, max_length=150, label="Nombre en este proyecto",
+        widget=forms.TextInput(attrs={
+            "placeholder": "Cómo se llama aquí",
+            "data-alias-input": "1",
+        }),
+    )
 
     class Meta:
         model = ProyectoProducto
-        fields = ["servicio", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota", "orden"]
+        fields = ["servicio", "nombre_proyecto", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota", "orden"]
         labels = {"nota": "Nota corta (opcional)"}
 
     def __init__(self, *args, **kwargs):

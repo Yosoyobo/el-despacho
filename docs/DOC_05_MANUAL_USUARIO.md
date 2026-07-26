@@ -5,6 +5,52 @@
 
 ---
 
+## Novedades — Cotizaciones con imagen, especificaciones y nombre propio (25 de julio de 2026 — cuarta entrega)
+
+- **Las cotizaciones ya salen con el formato de Learning Center.** El PDF
+  cambió por completo: arriba la fecha, el logotipo al centro y el cliente a la
+  derecha; el nombre del proyecto centrado; y abajo cada producto **numerado**,
+  con su nombre, sus especificaciones renglón por renglón, **la foto del
+  producto** a la derecha y su tabla de Cantidad / Precio Unitario / Subtotal.
+  Los montos se muestran sin IVA y sin centavos cuando terminan en `.00`.
+- **Ponle a cada producto el nombre que quieras, sin perder de qué está hecho.**
+  En la ventana del proyecto, dentro de la tarjeta de un producto, hay un botón
+  chico de etiqueta junto a «Producto». Al picarlo puedes escribir cómo se llama
+  **en este proyecto**: compras «TShirt Oversize Color» a Crea Blanks y la
+  vendes como «TShirt Modelo Janet». Ese nombre es el que aparece en el proyecto
+  y en la cotización; debajo queda una línea chica que dice de qué producto del
+  catálogo salió, y el buscador del tablero **sigue encontrándolo por los dos
+  nombres**. Con «usar el nombre del catálogo» regresas al original.
+- **Las especificaciones se escriben en la página de la cotización.** Al generar
+  una versión, el sistema arranca la descripción por ti (las piezas y lo que ya
+  sabe el catálogo) y tú la completas ahí mismo, un renglón por dato: piezas por
+  color, material, `Color:`, `Tamaño:` y los detalles de branding (bordados,
+  medidas, etiquetas). Se guarda solo al salir del campo.
+- **Lo que escribes no se pierde al generar la siguiente versión.** La v2 hereda
+  el texto de la v1 y sólo actualiza el número de piezas si cambió la cantidad,
+  **respetando lo que pusiste entre paréntesis** («105 pz (3 colores, 35 pz
+  c/u)» pasa a «110 pz (3 colores, 35 pz c/u)»). Cada versión queda congelada:
+  la v1 no se mueve aunque generes la v2.
+- **Dos interruptores nuevos en la página de la cotización** (recuadro
+  «Documento», a la derecha):
+  - **Incluir desglose y montos** — apagado, el PDF lleva la tabla de montos de
+    cada producto y nada más. Prendido, agrega al final el **Desglose de
+    Elementos** con todos los conceptos juntos (con una casilla para que el
+    cliente vaya marcando) y el cálculo de impuestos con el total.
+  - **Forma de pago** — elige entre **Anticipo** (respeta el porcentaje que hayas
+    capturado; si no hay, 50%) y **Un solo pago**. Cambia la última nota del PDF
+    y ahí mismo te muestra cómo va a quedar.
+
+  Los dos se heredan a la siguiente versión: decidirlo una vez alcanza.
+- **Las notas siempre van completas** al pie del PDF (precios de producción,
+  imágenes ilustrativas, variaciones por proceso manual, existencias, precios
+  sin IVA…). No se editan porque son las condiciones con las que se cotiza; si
+  necesitas algo extra para un cliente, escríbelo en «Términos» y se agrega
+  abajo como bloque aparte.
+- **El texto del documento se puede corregir mientras la cotización esté viva**
+  (borrador, generada o enviada). Una vez aprobada, pagada, rechazada o anulada
+  queda en solo lectura: es el testimonio de lo que se le mandó al cliente.
+
 ## Novedades — Resumen de actividad del taller en un clic (25 de julio de 2026 — tercera entrega)
 
 - **Nuevo botón «Resumir actividad» en el recuadro de El Chalán** (Dashboard).
@@ -2704,6 +2750,15 @@ La página es **editable directo** (los cambios se guardan solos; verás
   - Interruptor para **incluirlo o no** en el total (apagado = se atenúa y su
     monto queda en $0.00).
   - Categoría · Producto · Cantidad · Merma · Precio unitario.
+  - **Ponerle otro nombre en este proyecto:** junto a «Producto» hay un botón
+    chico de **etiqueta**. Al picarlo aparece un campo con el nombre del
+    catálogo para que lo cambies por el que ve el cliente — compras «TShirt
+    Oversize Color» a Crea Blanks y la vendes como «TShirt Modelo Janet». Ese
+    nombre es el que se usa en el proyecto, en el tablero y en la cotización;
+    debajo queda una línea chica «usa: …» con el producto real, y el buscador
+    del tablero **sigue encontrándolo por los dos nombres** (útil para «¿en qué
+    proyectos uso la playera de Crea Blanks?»). Con **«usar el nombre del
+    catálogo»** regresas al original.
   - **Proveedor** principal + costo unitario + notas.
   - **Impresión** (proveedor + costo) y el botón **"+ Proceso"** para sumar
     gastos operativos sueltos (materiales, viáticos, embalaje…).
@@ -2982,10 +3037,67 @@ Propuestas comerciales para tus clientes.
 
 - Código `COT-YYYY-NNNN`
 - Cliente + proyecto (obligatorio)
-- Líneas: producto + variación + cantidad + precio + descuento
+- Líneas: producto + **concepto** (el nombre que ve el cliente) +
+  **especificaciones** + cantidad + precio + descuento
 - Impuestos: marca los que aplican (IVA, retenciones)
 - Anticipo: porcentaje o monto fijo
 - Estados: Borrador → Enviada → Aprobada / Rechazada / Anulada
+
+### Concepto y especificaciones de cada producto
+
+Cada línea del documento tiene dos partes:
+
+- El **concepto** es el nombre que titula el producto en el PDF (y la columna
+  «Concepto» del desglose). Si le pusiste un nombre propio al producto dentro
+  del proyecto, ése es el que llega aquí.
+- Las **especificaciones** son los renglones que lee el cliente debajo del
+  nombre. El sistema arranca con las piezas y lo que ya sabe el catálogo, y tú
+  completas el resto **en la página de la cotización**, un renglón por dato:
+
+  ```
+  105 pz (3 colores, 35 pz c/u)
+  Gorras de gabardina 100% algodón deslavado
+  Color: Beige / Terracota / Café
+  Con bordado frontal y trasero
+  Frontal: Mantarraya - 4.5 - 5 cm de ancho
+  ```
+
+Se guardan solos al salir del campo. Puedes corregirlos mientras la cotización
+esté en **borrador, generada o enviada**; una vez **aprobada, pagada, rechazada
+o anulada** quedan en solo lectura, porque son el testimonio de lo que se le
+mandó al cliente.
+
+**Al generar la siguiente versión no pierdes lo escrito:** la v2 hereda el texto
+de la v1 y sólo actualiza el número de piezas si cambió la cantidad, respetando
+lo que hayas puesto entre paréntesis. Y cada versión queda congelada: la v1 no
+se mueve aunque generes la v2.
+
+### El documento (PDF) y sus dos interruptores
+
+El PDF lleva el formato de Learning Center: fecha, logotipo y cliente arriba; el
+nombre del proyecto centrado; cada producto **numerado** con sus
+especificaciones, **la foto del producto** (la del catálogo) y su tabla de
+Cantidad / Precio Unitario / Subtotal. Los montos van sin IVA y sin centavos
+cuando terminan en `.00`.
+
+En el recuadro **Documento** (a la derecha, en la página de la cotización):
+
+| Interruptor | Qué hace |
+|---|---|
+| **Incluir desglose y montos** | Apagado, el PDF sólo lleva la tabla de montos de cada producto. Prendido, agrega al final el **Desglose de Elementos** (todos los conceptos juntos, con una casilla para que el cliente vaya marcando) y el cálculo de impuestos con el total. |
+| **Forma de pago** | **Anticipo** (usa el porcentaje que hayas capturado; si no hay, 50%) o **Un solo pago**. Cambia la última nota del PDF; el recuadro te muestra cómo va a quedar. |
+
+Los dos se heredan a la siguiente versión.
+
+**Las notas van siempre completas** al pie (precios de producción, imágenes
+ilustrativas, variaciones por proceso manual, existencias, precios sin IVA y la
+forma de pago). No se editan: son las condiciones con las que Learning Center
+cotiza. Si necesitas condiciones extra para un cliente, escríbelas en
+**Términos** y se agregan abajo como bloque aparte.
+
+> **Ojo con las fotos:** salen del catálogo, así que un producto sin imagen sale
+> sin foto (el bloque no se ve roto, simplemente no la trae). Súbela en
+> *Productos → editar el producto*.
 
 En la **lista** de cotizaciones (tarjetas o tabla): el **estado** se cambia con un
 **menú de color único** por renglón; hay un **buscador de clientes** que abarca

@@ -117,6 +117,29 @@ class Cotizacion(models.Model):
     notas = models.TextField(blank=True, default="")
     terminos = models.TextField(blank=True, default="")
 
+    # LC 2026-07 (Oscar) — dos interruptores del documento que se le manda al
+    # cliente. Se prenden desde la página de la cotización y cada versión
+    # guarda los suyos (la siguiente versión los hereda).
+    #
+    # `incluir_desglose`: apagado, el PDF lleva la tablita de montos de cada
+    # producto y nada más. Prendido, agrega al final el «Desglose de Elementos»
+    # (todos los conceptos juntos) y el cálculo de impuestos con el total.
+    incluir_desglose = models.BooleanField(
+        default=False,
+        help_text="Incluir al final del PDF el desglose de conceptos y el cálculo de impuestos.",
+    )
+    # `forma_pago`: elige el texto de la última nota del PDF.
+    FORMA_ANTICIPO = "anticipo"
+    FORMA_CONTADO = "contado"
+    FORMAS_PAGO = (
+        (FORMA_ANTICIPO, "Anticipo"),
+        (FORMA_CONTADO, "Un solo pago"),
+    )
+    forma_pago = models.CharField(
+        max_length=12, choices=FORMAS_PAGO, default=FORMA_ANTICIPO,
+        help_text="Define la nota de forma de pago del PDF.",
+    )
+
     # PDF generado vía Google Docs (regla §8). Se regenera al pedirlo y se
     # guarda en Drive (subcarpeta "Cotizaciones"). Vacío = aún no se generó.
     pdf_file_id = models.CharField(max_length=100, blank=True, default="")
@@ -199,6 +222,18 @@ class Cotizacion(models.Model):
         return self.estado in ESTADOS_TERMINAL
 
     @property
+    def permite_editar_texto(self) -> bool:
+        """Si se puede corregir el TEXTO del documento (concepto y
+        especificaciones) desde la página de la cotización.
+
+        Es más permisivo que `es_editable` —que solo abarca borrador— porque
+        redactar no cambia dinero: mientras la cotización esté viva se puede
+        pulir la descripción. Una vez aprobada, pagada, rechazada o anulada
+        queda como testimonio de lo que se le mandó al cliente.
+        """
+        return self.estado in ("borrador", "generada", "enviada")
+
+    @property
     def esta_vencida(self) -> bool:
         """Vencida = enviada sin respuesta y fecha_validez < hoy."""
         return self.estado == "enviada" and self.fecha_validez < date.today()
@@ -255,6 +290,22 @@ class Cotizacion(models.Model):
             return Decimal("0.00")
         total = self.calcular_totales()["total"]
         return (Decimal(total) * pct / Decimal("100")).quantize(Decimal("0.01"))
+
+    @property
+    def nota_forma_pago(self) -> str:
+        """Última nota del PDF, según el interruptor Anticipo / Un solo pago.
+
+        En modo anticipo respeta el porcentaje capturado en la cotización (por
+        si un cliente va al 40%); si no hay ninguno, el default de LC es 50%.
+        """
+        if self.forma_pago == self.FORMA_CONTADO:
+            return "Forma de pago: Un sólo pago."
+        pct = self.anticipo_porcentaje or Decimal("0")
+        if pct <= 0:
+            pct = Decimal("50")
+        # 50.00 → «50»; 33.50 → «33.5» (sin ceros de relleno).
+        texto = f"{pct.normalize():f}" if isinstance(pct, Decimal) else str(pct)
+        return f"Forma de pago: Anticipo {texto}%."
 
     @property
     def anticipo_pendiente(self) -> bool:
@@ -336,6 +387,14 @@ class CotizacionItem(models.Model):
         on_delete=models.SET_NULL,
         related_name="lineas_cotizacion",
     )
+    # LC 2026-07: el NOMBRE del concepto tal como se congeló al generar la
+    # versión (el alias del proyecto si lo hubo). Es el título numerado del PDF
+    # y la columna «Concepto» del desglose. Vacío en las líneas viejas, que
+    # guardaban el nombre dentro de `descripcion` — ver `concepto_visible`.
+    concepto = models.CharField(max_length=150, blank=True, default="")
+    # Bloque multilínea con las especificaciones que lee el cliente (piezas,
+    # material, color, detalles de branding). Se genera al crear la versión y
+    # se edita a mano en la página de la cotización.
     descripcion = models.TextField(blank=True, default="")
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
@@ -358,7 +417,38 @@ class CotizacionItem(models.Model):
         ordering = ["cotizacion", "orden", "pk"]
 
     def __str__(self) -> str:
-        return f"{self.cotizacion.codigo} · {self.descripcion[:40]}"
+        return f"{self.cotizacion.codigo} · {self.concepto_visible[:40]}"
+
+    @property
+    def concepto_visible(self) -> str:
+        """Nombre del concepto. Retro-compatible: las líneas viejas guardaban el
+        nombre como primer (y único) renglón de `descripcion`."""
+        propio = (self.concepto or "").strip()
+        if propio:
+            return propio
+        return ((self.descripcion or "").strip().splitlines() or [""])[0].strip()
+
+    @property
+    def detalle_lineas(self) -> list[str]:
+        """Renglones de especificaciones que van bajo el título en el PDF.
+
+        Si la línea no tiene `concepto` propio (formato viejo), el primer
+        renglón de `descripcion` ES el nombre y no se repite como detalle.
+        """
+        crudo = (self.descripcion or "").strip()
+        if not crudo:
+            return []
+        renglones = crudo.splitlines()
+        if not (self.concepto or "").strip():
+            renglones = renglones[1:]
+        return [r.strip() for r in renglones if r.strip()]
+
+    @property
+    def filas_textarea(self) -> int:
+        """Alto del cuadro de especificaciones en la página de la cotización:
+        que quepa lo escrito más un renglón libre, sin desbordar la tabla."""
+        n = len((self.descripcion or "").splitlines())
+        return max(3, min(n + 1, 12))
 
     @property
     def unidad_label(self) -> str:

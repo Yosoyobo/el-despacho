@@ -1082,3 +1082,39 @@ def servicio_imagen(request, pk: int):
         payload={"servicio_id": srv.pk, "file_id": srv.imagen_file_id},
     ))
     return JsonResponse({"ok": True, "url": srv.imagen_url, "file_id": srv.imagen_file_id})
+
+
+@require_http_methods(["GET"])
+def imagen_producto_publica(request, token: str):
+    """Sirve la imagen de un producto por un enlace FIRMADO y TEMPORAL.
+
+    **Deliberadamente sin `login_required`.** Los PDF se generan vía Google
+    Docs y Google baja las imágenes del HTML de forma anónima, sin nuestra
+    sesión (ver `lib.imagen_publica`). Este endpoint es la única puerta sin
+    contraseña, y está cerrada con tres candados:
+
+    1. el token debe venir firmado con `DJANGO_SECRET_KEY` y no haber expirado,
+    2. el `file_id` debe ser la imagen de algún producto del catálogo — así un
+       token no sirve para leer archivos arbitrarios de Drive, y
+    3. sólo responde si Drive devuelve un `image/*`.
+
+    Cualquier fallo es un 404 seco (no filtra si el archivo existe o no).
+    """
+    from lib.imagen_publica import verificar
+
+    file_id = verificar(token)
+    if not file_id:
+        return HttpResponse(status=404)
+    if not Servicio.objects.filter(imagen_file_id=file_id).exists():
+        return HttpResponse(status=404)
+    try:
+        from lib.google_drive import drive
+        contenido, mime, _ = drive.descargar(file_id)
+    except Exception:  # noqa: BLE001 — Drive caído o sin permisos
+        return HttpResponse(status=404)
+    if not (mime or "").startswith("image/"):
+        return HttpResponse(status=404)
+    resp = HttpResponse(contenido, content_type=mime)
+    # El enlace ya es efímero por la firma; que nadie lo cachee en el camino.
+    resp["Cache-Control"] = "private, max-age=300"
+    return resp

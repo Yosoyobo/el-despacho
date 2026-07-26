@@ -63,7 +63,11 @@ def test_generar_v1_snapshot_solo_productos_incluidos(entorno):
     it = items[0]
     assert it.cantidad == Decimal("3")
     assert it.precio_unitario == Decimal("100")
-    assert "Taza" in it.descripcion
+    # LC 2026-07: el NOMBRE vive en `concepto`; `descripcion` guarda las
+    # especificaciones que lee el cliente (arranca con las piezas).
+    assert it.concepto == "Taza"
+    assert it.concepto_visible == "Taza"
+    assert it.descripcion.startswith("3 pz")
 
 
 def test_generar_incrementa_version_y_conserva_la_previa(entorno):

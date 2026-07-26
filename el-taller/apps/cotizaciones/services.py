@@ -44,12 +44,35 @@ def emitir_eliminada(cot: Cotizacion, actor):
 
 
 def construir_html_pdf(cot: Cotizacion) -> str:
-    """Renderiza el HTML imprimible de la cotización (template `pdf.html`)."""
+    """Renderiza el HTML imprimible de la cotización (template `pdf.html`).
+
+    Las imágenes van con **URL absoluta, pública y firmada**: el PDF lo genera
+    Google convirtiendo este HTML, y Google baja las imágenes desde sus
+    servidores de forma anónima (ver `lib.imagen_publica`). Una ruta relativa o
+    el proxy autenticado dejarían huecos en el documento.
+    """
     from django.template.loader import render_to_string
+
+    from lib.imagen_publica import base_publica, url_absoluta
+
+    from .notas import notas_para
+
+    items = list(cot.items.select_related("servicio", "unidad_fk").all())
+    filas = [
+        {
+            "it": it,
+            # La foto sale del catálogo (decisión Oscar: una sola por producto).
+            "imagen": url_absoluta(getattr(it.servicio, "imagen_file_id", "") or ""),
+        }
+        for it in items
+    ]
     return render_to_string("cotizaciones/pdf.html", {
         "cot": cot,
-        "items": list(cot.items.select_related("servicio", "unidad_fk").all()),
+        "items": items,
+        "filas": filas,
         "totales": cot.calcular_totales(),
+        "notas": notas_para(cot),
+        "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
     })
 
 
@@ -217,6 +240,7 @@ def duplicar(cot: Cotizacion, actor) -> Cotizacion:
                 cotizacion=nueva,
                 orden=it.orden,
                 servicio=it.servicio,
+                concepto=it.concepto,
                 descripcion=it.descripcion,
                 cantidad=it.cantidad,
                 unidad=it.unidad,
@@ -321,6 +345,7 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
 
     from ajustes.models.tasa import TasaImpositiva
 
+    from . import descripcion
     from .models import CotizacionImpuesto, CotizacionItem, estados_cot_activos
 
     with transaction.atomic():
@@ -340,24 +365,32 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             version=version,
             regimen_fiscal=proyecto.regimen_fiscal,
             descuento_global_porcentaje=Decimal("0.00"),
+            # LC 2026-07: los interruptores del documento se HEREDAN de la
+            # versión anterior — si ya decidiste incluir desglose y cobrar de
+            # un solo pago, la v+1 no te lo vuelve a preguntar.
+            incluir_desglose=(ultima_cot.incluir_desglose if ultima_cot else False),
+            forma_pago=(ultima_cot.forma_pago if ultima_cot else Cotizacion.FORMA_ANTICIPO),
+            anticipo_porcentaje=(
+                ultima_cot.anticipo_porcentaje if ultima_cot else Decimal("0.00")
+            ),
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
+        # LC 2026-07: las descripciones escritas a mano en la versión anterior
+        # se HEREDAN (nadie quiere reescribir el branding en cada versión).
+        indice = descripcion.indice_previo(ultima_cot)
         for i, pp in enumerate(proyecto.productos_incluidos):
-            nombre = pp.servicio.nombre if pp.servicio_id else "Producto"
-            if pp.variacion_id:
-                # Fase 3 §1.4 (higiene): no duplicar el nombre si la variación
-                # ya lo contiene.
-                vnom = pp.variacion.nombre or ""
-                if vnom and vnom.lower() not in nombre.lower():
-                    nombre = f"{nombre} · {vnom}"
-            # LC 2026-07: la NOTA interna del producto NO se copia a la línea de
-            # la cotización (no debe salir en el documento final al cliente).
+            # El cliente ve el nombre del producto EN ESTE PROYECTO (el alias, si
+            # se le puso); el FK al catálogo se conserva aparte. La higiene de
+            # «Servicio · Variación» vive en `nombre_catalogo`.
+            # La NOTA interna del producto NO se copia (no sale en el documento).
             CotizacionItem.objects.create(
                 cotizacion=cot,
                 orden=i,
                 servicio=pp.servicio if pp.servicio_id else None,
                 variacion=pp.variacion if pp.variacion_id else None,
-                descripcion=nombre,
+                concepto=pp.nombre_visible[:150],
+                descripcion=descripcion.descripcion_para(
+                    pp, descripcion.heredado(indice, pp)),
                 cantidad=Decimal(str(pp.cantidad)),
                 precio_unitario=pp.precio_efectivo,
             )

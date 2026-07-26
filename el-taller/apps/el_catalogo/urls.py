@@ -4,6 +4,10 @@ from . import views
 
 urlpatterns = [
     path("", views.lista, name="catalogo-lista"),
+    # Enlace FIRMADO y temporal para que Google baje la imagen al convertir un
+    # PDF (sin login a propósito — ver lib.imagen_publica). Va antes de las
+    # rutas <int:pk> por claridad.
+    path("img/<str:token>", views.imagen_producto_publica, name="catalogo-imagen-doc"),
     path("nuevo", views.nuevo, name="catalogo-nuevo"),
     path("<int:pk>/editar", views.editar, name="catalogo-editar"),
     path("<int:pk>/celda", views.servicio_celda, name="catalogo-servicio-celda"),

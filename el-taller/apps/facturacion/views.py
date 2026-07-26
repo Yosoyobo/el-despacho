@@ -815,7 +815,9 @@ def api_cotizacion_datos(request, pk):
         "terminos": cot.terminos,
         "items": [
             {
-                "descripcion": it.descripcion,
+                # El nombre del concepto (LC 2026-07: la cotización guarda las
+                # especificaciones aparte, en `descripcion`).
+                "descripcion": it.concepto_visible or it.descripcion,
                 "cantidad": str(it.cantidad),
                 "unidad": it.unidad,
                 "precio_unitario": str(it.precio_unitario),

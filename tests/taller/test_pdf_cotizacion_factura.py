@@ -40,11 +40,16 @@ def cot_borrador(cliente_factory, usuario_factory):
 # ── Cotizaciones ────────────────────────────────────────────────────────
 
 def test_cotizacion_construir_html_pdf_renderiza(cot_borrador):
+    """LC 2026-07: el documento se rehízo con el formato de Oscar — encabezado
+    fecha/logotipo/cliente, el título del proyecto por delante y las notas al
+    pie. Ya no lleva el rótulo «COTIZACIÓN» ni el código COT-YYYY-NNNN (misma
+    decisión de «el nombre antes que el código»)."""
     from apps.cotizaciones import services
     html = services.construir_html_pdf(cot_borrador)
-    assert cot_borrador.codigo in html
-    assert "COTIZACIÓN" in html
-    assert "Learning Center" in html
+    assert cot_borrador.titulo in html
+    assert cot_borrador.cliente.razon_social.upper() in html
+    assert "Logo_LC-256.png" in html
+    assert "Notas:" in html
 
 
 def test_cotizacion_generar_pdf_actualiza_modelo(cot_borrador, monkeypatch):
