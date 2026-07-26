@@ -100,13 +100,26 @@
         });
         return t;
     }
+    // LC 2026-07-26: procesos de VENTA — lo que se le cobra al cliente aparte del
+    // producto. SUMAN al monto de la línea (no al costo).
+    function totalVentas(card) {
+        let t = 0;
+        card.querySelectorAll('.venta-fila').forEach(fila => {
+            const d = ((fila.querySelector('.venta-desc') || {}).value || '').trim();
+            const p = num((fila.querySelector('.venta-precio') || {}).value);
+            const c = num((fila.querySelector('.venta-cant') || {}).value) || 1;
+            if (d || p) t += p * c;
+        });
+        return t;
+    }
     function recalcular(card) {
         const inc = card.querySelector('input[name$="-incluir_en_calculo"]');
         const cant = num((card.querySelector('input[name$="-cantidad"]') || {}).value);
         const merma = num((card.querySelector('input[name$="-merma"]') || {}).value);
         const incluido = !inc || inc.checked;
+        const ventas = totalVentas(card);
         const monto = card.querySelector('[data-monto]');
-        if (monto) monto.textContent = fmt(incluido ? precioEfectivo(card) * cant : 0);
+        if (monto) monto.textContent = fmt(incluido ? precioEfectivo(card) * cant + ventas : 0);
         // Costo de producción (reporte Oscar): por pieza (costo unitario) y total
         // producción + merma + procesos.
         const cu = costoEfectivo(card);
@@ -120,7 +133,7 @@
         // dentro del costo total. Verde ≥0, rojo <0.
         const margen = card.querySelector('[data-margen]');
         if (margen) {
-            const venta = incluido ? precioEfectivo(card) * cant : 0;
+            const venta = incluido ? precioEfectivo(card) * cant + ventas : 0;
             if (venta > 0) {
                 const pct = (venta - total) / venta * 100;
                 margen.textContent = pct.toFixed(1) + '%';
@@ -262,9 +275,40 @@
             });
         });
         hidden.value = JSON.stringify(arr);
+        serializarVentas(card);
+    }
+    // Procesos de VENTA → `ventas_json` (LC 2026-07-26).
+    function serializarVentas(card) {
+        const hidden = card.querySelector('input[name$="-ventas_json"]');
+        if (!hidden) return;
+        const arr = [];
+        card.querySelectorAll('.venta-fila').forEach(fila => {
+            const d = ((fila.querySelector('.venta-desc') || {}).value || '').trim();
+            const p = num((fila.querySelector('.venta-precio') || {}).value);
+            const c = num((fila.querySelector('.venta-cant') || {}).value) || 1;
+            if (d || p) arr.push({ descripcion: d, cantidad: Math.max(1, Math.round(c)), precio: p });
+        });
+        hidden.value = JSON.stringify(arr);
     }
     function renumerar(card) {
         card.querySelectorAll('.proceso-num').forEach((s, i) => s.textContent = (i + 1));
+        card.querySelectorAll('.venta-num').forEach((s, i) => s.textContent = (i + 1));
+    }
+    function agregarVenta(card) {
+        const lista = card.querySelector('.venta-lista');
+        if (!lista) return;
+        const fila = document.createElement('div');
+        fila.className = 'venta-fila grid grid-cols-[auto_1fr_72px_120px_auto] items-center gap-2';
+        fila.innerHTML = '<span class="venta-num text-xs font-medium text-gray-400"></span>' +
+            '<input type="text" class="venta-desc w-full" placeholder="Ej. Ponchado, diseño de arte…" autocomplete="off">' +
+            '<input type="number" min="1" step="1" class="venta-cant w-full" placeholder="1" value="1" title="Cantidad">' +
+            '<input type="number" step="0.01" min="0" class="venta-precio w-full" placeholder="0.00" title="Precio unitario que se le cobra">' +
+            '<button type="button" class="venta-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar proceso de venta"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>';
+        lista.appendChild(fila);
+        renumerar(card);
+        serializarVentas(card); recalcular(card);
+        const desc = fila.querySelector('.venta-desc');
+        if (desc) desc.focus();
     }
     function agregarProceso(card) {
         const lista = card.querySelector('.proceso-lista');
@@ -306,6 +350,8 @@
         else if (card && t.matches && t.matches('[data-cat-filtro]')) { aplicarCatFiltro(card); }
         else if (card && t.matches && t.matches('input[name$="-incluir_en_calculo"], input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) { recalcular(card); }
         if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .imp-por-pieza, .proc-desc, .proc-costo, .proc-por-pieza')) { serializar(card); recalcular(card); }
+        // Procesos de VENTA (LC 2026-07-26): suman al monto, no al costo.
+        if (card && t.matches && t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
         // Sync del estado oculto cuando se cambia desde la barra de status.
         const chip = t.closest && t.closest('[data-estado-slug]');
         if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }
@@ -316,6 +362,7 @@
         if (!card) return;
         if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) recalcular(card);
         if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { serializar(card); recalcular(card); }
+        if (t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
         if (t.matches('[data-alias-input]')) recalcular(card);
     });
@@ -424,6 +471,11 @@
         if (add && card) { agregarProceso(card); return; }
         const del = e.target.closest && e.target.closest('.proceso-del');
         if (del && card) { del.closest('.proceso-fila').remove(); renumerar(card); serializar(card); recalcular(card); autosave(); return; }
+        // Procesos de VENTA (LC 2026-07-26).
+        const addV = e.target.closest && e.target.closest('.venta-add');
+        if (addV && card) { agregarVenta(card); return; }
+        const delV = e.target.closest && e.target.closest('.venta-del');
+        if (delV && card) { delV.closest('.venta-fila').remove(); renumerar(card); serializarVentas(card); recalcular(card); autosave(); return; }
         // Reset de impresión (LC 2026-07): vuelve a «Sin impresión».
         const impReset = e.target.closest && e.target.closest('.imp-reset');
         if (impReset && card) {
@@ -474,6 +526,9 @@
                 .replace(new RegExp('productos-' + (idx - 1) + '-', 'g'), 'productos-' + idx + '-')
                 .replace(new RegExp('id_productos-' + (idx - 1) + '-', 'g'), 'id_productos-' + idx + '-');
             const lista = card.querySelector('.proceso-lista'); if (lista) lista.innerHTML = '';
+            // LC 2026-07-26: la tarjeta nueva nace sin procesos de venta (si se
+            // clonó de una que los tenía, se arrastrarían sus cobros).
+            const listaV = card.querySelector('.venta-lista'); if (listaV) listaV.innerHTML = '';
             card.querySelectorAll('input, select, textarea').forEach(el => {
                 if (el.type === 'checkbox') { el.checked = !!(el.name && el.name.endsWith('-incluir_en_calculo')); }
                 else if (el.tagName === 'SELECT') {

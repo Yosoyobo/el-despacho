@@ -201,6 +201,10 @@ class ProyectoProductoForm(forms.ModelForm):
     # Procesos (impresión + operativos) serializados en JSON por el front;
     # la vista los sincroniza a ProyectoProductoProceso tras guardar el form.
     procesos_json = forms.CharField(required=False, widget=forms.HiddenInput())
+    # LC 2026-07-26: procesos de VENTA (Ponchado, arte…) — se le cobran al
+    # cliente como líneas propias de la cotización. Mismo mecanismo: el front los
+    # serializa aquí y la vista los sincroniza a ProyectoProductoVenta.
+    ventas_json = forms.CharField(required=False, widget=forms.HiddenInput())
     # required=False + clean (abajo): una cantidad vacía en CUALQUIER fila no debe
     # invalidar todo el formset del detalle y bloquear silenciosamente el toggle
     # "incluir" de otra fila (reporte Oscar: "el botón de incluir no jala").

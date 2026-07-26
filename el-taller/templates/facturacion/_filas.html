@@ -1,10 +1,27 @@
 {% load forms_helpers %}
+{% comment %}
+Filas de la lista de Facturación.
+
+Orden de columnas (LC 2026-07-26, Oscar): Factura · Emisión · Cliente · Concepto ·
+PDF · XML · Proyecto · Total pagable · Estado. Las tres de en medio son angostas y
+sólo llevan ✓/✕: dicen de un vistazo qué le falta a cada factura (el PDF y el XML
+del CFDI que entrega el PAC, y si ya está ligada a un proyecto).
+{% endcomment %}
 {% for f in facturas %}
 {% if f.ghost %}
-{# Fila fantasma: folio que falta en la secuencia (LC 2026-07). #}
+{% comment %}Fila fantasma: folio que falta en la secuencia (LC 2026-07). El botón
+«Agregar +» abre el alta con ESE folio ya puesto (LC 2026-07-26, Oscar) — así se
+tapa el hueco sin teclear el número.{% endcomment %}
 <tr class="bg-gray-50/50 dark:bg-white/[0.02]">
     <td class="px-5 py-3"><span class="font-mono text-sm text-gray-400 dark:text-gray-500">F{{ f.folio_numero }}</span></td>
-    <td class="px-5 py-3 text-sm italic text-gray-400 dark:text-gray-500" colspan="5">Sin información</td>
+    <td class="px-5 py-3 text-sm italic text-gray-400 dark:text-gray-500" colspan="7">Sin información</td>
+    <td class="px-5 py-3 text-right">
+        {% if puede_crear %}
+        <a href="{% url 'facturacion:nueva' %}?folio={{ f.folio_numero }}"
+           title="Registrar la factura F{{ f.folio_numero }}"
+           class="inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-white px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/40 dark:bg-gray-900 dark:text-brand-300 dark:hover:bg-brand-500/10">Agregar +</a>
+        {% endif %}
+    </td>
 </tr>
 {% else %}
 {% with totales=f.calcular_totales %}
@@ -14,9 +31,18 @@
         <a href="{% url 'facturacion:detalle' f.pk %}" class="font-semibold {% if f.folio_numero %}text-gray-900 dark:text-gray-100{% else %}text-gray-400 italic dark:text-gray-500{% endif %} hover:text-brand-600 dark:hover:text-brand-400">{{ f.folio_display }}</a>
         <div class="mt-0.5 font-mono text-[11px] text-gray-400 dark:text-gray-500">{{ f.codigo }}</div>
     </td>
+    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.fecha_emision|date:"Y-m-d" }}</td>
     <td class="px-5 py-3 text-gray-700 dark:text-gray-200">{{ f.cliente.razon_social|truncatechars:40 }}</td>
     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.concepto|default:f.titulo|truncatechars:40 }}</td>
-    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ f.fecha_emision|date:"Y-m-d" }}</td>
+    <td class="px-5 py-3 text-center" title="{% if f.pdf_file_id %}PDF del CFDI almacenado{% else %}Falta el PDF del CFDI{% endif %}">
+        {% if f.pdf_file_id %}<span class="text-success-600 dark:text-success-400">&#10004;</span>{% else %}<span class="text-error-500 dark:text-error-400">&#10008;</span>{% endif %}
+    </td>
+    <td class="px-5 py-3 text-center" title="{% if f.xml_file_id %}XML del CFDI almacenado{% else %}Falta el XML del CFDI{% endif %}">
+        {% if f.xml_file_id %}<span class="text-success-600 dark:text-success-400">&#10004;</span>{% else %}<span class="text-error-500 dark:text-error-400">&#10008;</span>{% endif %}
+    </td>
+    <td class="px-5 py-3 text-center" title="{% if f.proyecto_id %}{{ f.proyecto.nombre|default:f.proyecto.codigo }}{% else %}Sin proyecto ligado{% endif %}">
+        {% if f.proyecto_id %}<span class="text-success-600 dark:text-success-400">&#10004;</span>{% else %}<span class="text-error-500 dark:text-error-400">&#10008;</span>{% endif %}
+    </td>
     <td class="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">{{ totales.total|dinero }}</td>
     <td class="px-5 py-3">
         {% with estado=f.estado_visible %}
@@ -27,5 +53,5 @@
 {% endwith %}
 {% endif %}
 {% empty %}
-<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin facturas.</td></tr>
+<tr><td colspan="9" class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin facturas.</td></tr>
 {% endfor %}

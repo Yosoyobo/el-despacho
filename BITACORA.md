@@ -7690,3 +7690,145 @@ verdes. `makemigrations --check` solo reporta los espurios conocidos
   del PAC, así que guardarlas en la cartera alcanza.
 - El centrado y los cortes de página del PDF solo se confirman **con el código en
   La Sede** — la conversión la hace Google, no nosotros.
+
+---
+
+# BITÁCORA — S-Ajustes-Jul26-R2 (2026-07-26, VERSION 2026.07.33)
+
+Segunda ronda de ajustes de Oscar el mismo día: 9 puntos, ordenados de lo chico a
+lo grande. El punto **2 (d)** llegó vacío en el ticket («(c) meter siempre un
+`<br>` … (d)») — se entregaron (a), (b) y (c) y se le preguntó qué era (d).
+
+## 1. Lo que Google Docs tampoco perdona: `page-break-inside`
+
+El bug que reportó Oscar («se truncó el título 4. Tote Bag Paris Texas y lo demás
+se pasó a la siguiente página») tiene una raíz nueva para la lista de quirks del
+convertidor: **`page-break-inside:avoid` se ignora**. El `<div>` con esa regla lo
+respeta el navegador (por eso la vista previa se ve bien al imprimir) pero no
+Docs. Lo único que Docs NO corta entre páginas es una **fila de tabla**, así que
+cada bloque de producto —y el desglose— ahora viven dentro de una **tabla
+envoltorio de una sola celda** (borde y padding apagados en la tabla Y en la
+celda, quirk #1). El `<div>` se conserva para la vista previa.
+
+Mismo capítulo, punto (b): el título «Desglose de Elementos» se despegaba de su
+tabla. Ya no es un `<p>` suelto antes, es la **primera fila de la misma tabla**
+(colspan 5, sin borde) — no hay forma de separarlos. El aire de arriba lo da un
+`<br>`: los márgenes de un `<p>` dentro de una celda no siempre sobreviven. El
+punto (c) es ese mismo truco entre el logotipo y el título.
+
+Queda como **quirk #6** documentado en el encabezado de `pdf.html`.
+
+## 2. Procesos de VENTA: un modelo nuevo, no un `tipo` más
+
+El pedido («al producto Bordado poder agregarle Ponchado, que le cobro aparte
+como línea») cabía en dos formas: sumar `tipo="venta"` a
+`ProyectoProductoProceso` o un modelo aparte. Se eligió **`ProyectoProductoVenta`**
+(migr. `proyectos/0027`, tabla `proyectos_producto_venta`) porque el modelo de
+procesos es de **costo** de punta a punta: `costo_procesos`, `gastos.py`,
+`signals_egresos`, `deuda_por_proveedor` y los egresos iteran `producto.procesos`.
+Un `tipo` nuevo habría obligado a excluirlo en cada uno de esos lugares — un
+`filter` olvidado y un cobro al cliente se vuelve un gasto propio.
+
+Cómo se conectó:
+
+- `ProyectoProducto.subtotal_ventas` / **`subtotal_con_ventas`** (fuente única de
+  lo cobrable de la línea). `subtotal` sigue siendo SOLO el producto, así que el
+  desglose del panel Económico no cambia de significado.
+- `Proyecto.monto_calculado` y `recalcular_monto_estimado` pasan a
+  `subtotal_con_ventas`; `utilidad` y `margen_porcentaje` de la línea también
+  (los procesos de venta son ingreso sin costo: suben el margen, y eso es
+  correcto).
+- **Cotización**: cada proceso de venta es su **propia línea** con
+  `CotizacionItem.agrupado=True` (migr. `cotizaciones/0017`, default False ⇒ las
+  líneas viejas no cambian). `construir_html_pdf` agrupa por esa bandera: las
+  agrupadas se pintan como renglones extra **dentro de la tabla de montos de su
+  producto**, así que la numeración de bloques sigue contando productos.
+  `duplicar` la conserva (si no, la copia volvería bloques numerados aparte).
+- **UI**: `ventas_json` (mismo patrón que `procesos_json`) + `sincronizar_ventas`
+  con reconciliación en sitio por orden de aparición, `MAX_VENTAS=20`, defensivo
+  ante JSON inválido. El botón «+ Proceso» de venta va **arriba** (bajo Categoría
+  · Producto · Cantidad · Merma · Precio) y el de producción se queda abajo; los
+  dos textos de ayuda dicen explícitamente cuál cobra y cuál cuesta.
+
+## 3. Pagos pendientes: agrupar y pagar una sola vez
+
+«Se le paga una vez a cada uno, no por cada producto o proceso separado». El
+recuadro pasa de una fila por unidad de gasto a **una por proveedor** con su total
+y un `<details>` con los conceptos.
+
+Lo que lo hace un pago de verdad y no sólo un agrupado visual:
+`ProyectoProducto.egreso` y `ProyectoProductoProceso.egreso` son FK **muchos-a-uno**,
+así que varias unidades pueden apuntar al MISMO egreso. `registrar_pago_grupo`
+crea **un solo Egreso** con la suma de las unidades sin egreso y liga todas.
+
+Matiz honesto: las unidades que ya traían un egreso «Pendiente» (la cuenta por
+pagar que se auto-genera al entrar a producción) se **liquidan** una por una — esos
+movimientos ya existen en contabilidad y no se pueden fusionar. El mensaje de
+éxito nombra todos los códigos afectados.
+
+El modal es el MISMO de siempre: se extrajo `_ctx_modal_pago` + `_datos_pago_post`
+y el template recibe `accion_url`, así que una unidad y un proveedor completo
+comparten formulario (y el grupo además enlista sus conceptos).
+
+## 4. Los seis puntos chicos
+
+- **Delete sobre la imagen** (`imagen_pegar.js` + los dos endpoints): desliga la
+  foto. Prefiere la PROPIA del uso (la línea vuelve a heredar la del catálogo); si
+  la que se ve es la del catálogo, se pide **confirmación** porque afecta a todos
+  sus usos (`data-img-compartida`). El archivo **no se borra de Drive**: el mismo
+  file_id puede estar congelado en una cotización enviada. El listener es global
+  pero sólo actúa si el evento viene DEL recuadro, así que Backspace en un campo
+  jamás borra nada.
+- **Slug del cliente**: la pastilla usaba `cliente.razon_social|slugify`
+  (inventaba `$tessa-studio`) y no pasaba `activo`, y el partial trata la variable
+  vacía como inactiva ⇒ tachada. Ahora `slug=cliente.slug activo=True`. El **mismo
+  bug** estaba en la pastilla del proyecto (`proyecto.codigo|lower`, cuando el
+  slug real es el del nombre) y en la de usuario de Recados: los tres arreglados.
+- **Folio faltante**: la fila «Sin información» gana **«Agregar +»** →
+  `/facturacion/nueva/?folio=N` (la vista ya leía `?proyecto=`/`?cliente=`).
+- **Tabla de facturas**: «Emisión» al 2.º lugar + tres columnas angostas con ✓/✕
+  (PDF y XML del CFDI, y proyecto ligado) con tooltip de qué falta.
+- **Kanban**: `sin_productos=True` en la fila de abajo oculta las pastillas con la
+  marca `data-productos-colapsado`, y el buscador las **revela en los resultados**
+  (buscar un producto y no ver cuál es no sirve de nada).
+- **TIZAYUCA**: `ESTADOS_SIN_PRODUCCION` excluye en pausa / entregado / cerrado /
+  cancelado. Lo que ya no se produce no es un pendiente de taller.
+
+## 5. Tests
+
+27 nuevos en `tests/taller/test_ajustes_jul26_r2.py` (uno parametrizado por los 4
+estados de TIZAYUCA). Se actualizó `test_finanzas_v3::test_alerta_en_detalle_proyecto`:
+el encabezado del recuadro ya no dice «pendiente» sino «N proveedor(es) por pagar
+· N concepto(s) sin registrar».
+
+Dos tropiezos al escribirlos, que valen para la próxima:
+
+- El título del documento trae apóstrofos y sale **escapado** en el HTML, así que
+  buscarlo literal falla; se ancla por su `font-size:13pt`.
+- `html.split("</thead>")[0]` arrastra todo el `<head>` y la sidebar (donde
+  «Clientes» aparece), así que comparar posiciones de cabeceras daba falso
+  negativo: hay que partir primero por `<thead`.
+
+Y una premisa mía equivocada: para un cliente nuevo llamado «Tessa Studio» el slug
+REAL **sí** es `tessa-studio`. El caso de Oscar es un cliente registrado como
+«Tessa» al que luego le corrigieron la razón social (el slug no se regenera, para
+no romper referencias históricas). El test lo reproduce así.
+
+`makemigrations --check` solo reporta los espurios conocidos (BigAutoField /
+rename de índice); las dos migraciones nuevas quedaron a mano y no aparecen como
+pendientes. Ruff limpio.
+
+## 6. Deuda diseñada
+
+- La página **«Gastos no registrados» de Tesorería** sigue agrupada por PROYECTO
+  con una fila por unidad. Oscar señaló el recuadro del proyecto; si quiere el
+  mismo criterio ahí, es el siguiente paso natural (misma función
+  `grupos_pagos_pendientes_de`).
+- Un proceso de venta **no lleva foto ni especificaciones propias** en el
+  documento: es un renglón de la tabla de montos de su producto.
+- Los procesos de venta **no se editan desde El Chalán** (como la impresión y los
+  procesos de producción, se capturan en la tarjeta).
+- Si un concepto ya tenía cuenta por pagar auto-generada, el pago del proveedor
+  produce **más de un egreso** (ver §3). Es inherente a conservar las CxP.
+- Los cortes de página del PDF solo se confirman **con el código en La Sede**: la
+  conversión la hace Google.

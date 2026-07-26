@@ -63,8 +63,16 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
     from .notas import notas_para
 
     items = list(cot.items.select_related("servicio", "unidad_fk").all())
-    filas = [
-        {
+    # LC 2026-07-26 (Oscar): las líneas marcadas `agrupado` son PROCESOS DE VENTA
+    # del concepto anterior (el «Ponchado» del Bordado): se cobran aparte pero se
+    # imprimen como renglones extra DENTRO de la tabla de montos de su producto,
+    # no como un bloque numerado propio. Así la numeración cuenta productos.
+    filas = []
+    for it in items:
+        if it.agrupado and filas:
+            filas[-1]["extras"].append(it)
+            continue
+        filas.append({
             "it": it,
             # La foto: la congelada en la línea (la del uso del proyecto, si le
             # pusieron una propia) o, si no, la del producto del catálogo.
@@ -73,9 +81,8 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
             # que de aquí sale su alto para estimar la página (ver el hueco de
             # las notas más abajo).
             "proporcion": proporcion(it.imagen_visible_file_id),
-        }
-        for it in items
-    ]
+            "extras": [],
+        })
     totales = cot.calcular_totales()
     notas = notas_para(cot)
     return render_to_string("cotizaciones/pdf.html", {
@@ -153,9 +160,14 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
             alto_foto = int(_ANCHO_FOTO_PT * prop) if prop else _ANCHO_FOTO_PT
             cuerpo = max(cuerpo, alto_foto)
         alto += 22 + cuerpo + 8 + 48 + 26  # nombre + cuerpo + tabla de montos
+        # Cada proceso de venta suma un renglón a la tabla de montos del producto
+        # (LC 2026-07-26).
+        alto += len(fila.get("extras") or []) * 18
 
     if cot.incluir_desglose:
         impuestos = len(cot.calcular_totales().get("impuestos_detalle", []))
+        # `items` incluye los procesos de venta: en el desglose cada uno es su
+        # propio renglón (ahí sí van en lista plana).
         alto += 46 + 24 + len(items) * 22 + 18  # título + encabezados + filas
         alto += (2 + impuestos) * 18 + 24       # subtotal + impuestos + total
 
@@ -367,6 +379,9 @@ def duplicar(cot: Cotizacion, actor) -> Cotizacion:
                 unidad=it.unidad,
                 precio_unitario=it.precio_unitario,
                 descuento_porcentaje=it.descuento_porcentaje,
+                # LC 2026-07-26: la copia conserva qué líneas son procesos de
+                # venta, o el documento las volvería bloques numerados aparte.
+                agrupado=it.agrupado,
             )
         for ci in cot.impuestos.all():
             CotizacionImpuesto.objects.create(cotizacion=nueva, tasa=ci.tasa)
@@ -504,7 +519,10 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
         # LC 2026-07: las descripciones escritas a mano en la versión anterior
         # se HEREDAN (nadie quiere reescribir el branding en cada versión).
         indice = descripcion.indice_previo(ultima_cot)
-        for i, pp in enumerate(proyecto.productos_incluidos):
+        orden = 0
+        for pp in proyecto.productos_incluidos:
+            i = orden
+            orden += 1
             # El cliente ve el nombre del producto EN ESTE PROYECTO (el alias, si
             # se le puso); el FK al catálogo se conserva aparte. La higiene de
             # «Servicio · Variación» vive en `nombre_catalogo`.
@@ -523,6 +541,21 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
                 cantidad=Decimal(str(pp.cantidad)),
                 precio_unitario=pp.precio_efectivo,
             )
+            # LC 2026-07-26 (Oscar): los PROCESOS DE VENTA de la línea (Ponchado,
+            # arte…) se cobran aparte, así que son líneas propias — con
+            # `agrupado=True` para que el documento las imprima dentro de la
+            # tabla de montos de su producto en vez de como bloques numerados.
+            for v in pp.ventas.all():
+                CotizacionItem.objects.create(
+                    cotizacion=cot,
+                    orden=orden,
+                    concepto=v.descripcion[:150],
+                    descripcion="",
+                    cantidad=Decimal(str(v.cantidad)),
+                    precio_unitario=v.precio_decimal,
+                    agrupado=True,
+                )
+                orden += 1
         # Solo el régimen 'iva' usa las tasas de la M2M; 'honorarios' y 'exento'
         # se calculan con lógica dedicada (lib.fiscal) y no dependen de tasas.
         # `iva_exento` legacy sigue vetando las tasas (back-compat).

@@ -27,6 +27,12 @@ Cinco cosas que la conversión NO perdona (Oscar 2026-07-25, rondas 2 y 3):
    blanco entre el encabezado y las filas. Las tablas van planas, con `<tr>`.
 5. Docs mete su propio espacio entre dos tablas seguidas y no hay forma de
    quitarlo: lo que deba ir junto va en UNA sola tabla.
+6. `page-break-inside:avoid` se IGNORA (Oscar 2026-07-26: el título de un
+   producto se quedó solo al pie de la página y su tabla pasó a la siguiente).
+   Lo único que Docs no corta entre páginas es una FILA de tabla, así que cada
+   bloque que deba viajar junto va dentro de una tabla ENVOLTORIO de una sola
+   celda. El `<div style="page-break-inside:avoid">` se conserva porque en la
+   vista previa (navegador de verdad) sí funciona al imprimir.
 
 Las imágenes llevan URL absoluta pública y firmada porque Google las baja
 desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py).
@@ -90,7 +96,11 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
     </tr>
   </table>
 
-  {# Título del documento: derivado del proyecto, o el que se capturó a mano #}
+  {% comment %}Título del documento: derivado del proyecto, o el que se capturó a
+  mano. LC 2026-07-26 (Oscar, C): SIEMPRE un renglón en blanco entre el logotipo
+  y el título — el margen de la tabla del encabezado no siempre sobrevive la
+  conversión, un `<br>` sí.{% endcomment %}
+  <br>
   <p style="text-align:center; font-size:13pt; margin:0 0 28pt 0;">{{ cot.titulo_documento }}</p>
 
   {% comment %}Un bloque numerado por concepto. El nombre, las especificaciones
@@ -98,9 +108,19 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   blanco entre el nombre y las especificaciones (Docs mete su propio espacio
   entre tablas y no hay forma de quitarlo).{% endcomment %}
   {% for fila in filas %}
-  {% comment %}Oscar 2026-07-26 (D): el bloque del producto —del título a su tabla
-  de montos— no se parte entre páginas.{% endcomment %}
+  {% comment %}El bloque del producto —del título a su tabla de montos— no se
+  parte entre páginas.
+
+  LC 2026-07-26 (Oscar, A): `page-break-inside:avoid` sobre un `<div>` lo respeta
+  el navegador (la vista previa) pero NO el convertidor de Docs — de ahí que el
+  título «4. Tote Bag Paris Texas» se quedara solo al pie de una página y el
+  resto pasara a la siguiente. La primitiva que Docs sí respeta es la FILA de una
+  tabla: una fila no se corta entre páginas. Así que todo el bloque va dentro de
+  una tabla ENVOLTORIO de una sola celda (borde y padding apagados en la tabla Y
+  en la celda, quirk #1). Se conserva el `<div>` para la vista previa impresa.{% endcomment %}
   <div style="page-break-inside:avoid;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
+  <tr><td style="border:none; padding:0; vertical-align:top;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:8pt;">
     <tr>
       <td style="border:none; width:22pt; vertical-align:top;">{{ forloop.counter }}.</td>
@@ -147,7 +167,21 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
       <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
       <td style="border:none;">&nbsp;</td>
     </tr>
+    {% comment %}LC 2026-07-26 (Oscar): procesos de VENTA del producto (Ponchado,
+    arte…). Se le cobran aparte —son sus propias líneas— pero viven en la MISMA
+    tablita del producto, para que el cliente lea el bloque completo.{% endcomment %}
+    {% for ex in fila.extras %}
+    <tr>
+      <td style="border:none;">&nbsp;</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:left; font-style:italic;">{{ ex.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ ex.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ ex.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ ex.subtotal|dinero_sin_signo }}</td>
+      <td style="border:none;">&nbsp;</td>
+    </tr>
+    {% endfor %}
   </table>
+  </td></tr></table>
   </div>
   {% empty %}
   <p style="color:#666666;">Sin conceptos.</p>
@@ -155,13 +189,26 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
 
   {# Desglose y cálculo de impuestos: solo si el interruptor está prendido #}
   {% if cot.incluir_desglose %}
-  {% comment %}Oscar 2026-07-26 (E): el desglose —del título a la tabla— tampoco
-  se parte entre páginas. Línea gris clara y columnas numéricas a la derecha,
-  igual que la tabla de montos; la primera columna es la casilla que el cliente
-  va marcando, así que va vacía a propósito.{% endcomment %}
+  {% comment %}El desglose —del título a la tabla— tampoco se parte entre páginas.
+  Línea gris clara y columnas numéricas a la derecha, igual que la tabla de
+  montos; la primera columna es la casilla que el cliente va marcando, así que va
+  vacía a propósito.
+
+  LC 2026-07-26 (Oscar, B): el título «Desglose de Elementos» se despegaba de su
+  tabla (quedaba al pie de una página y la tabla arrancaba en la siguiente).
+  Ahora el título es la PRIMERA FILA de la misma tabla —sin borde, a todo el
+  ancho—, así que no hay forma de separarlos; y todo va dentro de la tabla
+  envoltorio de una celda, igual que los bloques de producto. El aire de arriba
+  lo da un `<br>`: los márgenes de un `<p>` dentro de una celda no siempre
+  sobreviven la conversión.{% endcomment %}
+  <br>
   <div style="page-break-inside:avoid;">
-  <p style="text-align:center; font-size:12pt; margin:34pt 0 14pt 0;">Desglose de Elementos</p>
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
+  <tr><td style="border:none; padding:0; vertical-align:top;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
+    <tr>
+      <td colspan="5" style="border:none; padding:0 0 12pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
+    </tr>
     <tr>
       <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:22pt; text-align:center;">&#10004;</td>
       <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; text-align:left; font-style:italic;">Concepto</td>
@@ -179,6 +226,7 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
     </tr>
     {% endfor %}
   </table>
+  </td></tr></table>
   </div>
 
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">

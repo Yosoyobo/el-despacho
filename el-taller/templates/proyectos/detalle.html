@@ -194,26 +194,44 @@
             {# ── Pagos pendientes sin registrar (de producción en adelante) ── #}
             {% if pagos_pendientes %}
             <div class="mt-4 rounded-xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-500/40 dark:bg-warning-500/10">
-                <p class="text-sm font-semibold text-warning-800 dark:text-warning-300">⚠️ {{ pagos_pendientes|length }} pago{{ pagos_pendientes|length|pluralize:"s" }} pendiente{{ pagos_pendientes|length|pluralize:"s" }} sin registrar</p>
-                <p class="mt-0.5 text-xs text-warning-700 dark:text-warning-400">Registra cada pago cuando lo realices (queda ligado a un egreso y a un proveedor).</p>
+                <p class="text-sm font-semibold text-warning-800 dark:text-warning-300">⚠️ {{ pagos_grupos|length }} proveedor{{ pagos_grupos|length|pluralize:"es" }} por pagar · {{ pagos_pendientes|length }} concepto{{ pagos_pendientes|length|pluralize:"s" }} sin registrar</p>
+                <p class="mt-0.5 text-xs text-warning-700 dark:text-warning-400">Un pago por proveedor: registra cada uno cuando lo realices (queda ligado a un egreso).</p>
+                {% comment %}LC 2026-07-26 (Oscar): agrupado POR PROVEEDOR — «se le
+                paga una vez a cada uno, no por cada producto o proceso separado».
+                Cada renglón es un proveedor con su total; el desglose de conceptos
+                vive en el `<details>` y en el modal.{% endcomment %}
                 <ul class="mt-3 divide-y divide-warning-200/60 text-sm dark:divide-warning-500/20">
-                    {% for g in pagos_pendientes %}
-                    <li class="flex items-center justify-between gap-2 py-1.5">
-                        <span class="min-w-0 truncate text-gray-700 dark:text-gray-200">
-                            {{ g.label }}{% if g.proveedor %} <span class="text-xs text-gray-500">· {{ g.proveedor.razon_social }}</span>{% endif %}
-                        </span>
-                        <span class="flex shrink-0 items-center gap-2">
-                            {# LC #157: IVA por línea — base +IVA y total con IVA. #}
-                            <span class="text-right leading-tight">
-                                <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ g.total_con_iva|dinero }}</span>
-                                <span class="block text-[10px] tabular-nums text-gray-500 dark:text-gray-400">{{ g.monto|dinero }} + IVA</span>
+                    {% for gr in pagos_grupos %}
+                    <li class="py-1.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="min-w-0 truncate font-medium text-gray-800 dark:text-gray-100">
+                                {% if gr.proveedor %}🏢 {{ gr.proveedor.razon_social }}{% else %}<span class="text-warning-700 dark:text-warning-400">Sin proveedor asignado</span>{% endif %}
+                                <span class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">· {{ gr.unidades|length }} concepto{{ gr.unidades|length|pluralize:"s" }}</span>
                             </span>
-                            {% if puede_editar %}
-                            <button type="button" hx-get="{% url 'proyectos-registrar-gasto-modal' proyecto.pk g.clase g.pk %}"
-                                    hx-target="#modal-slot" hx-swap="innerHTML"
-                                    class="rounded-lg border border-warning-400 bg-white px-2.5 py-1 text-xs font-medium text-warning-700 hover:bg-warning-50 dark:border-warning-500/40 dark:bg-gray-900 dark:text-warning-300 dark:hover:bg-warning-500/10">Registrar pago</button>
-                            {% endif %}
-                        </span>
+                            <span class="flex shrink-0 items-center gap-2">
+                                {# LC #157: IVA — base +IVA y total con IVA. #}
+                                <span class="text-right leading-tight">
+                                    <span class="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{{ gr.total_con_iva|dinero }}</span>
+                                    <span class="block text-[10px] tabular-nums text-gray-500 dark:text-gray-400">{{ gr.monto|dinero }} + IVA</span>
+                                </span>
+                                {% if puede_editar %}
+                                <button type="button" hx-get="{% url 'proyectos-registrar-pago-proveedor' proyecto.pk gr.clave %}"
+                                        hx-target="#modal-slot" hx-swap="innerHTML"
+                                        class="rounded-lg border border-warning-400 bg-white px-2.5 py-1 text-xs font-medium text-warning-700 hover:bg-warning-50 dark:border-warning-500/40 dark:bg-gray-900 dark:text-warning-300 dark:hover:bg-warning-500/10">Registrar pago</button>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <details class="mt-1">
+                            <summary class="cursor-pointer text-[11px] text-warning-700 hover:underline dark:text-warning-400">Ver conceptos</summary>
+                            <ul class="mt-1 space-y-0.5 pl-3 text-xs">
+                                {% for g in gr.unidades %}
+                                <li class="flex items-center justify-between gap-2">
+                                    <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ g.label }}</span>
+                                    <span class="shrink-0 tabular-nums text-gray-500 dark:text-gray-400">{{ g.monto|dinero }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </details>
                     </li>
                     {% endfor %}
                 </ul>
@@ -333,6 +351,10 @@
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                         {% for pp in proyecto.productos.all %}
                         <tr class="{% if not pp.incluir_en_calculo %}opacity-50{% endif %}"><td class="px-4 py-3">{{ pp.nombre_visible }}</td><td class="px-4 py-3 text-right">{{ pp.cantidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ pp.subtotal|dinero }}</td></tr>
+                        {% comment %}LC 2026-07-26: procesos de venta del producto (se cobran aparte).{% endcomment %}
+                        {% for v in pp.ventas.all %}
+                        <tr class="{% if not pp.incluir_en_calculo %}opacity-50{% endif %}"><td class="px-4 py-3 pl-8 text-gray-600 dark:text-gray-300">↳ {{ v.descripcion }}</td><td class="px-4 py-3 text-right">{{ v.cantidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ v.subtotal|dinero }}</td></tr>
+                        {% endfor %}
                         {% empty %}<tr><td colspan="3" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Sin productos.</td></tr>{% endfor %}
                     </tbody>
                 </table>

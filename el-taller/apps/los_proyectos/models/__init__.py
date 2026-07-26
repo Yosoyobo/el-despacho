@@ -5,3 +5,4 @@ from .proceso import ProyectoProductoProceso  # noqa: F401
 from .producto import ProyectoProducto  # noqa: F401
 from .proveedor_proyecto import ProyectoProveedor, ProyectoProveedorIva  # noqa: F401
 from .proyecto import ESTADOS_PROYECTO, Proyecto, generar_codigo_proyecto  # noqa: F401
+from .venta import ProyectoProductoVenta  # noqa: F401

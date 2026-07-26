@@ -43,6 +43,9 @@ urlpatterns = [
     path("<int:pk>/deshacer", views.deshacer, name="proyectos-deshacer"),
     # Contabilidad en línea: registrar gastos del proyecto como egresos.
     path("<int:pk>/gasto/<str:clase>/<int:obj_pk>/registrar-modal", views.registrar_gasto_modal, name="proyectos-registrar-gasto-modal"),
+    # LC 2026-07-26: pago de TODO lo pendiente de un proveedor (clave 0 = sin
+    # proveedor asignado). Un solo egreso por proveedor.
+    path("<int:pk>/pago-proveedor/<int:clave>/registrar", views.registrar_pago_proveedor_modal, name="proyectos-registrar-pago-proveedor"),
     path("<int:pk>/gasto/<str:clase>/<int:obj_pk>/registrar", views.registrar_gasto, name="proyectos-registrar-gasto"),
     path("<int:pk>/gastos/registrar-todos", views.registrar_gastos_todos, name="proyectos-registrar-gastos-todos"),
 ]

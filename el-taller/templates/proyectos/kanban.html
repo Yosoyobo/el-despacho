@@ -32,7 +32,7 @@
         {% for col in fila_arriba %}{% include "proyectos/_kanban_columna.html" with col=col colapsable=True %}{% endfor %}
     </div>
     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {% for col in fila_abajo %}{% include "proyectos/_kanban_columna.html" with col=col colapsable=True %}{% endfor %}
+        {% for col in fila_abajo %}{% include "proyectos/_kanban_columna.html" with col=col colapsable=True sin_productos=True %}{% endfor %}
     </div>
 </div>
 <p id="kanban-sin-resultados" class="hidden py-8 text-center text-sm text-gray-400">Ningún proyecto coincide con la búsqueda.</p>

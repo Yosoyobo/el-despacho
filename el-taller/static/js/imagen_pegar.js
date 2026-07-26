@@ -11,9 +11,16 @@
  * dice a qué endpoint sube con `data-url`; el servidor decide si la foto queda
  * en el uso o en el producto del catálogo (ver ProyectoProducto.imagen_destino).
  *
+ * LC 2026-07-26 (Oscar): con el recuadro seleccionado, la tecla **Delete** (o
+ * Backspace) DESLIGA la foto — antes, una imagen equivocada se quedaba ligada
+ * para siempre. El archivo NO se borra de Drive: el mismo file_id puede estar
+ * congelado en una cotización ya enviada. Si la foto que se ve es la heredada
+ * del catálogo (`data-img-compartida`), se pide confirmación porque afecta a
+ * todos los proyectos que usan ese producto.
+ *
  * Contrato del recuadro:
  *
- *   <div data-img-slot data-url="/…/imagen">
+ *   <div data-img-slot data-url="/…/imagen" [data-img-compartida]>
  *     <img data-img-preview>            (opcional)
  *     <p  data-img-hint>…</p>           (opcional)
  *     <input type="file" data-img-file>  (opcional)
@@ -72,6 +79,51 @@
     img.classList.remove("hidden");
     var hint = slot.querySelector("[data-img-hint]");
     if (hint) hint.classList.add("hidden");
+  }
+
+  function despintar(slot) {
+    var img = slot.querySelector("[data-img-preview]");
+    if (img) { img.removeAttribute("src"); img.classList.add("hidden"); }
+    var hint = slot.querySelector("[data-img-hint]");
+    if (hint) hint.classList.remove("hidden");
+  }
+
+  function tieneImagen(slot) {
+    var img = slot.querySelector("[data-img-preview]");
+    return !!(img && !img.classList.contains("hidden"));
+  }
+
+  // Quitar (tecla Delete): desliga la foto. El archivo se queda en Drive a
+  // propósito — puede estar congelado en una cotización ya enviada.
+  function quitar(slot) {
+    var url = slot.getAttribute("data-url");
+    if (!url || !tieneImagen(slot)) return;
+    // Si la que se ve es la del CATÁLOGO (heredada), quitarla afecta a todos los
+    // proyectos que usan ese producto: eso sí se pregunta.
+    if (slot.hasAttribute("data-img-compartida")
+        && !window.confirm("Esta foto es la del producto del catálogo y la usan todos sus proyectos.\n\n¿Quitarla de todos modos?")) {
+      return;
+    }
+    estado(slot, "Quitando…");
+    var body = new FormData();
+    body.append("quitar", "1");
+    fetch(url, { method: "POST", headers: { "X-CSRFToken": csrf() }, body: body })
+      .then(function (r) {
+        if (r.status === 403) return { ok: false, error: "Sin permiso para cambiar esta imagen." };
+        return r.json().catch(function () {
+          return { ok: false, error: "El servidor no aceptó la operación." };
+        });
+      })
+      .then(function (data) {
+        if (data && data.ok) {
+          despintar(slot);
+          slot.removeAttribute("data-img-compartida");
+          estado(slot, data.mensaje || "✓ Foto quitada.");
+        } else {
+          estado(slot, (data && data.error) || "No se pudo quitar la imagen.", true);
+        }
+      })
+      .catch(function () { estado(slot, "Error de red al quitar la imagen.", true); });
   }
 
   function subir(slot, blob) {
@@ -158,6 +210,20 @@
         return;
       }
     }
+  });
+
+  // Delete/Backspace sobre el recuadro = quitar la foto (LC 2026-07-26, Oscar).
+  // El listener es global pero solo actúa si el evento viene DEL recuadro (que
+  // es focusable por su `tabindex`): así escribir Backspace en cualquier campo
+  // del formulario jamás borra una imagen.
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Delete" && ev.key !== "Backspace") return;
+    var slot = ev.target && ev.target.closest && ev.target.closest("[data-img-slot]");
+    if (!slot) return;
+    var tag = (ev.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    ev.preventDefault();  // Backspace: evita el "atrás" del navegador.
+    quitar(slot);
   });
 
   if (document.readyState === "loading") {

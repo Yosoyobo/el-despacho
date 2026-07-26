@@ -47,7 +47,7 @@
             <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Destinatarios</h3>
             <ul class="mt-3 flex flex-wrap gap-2">
                 {% for d in destinatarios %}
-                <li>{% include "_componentes_tailadmin/_chip_referencia.html" with tipo="usuario" slug=d.usuario.slug etiqueta=d.usuario.nombre_completo variante="badge" %}</li>
+                <li>{% include "_componentes_tailadmin/_chip_referencia.html" with tipo="usuario" slug=d.usuario.slug etiqueta=d.usuario.nombre_completo variante="badge" activo=True %}</li>
                 {% empty %}
                 <li class="text-sm text-gray-500 dark:text-gray-400">Sin destinatarios.</li>
                 {% endfor %}

@@ -5,6 +5,47 @@
 
 ---
 
+## Novedades — Cobros extra por producto, pagos agrupados por proveedor y detalles del documento (26 de julio de 2026 — novena entrega)
+
+- **Ya puedes cobrar un «proceso» aparte de cada producto.** En la tarjeta del
+  producto, debajo de Categoría · Producto · Cantidad · Merma · Precio unitario,
+  hay un botón **«+ Proceso»** con el título *Procesos que se le cobran al
+  cliente*. Sirve para lo que le facturas por separado: al Bordado le agregas
+  «Ponchado», con su cantidad y su precio. Cada uno **sube el monto del
+  proyecto** y viaja a la cotización como **su propia línea**, impresa dentro de
+  la tablita de su producto. Ojo: NO es el «+ Proceso» de abajo, que es de
+  producción y **cuesta** (ése baja tu utilidad); si el proceso además te cuesta
+  producirlo, captura ese costo abajo.
+- **Los pagos pendientes se agrupan por proveedor.** El recuadro del proyecto ya
+  no lista un pago por cada producto o proceso: ahora es **un renglón por
+  proveedor** con su total (y un «Ver conceptos» para el detalle). Le pagas una
+  sola vez a cada uno y el sistema registra **un solo egreso** con la suma.
+- **Para quitar la foto de un producto, pícala y aprieta Supr.** Antes, una
+  imagen equivocada se quedaba pegada para siempre. Si la foto es la del
+  catálogo (la que ven todos los proyectos de ese producto), te pregunta antes.
+  La foto sale del sistema, pero el archivo se queda en Drive: si ya la mandaste
+  en una cotización, ese documento no se rompe.
+- **En Facturación, los huecos de folio traen botón «Agregar +».** Si falta el
+  F102 entre el 101 y el 103, el renglón «Sin información» te deja crearla con
+  ese folio ya puesto.
+- **La tabla de facturas dice de un vistazo qué falta.** «Emisión» se movió al
+  segundo lugar y hay tres columnas nuevas con ✓ o ✕: si está subido el **PDF**
+  del CFDI, si está subido el **XML**, y si la factura ya tiene **proyecto**
+  ligado.
+- **El Kanban de proyectos se lee más limpio.** Las columnas de abajo (En pausa,
+  Entregado, Cerrado, Cancelado) ya no pintan las pastillas de productos… pero si
+  **buscas** algo, los resultados sí las muestran completas, aunque el proyecto ya
+  esté cerrado.
+- **La ficha del cliente ya muestra bien su referencia.** Antes salía tachada y
+  con un nombre inventado (`$tessa-studio` cuando su referencia es `$tessa`).
+- **Detalles del documento de la cotización:** un renglón en blanco entre el
+  logotipo y el título, el título «Desglose de Elementos» siempre pegado a su
+  tabla, y ningún bloque de producto se vuelve a partir a media página.
+- **«Resumir pendientes»: la sección TIZAYUCA sólo trae trabajo vivo.** Ya no
+  lista productos de proyectos en pausa, entregados, cerrados o cancelados.
+
+---
+
 ## Novedades — Fotos de producto desde el proyecto, el documento más limpio y clientes con varias razones sociales (26 de julio de 2026 — octava entrega)
 
 - **La foto del producto ya se pone desde el proyecto.** En cada tarjeta de
@@ -2856,7 +2897,7 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
 - **Próximos eventos:** las siguientes entregas y tareas con fecha. Click en la tarjeta te lleva al calendario completo.
 - **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están los dos botones: **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
-  - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
+  - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma; **solo de proyectos vivos** — lo que está en pausa, entregado, cerrado o cancelado ya no se produce, así que no aparece), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
   - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (se arma con datos, sin IA). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
 - **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. "Ver Kanban completo" abre el tablero con todas las columnas.
@@ -2899,6 +2940,11 @@ El corazón del negocio. Cada proyecto tiene código `LC-NNNN`, cliente, product
 
 - **Lista:** tabla ordenable con código, nombre, cliente, estado, fecha de compromiso. Puedes ordenar por **Cliente** (alfabético) haciendo clic en esa cabecera; otro clic invierte el orden.
 - **Kanban:** columnas por estado — útil para ver de un vistazo qué tienes en cada fase. Cada tarjeta muestra **todos sus productos con nombre completo y cantidad** (por ejemplo "Paliacates ×70, Pines/Insignias ×700, Etiquetas para Mandiles Infantiles ×30"), sin recortes, para tener la información completa de un vistazo. El mini-tablero del inicio (Dashboard) hace lo mismo.
+  - **La fila de abajo va sin productos.** En **En pausa, Entregado, Cerrado y
+    Cancelado** las tarjetas no pintan las pastillas de productos: esas columnas
+    se leen de un vistazo y el desglose las ensuciaba. **Pero si buscas algo**,
+    los resultados sí las muestran completas — cuando buscas un producto quieres
+    ver dónde está, aunque el proyecto ya esté cerrado.
 
 Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clickeables como filtros.
 
@@ -2943,15 +2989,26 @@ La página es **editable directo** (los cambios se guardan solos; verás
     proyectos uso la playera de Crea Blanks?»). Con **«usar el nombre del
     catálogo»** regresas al original.
   - **Proveedor** principal + costo unitario + notas.
+  - **Procesos que se le cobran al cliente** (botón **"+ Proceso"**, justo debajo
+    de esa fila). Es lo que le facturas **aparte** del producto: al Bordado le
+    agregas «Ponchado» con su cantidad y su precio. Cada uno **sube el monto del
+    proyecto** y sale en la cotización como **su propia línea**, dentro de la
+    tablita de ese producto. **No confundir** con el "+ Proceso" de más abajo,
+    que es de **producción** y te **cuesta** dinero. Si un proceso además cuesta
+    producirlo, captura el cobro aquí y el costo abajo.
   - **Imagen:** un recuadro donde **pegas la foto** del producto. Pícalo para
     elegir a dónde va y pega con **Ctrl/Cmd+V** (o usa «elige un archivo»). Si a
     esa línea le pusiste **otro nombre en este proyecto**, la foto se guarda para
     **ese uso**; si no le cambiaste el nombre, se guarda en el **producto del
     catálogo** y la heredan todos sus usos. El sistema confirma a dónde se fue.
     Es la foto que sale en el documento de la cotización, y queda **congelada**
-    en cada versión que generes.
+    en cada versión que generes. Para **quitarla**, pica el recuadro y aprieta
+    **Supr**; si es la del catálogo te pregunta antes, porque la ven todos los
+    proyectos de ese producto (el archivo se queda en Drive, así que los
+    documentos que ya mandaste no se rompen).
   - **Impresión** (proveedor + costo) y el botón **"+ Proceso"** para sumar
-    gastos operativos sueltos (materiales, viáticos, embalaje…).
+    gastos operativos sueltos (materiales, viáticos, embalaje…). Éstos **cuestan**
+    (bajan tu utilidad); no se le cobran al cliente.
   - **Monto calculado** (precio × cantidad) abajo a la derecha.
 
 A la derecha:
@@ -2967,15 +3024,20 @@ A la derecha:
 **Ingresos y egresos del proyecto:** más abajo hay un recuadro con los
 ingresos y egresos ligados al proyecto (aparece en cualquier estado). De
 **producción en adelante**, dentro del recuadro de egresos sale una **alerta
-amarilla** de *"N pago(s) pendiente(s) sin registrar"* con cada costo del
-proyecto (producto, impresión o gasto operativo) que aún no se paga. Las
-cantidades salen siempre como **"× 35 pz"** — el total de piezas a producir
-(cantidad + merma), sin desglosarlo. Cada uno
-tiene un botón **"Registrar pago"** que abre una ventana pidiendo **fecha,
-proveedor (obligatorio), método y estado** (Pagado por default, o Por
-reembolsar). Al confirmar, ese gasto queda registrado como egreso pagado (o,
-si ya existía como cuenta por pagar, se salda). Registra cada pago **cuando lo
-realices**.
+amarilla** de *"N proveedor(es) por pagar · N concepto(s) sin registrar"*.
+
+Está **agrupada por proveedor**: cada renglón es un proveedor con **su total**
+(porque le pagas una sola vez, no por cada producto o proceso). El enlace **"Ver
+conceptos"** te abre el detalle de lo que entra en ese pago; las cantidades salen
+siempre como **"× 35 pz"** — el total de piezas a producir (cantidad + merma).
+
+Cada proveedor tiene su botón **"Registrar pago"**, que abre una ventana con el
+total, la lista de conceptos incluidos y los datos del pago: **fecha, proveedor
+(obligatorio), método y estado** (Pagado por default, o Por reembolsar). Al
+confirmar se registra **un solo egreso** con la suma. Si algún concepto ya
+existía como **cuenta por pagar** (se generó solo al entrar a producción), ése se
+salda por separado — es un movimiento que ya vivía en la contabilidad. Registra
+cada pago **cuando lo realices**.
 
 Abajo está la tabla de **Tareas** del Pizarrón con "+ Nueva tarea".
 
@@ -3404,7 +3466,13 @@ Mismo patrón que en Proyectos: panel desplegable "+ Crear producto nuevo" abajo
 Cada factura tiene un **folio** propio: la letra **F** seguida de un número (F101, F102, F103…). Es el identificador que ves en toda la plataforma: la tabla, el detalle y el PDF.
 
 - Es **obligatorio**. Al crear una factura nueva, el sistema te propone el **siguiente número disponible**, pero lo puedes cambiar.
-- En la tabla de facturas, si en la secuencia falta un número (por ejemplo tienes F101, F102 y F104), aparece una fila **"Sin información"** en el lugar del F103 para que sepas que ese folio no existe.
+- En la tabla de facturas, si en la secuencia falta un número (por ejemplo tienes F101, F102 y F104), aparece una fila **"Sin información"** en el lugar del F103 para que sepas que ese folio no existe. Esa fila trae un botón **"Agregar +"**: lo picas y se abre el alta de factura **con ese folio ya puesto**, para tapar el hueco sin teclear el número.
+
+**Las columnas de la tabla.** El orden es: Factura · **Emisión** · Cliente ·
+Concepto · **PDF** · **XML** · **Proyecto** · Total pagable · Estado. Las tres de
+en medio son angostas y sólo llevan ✓ o ✕: te dicen de un vistazo si ya subiste
+el **PDF** del CFDI, si ya subiste el **XML**, y si la factura está **ligada a un
+proyecto**. Pasa el cursor encima para ver qué falta.
 
 ### Cómo llenar una factura
 

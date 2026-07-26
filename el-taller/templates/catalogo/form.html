@@ -66,6 +66,8 @@
                 <p data-img-hint class="text-xs text-gray-500 dark:text-gray-400{% if servicio.imagen_file_id %} hidden{% endif %}">
                     Pega una captura (Ctrl/Cmd+V) o elige un archivo.
                 </p>
+                {% comment %}LC 2026-07-26: con el recuadro seleccionado, Supr quita la foto.{% endcomment %}
+                <p class="text-[11px] text-gray-400 dark:text-gray-500">Pica el recuadro y aprieta <strong>Supr</strong> para quitarla.</p>
                 <input type="file" accept="image/*" data-img-file class="hidden">
                 <div class="mt-2 flex items-center justify-center gap-3">
                     <button type="button" data-img-elegir class="btn-secundario text-xs">Elegir archivo</button>
@@ -320,7 +322,8 @@
                     {% comment %}LC 2026-07-26: mini recuadro de la foto de ESTE uso, clickeable para pegar.{% endcomment %}
                     <td class="py-3 text-center">
                         <div data-img-slot data-url="{% url 'proyectos-producto-imagen' u.pk %}"
-                             title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo"
+                             {% if u.imagen_efectiva_file_id and not u.imagen_es_propia %}data-img-compartida{% endif %}
+                             title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo · Supr para quitarla"
                              class="mx-auto flex h-14 w-14 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 outline-none transition hover:border-brand-400 focus:border-brand-400 dark:border-gray-600">
                             <img data-img-preview alt="" class="max-h-[52px] max-w-[52px] rounded object-contain{% if not u.imagen_efectiva_file_id %} hidden{% endif %}"
                                  {% if u.imagen_efectiva_file_id %}src="{% url 'catalogo-imagen-producto' u.imagen_efectiva_file_id %}"{% endif %}>

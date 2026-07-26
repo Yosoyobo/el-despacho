@@ -455,6 +455,15 @@ class CotizacionItem(models.Model):
     # una versión pasada conserva la imagen con la que se cotizó. Vacío = se cae
     # a la del catálogo al armar el documento.
     imagen_file_id = models.CharField(max_length=100, blank=True, default="")
+    # LC 2026-07-26 (Oscar): esta línea es un PROCESO DE VENTA del concepto
+    # anterior (ej. «Ponchado» del Bordado). Se le cobra por separado —es su
+    # propia línea, con su cantidad y su precio— pero en el documento se imprime
+    # DENTRO de la tabla de montos de su producto, no como un bloque numerado
+    # aparte. Ver `services.construir_html_pdf`, que agrupa por esta bandera.
+    agrupado = models.BooleanField(
+        default=False,
+        help_text="Se imprime dentro del bloque del concepto anterior (proceso de venta).",
+    )
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
     # #12: unidad consolidada a 'pz' (sin selector). Columnas conservadas por back-compat.

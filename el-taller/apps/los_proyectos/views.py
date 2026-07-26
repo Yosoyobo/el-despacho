@@ -176,12 +176,15 @@ def _anotar_procesos(formset):
                     operativos.append(p)
         form.proc_impresion = impresion
         form.procs_operativos = operativos
+        # LC 2026-07-26: procesos de VENTA (lo que se le cobra aparte al cliente).
+        form.procs_venta = (list(inst.ventas.all().order_by("orden", "creado_en"))
+                            if inst and inst.pk else [])
 
 
 def _sync_procesos_formset(formset):
-    """Tras formset.save(): sincroniza los procesos (impresión + operativos)
-    de cada línea que sobrevivió (no borrada, con pk)."""
-    from .services_procesos import sincronizar_procesos
+    """Tras formset.save(): sincroniza los procesos de cada línea que sobrevivió
+    (no borrada, con pk) — los de producción y los de venta."""
+    from .services_procesos import sincronizar_procesos, sincronizar_ventas
     borrados = set(formset.deleted_forms)
     for form in formset.forms:
         if form in borrados:
@@ -190,6 +193,7 @@ def _sync_procesos_formset(formset):
         if not inst or not inst.pk:
             continue
         sincronizar_procesos(inst, form.cleaned_data.get("procesos_json"))
+        sincronizar_ventas(inst, form.cleaned_data.get("ventas_json"))
 
 
 def _fmt_fechahora(dt):
@@ -523,12 +527,16 @@ def detalle(request, pk):
     # abajo, en el recuadro de egresos. Sale de producción en adelante.
     pagos_pendientes = gastos.pagos_pendientes_de(proyecto) if gastos.debe_mostrar_alerta_pagos(proyecto) else []
     pagos_desglose = gastos.desglose_iva(proyecto, pagos_pendientes) if pagos_pendientes else None
+    # LC 2026-07-26 (Oscar): el recuadro se agrupa por proveedor — a cada uno se
+    # le paga UNA vez, no por producto/proceso.
+    pagos_grupos = gastos.grupos_pagos_pendientes_de(proyecto) if pagos_pendientes else []
     return render(request, "proyectos/detalle.html", {
         "proyecto": proyecto,
         "form": form,
         "formset": formset,
         "puede_editar": puede_ed,
         "pagos_pendientes": pagos_pendientes,
+        "pagos_grupos": pagos_grupos,
         "pagos_desglose": pagos_desglose,
         "pagos_pendientes_total": sum((g["monto"] for g in pagos_pendientes), Decimal("0.00")),
         "pasos_undo": services_undo.pasos_disponibles(proyecto),
@@ -1197,6 +1205,41 @@ def reordenar_productos(request, pk):
     return HttpResponse(status=204)
 
 
+def _quitar_imagen_linea(request, linea):
+    """Desliga la foto que se está viendo en la tarjeta del proyecto.
+
+    Prefiere quitar la PROPIA del uso: así la línea vuelve a heredar la del
+    catálogo (el caso normal de «me equivoqué de foto en este proyecto»). Si la
+    línea no tiene propia, la que se ve es la del catálogo y es ésa la que se
+    quita — afecta a todos sus usos, y el front lo confirma antes de pedirlo.
+    """
+    from django.http import JsonResponse
+
+    if linea.imagen_es_propia:
+        linea.imagen_file_id = ""
+        linea.imagen_url = ""
+        linea.save(update_fields=["imagen_file_id", "imagen_url"])
+        destino, mensaje = "uso", "✓ Se quitó la foto de este uso."
+    else:
+        srv = linea.servicio
+        if srv is None or not (srv.imagen_file_id or "").strip():
+            return JsonResponse({"ok": False, "error": "Este producto no tiene foto."}, status=400)
+        srv.imagen_file_id = ""
+        srv.imagen_url = ""
+        srv.save(update_fields=["imagen_file_id", "imagen_url", "actualizado_en"])
+        destino, mensaje = "catalogo", "✓ Se quitó la foto del producto del catálogo."
+    emitir(EventoPortavoz(
+        tipo="proyecto.producto_imagen",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proyecto_id": linea.proyecto_id, "linea_id": linea.pk,
+                 "servicio_id": linea.servicio_id, "destino": destino,
+                 "file_id": "", "quitada": True},
+    ))
+    # `url` vacía: el front esconde la miniatura y vuelve a mostrar el hint.
+    return JsonResponse({"ok": True, "quitada": True, "destino": destino,
+                         "file_id": "", "url": "", "mensaje": mensaje})
+
+
 @require_POST
 def producto_imagen(request, prod_pk):
     """Sube (o pega) la foto de un producto DESDE la tarjeta del proyecto.
@@ -1219,6 +1262,15 @@ def producto_imagen(request, prod_pk):
         ProyectoProducto.objects.select_related("proyecto", "servicio"), pk=prod_pk)
     if not puede_editar_proyecto(request.user, linea.proyecto):
         return HttpResponseForbidden("Sin permiso.")
+
+    # LC 2026-07-26 (Oscar): «poder picar delete en el teclado para borrarla; si
+    # no, se queda ligada permanente». Se DESLIGA la foto — el archivo NO se
+    # borra de Drive a propósito: el mismo file_id puede estar congelado en una
+    # cotización ya enviada (CotizacionItem.imagen_file_id) y borrarlo dejaría
+    # huecos en documentos históricos.
+    if (request.POST.get("quitar") or "") == "1":
+        return _quitar_imagen_linea(request, linea)
+
     archivo = request.FILES.get("imagen")
     if not archivo:
         return JsonResponse({"ok": False, "error": "No llegó ninguna imagen."}, status=400)
@@ -1632,6 +1684,161 @@ def _destino_registro(request, proyecto):
     return reverse("proyectos-detalle", args=[proyecto.pk])
 
 
+# LC #16: método por defecto «Tarjeta empresa»; métodos personales que, al
+# elegirse, mutan el estado a «Por reembolsar» (front + back).
+METODO_PAGO_DEFAULT = "tarjeta_empresa"
+# Solo dos estados: Pagado (default) y Por reembolsar.
+ESTADOS_PAGO_UI = [("pagado", "Pagado (saldado)"),
+                   ("por_reembolsar", "Por reembolsar al empleado")]
+
+
+def _ctx_modal_pago(proyecto, *, info, accion_url, error=None):
+    """Contexto del modal «Registrar pago».
+
+    Compartido por el modal de UNA unidad de gasto y por el de un proveedor
+    completo (LC 2026-07-26): el formulario es el mismo, sólo cambian el hero y
+    la URL a la que postea (`accion_url`).
+    """
+    from datetime import date as _date
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import Proveedor
+    from apps.tesoreria.models import CentroDeCosto
+    from apps.tesoreria.models.egreso import (
+        METODOS_EGRESO,
+        METODOS_EGRESO_FORM,
+        METODOS_REEMBOLSO,
+    )
+
+    from cuentas.models.usuario import Usuario
+
+    from . import gastos
+
+    # Pares (valor, etiqueta) del subconjunto del form (METODOS_EGRESO_FORM son
+    # sólo valores; las etiquetas viven en METODOS_EGRESO).
+    _labels_metodo = dict(METODOS_EGRESO)
+    metodos_pares = [(v, _labels_metodo.get(v, v)) for v in METODOS_EGRESO_FORM]
+    # LC #163: desglose de IVA para el hero (informativo — la tasa efectiva del
+    # proyecto sobre la base del gasto).
+    tasa = Decimal(str(getattr(proyecto, "iva_tasa_efectiva", 0) or 0))
+    base = Decimal(str(info["monto"] or 0))
+    iva = (base * tasa).quantize(Decimal("0.01"))
+    # LC #16: «¿Quién solicitó?» se pre-puebla con el Líder del proyecto.
+    lider = (proyecto.asignaciones.filter(rol_en_proyecto="lider")
+             .select_related("usuario").first())
+    return {
+        "proyecto": proyecto, "info": info, "accion_url": accion_url,
+        "centros": CentroDeCosto.objects.filter(activo=True).order_by("nombre"),
+        "centro_default": CentroDeCosto.objects.filter(slug=gastos.CENTRO_SLUG).first(),
+        "metodos": metodos_pares, "estados_pago": ESTADOS_PAGO_UI,
+        "metodo_default": METODO_PAGO_DEFAULT,
+        "metodos_personales": list(METODOS_REEMBOLSO),
+        "hoy": _date.today().isoformat(),
+        "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
+        "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
+        "iva_monto": iva, "iva_label": f"{float(tasa * 100):g}%",
+        "total_con_iva": (base + iva).quantize(Decimal("0.01")),
+        "solicitado_por_default": lider.usuario_id if lider else None,
+        "error": error,
+    }
+
+
+def _datos_pago_post(request):
+    """Lee del POST del modal los datos comunes del pago, ya normalizados."""
+    import contextlib as _contextlib
+    from datetime import date as _date
+
+    from apps.el_catalogo.models import Proveedor
+    from apps.tesoreria.models import CentroDeCosto
+    from apps.tesoreria.models.egreso import METODOS_REEMBOLSO
+
+    from cuentas.models.usuario import Usuario
+
+    metodo = request.POST.get("metodo") or METODO_PAGO_DEFAULT
+    estado_pago = request.POST.get("estado_pago") or "pagado"
+    if estado_pago not in ("pagado", "por_reembolsar"):
+        estado_pago = "pagado"
+    # LC #16: método personal ⇒ el gasto queda «Por reembolsar» (defensa
+    # server-side; el front también lo muta).
+    if metodo in set(METODOS_REEMBOLSO):
+        estado_pago = "por_reembolsar"
+    fecha = _date.today()
+    raw_fecha = (request.POST.get("fecha") or "").strip()
+    if raw_fecha:
+        with _contextlib.suppress(ValueError):
+            fecha = _date.fromisoformat(raw_fecha)
+    return {
+        "centro": CentroDeCosto.objects.filter(pk=request.POST.get("centro_de_costo") or 0).first(),
+        "pagado_por": Usuario.objects.filter(pk=request.POST.get("pagado_por") or 0).first(),
+        "solicitado_por": Usuario.objects.filter(pk=request.POST.get("solicitado_por") or 0).first(),
+        "proveedor": Proveedor.objects.filter(
+            pk=request.POST.get("proveedor") or 0, activo=True).first(),
+        "metodo": metodo, "estado_pago": estado_pago, "fecha": fecha,
+    }
+
+
+@login_required
+def registrar_pago_proveedor_modal(request, pk, clave):
+    """GET/POST modal «Registrar pago» de TODO lo pendiente de un proveedor.
+
+    LC 2026-07-26 (Oscar): «se le paga una vez a cada uno, no por cada producto o
+    proceso separado». Mismo formulario que el modal de una unidad; el hero
+    muestra el total del proveedor y el detalle de los conceptos incluidos.
+    """
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not _puede_registrar_gastos(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
+    from . import gastos
+
+    grupo = gastos.grupo_pago_de(proyecto, clave)
+    if grupo is None:
+        return HttpResponseForbidden("Ya no hay pagos pendientes de ese proveedor.")
+    n = len(grupo["unidades"])
+    info = {
+        "monto": grupo["monto"],
+        "label": f"{n} concepto{'s' if n != 1 else ''}",
+        "proveedor": grupo["proveedor"],
+        "conceptos": [{"label": u["label"], "monto": u["monto"]} for u in grupo["unidades"]],
+    }
+    accion_url = reverse("proyectos-registrar-pago-proveedor", args=[proyecto.pk, clave])
+
+    if request.method == "POST":
+        datos = _datos_pago_post(request)
+        # Proveedor OBLIGATORIO (LC 2026-07). El grupo «Sin proveedor asignado»
+        # se resuelve aquí: el usuario elige a quién se le paga.
+        if datos["proveedor"] is None:
+            return render(
+                request, "proyectos/_modal_registrar_gasto.html",
+                _ctx_modal_pago(proyecto, info=info, accion_url=accion_url,
+                                error="Elige un proveedor: todo egreso debe ir ligado a uno."),
+                status=200)
+        res = gastos.registrar_pago_grupo(
+            proyecto, clave, actor=request.user, centro=datos["centro"],
+            metodo=datos["metodo"], estado_pago=datos["estado_pago"],
+            pagado_por=datos["pagado_por"], solicitado_por=datos["solicitado_por"],
+            proveedor=datos["proveedor"], fecha=datos["fecha"],
+        )
+        codigos = ([res["creado"].codigo] if res["creado"] else []) + [
+            e.codigo for e in res["liquidados"]]
+        if not codigos:
+            return render(
+                request, "proyectos/_modal_registrar_gasto.html",
+                _ctx_modal_pago(proyecto, info=info, accion_url=accion_url,
+                                error="No se pudo registrar (revisa el centro de costo)."),
+                status=200)
+        messages.success(
+            request,
+            f"Pago de {datos['proveedor'].razon_social} registrado "
+            f"({res['unidades']} concepto(s)) en {', '.join(codigos)}.")
+        destino = _destino_registro(request, proyecto)
+        if request.headers.get("HX-Request") == "true":
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
+
+    return render(request, "proyectos/_modal_registrar_gasto.html",
+                  _ctx_modal_pago(proyecto, info=info, accion_url=accion_url))
+
+
 @login_required
 def registrar_gasto_modal(request, pk, clase, obj_pk):
     """GET/POST modal «Registrar pago» de un gasto del proyecto (LC 2026-07).
@@ -1647,15 +1854,10 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
         return HttpResponseForbidden("Sin permiso para registrar gastos del proyecto.")
     if clase not in ("producto", "proceso"):
         return HttpResponseForbidden("Tipo de gasto inválido.")
-    from decimal import Decimal
 
     from apps.el_catalogo.models import Proveedor
     from apps.tesoreria.models import CentroDeCosto
-    from apps.tesoreria.models.egreso import (
-        METODOS_EGRESO,
-        METODOS_EGRESO_FORM,
-        METODOS_REEMBOLSO,
-    )
+    from apps.tesoreria.models.egreso import METODOS_REEMBOLSO
 
     from cuentas.models.usuario import Usuario
 
@@ -1664,43 +1866,16 @@ def registrar_gasto_modal(request, pk, clase, obj_pk):
     if info is None:
         return HttpResponseForbidden("Gasto no encontrado.")
 
-    # LC #16: método por defecto «Tarjeta empresa»; métodos personales que, al
-    # elegirse, mutan el estado a «Por reembolsar» (front + back).
-    METODO_DEFAULT = "tarjeta_empresa"
+    METODO_DEFAULT = METODO_PAGO_DEFAULT
     METODOS_PERSONALES = set(METODOS_REEMBOLSO)
-    # Pares (valor, etiqueta) del subconjunto del form (METODOS_EGRESO_FORM son
-    # sólo valores; las etiquetas viven en METODOS_EGRESO).
-    _labels_metodo = dict(METODOS_EGRESO)
-    METODOS_FORM_PARES = [(v, _labels_metodo.get(v, v)) for v in METODOS_EGRESO_FORM]
-    # Solo dos estados: Pagado (default) y Por reembolsar.
-    ESTADOS_PAGO_UI = [("pagado", "Pagado (saldado)"),
-                       ("por_reembolsar", "Por reembolsar al empleado")]
-
-    # LC #163: desglose de IVA para el hero (informativo — la tasa efectiva del
-    # proyecto sobre la base del gasto).
-    _tasa = Decimal(str(getattr(proyecto, "iva_tasa_efectiva", 0) or 0))
-    _base = Decimal(str(info["monto"] or 0))
-    _iva = (_base * _tasa).quantize(Decimal("0.01"))
-    # LC #16: «¿Quién solicitó?» se pre-puebla con el Líder del proyecto.
-    _lider = (proyecto.asignaciones.filter(rol_en_proyecto="lider")
-              .select_related("usuario").first())
 
     def _ctx(error=None):
-        return {
-            "proyecto": proyecto, "clase": clase, "obj_pk": obj_pk, "info": info,
-            "centros": CentroDeCosto.objects.filter(activo=True).order_by("nombre"),
-            "centro_default": CentroDeCosto.objects.filter(slug=gastos.CENTRO_SLUG).first(),
-            "metodos": METODOS_FORM_PARES, "estados_pago": ESTADOS_PAGO_UI,
-            "metodo_default": METODO_DEFAULT,
-            "metodos_personales": list(METODOS_PERSONALES),
-            "hoy": _date.today().isoformat(),
-            "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
-            "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
-            "iva_monto": _iva, "iva_label": f"{float(_tasa * 100):g}%",
-            "total_con_iva": (_base + _iva).quantize(Decimal("0.01")),
-            "solicitado_por_default": _lider.usuario_id if _lider else None,
-            "error": error,
-        }
+        ctx = _ctx_modal_pago(
+            proyecto, info=info, error=error,
+            accion_url=reverse("proyectos-registrar-gasto-modal",
+                               args=[proyecto.pk, clase, obj_pk]))
+        ctx.update({"clase": clase, "obj_pk": obj_pk})
+        return ctx
 
     if request.method == "POST":
         centro = CentroDeCosto.objects.filter(pk=request.POST.get("centro_de_costo") or 0).first()

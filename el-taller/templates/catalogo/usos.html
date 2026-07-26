@@ -78,7 +78,8 @@
                 <td class="px-5 py-3 text-center">
                     {% if puede_editar %}
                     <div data-img-slot data-url="{% url 'proyectos-producto-imagen' u.pk %}"
-                         title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo"
+                         {% if u.imagen_efectiva_file_id and not u.imagen_es_propia %}data-img-compartida{% endif %}
+                         title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo · Supr para quitarla"
                          class="mx-auto flex h-14 w-14 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 outline-none transition hover:border-brand-400 focus:border-brand-400 dark:border-gray-600">
                         <img data-img-preview alt="" class="max-h-[52px] max-w-[52px] rounded object-contain{% if not u.imagen_efectiva_file_id %} hidden{% endif %}"
                              {% if u.imagen_efectiva_file_id %}src="{% url 'catalogo-imagen-producto' u.imagen_efectiva_file_id %}"{% endif %}>

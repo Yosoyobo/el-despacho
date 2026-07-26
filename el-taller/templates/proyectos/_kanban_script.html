@@ -82,6 +82,11 @@
                     var hay = !q || norm(card.getAttribute('data-buscar') || '').indexOf(q) !== -1;
                     card.classList.toggle('hidden', !hay);
                     if (hay) vis++;
+                    // LC 2026-07-26 (Oscar): las columnas de cierre esconden el
+                    // desglose de productos, pero en un RESULTADO de búsqueda sí
+                    // se muestra — si buscas un producto, quieres ver cuál es.
+                    var prods = card.querySelector('[data-productos-colapsado]');
+                    if (prods) prods.classList.toggle('hidden', !(hay && q));
                 });
                 totalVis += vis;
                 var cont = col.querySelector('.kanban-contador');

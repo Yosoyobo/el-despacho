@@ -24,6 +24,9 @@ from .models import ProyectoProductoProceso
 
 TIPOS_VALIDOS = {"impresion", "operativo"}
 
+# Tope defensivo de procesos de venta por línea (LC 2026-07-26).
+MAX_VENTAS = 20
+
 
 def _to_decimal(valor) -> Decimal:
     try:
@@ -119,3 +122,74 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
     for p in existentes:
         if p.pk not in conservados:
             p.delete()
+
+
+# ── Procesos de VENTA (LC 2026-07-26, Oscar) ─────────────────────────────────
+#
+# Mismo patrón que los de producción: el front los serializa en un campo oculto
+# `ventas_json` de la tarjeta y la vista llama a `sincronizar_ventas` tras
+# guardar el formset. La diferencia es qué significan: éstos se le COBRAN al
+# cliente (cada uno es una línea propia de la cotización), no cuestan.
+#
+# Reconciliación en sitio por orden de aparición (no borrar-y-recrear) para que
+# el pk sobreviva los autosaves.
+
+
+def sincronizar_ventas(producto, ventas_json: str | None) -> None:
+    """Reemplaza los procesos de venta del producto con los del JSON.
+
+    Formato esperado: lista de objetos
+      {"descripcion": str, "cantidad": int, "precio": número}
+
+    Defensivo: JSON inválido ⇒ no toca nada. Una fila sin descripción y sin
+    precio se ignora (es una fila vacía que el usuario nunca llenó).
+    """
+    from .models import ProyectoProductoVenta
+
+    if ventas_json is None:
+        return
+    try:
+        data = json.loads(ventas_json or "[]")
+    except (json.JSONDecodeError, TypeError):
+        return
+    if not isinstance(data, list):
+        return
+
+    deseados = []
+    for fila in data[:MAX_VENTAS]:
+        if not isinstance(fila, dict):
+            continue
+        descripcion = (fila.get("descripcion") or "").strip()[:200]
+        precio = _to_decimal(fila.get("precio"))
+        if precio < 0:
+            precio = Decimal("0.00")
+        try:
+            cantidad = int(fila.get("cantidad") or 1)
+        except (TypeError, ValueError):
+            cantidad = 1
+        cantidad = max(1, min(cantidad, 1_000_000))
+        if not descripcion and precio == 0:
+            continue
+        deseados.append({"descripcion": descripcion, "cantidad": cantidad,
+                         "precio_unitario": precio})
+
+    existentes = list(producto.ventas.all().order_by("orden", "creado_en"))
+    conservados = set()
+    for orden, d in enumerate(deseados):
+        if orden < len(existentes):
+            v = existentes[orden]
+            v.orden = orden
+            v.descripcion = d["descripcion"]
+            v.cantidad = d["cantidad"]
+            v.precio_unitario = d["precio_unitario"]
+            v.save(update_fields=["orden", "descripcion", "cantidad", "precio_unitario"])
+            conservados.add(v.pk)
+        else:
+            ProyectoProductoVenta.objects.create(
+                producto=producto, orden=orden, descripcion=d["descripcion"],
+                cantidad=d["cantidad"], precio_unitario=d["precio_unitario"],
+            )
+
+    for v in existentes:
+        if v.pk not in conservados:
+            v.delete()

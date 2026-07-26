@@ -1075,6 +1075,25 @@ def servicio_imagen(request, pk: int):
         return r
     from django.http import JsonResponse
     srv = get_object_or_404(Servicio, pk=pk)
+
+    # LC 2026-07-26 (Oscar): tecla Delete sobre el recuadro = desligar la foto.
+    # El archivo NO se borra de Drive: el mismo file_id puede estar congelado en
+    # cotizaciones ya enviadas y borrarlo dejaría huecos en esos documentos.
+    if (request.POST.get("quitar") or "") == "1":
+        if not (srv.imagen_file_id or "").strip():
+            return JsonResponse({"ok": False, "error": "Este producto no tiene foto."}, status=400)
+        srv.imagen_file_id = ""
+        srv.imagen_url = ""
+        srv.save(update_fields=["imagen_file_id", "imagen_url", "actualizado_en"])
+        emitir(EventoPortavoz(
+            tipo="catalogo.servicio_imagen",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"servicio_id": srv.pk, "file_id": "", "quitada": True},
+        ))
+        return JsonResponse({"ok": True, "quitada": True, "destino": "catalogo",
+                             "file_id": "", "url": "",
+                             "mensaje": "✓ Se quitó la foto del producto."})
+
     archivo = request.FILES.get("imagen")
     if not archivo:
         return JsonResponse({"ok": False, "error": "No llegó ninguna imagen."}, status=400)
