@@ -7549,3 +7549,144 @@ totales del régimen nuevo.
   cuadrada — lado seguro: notas más arriba.
 - El preview del total del formulario sigue siendo una **réplica en JS** del
   cálculo de `lib/fiscal`; el definitivo lo calcula el servidor al guardar.
+
+---
+
+# BITÁCORA — S-Ajustes-Jul26 (2026-07-26, VERSION 2026.07.32)
+
+> Ronda de Oscar con 10 puntos (fotos de producto, alias, historial de usos,
+> preview y formato del PDF, nombre del archivo, resumen de pendientes, razones
+> sociales del cliente, slug visible, facturas sin paginar) **más un pedido a
+> media sesión**: «el chalán debe de ser más inteligente ejecutando cosas de
+> clientes vía identificar su razón social».
+
+## 1. La foto del producto, desde donde se trabaja
+
+El pedido tenía la regla de negocio incluida: la foto se sube (o se pega, después
+de picar un recuadro **para definir el destino**) en las tarjetas de «Productos
+involucrados» del proyecto, y **si ese producto trae nombre/alias override, la
+foto es de ese uso; si no, del producto**.
+
+Eso se modeló donde vive la decisión, no en la vista:
+
+- `ProyectoProducto.imagen_file_id/imagen_url` (migr. `proyectos/0026`) +
+  `imagen_efectiva_file_id` (propia → catálogo), `imagen_es_propia` y
+  **`imagen_destino`** (`"uso"` si hay alias, `"catalogo"` si no). La UI y el
+  endpoint leen la MISMA propiedad, así que no pueden decir cosas distintas.
+- Endpoint `proyectos-producto-imagen` (POST con el pk de la LÍNEA; gate
+  `puede_editar_proyecto`; evento `proyecto.producto_imagen`). Cuando el destino
+  es el catálogo, además **limpia** la foto propia que la línea tuviera: el
+  usuario acaba de decidir que la del catálogo es la buena.
+- La foto queda **congelada por versión** de cotización:
+  `CotizacionItem.imagen_file_id` (migr. `cotizaciones/0016`) +
+  `imagen_visible_file_id`. `generar_desde_proyecto` la copia del uso y
+  `duplicar` la arrastra; el documento y el precalentamiento ya la leen.
+
+**Componente compartido** `static/js/imagen_pegar.js`: escanea `[data-img-slot]`
+al cargar y en `htmx:afterSwap`, activa el recuadro al picarlo (con uno solo en la
+página no hace falta picar) y sube por `fetch`. El JS inline que vivía en el form
+de catálogo se borró: esa pantalla ahora usa el componente y, de paso, **ya
+muestra la foto guardada al abrir** (antes solo se veía justo después de subirla).
+
+**Proxy autenticado** `catalogo-imagen-producto/<file_id>`: el `imagen_url` de
+Drive es una PÁGINA, no una imagen — sin esto no había miniatura en ningún lado.
+Comparte candados con el enlace firmado de Google vía `_es_imagen_de_producto`
+(el file_id debe pertenecer a un Servicio, a un uso o a una línea de cotización).
+
+## 2. Dos tropiezos que valen documentar
+
+- **`StringAgg` no sirve para esto.** El primer intento anotaba los alias con
+  `StringAgg(distinct=True)`; funciona en Postgres y **truena en el SQLite de los
+  tests** (la página del proyecto se caía). Se cambió a `widgets.mapa_alias()`:
+  UNA consulta plana `values_list("servicio_id", "nombre_proyecto")` cacheada
+  60 s. Portable, sin N+1 y sin instanciar filas. La caché se invalida con un
+  signal de `ProyectoProducto` (`weak=False`, como el de EstadoProyecto): lo
+  destapó la suite completa —el mapa cacheado se filtraba entre tests— y de paso
+  el alias nuevo es buscable al instante en vez de esperar el TTL.
+- **Cambiar el widget de un `ModelChoiceField` borra sus `choices`.** El setter de
+  `queryset` es lo que las propaga **al widget actual**; al reemplazar el widget
+  hay que re-asignar el queryset o el `<select>` sale vacío. Es el mismo tropiezo
+  de S-Proveedores-Bidireccional, ahora con un comentario en el código.
+- Un test viejo cazó un efecto colateral: `data-buscar` incluía proveedores
+  **archivados**, y el nombre de uno se filtraba a la página del proyecto. Ahora
+  solo entran los activos.
+
+## 3. El documento
+
+- **Vista previa**: `construir_html_pdf(cot, preview=True)` envuelve el documento
+  en una hoja carta con sus márgenes sobre fondo gris, con barra de «⬇ Bajar PDF»
+  e «Imprimir» (y `@media print` que la esconde). Todo dentro de
+  `{% if preview %}` — al PDF de Google no le llega nada del envoltorio, así que
+  el preview se puede maquillar sin arriesgar el documento.
+- **Centrado (tercer intento)**: ni `margin:0 auto` ni `align="center"` con
+  `width` como atributos centraron la tabla en Docs. Lo que sí funciona es una
+  **columna vacía a cada lado dentro de la misma tabla** (sin tablas anidadas).
+- Concepto a la izquierda y Cantidad/P. Unitario/Subtotal a la derecha; línea
+  `#cccccc` en lugar de `#000000`; y cada bloque de producto y el desglose dentro
+  de un `<div style="page-break-inside:avoid">`.
+- Nombre del archivo: **`COTIZACIÓN-[CLIENTE]-[PROYECTO]-[vN]`** (cliente en
+  mayúsculas, proyecto sin espacios, versión en minúsculas).
+
+## 4. Resumen de pendientes
+
+FACTURAS X EMITIR excluye los proyectos en régimen `exento` (y el `iva_exento`
+legacy): no se facturan, así que aparecer ahí era ruido. FACTURAS X COBRAR pasó a
+**CUENTAS X COBRAR** y ahora sale del CxC unificado de Tesorería — facturas con
+saldo + anticipos aprobados por facturar + proyectos con saldo sin factura ligada.
+Sigue siendo la única excepción a la regla «solo hacia adelante».
+
+## 5. Razones sociales del cliente (y por qué el RFC dejó de ser único)
+
+Modelo `cartera.ClienteRazonSocial` (razón social + RFC + principal) con migr.
+`cartera/0008`, que además **retira `cartera_cliente_rfc_unique_nonempty`**: el
+caso que trajo Oscar —Grupo Lazanto facturando para Cueva y para Kari Kari— era
+imposible de capturar con esa restricción.
+
+Patrón espejo idéntico al de los contactos: `espejar_razon_principal` (fila →
+campos legacy) y `asegurar_razon_principal` (legacy → fila). Así la búsqueda, el
+CFDI y todo el código viejo siguen funcionando. `razon_social_fiscal`/`rfc`
+salieron del `ClienteForm` y se capturan en el formset, **razón social + RFC en la
+misma línea**. El formset solo se procesa si su management form llegó — hay rutas
+que no lo mandan (quick-create HTMX, POSTs viejos en una pestaña abierta) y no
+deben quedar bloqueadas.
+
+## 6. El Chalán y los clientes
+
+`_cliente_por_razon_social` se reescribió en 4 pasos: **RFC** → exacto en
+`ClienteRazonSocial` / fiscal legacy / comercial → **normalizado**
+(`_normalizar_razon` quita acentos, puntuación y la terminación mercantil «S.A. de
+C.V.») → parcial. Los dos últimos solo cuentan si son **inequívocos**: más vale
+pedir aclaración que ligar mal una factura. Como lo usa `_resolver_cliente`, la
+mejora aplica a **todos** los ejecutores de cliente, no solo a facturas.
+`detalle_cliente` del chat expone las razones sociales, y la regla quedó escrita
+en el prompt del Dictado, en `prompt_chat` y en
+`lib/dictado_catalogo.IDENTIFICAR_CLIENTE` (banner nuevo en los dos paneles de
+Chalanes).
+
+## 7. Los tres puntos chicos
+
+- **Slug visible**: `#slug` bajo el título del proyecto y `$slug` como
+  «Referencia» en la ficha del cliente (proveedor y producto no tienen slug).
+- **Facturas sin paginación**: la lista entrega todas (`page_obj=None`), igual que
+  Clientes desde la Fase 1.
+- **Historial de usos**: «Diferenciador» como segunda columna y el mini recuadro
+  de imagen como última, también en el historial embebido de la ficha.
+
+## 8. Tests
+
+29 nuevos en `tests/taller/test_ajustes_jul26.py`. Se actualizaron los que fijaban
+el comportamiento anterior —borde negro y centrado por `align` (r3), nombre viejo
+del PDF, `FACTURAS X COBRAR`, `razon_social_fiscal` en el `ClienteForm`— y se
+sumó una aserción de regresión para el `<select>` vacío del widget. Suite del
+Taller verde, ruff limpio, candados de comentarios (ambas apps) y de Novedades
+verdes. `makemigrations --check` solo reporta los espurios conocidos
+(BigAutoField / rename de índice).
+
+## 9. Deuda diseñada
+
+- La foto se sube desde una línea **ya guardada** (Drive necesita a quién
+  colgarla); en una tarjeta nueva se avisa.
+- La factura **no elige todavía** con cuál razón social se emite: el CFDI se sube
+  del PAC, así que guardarlas en la cartera alcanza.
+- El centrado y los cortes de página del PDF solo se confirman **con el código en
+  La Sede** — la conversión la hace Google, no nosotros.

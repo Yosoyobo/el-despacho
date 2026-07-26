@@ -37,8 +37,8 @@ def _fecha_compromiso_proyecto(fecha_str):
 CAMPOS_PROYECTO_PERMITIDOS = {"estado", "monto_cotizado", "fecha_compromiso", "descripcion"}
 CAMPOS_TAREA_PERMITIDOS = {"estado", "prioridad", "asignado_slug", "fecha_compromiso", "hora", "tipo"}
 CAMPOS_CLIENTE_PERMITIDOS = {
-    "razon_social", "rfc", "nombre_contacto", "email_contacto",
-    "telefono", "direccion", "notas", "estado",
+    "razon_social", "razon_social_fiscal", "rfc", "nombre_contacto",
+    "email_contacto", "telefono", "direccion", "notas", "estado",
 }
 ESTADOS_PROYECTO_VALIDOS = {
     "por_cotizar", "esperando_respuesta", "en_proceso_diseno",
@@ -240,27 +240,111 @@ def _resolver_proyecto_para(payload: dict, contexto: dict | None = None):
         f"{cliente.razon_social} tiene varios proyectos ({codigos}). ¿En cuál lo registro?")
 
 
+# Terminaciones mercantiles que no distinguen a nadie: «MARKETING VEINTITRES
+# GRADOS SA DE CV» y «Marketing Veintitrés Grados» son el mismo cliente.
+_SUFIJOS_MERCANTILES = (
+    "sapi de cv", "s a p i de c v", "sa de cv", "s a de c v", "sa de c v",
+    "s de rl de cv", "s de r l de c v", "srl de cv", "s c", "sc", "ac", "a c",
+    "sa", "s a", "sofom", "spr de rl", "s a s", "sas",
+)
+# Máximo de filas que se recorren al comparar en memoria (guarda anti-runaway).
+_MAX_CANDIDATOS = 2000
+
+
+def _normalizar_razon(texto: str) -> str:
+    """Deja la razón social comparable: sin acentos, sin puntuación, sin
+    terminación mercantil y en minúsculas.
+
+    Así «MARKETING VEINTITRÉS GRADOS, S.A. DE C.V.» y «marketing veintitres
+    grados» resultan iguales, que es como los dicta un humano.
+    """
+    import re
+    import unicodedata
+
+    base = unicodedata.normalize("NFKD", str(texto or ""))
+    base = "".join(c for c in base if not unicodedata.combining(c)).lower()
+    base = re.sub(r"[^a-z0-9ñ ]+", " ", base)
+    base = re.sub(r"\s+", " ", base).strip()
+    for suf in _SUFIJOS_MERCANTILES:
+        if base.endswith(" " + suf):
+            base = base[: -(len(suf) + 1)].strip()
+            break
+    return base
+
+
 def _cliente_por_razon_social(texto: str):
-    """Cliente cuyo nombre comercial o RAZÓN SOCIAL FISCAL coincide con `texto`.
+    """Cliente identificado por su RAZÓN SOCIAL (cualquiera de ellas), su nombre
+    comercial o su RFC.
 
     Oscar 2026-07-25: al capturar facturas se dicta el nombre que aparece en el
     CFDI («MARKETING VEINTITRES GRADOS»), que casi nunca es el nombre con el que
-    llamamos al cliente («Optimist»). Sin esto el Chalán no lo encontraba y
-    dejaba la factura sin ligar.
+    llamamos al cliente («Optimist»). Oscar 2026-07-26: «el Chalán debe de ser
+    más inteligente ejecutando cosas de clientes vía identificar su razón
+    social» — así que ahora busca:
 
-    Orden: coincidencia exacta (razón social fiscal primero, que es la del
-    documento) → coincidencia parcial. La parcial sólo cuenta si es
-    inequívoca: dos clientes que peguen con el mismo texto no se adivinan.
+    1. por **RFC** (si lo que se dictó tiene forma de RFC),
+    2. exacto en las razones sociales del cliente (`ClienteRazonSocial`, que
+       pueden ser varias), en la fiscal legacy y en el nombre comercial,
+    3. **normalizado** (sin acentos, sin puntuación y sin «S.A. de C.V.»), y
+    4. por coincidencia parcial.
+
+    Los pasos 3 y 4 sólo cuentan si son INEQUÍVOCOS: dos clientes que peguen con
+    el mismo texto no se adivinan — más vale pedir aclaración que ligar mal una
+    factura.
     """
-    from apps.la_cartera.models import Cliente
+    from apps.la_cartera.models import Cliente, ClienteRazonSocial
 
     texto = (texto or "").strip()
     if len(texto) < 3:
         return None
+
+    # 1. RFC.
+    crudo = texto.upper().replace(" ", "").replace("-", "").replace(".", "")
+    if 12 <= len(crudo) <= 13 and crudo.isalnum():
+        fila = (ClienteRazonSocial.objects.filter(rfc__iexact=crudo)
+                .select_related("cliente").first())
+        if fila:
+            return fila.cliente
+        por_rfc = Cliente.objects.filter(rfc__iexact=crudo).first()
+        if por_rfc:
+            return por_rfc
+
+    # 2. Exacto: razones sociales capturadas → fiscal legacy → comercial.
+    fila = (ClienteRazonSocial.objects.filter(razon_social__iexact=texto)
+            .select_related("cliente").first())
+    if fila:
+        return fila.cliente
     for campo in ("razon_social_fiscal", "razon_social"):
         exacto = Cliente.objects.filter(**{f"{campo}__iexact": texto}).first()
         if exacto:
             return exacto
+
+    # 3. Normalizado, sobre los nombres de todos los clientes y sus razones.
+    objetivo = _normalizar_razon(texto)
+    if objetivo:
+        nombres: dict[int, set[str]] = {}
+        for cli in Cliente.objects.all()[:_MAX_CANDIDATOS]:
+            nombres.setdefault(cli.pk, set()).update(
+                n for n in (_normalizar_razon(cli.razon_social),
+                            _normalizar_razon(cli.razon_social_fiscal)) if n
+            )
+        for fila in ClienteRazonSocial.objects.all()[:_MAX_CANDIDATOS]:
+            if n := _normalizar_razon(fila.razon_social):
+                nombres.setdefault(fila.cliente_id, set()).add(n)
+        iguales = [pk for pk, ns in nombres.items() if objetivo in ns]
+        if len(iguales) == 1:
+            return Cliente.objects.filter(pk=iguales[0]).first()
+        if not iguales:
+            contiene = [pk for pk, ns in nombres.items()
+                        if any(objetivo in n or n in objetivo for n in ns)]
+            if len(contiene) == 1:
+                return Cliente.objects.filter(pk=contiene[0]).first()
+
+    # 4. Parcial en la base (por si la normalización no alcanzó).
+    fila = list(ClienteRazonSocial.objects.filter(razon_social__icontains=texto)
+                .select_related("cliente")[:2])
+    if len(fila) == 1:
+        return fila[0].cliente
     for campo in ("razon_social_fiscal", "razon_social"):
         parciales = list(Cliente.objects.filter(**{f"{campo}__icontains": texto})[:2])
         if len(parciales) == 1:
@@ -371,6 +455,7 @@ def crear_cliente(accion, usuario, contexto=None):
         estado = "prospecto"
     cliente = Cliente.objects.create(
         razon_social=razon[:200],
+        razon_social_fiscal=(payload.get("razon_social_fiscal") or "").strip().upper()[:200],
         rfc=(payload.get("rfc") or "")[:13],
         nombre_contacto=(payload.get("nombre_contacto") or "")[:200],
         email_contacto=(payload.get("email_contacto") or "")[:254],
@@ -380,6 +465,10 @@ def crear_cliente(accion, usuario, contexto=None):
         estado=estado,
         creado_por=usuario,
     )
+    # LC 2026-07-26: si vino razón social fiscal o RFC, queda también como la
+    # razón social de facturación PRINCIPAL (el cliente puede tener varias).
+    from apps.la_cartera.services import asegurar_razon_principal
+    asegurar_razon_principal(cliente)
     accion.entidad_tipo = "cliente"
     accion.entidad_id = cliente.pk
 
@@ -399,6 +488,9 @@ def actualizar_cliente(accion, usuario, contexto=None):
     if not aplicado:
         raise ValueError("Sin campos válidos para actualizar.")
     cliente.save(update_fields=[*aplicado, "actualizado_en"])
+    if {"razon_social_fiscal", "rfc"} & set(aplicado):
+        from apps.la_cartera.services import asegurar_razon_principal
+        asegurar_razon_principal(cliente)
     accion.entidad_tipo = "cliente"
     accion.entidad_id = cliente.pk
 

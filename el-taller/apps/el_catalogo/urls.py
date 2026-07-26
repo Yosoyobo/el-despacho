@@ -8,6 +8,10 @@ urlpatterns = [
     # PDF (sin login a propósito — ver lib.imagen_publica). Va antes de las
     # rutas <int:pk> por claridad.
     path("img/<str:token>", views.imagen_producto_publica, name="catalogo-imagen-doc"),
+    # Proxy AUTENTICADO para ver la foto dentro del sistema (tarjetas del
+    # proyecto, historial de usos, ficha del producto). El `imagen_url` de Drive
+    # es una página web, no una imagen: sin este proxy no hay miniatura.
+    path("imagen/<str:file_id>", views.imagen_producto, name="catalogo-imagen-producto"),
     path("nuevo", views.nuevo, name="catalogo-nuevo"),
     path("<int:pk>/editar", views.editar, name="catalogo-editar"),
     path("<int:pk>/celda", views.servicio_celda, name="catalogo-servicio-celda"),

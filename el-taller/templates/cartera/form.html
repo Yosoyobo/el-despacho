@@ -41,6 +41,45 @@
             </div>
         </section>
 
+        {% comment %}Datos de facturación — VARIAS razones sociales, cada una con
+        su RFC en la MISMA línea (Oscar 2026-07-26). La marcada «Principal» es la
+        que se usa por default y se espeja a los campos del cliente.{% endcomment %}
+        {% if formset_razones %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-1 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Datos de facturación</h2>
+            <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Un cliente puede facturar bajo varias razones sociales. Agrega las que use.</p>
+            {{ formset_razones.management_form }}
+            {% if formset_razones.non_form_errors %}<ul class="mb-3 text-xs text-error-600 dark:text-error-400">{% for e in formset_razones.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            <div id="razones-formset" class="space-y-3">
+                {% for rf in formset_razones %}
+                <div class="razon-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-[1fr_180px] dark:border-gray-700 dark:bg-gray-800/40">
+                    {% for hidden in rf.hidden_fields %}{{ hidden }}{% endfor %}
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-500">Razón social</label>{{ rf.razon_social }}
+                        {% if rf.razon_social.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ rf.razon_social.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-500">RFC</label>{{ rf.rfc }}
+                        {% if rf.rfc.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ rf.rfc.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div class="flex items-center justify-between gap-3 sm:col-span-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">{{ rf.principal }} Principal</label>
+                        {% if rf.instance.pk %}<label class="flex items-center gap-2 text-sm text-error-600 dark:text-error-400">{{ rf.DELETE }} Quitar</label>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <template id="razon-template">
+                <div class="razon-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-[1fr_180px] dark:border-gray-700 dark:bg-gray-800/40">
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Razón social</label><input type="text" name="__prefix__-razon_social" maxlength="200" placeholder="NOMBRE LEGAL DEL CFDI" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">RFC</label><input type="text" name="__prefix__-rfc" maxlength="13" placeholder="XAXX010101000" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div class="sm:col-span-2"><label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" name="__prefix__-principal" class="h-4 w-4 rounded border-gray-300 text-brand-600"> Principal</label></div>
+                </div>
+            </template>
+            <button type="button" id="add-razon" class="btn-secundario mt-3">+ Agregar razón social</button>
+        </section>
+        {% endif %}
+
         {% comment %} Contactos — varias personas (formset inline). {% endcomment %}
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h2 class="mb-4 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Contactos</h2>
@@ -105,21 +144,25 @@
 </form>
 
 <script>
+// Clonado de filas de formset (contactos y razones sociales usan el mismo patrón).
 (() => {
-    const prefijo = "{{ formset.prefix }}";
-    const totalInput = document.getElementById("id_" + prefijo + "-TOTAL_FORMS");
-    const cont = document.getElementById("contactos-formset");
-    const tpl = document.getElementById("contacto-template");
-    const btn = document.getElementById("add-contacto");
-    if (!totalInput || !cont || !tpl || !btn) return;
-    btn.addEventListener("click", () => {
-        const i = parseInt(totalInput.value, 10);
-        const html = tpl.innerHTML.replaceAll("__prefix__", prefijo + "-" + i);
-        const wrap = document.createElement("div");
-        wrap.innerHTML = html.trim();
-        cont.appendChild(wrap.firstElementChild);
-        totalInput.value = i + 1;
-    });
+    function cablear(prefijo, idCont, idTpl, idBtn) {
+        const totalInput = document.getElementById("id_" + prefijo + "-TOTAL_FORMS");
+        const cont = document.getElementById(idCont);
+        const tpl = document.getElementById(idTpl);
+        const btn = document.getElementById(idBtn);
+        if (!totalInput || !cont || !tpl || !btn) return;
+        btn.addEventListener("click", () => {
+            const i = parseInt(totalInput.value, 10);
+            const html = tpl.innerHTML.replaceAll("__prefix__", prefijo + "-" + i);
+            const wrap = document.createElement("div");
+            wrap.innerHTML = html.trim();
+            cont.appendChild(wrap.firstElementChild);
+            totalInput.value = i + 1;
+        });
+    }
+    cablear("{{ formset.prefix }}", "contactos-formset", "contacto-template", "add-contacto");
+    cablear("{{ formset_razones.prefix }}", "razones-formset", "razon-template", "add-razon");
 })();
 </script>
 {% endblock %}

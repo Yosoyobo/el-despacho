@@ -298,15 +298,39 @@ class Cotizacion(models.Model):
 
     @property
     def nombre_pdf(self) -> str:
-        """Nombre del archivo PDF. Para cotizaciones de proyecto (version ≥ 1)
-        usa «NombreDelProyecto_Vn» (decisión Oscar); para las standalone usa el
-        código COT-YYYY-NNNN."""
+        """Nombre del archivo PDF.
+
+        Convención LC (Oscar, 2026-07-26): **COTIZACIÓN-[CLIENTE]-[PROYECTO]-[VERSION]**,
+        con el CLIENTE en mayúsculas, el PROYECTO sin espacios y la versión en
+        minúsculas (`v2`). Ej.: `COTIZACIÓN-OPTIMIST-TedLasso-v2`.
+
+        Las piezas que falten se omiten (una cotización sin proyecto usa su
+        título; una sin versión no lleva el sufijo), así que el nombre nunca
+        queda con guiones huérfanos.
+        """
         import re
-        if self.version and self.proyecto_id:
-            base = (self.proyecto.nombre or self.proyecto.codigo or self.codigo).strip()
-            base = re.sub(r'[\\/:"*?<>|\n\r]+', " ", base).strip()
-            return f"{base}_V{self.version}"
-        return self.codigo
+
+        def limpio(texto: str, *, sin_espacios: bool = False) -> str:
+            # Fuera los caracteres que ningún sistema de archivos tolera.
+            t = re.sub(r'[\\/:"*?<>|\n\r]+', " ", str(texto or "")).strip()
+            t = re.sub(r"\s+", "" if sin_espacios else " ", t)
+            return t.strip("-")
+
+        partes = ["COTIZACIÓN"]
+        if self.cliente_id and (cli := limpio(self.cliente.razon_social, sin_espacios=True)):
+            partes.append(cli.upper())
+        if self.proyecto_id:
+            proy = limpio(self.proyecto.nombre or self.proyecto.codigo, sin_espacios=True)
+        else:
+            proy = limpio(self.titulo, sin_espacios=True)
+        if proy:
+            partes.append(proy)
+        if self.version:
+            partes.append(f"v{self.version}")
+        elif not self.proyecto_id:
+            # Standalone sin versión: el código la identifica.
+            partes.append(self.codigo)
+        return "-".join(partes)
 
     # --- Anticipo (S-Finanzas-V2 #E) -------------------------------------
 
@@ -426,6 +450,11 @@ class CotizacionItem(models.Model):
     # material, color, detalles de branding). Se genera al crear la versión y
     # se edita a mano en la página de la cotización.
     descripcion = models.TextField(blank=True, default="")
+    # LC 2026-07-26: foto CONGELADA de la línea. Al generar la versión se copia
+    # la del uso del proyecto (o la del catálogo si el uso no tiene propia), así
+    # una versión pasada conserva la imagen con la que se cotizó. Vacío = se cae
+    # a la del catálogo al armar el documento.
+    imagen_file_id = models.CharField(max_length=100, blank=True, default="")
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))
     # #12: unidad consolidada a 'pz' (sin selector). Columnas conservadas por back-compat.
@@ -487,6 +516,15 @@ class CotizacionItem(models.Model):
                 and renglones[0].strip().lower() == self.concepto_visible.strip().lower()):
             renglones = renglones[1:]
         return [r.strip() for r in renglones if r.strip()]
+
+    @property
+    def imagen_visible_file_id(self) -> str:
+        """La foto que va en el documento: la congelada en la línea si la hay,
+        si no la del producto del catálogo."""
+        propia = (self.imagen_file_id or "").strip()
+        if propia:
+            return propia
+        return (getattr(self.servicio, "imagen_file_id", "") or "").strip()
 
     @property
     def filas_textarea(self) -> int:

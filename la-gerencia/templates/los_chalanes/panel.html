@@ -317,6 +317,11 @@
             <strong class="font-semibold">Referencias entre acciones:</strong> {{ referencias_entre_acciones }}
         </div>
         {% endif %}
+        {% if identificar_cliente %}
+        <div class="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+            <strong class="font-semibold">Cómo nombrar al cliente:</strong> {{ identificar_cliente }}
+        </div>
+        {% endif %}
     </summary>
     <div class="grid grid-cols-1 gap-4 px-5 py-4 lg:grid-cols-2">
         <div>

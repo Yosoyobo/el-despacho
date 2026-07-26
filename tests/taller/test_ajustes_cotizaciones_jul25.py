@@ -105,8 +105,8 @@ def test_fechas_con_dia_de_la_semana_y_mes_completo(proyecto_factory, usuario_fa
     assert f"{manana.day} de " in linea
 
 
-def test_nada_vencido_salvo_las_facturas_por_cobrar(proyecto_factory, usuario_factory):
-    """Los proyectos con fecha pasada no entran. Las facturas por cobrar SÍ,
+def test_nada_vencido_salvo_las_cuentas_por_cobrar(proyecto_factory, usuario_factory):
+    """Los proyectos con fecha pasada no entran. Las cuentas por cobrar SÍ,
     aunque estén vencidas: se quedan hasta que se cobren o se liguen."""
     from apps.facturacion.models import Factura, FacturaItem
     from apps.taller_home.pendientes import secciones_pendientes
@@ -129,7 +129,7 @@ def test_nada_vencido_salvo_las_facturas_por_cobrar(proyecto_factory, usuario_fa
     assert "Proyecto al día" in cotizaciones
     assert "Proyecto atrasado" not in cotizaciones
     # Excepción: la factura vencida con saldo sigue en la lista de cobro.
-    assert fac.folio_display in "\n".join(_seccion(secs, "FACTURAS X COBRAR")["lineas"])
+    assert fac.codigo in "\n".join(_seccion(secs, "CUENTAS X COBRAR")["lineas"])
 
 
 def test_tizayuca_un_renglon_por_producto_con_merma(proyecto_factory, usuario_factory):
@@ -504,12 +504,11 @@ def test_pdf_sin_lineas_encabezado_gris_logo_chico_y_notas_al_pie(
     # (5) título fijo
     assert "Producción de elementos para proyecto &#x27;Ted Lasso&#x27;" in html \
         or "Producción de elementos para proyecto 'Ted Lasso'" in html
-    # (1) las tablas de conceptos llevan recuadro negro delgado; el encabezado,
-    # los totales y las notas van sin líneas (Oscar 2026-07-25, tercera ronda:
-    # antes la única línea era la casilla ✔ del desglose, en gris).
-    assert "1px solid #d9d9d9; padding:5pt" not in html
-    assert "border:1px solid #999999" not in html
-    assert html.count("border:1px solid #000000") >= 8
+    # (1) las tablas de conceptos llevan recuadro GRIS CLARO (Oscar 2026-07-26:
+    # «el outline de la línea debe de ser gris claro, no negro»); el encabezado,
+    # los totales y las notas siguen sin líneas.
+    assert "border:1px solid #000000" not in html
+    assert html.count("border:1px solid #cccccc") >= 8
     # (3) encabezados con fondo gris clarito
     assert html.count("background-color:#f2f2f2") >= 4
     # (2) logo más chico
@@ -517,7 +516,10 @@ def test_pdf_sin_lineas_encabezado_gris_logo_chico_y_notas_al_pie(
     # (4) notas empujadas al pie. Oscar 2026-07-25 (segunda ronda): el hueco
     # dejó de ser fijo (108pt) y ahora se calcula según lo que quepa en la hoja.
     assert "margin-top:108pt" not in html
-    assert html.index("page-break-inside:avoid") > html.index("Gorras")
+    # `rindex`: desde 2026-07-26 cada bloque de producto y el desglose también
+    # llevan `page-break-inside:avoid` (no se parten entre páginas); el ÚLTIMO
+    # es el de las notas, que va al final del documento.
+    assert html.rindex("page-break-inside:avoid") > html.index("Gorras")
 
 
 # ── 7) El alias del producto manda en los recuadros del proyecto ─────────
@@ -605,11 +607,11 @@ def test_tabla_de_montos_centrada_acotada_y_de_un_renglon(proyecto_factory,
     cot = _cot_con_producto(proyecto_factory(nombre="Ted Lasso"), admin)
 
     html = construir_html_pdf(cot)
-    # Oscar 2026-07-25 (segunda ronda): Google Docs ignora `margin:0 auto`, así
-    # que el centrado va con `align`; y como también ignora `white-space:nowrap`
-    # el encabezado se acortó para no partir el renglón.
-    assert 'align="center"' in html
-    assert "margin:0 auto 26pt auto" in html
+    # Oscar 2026-07-26 (cuarta ronda): ni `margin:0 auto` ni `align="center"`
+    # centraron la tabla en Docs. Lo que sí funciona es una columna vacía a cada
+    # lado dentro de la misma tabla. Y como el convertidor ignora
+    # `white-space:nowrap`, el encabezado se mantiene corto.
+    assert 'style="border:none; width:11%;"' in html
     assert "P. Unitario" in html
 
 

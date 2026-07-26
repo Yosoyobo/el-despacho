@@ -274,11 +274,13 @@ def test_generar_reinicia_estatus_a_generada(entorno):
     assert v1.estado == "enviada"  # v1 conserva su propio estatus (congelado)
 
 
-def test_nombre_pdf_usa_nombre_proyecto(entorno):
+def test_nombre_pdf_sigue_la_convencion_de_lc(entorno):
     from apps.cotizaciones import services
     cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
-    # Nombre del proyecto + _V{version} (decisión Oscar).
-    assert cot.nombre_pdf == "Branding Optimist_V1"
+    # Convención Oscar 2026-07-26: COTIZACIÓN-[CLIENTE]-[PROYECTO]-[vN], con el
+    # cliente en mayúsculas, el proyecto sin espacios y la versión en minúsculas.
+    cliente = entorno["p"].cliente.razon_social.replace(" ", "").upper()
+    assert cot.nombre_pdf == f"COTIZACIÓN-{cliente}-BrandingOptimist-v1"
 
 
 def test_pdf_descarga_con_nombre_de_proyecto(client, entorno, monkeypatch):
@@ -300,6 +302,6 @@ def test_pdf_descarga_con_nombre_de_proyecto(client, entorno, monkeypatch):
     assert resp["Content-Type"] == "application/pdf"
     cd = resp["Content-Disposition"]
     assert cd.startswith("attachment")
-    # El nombre del proyecto + versión va tanto en filename como en filename*.
-    assert "Branding Optimist_V1.pdf" in cd
+    # El nombre con la convención de LC va tanto en filename como en filename*.
+    assert f"{cot.nombre_pdf}.pdf" in cd or "BrandingOptimist-v1.pdf" in cd
     assert "filename*=UTF-8''" in cd

@@ -141,16 +141,24 @@ def _h_detalle_proyecto(args: dict, usuario) -> dict:
 def _h_detalle_cliente(args: dict, usuario) -> dict:
     from apps.la_cartera.models import Cliente
     slug = args["cliente_slug"].strip().lstrip("$").lower()
-    c = (
-        Cliente.objects.filter(slug=slug).first()
-        or Cliente.objects.filter(razon_social__icontains=slug).first()
-    )
+    c = Cliente.objects.filter(slug=slug).first()
+    if c is None:
+        # LC 2026-07-26: si no es el slug, se identifica por razón social o RFC
+        # (mismo resolvedor que usan los ejecutores).
+        from apps.el_dictado.ejecutores.basicos import _cliente_por_razon_social
+        c = (_cliente_por_razon_social(args["cliente_slug"].strip().lstrip("$"))
+             or Cliente.objects.filter(razon_social__icontains=slug).first())
     if c is None:
         return {"error": "no_encontrado", "cliente_slug": slug}
     return {
         "razon_social": c.razon_social,
         "estado": c.get_estado_display(),
         "rfc": c.rfc or None,
+        # Todas las razones sociales con las que puede facturar (pueden ser varias).
+        "razones_sociales": [
+            {"razon_social": r.razon_social, "rfc": r.rfc or None, "principal": r.principal}
+            for r in c.razones_sociales.all()[:10]
+        ],
         "contacto": c.nombre_contacto or None,
         "num_proyectos": c.proyectos.count(),
         "link": f"/clientes/{c.slug}/",
@@ -502,13 +510,25 @@ def _h_buscar_catalogo(args: dict, usuario) -> dict:
     if len(texto) < 2:
         return {"error": "texto_muy_corto"}
     from apps.el_catalogo.models import Proveedor, Servicio
+    from django.db.models import Q
     productos = []
     for s in (
-        Servicio.activos.filter(nombre__icontains=texto)
-        .select_related("categoria").prefetch_related("proveedores")[:_TOP_N]
+        # LC 2026-07-26: también encuentra por el ALIAS con el que se vendió en
+        # algún proyecto («TShirt Modelo Janet» → la playera del catálogo).
+        Servicio.activos.filter(
+            Q(nombre__icontains=texto) | Q(en_proyectos__nombre_proyecto__icontains=texto)
+        ).distinct()
+        .select_related("categoria")
+        .prefetch_related("proveedores", "en_proyectos")[:_TOP_N]
     ):
+        alias = []
+        for pp in s.en_proyectos.all():
+            nom = (pp.nombre_proyecto or "").strip()
+            if nom and nom not in alias:
+                alias.append(nom)
         productos.append({
             "nombre": s.nombre,
+            "tambien_llamado": alias[:5],
             "categoria": s.categoria.nombre if s.categoria_id else None,
             "precio": float(s.precio_base or 0),
             "costo": float(s.costo or 0),

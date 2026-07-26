@@ -14,17 +14,19 @@ Secciones (orden fijo, decisión Oscar):
   2..N. <PERSONA> ........ una sección por persona con pendientes asignados
   N+1. MISIONES .......... mandados (entregas/recolecciones) sin cerrar
   N+2. TIZAYUCA .......... un renglón POR PRODUCTO del proveedor de Tizayuca
-  N+3. FACTURAS X EMITIR . proyectos confirmados sin factura ligada
+  N+3. FACTURAS X EMITIR . proyectos confirmados sin factura ligada (los que
+                           NO contabilizan IVA no cuentan)
   N+4. COTIZACIONES ...... proyectos en «por cotizar»
-  N+5. FACTURAS X COBRAR . facturas emitidas con saldo pendiente
+  N+5. CUENTAS X COBRAR .. todo lo pendiente de cobro (facturas con saldo +
+                           anticipos + proyectos sin factura)
 
 **Regla de fechas (Oscar, 2026-07-25): el reporte mira HACIA ADELANTE.** Solo
 entra lo de hoy y lo que viene; lo que ya pasó de fecha NO se lista (aplica a
 tareas, mandados y proyectos). Lo que no tiene fecha sí entra — y en el caso de
 las tareas, se va a URGENTES para que no se pierda.
 
-**Única excepción: FACTURAS X COBRAR.** Ahí salen todas las que tengan saldo,
-vencidas incluidas, hasta que se marquen cobradas o se les ligue el cobro.
+**Única excepción: CUENTAS X COBRAR.** Ahí sale todo lo que tenga saldo,
+vencido incluido, hasta que se cobre.
 
 Cada sección respeta la visibilidad del usuario (mismos helpers que el
 Kanban de Tareas y el de Proyectos) y los permisos granulares (§4 #20): si
@@ -39,9 +41,6 @@ from datetime import date, datetime
 # ya dijo que sí y el trabajo va en curso o terminó. `por_cotizar`/
 # `esperando_respuesta` aún no son venta; `en_pausa`/`cancelado` no se facturan.
 ESTADOS_CONFIRMADOS = ("en_proceso_diseno", "en_proceso_produccion", "entregado", "cerrado")
-
-# Facturas que siguen "por cobrar" (emitidas, no canceladas, con saldo).
-ESTADOS_FACTURA_POR_COBRAR = ("emitida", "cobrada_parcial")
 
 # Nombres completos (Oscar 2026-07-25): «sábado 26 de julio», no «26 jul».
 _MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -230,6 +229,13 @@ def _seccion_tizayuca(proyectos_qs) -> dict:
 
 
 def _seccion_facturas_por_emitir(proyectos_qs) -> dict:
+    """Proyectos confirmados a los que todavía hay que emitirles factura.
+
+    **Los que no contabilizan IVA no cuentan** (Oscar, 2026-07-26): un proyecto
+    en régimen `exento` (o con el `iva_exento` legacy) no lleva factura, así que
+    aparecer aquí sería ruido. Lo que se les debe cobrar sale igual en CUENTAS X
+    COBRAR.
+    """
     from apps.facturacion.models import Factura
     con_factura = set(
         Factura.objects.exclude(estado="cancelada")
@@ -238,6 +244,8 @@ def _seccion_facturas_por_emitir(proyectos_qs) -> dict:
     )
     qs = (
         proyectos_qs.filter(estado__in=ESTADOS_CONFIRMADOS)
+        .exclude(regimen_fiscal="exento")
+        .exclude(iva_exento=True)
         .exclude(pk__in=con_factura)
         .order_by("fecha_compromiso", "pk")
     )
@@ -251,26 +259,40 @@ def _seccion_cotizaciones(proyectos_qs) -> dict:
     return {"titulo": "COTIZACIONES", "lineas": lineas}
 
 
-def _seccion_facturas_por_cobrar() -> dict:
-    """**Excepción a la regla de fechas** (Oscar 2026-07-25): aquí salen TODAS
-    las facturas con saldo —vencidas incluidas— hasta que se marquen cobradas o
-    se les ligue el cobro. Una factura por cobrar no deja de importar por haber
-    pasado su fecha; al contrario."""
-    from apps.facturacion.models import Factura
-    qs = (
-        Factura.objects.filter(estado__in=ESTADOS_FACTURA_POR_COBRAR)
-        .select_related("cliente", "proyecto")
-        .order_by("fecha_vencimiento", "pk")
-    )
+def _seccion_cuentas_por_cobrar() -> dict:
+    """Todo lo que está pendiente de cobro (Oscar, 2026-07-26: «cambiar FACTURAS
+    X COBRAR por CUENTAS X COBRAR y ahí sí se incluyen todos»).
+
+    Ya no son sólo facturas: usa el CxC unificado de Tesorería, que suma
+    facturas emitidas con saldo, anticipos de cotización aprobados pendientes de
+    facturar y proyectos con saldo sin factura ligada (sin doble conteo).
+
+    **Excepción a la regla de fechas**: aquí sale todo lo que tenga saldo,
+    vencido incluido, hasta que se cobre. Una cuenta por cobrar no deja de
+    importar por haber pasado su fecha; al contrario.
+    """
+    try:
+        from apps.tesoreria.services import cxc_unificado
+        filas = cxc_unificado()
+    except Exception:  # noqa: BLE001 — el reporte nunca se cae por una sección
+        filas = []
+    etiquetas = {"factura": "Factura", "anticipo": "Anticipo", "proyecto": "Proyecto"}
     lineas = []
-    for f in qs[: LIMITE_SECCION * 2]:
-        if f.saldo_pendiente <= 0:
+    for f in filas:
+        saldo = f.get("saldo") or 0
+        if saldo <= 0:
             continue
-        cliente = (getattr(f.cliente, "razon_social", "") or "").strip() or "sin cliente"
-        lineas.append(f"{f.folio_display} · {cliente} · saldo {f.saldo_pendiente:,.2f}")
+        tipo = etiquetas.get(f.get("tipo"), "Cuenta")
+        cliente = (f.get("cliente") or "").strip() or "sin cliente"
+        proyecto = (f.get("proyecto_nombre") or "").strip()
+        partes = [f"{tipo} {f.get('codigo') or ''}".strip(), cliente]
+        if proyecto:
+            partes.append(proyecto)
+        partes.append(f"saldo {saldo:,.2f}")
+        lineas.append(" · ".join(partes))
         if len(lineas) >= LIMITE_SECCION:
             break
-    return {"titulo": "FACTURAS X COBRAR", "lineas": lineas}
+    return {"titulo": "CUENTAS X COBRAR", "lineas": lineas}
 
 
 # ── Entrada pública ──────────────────────────────────────────────────────────
@@ -302,7 +324,7 @@ def secciones_pendientes(usuario) -> list[dict]:
     if puede_ver_cotizaciones(usuario):
         secciones.append(_seccion_cotizaciones(proyectos))
     if puede_ver_facturacion(usuario):
-        secciones.append(_seccion_facturas_por_cobrar())
+        secciones.append(_seccion_cuentas_por_cobrar())
     return secciones
 
 

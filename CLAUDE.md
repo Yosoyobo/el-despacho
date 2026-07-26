@@ -6190,6 +6190,105 @@ asumir cuadrada (lado seguro: notas más arriba). El preview del total en el
 formulario sigue siendo una réplica en JS del cálculo de `lib/fiscal` (el
 definitivo lo calcula el servidor al guardar).
 
+### S-Ajustes-Jul26 ✅ — Foto del producto desde el proyecto, alias buscables, documento y razones sociales (2026-07-26, VERSION 2026.07.32)
+
+Ronda de Oscar (10 puntos) + un pedido a media sesión: «el Chalán debe de ser más
+inteligente ejecutando cosas de clientes vía identificar su razón social».
+
+- **Foto del producto DESDE la tarjeta del proyecto** (decisión Oscar sobre el
+  destino): `ProyectoProducto.imagen_file_id/imagen_url` (migr. `proyectos/0026`)
+  + propiedades `imagen_efectiva_file_id` / `imagen_es_propia` / **`imagen_destino`**
+  — el MODELO decide a dónde va la foto (si la línea tiene alias es «otro»
+  producto para el cliente → se guarda en el USO; si no → en el `Servicio` del
+  catálogo, y ahí se limpia la propia si la había). Endpoint
+  `proyectos-producto-imagen` (POST, pk de la LÍNEA, gate `puede_editar_proyecto`,
+  evento `proyecto.producto_imagen`). La foto se **congela** en la cotización:
+  `CotizacionItem.imagen_file_id` (migr. `cotizaciones/0016`) +
+  `imagen_visible_file_id`; `generar_desde_proyecto` la copia y `duplicar` la
+  arrastra. `construir_html_pdf`/`_precalentar_imagenes` ya leen la congelada.
+- **Componente compartido de pegar/subir**: `static/js/imagen_pegar.js` (Taller;
+  cargado en `base.html`) escanea `[data-img-slot]` en load y en `htmx:afterSwap`,
+  con el flujo que pidió Oscar: **se pica el recuadro para fijar el destino y se
+  pega (Ctrl/Cmd+V)** — con un solo recuadro en la página no hace falta picar. El
+  JS inline del form de catálogo se borró y esa pantalla ahora usa el componente
+  (además ya muestra la foto guardada al abrir).
+- **Proxy autenticado de imágenes** `catalogo-imagen-producto/<file_id>`: el
+  `imagen_url` de Drive es una PÁGINA, no una imagen, así que sin esto no había
+  miniatura en ningún lado. Helpers `_es_imagen_de_producto` (el file_id debe ser
+  de un Servicio, un uso o una línea de cotización) y `_bytes_de_imagen`
+  (caché → Drive), reusados por el enlace firmado de Google.
+- **Alias buscables** (item 2): la lista del Catálogo busca por
+  `en_proyectos__nombre_proyecto`, la herramienta `buscar_catalogo` del Chalán
+  también (y devuelve `tambien_llamado`), y los comboboxes marcan el alias en
+  `data-buscar` vía `SelectProductoBuscable`. **Ojo**: el primer intento usó
+  `StringAgg` y el SQLite de los tests no lo soporta → se cambió a
+  `widgets.mapa_alias()` (UNA consulta plana `values_list`, cacheada 60 s e
+  invalidada por un signal de `ProyectoProducto` con `weak=False` — sin él, el
+  alias tardaba un minuto en ser buscable y la caché se filtraba entre tests).
+  Además, al cambiar el widget de un `ModelChoiceField` hay que **re-asignar el
+  queryset** o el `<select>` sale vacío (mismo tropiezo de
+  S-Proveedores-Bidireccional), y `data-buscar` solo lleva proveedores ACTIVOS
+  (un archivado se filtraba a la página del proyecto).
+- **Historial de usos** (item 3): columna «Diferenciador» (2.ª) + última columna
+  con el mini recuadro de la imagen, clickeable para pegar. Aplicado en
+  `catalogo/usos.html` y en el historial embebido de `catalogo/form.html`.
+- **Vista previa del documento** (item 4): `construir_html_pdf(cot, preview=True)`
+  envuelve el documento en una **hoja carta con márgenes** sobre fondo gris + barra
+  con «⬇ Bajar PDF» e «Imprimir» (`@media print` la oculta). Todo dentro de
+  `{% if preview %}`: al PDF de Google no le llega nada del envoltorio.
+- **PDF** (item 5, los 4 puntos): **(A) centrado** — ni `margin:0 auto` ni
+  `align="center"` funcionaron (van dos rondas); ahora se logra con una **columna
+  vacía a cada lado dentro de la MISMA tabla** (nada de tablas anidadas).
+  **(B)** concepto a la izquierda, Cantidad/P. Unitario/Subtotal a la derecha
+  (encabezado incluido). **(C)** línea `#cccccc` en lugar de `#000000` en las dos
+  tablas. **(D/E)** cada bloque de producto y el desglose van en un `<div
+  style="page-break-inside:avoid">`.
+- **Nombre del PDF** (item 6): `Cotizacion.nombre_pdf` →
+  **`COTIZACIÓN-[CLIENTE]-[PROYECTO]-[vN]`** (cliente en mayúsculas, proyecto sin
+  espacios, versión en minúsculas); las piezas que falten se omiten.
+- **Resumen de pendientes** (item 7): FACTURAS X EMITIR excluye
+  `regimen_fiscal="exento"` + `iva_exento` (no se facturan), y FACTURAS X COBRAR
+  pasó a **CUENTAS X COBRAR** alimentada por `tesoreria.services.cxc_unificado`
+  (facturas con saldo + anticipos + proyectos sin factura). Sigue siendo la única
+  excepción a la regla «solo hacia adelante».
+- **Cliente con varias razones sociales** (item 8): modelo
+  `cartera.ClienteRazonSocial` (razón social + RFC + principal, tabla
+  `cartera_cliente_razon_social`) + migr. `cartera/0008`, que además **retira la
+  restricción de RFC único** (Grupo Lazanto factura para Cueva y Kari Kari — el
+  caso real que bloqueaba). Patrón espejo de los contactos:
+  `espejar_razon_principal` (fila → campos legacy) y `asegurar_razon_principal`
+  (legacy → fila, usado por la edición rápida y por los ejecutores del Chalán).
+  `razon_social_fiscal`/`rfc` salieron del `ClienteForm` (se capturan en el
+  formset, razón social + RFC **en la misma línea**). El formset se procesa solo
+  si su management form llegó, para no invalidar rutas que no lo mandan
+  (quick-create HTMX, POSTs viejos).
+- **El Chalán identifica clientes por razón social** (pedido a media sesión):
+  `_cliente_por_razon_social` reescrito — RFC → exacto en `ClienteRazonSocial` /
+  legacy / comercial → **normalizado** (`_normalizar_razon`: sin acentos, sin
+  puntuación y sin terminación mercantil «S.A. de C.V.») → parcial. Los dos
+  últimos pasos solo cuentan si son INEQUÍVOCOS. Como lo usa `_resolver_cliente`,
+  aplica a TODOS los ejecutores de cliente. `detalle_cliente` del chat expone las
+  razones sociales. Documentado en el prompt del Dictado, en `prompt_chat` y en
+  `lib/dictado_catalogo.IDENTIFICAR_CLIENTE` (banner nuevo en los dos paneles de
+  Chalanes).
+- **Slug visible** (item 9): `#slug` bajo el título del proyecto y `$slug` como
+  «Referencia» en la ficha del cliente.
+- **Facturas sin paginación** (item 10): la lista entrega todas (`page_obj=None`),
+  igual que Clientes en la Fase 1.
+- **29 tests nuevos** (`tests/taller/test_ajustes_jul26.py`). Actualizados los que
+  fijaban el comportamiento anterior: borde negro y centrado por `align` (r3),
+  nombre viejo del PDF, `FACTURAS X COBRAR`, y `razon_social_fiscal` en el
+  `ClienteForm`. Suite del Taller verde, ruff limpio, candados de comentarios y
+  de Novedades verdes.
+
+**Deuda diseñada**: la foto se sube solo desde una línea YA guardada (Drive
+necesita a quién colgarla) — en una tarjeta nueva se avisa; el proveedor y el
+producto no tienen slug, así que el item 9 cubre proyecto y cliente; la caché de alias
+tiene un TTL de 60 s como red por si el signal no corre; la factura no
+elige TODAVÍA con cuál razón social se emite (el CFDI se sube del PAC, así que
+guardarlas en la cartera alcanza); y el centrado/los cortes de página del PDF solo
+se pueden confirmar **con el código en La Sede** (la conversión la hace Google).
+
 ---
 
 ## 9. Decisiones operativas tomadas

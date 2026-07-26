@@ -109,15 +109,17 @@ def test_lista_normal_tiene_columna_telefono(client, cliente_factory, usuario_fa
     assert "Teléfono" in r.content.decode()
 
 
-def test_form_cliente_razon_social_fiscal_mayusculas():
-    from apps.la_cartera.forms import ClienteForm
-    form = ClienteForm(data={
-        "razon_social": "acme comercial",
-        "razon_social_fiscal": "acme sa de cv",
-        "estado": "activo",
+def test_form_razon_social_fiscal_mayusculas():
+    """LC 2026-07-26: los datos de facturación se capturan en el formset de
+    razones sociales (varias por cliente), y ahí se guardan en MAYÚSCULAS."""
+    from apps.la_cartera.forms import ClienteRazonSocialForm
+    form = ClienteRazonSocialForm(data={
+        "razon_social": "acme sa de cv",
+        "rfc": "acm010101aaa",
     })
     assert form.is_valid(), form.errors
-    assert form.cleaned_data["razon_social_fiscal"] == "ACME SA DE CV"
+    assert form.cleaned_data["razon_social"] == "ACME SA DE CV"
+    assert form.cleaned_data["rfc"] == "ACM010101AAA"
 
 
 def test_detalle_muestra_razon_social_fiscal(client, cliente_factory, usuario_factory):

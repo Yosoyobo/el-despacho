@@ -36,6 +36,7 @@ from lib.dictado_catalogo import (
     COMANDOS_DICTADO,
     COMANDOS_PROHIBIDOS,
     CONSULTAS_CHAT,
+    IDENTIFICAR_CLIENTE,
     REFERENCIAS_ENTRE_ACCIONES,
 )
 from lib.permisos import roles_efectivos, tiene_rol
@@ -92,6 +93,7 @@ def panel(request):
         "comandos_dictado": COMANDOS_DICTADO,
         "comandos_prohibidos": COMANDOS_PROHIBIDOS,
         "referencias_entre_acciones": REFERENCIAS_ENTRE_ACCIONES,
+        "identificar_cliente": IDENTIFICAR_CLIENTE,
         "consultas_chat": CONSULTAS_CHAT,
         "banner_chat": BANNER_CHAT,
         "banner_relevo": BANNER_RELEVO,

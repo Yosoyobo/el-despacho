@@ -23,3 +23,18 @@ class LosProyectosConfig(AppConfig):
         # el cache de 60s disimulaba el bug en prod.
         post_save.connect(_invalidar, sender=EstadoProyecto, dispatch_uid="proyectos_estado_cache", weak=False)
         post_delete.connect(_invalidar, sender=EstadoProyecto, dispatch_uid="proyectos_estado_cache_del", weak=False)
+
+        # LC 2026-07-26: los ALIAS de producto («¿cómo se llama aquí?») viajan en
+        # el `data-buscar` de los combobox y salen de un mapa cacheado. Sin esta
+        # invalidación, un alias nuevo tardaba hasta un minuto en ser buscable.
+        # Mismo `weak=False` de arriba, por la misma razón.
+        from apps.el_catalogo.widgets import invalidar_mapa_alias
+        from apps.los_proyectos.models import ProyectoProducto
+
+        def _invalidar_alias(sender, **kwargs):
+            invalidar_mapa_alias()
+
+        post_save.connect(_invalidar_alias, sender=ProyectoProducto,
+                          dispatch_uid="proyectos_alias_cache", weak=False)
+        post_delete.connect(_invalidar_alias, sender=ProyectoProducto,
+                            dispatch_uid="proyectos_alias_cache_del", weak=False)

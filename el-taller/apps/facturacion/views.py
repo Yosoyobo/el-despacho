@@ -6,7 +6,6 @@ from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -108,8 +107,11 @@ def lista(request):
     else:
         objetos = qs
 
-    paginator = Paginator(objetos, 25)
-    page_obj = paginator.get_page(request.GET.get("page"))
+    # LC 2026-07-26 (Oscar): «no truncar página de facturas (quitar navegación en
+    # páginas)». Se listan todas — el folio es una secuencia continua y partirla
+    # en páginas obligaba a navegar para encontrar una factura. Mismo criterio
+    # que Clientes (Fase 1).
+    facturas = list(objetos)
 
     qs_filtros = []
     if q:
@@ -120,8 +122,8 @@ def lista(request):
     qs_paginacion = qs_filtros + ([f"orden={orden}"] if orden != "-folio" else [])
 
     return render(request, "facturacion/lista.html", {
-        "page_obj": page_obj,
-        "facturas": page_obj.object_list,
+        "page_obj": None,
+        "facturas": facturas,
         "q": q,
         "estado_filtro": estado_filtro,
         "orden_actual": orden,

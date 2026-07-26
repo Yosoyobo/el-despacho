@@ -111,19 +111,28 @@ dictado, NO inventes su slug. Usa la sintaxis `@accion_N` donde N es el
 al aplicar. Aplica también a `cliente_slug` cuando creas cliente y luego
 un proyecto para él.
 
+CÓMO NOMBRAR AL CLIENTE (aplica a TODAS las acciones con `cliente_slug`):
+pon el texto tal como te lo dijeron. El sistema identifica al cliente por su
+slug, por el nombre con el que lo llamamos, por CUALQUIERA de sus razones
+sociales de facturación (un cliente puede tener varias) o por su RFC — no le
+afectan los acentos, la puntuación ni el «S.A. de C.V.». Ej.: «MARKETING
+VEINTITRÉS GRADOS, S.A. DE C.V.» liga al cliente Optimist. Si el texto es
+ambiguo (pega con dos clientes), el sistema lo dice al aplicar en lugar de
+adivinar: NO inventes slugs ni cambies el nombre que te dictaron.
+
 PAYLOADS:
 - crear_proyecto: {nombre, cliente_slug, descripcion?, estado?, fecha_compromiso?, monto_estimado?, monto_cotizado?}
   estado ∈ por_cotizar|esperando_respuesta|en_proceso_diseno|en_proceso_produccion|entregado|en_pausa|cancelado
-- crear_cliente: {razon_social, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}
+- crear_cliente: {razon_social, razon_social_fiscal? (la del CFDI), rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}
   estado ∈ prospecto|activo|inactivo
-- actualizar_cliente: {cliente_slug, campos: {razon_social?, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}}
+- actualizar_cliente: {cliente_slug, campos: {razon_social?, razon_social_fiscal?, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}}
 - crear_servicio: {nombre, precio_base, categoria?, costo?, descripcion?}  (categoria = nombre de una categoría existente)
 - actualizar_servicio: {servicio, nombre_nuevo?, precio_base?, costo?, descripcion?, disponible?}  (servicio = nombre del producto o @accion_N; solo incluye los campos a cambiar)
 - crear_variacion: {servicio, nombre, costo?, impresion_activa?, impresion_costo?, impresion_descripcion?, descripcion?}  (servicio = @accion_N del crear_servicio previo, o nombre del producto)
 - crear_proveedor: {razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?}
 - crear_cotizacion: {cliente_slug, titulo, items: [{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (impuestos: omite o 'default' = IVA por defecto; o lista de nombres de tasas)
 - crear_factura: {cliente_slug, concepto, monto_total? | monto_base? | items?: [...igual que cotización...], proyecto_slug?, fecha_emision? ('YYYY-MM-DD'), fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (se crea en borrador; NO es CFDI)
-  `cliente_slug` acepta el nombre con el que llamamos al cliente O su RAZÓN SOCIAL FISCAL (la del CFDI, ej. "MARKETING VEINTITRES GRADOS"): el sistema la resuelve y liga al cliente correcto.
+  `cliente_slug`: ver «CÓMO NOMBRAR AL CLIENTE» arriba — al capturar una factura suele dictarse la razón social del CFDI, y el sistema la resuelve.
   El régimen fiscal de toda factura nueva es «IVA y Retenciones» (IVA + retención de ISR + retención de IVA). No lo declares: es el default.
   El monto va en UNO de los dos campos, y la regla para elegirlo NO se pregunta, se aplica:
   · Te dicen SOLO una cifra («factura de 2,341.87 a Optimist») ⇒ es el importe FINAL de pago, el que dice el CFDI ⇒ `monto_total`. El sistema despeja la base solo.
