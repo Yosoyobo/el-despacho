@@ -5839,6 +5839,102 @@ solapan a propósito (lectura literal del pedido); las secciones se cortan a 40
 renglones (`LIMITE_SECCION`); TIZAYUCA se ata al **nombre** del proveedor (misma
 fragilidad que la calculadora, constante compartida).
 
+### S-Cotizaciones-Bonitas ✅ — Documento con imagen + alias de producto por proyecto (2026-07-25, VERSION 2026.07.28)
+
+Pedido de Oscar tras dos screenshots de cotizaciones reales (Gorras MAU y el
+desglose de TESSA). Fase 1 del arco «dos tipos de producto» que se platicó: **no**
+se agregó el campo `tipo` ni la receta (bill of materials) — Oscar decidió que su
+lista de productos ya funciona y que en su lugar cada proyecto pueda **renombrar**
+el producto que compra. 7 commits, uno por pieza.
+
+- **Enlace público FIRMADO para las imágenes del PDF** (`lib/imagen_publica.py`):
+  raíz del problema — el PDF lo genera **Google** convirtiendo nuestro HTML
+  (regla §8), y **Google baja las imágenes anónimamente desde sus servidores**,
+  sin la sesión del usuario ni nuestra credencial de Drive. Por eso el proxy
+  autenticado de siempre (`/perfil/avatar-img/…`) NO sirve, y tampoco sirven la
+  URL de contenido de Drive ni `insertInlineImage` de la API de Docs: **todas
+  exigen que la imagen sea alcanzable sin contraseña**. Solución: token
+  `django.core.signing` (SECRET_KEY + sello de tiempo, TTL 900s) + endpoint
+  `/catalogo/img/<token>` **sin login a propósito**, con tres candados: firma
+  válida y no expirada · el `file_id` debe ser la imagen de algún `Servicio` (un
+  token no sirve para hurgar en Drive) · sólo `image/*`. Todo lo demás es 404
+  seco. Setting nuevo `TALLER_URL` en El Taller (el generador del documento no
+  tiene `request`). **El logo salió gratis**: `static/branding/Logo_LC-256.png`
+  ya lo sirve Caddy público.
+- **Alias del producto por proyecto** (`ProyectoProducto.nombre_proyecto`, migr.
+  `proyectos/0024`): botón de etiqueta en la tarjeta abierta → el campo se
+  revela prellenado con el nombre del catálogo; debajo queda «usa: …» con el
+  producto real. `nombre_visible` (alias → catálogo) es **fuente única** y de ahí
+  beben tarjeta, lista, chips del Kanban y la línea de la cotización;
+  `nombre_catalogo` conserva la higiene «Servicio · Variación» y ahora evita
+  «X · X» **en los dos sentidos** (antes sólo detectaba uno). El `data-buscar`
+  del Kanban indexa alias **y** nombre de catálogo — renombrar no rompe «¿dónde
+  uso la playera de Crea Blanks?». Se persiste con el autosave del detalle (el
+  campo entró a `Meta.fields`), sin endpoints nuevos.
+- **Concepto ≠ especificaciones** (`CotizacionItem.concepto`, migr.
+  `cotizaciones/0013`): el nombre pasa a `concepto` (título numerado del PDF y
+  columna «Concepto» del desglose) y `descripcion` queda como **bloque
+  multilínea**. **No migra datos**: las líneas viejas guardaban el nombre dentro
+  de `descripcion` y `concepto_visible` / `detalle_lineas` las leen bien sin
+  repetirlo como especificación. Consumidores actualizados: `duplicar` copia el
+  concepto; la **factura** y su API JSON toman el NOMBRE (no las
+  especificaciones — eso es material de venta); el form manual gana los dos
+  campos y su `clean` acepta el nombre en cualquiera de los dos por back-compat.
+- **Generador + congelado + herencia** (`apps/cotizaciones/descripcion.py`): al
+  generar la versión se arma el **esqueleto** (piezas que se cobran —la merma no
+  se cotiza— + `Servicio.descripcion_default`) y el detalle fino lo escribe una
+  persona. La v+1 **hereda** el texto editado y sólo refresca el conteo del
+  primer renglón con un regex que **preserva el paréntesis** («105 pz (3 colores,
+  35 pz c/u)» + 110 piezas → «110 pz (3 colores, 35 pz c/u)»); match por
+  (servicio, variación) y de respaldo por nombre del concepto. Cada versión queda
+  congelada.
+- **Texto editable en la página** (`/cotizaciones/items/<pk>/celda/`, patrón de
+  celda de Catálogo/Clientes): whitelist `{concepto, descripcion}`, normaliza
+  CRLF y recorta renglones vacíos. Gateado por `permite_editar_texto` (property
+  nueva: borrador/generada/enviada **sí**; aprobada/pagada/rechazada/anulada
+  **no** — testimonio de lo que se mandó), que es más permisivo que
+  `es_editable` a propósito porque **redactar no mueve dinero**.
+- **Dos interruptores del documento** (`Cotizacion.incluir_desglose` +
+  `forma_pago`, migr. `cotizaciones/0012`; endpoint
+  `/cotizaciones/<pk>/documento/`): recuadro «Documento» en el sidebar. El
+  desglose agrega la tabla de conceptos (**con la casilla ✔ vacía para que el
+  cliente vaya marcando**, decisión Oscar) + el cálculo de impuestos —
+  `lib.fiscal` ya lo producía, sólo cambió el layout. `forma_pago` elige la
+  última nota; `nota_forma_pago` respeta el `anticipo_porcentaje` capturado y cae
+  a 50%. **Ambos se heredan** a la versión siguiente. Un checkbox desmarcado no
+  viaja en el POST → su ausencia ES el apagado.
+- **PDF rehecho** (`templates/cotizaciones/pdf.html`) con el formato de Oscar:
+  encabezado fecha · logotipo · CLIENTE, título del proyecto centrado, bloque
+  numerado por concepto (nombre subrayado + especificaciones + foto a la derecha
+  + tablita de montos), desglose+totales tras el interruptor, y las notas.
+  Montos con `|dinero_sin_signo` (sin `$`, sin `.00`). **Ya no lleva el rótulo
+  «COTIZACIÓN» ni el código COT-YYYY-NNNN** (misma decisión de «el nombre del
+  proyecto antes que el código» de 2026.07.27). HTML deliberadamente conservador
+  (tablas + estilos inline) porque la conversión de Docs descarta el resto.
+- **Notas fijas** (`apps/cotizaciones/notas.py`): las 7 condiciones + la de forma
+  de pago, **siempre tal cual** (decisión Oscar). No editables — son las
+  condiciones con las que LC cotiza. `Cotizacion.terminos` se conserva y sale
+  como bloque «Condiciones adicionales» debajo.
+- **52 tests nuevos** en `tests/taller/test_cotizaciones_bonitas.py` + 12 en
+  `tests/taller/test_imagen_publica.py`.
+
+**Riesgo abierto (verificar al deployar):** que Google Docs respete el `<img>`
+remoto sólo se puede comprobar **con el código en La Sede** — el endpoint tiene
+que ser alcanzable desde internet, así que no hay forma de probarlo en local ni
+en CI. El diseño es el correcto (dominio público, sin auth, sin depender de
+permisos de Drive) y el template usa `{% if fila.imagen %}`, así que el peor caso
+es un PDF **sin la foto y con todo lo demás intacto**. Si fallara, el fallback es
+insertar la imagen con `batchUpdate`/`insertInlineImage` de la API de Docs —
+reusa el mismo endpoint firmado, no se tira nada.
+
+**Deuda diseñada:** el PDF no numera páginas (Docs no lo toma del HTML); el
+alias no se ofrece en el modal de alta rápida de producto (se pone al abrir la
+tarjeta); las fotos salen del catálogo, no por proyecto (decisión Oscar — «por
+ahora que salga del catálogo»); el generador NO deriva los detalles de branding
+de los procesos de la tarjeta (Oscar: «será mucho desmadre agregarlo en la
+tarjeta, editar en pág. de cotización»); una sola imagen por producto (frente y
+trasero van en la misma foto).
+
 ---
 
 ## 9. Decisiones operativas tomadas
