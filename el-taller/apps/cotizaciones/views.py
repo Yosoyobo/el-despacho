@@ -183,12 +183,21 @@ def _pills_estados() -> list[dict]:
     El color sale del catálogo configurable de Gerencia y, para los estados
     legacy que no viven ahí (borrador/rechazada/anulada), de `COLOR_ESTADO_LEGACY`.
     «Vigentes» (todos) no tiene color: es el filtro neutro.
+
+    Oscar 2026-07-25: un estado que el super_admin **oculta** en Gerencia
+    desaparece también de estas pastillas — si ya nadie usa «Enviada», no tiene
+    caso ofrecer el filtro. Los estados legacy (borrador/rechazada/anulada) no
+    viven en el catálogo, así que siempre se muestran.
     """
     from apps.cotizaciones.models import mapa_estados_cot
     mapa = mapa_estados_cot()
 
     def color(slug: str) -> str:
         return (mapa.get(slug) or {}).get("color") or COLOR_ESTADO_LEGACY.get(slug, "#667085")
+
+    def visible(slug: str) -> bool:
+        entrada = mapa.get(slug)
+        return True if entrada is None else bool(entrada.get("activo"))
 
     etiquetas = [
         ("borrador", "Borradores"),
@@ -200,7 +209,11 @@ def _pills_estados() -> list[dict]:
         ("anulada", "Anuladas"),
     ]
     pills = [{"slug": "", "label": "Vigentes", "color": ""}]
-    pills += [{"slug": s, "label": lbl, "color": color(s)} for s, lbl in etiquetas]
+    pills += [
+        {"slug": s, "label": (mapa.get(s) or {}).get("label") or lbl, "color": color(s)}
+        for s, lbl in etiquetas
+        if visible(s)
+    ]
     return pills
 
 
@@ -870,6 +883,8 @@ def documento_opciones(request, pk):
       de impuestos. Un checkbox apagado no viaja en el POST, así que la ausencia
       del valor ES el apagado.
     - `forma_pago`: cambia la última nota («Anticipo N%» / «Un sólo pago»).
+    - `titulo_documento_manual`: el encabezado centrado del PDF. Vacío vuelve
+      al automático («Producción de elementos para proyecto '…'»).
 
     No mueve dinero — sólo cómo se presenta —, así que basta con
     `permite_editar_texto`.
@@ -893,6 +908,8 @@ def documento_opciones(request, pk):
         if valor not in validas:
             return HttpResponseBadRequest("Forma de pago inválida.")
         cot.forma_pago = valor
+    elif campo == "titulo_documento_manual":
+        cot.titulo_documento_manual = (valor or "").strip()[:200]
     else:
         return HttpResponseBadRequest("Campo no editable.")
     cot.save(update_fields=[campo, "actualizado_en"])

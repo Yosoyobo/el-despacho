@@ -52,21 +52,22 @@ def test_panel_del_proyecto_enlaza_a_la_pagina_de_la_cotizacion(
     assert f'href="/cotizaciones/{cot.pk}/ver/"' not in html  # ya no el PDF
 
 
-# ── 2) Los 3 botones de El Chalán en la misma línea ──────────────────────
+# ── 2) Los controles de El Chalán en la misma línea ──────────────────────
 
 
-def test_dashboard_tiene_los_tres_controles_del_chalan_en_una_linea(
+def test_dashboard_tiene_los_controles_del_chalan_en_una_linea(
         client, usuario_factory):
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
     html = client.get("/").content.decode()
 
     assert "flex-nowrap" in html
-    assert "Abrir chat" in html
     assert "Resumir actividad" in html
     assert ">Enviar<" in html
-    # El bloque separado con solo el ícono del chat desapareció.
-    assert "Abrir el chat de El Chalán" in html  # queda como title del botón
+    # Oscar 2026-07-25 (segunda ronda): el atajo «Abrir chat» se quitó — el
+    # acceso al chat vive en el sidebar («El Chalán»).
+    assert "Abrir chat" not in html
+    assert "Abrir el chat de El Chalán" not in html
 
 
 # ── 3) Reporte de actividad ──────────────────────────────────────────────
@@ -484,9 +485,10 @@ def test_pdf_sin_lineas_encabezado_gris_logo_chico_y_notas_al_pie(
     assert html.count("background-color:#f2f2f2") >= 4
     # (2) logo más chico
     assert "width:48pt; height:48pt" in html
-    # (4) notas empujadas al pie
-    assert "margin-top:108pt" in html
-    assert html.index("margin-top:108pt") > html.index("Gorras")
+    # (4) notas empujadas al pie. Oscar 2026-07-25 (segunda ronda): el hueco
+    # dejó de ser fijo (108pt) y ahora se calcula según lo que quepa en la hoja.
+    assert "margin-top:108pt" not in html
+    assert html.index("page-break-inside:avoid") > html.index("Gorras")
 
 
 # ── 7) El alias del producto manda en los recuadros del proyecto ─────────
@@ -574,9 +576,12 @@ def test_tabla_de_montos_centrada_acotada_y_de_un_renglon(proyecto_factory,
     cot = _cot_con_producto(proyecto_factory(nombre="Ted Lasso"), admin)
 
     html = construir_html_pdf(cot)
-    assert "width:68%; border-collapse:collapse; margin:0 auto 26pt auto" in html
-    # Encabezados en una sola línea.
-    assert html.count("white-space:nowrap;\">") >= 4 or html.count("white-space:nowrap") >= 4
+    # Oscar 2026-07-25 (segunda ronda): Google Docs ignora `margin:0 auto`, así
+    # que el centrado va con `align`; y como también ignora `white-space:nowrap`
+    # el encabezado se acortó para no partir el renglón.
+    assert 'align="center"' in html
+    assert "margin:0 auto 26pt auto" in html
+    assert "P. Unitario" in html
 
 
 def test_sin_especificaciones_ni_foto_no_queda_tabla_vacia(proyecto_factory,

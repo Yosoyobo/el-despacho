@@ -21,6 +21,13 @@ Defensa en profundidad — el endpoint que consume esto (ver
 2. exige que el `file_id` sea la imagen de ALGÚN producto del catálogo (no
    permite leer archivos arbitrarios de Drive, igual que el proxy de avatar), y
 3. sólo responde si el archivo es `image/*`.
+
+**Por qué además se cachea.** Google no espera eternamente: si el origen tarda,
+la conversión sigue sin la imagen y el PDF sale con el hueco. Bajar el archivo
+de Drive en caliente son varios segundos, así que antes de mandarle el HTML a
+Google **precalentamos** la imagen (`precalentar`): se baja UNA vez, se reduce
+de tamaño y se guarda en caché. Cuando Google llega, el endpoint responde al
+instante y con pocos KB.
 """
 
 from __future__ import annotations
@@ -30,6 +37,15 @@ from django.core import signing
 
 # Salt propio: un token firmado para otra cosa no sirve como imagen pública.
 SALT = "despacho.imagen_publica"
+
+# Caché de bytes ya reducidos: clave por file_id de Drive. La vida es un poco
+# mayor que el TTL del enlace para cubrir un reintento de la conversión.
+CACHE_PREFIX = "imagen_publica:"
+CACHE_TTL = 1800
+
+# Lado máximo de la imagen que se sirve al documento. Una foto de celular de
+# 4000px no aporta nada a 150pt de ancho y sí hace lenta la descarga.
+LADO_MAX = 1000
 
 # Vida del enlace. La conversión de Docs tarda segundos; 15 minutos deja
 # holgura para reintentos sin dejar el enlace vivo de más.
@@ -64,6 +80,73 @@ def base_publica() -> str:
     return str(base).rstrip("/")
 
 
+def _clave(file_id: str) -> str:
+    return f"{CACHE_PREFIX}{file_id}"
+
+
+def desde_cache(file_id: str):
+    """`(bytes, mime)` si la imagen ya está precalentada; `None` si no."""
+    if not file_id:
+        return None
+    try:
+        from django.core.cache import cache
+        guardado = cache.get(_clave(file_id))
+    except Exception:  # noqa: BLE001 — Redis caído: se sirve sin caché
+        return None
+    if isinstance(guardado, tuple | list) and len(guardado) == 2:
+        return guardado[0], guardado[1]
+    return None
+
+
+def _reducir(contenido: bytes, mime: str):
+    """Baja la resolución a `LADO_MAX` para que la descarga sea de pocos KB.
+
+    Si Pillow no puede con el archivo (formato raro, imagen corrupta), devuelve
+    el original tal cual — más vale una imagen pesada que ninguna.
+    """
+    try:
+        import io
+
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(contenido))
+        if max(img.size) <= LADO_MAX and len(contenido) <= 400_000:
+            return contenido, mime
+        img.thumbnail((LADO_MAX, LADO_MAX), Image.LANCZOS)
+        salida = io.BytesIO()
+        if img.mode in ("RGBA", "LA", "P"):
+            img.convert("RGBA").save(salida, format="PNG", optimize=True)
+            return salida.getvalue(), "image/png"
+        img.convert("RGB").save(salida, format="JPEG", quality=82, optimize=True)
+        return salida.getvalue(), "image/jpeg"
+    except Exception:  # noqa: BLE001 — Pillow no pudo: se sirve el original
+        return contenido, mime
+
+
+def precalentar(file_id: str) -> bool:
+    """Baja la imagen de Drive, la reduce y la deja en caché lista para servir.
+
+    Se llama justo antes de mandarle el HTML a Google. Best-effort: cualquier
+    fallo devuelve False y el endpoint bajará de Drive como siempre (más lento,
+    con riesgo de que Google se canse y deje el hueco).
+    """
+    if not file_id or desde_cache(file_id) is not None:
+        return bool(file_id)
+    try:
+        from django.core.cache import cache
+
+        from lib.google_drive import drive
+
+        contenido, mime, _ = drive.descargar(file_id)
+        if not contenido or not (mime or "").startswith("image/"):
+            return False
+        contenido, mime = _reducir(contenido, mime)
+        cache.set(_clave(file_id), (contenido, mime), CACHE_TTL)
+        return True
+    except Exception:  # noqa: BLE001 — Drive caído o sin permisos
+        return False
+
+
 def url_absoluta(file_id: str) -> str:
     """Enlace absoluto y firmado que Google puede bajar al convertir el PDF.
 
@@ -85,8 +168,12 @@ __all__ = [
     "SALT",
     "TTL_SEGUNDOS",
     "NOMBRE_URL",
+    "CACHE_TTL",
+    "LADO_MAX",
     "firmar",
     "verificar",
     "base_publica",
     "url_absoluta",
+    "desde_cache",
+    "precalentar",
 ]

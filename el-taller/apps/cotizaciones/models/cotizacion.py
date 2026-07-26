@@ -139,6 +139,13 @@ class Cotizacion(models.Model):
         max_length=12, choices=FORMAS_PAGO, default=FORMA_ANTICIPO,
         help_text="Define la nota de forma de pago del PDF.",
     )
+    # Título del documento escrito a mano (Oscar 2026-07-25, segunda ronda).
+    # Vacío = se arma solo con el nombre del proyecto (ver `titulo_documento`).
+    # Se hereda a la versión siguiente, igual que los interruptores de arriba.
+    titulo_documento_manual = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Encabezado del PDF. Vacío usa el nombre del proyecto.",
+    )
 
     # PDF generado vía Google Docs (regla §8). Se regenera al pedirlo y se
     # guarda en Drive (subcarpeta "Cotizaciones"). Vacío = aún no se generó.
@@ -265,9 +272,18 @@ class Cotizacion(models.Model):
         """Título centrado del PDF, en el formato fijo de LC (Oscar 2026-07-25):
         «Producción de elementos para proyecto 'Ted Lasso'».
 
-        Se deriva SIEMPRE del proyecto para que ninguna versión salga con otro
-        encabezado; sin proyecto (cotización standalone) cae al título capturado.
+        Se deriva del proyecto para que ninguna versión salga con otro
+        encabezado; sin proyecto (cotización standalone) cae al título
+        capturado. Si alguien escribió un encabezado a mano en la página de la
+        cotización, ése manda (Oscar 2026-07-25, segunda ronda).
         """
+        return (self.titulo_documento_manual or "").strip() or self.titulo_documento_auto
+
+    @property
+    def titulo_documento_auto(self) -> str:
+        """El encabezado que se arma solo, sin considerar el escrito a mano.
+        Lo usa la página de la cotización para mostrar «así saldría si lo dejas
+        vacío»."""
         if self.proyecto_id:
             nombre = (self.proyecto.nombre or self.proyecto.codigo or "").strip()
             if nombre:

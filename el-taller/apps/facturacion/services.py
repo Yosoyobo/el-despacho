@@ -259,6 +259,46 @@ def fijar_linea_concepto(fac: Factura, *, monto=None) -> Decimal:
     return base
 
 
+def _divisor_total(fac: Factura) -> Decimal:
+    """Cuánto vale el total por cada peso de base, con el régimen y las tasas
+    que tiene ESTA factura. Total = base × divisor."""
+    factor = Decimal("1")
+    if fac.regimen_fiscal == "honorarios":
+        from lib.fiscal import desglose_honorarios
+        d = desglose_honorarios(Decimal("10000.00"))
+        factor = d["total"] / Decimal("10000.00")
+    elif fac.regimen_fiscal != "exento":
+        for fi in fac.impuestos.select_related("tasa").all():
+            pct = (fi.tasa.porcentaje or CERO) / Decimal("100")
+            factor += -pct if fi.tasa.tipo == "retencion" else pct
+    desc = Decimal("1") - (fac.descuento_global_porcentaje or CERO) / Decimal("100")
+    parcial = (fac.porcentaje_a_facturar or Decimal("100")) / Decimal("100")
+    divisor = factor * desc * parcial
+    return divisor if divisor > 0 else Decimal("1")
+
+
+def fijar_total_con_impuestos(fac: Factura, total_deseado) -> Decimal:
+    """Deja la factura con UNA línea-concepto cuyo TOTAL (ya con IVA y
+    retenciones) es exactamente `total_deseado`.
+
+    Oscar 2026-07-25: al capturar facturas viejas se dicta el importe final del
+    CFDI, no la base. Aquí se invierte el cálculo: base = total ÷ divisor, y se
+    corrige el redondeo comparando contra `calcular_totales` (los impuestos se
+    redondean al centavo por separado, así que la división sola puede quedar a
+    uno o dos centavos). Devuelve la base aplicada.
+    """
+    objetivo = Decimal(str(total_deseado)).quantize(Decimal("0.01"))
+    divisor = _divisor_total(fac)
+    base = (objetivo / divisor).quantize(Decimal("0.01"))
+    for _ in range(4):
+        fijar_linea_concepto(fac, monto=base)
+        diferencia = objetivo - fac.calcular_totales()["total"]
+        if abs(diferencia) < Decimal("0.005"):
+            break
+        base = (base + diferencia / divisor).quantize(Decimal("0.01"))
+    return base
+
+
 def asegurar_lineas_desde_origen(fac: Factura, *, monto_fallback=None) -> bool:
     """Anti-$0 para el modo «desglose»: si la factura quedó SIN líneas, sintetiza
     UNA línea-concepto con su monto base (`monto_fallback` explícito → subtotal

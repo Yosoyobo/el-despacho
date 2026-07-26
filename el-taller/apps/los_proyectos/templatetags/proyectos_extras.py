@@ -142,15 +142,17 @@ def _mapa_estados():
     (tests aislados, primer boot).
     """
     from django.core.cache import cache
-    # v2: el mapa ahora incluye `terminal` (LC 2026-07-25).
-    clave = "proyectos:mapa_estados:v2"
+    # v3: el mapa incluye `terminal` (LC 2026-07-25) y `activo` (para que un
+    # estado oculto en Gerencia desaparezca de los filtros).
+    clave = "proyectos:mapa_estados:v3"
     cacheado = cache.get(clave)
     if cacheado is not None:
         return cacheado
     from apps.los_proyectos.models import EstadoProyecto
     try:
         mapa = {
-            e.slug: {"label": e.label, "color": e.color, "terminal": e.terminal}
+            e.slug: {"label": e.label, "color": e.color,
+                     "terminal": e.terminal, "activo": e.activo}
             for e in EstadoProyecto.objects.all()
         }
         cache.set(clave, mapa, 60)
@@ -162,7 +164,22 @@ def _mapa_estados():
 def invalidar_mapa_estados():
     """Llamado desde signals al guardar/borrar EstadoProyecto."""
     from django.core.cache import cache
-    cache.delete_many(["proyectos:mapa_estados:v2", "proyectos:mapa_estados:v1"])
+    cache.delete_many([
+        "proyectos:mapa_estados:v3",
+        "proyectos:mapa_estados:v2",
+        "proyectos:mapa_estados:v1",
+    ])
+
+
+def estado_visible(slug: str) -> bool:
+    """¿El estado sigue ofreciéndose como filtro?
+
+    Oscar 2026-07-25: al ocultar un estado desde Gerencia debe desaparecer de
+    las pastillas/selectores de la página correspondiente. Un slug que no vive
+    en el catálogo (legacy) siempre se considera visible.
+    """
+    entrada = _mapa_estados().get(slug)
+    return True if entrada is None else bool(entrada.get("activo", True))
 
 
 @register.filter(name="color_estado")

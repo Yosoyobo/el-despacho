@@ -6039,6 +6039,85 @@ ignora un `concepto` vacío aunque la línea vieja tuviera el nombre en la
 descripción (es justo lo pedido, pero cambia el título de documentos históricos
 sin `concepto`).
 
+### S-Cotizacion-Documento-R2 ✅ — El documento de la cotización, ficha del proveedor y facturas al dictado (2026-07-25, VERSION 2026.07.30)
+
+Segunda ronda de Oscar sobre lo deployado el mismo día (2026.07.28/29). Ocho
+puntos, un solo deploy. Sin cambios de contrato en El Chalán más allá de los
+tres lugares de rigor.
+
+- **El PDF ya sale como la vista previa** (`pdf.html`). La conversión de Google
+  Docs perdona menos de lo que parecía: (1) una tabla sin borde declarado sale
+  con **líneas negras** por default → se apagan por partida doble, atributo
+  `border="0"` + `border:none` en la tabla Y en cada celda (la única línea a
+  propósito sigue siendo la casilla ✔ del desglose); (2) `margin:0 auto` **no
+  centra** tablas en Docs → `align="center"`; (3) un `<img>` no hereda el
+  `text-align` de su `<td>` → va en `<p align="center">` (arregla el logo);
+  (4) `white-space:nowrap` se ignora, así que «Precio Unitario» partía el
+  renglón y dejaba la fila al **doble de alto** → encabezado corto
+  («P. Unitario») + anchos en %; (5) el nombre del concepto y sus
+  especificaciones se fusionaron en **UNA tabla** (Docs mete espacio entre
+  tablas y ése era el «renglón vacío»).
+- **La foto del producto ya aparece en el PDF.** Raíz: Google baja la imagen
+  anónimamente y con **poca paciencia**; el endpoint firmado se ponía a bajar
+  de Drive en caliente (varios segundos) y la conversión se rendía —por eso la
+  vista previa sí la mostraba y el PDF no. Fix: `lib.imagen_publica.precalentar`
+  (baja UNA vez, **reduce con Pillow** a `LADO_MAX=1000`, guarda en caché 30 min)
+  + `desde_cache` en el endpoint + `services._precalentar_imagenes(cot)` llamado
+  en `generar_pdf` **antes** de entregarle el HTML a Google. Best-effort: si
+  Drive falla, se cae al camino de siempre.
+- **Hueco de las notas dinámico** (`services._espacio_antes_de_notas`): estima
+  el alto del documento en puntos (hoja carta útil = 648pt) y empuja las notas
+  a lo que queda de la hoja; si ya no caben, hueco 0 y pasan enteras a la
+  siguiente (`page-break-inside:avoid`). Es **estimación** —la paginación real
+  la hace Google— así que se limita a media hoja: mejor quedarse corto que
+  provocar una página de más. Se quitó la línea divisoria.
+- **Título del documento editable**: campo `Cotizacion.titulo_documento_manual`
+  (migr. `cotizaciones/0014`), property `titulo_documento_auto` para mostrar
+  «así saldría si lo dejas vacío», campo en el recuadro «Documento» del detalle
+  (autoguardado por `documento_opciones`) y **herencia** a la versión siguiente
+  como los otros dos interruptores.
+- **Ficha del proveedor**: el historial de proyectos es **completo** (se quitó
+  el `exclude(cancelado, cerrado)` y el manager `activos` — un proyecto
+  entregado desaparecía de la ficha) con badge de estado a color; **«¿Qué
+  surte?» subió a la columna grande**. Para que siga dentro del autoguardado el
+  `<form>` ahora envuelve TODA la rejilla y el bloque Estado/acciones se eyectó
+  al pie (lleva sus propios `<form>`, no se pueden anidar).
+- **Capacidad nueva `buscar_proveedor`** (`capacidades/lecturas.py`, gating
+  `catalogo`): ficha de UN proveedor — datos, qué surte con precio/costo/margen,
+  proyectos activos, y un bloque `dinero` (deuda comprometida + egresos pagados
+  y por pagar + últimos 5) que **sólo se arma con `puede_ver_finanzas`**
+  (defensa en profundidad: el gate de la capacidad es del Catálogo, la deuda es
+  otra cosa). Documentada en `CONSULTAS_CHAT`.
+- **Facturas dictadas** (los 3 lugares: ejecutor + `dictado_catalogo` +
+  `prompt.py`): `_resolver_cliente` ahora resuelve por **razón social fiscal**
+  y comercial (exacta → parcial **inequívoca**; dos candidatos no se adivinan) —
+  el nombre del CFDI («MARKETING VEINTITRES GRADOS») ya liga a Optimist.
+  `crear_factura` acepta `concepto`, `fecha_emision`, `fecha_vencimiento`,
+  `folio` («F-106» → 106, con aviso claro si ya existe) y el monto en **tres
+  formas**: `monto_total` (importe FINAL, ya con impuestos — se despeja la base
+  con `facturacion.services.fijar_total_con_impuestos`, que invierte el cálculo
+  y corrige el redondeo contra `calcular_totales`), `monto_base` (los impuestos
+  se suman encima) o `items` desglosados.
+- **Estados ocultos fuera de los filtros**: `_pills_estados` de Cotizaciones
+  salta los slugs con `activo=False` (los legacy borrador/rechazada/anulada no
+  viven en el catálogo, siempre salen) y toma el label del catálogo; en
+  Proyectos, `_estados_para_filtro()` hace lo mismo con el filtro de la lista y
+  el Kanban oculta la columna de un estado apagado **sólo si está vacía** (si
+  todavía hay proyectos parados ahí, esconderlos sería perderlos). El mapa
+  cacheado de estados de proyecto pasó a **v3** (ahora incluye `activo`).
+- **Dashboard**: se quitó el atajo «Abrir chat» del recuadro del Chalán (el
+  acceso vive en el sidebar).
+- **29 tests** en `tests/taller/test_ajustes_cotizaciones_jul25_r2.py`; se
+  actualizó el test del Dashboard de la ronda anterior (ya son dos controles,
+  no tres). Bug C (§14) cazado otra vez en el template del proveedor.
+
+**Deuda diseñada**: el hueco de las notas es una estimación (no hay forma de
+saber la paginación real de Docs desde el HTML); la ficha del proveedor corta
+el historial a 100 proyectos; `buscar_proveedor` no filtra por proyecto ni
+rango de fechas (es una ficha, no un reporte); la factura dictada nace en
+borrador — emitirla y cobrarla siguen siendo acciones aparte
+(`emitir_factura` / `cobrar_factura`).
+
 ---
 
 ## 9. Decisiones operativas tomadas

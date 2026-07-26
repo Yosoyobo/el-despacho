@@ -214,6 +214,24 @@ def _proyectos_visibles(user, *, solo_archivados=False):
     return Proyecto.objects.none()
 
 
+def _estados_para_filtro():
+    """`[(slug, label)]` de los estados que se ofrecen como filtro.
+
+    Oscar 2026-07-25: un estado que el super_admin oculta en Gerencia deja de
+    aparecer aquí. El label también sale del catálogo (por si lo renombraron).
+    """
+    from apps.los_proyectos.templatetags.proyectos_extras import (
+        _mapa_estados,
+        estado_visible,
+    )
+    mapa = _mapa_estados()
+    return [
+        (slug, (mapa.get(slug) or {}).get("label") or label)
+        for slug, label in ESTADOS_PROYECTO
+        if estado_visible(slug)
+    ]
+
+
 @login_required
 def lista(request):
     q = (request.GET.get("q") or "").strip()
@@ -278,7 +296,7 @@ def lista(request):
         "page_obj": page_obj,
         "q": q,
         "estado": estado,
-        "estados_disponibles": ESTADOS_PROYECTO,
+        "estados_disponibles": _estados_para_filtro(),
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])),
@@ -328,11 +346,16 @@ def kanban(request):
     # estados de cierre/pausa. Estados custom nuevos caen arriba por default.
     # LC Buzón §158/159: «En pausa» va primero en la fila inferior.
     SLUGS_FILA_ABAJO = ("en_pausa", "entregado", "cerrado", "cancelado")
+    # Oscar 2026-07-25: un estado oculto en Gerencia no arma columna… salvo que
+    # todavía tenga proyectos parados ahí (esconderlos sería perderlos de vista).
+    from apps.los_proyectos.templatetags.proyectos_extras import estado_visible
     columnas = {}
     for slug, label in ESTADOS_PROYECTO:
         proyectos = list(qs.filter(estado=slug).order_by("fecha_compromiso", "-creado_en"))
+        if not proyectos and not estado_visible(slug):
+            continue
         columnas[slug] = {"slug": slug, "label": label, "proyectos": proyectos, "total": len(proyectos)}
-    fila_arriba = [columnas[s] for s, _ in ESTADOS_PROYECTO if s not in SLUGS_FILA_ABAJO]
+    fila_arriba = [columnas[s] for s, _ in ESTADOS_PROYECTO if s not in SLUGS_FILA_ABAJO and s in columnas]
     fila_abajo = [columnas[s] for s in SLUGS_FILA_ABAJO if s in columnas]
     return render(request, "proyectos/kanban.html", {
         "fila_arriba": fila_arriba,

@@ -526,6 +526,103 @@ def _h_buscar_catalogo(args: dict, usuario) -> dict:
     return {"productos": productos, "proveedores": proveedores}
 
 
+def _h_buscar_proveedor(args: dict, usuario) -> dict:
+    """Ficha completa de UN proveedor (Oscar 2026-07-25): datos, qué surte con
+    sus precios, en qué proyectos anda, cuánto se le debe y qué se le ha pagado.
+
+    Acepta nombre o slug del proveedor. El bloque de dinero (deuda y pagos)
+    sólo se arma si el usuario puede ver finanzas — defensa en profundidad: el
+    gating de la capacidad es del Catálogo, y la deuda es otra cosa.
+    """
+    from lib.permisos import puede_ver_finanzas
+
+    texto = (args.get("nombre") or args.get("slug") or "").strip().lstrip("$@#")
+    if len(texto) < 2:
+        return {"error": "texto_muy_corto"}
+
+    from apps.el_catalogo.models import Proveedor
+    prov = (
+        Proveedor.objects.filter(razon_social__iexact=texto).first()
+        or Proveedor.objects.filter(razon_social__icontains=texto).first()
+    )
+    if prov is None:
+        return {"error": "no_encontrado", "nombre": texto}
+
+    surte = [
+        {
+            "producto": s.nombre,
+            "categoria": s.categoria.nombre if s.categoria_id else None,
+            "precio": float(s.precio_base or 0),
+            "costo": float(s.costo or 0),
+            "margen_pct": round(s.margen_porcentaje, 1),
+        }
+        for s in prov.servicios.filter(activo=True).select_related("categoria")[:_TOP_N]
+    ]
+
+    from apps.los_proyectos.models import Proyecto
+    from django.db.models import Q as _Q
+    mgr = getattr(Proyecto, "activos", Proyecto.objects)
+    proyectos_qs = (
+        mgr.filter(_Q(proveedores_asignados__proveedor=prov) | _Q(productos__proveedor=prov))
+        .exclude(estado__in=["cancelado", "cerrado"])
+        .select_related("cliente").distinct().order_by("-creado_en")[:_TOP_N]
+    )
+    proyectos = [
+        {
+            "proyecto": p.nombre or p.codigo,
+            "codigo": p.codigo,
+            "cliente": p.cliente.razon_social if p.cliente_id else None,
+            "estado": p.get_estado_display(),
+            "link": f"/proyectos/{p.pk}/",
+        }
+        for p in proyectos_qs
+    ]
+
+    datos = {
+        "razon_social": prov.razon_social,
+        "activo": prov.activo,
+        "contacto": prov.nombre_contacto or None,
+        "email": prov.email_contacto or None,
+        "telefono": prov.telefono or None,
+        "rfc": prov.rfc or None,
+        "direccion": prov.direccion or None,
+        "surte": surte,
+        "total_productos": prov.servicios.filter(activo=True).count(),
+        "proyectos_activos": proyectos,
+        "link": f"/catalogo/proveedores/{prov.pk}/",
+    }
+
+    if not puede_ver_finanzas(usuario):
+        return datos
+
+    # Deuda comprometida: lo que los proyectos vigentes le van a deber.
+    deuda = 0.0
+    for p in proyectos_qs:
+        for renglon in p.deuda_por_proveedor():
+            if getattr(renglon.get("proveedor"), "pk", None) == prov.pk:
+                deuda += float(renglon.get("total") or 0)
+
+    from apps.tesoreria.models import Egreso
+    from django.db.models import Sum
+    egresos = Egreso.vigentes.filter(proveedor=prov)
+    pagado = float(egresos.filter(estado_pago="pagado").aggregate(t=Sum("monto"))["t"] or 0)
+    por_pagar = float(
+        egresos.exclude(estado_pago="pagado").aggregate(t=Sum("monto"))["t"] or 0
+    )
+    ultimos = [
+        {"codigo": e.codigo, "fecha": e.fecha.isoformat(), "monto": float(e.monto),
+         "estado_pago": e.get_estado_pago_display(), "descripcion": e.descripcion[:80]}
+        for e in egresos.order_by("-fecha", "-pk")[:5]
+    ]
+    datos["dinero"] = {
+        "deuda_comprometida_en_proyectos": round(deuda, 2),
+        "egresos_pagados": pagado,
+        "egresos_por_pagar": por_pagar,
+        "ultimos_egresos": ultimos,
+    }
+    return datos
+
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 _LECTURAS: dict[str, Capacidad] = {
@@ -693,6 +790,17 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={"texto": {"tipo": "str", "requerido": True}},
         gating="catalogo", fn=_h_buscar_catalogo,
+    ),
+    "buscar_proveedor": Capacidad(
+        nombre="buscar_proveedor",
+        descripcion=(
+            "Ficha de UN proveedor por nombre: contacto, qué productos surte "
+            "con sus precios y costos, en qué proyectos anda, cuánto se le "
+            "debe y qué se le ha pagado (el dinero sólo si puedes ver "
+            "finanzas). Arg: nombre."
+        ),
+        args_schema={"nombre": {"tipo": "str", "requerido": True}},
+        gating="catalogo", fn=_h_buscar_proveedor,
     ),
     "mi_jornada_hoy": Capacidad(
         nombre="mi_jornada_hoy",

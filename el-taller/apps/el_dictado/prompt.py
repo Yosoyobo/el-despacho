@@ -122,7 +122,12 @@ PAYLOADS:
 - crear_variacion: {servicio, nombre, costo?, impresion_activa?, impresion_costo?, impresion_descripcion?, descripcion?}  (servicio = @accion_N del crear_servicio previo, o nombre del producto)
 - crear_proveedor: {razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?}
 - crear_cotizacion: {cliente_slug, titulo, items: [{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (impuestos: omite o 'default' = IVA por defecto; o lista de nombres de tasas)
-- crear_factura: {cliente_slug, titulo, items: [...igual que cotización...], proyecto_slug?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (se crea en borrador; NO es CFDI)
+- crear_factura: {cliente_slug, concepto, monto_total? | monto_base? | items?: [...igual que cotización...], proyecto_slug?, fecha_emision? ('YYYY-MM-DD'), fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos?}  (se crea en borrador; NO es CFDI)
+  `cliente_slug` acepta el nombre con el que llamamos al cliente O su RAZÓN SOCIAL FISCAL (la del CFDI, ej. "MARKETING VEINTITRES GRADOS"): el sistema la resuelve y liga al cliente correcto.
+  El monto va en UNO de los dos campos, según cómo te lo digan:
+  · `monto_total` = el importe FINAL del documento, YA con IVA y retenciones (lo normal al registrar una factura que ya existe: es la cifra del CFDI). El sistema despeja la base solo.
+  · `monto_base` = el importe ANTES de impuestos, cuando te dicen que hay que agregarle IVA y retenciones encima.
+  Si no queda claro cuál es, pregunta. Al registrar una factura que ya existe agrega también `fecha_emision` y `folio` si los traes, y NO inventes `items` desglosados.
 - crear_tarea: {proyecto_slug (o cliente_slug si solo sabes el cliente → su proyecto activo), titulo, asignado_slug?, fecha_compromiso? (SOLO fecha 'YYYY-MM-DD'), hora? ('HH:MM' aparte, NUNCA la metas en fecha_compromiso), prioridad?, tipo? ∈ tarea|entrega|junta|recoger, runner_slug?}
   (si tipo es entrega|recoger, el runner se asigna AUTOMÁTICAMENTE al crearla — NO agregues una acción `asignar_runner` aparte; solo da runner_slug si quieres uno específico)
 - actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso? ('YYYY-MM-DD'), hora? ('HH:MM'), tipo?}}  (tarea_id puede ser `@accion_N` si la tarea la creaste en una acción previa del mismo plan)

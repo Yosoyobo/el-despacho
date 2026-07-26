@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextlib
 from datetime import date as _date
+from datetime import timedelta as _timedelta
 from decimal import Decimal, InvalidOperation
 
 from . import _gate, registrar
@@ -309,39 +310,90 @@ def cobrar_factura(accion, usuario, contexto=None):
 
 @registrar("crear_factura")
 def crear_factura(accion, usuario, contexto=None):
-    """Crea una factura comercial en BORRADOR con líneas e impuestos.
+    """Crea una factura comercial en BORRADOR. NO emite y NO es un CFDI (§16).
 
-    NO emite (queda en borrador para revisión) y NO es un CFDI (regla §16).
-    Payload: cliente_slug, titulo, items: [{descripcion, precio_unitario,
-    cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?,
+    Tres formas de capturarla, según cómo venga dictada la cifra:
+
+    - **`monto_total`** — el importe FINAL del documento, ya con IVA y
+      retenciones (lo normal al registrar una factura que ya existe: es lo que
+      dice el CFDI). El sistema despeja la base para que el total calce al
+      centavo.
+    - **`monto_base`** — el importe ANTES de impuestos; el IVA y las
+      retenciones se calculan encima.
+    - **`items`** — desglose línea por línea: `[{descripcion,
+      precio_unitario, cantidad?, descuento_porcentaje?, servicio?}]`.
+
+    Payload: cliente_slug (nombre comercial, razón social fiscal o slug),
+    concepto|titulo, monto_total? | monto_base? | items?, proyecto_slug?,
+    fecha_emision?, fecha_vencimiento?, folio?,
     descuento_global_porcentaje?, notas?, terminos?, impuestos?.
     """
     _gate(usuario, "puede_crear_facturacion", "crear facturas")
     from apps.facturacion.models import Factura, FacturaImpuesto, FacturaItem
+    from apps.facturacion.services import fijar_linea_concepto, fijar_total_con_impuestos
     from django.db import transaction
 
     payload = accion.payload or {}
     cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower(), contexto)
-    titulo = (payload.get("titulo") or "").strip()
-    _exigir(bool(titulo), "Falta `titulo` de la factura.")
+    concepto = (payload.get("concepto") or payload.get("titulo") or "").strip()
+    _exigir(bool(concepto), "Falta el `concepto` de la factura.")
     items = payload.get("items")
-    _exigir(isinstance(items, list) and bool(items), "Necesitas al menos una línea en `items`.")
+    tiene_items = isinstance(items, list) and bool(items)
+    tiene_total = payload.get("monto_total") not in (None, "")
+    tiene_base = payload.get("monto_base") not in (None, "")
+    _exigir(
+        tiene_items or tiene_total or tiene_base,
+        "Dime el monto de la factura (`monto_total` si ya trae impuestos, "
+        "`monto_base` si van encima) o pásame sus `items`.",
+    )
     proyecto = _resolver_proyecto(payload["proyecto_slug"], contexto) if payload.get("proyecto_slug") else None
 
     with transaction.atomic():
         fac = Factura(
-            cliente=cliente, proyecto=proyecto, titulo=titulo[:200], estado="borrador",
+            cliente=cliente, proyecto=proyecto,
+            concepto=concepto[:200], titulo=concepto[:200], estado="borrador",
+            fecha_emision=_fecha(payload, "fecha_emision"),
             descuento_global_porcentaje=_descuento_global(payload),
             notas=(payload.get("notas") or ""), terminos=(payload.get("terminos") or ""),
             creado_por=usuario,
         )
+        if payload.get("fecha_vencimiento"):
+            fac.fecha_vencimiento = _fecha(payload, "fecha_vencimiento")
+        else:
+            # 30 días desde la emisión (el default del modelo cuenta desde hoy,
+            # que no sirve al capturar una factura de hace meses).
+            fac.fecha_vencimiento = fac.fecha_emision + _timedelta(days=30)
+        folio = _folio(payload)
+        if folio:
+            _exigir(
+                not Factura.objects.filter(folio_numero=folio).exists(),
+                f"El folio F{folio} ya está usado por otra factura.",
+            )
+            fac.folio_numero = folio
         fac.save()  # genera codigo FAC-YYYY-NNNN bajo atomic
-        _crear_lineas(FacturaItem, parent_attr="factura", parent=fac, items=items, contexto=contexto)
         for tasa in _tasas_a_aplicar(payload):
             FacturaImpuesto.objects.get_or_create(factura=fac, tasa=tasa)
+        if tiene_items:
+            _crear_lineas(FacturaItem, parent_attr="factura", parent=fac,
+                          items=items, contexto=contexto)
+        elif tiene_total:
+            # El monto dictado ya trae impuestos: se despeja la base.
+            fijar_total_con_impuestos(fac, _monto(payload, "monto_total"))
+        else:
+            # El monto dictado es la base: los impuestos se suman encima.
+            fijar_linea_concepto(fac, monto=_monto(payload, "monto_base"))
 
     accion.entidad_tipo = "factura"
     accion.entidad_id = fac.pk
+
+
+def _folio(payload: dict) -> int | None:
+    """Folio oficial «F###» dictado como número o como texto («F-106», «F106»)."""
+    crudo = payload.get("folio") or payload.get("folio_numero")
+    if crudo in (None, ""):
+        return None
+    digitos = "".join(c for c in str(crudo) if c.isdigit())
+    return int(digitos) if digitos else None
 
 
 # ── Cotizaciones ──────────────────────────────────────────────────────────────

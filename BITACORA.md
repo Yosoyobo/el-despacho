@@ -7316,3 +7316,123 @@ Las pastillas de clientes recientes se recortan al ancho sin indicador «+N» ·
 existente), no a la lista · el «al pie» de las notas es espaciado, no un footer
 real · `gastos._nombre_base` (etiquetas de egresos) se queda con el nombre del
 catálogo a propósito: es lo que se le compra al proveedor.
+
+---
+
+# BITÁCORA — S-Cotizacion-Documento-R2 (2026-07-25, VERSION 2026.07.30)
+
+> Segunda ronda de comentarios de Oscar sobre lo que se acababa de deployar
+> (2026.07.28 el documento, 2026.07.29 los ajustes de cotizaciones). Ocho
+> puntos, un solo deploy. Rama `agent/cotizacion-documento-r2`.
+
+## 1. Entregas
+
+### El PDF ya se ve como la vista previa
+
+La vista previa (HTML servido por Django) siempre estuvo bien; lo que se rompía
+era la **conversión a PDF de Google Docs**. Cinco quirks confirmados y
+documentados en el propio `pdf.html` para que no se vuelvan a pisar:
+
+1. Tabla sin borde declarado ⇒ Docs le pone **líneas negras** por default. Se
+   apagan con `border="0"` (atributo) **y** `border:none` en la tabla y en cada
+   celda. La casilla ✔ del desglose es la única que conserva línea.
+2. `margin:0 auto` **no centra** una tabla en Docs ⇒ `align="center"`.
+3. Un `<img>` no hereda el `text-align` del `<td>` ⇒ va en un
+   `<p align="center">`. (Ése era el logo descentrado.)
+4. `white-space:nowrap` se ignora ⇒ «Precio Unitario» partía renglón y dejaba
+   la fila de encabezados al doble de alto. Encabezado corto («P. Unitario») +
+   anchos en %.
+5. Docs mete su propio espacio **entre tablas** ⇒ el «renglón vacío» entre el
+   nombre del concepto y sus especificaciones. Se fusionaron en una sola tabla.
+
+### La foto del producto en el PDF (el hueco de la (f))
+
+Raíz: Google baja la imagen **anónimamente y con poca paciencia**. El endpoint
+firmado (`/catalogo/img/<token>`) se ponía a bajar el archivo de Drive en
+caliente —varios segundos— y la conversión se rendía. Por eso la vista previa la
+mostraba (el navegador sí espera) y el PDF no.
+
+Fix en `lib/imagen_publica.py`: `precalentar(file_id)` baja UNA vez, **reduce con
+Pillow** (`LADO_MAX=1000`, JPEG 82 o PNG si trae alfa) y deja los bytes en caché
+30 min; el endpoint sirve de `desde_cache` cuando está caliente;
+`cotizaciones.services._precalentar_imagenes(cot)` corre en `generar_pdf`
+**antes** de entregarle el HTML a Google. Todo best-effort: si Drive falla, se
+cae al camino de siempre.
+
+### Hueco dinámico de las notas
+
+`services._espacio_antes_de_notas(cot, filas, items, notas)` estima el alto del
+documento en puntos (hoja carta útil = 648pt) y devuelve lo que falta para
+llegar al pie. Si no cabe, devuelve 0 y el bloque pasa entero a la hoja
+siguiente (`page-break-inside:avoid`). Es **estimación** —la paginación real la
+hace Google—, así que se limita a media hoja: preferimos quedarnos cortos a
+provocar una página de más. Se quitó la línea divisoria.
+
+### Título del documento editable
+
+Campo `Cotizacion.titulo_documento_manual` (migr. `cotizaciones/0014`), property
+`titulo_documento_auto` (para mostrar «así saldría si lo dejas vacío»), campo en
+el recuadro «Documento» del detalle con autoguardado por `documento_opciones`, y
+**herencia** a la versión siguiente igual que los otros dos interruptores.
+
+### Ficha del proveedor
+
+Historial de proyectos **completo** (se quitó `exclude(cancelado, cerrado)` y el
+manager `activos`: un proyecto entregado desaparecía de la ficha) con badge de
+estado a color. **«¿Qué surte?» subió a la columna grande**; para que siga dentro
+del autoguardado el `<form>` ahora envuelve toda la rejilla y el bloque
+Estado/acciones se eyectó al pie (lleva sus propios `<form>`, no se anidan).
+
+### `buscar_proveedor` para El Chalán
+
+Capacidad de lectura nueva (gating `catalogo`): datos del proveedor, qué surte
+con precio/costo/margen, proyectos activos y un bloque `dinero` (deuda
+comprometida, egresos pagados / por pagar, últimos 5) que **sólo se arma con
+`puede_ver_finanzas`** — defensa en profundidad: el gate de la capacidad es del
+Catálogo, la deuda es otra cosa. Documentada en `CONSULTAS_CHAT` (§10).
+
+### Facturas dictadas
+
+- `_resolver_cliente` resuelve también por **razón social** (fiscal primero, que
+  es la del CFDI): exacta → parcial **inequívoca**. Dos candidatos no se
+  adivinan: se lanza el error de siempre.
+- `crear_factura` acepta `concepto`, `fecha_emision`, `fecha_vencimiento`,
+  `folio` («F-106» → 106, con aviso claro si ya existe) y el monto en tres
+  formas: **`monto_total`** (importe final del CFDI — se despeja la base con
+  `facturacion.services.fijar_total_con_impuestos`, que invierte el cálculo y
+  corrige el redondeo comparando contra `calcular_totales`), **`monto_base`**
+  (los impuestos van encima) o **`items`** desglosados.
+- Los 3 lugares de rigor tocados: ejecutor + `lib/dictado_catalogo` +
+  `prompt.py`.
+
+### Estados ocultos fuera de los filtros
+
+`_pills_estados` (Cotizaciones) salta los slugs con `activo=False` y toma el
+label del catálogo; los legacy (borrador/rechazada/anulada) no viven en la tabla
+y siempre salen. En Proyectos, `_estados_para_filtro()` hace lo mismo con el
+filtro de la lista, y el Kanban oculta la columna de un estado apagado **sólo si
+está vacía** (si hay proyectos parados ahí, esconderlos sería perderlos). El mapa
+cacheado de estados de proyecto pasó a **v3** (ahora incluye `activo`).
+
+### Dashboard
+
+Se quitó el atajo «Abrir chat» del recuadro del Chalán — el acceso vive en el
+sidebar.
+
+## 2. Tests
+
+`tests/taller/test_ajustes_cotizaciones_jul25_r2.py` (29). Se actualizó el test
+del Dashboard de la ronda anterior (dos controles, no tres). Ruff limpio; el
+candado de Bug C (§14) volvió a cazar un `{# … #}` multilínea, esta vez en
+`catalogo/proveedor_detalle.html`.
+
+## 3. Deuda diseñada
+
+- El hueco de las notas es una **estimación**: desde el HTML no hay forma de
+  saber cómo va a paginar Google. Si algún documento queda con más o menos aire
+  del ideal, es esto (nunca rompe el PDF).
+- La ficha del proveedor corta el historial a 100 proyectos.
+- `buscar_proveedor` es una ficha, no un reporte: no filtra por proyecto ni por
+  rango de fechas.
+- La factura dictada nace en **borrador**; emitirla y cobrarla siguen siendo
+  acciones aparte (`emitir_factura` / `cobrar_factura`).

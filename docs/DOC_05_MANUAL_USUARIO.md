@@ -5,6 +5,51 @@
 
 ---
 
+## Novedades — El documento de la cotización, ficha del proveedor y facturas al dictado (25 de julio de 2026 — sexta entrega)
+
+- **El PDF que descargas ya se ve como la vista previa.** Se corrigió lo que la
+  conversión a PDF estaba echando a perder: las **líneas negras** de las tablas
+  desaparecieron, la **tabla de precios va centrada** y su encabezado ya no se
+  parte en dos renglones, el **logotipo quedó centrado** en su recuadro y entre
+  el **nombre del producto y sus especificaciones** ya no hay un renglón en
+  blanco.
+- **La foto del producto ya sale en el PDF**, no nada más en la vista previa.
+  (Google tarda muy poco esperando la imagen; ahora se la dejamos lista de
+  antemano y reducida de tamaño.)
+- **Las notas del documento cambiaron.** Se les quitó la línea divisoria y el
+  espacio que las empuja al pie **se calcula solo**: si caben en lo que queda de
+  la hoja se van hasta abajo, y si ya no caben pasan **completas** a la
+  siguiente — nunca partidas a la mitad.
+- **El título del documento ahora se puede escribir a mano.** En la página de la
+  cotización, dentro del recuadro «Documento», hay un campo «Título del
+  documento». Viene lleno solo con el nombre del proyecto; si lo cambias, manda
+  lo que escribiste (y la siguiente versión lo hereda). Déjalo vacío para volver
+  al automático.
+- **La ficha del proveedor muestra su historial completo de proyectos**, no solo
+  los vigentes: un proyecto entregado o cerrado sigue apareciendo, con su estado
+  a color. Y el recuadro **«¿Qué surte?» se subió a la columna grande**, que es
+  lo primero que uno va a consultar.
+- **El Chalán ya sabe de proveedores.** Pregúntale «háblame de Simil Cuero
+  Plymouth» o «¿cuánto le debemos a Telas del Norte?» y te contesta con el
+  contacto, qué productos surte (con precios y costos), en qué proyectos anda,
+  cuánto se le debe y qué se le ha pagado. Lo del dinero solo lo ve quien tiene
+  permiso de finanzas.
+- **Registrar facturas dictándoselas al Chalán.** Ya identifica al cliente por
+  su **razón social fiscal** (la que aparece en el CFDI), así que si le pasas
+  «F-106 · MARKETING VEINTITRES GRADOS · 2026-04-15 · Bordado de mandiles
+  proyecto Marriott Bonvoy · $2,341.87» sabe que es de Optimist y guarda folio,
+  fecha, concepto y monto. El monto lo puedes dar de las dos formas:
+  **el total final** (ya con IVA y retenciones, como viene en la factura) o
+  **el monto antes de impuestos** para que él les sume el IVA y las retenciones
+  encima. La factura queda en borrador para que la revises.
+- **Un estado que ocultas ya no estorba en los filtros.** Si en Gerencia →
+  Catálogos apagas, por ejemplo, el estado de cotización «Enviada», su pastilla
+  desaparece de la página de Cotizaciones (igual con los estados de proyecto).
+- **El recuadro de El Chalán en el Inicio perdió el botón «Abrir chat»** — para
+  eso está «El Chalán» en el menú de la izquierda.
+
+---
+
 ## Novedades — Cotizaciones más claras, resumen del día y El Chalán corrige dinero (25 de julio de 2026 — quinta entrega)
 
 - **La lista de Cotizaciones abre en tabla.** Es la vista por default (las
@@ -3023,7 +3068,9 @@ Plymouth" en sus **Proveedores aplicables**.
 
 ### Proveedores
 
-CRM de quién te surte. Razón social, contacto, email, teléfono, RFC, dirección, notas. Su detalle muestra los productos que pueden surtirte, su **última ubicación** (de las visitas del Checador, con botón 📍 al mapa) y su **dirección fiscal** (con la casilla "es la misma que la dirección").
+CRM de quién te surte. Razón social, contacto, email, teléfono, RFC, dirección, notas. Su detalle muestra, en la columna grande, **¿Qué surte?** (las subcategorías), los **productos** que pueden surtirte y el **historial completo de proyectos** en los que ha participado —con su estado a color, incluidos los ya entregados o cerrados—. A la derecha quedan sus datos, su **última ubicación** (de las visitas del Checador, con botón 📍 al mapa) y su **dirección fiscal** (con la casilla "es la misma que la dirección").
+
+Si prefieres preguntarle a El Chalán: «háblame de Simil Cuero Plymouth» o «¿cuánto le debemos a Telas del Norte?» te devuelve la misma ficha en texto (el dinero, sólo si tienes permiso de finanzas).
 
 Desde el form de un producto puedes crear un proveedor nuevo sin salir: panel "+ Nuevo proveedor", lo creas y queda marcado como pastilla. También hay un acceso directo "Nuevo proveedor" en el Dashboard.
 
@@ -3076,6 +3123,26 @@ Abajo, una sección "Qué pueden hacer Los Chalanes" lista las acciones que el C
 - Crear recado · Crear mensaje del buzón
 - Registrar egreso · Registrar ingreso · Crear factura (borrador)
 - **Editar un ingreso · Editar un egreso · Editar una factura en borrador**
+
+**Registrar una factura dictándosela.** Le pasas los datos como los tengas y él
+arma la factura en borrador para que la confirmes:
+
+> "Registra la factura F-106 de MARKETING VEINTITRES GRADOS del 15 de abril:
+> Bordado de mandiles proyecto Marriott Bonvoy, $2,341.87."
+
+Dos cosas que ya sabe hacer:
+
+- **Identificar al cliente por su razón social fiscal** —la que aparece en el
+  CFDI—, no sólo por el nombre con el que lo llamamos. En el ejemplo entiende
+  que MARKETING VEINTITRES GRADOS es Optimist y lo liga. (Captura la razón
+  social fiscal del cliente en su ficha, en *Clientes*.)
+- **Leer el monto de las dos formas**: si le das el **total final** (lo que dice
+  la factura, ya con IVA y retenciones) despeja solo la base para que el total
+  cuadre al centavo; si le dices que el monto va **antes de impuestos**, les suma
+  el IVA y las retenciones encima. Cuando no quede claro cuál es, te pregunta.
+
+También guarda el **folio**, la **fecha de emisión** y el **concepto**. Queda en
+borrador: revísala y emítela desde la página de la factura.
 
 **Corregir lo que ya se capturó** (requiere permiso de Finanzas o de
 Facturación). Le dictas el cambio con el código del movimiento y él te lo
@@ -3176,18 +3243,21 @@ cuando terminan en `.00`.
 
 En el recuadro **Documento** (a la derecha, en la página de la cotización):
 
-| Interruptor | Qué hace |
+| Control | Qué hace |
 |---|---|
+| **Título del documento** | El encabezado centrado del PDF. Viene lleno solo («Producción de elementos para proyecto '…'»); escribe otro y manda el tuyo. Déjalo vacío para volver al automático. |
 | **Incluir desglose y montos** | Apagado, el PDF sólo lleva la tabla de montos de cada producto. Prendido, agrega al final el **Desglose de Elementos** (todos los conceptos juntos, con una casilla para que el cliente vaya marcando) y el cálculo de impuestos con el total. |
 | **Forma de pago** | **Anticipo** (usa el porcentaje que hayas capturado; si no hay, 50%) o **Un solo pago**. Cambia la última nota del PDF; el recuadro te muestra cómo va a quedar. |
 
-Los dos se heredan a la siguiente versión.
+Los tres se heredan a la siguiente versión.
 
-**Las notas van siempre completas** al pie (precios de producción, imágenes
+**Las notas van al pie, siempre completas** (precios de producción, imágenes
 ilustrativas, variaciones por proceso manual, existencias, precios sin IVA y la
 forma de pago). No se editan: son las condiciones con las que Learning Center
 cotiza. Si necesitas condiciones extra para un cliente, escríbelas en
-**Términos** y se agregan abajo como bloque aparte.
+**Términos** y se agregan abajo como bloque aparte. El hueco que las empuja al
+pie se calcula solo: si caben en lo que queda de la hoja bajan hasta el final, y
+si ya no caben pasan completas a la siguiente (nunca partidas).
 
 > **Ojo con las fotos:** salen del catálogo, así que un producto sin imagen sale
 > sin foto (el bloque no se ve roto, simplemente no la trae). Súbela en
