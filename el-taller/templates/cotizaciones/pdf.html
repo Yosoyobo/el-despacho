@@ -15,9 +15,11 @@ Cinco cosas que la conversión NO perdona (Oscar 2026-07-25, rondas 2 y 3):
    declarado SÓLO en la tabla no se dibuja — la línea de las DOS tablas de
    conceptos (montos y desglose) va celda por celda. El encabezado, los
    totales y las notas van sin líneas.
-2. `margin:0 auto` no centra tablas en Docs: se centra con `align="center"` y
-   `width` como ATRIBUTOS, no en el style. Un `<img>` tampoco hereda el
-   `text-align` de su `<td>`: va envuelto en un `<p align="center">`.
+2. Centrar una tabla no se puede: ni `margin:0 auto` ni `align="center"` con
+   `width` como atributos bastaron (Oscar seguía viéndolas a la izquierda). Lo
+   que sí funciona es dejar una COLUMNA VACÍA a cada lado dentro de la misma
+   tabla. Un `<img>` tampoco hereda el `text-align` de su `<td>`: va envuelto
+   en un `<p align="center">`.
 3. `white-space:nowrap` se ignora, así que un encabezado largo parte el
    renglón y deja la fila al doble de alto. Por eso los encabezados son
    cortos y las columnas llevan ancho en %.
@@ -32,8 +34,43 @@ desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py).
 Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
 {% endcomment %}
 <html lang="es">
-<head><meta charset="utf-8"><title>{{ cot.titulo_documento }}</title></head>
+<head><meta charset="utf-8"><title>{{ cot.titulo_documento }}</title>
+{% if preview %}
+{% comment %}Envoltorio SOLO de pantalla (LC 2026-07-26): hoja carta con sus
+márgenes sobre fondo gris + barra para bajar el PDF. Nada de esto viaja al
+documento que convierte Google — va todo dentro de `{% if preview %}`.{% endcomment %}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { background: #e5e7eb; margin: 0; }
+  .lc-barra { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap;
+    align-items: center; justify-content: space-between; gap: 12px;
+    background: #171717; color: #ffffff; padding: 10px 16px; font-size: 13px; }
+  .lc-barra a, .lc-barra button { font: inherit; text-decoration: none; cursor: pointer;
+    border-radius: 8px; padding: 7px 14px; border: 1px solid transparent; }
+  .lc-btn { background: #465fff; color: #ffffff; font-weight: 600; }
+  .lc-btn-sec { background: transparent; color: #e5e7eb; border-color: #4b5563; }
+  .lc-hoja { background: #ffffff; width: 8.5in; max-width: 100%; box-sizing: border-box;
+    margin: 24px auto; padding: 1in; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  @media (max-width: 900px) { .lc-hoja { padding: 0.5in; margin: 12px auto; } }
+  @media print {
+    body { background: #ffffff; }
+    .lc-barra { display: none; }
+    .lc-hoja { width: auto; margin: 0; padding: 0; box-shadow: none; }
+  }
+</style>
+{% endif %}
+</head>
 <body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt;">
+{% if preview %}
+<div class="lc-barra">
+  <span>Vista previa · <strong>{{ nombre_archivo }}</strong></span>
+  <span>
+    {% if url_descargar %}<a class="lc-btn" href="{{ url_descargar }}">&#11015; Bajar PDF</a>{% endif %}
+    <button type="button" class="lc-btn-sec" onclick="window.print()">Imprimir</button>
+  </span>
+</div>
+<div class="lc-hoja">
+{% endif %}
 
   {# Encabezado: fecha · logotipo (chico y al centro) · cliente #}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">
@@ -61,6 +98,9 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
   blanco entre el nombre y las especificaciones (Docs mete su propio espacio
   entre tablas y no hay forma de quitarlo).{% endcomment %}
   {% for fila in filas %}
+  {% comment %}Oscar 2026-07-26 (D): el bloque del producto —del título a su tabla
+  de montos— no se parte entre páginas.{% endcomment %}
+  <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:8pt;">
     <tr>
       <td style="border:none; width:22pt; vertical-align:top;">{{ forloop.counter }}.</td>
@@ -78,55 +118,68 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
     </tr>
     {% endif %}
   </table>
-  {% comment %}Tabla de montos: es la ÚNICA con línea negra en todo el
-  documento (Oscar 2026-07-25, tercera ronda). Va celda por celda —
-  `border-collapse` sin borde en la tabla no dibuja nada en Docs. Sin
-  `<thead>/<tbody>`: el convertidor los trata como bloques y metía un renglón
-  en blanco entre el encabezado gris y la fila. Se centra con `align` +
-  `width` como ATRIBUTOS (el `margin:0 auto` del style lo ignora).{% endcomment %}
-  <table align="center" width="78%" border="0" cellspacing="0" cellpadding="0" style="width:78%; border-collapse:collapse; margin:0 auto 26pt auto; font-size:10pt;">
+  {% comment %}Tabla de montos. Tres cosas aprendidas con el convertidor de Docs
+  (Oscar 2026-07-25 y 26):
+
+  · **Centrado (A).** Ni `margin:0 auto` ni `align="center"` centraron la tabla.
+    Lo que SÍ funciona en cualquier convertidor es una COLUMNA VACÍA a cada lado
+    dentro de la MISMA tabla (nada de tablas anidadas): la tabla ocupa el 100% y
+    las celdas con contenido quedan al centro.
+  · **Alineación (B).** Concepto a la izquierda; Cantidad, P. Unitario y
+    Subtotal a la derecha, encabezado incluido.
+  · **Línea (C).** Gris claro, no negra. Va celda por celda: un borde declarado
+    sólo en la tabla no se dibuja. Sin `<thead>/<tbody>` — el convertidor los
+    trata como bloques y metía un renglón en blanco.{% endcomment %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:26pt; font-size:10pt;">
     <tr>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:46%; text-align:center; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:16%; text-align:center; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">Subtotal</td>
+      <td style="border:none; width:11%;">&nbsp;</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:36%; text-align:left; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:12%; text-align:right; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:15%; text-align:right; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:15%; text-align:right; font-style:italic;">Subtotal</td>
+      <td style="border:none; width:11%;">&nbsp;</td>
     </tr>
     <tr>
-      <td style="border:1px solid #000000; padding:3pt 5pt; font-style:italic;">{{ fila.it.concepto_visible }}</td>
-      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
+      <td style="border:none;">&nbsp;</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:left; font-style:italic;">{{ fila.it.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
+      <td style="border:none;">&nbsp;</td>
     </tr>
   </table>
+  </div>
   {% empty %}
   <p style="color:#666666;">Sin conceptos.</p>
   {% endfor %}
 
   {# Desglose y cálculo de impuestos: solo si el interruptor está prendido #}
   {% if cot.incluir_desglose %}
+  {% comment %}Oscar 2026-07-26 (E): el desglose —del título a la tabla— tampoco
+  se parte entre páginas. Línea gris clara y columnas numéricas a la derecha,
+  igual que la tabla de montos; la primera columna es la casilla que el cliente
+  va marcando, así que va vacía a propósito.{% endcomment %}
+  <div style="page-break-inside:avoid;">
   <p style="text-align:center; font-size:12pt; margin:34pt 0 14pt 0;">Desglose de Elementos</p>
-  {% comment %}Igual que la tabla de montos: recuadro negro delgado celda por
-  celda y sin `<thead>/<tbody>` (Oscar 2026-07-25, tercera ronda — «tabla
-  desglose sí recuadro»). La primera columna es la casilla que el cliente va
-  marcando, así que va vacía a propósito.{% endcomment %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
     <tr>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:22pt; text-align:center;">&#10004;</td>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; text-align:center; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:16%; text-align:center; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #000000; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:center; font-style:italic;">Subtotal</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:22pt; text-align:center;">&#10004;</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; text-align:left; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:16%; text-align:right; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:right; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:right; font-style:italic;">Subtotal</td>
     </tr>
     {% for it in items %}
     <tr>
-      <td style="border:1px solid #000000; padding:3pt 5pt;">&nbsp;</td>
-      <td style="border:1px solid #000000; padding:3pt 5pt; font-style:italic;">{{ it.concepto_visible }}</td>
-      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #000000; padding:3pt 5pt; text-align:center;">{{ it.subtotal|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt;">&nbsp;</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
     </tr>
     {% endfor %}
   </table>
+  </div>
 
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">
     <tr>
@@ -178,5 +231,6 @@ Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
   <div style="font-size:10pt; white-space:pre-line;">{{ cot.terminos }}</div>
   {% endif %}
 
+{% if preview %}</div>{% endif %}
 </body>
 </html>

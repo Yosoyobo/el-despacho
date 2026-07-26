@@ -20,6 +20,16 @@ REFERENCIAS_ENTRE_ACCIONES = (
     "hace fuzzy match contra las entidades recién creadas."
 )
 
+# Cómo se identifica a un cliente en cualquier comando (LC 2026-07-26).
+IDENTIFICAR_CLIENTE = (
+    "Al cliente le puedes hablar como quieras: su nombre corto, el nombre con "
+    "el que lo llamamos, CUALQUIERA de sus razones sociales de facturación (un "
+    "cliente puede tener varias) o su RFC. Da igual acentos, puntuación y el "
+    "«S.A. de C.V.»: «MARKETING VEINTITRÉS GRADOS, S.A. DE C.V.» liga a "
+    "Optimist. Si el texto pega con dos clientes distintos, el Chalán lo dice "
+    "en lugar de adivinar."
+)
+
 
 COMANDOS_DICTADO: list[dict] = [
     {
@@ -53,14 +63,14 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_cliente",
         "titulo": "Crear cliente",
         "ejemplo": 'Crea un cliente que se llame "NoKo Devs".',
-        "payload": "razon_social, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?",
+        "payload": "razon_social, razon_social_fiscal? (la del CFDI), rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?",
         "gating": "cartera",
     },
     {
         "tipo": "actualizar_cliente",
         "titulo": "Actualizar cliente",
         "ejemplo": "Actualiza el teléfono de $noko-devs a 555-1234.",
-        "payload": "cliente_slug, campos: {razon_social?, rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}",
+        "payload": "cliente_slug, campos: {razon_social?, razon_social_fiscal? (la del CFDI), rfc?, nombre_contacto?, email_contacto?, telefono?, direccion?, notas?, estado?}",
         "gating": "cartera",
     },
     # ── Catálogo: crear productos/variaciones/proveedores (S-Chalan-Barrido).
@@ -206,7 +216,7 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_factura",
         "titulo": "Crear factura (borrador)",
         "ejemplo": 'Registra la factura F-106 de MARKETING VEINTITRES GRADOS del 15/04/2026: "Bordado de mandiles proyecto Marriott Bonvoy" por $2,341.87.',
-        "payload": "cliente_slug (nombre comercial o razón social fiscal), concepto, monto_total (una sola cifra dictada = importe FINAL de pago, ya con IVA y retenciones) | monto_base (cuando dicen «+ IVA» = subtotal, los impuestos se suman encima) | items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, fecha_emision?, fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres]). Nace en régimen «IVA y Retenciones».",
+        "payload": "cliente_slug (nombre, cualquiera de sus razones sociales o RFC), concepto, monto_total (una sola cifra dictada = importe FINAL de pago, ya con IVA y retenciones) | monto_base (cuando dicen «+ IVA» = subtotal, los impuestos se suman encima) | items:[{descripcion, precio_unitario, cantidad?, descuento_porcentaje?, servicio?}], proyecto_slug?, fecha_emision?, fecha_vencimiento?, folio?, descuento_global_porcentaje?, notas?, terminos?, impuestos? (default|[nombres]). Nace en régimen «IVA y Retenciones».",
         "gating": "facturacion_crear",
     },
     {
@@ -502,6 +512,7 @@ __all__ = [
     "COMANDOS_DICTADO",
     "COMANDOS_PROHIBIDOS",
     "REFERENCIAS_ENTRE_ACCIONES",
+    "IDENTIFICAR_CLIENTE",
     "CONSULTAS_CHAT",
     "BANNER_CHAT",
     "BANNER_RELEVO",

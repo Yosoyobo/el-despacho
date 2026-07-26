@@ -1197,6 +1197,69 @@ def reordenar_productos(request, pk):
     return HttpResponse(status=204)
 
 
+@require_POST
+def producto_imagen(request, prod_pk):
+    """Sube (o pega) la foto de un producto DESDE la tarjeta del proyecto.
+
+    **A dónde va la foto** (decisión Oscar, 2026-07-26): si la línea tiene alias
+    (`nombre_proyecto`), para el cliente es otro producto, así que la foto se
+    guarda en ESE uso; si no tiene alias, se guarda en el producto del catálogo
+    y la heredan todos sus usos. Lo decide el modelo
+    (`ProyectoProducto.imagen_destino`) para que la UI y la vista coincidan.
+
+    Devuelve JSON con la URL de la miniatura y el destino, para que la tarjeta
+    (o el historial de usos) se actualice sin recargar. Fallback gracioso si
+    Drive falla.
+    """
+    from django.http import JsonResponse
+
+    from lib.adjuntos import subir
+
+    linea = get_object_or_404(
+        ProyectoProducto.objects.select_related("proyecto", "servicio"), pk=prod_pk)
+    if not puede_editar_proyecto(request.user, linea.proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    archivo = request.FILES.get("imagen")
+    if not archivo:
+        return JsonResponse({"ok": False, "error": "No llegó ninguna imagen."}, status=400)
+    res = subir(archivo, subcarpeta="Productos")
+    if not res.ok:
+        return JsonResponse({"ok": False, "error": res.error})
+    file_id = res.data.get("id", "")
+    url_drive = res.data.get("webViewLink", "") or res.data.get("thumbnailLink", "")
+    destino = linea.imagen_destino
+    if destino == "uso":
+        linea.imagen_file_id = file_id
+        linea.imagen_url = url_drive
+        linea.save(update_fields=["imagen_file_id", "imagen_url"])
+    else:
+        srv = linea.servicio
+        srv.imagen_file_id = file_id
+        srv.imagen_url = url_drive
+        srv.save(update_fields=["imagen_file_id", "imagen_url", "actualizado_en"])
+        # Si la línea traía una foto propia de antes, se limpia: el usuario
+        # acaba de decidir que la del catálogo es la buena.
+        if linea.imagen_file_id:
+            linea.imagen_file_id = ""
+            linea.imagen_url = ""
+            linea.save(update_fields=["imagen_file_id", "imagen_url"])
+    emitir(EventoPortavoz(
+        tipo="proyecto.producto_imagen",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proyecto_id": linea.proyecto_id, "linea_id": linea.pk,
+                 "servicio_id": linea.servicio_id, "destino": destino,
+                 "file_id": file_id},
+    ))
+    return JsonResponse({
+        "ok": True,
+        "destino": destino,
+        "file_id": file_id,
+        "url": reverse("catalogo-imagen-producto", args=[file_id]) if file_id else "",
+        "mensaje": ("✓ Foto guardada para este uso." if destino == "uso"
+                    else "✓ Foto guardada en el producto del catálogo."),
+    })
+
+
 # ── Cotizaciones del proyecto (recuadro versionado, render Oscar 2026-06-27) ──
 
 # El botón "Enviar" del recuadro aún no manda correo real (El Cartero ya existe,

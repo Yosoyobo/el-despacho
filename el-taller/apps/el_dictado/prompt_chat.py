@@ -40,6 +40,12 @@ _REFS = """\
 REFERENCIAS ENTRE ACCIONES: si una acción depende de una entidad creada por
 otra acción del MISMO turno, usa `@accion_N` (N = índice 0-based) en vez de un
 slug inventado.
+
+CLIENTES: en `cliente_slug` pon el texto tal como te lo dijeron. El sistema lo
+identifica por su slug, por el nombre con el que lo llamamos, por CUALQUIERA de
+sus razones sociales de facturación o por su RFC (sin importar acentos,
+puntuación ni «S.A. de C.V.»). Si el texto es ambiguo, el sistema lo dice: no
+adivines ni inventes slugs.
 """
 
 

@@ -1,4 +1,8 @@
-from apps.la_cartera.forms import ClienteContactoFormSet, ClienteForm
+from apps.la_cartera.forms import (
+    ClienteContactoFormSet,
+    ClienteForm,
+    ClienteRazonSocialFormSet,
+)
 from apps.la_cartera.models import Cliente
 from apps.la_cartera.models.cliente import ESTADOS_CLIENTE
 from django.contrib import messages
@@ -38,6 +42,9 @@ def _buscar_clientes(qs, q):
         Q(razon_social__icontains=q)
         | Q(razon_social_fiscal__icontains=q)
         | Q(rfc__icontains=q)
+        # LC 2026-07-26: y por CUALQUIERA de sus razones sociales de facturación.
+        | Q(razones_sociales__razon_social__icontains=q)
+        | Q(razones_sociales__rfc__icontains=q)
         | Q(email_contacto__icontains=q)
         | Q(nombre_contacto__icontains=q)
         | Q(contactos__nombre__icontains=q)
@@ -277,6 +284,10 @@ def cliente_celda(request, pk):
     elif campo == "razon_social_fiscal":
         cliente.razon_social_fiscal = valor.upper()[:200]
         cliente.save(update_fields=["razon_social_fiscal", "actualizado_en"])
+        # LC 2026-07-26: la lista edita el campo legacy; la razón social
+        # PRINCIPAL se sincroniza para que las dos vistas digan lo mismo.
+        from apps.la_cartera.services import asegurar_razon_principal
+        asegurar_razon_principal(cliente)
     elif campo == "telefono":
         valor = valor[:40]
         cliente.telefono = valor
@@ -379,6 +390,19 @@ def cliente_quick_create(request):
     return JsonResponse({"ok": True, "id": cliente.pk, "razon_social": cliente.razon_social})
 
 
+def _razones_del_post(request, instance=None):
+    """Formset de razones sociales, sólo si su management form llegó.
+
+    Hay rutas que capturan al cliente sin esta sección (el quick-create HTMX, y
+    cualquier POST viejo que quedara en una pestaña abierta). Ahí devolvemos
+    None: la sección se omite en lugar de invalidar todo el guardado.
+    """
+    prefijo = ClienteRazonSocialFormSet.get_default_prefix()
+    if f"{prefijo}-TOTAL_FORMS" not in request.POST:
+        return None
+    return ClienteRazonSocialFormSet(request.POST, instance=instance)
+
+
 @login_required
 def nuevo(request):
     if not puede_editar_cartera(request.user):
@@ -393,10 +417,15 @@ def nuevo(request):
         # `asegurar_contacto_principal` deja un contacto principal si más tarde
         # se llenan los datos legacy.
         formset = None if es_htmx else ClienteContactoFormSet(request.POST)
-        if form.is_valid() and (formset is None or formset.is_valid()):
+        # LC 2026-07-26: razones sociales de facturación (varias, cada una con su
+        # RFC). Igual que Contactos: fuera del quick-create HTMX.
+        formset_razones = None if es_htmx else _razones_del_post(request)
+        if (form.is_valid() and (formset is None or formset.is_valid())
+                and (formset_razones is None or formset_razones.is_valid())):
             from apps.la_cartera.services import (
                 asegurar_contacto_principal,
                 espejar_contacto_principal,
+                espejar_razon_principal,
             )
             cliente = form.save(commit=False)
             cliente.creado_por = request.user
@@ -407,6 +436,10 @@ def nuevo(request):
                 espejar_contacto_principal(cliente)
             else:
                 asegurar_contacto_principal(cliente)
+            if formset_razones is not None:
+                formset_razones.instance = cliente
+                formset_razones.save()
+                espejar_razon_principal(cliente)
             emitir(EventoPortavoz(
                 tipo="cliente.creado",
                 actor_id=request.user.pk,
@@ -421,7 +454,8 @@ def nuevo(request):
     else:
         form = ClienteForm()
         formset = ClienteContactoFormSet()
-    ctx = {"form": form, "formset": formset, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"label": "Nuevo cliente"}], "back_url": "/cartera/", "back_label": "Clientes"}
+        formset_razones = ClienteRazonSocialFormSet()
+    ctx = {"form": form, "formset": formset, "formset_razones": formset_razones, "modo": "nuevo", "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"label": "Nuevo cliente"}], "back_url": "/cartera/", "back_label": "Clientes"}
     tmpl = "cartera/_modal_nuevo_cliente.html" if es_htmx else "cartera/form.html"
     return render(request, tmpl, ctx)
 
@@ -434,11 +468,19 @@ def editar(request, pk):
     if request.method == "POST":
         form = ClienteForm(request.POST, instance=cliente)
         formset = ClienteContactoFormSet(request.POST, instance=cliente)
-        if form.is_valid() and formset.is_valid():
-            from apps.la_cartera.services import espejar_contacto_principal
+        formset_razones = _razones_del_post(request, instance=cliente)
+        if (form.is_valid() and formset.is_valid()
+                and (formset_razones is None or formset_razones.is_valid())):
+            from apps.la_cartera.services import (
+                espejar_contacto_principal,
+                espejar_razon_principal,
+            )
             form.save()
             formset.save()
             espejar_contacto_principal(cliente)
+            if formset_razones is not None:
+                formset_razones.save()
+                espejar_razon_principal(cliente)
             emitir(EventoPortavoz(
                 tipo="cliente.actualizado",
                 actor_id=request.user.pk,
@@ -450,7 +492,8 @@ def editar(request, pk):
     else:
         form = ClienteForm(instance=cliente)
         formset = ClienteContactoFormSet(instance=cliente)
-    return render(request, "cartera/form.html", {"form": form, "formset": formset, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}], "back_url": f"/cartera/{cliente.pk}/", "back_label": cliente.razon_social})
+        formset_razones = ClienteRazonSocialFormSet(instance=cliente)
+    return render(request, "cartera/form.html", {"form": form, "formset": formset, "formset_razones": formset_razones, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}], "back_url": f"/cartera/{cliente.pk}/", "back_label": cliente.razon_social})
 
 
 @login_required

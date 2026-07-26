@@ -5,6 +5,48 @@
 
 ---
 
+## Novedades — Fotos de producto desde el proyecto, el documento más limpio y clientes con varias razones sociales (26 de julio de 2026 — octava entrega)
+
+- **La foto del producto ya se pone desde el proyecto.** En cada tarjeta de
+  «Productos involucrados» hay un recuadro de imagen: lo picas y pegas la foto
+  (Ctrl/Cmd+V) o eliges un archivo. Si al producto le pusiste **otro nombre en
+  ese proyecto**, la foto se guarda para **ese uso**; si no le cambiaste el
+  nombre, se guarda en el **producto del catálogo** y la heredan todos sus usos.
+  El sistema te dice a dónde se fue.
+- **Los nombres que le pones a un producto en cada proyecto ya se buscan.** Si
+  vendiste la playera como «TShirt Modelo Janet», escribes «Janet» en Productos
+  (o en el buscador de producto de una cotización) y aparece. El Chalán también
+  los reconoce.
+- **El «Historial de usos» de cada producto muestra su diferenciador y su foto.**
+  Segunda columna: con qué nombre se vendió en ese proyecto. Última columna: un
+  mini recuadro con la imagen, que también sirve para pegarle una foto nueva.
+- **La vista previa del documento ya se ve como una hoja.** Con sus márgenes,
+  centrada sobre fondo gris, y con un botón **«Bajar PDF»** hasta arriba (y otro
+  para imprimir).
+- **El documento de la cotización quedó más limpio.** Las tablas de conceptos
+  ahora sí salen centradas, el concepto va a la izquierda y Cantidad, P. Unitario
+  y Subtotal a la derecha, el recuadro es gris claro en lugar de negro, y ni un
+  producto ni el «Desglose de Elementos» se parten a media página.
+- **Los PDF se llaman igual siempre:** `COTIZACIÓN-CLIENTE-Proyecto-v2`, con el
+  cliente en mayúsculas, el proyecto sin espacios y la versión en minúsculas.
+- **«Resumir pendientes» cambió dos secciones.** «FACTURAS X EMITIR» ya no cuenta
+  los proyectos que no llevan IVA (esos no se facturan), y «FACTURAS X COBRAR»
+  ahora se llama **«CUENTAS X COBRAR»** e incluye todo lo pendiente de cobro:
+  facturas con saldo, anticipos por facturar y proyectos sin factura ligada.
+- **Un cliente puede facturar con varias razones sociales.** En su ficha hay una
+  sección «Datos de facturación» donde agregas cuantas use, cada una con **su
+  RFC en la misma línea**. Y una misma razón social ya puede aplicar para dos
+  clientes distintos (el caso de Grupo Lazanto con Cueva y Kari Kari).
+- **El Chalán reconoce al cliente por su razón social o su RFC.** Le dictas
+  «MARKETING VEINTITRÉS GRADOS, S.A. DE C.V.» y liga a Optimist — le da igual
+  los acentos, la puntuación y el «S.A. de C.V.». Si el nombre pega con dos
+  clientes te lo dice en lugar de adivinar.
+- **La referencia (slug) se ve en la ficha del proyecto y del cliente.** Es el
+  nombre con el que se le menciona a El Chalán y con `#` o `$` en los textos.
+- **La lista de facturas ya no se parte en páginas:** se ven todas de corrido.
+
+---
+
 ## Novedades — Los centavos de las facturas, el documento con su recuadro y «Resumir pendientes» (25 de julio de 2026 — séptima entrega)
 
 - **Los totales de las facturas ya cuadran al centavo con el CFDI.** Al capturar
@@ -2814,7 +2856,7 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
 - **Próximos eventos:** las siguientes entregas y tareas con fecha. Click en la tarjeta te lleva al calendario completo.
 - **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están los dos botones: **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
-  - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada), **COTIZACIONES** (proyectos por cotizar) y **FACTURAS X COBRAR** (facturas emitidas con saldo). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **FACTURAS X COBRAR sale completa** (vencidas incluidas) hasta que se marquen cobradas o se les ligue el cobro. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
+  - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
   - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (se arma con datos, sin IA). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
 - **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. "Ver Kanban completo" abre el tablero con todas las columnas.
@@ -2830,9 +2872,10 @@ Tus clientes B2B (restaurantes, heladerías, cafeterías, etc.).
 - **Lista:** filtra por nombre, ve quiénes tienen proyectos activos, marca "Mostrar archivados" para ver los inactivos. La tabla incluye una columna de **Teléfono**.
 - **Edición rápida:** el botón **"✎ Edición rápida"** de la lista te deja editar **Nombre**, **Razón social**, **Teléfono** y **Estado** (pastillas de color) de cada cliente directo en la tabla; cada cambio se guarda solo. El teléfono que capturas aquí también actualiza el del contacto principal. Se quitó el botón "Ver" (la fila entera ya abre el cliente).
 - **Eliminar archivados:** en la sección de clientes archivados hay una **✕** para borrar un cliente **permanentemente** (solo super admin; bloqueado si tiene proyectos o facturas ligadas).
-- **Nuevo cliente:** nombre, RFC, contacto, email y teléfono.
-- **Nombre vs. Razón social:** el **"Nombre"** es con el que operas día a día; la **"Razón social"** (opcional) es el nombre legal para el CFDI/facturación. El **Estado** (prospecto / activo / inactivo) se elige con pastillas.
-- **Detalle:** ves todos sus proyectos (con el **nombre en azul** para abrir y el **código** en gris). La **Razón social** aparece como subtítulo bajo el nombre y en el recuadro **"Identificación"** junto al RFC. Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
+- **Nuevo cliente:** nombre, contacto, email y teléfono.
+- **Nombre vs. Razón social:** el **"Nombre"** es con el que operas día a día; las **razones sociales** son los nombres legales para el CFDI.
+- **Datos de facturación (varias razones sociales):** al editar el cliente hay una sección donde agregas **todas las razones sociales con las que factura**, cada una con **su RFC en la misma línea**. Marca una como **Principal**: es la que se usa por default y la que aparece en su ficha. Una misma razón social puede aplicar para **dos clientes distintos** (el caso de Grupo Lazanto con Cueva y Kari Kari) — el sistema ya no lo bloquea.
+- **Detalle:** ves todos sus proyectos (con el **nombre en azul** para abrir y el **código** en gris) y el recuadro **"Identificación"** con **todas** sus razones sociales y RFC, más su **Referencia** (`$slug`: el nombre con el que se le menciona a El Chalán y con `$` en los textos). Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
 - **Ubicación y dirección fiscal:** el detalle muestra la **última ubicación** del cliente (tomada de las visitas del Checador, con botón 📍 al mapa) y su **dirección**. Al editar hay una casilla **"la dirección fiscal es la misma"**; si la destildas, capturas la **dirección fiscal** por separado.
 - **Crear cliente sin salir:** desde el form de un proyecto nuevo hay un botón "+ Nuevo" al lado del selector de cliente.
 
@@ -2900,6 +2943,13 @@ La página es **editable directo** (los cambios se guardan solos; verás
     proyectos uso la playera de Crea Blanks?»). Con **«usar el nombre del
     catálogo»** regresas al original.
   - **Proveedor** principal + costo unitario + notas.
+  - **Imagen:** un recuadro donde **pegas la foto** del producto. Pícalo para
+    elegir a dónde va y pega con **Ctrl/Cmd+V** (o usa «elige un archivo»). Si a
+    esa línea le pusiste **otro nombre en este proyecto**, la foto se guarda para
+    **ese uso**; si no le cambiaste el nombre, se guarda en el **producto del
+    catálogo** y la heredan todos sus usos. El sistema confirma a dónde se fue.
+    Es la foto que sale en el documento de la cotización, y queda **congelada**
+    en cada versión que generes.
   - **Impresión** (proveedor + costo) y el botón **"+ Proceso"** para sumar
     gastos operativos sueltos (materiales, viáticos, embalaje…).
   - **Monto calculado** (precio × cantidad) abajo a la derecha.
@@ -3048,12 +3098,19 @@ Lo que vendes/produces. Cada producto tiene:
 - **Impresión y procesos adicionales** (ver abajo).
 - **Usos:** la columna "Usos" de la lista cuenta las veces que el producto se
   ha usado en proyectos; al abrir el producto ves su **bitácora de Usos** (en
-  qué proyectos se usó, con cantidad, costo, precio, proveedor e impresión).
+  qué proyectos se usó, con qué **diferenciador** —el nombre que se le puso en
+  ese proyecto—, cantidad, costo, precio, proveedor, impresión y un **mini
+  recuadro con su imagen**, que también sirve para pegarle una foto nueva).
+- **Imagen:** se pega (Ctrl/Cmd+V) o se sube en la ficha del producto, y también
+  desde la tarjeta del producto **en la página de un proyecto** (ver Proyectos).
 
-El **buscador** de la lista encuentra productos por su nombre **y también por el
-nombre del proveedor** (escribe "Plymouth" y salen todos los suyos). Cuando
-**creas** un producto, el sistema te deja en **su página** para que sigas con la
-imagen, los proveedores y los procesos.
+El **buscador** de la lista encuentra productos por su nombre, por el **nombre
+del proveedor** (escribe "Plymouth" y salen todos los suyos) y por **cualquier
+nombre con el que se haya vendido en un proyecto** (si la playera se vendió como
+"TShirt Modelo Janet", escribe "Janet" y aparece). Los selectores de producto de
+proyectos, cotizaciones y facturas buscan igual. Cuando **creas** un producto, el
+sistema te deja en **su página** para que sigas con la imagen, los proveedores y
+los procesos.
 
 Para sacar un producto de circulación usa **Archivar** (se puede **Reactivar**);
 el borrado permanente sólo lo hace super admin y sólo si no se ha usado.
@@ -3166,10 +3223,14 @@ arma la factura en borrador para que la confirmes:
 
 Dos cosas que ya sabe hacer:
 
-- **Identificar al cliente por su razón social fiscal** —la que aparece en el
-  CFDI—, no sólo por el nombre con el que lo llamamos. En el ejemplo entiende
-  que MARKETING VEINTITRES GRADOS es Optimist y lo liga. (Captura la razón
-  social fiscal del cliente en su ficha, en *Clientes*.)
+- **Identificar al cliente por su razón social o su RFC**, no sólo por el nombre
+  con el que lo llamamos: le sirve **cualquiera** de las razones sociales que le
+  capturaste (un cliente puede tener varias) y le dan igual los acentos, la
+  puntuación y el «S.A. de C.V.». En el ejemplo entiende que MARKETING VEINTITRES
+  GRADOS es Optimist y lo liga. Esto aplica a **todo** lo que le pidas de un
+  cliente, no sólo a las facturas; si el nombre pega con dos clientes te lo dice
+  en lugar de adivinar. (Captura sus razones sociales en su ficha, en *Clientes*
+  → «Datos de facturación».)
 - **Leer el monto sin preguntarte cuál es.** Una sola cifra («$2,341.87») es el
   **importe final de pago**, el que dice el CFDI: despeja solo la base para que
   el total cuadre al centavo. Si le dices **«+ IVA»** («20,700 más IVA»), esa
@@ -3273,10 +3334,19 @@ se mueve aunque generes la v2.
 
 El PDF lleva el formato de Learning Center: fecha, logotipo y cliente arriba; el
 nombre del proyecto centrado; cada producto **numerado** con sus
-especificaciones, **la foto del producto** (la del catálogo) y su tabla de
-Cantidad / Precio Unitario / Subtotal (con recuadro negro delgado, igual que la
-tabla del Desglose; son las únicas del documento con líneas). Los montos van sin
-IVA y sin centavos cuando terminan en `.00`.
+especificaciones, **su foto** (la del uso si le pegaste una en la tarjeta del
+proyecto, si no la del catálogo) y su tabla de Cantidad / P. Unitario / Subtotal.
+Esas tablas van **centradas**, con el concepto a la izquierda y los números a la
+derecha, y con **recuadro gris claro** (igual que la tabla del Desglose; son las
+únicas del documento con líneas). Ni un producto ni el «Desglose de Elementos» se
+parten a media página. Los montos van sin IVA y sin centavos cuando terminan en
+`.00`.
+
+**Verlo y bajarlo:** «Ver» abre la **vista previa** —el documento como una hoja
+con sus márgenes— con un botón **«⬇ Bajar PDF»** hasta arriba (y otro para
+imprimir). El archivo se llama siempre igual:
+`COTIZACIÓN-CLIENTE-NombreDelProyecto-v2`, con el cliente en mayúsculas, el
+proyecto sin espacios y la versión en minúsculas.
 
 El **Título del documento** (el encabezado centrado del PDF) se edita hasta
 arriba de la página de la cotización, en la columna principal: viene con el

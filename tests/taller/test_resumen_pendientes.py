@@ -113,7 +113,7 @@ def test_misiones_lista_mandados_abiertos(proyecto_factory, usuario_factory):
     assert "sin runner" in mis["lineas"][0]
 
 
-# ── TIZAYUCA · FACTURAS X EMITIR · COTIZACIONES · FACTURAS X COBRAR ──────
+# ── TIZAYUCA · FACTURAS X EMITIR · COTIZACIONES · CUENTAS X COBRAR ───────
 
 
 def test_tizayuca_lista_un_renglon_por_producto(proyecto_factory, usuario_factory):
@@ -159,7 +159,7 @@ def test_facturas_por_emitir_excluye_proyectos_ya_facturados(proyecto_factory, u
     assert "Apenas cotizando" in "\n".join(_seccion(secs, "COTIZACIONES")["lineas"])
 
 
-def test_facturas_por_cobrar_solo_con_saldo(proyecto_factory, usuario_factory):
+def test_cuentas_por_cobrar_solo_con_saldo(proyecto_factory, usuario_factory):
     from apps.facturacion.models import Factura, FacturaItem
     from apps.taller_home.pendientes import secciones_pendientes
 
@@ -176,9 +176,11 @@ def test_facturas_por_cobrar_solo_con_saldo(proyecto_factory, usuario_factory):
         fecha_emision=dt.date.today(), fecha_vencimiento=dt.date.today(),
     )
 
-    cobrar = "\n".join(_seccion(secciones_pendientes(admin), "FACTURAS X COBRAR")["lineas"])
-    assert fac.folio_display in cobrar
-    assert pagada.folio_display not in cobrar
+    # LC 2026-07-26: la sección pasó a llamarse CUENTAS X COBRAR y ahora sale del
+    # CxC unificado (facturas + anticipos + proyectos), identificada por código.
+    cobrar = "\n".join(_seccion(secciones_pendientes(admin), "CUENTAS X COBRAR")["lineas"])
+    assert fac.codigo in cobrar
+    assert pagada.codigo not in cobrar
 
 
 def test_disenador_no_ve_secciones_de_facturacion(proyecto_factory, usuario_factory):
@@ -187,7 +189,7 @@ def test_disenador_no_ve_secciones_de_facturacion(proyecto_factory, usuario_fact
     disenador = usuario_factory(rol="disenador")
     titulos = [s["titulo"] for s in secciones_pendientes(disenador)]
     assert "FACTURAS X EMITIR" not in titulos
-    assert "FACTURAS X COBRAR" not in titulos
+    assert "CUENTAS X COBRAR" not in titulos
     assert "URGENTES" in titulos
 
 

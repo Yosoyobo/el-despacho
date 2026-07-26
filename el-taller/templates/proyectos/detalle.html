@@ -23,6 +23,9 @@
             </div>
             {# Metadata + Resumir actividad, justo debajo del título. #}
             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
+                {% comment %}El slug es la referencia con la que se nombra el
+                proyecto en El Chalán y con `#` en los textos (Oscar 2026-07-26).{% endcomment %}
+                <span class="font-mono text-xs text-gray-400 dark:text-gray-500" title="Con este nombre se menciona el proyecto en El Chalán y con # en los textos">#{{ proyecto.slug }}</span>
                 <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|hfmt:"d M Y H:i" }}</time></span>
                 {% include "proyectos/_guardado_indicador.html" with estado="guardado" %}
                 <span id="autosave-error-detalle" class="text-xs text-error-600 dark:text-error-400"></span>

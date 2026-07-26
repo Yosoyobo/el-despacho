@@ -24,6 +24,10 @@ urlpatterns = [
     path("<int:pk>/quitar-producto/<int:prod_pk>", views.quitar_producto, name="proyectos-quitar-producto"),
     # LC Fase 2: persistir el orden (drag & drop) de las tarjetas de producto.
     path("<int:pk>/reordenar-productos", views.reordenar_productos, name="proyectos-reordenar-productos"),
+    # LC 2026-07-26: foto del producto desde la tarjeta del proyecto (pegar o
+    # subir). `prod_pk` es de la LÍNEA — el destino (uso vs catálogo) lo decide
+    # el alias, así que no hace falta pasarlo por la URL.
+    path("producto/<int:prod_pk>/imagen", views.producto_imagen, name="proyectos-producto-imagen"),
     # Revisión buzón R2: mini-Chalán del quick-create aplica los productos confirmados.
     path("<int:pk>/productos-ia-aplicar", views.proyecto_productos_ia_aplicar, name="proyectos-productos-ia-aplicar"),
     # Recuadro «Cotizaciones» del proyecto (versionado, render Oscar 2026-06-27).

@@ -84,8 +84,13 @@ def lista(request):
         # LC 2026-07-25: el buscador también encuentra por PROVEEDOR (escribes
         # "Plymouth" y salen sus productos). `distinct` porque el join M2M
         # duplicaría filas cuando varios proveedores hacen match.
+        # LC 2026-07-26 (Oscar): y por los ALIAS con los que se vendió en algún
+        # proyecto («TShirt Modelo Janet» encuentra la playera del catálogo) —
+        # los alias son parte de la base buscable de productos.
         qs = qs.filter(
-            Q(nombre__icontains=q) | Q(proveedores__razon_social__icontains=q)
+            Q(nombre__icontains=q)
+            | Q(proveedores__razon_social__icontains=q)
+            | Q(en_proyectos__nombre_proyecto__icontains=q)
         ).distinct()
     if categoria_id:
         qs = qs.filter(categoria_id=categoria_id)
@@ -352,7 +357,7 @@ def editar(request, pk: int):
     # abajo mostramos el historial de usos (solo lectura).
     usos = (
         srv.en_proyectos
-        .select_related("proyecto", "proyecto__cliente", "variacion", "proveedor")
+        .select_related("servicio", "proyecto", "proyecto__cliente", "variacion", "proveedor")
         .prefetch_related("procesos__proveedor")
         .order_by("-creado_en")
     )
@@ -417,7 +422,7 @@ def usos_lista(request, pk: int):
     ve_precios = puede(request.user, "catalogo", "ver_precios")
     usos = (
         srv.en_proyectos
-        .select_related("proyecto", "proyecto__cliente", "variacion", "proveedor")
+        .select_related("servicio", "proyecto", "proyecto__cliente", "variacion", "proveedor")
         .prefetch_related("procesos__proveedor")
         .order_by("-creado_en")
     )
@@ -1085,7 +1090,81 @@ def servicio_imagen(request, pk: int):
         actor_id=request.user.pk, actor_email=request.user.email,
         payload={"servicio_id": srv.pk, "file_id": srv.imagen_file_id},
     ))
-    return JsonResponse({"ok": True, "url": srv.imagen_url, "file_id": srv.imagen_file_id})
+    # `imagen_url` de Drive es una PÁGINA, no una imagen: la miniatura se sirve
+    # por el proxy autenticado.
+    return JsonResponse({
+        "ok": True,
+        "file_id": srv.imagen_file_id,
+        "url": reverse("catalogo-imagen-producto", args=[srv.imagen_file_id]) if srv.imagen_file_id else "",
+        "destino": "catalogo",
+        "mensaje": "✓ Foto guardada en el producto del catálogo.",
+    })
+
+
+def _es_imagen_de_producto(file_id: str) -> bool:
+    """True si el `file_id` es la foto de un producto del catálogo, de un uso en
+    un proyecto o de una línea de cotización.
+
+    Es el candado que evita que un enlace sirva para leer archivos arbitrarios
+    de Drive (mismo criterio para el proxy autenticado y el enlace firmado).
+    """
+    if not file_id:
+        return False
+    if Servicio.objects.filter(imagen_file_id=file_id).exists():
+        return True
+    try:
+        from apps.los_proyectos.models import ProyectoProducto
+        if ProyectoProducto.objects.filter(imagen_file_id=file_id).exists():
+            return True
+    except Exception:  # noqa: BLE001 — app no instalada en este proyecto Django
+        pass
+    try:
+        from apps.cotizaciones.models import CotizacionItem
+        if CotizacionItem.objects.filter(imagen_file_id=file_id).exists():
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def _bytes_de_imagen(file_id: str):
+    """`(contenido, mime)` de la imagen: de la caché si está precalentada, si no
+    bajándola de Drive. `None` si no se pudo o no es una imagen."""
+    from lib.imagen_publica import desde_cache
+
+    cacheada = desde_cache(file_id)
+    if cacheada is not None:
+        contenido, mime = cacheada
+    else:
+        try:
+            from lib.google_drive import drive
+            contenido, mime, _ = drive.descargar(file_id)
+        except Exception:  # noqa: BLE001 — Drive caído o sin permisos
+            return None
+    if not (mime or "").startswith("image/"):
+        return None
+    return contenido, mime
+
+
+@require_http_methods(["GET"])
+def imagen_producto(request, file_id: str):
+    """Sirve la foto de un producto DENTRO del sistema (miniaturas y previews).
+
+    Autenticado y gateado por `catalogo.ver_nombres`; sólo entrega archivos que
+    sean imagen de un producto, de un uso o de una línea de cotización. A
+    diferencia del enlace firmado (`imagen_producto_publica`, para Google), este
+    no caduca — la miniatura sigue viéndose aunque la pestaña quede abierta.
+    """
+    if (r := _gate(request, "ver_nombres")) is not None:
+        return r
+    if not _es_imagen_de_producto(file_id):
+        return HttpResponse(status=404)
+    datos = _bytes_de_imagen(file_id)
+    if datos is None:
+        return HttpResponse(status=404)
+    resp = HttpResponse(datos[0], content_type=datos[1])
+    resp["Cache-Control"] = "private, max-age=600"
+    return resp
 
 
 @require_http_methods(["GET"])
@@ -1098,8 +1177,9 @@ def imagen_producto_publica(request, token: str):
     contraseña, y está cerrada con tres candados:
 
     1. el token debe venir firmado con `DJANGO_SECRET_KEY` y no haber expirado,
-    2. el `file_id` debe ser la imagen de algún producto del catálogo — así un
-       token no sirve para leer archivos arbitrarios de Drive, y
+    2. el `file_id` debe ser la imagen de un producto del catálogo, de un uso en
+       un proyecto o de una línea de cotización — así un token no sirve para
+       leer archivos arbitrarios de Drive, y
     3. sólo responde si Drive devuelve un `image/*`.
 
     Cualquier fallo es un 404 seco (no filtra si el archivo existe o no).
@@ -1108,24 +1188,15 @@ def imagen_producto_publica(request, token: str):
     un PDF): Google no espera mucho y bajar de Drive en caliente tarda lo
     suficiente como para que la conversión se rinda y deje el hueco.
     """
-    from lib.imagen_publica import desde_cache, verificar
+    from lib.imagen_publica import verificar
 
     file_id = verificar(token)
-    if not file_id:
+    if not file_id or not _es_imagen_de_producto(file_id):
         return HttpResponse(status=404)
-    if not Servicio.objects.filter(imagen_file_id=file_id).exists():
+    datos = _bytes_de_imagen(file_id)
+    if datos is None:
         return HttpResponse(status=404)
-    cacheada = desde_cache(file_id)
-    if cacheada is not None:
-        contenido, mime = cacheada
-    else:
-        try:
-            from lib.google_drive import drive
-            contenido, mime, _ = drive.descargar(file_id)
-        except Exception:  # noqa: BLE001 — Drive caído o sin permisos
-            return HttpResponse(status=404)
-    if not (mime or "").startswith("image/"):
-        return HttpResponse(status=404)
+    contenido, mime = datos
     resp = HttpResponse(contenido, content_type=mime)
     # El enlace ya es efímero por la firma; que nadie lo cachee en el camino.
     resp["Cache-Control"] = "private, max-age=300"

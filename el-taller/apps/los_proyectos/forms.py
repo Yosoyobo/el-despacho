@@ -247,6 +247,19 @@ class ProyectoProductoForm(forms.ModelForm):
         for _c in ("servicio", "proveedor"):
             if _c in self.fields:
                 self.fields[_c].widget.attrs["data-select-buscable"] = "1"
+        # LC 2026-07-26 (Oscar): el Producto además se encuentra escribiendo el
+        # PROVEEDOR o cualquier ALIAS con el que se vendió en otro proyecto. El
+        # widget lo marca en `data-buscar` (los alias salen de UNA consulta
+        # cacheada, sin N+1).
+        if "servicio" in self.fields:
+            from apps.el_catalogo.widgets import SelectProductoBuscable
+            campo_srv = self.fields["servicio"]
+            campo_srv.widget = SelectProductoBuscable()
+            # OJO (mismo tropiezo de S-Proveedores-Bidireccional): el setter de
+            # `queryset` es lo que propaga las `choices` AL WIDGET ACTUAL. Al
+            # cambiar el widget hay que re-asignar el queryset o el `<select>`
+            # sale vacío.
+            campo_srv.queryset = campo_srv.queryset
         # LC 2026-07: el dropdown de Producto muestra «Nombre - Proveedor».
         def _etiqueta_servicio(s):
             prov = next((p for p in s.proveedores.all() if p.activo), None)

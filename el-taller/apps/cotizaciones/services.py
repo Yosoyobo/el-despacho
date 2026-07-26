@@ -43,13 +43,18 @@ def emitir_eliminada(cot: Cotizacion, actor):
     _emitir("cotizacion.eliminada", cot, actor, {"titulo": cot.titulo})
 
 
-def construir_html_pdf(cot: Cotizacion) -> str:
+def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
     """Renderiza el HTML imprimible de la cotización (template `pdf.html`).
 
     Las imágenes van con **URL absoluta, pública y firmada**: el PDF lo genera
     Google convirtiendo este HTML, y Google baja las imágenes desde sus
     servidores de forma anónima (ver `lib.imagen_publica`). Una ruta relativa o
     el proxy autenticado dejarían huecos en el documento.
+
+    `preview=True` añade SOLO el envoltorio de pantalla (hoja carta con sus
+    márgenes, fondo gris y barra con «Bajar PDF»). El documento que se le manda
+    a Google va siempre sin envoltorio — así el preview se puede maquillar sin
+    tocar el PDF.
     """
     from django.template.loader import render_to_string
 
@@ -61,12 +66,13 @@ def construir_html_pdf(cot: Cotizacion) -> str:
     filas = [
         {
             "it": it,
-            # La foto sale del catálogo (decisión Oscar: una sola por producto).
-            "imagen": url_absoluta(getattr(it.servicio, "imagen_file_id", "") or ""),
+            # La foto: la congelada en la línea (la del uso del proyecto, si le
+            # pusieron una propia) o, si no, la del producto del catálogo.
+            "imagen": url_absoluta(it.imagen_visible_file_id),
             # Proporción real de la foto: el ancho es fijo en el documento, así
             # que de aquí sale su alto para estimar la página (ver el hueco de
             # las notas más abajo).
-            "proporcion": proporcion(getattr(it.servicio, "imagen_file_id", "") or ""),
+            "proporcion": proporcion(it.imagen_visible_file_id),
         }
         for it in items
     ]
@@ -88,7 +94,19 @@ def construir_html_pdf(cot: Cotizacion) -> str:
         "notas": notas,
         "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
         "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items, notas),
+        "preview": preview,
+        "url_descargar": _url_descargar(cot) if preview else "",
+        "nombre_archivo": cot.nombre_pdf,
     })
+
+
+def _url_descargar(cot: Cotizacion) -> str:
+    """Ruta para bajar el PDF real (Drive). "" si el urlconf no la expone."""
+    from django.urls import NoReverseMatch, reverse
+    try:
+        return reverse("cotizaciones:pdf", args=[cot.pk])
+    except NoReverseMatch:
+        return ""
 
 
 # Hoja carta con márgenes de una pulgada: 792pt − 144pt de márgenes.
@@ -165,7 +183,7 @@ def _precalentar_imagenes(cot: Cotizacion) -> None:
 
     vistos = set()
     for it in cot.items.select_related("servicio").all():
-        file_id = getattr(it.servicio, "imagen_file_id", "") or ""
+        file_id = it.imagen_visible_file_id
         if file_id and file_id not in vistos:
             vistos.add(file_id)
             precalentar(file_id)
@@ -343,6 +361,7 @@ def duplicar(cot: Cotizacion, actor) -> Cotizacion:
                 orden=it.orden,
                 servicio=it.servicio,
                 concepto=it.concepto,
+                imagen_file_id=it.imagen_file_id,
                 descripcion=it.descripcion,
                 cantidad=it.cantidad,
                 unidad=it.unidad,
@@ -496,6 +515,9 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
                 servicio=pp.servicio if pp.servicio_id else None,
                 variacion=pp.variacion if pp.variacion_id else None,
                 concepto=pp.nombre_visible[:150],
+                # La foto se congela con la versión: la del uso si le pusieron
+                # una propia, si no la del catálogo (LC 2026-07-26).
+                imagen_file_id=pp.imagen_efectiva_file_id,
                 descripcion=descripcion.descripcion_para(
                     pp, descripcion.heredado(indice, pp)),
                 cantidad=Decimal(str(pp.cantidad)),

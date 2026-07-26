@@ -25,6 +25,7 @@ EventoTipo = Literal[
     "proyecto.estado_borrado",
     "proyecto.egresos_generados",
     "proyecto.gasto_registrado",
+    "proyecto.producto_imagen",
     "chalan.voz_actualizada",
     "chalan.voz_personal_actualizada",
     "chalan.propuesta_generada",

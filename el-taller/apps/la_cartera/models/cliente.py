@@ -62,13 +62,10 @@ class Cliente(models.Model):
         verbose_name = "cliente"
         verbose_name_plural = "clientes"
         ordering = ["razon_social"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["rfc"],
-                condition=~models.Q(rfc=""),
-                name="cartera_cliente_rfc_unique_nonempty",
-            ),
-        ]
+        # LC 2026-07-26 (Oscar): el RFC ya NO es único. Una misma razón social
+        # (Grupo Lazanto) puede aplicar para dos clientes distintos (Cueva y
+        # Kari Kari), así que la restricción bloqueaba un caso real. Las razones
+        # sociales de facturación viven en `ClienteRazonSocial`.
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -78,6 +75,21 @@ class Cliente(models.Model):
 
     def __str__(self):
         return self.razon_social
+
+    @property
+    def razon_social_principal(self):
+        """Razón social de facturación marcada principal (o la primera). None si
+        el cliente no tiene ninguna capturada."""
+        filas = list(self.razones_sociales.all())
+        for r in filas:
+            if r.principal:
+                return r
+        return filas[0] if filas else None
+
+    @property
+    def razones_sociales_texto(self) -> str:
+        """«RAZÓN (RFC) · OTRA (RFC2)» — para búsqueda y vistas compactas."""
+        return " · ".join(str(r) for r in self.razones_sociales.all())
 
     @property
     def contacto_principal(self):

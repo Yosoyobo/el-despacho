@@ -71,6 +71,14 @@ class ProyectoProducto(models.Model):
     # incluidas se muestran primero; entre iguales, por este `orden` ascendente.
     orden = models.PositiveIntegerField(default=0, db_index=True)
 
+    # LC 2026-07-26 (Oscar): foto de ESTE uso del producto. La imagen se sube o
+    # se pega desde la tarjeta del proyecto; si la línea tiene alias
+    # (`nombre_proyecto`) la foto se guarda aquí —es «otro» producto para el
+    # cliente—, y si no, se guarda en el catálogo (`Servicio.imagen_file_id`).
+    # Vacío = se usa la del catálogo (ver `imagen_efectiva_file_id`).
+    imagen_file_id = models.CharField(max_length=100, blank=True, default="")
+    imagen_url = models.URLField(max_length=500, blank=True, default="")
+
     # B (2026-06-07): Egreso generado en Tesorería cuando el proyecto pasa a
     # producción. Marca de idempotencia — una línea con egreso no vuelve a
     # generar. SET_NULL: si el egreso se borra físicamente, la línea queda sin
@@ -117,6 +125,30 @@ class ProyectoProducto(models.Model):
         si no el del catálogo. **Fuente única** — de aquí lo toman la tarjeta,
         la lista, el Kanban y la cotización."""
         return (self.nombre_proyecto or "").strip() or self.nombre_catalogo
+
+    # ── Imagen (LC 2026-07-26) ───────────────────────────────────────────────
+
+    @property
+    def imagen_efectiva_file_id(self) -> str:
+        """La foto que representa esta línea: la propia si la tiene, si no la
+        del catálogo. **Fuente única** — de aquí la toman la tarjeta, el
+        historial de usos y el documento de la cotización."""
+        propia = (self.imagen_file_id or "").strip()
+        if propia:
+            return propia
+        return (getattr(self.servicio, "imagen_file_id", "") or "").strip()
+
+    @property
+    def imagen_es_propia(self) -> bool:
+        """True si la foto es de este uso (no la heredada del catálogo)."""
+        return bool((self.imagen_file_id or "").strip())
+
+    @property
+    def imagen_destino(self) -> str:
+        """A dónde iría una foto nueva: `uso` si la línea tiene alias (es «otro»
+        producto para el cliente), `catalogo` si no. Lo decide el modelo para
+        que la vista y la UI digan lo mismo."""
+        return "uso" if (self.nombre_proyecto or "").strip() else "catalogo"
 
     @property
     def etiqueta(self) -> str:

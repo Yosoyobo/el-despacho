@@ -1,0 +1,169 @@
+/**
+ * Recuadros de imagen: pegar (Ctrl/Cmd+V) o elegir archivo → Drive.
+ *
+ * LC 2026-07-26 (Oscar): «el input de las imágenes de productos lo vamos a
+ * habilitar subir (o pegar, después de picar en un recuadro para definir el
+ * destino)». De ahí el flujo: se pica el recuadro para ELEGIR EL DESTINO y
+ * luego se pega. Con un solo recuadro en la página no hace falta picar.
+ *
+ * Se usa en tres lugares: la ficha del producto (catálogo), las tarjetas de
+ * «Productos involucrados» del proyecto y el historial de usos. Cada recuadro
+ * dice a qué endpoint sube con `data-url`; el servidor decide si la foto queda
+ * en el uso o en el producto del catálogo (ver ProyectoProducto.imagen_destino).
+ *
+ * Contrato del recuadro:
+ *
+ *   <div data-img-slot data-url="/…/imagen">
+ *     <img data-img-preview>            (opcional)
+ *     <p  data-img-hint>…</p>           (opcional)
+ *     <input type="file" data-img-file>  (opcional)
+ *     <button data-img-elegir>…</button> (opcional)
+ *     <p  data-img-estado></p>          (opcional)
+ *   </div>
+ *
+ * Se re-escanea en `htmx:afterSwap` para que funcione dentro de modales y de
+ * fragmentos inyectados (gotcha del repo: los <script> inline inyectados por
+ * HTMX corren con `document.currentScript === null`).
+ */
+(function () {
+  "use strict";
+
+  var MAX_BYTES = 25 * 1024 * 1024;
+  var CLASES_ACTIVO = ["ring-2", "ring-brand-400"];
+
+  function csrf() {
+    var inp = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (inp) return inp.value;
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : "";
+  }
+
+  function slots() {
+    return Array.prototype.slice.call(document.querySelectorAll("[data-img-slot]"));
+  }
+
+  function activo() {
+    return document.querySelector("[data-img-slot][data-img-activo]");
+  }
+
+  function activar(slot) {
+    slots().forEach(function (s) {
+      if (s === slot) return;
+      delete s.dataset.imgActivo;
+      s.classList.remove.apply(s.classList, CLASES_ACTIVO);
+    });
+    slot.dataset.imgActivo = "1";
+    slot.classList.add.apply(slot.classList, CLASES_ACTIVO);
+  }
+
+  function estado(slot, texto, esError) {
+    var el = slot.querySelector("[data-img-estado]");
+    if (!el) return;
+    el.textContent = texto || "";
+    el.className = "mt-1 text-xs " + (esError
+      ? "text-error-600 dark:text-error-400"
+      : "text-success-600 dark:text-success-400");
+  }
+
+  function pintar(slot, src) {
+    var img = slot.querySelector("[data-img-preview]");
+    if (!img) return;
+    img.src = src;
+    img.classList.remove("hidden");
+    var hint = slot.querySelector("[data-img-hint]");
+    if (hint) hint.classList.add("hidden");
+  }
+
+  function subir(slot, blob) {
+    if (!blob) return;
+    var url = slot.getAttribute("data-url");
+    if (!url) return;
+    if (blob.size > MAX_BYTES) {
+      estado(slot, "La imagen supera 25 MB.", true);
+      return;
+    }
+    // Preview optimista con el blob local: se ve al instante, aunque Drive tarde.
+    try { pintar(slot, URL.createObjectURL(blob)); } catch (e) { /* sin preview */ }
+    estado(slot, "Subiendo…");
+    var body = new FormData();
+    body.append("imagen", blob, blob.name || ("captura-" + Date.now() + ".png"));
+    fetch(url, { method: "POST", headers: { "X-CSRFToken": csrf() }, body: body })
+      .then(function (r) {
+        if (r.status === 403) return { ok: false, error: "Sin permiso para cambiar esta imagen." };
+        return r.json().catch(function () {
+          return { ok: false, error: "El servidor no aceptó la imagen." };
+        });
+      })
+      .then(function (data) {
+        if (data && data.ok) {
+          estado(slot, data.mensaje || "✓ Imagen guardada.");
+          if (data.url) pintar(slot, data.url);
+          if (data.destino) slot.dataset.imgDestino = data.destino;
+        } else {
+          estado(slot, (data && data.error) || "No se pudo subir la imagen.", true);
+        }
+      })
+      .catch(function () { estado(slot, "Error de red al subir la imagen.", true); });
+  }
+
+  function montar(slot) {
+    if (slot.dataset.imgMontado) return;
+    slot.dataset.imgMontado = "1";
+    if (!slot.hasAttribute("tabindex")) slot.setAttribute("tabindex", "0");
+
+    slot.addEventListener("click", function () { activar(slot); });
+    slot.addEventListener("focus", function () { activar(slot); });
+
+    var file = slot.querySelector("[data-img-file]");
+    var elegir = slot.querySelector("[data-img-elegir]");
+    if (elegir && file) {
+      elegir.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        activar(slot);
+        file.click();
+      });
+    }
+    if (file) {
+      file.addEventListener("change", function () {
+        if (file.files && file.files[0]) subir(slot, file.files[0]);
+      });
+      // Los recuadros chicos (tarjeta del proyecto, historial de usos) no traen
+      // botón: un clic los elige como destino para pegar, y doble clic abre el
+      // selector de archivos.
+      slot.addEventListener("dblclick", function () {
+        activar(slot);
+        file.click();
+      });
+    }
+  }
+
+  function escanear() { slots().forEach(montar); }
+
+  // Pegar: va al recuadro activo. Con uno solo en la página, a ése.
+  document.addEventListener("paste", function (ev) {
+    var lista = slots();
+    if (!lista.length) return;
+    var destino = activo() || (lista.length === 1 ? lista[0] : null);
+    if (!destino) return;
+    var items = (ev.clipboardData && ev.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf("image") === 0) {
+        var blob = items[i].getAsFile();
+        if (blob) {
+          ev.preventDefault();
+          activar(destino);
+          subir(destino, blob);
+          try { destino.scrollIntoView({ block: "center" }); } catch (e) { /* ignora */ }
+        }
+        return;
+      }
+    }
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", escanear);
+  } else {
+    escanear();
+  }
+  document.body.addEventListener("htmx:afterSwap", escanear);
+})();

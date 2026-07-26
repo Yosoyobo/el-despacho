@@ -212,12 +212,14 @@ def cotizacion(entorno):
     return cot
 
 
-def test_tabla_de_conceptos_lleva_linea_negra_delgada(cotizacion):
-    """Las tablas de conceptos llevan línea negra; el resto del documento no."""
+def test_tabla_de_conceptos_lleva_linea_gris_delgada(cotizacion):
+    """Las tablas de conceptos llevan línea gris clara (Oscar 2026-07-26: «no
+    negro»); el resto del documento sigue sin líneas."""
     from apps.cotizaciones.services import construir_html_pdf
 
     html = construir_html_pdf(cotizacion)
-    assert html.count("border:1px solid #000000") >= 8  # 4 encabezados + 4 celdas
+    assert "border:1px solid #000000" not in html
+    assert html.count("border:1px solid #cccccc") >= 8  # 4 encabezados + 4 celdas
     # El encabezado (fecha/logo/cliente), los totales y las notas van sin líneas.
     encabezado = html.split("Bufandas")[0]
     assert "border:1px solid" not in encabezado
@@ -232,19 +234,20 @@ def test_tabla_del_desglose_tambien_lleva_recuadro(cotizacion):
     cotizacion.save(update_fields=["incluir_desglose"])
     desglose = construir_html_pdf(cotizacion).split("Desglose de Elementos", 1)[1]
     tabla = desglose.split("</table>", 1)[0]
-    assert tabla.count("border:1px solid #000000") >= 10  # 5 encabezados + 5 celdas
-    assert "#999999" not in tabla  # la casilla ✔ ya va en negro, como el resto
+    assert tabla.count("border:1px solid #cccccc") >= 10  # 5 encabezados + 5 celdas
+    assert "#999999" not in tabla  # la casilla ✔ va con la misma línea que el resto
 
 
 def test_tablas_de_conceptos_centrada_y_sin_thead(cotizacion):
-    """Docs ignora `margin:0 auto` y mete un renglón en blanco entre
-    `<thead>` y `<tbody>`: se centra con atributos y sin esas etiquetas."""
+    """Docs mete un renglón en blanco entre `<thead>` y `<tbody>` (van sin esas
+    etiquetas) y tampoco centra tablas: el centrado se logra con una columna
+    vacía a cada lado dentro de la misma tabla (Oscar 2026-07-26)."""
     from apps.cotizaciones.services import construir_html_pdf
 
     cotizacion.incluir_desglose = True
     cotizacion.save(update_fields=["incluir_desglose"])
     html = construir_html_pdf(cotizacion)
-    assert 'align="center" width="78%"' in html
+    assert 'style="border:none; width:11%;"' in html
     assert "<thead>" not in html
     assert "<tbody>" not in html
 

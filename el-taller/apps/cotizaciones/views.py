@@ -925,12 +925,15 @@ def documento_opciones(request, pk):
 @login_required
 def pdf_ver(request, pk):
     """Vista RÁPIDA del documento: el HTML imprimible inline, sin round-trip a
-    Google Drive (arregla la «pantalla azul» del visor). El PDF real (Drive) se
-    baja con «Descargar». LC 2026-07."""
+    Google Drive (arregla la «pantalla azul» del visor).
+
+    LC 2026-07-26 (Oscar): se muestra como HOJA —con sus márgenes, sobre fondo
+    gris— y con una barra arriba para **bajar el PDF** o imprimir. El PDF real
+    (Drive) sigue saliendo por «Bajar PDF»."""
     if (r := _gate_ver(request)) is not None:
         return r
     cot = get_object_or_404(Cotizacion, pk=pk)
-    return HttpResponse(services.construir_html_pdf(cot))
+    return HttpResponse(services.construir_html_pdf(cot, preview=True))
 
 
 @login_required

@@ -121,7 +121,8 @@ class CotizacionItemForm(forms.ModelForm):
         # LC Buzón §4: combobox type-to-search en el Producto de cada línea.
         # LC 2026-07-25: el widget además marca cada opción con sus proveedores
         # (`data-buscar`) para poder encontrar el producto escribiendo el
-        # proveedor. `prefetch_related` evita el N+1 al pintar las opciones.
+        # proveedor. LC 2026-07-26: también por los alias de proyecto.
+        # `prefetch_related` evita el N+1 al pintar las opciones.
         if "servicio" in self.fields:
             from apps.el_catalogo.widgets import SelectProductoBuscable
             campo = self.fields["servicio"]
