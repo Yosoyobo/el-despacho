@@ -17,10 +17,16 @@ from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 
 
-def _cuerpo_pendientes(secciones: list[dict]) -> str:
+def _cuerpo_pendientes(secciones: list[dict], encabezado: str = "") -> str:
     """Secciones → HTML de texto simple: títulos en negritas, `<br>` entre
-    renglones y una línea en blanco entre secciones."""
+    renglones y una línea en blanco entre secciones.
+
+    El encabezado (día, fecha y hora en que se generó) va hasta arriba, en
+    negritas y separado del resto — decisión Oscar 2026-07-25.
+    """
     partes: list[str] = []
+    if encabezado:
+        partes.append(f"<b>{escape(encabezado)}</b>")
     for sec in secciones:
         if partes:
             partes.append("")  # línea en blanco separadora
@@ -34,12 +40,13 @@ def _cuerpo_pendientes(secciones: list[dict]) -> str:
 @login_required
 def resumen_actividad(request):
     """Modal con el resumen de la actividad pendiente del taller."""
-    from .pendientes import secciones_pendientes
+    from .pendientes import encabezado_fecha, secciones_pendientes
 
     secciones = secciones_pendientes(request.user)
     cuerpo = format_html(
         '<div id="reporte-pendientes" class="leading-relaxed text-gray-700 dark:text-gray-200">{}</div>',
-        mark_safe(_cuerpo_pendientes(secciones)),  # noqa: S308 — HTML propio, ya escapado
+        # noqa: S308 — HTML propio, ya escapado
+        mark_safe(_cuerpo_pendientes(secciones, encabezado_fecha())),
     )
     footer = mark_safe(  # noqa: S308 — HTML estático propio
         '<button type="button" class="btn-secundario" '

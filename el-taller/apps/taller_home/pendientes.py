@@ -9,13 +9,22 @@ debe ser exacto y gratis; el resumen narrativo con IA vive por proyecto en
 `apps.los_proyectos.resumen_ia`.
 
 Secciones (orden fijo, decisión Oscar):
-  1. URGENTES ............ tareas de TODO el equipo marcadas alta o ya vencidas
+  0. Encabezado .......... día de la semana, fecha y hora en que se generó
+  1. URGENTES ............ tareas de prioridad alta + las que NO tienen fecha
   2..N. <PERSONA> ........ una sección por persona con pendientes asignados
   N+1. MISIONES .......... mandados (entregas/recolecciones) sin cerrar
-  N+2. TIZAYUCA .......... proyectos vigentes con el proveedor de Tizayuca
+  N+2. TIZAYUCA .......... un renglón POR PRODUCTO del proveedor de Tizayuca
   N+3. FACTURAS X EMITIR . proyectos confirmados sin factura ligada
   N+4. COTIZACIONES ...... proyectos en «por cotizar»
   N+5. FACTURAS X COBRAR . facturas emitidas con saldo pendiente
+
+**Regla de fechas (Oscar, 2026-07-25): el reporte mira HACIA ADELANTE.** Solo
+entra lo de hoy y lo que viene; lo que ya pasó de fecha NO se lista (aplica a
+tareas, mandados y proyectos). Lo que no tiene fecha sí entra — y en el caso de
+las tareas, se va a URGENTES para que no se pierda.
+
+**Única excepción: FACTURAS X COBRAR.** Ahí salen todas las que tengan saldo,
+vencidas incluidas, hasta que se marquen cobradas o se les ligue el cobro.
 
 Cada sección respeta la visibilidad del usuario (mismos helpers que el
 Kanban de Tareas y el de Proyectos) y los permisos granulares (§4 #20): si
@@ -34,26 +43,56 @@ ESTADOS_CONFIRMADOS = ("en_proceso_diseno", "en_proceso_produccion", "entregado"
 # Facturas que siguen "por cobrar" (emitidas, no canceladas, con saldo).
 ESTADOS_FACTURA_POR_COBRAR = ("emitida", "cobrada_parcial")
 
-_MESES = ("ene", "feb", "mar", "abr", "may", "jun",
-          "jul", "ago", "sep", "oct", "nov", "dic")
+# Nombres completos (Oscar 2026-07-25): «sábado 26 de julio», no «26 jul».
+_MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio",
+          "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+_DIAS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 
 # Tope por sección para que el reporte siga siendo legible (y el modal, corto).
 LIMITE_SECCION = 40
 
 
-def _fecha(d) -> str:
-    """`date`/`datetime` → «26 jul» (o «26 jul 2027» si no es el año en curso).
-
-    Los `datetime` aware se pasan a hora local ANTES de leer el día: leerlos en
-    UTC corre la fecha (el bug +6h de S-Chalan-Barrido).
-    """
-    if not d:
-        return "sin fecha"
+def _a_date(d):
+    """Normaliza a `date`. Los `datetime` aware se pasan a hora local ANTES de
+    leer el día: leerlos en UTC corre la fecha (el bug +6h de S-Chalan-Barrido)."""
     if isinstance(d, datetime):
         from django.utils import timezone
-        d = timezone.localtime(d).date() if timezone.is_aware(d) else d.date()
-    txt = f"{d.day} {_MESES[d.month - 1]}"
-    return txt if d.year == date.today().year else f"{txt} {d.year}"
+        return timezone.localtime(d).date() if timezone.is_aware(d) else d.date()
+    return d
+
+
+def _fecha(d) -> str:
+    """`date`/`datetime` → «sábado 26 de julio» (+ « de 2027» si es otro año)."""
+    if not d:
+        return "sin fecha"
+    d = _a_date(d)
+    txt = f"{_DIAS[d.weekday()]} {d.day} de {_MESES[d.month - 1]}"
+    return txt if d.year == date.today().year else f"{txt} de {d.year}"
+
+
+def _vigente(d) -> bool:
+    """Regla Oscar: solo hoy y lo que viene. Sin fecha también entra (no se
+    pierde); lo que ya pasó, no."""
+    if not d:
+        return True
+    return _a_date(d) >= date.today()
+
+
+def encabezado_fecha() -> str:
+    """Primera línea del reporte: día, fecha y hora en que se generó.
+
+    La hora respeta la preferencia 24h/AM-PM del usuario (thread-local que fija
+    el context processor `formato_hora`; fuera de un request cae a 24h).
+    """
+    from django.template.defaultfilters import date as _fmt
+    from django.utils import timezone
+
+    from lib.formato_hora import aplicar
+    ahora = timezone.localtime()
+    return (
+        f"{_DIAS[ahora.weekday()]} {ahora.day} de {_MESES[ahora.month - 1]} "
+        f"de {ahora.year} · {_fmt(ahora, aplicar('H:i'))}"
+    )
 
 
 def _cliente_de(proyecto) -> str:
@@ -82,22 +121,23 @@ def _orden_tareas(tareas: list) -> list:
 # ── Secciones ────────────────────────────────────────────────────────────────
 
 def _tareas_pendientes(user):
-    """Tareas vigentes visibles: ni terminales ni archivadas."""
+    """Tareas visibles que siguen abiertas: ni terminales ni archivadas, y con
+    fecha de hoy en adelante (o sin fecha)."""
     from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
     from apps.el_pizarron.views import _tareas_visibles
+    from django.db.models import Q
     return (
         _tareas_visibles(user)
         .filter(archivada=False)
         .exclude(estado__in=slugs_terminales_tarea())
+        .filter(Q(fecha_compromiso__isnull=True) | Q(fecha_compromiso__gte=date.today()))
     )
 
 
 def _seccion_urgentes(tareas: list) -> dict:
-    hoy = date.today()
-    urgentes = [
-        t for t in tareas
-        if t.prioridad == "alta" or (t.fecha_compromiso and t.fecha_compromiso < hoy)
-    ]
+    """Prioridad alta + TODO lo que no tiene fecha (Oscar: sin fecha = urgente,
+    para que no se quede olvidado en el fondo de la lista)."""
+    urgentes = [t for t in tareas if t.prioridad == "alta" or not t.fecha_compromiso]
     return {
         "titulo": "URGENTES",
         "lineas": [_linea_tarea(t) for t in _orden_tareas(urgentes)[:LIMITE_SECCION]],
@@ -132,9 +172,12 @@ def _secciones_por_persona(tareas: list) -> list[dict]:
 
 def _seccion_misiones(user) -> dict:
     from apps.el_pizarron.mandados import mandados_visibles
+    from django.db.models import Q
     mandados = list(
         mandados_visibles(user)
-        .exclude(estado__in=("entregado", "cancelado"))[:LIMITE_SECCION * 2]
+        .exclude(estado__in=("entregado", "cancelado"))
+        .filter(Q(tarea__fecha_compromiso__isnull=True)
+                | Q(tarea__fecha_compromiso__gte=date.today()))[:LIMITE_SECCION * 2]
     )
     lejos = date(9999, 12, 31)
     mandados.sort(key=lambda m: (m.tarea.fecha_compromiso or lejos, m.pk))
@@ -148,22 +191,41 @@ def _seccion_misiones(user) -> dict:
 
 
 def _seccion_tizayuca(proyectos_qs) -> dict:
-    """Proyectos vigentes que llevan producto del proveedor de Tizayuca —
-    ligado a la línea del proyecto o al producto del catálogo."""
+    """Un renglón POR PRODUCTO del proveedor de Tizayuca (Oscar 2026-07-25):
+    «proyecto · cliente · fecha · producto x N pz».
+
+    N son las piezas que hay que producir: cantidad **+ merma**. Si un proyecto
+    lleva varios productos de ese proveedor, cada uno va en su propio renglón.
+    Solo cuentan las líneas incluidas en el cálculo (las apagadas no se
+    producen — mismo criterio que los chips del Kanban).
+    """
     from apps.el_catalogo.calculadora import PROVEEDOR_CALCULADORA
+    from apps.los_proyectos.models import ProyectoProducto
     from django.db.models import Q
-    qs = (
-        proyectos_qs.filter(
-            Q(productos__proveedor__razon_social__icontains=PROVEEDOR_CALCULADORA)
-            | Q(productos__servicio__proveedores__razon_social__icontains=PROVEEDOR_CALCULADORA)
+
+    lineas_qs = (
+        ProyectoProducto.objects.filter(
+            proyecto__in=proyectos_qs, incluir_en_calculo=True,
         )
+        .filter(
+            Q(proveedor__razon_social__icontains=PROVEEDOR_CALCULADORA)
+            | Q(servicio__proveedores__razon_social__icontains=PROVEEDOR_CALCULADORA)
+        )
+        .select_related("proyecto", "proyecto__cliente", "servicio", "variacion")
         .distinct()
-        .order_by("fecha_compromiso", "pk")
     )
-    lineas = [
-        f"{_nombre_proyecto(p)} · {_cliente_de(p)} · {_fecha(p.fecha_compromiso)}"
-        for p in qs[:LIMITE_SECCION]
-    ]
+    lejos = date(9999, 12, 31)
+    filas = sorted(
+        lineas_qs[: LIMITE_SECCION * 3],
+        key=lambda pp: (pp.proyecto.fecha_compromiso or lejos, pp.proyecto_id, pp.orden, pp.pk),
+    )
+    lineas = []
+    for pp in filas[:LIMITE_SECCION]:
+        piezas = (pp.cantidad or 0) + (pp.merma or 0)
+        lineas.append(
+            f"{_nombre_proyecto(pp.proyecto)} · {_cliente_de(pp.proyecto)} · "
+            f"{_fecha(pp.proyecto.fecha_compromiso)} · {pp.nombre_visible} x {piezas} pz"
+        )
     return {"titulo": "TIZAYUCA", "lineas": lineas}
 
 
@@ -190,6 +252,10 @@ def _seccion_cotizaciones(proyectos_qs) -> dict:
 
 
 def _seccion_facturas_por_cobrar() -> dict:
+    """**Excepción a la regla de fechas** (Oscar 2026-07-25): aquí salen TODAS
+    las facturas con saldo —vencidas incluidas— hasta que se marquen cobradas o
+    se les ligue el cobro. Una factura por cobrar no deja de importar por haber
+    pasado su fecha; al contrario."""
     from apps.facturacion.models import Factura
     qs = (
         Factura.objects.filter(estado__in=ESTADOS_FACTURA_POR_COBRAR)
@@ -216,6 +282,7 @@ def secciones_pendientes(usuario) -> list[dict]:
     omiten (no se muestran vacías).
     """
     from apps.los_proyectos.views import _proyectos_visibles
+    from django.db.models import Q
 
     from lib.permisos import puede_ver_cotizaciones, puede_ver_facturacion
 
@@ -224,7 +291,11 @@ def secciones_pendientes(usuario) -> list[dict]:
     secciones += _secciones_por_persona(tareas)
     secciones.append(_seccion_misiones(usuario))
 
-    proyectos = _proyectos_visibles(usuario).exclude(estado__in=("cancelado",))
+    proyectos = (
+        _proyectos_visibles(usuario)
+        .exclude(estado__in=("cancelado",))
+        .filter(Q(fecha_compromiso__isnull=True) | Q(fecha_compromiso__gte=date.today()))
+    )
     secciones.append(_seccion_tizayuca(proyectos))
     if puede_ver_facturacion(usuario):
         secciones.append(_seccion_facturas_por_emitir(proyectos))
@@ -237,11 +308,16 @@ def secciones_pendientes(usuario) -> list[dict]:
 
 def texto_pendientes(usuario) -> str:
     """El reporte en texto plano (para copiar/pegar). Sin HTML."""
-    bloques = []
+    bloques = [encabezado_fecha()]
     for sec in secciones_pendientes(usuario):
         cuerpo = "\n".join(sec["lineas"]) if sec["lineas"] else "(ninguno)"
         bloques.append(f"{sec['titulo']}\n{cuerpo}")
     return "\n\n".join(bloques)
 
 
-__all__ = ["secciones_pendientes", "texto_pendientes", "ESTADOS_CONFIRMADOS"]
+__all__ = [
+    "secciones_pendientes",
+    "texto_pendientes",
+    "encabezado_fecha",
+    "ESTADOS_CONFIRMADOS",
+]
