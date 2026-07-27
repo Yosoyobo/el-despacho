@@ -9,11 +9,9 @@
 <div class="mb-4 flex flex-wrap items-center gap-2">
     {% if not cliente.activo %}<span class="badge badge-gray">Archivado</span>{% endif %}
     <span class="badge {% if cliente.estado == 'activo' %}badge-success{% elif cliente.estado == 'prospecto' %}badge-blue{% else %}badge-gray{% endif %}">{{ cliente.get_estado_display }}</span>
-    {% comment %}LC 2026-07-26 (Oscar): la pastilla salía con un slug INVENTADO
-    («$tessa-studio», slugificando la razón social) y tachada — `activo` no se
-    pasaba, y el partial trata la variable vacía como inactiva. El slug real es
-    el del modelo, el mismo con el que se le menciona en El Chalán.{% endcomment %}
-    {% include "_componentes_tailadmin/_chip_referencia.html" with tipo="cliente" slug=cliente.slug variante="badge" activo=True %}
+    {% comment %}LC 2026-07-26 (Oscar, ronda 3): la pastilla de color con el slug
+    se quitó de aquí — la referencia `$slug` vive en el recuadro «Identificación»
+    del costado, que es donde se busca.{% endcomment %}
 </div>
 
 {# Header cards del cliente. #}

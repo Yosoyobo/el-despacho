@@ -165,8 +165,10 @@ def test_pdf_mete_un_br_entre_el_logo_y_el_titulo(proyecto_factory):
     cot = _cot_con_items(proyecto_factory)
     html = services.construir_html_pdf(cot)
     i_logo = html.find("Logo_LC-256.png")
-    # El título del documento es el <p> centrado de 13pt que va tras el logo.
-    i_titulo = html.find('font-size:13pt', i_logo)
+    # El título es el <p> centrado que va tras el logo. LC 2026-07-26 (ronda 3):
+    # ya no tiene tamaño propio —usa el del cuerpo—, así que se busca por su
+    # texto en vez de por el `font-size`.
+    i_titulo = html.find("Producción de elementos para proyecto", i_logo)
     assert i_logo != -1 and i_titulo != -1
     assert "<br>" in html[i_logo:i_titulo]
 

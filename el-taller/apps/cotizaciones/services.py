@@ -62,6 +62,11 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
 
     from .notas import notas_para
 
+    # Las fotos se precalientan ANTES de medirlas: `proporcion()` solo lee de
+    # caché, y sin proporción no se puede acotar el alto de la imagen (salía una
+    # bata de media página). Es best-effort y cacheado, así que cuesta poco.
+    _precalentar_imagenes(cot)
+
     items = list(cot.items.select_related("servicio", "unidad_fk").all())
     # LC 2026-07-26 (Oscar): las líneas marcadas `agrupado` son PROCESOS DE VENTA
     # del concepto anterior (el «Ponchado» del Bordado): se cobran aparte pero se
@@ -72,15 +77,18 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         if it.agrupado and filas:
             filas[-1]["extras"].append(it)
             continue
+        file_id = it.imagen_visible_file_id
+        ancho, alto = _medida_foto(proporcion(file_id))
         filas.append({
             "it": it,
             # La foto: la congelada en la línea (la del uso del proyecto, si le
             # pusieron una propia) o, si no, la del producto del catálogo.
-            "imagen": url_absoluta(it.imagen_visible_file_id),
-            # Proporción real de la foto: el ancho es fijo en el documento, así
-            # que de aquí sale su alto para estimar la página (ver el hueco de
-            # las notas más abajo).
-            "proporcion": proporcion(it.imagen_visible_file_id),
+            "imagen": url_absoluta(file_id),
+            # Medida FIJA con la que va en el documento (ver `_medida_foto`): el
+            # template las pinta como atributos, así que ninguna foto puede
+            # descuadrar la hoja por más alta que sea.
+            "img_ancho": ancho,
+            "img_alto": alto,
             "extras": [],
         })
     totales = cot.calcular_totales()
@@ -119,9 +127,34 @@ def _url_descargar(cot: Cotizacion) -> str:
 # Hoja carta con márgenes de una pulgada: 792pt − 144pt de márgenes.
 _ALTO_UTIL_PT = 648
 
-# Ancho con el que va la foto del producto en el documento (ver pdf.html). Su
-# ALTO sale de la proporción real de la imagen.
+# Caja en la que DEBE caber la foto del producto (ver `_medida_foto`). El alto
+# es el tope duro que pidió Oscar (2026-07-26, ronda 3): «alrededor del alto de
+# 4 celdas de la tabla» — una celda mide ~19pt (3pt de padding × 2 + el
+# renglón), así que 4 ≈ 76pt. Sin este tope una foto vertical (la bata: 1×2) se
+# comía media página y descuadraba el documento.
 _ANCHO_FOTO_PT = 150
+_ALTO_FOTO_PT = 76
+
+
+def _medida_foto(proporcion: float) -> tuple[int, int]:
+    """`(ancho, alto)` en puntos con los que la foto entra en el documento.
+
+    La imagen se escala para caber COMPLETA en la caja `_ANCHO_FOTO_PT ×
+    _ALTO_FOTO_PT`, conservando su proporción. Se devuelven las DOS medidas
+    porque el documento las pinta como atributos del `<img>`: dejarle una sola a
+    la conversión de Docs es lo que hacía que una foto vertical creciera sin
+    control.
+
+    Si no se pudo medir (Drive caído, imagen que Pillow no abre), se asume
+    cuadrada del alto máximo: una foto chica nunca rompe el formato.
+    """
+    prop = float(proporcion or 0)
+    if prop <= 0:
+        return _ALTO_FOTO_PT, _ALTO_FOTO_PT
+    alto = _ANCHO_FOTO_PT * prop
+    if alto <= _ALTO_FOTO_PT:
+        return _ANCHO_FOTO_PT, max(1, int(round(alto)))
+    return max(1, int(round(_ALTO_FOTO_PT / prop))), _ALTO_FOTO_PT
 
 # Colchón al pie: la paginación real la hace Google, no nosotros, así que el
 # bloque de notas se deja un poco arriba del borde. Sin este colchón, un error
@@ -153,12 +186,9 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
         if renglones:
             cuerpo = renglones * 14
         if fila.get("imagen"):
-            # Alto real de la foto = ancho fijo × su proporción. Si no se pudo
-            # medir (no estaba precalentada), se asume cuadrada: sobreestimar el
-            # contenido deja las notas más arriba, que es el lado seguro.
-            prop = fila.get("proporcion") or 0
-            alto_foto = int(_ANCHO_FOTO_PT * prop) if prop else _ANCHO_FOTO_PT
-            cuerpo = max(cuerpo, alto_foto)
+            # La foto va acotada a una caja fija (`_medida_foto`), así que su
+            # alto real es el que ya se calculó al armar la fila.
+            cuerpo = max(cuerpo, int(fila.get("img_alto") or _ALTO_FOTO_PT))
         alto += 22 + cuerpo + 8 + 48 + 26  # nombre + cuerpo + tabla de montos
         # Cada proceso de venta suma un renglón a la tabla de montos del producto
         # (LC 2026-07-26).
@@ -259,7 +289,8 @@ def generar_pdf(cot: Cotizacion, actor):
     from lib.documentos import generar_pdf as _gen
     from lib.google_drive import drive
 
-    _precalentar_imagenes(cot)
+    # El precalentado vive dentro de `construir_html_pdf` (ahí se MIDEN las fotos
+    # para acotarlas), así que aquí ya no se repite.
     html = construir_html_pdf(cot)
     res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones")
     if not res.ok:

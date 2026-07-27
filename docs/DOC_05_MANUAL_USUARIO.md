@@ -5,6 +5,30 @@
 
 ---
 
+## Novedades — El documento de la cotización a prueba de todo, y la foto del producto ya no se borra sola (26 de julio de 2026 — décima entrega)
+
+- **Las fotos ya no descuadran la cotización.** Una foto vertical (una bata, un
+  hoodie) se estiraba a media página y dejaba huecos enormes. Ahora todas entran
+  en el mismo tamaño, del alto de unos cuatro renglones de la tabla: subas la
+  foto que subas, el documento se ve igual.
+- **El título de la cotización va del mismo tamaño que el resto del texto.**
+- **«Un solo pago» ya responde.** El botón de Forma de pago guardaba el cambio
+  pero la pastilla seguía marcando «Anticipo» y la nota de abajo no cambiaba;
+  parecía descompuesto. Ahora el recuadro se actualiza al instante.
+- **Quitar la foto de un producto ya no se guarda sola.** En la ficha del
+  producto, al apretar Supr la foto se marca para quitarse y sólo desaparece
+  cuando le das **Guardar producto**. Si te sales sin guardar, ahí sigue. Y si
+  dejaste cambios sin guardar, la página te avisa antes de salirte.
+- **El menú de la izquierda ocupa toda la altura de la pantalla**, con los
+  botones repartidos de arriba abajo en vez de amontonados arriba.
+- **Ficha del cliente:** se quitó la pastilla de color con la referencia que
+  salía hasta arriba (la referencia sigue en el recuadro «Identificación»).
+- **Ficha del proveedor:** los títulos de sección («¿Qué surte?», «Productos que
+  surte», «Proyectos») ahora se ven como los del cliente — afuera del recuadro y
+  del mismo tamaño.
+
+---
+
 ## Novedades — Cobros extra por producto, pagos agrupados por proveedor y detalles del documento (26 de julio de 2026 — novena entrega)
 
 - **Ya puedes cobrar un «proceso» aparte de cada producto.** En la tarjeta del
@@ -3177,6 +3201,13 @@ los procesos.
 Para sacar un producto de circulación usa **Archivar** (se puede **Reactivar**);
 el borrado permanente sólo lo hace super admin y sólo si no se ha usado.
 
+**Quitar la foto de la ficha del producto** es un cambio **pendiente**: pica el
+recuadro, aprieta **Supr** y la foto se marca para quitarse, pero sólo desaparece
+cuando le das **Guardar producto**. Si te sales de la página sin guardar, ahí
+sigue. Y si dejaste cualquier cambio sin guardar, el navegador te avisa antes de
+salirte. (En la tarjeta del proyecto y en el historial de usos no hay botón de
+guardar, así que ahí el cambio es inmediato.)
+
 ### Impresión y procesos adicionales del producto
 
 En la ficha del producto, el recuadro **"🖨️ Impresión y procesos adicionales"**
@@ -3398,6 +3429,10 @@ El PDF lleva el formato de Learning Center: fecha, logotipo y cliente arriba; el
 nombre del proyecto centrado; cada producto **numerado** con sus
 especificaciones, **su foto** (la del uso si le pegaste una en la tarjeta del
 proyecto, si no la del catálogo) y su tabla de Cantidad / P. Unitario / Subtotal.
+Todas las fotos salen del **mismo tamaño** —del alto de unos cuatro renglones de
+la tabla—, así que da igual si la subiste vertical, apaisada o gigante: el
+documento se ve igual siempre. El título del documento va del mismo tamaño que el
+resto del texto.
 Esas tablas van **centradas**, con el concepto a la izquierda y los números a la
 derecha, y con **recuadro gris claro** (igual que la tabla del Desglose; son las
 únicas del documento con líneas). Ni un producto ni el «Desglose de Elementos» se

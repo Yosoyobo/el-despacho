@@ -6360,6 +6360,56 @@ concepto ya tenía CxP auto-generada el pago del proveedor produce **más de un
 egreso** (inherente a conservar las cuentas por pagar); y los cortes de página del
 PDF sólo se confirman **con el código en La Sede**.
 
+### S-Ajustes-Jul26-R3 ✅ — El documento a prueba de todo, forma de pago y safeguards de UI (2026-07-26, VERSION 2026.07.34)
+
+Tercera ronda del día, disparada por un PDF real que Oscar adjuntó
+(`COTIZACIÓN-OPTIMIST-JeepParte1-v2`): las fotos verticales se comían media
+página. «El formato tiene que ser super watertight y nunca verse afectado.»
+
+- **La foto ya no puede descuadrar el documento**: `services._medida_foto(prop)`
+  devuelve `(ancho, alto)` para que la imagen quepa COMPLETA en una caja de
+  **150×76pt** (76 ≈ 4 celdas de la tabla, la medida que pidió Oscar), y el
+  template las pinta como **atributos** `width`/`height` además del style. Antes
+  iba sólo `width:150pt` y una foto 1×2 crecía a 300pt. Sin proporción medible
+  se asume cuadrada del alto máximo — el lado seguro. `construir_html_pdf` ahora
+  llama a `_precalentar_imagenes` ANTES de medir (`proporcion()` sólo lee de
+  caché, así que sin precalentar no había medida). El estimador del hueco de las
+  notas usa el `img_alto` ya calculado.
+- **El título del documento usa el font del cuerpo** (se le quitó el `13pt`).
+- **Bug «el botón de un solo pago no sirve»**: el backend SÍ guardaba; el
+  endpoint devolvía `204` con `hx-swap="none"`, así que la pastilla seguía
+  marcando Anticipo y la nota del PDF no cambiaba — se veía muerto. El recuadro
+  se extrajo a `cotizaciones/_documento_opciones.html`, el endpoint lo devuelve
+  repintado y las pastillas (ahora `<button>`) mandan su valor en `hx-vals`, sin
+  depender de que htmx incluya el `value` de un radio escondido.
+- **Safeguard de la foto del producto** (Oscar): en la FICHA del producto quitar
+  la foto es un cambio **pendiente** — `data-img-diferido` en el recuadro hace
+  que el componente no postee, marque el hidden `imagen_quitar` y lo aplique la
+  vista `editar` al guardar. Si te sales sin guardar, la foto sigue. En el
+  proyecto y en el historial de usos (sin botón de guardar) sigue siendo
+  inmediato. Se sumó un guard genérico **`<form data-avisar-cambios>`** en
+  `ui.js` (dual-copy §18): marca el form como sucio al primer cambio y avisa en
+  `beforeunload`; otros componentes lo marcan con
+  `form.dataset.cambiosSinGuardar = "1"`.
+- **Sidebar al 100% del alto**: el `<nav>` pasó a `flex-1 justify-between`, así
+  el sobrante se reparte entre los botones en vez de dejarlos apelotonados
+  arriba. Dual-copy Taller + Gerencia.
+- **Fichas**: se quitó la pastilla de color con el slug del encabezado del
+  cliente (la referencia vive en «Identificación»), y los títulos de sección del
+  **proveedor** adoptaron el estilo de la ficha del cliente —`text-theme-xl
+  font-medium` FUERA del recuadro— en las dos variantes del template (editable y
+  solo lectura).
+- **12 tests nuevos** (`tests/taller/test_ajustes_jul26_r3.py`). Actualizados los
+  que fijaban el contrato anterior: los toggles del documento ahora responden
+  `200` con el recuadro (antes `204`), el estimador recibe `img_alto` en vez de
+  `proporcion`, y el test del `<br>` busca el título por su texto.
+
+**Deuda diseñada**: el tope de 76pt es un número fijo (si algún día LC quiere
+fotos más grandes, es una constante); el guard de «cambios sin guardar» sólo está
+puesto en la ficha del producto (aplicarlo a otros forms es agregar el atributo);
+y el reparto del sidebar deja huecos amplios en pantallas muy altas con pocos
+items — es justo lo que se pidió.
+
 ---
 
 ## 9. Decisiones operativas tomadas

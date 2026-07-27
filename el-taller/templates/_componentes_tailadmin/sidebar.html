@@ -14,7 +14,11 @@
 
     {# V11: iconos por carpeta (nombre → clave). ui.js los lee para pintar el SVG. #}
     <script type="application/json" id="sidebar-carpetas-iconos">{{ sidebar_carpetas_json|default:"{}" }}</script>
-    <nav class="flex flex-col gap-1 text-sm">
+    {% comment %}LC 2026-07-26 (Oscar): el menú ocupa TODO el alto de la ventana y
+    el espacio sobrante se reparte entre los botones (`flex-1` + `justify-between`),
+    en vez de dejarlos apelotonados arriba con un hueco abajo. Si los items no
+    caben, `justify-between` no hace nada y el `<aside>` scrollea como siempre.{% endcomment %}
+    <nav class="flex flex-1 flex-col justify-between gap-1 text-sm">
         <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú</h3>
 
         {% if not sidebar_orden.dashboard.oculto %}

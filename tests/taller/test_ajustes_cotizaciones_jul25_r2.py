@@ -68,7 +68,9 @@ class TestDocumento:
             f"/cotizaciones/{entorno['cot'].pk}/documento/",
             {"campo": "titulo_documento_manual", "valor_titulo_documento_manual": "Uniformes Marriott"},
         )
-        assert r.status_code == 204
+        # LC 2026-07-26 (ronda 3): el endpoint devuelve el recuadro «Documento»
+        # repintado; el control del título lo ignora con `hx-swap="none"`.
+        assert r.status_code == 200
         entorno["cot"].refresh_from_db()
         assert entorno["cot"].titulo_documento == "Uniformes Marriott"
 

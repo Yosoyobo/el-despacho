@@ -7832,3 +7832,96 @@ pendientes. Ruff limpio.
   produce **más de un egreso** (ver §3). Es inherente a conservar las CxP.
 - Los cortes de página del PDF solo se confirman **con el código en La Sede**: la
   conversión la hace Google.
+
+---
+
+# BITÁCORA — S-Ajustes-Jul26-R3 (2026-07-26, VERSION 2026.07.34)
+
+> Tercera ronda del día. La disparó un PDF real que Oscar adjuntó
+> (`COTIZACIÓN-OPTIMIST-JeepParte1-v2`): la foto de la bata ocupaba media hoja y
+> el bloque siguiente quedaba en el aire. «El formato tiene que ser super
+> watertight y nunca verse afectado o fuera de diseño.»
+
+## 1. Por qué se rompía el documento
+
+La imagen iba con `style="width:150pt"` y nada más. Con una foto **vertical**
+(bata, hoodie: proporción 1×2) el convertidor la escalaba a 150 de ancho × 300 de
+alto — media hoja carta útil. Da igual cuánto se ajuste el resto del layout: si
+el alto de la foto depende de lo que suba el usuario, el documento nunca es
+estable.
+
+**Fix**: `services._medida_foto(proporcion)` calcula `(ancho, alto)` para que la
+imagen quepa COMPLETA en una caja de **150×76pt** —76 ≈ el alto de 4 celdas de la
+tabla, la medida que pidió Oscar— y el template las pinta como **atributos**
+`width`/`height` (Docs hace caso a los atributos) además del `style`. Ninguna
+foto puede pasarse de ahí.
+
+Dos detalles que hacían falta para que funcionara:
+
+- `proporcion()` **sólo lee de caché**, así que `construir_html_pdf` ahora llama
+  a `_precalentar_imagenes` ANTES de medir. Sin eso la proporción era 0 en la
+  vista previa y en el primer render.
+- Sin proporción medible se asume **cuadrada del alto máximo**: una foto chica
+  nunca rompe el formato, y si Drive falla el documento sigue cuadrado.
+
+El estimador del hueco de las notas dejó de deducir el alto de la proporción y
+usa el `img_alto` ya calculado — una sola fuente.
+
+También se le quitó el `font-size:13pt` al título: hereda el del `<body>` (11pt),
+que es lo que pidió Oscar.
+
+## 2. «El botón de un solo pago no sirve»
+
+El backend **sí guardaba** (los tests de julio 25 lo probaban). Lo que fallaba
+era la respuesta: `204` + `hx-swap="none"`, así que la pastilla seguía marcando
+«Anticipo» y la «Nota del PDF» no cambiaba. Para el usuario, un botón muerto.
+
+Se extrajo el recuadro a `cotizaciones/_documento_opciones.html`; el endpoint lo
+devuelve **repintado** y el propio `<section>` es el target. De paso las
+pastillas pasaron de radio escondido a `<button>` con el valor en `hx-vals`: ya
+no depende de que htmx incluya el `value` de un `input` con `sr-only`.
+
+## 3. Safeguard: la foto del producto no se borra sola
+
+Pedido de Oscar: quitar la imagen en la ficha del producto debe ser un cambio
+**pendiente** hasta apretar «Guardar producto».
+
+- El recuadro de esa página lleva `data-img-diferido` + `data-img-quitar-campo`:
+  el componente no postea, marca el hidden `imagen_quitar` y pinta «Se quitará al
+  guardar». La vista `editar` lo aplica al guardar. Subir una foto nueva cancela
+  el borrado pendiente.
+- En la tarjeta del proyecto y en el historial de usos **no hay** botón de
+  guardar, así que ahí el borrado sigue siendo inmediato (a propósito).
+- Guard genérico nuevo en `ui.js` (dual-copy §18): `<form data-avisar-cambios>`
+  se marca sucio al primer `input`/`change`, avisa en `beforeunload` y se limpia
+  al enviar. Otros componentes lo marcan con
+  `form.dataset.cambiosSinGuardar = "1"` — así lo hace el borrado diferido.
+
+## 4. Los dos ajustes visuales
+
+- **Sidebar**: el `<nav>` pasó a `flex-1 justify-between`. Ocupa todo el alto y
+  reparte el sobrante entre los botones; si no caben, `justify-between` no hace
+  nada y scrollea como siempre. Dual-copy Taller + Gerencia.
+- **Fichas**: fuera la pastilla de color con el slug del encabezado del cliente
+  (la referencia sigue en «Identificación»), y los títulos de sección del
+  proveedor adoptaron el estilo del cliente: `text-theme-xl font-medium` FUERA
+  del recuadro. Se aplicó en las **dos** variantes del template (editable y solo
+  lectura) — un descuido ahí deja media página con el estilo viejo.
+
+## 5. Tests
+
+12 nuevos en `tests/taller/test_ajustes_jul26_r3.py`. Se actualizaron los que
+fijaban el contrato anterior: los toggles del documento responden `200` con el
+recuadro (antes `204`), el estimador recibe `img_alto` en vez de `proporcion`, y
+el test del `<br>` entre logo y título lo busca por su texto (ya no por el
+`font-size`). Ruff limpio y candados de comentarios verdes.
+
+## 6. Deuda diseñada
+
+- El tope de 76pt es una constante: si LC quiere fotos más grandes se cambia ahí.
+- El guard de «cambios sin guardar» sólo está puesto en la ficha del producto;
+  aplicarlo a otro formulario es agregarle el atributo.
+- Con pocos items y una pantalla muy alta, el sidebar deja huecos amplios entre
+  botones — es exactamente lo que se pidió, pero conviene verlo en prod.
+- Como siempre con el documento: el resultado final lo pagina Google, así que el
+  PDF real sólo se puede confirmar con el código en La Sede.

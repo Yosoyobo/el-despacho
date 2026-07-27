@@ -449,7 +449,9 @@ class TestToggles:
         client.force_login(entorno["admin"])
         resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
                            {"campo": "incluir_desglose", "valor": "on"})
-        assert resp.status_code == 204
+        # LC 2026-07-26: devuelve el recuadro repintado (antes 204, y la UI se
+        # quedaba con el estado viejo).
+        assert resp.status_code == 200
         cot.refresh_from_db()
         assert cot.incluir_desglose is True
 
@@ -462,7 +464,7 @@ class TestToggles:
         client.force_login(entorno["admin"])
         resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
                            {"campo": "incluir_desglose"})
-        assert resp.status_code == 204
+        assert resp.status_code == 200
         cot.refresh_from_db()
         assert cot.incluir_desglose is False
 
@@ -472,10 +474,13 @@ class TestToggles:
         client.force_login(entorno["admin"])
         resp = client.post(f"/cotizaciones/{cot.pk}/documento/",
                            {"campo": "forma_pago", "valor": "contado"})
-        assert resp.status_code == 204
+        assert resp.status_code == 200
         cot.refresh_from_db()
         assert cot.forma_pago == "contado"
         assert cot.nota_forma_pago == "Forma de pago: Un sólo pago."
+        # El recuadro que regresa ya trae la pastilla correcta y la nota nueva.
+        html = resp.content.decode()
+        assert "Un sólo pago" in html
 
     def test_forma_de_pago_invalida_se_rechaza(self, client, entorno):
         from apps.cotizaciones import services

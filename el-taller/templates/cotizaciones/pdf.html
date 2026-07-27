@@ -35,7 +35,11 @@ Cinco cosas que la conversión NO perdona (Oscar 2026-07-25, rondas 2 y 3):
    vista previa (navegador de verdad) sí funciona al imprimir.
 
 Las imágenes llevan URL absoluta pública y firmada porque Google las baja
-desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py).
+desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py). Y van
+SIEMPRE con ancho y alto FIJOS, calculados en `services._medida_foto` para que
+quepan en una caja de 150×76pt: dejarle el escalado al convertidor hacía que una
+foto vertical ocupara media hoja. El formato no debe depender de qué imagen
+suban.
 
 Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
 {% endcomment %}
@@ -101,7 +105,9 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   y el título — el margen de la tabla del encabezado no siempre sobrevive la
   conversión, un `<br>` sí.{% endcomment %}
   <br>
-  <p style="text-align:center; font-size:13pt; margin:0 0 28pt 0;">{{ cot.titulo_documento }}</p>
+  {% comment %}El título va con el MISMO tamaño que el cuerpo (Oscar
+  2026-07-26): heredarlo del `<body>` evita que el documento tenga dos escalas.{% endcomment %}
+  <p style="text-align:center; margin:0 0 28pt 0;">{{ cot.titulo_documento }}</p>
 
   {% comment %}Un bloque numerado por concepto. El nombre, las especificaciones
   y la foto van en UNA SOLA tabla: dos tablas seguidas dejaban un renglón en
@@ -133,7 +139,13 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
         {% for renglon in fila.it.detalle_lineas %}{{ renglon }}<br>{% endfor %}
       </td>
       <td style="border:none; width:36%; vertical-align:top;">
-        {% if fila.imagen %}<p align="right" style="margin:0; text-align:right;"><img src="{{ fila.imagen }}" alt="{{ fila.it.concepto_visible }}" style="width:150pt;"></p>{% endif %}
+        {% comment %}La foto va con ANCHO y ALTO fijos, calculados en
+        `services._medida_foto` para que quepa completa en una caja de 150×76pt
+        (≈ el alto de 4 celdas de la tabla, Oscar 2026-07-26). Con solo el ancho,
+        una foto vertical —la bata, 1×2— se estiraba a media página y descuadraba
+        el documento. Las medidas van como ATRIBUTOS además del style: el
+        convertidor de Docs hace caso a los atributos.{% endcomment %}
+        {% if fila.imagen %}<p align="right" style="margin:0; text-align:right;"><img src="{{ fila.imagen }}" alt="{{ fila.it.concepto_visible }}" width="{{ fila.img_ancho }}" height="{{ fila.img_alto }}" style="width:{{ fila.img_ancho }}pt; height:{{ fila.img_alto }}pt;"></p>{% endif %}
       </td>
     </tr>
     {% endif %}

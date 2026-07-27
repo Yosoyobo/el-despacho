@@ -904,3 +904,50 @@ window.abrirRickroll = function () {
   document.addEventListener('keydown', onKey);
   document.body.appendChild(ov);
 };
+
+
+/* Aviso de cambios sin guardar (LC 2026-07-26, Oscar).
+
+   Marca un `<form data-avisar-cambios>` como "sucio" en cuanto el usuario toca
+   un campo, y si intenta salirse de la página sin guardar, el navegador le
+   pregunta. También lo puede marcar otro componente escribiendo
+   `form.dataset.cambiosSinGuardar = "1"` (así lo hace el borrado diferido de la
+   foto del producto, en imagen_pegar.js).
+
+   Se limpia al enviar el formulario — guardar no debe disparar el aviso. */
+(function () {
+  'use strict';
+  function formularios() {
+    return Array.prototype.slice.call(document.querySelectorAll('form[data-avisar-cambios]'));
+  }
+  function sucio() {
+    return formularios().some(function (f) { return f.dataset.cambiosSinGuardar === '1'; });
+  }
+  function montar(form) {
+    if (form.dataset.avisoMontado) return;
+    form.dataset.avisoMontado = '1';
+    ['input', 'change'].forEach(function (ev) {
+      form.addEventListener(ev, function (e) {
+        // Los controles de solo-lectura o los que no viajan en el POST no cuentan.
+        var t = e.target;
+        if (!t || t.disabled || t.type === 'hidden') return;
+        form.dataset.cambiosSinGuardar = '1';
+      });
+    });
+    form.addEventListener('submit', function () {
+      delete form.dataset.cambiosSinGuardar;
+    });
+  }
+  function escanear() { formularios().forEach(montar); }
+  window.addEventListener('beforeunload', function (e) {
+    if (!sucio()) return;
+    e.preventDefault();
+    e.returnValue = '';  // requerido por Chrome para mostrar el aviso
+  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', escanear);
+  } else {
+    escanear();
+  }
+  document.body.addEventListener('htmx:afterSwap', escanear);
+})();
