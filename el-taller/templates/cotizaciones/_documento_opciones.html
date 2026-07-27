@@ -1,0 +1,42 @@
+{% comment %}Recuadro «Documento» de la cotización: los interruptores del PDF.
+
+LC 2026-07-26 (Oscar, ronda 3 — «el botón de un solo pago no sirve»): antes cada
+control posteaba con `hx-swap="none"`, así que la pastilla seguía marcando la
+opción vieja y la «Nota del PDF» no cambiaba — se veía muerto aunque guardara.
+Ahora el endpoint devuelve ESTE partial y el recuadro se repinta con el estado
+real. Además, cada pastilla manda su valor en `hx-vals`: así no depende de que
+htmx incluya el `value` del radio.
+
+Se re-renderiza solo (`hx-target` = el propio `<section>`), así que no necesita
+JS ni tocar el resto de la página.
+{% endcomment %}
+<section id="documento-opciones"
+         class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
+         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+         hx-target="#documento-opciones" hx-swap="outerHTML">
+    <h2 class="mb-3 text-sm font-medium text-gray-800 dark:text-gray-100">Documento</h2>
+    <label class="flex cursor-pointer items-start gap-2.5">
+        <input type="checkbox" name="valor_incluir_desglose" value="on" {% if cot.incluir_desglose %}checked{% endif %}
+               hx-post="{% url 'cotizaciones:documento-opciones' cot.pk %}" hx-trigger="change"
+               hx-vals='{"campo": "incluir_desglose"}'
+               class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 dark:border-gray-700">
+        <span class="text-sm text-gray-700 dark:text-gray-200">
+            Incluir desglose y montos
+            <span class="mt-0.5 block text-xs text-gray-400 dark:text-gray-500">Agrega al final la tabla de conceptos y el cálculo de impuestos.</span>
+        </span>
+    </label>
+    <div class="mt-4">
+        <span class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Forma de pago</span>
+        <div class="flex flex-wrap gap-2">
+            {% for valor, etiqueta in cot.FORMAS_PAGO %}
+            <button type="button"
+                    class="pill-filtro {% if cot.forma_pago == valor %}pill-filtro-on{% endif %}"
+                    hx-post="{% url 'cotizaciones:documento-opciones' cot.pk %}"
+                    hx-vals='{"campo": "forma_pago", "valor_forma_pago": "{{ valor }}"}'>
+                {{ etiqueta }}
+            </button>
+            {% endfor %}
+        </div>
+        <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">Nota del PDF: «{{ cot.nota_forma_pago }}»</p>
+    </div>
+</section>

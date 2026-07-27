@@ -272,7 +272,7 @@ def test_hueco_de_notas_deja_colchon_al_pie(cotizacion):
     )
 
     items = list(cotizacion.items.all())
-    filas = [{"it": it, "imagen": "", "proporcion": 0} for it in items]
+    filas = [{"it": it, "imagen": "", "img_alto": 0} for it in items]
     notas = notas_para(cotizacion)
     hueco = _espacio_antes_de_notas(cotizacion, filas, items, notas)
     alto_notas = 22 + len(notas) * 15
@@ -281,15 +281,16 @@ def test_hueco_de_notas_deja_colchon_al_pie(cotizacion):
 
 
 def test_foto_apaisada_no_infla_la_estimacion(cotizacion):
-    """Una foto banner (4:1) mide un cuarto de su ancho: con la proporción real
-    el hueco es mayor que asumiéndola cuadrada."""
+    """Una foto banner (4:1) ocupa menos alto que una cuadrada, así que deja más
+    hueco para las notas. LC 2026-07-26: el alto ya viene calculado en la fila
+    (`img_alto`, de `_medida_foto`), no se deduce aquí de la proporción."""
     from apps.cotizaciones.notas import notas_para
-    from apps.cotizaciones.services import _espacio_antes_de_notas
+    from apps.cotizaciones.services import _espacio_antes_de_notas, _medida_foto
 
     items = list(cotizacion.items.all())
     notas = notas_para(cotizacion)
-    apaisada = [{"it": it, "imagen": "u", "proporcion": 0.25} for it in items]
-    sin_medida = [{"it": it, "imagen": "u", "proporcion": 0} for it in items]
+    apaisada = [{"it": it, "imagen": "u", "img_alto": _medida_foto(0.25)[1]} for it in items]
+    sin_medida = [{"it": it, "imagen": "u", "img_alto": _medida_foto(0)[1]} for it in items]
     assert (_espacio_antes_de_notas(cotizacion, apaisada, items, notas)
             > _espacio_antes_de_notas(cotizacion, sin_medida, items, notas))
 
@@ -325,7 +326,7 @@ def test_titulo_igual_al_automatico_se_guarda_vacio(cotizacion, entorno, client)
         {"campo": "titulo_documento_manual",
          "valor_titulo_documento_manual": cotizacion.titulo_documento_auto},
     )
-    assert r.status_code == 204
+    assert r.status_code == 200
     cotizacion.refresh_from_db()
     assert cotizacion.titulo_documento_manual == ""
 
@@ -337,7 +338,7 @@ def test_titulo_editado_a_mano_si_se_guarda(cotizacion, entorno, client):
         {"campo": "titulo_documento_manual",
          "valor_titulo_documento_manual": "Propuesta especial Ted Lasso"},
     )
-    assert r.status_code == 204
+    assert r.status_code == 200
     cotizacion.refresh_from_db()
     assert cotizacion.titulo_documento_manual == "Propuesta especial Ted Lasso"
     assert cotizacion.titulo_documento == "Propuesta especial Ted Lasso"

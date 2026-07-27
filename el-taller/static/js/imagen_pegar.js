@@ -18,9 +18,14 @@
  * del catálogo (`data-img-compartida`), se pide confirmación porque afecta a
  * todos los proyectos que usan ese producto.
  *
+ * En la página del PRODUCTO el borrado es DIFERIDO (`data-img-diferido`): no se
+ * postea nada, se apunta en un campo oculto y se aplica al «Guardar producto».
+ * Si el usuario se sale sin guardar, la foto sigue ahí (Oscar 2026-07-26).
+ *
  * Contrato del recuadro:
  *
- *   <div data-img-slot data-url="/…/imagen" [data-img-compartida]>
+ *   <div data-img-slot data-url="/…/imagen" [data-img-compartida]
+ *        [data-img-diferido data-img-quitar-campo="#id-del-hidden"]>
  *     <img data-img-preview>            (opcional)
  *     <p  data-img-hint>…</p>           (opcional)
  *     <input type="file" data-img-file>  (opcional)
@@ -93,6 +98,17 @@
     return !!(img && !img.classList.contains("hidden"));
   }
 
+  // Avisa al guard de "cambios sin guardar" de ui.js (si la página lo usa).
+  function marcarSucio(el) {
+    var form = el.closest && el.closest("form");
+    if (form) form.dataset.cambiosSinGuardar = "1";
+  }
+
+  function campoQuitar(slot) {
+    var sel = slot.getAttribute("data-img-quitar-campo");
+    return sel ? document.querySelector(sel) : null;
+  }
+
   // Quitar (tecla Delete): desliga la foto. El archivo se queda en Drive a
   // propósito — puede estar congelado en una cotización ya enviada.
   function quitar(slot) {
@@ -102,6 +118,19 @@
     // proyectos que usan ese producto: eso sí se pregunta.
     if (slot.hasAttribute("data-img-compartida")
         && !window.confirm("Esta foto es la del producto del catálogo y la usan todos sus proyectos.\n\n¿Quitarla de todos modos?")) {
+      return;
+    }
+    // Modo DIFERIDO (página del producto, Oscar 2026-07-26): no se postea nada.
+    // Se apunta el cambio en un campo oculto del formulario y se aplica cuando
+    // el usuario aprieta «Guardar producto». Si se sale sin guardar, la foto
+    // sigue ahí.
+    if (slot.hasAttribute("data-img-diferido")) {
+      var campo = campoQuitar(slot);
+      if (campo) campo.value = "1";
+      despintar(slot);
+      slot.dataset.imgPendiente = "1";
+      estado(slot, "Se quitará al guardar el producto.");
+      marcarSucio(slot);
       return;
     }
     estado(slot, "Quitando…");
@@ -134,6 +163,10 @@
       estado(slot, "La imagen supera 25 MB.", true);
       return;
     }
+    // Una foto nueva cancela el borrado pendiente del modo diferido.
+    var campo = campoQuitar(slot);
+    if (campo) campo.value = "";
+    delete slot.dataset.imgPendiente;
     // Preview optimista con el blob local: se ve al instante, aunque Drive tarde.
     try { pintar(slot, URL.createObjectURL(blob)); } catch (e) { /* sin preview */ }
     estado(slot, "Subiendo…");

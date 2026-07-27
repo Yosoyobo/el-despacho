@@ -919,7 +919,12 @@ def documento_opciones(request, pk):
         return HttpResponseBadRequest("Campo no editable.")
     cot.save(update_fields=[campo, "actualizado_en"])
     services.emitir_actualizada(cot, request.user)
-    return HttpResponse(status=204)
+    # LC 2026-07-26 (Oscar, ronda 3): se devuelve el recuadro repintado. Antes
+    # era un 204 y la pastilla seguía marcando la opción vieja —«el botón de un
+    # solo pago no sirve»—, aunque el valor sí se guardara. Los controles que no
+    # quieren refrescarse (el título, que vive en otra tarjeta) usan
+    # `hx-swap="none"` y simplemente ignoran esta respuesta.
+    return render(request, "cotizaciones/_documento_opciones.html", {"cot": cot})
 
 
 @login_required

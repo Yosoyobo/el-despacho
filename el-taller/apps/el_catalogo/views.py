@@ -327,6 +327,13 @@ def editar(request, pk: int):
             # flujo) NO debe borrar lo capturado.
             if "procesos_default_json" in request.POST:
                 obj.procesos_default = procesos_default.parsear(request.POST)
+            # LC 2026-07-26 (Oscar, ronda 3): quitar la foto en esta página es un
+            # cambio PENDIENTE hasta que se aprieta «Guardar producto» — salirse
+            # sin guardar ya no la desliga. El archivo NO se borra de Drive:
+            # puede estar congelado en una cotización enviada.
+            if request.POST.get("imagen_quitar") == "1":
+                obj.imagen_file_id = ""
+                obj.imagen_url = ""
             obj.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
             # Calculadora de costos (proveedores como Simil Cuero Plymouth): si el

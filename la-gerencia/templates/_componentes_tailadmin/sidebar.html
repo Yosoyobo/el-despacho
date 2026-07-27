@@ -9,7 +9,10 @@
         <span class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Gerencia</span>
     </a>
 
-    <nav class="flex flex-col gap-1 text-sm">
+    {% comment %}LC 2026-07-26 (Oscar): el menú ocupa TODO el alto de la ventana y
+    el espacio sobrante se reparte entre los botones (regla §18: espejo del
+    sidebar de El Taller).{% endcomment %}
+    <nav class="flex flex-1 flex-col justify-between gap-1 text-sm">
         <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú</h3>
 
         <a href="/" class="menu-item {% if request.path == '/' %}menu-item-active{% else %}menu-item-inactive{% endif %}">
