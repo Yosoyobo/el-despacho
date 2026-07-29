@@ -5,6 +5,64 @@
 
 ---
 
+## Novedades — La cotización mejor armada, la tarjeta de producto más limpia y el celular por fin cómodo (28 de julio de 2026 — undécima entrega)
+
+**En el documento de la cotización (el PDF)**
+
+- **La descripción y la foto ya no se separan de su tabla de precios.** Cuando un
+  producto no cabía en lo que quedaba de la hoja, el nombre y la foto se quedaban
+  abajo y la tabla se pasaba a la página siguiente. Ahora cada producto viaja
+  completo a la página que le toque.
+- **A partir de la página 2, el contenido arranca con dos renglones de aire**, en
+  lugar de pegado al borde de arriba.
+- **Un renglón menos entre el título y el primer producto.**
+- **Las fotos van centradas** dentro de su espacio, así todas quedan alineadas
+  entre sí aunque unas sean apaisadas y otras verticales.
+- **Interlineado más apretado**: cabe más en cada hoja.
+- **La foto que le pusiste al producto *en ese proyecto* es la que sale.** Si le
+  cambiaste el nombre a un producto para ese proyecto y le subiste su propia foto,
+  antes el documento seguía usando la del catálogo. Ya no.
+- **Guardar el PDF desde el celular.** El botón ahora dice **«Guardar /
+  Compartir»**: abre la hoja de compartir del teléfono (Archivos, WhatsApp,
+  Correo) con el archivo y su nombre correcto. Ya no hay que pasar por
+  «Imprimir», que le metía un pie de página con la dirección web. Si de todos
+  modos imprimes, ese pie ya no aparece.
+
+**En la página de un proyecto**
+
+- **Tarjeta de producto rediseñada:** la foto va en la esquina, el resumen del
+  producto se queda visible aunque abras la tarjeta, se quitó la línea «usa: …» y
+  todo quedó más apretado. Abajo ahora ves la **utilidad por pieza** en verde, y
+  del lado derecho el **monto**, con la **utilidad** del producto y su **margen**
+  debajo. El botón verde **«+ Proceso»** es el que se le *cobra* al cliente; el
+  gris de abajo es el que *cuesta* producir.
+- **Quitar la foto de un producto ya es un cambio pendiente**, igual que en la
+  ficha del producto: se aplica cuando guardas el proyecto. Si te sales sin
+  guardar, la foto sigue ahí.
+- **El recuadro de Tareas vacío** ya no ocupa media pantalla: es un renglón.
+
+**En el celular**
+
+- **Los eventos del calendario se leen**: letra y celdas ajustadas al ancho del
+  teléfono.
+- **La tabla de Tareas del proyecto ya no se sale** de la pantalla (en pantalla
+  chica se ocultan «Asignada a» y «Prioridad», que están en el detalle).
+- **Ya se pueden arrastrar las tarjetas de producto con el dedo** para
+  reordenarlas.
+- **El botón «Nueva tarea» abre un recuadro que sí cabe** en la pantalla.
+
+**Otros**
+
+- **El Dashboard y el calendario ya no muestran nada de proyectos cancelados.**
+- **En el recuadro de El Chalán del Dashboard hay un botón 📎** para mandarle una
+  foto junto con el mensaje (un recibo, la muestra de un producto).
+- **Listas de Ingresos y Egresos:** se quitó la columna de código y el menú de
+  tres puntos. El orden es Fecha · Monto · Cliente/Proveedor · Método ·
+  Descripción · Estado, y al picar un renglón **abre directo en modo edición**.
+- **La página de Novedades numera las entregas** (la más vieja es la 1).
+
+---
+
 ## Novedades — El documento de la cotización a prueba de todo, y la foto del producto ya no se borra sola (26 de julio de 2026 — décima entrega)
 
 - **Las fotos ya no descuadran la cotización.** Una foto vertical (una bata, un
@@ -2919,8 +2977,8 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 
 - **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
 - **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
-- **Próximos eventos:** las siguientes entregas y tareas con fecha. Click en la tarjeta te lleva al calendario completo.
-- **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están los dos botones: **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
+- **Próximos eventos:** las siguientes entregas y tareas con fecha; cada una te lleva a su proyecto o a su tarea. **Nada de proyectos cancelados** — ni aquí ni en el calendario.
+- **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están el botón **📎** (adjuntar una foto al mensaje — un recibo, la muestra de un producto; solo aparece si el Chalán configurado sabe leer imágenes), **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
   - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma; **solo de proyectos vivos** — lo que está en pausa, entregado, cerrado o cancelado ya no se produce, así que no aparece), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
   - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (se arma con datos, sin IA). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
@@ -3008,8 +3066,8 @@ La página es **editable directo** (los cambios se guardan solos; verás
     catálogo para que lo cambies por el que ve el cliente — compras «TShirt
     Oversize Color» a Crea Blanks y la vendes como «TShirt Modelo Janet». Ese
     nombre es el que se usa en el proyecto, en el tablero y en la cotización;
-    debajo queda una línea chica «usa: …» con el producto real, y el buscador
-    del tablero **sigue encontrándolo por los dos nombres** (útil para «¿en qué
+    el producto real sigue a la vista en el selector de abajo, y el buscador del
+    tablero **sigue encontrándolo por los dos nombres** (útil para «¿en qué
     proyectos uso la playera de Crea Blanks?»). Con **«usar el nombre del
     catálogo»** regresas al original.
   - **Proveedor** principal + costo unitario + notas.
@@ -3020,20 +3078,27 @@ La página es **editable directo** (los cambios se guardan solos; verás
     tablita de ese producto. **No confundir** con el "+ Proceso" de más abajo,
     que es de **producción** y te **cuesta** dinero. Si un proceso además cuesta
     producirlo, captura el cobro aquí y el costo abajo.
-  - **Imagen:** un recuadro donde **pegas la foto** del producto. Pícalo para
-    elegir a dónde va y pega con **Ctrl/Cmd+V** (o usa «elige un archivo»). Si a
-    esa línea le pusiste **otro nombre en este proyecto**, la foto se guarda para
-    **ese uso**; si no le cambiaste el nombre, se guarda en el **producto del
-    catálogo** y la heredan todos sus usos. El sistema confirma a dónde se fue.
-    Es la foto que sale en el documento de la cotización, y queda **congelada**
-    en cada versión que generes. Para **quitarla**, pica el recuadro y aprieta
-    **Supr**; si es la del catálogo te pregunta antes, porque la ven todos los
-    proyectos de ese producto (el archivo se queda en Drive, así que los
-    documentos que ya mandaste no se rompen).
+  - **Imagen:** el recuadro de la **esquina de la tarjeta**, donde **pegas la
+    foto** del producto. Pícalo para elegir a dónde va y pega con **Ctrl/Cmd+V**
+    (o dale doble clic para subir un archivo). Si a esa línea le pusiste **otro
+    nombre en este proyecto**, la foto se guarda para **ese uso**; si no le
+    cambiaste el nombre, se guarda en el **producto del catálogo** y la heredan
+    todos sus usos. El sistema confirma a dónde se fue. Es la foto que sale en el
+    documento de la cotización: si la línea tiene la suya, **ésa manda**; si no,
+    sale la que quedó congelada al generar la versión. Para **quitarla**, pica el
+    recuadro y aprieta **Supr**: se marca para quitarse y **sólo desaparece
+    cuando guardas el proyecto** — si te sales sin guardar, ahí sigue. Si la que
+    se ve es la del catálogo te pregunta antes, porque la ven todos los proyectos
+    de ese producto (el archivo se queda en Drive, así que los documentos que ya
+    mandaste no se rompen).
   - **Impresión** (proveedor + costo) y el botón **"+ Proceso"** para sumar
     gastos operativos sueltos (materiales, viáticos, embalaje…). Éstos **cuestan**
     (bajan tu utilidad); no se le cobran al cliente.
-  - **Monto calculado** (precio × cantidad) abajo a la derecha.
+  - **Abajo a la izquierda**, el costo de producción con el **costo por pieza** y,
+    en verde, la **utilidad por pieza**. **Abajo a la derecha**, el **monto** del
+    producto y, debajo, su **utilidad** en pesos y su **margen** en verde.
+  - Para **reordenar** las tarjetas, arrastra por el asa de puntitos de la
+    izquierda. En el celular funciona igual, con el dedo.
 
 A la derecha:
 
@@ -3445,6 +3510,16 @@ imprimir). El archivo se llama siempre igual:
 `COTIZACIÓN-CLIENTE-NombreDelProyecto-v2`, con el cliente en mayúsculas, el
 proyecto sin espacios y la versión en minúsculas.
 
+**Desde el celular** ese botón dice **«⬇ Guardar / Compartir»** y abre la hoja de
+compartir del teléfono (Archivos, WhatsApp, Correo) con el PDF y su nombre
+correcto. No hace falta pasar por «Imprimir» — y si de todos modos imprimes, ya
+no sale el pie de página con la dirección web.
+
+**Cómo se pagina:** el nombre, las especificaciones y la foto de un producto
+**nunca se separan** de su tabla de precios: si el bloque no cabe en lo que queda
+de la hoja, se va entero a la siguiente. Y de la página 2 en adelante el
+contenido arranca con dos renglones de aire arriba.
+
 El **Título del documento** (el encabezado centrado del PDF) se edita hasta
 arriba de la página de la cotización, en la columna principal: viene con el
 texto real ya escrito para que lo corrijas encima. Si lo dejas igual, sigue
@@ -3577,6 +3652,11 @@ subtotal solo; apágalo si el movimiento no llevó IVA. Todo es en **pesos (MXN)
 - **Egresos:** qué gastaste, centro de costo, **proveedor (obligatorio — todo egreso va ligado a un proveedor)**, quién pagó, fecha. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción. Un egreso **solo se registra cuando el pago se realiza**: los estados posibles son **Pagado (saldado)** o **Por reembolsar**; ya no se registran egresos "por pagar" a mano.
 - **Por cobrar (CxC):** vista unificada de facturas pendientes + anticipos por generar + proyectos legacy con saldo, ordenado por vencimiento. Se muestra el **nombre del proyecto** (con su código en chico) y es un enlace al proyecto.
 - **Por pagar (CxP):** egresos pendientes de pagar + reembolsos pendientes por empleado. Cada egreso pendiente se lee por el **nombre de su proyecto**; el código del egreso queda en la línea de detalle.
+
+**Las listas de Ingresos y Egresos** muestran, en este orden: **Fecha · Monto ·
+Cliente (o Proveedor) · Proyecto · Método · Descripción · Estado**. Al picar un
+renglón **abres directo en modo edición** (los movimientos anulados, que no se
+editan, abren en su detalle).
 
 En la página de un **ingreso** o un **egreso**, el proyecto es un **enlace**: un
 clic y estás en él.

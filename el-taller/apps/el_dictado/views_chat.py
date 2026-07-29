@@ -99,11 +99,21 @@ def conversacion(request, pk: int):
 @require_http_methods(["POST"])
 def nuevo(request):
     """POST /chalan/nuevo — crea un chat nuevo (con mensaje inicial opcional del
-    Dashboard) y redirige a la sección de chat con ese chat abierto."""
+    Dashboard) y redirige a la sección de chat con ese chat abierto.
+
+    LC 2026-07-28 (Oscar): el mini Chalán del Dashboard también acepta una FOTO
+    («subir foto / adjunto al mensaje»), así que el primer turno puede llevar
+    imagen igual que los siguientes. Se puede mandar solo la foto, sin texto.
+    """
     mensaje = (request.POST.get("mensaje") or request.POST.get("texto") or "").strip()
+    imagenes = _imagenes_de_request(request)
+    archivo = request.FILES.get("imagen") if imagenes else None
     conv = crear_conversacion(usuario=request.user, mensaje_inicial=mensaje or None)
-    if mensaje:
-        conversar(mensaje=mensaje, usuario=request.user, conversacion=conv)
+    if mensaje or imagenes:
+        conversar(
+            mensaje=mensaje, usuario=request.user, conversacion=conv,
+            imagenes=imagenes, archivo_adjunto=archivo,
+        )
     return redirect("chalan-conversacion", pk=conv.pk)
 
 

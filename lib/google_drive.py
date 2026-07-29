@@ -49,6 +49,11 @@ MIME_CARPETA = "application/vnd.google-apps.folder"
 MIME_GDOC = "application/vnd.google-apps.document"
 MIME_PDF = "application/pdf"
 DRIVE_EXPORT_FMT = "https://www.googleapis.com/drive/v3/files/{file_id}/export"
+# API de Documentos: se usa SOLO para endurecer la paginación del Doc temporal
+# antes de exportarlo a PDF (ver `_endurecer_paginacion`). Reutiliza la misma
+# credencial OAuth — el scope `drive.file` cubre los documentos que la app creó
+# (mismo truco que `lib/google_sheets.py`).
+DOCS_BASE = "https://docs.googleapis.com/v1/documents"
 
 
 class NoConfiguradoError(Exception):
@@ -504,6 +509,47 @@ class GoogleDriveWrapper:
         resp.raise_for_status()
         return resp.json()["id"]
 
+    # -- Paginación del documento ------------------------------------------
+
+    def _endurecer_paginacion(self, doc_id: str) -> bool:
+        """Marca TODAS las filas de tabla del Doc como «no se parten entre
+        páginas» (`TableRowStyle.preventOverflow`).
+
+        **Por qué.** Los bloques que deben viajar juntos —el nombre del
+        producto con sus especificaciones, su foto y su tabla de montos— van
+        dentro de una tabla envoltorio de una sola celda, porque el
+        `page-break-inside:avoid` del HTML lo ignora el convertidor de Google
+        (quirk #6 de `cotizaciones/pdf.html`). Pero una fila de tabla en Google
+        Docs **sí puede** desbordarse a la página siguiente si es más alta que
+        lo que resta de la hoja: el envoltorio sólo ayuda, no garantiza nada.
+        `preventOverflow` es el interruptor que lo garantiza, y sólo se puede
+        prender por la API de Documentos, después de la conversión.
+
+        Best-effort: cualquier fallo devuelve False y el PDF se exporta igual
+        (con el comportamiento de antes). Nunca lanza.
+        """
+        try:
+            with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
+                resp = cli.get(
+                    f"{DOCS_BASE}/{doc_id}",
+                    headers=self._headers(),
+                    params={"fields": "body(content(startIndex,table(rows)))"},
+                )
+                resp.raise_for_status()
+                cuerpo = (resp.json().get("body") or {}).get("content") or []
+                peticiones = _peticiones_prevent_overflow(cuerpo)
+                if not peticiones:
+                    return False
+                resp = cli.post(
+                    f"{DOCS_BASE}/{doc_id}:batchUpdate",
+                    headers=self._headers(),
+                    json={"requests": peticiones},
+                )
+                resp.raise_for_status()
+            return True
+        except Exception:  # noqa: BLE001 — sin API de Docs el PDF sale igual
+            return False
+
     def html_a_pdf(
         self, *, html: str, nombre: str, carpeta_id: str | None = None
     ) -> dict[str, Any]:
@@ -519,6 +565,7 @@ class GoogleDriveWrapper:
         nombre_pdf = nombre if nombre.lower().endswith(".pdf") else f"{nombre}.pdf"
         doc_id = self._subir_html_como_gdoc(html, f"_tmp_{nombre}", carpeta_id)
         try:
+            self._endurecer_paginacion(doc_id)
             pdf_bytes = self.exportar(doc_id, MIME_PDF)
         finally:
             # El Doc intermedio no debe quedar como basura en Drive (best-effort).
@@ -529,6 +576,38 @@ class GoogleDriveWrapper:
         return meta
 
 
+def _peticiones_prevent_overflow(contenido: list) -> list[dict]:
+    """Peticiones `updateTableRowStyle` para que ninguna fila de tabla del
+    documento se parta entre páginas (ver `_endurecer_paginacion`).
+
+    Recibe el `body.content` que devuelve la API de Documentos y devuelve una
+    petición por tabla, con todos sus índices de fila. Ninguna cambia el largo
+    del documento, así que los índices siguen siendo válidos dentro del mismo
+    lote. Función pura y tolerante a basura (elementos sin tabla, sin índice o
+    sin filas se ignoran).
+    """
+    peticiones: list[dict] = []
+    for elemento in contenido or []:
+        if not isinstance(elemento, dict):
+            continue
+        tabla = elemento.get("table")
+        inicio = elemento.get("startIndex")
+        if not isinstance(tabla, dict) or not isinstance(inicio, int):
+            continue
+        filas = tabla.get("rows") or 0
+        if not isinstance(filas, int) or filas <= 0:
+            continue
+        peticiones.append({
+            "updateTableRowStyle": {
+                "tableStartLocation": {"index": inicio},
+                "rowIndices": list(range(filas)),
+                "tableRowStyle": {"preventOverflow": True},
+                "fields": "preventOverflow",
+            }
+        })
+    return peticiones
+
+
 drive = GoogleDriveWrapper()
 
 __all__ = [
@@ -536,6 +615,7 @@ __all__ = [
     "NoConfiguradoError",
     "drive",
     "SCOPES",
+    "DOCS_BASE",
     "construir_url_consentimiento",
     "intercambiar_codigo_por_refresh_token",
     "parsear_cliente_json",

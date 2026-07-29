@@ -216,6 +216,12 @@ def _mis_mandados(user):
     return list(qs[:5])
 
 
+def _chat_acepta_imagenes(user) -> bool:
+    """True si el Chalán de la estación del chat sabe leer imágenes."""
+    from apps.el_dictado.services_chat import chat_acepta_imagenes
+    return chat_acepta_imagenes(user)
+
+
 def _proximos_eventos(user):
     """Entregas de proyectos + tareas con fecha, desde hoy. (V6: el estado
     `bloqueada` ya no existe — sin exclusiones especiales.)"""
@@ -304,8 +310,12 @@ def home(request):
     es_runner = _safe("es_runner", lambda: _es_runner(user), False)
     mis_mandados = _safe("mis_mandados", lambda: _mis_mandados(user), []) if es_runner else []
     propuestas_chalan = _safe("propuestas_chalan", lambda: _propuestas_chalan(user), [])
+    # LC 2026-07-28 (Oscar): el mini Chalán del Dashboard acepta foto adjunta,
+    # pero sólo si el Chalán configurado para el chat tiene visión.
+    chat_vision_ok = _safe("chat_vision_ok", lambda: _chat_acepta_imagenes(user), False)
 
     return render(request, "taller_home/home.html", {
+        "chat_vision_ok": chat_vision_ok,
         "titulo": "LEARNING CENTER",
         "hoy": date.today(),
         "propuestas_chalan": propuestas_chalan,

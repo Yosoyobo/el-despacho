@@ -197,11 +197,11 @@
     {% if permisos_modulos.chalan %}
     <section data-andamiaje="dictado-slot"
              class="flex flex-col rounded-2xl border border-brand-200 bg-brand-25 p-4 lg:col-span-2 dark:border-brand-500/30 dark:bg-brand-500/5">
-        <form method="post" action="{% url 'chalan-nuevo' %}" class="flex flex-1 flex-col">
+        <form method="post" action="{% url 'chalan-nuevo' %}" enctype="multipart/form-data" class="flex flex-1 flex-col">
             {% csrf_token %}
             <div class="flex flex-1 items-stretch gap-3">
                 <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 self-start items-center justify-center rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">🎤</span>
-                <textarea name="mensaje" rows="8" required data-referencias
+                <textarea name="mensaje" rows="8" {% if not chat_vision_ok %}required{% endif %} data-referencias
                           placeholder="Reporta updates, consulta finanzas, crea nuevos proyectos o asigna pendientes. Puedes usar @persona, #proyecto y $cliente. Te respondo en el chat o preparo las acciones a un clic de confirmar."
                           class="h-full min-h-[11rem] w-full flex-1 resize-none border-0 bg-transparent px-0 py-1 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
             </div>
@@ -212,7 +212,17 @@
             no envía el textarea). Se llamaba «Resumir actividad», pero eso se
             confundía con el resumen con IA del detalle del proyecto: esto es el
             reporte de pendientes (tercera ronda).{% endcomment %}
+            {% comment %}LC 2026-07-28 (Oscar): se puede adjuntar una foto al mensaje
+            (un recibo, la muestra de un producto). Solo aparece si el Chalán de la
+            estación del chat tiene visión — `chat_vision_ok`.{% endcomment %}
             <div class="mt-2 flex flex-nowrap items-center justify-end gap-1.5">
+                {% if chat_vision_ok %}
+                <label for="home-chalan-imagen" title="Adjuntar una foto al mensaje"
+                       class="shrink-0 cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 hover:bg-white dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">📎</label>
+                <input type="file" name="imagen" id="home-chalan-imagen" accept="image/*" class="hidden"
+                       onchange="var n=document.getElementById('home-chalan-adjunto'); if(n)n.textContent=this.files.length?('📎 '+this.files[0].name):'';">
+                <span id="home-chalan-adjunto" class="mr-auto min-w-0 truncate text-[11px] text-brand-600 dark:text-brand-400"></span>
+                {% endif %}
                 <button type="button" hx-get="{% url 'taller-resumen-actividad' %}"
                         hx-target="#modal-slot" hx-swap="innerHTML"
                         class="btn-secundario min-w-0 whitespace-nowrap px-2 text-xs">Resumir pendientes</button>

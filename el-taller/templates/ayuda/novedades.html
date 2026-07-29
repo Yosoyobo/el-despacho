@@ -9,7 +9,12 @@
     {% for n in novedades %}
     <details class="manual-cuerpo group rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" {% if forloop.first %}open{% endif %}>
         <summary class="flex cursor-pointer select-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-800 dark:text-gray-100">
-            <span class="flex items-center gap-2">
+            <span class="flex min-w-0 items-center gap-2">
+                {% comment %}Contador chiquito (Oscar 2026-07-28): numera las entregas
+                empezando por 1 en la más vieja —hasta abajo— para saber de un vistazo
+                cuántas van. `revcounter` cuenta al revés del listado, que está de la
+                más reciente a la más vieja.{% endcomment %}
+                <span class="shrink-0 tabular-nums text-[10px] font-normal text-gray-300 dark:text-gray-600">{{ forloop.revcounter }}</span>
                 {% if forloop.first %}<span class="inline-flex h-2 w-2 shrink-0 rounded-full bg-brand-500"></span>{% endif %}
                 {{ n.titulo }}
             </span>

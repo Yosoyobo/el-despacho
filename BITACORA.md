@@ -7925,3 +7925,137 @@ el test del `<br>` entre logo y título lo busca por su texto (ya no por el
   botones — es exactamente lo que se pidió, pero conviene verlo en prod.
 - Como siempre con el documento: el resultado final lo pagina Google, así que el
   PDF real sólo se puede confirmar con el código en La Sede.
+
+---
+
+# BITÁCORA — S-Ajustes-Jul28 (VERSION 2026.07.35)
+
+> Cierre del **2026-07-28**. Ronda de Oscar: 7 puntos del documento de la
+> cotización, 3 de la página del proyecto, 4 de la versión móvil, más cuatro
+> pedidos que llegaron a media sesión. El rediseño de la tarjeta de producto vino
+> como screenshot (flujo render-driven).
+
+## 1. Lo que de verdad arreglaba el punto 1 del PDF
+
+El envoltorio de tabla de una celda (quirk #6, sprint pasado) **ayuda pero no
+garantiza nada**: una fila de tabla en Google Docs sí se desborda a la página
+siguiente si es más alta que lo que queda de hoja. Por eso la descripción y la
+foto se seguían separando de su tabla de precios.
+
+El interruptor que lo garantiza es `TableRowStyle.preventOverflow`, y **sólo
+existe en la API de Documentos** — no hay HTML que lo produzca. Nuevo
+`GoogleDriveWrapper._endurecer_paginacion(doc_id)`, que corre entre la conversión
+y el export: `documents.get` con `fields=body(content(startIndex,table(rows)))` y
+una petición `updateTableRowStyle` por tabla con todos sus `rowIndices`. Ninguna
+cambia el largo del documento, así que los índices siguen válidos dentro del
+mismo lote. Reutiliza la credencial OAuth de Drive (el scope `drive.file` cubre
+Docs sobre archivos que la app creó — mismo truco que `lib/google_sheets.py`).
+Best-effort: si la API no responde, el PDF sale como antes.
+
+El armado de las peticiones vive en la función pura
+`_peticiones_prevent_overflow(contenido)`, testeable sin red.
+
+## 2. `_paginar`: una sola simulación para dos cosas
+
+`services._paginar(cot, filas, items)` recorre los bloques como **atómicos** (que
+es justo lo que `preventOverflow` garantiza) y devuelve
+`{aire_bloques, aire_desglose, libre}`:
+
+- `aire_bloques` alimenta el punto 7 — los bloques que arrancan hoja nueva llevan
+  **dos `<br>` DENTRO de su celda**, para que el aire viaje con ellos.
+- `libre` es el sobrante real de la última hoja, y con eso
+  `_espacio_antes_de_notas` calcula el hueco del pie. Antes era
+  `_ALTO_UTIL_PT - (alto % _ALTO_UTIL_PT)`, que ignoraba el desperdicio de cada
+  corte de página; ahora la cuenta refleja lo que de verdad quedó vacío.
+
+Sigue siendo una **estimación** — la hoja real la corta Google.
+
+## 3. El bug de la foto del alias (punto 4)
+
+Oscar: «la imagen que subí al alias no está sirviendo, se está incrustando la
+imagen principal». No había bug en la subida ni en el destino: la foto se
+**congela** con la versión (`CotizacionItem.imagen_file_id`), así que una versión
+generada ANTES de subir la foto del uso conservaba la del catálogo.
+
+`_fotos_vivas_del_proyecto(cot)` indexa las fotos **propias** de los usos vigentes
+—llaves iguales a las de `descripcion.indice_previo`: por producto y, de
+respaldo, por nombre del concepto— y `_foto_del_item` las prefiere. La foto propia
+de un uso es una decisión explícita de ESE proyecto, así que gana siempre; el
+congelado sigue cubriendo el caso que lo motivó (que después le cambien la foto al
+producto del catálogo). `_precalentar_imagenes` pasó a `(items, fotos_vivas)` para
+calentar la que de verdad se va a usar.
+
+## 4. Guardar el PDF desde el celular (punto 6)
+
+`Content-Disposition: attachment` no baja nada en un teléfono: el navegador abre
+su visor. La vista previa usa ahora la **Web Share API** — `fetch` del PDF →
+`File` con el nombre bueno → `navigator.share({files})` → hoja de compartir del
+sistema. Si el navegador no sabe compartir archivos, o el usuario cancela, cae al
+enlace de siempre. Y `@page { margin: 0 }` mata el encabezado/pie con la URL que
+el navegador estampaba al imprimir (el margen lo pone la hoja, no la página).
+
+## 5. Tarjeta de producto (render)
+
+Foto en la **esquina** de la cabecera (se fue el bloque «Imagen» con su párrafo de
+ayuda), resumen compacto visible también al expandir, fuera la línea «usa: …»,
+márgenes apretados, sin párrafos de ayuda ni divisor en el pie, **utilidad por
+pieza** en verde junto al costo, y el pie separa MONTO (arriba) de utilidad en
+gris + margen en verde. El «+ Proceso» de VENTA va en verde para distinguirlo del
+de producción, que cuesta.
+
+**Quitar la foto pasó a ser DIFERIDO** también aquí: campo no-modelo
+`ProyectoProductoForm.imagen_quitar` + `save()` → `_desligar_imagen` (mismo
+criterio que la vista: prefiere la propia del uso; el archivo NUNCA se borra de
+Drive porque puede estar congelado en una cotización enviada).
+
+**Gotcha del componente**: `imagen_pegar.js` buscaba el aviso de estado DENTRO
+del recuadro, y 64px no dan para un párrafo. Se le agregó `data-img-estado-sel`
+(selector a un elemento externo) y `data-clase-base` (para que el JS no le pise
+las clases al repintar).
+
+## 6. Móvil
+
+- Eventos del calendario a 9px con celdas de 76px; `sm:` recupera el tamaño de
+  escritorio.
+- Tabla de Tareas sin `min-w-[560px]` (era lo que forzaba el scroll) y con
+  «Asignada a» / «Prioridad» ocultas en pantalla chica.
+- **Arrastre táctil** de las tarjetas de producto con Pointer Events: el DnD de
+  HTML5 no existe en touch. El asa ya traía `touch-none`, así que el gesto no
+  scrollea. Mismo `persistirOrden` que en escritorio.
+- Utilidad `.modal-alto` (`dvh` con fallback `vh`, **dual-copy §18**) y diálogo
+  pegado arriba en pantalla chica: el modal de Nueva tarea se medía en `vh`, que
+  en iOS incluye la barra del navegador, y por eso «no se podía avanzar».
+
+## 7. Los cuatro pedidos sueltos
+
+- **Calendario sin proyectos cancelados**: se arregló en
+  `calendario/services._proyectos_visibles_qs` y `_tareas_visibles_qs`, que es de
+  donde leen la página del calendario, «Próximos eventos» del Dashboard y el
+  mini-calendario. Un solo cambio cubre los tres.
+- **Novedades numeradas** con `forloop.revcounter` (la más vieja es la 1).
+- **Listas de Ingresos y Egresos**: sin columna de código y sin el menú de tres
+  puntos; orden Fecha · Monto · Cliente|Proveedor·Proyecto · Método · Descripción
+  · Estado; la fila abre **en editar** (los anulados, que no se editan, a su
+  detalle). La fecha usa el filtro `fecha_corta` que ya existía.
+- **📎 en el mini Chalán del Dashboard**: `chalan-nuevo` ahora lee la imagen igual
+  que `enviar`, y se puede mandar sólo la foto (el textarea deja de ser
+  obligatorio cuando el Chalán tiene visión). De paso, el composer de «chat
+  nuevo» de la página de El Chalán también acepta adjunto.
+
+## 8. Tests
+
+22 nuevos en `tests/taller/test_ajustes_jul28.py`. Ruff limpio; candado de
+comentarios (`{# #}` multilínea, Bug C §14) y el de Novedades, verdes.
+
+## 9. Deuda diseñada
+
+- `_paginar` es estimación: peor caso, un bloque lleva aire de más a media hoja.
+- `preventOverflow` depende de que la API de Documentos responda; si falla, el
+  PDF se degrada al comportamiento anterior sin avisarle al usuario.
+- El borrado diferido de la foto se aplica en el siguiente **autoguardado** del
+  proyecto, no sólo al apretar Guardar — en esa página el autosave es el que
+  manda.
+- El arrastre táctil sólo se implementó en las tarjetas de producto; el Kanban
+  sigue con DnD de HTML5 (escritorio).
+- Como siempre: el PDF final lo pagina Google, así que el resultado real de los
+  puntos 1, 3 y 7 sólo se confirma con el código en La Sede.

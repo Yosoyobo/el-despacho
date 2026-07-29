@@ -62,12 +62,12 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
 
     from .notas import notas_para
 
+    items = list(cot.items.select_related("servicio", "unidad_fk").all())
+    fotos_vivas = _fotos_vivas_del_proyecto(cot)
     # Las fotos se precalientan ANTES de medirlas: `proporcion()` solo lee de
     # caché, y sin proporción no se puede acotar el alto de la imagen (salía una
     # bata de media página). Es best-effort y cacheado, así que cuesta poco.
-    _precalentar_imagenes(cot)
-
-    items = list(cot.items.select_related("servicio", "unidad_fk").all())
+    _precalentar_imagenes(items, fotos_vivas)
     # LC 2026-07-26 (Oscar): las líneas marcadas `agrupado` son PROCESOS DE VENTA
     # del concepto anterior (el «Ponchado» del Bordado): se cobran aparte pero se
     # imprimen como renglones extra DENTRO de la tabla de montos de su producto,
@@ -77,12 +77,12 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         if it.agrupado and filas:
             filas[-1]["extras"].append(it)
             continue
-        file_id = it.imagen_visible_file_id
+        file_id = _foto_del_item(it, fotos_vivas)
         ancho, alto = _medida_foto(proporcion(file_id))
         filas.append({
             "it": it,
-            # La foto: la congelada en la línea (la del uso del proyecto, si le
-            # pusieron una propia) o, si no, la del producto del catálogo.
+            # La foto: la del uso en el proyecto si le pusieron una propia, si no
+            # la congelada con la versión (ver `_foto_del_item`).
             "imagen": url_absoluta(file_id),
             # Medida FIJA con la que va en el documento (ver `_medida_foto`): el
             # template las pinta como atributos, así que ninguna foto puede
@@ -91,6 +91,12 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
             "img_alto": alto,
             "extras": [],
         })
+    # LC 2026-07-28 (Oscar, punto 7): los bloques que arrancan una hoja nueva
+    # llevan dos renglones de aire arriba. Se marcan aquí, simulando la
+    # paginación (ver `_paginar`).
+    paginacion = _paginar(cot, filas, items)
+    for i, fila in enumerate(filas):
+        fila["aire_arriba"] = i in paginacion["aire_bloques"]
     totales = cot.calcular_totales()
     notas = notas_para(cot)
     return render_to_string("cotizaciones/pdf.html", {
@@ -108,7 +114,8 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         ],
         "notas": notas,
         "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
-        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items, notas),
+        "aire_desglose": paginacion["aire_desglose"],
+        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items, notas, paginacion),
         "preview": preview,
         "url_descargar": _url_descargar(cot) if preview else "",
         "nombre_archivo": cot.nombre_pdf,
@@ -162,8 +169,87 @@ def _medida_foto(proporcion: float) -> tuple[int, int]:
 # (Oscar 2026-07-25: «no debe de suceder así»).
 _MARGEN_SEGURIDAD_PT = 28
 
+# Aire arriba de cada bloque que arranca una hoja nueva (Oscar 2026-07-28,
+# punto 7: «todas las páginas a partir de la 2 deben tener 2 <br> hasta arriba
+# de margen»). El template los pinta como dos `<br>` DENTRO de la celda del
+# bloque, así que el aire viaja con él a la página que le toque.
+_AIRE_PAGINA_PT = 28
 
-def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
+# Encabezado (fecha/logo/cliente) + título centrado. El título dejó de llevar
+# 28pt de aire abajo (Oscar 2026-07-28, punto 2: «un <br> de más»).
+_ALTO_ENCABEZADO_PT = 60 + 32
+
+
+def _alto_bloque(fila) -> int:
+    """Alto estimado (pt) del bloque de un producto: nombre + especificaciones
+    o foto + su tabla de montos. Es una **estimación** — la paginación real la
+    hace Google."""
+    cuerpo = 0
+    renglones = len(getattr(fila["it"], "detalle_lineas", []) or [])
+    if renglones:
+        cuerpo = renglones * 14
+    if fila.get("imagen"):
+        # La foto va acotada a una caja fija (`_medida_foto`), así que su alto
+        # real es el que ya se calculó al armar la fila.
+        cuerpo = max(cuerpo, int(fila.get("img_alto") or _ALTO_FOTO_PT))
+    # nombre + cuerpo + tabla de montos (+ un renglón por proceso de venta).
+    return 22 + cuerpo + 8 + 48 + 20 + len(fila.get("extras") or []) * 18
+
+
+def _alto_desglose(cot, items) -> int:
+    """Alto estimado (pt) del bloque «Desglose de Elementos» + los totales."""
+    impuestos = len(cot.calcular_totales().get("impuestos_detalle", []))
+    # `items` incluye los procesos de venta: en el desglose cada uno es su
+    # propio renglón (ahí sí van en lista plana).
+    alto = 46 + 24 + len(items) * 22 + 18   # título + encabezados + filas
+    alto += (2 + impuestos) * 18 + 24       # subtotal + impuestos + total
+    return alto
+
+
+def _paginar(cot, filas, items) -> dict:
+    """Simula la paginación del documento por BLOQUES ATÓMICOS.
+
+    Cada bloque de producto (y el desglose) viaja dentro de una tabla
+    envoltorio de una sola celda cuya fila lleva `preventOverflow` (ver
+    `lib.google_drive._endurecer_paginacion`), así que **no se parte**: o cabe
+    en lo que resta de la hoja o pasa entero a la siguiente. Esa regla es la
+    que se simula aquí.
+
+    Devuelve `{"aire_bloques": set[int], "libre": int}`:
+
+    · `aire_bloques` — índices de los bloques que arrancan hoja nueva; el
+      template les pone dos renglones de aire arriba (Oscar, punto 7).
+    · `libre` — puntos que quedan sin usar en la última hoja, para decidir
+      cuánto hueco meterle al bloque de notas.
+
+    Es una estimación: peor caso, un bloque lleva aire de más a media hoja o
+    el hueco de las notas queda corto. Nunca rompe el documento.
+    """
+    usado = _ALTO_ENCABEZADO_PT
+    aire: set[int] = set()
+    for i, fila in enumerate(filas):
+        alto = _alto_bloque(fila)
+        if usado > _ALTO_ENCABEZADO_PT and usado + alto > _ALTO_UTIL_PT:
+            aire.add(i)
+            usado = _AIRE_PAGINA_PT + alto
+        else:
+            usado += alto
+    aire_desglose = False
+    if cot.incluir_desglose:
+        alto = _alto_desglose(cot, items)
+        if usado + alto > _ALTO_UTIL_PT:
+            aire_desglose = True
+            usado = _AIRE_PAGINA_PT + alto
+        else:
+            usado += alto
+    return {
+        "aire_bloques": aire,
+        "aire_desglose": aire_desglose,
+        "libre": max(0, _ALTO_UTIL_PT - (usado % _ALTO_UTIL_PT)),
+    }
+
+
+def _espacio_antes_de_notas(cot, filas, items, notas, paginacion=None) -> int:
     """Hueco (en puntos) que empuja el bloque de notas al pie de la hoja.
 
     Oscar 2026-07-25: el espacio debe ser DINÁMICO — si las notas caben en lo
@@ -171,49 +257,69 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
     nada y pasan enteras a la hoja siguiente (el `page-break-inside:avoid` del
     template impide que se partan).
 
-    Es una **estimación**: el HTML lo pagina Google, no nosotros, así que aquí
-    se suman altos aproximados por bloque. Peor caso, el hueco queda un poco
-    más corto o más largo que el ideal — nunca rompe el documento. Por eso el
-    resultado se limita a `_ALTO_UTIL_PT / 2` y se le resta
-    `_MARGEN_SEGURIDAD_PT`: mejor quedarse corto que empujar un renglón de las
-    notas a una hoja de más.
+    Lo que queda libre en la última hoja lo calcula `_paginar`. El resultado se
+    limita a `_ALTO_UTIL_PT / 2` y se le resta `_MARGEN_SEGURIDAD_PT`: mejor
+    quedarse corto que empujar un renglón de las notas a una hoja de más.
     """
-    alto = 60 + 46  # encabezado (fecha/logo/cliente) + título centrado
-
-    for fila in filas:
-        cuerpo = 0
-        renglones = len(getattr(fila["it"], "detalle_lineas", []) or [])
-        if renglones:
-            cuerpo = renglones * 14
-        if fila.get("imagen"):
-            # La foto va acotada a una caja fija (`_medida_foto`), así que su
-            # alto real es el que ya se calculó al armar la fila.
-            cuerpo = max(cuerpo, int(fila.get("img_alto") or _ALTO_FOTO_PT))
-        alto += 22 + cuerpo + 8 + 48 + 26  # nombre + cuerpo + tabla de montos
-        # Cada proceso de venta suma un renglón a la tabla de montos del producto
-        # (LC 2026-07-26).
-        alto += len(fila.get("extras") or []) * 18
-
-    if cot.incluir_desglose:
-        impuestos = len(cot.calcular_totales().get("impuestos_detalle", []))
-        # `items` incluye los procesos de venta: en el desglose cada uno es su
-        # propio renglón (ahí sí van en lista plana).
-        alto += 46 + 24 + len(items) * 22 + 18  # título + encabezados + filas
-        alto += (2 + impuestos) * 18 + 24       # subtotal + impuestos + total
-
     alto_notas = 22 + len(notas) * 15
     if getattr(cot, "terminos", ""):
         alto_notas += 26 + len(cot.terminos.splitlines()) * 13
 
-    # Lo que queda libre en la última hoja que ya se empezó a llenar.
-    libre = _ALTO_UTIL_PT - (alto % _ALTO_UTIL_PT)
+    libre = (paginacion or _paginar(cot, filas, items))["libre"]
     hueco = libre - alto_notas - _MARGEN_SEGURIDAD_PT
     if hueco <= 0:
         return 0
     return int(min(hueco, _ALTO_UTIL_PT // 2))
 
 
-def _precalentar_imagenes(cot: Cotizacion) -> None:
+def _fotos_vivas_del_proyecto(cot) -> dict:
+    """Fotos PROPIAS de los usos vigentes del proyecto, indexadas para casarlas
+    con las líneas del documento.
+
+    LC 2026-07-28 (Oscar, punto 4): «la imagen distinta que subí al alias de un
+    producto no está sirviendo, se está incrustando la imagen principal». La
+    foto se congela con la versión (`CotizacionItem.imagen_file_id`), así que si
+    la versión se generó ANTES de subir la foto del alias, el documento seguía
+    saliendo con la del catálogo. La foto propia de un uso es una decisión
+    explícita de ESE proyecto, así que gana siempre; la congelada sigue
+    cubriendo el caso que motivó el congelado (que después le cambien la foto al
+    producto del catálogo).
+
+    Llaves iguales a las de `descripcion.indice_previo`: por producto y, de
+    respaldo, por el nombre del concepto.
+    """
+    proyecto = getattr(cot, "proyecto", None)
+    if proyecto is None:
+        return {}
+    vivas: dict = {}
+    try:
+        lineas = proyecto.productos.select_related("servicio").all()
+    except Exception:  # noqa: BLE001 — proyecto borrado o sin acceso al related
+        return {}
+    for pp in lineas:
+        if not pp.imagen_es_propia:
+            continue
+        file_id = pp.imagen_file_id.strip()
+        vivas.setdefault(("srv", pp.servicio_id, pp.variacion_id), file_id)
+        nombre = pp.nombre_visible.strip().lower()
+        if nombre:
+            vivas.setdefault(("nom", nombre), file_id)
+    return vivas
+
+
+def _foto_del_item(it, fotos_vivas: dict) -> str:
+    """`file_id` de la foto que va en el documento para esta línea: la propia
+    del uso en el proyecto si la hay, si no la congelada con la versión."""
+    if fotos_vivas:
+        viva = fotos_vivas.get(("srv", it.servicio_id, it.variacion_id))
+        if not viva:
+            viva = fotos_vivas.get(("nom", it.concepto_visible.strip().lower()))
+        if viva:
+            return viva
+    return it.imagen_visible_file_id
+
+
+def _precalentar_imagenes(items, fotos_vivas: dict) -> None:
     """Deja las fotos de los productos listas en caché ANTES de que Google baje
     el HTML (ver `lib.imagen_publica.precalentar`).
 
@@ -224,8 +330,8 @@ def _precalentar_imagenes(cot: Cotizacion) -> None:
     from lib.imagen_publica import precalentar
 
     vistos = set()
-    for it in cot.items.select_related("servicio").all():
-        file_id = it.imagen_visible_file_id
+    for it in items:
+        file_id = _foto_del_item(it, fotos_vivas)
         if file_id and file_id not in vistos:
             vistos.add(file_id)
             precalentar(file_id)

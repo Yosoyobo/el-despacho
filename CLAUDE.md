@@ -6410,6 +6410,88 @@ puesto en la ficha del producto (aplicarlo a otros forms es agregar el atributo)
 y el reparto del sidebar deja huecos amplios en pantallas muy altas con pocos
 items — es justo lo que se pidió.
 
+### S-Ajustes-Jul28 ✅ — Paginación real del PDF, tarjeta de producto del render y móvil usable (2026-07-28, VERSION 2026.07.35)
+
+Ronda de Oscar (7 puntos del PDF + 3 de la página del proyecto + 4 de móvil) más
+cuatro pedidos sueltos que llegaron a media sesión. El render de la tarjeta de
+producto lo mandó como screenshot (flujo render-driven).
+
+- **La paginación del documento ya se garantiza en el DOCUMENTO, no en el HTML**
+  (punto 1, el que se venía resistiendo): el envoltorio de tabla de una celda
+  (quirk #6) **ayuda pero no basta** — una fila más alta que lo que resta de hoja
+  sí se desborda. El seguro real es `TableRowStyle.preventOverflow`, que sólo
+  existe en la **API de Documentos**: `GoogleDriveWrapper._endurecer_paginacion`
+  corre entre la conversión y el export (`documents.get` → una petición
+  `updateTableRowStyle` por tabla con todos sus `rowIndices`; ninguna cambia el
+  largo del doc, así que los índices siguen válidos dentro del lote). Reutiliza la
+  credencial OAuth de Drive — el scope `drive.file` cubre Docs sobre archivos que
+  la app creó (mismo truco que `lib/google_sheets.py`). Best-effort: si falla, el
+  PDF sale como antes. Helper puro `_peticiones_prevent_overflow` (testeable sin
+  red).
+- **`services._paginar`** (nuevo) simula la paginación por **bloques atómicos** y
+  devuelve `{aire_bloques, aire_desglose, libre}`. De ahí salen dos cosas: los
+  bloques que arrancan hoja nueva llevan **dos `<br>` dentro de su celda** (punto
+  7 — el aire viaja con el bloque), y `_espacio_antes_de_notas` calcula el hueco
+  del pie con el sobrante REAL de la última hoja (antes era un módulo sobre el
+  alto total, que ignoraba el desperdicio de cada corte). `_alto_bloque` y
+  `_alto_desglose` quedan como helpers.
+- **La foto del ALIAS gana sobre la congelada** (punto 4, el bug que Oscar
+  reportó como «se está incrustando la imagen principal»): la foto se congela con
+  la versión (`CotizacionItem.imagen_file_id`), así que una versión generada
+  ANTES de subir la foto del uso seguía saliendo con la del catálogo.
+  `_fotos_vivas_del_proyecto(cot)` indexa las fotos **propias** de los usos
+  vigentes (llaves iguales a `descripcion.indice_previo`: por producto y, de
+  respaldo, por nombre del concepto) y `_foto_del_item` las prefiere. El
+  congelado sigue cubriendo su caso original (que después le cambien la foto al
+  producto del catálogo). `_precalentar_imagenes` pasó a recibir `(items,
+  fotos_vivas)` para calentar la que de verdad se va a usar.
+- **Documento**: un renglón menos bajo el título (28pt→14pt, punto 2); fotos
+  **centradas** vertical y horizontalmente en su celda (punto 3); interlineado
+  `1.15` y celdas de 3pt→2pt (punto 5).
+- **Guardar el PDF en el celular** (punto 6): `Content-Disposition: attachment`
+  no baja nada en un teléfono — el navegador abre su visor. La vista previa ahora
+  usa la **Web Share API** (fetch → `File` con el nombre bueno →
+  `navigator.share`), con el enlace normal de respaldo si el navegador no sabe
+  compartir archivos o el usuario cancela. Además `@page { margin: 0 }` mata el
+  encabezado/pie que estampaba el navegador al imprimir.
+- **Tarjeta de producto rediseñada** (render de Oscar): foto en la **esquina** de
+  la cabecera (se fue el bloque de Imagen con su párrafo), el resumen compacto se
+  queda visible al expandir, fuera la línea «usa: …», márgenes apretados, sin los
+  párrafos de ayuda ni el divisor del pie, **utilidad por pieza** en verde junto
+  al costo, y el pie separa MONTO de la utilidad (gris) + margen (verde). El
+  «+ Proceso» de VENTA va en verde para distinguirlo del de producción.
+- **Quitar la foto desde el proyecto es DIFERIDO**: campo no-modelo
+  `ProyectoProductoForm.imagen_quitar` + `save()` que llama `_desligar_imagen`
+  (mismo criterio que `views._quitar_imagen_linea`: prefiere la propia del uso; el
+  archivo NUNCA se borra de Drive porque puede estar congelado en una cotización
+  enviada). El recuadro de la tarjeta usa `data-img-diferido`, como la ficha del
+  producto. **`imagen_pegar.js` gana `data-img-estado-sel` + `data-clase-base`**:
+  el aviso puede vivir FUERA del recuadro (64px no dan para un párrafo).
+- **Móvil**: eventos del calendario a 9px con celdas de 76px (`sm:` vuelve al
+  tamaño de escritorio); tabla de Tareas sin `min-w-[560px]` y con «Asignada a» /
+  «Prioridad» ocultas en pantalla chica; **arrastre táctil** de las tarjetas de
+  producto con Pointer Events (el DnD de HTML5 no existe en touch — el asa ya
+  traía `touch-none`); utilidad `.modal-alto` (`dvh` con fallback `vh`,
+  **dual-copy §18**) + diálogo pegado arriba en pantalla chica para el modal de
+  Nueva tarea.
+- **Extras de la misma ronda**: el calendario (y con él «Próximos eventos» del
+  Dashboard y el mini-cal, que leen del mismo service) **excluye proyectos
+  cancelados** y sus tareas; contador `revcounter` por fila en `/ayuda/novedades/`
+  (la más vieja es la 1); listas de Ingresos/Egresos **sin código ni menú de tres
+  puntos**, orden Fecha · Monto · Cliente|Proveedor·Proyecto · Método ·
+  Descripción · Estado, y la fila **abre en editar** (los anulados, a su detalle);
+  botón **📎** en el mini Chalán del Dashboard (`chalan-nuevo` ahora acepta imagen
+  y se puede mandar sólo la foto).
+- **22 tests nuevos** (`tests/taller/test_ajustes_jul28.py`).
+
+**Deuda diseñada**: `_paginar` es una **estimación** (la hoja real la corta
+Google) — peor caso, un bloque lleva aire de más a media hoja; `preventOverflow`
+depende de que la API de Documentos responda (si no, se degrada al
+comportamiento anterior, sin aviso al usuario); el borrado diferido de la foto se
+aplica en el siguiente **autoguardado** del proyecto, no sólo al botón Guardar
+(el autosave es el que manda ahí); y el arrastre táctil sólo se implementó en las
+tarjetas de producto — el Kanban sigue con DnD de HTML5 (escritorio).
+
 ---
 
 ## 9. Decisiones operativas tomadas

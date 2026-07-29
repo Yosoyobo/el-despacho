@@ -12,16 +12,20 @@ disparan el autoguardado (el <select> hace stopPropagation en change).
 <section>
     <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas</h2>
     <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-        <table class="min-w-[560px] text-sm md:min-w-full">
+        {% comment %}LC 2026-07-28 (Oscar, móvil punto 2): la tabla ya no exige 560px
+        —eso forzaba scroll horizontal en el celular—. En pantalla chica se esconden
+        «Asignada a» y «Prioridad» (viven en el detalle de la tarea) y quedan las dos
+        columnas que se operan desde aquí: el título y el estado.{% endcomment %}
+        <table class="w-full text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                <tr><th class="px-5 py-3 text-left">Tarea</th><th class="px-5 py-3 text-left">Asignada a</th><th class="px-5 py-3 text-left">Estado</th><th class="px-5 py-3 text-left">Prioridad</th>{% if puede_editar %}<th class="px-3 py-3 text-right"><span class="sr-only">Archivar</span></th>{% endif %}</tr>
+                <tr><th class="px-3 py-2.5 text-left sm:px-5">Tarea</th><th class="hidden px-5 py-2.5 text-left md:table-cell">Asignada a</th><th class="px-3 py-2.5 text-left sm:px-5">Estado</th><th class="hidden px-5 py-2.5 text-left sm:table-cell">Prioridad</th>{% if puede_editar %}<th class="px-2 py-2.5 text-right sm:px-3"><span class="sr-only">Archivar</span></th>{% endif %}</tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                 {% for t in tareas %}
                 <tr id="tarea-fila-{{ t.pk }}" data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                    <td class="px-5 py-3"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
-                    <td class="px-5 py-3 text-sm">
+                    <td class="px-3 py-2.5 sm:px-5"><a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a></td>
+                    <td class="hidden px-5 py-2.5 text-gray-600 dark:text-gray-300 md:table-cell">{{ t.asignada_a.nombre_completo|default:"—" }}</td>
+                    <td class="px-3 py-2.5 text-sm sm:px-5">
                         {% if puede_editar and estados_tarea %}
                         {% with color=t.estado|color_estado_tarea %}
                         <select aria-label="Cambiar estado de la tarea"
@@ -41,9 +45,9 @@ disparan el autoguardado (el <select> hace stopPropagation en change).
                         {% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}
                         {% endif %}
                     </td>
-                    <td class="px-5 py-3"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
+                    <td class="hidden px-5 py-2.5 sm:table-cell"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
                     {% if puede_editar %}
-                    <td class="px-3 py-3 text-right">
+                    <td class="px-2 py-2.5 text-right sm:px-3">
                         <button type="button" title="Archivar tarea" aria-label="Archivar tarea"
                                 class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition hover:border-error-300 hover:bg-error-50 hover:text-error-600 dark:border-gray-700 dark:hover:bg-error-500/10 dark:hover:text-error-400"
                                 hx-post="{% url 'pizarron-archivar-tarea' t.pk %}"
@@ -56,13 +60,16 @@ disparan el autoguardado (el <select> hace stopPropagation en change).
                     {% endif %}
                 </tr>
                 {% empty %}
-                <tr><td colspan="{% if puede_editar %}5{% else %}4{% endif %}" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="Crea la primera tarea para empezar a coordinar el proyecto." icono="tasks" %}</div></td></tr>
+                {% comment %}LC 2026-07-28 (Oscar): el vacío era un bloque enorme con
+                ilustración; aquí basta un renglón — el botón de abajo ya invita a
+                crear la primera.{% endcomment %}
+                <tr><td colspan="{% if puede_editar %}5{% else %}4{% endif %}" class="px-3 py-4 text-center text-sm text-gray-400 dark:text-gray-500 sm:px-5">Sin tareas todavía.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
     {% if puede_editar %}
-    <div class="mt-3 flex justify-center">
+    <div class="mt-2 flex justify-center">
         <button type="button" class="btn-secundario"
                 hx-get="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nueva tarea</button>
     </div>
