@@ -161,8 +161,13 @@
         if (cuerpo) cuerpo.classList.toggle('opacity-40', !incluido), cuerpo.classList.toggle('pointer-events-none', !incluido);
         // Ticket UX 2026-07: toggle Off ⇒ atenúa la tarjeta COMPLETA (gris),
         // no solo el cuerpo. El footer (incluir/eliminar) sigue clickeable.
-        card.classList.toggle('opacity-60', !incluido);
+        // LC 2026-07-29 (Oscar: «hacer más gris / menos visible»): la apagada
+        // baja a 40% y pierde el color de fondo — se lee de un golpe que no
+        // cuenta, sin desaparecer.
+        card.classList.toggle('opacity-40', !incluido);
         card.classList.toggle('grayscale', !incluido);
+        card.classList.toggle('bg-gray-100', !incluido);
+        card.classList.toggle('dark:bg-white/[0.03]', !incluido);
         // Resumen compacto de la cabecera: «[cant] pz - producto - precio»
         // (ticket UX 2026-07: con «pz» y SIN el proveedor del nombre).
         const resumen = card.querySelector('[data-resumen]');
@@ -779,16 +784,25 @@ por un endpoint aparte.{% endcomment %}
     }, true);
 
     // Colapsar / expandir una tarjeta.
+    // LC 2026-07-29 (Oscar): se pica TODA la barra, no sólo el título. El asa de
+    // arrastre y el recuadro de la foto conservan lo suyo, y cualquier control
+    // (input/select/button/enlace) dentro de la cabecera tampoco la despliega.
     document.addEventListener('click', function (e) {
-        const tog = e.target.closest && e.target.closest('#' + CONT + ' [data-card-toggle]');
-        if (!tog) return;
-        const card = tog.closest('[data-card]');
+        if (!e.target.closest) return;
+        const barra = e.target.closest('#' + CONT + ' [data-card-barra]');
+        if (!barra) return;
+        if (e.target.closest('[data-drag-handle], [data-img-slot], input, select, textarea, a')) return;
+        // El botón del título sí despliega; cualquier otro botón de la barra no.
+        const btn = e.target.closest('button');
+        if (btn && !btn.hasAttribute('data-card-toggle')) return;
+        const card = barra.closest('[data-card]');
         const body = card && card.querySelector('[data-card-body]');
         if (!body) return;
         const abierto = !body.classList.contains('hidden');
         body.classList.toggle('hidden', abierto);
-        tog.setAttribute('aria-expanded', abierto ? 'false' : 'true');
-        const chev = tog.querySelector('[data-chevron]');
+        const tog = card.querySelector('[data-card-toggle]');
+        if (tog) tog.setAttribute('aria-expanded', abierto ? 'false' : 'true');
+        const chev = card.querySelector('[data-chevron]');
         if (chev) chev.classList.toggle('-rotate-90', abierto);
         // El resumen compacto se queda visible también al EXPANDIR (render Oscar
         // 2026-07-28, punto b): es el título de la tarjeta, no un sustituto.

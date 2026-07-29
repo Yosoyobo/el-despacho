@@ -32,8 +32,11 @@ Render fino LC 2026-07-28 (Oscar):
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
     <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.variacion }}{{ f.orden }}{{ f.imagen_quitar }}</div>
 
-    {# ── Cabecera: asa · resumen (siempre visible) · foto en la esquina ── #}
-    <div class="flex items-start gap-2">
+    {% comment %}── Cabecera: asa · resumen (siempre visible) · foto en la esquina ──
+    LC 2026-07-29 (Oscar): la barra COMPLETA despliega la tarjeta
+    (`data-card-barra`); el asa, la foto y los controles quedan fuera del gesto,
+    ver `_form_productos_js`. `cursor-pointer` avisa que se puede picar.{% endcomment %}
+    <div data-card-barra class="flex cursor-pointer items-start gap-2">
         <button type="button" data-drag-handle title="Arrastra para reordenar" aria-label="Reordenar"
                 class="mt-0.5 shrink-0 cursor-grab touch-none rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.06]">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>
@@ -211,8 +214,16 @@ Render fino LC 2026-07-28 (Oscar):
         </div>
     </div>
 
-    {# Pie: incluir + eliminar · costo de producción · monto y utilidad (sin divisor) #}
-    <div class="mt-2 flex items-center justify-between gap-3">
+    {% comment %}Pie: incluir + eliminar · costo de producción · monto y utilidad
+    (sin divisor).
+
+    LC 2026-07-29 (Oscar, móvil punto 1): «al expandir la tarjeta, el texto de
+    hasta abajo se sale del recuadro y cambia toda la vista». El renglón del
+    costo de producción no cabe junto al toggle y al Monto en una pantalla de
+    360px, y al no poder encogerse desbordaba la tarjeta (y con ella el ancho de
+    la página). Ahora el pie ENVUELVE y en móvil ese texto baja a su propio
+    renglón (`order-last w-full`); en `sm` vuelve a su lugar de siempre.{% endcomment %}
+    <div class="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div class="flex items-center gap-2">
             <label class="inline-flex cursor-pointer items-center" title="Incluir esta línea en el cálculo del proyecto">
                 <span class="relative inline-flex h-5 w-9 shrink-0 items-center">
@@ -227,9 +238,10 @@ Render fino LC 2026-07-28 (Oscar):
                     {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
             </button>
-            {% comment %}(f) Tras el costo unitario, la utilidad POR PIEZA en verde.{% endcomment %}
-            <span class="min-w-0 truncate text-[11px] text-gray-400 dark:text-gray-500">Costo prod. <span class="tabular-nums" data-costo-total>—</span> · unit. <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span></span>
         </div>
+        {% comment %}(f) Tras el costo unitario, la utilidad POR PIEZA en verde. En
+        móvil se va a su propio renglón (ver el comentario del pie).{% endcomment %}
+        <span class="order-last w-full min-w-0 text-[11px] text-gray-400 dark:text-gray-500 sm:order-none sm:w-auto sm:flex-1 sm:truncate">Costo prod. <span class="tabular-nums" data-costo-total>—</span> · unit. <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span></span>
         {% comment %}(g) MONTO arriba; debajo, la utilidad del producto en gris y su
         margen en verde.{% endcomment %}
         <div class="shrink-0 text-right">

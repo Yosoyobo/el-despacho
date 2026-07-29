@@ -69,23 +69,22 @@ class TareaForm(forms.ModelForm):
         label="Que el sistema/El Chalán asigne al runner más libre",
     )
     # S-LC-Feedback-V13: "Lugar" (destino) de la entrega/recolección. Texto libre
-    # (dirección o nombre de un lugar conocido). Obligatorio si tipo entrega/recoger.
+    # (dirección o nombre de un lugar conocido).
+    #
+    # LC 2026-07-29 (Oscar): **OPCIONAL siempre**. Era obligatorio para
+    # entrega/recoger y frenaba el alta de la tarea: «al crear una tarea el lugar
+    # no es obligatorio; lo más importante es qué, quién y cuándo». El lugar se
+    # pone después desde el mandado (que además lo deriva de la dirección del
+    # cliente cuando existe).
     destino_etiqueta = forms.CharField(
         required=False, max_length=200, label="Lugar (destino)",
         widget=forms.TextInput(attrs={
-            "placeholder": "Dirección o lugar de entrega/recolección",
+            "placeholder": "Dirección o lugar de entrega/recolección (opcional)",
         }),
     )
 
     def clean_tipo(self):
         return self.cleaned_data.get("tipo") or "tarea"
-
-    def clean(self):
-        cleaned = super().clean()
-        tipo = cleaned.get("tipo") or "tarea"
-        if tipo in ("entrega", "recoger") and not (cleaned.get("destino_etiqueta") or "").strip():
-            self.add_error("destino_etiqueta", "Indica el lugar (destino) de la entrega/recolección.")
-        return cleaned
 
     def save(self, commit=True):
         tarea = super().save(commit=commit)

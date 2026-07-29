@@ -1,8 +1,12 @@
 {% comment %}Render-V2: respuesta del autoguardado. Refresca por OOB: panel económico,
 panel de proveedores, indicador permanente (✓/✕), marca de última actualización y el
 estado del botón Deshacer (cuántos pasos quedan).{% endcomment %}
-{% include "proyectos/_economico_panel.html" with proyecto=proyecto form=form puede_editar=puede_editar oob=True %}
-{% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=True oob=True %}
+{% comment %}El `clase_extra` con el `order-*` tiene que ir TAMBIÉN aquí: el swap por
+OOB reemplaza el `<section>` completo, así que sin él el panel perdía su posición en
+el orden de móvil y saltaba de lugar tras cada autoguardado (LC 2026-07-29). Debe
+coincidir con lo que pasa `proyectos/detalle.html`.{% endcomment %}
+{% include "proyectos/_economico_panel.html" with proyecto=proyecto form=form puede_editar=puede_editar oob=True clase_extra="order-2 xl:order-none" %}
+{% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=True oob=True clase_extra="order-6 xl:order-none" %}
 {% if rerender_productos %}
 {% comment %}Tras crear un producto inline: re-renderiza el formset con la tarjeta nueva
 ya con su pk (acordeon omitido = todas visibles, el usuario está agregando).{% endcomment %}

@@ -112,13 +112,17 @@ class TestDocumento:
         assert "page-break-inside:avoid" in html
 
     def test_el_hueco_de_las_notas_es_dinamico(self, entorno):
-        """Un documento cortito deja hueco; uno largo ya no estira nada."""
+        """Un documento cortito deja hueco; uno largo ya no estira nada.
+
+        LC 2026-07-29: el hueco lleva TOPE (`_TOPE_HUECO_NOTAS_PT`) para que un
+        error de estimación no abra medio hoja de agujero, así que la comparación
+        va contra el tope y contra el caso saturado.
+        """
         from apps.cotizaciones import services
         from apps.cotizaciones.models import CotizacionItem
         cot = entorno["cot"]
-        hueco_corto = services._espacio_antes_de_notas(
-            cot, [], [], ["nota"] * 8)
-        assert hueco_corto > 0
+        hueco_corto = services._espacio_antes_de_notas(cot, [], [], ["nota"] * 8)
+        assert 0 < hueco_corto <= services._TOPE_HUECO_NOTAS_PT
 
         for i in range(40):
             CotizacionItem.objects.create(
@@ -127,8 +131,8 @@ class TestDocumento:
         items = list(cot.items.all())
         filas = [{"it": it, "imagen": ""} for it in items]
         hueco_largo = services._espacio_antes_de_notas(cot, filas, items, ["nota"] * 8)
-        assert hueco_largo < hueco_corto
-        assert hueco_largo >= 0
+        # Un documento largo no puede pedir MÁS hueco que uno corto.
+        assert 0 <= hueco_largo <= hueco_corto
 
 
 # ── La foto del PDF (caché) ───────────────────────────────────────────────

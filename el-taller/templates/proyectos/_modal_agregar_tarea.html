@@ -1,6 +1,11 @@
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
-    <div class="relative mx-4 w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
-        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+{% comment %}«+ Nueva tarea» del proyecto. LC 2026-07-29 (Oscar): se le quitó el
+widget 🤖 de la descripción — El Chalán ahora vive en su propio botón «Dictar
+tareas», al lado de éste, donde propone varias tareas de un jalón. Aquí sólo se
+captura a mano: qué, quién y cuándo. El diálogo se pega arriba en pantalla chica y
+lleva su propio scroll, para que quepa en un celular.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/60 p-3 backdrop-blur-sm dark:bg-gray-900/80 sm:items-center sm:p-4">
+    <div class="modal-alto relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
             <div>
                 <p class="font-mono text-xs uppercase tracking-wider text-brand-500 dark:text-brand-400">{{ proyecto.nombre|default:proyecto.codigo }}</p>
                 <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">Nueva tarea</h2>
@@ -9,19 +14,18 @@
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
             </button>
         </header>
-        <form hx-post="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form">
+        <form hx-post="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
             {% csrf_token %}
-            <div class="space-y-5 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+            <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
                 {% for f in form %}
                 <div>
                     {% if f.label %}<label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}{% if f.field.required %} <span class="text-error-500">*</span>{% endif %}</label>{% endif %}
                     {{ f }}
-                    {% if f.name == 'descripcion' %}{% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:f.id_for_label contexto_modelo="proyecto" contexto_id=proyecto.pk instruccion_ph="Ej. describe la tarea para este proyecto" %}{% endif %}
                     {% if f.errors %}<ul class="mt-1.5 space-y-0.5 text-xs text-error-600 dark:text-error-400">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                 </div>
                 {% endfor %}
             </div>
-            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <footer class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
                 <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
                 <button type="submit" class="btn-primario">Crear tarea</button>
             </footer>

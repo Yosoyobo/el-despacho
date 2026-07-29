@@ -2,14 +2,15 @@
 {% comment %}
 Render-V2 — Panel de Tareas del proyecto. Va ARRIBA de Productos involucrados.
 El botón "+ Nueva tarea" va centrado DEBAJO de la lista (no en el header).
-Params: proyecto, tareas, puede_editar, estados_tarea (lista de EstadoTarea activos).
+Params: proyecto, tareas, puede_editar, estados_tarea (lista de EstadoTarea activos),
+clase_extra (opcional — el detalle la usa para el `order-*` del orden en móvil).
 
 Edición inline (ticket UX 2026-07): la pastilla de Estado es un <select> coloreado
 que cambia el estado sin salir de la página, y una "X" a la derecha archiva la
 tarea. Ambos controles NO envían el form del proyecto (hx-params="none") y no
 disparan el autoguardado (el <select> hace stopPropagation en change).
 {% endcomment %}
-<section>
+<section class="{{ clase_extra }}">
     <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas</h2>
     <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         {% comment %}LC 2026-07-28 (Oscar, móvil punto 2): la tabla ya no exige 560px
@@ -69,9 +70,19 @@ disparan el autoguardado (el <select> hace stopPropagation en change).
         </table>
     </div>
     {% if puede_editar %}
-    <div class="mt-2 flex justify-center">
+    {% comment %}LC 2026-07-29 (Oscar): junto a «+ Nueva tarea», dictarle varias
+    al Chalán sin salir de la página — los dos abren su modal en #modal-slot.{% endcomment %}
+    <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
         <button type="button" class="btn-secundario"
                 hx-get="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">+ Nueva tarea</button>
+        {% if permisos_modulos.chalan %}
+        <button type="button"
+                hx-get="{% url 'proyectos-tareas-chalan' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                title="Dile al Chalán qué hay que hacer, quién y cuándo — él propone las tareas y tú confirmas"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20">
+            🤖 Dictar tareas
+        </button>
+        {% endif %}
     </div>
     {% endif %}
 </section>

@@ -10,7 +10,13 @@ anillo + dot, eventos con badges coloreados de fondo suave.
             {{ nombre_mes }} {{ mes_year }}
         </h2>
     </header>
-    <div class="grid grid-cols-7 gap-px overflow-hidden bg-gray-200 dark:bg-gray-800">
+    {% comment %}LC 2026-07-29 (Oscar, general punto 3): las columnas de sábado y
+    domingo van 20% más angostas — casi nunca hay entregas en fin de semana y ese
+    ancho le sirve a los días hábiles. `minmax(0,…)` en TODAS las columnas es lo
+    que garantiza que la rejilla nunca crezca más que su contenedor: sin él una
+    palabra larga de un evento ensancha su columna y saca el calendario de la
+    pantalla (el scroll horizontal que se veía en el celular).{% endcomment %}
+    <div class="grid w-full grid-cols-[repeat(5,minmax(0,1fr))_repeat(2,minmax(0,0.8fr))] gap-px overflow-hidden bg-gray-200 dark:bg-gray-800">
         {% comment %}LC 2026-07: encabezado a dos caracteres (Ma / Mi, sin la «X» heredada).{% endcomment %}
         <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Lu</div>
         <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Ma</div>
@@ -21,10 +27,16 @@ anillo + dot, eventos con badges coloreados de fondo suave.
         <div class="bg-gray-50 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">Do</div>
         {% for semana in mes_grid.semanas %}
             {% for celda in semana %}
+            {% if not celda.mes_actual %}
+            {% comment %}LC 2026-07-29 (Oscar): los días de otro mes ya NO se pintan
+            —«por esto tenemos el siguiente mes también»—. La celda queda vacía para
+            que la rejilla conserve su forma: sin número y sin ser clickeable.{% endcomment %}
+            <div class="min-h-[76px] bg-gray-50/60 dark:bg-white/[0.015] sm:min-h-[104px]" aria-hidden="true"></div>
+            {% else %}
             {# Celda clickeable: abre el modal del día (crear evento/tarea/proyecto con fecha precargada, LC 2026-06-29). #}
             <div role="button" tabindex="0" data-dia="{{ celda.fecha|date:'Y-m-d' }}"
                  hx-get="{% url 'calendario-dia' celda.fecha|date:'Y-m-d' %}" hx-target="#modal-slot" hx-swap="innerHTML"
-                 class="group relative min-h-[76px] cursor-pointer bg-white px-1 py-1 text-xs transition hover:bg-brand-50/30 dark:bg-gray-900 dark:hover:bg-brand-500/5 sm:min-h-[104px] sm:px-1.5 sm:py-1.5 {% if celda.es_finde %}bg-gray-50/70 dark:bg-white/[0.02]{% endif %} {% if not celda.mes_actual %}opacity-40{% endif %}">
+                 class="group relative min-h-[76px] min-w-0 cursor-pointer overflow-hidden bg-white px-1 py-1 text-xs transition hover:bg-brand-50/30 dark:bg-gray-900 dark:hover:bg-brand-500/5 sm:min-h-[104px] sm:px-1.5 sm:py-1.5 {% if celda.es_finde %}bg-gray-50/70 dark:bg-white/[0.02]{% endif %}">
                 <div class="mb-1 flex items-center justify-between sm:mb-1.5">
                     {% if celda.es_hoy %}
                     <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-white shadow-theme-sm sm:h-7 sm:w-7 sm:text-sm">{{ celda.fecha.day }}</span>
@@ -40,15 +52,16 @@ anillo + dot, eventos con badges coloreados de fondo suave.
                     menos padding y vuelve a su tamaño de escritorio en `sm`.{% endcomment %}
                     {% if ev.tipo == "evento" %}
                     <span draggable="true" data-ev-tipo="evento" data-ev-id="{{ ev.evento_id }}"
-                          class="block cursor-grab line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px]" style="background-color: {{ ev.color_hex }}22; color: {{ ev.color_hex }}; border-color: {{ ev.color_hex }}55" title="{{ ev.titulo }} — arrastra para mover de día">{% if ev.es_multidia and not ev.es_inicio %}↔ {% endif %}{{ ev.titulo }}</span>
+                          class="block cursor-grab break-words line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px]" style="background-color: {{ ev.color_hex }}22; color: {{ ev.color_hex }}; border-color: {{ ev.color_hex }}55" title="{{ ev.titulo }} — arrastra para mover de día">{% if ev.es_multidia and not ev.es_inicio %}↔ {% endif %}{{ ev.titulo }}</span>
                     {% else %}
                     <span draggable="true" data-ev-tipo="{{ ev.tipo }}" data-ev-id="{{ ev.obj_id }}"
-                          class="block cursor-grab line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px] {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }} — arrastra para mover de día">{{ ev.titulo }}</span>
+                          class="block cursor-grab break-words line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px] {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }} — arrastra para mover de día">{{ ev.titulo }}</span>
                     {% endif %}
                     {% endfor %}
                     {% if celda.eventos|length > 3 %}<div class="px-1 text-[9px] font-medium text-gray-500 dark:text-gray-400 sm:text-[10px]">+{{ celda.eventos|length|add:"-3" }} más</div>{% endif %}
                 </div>
             </div>
+            {% endif %}
             {% endfor %}
         {% endfor %}
     </div>

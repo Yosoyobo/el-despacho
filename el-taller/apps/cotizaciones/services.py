@@ -91,12 +91,6 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
             "img_alto": alto,
             "extras": [],
         })
-    # LC 2026-07-28 (Oscar, punto 7): los bloques que arrancan una hoja nueva
-    # llevan dos renglones de aire arriba. Se marcan aquí, simulando la
-    # paginación (ver `_paginar`).
-    paginacion = _paginar(cot, filas, items)
-    for i, fila in enumerate(filas):
-        fila["aire_arriba"] = i in paginacion["aire_bloques"]
     totales = cot.calcular_totales()
     notas = notas_para(cot)
     return render_to_string("cotizaciones/pdf.html", {
@@ -114,8 +108,7 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         ],
         "notas": notas,
         "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
-        "aire_desglose": paginacion["aire_desglose"],
-        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items, notas, paginacion),
+        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items, notas),
         "preview": preview,
         "url_descargar": _url_descargar(cot) if preview else "",
         "nombre_archivo": cot.nombre_pdf,
@@ -166,24 +159,37 @@ def _medida_foto(proporcion: float) -> tuple[int, int]:
 # Colchón al pie: la paginación real la hace Google, no nosotros, así que el
 # bloque de notas se deja un poco arriba del borde. Sin este colchón, un error
 # de estimación de unos milímetros manda el último renglón a una hoja nueva
-# (Oscar 2026-07-25: «no debe de suceder así»).
-_MARGEN_SEGURIDAD_PT = 28
+# (Oscar 2026-07-25: «no debe de suceder así»). LC 2026-07-29: subió de 28 a 56
+# porque las notas de la cotización de Tessa se partieron en dos hojas.
+_MARGEN_SEGURIDAD_PT = 56
 
-# Aire arriba de cada bloque que arranca una hoja nueva (Oscar 2026-07-28,
-# punto 7: «todas las páginas a partir de la 2 deben tener 2 <br> hasta arriba
-# de margen»). El template los pinta como dos `<br>` DENTRO de la celda del
-# bloque, así que el aire viaja con él a la página que le toque.
-_AIRE_PAGINA_PT = 28
+# Tope del hueco que empuja las notas al pie (LC 2026-07-29, Oscar: «se siguen
+# creando espacios extraños e innecesarios, así como páginas vacías»). El hueco
+# sale de una ESTIMACIÓN, así que un error grande abría medio hoja de agujero —
+# o empujaba las notas tan abajo que el párrafo que Google agrega al final del
+# documento se iba solo a una hoja nueva (la página 4 vacía de la cotización de
+# Dekalogo). Con tope, un error de estimación cuesta unos milímetros.
+_TOPE_HUECO_NOTAS_PT = 96
 
 # Encabezado (fecha/logo/cliente) + título centrado. El título dejó de llevar
 # 28pt de aire abajo (Oscar 2026-07-28, punto 2: «un <br> de más»).
 _ALTO_ENCABEZADO_PT = 60 + 32
 
+# Lo que el convertidor de Google le SUMA a cada bloque por su cuenta: mete un
+# párrafo vacío alrededor de cada tabla (quirk #5 de `pdf.html`) y respeta a su
+# manera los márgenes. Calibrado midiendo dos documentos reales (LC 2026-07-29,
+# cotizaciones de Tessa Studio y Dekalogo): la estimación se quedaba ~60pt corta
+# por bloque, y con 6 bloques eso son casi 6 cm de error acumulado — de ahí que
+# el hueco de las notas saliera disparatado. Se prefiere pasarse de largo:
+# sobreestimar sólo pone las notas un poco más arriba.
+_OVERHEAD_BLOQUE_PT = 60
+
 
 def _alto_bloque(fila) -> int:
     """Alto estimado (pt) del bloque de un producto: nombre + especificaciones
-    o foto + su tabla de montos. Es una **estimación** — la paginación real la
-    hace Google."""
+    o foto + su tabla de montos, más lo que el convertidor agrega por su cuenta
+    (`_OVERHEAD_BLOQUE_PT`). Es una **estimación** — la paginación real la hace
+    Google."""
     cuerpo = 0
     renglones = len(getattr(fila["it"], "detalle_lineas", []) or [])
     if renglones:
@@ -193,7 +199,8 @@ def _alto_bloque(fila) -> int:
         # real es el que ya se calculó al armar la fila.
         cuerpo = max(cuerpo, int(fila.get("img_alto") or _ALTO_FOTO_PT))
     # nombre + cuerpo + tabla de montos (+ un renglón por proceso de venta).
-    return 22 + cuerpo + 8 + 48 + 20 + len(fila.get("extras") or []) * 18
+    alto = 22 + cuerpo + 8 + 48 + 20 + len(fila.get("extras") or []) * 18
+    return alto + _OVERHEAD_BLOQUE_PT
 
 
 def _alto_desglose(cot, items) -> int:
@@ -203,73 +210,59 @@ def _alto_desglose(cot, items) -> int:
     # propio renglón (ahí sí van en lista plana).
     alto = 46 + 24 + len(items) * 22 + 18   # título + encabezados + filas
     alto += (2 + impuestos) * 18 + 24       # subtotal + impuestos + total
-    return alto
+    return alto + _OVERHEAD_BLOQUE_PT
 
 
 def _paginar(cot, filas, items) -> dict:
     """Simula la paginación del documento por BLOQUES ATÓMICOS.
 
-    Cada bloque de producto (y el desglose) viaja dentro de una tabla
-    envoltorio de una sola celda cuya fila lleva `preventOverflow` (ver
+    Cada bloque de producto (y el desglose, y las notas) viaja dentro de una
+    tabla envoltorio de una sola celda cuya fila lleva `preventOverflow` (ver
     `lib.google_drive._endurecer_paginacion`), así que **no se parte**: o cabe
     en lo que resta de la hoja o pasa entero a la siguiente. Esa regla es la
     que se simula aquí.
 
-    Devuelve `{"aire_bloques": set[int], "libre": int}`:
+    Devuelve `{"libre": int}` — los puntos que quedan sin usar en la última
+    hoja, para decidir cuánto hueco meterle al bloque de notas.
 
-    · `aire_bloques` — índices de los bloques que arrancan hoja nueva; el
-      template les pone dos renglones de aire arriba (Oscar, punto 7).
-    · `libre` — puntos que quedan sin usar en la última hoja, para decidir
-      cuánto hueco meterle al bloque de notas.
-
-    Es una estimación: peor caso, un bloque lleva aire de más a media hoja o
-    el hueco de las notas queda corto. Nunca rompe el documento.
+    Es una estimación (la hoja real la corta Google), así que sólo se usa para
+    algo cuyo peor caso son unos milímetros: ver `_TOPE_HUECO_NOTAS_PT`.
     """
     usado = _ALTO_ENCABEZADO_PT
-    aire: set[int] = set()
-    for i, fila in enumerate(filas):
+    for fila in filas:
         alto = _alto_bloque(fila)
         if usado > _ALTO_ENCABEZADO_PT and usado + alto > _ALTO_UTIL_PT:
-            aire.add(i)
-            usado = _AIRE_PAGINA_PT + alto
+            usado = alto          # el bloque arranca hoja nueva
         else:
             usado += alto
-    aire_desglose = False
     if cot.incluir_desglose:
         alto = _alto_desglose(cot, items)
-        if usado + alto > _ALTO_UTIL_PT:
-            aire_desglose = True
-            usado = _AIRE_PAGINA_PT + alto
-        else:
-            usado += alto
-    return {
-        "aire_bloques": aire,
-        "aire_desglose": aire_desglose,
-        "libre": max(0, _ALTO_UTIL_PT - (usado % _ALTO_UTIL_PT)),
-    }
+        usado = alto if usado + alto > _ALTO_UTIL_PT else usado + alto
+    return {"libre": max(0, _ALTO_UTIL_PT - min(usado, _ALTO_UTIL_PT))}
 
 
-def _espacio_antes_de_notas(cot, filas, items, notas, paginacion=None) -> int:
+def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
     """Hueco (en puntos) que empuja el bloque de notas al pie de la hoja.
 
     Oscar 2026-07-25: el espacio debe ser DINÁMICO — si las notas caben en lo
     que queda de la página, se van hasta abajo; si ya no caben, no se estira
-    nada y pasan enteras a la hoja siguiente (el `page-break-inside:avoid` del
-    template impide que se partan).
+    nada y pasan enteras a la hoja siguiente (el envoltorio de tabla con
+    `preventOverflow` impide que se partan, LC 2026-07-29).
 
-    Lo que queda libre en la última hoja lo calcula `_paginar`. El resultado se
-    limita a `_ALTO_UTIL_PT / 2` y se le resta `_MARGEN_SEGURIDAD_PT`: mejor
-    quedarse corto que empujar un renglón de las notas a una hoja de más.
+    Lo que queda libre en la última hoja lo calcula `_paginar`. Al resultado se
+    le resta `_MARGEN_SEGURIDAD_PT` y se le pone el tope
+    `_TOPE_HUECO_NOTAS_PT`: mejor quedarse corto que abrir un agujero a media
+    hoja o empujar el documento a una página de más.
     """
     alto_notas = 22 + len(notas) * 15
     if getattr(cot, "terminos", ""):
         alto_notas += 26 + len(cot.terminos.splitlines()) * 13
 
-    libre = (paginacion or _paginar(cot, filas, items))["libre"]
+    libre = _paginar(cot, filas, items)["libre"]
     hueco = libre - alto_notas - _MARGEN_SEGURIDAD_PT
     if hueco <= 0:
         return 0
-    return int(min(hueco, _ALTO_UTIL_PT // 2))
+    return int(min(hueco, _TOPE_HUECO_NOTAS_PT))
 
 
 def _fotos_vivas_del_proyecto(cot) -> dict:
@@ -285,35 +278,58 @@ def _fotos_vivas_del_proyecto(cot) -> dict:
     cubriendo el caso que motivó el congelado (que después le cambien la foto al
     producto del catálogo).
 
-    Llaves iguales a las de `descripcion.indice_previo`: por producto y, de
-    respaldo, por el nombre del concepto.
+    **Por qué el NOMBRE manda (LC 2026-07-29, Oscar: «se sigue poniendo la
+    imagen del producto padre»).** Dos líneas del mismo proyecto pueden apuntar
+    al MISMO producto del catálogo con alias distintos («Playera dry fit —
+    negro» y «— blanco»): la llave `("srv", servicio, variación)` es la misma
+    para las dos, así que casar por producto le daba a ambas la foto de la
+    primera. Lo que de verdad distingue un alias es su nombre, y el nombre del
+    concepto se congela desde `nombre_visible`, así que casa exacto. La llave
+    por producto se conserva sólo como respaldo y **sólo cuando no hay
+    ambigüedad** (un único uso de ese producto en el proyecto).
     """
     proyecto = getattr(cot, "proyecto", None)
     if proyecto is None:
         return {}
-    vivas: dict = {}
     try:
-        lineas = proyecto.productos.select_related("servicio").all()
+        lineas = list(proyecto.productos.select_related("servicio").all())
     except Exception:  # noqa: BLE001 — proyecto borrado o sin acceso al related
         return {}
+    # Cuántas líneas comparten cada producto — se cuentan TODAS, no sólo las que
+    # tienen foto propia: si el producto se usa dos veces, la llave por producto
+    # no puede decidir cuál de las dos es (y le pasaría la foto del alias a la
+    # línea que debe salir con la del catálogo).
+    usos_por_producto: dict = {}
+    for pp in lineas:
+        clave = ("srv", pp.servicio_id, pp.variacion_id)
+        usos_por_producto[clave] = usos_por_producto.get(clave, 0) + 1
+
+    vivas: dict = {}
     for pp in lineas:
         if not pp.imagen_es_propia:
             continue
         file_id = pp.imagen_file_id.strip()
-        vivas.setdefault(("srv", pp.servicio_id, pp.variacion_id), file_id)
         nombre = pp.nombre_visible.strip().lower()
         if nombre:
             vivas.setdefault(("nom", nombre), file_id)
+        clave = ("srv", pp.servicio_id, pp.variacion_id)
+        if usos_por_producto.get(clave) == 1:
+            vivas.setdefault(clave, file_id)
     return vivas
 
 
 def _foto_del_item(it, fotos_vivas: dict) -> str:
     """`file_id` de la foto que va en el documento para esta línea: la propia
-    del uso en el proyecto si la hay, si no la congelada con la versión."""
+    del uso en el proyecto si la hay, si no la congelada con la versión.
+
+    Se casa primero por NOMBRE del concepto (el alias es lo que distingue dos
+    usos del mismo producto) y sólo después por producto — ver
+    `_fotos_vivas_del_proyecto`.
+    """
     if fotos_vivas:
-        viva = fotos_vivas.get(("srv", it.servicio_id, it.variacion_id))
+        viva = fotos_vivas.get(("nom", it.concepto_visible.strip().lower()))
         if not viva:
-            viva = fotos_vivas.get(("nom", it.concepto_visible.strip().lower()))
+            viva = fotos_vivas.get(("srv", it.servicio_id, it.variacion_id))
         if viva:
             return viva
     return it.imagen_visible_file_id

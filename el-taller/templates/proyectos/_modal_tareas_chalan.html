@@ -1,0 +1,79 @@
+{% comment %}Mini-Chalán de tareas del proyecto (LC 2026-07-29, Oscar: «un botón
+para describir y sumar tareas con el Chalán, lo menos invasivo y que no nos saque
+de la página»).
+
+UN solo modal con dos estados, los dos dentro de `#modal-slot`:
+
+· Sin `resultado` → el textarea para dictar. `hx-post` al mismo endpoint.
+· Con `resultado` → el preview con checkboxes. El Chalán PROPONE; las tareas se
+  crean cuando el usuario confirma (regla §20). «Volver a dictar» reabre el
+  textarea con el texto original para corregirlo.
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/60 p-3 backdrop-blur-sm dark:bg-gray-900/80 sm:items-center sm:p-4">
+    <div class="modal-alto relative flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div class="min-w-0">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">🤖 Dictar tareas al Chalán</h2>
+                <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ proyecto.nombre|default:proyecto.codigo }}</p>
+            </div>
+            <button type="button" data-modal-slot-close class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+
+        {% if resultado.ok and resultado.tareas %}
+        <form hx-post="{% url 'proyectos-tareas-chalan-aplicar' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex min-h-0 flex-col">
+            {% csrf_token %}
+            <input type="hidden" name="tareas_json" value="{{ tareas_json }}">
+            <div class="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 py-4">
+                <p class="mb-2 text-sm text-gray-600 dark:text-gray-300">El Chalán entendió esto. Revisa y confirma cuáles crear:</p>
+                {% for t in resultado.tareas %}
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 transition hover:bg-gray-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:has-[:checked]:bg-brand-500/10">
+                    <input type="checkbox" name="sel" value="{{ forloop.counter0 }}" checked class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-600 focus:ring-brand-500/30">
+                    <span class="min-w-0 flex-1">
+                        <span class="block break-words font-medium text-gray-800 dark:text-gray-100">{{ t.titulo }}</span>
+                        <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                            {% if t.asignada_nombre %}👤 {{ t.asignada_nombre }}{% else %}<span class="text-warning-600 dark:text-warning-400">👤 sin responsable — queda a tu nombre</span>{% endif %}
+                            · 📅 {{ t.fecha }}
+                            {% if t.tipo != "tarea" %} · {{ t.tipo|capfirst }}{% endif %}
+                            {% if t.prioridad == "alta" %} · <span class="text-error-600 dark:text-error-400">Prioridad alta</span>{% endif %}
+                        </span>
+                        {% if t.detalle %}<span class="mt-0.5 block break-words text-xs text-gray-400 dark:text-gray-500">{{ t.detalle }}</span>{% endif %}
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+            <footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" class="btn-secundario"
+                        hx-get="{% url 'proyectos-tareas-chalan' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">← Volver a dictar</button>
+                <button type="submit" class="btn-primario">Crear seleccionadas</button>
+            </footer>
+        </form>
+        {% else %}
+        <form hx-post="{% url 'proyectos-tareas-chalan' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
+            {% csrf_token %}
+            <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+                {% if resultado %}
+                <div class="rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+                    {{ resultado.error|default:"El Chalán no identificó tareas. Intenta de otra forma o créalas a mano." }}
+                </div>
+                {% endif %}
+                <label for="tareas-chalan-texto" class="block text-sm text-gray-600 dark:text-gray-300">
+                    Dile qué hay que hacer, quién y cuándo. Puedes poner varias de un jalón.
+                </label>
+                <textarea id="tareas-chalan-texto" name="texto" rows="5" autofocus
+                          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                          placeholder="El lunes Karla manda el arte al cliente, el jueves hay que recoger las gorras en Tizayuca y el viernes junta de revisión.">{{ texto }}</textarea>
+                <p class="text-xs text-gray-400 dark:text-gray-500">El Chalán propone; tú confirmas cuáles crear.</p>
+            </div>
+            <footer class="flex shrink-0 items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario">
+                    {% include "_componentes_tailadmin/_spinner.html" with tamano="xs" color="white" clase_extra="htmx-indicator" %}
+                    Interpretar
+                </button>
+            </footer>
+        </form>
+        {% endif %}
+    </div>
+</div>
