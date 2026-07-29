@@ -184,14 +184,27 @@ def _compact_kpis(user, rol) -> list[dict]:
 
 
 def _mis_tareas(user):
-    """Tareas asignadas a mí (o donde soy el runner), sin completadas."""
-    from apps.el_pizarron.models import Tarea
-    from django.db.models import Q
+    """Tareas pendientes del despacho — las de TODOS, no sólo las mías.
+
+    LC 2026-07-29 (Oscar): el recuadro pasó de «Mis tareas» a «Tareas
+    pendientes» mostrando las de todo el equipo. La visibilidad la sigue
+    resolviendo `_tareas_visibles` de la página de Tareas (misma fuente), así que
+    quien sólo ve lo suyo —un runner, un diseñador— sigue viendo sólo lo suyo.
+
+    El nombre de la función se conserva: es lo que consume el Dashboard y
+    renombrarlo no aporta.
+    """
+    from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
+    from apps.el_pizarron.views import _tareas_visibles
     qs = (
-        Tarea.objects.filter(Q(asignada_a=user) | Q(responsables=user) | Q(runner=user))
-        .exclude(estado="completada")
+        _tareas_visibles(user)
+        # Los estados terminales son CONFIGURABLES en Gerencia, así que se
+        # excluyen todos — no sólo el literal "completada". Con el recuadro
+        # mostrando lo de todo el equipo, una tarea cerrada en otro estado
+        # terminal se colaba como «pendiente».
+        .exclude(estado__in=slugs_terminales_tarea())
         .filter(archivada=False)  # LC #154: las archivadas no saturan el Dashboard
-        .select_related("proyecto__cliente")
+        .select_related("proyecto__cliente", "asignada_a")
         .order_by("fecha_compromiso")
         .distinct()
     )

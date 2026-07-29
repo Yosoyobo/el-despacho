@@ -15,7 +15,7 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
 {% endcomment %}
 <section id="cotizaciones-panel-{{ proyecto.pk }}"
          {% if puede_estado or puede_cotizar %}hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}
-         class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+         class="{{ clase_extra }} rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cotizaciones</h3>
 
     {% if cotizaciones_proyecto %}

@@ -8059,3 +8059,161 @@ comentarios (`{# #}` multilínea, Bug C §14) y el de Novedades, verdes.
   sigue con DnD de HTML5 (escritorio).
 - Como siempre: el PDF final lo pagina Google, así que el resultado real de los
   puntos 1, 3 y 7 sólo se confirma con el código en La Sede.
+
+---
+
+# BITÁCORA — S-Ajustes-Jul29 (2026-07-29, VERSION 2026.07.36)
+
+> Ronda de Oscar sobre lo deployado el día anterior (2026.07.35), con **dos PDFs
+> reales adjuntos** como evidencia: `COTIZACIÓN-TESSASTUDIO-PlayerasDryFitLCC-v3`
+> y `COTIZACIÓN-DEKALOGO-Paris,Texas-v1`. 14 puntos: 3 del PDF, 3 de la página del
+> proyecto, 5 de móvil y 4 generales.
+
+## 1. PDF — la foto del ALIAS gana sobre la del producto padre
+
+**Raíz.** `_fotos_vivas_del_proyecto` indexaba las fotos propias de los usos por
+`("srv", servicio, variación)` **y** por nombre, pero `_foto_del_item` consultaba
+la llave por PRODUCTO **primero**. Dos líneas del mismo producto del catálogo con
+alias distintos («Playera dry fit — negro» / «Polo dry fit — blanco») comparten esa
+llave, así que el `setdefault` dejaba la foto de la PRIMERA y las dos salían igual
+— exactamente el «se sigue poniendo la imagen del producto padre».
+
+**Fix.** Casa **por NOMBRE primero** (el alias es lo que distingue dos usos del
+mismo producto, y el concepto se congela desde `nombre_visible`, así que casa
+exacto). La llave por producto queda de respaldo y **sólo cuando no hay
+ambigüedad**: se cuentan TODAS las líneas que usan ese producto, no sólo las que
+tienen foto propia — si no, la línea SIN alias heredaba la foto del alias.
+
+## 2. PDF — espacios extraños y páginas vacías (3 causas)
+
+- **(a) El aire calculado a mano se RETIRÓ** (revierte el punto 7 del 2026-07-28).
+  Salía de una estimación; cuando ésta se equivocaba, los dos `<br>` caían a media
+  hoja. El margen de una pulgada de la hoja ya da ese aire.
+- **(b) UN solo `<table>` envoltorio para TODOS los bloques**, una fila por bloque.
+  Antes cada bloque era su propia tabla y el convertidor mete su espacio entre dos
+  tablas seguidas sin forma de quitarlo (quirk #5): ése era el hueco «entre los
+  elementos 1 y 2» de Tessa. Dentro de una misma tabla no existe, y cada fila sigue
+  siendo la primitiva que Docs no corta.
+- **(c) El estimador se quedaba ~60pt corto POR BLOQUE** (medido sobre los dos PDFs
+  reales). Con 6 bloques son ~6 cm de error acumulado, y de ahí salía un hueco de
+  notas disparatado que empujaba el documento a una hoja de más — la página 4 vacía
+  de Dekalogo. Constante nueva `_OVERHEAD_BLOQUE_PT = 60`, `_MARGEN_SEGURIDAD_PT`
+  28→56 y **tope nuevo `_TOPE_HUECO_NOTAS_PT = 96`**: así un error de estimación
+  cuesta milímetros, no medio hoja.
+
+## 3. PDF — las notas ya no se parten
+
+`page-break-inside:avoid` no basta (quirk #6). El bloque de notas va dentro de la
+MISMA tabla envoltorio de una celda que los bloques de producto, cuya fila lleva
+`preventOverflow`: o caben enteras o pasan enteras. El hueco que las empuja al pie
+va DENTRO de la celda para que viaje con ellas.
+
+## 4. `preventOverflow` en las tablas ANIDADAS
+
+`_peticiones_prevent_overflow` sólo recorría el primer nivel de `body.content`.
+Los bloques del documento viven en celdas del envoltorio, así que las tablas del
+nombre/especificaciones y de los montos son **hijas**, no hermanas: quedaban sin
+proteger. Y si el convertidor aplanara el anidado —la hipótesis que explica que un
+bloque se siguiera partiendo—, eran justo ésas las que se cortaban. Ahora recorre
+recursivamente (tope de profundidad 6) y el `fields` del `documents.get` pasó a
+`body(content)` completo.
+
+## 5. Página del proyecto
+
+- **Facturas ligadas con monto y fecha de emisión.** El total se calcula en la
+  vista (`total_calc`) con `prefetch_related("items", "impuestos__tasa")` para no
+  pegarle a la base por renglón.
+- **Mini-Chalán de tareas** (`apps/los_proyectos/tareas_ia.py`, espejo de
+  `productos_ia`): botón «🤖 Dictar tareas» junto a «+ Nueva tarea» → modal con
+  textarea → El Chalán propone **qué/quién/cuándo** → checkboxes y confirmación
+  (**regla §20: propone, nunca aplica**). `_resolver_persona` no adivina si hay dos
+  coincidencias; sin responsable resuelto, la tarea queda a nombre de quien la
+  crea. Vistas `tareas_chalan_modal` / `tareas_chalan_aplicar`, gateadas por
+  `puede_editar_proyecto` + `puede_usar_chalan`, y `aplicar_tareas` re-valida.
+- **Tarjeta de producto**: apagada va **más gris** (opacity 40 + grayscale + fondo
+  neutro) y **se abre picando toda la barra** (`data-card-barra`), con el asa de
+  arrastre, la foto y los controles fuera del gesto.
+
+## 6. Móvil
+
+- **El pie de la tarjeta de producto envuelve.** El renglón del costo de producción
+  no cabía junto al toggle y al Monto en 360px y, al no poder encogerse, desbordaba
+  la tarjeta y con ella el ancho de la página. Ahora en móvil baja a su propio
+  renglón (`order-last w-full`) y en `sm` vuelve a su lugar.
+- **Reorden del detalle del proyecto** sin duplicar nada: en móvil el contenedor es
+  `flex flex-col` y main/aside son `contents` (no generan caja), así que sus
+  secciones se vuelven hijas del flex y `order-*` las intercala — Económico →
+  Descripción → Tareas → Productos → Proveedores → Equipo → Cotizaciones →
+  Ingresos y egresos → Facturas ligadas. En `xl` vuelven a ser dos columnas.
+  Duplicar los paneles no era opción: el Económico tiene id único para el OOB del
+  autosave y la Descripción es un campo del form. Se agregó `clase_extra` a
+  `_tareas_panel`, `_economico_panel`, `_proveedores_panel`, `_cotizaciones_panel`
+  y `_facturas_panel`.
+- **Calendario sin scroll horizontal**: `minmax(0,…)` en todas las columnas (sin
+  él una palabra larga ensancha su columna), `overflow-hidden` + `min-w-0` en la
+  celda y `break-words` en los chips.
+- **Guardar/Compartir en iOS.** La causa es la **activación de usuario**: iOS sólo
+  abre la hoja de compartir DENTRO del gesto que la pidió, y generar el PDF tarda
+  segundos (lo arma Google), así que al volver del `fetch` el permiso ya había
+  expirado, `share()` tronaba y caíamos al visor. No se puede pre-bajar al cargar
+  (cada descarga REGENERA el documento, ver `views.generar_pdf`), así que el botón
+  trabaja en dos tiempos: el primer toque baja e intenta compartir —en Android y
+  escritorio alcanza—, y si el sistema rechaza queda como **«Compartir PDF»** y el
+  siguiente toque abre la hoja al instante.
+- **Modal «Nueva tarea» compacto** (`max-w-md`, campos apilados, como el modal
+  corto del calendario): arriba y a la vista sólo **qué / quién / cuándo**; tipo,
+  lugar, detalles y runner en un `<details>` «Más opciones». El mini-calendario
+  inline medía ~260px —la mitad del alto del diálogo— y se cambió por el campo de
+  fecha del sistema (`ui.js` le pone «Hoy» y abre el picker nativo).
+
+## 7. General
+
+- **El 🤖 salió del modal manual «+ Nueva tarea»** del proyecto (tenía un
+  `_ia_bar` en la descripción). Oscar: «podemos quitar el chalán de adentro de este
+  modal» — ahora El Chalán vive en su propio botón al lado. De paso el diálogo se
+  pega arriba con su propio scroll, para que quepa en un celular.
+- **El Lugar de la tarea ya NO es obligatorio**: se quitó el `clean()` de
+  `TareaForm` que lo exigía para entrega/recoger. Frenaba el alta; el mandado lo
+  deriva después de la dirección del cliente.
+- **Dashboard: «Mis tareas» → «Tareas pendientes»**, con las de TODO el equipo.
+  Reusa `_tareas_visibles` del Pizarrón (misma fuente que la página de Tareas), así
+  que quien sólo ve lo suyo sigue viendo lo suyo. Encabezado clickeable a Tareas y
+  el nombre del responsable en cada renglón.
+- **Calendarios**: los días de otros meses ya no se pintan (celda vacía, no
+  clickeable) y las columnas de sábado y domingo van 20% más angostas.
+- **«Nuevo evento» y «Resumir con El Chalán»** pasaron a la izquierda, en un
+  renglón arriba de Hoy / Mes / Año (antes vivían en la columna derecha).
+
+## 8. Resumen del calendario rehecho
+
+`apps/calendario/resumen.py` (nuevo) arma **con consultas** las cuatro secciones
+que pidió Oscar: **Hoy · Esta semana** (lun-vie, sin lo que ya pasó, hoy sí)
+**· Tareas** (sin las terminales) **· Siguientes entregas** («fecha · proyecto ·
+productos», el nombre del producto en ESE proyecto). El formato no tiene nada que
+interpretar, así que sale exacto, instantáneo y gratis — mismo criterio que el
+reporte de pendientes del Dashboard. `resumen_ia` se reduce a `lectura_de_carga`:
+**una frase** del Chalán sobre cómo se ve la carga, y si no responde las secciones
+salen igual.
+
+## 9. Tests
+
+26 nuevos en `tests/taller/test_ajustes_jul29.py`. Se actualizaron **3 fixtures
+propias** de los mecanismos que este sprint cambió a propósito: el test del aire
+(retirado) y dos que comparaban el hueco de las notas, que ahora satura contra el
+tope — miden sobre `_paginar(...)["libre"]`, la señal cruda. Ruff (0.8.4) limpio;
+candado de comentarios `{# #}` multilínea (Bug C §14) y de Novedades, verdes.
+
+## 10. Deuda diseñada / riesgo abierto
+
+- El estimador de la paginación sigue siendo **estimación** (la hoja real la corta
+  Google). Su único efecto es graduar el hueco de las notas y ahora lleva tope, así
+  que el peor caso son milímetros.
+- **Si un bloque volviera a partirse**, la hipótesis restante es que el convertidor
+  APLANA las tablas anidadas y por eso el envoltorio no protege. El recorrido
+  anidado de `preventOverflow` cubre ese caso, pero **sólo se confirma con el
+  código en La Sede** — la conversión la hace Google, no se puede probar en local
+  ni en CI.
+- El reorden en móvil usa `display:contents` (iOS Safari 11.1+).
+- El mini-Chalán de tareas sólo CREA: no edita tareas existentes ni asigna runner.
+- El resumen del calendario corta cada sección a 12 renglones (`LIMITE_SECCION`) y
+  las entregas a 60 días.

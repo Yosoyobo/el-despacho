@@ -530,10 +530,14 @@ class GoogleDriveWrapper:
         """
         try:
             with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
+                # Se pide el cuerpo COMPLETO (no sólo las tablas de primer
+                # nivel): los bloques del documento son tablas ANIDADAS dentro
+                # de la tabla envoltorio, y sus filas también deben quedar
+                # protegidas — ver `_peticiones_prevent_overflow`.
                 resp = cli.get(
                     f"{DOCS_BASE}/{doc_id}",
                     headers=self._headers(),
-                    params={"fields": "body(content(startIndex,table(rows)))"},
+                    params={"fields": "body(content)"},
                 )
                 resp.raise_for_status()
                 cuerpo = (resp.json().get("body") or {}).get("content") or []
@@ -585,26 +589,45 @@ def _peticiones_prevent_overflow(contenido: list) -> list[dict]:
     del documento, así que los índices siguen siendo válidos dentro del mismo
     lote. Función pura y tolerante a basura (elementos sin tabla, sin índice o
     sin filas se ignoran).
+
+    **Recorre las tablas ANIDADAS** (LC 2026-07-29): el documento de la
+    cotización mete cada bloque en una celda de la tabla envoltorio, así que las
+    tablas del nombre/especificaciones y de los montos son hijas, no hermanas.
+    Con sólo el primer nivel quedaban sin proteger, y si el convertidor de
+    Google aplana el anidado —que es la explicación de que un bloque se siguiera
+    partiendo— eran justo ésas las que se cortaban.
     """
     peticiones: list[dict] = []
-    for elemento in contenido or []:
-        if not isinstance(elemento, dict):
-            continue
-        tabla = elemento.get("table")
-        inicio = elemento.get("startIndex")
-        if not isinstance(tabla, dict) or not isinstance(inicio, int):
-            continue
-        filas = tabla.get("rows") or 0
-        if not isinstance(filas, int) or filas <= 0:
-            continue
-        peticiones.append({
-            "updateTableRowStyle": {
-                "tableStartLocation": {"index": inicio},
-                "rowIndices": list(range(filas)),
-                "tableRowStyle": {"preventOverflow": True},
-                "fields": "preventOverflow",
-            }
-        })
+
+    def _recorrer(elementos, profundidad: int = 0) -> None:
+        # Tope de recursión: defensa contra una respuesta inesperadamente honda.
+        if profundidad > 6:
+            return
+        for elemento in elementos or []:
+            if not isinstance(elemento, dict):
+                continue
+            tabla = elemento.get("table")
+            if not isinstance(tabla, dict):
+                continue
+            inicio = elemento.get("startIndex")
+            filas = tabla.get("rows") or 0
+            if isinstance(inicio, int) and isinstance(filas, int) and filas > 0:
+                peticiones.append({
+                    "updateTableRowStyle": {
+                        "tableStartLocation": {"index": inicio},
+                        "rowIndices": list(range(filas)),
+                        "tableRowStyle": {"preventOverflow": True},
+                        "fields": "preventOverflow",
+                    }
+                })
+            for fila in tabla.get("tableRows") or []:
+                if not isinstance(fila, dict):
+                    continue
+                for celda in fila.get("tableCells") or []:
+                    if isinstance(celda, dict):
+                        _recorrer(celda.get("content"), profundidad + 1)
+
+    _recorrer(contenido)
     return peticiones
 
 

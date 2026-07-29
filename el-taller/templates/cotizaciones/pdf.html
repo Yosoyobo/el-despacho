@@ -39,10 +39,15 @@ Cinco cosas que la conversión NO perdona (Oscar 2026-07-25, rondas 2 y 3):
    prende después de la conversión, por la API de Documentos —
    `TableRowStyle.preventOverflow` en todas las filas, ver
    `lib.google_drive._endurecer_paginacion`.
-7. Los bloques que arrancan una hoja nueva llevan dos `<br>` de aire arriba,
-   DENTRO de su celda para que el aire viaje con ellos (Oscar 2026-07-28,
-   punto 7). Cuál bloque lo lleva lo decide `services._paginar`, simulando la
-   paginación — es una estimación, la hoja real la corta Google.
+   **Y todo lo que deba viajar junto usa el MISMO envoltorio**: los bloques de
+   producto (una fila cada uno de UNA sola tabla), el desglose y las notas.
+7. **Nada de aire calculado a mano.** Hasta el 2026-07-28 los bloques que la
+   simulación creía primeros de hoja llevaban dos `<br>` arriba; como la
+   simulación es sólo una estimación, el aire caía a media hoja y producía
+   huecos inexplicables (Oscar 2026-07-29: «espacios extraños e innecesarios»).
+   El margen de una pulgada de la hoja ya da ese aire. Lo único que sigue
+   estimándose es el hueco que empuja las notas al pie, y va con tope
+   (`services._TOPE_HUECO_NOTAS_PT`) para que un error cueste milímetros.
 
 Las imágenes llevan URL absoluta pública y firmada porque Google las baja
 desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py). Y van
@@ -106,7 +111,20 @@ attachment` no baja nada: el navegador abre su visor. La única forma de
 entregar el archivo REAL con su nombre es la Web Share API — se baja el PDF a
 memoria, se arma un `File` con el nombre bueno y se abre la hoja de compartir
 del sistema (Archivos, WhatsApp, Correo…). En escritorio no aplica y el enlace
-se comporta como siempre.{% endcomment %}
+se comporta como siempre.
+
+LC 2026-07-29 (Oscar, móvil punto 3): «tarda unos segundos, luego abre el PDF
+pero sin ninguna opción de exportar o compartir». La causa es la **activación de
+usuario**: iOS sólo deja abrir la hoja de compartir DENTRO del gesto que la pidió,
+y generar el PDF tarda varios segundos (lo arma Google), así que al volver del
+`fetch` el permiso ya expiró, `share()` truena y caíamos al visor.
+
+No se puede pre-bajar al cargar la página (cada descarga REGENERA el documento en
+Google, ver `views.generar_pdf`), así que el botón trabaja en dos tiempos: el
+primer toque baja el archivo y lo deja en memoria —e intenta compartir, que en
+Android y escritorio sí funciona de un jalón—; si el sistema rechaza por la
+activación, el botón se queda como «Compartir PDF» y el siguiente toque abre la
+hoja al instante, ya sin espera.{% endcomment %}
 <script>
 (function () {
   var a = document.getElementById('lc-bajar');
@@ -115,23 +133,47 @@ se comporta como siempre.{% endcomment %}
   // Sonda barata: si el navegador no sabe compartir archivos, no tocamos nada.
   try { if (!navigator.canShare({ files: [new File([new Blob()], nombre, { type: 'application/pdf' })] })) return; }
   catch (e) { return; }
-  a.textContent = '⬇ Guardar / Compartir';
+
+  var ETIQUETA_BAJAR = '⬇ Guardar / Compartir';
+  var ETIQUETA_LISTO = '⬆ Compartir PDF';
+  var archivo = null;      // el PDF ya en memoria (se baja una sola vez)
+  var ocupado = false;
+  a.textContent = ETIQUETA_BAJAR;
+
+  function compartir() {
+    // Se llama SIN await de por medio: así conserva la activación del gesto.
+    return navigator.share({ files: [archivo], title: nombre });
+  }
+
   a.addEventListener('click', function (ev) {
     ev.preventDefault();
-    var texto = a.textContent;
+    if (ocupado) return;
+
+    if (archivo) {                       // segundo toque: instantáneo
+      compartir().catch(function () { /* cancelar no es error */ });
+      return;
+    }
+
+    ocupado = true;
     a.textContent = 'Preparando…';
     fetch(a.href, { credentials: 'same-origin' })
       .then(function (r) { if (!r.ok) throw new Error('http'); return r.blob(); })
       .then(function (blob) {
-        var archivo = new File([blob], nombre, { type: 'application/pdf' });
-        return navigator.share({ files: [archivo], title: nombre });
+        archivo = new File([blob], nombre, { type: 'application/pdf' });
+        a.textContent = ETIQUETA_LISTO;
+        // Se intenta de una vez: donde la activación sobrevive (Android,
+        // escritorio) el usuario no tiene que picar dos veces.
+        return compartir().catch(function () {
+          // Rechazo por activación o cancelación: el archivo ya está listo y el
+          // botón lo dice, así que el siguiente toque comparte sin esperar.
+        });
       })
       .catch(function () {
-        // Cancelar la hoja de compartir también cae aquí: se deja el enlace
-        // normal como salida (abre el visor, como antes).
+        // No se pudo bajar: el enlace normal sigue siendo la salida.
+        a.textContent = ETIQUETA_BAJAR;
         window.location.href = a.href;
       })
-      .finally(function () { a.textContent = texto; });
+      .finally(function () { ocupado = false; });
   });
 })();
 </script>
@@ -172,23 +214,18 @@ se comporta como siempre.{% endcomment %}
   y la foto van en UNA SOLA tabla: dos tablas seguidas dejaban un renglón en
   blanco entre el nombre y las especificaciones (Docs mete su propio espacio
   entre tablas y no hay forma de quitarlo).{% endcomment %}
-  {% for fila in filas %}
-  {% comment %}El bloque del producto —del título a su tabla de montos— no se
-  parte entre páginas.
-
-  LC 2026-07-26 (Oscar, A): `page-break-inside:avoid` sobre un `<div>` lo respeta
-  el navegador (la vista previa) pero NO el convertidor de Docs — de ahí que el
-  título «4. Tote Bag Paris Texas» se quedara solo al pie de una página y el
-  resto pasara a la siguiente. La primitiva que Docs sí respeta es la FILA de una
-  tabla: una fila no se corta entre páginas. Así que todo el bloque va dentro de
-  una tabla ENVOLTORIO de una sola celda (borde y padding apagados en la tabla Y
-  en la celda, quirk #1). Se conserva el `<div>` para la vista previa impresa.{% endcomment %}
-  <div style="page-break-inside:avoid;">
+  {% comment %}UNA sola tabla envoltorio para TODOS los bloques, una fila por
+  bloque (LC 2026-07-29, Oscar: «se siguen creando espacios extraños e
+  innecesarios»). Antes cada bloque era su propia tabla, y el convertidor mete
+  su propio espacio entre dos tablas seguidas sin forma de quitarlo (quirk #5):
+  ese era el hueco que aparecía entre un elemento y el siguiente. Dentro de una
+  misma tabla no hay tal espacio, y cada fila sigue siendo la primitiva que Docs
+  no corta entre páginas (quirk #6 + `preventOverflow`).{% endcomment %}
+  {% if filas %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
+  {% for fila in filas %}
   <tr><td style="border:none; padding:0; vertical-align:top;">
-  {% comment %}Aire de arriba cuando el bloque arranca hoja nueva (punto 7). Va
-  DENTRO de la celda para que viaje con el bloque a la página que le toque.{% endcomment %}
-  {% if fila.aire_arriba %}<br><br>{% endif %}
+  <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:6pt;">
     <tr>
       <td style="border:none; width:22pt; vertical-align:top;">{{ forloop.counter }}.</td>
@@ -258,11 +295,13 @@ se comporta como siempre.{% endcomment %}
     </tr>
     {% endfor %}
   </table>
-  </td></tr></table>
   </div>
-  {% empty %}
-  <p style="color:#666666;">Sin conceptos.</p>
+  </td></tr>
   {% endfor %}
+  </table>
+  {% else %}
+  <p style="color:#666666;">Sin conceptos.</p>
+  {% endif %}
 
   {# Desglose y cálculo de impuestos: solo si el interruptor está prendido #}
   {% if cot.incluir_desglose %}
@@ -282,7 +321,6 @@ se comporta como siempre.{% endcomment %}
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
-  {% if aire_desglose %}<br><br>{% endif %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
     <tr>
       <td colspan="5" style="border:none; padding:0 0 10pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
@@ -336,20 +374,31 @@ se comporta como siempre.{% endcomment %}
   {% comment %}Notas: van siempre y completas (ver apps/cotizaciones/notas.py).
   Oscar 2026-07-25 (segunda ronda): sin línea divisoria, y el hueco que las
   empuja al pie es DINÁMICO — `espacio_notas_pt` estima cuánto falta para
-  llegar al final de la hoja (ver services._espacio_antes_de_notas). Si ya no
-  cabe, el espacio es 0 y el bloque pasa entero a la hoja siguiente:
-  `page-break-inside:avoid` impide que se parta a la mitad.
-  {% endcomment %}
-  <div style="margin-top:{{ espacio_notas_pt }}pt; page-break-inside:avoid;">
-    <p style="margin:0 0 4pt 0; font-size:9pt;">Notas:</p>
-    <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:9pt;">
-      {% for nota in notas %}
-      <tr>
-        <td style="border:none; width:18pt; vertical-align:top; padding:1pt 0;">{{ forloop.counter }}.</td>
-        <td style="border:none; vertical-align:top; padding:1pt 0;">{{ nota }}</td>
-      </tr>
-      {% endfor %}
-    </table>
+  llegar al final de la hoja (ver services._espacio_antes_de_notas).
+
+  LC 2026-07-29 (Oscar: «se compaginó el bloque de notas»): el bloque se partía
+  en dos hojas — las notas 1 y 2 al pie de una y de la 3 a la 8 en la siguiente.
+  `page-break-inside:avoid` no basta (quirk #6: el convertidor lo ignora), así
+  que las notas van dentro de la MISMA tabla envoltorio de una celda que usan
+  los bloques de producto: una fila con `preventOverflow` no se corta, así que
+  o caben enteras o pasan enteras. El hueco que las empuja al pie va DENTRO de
+  la celda para que viaje con ellas.{% endcomment %}
+  <div style="page-break-inside:avoid;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
+  <tr><td style="border:none; padding:0; vertical-align:top;">
+    <div style="margin-top:{{ espacio_notas_pt }}pt;">
+      <p style="margin:0 0 4pt 0; font-size:9pt;">Notas:</p>
+      <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:9pt;">
+        {% for nota in notas %}
+        <tr>
+          <td style="border:none; width:18pt; vertical-align:top; padding:1pt 0;">{{ forloop.counter }}.</td>
+          <td style="border:none; vertical-align:top; padding:1pt 0;">{{ nota }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </td></tr>
+  </table>
   </div>
 
   {% if cot.terminos %}

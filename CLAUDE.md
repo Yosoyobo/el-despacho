@@ -4221,6 +4221,107 @@ servidor local apagado saldría en rojo — se omitió a propósito por ser de
 prueba); el base URL se enmascara en el panel como si fuera llave (cosmético,
 no es secreto).
 
+### S-Ajustes-Jul29 ✅ — Documento sin huecos, tareas dictadas al Chalán y móvil usable (2026-07-29, VERSION 2026.07.36)
+
+Ronda de Oscar sobre lo deployado el día anterior (2026.07.35), con dos PDFs reales
+adjuntos como evidencia (`COTIZACIÓN-TESSASTUDIO-PlayerasDryFitLCC-v3` y
+`COTIZACIÓN-DEKALOGO-Paris,Texas-v1`). 14 puntos: 3 del PDF, 3 de la página del
+proyecto, 5 de móvil y 4 generales.
+
+- **PDF — la foto del ALIAS gana (raíz encontrada)**: `_fotos_vivas_del_proyecto`
+  indexaba por `("srv", servicio, variación)` **y** por nombre, pero
+  `_foto_del_item` consultaba la llave por PRODUCTO primero. Dos líneas del mismo
+  producto del catálogo con alias distintos («Playera dry fit — negro» / «— blanco»)
+  comparten esa llave, así que `setdefault` dejaba la foto de la PRIMERA y las dos
+  salían igual — el «se sigue poniendo la imagen del producto padre». Ahora casa
+  **por NOMBRE primero** (el alias es lo que distingue, y el concepto se congela
+  desde `nombre_visible`) y la llave por producto sólo aplica **cuando el producto
+  se usa una sola vez** en el proyecto (se cuentan TODAS las líneas, no sólo las
+  que tienen foto propia: si no, la línea sin alias heredaba la foto del alias).
+- **PDF — espacios extraños y páginas vacías**: tres causas, las tres atacadas.
+  (a) **El aire calculado a mano se RETIRÓ** (revierte el punto 7 del 2026-07-28):
+  salía de una estimación y cuando ésta se equivocaba caía a media hoja. El margen
+  de una pulgada ya da ese aire. (b) **Un solo `<table>` envoltorio para TODOS los
+  bloques**, una fila por bloque: dos tablas hermanas dejaban el espacio que Docs
+  mete entre tablas (quirk #5) — ése era el hueco «entre los elementos 1 y 2».
+  (c) **El estimador estaba ~60pt corto por bloque** (medido sobre los dos PDFs
+  reales): con 6 bloques son ~6 cm de error acumulado, y de ahí salía un hueco de
+  notas disparatado que empujaba el documento a una hoja de más (la página 4 vacía
+  de Dekalogo). Constante nueva `_OVERHEAD_BLOQUE_PT = 60`, margen de seguridad
+  28→56pt y **tope nuevo `_TOPE_HUECO_NOTAS_PT = 96`** para que un error de
+  estimación cueste milímetros y no medio hoja.
+- **PDF — las notas ya no se parten**: van dentro de la MISMA tabla envoltorio de
+  una celda que los bloques (fila con `preventOverflow`), así que o caben enteras o
+  pasan enteras. `page-break-inside:avoid` no basta (quirk #6).
+- **`_peticiones_prevent_overflow` ahora RECORRE las tablas anidadas** (antes sólo
+  el primer nivel): los bloques viven en celdas del envoltorio, así que sus tablas
+  son hijas. Si el convertidor aplanara el anidado —la explicación de que un bloque
+  se siguiera partiendo—, eran justo ésas las que quedaban sin proteger. El `fields`
+  del `documents.get` pasó a `body(content)` completo.
+- **Proyecto**: Facturas ligadas con **monto y fecha de emisión** (total
+  precalculado en la vista + `prefetch_related` para no pegarle a la base por
+  renglón) · **mini-Chalán de tareas** (`apps/los_proyectos/tareas_ia.py`, espejo de
+  `productos_ia`): botón «🤖 Dictar tareas» junto a «+ Nueva tarea» → modal con
+  textarea → El Chalán propone qué/quién/cuándo → **checkboxes y confirmación**
+  (regla §20, nunca auto-aplica); `_resolver_persona` no adivina si hay dos
+  coincidencias y sin responsable la tarea queda a nombre de quien la crea ·
+  tarjeta de producto **más gris al apagarla** (opacity 40 + grayscale + fondo
+  neutro) y **se abre picando toda la barra** (`data-card-barra`, con el asa, la
+  foto y los controles fuera del gesto).
+- **Móvil**: el pie de la tarjeta de producto **envuelve** (el renglón del costo de
+  producción baja a su propio renglón; antes desbordaba la tarjeta y con ella el
+  ancho de la página) · **reorden del detalle del proyecto** con `display:contents`
+  en móvil — main y aside no generan caja, sus secciones se vuelven hijas del flex
+  y `order-*` los intercala (Económico → Descripción → Tareas → … → Ingresos y
+  egresos → Facturas ligadas); en `xl` vuelven a ser dos columnas. **Cero
+  duplicación** de paneles, que era el riesgo (el Económico tiene id único para el
+  OOB y la Descripción es un campo del form). Se agregó `clase_extra` a
+  `_tareas_panel`, `_economico_panel`, `_proveedores_panel`, `_cotizaciones_panel`
+  y `_facturas_panel` · **calendario sin scroll horizontal** (`minmax(0,…)` en
+  todas las columnas + `overflow-hidden` y `break-words` en celdas y chips) ·
+  **Guardar/Compartir en iOS**: la causa era la **activación de usuario** — iOS
+  sólo abre la hoja de compartir DENTRO del gesto, y generar el PDF tarda segundos
+  (lo arma Google), así que al volver del `fetch` el permiso ya expiró y caíamos al
+  visor. No se puede pre-bajar (cada descarga REGENERA el documento), así que el
+  botón trabaja en dos tiempos: baja e intenta compartir (Android/escritorio, un
+  toque) y si el sistema rechaza queda como **«Compartir PDF»** y el siguiente
+  toque abre la hoja al instante.
+- **Modal «Nueva tarea» compacto** (`max-w-md`, campos apilados como el modal corto
+  del calendario): arriba sólo **qué / quién / cuándo**; tipo, lugar, detalles y
+  runner en un `<details>` «Más opciones». El mini-calendario inline (~260px, la
+  mitad del alto del diálogo) se cambió por el campo de fecha del sistema.
+- **General**: el 🤖 de la descripción salió del modal manual «+ Nueva tarea» del
+  proyecto (Oscar: «podemos quitar el chalán de adentro de este modal» — ahora vive
+  en su propio botón al lado) · el **Lugar de la tarea ya NO es obligatorio** (se quitó el `clean()`
+  de `TareaForm` que lo exigía para entrega/recoger — frenaba el alta; el mandado lo
+  deriva después de la dirección del cliente) · Dashboard: «Mis tareas» →
+  **«Tareas pendientes»** de TODO el equipo (reusa `_tareas_visibles` del Pizarrón,
+  así que quien sólo ve lo suyo sigue viendo lo suyo) con el encabezado clickeable a
+  Tareas y el nombre del responsable por renglón · calendarios **sin los días de
+  otros meses** (celda vacía, no clickeable) y **finde 20% más angosto** ·
+  «Nuevo evento» y «Resumir con El Chalán» **a la izquierda, arriba** de Hoy/Mes/Año.
+- **Resumen del calendario rehecho** (`apps/calendario/resumen.py` nuevo): las
+  cuatro secciones que pidió Oscar —**Hoy · Esta semana** (lun-vie, sin lo que ya
+  pasó, hoy sí) **· Tareas** (sin terminales) **· Siguientes entregas** («fecha ·
+  proyecto · productos»)— se arman **con consultas, no con IA**: el formato no
+  tiene nada que interpretar, así que sale exacto, instantáneo y gratis (mismo
+  criterio que el reporte de pendientes). `resumen_ia` se reduce a
+  `lectura_de_carga`: **una frase** del Chalán sobre la carga, y si no responde las
+  secciones salen igual.
+- **26 tests nuevos** (`tests/taller/test_ajustes_jul29.py`). Se actualizaron 3
+  fixtures propias de los mecanismos que este sprint cambió a propósito: el test
+  del aire (retirado) y dos que comparaban el hueco de las notas, que ahora satura
+  contra el tope — miden sobre `_paginar(...)["libre"]`, la señal cruda.
+
+**Deuda diseñada / riesgo abierto**: el estimador de la paginación sigue siendo una
+**estimación** (la hoja real la corta Google) — su único efecto es graduar el hueco
+de las notas, y con tope el peor caso son milímetros. **Si un bloque volviera a
+partirse**, la hipótesis restante es que el convertidor APLANA las tablas anidadas y
+por eso el envoltorio no protege; el recorrido anidado de `preventOverflow` cubre
+ese caso, pero **sólo se puede confirmar con el código en La Sede** (la conversión
+la hace Google). El reorden en móvil usa `display:contents` (iOS Safari 11.1+). El
+mini-Chalán de tareas no edita tareas existentes ni asigna runner (sólo las crea).
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

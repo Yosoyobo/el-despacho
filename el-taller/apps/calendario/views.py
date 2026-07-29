@@ -175,32 +175,49 @@ def evento_eliminar(request, pk: int):
 
 @login_required
 def resumen_modal(request):
-    """GET /calendario/resumen/ — El Chalán resume el calendario (estación
-    `calendario_resumen`). Modal HTMX. No persiste. Gated por (chalan, usar)."""
+    """GET /calendario/resumen/ — resumen ejecutivo del calendario. Modal HTMX.
+
+    LC 2026-07-29 (Oscar): las cuatro secciones (Hoy · Esta semana · Tareas ·
+    Siguientes entregas) se arman con consultas —formato exacto, gratis— y El
+    Chalán agrega una sola frase de lectura de la carga. Gated por (chalan, usar)
+    porque la frase la escribe él; si no responde, las secciones salen igual.
+    """
     from django.http import HttpResponseForbidden
-    from django.utils.html import format_html
+    from django.utils.html import escape, format_html
+    from django.utils.safestring import mark_safe
 
     from lib.permisos import puede_usar_chalan
 
-    from .resumen_ia import resumir_calendario
+    from .resumen import secciones_calendario, texto_calendario
+    from .resumen_ia import lectura_de_carga
 
     if not puede_usar_chalan(request.user):
         return HttpResponseForbidden("No tienes permiso para usar El Chalán.")
-    try:
-        dias = int(request.GET.get("dias") or 14)
-    except (TypeError, ValueError):
-        dias = 14
-    res = resumir_calendario(usuario=request.user, dias=dias)
-    if res.get("ok"):
-        cuerpo = format_html('<p class="whitespace-pre-line">{}</p>', res["resumen"])
-    else:
-        cuerpo = format_html(
-            '<p class="text-error-600 dark:text-error-400">{}</p>',
-            res.get("error") or "El Chalán no respondió.",
+
+    secciones = secciones_calendario(request.user)
+    lectura = lectura_de_carga(usuario=request.user,
+                               contexto_txt=texto_calendario(request.user))
+
+    partes: list[str] = []
+    if lectura.get("ok"):
+        partes.append(format_html(
+            '<p class="mb-4 rounded-lg border border-brand-200 bg-brand-50/60 p-3 '
+            'text-sm text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 '
+            'dark:text-brand-200">🤖 {}</p>', lectura["lectura"]))
+    for sec in secciones:
+        renglones = "".join(
+            f'<li class="py-0.5">{escape(ln)}</li>' for ln in sec["lineas"]
         )
+        partes.append(mark_safe(
+            '<p class="mt-3 text-xs font-semibold uppercase tracking-wider '
+            'text-gray-500 dark:text-gray-400">'
+            f'{escape(sec["titulo"])}</p>'
+            '<ul class="mt-1 text-sm text-gray-700 dark:text-gray-200">'
+            f'{renglones}</ul>'
+        ))
     return render(request, "_componentes_tailadmin/_modal_htmx.html", {
-        "titulo": f"Resumen del calendario · próximos {res.get('dias', dias)} días",
-        "cuerpo": cuerpo,
+        "titulo": "Resumen del calendario",
+        "cuerpo": mark_safe("".join(partes)),
         "tamano": "lg",
     })
 

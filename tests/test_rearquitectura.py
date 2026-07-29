@@ -203,8 +203,10 @@ def test_sala_juntas_taller_disenador(client, usuario_factory):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    # KPIs del catálogo aplicables al diseñador.
-    assert "Mis tareas" in body or "Mis recados" in body
+    # KPIs del catálogo aplicables al diseñador. LC 2026-07-29: el recuadro «Mis
+    # tareas» pasó a «Tareas pendientes» (muestra las de todo el equipo, acotadas
+    # a lo que el usuario puede ver).
+    assert "Tareas pendientes" in body or "Mis recados" in body
     # No le aparecen KPIs admin-only
     assert "Buzón sin responder" not in body
 

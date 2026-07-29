@@ -20,7 +20,10 @@ def test_nueva_tarea_modal_get_htmx(client, usuario_factory, proyecto_factory):
     assert "Nueva Tarea" in cuerpo
     assert "data-nueva-tarea" in cuerpo
     assert "data-select-buscable" in cuerpo  # combobox en Proyecto/Asignar a
-    assert "data-minical" in cuerpo          # calendario inline
+    # LC 2026-07-29: el mini-calendario inline (~260px) se cambió por el campo de
+    # fecha del sistema — el diálogo no cabía en un celular y «no se podía usar».
+    assert 'type="date"' in cuerpo
+    assert "Más opciones" in cuerpo          # tipo/lugar/detalles, plegados
 
 
 def test_nueva_tarea_modal_post_htmx_crea_y_redirige(client, usuario_factory, proyecto_factory):

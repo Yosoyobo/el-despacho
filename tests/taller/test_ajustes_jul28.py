@@ -231,20 +231,29 @@ def test_la_vista_previa_ofrece_compartir_con_el_nombre_correcto(
     assert "@page { margin: 0; }" in html
 
 
-# ── (7) Dos renglones de aire en los bloques que arrancan hoja ──────────────
+# ── La simulación de la paginación (sin aire calculado a mano) ──────────────
 
-def test_los_bloques_que_arrancan_hoja_llevan_aire_arriba():
+def test_paginar_reporta_lo_que_queda_libre_en_la_ultima_hoja():
+    """LC 2026-07-29: el aire de dos `<br>` en los bloques que arrancaban hoja se
+    RETIRÓ — al salir de una estimación caía a media hoja y producía los «espacios
+    extraños» que reportó Oscar. `_paginar` sólo informa lo que queda libre, y eso
+    únicamente gradúa el hueco de las notas (con tope)."""
     from apps.cotizaciones.services import _ALTO_UTIL_PT, _paginar
 
     class _Cot:
         incluir_desglose = False
 
-    # Bloques altos: al tercero ya no cabe nada más en la primera hoja.
-    filas = [{"it": None, "imagen": "u", "img_alto": 200, "extras": []} for _ in range(6)]
-    resultado = _paginar(_Cot(), filas, [])
-    assert resultado["aire_bloques"], "ningún bloque quedó marcado como inicio de hoja"
-    assert 0 not in resultado["aire_bloques"]      # el primero va tras el encabezado
-    assert resultado["libre"] <= _ALTO_UTIL_PT
+    def _bloques(n):
+        return [{"it": None, "imagen": "u", "img_alto": 200, "extras": []} for _ in range(n)]
+
+    # `libre` es lo que queda en la ÚLTIMA hoja (no acumulado): cada bloque que
+    # cabe en la hoja en curso se lo come, y al pasar de hoja vuelve a sobrar.
+    libre_vacio = _paginar(_Cot(), [], [])["libre"]
+    libre_uno = _paginar(_Cot(), _bloques(1), [])["libre"]
+    assert libre_vacio > libre_uno >= 0
+    for n in (1, 2, 6, 12):
+        assert 0 <= _paginar(_Cot(), _bloques(n), [])["libre"] <= _ALTO_UTIL_PT
+    assert "aire_bloques" not in _paginar(_Cot(), _bloques(1), [])
 
 
 def test_un_documento_corto_no_lleva_aire_extra(proyecto_factory, usuario_factory,

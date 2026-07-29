@@ -282,17 +282,19 @@ def test_hueco_de_notas_deja_colchon_al_pie(cotizacion):
 
 def test_foto_apaisada_no_infla_la_estimacion(cotizacion):
     """Una foto banner (4:1) ocupa menos alto que una cuadrada, así que deja más
-    hueco para las notas. LC 2026-07-26: el alto ya viene calculado en la fila
-    (`img_alto`, de `_medida_foto`), no se deduce aquí de la proporción."""
-    from apps.cotizaciones.notas import notas_para
-    from apps.cotizaciones.services import _espacio_antes_de_notas, _medida_foto
+    hoja libre. LC 2026-07-26: el alto ya viene calculado en la fila (`img_alto`,
+    de `_medida_foto`), no se deduce aquí de la proporción.
+
+    LC 2026-07-29: se mide contra `_paginar` (la señal cruda) porque el hueco de
+    las notas lleva tope y con un documento de una línea los dos casos saturan.
+    """
+    from apps.cotizaciones.services import _medida_foto, _paginar
 
     items = list(cotizacion.items.all())
-    notas = notas_para(cotizacion)
     apaisada = [{"it": it, "imagen": "u", "img_alto": _medida_foto(0.25)[1]} for it in items]
     sin_medida = [{"it": it, "imagen": "u", "img_alto": _medida_foto(0)[1]} for it in items]
-    assert (_espacio_antes_de_notas(cotizacion, apaisada, items, notas)
-            > _espacio_antes_de_notas(cotizacion, sin_medida, items, notas))
+    assert (_paginar(cotizacion, apaisada, items)["libre"]
+            > _paginar(cotizacion, sin_medida, items)["libre"])
 
 
 def test_proporcion_sin_cache_no_lanza():

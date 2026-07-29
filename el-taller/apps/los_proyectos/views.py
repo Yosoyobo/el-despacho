@@ -749,6 +749,68 @@ def proyecto_productos_ia_aplicar(request, pk):
 
 
 @login_required
+def tareas_chalan_modal(request, pk):
+    """Mini-Chalán de tareas del proyecto (LC 2026-07-29, Oscar).
+
+    GET  → modal con un textarea para dictar las tareas.
+    POST → El Chalán interpreta y se re-inyecta el MISMO modal con el preview y
+           sus checkboxes. Nada se crea aquí (regla §20: propone, no aplica);
+           eso lo hace `tareas_chalan_aplicar` cuando el usuario confirma.
+
+    Todo vive en `#modal-slot`, así que el usuario nunca sale del proyecto.
+    """
+    import json as _json
+
+    from . import tareas_ia
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    from lib.permisos import puede_usar_chalan
+    if not puede_usar_chalan(request.user):
+        return HttpResponseForbidden("Sin permiso para usar El Chalán.")
+
+    ctx = {"proyecto": proyecto, "texto": ""}
+    if request.method == "POST":
+        texto = (request.POST.get("texto") or "").strip()
+        resultado = tareas_ia.interpretar_tareas(
+            proyecto=proyecto, texto=texto, usuario=request.user)
+        ctx.update({
+            "texto": texto,
+            "resultado": resultado,
+            "tareas_json": _json.dumps(resultado.get("tareas") or [], ensure_ascii=False),
+        })
+    return render(request, "proyectos/_modal_tareas_chalan.html", ctx)
+
+
+@login_required
+@require_POST
+def tareas_chalan_aplicar(request, pk):
+    """Crea las tareas que el usuario confirmó del preview del mini-Chalán."""
+    import json as _json
+
+    from . import tareas_ia
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden()
+    try:
+        propuestas = _json.loads(request.POST.get("tareas_json") or "[]")
+    except (ValueError, TypeError):
+        propuestas = []
+    if not isinstance(propuestas, list):
+        propuestas = []
+    seleccion = set(request.POST.getlist("sel"))
+    elegidas = [t for i, t in enumerate(propuestas) if str(i) in seleccion and isinstance(t, dict)]
+    res = tareas_ia.aplicar_tareas(proyecto=proyecto, tareas=elegidas, usuario=request.user)
+    if res["creadas"]:
+        messages.success(request, f"{res['creadas']} tarea(s) creada(s).")
+    elif res["mensajes"]:
+        messages.warning(request, " ".join(res["mensajes"])[:300])
+    else:
+        messages.info(request, "No se creó ninguna tarea.")
+    return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})
+
+
+@login_required
 def editar(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not puede_editar_proyecto(request.user, proyecto):
@@ -1323,9 +1385,24 @@ def _ctx_facturas(proyecto, user) -> dict:
     """Contexto del recuadro «Facturas ligadas» del detalle de proyecto (LC #9).
 
     Lista las facturas del proyecto (incl. canceladas, atenuadas), más recientes
-    primero. `puede_facturar` habilita el botón «+ Nueva»."""
+    primero. `puede_facturar` habilita el botón «+ Nueva».
+
+    LC 2026-07-29 (Oscar): el recuadro muestra también el MONTO y la FECHA DE
+    EMISIÓN. El total se calcula aquí y se cuelga de cada objeto (`total_calc`)
+    en vez de llamar al método desde la plantilla: así el prefetch evita un par
+    de consultas por renglón."""
     from lib.permisos import puede_crear_facturacion
-    facturas = list(proyecto.facturas.select_related("cliente").order_by("-creado_en")[:20])
+    facturas = list(
+        proyecto.facturas
+        .select_related("cliente")
+        .prefetch_related("items", "impuestos__tasa")
+        .order_by("-creado_en")[:20]
+    )
+    for f in facturas:
+        try:
+            f.total_calc = f.calcular_totales()["total"]
+        except Exception:  # noqa: BLE001 — un total raro no tumba el detalle
+            f.total_calc = None
     return {
         "facturas_proyecto": facturas,
         "puede_facturar": puede_crear_facturacion(user),
@@ -1599,6 +1676,9 @@ def toggle_proveedor_iva(request, pk, prov_pk):
     return render(request, "proyectos/_proveedores_panel.html", {
         "proyecto": proyecto, "proveedores_panel": _proveedores_panel(proyecto),
         "puede_editar": True, "oob": True,
+        # El swap por OOB reemplaza el <section>: sin el `order-*` el panel se
+        # saldría de su lugar en el orden de móvil (ver `_guardado_oob.html`).
+        "clase_extra": "order-6 xl:order-none",
     })
 
 

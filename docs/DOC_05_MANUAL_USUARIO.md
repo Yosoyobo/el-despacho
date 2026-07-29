@@ -5,6 +5,69 @@
 
 ---
 
+## Novedades — El documento sin huecos, tareas dictadas al Chalán y el calendario que cabe en el celular (29 de julio de 2026 — duodécima entrega)
+
+**En el documento de la cotización (el PDF)**
+
+- **Se fueron los huecos y las hojas en blanco.** Aparecían espacios raros entre
+  un producto y el siguiente, y a veces una página final vacía. Dos causas: el
+  aire que se metía «arriba de cada página» caía a media hoja cuando el cálculo se
+  equivocaba, y el sistema se quedaba corto midiendo cuánto ocupaba cada producto.
+  El aire se quitó (el margen de la hoja ya lo da) y la medición se corrigió.
+- **El bloque de Notas ya no se parte en dos hojas.** Antes podían quedar las
+  notas 1 y 2 al pie de una página y el resto en la siguiente. Ahora pasan
+  completas.
+- **La foto del producto renombrado sí sale.** Si dos productos del proyecto
+  vienen del mismo producto del catálogo y les pusiste nombres distintos (por
+  ejemplo «Playera dry fit — negro» y «— blanco»), cada uno sale con SU foto. Antes
+  las dos salían con la misma.
+- **Guardar el PDF desde el celular, ahora sí.** El botón «Guardar / Compartir»
+  tardaba y terminaba abriendo el PDF sin opciones. Ahora, cuando el archivo está
+  listo, el botón cambia a **«Compartir PDF»** y al tocarlo abre la hoja de
+  compartir del teléfono (Archivos, WhatsApp, Correo) al instante.
+
+**En la página del proyecto**
+
+- **Dictarle tareas al Chalán.** Junto a «+ Nueva tarea» hay un botón
+  **🤖 Dictar tareas**: le escribes en tus palabras qué hay que hacer, quién y
+  cuándo («el lunes Karla manda el arte y el jueves recogemos las gorras en
+  Tizayuca»), él propone las tareas y tú marcas cuáles crear. Nunca las crea solo.
+- **Facturas ligadas con monto y fecha.** El recuadro ya muestra cuánto es cada
+  factura y cuándo se emitió, no sólo el folio.
+- **La tarjeta de un producto se abre picando toda la barra**, no nada más el
+  título. Y un producto apagado (sin el toggle) se ve claramente más gris.
+
+**En el celular**
+
+- **La tarjeta de producto ya no se desborda.** Al abrirla, el renglón del costo
+  de producción se salía del recuadro y descuadraba toda la pantalla; ahora baja a
+  su propio renglón.
+- **La página del proyecto está mejor ordenada**: primero los datos, luego el
+  recuadro de información y la descripción, después Tareas y Productos, y al final
+  Ingresos y egresos junto a Facturas ligadas.
+- **El calendario ya cabe**: se fue el corrimiento a lo ancho.
+- **El «Nueva tarea» ya se puede usar.** El recuadro se hizo corto: arriba y a la
+  vista sólo lo esencial —qué, quién y cuándo— y lo demás (tipo, lugar, detalles)
+  se despliega en «Más opciones».
+
+**En todo el sistema**
+
+- **El lugar de una tarea ya NO es obligatorio.** Para entregas y recolecciones se
+  puede dejar en blanco y ponerlo después; lo importante es qué, quién y cuándo.
+- **En el Dashboard, «Mis tareas» ahora es «Tareas pendientes»** y muestra las de
+  todo el equipo (cada renglón dice de quién es). El recuadro completo lleva a
+  Tareas.
+- **En los calendarios ya no se pintan los días de otros meses** (para eso está el
+  mes siguiente abajo), y las columnas de sábado y domingo son más angostas.
+- **Los botones «Nuevo evento» y «Resumir con El Chalán»** pasaron a la izquierda,
+  en un renglón arriba de Hoy / Mes / Año.
+- **El resumen del calendario ahora es un resumen de verdad**: cuatro bloques
+  cortos — *Hoy*, *Esta semana* (lunes a viernes, sin lo que ya pasó), *Tareas*
+  (sin las terminadas) y *Siguientes entregas* (fecha, proyecto y productos) —, y
+  arriba una línea del Chalán con cómo se ve la carga.
+
+---
+
 ## Novedades — La cotización mejor armada, la tarjeta de producto más limpia y el celular por fin cómodo (28 de julio de 2026 — undécima entrega)
 
 **En el documento de la cotización (el PDF)**
@@ -1016,7 +1079,10 @@
   mandados**. El tablero de reparto (en camino / entregado) sigue disponible desde
   el filtro de Mandados.
 - **Lugar en las entregas/recolecciones.** Al crear una tarea de tipo **entrega** o
-  **recoger**, ahora pones el **Lugar (destino)** — es obligatorio para ese tipo.
+  **recoger** puedes poner el **Lugar (destino)**, pero **no es obligatorio**: si no
+  lo sabes todavía, lo dejas en blanco y lo pones después desde el mandado (que
+  además lo toma solo de la dirección del cliente cuando la tiene). Lo que sí hace
+  falta es **qué, quién y cuándo**.
 - **Tareas cerradas ordenadas por cuándo se terminaron.** En Tareas, las cerradas
   se ordenan con **las más recientes arriba** y cada una muestra **cuánto tardó**
   (desde que se creó hasta que se marcó como completada).
@@ -1832,8 +1898,12 @@ Chalanes** puedes elegir qué modelo usa el chat rápido (estación
   organiza **por rol**: marcas **una o varias personas** en cada rol (Líder,
   Diseñador, Producción, Revisor).
 - **El Chalán resume tu calendario.** En la página **Calendario**, botón
-  **"🤖 Resumir con El Chalán"**: te dice qué entregas y tareas vienen y qué
-  urge en los próximos días.
+  **"🤖 Resumir con El Chalán"** (arriba a la izquierda, junto a «Nuevo evento»).
+  Abre un resumen corto de cuatro bloques: **Hoy**, **Esta semana** (lunes a
+  viernes, sin lo que ya pasó), **Tareas** (las abiertas, por fecha) y **Siguientes
+  entregas** (fecha · proyecto · productos). Arriba, una línea del Chalán con cómo
+  se ve la carga. Los bloques salen de los datos del sistema, así que son exactos;
+  si el Chalán no responde, el resumen igual aparece sin esa línea.
 - **Indicador "Procesando…".** Cuando la plataforma está trabajando, aparece un
   **logo de LC girando** abajo a la derecha, para que sepas que está procesando.
 
@@ -2976,7 +3046,7 @@ El super admin puede reordenar y ocultar items del menú para todo el equipo des
 Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 
 - **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
-- **Mis tareas:** las tareas asignadas a ti que siguen abiertas, con su fecha. Arriba el total.
+- **Tareas pendientes:** las tareas abiertas **de todo el equipo** (no sólo las tuyas), con su fecha y de quién es cada una; arriba el total. Picas el recuadro y te lleva a **Tareas**. Si tus permisos sólo alcanzan lo tuyo, sigues viendo sólo lo tuyo.
 - **Próximos eventos:** las siguientes entregas y tareas con fecha; cada una te lleva a su proyecto o a su tarea. **Nada de proyectos cancelados** — ni aquí ni en el calendario.
 - **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están el botón **📎** (adjuntar una foto al mensaje — un recibo, la muestra de un producto; solo aparece si el Chalán configurado sabe leer imágenes), **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
   - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma; **solo de proyectos vivos** — lo que está en pausa, entregado, cerrado o cancelado ya no se produce, así que no aparece), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
@@ -3128,7 +3198,24 @@ existía como **cuenta por pagar** (se generó solo al entrar a producción), é
 salda por separado — es un movimiento que ya vivía en la contabilidad. Registra
 cada pago **cuando lo realices**.
 
-Abajo está la tabla de **Tareas** del Pizarrón con "+ Nueva tarea".
+Abajo está la tabla de **Tareas** del Pizarrón con dos botones:
+
+- **"+ Nueva tarea"** abre el alta corta (qué, quién, cuándo; lo demás en «Más
+  opciones»). Ya no trae el botón 🤖 dentro: para eso está el de al lado.
+- **"🤖 Dictar tareas"** (si tienes El Chalán habilitado) abre una ventana donde le
+  escribes en tus palabras varias tareas de un jalón — *«el lunes Karla manda el
+  arte al cliente, el jueves recogemos las gorras en Tizayuca y el viernes junta de
+  revisión»*. El Chalán las convierte a tareas con su responsable y su fecha, te las
+  muestra con una casilla cada una y **tú marcas cuáles crear**: nunca las crea
+  solo. Si no queda claro de quién es una tarea, queda a tu nombre y la reasignas
+  después. Todo pasa sin salir de la página del proyecto.
+  - **Con El Chalán:** es un **botón** del proyecto, no un comando del chat. Si lo
+    prefieres conversando, en el chat de El Chalán también puedes pedirle crear
+    tareas (`crear_tarea`) mencionando el proyecto con `#`.
+
+El recuadro de **Facturas ligadas** (a la derecha, debajo de Cotizaciones) muestra
+de cada factura el folio, el concepto, su **fecha de emisión**, el **monto** y su
+estado.
 
 Si tienes El Chalán habilitado, arriba aparece **🤖 Resumir actividad**: abre una ventana con un resumen del proyecto (tareas, comentarios y movimientos recientes) en un párrafo.
 
