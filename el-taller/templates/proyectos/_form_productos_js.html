@@ -129,11 +129,25 @@
         const ctot = card.querySelector('[data-costo-total]');
         if (cpp) cpp.textContent = cu ? fmt(cu) : '—';
         if (ctot) ctot.textContent = total ? fmt(total) : '—';
+        // LC 2026-07-28 (Oscar, render f): utilidad POR PIEZA (precio − costo
+        // unitario), en verde junto al costo de producción.
+        const upp = card.querySelector('[data-utilidad-pp]');
+        if (upp) {
+            const u = precioEfectivo(card) - cu;
+            upp.textContent = (precioEfectivo(card) || cu) ? fmt(u) : '—';
+            upp.classList.toggle('text-success-600', u >= 0);
+            upp.classList.toggle('dark:text-success-400', u >= 0);
+            upp.classList.toggle('text-error-600', u < 0);
+            upp.classList.toggle('dark:text-error-400', u < 0);
+        }
         // LC 2026-07: % de margen en vivo (utilidad ÷ venta), la merma ya está
-        // dentro del costo total. Verde ≥0, rojo <0.
+        // dentro del costo total. Verde ≥0, rojo <0. Render 2026-07-28 (g): la
+        // utilidad en pesos va ANTES, en gris.
+        const venta = incluido ? precioEfectivo(card) * cant + ventas : 0;
+        const util = card.querySelector('[data-utilidad]');
+        if (util) util.textContent = venta > 0 ? fmt(venta - total) : '—';
         const margen = card.querySelector('[data-margen]');
         if (margen) {
-            const venta = incluido ? precioEfectivo(card) * cant + ventas : 0;
             if (venta > 0) {
                 const pct = (venta - total) / venta * 100;
                 margen.textContent = pct.toFixed(1) + '%';
@@ -141,7 +155,7 @@
                 margen.classList.toggle('dark:text-success-400', pct >= 0);
                 margen.classList.toggle('text-error-600', pct < 0);
                 margen.classList.toggle('dark:text-error-400', pct < 0);
-            } else { margen.textContent = '—'; margen.className = 'tabular-nums font-semibold text-gray-400'; }
+            } else { margen.textContent = '—'; margen.className = 'font-semibold text-gray-400'; }
         }
         const cuerpo = card.querySelector('[data-cuerpo]');
         if (cuerpo) cuerpo.classList.toggle('opacity-40', !incluido), cuerpo.classList.toggle('pointer-events-none', !incluido);
@@ -155,7 +169,6 @@
         if (resumen) {
             resumen.textContent = (cant || 0) + ' pz - ' + nombreVisible(card) + ' - ' + fmt(precioEfectivo(card));
         }
-        sincronizarOrigenAlias(card);
     }
     // Nombre del producto tal como está en el CATÁLOGO (lo que se compra).
     function nombreCatalogo(card) {
@@ -176,17 +189,8 @@
         const propio = alias ? (alias.value || '').trim() : '';
         return propio || nombreCatalogo(card) || 'Nuevo producto';
     }
-    // La línea chica «usa: X» solo aparece cuando hay alias — es la que deja ver
-    // de qué está hecho el producto renombrado.
-    function sincronizarOrigenAlias(card) {
-        const origen = card.querySelector('[data-alias-origen]');
-        if (!origen) return;
-        const alias = card.querySelector('[data-alias-input]');
-        const propio = alias ? (alias.value || '').trim() : '';
-        const cat = nombreCatalogo(card);
-        origen.textContent = cat ? ('usa: ' + cat) : '';
-        origen.classList.toggle('hidden', !propio || !cat);
-    }
+    // (La línea «usa: [producto del catálogo]» se retiró — render Oscar
+    // 2026-07-28, punto c: el producto ya se ve en el select de abajo.)
     function prellenarServicio(sel) {
         const card = sel.closest('[data-card]'); if (!card) return;
         const datos = SERVICIOS_DATOS[sel.value];
@@ -554,7 +558,6 @@
         // el campo vendría visible con el nombre de la otra).
         const _ali = card.querySelector('[data-alias-input]'); if (_ali) _ali.value = '';
         const _alc = card.querySelector('[data-alias-campo]'); if (_alc) _alc.classList.add('hidden');
-        const _alo = card.querySelector('[data-alias-origen]'); if (_alo) _alo.classList.add('hidden');
         // LC Fase 2: las tarjetas nuevas nacen EXPANDIDAS (hay que llenarlas).
         const _body = card.querySelector('[data-card-body]'); if (_body) _body.classList.remove('hidden');
         const _chev = card.querySelector('[data-chevron]'); if (_chev) _chev.classList.remove('-rotate-90');
@@ -787,10 +790,8 @@ por un endpoint aparte.{% endcomment %}
         tog.setAttribute('aria-expanded', abierto ? 'false' : 'true');
         const chev = tog.querySelector('[data-chevron]');
         if (chev) chev.classList.toggle('-rotate-90', abierto);
-        // Ticket UX 2026-07: ocultar el resumen compacto cuando se EXPANDE (para
-        // no repetir datos); mostrarlo al colapsar.
-        const resumen = card.querySelector('[data-resumen]');
-        if (resumen) resumen.classList.toggle('hidden', !abierto);
+        // El resumen compacto se queda visible también al EXPANDIR (render Oscar
+        // 2026-07-28, punto b): es el título de la tarjeta, no un sustituto.
     });
 
     // Drag & drop por el asa (solo la tarjeta se vuelve draggable al presionar
@@ -830,6 +831,46 @@ por un endpoint aparte.{% endcomment %}
         dragging = null;
         persistirOrden();
     });
+
+    // ── Arrastre con el DEDO (LC 2026-07-28, móvil punto 3) ──────────────────
+    // El drag & drop nativo de HTML5 no existe en touch: en el celular las
+    // tarjetas simplemente no se movían. Aquí se reordena a mano con Pointer
+    // Events — el asa ya trae `touch-none`, así que el gesto no scrollea la
+    // página. Mismo resultado y mismo `persistirOrden` que en escritorio.
+    (function () {
+        let tocando = null, capturado = null;
+        function reacomodar(y) {
+            const c = cont(); if (!c || !tocando) return;
+            const otras = Array.from(c.querySelectorAll('[data-card]')).filter(x => x !== tocando);
+            const despues = otras.find(x => { const r = x.getBoundingClientRect(); return y < r.top + r.height / 2; });
+            if (despues) c.insertBefore(tocando, despues); else c.appendChild(tocando);
+        }
+        document.addEventListener('pointerdown', function (e) {
+            if (e.pointerType === 'mouse') return;  // el ratón usa el DnD nativo
+            const h = e.target.closest && e.target.closest('#' + CONT + ' [data-drag-handle]');
+            if (!h) return;
+            tocando = h.closest('[data-card]');
+            if (!tocando) return;
+            capturado = h;
+            try { h.setPointerCapture(e.pointerId); } catch (_) {}
+            tocando.classList.add('opacity-50');
+            e.preventDefault();
+        });
+        document.addEventListener('pointermove', function (e) {
+            if (!tocando) return;
+            e.preventDefault();
+            reacomodar(e.clientY);
+        });
+        function soltar(e) {
+            if (!tocando) return;
+            tocando.classList.remove('opacity-50');
+            tocando = null;
+            if (capturado) { try { capturado.releasePointerCapture(e.pointerId); } catch (_) {} capturado = null; }
+            persistirOrden();
+        }
+        document.addEventListener('pointerup', soltar);
+        document.addEventListener('pointercancel', soltar);
+    })();
 
     // Toggle "incluir en el cálculo" → On sube la tarjeta al tope; Off al fondo.
     // Diferido para no interferir con el evento change en curso (autosave).

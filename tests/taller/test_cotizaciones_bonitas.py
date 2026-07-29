@@ -137,7 +137,7 @@ class TestBotonAlias:
     # Ojo: el <template> de la tarjeta vacía siempre aporta un bloque con
     # `hidden`, así que la señal fiable es la AUSENCIA/PRESENCIA de un bloque
     # SIN `hidden` (que solo puede venir de una línea que ya tiene alias).
-    VISIBLE = 'data-alias-campo class="mb-1.5"'
+    VISIBLE = 'data-alias-campo class="mb-1"'
 
     def test_el_campo_nace_oculto_si_no_hay_alias(self, client, entorno):
         client.force_login(entorno["admin"])
@@ -152,7 +152,9 @@ class TestBotonAlias:
         client.force_login(entorno["admin"])
         html = client.get(f"/proyectos/{entorno['p'].pk}/").content.decode()
         assert self.VISIBLE in html
-        assert "usa: TShirt Oversize Color" in html
+        # La línea «usa: [producto del catálogo]» se retiró en el render del
+        # 2026-07-28 (Oscar, punto c): el producto real se ve en el select.
+        assert "TShirt Oversize Color" in html
 
     def test_el_autosave_guarda_el_alias(self, client, entorno):
         client.force_login(entorno["admin"])

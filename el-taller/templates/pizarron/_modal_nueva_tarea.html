@@ -4,8 +4,13 @@ Se inyecta en #modal-slot. Header con título + Guardar + ✕; título grande;
 Proyecto/Asignar a como combobox buscable + pills de acceso rápido; fecha con
 mini-calendario inline; tipo en pills; detalles opcional. POST HTMX → 204 +
 HX-Redirect (ver vista nueva_tarea_global).{% endcomment %}
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm dark:bg-gray-900/80">
-    <div data-nueva-tarea class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+{% comment %}LC 2026-07-28 (Oscar, móvil punto 4): en el celular el diálogo no
+cabía y «no se podía avanzar». Dos causas: el alto se medía en `vh` (que en iOS
+incluye la barra del navegador) y el modal se centraba, así que el sobrante se
+cortaba arriba. Ahora el alto es `.modal-alto` (dvh, ver input.css) y en pantalla
+chica el diálogo se pega arriba con su propio scroll.{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/60 p-3 backdrop-blur-sm dark:bg-gray-900/80 sm:items-center sm:p-4">
+    <div data-nueva-tarea class="modal-alto relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
         <form hx-post="{% url 'pizarron-nueva-tarea-global' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
             {% csrf_token %}
             <header class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">

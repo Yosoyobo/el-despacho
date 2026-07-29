@@ -157,13 +157,15 @@ def ingresos_lista(request):
         "orden_actual": orden,
         "querystring_base": "&".join(qs_filtros),
         "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-fecha" else [])),
+        # LC 2026-07-28 (Oscar): sin código y sin la columna del menú; el monto
+        # sube al segundo lugar y la descripción entra como columna propia.
         "cabeceras_ingresos": [
-            {"label": "Código", "sort_key": "codigo"},
             {"label": "Fecha", "sort_key": "fecha"},
+            {"label": "Monto", "sort_key": "monto", "align": "right"},
             {"label": "Cliente · Proyecto"},
             {"label": "Método"},
-            {"label": "Monto", "sort_key": "monto", "align": "right"},
-            {"label": "", "align": "right"},
+            {"label": "Descripción"},
+            {"label": "Estado"},
         ],
     })
 
@@ -407,14 +409,14 @@ def egresos_lista(request):
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-fecha" else [])),
+        # LC 2026-07-28 (Oscar): mismo criterio que Ingresos.
         "cabeceras_egresos": [
-            {"label": "Código", "sort_key": "codigo"},
             {"label": "Fecha", "sort_key": "fecha"},
-            {"label": "Proveedor · Proyecto"},
-            {"label": "Centro"},
-            {"label": "Estado", "sort_key": "estado_pago"},
             {"label": "Monto", "sort_key": "monto", "align": "right"},
-            {"label": "", "align": "right"},
+            {"label": "Proveedor · Proyecto"},
+            {"label": "Método"},
+            {"label": "Descripción"},
+            {"label": "Estado", "sort_key": "estado_pago"},
         ],
         "centros": CentroDeCosto.objects.filter(activo=True),
         "incluye_anulados": request.GET.get("anulados") == "1",

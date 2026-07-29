@@ -239,6 +239,12 @@ class ProyectoProductoForm(forms.ModelForm):
             "data-alias-input": "1",
         }),
     )
+    # LC 2026-07-28 (Oscar): quitar la foto de la tarjeta es un cambio PENDIENTE,
+    # no inmediato («si salgo del proyecto sin guardar, igual se queda
+    # eliminada»). El componente `imagen_pegar.js` en modo diferido escribe "1"
+    # aquí y el borrado se aplica al guardar (ver `save`). Mismo patrón que la
+    # ficha del producto en el catálogo.
+    imagen_quitar = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = ProyectoProducto
@@ -326,6 +332,34 @@ class ProyectoProductoForm(forms.ModelForm):
         if not cleaned.get("servicio") and not self.cleaned_data.get("DELETE") and self.has_changed():
             self.add_error("servicio", "Elige un producto del catálogo.")
         return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=commit)
+        if commit and (self.cleaned_data.get("imagen_quitar") or "") == "1":
+            _desligar_imagen(obj)
+        return obj
+
+
+def _desligar_imagen(linea) -> None:
+    """Desliga la foto que se ve en la tarjeta (borrado diferido, LC 2026-07-28).
+
+    Prefiere quitar la PROPIA del uso: así la línea vuelve a heredar la del
+    catálogo (el caso normal de «me equivoqué de foto en este proyecto»). Si no
+    tiene propia, la que se ve es la del catálogo y es ésa la que se quita — el
+    front lo confirma antes de pedirlo. **El archivo NO se borra de Drive**: el
+    mismo file_id puede estar congelado en una cotización ya enviada. Mismo
+    criterio que `views._quitar_imagen_linea`.
+    """
+    if linea.imagen_es_propia:
+        linea.imagen_file_id = ""
+        linea.imagen_url = ""
+        linea.save(update_fields=["imagen_file_id", "imagen_url"])
+        return
+    srv = linea.servicio
+    if srv is not None and (srv.imagen_file_id or "").strip():
+        srv.imagen_file_id = ""
+        srv.imagen_url = ""
+        srv.save(update_fields=["imagen_file_id", "imagen_url", "actualizado_en"])
 
 
 ProyectoProductoFormSet = inlineformset_factory(

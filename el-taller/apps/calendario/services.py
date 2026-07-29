@@ -12,6 +12,9 @@ from datetime import date, timedelta
 
 from django.utils import timezone
 
+# Los proyectos cancelados no pintan en ningún calendario (Oscar 2026-07-28).
+ESTADO_CANCELADO = "cancelado"
+
 
 def _proyectos_visibles_qs(user):
     from apps.los_proyectos.models import Proyecto
@@ -21,7 +24,10 @@ def _proyectos_visibles_qs(user):
     # V6 Bloque 10: roles efectivos (rol primario + roles_extra) en lugar de
     # user.rol duro — un "miembro" con rol personalizado "dueno" ve lo mismo.
     roles = roles_efectivos(user)
-    qs = Proyecto.activos.select_related("cliente")  # LC 2026-07: sin archivados
+    # LC 2026-07: sin archivados. LC 2026-07-28 (Oscar): tampoco los CANCELADOS
+    # — un proyecto que ya no va no tiene por qué seguir apareciendo en el
+    # calendario ni en «Próximos eventos» del Dashboard (ambos leen de aquí).
+    qs = Proyecto.activos.exclude(estado=ESTADO_CANCELADO).select_related("cliente")
     if roles & {"super_admin", "dueno", "contador"}:
         return qs
     if "disenador" in roles:
@@ -38,7 +44,12 @@ def _tareas_visibles_qs(user):
     # V6 Bloque 10: restringe a sus proyectos solo si es diseñador (primario
     # o personalizado) sin un rol amplio que le dé visibilidad total.
     roles = roles_efectivos(user)
-    qs = Tarea.objects.exclude(estado="completada").select_related("proyecto", "asignada_a")
+    qs = (
+        Tarea.objects.exclude(estado="completada")
+        # Oscar 2026-07-28: las tareas de un proyecto CANCELADO tampoco.
+        .exclude(proyecto__estado=ESTADO_CANCELADO)
+        .select_related("proyecto", "asignada_a")
+    )
     if "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"}):
         proyectos_ids = ProyectoAsignacion.objects.filter(usuario=user).values_list("proyecto_id", flat=True)
         qs = qs.filter(proyecto_id__in=list(proyectos_ids))

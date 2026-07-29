@@ -68,11 +68,16 @@
     slot.classList.add.apply(slot.classList, CLASES_ACTIVO);
   }
 
+  // El aviso puede vivir DENTRO del recuadro o fuera (recuadros chicos, como la
+  // tarjeta de producto del proyecto: 64px no dan para un párrafo). Fuera se
+  // referencia con `data-img-estado-sel`, y puede fijar sus propias clases de
+  // base con `data-clase-base`.
   function estado(slot, texto, esError) {
-    var el = slot.querySelector("[data-img-estado]");
+    var sel = slot.getAttribute("data-img-estado-sel");
+    var el = (sel && document.querySelector(sel)) || slot.querySelector("[data-img-estado]");
     if (!el) return;
     el.textContent = texto || "";
-    el.className = "mt-1 text-xs " + (esError
+    el.className = (el.getAttribute("data-clase-base") || "mt-1 text-xs") + " " + (esError
       ? "text-error-600 dark:text-error-400"
       : "text-success-600 dark:text-success-400");
   }

@@ -24,26 +24,29 @@ anillo + dot, eventos con badges coloreados de fondo suave.
             {# Celda clickeable: abre el modal del día (crear evento/tarea/proyecto con fecha precargada, LC 2026-06-29). #}
             <div role="button" tabindex="0" data-dia="{{ celda.fecha|date:'Y-m-d' }}"
                  hx-get="{% url 'calendario-dia' celda.fecha|date:'Y-m-d' %}" hx-target="#modal-slot" hx-swap="innerHTML"
-                 class="group relative min-h-[104px] cursor-pointer bg-white px-1.5 py-1.5 text-xs transition hover:bg-brand-50/30 dark:bg-gray-900 dark:hover:bg-brand-500/5 {% if celda.es_finde %}bg-gray-50/70 dark:bg-white/[0.02]{% endif %} {% if not celda.mes_actual %}opacity-40{% endif %}">
-                <div class="mb-1.5 flex items-center justify-between">
+                 class="group relative min-h-[76px] cursor-pointer bg-white px-1 py-1 text-xs transition hover:bg-brand-50/30 dark:bg-gray-900 dark:hover:bg-brand-500/5 sm:min-h-[104px] sm:px-1.5 sm:py-1.5 {% if celda.es_finde %}bg-gray-50/70 dark:bg-white/[0.02]{% endif %} {% if not celda.mes_actual %}opacity-40{% endif %}">
+                <div class="mb-1 flex items-center justify-between sm:mb-1.5">
                     {% if celda.es_hoy %}
-                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white shadow-theme-sm">{{ celda.fecha.day }}</span>
+                    <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-white shadow-theme-sm sm:h-7 sm:w-7 sm:text-sm">{{ celda.fecha.day }}</span>
                     {% else %}
-                    <span class="text-sm font-semibold {% if celda.es_finde %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %}">{{ celda.fecha.day }}</span>
+                    <span class="text-[11px] font-semibold sm:text-sm {% if celda.es_finde %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %}">{{ celda.fecha.day }}</span>
                     {% endif %}
                     <span class="text-base font-bold text-gray-300 opacity-0 transition group-hover:opacity-100 dark:text-gray-600" aria-hidden="true">+</span>
                 </div>
                 <div class="space-y-0.5">
                     {% for ev in celda.eventos|slice:":3" %}
+                    {% comment %}LC 2026-07-28 (Oscar, móvil punto 1): en el celular
+                    la celda mide ~50px y el texto de 11px no cabía; baja a 9px con
+                    menos padding y vuelve a su tamaño de escritorio en `sm`.{% endcomment %}
                     {% if ev.tipo == "evento" %}
                     <span draggable="true" data-ev-tipo="evento" data-ev-id="{{ ev.evento_id }}"
-                          class="block cursor-grab line-clamp-2 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-tight active:cursor-grabbing" style="background-color: {{ ev.color_hex }}22; color: {{ ev.color_hex }}; border-color: {{ ev.color_hex }}55" title="{{ ev.titulo }} — arrastra para mover de día">{% if ev.es_multidia and not ev.es_inicio %}↔ {% endif %}{{ ev.titulo }}</span>
+                          class="block cursor-grab line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px]" style="background-color: {{ ev.color_hex }}22; color: {{ ev.color_hex }}; border-color: {{ ev.color_hex }}55" title="{{ ev.titulo }} — arrastra para mover de día">{% if ev.es_multidia and not ev.es_inicio %}↔ {% endif %}{{ ev.titulo }}</span>
                     {% else %}
                     <span draggable="true" data-ev-tipo="{{ ev.tipo }}" data-ev-id="{{ ev.obj_id }}"
-                          class="block cursor-grab line-clamp-2 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-tight active:cursor-grabbing {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }} — arrastra para mover de día">{{ ev.titulo }}</span>
+                          class="block cursor-grab line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px] {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }} — arrastra para mover de día">{{ ev.titulo }}</span>
                     {% endif %}
                     {% endfor %}
-                    {% if celda.eventos|length > 3 %}<div class="px-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">+{{ celda.eventos|length|add:"-3" }} más</div>{% endif %}
+                    {% if celda.eventos|length > 3 %}<div class="px-1 text-[9px] font-medium text-gray-500 dark:text-gray-400 sm:text-[10px]">+{{ celda.eventos|length|add:"-3" }} más</div>{% endif %}
                 </div>
             </div>
             {% endfor %}

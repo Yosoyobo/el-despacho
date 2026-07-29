@@ -29,10 +29,20 @@ Cinco cosas que la conversión NO perdona (Oscar 2026-07-25, rondas 2 y 3):
    quitarlo: lo que deba ir junto va en UNA sola tabla.
 6. `page-break-inside:avoid` se IGNORA (Oscar 2026-07-26: el título de un
    producto se quedó solo al pie de la página y su tabla pasó a la siguiente).
-   Lo único que Docs no corta entre páginas es una FILA de tabla, así que cada
-   bloque que deba viajar junto va dentro de una tabla ENVOLTORIO de una sola
-   celda. El `<div style="page-break-inside:avoid">` se conserva porque en la
-   vista previa (navegador de verdad) sí funciona al imprimir.
+   Lo que Docs corta con menos ganas es una FILA de tabla, así que cada bloque
+   que deba viajar junto va dentro de una tabla ENVOLTORIO de una sola celda.
+   El `<div style="page-break-inside:avoid">` se conserva porque en la vista
+   previa (navegador de verdad) sí funciona al imprimir.
+   **Pero el envoltorio solo no basta** (Oscar 2026-07-28, punto 1: la
+   descripción y la foto seguían separándose de su tabla de montos): una fila
+   más alta que lo que queda de hoja SÍ se desborda. El seguro de verdad se
+   prende después de la conversión, por la API de Documentos —
+   `TableRowStyle.preventOverflow` en todas las filas, ver
+   `lib.google_drive._endurecer_paginacion`.
+7. Los bloques que arrancan una hoja nueva llevan dos `<br>` de aire arriba,
+   DENTRO de su celda para que el aire viaje con ellos (Oscar 2026-07-28,
+   punto 7). Cuál bloque lo lleva lo decide `services._paginar`, simulando la
+   paginación — es una estimación, la hoja real la corta Google.
 
 Las imágenes llevan URL absoluta pública y firmada porque Google las baja
 desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py). Y van
@@ -62,23 +72,70 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   .lc-hoja { background: #ffffff; width: 8.5in; max-width: 100%; box-sizing: border-box;
     margin: 24px auto; padding: 1in; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
   @media (max-width: 900px) { .lc-hoja { padding: 0.5in; margin: 12px auto; } }
+  /* Al imprimir, el margen lo pone la HOJA y no la página: con `@page {
+     margin: 0 }` el navegador deja de estampar su encabezado y su pie con la
+     URL y la fecha (Oscar 2026-07-28, punto 6a). */
+  @page { margin: 0; }
   @media print {
     body { background: #ffffff; }
     .lc-barra { display: none; }
-    .lc-hoja { width: auto; margin: 0; padding: 0; box-shadow: none; }
+    .lc-hoja { width: auto; margin: 0; padding: 0.8in; box-shadow: none; }
   }
 </style>
 {% endif %}
 </head>
-<body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt;">
+{% comment %}Interlineado apretado (Oscar 2026-07-28, punto 5: «que quepan más
+elementos»). Docs respeta `line-height` como interlineado del párrafo.{% endcomment %}
+<body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt; line-height: 1.15;">
 {% if preview %}
 <div class="lc-barra">
   <span>Vista previa · <strong>{{ nombre_archivo }}</strong></span>
   <span>
-    {% if url_descargar %}<a class="lc-btn" href="{{ url_descargar }}">&#11015; Bajar PDF</a>{% endif %}
+    {% if url_descargar %}
+    <a class="lc-btn" id="lc-bajar" href="{{ url_descargar }}" download="{{ nombre_archivo }}.pdf"
+       data-nombre="{{ nombre_archivo }}.pdf">&#11015; Bajar PDF</a>
+    {% endif %}
     <button type="button" class="lc-btn-sec" onclick="window.print()">Imprimir</button>
   </span>
 </div>
+{% if url_descargar %}
+{% comment %}LC 2026-07-28 (Oscar, punto 6): «en móvil pico bajar PDF, me lo abre
+y no lo puedo guardar; tengo que imprimir y ahí se le mete un footer con la URL
+y se comparte con otro nombre». En el celular, un `Content-Disposition:
+attachment` no baja nada: el navegador abre su visor. La única forma de
+entregar el archivo REAL con su nombre es la Web Share API — se baja el PDF a
+memoria, se arma un `File` con el nombre bueno y se abre la hoja de compartir
+del sistema (Archivos, WhatsApp, Correo…). En escritorio no aplica y el enlace
+se comporta como siempre.{% endcomment %}
+<script>
+(function () {
+  var a = document.getElementById('lc-bajar');
+  if (!a || !navigator.canShare) return;
+  var nombre = a.getAttribute('data-nombre') || 'cotizacion.pdf';
+  // Sonda barata: si el navegador no sabe compartir archivos, no tocamos nada.
+  try { if (!navigator.canShare({ files: [new File([new Blob()], nombre, { type: 'application/pdf' })] })) return; }
+  catch (e) { return; }
+  a.textContent = '⬇ Guardar / Compartir';
+  a.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    var texto = a.textContent;
+    a.textContent = 'Preparando…';
+    fetch(a.href, { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) throw new Error('http'); return r.blob(); })
+      .then(function (blob) {
+        var archivo = new File([blob], nombre, { type: 'application/pdf' });
+        return navigator.share({ files: [archivo], title: nombre });
+      })
+      .catch(function () {
+        // Cancelar la hoja de compartir también cae aquí: se deja el enlace
+        // normal como salida (abre el visor, como antes).
+        window.location.href = a.href;
+      })
+      .finally(function () { a.textContent = texto; });
+  });
+})();
+</script>
+{% endif %}
 <div class="lc-hoja">
 {% endif %}
 
@@ -106,8 +163,10 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   conversión, un `<br>` sí.{% endcomment %}
   <br>
   {% comment %}El título va con el MISMO tamaño que el cuerpo (Oscar
-  2026-07-26): heredarlo del `<body>` evita que el documento tenga dos escalas.{% endcomment %}
-  <p style="text-align:center; margin:0 0 28pt 0;">{{ cot.titulo_documento }}</p>
+  2026-07-26): heredarlo del `<body>` evita que el documento tenga dos escalas.
+  El aire de abajo bajó de 28pt a 14pt (Oscar 2026-07-28, punto 2: «entre el
+  título y el primer elemento hay un <br> de más»).{% endcomment %}
+  <p style="text-align:center; margin:0 0 14pt 0;">{{ cot.titulo_documento }}</p>
 
   {% comment %}Un bloque numerado por concepto. El nombre, las especificaciones
   y la foto van en UNA SOLA tabla: dos tablas seguidas dejaban un renglón en
@@ -127,7 +186,10 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:8pt;">
+  {% comment %}Aire de arriba cuando el bloque arranca hoja nueva (punto 7). Va
+  DENTRO de la celda para que viaje con el bloque a la página que le toque.{% endcomment %}
+  {% if fila.aire_arriba %}<br><br>{% endif %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:6pt;">
     <tr>
       <td style="border:none; width:22pt; vertical-align:top;">{{ forloop.counter }}.</td>
       <td colspan="2" style="border:none; vertical-align:top;"><u>{{ fila.it.concepto_visible }}</u></td>
@@ -138,14 +200,17 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
       <td style="border:none; width:62%; vertical-align:top; padding-left:12pt;">
         {% for renglon in fila.it.detalle_lineas %}{{ renglon }}<br>{% endfor %}
       </td>
-      <td style="border:none; width:36%; vertical-align:top;">
-        {% comment %}La foto va con ANCHO y ALTO fijos, calculados en
+      {% comment %}La foto va CENTRADA en su celda, horizontal y verticalmente
+      (Oscar 2026-07-28, punto 3): así todas quedan sobre el mismo eje aunque
+      unas sean apaisadas y otras verticales.{% endcomment %}
+      <td style="border:none; width:36%; vertical-align:middle; text-align:center;">
+        {% comment %}Va con ANCHO y ALTO fijos, calculados en
         `services._medida_foto` para que quepa completa en una caja de 150×76pt
         (≈ el alto de 4 celdas de la tabla, Oscar 2026-07-26). Con solo el ancho,
         una foto vertical —la bata, 1×2— se estiraba a media página y descuadraba
         el documento. Las medidas van como ATRIBUTOS además del style: el
         convertidor de Docs hace caso a los atributos.{% endcomment %}
-        {% if fila.imagen %}<p align="right" style="margin:0; text-align:right;"><img src="{{ fila.imagen }}" alt="{{ fila.it.concepto_visible }}" width="{{ fila.img_ancho }}" height="{{ fila.img_alto }}" style="width:{{ fila.img_ancho }}pt; height:{{ fila.img_alto }}pt;"></p>{% endif %}
+        {% if fila.imagen %}<p align="center" style="margin:0; text-align:center;"><img src="{{ fila.imagen }}" alt="{{ fila.it.concepto_visible }}" width="{{ fila.img_ancho }}" height="{{ fila.img_alto }}" style="width:{{ fila.img_ancho }}pt; height:{{ fila.img_alto }}pt;"></p>{% endif %}
       </td>
     </tr>
     {% endif %}
@@ -162,21 +227,21 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   · **Línea (C).** Gris claro, no negra. Va celda por celda: un borde declarado
     sólo en la tabla no se dibuja. Sin `<thead>/<tbody>` — el convertidor los
     trata como bloques y metía un renglón en blanco.{% endcomment %}
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:26pt; font-size:10pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
     <tr>
       <td style="border:none; width:11%;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:36%; text-align:left; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:12%; text-align:right; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:15%; text-align:right; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:15%; text-align:right; font-style:italic;">Subtotal</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:36%; text-align:left; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:12%; text-align:right; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:15%; text-align:right; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:15%; text-align:right; font-style:italic;">Subtotal</td>
       <td style="border:none; width:11%;">&nbsp;</td>
     </tr>
     <tr>
       <td style="border:none;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:left; font-style:italic;">{{ fila.it.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:left; font-style:italic;">{{ fila.it.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
       <td style="border:none;">&nbsp;</td>
     </tr>
     {% comment %}LC 2026-07-26 (Oscar): procesos de VENTA del producto (Ponchado,
@@ -185,10 +250,10 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
     {% for ex in fila.extras %}
     <tr>
       <td style="border:none;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:left; font-style:italic;">{{ ex.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ ex.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ ex.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ ex.subtotal|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:left; font-style:italic;">{{ ex.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ ex.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ ex.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ ex.subtotal|dinero_sin_signo }}</td>
       <td style="border:none;">&nbsp;</td>
     </tr>
     {% endfor %}
@@ -217,24 +282,25 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
+  {% if aire_desglose %}<br><br>{% endif %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
     <tr>
-      <td colspan="5" style="border:none; padding:0 0 12pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
+      <td colspan="5" style="border:none; padding:0 0 10pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
     </tr>
     <tr>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:22pt; text-align:center;">&#10004;</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; text-align:left; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:16%; text-align:right; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:right; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:3pt 5pt; width:19%; text-align:right; font-style:italic;">Subtotal</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:22pt; text-align:center;">&#10004;</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; text-align:left; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:16%; text-align:right; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:19%; text-align:right; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:19%; text-align:right; font-style:italic;">Subtotal</td>
     </tr>
     {% for it in items %}
     <tr>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:3pt 5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt;">&nbsp;</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
     </tr>
     {% endfor %}
   </table>

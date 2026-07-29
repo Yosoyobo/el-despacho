@@ -156,7 +156,8 @@ def test_pdf_titulo_del_desglose_va_dentro_de_su_tabla(proyecto_factory):
     cot = _cot_con_items(proyecto_factory)
     html = services.construir_html_pdf(cot)
     # El título es una fila colspan de la MISMA tabla (no un <p> suelto antes).
-    assert '<td colspan="5" style="border:none; padding:0 0 12pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>' in html
+    # (El padding bajó a 10pt con el interlineado apretado del 2026-07-28.)
+    assert '<td colspan="5" style="border:none; padding:0 0 10pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>' in html
     assert '<p style="text-align:center; font-size:12pt; margin:34pt 0 14pt 0;">Desglose' not in html
 
 
@@ -364,7 +365,9 @@ def test_tarjeta_del_producto_ofrece_proceso_de_venta(
     assert r.status_code == 200
     html = r.content.decode()
     assert "venta-add" in html
-    assert "Procesos que se le cobran al cliente" in html
+    # El rótulo se retiró en el render del 2026-07-28: queda el botón verde con
+    # su tooltip («Agrega una línea que se le COBRA al cliente…»).
+    assert "se le COBRA al cliente" in html
     assert "ventas_json" in html
 
 
