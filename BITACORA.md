@@ -8472,6 +8472,18 @@ cotización**.
   fondo (`md:items-end`), al crecer **empuja su etiqueta hacia arriba** en vez de
   estirar la tarjeta — que es literalmente lo que pidió Oscar.
 
+**Esto invierte una decisión previa y hay que decirlo.** La Fase 5 del arco LC
+(2026-07-08, commit `a858293`) dejó esa nota **fuera del PDF del cliente** a
+propósito —«notas internas»— y puso un test que lo fijaba
+(`test_cotizaciones_fase5.py::test_nota_producto_no_se_copia_a_cotizacion`, con el
+valor literal «NOTA INTERNA SECRETA»). Salió en la corrida completa de la suite.
+Oscar pidió explícitamente lo contrario, así que el test se reescribió con la regla
+nueva (`test_descripcion_del_producto_si_se_copia_a_cotizacion`). **Riesgo
+señalado**: las líneas de proyectos activos que ya traigan texto ahí lo van a
+mostrar al cliente en la siguiente versión de su cotización — avisado con un ⚠️ en
+las Novedades. Si algún día se quiere otra vez una nota interna por línea, tiene
+que ser un campo **nuevo**, no éste.
+
 ## 6. El «+ Proceso» verde a la primera fila
 
 Se reduce a un «+» grande y entra como sexta columna de

@@ -158,8 +158,9 @@ def test_pdf_titulo_del_desglose_va_dentro_de_su_tabla(proyecto_factory):
     cot = _cot_con_items(proyecto_factory, n=2)
     html = services.construir_html_pdf(cot)
     # El título es una fila colspan de la MISMA tabla (no un <p> suelto antes).
-    # (El padding bajó a 10pt con el interlineado apretado del 2026-07-28.)
-    assert '<td colspan="5" style="border:none; padding:0 0 10pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>' in html
+    # (El padding bajó a 10pt el 2026-07-28 y a 6pt el 2026-08-04, con las dos
+    # rondas de «apretar el interlineado de todo».)
+    assert '<td colspan="5" style="border:none; padding:0 0 6pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>' in html
     assert '<p style="text-align:center; font-size:12pt; margin:34pt 0 14pt 0;">Desglose' not in html
 
 

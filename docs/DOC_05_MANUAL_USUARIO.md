@@ -20,6 +20,10 @@
   Lo que escribas ahí (colores, medidas, dónde va el bordado…) es la
   especificación que sale en el documento debajo del nombre del concepto. El campo
   crece solo mientras escribes, hacia arriba, sin estirar la tarjeta.
+  **⚠️ Ojo con lo que ya tenías escrito:** ese campo antes era una nota interna que
+  **no** salía en el PDF. Ahora sí sale. Si en algún producto de un proyecto activo
+  dejaste una nota para ti, **revísala antes de generar la siguiente versión de su
+  cotización** — el cliente la va a leer.
 - **El botón verde de proceso es ahora un «+»** y vive en la misma línea que
   Categoría, Producto, Cantidad, Merma y Precio unitario.
 

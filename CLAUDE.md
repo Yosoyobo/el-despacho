@@ -4474,7 +4474,15 @@ tarjeta de producto marcada «urgente» y dos pedidos que llegaron a media sesi�
   ganara, «ligar» no significaría nada: el texto heredado se comería lo que se
   acaba de escribir. El textarea crece solo (`data-autogrow`, tope 220px) y, como
   la fila alinea al fondo (`md:items-end`), al crecer **empuja su etiqueta hacia
-  arriba** en vez de estirar la tarjeta.
+  arriba** en vez de estirar la tarjeta. **Esto INVIERTE una decisión previa**: la
+  Fase 5 del arco LC (2026-07-08, commit `a858293`) había dejado esa nota
+  **fuera del PDF del cliente** a propósito («notas internas»), con un test que lo
+  fijaba (`test_cotizaciones_fase5.py`). Oscar pidió explícitamente lo contrario,
+  así que el test se reescribió con la regla nueva. **Riesgo señalado a Oscar**:
+  las líneas de proyectos activos que ya traigan texto en ese campo lo van a
+  mostrar al cliente en la siguiente versión que se genere — avisado en Novedades.
+  Si algún día se vuelve a querer una nota interna por línea, tiene que ser un
+  campo NUEVO, no éste.
 - **El «+ Proceso» verde a la fila 1**: se reduce a un «+» grande y entra como
   sexta columna de la fila de Categoría·Producto·Cantidad·Merma·Precio, quitándole
   espacio a Categoría (`1fr` → `0.7fr`). El JS liga el botón por clase dentro de
