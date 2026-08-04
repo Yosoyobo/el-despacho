@@ -275,3 +275,124 @@ def test_sugerencia_oculta_para_quien_no_puede_cambiar_el_estado(
     client.force_login(dis)
     r = client.get(f"/proyectos/{p.pk}/")
     assert "¿Pasar el proyecto a" not in r.content.decode()
+
+
+# ── (1) El recuadro «Descripción» del proyecto ahora se llama «Notas» ─────────
+
+
+def test_el_recuadro_del_proyecto_se_llama_notas(client, usuario_factory,
+                                                 proyecto_factory):
+    """Oscar: «cambiar el recuadro descripción a notas». El campo del modelo
+    sigue siendo `descripcion` — sólo cambia la etiqueta."""
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    p = proyecto_factory(descripcion="Algo escrito")
+    cuerpo = client.get(f"/proyectos/{p.pk}/").content.decode()
+    assert 'id_descripcion" class="mb-1.5 block' in cuerpo.replace('for="', 'for="')
+    assert ">Notas</label>" in cuerpo
+    # Y el campo sigue posteándose con su nombre real.
+    assert 'name="descripcion"' in cuerpo
+
+
+# ── (2a) El «+» verde de proceso de venta vive en la fila 1 ───────────────────
+
+
+def test_el_boton_verde_es_un_mas_en_la_primera_fila():
+    """Oscar: «minimizar a solo un + más grande y poner forzoso en la misma línea
+    que categoría, producto, cantidad, merma, precio unitario. Absorber espacio de
+    categoría»."""
+    from pathlib import Path
+    tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
+        encoding="utf-8")
+    # Una sexta columna en la fila 1 y Categoría cede espacio (1fr → 0.7fr).
+    assert "md:grid-cols-[0.7fr_1.4fr_72px_72px_120px_36px]" in tpl
+    # El botón quedó como un «+» grande, ya no «+ Proceso».
+    ini = tpl.index("venta-add")
+    boton = tpl[ini:tpl.index("</button>", ini) + len("</button>")]
+    assert ">+</button>" in boton
+    assert "+ Proceso" not in boton
+    assert "text-xl" in boton
+    # Y está DENTRO de la fila 1: aparece antes del bloque `data-ventas`.
+    assert tpl.index("venta-add") < tpl.index("data-ventas")
+    # Sin líneas de venta, el contenedor de la lista no ocupa su hueco.
+    assert "[&:not(:has(.venta-fila))]:hidden" in tpl
+
+
+# ── (2b) «Notas» → «Descripción», multilínea y ligada a la cotización ─────────
+
+
+def test_la_descripcion_de_la_linea_es_multilinea_y_crece():
+    from pathlib import Path
+
+    from apps.los_proyectos.forms import ProyectoProductoForm
+    from django import forms as dj_forms
+    f = ProyectoProductoForm()
+    assert isinstance(f.fields["nota"].widget, dj_forms.Textarea)
+    assert f.fields["nota"].widget.attrs.get("data-autogrow") == "1"
+    assert f.fields["nota"].label == "Descripción"
+    # Ya no es un CharField de 200: acepta un texto largo de varias líneas.
+    from apps.los_proyectos.models import ProyectoProducto
+    assert ProyectoProducto._meta.get_field("nota").max_length is None
+    tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
+        encoding="utf-8")
+    assert ">Descripción</label>" in tpl
+    assert ">Notas</label>" not in tpl
+    # El renglón alinea al fondo: al crecer, la etiqueta sube.
+    assert "md:grid-cols-[1.4fr_120px_1.6fr] md:items-end" in tpl
+    js = Path("el-taller/templates/proyectos/_form_productos_js.html").read_text(
+        encoding="utf-8")
+    assert "function autogrow(ta)" in js
+    assert "textarea[data-autogrow]" in js
+
+
+def test_la_descripcion_de_la_tarjeta_es_la_especificacion_de_la_cotizacion(
+        proyecto_factory):
+    """Oscar: «ligar a la especificación del elemento que se pone en la
+    cotización». Lo que se escribe en la tarjeta es lo que sale en el documento."""
+    from apps.cotizaciones import descripcion
+    from apps.los_proyectos.models import ProyectoProducto
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=_servicio(), cantidad=105,
+        nota="Gorras de gabardina\nColor: Beige / Terracota",
+    )
+    texto = descripcion.descripcion_para(pp)
+    assert texto.splitlines() == [
+        "105 pz", "Gorras de gabardina", "Color: Beige / Terracota"]
+
+
+def test_la_descripcion_de_la_tarjeta_gana_sobre_la_version_anterior(
+        proyecto_factory):
+    """Si no ganara, «ligar» no significaría nada: la herencia de la versión
+    previa se comería lo que se acaba de escribir en la tarjeta."""
+    from apps.cotizaciones import descripcion
+    from apps.los_proyectos.models import ProyectoProducto
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=_servicio(), cantidad=110, nota="Especificación nueva")
+    texto = descripcion.descripcion_para(pp, previo="105 pz\nTexto viejo de la v1")
+    assert texto == "110 pz\nEspecificación nueva"
+
+
+def test_sin_descripcion_en_la_tarjeta_se_hereda_como_antes(proyecto_factory):
+    """Cero regresión: la línea sin descripción propia sigue heredando el texto
+    editado en la versión anterior, con las piezas al día."""
+    from apps.cotizaciones import descripcion
+    from apps.los_proyectos.models import ProyectoProducto
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=_servicio(), cantidad=110, nota="")
+    texto = descripcion.descripcion_para(
+        pp, previo="105 pz (3 colores, 35 pz c/u)\nFrontal: Mantarraya")
+    assert texto == "110 pz (3 colores, 35 pz c/u)\nFrontal: Mantarraya"
+
+
+def test_sin_descripcion_ni_previo_cae_al_catalogo(proyecto_factory):
+    from apps.cotizaciones import descripcion
+    from apps.los_proyectos.models import ProyectoProducto
+    srv = _servicio()
+    srv.descripcion_default = "Playera 100% algodón"
+    srv.save(update_fields=["descripcion_default"])
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=20)
+    assert descripcion.descripcion_para(pp) == "20 pz\nPlayera 100% algodón"
