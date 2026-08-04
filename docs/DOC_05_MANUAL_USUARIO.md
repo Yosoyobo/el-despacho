@@ -10,11 +10,15 @@
 **Tarjeta de producto del proyecto**
 
 - **El costo unitario y la ganancia por pieza ya se calculan bien.** Abajo de cada
-  tarjeta salía el costo del producto pelón (por ejemplo `$44.94`), sin contar la
-  merma ni la impresión ni los procesos. Ahora el renglón reparte **todo** el
-  costo de producción entre las piezas que se cobran: en el mismo caso son
-  `$103.37` de costo y `$116.63` de ganancia por pieza — que multiplicados por la
-  cantidad dan exactamente la utilidad y el margen que ya salían a la derecha.
+  tarjeta salía el costo del producto pelón (por ejemplo `$44.94`), sin la
+  impresión ni los procesos. Ahora suma **todo lo que cuesta una pieza**: el
+  producto, la impresión y los procesos fijos divididos entre las piezas. En el
+  mismo caso: `$44.94` + `$39.00` de impresión + `$150.00 ÷ 29` = **`$89.11`** de
+  costo y **`$130.89`** de ganancia por pieza.
+  La división es entre **todas las piezas producidas** (las que se venden más la
+  merma), porque una pieza de merma cuesta lo mismo que una vendible. Por eso la
+  merma no infla el costo por pieza: su pérdida se ve donde debe, en la **utilidad
+  y el margen** de la derecha.
 - **Ese renglón se lee más grande.**
 - **«Notas» ahora es «Descripción», acepta varios renglones y va a la cotización.**
   Lo que escribas ahí (colores, medidas, dónde va el bordado…) es la
@@ -3276,10 +3280,13 @@ La página es **editable directo** (los cambios se guardan solos; verás
     gastos operativos sueltos (materiales, viáticos, embalaje…). Éstos **cuestan**
     (bajan tu utilidad); no se le cobran al cliente.
   - **Abajo a la izquierda**, el costo de producción con el **costo por pieza** y,
-    en verde, la **ganancia por pieza**. El costo por pieza incluye **todo**: el
-    producto, la merma, la impresión y los procesos, repartido entre las piezas
-    que se cobran (así la ganancia por pieza × la cantidad da exactamente la
-    utilidad de la línea). **Abajo a la derecha**, el **monto** del
+    en verde, la **ganancia por pieza**. El costo por pieza es lo que cuesta
+    **una** pieza con todo incluido: el producto, la impresión y los procesos
+    fijos divididos entre las piezas. La división es entre **todas las piezas
+    producidas** —las que se venden más la merma—, porque una pieza de merma
+    cuesta lo mismo que una vendible. La pérdida por merma no se reparte en el
+    costo por pieza: se ve en la **utilidad** y el **margen** de la derecha, que
+    son totales de la línea. **Abajo a la derecha**, el **monto** del
     producto y, debajo, su **utilidad** en pesos y su **margen** en verde.
   - Para **reordenar** las tarjetas, arrastra por el asa de puntitos de la
     izquierda. En el celular funciona igual, con el dedo.

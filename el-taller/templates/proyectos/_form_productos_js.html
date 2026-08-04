@@ -127,16 +127,22 @@
         const total = cu * piezas + costoProcesos(card, piezas);
         // LC 2026-08-04 (Oscar, URGENTE): «el costo unitario y la ganancia
         // unitaria de hasta abajo no se están calculando bien». Se mostraba el
-        // costo del PRODUCTO pelón ($44.94), ignorando la merma y los procesos —
-        // en el caso reportado el costo real por pieza era $103.37. El costo
-        // unitario REAL reparte TODO el costo de producción (producto + merma +
-        // impresión + procesos) entre las piezas que se COBRAN: la merma no se
-        // le factura al cliente, así que la absorben las piezas vendidas. Así
-        // cuadra con el margen que ya salía bien abajo a la derecha:
-        // utilidad_unitaria × cantidad = utilidad total.
+        // costo del PRODUCTO pelón ($44.94), sin la impresión ni los procesos
+        // repartidos. El costo unitario REAL suma todo lo que cuesta una pieza:
+        // el producto, la impresión y los procesos fijos divididos.
+        //
+        // El divisor son las piezas PRODUCIDAS (cantidad + merma), no las que se
+        // cobran (Oscar, aclaración: «el costo unitario del producto no debe de
+        // sumar la merma diferida — o sea cada pz de merma tiene el mismo costo
+        // unitario»). Una pieza de merma cuesta lo mismo que una vendible, así
+        // que la merma NO se amortiza en el costo por pieza; su pérdida aparece
+        // donde corresponde, en la utilidad y el margen totales de la derecha.
+        // Consecuencia esperada: utilidad_unitaria × cantidad NO da la utilidad
+        // total — lo que falta es lo que se perdió produciendo la merma. Es
+        // correcto: el costo por pieza habla de UNA pieza, la merma es un total.
         const cpp = card.querySelector('[data-costo-pp]');
         const ctot = card.querySelector('[data-costo-total]');
-        const cuReal = cant > 0 ? total / cant : 0;
+        const cuReal = piezas > 0 ? total / piezas : 0;
         if (cpp) cpp.textContent = cuReal ? fmt(cuReal) : '—';
         if (ctot) ctot.textContent = total ? fmt(total) : '—';
         // LC 2026-07-28 (Oscar, render f): utilidad POR PIEZA (precio − costo

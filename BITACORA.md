@@ -8399,14 +8399,24 @@ El total estaba bien; los otros dos no: `unit.` mostraba el costo del **producto
 pelón** y la ganancia era `precio − ese costo`. Ni la merma ni la impresión ni los
 procesos entraban.
 
-El **costo unitario real** reparte TODO el costo de producción entre las piezas
-que se **cobran** (`cantidad`), no entre las producidas (`cantidad + merma`): la
-merma no se le factura al cliente, así que la absorben las que se venden. Con el
-caso de Oscar: `2,584.26 ÷ 25 = 103.37` y `220 − 103.37 = 116.63`.
+El **costo unitario real** suma todo lo que cuesta UNA pieza: el producto, la
+impresión por pieza y los procesos fijos divididos. Con el caso de Oscar:
+`44.94 + 39.00 + 150/29 = 89.11`, y la ganancia `220 − 89.11 = 130.89`.
 
-**La prueba de que el reparto es el correcto**: `116.63 × 25 = 2,915.75`, que es la
-utilidad ($2,915.74, un centavo de redondeo) y el margen (53.0%) que YA salían bien
-abajo a la derecha. Dividir entre 29 daría `130.89 × 25 = 3,272` — no cuadra.
+**El divisor son las piezas PRODUCIDAS, no las cobradas.** La primera versión de
+este fix dividía entre las 25 cobradas (`103.37`), amortizando la merma en el costo
+por pieza. Oscar lo corrigió en la misma sesión: «el costo unitario del producto no
+debe de sumar la merma diferida — o sea cada pz de merma tiene el mismo costo
+unitario». Tiene razón: una pieza de merma cuesta lo mismo de producir que una
+vendible, así que el costo por pieza se divide entre las **29** y la merma no se
+diluye ahí.
+
+**Consecuencia que hay que dejar escrita**: `utilidad_unitaria × cantidad` **NO**
+da la utilidad total (`130.89 × 25 = 3,272` vs `2,915.74`). No es un bug — lo que
+falta es lo que se perdió produciendo la merma, y ésa aparece donde corresponde: en
+la utilidad y el margen totales de la derecha, que no se tocaron. La invariante
+correcta, la que fija el test, es
+`costo_unitario_real × (cantidad + merma) == costo_total_con_procesos`.
 
 Arreglado en `_form_productos_js.recalcular` y espejado en el modelo con
 `ProyectoProducto.costo_unitario_real` / `utilidad_unitaria` (fuente única para

@@ -60,37 +60,60 @@ def _linea_del_screenshot(proyecto_factory):
     return pp
 
 
-def test_costo_unitario_real_reparte_todo_el_costo_entre_las_piezas_cobradas(
-        proyecto_factory):
-    """El caso del screenshot: mostraba $44.94 y lo correcto es $103.37."""
+def test_costo_unitario_real_suma_impresion_y_procesos_divididos(proyecto_factory):
+    """El caso del screenshot: mostraba $44.94 (el producto pelón) y lo correcto
+    es $89.11 — producto + impresión por pieza + el proceso fijo dividido."""
     pp = _linea_del_screenshot(proyecto_factory)
     assert pp.costo_total_con_procesos == Decimal("2584.26")
-    # 2,584.26 ÷ 25 piezas cobradas (la merma la absorben las que se venden).
-    assert round(pp.costo_unitario_real, 2) == Decimal("103.37")
+    # 44.94 (producto) + 39.00 (impresión/pz) + 150/29 (fijo dividido) = 89.11
+    assert round(pp.costo_unitario_real, 2) == Decimal("89.11")
     # Y NO el costo del producto pelón, que era el bug.
     assert round(pp.costo_unitario_real, 2) != pp.costo_efectivo
 
 
+def test_el_divisor_son_las_piezas_producidas_no_las_cobradas(proyecto_factory):
+    """Oscar: «el costo unitario del producto no debe de sumar la merma diferida —
+    o sea cada pz de merma tiene el mismo costo unitario». El costo por pieza sale
+    de dividir entre las 29 producidas, no entre las 25 que se cobran."""
+    pp = _linea_del_screenshot(proyecto_factory)
+    piezas = pp.cantidad + pp.merma
+    assert round(pp.costo_unitario_real * piezas, 2) == pp.costo_total_con_procesos
+    # Repartirlo entre las cobradas daría 103.37 — eso amortizaría la merma.
+    assert round(pp.costo_unitario_real, 2) != Decimal("103.37")
+
+
 def test_utilidad_unitaria_usa_el_costo_real(proyecto_factory):
-    """Mostraba $175.06 (220 − 44.94); lo correcto es $116.63."""
+    """Mostraba $175.06 (220 − 44.94); lo correcto es $130.89 (220 − 89.11)."""
     pp = _linea_del_screenshot(proyecto_factory)
-    assert round(pp.utilidad_unitaria, 2) == Decimal("116.63")
+    assert round(pp.utilidad_unitaria, 2) == Decimal("130.89")
 
 
-def test_utilidad_unitaria_cuadra_con_la_utilidad_de_la_linea(proyecto_factory):
-    """La prueba de que el reparto es el correcto: utilidad/pieza × cantidad
-    tiene que dar la utilidad total que ya salía bien (y su margen del 53%)."""
+def test_la_merma_sigue_pegandole_a_la_utilidad_total(proyecto_factory):
+    """La merma NO se amortiza por pieza, así que su pérdida tiene que seguir
+    apareciendo en los totales de la derecha (que ya salían bien). Y por eso
+    utilidad/pieza × cantidad NO da la utilidad total: es esperado."""
     pp = _linea_del_screenshot(proyecto_factory)
-    assert round(pp.utilidad_unitaria * pp.cantidad, 2) == round(pp.utilidad, 2)
+    assert round(pp.utilidad, 2) == Decimal("2915.74")
     assert pp.margen_porcentaje == Decimal("53.0")
+    assert round(pp.utilidad_unitaria * pp.cantidad, 2) > round(pp.utilidad, 2)
 
 
-def test_costo_unitario_real_sin_cantidad_no_divide_por_cero(proyecto_factory):
+def test_costo_unitario_real_sin_piezas_no_divide_por_cero(proyecto_factory):
     from apps.los_proyectos.models import ProyectoProducto
     p = proyecto_factory()
     pp = ProyectoProducto.objects.create(
         proyecto=p, servicio=_servicio(), cantidad=0, merma=0)
     assert pp.costo_unitario_real == Decimal("0")
+
+
+def test_solo_merma_sin_cantidad_igual_calcula_el_costo_por_pieza(proyecto_factory):
+    """Si sólo hay merma (caso raro), cada pieza sigue teniendo su costo."""
+    from apps.los_proyectos.models import ProyectoProducto
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=_servicio(), cantidad=0, merma=4,
+        costo_unitario=Decimal("50.00"))
+    assert pp.costo_unitario_real == Decimal("50.00")
 
 
 def test_la_tarjeta_calcula_el_costo_unitario_con_el_total(proyecto_factory):
@@ -99,7 +122,7 @@ def test_la_tarjeta_calcula_el_costo_unitario_con_el_total(proyecto_factory):
     from pathlib import Path
     js = Path("el-taller/templates/proyectos/_form_productos_js.html").read_text(
         encoding="utf-8")
-    assert "const cuReal = cant > 0 ? total / cant : 0;" in js
+    assert "const cuReal = piezas > 0 ? total / piezas : 0;" in js
     assert "cpp.textContent = cuReal ? fmt(cuReal) : '—'" in js
     # La utilidad por pieza sale del costo REAL, ya no del producto pelón.
     assert "precioEfectivo(card) - cuReal" in js

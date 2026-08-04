@@ -239,22 +239,32 @@ class ProyectoProducto(models.Model):
 
     @property
     def costo_unitario_real(self) -> Decimal:
-        """Lo que cuesta CADA pieza que se cobra, con todo incluido.
+        """Lo que cuesta CADA pieza producida, con todo incluido.
 
         LC 2026-08-04 (Oscar, urgente): la tarjeta mostraba el costo del producto
-        pelón como «costo unitario», ignorando la merma y los procesos. El costo
-        real por pieza reparte TODO el costo de producción entre las piezas que
-        se **cobran** (`cantidad`), no entre las producidas: la merma no se le
-        factura al cliente, así que la absorben las piezas vendidas. De ahí que
-        `utilidad_unitaria × cantidad` cuadre con la utilidad de la línea.
+        pelón como «costo unitario», sin la impresión ni los procesos repartidos.
+        Aquí se suma todo lo que cuesta una pieza: el producto, la impresión y los
+        procesos fijos divididos.
+
+        El divisor son las piezas **producidas** (`cantidad + merma`), no las que
+        se cobran (Oscar: «el costo unitario del producto no debe de sumar la merma
+        diferida — o sea cada pz de merma tiene el mismo costo unitario»). Una
+        pieza de merma cuesta lo mismo que una vendible, así que la merma **no se
+        amortiza** en el costo por pieza; su pérdida aparece donde corresponde, en
+        `utilidad` y `margen_porcentaje`, que son totales.
+
+        Consecuencia esperada: `utilidad_unitaria × cantidad` **no** da `utilidad`
+        — lo que falta es lo que se perdió produciendo la merma. Es correcto, no un
+        bug: el costo por pieza habla de UNA pieza; la merma es un total.
         """
-        if self.cantidad <= 0:
+        piezas = (self.cantidad or 0) + (self.merma or 0)
+        if piezas <= 0:
             return CERO
-        return self.costo_total_con_procesos / Decimal(str(self.cantidad))
+        return self.costo_total_con_procesos / Decimal(str(piezas))
 
     @property
     def utilidad_unitaria(self) -> Decimal:
-        """Ganancia por pieza vendida: precio − costo unitario real."""
+        """Ganancia por pieza: precio − costo unitario real (con todo incluido)."""
         return self.precio_efectivo - self.costo_unitario_real
 
     @property

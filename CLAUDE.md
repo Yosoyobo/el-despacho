@@ -4426,16 +4426,23 @@ tarjeta de producto marcada «urgente» y dos pedidos que llegaron a media sesi�
 
 - **URGENTE — costo unitario y ganancia unitaria de la tarjeta**: el pie mostraba
   el costo del PRODUCTO pelón (`$44.94` en el caso de Oscar) y la utilidad
-  `precio − ese costo` (`$175.06`), ignorando merma, impresión y procesos. El
-  **costo unitario real** reparte TODO el costo de producción entre las piezas que
-  se **cobran** (`cantidad`, no `cantidad+merma`): la merma no se le factura al
-  cliente, así que la absorben las vendidas. Con eso el caso real da `$103.37` /
-  `$116.63`, y **cuadra al centavo** con la utilidad ($2,915.74) y el margen
-  (53.0%) que ya salían bien a la derecha — ésa es la prueba de que el reparto es
-  el correcto. Arreglado en el JS (`_form_productos_js.recalcular`) y espejado en
-  el modelo con `ProyectoProducto.costo_unitario_real` / `utilidad_unitaria`
-  (fuente única para tests y consumo futuro). El renglón además se lee más grande
-  (`text-[11px]` → `text-xs sm:text-sm`, pedido de Oscar a media sesión).
+  `precio − ese costo` (`$175.06`); le faltaban la impresión y los procesos
+  repartidos. El **costo unitario real** suma todo lo que cuesta UNA pieza:
+  producto + impresión por pieza + procesos fijos divididos → `44.94 + 39.00 +
+  150/29 = ` **`$89.11`**, con ganancia **`$130.89`**.
+  **El divisor son las piezas PRODUCIDAS (`cantidad + merma`), no las cobradas**
+  (Oscar, aclaración explícita: «el costo unitario del producto no debe de sumar la
+  merma diferida — o sea cada pz de merma tiene el mismo costo unitario»). Una
+  pieza de merma cuesta lo mismo que una vendible, así que **la merma no se
+  amortiza** en el costo por pieza; su pérdida sigue apareciendo en `utilidad` y
+  `margen_porcentaje`, que son totales y ya salían bien. **Consecuencia esperada:
+  `utilidad_unitaria × cantidad` NO da la utilidad total** — no es un bug, y hay un
+  test que lo fija para que nadie lo «arregle». Invariante correcta:
+  `costo_unitario_real × (cantidad + merma) == costo_total_con_procesos`.
+  Arreglado en el JS (`_form_productos_js.recalcular`) y espejado en el modelo con
+  `ProyectoProducto.costo_unitario_real` / `utilidad_unitaria` (fuente única para
+  tests y consumo futuro). El renglón además se lee más grande (`text-[11px]` →
+  `text-xs sm:text-sm`, pedido de Oscar a media sesión).
 - **En escritorio «Bajar PDF» volvió a descargar**: macOS Chrome y Safari SÍ
   implementan `navigator.share` (lo enchufan a la hoja de compartir del sistema),
   así que el desvío a compartir de 2026-07-28 —pensado para el celular— secuestraba
