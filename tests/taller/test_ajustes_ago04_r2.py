@@ -312,8 +312,8 @@ def test_el_boton_verde_es_un_mas_en_la_primera_fila():
     assert ">+</button>" in boton
     assert "+ Proceso" not in boton
     assert "text-xl" in boton
-    # Y está DENTRO de la fila 1: aparece antes del bloque `data-ventas`.
-    assert tpl.index("venta-add") < tpl.index("data-ventas")
+    # Y está DENTRO de la fila 1: aparece antes del contenedor de la lista.
+    assert tpl.index("venta-add") < tpl.index("<div data-ventas")
     # Sin líneas de venta, el contenedor de la lista no ocupa su hueco.
     assert "[&:not(:has(.venta-fila))]:hidden" in tpl
 
