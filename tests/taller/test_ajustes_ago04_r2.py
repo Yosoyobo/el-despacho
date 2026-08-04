@@ -106,6 +106,17 @@ def test_la_tarjeta_calcula_el_costo_unitario_con_el_total(proyecto_factory):
     assert "precioEfectivo(card) - cu;" not in js
 
 
+def test_el_pie_de_la_tarjeta_se_lee_mas_grande():
+    """Oscar 2026-08-04: «el texto "Costo prod. … · unit. …/pz · …" debe de ser
+    más grande» — pasó de 11px a text-xs/text-sm."""
+    from pathlib import Path
+    tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
+        encoding="utf-8")
+    pie = next(ln for ln in tpl.splitlines() if "Costo prod." in ln)
+    assert "text-[11px]" not in pie
+    assert "text-xs" in pie and "sm:text-sm" in pie
+
+
 # ── 1 · En escritorio, el botón baja el archivo ───────────────────────────────
 
 

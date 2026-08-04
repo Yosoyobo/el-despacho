@@ -140,8 +140,10 @@ def test_menos_aire_entre_titulo_y_primer_elemento(proyecto_factory, usuario_fac
     _item(cot)
 
     html = services.construir_html_pdf(cot)
-    assert "margin:0 0 14pt 0" in html
+    # 28pt → 14pt (2026-07-28) → 8pt (2026-08-04, «apretar aún más todo»).
+    assert "margin:0 0 8pt 0" in html
     assert "margin:0 0 28pt 0" not in html
+    assert "margin:0 0 14pt 0" not in html
 
 
 def test_la_foto_va_centrada_en_su_celda(proyecto_factory, usuario_factory, _drive_falso):
@@ -163,8 +165,11 @@ def test_interlineado_apretado(proyecto_factory, usuario_factory, _drive_falso):
     _item(cot)
 
     html = services.construir_html_pdf(cot)
-    assert "line-height: 1.15" in html
-    assert "padding:3pt 5pt" not in html   # las celdas bajaron a 2pt
+    # LC 2026-08-04 (Oscar: «apretar aún más el interlineado de todo»): el cuerpo
+    # bajó de 1.15 a 1.02 y las celdas de concepto de 2pt a 1pt de padding.
+    assert "line-height: 1.02" in html
+    assert "padding:3pt 5pt" not in html
+    assert "#cccccc; padding:1pt 5pt" in html
 
 
 # ── (4) La foto del alias gana sobre la del catálogo ────────────────────────

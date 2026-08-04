@@ -241,7 +241,10 @@ Render fino LC 2026-07-28 (Oscar):
         </div>
         {% comment %}(f) Tras el costo unitario, la utilidad POR PIEZA en verde. En
         móvil se va a su propio renglón (ver el comentario del pie).{% endcomment %}
-        <span class="order-last w-full min-w-0 text-[11px] text-gray-400 dark:text-gray-500 sm:order-none sm:w-auto sm:flex-1 sm:truncate">Costo prod. <span class="tabular-nums" data-costo-total>—</span> · unit. <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span></span>
+        {% comment %}LC 2026-08-04 (Oscar): «el texto "Costo prod. … · unit. …/pz ·
+        …" debe de ser más grande» — de 11px a 12/14px (chico en móvil, donde se
+        va a su propio renglón; text-sm de tablet en adelante).{% endcomment %}
+        <span class="order-last w-full min-w-0 text-xs text-gray-500 dark:text-gray-400 sm:order-none sm:w-auto sm:flex-1 sm:truncate sm:text-sm">Costo prod. <span class="tabular-nums" data-costo-total>—</span> · unit. <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span></span>
         {% comment %}(g) MONTO arriba; debajo, la utilidad del producto en gris y su
         margen en verde.{% endcomment %}
         <div class="shrink-0 text-right">
