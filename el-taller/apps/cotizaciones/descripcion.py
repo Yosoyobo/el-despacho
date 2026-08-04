@@ -37,12 +37,28 @@ def _piezas(pp) -> int:
     return int(pp.cantidad or 0)
 
 
+def _especificacion(pp) -> str:
+    """Especificación del elemento: la que se escribió en la TARJETA del proyecto
+    o, si está vacía, la que trae el producto del catálogo.
+
+    LC 2026-08-04 (Oscar): el campo «Descripción» de la tarjeta de producto está
+    **ligado a la especificación del elemento que se pone en la cotización». Es un
+    override por línea, el mismo patrón que `precio_unitario` / `costo_unitario` /
+    `nombre_proyecto`: lo del proyecto manda; el catálogo es el respaldo.
+    """
+    propia = (getattr(pp, "nota", "") or "").strip()
+    if propia:
+        return propia
+    if pp.servicio_id:
+        return (pp.servicio.descripcion_default or "").strip()
+    return ""
+
+
 def esqueleto(pp) -> str:
     """Descripción inicial de una línea de producto del proyecto."""
     renglones = [f"{_piezas(pp)} pz"]
-    if pp.servicio_id:
-        base = (pp.servicio.descripcion_default or "").strip()
-        renglones += [r.strip() for r in base.splitlines() if r.strip()]
+    base = _especificacion(pp)
+    renglones += [r.strip() for r in base.splitlines() if r.strip()]
     return "\n".join(renglones)
 
 

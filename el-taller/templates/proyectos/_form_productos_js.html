@@ -353,8 +353,21 @@
         renumerar(card);
         card._inited = true;
     }
+    // LC 2026-08-04 (Oscar): la Descripción del elemento «debe de crecer moviendo
+    // el título hacia arriba». La fila alinea al fondo (`md:items-end`), así que
+    // basta con que el textarea siga a su contenido: al crecer, su etiqueta sube.
+    // Tope para que una descripción larga no estire la tarjeta sin fin.
+    function autogrow(ta) {
+        ta.style.height = 'auto';
+        ta.style.height = Math.min(ta.scrollHeight, 220) + 'px';
+    }
+    function initAutogrow() {
+        document.querySelectorAll('#formset-productos textarea[data-autogrow]')
+            .forEach(ta => { if (!ta._agInit) { ta._agInit = 1; autogrow(ta); } });
+    }
     function initCards() {
         document.querySelectorAll('#formset-productos [data-card]').forEach(c => { if (!c._inited) initCard(c); });
+        initAutogrow();
     }
     initCards();
     // Tras cada swap HTMX (autosave OOB, re-render del formset al crear producto)
@@ -384,6 +397,8 @@
         if (t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
         if (t.matches('[data-alias-input]')) recalcular(card);
+        // La Descripción del elemento crece con lo que se escribe (ver `autogrow`).
+        if (t.matches('textarea[data-autogrow]')) autogrow(t);
     });
     document.addEventListener('click', function (e) {
         // LC 2026-07 (Oscar): renombrar el producto SOLO para este proyecto.
