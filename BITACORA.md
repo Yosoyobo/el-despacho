@@ -8478,11 +8478,39 @@ propósito —«notas internas»— y puso un test que lo fijaba
 (`test_cotizaciones_fase5.py::test_nota_producto_no_se_copia_a_cotizacion`, con el
 valor literal «NOTA INTERNA SECRETA»). Salió en la corrida completa de la suite.
 Oscar pidió explícitamente lo contrario, así que el test se reescribió con la regla
-nueva (`test_descripcion_del_producto_si_se_copia_a_cotizacion`). **Riesgo
-señalado**: las líneas de proyectos activos que ya traigan texto ahí lo van a
-mostrar al cliente en la siguiente versión de su cotización — avisado con un ⚠️ en
-las Novedades. Si algún día se quiere otra vez una nota interna por línea, tiene
-que ser un campo **nuevo**, no éste.
+nueva (`test_descripcion_del_producto_si_se_copia_a_cotizacion`). Si algún día se
+quiere otra vez una nota interna por línea, tiene que ser un campo **nuevo**, no
+éste.
+
+**Y la migración de datos que lo cierra.** Al señalarle el riesgo (las notas
+internas existentes empezarían a salir al cliente), Oscar lo resolvió de raíz:
+«necesitamos sustituir lo que ya se escribió en especificaciones de varias
+cotizaciones y eso es el nuevo campo de notas; las notas anteriores por producto se
+pueden eliminar». De ahí sale
+`proyectos/0029_descripcion_desde_cotizaciones`:
+
+- **Borra** lo que hubiera en `nota` (eran notas internas; no sirven como
+  especificación).
+- **Baja** a cada línea la especificación que YA estaba escrita en sus
+  cotizaciones, tomando **la versión más reciente con texto** (es lo último que
+  alguien redactó a mano). Emparejado igual que `descripcion.indice_previo`: por
+  `(servicio, variacion)` y de respaldo por el nombre del concepto, para que una
+  línea a la que le cambiaron el producto no se quede sin su texto.
+- El texto se copia **verbatim**. Para que no salga un «105 pz» duplicado,
+  `esqueleto` ahora detecta que la especificación ya arranca con piezas y le
+  **refresca el conteo** en vez de anteponer otro renglón — conservando el
+  paréntesis («105 pz (3 colores, 35 pz c/u)» + 110 piezas → «110 pz (3 colores,
+  35 pz c/u)»).
+- Reversa: vacía las descripciones. Las notas internas originales se descartan a
+  propósito, no hay de dónde recuperarlas.
+
+**Bug que cazó su propio test**: la primera versión hacía
+`.prefetch_related("items").iterator()` sin `chunk_size` — Django lo rechaza con
+`ValueError`, así que la migración habría tronado el `migrate` de La Sede. Los 29
+tests del archivo salieron en ERROR (falla la creación de la BD de tests) y ahí se
+vio. Los 4 tests de la migración corren la función real contra los modelos
+actuales (misma forma), así que cubren emparejado por FK, respaldo por nombre,
+borrado de la nota vieja e idempotencia.
 
 ## 6. El «+ Proceso» verde a la primera fila
 

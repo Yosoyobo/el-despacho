@@ -4478,11 +4478,20 @@ tarjeta de producto marcada «urgente» y dos pedidos que llegaron a media sesi�
   Fase 5 del arco LC (2026-07-08, commit `a858293`) había dejado esa nota
   **fuera del PDF del cliente** a propósito («notas internas»), con un test que lo
   fijaba (`test_cotizaciones_fase5.py`). Oscar pidió explícitamente lo contrario,
-  así que el test se reescribió con la regla nueva. **Riesgo señalado a Oscar**:
-  las líneas de proyectos activos que ya traigan texto en ese campo lo van a
-  mostrar al cliente en la siguiente versión que se genere — avisado en Novedades.
-  Si algún día se vuelve a querer una nota interna por línea, tiene que ser un
-  campo NUEVO, no éste.
+  así que el test se reescribió con la regla nueva. Si algún día se vuelve a querer
+  una nota interna por línea, tiene que ser un campo **NUEVO**, no éste.
+- **Migración de datos `proyectos/0029_descripcion_desde_cotizaciones`** (Oscar,
+  aclaración en la misma sesión: «necesitamos sustituir lo que ya se escribió en
+  especificaciones de varias cotizaciones y eso es el nuevo campo de notas; las
+  notas anteriores por producto se pueden eliminar»). Al señalarle que las notas
+  internas existentes empezarían a salir al cliente, la resolvió de raíz: **se
+  borran** las notas viejas y **se baja** a cada línea la especificación que ya
+  estaba escrita en sus cotizaciones, tomando **la versión más reciente con texto**
+  (emparejado por `(servicio, variacion)` y, de respaldo, por nombre del concepto —
+  igual que `descripcion.indice_previo`). El texto se copia **verbatim**: para que
+  no salga un «105 pz» duplicado, `esqueleto` ahora detecta que la especificación
+  ya arranca con piezas y le **refresca el conteo** en vez de anteponer otro
+  renglón (conservando el paréntesis, «105 pz (3 colores, 35 pz c/u)»).
 - **El «+ Proceso» verde a la fila 1**: se reduce a un «+» grande y entra como
   sexta columna de la fila de Categoría·Producto·Cantidad·Merma·Precio, quitándole
   espacio a Categoría (`1fr` → `0.7fr`). El JS liga el botón por clase dentro de

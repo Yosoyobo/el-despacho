@@ -387,6 +387,112 @@ def test_sin_descripcion_en_la_tarjeta_se_hereda_como_antes(proyecto_factory):
     assert texto == "110 pz (3 colores, 35 pz c/u)\nFrontal: Mantarraya"
 
 
+def test_el_esqueleto_no_duplica_las_piezas_si_ya_vienen_en_el_texto(
+        proyecto_factory):
+    """La especificación que baja de una cotización ya arranca con «N pz (…)».
+    Se le refresca el conteo, **conservando el paréntesis**, en vez de anteponer
+    otro renglón de piezas."""
+    from apps.cotizaciones import descripcion
+    from apps.los_proyectos.models import ProyectoProducto
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=_servicio(), cantidad=110,
+        nota="105 pz (3 colores, 35 pz c/u)\nFrontal: Mantarraya",
+    )
+    assert descripcion.esqueleto(pp) == (
+        "110 pz (3 colores, 35 pz c/u)\nFrontal: Mantarraya")
+
+
+# ── Migración: la especificación ya escrita baja a la tarjeta ─────────────────
+
+
+def _correr_migracion_0029():
+    """Corre la data migration sobre los modelos actuales (misma forma)."""
+    import importlib
+
+    from django.apps import apps as registro
+    mod = importlib.import_module(
+        "apps.los_proyectos.migrations.0029_descripcion_desde_cotizaciones")
+    mod.poblar(registro, None)
+
+
+def test_migracion_baja_la_especificacion_de_la_ultima_version(
+        proyecto_factory, usuario_factory):
+    """Oscar: «sustituir lo que ya se escribió en especificaciones de varias
+    cotizaciones y eso es el nuevo campo de notas»."""
+    from apps.cotizaciones.models import Cotizacion, CotizacionItem
+    from apps.los_proyectos.models import ProyectoProducto
+    u = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    srv = _servicio()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=srv, cantidad=25, nota="nota interna vieja")
+    for v, texto in ((1, "25 pz\nTexto de la v1"), (2, "25 pz\nTexto de la v2")):
+        cot = Cotizacion.objects.create(
+            cliente=p.cliente, proyecto=p, titulo=f"v{v}", version=v, creado_por=u)
+        CotizacionItem.objects.create(
+            cotizacion=cot, servicio=srv, descripcion=texto,
+            cantidad=25, precio_unitario=Decimal("220.00"))
+    _correr_migracion_0029()
+    pp.refresh_from_db()
+    # Gana la versión MÁS RECIENTE con texto, y la nota interna se fue.
+    assert pp.nota == "25 pz\nTexto de la v2"
+
+
+def test_migracion_borra_la_nota_vieja_sin_cotizacion(proyecto_factory):
+    """«Las notas anteriores por producto se pueden eliminar» — sin especificación
+    de dónde bajar, la línea queda limpia."""
+    from apps.los_proyectos.models import ProyectoProducto
+    p = proyecto_factory()
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=_servicio(), cantidad=5, nota="NOTA INTERNA SECRETA")
+    _correr_migracion_0029()
+    pp.refresh_from_db()
+    assert pp.nota == ""
+
+
+def test_migracion_empareja_por_nombre_si_cambio_el_producto(
+        proyecto_factory, usuario_factory):
+    """Respaldo de `indice_previo`: si a la línea le cambiaron el producto, el
+    texto se encuentra por el nombre del concepto."""
+    from apps.cotizaciones.models import Cotizacion, CotizacionItem
+    from apps.los_proyectos.models import ProyectoProducto
+    u = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    srv_viejo = _servicio("Playera vieja")
+    srv_nuevo = _servicio("Playera nueva")
+    cot = Cotizacion.objects.create(
+        cliente=p.cliente, proyecto=p, titulo="v1", version=1, creado_por=u)
+    CotizacionItem.objects.create(
+        cotizacion=cot, servicio=srv_viejo, concepto="Gorras MAU",
+        descripcion="105 pz\nGorras de gabardina", cantidad=105,
+        precio_unitario=Decimal("100.00"))
+    pp = ProyectoProducto.objects.create(
+        proyecto=p, servicio=srv_nuevo, cantidad=105,
+        nombre_proyecto="Gorras MAU")
+    _correr_migracion_0029()
+    pp.refresh_from_db()
+    assert pp.nota == "105 pz\nGorras de gabardina"
+
+
+def test_migracion_es_idempotente(proyecto_factory, usuario_factory):
+    from apps.cotizaciones.models import Cotizacion, CotizacionItem
+    from apps.los_proyectos.models import ProyectoProducto
+    u = usuario_factory(rol="super_admin")
+    p = proyecto_factory()
+    srv = _servicio()
+    pp = ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=10)
+    cot = Cotizacion.objects.create(
+        cliente=p.cliente, proyecto=p, titulo="v1", version=1, creado_por=u)
+    CotizacionItem.objects.create(
+        cotizacion=cot, servicio=srv, descripcion="10 pz\nEspecificación",
+        cantidad=10, precio_unitario=Decimal("50.00"))
+    _correr_migracion_0029()
+    _correr_migracion_0029()
+    pp.refresh_from_db()
+    assert pp.nota == "10 pz\nEspecificación"
+
+
 def test_sin_descripcion_ni_previo_cae_al_catalogo(proyecto_factory):
     from apps.cotizaciones import descripcion
     from apps.los_proyectos.models import ProyectoProducto

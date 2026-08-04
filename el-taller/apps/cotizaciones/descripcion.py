@@ -55,11 +55,18 @@ def _especificacion(pp) -> str:
 
 
 def esqueleto(pp) -> str:
-    """Descripción inicial de una línea de producto del proyecto."""
-    renglones = [f"{_piezas(pp)} pz"]
+    """Descripción inicial de una línea de producto del proyecto.
+
+    Si la especificación **ya arranca hablando de piezas** —porque se escribió así
+    a mano o porque bajó de una cotización anterior, «105 pz (3 colores, 35 pz
+    c/u)»— no se le antepone otro renglón: se le refresca el conteo y se conserva
+    todo lo demás, incluido el paréntesis (LC 2026-08-04).
+    """
     base = _especificacion(pp)
-    renglones += [r.strip() for r in base.splitlines() if r.strip()]
-    return "\n".join(renglones)
+    renglones = [r.strip() for r in base.splitlines() if r.strip()]
+    if renglones and _RE_PIEZAS.match(renglones[0]):
+        return refrescar_piezas("\n".join(renglones), pp)
+    return "\n".join([f"{_piezas(pp)} pz", *renglones])
 
 
 def refrescar_piezas(texto: str, pp) -> str:
