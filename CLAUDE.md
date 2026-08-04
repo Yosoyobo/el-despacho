@@ -4322,6 +4322,103 @@ ese caso, pero **sólo se puede confirmar con el código en La Sede** (la conver
 la hace Google). El reorden en móvil usa `display:contents` (iOS Safari 11.1+). El
 mini-Chalán de tareas no edita tareas existentes ni asigna runner (sólo las crea).
 
+### S-Ajustes-Ago04 ✅ — El Chalán cacha al cliente, respuestas con botón y el resumen de todo lo que viene (2026-08-04, VERSION 2026.08.01)
+
+Ronda de Oscar con una imagen de un workflow del chat que fallaba «extremadamente
+común», más ajustes de Dashboard, calendario, cotización y proyecto. Un pedido
+extra a media sesión (botón «Nuevo proyecto» en la ficha del cliente). Sin
+migraciones.
+
+- **Los dos bugs de la imagen, atacados en el BACKEND (no en el prompt)**:
+  - **«No cachó el cliente»**: el chat mandó `$karikari` y el cliente es «KARI
+    KARI». No empataba ni exacto, ni normalizado, ni por contención («karikari» no
+    está dentro de «kari kari»). Paso **3b** nuevo en
+    `_cliente_por_razon_social`: comparación **compactada** (`_compacto` =
+    normalizada y sin espacios), sólo si es INEQUÍVOCA. Como vive en
+    `_resolver_cliente`, aplica a TODOS los ejecutores de cliente.
+  - **«Falló sabiendo que tenía que crear el proyecto nuevo» / «dijo confirmar
+    pero no agregó el producto»**: el LLM omitió el `@accion_0` y
+    `_resolver_proyecto_para` cayó al branch del cliente → «KARI KARI tiene varios
+    proyectos (#LC-0044, #LC-0009), ¿en cuál lo registro?». Helper nuevo
+    `_proyecto_creado_en_este_dictado(contexto, cliente=None)`: si una acción
+    previa del MISMO dictado creó un proyecto, **ES ése** (el último por `orden`,
+    y sólo si es del cliente resuelto — nunca cuelga un producto del proyecto
+    equivocado). El prompt también se reforzó (`_REFS` del chat + `prompt.py`),
+    pero la garantía es el código.
+- **Respuestas del chat visuales** (`apps/el_dictado/presentacion.py` nuevo,
+  Taller-only): la tarjeta de cada acción se arma **con datos**, no con la prosa
+  del LLM — pastilla con el `titulo` del catálogo (`titulo_accion`) + campos
+  `Etiqueta: valor` (`campos_accion`, con whitelist `_ETIQUETAS`, orden de
+  lectura, fechas legibles, aplanado de `campos` y strip de `@#$`). Propiedades
+  nuevas `DictadoAccion.etiqueta_accion` / `.campos_visibles` y
+  `Dictado.enlaces_resultado` (**cero migración**).
+- **Botón de destino tras aplicar** (`enlaces_de_dictado`): mapea
+  `entidad_tipo`→ruta (`_DESTINOS`, 18 tipos) + `_url_indirecta` para los pk sin
+  página propia (`producto` = línea → su proyecto; `variacion` → su producto). El
+  mensaje de RESULTADO se crea con `dictado=dictado` y el template pinta los
+  botones desde ahí (partial `el_dictado/_chat_enlaces.html`, reusado en el
+  detalle del Dictado). Sin repetirlos en la tarjeta de la propuesta.
+- **Prosa del bot más corta**: `_limpiar_texto_bot` en `services_chat` quita el
+  markdown que el chat no renderiza (`**`, `#`) y aprieta renglones — se limpia al
+  PERSISTIR para que el historial que se le re-alimenta también salga limpio. El
+  prompt (nativo y degradado) exige una línea de ≤12 palabras al proponer, sin
+  «¿Procedo?» y renglones «Campo: valor» al consultar.
+- **Dashboard**: buscador del Kanban al MISMO renglón de «Proyectos activos» /
+  «Ver tablero completo», `text-base` y `flex-1` (en móvil baja a su renglón con
+  `order-last`). **«Resumir pendientes» ahora usa IA** (Oscar: «como el botón de
+  la página del calendario»): `apps/taller_home/pendientes_ia.py` agrega **dos
+  frases** de lectura sobre el reporte, que sigue siendo **determinista**
+  (un reporte operativo tiene que ser exacto). Reusa la estación
+  `calendario_resumen` — mismo trabajo, sin migración de seed. Gated por
+  `puede_usar_chalan`; si no responde, el reporte sale igual.
+- **Resumen del calendario rehecho** (`apps/calendario/resumen.py`): es «la lista
+  de todo lo que viene» — **Hoy · Esta semana · La próxima semana · En 2, 3 y 4
+  semanas** al detalle y **Más adelante** en una línea general
+  (`_mas_adelante`: conteos + rango + las 3 entregas más próximas). Más
+  **Tareas** (atrasadas con `tono="atrasado"` → amarillo, y `- nombre del
+  proyecto`) y **Siguientes entregas** («fecha · proyecto» + productos con
+  cantidad como sub-viñetas). La línea pasó de `str` a
+  `{texto, tono, sub}`; el cuerpo se renderiza con el template nuevo
+  `calendario/_resumen_cuerpo.html` (`<ol>` numerado, `text-base`) en lugar de
+  HTML armado en la vista. `texto_calendario` numera e indenta.
+  `services.eventos_por_dia` ahora pone el **nombre** del proyecto en el
+  `subtitulo` de las tareas (antes el código) — también mejora «Próximos
+  eventos».
+- **Móvil: el calendario ya cabe.** La rejilla ya usaba `minmax(0,…)`; la causa
+  real era la CAJA: la `<section>` del mes es hija de un `grid` y un grid item
+  nace con `min-width:auto`, así que no podía encoger por debajo del ancho mínimo
+  de su contenido. `min-w-0 max-w-full` en `_mes.html` + `min-w-0` en la columna
+  izquierda de `calendario/index.html`.
+- **Ficha del cliente → «+ Nuevo proyecto»** (pedido a media sesión): botón en el
+  encabezado del recuadro Proyectos y otro en grande en el empty state; el modal
+  quick-create acepta `?cliente=<pk>` y abre con el cliente puesto. Gated con
+  `puede_crear_proyecto` (permiso de crear proyectos, no el de ver la cartera).
+- **Cotización — regla del producto único**: `services._mostrar_desglose(cot,
+  filas)` — con UN bloque de producto la tabla «Desglose de Elementos» **no se
+  imprime** (sería copia de la tablita de montos), pero **los impuestos y el total
+  sí**. `_alto_desglose(..., con_tabla=)` y `_paginar` usan la misma condición.
+- **PDF**: interlineado de Subtotal/impuestos/Total a 1pt (3pt el total) y notas
+  con `padding:0` + `line-height:1.1`. Filtros nuevos `dinero_exacto` /
+  `dinero_exacto_sin_signo` (refactor con `_partes_monto`) → **IVA trasladado,
+  Retención de ISR, Retención de IVA y Total SIEMPRE con centavos** (el `|dinero`
+  global sigue truncando los `.00`).
+- **«Resumen de actividad» del proyecto**: formato fijo de 5 renglones (Estado ·
+  Productos · Avance · Pendiente · Atención), **con los PRODUCTOS INVOLUCRADOS en
+  el contexto** (alias del proyecto + cantidad + merma) y el título del modal con
+  el **nombre** del proyecto.
+- **35 tests nuevos** (`tests/taller/test_ajustes_ago04.py`), incluido el caso de
+  la imagen de punta a punta. Se actualizó
+  `test_cotizaciones_bonitas::test_con_desglose_...` (ahora necesita 2 productos)
+  y se sumó su contraparte de un solo producto.
+
+**Deuda diseñada**: el «Resumir pendientes» del Dashboard **no** es IA de punta a
+punta (las listas siguen siendo consultas — es la lectura la que usa IA), por
+diseño; comparte la estación `calendario_resumen` con el resumen del calendario,
+así que se configuran juntos. Los botones de destino no cubren `correo`,
+`asignacion`≠proyecto ni `solicitud_correccion` con pk (van a la bandeja). El
+`min-w-0` arregla el desborde encogiendo columnas: no es un `transform: scale`,
+así que en pantallas muy angostas los chips truncan más.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

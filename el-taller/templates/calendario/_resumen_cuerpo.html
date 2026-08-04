@@ -1,0 +1,27 @@
+{% comment %}
+Cuerpo del resumen ejecutivo del calendario (LC 2026-08-04).
+
+Params: `secciones` = [{titulo, lineas:[{texto, tono, sub}]}] · `lectura` = la
+frase de El Chalán (dict de `resumen_ia.lectura_de_carga`).
+
+Oscar: listas NUMERADAS, texto un poco más grande, las tareas atrasadas en tono
+amarillo y los productos de cada entrega como sub-viñetas.
+{% endcomment %}
+{% if lectura.ok %}
+<p class="mb-4 rounded-lg border border-brand-200 bg-brand-50/60 p-3 text-sm text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200">🤖 {{ lectura.lectura }}</p>
+{% endif %}
+{% for sec in secciones %}
+<p class="mt-4 text-sm font-semibold uppercase tracking-wider text-gray-500 first:mt-0 dark:text-gray-400">{{ sec.titulo }}</p>
+<ol class="mt-1.5 list-decimal space-y-1 pl-6 text-base text-gray-700 marker:text-gray-400 dark:text-gray-200 dark:marker:text-gray-500">
+    {% for linea in sec.lineas %}
+    <li class="{% if linea.tono == 'atrasado' %}text-warning-700 dark:text-warning-400{% endif %}">
+        {{ linea.texto }}
+        {% if linea.sub %}
+        <ul class="mt-0.5 list-disc space-y-0.5 pl-5 text-sm text-gray-500 marker:text-gray-300 dark:text-gray-400 dark:marker:text-gray-600">
+            {% for s in linea.sub %}<li>{{ s }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ol>
+{% endfor %}

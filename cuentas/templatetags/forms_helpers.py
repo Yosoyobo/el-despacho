@@ -39,6 +39,23 @@ def tiene_rol(user, nombres: str) -> bool:
         return False
 
 
+def _partes_monto(valor):
+    """`(signo, entero_con_comas, decimales)` o None si no es un monto."""
+    try:
+        v = Decimal(str(valor)).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    signo = "-" if v < 0 else ""
+    entero, _, decimales = abs(v).__format__("f").partition(".")
+    grupos = []
+    while len(entero) > 3:
+        grupos.insert(0, entero[-3:])
+        entero = entero[:-3]
+    if entero:
+        grupos.insert(0, entero)
+    return signo, ",".join(grupos), (decimales or "00")
+
+
 @register.filter
 def dinero(valor) -> str:
     """Formatea un monto como `$1,234.56`. None / vacío → `—`.
@@ -48,22 +65,30 @@ def dinero(valor) -> str:
     global a todas las cifras del sistema vía `|dinero`/`|dinero_sin_signo`."""
     if valor is None or valor == "":
         return "—"
-    try:
-        v = Decimal(str(valor)).quantize(Decimal("0.01"))
-    except (InvalidOperation, ValueError, TypeError):
+    partes = _partes_monto(valor)
+    if partes is None:
         return str(valor)
-    signo = "-" if v < 0 else ""
-    entero, _, decimales = abs(v).__format__("f").partition(".")
-    grupos = []
-    while len(entero) > 3:
-        grupos.insert(0, entero[-3:])
-        entero = entero[:-3]
-    if entero:
-        grupos.insert(0, entero)
-    entero_fmt = ",".join(grupos)
-    if decimales and decimales != "00":
+    signo, entero_fmt, decimales = partes
+    if decimales != "00":
         return f"{signo}${entero_fmt}.{decimales}"[:32]
     return f"{signo}${entero_fmt}"[:32]
+
+
+@register.filter
+def dinero_exacto(valor) -> str:
+    """Como `dinero` pero SIEMPRE con los dos centavos: `$1,234.00`.
+
+    LC 2026-08-04 (Oscar): en el documento de la cotización, «IVA trasladado»,
+    «Retención de ISR», «Retención de IVA» y «Total» siempre llevan centavos —
+    truncarlos en un renglón fiscal se lee raro.
+    """
+    if valor is None or valor == "":
+        return "—"
+    partes = _partes_monto(valor)
+    if partes is None:
+        return str(valor)
+    signo, entero_fmt, decimales = partes
+    return f"{signo}${entero_fmt}.{decimales}"[:32]
 
 
 @register.filter
@@ -149,11 +174,20 @@ def breadcrumb_items(*args):
 @register.filter
 def dinero_sin_signo(valor) -> str:
     """Como `dinero` pero sin el `$` adelante (útil dentro de tablas)."""
-    formato = dinero(valor)
-    if formato.startswith("$"):
-        return formato[1:]
+    return _quitar_signo(dinero(valor))
+
+
+@register.filter
+def dinero_exacto_sin_signo(valor) -> str:
+    """Como `dinero_exacto` (siempre con centavos) pero sin el `$`."""
+    return _quitar_signo(dinero_exacto(valor))
+
+
+def _quitar_signo(formato: str) -> str:
     if formato.startswith("-$"):
         return "-" + formato[2:]
+    if formato.startswith("$"):
+        return formato[1:]
     return formato
 
 

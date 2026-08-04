@@ -209,20 +209,64 @@ def _resolver_proyecto(slug: str, contexto: dict | None = None):
     raise ValueError(f"Proyecto `{slug}` no encontrado.{sugerencia}")
 
 
+def _proyecto_creado_en_este_dictado(contexto: dict | None, cliente=None):
+    """El proyecto que otra acción del MISMO dictado acaba de crear.
+
+    LC 2026-08-04 (Oscar, workflow del chat): «crea el proyecto X para Kari Kari
+    y agrégale 18 playeras» aplicaba la primera acción y la segunda moría con
+    «KARI KARI tiene varios proyectos (#LC-0044, #LC-0009). ¿En cuál lo
+    registro?» — el LLM había omitido el `@accion_0` y el backend no tenía por
+    qué adivinar. Pero sí lo tiene: si en este mismo dictado se acaba de crear un
+    proyecto, ES ése; preguntar por cuál de los viejos es absurdo.
+
+    Se toma el ÚLTIMO creado (mayor `orden`) y, si se sabe para qué cliente es,
+    sólo cuenta si le pertenece — nunca se cuelga un producto del proyecto
+    equivocado.
+    """
+    if not contexto:
+        return None
+    entidades = (contexto or {}).get("entidades_creadas") or {}
+    ids = [
+        info["id"] for _orden, info in sorted(entidades.items(), reverse=True)
+        if info.get("tipo") == "proyecto" and info.get("id")
+    ]
+    if not ids:
+        return None
+    from apps.los_proyectos.models import Proyecto
+    qs = Proyecto.objects.filter(pk__in=ids)
+    if cliente is not None:
+        qs = qs.filter(cliente=cliente)
+    por_id = {p.pk: p for p in qs}
+    for pk in ids:  # `ids` ya viene del más reciente al más viejo
+        if pk in por_id:
+            return por_id[pk]
+    return None
+
+
 def _resolver_proyecto_para(payload: dict, contexto: dict | None = None):
-    """Resuelve el proyecto de una tarea/mandado.
+    """Resuelve el proyecto de una tarea/mandado/producto.
 
     Toda tarea/entrega cuelga de un proyecto (FK obligatoria). Si el usuario solo
     dio un cliente ('entregar players para $noko-devs'), no hay proyecto_slug:
-    caemos al cliente y usamos su ÚNICO proyecto activo. Si tiene varios o ninguno,
-    levantamos un error claro y accionable (que el chat le muestra al usuario)."""
+    primero vemos si una acción previa del mismo dictado acaba de crear un
+    proyecto (ése manda), y si no, caemos al ÚNICO proyecto activo del cliente.
+    Si tiene varios o ninguno, levantamos un error claro y accionable (que el
+    chat le muestra al usuario)."""
     slug = (payload.get("proyecto_slug") or "").strip()
     if slug:
         return _resolver_proyecto(slug, contexto)
     cli_slug = (payload.get("cliente_slug") or "").strip()
     if not cli_slug:
+        # Sin cliente tampoco: si acabamos de crear un proyecto en este dictado,
+        # la acción es para ése.
+        recien = _proyecto_creado_en_este_dictado(contexto)
+        if recien:
+            return recien
         raise ValueError("Falta el proyecto: dime de qué proyecto es (ej. #LC-0001).")
     cliente = _resolver_cliente(cli_slug, contexto)
+    recien = _proyecto_creado_en_este_dictado(contexto, cliente)
+    if recien:
+        return recien
     from apps.los_proyectos.models import Proyecto
     activos = list(
         Proyecto.objects.filter(cliente=cliente)
@@ -270,6 +314,16 @@ def _normalizar_razon(texto: str) -> str:
             base = base[: -(len(suf) + 1)].strip()
             break
     return base
+
+
+def _compacto(texto: str) -> str:
+    """La razón normalizada y SIN espacios: «KARI KARI» → «karikari».
+
+    Es la forma en la que un humano (o el LLM) dicta un nombre de corrido.
+    `_normalizar_razon` es idempotente, así que sirve tanto para el texto crudo
+    como para un nombre ya normalizado.
+    """
+    return _normalizar_razon(texto).replace(" ", "")
 
 
 def _cliente_por_razon_social(texto: str):
@@ -334,6 +388,18 @@ def _cliente_por_razon_social(texto: str):
         iguales = [pk for pk, ns in nombres.items() if objetivo in ns]
         if len(iguales) == 1:
             return Cliente.objects.filter(pk=iguales[0]).first()
+        if not iguales:
+            # 3b. Sin espacios. LC 2026-08-04 (Oscar, «no cachó el cliente»):
+            # el chat mandó `$karikari` y el cliente es «KARI KARI» — pegado no
+            # empataba ni exacto, ni normalizado, ni por contención («karikari»
+            # no está dentro de «kari kari»). Un nombre dictado de corrido es de
+            # lo más común, así que se compara también compactado.
+            objetivo_cmp = _compacto(objetivo)
+            if objetivo_cmp:
+                iguales = [pk for pk, ns in nombres.items()
+                           if any(_compacto(n) == objetivo_cmp for n in ns)]
+                if len(iguales) == 1:
+                    return Cliente.objects.filter(pk=iguales[0]).first()
         if not iguales:
             contiene = [pk for pk, ns in nombres.items()
                         if any(objetivo in n or n in objetivo for n in ns)]

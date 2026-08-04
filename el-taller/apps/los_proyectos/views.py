@@ -590,14 +590,18 @@ def resumen_actividad(request, pk):
         return HttpResponseForbidden("No tienes permiso para usar El Chalán.")
     res = resumir_actividad(proyecto=proyecto, usuario=request.user)
     if res.get("ok"):
-        cuerpo = format_html('<p class="whitespace-pre-line">{}</p>', res["resumen"])
+        cuerpo = format_html(
+            '<p class="whitespace-pre-line text-base leading-relaxed text-gray-700 '
+            'dark:text-gray-200">{}</p>', res["resumen"])
     else:
         cuerpo = format_html(
             '<p class="text-error-600 dark:text-error-400">{}</p>',
             res.get("error") or "El Chalán no respondió.",
         )
     return render(request, "_componentes_tailadmin/_modal_htmx.html", {
-        "titulo": f"Resumen de actividad · {proyecto.codigo}",
+        # LC 2026-08-04: el NOMBRE del proyecto, no su código (regla «nombre >
+        # código» del 2026-07-27).
+        "titulo": f"Resumen de actividad · {proyecto.nombre or proyecto.codigo}",
         "cuerpo": cuerpo,
         "tamano": "lg",
     })
@@ -709,6 +713,12 @@ def _nuevo_modal(request):
     f = request.GET.get("fecha_compromiso")
     if f:
         initial["fecha_compromiso_dia"] = f
+    # LC 2026-08-04 (Oscar): desde la ficha de un cliente se abre con el cliente
+    # ya puesto («crear nuevo proyecto ya para este cliente»).
+    cliente_pk = request.GET.get("cliente")
+    if (cliente_pk and str(cliente_pk).isdigit()
+            and Cliente.activos.filter(pk=cliente_pk).exists()):
+        initial["cliente"] = int(cliente_pk)
     form = ProyectoForm(initial=initial)
     # Estado por default: el primero activo (el quick-create no obliga a elegirlo).
     if not form.fields["estado"].initial:

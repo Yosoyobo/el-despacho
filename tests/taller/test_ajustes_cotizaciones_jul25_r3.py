@@ -228,10 +228,14 @@ def test_tabla_de_conceptos_lleva_linea_gris_delgada(cotizacion):
 
 def test_tabla_del_desglose_tambien_lleva_recuadro(cotizacion):
     """Oscar 2026-07-25 (tercera ronda): «tabla desglose sí recuadro»."""
+    from apps.cotizaciones.models import CotizacionItem
     from apps.cotizaciones.services import construir_html_pdf
-
     cotizacion.incluir_desglose = True
     cotizacion.save(update_fields=["incluir_desglose"])
+    # LC 2026-08-04: con un solo producto la tabla del desglose ya no se imprime.
+    CotizacionItem.objects.create(
+        cotizacion=cotizacion, orden=1, concepto="Gorras",
+        descripcion="50 pz", cantidad=50, precio_unitario=Decimal("120"))
     desglose = construir_html_pdf(cotizacion).split("Desglose de Elementos", 1)[1]
     tabla = desglose.split("</table>", 1)[0]
     assert tabla.count("border:1px solid #cccccc") >= 10  # 5 encabezados + 5 celdas

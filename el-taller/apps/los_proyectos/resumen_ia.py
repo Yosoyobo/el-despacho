@@ -1,9 +1,14 @@
 """El Chalán resume la actividad de un proyecto (estación `comunicacion`, S4).
 
-Junta el feed de `ActividadProyecto` + comentarios visibles (respetando
-`es_interno`) + tareas con su estado, y pide al LLM un resumen ejecutivo en un
-párrafo. NO se persiste — se muestra en un modal HTMX. Diseño defensivo: nunca
-lanza — devuelve `{ok, resumen, error}`.
+Junta los PRODUCTOS involucrados + el feed de `ActividadProyecto` + comentarios
+visibles (respetando `es_interno`) + tareas con su estado, y pide al LLM un
+resumen ejecutivo. NO se persiste — se muestra en un modal HTMX. Diseño
+defensivo: nunca lanza — devuelve `{ok, resumen, error}`.
+
+LC 2026-08-04 (Oscar): «debe tener el estilo actualizado, resumido, claro y
+conciso, y tomar en cuenta los productos involucrados». Así que el formato deja
+de ser un párrafo corrido y pasa a renglones cortos «Etiqueta: valor» —el mismo
+estilo con el que ahora contesta el chat— y los productos entran al contexto.
 """
 
 from __future__ import annotations
@@ -12,34 +17,60 @@ import re
 
 _SYSTEM = (
     "Eres El Chalán de Learning Center, un despacho mexicano de diseño y maquila. "
-    "Te doy la actividad reciente de un proyecto (eventos, comentarios y tareas "
-    "con su estado). Redacta un RESUMEN EJECUTIVO en UN solo párrafo, español de "
-    "México, profesional y conciso: dónde está el proyecto, qué se ha hecho y qué "
-    "falta o está bloqueado. Usa SOLO los datos dados, no inventes. Texto plano, "
-    "sin encabezados ni viñetas."
+    "Te doy un proyecto con sus productos, tareas, comentarios y actividad. "
+    "Devuelve un resumen EJECUTIVO Y CORTO en español de México, con este formato "
+    "exacto, un renglón por línea y sin markdown:\n"
+    "Estado: <estado actual> · <cliente>\n"
+    "Productos: <qué se está produciendo, con cantidades si las hay>\n"
+    "Avance: <una frase de lo que ya se hizo>\n"
+    "Pendiente: <una frase de lo que falta; si no hay nada abierto, dilo>\n"
+    "Atención: <una frase SOLO si hay algo atrasado, bloqueado o en riesgo; si no, "
+    "omite este renglón>\n"
+    "Reglas: máximo 5 renglones, ninguno de más de 25 palabras, usa SOLO los datos "
+    "dados y no inventes nada. Nada de encabezados, viñetas ni asteriscos."
 )
 
-_MAX_TOKENS = 500
+_MAX_TOKENS = 400
 
 _RE_FENCE = re.compile(r"^```(?:\w+)?|```$", re.IGNORECASE | re.MULTILINE)
 _RE_HTML = re.compile(r"<[^>]+>")
+_RE_ENFASIS = re.compile(r"(\*\*|__)(.+?)\1", re.DOTALL)
 
 
 def _limpiar(texto: str) -> str:
     texto = _RE_FENCE.sub("", texto or "").strip()
     texto = _RE_HTML.sub("", texto)
-    return texto.strip()
+    return _RE_ENFASIS.sub(r"\2", texto).strip()
 
 
 def resumir_actividad(*, proyecto, usuario=None) -> dict:
     """Resume la actividad de `proyecto`. Devuelve `{ok, resumen, error}`."""
     from lib.permisos import puede_ver_comentario
 
+    cliente = getattr(getattr(proyecto, "cliente", None), "razon_social", "") or "sin cliente"
     partes: list[str] = [
-        f"PROYECTO: {proyecto.codigo} «{proyecto.nombre}» — estado: {proyecto.get_estado_display()}"
+        f"PROYECTO: {proyecto.codigo} «{proyecto.nombre}» — cliente: {cliente} — "
+        f"estado: {proyecto.get_estado_display()}"
     ]
     if (proyecto.descripcion or "").strip():
         partes.append("Descripción: " + proyecto.descripcion.strip()[:400])
+
+    # LC 2026-08-04 (Oscar): el resumen tiene que tomar en cuenta lo que se está
+    # produciendo. El alias del proyecto manda sobre el nombre del catálogo.
+    try:
+        lineas_producto = list(proyecto.productos_incluidos)
+    except Exception:  # noqa: BLE001 — un producto raro no tumba el resumen
+        lineas_producto = []
+    if lineas_producto:
+        partes.append("PRODUCTOS INVOLUCRADOS:")
+        for pp in lineas_producto[:20]:
+            cantidad = getattr(pp, "cantidad", None)
+            merma = getattr(pp, "merma", 0) or 0
+            extra = f" (+{merma} de merma)" if merma else ""
+            partes.append(
+                f"- {pp.nombre_visible}"
+                + (f" · {cantidad} pz{extra}" if cantidad else "")
+            )
 
     tareas = list(proyecto.tareas.select_related("asignada_a").order_by("estado", "-creado_en")[:40])
     if tareas:

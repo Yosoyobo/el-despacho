@@ -231,7 +231,8 @@
                 {% endif %}
                 <button type="button" hx-get="{% url 'taller-resumen-actividad' %}"
                         hx-target="#modal-slot" hx-swap="innerHTML"
-                        class="btn-secundario min-w-0 whitespace-nowrap px-2 text-xs">Resumir pendientes</button>
+                        title="El reporte exacto de pendientes, con la lectura de El Chalán arriba"
+                        class="btn-secundario min-w-0 whitespace-nowrap px-2 text-xs">🤖 Resumir pendientes</button>
                 <button type="submit" class="btn-primario shrink-0 whitespace-nowrap px-3 text-xs">Enviar</button>
             </div>
         </form>
@@ -250,14 +251,18 @@
 
 {# ── 4) Kanban de 4 columnas activas. Reusa el partial canónico + el JS compartido. ── #}
 <section class="mb-8">
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos</h2>
-        <a href="{% url 'proyectos-kanban' %}" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver tablero completo →</a>
+    {% comment %}LC 2026-08-04 (Oscar): el buscador va en la MISMA línea que
+    «Proyectos activos» y «Ver tablero completo», y más grande/largo — se come
+    todo el espacio libre del renglón. En móvil baja a su propio renglón
+    (`w-full` + `order-last`) para no apretar el encabezado. Es el mismo buscador
+    que la página Kanban: lo activa el JS compartido por su `id`.{% endcomment %}
+    <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2 class="shrink-0 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos</h2>
+        <input type="search" id="kanban-buscar" autocomplete="off"
+               placeholder="Buscar por nombre, cliente, código, producto, proveedor, equipo o contacto…"
+               class="order-last w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-700 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 sm:order-none sm:w-auto sm:min-w-[16rem] sm:flex-1">
+        <a href="{% url 'proyectos-kanban' %}" class="ml-auto shrink-0 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:ml-0">Ver tablero completo →</a>
     </div>
-    {# LC revisión buzón: mismo buscador que la página Kanban (lo activa el JS compartido). #}
-    <input type="search" id="kanban-buscar" autocomplete="off"
-           placeholder="Buscar por nombre, cliente, código, producto, proveedor, equipo o contacto…"
-           class="mb-3 w-full max-w-md rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
     <div id="kanban-grid" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {% for col in kanban_cols %}{% include "proyectos/_kanban_columna.html" with col=col %}{% endfor %}
     </div>

@@ -97,7 +97,10 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
             "tipo": "tarea",
             "tipo_tarea": t.tipo,
             "titulo": f"{pre} {hora}{t.titulo}" if pre else f"{hora}{t.titulo}",
-            "subtitulo": t.proyecto.codigo,
+            # LC 2026-08-04 (Oscar): el nombre del proyecto, no su código — mismo
+            # criterio del sweep «nombre > código» (2026.07.27). Lo leen el
+            # resumen del calendario, «Próximos eventos» y el tooltip de la celda.
+            "subtitulo": t.proyecto.nombre or t.proyecto.codigo,
             "url": f"/tareas/{t.pk}/",
             "obj_id": t.pk,  # D6: modal corto de edición al clicar el evento
             "color": color,

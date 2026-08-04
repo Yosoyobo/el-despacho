@@ -33,22 +33,31 @@
 </div>
 
 {% elif m.tipo == "accion" %}
+{% comment %}LC 2026-08-04 (Oscar): la tarjeta se arma con DATOS, no con la prosa
+del Chalán — una pastilla con el nombre de la acción y sus campos como pares
+«Etiqueta: valor» (ver apps/el_dictado/presentacion.py). El preámbulo del LLM
+queda arriba, chico, y sólo si dijo algo.{% endcomment %}
 <div class="mb-3 flex items-end gap-2" data-mensaje-id="{{ m.pk }}">
     {% include "_componentes_tailadmin/_avatar_chalan.html" with tamano="xs" %}
     <div class="max-w-[85%] rounded-2xl rounded-tl-sm border border-warning-200 bg-warning-50/60 px-4 py-3 text-sm text-gray-800 shadow-theme-xs dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-gray-100">
-        <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        {% if m.cuerpo %}<p class="whitespace-pre-wrap break-words text-xs text-gray-600 dark:text-gray-300">{{ m.cuerpo }}</p>{% endif %}
         {% if m.dictado %}
             {% if m.dictado.estado == "esperando_confirmacion" or m.dictado.estado == "confirmado_parcial" %}
             <form method="post" action="{% url 'chalan-aplicar' m.dictado.pk %}" class="mt-2">
                 {% csrf_token %}
-                <ul class="space-y-1.5">
+                <ul class="space-y-2">
                     {% for a in m.dictado.acciones.all %}
-                    <li class="flex items-start gap-2">
+                    <li class="flex items-start gap-2 rounded-xl border border-warning-200/70 bg-white/70 p-2.5 dark:border-warning-500/20 dark:bg-white/[0.04]">
                         <input type="checkbox" name="accion_{{ a.pk }}" id="acc_{{ a.pk }}" checked
-                               class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500/30">
-                        <label for="acc_{{ a.pk }}" class="text-xs leading-snug">
-                            {{ a.descripcion }}
+                               class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-600 focus:ring-brand-500/30">
+                        <label for="acc_{{ a.pk }}" class="min-w-0 flex-1 cursor-pointer leading-snug">
+                            <span class="inline-flex items-center rounded-md bg-brand-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ a.etiqueta_accion }}</span>
                             {% if a.confianza < 0.7 %}<span class="ml-1 text-warning-600 dark:text-warning-400" title="Confianza baja">⚠</span>{% endif %}
+                            {% for c in a.campos_visibles %}
+                            <span class="mt-1 block text-xs"><span class="text-gray-500 dark:text-gray-400">{{ c.etiqueta }}:</span> <span class="font-medium">{{ c.valor }}</span></span>
+                            {% empty %}
+                            <span class="mt-1 block text-xs">{{ a.descripcion }}</span>
+                            {% endfor %}
                         </label>
                     </li>
                     {% empty %}
@@ -56,15 +65,23 @@
                     {% endfor %}
                 </ul>
                 <div class="mt-3 flex items-center gap-2">
-                    <button class="btn-primario px-3 py-1.5 text-xs">Aplicar</button>
+                    <button class="btn-primario px-3 py-1.5 text-xs">Confirmar</button>
                     <button type="submit" formaction="{% url 'chalan-cancelar' m.dictado.pk %}" formmethod="post"
                             class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Descartar</button>
                 </div>
             </form>
             {% else %}
-            <p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                {{ m.dictado.get_estado_display }}
-            </p>
+            <ul class="mt-2 space-y-1">
+                {% for a in m.dictado.acciones.all %}
+                <li class="text-xs">
+                    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ a.etiqueta_accion }}</span>
+                    {% if a.aplicada %}<span class="ml-1 text-success-600 dark:text-success-400">✓</span>{% elif a.error_al_aplicar %}<span class="ml-1 text-error-600 dark:text-error-400">✕</span>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% comment %}Los botones de destino van en el mensaje de RESULTADO
+            (el siguiente turno), no aquí: repetirlos en las dos burbujas se veía
+            ruidoso.{% endcomment %}
             {% endif %}
         {% endif %}
         <p class="mt-1 text-right text-[10px] text-gray-400 dark:text-gray-500">{{ m.creado_en|hfmt:"H:i" }}</p>
@@ -76,6 +93,9 @@
     {% include "_componentes_tailadmin/_avatar_chalan.html" with tamano="xs" %}
     <div class="max-w-[80%] rounded-2xl rounded-tl-sm bg-gray-100 px-4 py-2 text-sm text-gray-800 shadow-theme-xs dark:bg-gray-800 dark:text-gray-100">
         <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+        {% comment %}Un mensaje de texto ligado a un dictado es el RESULTADO de
+        aplicar: trae los botones a lo que quedó creado.{% endcomment %}
+        {% if m.dictado %}{% include "el_dictado/_chat_enlaces.html" with enlaces=m.dictado.enlaces_resultado %}{% endif %}
         <p class="mt-1 text-right text-[10px] text-gray-500 dark:text-gray-400">{{ m.creado_en|hfmt:"H:i" }}</p>
     </div>
 </div>

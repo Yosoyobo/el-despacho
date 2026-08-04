@@ -109,7 +109,9 @@ dictado, NO inventes su slug. Usa la sintaxis `@accion_N` donde N es el
 `crear_proyecto` y la 1 es `asignar_usuario_proyecto`, usa
 `"proyecto_slug": "@accion_0"` en la 1. El sistema resuelve la referencia
 al aplicar. Aplica también a `cliente_slug` cuando creas cliente y luego
-un proyecto para él.
+un proyecto para él, y a `agregar_producto_proyecto` cuando el proyecto lo
+creaste en la acción anterior: manda `"proyecto_slug": "@accion_0"`, NUNCA sólo
+el cliente (el cliente puede tener varios proyectos y no hay cómo adivinar).
 
 CÓMO NOMBRAR AL CLIENTE (aplica a TODAS las acciones con `cliente_slug`):
 pon el texto tal como te lo dijeron. El sistema identifica al cliente por su

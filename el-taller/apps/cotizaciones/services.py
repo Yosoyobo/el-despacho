@@ -98,6 +98,10 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         "items": items,
         "filas": filas,
         "totales": totales,
+        # LC 2026-08-04 (Oscar): con UN solo producto la tabla de desglose repite
+        # exactamente la tablita de montos del bloque — así que no se imprime.
+        # Los impuestos y el total SÍ (es lo que el interruptor debe agregar).
+        "mostrar_desglose": _mostrar_desglose(cot, filas),
         # Oscar 2026-07-25: el desglose de impuestos va SIN porcentajes. El
         # nombre que arma `lib.fiscal` los trae entre paréntesis («Retención de
         # IVA (10.6667%)»), así que aquí se limpian solo para el documento —
@@ -203,13 +207,31 @@ def _alto_bloque(fila) -> int:
     return alto + _OVERHEAD_BLOQUE_PT
 
 
-def _alto_desglose(cot, items) -> int:
-    """Alto estimado (pt) del bloque «Desglose de Elementos» + los totales."""
+def _mostrar_desglose(cot, filas) -> bool:
+    """Si el documento lleva la tabla «Desglose de Elementos».
+
+    LC 2026-08-04 (Oscar): «si sólo tiene 1 producto, al prender el interruptor
+    no se mete la tabla de desglose, pero sí se meten los montos de impuestos» —
+    con un solo bloque la tabla es una copia literal de la tablita de montos que
+    ya se imprimió arriba. `filas` son los BLOQUES de producto (los procesos de
+    venta viven dentro de su bloque, no cuentan como producto aparte).
+    """
+    return bool(getattr(cot, "incluir_desglose", False)) and len(filas or []) > 1
+
+
+def _alto_desglose(cot, items, con_tabla: bool = True) -> int:
+    """Alto estimado (pt) del bloque «Desglose de Elementos» + los totales.
+
+    `con_tabla=False` cuando el desglose se omite (un solo producto) y sólo se
+    imprimen los impuestos y el total.
+    """
     impuestos = len(cot.calcular_totales().get("impuestos_detalle", []))
-    # `items` incluye los procesos de venta: en el desglose cada uno es su
-    # propio renglón (ahí sí van en lista plana).
-    alto = 46 + 24 + len(items) * 22 + 18   # título + encabezados + filas
-    alto += (2 + impuestos) * 18 + 24       # subtotal + impuestos + total
+    alto = 0
+    if con_tabla:
+        # `items` incluye los procesos de venta: en el desglose cada uno es su
+        # propio renglón (ahí sí van en lista plana).
+        alto += 46 + 24 + len(items) * 22 + 18   # título + encabezados + filas
+    alto += (2 + impuestos) * 18 + 24            # subtotal + impuestos + total
     return alto + _OVERHEAD_BLOQUE_PT
 
 
@@ -236,7 +258,7 @@ def _paginar(cot, filas, items) -> dict:
         else:
             usado += alto
     if cot.incluir_desglose:
-        alto = _alto_desglose(cot, items)
+        alto = _alto_desglose(cot, items, con_tabla=_mostrar_desglose(cot, filas))
         usado = alto if usado + alto > _ALTO_UTIL_PT else usado + alto
     return {"libre": max(0, _ALTO_UTIL_PT - min(usado, _ALTO_UTIL_PT))}
 
