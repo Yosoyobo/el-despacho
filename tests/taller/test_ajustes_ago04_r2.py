@@ -112,7 +112,8 @@ def test_el_pie_de_la_tarjeta_se_lee_mas_grande():
     from pathlib import Path
     tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
         encoding="utf-8")
-    pie = next(ln for ln in tpl.splitlines() if "Costo prod." in ln)
+    pie = next(ln for ln in tpl.splitlines()
+               if "Costo prod." in ln and "data-costo-total" in ln)
     assert "text-[11px]" not in pie
     assert "text-xs" in pie and "sm:text-sm" in pie
 
