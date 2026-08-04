@@ -8383,3 +8383,130 @@ candados de comentarios `{# #}` multilínea (Bug C §14) y de Novedades, verdes.
   un `transform: scale`), así que en pantallas muy angostas los chips truncan más.
 - La regla del producto único cuenta **bloques** (`filas`), no líneas: los procesos
   de venta viven dentro de su bloque y no hacen que aparezca el desglose.
+
+---
+
+# BITÁCORA — S-Ajustes-Ago04-R2 (2026-08-04, VERSION 2026.08.02)
+
+> Segunda ronda del día sobre lo deployado en `2026.08.01`. Un screenshot marcado
+> **urgente** (la tarjeta de producto) + 3 puntos del ticket + 3 pedidos que
+> llegaron a media sesión. Rama `agent/ajustes-ago04`.
+
+## 1. URGENTE — el costo unitario y la ganancia unitaria de la tarjeta
+
+El pie de la tarjeta decía `Costo prod. $2,584.26 · unit. $44.94/pz · $175.06`.
+El total estaba bien; los otros dos no: `unit.` mostraba el costo del **producto
+pelón** y la ganancia era `precio − ese costo`. Ni la merma ni la impresión ni los
+procesos entraban.
+
+El **costo unitario real** reparte TODO el costo de producción entre las piezas
+que se **cobran** (`cantidad`), no entre las producidas (`cantidad + merma`): la
+merma no se le factura al cliente, así que la absorben las que se venden. Con el
+caso de Oscar: `2,584.26 ÷ 25 = 103.37` y `220 − 103.37 = 116.63`.
+
+**La prueba de que el reparto es el correcto**: `116.63 × 25 = 2,915.75`, que es la
+utilidad ($2,915.74, un centavo de redondeo) y el margen (53.0%) que YA salían bien
+abajo a la derecha. Dividir entre 29 daría `130.89 × 25 = 3,272` — no cuadra.
+
+Arreglado en `_form_productos_js.recalcular` y espejado en el modelo con
+`ProyectoProducto.costo_unitario_real` / `utilidad_unitaria` (fuente única para
+tests y consumo futuro; el JS es el que pinta en vivo). El renglón además pasó de
+`text-[11px]` a `text-xs sm:text-sm` (Oscar, a media sesión: «debe de ser más
+grande»).
+
+## 2. En escritorio, «Bajar PDF» volvió a descargar
+
+macOS **Chrome y Safari sí implementan `navigator.share`** (lo enchufan a la hoja
+de compartir del sistema), así que el desvío a Web Share de 2026-07-28 —pensado
+para el celular— secuestraba el clic en la computadora y salía el menú de
+AirDrop/Mail/Messages. El desvío ahora se gatea por
+**`matchMedia('(pointer: coarse)')`**; en escritorio no se toca nada y el
+`Content-Disposition: attachment` de `views.generar_pdf` baja el archivo con su
+nombre.
+
+## 3. El documento, lo más apretado posible
+
+Cuerpo `line-height` 1.15 → **1.02** (piso práctico: más abajo Docs encima los
+acentos), celdas de concepto `2pt` → **1pt**, encabezado 24 → 12pt, título 14 →
+8pt, tablas de conceptos 18 → 10pt, totales 24 → 14pt, notas 1.1 → 1.0. La fila
+«Total» conserva 2pt a propósito (va destacada).
+
+**El estimador de paginación bajó a la par** (`_alto_bloque`, `_alto_desglose`,
+`_ALTO_ENCABEZADO_PT`, `alto_notas`). Es la parte fácil de olvidar: si el documento
+se aprieta y el estimador no, cree que ocupa más de lo que ocupa, `libre` sale
+corto y el hueco de las notas las deja flotando a media hoja.
+
+## 4. Botón chiquito ✓/✕ en el recuadro Cotizaciones
+
+Si el proyecto sigue en `por_cotizar` y ya hay una versión, se ofrece «¿Pasar el
+proyecto a Esperando respuesta?». **Cero endpoints nuevos**: el ✓ reusa
+`proyectos-cambiar-estado` (camino inline, que ya devuelve la barra de status) con
+`hx-target="#proyecto-status-bar-<pk>"`, así que el cambio se ve al instante.
+
+Sólo se ofrece si el estado destino está **activo** en el catálogo de Gerencia (si
+el super_admin lo apagó, `CambiarEstadoForm` lo rechazaría) y si quien mira puede
+cambiar el estado. La ✕ es «ahora no» y se recuerda en `localStorage` por
+**(proyecto, versión)**: al generar una versión nueva vuelve a ofrecerse, que es
+cuando la pregunta vuelve a tener sentido. Aparece sola al generar la v1 porque el
+recuadro se repinta por HTMX con el contexto nuevo.
+
+## 5. Swap de nombres «Descripción» ⇄ «Notas» (pedido de media sesión)
+
+El recuadro del PROYECTO pasa a llamarse **Notas** (el campo del modelo sigue
+siendo `descripcion`). La «Nota corta» de la LÍNEA de producto pasa a llamarse
+**Descripción** y queda **ligada a la especificación del elemento en la
+cotización**.
+
+- `ProyectoProducto.nota`: `CharField(200)` → **`TextField`** (migración
+  `proyectos/0028_producto_descripcion`, sólo `AlterField`, escrita a mano porque
+  `makemigrations` mete los espurios de BigAutoField + un rename de índice). **El
+  nombre del campo se conserva**: renombrarlo arrastraría undo, duplicar proyecto y
+  el mini-Chalán sin ganar nada.
+- `descripcion._especificacion(pp)` la usa como **override** del
+  `Servicio.descripcion_default` (mismo patrón que `precio_unitario`).
+- En `descripcion_para` **gana sobre la herencia de la versión anterior**. Es la
+  decisión de fondo: si no ganara, «ligar» no significaría nada — el texto heredado
+  se comería lo que se acaba de escribir en la tarjeta. Las líneas SIN descripción
+  propia siguen heredando igual que antes (cero regresión, con test).
+- El textarea crece solo (`data-autogrow`, tope 220px) y, como la fila alinea al
+  fondo (`md:items-end`), al crecer **empuja su etiqueta hacia arriba** en vez de
+  estirar la tarjeta — que es literalmente lo que pidió Oscar.
+
+## 6. El «+ Proceso» verde a la primera fila
+
+Se reduce a un «+» grande y entra como sexta columna de
+Categoría·Producto·Cantidad·Merma·Precio, quitándole espacio a Categoría (`1fr` →
+`0.7fr`). El JS liga el botón por clase **dentro de la tarjeta**, no por vecindad,
+así que moverlo no rompió nada. El contenedor de la lista se esconde con
+`[&:not(:has(.venta-fila))]:hidden` para no dejar su hueco cuando no hay líneas.
+
+## 7. Regla nueva de Novedades
+
+Oscar, en esta sesión: «en novedades ya no le pongas "duodecima entrega" y eso del
+final, nunca». `VERSION_FECHA` y el encabezado del bloque llevan **sólo la fecha**.
+El candado `test_ayuda_novedades` sólo exige que `VERSION_FECHA` aparezca entre
+paréntesis en el primer bloque, así que el formato corto pasa sin cambios. Guardado
+en `memory/regla-novedades-sin-numero-entrega`.
+
+## 8. Tests
+
+24 nuevos en `tests/taller/test_ajustes_ago04_r2.py`, con el caso del screenshot
+parametrizado como red permanente (incluida la comprobación de que
+`utilidad_unitaria × cantidad == utilidad`). Se actualizaron los 2 tests de
+`test_ajustes_jul28.py` que fijaban el interlineado viejo (1.15 y el aire de 14pt
+del título) — era justo lo que este sprint cambió a propósito. Ruff (0.8.4) limpio;
+candados de comentarios `{# #}` multilínea (Bug C §14) y de Novedades, verdes.
+
+## 9. Deuda diseñada
+
+- El estimador de paginación sigue siendo una **estimación** (la hoja la corta
+  Google). Su único efecto es graduar el hueco de las notas, con tope de 96pt.
+- `line-height: 1.02` es el piso práctico del documento: más abajo Docs encima los
+  acentos.
+- La ✕ de la sugerencia se recuerda **por navegador** (`localStorage`), no por
+  usuario en la base.
+- La Descripción de la línea no se edita desde El Chalán. El mini-Chalán de
+  productos sí la escribe al crear (vía `nota`), pero capado a 200 caracteres —
+  herencia de cuando el campo era un `CharField`.
+- La vista de **solo lectura** del proyecto (diseñador sin permiso de edición) no
+  muestra la Descripción de cada línea; sigue listando producto/cantidad/subtotal.
