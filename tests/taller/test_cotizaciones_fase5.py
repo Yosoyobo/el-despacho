@@ -86,7 +86,17 @@ def test_estado_inline_funciona_con_version_hermana_anulada(client, cliente_fact
     assert v2.estado == activos[1]["slug"]
 
 
-def test_nota_producto_no_se_copia_a_cotizacion(cliente_factory, usuario_factory):
+def test_descripcion_del_producto_si_se_copia_a_cotizacion(cliente_factory, usuario_factory):
+    """LC 2026-08-04 — **invierte la regla de la Fase 5** (2026-07-08), que decía
+    «notas internas fuera del PDF del cliente».
+
+    Oscar pidió explícitamente lo contrario: «cambiar notas a descripción y ligar a
+    la especificación del elemento que se pone en la cotización». El campo dejó de
+    ser una nota interna y ahora ES la especificación que lee el cliente — la
+    etiqueta de la tarjeta dice «Descripción» y su `title` avisa que sale en el
+    documento. Si alguna vez se vuelve a querer una nota interna por línea, tiene
+    que ser un campo NUEVO, no éste.
+    """
     from apps.cotizaciones.services import generar_desde_proyecto
     from apps.el_catalogo.models import CategoriaServicio, Servicio
     from apps.los_proyectos.models import Proyecto, ProyectoProducto
@@ -97,8 +107,9 @@ def test_nota_producto_no_se_copia_a_cotizacion(cliente_factory, usuario_factory
     serv = Servicio.objects.create(nombre="Lona", categoria=cat, precio_base=Decimal("100"), activo=True)
     ProyectoProducto.objects.create(
         proyecto=proy, servicio=serv, cantidad=1, precio_unitario=Decimal("100"),
-        nota="NOTA INTERNA SECRETA", incluir_en_calculo=True,
+        nota="Color: Beige\nCon bordado frontal", incluir_en_calculo=True,
     )
     cot = generar_desde_proyecto(proy, autor)
-    for it in cot.items.all():
-        assert "NOTA INTERNA SECRETA" not in it.descripcion
+    it = cot.items.first()
+    assert "Color: Beige" in it.descripcion
+    assert "Con bordado frontal" in it.descripcion

@@ -5,6 +5,53 @@
 
 ---
 
+## Novedades — La ganancia por pieza bien calculada, la descripción del producto que viaja a la cotización y el PDF más apretado (4 de agosto de 2026)
+
+**Tarjeta de producto del proyecto**
+
+- **El costo unitario y la ganancia por pieza ya se calculan bien.** Abajo de cada
+  tarjeta salía el costo del producto pelón (por ejemplo `$44.94`), sin la
+  impresión ni los procesos. Ahora suma **todo lo que cuesta una pieza**: el
+  producto, la impresión y los procesos fijos divididos entre las piezas. En el
+  mismo caso: `$44.94` + `$39.00` de impresión + `$150.00 ÷ 29` = **`$89.11`** de
+  costo y **`$130.89`** de ganancia por pieza.
+  La división es entre **todas las piezas producidas** (las que se venden más la
+  merma), porque una pieza de merma cuesta lo mismo que una vendible. Por eso la
+  merma no infla el costo por pieza: su pérdida se ve donde debe, en la **utilidad
+  y el margen** de la derecha.
+- **Ese renglón se lee más grande.**
+- **«Notas» ahora es «Descripción», acepta varios renglones y va a la cotización.**
+  Lo que escribas ahí (colores, medidas, dónde va el bordado…) es la
+  especificación que sale en el documento debajo del nombre del concepto. El campo
+  crece solo mientras escribes, hacia arriba, sin estirar la tarjeta.
+- **Lo que ya habías escrito no se pierde: se mudó a la tarjeta.** Las
+  especificaciones que venías redactando en la página de la cotización **bajaron al
+  campo Descripción** de cada producto (se tomó la última versión que tuviera
+  texto). De ahora en adelante ése es el lugar para escribirlas: se aplican a la
+  siguiente versión que generes. Las **notas internas** que hubiera en ese campo se
+  borraron, porque el campo cambió de uso.
+- **El botón verde de proceso es ahora un «+»** y vive en la misma línea que
+  Categoría, Producto, Cantidad, Merma y Precio unitario.
+
+**Página del proyecto**
+
+- El recuadro **«Descripción» se llama «Notas»** (la descripción es ahora la de
+  cada producto, la que viaja a la cotización).
+- En el recuadro **Cotizaciones**, si el proyecto sigue en «Por cotizar» y ya
+  generaste una cotización, aparece abajo **«¿Pasar el proyecto a Esperando
+  respuesta?»** con un ✓ y una ✕. El ✓ lo cambia ahí mismo; la ✕ lo deja para
+  después y no vuelve a preguntar por esa versión.
+
+**Documento de la cotización**
+
+- **En la computadora, «Bajar PDF» vuelve a bajar el archivo.** Se había puesto a
+  abrir el menú de compartir del sistema (el mismo del celular). En el celular
+  sigue funcionando como antes, con la hoja de compartir.
+- **Todo el documento va más apretado**: menos aire entre renglones, entre el
+  encabezado y el título, y dentro de las tablas. Caben más elementos por hoja.
+
+---
+
 ## Novedades — El Chalán que sí cacha al cliente, respuestas con botón y el resumen de todo lo que viene (4 de agosto de 2026 — primera entrega de agosto)
 
 **El Chalán (el chat)**
@@ -3191,7 +3238,8 @@ La página es **editable directo** (los cambios se guardan solos; verás
   de cada tarjeta:
   - Interruptor para **incluirlo o no** en el total (apagado = se atenúa y su
     monto queda en $0.00).
-  - Categoría · Producto · Cantidad · Merma · Precio unitario.
+  - Categoría · Producto · Cantidad · Merma · Precio unitario, y al final el
+    botón **verde «+»** de los procesos que se le cobran al cliente (ver abajo).
   - **Ponerle otro nombre en este proyecto:** junto a «Producto» hay un botón
     chico de **etiqueta**. Al picarlo aparece un campo con el nombre del
     catálogo para que lo cambies por el que ve el cliente — compras «TShirt
@@ -3201,9 +3249,15 @@ La página es **editable directo** (los cambios se guardan solos; verás
     tablero **sigue encontrándolo por los dos nombres** (útil para «¿en qué
     proyectos uso la playera de Crea Blanks?»). Con **«usar el nombre del
     catálogo»** regresas al original.
-  - **Proveedor** principal + costo unitario + notas.
-  - **Procesos que se le cobran al cliente** (botón **"+ Proceso"**, justo debajo
-    de esa fila). Es lo que le facturas **aparte** del producto: al Bordado le
+  - **Proveedor** principal + costo unitario + **Descripción**.
+  - **Descripción:** es la **especificación de este elemento** y es la que sale
+    en el documento de la cotización, debajo del nombre del concepto (colores,
+    medidas, dónde va el bordado…). Acepta **varios renglones** y va creciendo
+    mientras escribes. Lo que pongas aquí **manda** sobre lo que traiga el
+    producto del catálogo y sobre lo que se hubiera escrito en la versión
+    anterior de la cotización; si la dejas vacía, se usa la del catálogo.
+  - **Procesos que se le cobran al cliente** (el botón **verde «+»** del final de
+    la primera fila). Es lo que le facturas **aparte** del producto: al Bordado le
     agregas «Ponchado» con su cantidad y su precio. Cada uno **sube el monto del
     proyecto** y sale en la cotización como **su propia línea**, dentro de la
     tablita de ese producto. **No confundir** con el "+ Proceso" de más abajo,
@@ -3226,7 +3280,13 @@ La página es **editable directo** (los cambios se guardan solos; verás
     gastos operativos sueltos (materiales, viáticos, embalaje…). Éstos **cuestan**
     (bajan tu utilidad); no se le cobran al cliente.
   - **Abajo a la izquierda**, el costo de producción con el **costo por pieza** y,
-    en verde, la **utilidad por pieza**. **Abajo a la derecha**, el **monto** del
+    en verde, la **ganancia por pieza**. El costo por pieza es lo que cuesta
+    **una** pieza con todo incluido: el producto, la impresión y los procesos
+    fijos divididos entre las piezas. La división es entre **todas las piezas
+    producidas** —las que se venden más la merma—, porque una pieza de merma
+    cuesta lo mismo que una vendible. La pérdida por merma no se reparte en el
+    costo por pieza: se ve en la **utilidad** y el **margen** de la derecha, que
+    son totales de la línea. **Abajo a la derecha**, el **monto** del
     producto y, debajo, su **utilidad** en pesos y su **margen** en verde.
   - Para **reordenar** las tarjetas, arrastra por el asa de puntitos de la
     izquierda. En el celular funciona igual, con el dedo.
@@ -3632,6 +3692,11 @@ Abre en **tabla** (el botón «▦ Tarjetas» cambia a la vista de tarjetas):
   una factura a partir de ella). Cada acción respeta su permiso.
 - Desde la página del proyecto, el enlace «Ver →» de cada versión abre **la
   página de la cotización**; el documento imprimible se abre desde ahí.
+- Si el proyecto sigue en **«Por cotizar»** y ya generaste una cotización, abajo
+  del recuadro aparece **«¿Pasar el proyecto a Esperando respuesta?»** con un
+  **✓** y una **✕**. El ✓ le cambia el estado ahí mismo (se ve al instante en la
+  barra de arriba); la ✕ lo deja para después y no vuelve a preguntar por esa
+  versión —si generas una nueva, te lo vuelve a ofrecer.
 
 ### Concepto y especificaciones de cada producto
 
@@ -3641,8 +3706,10 @@ Cada línea del documento tiene dos partes:
   «Concepto» del desglose). Si le pusiste un nombre propio al producto dentro
   del proyecto, ése es el que llega aquí.
 - Las **especificaciones** son los renglones que lee el cliente debajo del
-  nombre. El sistema arranca con las piezas y lo que ya sabe el catálogo, y tú
-  completas el resto **en la página de la cotización**, un renglón por dato:
+  nombre. Salen de la **Descripción** que le pusiste al producto en la tarjeta del
+  proyecto; si la dejaste vacía, el sistema arranca con las piezas y lo que sepa
+  el catálogo. En cualquier caso puedes completarlas o corregirlas **en la página
+  de la cotización**, un renglón por dato:
 
   ```
   105 pz (3 colores, 35 pz c/u)
@@ -3660,7 +3727,9 @@ mandó al cliente.
 **Al generar la siguiente versión no pierdes lo escrito:** la v2 hereda el texto
 de la v1 y sólo actualiza el número de piezas si cambió la cantidad, respetando
 lo que hayas puesto entre paréntesis. Y cada versión queda congelada: la v1 no
-se mueve aunque generes la v2.
+se mueve aunque generes la v2. **Ojo:** si el producto tiene **Descripción** en su
+tarjeta del proyecto, ésa es la que manda en la versión nueva — es el lugar
+pensado para actualizar la especificación.
 
 ### El documento (PDF) y sus dos interruptores
 
@@ -3678,7 +3747,9 @@ derecha, y con **recuadro gris claro** (igual que la tabla del Desglose; son las
 parten a media página. Los montos de los productos van sin IVA y sin centavos
 cuando terminan en `.00`; en cambio **Subtotal, IVA trasladado, Retención de ISR,
 Retención de IVA y Total llevan SIEMPRE los dos centavos**, y ese bloque va con el
-interlineado apretado (las notas del final también).
+interlineado apretado (las notas del final también). El documento va **lo más
+apretado posible** —entre renglones, bajo el encabezado y dentro de las
+tablas— para que quepan más elementos por hoja.
 
 **Verlo y bajarlo:** «Ver» abre la **vista previa** —el documento como una hoja
 con sus márgenes— con un botón **«⬇ Bajar PDF»** hasta arriba (y otro para
@@ -3686,10 +3757,12 @@ imprimir). El archivo se llama siempre igual:
 `COTIZACIÓN-CLIENTE-NombreDelProyecto-v2`, con el cliente en mayúsculas, el
 proyecto sin espacios y la versión en minúsculas.
 
-**Desde el celular** ese botón dice **«⬇ Guardar / Compartir»** y abre la hoja de
-compartir del teléfono (Archivos, WhatsApp, Correo) con el PDF y su nombre
-correcto. No hace falta pasar por «Imprimir» — y si de todos modos imprimes, ya
-no sale el pie de página con la dirección web.
+**En la computadora** ese botón **baja el archivo** directo, con su nombre.
+
+**Desde el celular** dice **«⬇ Guardar / Compartir»** y abre la hoja de compartir
+del teléfono (Archivos, WhatsApp, Correo) con el PDF y su nombre correcto. No
+hace falta pasar por «Imprimir» — y si de todos modos imprimes, ya no sale el pie
+de página con la dirección web.
 
 **Cómo se pagina:** el nombre, las especificaciones y la foto de un producto
 **nunca se separan** de su tabla de precios: si el bloque no cabe en lo que queda

@@ -14,7 +14,7 @@ Recuadro «Cotizaciones» del detalle de proyecto (render Oscar 2026-06-27).
 El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
 {% endcomment %}
 <section id="cotizaciones-panel-{{ proyecto.pk }}"
-         {% if puede_estado or puede_cotizar %}hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}
+         {% if puede_estado or puede_cotizar or sugerir_esperando %}hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}
          class="{{ clase_extra }} rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cotizaciones</h3>
 
@@ -96,5 +96,60 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
         {# "Enviar" placeholder — abre rickroll en modal con autoplay (decisión Oscar). #}
         <button type="button" onclick="window.abrirRickroll && window.abrirRickroll()" class="btn-secundario">Enviar</button>
     </div>
+    {% endif %}
+
+    {% if sugerir_esperando %}
+    {% comment %}LC 2026-08-04 (Oscar): «si un proyecto está en estatus Por Cotizar,
+    después de que se haya generado la primera cotización, agregar un botón
+    chiquito abajo de este recuadro que diga pasar a status "esperando respuesta"?
+    Check y x».
+
+    El ✓ reusa el endpoint que ya mueve el estado del proyecto
+    (`proyectos-cambiar-estado`, camino inline) y repinta la BARRA DE STATUS de
+    arriba, que es donde se ve el estado — así el cambio se refleja sin recargar.
+    La sugerencia se esconde sola al terminar.
+
+    La ✕ es «ahora no»: se recuerda en el navegador por (proyecto, versión), así
+    que no vuelve a molestar… pero reaparece si se genera una versión nueva, que
+    es justo cuando la pregunta vuelve a tener sentido.{% endcomment %}
+    <div id="cot-sugerencia-{{ proyecto.pk }}"
+         data-sug-clave="despacho-cot-esperando-{{ proyecto.pk }}-v{{ cot_version_actual }}"
+         class="mt-3 hidden items-center justify-between gap-2 rounded-lg border border-dashed border-gray-300 px-2.5 py-2 dark:border-gray-700">
+        <span class="min-w-0 flex-1 text-xs text-gray-500 dark:text-gray-400">¿Pasar el proyecto a «{{ estado_tras_cotizar_label }}»?</span>
+        <span class="flex shrink-0 items-center gap-1">
+            <button type="button" title="Sí, pasar a {{ estado_tras_cotizar_label }}" aria-label="Sí, cambiar el estado"
+                    hx-post="{% url 'proyectos-cambiar-estado' proyecto.pk %}"
+                    hx-vals='{"estado": "{{ estado_tras_cotizar }}"}'
+                    hx-target="#proyecto-status-bar-{{ proyecto.pk }}"
+                    hx-swap="outerHTML"
+                    hx-on::after-request="this.closest('[data-sug-clave]').classList.add('hidden')"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-success-200 bg-white text-success-600 hover:bg-success-50 dark:border-success-500/30 dark:bg-transparent dark:text-success-400 dark:hover:bg-success-500/10">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button type="button" data-sug-descartar title="Ahora no" aria-label="Ahora no"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/[0.04]">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </span>
+    </div>
+    {% comment %}Nace oculta y el script la muestra si no está descartada: así no
+    parpadea al cargar. El script se re-ejecuta con cada swap HTMX del recuadro y
+    se rootea por ID — dentro de un fragmento inyectado `document.currentScript`
+    es `null` (§14 del CLAUDE.md).{% endcomment %}
+    <script>
+    (function () {
+      var d = document.getElementById('cot-sugerencia-{{ proyecto.pk }}');
+      if (!d) return;
+      var clave = d.dataset.sugClave;
+      var guardado = null;
+      try { guardado = window.localStorage.getItem(clave); } catch (e) { /* modo privado */ }
+      if (!guardado) { d.classList.remove('hidden'); d.classList.add('flex'); }
+      var x = d.querySelector('[data-sug-descartar]');
+      if (x) x.addEventListener('click', function () {
+        try { window.localStorage.setItem(clave, '1'); } catch (e) { /* da igual */ }
+        d.classList.add('hidden'); d.classList.remove('flex');
+      });
+    })();
+    </script>
     {% endif %}
 </section>

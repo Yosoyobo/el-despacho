@@ -66,7 +66,14 @@ class ProyectoProducto(models.Model):
     # C7 S-LC-Feedback-V6: si está desmarcado, la línea NO entra en los
     # cálculos de dinero del proyecto (monto calculado / IVA / costo).
     incluir_en_calculo = models.BooleanField(default=True)
-    nota = models.CharField(max_length=200, blank=True, default="")
+    # LC 2026-08-04 (Oscar): esta «nota corta» pasó a ser la **DESCRIPCIÓN** del
+    # elemento — la especificación que viaja a la cotización (colores, medidas,
+    # dónde va el bordado…). Por eso deja de ser un renglón de 200 caracteres y
+    # acepta varias líneas. El nombre del campo se conserva para no arrastrar una
+    # migración de rename por todo el repo (undo, duplicar, el mini-Chalán);
+    # lo que cambia es su significado y su etiqueta visible.
+    # Ver `apps.cotizaciones.descripcion.esqueleto`.
+    nota = models.TextField(blank=True, default="")
     # LC Fase 2: orden manual (drag & drop) de las tarjetas en el detalle. Las
     # incluidas se muestran primero; entre iguales, por este `orden` ascendente.
     orden = models.PositiveIntegerField(default=0, db_index=True)
@@ -229,6 +236,36 @@ class ProyectoProducto(models.Model):
     def costo_total_con_procesos(self) -> Decimal:
         """Costo de la línea (producto + merma) más sus procesos fijos."""
         return self.costo_total_linea + self.costo_procesos
+
+    @property
+    def costo_unitario_real(self) -> Decimal:
+        """Lo que cuesta CADA pieza producida, con todo incluido.
+
+        LC 2026-08-04 (Oscar, urgente): la tarjeta mostraba el costo del producto
+        pelón como «costo unitario», sin la impresión ni los procesos repartidos.
+        Aquí se suma todo lo que cuesta una pieza: el producto, la impresión y los
+        procesos fijos divididos.
+
+        El divisor son las piezas **producidas** (`cantidad + merma`), no las que
+        se cobran (Oscar: «el costo unitario del producto no debe de sumar la merma
+        diferida — o sea cada pz de merma tiene el mismo costo unitario»). Una
+        pieza de merma cuesta lo mismo que una vendible, así que la merma **no se
+        amortiza** en el costo por pieza; su pérdida aparece donde corresponde, en
+        `utilidad` y `margen_porcentaje`, que son totales.
+
+        Consecuencia esperada: `utilidad_unitaria × cantidad` **no** da `utilidad`
+        — lo que falta es lo que se perdió produciendo la merma. Es correcto, no un
+        bug: el costo por pieza habla de UNA pieza; la merma es un total.
+        """
+        piezas = (self.cantidad or 0) + (self.merma or 0)
+        if piezas <= 0:
+            return CERO
+        return self.costo_total_con_procesos / Decimal(str(piezas))
+
+    @property
+    def utilidad_unitaria(self) -> Decimal:
+        """Ganancia por pieza: precio − costo unitario real (con todo incluido)."""
+        return self.precio_efectivo - self.costo_unitario_real
 
     @property
     def utilidad(self) -> Decimal:

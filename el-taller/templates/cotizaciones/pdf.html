@@ -90,8 +90,11 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
 {% endif %}
 </head>
 {% comment %}Interlineado apretado (Oscar 2026-07-28, punto 5: «que quepan más
-elementos»). Docs respeta `line-height` como interlineado del párrafo.{% endcomment %}
-<body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt; line-height: 1.15;">
+elementos»). Docs respeta `line-height` como interlineado del párrafo.
+LC 2026-08-04 (Oscar): «apretar aún más el interlineado de todo» → 1.15 → 1.02
+(el mínimo que Docs sigue respetando sin encimar los acentos) y todos los
+márgenes/paddings del documento bajan a la par, ver los bloques de abajo.{% endcomment %}
+<body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt; line-height: 1.02;">
 {% if preview %}
 <div class="lc-barra">
   <span>Vista previa · <strong>{{ nombre_archivo }}</strong></span>
@@ -124,11 +127,24 @@ Google, ver `views.generar_pdf`), así que el botón trabaja en dos tiempos: el
 primer toque baja el archivo y lo deja en memoria —e intenta compartir, que en
 Android y escritorio sí funciona de un jalón—; si el sistema rechaza por la
 activación, el botón se queda como «Compartir PDF» y el siguiente toque abre la
-hoja al instante, ya sin espera.{% endcomment %}
+hoja al instante, ya sin espera.
+
+LC 2026-08-04 (Oscar): «en desktop este botón debería de bajar el archivo». En
+macOS, Chrome y Safari SÍ implementan `navigator.share` (lo enchufan a la hoja de
+compartir del sistema), así que en la computadora el botón dejaba de descargar y
+abría el mismo menú de AirDrop/Mail/Messages del celular. La respuesta ya la da
+`Content-Disposition: attachment` de `views.generar_pdf`: en escritorio no se
+toca nada y el enlace baja el PDF con su nombre. El desvío a compartir queda sólo
+donde de verdad hace falta —donde el navegador NO sabe descargar—, y eso se
+detecta por el puntero: `pointer: coarse` es táctil (celular/tablet), `fine` es
+ratón/trackpad.{% endcomment %}
 <script>
 (function () {
   var a = document.getElementById('lc-bajar');
   if (!a || !navigator.canShare) return;
+  // Sólo en táctil: en escritorio el `<a download>` ya baja el archivo.
+  var tactil = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if (!tactil) return;
   var nombre = a.getAttribute('data-nombre') || 'cotizacion.pdf';
   // Sonda barata: si el navegador no sabe compartir archivos, no tocamos nada.
   try { if (!navigator.canShare({ files: [new File([new Blob()], nombre, { type: 'application/pdf' })] })) return; }
@@ -182,7 +198,8 @@ hoja al instante, ya sin espera.{% endcomment %}
 {% endif %}
 
   {# Encabezado: fecha · logotipo (chico y al centro) · cliente #}
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">
+  {# LC 2026-08-04: el aire bajo el encabezado pasó de 24pt a 12pt. #}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:12pt;">
     <tr>
       {% comment %}Fecha y cliente al RAS del logotipo (arriba), no centrados
       con él: así el encabezado se lee como una sola línea (render de Oscar,
@@ -207,8 +224,9 @@ hoja al instante, ya sin espera.{% endcomment %}
   {% comment %}El título va con el MISMO tamaño que el cuerpo (Oscar
   2026-07-26): heredarlo del `<body>` evita que el documento tenga dos escalas.
   El aire de abajo bajó de 28pt a 14pt (Oscar 2026-07-28, punto 2: «entre el
-  título y el primer elemento hay un <br> de más»).{% endcomment %}
-  <p style="text-align:center; margin:0 0 14pt 0;">{{ cot.titulo_documento }}</p>
+  título y el primer elemento hay un <br> de más») y de 14pt a 8pt en la ronda
+  del 2026-08-04 («apretar aún más el interlineado de todo»).{% endcomment %}
+  <p style="text-align:center; margin:0 0 8pt 0;">{{ cot.titulo_documento }}</p>
 
   {% comment %}Un bloque numerado por concepto. El nombre, las especificaciones
   y la foto van en UNA SOLA tabla: dos tablas seguidas dejaban un renglón en
@@ -226,7 +244,7 @@ hoja al instante, ya sin espera.{% endcomment %}
   {% for fila in filas %}
   <tr><td style="border:none; padding:0; vertical-align:top;">
   <div style="page-break-inside:avoid;">
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:6pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:3pt;">
     <tr>
       <td style="border:none; width:22pt; vertical-align:top;">{{ forloop.counter }}.</td>
       <td colspan="2" style="border:none; vertical-align:top;"><u>{{ fila.it.concepto_visible }}</u></td>
@@ -264,21 +282,21 @@ hoja al instante, ya sin espera.{% endcomment %}
   · **Línea (C).** Gris claro, no negra. Va celda por celda: un borde declarado
     sólo en la tabla no se dibuja. Sin `<thead>/<tbody>` — el convertidor los
     trata como bloques y metía un renglón en blanco.{% endcomment %}
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:10pt;">
     <tr>
       <td style="border:none; width:11%;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:36%; text-align:left; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:12%; text-align:right; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:15%; text-align:right; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:15%; text-align:right; font-style:italic;">Subtotal</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:36%; text-align:left; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:12%; text-align:right; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:15%; text-align:right; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:15%; text-align:right; font-style:italic;">Subtotal</td>
       <td style="border:none; width:11%;">&nbsp;</td>
     </tr>
     <tr>
       <td style="border:none;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:left; font-style:italic;">{{ fila.it.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:left; font-style:italic;">{{ fila.it.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
       <td style="border:none;">&nbsp;</td>
     </tr>
     {% comment %}LC 2026-07-26 (Oscar): procesos de VENTA del producto (Ponchado,
@@ -287,10 +305,10 @@ hoja al instante, ya sin espera.{% endcomment %}
     {% for ex in fila.extras %}
     <tr>
       <td style="border:none;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:left; font-style:italic;">{{ ex.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ ex.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ ex.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ ex.subtotal|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:left; font-style:italic;">{{ ex.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ ex.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ ex.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ ex.subtotal|dinero_sin_signo }}</td>
       <td style="border:none;">&nbsp;</td>
     </tr>
     {% endfor %}
@@ -325,24 +343,24 @@ hoja al instante, ya sin espera.{% endcomment %}
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:18pt; font-size:10pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:10pt;">
     <tr>
-      <td colspan="5" style="border:none; padding:0 0 10pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
+      <td colspan="5" style="border:none; padding:0 0 6pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
     </tr>
     <tr>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:22pt; text-align:center;">&#10004;</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; text-align:left; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:16%; text-align:right; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:19%; text-align:right; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:2pt 5pt; width:19%; text-align:right; font-style:italic;">Subtotal</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:22pt; text-align:center;">&#10004;</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; text-align:left; font-style:italic;">Concepto</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:16%; text-align:right; font-style:italic;">Cantidad</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:19%; text-align:right; font-style:italic;">P. Unitario</td>
+      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:19%; text-align:right; font-style:italic;">Subtotal</td>
     </tr>
     {% for it in items %}
     <tr>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:2pt 5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt;">&nbsp;</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
     </tr>
     {% endfor %}
   </table>
@@ -355,7 +373,7 @@ hoja al instante, ya sin espera.{% endcomment %}
   trasladado», «Retención de ISR», «Retención de IVA» y «Total» SIEMPRE con los
   dos centavos — `dinero_exacto_sin_signo` (el `|dinero_sin_signo` normal trunca
   los `.00`, que en un documento fiscal se lee raro).{% endcomment %}
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:14pt;">
     <tr>
       <td style="border:none; padding:1pt 5pt;">Subtotal</td>
       <td style="border:none; padding:1pt 5pt; text-align:right;">{{ totales.subtotal_items|dinero_exacto_sin_signo }}</td>
@@ -375,8 +393,8 @@ hoja al instante, ya sin espera.{% endcomment %}
     </tr>
     {% endfor %}
     <tr>
-      <td style="border:none; padding:3pt 5pt; font-weight:bold;">Total</td>
-      <td style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold;">{{ totales.total|dinero_exacto_sin_signo }}</td>
+      <td style="border:none; padding:2pt 5pt; font-weight:bold;">Total</td>
+      <td style="border:none; padding:2pt 5pt; text-align:right; font-weight:bold;">{{ totales.total|dinero_exacto_sin_signo }}</td>
     </tr>
   </table>
   {% endif %}
@@ -397,10 +415,10 @@ hoja al instante, ya sin espera.{% endcomment %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
     <div style="margin-top:{{ espacio_notas_pt }}pt;">
-      <p style="margin:0 0 3pt 0; font-size:9pt;">Notas:</p>
+      <p style="margin:0 0 2pt 0; font-size:9pt;">Notas:</p>
       {% comment %}LC 2026-08-04 (Oscar): interlineado un poco más apretado —
       padding a 0 y `line-height:1.1` en la tabla (el del cuerpo es 1.15).{% endcomment %}
-      <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:9pt; line-height:1.1;">
+      <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:9pt; line-height:1.0;">
         {% for nota in notas %}
         <tr>
           <td style="border:none; width:18pt; vertical-align:top; padding:0;">{{ forloop.counter }}.</td>
@@ -414,7 +432,7 @@ hoja al instante, ya sin espera.{% endcomment %}
   </div>
 
   {% if cot.terminos %}
-  <p style="margin:18pt 0 4pt 0; font-size:10pt; font-weight:bold;">Condiciones adicionales</p>
+  <p style="margin:12pt 0 3pt 0; font-size:10pt; font-weight:bold;">Condiciones adicionales</p>
   <div style="font-size:10pt; white-space:pre-line;">{{ cot.terminos }}</div>
   {% endif %}
 

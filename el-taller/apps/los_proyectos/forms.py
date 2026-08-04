@@ -249,7 +249,21 @@ class ProyectoProductoForm(forms.ModelForm):
     class Meta:
         model = ProyectoProducto
         fields = ["servicio", "nombre_proyecto", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota", "orden"]
-        labels = {"nota": "Nota corta (opcional)"}
+        # LC 2026-08-04 (Oscar): la «nota corta» es ahora la DESCRIPCIÓN del
+        # elemento y alimenta su especificación en la cotización. Acepta varias
+        # líneas y crece sola hacia arriba (`data-autogrow` + la fila alinea al
+        # fondo, así que al crecer sube su etiqueta).
+        labels = {"nota": "Descripción"}
+        widgets = {
+            "nota": forms.Textarea(attrs={
+                "rows": 2,
+                "data-autogrow": "1",
+                "class": "resize-none",
+                "placeholder": "Color: Beige / Terracota\nCon bordado frontal…",
+                "title": "Especificación de este elemento. Es lo que sale en la "
+                         "cotización debajo del nombre del concepto.",
+            }),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

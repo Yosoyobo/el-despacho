@@ -1390,6 +1390,10 @@ def producto_imagen(request, prod_pk):
 # se cablea después). Por ahora es placeholder → rickroll (decisión Oscar).
 RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
+# A dónde pasa el proyecto una vez que ya tiene cotización (LC 2026-08-04): el
+# paso siguiente del ciclo LC después de «Por cotizar».
+_ESTADO_TRAS_COTIZAR = "esperando_respuesta"
+
 
 def _ctx_facturas(proyecto, user) -> dict:
     """Contexto del recuadro «Facturas ligadas» del detalle de proyecto (LC #9).
@@ -1464,10 +1468,35 @@ def _ctx_cotizaciones(proyecto, user) -> dict:
             "aprobada": latest.aprobada_en,
             "pagada": latest.pagada_en,
         }.get(estado_actual) or latest.creado_en
+    # LC 2026-08-04 (Oscar): «si un proyecto está en estatus Por Cotizar, después
+    # de que se haya generado la primera cotización, agregar un botón chiquito
+    # abajo de este recuadro que diga pasar a status "esperando respuesta"?
+    # Check y x». Se sugiere sólo si de verdad se puede aplicar: hay al menos una
+    # versión, el proyecto sigue en `por_cotizar`, quien mira puede cambiarle el
+    # estado y el estado destino está ACTIVO en el catálogo de Gerencia (si el
+    # super_admin lo apagó, `CambiarEstadoForm` lo rechazaría).
+    destino_activo = EstadoProyecto.objects.filter(
+        slug=_ESTADO_TRAS_COTIZAR, activo=True).exists()
+    sugerir_esperando = bool(
+        cots
+        and proyecto.estado == "por_cotizar"
+        and destino_activo
+        and puede_editar_proyecto(user, proyecto)
+    )
     return {
         "proyecto": proyecto,
         "cotizaciones_proyecto": cots,
         "cot_latest_pk": latest.pk if latest else None,
+        "sugerir_esperando": sugerir_esperando,
+        "estado_tras_cotizar": _ESTADO_TRAS_COTIZAR,
+        "estado_tras_cotizar_label": (
+            EstadoProyecto.objects.filter(slug=_ESTADO_TRAS_COTIZAR)
+            .values_list("label", flat=True).first() or "Esperando respuesta"
+        ),
+        # Versión más reciente: el descarte de la sugerencia se recuerda por
+        # (proyecto, versión), así que al generar una versión nueva vuelve a
+        # ofrecerse.
+        "cot_version_actual": latest.version if latest else 0,
         "cot_estado_actual": estado_actual,
         "cot_estado_label": (mapa.get(estado_actual) or {}).get("label", estado_actual or ""),
         "cot_estado_color": (mapa.get(estado_actual) or {}).get("color", "#667085"),
