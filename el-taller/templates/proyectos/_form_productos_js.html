@@ -125,16 +125,26 @@
         const cu = costoEfectivo(card);
         const piezas = cant + merma;
         const total = cu * piezas + costoProcesos(card, piezas);
+        // LC 2026-08-04 (Oscar, URGENTE): «el costo unitario y la ganancia
+        // unitaria de hasta abajo no se están calculando bien». Se mostraba el
+        // costo del PRODUCTO pelón ($44.94), ignorando la merma y los procesos —
+        // en el caso reportado el costo real por pieza era $103.37. El costo
+        // unitario REAL reparte TODO el costo de producción (producto + merma +
+        // impresión + procesos) entre las piezas que se COBRAN: la merma no se
+        // le factura al cliente, así que la absorben las piezas vendidas. Así
+        // cuadra con el margen que ya salía bien abajo a la derecha:
+        // utilidad_unitaria × cantidad = utilidad total.
         const cpp = card.querySelector('[data-costo-pp]');
         const ctot = card.querySelector('[data-costo-total]');
-        if (cpp) cpp.textContent = cu ? fmt(cu) : '—';
+        const cuReal = cant > 0 ? total / cant : 0;
+        if (cpp) cpp.textContent = cuReal ? fmt(cuReal) : '—';
         if (ctot) ctot.textContent = total ? fmt(total) : '—';
         // LC 2026-07-28 (Oscar, render f): utilidad POR PIEZA (precio − costo
-        // unitario), en verde junto al costo de producción.
+        // unitario REAL), en verde junto al costo de producción.
         const upp = card.querySelector('[data-utilidad-pp]');
         if (upp) {
-            const u = precioEfectivo(card) - cu;
-            upp.textContent = (precioEfectivo(card) || cu) ? fmt(u) : '—';
+            const u = precioEfectivo(card) - cuReal;
+            upp.textContent = (precioEfectivo(card) || cuReal) ? fmt(u) : '—';
             upp.classList.toggle('text-success-600', u >= 0);
             upp.classList.toggle('dark:text-success-400', u >= 0);
             upp.classList.toggle('text-error-600', u < 0);

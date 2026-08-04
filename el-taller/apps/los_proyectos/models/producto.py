@@ -231,6 +231,26 @@ class ProyectoProducto(models.Model):
         return self.costo_total_linea + self.costo_procesos
 
     @property
+    def costo_unitario_real(self) -> Decimal:
+        """Lo que cuesta CADA pieza que se cobra, con todo incluido.
+
+        LC 2026-08-04 (Oscar, urgente): la tarjeta mostraba el costo del producto
+        pelón como «costo unitario», ignorando la merma y los procesos. El costo
+        real por pieza reparte TODO el costo de producción entre las piezas que
+        se **cobran** (`cantidad`), no entre las producidas: la merma no se le
+        factura al cliente, así que la absorben las piezas vendidas. De ahí que
+        `utilidad_unitaria × cantidad` cuadre con la utilidad de la línea.
+        """
+        if self.cantidad <= 0:
+            return CERO
+        return self.costo_total_con_procesos / Decimal(str(self.cantidad))
+
+    @property
+    def utilidad_unitaria(self) -> Decimal:
+        """Ganancia por pieza vendida: precio − costo unitario real."""
+        return self.precio_efectivo - self.costo_unitario_real
+
+    @property
     def utilidad(self) -> Decimal:
         """Lo cobrado (producto + procesos de venta) menos el costo real
         (merma + procesos de producción)."""

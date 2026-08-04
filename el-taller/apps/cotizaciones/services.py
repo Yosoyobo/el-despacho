@@ -176,8 +176,9 @@ _MARGEN_SEGURIDAD_PT = 56
 _TOPE_HUECO_NOTAS_PT = 96
 
 # Encabezado (fecha/logo/cliente) + título centrado. El título dejó de llevar
-# 28pt de aire abajo (Oscar 2026-07-28, punto 2: «un <br> de más»).
-_ALTO_ENCABEZADO_PT = 60 + 32
+# 28pt de aire abajo (Oscar 2026-07-28, punto 2: «un <br> de más»), y en la
+# ronda del 2026-08-04 («apretar aún más el interlineado de todo») bajó a 8pt.
+_ALTO_ENCABEZADO_PT = 60 + 24
 
 # Lo que el convertidor de Google le SUMA a cada bloque por su cuenta: mete un
 # párrafo vacío alrededor de cada tabla (quirk #5 de `pdf.html`) y respeta a su
@@ -197,13 +198,17 @@ def _alto_bloque(fila) -> int:
     cuerpo = 0
     renglones = len(getattr(fila["it"], "detalle_lineas", []) or [])
     if renglones:
-        cuerpo = renglones * 14
+        cuerpo = renglones * 13
     if fila.get("imagen"):
         # La foto va acotada a una caja fija (`_medida_foto`), así que su alto
         # real es el que ya se calculó al armar la fila.
         cuerpo = max(cuerpo, int(fila.get("img_alto") or _ALTO_FOTO_PT))
     # nombre + cuerpo + tabla de montos (+ un renglón por proceso de venta).
-    alto = 22 + cuerpo + 8 + 48 + 20 + len(fila.get("extras") or []) * 18
+    # LC 2026-08-04: las medidas bajaron con el interlineado del documento
+    # (`pdf.html`: body 1.15 → 1.02, celdas 2pt → 1pt de padding, márgenes de
+    # 18/24pt → 10/14pt). Si el estimador no baja con él, cree que el documento
+    # ocupa más de lo que ocupa y las notas se quedan flotando a media hoja.
+    alto = 18 + cuerpo + 4 + 32 + 10 + len(fila.get("extras") or []) * 15
     return alto + _OVERHEAD_BLOQUE_PT
 
 
@@ -230,8 +235,8 @@ def _alto_desglose(cot, items, con_tabla: bool = True) -> int:
     if con_tabla:
         # `items` incluye los procesos de venta: en el desglose cada uno es su
         # propio renglón (ahí sí van en lista plana).
-        alto += 46 + 24 + len(items) * 22 + 18   # título + encabezados + filas
-    alto += (2 + impuestos) * 18 + 24            # subtotal + impuestos + total
+        alto += 30 + 16 + len(items) * 15 + 10   # título + encabezados + filas
+    alto += (2 + impuestos) * 14 + 18            # subtotal + impuestos + total
     return alto + _OVERHEAD_BLOQUE_PT
 
 
@@ -276,9 +281,11 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
     `_TOPE_HUECO_NOTAS_PT`: mejor quedarse corto que abrir un agujero a media
     hoja o empujar el documento a una página de más.
     """
-    alto_notas = 22 + len(notas) * 15
+    # LC 2026-08-04: bajan con el interlineado del documento (las notas van a
+    # 9pt con `line-height:1.0` y padding 0).
+    alto_notas = 18 + len(notas) * 13
     if getattr(cot, "terminos", ""):
-        alto_notas += 26 + len(cot.terminos.splitlines()) * 13
+        alto_notas += 20 + len(cot.terminos.splitlines()) * 11
 
     libre = _paginar(cot, filas, items)["libre"]
     hueco = libre - alto_notas - _MARGEN_SEGURIDAD_PT
