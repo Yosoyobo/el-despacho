@@ -147,7 +147,10 @@ def test_documento_con_interlineado_apretado():
     tpl = Path("el-taller/templates/cotizaciones/pdf.html").read_text(encoding="utf-8")
     assert "line-height: 1.02;" in tpl          # cuerpo (era 1.15)
     assert "line-height: 1.15;" not in tpl
-    assert "padding:2pt 5pt" not in tpl         # celdas de concepto (eran 2pt)
+    # Celdas de las tablas de conceptos: 2pt → 1pt (la fila «Total», que va
+    # destacada, se queda con 2pt a propósito).
+    assert "#cccccc; padding:2pt 5pt" not in tpl
+    assert "#cccccc; padding:1pt 5pt" in tpl
     assert "margin-bottom:24pt" not in tpl      # encabezado y totales
     assert "margin-bottom:18pt" not in tpl      # tablas de conceptos
 
@@ -232,7 +235,7 @@ def test_sugerencia_aparece_al_generar_la_primera_cotizacion(
 
     monkeypatch.setattr(
         "apps.cotizaciones.services.generar_desde_proyecto", _generar)
-    r = client.post(f"/proyectos/{p.pk}/generar-cotizacion",
+    r = client.post(f"/proyectos/{p.pk}/cotizacion/generar",
                     HTTP_HX_REQUEST="true")
     assert r.status_code == 200
     assert "¿Pasar el proyecto a «Esperando respuesta»?" in r.content.decode()
@@ -243,7 +246,7 @@ def test_el_check_cambia_el_estado_del_proyecto(client, usuario_factory,
     u = usuario_factory(rol="super_admin")
     client.force_login(u)
     p = _con_cotizacion(proyecto_factory, u)
-    r = client.post(f"/proyectos/{p.pk}/cambiar-estado/",
+    r = client.post(f"/proyectos/{p.pk}/cambiar-estado",
                     {"estado": "esperando_respuesta"}, HTTP_HX_REQUEST="true")
     assert r.status_code == 200          # devuelve la barra de status repintada
     p.refresh_from_db()
@@ -256,7 +259,7 @@ def test_sugerencia_oculta_para_quien_no_puede_cambiar_el_estado(
     p = _con_cotizacion(proyecto_factory, u)
     dis = usuario_factory(rol="disenador")
     from apps.los_proyectos.models import ProyectoAsignacion
-    ProyectoAsignacion.objects.create(proyecto=p, usuario=dis, rol="disenador")
+    ProyectoAsignacion.objects.create(proyecto=p, usuario=dis, rol_en_proyecto="disenador")
     client.force_login(dis)
     r = client.get(f"/proyectos/{p.pk}/")
     assert "¿Pasar el proyecto a" not in r.content.decode()
