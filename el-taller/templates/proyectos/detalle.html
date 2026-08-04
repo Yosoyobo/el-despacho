@@ -261,9 +261,13 @@
 
     {# ── Aside: descripción → Económico → Proveedores → Equipo ── #}
     <aside class="contents xl:block xl:space-y-6">
-        {# Descripción chiquita, arriba del Económico. En móvil va justo debajo del recuadro Económico (Oscar). #}
+        {% comment %}Notas del proyecto, chiquitas, arriba del Económico. En móvil
+        va justo debajo del recuadro Económico (Oscar). LC 2026-08-04: se llamaba
+        «Descripción», pero ese nombre ahora es el de la especificación de cada
+        producto (la que viaja a la cotización); aquí son las notas del proyecto.
+        El campo del modelo sigue siendo `descripcion`.{% endcomment %}
         <div class="order-3 xl:order-none">
-            <label for="{{ form.descripcion.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Descripción</label>
+            <label for="{{ form.descripcion.id_for_label }}" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Notas</label>
             {{ form.descripcion }}
         </div>
 
@@ -376,7 +380,7 @@
         </section>
     </div>
     <aside class="contents xl:block xl:space-y-6">
-        {% if proyecto.descripcion %}<div class="order-3 xl:order-none"><h3 class="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Descripción</h3><p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ proyecto.descripcion }}</p></div>{% endif %}
+        {% if proyecto.descripcion %}<div class="order-3 xl:order-none"><h3 class="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Notas</h3><p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{{ proyecto.descripcion }}</p></div>{% endif %}
         {% include "proyectos/_economico_panel.html" with proyecto=proyecto clase_extra="order-2 xl:order-none" %}
         {% include "proyectos/_proveedores_panel.html" with proyecto=proyecto proveedores_panel=proveedores_panel puede_editar=False clase_extra="order-6 xl:order-none" %}
         <section class="order-7 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 xl:order-none">

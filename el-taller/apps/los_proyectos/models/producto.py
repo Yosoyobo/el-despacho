@@ -66,7 +66,14 @@ class ProyectoProducto(models.Model):
     # C7 S-LC-Feedback-V6: si está desmarcado, la línea NO entra en los
     # cálculos de dinero del proyecto (monto calculado / IVA / costo).
     incluir_en_calculo = models.BooleanField(default=True)
-    nota = models.CharField(max_length=200, blank=True, default="")
+    # LC 2026-08-04 (Oscar): esta «nota corta» pasó a ser la **DESCRIPCIÓN** del
+    # elemento — la especificación que viaja a la cotización (colores, medidas,
+    # dónde va el bordado…). Por eso deja de ser un renglón de 200 caracteres y
+    # acepta varias líneas. El nombre del campo se conserva para no arrastrar una
+    # migración de rename por todo el repo (undo, duplicar, el mini-Chalán);
+    # lo que cambia es su significado y su etiqueta visible.
+    # Ver `apps.cotizaciones.descripcion.esqueleto`.
+    nota = models.TextField(blank=True, default="")
     # LC Fase 2: orden manual (drag & drop) de las tarjetas en el detalle. Las
     # incluidas se muestran primero; entre iguales, por este `orden` ascendente.
     orden = models.PositiveIntegerField(default=0, db_index=True)

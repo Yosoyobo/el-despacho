@@ -76,8 +76,12 @@ Render fino LC 2026-07-28 (Oscar):
 
     <div data-card-body class="mt-2{% if f.instance.pk and not f.errors %} hidden{% endif %}">
     <div data-cuerpo class="space-y-2.5">
-        {# Fila 1: categoría · producto · cantidad · merma · precio #}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1fr_1.4fr_72px_72px_120px] md:items-end">
+        {% comment %}Fila 1: categoría · producto · cantidad · merma · precio · «+».
+        LC 2026-08-04 (Oscar): el «+ Proceso» VERDE (lo que se le cobra al cliente)
+        se reduce a un «+» grande y se mete FORZOSO en esta misma fila; el espacio
+        se lo quita a Categoría (1fr → 0.7fr). Antes vivía en su propio renglón
+        alineado a la derecha y se leía como si no perteneciera a nada.{% endcomment %}
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.7fr_1.4fr_72px_72px_120px_36px] md:items-end">
             <div>
                 <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Categoría</label>
                 <select class="cat-filtro w-full" data-cat-filtro>
@@ -118,18 +122,24 @@ Render fino LC 2026-07-28 (Oscar):
                 <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Precio unitario</label>
                 {{ f.precio_unitario }}
             </div>
+            {% comment %}El «+» de los procesos de VENTA (lo que se le cobra al
+            cliente aparte del producto: Ponchado, arte…). La lista que agrega vive
+            abajo, en `[data-ventas]`; el JS los liga por clase, no por vecindad.{% endcomment %}
+            <div class="flex items-end justify-end">
+                <button type="button" class="venta-add inline-flex h-9 w-9 items-center justify-center rounded-lg bg-success-500 text-xl font-semibold leading-none text-white transition hover:bg-success-600"
+                        title="Agrega una línea que se le COBRA al cliente ligada a este producto (ej. Ponchado, arte). Sale como su propio renglón en la cotización."
+                        aria-label="Agregar proceso que se le cobra al cliente">+</button>
+            </div>
         </div>
 
         {% comment %}LC 2026-07-26 (Oscar): procesos de VENTA — el «subproducto» que
         se le cobra al cliente APARTE del producto (Bordado → Ponchado). No es el
         «+ Proceso» de abajo, que es de producción y cuesta: éste SUMA al precio y
-        viaja a la cotización como su propia línea. Va en VERDE (render 2026-07-28).{% endcomment %}
-        <div data-ventas>
-            <div class="flex justify-end">
-                <button type="button" class="venta-add inline-flex h-8 items-center gap-1 rounded-lg bg-success-500 px-3 text-xs font-medium text-white transition hover:bg-success-600"
-                        title="Agrega una línea que se le COBRA al cliente ligada a este producto (ej. Ponchado, arte). Sale como su propio renglón en la cotización.">+ Proceso</button>
-            </div>
-            <div class="venta-lista mt-2 space-y-2">
+        viaja a la cotización como su propia línea. El botón que las agrega subió a
+        la fila 1 (LC 2026-08-04); aquí queda sólo la lista.{% endcomment %}
+        {# Sin líneas de venta el recuadro no ocupa ni su hueco (el `space-y` del cuerpo). #}
+        <div data-ventas class="[&:not(:has(.venta-fila))]:hidden">
+            <div class="venta-lista space-y-2">
                 {% for v in f.procs_venta %}
                 <div class="venta-fila grid grid-cols-[auto_1fr_72px_120px_auto] items-center gap-2">
                     <span class="venta-num text-xs font-medium text-gray-400">{{ forloop.counter }}</span>
@@ -144,7 +154,12 @@ Render fino LC 2026-07-28 (Oscar):
             </div>
         </div>
 
-        {# Fila 2: proveedor principal · costo unitario · notas #}
+        {% comment %}Fila 2: proveedor principal · costo unitario · descripción.
+        LC 2026-08-04 (Oscar): «cambiar notas a descripción y ligar a la
+        especificación del elemento que se pone en la cotización». Es un textarea
+        de varias líneas que crece solo: como la fila alinea al fondo
+        (`md:items-end`), al crecer empuja su etiqueta HACIA ARRIBA en vez de
+        estirar la tarjeta hacia abajo.{% endcomment %}
         <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.4fr_120px_1.6fr] md:items-end">
             <div>
                 <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Proveedor</label>
@@ -155,7 +170,8 @@ Render fino LC 2026-07-28 (Oscar):
                 {{ f.costo_unitario }}
             </div>
             <div>
-                <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Notas</label>
+                <label for="{{ f.nota.id_for_label }}" class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                       title="Sale en la cotización, debajo del nombre del concepto.">Descripción</label>
                 {{ f.nota }}
             </div>
         </div>
