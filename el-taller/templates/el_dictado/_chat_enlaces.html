@@ -1,0 +1,16 @@
+{% comment %}
+Botones de destino tras una acción de El Chalán (LC 2026-08-04, Oscar: «al hacer
+una acción, la respuesta debe de regresar también un botón a la página más
+probable de visitar»). Param: `enlaces` = [{url, etiqueta}] — sale de
+`Dictado.enlaces_resultado`.
+{% endcomment %}
+{% if enlaces %}
+<div class="mt-2.5 flex flex-wrap gap-1.5">
+    {% for e in enlaces %}
+    <a href="{{ e.url }}"
+       class="inline-flex items-center gap-1 rounded-lg bg-brand-500 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-theme-xs transition hover:bg-brand-600">
+        {{ e.etiqueta }} →
+    </a>
+    {% endfor %}
+</div>
+{% endif %}

@@ -3,7 +3,14 @@ Render de un mes — params: mes_grid, nombre_mes, mes_year.
 Estilizado en S-Demo-Pre-Showcase-2: gradient sutil, día actual con
 anillo + dot, eventos con badges coloreados de fondo suave.
 {% endcomment %}
-<section class="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50/50 shadow-theme-sm dark:border-gray-800 dark:from-gray-900 dark:to-gray-800/30">
+{% comment %}LC 2026-08-04 (Oscar, móvil): el calendario seguía sacando scroll
+horizontal en el celular. La causa no estaba en la rejilla (ya usa
+`minmax(0,…)`) sino en la CAJA: esta sección es hija de un `grid`, y un grid item
+nace con `min-width:auto`, o sea que NO puede encogerse por debajo del ancho
+mínimo de su contenido — una palabra larga de un evento ensanchaba el track y con
+él la página. `min-w-0` + `max-w-full` la dejan encoger, así que la rejilla
+completa se escala al ancho disponible en vez de desbordarse.{% endcomment %}
+<section class="min-w-0 max-w-full overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50/50 shadow-theme-sm dark:border-gray-800 dark:from-gray-900 dark:to-gray-800/30">
     <header class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <h2 class="flex items-center gap-2 text-base font-semibold capitalize text-gray-900 dark:text-gray-100">
             <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">📅</span>

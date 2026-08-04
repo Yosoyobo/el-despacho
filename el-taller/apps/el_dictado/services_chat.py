@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from django.db import transaction
 
@@ -423,7 +424,7 @@ def _conversar_texto(*, usuario, conversacion, prep, imagenes) -> dict:
         if tipo == "responder":
             nuevos.append(_crear_mensaje(
                 conversacion, rol="bot", chalan=chalan_provider,
-                cuerpo=(sobre.get("texto") or "").strip() or "Listo.",
+                cuerpo=_limpiar_texto_bot(sobre.get("texto")) or "Listo.",
             ))
             cerrado = True
             break
@@ -431,7 +432,7 @@ def _conversar_texto(*, usuario, conversacion, prep, imagenes) -> dict:
         if tipo == "accion":
             acciones_raw = sobre.get("acciones") or []
             dictado_creado = _persistir_acciones_chat(acciones_raw=acciones_raw, usuario=usuario, chalan=chalan_provider)
-            preambulo = (sobre.get("texto") or "").strip()
+            preambulo = _limpiar_texto_bot(sobre.get("texto"))
             if dictado_creado.acciones.count() == 0:
                 # Mismo guard que el modo nativo: el modelo propuso algo en prosa
                 # pero no estructuró ninguna acción aplicable. No dejamos un
@@ -496,6 +497,25 @@ def _conversar_texto(*, usuario, conversacion, prep, imagenes) -> dict:
     return {"mensajes": nuevos, "dictado": dictado_creado}
 
 
+# El chat pinta el texto tal cual (`whitespace-pre-wrap`), así que el markdown
+# del LLM se veía literal: «**Bandanas**». LC 2026-08-04 (Oscar: «respuestas más
+# cortas, visuales, intuitivas»): se limpia al persistir, no al renderizar, para
+# que el historial que se le re-alimenta al modelo también salga limpio.
+_RE_ENFASIS = re.compile(r"(\*\*|__)(.+?)\1", re.DOTALL)
+_RE_ENCABEZADO_MD = re.compile(r"^\s{0,3}#{1,6}\s*", re.MULTILINE)
+_RE_BLANCOS = re.compile(r"\n{3,}")
+
+
+def _limpiar_texto_bot(texto: str) -> str:
+    """Quita el markdown que el chat no renderiza y aprieta los renglones."""
+    t = (texto or "").strip()
+    if not t:
+        return t
+    t = _RE_ENFASIS.sub(r"\2", t)
+    t = _RE_ENCABEZADO_MD.sub("", t)
+    return _RE_BLANCOS.sub("\n\n", t).strip()
+
+
 def _resumen_herramienta(nombre: str, salida) -> str:
     """Texto corto para la tarjeta informativa 🔧 (no es lo que ve el LLM)."""
     if isinstance(salida, dict) and salida.get("error"):
@@ -524,7 +544,7 @@ def _cerrar_turno_nativo(conversacion, usuario, propuestas, chalan, texto):
     """Cierra el turno nativo. Si hay propuestas bufferadas crea UN Dictado
     (preview/confirm, regla §20) y devuelve `(dictado, mensaje_accion)`; si no,
     devuelve `(None, mensaje_respuesta)`. Preserva el guard de dictado vacío."""
-    texto = (texto or "").strip()
+    texto = _limpiar_texto_bot(texto)
     if not propuestas:
         return None, _crear_mensaje(conversacion, rol="bot", chalan=chalan, cuerpo=texto or "Listo.")
     dictado = _persistir_acciones_chat(acciones_raw=propuestas, usuario=usuario, chalan=chalan)

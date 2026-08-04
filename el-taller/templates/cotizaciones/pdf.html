@@ -305,6 +305,10 @@ hoja al instante, ya sin espera.{% endcomment %}
 
   {# Desglose y cálculo de impuestos: solo si el interruptor está prendido #}
   {% if cot.incluir_desglose %}
+  {% comment %}LC 2026-08-04 (Oscar): la TABLA de desglose se omite cuando hay un
+  solo producto (sería copia de la tablita de montos de arriba); los impuestos y
+  el total sí van. Ver `services._mostrar_desglose`.{% endcomment %}
+  {% if mostrar_desglose %}
   {% comment %}El desglose —del título a la tabla— tampoco se parte entre páginas.
   Línea gris clara y columnas numéricas a la derecha, igual que la tabla de
   montos; la primera columna es la casilla que el cliente va marcando, así que va
@@ -344,29 +348,35 @@ hoja al instante, ya sin espera.{% endcomment %}
   </table>
   </td></tr></table>
   </div>
+  {% endif %}
 
+  {% comment %}Subtotal, impuestos y total. LC 2026-08-04 (Oscar): interlineado
+  APRETADO (1pt en lugar de 2, y 3pt en el total) y los montos de «IVA
+  trasladado», «Retención de ISR», «Retención de IVA» y «Total» SIEMPRE con los
+  dos centavos — `dinero_exacto_sin_signo` (el `|dinero_sin_signo` normal trunca
+  los `.00`, que en un documento fiscal se lee raro).{% endcomment %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:24pt;">
     <tr>
-      <td style="border:none; padding:2pt 5pt;">Subtotal</td>
-      <td style="border:none; padding:2pt 5pt; text-align:right;">{{ totales.subtotal_items|dinero_sin_signo }}</td>
+      <td style="border:none; padding:1pt 5pt;">Subtotal</td>
+      <td style="border:none; padding:1pt 5pt; text-align:right;">{{ totales.subtotal_items|dinero_exacto_sin_signo }}</td>
     </tr>
     {% if totales.descuento_global %}
     <tr>
-      <td style="border:none; padding:2pt 5pt 2pt 20pt;">Descuento global</td>
-      <td style="border:none; padding:2pt 5pt; text-align:right;">- {{ totales.descuento_global|dinero_sin_signo }}</td>
+      <td style="border:none; padding:1pt 5pt 1pt 20pt;">Descuento global</td>
+      <td style="border:none; padding:1pt 5pt; text-align:right;">- {{ totales.descuento_global|dinero_exacto_sin_signo }}</td>
     </tr>
     {% endif %}
     {% comment %}Oscar 2026-07-25: en el desglose van los nombres y los montos,
     sin los porcentajes.{% endcomment %}
     {% for imp in impuestos_pdf %}
     <tr>
-      <td style="border:none; padding:2pt 5pt 2pt 20pt;">{% if imp.tipo == "retencion" %}- {% endif %}{{ imp.nombre }}</td>
-      <td style="border:none; padding:2pt 5pt; text-align:right;">{{ imp.monto|dinero_sin_signo }}</td>
+      <td style="border:none; padding:1pt 5pt 1pt 20pt;">{% if imp.tipo == "retencion" %}- {% endif %}{{ imp.nombre }}</td>
+      <td style="border:none; padding:1pt 5pt; text-align:right;">{{ imp.monto|dinero_exacto_sin_signo }}</td>
     </tr>
     {% endfor %}
     <tr>
-      <td style="border:none; padding:5pt; font-weight:bold;">Total</td>
-      <td style="border:none; padding:5pt; text-align:right; font-weight:bold;">{{ totales.total|dinero_sin_signo }}</td>
+      <td style="border:none; padding:3pt 5pt; font-weight:bold;">Total</td>
+      <td style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold;">{{ totales.total|dinero_exacto_sin_signo }}</td>
     </tr>
   </table>
   {% endif %}
@@ -387,12 +397,14 @@ hoja al instante, ya sin espera.{% endcomment %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
     <div style="margin-top:{{ espacio_notas_pt }}pt;">
-      <p style="margin:0 0 4pt 0; font-size:9pt;">Notas:</p>
-      <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:9pt;">
+      <p style="margin:0 0 3pt 0; font-size:9pt;">Notas:</p>
+      {% comment %}LC 2026-08-04 (Oscar): interlineado un poco más apretado —
+      padding a 0 y `line-height:1.1` en la tabla (el del cuerpo es 1.15).{% endcomment %}
+      <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:9pt; line-height:1.1;">
         {% for nota in notas %}
         <tr>
-          <td style="border:none; width:18pt; vertical-align:top; padding:1pt 0;">{{ forloop.counter }}.</td>
-          <td style="border:none; vertical-align:top; padding:1pt 0;">{{ nota }}</td>
+          <td style="border:none; width:18pt; vertical-align:top; padding:0;">{{ forloop.counter }}.</td>
+          <td style="border:none; vertical-align:top; padding:0;">{{ nota }}</td>
         </tr>
         {% endfor %}
       </table>

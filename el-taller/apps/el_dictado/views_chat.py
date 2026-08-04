@@ -169,16 +169,19 @@ def aplicar_accion(request, pk: int):
             # Surface el error CONCRETO de cada acción fallida (no un "con error"
             # mudo). Así el usuario sabe qué faltó y puede reformular.
             detalles = "\n".join(
-                f"• {a.descripcion or a.tipo}: {a.error_al_aplicar}"
+                f"• {a.etiqueta_accion}: {a.error_al_aplicar}"
                 for a in dictado.acciones.filter(confirmada=True, aplicada=False)
                 if (a.error_al_aplicar or "").strip()
             )
-            cuerpo = f"Apliqué {resultado['aplicadas']} y {resultado['fallidas']} no se pudieron:"
+            listo = f"✓ {resultado['aplicadas']} aplicada(s). " if resultado["aplicadas"] else ""
+            cuerpo = f"{listo}⚠ {resultado['fallidas']} no se pudo:"
             if detalles:
                 cuerpo += "\n" + detalles
         else:
-            cuerpo = f"Listo: {resultado['aplicadas']} acción(es) aplicada(s)."
-        _crear_mensaje(conv, rol="bot", chalan=dictado.chalan, cuerpo=cuerpo)
+            cuerpo = f"✓ Listo — {resultado['aplicadas']} cambio(s) aplicado(s)."
+        # El mensaje de resultado va LIGADO al dictado para que traiga los
+        # botones de destino («Ir al proyecto») — LC 2026-08-04, Oscar.
+        _crear_mensaje(conv, rol="bot", chalan=dictado.chalan, cuerpo=cuerpo, dictado=dictado)
         conv.save(update_fields=["actualizado_en"])
         return redirect("chalan-conversacion", pk=conv.pk)
     return redirect("chalan-chat")

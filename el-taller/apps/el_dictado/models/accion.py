@@ -46,3 +46,18 @@ class DictadoAccion(models.Model):
 
     def __str__(self) -> str:
         return f"accion#{self.pk} {self.tipo} dictado={self.dictado_id}"
+
+    # ── Presentación en el chat (LC 2026-08-04) ───────────────────────────────
+    # La tarjeta de la acción se pinta con datos, no con la prosa del LLM: una
+    # pastilla con el nombre de la acción y sus campos como pares legibles.
+    @property
+    def etiqueta_accion(self) -> str:
+        """Nombre humano de la acción, para la pastilla («Crear proyecto»)."""
+        from ..presentacion import titulo_accion
+        return titulo_accion(self.tipo)
+
+    @property
+    def campos_visibles(self) -> list[dict]:
+        """`[{etiqueta, valor}]` del payload, en orden de lectura."""
+        from ..presentacion import campos_accion
+        return campos_accion(self.tipo, self.payload)

@@ -177,13 +177,15 @@ def evento_eliminar(request, pk: int):
 def resumen_modal(request):
     """GET /calendario/resumen/ — resumen ejecutivo del calendario. Modal HTMX.
 
-    LC 2026-07-29 (Oscar): las cuatro secciones (Hoy · Esta semana · Tareas ·
-    Siguientes entregas) se arman con consultas —formato exacto, gratis— y El
-    Chalán agrega una sola frase de lectura de la carga. Gated por (chalan, usar)
-    porque la frase la escribe él; si no responde, las secciones salen igual.
+    LC 2026-08-04 (Oscar): es **la lista de todo lo que viene** — hoy, el resto
+    de la semana y las siguientes cuatro con detalle, y de ahí en adelante una
+    línea general. Las secciones se arman con consultas (exactas, instantáneas y
+    gratis) y El Chalán pone encima una sola frase de lectura de la carga. Gated
+    por (chalan, usar) porque la frase la escribe él; si no responde, las
+    secciones salen igual.
     """
     from django.http import HttpResponseForbidden
-    from django.utils.html import escape, format_html
+    from django.template.loader import render_to_string
     from django.utils.safestring import mark_safe
 
     from lib.permisos import puede_usar_chalan
@@ -197,27 +199,13 @@ def resumen_modal(request):
     secciones = secciones_calendario(request.user)
     lectura = lectura_de_carga(usuario=request.user,
                                contexto_txt=texto_calendario(request.user))
-
-    partes: list[str] = []
-    if lectura.get("ok"):
-        partes.append(format_html(
-            '<p class="mb-4 rounded-lg border border-brand-200 bg-brand-50/60 p-3 '
-            'text-sm text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 '
-            'dark:text-brand-200">🤖 {}</p>', lectura["lectura"]))
-    for sec in secciones:
-        renglones = "".join(
-            f'<li class="py-0.5">{escape(ln)}</li>' for ln in sec["lineas"]
-        )
-        partes.append(mark_safe(
-            '<p class="mt-3 text-xs font-semibold uppercase tracking-wider '
-            'text-gray-500 dark:text-gray-400">'
-            f'{escape(sec["titulo"])}</p>'
-            '<ul class="mt-1 text-sm text-gray-700 dark:text-gray-200">'
-            f'{renglones}</ul>'
-        ))
+    cuerpo = render_to_string("calendario/_resumen_cuerpo.html", {
+        "secciones": secciones,
+        "lectura": lectura,
+    })
     return render(request, "_componentes_tailadmin/_modal_htmx.html", {
         "titulo": "Resumen del calendario",
-        "cuerpo": mark_safe("".join(partes)),
+        "cuerpo": mark_safe(cuerpo),  # noqa: S308 — el template ya escapa
         "tamano": "lg",
     })
 

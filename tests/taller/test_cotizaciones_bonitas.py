@@ -605,13 +605,33 @@ class TestDocumento:
     def test_con_desglose_sale_la_tabla_con_casilla_y_los_totales(
         self, entorno, tasa_iva_default
     ):
+        """LC 2026-08-04: la TABLA de desglose necesita más de un producto (con uno
+        solo sería copia de la tablita de montos). Los totales van en los dos casos
+        — ver `test_con_un_solo_producto_...` abajo."""
+        from apps.cotizaciones import services
+        from apps.cotizaciones.models import CotizacionItem
+        cot = self._cot_lista(entorno)
+        cot.incluir_desglose = True
+        cot.save(update_fields=["incluir_desglose"])
+        CotizacionItem.objects.create(
+            cotizacion=cot, orden=9, concepto="Gorras bordadas",
+            descripcion="Gorras bordadas", cantidad=Decimal("10"),
+            precio_unitario=Decimal("180.00"))
+        html = services.construir_html_pdf(cot)
+        assert "Desglose de Elementos" in html
+        assert "&#10004;" in html   # la casilla para que el cliente vaya marcando
+        assert "Subtotal" in html
+        assert "Total" in html
+
+    def test_con_un_solo_producto_van_los_totales_pero_no_la_tabla(
+        self, entorno, tasa_iva_default
+    ):
         from apps.cotizaciones import services
         cot = self._cot_lista(entorno)
         cot.incluir_desglose = True
         cot.save(update_fields=["incluir_desglose"])
         html = services.construir_html_pdf(cot)
-        assert "Desglose de Elementos" in html
-        assert "&#10004;" in html   # la casilla para que el cliente vaya marcando
+        assert "Desglose de Elementos" not in html
         assert "Subtotal" in html
         assert "Total" in html
 

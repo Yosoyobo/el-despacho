@@ -8217,3 +8217,169 @@ candado de comentarios `{# #}` multilínea (Bug C §14) y de Novedades, verdes.
 - El mini-Chalán de tareas sólo CREA: no edita tareas existentes ni asigna runner.
 - El resumen del calendario corta cada sección a 12 renglones (`LIMITE_SECCION`) y
   las entregas a 60 días.
+
+---
+
+# BITÁCORA — S-Ajustes-Ago04 (2026-08-04, VERSION 2026.08.01)
+
+> Rama `agent/ajustes-jul29` (continúa tras el merge de 2026.07.36). Ronda de
+> Oscar con una **imagen** de un workflow del chat que fallaba «extremadamente
+> común», más ajustes de Dashboard, calendario, cotización y proyecto. A media
+> sesión pidió además el botón «+ Nuevo proyecto» en la ficha del cliente.
+> **Sin migraciones.**
+
+## 1. Los dos bugs de la imagen — atacados en el BACKEND, no en el prompt
+
+La imagen traía tres síntomas de un mismo workflow («crea el proyecto X para Kari
+Kari y agrégale 18 playeras»):
+
+1. **«No cachó el cliente»** — el chat mandó `$karikari` y el cliente es «KARI
+   KARI». Se revisaron los cuatro pasos de `_cliente_por_razon_social` y ninguno
+   podía empatar: exacto no; normalizado tampoco («karikari» ≠ «kari kari»); y la
+   contención falla en los dos sentidos («karikari» NO está dentro de «kari kari»).
+   Fix: paso **3b** con comparación **compactada** — `_compacto(texto)` =
+   `_normalizar_razon` sin espacios, y sólo cuenta si es **inequívoca**. Vive en
+   `_resolver_cliente`, así que lo heredan TODOS los ejecutores de cliente.
+2. **«Falló sabiendo que tenía que crear el proyecto nuevo»** + 3. **«dijo
+   confirmar pero no agregó el producto»** — son el mismo: el LLM omitió el
+   `@accion_0` en `agregar_producto_proyecto`, así que `_resolver_proyecto_para`
+   cayó al branch «proyectos activos del cliente» y murió con «KARI KARI tiene
+   varios proyectos (#LC-0044, #LC-0009). ¿En cuál lo registro?». Preguntar por
+   uno de los viejos es absurdo cuando en la misma tanda se acaba de crear uno.
+   Helper nuevo **`_proyecto_creado_en_este_dictado(contexto, cliente=None)`**:
+   toma el último proyecto creado (mayor `orden` de `contexto.entidades_creadas`)
+   y, si se sabe para qué cliente es, **sólo cuenta si le pertenece** — nunca se
+   cuelga un producto del proyecto equivocado. También aplica sin `cliente_slug`.
+
+El prompt se reforzó igual (`_REFS` del chat con el caso típico + `prompt.py`),
+pero **la garantía es el código**: un prompt no es un contrato.
+
+## 2. Respuestas del chat: pastilla, campos y botón de destino
+
+`apps/el_dictado/presentacion.py` (nuevo, Taller-only). En vez de pedirle al LLM
+que redacte bonito, la tarjeta se arma **con datos**:
+
+- `titulo_accion(tipo)` → la pastilla, leyendo el `titulo` de
+  `lib.dictado_catalogo.COMANDOS_DICTADO` (fuente única; humaniza el slug si el
+  tipo no está).
+- `campos_accion(tipo, payload)` → `[{etiqueta, valor}]` con whitelist
+  `_ETIQUETAS` (lo que no está no se pinta), orden de lectura `_ORDEN`, fechas
+  legibles («3 de agosto de 2026»), aplanado de `campos` (los `actualizar_*`) y
+  strip de `@#$` — preservando `@accion_N`.
+- `enlaces_de_dictado(dictado)` → `[{url, etiqueta}]` de lo que quedó al aplicar,
+  mapeando `entidad_tipo` con `_DESTINOS` (18 tipos) y `_url_indirecta` para los
+  pk sin página propia (`producto` = una línea → su PROYECTO; `variacion` → su
+  producto del catálogo).
+
+**Cero migración**: los ejecutores ya escribían `entidad_tipo`/`entidad_id`, y las
+tres funciones se exponen como propiedades del modelo
+(`DictadoAccion.etiqueta_accion`, `.campos_visibles`, `Dictado.enlaces_resultado`)
+para que el template las use sin lógica.
+
+**Dónde salen los botones**: el mensaje de RESULTADO de `views_chat.aplicar_accion`
+ahora se crea con `dictado=dictado`, y el template pinta
+`el_dictado/_chat_enlaces.html` cuando un mensaje de texto trae dictado. Se
+quitaron de la tarjeta de la propuesta: dos grupos idénticos de botones pegados se
+veían ruidosos. El mismo partial se reusó en el detalle del Dictado.
+
+**Prosa más corta**: `_limpiar_texto_bot` quita el markdown que el chat no
+renderiza (`**`, `__`, `#`) y aprieta renglones. Se limpia al **persistir**, no al
+renderizar, para que el historial que se le re-alimenta al modelo también salga
+limpio. El prompt (nativo y degradado) exige ≤12 palabras al proponer, prohíbe
+«¿Procedo?» (ya hay botones) y pide renglones «Campo: valor» al consultar.
+
+## 3. Dashboard
+
+- **Buscador del Kanban al encabezado**: mismo renglón que «Proyectos activos» y
+  «Ver tablero completo», `text-base` + `flex-1`. En móvil baja a su propio
+  renglón (`order-last w-full`) para no apretar el título.
+- **«Resumir pendientes» ahora usa IA** (Oscar: «como el botón de la página del
+  calendario»). `apps/taller_home/pendientes_ia.py` agrega **dos frases** de
+  lectura ARRIBA del reporte; las listas siguen siendo **deterministas** — un
+  reporte operativo tiene que ser exacto, y así estaba declarado desde julio.
+  Reusa la estación `calendario_resumen` (mismo trabajo: leer una agenda y decir
+  cómo se ve) para no meter una estación nueva con su migración de seed. Gated por
+  `puede_usar_chalan`: el reporte es de todos, la lectura con IA es de quien puede
+  usarla (y paga sus tokens).
+
+## 4. Resumen del calendario, rehecho
+
+`apps/calendario/resumen.py`. Es «la lista de todo lo que viene»:
+
+**Hoy · Esta semana · La próxima semana (rango) · En 2, 3 y 4 semanas** al
+detalle, **Tareas**, **Siguientes entregas** y **Más adelante** en una línea
+general (`_mas_adelante`: conteos + rango + las 3 entregas más próximas).
+
+- La línea pasó de `str` a `{texto, tono, sub}`: `tono="atrasado"` pinta la tarea
+  en amarillo y `sub` son las sub-viñetas (los productos de una entrega, con su
+  cantidad).
+- Las tareas atrasadas llevan `- nombre del proyecto` al lado.
+- El cuerpo se renderiza con el template nuevo `calendario/_resumen_cuerpo.html`
+  (`<ol>` numerado, `text-base`) en lugar del HTML que la vista armaba a mano.
+- `texto_calendario` numera e indenta (es lo que se copia y lo que va al prompt).
+- `services.eventos_por_dia` ahora pone el **nombre** del proyecto en el
+  `subtitulo` de las tareas (antes el código): mismo criterio del sweep «nombre >
+  código» de 2026.07.27, y mejora también «Próximos eventos» y el tooltip de la
+  celda.
+
+## 5. Móvil: el calendario ya cabe
+
+La rejilla ya usaba `minmax(0,…)` desde julio, así que el desborde no venía de
+ahí. La causa era la **caja**: la `<section>` del mes es hija de un `grid`, y un
+grid item nace con `min-width:auto` — o sea que **no puede encogerse por debajo
+del ancho mínimo de su contenido**, y una palabra larga de un evento ensanchaba el
+track y con él la página. `min-w-0 max-w-full` en `_mes.html` + `min-w-0` en la
+columna izquierda de `calendario/index.html`.
+
+## 6. Ficha del cliente → «+ Nuevo proyecto»
+
+Pedido a media sesión. Botón en el encabezado del recuadro Proyectos y otro en
+grande en el empty state («+ Nuevo proyecto para [cliente]»). El modal
+quick-create (`_nuevo_modal`) acepta `?cliente=<pk>` y abre con el cliente puesto.
+Gated con `puede_crear_proyecto` (permiso de **crear proyectos**, no el de ver la
+cartera: con `permisos_modulos.proyectos` un diseñador vería el botón y se
+llevaría un 403).
+
+## 7. Cotización: regla del producto único + centavos
+
+- `services._mostrar_desglose(cot, filas)`: con **UN** bloque de producto la tabla
+  «Desglose de Elementos» **no se imprime** (sería copia literal de la tablita de
+  montos de arriba), pero **los impuestos y el total sí** — es lo que el
+  interruptor debe agregar. `_alto_desglose(..., con_tabla=)` y `_paginar` usan la
+  misma condición para que la estimación no se descuadre.
+- **Interlineado**: Subtotal/impuestos a 1pt (3pt el Total) y notas con
+  `padding:0` + `line-height:1.1`.
+- **Centavos siempre**: filtros nuevos `dinero_exacto` / `dinero_exacto_sin_signo`
+  (refactor con `_partes_monto`, sin tocar `dinero`). El `|dinero` global sigue
+  truncando los `.00` — sólo el bloque fiscal del documento los fija.
+
+## 8. «Resumen de actividad» del proyecto
+
+Formato fijo de 5 renglones (Estado · Productos · Avance · Pendiente · Atención,
+el último sólo si aplica), en el mismo estilo con el que ahora contesta el chat, y
+**los PRODUCTOS INVOLUCRADOS entran al contexto** (alias del proyecto + cantidad +
+merma). El título del modal usa el **nombre** del proyecto.
+
+## 9. Tests
+
+35 nuevos en `tests/taller/test_ajustes_ago04.py`, incluido el caso de la imagen
+**de punta a punta** (dos proyectos viejos + `$karikari` + `agregar_producto` sin
+`@accion_0` → 2 aplicadas, 0 fallidas). Se actualizó
+`test_cotizaciones_bonitas::test_con_desglose_sale_la_tabla_...` (ahora necesita
+dos productos, porque con uno la regla nueva la oculta) y se sumó su contraparte
+`test_con_un_solo_producto_van_los_totales_pero_no_la_tabla`. Ruff (0.8.4) limpio;
+candados de comentarios `{# #}` multilínea (Bug C §14) y de Novedades, verdes.
+
+## 10. Deuda diseñada
+
+- **«Resumir pendientes» no es IA de punta a punta** (decisión): las listas son
+  consultas, la IA sólo pone la lectura. Y comparte la estación
+  `calendario_resumen` con el resumen del calendario, así que ambos se configuran
+  juntos en Gerencia → Chalanes.
+- Los botones de destino no cubren `correo` ni `solicitud_correccion` con pk (ese
+  va a la bandeja de correcciones); una `variacion` lleva a su producto porque su
+  CRUD se retiró en S-Fiscal-Estructura.
+- El `min-w-0` del calendario arregla el desborde **encogiendo** columnas (no es
+  un `transform: scale`), así que en pantallas muy angostas los chips truncan más.
+- La regla del producto único cuenta **bloques** (`filas`), no líneas: los procesos
+  de venta viven dentro de su bloque y no hacen que aparezca el desglose.

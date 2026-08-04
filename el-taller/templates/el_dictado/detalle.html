@@ -22,13 +22,16 @@
                         {% if a.aplicada %}✓{% elif a.error_al_aplicar %}✗{% elif not a.confirmada %}○{% else %}·{% endif %}
                         {{ a.descripcion }}
                     </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ a.tipo }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ a.etiqueta_accion }}</p>
                     {% if a.error_al_aplicar %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ a.error_al_aplicar }}</p>{% endif %}
                 </li>
                 {% empty %}
                 <li>{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin acciones" descripcion="El Chalán no produjo acciones aplicables para este dictado." icono="sparkles" %}</li>
                 {% endfor %}
             </ul>
+            {% comment %}LC 2026-08-04: los botones a lo que quedó creado, igual
+            que en el chat.{% endcomment %}
+            {% include "el_dictado/_chat_enlaces.html" with enlaces=dictado.enlaces_resultado %}
         </section>
     </div>
 

@@ -30,7 +30,8 @@
 
 <div class="grid gap-6 lg:grid-cols-4">
     {# Columna izquierda 75% — calendario con navegación + meses apilados. #}
-    <div class="lg:col-span-3 space-y-4">
+    {# LC 2026-08-04: `min-w-0` — sin él este grid item no encoge y el calendario saca scroll horizontal en móvil. #}
+    <div class="min-w-0 lg:col-span-3 space-y-4">
         {% comment %}LC 2026-07-29 (Oscar, general punto 3): «Nuevo evento» y
         «Resumir con el Chalán» pasan a la IZQUIERDA, en una sola fila ARRIBA de
         los botones de Hoy / Mes / Año. Antes vivían en la columna de la derecha,
@@ -46,11 +47,11 @@
             </button>
             {% if permisos_modulos.chalan %}
             <button type="button"
-                    hx-get="{% url 'calendario-resumen' %}?dias=14"
+                    hx-get="{% url 'calendario-resumen' %}"
                     hx-target="#modal-slot"
                     hx-swap="innerHTML"
                     class="inline-flex items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50/60 px-4 py-2.5 text-sm font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300"
-                    title="El Chalán resume tus entregas y tareas de los próximos 14 días">
+                    title="Todo lo que viene: hoy y las próximas 4 semanas al detalle, y de ahí en adelante en general">
                 🤖 Resumir con El Chalán
             </button>
             {% endif %}

@@ -153,7 +153,9 @@ def test_pdf_envuelve_cada_bloque_para_que_no_se_parta(proyecto_factory):
 
 def test_pdf_titulo_del_desglose_va_dentro_de_su_tabla(proyecto_factory):
     from apps.cotizaciones import services
-    cot = _cot_con_items(proyecto_factory)
+    # LC 2026-08-04: la tabla del desglose necesita más de un producto (con uno
+    # solo ya no se imprime — sería copia de la tablita de montos).
+    cot = _cot_con_items(proyecto_factory, n=2)
     html = services.construir_html_pdf(cot)
     # El título es una fila colspan de la MISMA tabla (no un <p> suelto antes).
     # (El padding bajó a 10pt con el interlineado apretado del 2026-07-28.)

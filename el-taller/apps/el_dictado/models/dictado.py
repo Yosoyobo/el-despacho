@@ -61,3 +61,14 @@ class Dictado(models.Model):
 
     def __str__(self) -> str:
         return f"dictado#{self.pk} '{self.texto_crudo[:40]}'"
+
+    @property
+    def enlaces_resultado(self) -> list[dict]:
+        """`[{url, etiqueta}]` de las entidades que quedaron al aplicar.
+
+        LC 2026-08-04 (Oscar): tras una acción, la respuesta del chat trae el
+        botón a la página más probable de visitar («Ir al proyecto»). Sale de
+        `DictadoAccion.entidad_tipo/entidad_id`, que los ejecutores ya escriben.
+        """
+        from ..presentacion import enlaces_de_dictado
+        return enlaces_de_dictado(self)

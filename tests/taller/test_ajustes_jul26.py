@@ -271,6 +271,11 @@ def test_el_pdf_alinea_los_numeros_a_la_derecha_y_el_concepto_a_la_izquierda(
     cot = _cot_con_linea(proyecto_factory(nombre="Ted Lasso"), admin)
     cot.incluir_desglose = True
     cot.save()
+    # LC 2026-08-04: con un solo producto la tabla del desglose ya no se imprime.
+    from apps.cotizaciones.models import CotizacionItem
+    CotizacionItem.objects.create(
+        cotizacion=cot, orden=1, concepto="Bolsas", descripcion="50 pz",
+        cantidad=50, precio_unitario=Decimal("90.00"))
 
     html = construir_html_pdf(cot)
     # Columnas numéricas a la derecha (montos + desglose = varias celdas).

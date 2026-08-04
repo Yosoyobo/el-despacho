@@ -242,9 +242,13 @@ def detalle(request, pk):
         ultima_visita = ultima_ubicacion_de(cliente=cliente)
     except Exception:  # noqa: BLE001 — la ubicación nunca tumba el perfil
         pass
+    # LC 2026-08-04 (Oscar): botón «+ Nuevo proyecto» para ESTE cliente. Se gatea
+    # con el permiso de crear proyectos, no con el de ver la cartera.
+    from lib.permisos import puede_editar_proyecto
     return render(request, "cartera/detalle.html", {
         "cliente": cliente,
         "puede_editar": puede_editar,
+        "puede_crear_proyecto": puede_editar_proyecto(request.user, None),
         "ultima_visita": ultima_visita,
         "contactos": list(cliente.contactos.all()),
         "proyectos_por_estado": proyectos_por_estado,

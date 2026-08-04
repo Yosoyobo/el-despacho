@@ -5,6 +5,66 @@
 
 ---
 
+## Novedades — El Chalán que sí cacha al cliente, respuestas con botón y el resumen de todo lo que viene (4 de agosto de 2026 — primera entrega de agosto)
+
+**El Chalán (el chat)**
+
+- **Ya cacha al cliente aunque lo escribas de corrido.** Escribir `$karikari` en
+  lugar de `$kari-kari` fallaba con «Cliente no encontrado». Ahora se reconoce
+  igual (sin espacios, sin acentos, sin puntuación y sin el «S.A. de C.V.»).
+- **«Créale un proyecto y agrégale los productos» ya funciona de corrido.** Antes
+  la primera acción creaba el proyecto y la segunda se quedaba preguntando «este
+  cliente tiene varios proyectos, ¿en cuál lo registro?». Si el proyecto se acaba
+  de crear en esa misma tanda, el producto se le cuelga a ése.
+- **Las respuestas son más cortas y visuales.** Cada acción propuesta ahora se ve
+  como una tarjeta con su etiqueta (**Crear proyecto**) y sus datos en renglones
+  («Nombre: …», «Cliente: …», «Fecha de entrega: 3 de agosto de 2026»). Se acabaron
+  los párrafos largos, los `**asteriscos**` y el «¿Procedo?» — para eso están los
+  botones **Confirmar** y **Descartar**.
+- **Al terminar te deja el botón para ir a lo que se creó**: «Ir al proyecto →»,
+  «Ir al cliente →», «Ir a la factura →», según lo que hayas hecho.
+
+**Calendario**
+
+- **«Resumir con El Chalán» ahora es la lista de todo lo que viene**: hoy, el
+  resto de la semana y las siguientes cuatro semanas al detalle, y de ahí en
+  adelante un renglón general («3 entregas entre el 14 sep y el 2 oct»).
+- Las listas van **numeradas**, con **nombres de proyecto** (ya no códigos) y en
+  **texto más grande**. Las **tareas atrasadas salen en amarillo** y con el
+  proyecto al lado. En **Siguientes entregas**, debajo de cada fecha vienen los
+  **productos con su cantidad**.
+- **En el celular el calendario ya cabe**: se acabó el barrido hacia los lados.
+
+**Dashboard**
+
+- El **buscador de proyectos** subió al mismo renglón de «Proyectos activos» y es
+  más grande y más largo.
+- **«Resumir pendientes» ahora usa IA**: arriba del reporte —que sigue siendo
+  exacto— El Chalán pone dos frases con lo que más urge hoy.
+
+**Clientes**
+
+- En la ficha de un cliente hay un botón **«+ Nuevo proyecto»** que abre el alta
+  con el cliente ya puesto. Si el cliente todavía no tiene proyectos, el botón
+  aparece en grande justo debajo del aviso.
+
+**Cotizaciones (el documento)**
+
+- **Con un solo producto ya no se imprime la tabla de «Desglose de Elementos»**
+  (era una copia de la tablita de arriba), pero los **impuestos y el total sí**
+  siguen apareciendo al prender el interruptor.
+- **Subtotal, impuestos y total van más apretados** y **siempre con centavos**
+  («IVA trasladado 5,403.20», no «5,403.2»). Las notas del final también quedaron
+  un poco más juntas.
+
+**Proyecto**
+
+- El **«Resumen de actividad»** cambió de estilo: en lugar de un párrafo, cinco
+  renglones cortos (Estado · Productos · Avance · Pendiente · Atención) y **toma
+  en cuenta los productos involucrados**.
+
+---
+
 ## Novedades — El documento sin huecos, tareas dictadas al Chalán y el calendario que cabe en el celular (29 de julio de 2026 — duodécima entrega)
 
 **En el documento de la cotización (el PDF)**
@@ -3049,10 +3109,10 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Tareas pendientes:** las tareas abiertas **de todo el equipo** (no sólo las tuyas), con su fecha y de quién es cada una; arriba el total. Picas el recuadro y te lleva a **Tareas**. Si tus permisos sólo alcanzan lo tuyo, sigues viendo sólo lo tuyo.
 - **Próximos eventos:** las siguientes entregas y tareas con fecha; cada una te lleva a su proyecto o a su tarea. **Nada de proyectos cancelados** — ni aquí ni en el calendario.
 - **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están el botón **📎** (adjuntar una foto al mensaje — un recibo, la muestra de un producto; solo aparece si el Chalán configurado sabe leer imágenes), **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
-  - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma; **solo de proyectos vivos** — lo que está en pausa, entregado, cerrado o cancelado ya no se produce, así que no aparece), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —no es una opinión de la IA— y solo trae las secciones que tus permisos alcanzan.
-  - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (se arma con datos, sin IA). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
+  - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma; **solo de proyectos vivos** — lo que está en pausa, entregado, cerrado o cancelado ya no se produce, así que no aparece), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —las listas son exactas, no una opinión de la IA— y solo trae las secciones que tus permisos alcanzan. **Arriba del reporte, El Chalán te pone dos frases** con lo que más urge hoy y qué conviene destrabar; si no responde, el reporte se muestra igual.
+  - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (las listas se arman con datos; la IA solo agrega la lectura de arriba). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
-- **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. "Ver Kanban completo" abre el tablero con todas las columnas.
+- **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. El **buscador** va en el mismo renglón del título (grande y largo: busca por nombre, cliente, código, producto, proveedor, equipo o contacto). "Ver tablero completo" abre el tablero con todas las columnas.
 - **Calendario:** el mes actual y el siguiente lado a lado, igual que la página de Calendario, con los eventos del día visibles.
 - **Tu tablero (KPIs):** ocho indicadores del negocio; los tres financieros traen una mini-gráfica de los últimos seis meses. Puedes ocultarlos o reordenarlos (arrastrando) desde "Editar tablero", y pedirle KPIs a la medida al asistente desde "KPIs custom".
 
@@ -3070,6 +3130,7 @@ Tus clientes B2B (restaurantes, heladerías, cafeterías, etc.).
 - **Datos de facturación (varias razones sociales):** al editar el cliente hay una sección donde agregas **todas las razones sociales con las que factura**, cada una con **su RFC en la misma línea**. Marca una como **Principal**: es la que se usa por default y la que aparece en su ficha. Una misma razón social puede aplicar para **dos clientes distintos** (el caso de Grupo Lazanto con Cueva y Kari Kari) — el sistema ya no lo bloquea.
 - **Detalle:** ves todos sus proyectos (con el **nombre en azul** para abrir y el **código** en gris) y el recuadro **"Identificación"** con **todas** sus razones sociales y RFC, más su **Referencia** (`$slug`: el nombre con el que se le menciona a El Chalán y con `$` en los textos). Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
 - **Ubicación y dirección fiscal:** el detalle muestra la **última ubicación** del cliente (tomada de las visitas del Checador, con botón 📍 al mapa) y su **dirección**. Al editar hay una casilla **"la dirección fiscal es la misma"**; si la destildas, capturas la **dirección fiscal** por separado.
+- **Arrancarle un proyecto:** en el detalle, el recuadro **Proyectos** trae el botón **"+ Nuevo proyecto"**, que abre el alta con **este cliente ya puesto**. Si todavía no tiene ninguno, el botón aparece en grande debajo del aviso «Sin proyectos todavía».
 - **Crear cliente sin salir:** desde el form de un proyecto nuevo hay un botón "+ Nuevo" al lado del selector de cliente.
 
 ---
@@ -3245,6 +3306,16 @@ Dos meses lado a lado (actual y siguiente). Cada día muestra hasta 3 chips con 
 - 🟡 tareas (color por prioridad)
 
 A la derecha hay un panel sticky con los próximos 90 días en lista y un botón "+ Nuevo evento" para agendar una tarea o un proyecto.
+
+**🤖 Resumir con El Chalán** (arriba a la izquierda) abre **la lista de todo lo que viene**, numerada y en texto grande:
+
+- **Hoy** · **Esta semana** (lo que queda) · **La próxima semana** · **En 2 semanas** · **En 3 semanas** · **En 4 semanas** — con el detalle de cada evento.
+- **Tareas:** todas las abiertas por fecha. Las **atrasadas salen en amarillo** y con el **nombre del proyecto** al lado.
+- **Siguientes entregas:** «fecha · proyecto» y debajo, como sub-viñetas, **los productos con su cantidad**.
+- **Más adelante:** un renglón general con cuántas entregas y tareas hay y en qué rango de fechas.
+- Arriba de todo, El Chalán agrega **una frase** sobre cómo se ve la carga. Si no responde, las listas salen igual (se arman con datos, no con IA).
+
+En el **celular** el calendario se ajusta al ancho de la pantalla — sin barrido horizontal.
 
 ---
 
@@ -3442,8 +3513,11 @@ solo aparecen si tienes permiso de usar El Chalán.
 - **Sugerir categoría de un gasto:** al registrar un egreso en Tesorería, el
   botón **🤖 Sugerir categoría** elige el centro de costo según la descripción.
 - **Resumir actividad de un proyecto:** en el detalle de un proyecto, el botón
-  **🤖 Resumir actividad** abre un resumen de en qué va (tareas, comentarios y
-  movimientos recientes).
+  **🤖 Resumir actividad** abre un resumen corto de en qué va, en cinco renglones:
+  **Estado** (con el cliente), **Productos** (qué se está produciendo y cuántas
+  piezas), **Avance**, **Pendiente** y —sólo si aplica— **Atención**. Toma en
+  cuenta los productos involucrados, las tareas, los comentarios y los movimientos
+  recientes.
 
 ### En el sidebar — "Chalanes"
 
@@ -3499,6 +3573,19 @@ documento que mandaste); un ingreso o egreso **anulado no se toca** —se captur
 uno nuevo—; y **el monto de un ingreso o egreso no se puede cambiar**, porque su
 movimiento contable ya quedó registrado y no se reajusta solo. Si el importe
 está mal, anúlalo y captúralo de nuevo (así queda la huella de la corrección).
+
+**Cómo se leen sus respuestas.** Cada acción que te propone se ve como una
+tarjeta con **su etiqueta** (por ejemplo **Crear proyecto**) y **sus datos en
+renglones** («Nombre: Bandanas NIKE RUN», «Cliente: Optimist», «Fecha de entrega:
+3 de agosto de 2026»), con su casilla para incluirla o no. Abajo, **Confirmar** o
+**Descartar**. Al confirmar, la respuesta trae el **botón para ir a lo que quedó**
+(«Ir al proyecto →», «Ir al cliente →», «Ir a la factura →»). Y si algo falla, te
+dice exactamente qué faltó en esa acción.
+
+**Encadenar pasos en una sola frase.** «Créale a $karikari el proyecto "Playeras
+Extra" y agrégale 18 playeras Kari Kari» crea el proyecto y le cuelga el producto
+a **ese** proyecto nuevo (no te pregunta a cuál de los viejos). El nombre del
+cliente lo puedes escribir **de corrido** (`$karikari` para «KARI KARI»).
 
 Y lo que NO puede hacer (por seguridad): borrar entidades, mover dinero entre cuentas sin tu autorización, mandar emails externos, modificar facturación fiscal.
 
@@ -3588,8 +3675,10 @@ resto del texto.
 Esas tablas van **centradas**, con el concepto a la izquierda y los números a la
 derecha, y con **recuadro gris claro** (igual que la tabla del Desglose; son las
 únicas del documento con líneas). Ni un producto ni el «Desglose de Elementos» se
-parten a media página. Los montos van sin IVA y sin centavos cuando terminan en
-`.00`.
+parten a media página. Los montos de los productos van sin IVA y sin centavos
+cuando terminan en `.00`; en cambio **Subtotal, IVA trasladado, Retención de ISR,
+Retención de IVA y Total llevan SIEMPRE los dos centavos**, y ese bloque va con el
+interlineado apretado (las notas del final también).
 
 **Verlo y bajarlo:** «Ver» abre la **vista previa** —el documento como una hoja
 con sus márgenes— con un botón **«⬇ Bajar PDF»** hasta arriba (y otro para
@@ -3616,7 +3705,7 @@ En el recuadro **Documento** (a la derecha, en la página de la cotización):
 
 | Control | Qué hace |
 |---|---|
-| **Incluir desglose y montos** | Apagado, el PDF sólo lleva la tabla de montos de cada producto. Prendido, agrega al final el **Desglose de Elementos** (todos los conceptos juntos, con una casilla para que el cliente vaya marcando) y el cálculo de impuestos con el total. |
+| **Incluir desglose y montos** | Apagado, el PDF sólo lleva la tabla de montos de cada producto. Prendido, agrega al final el **Desglose de Elementos** (todos los conceptos juntos, con una casilla para que el cliente vaya marcando) y el cálculo de impuestos con el total. **Con un solo producto la tabla del desglose NO se imprime** (sería una copia de la tablita de arriba), pero los **impuestos y el total sí**. |
 | **Forma de pago** | **Anticipo** (usa el porcentaje que hayas capturado; si no hay, 50%) o **Un solo pago**. Cambia la última nota del PDF; el recuadro te muestra cómo va a quedar. |
 
 El título y los dos controles se heredan a la siguiente versión.
