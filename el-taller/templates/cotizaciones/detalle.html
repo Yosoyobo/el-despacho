@@ -11,6 +11,10 @@ cotización baja a subtítulo (decisión Oscar: nombre > código, siempre).{% en
 {% endwith %}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
+    {% comment %}LC 2026-08-04 R3 (Oscar): «en la página de una cotización debemos de
+    ver la versión en algún lado». Va con las pastillas de arriba, junto al estado —
+    lo primero que se lee al abrirla. Las standalone (sin versión) no la muestran.{% endcomment %}
+    {% if cot.version %}<span class="badge badge-brand tabular-nums" title="Versión de la cotización de este proyecto">{{ cot.version_label }}</span>{% endif %}
     {% with estado=cot.estado_visible %}
     <span class="badge {% if estado == 'aprobada' %}badge-success{% elif estado == 'rechazada' or estado == 'anulada' %}badge-error{% elif estado == 'vencida' %}badge-warning{% elif estado == 'enviada' %}badge-brand{% else %}badge-gray{% endif %}">{{ estado }}</span>
     {% endwith %}

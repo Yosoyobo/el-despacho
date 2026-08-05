@@ -951,3 +951,98 @@ window.abrirRickroll = function () {
   }
   document.body.addEventListener('htmx:afterSwap', escanear);
 })();
+
+/* ── Guardar flotante (LC 2026-08-04 R3, Oscar) ─────────────────────────────
+   «En toda la página, los botones de Guardar deben de ir arriba a la derecha, y
+   flotar encima de todo.»
+
+   En vez de mover el botón de 25 plantillas, se monta una copia FLOTANTE arriba
+   a la derecha que aparece en cuanto el Guardar de verdad se sale de la pantalla,
+   y al picarla se hace click en el original: así el form, HTMX, el `form=` y
+   cualquier hx-post siguen funcionando igual (clonar el botón o moverlo de sitio
+   sí los rompería).
+
+   Reglas:
+   - Sólo el PRIMER submit visible de la página; los modales (`#modal-slot`) no
+     participan — ya traen su pie de botones.
+   - Opt-out: `data-sin-guardar-flotante` en el botón o en su form.
+   - Se esconde mientras hay un modal abierto y refleja el `disabled` del original.
+   - Se re-escanea en cada swap de HTMX (el botón puede llegar por OOB, como el
+     Deshacer/Guardar del detalle de proyecto). */
+(function () {
+  'use strict';
+  var SEL = 'button[type="submit"], input[type="submit"]';
+  var barra = null, boton = null, original = null, observer = null;
+  var ultimoFuera = false;  // ¿el Guardar original está fuera de la pantalla?
+
+  function esCandidato(el) {
+    if (el.closest('#modal-slot') || el.closest('[data-modal-slot-close]')) return false;
+    if (el.hasAttribute('data-sin-guardar-flotante')) return false;
+    var f = el.closest('form');
+    if (f && f.hasAttribute('data-sin-guardar-flotante')) return false;
+    // Un botón escondido (display:none) no cuenta como el Guardar de la página.
+    return !!(el.offsetParent || el.getClientRects().length);
+  }
+
+  function etiqueta(el) {
+    var t = (el.tagName === 'INPUT' ? el.value : el.textContent) || '';
+    t = t.replace(/\s+/g, ' ').trim();
+    return t.length > 24 ? t.slice(0, 24) + '…' : (t || 'Guardar');
+  }
+
+  function montarBarra() {
+    if (barra) return;
+    barra = document.createElement('div');
+    // Debajo del header sticky (z-20) y por debajo de los modales (z-50).
+    barra.className = 'fixed right-4 top-[4.75rem] z-40 hidden sm:right-6';
+    barra.setAttribute('data-guardar-flotante', '');
+    boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = 'btn-primario shadow-theme-lg';
+    boton.addEventListener('click', function () {
+      if (original && !original.disabled) original.click();
+    });
+    barra.appendChild(boton);
+    document.body.appendChild(barra);
+  }
+
+  function hayModal() {
+    var slot = document.getElementById('modal-slot');
+    return !!(slot && slot.children.length);
+  }
+
+  function pintar(visible) {
+    if (!barra || !original) return;
+    var mostrar = visible && !hayModal() && !original.disabled;
+    barra.classList.toggle('hidden', !mostrar);
+  }
+
+  function escanear() {
+    var candidatos = Array.prototype.slice.call(document.querySelectorAll(SEL)).filter(esCandidato);
+    var nuevo = candidatos[0] || null;
+    if (nuevo === original) return;
+    if (observer) { observer.disconnect(); observer = null; }
+    original = nuevo;
+    if (!original) { if (barra) barra.classList.add('hidden'); return; }
+    montarBarra();
+    boton.textContent = etiqueta(original);
+    boton.title = 'Ir arriba no hace falta: guarda desde aquí';
+    // Aparece justo cuando el original deja de verse.
+    observer = new IntersectionObserver(function (entradas) {
+      entradas.forEach(function (e) { ultimoFuera = !e.isIntersecting; pintar(ultimoFuera); });
+    }, { rootMargin: '-72px 0px 0px 0px' });
+    observer.observe(original);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', escanear);
+  } else {
+    escanear();
+  }
+  document.body.addEventListener('htmx:afterSettle', function () { escanear(); pintar(ultimoFuera); });
+  // Un modal abierto tapa la barra (y al revés); el slot avisa cuándo cambia.
+  var slot = document.getElementById('modal-slot');
+  if (slot && window.MutationObserver) {
+    new MutationObserver(function () { pintar(ultimoFuera); }).observe(slot, { childList: true });
+  }
+})();

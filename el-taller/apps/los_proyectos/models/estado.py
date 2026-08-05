@@ -82,3 +82,33 @@ class EstadoProyecto(models.Model):
 
     def __str__(self):
         return self.label
+
+
+# LC 2026-08-04 R3 (Oscar): «regla para Próximos eventos: solo mostrar fechas de
+# compromiso para proyectos con status a partir de En proceso de diseño».
+#
+# Se resuelve por el `orden` del catálogo, no por una lista de slugs a mano: si el
+# super_admin reordena o agrega un estado en Gerencia, la regla lo sigue. Con el
+# catálogo sembrado quedan dentro diseño (30), producción (40), entregado (50),
+# cerrado (55) y en pausa (60), y quedan fuera por cotizar (10) y esperando
+# respuesta (20) — un proyecto que ni se ha cotizado no tiene por qué ocupar la
+# agenda de nadie.
+SLUG_DESDE_COMPROMISO = "en_proceso_diseno"
+
+
+def slugs_con_compromiso_visible() -> set[str]:
+    """Estados a partir de los cuales la fecha de entrega ya cuenta como agenda.
+
+    Defensivo: si el catálogo no está sembrado (tests, base nueva), cae a la lista
+    equivalente de `ESTADOS_BASE`.
+    """
+    try:
+        corte = EstadoProyecto.objects.filter(slug=SLUG_DESDE_COMPROMISO).values_list("orden", flat=True).first()
+        if corte is not None:
+            return set(
+                EstadoProyecto.objects.filter(orden__gte=corte).values_list("slug", flat=True)
+            )
+    except Exception:  # pragma: no cover - defensivo (DB no disponible)
+        pass
+    corte_base = dict((s, o) for s, _l, _c, o, _t in ESTADOS_BASE).get(SLUG_DESDE_COMPROMISO, 30)
+    return {s for s, _l, _c, o, _t in ESTADOS_BASE if o >= corte_base}
