@@ -3,8 +3,11 @@
 por OOB tras crear un producto inline (para que la tarjeta nueva traiga su pk y NO se
 duplique al siguiente autosave). LC Fase 2: sin acordeón — todas las tarjetas se listan
 (colapsadas por default, cada una expandible por su cuenta; drag & drop para reordenar).{% endcomment %}
+{% comment %}LC 2026-08-04 (Oscar): el color de cada tarjeta ya NO se rota por
+POSICIÓN (antes con el rotador de Django) — se deriva del producto con el filtro
+`color_tarjeta`, así que es el mismo siempre, aunque la arrastres, la apagues o
+recargues la página.{% endcomment %}
 {{ formset.management_form }}
 {% for f in formset %}
-    {% cycle 'brand' 'success' 'warning' 'blue-light' 'orange' as cardcolor silent %}
-    {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=cardcolor %}
+    {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance.pk|color_tarjeta con_autosave=con_autosave %}
 {% endfor %}

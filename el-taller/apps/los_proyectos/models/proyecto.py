@@ -108,6 +108,11 @@ class Proyecto(models.Model):
 
     # LC 2026-07: soft-archive (proyectos de prueba/duplicados). Distinto de
     # «Cancelado» (estado real). Se oculta de listas/kanban/selectores.
+    # LC 2026-08-04 (Oscar): orden manual de las tarjetas del Kanban dentro de su
+    # columna («quiero arrastrar los proyectos para cambiar su orden; se guarda
+    # obvio, es meramente visual»). Compartido por todo el equipo: si alguien
+    # acomoda una columna, todos la ven así. No afecta la lista ni los reportes.
+    orden_kanban = models.IntegerField(default=0, db_index=True)
     archivado = models.BooleanField(default=False, db_index=True)
     archivado_en = models.DateTimeField(null=True, blank=True)
     archivado_por = models.ForeignKey(

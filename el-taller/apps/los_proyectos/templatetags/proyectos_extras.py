@@ -210,3 +210,28 @@ def estado_label(estado: str) -> str:
         if slug == estado:
             return label
     return estado
+
+
+# LC 2026-08-04 (Oscar): «que dejen de cambiar de color cada toggle o
+# movimiento». El color de la tarjeta de producto se rotaba con `{% cycle %}`,
+# es decir por POSICIÓN: al arrastrar una tarjeta o apagar un toggle (que la
+# movía de lugar) TODAS se recoloreaban. Ahora el color se deriva del producto,
+# así que es estable para siempre: la tarjeta de las gorras es verde hoy, al
+# recargar y después de moverla.
+_COLORES_TARJETA = ("brand", "success", "warning", "blue-light", "orange")
+
+
+@register.filter(name="color_tarjeta")
+def color_tarjeta(pk) -> str:
+    """Token de color estable para la tarjeta de un producto del proyecto.
+
+    Determinista por pk (no usa `hash()`, que en Python varía entre procesos).
+    Las líneas sin guardar todavía no tienen pk → `brand`, el color por defecto.
+    """
+    try:
+        n = int(pk)
+    except (TypeError, ValueError):
+        return "brand"
+    if n <= 0:
+        return "brand"
+    return _COLORES_TARJETA[n % len(_COLORES_TARJETA)]

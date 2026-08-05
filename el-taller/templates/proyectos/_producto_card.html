@@ -46,6 +46,31 @@ Render fino LC 2026-07-28 (Oscar):
             <span data-resumen class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ f.instance.cantidad|default:1 }} pz - {% if f.instance.pk and f.instance.servicio_id %}{{ f.instance.nombre_visible }}{% else %}Nuevo producto{% endif %} - {{ f.instance.precio_efectivo|dinero }}</span>
             <svg data-chevron class="h-4 w-4 shrink-0 text-gray-400 transition-transform{% if f.instance.pk and not f.errors %} -rotate-90{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+        {% comment %}LC 2026-08-04 (Oscar): el toggle «incluir» vive en la CABECERA
+        para que se vea también con la tarjeta colapsada (antes estaba en el pie,
+        dentro del cuerpo que se esconde). Al lado, un «Duplicar» ultra chico y
+        discreto. Ninguno despliega la tarjeta — el handler de `data-card-barra`
+        salta labels y botones que no sean el del título.{% endcomment %}
+        <div class="flex shrink-0 items-center gap-1">
+            <label class="inline-flex cursor-pointer items-center" title="Incluir esta línea en el cálculo del proyecto">
+                <span class="relative inline-flex h-5 w-9 shrink-0 items-center">
+                    {{ f.incluir_en_calculo }}
+                    <span aria-hidden="true" class="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-brand-500 dark:bg-gray-700"></span>
+                    <span aria-hidden="true" class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-theme-xs transition peer-checked:translate-x-4"></span>
+                </span>
+            </label>
+            {% comment %}Duplicar sólo donde hay autoguardado (el detalle): clona la
+            línea YA GUARDADA en el servidor y recarga. `hx-params="none"` evita que
+            el POST arrastre todo el formset del proyecto.{% endcomment %}
+            {% if f.instance.pk and con_autosave %}
+            <button type="button" data-duplicar-producto
+                    hx-post="{% url 'proyectos-duplicar-producto' f.instance.proyecto_id f.instance.pk %}"
+                    hx-params="none" hx-swap="none"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    class="rounded p-1 text-[11px] leading-none text-gray-400 transition hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/[0.06] dark:hover:text-brand-400"
+                    title="Duplicar esta línea (con sus procesos) debajo" aria-label="Duplicar producto">⧉</button>
+            {% endif %}
+        </div>
         {% comment %}La foto se pega o se sube desde aquí (Ctrl/Cmd+V tras picar el
         recuadro; doble clic abre el selector). Si la línea tiene alias, la foto
         queda para este uso; si no, para el producto del catálogo — lo decide el
@@ -81,9 +106,9 @@ Render fino LC 2026-07-28 (Oscar):
         se reduce a un «+» grande y se mete FORZOSO en esta misma fila; el espacio
         se lo quita a Categoría (1fr → 0.7fr). Antes vivía en su propio renglón
         alineado a la derecha y se leía como si no perteneciera a nada.{% endcomment %}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.7fr_1.4fr_72px_72px_120px_36px] md:items-end">
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.8fr_1.5fr_58px_58px_104px_36px] md:items-end">
             <div>
-                <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Categoría</label>
+                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Categoría</label>
                 <select class="cat-filtro w-full" data-cat-filtro>
                     <option value="">Todas</option>
                     {% for c in categorias_disponibles %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}
@@ -98,7 +123,7 @@ Render fino LC 2026-07-28 (Oscar):
                             class="shrink-0 rounded p-0.5 text-gray-400 transition hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/[0.06] dark:hover:text-brand-400">
                         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V4a2 2 0 012-2h8l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                     </button>
-                    <label class="block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Producto</label>
+                    <label class="block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Producto</label>
                 </div>
                 {% comment %}El alias, oculto mientras no se use. El select del catálogo SIEMPRE se postea (es el vínculo real).{% endcomment %}
                 <div data-alias-campo class="{% if not f.instance.nombre_proyecto %}hidden {% endif %}mb-1">
@@ -111,15 +136,15 @@ Render fino LC 2026-07-28 (Oscar):
                 {{ f.servicio }}
             </div>
             <div>
-                <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cantidad</label>
+                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cantidad</label>
                 {{ f.cantidad }}
             </div>
             <div>
-                <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas extra (muestras, control de calidad). Suman costo, no se cobran.">Merma</label>
+                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas extra (muestras, control de calidad). Suman costo, no se cobran.">Merma</label>
                 {{ f.merma }}
             </div>
             <div>
-                <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Precio unitario</label>
+                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Precio unitario</label>
                 {{ f.precio_unitario }}
             </div>
             {% comment %}El «+» de los procesos de VENTA (lo que se le cobra al
@@ -160,17 +185,17 @@ Render fino LC 2026-07-28 (Oscar):
         de varias líneas que crece solo: como la fila alinea al fondo
         (`md:items-end`), al crecer empuja su etiqueta HACIA ARRIBA en vez de
         estirar la tarjeta hacia abajo.{% endcomment %}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.4fr_120px_1.6fr] md:items-end">
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.2fr_84px_2.6fr] md:items-end">
             <div>
-                <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Proveedor</label>
+                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Proveedor</label>
                 {{ f.proveedor }}
             </div>
             <div>
-                <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo unitario</label>
+                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo unitario</label>
                 {{ f.costo_unitario }}
             </div>
             <div>
-                <label for="{{ f.nota.id_for_label }}" class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                <label for="{{ f.nota.id_for_label }}" class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
                        title="Sale en la cotización, debajo del nombre del concepto.">Descripción</label>
                 {{ f.nota }}
             </div>
@@ -180,7 +205,7 @@ Render fino LC 2026-07-28 (Oscar):
         <div data-procesos>
             <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.4fr_120px_auto_auto] md:items-end" data-impresion>
                 <div>
-                    <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
+                    <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
                     <select class="imp-proveedor w-full" data-select-buscable>
                         <option value="">— Sin impresión —</option>
                         {% for prov in proveedores_activos %}
@@ -188,9 +213,17 @@ Render fino LC 2026-07-28 (Oscar):
                         {% endfor %}
                     </select>
                 </div>
+                {% comment %}LC 2026-08-04 (Oscar): aquí se puede escribir la CUENTA
+                — «35+15+15» por tres bordados (frontal y dos laterales). La cuenta se
+                queda escrita tal cual y el total (65) es el que se usa; el resultado
+                se muestra al lado. Por eso es `type="text"`: un input numérico ni
+                deja teclear el «+».{% endcomment %}
                 <div>
-                    <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo</label>
-                    <input type="number" step="0.01" min="0" class="imp-costo w-full" placeholder="0.00" value="{% if f.proc_impresion %}{{ f.proc_impresion.costo|stringformat:'.2f' }}{% endif %}">
+                    <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo</label>
+                    <input type="text" inputmode="text" autocomplete="off" class="imp-costo w-full" placeholder="0.00 o 35+15+15"
+                           title="Acepta una cuenta: escribe 35+15+15 y se suma solo (la cuenta se queda escrita)."
+                           value="{% if f.proc_impresion %}{% if f.proc_impresion.costo_expr %}{{ f.proc_impresion.costo_expr }}{% else %}{{ f.proc_impresion.costo|stringformat:'.2f' }}{% endif %}{% endif %}">
+                    <span data-imp-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span>
                 </div>
                 <div class="flex items-end pb-2">
                     <label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma).">
@@ -241,13 +274,7 @@ Render fino LC 2026-07-28 (Oscar):
     renglón (`order-last w-full`); en `sm` vuelve a su lugar de siempre.{% endcomment %}
     <div class="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div class="flex items-center gap-2">
-            <label class="inline-flex cursor-pointer items-center" title="Incluir esta línea en el cálculo del proyecto">
-                <span class="relative inline-flex h-5 w-9 shrink-0 items-center">
-                    {{ f.incluir_en_calculo }}
-                    <span aria-hidden="true" class="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-brand-500 dark:bg-gray-700"></span>
-                    <span aria-hidden="true" class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-theme-xs transition peer-checked:translate-x-4"></span>
-                </span>
-            </label>
+            {# El toggle «incluir» subió a la cabecera (visible con la tarjeta colapsada). #}
             <button type="button"
                     class="producto-eliminar inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-200 bg-white text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10"
                     title="Quitar producto" aria-label="Quitar producto"

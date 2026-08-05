@@ -57,6 +57,12 @@ class ProyectoProductoProceso(models.Model):
     # (fijo) del proceso; si es True, es el costo POR PIEZA y se multiplica por
     # las piezas producidas (cantidad + merma del producto padre).
     costo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # LC 2026-08-04 (Oscar): «quiero poder escribir 35+15+15 por 3 bordados,
+    # frontal y 2 laterales, y que se sume naturalmente y lo deje así». Aquí se
+    # guarda LA CUENTA tal como la escribió el usuario; `costo` guarda su
+    # resultado (65.00), que es lo único que entra a los cálculos. Vacío = el
+    # costo se capturó como un número pelón. Ver `services_procesos`.
+    costo_expr = models.CharField(max_length=120, blank=True, default="")
     # S-LC-Proyecto-V2 (Oscar): impresión suele ser por pieza; viáticos/renta
     # suelen ser fijos. El default lo pone el form/data-migration por tipo.
     por_pieza = models.BooleanField(default=False)

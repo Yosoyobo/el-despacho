@@ -101,9 +101,11 @@ class ProyectoProducto(models.Model):
 
     class Meta:
         db_table = "proyectos_producto"
-        # LC Fase 2: incluidas primero (toggle On sube al tope), luego por el
-        # orden manual del drag & drop, y por antigüedad al final.
-        ordering = ["-incluir_en_calculo", "orden", "creado_en"]
+        # LC 2026-08-04 (Oscar): «prender y apagar toggles no debe cambiar el
+        # orden». Se quitó `-incluir_en_calculo` del ordering — mandaba las
+        # incluidas al tope, así que apagar una línea la reacomodaba al recargar.
+        # El orden lo manda SOLO el arrastre (`orden`), y por antigüedad al final.
+        ordering = ["orden", "creado_en"]
         verbose_name = "producto del proyecto"
         verbose_name_plural = "productos del proyecto"
 
