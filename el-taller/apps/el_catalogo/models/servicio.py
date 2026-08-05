@@ -35,6 +35,22 @@ class Servicio(models.Model):
         blank=True,
         related_name="servicios",
     )
+    # LC 2026-08-04 (Oscar): «el proveedor que se le pone a un proyecto los liga
+    # de forma fuerte; si en un proyecto algo se asigna a otro proveedor, se le
+    # liga también, pero el principal (primero) se mantiene».
+    #
+    # El «primero» NO podía ser el primero de la M2M: `Proveedor.Meta.ordering`
+    # es alfabético, así que ligar un proveedor nuevo podía volverlo el primero
+    # y cambiarle el default a todos los proyectos siguientes. Con este FK el
+    # principal es explícito: los proveedores que se ligan desde un proyecto
+    # entran a la M2M y NUNCA lo mueven (sólo lo ocupan si estaba vacío).
+    proveedor_principal = models.ForeignKey(
+        "el_catalogo.Proveedor",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="productos_principales",
+        help_text="El que surte este producto por default. Los demás quedan como alternativas.",
+    )
     # 2026-07: calculadora de costos por producto (usada solo por productos de
     # ciertos proveedores, p. ej. "Simil Cuero Plymouth"). Guarda los insumos
     # capturados: {"materiales": [4 montos], "sublimacion": [4 montos],
@@ -72,6 +88,20 @@ class Servicio(models.Model):
 
     def __str__(self) -> str:
         return f"{self.nombre} ({self.categoria.nombre})"
+
+    @property
+    def proveedor_default(self):
+        """Quién surte este producto por default (LC 2026-08-04).
+
+        **Fuente única** del proveedor que se autocompleta en la tarjeta de
+        producto y del que se muestra en la etiqueta del dropdown. Prefiere el
+        `proveedor_principal` explícito; si no hay (catálogo viejo), cae al
+        primero activo de la M2M — el comportamiento de siempre.
+        """
+        principal = self.proveedor_principal
+        if principal is not None and principal.activo:
+            return principal
+        return next((p for p in self.proveedores.all() if p.activo), None)
 
     @property
     def margen_porcentaje(self) -> float:

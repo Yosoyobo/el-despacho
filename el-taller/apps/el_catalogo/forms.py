@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 
 from .models import (
     CategoriaProveedor,
@@ -122,7 +123,7 @@ class ServicioForm(forms.ModelForm):
         # consolidó a 'pz' (fija por dentro, sin selector) y el estado
         # «Disponible» se jubiló (archivar vive en su propio botón). Ambos
         # campos salen del form.
-        fields = ["nombre", "descripcion_default", "costo", "precio_base", "categoria", "proveedores"]
+        fields = ["nombre", "descripcion_default", "costo", "precio_base", "categoria", "proveedores", "proveedor_principal"]
         labels = {
             "nombre": "Nombre",
             "descripcion_default": "Descripción",
@@ -153,6 +154,23 @@ class ServicioForm(forms.ModelForm):
             self.fields["proveedores"].required = False
             self.fields["proveedores"].label = "Proveedores aplicables"
             self.fields["proveedores"].help_text = "Marca quién te puede surtir este producto. Opcional."
+        # LC 2026-08-04 (Oscar): el PRINCIPAL es explícito. Es el que se
+        # autocompleta en la tarjeta del proyecto y el que sale en la etiqueta
+        # del dropdown de productos; los proveedores que se ligan desde un
+        # proyecto entran como alternativas y NO se lo quitan.
+        if "proveedor_principal" in self.fields:
+            campo = self.fields["proveedor_principal"]
+            activos = Proveedor.objects.filter(activo=True).order_by("razon_social")
+            actual = getattr(self.instance, "proveedor_principal_id", None)
+            if actual:  # un principal archivado sigue siendo una opción válida
+                activos = Proveedor.objects.filter(
+                    Q(activo=True) | Q(pk=actual)
+                ).order_by("razon_social")
+            campo.queryset = activos
+            campo.required = False
+            campo.empty_label = "— Sin principal —"
+            campo.label = "Proveedor principal"
+            campo.help_text = "El que surte por default. Los demás quedan como alternativas."
 
     def clean_costo(self):
         v = self.cleaned_data.get("costo")

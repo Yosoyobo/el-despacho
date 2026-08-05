@@ -38,3 +38,14 @@ class LosProyectosConfig(AppConfig):
                           dispatch_uid="proyectos_alias_cache", weak=False)
         post_delete.connect(_invalidar_alias, sender=ProyectoProducto,
                             dispatch_uid="proyectos_alias_cache_del", weak=False)
+
+        # LC 2026-08-04: el proveedor que se le pone a la línea de un proyecto se
+        # liga al producto del catálogo (sin mover al principal). Ver
+        # signals_catalogo. `weak=False`: la función es de módulo, pero se
+        # mantiene el patrón del archivo para que nadie lo cambie sin pensarlo.
+        from apps.los_proyectos.signals_catalogo import (
+            vincular_proveedor_al_catalogo,
+        )
+
+        post_save.connect(vincular_proveedor_al_catalogo, sender=ProyectoProducto,
+                          dispatch_uid="proyectos_vincula_proveedor", weak=False)

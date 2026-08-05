@@ -26,7 +26,11 @@ urlpatterns = [
     path("<int:pk>/agregar-producto", views.agregar_producto_modal, name="proyectos-agregar-producto"),
     path("<int:pk>/quitar-producto/<int:prod_pk>", views.quitar_producto, name="proyectos-quitar-producto"),
     # LC Fase 2: persistir el orden (drag & drop) de las tarjetas de producto.
+    # LC 2026-08-04 R3: orden manual de las tarjetas del Kanban (compartido).
+    path("reordenar-kanban", views.reordenar_kanban, name="proyectos-reordenar-kanban"),
     path("<int:pk>/reordenar-productos", views.reordenar_productos, name="proyectos-reordenar-productos"),
+    # LC 2026-08-04 (Oscar): «⧉» de la tarjeta — clona la línea con sus procesos.
+    path("<int:pk>/duplicar-producto/<int:prod_pk>", views.duplicar_producto, name="proyectos-duplicar-producto"),
     # LC 2026-07-26: foto del producto desde la tarjeta del proyecto (pegar o
     # subir). `prod_pk` es de la LÍNEA — el destino (uso vs catálogo) lo decide
     # el alias, así que no hace falta pasarlo por la URL.
