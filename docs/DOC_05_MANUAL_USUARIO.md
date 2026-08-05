@@ -5,6 +5,80 @@
 
 ---
 
+## Novedades — Guardar que te sigue, tarjetas que no se mueven y cuentas escritas en el costo (4 de agosto de 2026)
+
+**En todas las páginas**
+
+- **El botón Guardar te sigue.** En cuanto el Guardar de la página se sale de la
+  pantalla, aparece uno flotando arriba a la derecha, encima de todo. Ya no hay
+  que subir hasta arriba para guardar un formulario largo.
+
+**Tarjeta de producto del proyecto**
+
+- **Cada tarjeta conserva SU color.** Antes el color se repartía por posición, así
+  que al arrastrar una tarjeta o apagar un toggle se recoloreaban todas. Ahora el
+  color sale del producto: es el mismo hoy, mañana y después de moverla.
+- **Prender y apagar el toggle ya no reacomoda nada.** La línea se atenúa en su
+  lugar. El orden lo manda sólo el arrastre.
+- **El toggle se ve con la tarjeta cerrada**, junto al resumen, para poder prender
+  y apagar líneas sin abrir cada una.
+- **Botón «⧉» para duplicar** (chiquito, junto al toggle): copia la línea completa
+  —cantidades, precio, costo, proveedor, Descripción, impresión y procesos— y la
+  deja justo debajo.
+- **En el costo de Impresión puedes escribir la cuenta.** Para tres bordados
+  (frontal y dos laterales) escribe `35+15+15`: **la cuenta se queda escrita** y al
+  lado aparece el total (`= $65.00`), que es el que se usa en todos los cálculos.
+  También acepta restas.
+- **Letras y recuadros más justos**: los títulos de los campos son más chicos,
+  Cantidad y Merma más angostos, el Costo unitario más angosto y la **Descripción
+  más ancha**, con letra chica y un tope de unos 4 renglones (de ahí en adelante
+  scrollea por dentro en lugar de estirar la tarjeta).
+
+**Proveedores**
+
+- **El proveedor que le pones a un producto dentro de un proyecto se guarda en el
+  catálogo.** Queda ligado a ese producto como quien puede surtirlo, y la próxima
+  vez ya aparece marcado en su ficha.
+- **El principal no se mueve.** En la ficha del producto hay un campo nuevo
+  **★ Proveedor principal**: es el que se autocompleta y el que aparece junto al
+  nombre en los buscadores. Los que se ligan desde un proyecto entran como
+  alternativas y nunca le quitan el lugar.
+
+**Página del proyecto**
+
+- **«+ Crear producto nuevo en el catálogo» se volvió a leer**: se ve la palabra
+  Categoría, los recuadros de Cantidad y Merma son angostos y **todos los campos
+  dicen qué son** (antes había un «1» y un «0» sueltos).
+- **«+ Nuevo ingreso» y «+ Nuevo egreso» viven dentro de su propio recuadro**,
+  abajo y centrados, para no confundir cuál es de cuál.
+- **Comentarios del proyecto quedó mucho más compacto.**
+
+**Tablero (Kanban)**
+
+- **Arrastra los proyectos para acomodarlos dentro de su columna.** El orden se
+  guarda y lo ve todo el equipo. Arrastrar a OTRA columna sigue cambiando el
+  estado, como siempre.
+
+**Inicio (Dashboard)**
+
+- El texto del **buscador de proyectos** es más chico.
+- **«Próximos eventos» ya sólo muestra entregas de proyectos que van en serio**:
+  de «En proceso de diseño» en adelante. Un proyecto por cotizar o esperando
+  respuesta no ocupa lugar ahí. En la página del Calendario se siguen viendo todas.
+- A los eventos se les **quitó la palabra «Compromiso»**: queda 📦 y el nombre del
+  proyecto.
+
+**El Chalán**
+
+- Los botones **«🤖 Redactar» son grises** — antes eran azules y se confundían con
+  los de Guardar.
+
+**Cotizaciones**
+
+- La página de una cotización **muestra su versión** (`v1`, `v2`…) junto al estado.
+
+---
+
 ## Novedades — La ganancia por pieza bien calculada, la descripción del producto que viaja a la cotización y el PDF más apretado (4 de agosto de 2026)
 
 **Tarjeta de producto del proyecto**
@@ -3095,6 +3169,13 @@ El Despacho vive en tres direcciones:
 | **gerencia.learningcenter.mx** | Configuración del sistema + tablero ejecutivo | Super admin y quien tenga el permiso |
 | **recepcion.learningcenter.mx** | Portal para clientes externos | Próximamente |
 
+### El botón Guardar te sigue
+
+En cualquier página con formulario, cuando el botón **Guardar** se sale de la
+pantalla al bajar, aparece **otro flotando arriba a la derecha**, encima de todo.
+Es el mismo botón: puedes guardar sin subir hasta arriba. En las ventanas
+(modales) no aparece, porque ya traen sus botones al pie.
+
 ### Dos formas de entrar
 
 1. **Correo y contraseña.** Si fallas 5 veces seguidas en 15 minutos, el sistema bloquea tu IP un rato.
@@ -3154,12 +3235,12 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 
 - **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
 - **Tareas pendientes:** las tareas abiertas **de todo el equipo** (no sólo las tuyas), con su fecha y de quién es cada una; arriba el total. Picas el recuadro y te lleva a **Tareas**. Si tus permisos sólo alcanzan lo tuyo, sigues viendo sólo lo tuyo.
-- **Próximos eventos:** las siguientes entregas y tareas con fecha; cada una te lleva a su proyecto o a su tarea. **Nada de proyectos cancelados** — ni aquí ni en el calendario.
+- **Próximos eventos:** las siguientes entregas y tareas con fecha; cada una te lleva a su proyecto o a su tarea. **Nada de proyectos cancelados** — ni aquí ni en el calendario. Y de las **entregas de proyecto** sólo salen las de proyectos que ya van en serio: **de "En proceso de diseño" en adelante**. Uno por cotizar o esperando respuesta todavía no tiene compromiso real, así que no ocupa lugar (en la página del **Calendario** se siguen viendo todas).
 - **El Chalán (recuadro azul):** una caja de texto donde le reportas updates, le consultas finanzas, le pides crear proyectos o asignar pendientes (usa `@persona`, `#proyecto` y `$cliente`). Él te responde en el chat o te prepara las acciones a un clic de confirmar. Abajo, en un solo renglón, están el botón **📎** (adjuntar una foto al mensaje — un recibo, la muestra de un producto; solo aparece si el Chalán configurado sabe leer imágenes), **Resumir pendientes** y **Enviar** (manda lo que escribiste). El chat completo vive en «El Chalán», en el menú de la izquierda.
   - **Resumir pendientes:** abre una ventana con **lo que viene** en el taller, en texto simple y listo para copiar. Hasta arriba el **día, la fecha y la hora** en que lo generaste, y luego: **URGENTES** (prioridad alta y todo lo que no tiene fecha, de todo el equipo, con lo más próximo hasta arriba), **una sección por persona** con lo suyo, **MISIONES** (entregas y recolecciones abiertas, con su runner), **TIZAYUCA** (un renglón por producto de Simil Cuero Plymouth: proyecto · cliente · fecha · producto x piezas contando la merma; **solo de proyectos vivos** — lo que está en pausa, entregado, cerrado o cancelado ya no se produce, así que no aparece), **FACTURAS X EMITIR** (proyectos confirmados sin factura ligada; **los que no llevan IVA no cuentan**, porque no se facturan), **COTIZACIONES** (proyectos por cotizar) y **CUENTAS X COBRAR** (todo lo pendiente de cobro: facturas con saldo, anticipos aprobados por facturar y proyectos con saldo sin factura ligada). **Solo lista lo de hoy y lo que viene** — lo que ya se pasó de fecha no aparece, con UNA excepción: **CUENTAS X COBRAR sale completa** (vencidas incluidas) hasta que se cobren. Las fechas se leen completas («sábado 26 de julio»). Sale de los datos del sistema —las listas son exactas, no una opinión de la IA— y solo trae las secciones que tus permisos alcanzan. **Arriba del reporte, El Chalán te pone dos frases** con lo que más urge hoy y qué conviene destrabar; si no responde, el reporte se muestra igual.
   - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (las listas se arman con datos; la IA solo agrega la lectura de arriba). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
-- **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. El **buscador** va en el mismo renglón del título (grande y largo: busca por nombre, cliente, código, producto, proveedor, equipo o contacto). "Ver tablero completo" abre el tablero con todas las columnas.
+- **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. El **buscador** va en el mismo renglón del título (largo, con letra normal: busca por nombre, cliente, código, producto, proveedor, equipo o contacto). Aquí también puedes **arrastrar las tarjetas dentro de su columna** para acomodarlas. "Ver tablero completo" abre el tablero con todas las columnas.
 - **Calendario:** el mes actual y el siguiente lado a lado, igual que la página de Calendario, con los eventos del día visibles.
 - **Tu tablero (KPIs):** ocho indicadores del negocio; los tres financieros traen una mini-gráfica de los últimos seis meses. Puedes ocultarlos o reordenarlos (arrastrando) desde "Editar tablero", y pedirle KPIs a la medida al asistente desde "KPIs custom".
 
@@ -3199,7 +3280,7 @@ El corazón del negocio. Cada proyecto tiene código `LC-NNNN`, cliente, product
 ### Dos vistas
 
 - **Lista:** tabla ordenable con código, nombre, cliente, estado, fecha de compromiso. Puedes ordenar por **Cliente** (alfabético) haciendo clic en esa cabecera; otro clic invierte el orden.
-- **Kanban:** columnas por estado — útil para ver de un vistazo qué tienes en cada fase. Cada tarjeta muestra **todos sus productos con nombre completo y cantidad** (por ejemplo "Paliacates ×70, Pines/Insignias ×700, Etiquetas para Mandiles Infantiles ×30"), sin recortes, para tener la información completa de un vistazo. El mini-tablero del inicio (Dashboard) hace lo mismo.
+- **Kanban:** columnas por estado — útil para ver de un vistazo qué tienes en cada fase. **Arrastra una tarjeta dentro de su columna para acomodarla** en el orden que quieras: se guarda y **lo ve todo el equipo** (es sólo visual, no cambia nada del proyecto). Arrastrarla a **otra columna** sigue cambiando su estado. Cada tarjeta muestra **todos sus productos con nombre completo y cantidad** (por ejemplo "Paliacates ×70, Pines/Insignias ×700, Etiquetas para Mandiles Infantiles ×30"), sin recortes, para tener la información completa de un vistazo. El mini-tablero del inicio (Dashboard) hace lo mismo.
   - **La fila de abajo va sin productos.** En **En pausa, Entregado, Cerrado y
     Cancelado** las tarjetas no pintan las pastillas de productos: esas columnas
     se leen de un vistazo y el desglose las ensuciaba. **Pero si buscas algo**,
@@ -3232,12 +3313,17 @@ La página es **editable directo** (los cambios se guardan solos; verás
 - **Datos del proyecto:** nombre, cliente (con "+ Nuevo cliente"), descripción
   y dos **calendarios** (Inicio y Entrega) para elegir las fechas.
 - **Productos involucrados:** se listan **todos** como **tarjetas plegables**.
-  Cada una se ve compacta (**cantidad · nombre · precio**); ábrela con su título
-  cuando quieras editarla. Arrástralas del **asa (⠿)** para reordenarlas; al
-  encender el interruptor de "incluir" de una, esa **sube al principio**. Dentro
-  de cada tarjeta:
-  - Interruptor para **incluirlo o no** en el total (apagado = se atenúa y su
-    monto queda en $0.00).
+  Cada una se ve compacta (**cantidad · nombre · precio**); ábrela picando su
+  barra cuando quieras editarla. Cada tarjeta tiene **su propio color**, que sale
+  del producto y **no cambia nunca** — ni al moverla, ni al apagarla, ni al
+  recargar. Arrástralas del **asa (⠿)** para reordenarlas: **el orden lo manda
+  sólo el arrastre**, prender o apagar una línea ya no reacomoda nada. Dentro de
+  cada tarjeta:
+  - En la **barra de arriba** (visible también con la tarjeta cerrada): el
+    interruptor para **incluirla o no** en el total (apagada = se atenúa y su
+    monto queda en $0.00) y el botón **⧉ Duplicar**, que copia la línea completa
+    —cantidades, precio, costo, proveedor, Descripción, impresión y procesos— y la
+    deja justo debajo.
   - Categoría · Producto · Cantidad · Merma · Precio unitario, y al final el
     botón **verde «+»** de los procesos que se le cobran al cliente (ver abajo).
   - **Ponerle otro nombre en este proyecto:** junto a «Producto» hay un botón
@@ -3255,7 +3341,9 @@ La página es **editable directo** (los cambios se guardan solos; verás
     medidas, dónde va el bordado…). Acepta **varios renglones** y va creciendo
     mientras escribes. Lo que pongas aquí **manda** sobre lo que traiga el
     producto del catálogo y sobre lo que se hubiera escrito en la versión
-    anterior de la cotización; si la dejas vacía, se usa la del catálogo.
+    anterior de la cotización; si la dejas vacía, se usa la del catálogo. El
+    campo crece hasta unos **4 renglones** y de ahí en adelante **scrollea por
+    dentro**, para que una especificación larga no estire la tarjeta.
   - **Procesos que se le cobran al cliente** (el botón **verde «+»** del final de
     la primera fila). Es lo que le facturas **aparte** del producto: al Bordado le
     agregas «Ponchado» con su cantidad y su precio. Cada uno **sube el monto del
@@ -3279,6 +3367,11 @@ La página es **editable directo** (los cambios se guardan solos; verás
   - **Impresión** (proveedor + costo) y el botón **"+ Proceso"** para sumar
     gastos operativos sueltos (materiales, viáticos, embalaje…). Éstos **cuestan**
     (bajan tu utilidad); no se le cobran al cliente.
+  - En el **costo de la Impresión puedes escribir la cuenta**: para tres bordados
+    (frontal y dos laterales) escribe `35+15+15`. **La cuenta se queda escrita**
+    —para que después recuerdes de dónde salió— y al lado aparece el total
+    (`= $65.00`), que es el que se usa en todos los cálculos. También acepta
+    restas. Si escribes un número normal, se comporta como siempre.
   - **Abajo a la izquierda**, el costo de producción con el **costo por pieza** y,
     en verde, la **ganancia por pieza**. El costo por pieza es lo que cuesta
     **una** pieza con todo incluido: el producto, la impresión y los procesos
@@ -3289,7 +3382,7 @@ La página es **editable directo** (los cambios se guardan solos; verás
     son totales de la línea. **Abajo a la derecha**, el **monto** del
     producto y, debajo, su **utilidad** en pesos y su **margen** en verde.
   - Para **reordenar** las tarjetas, arrastra por el asa de puntitos de la
-    izquierda. En el celular funciona igual, con el dedo.
+    izquierda. En el celular funciona igual, con el dedo. El orden se guarda solo.
 
 A la derecha:
 
@@ -3302,7 +3395,9 @@ A la derecha:
   cuadra con lo que realmente pagas).
 
 **Ingresos y egresos del proyecto:** más abajo hay un recuadro con los
-ingresos y egresos ligados al proyecto (aparece en cualquier estado). De
+ingresos y egresos ligados al proyecto (aparece en cualquier estado). Cada lado
+tiene **su propio botón al pie** —**"+ Nuevo ingreso"** y **"+ Nuevo egreso"**—,
+centrado dentro de su recuadro, y abre la captura sin salir del proyecto. De
 **producción en adelante**, dentro del recuadro de egresos sale una **alerta
 amarilla** de *"N proveedor(es) por pagar · N concepto(s) sin registrar"*.
 
@@ -3342,7 +3437,10 @@ Si tienes El Chalán habilitado, arriba aparece **🤖 Resumir actividad**: abre
 
 ### Crear producto sin salir del proyecto
 
-Si el cliente quiere algo que no tienes en el catálogo, despliega "+ Crear producto nuevo en el catálogo" abajo de la lista de productos. Captura tipo + nombre + costo + precio + cantidad y queda registrado en el catálogo y agregado a este proyecto.
+Si el cliente quiere algo que no tienes en el catálogo, despliega "+ Crear
+producto nuevo en el catálogo" arriba de la lista de productos. Captura
+**Categoría + Nombre + Costo + Precio + Cantidad + Merma** —cada recuadro dice qué
+es— y queda registrado en el catálogo y agregado a este proyecto.
 
 ---
 
@@ -3464,6 +3562,12 @@ Lo que vendes/produces. Cada producto tiene:
 - **Proveedores aplicables** — quién te puede surtir este producto. Se eligen con
   un **dropdown con buscador**: escribes el nombre, lo eliges y queda como
   **pastilla con ✕**. Puedes agregar todos los que te surtan.
+- **★ Proveedor principal** — el que surte por default. Es el que se autocompleta
+  en la tarjeta del producto dentro de un proyecto y el que aparece junto al
+  nombre en los buscadores. Cuando en un proyecto le pones **otro** proveedor a un
+  producto, ése **se liga solo** al catálogo como alternativa, pero **no le quita
+  el lugar al principal** (si el producto no tenía principal, el primero que se
+  ligue lo ocupa).
 - **Impresión y procesos adicionales** (ver abajo).
 - **Usos:** la columna "Usos" de la lista cuenta las veces que el producto se
   ha usado en proyectos; al abrir el producto ves su **bitácora de Usos** (en

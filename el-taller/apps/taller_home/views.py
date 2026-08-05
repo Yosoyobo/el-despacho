@@ -237,14 +237,24 @@ def _chat_acepta_imagenes(user) -> bool:
 
 def _proximos_eventos(user):
     """Entregas de proyectos + tareas con fecha, desde hoy. (V6: el estado
-    `bloqueada` ya no existe — sin exclusiones especiales.)"""
+    `bloqueada` ya no existe — sin exclusiones especiales.)
+
+    LC 2026-08-04 R3 (Oscar): la fecha de entrega de un proyecto sólo cuenta como
+    evento **de En proceso de diseño en adelante**. Un proyecto por cotizar o
+    esperando respuesta todavía no tiene compromiso real y ensuciaba el widget.
+    La regla vive SÓLO aquí: la página del Calendario sigue mostrando todo.
+    """
     from apps.calendario.services import eventos_por_dia
+    from apps.los_proyectos.models import slugs_con_compromiso_visible
     hoy = date.today()
     fin = hoy + timedelta(days=90)
     evmap = eventos_por_dia(user, hoy, fin)
+    con_compromiso = slugs_con_compromiso_visible()
     items = []
     for f in sorted(evmap.keys()):
         for ev in evmap[f]:
+            if ev.get("tipo") == "entrega" and ev.get("estado") not in con_compromiso:
+                continue
             items.append({**ev, "fecha": f})
     return items[:4], max(0, len(items) - 4)
 
@@ -260,7 +270,8 @@ def _kanban_cols(user):
     labels = dict(ESTADOS_PROYECTO)
     cols = []
     for slug in KANBAN_SLUGS_DASHBOARD:
-        proyectos = list(qs.filter(estado=slug).order_by("fecha_compromiso", "-creado_en"))
+        # LC 2026-08-04 R3: mismo orden manual que la página Kanban.
+        proyectos = list(qs.filter(estado=slug).order_by("orden_kanban", "fecha_compromiso", "-creado_en"))
         cols.append({"slug": slug, "label": labels.get(slug, slug),
                      "proyectos": proyectos, "total": len(proyectos)})
     return cols

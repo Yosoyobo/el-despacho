@@ -8560,3 +8560,195 @@ candados de comentarios `{# #}` multilínea (Bug C §14) y de Novedades, verdes.
   herencia de cuando el campo era un `CharField`.
 - La vista de **solo lectura** del proyecto (diseñador sin permiso de edición) no
   muestra la Descripción de cada línea; sigue listando producto/cantidad/subtotal.
+
+---
+
+# BITÁCORA — S-Ajustes-Ago04-R3 (2026-08-04, VERSION 2026.08.03)
+
+> Tercera ronda del día sobre lo deployado en 2026.08.01 y 2026.08.02. Ticket de
+> Oscar con notas en imagen (tabita de crear producto, tarjeta de producto,
+> ingresos/egresos, comentarios) más 8 pedidos en texto. Seis definiciones se
+> resolvieron con AskUserQuestion antes de escribir código.
+
+## 0. Decisiones de Oscar (AskUserQuestion)
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Dónde va el Guardar flotante? | **Todas** las páginas con Guardar (modales excluidos) |
+| Color de las tarjetas de producto | **Fijo por producto** (nunca cambia) |
+| «35+15+15» en el costo | **Se queda la cuenta escrita**; el total se calcula |
+| Orden del Kanban | **El mismo para todo el equipo** |
+| Regla de compromisos | **Sólo en Próximos eventos** (el Calendario muestra todo) |
+| ¿En qué campos aceptar cuentas? | **Sólo el costo de Impresión** |
+
+## 1. El «bug» de los 2,584.26 — no era bug
+
+Oscar reportó que el sistema calculó **2,584.26** de costo de producción de las
+Playeras Corriendo Club (29 pz · costo 44.94 · impresión 39 · «adaptación y
+positivos 150/29») y su cuenta a mano dio **2,584.19**.
+
+Verificado con Decimal: el sistema tiene razón.
+
+```
+producto   44.94 × 29 = 1,303.26
+impresión  39.00 × 29 = 1,131.00
+fijo                   =   150.00   ← los $150 entran COMPLETOS
+                         ─────────
+                          2,584.26
+```
+
+Los 7 centavos salen de repartir el monto fijo a mano: `150 ÷ 29 = 5.1724…`, que
+redondeado a centavos es `5.17`, y `5.17 × 29 = 149.93` (7 centavos menos que 150).
+Oscar mismo lo sospechó («posiblemente por unos varios decimales que no tomé en
+cuenta»). El backend usa `Decimal` de punta a punta y el `costo` del proceso tiene
+`decimal_places=2`, así que **capturar el total como monto fijo es exacto y
+repartirlo por pieza no lo es** — de ahí que la feature de cuentas escritas (§2)
+sea justamente la forma correcta de capturar «tres bordados de 35+15+15».
+
+El caso quedó parametrizado como red permanente en
+`test_el_costo_de_produccion_de_las_playeras_no_pierde_centavos`, que fija **las
+dos** cifras: el total correcto y de dónde venía la diferencia.
+
+## 2. Cuentas escritas en el costo de Impresión
+
+Campo nuevo `ProyectoProductoProceso.costo_expr` (migr. `proyectos/0030`): guarda
+**la cuenta tal como se escribió** («35+15+15») y `costo` guarda su resultado
+(65.00), que es lo único que entra a los cálculos.
+
+- `services_procesos.suma_expresion()` acepta sólo cadenas de sumas/restas de
+  números — **sin `eval`**, sin paréntesis, sin multiplicación. Un token mal
+  pegado (`35++15`, `35+`) descarta la cuenta completa.
+- **El servidor manda**: `_expr_y_costo()` recalcula el total DE la cuenta e ignora
+  el `costo` que mandó el front. Un POST con un total inventado no cuela.
+- El input pasó de `type="number"` a `type="text"` (un input numérico ni deja
+  teclear el «+») y al lado se pinta `= $65.00` en vivo.
+- El JS (`evalSuma`/`numCuenta`/`esCuenta`) espeja la función de Python.
+- **Decisión**: sólo el costo de Impresión (respuesta de Oscar). Los otros campos
+  numéricos siguen igual. La división NO se soporta a propósito: con
+  `decimal_places=2` un `150/29` perdería centavos — exactamente el error de §1.
+
+## 3. Tarjeta de producto
+
+- **Color estable**: el `{% cycle %}` del formset repartía el color por POSICIÓN,
+  así que arrastrar una tarjeta o apagar un toggle (que la movía) recoloreaba
+  todas. Filtro nuevo `color_tarjeta(pk)` → color determinista por producto.
+- **El toggle ya no reordena**: se retiró el bloque de JS que subía/bajaba la
+  tarjeta y se quitó `-incluir_en_calculo` de `ProyectoProducto.Meta.ordering`
+  (`AlterModelOptions` en la migración) — sin eso, el orden volvía a cambiar al
+  recargar. Ahora el orden lo manda **sólo** el arrastre.
+- **El toggle vive en la cabecera** (visible con la tarjeta colapsada). Hubo que
+  sumar `label` a la lista de exclusiones del handler de `data-card-barra`: sin
+  eso, picar el toggle apagaba la línea **y** desplegaba la tarjeta.
+- **Botón ⧉ Duplicar** (ultra chico, junto al toggle) → endpoint
+  `proyectos-duplicar-producto`: clona la línea con sus procesos y ventas, hace
+  hueco con `orden__gt` + `F("orden") + 1` y la deja justo debajo. **NO** hereda
+  el FK `egreso` (la dejaría marcada como ya pagada) ni la foto propia del uso.
+  Sólo se renderiza donde hay autoguardado (`con_autosave`, el detalle): en
+  Nuevo/Editar un POST+redirect perdería lo no guardado.
+- **Tamaños** (notas en imagen): labels 11px → 10px, Cantidad/Merma 72px → 58px,
+  Costo unitario 120px → 84px y la Descripción de `1.6fr` → `2.6fr`. La
+  Descripción va en `text-[11px]` con tope de ~4 renglones (`data-autogrow="84"`)
+  y scroll interno; `autogrow` ahora lee el tope del atributo.
+
+## 4. Proveedores: ligado fuerte sin mover al principal
+
+Pedido: «el proveedor que se le pone a un proyecto los liga de forma fuerte; si
+algo se asigna a otro proveedor, se liga también, pero el principal (primero) se
+mantiene».
+
+El «primero» **no podía** ser el primero de la M2M: `Proveedor.Meta.ordering` es
+`["razon_social"]`, así que `servicio.proveedores.all()` sale **alfabético** y
+ligar un proveedor nuevo podía volverlo el primero y robarle el default al de
+siempre (caso real: «Alfa Bordados» antes de «Zeta Textiles»).
+
+- FK nuevo `Servicio.proveedor_principal` (migr. `el_catalogo/0014`) + data
+  migration que lo siembra con el que hoy se usa → cero cambio de comportamiento
+  al aplicar.
+- `Servicio.proveedor_default` es la **fuente única** (principal explícito →
+  fallback al primero activo). La usan `_servicios_datos_json` (autocompletar de
+  la tarjeta) y la etiqueta «Nombre - Proveedor» del dropdown.
+- Señal `post_save` de `ProyectoProducto` (`signals_catalogo.py`, `weak=False`):
+  `proveedores.add(...)` idempotente y `proveedor_principal` **sólo si estaba
+  vacío**. Va en señal y no en la vista porque las líneas se guardan desde el
+  formset, el modal, el duplicado, el mini-Chalán y los ejecutores del Dictado.
+  Defensiva: si falla, se calla (ligar un proveedor nunca debe tumbar un guardado).
+- El principal se elige a mano en la ficha del producto (`★ Proveedor principal`).
+
+## 5. Guardar flotante en todas las páginas
+
+En vez de tocar ~25 plantillas, un IIFE en `ui.js` (**dual-copy §18**) monta una
+barra fija arriba a la derecha y, al picarla, hace `original.click()`. Clonar o
+mover el botón habría roto el `form=`, los `hx-post` y el `disabled`; delegar el
+click no rompe nada. Aparece cuando el Guardar real sale de la pantalla
+(`IntersectionObserver` con `rootMargin` de 72px por el header sticky), se esconde
+con un modal abierto (`MutationObserver` sobre `#modal-slot`) y respeta
+`data-sin-guardar-flotante` como opt-out. `z-40`: debajo de los modales (z-50),
+encima del contenido.
+
+## 6. Kanban: reordenar dentro de la columna
+
+`Proyecto.orden_kanban` (migr. `proyectos/0030`) + endpoint
+`proyectos-reordenar-kanban` (POST con la lista de pks de UNA columna, acotado a
+los proyectos visibles). El orden es **compartido** (respuesta de Oscar). El JS
+ahora reacomoda la tarjeta durante el `dragover` (como las tarjetas de producto) y
+al soltar: misma columna → sólo guarda el orden; otra columna → cambia el estado
+como siempre **y** guarda su posición ahí. La página y el mini-tablero del
+Dashboard ordenan por `orden_kanban` primero.
+
+## 7. Próximos eventos + el texto «Compromiso»
+
+- El prefijo «Compromiso: » salió de `eventos_por_dia` → afecta a todos los
+  calendarios (era el pedido: «quitarle el texto a todos los eventos relevantes»).
+  Queda `📦 {nombre del proyecto}`.
+- La **regla de estados vive sólo en el widget del Dashboard** (decisión Oscar):
+  `_proximos_eventos` filtra las entregas con `slugs_con_compromiso_visible()`.
+  El corte se calcula por el `orden` del catálogo de estados (≥ el de
+  `en_proceso_diseno`), no con una lista de slugs a mano: si el super_admin
+  reordena o agrega un estado en Gerencia, la regla lo sigue. Defensivo: sin
+  catálogo sembrado cae a `ESTADOS_BASE`.
+- Para que el widget pueda filtrar, el evento de entrega ahora expone `estado`.
+
+## 8. Resto del ticket
+
+- **Tabita «+ Crear producto nuevo»**: la rejilla apretaba tanto que «Categoría»
+  no cabía. Ahora Categoría y Nombre tienen ancho mínimo (`minmax`), los
+  numéricos son angostos y **todos** los campos dicen qué son en su placeholder —
+  se fueron el `value="1"` y el `value="0"` sueltos. Aplicado en el detalle y en
+  Nuevo proyecto.
+- **Ingresos y egresos**: cada «+ Nuevo …» se metió DENTRO de su recuadro, abajo y
+  centrado.
+- **Comentarios del proyecto**: título al tamaño de las demás secciones, vacío en
+  un renglón (fuera la ilustración de `_empty_state`), padding apretado, textarea
+  de 2 renglones y el check «Interno» comparte renglón con Comentar.
+- **Buscador del Dashboard**: `text-base` → `text-sm`.
+- **Botones «🤖 Redactar»**: de `bg-brand-500` a gris (se confundían con Guardar);
+  el robotcito azulito se queda.
+- **Cotización**: la versión (`v3`) sale como pastilla junto al estado.
+
+## 9. Tests
+
+42 nuevos en `tests/taller/test_ajustes_ago04_r3.py`. Se actualizaron 2 tests de
+`test_ajustes_ago04_r2.py` que fijaban valores exactos que este sprint cambió a
+propósito (los px de las dos rejillas de la tarjeta y el `data-autogrow="1"`);
+ahora comprueban la **forma** (6 columnas, el «+» de 36px al final; la Descripción
+más ancha que el costo; el tope del autogrow en rango) para que un afinado futuro
+no los rompa. Ruff (0.8.4) limpio. Candado de Novedades verde.
+
+## 10. Deuda diseñada
+
+- Las cuentas escritas **sólo** están en el costo de Impresión (decisión Oscar).
+  El sanitizador ya acepta el par (cuenta, total) para cualquier proceso, así que
+  extenderlo a los operativos es cablear el input.
+- **No se soporta la división** en las cuentas (`150/29`): con `decimal_places=2`
+  perdería centavos. La forma exacta es capturar el total como monto fijo.
+- El **⧉ Duplicar** no aparece en Nuevo/Editar proyecto (sin autoguardado). Si LC
+  lo pide ahí, hay que clonar en el DOM en lugar de ir al servidor.
+- El **Guardar flotante** toma el PRIMER submit visible de la página. En una
+  pantalla con dos formularios independientes flotaría el del primero; hasta hoy
+  no hay ninguna así (los modales están excluidos y tienen su pie).
+- La **regla de compromisos** no aplica al Calendario ni al resumen del Chalán
+  (decisión explícita de Oscar). Si algún día se quiere parejo, el helper
+  `slugs_con_compromiso_visible()` ya está listo para usarse en
+  `eventos_por_dia`.
+- El **orden del Kanban** es compartido y cualquiera con permiso de editar
+  proyectos puede reacomodar. No hay bitácora de quién lo movió (es cosmético).

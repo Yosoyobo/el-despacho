@@ -7,6 +7,33 @@
 
     // ── Utilidades ────────────────────────────────────────────────────────
     function num(v) { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isNaN(n) ? 0 : n; }
+    // LC 2026-08-04 (Oscar): el costo de la impresión acepta una CUENTA escrita
+    // («35+15+15» = 3 bordados). Sólo cadenas de sumas/restas de números — sin
+    // paréntesis, sin `eval`. Devuelve null si no es una cuenta legible; espeja
+    // `services_procesos.suma_expresion`, que es quien manda al guardar.
+    function evalSuma(v) {
+        const s = String(v == null ? '' : v).replace(/,/g, '').replace(/\s+/g, '');
+        if (!s || s.length > 120 || !/^[0-9.+-]+$/.test(s)) return null;
+        const t = s.match(/[+-]?(?:\d+\.?\d*|\.\d+)/g);
+        if (!t || t.join('') !== s) return null;
+        let total = 0;
+        for (const x of t) { const n = parseFloat(x); if (isNaN(n)) return null; total += n; }
+        return total;
+    }
+    // ¿Es una cuenta (trae signo después del primer carácter) y no un número pelón?
+    function esCuenta(v) {
+        const s = String(v == null ? '' : v).replace(/\s+/g, '');
+        return s.length > 1 && /[+-]/.test(s.slice(1)) && evalSuma(s) !== null;
+    }
+    // Costo capturado en un campo que admite cuentas.
+    function numCuenta(v) { const r = evalSuma(v); return r === null ? num(v) : r; }
+    // Pinta «= $65.00» junto al campo cuando lo escrito es una cuenta.
+    function pintarSuma(card) {
+        const campo = card.querySelector('.imp-costo');
+        const hint = card.querySelector('[data-imp-suma]');
+        if (!campo || !hint) return;
+        hint.textContent = esCuenta(campo.value) ? '= ' + fmt(numCuenta(campo.value)) : '';
+    }
     function fmt(n) { return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function pad(n) { return String(n).padStart(2, '0'); }
     function autosave() { if (!cargando && form) form.dispatchEvent(new Event('change', { bubbles: true })); }
@@ -91,7 +118,7 @@
         const impProv = card.querySelector('.imp-proveedor');
         const impCosto = card.querySelector('.imp-costo');
         const impPP = card.querySelector('.imp-por-pieza');
-        if (impProv && impProv.value) { const c = num(impCosto && impCosto.value); t += (impPP && impPP.checked) ? c * piezas : c; }
+        if (impProv && impProv.value) { const c = numCuenta(impCosto && impCosto.value); t += (impPP && impPP.checked) ? c * piezas : c; }
         card.querySelectorAll('.proceso-fila').forEach(fila => {
             const c = num((fila.querySelector('.proc-costo') || {}).value);
             const d = ((fila.querySelector('.proc-desc') || {}).value || '').trim();
@@ -286,7 +313,13 @@
         const impProv = card.querySelector('.imp-proveedor');
         const impCosto = card.querySelector('.imp-costo');
         const impPP = card.querySelector('.imp-por-pieza');
-        if (impProv && impProv.value) arr.push({ tipo: 'impresion', proveedor_id: parseInt(impProv.value, 10), costo: num(impCosto && impCosto.value), por_pieza: !!(impPP && impPP.checked) });
+        if (impProv && impProv.value) arr.push({
+            tipo: 'impresion', proveedor_id: parseInt(impProv.value, 10),
+            costo: numCuenta(impCosto && impCosto.value),
+            // La cuenta escrita se conserva; el servidor recalcula el total de ella.
+            costo_expr: (impCosto && esCuenta(impCosto.value)) ? impCosto.value.trim() : '',
+            por_pieza: !!(impPP && impPP.checked),
+        });
         card.querySelectorAll('.proceso-fila').forEach(fila => {
             const d = (fila.querySelector('.proc-desc') || {}).value || '';
             const c = num((fila.querySelector('.proc-costo') || {}).value);
@@ -354,6 +387,7 @@
     function initCard(card) {
         setCatDesdeServicio(card);
         aplicarCatFiltro(card);
+        pintarSuma(card);
         recalcular(card);
         serializar(card);
         renumerar(card);
@@ -363,9 +397,15 @@
     // el título hacia arriba». La fila alinea al fondo (`md:items-end`), así que
     // basta con que el textarea siga a su contenido: al crecer, su etiqueta sube.
     // Tope para que una descripción larga no estire la tarjeta sin fin.
+    //
+    // LC 2026-08-04 R3 (Oscar): el tope llega en `data-autogrow` (px). Con ~84px
+    // caben unas 4 líneas de 11px y de ahí en adelante el textarea scrollea por
+    // dentro en lugar de estirar la tarjeta. Cualquier valor <= 1 (el "1" legacy)
+    // cae al tope de siempre.
     function autogrow(ta) {
+        const tope = parseInt(ta.getAttribute('data-autogrow'), 10);
         ta.style.height = 'auto';
-        ta.style.height = Math.min(ta.scrollHeight, 220) + 'px';
+        ta.style.height = Math.min(ta.scrollHeight, tope > 1 ? tope : 220) + 'px';
     }
     function initAutogrow() {
         document.querySelectorAll('#formset-productos textarea[data-autogrow]')
@@ -387,7 +427,7 @@
         if (t.matches && t.matches('select[name$="-servicio"]')) { prellenarServicio(t); }
         else if (card && t.matches && t.matches('[data-cat-filtro]')) { aplicarCatFiltro(card); }
         else if (card && t.matches && t.matches('input[name$="-incluir_en_calculo"], input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) { recalcular(card); }
-        if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .imp-por-pieza, .proc-desc, .proc-costo, .proc-por-pieza')) { serializar(card); recalcular(card); }
+        if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .imp-por-pieza, .proc-desc, .proc-costo, .proc-por-pieza')) { pintarSuma(card); serializar(card); recalcular(card); }
         // Procesos de VENTA (LC 2026-07-26): suman al monto, no al costo.
         if (card && t.matches && t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
         // Sync del estado oculto cuando se cambia desde la barra de status.
@@ -399,7 +439,7 @@
         const card = t.closest && t.closest('[data-card]');
         if (!card) return;
         if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) recalcular(card);
-        if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { serializar(card); recalcular(card); }
+        if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { pintarSuma(card); serializar(card); recalcular(card); }
         if (t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
         if (t.matches('[data-alias-input]')) recalcular(card);
@@ -522,7 +562,7 @@
             const prov = card.querySelector('.imp-proveedor'); if (prov) prov.value = '';
             const costo = card.querySelector('.imp-costo'); if (costo) costo.value = '';
             const pp = card.querySelector('.imp-por-pieza'); if (pp) pp.checked = false;
-            serializar(card); recalcular(card); autosave(); return;
+            pintarSuma(card); serializar(card); recalcular(card); autosave(); return;
         }
         // Quitar producto (X de la tarjeta).
         const elim = e.target.closest && e.target.closest('.producto-eliminar');
@@ -822,7 +862,9 @@ por un endpoint aparte.{% endcomment %}
         if (!e.target.closest) return;
         const barra = e.target.closest('#' + CONT + ' [data-card-barra]');
         if (!barra) return;
-        if (e.target.closest('[data-drag-handle], [data-img-slot], input, select, textarea, a')) return;
+        // `label` cubre el toggle «incluir», que desde LC 2026-08-04 vive en la
+        // cabecera: picarlo apaga la línea, no despliega la tarjeta.
+        if (e.target.closest('[data-drag-handle], [data-img-slot], label, input, select, textarea, a')) return;
         // El botón del título sí despliega; cualquier otro botón de la barra no.
         const btn = e.target.closest('button');
         if (btn && !btn.hasAttribute('data-card-toggle')) return;
@@ -917,24 +959,9 @@ por un endpoint aparte.{% endcomment %}
         document.addEventListener('pointercancel', soltar);
     })();
 
-    // Toggle "incluir en el cálculo" → On sube la tarjeta al tope; Off al fondo.
-    // Diferido para no interferir con el evento change en curso (autosave).
-    document.addEventListener('change', function (e) {
-        const t = e.target;
-        if (!(t.matches && t.matches('#' + CONT + ' input[name$="-incluir_en_calculo"]'))) return;
-        const card = t.closest('[data-card]');
-        const c = cont();
-        if (!card || !c) return;
-        const encendido = t.checked;
-        setTimeout(function () {
-            if (encendido) {
-                const primera = c.querySelector('[data-card]');
-                if (primera && primera !== card) c.insertBefore(card, primera);
-            } else {
-                c.appendChild(card);
-            }
-            persistirOrden();
-        }, 0);
-    });
+    // LC 2026-08-04 (Oscar): «prender y apagar toggles NO debe cambiar el orden».
+    // Antes el toggle On subía la tarjeta al tope y Off la mandaba al fondo (y el
+    // `Meta.ordering` del modelo repetía la jugada al recargar). Se retiró: el
+    // orden lo manda SOLO el arrastre. Apagar una línea la atenúa en su lugar.
 })();
 </script>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ modo|capfirst }} proyecto — Proyectos{% endblock %}
 {% block contenido %}
-{% load forms_helpers %}
+{% load forms_helpers proyectos_extras %}
 {% breadcrumb_items "Proyectos" "/proyectos/kanban/" "Proyecto" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=modo|capfirst|add:" proyecto" subtitulo="Datos del proyecto + productos involucrados" breadcrumb_items=breadcrumb_items back_url="/proyectos/kanban/" back_label="Proyectos" %}
 
@@ -50,23 +50,24 @@
         {{ formset.management_form }}
         <div id="formset-productos" class="space-y-4">
             {% for f in formset %}
-                {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos %}
+                {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance.pk|color_tarjeta %}
             {% endfor %}
         </div>
         {# quick-create de Servicio inline #}
         <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
             <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Crear producto nuevo en el catálogo</summary>
-            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-[1.5fr_2fr_100px_100px_80px_80px_auto]">
-                <div class="col-span-2 md:col-span-1">
-                    <label for="qc-categoria" class="text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
+            {# LC 2026-08-04 R3: Categoría/Nombre con ancho mínimo; numéricos angostos. #}
+            <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-[minmax(9rem,1.3fr)_minmax(10rem,1.7fr)_92px_92px_74px_74px_auto]">
+                <div class="col-span-2 sm:col-span-1">
+                    <label for="qc-categoria" class="text-xs font-medium text-gray-600 dark:text-gray-300">Categoría</label>
                     <select id="qc-categoria" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                        <option value="">— Tipo de producto —</option>
+                        <option value="">Categoría…</option>
                         {% for c in categorias_disponibles %}
                         <option value="{{ c.pk }}">{{ c.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-span-2 md:col-span-1">
+                <div class="col-span-2 sm:col-span-1">
                     <label for="qc-nombre" class="text-xs font-medium text-gray-600 dark:text-gray-300">Nombre</label>
                     <input id="qc-nombre" type="text" placeholder="ej. Playera bordada" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                 </div>
@@ -80,14 +81,14 @@
                 </div>
                 <div>
                     <label for="qc-cantidad" class="text-xs font-medium text-gray-600 dark:text-gray-300">Cantidad</label>
-                    <input id="qc-cantidad" type="number" min="1" value="1" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <input id="qc-cantidad" type="number" min="1" placeholder="Cant." class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                 </div>
                 <div>
                     <label for="qc-merma" class="text-xs font-medium text-gray-600 dark:text-gray-300" title="Piezas extra que fabricas">Merma</label>
-                    <input id="qc-merma" type="number" min="0" value="0" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <input id="qc-merma" type="number" min="0" placeholder="Merma" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                 </div>
-                <div class="flex items-end">
-                    <button type="button" id="qc-agregar" class="btn-primario whitespace-nowrap">Agregar</button>
+                <div class="col-span-2 flex items-end sm:col-span-1">
+                    <button type="button" id="qc-agregar" class="btn-primario w-full whitespace-nowrap sm:w-auto">Agregar</button>
                 </div>
             </div>
             <p id="qc-margen" class="mt-2 text-xs font-medium hidden"></p>

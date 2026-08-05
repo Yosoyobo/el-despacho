@@ -20,11 +20,14 @@ from apps.los_proyectos.models import (
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
+    ProyectoProductoProceso,
+    ProyectoProductoVenta,
 )
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import F, Q
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -57,11 +60,13 @@ def _servicios_datos_json():
     from apps.el_catalogo import procesos as procesos_catalogo
     qs = (
         Servicio.objects.filter(activo=True)
-        .only("pk", "nombre", "precio_base", "costo", "categoria_id", "procesos_default")
+        .select_related("proveedor_principal")
         .prefetch_related("proveedores")
     )
     for s in qs:
-        prov = next((p for p in s.proveedores.all() if p.activo), None)
+        # LC 2026-08-04: el principal es explícito (`proveedor_principal`), no
+        # «el primero alfabético» de la M2M — ver Servicio.proveedor_default.
+        prov = s.proveedor_default
         datos[str(s.pk)] = {
             # `nombre` limpio del producto (sin el sufijo "- Proveedor" que trae
             # la etiqueta del <option>) para el resumen compacto de la tarjeta.
@@ -355,7 +360,9 @@ def kanban(request):
     from apps.los_proyectos.templatetags.proyectos_extras import estado_visible
     columnas = {}
     for slug, label in ESTADOS_PROYECTO:
-        proyectos = list(qs.filter(estado=slug).order_by("fecha_compromiso", "-creado_en"))
+        # LC 2026-08-04 R3: primero el orden manual del arrastre (compartido por
+        # todo el equipo); entre iguales, el criterio de siempre.
+        proyectos = list(qs.filter(estado=slug).order_by("orden_kanban", "fecha_compromiso", "-creado_en"))
         if not proyectos and not estado_visible(slug):
             continue
         columnas[slug] = {"slug": slug, "label": label, "proyectos": proyectos, "total": len(proyectos)}
@@ -1275,6 +1282,91 @@ def reordenar_productos(request, pk):
         if prod_pk in validos:
             ProyectoProducto.objects.filter(pk=prod_pk).update(orden=indice)
     return HttpResponse(status=204)
+
+
+@require_POST
+def reordenar_kanban(request):
+    """LC 2026-08-04 R3 (Oscar): persiste el orden manual de las tarjetas del
+    Kanban dentro de una columna. «Se guarda obvio, es meramente visual».
+
+    Recibe `orden` = lista de pks de Proyecto en el nuevo orden de UNA columna.
+    Es compartido: si alguien acomoda la columna, todo el equipo la ve así. Sólo
+    escribe `orden_kanban`, así que no toca estados, fechas ni montos. Idempotente
+    y acotado a los proyectos que el usuario puede ver.
+    """
+    if not puede_editar_proyecto(request.user, None):
+        return HttpResponseForbidden("Sin permiso.")
+    visibles = set(_proyectos_visibles(request.user).values_list("pk", flat=True))
+    for indice, crudo in enumerate(request.POST.getlist("orden")):
+        try:
+            proy_pk = int(crudo)
+        except (TypeError, ValueError):
+            continue
+        if proy_pk in visibles:
+            Proyecto.objects.filter(pk=proy_pk).update(orden_kanban=indice)
+    return HttpResponse(status=204)
+
+
+@require_POST
+def duplicar_producto(request, pk, prod_pk):
+    """LC 2026-08-04 (Oscar): «⧉» ultra chico en la tarjeta — clona esa línea.
+
+    Copia TODO lo que hace a la línea (alias, cantidades, precio/costo, proveedor,
+    Descripción, procesos de producción y de venta) y la deja justo debajo de la
+    original. NO copia la foto propia del uso ni el vínculo al egreso: la foto se
+    pega en la tarjeta nueva si aplica, y el egreso es de la línea original —
+    heredarlo la dejaría marcada como ya pagada.
+    """
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    original = get_object_or_404(ProyectoProducto, pk=prod_pk, proyecto=proyecto)
+
+    with transaction.atomic():
+        # Hueco: la copia queda pegada a la original y lo que venía después se
+        # corre un lugar, así el orden manual del arrastre se respeta.
+        ProyectoProducto.objects.filter(
+            proyecto=proyecto, orden__gt=original.orden
+        ).update(orden=F("orden") + 1)
+        copia = ProyectoProducto.objects.create(
+            proyecto=proyecto,
+            servicio=original.servicio,
+            variacion=original.variacion,
+            proveedor=original.proveedor,
+            nombre_proyecto=original.nombre_proyecto,
+            cantidad=original.cantidad,
+            precio_unitario=original.precio_unitario,
+            costo_unitario=original.costo_unitario,
+            merma=original.merma,
+            incluir_en_calculo=original.incluir_en_calculo,
+            nota=original.nota,
+            orden=original.orden + 1,
+        )
+        for proc in original.procesos.all():
+            ProyectoProductoProceso.objects.create(
+                producto=copia, tipo=proc.tipo, orden=proc.orden,
+                proveedor=proc.proveedor, descripcion=proc.descripcion,
+                costo=proc.costo, costo_expr=proc.costo_expr,
+                por_pieza=proc.por_pieza,
+            )
+        for venta in original.ventas.all():
+            ProyectoProductoVenta.objects.create(
+                producto=copia, orden=venta.orden, descripcion=venta.descripcion,
+                cantidad=venta.cantidad, precio_unitario=venta.precio_unitario,
+            )
+
+    proyecto.recalcular_monto_estimado()
+    emitir(EventoPortavoz(
+        tipo="proyecto.actualizado",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proyecto_id": proyecto.pk, "campo": "producto_duplicado",
+                 "producto_id": copia.pk, "origen_id": original.pk},
+    ))
+    messages.success(request, "Producto duplicado.")
+    destino = _redir_detalle(proyecto)
+    if _es_htmx(request):
+        return HttpResponse(status=204, headers={"HX-Redirect": destino})
+    return redirect(destino)
 
 
 def _quitar_imagen_linea(request, linea):

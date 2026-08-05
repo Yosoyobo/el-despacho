@@ -35,6 +35,67 @@ def _to_decimal(valor) -> Decimal:
         return Decimal("0.00")
 
 
+# LC 2026-08-04 (Oscar): el costo de la impresión se puede capturar como una
+# CUENTA — «35+15+15» por tres bordados. Se acepta sólo una cadena de sumas y
+# restas de números (nada de paréntesis, multiplicaciones ni `eval`), y el
+# SERVIDOR es quien saca el total: así el monto que se guarda siempre concuerda
+# con la cuenta escrita, aunque el POST llegue de otra parte.
+MAX_EXPR = 120
+_SIGNOS = "+-"
+
+
+def suma_expresion(texto) -> Decimal | None:
+    """Total de una cadena tipo `35+15+15`. Devuelve None si no es una cuenta.
+
+    Un número pelón (`65` o `65.00`) también devuelve su valor — así el mismo
+    campo sirve para las dos formas de capturar.
+    """
+    if texto is None:
+        return None
+    crudo = str(texto).replace(",", "").replace(" ", "")
+    if not crudo or len(crudo) > MAX_EXPR:
+        return None
+    if any(c not in "0123456789." + _SIGNOS for c in crudo):
+        return None
+    # Términos con su signo. Si al re-pegarlos no sale la cadena original, la
+    # cuenta está mal escrita (`35++15`, `35+`, `.`) y se descarta completa.
+    terminos = []
+    actual = ""
+    for i, c in enumerate(crudo):
+        if c in _SIGNOS and i > 0:
+            terminos.append(actual)
+            actual = c
+        else:
+            actual += c
+    terminos.append(actual)
+    if "".join(terminos) != crudo:
+        return None
+    total = Decimal("0")
+    for t in terminos:
+        cuerpo = t.lstrip(_SIGNOS)
+        if not cuerpo or cuerpo.count(".") > 1 or cuerpo == ".":
+            return None
+        try:
+            total += Decimal(t if t[0] in _SIGNOS else f"+{t}")
+        except InvalidOperation:
+            return None
+    return total.quantize(Decimal("0.01"))
+
+
+def _expr_y_costo(fila: dict) -> tuple[str, Decimal]:
+    """Normaliza el par (cuenta escrita, total). El total lo manda la cuenta."""
+    expr = (str(fila.get("costo_expr") or "")).strip()[:MAX_EXPR]
+    # Sin signos no es una cuenta, es un número: no vale la pena conservarla.
+    if expr and not any(c in _SIGNOS for c in expr[1:]):
+        expr = ""
+    if expr:
+        total = suma_expresion(expr)
+        if total is not None:
+            return expr, total
+        expr = ""  # cuenta ilegible: se descarta y manda el número
+    return expr, _to_decimal(fila.get("costo"))
+
+
 def sincronizar_procesos(producto, procesos_json: str | None) -> None:
     """Reemplaza los procesos del producto con los del JSON.
 
@@ -64,7 +125,8 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
         tipo = fila.get("tipo")
         if tipo not in TIPOS_VALIDOS:
             continue
-        costo = _to_decimal(fila.get("costo"))
+        # LC 2026-08-04: el costo puede venir como una cuenta escrita («35+15+15»).
+        costo_expr, costo = _expr_y_costo(fila)
         proveedor_id = fila.get("proveedor_id")
         descripcion = (fila.get("descripcion") or "").strip()[:200]
         por_pieza = bool(fila.get("por_pieza"))
@@ -87,6 +149,7 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
         deseados.append({
             "tipo": tipo, "proveedor_id": proveedor_id,
             "descripcion": descripcion, "costo": costo, "por_pieza": por_pieza,
+            "costo_expr": costo_expr,
         })
 
     # 2) Reconcilia contra los existentes (emparejados por tipo + orden de
@@ -107,15 +170,17 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
             p.proveedor_id = d["proveedor_id"]
             p.descripcion = d["descripcion"]
             p.costo = d["costo"]
+            p.costo_expr = d["costo_expr"]
             p.por_pieza = d["por_pieza"]
-            p.save(update_fields=["orden", "proveedor_id", "descripcion", "costo", "por_pieza"])
+            p.save(update_fields=["orden", "proveedor_id", "descripcion", "costo", "costo_expr", "por_pieza"])
             conservados.add(p.pk)
             idx[tipo] = i + 1
         else:
             ProyectoProductoProceso.objects.create(
                 producto=producto, tipo=tipo, orden=orden,
                 proveedor_id=d["proveedor_id"], descripcion=d["descripcion"],
-                costo=d["costo"], por_pieza=d["por_pieza"],
+                costo=d["costo"], costo_expr=d["costo_expr"],
+                por_pieza=d["por_pieza"],
             )
 
     # 3) Borra los existentes que ya no aparecen en el JSON.

@@ -180,7 +180,7 @@ class EditarEconomicoForm(forms.ModelForm):
 
 class ProyectoProductoForm(forms.ModelForm):
     servicio = forms.ModelChoiceField(
-        queryset=Servicio.activos.all().select_related("categoria").prefetch_related("proveedores"),
+        queryset=Servicio.activos.all().select_related("categoria", "proveedor_principal").prefetch_related("proveedores"),
         required=False,
         empty_label="— Elige un producto —",
         label="Producto",
@@ -255,10 +255,15 @@ class ProyectoProductoForm(forms.ModelForm):
         # fondo, así que al crecer sube su etiqueta).
         labels = {"nota": "Descripción"}
         widgets = {
+            # LC 2026-08-04 R3 (Oscar): letra chica (del tamaño del chip
+            # «@Proveedor» de abajo) y tope de ~4 renglones con scroll interno —
+            # `data-autogrow` lleva el tope en px, así una especificación larga
+            # ya no estira la tarjeta sin fin. `min-h-0` gana al `min-h-[80px]`
+            # de `.campo-form textarea` (utilities pisa components).
             "nota": forms.Textarea(attrs={
                 "rows": 2,
-                "data-autogrow": "1",
-                "class": "resize-none",
+                "data-autogrow": "84",
+                "class": "resize-none overflow-y-auto min-h-0 px-2.5 py-1.5 text-[11px] leading-snug",
                 "placeholder": "Color: Beige / Terracota\nCon bordado frontal…",
                 "title": "Especificación de este elemento. Es lo que sale en la "
                          "cotización debajo del nombre del concepto.",
@@ -286,7 +291,7 @@ class ProyectoProductoForm(forms.ModelForm):
             campo_srv.queryset = campo_srv.queryset
         # LC 2026-07: el dropdown de Producto muestra «Nombre - Proveedor».
         def _etiqueta_servicio(s):
-            prov = next((p for p in s.proveedores.all() if p.activo), None)
+            prov = s.proveedor_default  # LC 2026-08-04: el principal explícito
             return f"{s.nombre} - {prov.razon_social}" if prov else s.nombre
         self.fields["servicio"].label_from_instance = _etiqueta_servicio
         # Bug Oscar 2026-06-29: al abrir un proyecto existente, las tarjetas

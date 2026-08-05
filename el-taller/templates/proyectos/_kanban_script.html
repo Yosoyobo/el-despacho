@@ -6,10 +6,43 @@
     // globales .kanban-card / .kanban-columna, así que sirve para ambos.
     let dragId = null;
     let dragSrc = null;
+    let dragCard = null;
+    function csrfToken() {
+        return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value
+            || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    }
+    // LC 2026-08-04 R3 (Oscar): «quiero la opción de arrastrar los proyectos para
+    // cambiar su orden; que se guarde, es meramente visual». El orden es COMPARTIDO
+    // (todo el equipo ve el mismo) y vive en `Proyecto.orden_kanban`.
+    async function persistirOrdenColumna(zona) {
+        if (!zona) return;
+        const ids = Array.from(zona.querySelectorAll('.kanban-card'))
+            .map(c => c.getAttribute('data-proyecto-id')).filter(Boolean);
+        if (!ids.length) return;
+        const body = new URLSearchParams();
+        ids.forEach(id => body.append('orden', id));
+        try {
+            await fetch('{% url "proyectos-reordenar-kanban" %}', {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken(), 'Content-Type': 'application/x-www-form-urlencoded'},
+                body: body,
+            });
+        } catch (_) { /* el orden es cosmético: si falla, no se molesta al usuario */ }
+    }
+    // Reacomoda la tarjeta arrastrada dentro de la zona bajo el cursor.
+    function reacomodar(zona, y) {
+        if (!zona || !dragCard) return;
+        const otras = Array.from(zona.querySelectorAll('.kanban-card')).filter(c => c !== dragCard);
+        const despues = otras.find(c => { const r = c.getBoundingClientRect(); return y < r.top + r.height / 2; });
+        if (despues) zona.insertBefore(dragCard, despues); else zona.appendChild(dragCard);
+        const vacio = zona.querySelector('.kanban-empty');
+        if (vacio) vacio.classList.add('hidden');
+    }
     document.querySelectorAll('.kanban-card').forEach(card => {
         card.addEventListener('dragstart', e => {
             dragId = card.getAttribute('data-proyecto-id');
             dragSrc = card.closest('.kanban-dropzone');
+            dragCard = card;
             card.classList.add('opacity-50');
             e.dataTransfer.effectAllowed = 'move';
             try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {}
@@ -24,6 +57,9 @@
         col.addEventListener('dragover', e => {
             e.preventDefault();
             col.classList.add('ring-2', 'ring-brand-400');
+            // Mientras arrastras, la tarjeta ya se acomoda en su lugar (así se ve
+            // dónde va a caer, igual que las tarjetas de producto del proyecto).
+            reacomodar(col.querySelector('.kanban-dropzone'), e.clientY);
         });
         col.addEventListener('dragleave', () => col.classList.remove('ring-2', 'ring-brand-400'));
         col.addEventListener('drop', async e => {
@@ -34,9 +70,15 @@
             const card = document.querySelector(`.kanban-card[data-proyecto-id="${dragId}"]`);
             if (!card) return;
             const estadoActual = card.getAttribute('data-estado-actual');
-            if (estadoActual === nuevoEstado) return; // misma columna, no hacer nada
+            const zonaDestino = col.querySelector('.kanban-dropzone');
+            if (estadoActual === nuevoEstado) {
+                // Misma columna: sólo cambió el orden.
+                await persistirOrdenColumna(zonaDestino);
+                dragId = null; dragSrc = null; dragCard = null;
+                return;
+            }
             // Mueve la tarjeta al DOM de la columna nueva (optimistic UI).
-            col.querySelector('.kanban-dropzone').appendChild(card);
+            if (card.closest('.kanban-dropzone') !== zonaDestino) zonaDestino.appendChild(card);
             card.setAttribute('data-estado-actual', nuevoEstado);
             // Llama al backend.
             try {
@@ -58,13 +100,16 @@
                     if (dragSrc) dragSrc.appendChild(card);
                     card.setAttribute('data-estado-actual', estadoActual);
                     alert('No se pudo cambiar el estado. Recarga la página.');
+                } else {
+                    // Quedó en la columna nueva: guarda también su posición ahí.
+                    await persistirOrdenColumna(zonaDestino);
                 }
             } catch (err) {
                 if (dragSrc) dragSrc.appendChild(card);
                 card.setAttribute('data-estado-actual', estadoActual);
                 alert('Error de red. Recarga la página.');
             }
-            dragId = null; dragSrc = null;
+            dragId = null; dragSrc = null; dragCard = null;
         });
     });
     // --- Buscador del Kanban (LC Buzón §156) — filtrado client-side, debounce ---

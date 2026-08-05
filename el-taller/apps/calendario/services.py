@@ -74,10 +74,14 @@ def eventos_por_dia(user, inicio: date, fin: date) -> dict[date, list[dict]]:
         dia_evento = timezone.localtime(p.fecha_compromiso).date()
         eventos[dia_evento].append({
             "tipo": "entrega",
-            # LC 2026-07: los eventos automáticos del ciclo del proyecto llevan
-            # el prefijo fijo «Compromiso:» + 📦 (entrega/cierre).
-            "titulo": f"📦 Compromiso: {p.nombre}",
+            # LC 2026-08-04 R3 (Oscar): «quitarle el texto Compromiso a todos los
+            # eventos relevantes». Queda el 📦 y el nombre del proyecto — el prefijo
+            # era ruido en cada renglón del calendario y de Próximos eventos.
+            "titulo": f"📦 {p.nombre}",
             "subtitulo": p.cliente.razon_social,
+            # Para la regla de «Próximos eventos» del Dashboard: sólo cuentan las
+            # entregas de proyectos que ya van en serio (de diseño en adelante).
+            "estado": p.estado,
             "url": f"/proyectos/{p.pk}/",
             "obj_id": p.pk,  # D6: modal corto de edición al clicar el evento
             "color": "gray" if dia_evento < hoy else "brand",

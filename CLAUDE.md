@@ -4521,6 +4521,82 @@ mini-Chalán de productos sí la escribe al crear, vía el campo `nota`, capado 
 caracteres). Las tarjetas de producto de la vista de **solo lectura** del proyecto
 no muestran la Descripción (siguen listando producto/cantidad/subtotal).
 
+### S-Ajustes-Ago04-R3 ✅ — Guardar que te sigue, tarjetas que no se mueven y cuentas escritas en el costo (2026-08-04, VERSION 2026.08.03)
+
+Tercera ronda del día sobre 2026.08.01/02. Notas en imagen (tabita de crear
+producto, tarjeta, ingresos/egresos, comentarios) + 8 pedidos en texto. Seis
+definiciones por AskUserQuestion: **Guardar flotante en TODAS las páginas** ·
+**color de tarjeta fijo por producto** · **la cuenta escrita se conserva** ·
+**orden del Kanban compartido** · la regla de compromisos **sólo en Próximos
+eventos** · cuentas **sólo en el costo de Impresión**.
+
+- **El «bug» de los 2,584.26 NO era bug** (verificado con Decimal): los $150 de
+  «adaptación y positivos» son un monto FIJO y entran completos
+  (`44.94×29 + 39×29 + 150 = 2,584.26`). Los 7 centavos de diferencia salen de
+  repartirlos a mano (`150÷29 = 5.1724 → 5.17 × 29 = 149.93`). El backend usa
+  `Decimal` de punta a punta y `costo` tiene `decimal_places=2`, así que capturar
+  el total como monto fijo es exacto y repartirlo por pieza no. El caso quedó
+  parametrizado como red permanente, fijando **las dos** cifras.
+- **Cuentas escritas en el costo de Impresión**: campo nuevo
+  `ProyectoProductoProceso.costo_expr` (migr. `proyectos/0030`) guarda «35+15+15»
+  y `costo` su resultado (65.00). `services_procesos.suma_expresion()` acepta sólo
+  cadenas de sumas/restas (**sin `eval`**, sin paréntesis, sin `*` ni `/`) y **el
+  servidor recalcula el total DE la cuenta**, ignorando el que manda el front. El
+  input pasó a `type="text"` (un numérico ni deja teclear «+») con `= $65.00` en
+  vivo al lado. La división no se soporta a propósito: con 2 decimales perdería
+  centavos — el error de arriba.
+- **Tarjeta de producto**: color **estable** por producto (filtro nuevo
+  `color_tarjeta`; el `{% cycle %}` lo repartía por POSICIÓN, de ahí que se
+  recolorearan todas al mover una) · el **toggle ya no reordena** (se quitó el JS
+  y `-incluir_en_calculo` del `Meta.ordering`, con `AlterModelOptions`) · el
+  **toggle vive en la cabecera** (visible colapsada; hubo que sumar `label` a las
+  exclusiones del handler de `data-card-barra`) · **⧉ Duplicar** clona la línea con
+  procesos y ventas y hace hueco con `F("orden")+1`, **sin** heredar el FK `egreso`
+  ni la foto propia (sólo donde hay autoguardado) · labels e inputs más chicos y
+  Descripción más ancha, en `text-[11px]` con tope de ~4 renglones
+  (`data-autogrow` ahora lleva el tope en px).
+- **Proveedores — ligado fuerte sin mover al principal**: el «primero» NO podía
+  ser el primero de la M2M porque `Proveedor.Meta.ordering` es alfabético (ligar
+  «Alfa» le robaba el default a «Zeta»). FK nuevo `Servicio.proveedor_principal`
+  (migr. `el_catalogo/0014` + data migration que lo siembra con el que hoy se usa)
+  y property `proveedor_default` como **fuente única**. Señal `post_save` de
+  `ProyectoProducto` (`signals_catalogo.py`, `weak=False`) hace `proveedores.add`
+  idempotente y ocupa el principal **sólo si estaba vacío**; va en señal porque las
+  líneas se guardan desde el formset, el modal, el duplicado, el mini-Chalán y los
+  ejecutores. Se elige a mano en la ficha del producto (★).
+- **Guardar flotante en TODAS las páginas** (`ui.js`, dual-copy §18): en vez de
+  tocar ~25 plantillas, una barra fija arriba a la derecha que hace
+  `original.click()` — clonar o mover el botón rompería `form=`/`hx-post`/`disabled`.
+  Aparece con `IntersectionObserver` (rootMargin 72px por el header sticky), se
+  esconde con un modal abierto (`MutationObserver` sobre `#modal-slot`), `z-40`, y
+  respeta `data-sin-guardar-flotante`.
+- **Kanban reordenable**: `Proyecto.orden_kanban` + endpoint
+  `proyectos-reordenar-kanban` (una columna por POST, acotado a lo visible). El JS
+  reacomoda en `dragover`; misma columna → guarda orden, otra columna → cambia
+  estado **y** guarda posición. Orden **compartido** por el equipo.
+- **Próximos eventos**: fuera el prefijo «Compromiso: » de `eventos_por_dia` (todos
+  los calendarios) y la regla de estados **sólo en el widget del Dashboard** vía
+  `slugs_con_compromiso_visible()`, que calcula el corte por el **`orden` del
+  catálogo** (≥ `en_proceso_diseno`) — si el super_admin reordena estados, la regla
+  lo sigue. El evento de entrega ahora expone `estado`.
+- **Resto**: tabita de crear producto legible (`minmax` para Categoría/Nombre,
+  numéricos angostos, todos los campos con placeholder — se fueron el `1` y el `0`
+  sueltos) · «+ Nuevo ingreso/egreso» DENTRO de su recuadro, abajo y centrado ·
+  Comentarios del proyecto compacto · buscador del Dashboard a `text-sm` · botones
+  «🤖 Redactar» en gris · la cotización muestra su versión.
+- **42 tests nuevos** (`tests/taller/test_ajustes_ago04_r3.py`). Se actualizaron 2
+  de `test_ajustes_ago04_r2.py` que fijaban px exactos y el `data-autogrow="1"`:
+  ahora comprueban la FORMA (6 columnas con el «+» al final, Descripción más ancha
+  que el costo, tope del autogrow en rango).
+
+**Deuda diseñada**: las cuentas escritas sólo están en el costo de Impresión (el
+sanitizador ya acepta el par para cualquier proceso); sin división a propósito; el
+⧉ Duplicar no sale en Nuevo/Editar (sin autoguardado un POST perdería lo no
+guardado); el Guardar flotante toma el PRIMER submit visible (hoy no hay pantalla
+con dos formularios independientes); la regla de compromisos no aplica al
+Calendario ni al resumen del Chalán (decisión de Oscar, el helper ya está listo si
+se quiere parejo); el orden del Kanban no registra quién lo movió.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

@@ -10,7 +10,7 @@ coincidir con lo que pasa `proyectos/detalle.html`.{% endcomment %}
 {% if rerender_productos %}
 {% comment %}Tras crear un producto inline: re-renderiza el formset con la tarjeta nueva
 ya con su pk (acordeon omitido = todas visibles, el usuario está agregando).{% endcomment %}
-<div id="formset-productos" class="space-y-4" hx-swap-oob="true">{% include "proyectos/_formset_productos.html" %}</div>
+<div id="formset-productos" class="space-y-4" hx-swap-oob="true">{% include "proyectos/_formset_productos.html" with con_autosave=True %}</div>
 {% endif %}
 {% include "proyectos/_guardado_indicador.html" with estado=ok|yesno:"guardado,error" oob=True %}
 {% comment %}V6 Bloque 5: error legible del autosave — antes el fallo era un
