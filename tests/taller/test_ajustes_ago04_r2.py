@@ -14,6 +14,7 @@ Cubre los 4 puntos del ticket:
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 
 import pytest
@@ -327,8 +328,11 @@ def test_el_boton_verde_es_un_mas_en_la_primera_fila():
     from pathlib import Path
     tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
         encoding="utf-8")
-    # Una sexta columna en la fila 1 y Categoría cede espacio (1fr → 0.7fr).
-    assert "md:grid-cols-[0.7fr_1.4fr_72px_72px_120px_36px]" in tpl
+    # Una sexta columna en la fila 1 (el «+» de 36px) y Categoría cede espacio.
+    # R3 2026-08-04: los anchos se afinaron (labels e inputs más chicos), así que
+    # el test fija la FORMA de la rejilla, no los px exactos.
+    fila1 = re.search(r"md:grid-cols-\[([^\]]+)\]", tpl).group(1).split("_")
+    assert len(fila1) == 6 and fila1[-1] == "36px", fila1
     # El botón quedó como un «+» grande, ya no «+ Proceso».
     ini = tpl.index("venta-add")
     boton = tpl[ini:tpl.index("</button>", ini) + len("</button>")]
@@ -351,7 +355,11 @@ def test_la_descripcion_de_la_linea_es_multilinea_y_crece():
     from django import forms as dj_forms
     f = ProyectoProductoForm()
     assert isinstance(f.fields["nota"].widget, dj_forms.Textarea)
-    assert f.fields["nota"].widget.attrs.get("data-autogrow") == "1"
+    # R3 2026-08-04 (Oscar): el autogrow trae su TOPE en px (~4 renglones) para
+    # que una especificación larga scrollee por dentro y no estire la tarjeta.
+    tope = int(f.fields["nota"].widget.attrs.get("data-autogrow"))
+    assert 60 <= tope <= 120, tope
+    assert "text-[11px]" in f.fields["nota"].widget.attrs.get("class", "")
     assert f.fields["nota"].label == "Descripción"
     # Ya no es un CharField de 200: acepta un texto largo de varias líneas.
     from apps.los_proyectos.models import ProyectoProducto
@@ -361,7 +369,10 @@ def test_la_descripcion_de_la_linea_es_multilinea_y_crece():
     assert ">Descripción</label>" in tpl
     assert ">Notas</label>" not in tpl
     # El renglón alinea al fondo: al crecer, la etiqueta sube.
-    assert "md:grid-cols-[1.4fr_120px_1.6fr] md:items-end" in tpl
+    # La Descripción se lleva más ancho que el costo unitario (R3: se agrandó).
+    fila2 = re.search(r"md:grid-cols-\[([\d.]+fr)_(\d+px)_([\d.]+fr)\] md:items-end", tpl)
+    assert fila2, "la fila 2 debe seguir siendo proveedor · costo · descripción"
+    assert float(fila2.group(3)[:-2]) > float(fila2.group(1)[:-2])
     js = Path("el-taller/templates/proyectos/_form_productos_js.html").read_text(
         encoding="utf-8")
     assert "function autogrow(ta)" in js
