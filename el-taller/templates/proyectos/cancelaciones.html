@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% comment %}
+Estadísticas de cancelación (LC 2026-08-07, Oscar): la lista de todo lo que se
+canceló con su razón, «para analizar más adelante». Los que quedaron sin motivo
+salen con su botón «Agregar +», mismo formato que los folios faltantes de
+Facturación.
+{% endcomment %}
+{% block title %}Estadísticas de cancelación — El Taller{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Proyectos" "Estadísticas de cancelación" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Estadísticas de cancelación" subtitulo="Por qué se cancelaron los proyectos" breadcrumb_items=breadcrumb_items back_url=back_url back_label=back_label %}
+
+{% if total %}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Cancelados" valor=total color="error" %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Sin información" valor=sin_info color="warning" %}
+</div>
+
+<section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Por motivo</h2>
+    <ul class="space-y-2">
+        {% for r in resumen %}
+        <li class="flex items-center gap-3 text-sm">
+            <span class="w-40 shrink-0 truncate {% if r.vacio %}text-gray-400 dark:text-gray-500{% else %}text-gray-700 dark:text-gray-200{% endif %}">{{ r.label }}</span>
+            <span class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                <span class="block h-full rounded-full {% if r.vacio %}bg-gray-300 dark:bg-gray-600{% else %}bg-brand-500{% endif %}" style="width: {{ r.pct }}%"></span>
+            </span>
+            <span class="w-16 shrink-0 text-right tabular-nums text-gray-600 dark:text-gray-300">{{ r.n }} · {{ r.pct }}%</span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="min-w-[640px] text-sm md:min-w-full">
+            <thead class="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <tr>
+                    <th class="px-5 py-3">Proyecto</th>
+                    <th class="px-5 py-3">Cliente</th>
+                    <th class="px-5 py-3">Cancelado</th>
+                    <th class="px-5 py-3">Motivo</th>
+                    <th class="px-5 py-3">Detalles</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for p in proyectos %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-3">
+                        <a href="{% url 'proyectos-detalle' p.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ p.nombre|default:p.codigo }}</a>
+                        <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">{{ p.codigo }}</span>
+                    </td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ p.cliente.razon_social|default:"—" }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if p.cancelado_en %}{{ p.cancelado_en|date:"d M Y" }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                    <td class="px-5 py-3">
+                        {% if p.motivo_cancelacion %}
+                        <span class="badge badge-gray">{{ p.motivo_cancelacion.label }}</span>
+                        {% else %}
+                        <span class="italic text-gray-400 dark:text-gray-500">Sin información</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="min-w-0 flex-1 truncate">{{ p.nota_cancelacion|default:"" }}</span>
+                            {% if puede_editar %}
+                            <button type="button"
+                                    hx-get="{% url 'proyectos-motivo-cancelacion' p.pk %}?recargar=1"
+                                    hx-target="#modal-slot" hx-swap="innerHTML"
+                                    class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-brand-300 bg-white px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/40 dark:bg-gray-900 dark:text-brand-300 dark:hover:bg-brand-500/10">{% if p.motivo_cancelacion or p.nota_cancelacion %}Editar{% else %}Agregar +{% endif %}</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-5 py-10">
+                    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin cancelaciones" descripcion="Todavía no se ha cancelado ningún proyecto. Qué bueno." icono="sparkles" %}
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -363,8 +363,13 @@ class TestTareasChalan:
         titulos = set(Tarea.objects.filter(proyecto=proyecto).values_list("titulo", flat=True))
         assert titulos == {"Sí va"}
 
-    def test_sin_responsable_queda_a_nombre_de_quien_la_crea(
+    def test_sin_responsable_queda_general_del_despacho(
             self, proyecto_factory, usuario_factory):
+        """LC 2026-08-07 (Oscar): «no debe de asignar a nadie si no se lo digo».
+
+        Antes caía a quien dictaba, y terminaba con tareas ajenas colgadas de su
+        nombre. Ahora se queda sin responsable. Ver test_ajustes_ago07.py.
+        """
         from apps.los_proyectos import tareas_ia
         admin = usuario_factory(rol="super_admin")
         proyecto = proyecto_factory(nombre="Playeras LCC")
@@ -373,7 +378,7 @@ class TestTareasChalan:
             tareas=[{"titulo": "Sin dueño", "fecha": "2026-08-03"}])
         assert res["creadas"] == 1
         from apps.el_pizarron.models import Tarea
-        assert Tarea.objects.get(titulo="Sin dueño").asignada_a_id == admin.pk
+        assert Tarea.objects.get(titulo="Sin dueño").asignada_a_id is None
 
     def test_interpretar_sin_texto_no_llama_a_la_ia(self, proyecto_factory):
         from apps.los_proyectos import tareas_ia

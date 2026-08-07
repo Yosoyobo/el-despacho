@@ -64,6 +64,53 @@ def _normalizar_accion(tipo: str, payload: dict):
     return real, payload
 
 
+# ── Orden de ejecución (LC 2026-08-07, Oscar) ────────────────────────────────
+# «Internamente en workflows así, necesitas ejecutar en orden: (1) crear clientes
+# nuevos (2) crear proyectos nuevos (3) crear tareas nuevas.»
+#
+# El LLM propone las acciones en el orden en que las contó, que no siempre es el
+# orden en que se pueden aplicar: una tarea que cuelga de un proyecto que aún no
+# existe falla. Aquí las acciones se aplican por DEPENDENCIA — primero lo que
+# otras necesitan— y dentro de cada escalón se respeta el orden del Chalán.
+#
+# `@accion_N` sigue funcionando: el contexto se llena con el `orden` original, y
+# como las referencias siempre apuntan hacia atrás en la cadena de dependencias
+# (tarea → proyecto → cliente), el reacomodo sólo las ayuda.
+_ESCALON_EJECUCION: dict[str, int] = {
+    # 1. Catálogo: un producto puede necesitar a su proveedor.
+    "crear_proveedor": 10,
+    "crear_servicio": 20,
+    "crear_variacion": 20,
+    "actualizar_servicio": 20,
+    # 2. Clientes.
+    "crear_cliente": 30,
+    "actualizar_cliente": 30,
+    # 3. Proyectos.
+    "crear_proyecto": 40,
+    "actualizar_proyecto": 40,
+    "duplicar_proyecto": 40,
+    # 4. Lo que cuelga del proyecto.
+    "asignar_usuario_proyecto": 50,
+    "agregar_producto_proyecto": 50,
+    "quitar_producto_proyecto": 50,
+    # 5. Tareas y mandados.
+    "crear_tarea": 60,
+    "crear_mandado": 60,
+    "actualizar_tarea": 60,
+    "asignar_runner": 60,
+    "cambiar_estado_mandado": 60,
+}
+_ESCALON_DEFAULT = 70  # dinero, mensajes, checador… nada depende de ellos
+
+
+def _orden_de_ejecucion(acciones: list) -> list:
+    """Las acciones reacomodadas por dependencia, estable dentro de cada escalón."""
+    return sorted(
+        acciones,
+        key=lambda a: (_ESCALON_EJECUCION.get(a.tipo, _ESCALON_DEFAULT), a.orden),
+    )
+
+
 def interpretar(
     *,
     texto: str | None = None,
@@ -212,7 +259,11 @@ def aplicar(*, dictado, usuario, _reintentos: int = 0, _proveedores_intentados: 
     if dictado.chalan:
         proveedores_intentados.add(dictado.chalan)
 
-    acciones = list(dictado.acciones.filter(confirmada=True).order_by("orden"))
+    # Por dependencia, no por el orden en que el Chalán las contó (ver
+    # `_ESCALON_EJECUCION`): primero clientes, luego proyectos, luego tareas.
+    acciones = _orden_de_ejecucion(
+        list(dictado.acciones.filter(confirmada=True).order_by("orden"))
+    )
     aplicadas = 0
     fallidas = 0
     # Contexto compartido entre ejecutores del mismo dictado. Permite que una

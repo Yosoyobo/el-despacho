@@ -79,6 +79,12 @@ class Tarea(models.Model):
     # flujo (pendiente/en_curso/completada); archivar solo la esconde de la vista.
     archivada = models.BooleanField(default=False, db_index=True)
 
+    # LC 2026-08-07 (Oscar): «poder arrastrar tareas en tablas para ordenar y
+    # mantener orden». El orden es del equipo, como el del Kanban de Proyectos:
+    # lo que uno acomoda lo ven todos. Todas nacen en 0 y el arrastre reparte
+    # 0,1,2… entre las filas de esa tabla.
+    orden = models.IntegerField(default=0, db_index=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
@@ -89,7 +95,9 @@ class Tarea(models.Model):
         db_table = "pizarron_tarea"
         verbose_name = "tarea"
         verbose_name_plural = "tareas"
-        ordering = ["estado", "-creado_en"]
+        # `orden` primero para que el acomodo manual mande en todos lados (con
+        # todas en 0 el orden es exactamente el de antes).
+        ordering = ["orden", "estado", "-creado_en"]
 
     def __str__(self):
         return self.titulo

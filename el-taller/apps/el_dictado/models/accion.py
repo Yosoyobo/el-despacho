@@ -61,3 +61,17 @@ class DictadoAccion(models.Model):
         """`[{etiqueta, valor}]` del payload, en orden de lectura."""
         from ..presentacion import campos_accion
         return campos_accion(self.tipo, self.payload)
+
+    # LC 2026-08-07 (Oscar): en el resultado hay que saber QUÉ acción se logró o
+    # falló, no sólo cuántas. Estas dos alimentan la fila del ✓/✕.
+    @property
+    def resumen_visible(self) -> str:
+        """De qué era la acción: «Seguimiento de diseños»."""
+        from ..presentacion import resumen_accion
+        return resumen_accion(self.tipo, self.payload)
+
+    @property
+    def error_visible(self) -> str:
+        """El motivo de la falla, recortado para la burbuja del chat."""
+        from ..presentacion import error_legible
+        return error_legible(self.error_al_aplicar)

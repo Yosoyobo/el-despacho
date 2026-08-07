@@ -8752,3 +8752,162 @@ no los rompa. Ruff (0.8.4) limpio. Candado de Novedades verde.
   `eventos_por_dia`.
 - El **orden del Kanban** es compartido y cualquiera con permiso de editar
   proyectos puede reacomodar. No hay bitácora de quién lo movió (es cosmético).
+
+---
+
+# BITÁCORA — S-Ajustes-Ago07 (2026-08-07, VERSION 2026.08.04)
+
+> Ronda de Oscar sobre lo deployado el 4 de agosto (2026.08.01/02/03). Diez notas:
+> una en imagen (un chat con 15 acciones que salieron como pastillas `CREAR TAREA ✕`
+> sin decir cuál), ocho en texto y una que llegó a media sesión (los gastos sin
+> proveedor). Seis definiciones por AskUserQuestion.
+
+## 1. Regla nueva de la sesión
+
+**Si algo repercute en La Gerencia, se le avisa a Oscar y él decide si se limita a
+El Taller.** Aplica a esta sesión y a todas las de ajustes de El Taller. En este
+sprint el único punto que la toca es el **catálogo de Motivos de cancelación**, que
+él autorizó explícitamente; el resto quedó encerrado en El Taller (incluido el
+Guardar fijo, que comparte archivo con Gerencia y por eso se resolvió con un
+interruptor en el `<body>` en vez de bifurcar el código).
+
+## 2. Decisiones (AskUserQuestion)
+
+| Tema | Decisión |
+|---|---|
+| Costo unitario (nota cortada) | Al elegir producto, **siempre pisa** |
+| Guardar arriba a la derecha | **Siempre visible, oculta el original — sólo El Taller** |
+| Arrastrar tareas | Lista de Tareas **y** recuadro del proyecto |
+| Modal «Esperando respuesta» | **Al generar** la cotización |
+| Motivo de cancelación | **Opcional**, con pastillas de un clic |
+| Dónde se editan los motivos | **En La Gerencia**, con los demás catálogos |
+| Runner de mandados | **Sigue automático** (sólo las tareas dejan de asignarse) |
+| Nombre del proyecto | **Sólo el título en vivo** (el guardado sigue igual) |
+| Gastos sin proveedor | **Un gasto → UN proveedor** |
+
+## 3. El Chalán: qué se logró y qué falló
+
+El screenshot mostraba quince pastillas `CREAR PROYECTO ✓/✕`, `CREAR TAREA ✕`…
+sin decir **cuál**. Se agregó `presentacion.resumen_accion()`, que saca del payload
+la primera llave que IDENTIFICA a la entidad (`_IDENTIFICADORES`: titulo → nombre →
+concepto → asunto → razón social → …) y `error_legible()`, que aprieta y recorta el
+motivo. Se exponen como `DictadoAccion.resumen_visible` / `.error_visible` —
+propiedades, **cero migración**. La lista del resultado pinta ahora
+«CREAR TAREA ✕ Seguimiento de diseños» con el error en un recuadro rojo debajo, y
+el mensaje de texto de `views_chat.aplicar_accion` nombra la entidad fallida.
+`campos_accion` se refactorizó sobre un `_aplanar()` compartido.
+
+## 4. El Chalán: orden de ejecución
+
+La segunda nota de la imagen: «necesitas ejecutar en orden: (1) crear clientes
+nuevos (2) crear proyectos nuevos (3) crear tareas nuevas». `services.aplicar` ya no
+usa el orden en que el LLM contó las acciones sino un **sort estable por escalón de
+dependencia** (`_ESCALON_EJECUCION` / `_orden_de_ejecucion`): catálogo 10-20,
+clientes 30, proyectos 40, líneas del proyecto 50, tareas y mandados 60, el resto
+70. Dentro del escalón manda el orden del Chalán.
+
+**`@accion_N` no se rompe**: el contexto de entidades creadas se llena con el
+`orden` ORIGINAL, y como las referencias siempre apuntan hacia atrás en la cadena
+de dependencias (tarea → proyecto → cliente), el reacomodo sólo las ayuda.
+
+## 5. Tareas sin dueño por default
+
+La raíz **no** era el ejecutor: `crear_tarea` ya respetaba `asignado_slug` vacío.
+Era `los_proyectos/tareas_ia.aplicar_tareas`, cuyo docstring decía «una tarea sin
+dueño no le sirve a nadie» y caía a `usuario` — así que el mini-Chalán del proyecto
+le colgaba a quien dictaba todo lo que no resolvía. Ahora queda `None`, y los dos
+prompts lo dicen explícito. El **runner de los mandados sigue automático** por
+decisión de Oscar.
+
+## 6. Guardar fijo arriba a la derecha
+
+Ya existía una barra flotante que aparecía al salirse el original. Ahora monta **un
+proxy por cada botón del grupo** (`grupoDe()` toma el contenedor cuando todos sus
+hijos son acciones, así el «↶ Deshacer» se va con el Guardar) y **esconde el grupo
+original**.
+
+Dos cosas que había que resolver:
+
+- **`ui.js` es dual-copy y hay un test que exige que los dos archivos sean
+  idénticos** (regla §18). Como Oscar pidió el cambio sólo para El Taller, el modo
+  se prende con `data-guardar-fijo` en el `<body>` de El Taller. Mismo archivo, un
+  atributo de diferencia.
+- **Esconder al botón equivocado sí sería un bug.** Antes daba igual (sólo se
+  duplicaba), pero ahora hay que filtrar: `RE_GUARDA` exige que el texto empiece
+  con Guardar/Crear/Actualizar/Registrar/Emitir. Sin eso, la barra habría
+  secuestrado —y escondido— «Filtrar» de las listas, «Confirmar» del chat del
+  Chalán, «Casar» de conciliación y **«Volver a mi cuenta» del banner de
+  impersonación**, que es el primer submit de CADA página mientras se impersona.
+
+## 7. Arrastrar tareas
+
+`Tarea.orden` (migr. `pizarron/0013`) con `orden` al frente del `Meta.ordering`:
+como todas nacen en 0, el orden que ve el equipo hoy **no cambia** hasta que
+alguien arrastre. Endpoint `pizarron-reordenar-tareas` (POST `orden[]`, acotado a
+`_tareas_visibles`, escribe sólo `orden`). Partial `pizarron/_tareas_orden_js.html`
+con **Pointer Events** —el drag & drop de HTML5 no existe en touch— aplicado a las
+dos tablas. El asa es un `<button>`, y el manejador de filas clickeables de `ui.js`
+ignora los botones, así que arrastrar nunca abre la tarea.
+
+## 8. Cancelación con motivo
+
+Migración `proyectos/0031`: modelo `MotivoCancelacion` (slug/label/orden/activo/
+sistema, seed Precio · Cliente desistió · Tiempos · Otro) + `Proyecto.
+motivo_cancelacion` / `nota_cancelacion` / `cancelado_en`.
+
+Todas las vías de cancelación —desplegable, barra de estatus, arrastre en el
+Kanban, modal— pasan por `cambiar_estado`, así que el aviso viaja como cabecera
+**`HX-Trigger: pedirMotivoCancelacion`** y el listener vive en `base.html`. El
+Kanban usa `fetch` (no HTMX), así que lee la cabecera y dispara el evento a mano.
+El camino del modal recarga la página, y ahí la cabecera se perdería: por eso pide
+el modal con **`?motivo=1`** en el redirect.
+
+Página **`/proyectos/cancelaciones/`** con desglose por motivo y filas «Sin
+información» + «Agregar +» (patrón de los folios faltantes de Facturación). Botón
+hasta abajo y centrado en Kanban y Lista. El catálogo se administra en
+**La Gerencia → Catálogos → Motivos de cancelación** (app nueva
+`apps/motivos_cancelacion/`, calcada de `estados_tarea`).
+
+## 9. Modal de «Esperando respuesta» y gastos sin proveedor
+
+- Al **generar** la cotización, la vista arma el panel con `render_to_string` y le
+  concatena `_modal_pasar_esperando.html`, que trae su propio
+  `<div id="modal-slot" hx-swap-oob="innerHTML">`. La sugerencia chica del recuadro
+  se queda de respaldo y comparten la llave de `localStorage` del descarte.
+- Los **gastos de procesos sin proveedor** no salían en ningún lado: el recuadro
+  sólo acumula lo que tiene proveedor. Ahora `_gastos_sin_proveedor()` los lista al
+  pie con un selector para ligarlos (`proyectos-ligar-gasto-proveedor`), y al
+  ligarlos suben a la tarjeta de ese proveedor y cuentan en su deuda. Se extrajo
+  `_ctx_proveedores()` como fuente única de los 4 sitios que pintan el recuadro.
+
+## 10. Gotchas
+
+- **`django.shortcuts.render()` no acepta `headers=`** — hay que setearlos sobre la
+  respuesta ya construida. Costó un test rojo.
+- El `app_label` de tareas es **`pizarron`** (no `el_pizarron`) y el de proyectos
+  **`proyectos`** (no `los_proyectos`): las FK por string y las dependencias de
+  migración usan ésos.
+- Una app nueva de Gerencia hay que registrarla **también en
+  `tests/urls_gerencia.py`**, o sus tests dan 404.
+
+## 11. Tests
+
+43 nuevos (`tests/taller/test_ajustes_ago07.py` 37 +
+`tests/gerencia/test_motivos_cancelacion.py` 6). Se actualizó el test del Guardar
+flotante de R3 (`original.click()` → `real.click()`), que fijaba justo el detalle
+que este sprint cambió a propósito. Ruff (0.8.4) limpio. Candado de Novedades
+verde.
+
+## 12. Deuda diseñada
+
+- El orden de las tareas es **uno solo** compartido por las dos tablas: acomodar en
+  el proyecto y en la lista general se pisan entre sí (mismo campo, igual que el
+  Kanban de Proyectos).
+- Los gastos que se listan como sueltos son los de **procesos**. Una línea de
+  producto sin proveedor no entra: su selector ya vive en la tarjeta del producto.
+- Cancelar **desde El Chalán** no pregunta el motivo (sólo sella la fecha); el
+  proyecto sale como «Sin información» y se completa desde Estadísticas.
+- El modal de «Esperando respuesta» sale **al generar**, no al reabrir un proyecto
+  que quedó en «Por cotizar» con cotización.
+- El descarte del modal se recuerda en `localStorage` (por navegador), no en la
+  base.

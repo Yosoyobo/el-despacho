@@ -168,8 +168,12 @@ def aplicar_accion(request, pk: int):
         if resultado["fallidas"]:
             # Surface el error CONCRETO de cada acción fallida (no un "con error"
             # mudo). Así el usuario sabe qué faltó y puede reformular.
+            # LC 2026-08-07 (Oscar): con el NOMBRE de la entidad, no sólo el tipo
+            # de acción — con 9 tareas dictadas, «Crear tarea: falló» no dice cuál.
             detalles = "\n".join(
-                f"• {a.etiqueta_accion}: {a.error_al_aplicar}"
+                f"• {a.etiqueta_accion}"
+                + (f" «{a.resumen_visible}»" if a.resumen_visible else "")
+                + f": {a.error_al_aplicar}"
                 for a in dictado.acciones.filter(confirmada=True, aplicada=False)
                 if (a.error_al_aplicar or "").strip()
             )

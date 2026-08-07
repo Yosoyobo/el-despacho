@@ -122,6 +122,19 @@ class Proyecto(models.Model):
         related_name="proyectos_archivados",
     )
 
+    # ── Por qué se canceló (LC 2026-08-07, Oscar) ────────────────────────────
+    # Se pregunta al pasar el proyecto a «Cancelado», desde donde sea, pero se
+    # puede omitir: un proyecto sin motivo sale en Estadísticas de cancelación
+    # con «Sin información» y su botón para completarlo después.
+    motivo_cancelacion = models.ForeignKey(
+        "proyectos.MotivoCancelacion",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="proyectos",
+    )
+    nota_cancelacion = models.TextField(blank=True, default="")
+    cancelado_en = models.DateTimeField(null=True, blank=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     creado_por = models.ForeignKey(

@@ -103,6 +103,17 @@
                 } else {
                     // Quedó en la columna nueva: guarda también su posición ahí.
                     await persistirOrdenColumna(zonaDestino);
+                    // LC 2026-08-07: si la tarjeta se arrastró a «Cancelado», el
+                    // servidor pide el motivo por cabecera. Como aquí no hay HTMX
+                    // que la lea, se dispara el mismo evento a mano (el listener
+                    // vive en base.html).
+                    try {
+                        const trig = JSON.parse(resp.headers.get('HX-Trigger') || '{}');
+                        if (trig.pedirMotivoCancelacion) {
+                            document.body.dispatchEvent(new CustomEvent(
+                                'pedirMotivoCancelacion', { detail: trig.pedirMotivoCancelacion }));
+                        }
+                    } catch (_) { /* sin cabecera o mal formada: no pasa nada */ }
                 }
             } catch (err) {
                 if (dragSrc) dragSrc.appendChild(card);

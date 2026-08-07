@@ -246,7 +246,13 @@
             const precio = card.querySelector('input[name$="-precio_unitario"]');
             const costo = card.querySelector('input[name$="-costo_unitario"]');
             if (precio && !precio.value) precio.value = datos.precio;
-            if (costo && !costo.value) costo.value = datos.costo;
+            // LC 2026-08-07 (Oscar): el COSTO del catálogo manda. Antes sólo se
+            // ponía si el campo estaba vacío, así que cambiar de producto dejaba
+            // pegado el costo del anterior y la utilidad salía mal. Esto sólo
+            // corre cuando el usuario ELIGE producto (el `change` del select),
+            // así que un costo escrito a mano se respeta hasta el próximo cambio.
+            // El precio NO se pisa: ése se negocia por proyecto.
+            if (costo) costo.value = datos.costo;
             const cat = card.querySelector('[data-cat-filtro]');
             if (cat && datos.categoria) cat.value = datos.categoria;
             // LC 2026-07: autocompletar proveedor (el 1º del catálogo) si está vacío.

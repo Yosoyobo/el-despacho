@@ -1,0 +1,35 @@
+{% comment %}
+«¿Pasar el proyecto a Esperando respuesta?» como modal (LC 2026-08-07, Oscar:
+«está bien como está, pero además de eso quiero que salga como modal de los que
+100% tienes que ver»). Sale al GENERAR la cotización; la sugerencia chica del
+recuadro se queda como respaldo para cuando este modal se omite.
+
+Se inyecta por OOB desde `generar_cotizacion`, así que trae su propio envoltorio
+de `#modal-slot`. «Ahora no» apunta la misma llave de localStorage que usa la
+sugerencia chica, para no preguntar dos veces por la misma versión.
+{% endcomment %}
+<div id="modal-slot" hx-swap-oob="innerHTML">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+        <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+            <header class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <p class="font-mono text-xs uppercase tracking-wider text-success-600 dark:text-success-400">Cotización {{ cot_version_actual }} lista ✓</p>
+                <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">¿Pasar «{{ proyecto.nombre|default:proyecto.codigo }}» a «{{ estado_tras_cotizar_label }}»?</h2>
+            </header>
+            <div class="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">
+                El proyecto sigue en «Por cotizar». Si ya la mandaste al cliente, pásalo a «{{ estado_tras_cotizar_label }}» para que el tablero refleje dónde está de verdad.
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close
+                        onclick="try { localStorage.setItem('despacho-cot-esperando-{{ proyecto.pk }}-v{{ cot_version_actual }}', '1'); } catch (e) {}"
+                        class="btn-secundario">Ahora no</button>
+                <button type="button"
+                        hx-post="{% url 'proyectos-cambiar-estado' proyecto.pk %}"
+                        hx-vals='{"estado": "{{ estado_tras_cotizar }}"}'
+                        hx-target="#proyecto-status-bar-{{ proyecto.pk }}"
+                        hx-swap="outerHTML"
+                        hx-on::after-request="var s=document.querySelector('[data-sug-clave]'); if (s) s.classList.add('hidden'); var m=document.getElementById('modal-slot'); if (m) m.innerHTML='';"
+                        class="btn-primario">Sí, pasarlo</button>
+            </footer>
+        </div>
+    </div>
+</div>

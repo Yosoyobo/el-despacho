@@ -82,4 +82,43 @@ es por proveedor y SOLO de este proyecto (default prendido).
     {% else %}
     {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proveedores" descripcion="Asigna un proveedor a un producto o usa “+ Agregar”." icono="folder" %}
     {% endif %}
+
+    {% comment %}LC 2026-08-07 (Oscar): los gastos de procesos que no están
+    ligados a nadie no aparecían en ningún lado. Van hasta abajo, con su
+    selector para colgarlos de un proveedor; al ligarlos suben a la tarjeta de
+    ése y cuentan en su deuda.
+
+    El selector NO manda el form del proyecto (`hx-params="none"`) y corta el
+    `change` para no disparar el autoguardado — mismo patrón que el estado de la
+    tabla de Tareas.{% endcomment %}
+    {% if gastos_sin_proveedor %}
+    <div class="mt-4 border-t border-dashed border-gray-200 pt-3 dark:border-gray-800">
+        <h4 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Gastos sin proveedor</h4>
+        <ul class="space-y-2 text-sm">
+            {% for g in gastos_sin_proveedor %}
+            <li class="rounded-lg border border-dashed border-gray-200 p-2.5 dark:border-gray-800">
+                <div class="flex items-start justify-between gap-2">
+                    <span class="min-w-0 flex-1 text-gray-700 dark:text-gray-200">{{ g.nombre }}</span>
+                    <span class="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ g.monto|dinero }}</span>
+                </div>
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{{ g.producto }}{% if g.por_pieza %} · × {{ g.piezas }} pz{% endif %}</p>
+                {% if puede_editar %}
+                <select aria-label="Ligar este gasto a un proveedor"
+                        class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
+                        hx-post="{% url 'proyectos-ligar-gasto-proveedor' proyecto.pk g.pk %}"
+                        hx-trigger="change" hx-swap="none" hx-params="none"
+                        hx-vals='js:{proveedor: event.target.value}'
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                        hx-on:change="event.stopPropagation();">
+                    <option value="">Ligar a un proveedor…</option>
+                    {% for p in proveedores_para_ligar %}
+                    <option value="{{ p.pk }}">{{ p.razon_social }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </section>

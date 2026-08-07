@@ -7,6 +7,11 @@ from .estado import (  # noqa: F401
     EstadoProyecto,
     slugs_con_compromiso_visible,
 )
+from .motivo_cancelacion import (  # noqa: F401
+    MOTIVOS_BASE,
+    MotivoCancelacion,
+    motivos_activos,
+)
 from .proceso import ProyectoProductoProceso  # noqa: F401
 from .producto import ProyectoProducto  # noqa: F401
 from .proveedor_proyecto import ProyectoProveedor, ProyectoProveedorIva  # noqa: F401

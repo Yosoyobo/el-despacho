@@ -579,6 +579,12 @@ def actualizar_proyecto(accion, usuario, contexto=None):
         aplicado.append(k)
     if not aplicado:
         raise ValueError("Sin campos válidos para actualizar.")
+    # LC 2026-08-07: cancelar desde El Chalán también sella la fecha, para que el
+    # proyecto salga en Estadísticas de cancelación (el motivo se completa ahí).
+    if "estado" in aplicado and proyecto.estado == "cancelado" and proyecto.cancelado_en is None:
+        from django.utils import timezone as _tz
+        proyecto.cancelado_en = _tz.now()
+        aplicado.append("cancelado_en")
     proyecto.save(update_fields=[*aplicado, "actualizado_en"])
     accion.entidad_tipo = "proyecto"
     accion.entidad_id = proyecto.pk

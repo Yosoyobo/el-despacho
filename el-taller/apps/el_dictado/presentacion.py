@@ -137,11 +137,12 @@ def _valor_legible(clave: str, valor) -> str:
     return texto[:_MAX_VALOR]
 
 
-def campos_accion(tipo: str, payload: dict | None) -> list[dict]:
-    """`[{etiqueta, valor}]` de una acción, en orden de lectura.
+def _aplanar(payload: dict | None) -> dict:
+    """El payload como un solo nivel.
 
-    Acepta que el LLM anide los cambios en `campos` (como hacen los
-    `actualizar_*`) o que los ponga al nivel superior: se aplanan ambos.
+    El LLM a veces anida los cambios en `campos` (como hacen los `actualizar_*`)
+    y a veces los pone arriba: se aceptan las dos formas. Si la misma llave
+    viene en los dos lados, gana la de `campos` (es la explícita).
     """
     plano: dict = {}
     for clave, valor in (payload or {}).items():
@@ -149,9 +150,14 @@ def campos_accion(tipo: str, payload: dict | None) -> list[dict]:
             plano.update(valor)
         else:
             plano.setdefault(clave, valor)
-    # `campos` gana sobre el nivel superior cuando la misma llave viene en los dos.
     if isinstance((payload or {}).get("campos"), dict):
         plano.update(payload["campos"])
+    return plano
+
+
+def campos_accion(tipo: str, payload: dict | None) -> list[dict]:
+    """`[{etiqueta, valor}]` de una acción, en orden de lectura."""
+    plano = _aplanar(payload)
 
     filas: list[dict] = []
     vistos: set[str] = set()
@@ -168,6 +174,42 @@ def campos_accion(tipo: str, payload: dict | None) -> list[dict]:
         if texto:
             filas.append({"etiqueta": _ETIQUETAS[clave], "valor": texto})
     return filas[:_MAX_CAMPOS]
+
+
+# ── De qué era la acción (LC 2026-08-07) ─────────────────────────────────────
+# Oscar: «aquí a fuerza necesitamos saber qué tarea se logró o falló,
+# específicamente». En el resultado, junto al ✓/✕ va el dato que IDENTIFICA a
+# la entidad, no sólo el nombre de la acción. Se busca en este orden y gana el
+# primero que traiga algo.
+_IDENTIFICADORES = (
+    "titulo", "nombre", "concepto", "asunto", "razon_social", "razon_social_fiscal",
+    "servicio", "producto", "descripcion", "folio", "monto_total", "monto",
+    "proyecto_slug", "cliente_slug", "usuario_slug",
+)
+
+_MAX_RESUMEN = 60
+_MAX_ERROR = 160
+
+
+def resumen_accion(tipo: str, payload: dict | None) -> str:
+    """«Seguimiento de diseños» — de qué era la acción, en una línea corta.
+
+    Si el payload no trae ninguna llave identificadora (raro), se devuelve
+    cadena vacía y la fila del resultado sale sólo con su pastilla.
+    """
+    plano = _aplanar(payload)
+    for clave in _IDENTIFICADORES:
+        if clave in plano:
+            texto = _valor_legible(clave, plano[clave])
+            if texto:
+                return texto[:_MAX_RESUMEN]
+    return ""
+
+
+def error_legible(texto: str | None) -> str:
+    """El error de una acción, recortado para caber en la burbuja del chat."""
+    limpio = " ".join((texto or "").split())
+    return limpio[: _MAX_ERROR - 1] + "…" if len(limpio) > _MAX_ERROR else limpio
 
 
 # ── Botón de destino ─────────────────────────────────────────────────────────
@@ -256,4 +298,10 @@ def enlaces_de_dictado(dictado) -> list[dict]:
     return enlaces
 
 
-__all__ = ["titulo_accion", "campos_accion", "enlaces_de_dictado"]
+__all__ = [
+    "campos_accion",
+    "enlaces_de_dictado",
+    "error_legible",
+    "resumen_accion",
+    "titulo_accion",
+]

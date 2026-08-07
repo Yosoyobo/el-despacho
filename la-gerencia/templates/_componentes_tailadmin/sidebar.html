@@ -77,6 +77,10 @@
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12M4 12h12M4 18h8" stroke-linecap="round"/><path d="m17 15 2 2 3.5-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Estados de tarea
         </a>
+        <a href="{% url 'motivos-cancelacion-lista' %}" class="menu-item {% if '/catalogos/motivos-cancelacion' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6" stroke-linecap="round"/></svg>
+            Motivos de cancelación
+        </a>
         <a href="{% url 'estados-buzon-lista' %}" class="menu-item {% if '/catalogos/estados-buzon' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v12H5.2L4 17.2V4Z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/><circle cx="15" cy="10" r="1.2" fill="currentColor"/></svg>
             Estados del Buzón

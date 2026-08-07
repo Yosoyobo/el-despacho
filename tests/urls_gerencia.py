@@ -30,6 +30,7 @@ urlpatterns = [
     path("catalogos/", include("apps.estados_proyecto.urls")),
     path("catalogos/", include("apps.estados_cotizacion.urls")),
     path("catalogos/", include("apps.estados_tarea.urls")),
+    path("catalogos/", include("apps.motivos_cancelacion.urls")),
     path("", include("campanas.urls")),
     path("catalogos/", include("apps.estados_buzon.urls")),
     path("catalogos/", include("apps.tipos_buzon.urls")),

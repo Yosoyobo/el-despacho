@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Motivos de cancelación — Catálogos{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Catálogos" "" "Motivos de cancelación" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Catálogos · Motivos de cancelación</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Motivos de cancelación</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Las opciones de un clic que salen al cancelar un proyecto en El Taller. Se agrupan solas en «Estadísticas de cancelación».</p>
+    </div>
+    <a href="{% url 'motivos-cancelacion-nuevo' %}" class="btn-primario">+ Nuevo motivo</a>
+</header>
+
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3 text-left">Nombre</th>
+                <th class="px-5 py-3 text-left">Slug</th>
+                <th class="px-5 py-3 text-right">Orden</th>
+                <th class="px-5 py-3 text-center">Activo</th>
+                <th class="px-5 py-3 text-right">Proyectos</th>
+                <th class="px-5 py-3 text-right">—</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for m in motivos %}
+            <tr>
+                <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ m.label }} {% if m.sistema %}<span class="ml-1 text-[10px] uppercase tracking-wider text-gray-400">sistema</span>{% endif %}</td>
+                <td class="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{{ m.slug }}</td>
+                <td class="px-5 py-3 text-right tabular-nums">{{ m.orden }}</td>
+                <td class="px-5 py-3 text-center">{% if m.activo %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-gray">Inactivo</span>{% endif %}</td>
+                <td class="px-5 py-3 text-right tabular-nums">{{ m.proyectos_usando }}</td>
+                <td class="px-5 py-3 text-right">
+                    <a href="{% url 'motivos-cancelacion-editar' m.slug %}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Editar</a>
+                    <form method="post" action="{% url 'motivos-cancelacion-toggle' m.slug %}" class="ml-2 inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-xs font-medium text-gray-500 hover:underline dark:text-gray-400" title="{% if m.activo %}Deja de ofrecerlo al cancelar (los proyectos que ya lo tienen lo conservan){% else %}Vuelve a ofrecerlo al cancelar{% endif %}">{% if m.activo %}Ocultar{% else %}Mostrar{% endif %}</button>
+                    </form>
+                    {% if not m.sistema and m.proyectos_usando == 0 %}
+                    <form method="post" action="{% url 'motivos-cancelacion-borrar' m.slug %}" class="ml-2 inline" onsubmit="return confirm('¿Borrar el motivo «{{ m.label|escapejs }}»?');">
+                        {% csrf_token %}
+                        <button type="submit" class="text-xs font-medium text-error-600 hover:underline dark:text-error-400">Borrar</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sin motivos configurados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

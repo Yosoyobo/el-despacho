@@ -23,6 +23,12 @@ EventoTipo = Literal[
     "proyecto.estado_creado",
     "proyecto.estado_actualizado",
     "proyecto.estado_borrado",
+    # LC 2026-08-07: por qué se cancelan los proyectos.
+    "proyecto.cancelacion_motivo",
+    "proyecto.motivo_cancelacion_creado",
+    "proyecto.motivo_cancelacion_actualizado",
+    "proyecto.motivo_cancelacion_borrado",
+    "proyecto.gasto_ligado_proveedor",
     "proyecto.egresos_generados",
     "proyecto.gasto_registrado",
     "proyecto.producto_imagen",

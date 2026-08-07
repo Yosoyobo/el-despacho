@@ -5,6 +5,69 @@
 
 ---
 
+## Novedades — El Chalán dice qué falló, tareas que se arrastran y por qué se cancelan los proyectos (7 de agosto de 2026)
+
+**El Chalán**
+
+- **Ahora dice QUÉ se logró y qué no.** Cuando le dictas varias cosas de un jalón,
+  el resultado ya no es una lista de palomitas y taches sin nombre: cada renglón
+  trae **el nombre de lo que hizo** («Crear tarea ✕ Seguimiento de diseños») y, si
+  falló, **el motivo** en rojo debajo. Con quince acciones dictadas ya se sabe cuál
+  hay que repetir.
+- **Hace las cosas en el orden correcto.** Antes las aplicaba en el orden en que
+  las contó, así que una tarea de un proyecto que él mismo iba a crear fallaba por
+  no existir todavía. Ahora primero crea productos y proveedores, luego clientes,
+  luego proyectos y hasta el final las tareas.
+- **Ya no le pone dueño a las tareas por su cuenta.** Si no le dices a quién, la
+  tarea queda **general del despacho**. Si sí se lo dices, la asigna. (Los mandados
+  de entrega o recolección siguen eligiendo solos al repartidor más cercano: ésa
+  es la gracia.)
+
+**Proyectos**
+
+- **El nombre se ve al momento.** Al cambiar el nombre de un proyecto, el título
+  grande de arriba y la pestaña del navegador cambian mientras escribes.
+- **Al cancelar te pregunta por qué.** Da igual desde dónde canceles —el
+  desplegable, la barra de estatus o arrastrando la tarjeta en el tablero—: sale un
+  recuadro con motivos de un clic (Precio · Cliente desistió · Tiempos · Otro) y un
+  espacio para detalles. **Se puede omitir**: cancelar nunca se bloquea.
+- **Botón «Estadísticas de cancelación»**, hasta abajo y centrado en Proyectos.
+  Lleva a la lista de todo lo cancelado con su razón, agrupada por motivo. Los que
+  se cancelaron sin decir por qué salen como **«Sin información»** con su botón
+  **«Agregar +»** para completarlos después.
+- **Al generar una cotización sale el recuadro** preguntando si pasas el proyecto a
+  «Esperando respuesta». La sugerencia chica de siempre se queda como respaldo.
+- **Los gastos sin proveedor ya se ven.** Al pie del recuadro de Proveedores
+  aparece «Gastos sin proveedor» con lo que no está ligado a nadie, y un selector
+  para colgarle cada uno a su proveedor. Al ligarlo sube a la tarjeta de ése y
+  cuenta en su deuda.
+- **El costo del catálogo manda.** Al elegir un producto en una tarjeta, el costo
+  unitario **siempre** se trae del catálogo (antes sólo se ponía si el campo estaba
+  vacío, así que al cambiar de producto se quedaba pegado el costo del anterior y
+  la ganancia salía mal). El precio no se toca: ése se negocia por proyecto.
+
+**Tareas**
+
+- **Se arrastran para ordenarlas.** Tanto en la lista de Tareas como en el recuadro
+  de Tareas del proyecto, cada renglón tiene un asa a la izquierda: la jalas y la
+  sueltas donde quieras. **El orden se guarda y lo ve todo el equipo**, como el
+  tablero de Proyectos. Funciona igual con el dedo en el celular.
+
+**En todas las páginas**
+
+- **El Guardar vive fijo arriba a la derecha.** Ya no aparece sólo cuando el de
+  abajo se sale de la pantalla: está ahí desde que abres la página, con los botones
+  que lo acompañan (Deshacer, etc.), y los de abajo se esconden para no verlos
+  duplicados.
+
+**Ajustes (La Gerencia)**
+
+- **Catálogos → Motivos de cancelación**: renombra, reordena, agrega o esconde los
+  motivos que salen al cancelar un proyecto. Las estadísticas se agrupan solas con
+  lo que configures ahí.
+
+---
+
 ## Novedades — Guardar que te sigue, tarjetas que no se mueven y cuentas escritas en el costo (4 de agosto de 2026)
 
 **En todas las páginas**
@@ -3169,12 +3232,14 @@ El Despacho vive en tres direcciones:
 | **gerencia.learningcenter.mx** | Configuración del sistema + tablero ejecutivo | Super admin y quien tenga el permiso |
 | **recepcion.learningcenter.mx** | Portal para clientes externos | Próximamente |
 
-### El botón Guardar te sigue
+### El botón Guardar vive arriba a la derecha
 
-En cualquier página con formulario, cuando el botón **Guardar** se sale de la
-pantalla al bajar, aparece **otro flotando arriba a la derecha**, encima de todo.
-Es el mismo botón: puedes guardar sin subir hasta arriba. En las ventanas
-(modales) no aparece, porque ya traen sus botones al pie.
+En cualquier página con formulario, el botón **Guardar** está fijo **arriba a la
+derecha**, encima de todo, desde que abres la página. Si trae botones que lo
+acompañan (**Deshacer**, por ejemplo), se van con él, y los de abajo se esconden
+para no verlos duplicados. Es el mismo botón de siempre, sólo que ya no hay que
+buscarlo. En las ventanas (modales) no aparece, porque ya traen sus botones al
+pie.
 
 ### Dos formas de entrar
 
@@ -3296,6 +3361,22 @@ Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clic
 
 **"Proyectos" siempre abre el Kanban.** El menú, las migas de pan y el botón de "volver" de un proyecto te dejan en el **Tablero**; para la tabla usa el botón **"Lista"** del encabezado.
 
+### Cancelar un proyecto y por qué
+
+Cuando pasas un proyecto a **Cancelado** —desde el desplegable del detalle, la
+barra de estatus o arrastrando la tarjeta en el tablero— sale un recuadro que
+pregunta **por qué se canceló**: motivos de un clic (Precio · Cliente desistió ·
+Tiempos · Otro) y un espacio para detalles. **Se puede omitir**: cancelar nunca se
+bloquea por no contestarlo.
+
+Hasta abajo de Proyectos, centrado, está el botón **«Estadísticas de
+cancelación»**: la lista de todo lo cancelado con su razón y el desglose por
+motivo. Los proyectos que se cancelaron sin decir por qué salen como **«Sin
+información»** con un botón **«Agregar +»** para completarlos cuando quieras.
+
+Los motivos que se ofrecen se editan en **La Gerencia → Catálogos → Motivos de
+cancelación** (renombrar, reordenar, agregar o esconder).
+
 ### Archivar o eliminar un proyecto
 
 Para proyectos de **prueba o duplicados** (distinto de "Cancelado", que se reserva para proyectos reales que no se hicieron), en el detalle hay dos botones arriba a la derecha:
@@ -3392,7 +3473,10 @@ A la derecha:
 - **Equipo:** marca quién participa y su rol.
 - **Proveedores:** cuánto se le paga a cada proveedor por este proyecto, con el
   desglose **Subtotal + IVA + Total** (los proveedores facturan con IVA, así
-  cuadra con lo que realmente pagas).
+  cuadra con lo que realmente pagas). Hasta abajo, **«Gastos sin proveedor»**
+  lista los gastos de procesos que no están ligados a nadie, con un selector para
+  colgarle cada uno a su proveedor; al ligarlo sube a la tarjeta de ése y cuenta
+  en su deuda.
 
 **Ingresos y egresos del proyecto:** más abajo hay un recuadro con los
 ingresos y egresos ligados al proyecto (aparece en cualquier estado). Cada lado
@@ -3450,6 +3534,12 @@ Cada tarea pertenece a un proyecto. Tiene título, descripción, estado, priorid
 
 - El **tablero de Tareas** arranca mostrando **todo el despacho**; filtra a las
   tuyas con el chip de tu nombre cuando quieras.
+- **Se arrastran para ordenarlas.** En la lista de Tareas y en el recuadro de
+  Tareas del proyecto, cada renglón tiene un asa (⠿) a la izquierda: la jalas y la
+  sueltas donde quieras. El orden **se guarda y lo ve todo el equipo**. Funciona
+  igual con el dedo en el celular.
+- Si le **dictas** las tareas a El Chalán y no le dices a quién, quedan **sin
+  responsable** (generales del despacho) — nunca se las cuelga a quien dicta.
 - La persona asignada recibe push automático.
 - Diseñadores solo ven tareas de proyectos donde están asignados.
 - Las completas marcando "Completar".
@@ -3762,6 +3852,18 @@ La caja de texto del Dashboard. Escribes en lenguaje natural:
 > "Carlos del proyecto LC-0042 ya entregó el diseño. Pasa el proyecto a producción y crea una tarea para Diana revisar arte el martes."
 
 El Chalán Claudio interpreta y te muestra un **preview con checkboxes** de cada acción. Tú revisas, desmarcas las que no quieras, y confirmas. Las acciones se aplican una por una; si alguna falla, las demás se aplican igual.
+
+**Se aplican en el orden correcto, no en el que las contó.** Primero productos y
+proveedores, luego clientes, luego proyectos y hasta el final las tareas — así una
+tarea de un proyecto que él mismo acaba de crear no falla por «no existe».
+
+**El resultado dice cuál se logró y cuál no.** Cada renglón trae **el nombre** de
+lo que hizo («Crear tarea ✕ Seguimiento de diseños») y, si falló, **el motivo**
+debajo. Con muchas acciones de un jalón ya se sabe exactamente qué repetir.
+
+**No le pone dueño a las tareas por su cuenta.** Si no le dices a quién, la tarea
+queda general del despacho. Los mandados de entrega o recolección sí siguen
+eligiendo solos al repartidor más cercano.
 
 Si el Chalán no entiende, puedes responder una clarificación sin perder el dictado original. Si todo falla, hay un botón "🔄 Reintentar con otro Chalán".
 

@@ -113,8 +113,9 @@ def interpretar_tareas(*, proyecto, texto: str, usuario) -> dict:
         '"fecha": "YYYY-MM-DD", "tipo": "tarea|entrega|junta|recoger", '
         '"prioridad": "baja|media|alta", "detalle": "<texto corto|vacío>"}]}\n'
         "Reglas: una tarea por cada cosa que haya que hacer; no inventes tareas que "
-        "el usuario no pidió. Usa el NOMBRE EXACTO de la lista de personas; si no "
-        "queda claro quién, deja `responsable` vacío. Resuelve las fechas relativas "
+        "el usuario no pidió. Usa el NOMBRE EXACTO de la lista de personas SOLO si "
+        "el usuario dijo a quién; si no lo dijo, deja `responsable` VACÍO — nunca "
+        "adivines ni la asignes a quien está dictando. Resuelve las fechas relativas "
         "(«mañana», «el lunes», «en dos semanas») a fecha ISO contra la fecha de hoy "
         "que te doy; si no se menciona fecha, usa la de hoy. `tipo`: 'entrega' si se "
         "entrega algo al cliente, 'recoger' si hay que ir a recoger o pasar por algo, "
@@ -177,8 +178,10 @@ def interpretar_tareas(*, proyecto, texto: str, usuario) -> dict:
 def aplicar_tareas(*, proyecto, tareas: list[dict], usuario) -> dict:
     """Crea las `Tarea` seleccionadas. Re-valida permisos (defensa en profundidad).
 
-    Una tarea sin responsable resuelto se asigna a quien la está creando: el
-    modelo lo permite vacío, pero una tarea sin dueño no le sirve a nadie.
+    Una tarea sin responsable resuelto se queda SIN responsable, general del
+    despacho (Oscar, LC 2026-08-07: «no debe de asignar a nadie si no se lo
+    digo»). Antes caía a quien la dictaba, y terminaba con tareas ajenas
+    colgadas de su nombre.
     """
     from apps.el_pizarron.models import Tarea
 
@@ -198,8 +201,6 @@ def aplicar_tareas(*, proyecto, tareas: list[dict], usuario) -> dict:
         asignada = None
         if (aid := t.get("asignada_id")):
             asignada = Usuario.objects.filter(pk=aid, is_active=True).first()
-        if asignada is None:
-            asignada = usuario
         tipo = (t.get("tipo") or "tarea").strip().lower()
         prioridad = (t.get("prioridad") or "media").strip().lower()
         tarea = Tarea.objects.create(

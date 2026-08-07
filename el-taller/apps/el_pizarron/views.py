@@ -3,7 +3,7 @@ from apps.el_pizarron.models import Tarea
 from apps.los_proyectos.models import Proyecto
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -498,6 +498,36 @@ def archivar_tarea(request, pk):
         f"Tarea «{tarea.titulo[:60]}» {'archivada' if tarea.archivada else 'desarchivada'}.")
     destino = request.POST.get("next") or reverse("tareas-kanban")
     return redirect(destino)
+
+
+@login_required
+def reordenar_tareas(request):
+    """LC 2026-08-07 (Oscar): persiste el acomodo manual de las tablas de tareas.
+
+    Recibe `orden` = lista de pks en el nuevo orden de UNA tabla (la del proyecto
+    o la lista general). Es compartido: lo que uno acomoda lo ve el equipo, igual
+    que el Kanban de Proyectos. Sólo escribe `orden`, así que no toca estados,
+    fechas ni responsables. Idempotente y acotado a las tareas que el usuario
+    puede ver — un pk ajeno se ignora en silencio.
+    """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    crudos = request.POST.getlist("orden")
+    pks = []
+    for crudo in crudos:
+        try:
+            pks.append(int(crudo))
+        except (TypeError, ValueError):
+            continue
+    if not pks:
+        return HttpResponse(status=204)
+    visibles = set(
+        _tareas_visibles(request.user).filter(pk__in=pks).values_list("pk", flat=True)
+    )
+    for indice, tarea_pk in enumerate(pks):
+        if tarea_pk in visibles:
+            Tarea.objects.filter(pk=tarea_pk).update(orden=indice)
+    return HttpResponse(status=204)
 
 
 @login_required

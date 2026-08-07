@@ -28,6 +28,7 @@
         <table class="min-w-[640px] md:min-w-full text-sm">
             <thead class="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:text-gray-400">
                 <tr>
+                    <th class="w-8 px-1 py-3"><span class="sr-only">Ordenar</span></th>
                     <th class="px-5 py-3">Tarea</th>
                     <th class="px-5 py-3">Proyecto</th>
                     <th class="px-5 py-3">Asignada</th>
@@ -35,9 +36,16 @@
                     <th class="px-5 py-3">Compromiso</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% comment %}LC 2026-08-07: arrastre para ordenar (ver
+            pizarron/_tareas_orden_js.html). El orden es del equipo.{% endcomment %}
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800"
+                   data-tareas-orden="{% url 'pizarron-reordenar-tareas' %}" data-csrf="{{ csrf_token }}">
                 {% for t in tareas %}
-                <tr data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <tr data-tarea-id="{{ t.pk }}" data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="w-8 px-1 py-3 align-middle">
+                        <button type="button" data-tarea-asa title="Arrastra para ordenar" aria-label="Arrastra para ordenar"
+                                class="cursor-grab touch-none select-none px-1 text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600 dark:hover:text-gray-400">⠿</button>
+                    </td>
                     <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}{% if t.completada_en %}<span class="mt-0.5 block text-[11px] font-normal text-success-600 dark:text-success-400">✓ Completada {{ t.completada_en|date:"d M Y H:i" }} · tardó {{ t.duracion_completado }}</span>{% endif %}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.proyecto.codigo }} · {{ t.proyecto.nombre|truncatechars:30 }}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
@@ -47,7 +55,7 @@
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.fecha_compromiso %}{{ t.fecha_compromiso|date:"d M Y" }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" class="px-5 py-10">
+                <tr><td colspan="6" class="px-5 py-10">
                     {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="No hay tareas que coincidan con el filtro." icono="tasks" %}
                 </td></tr>
                 {% endfor %}
@@ -55,4 +63,5 @@
         </table>
     </div>
 </div>
+{% include "pizarron/_tareas_orden_js.html" %}
 {% endblock %}

@@ -141,6 +141,7 @@ PAYLOADS:
   · Te dicen la cifra «+ IVA» / «más IVA» / «más impuestos» («20,700 + IVA») ⇒ es el SUBTOTAL antes de impuestos ⇒ `monto_base`. El IVA y las retenciones se calculan encima.
   Al registrar una factura que ya existe agrega también `fecha_emision` y `folio` si los traes, y NO inventes `items` desglosados.
 - crear_tarea: {proyecto_slug (o cliente_slug si solo sabes el cliente → su proyecto activo), titulo, asignado_slug?, fecha_compromiso? (SOLO fecha 'YYYY-MM-DD'), hora? ('HH:MM' aparte, NUNCA la metas en fecha_compromiso), prioridad?, tipo? ∈ tarea|entrega|junta|recoger, runner_slug?}
+  RESPONSABLE: manda `asignado_slug` SÓLO si te dijeron a quién. Si no lo dijeron, OMITE el campo — la tarea queda general del despacho. NUNCA la asignes a quien está dictando ni adivines por el contexto. Si sí te lo dijeron, asígnala siempre (no la dejes general).
   (si tipo es entrega|recoger, el runner se asigna AUTOMÁTICAMENTE al crearla — NO agregues una acción `asignar_runner` aparte; solo da runner_slug si quieres uno específico)
 - actualizar_tarea: {tarea_id, campos: {estado?, prioridad?, asignado_slug?, fecha_compromiso? ('YYYY-MM-DD'), hora? ('HH:MM'), tipo?}}  (tarea_id puede ser `@accion_N` si la tarea la creaste en una acción previa del mismo plan)
 - asignar_runner: {tarea_id, runner_slug?}  (sin runner_slug ⇒ el sistema asigna el repartidor más libre; solo tareas entrega/recoger. tarea_id acepta `@accion_N`. NO lo uses tras crear_tarea/crear_mandado de tipo entrega/recoger — esas YA asignan runner solas)
