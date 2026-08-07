@@ -33,7 +33,11 @@
     <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
     {% block head_extra %}{% endblock %}
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100 min-h-screen">
+{% comment %}`data-guardar-fijo`: el Guardar vive SIEMPRE arriba a la derecha y el
+grupo de botones original se esconde (Oscar, LC 2026-08-07). Es un interruptor a
+propósito: `ui.js` es dual-copy (regla §18) y La Gerencia NO lo prende, así que
+allá el Guardar sigue apareciendo sólo al salirse de la pantalla.{% endcomment %}
+<body data-guardar-fijo class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100 min-h-screen">
 {% include "_componentes_tailadmin/_banner_deploy.html" %}
 {% if request.impersonando %}
 <div class="sticky top-0 z-[60] flex flex-wrap items-center justify-center gap-3 bg-warning-500 px-4 py-2 text-center text-sm font-medium text-white">
@@ -102,6 +106,19 @@
 {% block scripts_graficas %}{# Páginas con charts cargan ApexCharts + site_charts.js #}{% endblock %}
 {% block body_extra %}{% endblock %}
 <div id="modal-slot"></div>
+
+{% comment %}Al cancelar un proyecto —desde el dropdown del detalle, la barra de
+status o arrastrando la tarjeta en el Kanban— el servidor contesta con la
+cabecera `HX-Trigger: pedirMotivoCancelacion`, y aquí se abre el modal del
+«¿por qué?». Vive en base.html porque el `#modal-slot` es global y el disparo
+puede venir de cualquier pantalla. El Kanban usa `fetch` (no HTMX), así que lee
+la cabecera él mismo y dispara este mismo evento a mano.{% endcomment %}
+<script>
+document.body.addEventListener('pedirMotivoCancelacion', function (e) {
+    var url = e.detail && e.detail.url;
+    if (url && window.htmx) htmx.ajax('GET', url, { target: '#modal-slot', swap: 'innerHTML' });
+});
+</script>
 
 {# Barra de progreso de subida de adjuntos — fija arriba; ui.js la mueve con el upload real. #}
 <div id="barra-subida" class="fixed inset-x-0 top-0 z-[80] hidden h-1 bg-transparent">

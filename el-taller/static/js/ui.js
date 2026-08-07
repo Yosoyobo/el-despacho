@@ -952,19 +952,28 @@ window.abrirRickroll = function () {
   document.body.addEventListener('htmx:afterSwap', escanear);
 })();
 
-/* ── Guardar flotante (LC 2026-08-04 R3, Oscar) ─────────────────────────────
-   «En toda la página, los botones de Guardar deben de ir arriba a la derecha, y
-   flotar encima de todo.»
+/* ── Guardar flotante (LC 2026-08-04 R3 · fijo desde 2026-08-07, Oscar) ──────
+   «En todas las páginas, el botón de Guardar debe de existir en la esquina
+   superior derecha. Si trae consigo otros botones, moverlos esos ahí también.»
 
-   En vez de mover el botón de 25 plantillas, se monta una copia FLOTANTE arriba
-   a la derecha que aparece en cuanto el Guardar de verdad se sale de la pantalla,
-   y al picarla se hace click en el original: así el form, HTMX, el `form=` y
-   cualquier hx-post siguen funcionando igual (clonar el botón o moverlo de sitio
-   sí los rompería).
+   En vez de mover el botón en ~25 plantillas, se monta arriba a la derecha una
+   barra con un PROXY por cada botón del grupo; al picar el proxy se hace click
+   en el original. Así el form, HTMX, el `form=` y cualquier hx-post siguen
+   funcionando igual (clonar el botón o moverlo de sitio sí los rompería).
+
+   Dos modos, según `data-guardar-fijo` en el <body>:
+   - CON el atributo (El Taller): la barra vive siempre visible y el grupo de
+     botones original se esconde, para no verlos duplicados.
+   - SIN el atributo (La Gerencia): como antes — la barra sólo aparece cuando el
+     Guardar de verdad se sale de la pantalla, y nada se esconde.
+   `ui.js` es dual-copy (regla §18): el archivo es idéntico en las dos apps y lo
+   que cambia es el interruptor del <body>.
 
    Reglas:
-   - Sólo el PRIMER submit visible de la página; los modales (`#modal-slot`) no
-     participan — ya traen su pie de botones.
+   - Sólo botones que GUARDAN (Guardar / Crear / Actualizar / Registrar / Emitir).
+     Filtrar, Confirmar, Enviar, Casar, «Volver a mi cuenta»… no cuentan: si no,
+     la barra secuestraría el botón de un filtro o del banner de impersonación.
+   - Los modales (`#modal-slot`) no participan — ya traen su pie de botones.
    - Opt-out: `data-sin-guardar-flotante` en el botón o en su form.
    - Se esconde mientras hay un modal abierto y refleja el `disabled` del original.
    - Se re-escanea en cada swap de HTMX (el botón puede llegar por OOB, como el
@@ -972,22 +981,51 @@ window.abrirRickroll = function () {
 (function () {
   'use strict';
   var SEL = 'button[type="submit"], input[type="submit"]';
-  var barra = null, boton = null, original = null, observer = null;
+  /* Lo que sí es un "guardar". Se compara contra el texto del botón. */
+  var RE_GUARDA = /^(guardar|crear|actualizar|registrar|emitir)\b/i;
+  var ACCIONES = /^(BUTTON|A|INPUT)$/;
+  var barra = null, lista = null, original = null, grupo = null;
+  var observer = null, proxies = [];
   var ultimoFuera = false;  // ¿el Guardar original está fuera de la pantalla?
+
+  function fijo() {
+    return document.body.hasAttribute('data-guardar-fijo');
+  }
+
+  function texto(el) {
+    var t = (el.tagName === 'INPUT' ? el.value : el.textContent) || '';
+    return t.replace(/\s+/g, ' ').trim();
+  }
+
+  function etiqueta(el) {
+    var t = texto(el);
+    return t.length > 24 ? t.slice(0, 24) + '…' : (t || 'Guardar');
+  }
 
   function esCandidato(el) {
     if (el.closest('#modal-slot') || el.closest('[data-modal-slot-close]')) return false;
     if (el.hasAttribute('data-sin-guardar-flotante')) return false;
     var f = el.closest('form');
     if (f && f.hasAttribute('data-sin-guardar-flotante')) return false;
+    if (!RE_GUARDA.test(texto(el))) return false;
+    // El grupo que nosotros escondimos sigue contando: si no, el siguiente
+    // escaneo elegiría otro botón y la barra saltaría al equivocado.
+    if (el.closest('[data-guardar-flotante-origen]')) return true;
     // Un botón escondido (display:none) no cuenta como el Guardar de la página.
     return !!(el.offsetParent || el.getClientRects().length);
   }
 
-  function etiqueta(el) {
-    var t = (el.tagName === 'INPUT' ? el.value : el.textContent) || '';
-    t = t.replace(/\s+/g, ' ').trim();
-    return t.length > 24 ? t.slice(0, 24) + '…' : (t || 'Guardar');
+  /* El Guardar y los botones que lo acompañan (Deshacer, Cancelar…). Sólo se
+     toma el grupo cuando el contenedor no tiene nada más que botones. */
+  function grupoDe(el) {
+    var p = el.parentElement;
+    if (!p) return { contenedor: el, botones: [el] };
+    var hijos = Array.prototype.slice.call(p.children);
+    var soloAcciones = hijos.length > 1 && hijos.every(function (h) {
+      return ACCIONES.test(h.tagName);
+    });
+    if (soloAcciones) return { contenedor: p, botones: hijos };
+    return { contenedor: el, botones: [el] };
   }
 
   function montarBarra() {
@@ -996,13 +1034,9 @@ window.abrirRickroll = function () {
     // Debajo del header sticky (z-20) y por debajo de los modales (z-50).
     barra.className = 'fixed right-4 top-[4.75rem] z-40 hidden sm:right-6';
     barra.setAttribute('data-guardar-flotante', '');
-    boton = document.createElement('button');
-    boton.type = 'button';
-    boton.className = 'btn-primario shadow-theme-lg';
-    boton.addEventListener('click', function () {
-      if (original && !original.disabled) original.click();
-    });
-    barra.appendChild(boton);
+    lista = document.createElement('div');
+    lista.className = 'flex items-center gap-2';
+    barra.appendChild(lista);
     document.body.appendChild(barra);
   }
 
@@ -1013,8 +1047,31 @@ window.abrirRickroll = function () {
 
   function pintar(visible) {
     if (!barra || !original) return;
-    var mostrar = visible && !hayModal() && !original.disabled;
-    barra.classList.toggle('hidden', !mostrar);
+    proxies.forEach(function (par) {
+      par.proxy.disabled = !!par.real.disabled;
+      par.proxy.classList.toggle('cursor-not-allowed', !!par.real.disabled);
+      par.proxy.classList.toggle('opacity-40', !!par.real.disabled);
+    });
+    barra.classList.toggle('hidden', !(visible && !hayModal()));
+  }
+
+  function soltarOriginal() {
+    if (!grupo) return;
+    var c = grupo.contenedor;
+    if (c.hasAttribute('data-guardar-flotante-origen')) {
+      c.removeAttribute('data-guardar-flotante-origen');
+      c.style.display = c.dataset.gfDisplay || '';
+      delete c.dataset.gfDisplay;
+    }
+    grupo = null;
+  }
+
+  function esconderOriginal() {
+    if (!grupo) return;
+    var c = grupo.contenedor;
+    c.dataset.gfDisplay = c.style.display || '';
+    c.setAttribute('data-guardar-flotante-origen', '');
+    c.style.display = 'none';
   }
 
   function escanear() {
@@ -1022,16 +1079,43 @@ window.abrirRickroll = function () {
     var nuevo = candidatos[0] || null;
     if (nuevo === original) return;
     if (observer) { observer.disconnect(); observer = null; }
+    soltarOriginal();
+    proxies = [];
     original = nuevo;
     if (!original) { if (barra) barra.classList.add('hidden'); return; }
     montarBarra();
-    boton.textContent = etiqueta(original);
-    boton.title = 'Ir arriba no hace falta: guarda desde aquí';
-    // Aparece justo cuando el original deja de verse.
+    grupo = grupoDe(original);
+    lista.textContent = '';
+    grupo.botones.forEach(function (real) {
+      var proxy = document.createElement('button');
+      proxy.type = 'button';
+      proxy.className = (real === original ? 'btn-primario' : 'btn-secundario') + ' shadow-theme-lg';
+      proxy.textContent = etiqueta(real);
+      proxy.addEventListener('click', function () {
+        if (!real.disabled) real.click();
+      });
+      lista.appendChild(proxy);
+      proxies.push({ proxy: proxy, real: real });
+    });
+    if (fijo()) {
+      esconderOriginal();
+      ultimoFuera = true;
+      pintar(true);
+      return;
+    }
+    // Modo clásico: aparece justo cuando el original deja de verse.
     observer = new IntersectionObserver(function (entradas) {
       entradas.forEach(function (e) { ultimoFuera = !e.isIntersecting; pintar(ultimoFuera); });
     }, { rootMargin: '-72px 0px 0px 0px' });
     observer.observe(original);
+  }
+
+  /* Un swap de HTMX puede reemplazar un botón del grupo dejando el proxy
+     apuntando a un nodo que ya no está en la página (pasa con el «↶ Deshacer»
+     del detalle de proyecto, que llega por OOB en cada autoguardado). Si eso
+     ocurre, se re-montan los proxies. */
+  function grupoVigente() {
+    return proxies.length > 0 && proxies.every(function (p) { return p.real.isConnected; });
   }
 
   if (document.readyState === 'loading') {
@@ -1039,7 +1123,11 @@ window.abrirRickroll = function () {
   } else {
     escanear();
   }
-  document.body.addEventListener('htmx:afterSettle', function () { escanear(); pintar(ultimoFuera); });
+  document.body.addEventListener('htmx:afterSettle', function () {
+    if (!grupoVigente()) original = null;   // fuerza re-montar la barra
+    escanear();
+    pintar(ultimoFuera);
+  });
   // Un modal abierto tapa la barra (y al revés); el slot avisa cuándo cambia.
   var slot = document.getElementById('modal-slot');
   if (slot && window.MutationObserver) {

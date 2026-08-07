@@ -5,6 +5,9 @@ from . import views
 urlpatterns = [
     path("", views.lista, name="proyectos-lista"),
     path("kanban/", views.kanban, name="proyectos-kanban"),
+    # LC 2026-08-07: por qué se cancelan los proyectos (lista + captura del motivo).
+    path("cancelaciones/", views.cancelaciones, name="proyectos-cancelaciones"),
+    path("<int:pk>/motivo-cancelacion", views.motivo_cancelacion, name="proyectos-motivo-cancelacion"),
     path("nuevo", views.nuevo, name="proyectos-nuevo"),
     path("cliente-nuevo/", views.cliente_inline, name="proyectos-cliente-inline"),
     path("<int:pk>/", views.detalle, name="proyectos-detalle"),
@@ -46,6 +49,7 @@ urlpatterns = [
     path("<int:pk>/agregar-proveedor", views.agregar_proveedor_modal, name="proyectos-agregar-proveedor"),
     path("<int:pk>/quitar-proveedor/<int:prov_pk>", views.quitar_proveedor, name="proyectos-quitar-proveedor"),
     path("<int:pk>/proveedor-iva/<int:prov_pk>", views.toggle_proveedor_iva, name="proyectos-proveedor-iva"),
+    path("<int:pk>/gasto/<int:proc_pk>/proveedor", views.ligar_gasto_proveedor, name="proyectos-ligar-gasto-proveedor"),
     # Render-V2: deshacer el último guardado (Undo en Redis).
     path("<int:pk>/deshacer", views.deshacer, name="proyectos-deshacer"),
     # Contabilidad en línea: registrar gastos del proyecto como egresos.

@@ -65,6 +65,10 @@ INSTALLED_APPS = [
     "apps.tesoreria.apps.TesoreriaConfig",
     "apps.centros_costo.apps.CentrosCostoConfig",
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
+    # LC 2026-08-07: motivos de cancelación de proyecto. El modelo vive en El
+    # Taller (apps.los_proyectos, ya instalada arriba); esta app sólo aporta la
+    # UI de Gerencia para que Oscar cambie las etiquetas sin tocar código.
+    "apps.motivos_cancelacion.apps.MotivosCancelacionConfig",
     # CRUD admin de Estados de cotización (los modelos viven en apps.cotizaciones,
     # ya instalada abajo; esta app solo aporta la UI de Gerencia).
     "apps.estados_cotizacion.apps.EstadosCotizacionConfig",

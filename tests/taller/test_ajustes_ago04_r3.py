@@ -408,8 +408,10 @@ def test_el_guardar_flota_arriba_a_la_derecha_en_las_dos_apps():
     assert taller == gerencia, "ui.js es dual-copy (regla §18)"
     assert "data-guardar-flotante" in taller
     assert "fixed right-4 top-" in taller
-    # No clona ni mueve el botón: hace click en el original (HTMX/form intactos).
-    assert "original.click()" in taller
+    # No clona ni mueve el botón: hace click en el real (HTMX/form intactos).
+    # LC 2026-08-07: ahora es un proxy por botón del grupo, así que el click va
+    # a `real` en vez de a `original` — ver test_ajustes_ago07.py.
+    assert "real.click()" in taller
     assert "data-sin-guardar-flotante" in taller  # opt-out
     assert "#modal-slot" in taller                # los modales no participan
 

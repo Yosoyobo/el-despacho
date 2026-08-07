@@ -71,11 +71,16 @@ queda arriba, chico, y sólo si dijo algo.{% endcomment %}
                 </div>
             </form>
             {% else %}
-            <ul class="mt-2 space-y-1">
+            {% comment %}LC 2026-08-07 (Oscar): «a fuerza necesitamos saber qué
+            tarea se logró o falló, específicamente» — junto al ✓/✕ va el nombre
+            de la entidad y, si falló, el motivo.{% endcomment %}
+            <ul class="mt-2 space-y-1.5">
                 {% for a in m.dictado.acciones.all %}
-                <li class="text-xs">
+                <li class="text-xs {% if a.error_al_aplicar %}rounded-lg border border-error-200 bg-error-50/60 px-2 py-1.5 dark:border-error-500/30 dark:bg-error-500/10{% endif %}">
                     <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ a.etiqueta_accion }}</span>
                     {% if a.aplicada %}<span class="ml-1 text-success-600 dark:text-success-400">✓</span>{% elif a.error_al_aplicar %}<span class="ml-1 text-error-600 dark:text-error-400">✕</span>{% endif %}
+                    {% if a.resumen_visible %}<span class="ml-1 font-medium text-gray-800 dark:text-gray-100">{{ a.resumen_visible }}</span>{% endif %}
+                    {% if a.error_al_aplicar %}<span class="mt-1 block text-[11px] leading-snug text-error-700 dark:text-error-300">{{ a.error_visible }}</span>{% endif %}
                 </li>
                 {% endfor %}
             </ul>

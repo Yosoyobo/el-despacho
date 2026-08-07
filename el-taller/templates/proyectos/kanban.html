@@ -38,4 +38,9 @@
 <p id="kanban-sin-resultados" class="hidden py-8 text-center text-sm text-gray-400">Ningún proyecto coincide con la búsqueda.</p>
 
 {% include "proyectos/_kanban_script.html" %}
+{% comment %}LC 2026-08-07 (Oscar): «Estadísticas de cancelación» — hasta abajo
+y centrado, en las dos vistas de Proyectos.{% endcomment %}
+<div class="mt-8 flex justify-center">
+    <a href="{% url 'proyectos-cancelaciones' %}" class="btn-secundario">Estadísticas de cancelación</a>
+</div>
 {% endblock %}

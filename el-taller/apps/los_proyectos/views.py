@@ -17,6 +17,7 @@ from apps.los_proyectos.models import (
     ESTADOS_PROYECTO,
     ROLES_PROYECTO,
     EstadoProyecto,
+    MotivoCancelacion,
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
@@ -30,6 +31,7 @@ from django.db import transaction
 from django.db.models import F, Q
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -165,6 +167,49 @@ def _proveedores_panel(proyecto):
         if pid not in vistos:
             filas.append(_fila(pv.proveedor, Decimal("0.00"), [], pv))
     return filas
+
+
+def _gastos_sin_proveedor(proyecto):
+    """Los gastos de procesos que no están ligados a nadie (LC 2026-08-07, Oscar).
+
+    Antes no salían en ningún lado: el recuadro de Proveedores sólo acumula lo
+    que tiene proveedor, así que un gasto operativo suelto desaparecía de la
+    vista. Aquí se listan al pie del recuadro con su botón para ligarlos.
+
+    La impresión siempre lleva proveedor, así que en la práctica son los gastos
+    operativos. Los productos sin proveedor no entran: su selector ya vive en la
+    tarjeta del producto.
+    """
+    sueltos = []
+    for pp in proyecto.productos_incluidos:
+        piezas = pp.cantidad + pp.merma
+        for proc in pp.procesos.all():
+            if proc.proveedor_id:
+                continue
+            costo = Decimal(str(proc.costo or 0))
+            if costo <= 0:
+                continue
+            monto = (costo * piezas) if proc.por_pieza else costo
+            sueltos.append({
+                "pk": proc.pk,
+                "nombre": proc.descripcion or f"Gasto · {pp.nombre_visible}",
+                "producto": pp.nombre_visible,
+                "monto": monto.quantize(Decimal("0.01")),
+                "por_pieza": proc.por_pieza,
+                "piezas": piezas if proc.por_pieza else None,
+            })
+    return sueltos
+
+
+def _ctx_proveedores(proyecto):
+    """Todo lo que necesita el recuadro de Proveedores, en un solo lugar: las
+    tarjetas por proveedor, los gastos que quedaron sueltos y el catálogo para
+    ligarlos."""
+    return {
+        "proveedores_panel": _proveedores_panel(proyecto),
+        "gastos_sin_proveedor": _gastos_sin_proveedor(proyecto),
+        "proveedores_para_ligar": _proveedores_activos(),
+    }
 
 
 def _anotar_procesos(formset):
@@ -498,7 +543,7 @@ def detalle(request, pk):
             if es_htmx:
                 ctx = {"proyecto": proyecto, "ok": True,
                        "form": ProyectoForm(instance=proyecto), "puede_editar": True,
-                       "proveedores_panel": _proveedores_panel(proyecto),
+                       **_ctx_proveedores(proyecto),
                        "pasos_undo": services_undo.pasos_disponibles(proyecto)}
                 if hubo_nuevos:
                     from apps.el_catalogo.models import CategoriaServicio
@@ -521,7 +566,7 @@ def detalle(request, pk):
                           {"proyecto": proyecto, "ok": False,
                            "form": form, "puede_editar": True,
                            "error_detalle": _primer_error(form, formset),
-                           "proveedores_panel": _proveedores_panel(proyecto)}, status=200)
+                           **_ctx_proveedores(proyecto)}, status=200)
     else:
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetDetalle(instance=proyecto)
@@ -552,7 +597,7 @@ def detalle(request, pk):
         "roles_proyecto": ROLES_PROYECTO,
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
         "servicios_datos_json": _servicios_datos_json(),
-        "proveedores_panel": _proveedores_panel(proyecto),
+        **_ctx_proveedores(proyecto),
         "proveedores_activos": _proveedores_activos(),
         "estados_barra": list(
             EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
@@ -942,6 +987,13 @@ def cambiar_estado(request, pk):
             if nuevo == "entregado" and form.cleaned_data.get("fecha_real_entrega"):
                 proyecto.fecha_real_entrega = form.cleaned_data["fecha_real_entrega"]
                 updates.append("fecha_real_entrega")
+            # LC 2026-08-07 (Oscar): al cancelar se pregunta por qué. La fecha se
+            # sella aquí; el motivo lo pide el modal que dispara `HX-Trigger` más
+            # abajo (cancelar NUNCA se bloquea por no tenerlo).
+            recien_cancelado = nuevo == "cancelado" and anterior != "cancelado"
+            if recien_cancelado:
+                proyecto.cancelado_en = timezone.now()
+                updates.append("cancelado_en")
             proyecto.save(update_fields=updates)
             emitir(EventoPortavoz(
                 tipo="proyecto.status_cambiado",
@@ -957,17 +1009,33 @@ def cambiar_estado(request, pk):
                 descripcion=f"Estado: {anterior} → {nuevo}", actor=request.user,
                 url=f"/proyectos/{proyecto.pk}/",
             )
+            # El aviso para abrir el modal del motivo viaja como cabecera, así lo
+            # recogen igual el dropdown inline, la barra de status y el arrastre
+            # del Kanban (que usa `fetch`, no HTMX). Ver el listener en base.html.
+            cabeceras = {}
+            if recien_cancelado:
+                import json
+                cabeceras["HX-Trigger"] = json.dumps({"pedirMotivoCancelacion": {
+                    "url": reverse("proyectos-motivo-cancelacion", args=[proyecto.pk]),
+                }})
             if inline and es_htmx:
                 # Render-V1: devolvemos la barra de status para swap inline.
-                return render(request, "proyectos/_barra_status.html", {
+                resp = render(request, "proyectos/_barra_status.html", {
                     "proyecto": proyecto,
                     "estados_barra": list(
                         EstadoProyecto.objects.filter(activo=True).order_by("orden").values("slug", "label", "color")
                     ),
                     "puede_editar": True,
                 })
+                for nombre, valor in cabeceras.items():
+                    resp[nombre] = valor
+                return resp
             messages.success(request, f"Estado: {anterior} → {nuevo}")
             destino = reverse("proyectos-detalle", args=[proyecto.pk])
+            # Aquí la página se recarga, así que la cabecera no sirve: el modal
+            # se pide con `?motivo=1` cuando el detalle vuelve a cargar.
+            if recien_cancelado:
+                destino += "?motivo=1"
             if es_htmx:
                 return HttpResponse(status=204, headers={"HX-Redirect": destino})
             return redirect(destino)
@@ -975,6 +1043,91 @@ def cambiar_estado(request, pk):
         form = CambiarEstadoForm(initial={"estado": proyecto.estado})
     template = "proyectos/_modal_cambiar_estado.html" if es_htmx else "proyectos/cambiar_estado.html"
     return render(request, template, {"form": form, "proyecto": proyecto})
+
+
+@login_required
+def motivo_cancelacion(request, pk):
+    """LC 2026-08-07 (Oscar): «¿por qué se canceló?».
+
+    Sale solo al cancelar (desde donde sea) y también desde Estadísticas de
+    cancelación para completar los que quedaron sin información. Se puede
+    omitir: el proyecto ya está cancelado y esto sólo agrega la razón.
+    """
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    if request.method == "POST":
+        slug = (request.POST.get("motivo") or "").strip()
+        motivo = MotivoCancelacion.objects.filter(slug=slug).first() if slug else None
+        proyecto.motivo_cancelacion = motivo
+        proyecto.nota_cancelacion = (request.POST.get("nota") or "").strip()[:2000]
+        if proyecto.cancelado_en is None:
+            proyecto.cancelado_en = timezone.now()
+        proyecto.save(update_fields=[
+            "motivo_cancelacion", "nota_cancelacion", "cancelado_en", "actualizado_en",
+        ])
+        emitir(EventoPortavoz(
+            tipo="proyecto.cancelacion_motivo",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"proyecto_id": proyecto.pk, "motivo": motivo.slug if motivo else "",
+                     "tiene_nota": bool(proyecto.nota_cancelacion)},
+        ))
+        if request.headers.get("HX-Request") == "true":
+            # Vacía el slot del modal. La página de atrás ya está al día (el
+            # estado se cambió antes) — salvo la lista de estadísticas, que se
+            # refresca sola porque el botón vive en una fila que se recarga.
+            if request.POST.get("recargar"):
+                return HttpResponse(status=204, headers={"HX-Refresh": "true"})
+            return HttpResponse("")
+        return redirect("proyectos-cancelaciones")
+    return render(request, "proyectos/_modal_motivo_cancelacion.html", {
+        "proyecto": proyecto,
+        "motivos": MotivoCancelacion.objects.filter(activo=True),
+        "recargar": request.GET.get("recargar", ""),
+    })
+
+
+@login_required
+def cancelaciones(request):
+    """LC 2026-08-07 (Oscar): «Estadísticas de cancelación».
+
+    La lista de TODO lo cancelado con su razón, para analizarla más adelante.
+    Los que no tienen información salen con su botón «Agregar +», igual que los
+    folios faltantes de Facturación.
+    """
+    qs = (
+        _proyectos_visibles(request.user)
+        .filter(estado="cancelado")
+        .select_related("cliente", "motivo_cancelacion")
+        .order_by("-cancelado_en", "-actualizado_en")
+    )
+    proyectos = list(qs)
+    total = len(proyectos)
+    # Conteo por motivo, con «Sin información» al final.
+    conteo: dict[str, int] = {}
+    sin_info = 0
+    for p in proyectos:
+        if p.motivo_cancelacion_id:
+            conteo[p.motivo_cancelacion.label] = conteo.get(p.motivo_cancelacion.label, 0) + 1
+        else:
+            sin_info += 1
+    resumen = [
+        {"label": label, "n": n, "pct": round(n * 100 / total) if total else 0}
+        for label, n in sorted(conteo.items(), key=lambda par: -par[1])
+    ]
+    if sin_info:
+        resumen.append({"label": "Sin información", "n": sin_info,
+                        "pct": round(sin_info * 100 / total) if total else 0,
+                        "vacio": True})
+    return render(request, "proyectos/cancelaciones.html", {
+        "proyectos": proyectos,
+        "total": total,
+        "sin_info": sin_info,
+        "resumen": resumen,
+        "puede_editar": puede_editar_proyecto(request.user, None),
+        "back_url": reverse("proyectos-kanban"),
+        "back_label": "Proyectos",
+    })
 
 
 @login_required
@@ -1624,8 +1777,14 @@ def generar_cotizacion(request, pk):
     cot = cot_services.generar_desde_proyecto(proyecto, request.user)
     messages.success(request, f"Cotización {cot.version_label} generada ({cot.codigo}).")
     if _es_htmx(request):
-        return render(request, "proyectos/_cotizaciones_panel.html",
-                      _ctx_cotizaciones(proyecto, request.user))
+        ctx = _ctx_cotizaciones(proyecto, request.user)
+        html = render_to_string("proyectos/_cotizaciones_panel.html", ctx, request=request)
+        # LC 2026-08-07 (Oscar): además de la sugerencia chica del recuadro, el
+        # «¿pasar a Esperando respuesta?» sale como modal al generar — de los que
+        # no se pueden pasar por alto. Viaja pegado por OOB al `#modal-slot`.
+        if ctx.get("sugerir_esperando"):
+            html += render_to_string("proyectos/_modal_pasar_esperando.html", ctx, request=request)
+        return HttpResponse(html)
     return redirect(_redir_detalle(proyecto))
 
 
@@ -1804,13 +1963,51 @@ def toggle_proveedor_iva(request, pk, prov_pk):
     if not creado:
         obj.aplica_iva = not obj.aplica_iva
         obj.save(update_fields=["aplica_iva"])
+    return _render_panel_proveedores(request, proyecto)
+
+
+def _render_panel_proveedores(request, proyecto):
+    """Repinta el recuadro de Proveedores por OOB (toggle de IVA, ligar gasto…)."""
     return render(request, "proyectos/_proveedores_panel.html", {
-        "proyecto": proyecto, "proveedores_panel": _proveedores_panel(proyecto),
+        "proyecto": proyecto, **_ctx_proveedores(proyecto),
         "puede_editar": True, "oob": True,
         # El swap por OOB reemplaza el <section>: sin el `order-*` el panel se
         # saldría de su lugar en el orden de móvil (ver `_guardado_oob.html`).
         "clase_extra": "order-6 xl:order-none",
     })
+
+
+@login_required
+@require_POST
+def ligar_gasto_proveedor(request, pk, proc_pk):
+    """LC 2026-08-07 (Oscar): liga un gasto suelto de proceso a UN proveedor.
+
+    «En el recuadro de proveedores dentro de un proyecto, los gastos adicionales
+    de procesos etc, hay que mostrarlos aquí hasta abajo […] con opción de
+    ligarlo con un botón a un proveedor.» Al ligarlo, el gasto deja la lista de
+    sueltos y se suma a la tarjeta de ese proveedor (y a su deuda).
+
+    Con `proveedor` vacío se desliga, por si se eligió el equivocado.
+    """
+    from apps.el_catalogo.models import Proveedor
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    proceso = get_object_or_404(
+        ProyectoProductoProceso, pk=proc_pk, producto__proyecto=proyecto)
+    crudo = (request.POST.get("proveedor") or "").strip()
+    proveedor = Proveedor.objects.filter(pk=crudo, activo=True).first() if crudo else None
+    if crudo and proveedor is None:
+        return HttpResponseForbidden("Proveedor inválido.")
+    proceso.proveedor = proveedor
+    proceso.save(update_fields=["proveedor"])
+    emitir(EventoPortavoz(
+        tipo="proyecto.gasto_ligado_proveedor",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proyecto_id": proyecto.pk, "proceso_id": proceso.pk,
+                 "proveedor_id": proveedor.pk if proveedor else None},
+    ))
+    return _render_panel_proveedores(request, proyecto)
 
 
 @login_required

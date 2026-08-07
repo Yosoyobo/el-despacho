@@ -17,7 +17,7 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-3">
-                <h1 class="text-title-md font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-title-lg">{{ proyecto.nombre }}</h1>
+                <h1 id="titulo-proyecto" class="text-title-md font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-title-lg">{{ proyecto.nombre }}</h1>
                 <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-semibold tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ proyecto.codigo }}</span>
                 {% if proyecto.archivado %}<span class="rounded-lg bg-gray-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">Archivado</span>{% endif %}
             </div>
@@ -54,8 +54,42 @@
     </div>
 </header>
 
+{% comment %}LC 2026-08-07 (Oscar): «al cambiar nombres de proyectos quiero que se
+actualice solo». El guardado sigue siendo el autosave del formulario; lo que aquí
+se arregla es que el título grande (y la pestaña del navegador) reflejen el nombre
+nuevo mientras lo escribes, en vez de esperar a recargar la página.{% endcomment %}
+<script>
+(function () {
+    var codigo = '{{ proyecto.codigo|escapejs }}';
+    function enlazar() {
+        // El campo vive dentro del form, que se renderiza más abajo: hay que
+        // esperar a que el documento termine de parsearse.
+        var campo = document.getElementById('{{ form.nombre.id_for_label|escapejs }}');
+        var titulo = document.getElementById('titulo-proyecto');
+        if (!campo || !titulo) return;
+        campo.addEventListener('input', function () {
+            var nombre = campo.value.trim() || codigo;
+            titulo.textContent = nombre;
+            document.title = codigo + ' — ' + nombre;
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enlazar);
+    } else {
+        enlazar();
+    }
+})();
+</script>
+
 {# ── Barra de status full-width: chips repartidos, seleccionado con outline grueso a color ── #}
 {% include "proyectos/_barra_status.html" with proyecto=proyecto estados_barra=estados_barra puede_editar=puede_editar %}
+
+{% comment %}LC 2026-08-07: cuando se cancela desde el modal de estado la página
+se recarga, así que el «¿por qué se canceló?» se pide con `?motivo=1`.{% endcomment %}
+{% if request.GET.motivo and puede_editar %}
+<div hx-get="{% url 'proyectos-motivo-cancelacion' proyecto.pk %}" hx-trigger="load"
+     hx-target="#modal-slot" hx-swap="innerHTML"></div>
+{% endif %}
 
 {# LC 2026-07: la alerta de pagos pendientes se movió ABAJO, al recuadro de egresos. #}
 

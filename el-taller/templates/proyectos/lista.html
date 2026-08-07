@@ -52,4 +52,9 @@
 </form>
 
 {% include "_componentes_tailadmin/_tabla_datos.html" with cabeceras=cabeceras_proyectos filas_template="proyectos/_filas.html" orden_actual=orden_actual querystring_base=querystring_base page_obj=page_obj querystring_paginacion=querystring_paginacion %}
+{% comment %}LC 2026-08-07 (Oscar): «Estadísticas de cancelación» — hasta abajo
+y centrado, en las dos vistas de Proyectos.{% endcomment %}
+<div class="mt-8 flex justify-center">
+    <a href="{% url 'proyectos-cancelaciones' %}" class="btn-secundario">Estadísticas de cancelación</a>
+</div>
 {% endblock %}
