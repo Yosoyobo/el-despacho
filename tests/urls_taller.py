@@ -2,8 +2,11 @@
 from django.urls import include, path
 
 from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
+from lib.salud_views import salud
 
 urlpatterns = [
+    # El monitor del taller pregunta aquí (ver docs/MONITOR_SALUD.md).
+    path("salud", salud, name="salud"),
     *urlpatterns_sw,
     *urlpatterns_suscripcion,
     path("", include("auth_google.urls", namespace="google_oauth")),

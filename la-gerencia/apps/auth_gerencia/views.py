@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
+from lib.auditoria_acceso import registrar as _auditar
 from lib.errors import RateLimitExcedido
 from lib.permisos import puede, tiene_rol
 from lib.ratelimit import intentar, reset
@@ -50,6 +51,7 @@ def sign_in(request):
 
     if not email or not password:
         messages.error(request, "Email y contraseña requeridos.")
+        _auditar(request, app="gerencia", exito=False, motivo="faltan_datos", email=email)
         return render(request, "auth/sign_in.html", status=400)
 
     ident = f"gerencia:{email}:{request.META.get('REMOTE_ADDR', '?')}"
@@ -57,18 +59,22 @@ def sign_in(request):
         intentar("login_gerencia", ident, limite=5, ventana_seg=900)
     except RateLimitExcedido as exc:
         messages.error(request, str(exc))
+        _auditar(request, app="gerencia", exito=False, motivo="limite", email=email)
         return render(request, "auth/sign_in.html", status=429)
 
     user = authenticate(request, username=email, password=password)
     if user is None or not user.is_active:
         messages.error(request, "Credenciales inválidas.")
+        _auditar(request, app="gerencia", exito=False, motivo="credenciales", email=email)
         return render(request, "auth/sign_in.html", status=401)
 
     if not _puede_entrar_gerencia(user):
         messages.error(request, "No tienes permiso para entrar a La Gerencia. Pide a un super_admin que te lo asigne.")
+        _auditar(request, app="gerencia", exito=False, motivo="sin_permiso", email=email, usuario=user)
         return render(request, "auth/sign_in.html", status=403)
 
     login(request, user)
+    _auditar(request, app="gerencia", exito=True, motivo="ok", email=email, usuario=user)
     user.ultimo_acceso_en = timezone.now()
     user.save(update_fields=["ultimo_acceso_en"])
     reset("login_gerencia", ident)

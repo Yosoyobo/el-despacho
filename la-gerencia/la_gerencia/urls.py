@@ -5,6 +5,7 @@ from django.urls import include, path, re_path
 
 from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
 from lib.aviso_deploy_views import banner_deploy, semaforo_deploy
+from lib.salud_views import salud
 
 
 def _redirect_a_taller(prefijo: str):
@@ -20,6 +21,8 @@ def _redirect_a_taller(prefijo: str):
     return _vista
 
 urlpatterns = [
+    # El monitor del taller pregunta aquí (ver docs/MONITOR_SALUD.md).
+    path("salud", salud, name="salud"),
     path("sistema/aviso-deploy/", banner_deploy, name="aviso-deploy"),
     path("sistema/aviso-deploy/semaforo/", semaforo_deploy, name="aviso-deploy-semaforo"),
     *urlpatterns_sw,
