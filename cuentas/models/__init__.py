@@ -1,4 +1,5 @@
 from .config_recordatorios import ConfigRecordatorios
+from .intento_acceso import IntentoAcceso
 from .novedades import LecturaNovedades, NovedadAnunciada
 from .permiso_usuario import PermisoUsuario
 from .presupuesto_ia import PresupuestoIA
@@ -12,4 +13,4 @@ from .sidebar_orden import (
 )
 from .usuario import Usuario
 
-__all__ = ["Usuario", "PermisoUsuario", "SidebarOrden", "SidebarOrdenUsuario", "SidebarCarpetaUsuario", "SLUGS_SIDEBAR_TALLER", "ICONOS_CARPETA", "Rol", "PresupuestoIA", "ConfigRecordatorios", "LecturaNovedades", "NovedadAnunciada"]
+__all__ = ["Usuario", "PermisoUsuario", "SidebarOrden", "SidebarOrdenUsuario", "SidebarCarpetaUsuario", "SLUGS_SIDEBAR_TALLER", "ICONOS_CARPETA", "Rol", "PresupuestoIA", "ConfigRecordatorios", "LecturaNovedades", "NovedadAnunciada", "IntentoAcceso"]

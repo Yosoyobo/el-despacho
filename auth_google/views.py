@@ -15,6 +15,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from lib.auditoria_acceso import registrar as _auditar
 from lib.google_oauth import (
     GoogleOAuthCodigoInvalido,
     GoogleOAuthConfig,
@@ -92,8 +93,27 @@ def callback(request: HttpRequest) -> HttpResponse:
 
     usuario.backend = "django.contrib.auth.backends.ModelBackend"
     login(request, usuario)
+    _auditar(
+        request,
+        app=_app_de_host(request.get_host()),
+        exito=True,
+        motivo="ok",
+        email=perfil.email,
+        usuario=usuario,
+        via="google",
+    )
     destino = nxt or "/"
     return redirect(destino)
+
+
+def _app_de_host(host: str) -> str:
+    """Qué app está atendiendo el SSO — el mismo callback sirve a las tres."""
+    host = (host or "").lower()
+    if "gerencia" in host:
+        return "gerencia"
+    if "recepcion" in host:
+        return "recepcion"
+    return "taller"
 
 
 def _host_permite_rol(host: str, rol: str) -> bool:
@@ -104,6 +124,16 @@ def _host_permite_rol(host: str, rol: str) -> bool:
 
 
 def _render_error(request, *, motivo: str, detalle: str = "", email_google: str = "", status: int = 400):
+    # Todo intento que entró queda en la bitácora, bueno o malo: es lo que
+    # distingue «lo usa una persona» de «alguien está tanteando».
+    _auditar(
+        request,
+        app=_app_de_host(request.get_host()),
+        exito=False,
+        motivo="sso",
+        email=email_google,
+        via="google",
+    )
     return render(request, "auth_google/error.html", {
         "motivo": motivo,
         "detalle": detalle,

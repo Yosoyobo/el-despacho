@@ -5,6 +5,31 @@
 
 ---
 
+## Novedades — El sistema ahora avisa solo si algo se cayó (8 de agosto de 2026)
+
+**Vigilancia desde fuera**
+
+- **El Despacho ya contesta si está en pie.** Se agregó una página de salud
+  (`/salud`) para que un monitor externo pregunte cada tanto cómo va todo: base de
+  datos, notificaciones, correo, IA, integraciones y respaldos. Si algo se cae de
+  verdad, el monitor lo ve sin que nadie tenga que reportarlo.
+- **Distingue «roto» de «apagado a propósito».** Que no haya llave de IA o que El
+  Cartero no tenga canal de correo sale marcado como apagado, no como falla: así la
+  alarma solo suena cuando de veras hay que actuar. Solo dos cosas cuentan como
+  caída: que no responda la base de datos o que no responda la cola de
+  notificaciones.
+- **Ahí no se publica nada del negocio.** Ni clientes, ni proveedores, ni cifras de
+  dinero: esa página la puede leer cualquiera. El gasto de IA y el uso del sistema
+  solo se contestan a quien traiga el token del monitor, que el super admin pega en
+  *Ajustes → Credenciales → El Celador — token del monitor*.
+- **Se anota cada entrada al sistema**, las buenas y las falladas, para poder
+  distinguir «lo está usando el equipo» de «alguien está probando contraseñas». No
+  se muestra en ninguna pantalla: al monitor solo viajan los totales.
+- **La Recepción** (el portal de clientes, apagado hasta su fase) contesta
+  «apagado» en vez de verse como caída.
+
+---
+
 ## Novedades — El Chalán dice qué falló, tareas que se arrastran y por qué se cancelan los proyectos (7 de agosto de 2026)
 
 **El Chalán**
@@ -4247,6 +4272,33 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Directorio** (usuarios, sus permisos individuales, roles extra personalizados).
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
+- **El Celador** (token del monitor externo que vigila que el sistema esté en pie).
+
+### El Celador (el monitor que vigila de afuera)
+
+El Despacho publica una página de salud, `/salud`, para que un monitor externo
+pueda preguntarle desde fuera si está en pie. **Nadie le reporta nada al monitor:
+él pregunta y nosotros contestamos**, así que no hay que acordarse de nada al
+desplegar y no se abrió ningún puerto nuevo.
+
+Lo que contesta en abierto es solo el estado de las piezas: base de datos,
+notificaciones, correo, IA, integraciones y respaldos. Cada pieza sale en uno de
+cuatro estados: **funciona**, **funciona de menos** (hay algo que revisar),
+**apagado a propósito** o **roto**. Solo el último cuenta como caída, y solo dos
+cosas lo provocan: que no responda la base de datos o que no responda la cola de
+notificaciones. Que falte una llave de IA o que El Cartero no tenga canal **no es
+una falla** — está así porque alguien lo decidió.
+
+**Ahí no aparece nada del negocio.** Ni clientes, ni proveedores, ni cifras de
+dinero: esa página la puede leer cualquiera. Lo único que se contesta de más —el
+gasto de IA de los últimos 30 días y cuánta gente está usando el sistema— exige
+el token del monitor, que el super admin pega en *Ajustes → Credenciales → El
+Celador — token del monitor*. **Sin ese token nadie ve nada de eso.**
+
+Como parte de esto, el sistema ahora anota **cada entrada** (las buenas y las
+falladas) para poder distinguir «lo está usando el equipo» de «alguien está
+probando contraseñas». Se guarda quién intentó y desde dónde, pero eso no se
+muestra en ninguna pantalla: al monitor solo viajan los totales.
 
 ### Acceso MCP para asistentes externos
 

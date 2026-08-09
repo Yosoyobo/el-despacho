@@ -8911,3 +8911,97 @@ verde.
   que quedó en «Por cotizar» con cotización.
 - El descarte del modal se recuerda en `localStorage` (por navegador), no en la
   base.
+
+---
+
+# BITÁCORA — S-Celador-V1 (2026-08-08, VERSION 2026.08.05)
+
+> Llegó `ADOPTAR-EL-MONITOR.md` del taller y la instrucción fue «despliega esto».
+> El documento es un contrato, no una idea: pide **un extremo** y, si es máquina, un
+> proceso que el taller instala solo. Se implementó el extremo hasta el **nivel 2**.
+> Contrato de nuestro lado en **`docs/MONITOR_SALUD.md`**.
+
+## 1. Qué se entregó
+
+- **`lib/salud.py`** — el payload. Seis módulos, cada uno en su propio `try`:
+  `base` (Postgres), `cola` (Redis + Portavoz), `correo` (El Cartero), `ia`
+  (Chalanes con llave), `integraciones` (último `site_chequeo`) y `respaldo` (rsync
+  a HAL, con respaldo local). Nada lanza: un extremo de salud que devuelve 500 no
+  informa, solo agrega ruido.
+- **`lib/salud_views.py`** — vista compartida montada en los 3 urlconf reales + los
+  2 de pruebas (patrón `aviso_deploy_views`). Pública, `@require_safe`,
+  `Cache-Control: no-store`, `503` **solo** en `falla`.
+- **`lib/celador.py`** — la credencial `x-celador`: slot `celador_token` de Los
+  Ajustes **o** `CELADOR_TOKEN` del entorno, `hmac.compare_digest`, y sin token
+  configurado **nadie pasa**.
+- **`cuentas.IntentoAcceso`** (migr. `cuentas/0040`) + **`lib/auditoria_acceso.py`**
+  cableado en los 3 caminos de entrada. Alimenta `uso` del nivel 2.
+- **Caddyfile** — `/salud` de La Recepción lo contesta El Portero: `apagado` con 200
+  mientras el contenedor esté dormido por el profile `s5`.
+- **`docs/MONITOR_SALUD.md`** con lo que hay que decirle al taller (direcciones,
+  cabecera, tabla de estados por módulo) y la lista de revisión del contrato.
+
+## 2. Decisiones
+
+- **Qué merece `falla`**: solo Postgres y Redis caídos. Las dos dejan el despacho
+  inservible (sin Redis no hay cola ni límite de intentos) y las dos justifican una
+  llamada a media noche. Todo lo que está sin configurar es `apagado`; una
+  integración externa caída es `degradado`. La regla del contrato es explícita: si
+  dudas entre `degradado` y `falla`, es `degradado`, porque cuatro alarmas que nadie
+  puede cerrar entrenan a ignorar el tablero.
+- **El token en los dos lugares.** El contrato del taller dice `CELADOR_TOKEN` en el
+  entorno; la regla §4 #3 del repo dice que toda credencial se configura desde Los
+  Ajustes. Se aceptan ambos: Bóveda primero (el GUI, el camino normal), entorno como
+  respaldo — sirve antes de tener acceso al GUI y sobrevive si la base no responde,
+  que es exactamente cuando `/salud` importa más.
+- **Conjunto todo-apagado ⇒ `apagado`.** Aplica a La Recepción hasta S5: está así
+  porque alguien lo decidió, no porque se rompiera.
+- **Dos caras, no dos endpoints.** Los nombres de las plataformas en rojo y el
+  archivo del respaldo enriquecen el MISMO `detalle` cuando hay credencial. Sin ella
+  va el conteo y la antigüedad, que son infraestructura y no negocio.
+- **La bitácora guarda IP y navegador.** Sin eso no se distingue un usuario de
+  alguien probando contraseñas. No sale de la tabla: a `/salud` solo viajan conteos y
+  no hay pantalla que la muestre. No contradice a El Colador (que redacta IPs en los
+  reportes de error que sí se leen en la UI): ahí el dato no aporta y aquí es el dato.
+- **Niveles 3 y 4 no tocan el repo** — el agente de la máquina lo instala el taller
+  con su guion, y su MCP es del lado de ellos (el nuestro, `mcp_despacho/`, es otra
+  cosa y no se mezcla).
+
+## 3. Gotchas
+
+- **`caddy` sí ordena los `respond`**: verificado con `caddy adapt` que
+  `respond /salud … 200` gana sobre el `respond * … 503` del bloque de La Recepción.
+  Se evitó `handle` a propósito: en el orden de directivas de Caddy, `respond` corre
+  antes y el catch-all se habría comido la ruta.
+- Ruff reescribe `datetime.timezone as tz` a `datetime.UTC` (py312) — dejar que lo
+  haga en vez de pelearse.
+- `Usuario` no tiene campo `nombre`, es **`nombre_completo`** (lo cazó un test).
+- El plural de «integración» pierde el acento: `integraciónes` es la falta que
+  produce un `f"{n} integración{'es' if …}"`.
+
+## 4. Tests
+
+32 en `tests/test_salud.py`, uno por punto de la lista de revisión del contrato
+(cara pública, 503 solo en falla, no-store, nada de dinero en abierto, hueco≠cero,
+token en tiempo constante, sin token nadie pasa, cada intento registrado). Cazaron
+los dos bugs propios de la sección anterior antes del commit. Suite completa: **2426 pass, 9 skipped**; los únicos rojos fueron los 3 de
+`test_aviso_deploy` por no tener Redis en esta Mac (verificado: con un Redis
+levantado pasan los 9). Regresión verde en el
+radio afectado (google_oauth, ajustes, permisos, site, chalanes, candados de
+comentarios y de Novedades). Ruff limpio. `makemigrations --check` no pide nada de
+`IntentoAcceso` más allá del `Alter field id` espurio de siempre (§14).
+
+## 5. Deuda diseñada
+
+- `/salud` no reporta CPU/disco/contenedores: ése es el nivel 3 y lo cubre el agente
+  del taller.
+- Los umbrales (`UMBRAL_COLA_PENDIENTES=200`, `DIAS_RESPALDO_TOLERADOS=4`) son
+  constantes en `lib/salud.py`, no configurables por GUI.
+- La bitácora de accesos no tiene pantalla. Si algún día se quiere ver «quién entró»,
+  es una vista nueva en La Gerencia — y ahí sí hay que decidir qué se muestra de la
+  dirección IP.
+- El módulo `respaldo` mide el rsync a HAL, no El Resguardo a DO Spaces (dormido).
+- Falta el paso manual de Oscar: pegar el token que dé el taller en *Ajustes →
+  Credenciales → El Celador — token del monitor* (o en `CELADOR_TOKEN` del `.env` de
+  La Sede) y darles las direcciones de `/salud`. Sin eso, el nivel 1 ya funciona y el
+  desglose simplemente no se contesta.

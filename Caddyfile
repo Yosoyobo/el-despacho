@@ -44,6 +44,13 @@ recepcion.learningcenter.mx {
 	# bloque a `reverse_proxy la-recepcion:8002`.
 	encode gzip
 	respond /ping "ok" 200
+	# El monitor del taller pregunta por /salud (docs/MONITOR_SALUD.md). Como el
+	# contenedor está apagado A PROPÓSITO, contesta El Portero: `apagado` con 200,
+	# que el monitor reporta como pendiente y NO como caída. Cuando S5 encienda
+	# la app, el `reverse_proxy` deja que responda su propio /salud (ya montado).
+	header /salud Content-Type application/json
+	header /salud Cache-Control no-store
+	respond /salud `{"estado":"apagado","app":"recepcion","modulos":[{"modulo":"web","estado":"apagado","detalle":"el portal de clientes se enciende en la fase S5"}]}` 200
 	respond * `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>La Recepción — Próximamente</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0}main{max-width:480px;padding:2rem;text-align:center}h1{font-size:1.5rem;margin:0 0 0.5rem;color:#fff}p{margin:0;color:#94a3b8;line-height:1.6}.tag{display:inline-block;margin-top:1.5rem;padding:0.25rem 0.75rem;border-radius:9999px;background:#1e293b;color:#60a5fa;font-size:0.75rem;font-weight:500}</style></head><body><main><h1>La Recepción está en obras</h1><p>El portal para clientes estará disponible cuando el despacho termine la siguiente fase de desarrollo. Mientras tanto, comunícate con tu contacto en Learning Center.</p><span class="tag">Próximamente · S5</span></main></body></html>` 503
 }
 

@@ -62,6 +62,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **Los Analistas** | Abstracción IA multi-provider (S4) | — |
 | **El Reemplazo** | Fallback IA automático (S4) | — |
 | **El Cartero** | Envío de correo con canal intercambiable SMTP/n8n (`lib/cartero.py`) | — |
+| **El Celador** | Extremo `/salud` para el monitor del taller + su credencial (`lib/salud.py`, `lib/celador.py`) | — |
 
 ### Módulos de negocio
 
@@ -319,6 +320,7 @@ ElDespacho/
 | `DESPACHO_SUPERADMIN_EMAIL` · `DESPACHO_SUPERADMIN_PASSWORD` | Bootstrap idempotente |
 | `CADDY_HTTP_PORT` · `CADDY_HTTPS_PORT` | `18080/18443` en HAL (macOS reserva 80/443) |
 | `DESPACHO_ENV` | `development` | `production` |
+| `CELADOR_TOKEN` | Credencial del monitor del taller (cabecera `x-celador`). Opcional; el camino normal es el slot `celador_token` de Los Ajustes. Vacío en ambos = nadie ve el desglose de `/salud`. |
 
 ---
 
@@ -4696,6 +4698,78 @@ son los de PROCESOS (una línea de producto sin proveedor no entra: su selector 
 vive en la tarjeta); el motivo de cancelación no se pide cuando se cancela desde
 El Chalán (sólo se sella la fecha y el proyecto sale como «Sin información»); el
 modal de «Esperando respuesta» sólo sale al generar, no al reabrir el proyecto.
+
+### S-Celador-V1 ✅ — El extremo `/salud` para el monitor del taller (2026-08-08, VERSION 2026.08.05)
+
+Adopción del contrato `ADOPTAR-EL-MONITOR.md` que llegó del taller. El monitor
+**pregunta; nadie le reporta**: no hay agente que empuje datos, no se abrió ningún
+puerto y no hay nada que recordar al desplegar. Se pagó el precio de una vez —
+publicar el extremo— y se cubrió hasta el **nivel 2** (los niveles 3 y 4, el agente
+de la máquina y el MCP del monitor, son del lado del taller y no tocan el repo).
+Contrato completo en **`docs/MONITOR_SALUD.md`**. Sin pasos manuales para que quede
+en pie; el token es un paso manual aparte (abajo).
+
+- **`lib/salud.py`** — arma la respuesta. Seis módulos, cada uno medido en su propio
+  `try` (nada aquí lanza: un extremo de salud que devuelve 500 no informa, solo
+  agrega ruido): `base` (Postgres `SELECT 1` + conexiones), `cola` (Redis + cola y
+  bandeja de descartados del Portavoz), `correo` (El Cartero), `ia` (cuántos
+  Chalanes tienen llave), `integraciones` (último `site_chequeo` por plataforma) y
+  `respaldo` (el registro del rsync a HAL, con los archivos locales de respaldo).
+  **Solo Postgres y Redis caídos se reportan `falla`** — es la única palabra que
+  despierta a alguien, y un módulo que grita por una credencial opcional produce una
+  alarma que nadie puede cerrar (cuatro de ésas entrenan a ignorar el tablero). Todo
+  lo demás sin configurar es `apagado`. Si TODO sale apagado, el conjunto también (el
+  caso de La Recepción hasta S5).
+- **`lib/salud_views.py`** — vista compartida montada como `path("salud", …)` en los
+  **3** urlconf reales + los 2 de pruebas (patrón de `lib/aviso_deploy_views.py`).
+  Pública a propósito, `@require_safe`, `Cache-Control: no-store` (un monitor
+  cacheado miente en verde) y **`503` solo cuando el conjunto está en `falla`**. El
+  JSON dice qué `app` contestó, porque las tres comparten base de datos.
+- **`lib/celador.py`** — la credencial. La cabecera es `x-celador` y el token sale
+  del slot **`celador_token`** de Los Ajustes (regla §4 #3) **o** de `CELADOR_TOKEN`
+  en el entorno (el respaldo del contrato del taller: sirve antes de tener el GUI y
+  sobrevive si la base no responde, que es cuando `/salud` más importa). Comparación
+  con `hmac.compare_digest` — con `==` el tiempo delata el token letra por letra — y
+  **sin token configurado NADIE pasa**: se cierra, no se abre.
+- **Las dos caras.** En abierto no hay conteos del negocio, nombres de proveedores ni
+  cifras de dinero (cualquiera puede leer `/salud`): `integraciones` publica el
+  conteo y `respaldo` la antigüedad. Con la credencial se agregan `ia` (llamadas,
+  fallidas, tokens y `costoMicro` en **millonésimas enteras** desde `AnalistaLog`) y
+  `uso` (ingresos, fallidos y cuentas activas), y los detalles dicen de más (nombres
+  de las plataformas en rojo, archivo del respaldo).
+- **Un hueco no es un cero** (regla del contrato, y hay test de cada caso): el
+  respaldo que no se pudo consultar dice «no se pudo determinar», no «hace 0 días»;
+  Redis caído no reporta «0 pendientes»; `uso.ingresos` va en **`null`** mientras la
+  bitácora esté vacía, porque un `0` ahí se leería como «nadie entró» cuando la
+  verdad es «todavía no se está midiendo» (`registrandoDesde` dice desde cuándo hay
+  datos). `cuentasActivas` sí sale desde el día 1: viene de `ultimo_acceso_en`, que
+  se lleva desde S1a.
+- **Bitácora de accesos** — modelo `cuentas.IntentoAcceso` (tabla
+  `cuentas_intento_acceso`, migración `cuentas/0040`) + `lib/auditoria_acceso.py`,
+  cableado en los **tres** caminos de entrada (login de El Taller, login de La
+  Gerencia y el SSO de Google, éste último desde `_render_error` para cubrir todas
+  sus salidas malas). Registra **cada** intento con su motivo
+  (`ok`/`credenciales`/`faltan_datos`/`sin_permiso`/`limite`/`sso`), y **nunca
+  lanza**: la bitácora no puede ser el motivo de que alguien no pueda entrar.
+  Guarda dirección (primer salto de `X-Forwarded-For`, porque detrás de El Portero
+  `REMOTE_ADDR` es Caddy) y navegador, que **no salen de la tabla** — a `/salud` solo
+  viajan conteos y no hay pantalla que los muestre. Es lo que distingue «lo usa el
+  equipo» de «alguien está probando contraseñas».
+- **La Recepción** está apagada por profile `s5`, así que su `/salud` lo contesta El
+  Portero: `apagado` con **200** (pendiente de calendario, no caída). Verificado con
+  `caddy adapt` que el `respond /salud` gana sobre el `respond *` del 503; su vista
+  Django ya está montada para cuando S5 la encienda.
+- **32 tests** en `tests/test_salud.py`, uno por punto de la lista de revisión del
+  contrato. Cazaron dos bugs propios antes del commit: el plural «integraciónes» (el
+  acento se cae en plural) y un conjunto todo-apagado que se reportaba `ok`.
+
+**Deuda diseñada**: `/salud` no expone métricas del host (CPU/disco/contenedores) —
+eso es el nivel 3 y lo cubre el agente que instala el taller; los umbrales
+(`UMBRAL_COLA_PENDIENTES=200`, `DIAS_RESPALDO_TOLERADOS=4`) son constantes en
+`lib/salud.py`, no configurables por GUI; la bitácora de accesos no tiene pantalla
+(si algún día se quiere ver «quién entró», es una vista nueva en La Gerencia, y ahí
+sí habría que decidir qué se muestra de la dirección IP); y el módulo `respaldo`
+mide el rsync a HAL, no El Resguardo a DO Spaces (que hoy está dormido).
 
 ### S5 — La Recepción
 
