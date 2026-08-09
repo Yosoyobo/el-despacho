@@ -7398,6 +7398,40 @@ def _patch_oncommit(monkeypatch):
 
 O usa `@pytest.mark.django_db(transaction=True)` (más lento).
 
+### Bug F — un bind-mount de UN ARCHIVO fija el inode: `git reset --hard` no llega adentro
+
+`docker-compose.yml` monta el Caddyfile como archivo único
+(`./Caddyfile:/etc/caddy/Caddyfile:ro`). En Linux, ese mount se ata al **inode** al
+crear el contenedor, y `git reset --hard` **reemplaza** el archivo (escribe uno nuevo
+y hace rename → inode nuevo). Resultado: el contenedor sigue viendo el Caddyfile
+**viejo** aunque `cat Caddyfile` en el host muestre el nuevo.
+
+Lo insidioso es que la recarga en caliente **reporta éxito**:
+
+```bash
+docker compose exec -T el-portero caddy reload --config /etc/caddy/Caddyfile
+# {"msg":"using config from file"} {"msg":"adapted config to JSON"}  ← del archivo VIEJO
+```
+
+Se detectó en S-Celador-V1: el `/salud` de La Recepción seguía devolviendo el 503 de
+la config anterior con el deploy verde. Diagnóstico de un solo comando:
+
+```bash
+grep -c "lo-que-cambiaste" Caddyfile                                   # host  → 1
+docker compose … exec -T el-portero grep -c "lo-que-cambiaste" /etc/caddy/Caddyfile  # dentro → 0
+```
+
+La Mudanza ahora compara el archivo de adentro contra el del repo y **recrea
+el-portero** si difieren (auto-curativo: endereza un contenedor que ya quedó con
+config vieja, aunque el Caddyfile no cambie en ese commit). Los certs viven en
+`./data/caddy/data`, así que recrear no vuelve a emitirlos.
+
+**Aplica a cualquier archivo montado individualmente**, no solo al Caddyfile. Si
+agregas uno, o lo montas por directorio, o recreas el contenedor al cambiarlo. **No
+confíes en un `reload` que lee desde dentro del contenedor.** Y en macOS **no se
+puede reproducir**: Docker Desktop comparte por ruta, no por inode, así que ahí el
+cambio sí se ve.
+
 ---
 
 ## §15. El Site — monitoreo del Droplet (S2a.2)

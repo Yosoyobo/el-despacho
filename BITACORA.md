@@ -8991,7 +8991,29 @@ radio afectado (google_oauth, ajustes, permisos, site, chalanes, candados de
 comentarios y de Novedades). Ruff limpio. `makemigrations --check` no pide nada de
 `IntentoAcceso` más allá del `Alter field id` espurio de siempre (§14).
 
-## 5. Deuda diseñada
+## 5. Hallazgo al verificar en producción: el Caddyfile no llegaba adentro (§14 Bug F)
+
+El deploy salió verde y `/salud` contestó bien en Taller y Gerencia, pero **La
+Recepción seguía devolviendo el 503 de la config anterior**. El bloque del Caddyfile
+era correcto (verificado aislando el bloque en un Caddy local: `/salud` → 200 JSON,
+`/` → 503), y el paso de La Mudanza que recarga Caddy reportó éxito.
+
+La causa: en Linux, un bind-mount de **UN ARCHIVO** (`./Caddyfile:/etc/caddy/Caddyfile`)
+se ata al **inode** al crear el contenedor, y `git reset --hard` reemplaza el archivo
+(rename → inode nuevo). El contenedor seguía viendo el Caddyfile viejo, así que
+`caddy reload --config /etc/caddy/Caddyfile` recargó **ese** y reportó éxito. Un
+diagnóstico de un comando lo confirmó (host `grep -c` → 1, dentro del contenedor → 0).
+
+Arreglo en `el-mensajero.yml`: La Mudanza compara el archivo de adentro contra el del
+repo y **recrea el-portero** si difieren. Es auto-curativo — endereza un contenedor
+que ya quedó con config vieja aunque el Caddyfile no cambie en ese commit — y arregla
+un hueco **latente para cualquier cambio de Caddyfile**, no solo para éste. Los certs
+viven en `./data/caddy/data`, así que recrear no los vuelve a emitir. Documentado como
+**§14 Bug F** del CLAUDE.md.
+
+**En macOS no se puede reproducir**: Docker Desktop comparte por ruta, no por inode.
+
+## 6. Deuda diseñada
 
 - `/salud` no reporta CPU/disco/contenedores: ése es el nivel 3 y lo cubre el agente
   del taller.
