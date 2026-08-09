@@ -276,14 +276,35 @@ jobs:
             echo "=== docker compose up -d ==="
             docker compose $COMPOSE_FILES up -d
 
-            echo "=== Recargando Caddy (el Caddyfile es bind-mount) ==="
+            echo "=== Aplicando el Caddyfile (bind-mount de UN archivo) ==="
             # `up -d` NO recrea el-portero al cambiar el Caddyfile montado, así
             # que un cambio de hosts/dominios no se aplicaría y Caddy seguiría
             # sirviendo la config vieja (sin cert para el dominio nuevo).
-            # Recargamos en caliente; si falla, recreamos el contenedor.
-            docker compose $COMPOSE_FILES exec -T el-portero \
-                caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
-              || docker compose $COMPOSE_FILES up -d --force-recreate el-portero
+            #
+            # OJO (S-Celador-V1): recargar en caliente NO basta. En Linux, un
+            # bind-mount de UN ARCHIVO fija el inode al crear el contenedor, y
+            # `git reset --hard` REEMPLAZA el archivo (rename → inode nuevo). El
+            # contenedor sigue viendo el Caddyfile VIEJO, así que
+            # `caddy reload --config /etc/caddy/Caddyfile` recarga ese y reporta
+            # éxito: el cambio nunca se aplica y nada avisa. Pasó con el `/salud`
+            # de La Recepción.
+            #
+            # Por eso se compara el archivo DE ADENTRO contra el del repo y, si
+            # difieren, se recrea el contenedor (así vuelve a montar el inode
+            # actual). Es auto-curativo: endereza un contenedor que ya quedó con
+            # una config vieja de deploys anteriores, aunque el Caddyfile no
+            # cambie en este commit. Los certs viven en ./data/caddy/data, así
+            # que recrear no vuelve a emitirlos.
+            if docker compose $COMPOSE_FILES exec -T el-portero \
+                 cat /etc/caddy/Caddyfile 2>/dev/null | diff -q - Caddyfile >/dev/null 2>&1; then
+              echo "El Caddyfile del contenedor ya coincide con el del repo — recarga en caliente"
+              docker compose $COMPOSE_FILES exec -T el-portero \
+                  caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
+                || docker compose $COMPOSE_FILES up -d --force-recreate el-portero
+            else
+              echo "El Caddyfile del contenedor NO coincide con el del repo — recreando el-portero"
+              docker compose $COMPOSE_FILES up -d --force-recreate el-portero
+            fi
 
             echo "=== Esperando 45s para healthchecks ==="
             sleep 45
