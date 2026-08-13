@@ -258,15 +258,23 @@
     que la página Kanban: lo activa el JS compartido por su `id`.{% endcomment %}
     <div class="mb-3 flex flex-wrap items-center gap-3">
         <h2 class="shrink-0 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos</h2>
-        <input type="search" id="kanban-buscar" autocomplete="off"
+        {% comment %}El `hx-get` alcanza lo que el tablero no puede mostrar: sus
+        cuatro columnas son las activas, así que un proyecto entregado o cerrado
+        ni siquiera está en la página (LC 2026-08-12). El filtro instantáneo de
+        las columnas visibles se conserva — la red no le estorba.{% endcomment %}
+        <input type="search" id="kanban-buscar" autocomplete="off" name="q"
                placeholder="Buscar por nombre, cliente, código, producto, proveedor, equipo o contacto…"
+               hx-get="{% url 'taller-buscar-proyectos' %}"
+               hx-trigger="input changed delay:300ms"
+               hx-target="#kanban-fuera" hx-swap="innerHTML"
                class="order-last w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 sm:order-none sm:w-auto sm:min-w-[16rem] sm:flex-1">
         <a href="{% url 'proyectos-kanban' %}" class="ml-auto shrink-0 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:ml-0">Ver tablero completo →</a>
     </div>
     <div id="kanban-grid" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {% for col in kanban_cols %}{% include "proyectos/_kanban_columna.html" with col=col %}{% endfor %}
     </div>
-    <p id="kanban-sin-resultados" class="hidden mt-3 text-sm text-gray-400 dark:text-gray-500">Ningún proyecto coincide con la búsqueda.</p>
+    <p id="kanban-sin-resultados" class="hidden mt-3 text-sm text-gray-400 dark:text-gray-500">Ninguno del tablero coincide con la búsqueda.</p>
+    <div id="kanban-fuera"></div>
 </section>
 {% include "proyectos/_kanban_script.html" %}
 

@@ -131,3 +131,124 @@ def test_el_calendario_y_los_productos_atienden_el_movimiento_ellos_mismos():
     assert "arrastrar:mover" in cal
     prods = Path("el-taller/templates/proyectos/_form_productos_js.html").read_text(encoding="utf-8")
     assert "arrastrar:ordenar" in prods
+
+
+# ── El alta abre el modal desde cualquier lista ──────────────────────────────
+
+ALTAS = {
+    "proyectos (lista)": (Path("el-taller/templates/proyectos/lista.html"), "proyectos-nuevo"),
+    "proyectos (tablero)": (Path("el-taller/templates/proyectos/kanban.html"), "proyectos-nuevo"),
+    "clientes": (Path("el-taller/templates/cartera/lista.html"), "cartera-nuevo"),
+    "productos": (Path("el-taller/templates/catalogo/lista.html"), "catalogo-nuevo"),
+    "proveedores": (
+        Path("el-taller/templates/catalogo/proveedores_lista.html"),
+        "catalogo-proveedor-nuevo",
+    ),
+    "tesorería": (Path("el-taller/templates/tesoreria/landing.html"), "tesoreria:ingreso-nuevo"),
+    "ingresos": (Path("el-taller/templates/tesoreria/ingresos_lista.html"), "tesoreria:ingreso-nuevo"),
+    "egresos": (Path("el-taller/templates/tesoreria/egresos_lista.html"), "tesoreria:egreso-nuevo"),
+    "tareas (lista)": (Path("el-taller/templates/pizarron/lista.html"), "/tareas/nueva/"),
+    "tareas (tablero)": (Path("el-taller/templates/pizarron/kanban.html"), "/tareas/nueva/"),
+}
+
+
+@pytest.mark.parametrize("nombre,datos", sorted(ALTAS.items()))
+def test_el_alta_de_cada_lista_abre_el_modal(nombre, datos):
+    ruta, destino = datos
+    texto = ruta.read_text(encoding="utf-8")
+    assert 'hx-target="#modal-slot"' in texto, f"{nombre}: el alta no abre el modal"
+    esperado = destino if destino.startswith("/") else f"{{% url '{destino}' %}}"
+    assert f'hx-get="{esperado}"' in texto, f"{nombre}: el alta no apunta a {destino}"
+
+
+@pytest.mark.parametrize("nombre,datos", sorted(ALTAS.items()))
+def test_ninguna_lista_conserva_el_enlace_a_la_pagina_vieja(nombre, datos):
+    ruta, destino = datos
+    texto = ruta.read_text(encoding="utf-8")
+    viejo = f'href="{destino}"' if destino.startswith("/") else f"<a href=\"{{% url '{destino}' %}}\" class=\"btn-"
+    assert viejo not in texto, f"{nombre}: quedó el enlace a la página completa"
+
+
+def test_el_empty_state_puede_abrir_el_modal_y_sigue_igual_en_las_dos_apps():
+    taller = Path("el-taller/templates/_componentes_tailadmin/_empty_state.html")
+    gerencia = Path("la-gerencia/templates/_componentes_tailadmin/_empty_state.html")
+    texto = taller.read_text(encoding="utf-8")
+    assert "cta_modal" in texto
+    # Regla §18: las dos copias tienen que quedar idénticas.
+    assert texto == gerencia.read_text(encoding="utf-8")
+
+
+# ── El buscador del Dashboard alcanza los cerrados ───────────────────────────
+
+
+@pytest.fixture
+def admin_user(django_user_model):
+    return django_user_model.objects.create_user(
+        email="jefa@lc.mx", password="x", rol="super_admin", nombre_completo="Jefa LC",
+    )
+
+
+@pytest.fixture
+def cliente_nike():
+    from apps.la_cartera.models import Cliente
+    return Cliente.objects.create(razon_social="NIKE")
+
+
+@pytest.mark.django_db
+def test_la_busqueda_encuentra_lo_que_el_tablero_no_muestra(client, admin_user, cliente_nike):
+    """El caso de Oscar: un proyecto entregado no está en las 4 columnas."""
+    from apps.los_proyectos.models import Proyecto
+
+    entregado = Proyecto.objects.create(
+        nombre="Gorras Nike", cliente=cliente_nike, estado="entregado",
+    )
+    activo = Proyecto.objects.create(
+        nombre="Bandanas Nike", cliente=cliente_nike, estado="en_proceso_diseno",
+    )
+    client.force_login(admin_user)
+    html = client.get("/buscar/proyectos", {"q": "nike"}).content.decode()
+
+    assert entregado.nombre in html, "el entregado tenía que salir"
+    assert activo.nombre not in html, "el activo ya está en el tablero; no se repite"
+
+
+@pytest.mark.django_db
+def test_la_busqueda_tambien_alcanza_cerrados_y_cancelados(client, admin_user, cliente_nike):
+    from apps.los_proyectos.models import Proyecto
+
+    for estado in ("cerrado", "cancelado"):
+        Proyecto.objects.create(
+            nombre=f"Totes {estado}", cliente=cliente_nike, estado=estado,
+        )
+    client.force_login(admin_user)
+    html = client.get("/buscar/proyectos", {"q": "totes"}).content.decode()
+    assert "Totes cerrado" in html
+    assert "Totes cancelado" in html
+
+
+@pytest.mark.django_db
+def test_la_busqueda_no_dispara_con_una_sola_letra(client, admin_user, cliente_nike):
+    from apps.los_proyectos.models import Proyecto
+
+    Proyecto.objects.create(nombre="Gorras", cliente=cliente_nike, estado="entregado")
+    client.force_login(admin_user)
+    assert "Gorras" not in client.get("/buscar/proyectos", {"q": "g"}).content.decode()
+
+
+@pytest.mark.django_db
+def test_la_busqueda_respeta_lo_que_cada_quien_puede_ver(client, django_user_model, cliente_nike):
+    """Un miembro sin asignación no ve proyectos ajenos, tampoco al buscar."""
+    from apps.los_proyectos.models import Proyecto
+
+    ajeno = django_user_model.objects.create_user(
+        email="dani@lc.mx", password="x", rol="miembro", nombre_completo="Dani",
+    )
+    Proyecto.objects.create(nombre="Gorras Nike", cliente=cliente_nike, estado="entregado")
+    client.force_login(ajeno)
+    assert "Gorras Nike" not in client.get("/buscar/proyectos", {"q": "nike"}).content.decode()
+
+
+def test_el_buscador_del_dashboard_pega_al_servidor():
+    home = Path("el-taller/templates/taller_home/home.html").read_text(encoding="utf-8")
+    assert 'hx-target="#kanban-fuera"' in home
+    assert 'id="kanban-fuera"' in home

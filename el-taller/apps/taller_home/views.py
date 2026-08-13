@@ -21,6 +21,7 @@ from datetime import date, timedelta
 
 from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -310,6 +311,51 @@ def _propuestas_chalan(user):
         PropuestaChalan.objects.filter(usuario=user, estado="pendiente")
         .select_related("dictado")[:5]
     )
+
+
+# Cuántos resultados «fuera del tablero» se listan antes de mandar a la lista.
+MAX_RESULTADOS_FUERA = 12
+
+
+@login_required
+def buscar_proyectos(request):
+    """Busca lo que el tablero del Dashboard NO puede mostrar (LC 2026-08-12).
+
+    El Dashboard sólo pinta las cuatro columnas activas, así que un proyecto
+    entregado, cerrado o cancelado no está en la página y el filtro instantáneo
+    del navegador jamás lo encontraría. Aquí se busca del lado del servidor y se
+    devuelven SÓLO los que quedan fuera del tablero — los que sí están los sigue
+    filtrando el buscador al instante, sin esperar a la red.
+
+    Respeta la visibilidad de siempre (`_proyectos_visibles`).
+    """
+    from apps.los_proyectos.views import _proyectos_visibles
+
+    q = (request.GET.get("q") or "").strip()
+    ctx = {"q": q, "resultados": [], "total": 0, "hay_mas": False}
+    if len(q) < 2:
+        return render(request, "taller_home/_kanban_resultados_fuera.html", ctx)
+
+    qs = (
+        _proyectos_visibles(request.user)
+        .exclude(estado__in=KANBAN_SLUGS_DASHBOARD)
+        .filter(
+            Q(nombre__icontains=q)
+            | Q(codigo__icontains=q)
+            | Q(cliente__razon_social__icontains=q)
+            | Q(productos__nombre_proyecto__icontains=q)
+            | Q(productos__servicio__nombre__icontains=q)
+            | Q(productos__proveedor__razon_social__icontains=q)
+        )
+        .select_related("cliente")
+        .distinct()
+        .order_by("-actualizado_en")
+    )
+    encontrados = list(qs[: MAX_RESULTADOS_FUERA + 1])
+    ctx["hay_mas"] = len(encontrados) > MAX_RESULTADOS_FUERA
+    ctx["resultados"] = encontrados[:MAX_RESULTADOS_FUERA]
+    ctx["total"] = len(ctx["resultados"])
+    return render(request, "taller_home/_kanban_resultados_fuera.html", ctx)
 
 
 @login_required

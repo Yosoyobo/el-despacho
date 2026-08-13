@@ -8,6 +8,8 @@ Params:
 - icono (str, opcional) — slug de iconos: inbox|search|tasks|folder|chat|alert|sparkles. Default: inbox.
 - cta_url (str, opcional) — si se pasa, renderiza un botón link a esa URL
 - cta_label (str, opcional, default "Crear")
+- cta_modal (bool, opcional) — el CTA abre el modal (hx-get a #modal-slot) en
+  vez de navegar a la página completa (LC 2026-08-12)
 - clase_extra (str, opcional)
 {% endcomment %}
 <div class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50/50 py-12 px-6 text-center dark:border-gray-700 dark:bg-gray-900/30 {{ clase_extra|default:'' }}">
@@ -30,5 +32,5 @@ Params:
     </div>
     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ titulo }}</h3>
     {% if descripcion %}<p class="max-w-md text-sm text-gray-500 dark:text-gray-400">{{ descripcion }}</p>{% endif %}
-    {% if cta_url %}<a href="{{ cta_url }}" class="mt-2 btn-primario">{{ cta_label|default:'Crear' }}</a>{% endif %}
+    {% if cta_url %}{% if cta_modal %}<button type="button" hx-get="{{ cta_url }}" hx-target="#modal-slot" hx-swap="innerHTML" class="mt-2 btn-primario">{{ cta_label|default:'Crear' }}</button>{% else %}<a href="{{ cta_url }}" class="mt-2 btn-primario">{{ cta_label|default:'Crear' }}</a>{% endif %}{% endif %}
 </div>
