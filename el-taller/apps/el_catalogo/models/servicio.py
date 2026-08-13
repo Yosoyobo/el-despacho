@@ -104,6 +104,27 @@ class Servicio(models.Model):
         return next((p for p in self.proveedores.all() if p.activo), None)
 
     @property
+    def fotos_ficha(self) -> list:
+        """Los `file_id` que muestra la ficha del catálogo (LC 2026-08-12).
+
+        Primero la foto del producto y luego las propias de sus usos en
+        proyectos — las que se le pusieron a un alias («T-Shirt Modelo Janet»
+        se ve distinta a la playera base). Sin repetir.
+
+        Lee de `usos_con_foto` cuando la vista lo prefetcheó; sin eso consulta,
+        así que **la lista siempre debe prefetchear** o son N+1.
+        """
+        fotos = [self.imagen_file_id] if self.imagen_file_id else []
+        usos = getattr(self, "usos_con_foto", None)
+        if usos is None:
+            usos = self.en_proyectos.exclude(imagen_file_id="").only("imagen_file_id")
+        for uso in usos:
+            fid = getattr(uso, "imagen_file_id", "")
+            if fid and fid not in fotos:
+                fotos.append(fid)
+        return fotos
+
+    @property
     def margen_porcentaje(self) -> float:
         """Margen calculado (precio_base - costo) / precio_base × 100.
 

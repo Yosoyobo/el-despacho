@@ -324,7 +324,8 @@ def test_archivar_desde_la_lista_te_regresa_con_tus_filtros(client, admin_user, 
 @pytest.mark.django_db
 def test_la_lista_de_productos_manda_de_donde_vienes(client, admin_user, producto):
     client.force_login(admin_user)
-    html = client.get("/catalogo/", {"q": "bandana"}).content.decode()
+    # La tabla, que es donde viven el enlace de la fila y el form de archivar.
+    html = client.get("/catalogo/", {"q": "bandana", "vista": "tabla"}).content.decode()
     assert "volver=" in html, "los enlaces de la fila no llevan de dónde vienes"
     assert 'name="volver"' in html, "el form de archivar no lleva de dónde vienes"
 
@@ -459,6 +460,127 @@ def test_guardar_la_calculadora_propaga_sin_tocar_lo_pagado(client, admin_user, 
     linea.refresh_from_db()
     assert simil.costo != Decimal("180.00"), "la calculadora tenía que recalcular"
     assert linea.costo_unitario == simil.costo
+
+
+# ── La página de Productos abre en fichas ────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_productos_abre_en_fichas_y_la_tabla_queda_a_un_clic(client, admin_user, producto):
+    client.force_login(admin_user)
+    fichas = client.get("/catalogo/")
+    assert fichas.context["en_tarjetas"] is True
+    assert "☰ Ver en tabla" in fichas.content.decode()
+
+    tabla = client.get("/catalogo/", {"vista": "tabla"})
+    assert tabla.context["en_tarjetas"] is False
+    assert "▦ Ver en fichas" in tabla.content.decode()
+
+
+@pytest.mark.django_db
+def test_la_edicion_rapida_sigue_siendo_la_tabla(client, admin_user, producto):
+    client.force_login(admin_user)
+    r = client.get("/catalogo/", {"editar": "1"})
+    assert r.context["en_tarjetas"] is False
+    assert r.context["editar_inline"] is True
+
+
+@pytest.mark.django_db
+def test_la_ficha_muestra_nombre_categoria_proveedor_y_numeros(client, admin_user, producto, categoria):
+    from apps.el_catalogo.models import Proveedor
+
+    prov = Proveedor.objects.create(razon_social="Crea Blanks")
+    producto.proveedor_principal = prov
+    producto.save(update_fields=["proveedor_principal"])
+    producto.proveedores.add(prov)
+
+    client.force_login(admin_user)
+    html = client.get("/catalogo/").content.decode()
+    assert "Bandana Roja" in html
+    assert "Textiles" in html
+    assert "Crea Blanks" in html
+    assert "Margen" in html
+
+
+@pytest.mark.django_db
+def test_la_ficha_junta_la_foto_del_catalogo_y_las_de_sus_usos(cliente_nike, categoria):
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.models import Proyecto, ProyectoProducto
+
+    srv = Servicio.objects.create(nombre="Playera", categoria=categoria,
+                                  precio_base=100, imagen_file_id="FOTO-CATALOGO")
+    p = Proyecto.objects.create(nombre="Nike", cliente=cliente_nike)
+    ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=1,
+                                    imagen_file_id="FOTO-ALIAS")
+    ProyectoProducto.objects.create(proyecto=p, servicio=srv, cantidad=1)  # sin foto
+
+    assert srv.fotos_ficha == ["FOTO-CATALOGO", "FOTO-ALIAS"]
+
+
+@pytest.mark.django_db
+def test_las_fichas_no_hacen_una_consulta_por_producto(client, admin_user, categoria, cliente_nike):
+    """El costo tiene que ser el mismo con 12 productos que con 24.
+
+    La ficha de proveedores —de donde se copió el diseño— tiene un N+1 que hoy
+    pasa desapercibido porque hay pocos proveedores. Con cientos de productos
+    sería fatal, así que aquí queda la red.
+    """
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.models import Proyecto, ProyectoProducto
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    proyecto = Proyecto.objects.create(nombre="Nike", cliente=cliente_nike)
+
+    def sembrar(desde, hasta):
+        for i in range(desde, hasta):
+            srv = Servicio.objects.create(nombre=f"Producto {i}", categoria=categoria,
+                                          precio_base=100, imagen_file_id=f"F{i}")
+            ProyectoProducto.objects.create(proyecto=proyecto, servicio=srv,
+                                            cantidad=1, imagen_file_id=f"U{i}")
+
+    client.force_login(admin_user)
+    sembrar(0, 12)
+    with CaptureQueriesContext(connection) as con_12:
+        assert client.get("/catalogo/").status_code == 200
+    sembrar(12, 24)
+    with CaptureQueriesContext(connection) as con_24:
+        assert client.get("/catalogo/").status_code == 200
+
+    assert len(con_24) == len(con_12), (
+        f"el número de consultas crece con los productos: "
+        f"{len(con_12)} con 12 y {len(con_24)} con 24 (N+1)"
+    )
+
+
+@pytest.mark.django_db
+def test_el_proxy_guarda_lo_que_baja_y_no_vuelve_a_pedirselo_a_drive(client, admin_user, producto, monkeypatch):
+    """Antes leía la caché pero nunca escribía: cada visita pegaba a Drive."""
+    from django.core.cache import cache
+
+    import lib.imagen_publica as imgpub
+
+    cache.clear()
+    producto.imagen_file_id = "FOTO-1"
+    producto.save(update_fields=["imagen_file_id"])
+    bajadas = []
+
+    class DriveFalso:
+        def descargar(self, file_id):
+            bajadas.append(file_id)
+            return b"\x89PNG-falso", "image/png", "foto.png"
+
+    monkeypatch.setattr(imgpub, "_reducir", lambda c, m, lado=0: (c, m))
+    monkeypatch.setitem(__import__("sys").modules, "lib.google_drive",
+                        type("M", (), {"drive": DriveFalso()}))
+
+    client.force_login(admin_user)
+    for _ in range(3):
+        r = client.get("/catalogo/imagen/FOTO-1", {"mini": "1"})
+        assert r.status_code == 200
+    assert len(bajadas) == 1, f"le pegó a Drive {len(bajadas)} veces en vez de una"
+    assert "max-age=86400" in r["Cache-Control"]
+    assert r["ETag"]
 
 
 # ── El título del documento con un solo producto ─────────────────────────────

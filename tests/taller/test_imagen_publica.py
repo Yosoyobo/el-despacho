@@ -11,6 +11,17 @@ import pytest
 
 pytestmark = [pytest.mark.taller, pytest.mark.django_db]
 
+
+
+@pytest.fixture(autouse=True)
+def _cache_limpia():
+    """LC 2026-08-12: el proxy ya GUARDA en caché lo que baja de Drive (antes
+    la leía pero nunca escribía). Sin limpiar entre pruebas, la imagen buena de
+    un test sobrevive al Drive roto del siguiente."""
+    from django.core.cache import cache
+    cache.clear()
+    yield
+    cache.clear()
 PNG = b"\x89PNG\r\n\x1a\n-bytes-de-prueba"
 
 
