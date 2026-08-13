@@ -37,10 +37,14 @@ Render fino LC 2026-07-28 (Oscar):
     (`data-card-barra`); el asa, la foto y los controles quedan fuera del gesto,
     ver `_form_productos_js`. `cursor-pointer` avisa que se puede picar.{% endcomment %}
     <div data-card-barra class="flex cursor-pointer items-start gap-2">
+        {% comment %}`sin_arrastre` lo pasa la pestaña de una versión pasada: ahí no
+        hay zona de arrastre, así que un asa inerte sólo engañaría (S-Ajustes-Ago12-B).{% endcomment %}
+        {% if not sin_arrastre %}
         <button type="button" data-drag-handle data-arr-asa title="Arrastra para reordenar" aria-label="Reordenar"
                 class="mt-0.5 shrink-0 cursor-grab touch-none rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.06]">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>
         </button>
+        {% endif %}
         <button type="button" data-card-toggle aria-expanded="{% if f.instance.pk and not f.errors %}false{% else %}true{% endif %}"
                 class="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-0.5 text-left">
             <span data-resumen class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ f.instance.cantidad|default:1 }} pz - {% if f.instance.pk and f.instance.servicio_id %}{{ f.instance.nombre_visible }}{% else %}Nuevo producto{% endif %} - {{ f.instance.precio_efectivo|dinero }}</span>
@@ -77,7 +81,20 @@ Render fino LC 2026-07-28 (Oscar):
         servidor. **Quitarla es un cambio PENDIENTE** (`data-img-diferido`, Oscar
         2026-07-28): se aplica al guardar el proyecto, así que salirse sin guardar
         la deja intacta.{% endcomment %}
-        {% if f.instance.pk %}
+        {% comment %}`solo_lectura_foto`: en la pestaña de una versión la foto se ve
+        pero no se cambia — es la que quedó congelada con el documento
+        (S-Ajustes-Ago12-B).{% endcomment %}
+        {% if solo_lectura_foto %}
+        <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white/60 dark:border-gray-700 dark:bg-gray-900/40"
+             title="Foto con la que se cotizó esta versión">
+            {% if f.instance.imagen_efectiva_file_id %}
+            <img alt="" class="max-h-[58px] max-w-[58px] rounded object-contain"
+                 src="{% url 'catalogo-imagen-producto' f.instance.imagen_efectiva_file_id %}">
+            {% else %}
+            <span class="px-1 text-center text-[9px] leading-tight text-gray-400 dark:text-gray-500">Sin foto</span>
+            {% endif %}
+        </div>
+        {% elif f.instance.pk %}
         <div data-img-slot data-url="{% url 'proyectos-producto-imagen' f.instance.pk %}"
              data-img-diferido="1" data-img-quitar-campo="#{{ f.imagen_quitar.id_for_label }}"
              data-img-estado-sel="#img-estado-{{ f.instance.pk }}"
@@ -97,7 +114,7 @@ Render fino LC 2026-07-28 (Oscar):
     {% comment %}El aviso de la foto («Subiendo…», «Se quitará al guardar») vive
     FUERA del recuadro —que mide 64px— y el componente lo encuentra por
     `data-img-estado-sel`.{% endcomment %}
-    {% if f.instance.pk %}<p id="img-estado-{{ f.instance.pk }}" data-img-estado data-clase-base="mt-1 text-right text-[11px]" class="mt-1 text-right text-[11px]"></p>{% endif %}
+    {% if f.instance.pk and not solo_lectura_foto %}<p id="img-estado-{{ f.instance.pk }}" data-img-estado data-clase-base="mt-1 text-right text-[11px]" class="mt-1 text-right text-[11px]"></p>{% endif %}
 
     <div data-card-body class="mt-2{% if f.instance.pk and not f.errors %} hidden{% endif %}">
     <div data-cuerpo class="space-y-2.5">

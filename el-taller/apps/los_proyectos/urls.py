@@ -32,6 +32,12 @@ urlpatterns = [
     # LC 2026-08-04 R3: orden manual de las tarjetas del Kanban (compartido).
     path("reordenar-kanban", views.reordenar_kanban, name="proyectos-reordenar-kanban"),
     path("<int:pk>/reordenar-productos", views.reordenar_productos, name="proyectos-reordenar-productos"),
+    # LC 2026-08-13 (Deploy B): pestañas por versión de «Productos involucrados».
+    # RECONSTRUIDO tras un `git reset --hard` accidental: los nombres y la firma
+    # salen de `views.productos_version` / `views.version_restaurar` y de lo que
+    # piden `_productos_tabs.html`, `_productos_version.html` y su test.
+    path("<int:pk>/productos/version/<int:cot_pk>", views.productos_version, name="proyectos-productos-version"),
+    path("<int:pk>/productos/version/<int:cot_pk>/restaurar", views.version_restaurar, name="proyectos-version-restaurar"),
     # LC 2026-08-04 (Oscar): «⧉» de la tarjeta — clona la línea con sus procesos.
     path("<int:pk>/duplicar-producto/<int:prod_pk>", views.duplicar_producto, name="proyectos-duplicar-producto"),
     # LC 2026-07-26: foto del producto desde la tarjeta del proyecto (pegar o

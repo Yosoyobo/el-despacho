@@ -1,0 +1,45 @@
+{% load proyectos_extras forms_helpers %}
+{% comment %}Panel de una versión: las MISMAS tarjetas, sobre la foto de los
+productos con los que se generó esa cotización (S-Ajustes-Ago12-B).
+
+Editable, incluidas las versiones pasadas — decisión de Oscar, tomada sabiendo
+que el documento de esa versión cambia con ella. Lo que ve el cliente (nombre,
+especificación, cantidad, precio y las líneas de venta) se empuja al documento al
+guardar; la merma, el costo, el proveedor y los procesos se quedan aquí.
+
+Se guarda con el MISMO autoguardado del proyecto: los campos viajan en el
+formulario y `views.detalle` los reconoce por el prefijo `ppv`. El pk de la
+cotización va en el hidden de abajo.
+{% endcomment %}
+<div id="formset-productos-version" class="space-y-3">
+    <input type="hidden" name="ppv_cotizacion" value="{{ cot.pk }}">
+    {{ formset.management_form }}
+
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-500/30 dark:bg-brand-500/10">
+        <p class="text-xs text-gray-600 dark:text-gray-300">
+            <span class="font-semibold text-brand-700 dark:text-brand-300">{{ cot.version_label }}</span>
+            · {{ cot.codigo }} · los productos con los que se generó.
+            Al guardar, el documento de esta versión se actualiza.
+        </p>
+        <button type="button"
+                hx-post="{% url 'proyectos-version-restaurar' proyecto.pk cot.pk %}"
+                hx-params="none" hx-swap="none"
+                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                hx-confirm="Se van a reponer estos valores en los productos del proyecto. Lo que hayas agregado después y no esté en esta versión se queda como está."
+                class="btn-secundario whitespace-nowrap text-xs">↩ Restaurar en edición</button>
+    </div>
+
+    {% if hay_reconstruido %}
+    <p class="rounded-xl border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+        Los costos de esta versión se tomaron de la línea que el proyecto tiene hoy:
+        la cotización sólo guarda lo que ve el cliente, así que de las versiones
+        anteriores a esta actualización no hay costo de entonces que mostrar.
+    </p>
+    {% endif %}
+
+    {% for f in formset %}
+        {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance.servicio_id|color_tarjeta solo_lectura_foto=True sin_arrastre=True %}
+    {% empty %}
+        {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos en esta versión" descripcion="La cotización se generó sin líneas de producto." icono="folder" %}
+    {% endfor %}
+</div>
