@@ -4850,6 +4850,20 @@ es editable); Cotizaciones y Facturación siguen sin modal de alta; las fichas d
 proveedores conservan su N+1 (se copió el HTML, no el patrón de datos); el
 arrastre táctil sólo se puede verificar **con el código en La Sede**.
 
+**Hotfix del mismo día (VERSION 2026.08.07)** — Oscar en el celular: «no me deja
+scrollear a gusto por la página, agarra tareas y las arrastra». Dos causas en el
+motor: (a) `marcar()` ponía **`touch-none` a TODO el elemento** cuando no tenía
+asa, o sea «aquí no scrollees» en cada tarjeta del tablero; y (b) bastaban 6px en
+cualquier dirección para agarrar, así que una deslizada vertical —intención de
+scroll— se volvía arrastre. Arreglo: `touch-none` **sólo en las asas**, y con el
+dedo en un elemento sin asa hay que **mantener presionado** (`ESPERA_TACTIL=320ms`,
+`TOLERANCIA=10px`, con `navigator.vibrate` al agarrar); mientras se espera no se
+toca el gesto, así que la página scrollea normal, y si el dedo se mueve antes de
+tiempo se cancela. El scroll sólo se frena **mientras se arrastra de verdad**, desde
+un `touchmove` **no pasivo** — `preventDefault` en `pointermove` no lo garantiza.
+`select-none` en los elementos sin asa para que sostener no saque el globo de
+«copiar» de iOS.
+
 ### S-Ajustes-Ago12-B ⏳ — Pestañas por versión en Productos involucrados
 
 Segundo deploy de la misma ronda (punto 11). Trae modelo nuevo

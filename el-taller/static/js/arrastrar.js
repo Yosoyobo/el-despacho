@@ -28,6 +28,12 @@
  *
  * Distinguir un clic de un arrastre: no pasa nada hasta recorrer UMBRAL px, así
  * que las tarjetas que son enlaces siguen abriéndose al picarlas.
+ *
+ * Y con el DEDO, en un elemento sin asa, hay que **mantener presionado**
+ * (LC 2026-08-13, Oscar: «no me deja scrollear a gusto por la página, agarra
+ * tareas y las arrastra»). Deslizar scrollea; sostener levanta la tarjeta —
+ * el gesto que ya usa cualquier teléfono. Con asa no aplica: agarrar un blanco
+ * de 20px dedicado a eso ya es intención explícita.
  */
 (function () {
     'use strict';
@@ -36,12 +42,21 @@
     var BORDE = 72;        // px de orilla donde la página empieza a rodar sola
     var PASO = 14;         // px por cuadro al rodar
 
+    // Con el DEDO, en un elemento SIN asa, hay que mantener presionado para
+    // agarrarlo (LC 2026-08-13, Oscar: «no me deja scrollear a gusto por la
+    // página, agarra tareas y las arrastra»). Deslizar scrollea; sostener
+    // levanta la tarjeta — el gesto que ya usa cualquier teléfono. Con asa no
+    // aplica: agarrarla ya es intención explícita.
+    var ESPERA_TACTIL = 320;   // ms sosteniendo antes de que agarre
+    var TOLERANCIA = 10;       // px que se pueden mover sin cancelar la espera
+
     var item = null;       // elemento que se arrastra
     var zonaOrigen = null;
     var asa = null;
     var punteroId = null;
     var x0 = 0, y0 = 0;
-    var activo = false;    // ya se pasó el umbral
+    var activo = false;    // ya se está arrastrando de verdad
+    var esperando = null;  // timer del «mantén presionado»
     var rodando = null;
 
     function zonaDe(el) { return el && el.closest ? el.closest('[data-arr-zona]') : null; }
@@ -205,6 +220,22 @@
         return el;
     }
 
+    function agarrar() {
+        if (!item || activo) return;
+        activo = true;
+        esperando = null;
+        try { asa.setPointerCapture(punteroId); } catch (_) {}
+        item.classList.add('opacity-50');
+        document.body.classList.add('select-none');
+        // Un tirón corto avisa que ya quedó agarrada — sin él, en el celular no
+        // se sabe si el «mantén presionado» prendió.
+        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (_) {} }
+    }
+
+    function cancelarEspera() {
+        if (esperando) { clearTimeout(esperando); esperando = null; }
+    }
+
     document.addEventListener('pointerdown', function (e) {
         if (e.button > 0 || !e.target.closest) return;
         var el = arrancableDesde(e.target);
@@ -214,16 +245,28 @@
         item = el; zonaOrigen = zona; punteroId = e.pointerId;
         asa = e.target.closest('[data-arr-asa]') || el;
         x0 = e.clientX; y0 = e.clientY; activo = false;
+        cancelarEspera();
+        // Con el dedo y sin asa: hay que SOSTENER. Mientras tanto no se toca el
+        // gesto, así que la página scrollea como siempre; si el dedo se mueve
+        // antes de tiempo, era scroll y se cancela.
+        if (e.pointerType !== 'mouse' && !e.target.closest('[data-arr-asa]')) {
+            esperando = setTimeout(agarrar, ESPERA_TACTIL);
+        }
     });
 
     document.addEventListener('pointermove', function (e) {
         if (!item || e.pointerId !== punteroId) return;
+        if (esperando) {
+            // Se movió mientras esperábamos: era una deslizada para scrollear.
+            if (Math.abs(e.clientX - x0) > TOLERANCIA || Math.abs(e.clientY - y0) > TOLERANCIA) {
+                cancelarEspera();
+                item = null; zonaOrigen = null; punteroId = null; asa = null;
+            }
+            return;   // sin `preventDefault`: la página se mueve con normalidad
+        }
         if (!activo) {
             if (Math.abs(e.clientX - x0) < UMBRAL && Math.abs(e.clientY - y0) < UMBRAL) return;
-            activo = true;
-            try { asa.setPointerCapture(punteroId); } catch (_) {}
-            item.classList.add('opacity-50');
-            document.body.classList.add('select-none');
+            agarrar();
         }
         e.preventDefault();
         rodarSiHaceFalta(e.clientY);
@@ -244,6 +287,7 @@
 
     function soltar(e) {
         if (!item || (e && e.pointerId !== punteroId)) return;
+        cancelarEspera();
         var el = item, origen = zonaOrigen, hubo = activo;
         item = null; zonaOrigen = null; punteroId = null; activo = false;
         detenerRodado();
@@ -275,13 +319,25 @@
     document.addEventListener('pointerup', soltar);
     document.addEventListener('pointercancel', soltar);
 
-    // El asa no debe scrollear la página al arrastrar con el dedo. Se pone por
-    // JS y no en la plantilla para que ninguna zona se olvide de hacerlo.
+    // Mientras se arrastra de verdad, la página no debe moverse. `preventDefault`
+    // en `pointermove` no lo garantiza: el scroll táctil sólo se frena desde
+    // `touchmove` con el listener NO pasivo. Y sólo con `activo`, para que
+    // deslizar sobre una tarjeta siga scrolleando (LC 2026-08-13).
+    document.addEventListener('touchmove', function (e) {
+        if (activo) e.preventDefault();
+    }, { passive: false });
+
+    // El ASA no scrollea nunca: es un blanco chiquito dedicado a arrastrar.
+    // El resto del elemento SÍ, porque si no, deslizar sobre una tarjeta del
+    // tablero se comía el scroll de toda la página — ése era el bug. Ahí el
+    // gesto es «mantén presionado» (ver `ESPERA_TACTIL`).
     function marcar() {
         document.querySelectorAll('[data-arr-item]').forEach(function (el) {
-            var a = el.querySelector('[data-arr-asa]') || el;
-            a.classList.add('touch-none');
-            if (a === el) el.classList.add('cursor-grab', 'active:cursor-grabbing');
+            var a = el.querySelector('[data-arr-asa]');
+            if (a) a.classList.add('touch-none');
+            // `select-none`: sin él, sostener el dedo sobre una tarjeta saca el
+            // globo de «copiar / buscar» de iOS en vez de agarrarla.
+            else el.classList.add('cursor-grab', 'active:cursor-grabbing', 'select-none');
         });
         pintarVacios();
     }

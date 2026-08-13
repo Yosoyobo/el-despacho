@@ -21,6 +21,10 @@
   carpetas de tu menú: **un solo comportamiento en todas partes**.
 - Picar una tarjeta la sigue abriendo: sólo se considera arrastre si de verdad la
   mueves.
+- **En el celular, para agarrar una tarjeta hay que mantenerla presionada un
+  momento** (te avisa con un tironcito). Deslizar el dedo encima **scrollea la
+  página**, como en cualquier app. Donde hay asa (⠿) —las listas de tareas y las
+  tarjetas de producto— basta con jalar del asa, sin esperar.
 
 **Ya no te saca de donde estás**
 

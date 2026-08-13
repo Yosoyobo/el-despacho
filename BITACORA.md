@@ -9182,3 +9182,50 @@ título es editable); Cotizaciones y Facturación siguen sin modal de alta; las
 fichas de proveedores conservan su N+1 (se copió el HTML, no el patrón de datos);
 y el **arrastre táctil sólo se puede verificar con el código en La Sede** — no hay
 forma de probar un gesto de dedo en CI.
+
+
+---
+
+# BITÁCORA — S-Ajustes-Ago12 · hotfix táctil (2026-08-13, VERSION 2026.08.07)
+
+Oscar probó el arrastre en el celular apenas salió el deploy: **«no me deja
+scrollear a gusto por la página, agarra tareas y las arrastra. Esto está
+sucediendo en todos lados donde lo aplicaste.»**
+
+## La causa (dos, que se sumaban)
+
+1. **`marcar()` le ponía `touch-none` a TODO el elemento** cuando no tenía asa —
+   `a = el.querySelector('[data-arr-asa]') || el`. `touch-action: none` es
+   literalmente «navegador, aquí no scrollees», así que en el tablero de Tareas,
+   el de Proyectos, los KPIs, el calendario y las tarjetas del menú **ninguna
+   deslizada movía la página**.
+2. Aun sin eso, el umbral de 6px en cualquier dirección convierte una deslizada
+   vertical —que es intención de scroll— en un arrastre. En escritorio no se
+   nota porque ahí se scrollea con la rueda.
+
+## El arreglo
+
+* **`touch-none` sólo en las asas.** Un asa es un blanco de ~20px dedicado a
+  arrastrar; el resto de la tarjeta recupera su `touch-action` normal.
+* **«Mantén presionado» con el dedo, en elementos sin asa** (`ESPERA_TACTIL`
+  320ms, `TOLERANCIA` 10px). Es el gesto que ya usa cualquier teléfono para
+  reordenar. Mientras se espera **no se toca el gesto** (nada de
+  `preventDefault`), así que la página scrollea con normalidad; si el dedo se
+  mueve antes de que dispare, era scroll y se cancela. Al agarrar,
+  `navigator.vibrate(12)` avisa — sin eso no se sabe si prendió.
+* **Con asa se conserva el comportamiento inmediato**, también en táctil:
+  agarrar el asa ya es intención explícita.
+* **El scroll se frena sólo mientras se arrastra de verdad**, desde un
+  `touchmove` con listener **no pasivo**. Detalle que cuesta encontrar:
+  `preventDefault()` en `pointermove` **no** detiene el scroll táctil.
+* **`select-none`** en los elementos sin asa: sin él, sostener el dedo saca el
+  globo de «copiar / buscar» de iOS en vez de agarrar la tarjeta.
+
+## Lección para el motor
+
+El arrastre táctil no se puede probar en CI, y este bug sólo aparece **con el
+dedo en una página que scrollea** — dos condiciones que ninguna prueba de
+plantilla reproduce. Los tests nuevos fijan el CONTRATO (que exista el
+«mantén presionado», que `touch-none` sea sólo del asa, que el `touchmove` no
+sea pasivo), que es lo máximo que se puede blindar desde aquí. La verificación
+real sigue siendo un teléfono.
