@@ -111,28 +111,32 @@ def _expr_y_costo(fila: dict) -> tuple[str, Decimal]:
     return expr, _to_decimal(fila.get("costo"))
 
 
-def sincronizar_procesos(producto, procesos_json: str | None) -> None:
-    """Reemplaza los procesos del producto con los del JSON.
+def procesos_normalizados(procesos_json: str | None) -> list[dict] | None:
+    """Valida el JSON de procesos y devuelve la lista deseada.
+
+    `None` significa «no toques nada» (no llegó JSON, o es ilegible). Es la
+    fuente única de las reglas —whitelist de tipos, proveedor activo, la cuenta
+    escrita manda sobre el total— y la comparten el sincronizador de la línea
+    viva y la foto por versión (S-Ajustes-Ago12-B).
 
     Formato esperado: lista de objetos
       {"tipo": "impresion"|"operativo", "proveedor_id": int|null,
        "descripcion": str, "costo": número}
     """
     if procesos_json is None:
-        return
+        return None
     try:
         data = json.loads(procesos_json or "[]")
     except (json.JSONDecodeError, TypeError):
-        return
+        return None
     if not isinstance(data, list):
-        return
+        return None
 
     # Proveedores activos válidos (whitelist anti-inyección de IDs).
     ids_validos = set(
         Proveedor.objects.filter(activo=True).values_list("pk", flat=True)
     )
 
-    # 1) Normaliza el JSON a la lista de procesos deseados.
     deseados = []
     for fila in data:
         if not isinstance(fila, dict):
@@ -166,6 +170,14 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
             "descripcion": descripcion, "costo": costo, "por_pieza": por_pieza,
             "costo_expr": costo_expr,
         })
+    return deseados
+
+
+def sincronizar_procesos(producto, procesos_json: str | None) -> None:
+    """Reemplaza los procesos del producto con los del JSON."""
+    deseados = procesos_normalizados(procesos_json)
+    if deseados is None:
+        return
 
     # 2) Reconcilia contra los existentes (emparejados por tipo + orden de
     #    aparición), actualizando en sitio para PRESERVAR el FK `egreso`.
@@ -215,25 +227,23 @@ def sincronizar_procesos(producto, procesos_json: str | None) -> None:
 # el pk sobreviva los autosaves.
 
 
-def sincronizar_ventas(producto, ventas_json: str | None) -> None:
-    """Reemplaza los procesos de venta del producto con los del JSON.
+def ventas_normalizadas(ventas_json: str | None) -> list[dict] | None:
+    """Valida el JSON de procesos de venta y devuelve la lista deseada.
+
+    `None` = no toques nada (sin JSON o ilegible). Una fila sin descripción y sin
+    precio se ignora: es una fila vacía que el usuario nunca llenó.
 
     Formato esperado: lista de objetos
       {"descripcion": str, "cantidad": int, "precio": número}
-
-    Defensivo: JSON inválido ⇒ no toca nada. Una fila sin descripción y sin
-    precio se ignora (es una fila vacía que el usuario nunca llenó).
     """
-    from .models import ProyectoProductoVenta
-
     if ventas_json is None:
-        return
+        return None
     try:
         data = json.loads(ventas_json or "[]")
     except (json.JSONDecodeError, TypeError):
-        return
+        return None
     if not isinstance(data, list):
-        return
+        return None
 
     deseados = []
     for fila in data[:MAX_VENTAS]:
@@ -252,6 +262,16 @@ def sincronizar_ventas(producto, ventas_json: str | None) -> None:
             continue
         deseados.append({"descripcion": descripcion, "cantidad": cantidad,
                          "precio_unitario": precio})
+    return deseados
+
+
+def sincronizar_ventas(producto, ventas_json: str | None) -> None:
+    """Reemplaza los procesos de venta del producto con los del JSON."""
+    from .models import ProyectoProductoVenta
+
+    deseados = ventas_normalizadas(ventas_json)
+    if deseados is None:
+        return
 
     existentes = list(producto.ventas.all().order_by("orden", "creado_en"))
     conservados = set()

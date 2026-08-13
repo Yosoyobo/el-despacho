@@ -1,6 +1,7 @@
 from datetime import datetime, time
 from decimal import Decimal
 
+from apps.cotizaciones.models import Cotizacion
 from apps.el_catalogo.models import Proveedor, Servicio, Variacion
 from apps.la_cartera.models import Cliente
 from apps.los_proyectos.models import (
@@ -9,6 +10,7 @@ from apps.los_proyectos.models import (
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
+    ProyectoProductoVersion,
     ProyectoProveedor,
 )
 from apps.tesoreria.models.ingreso import METODOS_INGRESO
@@ -379,6 +381,10 @@ class ProyectoProductoForm(forms.ModelForm):
         # orden es NOT NULL con default 0; vacío/None ⇒ 0 (Fase 3 §2).
         return self.cleaned_data.get("orden") or 0
 
+    # La foto por versión (S-Ajustes-Ago12-B) SÍ admite líneas sin producto: el
+    # producto pudo borrarse del catálogo después de cotizarse.
+    exigir_servicio = True
+
     def clean(self):
         cleaned = super().clean()
         # El modelo exige servicio (NOT NULL). Una tarjeta nueva inline que se
@@ -386,7 +392,7 @@ class ProyectoProductoForm(forms.ModelForm):
         # guardar; un error claro es mejor que un 500. Las filas intactas/vacías
         # las ignora el formset (has_changed=False), y las marcadas DELETE no se
         # validan.
-        if not cleaned.get("servicio") and not self.cleaned_data.get("DELETE") and self.has_changed():
+        if self.exigir_servicio and not cleaned.get("servicio") and not self.cleaned_data.get("DELETE") and self.has_changed():
             self.add_error("servicio", "Elige un producto del catálogo.")
         return cleaned
 
@@ -438,6 +444,74 @@ ProyectoProductoFormSetEdit = inlineformset_factory(
 ProyectoProductoFormSetDetalle = inlineformset_factory(
     Proyecto, ProyectoProducto, form=ProyectoProductoForm,
     extra=0, can_delete=True,
+)
+
+
+class ProyectoProductoVersionForm(ProyectoProductoForm):
+    """La MISMA tarjeta, sobre la foto de una versión de cotización.
+
+    S-Ajustes-Ago12-B. Hereda todos los campos declarados para que
+    `_producto_card.html` funcione sin ramificarse; sólo cambian tres cosas:
+
+    1. El producto NO es obligatorio (pudo borrarse del catálogo después).
+    2. `procesos_json` / `ventas_json` son campos del MODELO (JSONField), pero el
+       front los maneja como texto. Se quedan FUERA de `Meta.fields` —si
+       entraran, `construct_instance` metería la cadena cruda en el JSONField— y
+       se normalizan en `save()` con las mismas reglas que la línea viva.
+    3. Los placeholders no dicen «catálogo»: en una foto, vacío es *desconocido*,
+       no *heredado*.
+    """
+
+    exigir_servicio = False
+
+    class Meta(ProyectoProductoForm.Meta):
+        model = ProyectoProductoVersion
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        import json as _json
+
+        inst = getattr(self, "instance", None)
+        if inst is not None:
+            self.initial["procesos_json"] = _json.dumps(inst.procesos_json or [])
+            self.initial["ventas_json"] = _json.dumps(inst.ventas_json or [])
+            # El padre rellena precio/costo con el «efectivo» cuando están vacíos
+            # (para que la línea viva muestre el del catálogo). Aquí un vacío es
+            # desconocido: mejor dejarlo vacío que escribir un 0.00 inventado.
+            if inst.precio_unitario is None:
+                self.initial.pop("precio_unitario", None)
+            if inst.costo_unitario is None:
+                self.initial.pop("costo_unitario", None)
+        for campo in ("precio_unitario", "costo_unitario"):
+            if campo in self.fields:
+                self.fields[campo].widget.attrs["placeholder"] = "—"
+
+    def save(self, commit=True):
+        from .services_procesos import procesos_normalizados, ventas_normalizadas
+
+        # Salta el `save` del padre (su borrado diferido de imagen es de la línea
+        # viva) y se queda con el de ModelForm.
+        obj = super(ProyectoProductoForm, self).save(commit=False)
+        obj.costo_unitario_expr = getattr(self, "_costo_expr", "") or ""
+        procesos = procesos_normalizados(self.cleaned_data.get("procesos_json"))
+        if procesos is not None:
+            # Los montos se guardan como texto: el JSON no serializa `Decimal` y
+            # un `float` perdería centavos.
+            obj.procesos_json = [{**p, "costo": str(p["costo"])} for p in procesos]
+        ventas = ventas_normalizadas(self.cleaned_data.get("ventas_json"))
+        if ventas is not None:
+            obj.ventas_json = [{
+                "descripcion": v["descripcion"], "cantidad": v["cantidad"],
+                "precio": str(v["precio_unitario"]),
+            } for v in ventas]
+        if commit:
+            obj.save()
+        return obj
+
+
+ProyectoProductoVersionFormSet = inlineformset_factory(
+    Cotizacion, ProyectoProductoVersion, form=ProyectoProductoVersionForm,
+    fk_name="cotizacion", extra=0, can_delete=True,
 )
 
 

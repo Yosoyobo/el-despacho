@@ -14,6 +14,7 @@ from .motivo_cancelacion import (  # noqa: F401
 )
 from .proceso import ProyectoProductoProceso  # noqa: F401
 from .producto import ProyectoProducto  # noqa: F401
+from .producto_version import ProyectoProductoVersion  # noqa: F401
 from .proveedor_proyecto import ProyectoProveedor, ProyectoProveedorIva  # noqa: F401
 from .proyecto import ESTADOS_PROYECTO, Proyecto, generar_codigo_proyecto  # noqa: F401
 from .venta import ProyectoProductoVenta  # noqa: F401
