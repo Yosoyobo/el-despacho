@@ -231,10 +231,12 @@ def test_solo_los_botones_que_guardan_se_llevan_arriba():
 def test_las_dos_tablas_de_tareas_traen_el_arrastre():
     for tpl in (TPL_PANEL_TAREAS, TPL_LISTA_TAREAS):
         html = tpl.read_text(encoding="utf-8")
-        assert "data-tareas-orden" in html, tpl
-        assert "data-tarea-asa" in html, tpl
-        assert 'data-tarea-id="{{ t.pk }}"' in html, tpl
-        assert "pizarron/_tareas_orden_js.html" in html, tpl
+        # LC 2026-08-12: el gesto se unificó en El Arrastre (arrastrar.js);
+        # las tablas lo declaran por atributos en vez de incluir su propio JS.
+        assert "data-arr-zona" in html, tpl
+        assert "data-arr-asa" in html, tpl
+        assert 'data-arr-item="{{ t.pk }}"' in html, tpl
+        assert "pizarron-reordenar-tareas" in html, tpl
 
 
 def test_reordenar_guarda_el_orden(client, admin_user, proyecto):

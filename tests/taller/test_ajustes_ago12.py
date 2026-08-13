@@ -379,6 +379,115 @@ def test_con_varios_productos_vuelve_el_formato_de_siempre(cliente_nike, categor
     assert cot.titulo_documento == "Producción de elementos para proyecto 'Nike Run 2026'"
 
 
+# ── La tarjeta de producto ───────────────────────────────────────────────────
+
+TPL_CARD = Path("el-taller/templates/proyectos/_producto_card.html")
+
+
+def test_el_boton_dice_agregar_producto():
+    for ruta in ("el-taller/templates/proyectos/detalle.html",
+                 "el-taller/templates/proyectos/form.html"):
+        texto = Path(ruta).read_text(encoding="utf-8")
+        assert ">+ Agregar producto<" in texto, ruta
+        assert ">+ Nuevo producto<" not in texto, ruta
+
+
+def test_cantidad_y_merma_ya_no_se_encimam():
+    """Los tracks eran fijos a 58px y la etiqueta CANTIDAD medía ~53."""
+    texto = TPL_CARD.read_text(encoding="utf-8")
+    assert "_58px_58px_" not in texto, "las columnas siguen sin poder crecer"
+    assert "minmax(72px,auto)_minmax(72px,auto)" in texto
+    assert ">Cant.<" in texto, "la etiqueta larga sigue ahí"
+
+
+def test_los_campos_angostos_tienen_su_clase_en_las_dos_apps():
+    from apps.los_proyectos.forms import ProyectoProductoForm
+
+    form = ProyectoProductoForm()
+    for campo in ("cantidad", "merma"):
+        assert "campo-angosto" in form.fields[campo].widget.attrs.get("class", ""), campo
+    taller = Path("el-taller/static/css/input.css").read_text(encoding="utf-8")
+    gerencia = Path("la-gerencia/static/css/input.css").read_text(encoding="utf-8")
+    assert ".campo-angosto" in taller and ".campo-angosto" in gerencia
+
+
+# ── El costo unitario acepta cuentas ─────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "cuenta,total",
+    [
+        ("15.75*100", "1575.00"),
+        ("2*3+4", "10.00"),          # la multiplicación va primero
+        ("35+15+15", "65.00"),       # lo de antes sigue igual
+        ("65", "65.00"),             # un número pelón también vale
+        ("100-2*10", "80.00"),
+        ("1.5*2*4", "12.00"),
+    ],
+)
+def test_las_cuentas_del_costo(cuenta, total):
+    from decimal import Decimal
+
+    from apps.los_proyectos.services_procesos import suma_expresion
+    assert suma_expresion(cuenta) == Decimal(total)
+
+
+@pytest.mark.parametrize(
+    "basura",
+    ["35/2", "(2+3)*4", "abc", "35++15", "35*", "*15", "2**3", ".", ""],
+)
+def test_lo_que_no_es_una_cuenta_se_rechaza(basura):
+    """La DIVISIÓN se sigue rechazando a propósito: con dos decimales pierde
+    centavos (150 ÷ 29 × 29 = 149.93). Ése fue el error que ya nos costó."""
+    from apps.los_proyectos.services_procesos import suma_expresion
+    assert suma_expresion(basura) is None
+
+
+def test_el_campo_del_costo_unitario_deja_teclear_la_cuenta():
+    """Un `type=number` ni siquiera deja escribir el `*`."""
+    from apps.los_proyectos.forms import ProyectoProductoForm
+
+    widget = ProyectoProductoForm().fields["costo_unitario"].widget
+    assert widget.input_type == "text"
+    assert "costo-unit" in widget.attrs.get("class", "")
+    assert "data-costo-suma" in TPL_CARD.read_text(encoding="utf-8")
+
+
+@pytest.mark.django_db
+def test_el_servidor_saca_el_total_y_conserva_la_cuenta_escrita(cliente_nike, categoria):
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.forms import ProyectoProductoForm
+    from apps.los_proyectos.models import Proyecto
+
+    proyecto = Proyecto.objects.create(nombre="Nike Run", cliente=cliente_nike)
+    srv = Servicio.objects.create(nombre="Bandana", categoria=categoria, precio_base=220)
+    form = ProyectoProductoForm(
+        {"servicio": srv.pk, "cantidad": "10", "costo_unitario": "15.75*100", "merma": "0"},
+    )
+    assert form.is_valid(), form.errors
+    linea = form.save(commit=False)
+    linea.proyecto = proyecto
+    linea.save()
+
+    assert linea.costo_unitario == Decimal("1575.00")
+    assert linea.costo_unitario_expr == "15.75*100", "la cuenta escrita se conserva"
+
+
+@pytest.mark.django_db
+def test_un_costo_ilegible_no_pasa(cliente_nike, categoria):
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.forms import ProyectoProductoForm
+
+    srv = Servicio.objects.create(nombre="Bandana", categoria=categoria, precio_base=220)
+    form = ProyectoProductoForm(
+        {"servicio": srv.pk, "cantidad": "10", "costo_unitario": "35/2", "merma": "0"},
+    )
+    assert not form.is_valid()
+    assert "costo_unitario" in form.errors
+
+
 @pytest.mark.django_db
 def test_el_titulo_escrito_a_mano_sigue_mandando(cliente_nike, categoria):
     from apps.cotizaciones.models import Cotizacion

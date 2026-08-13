@@ -13,26 +13,41 @@
     // `services_procesos.suma_expresion`, que es quien manda al guardar.
     function evalSuma(v) {
         const s = String(v == null ? '' : v).replace(/,/g, '').replace(/\s+/g, '');
-        if (!s || s.length > 120 || !/^[0-9.+-]+$/.test(s)) return null;
-        const t = s.match(/[+-]?(?:\d+\.?\d*|\.\d+)/g);
+        if (!s || s.length > 120 || !/^[0-9.+\-*]+$/.test(s)) return null;
+        // Términos con su signo; dentro de cada uno, factores separados por `*`
+        // (LC 2026-08-12: «15.75*100»). La división NO se acepta: con dos
+        // decimales pierde centavos.
+        const t = s.match(/[+-]?(?:\d+\.?\d*|\.\d+)(?:\*(?:\d+\.?\d*|\.\d+))*/g);
         if (!t || t.join('') !== s) return null;
         let total = 0;
-        for (const x of t) { const n = parseFloat(x); if (isNaN(n)) return null; total += n; }
+        for (const term of t) {
+            const signo = term[0] === '-' ? -1 : 1;
+            let prod = 1;
+            for (const f of term.replace(/^[+-]/, '').split('*')) {
+                const n = parseFloat(f);
+                if (isNaN(n)) return null;
+                prod *= n;
+            }
+            total += signo * prod;
+        }
         return total;
     }
     // ¿Es una cuenta (trae signo después del primer carácter) y no un número pelón?
     function esCuenta(v) {
         const s = String(v == null ? '' : v).replace(/\s+/g, '');
-        return s.length > 1 && /[+-]/.test(s.slice(1)) && evalSuma(s) !== null;
+        return s.length > 1 && /[+\-*]/.test(s.slice(1)) && evalSuma(s) !== null;
     }
     // Costo capturado en un campo que admite cuentas.
     function numCuenta(v) { const r = evalSuma(v); return r === null ? num(v) : r; }
     // Pinta «= $65.00» junto al campo cuando lo escrito es una cuenta.
     function pintarSuma(card) {
-        const campo = card.querySelector('.imp-costo');
-        const hint = card.querySelector('[data-imp-suma]');
-        if (!campo || !hint) return;
-        hint.textContent = esCuenta(campo.value) ? '= ' + fmt(numCuenta(campo.value)) : '';
+        [['.imp-costo', '[data-imp-suma]'],
+         ['input[name$="-costo_unitario"]', '[data-costo-suma]']].forEach(([sc, sh]) => {
+            const campo = card.querySelector(sc);
+            const hint = card.querySelector(sh);
+            if (!campo || !hint) return;
+            hint.textContent = esCuenta(campo.value) ? '= ' + fmt(numCuenta(campo.value)) : '';
+        });
     }
     function fmt(n) { return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function pad(n) { return String(n).padStart(2, '0'); }
@@ -109,7 +124,7 @@
     function costoEfectivo(card) {
         const sel = card.querySelector('select[name$="-servicio"]');
         const cIn = card.querySelector('input[name$="-costo_unitario"]');
-        if (cIn && cIn.value !== '') return num(cIn.value);
+        if (cIn && cIn.value !== '') return numCuenta(cIn.value);
         if (sel && SERVICIOS_DATOS[sel.value]) return num(SERVICIOS_DATOS[sel.value].costo);
         return 0;
     }
@@ -444,7 +459,7 @@
         const t = e.target;
         const card = t.closest && t.closest('[data-card]');
         if (!card) return;
-        if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) recalcular(card);
+        if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) { pintarSuma(card); recalcular(card); }
         if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { pintarSuma(card); serializar(card); recalcular(card); }
         if (t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.

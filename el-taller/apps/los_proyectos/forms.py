@@ -208,18 +208,30 @@ class ProyectoProductoForm(forms.ModelForm):
     # required=False + clean (abajo): una cantidad vacía en CUALQUIER fila no debe
     # invalidar todo el formset del detalle y bloquear silenciosamente el toggle
     # "incluir" de otra fila (reporte Oscar: "el botón de incluir no jala").
-    cantidad = forms.IntegerField(required=False, min_value=1, initial=1, label="Cantidad")
+    cantidad = forms.IntegerField(
+        required=False, min_value=1, initial=1, label="Cant.",
+        widget=forms.NumberInput(attrs={"class": "campo-angosto", "placeholder": "1"}),
+    )
     precio_unitario = forms.DecimalField(
         required=False, min_value=0, label="Precio unit.",
         widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "catálogo"}),
     )
-    costo_unitario = forms.DecimalField(
-        required=False, min_value=0, label="Costo unit.",
-        widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "catálogo"}),
+    # LC 2026-08-12 (Oscar): «habilitemos que también se pueda escribir y
+    # calcular, por ejemplo 15.75*100». Un `type=number` ni deja teclear el `*`,
+    # así que es texto y el SERVIDOR saca el total (`limpiar_costo_unitario`),
+    # igual que el costo de la impresión.
+    costo_unitario = forms.CharField(
+        required=False, label="Costo unit.",
+        widget=forms.TextInput(attrs={
+            "inputmode": "text", "autocomplete": "off",
+            "placeholder": "catálogo", "class": "costo-unit",
+            "title": "Acepta una cuenta: escribe 15.75*100 y se calcula solo "
+                     "(la cuenta se queda escrita).",
+        }),
     )
     merma = forms.IntegerField(
         required=False, min_value=0, initial=0, label="Merma",
-        widget=forms.NumberInput(attrs={"placeholder": "0"}),
+        widget=forms.NumberInput(attrs={"class": "campo-angosto", "placeholder": "0"}),
     )
     incluir_en_calculo = forms.BooleanField(
         required=False, initial=True, label="Incluir en cálculo",
@@ -328,6 +340,32 @@ class ProyectoProductoForm(forms.ModelForm):
                     self.initial["precio_unitario"] = inst.precio_efectivo
                 if inst.costo_unitario is None:
                     self.initial["costo_unitario"] = inst.costo_efectivo
+            # Si se capturó como cuenta, se vuelve a mostrar la cuenta escrita.
+            if inst.costo_unitario_expr:
+                self.initial["costo_unitario"] = inst.costo_unitario_expr
+
+    def clean_costo_unitario(self):
+        """El campo acepta un número o una CUENTA («15.75*100»).
+
+        El total lo saca el SERVIDOR (LC 2026-08-12), igual que el costo de la
+        impresión: así el monto guardado siempre concuerda con lo escrito,
+        venga el POST de donde venga. Vacío ⇒ None (hereda el del catálogo).
+        """
+        from apps.los_proyectos.services_procesos import suma_expresion
+
+        crudo = (self.cleaned_data.get("costo_unitario") or "").strip()
+        self._costo_expr = ""
+        if not crudo:
+            return None
+        total = suma_expresion(crudo)
+        if total is None:
+            raise forms.ValidationError("Costo inválido. Usa un número o una cuenta como 15.75*100.")
+        if total < 0:
+            raise forms.ValidationError("El costo no puede ser negativo.")
+        # Sólo se conserva escrita si de verdad es una cuenta, no un número.
+        if any(c in "+-*" for c in crudo[1:]):
+            self._costo_expr = crudo[:120]
+        return total
 
     def clean_merma(self):
         # merma es NOT NULL con default 0; el form vacío llega como None.
@@ -353,9 +391,13 @@ class ProyectoProductoForm(forms.ModelForm):
         return cleaned
 
     def save(self, commit=True):
-        obj = super().save(commit=commit)
-        if commit and (self.cleaned_data.get("imagen_quitar") or "") == "1":
-            _desligar_imagen(obj)
+        obj = super().save(commit=False)
+        obj.costo_unitario_expr = getattr(self, "_costo_expr", "") or ""
+        if commit:
+            obj.save()
+            self.save_m2m()
+            if (self.cleaned_data.get("imagen_quitar") or "") == "1":
+                _desligar_imagen(obj)
         return obj
 
 
