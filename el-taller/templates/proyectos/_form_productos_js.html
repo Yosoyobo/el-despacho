@@ -428,12 +428,16 @@
         ta.style.height = 'auto';
         ta.style.height = Math.min(ta.scrollHeight, tope > 1 ? tope : 220) + 'px';
     }
+    // S-Ajustes-Ago12-B: además del bloque vivo, las tarjetas de la pestaña de una
+    // versión (`#formset-productos-version`, inyectada por HTMX). La delegación de
+    // eventos de más abajo ya las cubre; esto es la inicialización de cada tarjeta.
+    const ZONAS_CARDS = '#formset-productos [data-card], #formset-productos-version [data-card]';
     function initAutogrow() {
-        document.querySelectorAll('#formset-productos textarea[data-autogrow]')
+        document.querySelectorAll('#formset-productos textarea[data-autogrow], #formset-productos-version textarea[data-autogrow]')
             .forEach(ta => { if (!ta._agInit) { ta._agInit = 1; autogrow(ta); } });
     }
     function initCards() {
-        document.querySelectorAll('#formset-productos [data-card]').forEach(c => { if (!c._inited) initCard(c); });
+        document.querySelectorAll(ZONAS_CARDS).forEach(c => { if (!c._inited) initCard(c); });
         initAutogrow();
     }
     initCards();
@@ -591,7 +595,10 @@
             const fila = elim.closest('[data-card]');
             const checkboxId = elim.getAttribute('data-delete-checkbox');
             if (checkboxId) { const cb = document.getElementById(checkboxId); if (cb) cb.checked = true; if (fila) fila.style.display = 'none'; }
-            else if (fila) { const tf = document.querySelector('input[name$="-TOTAL_FORMS"]'); fila.remove(); if (tf) tf.value = parseInt(tf.value, 10) - 1; }
+            // Scope al bloque vivo: desde S-Ajustes-Ago12-B puede haber OTRO
+            // management form en la página (la pestaña de una versión), y un
+            // `querySelector` suelto le bajaría el contador al equivocado.
+            else if (fila) { const tf = document.querySelector('#formset-productos input[name$="-TOTAL_FORMS"]'); fila.remove(); if (tf) tf.value = parseInt(tf.value, 10) - 1; }
             autosave();
         }
     });
@@ -603,7 +610,10 @@
     // (evita el bug de duplicados que motivó el modal en V8). En Nuevo/Editar
     // (sin template ni autosave) se cae al clonado de la última tarjeta.
     function construirTarjeta(servId, cantVal, precioVal, costoVal, mermaVal) {
-        const tf = document.querySelector('input[name$="-TOTAL_FORMS"]');
+        // Igual que arriba: el contador tiene que ser el del bloque VIVO. Con la
+        // pestaña de una versión abierta, un `querySelector` suelto tomaría su
+        // management form y la tarjeta nueva nacería con el índice equivocado.
+        const tf = document.querySelector('#formset-productos input[name$="-TOTAL_FORMS"]');
         const cont = document.getElementById('formset-productos');
         if (!tf || !cont) return null;
         const idx = parseInt(tf.value, 10);
@@ -880,7 +890,8 @@ por un endpoint aparte.{% endcomment %}
     // (input/select/button/enlace) dentro de la cabecera tampoco la despliega.
     document.addEventListener('click', function (e) {
         if (!e.target.closest) return;
-        const barra = e.target.closest('#' + CONT + ' [data-card-barra]');
+        // S-Ajustes-Ago12-B: también las tarjetas de la pestaña de una versión.
+        const barra = e.target.closest('#' + CONT + ' [data-card-barra], #formset-productos-version [data-card-barra]');
         if (!barra) return;
         // `label` cubre el toggle «incluir», que desde LC 2026-08-04 vive en la
         // cabecera: picarlo apaga la línea, no despliega la tarjeta.

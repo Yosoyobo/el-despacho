@@ -29,7 +29,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import F, Q
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -489,21 +489,32 @@ def _ctx_equipo_grupos(proyecto):
     return grupos
 
 
-@login_required
-def _primer_error(form, formset) -> str:
-    """Primer error legible del form o del formset, para el indicador del
-    autosave (V6 Bloque 5). '' si no hay (no debería pasar en rama inválida)."""
-    for f in [form, *formset.forms]:
+def _primer_error(form, *formsets) -> str:
+    """Primer error legible del form o de los formsets, para el indicador del
+    autosave (V6 Bloque 5). '' si no hay (no debería pasar en rama inválida).
+
+    Acepta varios formsets porque en el detalle puede haber dos: las líneas vivas
+    y las de una pestaña de versión abierta (S-Ajustes-Ago12-B)."""
+    formsets = [fs for fs in formsets if fs is not None]
+    for f in [form, *[frm for fs in formsets for frm in fs.forms]]:
         for campo, errores in f.errors.items():
             etiqueta = "" if campo == "__all__" else f"{f.fields.get(campo).label if f.fields.get(campo) else campo}: "
             if errores:
                 return f"{etiqueta}{errores[0]}"
-    for e in formset.non_form_errors():
-        return str(e)
+    for fs in formsets:
+        for e in fs.non_form_errors():
+            return str(e)
     return ""
 
 
+@login_required
 def detalle(request, pk):
+    # OJO (bug preexistente, cazado en S-Ajustes-Ago12-B): este `@login_required`
+    # estaba pegado a `_primer_error`, el helper de arriba. Consecuencia: el
+    # decorador trataba al `form` como si fuera el `request` (`request.user` →
+    # `AttributeError`) y el autoguardado INVÁLIDO tronaba con 500 en vez de
+    # mostrar el error legible que V6 puso ahí; y el detalle se quedó sin su
+    # decorador (el acceso lo sostenía `puede_ver_proyecto`).
     proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
     if not puede_ver_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Sin acceso a este proyecto.")
@@ -513,7 +524,18 @@ def detalle(request, pk):
     if request.method == "POST" and puede_ed:
         form = ProyectoForm(request.POST, instance=proyecto)
         formset = ProyectoProductoFormSetDetalle(request.POST, instance=proyecto)
-        if form.is_valid() and formset.is_valid():
+        # S-Ajustes-Ago12-B: si hay una pestaña de versión abierta, sus tarjetas
+        # viajan en el MISMO POST (prefijo `ppv`) y se guardan con el mismo
+        # autoguardado — así «Guardado» nunca miente.
+        cot_version = None
+        formset_version = None
+        if "ppv-TOTAL_FORMS" in request.POST:
+            cot_version = _cotizacion_del_proyecto(
+                proyecto, request.POST.get("ppv_cotizacion") or 0)
+            if cot_version is not None:
+                formset_version = _formset_version(cot_version, request.POST)
+        version_ok = formset_version is None or formset_version.is_valid()
+        if form.is_valid() and formset.is_valid() and version_ok:
             # Render-V2: snapshot del estado ANTES de guardar, para el Undo
             # (Redis, coalescido). Se hace sobre una instancia fresca para no
             # capturar las mutaciones que el ModelForm ya aplicó al `instance`.
@@ -526,6 +548,21 @@ def detalle(request, pk):
             form.save()
             formset.save()
             _sync_procesos_formset(formset)
+            if formset_version is not None:
+                from . import services_version
+                formset_version.save()
+                # El documento de esa versión sigue a su pestaña: se le empuja lo
+                # que ve el cliente (nombre, especificación, cantidad, precio y
+                # las líneas de venta). **El PDF de una cotización ya enviada
+                # cambia** — decisión de Oscar, tomada sabiéndolo.
+                services_version.sincronizar_items(cot_version)
+                emitir(EventoPortavoz(
+                    tipo="cotizacion.version_editada",
+                    actor_id=request.user.pk, actor_email=request.user.email,
+                    payload={"proyecto_id": proyecto.pk,
+                             "cotizacion_id": cot_version.pk,
+                             "version": cot_version.version},
+                ))
             # ¿Se creó algún producto inline? Entonces hay que re-renderizar el
             # formset por OOB para que la tarjeta nueva traiga su pk y NO se
             # duplique en el siguiente autosave (bug que motivó el modal en V8).
@@ -565,7 +602,7 @@ def detalle(request, pk):
             return render(request, "proyectos/_guardado_oob.html",
                           {"proyecto": proyecto, "ok": False,
                            "form": form, "puede_editar": True,
-                           "error_detalle": _primer_error(form, formset),
+                           "error_detalle": _primer_error(form, formset, formset_version),
                            **_ctx_proveedores(proyecto)}, status=200)
     else:
         form = ProyectoForm(instance=proyecto)
@@ -1435,6 +1472,95 @@ def reordenar_productos(request, pk):
         if prod_pk in validos:
             ProyectoProducto.objects.filter(pk=prod_pk).update(orden=indice)
     return HttpResponse(status=204)
+
+
+# ── Pestañas por versión de cotización (S-Ajustes-Ago12-B) ───────────────────
+
+def _ctx_version(proyecto, cot, formset):
+    from apps.el_catalogo.models import CategoriaServicio
+    return {
+        "proyecto": proyecto,
+        "cot": cot,
+        "formset": formset,
+        "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+        "proveedores_activos": _proveedores_activos(),
+        # Aviso honesto: en una foto reconstruida el costo se tomó de la línea de
+        # hoy, porque la cotización nunca guardó el de entonces.
+        "hay_reconstruido": any(f.instance.reconstruido for f in formset.forms),
+    }
+
+
+def _cotizacion_del_proyecto(proyecto, cot_pk):
+    """La versión pedida, SIEMPRE acotada a este proyecto. `None` si no es de él.
+
+    El pk puede venir de un POST manipulado, así que se coerciona: `filter(pk="x")`
+    levanta ValueError y sería un 500 por un dato basura.
+    """
+    try:
+        pk = int(cot_pk)
+    except (TypeError, ValueError):
+        return None
+    return proyecto.cotizaciones.filter(pk=pk, version__gt=0).first()
+
+
+def _formset_version(cot, data=None):
+    from .forms import ProyectoProductoVersionFormSet
+    return ProyectoProductoVersionFormSet(data, instance=cot, prefix="ppv")
+
+
+@login_required
+def productos_version(request, pk, cot_pk):
+    """Panel de «Productos involucrados» de UNA versión de cotización.
+
+    GET (HTMX) → las mismas tarjetas sobre la foto de esa versión. Se guarda con
+    el autoguardado del proyecto (ver `detalle`), no con un botón propio.
+    """
+    proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso para editar este proyecto.")
+    cot = _cotizacion_del_proyecto(proyecto, cot_pk)
+    if cot is None:
+        raise Http404("Esa versión no es de este proyecto.")
+    formset = _formset_version(cot)
+    from . import services_version
+    services_version.anotar_procesos(formset)
+    return render(request, "proyectos/_productos_version.html",
+                  _ctx_version(proyecto, cot, formset))
+
+
+@login_required
+@require_POST
+def version_restaurar(request, pk, cot_pk):
+    """Repone en las líneas vivas los valores de esa versión.
+
+    No borra lo que el proyecto tenga y la versión no traiga (una línea puede
+    tener un egreso ya registrado; hacerla desaparecer dejaría el gasto colgando).
+    """
+    proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso para editar este proyecto.")
+    cot = _cotizacion_del_proyecto(proyecto, cot_pk)
+    if cot is None:
+        raise Http404("Esa versión no es de este proyecto.")
+    from . import services_version
+    res = services_version.restaurar_en_edicion(cot, request.user)
+    emitir(EventoPortavoz(
+        tipo="cotizacion.version_restaurada",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"proyecto_id": proyecto.pk, "cotizacion_id": cot.pk,
+                 "version": cot.version, **res},
+    ))
+    extra = f" y {res['creadas']} agregada(s)" if res["creadas"] else ""
+    messages.success(
+        request,
+        f"{cot.version_label} restaurada: {res['actualizadas']} línea(s) "
+        f"actualizada(s){extra}.",
+    )
+    if _es_htmx(request):
+        return HttpResponse(status=204, headers={"HX-Redirect": _redir_detalle(proyecto)})
+    return redirect(_redir_detalle(proyecto))
 
 
 @require_POST

@@ -2,6 +2,57 @@
 
 ---
 
+## 🔴 SE PERDIERON DOS ARCHIVOS — QUÉ HAY QUE REHACER
+
+**Lo que pasó.** El chat del hotfix corrió un `git reset --hard` que, por un
+`cd` que falló, cayó en el árbol principal en vez de en uno aparte. Eso revirtió
+los archivos **ya existentes** que tenías modificados sin commitear. Se recuperó
+casi todo desde un commit accidental previo, pero **dos cambios se perdieron**
+porque son posteriores a ese punto.
+
+**Intacto (nada que hacer):** los 7 archivos nuevos —`models/producto_version.py`,
+`services_version.py`, las migraciones `0033`/`0034`, `_productos_tabs.html`,
+`_productos_version.html`, `tests/taller/test_ajustes_ago12b.py`— y los 7
+recuperados: `cotizaciones/services.py`, `forms.py`, `models/__init__.py`,
+`services_procesos.py`, `views.py`, `_producto_card.html`, `detalle.html`.
+
+**Reconstruido** (estaba determinado por tu propio código, sin margen de
+interpretación — las vistas existen, las plantillas y el test piden esos
+nombres):
+
+* `urls.py` — las rutas `proyectos-productos-version` y
+  `proyectos-version-restaurar`.
+* `lib/portavoz_eventos.py` — el evento `cotizacion.version_restaurada`, que es
+  el único que tu `views.py` emite de verdad.
+
+**Perdido, hay que rehacerlo:**
+
+* **`el-taller/templates/proyectos/_form_productos_js.html`** — está en la
+  versión de `main`. Tus cambios (inicializar las tarjetas de la versión, el
+  prefijo del formset, etc.) no están.
+* Lo que hayas tocado en **`views.py` / `detalle.html` después de las 10:52**,
+  incluido el arreglo del `@login_required` mal puesto sobre `_primer_error`.
+* Tus borradores de `CLAUDE.md`, `BITACORA.md` y `DOC_05` — se rehacen igual,
+  porque reclamaban una `VERSION` ya usada (ver punto 4 abajo).
+
+**Tu propio test es la especificación de lo que falta.** Corre:
+
+```
+BOVEDA_MASTER_KEY=$(python3 -c "print('a'*64)") pytest tests/taller/test_ajustes_ago12b.py -q
+```
+
+Van **31 de 39**. Los 8 rojos son exactamente el hueco:
+`test_el_bloque_vivo_nunca_sale_del_dom`,
+`test_el_js_inicializa_tambien_las_tarjetas_de_la_version`,
+`test_editar_la_version_guarda_la_foto_y_empuja_al_documento`,
+`test_la_cuenta_escrita_en_el_costo_la_resuelve_el_servidor`,
+`test_los_procesos_de_la_version_se_normalizan_al_guardar`,
+`test_las_lineas_de_venta_se_resincronizan_en_el_documento`,
+`test_quitar_un_producto_de_la_version_lo_quita_del_documento`,
+`test_un_autoguardado_invalido_avisa_en_vez_de_tronar`.
+
+---
+
 ## ⚠️ LEE ESTO PRIMERO SI ESTÁS RETOMANDO EL TRABAJO
 
 **Hubo una colisión: dos chats escribiendo en el mismo directorio.** El

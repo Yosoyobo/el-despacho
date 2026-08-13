@@ -9229,3 +9229,138 @@ plantilla reproduce. Los tests nuevos fijan el CONTRATO (que exista el
 «mantén presionado», que `touch-none` sea sólo del asa, que el `touchmove` no
 sea pasivo), que es lo máximo que se puede blindar desde aquí. La verificación
 real sigue siendo un teléfono.
+
+---
+
+# S-Ajustes-Ago12-B — Pestañas por versión en «Productos involucrados» (2026-08-13, VERSION 2026.08.09)
+
+Punto 11 de la ronda del 12 de agosto, el que se había separado por traer modelo
+nuevo. Handoff: `docs/SPRINT-Ajustes-Ago12-B-pestanas-version.md`.
+
+## Lo que pidió Oscar
+
+> «La sección de productos involucrados debe de ser contenida y navegable con
+> sencillas pestañas o tabs que muestren la versión de la cotización, y al cambiar
+> de Tab seleccionada cambien los productos mostrados a los incluidos en cada
+> cotización.»
+
+Y al preguntarle qué se edita ahí:
+
+> «Las tabs v1/v2/etc son para ver/cambiar productos involucrados que llegaron a
+> ser guardadas dentro del proyecto bajo cada cotización (v) se debería de guardar
+> todo siempre. A las cotizaciones en sí no agregaremos datos de merma, costos,
+> proveedores, ya que las cotizaciones son de salida y vista de clientes.»
+
+Más una decisión anterior suya, tomada con el aviso de que el PDF cambiaría:
+**todas las pestañas son editables**, incluidas las pasadas.
+
+## El hallazgo que definió el diseño
+
+**No existe ninguna FK entre `CotizacionItem` y `ProyectoProducto`** — lo único
+que las liga es una heurística por `(servicio, variacion)` con respaldo por nombre
+que sólo sirve para heredar el texto de la descripción entre versiones. Y la
+cotización congela **sólo lo que ve el cliente**: concepto, especificación,
+cantidad, precio, foto, y las ventas como líneas `agrupado=True`. Merma, costo
+unitario, proveedor y procesos de producción **no están en ninguna parte del
+documento**.
+
+Por eso el snapshot completo tiene que vivir del lado del proyecto, en su propia
+tabla. Ver `CLAUDE.md §8` para el detalle del modelo y sus tres invariantes
+(`default=list`, los nulos son *desconocido* y no *heredado*, y la tabla va aparte
+para no contar doble en gastos/egresos/Contaduría/Kanban).
+
+## Correcciones al plan del handoff
+
+El handoff traía cuatro cosas que el código desmintió:
+
+1. **`default=dict` → `default=list`.** La forma real es una lista, y los
+   sincronizadores hacen `isinstance(data, list)`: un `{}` se habría descartado
+   **en silencio**, sin un solo error.
+2. **`nombre_proyecto` 200 → 150**, que es el largo del campo vivo y del
+   `concepto` del documento.
+3. **Faltaba `costo_unitario_expr`**: desde ayer el costo se puede escribir como
+   cuenta («15.75*100»), y sin ese campo editar o restaurar la perdía.
+4. **El emparejado de la reconstrucción va por NOMBRE primero**, no por
+   `(servicio, variacion)` como decía el handoff. Es la lección de Jul29: dos
+   alias del mismo producto del catálogo comparten esa llave, así que emparejar
+   por ahí le cuelga a una línea el costo de la otra.
+
+Y una quinta, del propio §🔴 del handoff: decía que dos bloques de Novedades con
+la misma fecha rompen el candado. No es así — `tests/test_ayuda_novedades.py` sólo
+exige que el PRIMER bloque tenga `VERSION_FECHA`, y `lib/novedades.py` identifica
+cada bloque por `slugify(título)` completo (con desambiguación para títulos
+repetidos). Ya hay tres bloques fechados «4 de agosto de 2026» en el manual. Así
+que este release estrena su propio bloque en vez de esconderse dentro del anterior.
+
+## Lo que se entregó
+
+- Modelo `ProyectoProductoVersion` + migración `proyectos/0033` (aditiva) +
+  `proyectos/0034` (reconstrucción de lo ya cotizado, idempotente y defensiva).
+- `services_version.py`: `fotografiar` (al generar), `sincronizar_items` (empuja
+  al documento lo que ve el cliente, reconciliando las líneas de venta en sitio) y
+  `restaurar_en_edicion` (upsert, **sin borrar**).
+- Pestañas `_productos_tabs.html` + panel `_productos_version.html` reutilizando
+  **la misma tarjeta** vía un form que HEREDA del vivo.
+- Refactor DRY: `procesos_normalizados` / `ventas_normalizadas` extraídas para que
+  las reglas de la cuenta escrita vivan en un solo lugar.
+- 39 tests en `tests/taller/test_ajustes_ago12b.py`.
+
+## Dos decisiones de arquitectura que conviene recordar
+
+**El bloque vivo sólo se esconde, nunca sale del DOM.** La sección de productos
+vive dentro de `#form-proyecto`; si la pestaña de una versión reemplazara el
+bloque, el management form del formset se iría con él y el POST del autoguardado
+quedaría inválido. Escondiéndolo, sus hidden siguen viajando (no-op) y el
+autoguardado sigue igual. Consecuencia: hay DOS management forms en la página, así
+que se acotaron al bloque vivo los dos `querySelector('input[name$="-TOTAL_FORMS"]')`
+sueltos del JS (el de quitar una tarjeta y el de construirla) — el segundo se
+encontró al rehacer el archivo, y habría hecho nacer la tarjeta nueva con el
+índice del formset equivocado.
+
+**La versión se guarda con ESE mismo autoguardado**, con prefijo `ppv`, en vez de
+un botón propio. Se evaluó un `<form>` anidado (lo prohíbe HTML), un filtro de
+evento en el `hx-trigger` (si la expresión no evalúa, HTMX no dispara **nunca** y
+el autoguardado del proyecto se muere en silencio: demasiado riesgo para algo que
+no se puede probar sin navegador) y un botón con `hx-include`. Ganó el
+autoguardado: cero mecanismos nuevos y «Guardado ✓» no miente.
+
+## Bug preexistente cazado de paso
+
+`@login_required` estaba pegado a **`_primer_error`**, el helper de arriba, en vez
+de a `detalle`. Consecuencia: el decorador trataba al `form` como si fuera el
+`request` (`request.user` → `AttributeError: 'ProyectoForm' object has no attribute
+'user'`), así que **la rama del autoguardado inválido tiraba 500** en lugar de
+mostrar el error legible que V6 Bloque 5 metió ahí justamente para que el guardado
+fallido no fuera silencioso. Llevaba roto desde que se entregó. Y `detalle` se
+quedó sin su decorador — el acceso lo sostenía `puede_ver_proyecto`, que para un
+anónimo devuelve False, así que no hubo agujero.
+
+Se encontró leyendo el diff (el decorador aparece en el contexto de la línea que
+cambié), se reprodujo con un POST inválido y se arregló moviéndolo a `detalle`, con
+test de regresión. **Lección:** un decorador, luego una función auxiliar y DESPUÉS
+la vista es un patrón que se lee bien y hace lo contrario; al insertar un helper
+arriba de una vista, revisar qué quedó decorando.
+
+## Lección operativa — dos sesiones en el mismo working tree se pisan
+
+Este sprint se escribió **dos veces**. Otra sesión trabajaba los hotfixes táctiles
+en el MISMO árbol:
+
+1. Su `git commit -a` barrió este trabajo en vuelo hacia su commit, y lo pusheó con
+   PR abierto. Peor: se llevó `views.py` y las plantillas **pero no `urls.py`**, así
+   que ese PR dejaba el detalle de cualquier proyecto con cotización en
+   `NoReverseMatch` (500), a un merge de distancia.
+2. Después, un `git reset --hard` que por un `cd` fallido cayó en el árbol
+   principal revirtió los archivos **ya existentes** sin commitear. Los 7 archivos
+   nuevos sobrevivieron (untracked), y el resto se recuperó de un commit accidental
+   previo; se rehicieron a mano `_form_productos_js.html`, las ediciones tardías de
+   `views.py`/`detalle.html` (incluido el fix del decorador) y los docs.
+
+Lo que salvó el día fue **el test**: `tests/taller/test_ajustes_ago12b.py` es
+untracked y sobrevivió, así que los 8 rojos señalaron exactamente el hueco y la
+reconstrucción se pudo verificar contra una especificación, no contra la memoria.
+
+**Reglas que salen de aquí:** dos sesiones a la vez ⇒ la segunda en su propio
+`git worktree`; nunca `git add -A` a ciegas (añadir por archivo o revisar
+`git diff --cached --stat`); y al retomar, si `git log`/`git status` no coinciden
+con lo que dejaste, revisar el reflog ANTES de tocar nada.

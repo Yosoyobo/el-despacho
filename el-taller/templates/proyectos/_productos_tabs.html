@@ -1,0 +1,60 @@
+{% comment %}Pestañas de «Productos involucrados» (S-Ajustes-Ago12-B, Oscar).
+
+    [ En edición ]  [ v3 ]  [ v2 ]  [ v1 ]
+
+«En edición» son las líneas vivas del proyecto (las de siempre). Cada vN es la
+FOTO de los productos tal como quedaron cuando se generó esa versión de la
+cotización — con su merma, costo, proveedor y procesos, que el documento no
+guarda porque «las cotizaciones son de salida y vista de clientes».
+
+El bloque vivo NUNCA sale del DOM: sólo se esconde. Es lo que mantiene su
+management form dentro del formulario del proyecto, así que el autoguardado
+sigue funcionando igual mientras miras una versión.
+
+Espera `cotizaciones_proyecto` (de `_ctx_cotizaciones`) y `proyecto`.
+{% endcomment %}
+{% if cotizaciones_proyecto %}
+<div class="mb-3 flex flex-wrap items-center gap-1.5" data-productos-tabs>
+    <button type="button" data-tab-vivo aria-current="true"
+            class="pill-filtro pill-filtro-on"
+            title="Los productos del proyecto ahora mismo (los que se editan)">En edición</button>
+    {% for c in cotizaciones_proyecto reversed %}
+    <button type="button"
+            hx-get="{% url 'proyectos-productos-version' proyecto.pk c.pk %}"
+            hx-target="#productos-version" hx-swap="innerHTML"
+            data-tab-version="{{ c.pk }}"
+            class="pill-filtro"
+            title="Los productos con los que se generó la {{ c.version_label }}">{{ c.version_label }}</button>
+    {% endfor %}
+</div>
+<script>
+(function () {
+    const barra = document.querySelector('[data-productos-tabs]');
+    if (!barra) return;
+    // OJO: este script corre ANTES de que existan `#productos-vivo` y
+    // `#productos-version` (están más abajo en la página), así que se buscan al
+    // momento del clic. Resolverlos aquí daría `null` y las pestañas no harían
+    // nada — el mismo tropiezo del título en vivo de S-Ajustes-Ago07.
+    const vivo = () => document.getElementById('productos-vivo');
+    const slot = () => document.getElementById('productos-version');
+    function marcar(activo) {
+        barra.querySelectorAll('button').forEach(b => {
+            const on = b === activo;
+            b.classList.toggle('pill-filtro-on', on);
+            if (on) { b.setAttribute('aria-current', 'true'); } else { b.removeAttribute('aria-current'); }
+        });
+    }
+    barra.addEventListener('click', function (e) {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        marcar(btn);
+        const esVivo = btn.hasAttribute('data-tab-vivo');
+        const bloque = vivo();
+        if (bloque) bloque.classList.toggle('hidden', !esVivo);
+        // Al volver a «En edición» el panel de la versión se vacía: así sus
+        // campos dejan de viajar en el autoguardado del proyecto.
+        if (esVivo) { const s = slot(); if (s) s.innerHTML = ''; }
+    });
+})();
+</script>
+{% endif %}

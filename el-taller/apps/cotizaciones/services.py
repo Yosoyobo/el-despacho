@@ -702,6 +702,9 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
         # se HEREDAN (nadie quiere reescribir el branding en cada versión).
         indice = descripcion.indice_previo(ultima_cot)
         orden = 0
+        # S-Ajustes-Ago12-B: las parejas (línea del proyecto, línea del cliente)
+        # para congelar además el lado del COSTO, que la cotización no guarda.
+        pares_foto = []
         for pp in proyecto.productos_incluidos:
             i = orden
             orden += 1
@@ -709,7 +712,7 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             # se le puso); el FK al catálogo se conserva aparte. La higiene de
             # «Servicio · Variación» vive en `nombre_catalogo`.
             # La NOTA interna del producto NO se copia (no sale en el documento).
-            CotizacionItem.objects.create(
+            item = CotizacionItem.objects.create(
                 cotizacion=cot,
                 orden=i,
                 servicio=pp.servicio if pp.servicio_id else None,
@@ -723,6 +726,7 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
                 cantidad=Decimal(str(pp.cantidad)),
                 precio_unitario=pp.precio_efectivo,
             )
+            pares_foto.append((pp, item))
             # LC 2026-07-26 (Oscar): los PROCESOS DE VENTA de la línea (Ponchado,
             # arte…) se cobran aparte, así que son líneas propias — con
             # `agrupado=True` para que el documento las imprima dentro de la
@@ -738,6 +742,12 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
                     agrupado=True,
                 )
                 orden += 1
+        # S-Ajustes-Ago12-B: la foto completa de los productos de esta versión
+        # (con merma, costo, proveedor y procesos) vive del lado del proyecto —
+        # la cotización sólo guarda lo que ve el cliente. Alimenta las pestañas
+        # v1/v2/… del recuadro «Productos involucrados».
+        from apps.los_proyectos import services_version
+        services_version.fotografiar(cot, pares_foto)
         # Solo el régimen 'iva' usa las tasas de la M2M; 'honorarios' y 'exento'
         # se calculan con lógica dedicada (lib.fiscal) y no dependen de tasas.
         # `iva_exento` legacy sigue vetando las tasas (back-compat).

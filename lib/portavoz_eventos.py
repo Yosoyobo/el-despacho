@@ -59,6 +59,8 @@ EventoTipo = Literal[
     "cotizacion.eliminada",
     "cotizacion.vencida",
     "cotizacion.pdf_generado",
+    "cotizacion.version_editada",
+    "cotizacion.version_restaurada",
     "cotizacion.generada",
     "cotizacion.pagada",
     "cotizacion.anticipo_requerido",
