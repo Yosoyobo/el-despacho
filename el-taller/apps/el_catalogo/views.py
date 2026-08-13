@@ -20,6 +20,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from lib.navegacion import destino_de_regreso
 from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -228,9 +229,10 @@ def servicio_eliminar(request, pk: int):
         ))
         srv.delete()
         messages.success(request, f"Producto «{nombre}» eliminado permanentemente.")
+        destino = destino_de_regreso(request, reverse("catalogo-lista"))
         if es_htmx:
-            return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-lista")})
-        return redirect("catalogo-lista")
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
     if es_htmx:
         return render(request, "catalogo/_modal_eliminar_servicio.html", ctx)
     return redirect("catalogo-lista")
@@ -306,6 +308,13 @@ def _navegacion_producto(request) -> dict:
                 ]
                 back_url = url_prov
     trail.append({"label": "Producto"})
+    # LC 2026-08-12: sin `?desde=`, el «← Volver» respeta el `?volver=` con el
+    # que llegaste desde la lista, así que regresas con tus filtros puestos.
+    if not back_url:
+        from lib.navegacion import es_ruta_interna
+        crudo = (request.GET.get("volver") or "").strip()
+        if es_ruta_interna(crudo):
+            back_url = crudo
     return {"breadcrumb_trail": trail, "back_url_producto": back_url}
 
 
@@ -355,9 +364,13 @@ def editar(request, pk: int):
                 payload={"servicio_id": srv.pk},
             ))
             messages.success(request, "Producto actualizado.")
-            # Fase 3 §1.2: si venía de un proveedor, regresa a su ficha.
-            destino = _navegacion_producto(request).get("back_url_producto")
-            return redirect(destino or reverse("catalogo-lista"))
+            # LC 2026-08-12 (Oscar): «al darle guardar me saca a la lista».
+            # Guardar recarga la MISMA ficha; para salir están el «← Volver» y
+            # la miga, que siguen respetando de dónde venías (`?desde=`,
+            # `?volver=`) — por eso se conserva la query string.
+            destino = reverse("catalogo-editar", args=[srv.pk])
+            cola = request.META.get("QUERY_STRING", "")
+            return redirect(f"{destino}?{cola}" if cola else destino)
     else:
         form = ServicioForm(instance=srv)
     # Sprint 2 UX (item 7): el detalle y la edición se unifican en este panel;
@@ -411,7 +424,7 @@ def archivar(request, pk: int):
     srv.activo = not srv.activo
     srv.save(update_fields=["activo", "actualizado_en"])
     messages.success(request, "Producto " + ("archivado." if not srv.activo else "reactivado."))
-    return redirect("catalogo-lista")
+    return redirect(destino_de_regreso(request, reverse("catalogo-lista")))
 
 
 # ── Usos (bitácora histórica del producto) ───────────────────────────────────
@@ -752,9 +765,12 @@ def proveedor_nuevo(request):
                 payload={"proveedor_id": prov.pk, "razon_social": prov.razon_social},
             ))
             messages.success(request, f"Proveedor '{prov.razon_social}' creado.")
+            # LC 2026-08-12: se abre SU ficha, igual que un producto nuevo —
+            # es lo que quieres hacer enseguida (ligarle productos, ubicación).
+            destino = reverse("catalogo-proveedor-detalle", args=[prov.pk])
             if es_htmx:
-                return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-proveedores")})
-            return redirect("catalogo-proveedores")
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
         # inválido → cae al render (modal si es HTMX).
     else:
         form = ProveedorForm()
@@ -933,7 +949,7 @@ def proveedor_archivar(request, pk: int):
         payload={"proveedor_id": prov.pk},
     ))
     messages.success(request, f"Proveedor '{prov.razon_social}' " + ("desactivado." if not prov.activo else "reactivado."))
-    return redirect("catalogo-proveedores")
+    return redirect(destino_de_regreso(request, reverse("catalogo-proveedores")))
 
 
 @require_http_methods(["GET", "POST"])

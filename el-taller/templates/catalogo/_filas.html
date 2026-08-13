@@ -3,10 +3,13 @@ la fila navega al PANEL de edición (item 7 — se quitó el botón «Editar»; 
 unifica detalle + edición e incluye el historial de usos). Los usuarios sin
 permiso de edición navegan al historial de usos (solo lectura).{% endcomment %}
 {% for s in servicios %}
+{% comment %}LC 2026-08-12: el `?volver=` lleva la búsqueda y los filtros de
+esta lista, para que archivar o eliminar te regrese a donde estabas.{% endcomment %}
+{% with volver=request.get_full_path|urlencode %}
 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if not s.activo %}opacity-60{% endif %}"
-    data-href="{% if puede_editar %}{% url 'catalogo-editar' s.pk %}{% else %}{% url 'catalogo-usos' s.pk %}{% endif %}">
+    data-href="{% if puede_editar %}{% url 'catalogo-editar' s.pk %}{% else %}{% url 'catalogo-usos' s.pk %}{% endif %}?volver={{ volver }}">
     <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">
-        <a href="{% if puede_editar %}{% url 'catalogo-editar' s.pk %}{% else %}{% url 'catalogo-usos' s.pk %}{% endif %}" class="hover:underline">{{ s.nombre }}</a>
+        <a href="{% if puede_editar %}{% url 'catalogo-editar' s.pk %}{% else %}{% url 'catalogo-usos' s.pk %}{% endif %}?volver={{ volver }}" class="hover:underline">{{ s.nombre }}</a>
     </td>
     <td class="px-5 py-3">{% if s.categoria %}<span class="badge badge-hex" style="--ec: {{ s.categoria.color }}">{{ s.categoria.nombre }}</span>{% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}</td>
     <td class="px-5 py-3">
@@ -31,17 +34,18 @@ permiso de edición navegan al historial de usos (solo lectura).{% endcomment %}
     <td class="px-5 py-3 text-right">
         <div class="inline-flex items-center gap-2">
             {% if puede_archivar %}
-            <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}
+            <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="volver" value="{{ request.get_full_path }}">
                 <button type="submit" class="text-sm font-medium text-warning-700 hover:underline dark:text-warning-400">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>
             </form>
             {% endif %}
             {% if puede_eliminar %}
-            <button type="button" hx-get="{% url 'catalogo-eliminar' s.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm font-medium text-error-600 hover:underline dark:text-error-400" title="Eliminar permanentemente">Eliminar</button>
+            <button type="button" hx-get="{% url 'catalogo-eliminar' s.pk %}?volver={{ volver }}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm font-medium text-error-600 hover:underline dark:text-error-400" title="Eliminar permanentemente">Eliminar</button>
             {% endif %}
         </div>
     </td>
     {% endif %}
 </tr>
+{% endwith %}
 {% empty %}
 <tr><td colspan="8" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos" descripcion="Agrega el primer producto para empezar a cotizar más rápido." icono="folder" %}</div></td></tr>
 {% endfor %}

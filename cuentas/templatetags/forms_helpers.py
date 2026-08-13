@@ -133,13 +133,14 @@ def url_segura(valor) -> str:
     """Devuelve `valor` si es una ruta relativa segura (empieza con '/' y no
     con '//'), si no cadena vacía. Usado por el «← Volver» contextual para
     respetar el `?volver=` de dónde viene el usuario sin abrir redirect a
-    dominios externos ni inyección (LC 2026-07)."""
-    if not valor:
-        return ""
-    v = str(valor).strip()
-    if v.startswith("/") and not v.startswith("//") and "\n" not in v and "\r" not in v:
-        return v
-    return ""
+    dominios externos ni inyección (LC 2026-07).
+
+    El criterio vive en `lib.navegacion` desde LC 2026-08-12, para que el
+    encabezado y los redirects usen exactamente la misma regla.
+    """
+    from lib.navegacion import es_ruta_interna
+
+    return str(valor).strip() if es_ruta_interna(valor) else ""
 
 
 @register.simple_tag

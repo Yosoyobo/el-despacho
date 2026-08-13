@@ -160,7 +160,9 @@ def test_catalogo_fila_navega_al_panel_de_edicion(client, usuario_factory):
     client.force_login(usuario_factory(rol="super_admin"))
     html = client.get("/catalogo/").content.decode()
     editar_url = reverse("catalogo-editar", args=[srv.pk])
-    assert f'data-href="{editar_url}"' in html   # la fila entera va al panel
+    # LC 2026-08-12: el enlace lleva además `?volver=` con los filtros de la
+    # lista, para que archivar o eliminar te regrese a donde estabas.
+    assert f'data-href="{editar_url}?volver=' in html   # la fila entera va al panel
 
 
 def test_panel_edicion_incluye_historial_de_usos(client, usuario_factory):

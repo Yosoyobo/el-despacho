@@ -252,3 +252,76 @@ def test_el_buscador_del_dashboard_pega_al_servidor():
     home = Path("el-taller/templates/taller_home/home.html").read_text(encoding="utf-8")
     assert 'hx-target="#kanban-fuera"' in home
     assert 'id="kanban-fuera"' in home
+
+
+# ── «Guardar te deja donde estás» ────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "valor,esperado",
+    [
+        ("/catalogo/?q=nike", "/catalogo/?q=nike"),   # ruta nuestra: se respeta
+        ("//evil.com/x", "/fallback"),                # esquema relativo: fuera
+        ("https://evil.com", "/fallback"),            # otro dominio: fuera
+        ("/ok\nX-Malo: 1", "/fallback"),              # inyección de cabecera: fuera
+        ("", "/fallback"),
+        (None, "/fallback"),
+    ],
+)
+def test_solo_se_regresa_a_rutas_nuestras(valor, esperado, rf):
+    from lib.navegacion import destino_de_regreso
+
+    peticion = rf.post("/x", {"volver": valor} if valor is not None else {})
+    assert destino_de_regreso(peticion, "/fallback") == esperado
+
+
+@pytest.fixture
+def categoria():
+    from apps.el_catalogo.models import CategoriaServicio
+    return CategoriaServicio.objects.create(nombre="Textiles")
+
+
+@pytest.fixture
+def producto(categoria):
+    from apps.el_catalogo.models import Servicio
+    return Servicio.objects.create(
+        nombre="Bandana Roja", categoria=categoria, precio_base=220, costo=44.94,
+    )
+
+
+@pytest.mark.django_db
+def test_guardar_la_ficha_de_un_producto_te_deja_en_la_ficha(
+    client, admin_user, producto, categoria,
+):
+    """La queja literal de Oscar: guardar lo sacaba a la lista."""
+    client.force_login(admin_user)
+    r = client.post(
+        f"/catalogo/{producto.pk}/editar",
+        {
+            "nombre": "Bandana Roja", "categoria": categoria.pk,
+            "precio_base": "230", "costo": "44.94", "unidad": "pz",
+        },
+    )
+    assert r.status_code == 302
+    assert r["Location"].startswith(f"/catalogo/{producto.pk}/editar"), r["Location"]
+    producto.refresh_from_db()
+    assert str(producto.precio_base) == "230.00", "además tenía que guardar"
+
+
+@pytest.mark.django_db
+def test_archivar_desde_la_lista_te_regresa_con_tus_filtros(client, admin_user, producto):
+    client.force_login(admin_user)
+    r = client.post(
+        f"/catalogo/{producto.pk}/archivar",
+        {"volver": "/catalogo/?q=bandana&editar=1"},
+    )
+    assert r.status_code == 302
+    assert r["Location"] == "/catalogo/?q=bandana&editar=1"
+
+
+@pytest.mark.django_db
+def test_la_lista_de_productos_manda_de_donde_vienes(client, admin_user, producto):
+    client.force_login(admin_user)
+    html = client.get("/catalogo/", {"q": "bandana"}).content.decode()
+    assert "volver=" in html, "los enlaces de la fila no llevan de dónde vienes"
+    assert 'name="volver"' in html, "el form de archivar no lleva de dónde vienes"
