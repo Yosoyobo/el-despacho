@@ -45,7 +45,15 @@ def entorno(usuario_factory, cliente_factory, proyecto_factory):
 
 class TestDocumento:
 
-    def test_titulo_automatico_sale_del_proyecto(self, entorno):
+    def test_titulo_automatico_sale_del_producto_unico(self, entorno):
+        # LC 2026-08-12 (Oscar): con UN producto el proyecto ES ese producto,
+        # así que la envoltura sobra. En plural siempre.
+        assert entorno["cot"].titulo_documento == "Producción de Mandiles de mezclilla"
+
+    def test_con_dos_productos_vuelve_la_envoltura_del_proyecto(self, entorno):
+        from apps.cotizaciones.models import CotizacionItem
+        CotizacionItem.objects.create(
+            cotizacion=entorno["cot"], concepto="Gorra", cantidad=10, precio_unitario="90")
         assert entorno["cot"].titulo_documento == (
             "Producción de elementos para proyecto 'Marriott Bonvoy'")
 
@@ -55,7 +63,7 @@ class TestDocumento:
         cot.save(update_fields=["titulo_documento_manual"])
         assert cot.titulo_documento == "Propuesta de uniformes 2026"
         # …y el automático sigue disponible para mostrarlo como sugerencia.
-        assert cot.titulo_documento_auto.startswith("Producción de elementos")
+        assert cot.titulo_documento_auto.startswith("Producción de ")
 
     def test_titulo_manual_en_blanco_vuelve_al_automatico(self, entorno):
         cot = entorno["cot"]

@@ -285,10 +285,40 @@ class Cotizacion(models.Model):
         Lo usa la página de la cotización para mostrar «así saldría si lo dejas
         vacío»."""
         if self.proyecto_id:
+            # LC 2026-08-12 (Oscar): con UN solo producto, el proyecto ES ese
+            # producto y la envoltura sobra — «Producción de Bandanas Rojas»,
+            # en plural siempre. Con dos o más vuelve el formato de siempre.
+            unico = self._producto_unico()
+            if unico:
+                from lib.plural import pluralizar
+                return f"Producción de {pluralizar(unico)}"
             nombre = (self.proyecto.nombre or self.proyecto.codigo or "").strip()
             if nombre:
                 return f"Producción de elementos para proyecto '{nombre}'"
         return (self.titulo or self.codigo or "").strip()
+
+    def _producto_unico(self) -> str:
+        """El nombre del único producto del proyecto, o "" si hay otro número.
+
+        Se lee de la COTIZACIÓN cuando ya tiene líneas (es la foto de lo que se
+        cotizó) y del proyecto mientras no las tenga. Defensiva: cualquier
+        tropiezo devuelve "" y el título cae al formato de siempre.
+        """
+        try:
+            if self.pk:
+                conceptos = [
+                    it.concepto_visible
+                    for it in self.items.all()
+                    if not it.agrupado and it.concepto_visible
+                ]
+                if conceptos:
+                    return conceptos[0] if len(conceptos) == 1 else ""
+            lineas = list(self.proyecto.productos_incluidos)
+            if len(lineas) == 1:
+                return (lineas[0].nombre_visible or "").strip()
+        except Exception:  # noqa: BLE001 — el título nunca tumba la página
+            return ""
+        return ""
 
     @property
     def estado_color(self) -> str:

@@ -549,7 +549,9 @@ class TestDocumento:
         assert cot.cliente.razon_social.upper() in html
         assert "/static/branding/Logo_LC-256.png" in html
         # Título del proyecto y concepto numerado con sus especificaciones.
-        assert cot.titulo in html
+        # LC 2026-08-12: con UN solo producto el título es «Producción de
+        # [Producto]» (en plural); la envoltura sólo queda para 2 o más.
+        assert cot.titulo_documento in html
         assert "<u>T-Shirts Gris Oscuro</u>" in html
         assert "100% algodón, calidad oversize heavyweight 250 gsm" in html
         assert "Color: por definir" in html

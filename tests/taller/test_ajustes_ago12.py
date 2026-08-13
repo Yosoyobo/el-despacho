@@ -325,3 +325,71 @@ def test_la_lista_de_productos_manda_de_donde_vienes(client, admin_user, product
     html = client.get("/catalogo/", {"q": "bandana"}).content.decode()
     assert "volver=" in html, "los enlaces de la fila no llevan de dónde vienes"
     assert 'name="volver"' in html, "el form de archivar no lleva de dónde vienes"
+
+
+# ── El título del documento con un solo producto ─────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "nombre,esperado",
+    [
+        ("Bandana Roja", "Bandanas Rojas"),
+        ("Bandanas Rojas", "Bandanas Rojas"),      # ya venía en plural
+        ("Gorra", "Gorras"),
+        ("Lápiz", "Lápices"),
+        ("Vinil", "Viniles"),
+        ("Playera Dry Fit", "Playeras Dry Fit"),   # la marca no se toca
+        ("Bandana Roja 'NIKE RUN'", "Bandanas Rojas 'NIKE RUN'"),
+        ("Playera de Algodón", "Playeras de Algodón"),
+        ("Libreta A5", "Libretas A5"),
+        ("", ""),
+    ],
+)
+def test_pluralizar(nombre, esperado):
+    from lib.plural import pluralizar
+    assert pluralizar(nombre) == esperado
+
+
+@pytest.mark.django_db
+def test_con_un_solo_producto_el_documento_se_titula_con_el_producto(cliente_nike, categoria):
+    from apps.cotizaciones.models import Cotizacion
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.models import Proyecto, ProyectoProducto
+
+    proyecto = Proyecto.objects.create(nombre="Nike Run 2026", cliente=cliente_nike)
+    srv = Servicio.objects.create(nombre="Bandana Roja", categoria=categoria, precio_base=220)
+    ProyectoProducto.objects.create(proyecto=proyecto, servicio=srv, cantidad=105)
+    cot = Cotizacion.objects.create(cliente=cliente_nike, proyecto=proyecto, version=1)
+
+    assert cot.titulo_documento == "Producción de Bandanas Rojas"
+
+
+@pytest.mark.django_db
+def test_con_varios_productos_vuelve_el_formato_de_siempre(cliente_nike, categoria):
+    from apps.cotizaciones.models import Cotizacion
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.models import Proyecto, ProyectoProducto
+
+    proyecto = Proyecto.objects.create(nombre="Nike Run 2026", cliente=cliente_nike)
+    for nombre in ("Bandana Roja", "Gorra Negra"):
+        srv = Servicio.objects.create(nombre=nombre, categoria=categoria, precio_base=100)
+        ProyectoProducto.objects.create(proyecto=proyecto, servicio=srv, cantidad=10)
+    cot = Cotizacion.objects.create(cliente=cliente_nike, proyecto=proyecto, version=1)
+
+    assert cot.titulo_documento == "Producción de elementos para proyecto 'Nike Run 2026'"
+
+
+@pytest.mark.django_db
+def test_el_titulo_escrito_a_mano_sigue_mandando(cliente_nike, categoria):
+    from apps.cotizaciones.models import Cotizacion
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.models import Proyecto, ProyectoProducto
+
+    proyecto = Proyecto.objects.create(nombre="Nike Run 2026", cliente=cliente_nike)
+    srv = Servicio.objects.create(nombre="Bandana Roja", categoria=categoria, precio_base=220)
+    ProyectoProducto.objects.create(proyecto=proyecto, servicio=srv, cantidad=105)
+    cot = Cotizacion.objects.create(
+        cliente=cliente_nike, proyecto=proyecto, version=1,
+        titulo_documento_manual="Lo que yo diga",
+    )
+    assert cot.titulo_documento == "Lo que yo diga"

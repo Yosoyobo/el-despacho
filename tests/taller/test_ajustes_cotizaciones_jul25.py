@@ -501,9 +501,10 @@ def test_pdf_sin_lineas_encabezado_gris_logo_chico_y_notas_al_pie(
     cot.save()
 
     html = construir_html_pdf(cot)
-    # (5) título fijo
-    assert "Producción de elementos para proyecto &#x27;Ted Lasso&#x27;" in html \
-        or "Producción de elementos para proyecto 'Ted Lasso'" in html
+    # (5) título fijo — con UN solo producto es «Producción de [Producto]»
+    # (LC 2026-08-12); la envoltura del proyecto sólo sale con 2 o más.
+    assert cot.titulo_documento == "Producción de Gorras"
+    assert "Producción de Gorras" in html
     # (1) las tablas de conceptos llevan recuadro GRIS CLARO (Oscar 2026-07-26:
     # «el outline de la línea debe de ser gris claro, no negro»); el encabezado,
     # los totales y las notas siguen sin líneas.
