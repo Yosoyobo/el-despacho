@@ -91,6 +91,29 @@ def test_el_motor_se_reengancha_tras_un_swap_de_htmx():
     assert "htmx:afterSwap" in JS_ARRASTRE.read_text(encoding="utf-8")
 
 
+def test_deslizar_sobre_una_tarjeta_scrollea_la_pagina():
+    """LC 2026-08-13 (Oscar): «no me deja scrollear a gusto por la página, agarra
+    tareas y las arrastra». Con el dedo y sin asa hay que MANTENER PRESIONADO."""
+    js = JS_ARRASTRE.read_text(encoding="utf-8")
+    assert "ESPERA_TACTIL" in js, "no existe el «mantén presionado»"
+    assert "setTimeout(agarrar, ESPERA_TACTIL)" in js
+    # Mientras se espera NO se toca el gesto, así que la página se mueve.
+    assert "sin `preventDefault`: la página se mueve" in js
+    # Y si el dedo se mueve antes de tiempo, era scroll: se cancela.
+    assert "cancelarEspera()" in js
+
+
+def test_solo_el_asa_bloquea_el_scroll():
+    """El `touch-none` sobre TODA la tarjeta era la causa del bug: le decía al
+    navegador «aquí no scrollees» en cada tarjeta del tablero."""
+    js = JS_ARRASTRE.read_text(encoding="utf-8")
+    assert "if (a) a.classList.add('touch-none');" in js
+    # El scroll sólo se frena mientras se arrastra DE VERDAD, y desde touchmove
+    # no pasivo (preventDefault en pointermove no lo garantiza).
+    assert "{ passive: false }" in js
+    assert "if (activo) e.preventDefault();" in js
+
+
 @pytest.mark.parametrize("ruta", MOTORES_RETIRADOS, ids=lambda p: p.name)
 def test_los_motores_viejos_ya_no_existen(ruta):
     assert not ruta.exists(), f"{ruta} debía borrarse al unificar"
