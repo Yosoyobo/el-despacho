@@ -4864,16 +4864,112 @@ un `touchmove` **no pasivo** — `preventDefault` en `pointermove` no lo garanti
 `select-none` en los elementos sin asa para que sostener no saque el globo de
 «copiar» de iOS.
 
-### S-Ajustes-Ago12-B ⏳ — Pestañas por versión en Productos involucrados
+**Segundo hotfix táctil (VERSION 2026.08.08)** — el resaltado de «vas a soltar
+aquí» (borde azul) se quedaba pegado al apoyar el dedo: era un efecto pensado para
+el mouse y en táctil no hay «salir del elemento» que lo apague. Se limitó al
+puntero fino.
 
-Segundo deploy de la misma ronda (punto 11). Trae modelo nuevo
-`ProyectoProductoVersion` + migración, así que va aparte. Decisión de Oscar: el
-snapshot completo (merma, costo, proveedor, procesos) vive **del lado del
-proyecto** — «a las cotizaciones no agregaremos datos de costo, son de salida y
-vista de clientes»— y **todas las pestañas son editables**. Las versiones que ya
-existen se reconstruyen por data migration desde lo que la cotización sí guardó,
-completando el lado del costo con la línea actual y marcándolas como tales. Plan
-completo en `~/.claude/plans/tender-marinating-nygaard.md`.
+### S-Ajustes-Ago12-B ✅ — Pestañas por versión en «Productos involucrados» (2026-08-13, VERSION 2026.08.09)
+
+Punto 11 de la ronda del 12 de agosto, el que se había separado por traer modelo
+nuevo. Decisiones de Oscar: el snapshot completo (merma, costo, proveedor,
+procesos) vive **del lado del proyecto** —«a las cotizaciones no agregaremos datos
+de costo, son de salida y vista de clientes»— y **todas las pestañas son
+editables**, sabiendo que el PDF de una versión ya enviada cambia con ellas.
+
+- **El hallazgo que definió el diseño**: no existe FK entre `CotizacionItem` y
+  `ProyectoProducto`, y la cotización congela SÓLO lo que ve el cliente
+  (concepto, especificación, cantidad, precio, foto, + las ventas como items
+  `agrupado=True`). Merma, costo, proveedor y procesos no están en ninguna parte
+  del documento — de ahí la tabla nueva.
+- **Modelo `ProyectoProductoVersion`** (`models/producto_version.py`, tabla
+  `proyectos_producto_version`, migración `proyectos/0033`): FK a `Cotizacion`
+  (CASCADE) + FK al `CotizacionItem` (SET_NULL, es la identidad estable para
+  empujar al PDF) + servicio/variacion/proveedor SET_NULL (un producto se puede
+  borrar del catálogo y un histórico NO debe bloquearlo) + alias, cantidad,
+  merma, precio, costo, `costo_unitario_expr`, nota, foto, `incluir_en_calculo`,
+  `procesos_json`, `ventas_json`, `reconstruido`. `UniqueConstraint` parcial
+  `(cotizacion, item)` = idempotencia gratis.
+  - **`default=list`, NO `dict`**: la forma real es una LISTA — es la que
+    serializa el JS de la tarjeta y la que consumen `sincronizar_procesos` /
+    `sincronizar_ventas`, que hacen `isinstance(data, list)` y **descartan en
+    silencio** cualquier otra cosa. Un `{}` habría sido un no-op invisible.
+  - **Los nulos significan otra cosa que en `ProyectoProducto`**: aquí un nulo es
+    **desconocido**, no «hereda del catálogo». Si heredara, un cambio de precio de
+    hoy reescribiría lo que se cotizó hace tres meses. Por eso `precio_efectivo` /
+    `costo_efectivo` del snapshot **no caen al catálogo**, y al fotografiar se
+    escriben resueltos.
+  - **Tabla aparte a propósito**: `proyecto.productos` alimenta gastos, egresos,
+    Contaduría, el documento y los chips del Kanban. Un campo `version` en
+    `ProyectoProducto` haría que todo eso contara doble.
+- **`services_version.py`** con las tres operaciones: `fotografiar(cot, pares)`
+  (la llama `generar_desde_proyecto` con las parejas línea↔item, que ahí se
+  saben, así que no hay que adivinarlas; **no** copia el FK `egreso`),
+  `sincronizar_items(cot)` (empuja al documento concepto/especificación/cantidad/
+  precio y **reconcilia las líneas de venta** `agrupado=True` en sitio, para que
+  los pk sobrevivan) y `restaurar_en_edicion(cot)`.
+- **Reconstrucción de lo ya cotizado** (`proyectos/0034`, data migration
+  idempotente y defensiva): lo exacto sale del documento; el lado del costo se
+  toma de la línea que el proyecto tiene HOY y la fila se marca
+  `reconstruido=True` → la pestaña avisa en amarillo, para que nadie lea un margen
+  histórico que nunca se midió. **El emparejado va por NOMBRE primero** (lección
+  de S-Ajustes-Jul29: dos alias del mismo producto comparten la llave
+  `(servicio, variacion)`), la llave por producto sólo si ese par se usa UNA vez,
+  y una línea emparejada no se reutiliza. Ojo: **los modelos históricos no traen
+  properties**, así que `concepto_visible`/`nombre_visible` van reimplementados
+  dentro de la migración (como hizo `0029`).
+- **La MISMA tarjeta, sin ramificarla**: `ProyectoProductoVersionForm` **hereda**
+  de `ProyectoProductoForm` (mismos campos declarados) con tres diferencias —
+  producto no obligatorio (`exigir_servicio = False`, atributo nuevo en el padre),
+  `procesos_json`/`ventas_json` fuera de `Meta.fields` (si entraran,
+  `construct_instance` metería la cadena cruda en el JSONField) y placeholders que
+  no dicen «catálogo». Flags NEGATIVOS en `_producto_card.html`
+  (`sin_arrastre`, `solo_lectura_foto`) para no tocar los tres includes vivos.
+- **Se guarda con el autoguardado del proyecto**, no con un botón propio: el panel
+  de la versión vive DENTRO de `#form-proyecto` con prefijo `ppv`, y `detalle`
+  reconoce el prefijo. Así «Guardado ✓» nunca miente. **El bloque vivo
+  (`#productos-vivo`) sólo se ESCONDE, nunca sale del DOM** — si saliera, su
+  management form se iría con él y el autoguardado se rompería; y el slot de la
+  versión va DESPUÉS, porque hay JS que busca el primer `-TOTAL_FORMS` de la
+  página (se acotaron **los dos** selectores sueltos al bloque vivo: el de quitar
+  una tarjeta y el de construirla).
+- **Refactor DRY**: `procesos_normalizados` / `ventas_normalizadas` extraídas de
+  `services_procesos` — las reglas de la cuenta escrita y la whitelist de
+  proveedores quedan en UN solo lugar para la línea viva y para la foto.
+- **Bug PREEXISTENTE cazado al leer el diff**: `@login_required` estaba pegado a
+  `_primer_error` (el helper) en lugar de a `detalle`. El decorador trataba al
+  `form` como si fuera el `request` (`request.user` → `AttributeError`), así que
+  **la rama del autoguardado inválido tiraba 500** en vez de mostrar el error
+  legible que V6 Bloque 5 puso ahí — la feature llevaba rota desde que se
+  entregó—, y `detalle` se quedó sin decorador (el acceso lo sostenía
+  `puede_ver_proyecto`). Decorador movido a su lugar + test de regresión.
+- **39 tests** en `tests/taller/test_ajustes_ago12b.py` (incluida la
+  reconstrucción contra datos de verdad: se le pasa el registro REAL de apps a la
+  data migration, que corre igual porque nunca usa properties). Eventos nuevos:
+  `cotizacion.version_editada`, `cotizacion.version_restaurada`.
+
+**Deuda diseñada**: «Restaurar en edición» **no borra** lo que el proyecto tenga y
+la versión no traiga (una línea puede tener un egreso registrado; hacerla
+desaparecer dejaría el gasto colgando) — es upsert, y el mensaje lo dice. Las
+pestañas sólo salen para quien puede EDITAR el proyecto; quien lo ve en solo
+lectura conserva su tabla de siempre. La foto de una versión se ve pero no se
+cambia (no hay endpoint de imagen para el snapshot). Las tarjetas de la versión no
+se arrastran (el `orden` se conserva, pero no hay zona de arrastre). Y el PDF de
+una cotización ya enviada **cambia** si se edita su pestaña: es lo que Oscar
+eligió, pero conviene recordarlo cuando alguien reporte «el PDF no es el que
+mandé».
+
+**Lección operativa — dos sesiones en el mismo working tree se pisan.** Este
+sprint se escribió dos veces. Otra sesión trabajaba el hotfix táctil en el MISMO
+árbol: primero su `git commit -a` barrió este trabajo en vuelo hacia su commit
+(dejando un PR que rompía el detalle porque se llevó `views.py` y las plantillas
+pero no `urls.py`), y después un `git reset --hard` —que por un `cd` fallido cayó
+en el árbol principal— revirtió los archivos ya existentes sin commitear. Se
+recuperó casi todo de un commit accidental; se rehicieron a mano
+`_form_productos_js.html`, las ediciones tardías de `views.py`/`detalle.html` y
+los docs. **Regla: si hay dos sesiones a la vez, la segunda en su propio
+`git worktree`.** Y al retomar, si `git log`/`git status` no coinciden con lo que
+dejaste, revisar el reflog ANTES de tocar nada.
 
 ### S5 — La Recepción
 

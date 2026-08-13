@@ -5,6 +5,50 @@
 
 ---
 
+## Novedades — Los productos de cada cotización, en pestañas (13 de agosto de 2026)
+
+**Productos involucrados ahora tiene pestañas**
+
+- En la página del proyecto, arriba de las tarjetas de producto, aparecen
+  **pestañas**: **En edición** y una por cada versión de cotización que hayas
+  generado (**v1**, **v2**, **v3**…). «En edición» son los productos del proyecto
+  ahora mismo, como siempre. Cada **vN** te muestra **los productos con los que se
+  generó esa cotización**.
+- Y te los muestra **completos**: con su **merma**, su **costo unitario**, su
+  **proveedor** y sus **procesos** de entonces. Eso es información que la
+  cotización no guarda —el documento es lo que ve el cliente— así que ahora se
+  guarda del lado del proyecto cada vez que generas una versión.
+- **Las pestañas se editan**, incluidas las versiones pasadas. Se guardan con el
+  mismo guardado automático de siempre: cuando dice «Guardado ✓», tu cambio quedó.
+  Ojo con esto: **lo que ve el cliente se actualiza en el documento de esa
+  versión** —el nombre, la especificación, la cantidad, el precio y las líneas que
+  se le cobran aparte—, así que si vuelves a bajar el PDF de esa versión, saldrá
+  con los cambios. La merma, el costo, el proveedor y los procesos se quedan
+  guardados del lado del proyecto: nunca salen en el documento.
+- Botón **«↩ Restaurar en edición»**: repone en los productos del proyecto los
+  valores de esa versión. Lo que hayas agregado después y no esté en la versión
+  **se queda como está** (por si ya le registraste un gasto).
+- La **foto** de una versión se ve pero no se cambia: es la que quedó congelada
+  con el documento.
+
+**Un arreglo de paso**
+
+- Si el guardado automático del proyecto **no podía guardar** (por ejemplo, un
+  costo escrito con letras), la página se caía con un error en vez de decirte qué
+  estaba mal. Ahora te lo dice, como estaba previsto.
+
+**Lo que ya estaba cotizado también aparece**
+
+- Las cotizaciones que generaste antes de esta actualización **no salen vacías**:
+  el sistema reconstruyó sus pestañas con lo que el documento sí guardó (nombre,
+  especificación, cantidad, precio y foto). Para el **costo** —merma, costo
+  unitario, proveedor, procesos— usó el de la línea que el proyecto tiene hoy,
+  porque el de entonces nunca se guardó. En esas pestañas verás un aviso amarillo
+  diciéndolo, para que no leas una ganancia histórica que en realidad nunca se
+  midió.
+
+---
+
 ## Novedades — Arrastrar funciona con el dedo, guardar ya no te saca y Productos abre en fichas (13 de agosto de 2026)
 
 **Arrastrar**
@@ -25,6 +69,9 @@
   momento** (te avisa con un tironcito). Deslizar el dedo encima **scrollea la
   página**, como en cualquier app. Donde hay asa (⠿) —las listas de tareas y las
   tarjetas de producto— basta con jalar del asa, sin esperar.
+- **Ya no se pinta el borde azul con sólo apoyar el dedo** sobre una tarjeta
+  arrastrable. Ese resaltado era para el mouse; en pantalla táctil se quedaba
+  pegado al tocar.
 
 **Ya no te saca de donde estás**
 
@@ -3491,7 +3538,18 @@ La página es **editable directo** (los cambios se guardan solos; verás
   resaltado; haz clic en otro para cambiarlo al instante.
 - **Datos del proyecto:** nombre, cliente (con "+ Nuevo cliente"), descripción
   y dos **calendarios** (Inicio y Entrega) para elegir las fechas.
-- **Productos involucrados:** se listan **todos** como **tarjetas plegables**.
+- **Productos involucrados:** arriba hay **pestañas**: **En edición** y una por
+  cada versión de cotización que hayas generado (**v1**, **v2**, …). «En edición»
+  son los productos del proyecto ahora mismo; cada **vN** te muestra los
+  productos **con los que se generó esa cotización**, con su merma, su costo, su
+  proveedor y sus procesos de entonces. Esas pestañas también se editan: al
+  guardar, **el documento de esa versión se actualiza** con lo que ve el cliente
+  (nombre, especificación, cantidad, precio y las líneas que se le cobran
+  aparte). El botón **«↩ Restaurar en edición»** repone esos valores en los
+  productos del proyecto; lo que hayas agregado después y no esté en la versión
+  se queda como está. La foto de una versión se ve pero no se cambia: es la que
+  quedó congelada con el documento.
+  Se listan **todos** como **tarjetas plegables**.
   Cada una se ve compacta (**cantidad · nombre · precio**); ábrela picando su
   barra cuando quieras editarla. Cada tarjeta tiene **su propio color**, que sale
   del producto y **no cambia nunca** — ni al moverla, ni al apagarla, ni al
