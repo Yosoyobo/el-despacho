@@ -103,6 +103,22 @@ def test_deslizar_sobre_una_tarjeta_scrollea_la_pagina():
     assert "cancelarEspera()" in js
 
 
+def test_el_hover_no_se_queda_pegado_al_tocar():
+    """LC 2026-08-13 (Oscar): «no me gusta el outline azul que se activa
+    inmediatamente cuando mi dedo está encima de alguna».
+
+    En táctil el navegador finge un `:hover` al tocar y lo deja pegado, así que
+    el `hover:border-brand-300` de las tarjetas arrastrables pintaba el borde
+    azul con sólo apoyar el dedo. Con este ajuste, Tailwind mete cada `hover:`
+    dentro de `@media (hover: hover)`.
+    """
+    cfg = Path("el-taller/tailwind.config.js").read_text(encoding="utf-8")
+    assert "hoverOnlyWhenSupported: true" in cfg
+    # Y las tarjetas conservan su hover para quien sí tiene mouse.
+    tarjeta = Path("el-taller/templates/pizarron/_kanban_tarjeta.html").read_text(encoding="utf-8")
+    assert "hover:border-brand-300" in tarjeta
+
+
 def test_solo_el_asa_bloquea_el_scroll():
     """El `touch-none` sobre TODA la tarjeta era la causa del bug: le decía al
     navegador «aquí no scrollees» en cada tarjeta del tablero."""

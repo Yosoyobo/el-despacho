@@ -7,6 +7,21 @@
 // partials del sprint). Si surge drift, unificar en sprint futuro.
 module.exports = {
   darkMode: 'class',
+  // LC 2026-08-13 (Oscar): «no me gusta el outline azul que se activa
+  // inmediatamente cuando mi dedo está encima de alguna [tarjeta]».
+  //
+  // En pantalla táctil el navegador FINGE un `:hover` al tocar y lo deja
+  // pegado, así que el borde azul de `hover:border-brand-300` aparecía en
+  // cuanto ponías el dedo sobre una tarjeta arrastrable — y se quedaba. Con
+  // esto, Tailwind envuelve cada utilidad `hover:` en `@media (hover: hover)`,
+  // o sea que sólo aplican donde de verdad hay un puntero que puede posarse.
+  // Cubre TODAS las superficies de arrastre (tableros de tareas y de proyectos,
+  // el del Dashboard, calendario, KPIs, carpetas del menú) y de paso el resto
+  // de la app, donde el hover pegado también era un defecto.
+  //
+  // Divergencia deliberada con `la-gerencia/tailwind.config.js`: es un arreglo
+  // de El Taller y La Gerencia no se toca (instrucción de Oscar).
+  future: { hoverOnlyWhenSupported: true },
   // Mantener sincronizado con la-gerencia/tailwind.config.js (regla §18).
   safelist: [
     // Charts: gauges/sparklines arman clases desde Python.
