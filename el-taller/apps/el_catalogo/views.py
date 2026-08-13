@@ -324,6 +324,10 @@ def editar(request, pk: int):
         return r
     srv = get_object_or_404(Servicio, pk=pk)
     puede_editar_precios = puede(request.user, "catalogo", "editar_precios")
+    # El costo ANTES de tocar nada: con él se decide qué líneas de proyecto lo
+    # traían copiado del catálogo y cuáles se negociaron aparte (Bug D §14 —
+    # `form.is_valid()` ya habría escrito el nuevo sobre `srv`).
+    srv_costo_previo = srv.costo
     if request.method == "POST":
         form = ServicioForm(request.POST, instance=srv)
         if form.is_valid():
@@ -353,10 +357,22 @@ def editar(request, pk: int):
                 parsear_detalles,
                 servicio_usa_calculadora,
             )
+            costo_anterior = srv_costo_previo
             if servicio_usa_calculadora(obj):
                 obj.detalles_costo = parsear_detalles(request.POST)
                 obj.costo = calcular(obj.detalles_costo)["subtotal"]
                 obj.save(update_fields=["detalles_costo", "costo", "actualizado_en"])
+            # LC 2026-08-12 (Oscar): el costo nuevo baja SOLO a los proyectos
+            # vivos — los que no han generado egreso ni cerrado, y donde nadie
+            # escribió un costo aparte. Lo pagado o facturado no se toca.
+            from apps.el_catalogo.propagacion import propagar_costo
+            tocadas = propagar_costo(obj, costo_anterior, request.user)
+            if tocadas:
+                messages.info(
+                    request,
+                    f"El costo nuevo se aplicó a {tocadas} línea"
+                    f"{'s' if tocadas != 1 else ''} de proyectos abiertos.",
+                )
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_actualizado",
                 actor_id=request.user.pk,

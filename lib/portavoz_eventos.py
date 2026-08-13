@@ -107,6 +107,7 @@ EventoTipo = Literal[
     "catalogo.subcategoria_proveedor_actualizada",
     "catalogo.servicio_actualizado",
     "catalogo.servicio_imagen",
+    "catalogo.costo_propagado",
     "catalogo.variacion_creada",
     "mandado.estado_cambiado",
     "mandado.destino_fijado",

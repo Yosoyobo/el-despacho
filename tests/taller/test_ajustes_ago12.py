@@ -18,6 +18,8 @@ Cubre el ticket:
 
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -325,6 +327,138 @@ def test_la_lista_de_productos_manda_de_donde_vienes(client, admin_user, product
     html = client.get("/catalogo/", {"q": "bandana"}).content.decode()
     assert "volver=" in html, "los enlaces de la fila no llevan de dónde vienes"
     assert 'name="volver"' in html, "el form de archivar no lleva de dónde vienes"
+
+
+# ── La calculadora de Simil baja a los proyectos vivos ───────────────────────
+
+
+@pytest.fixture
+def simil(categoria):
+    """Un producto de Simil Cuero Plymouth, que es quien usa la calculadora."""
+    from apps.el_catalogo.calculadora import PROVEEDOR_CALCULADORA
+    from apps.el_catalogo.models import Proveedor, Servicio
+
+    prov = Proveedor.objects.create(razon_social=PROVEEDOR_CALCULADORA)
+    srv = Servicio.objects.create(
+        nombre="Mandil", categoria=categoria, precio_base=510, costo=Decimal("180.00"),
+    )
+    srv.proveedores.add(prov)
+    return srv
+
+
+def _linea(proyecto, servicio, **extra):
+    from apps.los_proyectos.models import ProyectoProducto
+    return ProyectoProducto.objects.create(
+        proyecto=proyecto, servicio=servicio, cantidad=10, **extra,
+    )
+
+
+@pytest.mark.django_db
+def test_el_costo_nuevo_baja_a_los_proyectos_abiertos(cliente_nike, simil):
+    from apps.el_catalogo.propagacion import propagar_costo
+    from apps.los_proyectos.models import Proyecto
+
+    p = Proyecto.objects.create(nombre="Vivo", cliente=cliente_nike, estado="en_proceso_diseno")
+    linea = _linea(p, simil, costo_unitario=Decimal("180.00"))
+
+    simil.costo = Decimal("210.00")
+    simil.save(update_fields=["costo"])
+    assert propagar_costo(simil, Decimal("180.00")) == 1
+
+    linea.refresh_from_db()
+    assert linea.costo_unitario == Decimal("210.00")
+
+
+@pytest.mark.django_db
+def test_una_linea_que_ya_genero_egreso_no_se_toca(cliente_nike, simil):
+    """Ese dinero ya salió: moverlo hacia atrás descuadra la contabilidad."""
+    from apps.el_catalogo.propagacion import propagar_costo
+    from apps.los_proyectos.models import Proyecto
+    from apps.tesoreria.models import CentroDeCosto, Egreso
+
+    p = Proyecto.objects.create(nombre="En producción", cliente=cliente_nike,
+                                estado="en_proceso_produccion")
+    centro, _ = CentroDeCosto.objects.get_or_create(  # ya viene sembrado
+        slug="insumos-de-proyecto", defaults={"nombre": "Insumos de proyecto"})
+    egreso = Egreso.objects.create(monto=Decimal("1800.00"), descripcion="x",
+                                   centro_de_costo=centro, fecha=date.today())
+    linea = _linea(p, simil, costo_unitario=Decimal("180.00"), egreso=egreso)
+
+    assert propagar_costo(simil, Decimal("180.00")) == 0
+    linea.refresh_from_db()
+    assert linea.costo_unitario == Decimal("180.00")
+
+
+@pytest.mark.django_db
+def test_un_proyecto_cerrado_o_archivado_no_se_toca(cliente_nike, simil):
+    from apps.el_catalogo.propagacion import propagar_costo
+    from apps.los_proyectos.models import Proyecto
+
+    cerrado = Proyecto.objects.create(nombre="Cerrado", cliente=cliente_nike, estado="cerrado")
+    archivado = Proyecto.objects.create(nombre="Archivado", cliente=cliente_nike,
+                                        estado="en_proceso_diseno", archivado=True)
+    l1 = _linea(cerrado, simil, costo_unitario=Decimal("180.00"))
+    l2 = _linea(archivado, simil, costo_unitario=Decimal("180.00"))
+
+    simil.costo = Decimal("210.00")
+    assert propagar_costo(simil, Decimal("180.00")) == 0
+    for linea in (l1, l2):
+        linea.refresh_from_db()
+        assert linea.costo_unitario == Decimal("180.00")
+
+
+@pytest.mark.django_db
+def test_un_costo_escrito_a_mano_se_respeta(cliente_nike, simil):
+    """Un costo negociado para ese proyecto es una decisión, no una copia."""
+    from apps.el_catalogo.propagacion import propagar_costo
+    from apps.los_proyectos.models import Proyecto
+
+    p = Proyecto.objects.create(nombre="Negociado", cliente=cliente_nike,
+                                estado="en_proceso_diseno")
+    linea = _linea(p, simil, costo_unitario=Decimal("150.00"))  # ≠ el del catálogo
+
+    simil.costo = Decimal("210.00")
+    assert propagar_costo(simil, Decimal("180.00")) == 0
+    linea.refresh_from_db()
+    assert linea.costo_unitario == Decimal("150.00")
+
+
+@pytest.mark.django_db
+def test_una_linea_sin_costo_propio_tambien_se_pone_al_dia(cliente_nike, simil):
+    from apps.el_catalogo.propagacion import propagar_costo
+    from apps.los_proyectos.models import Proyecto
+
+    p = Proyecto.objects.create(nombre="Heredando", cliente=cliente_nike,
+                                estado="en_proceso_diseno")
+    linea = _linea(p, simil)  # costo_unitario = None ⇒ heredaba del catálogo
+
+    simil.costo = Decimal("210.00")
+    assert propagar_costo(simil, Decimal("180.00")) == 1
+    linea.refresh_from_db()
+    assert linea.costo_unitario == Decimal("210.00")
+
+
+@pytest.mark.django_db
+def test_guardar_la_calculadora_propaga_sin_tocar_lo_pagado(client, admin_user, cliente_nike, simil, categoria):
+    """De punta a punta: se guarda la ficha y el proyecto abierto queda al día."""
+    from apps.los_proyectos.models import Proyecto
+
+    p = Proyecto.objects.create(nombre="Vivo", cliente=cliente_nike, estado="en_proceso_diseno")
+    linea = _linea(p, simil, costo_unitario=Decimal("180.00"))
+    client.force_login(admin_user)
+
+    client.post(f"/catalogo/{simil.pk}/editar", {
+        "nombre": "Mandil", "categoria": categoria.pk, "precio_base": "510",
+        "costo": "180", "unidad": "pz",
+        # El proveedor viaja en el POST: si no, el form limpia la M2M y el
+        # producto deja de usar la calculadora.
+        "proveedores": [p.pk for p in simil.proveedores.all()],
+        "calc_material_0": "100", "calc_sublimacion_0": "20", "calc_mano_obra": "10",
+    })
+    simil.refresh_from_db()
+    linea.refresh_from_db()
+    assert simil.costo != Decimal("180.00"), "la calculadora tenía que recalcular"
+    assert linea.costo_unitario == simil.costo
 
 
 # ── El título del documento con un solo producto ─────────────────────────────
