@@ -4771,6 +4771,96 @@ eso es el nivel 3 y lo cubre el agente que instala el taller; los umbrales
 sí habría que decidir qué se muestra de la dirección IP); y el módulo `respaldo`
 mide el rsync a HAL, no El Resguardo a DO Spaces (que hoy está dormido).
 
+### S-Ajustes-Ago12 ✅ — Un solo motor de arrastre, guardar que no expulsa y Productos en fichas (2026-08-13, VERSION 2026.08.06)
+
+Ronda de Oscar sobre lo deployado el 8 de agosto. Once puntos; el 11 (pestañas por
+versión) se separó a su propio deploy por traer modelo nuevo. Decisiones por
+AskUserQuestion: **plural automático con reglas** · **la calculadora actualiza sólo
+los vivos** · **búsqueda del Dashboard en el servidor** · **fotos del catálogo + las
+de sus usos** · **guardar te deja donde estás** · **unificar los 6 arrastrables**.
+
+- **El Arrastre — motor único** (`el-taller/static/js/arrastrar.js`, Taller-only;
+  La Gerencia conserva el suyo en el editor del menú). Había **seis**
+  implementaciones en dos tecnologías; cuatro usaban el drag & drop de HTML5, que
+  **no existe en táctil** — de ahí que el tablero de tareas «no fuera arrastrable»
+  desde el celular. Ahora Pointer Events (un solo camino para dedo y ratón) con
+  contrato por atributos: `data-arr-zona` + `data-arr-grupo` (+ `-orden-url`,
+  `-orden-campo`, `-mover-url` con `{id}`, `-mover-campo/-valor/-extra`, `-eje`,
+  `-acepta`) y `data-arr-item` (+ `data-arr-asa`, `data-arr-tipo`,
+  `data-arr-vacio`). **Umbral de 6px** antes de considerar arrastre, así que picar
+  una tarjeta-enlace la sigue abriendo, y un `click` de captura se traga el que
+  viene tras un arrastre real. Eventos `arrastrar:ordenar` / `:mover` (cancelables
+  con `preventDefault`) y `:movido` para los tres casos con lógica propia — el
+  calendario manda tipo+id+fecha a su vista, los productos vuelcan el orden al
+  formset antes de guardar, y el kanban de proyectos lee `HX-Trigger` para el
+  motivo de cancelación. Migradas las 6 + carpetas del menú (con `data-arr-acepta`
+  para que una carpeta no entre en otra). **Borrados** `_kanban_script_tareas.html`
+  y `_tareas_orden_js.html`.
+- **El alta abre el modal desde cualquier lista.** Las vistas YA tenían rama
+  `HX-Request` + `_modal_nuevo_*.html`, pero sólo el Dashboard las pedía. Diez
+  listas convertidas + los empty states, con un `cta_modal` nuevo en
+  `_empty_state.html` (dual-copy §18). La página completa se conserva como
+  fallback. Cotizaciones y Facturación se quedan (no tienen modal de alta).
+- **La búsqueda del Dashboard alcanza los cerrados.** `_kanban_cols` sólo pinta las
+  4 columnas de `KANBAN_SLUGS_DASHBOARD`, así que un proyecto entregado ni estaba
+  en la página. Vista nueva `taller-buscar-proyectos` (server-side, respeta
+  `_proyectos_visibles`) que devuelve SÓLO lo que queda fuera del tablero, bajo el
+  Kanban; el filtro instantáneo de lo visible se conserva.
+- **`lib/navegacion.py::destino_de_regreso`** — contrato único de «volver». Había
+  cuatro mecanismos que no compartían nada y un `?volver=` que **sólo se leía al
+  pintar el encabezado, nunca al redirigir**. Guardar un producto recarga su ficha;
+  archivar/eliminar desde la lista regresa a **esa** lista con búsqueda, categoría y
+  modo de edición intactos; un proveedor nuevo abre su ficha. `url_segura` del
+  encabezado ahora usa el mismo criterio (`es_ruta_interna`).
+- **Título del documento con un solo producto** (`Cotizacion.titulo_documento_auto`
+  + `lib/plural.py`): «Producción de Bandanas Rojas», en plural siempre. Se
+  pluraliza la CABEZA (primera palabra + las que sigan pareciendo españolas —
+  vocal/r/l/n, no ALL-CAPS, no número), así «Playera Dry Fit» → «Playeras Dry Fit».
+  Con 2+ vuelve el formato de siempre. Lee de la cotización si ya tiene líneas.
+- **Tarjeta de producto**: «+ Agregar producto»; Cant./Merma dejan de encimarse
+  (los tracks eran fijos a 58px y el input se comía 34 en padding → `minmax(72px,auto)`
+  + clase `.campo-angosto` en los dos `input.css`); **el costo unitario acepta
+  cuentas** (`15.75*100`) — `suma_expresion` gana la multiplicación, el campo pasa a
+  texto (un `number` ni deja teclear el `*`), el SERVIDOR saca el total y la cuenta
+  escrita se guarda en `costo_unitario_expr` (migr. `proyectos/0032`). **La división
+  se sigue rechazando**: con dos decimales pierde centavos.
+- **La calculadora de Simil baja a los proyectos vivos**
+  (`apps/el_catalogo/propagacion.py`): actualiza una línea sólo si el proyecto no
+  está archivado ni terminal, la línea no generó egreso, el proyecto no tiene
+  cotización pagada, y el costo **coincidía con el anterior del catálogo** (era
+  copia, no un precio negociado). Ojo Bug D §14: el costo previo se captura ANTES de
+  `form.is_valid()`. Evento `catalogo.costo_propagado`.
+- **Productos en fichas** (`catalogo/_tarjetas.html`, `?vista=tabla` para volver).
+  **La infraestructura de imágenes estaba rota desde antes**: `imagen_producto`
+  LEÍA la caché pero **nunca escribía**, servía sin reducir y hacía hasta 3
+  consultas por imagen. Arreglado antes de meter fotos: `lib.imagen_publica.obtener()`
+  baja una vez / reduce / guarda (lo usan proxy y precalentado del PDF), miniatura
+  `?mini=1` de ~400px cacheada un día, `Cache-Control` 600s→86400s + `ETag`/304, el
+  veredicto del candado cacheado, y `loading="lazy"` en las fichas. **Sin
+  paginación** (criterio de Clientes/Facturas). `Servicio.fotos_ficha` = foto del
+  catálogo + las propias de sus usos, con `Prefetch` acotado — hay test que compara
+  12 productos contra 24 para fijar que no hay N+1.
+- **~60 tests nuevos** en `tests/taller/test_ajustes_ago12.py`. Se actualizaron los
+  que fijaban contratos que este sprint cambió a propósito: el título viejo (5), el
+  `35*2` que antes era basura, los dos que buscaban el arrastre en los scripts
+  borrados, y los del catálogo que ahora piden `?vista=tabla`.
+
+**Deuda diseñada**: el plural falla con nombres en inglés de 2+ palabras (el título
+es editable); Cotizaciones y Facturación siguen sin modal de alta; las fichas de
+proveedores conservan su N+1 (se copió el HTML, no el patrón de datos); el
+arrastre táctil sólo se puede verificar **con el código en La Sede**.
+
+### S-Ajustes-Ago12-B ⏳ — Pestañas por versión en Productos involucrados
+
+Segundo deploy de la misma ronda (punto 11). Trae modelo nuevo
+`ProyectoProductoVersion` + migración, así que va aparte. Decisión de Oscar: el
+snapshot completo (merma, costo, proveedor, procesos) vive **del lado del
+proyecto** — «a las cotizaciones no agregaremos datos de costo, son de salida y
+vista de clientes»— y **todas las pestañas son editables**. Las versiones que ya
+existen se reconstruyen por data migration desde lo que la cotización sí guardó,
+completando el lado del costo con la línea actual y marcándolas como tales. Plan
+completo en `~/.claude/plans/tender-marinating-nygaard.md`.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

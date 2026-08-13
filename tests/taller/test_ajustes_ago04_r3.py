@@ -73,13 +73,17 @@ def proyecto(catalogo):
     ("100-5", "95.00"),
     ("65", "65.00"),
     ("65.50", "65.50"),
+    # LC 2026-08-12: se sumó la multiplicación. La división NO — con dos
+    # decimales pierde centavos, que es el error que ya nos costó una vez.
+    ("15.75*100", "1575.00"),
+    ("35*2", "70.00"),
 ])
 def test_la_cuenta_del_costo_se_suma(escrito, esperado):
     from apps.los_proyectos.services_procesos import suma_expresion
     assert suma_expresion(escrito) == Decimal(esperado)
 
 
-@pytest.mark.parametrize("basura", ["35++15", "35+", "abc", "", "35*2", "35/2", "."])
+@pytest.mark.parametrize("basura", ["35++15", "35+", "abc", "", "35/2", "."])
 def test_una_cuenta_mal_escrita_no_se_interpreta(basura):
     from apps.los_proyectos.services_procesos import suma_expresion
     assert suma_expresion(basura) is None
@@ -313,11 +317,14 @@ def test_el_kanban_respeta_el_orden_guardado(client, admin_user):
 
 
 def test_el_arrastre_del_kanban_persiste_por_su_endpoint():
-    js = Path("el-taller/templates/proyectos/_kanban_script.html").read_text(encoding="utf-8")
-    assert "persistirOrdenColumna" in js
-    assert '{% url "proyectos-reordenar-kanban" %}' in js
-    # Soltar en la MISMA columna ya no es un no-op: guarda el orden.
-    assert "Misma columna: sólo cambió el orden" in js
+    # LC 2026-08-12: el gesto se unificó en El Arrastre
+    # (static/js/arrastrar.js); la columna declara su endpoint por atributo y
+    # el motor guarda el orden también al soltar en la MISMA columna.
+    col = Path("el-taller/templates/proyectos/_kanban_columna.html").read_text(encoding="utf-8")
+    assert '{% url \'proyectos-reordenar-kanban\' %}' in col
+    assert "data-arr-zona" in col
+    js = Path("el-taller/static/js/arrastrar.js").read_text(encoding="utf-8")
+    assert "guardarOrden(zona)" in js
 
 
 # ── (6) Próximos eventos del Dashboard ──────────────────────────────────────

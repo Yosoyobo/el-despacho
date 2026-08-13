@@ -47,6 +47,13 @@ CACHE_TTL = 1800
 # 4000px no aporta nada a 150pt de ancho y sí hace lenta la descarga.
 LADO_MAX = 1000
 
+# Miniatura para las fichas del catálogo (LC 2026-08-12). Una pantalla de
+# productos con foto son decenas de imágenes a la vez: a 400px pesan ~30 KB en
+# vez de los 2-4 MB de una foto de celular. Vive un día porque el `file_id` es
+# inmutable — si cambia la foto, cambia el id.
+LADO_MINI = 400
+CACHE_TTL_MINI = 86400
+
 # Vida del enlace. La conversión de Docs tarda segundos; 15 minutos deja
 # holgura para reintentos sin dejar el enlace vivo de más.
 TTL_SEGUNDOS = 900
@@ -80,22 +87,60 @@ def base_publica() -> str:
     return str(base).rstrip("/")
 
 
-def _clave(file_id: str) -> str:
-    return f"{CACHE_PREFIX}{file_id}"
+def _clave(file_id: str, mini: bool = False) -> str:
+    return f"{CACHE_PREFIX}{'mini:' if mini else ''}{file_id}"
 
 
-def desde_cache(file_id: str):
-    """`(bytes, mime)` si la imagen ya está precalentada; `None` si no."""
+def desde_cache(file_id: str, mini: bool = False):
+    """`(bytes, mime)` si la imagen ya está en caché; `None` si no."""
     if not file_id:
         return None
     try:
         from django.core.cache import cache
-        guardado = cache.get(_clave(file_id))
+        guardado = cache.get(_clave(file_id, mini))
     except Exception:  # noqa: BLE001 — Redis caído: se sirve sin caché
         return None
     if isinstance(guardado, tuple | list) and len(guardado) == 2:
         return guardado[0], guardado[1]
     return None
+
+
+def obtener(file_id: str, mini: bool = False):
+    """`(bytes, mime)` de la imagen, bajándola de Drive **una sola vez**.
+
+    LC 2026-08-12: antes el proxy del catálogo LEÍA esta caché pero nunca
+    escribía en ella — en cada visita volvía a bajar la foto de Drive (dos
+    llamadas HTTP), la servía sin reducir y tiraba los bytes. Con una pantalla
+    de fichas eso son decenas de llamadas a Google por carga, y se pega el
+    límite de cuota. Aquí se baja, se reduce y se guarda; la siguiente visita
+    (de quien sea) sale de la caché.
+
+    `mini=True` devuelve la miniatura de las fichas (~30 KB). Nunca lanza.
+    """
+    if not file_id:
+        return None
+    guardado = desde_cache(file_id, mini)
+    if guardado is not None:
+        return guardado
+    try:
+        from django.core.cache import cache
+
+        from lib.google_drive import drive
+
+        contenido, mime, _ = drive.descargar(file_id)
+    except Exception:  # noqa: BLE001 — Drive caído o sin permisos
+        return None
+    if not contenido or not (mime or "").startswith("image/"):
+        return None
+    lado = LADO_MINI if mini else LADO_MAX
+    contenido, mime = _reducir(contenido, mime, lado)
+    try:
+        from django.core.cache import cache
+        cache.set(_clave(file_id, mini), (contenido, mime),
+                  CACHE_TTL_MINI if mini else CACHE_TTL)
+    except Exception:  # noqa: BLE001 — Redis caído: se sirve sin guardar
+        pass
+    return contenido, mime
 
 
 def proporcion(file_id: str) -> float:
@@ -121,7 +166,7 @@ def proporcion(file_id: str) -> float:
         return 0.0
 
 
-def _reducir(contenido: bytes, mime: str):
+def _reducir(contenido: bytes, mime: str, lado: int = LADO_MAX):
     """Baja la resolución a `LADO_MAX` para que la descarga sea de pocos KB.
 
     Si Pillow no puede con el archivo (formato raro, imagen corrupta), devuelve
@@ -133,9 +178,9 @@ def _reducir(contenido: bytes, mime: str):
         from PIL import Image
 
         img = Image.open(io.BytesIO(contenido))
-        if max(img.size) <= LADO_MAX and len(contenido) <= 400_000:
+        if max(img.size) <= lado and len(contenido) <= 400_000:
             return contenido, mime
-        img.thumbnail((LADO_MAX, LADO_MAX), Image.LANCZOS)
+        img.thumbnail((lado, lado), Image.LANCZOS)
         salida = io.BytesIO()
         if img.mode in ("RGBA", "LA", "P"):
             img.convert("RGBA").save(salida, format="PNG", optimize=True)
@@ -153,21 +198,9 @@ def precalentar(file_id: str) -> bool:
     fallo devuelve False y el endpoint bajará de Drive como siempre (más lento,
     con riesgo de que Google se canse y deje el hueco).
     """
-    if not file_id or desde_cache(file_id) is not None:
-        return bool(file_id)
-    try:
-        from django.core.cache import cache
-
-        from lib.google_drive import drive
-
-        contenido, mime, _ = drive.descargar(file_id)
-        if not contenido or not (mime or "").startswith("image/"):
-            return False
-        contenido, mime = _reducir(contenido, mime)
-        cache.set(_clave(file_id), (contenido, mime), CACHE_TTL)
-        return True
-    except Exception:  # noqa: BLE001 — Drive caído o sin permisos
+    if not file_id:
         return False
+    return obtener(file_id) is not None
 
 
 def url_absoluta(file_id: str) -> str:

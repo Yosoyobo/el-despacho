@@ -13,26 +13,41 @@
     // `services_procesos.suma_expresion`, que es quien manda al guardar.
     function evalSuma(v) {
         const s = String(v == null ? '' : v).replace(/,/g, '').replace(/\s+/g, '');
-        if (!s || s.length > 120 || !/^[0-9.+-]+$/.test(s)) return null;
-        const t = s.match(/[+-]?(?:\d+\.?\d*|\.\d+)/g);
+        if (!s || s.length > 120 || !/^[0-9.+\-*]+$/.test(s)) return null;
+        // Términos con su signo; dentro de cada uno, factores separados por `*`
+        // (LC 2026-08-12: «15.75*100»). La división NO se acepta: con dos
+        // decimales pierde centavos.
+        const t = s.match(/[+-]?(?:\d+\.?\d*|\.\d+)(?:\*(?:\d+\.?\d*|\.\d+))*/g);
         if (!t || t.join('') !== s) return null;
         let total = 0;
-        for (const x of t) { const n = parseFloat(x); if (isNaN(n)) return null; total += n; }
+        for (const term of t) {
+            const signo = term[0] === '-' ? -1 : 1;
+            let prod = 1;
+            for (const f of term.replace(/^[+-]/, '').split('*')) {
+                const n = parseFloat(f);
+                if (isNaN(n)) return null;
+                prod *= n;
+            }
+            total += signo * prod;
+        }
         return total;
     }
     // ¿Es una cuenta (trae signo después del primer carácter) y no un número pelón?
     function esCuenta(v) {
         const s = String(v == null ? '' : v).replace(/\s+/g, '');
-        return s.length > 1 && /[+-]/.test(s.slice(1)) && evalSuma(s) !== null;
+        return s.length > 1 && /[+\-*]/.test(s.slice(1)) && evalSuma(s) !== null;
     }
     // Costo capturado en un campo que admite cuentas.
     function numCuenta(v) { const r = evalSuma(v); return r === null ? num(v) : r; }
     // Pinta «= $65.00» junto al campo cuando lo escrito es una cuenta.
     function pintarSuma(card) {
-        const campo = card.querySelector('.imp-costo');
-        const hint = card.querySelector('[data-imp-suma]');
-        if (!campo || !hint) return;
-        hint.textContent = esCuenta(campo.value) ? '= ' + fmt(numCuenta(campo.value)) : '';
+        [['.imp-costo', '[data-imp-suma]'],
+         ['input[name$="-costo_unitario"]', '[data-costo-suma]']].forEach(([sc, sh]) => {
+            const campo = card.querySelector(sc);
+            const hint = card.querySelector(sh);
+            if (!campo || !hint) return;
+            hint.textContent = esCuenta(campo.value) ? '= ' + fmt(numCuenta(campo.value)) : '';
+        });
     }
     function fmt(n) { return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function pad(n) { return String(n).padStart(2, '0'); }
@@ -109,7 +124,7 @@
     function costoEfectivo(card) {
         const sel = card.querySelector('select[name$="-servicio"]');
         const cIn = card.querySelector('input[name$="-costo_unitario"]');
-        if (cIn && cIn.value !== '') return num(cIn.value);
+        if (cIn && cIn.value !== '') return numCuenta(cIn.value);
         if (sel && SERVICIOS_DATOS[sel.value]) return num(SERVICIOS_DATOS[sel.value].costo);
         return 0;
     }
@@ -444,7 +459,7 @@
         const t = e.target;
         const card = t.closest && t.closest('[data-card]');
         if (!card) return;
-        if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) recalcular(card);
+        if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) { pintarSuma(card); recalcular(card); }
         if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { pintarSuma(card); serializar(card); recalcular(card); }
         if (t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
@@ -810,7 +825,6 @@ por un endpoint aparte.{% endcomment %}
     const CONT = 'formset-productos';
     const cont = () => document.getElementById(CONT);
     const form = () => document.getElementById('form-proyecto') || document.querySelector('form');
-    let dragging = null;
 
     // Fase 3 §2: escribe el `orden` (posición en el DOM) en el hidden `-orden`
     // de cada tarjeta REAL (con producto o ya guardada); las filas extra vacías
@@ -887,83 +901,17 @@ por un endpoint aparte.{% endcomment %}
         // 2026-07-28, punto b): es el título de la tarjeta, no un sustituto.
     });
 
-    // Drag & drop por el asa (solo la tarjeta se vuelve draggable al presionar
-    // el asa, para no romper la selección de texto en los inputs).
-    document.addEventListener('mousedown', function (e) {
-        const h = e.target.closest && e.target.closest('#' + CONT + ' [data-drag-handle]');
-        if (!h) return;
-        const card = h.closest('[data-card]');
-        if (card) card.draggable = true;
-    });
-    document.addEventListener('mouseup', function () {
-        if (dragging) return;
-        const c = cont(); if (!c) return;
-        c.querySelectorAll('[data-card][draggable="true"]').forEach(card => { card.draggable = false; });
-    });
-    document.addEventListener('dragstart', function (e) {
-        const card = e.target.closest && e.target.closest('#' + CONT + ' [data-card]');
-        if (!card || !card.draggable) return;
-        dragging = card;
-        card.classList.add('opacity-50');
-        if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} }
-    });
-    document.addEventListener('dragover', function (e) {
-        if (!dragging) return;
+    // ── Arrastrar para reordenar ─────────────────────────────────────────────
+    // El gesto lo pone El Arrastre (static/js/arrastrar.js) por los `data-arr-*`
+    // de la tarjeta y del contenedor; aquí sólo se atiende el resultado, porque
+    // guardar el orden de los productos NO es el POST genérico: primero hay que
+    // volcar la posición del DOM a los `-orden` del formset (LC 2026-08-12).
+    document.addEventListener('arrastrar:ordenar', function (e) {
         const c = cont();
-        if (!c || !c.contains(e.target)) return;
-        e.preventDefault();
-        const otras = Array.from(c.querySelectorAll('[data-card]')).filter(x => x !== dragging);
-        const despues = otras.find(x => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
-        if (despues) c.insertBefore(dragging, despues); else c.appendChild(dragging);
-    });
-    document.addEventListener('drop', function (e) { if (dragging) e.preventDefault(); });
-    document.addEventListener('dragend', function () {
-        if (!dragging) return;
-        dragging.classList.remove('opacity-50');
-        dragging.draggable = false;
-        dragging = null;
+        if (!c || e.target !== c) return;
+        e.preventDefault();   // el motor no postea: manda `persistirOrden`
         persistirOrden();
     });
-
-    // ── Arrastre con el DEDO (LC 2026-07-28, móvil punto 3) ──────────────────
-    // El drag & drop nativo de HTML5 no existe en touch: en el celular las
-    // tarjetas simplemente no se movían. Aquí se reordena a mano con Pointer
-    // Events — el asa ya trae `touch-none`, así que el gesto no scrollea la
-    // página. Mismo resultado y mismo `persistirOrden` que en escritorio.
-    (function () {
-        let tocando = null, capturado = null;
-        function reacomodar(y) {
-            const c = cont(); if (!c || !tocando) return;
-            const otras = Array.from(c.querySelectorAll('[data-card]')).filter(x => x !== tocando);
-            const despues = otras.find(x => { const r = x.getBoundingClientRect(); return y < r.top + r.height / 2; });
-            if (despues) c.insertBefore(tocando, despues); else c.appendChild(tocando);
-        }
-        document.addEventListener('pointerdown', function (e) {
-            if (e.pointerType === 'mouse') return;  // el ratón usa el DnD nativo
-            const h = e.target.closest && e.target.closest('#' + CONT + ' [data-drag-handle]');
-            if (!h) return;
-            tocando = h.closest('[data-card]');
-            if (!tocando) return;
-            capturado = h;
-            try { h.setPointerCapture(e.pointerId); } catch (_) {}
-            tocando.classList.add('opacity-50');
-            e.preventDefault();
-        });
-        document.addEventListener('pointermove', function (e) {
-            if (!tocando) return;
-            e.preventDefault();
-            reacomodar(e.clientY);
-        });
-        function soltar(e) {
-            if (!tocando) return;
-            tocando.classList.remove('opacity-50');
-            tocando = null;
-            if (capturado) { try { capturado.releasePointerCapture(e.pointerId); } catch (_) {} capturado = null; }
-            persistirOrden();
-        }
-        document.addEventListener('pointerup', soltar);
-        document.addEventListener('pointercancel', soltar);
-    })();
 
     // LC 2026-08-04 (Oscar): «prender y apagar toggles NO debe cambiar el orden».
     // Antes el toggle On subía la tarjeta al tope y Off la mandaba al fondo (y el

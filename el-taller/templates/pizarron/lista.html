@@ -3,7 +3,7 @@
 {% block title %}Tareas — El Taller{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Tareas" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Todas tus tareas en un solo lugar" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/" class="btn-secundario">Ver tablero</a>' %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Todas tus tareas en un solo lugar" breadcrumb_items=breadcrumb_items acciones='<button type="button" hx-get="/tareas/nueva/" hx-target="#modal-slot" hx-swap="innerHTML" class="btn-primario">+ Nueva tarea</button> <a href="/tareas/" class="btn-secundario">Ver tablero</a>' %}
 
 {# KPIs hero #}
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -37,13 +37,13 @@
                 </tr>
             </thead>
             {% comment %}LC 2026-08-07: arrastre para ordenar (ver
-            pizarron/_tareas_orden_js.html). El orden es del equipo.{% endcomment %}
+            static/js/arrastrar.js). El orden es del equipo.{% endcomment %}
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800"
-                   data-tareas-orden="{% url 'pizarron-reordenar-tareas' %}" data-csrf="{{ csrf_token }}">
+                   data-arr-zona data-arr-grupo="tareas-filas" data-arr-orden-url="{% url 'pizarron-reordenar-tareas' %}">
                 {% for t in tareas %}
-                <tr data-tarea-id="{{ t.pk }}" data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <tr data-arr-item="{{ t.pk }}" data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
                     <td class="w-8 px-1 py-3 align-middle">
-                        <button type="button" data-tarea-asa title="Arrastra para ordenar" aria-label="Arrastra para ordenar"
+                        <button type="button" data-arr-asa title="Arrastra para ordenar" aria-label="Arrastra para ordenar"
                                 class="cursor-grab touch-none select-none px-1 text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600 dark:hover:text-gray-400">⠿</button>
                     </td>
                     <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}{% if t.completada_en %}<span class="mt-0.5 block text-[11px] font-normal text-success-600 dark:text-success-400">✓ Completada {{ t.completada_en|date:"d M Y H:i" }} · tardó {{ t.duracion_completado }}</span>{% endif %}</td>
@@ -63,5 +63,5 @@
         </table>
     </div>
 </div>
-{% include "pizarron/_tareas_orden_js.html" %}
+
 {% endblock %}

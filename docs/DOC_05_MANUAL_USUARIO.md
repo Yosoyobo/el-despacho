@@ -5,6 +5,75 @@
 
 ---
 
+## Novedades — Arrastrar funciona con el dedo, guardar ya no te saca y Productos abre en fichas (13 de agosto de 2026)
+
+**Arrastrar**
+
+- **El tablero de Tareas ya se arrastra… y desde el celular.** Había seis maneras
+  distintas de arrastrar en el sistema y cuatro de ellas **no existían en pantalla
+  táctil**: por eso desde el teléfono o la tableta las tarjetas simplemente no se
+  movían. Ahora hay una sola, y funciona igual con el dedo que con el mouse.
+- Mientras arrastras, **la tarjeta se acomoda sola** en el lugar donde va a caer, y
+  en el tablero de Tareas ya puedes **reordenar dentro de la misma columna** (antes
+  sólo servía para cambiarla de columna).
+- Lo mismo aplica al tablero de Proyectos, a las listas de tareas, a las tarjetas de
+  producto del proyecto, al calendario, a las tarjetas del Dashboard y a las
+  carpetas de tu menú: **un solo comportamiento en todas partes**.
+- Picar una tarjeta la sigue abriendo: sólo se considera arrastre si de verdad la
+  mueves.
+
+**Ya no te saca de donde estás**
+
+- **Guardar un producto te deja en su página**, con un aviso de guardado. Antes te
+  expulsaba a la lista. Para salir están el «← Volver» y las migas de arriba.
+- **Archivar o eliminar desde una lista te regresa a esa lista**, con tu búsqueda y
+  tus filtros intactos — incluida la edición rápida si la traías puesta.
+- Un **proveedor nuevo abre su propia ficha**, igual que un producto nuevo.
+
+**Altas más rápidas**
+
+- El botón **«+ Nuevo…» de cualquier lista abre la ventana rápida**, la misma del
+  Dashboard, en vez de mandarte a la página completa de antes. Aplica a Proyectos,
+  Clientes, Productos, Proveedores, Tesorería, Ingresos, Egresos y Tareas.
+
+**Buscar en el Dashboard**
+
+- El buscador del tablero **ya encuentra proyectos entregados, cerrados y
+  cancelados**. Antes sólo miraba las cuatro columnas visibles, así que lo terminado
+  era invisible. Ahora aparecen abajo, en «Fuera del tablero».
+
+**Productos**
+
+- **La página abre en fichas**, como la de Proveedores: nombre, categoría y
+  proveedor en una línea, las fotos del producto, y costo · precio · margen abajo;
+  el número de usos en la esquina. La tabla y la edición rápida quedan a un clic.
+- Las fotos ahora **pesan una fracción** y se cargan sólo cuando las ves, así que la
+  página abre rápido aunque el catálogo crezca.
+
+**Cotizaciones**
+
+- **Cuando el proyecto tiene un solo producto**, el documento se titula «Producción
+  de Bandanas Rojas» en vez de «Producción de elementos para proyecto 'Bandanas
+  Rojas'». Con dos o más elementos sigue como antes. El título se puede escribir a
+  mano en la página de la cotización.
+
+**Tarjeta de producto del proyecto**
+
+- El botón de abajo ahora dice **«+ Agregar producto»**.
+- **Cantidad y Merma ya no se encimam**: los campos son más angostos y la etiqueta
+  dice «Cant.».
+- **El costo unitario acepta cuentas**: escribe `15.75*100` y él saca el total,
+  igual que el costo de impresión. Al lado te muestra en cuánto queda.
+
+**Productos de Simil Cuero Plymouth**
+
+- Al cambiar los números de su calculadora, **el costo nuevo baja solo a los
+  proyectos abiertos** que todavía no han generado gasto ni cerrado. Lo que ya se
+  pagó o se facturó no se toca, y un costo que hayas escrito a mano para un proyecto
+  se respeta. Al guardar te dice a cuántos llegó.
+
+---
+
 ## Novedades — El sistema ahora avisa solo si algo se cayó (8 de agosto de 2026)
 
 **Vigilancia desde fuera**
@@ -3561,8 +3630,14 @@ Cada tarea pertenece a un proyecto. Tiene título, descripción, estado, priorid
   tuyas con el chip de tu nombre cuando quieras.
 - **Se arrastran para ordenarlas.** En la lista de Tareas y en el recuadro de
   Tareas del proyecto, cada renglón tiene un asa (⠿) a la izquierda: la jalas y la
-  sueltas donde quieras. El orden **se guarda y lo ve todo el equipo**. Funciona
-  igual con el dedo en el celular.
+  sueltas donde quieras. El orden **se guarda y lo ve todo el equipo**.
+- **En el tablero también se arrastran**: de una columna a otra para cambiarles el
+  estado, y **dentro de la misma columna** para acomodarlas. Mientras arrastras, la
+  tarjeta se acomoda sola donde va a caer.
+- **Todo el arrastre del sistema funciona con el dedo** — tablero de Tareas, tablero
+  de Proyectos, tarjetas de producto, calendario, tarjetas del Dashboard y carpetas
+  de tu menú. Picar una tarjeta la sigue abriendo: sólo cuenta como arrastre si de
+  verdad la mueves.
 - Si le **dictas** las tareas a El Chalán y no le dices a quién, quedan **sin
   responsable** (generales del despacho) — nunca se las cuelga a quien dicta.
 - La persona asignada recibe push automático.
@@ -3669,6 +3744,12 @@ ese cliente, y entender qué lo **amarra** si quieres eliminarlo.
 
 ## Productos (Catálogo)
 
+**La página abre en fichas**: cada producto es una tarjeta con su nombre, su
+categoría y su proveedor en una línea, sus fotos, y el costo · precio · margen
+abajo; en la esquina, el número de veces que se ha usado. Con **«☰ Ver en tabla»**
+pasas a la vista de renglones (que es donde se ordena por columna), y
+**«✎ Edición rápida»** te deja escribir directo en las celdas.
+
 Lo que vendes/produces. Cada producto tiene:
 
 - Nombre y descripción (todo se maneja en **piezas**).
@@ -3751,6 +3832,12 @@ luego el **IVA** y el **Gran total**. El **Subtotal** se copia al **Costo** del
 producto; el **precio de venta lo pones tú** (la calculadora no lo toca). Para
 que aparezca la calculadora, el producto debe tener marcado a "Simil Cuero
 Plymouth" en sus **Proveedores aplicables**.
+
+**Al guardar, el costo nuevo baja solo a los proyectos abiertos** donde ya está
+capturado ese producto, y te dice a cuántos llegó. **No se toca** lo que ya se
+pagó (una línea que generó un gasto), lo que está en un proyecto cerrado o
+archivado, ni un costo que hayas escrito **a mano** para ese proyecto — eso último
+es una decisión tuya, no una copia del catálogo.
 
 ### Proveedores
 
@@ -4002,8 +4089,14 @@ contenido arranca con dos renglones de aire arriba.
 
 El **Título del documento** (el encabezado centrado del PDF) se edita hasta
 arriba de la página de la cotización, en la columna principal: viene con el
-texto real ya escrito para que lo corrijas encima. Si lo dejas igual, sigue
-tomándose del nombre del proyecto; si lo cambias, manda lo tuyo.
+texto real ya escrito para que lo corrijas encima. Si lo dejas igual se arma
+solo, y si lo cambias manda lo tuyo.
+
+**Cómo se arma solo:** con **un solo producto** el título es «Producción de
+Bandanas Rojas» —el nombre del producto, siempre en plural—, porque en esos
+proyectos el producto *es* el proyecto. Con **dos o más** vuelve a
+«Producción de elementos para proyecto 'Nombre del proyecto'». Si el plural
+sale raro (pasa con nombres en inglés), lo corriges escribiéndolo a mano.
 
 En el recuadro **Documento** (a la derecha, en la página de la cotización):
 

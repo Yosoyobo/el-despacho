@@ -59,6 +59,11 @@ class ProyectoProducto(models.Model):
         max_digits=12, decimal_places=2, null=True, blank=True,
         help_text="Costo por unidad para este proyecto. Vacío = usa el del catálogo.",
     )
+    # LC 2026-08-12 (Oscar): el costo se puede escribir como una CUENTA
+    # («15.75*100»). Aquí queda la cuenta tal como se escribió; `costo_unitario`
+    # guarda el total, que lo saca el SERVIDOR — mismo contrato que el
+    # `costo_expr` de la impresión.
+    costo_unitario_expr = models.CharField(max_length=120, blank=True, default="")
     merma = models.PositiveIntegerField(
         default=0,
         help_text="Piezas extra (muestras, control de calidad, regalos). Suman costo, no se cobran.",

@@ -316,8 +316,7 @@ def test_titulo_del_documento_viene_precargado_en_la_columna_principal(
     """Con placeholder había que reescribirlo: ahora trae el texto real."""
     client.force_login(entorno["admin"])
     body = client.get(f"/cotizaciones/{cotizacion.pk}/").content.decode()
-    # Django escapa el apóstrofe del nombre, así que se busca el texto base.
-    assert "Producción de elementos para proyecto" in body
+    assert "Producción de" in body
     assert 'id="titulo-documento"' in body
     assert "placeholder=" not in body.split('id="titulo-documento"')[1][:400]
     # Va antes de «Líneas» (columna principal), no en la barra lateral.

@@ -136,8 +136,9 @@ def test_catalogo_orden_por_categoria(client, usuario_factory):
     # desc: Zeta antes que Alfa
     html_desc = client.get("/catalogo/?orden=-categoria").content.decode()
     assert html_desc.index("Producto en Zeta") < html_desc.index("Producto en Alfa")
-    # la cabecera Categoría es un link de orden (en estado neutro apunta a asc)
-    html_neutro = client.get("/catalogo/").content.decode()
+    # La cabecera ordenable vive en la TABLA; desde LC 2026-08-12 la página abre
+    # en fichas y la tabla queda a un clic.
+    html_neutro = client.get("/catalogo/", {"vista": "tabla"}).content.decode()
     assert "orden=categoria" in html_neutro
 
 
@@ -146,7 +147,7 @@ def test_catalogo_orden_por_categoria(client, usuario_factory):
 def test_catalogo_proveedor_tercera_columna(client, usuario_factory):
     resp = None
     client.force_login(usuario_factory(rol="super_admin"))
-    resp = client.get("/catalogo/")
+    resp = client.get("/catalogo/", {"vista": "tabla"})
     cabeceras = [c["label"] for c in resp.context["cabeceras_catalogo"]]
     assert cabeceras[:3] == ["Nombre", "Categoría", "Proveedores"]
     assert cabeceras.index("Proveedores") < cabeceras.index("Usos")
@@ -158,9 +159,11 @@ def test_catalogo_fila_navega_al_panel_de_edicion(client, usuario_factory):
     from apps.el_catalogo.models import Servicio
     srv = Servicio.objects.create(nombre="Playera", precio_base="100", categoria=_categoria())
     client.force_login(usuario_factory(rol="super_admin"))
-    html = client.get("/catalogo/").content.decode()
+    html = client.get("/catalogo/", {"vista": "tabla"}).content.decode()
     editar_url = reverse("catalogo-editar", args=[srv.pk])
-    assert f'data-href="{editar_url}"' in html   # la fila entera va al panel
+    # LC 2026-08-12: el enlace lleva además `?volver=` con los filtros de la
+    # lista, para que archivar o eliminar te regrese a donde estabas.
+    assert f'data-href="{editar_url}?volver=' in html   # la fila entera va al panel
 
 
 def test_panel_edicion_incluye_historial_de_usos(client, usuario_factory):

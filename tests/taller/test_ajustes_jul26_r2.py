@@ -172,7 +172,9 @@ def test_pdf_mete_un_br_entre_el_logo_y_el_titulo(proyecto_factory):
     # El título es el <p> centrado que va tras el logo. LC 2026-07-26 (ronda 3):
     # ya no tiene tamaño propio —usa el del cuerpo—, así que se busca por su
     # texto en vez de por el `font-size`.
-    i_titulo = html.find("Producción de elementos para proyecto", i_logo)
+    # LC 2026-08-12: con UN solo producto el título es «Producción de
+    # [Producto]»; la envoltura del proyecto sólo sale con 2 o más.
+    i_titulo = html.find(cot.titulo_documento, i_logo)
     assert i_logo != -1 and i_titulo != -1
     assert "<br>" in html[i_logo:i_titulo]
 

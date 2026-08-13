@@ -21,15 +21,15 @@ disparan el autoguardado (el <select> hace stopPropagation en change).
             <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
                 <tr>{% if puede_editar %}<th class="w-8 px-1 py-2.5"><span class="sr-only">Ordenar</span></th>{% endif %}<th class="px-3 py-2.5 text-left sm:px-5">Tarea</th><th class="hidden px-5 py-2.5 text-left md:table-cell">Asignada a</th><th class="px-3 py-2.5 text-left sm:px-5">Estado</th><th class="hidden px-5 py-2.5 text-left sm:table-cell">Prioridad</th>{% if puede_editar %}<th class="px-2 py-2.5 text-right sm:px-3"><span class="sr-only">Archivar</span></th>{% endif %}</tr>
             </thead>
-            {% comment %}LC 2026-08-07: el `data-tareas-orden` prende el arrastre
-            (ver pizarron/_tareas_orden_js.html). El orden es del equipo.{% endcomment %}
+            {% comment %}LC 2026-08-07: los `data-arr-*` prenden el arrastre
+            (ver static/js/arrastrar.js). El orden es del equipo.{% endcomment %}
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800"
-                   {% if puede_editar %}data-tareas-orden="{% url 'pizarron-reordenar-tareas' %}" data-csrf="{{ csrf_token }}"{% endif %}>
+                   {% if puede_editar %}data-arr-zona data-arr-grupo="tareas-filas" data-arr-orden-url="{% url 'pizarron-reordenar-tareas' %}"{% endif %}>
                 {% for t in tareas %}
-                <tr id="tarea-fila-{{ t.pk }}" data-tarea-id="{{ t.pk }}" data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <tr id="tarea-fila-{{ t.pk }}" data-arr-item="{{ t.pk }}" data-href="{% url 'pizarron-detalle-tarea' t.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
                     {% if puede_editar %}
                     <td class="w-8 px-1 py-2.5 align-middle">
-                        <button type="button" data-tarea-asa title="Arrastra para ordenar" aria-label="Arrastra para ordenar"
+                        <button type="button" data-arr-asa title="Arrastra para ordenar" aria-label="Arrastra para ordenar"
                                 class="cursor-grab touch-none select-none px-1 text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600 dark:hover:text-gray-400">⠿</button>
                     </td>
                     {% endif %}
@@ -93,6 +93,6 @@ disparan el autoguardado (el <select> hace stopPropagation en change).
         </button>
         {% endif %}
     </div>
-    {% include "pizarron/_tareas_orden_js.html" %}
+    
     {% endif %}
 </section>

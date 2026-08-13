@@ -5,6 +5,9 @@ from . import views, views_avatar, views_impersonar, views_kpi_custom, views_res
 urlpatterns = [
     path("", views.home, name="taller-home"),
     path("ping", views.ping, name="taller-ping"),
+    # LC 2026-08-12: el buscador del tablero del Dashboard alcanza también los
+    # proyectos entregados/cerrados/cancelados, que no están en sus 4 columnas.
+    path("buscar/proyectos", views.buscar_proyectos, name="taller-buscar-proyectos"),
     # «Resumir pendientes» del recuadro de El Chalán en el Dashboard (LC 2026-07).
     path("resumen/actividad/", views_resumen.resumen_actividad, name="taller-resumen-actividad"),
     # S-LC-Feedback-V8: impersonación de super_admin.

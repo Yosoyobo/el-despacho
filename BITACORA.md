@@ -9027,3 +9027,158 @@ viven en `./data/caddy/data`, así que recrear no los vuelve a emitir. Documenta
   Credenciales → El Celador — token del monitor* (o en `CELADOR_TOKEN` del `.env` de
   La Sede) y darles las direcciones de `/salud`. Sin eso, el nivel 1 ya funciona y el
   desglose simplemente no se contesta.
+
+---
+
+# BITÁCORA — S-Ajustes-Ago12 (2026-08-13, VERSION 2026.08.06)
+
+> Ronda de Oscar sobre lo deployado el 8 de agosto. Once puntos; el último
+> (pestañas por versión) se separó a su propio deploy porque trae modelo nuevo.
+> Rama `agent/ajustes-ago12`.
+
+## Lo que se entregó
+
+### 1. El Arrastre — un solo motor para todo El Taller
+
+**El diagnóstico.** El tablero de Tareas «no era arrastrable» porque su código
+usaba el drag & drop de HTML5, que **no existe en pantalla táctil**. Al abrir el
+inventario aparecieron **seis** implementaciones distintas en dos tecnologías
+incompatibles: cuatro de HTML5 (tableros de proyectos y tareas, calendario, KPIs,
+carpetas del menú) y dos de Pointer Events (filas de tareas, tarjetas de
+producto). El de tareas, además, no reordenaba dentro de la columna ni acomodaba
+la tarjeta mientras la arrastrabas — en escritorio también se sentía muerto.
+
+**La solución.** `el-taller/static/js/arrastrar.js`, Pointer Events, manejado por
+atributos y con re-escaneo en `htmx:afterSwap` (patrón de `geo_picker.js`):
+
+```
+data-arr-zona · -grupo · -orden-url · -orden-campo · -mover-url («{id}»)
+              · -mover-campo/-valor/-extra · -eje (y|xy) · -acepta
+data-arr-item · data-arr-asa · data-arr-tipo · data-arr-vacio
+```
+
+Piezas que valen la pena recordar:
+
+* **Umbral de 6px** antes de considerar que es un arrastre — sin él, picar una
+  tarjeta del Kanban (que es un `<a>`) dejaría de abrirla. Tras un arrastre real,
+  un listener `click` de captura *once* se traga el clic que viene detrás.
+* **`elementFromPoint` con el elemento arrastrado en `pointer-events:none`** para
+  saber sobre qué zona vamos; sirve igual con zonas anidadas (las carpetas).
+* **Eventos cancelables** `arrastrar:ordenar` / `arrastrar:mover` para los casos
+  con lógica propia, y `arrastrar:movido` con la respuesta HTTP. Tres los usan:
+  el calendario (manda tipo+id+fecha a su vista), los productos (vuelcan la
+  posición del DOM a los `-orden` del formset antes de guardar) y el kanban de
+  proyectos (lee `HX-Trigger` para el modal del motivo de cancelación).
+* **`data-arr-acepta`** es lo que impide meter una carpeta del menú dentro de
+  otra, y `item.contains(zona)` cubre el caso general.
+
+Borrados `pizarron/_kanban_script_tareas.html` y `pizarron/_tareas_orden_js.html`.
+La Gerencia **no se tocó**: conserva su propio arrastre en el editor del menú.
+
+### 2. El alta abre el modal desde cualquier lista
+
+Hallazgo del inventario: las vistas **ya** sabían servir su modal (rama
+`HX-Request` + los siete `_modal_nuevo_*.html`), pero **sólo el Dashboard lo
+pedía** — desde las listas el botón era un `<a href>` a la página completa. Diez
+listas convertidas a `hx-get` → `#modal-slot`, más los empty states con un
+`cta_modal` nuevo en `_empty_state.html` (dual-copy §18). La página completa se
+conserva: entrar por URL directa sigue funcionando.
+
+### 3. La búsqueda del Dashboard alcanza los cerrados
+
+`_kanban_cols` sólo arma las 4 columnas de `KANBAN_SLUGS_DASHBOARD`, así que un
+proyecto entregado, cerrado o cancelado **no está en el DOM** y el filtro
+client-side no tenía dónde buscarlo. Vista nueva `taller-buscar-proyectos`
+(server-side, `_proyectos_visibles`, excluye los estados del tablero) que
+devuelve sólo lo que queda fuera, en un recuadro bajo el Kanban. El filtro
+instantáneo de lo visible se conserva — la red no le estorba a lo que ya se ve.
+
+### 4. «Guardar te deja donde estás»
+
+El repo tenía **cuatro** mecanismos de "volver" sin contrato común
+(`_next_seguro`, `_destino_registro`, `_navegacion_producto`, y el `?volver=` que
+**sólo se consumía al pintar el encabezado, jamás al redirigir**). Queda
+`lib/navegacion.py::destino_de_regreso(request, fallback)`, que lee `volver`/`next`
+de POST y GET y descarta lo que no sea ruta interna; `url_segura` del encabezado
+ahora comparte el criterio (`es_ruta_interna`), así que miga y redirect no pueden
+discrepar. Aplicado donde el salto era un error: guardar un producto recarga su
+ficha; archivar/eliminar desde la lista regresa a **esa** lista con filtros; un
+proveedor nuevo abre su ficha.
+
+### 5. Título del documento con un solo producto
+
+`titulo_documento_auto` cuenta conceptos: con uno solo, «Producción de
+[Producto]» **en plural siempre** (decisión de Oscar). `lib/plural.py` pluraliza
+la CABEZA del nombre y se detiene en la primera palabra que no parezca española,
+así «Bandana Roja» → «Bandanas Rojas» y «Playera Dry Fit» → «Playeras Dry Fit».
+
+### 6. Tarjeta de producto
+
+«+ Agregar producto». Cant./Merma dejan de encimarse: los tracks eran fijos a
+58px y el input global gasta 34 en padding, así que quedaban 24 útiles para una
+etiqueta de ~53 → `minmax(72px,auto)` + `.campo-angosto` (dual-copy) + `truncate`.
+Y **el costo unitario acepta cuentas** (`15.75*100`): `suma_expresion` gana la
+multiplicación con su precedencia, el campo pasa a texto (un `number` ni deja
+teclear el `*`), el servidor saca el total y la cuenta escrita se guarda en
+`costo_unitario_expr` (migr. `proyectos/0032`). **La división se sigue
+rechazando**: con dos decimales pierde centavos, que es el error de los 150÷29.
+
+### 7. La calculadora de Simil baja a los proyectos vivos
+
+Confirmado que hoy NO propaga: el costo del catálogo llega a la línea en dos
+copias (al elegir producto, y al primer render porque el form materializa el
+`NULL`) y ahí se congela. `apps/el_catalogo/propagacion.py` lo baja sólo si el
+proyecto está abierto, la línea no generó egreso, no hay cotización pagada y el
+costo **coincidía con el anterior del catálogo** — un costo escrito a mano es una
+decisión, no una copia. El costo previo se captura ANTES de `form.is_valid()`
+(Bug D §14).
+
+### 8. Productos en fichas + la infraestructura de imágenes
+
+Oscar preguntó si la vista de fichas consume muchos recursos. **Sí consumía, y
+estaba roto desde antes**: `imagen_producto` LEÍA la caché pero **nunca escribía
+en ella**, así que cada visita volvía a bajar la foto de Drive (dos llamadas
+HTTP), la servía **sin reducir** y tiraba los bytes; encima hacía hasta 3
+consultas por imagen sólo para validarla. Una pantalla de productos con foto eran
+cientos de llamadas a Google por carga.
+
+Arreglado ANTES de meter las fichas: `lib.imagen_publica.obtener()` (baja una
+vez / reduce / guarda, lo usan proxy y precalentado del PDF), miniatura `?mini=1`
+de ~400px cacheada un día, `Cache-Control` 600→86400 + `ETag`/304, veredicto del
+candado cacheado, `loading="lazy"`. **Sin paginación**, siguiendo el criterio que
+Oscar ya fijó en Clientes y Facturas.
+
+## Tests
+
+~60 nuevos en `tests/taller/test_ajustes_ago12.py`, incluido uno que compara el
+número de consultas con 12 productos contra 24 para fijar que las fichas no
+tienen N+1.
+
+Se **actualizaron** los que fijaban contratos que este sprint cambió a propósito:
+5 del título viejo (sus fixtures son proyectos de un solo producto), el `35*2` que
+antes era basura, los dos que buscaban el arrastre en los scripts borrados, y los
+del catálogo que ahora piden `?vista=tabla` porque la página abre en fichas. Se
+agregó una fixture de caché limpia a `test_imagen_publica.py` — ahora que el proxy
+guarda, la imagen buena de un test sobrevivía al Drive roto del siguiente.
+
+## Gotchas de la sesión
+
+* **Bug C (§14) otra vez**: tres comentarios `{# … #}` **multilínea** nuevos. El
+  candado los cazó antes del commit. Con `{% comment %}` no pasa.
+* `input.css` de Taller y Gerencia **no son idénticos** (el Taller tiene los
+  estilos del manual); `test_pwa_css.py` valida reglas concretas, no identidad.
+* `CategoriaServicio` no tiene `slug`, y `Egreso.fecha` es NOT NULL sin default.
+* Un POST de producto que no manda `proveedores` **limpia la M2M** — y con eso el
+  producto deja de usar la calculadora.
+
+## Lo que queda
+
+**Deploy B (S-Ajustes-Ago12-B)** — pestañas por versión en «Productos
+involucrados», con `ProyectoProductoVersion` y su backfill. Plan en
+`~/.claude/plans/tender-marinating-nygaard.md`.
+
+**Deuda diseñada**: el plural falla con nombres en inglés de 2+ palabras (el
+título es editable); Cotizaciones y Facturación siguen sin modal de alta; las
+fichas de proveedores conservan su N+1 (se copió el HTML, no el patrón de datos);
+y el **arrastre táctil sólo se puede verificar con el código en La Sede** — no hay
+forma de probar un gesto de dedo en CI.

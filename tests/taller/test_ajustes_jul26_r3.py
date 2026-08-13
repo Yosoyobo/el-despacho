@@ -104,7 +104,9 @@ def test_el_titulo_del_documento_usa_el_font_del_cuerpo(proyecto_factory, usuari
     html = construir_html_pdf(cot)
     assert "font-size:13pt" not in html          # ya no tiene escala propia
     assert "font-size: 11pt" in html             # la del <body>
-    assert "Producción de elementos para proyecto" in html
+    # LC 2026-08-12: con UN solo producto el título es «Producción de
+    # [Producto]»; la envoltura del proyecto sólo sale con 2 o más.
+    assert cot.titulo_documento in html
 
 
 # ── (2) Forma de pago ───────────────────────────────────────────────────────

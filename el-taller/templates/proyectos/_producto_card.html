@@ -27,7 +27,7 @@ Render fino LC 2026-07-28 (Oscar):
 - (h) El «+ Proceso» de arriba (lo que se le cobra al cliente) va en verde,
   para distinguirlo del de producción, que cuesta.
 {% endcomment %}
-<div class="producto-fila rounded-xl border-2 border-white p-3 shadow-theme-sm transition dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card>
+<div class="producto-fila rounded-xl border-2 border-white p-3 shadow-theme-sm transition dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card data-arr-item="{{ f.instance.pk|default:'' }}">
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
     <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.variacion }}{{ f.orden }}{{ f.imagen_quitar }}</div>
@@ -37,7 +37,7 @@ Render fino LC 2026-07-28 (Oscar):
     (`data-card-barra`); el asa, la foto y los controles quedan fuera del gesto,
     ver `_form_productos_js`. `cursor-pointer` avisa que se puede picar.{% endcomment %}
     <div data-card-barra class="flex cursor-pointer items-start gap-2">
-        <button type="button" data-drag-handle title="Arrastra para reordenar" aria-label="Reordenar"
+        <button type="button" data-drag-handle data-arr-asa title="Arrastra para reordenar" aria-label="Reordenar"
                 class="mt-0.5 shrink-0 cursor-grab touch-none rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.06]">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>
         </button>
@@ -106,7 +106,12 @@ Render fino LC 2026-07-28 (Oscar):
         se reduce a un «+» grande y se mete FORZOSO en esta misma fila; el espacio
         se lo quita a Categoría (1fr → 0.7fr). Antes vivía en su propio renglón
         alineado a la derecha y se leía como si no perteneciera a nada.{% endcomment %}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.8fr_1.5fr_58px_58px_104px_36px] md:items-end">
+        {% comment %}LC 2026-08-12 (Oscar): «Cantidad y Merma se están encimando».
+        Los dos tracks eran fijos a 58px y el input se comía 34 en padding:
+        quedaban 24 útiles y la etiqueta CANTIDAD mide ~53. Ahora la columna
+        puede crecer (`minmax`), los campos son angostos (`campo-angosto`) y
+        la etiqueta dice «Cant.» y no se parte.{% endcomment %}
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.8fr_1.5fr_minmax(72px,auto)_minmax(72px,auto)_104px_36px] md:items-end">
             <div>
                 <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Categoría</label>
                 <select class="cat-filtro w-full" data-cat-filtro>
@@ -135,12 +140,12 @@ Render fino LC 2026-07-28 (Oscar):
                 </div>
                 {{ f.servicio }}
             </div>
-            <div>
-                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cantidad</label>
+            <div class="min-w-0">
+                <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas a cobrar">Cant.</label>
                 {{ f.cantidad }}
             </div>
-            <div>
-                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas extra (muestras, control de calidad). Suman costo, no se cobran.">Merma</label>
+            <div class="min-w-0">
+                <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas extra (muestras, control de calidad). Suman costo, no se cobran.">Merma</label>
                 {{ f.merma }}
             </div>
             <div>
@@ -185,14 +190,19 @@ Render fino LC 2026-07-28 (Oscar):
         de varias líneas que crece solo: como la fila alinea al fondo
         (`md:items-end`), al crecer empuja su etiqueta HACIA ARRIBA en vez de
         estirar la tarjeta hacia abajo.{% endcomment %}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.2fr_84px_2.6fr] md:items-end">
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.2fr_112px_2.6fr] md:items-end">
             <div>
                 <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Proveedor</label>
                 {{ f.proveedor }}
             </div>
-            <div>
-                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo unitario</label>
+            {% comment %}LC 2026-08-12 (Oscar): el costo unitario acepta una CUENTA
+            («15.75*100»). El total lo saca el servidor; aquí sólo se muestra en
+            vivo para que veas lo que va a quedar.{% endcomment %}
+            <div class="min-w-0">
+                <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                       title="Acepta una cuenta: escribe 15.75*100 y se calcula solo.">Costo unit.</label>
                 {{ f.costo_unitario }}
+                <span data-costo-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span>
             </div>
             <div>
                 <label for="{{ f.nota.id_for_label }}" class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"

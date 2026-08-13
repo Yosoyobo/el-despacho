@@ -12,6 +12,7 @@ toggleables individualmente via tabla `cuentas_permiso_usuario`:
   catalogo.gestionar_categorias → Submenú de categorías + CRUD
 """
 
+import contextlib
 import json
 
 from django.contrib import messages
@@ -20,6 +21,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from lib.navegacion import destino_de_regreso
 from lib.permisos import puede
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -72,10 +74,23 @@ def lista(request):
     categoria_id = request.GET.get("categoria") or ""
     incluir_archivados = request.GET.get("archivados") == "1" and puede_archivar
     qs = (
-        Servicio.objects.select_related("categoria")
+        Servicio.objects.select_related("categoria", "proveedor_principal")
         .prefetch_related("proveedores")
         .annotate(usos_count=Count("en_proyectos", distinct=True))
     )
+    # LC 2026-08-12: la ficha muestra la foto del producto MÁS las propias de
+    # sus usos. Un `Prefetch` acotado a las que tienen foto = UNA consulta
+    # extra en total, no una por producto.
+    from apps.los_proyectos.models import ProyectoProducto
+    from django.db.models import Prefetch
+
+    qs = qs.prefetch_related(Prefetch(
+        "en_proyectos",
+        queryset=ProyectoProducto.objects.exclude(imagen_file_id="")
+        .only("id", "servicio_id", "imagen_file_id")
+        .order_by("-creado_en"),
+        to_attr="usos_con_foto",
+    ))
     # `activo` sigue siendo el mecanismo de ARCHIVADO (se conserva); solo se
     # jubiló su presentación como "Disponible/No disponible" (#10).
     if not incluir_archivados:
@@ -105,6 +120,11 @@ def lista(request):
         qs = qs.order_by("nombre")
     # LC revisión buzón R2: modo edición inline (celdas editables) opt-in.
     editar_inline = request.GET.get("editar") == "1" and puede_editar
+    # LC 2026-08-12 (Oscar): «la página de productos la vamos a formatear por
+    # default en vista de fichas, como la de proveedores. La tabla de edición
+    # rápida se mantiene como opción.» La edición rápida implica tabla.
+    vista = (request.GET.get("vista") or "").strip()
+    en_tarjetas = vista != "tabla" and not editar_inline
     # #12 unidad consolidada a 'pz' (columna retirada) · #9 columna "Usos"
     # (veces que el producto ha aparecido en proyectos) · #10 sin "Estado".
     # Sprint 2 UX: Categoría ordenable (item 6) · Proveedores al 3er lugar (item 11).
@@ -131,6 +151,8 @@ def lista(request):
         _params.append(("archivados", "1"))
     if editar_inline:
         _params.append(("editar", "1"))
+    if vista == "tabla":
+        _params.append(("vista", "tabla"))
     querystring_base = urlencode(_params)
     return render(request, "catalogo/lista.html", {
         "servicios": qs,
@@ -148,6 +170,7 @@ def lista(request):
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "editar_inline": editar_inline,
+        "en_tarjetas": en_tarjetas,
         "filas_template": "catalogo/_filas_editable.html" if editar_inline else "catalogo/_filas.html",
     })
 
@@ -228,9 +251,10 @@ def servicio_eliminar(request, pk: int):
         ))
         srv.delete()
         messages.success(request, f"Producto «{nombre}» eliminado permanentemente.")
+        destino = destino_de_regreso(request, reverse("catalogo-lista"))
         if es_htmx:
-            return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-lista")})
-        return redirect("catalogo-lista")
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
     if es_htmx:
         return render(request, "catalogo/_modal_eliminar_servicio.html", ctx)
     return redirect("catalogo-lista")
@@ -306,6 +330,13 @@ def _navegacion_producto(request) -> dict:
                 ]
                 back_url = url_prov
     trail.append({"label": "Producto"})
+    # LC 2026-08-12: sin `?desde=`, el «← Volver» respeta el `?volver=` con el
+    # que llegaste desde la lista, así que regresas con tus filtros puestos.
+    if not back_url:
+        from lib.navegacion import es_ruta_interna
+        crudo = (request.GET.get("volver") or "").strip()
+        if es_ruta_interna(crudo):
+            back_url = crudo
     return {"breadcrumb_trail": trail, "back_url_producto": back_url}
 
 
@@ -315,6 +346,10 @@ def editar(request, pk: int):
         return r
     srv = get_object_or_404(Servicio, pk=pk)
     puede_editar_precios = puede(request.user, "catalogo", "editar_precios")
+    # El costo ANTES de tocar nada: con él se decide qué líneas de proyecto lo
+    # traían copiado del catálogo y cuáles se negociaron aparte (Bug D §14 —
+    # `form.is_valid()` ya habría escrito el nuevo sobre `srv`).
+    srv_costo_previo = srv.costo
     if request.method == "POST":
         form = ServicioForm(request.POST, instance=srv)
         if form.is_valid():
@@ -344,10 +379,22 @@ def editar(request, pk: int):
                 parsear_detalles,
                 servicio_usa_calculadora,
             )
+            costo_anterior = srv_costo_previo
             if servicio_usa_calculadora(obj):
                 obj.detalles_costo = parsear_detalles(request.POST)
                 obj.costo = calcular(obj.detalles_costo)["subtotal"]
                 obj.save(update_fields=["detalles_costo", "costo", "actualizado_en"])
+            # LC 2026-08-12 (Oscar): el costo nuevo baja SOLO a los proyectos
+            # vivos — los que no han generado egreso ni cerrado, y donde nadie
+            # escribió un costo aparte. Lo pagado o facturado no se toca.
+            from apps.el_catalogo.propagacion import propagar_costo
+            tocadas = propagar_costo(obj, costo_anterior, request.user)
+            if tocadas:
+                messages.info(
+                    request,
+                    f"El costo nuevo se aplicó a {tocadas} línea"
+                    f"{'s' if tocadas != 1 else ''} de proyectos abiertos.",
+                )
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_actualizado",
                 actor_id=request.user.pk,
@@ -355,9 +402,13 @@ def editar(request, pk: int):
                 payload={"servicio_id": srv.pk},
             ))
             messages.success(request, "Producto actualizado.")
-            # Fase 3 §1.2: si venía de un proveedor, regresa a su ficha.
-            destino = _navegacion_producto(request).get("back_url_producto")
-            return redirect(destino or reverse("catalogo-lista"))
+            # LC 2026-08-12 (Oscar): «al darle guardar me saca a la lista».
+            # Guardar recarga la MISMA ficha; para salir están el «← Volver» y
+            # la miga, que siguen respetando de dónde venías (`?desde=`,
+            # `?volver=`) — por eso se conserva la query string.
+            destino = reverse("catalogo-editar", args=[srv.pk])
+            cola = request.META.get("QUERY_STRING", "")
+            return redirect(f"{destino}?{cola}" if cola else destino)
     else:
         form = ServicioForm(instance=srv)
     # Sprint 2 UX (item 7): el detalle y la edición se unifican en este panel;
@@ -411,7 +462,7 @@ def archivar(request, pk: int):
     srv.activo = not srv.activo
     srv.save(update_fields=["activo", "actualizado_en"])
     messages.success(request, "Producto " + ("archivado." if not srv.activo else "reactivado."))
-    return redirect("catalogo-lista")
+    return redirect(destino_de_regreso(request, reverse("catalogo-lista")))
 
 
 # ── Usos (bitácora histórica del producto) ───────────────────────────────────
@@ -752,9 +803,12 @@ def proveedor_nuevo(request):
                 payload={"proveedor_id": prov.pk, "razon_social": prov.razon_social},
             ))
             messages.success(request, f"Proveedor '{prov.razon_social}' creado.")
+            # LC 2026-08-12: se abre SU ficha, igual que un producto nuevo —
+            # es lo que quieres hacer enseguida (ligarle productos, ubicación).
+            destino = reverse("catalogo-proveedor-detalle", args=[prov.pk])
             if es_htmx:
-                return HttpResponse(status=204, headers={"HX-Redirect": reverse("catalogo-proveedores")})
-            return redirect("catalogo-proveedores")
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
         # inválido → cae al render (modal si es HTMX).
     else:
         form = ProveedorForm()
@@ -933,7 +987,7 @@ def proveedor_archivar(request, pk: int):
         payload={"proveedor_id": prov.pk},
     ))
     messages.success(request, f"Proveedor '{prov.razon_social}' " + ("desactivado." if not prov.activo else "reactivado."))
-    return redirect("catalogo-proveedores")
+    return redirect(destino_de_regreso(request, reverse("catalogo-proveedores")))
 
 
 @require_http_methods(["GET", "POST"])
@@ -1136,6 +1190,23 @@ def _es_imagen_de_producto(file_id: str) -> bool:
     """
     if not file_id:
         return False
+    # LC 2026-08-12: eran hasta TRES consultas por cada imagen de la pantalla.
+    # El veredicto no cambia (el `file_id` es inmutable), así que se recuerda.
+    from django.core.cache import cache
+    clave = f"catalogo:img_ok:{file_id}"
+    try:
+        recordado = cache.get(clave)
+    except Exception:  # noqa: BLE001 — Redis caído: se consulta como siempre
+        recordado = None
+    if recordado is not None:
+        return bool(recordado)
+    veredicto = _consultar_si_es_imagen_de_producto(file_id)
+    with contextlib.suppress(Exception):
+        cache.set(clave, veredicto, 86400 if veredicto else 60)
+    return veredicto
+
+
+def _consultar_si_es_imagen_de_producto(file_id: str) -> bool:
     if Servicio.objects.filter(imagen_file_id=file_id).exists():
         return True
     try:
@@ -1153,23 +1224,16 @@ def _es_imagen_de_producto(file_id: str) -> bool:
     return False
 
 
-def _bytes_de_imagen(file_id: str):
-    """`(contenido, mime)` de la imagen: de la caché si está precalentada, si no
-    bajándola de Drive. `None` si no se pudo o no es una imagen."""
-    from lib.imagen_publica import desde_cache
+def _bytes_de_imagen(file_id: str, mini: bool = False):
+    """`(contenido, mime)` de la imagen, de la caché o de Drive.
 
-    cacheada = desde_cache(file_id)
-    if cacheada is not None:
-        contenido, mime = cacheada
-    else:
-        try:
-            from lib.google_drive import drive
-            contenido, mime, _ = drive.descargar(file_id)
-        except Exception:  # noqa: BLE001 — Drive caído o sin permisos
-            return None
-    if not (mime or "").startswith("image/"):
-        return None
-    return contenido, mime
+    LC 2026-08-12: delega en `lib.imagen_publica.obtener`, que además GUARDA lo
+    que baja. Antes esto leía la caché pero nunca escribía en ella, así que
+    cada visita volvía a pedirle la foto a Drive y la servía sin reducir.
+    """
+    from lib.imagen_publica import obtener
+
+    return obtener(file_id, mini=mini)
 
 
 @require_http_methods(["GET"])
@@ -1185,11 +1249,21 @@ def imagen_producto(request, file_id: str):
         return r
     if not _es_imagen_de_producto(file_id):
         return HttpResponse(status=404)
-    datos = _bytes_de_imagen(file_id)
+    # `?mini=1` sirve la miniatura de ~30 KB de las fichas del catálogo.
+    mini = request.GET.get("mini") == "1"
+    etiqueta = f'"{file_id}{"-mini" if mini else ""}"'
+    # El `file_id` es inmutable: si cambia la foto, cambia el id. Así que si el
+    # navegador ya la tiene, no hace falta ni bajarla.
+    if request.headers.get("If-None-Match") == etiqueta:
+        return HttpResponse(status=304)
+    datos = _bytes_de_imagen(file_id, mini=mini)
     if datos is None:
         return HttpResponse(status=404)
     resp = HttpResponse(datos[0], content_type=datos[1])
-    resp["Cache-Control"] = "private, max-age=600"
+    # Un día de caché en el navegador (antes 10 min): con decenas de fichas en
+    # pantalla, volver a pedirlas en cada visita es lo que apretaba a Drive.
+    resp["Cache-Control"] = "private, max-age=86400"
+    resp["ETag"] = etiqueta
     return resp
 
 

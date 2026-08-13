@@ -258,15 +258,23 @@
     que la página Kanban: lo activa el JS compartido por su `id`.{% endcomment %}
     <div class="mb-3 flex flex-wrap items-center gap-3">
         <h2 class="shrink-0 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos</h2>
-        <input type="search" id="kanban-buscar" autocomplete="off"
+        {% comment %}El `hx-get` alcanza lo que el tablero no puede mostrar: sus
+        cuatro columnas son las activas, así que un proyecto entregado o cerrado
+        ni siquiera está en la página (LC 2026-08-12). El filtro instantáneo de
+        las columnas visibles se conserva — la red no le estorba.{% endcomment %}
+        <input type="search" id="kanban-buscar" autocomplete="off" name="q"
                placeholder="Buscar por nombre, cliente, código, producto, proveedor, equipo o contacto…"
+               hx-get="{% url 'taller-buscar-proyectos' %}"
+               hx-trigger="input changed delay:300ms"
+               hx-target="#kanban-fuera" hx-swap="innerHTML"
                class="order-last w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 sm:order-none sm:w-auto sm:min-w-[16rem] sm:flex-1">
         <a href="{% url 'proyectos-kanban' %}" class="ml-auto shrink-0 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:ml-0">Ver tablero completo →</a>
     </div>
     <div id="kanban-grid" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {% for col in kanban_cols %}{% include "proyectos/_kanban_columna.html" with col=col %}{% endfor %}
     </div>
-    <p id="kanban-sin-resultados" class="hidden mt-3 text-sm text-gray-400 dark:text-gray-500">Ningún proyecto coincide con la búsqueda.</p>
+    <p id="kanban-sin-resultados" class="hidden mt-3 text-sm text-gray-400 dark:text-gray-500">Ninguno del tablero coincide con la búsqueda.</p>
+    <div id="kanban-fuera"></div>
 </section>
 {% include "proyectos/_kanban_script.html" %}
 
@@ -299,9 +307,12 @@
         <a href="{% url 'perfil-dashboard' %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Editar tablero →</a>
     </div>
 </section>
-<section id="kpis-grid" class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+<section id="kpis-grid" class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4"
+         data-arr-zona data-arr-grupo="kpis" data-arr-eje="xy"
+         data-arr-orden-url="{% url 'perfil-dashboard-reordenar' %}"
+         data-arr-orden-campo="slugs">
     {% for k in compact_kpis %}
-    <div draggable="true" data-kpi-slug="{{ k.slug }}" class="kpi-card cursor-grab active:cursor-grabbing">
+    <div data-arr-item="{{ k.slug }}" class="kpi-card">
         {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link sparkline_id=k.slug sparkline_serie=k.sparkline_serie sparkline_color=k.sparkline_color sparkline_formato="moneda" valor_alerta=k.alerta %}
     </div>
     {% empty %}
@@ -310,42 +321,6 @@
     </div>
     {% endfor %}
 </section>
-<script>
-(function () {
-    // S-LC-Feedback-V3: drag & drop de tarjetas KPI compactas. Persiste orden.
-    const grid = document.getElementById('kpis-grid');
-    if (!grid) return;
-    let dragEl = null;
-    grid.addEventListener('dragstart', e => {
-        const card = e.target.closest('.kpi-card');
-        if (!card) return;
-        dragEl = card;
-        card.classList.add('opacity-50');
-        e.dataTransfer.effectAllowed = 'move';
-    });
-    grid.addEventListener('dragend', e => {
-        const card = e.target.closest('.kpi-card');
-        if (card) card.classList.remove('opacity-50');
-        dragEl = null;
-        const slugs = Array.from(grid.querySelectorAll('.kpi-card')).map(c => c.getAttribute('data-kpi-slug'));
-        const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
-        const body = new FormData();
-        slugs.forEach(s => body.append('slugs', s));
-        fetch('{% url "perfil-dashboard-reordenar" %}', {
-            method: 'POST',
-            headers: {'X-CSRFToken': csrf || ''},
-            body: body,
-        }).catch(() => {});
-    });
-    grid.addEventListener('dragover', e => {
-        e.preventDefault();
-        const card = e.target.closest('.kpi-card');
-        if (!card || card === dragEl || !dragEl) return;
-        const rect = card.getBoundingClientRect();
-        const antes = (e.clientX - rect.left) < rect.width / 2;
-        if (antes) card.parentNode.insertBefore(dragEl, card);
-        else card.parentNode.insertBefore(dragEl, card.nextSibling);
-    });
-})();
-</script>
+{% comment %}El orden de las tarjetas lo mueve El Arrastre (static/js/arrastrar.js)
+por los `data-arr-*` de la rejilla; el POST de `slugs` lo hace él solo.{% endcomment %}
 {% endblock %}

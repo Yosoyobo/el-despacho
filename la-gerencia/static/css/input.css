@@ -22,6 +22,14 @@
 }
 
 @layer components {
+  /* LC 2026-08-12 (Oscar): «apretar y hacer más chicos labels de campos —
+     cantidad y merma se están encimando». El padding global de un input
+     (`px-4`) se come 32px, y en una columna angosta no queda ni para tres
+     dígitos. `campo-angosto` la aprieta sin tocar el resto de los formularios. */
+  .campo-angosto {
+    @apply px-2 text-xs;
+  }
+
   /* S-LC-Feedback-V3: contenedores de charts no desbordan en mobile.
      ApexCharts respeta width 100% del contenedor; sólo aseguramos overflow
      hidden para que el SVG no salga horizontalmente y dejamos el browser

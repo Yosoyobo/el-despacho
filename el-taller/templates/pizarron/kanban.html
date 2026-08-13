@@ -6,7 +6,7 @@
 {% if es_runner_only %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Mis mandados" subtitulo="Tus entregas y recolecciones" breadcrumb_items=breadcrumb_items %}
 {% else %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Tablero por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<a href="/tareas/nueva/" class="btn-primario">+ Nueva tarea</a> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a>' %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Tablero por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<button type="button" hx-get="/tareas/nueva/" hx-target="#modal-slot" hx-swap="innerHTML" class="btn-primario">+ Nueva tarea</button> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a>' %}
 {% endif %}
 
 {# S-LC-Feedback-V13: filtro de categoría — Mandados se fusionó en Tareas. #}
@@ -60,7 +60,11 @@ runners (solo ven sus mandados). {% endcomment %}
             <span class="badge badge-hex text-[10px]" style="--ec: {{ col.color }}">{{ col.label }}</span>
             <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
         </div>
-        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2">
+        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2"
+             data-arr-zona data-arr-grupo="tareas"
+             data-arr-orden-url="{% url 'pizarron-reordenar-tareas' %}"
+             data-arr-mover-url="/tareas/{id}/cambiar-estado"
+             data-arr-mover-campo="estado" data-arr-mover-valor="{{ col.slug }}">
             {% for t in col.tareas %}{% include "pizarron/_kanban_tarjeta.html" %}{% endfor %}
         </div>
     </div>
@@ -76,7 +80,11 @@ runners (solo ven sus mandados). {% endcomment %}
             <span class="badge badge-hex text-[10px]" style="--ec: {{ col.color }}">{{ col.label }}</span>
             <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
         </div>
-        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2">
+        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2"
+             data-arr-zona data-arr-grupo="tareas"
+             data-arr-orden-url="{% url 'pizarron-reordenar-tareas' %}"
+             data-arr-mover-url="/tareas/{id}/cambiar-estado"
+             data-arr-mover-campo="estado" data-arr-mover-valor="{{ col.slug }}">
             {% for t in col.tareas %}{% include "pizarron/_kanban_tarjeta.html" %}{% endfor %}
         </div>
     </div>
@@ -85,8 +93,7 @@ runners (solo ven sus mandados). {% endcomment %}
 {% endif %}
 
 {% if total == 0 %}
-<div class="mx-auto mt-6 max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="No hay tareas que coincidan con los filtros." icono="tasks" cta_url="/tareas/nueva/" cta_label="+ Nueva tarea" %}</div>
+<div class="mx-auto mt-6 max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="No hay tareas que coincidan con los filtros." icono="tasks" cta_url="/tareas/nueva/" cta_label="+ Nueva tarea" cta_modal=True %}</div>
 {% endif %}
 
-{% include "pizarron/_kanban_script_tareas.html" %}
 {% endblock %}
