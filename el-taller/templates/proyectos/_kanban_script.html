@@ -1,128 +1,28 @@
 <script>
 (function () {
-    // S-LC-Feedback-V3: drag & drop Kanban. Cambia estado al soltar en otra columna.
-    // Extraído a partial compartido (S-Dashboard-Render) — lo usan la página
-    // Kanban completa y el Kanban embebido del Dashboard. Opera sobre selectores
-    // globales .kanban-card / .kanban-columna, así que sirve para ambos.
-    let dragId = null;
-    let dragSrc = null;
-    let dragCard = null;
-    function csrfToken() {
-        return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value
-            || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-    }
-    // LC 2026-08-04 R3 (Oscar): «quiero la opción de arrastrar los proyectos para
-    // cambiar su orden; que se guarde, es meramente visual». El orden es COMPARTIDO
-    // (todo el equipo ve el mismo) y vive en `Proyecto.orden_kanban`.
-    async function persistirOrdenColumna(zona) {
-        if (!zona) return;
-        const ids = Array.from(zona.querySelectorAll('.kanban-card'))
-            .map(c => c.getAttribute('data-proyecto-id')).filter(Boolean);
-        if (!ids.length) return;
-        const body = new URLSearchParams();
-        ids.forEach(id => body.append('orden', id));
+    // Buscador y columnas colapsables del Kanban de Proyectos. Lo usan la página
+    // Kanban completa y el Kanban embebido del Dashboard.
+    //
+    // El ARRASTRE ya no vive aquí: lo maneja El Arrastre (static/js/arrastrar.js)
+    // por los atributos `data-arr-*` de `_kanban_columna.html` (LC 2026-08-12).
+    // Lo único que se queda es el remate de cancelar, que necesita leer la
+    // cabecera de la respuesta.
+
+    // LC 2026-08-07: al arrastrar a «Cancelado» el servidor pide el motivo por
+    // la cabecera `HX-Trigger`. Como el movimiento no lo hace HTMX, el evento se
+    // dispara a mano (el listener vive en base.html).
+    document.addEventListener('arrastrar:movido', function (e) {
+        var r = e.detail && e.detail.respuesta;
+        if (!r || !r.headers) return;
         try {
-            await fetch('{% url "proyectos-reordenar-kanban" %}', {
-                method: 'POST',
-                headers: {'X-CSRFToken': csrfToken(), 'Content-Type': 'application/x-www-form-urlencoded'},
-                body: body,
-            });
-        } catch (_) { /* el orden es cosmético: si falla, no se molesta al usuario */ }
-    }
-    // Reacomoda la tarjeta arrastrada dentro de la zona bajo el cursor.
-    function reacomodar(zona, y) {
-        if (!zona || !dragCard) return;
-        const otras = Array.from(zona.querySelectorAll('.kanban-card')).filter(c => c !== dragCard);
-        const despues = otras.find(c => { const r = c.getBoundingClientRect(); return y < r.top + r.height / 2; });
-        if (despues) zona.insertBefore(dragCard, despues); else zona.appendChild(dragCard);
-        const vacio = zona.querySelector('.kanban-empty');
-        if (vacio) vacio.classList.add('hidden');
-    }
-    document.querySelectorAll('.kanban-card').forEach(card => {
-        card.addEventListener('dragstart', e => {
-            dragId = card.getAttribute('data-proyecto-id');
-            dragSrc = card.closest('.kanban-dropzone');
-            dragCard = card;
-            card.classList.add('opacity-50');
-            e.dataTransfer.effectAllowed = 'move';
-            try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {}
-        });
-        card.addEventListener('dragend', () => {
-            card.classList.remove('opacity-50');
-            document.querySelectorAll('.kanban-columna').forEach(c => c.classList.remove('ring-2', 'ring-brand-400'));
-        });
-        // Click sigue funcionando: dragstart/dragend no previenen navegación si no hubo drop.
-    });
-    document.querySelectorAll('.kanban-columna').forEach(col => {
-        col.addEventListener('dragover', e => {
-            e.preventDefault();
-            col.classList.add('ring-2', 'ring-brand-400');
-            // Mientras arrastras, la tarjeta ya se acomoda en su lugar (así se ve
-            // dónde va a caer, igual que las tarjetas de producto del proyecto).
-            reacomodar(col.querySelector('.kanban-dropzone'), e.clientY);
-        });
-        col.addEventListener('dragleave', () => col.classList.remove('ring-2', 'ring-brand-400'));
-        col.addEventListener('drop', async e => {
-            e.preventDefault();
-            col.classList.remove('ring-2', 'ring-brand-400');
-            if (!dragId) return;
-            const nuevoEstado = col.getAttribute('data-estado');
-            const card = document.querySelector(`.kanban-card[data-proyecto-id="${dragId}"]`);
-            if (!card) return;
-            const estadoActual = card.getAttribute('data-estado-actual');
-            const zonaDestino = col.querySelector('.kanban-dropzone');
-            if (estadoActual === nuevoEstado) {
-                // Misma columna: sólo cambió el orden.
-                await persistirOrdenColumna(zonaDestino);
-                dragId = null; dragSrc = null; dragCard = null;
-                return;
+            var trig = JSON.parse(r.headers.get('HX-Trigger') || '{}');
+            if (trig.pedirMotivoCancelacion) {
+                document.body.dispatchEvent(new CustomEvent(
+                    'pedirMotivoCancelacion', { detail: trig.pedirMotivoCancelacion }));
             }
-            // Mueve la tarjeta al DOM de la columna nueva (optimistic UI).
-            if (card.closest('.kanban-dropzone') !== zonaDestino) zonaDestino.appendChild(card);
-            card.setAttribute('data-estado-actual', nuevoEstado);
-            // Llama al backend.
-            try {
-                const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value
-                    || document.cookie.match(/csrftoken=([^;]+)/)?.[1];
-                const body = new FormData();
-                body.append('estado', nuevoEstado);
-                body.append('hx_kanban', '1');
-                // OJO: sin slash final — la ruta es `cambiar-estado` (no `/`).
-                // Django no hace APPEND_SLASH en POST, así que con `/` daba 404
-                // → "No se pudo cambiar el estado" (S-LC-Feedback-V7 fix).
-                const resp = await fetch(`/proyectos/${dragId}/cambiar-estado`, {
-                    method: 'POST',
-                    headers: {'X-CSRFToken': csrf || '', 'HX-Request': 'true'},
-                    body: body,
-                });
-                // 200/204/302 = OK (302 = django redirect tras save exitoso).
-                if (!resp.ok && resp.status !== 204 && resp.status !== 302) {
-                    if (dragSrc) dragSrc.appendChild(card);
-                    card.setAttribute('data-estado-actual', estadoActual);
-                    alert('No se pudo cambiar el estado. Recarga la página.');
-                } else {
-                    // Quedó en la columna nueva: guarda también su posición ahí.
-                    await persistirOrdenColumna(zonaDestino);
-                    // LC 2026-08-07: si la tarjeta se arrastró a «Cancelado», el
-                    // servidor pide el motivo por cabecera. Como aquí no hay HTMX
-                    // que la lea, se dispara el mismo evento a mano (el listener
-                    // vive en base.html).
-                    try {
-                        const trig = JSON.parse(resp.headers.get('HX-Trigger') || '{}');
-                        if (trig.pedirMotivoCancelacion) {
-                            document.body.dispatchEvent(new CustomEvent(
-                                'pedirMotivoCancelacion', { detail: trig.pedirMotivoCancelacion }));
-                        }
-                    } catch (_) { /* sin cabecera o mal formada: no pasa nada */ }
-                }
-            } catch (err) {
-                if (dragSrc) dragSrc.appendChild(card);
-                card.setAttribute('data-estado-actual', estadoActual);
-                alert('Error de red. Recarga la página.');
-            }
-            dragId = null; dragSrc = null; dragCard = null;
-        });
+        } catch (_) { /* sin cabecera o mal formada: no pasa nada */ }
     });
+
     // --- Buscador del Kanban (LC Buzón §156) — filtrado client-side, debounce ---
     var buscar = document.getElementById('kanban-buscar');
     if (buscar) {

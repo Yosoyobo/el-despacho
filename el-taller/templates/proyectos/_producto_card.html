@@ -27,7 +27,7 @@ Render fino LC 2026-07-28 (Oscar):
 - (h) El «+ Proceso» de arriba (lo que se le cobra al cliente) va en verde,
   para distinguirlo del de producción, que cuesta.
 {% endcomment %}
-<div class="producto-fila rounded-xl border-2 border-white p-3 shadow-theme-sm transition dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card>
+<div class="producto-fila rounded-xl border-2 border-white p-3 shadow-theme-sm transition dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card data-arr-item="{{ f.instance.pk|default:'' }}">
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
     <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.variacion }}{{ f.orden }}{{ f.imagen_quitar }}</div>
@@ -37,7 +37,7 @@ Render fino LC 2026-07-28 (Oscar):
     (`data-card-barra`); el asa, la foto y los controles quedan fuera del gesto,
     ver `_form_productos_js`. `cursor-pointer` avisa que se puede picar.{% endcomment %}
     <div data-card-barra class="flex cursor-pointer items-start gap-2">
-        <button type="button" data-drag-handle title="Arrastra para reordenar" aria-label="Reordenar"
+        <button type="button" data-drag-handle data-arr-asa title="Arrastra para reordenar" aria-label="Reordenar"
                 class="mt-0.5 shrink-0 cursor-grab touch-none rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.06]">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>
         </button>

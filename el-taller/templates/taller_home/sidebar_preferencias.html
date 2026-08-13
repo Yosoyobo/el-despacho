@@ -19,11 +19,12 @@
     ordenada: items sueltos y carpetas conviven y se reordenan juntos; los items se
     pueden meter/sacar de carpetas. El orden y la carpeta se calculan de la posición
     al guardar — sin números a la vista.{% endcomment %}
-    <div id="sb-principal" data-dropzone-principal class="space-y-2 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
+    <div id="sb-principal" data-dropzone-principal data-arr-zona data-arr-grupo="sb" class="space-y-2 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
         {% for el in elementos %}
             {% if el.tipo == "item" %}
             <div class="sb-card flex cursor-grab items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 shadow-theme-xs active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800{% if el.item.oculto %} opacity-50{% endif %}"
-                 draggable="true" data-slug="{{ el.item.slug }}" data-oculto="{% if el.item.oculto %}1{% else %}0{% endif %}">
+                 data-slug="{{ el.item.slug }}" data-oculto="{% if el.item.oculto %}1{% else %}0{% endif %}"
+                 data-arr-item="{{ el.item.slug }}" data-arr-tipo="item">
                 <span class="select-none text-gray-400">⠿</span>
                 <span class="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">{{ el.item.label }}</span>
                 <button type="button" data-toggle-oculto title="Mostrar / ocultar en mi menú"
@@ -33,9 +34,11 @@
                 </button>
             </div>
             {% else %}
-            <div class="sb-carpeta relative rounded-xl border border-gray-200 bg-gray-50/60 p-2.5 dark:border-gray-700 dark:bg-gray-800/40" data-grupo="{{ el.grupo }}" data-icono="{{ el.icono|default:'folder' }}">
+            <div class="sb-carpeta relative rounded-xl border border-gray-200 bg-gray-50/60 p-2.5 dark:border-gray-700 dark:bg-gray-800/40"
+                 data-grupo="{{ el.grupo }}" data-icono="{{ el.icono|default:'folder' }}"
+                 data-arr-item="{{ el.grupo }}" data-arr-tipo="carpeta">
                 <header class="mb-2 flex items-center gap-2">
-                    <span class="sb-carpeta-asa cursor-grab select-none text-gray-400 active:cursor-grabbing" title="Arrastra para mover la carpeta" draggable="true">⠿</span>
+                    <span class="sb-carpeta-asa cursor-grab touch-none select-none text-gray-400 active:cursor-grabbing" title="Arrastra para mover la carpeta" data-arr-asa>⠿</span>
                     <button type="button" data-icono-toggle title="Cambiar icono de la carpeta"
                             class="sb-icono-btn inline-flex h-7 w-7 items-center justify-center rounded-md text-base hover:bg-gray-100 dark:hover:bg-gray-700"></button>
                     <input type="text" value="{{ el.grupo }}" maxlength="40" data-zona-nombre
@@ -50,10 +53,12 @@
                         {% endfor %}
                     </div>
                 </header>
-                <div class="sb-lista ml-2 min-h-[2.5rem] space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700" data-dropzone-folder>
+                <div class="sb-lista ml-2 min-h-[2.5rem] space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700"
+                     data-dropzone-folder data-arr-zona data-arr-grupo="sb" data-arr-acepta="item">
                     {% for it in el.items %}
                     <div class="sb-card flex cursor-grab items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 shadow-theme-xs active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800{% if it.oculto %} opacity-50{% endif %}"
-                         draggable="true" data-slug="{{ it.slug }}" data-oculto="{% if it.oculto %}1{% else %}0{% endif %}">
+                         data-slug="{{ it.slug }}" data-oculto="{% if it.oculto %}1{% else %}0{% endif %}"
+                         data-arr-item="{{ it.slug }}" data-arr-tipo="item">
                         <span class="select-none text-gray-400">⠿</span>
                         <span class="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">{{ it.label }}</span>
                         <button type="button" data-toggle-oculto title="Mostrar / ocultar en mi menú"
@@ -96,64 +101,14 @@
     var emojiDe = {};
     ICONOS.forEach(function (t) { emojiDe[t[0]] = t[1]; });
 
-    var cardArr = null;   // tarjeta de item en arrastre
-    var carpArr = null;   // carpeta en arrastre
-
-    // Inserta `movido` en `cont` según la posición vertical, solo entre `selector`.
-    function colocar(cont, y, movido, selector) {
-        var hijos = Array.prototype.slice.call(cont.children).filter(function (c) {
-            return c !== movido && c.matches(selector);
-        });
-        for (var i = 0; i < hijos.length; i++) {
-            var r = hijos[i].getBoundingClientRect();
-            if (y < r.top + r.height / 2) { cont.insertBefore(movido, hijos[i]); return; }
-        }
-        cont.appendChild(movido);
-    }
-
-    function cardInit(card) {
-        card.addEventListener('dragstart', function (e) { e.stopPropagation(); cardArr = card; setTimeout(function () { card.classList.add('opacity-30'); }, 0); });
-        card.addEventListener('dragend', function () { card.classList.remove('opacity-30'); cardArr = null; quitarResalte(); });
-    }
+    // El arrastre lo pone El Arrastre (static/js/arrastrar.js) por los
+    // `data-arr-*` del HTML: `#sb-principal` recibe items y carpetas, y la lista
+    // de una carpeta sólo items (`data-arr-acepta="item"`), que es lo que impide
+    // meter una carpeta dentro de otra. Aquí no se guarda nada al soltar: el
+    // menú se persiste hasta «Guardar mi menú», leyendo el DOM (LC 2026-08-12).
     function carpetaInit(carp) {
-        var asa = carp.querySelector('.sb-carpeta-asa');
-        if (asa) {
-            asa.addEventListener('dragstart', function (e) { e.stopPropagation(); carpArr = carp; setTimeout(function () { carp.classList.add('opacity-40'); }, 0); });
-            asa.addEventListener('dragend', function () { carp.classList.remove('opacity-40'); carpArr = null; quitarResalte(); });
-        }
         zonaPintarIcono(carp);
-        var lista = carp.querySelector('[data-dropzone-folder]');
-        if (lista) folderListaInit(lista);
-        carp.querySelectorAll('.sb-card').forEach(cardInit);
     }
-    function quitarResalte() {
-        raiz.querySelectorAll('[data-dropzone-folder]').forEach(function (z) { z.classList.remove('ring-2', 'ring-brand-400'); });
-        raiz.classList.remove('ring-2', 'ring-brand-400');
-    }
-
-    // Dropzone de una carpeta: solo acepta TARJETAS (los items entran/salen).
-    function folderListaInit(lista) {
-        lista.addEventListener('dragover', function (e) {
-            if (!cardArr) return;            // una carpeta no entra en otra
-            e.preventDefault(); e.stopPropagation();
-            lista.classList.add('ring-2', 'ring-brand-400');
-            colocar(lista, e.clientY, cardArr, '.sb-card');
-        });
-        lista.addEventListener('dragleave', function () { lista.classList.remove('ring-2', 'ring-brand-400'); });
-        lista.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); lista.classList.remove('ring-2', 'ring-brand-400'); });
-    }
-
-    // Dropzone principal: acepta tarjetas (→ nivel superior) y carpetas (reordenar).
-    raiz.addEventListener('dragover', function (e) {
-        if (cardArr) {
-            e.preventDefault();
-            colocar(raiz, e.clientY, cardArr, '.sb-card, .sb-carpeta');
-        } else if (carpArr) {
-            e.preventDefault();
-            colocar(raiz, e.clientY, carpArr, '.sb-card, .sb-carpeta');
-        }
-    });
-    raiz.addEventListener('drop', function (e) { e.preventDefault(); quitarResalte(); });
 
     function zonaPintarIcono(carp) {
         var btn = carp.querySelector('[data-icono-toggle]');
@@ -162,7 +117,6 @@
     }
 
     // Inicializa todo lo presente.
-    raiz.querySelectorAll(':scope > .sb-card').forEach(cardInit);
     raiz.querySelectorAll(':scope > .sb-carpeta').forEach(carpetaInit);
 
     // ── Clicks: ocultar item / borrar carpeta / picker de icono ───────────
@@ -216,14 +170,16 @@
         carp.className = 'sb-carpeta relative rounded-xl border border-gray-200 bg-gray-50/60 p-2.5 dark:border-gray-700 dark:bg-gray-800/40';
         carp.setAttribute('data-grupo', nombre);
         carp.setAttribute('data-icono', 'folder');
+        carp.setAttribute('data-arr-item', nombre);
+        carp.setAttribute('data-arr-tipo', 'carpeta');
         carp.innerHTML = '<header class="mb-2 flex items-center gap-2">'
-            + '<span class="sb-carpeta-asa cursor-grab select-none text-gray-400 active:cursor-grabbing" title="Arrastra para mover la carpeta" draggable="true">⠿</span>'
+            + '<span class="sb-carpeta-asa cursor-grab touch-none select-none text-gray-400 active:cursor-grabbing" title="Arrastra para mover la carpeta" data-arr-asa>⠿</span>'
             + '<button type="button" data-icono-toggle class="sb-icono-btn inline-flex h-7 w-7 items-center justify-center rounded-md text-base hover:bg-gray-100 dark:hover:bg-gray-700"></button>'
             + '<input type="text" maxlength="40" data-zona-nombre class="sb-zona-nombre flex-1 rounded-md border border-gray-200 bg-transparent px-2 py-1 text-sm font-semibold text-gray-800 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-gray-100"/>'
             + '<button type="button" data-borrar-carpeta class="rounded-md p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>'
             + '<div data-icono-picker class="absolute left-8 top-10 z-20 hidden grid w-56 grid-cols-8 gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900">' + opciones + '</div>'
             + '</header>'
-            + '<div class="sb-lista ml-2 min-h-[2.5rem] space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700" data-dropzone-folder></div>';
+            + '<div class="sb-lista ml-2 min-h-[2.5rem] space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700" data-dropzone-folder data-arr-zona data-arr-grupo="sb" data-arr-acepta="item"></div>';
         carp.querySelector('[data-zona-nombre]').value = nombre;
         raiz.appendChild(carp);
         carpetaInit(carp);

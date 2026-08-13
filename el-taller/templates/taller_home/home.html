@@ -299,9 +299,12 @@
         <a href="{% url 'perfil-dashboard' %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Editar tablero →</a>
     </div>
 </section>
-<section id="kpis-grid" class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+<section id="kpis-grid" class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4"
+         data-arr-zona data-arr-grupo="kpis" data-arr-eje="xy"
+         data-arr-orden-url="{% url 'perfil-dashboard-reordenar' %}"
+         data-arr-orden-campo="slugs">
     {% for k in compact_kpis %}
-    <div draggable="true" data-kpi-slug="{{ k.slug }}" class="kpi-card cursor-grab active:cursor-grabbing">
+    <div data-arr-item="{{ k.slug }}" class="kpi-card">
         {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link sparkline_id=k.slug sparkline_serie=k.sparkline_serie sparkline_color=k.sparkline_color sparkline_formato="moneda" valor_alerta=k.alerta %}
     </div>
     {% empty %}
@@ -310,42 +313,6 @@
     </div>
     {% endfor %}
 </section>
-<script>
-(function () {
-    // S-LC-Feedback-V3: drag & drop de tarjetas KPI compactas. Persiste orden.
-    const grid = document.getElementById('kpis-grid');
-    if (!grid) return;
-    let dragEl = null;
-    grid.addEventListener('dragstart', e => {
-        const card = e.target.closest('.kpi-card');
-        if (!card) return;
-        dragEl = card;
-        card.classList.add('opacity-50');
-        e.dataTransfer.effectAllowed = 'move';
-    });
-    grid.addEventListener('dragend', e => {
-        const card = e.target.closest('.kpi-card');
-        if (card) card.classList.remove('opacity-50');
-        dragEl = null;
-        const slugs = Array.from(grid.querySelectorAll('.kpi-card')).map(c => c.getAttribute('data-kpi-slug'));
-        const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
-        const body = new FormData();
-        slugs.forEach(s => body.append('slugs', s));
-        fetch('{% url "perfil-dashboard-reordenar" %}', {
-            method: 'POST',
-            headers: {'X-CSRFToken': csrf || ''},
-            body: body,
-        }).catch(() => {});
-    });
-    grid.addEventListener('dragover', e => {
-        e.preventDefault();
-        const card = e.target.closest('.kpi-card');
-        if (!card || card === dragEl || !dragEl) return;
-        const rect = card.getBoundingClientRect();
-        const antes = (e.clientX - rect.left) < rect.width / 2;
-        if (antes) card.parentNode.insertBefore(dragEl, card);
-        else card.parentNode.insertBefore(dragEl, card.nextSibling);
-    });
-})();
-</script>
+{% comment %}El orden de las tarjetas lo mueve El Arrastre (static/js/arrastrar.js)
+por los `data-arr-*` de la rejilla; el POST de `slugs` lo hace él solo.{% endcomment %}
 {% endblock %}

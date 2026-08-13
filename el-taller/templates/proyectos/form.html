@@ -48,7 +48,7 @@
             <button type="button" id="add-producto" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo producto</button>
         </div>
         {{ formset.management_form }}
-        <div id="formset-productos" class="space-y-4">
+        <div id="formset-productos" class="space-y-4" data-arr-zona data-arr-grupo="productos">
             {% for f in formset %}
                 {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance.pk|color_tarjeta %}
             {% endfor %}

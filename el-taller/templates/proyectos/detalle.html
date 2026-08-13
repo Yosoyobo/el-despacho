@@ -184,7 +184,7 @@ se recarga, así que el «¿por qué se canceló?» se pide con `?motivo=1`.{% e
             e individualmente expandibles). El management form vive en _formset_productos
             para poder re-renderizar #formset-productos por OOB cuando se crea un producto
             inline (la tarjeta nueva trae su pk → no se duplica). {% endcomment %}
-            <div id="formset-productos" class="space-y-3">
+            <div id="formset-productos" class="space-y-3" data-arr-zona data-arr-grupo="productos">
                 {% include "proyectos/_formset_productos.html" with con_autosave=True %}
             </div>
 

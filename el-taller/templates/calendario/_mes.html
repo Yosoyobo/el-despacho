@@ -52,17 +52,18 @@ completa se escala al ancho disponible en vez de desbordarse.{% endcomment %}
                     {% endif %}
                     <span class="text-base font-bold text-gray-300 opacity-0 transition group-hover:opacity-100 dark:text-gray-600" aria-hidden="true">+</span>
                 </div>
-                <div class="space-y-0.5">
+                <div class="space-y-0.5" data-arr-zona data-arr-grupo="calendario"
+                     data-arr-fecha="{{ celda.fecha|date:'Y-m-d' }}">
                     {% for ev in celda.eventos|slice:":3" %}
                     {% comment %}LC 2026-07-28 (Oscar, móvil punto 1): en el celular
                     la celda mide ~50px y el texto de 11px no cabía; baja a 9px con
                     menos padding y vuelve a su tamaño de escritorio en `sm`.{% endcomment %}
                     {% if ev.tipo == "evento" %}
-                    <span draggable="true" data-ev-tipo="evento" data-ev-id="{{ ev.evento_id }}"
-                          class="block cursor-grab break-words line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px]" style="background-color: {{ ev.color_hex }}22; color: {{ ev.color_hex }}; border-color: {{ ev.color_hex }}55" title="{{ ev.titulo }} — arrastra para mover de día">{% if ev.es_multidia and not ev.es_inicio %}↔ {% endif %}{{ ev.titulo }}</span>
+                    <span data-arr-item="{{ ev.evento_id }}" data-ev-tipo="evento"
+                          class="block break-words line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight sm:px-1.5 sm:text-[11px]" style="background-color: {{ ev.color_hex }}22; color: {{ ev.color_hex }}; border-color: {{ ev.color_hex }}55" title="{{ ev.titulo }} — arrastra para mover de día">{% if ev.es_multidia and not ev.es_inicio %}↔ {% endif %}{{ ev.titulo }}</span>
                     {% else %}
-                    <span draggable="true" data-ev-tipo="{{ ev.tipo }}" data-ev-id="{{ ev.obj_id }}"
-                          class="block cursor-grab break-words line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight active:cursor-grabbing sm:px-1.5 sm:text-[11px] {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }} — arrastra para mover de día">{{ ev.titulo }}</span>
+                    <span data-arr-item="{{ ev.obj_id }}" data-ev-tipo="{{ ev.tipo }}"
+                          class="block break-words line-clamp-2 rounded-md border px-1 py-0.5 text-[9px] font-medium leading-tight sm:px-1.5 sm:text-[11px] {% if ev.color == 'brand' %}border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300{% elif ev.color == 'warning' %}border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-warning-300{% else %}border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-white/[0.05] dark:text-gray-300{% endif %}" title="{{ ev.titulo }} · {{ ev.subtitulo }} — arrastra para mover de día">{{ ev.titulo }}</span>
                     {% endif %}
                     {% endfor %}
                     {% if celda.eventos|length > 3 %}<div class="px-1 text-[9px] font-medium text-gray-500 dark:text-gray-400 sm:text-[10px]">+{{ celda.eventos|length|add:"-3" }} más</div>{% endif %}

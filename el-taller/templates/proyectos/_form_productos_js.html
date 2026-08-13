@@ -810,7 +810,6 @@ por un endpoint aparte.{% endcomment %}
     const CONT = 'formset-productos';
     const cont = () => document.getElementById(CONT);
     const form = () => document.getElementById('form-proyecto') || document.querySelector('form');
-    let dragging = null;
 
     // Fase 3 §2: escribe el `orden` (posición en el DOM) en el hidden `-orden`
     // de cada tarjeta REAL (con producto o ya guardada); las filas extra vacías
@@ -887,83 +886,17 @@ por un endpoint aparte.{% endcomment %}
         // 2026-07-28, punto b): es el título de la tarjeta, no un sustituto.
     });
 
-    // Drag & drop por el asa (solo la tarjeta se vuelve draggable al presionar
-    // el asa, para no romper la selección de texto en los inputs).
-    document.addEventListener('mousedown', function (e) {
-        const h = e.target.closest && e.target.closest('#' + CONT + ' [data-drag-handle]');
-        if (!h) return;
-        const card = h.closest('[data-card]');
-        if (card) card.draggable = true;
-    });
-    document.addEventListener('mouseup', function () {
-        if (dragging) return;
-        const c = cont(); if (!c) return;
-        c.querySelectorAll('[data-card][draggable="true"]').forEach(card => { card.draggable = false; });
-    });
-    document.addEventListener('dragstart', function (e) {
-        const card = e.target.closest && e.target.closest('#' + CONT + ' [data-card]');
-        if (!card || !card.draggable) return;
-        dragging = card;
-        card.classList.add('opacity-50');
-        if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} }
-    });
-    document.addEventListener('dragover', function (e) {
-        if (!dragging) return;
+    // ── Arrastrar para reordenar ─────────────────────────────────────────────
+    // El gesto lo pone El Arrastre (static/js/arrastrar.js) por los `data-arr-*`
+    // de la tarjeta y del contenedor; aquí sólo se atiende el resultado, porque
+    // guardar el orden de los productos NO es el POST genérico: primero hay que
+    // volcar la posición del DOM a los `-orden` del formset (LC 2026-08-12).
+    document.addEventListener('arrastrar:ordenar', function (e) {
         const c = cont();
-        if (!c || !c.contains(e.target)) return;
-        e.preventDefault();
-        const otras = Array.from(c.querySelectorAll('[data-card]')).filter(x => x !== dragging);
-        const despues = otras.find(x => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
-        if (despues) c.insertBefore(dragging, despues); else c.appendChild(dragging);
-    });
-    document.addEventListener('drop', function (e) { if (dragging) e.preventDefault(); });
-    document.addEventListener('dragend', function () {
-        if (!dragging) return;
-        dragging.classList.remove('opacity-50');
-        dragging.draggable = false;
-        dragging = null;
+        if (!c || e.target !== c) return;
+        e.preventDefault();   // el motor no postea: manda `persistirOrden`
         persistirOrden();
     });
-
-    // ── Arrastre con el DEDO (LC 2026-07-28, móvil punto 3) ──────────────────
-    // El drag & drop nativo de HTML5 no existe en touch: en el celular las
-    // tarjetas simplemente no se movían. Aquí se reordena a mano con Pointer
-    // Events — el asa ya trae `touch-none`, así que el gesto no scrollea la
-    // página. Mismo resultado y mismo `persistirOrden` que en escritorio.
-    (function () {
-        let tocando = null, capturado = null;
-        function reacomodar(y) {
-            const c = cont(); if (!c || !tocando) return;
-            const otras = Array.from(c.querySelectorAll('[data-card]')).filter(x => x !== tocando);
-            const despues = otras.find(x => { const r = x.getBoundingClientRect(); return y < r.top + r.height / 2; });
-            if (despues) c.insertBefore(tocando, despues); else c.appendChild(tocando);
-        }
-        document.addEventListener('pointerdown', function (e) {
-            if (e.pointerType === 'mouse') return;  // el ratón usa el DnD nativo
-            const h = e.target.closest && e.target.closest('#' + CONT + ' [data-drag-handle]');
-            if (!h) return;
-            tocando = h.closest('[data-card]');
-            if (!tocando) return;
-            capturado = h;
-            try { h.setPointerCapture(e.pointerId); } catch (_) {}
-            tocando.classList.add('opacity-50');
-            e.preventDefault();
-        });
-        document.addEventListener('pointermove', function (e) {
-            if (!tocando) return;
-            e.preventDefault();
-            reacomodar(e.clientY);
-        });
-        function soltar(e) {
-            if (!tocando) return;
-            tocando.classList.remove('opacity-50');
-            tocando = null;
-            if (capturado) { try { capturado.releasePointerCapture(e.pointerId); } catch (_) {} capturado = null; }
-            persistirOrden();
-        }
-        document.addEventListener('pointerup', soltar);
-        document.addEventListener('pointercancel', soltar);
-    })();
 
     // LC 2026-08-04 (Oscar): «prender y apagar toggles NO debe cambiar el orden».
     // Antes el toggle On subía la tarjeta al tope y Off la mandaba al fondo (y el
