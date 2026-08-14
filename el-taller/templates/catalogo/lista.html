@@ -45,6 +45,18 @@
     <button type="submit" class="btn-secundario">Filtrar</button>
 </form>
 
+{% comment %}LC 2026-08-13 (Oscar): «agregar arriba un filtro de ordenar por
+nombre, núm. de usos, costo, precio y margen». Sirve igual en fichas y en tabla
+(la tabla además conserva el orden por sus cabeceras). Picar la pastilla activa
+invierte el orden.{% endcomment %}
+<div class="mb-5 flex flex-wrap items-center gap-2">
+    <span class="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Ordenar por</span>
+    {% for o in ordenamientos %}
+    <a href="?{% if querystring_base %}{{ querystring_base }}&amp;{% endif %}orden={{ o.orden }}"
+       class="pill-filtro{% if o.activo %} pill-filtro-on{% endif %}">{{ o.label }}{% if o.activo %} {{ o.flecha }}{% endif %}</a>
+    {% endfor %}
+</div>
+
 {% if editar_inline %}<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">✎ Edición rápida activa — escribe en las celdas y se guardan solas al salir del campo. El margen se recalcula al momento.</p>{% endif %}
 {% if en_tarjetas %}
 {% include "catalogo/_tarjetas.html" %}

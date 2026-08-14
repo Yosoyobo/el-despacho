@@ -9364,3 +9364,111 @@ reconstrucción se pudo verificar contra una especificación, no contra la memor
 `git worktree`; nunca `git add -A` a ciegas (añadir por archivo o revisar
 `git diff --cached --stat`); y al retomar, si `git log`/`git status` no coinciden
 con lo que dejaste, revisar el reflog ANTES de tocar nada.
+
+---
+
+# S-Ajustes-Ago13 — El arrastre en escritorio, «✓ Guardado» global y el dropdown con palomitas (2026-08-13, VERSION 2026.08.10)
+
+Ronda de Oscar sobre lo deployado el 12 de agosto: nueve puntos, uno de ellos con
+render adjunto (las medidas de la tarjeta de producto). Sin migraciones.
+
+**Nota de arranque:** el ticket llegó dos veces. El trabajo ya estaba escrito en
+el árbol —sin commitear, así que prod seguía en `2026.08.09` y Oscar no veía nada
+aplicado—, encima de una rama (`agent/ajustes-ago12-b`) cuyo PR ya se había
+mergeado por squash. Se movió a `agent/ajustes-ago13` desde `origin/main` (que ya
+traía ago12-b squasheado, verificado con un `git diff HEAD origin/main` vacío
+sobre los archivos tocados) y de ahí se cerró. Es la misma lección de ago12-b, un
+paso antes: no basta con no pisarse entre sesiones, hay que **cerrar el ciclo
+(commit → push → PR → merge) o el trabajo no existe** para quien lo pidió.
+
+## El hallazgo del sprint — por qué el arrastre servía con el dedo y no con el ratón
+
+El motor único de S-Ajustes-Ago12 se escribió justamente porque el drag & drop de
+HTML5 **no existe en táctil**. Quedó perfecto en el celular y muerto en la
+computadora, y la causa es la otra cara de la misma moneda: las tarjetas de los
+tableros son `<a>`, y **los enlaces (y las imágenes) son arrastrables de fábrica
+en escritorio**. Al mover el ratón el navegador arranca SU arrastre nativo —el
+fantasma con el título y la URL—, manda `pointercancel` y el nuestro muere antes
+de agarrar nada. Con el dedo el arrastre nativo no existe, así que ahí nunca
+estorbó: el bug era estrictamente de escritorio, y por eso costó verlo.
+
+Fix de dos capas en `arrastrar.js`:
+
+1. Listener de **`dragstart` en captura** que hace `preventDefault()` si el evento
+   nace dentro de un `[data-arr-item]`.
+2. `draggable="false"` puesto en `marcar()`, para que el navegador ni lo intente.
+
+Consecuencia para el test de Ago12 que prohibía los verbos de HTML5-DnD:
+**`dragstart` es ahora la única palabra que el motor puede nombrar, y sólo para
+cancelarla**. El test se acotó a `dragover`/`dragend`/`dataTransfer` y su docstring
+lo explica, para que nadie lo "arregle" quitando el fix.
+
+## Lo que se entregó
+
+| # | Punto de Oscar | Cómo quedó |
+|---|---|---|
+| 1 | El arrastre no sirve en escritorio | `dragstart` cancelado + `draggable=false` (arriba) |
+| 2 | ¿Guardar las miniaturas en el aparato? | `Cache-Control: max-age=2592000, immutable` (de 1 día a 1 mes) |
+| 3 | «✓ Guardado» en todas las páginas | El guard se auto-monta; chip de estado en la barra flotante |
+| 4 | Proveedores aplicables ocupa media pantalla | Multi-select con buscador y palomitas |
+| 5 | Todos los dropdowns de entidad, buscables | Reconocimiento por NOMBRE del campo |
+| 6 | Resultados fuera del tablero, en las 4 columnas | Tablero inactivo reusando `_kanban_columna` en `solo_lectura` |
+| 7 | Ordenar Productos por nombre/usos/costo/precio/margen | Pastillas + margen anotado en SQL |
+| 8 | Fotos completas, no recortadas al cuadrado | `object-contain` con alto fijo |
+| 9 | Las medidas de la tarjeta (render) | `minmax` recalibrados a la referencia |
+
+## Decisiones que conviene recordar
+
+**El estado de guardado se monta solo, no se marca a mano.** Marcar
+`data-avisar-cambios` página por página garantiza olvidar las que vengan después,
+así que el guard ahora detecta cualquier formulario con un botón de guardar,
+usando **el mismo `RE_GUARDA`** que ya filtra la barra flotante
+(`guardar|crear|actualizar|registrar|emitir`). Ese filtro no es cosmético: sin él
+la barra secuestraba «Filtrar», el «Confirmar» del chat y el «Volver a mi cuenta»
+del banner de impersonación. Se saltan los modales (se cierran sin salir de la
+página, ahí el aviso no aplica) y lo marcado `data-sin-avisar-cambios`.
+
+**Los dropdowns se reconocen por el NOMBRE del campo.** Misma lógica: una lista
+de `data-select-buscable` puestos a mano envejece mal. `CANONICOS` cubre cliente,
+proveedor, producto, servicio, proyecto, contacto, categoría, usuario, asignado,
+responsable, runner, sede, cotización, factura y centro. El opt-in explícito sigue
+mandando y **`data-sin-buscar` gana sobre todo**. Es una heurística a propósito:
+lo peor que le pasa a un falso positivo es recibir un buscador que sólo filtra.
+
+**Las casillas no se van del DOM.** El multi-select con palomitas envuelve las
+casillas que ya renderiza Django y sólo las esconde, así que **el POST no cambia
+ni una coma** y el alta rápida de proveedor y el 🤖 Sugerir las siguen tocando
+igual (avisan con `window.multiBuscableRefrescar(root)`). Rehacerlo como un widget
+nuevo habría obligado a tocar el form, la vista y los dos scripts que ya las
+manipulan.
+
+**`solo_lectura` en la columna del Kanban, no una columna nueva.** El tablero de
+resultados reusa el partial canónico con una bandera que apaga la zona de
+arrastre: mover una tarjeta ahí no significaría nada. Y el filtro instantáneo del
+Kanban **se salta** `.kanban-columna-fuera` — esas columnas ya vienen filtradas
+por el servidor, y si el JS las tocara les reescribiría el contador a «1/1».
+
+**El margen se ordena en SQL.** No es columna sino property, así que se anota con
+`Case/When` (`(precio − costo) / precio × 100`, precio 0 → 0). Ordenar en Python
+habría obligado a traer el catálogo completo a memoria.
+
+**Miniaturas: caché, no más compresión.** El `immutable` es seguro porque **el
+`file_id` ES la identidad del archivo**: al cambiar la foto cambia el id y con él
+la URL, así que no hay forma de servir una miniatura vieja. Se decidió NO bajar
+más la calidad (400px / JPEG 82): el cuello era la primera carga contra Drive —ya
+resuelto—, y de la segunda visita en adelante el costo de red es cero, así que
+comprimir más sólo cambiaría el peso de algo que ya no se descarga, a cambio de
+artefactos en bordados y logos con texto, que es justo lo que LC vende.
+
+**Los tests fijan la forma, no los píxeles.** El punto 9 venía con render, pero lo
+que se blinda es que Cant./Merma sigan siendo `minmax` — **un track fijo fue
+exactamente lo que las encimó en Ago12**. Los píxeles son ajustables; la propiedad
+de "poder encoger antes que encimarse" es la que no debe perderse.
+
+## Tests
+
+26 nuevos en `tests/taller/test_ajustes_ago13.py`, uno por punto. Se actualizaron
+**3** de `test_ajustes_ago12.py`: los verbos de HTML5-DnD prohibidos, el `max-age`
+de un día y los anchos exactos de Cant./Merma. Los tres fijaban justamente el
+contrato que este sprint cambió a propósito — se ajustaron con su razón escrita al
+lado, no se borraron.

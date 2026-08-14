@@ -5,6 +5,64 @@
 
 ---
 
+## Novedades — El arrastre vuelve en la computadora, «✓ Guardado» en todas las páginas y Productos se ordena (13 de agosto de 2026)
+
+**Arrastrar volvió a servir en la computadora**
+
+- Las tarjetas de los tableros —Proyectos, Tareas, el calendario— volvieron a
+  moverse con el ratón. Lo que pasaba: las tarjetas son enlaces, y el navegador
+  tiene su propio arrastre de enlaces (el fantasmita con la dirección de la
+  página) que se adelantaba al nuestro y lo mataba antes de agarrar nada. Con el
+  dedo eso no existe, por eso en el celular sí funcionaba y en la computadora no.
+
+**Ahora sabes si te falta guardar, en toda la página que sea**
+
+- Junto al botón de Guardar aparece **«● Sin guardar»** en cuanto tocas algo, y
+  **«✓ Guardado»** cuando quedó. Ya no hay que ir página por página: sale sola en
+  cualquier pantalla que tenga un botón de Guardar, Crear, Actualizar, Registrar
+  o Emitir. Y si te intentas salir con algo pendiente, el navegador te avisa.
+- En las páginas que guardan solas (los productos del proyecto, las celdas de
+  edición rápida), el «✓ Guardado» también aparece al terminar.
+
+**Los proveedores de un producto ya no ocupan media pantalla**
+
+- En **Nuevo producto**, «Proveedores aplicables» dejó de ser una parrilla de
+  casillas y ahora es un **menú con buscador y palomitas**: escribes, palomeas
+  los que quieras sin que se cierre, y arriba quedan las pastillas de lo elegido
+  (con su ✕ para quitarlos de un clic).
+
+**Todos los buscadores de listas largas funcionan igual**
+
+- Los menús de **cliente, proveedor, producto, proyecto, contacto, categoría,
+  responsable, runner, sede, cotización y factura** son el mismo buscador de
+  siempre: picas, escribes dos letras y filtra. Ya no hay que acordarse de cuál
+  sí y cuál no.
+
+**Buscar en el Dashboard te muestra también lo que ya cerraste**
+
+- Al buscar en el tablero del Dashboard, lo que encuentra **fuera** de las cuatro
+  columnas activas ahora sale abajo **en esas mismas cuatro columnas** (En pausa,
+  Entregado, Cerrado, Cancelado), cada una con su contador. Si el proyecto que
+  buscas ya se entregó, lo ves ahí sin salirte de la página.
+
+**Productos: ordenar por lo que te sirva**
+
+- Arriba de la lista hay pastillas para **ordenar por nombre, número de usos,
+  costo, precio o margen**. Picar la que ya está activa invierte el orden (de
+  mayor a menor y al revés). Funciona igual en fichas y en tabla, y respeta los
+  filtros que tengas puestos.
+
+**Detalles**
+
+- En las fichas de producto las fotos se ven **completas**, no recortadas al
+  cuadrado: se ajustan al alto y el ancho se acomoda solo.
+- Las miniaturas se **guardan en tu aparato un mes**, así que a partir de la
+  segunda visita la página abre sin volver a pedirlas.
+- Los campos de la tarjeta de producto del proyecto volvieron a las medidas de
+  siempre: Cantidad, Merma y Precio unitario más cómodos.
+
+---
+
 ## Novedades — Los productos de cada cotización, en pestañas (13 de agosto de 2026)
 
 **Productos involucrados ahora tiene pestañas**
@@ -3386,6 +3444,16 @@ para no verlos duplicados. Es el mismo botón de siempre, sólo que ya no hay qu
 buscarlo. En las ventanas (modales) no aparece, porque ya traen sus botones al
 pie.
 
+**Al lado del botón te dice cómo vas:** en cuanto tocas algo aparece
+**«● Sin guardar»** (ámbar), y al terminar **«✓ Guardado»** (verde) por unos
+segundos. Sale en **todas** las páginas que tengan un botón de Guardar, Crear,
+Actualizar, Registrar o Emitir — no hay que hacer nada para prenderlo. En las
+páginas que guardan solas (los productos del proyecto, las celdas de edición
+rápida) también aparece el «✓ Guardado» al terminar cada guardado.
+
+Y si intentas salirte con algo pendiente, el navegador te pregunta antes de
+perderlo.
+
 ### Dos formas de entrar
 
 1. **Correo y contraseña.** Si fallas 5 veces seguidas en 15 minutos, el sistema bloquea tu IP un rato.
@@ -3451,6 +3519,7 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
   - **Con El Chalán:** este resumen es un **botón**, no un comando del chat (las listas se arman con datos; la IA solo agrega la lectura de arriba). Si lo quieres conversando, pregúntale al Chalán por los pendientes de un proyecto o de una persona: eso sí lo consulta él.
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
 - **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. El **buscador** va en el mismo renglón del título (largo, con letra normal: busca por nombre, cliente, código, producto, proveedor, equipo o contacto). Aquí también puedes **arrastrar las tarjetas dentro de su columna** para acomodarlas. "Ver tablero completo" abre el tablero con todas las columnas.
+  - **Lo que buscas y ya no está en el tablero:** si tu búsqueda encuentra proyectos **fuera** de esas cuatro columnas, aparece abajo un segundo tablero, **«Fuera del tablero»**, con las otras cuatro columnas (**En pausa, Entregado, Cerrado, Cancelado**) y su contador cada una — así ves de un vistazo "0, 0, 1 y 0". Son resultados de búsqueda: se pican para abrirlos, pero no se arrastran ni cambian de estado desde ahí.
 - **Calendario:** el mes actual y el siguiente lado a lado, igual que la página de Calendario, con los eventos del día visibles.
 - **Tu tablero (KPIs):** ocho indicadores del negocio; los tres financieros traen una mini-gráfica de los últimos seis meses. Puedes ocultarlos o reordenarlos (arrastrando) desde "Editar tablero", y pedirle KPIs a la medida al asistente desde "KPIs custom".
 
@@ -3807,10 +3876,16 @@ ese cliente, y entender qué lo **amarra** si quieres eliminarlo.
 ## Productos (Catálogo)
 
 **La página abre en fichas**: cada producto es una tarjeta con su nombre, su
-categoría y su proveedor en una línea, sus fotos, y el costo · precio · margen
-abajo; en la esquina, el número de veces que se ha usado. Con **«☰ Ver en tabla»**
-pasas a la vista de renglones (que es donde se ordena por columna), y
-**«✎ Edición rápida»** te deja escribir directo en las celdas.
+categoría y su proveedor en una línea, sus fotos (**completas**, no recortadas al
+cuadrado), y el costo · precio · margen abajo; en la esquina, el número de veces
+que se ha usado. Con **«☰ Ver en tabla»** pasas a la vista de renglones (que
+además se ordena por columna), y **«✎ Edición rápida»** te deja escribir directo
+en las celdas.
+
+Arriba, **«Ordenar por»** tiene pastillas para acomodar la lista por **nombre,
+usos, costo, precio o margen**. Picar la pastilla que ya está activa **invierte**
+el orden (la flecha ↑/↓ te dice cuál va). Funciona igual en fichas y en tabla, y
+respeta el buscador y la categoría que tengas puestos.
 
 Lo que vendes/produces. Cada producto tiene:
 

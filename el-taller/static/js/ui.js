@@ -914,14 +914,42 @@ window.abrirRickroll = function () {
    `form.dataset.cambiosSinGuardar = "1"` (así lo hace el borrado diferido de la
    foto del producto, en imagen_pegar.js).
 
-   Se limpia al enviar el formulario — guardar no debe disparar el aviso. */
+   Se limpia al enviar el formulario — guardar no debe disparar el aviso.
+
+   LC 2026-08-13 (Oscar): «el aviso de cambios o "✓ Guardado" hay que aplicarlo
+   a TODAS las páginas — productos, proyectos, todo». Así que ya no hace falta
+   marcar `data-avisar-cambios` a mano: se monta solo en cualquier formulario
+   que tenga un botón de GUARDAR (los mismos verbos que la barra flotante). Se
+   saltan los modales —se cierran sin salirse de la página, ahí no aplica— y
+   cualquier form con `data-sin-avisar-cambios`. Además del aviso al salir, el
+   estado se ve: la barra flotante muestra «Sin guardar» mientras haya algo
+   pendiente y «✓ Guardado» al terminar. */
 (function () {
   'use strict';
+  /* Mismos verbos que la barra flotante: «Filtrar» o «Confirmar» no guardan. */
+  var RE_GUARDA = /^(guardar|crear|actualizar|registrar|emitir)\b/i;
+
+  function esFormDeGuardar(form) {
+    if (form.hasAttribute('data-avisar-cambios')) return true;
+    if (form.hasAttribute('data-sin-avisar-cambios')) return false;
+    if (form.closest('#modal-slot')) return false;
+    return Array.prototype.some.call(
+      form.querySelectorAll('button[type="submit"], input[type="submit"]'),
+      function (b) {
+        var t = (b.tagName === 'INPUT' ? b.value : b.textContent) || '';
+        return RE_GUARDA.test(t.replace(/\s+/g, ' ').trim());
+      }
+    );
+  }
   function formularios() {
-    return Array.prototype.slice.call(document.querySelectorAll('form[data-avisar-cambios]'));
+    return Array.prototype.slice.call(document.querySelectorAll('form')).filter(esFormDeGuardar);
   }
   function sucio() {
-    return formularios().some(function (f) { return f.dataset.cambiosSinGuardar === '1'; });
+    return Array.prototype.slice.call(document.querySelectorAll('form'))
+      .some(function (f) { return f.dataset.cambiosSinGuardar === '1'; });
+  }
+  function avisar(estado) {
+    if (window.__guardarEstado) window.__guardarEstado(estado);
   }
   function montar(form) {
     if (form.dataset.avisoMontado) return;
@@ -932,13 +960,18 @@ window.abrirRickroll = function () {
         var t = e.target;
         if (!t || t.disabled || t.type === 'hidden') return;
         form.dataset.cambiosSinGuardar = '1';
+        avisar('sucio');
       });
     });
     form.addEventListener('submit', function () {
       delete form.dataset.cambiosSinGuardar;
+      avisar('guardando');
     });
   }
-  function escanear() { formularios().forEach(montar); }
+  function escanear() {
+    formularios().forEach(montar);
+    avisar(sucio() ? 'sucio' : 'limpio');
+  }
   window.addEventListener('beforeunload', function (e) {
     if (!sucio()) return;
     e.preventDefault();
@@ -950,6 +983,16 @@ window.abrirRickroll = function () {
     escanear();
   }
   document.body.addEventListener('htmx:afterSwap', escanear);
+  /* Guardado por HTMX (autoguardado del proyecto, celdas, modales): el aviso se
+     apaga y la barra dice «✓ Guardado» un momento. */
+  document.body.addEventListener('htmx:afterRequest', function (e) {
+    var t = e.target;
+    var form = t && t.closest ? t.closest('form') : null;
+    if (!form || !form.dataset.avisoMontado) return;
+    if (!(e.detail && e.detail.successful)) return;
+    delete form.dataset.cambiosSinGuardar;
+    avisar(sucio() ? 'sucio' : 'guardado');
+  });
 })();
 
 /* ── Guardar flotante (LC 2026-08-04 R3 · fijo desde 2026-08-07, Oscar) ──────
@@ -1040,6 +1083,36 @@ window.abrirRickroll = function () {
     document.body.appendChild(barra);
   }
 
+  /* Estado de guardado, al lado del botón (LC 2026-08-13, Oscar: «el aviso de
+     cambios o ✓ Guardado, en todas las páginas»). Lo alimenta el guard de
+     cambios sin guardar de arriba. */
+  var estadoEl = null, estadoTimer = null, ultimoEstado = 'limpio';
+  var ESTADOS = {
+    sucio: ['● Sin guardar', 'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-300'],
+    guardando: ['Guardando…', 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'],
+    guardado: ['✓ Guardado', 'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-300'],
+  };
+  function pintarEstado() {
+    if (!lista) return;   // en esta página no hay nada que guardar
+    if (!estadoEl || !estadoEl.isConnected) {
+      estadoEl = document.createElement('span');
+      estadoEl.setAttribute('data-guardar-estado', '');
+    }
+    if (estadoEl.parentNode !== lista) lista.insertBefore(estadoEl, lista.firstChild);
+    var def = ESTADOS[ultimoEstado];
+    if (!def) { estadoEl.className = 'hidden'; return; }
+    estadoEl.textContent = def[0];
+    estadoEl.className = 'rounded-full px-2.5 py-1 text-xs font-medium shadow-theme-xs ' + def[1];
+  }
+  window.__guardarEstado = function (estado) {
+    ultimoEstado = estado;
+    if (estadoTimer) { clearTimeout(estadoTimer); estadoTimer = null; }
+    pintarEstado();
+    if (estado === 'guardado') {
+      estadoTimer = setTimeout(function () { window.__guardarEstado('limpio'); }, 2500);
+    }
+  };
+
   function hayModal() {
     var slot = document.getElementById('modal-slot');
     return !!(slot && slot.children.length);
@@ -1097,6 +1170,7 @@ window.abrirRickroll = function () {
       lista.appendChild(proxy);
       proxies.push({ proxy: proxy, real: real });
     });
+    pintarEstado();   // el `textContent = ''` de arriba se llevó el chip
     if (fijo()) {
       esconderOriginal();
       ultimoFuera = true;

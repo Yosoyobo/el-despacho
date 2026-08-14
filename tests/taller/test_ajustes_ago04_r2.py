@@ -136,8 +136,10 @@ def test_el_pie_de_la_tarjeta_se_lee_mas_grande():
     from pathlib import Path
     tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
         encoding="utf-8")
-    pie = next(ln for ln in tpl.splitlines()
-               if "Costo prod." in ln and "data-costo-total" in ln)
+    # LC 2026-08-13: el render de Oscar cambió las palabras del pie («Costo de
+    # producción: … · Unitario …/pz»), así que la línea se busca por su ancla
+    # estable — el `data-costo-total` — y no por el texto, que es lo que se ve.
+    pie = next(ln for ln in tpl.splitlines() if "data-costo-total" in ln)
     assert "text-[11px]" not in pie
     assert "text-xs" in pie and "sm:text-sm" in pie
 
@@ -328,11 +330,15 @@ def test_el_boton_verde_es_un_mas_en_la_primera_fila():
     from pathlib import Path
     tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
         encoding="utf-8")
-    # Una sexta columna en la fila 1 (el «+» de 36px) y Categoría cede espacio.
+    # Una sexta columna en la fila 1 (el «+», angosto) y Categoría cede espacio.
     # R3 2026-08-04: los anchos se afinaron (labels e inputs más chicos), así que
-    # el test fija la FORMA de la rejilla, no los px exactos.
+    # el test fija la FORMA de la rejilla, no los px exactos. LC 2026-08-13: el
+    # «+» pasó de 36 a 40px con las medidas del render — lo que se protege es que
+    # siga siendo la ÚLTIMA columna y de ancho fijo y angosto, no el número.
     fila1 = re.search(r"md:grid-cols-\[([^\]]+)\]", tpl).group(1).split("_")
-    assert len(fila1) == 6 and fila1[-1] == "36px", fila1
+    assert len(fila1) == 6, fila1
+    ancho_mas = re.fullmatch(r"(\d+)px", fila1[-1])
+    assert ancho_mas and 28 <= int(ancho_mas.group(1)) <= 48, fila1
     # El botón quedó como un «+» grande, ya no «+ Proceso».
     ini = tpl.index("venta-add")
     boton = tpl[ini:tpl.index("</button>", ini) + len("</button>")]
@@ -370,7 +376,11 @@ def test_la_descripcion_de_la_linea_es_multilinea_y_crece():
     assert ">Notas</label>" not in tpl
     # El renglón alinea al fondo: al crecer, la etiqueta sube.
     # La Descripción se lleva más ancho que el costo unitario (R3: se agrandó).
-    fila2 = re.search(r"md:grid-cols-\[([\d.]+fr)_(\d+px)_([\d.]+fr)\] md:items-end", tpl)
+    # LC 2026-08-13: con las medidas del render la columna del costo pasó de un
+    # ancho fijo a `minmax(...)` — para que en pantallas medianas encoja en vez
+    # de encimarse, la misma lección de Ago12. El regex acepta las dos formas.
+    fila2 = re.search(
+        r"md:grid-cols-\[([\d.]+fr)_(minmax\([^)]+\)|\d+px)_([\d.]+fr)\] md:items-end", tpl)
     assert fila2, "la fila 2 debe seguir siendo proveedor · costo · descripción"
     assert float(fila2.group(3)[:-2]) > float(fila2.group(1)[:-2])
     js = Path("el-taller/templates/proyectos/_form_productos_js.html").read_text(

@@ -14,8 +14,10 @@ toggleables individualmente via tabla `cuentas_permiso_usuario`:
 
 import contextlib
 import json
+from decimal import Decimal
 
 from django.contrib import messages
+from django.db.models import Case, DecimalField, F, Value, When
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -111,13 +113,49 @@ def lista(request):
         qs = qs.filter(categoria_id=categoria_id)
     # Sprint 2 UX (item 6): orden por Categoría con toggle asc/desc; el default
     # es alfabético por nombre (estable). El whitelist evita order_by arbitrario.
+    #
+    # LC 2026-08-13 (Oscar): «agregar arriba un filtro de ordenar por nombre,
+    # núm. de usos, costo, precio y margen». El margen no es una columna de la
+    # base (es una propiedad), así que se calcula en SQL para poder ordenar:
+    # (precio − costo) / precio × 100, y precio 0 vale 0.
+    qs = qs.annotate(margen_calc=Case(
+        When(precio_base__gt=0,
+             then=(F("precio_base") - F("costo")) * Value(Decimal("100")) / F("precio_base")),
+        default=Value(Decimal("0")),
+        output_field=DecimalField(max_digits=12, decimal_places=4),
+    ))
+    _campo_orden = {
+        "nombre": "nombre",
+        "categoria": "categoria__nombre",
+        "usos": "usos_count",
+        "costo": "costo",
+        "precio": "precio_base",
+        "margen": "margen_calc",
+    }
     orden = (request.GET.get("orden") or "").strip()
-    _orden_permitido = {"categoria": "categoria__nombre", "-categoria": "-categoria__nombre"}
-    if orden in _orden_permitido:
-        qs = qs.order_by(_orden_permitido[orden], "nombre")
+    _clave = orden.lstrip("-")
+    if _clave in _campo_orden:
+        campo = _campo_orden[_clave]
+        qs = qs.order_by(("-" if orden.startswith("-") else "") + campo, "nombre")
     else:
         orden = ""
         qs = qs.order_by("nombre")
+    # Pastillas de ordenamiento del encabezado (el `-` alterna asc/desc).
+    ordenamientos = [
+        {"clave": "nombre", "label": "Nombre"},
+        {"clave": "usos", "label": "Usos"},
+    ]
+    if ve_precios:
+        ordenamientos += [
+            {"clave": "costo", "label": "Costo"},
+            {"clave": "precio", "label": "Precio"},
+            {"clave": "margen", "label": "Margen"},
+        ]
+    for o in ordenamientos:
+        o["activo"] = _clave == o["clave"]
+        # Si ya está activa ascendente, el siguiente clic la invierte.
+        o["orden"] = ("-" if (o["activo"] and not orden.startswith("-")) else "") + o["clave"]
+        o["flecha"] = "↓" if (o["activo"] and orden.startswith("-")) else "↑"
     # LC revisión buzón R2: modo edición inline (celdas editables) opt-in.
     editar_inline = request.GET.get("editar") == "1" and puede_editar
     # LC 2026-08-12 (Oscar): «la página de productos la vamos a formatear por
@@ -167,6 +205,7 @@ def lista(request):
         "puede_eliminar": puede_eliminar,
         "puede_gestionar_cats": puede_gestionar_cats,
         "cabeceras_catalogo": cabeceras,
+        "ordenamientos": ordenamientos,
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "editar_inline": editar_inline,
@@ -1260,9 +1299,12 @@ def imagen_producto(request, file_id: str):
     if datos is None:
         return HttpResponse(status=404)
     resp = HttpResponse(datos[0], content_type=datos[1])
-    # Un día de caché en el navegador (antes 10 min): con decenas de fichas en
-    # pantalla, volver a pedirlas en cada visita es lo que apretaba a Drive.
-    resp["Cache-Control"] = "private, max-age=86400"
+    # LC 2026-08-13 (Oscar): «¿hay manera de guardar las miniaturas en el
+    # dispositivo para que carguen más rápido?». Ya se guardaban un día; ahora
+    # un MES y marcadas `immutable`, así que el navegador ni siquiera pregunta
+    # si cambiaron: las pinta del disco. Es seguro porque el `file_id` es la
+    # identidad del archivo — al cambiar la foto cambia el id, y con él la URL.
+    resp["Cache-Control"] = "private, max-age=2592000, immutable"
     resp["ETag"] = etiqueta
     return resp
 

@@ -32,7 +32,10 @@
         var aplicar = function () {
             var q = norm(buscar.value.trim());
             var totalVis = 0;
-            document.querySelectorAll('.kanban-columna').forEach(function (col) {
+            // Las columnas del «tablero inactivo» del Dashboard ya vienen
+            // filtradas por el servidor: el filtro instantáneo no las toca
+            // (si no, les reescribiría el contador a «1/1»).
+            document.querySelectorAll('.kanban-columna:not(.kanban-columna-fuera)').forEach(function (col) {
                 var vis = 0;
                 col.querySelectorAll('.kanban-card').forEach(function (card) {
                     var hay = !q || norm(card.getAttribute('data-buscar') || '').indexOf(q) !== -1;

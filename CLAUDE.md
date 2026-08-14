@@ -4971,6 +4971,90 @@ los docs. **Regla: si hay dos sesiones a la vez, la segunda en su propio
 `git worktree`.** Y al retomar, si `git log`/`git status` no coinciden con lo que
 dejaste, revisar el reflog ANTES de tocar nada.
 
+### S-Ajustes-Ago13 ✅ — El arrastre en escritorio, «✓ Guardado» global y el dropdown con palomitas (2026-08-13, VERSION 2026.08.10)
+
+Ronda de Oscar sobre lo deployado el 12 de agosto: nueve puntos, uno de ellos con
+render adjunto (las medidas de la tarjeta de producto). Sin migraciones.
+
+- **El arrastre volvió a servir en escritorio (raíz encontrada).** El motor único
+  de S-Ajustes-Ago12 quedó **perfecto en táctil y muerto con el ratón**, y la
+  causa es justo lo que hacía que en el celular sí funcionara: las tarjetas de los
+  tableros son `<a>`, y **los enlaces y las imágenes son arrastrables de fábrica en
+  escritorio**. Al mover el ratón el navegador arranca SU arrastre nativo (el
+  fantasma con la URL), manda `pointercancel` y el nuestro muere antes de agarrar
+  nada. Con el dedo el arrastre nativo no existe — por eso el bug era
+  exclusivamente de escritorio. Fix de dos capas en `arrastrar.js`: listener de
+  **`dragstart` en captura** que hace `preventDefault` si el evento nace dentro de
+  un `[data-arr-item]`, y `draggable="false"` puesto en `marcar()` para que el
+  navegador ni lo intente. **`dragstart` es ahora la ÚNICA palabra de HTML5-DnD que
+  el motor puede nombrar, y sólo para cancelarla** — el test de Ago12 que prohibía
+  los verbos viejos se acotó a `dragover`/`dragend`/`dataTransfer`.
+- **«● Sin guardar» / «✓ Guardado» en TODAS las páginas** (`ui.js`, dual-copy §18):
+  el guard de cambios sin guardar dejó de exigir `data-avisar-cambios` a mano —
+  ahora se monta solo en cualquier formulario que tenga un botón de guardar, con
+  el **mismo `RE_GUARDA`** de la barra flotante (`guardar|crear|actualizar|
+  registrar|emitir`), saltando los modales (se cierran sin salir de la página) y
+  lo marcado `data-sin-avisar-cambios`. El estado además **se ve**: chip dentro de
+  la barra flotante alimentado por `window.__guardarEstado(estado)`, con
+  `htmx:afterRequest` cubriendo el autoguardado del proyecto y las celdas de
+  edición rápida. Ojo: la barra se repinta con `textContent = ''`, así que hay que
+  volver a insertar el chip después (`pintarEstado()` al final del re-escaneo).
+- **Multi-select con buscador y palomitas** (`form_widgets.js`, dual-copy): la
+  parrilla de casillas de «Proveedores aplicables» del modal de producto pasó a un
+  botón con pastillas + panel filtrable. **Las casillas siguen en el DOM,
+  escondidas** — el POST no cambia ni una coma y el alta rápida de proveedor y el
+  🤖 Sugerir las siguen tocando igual (avisan con `window.multiBuscableRefrescar(root)`).
+  Contrato: `[data-multi-buscable="proveedor" data-multi-plural="proveedores"]`.
+- **Los dropdowns de entidad se reconocen por su NOMBRE, no uno por uno.** En vez
+  de ir marcando `data-select-buscable` en cada form y cada plantilla —y olvidar
+  los que vengan después—, `aplica()` acepta también los `<select>` cuyo `name`/`id`
+  casa con `CANONICOS` (cliente, proveedor, producto, servicio, proyecto, contacto,
+  categoría, usuario, asignado, responsable, runner, sede, cotización, factura,
+  centro). El opt-in explícito sigue mandando y **`data-sin-buscar` gana sobre
+  todo**. Sigue aplicando el umbral de opciones.
+- **Resultados «fuera del tablero» en las mismas 4 columnas** (`taller_home`): la
+  búsqueda del Dashboard ya no devuelve una lista suelta sino un **tablero
+  inactivo** que reusa el partial canónico `_kanban_columna.html` con
+  **`solo_lectura=True`** (bandera nueva: se ve igual pero no monta zona de
+  arrastre — mover ahí no significaría nada). Las columnas son `KANBAN_SLUGS_FUERA`
+  = en pausa · entregado · cerrado · cancelado, cada una con su contador; un estado
+  custom no se pierde (se le agrega su propia columna al final). `MAX_RESULTADOS_FUERA`
+  12 → 40. El filtro instantáneo **se salta** `.kanban-columna-fuera` (si no, les
+  reescribía el contador a «1/1» — ya vienen filtradas por el servidor).
+- **Productos: «Ordenar por» nombre · usos · costo · precio · margen.** El margen
+  no es columna sino property, así que se ordena con un `Case/When` anotado en SQL
+  (`(precio − costo) / precio × 100`, precio 0 → 0). Pastillas `.pill-filtro` que
+  conservan `querystring_base`; picar la activa invierte (`-clave`, flecha ↑/↓);
+  costo/precio/margen sólo si `ve_precios`. Un `?orden=` inventado cae al default.
+- **Miniaturas guardadas en el aparato un mes**: `Cache-Control` de
+  `max-age=86400` a **`max-age=2592000, immutable`** — con `immutable` el navegador
+  ni siquiera revalida. Es seguro porque **el `file_id` ES la identidad del
+  archivo**: al cambiar la foto cambia el id y con él la URL. Se decidió NO
+  comprimir más (400px/JPEG 82): el cuello era la primera carga contra Drive, no el
+  peso, y bajar calidad daña justo los bordados con texto.
+- **Fichas con la foto completa** (`_tarjetas.html`): `h-16 w-16 object-cover` →
+  `h-16 w-auto max-w-[7rem] object-contain` — se fija el alto y el ancho se acomoda,
+  con tope para que una panorámica no empuje a las demás.
+- **Tarjeta de producto de vuelta a las medidas del render**: Cant./Merma pasan de
+  `minmax(72px,auto)` a `minmax(96px,0.7fr)`, Precio unitario más ancho, Categoría
+  cede espacio (y gana buscador); el pie dice «Costo de producción: … · Unitario
+  …/pz». Se conservan los `minmax` a propósito: **un track fijo fue lo que las
+  encimó en Ago12**, así que el test fija la FORMA (que sigan siendo `minmax`), no
+  los píxeles.
+- **26 tests nuevos** (`tests/taller/test_ajustes_ago13.py`), uno por punto. Se
+  actualizaron 3 de `test_ajustes_ago12.py` que fijaban justo lo que este sprint
+  cambió a propósito (los verbos DnD prohibidos, el `max-age` de un día y los
+  anchos exactos de Cant./Merma).
+
+**Deuda diseñada**: el reconocimiento de dropdowns por nombre es una heurística —
+un `<select>` que se llame `cliente_*` y NO sea una lista de clientes también
+recibirá el buscador (inofensivo: es el mismo control, sólo filtra; y
+`data-sin-buscar` lo apaga). El multi-select con palomitas se aplicó al modal de
+producto; la ficha completa del producto conserva su lista de casillas con
+buscador (cabe, ahí el espacio no aprieta). El tablero «fuera» no pagina (tope de
+40 + enlace a la lista completa). El chip de estado vive dentro de la barra
+flotante, así que en una página sin botón de guardar no aparece.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
