@@ -72,11 +72,15 @@ def test_el_motor_existe_y_lo_carga_el_taller():
 
 
 def test_el_motor_usa_pointer_events_y_no_el_arrastre_de_html5():
-    """Es LA razón del sprint: el drag & drop de HTML5 no existe en táctil."""
+    """Es LA razón del sprint: el drag & drop de HTML5 no existe en táctil.
+
+    `dragstart` sí aparece, pero SÓLO para cancelarlo (ver el test de abajo):
+    el mecanismo sigue siendo Pointer Events de punta a punta.
+    """
     js = JS_ARRASTRE.read_text(encoding="utf-8")
     for gesto in ("pointerdown", "pointermove", "pointerup", "pointercancel"):
         assert gesto in js, f"el motor no escucha {gesto}"
-    for viejo in ("dragstart", "dragover", "dragend", "dataTransfer"):
+    for viejo in ("dragover", "dragend", "dataTransfer"):
         assert viejo not in js, f"el motor todavía usa {viejo} (HTML5, sin dedo)"
 
 
@@ -618,7 +622,10 @@ def test_el_proxy_guarda_lo_que_baja_y_no_vuelve_a_pedirselo_a_drive(client, adm
         r = client.get("/catalogo/imagen/FOTO-1", {"mini": "1"})
         assert r.status_code == 200
     assert len(bajadas) == 1, f"le pegó a Drive {len(bajadas)} veces en vez de una"
-    assert "max-age=86400" in r["Cache-Control"]
+    # LC 2026-08-13: de un día a un mes, y `immutable` (el file_id es la
+    # identidad del archivo, así que la miniatura vive en el disco del aparato).
+    assert "max-age=2592000" in r["Cache-Control"]
+    assert "immutable" in r["Cache-Control"]
     assert r["ETag"]
 
 
@@ -691,7 +698,10 @@ def test_cantidad_y_merma_ya_no_se_encimam():
     """Los tracks eran fijos a 58px y la etiqueta CANTIDAD medía ~53."""
     texto = TPL_CARD.read_text(encoding="utf-8")
     assert "_58px_58px_" not in texto, "las columnas siguen sin poder crecer"
-    assert "minmax(72px,auto)_minmax(72px,auto)" in texto
+    # LC 2026-08-13: las medidas volvieron a las del render (Cant./Merma más
+    # cómodas), pero lo que se fija aquí es que sigan siendo `minmax` — un track
+    # fijo es lo que las encimaba.
+    assert texto.count("minmax(96px,") >= 2, "Cant. y Merma volvieron a un ancho fijo"
     assert ">Cant.<" in texto, "la etiqueta larga sigue ahí"
 
 

@@ -31,9 +31,13 @@ apretaba a Google Drive.{% endcomment %}
         {% with fotos=s.fotos_ficha %}
         <div class="mt-4 flex items-center justify-center gap-2">
             {% for file_id in fotos|slice:":4" %}
+            {% comment %}LC 2026-08-13 (Oscar): «no mostrar imágenes recortadas al
+            cuadrado sino completas, limitadas al alto actual del cuadrado». Se fija
+            el ALTO y el ancho se acomoda solo (`object-contain`), con un tope para
+            que una foto muy panorámica no empuje a las demás.{% endcomment %}
             <img src="{% url 'catalogo-imagen-producto' file_id %}?mini=1" alt=""
-                 loading="lazy" decoding="async" width="64" height="64"
-                 class="h-16 w-16 shrink-0 rounded-lg border border-gray-200 object-cover dark:border-gray-700">
+                 loading="lazy" decoding="async"
+                 class="h-16 w-auto max-w-[7rem] shrink-0 rounded-lg border border-gray-200 object-contain dark:border-gray-700">
             {% empty %}
             <div class="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-gray-300 text-lg font-semibold text-gray-300 dark:border-gray-700 dark:text-gray-600">
                 {{ s.nombre|slice:":1"|upper }}

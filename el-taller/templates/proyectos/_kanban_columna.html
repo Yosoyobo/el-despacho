@@ -1,6 +1,6 @@
 {% load proyectos_extras forms_helpers %}
 {# Columna del Kanban — usada por las dos filas (C3 S-LC-Feedback-V6). #}
-<div class="kanban-columna flex min-w-0 flex-col rounded-2xl border border-t-4 border-gray-200 bg-gray-50 p-2.5 dark:border-gray-800 dark:bg-white/[0.02]"
+<div class="kanban-columna {% if solo_lectura %}kanban-columna-fuera {% endif %}flex min-w-0 flex-col rounded-2xl border border-t-4 border-gray-200 bg-gray-50 p-2.5 dark:border-gray-800 dark:bg-white/[0.02]"
      style="border-top-color: {{ col.slug|color_estado }}"
      data-estado="{{ col.slug }}">
     <header class="mb-3 flex items-center justify-between gap-2 px-1">
@@ -10,12 +10,17 @@
         </h2>
         <span class="kanban-contador inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-white px-2 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700" data-total="{{ col.total }}">{{ col.total }}</span>
     </header>
+    {% comment %}`solo_lectura`: la columna se ve igual pero no es zona de
+    arrastre. Lo usa el «tablero inactivo» de resultados del Dashboard, donde
+    mover una tarjeta no tendría sentido (LC 2026-08-13).{% endcomment %}
     <div class="kanban-dropzone space-y-2.5 min-h-[20px]"
+         {% if not solo_lectura %}
          data-arr-zona data-arr-grupo="proyectos"
          data-arr-orden-url="{% url 'proyectos-reordenar-kanban' %}"
          data-arr-mover-url="/proyectos/{id}/cambiar-estado"
          data-arr-mover-campo="estado" data-arr-mover-valor="{{ col.slug }}"
-         data-arr-mover-extra="hx_kanban=1">
+         data-arr-mover-extra="hx_kanban=1"
+         {% endif %}>
         {% for p in col.proyectos %}
         <a href="{% url 'proyectos-detalle' p.pk %}"
            data-arr-item="{{ p.pk }}"

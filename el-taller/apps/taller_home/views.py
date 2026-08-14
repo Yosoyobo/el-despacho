@@ -314,7 +314,13 @@ def _propuestas_chalan(user):
 
 
 # Cuántos resultados «fuera del tablero» se listan antes de mandar a la lista.
-MAX_RESULTADOS_FUERA = 12
+MAX_RESULTADOS_FUERA = 40
+
+# Las 4 columnas del «tablero inactivo» — las mismas, y en el mismo orden, que
+# la fila de abajo de la página Kanban (LC 2026-08-13, Oscar: «que los muestre
+# en los mismos recuadros de esas 4 categorías, divididas en 4 para caber en 1
+# fila»).
+KANBAN_SLUGS_FUERA = ("en_pausa", "entregado", "cerrado", "cancelado")
 
 
 @login_required
@@ -327,12 +333,16 @@ def buscar_proyectos(request):
     devuelven SÓLO los que quedan fuera del tablero — los que sí están los sigue
     filtrando el buscador al instante, sin esperar a la red.
 
+    LC 2026-08-13 (Oscar): los resultados ya no salen como una lista suelta sino
+    repartidos en las MISMAS cuatro columnas del tablero de abajo (en pausa,
+    entregado, cerrado, cancelado), con su contador — «0, 0, 1 y 0».
+
     Respeta la visibilidad de siempre (`_proyectos_visibles`).
     """
     from apps.los_proyectos.views import _proyectos_visibles
 
     q = (request.GET.get("q") or "").strip()
-    ctx = {"q": q, "resultados": [], "total": 0, "hay_mas": False}
+    ctx = {"q": q, "cols": [], "total": 0, "hay_mas": False}
     if len(q) < 2:
         return render(request, "taller_home/_kanban_resultados_fuera.html", ctx)
 
@@ -348,13 +358,29 @@ def buscar_proyectos(request):
             | Q(productos__proveedor__razon_social__icontains=q)
         )
         .select_related("cliente")
+        .prefetch_related("productos__servicio", "productos__variacion")
         .distinct()
-        .order_by("-actualizado_en")
+        .order_by("orden_kanban", "-actualizado_en")
     )
     encontrados = list(qs[: MAX_RESULTADOS_FUERA + 1])
     ctx["hay_mas"] = len(encontrados) > MAX_RESULTADOS_FUERA
-    ctx["resultados"] = encontrados[:MAX_RESULTADOS_FUERA]
-    ctx["total"] = len(ctx["resultados"])
+    encontrados = encontrados[:MAX_RESULTADOS_FUERA]
+    ctx["total"] = len(encontrados)
+
+    labels = dict(ESTADOS_PROYECTO)
+    por_estado: dict[str, list] = {slug: [] for slug in KANBAN_SLUGS_FUERA}
+    otros: list = []
+    for p in encontrados:
+        por_estado.get(p.estado, otros).append(p)
+    # Un estado custom (fuera de los 4 canónicos) no se pierde: se agrega su
+    # propia columna al final.
+    for p in otros:
+        por_estado.setdefault(p.estado, []).append(p)
+    ctx["cols"] = [
+        {"slug": slug, "label": labels.get(slug, slug),
+         "proyectos": lista, "total": len(lista)}
+        for slug, lista in por_estado.items()
+    ]
     return render(request, "taller_home/_kanban_resultados_fuera.html", ctx)
 
 

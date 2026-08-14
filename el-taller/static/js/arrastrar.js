@@ -319,6 +319,17 @@
     document.addEventListener('pointerup', soltar);
     document.addEventListener('pointercancel', soltar);
 
+    // En ESCRITORIO, los enlaces y las imágenes son arrastrables de fábrica: al
+    // mover el ratón sobre una tarjeta que es un `<a>` —el tablero de Tareas, el
+    // de Proyectos, el calendario— el navegador arranca SU PROPIO arrastre (el
+    // fantasma con el título y la URL), manda `pointercancel` y el nuestro
+    // muere antes de agarrar nada. Con el dedo no pasa, porque el arrastre
+    // nativo no existe en táctil: por eso el tablero se movía en el celular y
+    // no en la computadora (LC 2026-08-13, Oscar).
+    document.addEventListener('dragstart', function (e) {
+        if (e.target.closest && e.target.closest('[data-arr-item]')) e.preventDefault();
+    }, true);
+
     // Mientras se arrastra de verdad, la página no debe moverse. `preventDefault`
     // en `pointermove` no lo garantiza: el scroll táctil sólo se frena desde
     // `touchmove` con el listener NO pasivo. Y sólo con `activo`, para que
@@ -333,6 +344,9 @@
     // gesto es «mantén presionado» (ver `ESPERA_TACTIL`).
     function marcar() {
         document.querySelectorAll('[data-arr-item]').forEach(function (el) {
+            // Cinturón y tirantes contra el arrastre nativo (ver el `dragstart`
+            // de arriba): así el navegador ni siquiera lo intenta.
+            el.setAttribute('draggable', 'false');
             var a = el.querySelector('[data-arr-asa]');
             if (a) a.classList.add('touch-none');
             // `select-none`: sin él, sostener el dedo sobre una tarjeta saca el

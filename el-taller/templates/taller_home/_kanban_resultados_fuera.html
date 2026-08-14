@@ -1,26 +1,23 @@
-{% load proyectos_extras %}
 {% comment %}Resultados de búsqueda que NO están en el tablero del Dashboard
 (LC 2026-08-12). El tablero sólo muestra las cuatro columnas activas, así que
 un proyecto entregado, cerrado o cancelado no existe en la página y el filtro
-instantáneo jamás podría encontrarlo. Esto lo resuelve el servidor.{% endcomment %}
+instantáneo jamás podría encontrarlo. Esto lo resuelve el servidor.
+
+LC 2026-08-13 (Oscar): «que los muestre en los mismos recuadros de esas 4
+categorías que ya tenemos diseñados y divididos en 4 para caber en 1 fila. Al
+buscar algo y tener resultados fuera del tablero activo, mostrar automáticamente
+el tablero inactivo que muestre (ejemplo) 0, 0, 1 y 0 resultados.» Por eso se
+reusa el partial canónico de columna, en modo `solo_lectura` (son resultados de
+búsqueda: no se arrastran ni cambian de estado desde aquí).{% endcomment %}
 {% if q %}
-<div class="mt-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-    <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
-        Fuera del tablero{% if resultados %} ({{ total }}){% endif %}
+<div class="mt-6">
+    <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        Fuera del tablero{% if total %} ({{ total }}){% endif %}
     </h3>
-    {% if resultados %}
-    <ul class="divide-y divide-gray-100 dark:divide-gray-800">
-        {% for p in resultados %}
-        <li>
-            <a href="{% url 'proyectos-detalle' p.pk %}"
-               class="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                <span class="font-medium text-gray-900 dark:text-gray-100">{{ p.nombre|default:p.codigo }}</span>
-                {% if p.cliente %}<span class="text-xs text-gray-500 dark:text-gray-400">{{ p.cliente.razon_social }}</span>{% endif %}
-                <span class="badge badge-hex ml-auto text-[10px]" style="--ec: {{ p.estado|color_estado }}">{{ p.estado|estado_label }}</span>
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
+    {% if total %}
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {% for col in cols %}{% include "proyectos/_kanban_columna.html" with col=col solo_lectura=True %}{% endfor %}
+    </div>
     {% if hay_mas %}
     <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
         Hay más resultados. <a href="{% url 'proyectos-lista' %}?q={{ q|urlencode }}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Verlos todos →</a>

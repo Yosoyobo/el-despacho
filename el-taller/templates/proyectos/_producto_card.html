@@ -128,10 +128,15 @@ Render fino LC 2026-07-28 (Oscar):
         quedaban 24 útiles y la etiqueta CANTIDAD mide ~53. Ahora la columna
         puede crecer (`minmax`), los campos son angostos (`campo-angosto`) y
         la etiqueta dice «Cant.» y no se parte.{% endcomment %}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.8fr_1.5fr_minmax(72px,auto)_minmax(72px,auto)_104px_36px] md:items-end">
+        {% comment %}LC 2026-08-13 (Oscar): «los tamaños de los campos se cambiaron
+        una vez más» — con render. Las medidas vuelven a las de la referencia:
+        Cant. y Merma cómodas (no 72px pelados), Precio unitario más ancho y
+        Categoría cediéndoles el espacio. Se conservan los `minmax` para que en
+        pantallas medianas encojan en vez de encimarse (el bug de Ago12).{% endcomment %}
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.85fr_1.6fr_minmax(96px,0.7fr)_minmax(96px,0.7fr)_minmax(104px,0.62fr)_40px] md:items-end">
             <div>
                 <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Categoría</label>
-                <select class="cat-filtro w-full" data-cat-filtro>
+                <select class="cat-filtro w-full" data-cat-filtro data-select-buscable>
                     <option value="">Todas</option>
                     {% for c in categorias_disponibles %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}
                 </select>
@@ -207,7 +212,7 @@ Render fino LC 2026-07-28 (Oscar):
         de varias líneas que crece solo: como la fila alinea al fondo
         (`md:items-end`), al crecer empuja su etiqueta HACIA ARRIBA en vez de
         estirar la tarjeta hacia abajo.{% endcomment %}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.2fr_112px_2.6fr] md:items-end">
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.35fr_minmax(104px,0.72fr)_2.95fr] md:items-end">
             <div>
                 <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Proveedor</label>
                 {{ f.proveedor }}
@@ -230,7 +235,7 @@ Render fino LC 2026-07-28 (Oscar):
 
         {# Impresión + procesos operativos — sin recuadro punteado #}
         <div data-procesos>
-            <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[1.4fr_120px_auto_auto] md:items-end" data-impresion>
+            <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[2.6fr_minmax(120px,0.68fr)_auto_auto] md:items-end" data-impresion>
                 <div>
                     <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
                     <select class="imp-proveedor w-full" data-select-buscable>
@@ -314,7 +319,7 @@ Render fino LC 2026-07-28 (Oscar):
         {% comment %}LC 2026-08-04 (Oscar): «el texto "Costo prod. … · unit. …/pz ·
         …" debe de ser más grande» — de 11px a 12/14px (chico en móvil, donde se
         va a su propio renglón; text-sm de tablet en adelante).{% endcomment %}
-        <span class="order-last w-full min-w-0 text-xs text-gray-500 dark:text-gray-400 sm:order-none sm:w-auto sm:flex-1 sm:truncate sm:text-sm">Costo prod. <span class="tabular-nums" data-costo-total>—</span> · unit. <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span></span>
+        <span class="order-last w-full min-w-0 text-xs text-gray-500 dark:text-gray-400 sm:order-none sm:w-auto sm:flex-1 sm:truncate sm:text-sm">Costo de producción: <span class="tabular-nums" data-costo-total>—</span> · Unitario <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span></span>
         {% comment %}(g) MONTO arriba; debajo, la utilidad del producto en gris y su
         margen en verde.{% endcomment %}
         <div class="shrink-0 text-right">
