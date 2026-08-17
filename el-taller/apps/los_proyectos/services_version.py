@@ -130,6 +130,38 @@ def _nombre_de(fila) -> str:
     return fila.nombre_visible
 
 
+def opciones_de_fila(fila) -> tuple[dict, list[dict]]:
+    """`(la_que_manda, alternativas_visibles)` de una fila de la foto.
+
+    LC 2026-08-17: una fila puede traer escalas de volumen en `escalas_json`. La
+    que manda es la activa (o la Opción A si no hay ninguna) y es la que carga la
+    línea del documento; las demás visibles se imprimen como renglones extra
+    informativos, que NO suman. Un nulo en la escala hereda de la Opción A.
+
+    Cada opción es `{"cantidad": int, "precio": Decimal}`, ya resuelta.
+    """
+    base = {
+        "cantidad": int(fila.cantidad or 0),
+        "precio": (fila.precio_unitario if fila.precio_unitario is not None else CERO),
+    }
+    escalas = [e for e in (fila.escalas_json or []) if isinstance(e, dict)]
+    activa, visibles = None, []
+    for cruda in escalas:
+        precio = _a_decimal_opcional(cruda.get("precio_unitario"))
+        opcion = {
+            "cantidad": max(1, int(cruda.get("cantidad") or 1)),
+            "precio": base["precio"] if precio is None else precio,
+        }
+        if cruda.get("activa") and activa is None:
+            activa = opcion
+        elif cruda.get("visible_pdf", True):
+            visibles.append(opcion)
+    manda = activa or base
+    if activa is not None and getattr(fila, "visible_pdf", True):
+        visibles.insert(0, base)          # la Opción A pasa a ser alternativa
+    return manda, visibles
+
+
 @transaction.atomic
 def sincronizar_items(cot) -> None:
     """Reescribe las líneas de la cotización a partir de la foto editada.
@@ -161,15 +193,36 @@ def sincronizar_items(cot) -> None:
         item.concepto = _nombre_de(fila)[:150]
         item.descripcion = fila.nota or ""
         item.imagen_file_id = fila.imagen_file_id or ""
-        item.cantidad = Decimal(str(fila.cantidad or 0))
-        item.precio_unitario = fila.precio_unitario if fila.precio_unitario is not None else CERO
+        manda, alternativas = opciones_de_fila(fila)
+        item.cantidad = Decimal(str(manda["cantidad"]))
+        item.precio_unitario = manda["precio"]
         item.agrupado = False
+        item.informativo = False
         item.save()
         conservados.add(item.pk)
         if fila.item_id != item.pk:
             fila.item = item
             fila.save(update_fields=["item"])
         orden += 1
+
+        # 1b) Las ALTERNATIVAS de volumen visibles (LC 2026-08-17). Sin esto, el
+        #     paso 3 las borraría del documento al editar la pestaña: se van los
+        #     renglones que el cliente veía y el total cambiaría en silencio.
+        for alt in alternativas:
+            linea = cola_ventas.pop(0) if cola_ventas else CotizacionItem(cotizacion=cot)
+            linea.orden = orden
+            linea.servicio_id = fila.servicio_id
+            linea.variacion = None
+            linea.concepto = _nombre_de(fila)[:150]
+            linea.descripcion = ""
+            linea.imagen_file_id = ""
+            linea.cantidad = Decimal(str(alt["cantidad"]))
+            linea.precio_unitario = alt["precio"]
+            linea.agrupado = True
+            linea.informativo = True      # se imprime, no suma
+            linea.save()
+            conservados.add(linea.pk)
+            orden += 1
 
         # 2) Sus líneas de venta (se cobran aparte, se imprimen dentro de su
         #    bloque — ver `CotizacionItem.agrupado`).
@@ -190,6 +243,10 @@ def sincronizar_items(cot) -> None:
             linea.cantidad = Decimal(str(max(1, int(venta.get("cantidad") or 1))))
             linea.precio_unitario = precio
             linea.agrupado = True
+            # La cola de reutilizables mezcla ventas y alternativas: si no se
+            # apaga, una venta heredaría el `informativo` de la fila que reusó y
+            # dejaría de sumar al total.
+            linea.informativo = False
             linea.save()
             conservados.add(linea.pk)
             orden += 1

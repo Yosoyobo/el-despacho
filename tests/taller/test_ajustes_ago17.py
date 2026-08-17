@@ -694,3 +694,47 @@ def test_el_modal_de_escalas_solo_sale_a_quien_puede_aplicarlo(client, entorno,
         {"estado": "aprobada"}, HTTP_HX_REQUEST="true")
     # Sin permiso de cotizaciones ni de proyecto: no hay modal (403 o panel).
     assert "¿Con cuál cantidad quedó?" not in resp.content.decode()
+
+
+def test_editar_la_pestana_conserva_las_alternativas_del_documento(entorno):
+    """`sincronizar_items` borra del documento lo que no reconoce. Sin enseñarle
+    las escalas, editar una pestaña se llevaría los renglones que el cliente veía
+    y el total cambiaría en silencio."""
+    from apps.cotizaciones import services
+    from apps.los_proyectos import services_version
+    pp = entorno["linea"]
+    _escala(pp, cantidad=100, precio_unitario=Decimal("175.00"), activa=True)
+    _escala(pp, cantidad=200, precio_unitario=Decimal("160.00"), orden=1)
+    cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    antes = cot.calcular_totales()["subtotal_items"]
+    assert cot.items.filter(informativo=True).count() == 2
+
+    services_version.sincronizar_items(cot)
+
+    cot.refresh_from_db()
+    assert cot.items.filter(informativo=True).count() == 2
+    # La línea que suma sigue siendo la de la opción activa.
+    principal = cot.items.get(informativo=False, agrupado=False)
+    assert principal.cantidad == Decimal("100.00")
+    assert cot.calcular_totales()["subtotal_items"] == antes
+
+
+def test_la_pestana_no_apaga_el_cobro_de_una_venta(entorno):
+    """La cola de líneas reutilizables mezcla ventas y alternativas: si no se
+    apaga la bandera al reusar, una venta dejaría de sumar."""
+    from apps.cotizaciones import services
+    from apps.los_proyectos import services_version
+    from apps.los_proyectos.models import ProyectoProductoVenta
+    pp = entorno["linea"]
+    ProyectoProductoVenta.objects.create(
+        producto=pp, descripcion="Ponchado", cantidad=1,
+        precio_unitario=Decimal("350.00"), orden=0)
+    _escala(pp, cantidad=100, precio_unitario=Decimal("175.00"), activa=True)
+    cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    services_version.sincronizar_items(cot)
+
+    venta = cot.items.get(concepto="Ponchado")
+    assert venta.informativo is False
+    assert venta.agrupado is True
+    # 100 × 175 del producto + 350 del Ponchado; la alternativa (70 × 195) no suma.
+    assert cot.calcular_totales()["subtotal_items"] == Decimal("17850.00")
