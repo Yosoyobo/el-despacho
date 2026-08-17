@@ -508,31 +508,36 @@
     }
     function plantillaEscala() {
         // Espejo de `proyectos/_escala_fila.html` — si cambia allá, cambia aquí.
-        const etiqueta = c => '<label class="block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">' + c + '</label>';
+        // Las etiquetas van DENTRO de la celda de su campo: en un renglón aparte
+        // desaparecían en el celular (la rejilla baja a 2 columnas) y la sub-fila
+        // quedaba como cinco números sin nombre.
         const rejilla = 'gap-2 md:grid-cols-[auto_1fr_1fr_1.05fr_1.05fr_minmax(120px,1.1fr)]';
+        const eti = c => '<label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">' + c + '</label>';
+        const celda = (label, input) => '<div class="min-w-0">' + eti(label) + input + '</div>';
         const ojoOff = '<svg aria-hidden="true" class="hidden h-4 w-4 text-gray-300 dark:text-gray-600" data-ojo-off viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke-linecap="round"/><line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round"/></svg>';
         const ojoOn = '<svg aria-hidden="true" class="h-4 w-4 text-brand-500" data-ojo-on viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round"/><circle cx="12" cy="12" r="3"/></svg>';
         const equis = '<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>';
         return '' +
-        '<div class="hidden ' + rejilla + ' md:grid md:items-end">' +
-          '<span class="w-10"></span>' +
-          etiqueta('Cantidad <span class="font-bold text-brand-500" data-esc-letra>(B)</span>') +
-          etiqueta('Merma') + etiqueta('Precio unit.') + etiqueta('Costo unit.') + etiqueta('Impresión') +
-        '</div>' +
-        '<div class="grid grid-cols-2 ' + rejilla + ' md:items-center">' +
-          '<div class="col-span-2 flex items-center gap-1 md:col-span-1">' +
+        '<div class="grid grid-cols-2 ' + rejilla + ' md:items-end">' +
+          '<div class="col-span-2 flex items-center gap-1 pb-2 md:col-span-1">' +
             '<span aria-hidden="true" class="ml-1 mr-0.5 h-4 w-3 shrink-0 rounded-bl border-b-2 border-l-2 border-gray-300 dark:border-gray-600"></span>' +
             '<input type="radio" value="escala" class="esc-radio h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30" title="Esta cantidad es la que calcula el dinero del proyecto">' +
           '</div>' +
-          '<input type="number" min="1" step="1" class="esc-cant campo-angosto w-full" placeholder="1" value="1" title="Piezas a cobrar en esta opción">' +
-          '<input type="number" min="0" step="1" class="esc-merma campo-angosto w-full" placeholder="0" value="0" title="Piezas extra de esta opción (suman costo, no se cobran)">' +
-          '<input type="number" step="0.01" min="0" class="esc-precio w-full" placeholder="hereda" title="Precio por pieza de esta opción. Vacío = el de la Opción A.">' +
-          '<input type="text" inputmode="text" autocomplete="off" class="esc-costo w-full" placeholder="hereda" title="Costo por pieza de esta opción. Vacío = el de la Opción A. Acepta una cuenta (15.75*100).">' +
-          '<div class="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5 md:col-span-1">' +
-            '<input type="text" inputmode="text" autocomplete="off" class="esc-imp w-full min-w-[72px] flex-1" placeholder="hereda" title="Costo de impresión de esta opción. Vacío = el de la Opción A. El proveedor es el mismo.">' +
-            '<label class="inline-flex shrink-0 cursor-pointer items-center gap-0.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir de esta opción"><input type="checkbox" class="esc-imp-pp h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">/p</label>' +
-            '<span class="esc-extras flex min-w-0 flex-wrap items-center gap-1.5"></span>' +
-            '<button type="button" class="esc-extra-add inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm leading-none text-gray-400 transition hover:border-brand-400 hover:text-brand-500 dark:border-gray-600" title="Agrega otro costo a esta opción, en el mismo renglón" aria-label="Agregar costo a la escala">+</button>' +
+          celda('Cantidad <span class="font-bold text-brand-500" data-esc-letra>(B)</span>',
+                '<input type="number" min="1" step="1" class="esc-cant campo-angosto w-full" placeholder="1" value="1" title="Piezas a cobrar en esta opción">') +
+          celda('Merma',
+                '<input type="number" min="0" step="1" class="esc-merma campo-angosto w-full" placeholder="0" value="0" title="Piezas extra de esta opción (suman costo, no se cobran)">') +
+          celda('Precio unit.',
+                '<input type="number" step="0.01" min="0" class="esc-precio w-full" placeholder="hereda" title="Precio por pieza de esta opción. Vacío = el de la Opción A.">') +
+          celda('Costo unit.',
+                '<input type="text" inputmode="text" autocomplete="off" class="esc-costo w-full" placeholder="hereda" title="Costo por pieza de esta opción. Vacío = el de la Opción A. Acepta una cuenta (15.75*100).">') +
+          '<div class="col-span-2 min-w-0 md:col-span-1">' + eti('Impresión') +
+            '<div class="flex min-w-0 flex-wrap items-center gap-1.5">' +
+              '<input type="text" inputmode="text" autocomplete="off" class="esc-imp w-full min-w-[72px] flex-1" placeholder="hereda" title="Costo de impresión de esta opción. Vacío = el de la Opción A. El proveedor es el mismo.">' +
+              '<label class="inline-flex shrink-0 cursor-pointer items-center gap-0.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir de esta opción"><input type="checkbox" class="esc-imp-pp h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">/p</label>' +
+              '<span class="esc-extras flex min-w-0 flex-wrap items-center gap-1.5"></span>' +
+              '<button type="button" class="esc-extra-add inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm leading-none text-gray-400 transition hover:border-brand-400 hover:text-brand-500 dark:border-gray-600" title="Agrega otro costo a esta opción, en el mismo renglón" aria-label="Agregar costo a la escala">+</button>' +
+            '</div>' +
           '</div>' +
         '</div>' +
         '<div class="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">' +

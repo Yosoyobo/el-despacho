@@ -15,42 +15,51 @@ radio a la izquierda, y sus cinco campos reparten el ancho a partes casi iguales
 Los números van con `|unlocalize`: un input numérico no entiende «10,900.00».
 {% endcomment %}
 <div class="escala-fila" data-escala>
-    {% comment %}Etiquetas por sub-fila: la letra de la opción va en la primera
-    («CANTIDAD (B)»), como en el render.{% endcomment %}
-    <div class="hidden gap-2 md:grid md:grid-cols-[auto_1fr_1fr_1.05fr_1.05fr_minmax(120px,1.1fr)] md:items-end">
-        <span class="w-10"></span>
-        <label class="block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cantidad <span class="font-bold text-brand-500" data-esc-letra>({{ e.letra }})</span></label>
-        <label class="block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Merma</label>
-        <label class="block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Precio unit.</label>
-        <label class="block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo unit.</label>
-        <label class="block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
-    </div>
-    <div class="grid grid-cols-2 gap-2 md:grid-cols-[auto_1fr_1fr_1.05fr_1.05fr_minmax(120px,1.1fr)] md:items-center">
+    {% comment %}Cada etiqueta vive DENTRO de la celda de su campo, igual que en la
+    fila 1 de la tarjeta. En un renglón aparte se veía idéntico en escritorio pero
+    en el celular desaparecía —la rejilla baja a 2 columnas y las etiquetas no
+    pueden alinearse con los inputs—, y la sub-fila quedaba como cinco números sin
+    nombre. La letra de la opción va en la primera («CANTIDAD (B)»), como el render.{% endcomment %}
+    <div class="grid grid-cols-2 gap-2 md:grid-cols-[auto_1fr_1fr_1.05fr_1.05fr_minmax(120px,1.1fr)] md:items-end">
         {% comment %}Conector + radio. El `name` lleva el prefijo del form para que
         cada tarjeta sea su propio grupo de radios; no es un campo del formset (las
         escalas viajan en `escalas_json`), así que Django lo ignora.{% endcomment %}
-        <div class="col-span-2 flex items-center gap-1 md:col-span-1">
+        <div class="col-span-2 flex items-center gap-1 pb-2 md:col-span-1">
             <span aria-hidden="true" class="ml-1 mr-0.5 h-4 w-3 shrink-0 rounded-bl border-b-2 border-l-2 border-gray-300 dark:border-gray-600"></span>
             <input type="radio" name="opcion-{{ f.prefix }}" value="escala"
                    class="esc-radio h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30"
                    {% if e.activa %}checked{% endif %}
                    title="Esta cantidad es la que calcula el dinero del proyecto">
         </div>
-        <input type="number" min="1" step="1" class="esc-cant campo-angosto w-full" placeholder="1"
-               value="{{ e.cantidad|unlocalize }}" title="Piezas a cobrar en esta opción">
-        <input type="number" min="0" step="1" class="esc-merma campo-angosto w-full" placeholder="0"
-               value="{{ e.merma|unlocalize }}" title="Piezas extra de esta opción (suman costo, no se cobran)">
-        <input type="number" step="0.01" min="0" class="esc-precio w-full" placeholder="hereda"
-               value="{{ e.precio_unitario|default_if_none:''|unlocalize }}"
-               title="Precio por pieza de esta opción. Vacío = el de la Opción A.">
-        <input type="text" inputmode="text" autocomplete="off" class="esc-costo w-full" placeholder="hereda"
-               value="{% if e.costo_unitario_expr %}{{ e.costo_unitario_expr }}{% else %}{{ e.costo_unitario|default_if_none:''|unlocalize }}{% endif %}"
-               title="Costo por pieza de esta opción. Vacío = el de la Opción A. Acepta una cuenta (15.75*100).">
+        <div class="min-w-0">
+            <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cantidad <span class="font-bold text-brand-500" data-esc-letra>({{ e.letra }})</span></label>
+            <input type="number" min="1" step="1" class="esc-cant campo-angosto w-full" placeholder="1"
+                   value="{{ e.cantidad|unlocalize }}" title="Piezas a cobrar en esta opción">
+        </div>
+        <div class="min-w-0">
+            <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Merma</label>
+            <input type="number" min="0" step="1" class="esc-merma campo-angosto w-full" placeholder="0"
+                   value="{{ e.merma|unlocalize }}" title="Piezas extra de esta opción (suman costo, no se cobran)">
+        </div>
+        <div class="min-w-0">
+            <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Precio unit.</label>
+            <input type="number" step="0.01" min="0" class="esc-precio w-full" placeholder="hereda"
+                   value="{{ e.precio_unitario|default_if_none:''|unlocalize }}"
+                   title="Precio por pieza de esta opción. Vacío = el de la Opción A.">
+        </div>
+        <div class="min-w-0">
+            <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Costo unit.</label>
+            <input type="text" inputmode="text" autocomplete="off" class="esc-costo w-full" placeholder="hereda"
+                   value="{% if e.costo_unitario_expr %}{{ e.costo_unitario_expr }}{% else %}{{ e.costo_unitario|default_if_none:''|unlocalize }}{% endif %}"
+                   title="Costo por pieza de esta opción. Vacío = el de la Opción A. Acepta una cuenta (15.75*100).">
+        </div>
         {% comment %}Impresión + «por pieza» + los costos extra que agrega el ⊕, todo
         en el MISMO renglón (spec §4). Es un flex para que los extras se inserten
         inline sin rehacer la rejilla; `flex-wrap` sólo actúa en pantallas angostas,
         donde envolver es mejor que desbordar la tarjeta (la lección de Ago12).{% endcomment %}
-        <div class="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5 md:col-span-1">
+        <div class="col-span-2 min-w-0 md:col-span-1">
+        <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
+        <div class="flex min-w-0 flex-wrap items-center gap-1.5">
             <input type="text" inputmode="text" autocomplete="off" class="esc-imp w-full min-w-[72px] flex-1" placeholder="hereda"
                    value="{% if e.impresion_costo_expr %}{{ e.impresion_costo_expr }}{% else %}{{ e.impresion_costo|default_if_none:''|unlocalize }}{% endif %}"
                    title="Costo de impresión de esta opción. Vacío = el de la Opción A. El proveedor es el mismo.">
@@ -72,6 +81,7 @@ Los números van con `|unlocalize`: un input numérico no entiende «10,900.00»
             </span>
             <button type="button" class="esc-extra-add inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm leading-none text-gray-400 transition hover:border-brand-400 hover:text-brand-500 dark:border-gray-600"
                     title="Agrega otro costo a esta opción, en el mismo renglón" aria-label="Agregar costo a la escala">+</button>
+        </div>
         </div>
     </div>
     {% comment %}Pie de la escala, espejo del de la Opción A: eliminar · costo de

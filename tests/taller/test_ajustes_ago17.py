@@ -738,3 +738,23 @@ def test_la_pestana_no_apaga_el_cobro_de_una_venta(entorno):
     assert venta.agrupado is True
     # 100 × 175 del producto + 350 del Ponchado; la alternativa (70 × 195) no suma.
     assert cot.calcular_totales()["subtotal_items"] == Decimal("17850.00")
+
+
+def test_la_sub_fila_conserva_sus_etiquetas_en_el_celular():
+    """Las etiquetas van DENTRO de la celda de su campo. En un renglón aparte se
+    veían igual en escritorio, pero en el celular la rejilla baja a 2 columnas y
+    las etiquetas no pueden alinearse con los inputs: la sub-fila quedaba como
+    cinco números sin nombre."""
+    tpl = TPL_ESCALA.read_text(encoding="utf-8")
+    assert "hidden gap-2 md:grid" not in tpl        # nada de etiquetas sólo-desktop
+    # Cada campo trae su etiqueta pegada arriba.
+    for etiqueta, clase in (("Cantidad", "esc-cant"), ("Merma", "esc-merma"),
+                            ("Precio unit.", "esc-precio"),
+                            ("Costo unit.", "esc-costo"), ("Impresión", "esc-imp")):
+        i = tpl.index(f">{etiqueta}")
+        assert clase in tpl[i:i + 700], (etiqueta, clase)
+    js = TPL_JS.read_text(encoding="utf-8")
+    plantilla = js[js.index("function plantillaEscala"):js.index("function agregarEscala")]
+    assert "hidden gap-2" not in plantilla
+    for etiqueta in ("Cantidad", "Merma", "Precio unit.", "Costo unit.", "Impresión"):
+        assert etiqueta in plantilla, etiqueta
