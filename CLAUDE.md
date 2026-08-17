@@ -5055,6 +5055,108 @@ buscador (cabe, ahí el espacio no aprieta). El tablero «fuera» no pagina (top
 40 + enlace a la lista completa). El chip de estado vive dentro de la barra
 flotante, así que en una página sin botón de guardar no aparece.
 
+### S-Ajustes-Ago17 ✅ — Escalas de volumen del producto + márgenes y pie del documento (2026-08-17, VERSION 2026.08.11)
+
+Dos entregas en un deploy (decisión Oscar: «todo junto»), pedidas con cuatro
+archivos: `a-instrucciones-tarjeta.md` + su render `b-render-tarjeta.jpeg`, y
+`c-instrucciones-cotizacionespdf.md` + su render `d-render-cotizacionespdf`.
+Decisiones por AskUserQuestion: los renglones de las escalas van **en la misma
+tabla de montos**; el total sigue siendo **sólo el de la activa**; el «+» de la
+sub-fila agrega **un costo pelón inline**; y el corte a una sola cantidad se pide
+con **modal al pasar la cotización a Aprobada** — más un modal nuevo que Oscar
+sumó a media sesión.
+
+**a/b — Escalas de volumen (Opción B, C…).**
+- **`ProyectoProductoEscala`** hija de `ProyectoProducto` (migración
+  `proyectos/0035`, tabla `proyectos_producto_escala`), patrón de
+  [proceso.py](el-taller/apps/los_proyectos/models/proceso.py) y
+  [venta.py](el-taller/apps/los_proyectos/models/venta.py). **La Opción A es la
+  fila principal de la tarjeta**, no una fila más. Campos: cantidad, merma,
+  precio, costo (+ `costo_unitario_expr`), `impresion_costo` (+ expr +
+  `por_pieza`), `extras_json`, `activa`, `visible_pdf`.
+- **Dos interruptores que NO son lo mismo**: el **radio** (`activa`) dice cuál
+  calcula el dinero — una sola, garantizada por un **`UniqueConstraint` parcial**
+  en la base, no por el JS —; el **ojo** (`visible_pdf`, también en
+  `ProyectoProducto`) dice si esa opción se imprime.
+- **Vacío hereda de A, 0 escrito es cero.** El pedido decía «vacíos o en 0.00
+  heredan», pero un 0 es un valor legítimo («esta opción no lleva impresión»):
+  se conservó la semántica de nulo del repo y se agregó
+  `_expr_y_costo_opcional`. La escala hereda además el proveedor y los gastos
+  operativos de A (recalculados con SUS piezas); la impresión se pisa con un
+  costo propio y `extras_json` guarda los costos del «+».
+- **El dinero se propaga solo**: se separó `*_propio` (lo de la línea) de
+  `*_efectivo`/`*_efectiva` (lo que cuenta, que puede venir de la escala activa)
+  en [producto.py](el-taller/apps/los_proyectos/models/producto.py). Todo lo que
+  ya leía `subtotal` / `costo_total_con_procesos` / `precio_efectivo` quedó bien
+  sin tocarse; se actualizaron los **~10 lectores directos** de `pp.cantidad +
+  pp.merma` a `piezas_efectivas` (gastos, deuda por proveedor, paneles,
+  `piezas_producidas` del proceso, `generar_desde_proyecto`, `descripcion`).
+- **En el documento**: `CotizacionItem.informativo` nuevo (migración
+  `cotizaciones/0018`) — `calcular_totales` suma TODAS las líneas, así que sin
+  esa bandera imprimir las alternativas duplicaría el total. Las visibles se
+  congelan `agrupado=True, informativo=True` (renglones extra del bloque) y el
+  «Desglose de Elementos» las excluye (si no, la lista no cuadraría con el
+  subtotal).
+- **Congelado por versión**: `escalas_json` + `visible_pdf` en
+  `ProyectoProductoVersion`. **La fila A del snapshot guarda `precio_propio` /
+  `costo_propio`**, no los efectivos — con una escala activa el efectivo ES el de
+  la escala y la pestaña debe conservar lo suyo. Los nulos se conservan (si se
+  aplanaran a 0, la escala pasaría a valer cero al repintar).
+- **UI**: fila 1 de la tarjeta gana una columna `auto` para el radio y un **⊕
+  azul junto a «Cant.»** que agrega escala; partial nuevo
+  [`_escala_fila.html`](el-taller/templates/proyectos/_escala_fila.html) con el
+  conector `└`, los 5 campos, el ⊕ de costos inline y su pie propio (costo de
+  producción · unitario · utilidad · ojo · monto/utilidad/margen); el ojo de A
+  sólo aparece si hay escalas (con una sola opción, esconderla dejaría al
+  producto sin renglón — y `opciones_documento()` nunca devuelve vacío).
+  `_form_productos_js.html` gana `plantillaEscala` (espejo del partial, con test
+  que lo exige), `serializarEscalas`, `recalcularEscalas` y la delegación.
+- **Los dos modales**: `escalas_elegir` («¿con cuál cantidad quedó?», OOB desde
+  `cotizacion_estado` al aprobar, cuerpo compartido con la variante Wave 5) y
+  `modal_aprobar_cotizacion` («¿pasar la cotización a Aprobada?») que dispara
+  `cambiar_estado` vía **`HX-Trigger: pedirAprobarCotizacion`** cuando el
+  proyecto entra a `en_proceso_diseno` en adelante y su cotización va en un paso
+  anterior. El listener de `base.html` y el del Kanban ahora atienden los DOS
+  eventos. Helper nuevo `slugs_en_proceso_en_adelante()` (excluye en pausa y
+  cancelado).
+- Duplicar línea y duplicar proyecto clonan las escalas.
+
+**c/d — El documento.**
+- Los márgenes NO salían de ningún lado nuestro: el PDF lo pagina Google con su
+  default de una pulgada y el `@page` del HTML sólo afecta la vista previa. Se
+  agregó `GoogleDriveWrapper._ajustar_pagina` (`updateDocumentStyle` por la API
+  de Documentos, misma plomería que `preventOverflow`), con
+  `html_a_pdf(..., pagina=)` y `lib.documentos.generar_pdf(..., pagina=)` — quien
+  no lo manda (las facturas) conserva los márgenes de siempre.
+- **Superior 1" → 0.5"** (el encabezado sube ~1.3 cm, como el render de
+  referencia), **inferior 1" → 0.6"** ⇒ **+10% de área imprimible**; laterales
+  intactos. `_MARGEN_*_PT` en `cotizaciones/services.py` son la **fuente única**:
+  de ahí salen `PAGINA_DOCUMENTO` y `_ALTO_UTIL_PT` (648 → 713), y la hoja de la
+  vista previa los espeja. Logotipo 48 → **50pt** con ancho y alto como atributos.
+- **Pie «1/1»** por `createFooter` + `insertText`, dentro del margen inferior
+  (`marginFooter=20pt` + `useCustomHeaderFooterMargins`, sin el cual Google
+  IGNORA el margen del pie) ⇒ no le quita ni un punto al contenido. Es **texto
+  literal**: se verificó contra la referencia oficial que **la API de Documentos
+  no tiene petición para insertar AutoText**, así que un número que avance no es
+  posible por esta vía.
+- **40 tests nuevos** (`tests/taller/test_ajustes_ago17.py`). Cazaron un bug
+  propio antes del commit: `opciones_documento` comparaba la escala activa por
+  **identidad** (`e is not activa`) y sin prefetch `escalas.all()` devuelve otro
+  objeto Python para la misma fila, así que la activa se imprimía dos veces →
+  se compara por pk. Se actualizó 1 test de Ago04-R2 que fijaba las 6 columnas
+  de la fila 1 (ahora son 7 por el radio).
+
+**Deuda diseñada**: el «1/1» es fijo — en un documento de 2+ hojas todas dirían
+«1/1» (hoy prácticamente todas las cotizaciones son de una); los márgenes y el
+pie sólo se pueden confirmar **con el código en La Sede** (la conversión la hace
+Google) y son best-effort: si la API de Docs falla, el PDF sale con los márgenes
+de antes, sin aviso. Las escalas no se editan desde El Chalán ni desde el modal
+de alta rápida de producto (se capturan al abrir la tarjeta); no llevan foto ni
+especificaciones propias (son el mismo producto); el precio de la escala no
+acepta cuenta escrita (el campo es numérico — el costo y la impresión sí); y el
+corte a una sola cantidad no se pide cuando la cotización se aprueba desde El
+Chalán (sólo desde el recuadro del proyecto).
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
