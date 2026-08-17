@@ -93,9 +93,14 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         })
     totales = cot.calcular_totales()
     notas = notas_para(cot)
+    # El «Desglose de Elementos» es lo que se está comprando, así que las
+    # ALTERNATIVAS de volumen no van (si fueran, la lista no cuadraría con el
+    # subtotal de abajo). Se leen en la tabla de montos de su producto.
+    items_desglose = [it for it in items if not it.informativo]
     return render_to_string("cotizaciones/pdf.html", {
         "cot": cot,
         "items": items,
+        "items_desglose": items_desglose,
         "filas": filas,
         "totales": totales,
         # LC 2026-08-04 (Oscar): con UN solo producto la tabla de desglose repite
@@ -112,10 +117,12 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         ],
         "notas": notas,
         "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
-        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items, notas),
+        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items_desglose, notas),
         "preview": preview,
         "url_descargar": _url_descargar(cot) if preview else "",
         "nombre_archivo": cot.nombre_pdf,
+        # Sólo lo pinta la vista previa: en el PDF el pie lo pone la API de Docs.
+        "pie_documento": PIE_DOCUMENTO,
     })
 
 
@@ -128,8 +135,48 @@ def _url_descargar(cot: Cotizacion) -> str:
         return ""
 
 
-# Hoja carta con márgenes de una pulgada: 792pt − 144pt de márgenes.
-_ALTO_UTIL_PT = 648
+# ── Márgenes de la hoja (LC 2026-08-17, Oscar + render de referencia) ────────
+#
+# Hasta ahora el documento salía con el margen por default de Google (una
+# pulgada por lado), y por eso el encabezado quedaba mucho más abajo que en el
+# formato que Oscar armaba a mano: ahí la fecha, el logotipo y el cliente
+# arrancan casi al borde. El margen superior baja a media pulgada (el
+# encabezado sube ~1.3 cm) y el inferior a 0.6", con lo que el área imprimible
+# crece **10%** — el «empujar el límite inferior hacia abajo» del pedido: cabe
+# más contenido por hoja y se evita la hoja de más con dos renglones.
+#
+# Los laterales NO se tocan: el ancho del texto es el del render de referencia.
+#
+# Son la FUENTE ÚNICA: de aquí salen los márgenes que se le piden a la API de
+# Documentos (`PAGINA_DOCUMENTO`) y el alto útil con el que el estimador simula
+# la paginación. Si se cambian y el estimador no, el hueco de las notas queda
+# mal — la lección de la ronda del 2026-08-04.
+_MARGEN_SUPERIOR_PT = 36     # 0.5"
+_MARGEN_INFERIOR_PT = 43     # ~0.6"
+# Distancia del pie al borde inferior. Vive DENTRO del margen inferior, así que
+# el pie no le quita nada al contenido (43 − 20 = 23pt de aire bajo el texto).
+_MARGEN_PIE_PT = 20
+
+# Pie fijo del documento (Oscar 2026-08-17: «agrégale un 1/1, bien abajo, fijo,
+# y que no afecte nunca cuánto contenido cabe»). Es texto LITERAL: la API de
+# Documentos no tiene petición para insertar el campo automático de número de
+# página, así que un contador que avance no es posible por esta vía. En un
+# documento de dos hojas ambas dirían «1/1»; hoy prácticamente todas las
+# cotizaciones son de una.
+PIE_DOCUMENTO = "1/1"
+
+# Lo que se le pide a la API de Documentos tras la conversión. Ver
+# `lib.google_drive.GoogleDriveWrapper._ajustar_pagina`.
+PAGINA_DOCUMENTO = {
+    "margen_superior_pt": _MARGEN_SUPERIOR_PT,
+    "margen_inferior_pt": _MARGEN_INFERIOR_PT,
+    "margen_pie_pt": _MARGEN_PIE_PT,
+    "pie_texto": PIE_DOCUMENTO,
+}
+
+# Alto de la hoja carta (11" = 792pt) menos los márgenes de arriba y abajo.
+_ALTO_HOJA_PT = 792
+_ALTO_UTIL_PT = _ALTO_HOJA_PT - _MARGEN_SUPERIOR_PT - _MARGEN_INFERIOR_PT
 
 # Caja en la que DEBE caber la foto del producto (ver `_medida_foto`). El alto
 # es el tope duro que pidió Oscar (2026-07-26, ronda 3): «alrededor del alto de
@@ -443,7 +490,8 @@ def generar_pdf(cot: Cotizacion, actor):
     # El precalentado vive dentro de `construir_html_pdf` (ahí se MIDEN las fotos
     # para acotarlas), así que aquí ya no se repite.
     html = construir_html_pdf(cot)
-    res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones")
+    res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones",
+               pagina=PAGINA_DOCUMENTO)
     if not res.ok:
         return res
 
@@ -723,10 +771,34 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
                 imagen_file_id=pp.imagen_efectiva_file_id,
                 descripcion=descripcion.descripcion_para(
                     pp, descripcion.heredado(indice, pp)),
-                cantidad=Decimal(str(pp.cantidad)),
+                cantidad=Decimal(str(pp.cantidad_efectiva)),
                 precio_unitario=pp.precio_efectivo,
             )
             pares_foto.append((pp, item))
+            # LC 2026-08-17 (Oscar): las ESCALAS DE VOLUMEN visibles que no son la
+            # activa se congelan como renglones extra del mismo bloque —
+            # `agrupado` para que se impriman dentro de la tabla de montos de su
+            # producto, e `informativo` para que NO sumen al total (el total es el
+            # de la opción activa, que es la que cargó el `item` de arriba).
+            for opcion in pp.opciones_documento():
+                if opcion is None and pp.escala_activa is None:
+                    continue      # la Opción A ya es el `item` principal
+                if opcion is not None and opcion.activa:
+                    continue      # la escala activa también es el `item`
+                cantidad = pp.cantidad if opcion is None else opcion.cantidad
+                precio = pp.precio_propio if opcion is None else opcion.precio_efectivo
+                CotizacionItem.objects.create(
+                    cotizacion=cot,
+                    orden=orden,
+                    servicio=pp.servicio if pp.servicio_id else None,
+                    concepto=pp.nombre_visible[:150],
+                    descripcion="",
+                    cantidad=Decimal(str(cantidad)),
+                    precio_unitario=precio,
+                    agrupado=True,
+                    informativo=True,
+                )
+                orden += 1
             # LC 2026-07-26 (Oscar): los PROCESOS DE VENTA de la línea (Ponchado,
             # arte…) se cobran aparte, así que son líneas propias — con
             # `agrupado=True` para que el documento las imprima dentro de la

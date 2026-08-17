@@ -15,7 +15,7 @@ from django.db import transaction
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
-from .models import Proyecto, ProyectoProducto
+from .models import Proyecto, ProyectoProducto, ProyectoProductoEscala
 from .models.proceso import ProyectoProductoProceso
 
 
@@ -36,7 +36,7 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
         creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         # Dinero NO se hereda: montos facturado/cobrado quedan en su default 0.
     )
-    for pp in origen.productos.all().prefetch_related("procesos"):
+    for pp in origen.productos.all().prefetch_related("procesos", "escalas"):
         nueva_linea = ProyectoProducto.objects.create(
             proyecto=nuevo,
             servicio_id=pp.servicio_id,
@@ -47,6 +47,7 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
             costo_unitario=pp.costo_unitario,
             merma=pp.merma,
             incluir_en_calculo=pp.incluir_en_calculo,
+            visible_pdf=pp.visible_pdf,
             nota=pp.nota,
             # egreso NO se hereda (marca de idempotencia de producción).
         )
@@ -59,6 +60,19 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
                 descripcion=proc.descripcion,
                 costo=proc.costo,
                 por_pieza=proc.por_pieza,
+            )
+        # LC 2026-08-17: las escalas de volumen viajan con la línea.
+        for esc in pp.escalas.all():
+            ProyectoProductoEscala.objects.create(
+                producto=nueva_linea, orden=esc.orden, cantidad=esc.cantidad,
+                merma=esc.merma, precio_unitario=esc.precio_unitario,
+                costo_unitario=esc.costo_unitario,
+                costo_unitario_expr=esc.costo_unitario_expr,
+                impresion_costo=esc.impresion_costo,
+                impresion_costo_expr=esc.impresion_costo_expr,
+                impresion_por_pieza=esc.impresion_por_pieza,
+                extras_json=list(esc.extras_json or []),
+                activa=esc.activa, visible_pdf=esc.visible_pdf,
             )
     emitir(EventoPortavoz(
         tipo="proyecto.duplicado",
