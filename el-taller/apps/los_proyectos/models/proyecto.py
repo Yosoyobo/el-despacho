@@ -350,7 +350,6 @@ class Proyecto(models.Model):
                     pp.proveedor_id, {"proveedor": pp.proveedor, "total": Decimal("0.00")}
                 )
                 slot["total"] += pp.costo_total_linea
-            piezas = pp.piezas_efectivas
             for proc in pp.procesos.all():
                 # Impresión (siempre con proveedor) u operativo con proveedor
                 # ligado por @ (ticket UX 2026-07): suma a la deuda de ese proveedor.

@@ -1999,7 +1999,11 @@ def cotizacion_estado(request, pk):
         # LC 2026-08-17: al APROBAR, si algún producto sigue ofreciendo más de una
         # cantidad, se pregunta cuál quedó — el cliente ya decidió. Al confirmar,
         # ésa queda activa y las demás salen del documento.
-        if request.POST.get("estado") == "aprobada":
+        # Sólo a quien puede aplicarlo: el modal toca las LÍNEAS del proyecto, y
+        # quien edita cotizaciones no necesariamente edita proyectos — le saldría
+        # una pregunta que al confirmar contestaría 403.
+        if (request.POST.get("estado") == "aprobada"
+                and puede_editar_proyecto(request.user, proyecto)):
             lineas = _lineas_con_varias_opciones(proyecto)
             if lineas:
                 oob = render(request, "proyectos/_modal_escalas_oob.html",

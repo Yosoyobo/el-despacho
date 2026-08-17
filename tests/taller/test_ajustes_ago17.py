@@ -629,7 +629,7 @@ def test_el_ojo_de_la_opcion_a_siempre_viaja_en_el_post(client, entorno):
     client.force_login(entorno["admin"])
     url = reverse("proyectos-detalle", args=[entorno["p"].pk])
     html = client.get(url).content.decode()
-    campo = f"productos-0-visible_pdf"
+    campo = "productos-0-visible_pdf"
     assert campo in html                      # está, aunque no haya escalas
 
     datos = dict(BASE_FORMSET)
@@ -676,3 +676,21 @@ def test_sin_override_la_impresion_no_cambia(entorno):
     proc = pp.procesos.get(tipo="impresion")
     assert proc.costo_efectivo == Decimal("10.00")
     assert proc.costo_total == Decimal("1000.00")     # 10 × 100
+
+
+def test_el_modal_de_escalas_solo_sale_a_quien_puede_aplicarlo(client, entorno,
+                                                               usuario_factory):
+    """Quien edita cotizaciones no necesariamente edita proyectos: mostrarle la
+    pregunta sería ofrecerle algo que al confirmar contestaría 403."""
+    from apps.cotizaciones import services
+    pp = entorno["linea"]
+    _escala(pp, cantidad=100, precio_unitario=Decimal("175.00"), orden=0)
+    services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+
+    disenador = usuario_factory(rol="disenador")
+    client.force_login(disenador)
+    resp = client.post(
+        reverse("proyectos-cotizacion-estado", args=[entorno["p"].pk]),
+        {"estado": "aprobada"}, HTTP_HX_REQUEST="true")
+    # Sin permiso de cotizaciones ni de proyecto: no hay modal (403 o panel).
+    assert "¿Con cuál cantidad quedó?" not in resp.content.decode()
