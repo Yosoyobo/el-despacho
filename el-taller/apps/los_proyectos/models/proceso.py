@@ -99,13 +99,40 @@ class ProyectoProductoProceso(models.Model):
     def piezas_producidas(self) -> int:
         """Piezas a producir del producto padre (cantidad + merma)."""
         prod = self.producto
-        return (prod.cantidad or 0) + (prod.merma or 0)
+        return prod.piezas_efectivas
+
+    # ── Con escalas de volumen (LC 2026-08-17) ───────────────────────────────
+    #
+    # Una escala puede PISAR el costo de impresión («a 100 piezas me la cobran a
+    # 8 y no a 10»). Cuando esa escala es la que manda, el costo que cuenta es el
+    # suyo — y tiene que contar en TODOS lados: el costo del proyecto, lo que se
+    # le adeuda al proveedor y el egreso que se genera. Por eso la resolución vive
+    # aquí y no en cada consumidor.
+
+    def _override_escala(self) -> tuple[Decimal, bool] | None:
+        if self.tipo != self.TIPO_IMPRESION:
+            return None
+        escala = self.producto.escala_activa
+        if escala is None or escala.impresion_costo is None:
+            return None
+        return Decimal(str(escala.impresion_costo)), bool(escala.impresion_por_pieza)
+
+    @property
+    def costo_efectivo(self) -> Decimal:
+        """El costo que cuenta: el de la escala activa si lo pisó, o el propio."""
+        override = self._override_escala()
+        return override[0] if override else self.costo_decimal
+
+    @property
+    def por_pieza_efectivo(self) -> bool:
+        override = self._override_escala()
+        return override[1] if override else bool(self.por_pieza)
 
     @property
     def costo_total(self) -> Decimal:
         """Costo total del proceso: fijo, o × piezas producidas si `por_pieza`."""
-        c = self.costo_decimal
-        return (c * self.piezas_producidas) if self.por_pieza else c
+        c = self.costo_efectivo
+        return (c * self.piezas_producidas) if self.por_pieza_efectivo else c
 
     @property
     def etiqueta(self) -> str:

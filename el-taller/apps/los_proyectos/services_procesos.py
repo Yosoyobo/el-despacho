@@ -20,7 +20,7 @@ from decimal import Decimal, InvalidOperation
 
 from apps.el_catalogo.models import Proveedor
 
-from .models import ProyectoProductoProceso
+from .models import MAX_ESCALAS, MAX_EXTRAS, ProyectoProductoProceso
 
 TIPOS_VALIDOS = {"impresion", "operativo"}
 
@@ -97,9 +97,13 @@ def suma_expresion(texto) -> Decimal | None:
     return total.quantize(Decimal("0.01"))
 
 
-def _expr_y_costo(fila: dict) -> tuple[str, Decimal]:
-    """Normaliza el par (cuenta escrita, total). El total lo manda la cuenta."""
-    expr = (str(fila.get("costo_expr") or "")).strip()[:MAX_EXPR]
+def _expr_y_costo(fila: dict, clave: str = "costo") -> tuple[str, Decimal]:
+    """Normaliza el par (cuenta escrita, total). El total lo manda la cuenta.
+
+    `clave` permite reusar la regla en otros campos que también aceptan cuenta
+    (`costo_unitario`, `impresion_costo` de las escalas de volumen).
+    """
+    expr = (str(fila.get(f"{clave}_expr") or "")).strip()[:MAX_EXPR]
     # Sin operadores no es una cuenta, es un número: no vale la pena conservarla.
     if expr and not any(c in _SIGNOS + _MULT for c in expr[1:]):
         expr = ""
@@ -108,7 +112,21 @@ def _expr_y_costo(fila: dict) -> tuple[str, Decimal]:
         if total is not None:
             return expr, total
         expr = ""  # cuenta ilegible: se descarta y manda el número
-    return expr, _to_decimal(fila.get("costo"))
+    return expr, _to_decimal(fila.get(clave))
+
+
+def _expr_y_costo_opcional(fila: dict, clave: str) -> tuple[str, Decimal | None]:
+    """Igual que `_expr_y_costo`, pero **vacío devuelve None**.
+
+    Es la semántica de las escalas de volumen: un campo en blanco HEREDA de la
+    Opción A, mientras que un 0 escrito es un cero de verdad («esta escala no
+    lleva impresión»). Por eso no se puede usar el 0 como centinela.
+    """
+    crudo = fila.get(clave)
+    expr_crudo = str(fila.get(f"{clave}_expr") or "").strip()
+    if not expr_crudo and (crudo is None or str(crudo).strip() == ""):
+        return "", None
+    return _expr_y_costo(fila, clave)
 
 
 def procesos_normalizados(procesos_json: str | None) -> list[dict] | None:
@@ -263,6 +281,135 @@ def ventas_normalizadas(ventas_json: str | None) -> list[dict] | None:
         deseados.append({"descripcion": descripcion, "cantidad": cantidad,
                          "precio_unitario": precio})
     return deseados
+
+
+def _entero(valor, *, minimo: int, default: int) -> int:
+    try:
+        n = int(valor)
+    except (TypeError, ValueError):
+        return default
+    return max(minimo, min(n, 1_000_000))
+
+
+def escalas_normalizadas(escalas_json: str | None) -> list[dict] | None:
+    """Valida el JSON de escalas de volumen y devuelve la lista deseada.
+
+    `None` = no toques nada (sin JSON o ilegible). Fuente única de las reglas,
+    compartida por la línea viva y la foto por versión.
+
+    Formato esperado: lista de objetos
+      {"cantidad": int, "merma": int,
+       "precio_unitario": número|"", "costo_unitario": número|"",
+       "costo_unitario_expr": str, "impresion_costo": número|"",
+       "impresion_costo_expr": str, "impresion_por_pieza": bool,
+       "extras": [{"costo": número, "costo_expr": str, "por_pieza": bool}],
+       "activa": bool, "visible_pdf": bool}
+
+    Dos invariantes que se imponen aquí y no en el front:
+
+    - **Vacío hereda, 0 es cero** (ver `_expr_y_costo_opcional`).
+    - **Una sola activa**: si el JSON trae varias, gana la primera. La base
+      además lo garantiza con un `UniqueConstraint` parcial.
+    """
+    if escalas_json is None:
+        return None
+    try:
+        data = json.loads(escalas_json or "[]")
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, list):
+        return None
+
+    deseados: list[dict] = []
+    ya_hay_activa = False
+    for fila in data[:MAX_ESCALAS]:
+        if not isinstance(fila, dict):
+            continue
+        precio_expr, precio = _expr_y_costo_opcional(fila, "precio_unitario")
+        costo_expr, costo = _expr_y_costo_opcional(fila, "costo_unitario")
+        imp_expr, imp_costo = _expr_y_costo_opcional(fila, "impresion_costo")
+        extras = []
+        for extra in (fila.get("extras") or [])[:MAX_EXTRAS]:
+            if not isinstance(extra, dict):
+                continue
+            e_expr, e_costo = _expr_y_costo(extra)
+            if e_costo == 0:
+                continue          # un extra en cero no aporta nada
+            extras.append({"costo": str(e_costo), "costo_expr": e_expr,
+                           "por_pieza": bool(extra.get("por_pieza"))})
+
+        cantidad_cruda = fila.get("cantidad")
+        vacia = (
+            (cantidad_cruda is None or str(cantidad_cruda).strip() in ("", "0"))
+            and precio is None and costo is None and imp_costo is None and not extras
+        )
+        if vacia:
+            continue              # fila que se agregó y nunca se llenó
+
+        activa = bool(fila.get("activa")) and not ya_hay_activa
+        if activa:
+            ya_hay_activa = True
+        deseados.append({
+            "cantidad": _entero(cantidad_cruda, minimo=1, default=1),
+            "merma": _entero(fila.get("merma"), minimo=0, default=0),
+            # El precio no acepta cuenta hoy (el campo es numérico); se conserva
+            # el par por simetría con el costo, que sí.
+            "precio_unitario": precio,
+            "costo_unitario": costo,
+            "costo_unitario_expr": costo_expr,
+            "impresion_costo": imp_costo,
+            "impresion_costo_expr": imp_expr,
+            "impresion_por_pieza": bool(fila.get("impresion_por_pieza")),
+            "extras_json": extras,
+            "activa": activa,
+            # Default TRUE: una escala nace visible, como en el render.
+            "visible_pdf": bool(fila.get("visible_pdf", True)),
+        })
+        del precio_expr           # el precio no guarda su cuenta (campo numérico)
+    return deseados
+
+
+def sincronizar_escalas(producto, escalas_json: str | None) -> None:
+    """Reemplaza las escalas de volumen del producto con las del JSON.
+
+    Reconciliación en sitio por orden de aparición, como los procesos de venta.
+    **Primero se apaga toda `activa`**: el `UniqueConstraint` parcial rechazaría
+    un momento intermedio con dos activas (pasar la activa de la B a la C).
+    """
+    from .models import ProyectoProductoEscala
+
+    deseados = escalas_normalizadas(escalas_json)
+    if deseados is None:
+        return
+
+    existentes = list(producto.escalas.all().order_by("orden", "creado_en"))
+    if existentes:
+        producto.escalas.update(activa=False)
+
+    activa_pk = None
+    conservados = set()
+    for orden, d in enumerate(deseados):
+        campos = {k: v for k, v in d.items() if k != "activa"}
+        if orden < len(existentes):
+            e = existentes[orden]
+            e.orden = orden
+            e.activa = False
+            for campo, valor in campos.items():
+                setattr(e, campo, valor)
+            e.save()
+            conservados.add(e.pk)
+        else:
+            e = ProyectoProductoEscala.objects.create(
+                producto=producto, orden=orden, activa=False, **campos)
+        if d["activa"]:
+            activa_pk = e.pk
+
+    for e in existentes:
+        if e.pk not in conservados:
+            e.delete()
+
+    if activa_pk is not None:
+        ProyectoProductoEscala.objects.filter(pk=activa_pk).update(activa=True)
 
 
 def sincronizar_ventas(producto, ventas_json: str | None) -> None:

@@ -1,11 +1,17 @@
 from .actividad import TIPOS_ACTIVIDAD, ActividadProyecto  # noqa: F401
 from .asignacion import ROLES_PROYECTO, ProyectoAsignacion  # noqa: F401
+from .escala import (  # noqa: F401
+    MAX_ESCALAS,
+    MAX_EXTRAS,
+    ProyectoProductoEscala,
+)
 from .estado import (  # noqa: F401
     COLORES_SUGERIDOS,
     ESTADOS_BASE,
     HEX_COLOR,
     EstadoProyecto,
     slugs_con_compromiso_visible,
+    slugs_en_proceso_en_adelante,
 )
 from .motivo_cancelacion import (  # noqa: F401
     MOTIVOS_BASE,
