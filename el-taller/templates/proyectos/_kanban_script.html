@@ -16,10 +16,13 @@
         if (!r || !r.headers) return;
         try {
             var trig = JSON.parse(r.headers.get('HX-Trigger') || '{}');
-            if (trig.pedirMotivoCancelacion) {
-                document.body.dispatchEvent(new CustomEvent(
-                    'pedirMotivoCancelacion', { detail: trig.pedirMotivoCancelacion }));
-            }
+            // Los dos avisos que puede mandar `cambiar_estado`: el motivo de
+            // cancelación y (LC 2026-08-17) el «¿aprobar la cotización?».
+            ['pedirMotivoCancelacion', 'pedirAprobarCotizacion'].forEach(function (ev) {
+                if (trig[ev]) {
+                    document.body.dispatchEvent(new CustomEvent(ev, { detail: trig[ev] }));
+                }
+            });
         } catch (_) { /* sin cabecera o mal formada: no pasa nada */ }
     });
 

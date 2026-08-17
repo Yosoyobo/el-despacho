@@ -1,0 +1,33 @@
+{% comment %}«¿Pasar la cotización a Aprobada?» (LC 2026-08-17, Oscar). Sale
+cuando el proyecto entra a producción y su cotización sigue en un paso anterior:
+si el taller ya está trabajando, debería estar aprobada.
+
+Lo pide el listener de `base.html` al recibir `HX-Trigger: pedirAprobarCotizacion`
+desde `cambiar_estado`, así que llega por HTMX al `#modal-slot` (patrón Wave 5) y
+no necesita envoltorio propio. El botón reusa `proyectos-cotizacion-estado`: al
+aprobar, si algún producto sigue ofreciendo varias cantidades, esa misma vista
+encadena el modal de «¿con cuál quedó?».{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <p class="font-mono text-xs uppercase tracking-wider text-brand-600 dark:text-brand-400">Cotización v{{ cot.version }} · {{ estado_actual_label }}</p>
+            <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">¿Pasar la cotización a «{{ aprobada_label }}»?</h2>
+        </header>
+        <div class="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">
+            El proyecto ya entró a producción, pero su cotización sigue en
+            «{{ estado_actual_label }}». Si el cliente ya dio el visto bueno,
+            pásala a «{{ aprobada_label }}» para que el tablero y la cobranza
+            reflejen dónde está de verdad.
+        </div>
+        <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <button type="button" data-modal-slot-close class="btn-secundario">Ahora no</button>
+            <button type="button"
+                    hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk %}"
+                    hx-vals='{"estado": "aprobada", "cot_pk": "{{ cot.pk }}"}'
+                    hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
+                    hx-swap="outerHTML"
+                    hx-on::after-request="var m=document.getElementById('modal-slot'); if (m && !m.querySelector('form')) m.innerHTML='';"
+                    class="btn-primario">Sí, aprobarla</button>
+        </footer>
+    </div>
+</div>
