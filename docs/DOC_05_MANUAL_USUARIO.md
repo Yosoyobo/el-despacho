@@ -3699,6 +3699,10 @@ La página es **editable directo** (los cambios se guardan solos; verás
       volumen, no el producto.
     - Con la **✕** de la sub-fila la quitas; si era la que calculaba, el dinero
       vuelve a la primera opción.
+    - **Con El Chalán:** las escalas se capturan **a mano** en esta tarjeta. El
+      Chalán todavía no las agrega ni las cambia — igual que la impresión y los
+      procesos de producción. Sí puede crearte el producto y la línea del
+      proyecto; las cantidades alternativas las pones tú.
   - **Ponerle otro nombre en este proyecto:** junto a «Producto» hay un botón
     chico de **etiqueta**. Al picarlo aparece un campo con el nombre del
     catálogo para que lo cambies por el que ve el cliente — compras «TShirt
