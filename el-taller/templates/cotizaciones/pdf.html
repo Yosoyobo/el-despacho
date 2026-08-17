@@ -74,9 +74,14 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
     border-radius: 8px; padding: 7px 14px; border: 1px solid transparent; }
   .lc-btn { background: #465fff; color: #ffffff; font-weight: 600; }
   .lc-btn-sec { background: transparent; color: #e5e7eb; border-color: #4b5563; }
+  /* Los márgenes de la hoja ESPEJAN los del documento real (medio inch arriba,
+     0.6 abajo, una pulgada a los lados). Viven en
+     `services._MARGEN_*_PT`: si allá cambian, aquí también, o la vista previa
+     deja de parecerse al PDF. */
   .lc-hoja { background: #ffffff; width: 8.5in; max-width: 100%; box-sizing: border-box;
-    margin: 24px auto; padding: 1in; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
-  @media (max-width: 900px) { .lc-hoja { padding: 0.5in; margin: 12px auto; } }
+    margin: 24px auto; padding: 0.5in 1in 0.6in; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .lc-pie { margin: 0.35in 0 0; text-align: center; font-size: 9pt; color: #666666; }
+  @media (max-width: 900px) { .lc-hoja { padding: 0.4in 0.5in 0.5in; margin: 12px auto; } }
   /* Al imprimir, el margen lo pone la HOJA y no la página: con `@page {
      margin: 0 }` el navegador deja de estampar su encabezado y su pie con la
      URL y la fecha (Oscar 2026-07-28, punto 6a). */
@@ -84,7 +89,7 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   @media print {
     body { background: #ffffff; }
     .lc-barra { display: none; }
-    .lc-hoja { width: auto; margin: 0; padding: 0.8in; box-shadow: none; }
+    .lc-hoja { width: auto; margin: 0; padding: 0.5in 0.8in 0.6in; box-shadow: none; }
   }
 </style>
 {% endif %}
@@ -208,7 +213,11 @@ ratón/trackpad.{% endcomment %}
         {{ cot.fecha_emision|date:"j" }} {{ cot.fecha_emision|date:"F"|capfirst }} {{ cot.fecha_emision|date:"Y" }}
       </td>
       <td style="border:none; width:34%; vertical-align:top;">
-        {% if logo_url %}<p align="center" style="margin:0; text-align:center;"><img src="{{ logo_url }}" alt="Learning Center" style="width:48pt; height:48pt;"></p>{% endif %}
+        {% comment %}LC 2026-08-17 (Oscar, punto 1 del render): el logotipo crece
+        un 5% (48 → 50pt) para que tenga la presencia que tiene en el formato de
+        referencia. Va con ancho y alto FIJOS por la misma razón que las fotos de
+        producto: el convertidor hace caso a los atributos.{% endcomment %}
+        {% if logo_url %}<p align="center" style="margin:0; text-align:center;"><img src="{{ logo_url }}" alt="Learning Center" width="50" height="50" style="width:50pt; height:50pt;"></p>{% endif %}
       </td>
       <td style="border:none; width:33%; vertical-align:top; text-align:right;">
         {{ cot.cliente.razon_social|upper }}
@@ -354,7 +363,7 @@ ratón/trackpad.{% endcomment %}
       <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:19%; text-align:right; font-style:italic;">P. Unitario</td>
       <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:19%; text-align:right; font-style:italic;">Subtotal</td>
     </tr>
-    {% for it in items %}
+    {% for it in items_desglose %}
     <tr>
       <td style="border:1px solid #cccccc; padding:1pt 5pt;">&nbsp;</td>
       <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
@@ -436,6 +445,10 @@ ratón/trackpad.{% endcomment %}
   <div style="font-size:10pt; white-space:pre-line;">{{ cot.terminos }}</div>
   {% endif %}
 
-{% if preview %}</div>{% endif %}
+{% comment %}El pie con el «1/1» NO va en el HTML: en el PDF vive en el pie real
+del documento, dentro del margen inferior, para que no le quite espacio al
+contenido (se pone por la API de Documentos, ver `_ajustar_pagina`). Aquí se
+pinta sólo en la vista previa, para que se vea lo que va a llevar el PDF.{% endcomment %}
+{% if preview %}<p class="lc-pie">{{ pie_documento }}</p></div>{% endif %}
 </body>
 </html>

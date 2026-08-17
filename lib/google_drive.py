@@ -511,6 +511,55 @@ class GoogleDriveWrapper:
 
     # -- Paginación del documento ------------------------------------------
 
+    def _ajustar_pagina(self, doc_id: str, pagina: dict) -> bool:
+        """Márgenes de la hoja y pie de página fijo del documento.
+
+        **Por qué por API.** El PDF lo pagina Google con los márgenes por
+        default del Doc (una pulgada por lado); el `@page` del HTML sólo afecta
+        la vista previa del navegador. Lo único que los mueve de verdad es
+        `updateDocumentStyle`, después de la conversión.
+
+        El pie va en el PIE REAL del documento —dentro del margen inferior—, así
+        que no le quita ni un punto al área de contenido. Es **texto literal**:
+        la API de Documentos no tiene petición para insertar el campo automático
+        de número de página (no existe `insertAutoText`), así que un número que
+        avance no es posible por esta vía.
+
+        Dos lotes porque el `footerId` sólo se conoce en la respuesta del
+        `createFooter`, y una petición no puede referirse a la respuesta de otra
+        del mismo lote. Best-effort: cualquier fallo devuelve False y el PDF se
+        exporta con los márgenes de siempre. Nunca lanza.
+        """
+        try:
+            peticiones = _peticiones_pagina(pagina)
+            texto_pie = str(pagina.get("pie_texto") or "").strip()
+            if texto_pie:
+                peticiones.append({"createFooter": {"type": "DEFAULT"}})
+            if not peticiones:
+                return False
+            with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
+                resp = cli.post(
+                    f"{DOCS_BASE}/{doc_id}:batchUpdate",
+                    headers=self._headers(),
+                    json={"requests": peticiones},
+                )
+                resp.raise_for_status()
+                if not texto_pie:
+                    return True
+                pie_id = _id_del_pie(resp.json())
+                if not pie_id:
+                    # Los márgenes sí quedaron; sólo se perdió el pie.
+                    return True
+                resp = cli.post(
+                    f"{DOCS_BASE}/{doc_id}:batchUpdate",
+                    headers=self._headers(),
+                    json={"requests": _peticiones_texto_pie(pie_id, texto_pie)},
+                )
+                resp.raise_for_status()
+            return True
+        except Exception:  # noqa: BLE001 — sin API de Docs el PDF sale igual
+            return False
+
     def _endurecer_paginacion(self, doc_id: str) -> bool:
         """Marca TODAS las filas de tabla del Doc como «no se parten entre
         páginas» (`TableRowStyle.preventOverflow`).
@@ -555,11 +604,17 @@ class GoogleDriveWrapper:
             return False
 
     def html_a_pdf(
-        self, *, html: str, nombre: str, carpeta_id: str | None = None
+        self, *, html: str, nombre: str, carpeta_id: str | None = None,
+        pagina: dict | None = None,
     ) -> dict[str, Any]:
         """Genera un PDF a partir de HTML usando Google (regla §8: NO librerías
         de PDF locales). Flujo: HTML → Google Doc nativo (conversión) → export
         PDF → sube el PDF como archivo real → borra el Doc temporal.
+
+        `pagina` (opcional) ajusta los márgenes de la hoja y pone un pie fijo,
+        ver `_ajustar_pagina`. Sin él, el documento sale con los márgenes por
+        default de Google — el comportamiento de siempre, que es el que
+        conservan los documentos que no lo pidan.
 
         Devuelve `{id, name, webViewLink, pdf_bytes}` — `pdf_bytes` para servir
         la descarga inmediata; `id`/`webViewLink` para persistir el enlace.
@@ -569,6 +624,8 @@ class GoogleDriveWrapper:
         nombre_pdf = nombre if nombre.lower().endswith(".pdf") else f"{nombre}.pdf"
         doc_id = self._subir_html_como_gdoc(html, f"_tmp_{nombre}", carpeta_id)
         try:
+            if pagina:
+                self._ajustar_pagina(doc_id, pagina)
             self._endurecer_paginacion(doc_id)
             pdf_bytes = self.exportar(doc_id, MIME_PDF)
         finally:
@@ -578,6 +635,88 @@ class GoogleDriveWrapper:
         meta = self._subir_contenido(pdf_bytes, nombre_pdf, carpeta_id, MIME_PDF)
         meta["pdf_bytes"] = pdf_bytes
         return meta
+
+
+def _pt(valor) -> dict:
+    """`Dimension` de la API de Documentos, en puntos."""
+    return {"magnitude": float(valor), "unit": "PT"}
+
+
+def _peticiones_pagina(pagina: dict) -> list[dict]:
+    """Petición `updateDocumentStyle` con los márgenes de la hoja.
+
+    Función pura (testeable sin red). `pagina` acepta
+    `margen_superior_pt`, `margen_inferior_pt` y `margen_pie_pt`; las que no
+    vengan se dejan como estén. Devuelve `[]` si no hay nada que cambiar.
+
+    `useCustomHeaderFooterMargins` va en el mismo lote a propósito: sin él,
+    Google IGNORA `marginFooter` y usa el del editor — el pie se despegaría del
+    borde y podría chocar con el contenido.
+    """
+    estilo: dict = {}
+    campos: list[str] = []
+    for clave, campo in (
+        ("margen_superior_pt", "marginTop"),
+        ("margen_inferior_pt", "marginBottom"),
+        ("margen_pie_pt", "marginFooter"),
+    ):
+        valor = pagina.get(clave)
+        if valor is None:
+            continue
+        estilo[campo] = _pt(valor)
+        campos.append(campo)
+    if not campos:
+        return []
+    if "marginFooter" in campos:
+        estilo["useCustomHeaderFooterMargins"] = True
+        campos.append("useCustomHeaderFooterMargins")
+    return [{
+        "updateDocumentStyle": {
+            "documentStyle": estilo,
+            "fields": ",".join(campos),
+        },
+    }]
+
+
+def _id_del_pie(respuesta: dict) -> str:
+    """`footerId` de la respuesta del `createFooter`. "" si no viene."""
+    for reply in (respuesta or {}).get("replies") or []:
+        if isinstance(reply, dict):
+            pie = reply.get("createFooter")
+            if isinstance(pie, dict) and pie.get("footerId"):
+                return str(pie["footerId"])
+    return ""
+
+
+def _peticiones_texto_pie(pie_id: str, texto: str) -> list[dict]:
+    """Peticiones para escribir el pie: texto centrado, chico y gris.
+
+    Se inserta con `endOfSegmentLocation` y no con un índice: en un segmento
+    recién creado el índice 0 es ambiguo (en el cuerpo del documento ni siquiera
+    es válido), mientras que «al final del segmento» siempre lo es.
+    """
+    rango = {"segmentId": pie_id, "startIndex": 0, "endIndex": len(texto)}
+    return [
+        {"insertText": {
+            "endOfSegmentLocation": {"segmentId": pie_id},
+            "text": texto,
+        }},
+        {"updateParagraphStyle": {
+            "range": rango,
+            "paragraphStyle": {"alignment": "CENTER"},
+            "fields": "alignment",
+        }},
+        {"updateTextStyle": {
+            "range": rango,
+            "textStyle": {
+                "fontSize": _pt(9),
+                "foregroundColor": {"color": {"rgbColor": {
+                    "red": 0.4, "green": 0.4, "blue": 0.4,
+                }}},
+            },
+            "fields": "fontSize,foregroundColor",
+        }},
+    ]
 
 
 def _peticiones_prevent_overflow(contenido: list) -> list[dict]:
