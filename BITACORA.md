@@ -9570,7 +9570,7 @@ verificaba el modal.
 
 ## Tests
 
-40 nuevos en `tests/taller/test_ajustes_ago17.py`, organizados por capa (modelo ·
+46 nuevos en `tests/taller/test_ajustes_ago17.py`, organizados por capa (modelo ·
 sanitizador · cotización · versión · tarjeta y JS · modales · documento). Dos
 merecen mención:
 

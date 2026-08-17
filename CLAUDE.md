@@ -5139,7 +5139,7 @@ sumó a media sesión.
   literal**: se verificó contra la referencia oficial que **la API de Documentos
   no tiene petición para insertar AutoText**, así que un número que avance no es
   posible por esta vía.
-- **40 tests nuevos** (`tests/taller/test_ajustes_ago17.py`). Cazaron un bug
+- **46 tests nuevos** (`tests/taller/test_ajustes_ago17.py`). Cazaron un bug
   propio antes del commit: `opciones_documento` comparaba la escala activa por
   **identidad** (`e is not activa`) y sin prefetch `escalas.all()` devuelve otro
   objeto Python para la misma fila, así que la activa se imprimía dos veces →
