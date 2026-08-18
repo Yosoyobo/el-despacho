@@ -5,6 +5,53 @@
 
 ---
 
+## Novedades — Cotizar el mismo producto a varias cantidades, y el documento con más aire (17 de agosto de 2026)
+
+**Un producto, varias cantidades para que el cliente escoja**
+
+- En la tarjeta de un producto, junto a «Cant.», hay un **+ azul** que agrega
+  otra cantidad del mismo producto: la **Opción B**, luego la C, la D… Cada una
+  tiene su propia cantidad, merma, precio, costo y costo de impresión, y su
+  propio renglón de costo de producción, monto, utilidad y margen.
+- Lo que dejes **en blanco se toma de la primera opción**. Si la B se vende a
+  otro precio pero se produce igual, sólo escribes el precio. Ojo: escribir un
+  **0** no es lo mismo que dejarlo vacío — un 0 quiere decir «esta opción no
+  cuesta eso».
+- El producto, su nombre, su descripción, su foto, su proveedor y sus cobros
+  extra (Ponchado, arte…) son los mismos para todas las opciones. Una escala
+  cambia el volumen, no el producto.
+- El **círculo** de cada opción dice cuál calcula el proyecto: sólo una a la vez,
+  y es la que se usa para el monto, el costo, el margen y los gastos. El **ojo**
+  dice si esa opción se imprime en la cotización.
+- En la cotización, las opciones salen como **renglones extra en la tablita de
+  su producto** («70 pz a 195», «100 a 175», «200 a 160»), y el total de abajo
+  sigue siendo el de la opción marcada. Las alternativas no se suman.
+- Cuando pasas la cotización a **Aprobada**, si algún producto sigue ofreciendo
+  varias cantidades, el sistema pregunta **con cuál quedó**: la que escoges pasa
+  a ser la que cuenta y las otras salen del documento (no se borran, por si hay
+  que volver a ofrecerlas).
+- El botón **⧉ Duplicar** de la tarjeta se lleva también las opciones, y cada
+  versión de la cotización guarda las que tenía ese día en su pestaña.
+
+**Cuando el proyecto entra a producción, te recuerda aprobar la cotización**
+
+- Al mover un proyecto a «En proceso de diseño» o más adelante, si su cotización
+  sigue en un paso anterior, sale un aviso para pasarla a **Aprobada**. Si el
+  taller ya está trabajando, la cotización debería estar aprobada. Puedes decir
+  «Ahora no».
+
+**El documento de la cotización, con más aire y numerado**
+
+- El encabezado (fecha, logotipo y cliente) **sube**: queda casi al borde de la
+  hoja, como en el formato que armábamos a mano. El logotipo también creció un
+  poco.
+- Cabe **~10% más contenido por hoja**, así que es más difícil que el documento
+  se vaya a una página de más por un par de renglones.
+- Abajo, centrado, aparece **1/1**. Va en el pie de la hoja, así que no le quita
+  espacio a lo que cotizas.
+
+---
+
 ## Novedades — El arrastre vuelve en la computadora, «✓ Guardado» en todas las páginas y Productos se ordena (13 de agosto de 2026)
 
 **Arrastrar volvió a servir en la computadora**
@@ -3632,6 +3679,30 @@ La página es **editable directo** (los cambios se guardan solos; verás
     deja justo debajo.
   - Categoría · Producto · Cantidad · Merma · Precio unitario, y al final el
     botón **verde «+»** de los procesos que se le cobran al cliente (ver abajo).
+  - **Cotizar el mismo producto a varias cantidades (escalas de volumen):**
+    junto a «Cant.» hay un **+ azul**. Cada vez que lo picas se agrega otra
+    cantidad del mismo producto —la **Opción B**, la C, la D…— como una sub-fila
+    con su propia cantidad, merma, precio unitario, costo unitario y costo de
+    impresión, y con su propio renglón de costo de producción, monto, utilidad y
+    margen. Sirve para ofrecerle al cliente «70 pz a 195, 100 a 175, 200 a 160».
+    - Lo que dejes **en blanco se hereda de la primera opción**; escribir un
+      **0** es distinto: quiere decir «esta opción no lleva ese costo».
+    - El **círculo** dice cuál calcula el proyecto: sólo una a la vez, y es la
+      que se usa para el monto, el costo, el margen, la cotización y los gastos.
+      El **ojo** dice si esa opción se imprime en la cotización (la que no se
+      imprime se ve tenue).
+    - El **+ chico** del final de la sub-fila agrega otro costo a esa opción, en
+      el mismo renglón. Hereda la descripción y el proveedor de la primera
+      opción — sólo cambia el monto.
+    - El producto, su nombre, su descripción, su foto, su proveedor y sus cobros
+      extra son los mismos para todas las opciones: una escala cambia el
+      volumen, no el producto.
+    - Con la **✕** de la sub-fila la quitas; si era la que calculaba, el dinero
+      vuelve a la primera opción.
+    - **Con El Chalán:** las escalas se capturan **a mano** en esta tarjeta. El
+      Chalán todavía no las agrega ni las cambia — igual que la impresión y los
+      procesos de producción. Sí puede crearte el producto y la línea del
+      proyecto; las cantidades alternativas las pones tú.
   - **Ponerle otro nombre en este proyecto:** junto a «Producto» hay un botón
     chico de **etiqueta**. Al picarlo aparece un campo con el nombre del
     catálogo para que lo cambies por el que ve el cliente — compras «TShirt
@@ -4206,6 +4277,13 @@ interlineado apretado (las notas del final también). El documento va **lo más
 apretado posible** —entre renglones, bajo el encabezado y dentro de las
 tablas— para que quepan más elementos por hoja.
 
+**Márgenes y pie.** El encabezado arranca casi al borde de la hoja (media
+pulgada arriba), como en el formato que se armaba a mano, y abajo queda menos
+margen: en total cabe **~10% más contenido por hoja**, así que es más difícil que
+el documento se vaya a una página de más por un par de renglones. Hasta abajo,
+centrado, va **1/1**; vive en el pie de la hoja, así que no le quita espacio a lo
+que cotizas.
+
 **Verlo y bajarlo:** «Ver» abre la **vista previa** —el documento como una hoja
 con sus márgenes— con un botón **«⬇ Bajar PDF»** hasta arriba (y otro para
 imprimir). El archivo se llama siempre igual:
@@ -4234,6 +4312,21 @@ Bandanas Rojas» —el nombre del producto, siempre en plural—, porque en esos
 proyectos el producto *es* el proyecto. Con **dos o más** vuelve a
 «Producción de elementos para proyecto 'Nombre del proyecto'». Si el plural
 sale raro (pasa con nombres en inglés), lo corriges escribiéndolo a mano.
+
+**Cuando un producto se cotiza a varias cantidades** (las escalas de volumen de
+la tarjeta del proyecto), las opciones con el **ojo** prendido salen como
+**renglones extra dentro de la tablita de montos de ese producto** —«70 pz a
+195», «100 a 175», «200 a 160»— para que el cliente lea el bloque completo de un
+tirón. El **Subtotal, los impuestos y el Total de abajo son los de la opción
+marcada**: las alternativas se imprimen pero **no se suman**. En el «Desglose de
+Elementos» no aparecen, porque ahí va lo que se está comprando.
+
+Al pasar la cotización a **Aprobada**, si algún producto sigue ofreciendo varias
+cantidades, el sistema pregunta **con cuál quedó**. La que escoges pasa a ser la
+que calcula el proyecto y las otras salen del documento; **no se borran**, por si
+hay que volver a ofrecerlas. Y si mueves el proyecto a «En proceso de diseño» o
+más adelante con la cotización en un paso anterior, sale un aviso para pasarla a
+Aprobada — si el taller ya está trabajando, debería estarlo.
 
 En el recuadro **Documento** (a la derecha, en la página de la cotización):
 

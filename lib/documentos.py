@@ -25,11 +25,17 @@ class ResultadoPdf:
     error: str = ""
 
 
-def generar_pdf(*, html: str, nombre: str, subcarpeta: str | None = None) -> ResultadoPdf:
+def generar_pdf(
+    *, html: str, nombre: str, subcarpeta: str | None = None,
+    pagina: dict | None = None,
+) -> ResultadoPdf:
     """Genera un PDF desde `html` y lo guarda en Drive. Fallback gracioso.
 
     `nombre` es el nombre del archivo (sin requerir `.pdf`). `subcarpeta`
     organiza el archivo bajo la carpeta raíz (p.ej. "Cotizaciones").
+    `pagina` (opcional) ajusta márgenes y pie del documento — ver
+    `lib.google_drive.GoogleDriveWrapper._ajustar_pagina`. Quien no lo manda
+    conserva los márgenes por default de Google.
     """
     from lib.google_drive import NoConfiguradoError, drive
 
@@ -40,7 +46,8 @@ def generar_pdf(*, html: str, nombre: str, subcarpeta: str | None = None) -> Res
         )
     try:
         carpeta_id = drive.obtener_o_crear_subcarpeta(subcarpeta) if subcarpeta else None
-        meta = drive.html_a_pdf(html=html, nombre=nombre, carpeta_id=carpeta_id)
+        meta = drive.html_a_pdf(
+            html=html, nombre=nombre, carpeta_id=carpeta_id, pagina=pagina)
     except NoConfiguradoError as exc:
         return ResultadoPdf(ok=False, error=str(exc))
     except Exception as exc:  # noqa: BLE001 — fallback gracioso, no tumbar el flujo

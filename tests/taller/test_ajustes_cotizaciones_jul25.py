@@ -512,8 +512,10 @@ def test_pdf_sin_lineas_encabezado_gris_logo_chico_y_notas_al_pie(
     assert html.count("border:1px solid #cccccc") >= 8
     # (3) encabezados con fondo gris clarito
     assert html.count("background-color:#f2f2f2") >= 4
-    # (2) logo más chico
-    assert "width:48pt; height:48pt" in html
+    # (2) logo chico, con medida FIJA (no se le deja el escalado al convertidor).
+    # LC 2026-08-17: creció un 5% (48 → 50pt) con el render de referencia; lo que
+    # se protege es que siga siendo chico y con las dos medidas declaradas.
+    assert "width:50pt; height:50pt" in html
     # (4) notas empujadas al pie. Oscar 2026-07-25 (segunda ronda): el hueco
     # dejó de ser fijo (108pt) y ahora se calcula según lo que quepa en la hoja.
     assert "margin-top:108pt" not in html

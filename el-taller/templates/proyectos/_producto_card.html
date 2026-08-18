@@ -30,7 +30,12 @@ Render fino LC 2026-07-28 (Oscar):
 <div class="producto-fila rounded-xl border-2 border-white p-3 shadow-theme-sm transition dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card data-arr-item="{{ f.instance.pk|default:'' }}">
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
-    <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.variacion }}{{ f.orden }}{{ f.imagen_quitar }}</div>
+    {% comment %}LC 2026-08-17: `visible_pdf` (el ojo de la Opción A) se rendea
+    SIEMPRE — aquí escondido cuando no hay escalas, y como ojo en el pie cuando sí.
+    Un checkbox que no viaja en el POST se guarda como False, así que si sólo se
+    pintara con escalas, el autoguardado apagaría del documento a todas las líneas
+    normales. Las dos ramas son excluyentes: el campo aparece una sola vez.{% endcomment %}
+    <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.escalas_json }}{{ f.variacion }}{{ f.orden }}{{ f.imagen_quitar }}{% if not f.escalas %}{{ f.visible_pdf }}{% endif %}</div>
 
     {% comment %}── Cabecera: asa · resumen (siempre visible) · foto en la esquina ──
     LC 2026-07-29 (Oscar): la barra COMPLETA despliega la tarjeta
@@ -133,7 +138,11 @@ Render fino LC 2026-07-28 (Oscar):
         Cant. y Merma cómodas (no 72px pelados), Precio unitario más ancho y
         Categoría cediéndoles el espacio. Se conservan los `minmax` para que en
         pantallas medianas encojan en vez de encimarse (el bug de Ago12).{% endcomment %}
-        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.85fr_1.6fr_minmax(96px,0.7fr)_minmax(96px,0.7fr)_minmax(104px,0.62fr)_40px] md:items-end">
+        {% comment %}LC 2026-08-17 (Oscar, render b): dos controles nuevos en esta
+        fila — el RADIO (columna `auto` entre Producto y Cant., cuál opción calcula
+        el dinero) y el ⊕ azul junto a la etiqueta «Cant.», que agrega una escala
+        de volumen (Opción B, C…). Ver el bloque `[data-escalas]` más abajo.{% endcomment %}
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[0.85fr_1.6fr_auto_minmax(96px,0.7fr)_minmax(96px,0.7fr)_minmax(104px,0.62fr)_40px] md:items-end">
             <div>
                 <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Categoría</label>
                 <select class="cat-filtro w-full" data-cat-filtro data-select-buscable>
@@ -162,8 +171,21 @@ Render fino LC 2026-07-28 (Oscar):
                 </div>
                 {{ f.servicio }}
             </div>
+            {% comment %}El radio de la Opción A. `name` con el prefijo del form
+            para que cada tarjeta sea su propio grupo; no es un campo del formset
+            (las escalas viajan en `escalas_json`), así que Django lo ignora.{% endcomment %}
+            <div class="flex items-center pb-2">
+                <input type="radio" name="opcion-{{ f.prefix }}" value="a" class="escala-radio h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30"
+                       data-escala-radio="a" {% if not f.escala_activa %}checked{% endif %}
+                       title="Esta cantidad es la que calcula el dinero del proyecto">
+            </div>
             <div class="min-w-0">
-                <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas a cobrar">Cant.</label>
+                <div class="mb-1 flex items-center gap-1">
+                    <label class="block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas a cobrar">Cant.</label>
+                    <button type="button" class="escala-add inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold leading-none text-white transition hover:bg-brand-600"
+                            title="Agrega otra cantidad para el mismo producto (Opción B, C…). El cliente escoge y sólo la marcada calcula el proyecto."
+                            aria-label="Agregar escala de volumen">+</button>
+                </div>
                 {{ f.cantidad }}
             </div>
             <div class="min-w-0">
@@ -319,12 +341,39 @@ Render fino LC 2026-07-28 (Oscar):
         {% comment %}LC 2026-08-04 (Oscar): «el texto "Costo prod. … · unit. …/pz ·
         …" debe de ser más grande» — de 11px a 12/14px (chico en móvil, donde se
         va a su propio renglón; text-sm de tablet en adelante).{% endcomment %}
-        <span class="order-last w-full min-w-0 text-xs text-gray-500 dark:text-gray-400 sm:order-none sm:w-auto sm:flex-1 sm:truncate sm:text-sm">Costo de producción: <span class="tabular-nums" data-costo-total>—</span> · Unitario <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span></span>
+        <span class="order-last w-full min-w-0 text-xs text-gray-500 dark:text-gray-400 sm:order-none sm:w-auto sm:flex-1 sm:truncate sm:text-sm">Costo de producción: <span class="tabular-nums" data-costo-total>—</span> · Unitario <span class="tabular-nums" data-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-success-600 dark:text-success-400" data-utilidad-pp>—</span>{% comment %}LC 2026-08-17 (render b): el OJO de la Opción A — si esta cantidad se
+        imprime en la cotización. Sólo aparece cuando hay escalas: con una sola opción,
+        esconderla dejaría al producto sin ningún renglón en el documento. CSS puro con
+        `peer`, sin JS.{% endcomment %}{% if f.escalas %} · <label class="inline-flex cursor-pointer items-center align-middle" title="Imprimir esta cantidad en la cotización">
+            {{ f.visible_pdf }}
+            <svg aria-hidden="true" class="h-4 w-4 text-gray-300 peer-checked:hidden dark:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke-linecap="round"/><line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round"/></svg>
+            <svg aria-hidden="true" class="hidden h-4 w-4 text-brand-500 peer-checked:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round"/><circle cx="12" cy="12" r="3"/></svg>
+        </label>{% endif %}</span>
         {% comment %}(g) MONTO arriba; debajo, la utilidad del producto en gris y su
         margen en verde.{% endcomment %}
         <div class="shrink-0 text-right">
             <span class="block tabular-nums text-gray-900 dark:text-gray-100"><span class="mr-1 text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Monto</span><span class="text-base font-semibold" data-monto>$0.00</span></span>
             <span class="block text-xs tabular-nums"><span class="text-gray-400 dark:text-gray-500" data-utilidad>—</span> <span class="font-semibold" data-margen>—</span></span>
+        </div>
+    </div>
+
+    {% comment %}── Escalas de volumen: Opción B, C… (LC 2026-08-17, render b) ──
+    Cada sub-fila es una cantidad alternativa del MISMO producto: sólo cambia
+    cuánto, cuánta merma, a cómo se vende, cuánto cuesta y cuánto cuesta
+    imprimirla. Producto, alias, descripción, foto, proveedor y procesos de venta
+    son los de la Opción A; los campos que se dejan vacíos **heredan** de ella (un
+    0 escrito es un cero de verdad, ver `models/escala.py`).
+
+    El radio dice cuál calcula el dinero del proyecto —sólo una, y lo garantiza un
+    constraint en la base—; el ojo, si esa opción se imprime en la cotización.
+
+    Sin escalas el recuadro no ocupa ni su hueco (`:has(.escala-fila)`), igual que
+    la lista de procesos de venta.{% endcomment %}
+    <div data-escalas class="mt-2 [&:not(:has(.escala-fila))]:hidden">
+        <div class="escala-lista space-y-2 border-t border-gray-200/70 pt-2 dark:border-gray-700/60">
+            {% for e in f.escalas %}
+            {% include "proyectos/_escala_fila.html" with e=e %}
+            {% endfor %}
         </div>
     </div>
     </div>

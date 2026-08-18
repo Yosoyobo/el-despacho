@@ -1,0 +1,63 @@
+{% load forms_helpers l10n %}
+{% comment %}
+Cuerpo del modal «¿con cuál cantidad quedó?» (LC 2026-08-17). Lo comparten el
+modal normal (`_modal_escalas.html`, patrón Wave 5) y el que se inyecta por OOB
+al aprobar la cotización (`_modal_escalas_oob.html`), para que la pregunta se vea
+igual por los dos caminos.
+
+Espera `proyecto` y `lineas` (los `ProyectoProducto` que hoy imprimen más de una
+cantidad). Por cada línea, un radio por opción — la ACTIVA viene marcada.
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <p class="font-mono text-xs uppercase tracking-wider text-success-600 dark:text-success-400">Cotización aprobada ✓</p>
+            <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">¿Con cuál cantidad quedó?</h2>
+        </header>
+        <form hx-post="{% url 'proyectos-escalas-elegir' proyecto.pk %}"
+              hx-target="#modal-slot" hx-swap="innerHTML">
+            {% csrf_token %}
+            <div class="max-h-[60vh] space-y-4 overflow-y-auto px-5 py-4">
+                <p class="text-sm text-gray-600 dark:text-gray-300">
+                    El cliente ya escogió, así que dejamos una sola por producto: ésa
+                    calcula el proyecto y es la única que sale en el documento. Las
+                    otras se conservan por si hay que volver a ofrecerlas.
+                </p>
+                {% for pp in lineas %}
+                <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                    <p class="mb-2 text-sm font-medium text-gray-800 dark:text-gray-100">{{ pp.nombre_visible }}</p>
+                    <div class="space-y-1.5">
+                        {% if pp.visible_pdf %}
+                        <label class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:hover:bg-white/[0.04] dark:has-[:checked]:bg-brand-500/15 dark:has-[:checked]:text-brand-300">
+                            <input type="radio" name="opcion-{{ pp.pk }}" value="a"
+                                   class="h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30"
+                                   {% if not pp.escala_activa %}checked{% endif %}>
+                            <span class="tabular-nums">{{ pp.cantidad|unlocalize }} pz</span>
+                            <span class="text-gray-400">·</span>
+                            <span class="tabular-nums">{{ pp.precio_propio|dinero }} c/u</span>
+                        </label>
+                        {% endif %}
+                        {% for e in pp.escalas.all %}
+                        {% if e.visible_pdf or e.activa %}
+                        <label class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:hover:bg-white/[0.04] dark:has-[:checked]:bg-brand-500/15 dark:has-[:checked]:text-brand-300">
+                            <input type="radio" name="opcion-{{ pp.pk }}" value="{{ e.pk }}"
+                                   class="h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30"
+                                   {% if e.activa %}checked{% endif %}>
+                            <span class="tabular-nums">{{ e.cantidad|unlocalize }} pz</span>
+                            <span class="text-gray-400">·</span>
+                            <span class="tabular-nums">{{ e.precio_efectivo|dinero }} c/u</span>
+                            <span class="ml-auto text-[11px] font-medium text-brand-500">Opción {{ e.letra }}</span>
+                        </label>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Ahora no</button>
+                <button type="submit" class="btn-primario">Dejar sólo ésas</button>
+            </footer>
+        </form>
+    </div>
+</div>

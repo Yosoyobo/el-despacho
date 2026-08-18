@@ -330,13 +330,15 @@ def test_el_boton_verde_es_un_mas_en_la_primera_fila():
     from pathlib import Path
     tpl = Path("el-taller/templates/proyectos/_producto_card.html").read_text(
         encoding="utf-8")
-    # Una sexta columna en la fila 1 (el «+», angosto) y Categoría cede espacio.
+    # El «+» es la ÚLTIMA columna de la fila 1, angosta y de ancho fijo.
     # R3 2026-08-04: los anchos se afinaron (labels e inputs más chicos), así que
     # el test fija la FORMA de la rejilla, no los px exactos. LC 2026-08-13: el
     # «+» pasó de 36 a 40px con las medidas del render — lo que se protege es que
     # siga siendo la ÚLTIMA columna y de ancho fijo y angosto, no el número.
+    # LC 2026-08-17: la fila ganó una columna `auto` para el RADIO de la opción
+    # (escalas de volumen), así que son 7 — el «+» sigue al final.
     fila1 = re.search(r"md:grid-cols-\[([^\]]+)\]", tpl).group(1).split("_")
-    assert len(fila1) == 6, fila1
+    assert len(fila1) == 7, fila1
     ancho_mas = re.fullmatch(r"(\d+)px", fila1[-1])
     assert ancho_mas and 28 <= int(ancho_mas.group(1)) <= 48, fila1
     # El botón quedó como un «+» grande, ya no «+ Proceso».

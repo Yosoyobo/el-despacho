@@ -9472,3 +9472,142 @@ de "poder encoger antes que encimarse" es la que no debe perderse.
 de un día y los anchos exactos de Cant./Merma. Los tres fijaban justamente el
 contrato que este sprint cambió a propósito — se ajustaron con su razón escrita al
 lado, no se borraron.
+
+---
+
+# S-Ajustes-Ago17 — Cotizar el mismo producto a varias cantidades, y el documento con más aire (2026-08-17, VERSION 2026.08.11)
+
+Ronda con cuatro archivos: dos de instrucciones (`a-instrucciones-tarjeta.md`,
+`c-instrucciones-cotizacionespdf.md`) y sus dos renders (`b-render-tarjeta.jpeg`,
+`d-render-cotizacionespdf`). Los nombres de las imágenes no viajaron en el
+adjunto — se aclararon a media sesión, no faltaba nada. Decisión de Oscar: **todo
+junto en un deploy**, commits separados por si algo se revierte.
+
+Cuatro definiciones por AskUserQuestion antes de escribir código: las escalas se
+imprimen como **renglones extra en la misma tabla de montos**; el total sigue
+siendo **sólo el de la opción activa**; el «+» de la sub-fila agrega **un costo
+pelón inline** (hereda descripción y proveedor); y el corte a una sola cantidad se
+pide con **modal al pasar la cotización a Aprobada**. En esa última Oscar sumó un
+pedido: **un modal que ofrezca pasar la cotización a Aprobada cuando el proyecto
+entre a producción**.
+
+## Lo que definió el diseño
+
+**El dinero ya estaba centralizado, y eso lo cambió todo.** Todo el proyecto lee
+`pp.subtotal_con_ventas` y `pp.costo_total_con_procesos` (propiedades del modelo),
+así que bastó separar **`*_propio`** (lo que trae la línea) de
+**`*_efectivo`/`*_efectiva`** (lo que de verdad cuenta, que puede venir de la
+escala activa) para que monto, costo, margen, egresos, la cotización y los chips
+del Kanban salieran bien **sin tocar a sus consumidores**. Lo que sí hubo que
+barrer fueron los ~10 lugares que leían `pp.cantidad + pp.merma` a pelo: ahí es
+donde un olvido habría cobrado el volumen equivocado a un proveedor.
+
+**Vacío ≠ 0.** El pedido decía «vacíos o en 0.00 heredan de la Opción A». Se
+implementó **vacío hereda, 0 escrito es cero**: un 0 es un valor legítimo («esta
+opción no lleva impresión») y usarlo de centinela habría hecho imposible
+capturarlo. Es la misma semántica que ya tenía `ProyectoProducto` con el catálogo,
+así que no hay dos reglas que recordar. `_expr_y_costo_opcional` es el único lugar
+donde vive.
+
+**La regla «una sola activa» vive en la BASE.** Un `UniqueConstraint` parcial
+(`fields=["producto"], condition=Q(activa=True)`) en lugar de confiar en el radio
+del navegador: dos activas harían que el monto del proyecto dependiera del orden
+de lectura. Consecuencia práctica que hubo que atender en el sincronizador: mover
+la activa de la B a la C **truena** si no se apagan todas primero, porque el
+momento intermedio tiene dos. Hay test de ese movimiento exacto.
+
+**Tabla aparte, no un campo `version`.** Igual que con `ProyectoProductoVersion`:
+`proyecto.productos` alimenta gastos, egresos, Contaduría y el documento; meter
+las alternativas ahí haría que todo eso contara doble.
+
+**En la cotización, la bandera nueva no era opcional.** `calcular_totales` suma
+**todas** las líneas, así que imprimir las alternativas como líneas normales
+duplicaría el total. De ahí `CotizacionItem.informativo`: se imprime, no suma. Y
+el «Desglose de Elementos» las excluye — si aparecieran, la lista no cuadraría con
+el subtotal que va justo abajo.
+
+**El snapshot de la versión guarda `*_propio`.** `fotografiar` usaba
+`precio_efectivo`/`costo_efectivo`, que ahora resuelven a través de la escala
+activa: la fila A de la pestaña habría salido con el precio de la B. Con una línea
+sin escalas los dos son idénticos, así que el cambio no altera nada histórico.
+
+## El PDF: los márgenes no salían de nosotros
+
+El `@page { margin: 0 }` del template sólo afecta la vista previa del navegador.
+El PDF lo pagina **Google**, con el margen por default del documento (una pulgada
+por lado) — de ahí el `_ALTO_UTIL_PT = 648` que ya estaba en el estimador. Lo
+único que los mueve es `updateDocumentStyle` por la **API de Documentos**, la
+misma plomería que ya se usaba para `preventOverflow`.
+
+Se pasó por parámetro (`html_a_pdf(..., pagina=)`) y no como cambio global:
+`html_a_pdf` también lo usan las facturas, y ahí nadie pidió mover nada.
+
+Números: **superior 0.5"** (el encabezado sube ~1.3 cm, como el render de
+referencia) y **inferior 0.6"** ⇒ útil 648 → **713pt, +10%**, que es exactamente
+el «10% más de área» del pedido. Los laterales no se tocan: el ancho del texto es
+el del render. Y el estimador **baja a la par** — la lección de Ago04-R2: si el
+documento crece y el estimador no, el hueco de las notas queda mal.
+
+**El «1/1» no puede avanzar.** Se verificó contra la referencia oficial: la API de
+Documentos **no tiene petición para insertar AutoText** (número de página
+automático). `createFooter` + `insertText` sólo escriben texto literal, así que el
+pie es fijo — en un documento de dos hojas ambas dirían «1/1». Se implementó así
+porque es lo que Oscar pidió y hoy prácticamente todas las cotizaciones son de una
+hoja; queda anotado como deuda visible. Lo que sí se garantizó es lo otro que
+pidió: el pie vive **dentro del margen inferior** (`marginFooter=20pt`), así que
+no le quita ni un punto al contenido. Sin `useCustomHeaderFooterMargins` en el
+mismo lote, Google **ignora** ese margen y el pie se despega — ése fue el detalle
+que hubo que buscar en la documentación.
+
+## Cuatro bugs propios, cazados revisando el diff (ninguno reportado)
+
+1. **`opciones_documento()` filtraba la escala activa por identidad**
+   (`e is not activa`). Sin prefetch, `escalas.all()` vuelve a consultar y
+   devuelve **otro objeto Python para la misma fila**, así que la activa se
+   colaba dos veces y el documento habría impreso el mismo renglón repetido. Se
+   compara por pk. El test que lo encontró (`test_elegir_deja_una_sola_opcion`)
+   no estaba buscando eso: verificaba el modal.
+2. **El override de impresión no llegaba a la deuda ni al egreso.** El costo del
+   proyecto usaba el de la escala, pero `deuda_por_proveedor` y `gastos`
+   recomputaban a mano desde la fila del proceso. El proyecto decía una cosa y
+   la deuda otra. Se centralizó en `ProyectoProductoProceso.costo_total` /
+   `costo_efectivo` / `por_pieza_efectivo`, y los tres consumidores lo leen de
+   ahí. Regla que queda: **si un valor puede venir de la opción activa, se
+   resuelve en el modelo, no en cada consumidor.**
+3. **Editar la pestaña de una versión borraba sus alternativas.**
+   `sincronizar_items` reconstruye las líneas del documento desde la foto y borra
+   lo que no reconoce; no sabía de las escalas, así que se iban los renglones de
+   volumen Y la línea principal volvía a la cantidad de la Opción A —cambiando el
+   total en silencio—. Detalle fino: la cola de líneas reutilizables mezcla
+   ventas y alternativas, así que hay que **apagar `informativo` explícitamente**
+   al reusar una para una venta, o la venta deja de sumar.
+4. **La sub-fila perdía sus etiquetas en el celular.** Estaban en un renglón
+   aparte `hidden md:grid`, que en escritorio se ve igual al render pero en
+   móvil desaparece: la rejilla baja a 2 columnas y un renglón de etiquetas no
+   puede alinearse con los inputs. Quedaban cinco números sin nombre. Cada
+   etiqueta vive ahora dentro de la celda de su campo, como en la fila 1 de la
+   tarjeta.
+
+## Tests
+
+47 nuevos en `tests/taller/test_ajustes_ago17.py`, organizados por capa (modelo ·
+sanitizador · cotización · versión · tarjeta y JS · modales · documento). Dos
+merecen mención:
+
+- **`test_la_plantilla_js_coincide_con_el_partial`** compara las clases del
+  `plantillaEscala()` del JS contra el partial: el JS clona la sub-fila, así que
+  si el partial gana un campo y la plantilla no, la escala nueva se serializa
+  incompleta. Es el tipo de divergencia silenciosa que la regla de dual-copy (§18)
+  ya nos enseñó a blindar.
+- **`test_vacio_hereda_pero_el_cero_escrito_es_cero`** fija la decisión que se
+  tomó contra la letra del pedido, con su razón escrita al lado.
+
+Se actualizaron **3** tests ajenos, todos fijando contratos que este sprint cambió
+a propósito: la rejilla de la fila 1 de la tarjeta (6 → 7 columnas por el radio) en
+`test_ajustes_ago04_r2` —que la mide con regex— y en `test_ajustes_ago13` —que la
+fija literal—, y el tamaño del logotipo en `test_ajustes_cotizaciones_jul25`. Los
+tres conservan su intención con la razón escrita al lado.
+
+**Nota de proceso:** el de `ago13` sólo apareció al correr la suite COMPLETA sin
+`-x`. Las dos primeras corridas se detuvieron en el primer fallo y lo dejaron sin
+ejecutar — con un cambio transversal, `-x` esconde justo lo que hay que ver.

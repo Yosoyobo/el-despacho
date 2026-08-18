@@ -71,6 +71,11 @@ class ProyectoProducto(models.Model):
     # C7 S-LC-Feedback-V6: si está desmarcado, la línea NO entra en los
     # cálculos de dinero del proyecto (monto calculado / IVA / costo).
     incluir_en_calculo = models.BooleanField(default=True)
+    # LC 2026-08-17 (Oscar): el OJO de la Opción A. Distinto de
+    # `incluir_en_calculo`: éste decide si la opción se IMPRIME en la cotización.
+    # Con escalas de volumen se puede querer cotizar sólo 100 y 200 piezas y no
+    # la cantidad base con la que se armó la línea. Ver `models/escala.py`.
+    visible_pdf = models.BooleanField(default=True)
     # LC 2026-08-04 (Oscar): esta «nota corta» pasó a ser la **DESCRIPCIÓN** del
     # elemento — la especificación que viaja a la cotización (colores, medidas,
     # dónde va el bordado…). Por eso deja de ser un renglón de 200 caracteres y
@@ -168,24 +173,82 @@ class ProyectoProducto(models.Model):
     def etiqueta(self) -> str:
         """Etiqueta compacta para el resumen de lista de proyectos."""
         base = self.nombre_visible
-        if self.cantidad > 1:
-            return f"{base} ×{self.cantidad}"
+        if self.cantidad_efectiva > 1:
+            return f"{base} ×{self.cantidad_efectiva}"
         return base
 
-    # ── Precio / costo / merma (C4 S-LC-Feedback-V6) ──────────────────────────
+    # ── Escalas de volumen (LC 2026-08-17) ───────────────────────────────────
 
     @property
-    def precio_efectivo(self) -> Decimal:
-        """Precio unitario: override del proyecto o, si no, el del catálogo."""
+    def escala_activa(self):
+        """La escala que manda el dinero de esta línea, o None si manda la
+        Opción A (la fila principal). Recorre `escalas.all()` para aprovechar el
+        prefetch; la unicidad la garantiza el constraint del modelo.
+
+        Una línea SIN GUARDAR no tiene escalas (y preguntarle por ellas
+        levantaría `ValueError`): manda la Opción A. Pasa de verdad — la tarjeta
+        en blanco del formset lee `precio_efectivo` para su resumen.
+        """
+        if not self.pk:
+            return None
+        for e in self.escalas.all():
+            if e.activa:
+                return e
+        return None
+
+    @property
+    def tiene_escalas(self) -> bool:
+        return bool(self.pk) and bool(self.escalas.all())
+
+    def opciones_documento(self) -> list:
+        """Las opciones que se IMPRIMEN, la activa primero.
+
+        La activa va al frente porque es la que carga el concepto, la
+        descripción y la foto del bloque —y la única que suma al total—; las
+        demás la siguen en el orden en que se acomodaron en la tarjeta. Cada
+        elemento es la propia escala, o `None` para la Opción A (que se lee de
+        los campos de la línea).
+        """
+        if not self.pk:
+            return [None]
+        activa = self.escala_activa
+        # Se compara por pk y NO por identidad: sin prefetch, `escalas.all()`
+        # vuelve a consultar y devuelve otro objeto Python para la misma fila —
+        # con `is not` la activa se colaba dos veces en el documento.
+        activa_pk = activa.pk if activa is not None else None
+        visibles = [e for e in self.escalas.all()
+                    if e.visible_pdf and e.pk != activa_pk]
+        if activa is not None:
+            opciones = [activa]
+            if self.visible_pdf:
+                opciones.append(None)     # la Opción A como alternativa
+            opciones += visibles
+        else:
+            opciones = ([None] if self.visible_pdf else []) + visibles
+        # El formato nunca se queda sin renglón: si apagaron TODOS los ojos, se
+        # imprime la opción que manda (es la que cuadra con el total).
+        return opciones or [activa]
+
+    # ── Precio / costo / merma (C4 S-LC-Feedback-V6) ──────────────────────────
+    #
+    # LC 2026-08-17: `*_propio` es lo de la LÍNEA (override del proyecto o
+    # catálogo) y `*_efectivo` es lo que de verdad cuenta, que puede venir de la
+    # escala activa. Todo el proyecto —monto, costo, margen, egresos, la
+    # cotización, los chips del Kanban— lee los `*_efectivo` / `*_efectiva`, así
+    # que las escalas se propagan sin tocar a sus consumidores.
+
+    @property
+    def precio_propio(self) -> Decimal:
+        """Precio unitario de la línea: override del proyecto o el del catálogo."""
         if self.precio_unitario is not None:
             return Decimal(str(self.precio_unitario))
         base = self.servicio.precio_base if self.servicio_id else None
         return Decimal(str(base)) if base is not None else CERO
 
     @property
-    def costo_efectivo(self) -> Decimal:
-        """Costo unitario: override del proyecto o, si no, el del catálogo
-        (costo de la variación si existe, si no el del servicio)."""
+    def costo_propio(self) -> Decimal:
+        """Costo unitario de la línea: override del proyecto o, si no, el del
+        catálogo (costo de la variación si existe, si no el del servicio)."""
         if self.costo_unitario is not None:
             return Decimal(str(self.costo_unitario))
         if self.variacion_id:
@@ -194,11 +257,40 @@ class ProyectoProducto(models.Model):
         return Decimal(str(base)) if base is not None else CERO
 
     @property
+    def precio_efectivo(self) -> Decimal:
+        """Precio unitario que cuenta: el de la escala activa, o el de la línea."""
+        escala = self.escala_activa
+        return escala.precio_efectivo if escala else self.precio_propio
+
+    @property
+    def costo_efectivo(self) -> Decimal:
+        """Costo unitario que cuenta: el de la escala activa, o el de la línea."""
+        escala = self.escala_activa
+        return escala.costo_efectivo if escala else self.costo_propio
+
+    @property
+    def cantidad_efectiva(self) -> int:
+        """Piezas que se cobran: las de la escala activa, o las de la línea."""
+        escala = self.escala_activa
+        return int(escala.cantidad if escala else (self.cantidad or 0))
+
+    @property
+    def merma_efectiva(self) -> int:
+        """Merma que cuenta: la de la escala activa, o la de la línea."""
+        escala = self.escala_activa
+        return int(escala.merma if escala else (self.merma or 0))
+
+    @property
+    def piezas_efectivas(self) -> int:
+        """Piezas a producir (cantidad + merma) de la opción que manda."""
+        return self.cantidad_efectiva + self.merma_efectiva
+
+    @property
     def subtotal(self) -> Decimal:
         """Lo que se le cobra al cliente por el PRODUCTO (precio × cantidad).
         La merma NO se cobra, por eso no entra aquí; los procesos de venta
         tampoco — van aparte en `subtotal_ventas`."""
-        return self.precio_efectivo * self.cantidad
+        return self.precio_efectivo * self.cantidad_efectiva
 
     # ── Procesos de VENTA (LC 2026-07-26) ────────────────────────────────────
 
@@ -217,13 +309,13 @@ class ProyectoProducto(models.Model):
     @property
     def merma_costo(self) -> Decimal:
         """Costo de las piezas de merma (costo × merma)."""
-        return self.costo_efectivo * self.merma
+        return self.costo_efectivo * self.merma_efectiva
 
     @property
     def costo_total_linea(self) -> Decimal:
         """Costo real de producir la línea: incluye las piezas de merma.
         NO incluye los procesos (esos son montos fijos aparte)."""
-        return self.costo_efectivo * (self.cantidad + self.merma)
+        return self.costo_efectivo * self.piezas_efectivas
 
     # ── Procesos / impresión (S-LC-Proyecto-Render-V1) ───────────────────────
 
@@ -231,8 +323,15 @@ class ProyectoProducto(models.Model):
     def costo_procesos(self) -> Decimal:
         """Suma de los procesos de esta línea (impresión + operativos). Cada
         proceso es fijo o por pieza (× cantidad + merma) según `por_pieza`.
-        Usa los procesos precargados si los hay."""
-        piezas = self.cantidad + self.merma
+        Usa los procesos precargados si los hay.
+
+        Con una escala activa el cálculo se delega en ella: puede pisar el costo
+        de impresión y traer sus propios costos extra (ver `models/escala.py`).
+        """
+        escala = self.escala_activa
+        if escala is not None:
+            return escala.costo_procesos
+        piezas = self.piezas_efectivas
         total = CERO
         for p in self.procesos.all():
             c = Decimal(str(p.costo or 0))
@@ -264,7 +363,7 @@ class ProyectoProducto(models.Model):
         — lo que falta es lo que se perdió produciendo la merma. Es correcto, no un
         bug: el costo por pieza habla de UNA pieza; la merma es un total.
         """
-        piezas = (self.cantidad or 0) + (self.merma or 0)
+        piezas = self.piezas_efectivas
         if piezas <= 0:
             return CERO
         return self.costo_total_con_procesos / Decimal(str(piezas))

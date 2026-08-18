@@ -34,7 +34,7 @@ _RE_PIEZAS = re.compile(r"^(\s*)([\d.,]+)(\s*pz\b)", re.IGNORECASE)
 
 def _piezas(pp) -> int:
     """Piezas que se le cobran al cliente (la merma no se cotiza)."""
-    return int(pp.cantidad or 0)
+    return int(getattr(pp, "cantidad_efectiva", pp.cantidad) or 0)
 
 
 def _especificacion(pp) -> str:

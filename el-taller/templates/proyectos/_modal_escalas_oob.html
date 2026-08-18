@@ -1,0 +1,7 @@
+{% comment %}El MISMO modal, inyectado por OOB desde `cotizacion_estado` al pasar
+la cotización a Aprobada: ahí la respuesta ya trae el recuadro de cotizaciones,
+así que el modal viaja con su propio envoltorio de `#modal-slot` (igual que
+`_modal_registrar_anticipo_oob.html`).{% endcomment %}
+<div id="modal-slot" hx-swap-oob="innerHTML">
+{% include "proyectos/_modal_escalas_cuerpo.html" %}
+</div>

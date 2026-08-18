@@ -372,6 +372,214 @@
     function renumerar(card) {
         card.querySelectorAll('.proceso-num').forEach((s, i) => s.textContent = (i + 1));
         card.querySelectorAll('.venta-num').forEach((s, i) => s.textContent = (i + 1));
+        // Las escalas se nombran B, C, D… por su posición (la Opción A es la fila
+        // principal de la tarjeta).
+        card.querySelectorAll('.escala-fila [data-esc-letra]').forEach((s, i) => {
+            s.textContent = '(' + String.fromCharCode(66 + Math.min(i, 24)) + ')';
+        });
+    }
+
+    // ── Escalas de volumen (LC 2026-08-17) ────────────────────────────────────
+    //
+    // Un valor VACÍO hereda de la Opción A; un 0 escrito es un cero de verdad. Por
+    // eso los campos opcionales se leen con `heredado()`, que devuelve null cuando
+    // están en blanco, y NO con `num()` (que aplanaría a 0).
+    function heredado(valor, base) {
+        const s = (valor === undefined || valor === null) ? '' : String(valor).trim();
+        if (s === '') return base;
+        const n = numCuenta(s);
+        return isNaN(n) ? base : n;
+    }
+    function escalaImpresion(card, fila) {
+        // (costo, por_pieza) de la impresión: la propia de la escala, o la de A.
+        const propio = (fila.querySelector('.esc-imp') || {}).value;
+        if (propio !== undefined && String(propio).trim() !== '') {
+            const pp = fila.querySelector('.esc-imp-pp');
+            return [numCuenta(propio), !!(pp && pp.checked)];
+        }
+        const impProv = card.querySelector('.imp-proveedor');
+        const impCosto = card.querySelector('.imp-costo');
+        const impPP = card.querySelector('.imp-por-pieza');
+        if (impProv && impProv.value) return [numCuenta(impCosto && impCosto.value), !!(impPP && impPP.checked)];
+        return [0, false];
+    }
+    function escalaCostoProcesos(card, fila, piezas) {
+        let t = 0;
+        const [costoImp, ppImp] = escalaImpresion(card, fila);
+        t += ppImp ? costoImp * piezas : costoImp;
+        // Los gastos operativos de la Opción A se heredan tal cual, recalculados
+        // con las piezas de esta escala.
+        card.querySelectorAll('.proceso-fila').forEach(f => {
+            const c = num((f.querySelector('.proc-costo') || {}).value);
+            const d = ((f.querySelector('.proc-desc') || {}).value || '').trim();
+            const pp = f.querySelector('.proc-por-pieza');
+            if (d || c) t += (pp && pp.checked) ? c * piezas : c;
+        });
+        // Y encima, los costos extra propios de la escala (el ⊕ de la sub-fila).
+        fila.querySelectorAll('.esc-extra-caja').forEach(caja => {
+            const c = numCuenta((caja.querySelector('.esc-extra') || {}).value);
+            const pp = caja.querySelector('.esc-extra-pp');
+            if (c) t += (pp && pp.checked) ? c * piezas : c;
+        });
+        return t;
+    }
+    function recalcularEscalas(card) {
+        const ventas = totalVentas(card);
+        card.querySelectorAll('.escala-fila').forEach(fila => {
+            const cant = num((fila.querySelector('.esc-cant') || {}).value);
+            const merma = num((fila.querySelector('.esc-merma') || {}).value);
+            const piezas = cant + merma;
+            const precio = heredado((fila.querySelector('.esc-precio') || {}).value, precioEfectivo(card));
+            const costo = heredado((fila.querySelector('.esc-costo') || {}).value, costoEfectivo(card));
+            const total = costo * piezas + escalaCostoProcesos(card, fila, piezas);
+            const cuReal = piezas > 0 ? total / piezas : 0;
+            const monto = precio * cant + ventas;
+            const pon = (sel, txt) => { const n = fila.querySelector(sel); if (n) n.textContent = txt; };
+            pon('[data-esc-costo-total]', total ? fmt(total) : '—');
+            pon('[data-esc-costo-pp]', cuReal ? fmt(cuReal) : '—');
+            const upp = fila.querySelector('[data-esc-utilidad-pp]');
+            if (upp) {
+                const u = precio - cuReal;
+                upp.textContent = (precio || cuReal) ? fmt(u) : '—';
+                upp.classList.toggle('text-brand-600', u >= 0);
+                upp.classList.toggle('dark:text-brand-400', u >= 0);
+                upp.classList.toggle('text-error-600', u < 0);
+                upp.classList.toggle('dark:text-error-400', u < 0);
+            }
+            pon('[data-esc-monto]', fmt(monto));
+            pon('[data-esc-utilidad]', monto > 0 ? fmt(monto - total) : '—');
+            const margen = fila.querySelector('[data-esc-margen]');
+            if (margen) {
+                if (monto > 0) {
+                    const pct = (monto - total) / monto * 100;
+                    margen.textContent = pct.toFixed(1) + '%';
+                    margen.classList.toggle('text-success-600', pct >= 0);
+                    margen.classList.toggle('dark:text-success-400', pct >= 0);
+                    margen.classList.toggle('text-error-600', pct < 0);
+                    margen.classList.toggle('dark:text-error-400', pct < 0);
+                } else { margen.textContent = '—'; margen.className = 'font-semibold text-gray-400'; }
+            }
+            // La opción que no se imprime se lee tenue, como pidió el render.
+            const ojo = fila.querySelector('.esc-ojo');
+            const visible = !ojo || ojo.getAttribute('aria-pressed') !== 'false';
+            fila.classList.toggle('opacity-50', !visible);
+        });
+    }
+    function serializarEscalas(card) {
+        const hidden = card.querySelector('input[name$="-escalas_json"]');
+        if (!hidden) return;
+        const arr = [];
+        card.querySelectorAll('.escala-fila').forEach(fila => {
+            const val = sel => {
+                const n = fila.querySelector(sel);
+                return n ? String(n.value).trim() : '';
+            };
+            const marcado = sel => { const n = fila.querySelector(sel); return !!(n && n.checked); };
+            const ojo = fila.querySelector('.esc-ojo');
+            const extras = [];
+            fila.querySelectorAll('.esc-extra-caja').forEach(caja => {
+                const crudo = (caja.querySelector('.esc-extra') || {}).value;
+                const txt = crudo === undefined ? '' : String(crudo).trim();
+                if (txt === '') return;
+                extras.push({
+                    costo: numCuenta(txt),
+                    costo_expr: esCuenta(txt) ? txt : '',
+                    por_pieza: !!(caja.querySelector('.esc-extra-pp') || {}).checked,
+                });
+            });
+            const costoTxt = val('.esc-costo');
+            const impTxt = val('.esc-imp');
+            arr.push({
+                cantidad: Math.max(1, Math.round(num(val('.esc-cant')) || 1)),
+                merma: Math.max(0, Math.round(num(val('.esc-merma')))),
+                // "" (heredar) se manda como null, no como 0 (ver `heredado`).
+                precio_unitario: val('.esc-precio') === '' ? null : num(val('.esc-precio')),
+                costo_unitario: costoTxt === '' ? null : numCuenta(costoTxt),
+                costo_unitario_expr: esCuenta(costoTxt) ? costoTxt : '',
+                impresion_costo: impTxt === '' ? null : numCuenta(impTxt),
+                impresion_costo_expr: esCuenta(impTxt) ? impTxt : '',
+                impresion_por_pieza: marcado('.esc-imp-pp'),
+                extras: extras,
+                activa: marcado('.esc-radio'),
+                visible_pdf: !ojo || ojo.getAttribute('aria-pressed') !== 'false',
+            });
+        });
+        hidden.value = JSON.stringify(arr);
+    }
+    function plantillaEscala() {
+        // Espejo de `proyectos/_escala_fila.html` — si cambia allá, cambia aquí.
+        // Las etiquetas van DENTRO de la celda de su campo: en un renglón aparte
+        // desaparecían en el celular (la rejilla baja a 2 columnas) y la sub-fila
+        // quedaba como cinco números sin nombre.
+        const rejilla = 'gap-2 md:grid-cols-[auto_1fr_1fr_1.05fr_1.05fr_minmax(120px,1.1fr)]';
+        const eti = c => '<label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">' + c + '</label>';
+        const celda = (label, input) => '<div class="min-w-0">' + eti(label) + input + '</div>';
+        const ojoOff = '<svg aria-hidden="true" class="hidden h-4 w-4 text-gray-300 dark:text-gray-600" data-ojo-off viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke-linecap="round"/><line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round"/></svg>';
+        const ojoOn = '<svg aria-hidden="true" class="h-4 w-4 text-brand-500" data-ojo-on viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round"/><circle cx="12" cy="12" r="3"/></svg>';
+        const equis = '<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>';
+        return '' +
+        '<div class="grid grid-cols-2 ' + rejilla + ' md:items-end">' +
+          '<div class="col-span-2 flex items-center gap-1 pb-2 md:col-span-1">' +
+            '<span aria-hidden="true" class="ml-1 mr-0.5 h-4 w-3 shrink-0 rounded-bl border-b-2 border-l-2 border-gray-300 dark:border-gray-600"></span>' +
+            '<input type="radio" value="escala" class="esc-radio h-4 w-4 border-gray-300 text-brand-500 focus:ring-brand-500/30" title="Esta cantidad es la que calcula el dinero del proyecto">' +
+          '</div>' +
+          celda('Cantidad <span class="font-bold text-brand-500" data-esc-letra>(B)</span>',
+                '<input type="number" min="1" step="1" class="esc-cant campo-angosto w-full" placeholder="1" value="1" title="Piezas a cobrar en esta opción">') +
+          celda('Merma',
+                '<input type="number" min="0" step="1" class="esc-merma campo-angosto w-full" placeholder="0" value="0" title="Piezas extra de esta opción (suman costo, no se cobran)">') +
+          celda('Precio unit.',
+                '<input type="number" step="0.01" min="0" class="esc-precio w-full" placeholder="hereda" title="Precio por pieza de esta opción. Vacío = el de la Opción A.">') +
+          celda('Costo unit.',
+                '<input type="text" inputmode="text" autocomplete="off" class="esc-costo w-full" placeholder="hereda" title="Costo por pieza de esta opción. Vacío = el de la Opción A. Acepta una cuenta (15.75*100).">') +
+          '<div class="col-span-2 min-w-0 md:col-span-1">' + eti('Impresión') +
+            '<div class="flex min-w-0 flex-wrap items-center gap-1.5">' +
+              '<input type="text" inputmode="text" autocomplete="off" class="esc-imp w-full min-w-[72px] flex-1" placeholder="hereda" title="Costo de impresión de esta opción. Vacío = el de la Opción A. El proveedor es el mismo.">' +
+              '<label class="inline-flex shrink-0 cursor-pointer items-center gap-0.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir de esta opción"><input type="checkbox" class="esc-imp-pp h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">/p</label>' +
+              '<span class="esc-extras flex min-w-0 flex-wrap items-center gap-1.5"></span>' +
+              '<button type="button" class="esc-extra-add inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm leading-none text-gray-400 transition hover:border-brand-400 hover:text-brand-500 dark:border-gray-600" title="Agrega otro costo a esta opción, en el mismo renglón" aria-label="Agregar costo a la escala">+</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">' +
+          '<button type="button" class="esc-del inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-error-200 bg-white text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar esta opción" aria-label="Quitar escala">' + equis + '</button>' +
+          '<span class="order-last w-full min-w-0 text-xs text-gray-500 dark:text-gray-400 sm:order-none sm:w-auto sm:flex-1 sm:truncate">Costo de producción: <span class="tabular-nums" data-esc-costo-total>—</span> · Unitario <span class="tabular-nums" data-esc-costo-pp>—</span>/pz · <span class="tabular-nums font-medium text-brand-600 dark:text-brand-400" data-esc-utilidad-pp>—</span> · ' +
+            '<button type="button" class="esc-ojo align-middle" aria-pressed="true" title="Imprimir esta cantidad en la cotización" aria-label="Imprimir esta opción en la cotización">' + ojoOff + ojoOn + '</button></span>' +
+          '<div class="shrink-0 text-right">' +
+            '<span class="block tabular-nums text-gray-900 dark:text-gray-100"><span class="mr-1 text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Monto</span><span class="text-base font-semibold" data-esc-monto>$0.00</span></span>' +
+            '<span class="block text-xs tabular-nums"><span class="text-gray-400 dark:text-gray-500" data-esc-utilidad>—</span> <span class="font-semibold" data-esc-margen>—</span></span>' +
+          '</div>' +
+        '</div>';
+    }
+    function agregarEscala(card) {
+        const lista = card.querySelector('.escala-lista');
+        if (!lista) return;
+        if (lista.querySelectorAll('.escala-fila').length >= 6) return;  // tope MAX_ESCALAS
+        const fila = document.createElement('div');
+        fila.className = 'escala-fila';
+        fila.setAttribute('data-escala', '');
+        fila.innerHTML = plantillaEscala();
+        // El grupo de radios de la tarjeta: el mismo `name` que el de la Opción A.
+        const radioA = card.querySelector('[data-escala-radio="a"]');
+        const radio = fila.querySelector('.esc-radio');
+        if (radioA && radio) radio.name = radioA.name;
+        lista.appendChild(fila);
+        renumerar(card);
+        serializarEscalas(card); recalcularEscalas(card);
+        const cant = fila.querySelector('.esc-cant');
+        if (cant) { cant.focus(); cant.select(); }
+    }
+    function agregarExtraEscala(fila) {
+        const cont = fila.querySelector('.esc-extras');
+        if (!cont) return;
+        if (cont.querySelectorAll('.esc-extra-caja').length >= 6) return;  // tope MAX_EXTRAS
+        const caja = document.createElement('span');
+        caja.className = 'esc-extra-caja inline-flex items-center gap-0.5';
+        caja.innerHTML = '<input type="text" inputmode="text" autocomplete="off" class="esc-extra w-20" placeholder="0.00" title="Costo extra de esta opción (hereda la descripción y el proveedor de la Opción A)">' +
+            '<label class="inline-flex cursor-pointer items-center text-[11px] text-gray-600 dark:text-gray-300" title="Multiplica por las piezas a producir"><input type="checkbox" class="esc-extra-pp h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">/p</label>' +
+            '<button type="button" class="esc-extra-del text-error-500 hover:text-error-700" title="Quitar este costo" aria-label="Quitar costo extra">&times;</button>';
+        cont.appendChild(caja);
+        const input = caja.querySelector('.esc-extra');
+        if (input) input.focus();
     }
     function agregarVenta(card) {
         const lista = card.querySelector('.venta-lista');
@@ -411,6 +619,8 @@
         pintarSuma(card);
         recalcular(card);
         serializar(card);
+        serializarEscalas(card);
+        recalcularEscalas(card);
         renumerar(card);
         card._inited = true;
     }
@@ -454,7 +664,16 @@
         else if (card && t.matches && t.matches('input[name$="-incluir_en_calculo"], input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) { recalcular(card); }
         if (card && t.matches && t.matches('.imp-proveedor, .imp-costo, .imp-por-pieza, .proc-desc, .proc-costo, .proc-por-pieza')) { pintarSuma(card); serializar(card); recalcular(card); }
         // Procesos de VENTA (LC 2026-07-26): suman al monto, no al costo.
-        if (card && t.matches && t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
+        if (card && t.matches && t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); recalcularEscalas(card); }
+        // Escalas de volumen (LC 2026-08-17). El radio decide cuál calcula el
+        // proyecto; los campos vacíos heredan de la Opción A.
+        if (card && t.matches && t.matches('.esc-cant, .esc-merma, .esc-precio, .esc-costo, .esc-imp, .esc-imp-pp, .esc-extra, .esc-extra-pp, .esc-radio, [data-escala-radio]')) {
+            serializarEscalas(card); recalcularEscalas(card);
+        }
+        // Cambiar el precio, el costo o los procesos de A mueve lo que heredan.
+        if (card && t.matches && t.matches('input[name$="-precio_unitario"], input[name$="-costo_unitario"], .imp-proveedor, .imp-costo, .imp-por-pieza, .proc-costo, .proc-por-pieza, .proc-desc')) {
+            serializarEscalas(card); recalcularEscalas(card);
+        }
         // Sync del estado oculto cuando se cambia desde la barra de status.
         const chip = t.closest && t.closest('[data-estado-slug]');
         if (chip) { const sel = document.getElementById('id_estado'); if (sel) sel.value = chip.getAttribute('data-estado-slug'); }
@@ -465,7 +684,9 @@
         if (!card) return;
         if (t.matches('input[name$="-cantidad"], input[name$="-precio_unitario"], input[name$="-merma"], input[name$="-costo_unitario"]')) { pintarSuma(card); recalcular(card); }
         if (t.matches('.imp-costo, .proc-desc, .proc-costo')) { pintarSuma(card); serializar(card); recalcular(card); }
-        if (t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); }
+        if (t.matches('.venta-desc, .venta-cant, .venta-precio')) { serializarVentas(card); recalcular(card); recalcularEscalas(card); }
+        if (t.matches('.esc-cant, .esc-merma, .esc-precio, .esc-costo, .esc-imp, .esc-extra')) { serializarEscalas(card); recalcularEscalas(card); }
+        if (t.matches('input[name$="-precio_unitario"], input[name$="-costo_unitario"], .imp-costo, .proc-costo')) { recalcularEscalas(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
         if (t.matches('[data-alias-input]')) recalcular(card);
         // La Descripción del elemento crece con lo que se escribe (ver `autogrow`).
@@ -581,6 +802,38 @@
         if (addV && card) { agregarVenta(card); return; }
         const delV = e.target.closest && e.target.closest('.venta-del');
         if (delV && card) { delV.closest('.venta-fila').remove(); renumerar(card); serializarVentas(card); recalcular(card); autosave(); return; }
+        // ── Escalas de volumen (LC 2026-08-17) ──────────────────────────────
+        const addE = e.target.closest && e.target.closest('.escala-add');
+        if (addE && card) { agregarEscala(card); autosave(); return; }
+        const delE = e.target.closest && e.target.closest('.esc-del');
+        if (delE && card) {
+            const fila = delE.closest('.escala-fila');
+            const radioFila = fila ? fila.querySelector('.esc-radio') : null;
+            const eraActiva = !!(radioFila && radioFila.checked);
+            if (fila) fila.remove();
+            // Si se borró la que mandaba, el dinero vuelve a la Opción A.
+            if (eraActiva) { const rA = card.querySelector('[data-escala-radio="a"]'); if (rA) rA.checked = true; }
+            renumerar(card); serializarEscalas(card); recalcularEscalas(card); autosave(); return;
+        }
+        const addX = e.target.closest && e.target.closest('.esc-extra-add');
+        if (addX && card) { agregarExtraEscala(addX.closest('.escala-fila')); return; }
+        const delX = e.target.closest && e.target.closest('.esc-extra-del');
+        if (delX && card) {
+            const caja = delX.closest('.esc-extra-caja');
+            if (caja) caja.remove();
+            serializarEscalas(card); recalcularEscalas(card); autosave(); return;
+        }
+        // El ojo: si esta opción se imprime en la cotización.
+        const ojo = e.target.closest && e.target.closest('.esc-ojo');
+        if (ojo && card) {
+            const visible = ojo.getAttribute('aria-pressed') !== 'false';
+            ojo.setAttribute('aria-pressed', visible ? 'false' : 'true');
+            const off = ojo.querySelector('[data-ojo-off]');
+            const on = ojo.querySelector('[data-ojo-on]');
+            if (off) off.classList.toggle('hidden', visible);
+            if (on) on.classList.toggle('hidden', !visible);
+            serializarEscalas(card); recalcularEscalas(card); autosave(); return;
+        }
         // Reset de impresión (LC 2026-07): vuelve a «Sin impresión».
         const impReset = e.target.closest && e.target.closest('.imp-reset');
         if (impReset && card) {

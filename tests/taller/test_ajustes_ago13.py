@@ -261,7 +261,10 @@ def test_las_fichas_muestran_la_foto_completa():
 def test_la_tarjeta_de_producto_vuelve_a_las_medidas_del_render():
     texto = TPL_CARD.read_text(encoding="utf-8")
     # Fila 1: Categoría cede ancho; Cant./Merma/Precio quedan cómodos.
-    assert "md:grid-cols-[0.85fr_1.6fr_minmax(96px,0.7fr)_minmax(96px,0.7fr)_minmax(104px,0.62fr)_40px]" in texto
+    # LC 2026-08-17: se intercaló una columna `auto` para el RADIO de la opción
+    # (escalas de volumen) entre Producto y Cant. Los anchos de los campos son los
+    # mismos; lo que cambió es que ahora hay 7 columnas y no 6.
+    assert "md:grid-cols-[0.85fr_1.6fr_auto_minmax(96px,0.7fr)_minmax(96px,0.7fr)_minmax(104px,0.62fr)_40px]" in texto
     # Fila 2: Descripción es la ancha.
     assert "md:grid-cols-[1.35fr_minmax(104px,0.72fr)_2.95fr]" in texto
     # Fila 3: Impresión ocupa lo que ocupaba en el render.

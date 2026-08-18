@@ -116,10 +116,15 @@ cabecera `HX-Trigger: pedirMotivoCancelacion`, y aquí se abre el modal del
 «¿por qué?». Vive en base.html porque el `#modal-slot` es global y el disparo
 puede venir de cualquier pantalla. El Kanban usa `fetch` (no HTMX), así que lee
 la cabecera él mismo y dispara este mismo evento a mano.{% endcomment %}
+{% comment %}LC 2026-08-17 (Oscar): el mismo mecanismo sirve para ofrecer aprobar
+la cotización cuando el proyecto entra a producción — `HX-Trigger:
+pedirAprobarCotizacion` desde `cambiar_estado`.{% endcomment %}
 <script>
-document.body.addEventListener('pedirMotivoCancelacion', function (e) {
-    var url = e.detail && e.detail.url;
-    if (url && window.htmx) htmx.ajax('GET', url, { target: '#modal-slot', swap: 'innerHTML' });
+['pedirMotivoCancelacion', 'pedirAprobarCotizacion'].forEach(function (evento) {
+    document.body.addEventListener(evento, function (e) {
+        var url = e.detail && e.detail.url;
+        if (url && window.htmx) htmx.ajax('GET', url, { target: '#modal-slot', swap: 'innerHTML' });
+    });
 });
 </script>
 

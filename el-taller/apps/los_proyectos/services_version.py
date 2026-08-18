@@ -49,6 +49,35 @@ def ventas_json(pp) -> list[dict]:
     } for v in pp.ventas.all().order_by("orden", "creado_en")]
 
 
+def _opcional(valor) -> str | None:
+    """Decimal a cadena, conservando el None. En las escalas un nulo significa
+    «hereda de la Opción A», así que NO se puede aplanar a 0 (ver `models/escala`)."""
+    if valor is None:
+        return None
+    return str(Decimal(str(valor)).quantize(Decimal("0.01")))
+
+
+def escalas_json(pp) -> list[dict]:
+    """Escalas de volumen de una línea viva, como las serializa el front.
+
+    Se guardan con sus nulos intactos: la escala que heredaba de la Opción A
+    debe seguir heredando cuando la pestaña se vuelva a pintar.
+    """
+    return [{
+        "cantidad": int(e.cantidad or 1),
+        "merma": int(e.merma or 0),
+        "precio_unitario": _opcional(e.precio_unitario),
+        "costo_unitario": _opcional(e.costo_unitario),
+        "costo_unitario_expr": e.costo_unitario_expr or "",
+        "impresion_costo": _opcional(e.impresion_costo),
+        "impresion_costo_expr": e.impresion_costo_expr or "",
+        "impresion_por_pieza": bool(e.impresion_por_pieza),
+        "extras": list(e.extras_json or []),
+        "activa": bool(e.activa),
+        "visible_pdf": bool(e.visible_pdf),
+    } for e in pp.escalas.all().order_by("orden", "creado_en")]
+
+
 # ── Al generar la versión ────────────────────────────────────────────────────
 
 def fotografiar(cot, pares) -> int:
@@ -75,14 +104,19 @@ def fotografiar(cot, pares) -> int:
             merma=pp.merma or 0,
             # Resueltos, nunca heredados: un cambio de catálogo no debe reescribir
             # lo que se cotizó (ver el docstring del modelo).
-            precio_unitario=pp.precio_efectivo,
-            costo_unitario=pp.costo_efectivo,
+            # `*_propio` y no `*_efectivo`: con una escala activa, el efectivo
+            # ES el de la escala, y la fila A de la pestaña debe conservar lo
+            # suyo (las escalas se congelan aparte, en `escalas_json`).
+            precio_unitario=pp.precio_propio,
+            costo_unitario=pp.costo_propio,
             costo_unitario_expr=(pp.costo_unitario_expr or ""),
             nota=(pp.nota or ""),
             imagen_file_id=pp.imagen_efectiva_file_id,
             incluir_en_calculo=True,
             procesos_json=procesos_json(pp),
             ventas_json=ventas_json(pp),
+            escalas_json=escalas_json(pp),
+            visible_pdf=bool(pp.visible_pdf),
             reconstruido=False,
         ))
     if filas:
@@ -94,6 +128,38 @@ def fotografiar(cot, pares) -> int:
 
 def _nombre_de(fila) -> str:
     return fila.nombre_visible
+
+
+def opciones_de_fila(fila) -> tuple[dict, list[dict]]:
+    """`(la_que_manda, alternativas_visibles)` de una fila de la foto.
+
+    LC 2026-08-17: una fila puede traer escalas de volumen en `escalas_json`. La
+    que manda es la activa (o la Opción A si no hay ninguna) y es la que carga la
+    línea del documento; las demás visibles se imprimen como renglones extra
+    informativos, que NO suman. Un nulo en la escala hereda de la Opción A.
+
+    Cada opción es `{"cantidad": int, "precio": Decimal}`, ya resuelta.
+    """
+    base = {
+        "cantidad": int(fila.cantidad or 0),
+        "precio": (fila.precio_unitario if fila.precio_unitario is not None else CERO),
+    }
+    escalas = [e for e in (fila.escalas_json or []) if isinstance(e, dict)]
+    activa, visibles = None, []
+    for cruda in escalas:
+        precio = _a_decimal_opcional(cruda.get("precio_unitario"))
+        opcion = {
+            "cantidad": max(1, int(cruda.get("cantidad") or 1)),
+            "precio": base["precio"] if precio is None else precio,
+        }
+        if cruda.get("activa") and activa is None:
+            activa = opcion
+        elif cruda.get("visible_pdf", True):
+            visibles.append(opcion)
+    manda = activa or base
+    if activa is not None and getattr(fila, "visible_pdf", True):
+        visibles.insert(0, base)          # la Opción A pasa a ser alternativa
+    return manda, visibles
 
 
 @transaction.atomic
@@ -127,15 +193,36 @@ def sincronizar_items(cot) -> None:
         item.concepto = _nombre_de(fila)[:150]
         item.descripcion = fila.nota or ""
         item.imagen_file_id = fila.imagen_file_id or ""
-        item.cantidad = Decimal(str(fila.cantidad or 0))
-        item.precio_unitario = fila.precio_unitario if fila.precio_unitario is not None else CERO
+        manda, alternativas = opciones_de_fila(fila)
+        item.cantidad = Decimal(str(manda["cantidad"]))
+        item.precio_unitario = manda["precio"]
         item.agrupado = False
+        item.informativo = False
         item.save()
         conservados.add(item.pk)
         if fila.item_id != item.pk:
             fila.item = item
             fila.save(update_fields=["item"])
         orden += 1
+
+        # 1b) Las ALTERNATIVAS de volumen visibles (LC 2026-08-17). Sin esto, el
+        #     paso 3 las borraría del documento al editar la pestaña: se van los
+        #     renglones que el cliente veía y el total cambiaría en silencio.
+        for alt in alternativas:
+            linea = cola_ventas.pop(0) if cola_ventas else CotizacionItem(cotizacion=cot)
+            linea.orden = orden
+            linea.servicio_id = fila.servicio_id
+            linea.variacion = None
+            linea.concepto = _nombre_de(fila)[:150]
+            linea.descripcion = ""
+            linea.imagen_file_id = ""
+            linea.cantidad = Decimal(str(alt["cantidad"]))
+            linea.precio_unitario = alt["precio"]
+            linea.agrupado = True
+            linea.informativo = True      # se imprime, no suma
+            linea.save()
+            conservados.add(linea.pk)
+            orden += 1
 
         # 2) Sus líneas de venta (se cobran aparte, se imprimen dentro de su
         #    bloque — ver `CotizacionItem.agrupado`).
@@ -156,6 +243,10 @@ def sincronizar_items(cot) -> None:
             linea.cantidad = Decimal(str(max(1, int(venta.get("cantidad") or 1))))
             linea.precio_unitario = precio
             linea.agrupado = True
+            # La cola de reutilizables mezcla ventas y alternativas: si no se
+            # apaga, una venta heredaría el `informativo` de la fila que reusó y
+            # dejaría de sumar al total.
+            linea.informativo = False
             linea.save()
             conservados.add(linea.pk)
             orden += 1
@@ -172,6 +263,14 @@ def _a_decimal(valor) -> Decimal:
         return Decimal(str(valor or 0)).quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError, TypeError):
         return CERO
+
+
+def _a_decimal_opcional(valor) -> Decimal | None:
+    """Como `_a_decimal`, pero **conserva el None**: en una escala de volumen un
+    nulo significa «hereda de la Opción A», no cero."""
+    if valor is None or str(valor).strip() == "":
+        return None
+    return _a_decimal(valor)
 
 
 # ── Restaurar la versión en edición ──────────────────────────────────────────
@@ -201,7 +300,11 @@ def restaurar_en_edicion(cot, actor=None) -> dict:
     import json as _json
 
     from .models import ProyectoProducto
-    from .services_procesos import sincronizar_procesos, sincronizar_ventas
+    from .services_procesos import (
+        sincronizar_escalas,
+        sincronizar_procesos,
+        sincronizar_ventas,
+    )
 
     proyecto = cot.proyecto
     filas = list(cot.productos_version.all().order_by("orden", "pk"))
@@ -242,10 +345,12 @@ def restaurar_en_edicion(cot, actor=None) -> dict:
             pp.costo_unitario_expr = fila.costo_unitario_expr or ""
             pp.nota = fila.nota or ""
             pp.incluir_en_calculo = True
+            pp.visible_pdf = bool(getattr(fila, "visible_pdf", True))
             pp.orden = orden
             pp.save()
             sincronizar_procesos(pp, _json.dumps(fila.procesos_json or []))
             sincronizar_ventas(pp, _json.dumps(fila.ventas_json or []))
+            sincronizar_escalas(pp, _json.dumps(fila.escalas_json or []))
         proyecto.recalcular_monto_estimado()
     return {"actualizadas": actualizadas, "creadas": creadas}
 
@@ -264,6 +369,34 @@ class _Proceso:
         self.costo = _a_decimal(fila.get("costo"))
         self.costo_expr = fila.get("costo_expr") or ""
         self.por_pieza = bool(fila.get("por_pieza"))
+
+
+class _Escala:
+    """Escala de volumen de una foto, con la forma que espera la tarjeta.
+
+    Conserva los nulos (heredar de la Opción A) y expone `letra` como el modelo.
+    """
+
+    def __init__(self, fila: dict, orden: int):
+        self.orden = orden
+        self.cantidad = max(1, int(fila.get("cantidad") or 1))
+        self.merma = max(0, int(fila.get("merma") or 0))
+        self.precio_unitario = _a_decimal_opcional(fila.get("precio_unitario"))
+        self.costo_unitario = _a_decimal_opcional(fila.get("costo_unitario"))
+        self.costo_unitario_expr = fila.get("costo_unitario_expr") or ""
+        self.impresion_costo = _a_decimal_opcional(fila.get("impresion_costo"))
+        self.impresion_costo_expr = fila.get("impresion_costo_expr") or ""
+        self.impresion_por_pieza = bool(fila.get("impresion_por_pieza"))
+        self.extras_json = list(fila.get("extras") or [])
+        self.activa = bool(fila.get("activa"))
+        self.visible_pdf = bool(fila.get("visible_pdf", True))
+
+    @property
+    def letra(self) -> str:
+        return chr(ord("B") + min(self.orden, 24))
+
+    def extras(self) -> list[dict]:
+        return [e for e in self.extras_json if isinstance(e, dict)]
 
 
 class _Venta:
@@ -299,3 +432,8 @@ def anotar_procesos(formset) -> None:
         form.procs_operativos = operativos
         form.procs_venta = [_Venta(v) for v in (inst.ventas_json or [])
                             if isinstance(v, dict)]
+        form.escalas = [
+            _Escala(e, i) for i, e in enumerate(
+                [x for x in (inst.escalas_json or []) if isinstance(x, dict)])
+        ]
+        form.escala_activa = next((e for e in form.escalas if e.activa), None)

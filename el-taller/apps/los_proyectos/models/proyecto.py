@@ -350,7 +350,6 @@ class Proyecto(models.Model):
                     pp.proveedor_id, {"proveedor": pp.proveedor, "total": Decimal("0.00")}
                 )
                 slot["total"] += pp.costo_total_linea
-            piezas = pp.cantidad + pp.merma
             for proc in pp.procesos.all():
                 # Impresión (siempre con proveedor) u operativo con proveedor
                 # ligado por @ (ticket UX 2026-07): suma a la deuda de ese proveedor.
@@ -359,8 +358,9 @@ class Proyecto(models.Model):
                         proc.proveedor_id,
                         {"proveedor": proc.proveedor, "total": Decimal("0.00")},
                     )
-                    c = Decimal(str(proc.costo or 0))
-                    slot["total"] += (c * piezas) if proc.por_pieza else c
+                    # `costo_total` ya resuelve el override de la escala activa
+                    # (una escala puede pisar el costo de impresión).
+                    slot["total"] += proc.costo_total
         return sorted(acumulado.values(), key=lambda d: d["total"], reverse=True)
 
     def gastos_operativos(self):
@@ -370,7 +370,7 @@ class Proyecto(models.Model):
         gastos del proyecto (clavos, pegamento, viáticos, embalaje…)."""
         filas = []
         for pp in self._productos_incluidos():
-            piezas = pp.cantidad + pp.merma
+            piezas = pp.piezas_efectivas
             for proc in pp.procesos.all():
                 # Solo operativos SIN proveedor: los que ligan proveedor (@) ya
                 # cuentan en `deuda_por_proveedor` (evita doble conteo).

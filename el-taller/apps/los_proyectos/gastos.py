@@ -93,21 +93,22 @@ def _label_produccion(pp) -> str:
     LC 2026-07-25 (Oscar): siempre en el formato «× 35 pz» — sin el desglose
     «(30 + 5 merma)», que confundía en la lista de pagos pendientes.
     """
-    return f"{_nombre_base(pp)} · × {pp.cantidad + pp.merma} pz"
+    return f"{_nombre_base(pp)} · × {pp.piezas_efectivas} pz"
 
 
 def _monto_proceso(proc, pp) -> Decimal:
-    """Costo del proceso: fijo o × piezas producidas según `por_pieza`."""
-    c = Decimal(str(proc.costo or 0))
-    if proc.por_pieza:
-        c = c * (pp.cantidad + pp.merma)
-    return c.quantize(Decimal("0.01"))
+    """Costo del proceso: fijo o × piezas producidas según `por_pieza`.
+
+    Se lee de `proc.costo_total`, que ya resuelve el override de la escala activa
+    (LC 2026-08-17): el egreso debe cobrar lo de la opción que manda.
+    """
+    return Decimal(str(proc.costo_total)).quantize(Decimal("0.01"))
 
 
 def _label_proceso(proc, pp) -> str:
     # Mismo formato «× N pz» que el gasto del producto (LC 2026-07-25). El
     # proceso fijo no lleva piezas: su costo no depende de la producción.
-    suf = f" · × {pp.cantidad + pp.merma} pz" if proc.por_pieza else ""
+    suf = f" · × {pp.piezas_efectivas} pz" if proc.por_pieza_efectivo else ""
     return f"{_nombre_base(pp)} · {proc.etiqueta}{suf}"
 
 

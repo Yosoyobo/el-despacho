@@ -49,6 +49,11 @@ urlpatterns = [
     # Recuadro «Cotizaciones» del proyecto (versionado, render Oscar 2026-06-27).
     path("<int:pk>/cotizacion/generar", views.generar_cotizacion, name="proyectos-generar-cotizacion"),
     path("<int:pk>/cotizacion/estado", views.cotizacion_estado, name="proyectos-cotizacion-estado"),
+    # Escalas de volumen (LC 2026-08-17): el modal que pide dejar UNA sola
+    # cantidad al aprobar, y el que ofrece aprobar la cotización cuando el
+    # proyecto ya entró a producción.
+    path("<int:pk>/escalas/elegir", views.escalas_elegir, name="proyectos-escalas-elegir"),
+    path("<int:pk>/cotizacion/aprobar-modal", views.modal_aprobar_cotizacion, name="proyectos-modal-aprobar-cotizacion"),
     path("<int:pk>/cotizacion/anticipo", views.registrar_anticipo_modal, name="proyectos-registrar-anticipo"),
     path("<int:pk>/cotizacion/anticipo/vincular", views.vincular_ingreso_anticipo, name="proyectos-vincular-ingreso-anticipo"),
     # C5 S-LC-Feedback-V6: proveedores asignados al proyecto.

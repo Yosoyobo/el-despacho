@@ -21,6 +21,7 @@ from apps.los_proyectos.models import (
     Proyecto,
     ProyectoAsignacion,
     ProyectoProducto,
+    ProyectoProductoEscala,
     ProyectoProductoProceso,
     ProyectoProductoVenta,
 )
@@ -114,7 +115,7 @@ def _proveedores_panel(proyecto):
         )
 
     for pp in proyecto.productos_incluidos:
-        piezas = pp.cantidad + pp.merma
+        piezas = pp.piezas_efectivas
         # LC 2026-07-25: si le pusiste un nombre propio al producto DENTRO del
         # proyecto, ése es el que se lee aquí también (`nombre_visible` es la
         # fuente única del nombre del producto en el proyecto).
@@ -123,7 +124,7 @@ def _proveedores_panel(proyecto):
             s = _slot(pp.proveedor)
             s["total"] += pp.costo_total_linea
             s["conceptos"].append({
-                "nombre": nombre_prod, "cantidad": pp.cantidad, "piezas": piezas,
+                "nombre": nombre_prod, "cantidad": pp.cantidad_efectiva, "piezas": piezas,
                 "costo_unit": pp.costo_efectivo, "fijo": None,
             })
         for proc in pp.procesos.all():
@@ -131,15 +132,16 @@ def _proveedores_panel(proyecto):
             # por @ (ticket UX 2026-07): ambos suman a su proveedor en el panel.
             if proc.proveedor_id:
                 s = _slot(proc.proveedor)
-                c = Decimal(str(proc.costo or 0))
+                # El efectivo: una escala activa puede pisar el costo de impresión.
+                c = proc.costo_efectivo
                 if proc.tipo == "impresion":
                     nombre = f"Impresión · {nombre_prod}"
                 else:
                     nombre = proc.descripcion or f"Gasto · {nombre_prod}"
-                if proc.por_pieza:
+                if proc.por_pieza_efectivo:
                     s["total"] += c * piezas
                     s["conceptos"].append({
-                        "nombre": nombre, "cantidad": pp.cantidad, "piezas": piezas,
+                        "nombre": nombre, "cantidad": pp.cantidad_efectiva, "piezas": piezas,
                         "costo_unit": c, "fijo": None,
                     })
                 else:
@@ -182,7 +184,7 @@ def _gastos_sin_proveedor(proyecto):
     """
     sueltos = []
     for pp in proyecto.productos_incluidos:
-        piezas = pp.cantidad + pp.merma
+        piezas = pp.piezas_efectivas
         for proc in pp.procesos.all():
             if proc.proveedor_id:
                 continue
@@ -229,12 +231,22 @@ def _anotar_procesos(formset):
         # LC 2026-07-26: procesos de VENTA (lo que se le cobra aparte al cliente).
         form.procs_venta = (list(inst.ventas.all().order_by("orden", "creado_en"))
                             if inst and inst.pk else [])
+        # LC 2026-08-17: escalas de volumen (Opción B, C…) de la línea viva. La
+        # pestaña de una versión las arma desde su JSON (ver `services_version`).
+        form.escalas = (list(inst.escalas.all().order_by("orden", "creado_en"))
+                        if inst and inst.pk else [])
+        # El radio de la Opción A va marcado cuando NINGUNA escala manda.
+        form.escala_activa = next((e for e in form.escalas if e.activa), None)
 
 
 def _sync_procesos_formset(formset):
     """Tras formset.save(): sincroniza los procesos de cada línea que sobrevivió
     (no borrada, con pk) — los de producción y los de venta."""
-    from .services_procesos import sincronizar_procesos, sincronizar_ventas
+    from .services_procesos import (
+        sincronizar_escalas,
+        sincronizar_procesos,
+        sincronizar_ventas,
+    )
     borrados = set(formset.deleted_forms)
     for form in formset.forms:
         if form in borrados:
@@ -244,6 +256,8 @@ def _sync_procesos_formset(formset):
             continue
         sincronizar_procesos(inst, form.cleaned_data.get("procesos_json"))
         sincronizar_ventas(inst, form.cleaned_data.get("ventas_json"))
+        # LC 2026-08-17: escalas de volumen (Opción B, C…).
+        sincronizar_escalas(inst, form.cleaned_data.get("escalas_json"))
 
 
 def _fmt_fechahora(dt):
@@ -1055,6 +1069,15 @@ def cambiar_estado(request, pk):
                 cabeceras["HX-Trigger"] = json.dumps({"pedirMotivoCancelacion": {
                     "url": reverse("proyectos-motivo-cancelacion", args=[proyecto.pk]),
                 }})
+            # LC 2026-08-17 (Oscar): al entrar a producción, ofrecer aprobar la
+            # cotización — si el taller ya está trabajando, debería estar
+            # aprobada. Viaja como cabecera para que lo recojan igual el dropdown,
+            # la barra de status y el arrastre del Kanban (que usa `fetch`).
+            elif _toca_aprobar_cotizacion(proyecto, anterior, nuevo):
+                import json
+                cabeceras["HX-Trigger"] = json.dumps({"pedirAprobarCotizacion": {
+                    "url": reverse("proyectos-modal-aprobar-cotizacion", args=[proyecto.pk]),
+                }})
             if inline and es_htmx:
                 # Render-V1: devolvemos la barra de status para swap inline.
                 resp = render(request, "proyectos/_barra_status.html", {
@@ -1619,6 +1642,7 @@ def duplicar_producto(request, pk, prod_pk):
             merma=original.merma,
             incluir_en_calculo=original.incluir_en_calculo,
             nota=original.nota,
+            visible_pdf=original.visible_pdf,
             orden=original.orden + 1,
         )
         for proc in original.procesos.all():
@@ -1632,6 +1656,20 @@ def duplicar_producto(request, pk, prod_pk):
             ProyectoProductoVenta.objects.create(
                 producto=copia, orden=venta.orden, descripcion=venta.descripcion,
                 cantidad=venta.cantidad, precio_unitario=venta.precio_unitario,
+            )
+        # LC 2026-08-17: las escalas de volumen también se clonan, con su
+        # activa y su ojo — la copia debe cotizarse igual que la original.
+        for esc in original.escalas.all():
+            ProyectoProductoEscala.objects.create(
+                producto=copia, orden=esc.orden, cantidad=esc.cantidad,
+                merma=esc.merma, precio_unitario=esc.precio_unitario,
+                costo_unitario=esc.costo_unitario,
+                costo_unitario_expr=esc.costo_unitario_expr,
+                impresion_costo=esc.impresion_costo,
+                impresion_costo_expr=esc.impresion_costo_expr,
+                impresion_por_pieza=esc.impresion_por_pieza,
+                extras_json=list(esc.extras_json or []),
+                activa=esc.activa, visible_pdf=esc.visible_pdf,
             )
 
     proyecto.recalcular_monto_estimado()
@@ -1958,8 +1996,133 @@ def cotizacion_estado(request, pk):
             oob = render(request, "proyectos/_modal_registrar_anticipo_oob.html",
                          _ctx_anticipo(proyecto))
             return HttpResponse(panel.content + b"\n" + oob.content)
+        # LC 2026-08-17: al APROBAR, si algún producto sigue ofreciendo más de una
+        # cantidad, se pregunta cuál quedó — el cliente ya decidió. Al confirmar,
+        # ésa queda activa y las demás salen del documento.
+        # Sólo a quien puede aplicarlo: el modal toca las LÍNEAS del proyecto, y
+        # quien edita cotizaciones no necesariamente edita proyectos — le saldría
+        # una pregunta que al confirmar contestaría 403.
+        if (request.POST.get("estado") == "aprobada"
+                and puede_editar_proyecto(request.user, proyecto)):
+            lineas = _lineas_con_varias_opciones(proyecto)
+            if lineas:
+                oob = render(request, "proyectos/_modal_escalas_oob.html",
+                             {"proyecto": proyecto, "lineas": lineas})
+                return HttpResponse(panel.content + b"\n" + oob.content)
         return panel
     return redirect(_redir_detalle(proyecto))
+
+
+def _toca_aprobar_cotizacion(proyecto, anterior: str, nuevo: str) -> bool:
+    """Si al cambiar de estado conviene ofrecer aprobar la cotización.
+
+    Se ofrece cuando el proyecto ENTRA a «En proceso de diseño» o más adelante
+    (sin contar los detenidos) y su última cotización todavía no llegó a
+    Aprobada. Defensivo: cualquier fallo devuelve False — el cambio de estado
+    nunca se cae por un aviso.
+    """
+    from apps.cotizaciones.models import Cotizacion, mapa_estados_cot
+
+    from .models import slugs_en_proceso_en_adelante
+    try:
+        en_adelante = slugs_en_proceso_en_adelante()
+        if nuevo not in en_adelante or anterior in en_adelante:
+            return False
+        cot = (Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+               .order_by("-version").first())
+        if cot is None:
+            return False
+        estados = mapa_estados_cot()
+        orden_actual = (estados.get(cot.estado) or {}).get("orden")
+        orden_aprobada = (estados.get("aprobada") or {}).get("orden")
+        if orden_actual is None or orden_aprobada is None:
+            return False
+        return orden_actual < orden_aprobada
+    except Exception:  # noqa: BLE001 — el aviso nunca tumba el cambio de estado
+        return False
+
+
+def _lineas_con_varias_opciones(proyecto):
+    """Líneas del proyecto que hoy imprimen más de una cantidad (escalas de
+    volumen). Vacío = nada que preguntar."""
+    lineas = []
+    for pp in (proyecto.productos.filter(incluir_en_calculo=True)
+               .prefetch_related("escalas")):
+        if len(pp.opciones_documento()) > 1:
+            lineas.append(pp)
+    return lineas
+
+
+@login_required
+def escalas_elegir(request, pk):
+    """«¿Con cuál cantidad quedó?» — deja UNA sola opción por producto.
+
+    LC 2026-08-17 (Oscar): al aprobar la cotización el cliente ya escogió, así
+    que se fuerza el corte. Al confirmar, la opción elegida queda ACTIVA (es la
+    que calcula el proyecto) y las demás se apagan del documento; las escalas no
+    se borran — el histórico de lo que se ofreció se conserva.
+
+    GET (HTMX) pinta el modal; POST aplica. Patrón Wave 5.
+    """
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    lineas = _lineas_con_varias_opciones(proyecto)
+
+    if request.method == "POST":
+        with transaction.atomic():
+            for pp in lineas:
+                elegida = (request.POST.get(f"opcion-{pp.pk}") or "").strip()
+                # Primero se apagan TODAS: el constraint parcial de la base no
+                # tolera dos activas ni un instante.
+                pp.escalas.update(activa=False)
+                if elegida and elegida != "a":
+                    ProyectoProductoEscala.objects.filter(
+                        producto=pp, pk=elegida).update(activa=True, visible_pdf=True)
+                    pp.escalas.exclude(pk=elegida).update(visible_pdf=False)
+                    pp.visible_pdf = False
+                else:
+                    pp.escalas.update(visible_pdf=False)
+                    pp.visible_pdf = True
+                pp.save(update_fields=["visible_pdf"])
+        proyecto.recalcular_monto_estimado()
+        emitir(EventoPortavoz(
+            tipo="proyecto.actualizado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"proyecto_id": proyecto.pk, "escalas_confirmadas": len(lineas)},
+        ))
+        messages.success(request, "Listo: quedó una sola cantidad por producto.")
+        if _es_htmx(request):
+            return HttpResponse(status=204, headers={
+                "HX-Redirect": _redir_detalle(proyecto)})
+        return redirect(_redir_detalle(proyecto))
+
+    return render(request, "proyectos/_modal_escalas.html",
+                  {"proyecto": proyecto, "lineas": lineas})
+
+
+@login_required
+def modal_aprobar_cotizacion(request, pk):
+    """«¿Pasar la cotización a Aprobada?» — sale cuando el proyecto entra a
+    producción (LC 2026-08-17, Oscar). Si el taller ya está trabajando, la
+    cotización debería estar aprobada. Solo GET: el botón del modal reusa
+    `proyectos-cotizacion-estado`."""
+    from apps.cotizaciones.models import Cotizacion, mapa_estados_cot
+
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    cot = (Cotizacion.objects.filter(proyecto=proyecto, version__gt=0)
+           .order_by("-version").first())
+    if cot is None:
+        return HttpResponse("")
+    estados = mapa_estados_cot()
+    return render(request, "proyectos/_modal_aprobar_cotizacion.html", {
+        "proyecto": proyecto,
+        "cot": cot,
+        "estado_actual_label": (estados.get(cot.estado) or {}).get("label", cot.estado),
+        "aprobada_label": (estados.get("aprobada") or {}).get("label", "Aprobada"),
+    })
 
 
 def _ctx_anticipo(proyecto, form=None):

@@ -406,7 +406,9 @@ class Cotizacion(models.Model):
     def calcular_totales(self) -> dict:
 
         items = list(self.items.all())
-        subtotal_items = sum((it.subtotal for it in items), CERO)
+        # Las alternativas de volumen se imprimen pero NO suman (LC 2026-08-17):
+        # el total es el de la opción activa.
+        subtotal_items = sum((it.subtotal for it in items if not it.informativo), CERO)
 
         desc_pct = self.descuento_global_porcentaje or CERO
         descuento_global = q2(subtotal_items * desc_pct / Decimal("100"))
@@ -493,6 +495,15 @@ class CotizacionItem(models.Model):
     agrupado = models.BooleanField(
         default=False,
         help_text="Se imprime dentro del bloque del concepto anterior (proceso de venta).",
+    )
+    # LC 2026-08-17: renglón INFORMATIVO — una escala de volumen que el cliente
+    # puede escoger («100 pz a 175») pero que NO es la que se está cotizando. Se
+    # imprime dentro del bloque de su producto (va con `agrupado=True`) y
+    # `calcular_totales` la EXCLUYE de la suma: el total refleja sólo la opción
+    # activa. Sin esta bandera, imprimir las alternativas duplicaría el total.
+    informativo = models.BooleanField(
+        default=False,
+        help_text="Alternativa de volumen: se imprime pero no suma al total.",
     )
 
     cantidad = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("1.00"))

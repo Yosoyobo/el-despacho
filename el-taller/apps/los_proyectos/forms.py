@@ -207,6 +207,16 @@ class ProyectoProductoForm(forms.ModelForm):
     # cliente como líneas propias de la cotización. Mismo mecanismo: el front los
     # serializa aquí y la vista los sincroniza a ProyectoProductoVenta.
     ventas_json = forms.CharField(required=False, widget=forms.HiddenInput())
+    # LC 2026-08-17: escalas de volumen (Opción B, C…). Mismo mecanismo que los
+    # dos de arriba; las reglas viven en `services_procesos.escalas_normalizadas`.
+    escalas_json = forms.CharField(required=False, widget=forms.HiddenInput())
+    # El OJO de la Opción A: si esta opción se imprime en la cotización. Checkbox
+    # escondido que el ojo de la cabecera prende y apaga (CSS puro, sin JS).
+    visible_pdf = forms.BooleanField(
+        required=False, initial=True, label="Se imprime en la cotización",
+        widget=forms.CheckboxInput(attrs={"class": "peer sr-only",
+                                          "data-visible-pdf": "1"}),
+    )
     # required=False + clean (abajo): una cantidad vacía en CUALQUIER fila no debe
     # invalidar todo el formset del detalle y bloquear silenciosamente el toggle
     # "incluir" de otra fila (reporte Oscar: "el botón de incluir no jala").
@@ -262,7 +272,7 @@ class ProyectoProductoForm(forms.ModelForm):
 
     class Meta:
         model = ProyectoProducto
-        fields = ["servicio", "nombre_proyecto", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "nota", "orden"]
+        fields = ["servicio", "nombre_proyecto", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "visible_pdf", "nota", "orden"]
         # LC 2026-08-04 (Oscar): la «nota corta» es ahora la DESCRIPCIÓN del
         # elemento y alimenta su especificación en la cotización. Acepta varias
         # líneas y crece sola hacia arriba (`data-autogrow` + la fila alinea al
@@ -475,6 +485,7 @@ class ProyectoProductoVersionForm(ProyectoProductoForm):
         if inst is not None:
             self.initial["procesos_json"] = _json.dumps(inst.procesos_json or [])
             self.initial["ventas_json"] = _json.dumps(inst.ventas_json or [])
+            self.initial["escalas_json"] = _json.dumps(inst.escalas_json or [])
             # El padre rellena precio/costo con el «efectivo» cuando están vacíos
             # (para que la línea viva muestre el del catálogo). Aquí un vacío es
             # desconocido: mejor dejarlo vacío que escribir un 0.00 inventado.
@@ -487,7 +498,11 @@ class ProyectoProductoVersionForm(ProyectoProductoForm):
                 self.fields[campo].widget.attrs["placeholder"] = "—"
 
     def save(self, commit=True):
-        from .services_procesos import procesos_normalizados, ventas_normalizadas
+        from .services_procesos import (
+            escalas_normalizadas,
+            procesos_normalizados,
+            ventas_normalizadas,
+        )
 
         # Salta el `save` del padre (su borrado diferido de imagen es de la línea
         # viva) y se queda con el de ModelForm.
@@ -504,6 +519,22 @@ class ProyectoProductoVersionForm(ProyectoProductoForm):
                 "descripcion": v["descripcion"], "cantidad": v["cantidad"],
                 "precio": str(v["precio_unitario"]),
             } for v in ventas]
+        # LC 2026-08-17: las escalas de volumen de esta versión. Los montos van
+        # como texto (el JSON no serializa `Decimal`) y **el None se conserva**:
+        # en una escala significa «hereda de la Opción A».
+        escalas = escalas_normalizadas(self.cleaned_data.get("escalas_json"))
+        if escalas is not None:
+            def _txt(valor):
+                return None if valor is None else str(valor)
+            obj.escalas_json = [{
+                **e,
+                "precio_unitario": _txt(e["precio_unitario"]),
+                "costo_unitario": _txt(e["costo_unitario"]),
+                "impresion_costo": _txt(e["impresion_costo"]),
+                "extras": e["extras_json"],
+            } for e in escalas]
+            for fila in obj.escalas_json:
+                fila.pop("extras_json", None)
         if commit:
             obj.save()
         return obj

@@ -112,3 +112,18 @@ def slugs_con_compromiso_visible() -> set[str]:
         pass
     corte_base = dict((s, o) for s, _l, _c, o, _t in ESTADOS_BASE).get(SLUG_DESDE_COMPROMISO, 30)
     return {s for s, _l, _c, o, _t in ESTADOS_BASE if o >= corte_base}
+
+
+# Un proyecto en pausa o cancelado no está «más adelante»: está detenido.
+SLUGS_DETENIDOS = frozenset({"en_pausa", "cancelado"})
+
+
+def slugs_en_proceso_en_adelante() -> set[str]:
+    """Estados en los que el trabajo YA arrancó: de «En proceso de diseño» en
+    adelante, sin los detenidos (en pausa, cancelado).
+
+    LC 2026-08-17 (Oscar): «un modal de pasar cotización a aprobada cuando un
+    proyecto pase a estado en proceso en adelante» — si el taller ya está
+    trabajando, la cotización debería estar aprobada.
+    """
+    return slugs_con_compromiso_visible() - SLUGS_DETENIDOS

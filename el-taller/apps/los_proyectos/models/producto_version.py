@@ -108,14 +108,23 @@ class ProyectoProductoVersion(models.Model):
     # Foto con la que se cotizó. Vacío = se cae a la del catálogo al pintar.
     imagen_file_id = models.CharField(max_length=100, blank=True, default="")
     incluir_en_calculo = models.BooleanField(default=True)
+    # LC 2026-08-17: si la Opción A se imprimía en el documento de esta versión.
+    visible_pdf = models.BooleanField(default=True)
 
     # Listas, NO diccionarios: es la forma que serializa el JS de la tarjeta y
-    # la que consumen `sincronizar_procesos` / `sincronizar_ventas`, que
-    # descartan en silencio cualquier cosa que no sea `list`.
+    # la que consumen `sincronizar_procesos` / `sincronizar_ventas` /
+    # `sincronizar_escalas`, que descartan en silencio cualquier cosa que no
+    # sea `list`.
     #   procesos_json → [{tipo, proveedor_id, descripcion, costo, costo_expr, por_pieza}]
     #   ventas_json   → [{descripcion, cantidad, precio}]
+    #   escalas_json  → [{cantidad, merma, precio_unitario, costo_unitario,
+    #                     costo_unitario_expr, impresion_costo,
+    #                     impresion_costo_expr, impresion_por_pieza, extras,
+    #                     activa, visible_pdf}]
+    # En `escalas_json` los nulos son significativos: «hereda de la Opción A».
     procesos_json = models.JSONField(default=list, blank=True)
     ventas_json = models.JSONField(default=list, blank=True)
+    escalas_json = models.JSONField(default=list, blank=True)
 
     # True = la fila la armó la migración de reconstrucción, no el generador de
     # la versión. El lado del costo (merma, costo, proveedor, procesos) se tomó
