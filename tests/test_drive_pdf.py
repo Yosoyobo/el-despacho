@@ -77,13 +77,25 @@ def test_documentos_generar_pdf_ok(monkeypatch):
 
     monkeypatch.setattr(drive, "esta_configurado", lambda: True)
     monkeypatch.setattr(drive, "obtener_o_crear_subcarpeta", lambda nombre: "CARP")
-    monkeypatch.setattr(
-        drive, "html_a_pdf",
-        lambda *, html, nombre, carpeta_id: {
-            "id": "P1", "webViewLink": "http://x/P1", "pdf_bytes": b"%PDF",
-        },
-    )
-    res = doc.generar_pdf(html="<p>x</p>", nombre="X", subcarpeta="Cotizaciones")
+    # LC 2026-08-17: el doble acepta `pagina` (márgenes y pie del documento) y lo
+    # CAPTURA. El fallback de `generar_pdf` atrapa cualquier excepción, así que un
+    # doble con la firma vieja no fallaba con un `TypeError` legible: devolvía
+    # `ok=False` y el test parecía un problema de Drive. Verificar que el
+    # parámetro viaja convierte esa trampa en garantía.
+    visto = {}
+
+    def _falso(*, html, nombre, carpeta_id, pagina=None):
+        visto["pagina"] = pagina
+        return {"id": "P1", "webViewLink": "http://x/P1", "pdf_bytes": b"%PDF"}
+
+    monkeypatch.setattr(drive, "html_a_pdf", _falso)
+    res = doc.generar_pdf(html="<p>x</p>", nombre="X", subcarpeta="Cotizaciones",
+                          pagina={"margen_superior_pt": 36})
     assert res.ok is True
     assert res.data["id"] == "P1"
     assert res.pdf_bytes == b"%PDF"
+    assert visto["pagina"] == {"margen_superior_pt": 36}
+
+    # Y sin `pagina` (las facturas) llega None: los márgenes de siempre.
+    doc.generar_pdf(html="<p>x</p>", nombre="X", subcarpeta="Facturas")
+    assert visto["pagina"] is None
