@@ -1637,6 +1637,13 @@ def duplicar_producto(request, pk, prod_pk):
             variacion=original.variacion,
             proveedor=original.proveedor,
             nombre_proyecto=original.nombre_proyecto,
+            # LC 2026-08-18 (Oscar): la foto va ligada al alias, y el alias se
+            # copia — así que la foto también. Esto REVIERTE la decisión de
+            # Ago12-B («⧉ sin heredar la foto propia»): el punto de partida de
+            # una línea duplicada es la línea entera, y si la foto sobra se
+            # quita con Supr.
+            imagen_file_id=original.imagen_file_id,
+            imagen_url=original.imagen_url,
             cantidad=original.cantidad,
             precio_unitario=original.precio_unitario,
             costo_unitario=original.costo_unitario,

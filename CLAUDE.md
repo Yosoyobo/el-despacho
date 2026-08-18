@@ -5279,6 +5279,40 @@ la línea, así que dos líneas del mismo producto con alias distintos salen de 
 distintos —lo pedido— y con más de 20 productos en un proyecto se repite alguno. Las
 escalas siguen sin editarse desde El Chalán.
 
+### S-Ajustes-Ago18 · duplicar proyecto ✅ — la copia vuelve a ser una copia (2026-08-18, VERSION 2026.08.13)
+
+Dos bugs **preexistentes** que salieron al revisar el diff del sprint anterior
+(`services_duplicar` no copiaba todo lo que la tarjeta muestra). Se le reportaron
+a Oscar y dijo «sí, ciérralos en el siguiente».
+
+- **El alias se perdía.** `duplicar_proyecto` no copiaba `nombre_proyecto`, así
+  que la copia volvía al nombre del catálogo — «TShirt Modelo Janet» otra vez
+  «TShirt Oversize Color»— y con él cambiaba el concepto del documento y la
+  especificación que `descripcion.esqueleto` arma a partir del nombre. También
+  faltaba `orden`, así que la copia no respetaba el arrastre del original.
+- **Los procesos de VENTA no viajaban.** El bucle copiaba `procesos` y `escalas`
+  pero no `ventas`: la copia salía **más barata que el original sin que nada lo
+  avisara**, y la cotización nueva nacía sin esas líneas. No caen bajo la
+  exclusión de «dinero histórico» del docstring (cotizaciones, facturas,
+  egresos): un proceso de venta es PRECIO, parte de lo que se cotiza.
+- **La foto propia de la línea tampoco viajaba.** Quedó como pregunta y Oscar la
+  contestó el mismo día: «las fotos de productos van ligadas a su alias o nombre
+  y sí viajan al duplicar» — que es la regla que ya vivía en
+  `ProyectoProducto.imagen_destino`. Si el alias viaja, la foto va con él. Se
+  copia la **referencia** al archivo de Drive, no el archivo: dos líneas apuntan
+  al mismo `file_id`, y es seguro porque quitar la foto de una sólo DESLIGA (el
+  archivo nunca se borra de Drive, Jul-26-R2).
+- **Aplicado también al ⧉ de duplicar una línea suelta**, que ya se llevaba el
+  alias, los procesos y las ventas. **Revierte la decisión de Ago12-B** («⧉ sin
+  heredar la foto propia»), que quedaba incoherente con la regla nueva. El FK
+  `egreso` se sigue sin heredar: eso es marca de idempotencia de producción.
+- De paso, el `prefetch_related` incluye `ventas` (si no, una consulta por línea).
+- **7 tests** en `tests/taller/test_proyecto_duplicar_margen.py`, el archivo que
+  ya cubría duplicar. Verificados contra el código sin arreglar en DOS rondas
+  (alias+ventas: 2 fallan; fotos: 2 fallan). Los otros tres son red para la
+  próxima relación que se olvide. Explicación larga en
+  `docs/HANDOFF-duplicar-proyecto.md`.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

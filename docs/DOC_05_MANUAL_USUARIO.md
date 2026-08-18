@@ -48,6 +48,16 @@
   aparece donde la pusiste.
 - El recuadro de **Descripción** ya no crece y se encoge solo.
 
+**Duplicar un proyecto ya copia todo**
+
+- La copia perdía dos cosas: el **nombre que le pusiste al producto dentro del
+  proyecto** (volvía al del catálogo, y con él cambiaba lo que decía la
+  cotización) y **lo que se le cobra al cliente aparte** (Ponchado, arte…), así
+  que la copia salía más barata que el original sin avisar. Ya viajan las dos,
+  junto con el orden de las tarjetas y **la foto** — que va ligada al nombre que
+  le pusiste al producto, así que si el nombre viaja, la foto también. Lo mismo
+  al duplicar una sola tarjeta con el botón ⧉.
+
 **Buscar sin acentos**
 
 - Buscar `numeros` encuentra **Números Rojos**, y buscar `Números` encuentra
