@@ -50,7 +50,7 @@
         {{ formset.management_form }}
         <div id="formset-productos" class="space-y-4" data-arr-zona data-arr-grupo="productos">
             {% for f in formset %}
-                {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance.pk|color_tarjeta %}
+                {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance|color_tarjeta %}
             {% endfor %}
         </div>
         {# quick-create de Servicio inline #}

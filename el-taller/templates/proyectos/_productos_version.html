@@ -38,7 +38,7 @@ cotización va en el hidden de abajo.
     {% endif %}
 
     {% for f in formset %}
-        {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance.servicio_id|color_tarjeta solo_lectura_foto=True sin_arrastre=True %}
+        {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance|color_tarjeta solo_lectura_foto=True sin_arrastre=True %}
     {% empty %}
         {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin productos en esta versión" descripcion="La cotización se generó sin líneas de producto." icono="folder" %}
     {% endfor %}

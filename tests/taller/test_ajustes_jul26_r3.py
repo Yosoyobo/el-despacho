@@ -51,7 +51,12 @@ def _cot_con_linea(proyecto, autor, *, imagen="", codigo="COT-2026-9300"):
 # ── (1) La foto nunca descuadra el documento ────────────────────────────────
 
 def test_la_foto_se_acota_a_una_caja_fija():
-    """Sea cual sea la proporción, la imagen cabe en 150×76pt."""
+    """Sea cual sea la proporción, la imagen cabe en la caja.
+
+    El alto de la caja bajó de 76 a 64pt el 2026-08-18 (Oscar: «achicar un poco
+    la foto» para que el aire que deja arriba tampoco sea mucho), así que el test
+    se apoya en la constante y no en el número.
+    """
     from apps.cotizaciones.services import _ALTO_FOTO_PT, _ANCHO_FOTO_PT, _medida_foto
 
     # Apaisada (banner 4:1): manda el ancho.
@@ -61,7 +66,7 @@ def test_la_foto_se_acota_a_una_caja_fija():
     # Vertical (la bata, 1×2): manda el ALTO — este era el caso roto.
     ancho, alto = _medida_foto(2.0)
     assert alto == _ALTO_FOTO_PT
-    assert ancho == 38
+    assert ancho == round(_ALTO_FOTO_PT / 2)
 
     # Cuadrada.
     ancho, alto = _medida_foto(1.0)
@@ -90,8 +95,8 @@ def test_el_documento_pinta_la_foto_con_ancho_y_alto(proyecto_factory, usuario_f
                         lambda fid: "https://taller/img/x" if fid else "")
 
     html = services.construir_html_pdf(cot)
-    assert 'height="76"' in html and 'width="38"' in html
-    assert "height:76pt" in html
+    assert 'height="64"' in html and 'width="32"' in html
+    assert "height:64pt" in html
     # Nada de anchos sueltos sin alto: era lo que dejaba crecer la imagen.
     assert 'style="width:150pt;"' not in html
 

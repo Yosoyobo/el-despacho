@@ -17,7 +17,11 @@
                 {% comment %}LC 2026-07-25: el nombre que le pusiste al producto
                 dentro del proyecto manda también aquí (`nombre_visible`).{% endcomment %}
                 <span class="block truncate text-gray-700 dark:text-gray-200">{{ pp.nombre_visible }}</span>
-                <span class="block text-xs text-gray-400 dark:text-gray-500">{{ pp.precio_efectivo|dinero_corto }} x {{ pp.cantidad }} pz</span>
+                {% comment %}LC 2026-08-18 (Oscar): «también el desglose del Sidebar».
+                El precio ya salía de la opción activa pero la cantidad no, así que con
+                una Opción B marcada el renglón decía «$175 x 70 pz» y cobraba 100. La
+                letra avisa cuál opción está mandando.{% endcomment %}
+                <span class="block text-xs text-gray-400 dark:text-gray-500">{{ pp.precio_efectivo|dinero_corto }} x {{ pp.cantidad_efectiva }} pz{% if pp.escala_activa %} <span class="font-semibold">({{ pp.escala_activa.letra }})</span>{% endif %}</span>
             </span>
             <span class="shrink-0 pt-0.5 text-right font-medium tabular-nums text-gray-700 dark:text-gray-200">{{ pp.subtotal|dinero }}</span>
             {% if puede_editar %}

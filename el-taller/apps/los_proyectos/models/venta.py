@@ -38,6 +38,10 @@ class ProyectoProductoVenta(models.Model):
     )
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # LC 2026-08-18 (Oscar): el precio acepta una CUENTA escrita («350*3»).
+    # Aquí queda tal cual; `precio_unitario` guarda el total, que saca el
+    # servidor. Mismo contrato que el costo de los procesos de producción.
+    precio_expr = models.CharField(max_length=120, blank=True, default="")
 
     creado_en = models.DateTimeField(auto_now_add=True)
 

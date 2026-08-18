@@ -180,6 +180,34 @@ class EditarEconomicoForm(forms.ModelForm):
         }
 
 
+# LC 2026-08-18: los campos de dinero de la tarjeta aceptan una CUENTA escrita
+# («35+15+15», «15.75*100», «2400/12»). La regla es una sola para el precio y el
+# costo, así que vive aquí y no duplicada en cada `clean_*`.
+_OPERADORES = "+-*/"
+
+
+def _cuenta_del_campo(crudo, etiqueta: str) -> tuple:
+    """`(total, cuenta_escrita)` de un campo que admite cuentas.
+
+    Vacío ⇒ `(None, "")`, que en estos campos significa «hereda del catálogo».
+    La cuenta sólo se conserva escrita si de verdad es una cuenta y no un número
+    pelón: guardar «195» como «cuenta» no le sirve a nadie.
+    """
+    from apps.los_proyectos.services_procesos import suma_expresion
+
+    texto = (crudo or "").strip()
+    if not texto:
+        return None, ""
+    total = suma_expresion(texto)
+    if total is None:
+        raise forms.ValidationError(
+            f"{etiqueta} inválido. Usa un número o una cuenta como 15.75*100.")
+    if total < 0:
+        raise forms.ValidationError(f"{etiqueta} no puede ser negativo.")
+    expr = texto[:120] if any(c in _OPERADORES for c in texto[1:]) else ""
+    return total, expr
+
+
 class ProyectoProductoForm(forms.ModelForm):
     servicio = forms.ModelChoiceField(
         queryset=Servicio.activos.all().select_related("categoria", "proveedor_principal").prefetch_related("proveedores"),
@@ -224,9 +252,18 @@ class ProyectoProductoForm(forms.ModelForm):
         required=False, min_value=1, initial=1, label="Cant.",
         widget=forms.NumberInput(attrs={"class": "campo-angosto", "placeholder": "1"}),
     )
-    precio_unitario = forms.DecimalField(
-        required=False, min_value=0, label="Precio unit.",
-        widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "catálogo"}),
+    # LC 2026-08-18 (Oscar): el precio también acepta una CUENTA, con las cuatro
+    # operaciones. Igual que el costo: es un campo de texto —un `type=number` ni
+    # deja teclear el `*`— y el total lo saca el SERVIDOR, así que el monto
+    # guardado siempre concuerda con lo escrito, venga el POST de donde venga.
+    precio_unitario = forms.CharField(
+        required=False, label="Precio unit.",
+        widget=forms.TextInput(attrs={
+            "inputmode": "text", "autocomplete": "off",
+            "placeholder": "catálogo", "class": "precio-unit",
+            "title": "Acepta una cuenta: escribe 2400/12 y se calcula solo "
+                     "(la cuenta se queda escrita).",
+        }),
     )
     # LC 2026-08-12 (Oscar): «habilitemos que también se pueda escribir y
     # calcular, por ejemplo 15.75*100». Un `type=number` ni deja teclear el `*`,
@@ -355,6 +392,8 @@ class ProyectoProductoForm(forms.ModelForm):
             # Si se capturó como cuenta, se vuelve a mostrar la cuenta escrita.
             if inst.costo_unitario_expr:
                 self.initial["costo_unitario"] = inst.costo_unitario_expr
+            if getattr(inst, "precio_unitario_expr", ""):
+                self.initial["precio_unitario"] = inst.precio_unitario_expr
 
     def clean_costo_unitario(self):
         """El campo acepta un número o una CUENTA («15.75*100»).
@@ -363,20 +402,14 @@ class ProyectoProductoForm(forms.ModelForm):
         impresión: así el monto guardado siempre concuerda con lo escrito,
         venga el POST de donde venga. Vacío ⇒ None (hereda el del catálogo).
         """
-        from apps.los_proyectos.services_procesos import suma_expresion
+        total, self._costo_expr = _cuenta_del_campo(
+            self.cleaned_data.get("costo_unitario"), "Costo")
+        return total
 
-        crudo = (self.cleaned_data.get("costo_unitario") or "").strip()
-        self._costo_expr = ""
-        if not crudo:
-            return None
-        total = suma_expresion(crudo)
-        if total is None:
-            raise forms.ValidationError("Costo inválido. Usa un número o una cuenta como 15.75*100.")
-        if total < 0:
-            raise forms.ValidationError("El costo no puede ser negativo.")
-        # Sólo se conserva escrita si de verdad es una cuenta, no un número.
-        if any(c in "+-*" for c in crudo[1:]):
-            self._costo_expr = crudo[:120]
+    def clean_precio_unitario(self):
+        """Igual que el costo: número o cuenta, y el total lo saca el servidor."""
+        total, self._precio_expr = _cuenta_del_campo(
+            self.cleaned_data.get("precio_unitario"), "Precio")
         return total
 
     def clean_merma(self):
@@ -409,6 +442,7 @@ class ProyectoProductoForm(forms.ModelForm):
     def save(self, commit=True):
         obj = super().save(commit=False)
         obj.costo_unitario_expr = getattr(self, "_costo_expr", "") or ""
+        obj.precio_unitario_expr = getattr(self, "_precio_expr", "") or ""
         if commit:
             obj.save()
             self.save_m2m()
@@ -508,6 +542,7 @@ class ProyectoProductoVersionForm(ProyectoProductoForm):
         # viva) y se queda con el de ModelForm.
         obj = super(ProyectoProductoForm, self).save(commit=False)
         obj.costo_unitario_expr = getattr(self, "_costo_expr", "") or ""
+        obj.precio_unitario_expr = getattr(self, "_precio_expr", "") or ""
         procesos = procesos_normalizados(self.cleaned_data.get("procesos_json"))
         if procesos is not None:
             # Los montos se guardan como texto: el JSON no serializa `Decimal` y
@@ -518,6 +553,9 @@ class ProyectoProductoVersionForm(ProyectoProductoForm):
             obj.ventas_json = [{
                 "descripcion": v["descripcion"], "cantidad": v["cantidad"],
                 "precio": str(v["precio_unitario"]),
+                # La cuenta escrita también se congela (LC 2026-08-18): sin ella,
+                # editar la pestaña de una versión la perdería y dejaría el total.
+                "precio_expr": v["precio_expr"],
             } for v in ventas]
         # LC 2026-08-17: las escalas de volumen de esta versión. Los montos van
         # como texto (el JSON no serializa `Decimal`) y **el None se conserva**:

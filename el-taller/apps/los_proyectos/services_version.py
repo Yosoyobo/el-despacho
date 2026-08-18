@@ -46,6 +46,7 @@ def ventas_json(pp) -> list[dict]:
         "descripcion": v.descripcion or "",
         "cantidad": int(v.cantidad or 1),
         "precio": str(Decimal(str(v.precio_unitario or 0)).quantize(Decimal("0.01"))),
+        "precio_expr": v.precio_expr or "",
     } for v in pp.ventas.all().order_by("orden", "creado_en")]
 
 
@@ -67,6 +68,7 @@ def escalas_json(pp) -> list[dict]:
         "cantidad": int(e.cantidad or 1),
         "merma": int(e.merma or 0),
         "precio_unitario": _opcional(e.precio_unitario),
+        "precio_unitario_expr": e.precio_unitario_expr or "",
         "costo_unitario": _opcional(e.costo_unitario),
         "costo_unitario_expr": e.costo_unitario_expr or "",
         "impresion_costo": _opcional(e.impresion_costo),
@@ -108,10 +110,12 @@ def fotografiar(cot, pares) -> int:
             # ES el de la escala, y la fila A de la pestaña debe conservar lo
             # suyo (las escalas se congelan aparte, en `escalas_json`).
             precio_unitario=pp.precio_propio,
+            precio_unitario_expr=(pp.precio_unitario_expr or ""),
             costo_unitario=pp.costo_propio,
             costo_unitario_expr=(pp.costo_unitario_expr or ""),
             nota=(pp.nota or ""),
             imagen_file_id=pp.imagen_efectiva_file_id,
+            color=(pp.color or ""),
             incluir_en_calculo=True,
             procesos_json=procesos_json(pp),
             ventas_json=ventas_json(pp),
@@ -341,6 +345,7 @@ def restaurar_en_edicion(cot, actor=None) -> dict:
             pp.cantidad = fila.cantidad or 1
             pp.merma = fila.merma or 0
             pp.precio_unitario = fila.precio_unitario
+            pp.precio_unitario_expr = getattr(fila, "precio_unitario_expr", "") or ""
             pp.costo_unitario = fila.costo_unitario
             pp.costo_unitario_expr = fila.costo_unitario_expr or ""
             pp.nota = fila.nota or ""

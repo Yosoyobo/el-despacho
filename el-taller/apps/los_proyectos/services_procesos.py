@@ -16,6 +16,7 @@ inválido ⇒ no toca nada.
 from __future__ import annotations
 
 import json
+import re
 from decimal import Decimal, InvalidOperation
 
 from apps.el_catalogo.models import Proveedor
@@ -41,28 +42,38 @@ def _to_decimal(valor) -> Decimal:
 # quien saca el total: así el monto que se guarda siempre concuerda con la
 # cuenta escrita, aunque el POST llegue de otra parte.
 #
-# LC 2026-08-12 (Oscar): se suma la multiplicación — «15.75*100». Lo que se
-# sigue rechazando es la DIVISIÓN, y no por descuido: con dos decimales pierde
-# centavos (repartir 150 entre 29 da 5.17 × 29 = 149.93, no 150). Ése fue el
-# error que ya nos costó una vez.
+# LC 2026-08-12 (Oscar): se suma la multiplicación — «15.75*100».
+#
+# LC 2026-08-18 (Oscar): y la DIVISIÓN, que hasta hoy se rechazaba a propósito.
+# La razón del veto sigue siendo cierta —con dos decimales pierde centavos:
+# repartir 150 entre 29 da 5.17, y 5.17 × 29 son 149.93, no 150— así que ahora
+# se paga con transparencia en vez de con una prohibición: la división se
+# calcula a precisión completa y sólo se redondea al final, y la tarjeta pinta
+# el resultado en chiquito bajo el campo («= $5.17») para que el redondeo se
+# vea ANTES de guardar. Quien escribe la cuenta decide.
 MAX_EXPR = 120
 _SIGNOS = "+-"
 _MULT = "*"
+_DIV = "/"
+_FACTORES = _MULT + _DIV
 
 
 def suma_expresion(texto) -> Decimal | None:
-    """Total de una cuenta tipo `35+15+15` o `15.75*100`. None si no es cuenta.
+    """Total de una cuenta tipo `35+15+15`, `15.75*100` o `150/29`.
 
-    Un número pelón (`65` o `65.00`) también devuelve su valor — así el mismo
-    campo sirve para las dos formas de capturar. La multiplicación va primero,
-    como en la aritmética de siempre: `2*3+4` son 10.
+    None si no es una cuenta legible. Un número pelón (`65` o `65.00`) también
+    devuelve su valor — así el mismo campo sirve para las dos formas de
+    capturar. Multiplicaciones y divisiones van primero, como en la aritmética
+    de siempre (`2*3+4` son 10), y entre ellas de izquierda a derecha
+    (`100/4*3` son 75). El redondeo a centavos se hace UNA sola vez, al final:
+    `150/29*29` da los 150 exactos aunque el paso intermedio no sea redondo.
     """
     if texto is None:
         return None
     crudo = str(texto).replace(",", "").replace(" ", "")
     if not crudo or len(crudo) > MAX_EXPR:
         return None
-    if any(c not in "0123456789." + _SIGNOS + _MULT for c in crudo):
+    if any(c not in "0123456789." + _SIGNOS + _FACTORES for c in crudo):
         return None
     # Términos con su signo. Si al re-pegarlos no sale la cadena original, la
     # cuenta está mal escrita (`35++15`, `35+`, `.`) y se descarta completa.
@@ -83,16 +94,27 @@ def suma_expresion(texto) -> Decimal | None:
         cuerpo = t.lstrip(_SIGNOS)
         if not cuerpo:
             return None
+        # Factores con su operador: `100/4*3` → 100, (/ 4), (* 3).
+        piezas = re.split(f"([{re.escape(_FACTORES)}])", cuerpo)
         producto = Decimal("1")
-        factores = cuerpo.split(_MULT)
-        for factor in factores:
+        operador = _MULT
+        for i, pieza in enumerate(piezas):
+            if i % 2:                       # posición impar = el operador
+                operador = pieza
+                continue
             # `35*`, `*15` o `2**3` dejan un factor vacío: cuenta mal escrita.
-            if not factor or factor.count(".") > 1 or factor == ".":
+            if not pieza or pieza.count(".") > 1 or pieza == ".":
                 return None
             try:
-                producto *= Decimal(factor)
+                valor = Decimal(pieza)
             except InvalidOperation:
                 return None
+            if operador == _DIV:
+                if valor == 0:              # entre cero no hay cuenta que valga
+                    return None
+                producto /= valor
+            else:
+                producto *= valor
         total += signo * producto
     return total.quantize(Decimal("0.01"))
 
@@ -105,7 +127,7 @@ def _expr_y_costo(fila: dict, clave: str = "costo") -> tuple[str, Decimal]:
     """
     expr = (str(fila.get(f"{clave}_expr") or "")).strip()[:MAX_EXPR]
     # Sin operadores no es una cuenta, es un número: no vale la pena conservarla.
-    if expr and not any(c in _SIGNOS + _MULT for c in expr[1:]):
+    if expr and not any(c in _SIGNOS + _FACTORES for c in expr[1:]):
         expr = ""
     if expr:
         total = suma_expresion(expr)
@@ -268,9 +290,10 @@ def ventas_normalizadas(ventas_json: str | None) -> list[dict] | None:
         if not isinstance(fila, dict):
             continue
         descripcion = (fila.get("descripcion") or "").strip()[:200]
-        precio = _to_decimal(fila.get("precio"))
+        # LC 2026-08-18: el precio de un proceso de venta también admite cuenta.
+        precio_expr, precio = _expr_y_costo(fila, "precio")
         if precio < 0:
-            precio = Decimal("0.00")
+            precio, precio_expr = Decimal("0.00"), ""
         try:
             cantidad = int(fila.get("cantidad") or 1)
         except (TypeError, ValueError):
@@ -279,7 +302,7 @@ def ventas_normalizadas(ventas_json: str | None) -> list[dict] | None:
         if not descripcion and precio == 0:
             continue
         deseados.append({"descripcion": descripcion, "cantidad": cantidad,
-                         "precio_unitario": precio})
+                         "precio_unitario": precio, "precio_expr": precio_expr})
     return deseados
 
 
@@ -352,9 +375,8 @@ def escalas_normalizadas(escalas_json: str | None) -> list[dict] | None:
         deseados.append({
             "cantidad": _entero(cantidad_cruda, minimo=1, default=1),
             "merma": _entero(fila.get("merma"), minimo=0, default=0),
-            # El precio no acepta cuenta hoy (el campo es numérico); se conserva
-            # el par por simetría con el costo, que sí.
             "precio_unitario": precio,
+            "precio_unitario_expr": precio_expr,
             "costo_unitario": costo,
             "costo_unitario_expr": costo_expr,
             "impresion_costo": imp_costo,
@@ -365,7 +387,6 @@ def escalas_normalizadas(escalas_json: str | None) -> list[dict] | None:
             # Default TRUE: una escala nace visible, como en el render.
             "visible_pdf": bool(fila.get("visible_pdf", True)),
         })
-        del precio_expr           # el precio no guarda su cuenta (campo numérico)
     return deseados
 
 
@@ -429,12 +450,15 @@ def sincronizar_ventas(producto, ventas_json: str | None) -> None:
             v.descripcion = d["descripcion"]
             v.cantidad = d["cantidad"]
             v.precio_unitario = d["precio_unitario"]
-            v.save(update_fields=["orden", "descripcion", "cantidad", "precio_unitario"])
+            v.precio_expr = d["precio_expr"]
+            v.save(update_fields=["orden", "descripcion", "cantidad",
+                                  "precio_unitario", "precio_expr"])
             conservados.add(v.pk)
         else:
             ProyectoProductoVenta.objects.create(
                 producto=producto, orden=orden, descripcion=d["descripcion"],
                 cantidad=d["cantidad"], precio_unitario=d["precio_unitario"],
+                precio_expr=d["precio_expr"],
             )
 
     for v in existentes:

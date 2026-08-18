@@ -95,6 +95,9 @@ class ProyectoProductoVersion(models.Model):
     # Nulo = desconocido (ver el docstring del módulo), NO «usa el catálogo».
     precio_unitario = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True)
+    # La cuenta escrita del precio (LC 2026-08-18), por la misma razón que la
+    # del costo: sin ella, editar o restaurar la versión la perdería.
+    precio_unitario_expr = models.CharField(max_length=120, blank=True, default="")
     costo_unitario = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True)
     # La cuenta escrita del costo («15.75*100»), igual que en la línea viva
@@ -107,6 +110,9 @@ class ProyectoProductoVersion(models.Model):
     nota = models.TextField(blank=True, default="")
     # Foto con la que se cotizó. Vacío = se cae a la del catálogo al pintar.
     imagen_file_id = models.CharField(max_length=100, blank=True, default="")
+    # El color que tenía la tarjeta cuando se congeló la versión (LC 2026-08-18),
+    # para que la pestaña se lea igual que el bloque vivo.
+    color = models.CharField(max_length=7, blank=True, default="")
     incluir_en_calculo = models.BooleanField(default=True)
     # LC 2026-08-17: si la Opción A se imprimía en el documento de esta versión.
     visible_pdf = models.BooleanField(default=True)
@@ -169,6 +175,18 @@ class ProyectoProductoVersion(models.Model):
             else:
                 nombre = f"{nombre} · {vnom}"
         return nombre
+
+    @property
+    def color_asignado(self) -> str:
+        """El color congelado con la versión, sin la regla del nombre."""
+        from .. import colores
+        return colores.normalizar(self.color) or colores.color_estable(self.nombre_visible)
+
+    @property
+    def color_efectivo(self) -> str:
+        """El HEX de esta tarjeta congelada. Misma regla que en la línea viva."""
+        from .. import colores
+        return colores.color_del_texto(self.nombre_visible, self.nota) or self.color_asignado
 
     @property
     def nombre_visible(self) -> str:

@@ -23,6 +23,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from lib.busqueda import q_texto
 from lib.navegacion import destino_de_regreso
 from lib.permisos import puede
 from lib.portavoz import emitir
@@ -70,7 +71,7 @@ def lista(request):
     puede_eliminar = puede(user, "catalogo", "eliminar")
     puede_gestionar_cats = puede(user, "catalogo", "gestionar_categorias")
 
-    from django.db.models import Count, Q
+    from django.db.models import Count
 
     q = (request.GET.get("q") or "").strip()
     categoria_id = request.GET.get("categoria") or ""
@@ -104,11 +105,9 @@ def lista(request):
         # LC 2026-07-26 (Oscar): y por los ALIAS con los que se vendió en algún
         # proyecto («TShirt Modelo Janet» encuentra la playera del catálogo) —
         # los alias son parte de la base buscable de productos.
-        qs = qs.filter(
-            Q(nombre__icontains=q)
-            | Q(proveedores__razon_social__icontains=q)
-            | Q(en_proyectos__nombre_proyecto__icontains=q)
-        ).distinct()
+        qs = qs.filter(q_texto(
+            q, "nombre", "proveedores__razon_social",
+            "en_proyectos__nombre_proyecto")).distinct()
     if categoria_id:
         qs = qs.filter(categoria_id=categoria_id)
     # Sprint 2 UX (item 6): orden por Categoría con toggle asc/desc; el default
@@ -664,7 +663,6 @@ def proveedores_lista(request):
     formato de tarjetas.
     """
     from apps.los_proyectos.models import Proyecto
-    from django.db.models import Q
 
     if (r := _gate(request, "ver_nombres")) is not None:
         return r
@@ -698,17 +696,12 @@ def proveedores_lista(request):
     elif categoria_id.isdigit():
         qs = qs.filter(subcategorias__categoria_id=categoria_id)
     if q:
-        qs = qs.filter(
-            Q(razon_social__icontains=q)
-            | Q(nombre_contacto__icontains=q)
-            | Q(email_contacto__icontains=q)
-            | Q(telefono__icontains=q)
-            | Q(subcategorias__nombre__icontains=q)
-            | Q(subcategorias__categoria__nombre__icontains=q)
-            | Q(servicios__nombre__icontains=q)
-            | Q(productos_proyecto__proyecto__codigo__icontains=q)
-            | Q(productos_proyecto__proyecto__nombre__icontains=q)
-        )
+        qs = qs.filter(q_texto(
+            q, "razon_social", "nombre_contacto", "email_contacto", "telefono",
+            "subcategorias__nombre", "subcategorias__categoria__nombre",
+            "servicios__nombre", "productos_proyecto__proyecto__codigo",
+            "productos_proyecto__proyecto__nombre",
+        ))
     qs = qs.distinct().order_by("razon_social").prefetch_related(
         "servicios__categoria", "subcategorias__categoria",
     )
@@ -797,7 +790,7 @@ def proveedor_buscar(request):
     q = (request.GET.get("q") or "").strip()
     qs = Proveedor.objects.filter(activo=True)
     if q:
-        qs = qs.filter(razon_social__icontains=q)
+        qs = qs.filter(q_texto(q, "razon_social"))
     qs = qs.order_by("razon_social")[:8]
     return JsonResponse({"resultados": [
         {"id": p.pk, "nombre": p.razon_social} for p in qs

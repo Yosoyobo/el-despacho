@@ -1,7 +1,11 @@
+import json
 from datetime import date, datetime
 
 from django import template
 from django.utils import formats
+from django.utils.safestring import mark_safe
+
+from .. import colores
 
 register = template.Library()
 
@@ -215,23 +219,58 @@ def estado_label(estado: str) -> str:
 # LC 2026-08-04 (Oscar): «que dejen de cambiar de color cada toggle o
 # movimiento». El color de la tarjeta de producto se rotaba con `{% cycle %}`,
 # es decir por POSICIÓN: al arrastrar una tarjeta o apagar un toggle (que la
-# movía de lugar) TODAS se recoloreaban. Ahora el color se deriva del producto,
-# así que es estable para siempre: la tarjeta de las gorras es verde hoy, al
-# recargar y después de moverla.
-_COLORES_TARJETA = ("brand", "success", "warning", "blue-light", "orange")
+# movía de lugar) TODAS se recoloreaban.
+#
+# LC 2026-08-18 (Oscar): «los necesito 100% variados y contrastados, y
+# sólidamente ligados a cada uno de sus productos. Si en el nombre o descripción
+# se menciona un color, usar ese». El color ya no es un token de Tailwind sino un
+# HEX que sale de `apps.los_proyectos.colores` y se pinta con `--ec` +
+# `color-mix`. La regla completa vive en `ProyectoProducto.color_efectivo`.
 
 
 @register.filter(name="color_tarjeta")
-def color_tarjeta(pk) -> str:
-    """Token de color estable para la tarjeta de un producto del proyecto.
+def color_tarjeta(linea) -> str:
+    """HEX con el que se pinta la tarjeta de un producto del proyecto.
 
-    Determinista por pk (no usa `hash()`, que en Python varía entre procesos).
-    Las líneas sin guardar todavía no tienen pk → `brand`, el color por defecto.
+    Recibe la LÍNEA (`ProyectoProducto` o su foto por versión). Si le llega otra
+    cosa —un texto, un nulo— devuelve un color estable derivado de ella, para que
+    una tarjeta todavía sin guardar nunca aparezca sin identidad.
+    """
+    efectivo = getattr(linea, "color_efectivo", None)
+    if efectivo:
+        return efectivo
+    if linea in (None, ""):
+        return colores.COLOR_DEFAULT
+    return colores.color_estable(str(linea))
+
+
+@register.filter(name="color_escala")
+def color_escala(indice) -> str:
+    """HEX de la opción de volumen número `indice` (0 = la B, la primera).
+
+    LC 2026-08-18 (Oscar): «las opciones (B) (C) etc deben de tener cada una otro
+    color, empezando con el azul que ya tienes» — y el azul de la casa es
+    justamente el primero de la lista.
     """
     try:
-        n = int(pk)
+        n = int(indice)
     except (TypeError, ValueError):
-        return "brand"
-    if n <= 0:
-        return "brand"
-    return _COLORES_TARJETA[n % len(_COLORES_TARJETA)]
+        n = 0
+    return colores.PALETA[max(0, n) % len(colores.PALETA)]
+
+
+@register.simple_tag(name="colores_palabras_json")
+def colores_palabras_json() -> str:
+    """Los colores nombrados, para que la tarjeta se recolore mientras escribes.
+
+    Se sirve desde aquí —y no desde cada vista— para que el mapa siga teniendo
+    UN solo dueño: `apps.los_proyectos.colores`.
+    """
+    pares = [[list(palabras), hexa] for palabras, hexa in colores.COLORES_NOMBRADOS]
+    return mark_safe(json.dumps(pares, ensure_ascii=False))  # noqa: S308 — datos propios
+
+
+@register.simple_tag(name="colores_paleta_json")
+def colores_paleta_json() -> str:
+    """La lista de colores, para que el JS reparta las opciones B, C… igual."""
+    return mark_safe(json.dumps(list(colores.PALETA)))  # noqa: S308 — datos propios

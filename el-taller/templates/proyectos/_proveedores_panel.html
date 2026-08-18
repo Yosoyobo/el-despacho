@@ -27,8 +27,12 @@ es por proveedor y SOLO de este proyecto (default prendido).
                             hx-post="{% url 'proyectos-proveedor-iva' proyecto.pk fila.proveedor.pk %}"
                             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' hx-swap="none"
                             title="Aplicar IVA a este proveedor (solo este proyecto)">
-                        <span class="text-[10px] font-semibold uppercase tracking-wide {% if fila.aplica_iva %}text-brand-600 dark:text-brand-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">IVA</span>
-                        <span class="relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition {% if fila.aplica_iva %}bg-brand-500{% else %}bg-gray-300 dark:bg-gray-700{% endif %}">
+                        {% comment %}LC 2026-08-18 (Oscar): «los toggles de IVA deberían
+                        de ser todos grises no azules, son muy llamativos». Encendido se
+                        distingue por el tono y por dónde está la perilla, no por color de
+                        marca: es un interruptor de detalle, no una acción principal.{% endcomment %}
+                        <span class="text-[10px] font-semibold uppercase tracking-wide {% if fila.aplica_iva %}text-gray-600 dark:text-gray-300{% else %}text-gray-400 dark:text-gray-500{% endif %}">IVA</span>
+                        <span class="relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition {% if fila.aplica_iva %}bg-gray-500 dark:bg-gray-400{% else %}bg-gray-300 dark:bg-gray-700{% endif %}">
                             <span class="absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-theme-xs transition {% if fila.aplica_iva %}left-3.5{% else %}left-0.5{% endif %}"></span>
                         </span>
                     </button>

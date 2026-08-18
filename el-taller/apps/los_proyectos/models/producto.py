@@ -7,9 +7,12 @@ puede apuntar a Servicio (genérico) o Variacion (específica del producto).
 
 from __future__ import annotations
 
+import contextlib
 from decimal import Decimal
 
 from django.db import models
+
+from .. import colores
 
 CERO = Decimal("0.00")
 
@@ -55,6 +58,10 @@ class ProyectoProducto(models.Model):
         max_digits=12, decimal_places=2, null=True, blank=True,
         help_text="Precio por unidad para este proyecto. Vacío = usa el del catálogo.",
     )
+    # LC 2026-08-18 (Oscar): el precio también acepta una CUENTA escrita
+    # («150+45», «2400/12»). Aquí queda tal como se escribió; `precio_unitario`
+    # guarda el total, que lo saca el SERVIDOR. Mismo contrato que el costo.
+    precio_unitario_expr = models.CharField(max_length=120, blank=True, default="")
     costo_unitario = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True,
         help_text="Costo por unidad para este proyecto. Vacío = usa el del catálogo.",
@@ -96,6 +103,14 @@ class ProyectoProducto(models.Model):
     imagen_file_id = models.CharField(max_length=100, blank=True, default="")
     imagen_url = models.URLField(max_length=500, blank=True, default="")
 
+    # LC 2026-08-18 (Oscar): «los necesito 100% variados y contrastados, y
+    # sólidamente ligados a cada uno de sus productos». El color se reparte UNA
+    # vez —el primero libre de `colores.PALETA`, en orden— y se guarda aquí, que
+    # es lo que lo vuelve inamovible: arrastrar, apagar o borrar otra línea ya no
+    # lo mueve. Si el nombre o la descripción mencionan un color, ése manda sobre
+    # éste (ver `color_efectivo`).
+    color = models.CharField(max_length=7, blank=True, default="")
+
     # B (2026-06-07): Egreso generado en Tesorería cuando el proyecto pasa a
     # producción. Marca de idempotencia — una línea con egreso no vuelve a
     # generar. SET_NULL: si el egreso se borra físicamente, la línea queda sin
@@ -121,6 +136,53 @@ class ProyectoProducto(models.Model):
 
     def __str__(self) -> str:
         return f"{self.nombre_visible} ×{self.cantidad}"
+
+    def save(self, *args, **kwargs):
+        """Reparte el color de la tarjeta la primera vez que se guarda la línea.
+
+        Se hace aquí y no en el form para que valga por TODAS las vías de alta:
+        el formset del detalle, el modal de agregar, duplicar, el mini-Chalán y
+        los ejecutores del Dictado. Es una consulta por alta, y sólo cuando el
+        color está vacío. Defensivo: si algo falla, la línea se guarda igual y
+        el color cae al derivado del nombre.
+        """
+        if not self.color and self.proyecto_id:
+            with contextlib.suppress(Exception):
+                # Cuentan como ocupados tanto el color repartido a cada hermana
+                # como el que le dicta su nombre: si otra línea ya se llama
+                # «Bandana roja», el rojo está tomado aunque su columna `color`
+                # diga otra cosa. Una sola consulta, sólo al dar de alta.
+                hermanas = (
+                    ProyectoProducto.objects.filter(proyecto_id=self.proyecto_id)
+                    .exclude(pk=self.pk)
+                    .values_list("color", "nombre_proyecto", "nota", "servicio__nombre")
+                )
+                usados = [
+                    colores.color_del_texto(alias or catalogo, nota) or color
+                    for color, alias, nota, catalogo in hermanas
+                ]
+                self.color = colores.elegir_color_libre(usados)
+        super().save(*args, **kwargs)
+
+    @property
+    def color_asignado(self) -> str:
+        """El color que se le repartió, sin la regla del nombre.
+
+        Es al que vuelve la tarjeta si se le quita el color del nombre: el front
+        lo usa como base para repintarla en vivo mientras escribes.
+        """
+        return colores.normalizar(self.color) or colores.color_estable(self.nombre_visible)
+
+    @property
+    def color_efectivo(self) -> str:
+        """El HEX con el que se pinta la tarjeta de este producto.
+
+        Manda el color que menciona el texto («Playera negra» sale en negro);
+        si no menciona ninguno, el que se le repartió al darla de alta; y si es
+        una línea vieja que todavía no tiene, uno derivado de su nombre para que
+        nunca aparezca sin identidad.
+        """
+        return colores.color_del_texto(self.nombre_visible, self.nota) or self.color_asignado
 
     @property
     def nombre_catalogo(self) -> str:

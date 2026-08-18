@@ -29,7 +29,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F
 from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -38,6 +38,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
+from lib.busqueda import q_texto
 from lib.permisos import (
     es_admin,
     puede_archivar_proyecto,
@@ -315,7 +316,7 @@ def lista(request):
     ver_archivados = request.GET.get("archivados") == "1"
     qs = _proyectos_visibles(request.user, solo_archivados=ver_archivados)
     if q:
-        qs = qs.filter(Q(nombre__icontains=q) | Q(codigo__icontains=q) | Q(cliente__razon_social__icontains=q))
+        qs = qs.filter(q_texto(q, "nombre", "codigo", "cliente__razon_social"))
     if estado:
         qs = qs.filter(estado=estado)
     elif kpi_activo in KPI_MAP:
@@ -1639,6 +1640,9 @@ def duplicar_producto(request, pk, prod_pk):
             cantidad=original.cantidad,
             precio_unitario=original.precio_unitario,
             costo_unitario=original.costo_unitario,
+            # Las cuentas escritas viajan con sus montos (LC 2026-08-18).
+            precio_unitario_expr=original.precio_unitario_expr,
+            costo_unitario_expr=original.costo_unitario_expr,
             merma=original.merma,
             incluir_en_calculo=original.incluir_en_calculo,
             nota=original.nota,
@@ -1656,6 +1660,7 @@ def duplicar_producto(request, pk, prod_pk):
             ProyectoProductoVenta.objects.create(
                 producto=copia, orden=venta.orden, descripcion=venta.descripcion,
                 cantidad=venta.cantidad, precio_unitario=venta.precio_unitario,
+                precio_expr=venta.precio_expr,
             )
         # LC 2026-08-17: las escalas de volumen también se clonan, con su
         # activa y su ojo — la copia debe cotizarse igual que la original.
@@ -1663,6 +1668,7 @@ def duplicar_producto(request, pk, prod_pk):
             ProyectoProductoEscala.objects.create(
                 producto=copia, orden=esc.orden, cantidad=esc.cantidad,
                 merma=esc.merma, precio_unitario=esc.precio_unitario,
+                precio_unitario_expr=esc.precio_unitario_expr,
                 costo_unitario=esc.costo_unitario,
                 costo_unitario_expr=esc.costo_unitario_expr,
                 impresion_costo=esc.impresion_costo,

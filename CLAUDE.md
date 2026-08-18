@@ -5175,6 +5175,110 @@ acepta cuenta escrita (el campo es numérico — el costo y la impresión sí); 
 corte a una sola cantidad no se pide cuando la cotización se aprueba desde El
 Chalán (sólo desde el recuadro del proyecto).
 
+### S-Ajustes-Ago18 ✅ — Cuentas con división, colores ligados al producto y buscar sin acentos (2026-08-18, VERSION 2026.08.12)
+
+Ronda de Oscar sobre lo deployado el 17 de agosto: 10 puntos. Cuatro decisiones
+por AskUserQuestion (división **en todos** los campos con el redondeo a la vista ·
+**conservar la cuenta escrita** también en los precios · color **ligado al nombre
+que se ve**, y si no hay, uno de una lista de 20 **en orden** · las notas del
+documento **se siguen yendo al pie** cuando caben) y una respuesta en texto que
+definió el arreglo del PDF: **alinear texto y foto al borde inferior y achicar un
+poco la foto**.
+
+- **La división entra, y se paga con transparencia** (`services_procesos.suma_expresion`
+  + su espejo en JS). Estaba vetada desde Ago12 con una razón cierta —con dos
+  decimales pierde centavos: `150/29` × 29 = 149.93— y Oscar la pidió sabiéndolo.
+  Ahora se calcula a precisión completa, se **redondea UNA sola vez al final**
+  (`150/29*29` da los 150 exactos) y **el JS redondea igual que el servidor**, para
+  que el monto en vivo no prometa un número que la base no va a guardar. Entre cero
+  no hay cuenta que valga (`1/0` → None).
+- **Todos los campos de dinero de la tarjeta aceptan cuenta y muestran su total
+  abajo** («poner resultado en chiquito abajo del campo como se está haciendo
+  ahorita»). Los que faltaban —precio unitario, precio de la escala, costo del
+  proceso operativo y precio del proceso de venta— pasaron de `type="number"` a
+  texto (un input numérico ni deja teclear el `*`) y **conservan la cuenta
+  escrita**: campos nuevos `precio_unitario_expr` (línea, escala y foto por
+  versión) y `precio_expr` (proceso de venta), migración `proyectos/0036`. El
+  proceso operativo ya tenía `costo_expr` en el modelo desde Ago04-R3 — lo único
+  que le faltaba era la UI.
+- **Opciones de volumen**: el **costo va antes que el precio** (partial y
+  `plantillaEscala`, que son espejo), y **cada opción lleva su color** de la misma
+  lista, en orden, empezando por el azul de la casa. El color viaja en `--ec` y lo
+  toman la letra, el conector `└`, el radio (`accent-color`) y la utilidad por
+  pieza; `renumerar()` los reparte de nuevo al agregar o quitar una.
+- **El título de la tarjeta habla de la opción que MANDA** (`opcionActiva()`):
+  «100 pz (B) - Playera - $175.00», al instante. Y el desglose del sidebar tenía un
+  **bug real**: usaba `pp.cantidad` en vez de `pp.cantidad_efectiva`, así que con una
+  Opción B activa decía «$175 × 70 pz» y cobraba 100.
+- **Bug «las tarjetas se colapsan solas, cambian de color y se mueven»** — una sola
+  raíz con tres síntomas: al dar de alta un producto inline el servidor devuelve el
+  formset ENTERO por OOB (`rerender_productos`), y el HTML nuevo trae todas las
+  guardadas colapsadas y reordenadas. (a) El acordeón se anota en
+  `htmx:beforeRequest` y se vuelve a aplicar en `htmx:afterSettle`; la tarjeta nueva
+  —pk que no existía antes— nace abierta. (b) La posición: la tarjeta nueva nacía con
+  `orden` 0 y se colaba arriba de las que ya tenían orden mayor ⇒ se vuelca la
+  posición del DOM al crearla y al elegirle producto. (c) El color dejó de depender
+  de la posición desde Ago04-R3, pero con la paleta nueva además se guarda.
+- **Bug «el recuadro de descripción se hace grande y chico solo»**: `autogrow` medía
+  el textarea con la tarjeta COLAPSADA — dentro de un `display:none` el
+  `scrollHeight` es 0, así que le fijaba `height:0px` y sólo se recuperaba al
+  teclear. Lo que no se ve no se mide, y al desplegar la tarjeta se mide
+  (`window.__autogrowTarjeta`).
+- **Colores de producto** (`apps/los_proyectos/colores.py`): 20 HEX ordenados para
+  que dos consecutivos nunca sean del mismo tono. Tres reglas en `color_efectivo`:
+  (1) un color mencionado en el nombre o la descripción manda —«Playera negra» sale
+  en negro, y el JS lo repinta mientras escribes—; (2) si no, el primero LIBRE de la
+  lista, repartido al dar de alta y **guardado** en `ProyectoProducto.color` (es lo
+  que lo vuelve inamovible); (3) las líneas viejas caen a uno derivado de su nombre.
+  Se pinta con `--ec` + `color-mix` (`.tarjeta-color`), el sistema de las pastillas
+  de estado, así que se acabaron los cinco tokens de Tailwind —dos de ellos azules—
+  que producían el «todos verdes, azules, uno naranja aquí o allá». La data migration
+  reparte colores a lo ya existente, proyecto por proyecto. El snapshot por versión
+  también guarda el suyo.
+- **Búsquedas sin acentos** (`lib/busqueda.py`): `q_texto(q, *campos)` arma un
+  `iregex` en el que cada vocal admite sus variantes (`numeros` →
+  `n[uúùüû]m[eéèëê]r[oóòöô]s`), y como el texto del usuario también se despoja de
+  acentos, funciona en los dos sentidos. **`iregex` y no la extensión `unaccent`**
+  porque las pruebas corren en SQLite y ahí no existe; con los volúmenes de LC la
+  diferencia no se nota, y si algún día hace falta se cambia dentro del helper sin
+  tocar a los que llaman. Aplicado a las 16 búsquedas `?q=` (Inicio, Clientes,
+  Proyectos, Productos, Proveedores, Cotizaciones, Facturación, Tesorería,
+  Contaduría, Buzón, Mensajes, Equipo) + el filtro de chips de «Nueva tarea», que
+  era el único client-side que no normalizaba (el Kanban y el combobox ya lo hacían).
+- **Toggles de IVA del panel de proveedores en gris** («son muy llamativos»).
+- **PDF**: (1) el margen de arriba «no se movía» porque al pedir
+  `useCustomHeaderFooterMargins` para el pie, el **encabezado** se quedó con el
+  margen del editor (media pulgada) — un encabezado vacío ahí termina por debajo del
+  `marginTop` y Google baja el cuerpo para no encimarlo. Se agrega `marginHeader`
+  (12pt) y el cuerpo por fin arranca donde dice. **La pista era de Oscar.** (2) El
+  hueco entre la descripción y la tablita venía de que la foto y el texto comparten
+  renglón: la fila crece al alto de la foto y con descripción corta ese sobrante caía
+  justo ahí. Los dos se asientan al **borde inferior** (`vertical-align:bottom`) y la
+  foto baja de 76 a **64pt**, así que el sobrante queda ARRIBA y la tablita vuelve a
+  quedar a un renglón. (3) Escalera nueva de las notas (`_plan_notas`): caben → al
+  pie con el hueco de siempre; no caben → **modo apretado** (los márgenes de los
+  bloques se reducen ~10pt cada uno) y se vuelve a medir; ni así → pasan enteras a la
+  hoja siguiente y arrancan a **2 renglones** del margen.
+- **51 tests nuevos** (`tests/taller/test_ajustes_ago18.py`). Se actualizaron **7**
+  ajenos, todos fijando contratos que este sprint cambió a propósito: los tres que
+  declaraban la división rechazada (`test_ajustes_ago04_r3`, `test_ajustes_ago12`
+  ×2), el color de la tarjeta que era un token de Tailwind (`test_ajustes_ago04_r3`),
+  la forma del snapshot de ventas con `precio_expr` (`test_ajustes_ago12b`), el
+  tamaño de la caja de la foto (`test_ajustes_jul26_r3` ×2) y la foto centrada, que
+  ahora va asentada abajo (`test_ajustes_jul28`). **Los cuatro últimos sólo
+  aparecieron en la corrida COMPLETA** — la lección de Ago17 otra vez.
+
+**Deuda diseñada**: la división redondea a centavos en el campo unitario, así que
+`150/29` × 29 no da 150 — es inherente a dos decimales y por eso el total se muestra
+antes de guardar (decisión explícita de Oscar). El «0 renglones» literal entre la
+descripción y la tablita no es posible: Google mete un párrafo entre dos tablas
+seguidas y no se puede quitar (quirk #5), así que el modo apretado hace lo que sí se
+puede — reducir los márgenes. El estimador de paginación sigue siendo una
+**estimación** (la hoja la corta Google). El color se liga al **nombre visible** de
+la línea, así que dos líneas del mismo producto con alias distintos salen de colores
+distintos —lo pedido— y con más de 20 productos en un proyecto se repite alguno. Las
+escalas siguen sin editarse desde El Chalán.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

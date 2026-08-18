@@ -6,7 +6,6 @@ from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,6 +14,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_http_methods
 
 from ajustes.models.tasa import TasaImpositiva
+from lib.busqueda import q_texto
 from lib.permisos import (
     puede_cancelar_facturacion,
     puede_cobrar_facturacion,
@@ -70,11 +70,7 @@ def lista(request):
         elif estado_filtro in {"borrador", "emitida", "cobrada_parcial", "cobrada_total"}:
             qs = qs.filter(estado=estado_filtro)
     if q:
-        qs = qs.filter(
-            Q(codigo__icontains=q)
-            | Q(titulo__icontains=q)
-            | Q(cliente__razon_social__icontains=q)
-        )
+        qs = qs.filter(q_texto(q, "codigo", "titulo", "cliente__razon_social"))
 
     orden = (request.GET.get("orden") or "-folio").strip()
     base = orden.lstrip("-")

@@ -73,17 +73,18 @@ def proyecto(catalogo):
     ("100-5", "95.00"),
     ("65", "65.00"),
     ("65.50", "65.50"),
-    # LC 2026-08-12: se sumó la multiplicación. La división NO — con dos
-    # decimales pierde centavos, que es el error que ya nos costó una vez.
+    # LC 2026-08-12: se sumó la multiplicación. LC 2026-08-18: y la división,
+    # que hasta ese día se rechazaba (ver `test_ajustes_ago18`).
     ("15.75*100", "1575.00"),
     ("35*2", "70.00"),
+    ("35/2", "17.50"),
 ])
 def test_la_cuenta_del_costo_se_suma(escrito, esperado):
     from apps.los_proyectos.services_procesos import suma_expresion
     assert suma_expresion(escrito) == Decimal(esperado)
 
 
-@pytest.mark.parametrize("basura", ["35++15", "35+", "abc", "", "35/2", "."])
+@pytest.mark.parametrize("basura", ["35++15", "35+", "abc", "", "35//2", "1/0", "."])
 def test_una_cuenta_mal_escrita_no_se_interpreta(basura):
     from apps.los_proyectos.services_procesos import suma_expresion
     assert suma_expresion(basura) is None
@@ -169,10 +170,14 @@ def test_el_costo_de_produccion_de_las_playeras_no_pierde_centavos(proyecto, cat
 
 
 def test_el_color_de_la_tarjeta_es_estable_por_producto():
+    """El 2026-08-18 el filtro pasó de devolver un token de Tailwind a un HEX, y
+    de recibir un pk a recibir la línea; lo que NO cambió es lo que fija este
+    test: el mismo insumo da siempre el mismo color."""
+    from apps.los_proyectos.colores import COLOR_DEFAULT
     from apps.los_proyectos.templatetags.proyectos_extras import color_tarjeta
-    assert color_tarjeta(7) == color_tarjeta(7)  # mismo producto → mismo color
-    assert color_tarjeta(None) == "brand"        # línea sin guardar
-    assert color_tarjeta("") == "brand"
+    assert color_tarjeta("Bandana Azteca") == color_tarjeta("Bandana Azteca")
+    assert color_tarjeta(None) == COLOR_DEFAULT   # línea sin guardar
+    assert color_tarjeta("") == COLOR_DEFAULT
     # Y ya no se rota por posición con {% cycle %}.
     formset = Path("el-taller/templates/proyectos/_formset_productos.html").read_text(encoding="utf-8")
     assert "{% cycle" not in formset

@@ -52,7 +52,7 @@ Cinco cosas que la conversión NO perdona (Oscar 2026-07-25, rondas 2 y 3):
 Las imágenes llevan URL absoluta pública y firmada porque Google las baja
 desde sus servidores, sin nuestra sesión (ver lib/imagen_publica.py). Y van
 SIEMPRE con ancho y alto FIJOS, calculados en `services._medida_foto` para que
-quepan en una caja de 150×76pt: dejarle el escalado al convertidor hacía que una
+quepan en una caja fija (150×64pt): dejarle el escalado al convertidor hacía que una
 foto vertical ocupara media hoja. El formato no debe depender de qué imagen
 suban.
 
@@ -253,7 +253,14 @@ ratón/trackpad.{% endcomment %}
   {% for fila in filas %}
   <tr><td style="border:none; padding:0; vertical-align:top;">
   <div style="page-break-inside:avoid;">
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:3pt;">
+  {% comment %}LC 2026-08-18 (Oscar): la descripción y la foto van asentadas al
+  BORDE INFERIOR de su renglón. La fila crece al alto de la foto, y con una
+  descripción corta ese sobrante caía justo entre el texto y la tablita de
+  precios — el «espacio de más» que se notaba. Al alinear abajo, el sobrante
+  queda ARRIBA (bajo el nombre del concepto) y la tablita vuelve a quedar a un
+  renglón de la descripción, siempre. La foto además se achicó un poco
+  (`services._ALTO_FOTO_PT`), para que ese aire de arriba tampoco sea mucho.{% endcomment %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:{% if apretado %}0{% else %}3{% endif %}pt;">
     <tr>
       <td style="border:none; width:22pt; vertical-align:top;">{{ forloop.counter }}.</td>
       <td colspan="2" style="border:none; vertical-align:top;"><u>{{ fila.it.concepto_visible }}</u></td>
@@ -261,16 +268,16 @@ ratón/trackpad.{% endcomment %}
     {% if fila.it.detalle_lineas or fila.imagen %}
     <tr>
       <td style="border:none; width:22pt;">&nbsp;</td>
-      <td style="border:none; width:62%; vertical-align:top; padding-left:12pt;">
+      <td style="border:none; width:62%; vertical-align:bottom; padding-left:12pt;">
         {% for renglon in fila.it.detalle_lineas %}{{ renglon }}<br>{% endfor %}
       </td>
-      {% comment %}La foto va CENTRADA en su celda, horizontal y verticalmente
-      (Oscar 2026-07-28, punto 3): así todas quedan sobre el mismo eje aunque
-      unas sean apaisadas y otras verticales.{% endcomment %}
-      <td style="border:none; width:36%; vertical-align:middle; text-align:center;">
+      {% comment %}La foto va centrada a lo ancho y asentada ABAJO (Oscar
+      2026-08-18): al ras de la última línea de la descripción, para que el
+      sobrante del renglón no se meta entre el texto y la tablita.{% endcomment %}
+      <td style="border:none; width:36%; vertical-align:bottom; text-align:center;">
         {% comment %}Va con ANCHO y ALTO fijos, calculados en
-        `services._medida_foto` para que quepa completa en una caja de 150×76pt
-        (≈ el alto de 4 celdas de la tabla, Oscar 2026-07-26). Con solo el ancho,
+        `services._medida_foto` para que quepa completa en su caja (Oscar
+        2026-07-26; el alto bajó a 64pt el 2026-08-18). Con solo el ancho,
         una foto vertical —la bata, 1×2— se estiraba a media página y descuadraba
         el documento. Las medidas van como ATRIBUTOS además del style: el
         convertidor de Docs hace caso a los atributos.{% endcomment %}
@@ -291,7 +298,7 @@ ratón/trackpad.{% endcomment %}
   · **Línea (C).** Gris claro, no negra. Va celda por celda: un borde declarado
     sólo en la tabla no se dibuja. Sin `<thead>/<tbody>` — el convertidor los
     trata como bloques y metía un renglón en blanco.{% endcomment %}
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:10pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:{% if apretado %}3{% else %}10{% endif %}pt; font-size:10pt;">
     <tr>
       <td style="border:none; width:11%;">&nbsp;</td>
       <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:36%; text-align:left; font-style:italic;">Concepto</td>
@@ -352,7 +359,7 @@ ratón/trackpad.{% endcomment %}
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:10pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:{% if apretado %}3{% else %}10{% endif %}pt; font-size:10pt;">
     <tr>
       <td colspan="5" style="border:none; padding:0 0 6pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
     </tr>
@@ -423,7 +430,12 @@ ratón/trackpad.{% endcomment %}
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
-    <div style="margin-top:{{ espacio_notas_pt }}pt;">
+    {% comment %}LC 2026-08-18 (Oscar): «si no, las notas deben de ir a 2 <br> del
+    margen superior en la hoja extra». `brs_notas` sale de `services._plan_notas`
+    y vale 2 sólo cuando ni apretando el documento caben en la última hoja: como
+    el bloque viaja entero (fila con `preventOverflow`), arranca la siguiente y
+    ahí necesita ese aire para no quedar pegado al borde.{% endcomment %}
+    <div style="margin-top:{{ espacio_notas_pt }}pt;">{% if brs_notas %}<br><br>{% endif %}
       <p style="margin:0 0 2pt 0; font-size:9pt;">Notas:</p>
       {% comment %}LC 2026-08-04 (Oscar): interlineado un poco más apretado —
       padding a 0 y `line-height:1.1` en la tabla (el del cuerpo es 1.15).{% endcomment %}

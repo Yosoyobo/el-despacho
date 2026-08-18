@@ -147,13 +147,15 @@ def test_menos_aire_entre_titulo_y_primer_elemento(proyecto_factory, usuario_fac
 
 
 def test_la_foto_va_centrada_en_su_celda(proyecto_factory, usuario_factory, _drive_falso):
+    """Centrada a lo ancho. A lo alto pasó de MEDIO a ABAJO el 2026-08-18: con
+    descripción corta, el sobrante del renglón caía entre el texto y la tablita."""
     from apps.cotizaciones import services
     admin = usuario_factory(rol="super_admin")
     cot = _cot(proyecto_factory(nombre="Jeep Parte 1"), admin)
     _item(cot, imagen_file_id="foto-1")
 
     html = services.construir_html_pdf(cot)
-    assert 'vertical-align:middle; text-align:center;' in html
+    assert 'vertical-align:bottom; text-align:center;' in html
     assert '<p align="center" style="margin:0; text-align:center;"><img src="https://taller/img/foto-1"' in html
     assert 'align="right"' not in html
 

@@ -1,7 +1,8 @@
-{% load forms_helpers %}
+{% load forms_helpers proyectos_extras %}
 {% comment %}
 Render-V2 + LC Fase 2 — Tarjeta de producto del proyecto. Vive directamente
-sobre el fondo gris (sin contenedor blanco). Color tenue rotado vía `card_color`.
+sobre el fondo gris (sin contenedor blanco). El color tenue sale del HEX que
+llega en `card_color` (ver `apps.los_proyectos.colores`).
 Espera `f` (form del formset), `categorias_disponibles`, `proveedores_activos`,
 `card_color`. La vista anota `f.proc_impresion` y `f.procs_operativos`.
 
@@ -27,7 +28,15 @@ Render fino LC 2026-07-28 (Oscar):
 - (h) El «+ Proceso» de arriba (lo que se le cobra al cliente) va en verde,
   para distinguirlo del de producción, que cuesta.
 {% endcomment %}
-<div class="producto-fila rounded-xl border-2 border-white p-3 shadow-theme-sm transition dark:border-gray-700 {% if card_color == 'success' %}bg-success-50 dark:bg-success-500/10{% elif card_color == 'warning' %}bg-warning-50 dark:bg-warning-500/10{% elif card_color == 'blue-light' %}bg-blue-light-50 dark:bg-blue-light-500/10{% elif card_color == 'orange' %}bg-orange-50 dark:bg-orange-500/10{% elif card_color == 'purple' %}bg-purple-50 dark:bg-purple-500/10{% else %}bg-brand-50 dark:bg-brand-500/10{% endif %}" data-card data-arr-item="{{ f.instance.pk|default:'' }}">
+{% comment %}LC 2026-08-18 (Oscar): el color llega como HEX en `--ec` y de ahí
+salen el fondo y el borde (`.tarjeta-color`, ver input.css). Antes eran cinco
+tokens de Tailwind, dos de ellos azules — de ahí el «todos verdes, azules, uno
+naranja aquí o allá». La regla de qué color le toca a cada línea vive en
+`ProyectoProducto.color_efectivo`.{% endcomment %}
+<div class="producto-fila tarjeta-color rounded-xl border-2 p-3 shadow-theme-sm transition"
+     style="--ec: {{ card_color|default:'#465fff' }}"
+     data-color-base="{{ f.instance.color_asignado|default:card_color }}"
+     data-card data-card-color data-arr-item="{{ f.instance.pk|default:'' }}">
     {{ f.id }}
     {% if f.instance.pk %}<span class="hidden">{{ f.DELETE }}</span>{% endif %}
     {% comment %}LC 2026-08-17: `visible_pdf` (el ojo de la Opción A) se rendea
@@ -192,9 +201,15 @@ Render fino LC 2026-07-28 (Oscar):
                 <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="Piezas extra (muestras, control de calidad). Suman costo, no se cobran.">Merma</label>
                 {{ f.merma }}
             </div>
-            <div>
-                <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Precio unitario</label>
+            {% comment %}LC 2026-08-18 (Oscar): el precio acepta una CUENTA con las
+            cuatro operaciones («2400/12»). El total lo saca el servidor; aquí abajo
+            se muestra en chiquito lo que va a quedar, para que el redondeo se vea
+            ANTES de guardar.{% endcomment %}
+            <div class="min-w-0">
+                <label class="mb-1 block truncate text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                       title="Acepta una cuenta: escribe 2400/12 y se calcula solo.">Precio unitario</label>
                 {{ f.precio_unitario }}
+                <span data-precio-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span>
             </div>
             {% comment %}El «+» de los procesos de VENTA (lo que se le cobra al
             cliente aparte del producto: Ponchado, arte…). La lista que agrega vive
@@ -219,7 +234,12 @@ Render fino LC 2026-07-28 (Oscar):
                     <span class="venta-num text-xs font-medium text-gray-400">{{ forloop.counter }}</span>
                     <input type="text" class="venta-desc w-full" placeholder="Ej. Ponchado, diseño de arte…" value="{{ v.descripcion }}" autocomplete="off">
                     <input type="number" min="1" step="1" class="venta-cant w-full" placeholder="1" value="{{ v.cantidad }}" title="Cantidad">
-                    <input type="number" step="0.01" min="0" class="venta-precio w-full" placeholder="0.00" value="{{ v.precio_unitario|stringformat:'.2f' }}" title="Precio unitario que se le cobra">
+                    <div class="min-w-0">
+                        <input type="text" inputmode="text" autocomplete="off" class="venta-precio w-full" placeholder="0.00 o 350*3"
+                               value="{% if v.precio_expr %}{{ v.precio_expr }}{% else %}{{ v.precio_unitario|stringformat:'.2f' }}{% endif %}"
+                               title="Precio unitario que se le cobra. Acepta una cuenta (350*3).">
+                        <span data-venta-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span>
+                    </div>
                     <button type="button" class="venta-del inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10" title="Quitar proceso de venta">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
                     </button>
@@ -303,7 +323,12 @@ Render fino LC 2026-07-28 (Oscar):
                             <button type="button" data-proc-prov-clear class="text-brand-500 hover:text-error-600" aria-label="Quitar proveedor">×</button>
                         </span>
                     </div>
-                    <input type="number" step="0.01" min="0" class="proc-costo w-full" placeholder="0.00" value="{{ p.costo|stringformat:'.2f' }}">
+                    <div class="min-w-0">
+                        <input type="text" inputmode="text" autocomplete="off" class="proc-costo w-full" placeholder="0.00 o 35+15"
+                               value="{% if p.costo_expr %}{{ p.costo_expr }}{% else %}{{ p.costo|stringformat:'.2f' }}{% endif %}"
+                               title="Acepta una cuenta: escribe 35+15+15 y se suma solo.">
+                        <span data-proc-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span>
+                    </div>
                     <label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma).">
                         <input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" {% if p.por_pieza %}checked{% endif %}>
                         por pieza
@@ -372,7 +397,7 @@ Render fino LC 2026-07-28 (Oscar):
     <div data-escalas class="mt-2 [&:not(:has(.escala-fila))]:hidden">
         <div class="escala-lista space-y-2 border-t border-gray-200/70 pt-2 dark:border-gray-700/60">
             {% for e in f.escalas %}
-            {% include "proyectos/_escala_fila.html" with e=e %}
+            {% include "proyectos/_escala_fila.html" with e=e color_escala=forloop.counter0|color_escala %}
             {% endfor %}
         </div>
     </div>

@@ -59,6 +59,8 @@ class ProyectoProductoEscala(models.Model):
         max_digits=12, decimal_places=2, null=True, blank=True,
         help_text="Precio por unidad de esta escala. Vacío = el de la Opción A.",
     )
+    # La cuenta escrita del precio (LC 2026-08-18). Vacía = se capturó un número.
+    precio_unitario_expr = models.CharField(max_length=120, blank=True, default="")
     costo_unitario = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True,
         help_text="Costo por unidad de esta escala. Vacío = el de la Opción A.",
