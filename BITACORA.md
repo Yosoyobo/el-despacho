@@ -9590,7 +9590,7 @@ que hubo que buscar en la documentación.
 
 ## Tests
 
-49 nuevos en `tests/taller/test_ajustes_ago17.py`, organizados por capa (modelo ·
+47 nuevos en `tests/taller/test_ajustes_ago17.py`, organizados por capa (modelo ·
 sanitizador · cotización · versión · tarjeta y JS · modales · documento). Dos
 merecen mención:
 

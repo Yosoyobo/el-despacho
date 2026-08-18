@@ -5139,7 +5139,7 @@ sumó a media sesión.
   literal**: se verificó contra la referencia oficial que **la API de Documentos
   no tiene petición para insertar AutoText**, así que un número que avance no es
   posible por esta vía.
-- **49 tests nuevos** (`tests/taller/test_ajustes_ago17.py`). Se actualizaron 3
+- **47 tests nuevos** (`tests/taller/test_ajustes_ago17.py`). Se actualizaron 3
   tests ajenos que fijaban contratos que este sprint cambió a propósito: la
   rejilla de la fila 1 de la tarjeta (6 → 7 columnas por el radio) en
   `test_ajustes_ago04_r2` y `test_ajustes_ago13`, y el tamaño del logotipo en
