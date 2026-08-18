@@ -5139,12 +5139,30 @@ sumó a media sesión.
   literal**: se verificó contra la referencia oficial que **la API de Documentos
   no tiene petición para insertar AutoText**, así que un número que avance no es
   posible por esta vía.
-- **46 tests nuevos** (`tests/taller/test_ajustes_ago17.py`). Cazaron un bug
-  propio antes del commit: `opciones_documento` comparaba la escala activa por
-  **identidad** (`e is not activa`) y sin prefetch `escalas.all()` devuelve otro
-  objeto Python para la misma fila, así que la activa se imprimía dos veces →
-  se compara por pk. Se actualizó 1 test de Ago04-R2 que fijaba las 6 columnas
-  de la fila 1 (ahora son 7 por el radio).
+- **49 tests nuevos** (`tests/taller/test_ajustes_ago17.py`). Se actualizaron 3
+  tests ajenos que fijaban contratos que este sprint cambió a propósito: la
+  rejilla de la fila 1 de la tarjeta (6 → 7 columnas por el radio) en
+  `test_ajustes_ago04_r2` y `test_ajustes_ago13`, y el tamaño del logotipo en
+  `test_ajustes_cotizaciones_jul25`.
+- **Cuatro bugs propios, cazados revisando el diff** (ninguno reportado):
+  1. `opciones_documento` comparaba la escala activa por **identidad**
+     (`e is not activa`) y sin prefetch `escalas.all()` devuelve otro objeto
+     Python para la misma fila ⇒ la activa se imprimía dos veces. Se compara
+     por pk. **Lo encontró un test que buscaba otra cosa.**
+  2. El override de impresión de una escala no llegaba a la **deuda del
+     proveedor ni al egreso** (el costo del proyecto decía una cosa y la deuda
+     otra) ⇒ se centralizó en `ProyectoProductoProceso.costo_total` y los tres
+     consumidores que recomputaban a mano lo leen de ahí.
+  3. **`sincronizar_items` borraba las alternativas del documento** al editar la
+     pestaña de una versión —y devolvía la línea a la cantidad de la Opción A,
+     cambiando el total en silencio—: ahora resuelve las opciones de la fila
+     (`opciones_de_fila`). Ojo: la cola de líneas reutilizables mezcla ventas y
+     alternativas, así que `informativo` se apaga explícitamente al reusar una
+     para una venta, o dejaría de sumar.
+  4. Las etiquetas de la sub-fila estaban en un renglón `hidden md:grid`: en el
+     celular la rejilla baja a 2 columnas —donde un renglón de etiquetas no
+     puede alinearse con los inputs— y quedaban cinco números sin nombre. Cada
+     etiqueta vive ahora DENTRO de la celda de su campo, como en la fila 1.
 
 **Deuda diseñada**: el «1/1» es fijo — en un documento de 2+ hojas todas dirían
 «1/1» (hoy prácticamente todas las cotizaciones son de una); los márgenes y el

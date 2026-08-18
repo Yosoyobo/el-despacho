@@ -9559,18 +9559,38 @@ no le quita ni un punto al contenido. Sin `useCustomHeaderFooterMargins` en el
 mismo lote, Google **ignora** ese margen y el pie se despega — ése fue el detalle
 que hubo que buscar en la documentación.
 
-## Un bug propio, cazado por un test
+## Cuatro bugs propios, cazados revisando el diff (ninguno reportado)
 
-`opciones_documento()` filtraba la escala activa por **identidad**
-(`e is not activa`). Sin prefetch, `escalas.all()` vuelve a consultar y devuelve
-**otro objeto Python para la misma fila**, así que la activa se colaba dos veces y
-el documento habría impreso el mismo renglón repetido. Se compara por pk. El test
-que lo encontró (`test_elegir_deja_una_sola_opcion`) no estaba buscando eso:
-verificaba el modal.
+1. **`opciones_documento()` filtraba la escala activa por identidad**
+   (`e is not activa`). Sin prefetch, `escalas.all()` vuelve a consultar y
+   devuelve **otro objeto Python para la misma fila**, así que la activa se
+   colaba dos veces y el documento habría impreso el mismo renglón repetido. Se
+   compara por pk. El test que lo encontró (`test_elegir_deja_una_sola_opcion`)
+   no estaba buscando eso: verificaba el modal.
+2. **El override de impresión no llegaba a la deuda ni al egreso.** El costo del
+   proyecto usaba el de la escala, pero `deuda_por_proveedor` y `gastos`
+   recomputaban a mano desde la fila del proceso. El proyecto decía una cosa y
+   la deuda otra. Se centralizó en `ProyectoProductoProceso.costo_total` /
+   `costo_efectivo` / `por_pieza_efectivo`, y los tres consumidores lo leen de
+   ahí. Regla que queda: **si un valor puede venir de la opción activa, se
+   resuelve en el modelo, no en cada consumidor.**
+3. **Editar la pestaña de una versión borraba sus alternativas.**
+   `sincronizar_items` reconstruye las líneas del documento desde la foto y borra
+   lo que no reconoce; no sabía de las escalas, así que se iban los renglones de
+   volumen Y la línea principal volvía a la cantidad de la Opción A —cambiando el
+   total en silencio—. Detalle fino: la cola de líneas reutilizables mezcla
+   ventas y alternativas, así que hay que **apagar `informativo` explícitamente**
+   al reusar una para una venta, o la venta deja de sumar.
+4. **La sub-fila perdía sus etiquetas en el celular.** Estaban en un renglón
+   aparte `hidden md:grid`, que en escritorio se ve igual al render pero en
+   móvil desaparece: la rejilla baja a 2 columnas y un renglón de etiquetas no
+   puede alinearse con los inputs. Quedaban cinco números sin nombre. Cada
+   etiqueta vive ahora dentro de la celda de su campo, como en la fila 1 de la
+   tarjeta.
 
 ## Tests
 
-46 nuevos en `tests/taller/test_ajustes_ago17.py`, organizados por capa (modelo ·
+49 nuevos en `tests/taller/test_ajustes_ago17.py`, organizados por capa (modelo ·
 sanitizador · cotización · versión · tarjeta y JS · modales · documento). Dos
 merecen mención:
 
@@ -9582,7 +9602,12 @@ merecen mención:
 - **`test_vacio_hereda_pero_el_cero_escrito_es_cero`** fija la decisión que se
   tomó contra la letra del pedido, con su razón escrita al lado.
 
-Se actualizó **1** test de `test_ajustes_ago04_r2.py`: fijaba que la fila 1 de la
-tarjeta tuviera 6 columnas y ahora son 7 (la del radio). Fijaba justo lo que este
-sprint cambió a propósito; se ajustó conservando su intención (el «+» sigue siendo
-la última columna, angosta y de ancho fijo).
+Se actualizaron **3** tests ajenos, todos fijando contratos que este sprint cambió
+a propósito: la rejilla de la fila 1 de la tarjeta (6 → 7 columnas por el radio) en
+`test_ajustes_ago04_r2` —que la mide con regex— y en `test_ajustes_ago13` —que la
+fija literal—, y el tamaño del logotipo en `test_ajustes_cotizaciones_jul25`. Los
+tres conservan su intención con la razón escrita al lado.
+
+**Nota de proceso:** el de `ago13` sólo apareció al correr la suite COMPLETA sin
+`-x`. Las dos primeras corridas se detuvieron en el primer fallo y lo dejaron sin
+ejecutar — con un cambio transversal, `-x` esconde justo lo que hay que ver.
