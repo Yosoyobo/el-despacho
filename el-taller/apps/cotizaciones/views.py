@@ -5,7 +5,6 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -19,6 +18,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
 from ajustes.models.tasa import TasaImpositiva
+from lib.busqueda import q_texto
 from lib.permisos import (
     puede_anular_cotizaciones,
     puede_aprobar_cotizaciones,
@@ -92,11 +92,7 @@ def lista(request):
     if cliente_filtro.isdigit():
         qs = qs.filter(cliente_id=cliente_filtro)
     if q:
-        qs = qs.filter(
-            Q(codigo__icontains=q)
-            | Q(titulo__icontains=q)
-            | Q(cliente__razon_social__icontains=q)
-        )
+        qs = qs.filter(q_texto(q, "codigo", "titulo", "cliente__razon_social"))
 
     orden = (request.GET.get("orden") or "-creado_en").strip()
     base = orden.lstrip("-")

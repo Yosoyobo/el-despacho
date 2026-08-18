@@ -116,8 +116,10 @@ def test_generar_congela_el_lado_del_costo(entorno, cot):
     assert fila.procesos_json[0]["costo"] == "39.00"
     assert fila.procesos_json[0]["por_pieza"] is True
     assert fila.procesos_json[1]["descripcion"] == "Adaptación y positivos"
+    # `precio_expr` (LC 2026-08-18) viaja vacío cuando se capturó un número.
     assert fila.ventas_json == [
-        {"descripcion": "Ponchado", "cantidad": 1, "precio": "350.00"}]
+        {"descripcion": "Ponchado", "cantidad": 1, "precio": "350.00",
+         "precio_expr": ""}]
 
 
 def test_la_foto_queda_ligada_a_su_linea_del_documento(cot):
@@ -567,7 +569,11 @@ class TestReconstruirLoYaCotizado:
         assert fila.costo_unitario == Decimal("44.94")
         assert fila.proveedor_id == entorno["prov"].pk
         assert len(fila.procesos_json) == 2
-        # Las líneas `agrupado` del documento SON los procesos de venta.
+        # Las líneas `agrupado` del documento SON los procesos de venta. Aquí
+        # NO va `precio_expr` (LC 2026-08-18): esto lo arma una migración ya
+        # aplicada en producción —que no se toca— desde el documento, donde no
+        # hay cuenta escrita que conservar. `ventas_normalizadas` lee las dos
+        # formas sin quejarse.
         assert fila.ventas_json == [
             {"descripcion": "Ponchado", "cantidad": 1, "precio": "350.00"}]
 

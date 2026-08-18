@@ -14,12 +14,12 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import render
 from django.urls import reverse
 
 from cuentas.models.usuario import Usuario
+from lib.busqueda import q_texto
 
 
 @login_required
@@ -31,9 +31,7 @@ def lista(request):
         usuarios = usuarios.filter(is_active=True)
     if q:
         usuarios = usuarios.filter(
-            Q(nombre_completo__icontains=q) | Q(email__icontains=q)
-            | Q(puesto__icontains=q) | Q(oficina__icontains=q)
-        )
+            q_texto(q, "nombre_completo", "email", "puesto", "oficina"))
 
     # Render LC 2026-06-30: la lista es un ACORDEÓN. Cada renglón colapsado
     # muestra nombre + puesto·dirección + badges; al expandir, contacto + horario

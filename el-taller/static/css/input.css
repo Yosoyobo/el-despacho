@@ -305,6 +305,31 @@
   html { scroll-behavior: smooth; }
 }
 
+/* ── Color de la tarjeta de producto del proyecto (LC 2026-08-18, Oscar) ────
+   «Los necesito 100% variados y contrastados, y sólidamente ligados a cada uno
+   de sus productos.» El color llega como HEX en `--ec` (lo reparte
+   `apps.los_proyectos.colores`) y de ahí salen el fondo tenue y el borde, en
+   claro y en oscuro — el mismo sistema de las pastillas de estado.
+
+   Va en `components` a propósito: cuando la línea se apaga, el `bg-gray-100`
+   que le pone el JS es una utility y por orden de capas gana, así que la
+   tarjeta apagada se sigue viendo gris. */
+@layer components {
+  .tarjeta-color {
+    background-color: color-mix(in srgb, var(--ec, #465fff) 10%, #ffffff);
+    border-color: color-mix(in srgb, var(--ec, #465fff) 34%, #ffffff);
+  }
+  .dark .tarjeta-color {
+    background-color: color-mix(in srgb, var(--ec, #465fff) 15%, transparent);
+    border-color: color-mix(in srgb, var(--ec, #465fff) 32%, transparent);
+  }
+  /* Acento de una opción de volumen (B, C…): la letra, el conector y la
+     utilidad por pieza toman el color de su opción. */
+  .escala-acento { color: color-mix(in srgb, var(--ec, #465fff) 88%, #000000); }
+  .dark .escala-acento { color: color-mix(in srgb, var(--ec, #465fff) 62%, #ffffff); }
+  .escala-tinte { accent-color: var(--ec, #465fff); }
+}
+
 /* ── V6 Bloque 8: PWA feel nativo (iOS/Android) ──────────────────────────── */
 @layer base {
   /* iOS reescala texto en landscape y descuadra pantallas. */

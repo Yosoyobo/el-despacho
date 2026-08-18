@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
+from lib.busqueda import q_texto
 from lib.permisos import (
     es_admin,
     puede_ver_comentario,
@@ -806,8 +807,7 @@ def _direcciones_guardadas(q: str, limite: int = 8) -> list[dict]:
         return []
     from apps.el_catalogo.models import Proveedor
     from apps.la_cartera.models import Cliente
-    from django.db.models import Q as _Q
-    filtro = _Q(razon_social__icontains=q) | _Q(direccion__icontains=q) | _Q(direccion_fiscal__icontains=q)
+    filtro = q_texto(q, "razon_social", "direccion", "direccion_fiscal")
     out: list[dict] = []
     for c in Cliente.activos.filter(filtro)[:limite]:
         d = (c.direccion_fiscal or c.direccion or "").strip()

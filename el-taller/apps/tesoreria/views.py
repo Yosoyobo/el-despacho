@@ -23,6 +23,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 
+from lib.busqueda import q_texto
 from lib.permisos import puede_ver_finanzas
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -136,7 +137,7 @@ def ingresos_lista(request):
     qs = qs.select_related("cliente", "proyecto", "creado_por")
     q = (request.GET.get("q") or "").strip()
     if q:
-        qs = qs.filter(descripcion__icontains=q)
+        qs = qs.filter(q_texto(q, "descripcion"))
     orden_permitido = {"codigo", "fecha", "monto"}
     orden = (request.GET.get("orden") or "-fecha").strip()
     if orden.lstrip("-") not in orden_permitido:
@@ -378,8 +379,7 @@ def egresos_lista(request):
     centro = request.GET.get("centro") or ""
     estado = request.GET.get("estado_pago") or ""
     if q:
-        from django.db.models import Q
-        qs = qs.filter(Q(descripcion__icontains=q) | Q(proveedor_nombre__icontains=q))
+        qs = qs.filter(q_texto(q, "descripcion", "proveedor_nombre"))
     if centro:
         qs = qs.filter(centro_de_costo__slug=centro)
     if estado:

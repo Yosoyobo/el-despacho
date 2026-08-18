@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods
 
+from lib.busqueda import q_texto
 from lib.permisos import (
     puede_editar_cartera,
     puede_eliminar_cartera,
@@ -37,21 +38,14 @@ ESTADOS_PROYECTO_ACTIVOS = ("en_proceso_diseno", "en_proceso_produccion")
 
 
 def _buscar_clientes(qs, q):
-    from django.db.models import Q
-    return qs.filter(
-        Q(razon_social__icontains=q)
-        | Q(razon_social_fiscal__icontains=q)
-        | Q(rfc__icontains=q)
+    return qs.filter(q_texto(
+        q, "razon_social", "razon_social_fiscal", "rfc",
         # LC 2026-07-26: y por CUALQUIERA de sus razones sociales de facturación.
-        | Q(razones_sociales__razon_social__icontains=q)
-        | Q(razones_sociales__rfc__icontains=q)
-        | Q(email_contacto__icontains=q)
-        | Q(nombre_contacto__icontains=q)
-        | Q(contactos__nombre__icontains=q)
-        | Q(contactos__email__icontains=q)
-        | Q(proyectos__nombre__icontains=q)
-        | Q(proyectos__codigo__icontains=q)
-    ).distinct()
+        "razones_sociales__razon_social", "razones_sociales__rfc",
+        "email_contacto", "nombre_contacto",
+        "contactos__nombre", "contactos__email",
+        "proyectos__nombre", "proyectos__codigo",
+    )).distinct()
 
 
 @login_required

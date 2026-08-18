@@ -8,11 +8,12 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from lib.busqueda import q_texto
 from lib.permisos import (
     puede_anular_contaduria,
     puede_capturar_contaduria,
@@ -70,7 +71,7 @@ def cuentas(request):
     tipo = (request.GET.get("tipo") or "").strip()
     qs = CuentaContable.objects.all()
     if q:
-        qs = qs.filter(Q(codigo__icontains=q) | Q(nombre__icontains=q))
+        qs = qs.filter(q_texto(q, "codigo", "nombre"))
     if tipo in {"activo", "pasivo", "capital", "ingreso", "egreso"}:
         qs = qs.filter(tipo=tipo)
     return render(request, "contaduria/cuentas.html", {
@@ -90,7 +91,7 @@ def asientos(request):
     qs = Asiento.objects.select_related("creado_por")
     qs = qs if incluir_anulados else qs.filter(anulado=False)
     if q:
-        qs = qs.filter(Q(codigo__icontains=q) | Q(descripcion__icontains=q))
+        qs = qs.filter(q_texto(q, "codigo", "descripcion"))
     if origen:
         qs = qs.filter(origen=origen)
 

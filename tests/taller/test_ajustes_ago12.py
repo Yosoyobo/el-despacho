@@ -739,11 +739,14 @@ def test_las_cuentas_del_costo(cuenta, total):
 
 @pytest.mark.parametrize(
     "basura",
-    ["35/2", "(2+3)*4", "abc", "35++15", "35*", "*15", "2**3", ".", ""],
+    ["(2+3)*4", "abc", "35++15", "35*", "*15", "2**3", "35//2", "1/0", ".", ""],
 )
 def test_lo_que_no_es_una_cuenta_se_rechaza(basura):
-    """La DIVISIÓN se sigue rechazando a propósito: con dos decimales pierde
-    centavos (150 ÷ 29 × 29 = 149.93). Ése fue el error que ya nos costó."""
+    """Lo que no es una cuenta legible no se interpreta.
+
+    La DIVISIÓN sí se acepta desde LC 2026-08-18 (ver `test_ajustes_ago18`);
+    lo que se sigue rechazando es una cuenta mal escrita — y entre cero no hay
+    cuenta que valga."""
     from apps.los_proyectos.services_procesos import suma_expresion
     assert suma_expresion(basura) is None
 
@@ -787,7 +790,7 @@ def test_un_costo_ilegible_no_pasa(cliente_nike, categoria):
 
     srv = Servicio.objects.create(nombre="Bandana", categoria=categoria, precio_base=220)
     form = ProyectoProductoForm(
-        {"servicio": srv.pk, "cantidad": "10", "costo_unitario": "35/2", "merma": "0"},
+        {"servicio": srv.pk, "cantidad": "10", "costo_unitario": "35++15", "merma": "0"},
     )
     assert not form.is_valid()
     assert "costo_unitario" in form.errors

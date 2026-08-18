@@ -97,6 +97,10 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
     # ALTERNATIVAS de volumen no van (si fueran, la lista no cuadraría con el
     # subtotal de abajo). Se leen en la tabla de montos de su producto.
     items_desglose = [it for it in items if not it.informativo]
+    # El plan de las notas decide TRES cosas de golpe: el hueco que las empuja al
+    # pie, si el documento va apretado y si arrancan a dos renglones de una hoja
+    # nueva (LC 2026-08-18, ver `_plan_notas`).
+    plan_notas = _plan_notas(cot, filas, items_desglose, notas)
     return render_to_string("cotizaciones/pdf.html", {
         "cot": cot,
         "items": items,
@@ -117,7 +121,9 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         ],
         "notas": notas,
         "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
-        "espacio_notas_pt": _espacio_antes_de_notas(cot, filas, items_desglose, notas),
+        "espacio_notas_pt": plan_notas["espacio_pt"],
+        "apretado": plan_notas["apretado"],
+        "brs_notas": plan_notas["brs"],
         "preview": preview,
         "url_descargar": _url_descargar(cot) if preview else "",
         "nombre_archivo": cot.nombre_pdf,
@@ -156,6 +162,15 @@ _MARGEN_INFERIOR_PT = 43     # ~0.6"
 # Distancia del pie al borde inferior. Vive DENTRO del margen inferior, así que
 # el pie no le quita nada al contenido (43 − 20 = 23pt de aire bajo el texto).
 _MARGEN_PIE_PT = 20
+# Distancia del ENCABEZADO al borde superior. LC 2026-08-18 (Oscar): «no se pudo
+# lo de los márgenes en elementos de arriba — en Google Docs existe un header
+# dentro de cada documento, quizás va por ahí». Iba por ahí: al pedir
+# `useCustomHeaderFooterMargins` (que hacía falta para el pie) el encabezado
+# quedó con el margen del editor, media pulgada; un encabezado vacío a 36pt más
+# su renglón terminan por DEBAJO del margen superior, y Google baja el cuerpo
+# para no encimarlo. Con el encabezado pegado arriba, el cuerpo por fin arranca
+# donde dice `marginTop`.
+_MARGEN_ENCABEZADO_PT = 12
 
 # Pie fijo del documento (Oscar 2026-08-17: «agrégale un 1/1, bien abajo, fijo,
 # y que no afecte nunca cuánto contenido cabe»). Es texto LITERAL: la API de
@@ -171,6 +186,7 @@ PAGINA_DOCUMENTO = {
     "margen_superior_pt": _MARGEN_SUPERIOR_PT,
     "margen_inferior_pt": _MARGEN_INFERIOR_PT,
     "margen_pie_pt": _MARGEN_PIE_PT,
+    "margen_encabezado_pt": _MARGEN_ENCABEZADO_PT,
     "pie_texto": PIE_DOCUMENTO,
 }
 
@@ -180,11 +196,16 @@ _ALTO_UTIL_PT = _ALTO_HOJA_PT - _MARGEN_SUPERIOR_PT - _MARGEN_INFERIOR_PT
 
 # Caja en la que DEBE caber la foto del producto (ver `_medida_foto`). El alto
 # es el tope duro que pidió Oscar (2026-07-26, ronda 3): «alrededor del alto de
-# 4 celdas de la tabla» — una celda mide ~19pt (3pt de padding × 2 + el
-# renglón), así que 4 ≈ 76pt. Sin este tope una foto vertical (la bata: 1×2) se
-# comía media página y descuadraba el documento.
+# 4 celdas de la tabla». Sin este tope una foto vertical (la bata: 1×2) se comía
+# media página y descuadraba el documento.
+#
+# LC 2026-08-18 (Oscar): «cuando la descripción es corta, alinear al borde
+# inferior el texto y la imagen, y achicar un poco la foto». El tope baja de 76
+# a 64pt: con el texto y la foto asentados abajo, lo que sobra queda ARRIBA —
+# entre el nombre del concepto y la descripción— y la tablita de precios vuelve
+# a quedar pegada a la descripción, que era el hueco que se notaba.
 _ANCHO_FOTO_PT = 150
-_ALTO_FOTO_PT = 76
+_ALTO_FOTO_PT = 64
 
 
 def _medida_foto(proporcion: float) -> tuple[int, int]:
@@ -235,6 +256,15 @@ _ALTO_ENCABEZADO_PT = 60 + 24
 # el hueco de las notas saliera disparatado. Se prefiere pasarse de largo:
 # sobreestimar sólo pone las notas un poco más arriba.
 _OVERHEAD_BLOQUE_PT = 60
+
+# Lo que se ahorra por bloque en modo APRETADO. LC 2026-08-18 (Oscar): «cuando
+# las notas se pasen a una hoja vacía, apretar esta distancia a ver si lo
+# arregla». El renglón que Google mete entre dos tablas seguidas no se puede
+# quitar (quirk #5), pero los márgenes sí: la tabla de la descripción pierde sus
+# 3pt de abajo y la de montos baja de 10 a 3. Son ~10pt por bloque; con seis
+# bloques, casi una pulgada — de sobra para recuperar unas notas que se pasaban
+# de hoja por poco.
+_AHORRO_APRETADO_PT = 10
 
 
 def _alto_bloque(fila) -> int:
@@ -287,7 +317,7 @@ def _alto_desglose(cot, items, con_tabla: bool = True) -> int:
     return alto + _OVERHEAD_BLOQUE_PT
 
 
-def _paginar(cot, filas, items) -> dict:
+def _paginar(cot, filas, items, *, apretado: bool = False) -> dict:
     """Simula la paginación del documento por BLOQUES ATÓMICOS.
 
     Cada bloque de producto (y el desglose, y las notas) viaja dentro de una
@@ -302,31 +332,41 @@ def _paginar(cot, filas, items) -> dict:
     Es una estimación (la hoja real la corta Google), así que sólo se usa para
     algo cuyo peor caso son unos milímetros: ver `_TOPE_HUECO_NOTAS_PT`.
     """
+    ahorro = _AHORRO_APRETADO_PT if apretado else 0
     usado = _ALTO_ENCABEZADO_PT
     for fila in filas:
-        alto = _alto_bloque(fila)
+        alto = _alto_bloque(fila) - ahorro
         if usado > _ALTO_ENCABEZADO_PT and usado + alto > _ALTO_UTIL_PT:
             usado = alto          # el bloque arranca hoja nueva
         else:
             usado += alto
     if cot.incluir_desglose:
-        alto = _alto_desglose(cot, items, con_tabla=_mostrar_desglose(cot, filas))
+        alto = _alto_desglose(cot, items, con_tabla=_mostrar_desglose(cot, filas)) - ahorro
         usado = alto if usado + alto > _ALTO_UTIL_PT else usado + alto
     return {"libre": max(0, _ALTO_UTIL_PT - min(usado, _ALTO_UTIL_PT))}
 
 
-def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
-    """Hueco (en puntos) que empuja el bloque de notas al pie de la hoja.
+def _plan_notas(cot, filas, items, notas) -> dict:
+    """Dónde quedan las notas y cuánto aire lleva el documento.
 
-    Oscar 2026-07-25: el espacio debe ser DINÁMICO — si las notas caben en lo
-    que queda de la página, se van hasta abajo; si ya no caben, no se estira
-    nada y pasan enteras a la hoja siguiente (el envoltorio de tabla con
-    `preventOverflow` impide que se partan, LC 2026-07-29).
+    Devuelve `{"apretado": bool, "espacio_pt": int, "brs": int}`.
 
-    Lo que queda libre en la última hoja lo calcula `_paginar`. Al resultado se
-    le resta `_MARGEN_SEGURIDAD_PT` y se le pone el tope
-    `_TOPE_HUECO_NOTAS_PT`: mejor quedarse corto que abrir un agujero a media
-    hoja o empujar el documento a una página de más.
+    La escalera que pidió Oscar (2026-08-18), en ese orden:
+
+    1. **Aire normal.** Si las notas caben en lo que queda de la última hoja, se
+       van hasta el pie con el hueco de siempre (Oscar 2026-07-25: dinámico, con
+       tope, ver `_TOPE_HUECO_NOTAS_PT`).
+    2. **Apretado.** Si no caben, se aprietan los márgenes de todos los bloques
+       (`_AHORRO_APRETADO_PT`) y se vuelve a medir: muchas veces con eso alcanza
+       y el documento se queda en una sola hoja.
+    3. **Hoja nueva.** Si ni apretando caben, pasan enteras a la siguiente —el
+       envoltorio de tabla con `preventOverflow` impide que se partan— y ahí
+       arrancan a **dos renglones** del margen superior, para que no queden
+       pegadas al borde.
+
+    Todo se apoya en `_paginar`, que es una ESTIMACIÓN: la hoja de verdad la
+    corta Google. Por eso lo único que se decide con esto es el aire, cuyo peor
+    caso son unos milímetros.
     """
     # LC 2026-08-04: bajan con el interlineado del documento (las notas van a
     # 9pt con `line-height:1.0` y padding 0).
@@ -334,11 +374,19 @@ def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
     if getattr(cot, "terminos", ""):
         alto_notas += 20 + len(cot.terminos.splitlines()) * 11
 
-    libre = _paginar(cot, filas, items)["libre"]
-    hueco = libre - alto_notas - _MARGEN_SEGURIDAD_PT
-    if hueco <= 0:
-        return 0
-    return int(min(hueco, _TOPE_HUECO_NOTAS_PT))
+    for apretado in (False, True):
+        libre = _paginar(cot, filas, items, apretado=apretado)["libre"]
+        hueco = libre - alto_notas - _MARGEN_SEGURIDAD_PT
+        if hueco > 0:
+            return {"apretado": apretado,
+                    "espacio_pt": int(min(hueco, _TOPE_HUECO_NOTAS_PT)),
+                    "brs": 0}
+    return {"apretado": True, "espacio_pt": 0, "brs": 2}
+
+
+def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
+    """Sólo el hueco del plan de arriba (se conserva por los que ya lo usaban)."""
+    return _plan_notas(cot, filas, items, notas)["espacio_pt"]
 
 
 def _fotos_vivas_del_proyecto(cot) -> dict:

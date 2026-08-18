@@ -116,10 +116,13 @@
     // Filtro rápido client-side de los chips de proyecto.
     const input = document.getElementById('filtro-proyectos');
     if (!input) return;
+    // LC 2026-08-18 (Oscar): buscar «numeros» tiene que encontrar «Números».
+    const plano = s => (s || '').toString().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     input.addEventListener('input', () => {
-        const q = input.value.trim().toLowerCase();
+        const q = plano(input.value.trim());
         document.querySelectorAll('[data-chip-proyecto]').forEach(ch => {
-            ch.classList.toggle('hidden', q && !ch.getAttribute('data-chip-proyecto').includes(q));
+            ch.classList.toggle('hidden', q && !plano(ch.getAttribute('data-chip-proyecto')).includes(q));
         });
     });
 })();

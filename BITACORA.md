@@ -9611,3 +9611,148 @@ tres conservan su intención con la razón escrita al lado.
 **Nota de proceso:** el de `ago13` sólo apareció al correr la suite COMPLETA sin
 `-x`. Las dos primeras corridas se detuvieron en el primer fallo y lo dejaron sin
 ejecutar — con un cambio transversal, `-x` esconde justo lo que hay que ver.
+
+---
+
+# S-Ajustes-Ago18 — Cuentas con división, colores ligados al producto y buscar sin acentos (2026-08-18, VERSION 2026.08.12)
+
+Ronda de Oscar sobre lo deployado el 17 de agosto. Diez puntos: dos de captura,
+dos bugs de la tarjeta de producto, los colores, las búsquedas, un detalle visual
+y dos del documento. Cuatro decisiones por AskUserQuestion y una respuesta en
+texto que definió el arreglo del PDF.
+
+## Lo que decidió Oscar
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Cómo habilito la división, sabiendo que pierde centavos? | **En todos los campos, con el redondeo a la vista.** |
+| ¿La cuenta escrita se conserva también en los precios? (3 campos nuevos) | **Sí** — «mantener el cálculo escrito, poner resultado en chiquito abajo del campo». |
+| ¿A qué se amarra el color de la tarjeta? | Al **nombre que se ve**; si no hay color en el nombre, a uno de una lista de 15-20 **en orden**. |
+| ¿Y las notas que sí caben en la hoja? | **Que se sigan yendo al pie.** |
+| ¿De dónde sale el hueco entre la descripción y la tablita? | «Es la foto, se nota en especial cuando hay descripción más corta» → «alinear al borde inferior el texto y la imagen y achicar un poco la foto». |
+
+## La división: un veto que se levanta con los ojos abiertos
+
+La división estaba rechazada **a propósito** desde Ago12, con una razón que sigue
+siendo cierta: con dos decimales pierde centavos. `150/29` son $5.17 por pieza y
+29 piezas suman $149.93, no $150. Oscar la pidió sabiéndolo, así que el veto se
+cambia por transparencia:
+
+- El cálculo va a precisión completa y **se redondea UNA sola vez, al final**
+  (`150/29*29` da los 150 exactos aunque el paso intermedio no sea redondo).
+- **El JS redondea igual que el servidor.** Esto no es cosmético: si el navegador
+  mostrara 5.1724 y la base guardara 5.17, el «Monto» en vivo prometería 150.00 y
+  al recargar aparecería 149.93. Mejor enseñar desde el principio lo que va a
+  quedar — que es para lo que sirve el «= $5.17» de abajo.
+- `1/0` no es una cuenta: devuelve `None` y el campo se rechaza con un error
+  legible.
+
+## Los dos bugs de la tarjeta, con una sola raíz cada uno
+
+**«Se colapsan solas, cambian de color, se llegan a mover en posición.»** Los tres
+síntomas salen del mismo sitio: al dar de alta un producto inline, la vista
+devuelve el formset ENTERO por OOB (`rerender_productos`, puesto en V8 para que la
+tarjeta nueva traiga su pk y no se duplique). El HTML recién pintado trae **todas
+las guardadas colapsadas** —el partial las colapsa cuando tienen pk— y reordenadas
+por `Meta.ordering`. Además, la tarjeta nueva nacía con `orden` 0, así que al
+guardarse se colaba ARRIBA de las que ya tenían un orden mayor.
+
+- El acordeón se anota en `htmx:beforeRequest` (el DOM todavía está intacto) y se
+  vuelve a aplicar en `htmx:afterSettle`. La tarjeta nueva —cuyo pk no existía
+  antes del POST— nace abierta, que es lo que querías al agregarla.
+- La posición se arregla volcando el orden del DOM a los `-orden` del formset en
+  cuanto la tarjeta existe **y** al elegirle producto (antes de eso el
+  sincronizador la salta por estar vacía, y se quedaría en 0).
+
+**«El recuadro de descripción se hace grande y chico solo.»** `autogrow` medía el
+textarea con la tarjeta **colapsada**: dentro de un `display:none` el
+`scrollHeight` es 0, así que le fijaba `height:0px`. Al desplegar la tarjeta salía
+aplastado y sólo recuperaba su tamaño al teclear. Regla nueva: **lo que no se ve
+no se mide**, y al desplegar la tarjeta se mide (`window.__autogrowTarjeta`, que
+llama el handler del acordeón, que vive en el otro bloque de JS).
+
+## Colores: por qué se GUARDAN
+
+Oscar pidió tres cosas a la vez —variados, contrastados y «sólidamente ligados a
+cada uno de sus productos»— y la tercera es la que decide el diseño. Un color
+derivado al vuelo (por posición, por hash del nombre, por pk) se mueve en cuanto
+se mueve su insumo; el `{% cycle %}` de antes se movía con la POSICIÓN, que fue
+justo la queja de Ago04-R3. Así que:
+
+1. **Un color mencionado en el nombre o la descripción manda.** «Playera dry fit
+   negra» sale en negro. Como se deriva del texto, renombrar cambia el color al
+   instante — y el JS lo repinta mientras escribes, con la misma lista de palabras
+   que usa Python (un solo dueño, `colores.COLORES_NOMBRADOS`).
+2. **Si no, el primero LIBRE de la lista, en orden, y se guarda** en
+   `ProyectoProducto.color`. Guardarlo es lo que lo vuelve inamovible.
+3. Las líneas viejas caen a un color derivado del nombre, para que ninguna
+   aparezca sin identidad; la data migration reparte los definitivos proyecto por
+   proyecto.
+
+La lista tiene **20 HEX ordenados para que dos consecutivos nunca sean del mismo
+tono**: como se reparten en orden de captura, los productos de un proyecto salen
+contrastados entre sí sin depender del azar. Se pintan con `--ec` + `color-mix`
+(`.tarjeta-color`), el sistema de las pastillas de estado, así que se acabaron los
+cinco tokens de Tailwind —dos de ellos azules— que producían el «todos verdes,
+azules, uno naranja aquí o allá». El negro y el blanco no se pintan literales: uno
+daría un fondo sucio y el otro sería invisible; se usan sus grises equivalentes.
+
+## Acentos: por qué `iregex` y no `unaccent`
+
+`unaccent` de Postgres sería más rápido, pero **las pruebas corren en SQLite y ahí
+no existe**. El `iregex` de Django funciona en los dos motores (en SQLite registra
+REGEXP con el módulo `re` de Python), y con listas de cientos de filas la
+diferencia no se nota. `lib/busqueda.q_texto` arma un patrón donde cada vocal
+admite sus variantes y **el texto del usuario también se despoja de acentos**, así
+que funciona en los dos sentidos: `numeros` encuentra «Números» y `Números`
+encuentra «Numeros». Si algún día una tabla crece de verdad, el cambio se hace
+dentro del helper sin tocar a los 16 que llaman.
+
+El caso que reportó Oscar era **server-side**: el Kanban y el combobox ya
+normalizaban desde hace sprints. El único client-side que faltaba era el filtro de
+chips de «Nueva tarea».
+
+## El documento
+
+**El margen de arriba.** La pista la puso Oscar: «en Google Docs existe un header
+dentro de cada documento, quizás va por ahí». Iba por ahí. Al pedir
+`useCustomHeaderFooterMargins` —que hacía falta para que el pie «1/1» respetara su
+margen— el **encabezado** se quedó con el margen del editor, media pulgada. Un
+encabezado vacío colocado a 36pt más su renglón termina por DEBAJO del `marginTop`
+de 36pt, y Google baja el cuerpo para no encimarlo. Con `marginHeader` a 12pt el
+cuerpo por fin arranca donde dice.
+
+**El hueco entre la descripción y la tablita.** No era un renglón de más: la foto
+y el texto comparten renglón, la fila crece al alto de la foto (hasta 76pt) y con
+descripción corta todo ese blanco caía justo entre el texto y la tabla de precios.
+Se rompe el empate como pidió Oscar: los dos se asientan al **borde inferior** y la
+foto baja a **64pt**, así que el sobrante queda ARRIBA —bajo el nombre del
+concepto— y la tablita vuelve a quedar a un renglón de la descripción, siempre.
+
+**La escalera de las notas** (`_plan_notas`) es literalmente la que pidió: caben →
+al pie con el hueco de siempre; no caben → **modo apretado** y se vuelve a medir;
+ni así → pasan enteras a la hoja siguiente y arrancan a **2 renglones** del margen.
+El «0 renglones» literal no es posible —Google mete un párrafo entre dos tablas
+seguidas y no hay forma de quitarlo (quirk #5)—, así que el modo apretado hace lo
+que sí se puede: reducir los márgenes de los bloques, ~10pt cada uno, que con seis
+bloques son casi una pulgada.
+
+## Tests
+
+51 nuevos en `tests/taller/test_ajustes_ago18.py`, uno por punto del ticket. Se
+actualizaron **7** ajenos, todos fijando contratos que este sprint cambió a
+propósito: los tres que declaraban la división rechazada (`test_ajustes_ago04_r3`,
+`test_ajustes_ago12` ×2 — uno de ellos con la razón del veto escrita en su
+docstring), el color de la tarjeta que era un token de Tailwind, la forma del
+snapshot de ventas con `precio_expr`, el tamaño de la caja de la foto y la foto
+«centrada», que ahora va asentada abajo.
+
+**Nota de proceso, otra vez la de Ago17:** cuatro de esos siete sólo aparecieron
+al correr la suite COMPLETA (22 minutos). Las corridas por módulo daban verde.
+Con un cambio transversal no hay sustituto para la corrida entera.
+
+**Un detalle que sí importa:** el `ventas_json` que arma `fotografiar` ahora lleva
+`precio_expr` y el que arma la **data migration de reconstrucción** (0034, ya
+aplicada en producción) no — y así se queda. Esa migración no se toca, y arma la
+venta desde el documento, donde no hay cuenta escrita que conservar.
+`ventas_normalizadas` lee las dos formas sin quejarse.

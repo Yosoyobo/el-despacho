@@ -30,6 +30,7 @@ from django.views.decorators.http import require_http_methods
 
 from buzon.estados import estados_activos, label_de
 from buzon.models import MensajeBuzon
+from lib.busqueda import q_texto
 from lib.colador import colar_reporte
 from lib.permisos import es_admin, puede, requiere_permiso
 from lib.portavoz import emitir
@@ -62,9 +63,7 @@ def lista(request):
     if adjunto:
         qs = qs.filter(num_adjuntos__gt=0)
     if q:
-        from django.db.models import Q
-        qs = qs.filter(
-            Q(asunto__icontains=q) | Q(cuerpo__icontains=q) | Q(autor__email__icontains=q))
+        qs = qs.filter(q_texto(q, "asunto", "cuerpo", "autor__email"))
 
     # S-Chalanes-UX #3: lectura POR USUARIO. Anotamos cada mensaje con
     # `leido_para_mi` (negrita si no) y contamos los no leídos del usuario.

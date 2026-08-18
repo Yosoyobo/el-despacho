@@ -45,6 +45,11 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
             cantidad=pp.cantidad,
             precio_unitario=pp.precio_unitario,
             costo_unitario=pp.costo_unitario,
+            # Las cuentas escritas viajan con sus montos: si el costo se capturó
+            # como «35+15+15», la copia también lo dice (LC 2026-08-18; el par del
+            # precio nació en ese mismo sprint).
+            precio_unitario_expr=pp.precio_unitario_expr,
+            costo_unitario_expr=pp.costo_unitario_expr,
             merma=pp.merma,
             incluir_en_calculo=pp.incluir_en_calculo,
             visible_pdf=pp.visible_pdf,
@@ -59,6 +64,7 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
                 proveedor_id=proc.proveedor_id,
                 descripcion=proc.descripcion,
                 costo=proc.costo,
+                costo_expr=proc.costo_expr,
                 por_pieza=proc.por_pieza,
             )
         # LC 2026-08-17: las escalas de volumen viajan con la línea.
@@ -66,6 +72,7 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
             ProyectoProductoEscala.objects.create(
                 producto=nueva_linea, orden=esc.orden, cantidad=esc.cantidad,
                 merma=esc.merma, precio_unitario=esc.precio_unitario,
+                precio_unitario_expr=esc.precio_unitario_expr,
                 costo_unitario=esc.costo_unitario,
                 costo_unitario_expr=esc.costo_unitario_expr,
                 impresion_costo=esc.impresion_costo,

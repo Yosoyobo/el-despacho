@@ -5,6 +5,69 @@
 
 ---
 
+## Novedades — Cuentas en los precios, colores de verdad y buscar sin acentos (18 de agosto de 2026)
+
+**Escribe la cuenta, no el resultado**
+
+- Todos los campos de dinero de la tarjeta de producto —precio, costo,
+  impresión, gastos de producción, cobros extra y los de cada opción de
+  volumen— aceptan que escribas una **cuenta**: `35+15+15`, `15.75*100` y ahora
+  también **divisiones**, `2400/12`.
+- Debajo del campo aparece en chiquito lo que va a quedar («= $200.00»), y la
+  cuenta se **queda escrita**: mañana vuelves y sigues viendo `2400/12`, no un
+  200 pelón que ya nadie sabe de dónde salió.
+- Un aviso sobre las divisiones: el sistema trabaja con centavos, así que
+  `150/29` son $5.17 por pieza y 29 piezas suman $149.93, no $150. Por eso el
+  resultado se muestra **antes** de guardar: lo que ves ahí es lo que va a
+  quedar.
+
+**Las opciones de volumen, más claras**
+
+- En cada Opción B, C… el **costo** va ahora antes que el precio.
+- Cada opción tiene **su propio color** (la B se queda con el azul de siempre),
+  y lo llevan su letra, su círculo y su renglón de utilidad. Se distinguen de un
+  vistazo.
+- Al marcar una opción, el **título de la tarjeta** cambia al instante y te dice
+  cuál manda: «100 pz (B) - Playera - $175.00». El desglose del recuadro
+  Económico también, con la cantidad correcta (antes decía el precio de la
+  opción marcada con las piezas de la primera).
+
+**Colores de producto de verdad**
+
+- Las tarjetas ya no son «todas verdes, azules y una naranja»: hay **20 colores
+  contrastados** y a cada producto le toca uno **suyo**, que no se mueve aunque
+  lo arrastres, lo apagues, borres otro o agregues diez más.
+- Y si el nombre o la descripción **mencionan un color** («Playera dry fit
+  negra», «Bandana roja»), la tarjeta se pinta de ese color — en cuanto lo
+  escribes.
+
+**Dos cosas que estorbaban**
+
+- Al dar de alta un producto, las tarjetas ya **no se cierran solas** ni se
+  cambian de lugar: las que tenías abiertas se quedan abiertas y la nueva
+  aparece donde la pusiste.
+- El recuadro de **Descripción** ya no crece y se encoge solo.
+
+**Buscar sin acentos**
+
+- Buscar `numeros` encuentra **Números Rojos**, y buscar `Números` encuentra
+  `Numeros`. Vale en el buscador del Inicio y en las listas de Clientes,
+  Proyectos, Productos, Proveedores, Cotizaciones, Facturación, Tesorería,
+  Contaduría, Buzón, Mensajes y Equipo.
+
+**Detalles**
+
+- Los interruptores de **IVA** del recuadro de Proveedores ya no son azules: se
+  ven en gris, que es lo que son — un detalle, no una acción.
+- En la **cotización**: el encabezado por fin sube al margen que le toca (el
+  documento traía un encabezado invisible que empujaba todo hacia abajo), y el
+  hueco entre la descripción y la tablita de precios desaparece — la
+  descripción y la foto se asientan abajo y la foto queda un poco más chica. Si
+  las notas no alcanzan a caber, el documento se aprieta solo antes de mandarlas
+  a otra hoja.
+
+---
+
 ## Novedades — Cotizar el mismo producto a varias cantidades, y el documento con más aire (17 de agosto de 2026)
 
 **Un producto, varias cantidades para que el cliente escoja**
@@ -3679,18 +3742,30 @@ La página es **editable directo** (los cambios se guardan solos; verás
     deja justo debajo.
   - Categoría · Producto · Cantidad · Merma · Precio unitario, y al final el
     botón **verde «+»** de los procesos que se le cobran al cliente (ver abajo).
+  - **Todos los campos de dinero aceptan una cuenta.** En el precio, el costo,
+    la impresión, los gastos de producción, los cobros extra y los de cada
+    opción de volumen puedes escribir `35+15+15`, `15.75*100` o `2400/12` en vez
+    del resultado. Debajo del campo aparece en chiquito lo que va a quedar
+    («= $200.00») y **la cuenta se queda escrita**, así que mañana vuelves y
+    sigues viendo de dónde salió el número. Ojo con las divisiones: el sistema
+    trabaja con centavos, así que `150/29` son $5.17 por pieza y 29 piezas suman
+    $149.93, no $150 — por eso el resultado se ve antes de guardar.
   - **Cotizar el mismo producto a varias cantidades (escalas de volumen):**
     junto a «Cant.» hay un **+ azul**. Cada vez que lo picas se agrega otra
     cantidad del mismo producto —la **Opción B**, la C, la D…— como una sub-fila
-    con su propia cantidad, merma, precio unitario, costo unitario y costo de
+    con su propia cantidad, merma, **costo unitario, precio unitario** y costo de
     impresión, y con su propio renglón de costo de producción, monto, utilidad y
     margen. Sirve para ofrecerle al cliente «70 pz a 195, 100 a 175, 200 a 160».
+    Cada opción tiene **su color** (la B se queda con el azul de siempre), y lo
+    llevan su letra, su círculo y su renglón de utilidad.
     - Lo que dejes **en blanco se hereda de la primera opción**; escribir un
       **0** es distinto: quiere decir «esta opción no lleva ese costo».
     - El **círculo** dice cuál calcula el proyecto: sólo una a la vez, y es la
       que se usa para el monto, el costo, el margen, la cotización y los gastos.
-      El **ojo** dice si esa opción se imprime en la cotización (la que no se
-      imprime se ve tenue).
+      Al marcarla, el **título de la tarjeta** y el desglose del recuadro
+      Económico cambian al instante y te dicen cuál manda («100 pz **(B)** -
+      Playera - $175.00»). El **ojo** dice si esa opción se imprime en la
+      cotización (la que no se imprime se ve tenue).
     - El **+ chico** del final de la sub-fila agrega otro costo a esa opción, en
       el mismo renglón. Hereda la descripción y el proveedor de la primera
       opción — sólo cambia el monto.
@@ -3703,6 +3778,11 @@ La página es **editable directo** (los cambios se guardan solos; verás
       Chalán todavía no las agrega ni las cambia — igual que la impresión y los
       procesos de producción. Sí puede crearte el producto y la línea del
       proyecto; las cantidades alternativas las pones tú.
+  - **El color de la tarjeta.** Cada producto del proyecto estrena un color de
+    una lista de 20, y ese color **se queda con él**: no se mueve aunque
+    arrastres las tarjetas, apagues una, borres otra o agregues diez más. Si el
+    nombre o la Descripción **mencionan un color** («Playera dry fit negra»,
+    «Bandana roja»), la tarjeta se pinta de ese color en cuanto lo escribes.
   - **Ponerle otro nombre en este proyecto:** junto a «Producto» hay un botón
     chico de **etiqueta**. Al picarlo aparece un campo con el nombre del
     catálogo para que lo cambies por el que ve el cliente — compras «TShirt
@@ -3980,6 +4060,11 @@ Lo que vendes/produces. Cada producto tiene:
   recuadro con su imagen**, que también sirve para pegarle una foto nueva).
 - **Imagen:** se pega (Ctrl/Cmd+V) o se sube en la ficha del producto, y también
   desde la tarjeta del producto **en la página de un proyecto** (ver Proyectos).
+
+> **Los buscadores no se tropiezan con los acentos.** Escribas `numeros` o
+> `Números`, encuentras «Números Rojos» — y al revés. Vale en el buscador del
+> Inicio y en las listas de Clientes, Proyectos, Productos, Proveedores,
+> Cotizaciones, Facturación, Tesorería, Contaduría, Buzón, Mensajes y Equipo.
 
 El **buscador** de la lista encuentra productos por su nombre, por el **nombre
 del proveedor** (escribe "Plymouth" y salen todos los suyos) y por **cualquier

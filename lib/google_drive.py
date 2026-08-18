@@ -652,6 +652,13 @@ def _peticiones_pagina(pagina: dict) -> list[dict]:
     `useCustomHeaderFooterMargins` va en el mismo lote a propósito: sin él,
     Google IGNORA `marginFooter` y usa el del editor — el pie se despegaría del
     borde y podría chocar con el contenido.
+
+    **`marginHeader` no es un adorno** (LC 2026-08-18): al prenderlo para el pie,
+    el ENCABEZADO se quedó con el margen del editor (media pulgada). Un
+    encabezado vacío colocado ahí termina por debajo del margen superior, y
+    Google empuja el cuerpo hacia abajo para no encimarlo — por eso el margen de
+    arriba «no se movía» por más que se pidiera. Pegándolo al borde, el cuerpo
+    arranca donde dice `marginTop`.
     """
     estilo: dict = {}
     campos: list[str] = []
@@ -659,6 +666,7 @@ def _peticiones_pagina(pagina: dict) -> list[dict]:
         ("margen_superior_pt", "marginTop"),
         ("margen_inferior_pt", "marginBottom"),
         ("margen_pie_pt", "marginFooter"),
+        ("margen_encabezado_pt", "marginHeader"),
     ):
         valor = pagina.get(clave)
         if valor is None:
@@ -667,7 +675,7 @@ def _peticiones_pagina(pagina: dict) -> list[dict]:
         campos.append(campo)
     if not campos:
         return []
-    if "marginFooter" in campos:
+    if "marginFooter" in campos or "marginHeader" in campos:
         estilo["useCustomHeaderFooterMargins"] = True
         campos.append("useCustomHeaderFooterMargins")
     return [{

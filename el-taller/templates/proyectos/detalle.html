@@ -195,7 +195,7 @@ se recarga, así que el «¿por qué se canceló?» se pide con `?motivo=1`.{% e
             </div>
 
             {# Plantilla de tarjeta vacía (formset.empty_form) para "+ Nuevo producto" inline. #}
-            <template id="producto-empty-template">{% include "proyectos/_producto_card.html" with f=formset.empty_form categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color="brand" %}</template>
+            <template id="producto-empty-template">{% include "proyectos/_producto_card.html" with f=formset.empty_form categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color="#465fff" %}</template>
 
             {% comment %}+ Nuevo producto: agrega una tarjeta vacía inline (reporte Oscar).
             El bug de duplicados de V8 se evita re-renderizando el formset por OOB tras crear.{% endcomment %}

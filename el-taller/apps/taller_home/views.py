@@ -21,11 +21,12 @@ from datetime import date, timedelta
 
 from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+
+from lib.busqueda import q_texto
 
 from .kpis import (
     CATEGORIAS,
@@ -349,14 +350,11 @@ def buscar_proyectos(request):
     qs = (
         _proyectos_visibles(request.user)
         .exclude(estado__in=KANBAN_SLUGS_DASHBOARD)
-        .filter(
-            Q(nombre__icontains=q)
-            | Q(codigo__icontains=q)
-            | Q(cliente__razon_social__icontains=q)
-            | Q(productos__nombre_proyecto__icontains=q)
-            | Q(productos__servicio__nombre__icontains=q)
-            | Q(productos__proveedor__razon_social__icontains=q)
-        )
+        .filter(q_texto(
+            q, "nombre", "codigo", "cliente__razon_social",
+            "productos__nombre_proyecto", "productos__servicio__nombre",
+            "productos__proveedor__razon_social",
+        ))
         .select_related("cliente")
         .prefetch_related("productos__servicio", "productos__variacion")
         .distinct()

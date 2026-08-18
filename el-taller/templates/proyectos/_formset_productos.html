@@ -9,5 +9,5 @@ POSICIÓN (antes con el rotador de Django) — se deriva del producto con el fil
 recargues la página.{% endcomment %}
 {{ formset.management_form }}
 {% for f in formset %}
-    {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance.pk|color_tarjeta con_autosave=con_autosave %}
+    {% include "proyectos/_producto_card.html" with f=f categorias_disponibles=categorias_disponibles proveedores_activos=proveedores_activos card_color=f.instance|color_tarjeta con_autosave=con_autosave %}
 {% endfor %}
