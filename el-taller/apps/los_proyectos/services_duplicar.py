@@ -1,7 +1,9 @@
 """Duplicar proyecto (LC 2026-07).
 
 Clona un proyecto COMPLETO con un nombre nuevo: cliente, fechas, régimen fiscal
-y los productos involucrados (con proveedores, costos, precios, merma y procesos).
+y los productos involucrados **tal como se ven** — su nombre en el proyecto, su
+descripción, proveedores, costos, precios, merma, orden, las opciones de volumen,
+los procesos de producción y lo que se le cobra al cliente aparte.
 
 **Exclusiones duras** (no se duplican flujos de dinero históricos): cotizaciones,
 facturas, egresos/ingresos, montos facturado/cobrado, asignaciones de egreso, y
@@ -17,6 +19,7 @@ from lib.portavoz_eventos import EventoPortavoz
 
 from .models import Proyecto, ProyectoProducto, ProyectoProductoEscala
 from .models.proceso import ProyectoProductoProceso
+from .models.venta import ProyectoProductoVenta
 
 
 @transaction.atomic
@@ -36,12 +39,27 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
         creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         # Dinero NO se hereda: montos facturado/cobrado quedan en su default 0.
     )
-    for pp in origen.productos.all().prefetch_related("procesos", "escalas"):
+    for pp in origen.productos.all().prefetch_related("procesos", "escalas", "ventas"):
         nueva_linea = ProyectoProducto.objects.create(
             proyecto=nuevo,
             servicio_id=pp.servicio_id,
             variacion_id=pp.variacion_id,
             proveedor_id=pp.proveedor_id,
+            # LC 2026-08-18: el ALIAS del producto en este proyecto. Sin él, la
+            # copia perdía el nombre que ve el cliente («TShirt Modelo Janet»
+            # volvía a ser el del catálogo) y con él la especificación que el
+            # documento arma a partir del nombre. Igual el `orden`: la copia
+            # tiene que verse en el mismo orden que el original.
+            nombre_proyecto=pp.nombre_proyecto,
+            orden=pp.orden,
+            # LC 2026-08-18 (Oscar): «las fotos de productos van ligadas a su
+            # alias o nombre y sí viajan al duplicar». Se copia la REFERENCIA al
+            # archivo de Drive, no el archivo: las dos líneas apuntan al mismo, y
+            # quitarla de una sólo desliga (el archivo nunca se borra de Drive,
+            # ver `forms._desligar_imagen`). Una línea sin alias no tiene foto
+            # propia —la suya vive en el catálogo—, así que ahí esto no hace nada.
+            imagen_file_id=pp.imagen_file_id,
+            imagen_url=pp.imagen_url,
             cantidad=pp.cantidad,
             precio_unitario=pp.precio_unitario,
             costo_unitario=pp.costo_unitario,
@@ -66,6 +84,18 @@ def duplicar_proyecto(origen: Proyecto, *, nombre: str, actor) -> Proyecto:
                 costo=proc.costo,
                 costo_expr=proc.costo_expr,
                 por_pieza=proc.por_pieza,
+            )
+        # LC 2026-08-18: lo que se le COBRA al cliente aparte del producto
+        # (Ponchado, arte…). No se copiaba, así que la copia salía más barata que
+        # el original —sin que nada lo avisara— y la cotización nueva perdía esas
+        # líneas. Son cobros, no gastos: no tienen nada que ver con las
+        # exclusiones de dinero histórico de arriba.
+        for venta in pp.ventas.all():
+            ProyectoProductoVenta.objects.create(
+                producto=nueva_linea, orden=venta.orden,
+                descripcion=venta.descripcion, cantidad=venta.cantidad,
+                precio_unitario=venta.precio_unitario,
+                precio_expr=venta.precio_expr,
             )
         # LC 2026-08-17: las escalas de volumen viajan con la línea.
         for esc in pp.escalas.all():

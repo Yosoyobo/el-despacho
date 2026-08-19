@@ -105,3 +105,140 @@ def test_duplicar_no_copia_cotizaciones_ni_facturas(cliente_factory, usuario_fac
     nuevo = duplicar_proyecto(proy, nombre="Clon", actor=autor)
     assert nuevo.cotizaciones.count() == 0
     assert nuevo.facturas.count() == 0
+
+
+# ── Lo que la copia perdía (LC 2026-08-18, Oscar) ───────────────────────────
+
+
+def _proyecto_completo(cliente_factory, usuario_factory):
+    """Un proyecto con TODO lo que se ve en una tarjeta: alias, descripción,
+    orden, cobros extra, procesos y una opción de volumen."""
+    from apps.el_catalogo.models import Proveedor
+    from apps.los_proyectos.models import (
+        Proyecto,
+        ProyectoProductoEscala,
+        ProyectoProductoProceso,
+    )
+    from apps.los_proyectos.models.venta import ProyectoProductoVenta
+
+    autor = usuario_factory(rol="super_admin")
+    cli = cliente_factory(creado_por=autor)
+    proy = Proyecto.objects.create(nombre="Original", cliente=cli, creado_por=autor)
+    prov = Proveedor.objects.create(razon_social="Crea Blanks")
+    serv = _servicio(nombre="TShirt Oversize Color")
+
+    primera = _linea(proy, serv, cantidad=10, precio="120", costo="50", prov=prov)
+    primera.nombre_proyecto = "TShirt Modelo Janet"
+    primera.nota = "Color: Beige\nBordado frontal"
+    primera.orden = 3
+    # Foto PROPIA del uso: la tiene porque la línea tiene alias (ver
+    # `ProyectoProducto.imagen_destino`).
+    primera.imagen_file_id = "drive-janet-1"
+    primera.imagen_url = "https://drive/janet"
+    primera.save()
+    ProyectoProductoProceso.objects.create(
+        producto=primera, tipo="impresion", proveedor=prov,
+        costo=Decimal("15"), costo_expr="10+5", por_pieza=True, orden=0)
+    ProyectoProductoVenta.objects.create(
+        producto=primera, orden=0, descripcion="Ponchado", cantidad=2,
+        precio_unitario=Decimal("350"), precio_expr="175*2")
+    ProyectoProductoEscala.objects.create(
+        producto=primera, orden=0, cantidad=50, precio_unitario=Decimal("110"),
+        activa=True)
+    return autor, proy, primera
+
+
+def test_la_copia_conserva_el_nombre_que_ve_el_cliente(cliente_factory, usuario_factory):
+    """El alias del producto en el proyecto se perdía: la copia volvía al nombre
+    del catálogo, y con él cambiaba lo que dice la cotización."""
+    from apps.los_proyectos.services_duplicar import duplicar_proyecto
+
+    autor, proy, _ = _proyecto_completo(cliente_factory, usuario_factory)
+    linea = duplicar_proyecto(proy, nombre="Clon", actor=autor).productos.get()
+    assert linea.nombre_proyecto == "TShirt Modelo Janet"
+    assert linea.nombre_visible == "TShirt Modelo Janet"
+    assert linea.nota.startswith("Color: Beige")
+    assert linea.orden == 3
+
+
+def test_la_copia_conserva_lo_que_se_le_cobra_aparte(cliente_factory, usuario_factory):
+    """Los procesos de VENTA no se copiaban, así que la copia salía más barata
+    que el original sin que nada lo avisara."""
+    from apps.los_proyectos.services_duplicar import duplicar_proyecto
+
+    autor, proy, original = _proyecto_completo(cliente_factory, usuario_factory)
+    linea = duplicar_proyecto(proy, nombre="Clon", actor=autor).productos.get()
+    venta = linea.ventas.get()
+    assert venta.descripcion == "Ponchado"
+    assert venta.cantidad == 2
+    assert venta.precio_unitario == Decimal("350.00")
+    assert venta.precio_expr == "175*2"          # la cuenta escrita también
+    # Y por lo tanto la copia cobra lo mismo que el original.
+    assert linea.subtotal_con_ventas == original.subtotal_con_ventas
+
+
+def test_la_copia_conserva_las_cuentas_escritas(cliente_factory, usuario_factory):
+    from apps.los_proyectos.services_duplicar import duplicar_proyecto
+
+    autor, proy, _ = _proyecto_completo(cliente_factory, usuario_factory)
+    linea = duplicar_proyecto(proy, nombre="Clon", actor=autor).productos.get()
+    assert linea.procesos.get().costo_expr == "10+5"
+
+
+def test_la_copia_conserva_las_opciones_de_volumen(cliente_factory, usuario_factory):
+    """Ya se copiaban; el test las fija junto a las otras dos, que es donde se
+    nota si alguien vuelve a olvidar una relación de la línea."""
+    from apps.los_proyectos.services_duplicar import duplicar_proyecto
+
+    autor, proy, _ = _proyecto_completo(cliente_factory, usuario_factory)
+    linea = duplicar_proyecto(proy, nombre="Clon", actor=autor).productos.get()
+    escala = linea.escalas.get()
+    assert escala.cantidad == 50
+    assert escala.activa is True
+    assert linea.cantidad_efectiva == 50
+
+
+def test_la_copia_sigue_sin_heredar_el_dinero(cliente_factory, usuario_factory):
+    """La exclusión dura de siempre: los cobros extra son PRECIO, no un flujo de
+    dinero histórico. El egreso ya registrado no viaja."""
+    from apps.los_proyectos.services_duplicar import duplicar_proyecto
+
+    autor, proy, _ = _proyecto_completo(cliente_factory, usuario_factory)
+    nuevo = duplicar_proyecto(proy, nombre="Clon", actor=autor)
+    assert nuevo.productos.get().egreso_id is None
+    assert nuevo.monto_cobrado == Decimal("0")
+    assert nuevo.estado == "por_cotizar"
+
+
+def test_la_copia_conserva_la_foto(cliente_factory, usuario_factory):
+    """Oscar: «las fotos van ligadas a su alias o nombre y sí viajan al
+    duplicar». Se copia la referencia al archivo de Drive, no el archivo."""
+    from apps.los_proyectos.services_duplicar import duplicar_proyecto
+
+    autor, proy, original = _proyecto_completo(cliente_factory, usuario_factory)
+    linea = duplicar_proyecto(proy, nombre="Clon", actor=autor).productos.get()
+    assert linea.imagen_file_id == "drive-janet-1"
+    assert linea.imagen_es_propia is True
+    assert linea.imagen_efectiva_file_id == original.imagen_efectiva_file_id
+
+
+@pytest.mark.django_db
+def test_duplicar_una_linea_suelta_tambien_se_lleva_la_foto(
+        client, cliente_factory, usuario_factory):
+    """El ⧉ de la tarjeta. REVIERTE la decisión de Ago12-B: si el alias viaja y
+    la foto va ligada al alias, la foto viaja con él."""
+    from django.urls import reverse
+
+    autor, proy, original = _proyecto_completo(cliente_factory, usuario_factory)
+    client.force_login(autor)
+    resp = client.post(
+        reverse("proyectos-duplicar-producto", args=[proy.pk, original.pk]))
+    assert resp.status_code in (200, 204, 302)
+
+    copia = proy.productos.exclude(pk=original.pk).get()
+    assert copia.nombre_proyecto == "TShirt Modelo Janet"
+    assert copia.imagen_file_id == "drive-janet-1"
+    # Y lo que NO se hereda sigue sin heredarse: el egreso es marca de
+    # idempotencia de producción.
+    assert copia.egreso_id is None
+

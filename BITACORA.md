@@ -9756,3 +9756,56 @@ Con un cambio transversal no hay sustituto para la corrida entera.
 aplicada en producción) no — y así se queda. Esa migración no se toca, y arma la
 venta desde el documento, donde no hay cuenta escrita que conservar.
 `ventas_normalizadas` lee las dos formas sin quejarse.
+
+
+---
+
+# S-Ajustes-Ago18 · duplicar proyecto (2026-08-18, VERSION 2026.08.13)
+
+Dos bugs preexistentes que aparecieron **leyendo el diff**, no probando: al
+agregar `precio_unitario_expr` a `services_duplicar` se ve el bucle completo, y
+ahí se nota lo que no está. Se le reportaron a Oscar al cerrar el sprint anterior
+y dijo «sí, ciérralos en el siguiente».
+
+**El alias.** `duplicar_proyecto` no copiaba `nombre_proyecto`. La copia volvía al
+nombre del catálogo, así que «TShirt Modelo Janet» se convertía otra vez en
+«TShirt Oversize Color» — y como el documento arma el concepto y su especificación
+a partir de ese nombre, la cotización de la copia decía otra cosa. También faltaba
+`orden`: la copia no respetaba el arrastre del original.
+
+**Los procesos de venta.** El bucle copiaba `procesos` y `escalas` pero no
+`ventas`. La copia **salía más barata que el original y nada lo avisaba**: el
+`monto_estimado` sí se heredaba (e incluía los cobros extra), así que el número
+guardado ni siquiera concordaba con sus propios productos. Vale la pena decir por
+qué no era una exclusión deliberada: el docstring excluye «flujos de dinero
+histórico» —cotizaciones, facturas, egresos, montos cobrados—, y un proceso de
+venta no es eso. Es PRECIO: parte de lo que se cotiza, como el precio unitario.
+
+**Cómo se verificó.** Los 5 tests se corrieron contra el código SIN arreglar: los
+dos de los bugs fallan, los otros tres pasan. Un test que no se vio fallar no
+prueba nada.
+
+**La foto.** Era la tercera cosa que se perdía y quedó como pregunta a Oscar, que
+la contestó el mismo día: «las fotos de productos van ligadas a su alias o nombre
+y sí viajan al duplicar». No hizo falta inventar regla: es la que ya vive en
+`ProyectoProducto.imagen_destino` —con alias la foto es del uso, sin alias es del
+catálogo—, así que si el alias viaja, la foto va con él.
+
+Se aplicó **también al ⧉ de duplicar una línea suelta**, lo que **revierte la
+decisión de Ago12-B** («sin heredar la foto propia»). La razón de revertirla no es
+que la anterior estuviera mal, sino que el ⧉ sí copia el alias: dejar la foto
+fuera volvía incoherente la regla que Oscar acababa de enunciar. El FK `egreso`
+se sigue sin heredar — ésa sí es una exclusión con motivo propio (idempotencia de
+producción).
+
+**Detalle que importa:** se copia la REFERENCIA al archivo de Drive, no el
+archivo. Dos líneas apuntando al mismo `file_id` es seguro porque quitar la foto
+de una sólo **desliga**; el archivo nunca se borra de Drive (Jul-26-R2: el mismo
+id puede estar congelado en una cotización ya enviada). Y el proxy
+`catalogo-imagen-producto` sigue autorizando la imagen, porque valida contra
+productos, usos y líneas de cotización — y una línea duplicada es un uso válido.
+
+**Cómo se verificó (otra vez).** Los 7 tests se corrieron contra el código sin
+arreglar en dos rondas: alias+ventas (2 fallan de 9) y fotos (2 fallan de 11).
+Un test que no viste fallar no prueba nada.
+
