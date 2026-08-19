@@ -579,11 +579,17 @@ def test_ajustar_pagina_es_best_effort(monkeypatch):
     assert wrapper._ajustar_pagina("doc", {"margen_superior_pt": 36}) is False
 
 
-def test_el_area_imprimible_crecio_diez_por_ciento():
-    """Media pulgada arriba y 0.6 abajo: el encabezado sube y cabe ~10% más."""
+def test_los_margenes_que_se_le_piden_al_documento():
+    """Media pulgada arriba y 0.6 abajo es lo que se PIDE.
+
+    LC 2026-08-18 R2 (Oscar: «lo del margen superior no funcionó, desistamos por
+    ahora»): el de arriba no lo aplica Google, así que el estimador dejó de
+    contarlo — ver `test_ajustes_ago18_r2.py`. Se le sigue pidiendo, que no
+    cuesta nada, y el inferior sí bajó el límite del contenido.
+    """
     from apps.cotizaciones import services
-    assert services._ALTO_UTIL_PT == 792 - 36 - 43
-    assert pytest.approx(1.10, abs=0.01) == services._ALTO_UTIL_PT / 648
+    assert services.PAGINA_DOCUMENTO["margen_superior_pt"] == 36
+    assert services._MARGEN_INFERIOR_PT == 43
     # El pie vive DENTRO del margen inferior: no le quita nada al contenido.
     assert services._MARGEN_PIE_PT < services._MARGEN_INFERIOR_PT
 

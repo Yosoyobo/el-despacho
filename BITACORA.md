@@ -9809,3 +9809,187 @@ productos, usos y líneas de cotización — y una línea duplicada es un uso v�
 arreglar en dos rondas: alias+ventas (2 fallan de 9) y fotos (2 fallan de 11).
 Un test que no viste fallar no prueba nada.
 
+
+---
+
+# S-Ajustes-Ago18-R2 — Colores que se leen, tarjetas que se quedan abiertas y el documento sin hojas en blanco (2026-08-18, VERSION 2026.08.14)
+
+Segunda ronda de Oscar sobre lo que se acababa de deployar ese día, con un caso
+concreto encima: el proyecto **LC-0044**, seis productos, «verde, rojo, amarillo
+(feo), rojo, rojo, azul».
+
+## Los colores: una sola raíz para tres síntomas
+
+Los tres reclamos —«Números Azules se debería pintar azul», «ya hay mucho rojo» y
+«amarillo feo»— salían del mismo sitio, y no era la paleta.
+
+`color_del_texto` recibía los textos, **los concatenaba** y luego recorría
+`COLORES_NOMBRADOS` buscando cuál aparecía. Es decir: el color ganador lo decidía
+el **orden de la lista de colores**, no lo que dice el nombre. Y en esa lista el
+rojo va antes que el azul. Consecuencias, las tres reportadas:
+
+- Una línea llamada «Números Azules» sobre un producto de catálogo «Playera Roja»
+  salía **roja**. El alias no servía de nada, porque los tres textos eran uno.
+- Cualquier línea que mencionara «roja» en cualquiera de sus tres campos se
+  llevaba el rojo, y ahí están los tres rojos del proyecto.
+- Como los colores nombrados se apropiaban de medio proyecto, el reparto de los
+  que no dicen color arrancaba con lo que quedaba libre.
+
+El arreglo son dos desempates, y los dos hacen falta:
+
+1. **Entre textos manda el orden en que se pasan.** Los consumidores pasan alias
+   → nombre del catálogo → descripción, que es literalmente el «seguir alias
+   antes que nombre» que pidió Oscar. Quien llama decide la prioridad; la función
+   ya no adivina.
+2. **Dentro de un texto manda el que se menciona primero**, y a igual posición la
+   frase más larga — ese segundo desempate es lo que mantiene vivo «azul marino»
+   sobre «azul», que antes salía del orden de la lista.
+
+El «amarillo feo» sí era la paleta: el ámbar `#f59e0b` era el **cuarto** en
+repartirse, así que un proyecto de cuatro productos casi siempre lo sacaba. Salió
+de la lista; los amarillos que quedan están en la segunda mitad.
+
+**Y los proyectos que ya existen.** Oscar fue explícito: «nuevos **y**
+existentes». Los colores se guardan (Ago18 los hizo columna precisamente para que
+no se movieran), así que arreglar la regla no arregla lo ya repartido: hizo falta
+la data migration `0037_recolorear_tarjetas`, que vuelve a repartir todo, proyecto
+por proyecto y en orden de captura. Es determinista — correrla dos veces deja lo
+mismo.
+
+## «Todas salen moradas»
+
+La plantilla vacía del formset (`formset.empty_form`) es un `ProyectoProducto()`
+sin nada, así que su `color_asignado` caía a `color_estable("Producto")` — que da
+morado, siempre el mismo. De ahí que toda tarjeta nueva naciera morada hasta que
+se elegía producto.
+
+Lo que pidió Oscar es preciso: «que siempre se agreguen en un color (no siempre
+el mismo) y cambie sólo si seleccionas un producto que ya tiene un color
+favorito». O sea: color desde el primer momento, y el producto sólo lo pisa si
+trae color en el nombre. El JS ahora reparte el primer color LIBRE del tablero
+(`colorLibreEnTablero`, espejo exacto de `colores.elegir_color_libre`) y lo manda
+al servidor en un hidden `color` nuevo del form.
+
+Ese hidden trae una trampa que hay que cuidar: si llega **vacío** en una línea ya
+guardada, `construct_instance` pondría `color=""` y el `save()` del modelo le
+repartiría otro — la tarjeta cambiaría de color sola en el siguiente
+autoguardado. Por eso `clean_color` devuelve el color de la instancia cuando el
+campo viene vacío.
+
+## El bug de las tarjetas en negro con outline blanco
+
+Intermitente, «luego se actualiza a sus colores». No se pudo reproducir, pero la
+firma es inequívoca: fondo negro = el `body` en oscuro asomando porque la tarjeta
+no tiene fondo; contorno blanco = `border-2` sin `border-color`, que cae a
+`currentColor`. Las dos cosas juntas significan una sola: **`.tarjeta-color` no
+está aplicando**.
+
+Podía ser el CSS compilado sirviéndose de una versión anterior, un `--ec`
+inválido que descarta el `color-mix`, o cualquier otra cosa que dejara la hoja
+fuera un instante. Perseguir cuál de ellas era, sin repro, no valía la pena:
+todas se arreglan igual, quitando la dependencia. El fondo y el borde ahora van
+**inline** sobre `var(--ec)`.
+
+Lo que hizo posible el inline fue cambiar la mezcla: antes el modo claro mezclaba
+contra `#ffffff` y el oscuro contra `transparent`, así que hacían falta dos
+reglas y una de ellas tenía que ser `.dark …` — imposible de poner inline. Con
+**alpha en los dos** (mezcla contra `transparent`, 12% de fondo y 38% de borde),
+un solo par de valores se ve bien sobre claro y sobre oscuro. De paso desapareció
+la regla `.dark .tarjeta-color`, y lo que queda en el CSS es idéntico al inline:
+si algún día falta la hoja, la tarjeta se ve igual.
+
+## Las tarjetas que se cierran solas: una carrera
+
+Ago18 ya había atacado esto y seguía pasando, ahora «después de elegir un
+producto de la lista». El mecanismo anterior anotaba el estado del acordeón en
+`htmx:beforeRequest` y lo reponía en `htmx:afterSettle`, con **una** variable que
+el `afterSettle` consumía (`acordeonPrevio = null`).
+
+Eso funciona si los dos eventos vienen del mismo request. En esta página no: el
+banner de deploy y el semáforo pollean **cada 10 segundos**. Basta que el
+`afterSettle` de cualquiera de ellos caiga entre el POST del autoguardado y su
+propio `afterSettle` para que se lleve la anotación — y cuando por fin llega el
+HTML nuevo del formset, ya no queda nada que reponer.
+
+El arreglo no es sincronizar mejor, es **no depender del emparejamiento**: el
+estado vive en un `Map` pk→abierta que no se consume, se alimenta de lo que el
+usuario decide (el click de colapsar/expandir) y se aplica después de cada swap,
+venga de donde venga. Un pk que el registro no conoce es una tarjeta recién
+guardada, y ésa nace abierta.
+
+## El documento: no páginas en blanco
+
+COT-2026-0058 sacó una página 3 vacía con las notas completas en la 2. Tres
+cambios, y el segundo es el que resuelve el caso:
+
+1. **Se reserva la cola del documento** (`_COLA_DOCUMENTO_PT = 28`). Google cierra
+   el cuerpo con un párrafo propio que no se puede quitar; si el contenido
+   termina pegado al borde inferior, ese párrafo se va solo a una hoja nueva. Es
+   la explicación más simple de una hoja vacía al final.
+2. **Escalón 3 en `_plan_notas`.** El margen de seguridad (56pt) hacía que unas
+   notas que SÍ cabían se mandaran a la hoja siguiente por no caber *con holgura*
+   — una hoja entera a la basura por 40 puntos. Ahora, antes de rendirse, se les
+   quita todo el aire y se quedan donde están: es literalmente lo que dijo Oscar
+   («puedes quitar los `<br>`s entre el último elemento y el bloque de notas para
+   que quepa todo»). El riesgo de apurar la estimación es nulo: el bloque viaja en
+   una fila con `preventOverflow`, así que si el cálculo se equivoca Google lo
+   manda entero a la siguiente hoja — el mismo resultado que el escalón 4.
+3. **El estimador cuenta el margen superior REAL.** Oscar: «lo del margen superior
+   no funcionó, desistamos por ahora». Se desistió de pelearlo, pero no se podía
+   ignorar: `_ALTO_UTIL_PT` restaba los 36pt que se le PIDEN a la API, y Google
+   está aplicando su pulgada. El estimador creía tener 36 puntos más de hoja de
+   los que hay, subestimaba y empujaba las notas de página. Ahora resta 72. Se le
+   sigue pidiendo el chico: no cuesta nada y, si algún día lo respeta, lo único
+   que pasa es que sobra aire.
+
+Lo del bloque «huérfano al calce» no tiene arreglo desde el HTML:
+`preventOverflow` garantiza que un bloque no se **parta**, no dónde cae. Un
+bloque que cabe al final de la hoja se queda ahí.
+
+Lo que sí se hizo, por si el bloque de Oscar de verdad se partió: `_endurecer_
+paginacion` era un `except` mudo. Es best-effort a propósito —sin la API de
+Documentos el PDF debe salir igual—, pero si la protección no llega a aplicarse
+los bloques SÍ se parten y no quedaba rastro de ello. Ahora deja un `warning` con
+el id del documento. La próxima vez que se reporte un bloque partido, lo primero
+que hay que mirar es el log.
+
+## Lo demás
+
+**Proveedores con color** en el recuadro del proyecto: filtro `color_nombre`
+(estable por nombre, misma paleta de 20) + clase `.texto-color`, que lo oscurece
+sobre claro y lo aclara sobre oscuro — «son nombres, entonces colores
+brillantes/claros para fácil lectura».
+
+**Kanban**: el color del estado pasó de la barra izquierda al contorno completo de
+la pastilla, con los mismos HEX. Hubo que retirar el `hover:border-brand-*`: con
+el color en el contorno, un hover que lo pisara borraría el distintivo justo
+cuando se está apuntando a la tarjeta. El hover se quedó en la sombra. El
+comentario del template dice exactamente qué clases devolver para revertirlo,
+porque Oscar lo pidió reversible. Y el nombre del proyecto y el del cliente
+suben un escalón cada uno.
+
+## Tests
+
+28 nuevos en `tests/taller/test_ajustes_ago18_r2.py`. **21 de los 26 de la
+primera tanda fallan
+contra el código sin arreglar** — se verificó guardando los archivos de código en
+un stash y corriendo la suite nueva contra el árbol viejo.
+
+Dos de ellos pasaban en esa primera ronda por **coincidencia**, y valió la pena
+mirarlos: el del alias azul pasaba porque `nombre_visible` ya devolvía el alias
+(el caso sólo distingue si la descripción menciona otro color), y el de la
+herencia del catálogo pasaba porque el color que le tocaba por reparto era el
+azul de todos modos — era la única línea del proyecto. Los dos se endurecieron
+hasta que fallaron.
+
+Se actualizaron 2 ajenos, los dos fijando contratos que este sprint cambió a
+propósito: el nombre del mecanismo del acordeón (`test_ajustes_ago18`) y
+`_ALTO_UTIL_PT == 792 - 36 - 43` (`test_ajustes_ago17`, que ahora comprueba lo
+que se PIDE, no lo que se estima).
+
+**Nota de diseño de tests:** los tres de la escalera de las notas empezaron
+armando una cotización que ocupara justo lo necesario, y salieron frágiles —el
+estimador reparte por bloques atómicos, así que no hay forma de pedirle un
+sobrante exacto y el caso interesante es una franja de 56 puntos. Se cambiaron a
+sustituir `_paginar` con un `libre` controlado. La escalera es lo que se quiere
+probar; cómo se llega a ese `libre`, no.

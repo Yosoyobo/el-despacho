@@ -26,6 +26,7 @@ Drive. Referencia técnica: `docs/SETUP_GOOGLE_DRIVE.md`.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 from urllib.parse import urlencode
 from uuid import uuid4
@@ -54,6 +55,8 @@ DRIVE_EXPORT_FMT = "https://www.googleapis.com/drive/v3/files/{file_id}/export"
 # credencial OAuth — el scope `drive.file` cubre los documentos que la app creó
 # (mismo truco que `lib/google_sheets.py`).
 DOCS_BASE = "https://docs.googleapis.com/v1/documents"
+
+_LOG = logging.getLogger(__name__)
 
 
 class NoConfiguradoError(Exception):
@@ -575,7 +578,10 @@ class GoogleDriveWrapper:
         prender por la API de Documentos, después de la conversión.
 
         Best-effort: cualquier fallo devuelve False y el PDF se exporta igual
-        (con el comportamiento de antes). Nunca lanza.
+        (con el comportamiento de antes). Nunca lanza — pero **deja aviso en el
+        log**: si algún día vuelve a partirse un bloque, lo primero que hay que
+        saber es si la protección llegó a aplicarse o si la API de Documentos
+        falló en silencio (LC 2026-08-18 R2).
         """
         try:
             with httpx.Client(timeout=HTTP_TIMEOUT_ARCHIVO) as cli:
@@ -600,7 +606,12 @@ class GoogleDriveWrapper:
                 )
                 resp.raise_for_status()
             return True
-        except Exception:  # noqa: BLE001 — sin API de Docs el PDF sale igual
+        except Exception as exc:  # noqa: BLE001 — sin API de Docs el PDF sale igual
+            _LOG.warning(
+                "No se pudo blindar la paginación del documento %s: %s. El PDF "
+                "sale igual, pero sus bloques podrían partirse entre páginas.",
+                doc_id, exc,
+            )
             return False
 
     def html_a_pdf(

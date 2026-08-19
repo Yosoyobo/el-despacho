@@ -1,4 +1,4 @@
-{% load forms_helpers %}
+{% load forms_helpers proyectos_extras %}
 {% comment %}
 Panel de Proveedores del proyecto (rediseño, reporte Oscar). Cada tarjeta es
 clickeable completa (link al proveedor); el toggle de IVA y "Quitar asignación"
@@ -21,7 +21,12 @@ es por proveedor y SOLO de este proyecto (default prendido).
             <a href="{% url 'catalogo-proveedor-detalle' fila.proveedor.pk %}" class="absolute inset-0 z-0 rounded-lg" aria-label="Ver {{ fila.proveedor.razon_social }}"></a>
             <div class="pointer-events-none relative z-10">
                 <div class="flex items-start justify-between gap-2">
-                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ fila.proveedor.razon_social }}</span>
+                    {% comment %}LC 2026-08-18 R2 (Oscar): «a la lista de proveedores
+                    pongamos también código de color para distinguir; son nombres,
+                    entonces colores brillantes/claros para fácil lectura». El color
+                    es estable por nombre (`color_nombre`) y `.texto-color` lo ajusta
+                    para que se lea en claro y en oscuro.{% endcomment %}
+                    <span class="texto-color font-semibold" style="--ec: {{ fila.proveedor.razon_social|color_nombre }}">{{ fila.proveedor.razon_social }}</span>
                     {% if puede_editar %}
                     <button type="button" class="pointer-events-auto inline-flex shrink-0 items-center gap-1.5"
                             hx-post="{% url 'proyectos-proveedor-iva' proyecto.pk fila.proveedor.pk %}"

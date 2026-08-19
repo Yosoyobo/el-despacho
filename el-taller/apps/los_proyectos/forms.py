@@ -307,9 +307,16 @@ class ProyectoProductoForm(forms.ModelForm):
     # ficha del producto en el catálogo.
     imagen_quitar = forms.CharField(required=False, widget=forms.HiddenInput())
 
+    # LC 2026-08-18 R2 (Oscar): «prefiero que siempre las tarjetas se agreguen en
+    # un color (no siempre el mismo)». El color de una tarjeta NUEVA lo elige el
+    # front (el primer libre del tablero, ver `_form_productos_js`) y viaja aquí,
+    # para que lo que se vio al capturarla sea lo que se guarda. Si no viaja —JS
+    # apagado, un POST viejo— lo reparte el `save()` del modelo, como siempre.
+    color = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = ProyectoProducto
-        fields = ["servicio", "nombre_proyecto", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "visible_pdf", "nota", "orden"]
+        fields = ["servicio", "nombre_proyecto", "variacion", "proveedor", "cantidad", "precio_unitario", "costo_unitario", "merma", "incluir_en_calculo", "visible_pdf", "nota", "orden", "color"]
         # LC 2026-08-04 (Oscar): la «nota corta» es ahora la DESCRIPCIÓN del
         # elemento y alimenta su especificación en la cotización. Acepta varias
         # líneas y crece sola hacia arriba (`data-autogrow` + la fila alinea al
@@ -423,6 +430,19 @@ class ProyectoProductoForm(forms.ModelForm):
     def clean_orden(self):
         # orden es NOT NULL con default 0; vacío/None ⇒ 0 (Fase 3 §2).
         return self.cleaned_data.get("orden") or 0
+
+    def clean_color(self):
+        """HEX válido, o el que la línea ya tenía. Nunca un color inventado.
+
+        Si el campo llega vacío en una línea YA guardada, se conserva el suyo:
+        vaciarlo haría que el `save()` del modelo le repartiera otro y la tarjeta
+        cambiaría de color sola en el siguiente autoguardado.
+        """
+        from . import colores
+        propuesto = colores.normalizar(self.cleaned_data.get("color"))
+        if propuesto:
+            return propuesto
+        return colores.normalizar(getattr(self.instance, "color", ""))
 
     # La foto por versión (S-Ajustes-Ago12-B) SÍ admite líneas sin producto: el
     # producto pudo borrarse del catálogo después de cotizarse.

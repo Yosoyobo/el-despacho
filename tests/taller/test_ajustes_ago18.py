@@ -193,12 +193,16 @@ def test_la_fila_de_la_escala_lleva_su_color():
 # ── 5. Las tarjetas ya no se colapsan solas ni se mueven de lugar ──────────
 
 def test_el_acordeon_sobrevive_al_re_render_del_formset():
+    """LC 2026-08-18 R2: el estado del acordeón vive en un REGISTRO que no se
+    consume. La versión anterior lo anotaba en `htmx:beforeRequest` y lo reponía
+    en `htmx:afterSettle`, con una variable que el primer `afterSettle` que
+    llegara —el del polling del banner— se llevaba; ver
+    `test_ajustes_ago18_r2.py`."""
     js = (TALLER / "templates/proyectos/_form_productos_js.html").read_text()
-    assert "function anotarAcordeon" in js and "function aplicarAcordeon" in js
-    assert "htmx:beforeRequest', anotarAcordeon" in js
+    assert "function anotarEstadoActual" in js and "function aplicarAcordeon" in js
     assert "htmx:afterSettle', aplicarAcordeon" in js
-    # La tarjeta nueva (pk que no existía antes) nace abierta.
-    assert "abiertas.has(pk) || !conocidas.has(pk)" in js
+    # La tarjeta nueva (pk que el registro no conoce) nace abierta.
+    assert "estadoAcordeon.has(pk) ? estadoAcordeon.get(pk) : true" in js
 
 
 def test_la_tarjeta_nueva_nace_con_su_orden():
