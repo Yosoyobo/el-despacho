@@ -186,7 +186,13 @@ class ProyectoProductoVersion(models.Model):
     def color_efectivo(self) -> str:
         """El HEX de esta tarjeta congelada. Misma regla que en la línea viva."""
         from .. import colores
-        return colores.color_del_texto(self.nombre_visible, self.nota) or self.color_asignado
+        # Mismo orden de prioridad que la línea viva: alias → catálogo →
+        # descripción, y perezoso para no tocar el FK si el alias ya dio color.
+        return (
+            colores.color_del_texto(self.nombre_proyecto)
+            or colores.color_del_texto(self.nombre_catalogo, self.nota)
+            or self.color_asignado
+        )
 
     @property
     def nombre_visible(self) -> str:

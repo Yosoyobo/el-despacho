@@ -244,6 +244,20 @@ def color_tarjeta(linea) -> str:
     return colores.color_estable(str(linea))
 
 
+@register.filter(name="color_nombre")
+def color_nombre(texto) -> str:
+    """HEX estable para distinguir un NOMBRE de un vistazo (LC 2026-08-18 R2).
+
+    Oscar, sobre la lista de proveedores del proyecto: «pongamos también código
+    de color para distinguir; son nombres, entonces colores brillantes/claros
+    para fácil lectura». El mismo nombre saca siempre el mismo color, de la misma
+    lista de 20 con la que se pintan las tarjetas de producto. Se pinta con
+    `--ec` + la clase `.texto-color`, que lo oscurece en claro y lo aclara en
+    oscuro para que se lea en los dos temas.
+    """
+    return colores.color_estable(str(texto or ""))
+
+
 @register.filter(name="color_escala")
 def color_escala(indice) -> str:
     """HEX de la opción de volumen número `indice` (0 = la B, la primera).

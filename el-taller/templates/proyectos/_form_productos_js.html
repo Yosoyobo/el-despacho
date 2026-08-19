@@ -241,9 +241,12 @@
         // baja a 40% y pierde el color de fondo — se lee de un golpe que no
         // cuenta, sin desaparecer.
         card.classList.toggle('opacity-40', !incluido);
+        // LC 2026-08-18 R2: el `grayscale` es ahora lo ÚNICO que quita el color.
+        // Desde que el fondo va inline (para que la tarjeta no dependa del CSS
+        // compilado), un `bg-gray-100` de utility ya no puede pisarlo — pero
+        // tampoco hace falta: el filtro desatura el fondo del color y lo deja en
+        // el mismo gris tenue, en claro y en oscuro.
         card.classList.toggle('grayscale', !incluido);
-        card.classList.toggle('bg-gray-100', !incluido);
-        card.classList.toggle('dark:bg-white/[0.03]', !incluido);
         // Resumen compacto de la cabecera: «[cant] pz - producto - precio»
         // (ticket UX 2026-07: con «pz» y SIN el proveedor del nombre).
         //
@@ -287,6 +290,9 @@
     // aquí en vivo para que se vea mientras escribes). La lista de palabras la
     // sirve el mismo módulo de Python, así que no hay dos verdades.
     const COLORES_PALABRAS = {% colores_palabras_json %};
+    // `colores.PALETA`: la MISMA lista con la que el servidor reparte el color de
+    // cada tarjeta y la que numera las opciones B, C… (el nombre se quedó de
+    // cuando sólo la usaban las escalas).
     const PALETA_ESCALAS = {% colores_paleta_json %};
     function colorDelTexto(texto) {
         const plano = (texto || '').toString().toLowerCase()
@@ -299,12 +305,53 @@
         }
         return '';
     }
+    // LC 2026-08-18 R2 (Oscar): los textos se revisan POR SEPARADO y en orden —
+    // alias del proyecto, luego el nombre del catálogo, y al final la
+    // descripción. Concatenados, «Números Azules» sobre un catálogo «Playera
+    // Roja» salía roja. Espeja `ProyectoProducto.color_efectivo`.
+    function colorDeLaTarjeta(card) {
+        const alias = card.querySelector('[data-alias-input]');
+        const desc = (card.querySelector('textarea[name$="-nota"]') || {}).value || '';
+        return colorDelTexto(alias ? alias.value : '')
+            || colorDelTexto(nombreCatalogo(card))
+            || colorDelTexto(desc);
+    }
     function repintarColor(card) {
         if (!card.hasAttribute('data-card-color')) return;
-        const desc = (card.querySelector('textarea[name$="-nota"]') || {}).value || '';
-        const hexa = colorDelTexto(nombreVisible(card) + ' ' + desc)
-            || card.getAttribute('data-color-base') || '';
+        const hexa = colorDeLaTarjeta(card) || card.getAttribute('data-color-base') || '';
         if (hexa) card.style.setProperty('--ec', hexa);
+    }
+    // El primer color de la lista que no esté ocupado en el tablero. Espeja
+    // `colores.elegir_color_libre`: el front reparte igual que el servidor, y
+    // manda su elección en el hidden `-color` para que lo que se vio al capturar
+    // sea lo que quede guardado.
+    function colorLibreEnTablero(excluir) {
+        const cont = document.getElementById('formset-productos');
+        if (!cont) return PALETA_ESCALAS[0];
+        const usados = new Set();
+        cont.querySelectorAll('[data-card]').forEach(card => {
+            if (card === excluir) return;
+            const base = card.querySelector('input[name$="-color"]');
+            const hexa = colorDeLaTarjeta(card)
+                || (base && base.value)
+                || card.getAttribute('data-color-base') || '';
+            if (hexa) usados.add(hexa.toLowerCase());
+        });
+        for (const hexa of PALETA_ESCALAS) {
+            if (!usados.has(hexa.toLowerCase())) return hexa;
+        }
+        return PALETA_ESCALAS[usados.size % PALETA_ESCALAS.length];
+    }
+    // Le reparte color a una tarjeta recién creada. Si el producto que se elija
+    // después menciona un color, `repintarColor` lo pintará con ése — «que
+    // cambie sólo si seleccionas un producto que ya tiene un color favorito».
+    function repartirColorNuevo(card) {
+        if (!card.hasAttribute('data-card-color')) return;
+        const hexa = colorLibreEnTablero(card);
+        card.setAttribute('data-color-base', hexa);
+        const oculto = card.querySelector('input[name$="-color"]');
+        if (oculto) oculto.value = hexa;
+        repintarColor(card);
     }
     // Nombre del producto tal como está en el CATÁLOGO (lo que se compra).
     function nombreCatalogo(card) {
@@ -1034,6 +1081,11 @@
         const _chev = card.querySelector('[data-chevron]'); if (_chev) _chev.classList.remove('-rotate-90');
         const _tog = card.querySelector('[data-card-toggle]'); if (_tog) _tog.setAttribute('aria-expanded', 'true');
         initCard(card);
+        // LC 2026-08-18 R2 (Oscar): «prefiero que siempre las tarjetas se
+        // agreguen en un color (no siempre el mismo)». Antes todas nacían del
+        // color que `color_estable("Producto")` le tocaba a la plantilla vacía
+        // —moradas— hasta que se elegía producto.
+        repartirColorNuevo(card);
         // LC 2026-08-18 (Oscar): «al crear tarjetas de productos… se llegan a
         // mover en posición». La tarjeta nueva nacía con `orden` 0, así que al
         // guardarse se colaba ARRIBA de las que ya tenían un orden mayor. Se
@@ -1281,47 +1333,68 @@ por un endpoint aparte.{% endcomment %}
         // Al desplegar, la Descripción se vuelve a medir: escondida no se puede
         // (`scrollHeight` 0) y quedaba aplastada — LC 2026-08-18.
         if (abierto === false && window.__autogrowTarjeta) window.__autogrowTarjeta(card);
+        // Lo que el usuario acaba de decidir es lo que hay que reponer después
+        // del siguiente swap del formset.
+        if (window.__anotarAcordeonProductos) window.__anotarAcordeonProductos();
         // El resumen compacto se queda visible también al EXPANDIR (render Oscar
         // 2026-07-28, punto b): es el título de la tarjeta, no un sustituto.
     });
 
     // ── El acordeón sobrevive al re-render del formset ───────────────────────
     // LC 2026-08-18 (Oscar): «al crear tarjetas de productos se colapsan solas».
-    // Al dar de alta un producto inline, el servidor devuelve el formset entero
-    // por OOB (para que la tarjeta nueva traiga su pk y no se duplique), y el
-    // HTML recién pintado trae a TODAS las guardadas colapsadas. Se anota qué
-    // estaba abierto antes del POST y se vuelve a aplicar después del swap; la
-    // tarjeta nueva —cuyo pk no existía antes— nace abierta, que es lo que
-    // querías al agregarla.
-    let acordeonPrevio = null;
+    // Al dar de alta un producto inline —o al elegirle producto a una tarjeta,
+    // que dispara el autoguardado— el servidor devuelve el formset entero por
+    // OOB (para que la tarjeta nueva traiga su pk y no se duplique), y el HTML
+    // recién pintado trae a TODAS las guardadas colapsadas.
+    //
+    // LC 2026-08-18 R2 (Oscar: «las tarjetas aún se cierran solas, después de
+    // elegir un producto de la lista»): antes esto se resolvía anotando el
+    // estado en `htmx:beforeRequest` y reponiéndolo en `htmx:afterSettle`, con
+    // UNA variable que el `afterSettle` consumía. En esta página hay otros
+    // requests HTMX en vuelo (el banner de deploy y el semáforo pollean cada
+    // 10s), así que el `afterSettle` de CUALQUIERA de ellos se llevaba la
+    // anotación y cuando llegaba el swap del formset ya no quedaba nada que
+    // reponer: las tarjetas volvían a nacer colapsadas.
+    //
+    // Ahora el estado vive en un registro que no se consume: se actualiza cuando
+    // el usuario despliega o colapsa, y se vuelve a aplicar después de cada
+    // swap. Un pk que el registro no conoce es una tarjeta recién guardada, y
+    // ésa nace abierta —que es lo que querías al agregarla.
+    const estadoAcordeon = new Map();   // pk → abierta
+    let registroListo = false;
     function pkDeTarjeta(card) {
         const id = card.querySelector('input[name$="-id"]');
         return id && id.value ? String(id.value) : '';
     }
-    function anotarAcordeon() {
+    function anotarEstadoActual() {
         const c = cont();
         if (!c) return;
-        const abiertas = new Set(), conocidas = new Set();
         c.querySelectorAll('[data-card]').forEach(card => {
             const pk = pkDeTarjeta(card);
-            if (!pk) return;
-            conocidas.add(pk);
             const body = card.querySelector('[data-card-body]');
-            if (body && !body.classList.contains('hidden')) abiertas.add(pk);
+            if (!pk || !body) return;
+            estadoAcordeon.set(pk, !body.classList.contains('hidden'));
         });
-        acordeonPrevio = { abiertas, conocidas };
+        registroListo = true;
     }
+    window.__anotarAcordeonProductos = anotarEstadoActual;
     function aplicarAcordeon() {
         const c = cont();
-        if (!acordeonPrevio || !c) return;
-        const { abiertas, conocidas } = acordeonPrevio;
-        acordeonPrevio = null;
+        if (!c) return;
+        // Primera pasada: el DOM del servidor ES el estado inicial, no hay nada
+        // que reponer todavía.
+        if (!registroListo) { anotarEstadoActual(); return; }
         c.querySelectorAll('[data-card]').forEach(card => {
             const pk = pkDeTarjeta(card);
             if (!pk) return;                       // sin guardar: se deja como está
-            const abierta = abiertas.has(pk) || !conocidas.has(pk);
             const body = card.querySelector('[data-card-body]');
             if (!body) return;
+            const abierta = estadoAcordeon.has(pk) ? estadoAcordeon.get(pk) : true;
+            estadoAcordeon.set(pk, abierta);
+            // Esto corre en CADA swap, y en esta página el banner de deploy
+            // pollea cada 10s: si el DOM ya está como el registro, no se toca
+            // nada (y sobre todo no se vuelve a medir la Descripción).
+            if (body.classList.contains('hidden') !== abierta) return;
             body.classList.toggle('hidden', !abierta);
             const tog = card.querySelector('[data-card-toggle]');
             if (tog) tog.setAttribute('aria-expanded', abierta ? 'true' : 'false');
@@ -1330,7 +1403,8 @@ por un endpoint aparte.{% endcomment %}
             if (abierta && window.__autogrowTarjeta) window.__autogrowTarjeta(card);
         });
     }
-    document.body.addEventListener('htmx:beforeRequest', anotarAcordeon);
+    document.addEventListener('DOMContentLoaded', anotarEstadoActual);
+    if (document.readyState !== 'loading') anotarEstadoActual();
     document.body.addEventListener('htmx:afterSettle', aplicarAcordeon);
 
     // ── Arrastrar para reordenar ─────────────────────────────────────────────

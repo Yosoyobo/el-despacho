@@ -5,7 +5,7 @@
 
 ---
 
-## Novedades — Cuentas en los precios, colores de verdad y buscar sin acentos (18 de agosto de 2026)
+## Novedades — Cuentas en los precios, colores de verdad y el documento sin hojas en blanco (18 de agosto de 2026)
 
 **Escribe la cuenta, no el resultado**
 
@@ -40,13 +40,43 @@
 - Y si el nombre o la descripción **mencionan un color** («Playera dry fit
   negra», «Bandana roja»), la tarjeta se pinta de ese color — en cuanto lo
   escribes.
+- **Manda el nombre que TÚ le pusiste al producto.** Si la línea se llama
+  «Números Azules», sale azul aunque el producto del catálogo se llame «Playera
+  Roja» y la descripción hable de rojo. Si tu nombre no dice ningún color, se
+  mira el del catálogo, y al final la descripción.
+- Dentro de un mismo texto gana el color que se menciona **primero**: «Playera
+  roja y azul» sale roja, «Playera azul y roja» sale azul.
+- Una tarjeta **nueva** estrena color desde que la agregas —y no siempre el
+  mismo: le toca el primero que esté libre en ese proyecto—. Al elegir el
+  producto sólo cambia si ese producto trae un color en su nombre. Antes nacían
+  todas moradas hasta que elegías algo.
+- Se retiró el amarillo chillón de los primeros colores en repartirse, y los
+  proyectos que **ya existían** se volvieron a colorear con estas reglas: al
+  entrar los vas a ver variados.
 
-**Dos cosas que estorbaban**
+**Tres cosas que estorbaban**
 
-- Al dar de alta un producto, las tarjetas ya **no se cierran solas** ni se
-  cambian de lugar: las que tenías abiertas se quedan abiertas y la nueva
-  aparece donde la pusiste.
+- Al dar de alta un producto **o al elegirle producto a una tarjeta**, las
+  tarjetas ya **no se cierran solas** ni se cambian de lugar: las que tenías
+  abiertas se quedan abiertas y la nueva aparece donde la pusiste. (Se cerraban
+  cuando el aviso de actualización, que revisa cada 10 segundos, se cruzaba con
+  el guardado.)
+- Ya no aparecen las tarjetas **en negro con el contorno blanco** mientras carga
+  la página: el color viaja con cada tarjeta y no depende de que el archivo de
+  estilos llegue primero.
 - El recuadro de **Descripción** ya no crece y se encoge solo.
+
+**Proveedores con color**
+
+- En la página del proyecto, cada proveedor del recuadro **Proveedores** lleva
+  su nombre en un color propio y siempre el mismo, para distinguirlos de un
+  vistazo. Se lee bien en modo claro y en oscuro.
+
+**El tablero de Proyectos**
+
+- El color del estado pasó de la **barrita de la izquierda** al **contorno
+  completo** de cada tarjeta.
+- El **nombre del proyecto y el del cliente** se ven más grandes.
 
 **Duplicar un proyecto ya copia todo**
 
@@ -69,12 +99,21 @@
 
 - Los interruptores de **IVA** del recuadro de Proveedores ya no son azules: se
   ven en gris, que es lo que son — un detalle, no una acción.
-- En la **cotización**: el encabezado por fin sube al margen que le toca (el
-  documento traía un encabezado invisible que empujaba todo hacia abajo), y el
-  hueco entre la descripción y la tablita de precios desaparece — la
-  descripción y la foto se asientan abajo y la foto queda un poco más chica. Si
-  las notas no alcanzan a caber, el documento se aprieta solo antes de mandarlas
-  a otra hoja.
+- En la **cotización**: el hueco entre la descripción y la tablita de precios
+  desaparece — la descripción y la foto se asientan abajo y la foto queda un
+  poco más chica.
+
+**El documento, sin hojas en blanco**
+
+- **Ninguna hoja vacía.** Cuando las notas caben justas, el documento les quita
+  el aire de arriba y se quedan en la misma hoja, en vez de mandar una hoja
+  entera a la basura. Si de plano no caben, pasan **enteras** a la siguiente.
+- El bloque de cada elemento (título, descripción, imagen y su tabla) y el
+  bloque de notas siguen viajando **completos**: no se parten a la mitad entre
+  dos hojas.
+- El margen de arriba del PDF quedó pendiente: Google no lo está respetando, así
+  que por ahora se deja como está y el documento se planea contando el margen
+  que sí aplica. Se anotó para retomarlo.
 
 ---
 
@@ -403,7 +442,11 @@
 
 - **Cada tarjeta conserva SU color.** Antes el color se repartía por posición, así
   que al arrastrar una tarjeta o apagar un toggle se recoloreaban todas. Ahora el
-  color sale del producto: es el mismo hoy, mañana y después de moverla.
+  color sale del producto: es el mismo hoy, mañana y después de moverla. Una
+  tarjeta nueva estrena el primer color libre del proyecto desde que la agregas.
+- **Si el nombre dice un color, ése es el color.** Manda el nombre que le pusiste
+  al producto dentro del proyecto; si no dice ninguno, se mira el del catálogo y
+  al final la Descripción. Dentro de un texto gana el que se menciona primero.
 - **Prender y apagar el toggle ya no reacomoda nada.** La línea se atenúa en su
   lugar. El orden lo manda sólo el arrastre.
 - **El toggle se ve con la tarjeta cerrada**, junto al resumen, para poder prender
@@ -432,6 +475,8 @@
 
 **Página del proyecto**
 
+- **Cada proveedor del recuadro Proveedores lleva su nombre en color**, siempre
+  el mismo para el mismo proveedor, para distinguirlos de un vistazo.
 - **«+ Crear producto nuevo en el catálogo» se volvió a leer**: se ve la palabra
   Categoría, los recuadros de Cantidad y Merma son angostos y **todos los campos
   dicen qué son** (antes había un «1» y un «0» sueltos).
@@ -444,6 +489,10 @@
 - **Arrastra los proyectos para acomodarlos dentro de su columna.** El orden se
   guarda y lo ve todo el equipo. Arrastrar a OTRA columna sigue cambiando el
   estado, como siempre.
+- **El color del estado va en el contorno de la tarjeta** (antes era una barrita
+  a la izquierda). Son los mismos colores que configuraste en Estados de
+  proyecto.
+- El **nombre del proyecto y el del cliente** se ven más grandes.
 
 **Inicio (Dashboard)**
 
@@ -584,6 +633,9 @@
 - **El bloque de Notas ya no se parte en dos hojas.** Antes podían quedar las
   notas 1 y 2 al pie de una página y el resto en la siguiente. Ahora pasan
   completas.
+- **Y el documento no genera hojas en blanco.** Cuando las notas caben justas, se
+  les quita el aire de arriba y se quedan donde están, en vez de mandar una hoja
+  entera a la basura; si de plano no caben, pasan enteras a la siguiente.
 - **La foto del producto renombrado sí sale.** Si dos productos del proyecto
   vienen del mismo producto del catálogo y les pusiste nombres distintos (por
   ejemplo «Playera dry fit — negro» y «— blanco»), cada uno sale con SU foto. Antes

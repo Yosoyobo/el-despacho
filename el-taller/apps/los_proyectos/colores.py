@@ -19,6 +19,19 @@ Tres reglas, en este orden:
 3. Una línea vieja que todavía no tenga color guardado cae a un color derivado
    de su nombre, para que nunca se vea sin identidad.
 
+**Quién gana cuando hay varios colores en juego** (LC 2026-08-18 R2, Oscar:
+«"Números Azules" se debería de pintar azul — seguir alias antes que nombre»).
+Dos desempates, y los dos importan:
+
+- **Entre TEXTOS manda el orden en que se pasan**: primero el alias del
+  proyecto, luego el nombre del catálogo y al final la descripción. Antes los
+  tres iban concatenados, así que una línea llamada «Números Azules» sobre un
+  producto de catálogo «Playera Roja» salía ROJA: se buscaba color por color en
+  el orden de esta lista, y el rojo está antes que el azul.
+- **Dentro de un texto manda el que se menciona PRIMERO**, y a igual posición
+  la frase más larga («azul marino» le gana a «azul»). Antes mandaba el orden de
+  la lista de colores, que no tiene nada que ver con lo que dice el nombre.
+
 La lista tiene 20 colores ordenados de modo que **dos consecutivos nunca sean
 del mismo tono** — como se reparten en orden de captura, los productos de un
 mismo proyecto salen siempre contrastados entre sí.
@@ -37,35 +50,41 @@ import unicodedata
 # Arranca con el azul de la casa (el que ya tenían todas las tarjetas) y de ahí
 # salta de tono en tono. Son colores medios: al 14% dan un fondo tenue legible
 # y al 78% un texto con contraste suficiente.
+#
+# LC 2026-08-18 R2 (Oscar: «amarillo (feo)»): el ámbar `#f59e0b` era el cuarto
+# en repartirse, así que un proyecto de cuatro productos casi siempre lo sacaba.
+# Los amarillos bajaron a la segunda mitad de la lista y su lugar lo tomaron
+# tonos que se leen mejor en tarjeta (morado, naranja quemado, turquesa).
 PALETA = (
     "#465fff",  # azul (el de siempre)
     "#e11d48",  # rojo
     "#059669",  # verde
-    "#f59e0b",  # ámbar
     "#7c3aed",  # morado
+    "#ea580c",  # naranja
     "#0891b2",  # turquesa
     "#db2777",  # rosa
     "#65a30d",  # olivo
-    "#ea580c",  # naranja
-    "#2563eb",  # azul rey
-    "#be123c",  # vino
-    "#0d9488",  # verde azulado
-    "#c026d3",  # fucsia
-    "#ca8a04",  # mostaza
     "#4338ca",  # índigo
-    "#16a34a",  # verde pasto
-    "#9f1239",  # granate
     "#0284c7",  # azul cielo
+    "#be123c",  # vino
+    "#16a34a",  # verde pasto
+    "#c026d3",  # fucsia
+    "#0d9488",  # verde azulado
+    "#ca8a04",  # mostaza
+    "#9f1239",  # granate
+    "#2563eb",  # azul rey
     "#a16207",  # bronce
+    "#7e22ce",  # violeta
     "#57534e",  # piedra
 )
 
 COLOR_DEFAULT = PALETA[0]
 
 # ── Colores nombrados ────────────────────────────────────────────────────────
-# Se leen del nombre visible y de la descripción de la línea. El orden importa:
-# las combinaciones de dos palabras van ANTES que la palabra suelta, o «azul
-# marino» se resolvería como «azul» a secas.
+# Se leen del nombre visible y de la descripción de la línea. Las combinaciones
+# de dos palabras conviven con la palabra suelta: a igual posición en el texto
+# gana la más larga, así «azul marino» no se resuelve como «azul» a secas (ver
+# `_color_en`). El orden de esta lista ya NO decide nada — decide el texto.
 #
 # El negro y el blanco no se pintan de negro y blanco literales: uno daría un
 # fondo sucio y el otro sería invisible. Se usan sus grises equivalentes, que es
@@ -108,19 +127,42 @@ def _plano(texto) -> str:
     return "".join(c for c in desarmado if unicodedata.category(c) != "Mn").lower()
 
 
-def color_del_texto(*textos) -> str:
-    """El color que menciona el texto, o "" si no menciona ninguno.
+def _color_en(texto) -> str:
+    """El color que menciona UN texto, o "" si no menciona ninguno.
 
-    Empata por PALABRA COMPLETA: «Bandana Roja» sí, «Rojas Hermanas S.A.» sí
-    (es la palabra), pero «Carroza» no se confunde con «rosa».
+    Gana el que aparece ANTES en el texto; a igual posición, la frase más larga
+    («azul marino» sobre «azul»). Empata por palabra completa, así que «Bandana
+    Roja» sí y «Carroza» no se confunde con «rosa».
     """
-    plano = " ".join(_plano(t) for t in textos if t)
-    if not plano:
+    plano = _plano(texto)
+    if not plano.strip():
         return ""
+    mejor_pos: int | None = None
+    mejor_hex = ""
+    mejor_largo = 0
     for palabras, hexa in COLORES_NOMBRADOS:
         for palabra in palabras:
-            if re.search(rf"(?<![\w]){re.escape(palabra)}(?![\w])", plano):
-                return hexa
+            hallazgo = re.search(rf"(?<![\w]){re.escape(palabra)}(?![\w])", plano)
+            if not hallazgo:
+                continue
+            pos, largo = hallazgo.start(), len(palabra)
+            if mejor_pos is None or pos < mejor_pos or (pos == mejor_pos and largo > mejor_largo):
+                mejor_pos, mejor_hex, mejor_largo = pos, hexa, largo
+    return mejor_hex
+
+
+def color_del_texto(*textos) -> str:
+    """El color que mencionan los textos, o "" si ninguno menciona uno.
+
+    Los textos se revisan **en el orden en que se pasan** y se devuelve el
+    primero que dé color: quien llama decide la prioridad. Los consumidores del
+    repo pasan alias → nombre del catálogo → descripción, que es la regla que
+    pidió Oscar (2026-08-18 R2).
+    """
+    for texto in textos:
+        hexa = _color_en(texto)
+        if hexa:
+            return hexa
     return ""
 
 

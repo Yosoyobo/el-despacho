@@ -157,7 +157,15 @@ def _url_descargar(cot: Cotizacion) -> str:
 # Documentos (`PAGINA_DOCUMENTO`) y el alto útil con el que el estimador simula
 # la paginación. Si se cambian y el estimador no, el hueco de las notas queda
 # mal — la lección de la ronda del 2026-08-04.
-_MARGEN_SUPERIOR_PT = 36     # 0.5"
+#
+# ⚠️ LC 2026-08-18 R2 — **el de arriba no está funcionando** («desistamos por
+# ahora, pero anótalo por ahí», Oscar). Se le pide a la API de Documentos y el
+# PDF sale con la pulgada por default de Google. Se deja pedido: no cuesta nada
+# y si algún día lo respeta, el encabezado sube como pide el formato de
+# referencia. Lo que SÍ se corrigió es el estimador, que ahora planea con el
+# margen real (`_MARGEN_SUPERIOR_REAL_PT`) — si planeara con éste, creería que
+# hay media pulgada más de hoja y empujaría las notas de página.
+_MARGEN_SUPERIOR_PT = 36     # 0.5" — se pide, Google no lo aplica (ver arriba)
 _MARGEN_INFERIOR_PT = 43     # ~0.6"
 # Distancia del pie al borde inferior. Vive DENTRO del margen inferior, así que
 # el pie no le quita nada al contenido (43 − 20 = 23pt de aire bajo el texto).
@@ -191,8 +199,17 @@ PAGINA_DOCUMENTO = {
 }
 
 # Alto de la hoja carta (11" = 792pt) menos los márgenes de arriba y abajo.
+#
+# LC 2026-08-18 R2 (Oscar: «lo del margen superior del PDF no funcionó,
+# desistamos por ahora»): el margen de arriba que se le pide a la API de
+# Documentos NO se está aplicando en el PDF, así que el estimador tiene que
+# contar el que Google usa de verdad — su pulgada por default. Si contara los
+# 36pt que se piden, creería que hay 36pt más de hoja de los que hay, subestimaría
+# y las notas se pasarían de página. Se sigue PIDIENDO el margen chico (no cuesta
+# nada y si algún día lo respeta, sólo sobra aire), pero se planea con el real.
 _ALTO_HOJA_PT = 792
-_ALTO_UTIL_PT = _ALTO_HOJA_PT - _MARGEN_SUPERIOR_PT - _MARGEN_INFERIOR_PT
+_MARGEN_SUPERIOR_REAL_PT = 72   # 1" — lo que aplica Google, no lo que se pide
+_ALTO_UTIL_PT = _ALTO_HOJA_PT - _MARGEN_SUPERIOR_REAL_PT - _MARGEN_INFERIOR_PT
 
 # Caja en la que DEBE caber la foto del producto (ver `_medida_foto`). El alto
 # es el tope duro que pidió Oscar (2026-07-26, ronda 3): «alrededor del alto de
@@ -242,6 +259,21 @@ _MARGEN_SEGURIDAD_PT = 56
 # documento se iba solo a una hoja nueva (la página 4 vacía de la cotización de
 # Dekalogo). Con tope, un error de estimación cuesta unos milímetros.
 _TOPE_HUECO_NOTAS_PT = 96
+
+# Lo que hay que dejar libre al FINAL del documento. Al convertir, Google cierra
+# el cuerpo con un párrafo propio que no se puede quitar; si el contenido termina
+# pegado al borde inferior, ese párrafo se va solo a una hoja nueva y sale la
+# **página en blanco** que reportó Oscar (2026-08-18 R2: «nos generó una pág 3 en
+# blanco… regla: no páginas en blanco»). Reservarlo es lo único que lo evita.
+_COLA_DOCUMENTO_PT = 28
+
+# Lo mínimo que debe sobrar para dejar las notas en la última hoja SIN aire.
+# Oscar (2026-08-18 R2): «cuando haya conflicto, puedes quitar los <br>s entre el
+# último elemento y el bloque de notas para que quepa todo». Es el tercer escalón
+# de `_plan_notas`, y existe porque el segundo exige además el colchón de
+# seguridad: entre «cabe justo» y «cabe con holgura» se prefiere apretar antes
+# que mandar las notas —y con ellas una hoja entera— a la página siguiente.
+_COLCHON_MINIMO_NOTAS_PT = 8
 
 # Encabezado (fecha/logo/cliente) + título centrado. El título dejó de llevar
 # 28pt de aire abajo (Oscar 2026-07-28, punto 2: «un <br> de más»), y en la
@@ -343,7 +375,11 @@ def _paginar(cot, filas, items, *, apretado: bool = False) -> dict:
     if cot.incluir_desglose:
         alto = _alto_desglose(cot, items, con_tabla=_mostrar_desglose(cot, filas)) - ahorro
         usado = alto if usado + alto > _ALTO_UTIL_PT else usado + alto
-    return {"libre": max(0, _ALTO_UTIL_PT - min(usado, _ALTO_UTIL_PT))}
+    # La cola del documento (el párrafo que Google agrega al cerrar el cuerpo) se
+    # descuenta siempre: lo que sobra de verdad es menos que lo que sobra en el
+    # HTML.
+    libre = _ALTO_UTIL_PT - min(usado, _ALTO_UTIL_PT) - _COLA_DOCUMENTO_PT
+    return {"libre": max(0, libre)}
 
 
 def _plan_notas(cot, filas, items, notas) -> dict:
@@ -359,7 +395,11 @@ def _plan_notas(cot, filas, items, notas) -> dict:
     2. **Apretado.** Si no caben, se aprietan los márgenes de todos los bloques
        (`_AHORRO_APRETADO_PT`) y se vuelve a medir: muchas veces con eso alcanza
        y el documento se queda en una sola hoja.
-    3. **Hoja nueva.** Si ni apretando caben, pasan enteras a la siguiente —el
+    3. **Sin aire.** Si caben pero justas, se les quita todo el hueco (Oscar
+       2026-08-18 R2: «cuando haya conflicto, puedes quitar los <br>s entre el
+       último elemento y el bloque de notas para que quepa todo»). Este escalón
+       es el que evita la hoja de más cuando falta poquito.
+    4. **Hoja nueva.** Si ni así caben, pasan enteras a la siguiente —el
        envoltorio de tabla con `preventOverflow` impide que se partan— y ahí
        arrancan a **dos renglones** del margen superior, para que no queden
        pegadas al borde.
@@ -381,6 +421,14 @@ def _plan_notas(cot, filas, items, notas) -> dict:
             return {"apretado": apretado,
                     "espacio_pt": int(min(hueco, _TOPE_HUECO_NOTAS_PT)),
                     "brs": 0}
+    # Escalón 3: caben, pero justas. Se les quita TODO el aire antes que mandar
+    # una hoja entera a la basura (Oscar 2026-08-18 R2). Si aun así el estimador
+    # se equivocó, el peor caso es el mismo que el escalón 4 —Google las manda
+    # enteras a la hoja siguiente, porque el bloque viaja en una fila con
+    # `preventOverflow`—, sólo que sin los dos renglones de arriba.
+    libre = _paginar(cot, filas, items, apretado=True)["libre"]
+    if libre - alto_notas >= _COLCHON_MINIMO_NOTAS_PT:
+        return {"apretado": True, "espacio_pt": 0, "brs": 0}
     return {"apretado": True, "espacio_pt": 0, "brs": 2}
 
 

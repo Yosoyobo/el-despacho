@@ -157,8 +157,10 @@ class ProyectoProducto(models.Model):
                     .exclude(pk=self.pk)
                     .values_list("color", "nombre_proyecto", "nota", "servicio__nombre")
                 )
+                # Mismo orden de prioridad que `color_efectivo`: alias, luego el
+                # nombre del catálogo y al final la descripción.
                 usados = [
-                    colores.color_del_texto(alias or catalogo, nota) or color
+                    colores.color_del_texto(alias, catalogo, nota) or color
                     for color, alias, nota, catalogo in hermanas
                 ]
                 self.color = colores.elegir_color_libre(usados)
@@ -181,8 +183,20 @@ class ProyectoProducto(models.Model):
         si no menciona ninguno, el que se le repartió al darla de alta; y si es
         una línea vieja que todavía no tiene, uno derivado de su nombre para que
         nunca aparezca sin identidad.
+
+        LC 2026-08-18 R2 (Oscar): los tres textos van por SEPARADO y en orden de
+        prioridad — **el alias manda sobre el nombre del catálogo**, y éste sobre
+        la descripción. Concatenados, «Números Azules» sobre un catálogo «Playera
+        Roja» salía roja.
         """
-        return colores.color_del_texto(self.nombre_visible, self.nota) or self.color_asignado
+        # Perezoso a propósito: `nombre_catalogo` toca el FK al servicio, y si
+        # el alias ya dijo el color no hace falta ir por él (una consulta por
+        # tarjeta en el detalle del proyecto).
+        return (
+            colores.color_del_texto(self.nombre_proyecto)
+            or colores.color_del_texto(self.nombre_catalogo, self.nota)
+            or self.color_asignado
+        )
 
     @property
     def nombre_catalogo(self) -> str:

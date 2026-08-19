@@ -29,12 +29,22 @@ Render fino LC 2026-07-28 (Oscar):
   para distinguirlo del de producción, que cuesta.
 {% endcomment %}
 {% comment %}LC 2026-08-18 (Oscar): el color llega como HEX en `--ec` y de ahí
-salen el fondo y el borde (`.tarjeta-color`, ver input.css). Antes eran cinco
-tokens de Tailwind, dos de ellos azules — de ahí el «todos verdes, azules, uno
-naranja aquí o allá». La regla de qué color le toca a cada línea vive en
-`ProyectoProducto.color_efectivo`.{% endcomment %}
+salen el fondo y el borde. Antes eran cinco tokens de Tailwind, dos de ellos
+azules — de ahí el «todos verdes, azules, uno naranja aquí o allá». La regla de
+qué color le toca a cada línea vive en `ProyectoProducto.color_efectivo`.
+
+LC 2026-08-18 R2 (Oscar: «a veces me cargan las páginas con todas las tarjetas
+en negro y outline blanco»): el fondo y el borde van INLINE, no sólo en la clase
+`.tarjeta-color` del CSS compilado. Con la clase sola, cualquier momento en que
+esa hoja no esté (un CSS servido de una versión anterior, un navegador que la
+descarta) deja la tarjeta sin fondo —negra en oscuro— y con el borde en
+`currentColor`, que es blanco: exactamente lo reportado. Se usa `color-mix` con
+ALPHA (mezcla contra `transparent`, no contra blanco), que se ve bien sobre
+claro y sobre oscuro, así que un solo par de valores sirve para los dos temas y
+no hace falta la regla `.dark`. Todo se apoya en `var(--ec)`, así que el JS
+sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
 <div class="producto-fila tarjeta-color rounded-xl border-2 p-3 shadow-theme-sm transition"
-     style="--ec: {{ card_color|default:'#465fff' }}"
+     style="--ec: {{ card_color|default:'#465fff' }}; background-color: color-mix(in srgb, var(--ec) 12%, transparent); border-color: color-mix(in srgb, var(--ec) 38%, transparent);"
      data-color-base="{{ f.instance.color_asignado|default:card_color }}"
      data-card data-card-color data-arr-item="{{ f.instance.pk|default:'' }}">
     {{ f.id }}
@@ -44,7 +54,7 @@ naranja aquí o allá». La regla de qué color le toca a cada línea vive en
     Un checkbox que no viaja en el POST se guarda como False, así que si sólo se
     pintara con escalas, el autoguardado apagaría del documento a todas las líneas
     normales. Las dos ramas son excluyentes: el campo aparece una sola vez.{% endcomment %}
-    <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.escalas_json }}{{ f.variacion }}{{ f.orden }}{{ f.imagen_quitar }}{% if not f.escalas %}{{ f.visible_pdf }}{% endif %}</div>
+    <div class="hidden">{{ f.procesos_json }}{{ f.ventas_json }}{{ f.escalas_json }}{{ f.variacion }}{{ f.orden }}{{ f.imagen_quitar }}{{ f.color }}{% if not f.escalas %}{{ f.visible_pdf }}{% endif %}</div>
 
     {% comment %}── Cabecera: asa · resumen (siempre visible) · foto en la esquina ──
     LC 2026-07-29 (Oscar): la barra COMPLETA despliega la tarjeta

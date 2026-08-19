@@ -5313,6 +5313,101 @@ a Oscar y dijo «sí, ciérralos en el siguiente».
   próxima relación que se olvide. Explicación larga en
   `docs/HANDOFF-duplicar-proyecto.md`.
 
+### S-Ajustes-Ago18-R2 ✅ — Colores que se leen, tarjetas que se quedan abiertas y el documento sin hojas en blanco (2026-08-18, VERSION 2026.08.14)
+
+Segunda ronda de Oscar sobre lo deployado ese mismo día (2026.08.12/13), con el
+proyecto **LC-0044** como evidencia: «verde, rojo, amarillo (feo), rojo, rojo,
+azul». Cinco frentes, sin cambios de schema (la única migración es de datos).
+
+- **Los colores, tres arreglos con una raíz común.** `color_del_texto` concatenaba
+  alias + catálogo + descripción y buscaba color por color **en el orden de la
+  LISTA**, así que ganaba el que estuviera antes en `COLORES_NOMBRADOS` — el rojo
+  va antes que el azul, y por eso «Números Azules» sobre un catálogo «Playera
+  Roja» salía roja y el proyecto acumulaba tres rojos. Ahora manda **el texto**:
+  entre textos, el orden en que se pasan (alias → catálogo → descripción, que es
+  el «seguir alias antes que nombre» de Oscar); dentro de un texto, el color que
+  se menciona **primero**, y a igual posición la frase más larga («azul marino»
+  sobre «azul»). Los tres consumidores (`ProyectoProducto.color_efectivo`, su
+  `save()` y el espejo en JS) pasan los textos por separado.
+- **El ámbar `#f59e0b` salió de la paleta** (el «amarillo feo»): era el CUARTO en
+  repartirse, así que casi cualquier proyecto lo sacaba. Los amarillos bajaron a
+  la segunda mitad y su lugar lo tomaron morado, naranja quemado y turquesa.
+  Migración de datos **`proyectos/0037_recolorear_tarjetas`** vuelve a repartir
+  todo con las reglas nuevas (Oscar: «en proyectos nuevos **y existentes**»);
+  es determinista, así que correrla dos veces deja lo mismo.
+- **La tarjeta nueva estrena color** («todas salen moradas»): la plantilla vacía
+  del formset caía a `color_estable("Producto")` —morado— hasta que se elegía
+  producto. Ahora el JS le reparte el primer color LIBRE del tablero
+  (`colorLibreEnTablero`, espejo de `colores.elegir_color_libre`) y lo manda en
+  un hidden `color` nuevo del form, para que lo que se vio al capturar sea lo que
+  se guarda. Al elegir producto sólo cambia si ese producto trae color en su
+  nombre — «que cambie sólo si tiene un color favorito». `clean_color` conserva
+  el color de la instancia si el campo llega vacío: vaciarlo haría que el modelo
+  repartiera otro y la tarjeta cambiaría sola en el siguiente autoguardado.
+- **Bug «tarjetas en negro con outline blanco»** (intermitente, «luego se
+  actualiza a sus colores»): el color vivía SÓLO en la clase `.tarjeta-color` del
+  CSS compilado, y sin esa hoja la tarjeta se queda sin fondo —negra en oscuro—
+  con el borde en `currentColor`, que es blanco. Ahora el fondo y el borde van
+  **inline** sobre `var(--ec)`, con `color-mix` contra **`transparent`** (alpha):
+  un mismo par de valores sirve en claro y en oscuro, así que se pudo retirar la
+  regla `.dark .tarjeta-color` y el inline es idéntico a la clase. El JS sigue
+  repintando cambiando UNA variable.
+- **Bug «las tarjetas se cierran solas al elegir un producto de la lista»**: el
+  estado del acordeón se anotaba en `htmx:beforeRequest` y se reponía en
+  `htmx:afterSettle`, con UNA variable que el `afterSettle` **consumía**. En esta
+  página pollean el banner de deploy y el semáforo cada 10s, así que el
+  `afterSettle` de cualquiera de ellos se llevaba la anotación y cuando llegaba
+  el swap del formset ya no quedaba nada que reponer. Ahora el estado vive en un
+  **registro que no se consume** (`Map` pk→abierta), alimentado por el click del
+  usuario y aplicado tras cada swap; un pk desconocido = tarjeta recién guardada,
+  y ésa nace abierta.
+- **Proveedores con código de color** en el recuadro del proyecto: filtro nuevo
+  `color_nombre` (estable por nombre, misma paleta de 20) + clase `.texto-color`
+  que lo oscurece en claro y lo aclara en oscuro — «son nombres, entonces colores
+  brillantes/claros para fácil lectura».
+- **Kanban**: el color del estado pasó de la barra izquierda (`border-l-4`) al
+  **contorno completo** de la pastilla, con los mismos HEX; se retiró el
+  `hover:border-brand-*` porque pisaba el distintivo (el hover se quedó en la
+  sombra). Título del proyecto `text-xs`→`text-sm` y cliente `text-[10px]`→`text-xs`.
+  **Reversible**: el comentario del template dice exactamente qué clases
+  devolver.
+- **El documento sin hojas en blanco** (COT-2026-0058 sacó una página 3 vacía).
+  Tres cambios en el estimador: (1) **`_COLA_DOCUMENTO_PT = 28`** reservado al
+  final — Google cierra el cuerpo con un párrafo propio y, si el contenido
+  termina pegado al borde, ese párrafo se va solo a una hoja nueva; (2) escalón
+  **3 nuevo** en `_plan_notas`: si las notas caben pero justas, se les quita TODO
+  el aire y se quedan en la hoja (Oscar: «puedes quitar los `<br>`s entre el
+  último elemento y el bloque de notas para que quepa todo») — antes, entre
+  «cabe» y «cabe con los 56pt de seguridad» se mandaba una hoja entera a la
+  basura; (3) **el estimador cuenta el margen superior REAL**. Oscar: «lo del
+  margen superior no funcionó, desistamos por ahora» — Google no aplica los 36pt
+  que se le piden, así que `_ALTO_UTIL_PT` usa su pulgada (`_MARGEN_SUPERIOR_REAL_PT
+  = 72`); si contara el que se pide, creería que hay 36pt más de hoja y las notas
+  se pasarían de página. Se le SIGUE pidiendo el chico por si algún día lo
+  respeta.
+- **Aviso cuando no se puede blindar la paginación**: `_endurecer_paginacion`
+  era un `except` mudo. Si el `preventOverflow` no llega a aplicarse, el PDF sale
+  igual (best-effort) pero sus bloques SÍ pueden partirse — y no había forma de
+  saber si había pasado. Ahora deja un `warning` con el id del documento.
+- **28 tests** en `tests/taller/test_ajustes_ago18_r2.py`, verificados contra el
+  código sin arreglar (21 de los 26 de la primera tanda fallan). Se actualizaron 2 ajenos que fijaban
+  contratos que este sprint cambió a propósito: el nombre del mecanismo del
+  acordeón (`test_ajustes_ago18`) y `_ALTO_UTIL_PT == 792-36-43`
+  (`test_ajustes_ago17`, ahora comprueba lo que se PIDE).
+
+**Deuda diseñada**: **el margen superior del PDF queda pendiente** — se le pide a
+la API de Documentos y Google no lo aplica; el estimador ya trabaja con el real,
+así que no hace daño, pero el encabezado sigue más abajo de lo que pide el
+formato de referencia. La paginación sigue siendo una **estimación** (la hoja la
+corta Google): su único efecto es el aire de las notas, con tope de 96pt. Un
+bloque que quede solo al calce de una hoja no se puede evitar desde el HTML —
+`preventOverflow` garantiza que no se PARTA, no dónde cae. El color de la tarjeta
+se sigue ligando al texto, así que dos líneas del mismo producto con alias
+distintos salen de colores distintos (lo pedido) y con más de 20 productos se
+repite alguno. La lista de proveedores del proyecto es el único lugar con
+`color_nombre`: los chips «@Proveedor» de la tarjeta de producto se quedaron como
+estaban.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
