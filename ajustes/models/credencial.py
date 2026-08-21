@@ -36,7 +36,7 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("n8n_webhook_secret", "n8n — Webhook Secret", "Para firmar HMAC saliente."),
     ("vapid_public_key", "Web Push — VAPID Public", "Notificaciones del Interfono. Generar con `interfono_generar_vapid`."),
     ("vapid_private_key", "Web Push — VAPID Private", "Notificaciones del Interfono. Generar con `interfono_generar_vapid`."),
-    ("vapid_email", "Web Push — VAPID contact", "Correo de contacto del header VAPID (ej. mailto:soporte@bautista.mx)."),
+    ("vapid_email", "Web Push — VAPID contact", "Correo de contacto del header VAPID (ej. mailto:soporte@learningcenter.mx)."),
     ("do_api_token", "DigitalOcean — API Token (dop_v1_...)", "Token para que El Site lea specs y bandwidth del Droplet."),
     ("n8n_health_url", "n8n — Health URL (vía Tailscale)", "Ej. http://hal.tailedd04d.ts.net:5678/healthz. El Site lo pinguea."),
     ("rfc_empresa", "Contaduría — RFC de la empresa", "RFC de Learning Center. Se usa en el export fiscal XML (Anexo 24). Ej. XAXX010101000."),

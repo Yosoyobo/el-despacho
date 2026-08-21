@@ -55,7 +55,7 @@ class Command(BaseCommand):
         Credencial.guardar("vapid_public_key", public_b64)
         Credencial.guardar("vapid_private_key", private_b64)
         if not Credencial.esta_configurado("vapid_email"):
-            Credencial.guardar("vapid_email", "mailto:soporte@bautista.mx")
+            Credencial.guardar("vapid_email", "mailto:soporte@learningcenter.mx")
 
         self.stdout.write(self.style.SUCCESS(
             "Llaves VAPID generadas y guardadas. Public key disponible vía "

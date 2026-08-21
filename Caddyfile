@@ -1,7 +1,7 @@
 # El Portero — Caddy 2 con auto-HTTPS Let's Encrypt en producción.
 # En HAL local los puertos están remapeados (18080/18443) en docker-compose.
 {
-	email oscar@bautista.mx
+	email soporte@learningcenter.mx
 }
 
 # El Almacén (S-Medios-V1): los medios viven en disco y los sirve El Portero
