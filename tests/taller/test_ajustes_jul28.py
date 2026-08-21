@@ -34,11 +34,11 @@ def _on_commit_inmediato(monkeypatch):
 
 @pytest.fixture
 def _drive_falso(monkeypatch):
-    """Neutraliza la bajada de imágenes: el PDF se arma sin pegarle a Drive."""
-    monkeypatch.setattr("lib.imagen_publica.precalentar", lambda fid: True)
-    monkeypatch.setattr("lib.imagen_publica.proporcion", lambda fid: 1.0)
-    monkeypatch.setattr("lib.imagen_publica.url_absoluta",
-                        lambda fid: f"https://taller/img/{fid}" if fid else "")
+    """Neutraliza El Almacén: el PDF se arma sin leer archivos de disco."""
+    monkeypatch.setattr("lib.almacen.proporcion", lambda fid: 1.0)
+    monkeypatch.setattr("lib.almacen.url",
+                        lambda fid, variante="w400", absoluta=False:
+                        f"https://taller/medios/{fid}/w1000.jpg" if fid else "")
 
 
 def _servicio(nombre="Taza metálica", **kwargs):
@@ -156,7 +156,7 @@ def test_la_foto_va_centrada_en_su_celda(proyecto_factory, usuario_factory, _dri
 
     html = services.construir_html_pdf(cot)
     assert 'vertical-align:bottom; text-align:center;' in html
-    assert '<p align="center" style="margin:0; text-align:center;"><img src="https://taller/img/foto-1"' in html
+    assert '<p align="center" style="margin:0; text-align:center;"><img src="https://taller/medios/foto-1/w1000.jpg"' in html
     assert 'align="right"' not in html
 
 
@@ -196,7 +196,7 @@ def test_la_foto_del_alias_gana_sobre_la_congelada(proyecto_factory, usuario_fac
     _item(cot, servicio=srv, imagen_file_id="foto-catalogo")
 
     html = services.construir_html_pdf(cot)
-    assert "https://taller/img/foto-del-alias" in html
+    assert "https://taller/medios/foto-del-alias/w1000.jpg" in html
     assert "foto-catalogo" not in html
 
 
@@ -218,7 +218,7 @@ def test_sin_foto_propia_se_respeta_la_congelada(proyecto_factory, usuario_facto
     _item(cot, servicio=srv, imagen_file_id="foto-congelada")
 
     html = services.construir_html_pdf(cot)
-    assert "https://taller/img/foto-congelada" in html
+    assert "https://taller/medios/foto-congelada/w1000.jpg" in html
 
 
 # ── (6) Guardar / compartir en móvil ────────────────────────────────────────

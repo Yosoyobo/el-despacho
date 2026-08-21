@@ -29,8 +29,7 @@ def _on_commit_inmediato(monkeypatch):
 
 @pytest.fixture
 def _drive_falso(monkeypatch):
-    monkeypatch.setattr("lib.imagen_publica.precalentar", lambda *_a, **_k: False)
-    monkeypatch.setattr("lib.imagen_publica.proporcion", lambda *_a, **_k: 0.0)
+    monkeypatch.setattr("lib.almacen.proporcion", lambda *_a, **_k: 0.0)
 
 
 def _accion(payload):

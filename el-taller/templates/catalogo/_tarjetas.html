@@ -4,9 +4,9 @@ Proveedores. En orden y centrado: el nombre, la categoría y el proveedor en una
 línea, las fotos del producto, y costo · precio · margen en una línea; el número
 de usos va en la esquina.
 
-Las fotos son MINIATURAS (`?mini=1`, ~30 KB) y cargan en diferido: con la
-pantalla llena de productos, pedir las fotos completas de todos era lo que
-apretaba a Google Drive.{% endcomment %}
+Las fotos son MINIATURAS (~30 KB) y cargan en diferido. Desde S-Medios-V1 las
+sirve El Portero directo del disco, así que una pantalla llena de productos ya
+no son decenas de llamadas a Google Drive.{% endcomment %}
 {% with volver=request.get_full_path|urlencode %}
 <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
     {% for s in servicios %}
@@ -35,7 +35,7 @@ apretaba a Google Drive.{% endcomment %}
             cuadrado sino completas, limitadas al alto actual del cuadrado». Se fija
             el ALTO y el ancho se acomoda solo (`object-contain`), con un tope para
             que una foto muy panorámica no empuje a las demás.{% endcomment %}
-            <img src="{% url 'catalogo-imagen-producto' file_id %}?mini=1" alt=""
+            <img src="{{ file_id|medio_url }}" alt=""
                  loading="lazy" decoding="async"
                  class="h-16 w-auto max-w-[7rem] shrink-0 rounded-lg border border-gray-200 object-contain dark:border-gray-700">
             {% empty %}

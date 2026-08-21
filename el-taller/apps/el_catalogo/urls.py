@@ -4,13 +4,9 @@ from . import views
 
 urlpatterns = [
     path("", views.lista, name="catalogo-lista"),
-    # Enlace FIRMADO y temporal para que Google baje la imagen al convertir un
-    # PDF (sin login a propósito — ver lib.imagen_publica). Va antes de las
-    # rutas <int:pk> por claridad.
-    path("img/<str:token>", views.imagen_producto_publica, name="catalogo-imagen-doc"),
-    # Proxy AUTENTICADO para ver la foto dentro del sistema (tarjetas del
-    # proyecto, historial de usos, ficha del producto). El `imagen_url` de Drive
-    # es una página web, no una imagen: sin este proxy no hay miniatura.
+    # Camino FRÍO de la foto de un producto: autenticado, materializa en El
+    # Almacén la llave que aún no esté guardada y de ahí en adelante la sirve El
+    # Portero (`/medios/…`). Ver `lib/almacen.py`.
     path("imagen/<str:file_id>", views.imagen_producto, name="catalogo-imagen-producto"),
     path("nuevo", views.nuevo, name="catalogo-nuevo"),
     path("<int:pk>/editar", views.editar, name="catalogo-editar"),
