@@ -9993,3 +9993,173 @@ estimador reparte por bloques atómicos, así que no hay forma de pedirle un
 sobrante exacto y el caso interesante es una franja de 56 puntos. Se cambiaron a
 sustituir `_paginar` con un `libre` controlado. La escalera es lo que se quiere
 probar; cómo se llega a ese `libre`, no.
+
+---
+
+# S-Medios-V1 — El Almacén (2026-08-20, VERSION 2026.08.15)
+
+Pedido de Oscar: «que los medios carguen y cachen rápido y no depender de Drive
+para una operación tan ineficiente que puede bloquear los llamados de API a
+Google». Se planeó primero (el plan quedó en
+`~/.claude/plans/wild-dancing-biscuit.md`) y se ejecutó en un **worktree propio**,
+porque había otro sprint corriendo en el árbol principal — la lección de Ago12-B,
+donde dos sesiones en el mismo árbol se pisaron dos veces.
+
+## Lo que estaba pasando
+
+Drive no era el respaldo: era **el origen de cada lectura**. El Despacho sólo
+guardaba el `file_id`, así que cada foto que alguien miraba eran dos llamadas HTTP
+a Google (metadata + media) más un redimensionado con Pillow **en el hilo del
+request**, y lo que salía de ahí se guardaba en un Redis de **64 MB con
+`allkeys-lru`** que comparte con la cola del Portavoz, el rate-limiter y las
+sesiones.
+
+Las cuentas del caso peor son las que explican el reporte: una ficha de catálogo
+con 30 productos fríos = **30 descargas y 30 resizes en serie**, sobre 1 vCPU con
+un worker y cuatro hilos. Y un PDF con 6 fotos metía ~2 MB de golpe en esos 64 MB
+de LRU, desalojando lo demás.
+
+## Las tres decisiones
+
+Se preguntaron antes de escribir nada, porque cambiaban la arquitectura de raíz:
+
+1. **Servido híbrido.** Las fotos de producto las sirve El Portero directo del
+   disco; los documentos (comprobantes, CFDI, adjuntos) siguen detrás de la
+   sesión, leyendo del disco.
+2. **Drive queda de espejo.** El disco es la fuente de lectura; la subida además
+   manda una copia a Drive, así se conserva la durabilidad fuera del servidor.
+3. **Los 5 tipos de medio de una** (fotos, avatares, comprobantes, CFDI,
+   adjuntos), no sólo el camino caliente.
+
+## El hallazgo que hizo el sprint barato
+
+Las ~10 subidas del repo pasan por **una sola función** (`lib.adjuntos.subir`) y
+las ~13 lecturas por **otra sola** (`drive.descargar`), y todas con la misma forma
+`(contenido, mime, nombre)`. Un almacén detrás de esas dos cubre los cinco tipos
+de medio con **un cambio de una línea por sitio**.
+
+Y el segundo hallazgo, el que evitó las migraciones: las **15 columnas** que
+guardan el id (`imagen_file_id`, `drive_file_id`, `avatar_drive_id`,
+`pdf_file_id`, `xml_file_id`) son cadenas opacas de 100 caracteres o más. Un
+sha256 de 64 hex cabe en todas. Así que la llave del almacén **es la cadena que ya
+está en la base**: sha256 del contenido para lo nuevo, el id de Drive para lo
+importado. Cero migraciones en un sprint que mueve todos los archivos del sistema.
+
+## Por qué se hashea la llave y no se usa cruda
+
+La ruta en disco es `sha256(llave)`, no la llave. Tres razones, y la primera es la
+que obliga: **el APFS de HAL no distingue mayúsculas**, y dos ids de Drive que
+sólo difirieran en eso colisionarían en desarrollo (en el Linux de producción no,
+lo cual lo haría un bug que sólo aparece en la máquina de uno). Además uniforma el
+reparto en subcarpetas y la ruta pública no revela el id de Drive.
+
+## La decisión de seguridad central
+
+`orig/` y `pub/` separados, y **Caddy sólo alcanza `pub/`**: la carpeta con los
+derivados JPEG/PNG que generamos nosotros. Los originales subidos por los usuarios
+viven en `orig/`, fuera de su `root`.
+
+Eso cierra por completo el riesgo de que un XML o un SVG subido por alguien se
+interprete en el origen de la aplicación — que es el problema real de servir
+archivos de usuarios desde el mismo dominio que la app. El nombre del archivo
+tampoco toca el disco: el original siempre se llama `archivo`, y lo que el usuario
+escribió vive en el `meta.json` como dato.
+
+## El problema del sha256 que no se puede invertir
+
+La ruta pública lleva la huella, no la llave. Cuando El Portero no encuentra un
+derivado y cae a Django, la vista tiene `h` pero no la llave — y no hay forma de
+volver de una a la otra.
+
+Resultó que no hace falta: **regenerar un derivado sólo necesita el original**,
+que vive en `orig/<...>/<h>/` y se alcanza con la huella. Importar de Drive sí
+necesita la llave, pero ése es el otro camino: `url()` sólo emite `/medios/…`
+cuando el derivado existe, y mientras no exista devuelve el **proxy autenticado de
+siempre**, que materializa al paso. La siguiente vez que se pinte la página, la
+URL ya es la rápida. Se cura solo, y por eso se pudo desplegar antes de terminar
+la importación.
+
+## Dos bugs latentes que cayeron de paso
+
+Ninguno estaba reportado; salieron de leer el código de ingesta con cuidado.
+
+- **Las fotos de iPhone salían acostadas.** `_reducir` nunca aplicaba la
+  orientación EXIF. Ahora se aplica `exif_transpose` al ingresar, una sola vez.
+- **La medida de la foto en la hoja era una adivinanza.** `proporcion()` abría la
+  imagen con Pillow y **sólo si estaba en caché**; cuando no lo estaba devolvía
+  0.0 y el estimador la suponía cuadrada — de ahí que el hueco de las notas
+  saliera corto con una foto apaisada. Ahora el ancho y el alto están en el
+  `meta.json` escrito al subirla: exacto y gratis.
+
+Y desaparece un modo de falla que sí estaba documentado: «el PDF sale con el
+hueco» pasaba cuando Google se cansaba de esperar la imagen. Ya no hay nada que
+esperar.
+
+## Lo que se retiró
+
+`lib/imagen_publica.py` completo: el token firmado, su endpoint público
+`/catalogo/img/<token>`, los tres candados y el precalentado. Existían porque
+Google baja las imágenes del HTML **de forma anónima** y el proxy autenticado no
+le servía. Ahora la ruta de El Portero ya es pública y estable, así que todo ese
+aparato sobra — y un endpoint sin sesión que nadie usa es superficie de ataque, no
+compatibilidad. Se fue en el mismo movimiento que lo dejó sin usuarios (era la
+fase 6 del plan; adelantarlo era más limpio que dejarlo colgando un commit).
+
+## Un cambio de comportamiento, a favor
+
+**Si Drive falla, la subida ya no falla.** Antes, sin Drive conectado no se podía
+adjuntar nada: `subir()` devolvía `ok=False` y el flujo continuaba sin archivo.
+Ahora el archivo se guarda en disco y el espejo simplemente no se hace; el motivo
+viaja en `error_espejo` para quien lo quiera mostrar.
+
+El espejo se sube **desde el archivo ya guardado**, no del `UploadedFile`, para no
+depender de poder releerlo. Y si el disco falla pero Drive responde, se usa el id
+de Drive y El Almacén lo importa solo la primera vez que alguien lo lea.
+
+## El respaldo, que era el requisito escondido
+
+Poner el disco como fuente de verdad obliga a respaldarlo: `archivo.sh` sólo se
+llevaba Postgres y `data/credenciales`. Ahora suma `data/media/orig/` a HAL.
+
+Va como **árbol rsync, no como tarball**: son varios GB que casi no cambian, y
+rsync transfiere sólo lo nuevo. **Sin `--delete` y sin rotación**, porque un
+almacén direccionado por contenido nunca muta — sólo se agrega —, así que un
+archivo que desaparezca del droplet sigue siendo válido en HAL. Los derivados no
+se respaldan: se rehacen con `medios_derivar`.
+
+## Tests
+
+56 nuevos: `tests/test_almacen.py` (45, incluida la vista de respaldo y los
+intentos de pedir rutas inventadas) y `tests/taller/test_medios_importar.py` (11).
+
+Se actualizaron 9 archivos ajenos, todos fijando el mecanismo que este sprint
+retiró a propósito: se retira `test_imagen_publica.py` con su módulo; los fixtures
+`_drive_falso` de jul26_r3, jul28, jul29 y ago04 apuntan a `lib.almacen`; el test
+del enlace firmado de `cotizaciones_bonitas` y los del precalentado de jul25_r2 se
+reescribieron sobre El Almacén (el primero ahora mete una imagen de verdad en el
+almacén y comprueba la URL completa, que es una prueba más honesta que verificar
+un token); y el del proxy en ago12 ahora comprueba que **materializa en disco**,
+que es la garantía equivalente a la que fijaba.
+
+Un detalle de diseño de tests que valió la pena: el primer intento de
+`test_el_documento_lleva_la_url_del_almacen` armaba la cotización con
+`generar_desde_proyecto` y fallaba porque el proyecto del fixture no tiene líneas
+de producto. Se cambió a poner la foto en el `CotizacionItem` que el fixture ya
+crea. Lo que se quiere probar es que la URL del almacén llega al HTML; cómo se
+construye la cotización, no.
+
+## Deuda diseñada
+
+- Los documentos se sirven cargando los bytes a memoria (`HttpResponse`), no en
+  streaming. Es lo que ya hacían; pasar a `FileResponse` cambiaría `resp.content`
+  por `streaming_content` en varios tests y no era el objetivo del sprint.
+- El espejo a Drive es **síncrono** en la subida. No hay cola de trabajos donde
+  diferirlo (el Portavoz es de eventos hacia n8n, no un job queue).
+- **HEIC**: sigue aceptándose sin decodificador y produce una imagen que el
+  navegador no pinta — igual que antes, no es una regresión.
+  `almacen.hay_decodificador_heic()` importa `pillow-heif` de forma suave, así que
+  agregarlo a `requirements.txt` lo enciende sin tocar código. **Queda como
+  decisión de Oscar**, que era lo que el plan dejó marcado.
+- WebP/AVIF por negociación de `Accept` sale barato ahora que los derivados están
+  en disco. Y un CDN queda a un `CNAME` de distancia, porque las cabeceras ya son
+  `public, immutable`.

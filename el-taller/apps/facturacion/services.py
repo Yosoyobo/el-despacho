@@ -130,7 +130,6 @@ def almacenar_cfdi(fac: Factura, *, pdf_file=None, xml_file=None,
     import contextlib
 
     from lib.adjuntos import subir
-    from lib.google_drive import drive
 
     guardados: list[str] = []
     errores: list[str] = []

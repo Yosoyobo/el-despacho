@@ -5,6 +5,44 @@
 
 ---
 
+## Novedades — Las fotos y los archivos cargan al instante (20 de agosto de 2026)
+
+**Qué cambió**
+
+Hasta ahora, cada vez que alguien abría la lista de Productos, la página de un
+proyecto o una cotización, el sistema le pedía **cada foto a Google Drive** en
+ese momento, la achicaba y la mandaba. Con la pantalla llena de productos eran
+decenas de idas y vueltas a Google, y de ahí venía la lentitud: la primera vez
+que entrabas, las fotos tardaban en aparecer una por una.
+
+Ahora **las fotos y los archivos viven en el servidor**. Se guardan una sola vez,
+cuando los subes, y ya achicados. Después se sirven directo, sin pedirle nada a
+Google.
+
+**Lo que vas a notar**
+
+- **Las fotos aparecen de golpe.** La lista de Productos, las tarjetas de
+  «Productos involucrados» y el historial de usos cargan al instante, y en el
+  celular la foto se queda guardada un mes: la segunda visita es inmediata.
+- **El PDF de la cotización ya no sale sin fotos.** Pasaba cuando Google se
+  cansaba de esperar la imagen. Ya no hay nada que esperar: la foto está lista
+  desde que la subiste.
+- **La foto ya no sale de lado.** Las que se toman con el celular en horizontal
+  venían acostadas; ahora se enderezan solas al subirlas.
+- **Los comprobantes, el CFDI y los adjuntos** de Mensajes y del Buzón también
+  abren más rápido, por lo mismo.
+- **Si Google Drive se cae, ya puedes seguir trabajando.** Antes, sin Drive
+  conectado no se podía adjuntar nada. Ahora el archivo se guarda igual.
+
+**Nada que hacer de tu lado**
+
+No cambia ningún botón ni ninguna pantalla. Las fotos que ya estaban siguen
+donde estaban: se van pasando al servidor solas, y mientras eso ocurre todo
+funciona como siempre. Tus archivos siguen además copiados en Drive, como
+respaldo.
+
+---
+
 ## Novedades — Cuentas en los precios, colores de verdad y el documento sin hojas en blanco (18 de agosto de 2026)
 
 **Escribe la cuenta, no el resultado**
@@ -3591,9 +3629,15 @@ En orden aproximado de prioridad:
 > contador ya están en Contaduría; y los recordatorios de cobro a clientes se
 > activan en Ajustes → La Cobranza.
 
-> **Google Drive quedó conectado de punta a punta:** adjuntos en Recados, Buzón
+> **Google Drive quedó conectado de punta a punta:** adjuntos en Mensajes, Buzón
 > y El Chalán; comprobantes y lectura de recibos (OCR) en Tesorería; PDF de
 > cotizaciones y facturas; y exportar Tesorería a hojas de cálculo.
+
+> **Dónde viven tus archivos.** Las fotos, los comprobantes, el CFDI y los
+> adjuntos se guardan **en el servidor**, y por eso abren al instante: no hay que
+> ir a pedírselos a Google cada vez. Además se copian a Google Drive como
+> respaldo, así que la carpeta sigue ahí si alguna vez quieres verla a mano. Si
+> Drive estuviera caído, puedes seguir subiendo archivos con normalidad.
 
 ---
 
@@ -4091,7 +4135,9 @@ ese cliente, y entender qué lo **amarra** si quieres eliminarlo.
 **La página abre en fichas**: cada producto es una tarjeta con su nombre, su
 categoría y su proveedor en una línea, sus fotos (**completas**, no recortadas al
 cuadrado), y el costo · precio · margen abajo; en la esquina, el número de veces
-que se ha usado. Con **«☰ Ver en tabla»** pasas a la vista de renglones (que
+que se ha usado. Las fotos **cargan de golpe**: se guardan en el servidor ya
+achicadas cuando las subes, y tu navegador se las queda un mes, así que a la
+segunda visita aparecen al instante. Con **«☰ Ver en tabla»** pasas a la vista de renglones (que
 además se ordena por columna), y **«✎ Edición rápida»** te deja escribir directo
 en las celdas.
 
@@ -4596,7 +4642,7 @@ encendido** (así viene por defecto) el total ya lo incluye y el sistema saca el
 subtotal solo; apágalo si el movimiento no llevó IVA. Todo es en **pesos (MXN)**
 (ya no hay selector de moneda). Cliente y proyecto tienen **buscador**, y tanto en
 **ingresos como en egresos** puedes **pegar** el comprobante con **Ctrl/Cmd + V**
-(o subir un archivo); se guarda en Drive.
+(o subir un archivo); se guarda en el servidor, con copia en Drive.
 
 - **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`.
 - **Egresos:** qué gastaste, centro de costo, **proveedor (obligatorio — todo egreso va ligado a un proveedor)**, quién pagó, fecha. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción. Un egreso **solo se registra cuando el pago se realiza**: los estados posibles son **Pagado (saldado)** o **Por reembolsar**; ya no se registran egresos "por pagar" a mano.
