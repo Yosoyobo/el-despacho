@@ -35,7 +35,7 @@ class InterfonoConfig:
     @classmethod
     def vapid_email(cls) -> str:
         from ajustes.models.credencial import Credencial
-        valor = Credencial.obtener("vapid_email") or "soporte@bautista.mx"
+        valor = Credencial.obtener("vapid_email") or "soporte@learningcenter.mx"
         if not valor.startswith("mailto:"):
             valor = f"mailto:{valor}"
         return valor

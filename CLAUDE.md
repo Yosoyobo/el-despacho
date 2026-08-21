@@ -5408,6 +5408,82 @@ repite alguno. La lista de proveedores del proyecto es el único lugar con
 `color_nombre`: los chips «@Proveedor» de la tarjeta de producto se quedaron como
 estaban.
 
+### S-Workspace-Credenciales ✅ — SSO, SMTP y correos al dominio learningcenter.mx (2026-08-20, VERSION 2026.08.15)
+
+Migración de credenciales al Workspace de learningcenter.mx. **Casi todo el
+trabajo es de configuración, no de código** (regla §4 #3: las credenciales viven
+cifradas en La Bóveda y se pegan en la GUI), así que el entregable central es el
+runbook **`docs/MIGRACION_WORKSPACE_LEARNINGCENTER.md`**.
+
+- **Maps: no existe credencial que migrar.** Lo embebido es OpenStreetMap con
+  Leaflet y lo de Google Maps son sólo enlaces profundos
+  (`google.com/maps/search/?api=1&query=…`), que no llevan API key. Confirmado
+  con Oscar: nada que hacer. Pasar a la API de Google Maps sería producto de
+  paga y choca con «gratis o abortamos».
+- **SSO y SMTP no tienen nada hardcodeado.** El `redirect_uri` se arma
+  dinámicamente del host (`redirect_uri_desde_request`), así que los 3 hosts
+  comparten un solo cliente OAuth y el cambio de dominio no toca código.
+- **Hallazgo que define el orden de operaciones: cambiar el cliente del SSO
+  tumba Drive.** [lib/google_drive.py:123-124](lib/google_drive.py#L123-L124)
+  cae al cliente del login cuando Drive no tiene uno dedicado, y con scope
+  `drive.file` el acceso es por (cliente, cuenta) — así que la app perdería
+  **todo lo ya subido**: PDFs de cotizaciones/facturas, XML de CFDI, fotos de
+  producto, adjuntos, avatares, comprobantes. Y degrada en silencio. El aislante
+  ya existe en el código (`google_drive_oauth_client_*`, que gana sobre los del
+  login): pegar ahí el cliente ACTUAL antes de tocar el SSO. **Decisión de
+  Oscar: no tocar Drive en este cambio**, así que queda documentado como
+  advertencia en el runbook, no ejecutado.
+- **El `sub` de Google es estable por CUENTA, no por cliente OAuth**, así que
+  cambiar sólo el cliente NO rompe los vínculos existentes. Lo que rompe es que
+  las personas cambien de cuenta de Google, y ahí hay dos modos de falla con
+  remedio distinto: correo nuevo sin actualizar en El Directorio →
+  `CuentaNoRegistrada`; misma persona con otra cuenta de Google →
+  `YaVinculadoAOtra` y **no hay UI para desvincular**
+  ([auth_google/servicios.py:54-56](auth_google/servicios.py#L54-L56)). El
+  runbook trae el one-liner de `manage.py shell` para limpiar `google_sub`.
+- **SMTP = Gmail + contraseña de aplicación** (decisión Oscar sobre el relay de
+  Workspace). Los textos de ayuda de los 6 slots `SLOTS_SMTP` se reescribieron
+  de genéricos («Ej. smtp.gmail.com o mail.tudominio.mx») a este caso concreto:
+  puerto 587, la contraseña de 16 caracteres y NO la del correo, y que el
+  remitente necesita estar en «Enviar como» o Gmail lo reescribe. Es la ayuda
+  que se ve en la GUI al pegarlas. Documentado el tope de envío diario, que
+  Campañas puede topar.
+- **Correos del dominio viejo → `soporte@learningcenter.mx`** (decisión Oscar:
+  «el patrón obvio del dominio»): aviso de privacidad de **ambas** apps (texto
+  visible al usuario final, dual-copy), contacto VAPID del Interfón
+  (`lib/interfono.py` + la semilla de `interfono_generar_vapid` + el ejemplo del
+  slot) y el correo de ACME del `Caddyfile`.
+- **NO se tocó `DESPACHO_SUPERADMIN_EMAIL`** a propósito:
+  `bootstrap_superadmin` busca **por correo**, así que cambiarlo no renombra la
+  cuenta — crearía un **segundo** super_admin en el siguiente arranque. Los
+  correos `@bautista.mx` de la suite son datos de mentiras, no configuración.
+- **Guía de llaves: `docs/LLAVES_Y_CREDENCIALES.md`** (segunda parte de la
+  sesión, a pedido de Oscar). Inventario completo de qué llave necesita cada
+  módulo, de dónde sale, dónde se pega y cómo se comprueba. Tres cosas que el
+  reconocimiento aclaró y que no eran evidentes: **el botón «Probar» de
+  `/ajustes/` es un stub** (sólo confirma que el valor se descifra, no pega a la
+  API — las pruebas reales son 3: Google OAuth en Ajustes, «Probar conexión» por
+  Chalán en `/chalanes/`, y el envío de prueba de El Cartero); los **4 slots de
+  Stripe/MercadoPago están declarados pero ningún código los lee** (La Caja no
+  existe, pegarlos no habilita nada); y **`BOVEDA_MASTER_KEY` no se puede rotar
+  sin escribir un script** — existe `lib.boveda.rotar()` para un valor, pero no
+  hay comando que recorra la tabla. Se generan aquí: las dos llaves del `.env`
+  (`secrets.token_hex(32)`), VAPID (comando `interfono_generar_vapid`, que se
+  niega a correr si ya hay llaves porque regenerar invalida TODAS las
+  suscripciones) y `n8n_webhook_secret` (es NUESTRO: firma HMAC saliente, se
+  pega en los dos lados). Drive, El Resguardo y el keystore de El Envoltorio ya
+  tenían doc propia y se referencian en lugar de duplicarse.
+- Sin migraciones. Tests: 93 verdes en el radio de impacto (cartero, cartero UI,
+  interfono, google_oauth, legal, candados de comentarios) + suite completa +
+  ruff limpio.
+
+**Deuda diseñada:** Drive sigue sin aislar — el runbook lo marca como el paso
+que hay que decidir ANTES de reemplazar el cliente del SSO. No hay pantalla para
+desvincular una cuenta de Google (se resuelve por shell); si se vuelve rutina,
+vale un botón en El Directorio. Y si Campañas empieza a topar el límite diario
+de Gmail, el camino es el relay SMTP de Workspace (`smtp-relay.gmail.com`,
+autorizado por IP del Droplet), que no depende de la contraseña de una persona.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
