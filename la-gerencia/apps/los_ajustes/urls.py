@@ -21,6 +21,11 @@ urlpatterns = [
     path("cartero/", views.cartero_panel, name="ajustes-cartero"),
     path("cartero/guardar", views.cartero_guardar, name="ajustes-cartero-guardar"),
     path("cartero/probar", views.cartero_probar, name="ajustes-cartero-probar"),
+    # Canal Gmail API (el Droplet no puede hablar SMTP). Antes del slug catch-all.
+    path("cartero/gmail/conectar", views.cartero_gmail_conectar, name="ajustes-cartero-gmail-conectar"),
+    path("cartero/gmail/callback", views.cartero_gmail_callback, name="ajustes-cartero-gmail-callback"),
+    path("cartero/gmail/desconectar", views.cartero_gmail_desconectar, name="ajustes-cartero-gmail-desconectar"),
+    path("cartero/gmail/probar", views.cartero_gmail_probar, name="ajustes-cartero-gmail-probar"),
     path("cartero/plantillas/", views.cartero_plantillas, name="ajustes-cartero-plantillas"),
     path("cartero/plantillas/<slug:slug>/", views.cartero_plantilla_editar, name="ajustes-cartero-plantilla-editar"),
     path("cartero/plantillas/<slug:slug>/redactar", views.cartero_plantilla_redactar, name="ajustes-cartero-plantilla-redactar"),

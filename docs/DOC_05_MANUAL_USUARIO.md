@@ -5,6 +5,40 @@
 
 ---
 
+## Novedades — El correo ya tiene por dónde salir (20 de agosto de 2026)
+
+**Por qué no salía**
+
+- Al conectar el correo por SMTP salía el error «Network is unreachable». No eran
+  los datos ni la contraseña: **el servidor donde vive el sistema tiene bloqueada
+  la salida de correo por SMTP**. Es una política del proveedor del servidor
+  (DigitalOcean) y no se puede cambiar desde el sistema.
+- Lo comprobamos puerto por puerto: los cuatro puertos de correo se quedan
+  esperando sin respuesta, mientras la navegación normal por internet funciona
+  perfecto.
+
+**Cómo queda resuelto: Gmail API**
+
+- En *Ajustes → El Cartero* hay un canal nuevo, **«Gmail API (Google
+  Workspace)»**, que manda el correo por la vía normal de internet en lugar de
+  SMTP. Esa vía no está bloqueada.
+- **No se pega ninguna contraseña.** Se autoriza una sola vez con la cuenta de
+  Google desde el botón «Autorizar Gmail», y el permiso queda guardado cifrado.
+  El permiso alcanza **sólo para enviar**: el sistema no puede leer tu correo.
+- Sólo hay que escribir el **correo remitente**. Si quieres que salga desde una
+  dirección distinta a la cuenta que autorizaste, esa dirección tiene que estar
+  dada de alta en Gmail como «Enviar como», o Gmail la cambia sola.
+- Hay dos botones para revisar: **«Probar conexión»** comprueba el permiso sin
+  mandar nada, y **«Probar envío»** manda un correo de verdad.
+
+**El canal SMTP sigue ahí, con aviso**
+
+- No se quitó, porque sirve para pruebas fuera del servidor. Pero ahora la
+  pantalla avisa en rojo que **en producción no entrega**, para que nadie pierda
+  la tarde reintentándolo.
+
+---
+
 ## Novedades — Una página que explica qué es el sistema (20 de agosto de 2026)
 
 **Nueva página pública: «Acerca de»**
@@ -4791,6 +4825,48 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
 - **El Celador** (token del monitor externo que vigila que el sistema esté en pie).
+
+### La página «Acerca de»
+
+En `taller.learningcenter.mx/acerca/` hay una página pública —se lee sin iniciar
+sesión, como el aviso de privacidad— que explica qué es El Despacho, quién puede
+entrar y qué permisos pide cuando alguien usa «Continuar con Google».
+
+No es decorativa: **Google la exige** para autorizar el inicio de sesión con
+Google, y revisa que de verdad explique para qué sirve la aplicación. Si alguna
+vez Google objeta ese punto, lo que hay que corregir es el texto de esa página,
+no la configuración de la consola.
+
+### El correo saliente (El Cartero)
+
+El Cartero es quien manda los correos que salen del sistema: cotizaciones,
+facturas, recordatorios de cobranza y campañas. El Despacho **escribe** el correo
+y decide cuándo mandarlo; el canal sólo lo entrega. El canal se elige en
+*Ajustes → El Cartero* y hay tres:
+
+- **Gmail API (Google Workspace)** — el recomendado y el que funciona en el
+  servidor. Manda por la vía normal de internet.
+- **n8n** — el sistema entrega el correo ya armado a n8n y n8n lo manda.
+- **SMTP directo** — la forma clásica. **No entrega en producción:** el proveedor
+  del servidor tiene bloqueada la salida de correo por SMTP. Sirve sólo para
+  pruebas fuera del servidor, y la pantalla lo avisa.
+
+**Para dejar listo el canal de Gmail:**
+
+1. Elige el canal **«Gmail API»**.
+2. Escribe el **correo remitente**, la dirección desde la que quieres que salga.
+   Tiene que ser la cuenta que vas a autorizar o un alias suyo dado de alta en
+   Gmail como «Enviar como»; si no, Gmail la cambia sola por la de la cuenta.
+3. **Guarda.**
+4. Toca **«Autorizar Gmail»** y autoriza con esa cuenta de Google. No se escribe
+   ninguna contraseña: el permiso queda guardado cifrado y alcanza **sólo para
+   enviar** — el sistema no puede leer correo de nadie.
+5. **«Probar conexión»** revisa el permiso sin mandar nada. **«Probar envío»**
+   manda un correo de prueba.
+
+Si algún día el correo deja de salir de golpe, lo más probable es que se haya
+cambiado el cliente de «Continuar con Google»: el correo se apoya en el mismo, así
+que hay que volver a tocar «Autorizar Gmail».
 
 ### La página «Acerca de»
 

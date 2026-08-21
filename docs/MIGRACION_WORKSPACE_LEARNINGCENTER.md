@@ -12,7 +12,8 @@
 | Pieza | ¿Hay credencial? | Dónde se cambia |
 |---|---|---|
 | **Google SSO** | Sí — `google_oauth_client_id` / `_secret` / `_project_id` | Gerencia → Ajustes (`/ajustes/`) |
-| **SMTP** | Sí — 6 slots `smtp_*` | Gerencia → Ajustes → El Cartero (`/ajustes/cartero/`) |
+| **Correo** | Sí — consentimiento OAuth con scope `gmail.send` | Gerencia → Ajustes → El Cartero (`/ajustes/cartero/`) |
+| **SMTP** | Los 6 slots `smtp_*` siguen ahí, pero **no entregan en producción** | ídem — ver Paso 4 |
 | **Mapas** | **No existe ninguna** | — nada que hacer |
 | **Google Drive** | Sí, pero **fuera del alcance de este cambio** | ver la advertencia de abajo |
 
@@ -179,54 +180,93 @@ por si el SSO queda a medias.
 
 ---
 
-## Paso 4 — SMTP con Google Workspace (Gmail + contraseña de aplicación)
+## Paso 4 — El correo: por la API de Gmail, NO por SMTP
 
-### 4.1 En la cuenta del Workspace
+> ⚠️ **SMTP no funciona en La Sede y no es cosa de credenciales.** DigitalOcean
+> tiene bloqueada la salida SMTP del Droplet. Medido desde el host y desde el
+> contenedor:
+>
+> | Puerto | Resultado |
+> |---|---|
+> | 25, 465, 587, 2525 | **timeout** (los paquetes se descartan) |
+> | 443 | abierto |
+>
+> Por eso `smtp.gmail.com` es inalcanzable — y `smtp-relay.gmail.com` lo sería
+> igual: no es el sabor de SMTP, es que **este Droplet no puede hablar SMTP con
+> nadie**. La API de Gmail va por HTTPS/443 y esquiva el bloqueo sin pedirle
+> nada a DigitalOcean.
+>
+> Un detalle que confunde el diagnóstico: el error que reporta la app es
+> `[Errno 101] Network is unreachable`, no un timeout. Es porque el DNS de
+> `smtp.gmail.com` devuelve IPv6 primero, el contenedor no tiene ruta IPv6 y
+> falla al instante, tapando el timeout real de IPv4.
 
-1. La cuenta que va a enviar (ej. `soporte@learningcenter.mx`) necesita
-   **verificación en dos pasos activa** — sin eso Google no ofrece contraseñas
-   de aplicación.
-2. `myaccount.google.com` → Seguridad → Verificación en dos pasos →
-   **Contraseñas de aplicaciones**. Genera una y copia los **16 caracteres**
-   (los espacios se pueden quitar).
-3. Si la opción no aparece, un administrador tiene que permitirlas en la consola
-   de Admin (Seguridad → Autenticación); algunas ediciones las bloquean.
-4. Si el remitente va a ser **distinto** de la cuenta (ej. enviar como
-   `cotizaciones@learningcenter.mx` desde `soporte@`), da de alta ese alias en
-   Gmail → Configuración → Cuentas → **«Enviar como»**. Si no, Gmail reescribe
-   el remitente a la dirección de la cuenta.
+### 4.1 Por qué OAuth y no una cuenta de servicio
 
-### 4.2 En La Gerencia → Ajustes → El Cartero (`/ajustes/cartero/`)
+Lo natural sería una cuenta de servicio con delegación de dominio — no tocaría
+la pantalla de consentimiento y por lo tanto no afectaría la verificación del
+SSO. **No se puede:** la organización tiene activada
+`iam.disableServiceAccountKeyCreation`, que bloquea la creación de llaves JSON
+(la misma razón por la que Drive usa OAuth, ver
+[SETUP_GOOGLE_DRIVE.md](SETUP_GOOGLE_DRIVE.md)).
 
-| Slot | Valor |
-|---|---|
-| `smtp_host` | `smtp.gmail.com` |
-| `smtp_port` | `587` |
-| `smtp_user` | El correo **completo** de la cuenta, ej. `soporte@learningcenter.mx` |
-| `smtp_password` | La contraseña de aplicación de 16 caracteres (**no** la del correo) |
-| `smtp_from_email` | El remitente, ej. `cotizaciones@learningcenter.mx` |
-| `smtp_use_tls` | `1` |
+Así que el camino es el mismo patrón de Drive: consentimiento una vez, refresh
+token cifrado en La Bóveda, y canje por un access token de corta vida en cada
+envío.
 
-Además, en la misma pantalla:
+**El scope es `gmail.send`** — sólo enviar; no puede leer, buscar ni borrar
+correo. Ojo: Google lo clasifica como **sensible**, así que:
 
-- **Canal activo → «SMTP directo»**. Por default es n8n; si no se cambia, las
-  credenciales quedan guardadas pero el correo sigue saliendo por n8n.
-- **Nombre del remitente**: «Learning Center».
-- Botón **«Probar»** para mandarte un correo de prueba.
+- Cliente OAuth **«Interno»** (sólo cuentas del Workspace) → **no necesita
+  verificación**; lo autoriza el admin de la organización.
+- Cliente OAuth **«Externo»** → sí necesita verificación para ese scope. Si el
+  cliente ya está en revisión por otra cosa, esto la complica.
 
-La contraseña en blanco **no borra** la guardada: para quitarla hay que marcar
-explícitamente «Borrar contraseña guardada».
+Si todos los que usan el sistema tienen cuenta `@learningcenter.mx`, pasar el
+cliente a «Interno» resuelve de un golpe la verificación **y** este scope. El
+costo es que `oscar@bautista.mx` no podría usar «Continuar con Google» (el login
+con contraseña sigue igual).
 
-### 4.3 Ojo con el límite de envío
+### 4.2 En Google Cloud Console
 
-Gmail/Workspace tiene tope diario de envío por cuenta (del orden de 2,000
-destinatarios). Es suficiente para cotizaciones, facturas y cobranza, pero
-**Campañas** puede topar si se manda a todo el padrón varias veces al día. Si
-eso empieza a pasar, el camino es el **relay SMTP de Workspace**
-(`smtp-relay.gmail.com`, autorizado por IP del Droplet en la consola de Admin),
-que no depende de la contraseña de una persona.
+1. Habilita la **Gmail API** en el proyecto.
+2. Agrega el URI de regreso del asistente al cliente OAuth:
 
----
+   ```
+   https://gerencia.learningcenter.mx/ajustes/cartero/gmail/callback
+   ```
+
+   (El panel de El Cartero lo muestra en pantalla para copiarlo.)
+
+### 4.3 En La Gerencia → Ajustes → El Cartero (`/ajustes/cartero/`)
+
+1. **Canal activo → «Gmail API (Google Workspace)»**.
+2. **Correo remitente**: la dirección desde la que sale el correo, ej.
+   `hola@learningcenter.mx`. Tiene que ser la cuenta que vas a autorizar **o un
+   alias suyo** dado de alta en Gmail → Configuración → Cuentas → «Enviar como»;
+   si no, Gmail lo reescribe en silencio.
+3. **Guardar**.
+4. **«Autorizar Gmail»** → te manda a Google. Autoriza con la cuenta desde la
+   que quieres que salga el correo.
+5. **«Probar conexión»** comprueba el permiso sin mandar nada. Un 403 leyendo el
+   perfil **es lo correcto**: significa que el token sirve y que el scope es el
+   mínimo (sólo enviar).
+6. **«Probar envío»** manda un correo de verdad.
+
+No se pega ninguna contraseña: no hay contraseña de aplicación ni llave. El
+permiso queda cifrado en La Bóveda.
+
+### 4.4 Acoplamiento con el SSO
+
+Este canal usa **el cliente OAuth del login**, así que reemplazar ese cliente
+**invalida también el correo**, no sólo Drive. Después de cambiarlo hay que
+volver a autorizar desde el asistente. Es la misma trampa de la advertencia de
+Drive, con un consumidor más.
+
+### 4.5 Los slots SMTP se quedan
+
+No se borran: sirven para desarrollo local, donde sí hay salida SMTP. El panel
+marca el canal SMTP con la advertencia de que en producción no entrega.
 
 ## Lo que este cambio NO tocó
 
