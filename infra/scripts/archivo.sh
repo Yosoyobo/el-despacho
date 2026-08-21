@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# El Archivo — backup completo: dump de Postgres + tarball de /data/credenciales.
+# El Archivo — backup completo: dump de Postgres + tarball de /data/credenciales
+# + los medios de El Almacén (data/media/orig, como árbol rsync).
 # Tras generar el backup local, replica a HAL vía rsync sobre Tailscale.
 # Rota en HAL para conservar los 30 más recientes.
 #
@@ -43,6 +44,10 @@ HAL_HOST="${HAL_HOST:-hal.tailedd04d.ts.net}"
 HAL_DEST="${HAL_DEST:-Backups/el-despacho/}"
 HAL_KEY="${HAL_KEY:-$HOME/.ssh/hal-backup}"
 HAL_RETENER="${HAL_RETENER:-30}"
+# El Almacén (S-Medios-V1): los medios viven en disco, así que el respaldo
+# tiene que llevárselos. Sólo los ORIGINALES: los derivados (`pub/`) se
+# rehacen con `manage.py medios_derivar`.
+MEDIOS_ORIG="${MEDIOS_ORIG:-./data/media/orig}"
 
 # Trazabilidad en El Site: $1=archivo, $2=estado (ok|error), $3=destino (HAL|DO Spaces)
 _registrar() {
@@ -95,6 +100,29 @@ if [ -f "$HAL_KEY" ]; then
             ls -1t \$serie 2>/dev/null | tail -n +\$(( ${HAL_RETENER} + 1 )) | xargs -r rm -f -- || true
         done
     " || echo "==> [Archivo] rotación en HAL falló (no bloquea)"
+
+    # ── Medios (El Almacén) ─────────────────────────────────────────────────
+    # Desde S-Medios-V1 el disco es la fuente de verdad de fotos, comprobantes,
+    # CFDI y adjuntos, así que el respaldo tiene que incluirlos o una pérdida del
+    # droplet se los llevaría.
+    #
+    # Va como ÁRBOL, no como tarball: son varios GB que casi no cambian, y rsync
+    # transfiere sólo lo nuevo. Sin --delete y sin rotación, porque el almacén
+    # está direccionado por contenido: nada muta, sólo se agrega, así que un
+    # archivo que desaparece del droplet sigue siendo válido en HAL.
+    if [ -d "$MEDIOS_ORIG" ]; then
+        echo "==> [Archivo] medios → HAL ($(du -sh "$MEDIOS_ORIG" 2>/dev/null | cut -f1))"
+        if rsync -az --timeout=600 -e "ssh -i ${HAL_KEY} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10" \
+                "$MEDIOS_ORIG"/ "${HAL_USER}@${HAL_HOST}:${HAL_DEST}medios/"; then
+            echo "==> [Archivo] rsync medios→HAL OK"
+            _registrar "medios" ok "HAL"
+        else
+            echo "==> [Archivo] rsync medios→HAL FAIL (no bloquea el backup local)" >&2
+            _registrar "medios" error "HAL"
+        fi
+    else
+        echo "==> [Archivo] $MEDIOS_ORIG no existe todavía; nada que respaldar."
+    fi
 else
     echo "==> [Archivo] HAL_KEY=$HAL_KEY no existe; saltando rsync remoto."
 fi
