@@ -9993,3 +9993,166 @@ estimador reparte por bloques atómicos, así que no hay forma de pedirle un
 sobrante exacto y el caso interesante es una franja de 56 puntos. Se cambiaron a
 sustituir `_paginar` con un `libre` controlado. La escalera es lo que se quiere
 probar; cómo se llega a ese `libre`, no.
+
+---
+
+# S-Workspace-Credenciales — SSO, SMTP y correos al dominio learningcenter.mx (2026-08-20, VERSION 2026.08.15)
+
+Oscar pidió cambiar «las credenciales de Google SSO, maps y el SMTP a las del
+dominio y workspace de learningcenter.mx». Lo primero que salió del reconocimiento
+es que el trabajo casi no es de código: por la regla §4 #3 las credenciales viven
+cifradas en La Bóveda y se pegan en la GUI de La Gerencia, así que el entregable
+central es un runbook, `docs/MIGRACION_WORKSPACE_LEARNINGCENTER.md`.
+
+## Maps: no había nada que migrar
+
+No existe ninguna credencial de mapas. Lo que se ve embebido es OpenStreetMap con
+Leaflet —vendoreado, sin API key, por la regla «gratis o abortamos»— y lo de
+Google Maps son sólo enlaces profundos del tipo
+`google.com/maps/search/?api=1&query=lat,lng`, que no llevan llave. Se le preguntó
+a Oscar por si se refería a otra cosa y confirmó: nada que hacer. Cambiar a la API
+de Google Maps sería producto de paga y necesitaría su autorización explícita.
+
+## El hallazgo que define el orden de operaciones
+
+Drive **no tiene cliente OAuth propio** por default: cae al del login.
+
+```python
+# lib/google_drive.py:123-124
+cid = _credencial("google_drive_oauth_client_id") or _credencial("google_oauth_client_id")
+sec = _credencial("google_drive_oauth_client_secret") or _credencial("google_oauth_client_secret")
+```
+
+El scope es `drive.file`, que da acceso sólo a los archivos que la app creó **con
+ese cliente y esa cuenta**. Así que reemplazar el cliente del SSO, con Drive
+cayendo a él, le quita a la app el acceso a **todo lo ya subido**: PDFs de
+cotizaciones y facturas, XML de CFDI, fotos de producto, adjuntos de Mensajes y
+Buzón, avatares, comprobantes de egreso. Y lo peor es cómo se ve: el fallback es
+gracioso, así que no sale un error — sale un hueco donde estaba la foto y un PDF
+que no se genera.
+
+El aislante ya está en el código y no hubo que escribirlo: los slots
+`google_drive_oauth_client_*` ganan sobre los del login, así que basta pegar ahí
+el cliente ACTUAL antes de tocar el SSO y Drive queda anclado. Se le planteó a
+Oscar con las tres opciones y decidió **no tocar Drive ahorita**. Queda como
+advertencia en el runbook, en primera posición y antes de cualquier paso: no está
+ejecutado, y mientras no lo esté, cambiar el cliente del SSO tumba Drive.
+
+## Los dos modos de falla del SSO, y el que no tiene salida por UI
+
+Aquí había un matiz que bajó bastante el riesgo estimado: el `sub` de Google es
+estable **por cuenta de Google**, no por cliente OAuth. O sea que cambiar sólo el
+cliente **no** rompe los vínculos que ya existen. Lo que rompe es que las
+**personas** cambien de cuenta de Google, que es justo lo que suele pasar al
+mudarse a un Workspace.
+
+Y ahí son dos fallas distintas con remedios distintos:
+
+1. El correo del perfil de Google no existe como usuario activo en El Directorio
+   → `CuentaNoRegistrada`. Se arregla actualizando el correo del usuario **antes**
+   de que intente entrar.
+2. La misma persona ya tiene un `google_sub` de su cuenta anterior y entra con
+   otra → `YaVinculadoAOtra`. El sistema no sobreescribe el vínculo a propósito
+   (`auth_google/servicios.py:54-56`) y **no hay ninguna pantalla para
+   desvincular**, así que sin remedio documentado la persona queda fuera del SSO
+   de forma permanente.
+
+Para el segundo se documentó el one-liner de `manage.py shell` que limpia
+`google_sub`. Se consideró agregar un comando de management, y se descartó:
+ensancha el alcance de lo que Oscar pidió y un one-liner en el runbook desbloquea
+igual. Si se vuelve rutina, ahí sí vale un botón en El Directorio.
+
+## SMTP
+
+Oscar eligió Gmail + contraseña de aplicación sobre el relay de Workspace. El
+cambio de código es en la ayuda que se ve en la GUI: los seis slots de
+`SLOTS_SMTP` decían cosas genéricas («Ej. smtp.gmail.com o mail.tudominio.mx»,
+«Contraseña o app password») y ahora dicen el caso real — puerto 587, que la
+contraseña es la **de aplicación de 16 caracteres y no la del correo**, y que el
+remitente tiene que estar dado de alta en «Enviar como» o Gmail lo reescribe solo.
+Esa última es la que muerde en silencio: el correo sale, pero con otro remitente.
+
+Dos cosas más quedaron documentadas porque no son evidentes en la pantalla:
+guardar las credenciales **no cambia el canal** (el default es n8n, y si no se
+mueve el correo sigue saliendo por ahí), y el tope de envío diario de una cuenta
+de Workspace, que alcanza de sobra para cotizaciones y cobranza pero que Campañas
+puede topar mandando a todo el padrón.
+
+## Los correos del dominio viejo
+
+Oscar pidió «el patrón obvio del dominio», así que `soporte@learningcenter.mx` en:
+el aviso de privacidad de las **dos** apps (es texto visible al usuario final, y
+son copias sincronizadas), el contacto VAPID del Interfón —el respaldo de
+`lib/interfono.py`, la semilla de `interfono_generar_vapid` y el ejemplo del slot
+en Los Ajustes— y el correo de ACME del `Caddyfile`.
+
+**Lo que no se tocó, y por qué.** `DESPACHO_SUPERADMIN_EMAIL` sigue en
+`oscar@bautista.mx`: `bootstrap_superadmin` busca **por correo**, así que
+cambiarlo no renombra la cuenta, crearía un **segundo** super_admin en el
+siguiente arranque. Es un correo de persona, no un buzón de soporte, y el cambio
+correcto es editar su usuario en El Directorio primero. Los `@bautista.mx` que
+quedan en la suite son datos de mentiras, no configuración; cambiarlos sería
+ruido.
+
+Del `Caddyfile`: cambiar el correo de ACME hace que Caddy registre una cuenta
+nueva con Let's Encrypt la próxima vez que emita. Los certificados ya emitidos no
+se tocan (viven en `./data/caddy/data`) y La Mudanza ya recrea el-portero cuando
+el archivo difiere, por el Bug F de §14 — el bind-mount de un solo archivo fija el
+inode, así que un `reload` leería el viejo.
+
+## Tests
+
+Sin migraciones. 93 verdes en el radio de impacto: `test_cartero`,
+`gerencia/test_cartero_ui`, todo `interfono/`, todo `google_oauth/`,
+`taller/test_lc_feedback_v9` (el que toca privacidad) y los dos candados de
+comentarios (Bug C §14). Más la suite completa y ruff limpio.
+
+No se escribieron tests nuevos y vale decir por qué: los cambios son textos de
+ayuda y direcciones de correo en plantillas. Fijar el literal
+`soporte@learningcenter.mx` en un test no protege nada —sería el mismo dato
+escrito dos veces, y la próxima vez que cambie el correo habría que cambiarlo en
+los dos lados—, mientras el candado de Novedades y los de comentarios sí cubren lo
+que de verdad se puede romper aquí.
+
+## Segunda parte: la guía de llaves
+
+Oscar pidió, ya cerrado lo anterior, «las instrucciones para generar las llaves
+de cada uno de los módulos». Salió `docs/LLAVES_Y_CREDENCIALES.md`, y el
+reconocimiento previo destapó tres cosas que no eran evidentes y que valía la
+pena escribir antes de que alguien se confíe:
+
+**El botón «Probar» de `/ajustes/` es un stub.** El docstring lo dice sin rodeos
+—«en S2+ cada slot tendrá su prueba real»— y lo que hace es confirmar que el
+valor se descifra y reportar su longitud. No pega a la API de nadie. Las pruebas
+de verdad son tres y están repartidas: Google OAuth sí hace round-trip real
+contra Google desde Ajustes; cada Chalán tiene su «Probar conexión» en
+`/chalanes/` con una llamada real de 1 token; y El Cartero manda un correo de
+prueba. Para el resto la comprobación es usar la función.
+
+**Los 4 slots de Stripe y MercadoPago no los lee nadie.** Están declarados en
+`SLOTS_CREDENCIAL` desde S1a, pero un grep por los cuatro nombres fuera de
+`credencial.py` no devuelve nada: La Caja no está implementada. Pegar esas llaves
+hoy no habilita ningún cobro, y era importante decirlo porque la UI los muestra
+igual que los que sí funcionan.
+
+**`BOVEDA_MASTER_KEY` no se puede rotar con un comando.** Existe
+`lib.boveda.rotar()`, que re-cifra **un** blob bajo una llave nueva, pero no hay
+management command que recorra la tabla de credenciales. Rotar hoy es escribir un
+script o volver a pegar todo a mano. Quedó como advertencia explícita en lugar de
+dejar que alguien lo descubra a medio camino.
+
+Del lado de lo que sí se genera localmente: las dos llaves del `.env` con
+`secrets.token_hex(32)` (dos corridas, nunca la misma), VAPID con
+`interfono_generar_vapid` —que se niega a correr si ya hay llaves, porque
+regenerarlas invalida TODAS las suscripciones y el equipo entero tendría que
+volver a autorizar notificaciones— y `n8n_webhook_secret`, que **no lo da n8n**:
+es el secreto con el que El Portavoz firma HMAC-SHA256 lo que sale, así que lo
+elegimos nosotros y se pega en los dos lados.
+
+Dos detalles verificados contra el código antes de afirmarlos: el token de
+DigitalOcean puede ser de **sólo lectura** (`lib/site/droplet.py` sólo hace
+`httpx.get`), y de los seis Chalanes **sólo Deepseek expone saldo** por API — los
+otros cinco devuelven `soportado: False` y mandan al dashboard.
+
+Drive, El Resguardo y el keystore de El Envoltorio ya tenían documento propio, así
+que se referencian en lugar de duplicarlos.
