@@ -412,7 +412,11 @@ def url(clave: str, variante: str = "w400", *, absoluta: bool = False) -> str:
     datos = meta(clave)
     nombre = (datos.get("variantes") or {}).get(variante) if datos else ""
     if not nombre:
-        return _url_proxy(clave)
+        # Sin derivado no hay ruta pública. En relativo se cae al proxy, que sí
+        # puede servir el original; en absoluto se devuelve vacío a propósito —
+        # el único que pide URL absoluta es Google al convertir el documento, y
+        # el proxy exige sesión, así que un enlace ahí sólo dejaría el hueco.
+        return "" if absoluta else _url_proxy(clave)
     a, b, h = _tramos(_huella(clave))
     ruta = f"{PREFIJO_URL}/{a}/{b}/{h}/{nombre}"
     return f"{base_publica()}{ruta}" if absoluta else ruta

@@ -266,6 +266,120 @@ def test_borrar_quita_original_y_derivados():
     assert not almacen._dir_pub(clave).exists()
 
 
+# ── La subida: disco primero, Drive de espejo ────────────────────────────────
+
+class TestSubir:
+    """`lib.adjuntos.subir` conserva su firma y la forma de su `data`, para que
+    los ~10 puntos de subida del repo no cambien. Lo que cambia es a dónde va el
+    archivo y qué pasa cuando Drive no responde."""
+
+    def _archivo(self, nombre="foto.jpg", mime="image/jpeg", contenido=None):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return SimpleUploadedFile(nombre, contenido or _jpeg(600, 400),
+                                  content_type=mime)
+
+    def _drive(self, monkeypatch, *, configurado=True, revienta=False):
+        from lib.google_drive import drive
+
+        monkeypatch.setattr(drive, "esta_configurado", lambda: configurado)
+        monkeypatch.setattr(drive, "obtener_o_crear_subcarpeta", lambda *_a, **_k: "carp-1")
+
+        def _sube(*_a, **_k):
+            if revienta:
+                raise RuntimeError("timeout")
+            return {"id": "drv-99", "name": "foto.jpg", "mimeType": "image/jpeg",
+                    "size": "10", "webViewLink": "https://drive.example/ver"}
+
+        monkeypatch.setattr(drive, "subir_archivo", _sube)
+        monkeypatch.setattr(drive, "subir_fileobj", _sube)
+
+    def test_guarda_en_el_almacen_y_espeja_a_drive(self, monkeypatch):
+        from lib.adjuntos import subir
+
+        self._drive(monkeypatch)
+        res = subir(self._archivo(), subcarpeta="Productos")
+
+        assert res.ok
+        # El `id` es la llave de El Almacén, no el de Drive.
+        assert res.data["id"] != "drv-99"
+        assert almacen.existe(res.data["id"])
+        assert res.data["mimeType"] == "image/jpeg"
+        assert res.data["name"] == "foto.jpg"
+        # La copia de Drive queda anotada, para durabilidad fuera del servidor.
+        assert res.data["espejo_drive"] == "drv-99"
+        assert res.data["webViewLink"] == "https://drive.example/ver"
+        assert almacen.meta(res.data["id"])["drive_file_id"] == "drv-99"
+
+    def test_drive_caido_ya_no_tumba_la_subida(self, monkeypatch):
+        """Antes, sin Drive no se podía adjuntar nada. Ahora el archivo queda
+        guardado y el espejo simplemente no se hace."""
+        from lib.adjuntos import subir
+
+        self._drive(monkeypatch, revienta=True)
+        res = subir(self._archivo())
+
+        assert res.ok
+        assert almacen.existe(res.data["id"])
+        assert res.data["espejo_drive"] == ""
+        assert "Drive no respondió" in res.data["error_espejo"]
+
+    def test_sin_drive_conectado_tambien_guarda(self, monkeypatch):
+        from lib.adjuntos import subir
+
+        self._drive(monkeypatch, configurado=False)
+        res = subir(self._archivo())
+
+        assert res.ok and almacen.existe(res.data["id"])
+        assert "no está conectado" in res.data["error_espejo"]
+
+    def test_la_imagen_subida_queda_con_derivados_listos(self, monkeypatch):
+        """Es el punto del sprint: el redimensionado se paga una vez, al subir,
+        no en cada visita de cada usuario."""
+        from lib.adjuntos import subir
+
+        self._drive(monkeypatch, configurado=False)
+        res = subir(self._archivo())
+
+        assert almacen.ruta_variante(res.data["id"], "w400").is_file()
+        assert almacen.url(res.data["id"]).startswith("/medios/")
+
+    def test_sigue_rechazando_lo_que_no_se_permite(self, monkeypatch):
+        from lib.adjuntos import subir
+
+        self._drive(monkeypatch)
+        res = subir(self._archivo("virus.exe", "application/x-msdownload", b"MZ"))
+
+        assert not res.ok and "no permitido" in res.error
+
+    def test_si_el_disco_falla_se_usa_el_id_de_drive(self, monkeypatch):
+        """El Almacén lo importará solo la primera vez que alguien lo lea."""
+        from lib import adjuntos
+
+        self._drive(monkeypatch)
+
+        def _no_se_puede(*_a, **_k):
+            raise OSError("disco lleno")
+
+        monkeypatch.setattr(almacen, "guardar_fileobj", _no_se_puede)
+        res = adjuntos.subir(self._archivo())
+
+        assert res.ok and res.data["id"] == "drv-99"
+
+    def test_si_falla_todo_el_resultado_es_un_error_claro(self, monkeypatch):
+        from lib import adjuntos
+
+        self._drive(monkeypatch, revienta=True)
+
+        def _no_se_puede(*_a, **_k):
+            raise OSError("disco lleno")
+
+        monkeypatch.setattr(almacen, "guardar_fileobj", _no_se_puede)
+        res = adjuntos.subir(self._archivo())
+
+        assert not res.ok and "disco lleno" in res.error
+
+
 # ── Vista de respaldo (cuando El Portero no encuentra el derivado) ────────────
 
 @pytest.mark.django_db
