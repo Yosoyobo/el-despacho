@@ -3,6 +3,7 @@ from django.urls import include, path
 
 from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
 from lib.aviso_deploy_views import banner_deploy, semaforo_deploy
+from lib.medios_views import urlpatterns_medios
 from lib.salud_views import salud
 
 # El admin de Django vive solo en La Gerencia (Django project con `django.contrib.admin`
@@ -10,6 +11,8 @@ from lib.salud_views import salud
 urlpatterns = [
     # El monitor del taller pregunta aquí (ver docs/MONITOR_SALUD.md).
     path("salud", salud, name="salud"),
+    # El Almacén: respaldo si El Portero no encuentra el derivado en disco.
+    *urlpatterns_medios,
     path("sistema/aviso-deploy/", banner_deploy, name="aviso-deploy"),
     path("sistema/aviso-deploy/semaforo/", semaforo_deploy, name="aviso-deploy-semaforo"),
     *urlpatterns_sw,

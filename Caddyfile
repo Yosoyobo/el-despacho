@@ -4,6 +4,34 @@
 	email oscar@bautista.mx
 }
 
+# El Almacén (S-Medios-V1): los medios viven en disco y los sirve El Portero
+# DIRECTO, sin pasar por Django ni por Google Drive. Antes cada foto eran dos
+# llamadas a la API de Drive más un redimensionado en el hilo del request.
+#
+# La ruta lleva la huella del contenido (`/medios/<2>/<2>/<sha256>/w400.jpg`), así
+# que el archivo de una URL nunca cambia: se puede cachear un año e `immutable`,
+# y el navegador ni pregunta. Es también lo que deja poner un CDN adelante el día
+# que se quiera, sin tocar código.
+#
+# El `root` apunta a `/srv`, donde sólo se monta `pub/` — la carpeta con los
+# derivados JPEG/PNG que generamos NOSOTROS. Los originales subidos por los
+# usuarios viven en `orig/`, fuera del alcance de Caddy: por eso ningún archivo
+# ajeno se puede interpretar en el origen de la aplicación.
+(medios) {
+	handle /medios/* {
+		root * /srv
+		# Si el derivado no está (un `pub/` borrado a mano, un restore que sólo
+		# trajo los originales), que El Taller lo regenere y lo sirva.
+		@falta not file
+		reverse_proxy @falta el-taller:8000
+		@existe file
+		header @existe Cache-Control "public, max-age=31536000, immutable"
+		header @existe X-Content-Type-Options nosniff
+		header @existe X-Robots-Tag noindex
+		file_server
+	}
+}
+
 # Dominio raíz: sitio de marketing de Learning Center (Next.js export +
 # HeroUI, desarrollado por Jorge). Corre en HAL servido por launchd
 # (mx.learningcenter.web, puerto 8088) y se alcanza vía Tailscale.
@@ -22,6 +50,7 @@ www.learningcenter.mx {
 
 taller.learningcenter.mx {
 	encode gzip
+	import medios
 	# El Envoltorio (V6 Bloque 9): Digital Asset Links para la TWA Android.
 	# El fingerprint SHA-256 sale del keystore de firma (ver envoltorio/README.md);
 	# mientras sea el placeholder, la app abre con barra de URL (no rompe nada).
@@ -34,6 +63,7 @@ taller.learningcenter.mx {
 
 gerencia.learningcenter.mx {
 	encode gzip
+	import medios
 	reverse_proxy la-gerencia:8001
 }
 
@@ -56,6 +86,7 @@ recepcion.learningcenter.mx {
 
 # Acceso por IP / localhost (HAL dev): mismo routing por path-prefix de host header.
 :80 {
+	import medios
 	@taller host localhost 127.0.0.1
 	handle @taller {
 		reverse_proxy el-taller:8000

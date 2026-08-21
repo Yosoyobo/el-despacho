@@ -136,6 +136,12 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
+# El Almacén (S-Medios-V1): carpeta temporal por corrida de pruebas, para que
+# ningún test escriba en el almacén real. `tests/conftest.py` lo limpia entre
+# tests. Ver `lib/almacen.py`.
+import tempfile as _tempfile  # noqa: E402
+MEDIOS_DIR = _tempfile.mkdtemp(prefix="despacho-medios-")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
 

@@ -73,6 +73,9 @@ services:
     volumes:
       - ./data/credenciales:/data/credenciales
       - ./data/staticfiles-gerencia:/app/staticfiles
+      # El Almacén (S-Medios-V1): los medios en disco. Es la fuente de
+      # verdad para leer; Drive queda como espejo de la subida.
+      - ./data/media:/app/medios
     expose:
       - "8001"
     healthcheck:
@@ -103,6 +106,9 @@ services:
     volumes:
       - ./data/credenciales:/data/credenciales
       - ./data/staticfiles-taller:/app/staticfiles
+      # El Almacén (S-Medios-V1): los medios en disco. Es la fuente de
+      # verdad para leer; Drive queda como espejo de la subida.
+      - ./data/media:/app/medios
     expose:
       - "8000"
     healthcheck:
@@ -179,5 +185,8 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./infra/landing:/srv/landing:ro
+      # Sólo `pub/` (derivados propios), NUNCA `orig/` — ver el snippet
+      # `(medios)` del Caddyfile.
+      - ./data/media/pub:/srv/medios:ro
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
