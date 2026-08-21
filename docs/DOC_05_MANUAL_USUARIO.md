@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — Una página que explica qué es el sistema (20 de agosto de 2026)
+
+**Nueva página pública: «Acerca de»**
+
+- El sistema ya tiene una página, en `taller.learningcenter.mx/acerca/`, que
+  explica en lenguaje llano **qué es El Despacho**: para qué sirve, quién puede
+  entrar, y qué permisos pide cuando alguien usa «Continuar con Google».
+- Se puede leer **sin iniciar sesión**, igual que el aviso de privacidad y los
+  términos.
+- Deja claro algo que suele generar dudas: el permiso de Google Drive que pide el
+  sistema **sólo alcanza los archivos que el propio sistema crea** —los PDF de
+  cotizaciones y facturas, las fotos de productos, los comprobantes y adjuntos—
+  y **no da acceso al resto de tu Drive personal**.
+- Existe porque Google la pide para autorizar el botón de «Continuar con Google»:
+  exige que la página de inicio de la aplicación explique para qué sirve. Nada
+  cambia en el uso diario del sistema.
+
+---
+
 ## Novedades — El correo y el aviso de privacidad con el dominio de Learning Center (20 de agosto de 2026)
 
 **El sistema ya se presenta con learningcenter.mx**
@@ -4772,6 +4791,17 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
 - **El Celador** (token del monitor externo que vigila que el sistema esté en pie).
+
+### La página «Acerca de»
+
+En `taller.learningcenter.mx/acerca/` hay una página pública —se lee sin iniciar
+sesión, como el aviso de privacidad— que explica qué es El Despacho, quién puede
+entrar y qué permisos pide cuando alguien usa «Continuar con Google».
+
+No es decorativa: **Google la exige** para autorizar el inicio de sesión con
+Google, y revisa que de verdad explique para qué sirve la aplicación. Si alguna
+vez Google objeta ese punto, lo que hay que corregir es el texto de esa página,
+no la configuración de la consola.
 
 ### El correo saliente (El Cartero)
 

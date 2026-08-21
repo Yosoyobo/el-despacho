@@ -1,5 +1,6 @@
 from apps.buzon_admin import handlers as _err
 from apps.interfono_admin.views import perfil_notificaciones as _perfil_notif
+from apps.legal.views import acerca as _acerca
 from django.conf import settings
 from django.urls import include, path, re_path
 
@@ -34,6 +35,9 @@ urlpatterns = [
     path("", include("apps.auth_gerencia.urls")),
     path("directorio/", include("apps.el_directorio.urls")),
     path("ajustes/", include("apps.los_ajustes.urls")),
+    # Portada pública de la app: es la "Application home page" del cliente OAuth
+    # (la verificación de Google exige que explique el propósito). Sin login.
+    path("acerca/", _acerca, name="acerca"),
     path("legal/", include("apps.legal.urls")),
     # Pre-S2b.2: Catálogo y Buzón viven en El Taller. Aquí solo redirects
     # para preservar bookmarks viejos.

@@ -86,6 +86,36 @@ efectos colaterales. El asistente muestra qué `client_id` está usando hoy.
    server-side (redirección + intercambio de `code` en el backend), no hay JS
    pidiendo tokens.
 
+4. **Pantalla de consentimiento → App domain.** Estos son los valores, y los tres
+   enlaces responden **200 sin sesión** (importa: Google los rastrea y los
+   muestra al usuario, así que detrás del login no sirven):
+
+   | Campo | Valor |
+   |---|---|
+   | Application home page | `https://taller.learningcenter.mx/acerca/` |
+   | Application privacy policy link | `https://taller.learningcenter.mx/legal/privacidad` |
+   | Application terms of service link | `https://taller.learningcenter.mx/legal/terminos` |
+   | Authorized domains | `learningcenter.mx` (una sola entrada) |
+
+   **Authorized domains pide el dominio raíz**, no subdominios: con
+   `learningcenter.mx` quedan cubiertos los tres hosts. Registrar
+   `taller.learningcenter.mx` sería rechazado.
+
+   **Ojo con la home page — aquí ya se falló una vez.** Apuntarla al sitio de
+   marketing (`https://learningcenter.mx`) hace que la verificación se rechace
+   con *«Your home page does not explain the purpose of your app»*: ese sitio
+   describe los servicios de Learning Center a sus clientes, no lo que hace
+   este sistema ni por qué pide entrar con Google. Por eso existe
+   **`/acerca/`**, una página pública dentro de El Despacho que sí lo explica —
+   qué es la app, quién la usa, que no hay registro abierto, y qué permisos de
+   Google pide (incluido que `drive.file` sólo alcanza los archivos que la
+   propia app creó). Tampoco sirve apuntarla a la raíz de El Taller: devuelve
+   302 a `/sign-in`, y Google rechaza páginas de login como home page.
+
+   Si la verificación vuelve a objetar la home page, se edita
+   `templates/legal/_acerca_body.html` (**en las dos apps**, regla §18) — no se
+   cambia el campo en la consola.
+
 ---
 
 ## Paso 2 — Pegar las credenciales del SSO
