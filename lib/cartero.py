@@ -22,13 +22,16 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass, field
 
+# Las descripciones son la ayuda que se ve en Gerencia → Ajustes → El Cartero,
+# así que están escritas para el caso real de Learning Center: Google Workspace
+# con contraseña de aplicación (ver docs/MIGRACION_WORKSPACE_LEARNINGCENTER.md).
 SLOTS_SMTP = [
-    ("smtp_host", "Servidor (host)", "Ej. smtp.gmail.com o mail.tudominio.mx", "text"),
-    ("smtp_port", "Puerto", "587 (TLS) o 465 (SSL)", "text"),
-    ("smtp_user", "Usuario", "Usuario/cuenta de autenticación.", "text"),
-    ("smtp_password", "Contraseña", "Contraseña o app password.", "password"),
-    ("smtp_from_email", "Correo remitente", "Ej. cotizaciones@tudominio.mx", "text"),
-    ("smtp_use_tls", "Usar TLS", "1 = sí (recomendado), 0 = no.", "text"),
+    ("smtp_host", "Servidor (host)", "Con Google Workspace: smtp.gmail.com", "text"),
+    ("smtp_port", "Puerto", "587, que es el de TLS. El 465 es SSL y aquí no se usa.", "text"),
+    ("smtp_user", "Usuario", "El correo COMPLETO de la cuenta del Workspace, ej. soporte@learningcenter.mx", "text"),
+    ("smtp_password", "Contraseña", "La contraseña de aplicación de 16 caracteres, NO la del correo. Se genera en la cuenta de Google y requiere verificación en dos pasos activa.", "password"),
+    ("smtp_from_email", "Correo remitente", "Ej. cotizaciones@learningcenter.mx — tiene que ser la cuenta del usuario o un alias suyo dado de alta en «Enviar como», o Gmail lo reescribe.", "text"),
+    ("smtp_use_tls", "Usar TLS", "1 = sí, que es lo correcto con el puerto 587. 0 = no.", "text"),
 ]
 
 

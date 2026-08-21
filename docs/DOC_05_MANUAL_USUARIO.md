@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — El correo y el aviso de privacidad con el dominio de Learning Center (20 de agosto de 2026)
+
+**El sistema ya se presenta con learningcenter.mx**
+
+- El **aviso de privacidad** de El Taller y de La Gerencia manda los derechos
+  ARCO a **soporte@learningcenter.mx**. Antes apuntaba a una dirección del
+  dominio viejo, que es lo que ve un cliente si abre el aviso.
+- Las **notificaciones al celular** usan esa misma dirección como contacto
+  técnico.
+
+**Conectar el correo ya no es adivinar**
+
+- En *Ajustes → El Cartero*, cada campo del correo saliente dice exactamente qué
+  va: que el servidor es `smtp.gmail.com`, que el puerto es el **587**, que la
+  contraseña es la **de aplicación de 16 caracteres** y no la del correo, y que
+  el remitente tiene que estar dado de alta en «Enviar como» o Gmail lo cambia
+  solo.
+- Esto **no cambia cómo sale el correo hoy**: solo deja claro qué pegar cuando
+  se conecte la cuenta del Workspace.
+
+**Sobre los mapas: no hay nada que cambiar**
+
+- Los mapas del sistema (checadas, visitas, mandados) ya son **gratis y sin
+  llave**: el mapa que se ve embebido es OpenStreetMap y los botones de «Abrir en
+  Google Maps» son solo enlaces. No hay ninguna credencial de mapas que
+  configurar.
+
+---
+
 ## Novedades — Cuentas en los precios, colores de verdad y el documento sin hojas en blanco (18 de agosto de 2026)
 
 **Escribe la cuenta, no el resultado**
@@ -4743,6 +4772,38 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
 - **El Celador** (token del monitor externo que vigila que el sistema esté en pie).
+
+### El correo saliente (El Cartero)
+
+El Cartero es quien manda los correos que salen del sistema: cotizaciones,
+facturas, recordatorios de cobranza y campañas. El Despacho **escribe** el
+correo y decide cuándo mandarlo; el canal solo lo entrega. Hay dos canales y se
+elige en *Ajustes → El Cartero*:
+
+- **SMTP directo** — el sistema se conecta él mismo al servidor de correo.
+- **n8n** — el sistema entrega el correo ya armado a n8n y n8n lo manda.
+
+Para usar la cuenta de Google Workspace de Learning Center por SMTP directo hace
+falta esto:
+
+- **Servidor** `smtp.gmail.com`, **puerto** `587`, con TLS encendido.
+- **Usuario**: el correo completo de la cuenta que envía.
+- **Contraseña**: una **contraseña de aplicación** de 16 caracteres, no la
+  contraseña normal del correo. Se genera en la cuenta de Google y para que
+  aparezca la opción, esa cuenta necesita la verificación en dos pasos activa.
+- **Remitente**: si quieres que los correos salgan desde una dirección distinta
+  a la de la cuenta (por ejemplo `cotizaciones@` enviando desde `soporte@`), esa
+  dirección tiene que estar dada de alta en Gmail como «Enviar como». Si no,
+  Gmail la cambia sola por la de la cuenta.
+
+Dos detalles que ahorran confusión: **la contraseña en blanco no borra la
+guardada** (para quitarla hay que marcar «Borrar contraseña guardada»), y
+guardar las credenciales **no cambia el canal** — si sigue seleccionado n8n, el
+correo sigue saliendo por ahí. El botón **Probar** manda un correo de prueba.
+
+Ojo con el volumen: una cuenta de Workspace tiene tope de envío diario. Alcanza
+de sobra para cotizaciones, facturas y cobranza, pero mandar campañas a todo el
+padrón varias veces al día puede toparlo.
 
 ### El Celador (el monitor que vigila de afuera)
 
