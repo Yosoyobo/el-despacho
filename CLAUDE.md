@@ -5484,6 +5484,51 @@ vale un botón en El Directorio. Y si Campañas empieza a topar el límite diari
 de Gmail, el camino es el relay SMTP de Workspace (`smtp-relay.gmail.com`,
 autorizado por IP del Droplet), que no depende de la contraseña de una persona.
 
+### S-Acerca-OAuth ✅ — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
+
+Google rechazó la verificación del cliente OAuth con **«Your home page does not
+explain the purpose of your app»**. La causa fue un error de criterio de la
+sesión anterior: se puso `https://learningcenter.mx` como *Application home
+page*, y ese sitio describe **los servicios de Learning Center a sus clientes**,
+no lo que hace este sistema ni por qué pide entrar con Google. Tampoco servía la
+raíz de El Taller: devuelve **302 a `/sign-in`**, y Google rechaza páginas de
+login como home page.
+
+- **Página nueva `/acerca/`**, pública (sin login), en las dos apps
+  (dual-copy §18): `templates/legal/_acerca_body.html` + `acerca.html`, vista
+  `acerca` en `apps/legal/views.py`. **Se monta en la RAÍZ**, no bajo `legal/`,
+  porque es una URL de portada y no un documento legal. Explica qué es El
+  Despacho, para qué sirve, quién puede entrar (**no hay registro abierto** — el
+  alta la hace un admin en el directorio), y qué permisos de Google pide, con el
+  punto que más dudas genera: **`drive.file` sólo alcanza los archivos que la
+  propia app creó**, no el resto del Drive del usuario. Cierra con un *English
+  summary* — el revisor de Google no necesariamente lee español, y esa ronda
+  cuesta días.
+- **Los `urls.py` raíz de los dos proyectos** ganan `path("acerca/", _acerca)`.
+  También se montó en `tests/urls_taller.py` y `tests/urls_gerencia.py`, o los
+  tests darían 404.
+- **Runbook corregido**: `MIGRACION_WORKSPACE_LEARNINGCENTER.md` gana la sección
+  **App domain** con los 4 valores exactos y la advertencia de por qué la home
+  page NO puede ser el sitio de marketing ni la raíz de El Taller. Si Google
+  vuelve a objetar ese punto, se edita el texto de `/acerca/` — **no** el campo
+  de la consola.
+- **Valores para la consola** (los tres responden 200 sin sesión, verificado en
+  producción): home page `https://taller.learningcenter.mx/acerca/` · privacidad
+  `…/legal/privacidad` · términos `…/legal/terminos` · **Authorized domains =
+  `learningcenter.mx`** (Google pide el dominio raíz; un subdominio se rechaza).
+- **4 tests** en `tests/test_acerca_publica.py`: 200 **sin sesión** en las dos
+  apps (el modo de falla que importa es un 302 al login, que rompería la
+  verificación **en silencio** porque nada más en la app se nota), el contenido
+  que Google reclamó, y que las dos copias del template estén sincronizadas.
+  `manage.py check` limpio en los dos proyectos — el `urls.py` raíz no lo
+  cubren los tests, que usan urlconfs propios.
+
+**Nota de entorno:** `manage.py check` desde el host falla en La Gerencia con
+`No module named 'apps.la_cartera'` **y no es una regresión** — La Gerencia
+instala apps de El Taller (§14 Bug B: sólo ella migra) y el Dockerfile las copia
+a su imagen. Para reproducir el contenedor:
+`PYTHONPATH=<repo>/el-taller manage.py check`.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

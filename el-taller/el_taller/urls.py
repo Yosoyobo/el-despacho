@@ -1,4 +1,5 @@
 from apps.buzon_empleado import handlers as _err
+from apps.legal.views import acerca as _acerca
 from django.urls import include, path
 
 from interfono.urls_compartidas import urlpatterns_suscripcion, urlpatterns_sw
@@ -19,6 +20,9 @@ urlpatterns = [
     path("", include("apps.perfil_chalanes.urls")),
     path("", include("apps.taller_home.urls")),
     path("", include("apps.auth_taller.urls")),
+    # Portada pública de la app: es la "Application home page" del cliente OAuth
+    # (la verificación de Google exige que explique el propósito). Sin login.
+    path("acerca/", _acerca, name="acerca"),
     path("legal/", include("apps.legal.urls")),
     path("cartera/", include("apps.la_cartera.urls")),
     path("proyectos/", include("apps.los_proyectos.urls")),

@@ -1,0 +1,85 @@
+{% comment %}
+Página pública que explica QUÉ ES la app. Existe porque la verificación de
+Google exige que la "Application home page" del cliente OAuth describa el
+propósito de la aplicación, y el sitio de marketing de Learning Center describe
+los servicios al cliente, no este sistema.
+
+Requisitos que cubre (no quitar sin revisar la verificación):
+  · pública, sin login, en el dominio autorizado learningcenter.mx
+  · dice qué hace la app y quién la usa
+  · explica qué datos de la cuenta de Google pide y para qué
+  · enlaza el aviso de privacidad y los términos
+Dual-copy §18: espejo en la-gerencia/templates/legal/.
+{% endcomment %}
+<article class="prose prose-gray dark:prose-invert mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+<h1 class="!mt-0">El Despacho</h1>
+<p class="text-sm text-gray-500 dark:text-gray-400">Sistema interno de Learning Center.</p>
+
+<p><strong>El Despacho</strong> es el sistema de administración interna de
+<strong>Learning Center</strong>, un despacho mexicano de diseño y maquila de productos
+promocionales, arte e imagen corporativa. Lo usa el equipo de Learning Center para llevar
+la operación del día a día: no es un producto que se venda ni un servicio abierto al
+público.</p>
+
+<h2>Para qué sirve</h2>
+<p>Reúne en un solo lugar el trabajo que antes vivía repartido en hojas de cálculo y
+mensajes:</p>
+<ul>
+<li><strong>Clientes y proveedores</strong> — directorio de las empresas con las que trabaja el despacho.</li>
+<li><strong>Proyectos</strong> — cada trabajo, con sus productos, costos, fechas de entrega y responsables.</li>
+<li><strong>Cotizaciones y facturación</strong> — propuestas comerciales y control de cuentas por cobrar.</li>
+<li><strong>Tesorería y contabilidad</strong> — ingresos, egresos y el libro contable interno.</li>
+<li><strong>Tareas y mensajes</strong> — pendientes del equipo y mensajería interna.</li>
+<li><strong>Asistencia</strong> — registro de jornada y de visitas a clientes.</li>
+<li><strong>Asistente de IA</strong> — ayuda a redactar y a consultar información del propio sistema.</li>
+</ul>
+
+<h2>Quién puede entrar</h2>
+<p>Sólo las personas que trabajan en Learning Center. <strong>No hay registro
+abierto:</strong> una cuenta la da de alta un administrador desde el directorio interno, y
+sin esa alta previa no se puede acceder aunque se tenga una cuenta de Google válida.</p>
+
+<h2>Entrar con Google</h2>
+<p>Además de la contraseña, El Despacho ofrece «Continuar con Google» para no manejar una
+contraseña más. Cuando se usa, se piden estos permisos y nada más:</p>
+<ul>
+<li><strong>Tu nombre, foto y correo</strong> (<code>openid</code>, <code>email</code>,
+<code>profile</code>) — para identificarte y comprobar que tu correo corresponde a una
+persona dada de alta en el directorio interno. Si no corresponde, el acceso se rechaza.</li>
+<li><strong>Archivos que la propia aplicación crea en Google Drive</strong>
+(<code>drive.file</code>) — para guardar los documentos que genera el sistema: los PDF de
+cotizaciones y facturas, las fotos de los productos, los comprobantes de gastos y los
+archivos que el equipo adjunta. Este permiso <strong>no da acceso al resto de tu Drive</strong>:
+sólo alcanza los archivos que esta aplicación creó.</li>
+</ul>
+
+<h2>Lo que no hacemos</h2>
+<p>No vendemos ni compartimos datos con anunciantes, no mostramos publicidad y no usamos
+la información del sistema para entrenar modelos de inteligencia artificial. El detalle de
+cómo se tratan los datos está en el <a href="/legal/privacidad">Aviso de Privacidad</a>, y
+las condiciones de uso en los <a href="/legal/terminos">Términos</a>.</p>
+
+<h2>Contacto</h2>
+<p>Dudas sobre el sistema o sobre tus datos:
+<a href="mailto:soporte@learningcenter.mx">soporte@learningcenter.mx</a>.</p>
+
+<hr>
+
+<h2>English summary</h2>
+<p><strong>El Despacho</strong> is the internal business-management system of
+<strong>Learning Center</strong>, a Mexican design and promotional-products firm. It is used
+only by Learning Center staff to run day-to-day operations — clients and suppliers,
+projects, quotes and invoicing, treasury and bookkeeping, tasks and internal messaging,
+attendance, and an AI assistant. It is not a public service and there is no self
+sign-up: an administrator must create the account in the internal directory first.</p>
+<p>Sign-in with Google is offered as an alternative to a password. The app requests
+<code>openid</code>, <code>email</code> and <code>profile</code> to identify the user and
+match their address against that internal directory — if there is no match, access is
+denied. It also requests <code>drive.file</code> to store the documents the system itself
+generates (quote and invoice PDFs, product photos, expense receipts, attachments); that
+scope grants access only to files this application created, never to the rest of the
+user's Drive. No data is sold or shared with advertisers, there is no advertising, and
+system data is not used to train AI models. See the
+<a href="/legal/privacidad">Privacy Policy</a> and <a href="/legal/terminos">Terms</a>.
+Contact: <a href="mailto:soporte@learningcenter.mx">soporte@learningcenter.mx</a>.</p>
+</article>

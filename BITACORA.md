@@ -10156,3 +10156,82 @@ otros cinco devuelven `soportado: False` y mandan al dashboard.
 
 Drive, El Resguardo y el keystore de El Envoltorio ya tenían documento propio, así
 que se referencian en lugar de duplicarlos.
+
+---
+
+# S-Acerca-OAuth — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
+
+Google rechazó la verificación del cliente OAuth: **«Your home page does not
+explain the purpose of your app»**.
+
+## El error fue mío, y vale nombrarlo
+
+En la sesión anterior le di a Oscar `https://learningcenter.mx` como *Application
+home page*. El razonamiento que usé fue el equivocado: comparé candidatos por si
+respondían 200 sin login, y el apex ganó porque la raíz de El Taller devuelve 302
+a `/sign-in`. Elegí bien contra el criterio equivocado. Google no pide una página
+que cargue: pide una que **explique la aplicación**, y el sitio de marketing
+describe los servicios de Learning Center a sus clientes — diseño, maquila,
+promocionales. No dice ni una palabra de qué es El Despacho ni de por qué pide
+entrar con Google.
+
+Las dos opciones que existían eran las dos malas: el marketing no habla de la app,
+y la raíz de El Taller es una página de login, que Google rechaza explícitamente.
+No había página correcta que apuntar. Había que escribirla.
+
+## `/acerca/`
+
+Página pública nueva en las dos apps (dual-copy §18), montada en la **raíz** y no
+bajo `legal/`: es una URL de portada, no un documento legal, y así se lee en la
+pantalla de consentimiento. Cubre lo que la verificación reclama:
+
+- qué es El Despacho y para qué sirve, por módulos y en lenguaje llano;
+- quién puede entrar — **no hay registro abierto**, el alta la hace un admin en
+  el directorio interno, y sin eso el acceso se rechaza aunque la cuenta de
+  Google sea válida;
+- qué permisos pide y para qué, incluido el que más dudas genera: **`drive.file`
+  sólo alcanza los archivos que la propia aplicación creó**, no el resto del
+  Drive de la persona;
+- que no se venden datos, no hay publicidad y no se entrenan modelos con esto;
+- enlaces al aviso de privacidad y a los términos.
+
+Cierra con un **English summary**. La regla del proyecto es español en la UI y se
+respeta —el cuerpo está en español—, pero el lector real de esta página es un
+revisor de Google que no necesariamente lo lee, y cada ronda de verificación
+cuesta días. El resumen no cambia el idioma de la app: es una sección más de una
+página pública bilingüe.
+
+## Lo que hubo que tocar además
+
+Los `urls.py` **raíz** de los dos proyectos, con `path("acerca/", _acerca)`. Y
+también `tests/urls_taller.py` y `tests/urls_gerencia.py`: los tests corren con
+urlconfs propios, así que sin montarlo ahí el test habría dado 404 y yo habría
+ido a buscar el error en la vista.
+
+El runbook `MIGRACION_WORKSPACE_LEARNINGCENTER.md` gana la sección **App domain**
+con los cuatro valores exactos y, sobre todo, con el registro de por qué la home
+page no puede ser el marketing ni la raíz de El Taller — el objetivo es que nadie
+repita el diagnóstico desde cero. Incluye la instrucción de que, si Google vuelve
+a objetar ese punto, lo que se edita es el **texto de la página**, no el campo de
+la consola.
+
+## Tests
+
+4 en `tests/test_acerca_publica.py`. El que importa es que responda **200 sin
+sesión** en las dos apps: el modo de falla real no es un 500 sino un **302 al
+login**, que rompería la verificación **en silencio** — nada más en la app se
+nota, porque todo lo demás sí requiere sesión. Los otros fijan el contenido que
+Google reclamó (propósito, que no hay registro abierto, el alcance de
+`drive.file`, los enlaces legales) y que las dos copias del template no
+divergan.
+
+También corrí `manage.py check` en los dos proyectos, porque **los `urls.py`
+raíz no los cubren los tests** — usan urlconfs propios, así que un import roto
+ahí pasaría la suite y tumbaría producción. Los dos limpios.
+
+**Artefacto de entorno, no regresión:** `manage.py check` desde el host falla en
+La Gerencia con `No module named 'apps.la_cartera'`. Lo comprobé guardando mis
+cambios en un stash: falla igual sin ellos. La Gerencia instala apps de El Taller
+(§14 Bug B: sólo ella corre `migrate`) y el Dockerfile las copia a su imagen; en
+el host, `apps` sólo resuelve a `la-gerencia/apps`. Para reproducir el
+contenedor: `PYTHONPATH=<repo>/el-taller manage.py check`.
