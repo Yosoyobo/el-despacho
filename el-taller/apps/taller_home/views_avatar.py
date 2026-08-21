@@ -1,6 +1,6 @@
 """Avatar del usuario (S-LC-Feedback-V8).
 
-El usuario sube su foto; se guarda en Google Drive (privado, subcarpeta
+El usuario sube su foto; se guarda en El Almacén (disco, con espejo a Drive,
 "Avatares") y se sirve por un proxy autenticado — mismo patrón que los
 adjuntos del repo (los archivos de Drive no se hacen públicos). `avatar_url`
 apunta al proxy `/perfil/avatar-img/<file_id>`.
@@ -36,11 +36,11 @@ def avatar_modal(request):
         from lib.adjuntos import subir
         res = subir(archivo, subcarpeta="Avatares")
         if not res.ok:
-            return _render_modal(request, res.error or "No se pudo subir la imagen a Drive.")
+            return _render_modal(request, res.error or "No se pudo guardar la imagen.")
 
         file_id = (res.data or {}).get("id", "")
         if not file_id:
-            return _render_modal(request, "Drive no devolvió el archivo.")
+            return _render_modal(request, "No se pudo guardar el archivo.")
 
         # Borra el avatar anterior (best-effort).
         viejo = request.user.avatar_drive_id
@@ -49,8 +49,9 @@ def avatar_modal(request):
         request.user.save(update_fields=["avatar_drive_id", "avatar_url"])
         if viejo and viejo != file_id:
             try:
-                from lib.google_drive import drive
-                drive.borrar(viejo)
+                from lib import almacen
+
+                almacen.borrar(viejo, espejo=True)
             except Exception:  # noqa: BLE001
                 pass
         messages.success(request, "Tu foto se actualizó.")
@@ -67,17 +68,20 @@ def _render_modal(request, error: str):
 
 @login_required
 def avatar_img(request, file_id: str):
-    """Proxy autenticado: sirve la imagen del avatar desde Drive.
+    """Proxy autenticado: sirve la imagen del avatar desde El Almacén.
 
     Seguridad: solo sirve file_ids que sean el avatar de ALGÚN usuario (no
-    permite leer archivos arbitrarios de Drive). Cachea en el navegador.
+    permite leer archivos arbitrarios). Cachea en el navegador.
+
+    Se queda detrás de la sesión a propósito: la foto de una persona no va por
+    la ruta pública de El Portero, que es sólo para imágenes de producto.
     """
     from cuentas.models.usuario import Usuario
     if not Usuario.objects.filter(avatar_drive_id=file_id).exists():
         return HttpResponse(status=404)
     try:
-        from lib.google_drive import drive
-        contenido, mime, _ = drive.descargar(file_id)
+        from lib import almacen
+        contenido, mime, _ = almacen.leer(file_id)
     except Exception:  # noqa: BLE001
         return HttpResponse(status=404)
     resp = HttpResponse(contenido, content_type=mime or "image/jpeg")

@@ -104,13 +104,13 @@ def _render_correo(fac: Factura) -> tuple[str, str]:
 
 # --- CFDI del PAC (LC #162): almacenar PDF + XML, no generar --------------
 
-def _bytes_de_drive(file_id: str) -> bytes | None:
-    """Descarga los bytes de un archivo de Drive por id, o None. Nunca lanza."""
+def _bytes_almacenados(file_id: str) -> bytes | None:
+    """Bytes de un archivo de El Almacén por su llave, o None. Nunca lanza."""
     if not file_id:
         return None
     try:
-        from lib.google_drive import drive
-        contenido, _mime, _nombre = drive.descargar(file_id)
+        from lib import almacen
+        contenido, _mime, _nombre = almacen.leer(file_id)
         return contenido
     except Exception:  # noqa: BLE001
         return None
@@ -118,7 +118,7 @@ def _bytes_de_drive(file_id: str) -> bytes | None:
 
 def pdf_bytes_almacenado(fac: Factura) -> bytes | None:
     """Bytes del PDF del CFDI almacenado (para adjuntar en correos). Nunca lanza."""
-    return _bytes_de_drive(fac.pdf_file_id)
+    return _bytes_almacenados(fac.pdf_file_id)
 
 
 def almacenar_cfdi(fac: Factura, *, pdf_file=None, xml_file=None,
@@ -137,9 +137,14 @@ def almacenar_cfdi(fac: Factura, *, pdf_file=None, xml_file=None,
     update_fields: list[str] = []
 
     def _reemplazar(prev_id: str):
+        # El CFDI reemplazado sí se borra (es el único caso del repo): una foto de
+        # producto NUNCA se borra, porque su llave puede estar congelada en una
+        # cotización ya enviada. `espejo=True` se lleva también la copia de Drive.
         if prev_id:
             with contextlib.suppress(Exception):
-                drive.borrar(prev_id)
+                from lib import almacen
+
+                almacen.borrar(prev_id, espejo=True)
 
     if pdf_file is not None:
         res = subir(pdf_file, subcarpeta="Facturas")
@@ -334,22 +339,22 @@ def _sintetizar_linea(fac: Factura, base: Decimal) -> None:
 
 
 def borrar_cfdi_archivo(fac: Factura, tipo: str) -> None:
-    """Borra el PDF o XML del CFDI (Drive + campos de la factura). Best-effort;
-    nunca lanza. `tipo` ∈ {'pdf', 'xml'}."""
+    """Borra el PDF o XML del CFDI (El Almacén, su espejo en Drive y los campos
+    de la factura). Best-effort; nunca lanza. `tipo` ∈ {'pdf', 'xml'}."""
     import contextlib
 
-    from lib.google_drive import drive
+    from lib import almacen
 
     campos: list[str] = []
     if tipo == "pdf" and fac.pdf_file_id:
         with contextlib.suppress(Exception):
-            drive.borrar(fac.pdf_file_id)
+            almacen.borrar(fac.pdf_file_id, espejo=True)
         fac.pdf_file_id = ""
         fac.pdf_url = ""
         campos = ["pdf_file_id", "pdf_url"]
     elif tipo == "xml" and fac.xml_file_id:
         with contextlib.suppress(Exception):
-            drive.borrar(fac.xml_file_id)
+            almacen.borrar(fac.xml_file_id, espejo=True)
         fac.xml_file_id = ""
         fac.xml_url = ""
         campos = ["xml_file_id", "xml_url"]

@@ -856,18 +856,18 @@ def pdf_ver(request, pk):
     return HttpResponse(services.construir_html_pdf(fac))
 
 
-def _servir_drive(file_id: str, nombre_sugerido: str):
-    """Proxy autenticado: baja el archivo de Drive por id y lo sirve inline/
-    adjunto. 404 si Drive falla (sin liga pública)."""
+def _servir_archivo(file_id: str, nombre_sugerido: str):
+    """Proxy autenticado: lee el archivo de El Almacén y lo sirve inline/adjunto.
+    404 si no se pudo obtener (sin liga pública)."""
     from urllib.parse import quote
 
     from django.http import Http404
 
-    from lib.google_drive import drive
+    from lib import almacen
     try:
-        contenido, mime, nombre = drive.descargar(file_id)
+        contenido, mime, nombre = almacen.leer(file_id)
     except Exception:  # noqa: BLE001
-        raise Http404("No se pudo obtener el archivo de Drive.") from None
+        raise Http404("No se pudo obtener el archivo.") from None
     resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
     disp = "inline" if (mime or "").startswith(("application/pdf", "text/")) else "attachment"
     resp["Content-Disposition"] = f"{disp}; filename*=UTF-8''{quote(nombre or nombre_sugerido)}"
@@ -883,7 +883,7 @@ def descargar_pdf(request, pk):
     if not fac.pdf_file_id:
         messages.info(request, "Esta factura aún no tiene PDF del CFDI cargado.")
         return redirect("facturacion:detalle", pk=fac.pk)
-    return _servir_drive(fac.pdf_file_id, f"{fac.codigo}.pdf")
+    return _servir_archivo(fac.pdf_file_id, f"{fac.codigo}.pdf")
 
 
 @login_required
@@ -895,7 +895,7 @@ def descargar_xml(request, pk):
     if not fac.xml_file_id:
         messages.info(request, "Esta factura aún no tiene XML del CFDI cargado.")
         return redirect("facturacion:detalle", pk=fac.pk)
-    return _servir_drive(fac.xml_file_id, f"{fac.codigo}.xml")
+    return _servir_archivo(fac.xml_file_id, f"{fac.codigo}.xml")
 
 
 @login_required

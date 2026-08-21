@@ -292,11 +292,11 @@ def buzon_adjunto(request, pk: int):
     adj = get_object_or_404(MensajeBuzonAdjunto.objects.select_related("mensaje"), pk=pk)
     if adj.mensaje.autor_id != request.user.pk:
         raise Http404("Adjunto no encontrado.")
-    from lib.google_drive import drive
+    from lib import almacen
     try:
-        contenido, mime, nombre = drive.descargar(adj.drive_file_id)
+        contenido, mime, nombre = almacen.leer(adj.drive_file_id)
     except Exception:  # noqa: BLE001
-        raise Http404("No se pudo obtener el archivo de Drive.") from None
+        raise Http404("No se pudo obtener el archivo.") from None
     resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
     disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
     resp["Content-Disposition"] = f"{disposicion}; filename*=UTF-8''{quote(nombre)}"
