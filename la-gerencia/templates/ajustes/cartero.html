@@ -40,10 +40,17 @@
                 </span>
             </label>
             <label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
+                <input type="radio" name="proveedor" value="gmail_api" class="mt-0.5" {% if proveedor_activo == "gmail_api" %}checked{% endif %}>
+                <span>
+                    <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Gmail API (Google Workspace) <span class="ml-1 rounded bg-success-50 px-1.5 py-0.5 text-[10px] font-semibold text-success-700 dark:bg-success-500/15 dark:text-success-400">recomendado</span></span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">Manda por la API de Gmail (HTTPS). Es el único camino que funciona en el servidor: la salida SMTP está bloqueada. {% if gmail_listo %}✅ Conectado y listo.{% elif gmail_conectado %}⚠️ Conectado, pero falta el correo remitente (abajo).{% else %}⚠️ Falta conectar la cuenta (abajo).{% endif %}</span>
+                </span>
+            </label>
+            <label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/10">
                 <input type="radio" name="proveedor" value="smtp" class="mt-0.5" {% if proveedor_activo == "smtp" %}checked{% endif %}>
                 <span>
                     <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">SMTP directo</span>
-                    <span class="block text-xs text-gray-500 dark:text-gray-400">El Despacho manda el correo directo por tu servidor SMTP (abajo).</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">El Despacho manda el correo directo por tu servidor SMTP (abajo). <strong class="text-error-600 dark:text-error-400">No funciona en el servidor de producción:</strong> DigitalOcean tiene bloqueada la salida SMTP del Droplet (los puertos 25, 465, 587 y 2525 se caen por timeout). Sirve sólo en desarrollo local.</span>
                 </span>
             </label>
         </div>
@@ -68,7 +75,32 @@
         </div>
     </section>
 
-    {# ── SMTP ───────────────────────────────────────────────── #}
+    {% comment %}
+    Canal Gmail API. Mismo patrón que el asistente de Drive: consentimiento una
+    vez y refresh token cifrado en La Bóveda. No hay llave que pegar — la
+    organización bloquea las llaves JSON de cuenta de servicio.
+    {% endcomment %}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Gmail API — conexión</h2>
+        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Se autoriza una sola vez con la cuenta del Workspace. No se pega ninguna contraseña: el permiso queda cifrado en La Bóveda y sólo alcanza para <strong>enviar</strong> correo, nunca para leerlo.</p>
+
+        {% if not gmail_cliente_listo %}
+        <p class="rounded-lg bg-warning-50 p-3 text-xs text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">Falta el cliente OAuth de Google. Configúralo primero en Ajustes → Credenciales (Google OAuth).</p>
+        {% else %}
+        <div class="mb-4">
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Correo remitente</label>
+            <input type="text" name="gmail_api_remitente" value="{{ gmail_remitente }}"
+                   class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                   placeholder="hola@learningcenter.mx">
+            <p class="mt-1 text-[11px] text-gray-400">Tiene que ser la cuenta que autorizaste o un alias suyo dado de alta en «Enviar como», o Gmail lo reescribe. Se guarda con el botón de abajo.</p>
+        </div>
+        <p class="text-xs {% if gmail_conectado %}text-success-600 dark:text-success-400{% else %}text-gray-500 dark:text-gray-400{% endif %}">
+            {% if gmail_conectado %}✅ Cuenta autorizada.{% else %}Sin autorizar todavía.{% endif %}
+        </p>
+        <p class="mt-2 text-[11px] text-gray-400">Dirección de regreso que debe estar registrada en el cliente OAuth de Google: <code class="font-mono">{{ gmail_redirect_uri }}</code></p>
+        {% endif %}
+    </section>
+
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Servidor SMTP</h2>
         <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Solo se usa si el canal activo es «SMTP directo». Se guarda cifrado en La Bóveda.</p>
@@ -96,6 +128,38 @@
         <a href="{% url 'ajustes-panel' %}" class="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancelar</a>
     </div>
 </form>
+
+{% comment %}
+Botones del asistente de Gmail. Van FUERA del formulario de arriba porque los
+los formularios HTML no se anidan, y con `formaction` el usuario perdería lo que no haya
+guardado todavía. El orden es el del flujo: guardar → autorizar → probar.
+{% endcomment %}
+{% if gmail_cliente_listo %}
+<section class="mt-6 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Autorizar la cuenta de Gmail</h2>
+    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+        {% if gmail_conectado %}La cuenta ya está autorizada. Vuelve a autorizar sólo si cambiaste de cuenta o si el acceso fue revocado.{% else %}Te manda a Google para autorizar el envío. Hazlo con la cuenta desde la que quieres que salga el correo.{% endif %}
+    </p>
+    <div class="flex flex-wrap items-center gap-2">
+        <form method="post" action="{% url 'ajustes-cartero-gmail-conectar' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-secundario">{% if gmail_conectado %}🔄 Volver a autorizar{% else %}🔗 Autorizar Gmail{% endif %}</button>
+        </form>
+        {% if gmail_conectado %}
+        <form method="post" action="{% url 'ajustes-cartero-gmail-probar' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-secundario">🔍 Probar conexión</button>
+        </form>
+        <form method="post" action="{% url 'ajustes-cartero-gmail-desconectar' %}"
+              onsubmit="return confirm('¿Desconectar Gmail? El correo dejará de salir por este canal.');">
+            {% csrf_token %}
+            <button type="submit" class="text-sm font-medium text-error-600 hover:underline dark:text-error-400">Desconectar</button>
+        </form>
+        {% endif %}
+    </div>
+    <p class="mt-3 text-[11px] text-gray-400">«Probar conexión» sólo comprueba el permiso, no manda nada. Para mandar un correo de verdad usa «Probar envío» de abajo.</p>
+</section>
+{% endif %}
 
 {# ── Probar envío ───────────────────────────────────────────── #}
 <section class="mt-6 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

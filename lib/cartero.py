@@ -78,6 +78,9 @@ def esta_configurado() -> bool:
     prov = proveedor_activo()
     if prov == "smtp":
         return bool(_cred("smtp_host") and _cred("smtp_from_email"))
+    if prov == "gmail_api":
+        from lib import gmail_api
+        return gmail_api.esta_configurado()
     return bool(_cred("n8n_webhook_url"))
 
 
@@ -97,14 +100,24 @@ def enviar(
     try:
         if prov == "smtp":
             return _enviar_smtp(msg)
+        if prov == "gmail_api":
+            return _enviar_gmail_api(msg)
         return _enviar_n8n(msg)
     except Exception as exc:  # noqa: BLE001 — fallback gracioso
         return ResultadoCorreo(ok=False, proveedor=prov, error=f"El Cartero falló: {exc}")
 
 
 def _remitente() -> str:
-    """`Nombre <correo>` para el From, con el nombre de ConfiguracionCorreo."""
-    correo = _cred("smtp_from_email") or _cred("smtp_user")
+    """`Nombre <correo>` para el From, con el nombre de ConfiguracionCorreo.
+
+    Con el canal Gmail manda su propio slot: la dirección tiene que ser la
+    cuenta que dio consentimiento (o un alias suyo), o Gmail la reescribe.
+    """
+    correo = ""
+    if proveedor_activo() == "gmail_api":
+        from lib import gmail_api
+        correo = (gmail_api.remitente() or "").strip()
+    correo = correo or _cred("smtp_from_email") or _cred("smtp_user")
     try:
         from ajustes.models import ConfiguracionCorreo
         nombre = (ConfiguracionCorreo.obtener().remitente_nombre or "").strip()
@@ -149,6 +162,44 @@ def _enviar_smtp(msg: _Mensaje) -> ResultadoCorreo:
     if enviados:
         return ResultadoCorreo(ok=True, proveedor="smtp", detalle=f"Enviado a {msg.destinatario}.")
     return ResultadoCorreo(ok=False, proveedor="smtp", error="El servidor SMTP no aceptó el correo.")
+
+
+def _enviar_gmail_api(msg: _Mensaje) -> ResultadoCorreo:
+    """Manda por la API de Gmail (HTTPS/443).
+
+    Existe porque el Droplet tiene bloqueada la salida SMTP: DigitalOcean
+    descarta los paquetes a 25/465/587/2525 y el 443 va perfecto (ver
+    `lib/gmail_api.py`). Se arma el MIME con Django —así los adjuntos y el
+    multipart HTML+texto salen igual que por SMTP— pero **sin abrir conexión**:
+    `EmailMultiAlternatives` sin `connection` sólo sirve para serializar.
+    """
+    from django.core.mail import EmailMultiAlternatives
+
+    from lib import gmail_api
+
+    if not gmail_api.esta_configurado():
+        return ResultadoCorreo(
+            ok=False, proveedor="gmail_api",
+            error=("Gmail sin conectar (falta el consentimiento o el correo "
+                   "remitente en Ajustes → El Cartero)."),
+        )
+
+    correo = EmailMultiAlternatives(
+        subject=msg.asunto, body=(msg.texto or _html_a_texto(msg.html)),
+        from_email=_remitente(), to=[msg.destinatario],
+    )
+    correo.attach_alternative(msg.html, "text/html")
+    for a in msg.adjuntos:
+        correo.attach(a.nombre, a.contenido, a.mime)
+
+    try:
+        ident = gmail_api.enviar_mime(correo.message().as_bytes())
+    except gmail_api.GmailApiError as exc:
+        return ResultadoCorreo(ok=False, proveedor="gmail_api", error=str(exc))
+    return ResultadoCorreo(
+        ok=True, proveedor="gmail_api",
+        detalle=f"Enviado a {msg.destinatario}." + (f" (id {ident})" if ident else ""),
+    )
 
 
 def _enviar_n8n(msg: _Mensaje) -> ResultadoCorreo:

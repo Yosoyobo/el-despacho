@@ -5,7 +5,12 @@ Cartero compone. El Cartero arma asunto/cuerpo/adjunto y decide; el canal solo
 entrega:
 
 - `smtp`  → Django EmailMessage con conexión armada al vuelo desde La Bóveda
-            (slots `smtp_*`).
+            (slots `smtp_*`). **No sirve en La Sede:** DigitalOcean tiene
+            bloqueada la salida SMTP del Droplet (25/465/587/2525 se caen por
+            timeout; el 443 va bien).
+- `gmail_api` → API de Gmail por HTTPS/443, que esquiva ese bloqueo. Usa el
+            cliente OAuth del login + un refresh token con scope `gmail.send`
+            (ver `lib/gmail_api.py`).
 - `n8n`   → evento Portavoz `correo.solicitado` con el correo ya armado; el
             workflow de n8n solo lo manda por su proveedor.
 
@@ -21,6 +26,7 @@ from django.db import models
 PROVEEDORES_CORREO = (
     ("n8n", "n8n (vía El Portavoz)"),
     ("smtp", "SMTP directo"),
+    ("gmail_api", "Gmail API (Google Workspace)"),
 )
 
 

@@ -10235,3 +10235,117 @@ cambios en un stash: falla igual sin ellos. La Gerencia instala apps de El Talle
 (§14 Bug B: sólo ella corre `migrate`) y el Dockerfile las copia a su imagen; en
 el host, `apps` sólo resuelve a `la-gerencia/apps`. Para reproducir el
 contenedor: `PYTHONPATH=<repo>/el-taller manage.py check`.
+
+---
+
+# S-Correo-Gmail-API — El Droplet no puede hablar SMTP (2026-08-20, VERSION 2026.08.17)
+
+Oscar: «el SMTP falló», con la pantalla de El Cartero llena y correcta —
+`smtp.gmail.com`, 587, contraseña de aplicación, remitente. No era de
+credenciales.
+
+## Dos hipótesis, la primera equivocada
+
+Lo primero que vi en su captura fue que **«Usar TLS» estaba vacío** mientras
+todos los demás campos mostraban su valor. Hipótesis inmediata: TLS apagado
+contra el puerto 587, que Gmail rechaza. Fui a leer antes de decirlo, y estaba
+mal:
+
+```python
+usa_tls = _cred("smtp_use_tls") not in ("0", "false", "no", "")
+```
+
+`Credencial.obtener` devuelve `None` cuando el slot no existe, y `None` no está
+en esa tupla → **TLS queda activado por default**. El campo vacío es inofensivo.
+Buena señal de diseño, de paso: el default seguro es el correcto.
+
+## El error mentía
+
+El mensaje era `[Errno 101] Network is unreachable`, que suena a red caída, no a
+bloqueo. Reproduciéndolo desde el contenedor de producción salió la explicación:
+el DNS de `smtp.gmail.com` devuelve **IPv6 primero**, el contenedor no tiene ruta
+IPv6 y falla al instante — tapando lo que de verdad pasa. Forzando IPv4 el error
+cambió a **timeout**, que es otra cosa completamente distinta: los paquetes se
+descartan en silencio.
+
+## El diagnóstico
+
+Medido desde el host del Droplet y desde el contenedor:
+
+| Puerto | Resultado |
+|---|---|
+| 25, 465, 587, 2525 | timeout |
+| 443 (control) | abierto |
+
+Y desde HAL, para contrastar: 587 y 465 **abiertos**. O sea que no es Gmail ni la
+red en general — es **DigitalOcean bloqueando la salida SMTP del Droplet**, su
+política antispam de siempre.
+
+Esto además anula retroactivamente la decisión de la sesión anterior, cuando
+elegimos entre Gmail SMTP y el relay de Workspace: los dos usan 587/465, así que
+habrían fallado idéntico. **No era el sabor de SMTP; este Droplet no puede hablar
+SMTP con nadie.**
+
+## Lo que se descartó, y por qué
+
+Iba a proponer una **cuenta de servicio con delegación de dominio**, que era la
+opción elegante: no toca la pantalla de consentimiento y por lo tanto no
+afectaría la verificación del SSO que está en curso. `SETUP_GOOGLE_DRIVE.md` la
+tumbó — la organización tiene activada `iam.disableServiceAccountKeyCreation`,
+que bloquea la creación de llaves JSON. Sin llave no hay delegación.
+
+Así que el camino es el mismo patrón que Drive: consentimiento una vez, refresh
+token cifrado en La Bóveda, canje por un access token en cada envío. Scope
+`gmail.send` — sólo enviar, nunca leer.
+
+## `lib/gmail_api.py` + canal nuevo en El Cartero
+
+Canal `gmail_api` que arma el MIME con Django —así los adjuntos y el multipart
+HTML+texto salen igual que por SMTP— pero sin abrir conexión, y lo manda por
+`POST` a la API de Gmail en base64 **url-safe** (el estándar rompe con `+` y `/`;
+hay un test con bytes que producen justamente esos caracteres).
+
+Asistente en `/ajustes/cartero/` con el patrón del de Drive. Dos decisiones de
+detalle:
+
+- **`probar()` trata un 403 como éxito.** `gmail.send` no autoriza leer el
+  perfil, así que un 403 ahí confirma dos cosas buenas: el token sirve y el scope
+  es el mínimo. La falla real es el 401.
+- **El canal SMTP no se retiró**, porque sirve en desarrollo local. Pero la
+  pantalla ahora avisa **en rojo** que en producción no entrega. Sin ese aviso,
+  el siguiente que llegue va a perder la tarde reintentando exactamente lo mismo.
+
+## Un bug que cazó un test
+
+`cartero_guardar` validaba el canal contra un set escrito a mano:
+
+```python
+if proveedor in {"smtp", "n8n"}:
+```
+
+Con `gmail_api` fuera de ese set, elegir el canal nuevo **no se guardaba, en
+silencio**, y quedaba en n8n. Habría sido un buen rato de «pero sí lo seleccioné».
+Ahora valida contra los choices del modelo, así que el próximo canal no repite el
+mismo silencio.
+
+## Lo que hay que decirle a Oscar
+
+`gmail.send` es scope **sensible** para Google. Un cliente OAuth «Interno» no
+necesita verificación —lo autoriza el admin del Workspace—; uno «Externo» sí, y
+él está justo a media verificación. Si todo el equipo tiene cuenta
+`@learningcenter.mx`, pasar el cliente a «Interno» resolvería de un golpe la
+verificación **y** este scope; el costo es que `oscar@bautista.mx` perdería el
+SSO (el login con contraseña sigue igual).
+
+Y el acoplamiento, que ya conocíamos por Drive y ahora tiene un consumidor más:
+este canal usa **el cliente OAuth del login**, así que reemplazarlo invalida
+también el correo.
+
+## Tests
+
+29: 17 en `tests/test_gmail_api.py` (configuración incompleta, la URL de
+consentimiento con `offline`/`consent` y **sin** `include_granted_scopes` —
+acumular scopes rompería la separación por servicio—, base64 url-safe, traducción
+de errores de Gmail, token revocado, el 403 como éxito) y 8 de UI. Migración
+`ajustes/0014` verificada con `makemigrations --check`: lo único pendiente es el
+`Alter field id` espurio de BigAutoField (§14).

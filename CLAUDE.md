@@ -5529,6 +5529,65 @@ instala apps de El Taller (§14 Bug B: sólo ella migra) y el Dockerfile las cop
 a su imagen. Para reproducir el contenedor:
 `PYTHONPATH=<repo>/el-taller manage.py check`.
 
+### S-Correo-Gmail-API ✅ — El Droplet no puede hablar SMTP: canal nuevo por HTTPS (2026-08-20, VERSION 2026.08.17)
+
+Oscar reportó «el SMTP falló» con los datos bien pegados
+(`smtp.gmail.com`/587/contraseña de aplicación). **No era de credenciales.**
+
+- **Diagnóstico, medido desde el host y desde el contenedor:** DigitalOcean tiene
+  **bloqueada la salida SMTP del Droplet**. Los puertos **25, 465, 587 y 2525 se
+  caen por timeout**; el 443 va perfecto. Así que `smtp.gmail.com` es
+  inalcanzable y `smtp-relay.gmail.com` lo sería igual — **no es el sabor de
+  SMTP, es que este Droplet no puede hablar SMTP con nadie**. Eso también anula
+  la decisión de S-Workspace-Credenciales (Gmail SMTP vs relay): era irrelevante.
+- **Por qué el error engañaba:** la app reportaba `[Errno 101] Network is
+  unreachable`, no un timeout. El DNS de `smtp.gmail.com` devuelve **IPv6
+  primero**, el contenedor no tiene ruta IPv6 y falla al instante, tapando el
+  timeout real de IPv4. Primera hipótesis descartada por lectura de código: el
+  campo «Usar TLS» vacío es inofensivo (`_cred(...) not in ("0","false","no","")`
+  y un slot ausente devuelve `None` → TLS queda ACTIVADO por default).
+- **Solución elegida por Oscar: `lib/gmail_api.py`**, canal nuevo `gmail_api` en
+  El Cartero que manda por la **API de Gmail sobre HTTPS/443**. **Sin cuenta de
+  servicio**: la organización tiene `iam.disableServiceAccountKeyCreation`
+  (bloquea llaves JSON — la misma razón por la que Drive usa OAuth), así que va
+  con el patrón de Drive: consentimiento una vez, refresh token cifrado en La
+  Bóveda, canje por access token en cada envío. Scope **`gmail.send`** (sólo
+  enviar, nunca leer). Slots `gmail_api_oauth_refresh_token` +
+  `gmail_api_remitente`; **no van al catálogo de Los Ajustes** (los gestiona el
+  asistente, igual que los de Drive).
+- **Asistente en `/ajustes/cartero/`**: radio del canal nuevo + campo de
+  remitente + botones Autorizar / Probar conexión / Desconectar. El canal SMTP
+  **se conserva** (sirve en local) pero la pantalla avisa **en rojo** que en
+  producción no entrega, o alguien va a reintentarlo. `probar()` trata un **403
+  al leer el perfil como ÉXITO**: `gmail.send` no autoriza leer, así que un 403
+  confirma token válido + scope mínimo; el 401 es la falla real.
+- **Bug cazado por un test nuevo:** `cartero_guardar` validaba el canal contra un
+  set escrito a mano `{"smtp","n8n"}`, así que elegir Gmail **no se guardaba en
+  silencio** y quedaba en n8n. Ahora valida contra los choices del modelo, para
+  que el próximo canal no repita el mismo silencio.
+- **Acoplamiento a documentar:** este canal usa **el cliente OAuth del login**,
+  así que reemplazarlo invalida **también el correo**, no sólo Drive. Un
+  consumidor más de la misma trampa.
+- **Aviso sobre la verificación en curso:** `gmail.send` es scope **sensible**.
+  Un cliente «Interno» no necesita verificación (lo autoriza el admin del
+  Workspace); uno «Externo» sí. Si todos tienen cuenta `@learningcenter.mx`,
+  pasar el cliente a «Interno» resolvería de un golpe la verificación **y** este
+  scope; el costo es que `oscar@bautista.mx` perdería el SSO (no la contraseña).
+- Migración `ajustes/0014_canal_gmail_api` (sólo `AlterField` de choices;
+  `gmail_api` son 9 chars y el campo es `max_length=10`). Eventos nuevos
+  `ajuste.gmail_conectado` / `ajuste.gmail_desconectado`.
+- **29 tests** (`tests/test_gmail_api.py` 17 + 8 de UI en
+  `tests/gerencia/test_cartero_ui.py`, más los de cartero que siguen verdes),
+  incluido que el MIME salga en **base64 url-safe** (con bytes que en base64
+  estándar producen `+` y `/`, que es justo lo que Gmail rechaza).
+
+**Deuda diseñada:** el bloqueo de DigitalOcean se puede pedir levantar por
+ticket, y si lo levantan el canal SMTP volvería a servir — no se retiró por eso.
+La cola del Portavoz sigue con ~5000 eventos sin entregar, así que el canal n8n
+**no** es alternativa viable hoy sin destrabar eso primero. Y si algún día hay
+que mandar desde varias direcciones a la vez, hoy el remitente es uno solo por
+instalación.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

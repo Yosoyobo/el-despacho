@@ -123,16 +123,32 @@ con una cuenta de Google. Paso a paso en
 > sin aislar Drive le quita a la app el acceso a todo lo ya subido, **en
 > silencio**.
 
-### Correo saliente (SMTP)
+### Correo saliente
 
-Seis slots `smtp_*`. Con Google Workspace la contraseña es una **contraseña de
-aplicación de 16 caracteres** que se genera en la cuenta de Google (Seguridad →
-Verificación en dos pasos → Contraseñas de aplicaciones), **no** la contraseña
-normal del correo. Detalle completo, incluido el asunto de «Enviar como», en el
-**[runbook](MIGRACION_WORKSPACE_LEARNINGCENTER.md#paso-4--smtp-con-google-workspace-gmail--contraseña-de-aplicación)**.
+**No hay llave que pegar, y SMTP no sirve en producción.** DigitalOcean tiene
+bloqueada la salida SMTP del Droplet: los puertos 25, 465, 587 y 2525 se caen por
+timeout mientras el 443 va perfecto (medido desde el host y desde el contenedor).
+Así que `smtp.gmail.com` es inalcanzable, y `smtp-relay.gmail.com` lo sería igual.
 
-Se configura en Gerencia → Ajustes → **El Cartero**, que además tiene su propio
-botón «Probar» que manda un correo de prueba real.
+El canal que entrega es la **API de Gmail**, por HTTPS/443. No se pega ninguna
+contraseña: se **autoriza una vez** con la cuenta del Workspace desde
+Gerencia → Ajustes → **El Cartero** → «Autorizar Gmail», y el permiso queda
+cifrado en La Bóveda (`gmail_api_oauth_refresh_token`). Lo único que se escribe a
+mano es el **correo remitente** (`gmail_api_remitente`), que debe ser la cuenta
+autorizada o un alias suyo dado de alta en «Enviar como».
+
+El scope es `gmail.send` — sólo enviar, nunca leer. Google lo clasifica como
+**sensible**: un cliente OAuth «Interno» no necesita verificación, uno «Externo»
+sí. Paso a paso y el detalle de esa decisión en el
+**[runbook](MIGRACION_WORKSPACE_LEARNINGCENTER.md#paso-4--el-correo-por-la-api-de-gmail-no-por-smtp)**.
+
+Ojo con el acoplamiento: usa **el cliente OAuth del login**, así que reemplazar
+ese cliente invalida también el correo (no sólo Drive) y hay que volver a
+autorizar.
+
+Los slots `smtp_*` se conservan para desarrollo local, donde sí hay salida SMTP.
+Con Google Workspace la contraseña ahí sería una **contraseña de aplicación de 16
+caracteres**, no la del correo.
 
 ### Los seis Chalanes (IA)
 
@@ -230,7 +246,8 @@ Las pruebas de verdad son tres, y están en otro lado:
 |---|---|---|
 | **Google OAuth** | Ajustes → botón «Probar» del slot | Round-trip real contra Google |
 | **Cada Chalán** | Gerencia → Chalanes → «Probar conexión» | Llamada real de 1 token, guarda el resultado |
-| **Correo** | Ajustes → El Cartero → «Probar» | Manda un correo de prueba |
+| **Correo (Gmail)** | Ajustes → El Cartero → «Probar conexión» | Comprueba el permiso sin mandar nada. Un **403** al leer el perfil es ÉXITO: el scope es sólo-enviar |
+| **Correo (envío)** | Ajustes → El Cartero → «Probar envío» | Manda un correo de prueba de verdad |
 
 Para el resto, la comprobación es usar la función: sube una foto de producto para
 Drive, mira el cuadrante del Droplet en El Site para el token de DigitalOcean,

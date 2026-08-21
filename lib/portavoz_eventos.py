@@ -91,6 +91,9 @@ EventoTipo = Literal[
     "ajuste.drive_probado",
     "ajuste.drive_conectado",
     "ajuste.drive_desconectado",
+    # Canal Gmail API de El Cartero (el Droplet no puede hablar SMTP).
+    "ajuste.gmail_conectado",
+    "ajuste.gmail_desconectado",
     "catalogo.servicio_creado",
     "catalogo.servicio_actualizado",
     "catalogo.servicio_eliminado",

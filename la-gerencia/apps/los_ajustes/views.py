@@ -123,12 +123,20 @@ def cartero_panel(request):
     from ajustes.models import ConfiguracionCorreo
     from lib import cartero
     cfg = ConfiguracionCorreo.obtener()
+    from lib import gmail_api
     return render(request, "ajustes/cartero.html", {
         "cfg": cfg,
         "smtp_slots": _estado_smtp(),
         "n8n_configurado": bool(Credencial.obtener("n8n_webhook_url")),
         "proveedor_activo": cfg.proveedor,
         "configurado": cartero.esta_configurado(),
+        # Canal Gmail API: el Droplet no puede hablar SMTP (DigitalOcean lo
+        # bloquea), así que éste es el camino real para que salga el correo.
+        "gmail_cliente_listo": gmail_api.cliente_configurado(),
+        "gmail_conectado": gmail_api.esta_conectado(),
+        "gmail_listo": gmail_api.esta_configurado(),
+        "gmail_remitente": gmail_api.remitente() or "",
+        "gmail_redirect_uri": _gmail_redirect_uri(request),
     })
 
 
@@ -140,8 +148,12 @@ def cartero_guardar(request):
     from lib.cartero import SLOTS_SMTP
 
     cfg = ConfiguracionCorreo.obtener()
+    # Validamos contra los choices del modelo, NO contra un set escrito a mano:
+    # así un canal nuevo no se queda sin guardar en silencio (fue exactamente el
+    # bug al sumar `gmail_api`).
+    from ajustes.models.cartero import PROVEEDORES_CORREO
     proveedor = (request.POST.get("proveedor") or "").strip()
-    if proveedor in {"smtp", "n8n"}:
+    if proveedor in {clave for clave, _ in PROVEEDORES_CORREO}:
         cfg.proveedor = proveedor
     cfg.remitente_nombre = (request.POST.get("remitente_nombre") or "").strip() or "Learning Center"
     # V6 Bloque 7A: flags de correos automáticos (checkbox → bool).
@@ -149,6 +161,14 @@ def cartero_guardar(request):
     cfg.auto_pago = bool(request.POST.get("auto_pago"))
     cfg.actualizado_por = request.user
     cfg.save()
+
+    # Remitente del canal Gmail. Vacío borra el slot (Credencial.guardar lo
+    # elimina), que es lo que queremos: sin remitente el canal no está listo.
+    from lib.gmail_api import SLOT_REMITENTE
+    Credencial.guardar(
+        SLOT_REMITENTE, (request.POST.get(SLOT_REMITENTE) or "").strip(),
+        usuario=request.user,
+    )
 
     # Slots SMTP: solo guardamos los que vengan con valor (la contraseña en
     # blanco NO borra la guardada — hay que dejarla explícitamente vacía con
@@ -185,6 +205,115 @@ def cartero_probar(request):
         messages.success(request, f"Prueba enviada por {res.proveedor} a {destino}. {res.detalle}")
     else:
         messages.error(request, f"No se pudo enviar la prueba: {res.error}")
+    return redirect("ajustes-cartero")
+
+
+# ── El Cartero · canal Gmail API (consentimiento OAuth) ───────────────────
+#
+# Existe porque el Droplet tiene bloqueada la salida SMTP: DigitalOcean descarta
+# los paquetes a 25/465/587/2525 y sólo el 443 pasa. Mismo patrón que el
+# asistente de Drive: consentimiento una vez, refresh token cifrado en La Bóveda.
+
+_GMAIL_OAUTH_STATE = "gmail_oauth_state"
+
+
+def _gmail_redirect_uri(request) -> str:
+    """URI de callback que debe estar registrada en el cliente OAuth de Google."""
+    return f"{request.scheme}://{request.get_host()}/ajustes/cartero/gmail/callback"
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_gmail_conectar(request):
+    """Arranca el consentimiento: manda al admin a Google."""
+    import secrets
+
+    from lib import gmail_api
+
+    if not gmail_api.cliente_configurado():
+        messages.error(
+            request,
+            "Primero configura el cliente OAuth de Google en Ajustes → Credenciales.",
+        )
+        return redirect("ajustes-cartero")
+
+    state = secrets.token_urlsafe(24)
+    request.session[_GMAIL_OAUTH_STATE] = state
+    try:
+        url = gmail_api.construir_url_consentimiento(_gmail_redirect_uri(request), state)
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f"No se pudo iniciar la conexión: {exc}")
+        return redirect("ajustes-cartero")
+    return redirect(url)
+
+
+@requiere_permiso("ajustes", "acceder")
+def cartero_gmail_callback(request):
+    """Recibe el `code` de Google y guarda el refresh token."""
+    from lib import gmail_api
+
+    error = request.GET.get("error")
+    if error:
+        messages.error(request, f"Google canceló la conexión: {error}")
+        return redirect("ajustes-cartero")
+
+    esperado = request.session.pop(_GMAIL_OAUTH_STATE, None)
+    if not esperado or request.GET.get("state") != esperado:
+        messages.error(request, "La sesión de conexión expiró o no coincide. Intenta de nuevo.")
+        return redirect("ajustes-cartero")
+
+    code = request.GET.get("code")
+    if not code:
+        messages.error(request, "Google no devolvió el código de autorización.")
+        return redirect("ajustes-cartero")
+
+    try:
+        refresh = gmail_api.intercambiar_codigo_por_refresh_token(
+            code, _gmail_redirect_uri(request)
+        )
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f"No se pudo completar la conexión: {exc}")
+        return redirect("ajustes-cartero")
+
+    Credencial.guardar(gmail_api.SLOT_REFRESH, refresh, usuario=request.user)
+    emitir(EventoPortavoz(
+        tipo="ajuste.gmail_conectado",
+        actor_id=request.user.pk, actor_email=request.user.email, payload={},
+    ))
+    messages.success(
+        request,
+        "¡Cuenta de Gmail conectada! Escribe el correo remitente, elige el canal "
+        "«Gmail API» y guarda.",
+    )
+    return redirect("ajustes-cartero")
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_gmail_desconectar(request):
+    """Borra el refresh token. El correo deja de salir por este canal."""
+    from lib import gmail_api
+
+    Credencial.guardar(gmail_api.SLOT_REFRESH, "", usuario=request.user)
+    emitir(EventoPortavoz(
+        tipo="ajuste.gmail_desconectado",
+        actor_id=request.user.pk, actor_email=request.user.email, payload={},
+    ))
+    messages.success(request, "Gmail desconectado. Revoca el acceso en la cuenta de Google si ya no lo usarás.")
+    return redirect("ajustes-cartero")
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_gmail_probar(request):
+    """Comprueba el token SIN mandar correo (para eso está «Probar envío»)."""
+    from lib import gmail_api
+
+    res = gmail_api.probar()
+    if res["ok"]:
+        messages.success(request, f"Gmail — {res['detalle']}")
+    else:
+        messages.error(request, f"Gmail — {res['detalle']}")
     return redirect("ajustes-cartero")
 
 
