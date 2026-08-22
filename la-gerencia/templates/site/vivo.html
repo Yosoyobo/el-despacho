@@ -33,6 +33,8 @@ Cuatro decisiones que conviene no deshacer:
     <link rel="icon" href="{% static 'branding/Icono_LC-32.png' %}" sizes="32x32">
     <link rel="stylesheet" href="{% static 'vendor/daisyui/styled.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    {# Los tokens y las clases de los paneles — la MISMA hoja que carga El Site. #}
+    <link rel="stylesheet" href="{% static 'css/vigia-paneles.css' %}">
     {% comment %}
     Anti-FOUC: el tema se pone en el <html> ANTES de que el navegador pinte algo.
     Si esto viviera al final del <body>, la pared arrancaría con un destello del
@@ -58,6 +60,10 @@ Cuatro decisiones que conviene no deshacer:
     </script>
     <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
     <style>
+      /* Sólo lo que es EXCLUSIVO de la pared. Los tokens y las clases de los
+         paneles viven en `static/css/vigia-paneles.css`, que también carga El
+         Site de La Gerencia: las dos pantallas se mantienen a la par por
+         compartir la hoja, no por copiarla (regla de Oscar, 2026-08-22). */
       /* El tema de DaisyUI, mapeado a la paleta de El Despacho. Los valores van
          en OKLCH y sin la función porque DaisyUI 4 los aplica como
          `oklch(var(--p))`; un hex aquí no pintaría nada. */
@@ -88,79 +94,6 @@ Cuatro decisiones que conviene no deshacer:
         --border-btn: 1px; --tab-border: 1px; --tab-radius: .5rem;
       }
 
-      /* ── Los niveles de texto y superficie, como tokens ──────────────────
-         Antes había 69 `text-gray-*` clavados por siete plantillas, y eso hacía
-         dos cosas mal: el contraste no se podía ajustar en un solo lugar (con luz
-         de día, un gris 600 sobre negro simplemente no se lee) y no había forma
-         de tener modo claro sin duplicar cada clase.
-
-         Los grises van MÁS CLAROS que la paleta general del repo a propósito:
-         esto es una pared que se mira de lejos y a veces con el sol encima, no
-         una pantalla a medio metro. Lo que en una interfaz normal es «texto tenue
-         elegante», aquí es texto invisible. */
-      :root {
-        --vg-fondo:   #0f0f0f;   /* la página            */
-        --vg-tarjeta: #191919;   /* los paneles          */
-        --vg-realce:  #2f2f2f;   /* barras y pastillas   */
-        --vg-borde:   #383838;
-        --vg-1: #ffffff;         /* el dato protagonista */
-        --vg-2: #eaedf2;         /* datos normales       */
-        --vg-3: #c6ccd8;         /* etiquetas            */
-        --vg-4: #a3abba;         /* contexto             */
-        --vg-5: #838c9c;         /* lo más tenue         */
-        --vg-riel: #333333;      /* el arco de fondo     */
-      }
-      /* El modo claro. Los niveles son los MISMOS, invertidos: así ninguna
-         plantilla necesita saber en qué tema está. */
-      :root[data-tema="claro"] {
-        --vg-fondo:   #e9edf4;
-        --vg-tarjeta: #ffffff;
-        --vg-realce:  #dfe4ee;
-        --vg-borde:   #c7cedb;
-        --vg-1: #0b1220;
-        --vg-2: #232d44;
-        --vg-3: #414c66;
-        --vg-4: #5a6580;
-        --vg-5: #737d94;
-        --vg-riel: #c3cbd9;
-      }
-
-      .vg-fondo   { background-color: var(--vg-fondo); }
-      .vg-tarjeta { background-color: var(--vg-tarjeta); }
-      .vg-borde   { border-color: var(--vg-borde); }
-      .vg-riel-bg { background-color: var(--vg-riel); }
-      /* El riel de los anillos: es el arco de fondo contra el que se lee el
-         relleno de color. Necesita su propio token, no `--vg-realce`, porque en
-         claro un gris de superficie contra blanco no se distingue y el anillo se
-         lee como un aro flotante. */
-      .vg-riel    { color: var(--vg-riel); }
-      /* Con transparencia, para lo que iba en `bg-gray-800/40`. */
-      .vg-realce-suave { background-color: color-mix(in srgb, var(--vg-realce) 60%, transparent); }
-      .vg-1 { color: var(--vg-1); }
-      .vg-2 { color: var(--vg-2); }
-      .vg-3 { color: var(--vg-3); }
-      .vg-4 { color: var(--vg-4); }
-      .vg-5 { color: var(--vg-5); }
-      .vg-boton { color: var(--vg-4); transition: color .15s; }
-      .vg-boton:hover { color: var(--vg-1); }
-
-      /* En claro, los colores de estado tienen que oscurecerse o se pierden sobre
-         blanco: un verde-400 pensado para fondo negro es casi invisible sobre
-         papel. Se ajustan con `color-mix` en vez de duplicar cada clase. */
-      :root[data-tema="claro"] .text-success-400 { color: #067647; }
-      :root[data-tema="claro"] .text-success-300 { color: #05603a; }
-      :root[data-tema="claro"] .text-warning-400 { color: #b54708; }
-      :root[data-tema="claro"] .text-error-400   { color: #b42318; }
-      :root[data-tema="claro"] .text-brand-300,
-      :root[data-tema="claro"] .text-brand-400   { color: #2a31d8; }
-      :root[data-tema="claro"] .text-purple-300  { color: #6927da; }
-      :root[data-tema="claro"] .text-blue-light-400 { color: #026aa2; }
-      /* Y los fondos de pastilla, que en claro necesitan más cuerpo. */
-      :root[data-tema="claro"] .bg-brand-500\/15   { background-color: #dde9ff; }
-      :root[data-tema="claro"] .bg-purple-500\/15  { background-color: #ebe9fe; }
-      :root[data-tema="claro"] .bg-success-500\/15 { background-color: #d1fadf; }
-      :root[data-tema="claro"] .bg-error-500\/15   { background-color: #fee4e2; }
-
       /* La PARED no se scrollea: es un muro, y una barra de scroll ahí sólo
          significa que algo no cabe. Pero en un teléfono el contenido no cabe por
          definición, así que ahí sí tiene que poder deslizarse — si no, la mitad
@@ -183,25 +116,6 @@ Cuatro decisiones que conviene no deshacer:
          apretujados en fila en un teléfono aunque su grid dijera una columna.
          Un desborde en una esquina descuadra la página completa. */
       html, body { overflow-x: hidden; max-width: 100%; }
-      /* Y las cadenas sin espacios —rutas, direcciones IP, huellas— sí se
-         parten: son justo las que no envuelven solas. */
-      .vigia-parte { overflow-wrap: anywhere; word-break: break-word; }
-      /* Los paneles con lista sí, cuando no cabe. */
-      .vigia-scroll { overflow-y: auto; scrollbar-width: thin; }
-      .vigia-scroll::-webkit-scrollbar { width: 6px; }
-      .vigia-scroll::-webkit-scrollbar-thumb { background: var(--vg-realce); border-radius: 3px; }
-
-      /* El renglón nuevo del flujo entra con un destello: en una pared, el
-         movimiento es lo que hace que se note que está VIVA. */
-      @keyframes vigia-entra {
-        from { background-color: rgba(70,95,255,.20); }
-        to   { background-color: transparent; }
-      }
-      .vigia-nueva { animation: vigia-entra 2.4s ease-out; }
-
-      /* El punto que late en la cabecera: la señal de "esto está corriendo". */
-      @keyframes vigia-late { 0%,100% { opacity:1 } 50% { opacity:.25 } }
-      .vigia-late { animation: vigia-late 2s ease-in-out infinite; }
 
       /* DaisyUI dibuja el anillo con `--value`; el grosor va aquí para que los
          cuatro se vean iguales sin repetirlo en cada uno. */

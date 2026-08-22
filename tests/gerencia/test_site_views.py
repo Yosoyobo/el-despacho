@@ -84,19 +84,36 @@ class TestProbar:
 
 
 class TestPartials:
-    def test_partial_infra_solo_admin(self, client, usuario_factory):
-        client.force_login(usuario_factory(rol="disenador"))
-        assert client.get("/site/partial/infra").status_code == 403
-        client.force_login(usuario_factory(rol="dueno", email="d@x.com"))
-        assert client.get("/site/partial/infra").status_code == 200
+    """2026-08-22: El Site adoptó los paneles de El Vigía.
+
+    `partial/infra` y `partial/internos` se retiraron: el fierro y el trabajo
+    del despacho los sirven ahora `site-vivo-fierro` y `site-vivo-negocio`, que
+    son los MISMOS endpoints que consume la pared del NUC. Las integraciones se
+    quedaron como bloque aparte (decisión de Oscar) y conservan el suyo.
+    """
 
     def test_partial_integraciones(self, client, usuario_factory):
         client.force_login(usuario_factory(rol="super_admin"))
         assert client.get("/site/partial/integraciones").status_code == 200
 
-    def test_partial_internos(self, client, usuario_factory):
+    def test_los_partials_viejos_ya_no_existen(self, client, usuario_factory):
         client.force_login(usuario_factory(rol="super_admin"))
-        assert client.get("/site/partial/internos").status_code == 200
+        assert client.get("/site/partial/infra").status_code == 404
+        assert client.get("/site/partial/internos").status_code == 404
+
+    def test_los_paneles_del_vigia_atienden_a_quien_puede_ver_el_site(
+        self, client, usuario_factory
+    ):
+        """La puerta nueva: desde fuera de la máquina hay que traer sesión y
+        permiso. Sin sesión sigue siendo 404 — para internet estas rutas no
+        existen, igual que antes."""
+        # Sin sesión: 404. Para internet la ruta no existe.
+        assert client.get("/site/vivo/fierro").status_code == 404
+        # Con sesión pero sin permiso: 403, como el resto de El Site.
+        client.force_login(usuario_factory(rol="disenador"))
+        assert client.get("/site/vivo/fierro").status_code == 403
+        client.force_login(usuario_factory(rol="super_admin", email="sa@x.com"))
+        assert client.get("/site/vivo/fierro").status_code == 200
 
 
 class TestAPI:

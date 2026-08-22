@@ -10648,3 +10648,71 @@ cuatro fuentes de aprendizaje, auto-activación con y sin política, y el regist
   a acumular historia.
 - **`MetaKPI` sigue vacía**: sin metas capturadas el análisis describe, pero no puede
   decir «vas adelantado» o «vas corto».
+
+---
+
+# Sesión — S-Site-Vigia · El Site adopta El Vigía (2026-08-22, VERSION 2026.08.21)
+
+Oscar, cerrando El Análisis: «en la sección de El Site en La Gerencia, agrega el
+vigía. Aprobadísimo. Refactoriza esa sección a la versión de el vigía».
+
+Había dos pantallas midiendo lo mismo con dos diseños. El Vigía cubre casi todo
+mejor —anillos con tendencia contra gauges estáticos, contenedores bautizados
+contra un conteo, flujo de peticiones que El Site ni tenía— y lo único que sólo
+existía en El Site eran las **integraciones externas con su botón «Probar»**.
+
+## Las decisiones
+
+Ronda de 4 preguntas: `/site/` **se vuelve El Vigía con sesión** · las
+integraciones **se quedan como bloque aparte** · refresco **lento MÁS botón
+manual** · la pared **se queda como página aparte**… «pero se tiene que mantener
+a la par, **debe ser una regla**».
+
+Esa última frase definió la arquitectura del sprint. Dos pantallas separadas
+divergen en silencio; la única forma de que la regla se cumpla sin depender de
+que alguien se acuerde es que **compartan las piezas**:
+
+- **Los endpoints.** `_puerta()` sustituye a `_solo_local()` en los seis paneles:
+  local pasa sin sesión (la pared), y desde fuera se exige sesión + `site.ver`.
+  El **anónimo sigue viendo 404**: abrir la puerta a La Gerencia no es razón para
+  contarle a internet qué hay detrás. La *página* de la pared conserva su candado.
+- **La hoja de estilos.** Los tokens `--vg-*` vivían en el `<style>` inline de
+  `vivo.html`. Al meter esos partials en una página que extiende `base.html`
+  **habrían salido sin color** — se extrajeron a `static/css/vigia-paneles.css`.
+  De paso, `:root[data-tema="claro"]` → `[data-tema="claro"]`, para que el
+  atributo pueda ir en el `<html>` (pared) o en un contenedor (El Site, donde el
+  `<html>` ya lo manda el tema del sistema).
+- **Un test que lo exige**: `TestElVigiaYElSiteVanALaPar` compara qué endpoints
+  pide cada página, que ambas carguen la hoja, que El Site vaya más lento y que
+  traiga su botón.
+
+Queda como **regla §4 #22** del proyecto.
+
+## Lo demás
+
+`tablero.html` rehecho con los seis paneles a ritmo lento (10s–120s) + botón
+«Actualizar» que los dispara todos (`refrescar from:body`) + aviso de «sin
+respuesta» a los dos fallos seguidos. Integraciones y su histograma, abajo, tal
+cual. Se retiraron `partials/{infra,internos,chalanes_ia}.html` y los endpoints
+`partial_infra`/`partial_internos`, que ya no aportaban nada.
+
+Y `.badge-sm` a los dos `input.css` (dual-copy §18): la traía DaisyUI, que sólo
+carga la pared, así que tres pastillas salían más grandes de este lado — justo la
+divergencia que la regla nueva quiere evitar.
+
+## Tests
+
+5 nuevos. Tres ajenos actualizados porque fijaban contratos que este sprint
+cambió a propósito: el que leía los tokens del tema desde la plantilla (ahora
+viven en el CSS) y los de los dos partials retirados. 71 verdes en `tests/site`,
+128 con los de Gerencia.
+
+## Deuda diseñada
+
+- Son **dos plantillas de página**: la regla y el test las mantienen a la par en
+  paneles y estilos, pero un cambio de LAYOUT hay que hacerlo dos veces.
+- El histograma de chequeos sigue cargando ApexCharts de unpkg; el resto de El
+  Vigía está vendoreado a propósito.
+- **La pantalla no se pudo revisar mirándola** — eso sólo se puede con el código
+  en La Sede. La lección de El Vigía sigue vigente: una pantalla se revisa
+  viéndola, y aquí queda pendiente.

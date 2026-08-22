@@ -629,16 +629,41 @@ class TestElTemaYElContraste:
             "grises clavados: no siguen el tema y en claro no se leen → " + ", ".join(malos)
         )
 
+    def _hoja_paneles(self):
+        """La hoja que comparten la pared y El Site (2026-08-22).
+
+        Los tokens salieron del `<style>` de `vivo.html` a un archivo estático
+        justo para que las dos pantallas no tengan copias que divergan.
+        """
+        from pathlib import Path
+        return (Path(__file__).resolve().parents[2] / "la-gerencia" / "static"
+                / "css" / "vigia-paneles.css")
+
     def test_los_dos_temas_definen_los_mismos_niveles(self):
         """Si un token existe en oscuro y no en claro, ese texto hereda el valor
         del otro tema y se vuelve ilegible — el modo de falla es exactamente el
         que se reportó."""
         import re
-        t = (self._plantillas()[0]).read_text()
-        oscuro = set(re.findall(r"^\s*(--vg-[\w-]+):", t.split(':root[data-tema="claro"]')[0], re.M))
-        claro = set(re.findall(r"^\s*(--vg-[\w-]+):", t.split(':root[data-tema="claro"]')[1], re.M))
+        t = self._hoja_paneles().read_text()
+        oscuro = set(re.findall(r"^\s*(--vg-[\w-]+):", t.split('[data-tema="claro"]')[0], re.M))
+        claro = set(re.findall(r"^\s*(--vg-[\w-]+):", t.split('[data-tema="claro"]')[1], re.M))
         assert oscuro, "no se encontraron los tokens del tema oscuro"
         assert oscuro == claro, f"faltan en un tema: {oscuro ^ claro}"
+
+    def test_el_tema_no_se_ancla_a_root(self):
+        """`data-tema` tiene que poder ir en cualquier ancestro.
+
+        En la pared va en el <html>; en El Site de La Gerencia va en el
+        contenedor de los paneles, porque ahí el <html> ya lo manda el tema del
+        sistema (regla §19). Con `:root[data-tema=…]` las reglas del modo claro
+        no aplicarían en El Site y los paneles saldrían con los colores del otro
+        tema.
+        """
+        t = self._hoja_paneles().read_text()
+        assert ':root[data-tema=' not in t, (
+            "el tema de los paneles no debe anclarse a :root — rompe El Site"
+        )
+        assert '[data-tema="claro"]' in t
 
     def test_el_tema_se_aplica_antes_del_primer_pintado(self):
         """Si el script viviera al final del <body>, la pared arrancaría con un
@@ -737,4 +762,64 @@ class TestLasClasesDeColorExistenEnElCss:
             f"usadas en las plantillas y NO generadas en el CSS: {faltantes}. "
             "Recompilar Tailwind — sin la regla, el elemento sale sin color y "
             "parece un problema de diseño."
+        )
+
+
+class TestElVigiaYElSiteVanALaPar:
+    """Las dos pantallas se mantienen iguales. Es una regla (Oscar, 2026-08-22).
+
+    El Site de La Gerencia adoptó los paneles de la pared. Oscar eligió que la
+    pared siguiera siendo una página aparte (sin sesión, local) pero exigió que
+    no divergieran: «se tiene que mantener a la par, debe ser una regla».
+
+    Lo que hace que la regla se cumpla sola: las dos piden los MISMOS endpoints
+    y cargan la MISMA hoja de estilos. Estos tests lo exigen; si alguien agrega
+    un panel a una y olvida la otra, el build lo caza.
+    """
+
+    def _pared(self):
+        from pathlib import Path
+        return (Path(__file__).resolve().parents[2] / "la-gerencia" / "templates"
+                / "site" / "vivo.html").read_text()
+
+    def _site(self):
+        from pathlib import Path
+        return (Path(__file__).resolve().parents[2] / "la-gerencia" / "templates"
+                / "site" / "tablero.html").read_text()
+
+    def _paneles(self, texto: str) -> set:
+        import re
+        return set(re.findall(r"site-vivo-[a-z]+", texto))
+
+    def test_las_dos_pantallas_piden_los_mismos_paneles(self):
+        pared, site = self._paneles(self._pared()), self._paneles(self._site())
+        assert pared, "la pared no está pidiendo ningún panel"
+        faltan = pared - site
+        sobran = site - pared
+        assert not faltan, f"El Site no tiene estos paneles de la pared: {faltan}"
+        assert not sobran, f"El Site pide paneles que la pared no tiene: {sobran}"
+
+    def test_las_dos_cargan_la_misma_hoja_de_estilos(self):
+        for nombre, texto in (("la pared", self._pared()), ("El Site", self._site())):
+            assert "css/vigia-paneles.css" in texto, (
+                f"{nombre} no carga la hoja compartida: sus paneles saldrían sin color"
+            )
+
+    def test_el_site_va_mas_lento_que_la_pared(self):
+        """La pared refresca al instante; desde Gerencia no hace falta y le
+        pegaría al NUC con cada persona que tenga la página abierta."""
+        import re
+
+        def ritmos(texto):
+            return [int(s) for s in re.findall(r"every (\d+)s", texto)]
+
+        assert max(ritmos(self._pared())) <= 30
+        assert min(ritmos(self._site())) >= 10
+
+    def test_el_site_trae_el_boton_de_actualizar(self):
+        """Refresco lento **y** botón manual — las dos cosas que pidió Oscar."""
+        site = self._site()
+        assert "site-actualizar" in site
+        assert "refrescar from:body" in site, (
+            "el botón debe disparar todos los paneles de una"
         )

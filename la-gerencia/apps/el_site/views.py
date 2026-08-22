@@ -180,23 +180,18 @@ def _ctx_global(infra: dict, integ: dict, intern: dict) -> dict:
 def tablero(request):
     if (r := _gate(request)) is not None:
         return r
+    # 2026-08-22: los paneles del fierro, las peticiones, los contenedores, el
+    # trabajo del despacho y Los Chalanes los sirve El Vigía — la página los pide
+    # a sus mismos endpoints, así que aquí sólo queda lo que es exclusivo de El
+    # Site: las integraciones externas y su histograma.
     infra = _ctx_infra()
     integ = _ctx_integraciones()
     intern = _ctx_internos()
-    try:
-        from lib.analistas.stats import resumen_global, tarjetas_chalanes
-        chalanes_resumen = resumen_global(dias=30)
-        chalanes_tarjetas = tarjetas_chalanes(dias=30)
-    except Exception:  # noqa: BLE001 — El Site nunca debe tumbarse por esto.
-        chalanes_resumen = {"costo_total": 0, "llamadas_total": 0, "tokens_total": 0, "por_proveedor": []}
-        chalanes_tarjetas = []
     ctx = {
         "infra": infra,
         "integraciones": integ,
         "internos": intern,
         "global": _ctx_global(infra, integ, intern),
-        "chalanes_resumen": chalanes_resumen,
-        "chalanes_tarjetas": chalanes_tarjetas,
         # El enlace a El Vigía sale SÓLO si esta petición llegó directo a la
         # máquina: por el dominio la ruta da 404, y ofrecer un enlace que no
         # lleva a ninguna parte es peor que no ofrecerlo.
@@ -205,22 +200,10 @@ def tablero(request):
     return render(request, "site/tablero.html", ctx)
 
 
-def partial_infra(request):
-    if (r := _gate(request)) is not None:
-        return r
-    return render(request, "site/partials/infra.html", {"infra": _ctx_infra()})
-
-
 def partial_integraciones(request):
     if (r := _gate(request)) is not None:
         return r
     return render(request, "site/partials/integraciones.html", {"integraciones": _ctx_integraciones()})
-
-
-def partial_internos(request):
-    if (r := _gate(request)) is not None:
-        return r
-    return render(request, "site/partials/internos.html", {"internos": _ctx_internos()})
 
 
 @require_http_methods(["POST"])

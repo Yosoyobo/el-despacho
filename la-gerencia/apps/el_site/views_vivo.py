@@ -32,11 +32,12 @@ import os
 import time
 from datetime import UTC, datetime
 
-from django.http import Http404
+from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_safe
 
+from lib.permisos import puede, tiene_rol
 from lib.site import actividad, contenedores, internos, pulso
 from lib.site.gauges import snapshot_gauges_minimo
 
@@ -66,6 +67,30 @@ def _solo_local(request) -> None:
         raise Http404("El Vigía sólo se atiende en la máquina que vigila.")
 
 
+def _puerta(request):
+    """Los PANELES tienen dos puertas; la PÁGINA de la pared sólo una.
+
+    El Site de La Gerencia (2026-08-22) muestra los mismos paneles que la pared,
+    y los pide a estos mismos endpoints. Eso es lo que hace que las dos pantallas
+    se mantengan a la par de verdad: comparten el dato, no sólo el parecido.
+
+    - Desde la máquina (loopback, LAN, tailnet): pasa sin sesión — es la pared.
+    - Desde fuera y con sesión: hay que tener permiso de El Site.
+    - Desde fuera y sin sesión: **404**, igual que antes. Para internet estas
+      rutas siguen sin existir; abrir la puerta a La Gerencia no es motivo para
+      contarle al mundo qué hay detrás.
+
+    Devuelve una respuesta si hay que cortar, o None si puede pasar.
+    """
+    if _es_local(request):
+        return None
+    if not request.user.is_authenticated:
+        raise Http404("El Vigía sólo se atiende en la máquina que vigila.")
+    if not (tiene_rol(request.user, "super_admin") or puede(request.user, "site", "ver")):
+        return HttpResponseForbidden("Acceso restringido a quien puede ver El Site.")
+    return None
+
+
 # ── Página ───────────────────────────────────────────────────────────────────
 
 @require_safe
@@ -81,7 +106,8 @@ def vivo(request):
 @require_safe
 def vivo_fierro(request):
     """CPU, memoria, disco y contenedores de ESTA máquina. Refresca cada 5 s."""
-    _solo_local(request)
+    if (r := _puerta(request)) is not None:
+        return r
     ctx = {"infra": {"disponible": False}}
     try:
         ctx["infra"] = snapshot_gauges_minimo()
@@ -201,7 +227,8 @@ def vivo_fierro(request):
 @require_safe
 def vivo_peticiones(request):
     """El flujo de peticiones de los tres servicios. Refresca cada 2 s."""
-    _solo_local(request)
+    if (r := _puerta(request)) is not None:
+        return r
     filas: list = []
     error = ""
     try:
@@ -228,7 +255,8 @@ def vivo_peticiones(request):
 @require_safe
 def vivo_contenedores(request):
     """CPU y memoria por contenedor, al estilo `docker stats`. Cada 3 s."""
-    _solo_local(request)
+    if (r := _puerta(request)) is not None:
+        return r
     filas: list = []
     error = ""
     try:
@@ -311,7 +339,8 @@ def vivo_chalanes(request):
 
     Cada 15 s: son consultas a la base y el gasto no cambia por segundo.
     """
-    _solo_local(request)
+    if (r := _puerta(request)) is not None:
+        return r
     ctx: dict = {"llamadas": [], "por_chalan": [], "hoy": _ia_hoy()}
     try:
         from django.db.models import Count, DecimalField, Q, Sum
@@ -388,7 +417,8 @@ def vivo_ventana(request):
     Cada 30 s: son llamadas por internet (DigitalOcean y las dos sondas) y no
     tiene sentido machacarlas.
     """
-    _solo_local(request)
+    if (r := _puerta(request)) is not None:
+        return r
     ctx: dict = {}
     try:
         from lib.site import droplet
@@ -456,7 +486,8 @@ def _sondear_puertas() -> list[dict]:
 def vivo_negocio(request):
     """Qué está haciendo el sistema POR EL DESPACHO, no por la máquina.
     Cada 20 s: son consultas a la base, no hace falta más seguido."""
-    _solo_local(request)
+    if (r := _puerta(request)) is not None:
+        return r
     ctx: dict = {}
     try:
         ctx["internos"] = _fechas_locales(internos.snapshot())
