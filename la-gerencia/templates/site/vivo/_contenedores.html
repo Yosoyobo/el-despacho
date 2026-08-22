@@ -27,7 +27,7 @@ lejos, y una barra sí.
       <div class="flex items-baseline justify-between gap-2">
         <span class="truncate text-sm font-medium text-white">{{ f.pieza }}</span>
         <span class="shrink-0 font-mono text-[11px] tabular-nums text-gray-400">
-          {{ f.mem_mb|default:"—" }}<span class="text-gray-700">MB</span>
+          {{ f.mem_mb|default_if_none:"—" }}<span class="text-gray-700">MB</span>
         </span>
       </div>
       {% if f.oficio %}
@@ -40,9 +40,9 @@ lejos, y una barra sí.
         {% endcomment %}
         <progress class="progress h-1.5 flex-1
                     {% if f.cpu_pct >= 60 %}progress-error{% elif f.cpu_pct >= 25 %}progress-warning{% else %}progress-primary{% endif %}"
-                  value="{{ f.cpu_pct|default:0 }}" max="100"></progress>
+                  value="{{ f.cpu_pct|default_if_none:0 }}" max="100"></progress>
         <span class="w-11 shrink-0 text-right font-mono text-[10px] tabular-nums text-gray-500">
-          {{ f.cpu_pct|default:"—" }}%
+          {{ f.cpu_pct|default_if_none:"—" }}%
         </span>
       </div>
     </div>

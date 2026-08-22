@@ -60,21 +60,15 @@ alguien escribió.
     </div>
   {% else %}
   <div class="vigia-scroll min-h-0 flex-1">
+    {# Los anchos van en las celdas: un `<col>` no puede esconderse. #}
     <table class="w-full table-fixed">
-      <colgroup>
-        <col style="width:58px">   {# hora    #}
-        <col style="width:120px">  {# quién   #}
-        <col>                      {# qué le pidió #}
-        <col style="width:88px">   {# chalán  #}
-        <col style="width:112px">  {# costo   #}
-      </colgroup>
       <tbody>
         {% for ll in llamadas %}
         <tr class="border-b border-gray-800/40 last:border-0 align-middle">
-          <td class="whitespace-nowrap py-1 pl-4 pr-1 font-mono text-[11px] text-gray-600 tabular-nums">
+          <td class="w-[58px] whitespace-nowrap py-1 pl-3 pr-2 font-mono text-[11px] text-gray-600 tabular-nums">
             {{ ll.cuando|time:"H:i" }}
           </td>
-          <td class="truncate px-1 text-xs text-gray-300" title="{{ ll.quien }}">{{ ll.quien }}</td>
+          <td class="hidden truncate px-1 text-xs text-gray-300 sm:table-cell sm:w-[120px]" title="{{ ll.quien }}">{{ ll.quien }}</td>
           <td class="px-2 py-1">
             <div class="truncate text-sm text-white">
               {{ ll.estacion }}
@@ -86,13 +80,13 @@ alguien escribió.
               {% endif %}
             </div>
             <div class="truncate font-mono text-[10px] text-gray-700">
-              {{ ll.modelo }} · huella {{ ll.huella }}
+              <span class="sm:hidden">{{ ll.quien }} · </span><span class="lg:hidden">{{ ll.chalan }} · </span>{{ ll.modelo }} · huella {{ ll.huella }}
             </div>
           </td>
-          <td class="whitespace-nowrap px-2">
+          <td class="hidden whitespace-nowrap px-2 lg:table-cell lg:w-[88px]">
             <span class="badge badge-sm border-0 bg-gray-800 text-[10px] text-gray-300">{{ ll.chalan }}</span>
           </td>
-          <td class="whitespace-nowrap py-1 pl-1 pr-4 text-right font-mono text-[11px] tabular-nums">
+          <td class="w-[104px] whitespace-nowrap py-1 pl-1 pr-3 text-right font-mono text-[11px] tabular-nums">
             <span class="text-gray-500">{{ ll.tokens }}t</span>
             <span class="{% if ll.ms >= 4000 %}text-warning-400{% else %}text-gray-600{% endif %}">{{ ll.ms }}<span class="text-gray-700">ms</span></span>
             <div class="text-success-300">${{ ll.costo|floatformat:4 }}</div>

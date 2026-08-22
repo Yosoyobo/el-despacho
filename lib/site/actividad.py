@@ -43,7 +43,16 @@ SERVICIOS: tuple[tuple[str, str], ...] = (
 # Rutas que sólo son ruido en una pantalla en vivo: sondas de salud y el sondeo
 # que hace la propia página. Sin esto, el flujo se llena de `/ping` cada 10 s y
 # tapa lo que de verdad está pasando.
-_RUIDO = re.compile(r"^/(ping|salud|sistema/aviso-deploy|site/vivo)")
+# `/static/` entra aquí porque la propia pantalla pide su CSS y su HTMX al
+# arrancar, y esos tres renglones tapaban el tráfico de verdad — se veía un flujo
+# lleno de «Recursos del navegador» y nada más.
+_RUIDO = re.compile(
+    r"^/(ping|salud|sistema/aviso-deploy|site/vivo|static/|favicon|sw\.js"
+    # Los iconos que iOS y Android piden por su cuenta al guardar la app en la
+    # pantalla de inicio. No los pidió nadie, y como no existen salen en 404: se
+    # veían tres renglones rojos que parecían un problema y no lo son.
+    r"|apple-touch-icon|manifest)"
+)
 
 # gunicorn, formato de acceso por default + la duración que agrega el entrypoint:
 #   IP - - [fecha] "MÉTODO /ruta HTTP/1.1" CÓDIGO BYTES "referer" "ua" MICROSEG
@@ -160,8 +169,14 @@ def _parsear_gunicorn(resto: str) -> dict[str, Any] | None:
     }
 
 
-def peticiones(limite: int = 40, *, por_servicio: int = 60) -> list[dict[str, Any]]:
+def peticiones(limite: int = 40, *, por_servicio: int = 400) -> list[dict[str, Any]]:
     """Las últimas peticiones de los tres servicios, mezcladas y ordenadas.
+
+    `por_servicio` se pide GENEROSO (400 líneas) porque el filtro de ruido corre
+    DESPUÉS de leer: la propia pantalla pide su CSS, su HTMX y sus seis paneles
+    cada pocos segundos, así que de 60 líneas podían quedar cero peticiones de
+    personas y el panel más grande de la pared salía vacío. Leer 400 líneas de un
+    log ya escrito no le cuesta nada a nadie.
 
     Nunca lanza: un contenedor apagado o un socket ausente devuelven lo que se
     pueda leer del resto.

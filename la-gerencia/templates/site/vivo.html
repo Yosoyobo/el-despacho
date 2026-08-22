@@ -65,9 +65,31 @@ Cuatro decisiones que conviene no deshacer:
         --border-btn: 1px; --tab-border: 1px; --tab-radius: .5rem;
       }
 
-      /* Una pared no se scrollea ni se selecciona con el dedo. */
-      html, body { height: 100%; overflow: hidden; }
+      /* La PARED no se scrollea: es un muro, y una barra de scroll ahí sólo
+         significa que algo no cabe. Pero en un teléfono el contenido no cabe por
+         definición, así que ahí sí tiene que poder deslizarse — si no, la mitad
+         de los paneles quedan inalcanzables. El corte va en `lg`, el mismo que
+         usa el grid para pasar de apilado a tablero. */
       body { -webkit-user-select: none; user-select: none; }
+      @media (min-width: 1024px) {
+        html, body { height: 100%; overflow: hidden; }
+      }
+      @media (max-width: 1023px) {
+        html, body { min-height: 100%; }
+        /* En móvil el alto lo pone el contenido, no el viewport. */
+        .vigia-marco { height: auto !important; }
+      }
+
+      /* NADA estira la página a lo ancho, en ningún tamaño. Si algo no cabe,
+         envuelve o se recorta — pero no arrastra al resto. Sin esto, un solo
+         elemento ancho (una ruta larga, la línea del pie) hace que TODO el
+         layout se calcule sobre el ancho desbordado: los cuatro anillos salían
+         apretujados en fila en un teléfono aunque su grid dijera una columna.
+         Un desborde en una esquina descuadra la página completa. */
+      html, body { overflow-x: hidden; max-width: 100%; }
+      /* Y las cadenas sin espacios —rutas, direcciones IP, huellas— sí se
+         parten: son justo las que no envuelven solas. */
+      .vigia-parte { overflow-wrap: anywhere; word-break: break-word; }
       /* Los paneles con lista sí, cuando no cabe. */
       .vigia-scroll { overflow-y: auto; scrollbar-width: thin; }
       .vigia-scroll::-webkit-scrollbar { width: 6px; }
@@ -92,13 +114,13 @@ Cuatro decisiones que conviene no deshacer:
 </head>
 <body class="h-full bg-gray-950 text-gray-100 font-inter antialiased">
 
-<div class="flex h-full flex-col gap-2.5 p-3">
+<div class="vigia-marco flex h-full flex-col gap-2.5 p-2 sm:p-3">
 
   {# ── Cabecera ─────────────────────────────────────────────────────────── #}
-  <header class="flex shrink-0 items-center justify-between px-1">
-    <h1 class="flex items-baseline gap-3">
+  <header class="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1">
+    <h1 class="flex flex-wrap items-baseline gap-x-3">
       <span class="text-title-sm font-semibold tracking-tight text-white">El Vigía</span>
-      <span class="text-sm text-gray-400">el NUC de Learning Center, en vivo</span>
+      <span class="hidden text-sm text-gray-400 sm:inline">el NUC de Learning Center, en vivo</span>
       <span class="vigia-late text-success-400" aria-hidden="true">●</span>
     </h1>
     <div class="flex items-center gap-5">
@@ -107,15 +129,15 @@ Cuatro decisiones que conviene no deshacer:
             class="hidden rounded-lg bg-error-500/15 px-3 py-1 text-sm font-medium text-error-400">
         ● sin respuesta del servidor
       </span>
-      <span id="vigia-fecha" class="text-sm text-gray-500"></span>
-      <span id="vigia-reloj" class="font-mono text-title-sm tabular-nums text-gray-200">--:--:--</span>
+      <span id="vigia-fecha" class="hidden text-sm text-gray-500 sm:inline"></span>
+      <span id="vigia-reloj" class="font-mono text-lg tabular-nums text-gray-200 sm:text-title-sm">--:--:--</span>
     </div>
   </header>
 
   {# ── El fierro: cuatro anillos ─────────────────────────────────────────── #}
   <div class="shrink-0" hx-get="{% url 'site-vivo-fierro' %}"
        hx-trigger="load, every 5s" hx-swap="innerHTML">
-    <div class="grid grid-cols-4 gap-2.5">
+    <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
       {% for _ in "1234" %}
       <div class="flex animate-pulse items-center gap-4 rounded-2xl border border-gray-800 bg-gray-900 p-4">
         <div class="h-24 w-24 rounded-full bg-gray-800"></div>
@@ -129,11 +151,20 @@ Cuatro decisiones que conviene no deshacer:
   </div>
 
   {# ── Cuerpo ────────────────────────────────────────────────────────────── #}
-  <div class="grid min-h-0 flex-1 grid-cols-12 grid-rows-5 gap-2.5">
+  {% comment %}
+  El reparto: arriba las dos cosas que se miran de lejos (el flujo y Los
+  Chalanes), abajo tres paneles de igual ancho.
 
-    {# El flujo, que es lo que se mira de lejos: la mitad de la pantalla. #}
-    <section class="col-span-7 row-span-5 flex min-h-0 flex-col overflow-hidden
-                    rounded-2xl border border-gray-800 bg-gray-900">
+  El flujo NO se lleva todo el alto a propósito, aunque sea el protagonista: de
+  madrugada no hay tráfico, y el panel más grande de la pared no puede ser el que
+  se vacía. Con tres filas arriba y dos abajo, cuando no hay peticiones el hueco
+  es de un panel, no de media pantalla.
+  {% endcomment %}
+  <div class="grid min-h-0 gap-2.5 md:grid-cols-12 lg:flex-1 lg:grid-rows-5">
+
+    <section class="flex min-h-[22rem] flex-col overflow-hidden rounded-2xl
+                    border border-gray-800 bg-gray-900 md:col-span-12
+                    lg:col-span-7 lg:row-span-3 lg:min-h-0">
       <div hx-get="{% url 'site-vivo-peticiones' %}"
            hx-trigger="load, every 2s" hx-swap="innerHTML"
            class="flex min-h-0 flex-1 flex-col">
@@ -142,39 +173,40 @@ Cuatro decisiones que conviene no deshacer:
     </section>
 
     {# Los Chalanes: la auditoría del gasto de IA. #}
-    <section class="col-span-5 row-span-3 min-h-0 overflow-hidden rounded-2xl
-                    border border-gray-800 bg-gray-900"
+    <section class="min-h-[22rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-12
+                    lg:col-span-5 lg:row-span-3 lg:min-h-0"
              hx-get="{% url 'site-vivo-chalanes' %}"
              hx-trigger="load, every 15s" hx-swap="innerHTML">
       <p class="p-5 text-sm text-gray-600">Preguntando por Los Chalanes…</p>
     </section>
 
     {# Las piezas de la máquina. #}
-    <section class="col-span-2 row-span-2 min-h-0 overflow-hidden rounded-2xl
-                    border border-gray-800 bg-gray-900"
+    <section class="min-h-[18rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
              hx-get="{% url 'site-vivo-contenedores' %}"
              hx-trigger="load, every 3s" hx-swap="innerHTML">
       <p class="p-5 text-sm text-gray-600">Midiendo las piezas…</p>
     </section>
 
     {# El trabajo del despacho. #}
-    <section class="col-span-2 row-span-2 min-h-0 overflow-hidden rounded-2xl
-                    border border-gray-800 bg-gray-900"
+    <section class="min-h-[18rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
              hx-get="{% url 'site-vivo-negocio' %}"
              hx-trigger="load, every 20s" hx-swap="innerHTML">
       <p class="p-5 text-sm text-gray-600">Consultando el despacho…</p>
     </section>
 
     {# La ventana: el droplet que da la cara a internet. #}
-    <section class="col-span-1 row-span-2 min-h-0 overflow-hidden rounded-2xl
-                    border border-gray-800 bg-gray-900"
+    <section class="min-h-[18rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-12 lg:col-span-4 lg:row-span-2 lg:min-h-0"
              hx-get="{% url 'site-vivo-ventana' %}"
              hx-trigger="load, every 30s" hx-swap="innerHTML">
       <p class="p-4 text-xs text-gray-600">La ventana…</p>
     </section>
   </div>
 
-  <footer class="shrink-0 text-center text-[11px] text-gray-600">
+  <footer class="vigia-parte shrink-0 text-center text-[11px] text-gray-600">
     Sólo se atiende en la máquina que vigila ({{ host_pedido }}) ·
     Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener"
       class="text-gray-500 hover:text-gray-400">NoKo Devs</a> · © 2026 Learning Center

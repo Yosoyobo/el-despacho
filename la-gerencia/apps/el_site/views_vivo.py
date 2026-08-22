@@ -30,7 +30,7 @@ from __future__ import annotations
 import ipaddress
 import os
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 from django.http import Http404
 from django.shortcuts import render
@@ -92,23 +92,59 @@ def vivo_fierro(request):
     # no se acumula nada, que es lo correcto — la serie existe para la pared.
     infra = ctx["infra"] or {}
     g = infra.get("gauges") or {}
+    # Ojo con los nombres: `snapshot_gauges_minimo()` los devuelve en español
+    # —`memoria`, `disco`— y la primera versión de esto pedía `mem` y `disk`. El
+    # `.get()` devolvía None sin quejarse, así que las dos series se guardaban
+    # vacías y las gráficas decían «midiendo la tendencia…» para siempre. Un
+    # `.get()` con la llave equivocada no falla: miente en silencio.
+    io = (infra.get("host") or {}).get("disco_io") or {}
     pulso.anotar_varias({
         "cpu": (g.get("cpu") or {}).get("pct"),
-        "mem": (g.get("mem") or {}).get("pct"),
-        "disco": (g.get("disk") or {}).get("pct"),
+        "mem": (g.get("memoria") or {}).get("pct"),
+        # Del disco se guarda su ACTIVIDAD, no su porcentaje ocupado: ese último
+        # es 14.5% hoy y 14.5% mañana, y una línea plana no dice nada. Lo que se
+        # mueve —y lo que interesa— es cuánto está trabajando.
+        "disco_lee": io.get("lectura_mb_s"),
+        "disco_escribe": io.get("escritura_mb_s"),
     })
-    series = pulso.leer_varias(["cpu", "mem", "disco", "peticiones"])
+    # La memoria en GIGAS, no en megas. «3933.8 MB usados» obliga a dividir
+    # mentalmente para saber si son muchos o pocos; «3.8 de 15 GB» se entiende de
+    # un vistazo, que es todo lo que se le pide a una pared.
+    mem = (infra.get("host") or {}).get("memoria") or {}
+    if mem.get("disponible"):
+        ctx["mem_gb"] = {
+            "usado": round((mem.get("usado_mb") or 0) / 1024, 1),
+            "libre": round((mem.get("libre_mb") or 0) / 1024, 1),
+            "total": round((mem.get("total_mb") or 0) / 1024, 1),
+        }
+
+    series = pulso.leer_varias(
+        ["cpu", "mem", "disco_lee", "disco_escribe", "peticiones"]
+    )
+    # `relieve=True` en CPU y memoria porque son las dos que se mueven POCO y en
+    # rangos estrechos: con el eje de 0 a 100, una memoria oscilando entre 25.4% y
+    # 25.9% sale como una raya recta y parece que no pasa nada. Con el eje
+    # ajustado a la propia serie, ese medio punto se ve como la pendiente que es.
+    # No engaña: el número absoluto va al lado, grande.
     ctx["trazos"] = {
-        # Los porcentajes con tope 100 para que la línea diga la verdad: al 20%
-        # se ve baja. Con el máximo tomado del dato, un 20% plano llenaría la
-        # gráfica y parecería saturación.
-        "cpu": pulso.area(series["cpu"], maximo=100),
-        "mem": pulso.area(series["mem"], maximo=100),
-        "disco": pulso.area(series["disco"], maximo=100),
-        # Las peticiones sí van con escala propia: importa el relieve, no el tope.
-        "peticiones": pulso.area(series["peticiones"]),
+        "cpu": pulso.area(series["cpu"], relieve=True),
+        "mem": pulso.area(series["mem"], relieve=True),
+        # La actividad del disco sí arranca en cero de verdad, así que su eje
+        # empieza en cero: un pico se tiene que ver como un pico.
+        "disco_lee": pulso.area(series["disco_lee"]),
+        "disco_escribe": pulso.area(series["disco_escribe"]),
     }
-    ctx["puntos_peticiones"] = [p for p in series["peticiones"] if p is not None]
+    ctx["io"] = io
+    # Las peticiones van en barras: es un conteo discreto que toca el cero
+    # seguido, y un área con huecos se ve como trozos sueltos en vez de un ritmo.
+    # Se toman los últimos 32 puntos porque más barras en ese ancho quedan de un
+    # píxel y no se distingue nada.
+    recientes = series["peticiones"][-32:]
+    tope = max([p for p in recientes if p is not None] or [1]) or 1
+    ctx["barras_peticiones"] = [
+        {"n": int(p or 0), "pct": round((p or 0) / tope * 100)}
+        for p in recientes
+    ] if len(recientes) >= 2 else []
     return render(request, "site/vivo/_fierro.html", ctx)
 
 
@@ -150,6 +186,56 @@ def vivo_contenedores(request):
     except Exception as exc:  # noqa: BLE001
         error = str(exc)[:200]
     return render(request, "site/vivo/_contenedores.html", {"filas": filas, "error": error})
+
+
+def _trabajo_del_despacho() -> dict:
+    """Lo que el despacho tiene entre manos AHORA. Nunca lanza.
+
+    El panel mostraba sólo infraestructura —el almacén, la cola, el respaldo, el
+    último despliegue— que es información de la máquina, no del negocio. En una
+    pared del taller lo que importa es cuántos proyectos hay vivos y qué está
+    esperando a alguien.
+
+    Las consultas son conteos sobre columnas indexadas y van juntas en un solo
+    viaje mental: si alguna falla, ese renglón sale vacío y los demás siguen.
+    """
+    salida: dict = {}
+    try:
+        from apps.el_pizarron.models.tarea import Tarea
+        from apps.los_proyectos.models.estado import EstadoProyecto
+        from apps.los_proyectos.models.proyecto import Proyecto
+        from django.utils import timezone as _tz
+
+        # Los estados terminales salen del catálogo, no de una lista escrita a
+        # mano: si el super_admin agrega uno, la cuenta lo respeta sola.
+        terminales = list(
+            EstadoProyecto.objects.filter(terminal=True).values_list("slug", flat=True)
+        )
+        vivos = Proyecto.objects.filter(archivado=False).exclude(estado__in=terminales)
+        salida["proyectos"] = vivos.count()
+        salida["por_cotizar"] = vivos.filter(estado="por_cotizar").count()
+
+        hoy = _tz.localdate()
+        pendientes = Tarea.objects.filter(archivada=False).exclude(
+            estado__in=list(
+                __import__("apps.el_pizarron.models.estado_tarea", fromlist=["EstadoTarea"])
+                .EstadoTarea.objects.filter(terminal=True)
+                .values_list("slug", flat=True)
+            )
+        )
+        salida["tareas"] = pendientes.count()
+        salida["atrasadas"] = pendientes.filter(fecha_compromiso__lt=hoy).count()
+    except Exception:  # noqa: BLE001 — la pared nunca se cae por un conteo
+        pass
+
+    try:
+        from apps.facturacion.models.factura import Factura
+        porcobrar = Factura.vigentes.filter(estado__in=("emitida", "cobrada_parcial"))
+        salida["facturas"] = porcobrar.count()
+        salida["monto_por_cobrar"] = sum((f.saldo_pendiente or 0) for f in porcobrar)
+    except Exception:  # noqa: BLE001
+        pass
+    return salida
 
 
 @require_safe
@@ -318,6 +404,7 @@ def vivo_negocio(request):
         ctx["internos"] = {}
     ctx["ia"] = _ia_hoy()
     ctx["medios"] = _medios()
+    ctx["trabajo"] = _trabajo_del_despacho()
     return render(request, "site/vivo/_negocio.html", ctx)
 
 
@@ -349,13 +436,31 @@ def _fechas_locales(snap: dict) -> dict:
     El commit venía completo (64 caracteres) y se comía el renglón; siete
     bastan para identificarlo, que es para lo que se mira en una pared.
     """
-    for llave in ("backup_remoto", "backup_local", "deploy", "portavoz_head"):
+    for llave in ("backup_remoto", "backup_medios", "backup_local",
+                  "deploy", "portavoz_head"):
         bloque = snap.get(llave)
-        if isinstance(bloque, dict):
-            if bloque.get("creado_en"):
-                bloque["cuando"] = _cuando(bloque["creado_en"])
-            if bloque.get("commit"):
-                bloque["commit_corto"] = str(bloque["commit"])[:7]
+        if not isinstance(bloque, dict):
+            continue
+        if bloque.get("creado_en"):
+            bloque["cuando"] = _cuando(bloque["creado_en"])
+        # El respaldo local no guarda un ISO: trae la marca del archivo en disco.
+        elif bloque.get("creado_en_ts"):
+            bloque["cuando"] = _cuando(
+                datetime.fromtimestamp(bloque["creado_en_ts"], tz=UTC).isoformat()
+            )
+        if bloque.get("commit"):
+            bloque["commit_corto"] = str(bloque["commit"])[:7]
+        # El tamaño en la unidad que se lee. «449106 bytes» no le dice nada a
+        # nadie desde una pared, y «0.4 MB» tampoco: en KB se ve que hay algo.
+        # Importa porque es justo el número que delata un respaldo vacío — pasó
+        # con un dump de 20 bytes que llegó a HAL pareciendo copia buena.
+        n = bloque.get("tamano_bytes")
+        if n:
+            bloque["peso"] = (f"{n / 1048576:.1f} MB" if n >= 1048576
+                              else f"{n / 1024:.0f} KB")
+        elif n == 0:
+            # Un cero explícito es una alarma, no un dato: se dice con palabras.
+            bloque["peso"] = "vacío"
     return snap
 
 

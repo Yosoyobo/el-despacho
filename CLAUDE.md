@@ -5833,6 +5833,85 @@ enfrente es Chrome headless por el tailnet
 (`--headless=new --window-size=1920,1080 --virtual-time-budget=20000 --screenshot`,
 que es lo que espera a que los paneles HTMX carguen).
 
+**Ronda de rediseño de Oscar (mismo día).** Levantó la regla §4 #1 para permitir
+**DaisyUI**, que va vendoreado —se instala por npm y el repo compila Tailwind con el
+binario standalone sin Node, así que se trae `styled.min.css` (139 KB) y NO
+`full.css` (3.1 MB): la diferencia son sus 30 temas, que no se usan porque el tema
+se define con la paleta de El Despacho en **OKLCH** (DaisyUI 4 los aplica como
+`oklch(var(--p))`; un hex ahí no pinta nada). Los anillos, en cambio, terminaron en
+**SVG propio**: el `radial-progress` de DaisyUI salía con el arco desplazado y el
+número caído afuera, porque lo dibuja con `conic-gradient` y máscaras en
+pseudo-elementos; un `<circle>` con `stroke-dasharray` no depende de nada.
+
+Lo entregado: **quién · qué · a dónde** en el flujo (`lib/site/acciones.py` traduce
+la ruta a lo que la persona hace, y el «quién» es el PRIMER salto del
+X-Forwarded-For, que los entrypoints ahora loguean **antes** de los microsegundos
+porque `_RE_MICROS` ancla al final de la línea) · **nombres con sentido**
+(`contenedores.bautizar`: «despacho-postgres» → El Archivero · guarda todo) ·
+**gráficas** (`lib/site/pulso.py`, serie corta en Redis porque con varios workers
+una serie en memoria del proceso salta según quién atienda el refresco; la escribe
+quien la lee, así que si nadie mira no se acumula nada) · **Los Chalanes** con su
+auditoría hash-only y el reparto del gasto · **La ventana** (el droplet, con las
+tres puertas sondeadas primero y las especificaciones de DO después) · el
+**trabajo del despacho** y los **tres respaldos con su ubicación** · y la página
+**responsiva**.
+
+**Y el fierro del NUC, «ahora es cuando»:** El Taller a 8×4 y La Gerencia a 4×4 —
+la cuenta que importa no es la de CPU (cinco personas no saturan 8 núcleos) sino la
+de ESPERAS, porque un PDF que arma Google o una llamada a un Chalán se llevan
+segundos sin usar procesador y ocupan un hilo. Postgres pasa de los 512 MB que dejó
+la mudanza a 2 G de `shared_buffers` y 8 G de `effective_cache_size`, y por fin
+`random_page_cost=1.1` + `effective_io_concurrency=200`: el default asume disco que
+gira y hace que el planeador evite índices que sí conviene usar.
+
+**Seis bugs propios, los seis cazados MIRANDO la pantalla** (ninguno se veía en el
+código, y los seis pasaban las pruebas):
+1. **`g.get("mem")` y `g.get("disk")`** cuando los nombres son `memoria` y `disco`:
+   las dos series se guardaban vacías y las gráficas decían «midiendo la
+   tendencia…» para siempre. **Un `.get()` con la llave equivocada no falla:
+   miente en silencio.** Lo reportó Oscar («no veo que se muevan las tendencias»).
+2. **El disco ocupado no se mueve** (14.5% hoy, 14.5% mañana), así que su
+   tendencia era una raya. Se mide su **lectura y escritura** (`host.disco_io`,
+   `/proc/diskstats`); la primera muestra devuelve `disponible=False` porque son
+   contadores acumulados y una sola lectura no es una tasa. El helper
+   `sumar_sectores` se extrajo para poder probarlo — un test que compare tasas
+   compara relojes. **Y su test cazó un bug futuro real**: en NVMe el disco es
+   `nvme0n1` (acaba en dígito) y la partición `nvme0n1p1`, así que descartar «lo
+   que acaba en dígito» habría tirado el disco entero cuando entre el SSD nuevo.
+3. **Con el eje de 0 a 100, lo que se mueve poco se aplasta**: la memoria
+   oscilando medio punto salía recta. `pulso.trazo(relieve=True)` ajusta el eje a
+   la propia serie. No engaña porque el número absoluto va al lado, y una serie de
+   verdad plana sigue saliendo plana.
+4. **El filtro de ruido corría DESPUÉS de cortar el log a 60 líneas**: la propia
+   pantalla pide su CSS y sus seis paneles cada pocos segundos, así que quedaban
+   cero peticiones de personas y el panel más grande de la pared salía vacío.
+5. **`|default` se aplica a valores falsy, y `0.0` es falsy**: un contenedor en
+   reposo mostraba «—» como si no se pudiera medir. `default_if_none` es el que
+   distingue «cero» de «no se sabe».
+6. **`ultimo_backup_local` buscaba en `/opt/el-despacho/backups`**, la ruta del
+   droplet. Tras la mudanza el panel decía «no existe» sin que nada estuviera roto.
+
+**Dos trampas de CSS que valen para todo el repo:**
+- **`display:none` NO aplica a `<col>`.** La especificación sólo le deja `width`,
+  `visibility`, `background` y `border`. Una columna «escondida» seguía reservando
+  su ancho, la tabla medía más que el teléfono, y ese desborde hacía que el grid
+  de arriba se calculara sobre el ancho desbordado: los cuatro anillos salían
+  apretujados en fila. **Los anchos van en las celdas** (con `table-fixed` el
+  navegador toma los de la primera fila) y una celda escondida no ocupa nada.
+- **El grid del panel manda sobre el del esqueleto.** Cambiar las columnas en
+  `vivo.html` no sirve: HTMX reemplaza ese esqueleto por el partial, y es el
+  partial el que decide.
+
+**Y una lección de método:** «no cabe en el teléfono» era **artefacto de la
+herramienta**. Chrome headless tiene un **viewport mínimo de 500px**, así que
+`--window-size=390` renderiza a 500 y recorta la imagen — lo que yo leía como
+desborde era el recorte. Se resolvió inyectando un detector en la página que
+reporta `scrollWidth` y **qué elemento** se sale (cero culpables). **Antes de
+arreglar un desborde, medirlo**: el elemento culpable se nombra, no se adivina.
+Y el candado de Bug C (§14) hay que correrlo **después** de tocar plantillas: en
+este sprint cazó cuatro comentarios multilínea, y uno se colgó a producción por
+correrlo antes del último cambio.
+
 **Un test frágil del buzón, cazado de paso** (no es de este sprint pero salió en su
 CI): `tests/taller/test_buzon.py::test_mios_solo_ve_los_propios` afirmaba
 `assert b"A2" not in resp.content` — **dos caracteres** buscados en 25 KB de HTML

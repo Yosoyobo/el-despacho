@@ -121,37 +121,56 @@ def leer_varias(series: list[str]) -> dict[str, list[float | None]]:
 
 
 def trazo(puntos: list[float | None], *, ancho: int = 100, alto: int = 30,
-          maximo: float | None = None) -> str:
+          maximo: float | None = None, relieve: bool = False) -> str:
     """Los puntos como una `polyline` de SVG, en un sistema de 0..ancho × 0..alto.
 
     Devuelve cadena vacía si no hay al menos dos puntos: una línea de un punto no
     es una tendencia, y dibujar algo ahí sugeriría una historia que no existe.
 
-    El máximo se puede fijar (para porcentajes, 100) o se toma del propio dato,
-    que es lo que hace que una serie de milisegundos se vea con relieve en vez de
-    aplastada contra el piso.
+    Tres escalas, y elegir mal la escala es elegir mal la historia:
+
+    · `maximo=100` — el eje va de 0 a 100. Honesto para un porcentaje, pero
+      **aplasta lo que se mueve poco**: la memoria oscilando entre 25.4% y 25.9%
+      sale como una raya recta y parece que no pasa nada.
+    · `relieve=True` — el eje va del mínimo al máximo de la propia serie, con un
+      margen. Ese 25.4→25.9 se ve como una pendiente de verdad. NO es engañoso
+      aquí porque el número absoluto va al lado, grande: la línea responde «hacia
+      dónde va», no «cuánto es». Y si la serie es realmente plana, el margen la
+      deja en medio, sin inventar movimiento.
+    · sin nada — de 0 al máximo del dato. Para lo que arranca en cero y sube
+      (milisegundos, MB/s), donde el cero sí es el piso de verdad.
     """
     reales = [p for p in puntos if p is not None]
     if len(reales) < 2:
         return ""
-    tope = maximo if maximo is not None else max(reales)
-    if not tope or tope <= 0:
-        tope = 1.0
+
+    if relieve:
+        bajo, alto_v = min(reales), max(reales)
+        margen = (alto_v - bajo) * 0.25 or (abs(alto_v) * 0.02 or 1.0)
+        piso, techo = bajo - margen, alto_v + margen
+    else:
+        piso = 0.0
+        techo = maximo if maximo is not None else max(reales)
+    rango = techo - piso
+    if rango <= 0:
+        rango = 1.0
+
     n = len(puntos)
     partes: list[str] = []
     for i, p in enumerate(puntos):
         if p is None:
             continue
         x = (i / (n - 1)) * ancho if n > 1 else 0
-        y = alto - min(max(p / tope, 0.0), 1.0) * alto
+        frac = min(max((p - piso) / rango, 0.0), 1.0)
+        y = alto - frac * alto
         partes.append(f"{x:.1f},{y:.1f}")
     return " ".join(partes)
 
 
 def area(puntos: list[float | None], *, ancho: int = 100, alto: int = 30,
-         maximo: float | None = None) -> str:
+         maximo: float | None = None, relieve: bool = False) -> str:
     """Lo mismo pero cerrado contra el piso, para rellenar bajo la línea."""
-    linea = trazo(puntos, ancho=ancho, alto=alto, maximo=maximo)
+    linea = trazo(puntos, ancho=ancho, alto=alto, maximo=maximo, relieve=relieve)
     if not linea:
         return ""
     primero = linea.split(" ")[0].split(",")[0]

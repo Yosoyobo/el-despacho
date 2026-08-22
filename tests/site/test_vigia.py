@@ -499,3 +499,61 @@ class TestPanelesNuevos:
         for ruta in ("/site/vivo/chalanes", "/site/vivo/ventana"):
             r = client.get(ruta, HTTP_HOST="gerencia.learningcenter.mx")
             assert r.status_code == 404, ruta
+
+
+class TestLaEscalaDeLaTendencia:
+    """Elegir mal la escala es elegir mal la historia. Oscar lo reportó: «no veo
+    que se muevan las tendencias de el RAM ni el almacenamiento»."""
+
+    def test_con_eje_de_cero_a_cien_lo_que_se_mueve_poco_se_aplasta(self):
+        """La memoria oscilando medio punto sale como una raya recta: es el
+        síntoma que se reportó."""
+        from lib.site import pulso
+        casi_plana = [25.4, 25.6, 25.5, 25.9]
+        ys = [float(p.split(",")[1]) for p in
+              pulso.trazo(casi_plana, alto=30, maximo=100).split(" ")]
+        assert max(ys) - min(ys) < 0.5, "medio punto de 100 no se ve, y así era"
+
+    def test_con_relieve_ese_medio_punto_se_ve(self):
+        from lib.site import pulso
+        casi_plana = [25.4, 25.6, 25.5, 25.9]
+        ys = [float(p.split(",")[1]) for p in
+              pulso.trazo(casi_plana, alto=30, relieve=True).split(" ")]
+        assert max(ys) - min(ys) > 10, "con el eje ajustado, la pendiente se ve"
+
+    def test_una_serie_de_verdad_plana_no_inventa_movimiento(self):
+        """El relieve amplifica lo que se mueve; lo que NO se mueve tiene que
+        seguir quieto, o la pared mentiría."""
+        from lib.site import pulso
+        ys = {p.split(",")[1] for p in
+              pulso.trazo([50.0, 50.0, 50.0], alto=30, relieve=True).split(" ")}
+        assert len(ys) == 1, "una serie constante debe salir como una línea recta"
+
+    def test_el_relieve_deja_la_linea_dentro_del_marco(self):
+        from lib.site import pulso
+        ys = [float(p.split(",")[1]) for p in
+              pulso.trazo([0.0, 100.0, 50.0], alto=30, relieve=True).split(" ")]
+        assert min(ys) >= 0 and max(ys) <= 30
+
+
+class TestLosRespaldosSeEncuentran:
+    """La ruta estaba cableada a `/opt/el-despacho/backups`, la del droplet. Con
+    la mudanza el proyecto pasó a `/mnt/el-despacho` y el panel decía «no existe»
+    sin que nada estuviera roto."""
+
+    def test_encuentra_la_carpeta_donde_esté(self, tmp_path, monkeypatch):
+        from lib.site import internos
+        carpeta = tmp_path / "backups"
+        carpeta.mkdir()
+        (carpeta / "db-20260821-230351.sql.gz").write_bytes(b"x" * 449106)
+        monkeypatch.setattr(internos, "_RUTAS_RESPALDOS", (str(carpeta),))
+        r = internos.ultimo_backup_local()
+        assert r["disponible"] is True
+        assert r["carpeta"] == str(carpeta)
+        assert r["cuantos"] == 1
+
+    def test_sin_carpeta_lo_dice_sin_lanzar(self, monkeypatch):
+        from lib.site import internos
+        monkeypatch.setattr(internos, "_RUTAS_RESPALDOS", ("/no/existe/nunca",))
+        monkeypatch.setattr(internos, "_DONDE_BUSCAR_RESPALDOS", ())
+        assert internos.ultimo_backup_local()["disponible"] is False

@@ -72,7 +72,75 @@ def test_proc_no_existe(monkeypatch):
 def test_snapshot_estructura():
     from lib.site import host
     r = host.snapshot()
-    assert set(r.keys()) == {"cpu_load", "memoria", "disco", "uptime"}
+    assert set(r.keys()) == {"cpu_load", "memoria", "disco", "disco_io", "uptime"}
+
+
+class TestActividadDelDisco:
+    """El disco OCUPADO no se mueve —14.5% hoy, 14.5% mañana— así que en una
+    pared su tendencia es una raya recta. Lo que se mueve, y lo que interesa, es
+    cuánto está trabajando: eso mide `disco_io`."""
+
+    def test_la_primera_muestra_no_inventa_una_tasa(self, monkeypatch):
+        """`/proc/diskstats` da contadores ACUMULADOS desde el arranque: con una
+        sola lectura no hay tasa que calcular, y devolver cero ahí sería mentir
+        con «el disco está quieto»."""
+        from lib.site import host
+        host._IO_PREVIO.clear()
+        monkeypatch.setattr(host, "_leer", lambda _p: "   8   0 sda 1 2 100 4 5 6 200 8 9 10 11")
+        assert host.disco_io()["disponible"] is False
+
+    def test_la_segunda_muestra_da_la_tasa(self, monkeypatch):
+        from lib.site import host
+        host._IO_PREVIO.clear()
+        # Primera lectura: 0 sectores. Segunda: 2048 leídos y 4096 escritos, que
+        # a 512 bytes por sector son 1 MB y 2 MB.
+        monkeypatch.setattr(host, "_leer", lambda _p: "   8   0 sda 1 2 0 4 5 6 0 8 9 10 11")
+        host.disco_io()
+        monkeypatch.setattr(host, "_leer", lambda _p: "   8   0 sda 1 2 2048 4 5 6 4096 8 9 10 11")
+        r = host.disco_io()
+        assert r["disponible"] is True
+        assert r["lectura_mb_s"] > 0
+        assert r["escritura_mb_s"] > r["lectura_mb_s"]
+
+    def test_los_snaps_y_la_ram_no_cuentan_como_disco(self, monkeypatch):
+        """En este NUC hay una docena de `loop*` (los paquetes snap montados). Si
+        se contaran, la cifra de lectura saldría inflada por cosas que no tocan
+        el SSD."""
+        from lib.site import host
+        host._IO_PREVIO.clear()
+        solo_loops = "\n".join(
+            f"   7   {i} loop{i} 1 2 99999 4 5 6 99999 8 9 10 11" for i in range(3)
+        )
+        monkeypatch.setattr(host, "_leer", lambda _p: solo_loops)
+        host.disco_io()
+        r = host.disco_io()
+        # Todo era ruido: no hay actividad que reportar, no una cifra inflada.
+        assert r.get("lectura_mb_s", 0) == 0
+
+    def test_una_particion_no_se_cuenta_dos_veces(self):
+        """`sda` y `sda1` reportan los mismos bytes. Contando las dos, cada byte
+        se contaría doble. Se prueba sobre `sumar_sectores` y no sobre la tasa:
+        la tasa depende del tiempo entre dos lecturas, así que compararla sería
+        comparar relojes."""
+        from lib.site.host import sumar_sectores
+        con_particion = ("   8   0 sda 1 2 2048 4 5 6 4096 8 9 10 11\n"
+                         "   8   1 sda1 1 2 2048 4 5 6 4096 8 9 10 11")
+        solo_disco = "   8   0 sda 1 2 2048 4 5 6 4096 8 9 10 11"
+        assert sumar_sectores(con_particion) == sumar_sectores(solo_disco) == (2048, 4096)
+
+    def test_en_nvme_la_particion_lleva_p(self):
+        """En NVMe la forma es al revés que en SATA: el disco es `nvme0n1` (acaba
+        en dígito) y la partición `nvme0n1p1`. Descartar «lo que acaba en dígito»
+        tiraría el disco entero."""
+        from lib.site.host import sumar_sectores
+        crudo = ("259  0 nvme0n1 1 2 1024 4 5 6 2048 8 9 10 11\n"
+                 "259  1 nvme0n1p1 1 2 1024 4 5 6 2048 8 9 10 11")
+        assert sumar_sectores(crudo) == (1024, 2048)
+
+    def test_sin_proc_no_truena(self, monkeypatch):
+        from lib.site import host
+        monkeypatch.setattr(host, "_leer", lambda _p: None)
+        assert host.disco_io()["disponible"] is False
 
 
 # ── Gauges ───────────────────────────────────────────────────────────────────

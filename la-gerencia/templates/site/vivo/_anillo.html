@@ -1,60 +1,87 @@
 {% comment %}
 Una tarjeta de fierro: el anillo dice cómo está AHORA, la línea dice HACIA DÓNDE
-VA. Los dos juntos, porque «memoria 23%» y «memoria 23%, subiendo desde 18% hace
+VA. Los dos juntos, porque «memoria 26%» y «memoria 26%, subiendo desde 18% hace
 diez minutos» son dos noticias distintas y sólo la segunda deja adelantarse.
 
+El anillo es SVG propio y NO el `radial-progress` de DaisyUI. Se probó en la
+pantalla real y salía mal: el arco desplazado y el número caído afuera de su
+caja. DaisyUI lo dibuja con `conic-gradient` y máscaras en pseudo-elementos, que
+dependen de cómo el navegador resuelve `--size` y `--thickness`; un `<circle>`
+con `stroke-dasharray` no depende de nada y se ve igual en cualquier parte. La
+cuenta del arco se hace con `widthratio`, que es la única aritmética que Django
+permite en plantilla.
+
 Params:
-  titulo   · el nombre, en llano ("Memoria (RAM)")
-  sub      · la línea chica de contexto ("15 GB en total")
-  pct      · 0..100 para el anillo
-  color    · success | warning | error, ya decidido por `gauges.gauge()`
-  grande   · el número protagonista
-  unidad   · lo que va pegado al número, chico
-  trazo    · la polyline del área, de `pulso.area()`. Vacío = sin historia aún.
-  a, b     · dos datos al pie
+  titulo · sub · pct (0..100) · color (success|warning|error)
+  grande · unidad · trazo (de `pulso.area()`) · a · b
 {% endcomment %}
 {% with c=color|default:"success" %}
-<div class="flex items-center gap-3 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
+<div class="flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
 
-  <div class="radial-progress shrink-0
-              {% if c == 'error' %}text-error-400{% elif c == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}"
-       style="--value:{{ pct|default:0 }}; --size:5.5rem;" role="progressbar">
-    <span class="font-mono text-lg font-semibold tabular-nums text-white">{{ pct|default:"—" }}<span class="text-xs text-gray-500">%</span></span>
+  {# ── El anillo ──────────────────────────────────────────────────────────── #}
+  <div class="relative shrink-0" style="width:104px; height:104px;">
+    <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90"
+         aria-hidden="true">
+      {# El riel: el círculo completo, tenue. #}
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+              stroke-width="9" class="text-gray-800"/>
+      {# Y el relleno. 2·π·42 = 264. `widthratio` da pct/100 × 264. #}
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+              stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="{% widthratio pct|default:0 100 264 %} 264"
+              class="{% if c == 'error' %}text-error-400{% elif c == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}"
+              style="transition: stroke-dasharray .6s ease"/>
+    </svg>
+    {# El número, centrado de verdad: posicionado sobre el SVG, no dentro. #}
+    <div class="absolute inset-0 flex flex-col items-center justify-center">
+      <span class="font-mono text-xl font-semibold leading-none tabular-nums text-white">{{ pct|default:"—" }}</span>
+      <span class="mt-0.5 text-[10px] leading-none text-gray-500">%</span>
+    </div>
   </div>
 
+  {# ── Y los números ──────────────────────────────────────────────────────── #}
   <div class="min-w-0 flex-1">
-    <p class="truncate text-[11px] font-semibold uppercase tracking-wider text-gray-500">{{ titulo }}</p>
-    <p class="mt-0.5 flex items-baseline gap-1.5">
-      <span class="font-mono text-title-sm font-semibold tabular-nums text-white">{{ grande|default:"—" }}</span>
+    <p class="truncate text-xs font-semibold uppercase tracking-wider text-gray-500">{{ titulo }}</p>
+    <p class="mt-1 flex items-baseline gap-1.5">
+      <span class="font-mono text-title-md font-semibold leading-none tabular-nums text-white">{{ grande|default:"—" }}</span>
       <span class="text-xs text-gray-500">{{ unidad }}</span>
     </p>
 
     {% if trazo %}
-      {% comment %}
-      La línea, en su propio sistema de coordenadas: 100×22, estirada al ancho con
-      `preserveAspectRatio="none"`. Así no hay que saber cuántos píxeles mide la
-      tarjeta.
-      {% endcomment %}
-      <svg viewBox="0 0 100 22" preserveAspectRatio="none" class="mt-1.5 h-6 w-full" aria-hidden="true">
+      <svg viewBox="0 0 100 24" preserveAspectRatio="none" class="mt-2 h-7 w-full" aria-hidden="true">
         <defs>
           <linearGradient id="g-{{ titulo|slugify }}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="currentColor" stop-opacity=".35"/>
+            <stop offset="0%" stop-color="currentColor" stop-opacity=".4"/>
             <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
           </linearGradient>
         </defs>
         <g class="{% if c == 'error' %}text-error-400{% elif c == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
           <polygon points="{{ trazo }}" fill="url(#g-{{ titulo|slugify }})"/>
-          <polyline points="{{ trazo }}" fill="none" stroke="currentColor" stroke-width="1.4"
+          <polyline points="{{ trazo }}" fill="none" stroke="currentColor" stroke-width="1.6"
                     stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
         </g>
+        {% if trazo_b %}
+          {% comment %}
+          La segunda línea (la escritura del disco) va sin relleno y en otro
+          color: dos áreas apiladas se taparían y no se sabría cuál es cuál.
+          {% endcomment %}
+          <polyline points="{{ trazo_b }}" fill="none" stroke="currentColor" stroke-width="1.4"
+                    stroke-dasharray="3 2" stroke-linejoin="round"
+                    class="text-blue-light-400" vector-effect="non-scaling-stroke"/>
+        {% endif %}
       </svg>
     {% else %}
-      <div class="mt-1.5 h-6 flex items-center">
-        <span class="text-[10px] text-gray-700">midiendo la tendencia…</span>
+      {% comment %}
+      Con menos de dos puntos no hay tendencia que dibujar. Se reserva el hueco
+      para que las cuatro tarjetas midan igual desde el primer pintado y la fila
+      no brinque cuando aparezcan las líneas.
+      {% endcomment %}
+      <div class="mt-2 flex h-7 items-end">
+        <div class="h-px w-full bg-gray-800"></div>
       </div>
     {% endif %}
 
-    <p class="truncate text-[11px] text-gray-600">{{ a }}{% if b %} · {{ b }}{% endif %}</p>
+    <p class="mt-1 truncate text-xs text-gray-600">{{ a }}{% if b %} · {{ b }}{% endif %}</p>
   </div>
 </div>
 {% endwith %}

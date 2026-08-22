@@ -14,47 +14,64 @@ pared no tiene por qué traducir del inglés técnico.
   </div>
 {% else %}
 {% with g=infra.gauges h=infra.host cr=infra.containers_resumen %}
-<div class="grid grid-cols-4 gap-2.5">
+{% comment %}
+El grid va aquí y no sólo en el esqueleto de `vivo.html`: HTMX reemplaza ese
+esqueleto por este panel, así que es ESTE el que decide cuántas columnas hay.
+{% endcomment %}
+<div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
 
   {# ── CPU ──────────────────────────────────────────────────────────────── #}
   {% include "site/vivo/_anillo.html" with titulo="CPU" pct=g.cpu.pct color=g.cpu.color grande=h.cpu_load.load_1 unidad="de carga" trazo=trazos.cpu a=h.cpu_load.cores|stringformat:"s"|add:" núcleos activos" b="5 min: "|add:h.cpu_load.load_5|stringformat:"s" %}
 
   {# ── Memoria ──────────────────────────────────────────────────────────── #}
-  {% include "site/vivo/_anillo.html" with titulo="Memoria (RAM)" pct=g.memoria.pct color=g.memoria.color grande=h.memoria.usado_mb unidad="MB usados" trazo=trazos.mem a=h.memoria.libre_mb|stringformat:"s"|add:" MB libres" b="de "|add:h.memoria.total_mb|stringformat:"s" %}
+  {% include "site/vivo/_anillo.html" with titulo="Memoria (RAM)" pct=g.memoria.pct color=g.memoria.color grande=mem_gb.usado unidad="de "|add:mem_gb.total|stringformat:"s"|add:" GB" trazo=trazos.mem a=mem_gb.libre|stringformat:"s"|add:" GB libres" %}
 
   {# ── Disco ────────────────────────────────────────────────────────────── #}
-  {% include "site/vivo/_anillo.html" with titulo="Disco (SSD)" pct=g.disco.pct color=g.disco.color grande=h.disco.usado_gb unidad="GB usados" trazo=trazos.disco a=h.disco.libre_gb|stringformat:"s"|add:" GB libres" b="de "|add:h.disco.total_gb|stringformat:"s" %}
+  {% comment %}
+  El disco lleva DOS líneas, lectura y escritura, en vez de la tendencia del
+  porcentaje ocupado: ése no se mueve —14.5% hoy, 14.5% mañana— y una raya recta
+  en una pared es espacio tirado. Lo que se mueve es cuánto trabaja.
+  {% endcomment %}
+  {% include "site/vivo/_anillo.html" with titulo="Disco (SSD)" pct=g.disco.pct color=g.disco.color grande=h.disco.usado_gb unidad="de "|add:h.disco.total_gb|stringformat:"s"|add:" GB" trazo=trazos.disco_lee trazo_b=trazos.disco_escribe a=h.disco.libre_gb|stringformat:"s"|add:" GB libres" b=io.lectura_mb_s|default_if_none:"—"|stringformat:"s"|add:" lee · "|add:io.escritura_mb_s|default_if_none:"—"|stringformat:"s"|add:" escribe MB/s" %}
 
   {# ── Las piezas trabajando ────────────────────────────────────────────── #}
-  <div class="flex items-center gap-3 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
-    <div class="radial-progress shrink-0
-                {% if cr.running == cr.total %}text-success-400{% else %}text-warning-400{% endif %}"
-         style="--value:{{ cr.pct_running|default:0 }}; --size:5.5rem;" role="progressbar">
-      <span class="font-mono text-lg font-semibold tabular-nums text-white">
-        {{ cr.running|default:"—" }}<span class="text-xs text-gray-500">/{{ cr.total|default:"—" }}</span>
-      </span>
+  {% comment %}
+  Mismo anillo SVG que las otras tres, para que la fila se lea como una sola
+  cosa. Y aquí el movimiento va en BARRAS, no en área: las peticiones son un
+  conteo discreto que toca el cero seguido, y un área con huecos se ve como
+  trozos sueltos en vez de como un ritmo.
+  {% endcomment %}
+  <div class="flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
+    <div class="relative shrink-0" style="width:104px; height:104px;">
+      <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" class="text-gray-800"/>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                stroke-dasharray="{% widthratio cr.pct_running|default:0 100 264 %} 264"
+                class="{% if cr.running == cr.total %}text-success-400{% else %}text-warning-400{% endif %}"/>
+      </svg>
+      <div class="absolute inset-0 flex items-center justify-center">
+        <span class="font-mono text-xl font-semibold leading-none tabular-nums text-white">{{ cr.running|default:"—" }}<span class="text-sm text-gray-600">/{{ cr.total|default:"—" }}</span></span>
+      </div>
     </div>
     <div class="min-w-0 flex-1">
-      <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Piezas trabajando</p>
-      <p class="mt-0.5 text-title-sm font-semibold text-white">
-        {% if cr.running == cr.total %}Todas{% else %}{{ cr.stopped }} abajo{% endif %}
+      <p class="truncate text-xs font-semibold uppercase tracking-wider text-gray-500">Piezas trabajando</p>
+      <p class="mt-1 flex items-baseline gap-1.5">
+        <span class="text-title-md font-semibold leading-none text-white">{% if cr.running == cr.total %}Todas{% else %}{{ cr.stopped }} abajo{% endif %}</span>
       </p>
-      {% if trazos.peticiones %}
-        <svg viewBox="0 0 100 22" preserveAspectRatio="none" class="mt-1.5 h-6 w-full text-brand-400" aria-hidden="true">
-          <defs>
-            <linearGradient id="g-peticiones" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="currentColor" stop-opacity=".4"/>
-              <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <polygon points="{{ trazos.peticiones }}" fill="url(#g-peticiones)"/>
-          <polyline points="{{ trazos.peticiones }}" fill="none" stroke="currentColor"
-                    stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-        </svg>
+      {% if barras_peticiones %}
+        <div class="mt-2 flex h-7 items-end gap-px">
+          {% for b in barras_peticiones %}
+            <div class="flex-1 rounded-sm {% if b.pct %}bg-brand-500{% else %}bg-gray-800{% endif %}"
+                 style="height:{% if b.pct %}{{ b.pct }}{% else %}4{% endif %}%"
+                 title="{{ b.n }} peticiones"></div>
+          {% endfor %}
+        </div>
       {% else %}
-        <div class="mt-1.5 h-6"></div>
+        <div class="mt-2 flex h-7 items-end"><div class="h-px w-full bg-gray-800"></div></div>
       {% endif %}
-      <p class="truncate text-[11px] text-gray-600">
+      <p class="mt-1 truncate text-xs text-gray-600">
         {% if h.uptime.disponible %}encendido {{ h.uptime.humano }}{% endif %}
         {% if infra.containers.info.images %} · {{ infra.containers.info.images }} imágenes{% endif %}
       </p>
