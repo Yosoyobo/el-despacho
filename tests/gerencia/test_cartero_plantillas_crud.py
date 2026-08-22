@@ -193,3 +193,13 @@ def test_un_disenador_no_entra(client, usuario_factory):
     client.force_login(u)
     resp = client.get("/ajustes/cartero/plantillas/")
     assert resp.status_code in (302, 403)
+
+
+def test_una_plantilla_malformada_no_tumba_la_pantalla(client, usuario_factory):
+    """Un pk no numérico daba 500 (ValueError) en vez de 404."""
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    resp = client.post("/ajustes/cartero/reglas/guardar", {
+        "evento": "cotizacion_aprobada", "plantilla": "no-soy-un-numero",
+    })
+    assert resp.status_code == 404

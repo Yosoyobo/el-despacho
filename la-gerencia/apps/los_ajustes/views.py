@@ -405,9 +405,12 @@ def cartero_regla_guardar(request):
         messages.error(request, "Ese evento no existe.")
         return redirect("ajustes-cartero-reglas")
 
-    plantilla = get_object_or_404(
-        PlantillaCorreo, pk=(request.POST.get("plantilla") or 0),
-    )
+    # pk no numérico → get_object_or_404 lanza ValueError (500), no 404.
+    try:
+        plantilla_pk = int(request.POST.get("plantilla") or 0)
+    except ValueError:
+        plantilla_pk = 0
+    plantilla = get_object_or_404(PlantillaCorreo, pk=plantilla_pk)
     estado_slug = (request.POST.get("estado_slug") or "").strip()
     try:
         dias = max(1, int(request.POST.get("dias") or 90))

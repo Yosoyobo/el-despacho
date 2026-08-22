@@ -258,8 +258,9 @@ def test_una_plantilla_de_sistema_se_puede_mandar_aunque_no_tenga_fila(
     """Las de sistema siempre tienen que poder mandarse: si nadie ha abierto
     nunca «bienvenida», la fila puede no existir todavía y aun así hay que
     poder usarla."""
-    from ajustes.models import PlantillaCorreo
     from apps.el_dictado.ejecutores import EJECUTORES
+
+    from ajustes.models import PlantillaCorreo
 
     PlantillaCorreo.objects.filter(slug="bienvenida").delete()
     u = usuario_factory(rol="super_admin")
