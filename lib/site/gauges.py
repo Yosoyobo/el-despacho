@@ -14,19 +14,28 @@ from __future__ import annotations
 from . import caddy, contenedores, droplet, host, postgres, redis_status
 
 
-def gauge(pct: float | None, *, umbral_warn: float = 60, umbral_err: float = 80) -> dict:
+def gauge(pct: float | None, *, umbral_warn: float = 60, umbral_err: float = 80,
+          invertido: bool = False) -> dict:
     """Pre-calcula coordenadas de un arco SVG (270°) para un gauge radial.
 
     Devuelve `{disponible, pct, color, stroke_dasharray, stroke_dasharray_track,
     radio}`. Si pct es None, retorna `{disponible: False}` y el template
     pinta placeholder.
+
+    `invertido=True` para las métricas donde **más es mejor** (contenedores
+    corriendo): el arco sigue siendo `pct` —se quiere ver el anillo lleno— pero el
+    color se calcula sobre lo que FALTA. Sin esto, «6 de 6 corriendo» se pintaba
+    rojo: el gauge de contenedores pasaba `umbral_warn=0, umbral_err=0`, y con
+    ambos en cero cualquier porcentaje cae en «error». Estuvo así desde que se
+    escribió el panel — una alarma que nunca se podía apagar.
     """
     if pct is None:
         return {"disponible": False}
     pct_c = max(0.0, min(100.0, float(pct)))
-    if pct_c >= umbral_err:
+    pct_color = (100.0 - pct_c) if invertido else pct_c
+    if pct_color >= umbral_err:
         color = "error"
-    elif pct_c >= umbral_warn:
+    elif pct_color >= umbral_warn:
         color = "warning"
     else:
         color = "success"
@@ -81,7 +90,8 @@ def snapshot_infra() -> dict:
             "cpu": gauge(load_pct, umbral_warn=70, umbral_err=100),
             "memoria": gauge(mem_pct),
             "disco": gauge(dis_pct, umbral_warn=75, umbral_err=85),
-            "containers_running": gauge(pct_running, umbral_warn=0, umbral_err=0)
+            "containers_running": gauge(pct_running, invertido=True,
+                                        umbral_warn=0.1, umbral_err=25)
             if info_c.get("disponible") else {"disponible": False},
         },
         "containers_resumen": {
@@ -125,7 +135,8 @@ def snapshot_gauges_minimo() -> dict:
             "cpu": gauge(load_pct, umbral_warn=70, umbral_err=100),
             "memoria": gauge(mem_pct),
             "disco": gauge(dis_pct, umbral_warn=75, umbral_err=85),
-            "containers_running": gauge(pct_running, umbral_warn=0, umbral_err=0)
+            "containers_running": gauge(pct_running, invertido=True,
+                                        umbral_warn=0.1, umbral_err=25)
             if info_c.get("disponible") else {"disponible": False},
         },
         "containers_resumen": {

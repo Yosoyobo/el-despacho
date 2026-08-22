@@ -98,7 +98,12 @@ def _ctx_infra() -> dict:
             "cpu": _gauge(load_pct, umbral_warn=70, umbral_err=100),
             "memoria": _gauge(mem_pct),
             "disco": _gauge(dis_pct, umbral_warn=75, umbral_err=85),
-            "containers_running": _gauge(pct_running, umbral_warn=0, umbral_err=0)
+            # `invertido`: más contenedores corriendo es MEJOR, así que el color
+            # se calcula sobre lo que falta. Con los umbrales en cero, «6 de 6»
+            # salía «error». Hoy la tarjeta del tablero pinta su anillo por su
+            # cuenta y no lee esto, pero la API sí lo publica.
+            "containers_running": _gauge(pct_running, invertido=True,
+                                         umbral_warn=0.1, umbral_err=25)
             if info_c.get("disponible") else {"disponible": False},
         },
         "containers_resumen": {

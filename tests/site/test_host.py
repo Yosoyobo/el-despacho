@@ -73,3 +73,58 @@ def test_snapshot_estructura():
     from lib.site import host
     r = host.snapshot()
     assert set(r.keys()) == {"cpu_load", "memoria", "disco", "uptime"}
+
+
+# ── Gauges ───────────────────────────────────────────────────────────────────
+
+class TestGaugeDeContenedores:
+    """«6 de 6 corriendo» tiene que pintar VERDE.
+
+    El gauge de contenedores pasaba `umbral_warn=0, umbral_err=0`, y con ambos en
+    cero cualquier porcentaje cae en «error»: el anillo salía rojo aunque todo
+    estuviera arriba. Era una alarma que no se podía apagar, y se veía en el panel
+    que mira el super_admin. La métrica es de las que «más es mejor», así que el
+    color se calcula sobre lo que FALTA (`invertido=True`).
+    """
+
+    def test_todo_arriba_pinta_verde(self):
+        from lib.site.gauges import gauge
+
+        g = gauge(100.0, invertido=True, umbral_warn=0.1, umbral_err=25)
+        assert g["color"] == "success"
+        # El anillo sigue lleno: se quiere ver completo, no vacío.
+        assert g["pct"] == 100.0
+
+    def test_uno_caido_avisa_y_varios_alarman(self):
+        from lib.site.gauges import gauge
+
+        assert gauge(100 * 5 / 6, invertido=True, umbral_warn=0.1, umbral_err=25)["color"] == "warning"
+        assert gauge(100 * 4 / 6, invertido=True, umbral_warn=0.1, umbral_err=25)["color"] == "error"
+        assert gauge(0.0, invertido=True, umbral_warn=0.1, umbral_err=25)["color"] == "error"
+
+    def test_las_metricas_normales_no_cambian(self):
+        """Sin `invertido`, más sigue siendo peor (disco, CPU, memoria)."""
+        from lib.site.gauges import gauge
+
+        assert gauge(10.0)["color"] == "success"
+        assert gauge(70.0)["color"] == "warning"
+        assert gauge(85.0)["color"] == "error"
+        assert gauge(None)["disponible"] is False
+
+    def test_el_snapshot_del_taller_usa_el_gauge_invertido(self):
+        """El Dashboard del Taller y El Site comparten la lógica: los dos sitios
+        que pintan contenedores tienen que estar invertidos."""
+        from pathlib import Path
+
+        raiz = Path(__file__).resolve().parents[2]
+        # Tres sitios calculan este gauge: los dos snapshots de `lib/site/gauges.py`
+        # y el tablero de El Site. `count` sobre "invertido=True" a secas también
+        # cazaría la mención del docstring, así que se cuentan las LLAMADAS.
+        sitios = 0
+        for ruta in ("lib/site/gauges.py", "la-gerencia/apps/el_site/views.py"):
+            fuente = (raiz / ruta).read_text()
+            sitios += fuente.count("(pct_running, invertido=True")
+            assert "pct_running, umbral_warn=0, umbral_err=0" not in fuente, (
+                f"{ruta} todavía pinta «todo arriba» como error"
+            )
+        assert sitios == 3, f"esperaba 3 llamadas invertidas, encontré {sitios}"
