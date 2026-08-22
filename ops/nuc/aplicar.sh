@@ -14,7 +14,10 @@ set -euo pipefail
 
 NUC=${NUC:-nuc-lc}
 RAIZ=${RAIZ:-/mnt/el-despacho}
-CF="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.nuc.yml"
+# `docker-compose.site.yml` monta /proc, /sys y el docker.sock (solo lectura) para
+# que los gauges de El Site y del Dashboard midan ESTA máquina. Sin apilarlo, el
+# panel sale en «n/d» — fue el descuido del primer deploy al NUC (2026-08-21).
+CF="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.nuc.yml -f docker-compose.site.yml"
 
 ssh "$NUC" "set -euo pipefail
 cd $RAIZ

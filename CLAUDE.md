@@ -5705,6 +5705,22 @@ cosas que sólo se ven con el código corriendo:
   que la ventana consume: el sitio se caería y el síntoma —502 en la ventana,
   contenedores «healthy» en el NUC— no apunta para nada a ese archivo. La
   presencia de El Mostrador sirve de señal.
+- **Los gauges de El Site salían en «n/d»** (CPU, memoria, contenedores): el
+  primer `ops/nuc/aplicar.sh` no apilaba `docker-compose.site.yml`, que es el que
+  monta `/proc`, `/sys` y el `docker.sock`. Ya lo apila, y las etiquetas dicen
+  «del NUC» en vez de «del droplet» —es lo que miden desde la mudanza—; el panel
+  de certificados explica en pantalla que Caddy vive en la ventana, para que su
+  vacío no se lea como falla.
+- **El gauge de contenedores calculaba «siempre error».** Los tres sitios que lo
+  arman pasaban `umbral_warn=0, umbral_err=0`, y con ambos en cero cualquier
+  porcentaje cae en «error»: «6 de 6 corriendo» daba alarma. Es una métrica donde
+  **más es mejor**, así que `gauge()` gana `invertido=True` — el anillo sigue
+  mostrando `pct` (se quiere ver lleno) y el color se calcula sobre lo que FALTA.
+  **Ojo con el alcance:** ninguna plantilla lee `gauges.containers_running` (las
+  dos tarjetas pintan su anillo con `widthratio` y verde fijo), así que en
+  pantalla nunca se vio rojo; el valor equivocado sólo salía por la API de El
+  Site. Se arregló igual, porque el día que alguien pinte ese gauge heredaría la
+  alarma imposible de apagar.
 
 **Verificado en producción, no supuesto:** tres fotos reales pedidas por su URL
 pública devuelven 200 con `public, max-age=31536000, immutable` y el contador de

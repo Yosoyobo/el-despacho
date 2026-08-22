@@ -323,7 +323,11 @@
     {% elif infra.caddy.disponible %}
     <p class="text-xs text-gray-400 dark:text-gray-500">Directorio Caddy presente pero sin certs todavía.</p>
     {% else %}
-    <p class="text-xs text-gray-400 dark:text-gray-500">Caddy bind mount no montado ({{ infra.caddy.motivo|default:"?" }}).</p>
+    <p class="text-xs text-gray-400 dark:text-gray-500">
+      Sin datos: desde la mudanza (2026-08-21) Caddy vive en la ventana (el droplet)
+      y esta máquina es el NUC. No es una falla.
+      <span class="text-gray-300 dark:text-gray-600">({{ infra.caddy.motivo|default:"?" }})</span>
+    </p>
     {% endif %}
   </div>
 </div>
