@@ -44,17 +44,29 @@ def test_problema_se_pasa_por_el_colador(client, usuario_factory):
 
 def test_mios_solo_ve_los_propios(client, usuario_factory):
     """S-Buzon-SuperAdmin: el usuario ve SOLO sus tickets en Mensajes → Mi Buzón.
-    Legacy /buzon/mios/ redirige ahí."""
+    Legacy /buzon/mios/ redirige ahí.
+
+    Los asuntos llevan guion a propósito. Antes eran "A1" y "A2", y el
+    `not in resp.content` buscaba **dos caracteres** dentro de 25 KB de HTML que
+    incluyen el token CSRF: 64 caracteres aleatorios de [A-Za-z0-9]. La
+    probabilidad de que ese token contenga "A2" es del 1.63%, o sea que **1 de
+    cada 62 corridas del CI fallaba aquí sin que nada estuviera roto** (pasó el
+    2026-08-22). Un guion no puede salir de una cadena alfanumérica, así que el
+    literal ya no es alcanzable por azar. Y lo que de verdad se está probando
+    —que la lista trae sólo lo del autor— se afirma sobre el queryset, no sobre
+    el texto renderizado.
+    """
     from buzon.models import MensajeBuzon
     u1 = usuario_factory(rol="disenador")
     u2 = usuario_factory(rol="disenador")
-    MensajeBuzon.objects.create(autor=u1, tipo="otro", asunto="A1", cuerpo="x"*20)
-    MensajeBuzon.objects.create(autor=u2, tipo="otro", asunto="A2", cuerpo="y"*20)
+    mio = MensajeBuzon.objects.create(autor=u1, tipo="otro", asunto="Ticket-mio", cuerpo="x"*20)
+    MensajeBuzon.objects.create(autor=u2, tipo="otro", asunto="Ticket-ajeno", cuerpo="y"*20)
     client.force_login(u1)
     resp = client.get("/recados/buzon/")
     assert resp.status_code == 200
-    assert b"A1" in resp.content
-    assert b"A2" not in resp.content
+    assert [m.pk for m in resp.context["mensajes"]] == [mio.pk]
+    assert b"Ticket-mio" in resp.content
+    assert b"Ticket-ajeno" not in resp.content
     # URL vieja redirige a la nueva (Mi Buzón).
     resp_legacy = client.get("/buzon/mios/")
     assert resp_legacy.status_code == 302
