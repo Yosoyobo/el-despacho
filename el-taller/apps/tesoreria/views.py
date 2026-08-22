@@ -528,11 +528,11 @@ def ingreso_comprobante(request, pk):
     if not (ingreso.tiene_comprobante and ingreso.drive_file_id):
         raise Http404("Este ingreso no tiene comprobante.")
 
-    from lib.google_drive import drive
+    from lib import almacen
     try:
-        contenido, mime, nombre = drive.descargar(ingreso.drive_file_id)
+        contenido, mime, nombre = almacen.leer(ingreso.drive_file_id)
     except Exception:  # noqa: BLE001
-        raise Http404("No se pudo obtener el comprobante de Drive.") from None
+        raise Http404("No se pudo obtener el comprobante.") from None
 
     resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
     disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"
@@ -573,11 +573,11 @@ def egreso_comprobante(request, pk):
     if not (egreso.tiene_comprobante and egreso.drive_file_id):
         raise Http404("Este egreso no tiene comprobante.")
 
-    from lib.google_drive import drive
+    from lib import almacen
     try:
-        contenido, mime, nombre = drive.descargar(egreso.drive_file_id)
+        contenido, mime, nombre = almacen.leer(egreso.drive_file_id)
     except Exception:  # noqa: BLE001
-        raise Http404("No se pudo obtener el comprobante de Drive.") from None
+        raise Http404("No se pudo obtener el comprobante.") from None
 
     resp = HttpResponse(contenido, content_type=mime or "application/octet-stream")
     disposicion = "inline" if (mime or "").startswith(("image/", "application/pdf")) else "attachment"

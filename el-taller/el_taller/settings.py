@@ -162,10 +162,15 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
 
-# URL pública de El Taller. La usa `lib.imagen_publica` para armar los enlaces
+# URL pública de El Taller. La usa `lib.almacen` para armar los enlaces
 # absolutos de las imágenes que Google baja al convertir un PDF (no hay
 # `request` en el generador del documento). Mismo patrón que en La Gerencia.
 TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+
+# El Almacén (S-Medios-V1): carpeta donde viven los medios en disco. El
+# contenedor la monta desde `./data/media` del host; mudarla a otro disco es
+# cambiar esta variable y mover la carpeta. Ver `lib/almacen.py`.
+MEDIOS_DIR = os.environ.get("MEDIOS_DIR", "/app/medios")
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True

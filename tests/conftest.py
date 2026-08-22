@@ -64,6 +64,18 @@ def _emitir_noop(monkeypatch, request):
             pass
 
 
+@pytest.fixture(autouse=True)
+def _almacen_aislado():
+    """El Almacén (S-Medios-V1) recuerda los `meta.json` en el proceso porque son
+    inmutables. Entre tests hay que olvidarlos: dos tests que usen la misma
+    llave con contenidos distintos se contaminarían."""
+    from lib import almacen
+
+    almacen.olvidar_meta()
+    yield
+    almacen.olvidar_meta()
+
+
 @pytest.fixture
 def usuario_factory(db):
     """Crea Usuarios de prueba con rol arbitrario."""

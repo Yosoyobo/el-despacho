@@ -170,6 +170,10 @@ LOGIN_URL = "/sign-in"
 # Pre-S2b.2: destino de redirección para roles operativos. Override en tests
 # con `@override_settings(TALLER_URL="http://testserver/")`.
 TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+
+# El Almacén (S-Medios-V1): la misma carpeta que monta El Taller. La Gerencia
+# también sirve medios (los adjuntos del Buzón admin). Ver `lib/almacen.py`.
+MEDIOS_DIR = os.environ.get("MEDIOS_DIR", "/app/medios")
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/sign-in"
 

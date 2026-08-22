@@ -1750,6 +1750,7 @@ def producto_imagen(request, prod_pk):
     """
     from django.http import JsonResponse
 
+    from lib import almacen
     from lib.adjuntos import subir
 
     linea = get_object_or_404(
@@ -1800,7 +1801,7 @@ def producto_imagen(request, prod_pk):
         "ok": True,
         "destino": destino,
         "file_id": file_id,
-        "url": reverse("catalogo-imagen-producto", args=[file_id]) if file_id else "",
+        "url": almacen.url(file_id),
         "mensaje": ("✓ Foto guardada para este uso." if destino == "uso"
                     else "✓ Foto guardada en el producto del catálogo."),
     })

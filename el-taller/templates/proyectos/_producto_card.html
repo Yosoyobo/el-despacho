@@ -113,7 +113,7 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
              title="Foto con la que se cotizó esta versión">
             {% if f.instance.imagen_efectiva_file_id %}
             <img alt="" class="max-h-[58px] max-w-[58px] rounded object-contain"
-                 src="{% url 'catalogo-imagen-producto' f.instance.imagen_efectiva_file_id %}">
+                 src="{{ f.instance.imagen_efectiva_file_id|medio_url }}">
             {% else %}
             <span class="px-1 text-center text-[9px] leading-tight text-gray-400 dark:text-gray-500">Sin foto</span>
             {% endif %}
@@ -126,7 +126,7 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
              title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo · Supr para quitarla"
              class="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white/60 outline-none transition hover:border-brand-400 focus:border-brand-400 dark:border-gray-600 dark:bg-gray-900/40">
             <img data-img-preview alt="" class="max-h-[58px] max-w-[58px] rounded object-contain{% if not f.instance.imagen_efectiva_file_id %} hidden{% endif %}"
-                 {% if f.instance.imagen_efectiva_file_id %}src="{% url 'catalogo-imagen-producto' f.instance.imagen_efectiva_file_id %}"{% endif %}>
+                 {% if f.instance.imagen_efectiva_file_id %}src="{{ f.instance.imagen_efectiva_file_id|medio_url }}"{% endif %}>
             <span data-img-hint class="px-1 text-center text-[9px] leading-tight text-gray-400 dark:text-gray-500{% if f.instance.imagen_efectiva_file_id %} hidden{% endif %}">Pega la foto</span>
             <input type="file" accept="image/*" data-img-file class="hidden">
         </div>

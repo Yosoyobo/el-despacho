@@ -556,22 +556,34 @@ class TestDocumento:
         assert "100% algodón, calidad oversize heavyweight 250 gsm" in html
         assert "Color: por definir" in html
 
-    def test_la_imagen_va_con_url_publica_firmada(self, entorno, settings):
-        """Sin URL absoluta y firmada, Google no puede bajarla al convertir."""
-        from apps.cotizaciones import services
+    def test_la_imagen_va_con_url_absoluta_del_almacen(self, entorno, settings):
+        """Sin URL absoluta y alcanzable sin sesión, Google no puede bajarla al
+        convertir. S-Medios-V1: la sirve El Portero del disco — antes era un
+        enlace firmado que apuntaba a un proxy que bajaba de Drive en caliente,
+        y si Google se cansaba el PDF salía con el hueco."""
+        import io
 
-        from lib.imagen_publica import verificar
+        from apps.cotizaciones import services
+        from PIL import Image
+
+        from lib import almacen
         settings.TALLER_URL = "https://taller.learningcenter.mx/"
+        buf = io.BytesIO()
+        Image.new("RGB", (800, 600), "gray").save(buf, format="JPEG")
+        almacen.guardar_bytes(buf.getvalue(), mime="image/jpeg", nombre="f.jpg",
+                              clave="drive-foto-1")
+
         html = services.construir_html_pdf(self._cot_lista(entorno))
-        assert "https://taller.learningcenter.mx/catalogo/img/" in html
-        token = html.split("/catalogo/img/")[1].split('"')[0]
-        assert verificar(token) == "drive-foto-1"
+
+        huella = almacen._huella("drive-foto-1")
+        assert (f"https://taller.learningcenter.mx/medios/{huella[:2]}/"
+                f"{huella[2:4]}/{huella}/w1000.jpg") in html
 
     def test_producto_sin_imagen_no_deja_hueco(self, entorno):
         from apps.cotizaciones import services
         cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
         html = services.construir_html_pdf(cot)
-        assert "/catalogo/img/" not in html
+        assert "/medios/" not in html
 
     def test_montos_sin_signo_y_sin_centavos_de_relleno(self, entorno):
         from apps.cotizaciones import services

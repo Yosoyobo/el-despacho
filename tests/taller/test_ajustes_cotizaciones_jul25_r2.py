@@ -143,64 +143,68 @@ class TestDocumento:
         assert 0 <= hueco_largo <= hueco_corto
 
 
-# ── La foto del PDF (caché) ───────────────────────────────────────────────
+# ── La foto del PDF ───────────────────────────────────────────────────────
 
-class TestImagenPublica:
+class TestFotoDelDocumento:
+    """S-Medios-V1 retiró el precalentado: la foto ya está en disco, reducida,
+    desde que se subió. Lo que estos tests fijaban —que Google no se quede
+    esperando y el PDF salga sin foto— ahora se garantiza por construcción."""
 
-    def test_precalentar_deja_la_imagen_lista_para_servir(self, monkeypatch, entorno):
-        from django.core.cache import cache
+    def _imagen(self, clave):
+        import io
 
-        from lib import imagen_publica
-        cache.clear()
-        png = (
-            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
-            b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00"
-            b"\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
-        )
-        llamadas = {"n": 0}
+        from PIL import Image
 
-        class _Drive:
-            def descargar(self, file_id):
-                llamadas["n"] += 1
-                return png, "image/png", "foto.png"
+        from lib import almacen
+        buf = io.BytesIO()
+        Image.new("RGB", (900, 600), "teal").save(buf, format="JPEG")
+        return almacen.guardar_bytes(buf.getvalue(), mime="image/jpeg",
+                                     nombre="foto.jpg", clave=clave)
 
-        monkeypatch.setattr("lib.google_drive.drive", _Drive())
-        assert imagen_publica.precalentar("archivo-1") is True
-        assert imagen_publica.desde_cache("archivo-1") is not None
-        # Segunda vez no vuelve a pegarle a Drive.
-        imagen_publica.precalentar("archivo-1")
-        assert llamadas["n"] == 1
+    def test_la_foto_ya_esta_reducida_en_disco_antes_del_pdf(self, monkeypatch):
+        """No hay nada que bajar en caliente: el derivado existe, así que Google
+        no puede cansarse esperándolo."""
+        from lib import almacen
 
-    def test_precalentar_no_truena_si_drive_esta_caido(self, monkeypatch):
-        from lib import imagen_publica
+        def _no_toques_drive(*_a, **_k):
+            raise AssertionError("armar el documento no debe pegarle a Drive")
 
-        class _Drive:
-            def descargar(self, file_id):
-                raise RuntimeError("Drive caído")
+        monkeypatch.setattr("lib.google_drive.drive.descargar", _no_toques_drive)
+        self._imagen("foto-mandil")
 
-        monkeypatch.setattr("lib.google_drive.drive", _Drive())
-        assert imagen_publica.precalentar("archivo-roto") is False
+        ruta = almacen.ruta_variante("foto-mandil", "w1000")
+        assert ruta is not None and ruta.is_file()
+        assert almacen.url("foto-mandil", "w1000").startswith("/medios/")
 
-    def test_generar_pdf_precalienta_antes_de_llamar_a_google(self, monkeypatch, entorno):
+    def _con_foto(self, entorno, clave):
+        it = entorno["cot"].items.first()
+        it.imagen_file_id = clave
+        it.save(update_fields=["imagen_file_id"])
+        return entorno["cot"]
+
+    def test_el_documento_lleva_la_url_del_almacen(self, entorno, settings):
         from apps.cotizaciones import services
-        entorno["srv"].imagen_file_id = "foto-mandil"
-        entorno["srv"].save(update_fields=["imagen_file_id"])
-        orden = []
-        monkeypatch.setattr(
-            "lib.imagen_publica.precalentar",
-            lambda fid: orden.append(("precalienta", fid)) or True)
 
-        class _Res:
-            ok = False
-            error = "Drive no configurado"
-            pdf_bytes = b""
-            data: dict = {}
+        from lib import almacen
+        settings.TALLER_URL = "https://taller.learningcenter.mx/"
+        self._imagen("foto-mandil")
+        cot = self._con_foto(entorno, "foto-mandil")
 
-        monkeypatch.setattr(
-            "lib.documentos.generar_pdf",
-            lambda **kw: orden.append(("google", None)) or _Res())
-        services.generar_pdf(entorno["cot"], entorno["admin"])
-        assert orden == [("precalienta", "foto-mandil"), ("google", None)]
+        html = services.construir_html_pdf(cot)
+
+        assert almacen.url("foto-mandil", "w1000", absoluta=True) in html
+
+    def test_una_foto_que_no_esta_en_el_almacen_no_deja_hueco(self, entorno, settings):
+        """Sin derivado no hay ruta pública, y el documento omite la imagen en
+        lugar de apuntar a un proxy que Google no podría abrir."""
+        from apps.cotizaciones import services
+        settings.TALLER_URL = "https://taller.learningcenter.mx/"
+        cot = self._con_foto(entorno, "nunca-importada")
+
+        html = services.construir_html_pdf(cot)
+
+        assert "/medios/" not in html
+        assert "/catalogo/imagen/" not in html
 
 
 # ── Ficha del proveedor ───────────────────────────────────────────────────

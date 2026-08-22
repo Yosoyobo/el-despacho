@@ -6,6 +6,7 @@ cubran los CRUDs de S1b y la Auth de ambos proyectos sin levantar Postgres.
 
 import os
 import secrets
+import tempfile
 
 # Garantiza claves antes de importar lib.boveda (eager check, regla #2).
 os.environ.setdefault("BOVEDA_MASTER_KEY", secrets.token_hex(32))
@@ -135,6 +136,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
+
+# El Almacén (S-Medios-V1): carpeta temporal por corrida de pruebas, para que
+# ningún test escriba en el almacén real. `tests/conftest.py` lo limpia entre
+# tests. Ver `lib/almacen.py`.
+MEDIOS_DIR = tempfile.mkdtemp(prefix="despacho-medios-")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}

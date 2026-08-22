@@ -15,6 +15,9 @@ services:
       # del servicio, así que el mismo archivo sigue sirviendo en HAL local.
       UPSTREAM_TALLER: "100.121.244.5:8200"
       UPSTREAM_GERENCIA: "100.121.244.5:8201"
+      # Los medios los entrega El Mostrador, en el NUC, directo del disco. Si ese
+      # contenedor no contesta, el Caddyfile cae solo a UPSTREAM_TALLER.
+      UPSTREAM_MEDIOS: "100.121.244.5:8202"
       # La homepage vive AQUÍ, servida como archivos: si el NUC se cae, sigue en pie.
       LANDING_ROOT: "/srv/lc-fallback"
     volumes:

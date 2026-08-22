@@ -89,10 +89,10 @@ def test_el_documento_pinta_la_foto_con_ancho_y_alto(proyecto_factory, usuario_f
     cot.items.update(servicio=srv)
 
     # Foto vertical 1×2 (la que se salía de la hoja).
-    monkeypatch.setattr("lib.imagen_publica.precalentar", lambda fid: True)
-    monkeypatch.setattr("lib.imagen_publica.proporcion", lambda fid: 2.0)
-    monkeypatch.setattr("lib.imagen_publica.url_absoluta",
-                        lambda fid: "https://taller/img/x" if fid else "")
+    monkeypatch.setattr("lib.almacen.proporcion", lambda fid: 2.0)
+    monkeypatch.setattr("lib.almacen.url",
+                        lambda fid, variante="w400", absoluta=False:
+                        "https://taller/medios/x/w1000.jpg" if fid else "")
 
     html = services.construir_html_pdf(cot)
     assert 'height="64"' in html and 'width="32"' in html

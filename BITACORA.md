@@ -10315,3 +10315,112 @@ Tailscale (expira el **2027-02-18**; no hay CLI) · el **cable de red** (`eno1` 
 DOWN, trabaja por WiFi) y el **BIOS** para que encienda tras un corte. El bump de
 `VERSION` va junto con el primer deploy verde del job `mudanza`, para no anunciar (ni
 pushear por Novedades) una versión que el NUC no está corriendo.
+
+---
+
+# S-Medios-NUC — El Almacén aterriza en el NUC + el respaldo que mentía (2026-08-21, VERSION 2026.08.17)
+
+> Cierre del día siguiente a la mudanza. Oscar: «las imágenes de los productos no
+> se ven, ya tienes mucho almacenamiento para hacerlo en el NUC y poner a Google
+> Drive como prioridad 2» · «conecta las tuberías… ya puedes usar recursos
+> locales» · «si lo logras, migra todo, si no se resuben después».
+
+## El diagnóstico: no fue la mudanza
+
+El log de El Taller tenía, por cada foto, un `POST oauth2.googleapis.com/token
+→ 401 Unauthorized` seguido de `Not Found: /catalogo/imagen/<id>`. La Bóveda lo
+explicó en una consulta: `google_drive_oauth_refresh_token` es del **7 de junio**
+y `google_oauth_client_id/secret` se reemplazaron el **21 de agosto** (migración
+al Workspace). Drive **no tiene cliente propio**, así que usa el del login: al
+cambiarlo, el permiso quedó emitido para un cliente que ya no está en uso y
+Google lo rechaza. Ya estaba anotado como riesgo en el runbook de esa migración y
+descrito como el Bloque 0 de `docs/REPARTO-Notas-Ago21.md`.
+
+## El histórico se rescató del respaldo (sin consola de Google)
+
+El dump del **13 de agosto** es anterior a la migración y la `BOVEDA_MASTER_KEY`
+no cambió, así que el cliente viejo **descifra hoy**. Se comparó por hash contra
+el actual (sin imprimir secretos): distintos, o sea recuperable. Se escribió en
+los campos **dedicados** de Drive (`google_drive_oauth_client_*`), que
+`lib/google_drive.py` ya prefiere sobre los del login: el SSO se queda con el
+cliente nuevo y Drive recupera su historia. Prueba de fuego en el contenedor:
+refresh `200 OK` + una foto real de 24 093 bytes bajada por la API.
+
+**Aditivo y reversible** — llena dos campos que estaban vacíos; borrar las dos
+filas vuelve al estado de hoy.
+
+> **La trampa que se evitó.** «Reconectar» de un clic usa el cliente NUEVO, y el
+> permiso de Google alcanza sólo los archivos que creó esa combinación de cliente
+> + cuenta: habría arreglado las subidas de hoy y dejado ciego **todo** el
+> histórico —PDFs de cotización, XML de facturas, fotos, adjuntos, avatares,
+> comprobantes— **en silencio**.
+
+## Lo que se entregó
+
+- **El Almacén aterrizado.** La rama `agent/medios-almacen` (S-Medios-V1, escrita
+  el 20-ago, 6 fases, ~56 pruebas) estaba sin desplegar. Se fusionó sobre `main`
+  ya con la mudanza dentro; conflictos en `Caddyfile`, `BITACORA` y `DOC_05`.
+- **El Mostrador** (`infra/mostrador/Caddyfile` + servicio en el overlay del NUC,
+  puerto 8202). El diseño original servía los medios con **El Portero**, porque
+  Caddy y los archivos vivían juntos; la mudanza separó exactamente eso. El
+  Almacén guarda, El Mostrador entrega. Monta **sólo `pub/`** — la frontera de
+  seguridad queda intacta. Si a un derivado le falta el archivo, lo pide a El
+  Taller, que lo regenera del original.
+- **Un solo Caddyfile para las tres máquinas.** El snippet `(medios)` conserva
+  `root * /srv` + `@falta not file`: en la **ventana** `/srv/medios` no se monta,
+  así que nada existe ahí y todo se va por `@falta` al NUC; en **HAL** el volumen
+  sí está y se sirve del disco. El `reverse_proxy` lleva **dos** upstreams con
+  `lb_policy first` (El Mostrador y, de respaldo, `{$UPSTREAM_TALLER}`, que la
+  ventana ya definía), así que un contenedor caído no borra las fotos de la
+  pantalla. Comprobado con `caddy adapt`: `['…8202','…8200']`, `policy first`,
+  try 5s, fail 10s. `ops/ventana/aplicar.sh` ya ejerce `UPSTREAM_MEDIOS` al
+  validar.
+- **Gunicorn deja de estar calibrado para 1 GB.** Los entrypoints traían
+  `--workers 1 --threads 4` fijos (S-RAM-Wave4). Ahora se leen de
+  `GUNICORN_WORKERS`/`GUNICORN_THREADS` **con el mismo default**, y el overlay del
+  NUC los sube: Taller 4×4, Gerencia 2×4. No se usó `2×CPU+1` (17 workers) a
+  propósito: son 5 usuarios, y lo que ahogaba no era la concurrencia sino que UNA
+  petición lenta bloqueara a las demás.
+
+## El hallazgo que no era el trabajo pedido
+
+**El respaldo llevaba días mintiendo, y no era el rsync.** La mudanza documentó
+que el `db-20260819` llegó a HAL con **20 bytes** y se lo achacó a la
+replicación. La causa real: la línea de `archivo.sh` del crontab es **la única
+sin `cd @@RAIZ@@ &&`**, y el guion usa rutas relativas (`./backups`, `./data`,
+`docker compose` sin `-f`). Reproducido en el NUC desde `/home/linux`:
+
+    $ docker compose exec -T postgres echo hola
+    no configuration file provided: not found
+
+…y el `| gzip > "$DB_FILE"` **crea el archivo igual**, con un gzip vacío. En el
+droplet no se notó porque alguien corría el respaldo a mano de vez en cuando (los
+`.gz` de 438 K locales) mientras el cron escribía basura en `~/backups`.
+
+Un respaldo vacío es peor que ninguno: parece que hay copia. Arreglado en tres
+frentes — el **cron hace `cd`**, `archivo.sh` **se ubica solo** (como ya hacía
+`optimizar.sh` desde el commit 3fbbd7b) y **se niega a replicar** un dump de menos
+de 1 KB, dejándolo registrado como error en El Site. Urge más que antes: con El
+Almacén, ese rsync es el único lugar donde vive la copia de los originales fuera
+del NUC.
+
+## Tests
+
+Suite completa verde. `tests/test_almacen.py` (45) + `tests/taller/test_medios_importar.py`
+(11) de la rama, más el candado de Novedades y los de comentarios en plantillas.
+No se agregaron pruebas nuevas: lo de hoy es fontanería de despliegue (Caddyfile,
+overlays, entrypoints, cron) — se verificó con `caddy validate`/`caddy adapt`,
+`docker compose config`, `bash -n` y la prueba de fuego contra Drive en el
+contenedor.
+
+## Deuda diseñada
+
+- El cliente OAuth de Drive quedó fijado al **viejo**: sigue la dependencia de que
+  ese cliente no se borre de la consola de Google. Lo correcto a futuro es un
+  cliente propio de Drive con su propio consentimiento. Y si la pantalla de
+  consentimiento sigue en *Testing*, el permiso caduca cada 7 días y esto vuelve.
+- **HEIC** sigue sin decodificador (`pillow-heif` lo enciende sin tocar código).
+- El Mostrador **no aparece en `/salud`**: si se quiere, es un módulo nuevo en
+  `lib/salud.py`.
+- El CI **todavía no despliega al NUC** (faltan los secretos de Tailscale, ver la
+  entrada de la mudanza), así que el `pull && up -d` se hizo a mano.

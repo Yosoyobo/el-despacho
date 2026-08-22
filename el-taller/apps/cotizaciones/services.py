@@ -48,7 +48,7 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
 
     Las imágenes van con **URL absoluta, pública y firmada**: el PDF lo genera
     Google convirtiendo este HTML, y Google baja las imágenes desde sus
-    servidores de forma anónima (ver `lib.imagen_publica`). Una ruta relativa o
+    servidores de forma anónima (ver `lib/almacen.py`). Una ruta relativa o
     el proxy autenticado dejarían huecos en el documento.
 
     `preview=True` añade SOLO el envoltorio de pantalla (hoja carta con sus
@@ -58,16 +58,16 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
     """
     from django.template.loader import render_to_string
 
-    from lib.imagen_publica import base_publica, proporcion, url_absoluta
+    from lib import almacen
 
     from .notas import notas_para
 
     items = list(cot.items.select_related("servicio", "unidad_fk").all())
     fotos_vivas = _fotos_vivas_del_proyecto(cot)
-    # Las fotos se precalientan ANTES de medirlas: `proporcion()` solo lee de
-    # caché, y sin proporción no se puede acotar el alto de la imagen (salía una
-    # bata de media página). Es best-effort y cacheado, así que cuesta poco.
-    _precalentar_imagenes(items, fotos_vivas)
+    # S-Medios-V1: ya no hay nada que precalentar. El derivado existe en disco
+    # desde que se subió la foto y su ancho y alto están en el `meta.json`, así
+    # que medirla es exacto y gratis — antes se abría la imagen con Pillow y, si
+    # no estaba en caché, el estimador la suponía cuadrada.
     # LC 2026-07-26 (Oscar): las líneas marcadas `agrupado` son PROCESOS DE VENTA
     # del concepto anterior (el «Ponchado» del Bordado): se cobran aparte pero se
     # imprimen como renglones extra DENTRO de la tabla de montos de su producto,
@@ -78,12 +78,12 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
             filas[-1]["extras"].append(it)
             continue
         file_id = _foto_del_item(it, fotos_vivas)
-        ancho, alto = _medida_foto(proporcion(file_id))
+        ancho, alto = _medida_foto(almacen.proporcion(file_id))
         filas.append({
             "it": it,
             # La foto: la del uso en el proyecto si le pusieron una propia, si no
             # la congelada con la versión (ver `_foto_del_item`).
-            "imagen": url_absoluta(file_id),
+            "imagen": almacen.url(file_id, "w1000", absoluta=True),
             # Medida FIJA con la que va en el documento (ver `_medida_foto`): el
             # template las pinta como atributos, así que ninguna foto puede
             # descuadrar la hoja por más alta que sea.
@@ -120,7 +120,7 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
             for imp in totales.get("impuestos_detalle", [])
         ],
         "notas": notas,
-        "logo_url": f"{base_publica()}/static/branding/Logo_LC-256.png",
+        "logo_url": f"{almacen.base_publica()}/static/branding/Logo_LC-256.png",
         "espacio_notas_pt": plan_notas["espacio_pt"],
         "apretado": plan_notas["apretado"],
         "brs_notas": plan_notas["brs"],
@@ -505,24 +505,6 @@ def _foto_del_item(it, fotos_vivas: dict) -> str:
         if viva:
             return viva
     return it.imagen_visible_file_id
-
-
-def _precalentar_imagenes(items, fotos_vivas: dict) -> None:
-    """Deja las fotos de los productos listas en caché ANTES de que Google baje
-    el HTML (ver `lib.imagen_publica.precalentar`).
-
-    Sin esto, Google pide la imagen, el endpoint se pone a bajarla de Drive en
-    caliente y la conversión se cansa: el PDF sale sin foto aunque la vista
-    previa la muestre bien. Best-effort — nunca lanza.
-    """
-    from lib.imagen_publica import precalentar
-
-    vistos = set()
-    for it in items:
-        file_id = _foto_del_item(it, fotos_vivas)
-        if file_id and file_id not in vistos:
-            vistos.add(file_id)
-            precalentar(file_id)
 
 
 def _sin_porcentaje(nombre: str) -> str:

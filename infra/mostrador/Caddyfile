@@ -1,0 +1,48 @@
+# El Mostrador — entrega los medios de El Almacén desde el disco del NUC.
+#
+# POR QUÉ EXISTE. El Almacén (S-Medios-V1) sacó a Google Drive del camino de
+# lectura: las fotos se guardan una vez, ya achicadas, y se sirven de disco. El
+# diseño original las servía con El Portero, porque Caddy y los archivos vivían en
+# la misma máquina. Desde la mudanza al NUC (2026-08-21) ya no: El Portero está en
+# la ventana (el droplet) y el disco está aquí. Este contenedor es la pieza que
+# faltaba — El Almacén guarda, El Mostrador entrega.
+#
+# Lo que gana: una ficha de catálogo con 30 fotos son 30 peticiones que NO tocan
+# gunicorn, así que no compiten con la aplicación por sus hilos. Con la caché de un
+# año, además, el navegador sólo pide cada foto una vez.
+#
+# LA FRONTERA DE SEGURIDAD ES EL MONTAJE. Aquí sólo se monta `pub/`, que contiene
+# únicamente derivados JPEG/PNG que generamos NOSOTROS. Los originales que sube la
+# gente viven en `orig/`, que este contenedor NO monta: por eso ningún archivo
+# ajeno (un XML, un SVG) puede llegar a interpretarse desde una ruta nuestra.
+{
+	# Sin TLS ni redirecciones: sólo se alcanza por el tailnet, y quien termina
+	# HTTPS es El Portero en la ventana.
+	auto_https off
+	admin off
+}
+
+:80 {
+	encode gzip
+
+	# Sonda para el healthcheck de Docker y para diagnosticar a mano.
+	respond /ping "ok" 200
+
+	handle /medios/* {
+		root * /srv
+		# Un derivado puede no estar todavía (una foto importada de Drive cuya
+		# miniatura nadie ha pedido aún, o un `pub/` que se borró para
+		# regenerarlo). En ese caso lo pide a El Taller, que lo genera del
+		# original y lo sirve; de ahí en adelante ya sale de aquí.
+		@falta not file
+		reverse_proxy @falta {$UPSTREAM_TALLER:el-taller:8000}
+		@existe file
+		header @existe Cache-Control "public, max-age=31536000, immutable"
+		header @existe X-Content-Type-Options nosniff
+		header @existe X-Robots-Tag noindex
+		file_server
+	}
+
+	# Cualquier otra ruta no es asunto de El Mostrador.
+	respond 404
+}
