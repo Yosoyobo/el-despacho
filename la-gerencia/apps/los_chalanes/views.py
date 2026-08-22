@@ -377,9 +377,18 @@ def aprendizajes_barrido(request):
 
     r = destilar_aprendizajes(creado_por=request.user)
     analizados = r.get("analizados", 0)
+    conversaciones = r.get("conversaciones", 0)
     creados = r.get("creados", 0)
+    activados = r.get("activados", 0)
+    dias = r.get("dias", 30)
     motivo = r.get("motivo", "")
     plural = "" if creados == 1 else "s"
+    # De qué se alimentó el barrido. Sin esto, un «no encontré nada» no dice si
+    # fue porque no hay patrones o porque la ventana dejó fuera el historial.
+    revisado = f"{analizados} dictado{'' if analizados == 1 else 's'}"
+    if conversaciones:
+        revisado += f" y {conversaciones} conversacion{'' if conversaciones == 1 else 'es'} del chat"
+    revisado += f" de los últimos {dias} días"
 
     if not r.get("ok"):
         if motivo == "presupuesto_topado":
@@ -397,20 +406,28 @@ def aprendizajes_barrido(request):
     elif motivo == "sin_evidencia":
         messages.info(
             request,
-            "Aún no hay dictados recientes que analizar. El Chalán aprende del uso "
-            "del Dictado y el chat — vuelve cuando haya más historial.",
+            f"No hay nada que analizar en los últimos {dias} días. El Chalán aprende "
+            "del uso del Dictado y del chat; si el historial es más viejo, amplía la "
+            "ventana en Ajustes → El Análisis.",
         )
     elif creados:
+        extra = ""
+        if activados:
+            extra = (
+                f" De ésos activó {activados} solo, por venir con mucha seguridad "
+                "— puedes revertirlo con un clic."
+            )
         messages.success(
             request,
-            f"Barrido listo: analicé {analizados} dictados y propuse {creados} "
-            f"aprendizaje{plural} nuevo{plural}. Revísalos abajo y activa los buenos.",
+            f"Barrido listo: revisé {revisado} y propuse {creados} "
+            f"aprendizaje{plural} nuevo{plural}.{extra} Revísalos abajo y activa los buenos.",
         )
     else:
         messages.info(
             request,
-            f"Barrido listo: analicé {analizados} dictados, pero no encontré "
-            "patrones nuevos que valga la pena aprender.",
+            f"Barrido listo: revisé {revisado} y no encontré patrones nuevos que "
+            "valga la pena aprender. Si esperabas más, amplía «días de historial» "
+            "en Ajustes → El Análisis: puede que lo interesante quede fuera de la ventana.",
         )
     return redirect(f"{reverse('los_chalanes:aprendizajes-lista')}?filtro=propuestos")
 

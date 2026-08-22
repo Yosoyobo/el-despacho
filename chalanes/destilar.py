@@ -45,6 +45,15 @@ logger = logging.getLogger(__name__)
 ESTACION = "aprendizaje_destilado"
 MAX_CANDIDATOS = 8
 
+# Cómo se llaman los turnos del chat. Los valores REALES de la base son `user` y
+# `bot` (`apps.el_dictado.models.conversacion_chat.ROLES_MENSAJE`); las otras
+# variantes van por si algún día se renombran, para que esto no se quede mudo sin
+# avisar — que es justo el modo de falla que tuvo al escribirse: buscaba
+# "usuario", no encontraba ni un turno, y la fuente más abundante que hay (miles
+# de mensajes) no aportaba nada al aprendizaje.
+ROLES_PERSONA = {"user", "usuario"}
+ROLES_CHALAN = {"bot", "asistente", "chalan"}
+
 _SYSTEM = """\
 Eres El Chalán de El Despacho (CRM/ERP de Learning Center, diseño/maquila B2B
 mexicano). Tu trabajo AHORA no es interpretar un dictado nuevo: es APRENDER de
@@ -166,7 +175,9 @@ def recolectar_conversaciones(*, dias: int = 30, limite: int = 40) -> list[dict[
     desde = timezone.now() - timedelta(days=dias)
     try:
         mensajes = list(
-            MensajeChat.objects.filter(creado_en__gte=desde)
+            # Sólo la conversación: los turnos de tipo `herramienta` y `accion`
+            # son plomería del loop, no una persona hablando.
+            MensajeChat.objects.filter(creado_en__gte=desde, tipo="texto")
             .exclude(cuerpo="")
             .order_by("conversacion_id", "orden")[: limite * 6]
         )
@@ -180,9 +191,9 @@ def recolectar_conversaciones(*, dias: int = 30, limite: int = 40) -> list[dict[
     for m in mensajes:
         if m.conversacion_id != conversacion_actual:
             conversacion_actual, pendiente = m.conversacion_id, None
-        if m.rol == "usuario":
+        if m.rol in ROLES_PERSONA:
             pendiente = (m.cuerpo or "").strip()[:400]
-        elif pendiente and m.rol in ("asistente", "bot", "chalan"):
+        elif pendiente and m.rol in ROLES_CHALAN:
             pares.append({
                 "id": m.pk,
                 "pregunta": pendiente,
@@ -434,8 +445,25 @@ def _emitir(*, creado_por, creados: int, analizados: int, provider: str) -> None
 # ── Orquestador ──────────────────────────────────────────────────────
 
 
+def _dias_configurados(dias: int | None) -> int:
+    """Cuánto historial mirar. Sin valor explícito, manda el GUI de Gerencia.
+
+    Ampliarlo es la palanca cuando el barrido dice «no encontré nada»: el
+    despacho puede tener meses de historial y una ventana de 30 días deja fuera
+    casi todo. Se ajusta en Gerencia → Ajustes → El Análisis.
+    """
+    if dias is not None:
+        return dias
+    try:
+        from ajustes.models import ConfiguracionAnalisis
+
+        return ConfiguracionAnalisis.obtener().dias_ventana_aprendizaje or 30
+    except Exception:  # noqa: BLE001
+        return 30
+
+
 def destilar_aprendizajes(
-    *, dias: int = 30, limite: int = 60, dry_run: bool = False, creado_por=None,
+    *, dias: int | None = None, limite: int = 60, dry_run: bool = False, creado_por=None,
 ) -> dict[str, Any]:
     """Destila aprendizajes del historial reciente. Devuelve un resumen.
 
@@ -446,9 +474,11 @@ def destilar_aprendizajes(
     aunque `dry_run=True` (no se persiste) o `creados=0`.
     """
     base = {"ok": True, "analizados": 0, "candidatos": [], "creados": 0,
-            "activados": 0, "conversaciones": 0,
+            "activados": 0, "conversaciones": 0, "dias": 0,
             "dry_run": dry_run, "provider": "", "motivo": ""}
 
+    dias = _dias_configurados(dias)
+    base["dias"] = dias
     evidencia = recolectar_evidencia(dias=dias, limite=limite)
     conversaciones = recolectar_conversaciones(dias=dias)
     base["analizados"] = len(evidencia)
