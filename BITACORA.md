@@ -10716,3 +10716,102 @@ viven en el CSS) y los de los dos partials retirados. 71 verdes en `tests/site`,
 - **La pantalla no se pudo revisar mirándola** — eso sólo se puede con el código
   en La Sede. La lección de El Vigía sigue vigente: una pantalla se revisa
   viéndola, y aquí queda pendiente.
+
+---
+
+# Sesión — S-Plantillas-Correo · Plantillas propias, alias y reglas (2026-08-22, VERSION 2026.08.22)
+
+Arrancó con otra cosa: **verificar y activar el SMTP** ahora que la operación
+salió de DigitalOcean. Resultó que no había nada que activar —el canal ya estaba
+en `smtp` desde el 21 de agosto y las credenciales puestas—; lo que estaba roto
+era la red del droplet, y la mudanza al NUC lo destrabó sola. Verificado de
+punta a punta: 587/465 abiertos desde el host y desde los dos contenedores,
+`login()` OK contra Gmail y un envío real. De paso salió que el canal
+`gmail_api` **nunca se mergeó** (rama `agent/correo-gmail-api`, commit
+`d79d28e`): producción no tiene `lib/gmail_api.py`.
+
+Sobre eso vino el pedido de verdad: «necesitamos poder generar más plantillas de
+correos, no sólo las que tenemos».
+
+## Las decisiones
+
+Dos rondas de preguntas, más dos ampliaciones que Oscar mandó a media sesión.
+
+- **Ambas familias**: plantillas de uso libre **y** atadas a eventos. Los cuatro
+  eventos, y **configurables desde el GUI**.
+- **Botón de envío en la ficha del cliente**, y la creación **en La Gerencia**
+  junto al editor que ya existe.
+- **El Chalán puede escribir a direcciones dictadas**, no sólo al correo
+  registrado. Sus plantillas, en cambio, **nacen borrador**.
+- A media sesión: **El Chalán crea plantillas (con MCP)** y **cada plantilla con
+  su propio alias de remitente** — cobranza desde `cobranza@`, ventas desde
+  `ventas@`.
+
+## El hallazgo que abarató todo
+
+`PlantillaCorreo.obtener(slug)` **ya aceptaba cualquier slug** y creaba la fila.
+Lo que bloqueaba eran tres listas escritas a mano —`SLUGS_PLANTILLA`,
+`PLANTILLAS_CAMPANA` y los tres tipos que aceptaba el ejecutor del Chalán— más
+que `variables_de()` devolvía `[]` para un slug desconocido, así que el editor
+no ofrecía variables. Las tres pasan a consultar la base.
+
+## El quirk de Gmail, medido contra producción
+
+Se probó la conversación SMTP hasta `MAIL FROM` con seis remitentes: la cuenta
+real, tres alias plausibles, uno **inexistente** y uno **de otro dominio**. Los
+seis contestaron **250 OK**. O sea que Gmail **no valida el remitente en el
+envelope**: lo hace al entregar, contra el header `From:`, y si el alias no está
+en «Enviar como» **lo reescribe en silencio**.
+
+La consecuencia de diseño: **un alias no se puede verificar sin mandar un correo
+y mirarlo**. Por eso cada plantilla trae un botón de prueba cuyo cuerpo dice
+desde qué dirección se intentó mandar, y la pantalla lo advierte en amarillo.
+
+## Lo entregado
+
+`PlantillaCorreo` gana `sistema`/`origen`/`descripcion` y los dos campos del
+remitente; las de sistema no se borran (si desaparecen, ese correo se queda sin
+cuerpo) y `origen` distingue la apagada a mano del **borrador del Chalán**.
+
+`lib/correo_contexto.py` fija el contrato de variables: **una variable nunca
+falta, a lo mucho llega vacía**. Django ya renderiza vacío lo inexistente, pero
+sin el contrato un typo (`{{ proyeto }}`) se ve idéntico a un dato ausente.
+
+`ReglaCorreo` + `CorreoEnviadoRegla` (migración `ajustes/0015`) hacen
+configurable la relación evento→plantilla. **Arrancan apagadas** y llevan
+**candado por referencia** (`proyecto:12:entregado`), así que un proyecto que
+rebota entre dos estados no bombardea al cliente. El intento se audita salga o
+no: un fallo tampoco debe reintentarse en bucle. Los cuatro eventos van
+enganchados con `on_commit` y best-effort — entregar un proyecto no puede fallar
+porque el correo esté caído.
+
+Envío suelto desde la ficha del cliente (modal Wave 5), **sin campo para
+escribir la dirección a propósito**; campañas y el Chalán amplían a cualquier
+plantilla activa.
+
+## El defecto que cazaron las pruebas
+
+El registro de capacidades **poda las listas a los primeros elementos** antes de
+enseñárselas al LLM. Con las seis plantillas de sistema al frente, **las propias
+del usuario quedaban fuera del corte** y El Chalán no sabía que existían. Ahora
+van primero, y hay un test que lo fija.
+
+## Tests
+
+55 nuevos. Los dos críticos —que el alias llegue hasta el envío y que un mismo
+hecho no se avise dos veces— **verificados contra el código sin arreglar**:
+quitando esas dos líneas, fallan. Es la clase de fallo que no se nota en
+producción, porque el correo sale igual.
+
+## Deuda diseñada
+
+- **El Chalán no puede crear ni borrar los alias en Google.** Se verificó: **no
+  hay MCP de Google Admin en el proyecto** (el único es `mcp_despacho`, propio y
+  de sólo lectura) y los scopes consentidos son `openid/email/profile` y
+  `drive.file`. Haría falta Admin SDK (`admin.directory.user.alias`) para el
+  alias y `gmail.settings.sharing` para «Enviar como» — ambos sensibles, con
+  consentimiento de un admin del Workspace, y sin cuenta de servicio porque la
+  organización bloquea las llaves JSON. Hoy los alias se dan de alta a mano.
+- El envío desde la ficha no adjunta archivos.
+- Las reglas escriben al cliente, no al equipo.
+- El cron de clientes dormidos mira `Proyecto.creado_en`, no la última actividad.
