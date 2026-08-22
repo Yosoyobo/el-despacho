@@ -10837,3 +10837,132 @@ Chalán lo advierta antes de mandar.
 El estado se marca a mano **a propósito**: Gmail no deja comprobarlo de otro
 modo, porque no falla — reescribe. El botón manda el correo; la persona mira de
 quién llegó.
+
+# Sesión — S-Catalogo-Alta · El alta rápida deja el producto completo (2026-08-23, VERSION 2026.08.23)
+
+Handoff `docs/SPRINT-Catalogo-Alta.md` — notas 2, 3, 4, 10 y 11 del buzón del 21
+de agosto. El propio handoff lo llamaba «el sprint más valioso de la ronda»: tres
+de las cinco notas parecían problemas distintos y salían de **una sola raíz**.
+
+## La raíz
+
+Había **dos formas** de dar de alta un producto y no hacían lo mismo. El modal de
+la lista de Productos pedía proveedores; el atajo «+ Crear producto nuevo en el
+catálogo» —el que se usa sin salir del proyecto o de la cotización— **no**. Su
+endpoint sólo aceptaba `nombre`, `categoria_id`, `precio_base` y `costo`.
+
+De ahí se cae todo el resto en cascada:
+
+- el producto nace **sin proveedor**;
+- `servicio_usa_calculadora(srv)` pregunta `srv.proveedores.filter(razon_social__
+  icontains=…)`, así que **sin proveedor no hay calculadora**;
+- y sin proveedor tampoco puede haber **principal**.
+
+O sea: las notas 2, 3 y 4 eran el mismo hueco visto desde tres ángulos.
+
+## Lo entregado
+
+**Nota 2 — proveedor en el atajo.** `servicio_quick_create` acepta `proveedores`
+(0..n ids), los pasa por `_ids_proveedores_del_post` —que filtra contra los
+**activos** y **conserva el orden en que llegaron**— y hace `set(...)`. El orden
+no es adorno: `Proveedor.Meta.ordering` es alfabético, así que «el primero de la
+M2M» no es «el primero que marcaste» (la trampa que ya mordió en Ago04-R3). El
+primero marcado queda como `proveedor_principal`. El JSON devuelve `proveedores`,
+`proveedor_id` y `proveedor` para que el JS pinte la etiqueta y la tarjeta del
+proyecto autocomplete sin recargar.
+
+El selector es un partial nuevo, **`catalogo/_qc_proveedores.html`**: el patrón de
+la ficha en versión mínima (dropdown buscable que sólo AGREGA + pastillas con ✕),
+parametrizado por `prefijo` porque los cuatro paneles usan ids distintos (`qc`,
+`qcp`, `cot-qc`). Como esos paneles **no son formularios** —su JS manda un
+`fetch`—, lo elegido vive en inputs ocultos y cada panel lo lee con
+`window.qcProvIds(prefijo)`. Aplicado a los 4 paneles y a los 3 sitios del
+`fetch`. `proveedores_activos` se sumó al contexto del modal «Agregar producto» y
+del form de cotización, que no lo tenían.
+
+**Nota 3 — la calculadora aparece al marcar el proveedor.** El bug era peor de lo
+que se veía: `nuevo()` **nunca** llamaba `parsear_detalles`, así que aunque el
+recuadro hubiera estado ahí, el primer guardado tiraba los insumos. Dos cambios:
+(a) la sección se extrajo a **`catalogo/_calculadora.html`** —markup **y** su JS,
+auto-montado escaneando `[data-calc-box]` con un flag, no con `currentScript`, que
+es `null` en un modal inyectado por HTMX (el gotcha de R2-resto)— y se pinta
+**escondida** cuando el proveedor existe pero no está marcado, con un interruptor
+que la revela; (b) `nuevo()` guarda `detalles_costo` + `costo` **después de
+`save_m2m()`**, porque el gating depende de la M2M. El contexto quedó unificado en
+`views._ctx_calculadora(srv=None)`, que sirve al alta y a la ficha.
+
+Marcar una casilla por JS **no dispara `change`**, así que el interruptor se llama
+a mano desde `pintar()` (la ficha) y desde `refrescarProv()` (el modal), que son
+los dos lugares por donde pasan el alta rápida de proveedor y el 🤖 Sugerir.
+
+**Nota 4 — los dos bugs, los dos entregados.**
+
+**3a** era de una línea: `prellenarServicio` ponía el proveedor sólo
+`if (!prov.value)`, así que si la línea ya traía uno —el viejo, copiado antes de
+cambiar el principal— al elegir otro producto se quedaba el anterior. Eso es
+literalmente «no se está actualizando». Ahora **el catálogo pisa**, exactamente
+como se arregló el costo el 7 de agosto. Sólo corre en el `change` del selector de
+producto, así que un proveedor puesto a mano se respeta hasta cambiar de producto.
+**El precio no se pisa** — se negocia por proyecto.
+
+**3b**: el `<select>` del ★ se pintaba UNA vez con el queryset del servidor y no
+volvía a mirar nada. Un proveedor creado inline no aparecía hasta recargar, y al
+quitar una pastilla el principal quedaba apuntando a quien ya no surte, **en
+silencio**. Ahora `pintar()` reconstruye sus opciones desde los checkboxes
+marcados. Lo que se cuidó: **distinguir la carga de la interacción**. En la
+primera pintada NO se toca lo guardado —puede ser un proveedor **archivado**, que
+el form conserva como opción válida a propósito— sólo se avisa; si el usuario
+quita la pastilla, se limpia y se dice
+(`#prov-principal-aviso`). Y nunca se reasigna a otro por cuenta propia: nombrar
+un proveedor que el usuario no eligió es peor que dejarlo vacío.
+
+El modal de alta **no pinta el ★**: un select con todos los activos, en la misma
+pantalla donde eliges cuáles surten el producto, es el bug 3b otra vez. Ahí lo
+fija el servidor con el primero marcado, y se cambia en la ficha (que es donde se
+abre al guardar).
+
+**Nota 10 — archivar y eliminar en la ficha.** Todo existía; sólo faltaba
+ponerlos. Recuadro «Acciones» al pie, **FUERA** del `<form>` (un `<form>` no se
+anida), con el mismo gating que la lista.
+
+Dos cosas salieron al revisar el diff. **Archivar** se queda en la ficha a
+propósito (el producto sigue existiendo: ahí ves que quedó archivado y lo
+reactivas), pero **el borrado no puede volver a esta página** — deja de existir y
+sería un 404. Usa `back_url_producto` (la lista con sus filtros, o el proveedor
+del que venías) y, sin él, la vista cae a la lista. Y al seguir ese hilo apareció
+un hueco **preexistente**: el modal de borrado recibía el `volver` en el GET y
+**no lo mandaba en el POST**, así que borrar desde una lista filtrada siempre caía
+a la lista pelona. Ahora viaja como hidden — arreglo que también le sirve al botón
+de la lista.
+
+**Nota 11 — categorías.** Pastillas `badge-hex` arriba de la ficha que llevan a
+`catalogo-lista?categoria=<id>`, la actual con `ring-2`.
+
+## Pruebas
+
+**20 nuevas** en `tests/taller/test_catalogo_alta_proveedor.py`, **verificadas
+contra el código sin arreglar: 16 de 20 fallan**. Incluye los dos candados que
+pide el handoff (3a: que la línea del proveedor no lleve `!prov.value`; 3b:
+`provAgregarOpcion` → `pintar()` → el ★) y la trampa explícita de «guardar la
+ficha sin tocar proveedores». Las 4 que pasan sin el arreglo son las de
+back-compat, a propósito.
+
+Regresión del handoff verde (53 pass), candados de comentarios Bug C verdes, ruff
+limpio, `test_ayuda_novedades` verde.
+
+## Deuda diseñada
+
+- **3c NO se entregó** — el handoff lo marca como lo único que necesita decisión
+  de producto. Cambiar el principal en el catálogo **no** toca las líneas de
+  proyecto que ya existen: el proveedor se copió al crear la línea, igual que un
+  precio negociado (`signals_catalogo.py:43` sólo lo ocupa si está vacío). Si
+  Oscar quiere que se propague, es un añadido chico reusando `propagacion.py`.
+- El gating de la calculadora sigue siendo **por nombre de proveedor**
+  (`PROVEEDOR_CALCULADORA`), frágil ante renombre. Es lo que pidió Oscar y este
+  sprint no lo cambia.
+- El atajo no ofrece **crear** un proveedor nuevo (eso vive en la ficha y en el
+  modal): el partial es deliberadamente mínimo, como pide el handoff.
+- El ★ principal y los proveedores aplicables siguen sin editarse desde El Chalán.
+- **No se pudo revisar mirándola.** La parte visible de este sprint —el
+  interruptor de la calculadora, las pastillas, el aviso del ★— sólo se confirma
+  con el código corriendo.

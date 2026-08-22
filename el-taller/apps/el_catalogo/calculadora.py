@@ -40,6 +40,24 @@ def servicio_usa_calculadora(srv) -> bool:
     return srv.proveedores.filter(razon_social__icontains=PROVEEDOR_CALCULADORA).exists()
 
 
+def proveedores_calculadora() -> list[int]:
+    """Ids de los proveedores que disparan la calculadora (LC 2026-08-22, nota 3).
+
+    Con ellos el recuadro se puede pintar ESCONDIDO desde el alta y revelarse en
+    cuanto se marca uno — antes sólo se sabía al editar, cuando el vínculo ya
+    estaba guardado, así que el primer guardado perdía los insumos.
+
+    El gating sigue siendo por NOMBRE de proveedor (frágil ante renombre); es
+    lo que pidió Oscar y este sprint no lo cambia.
+    """
+    from .models import Proveedor  # noqa: PLC0415  (evita import circular)
+    return list(
+        Proveedor.objects
+        .filter(activo=True, razon_social__icontains=PROVEEDOR_CALCULADORA)
+        .values_list("pk", flat=True)
+    )
+
+
 def parsear_detalles(post) -> dict:
     """Lee los campos del POST (calc_material_N / calc_sublimacion_N /
     calc_mano_obra) y devuelve el dict a persistir en `detalles_costo`."""

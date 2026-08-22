@@ -6024,6 +6024,84 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Catalogo-Alta ✅ — El alta rápida deja el producto completo + la ficha con sus botones (2026-08-23, VERSION 2026.08.23)
+
+Notas 2, 3, 4, 10 y 11 del buzón del 21 de agosto (handoff
+`docs/SPRINT-Catalogo-Alta.md`). **Una sola raíz explica tres notas que parecían
+distintas:** había **dos** formas de dar de alta un producto y no hacían lo mismo —
+el modal de la lista pedía proveedores y el atajo «+ Crear producto nuevo en el
+catálogo» **no**. De ahí caía todo lo demás: el producto nacía sin proveedor, y
+`servicio_usa_calculadora` pregunta por la M2M (`proveedores__razon_social
+icontains`), así que **sin proveedor no hay calculadora** ni principal.
+
+- **Nota 2 — proveedor en el atajo**: `servicio_quick_create` acepta
+  `proveedores` (0..n), los valida contra los **activos** (`_ids_proveedores_del_post`,
+  nunca se confía en los ids del cliente) y hace `set(...)`. **El orden importa:**
+  el primero que se marcó queda como `proveedor_principal`, porque
+  `Proveedor.Meta.ordering` es alfabético y «el primero de la M2M» ≠ «el primero
+  que marcaste» (la trampa de Ago04-R3). El JSON devuelve `proveedores`,
+  `proveedor_id` y `proveedor` para que el JS pinte la etiqueta y la tarjeta del
+  proyecto autocomplete sin recargar. Partial nuevo
+  **`catalogo/_qc_proveedores.html`** (dropdown buscable que sólo AGREGA +
+  pastillas con ✕, `prefijo` por panel, API `window.qcProvIds/qcProvLimpiar`)
+  aplicado a los **4** paneles y a los **3** sitios que arman el `fetch`.
+  `proveedores_activos` se sumó al contexto del modal «Agregar producto» y del
+  form de cotización, que no lo tenían.
+- **Nota 3 — la calculadora aparece al marcar el proveedor**: sólo existía en
+  `editar`, así que capturar insumos en el alta **no servía de nada** (el primer
+  guardado los tiraba: `nuevo` nunca llamaba `parsear_detalles`). La sección se
+  extrajo a **`catalogo/_calculadora.html`** (markup + su JS, auto-montado por
+  `[data-calc-box]:not([data-calc-montado])` — no `currentScript`, que es `null`
+  en un modal inyectado) y se pinta **escondida** cuando el proveedor existe pero
+  no está marcado; el interruptor la revela. `nuevo()` ahora guarda
+  `detalles_costo` + `costo` **después de `save_m2m()`** (el gating depende de la
+  M2M). Contexto unificado en `views._ctx_calculadora(srv=None)`.
+- **Nota 4 — dos bugs localizados, los dos entregados.**
+  **3a**: `prellenarServicio` autocompletaba el proveedor sólo `if (!prov.value)`,
+  así que al cambiar de producto se quedaba pegado el del anterior — literalmente
+  «no se está actualizando». Ahora **el catálogo pisa**, misma semántica que el
+  costo desde el 7 de agosto (sólo corre en el `change` del selector, así que un
+  proveedor a mano se respeta hasta cambiar de producto). **El precio NO se pisa.**
+  **3b**: el `<select>` del ★ se pintaba UNA vez con el queryset del servidor y no
+  se enteraba de nada (un proveedor creado inline no salía hasta recargar; al
+  quitar una pastilla el principal quedaba apuntando a quien ya no surte, en
+  silencio). `pintar()` ahora reconstruye sus opciones desde los checkboxes
+  marcados. **Distingue carga de interacción a propósito:** en la primera pintada
+  NO toca lo guardado —puede ser un proveedor archivado, que el form conserva como
+  opción válida— sólo avisa; si el usuario quita la pastilla, se limpia y lo dice
+  (`#prov-principal-aviso`). Nunca reasigna a otro por su cuenta. El modal de alta
+  **no pinta el ★** (un select con todos los activos junto a «cuáles surten» es
+  el bug 3b otra vez): en el alta lo fija el servidor con el primero marcado.
+- **Nota 10 — archivar y eliminar en la ficha**: recuadro «Acciones» al pie,
+  **FUERA** del `<form>` (no se anidan), con el mismo gating que la lista
+  (`catalogo.eliminar` sólo super_admin). Rutas, modal y flujo ya existían.
+  **Dos detalles del destino**: archivar SÍ se queda en la ficha (el producto
+  sigue: así ves que quedó archivado y lo reactivas), pero el borrado **no puede
+  volver ahí** —esa página deja de existir—, así que usa `back_url_producto` y,
+  sin él, cae a la lista. Y de paso se cerró un hueco **preexistente**: el modal
+  de borrado recibía el `volver` en el GET pero **no lo mandaba en el POST**, así
+  que borrar desde una lista filtrada siempre caía a la lista pelona; ahora viaja
+  como hidden y beneficia también al botón de la lista.
+- **Nota 11 — navegación entre categorías**: pastillas `badge-hex` arriba de la
+  ficha que llevan a `catalogo-lista?categoria=<id>`, la actual con `ring-2`.
+- **20 tests** en `tests/taller/test_catalogo_alta_proveedor.py`, **verificados
+  contra el código sin arreglar: 16 de 20 fallan**. Incluye los dos candados que
+  pide el handoff (3a: que la línea 398 no lleve `!prov.value`; 3b:
+  `provAgregarOpcion` → `pintar()` → el ★) y la trampa de «guardar sin tocar
+  proveedores». Regresión del handoff verde (53 pass) + comentarios Bug C + ruff.
+
+**Deuda diseñada**: **3c no se entregó** (decisión del handoff — necesita decisión
+de producto): cambiar el principal en el catálogo **no** toca las líneas de
+proyecto que ya existen (el proveedor se copió al crear la línea, igual que un
+precio negociado; `signals_catalogo.py:43` sólo lo ocupa si está vacío). Si Oscar
+quiere que se propague, es un añadido chico reusando `propagacion.py` (que ya sólo
+toca líneas sin egreso, sin cotización pagada y cuyo valor coincidía con el del
+catálogo). El gating de la calculadora sigue siendo **por nombre de proveedor**
+(frágil ante renombre, constante `PROVEEDOR_CALCULADORA`) — es lo que pidió Oscar y
+este sprint no lo cambió. El atajo no ofrece **crear** un proveedor nuevo (eso vive
+en la ficha y en el modal); el partial `_qc_proveedores` es deliberadamente mínimo.
+Y el ★ no se edita desde El Chalán.
+
 ### S-Plantillas-Correo ✅ — Plantillas propias con alias, reglas evento→correo y El Chalán redactor (2026-08-22, VERSION 2026.08.22)
 
 Pedido de Oscar: «necesitamos poder generar más plantillas de correos, no sólo

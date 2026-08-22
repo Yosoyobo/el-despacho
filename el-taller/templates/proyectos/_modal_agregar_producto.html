@@ -33,6 +33,8 @@
                         <div class="col-span-2"><input id="qcp-nombre" type="text" placeholder="Nombre del producto *" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
                         <input id="qcp-costo" type="number" step="0.01" min="0" placeholder="Costo" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                         <input id="qcp-precio" type="number" step="0.01" min="0" placeholder="Precio unit. *" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        {% comment %}LC 2026-08-22 (nota 2): proveedor en el alta rápida.{% endcomment %}
+                        <div class="col-span-2">{% include "catalogo/_qc_proveedores.html" with prefijo="qcp" %}</div>
                         <div class="col-span-2 flex items-center justify-between gap-2">
                             <p id="qcp-msg" class="text-xs text-error-600 dark:text-error-400"></p>
                             <button type="button" id="qcp-crear" class="btn-secundario whitespace-nowrap">Crear y seleccionar</button>
@@ -70,6 +72,10 @@
             body.append('categoria_id', cat.value);
             body.append('precio_base', pre.value);
             body.append('costo', cos.value || '0');
+            // LC 2026-08-22 (nota 2): proveedores elegidos → POST.
+            (window.qcProvIds ? window.qcProvIds('qcp') : []).forEach(function (id) {
+                body.append('proveedores', id);
+            });
             const resp = await fetch('{% url "catalogo-quick-create" %}', {
                 method: 'POST', headers: {'X-CSRFToken': csrf}, body: body,
             });
@@ -83,7 +89,10 @@
             // Prellena precio/costo de la línea con lo capturado.
             if (inpPrecio && !inpPrecio.value) inpPrecio.value = pre.value;
             if (inpCosto && !inpCosto.value) inpCosto.value = cos.value || '';
+            var selProv = document.querySelector('#modal-slot select[name="proveedor"]');
+            if (selProv && !selProv.value && data.proveedor_id) selProv.value = data.proveedor_id;
             nom.value = ''; pre.value = ''; cos.value = ''; cat.selectedIndex = 0;
+            if (window.qcProvLimpiar) window.qcProvLimpiar('qcp');
             const det = btn.closest('details'); if (det) det.open = false;
         } catch (e) {
             msg.textContent = 'Error de red. Intenta otra vez.';

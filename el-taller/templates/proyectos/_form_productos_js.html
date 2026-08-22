@@ -393,9 +393,16 @@
             if (costo) costo.value = datos.costo;
             const cat = card.querySelector('[data-cat-filtro]');
             if (cat && datos.categoria) cat.value = datos.categoria;
-            // LC 2026-07: autocompletar proveedor (el 1º del catálogo) si está vacío.
+            // LC 2026-08-22 (nota 4, bug 3a): el PROVEEDOR del catálogo manda,
+            // igual que el costo desde el 7 de agosto. Antes sólo se ponía si el
+            // campo estaba vacío, así que al cambiar de producto se quedaba
+            // pegado el proveedor del anterior — eso es literalmente «el
+            // principal no se está actualizando». Como esto sólo corre en el
+            // `change` del selector de producto, un proveedor puesto a mano se
+            // respeta hasta que cambies de producto. El PRECIO no se pisa (se
+            // negocia por proyecto).
             const prov = card.querySelector('select[name$="-proveedor"]');
-            if (prov && !prov.value && datos.proveedor_id) prov.value = datos.proveedor_id;
+            if (prov && datos.proveedor_id) prov.value = datos.proveedor_id;
             aplicarProcesosDefault(card, datos.procesos);
         }
         recalcular(card);
@@ -1081,6 +1088,15 @@
         const _chev = card.querySelector('[data-chevron]'); if (_chev) _chev.classList.remove('-rotate-90');
         const _tog = card.querySelector('[data-card-toggle]'); if (_tog) _tog.setAttribute('aria-expanded', 'true');
         initCard(card);
+        // LC 2026-08-22 (nota 2): la tarjeta nueva nace con el proveedor del
+        // catálogo. Aquí NO se dispara `change`, así que `prellenarServicio` no
+        // corre — hay que ponerlo a mano o el producto que acabas de crear con
+        // su proveedor entraría al proyecto sin él.
+        if (servId) {
+            const _dS = SERVICIOS_DATOS[servId];
+            const _selP = card.querySelector('select[name$="-proveedor"]');
+            if (_dS && _selP && _dS.proveedor_id) _selP.value = _dS.proveedor_id;
+        }
         // LC 2026-08-18 R2 (Oscar): «prefiero que siempre las tarjetas se
         // agreguen en un color (no siempre el mismo)». Antes todas nacían del
         // color que `color_estable("Producto")` le tocaba a la plantilla vacía
@@ -1117,10 +1133,21 @@
                 body.append('categoria_id', cat.value);
                 body.append('precio_base', pre.value);
                 body.append('costo', cos.value || '0');
+                // LC 2026-08-22 (nota 2): los proveedores elegidos viajan en el
+                // POST. Sin ellos el producto nacía sin proveedor, y con eso se
+                // caían la calculadora y el principal.
+                (window.qcProvIds ? window.qcProvIds('qc') : []).forEach(function (id) {
+                    body.append('proveedores', id);
+                });
                 const resp = await fetch('{% url "catalogo-quick-create" %}', { method: 'POST', headers: { 'X-CSRFToken': csrf }, body });
                 const data = await resp.json();
                 if (!resp.ok || !data.ok) { msg(data.error || 'Error al crear.'); qcBtn.disabled = false; return; }
-                SERVICIOS_DATOS[data.id] = { precio: pre.value, costo: cos.value || '0', categoria: cat.value };
+                SERVICIOS_DATOS[data.id] = {
+                    nombre: data.nombre, precio: pre.value, costo: cos.value || '0',
+                    categoria: cat.value,
+                    proveedor_id: data.proveedor_id || '', proveedor: data.proveedor || '',
+                    procesos: [],
+                };
                 // En modo autoguardado (detalle) NO clonamos en cliente — eso
                 // duplicaba productos. Creamos el ProyectoProducto en el server
                 // (atómico) y recargamos. En Nuevo/Editar (sin autosave) sí clonamos.
@@ -1134,6 +1161,7 @@
                     body2.append('costo_unitario', cos.value || '');
                     body2.append('merma', mer.value || '0');
                     body2.append('incluir_en_calculo', 'on');
+                    if (data.proveedor_id) body2.append('proveedor', data.proveedor_id);
                     await fetch(addUrl, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: body2 });
                     window.location.reload();
                     return;
@@ -1143,6 +1171,7 @@
                 });
                 clonarUltima(data.id, cnt.value || '1', pre.value, cos.value || '', mer.value || '0');
                 nom.value = ''; pre.value = ''; cnt.value = '1'; cat.selectedIndex = 0; cos.value = ''; if (mer) mer.value = '0';
+                if (window.qcProvLimpiar) window.qcProvLimpiar('qc');
                 autosave();
             } catch (e) { msg('Error de red. Intenta otra vez.'); }
             qcBtn.disabled = false;
