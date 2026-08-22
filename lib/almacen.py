@@ -217,6 +217,15 @@ def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
             return {**existente, "id": clave_final, "duplicado": True}
 
         destino_dir.mkdir(parents=True, exist_ok=True)
+        # `mkstemp` crea el temporal en 0600 y `os.replace` conserva el modo, así
+        # que sin esto el original queda legible SÓLO por root. Se notó el
+        # 2026-08-21: el rsync de `archivo.sh` corre como el usuario del host y
+        # fallaba con «Permission denied» en cada archivo, o sea que los medios se
+        # quedaban SIN respaldo fuera del servidor. 0644 es el mismo modo que ya
+        # tienen `meta.json` y los derivados; `orig/` no lo sirve nadie (Caddy sólo
+        # monta `pub/`), así que no cambia a quién alcanza por la red.
+        with contextlib.suppress(OSError):
+            os.chmod(tmp_ruta, 0o644)
         os.replace(tmp_ruta, destino)
         tmp_ruta = None  # ya se movió
     finally:

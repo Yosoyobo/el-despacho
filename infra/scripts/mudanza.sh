@@ -8,6 +8,23 @@ set -euo pipefail
 # es /opt/el-despacho, en el NUC /mnt/el-despacho.
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# ── Freno: este guion NO sirve para el NUC ────────────────────────────────────
+# Es legacy (el deploy real es el script inline de el-mensajero.yml, y al NUC se
+# despliega con `ops/nuc/aplicar.sh`). El problema es que hace `compose up` SIN el
+# overlay del NUC, así que en esa máquina recrearía El Taller y La Gerencia **sin
+# los puertos publicados** (8200/8201) que la ventana consume por el tailnet: el
+# sitio se caería y el síntoma —502 en la ventana, contenedores "healthy" en el
+# NUC— no apunta para nada a este archivo.
+#
+# El Mostrador sólo existe en el overlay del NUC, así que su presencia es la señal
+# de que estamos en la máquina equivocada.
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx despacho-el-mostrador; then
+    echo "==> [Mudanza] ABORTA: esta máquina corre el overlay del NUC." >&2
+    echo "    Este guion recrearía las apps sin los puertos que consume la ventana." >&2
+    echo "    Usa: ops/nuc/aplicar.sh (desde HAL)." >&2
+    exit 1
+fi
+
 echo "==> [Mudanza] git pull --ff-only"
 git pull --ff-only origin main
 COMMIT_SHA=$(git rev-parse --short HEAD)

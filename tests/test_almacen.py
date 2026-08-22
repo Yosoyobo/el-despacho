@@ -471,3 +471,25 @@ class TestHeicNoSeAceptaSinDecodificador:
         """`hay_decodificador_heic()` se llama en cada `derivar()`: pase lo que
         pase con la dependencia, tiene que devolver un bool y nunca reventar."""
         assert almacen.hay_decodificador_heic() in (True, False)
+
+
+class TestElRespaldoPuedeLeerLosOriginales:
+    """`archivo.sh` replica `orig/` a HAL como el usuario del host, no como root.
+
+    `tempfile.mkstemp` crea en 0600 y `os.replace` conserva el modo, así que sin
+    un `chmod` explícito el original queda legible sólo por root y el rsync falla
+    con «Permission denied» en cada archivo: los medios se quedan sin respaldo
+    fuera del servidor, y en silencio. Pasó en producción el 2026-08-21.
+    """
+
+    def test_el_original_es_legible_por_otros(self):
+        clave = almacen.guardar_bytes(_jpeg(), mime="image/jpeg", nombre="f.jpg")["id"]
+        ruta = almacen._dir_orig(clave) / "archivo"
+        modo = ruta.stat().st_mode & 0o777
+        assert modo & 0o044, f"el original quedó en {oct(modo)}: el respaldo no puede leerlo"
+
+    def test_el_meta_y_los_derivados_tambien(self):
+        clave = almacen.guardar_bytes(_jpeg(), mime="image/jpeg", nombre="f.jpg")["id"]
+        for ruta in ((almacen._dir_orig(clave) / "meta.json"),
+                     *(almacen._dir_pub(clave)).glob("*")):
+            assert ruta.stat().st_mode & 0o044, f"{ruta.name} no es legible por el respaldo"

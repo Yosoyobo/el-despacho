@@ -10424,3 +10424,35 @@ contenedor.
   `lib/salud.py`.
 - El CI **todavía no despliega al NUC** (faltan los secretos de Tailscale, ver la
   entrada de la mudanza), así que el `pull && up -d` se hizo a mano.
+
+**Lo que salió al verificar el despliegue (mismo día, VERSION 2026.08.18).** Tres
+cosas que sólo se ven con el código corriendo:
+
+- **Los originales de El Almacén quedaban ilegibles para el respaldo.**
+  `tempfile.mkstemp` crea en 0600 y `os.replace` conserva el modo, así que cada
+  original quedaba legible sólo por root; `archivo.sh` corre como el usuario del
+  host, así que el rsync de los medios fallaba con «Permission denied» en cada
+  archivo — **sin copia fuera del servidor, y en silencio**. Junto con el bug del
+  `cd`, los medios no habrían tenido respaldo NUNCA. `chmod 0644` antes del
+  `os.replace` (el mismo modo que ya tenían `meta.json` y los derivados; `orig/`
+  no lo sirve nadie) + prueba verificada contra el código sin arreglar. Los
+  archivos ya escritos se enderezaron desde el contenedor.
+- **El Mostrador no registraba nada.** Caddy no lo hace si no se le pide, y sin
+  eso no se puede distinguir «la sirvió El Mostrador» de «cayó al respaldo de El
+  Taller» — que fue justo la duda al verificar. Bitácora a stdout con techo de
+  10 MB × 3.
+- **`mudanza.sh` aborta si lo corren en el NUC.** Es legacy y hace `compose up`
+  SIN el overlay, así que allá recrearía las apps **sin los puertos publicados**
+  que la ventana consume: el sitio se caería y el síntoma —502 en la ventana,
+  contenedores «healthy» en el NUC— no apunta para nada a ese archivo. La
+  presencia de El Mostrador sirve de señal.
+
+**Verificado en producción, no supuesto:** tres fotos reales pedidas por su URL
+pública devuelven 200 con `public, max-age=31536000, immutable` y el contador de
+`/medios/` de El Taller **no se movió** (las sirvió El Mostrador del disco) · la
+importación trajo **87 de 88** archivos, 21.1 MB (el que falta es un
+`istockphoto-….jpg` adjunto a un mensaje de junio: **404 en Drive**, ya lo habían
+borrado de ahí) · gunicorn arrancó con **4×4** en El Taller y **2×4** en La
+Gerencia · el respaldo corrido desde `$HOME` —donde lo dejaba caer el cron— ya
+produce un dump de **449 KB** (antes, 20 bytes) y llega a HAL con **127 tablas** y
+**87 archivos de medios**, 22 MB.
