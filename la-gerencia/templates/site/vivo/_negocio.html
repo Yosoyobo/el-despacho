@@ -19,7 +19,7 @@ la hora en UTC mientras el reloj de la cabecera va en local.
 
     {# ── El trabajo ────────────────────────────────────────────────────── #}
     {% if trabajo.proyectos is not None %}
-    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
       <div class="rounded-xl bg-gray-800/40 px-2.5 py-2">
         <p class="font-mono text-title-sm font-semibold leading-none tabular-nums text-white">{{ trabajo.proyectos|default:"0" }}</p>
         <p class="mt-1 text-[10px] leading-tight text-gray-500">proyectos vivos</p>
@@ -40,6 +40,18 @@ la hora en UTC mientras el reloj de la cabecera va en local.
         <p class="mt-1 text-[10px] leading-tight text-gray-500">
           por cobrar
           {% if trabajo.monto_por_cobrar %}<span class="text-gray-600">· ${{ trabajo.monto_por_cobrar|floatformat:0 }}</span>{% endif %}
+        </p>
+      </div>
+      {% comment %}
+      Los cancelados van del MES, no del total histórico: «183 desde siempre» no
+      dice nada y «4 este mes» sí — es el número que hace preguntar por qué. El
+      total queda debajo, en chico, para dar la escala.
+      {% endcomment %}
+      <div class="rounded-xl bg-gray-800/40 px-2.5 py-2">
+        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.cancelados_mes %}text-error-400{% else %}text-white{% endif %}">{{ trabajo.cancelados_mes|default:"0" }}</p>
+        <p class="mt-1 text-[10px] leading-tight text-gray-500">
+          cancelados/perdidos este mes
+          {% if trabajo.cancelados %}<span class="text-gray-600">· {{ trabajo.cancelados }} en total</span>{% endif %}
         </p>
       </div>
     </div>

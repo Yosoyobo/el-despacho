@@ -215,7 +215,17 @@ def _trabajo_del_despacho() -> dict:
         salida["proyectos"] = vivos.count()
         salida["por_cotizar"] = vivos.filter(estado="por_cotizar").count()
 
+        # Los cancelados: no están en `vivos` (su estado es terminal) así que se
+        # cuentan aparte. Van los del mes en curso y no el total histórico:
+        # «183 cancelados desde siempre» no dice nada, «4 este mes» sí — es el
+        # número que hace preguntar por qué.
         hoy = _tz.localdate()
+        primero = hoy.replace(day=1)
+        cancelados = Proyecto.objects.filter(archivado=False, estado="cancelado")
+        salida["cancelados_mes"] = cancelados.filter(
+            cancelado_en__date__gte=primero
+        ).count()
+        salida["cancelados"] = cancelados.count()
         pendientes = Tarea.objects.filter(archivada=False).exclude(
             estado__in=list(
                 __import__("apps.el_pizarron.models.estado_tarea", fromlist=["EstadoTarea"])
