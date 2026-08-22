@@ -134,7 +134,57 @@ def vivo_fierro(request):
         "disco_lee": pulso.area(series["disco_lee"]),
         "disco_escribe": pulso.area(series["disco_escribe"]),
     }
+    # El pie de la tarjeta del disco se arma AQUÍ y no en la plantilla. Encadenar
+    # seis filtros para pegar dos números es ilegible, y además era un 500: pasar
+    # `io.escritura_mb_s` como ARGUMENTO de `add:` hace que Django lo resuelva
+    # SIN silenciar el fallo (los argumentos de filtro no se silencian, a
+    # diferencia de las variables sueltas). Con `disco_io` en su primera muestra
+    # —«disponible: False»— esa llave no existe y la página revienta. O sea que
+    # fallaba SÓLO en el primer refresco tras recrear el contenedor, que es el
+    # peor momento para descubrirlo.
     ctx["io"] = io
+
+    # Los textos de las cuatro tarjetas se arman AQUÍ, todos. Es más legible que
+    # encadenar seis filtros en la plantilla, y sobre todo evita el 500: pasar
+    # `algo.llave` como ARGUMENTO de `add:` hace que Django lo resuelva SIN
+    # silenciar el fallo (los argumentos de filtro no se silencian, a diferencia
+    # de las variables sueltas), así que una llave ausente revienta la página.
+    # Pasaba con `disco_io` en su primera muestra, y estaba LATENTE en las otras
+    # tres: si `/proc` no se monta, `memoria`/`disco`/`cpu_load` devuelven sólo
+    # `{disponible: False}` y las tres tarjetas se caían igual.
+    cpu = (infra.get("host") or {}).get("cpu_load") or {}
+    disco = (infra.get("host") or {}).get("disco") or {}
+    gb = ctx.get("mem_gb") or {}
+
+    def _num(v, sufijo=""):
+        return f"{v}{sufijo}" if v is not None else "—"
+
+    # El color del anillo de memoria lo decide el COLCHÓN, no el porcentaje. Un
+    # 70% de 14.8 G deja 4.4 G libres y está perfecto; un 70% de 4 G no. Lo que
+    # importa es cuánto queda, no qué proporción se usó — y así el anillo se pone
+    # rojo el día en que de verdad hay que hacer algo, no antes.
+    presion = (infra.get("host") or {}).get("presion") or {}
+    if presion.get("disponible"):
+        g = dict(g)
+        mem = dict(g.get("memoria") or {})
+        mem["color"] = {"ok": "success", "aviso": "warning",
+                        "falla": "error"}.get(presion.get("estado"), "success")
+        g["memoria"] = mem
+        ctx["infra"] = {**infra, "gauges": g}
+    ctx["presion"] = presion
+
+    ctx["textos"] = {
+        "cpu_a": _num(cpu.get("cores"), " núcleos activos"),
+        "cpu_b": f"5 min: {cpu.get('load_5')}" if cpu.get("load_5") is not None else "",
+        "mem_unidad": f"de {gb.get('total')} GB" if gb.get("total") else "GB",
+        "mem_a": (presion.get("detalle") if presion.get("estado") != "ok"
+                  else _num(gb.get("libre"), " GB libres")),
+        "disco_unidad": (f"de {disco.get('total_gb')} GB"
+                         if disco.get("total_gb") is not None else "GB"),
+        "disco_a": _num(disco.get("libre_gb"), " GB libres"),
+        "disco_b": (f"{io.get('lectura_mb_s')} lee · {io.get('escritura_mb_s')} escribe MB/s"
+                    if io.get("disponible") else ""),
+    }
     # Las peticiones van en barras: es un conteo discreto que toca el cero
     # seguido, y un área con huecos se ve como trozos sueltos en vez de un ritmo.
     # Se toman los últimos 32 puntos porque más barras en ese ancho quedan de un

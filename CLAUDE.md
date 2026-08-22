@@ -5943,6 +5943,50 @@ El throughput no cambió porque el cuello nunca fue Postgres; lo que cambió es 
 cambiar parámetros de un servicio en el compose, recrear el contenedor y
 COMPROBAR con `SHOW`** — el `docker compose config` sólo dice lo que se pide.
 
+**El NUC, dimensionado para no volver (decisión de Oscar, 2026-08-22).** Su
+petición literal: «future proof el NUC. Recuerda que es un server headless, no
+quiero regresar en unos meses a configurar más RAM porque insististe en que la base
+completa cabe en el RAM». Tenía razón: estaba dimensionando para los 29 MB de HOY,
+que es exactamente lo que obliga a volver. Presupuesto: **4 G de colchón
+intocable**, ~10.8 G para repartir, y los techos puestos para que la base y el
+catálogo crezcan **cien veces** sin tocar una cifra.
+
+| | antes | ahora | qué compra |
+|---|---|---|---|
+| `shared_buffers` | 512 M | **4 G** | techo, no reserva: hoy usa 120 M porque la base son 29 M |
+| `work_mem` | 8 M | **32 M** | los reportes ordenan en memoria en vez de escribir al disco |
+| `maintenance_work_mem` | 128 M | **1 G** | VACUUM y CREATE INDEX cuando las tablas crezcan |
+| `autovacuum_work_mem` | (heredado) | **512 M** | fijado aparte: 4 procesos a 1 G serían 4 G en segundo plano |
+| `max_connections` | 50 | **200** | 96 hilos de las apps + worker + crons |
+| `max_wal_size` | 1 G | **4 G** | menos checkpoints con escritura sostenida |
+| Redis `maxmemory` | 64 M | **3 G** | techo; hoy usa 4.5 M |
+| hilos de gunicorn | 1×4 | **8×8 y 4×8** | el techo REAL: las esperas de IA, no el CPU |
+| `MALLOC_ARENA_MAX` | 2 | **8** | con 8 hilos por worker, 2 arenas son contención |
+
+**Y lo que de verdad evita volver: el sistema avisa solo.**
+`lib/site/host.presion_memoria()` con `COLCHON_GB=4` alimenta dos cosas — el anillo
+de memoria de El Vigía **se pinta por el colchón, no por el porcentaje** (un 70% de
+14.8 G deja 4.4 G y está perfecto; un 70% de 4 G no), y el módulo `memoria` de
+`/salud`, que reporta **degradado** —no falla— cuando el colchón se estrecha: el
+sistema sigue de pie y lo que hace falta es planear, no correr. **Si ese aviso
+aparece, ES la señal de volver. Mientras no aparezca, no hay nada que ajustar.**
+
+**Descartado con razón:** «más caché» no compra nada medible hoy y hay que decirlo
+al medirlo (la base son 29 M, El Almacén 23 M, sus derivados 12 M: todo cabe treinta
+veces en el techo anterior). Y **Ollama queda fuera por decisión de Oscar** («no va
+a funcionar mejor que las API existentes») — el adapter sigue en el repo, sin usar.
+
+**Dos trampas del compose, las dos cazadas midiendo:**
+- **Editar el compose y validarlo con `config` NO aplica nada**: el contenedor sigue
+  con lo viejo. Corría con `max_connections=50` mientras el archivo decía 100.
+  **Comprobar con `SHOW`, no con `config`** — el segundo dice lo que se pide.
+- **Un parámetro repetido en el `command` no falla: el último gana en silencio.**
+  `wal_buffers` quedó dos veces (64 M y 16 M) y Postgres arrancó con el segundo sin
+  una queja. Candado en `tests/site/test_host.py`.
+- Y recrear Postgres deja **conexiones muertas** en los workers de gunicorn:
+  `/salud` reporta «la base de datos no responde» aunque Postgres esté perfecto. Se
+  arregla con un HUP a las apps, que recicla los workers sin corte.
+
 **Y una lección de método:** «no cabe en el teléfono» era **artefacto de la
 herramienta**. Chrome headless tiene un **viewport mínimo de 500px**, así que
 `--window-size=390` renderiza a 500 y recorta la imagen — lo que yo leía como

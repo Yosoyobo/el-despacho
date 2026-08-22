@@ -11,6 +11,30 @@
 #   6. Le sube el fierro a gunicorn y a Postgres para lo que esta máquina da de
 #      verdad: 8 núcleos y 15 G, contra el default del repo, que está calibrado
 #      para el droplet de 1 GB (1 worker, shared_buffers=64MB).
+#
+# ── EL PRESUPUESTO DE MEMORIA (decisión de Oscar, 2026-08-22) ─────────────────
+# La máquina tiene 14.8 G y el colchón intocable es de 4 G, así que hay ~10.8 G
+# para repartir. Los números de abajo están dimensionados para que la base y el
+# catálogo puedan crecer CIEN VECES sin que nadie tenga que volver a entrar a un
+# servidor headless a cambiar una cifra. Eso es lo que se está comprando aquí, no
+# velocidad de hoy: con 29 MB de base, subir cachés no acelera nada medible.
+#
+#   Postgres shared_buffers   4 G   techo; crece con la base
+#   Postgres work_mem         ~0.8 G en el pico observado (25 consultas × 32 M)
+#   12 workers de gunicorn    3.6 G  (8 del Taller + 4 de La Gerencia)
+#   Redis                     3 G   techo; hoy usa 4.5 M
+#   El Mostrador, El Portavoz, Docker  ~0.5 G
+#   ─────────────────────────────────────────────────────────────
+#   Uso real hoy              ~4.4 G      → 10.4 G disponibles
+#   Peor caso realista        ~9.4 G      → 5.4 G de colchón
+#
+# Los techos NO son reservas: `shared_buffers` y el `maxmemory` de Redis se llenan
+# según haga falta. Sumar todos los techos a la vez da un número que asusta y que
+# no ocurre — y para el día en que se acerque está el aviso automático: El Vigía
+# pinta la memoria en rojo y `/salud` lo reporta cuando el colchón baja de 4 G.
+# **Si ese aviso aparece, ES la señal de volver aquí.** Mientras no aparezca, no
+# hay nada que ajustar.
+#
 services:
   el-portero:
     # Un profile que nadie activa = servicio que no se levanta, sin borrarlo del
@@ -37,7 +61,23 @@ services:
       # conexiones a Postgres: 32 (Taller) + 16 (Gerencia) + el worker = 49,
       # contra `max_connections=100`. Sobra el doble.
       GUNICORN_WORKERS: "8"
-      GUNICORN_THREADS: "4"
+      # 8 × 8 = 64 peticiones a la vez. Los HILOS se duplican y los workers no,
+      # porque el techo más bajo del sistema no es el CPU: son las esperas. Los
+      # logs lo enseñan — `/chalan/nuevo` tarda 6.4 s y `/chalan/c/N/enviar` 4.5 s,
+      # y ese tiempo NO gasta procesador (se está esperando a Anthropic o a
+      # Deepseek) pero ocupa un hilo completo. Con 4 hilos por worker, 32 personas
+      # pidiéndole algo al Chalán a la vez llenaban el cupo y la 33ª esperaba.
+      #
+      # Un hilo cuesta memoria de pila, no una copia de Django: los 32 nuevos
+      # suman ~150 MB, contra los ~230 MB que cuesta UN worker más. Y más workers
+      # no darían nada: el CPU ya se satura a 275 peticiones/segundo.
+      GUNICORN_THREADS: "8"
+      # `MALLOC_ARENA_MAX=2` viene del compose base, donde la RAM era el recurso
+      # escaso (droplet de 1 GB): dos arenas de malloc gastan poco pero se vuelven
+      # un punto de contención en cuanto hay muchos hilos pidiendo memoria a la
+      # vez. Con 8 hilos por worker se le da una arena a cada uno; cuesta ~150 MB
+      # de fragmentación y aquí sobran diez gigas.
+      MALLOC_ARENA_MAX: "8"
 
   la-gerencia:
     ports:
@@ -49,23 +89,30 @@ services:
       # y algunos hablan con el socket de Docker o con internet. Con 2 workers,
       # un sondeo lento a DigitalOcean podía dejar la pared esperando.
       GUNICORN_WORKERS: "4"
-      GUNICORN_THREADS: "4"
+      GUNICORN_THREADS: "8"
+      MALLOC_ARENA_MAX: "8"
 
   # ── Postgres ────────────────────────────────────────────────────────────────
   # El compose base está tuneado para "droplet de 1 GB" (shared_buffers=64MB).
   # Esta máquina tiene 15 G y 8 núcleos, y el primer paso de la mudanza lo dejó a
   # medio camino (512 MB) por prudencia. Aquí ya va dimensionado de verdad:
   #
-  #   shared_buffers 2G          el 13% de la RAM. La receta común es 25%, pero
-  #                              esta máquina corre TODO (apps, Redis, Docker),
-  #                              no es un servidor de base dedicado.
+  #   shared_buffers 4G          Un techo, no una reserva: se llena perezosamente,
+  #                              así que hoy Postgres usa ~90 MB porque la base
+  #                              entera pesa 29 MB (agosto 2026) y ya está toda en
+  #                              memoria. Subirlo NO acelera nada medible hoy —se
+  #                              deja dicho para que nadie lo mida esperando otra
+  #                              cosa— pero no cuesta nada y significa que la base
+  #                              puede crecer cien veces sin volver a tocar esto.
+  #   effective_cache_size 10G   tampoco reserva: le dice al planeador cuánta
+  #                              memoria puede suponer en caché. Con 14.8 G en la
+  #                              máquina y 4 G de colchón, 10 es la verdad.
   #   effective_cache_size 8G    no reserva nada: le dice al planeador cuánta
   #                              memoria puede suponer que el sistema tiene en
   #                              caché. Subirlo hace que prefiera índices sobre
   #                              recorridos de tabla completos.
-  #   work_mem 16M               por operación de orden/agrupado. Con 100
-  #                              conexiones el peor caso teórico es alto, pero
-  #                              las consultas del repo son chicas y ordenadas.
+  #   work_mem 32M               por operación de orden/agrupado. Ver la nota de
+  #                              abajo: el peor caso teórico no es el real.
   #   random_page_cost 1.1       el default (4.0) asume disco que gira, donde
   #                              saltar es caro. Esto es SSD: saltar cuesta casi
   #                              lo mismo que leer seguido, y sin corregirlo el
@@ -79,21 +126,50 @@ services:
     command:
       - "postgres"
       - "-c"
-      - "shared_buffers=2GB"
+      - "shared_buffers=4GB"
+      # 32 MB por operación de orden o agrupado. El peor caso teórico con 200
+      # conexiones asusta (6 G) pero no es el caso real: hay que tener 200
+      # consultas ORDENANDO a la vez, y aquí el pico observado bajo esfuerzo fue
+      # de ~25. Lo que compra: cuando la base tenga cien veces más filas, los
+      # reportes de Contaduría y los exports ordenan EN MEMORIA en vez de escribir
+      # archivos temporales al disco, que es donde una consulta pasa de medio
+      # segundo a diez.
       - "-c"
-      - "work_mem=16MB"
+      - "work_mem=32MB"
       - "-c"
-      - "effective_cache_size=8GB"
+      - "effective_cache_size=10GB"
+      # Para VACUUM y CREATE INDEX. Sube a 1 G porque es lo que decide cuánto
+      # tarda el mantenimiento cuando las tablas crecen, y corre de uno en uno.
       - "-c"
-      - "maintenance_work_mem=512MB"
+      - "maintenance_work_mem=1GB"
+      # Pero el autovacuum se queda con su propio techo, más bajo: hereda de
+      # `maintenance_work_mem` si no se fija, y con 4 procesos a 1 G cada uno
+      # serían 4 G de golpe en segundo plano, sin que nadie lo pidiera.
       - "-c"
-      - "max_connections=100"
+      - "autovacuum_work_mem=512MB"
+      - "-c"
+      - "autovacuum_max_workers=4"
+      # Menos checkpoints cuando haya escritura sostenida. Es disco, no memoria,
+      # pero es de lo mismo: dimensionar para el volumen que viene.
+      - "-c"
+      - "max_wal_size=4GB"
+      - "-c"
+      - "min_wal_size=512MB"
+      - "-c"
+      - "wal_buffers=64MB"
+      - "-c"
+      - "temp_buffers=32MB"
+      - "-c"
+      # 96 hilos entre las dos apps pueden pedir una conexión cada uno, más el
+      # worker del Portavoz, los crons y algún psql: 100 se quedaba corto y
+      # Postgres empieza a contestar «sorry, too many clients already». No cuesta
+      # casi nada: lo que pesa por conexión es `work_mem`, y sólo cuando de verdad
+      # ordena algo grande.
+      - "max_connections=200"
       - "-c"
       - "random_page_cost=1.1"
       - "-c"
       - "effective_io_concurrency=200"
-      - "-c"
-      - "wal_buffers=16MB"
       - "-c"
       - "max_worker_processes=8"
       - "-c"
@@ -116,10 +192,12 @@ services:
       - "--appendonly"
       - "yes"
       - "--maxmemory"
-      # 2 G. El techo importa por El Almacén: cada foto de producto deja su
-      # derivado en caché, y con 512 MB una tanda grande empezaba a desalojar.
-      # Con esto la caché de medios cabe entera y las fotos salen del primer tiro.
-      - "2gb"
+      # 3 G de TECHO, no de reserva: hoy Redis usa 4.5 MB. El techo importa por lo
+      # que escala con el catálogo —los derivados de imagen, las sesiones, el
+      # rate-limiter, la cola del Portavoz— y está puesto para que crezca cien
+      # veces sin que nadie tenga que volver a entrar aquí. Con `volatile-lru`
+      # sólo desaloja lo que tiene caducidad, así que la cola nunca se pierde.
+      - "3gb"
       - "--maxmemory-policy"
       - "volatile-lru"
     restart: always

@@ -21,10 +21,10 @@ esqueleto por este panel, así que es ESTE el que decide cuántas columnas hay.
 <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
 
   {# ── CPU ──────────────────────────────────────────────────────────────── #}
-  {% include "site/vivo/_anillo.html" with titulo="CPU" pct=g.cpu.pct color=g.cpu.color grande=h.cpu_load.load_1 unidad="de carga" trazo=trazos.cpu a=h.cpu_load.cores|stringformat:"s"|add:" núcleos activos" b="5 min: "|add:h.cpu_load.load_5|stringformat:"s" %}
+  {% include "site/vivo/_anillo.html" with titulo="CPU" pct=g.cpu.pct color=g.cpu.color grande=h.cpu_load.load_1 unidad="de carga" trazo=trazos.cpu a=textos.cpu_a b=textos.cpu_b %}
 
   {# ── Memoria ──────────────────────────────────────────────────────────── #}
-  {% include "site/vivo/_anillo.html" with titulo="Memoria (RAM)" pct=g.memoria.pct color=g.memoria.color grande=mem_gb.usado unidad="de "|add:mem_gb.total|stringformat:"s"|add:" GB" trazo=trazos.mem a=mem_gb.libre|stringformat:"s"|add:" GB libres" %}
+  {% include "site/vivo/_anillo.html" with titulo="Memoria (RAM)" pct=g.memoria.pct color=g.memoria.color grande=mem_gb.usado unidad=textos.mem_unidad trazo=trazos.mem a=textos.mem_a %}
 
   {# ── Disco ────────────────────────────────────────────────────────────── #}
   {% comment %}
@@ -32,7 +32,7 @@ esqueleto por este panel, así que es ESTE el que decide cuántas columnas hay.
   porcentaje ocupado: ése no se mueve —14.5% hoy, 14.5% mañana— y una raya recta
   en una pared es espacio tirado. Lo que se mueve es cuánto trabaja.
   {% endcomment %}
-  {% include "site/vivo/_anillo.html" with titulo="Disco (SSD)" pct=g.disco.pct color=g.disco.color grande=h.disco.usado_gb unidad="de "|add:h.disco.total_gb|stringformat:"s"|add:" GB" trazo=trazos.disco_lee trazo_b=trazos.disco_escribe a=h.disco.libre_gb|stringformat:"s"|add:" GB libres" b=io.lectura_mb_s|default_if_none:"—"|stringformat:"s"|add:" lee · "|add:io.escritura_mb_s|default_if_none:"—"|stringformat:"s"|add:" escribe MB/s" %}
+  {% include "site/vivo/_anillo.html" with titulo="Disco (SSD)" pct=g.disco.pct color=g.disco.color grande=h.disco.usado_gb unidad=textos.disco_unidad trazo=trazos.disco_lee trazo_b=trazos.disco_escribe a=textos.disco_a b=textos.disco_b %}
 
   {# ── Las piezas trabajando ────────────────────────────────────────────── #}
   {% comment %}

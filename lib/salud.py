@@ -230,6 +230,29 @@ def _m_respaldo(de_la_casa: bool) -> dict[str, Any]:
     return {"modulo": "respaldo", "estado": estado, "detalle": det}
 
 
+def _m_memoria() -> dict[str, Any]:
+    """¿Queda el colchón de memoria acordado en la máquina?
+
+    Existe para que **nadie tenga que volver a un servidor headless a adivinar si
+    le falta memoria**. El NUC quedó dimensionado (agosto 2026) para que la base y
+    el catálogo crezcan cien veces sin tocar una cifra, con 4 G de colchón
+    intocable. Este módulo es el que avisa el día en que ese colchón se empiece a
+    comer: si nunca aparece en amarillo, no hay nada que ajustar.
+
+    Se reporta **degradado**, no **falla**, cuando el colchón se estrecha: el
+    sistema sigue funcionando y lo que hace falta es planear, no correr. Sólo
+    cuando queda menos de la mitad pasa a falla — y ahí sí despierta a alguien,
+    porque lo siguiente es que el kernel empiece a matar procesos.
+    """
+    from lib.site import host
+    p = host.presion_memoria()
+    if not p.get("disponible"):
+        return {"modulo": "memoria", "estado": "apagado",
+                "detalle": "no se puede leer /proc en este contenedor"}
+    estado = {"ok": "ok", "aviso": "degradado", "falla": "falla"}[p["estado"]]
+    return {"modulo": "memoria", "estado": estado, "detalle": p["detalle"]}
+
+
 def modulos(de_la_casa: bool = False) -> list[dict[str, Any]]:
     """Los módulos de la cara pública, cada uno medido en su propio `try`."""
     medidas = (
@@ -237,6 +260,7 @@ def modulos(de_la_casa: bool = False) -> list[dict[str, Any]]:
         _m_cola,
         _m_correo,
         _m_ia,
+        _m_memoria,
         lambda: _m_integraciones(de_la_casa),
         lambda: _m_respaldo(de_la_casa),
     )

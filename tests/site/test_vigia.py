@@ -557,3 +557,46 @@ class TestLosRespaldosSeEncuentran:
         monkeypatch.setattr(internos, "_RUTAS_RESPALDOS", ("/no/existe/nunca",))
         monkeypatch.setattr(internos, "_DONDE_BUSCAR_RESPALDOS", ())
         assert internos.ultimo_backup_local()["disponible"] is False
+
+
+class TestElPanelDelFierroEnLaPrimeraMuestra:
+    """`disco_io` devuelve `{disponible: False, motivo: "primera muestra"}` en su
+    primera lectura: son contadores acumulados y una sola no es una tasa. El panel
+    reventaba con un 500 justo ahí, o sea **en el primer refresco tras recrear el
+    contenedor** — el peor momento para descubrirlo, y se descubrió así.
+
+    La causa: la plantilla pasaba `io.escritura_mb_s` como ARGUMENTO de un filtro
+    `add:`. Django **no silencia los argumentos de filtro** (a diferencia de las
+    variables sueltas), así que una llave ausente levanta `VariableDoesNotExist`.
+    Es un patrón que este repo ya tiene documentado como prohibido (§8, jul25-r2)
+    y volvió a colarse: por eso el candado.
+    """
+
+    @pytest.mark.django_db
+    def test_abre_aunque_el_disco_no_tenga_dos_muestras(self, client, settings, monkeypatch):
+        settings.ROOT_URLCONF = "tests.urls_gerencia"
+        settings.ALLOWED_HOSTS = ["*"]
+        from lib.site import host
+        # Se fuerza el estado exacto de la primera muestra.
+        monkeypatch.setattr(host, "disco_io",
+                            lambda: {"disponible": False, "motivo": "primera muestra"})
+        r = client.get("/site/vivo/fierro", HTTP_HOST="localhost")
+        assert r.status_code == 200, "el panel del fierro no puede caerse por eso"
+
+    def test_ningun_filtro_recibe_una_llave_de_diccionario_como_argumento(self):
+        """Candado del patrón, no sólo de este caso. `{{ x|add:y.z }}` con `y.z`
+        ausente es un 500; `{{ y.z }}` a secas sale vacío. La diferencia está en
+        que el argumento se resuelve sin silenciar."""
+        import re
+        from pathlib import Path
+        raiz = Path(__file__).resolve().parents[2] / "la-gerencia" / "templates" / "site"
+        sospechosos = []
+        for ruta in list(raiz.rglob("vivo*.html")) + list(raiz.rglob("vivo/*.html")):
+            for i, linea in enumerate(ruta.read_text().splitlines(), 1):
+                # Un filtro cuyo argumento es `algo.algo` (una llave anidada).
+                if re.search(r"\|(add|default|default_if_none|yesno):[a-z_]+\.[a-z_]+", linea):
+                    sospechosos.append(f"{ruta.name}:{i}")
+        assert not sospechosos, (
+            "argumento de filtro con llave anidada — un 500 si la llave falta: "
+            + ", ".join(sospechosos)
+        )

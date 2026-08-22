@@ -72,7 +72,8 @@ def test_proc_no_existe(monkeypatch):
 def test_snapshot_estructura():
     from lib.site import host
     r = host.snapshot()
-    assert set(r.keys()) == {"cpu_load", "memoria", "disco", "disco_io", "uptime"}
+    assert set(r.keys()) == {"cpu_load", "memoria", "disco", "disco_io",
+                            "presion", "uptime"}
 
 
 class TestActividadDelDisco:
@@ -196,3 +197,71 @@ class TestGaugeDeContenedores:
                 f"{ruta} todavía pinta «todo arriba» como error"
             )
         assert sitios == 3, f"esperaba 3 llamadas invertidas, encontré {sitios}"
+
+
+class TestElColchonDeMemoria:
+    """El NUC quedó dimensionado para que la base y el catálogo crezcan cien veces
+    sin tocar una cifra, con 4 G de colchón intocable (decisión de Oscar,
+    2026-08-22). Esto es lo que avisa el día en que ese colchón se estreche —
+    existe para que nadie tenga que volver a un servidor headless a adivinar si le
+    falta memoria."""
+
+    def test_con_el_colchon_entero_dice_ok(self, monkeypatch):
+        from lib.site import host
+        monkeypatch.setattr(host, "memoria",
+                            lambda: {"disponible": True, "libre_mb": 10 * 1024})
+        r = host.presion_memoria()
+        assert r["estado"] == "ok"
+        assert r["libre_gb"] == 10.0
+
+    def test_cuando_se_estrecha_avisa_ANTES_de_doler(self, monkeypatch):
+        """El escalón intermedio es el que sirve: enterarse cuando ya duele no
+        deja margen para planear nada."""
+        from lib.site import host
+        monkeypatch.setattr(host, "memoria",
+                            lambda: {"disponible": True, "libre_mb": int(3 * 1024)})
+        assert host.presion_memoria()["estado"] == "aviso"
+
+    def test_por_debajo_de_la_mitad_es_falla(self, monkeypatch):
+        """Menos de 2 G libres: lo siguiente es que el kernel empiece a matar
+        procesos, y el primero en caer sería una app."""
+        from lib.site import host
+        monkeypatch.setattr(host, "memoria",
+                            lambda: {"disponible": True, "libre_mb": 1024})
+        assert host.presion_memoria()["estado"] == "falla"
+
+    def test_sin_proc_lo_dice_en_vez_de_inventar(self, monkeypatch):
+        from lib.site import host
+        monkeypatch.setattr(host, "memoria", lambda: {"disponible": False})
+        assert host.presion_memoria()["disponible"] is False
+
+    def test_el_monitor_del_taller_tambien_lo_ve(self, monkeypatch):
+        """`/salud` lo reporta como **degradado**, no como falla, cuando el colchón
+        se estrecha: el sistema sigue funcionando y lo que hace falta es planear,
+        no correr. Una alarma que despierta a alguien sin que haya nada que hacer
+        esa noche entrena a ignorar el tablero."""
+        from lib import salud
+        from lib.site import host
+        monkeypatch.setattr(host, "memoria",
+                            lambda: {"disponible": True, "libre_mb": int(3 * 1024)})
+        m = salud._m_memoria()
+        assert m["modulo"] == "memoria"
+        assert m["estado"] == "degradado"
+        assert "colchón" in m["detalle"]
+
+
+class TestElOverlayDelNucNoSeContradice:
+    """Un parámetro repetido en el `command` de un servicio no falla: **el último
+    gana, en silencio**. Pasó con `wal_buffers`, que quedó dos veces (64MB y
+    16MB) y Postgres arrancó con el segundo sin decir nada. La única señal era
+    `pg_settings`, o sea que había que ir a buscarla sabiendo qué buscar."""
+
+    def test_ningun_parametro_de_postgres_esta_dos_veces(self):
+        import re
+        from pathlib import Path
+        raiz = Path(__file__).resolve().parents[2]
+        for archivo in ("docker-compose.yml", "docker-compose.nuc.yml"):
+            texto = (raiz / archivo).read_text()
+            nombres = re.findall(r'^\s*-\s*"([a-z_]+)=[^"]*"\s*$', texto, re.M)
+            repetidos = {n for n in nombres if nombres.count(n) > 1}
+            assert not repetidos, f"{archivo}: repetidos, el último gana en silencio → {repetidos}"

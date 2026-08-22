@@ -65,6 +65,47 @@ def memoria() -> dict[str, Any]:
     }
 
 
+# El colchón de memoria que NO se toca, en gigas. Decisión de Oscar (2026-08-22):
+# el NUC tiene 14.8 G, se reparten ~10.8 y estos 4 se quedan libres siempre.
+#
+# Existe como constante y no como número suelto porque de aquí salen dos cosas: el
+# color del anillo de memoria en El Vigía y el módulo de `/salud`. La idea es que
+# **nadie tenga que volver a un servidor headless a adivinar si le falta memoria**:
+# si el colchón se rompe, el sistema lo dice solo, en la pared y en el monitor.
+COLCHON_GB = float(os.environ.get("NUC_COLCHON_GB", "4"))
+
+
+def presion_memoria() -> dict[str, Any]:
+    """¿Queda el colchón de memoria acordado? Nunca lanza.
+
+    Devuelve `estado` en tres pasos, no dos, porque «ok» y «falla» no alcanzan:
+    hace falta el escalón intermedio que avisa ANTES de que duela, que es el
+    único momento en que sirve enterarse.
+
+      ok       queda más del colchón completo
+      aviso    queda entre el colchón y la mitad — es hora de mirar
+      falla    queda menos de la mitad del colchón — hay que actuar
+    """
+    m = memoria()
+    if not m.get("disponible"):
+        return {"disponible": False}
+    libre_gb = (m.get("libre_mb") or 0) / 1024
+    if libre_gb >= COLCHON_GB:
+        estado = "ok"
+    elif libre_gb >= COLCHON_GB / 2:
+        estado = "aviso"
+    else:
+        estado = "falla"
+    return {
+        "disponible": True,
+        "estado": estado,
+        "libre_gb": round(libre_gb, 1),
+        "colchon_gb": COLCHON_GB,
+        "detalle": (f"quedan {libre_gb:.1f} G libres de un colchón de "
+                    f"{COLCHON_GB:.0f} G"),
+    }
+
+
 def disco(path: str | Path | None = None) -> dict[str, Any]:
     """Espacio en disco del path raíz montado. En el container con
     /host:ro, usa `SITE_DISCO_ROOT=/host`. Si no existe, cae a `/`."""
@@ -176,5 +217,6 @@ def snapshot() -> dict[str, Any]:
         "memoria": memoria(),
         "disco": disco(),
         "disco_io": disco_io(),
+        "presion": presion_memoria(),
         "uptime": uptime(),
     }
