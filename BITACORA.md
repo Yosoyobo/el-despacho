@@ -10235,3 +10235,83 @@ cambios en un stash: falla igual sin ellos. La Gerencia instala apps de El Talle
 (§14 Bug B: sólo ella corre `migrate`) y el Dockerfile las copia a su imagen; en
 el host, `apps` sólo resuelve a `la-gerencia/apps`. Para reproducir el
 contenedor: `PYTHONPATH=<repo>/el-taller manage.py check`.
+
+---
+
+# S-Mudanza-NUC — El Despacho se va al NUC, La Sede queda como ventana (2026-08-21, sin bump de VERSION)
+
+> Mudanza de infraestructura. **Ningún cambio visible en la UI**, así que NO se
+> bumpeó `VERSION` (sigue en `2026.08.16`). Plan, resultados medidos y trampas en
+> **`docs/MUDANZA-AL-NUC-LC.md`**. Repo al día en el **PR #54** (mergeado) + dos
+> commits de arreglo en `main`.
+
+## Lo que se entregó
+
+Las apps, Postgres y Redis corren en el **NUC de Learning Center**; **La Sede quedó
+como ventana** — un solo contenedor (El Portero) que termina TLS y hace
+`reverse_proxy` por el tailnet. Los 5 registros DNS no se movieron. El droplet pasó
+de **6 contenedores y 22 crons** a **1 contenedor y 0 crons**, y su RAM usada de
+802 a 502 Mi.
+
+| Prueba | Resultado |
+|---|---|
+| Data migrada | **127 tablas, 10 160 filas** comparadas una por una contra el droplet: **cero diferencias** |
+| Cola del Portavoz | **5 184 eventos** preservados (Redis con AOF, copiado con el servicio detenido) |
+| Los 5 dominios | apex 200 · www 301 · taller 302 · gerencia 302 · recepcion 503 (intencional) |
+| **Failover** (NUC apagado a propósito) | homepage **200 con su contenido real**, subdominios 503 honesto, `/ping` **502 crudo** |
+| **Dos reinicios reales** | los 5 contenedores de vuelta **solos** |
+| RAM de la pila | **288 MB** de 14 G (en el droplet vivía en 1.9 G racionando) |
+
+## Decisiones de OBO (cerradas)
+
+1. **La homepage se sirve DESDE el droplet** con `file_server`. Son 52 archivos
+   estáticos: no necesitan servidor de app, y así no depende del NUC, ni de HAL, ni
+   del tailnet. **HAL sale del camino del sitio público** (antes la servía en
+   `100.107.38.26:8088`).
+2. Respaldos al disco del NUC **y** al RAID de HAL.
+3. Los gauges del Site **pasan a medir el NUC**; el panel de certificados queda sin
+   datos y **se dice en pantalla**.
+4. `/mnt/el-despacho` (el NUC tiene UN disco; cuando entre el SSD nuevo la ruta no
+   cambia).
+5. **El CI entra al tailnet**, la ventana no se vuelve puerta de deploy.
+
+## Cuatro hallazgos que no eran el trabajo pedido
+
+1. **El worker del Portavoz nunca ha corrido** — `la-gerencia/Dockerfile:68` declara
+   `ENTRYPOINT ["./entrypoint.sh"]` y ese script hace `exec gunicorn` **sin ejecutar
+   `"$@"`**: el `command:` del compose se ignora en silencio y ese contenedor es una
+   segunda copia de La Gerencia. `portavoz:cola` acumula **5 184 eventos desde el
+   2026-05-14**. **NO se arregló a propósito** (postea a n8n con HMAC; encenderlo
+   dispararía los 5 184 de golpe). **Sigue abierto.**
+2. **`allkeys-lru` + techo de 64 MB podía desalojar la propia cola** (no tiene TTL).
+   En el NUC quedó en 512 MB con `volatile-lru`. **Arreglado.**
+3. **El respaldo al RAID llevaba días mintiendo**: el `db-20260819` que llegó a HAL
+   pesaba **20 bytes** contra 438 K en el origen. Ya corre desde el NUC con su propia
+   llave y se verificó el CONTENIDO (127 `CREATE TABLE`, 127 `COPY`).
+4. **`docker kill -s HUP` dejaba dos contenedores sin volver tras un apagón** — el más
+   caro de diagnosticar y ahora §14 **Bug G**.
+
+## Los dos errores propios, dichos completos
+
+- **`secrets` en el `if:` de un job** tumbó los dos workflows enteros (corridas de
+  **0 s**, sin tests ni deploys) — §14 **Bug H**. Se validó el arreglo empujando a una
+  rama: si el archivo es inválido, GitHub crea una corrida fallida **aunque el trigger
+  no aplique**; cero corridas = archivo bueno.
+- **El guion del corte se rompió a media ejecución**: usé `sudo -S` varias veces en la
+  misma sesión SSH y la primera se comió la contraseña, así que las siguientes murieron
+  sin stdin. Postgres ya estaba restaurado, Redis no, y la ventana seguía apuntando al
+  droplet muerto. Se terminó a mano con una sola llamada a sudo. **Regla: una sesión
+  SSH, un `sudo -S`** (o `sudo -S bash -c '...'` con todo dentro).
+- **Al agregar bloques a `docker-compose.nuc.yml` repetí claves de servicio.** En YAML
+  la última gana, así que habría borrado los puertos publicados y el tuning de
+  Postgres. Se reescribió el archivo con cada servicio definido UNA vez y se validó con
+  `docker compose config`, no solo con un parser de YAML.
+
+## Lo que falta y pide mano de OBO
+
+Los secretos del CI (`TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `NUC_HOST`, `NUC_USER`,
+`NUC_SSH_KEY`) · **apagar el vencimiento de la llave del nodo** en la consola de
+Tailscale (expira el **2027-02-18**; no hay CLI) · el **cable de red** (`eno1` sigue
+DOWN, trabaja por WiFi) y el **BIOS** para que encienda tras un corte. El bump de
+`VERSION` va junto con el primer deploy verde del job `mudanza`, para no anunciar (ni
+pushear por Novedades) una versión que el NUC no está corriendo.

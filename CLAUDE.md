@@ -5529,6 +5529,104 @@ instala apps de El Taller (§14 Bug B: sólo ella migra) y el Dockerfile las cop
 a su imagen. Para reproducir el contenedor:
 `PYTHONPATH=<repo>/el-taller manage.py check`.
 
+### S-Mudanza-NUC ✅ — El Despacho se va al NUC, La Sede queda como ventana (2026-08-21, sin bump de VERSION)
+
+Mudanza de infraestructura, no de producto: **no hay cambio visible en la UI**, así
+que NO se bumpeó `VERSION` (ver "por qué" al final). Plan ejecutable y resultados
+medidos en **`docs/MUDANZA-AL-NUC-LC.md`**; repo al día en el **PR #54** (mergeado)
+más dos commits de arreglo en `main`.
+
+**La forma:** las apps, Postgres y Redis corren en el **NUC de Learning Center**
+(tailnet `100.121.244.5`, LAN `192.168.100.95`, usuario `linux`, proyecto en
+`/mnt/el-despacho`). **La Sede queda como VENTANA**: un solo contenedor
+(El Portero) que termina TLS y hace `reverse_proxy` por el tailnet. **Los 5
+registros DNS no se movieron.** El droplet pasó de 6 contenedores y 22 crons a
+**1 contenedor y 0 crons**.
+
+**Por qué:** La Sede corre con **1.9 G de RAM y 8.4 G libres de 24**, tan apretada
+que **La Recepción está apagada a propósito** para ahorrar ~120 MB (S-RAM-Wave3).
+La pila completa en el NUC consume **288 MB de 14 G** — o sea que ese motivo
+**ya no aplica**: encender La Recepción es decisión de producto, no de memoria
+(anotado como comentario en el bloque `recepcion` del `Caddyfile`).
+
+**Las 5 decisiones de OBO, cerradas — no volverlas a abrir:**
+1. **La homepage de `learningcenter.mx` se sirve DESDE el droplet** con
+   `file_server` (`/srv/lc-fallback`). Son 52 archivos estáticos del export de
+   Next: no necesitan servidor de app, y así la homepage **no depende del NUC, ni
+   de HAL, ni del tailnet**. Antes la servía HAL (`100.107.38.26:8088`) — HAL sale
+   del camino del sitio público. Se publica con `ops/ventana/publicar-homepage.sh`.
+2. **Respaldos al disco del NUC Y al RAID de HAL** (`archivo.sh` ya lo hacía; ahora
+   corre desde el NUC con su propia llave `~/.ssh/hal-backup`).
+3. Los gauges del `docker-compose.site.yml` **pasan a medir el NUC**; el panel de
+   certificados queda sin datos (Caddy vive en la ventana) y **se dice en pantalla**.
+4. **`/mnt/el-despacho`** con su carpeta propia (el NUC tiene UN disco de 119 G;
+   cuando entre el SSD nuevo la ruta NO cambia).
+5. **El CI entra al tailnet** (`tailscale/github-action` + OAuth + `tag:ci`) en vez
+   de volver la ventana una puerta de deploy.
+
+**Verificado en vivo, no supuesto:** 127 tablas y **10 160 filas** comparadas una
+por una contra el droplet (**cero diferencias**) · los **5 184 eventos** de
+`portavoz:cola` preservados · con el NUC apagado a propósito, la homepage sigue en
+**200 con su contenido real**, los subdominios dan la página de mantenimiento y
+`/ping` da **502 crudo** (el monitor ve la caída) · **dos reinicios reales** con los
+5 contenedores de vuelta solos.
+
+**El Caddyfile sigue siendo UNO** para las tres máquinas: los upstreams se leen con
+`{$UPSTREAM_TALLER:el-taller:8000}` (default al nombre del servicio), así que el
+mismo archivo sirve en la ventana y en HAL local sin cambiarle una línea. El
+`docker-compose.nuc.yml` saca a El Portero del stack con un profile que nadie
+activa; el `docker-compose.ventana.yml` le pone los upstreams y monta la homepage.
+
+**Tres bugs de producción que salieron al medir (dos siguen abiertos):**
+1. **El worker del Portavoz nunca ha corrido.** `la-gerencia/Dockerfile:68` declara
+   `ENTRYPOINT ["./entrypoint.sh"]` y ese script hace `exec gunicorn` **sin ejecutar
+   `"$@"`**, así que el `command: ["python","-m","lib.portavoz_worker"]` del compose
+   se ignora **en silencio**: ese contenedor es una **segunda copia de La Gerencia**.
+   `portavoz:cola` acumula **5 184 eventos desde el 2026-05-14**. **NO se arregló a
+   propósito:** el worker postea a n8n con HMAC y encenderlo dispararía los 5 184 de
+   golpe. Pide (a) corregir el entrypoint y (b) decidir qué se hace con el rezago.
+2. **`allkeys-lru` con techo de 64 MB podía desalojar la propia cola** (`portavoz:cola`
+   no tiene TTL) — o sea perder eventos sin aviso. En el NUC quedó en 512 MB con
+   **`volatile-lru`**, que solo desaloja lo que sí caduca.
+3. **`docker kill -s HUP` dejaba dos contenedores sin volver tras un apagón** — ver
+   §14 Bug G (arreglado).
+
+**La copia de respaldo al RAID llevaba días mintiendo:** el `db-20260819` que llegó a
+HAL pesaba **20 bytes** (gzip vacío) contra 438 K en el origen. Ya corre desde el NUC
+y se verificó el CONTENIDO (127 `CREATE TABLE`, 127 bloques `COPY`). **Al verificar un
+`.gz` en macOS usar `gunzip -c`, no `zcat`** — `zcat` da salida vacía y un respaldo
+bueno parece roto.
+
+**Los guiones de infra dejan de amarrar el proyecto a `/opt/el-despacho`:**
+`infra/cron/el-despacho.cron` usa `@@RAIZ@@` (lo sustituye `sync_crons.sh` por la raíz
+real), y `optimizar.sh`/`mudanza.sh` derivan la raíz de dónde viven. Así los crons y
+el mantenimiento **siguen al proyecto** en vez de suponer el servidor.
+
+**El CI cambió de forma** (`.github/workflows/`): `mudanza` despliega **al NUC**
+entrando al tailnet; job nuevo **`ventana`** despliega el Caddyfile al droplet
+**validándolo antes de aplicarlo** (`caddy validate`) y termina con un smoke test de
+la cadena completa (homepage + los dos `/ping`); `la-limpieza` apunta al NUC.
+**`mudanza` se SALTA** mientras no existan los secretos, en vez de fallar en rojo —
+ver §14 Bug H para el error que costó dos corridas muertas.
+
+**FALTA, y pide mano de OBO:** los secretos del CI (`TS_OAUTH_CLIENT_ID`,
+`TS_OAUTH_SECRET`, `NUC_HOST`, `NUC_USER`, `NUC_SSH_KEY`) · **apagar el vencimiento
+de la llave del nodo** en la consola de Tailscale (expira el **2027-02-18** y ese día
+se cae el sitio; no hay CLI) · el **cable de red** (`eno1` sigue DOWN, trabaja por
+WiFi) y el **BIOS** para que encienda tras un corte.
+
+**Por qué NO se bumpeó `VERSION`:** el deploy automático al NUC está gateado por los
+secretos de Tailscale, así que un bump anunciaría (y pushearía a todo el equipo por
+Novedades) una versión que el NUC no está corriendo. Se bumpea junto con el primer
+deploy verde del job `mudanza`.
+
+**Deuda diseñada:** el NUC tiene **un solo disco** (119 G, sin LVM) y corre **Ubuntu
+25.04, que no recibe parches desde el 19-ene-2026** — OBO decidió arrancar así
+sabiéndolo; cuando entre el SSD nuevo, si la máquina se reinstala conviene LVM (el
+disco se suma con `pvmove` en caliente). El motivo de cancelación no se pide cuando
+la cotización se aprueba desde El Chalán. La homepage se actualiza con un `rsync`
+manual (`ops/ventana/publicar-homepage.sh`), no con el deploy.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
@@ -8189,6 +8287,54 @@ agregas uno, o lo montas por directorio, o recreas el contenedor al cambiarlo. *
 confíes en un `reload` que lee desde dentro del contenedor.** Y en macOS **no se
 puede reproducir**: Docker Desktop comparte por ruta, no por inode, así que ahí el
 cambio sí se ve.
+
+### Bug G — `docker kill` marca el contenedor como "detenido a mano", aunque el proceso sobreviva
+
+`optimizar.sh` reciclaba los workers de gunicorn con `docker compose kill -s HUP`.
+Gunicorn **sobrevive** al HUP, así que el contenedor seguía corriendo perfecto — pero
+`docker kill` le cuelga al contenedor el marcador de "detenido a mano", y desde ese
+momento **`restart: unless-stopped` ya NO lo levanta** en el arranque.
+
+El síntoma es de los caros de diagnosticar: tras un apagón del NUC volvieron Postgres,
+Redis y el worker, y **La Gerencia y El Taller no**, con **cero errores en el journal**
+— el demonio restauró tres contenedores y dijo `Loading containers: done`. Y como
+`archivo.sh` dispara La Optimización **cada 3 días**, el sitio vivía a un corte de luz
+de quedarse abajo hasta que alguien corriera `up -d` a mano.
+
+**La regla:** para señalar un proceso dentro de un contenedor, mandar la señal **desde
+dentro** (`docker compose exec -T <svc> sh -c 'kill -HUP 1'`), **nunca** `docker kill`.
+Y donde el requisito sea "vuelve solo tras un apagón", usar **`restart: always`** (así
+quedó el overlay del NUC), no `unless-stopped`.
+
+**El síntoma a reconocer:** contenedores que no vuelven tras un boot **sin ningún
+error** en `journalctl -u docker`. Si el demonio no los menciona siquiera, no es un
+fallo de arranque: es que los cree detenidos a mano.
+
+### Bug H — el contexto `secrets` NO existe en el `if:` de un job de GitHub Actions
+
+Poner `if: ... && secrets.X != ''` a nivel **job** hace que GitHub **rechace el
+archivo completo** (`Unrecognized named-value: secrets`) y la corrida muera **en 0 s**
+sin ejecutar nada — ni tests, ni deploys. Dos workflows quedaron así y el síntoma en
+`gh run list` es engañoso: la corrida aparece con el **nombre del archivo** en vez del
+nombre del workflow.
+
+La comprobación va en un **paso**, que sí puede leer secretos por `env`, y los pasos
+siguientes se condicionan a su `outputs`:
+
+```yaml
+steps:
+  - id: creds
+    env: { TS_ID: "${{ secrets.TS_OAUTH_CLIENT_ID }}" }
+    run: |
+      if [ -n "${TS_ID:-}" ]; then echo "listo=si" >> "$GITHUB_OUTPUT"
+      else echo "listo=no" >> "$GITHUB_OUTPUT"; fi
+  - if: steps.creds.outputs.listo == 'si'
+    uses: ...
+```
+
+**Cómo validar un workflow sin tocar `main`:** empújalo a una rama cualquiera. Si el
+archivo es inválido, GitHub crea una corrida fallida de 0 s **aunque el trigger no
+aplique**; si no aparece ninguna corrida, el archivo es válido.
 
 ---
 
