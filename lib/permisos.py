@@ -294,6 +294,21 @@ def puede_ser_runner(user) -> bool:
     return puede(user, "runner", "recibir")
 
 
+def puede_ver_rutas(user) -> bool:
+    """Abrir el planeador y ver las rutas del día."""
+    return puede(user, "rutas", "ver")
+
+
+def puede_planear_rutas(user) -> bool:
+    """Armar o rearmar el reparto del día, y mover paradas entre runners."""
+    return puede(user, "rutas", "planear")
+
+
+def puede_despachar_rutas(user) -> bool:
+    """Publicar una ruta — es lo que le manda el correo al runner."""
+    return puede(user, "rutas", "despachar")
+
+
 def usuarios_runner():
     """Usuarios activos elegibles como runner — permiso (runner, recibir).
 

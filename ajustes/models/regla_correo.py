@@ -25,6 +25,7 @@ EVENTOS_CORREO = (
     ("proyecto_estado", "Un proyecto cambia de estado"),
     ("cotizacion_aprobada", "El cliente aprueba una cotización"),
     ("mandado_entregado", "Se marca una entrega como entregada"),
+    ("mandado_en_camino", "El runner sale con una entrega"),
     ("cliente_dormido", "Un cliente lleva tiempo sin proyectos nuevos"),
 )
 
@@ -45,6 +46,15 @@ META_EVENTOS: dict[str, dict] = {
         "filtro": None,
         "ayuda_filtro": "",
         "variables": ["cliente", "empresa", "proyecto", "mensaje", "fecha"],
+    },
+    "mandado_en_camino": {
+        "filtro": None,
+        "ayuda_filtro": "",
+        # `posicion` y `llegada` salen de la ruta planeada cuando la entrega va
+        # en una; si el runner salió sin ruta, llegan vacías y el correo se lee
+        # igual. Una variable nunca falta: a lo mucho llega vacía.
+        "variables": ["cliente", "empresa", "proyecto", "mensaje", "fecha",
+                      "runner", "posicion", "llegada"],
     },
     "cliente_dormido": {
         "filtro": "dias",

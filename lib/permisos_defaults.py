@@ -62,6 +62,11 @@ TODO_COMUNICACION = ["enviar_correo", "campanas"]
 # si nadie es runner, queda vacío. TODO_RUNNER alimenta el rol "Runner" sembrado
 # en la migración cuentas/0033.
 TODO_RUNNER = ["recibir"]
+# S-Planeador-Rutas: el plan de reparto del día. `ver` es lo que necesita un
+# runner para abrir SU ruta; `planear` y `despachar` son de quien organiza la
+# vuelta. Se separan porque no es lo mismo consultar la ruta que rearmarla o
+# publicarla (y mandarle el correo a alguien).
+TODO_RUTAS = ["ver", "planear", "despachar"]
 # S-LC-Feedback-V10 (decisión Oscar: "todo, TODO, debe tener permisos
 # granulares"): las áreas administrativas de La Gerencia dejan de gatearse por
 # rol literal y pasan a permisos delegables. super_admin sigue como failsafe
@@ -102,6 +107,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "analisis": list(TODO_ANALISIS),
         "checador": list(TODO_CHECADOR),
         "comunicacion": list(TODO_COMUNICACION),
+        "rutas": list(TODO_RUTAS),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
@@ -208,6 +214,9 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     # runner: ya no es default de ningún rol; se concede vía el rol "Runner"
     # (opt-in). Permanece en el catálogo para poder marcarlo en el editor de roles.
     "runner": list(TODO_RUNNER),
+    # rutas: super_admin las trae por default; el runner recibe `ver` desde el
+    # rol "Runner" (opt-in, ver la migración de este sprint).
+    "rutas": list(TODO_RUTAS),
     "gerencia": ["acceder"],
     # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
     "ajustes": list(TODO_AJUSTES),

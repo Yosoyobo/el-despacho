@@ -97,7 +97,18 @@ def marcar_en_camino(mandado, *, lat=None, lng=None):
         mandado.inicio_lat, mandado.inicio_lng = lat, lng
         campos += ["inicio_lat", "inicio_lng"]
     mandado.save(update_fields=campos)
+    # Avisa al cliente que su entrega salió, si la regla está encendida (arranca
+    # apagada). Best-effort y diferido: no se manda un correo de algo que
+    # después se deshace, y un correo que falla no deshace la salida.
+    _avisar_cliente_en_camino(mandado)
     return mandado
+
+
+def _avisar_cliente_en_camino(mandado) -> None:
+    import contextlib
+    with contextlib.suppress(Exception):
+        from apps.el_pizarron import rutas_correo
+        rutas_correo.avisar_cliente_en_camino(mandado)
 
 
 def marcar_entregado(mandado, *, completar_tarea: bool = True, lat=None, lng=None):
