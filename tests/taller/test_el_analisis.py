@@ -646,3 +646,34 @@ def test_varias_versiones_no_inflan_el_conteo_como_antes(
     assert Cotizacion.objects.count() == 47
     assert len(oportunidades()) == 25
     assert embudo()["total"] == 25
+
+
+# ── La data migration, corrida CON datos ─────────────────────────────────
+
+def test_la_migracion_del_permiso_siembra_con_super_admins_de_verdad(db, usuario_factory):
+    """El hueco que dejó La Gerencia sin arrancar el 2026-08-22.
+
+    La migración usaba `accion=` y el campo del modelo se llama `permiso`. NO
+    falló en los tests aunque las migraciones sí se apliquen: se aplican sobre
+    una base SIN usuarios, así que el bucle `for usuario in …super_admin` no
+    itera nunca y el `update_or_create` malo jamás se evalúa. En producción, con
+    super admins de verdad, revienta al arrancar y el contenedor no levanta.
+
+    Por eso este test invoca la función de la migración a mano, con datos —
+    que es la única forma de cubrir una data migration condicionada por filas.
+    """
+    import importlib
+
+    from django.apps import apps as registro
+
+    from cuentas.models.permiso_usuario import PermisoUsuario
+
+    admin = usuario_factory(rol="super_admin")
+    PermisoUsuario.objects.filter(usuario=admin, modulo="analisis").delete()
+
+    migracion = importlib.import_module("cuentas.migrations.0041_seed_permiso_analisis")
+    migracion.sembrar(registro, None)
+
+    assert PermisoUsuario.objects.filter(
+        usuario=admin, modulo="analisis", permiso="ver", activo=True,
+    ).exists(), "el super admin se quedó sin la llave de El Análisis"
