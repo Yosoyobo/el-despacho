@@ -25,6 +25,15 @@
 :80 {
 	encode gzip
 
+	# Caddy NO registra nada si no se le pide. Sin esto no hay forma de saber si una
+	# foto la sirvió El Mostrador o si cayó al respaldo de El Taller — que fue justo
+	# la duda al verificar el despliegue del 2026-08-21. Va a stdout, así que la
+	# recoge `docker compose logs`; el techo del archivo lo pone el compose.
+	log {
+		output stdout
+		format console
+	}
+
 	# Sonda para el healthcheck de Docker y para diagnosticar a mano.
 	respond /ping "ok" 200
 

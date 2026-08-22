@@ -102,6 +102,13 @@ services:
       UPSTREAM_TALLER: "el-taller:8000"
     ports:
       - "8202:80"
+    # Con la bitácora encendida, techo al archivo: las fotos son las peticiones
+    # más numerosas del sistema y esta máquina tiene UN disco.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1/ping"]
       interval: 30s
