@@ -504,20 +504,37 @@ def test_ahora_aprende_tambien_de_los_dictados_que_fallaron(db, usuario_factory)
 
 
 def test_aprende_de_las_conversaciones_del_chat(db, usuario_factory):
-    from apps.el_dictado.models import ConversacionChat, MensajeChat
+    """Con los roles REALES de la base: `user` y `bot`.
 
-    from chalanes.destilar import recolectar_conversaciones
+    La primera versión de este test los inventaba («usuario»/«asistente») y por
+    eso pasaba en verde mientras el destilador no habría leído ni un turno en
+    producción: los 1,448 mensajes del chat —la fuente más abundante que hay— no
+    habrían aportado nada. Los valores se toman de `ROLES_MENSAJE`, no de la
+    memoria de nadie.
+    """
+    from apps.el_dictado.models import ConversacionChat, MensajeChat
+    from apps.el_dictado.models.conversacion_chat import ROLES_MENSAJE
+
+    from chalanes.destilar import ROLES_CHALAN, ROLES_PERSONA, recolectar_conversaciones
+
+    reales = {clave for clave, _ in ROLES_MENSAJE}
+    assert reales & ROLES_PERSONA, f"ningun rol de persona casa con la base: {reales}"
+    assert reales & ROLES_CHALAN, f"ningun rol del Chalan casa con la base: {reales}"
 
     u = usuario_factory(rol="super_admin")
     conv = ConversacionChat.objects.create(usuario=u, titulo="Prueba")
-    MensajeChat.objects.create(conversacion=conv, orden=1, rol="usuario",
+    MensajeChat.objects.create(conversacion=conv, orden=1, rol="user", tipo="texto",
                                cuerpo="¿cómo va lo de la heladería?")
-    MensajeChat.objects.create(conversacion=conv, orden=2, rol="asistente",
+    MensajeChat.objects.create(conversacion=conv, orden=2, rol="bot", tipo="texto",
                                cuerpo="Te refieres al proyecto LC-0007.")
+    # Los turnos de herramienta son plomería del loop, no conversación.
+    MensajeChat.objects.create(conversacion=conv, orden=3, rol="bot",
+                               tipo="herramienta", cuerpo="resultado interno 42")
 
     pares = recolectar_conversaciones()
     assert len(pares) == 1
     assert "heladería" in pares[0]["pregunta"]
+    assert "42" not in pares[0]["respuesta"]
 
 
 def test_lo_muy_seguro_se_activa_solo_y_lo_dudoso_espera(db, usuario_factory):

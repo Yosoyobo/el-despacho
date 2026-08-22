@@ -116,6 +116,15 @@ aprende con mucha seguridad lo activa solo y te avisa; lo dudoso espera tu visto
 bueno en La Gerencia → Chalanes → Aprendizajes. **Nada de esto ejecuta acciones
 solo**: sigue siendo lo mismo de siempre, propone y tú confirmas.
 
+**Por qué antes decía «no encontré nada que aprender»**
+
+El barrido miraba sólo los **últimos 30 días** y sólo las veces que alguien lo
+corrigió a mano — que en tres meses fueron ocho. Por eso siempre contestaba lo
+mismo. Ahora mira además los dictados que le fallaron y **tus conversaciones del
+chat**, y el mensaje te dice de cuánto historial habló: «revisé 34 dictados y 28
+conversaciones de los últimos 30 días». Si esperabas más, en **Ajustes → El
+Análisis** puedes ampliar los días de historial que revisa.
+
 **Un pendiente que el Chalán te va a repetir**
 
 Las 32 facturas con CFDI en borrador ahora sí cuentan para los reportes, pero

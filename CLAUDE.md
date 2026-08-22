@@ -6181,7 +6181,15 @@ avisos · los 4 temas extra (clientes, proveedores, equipo, IA).
 - **Cron** `chalan_analisis_diario` (7:05 L-S, `--solo-alertas` / `--dry-run`).
 - **34 tests** en `tests/taller/test_el_analisis.py`.
 
-**Gotchas del sprint**: la columna del error de una acción es `error_al_aplicar`;
+**Gotchas del sprint**: los roles de `MensajeChat` son **`user`/`bot`**, no
+`usuario`/`asistente` — la primera versión del destilador buscaba los inventados y
+la fuente más abundante (1,448 mensajes) no habría aportado NADA, con el test en
+verde porque él mismo creaba los datos con el valor equivocado (se cazó midiendo
+el dump; ahora el test cruza contra `ROLES_MENSAJE`). La ventana del barrido sale
+de `ConfiguracionAnalisis.dias_ventana_aprendizaje` (GUI), y el mensaje dice de
+cuánto historial habló: un «no encontré nada» sin eso no distingue «no hay
+patrones» de «la ventana dejó fuera todo». La columna del error de una acción es
+`error_al_aplicar`;
 `_estados_raw` se importa del módulo, no del paquete `models`; el sidebar compartido
 obligó a montar `apps.taller_home.urls` en `tests/urls_gerencia.py`; y agregar un
 campo al form de estados de cotización rompía un test ajeno hasta darle default
