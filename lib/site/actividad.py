@@ -30,6 +30,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
+from lib.site import acciones
 from lib.site.contenedores import DOCKER_SOCK, _UnixHTTPConnection, disponible
 
 # Los contenedores que atienden peticiones, con el apodo que se muestra.
@@ -42,7 +43,16 @@ SERVICIOS: tuple[tuple[str, str], ...] = (
 # Rutas que sólo son ruido en una pantalla en vivo: sondas de salud y el sondeo
 # que hace la propia página. Sin esto, el flujo se llena de `/ping` cada 10 s y
 # tapa lo que de verdad está pasando.
-_RUIDO = re.compile(r"^/(ping|salud|sistema/aviso-deploy|site/vivo)")
+# `/static/` entra aquí porque la propia pantalla pide su CSS y su HTMX al
+# arrancar, y esos tres renglones tapaban el tráfico de verdad — se veía un flujo
+# lleno de «Recursos del navegador» y nada más.
+_RUIDO = re.compile(
+    r"^/(ping|salud|sistema/aviso-deploy|site/vivo|static/|favicon|sw\.js"
+    # Los iconos que iOS y Android piden por su cuenta al guardar la app en la
+    # pantalla de inicio. No los pidió nadie, y como no existen salen en 404: se
+    # veían tres renglones rojos que parecían un problema y no lo son.
+    r"|apple-touch-icon|manifest)"
+)
 
 # gunicorn, formato de acceso por default + la duración que agrega el entrypoint:
 #   IP - - [fecha] "MÉTODO /ruta HTTP/1.1" CÓDIGO BYTES "referer" "ua" MICROSEG
@@ -51,6 +61,16 @@ _RE_GUNICORN = re.compile(
     r"(?P<codigo>\d{3})\s+(?P<bytes>\d+|-)"
 )
 _RE_MICROS = re.compile(r'"\s+(?P<micros>\d+)\s*$')
+# Los tres campos entre comillas del final —referer, navegador, X-Forwarded-For—
+# más la duración. El XFF va antes de los microsegundos a propósito: `_RE_MICROS`
+# ancla al final de la línea, así que un campo después lo rompería en silencio.
+_RE_COLA = re.compile(
+    r'"(?P<ref>[^"]*)"\s+"(?P<ua>[^"]*)"\s+"(?P<xff>[^"]*)"\s+(?P<micros>\d+)\s*$'
+)
+# El formato anterior no traía el XFF; se sigue leyendo para no perder las
+# líneas que ya estaban en el buffer cuando se recicló el contenedor.
+_RE_COLA_VIEJA = re.compile(r'"(?P<ref>[^"]*)"\s+"(?P<ua>[^"]*)"\s+(?P<micros>\d+)?\s*$')
+_RE_IP = re.compile(r"^(?P<ip>\S+)\s")
 
 
 def _leer_bytes(path: str, *, timeout: float = 3.0) -> bytes:
@@ -110,12 +130,20 @@ def _parsear_caddy(resto: str) -> dict[str, Any] | None:
     except Exception:  # noqa: BLE001 — línea cortada por el buffer
         return None
     pet = d.get("request") or {}
+    cab = pet.get("headers") or {}
+    def _prim(llave: str) -> str:
+        v = cab.get(llave) or cab.get(llave.title()) or cab.get(llave.lower())
+        if isinstance(v, list):
+            return v[0] if v else ""
+        return v or ""
     return {
         "metodo": pet.get("method") or "?",
         "ruta": pet.get("uri") or "?",
         "codigo": d.get("status"),
         "bytes": d.get("size"),
         "ms": round((d.get("duration") or 0) * 1000, 1),
+        "quien": acciones.quien(_prim("X-Forwarded-For"), pet.get("remote_ip")),
+        "aparato": acciones.aparato(_prim("User-Agent")),
     }
 
 
@@ -123,7 +151,11 @@ def _parsear_gunicorn(resto: str) -> dict[str, Any] | None:
     m = _RE_GUNICORN.search(resto)
     if not m:
         return None
-    micros = _RE_MICROS.search(resto)
+    cola = _RE_COLA.search(resto) or _RE_COLA_VIEJA.search(resto)
+    ua = cola.group("ua") if cola else ""
+    xff = cola.groupdict().get("xff") if cola else ""
+    micros = cola.groupdict().get("micros") if cola else None
+    ip = _RE_IP.match(resto)
     return {
         "metodo": m.group("metodo"),
         "ruta": m.group("ruta"),
@@ -131,12 +163,20 @@ def _parsear_gunicorn(resto: str) -> dict[str, Any] | None:
         "bytes": None if m.group("bytes") == "-" else int(m.group("bytes")),
         # `%(D)s` es microsegundos. Si el entrypoint todavía no lo agrega, queda
         # en None y la columna sale vacía en vez de mentir con un cero.
-        "ms": round(int(micros.group("micros")) / 1000, 1) if micros else None,
+        "ms": round(int(micros) / 1000, 1) if micros else None,
+        "quien": acciones.quien(xff, ip.group("ip") if ip else None),
+        "aparato": acciones.aparato(ua),
     }
 
 
-def peticiones(limite: int = 40, *, por_servicio: int = 60) -> list[dict[str, Any]]:
+def peticiones(limite: int = 40, *, por_servicio: int = 400) -> list[dict[str, Any]]:
     """Las últimas peticiones de los tres servicios, mezcladas y ordenadas.
+
+    `por_servicio` se pide GENEROSO (400 líneas) porque el filtro de ruido corre
+    DESPUÉS de leer: la propia pantalla pide su CSS, su HTMX y sus seis paneles
+    cada pocos segundos, así que de 60 líneas podían quedar cero peticiones de
+    personas y el panel más grande de la pared salía vacío. Leer 400 líneas de un
+    log ya escrito no le cuesta nada a nadie.
 
     Nunca lanza: un contenedor apagado o un socket ausente devuelven lo que se
     pueda leer del resto.
@@ -160,7 +200,13 @@ def peticiones(limite: int = 40, *, por_servicio: int = 60) -> list[dict[str, An
                 continue
             if _RUIDO.match(datos["ruta"] or ""):
                 continue
-            filas.append({**datos, "servicio": apodo, "cuando": cuando})
+            filas.append({
+                **datos,
+                "servicio": apodo,
+                "cuando": cuando,
+                # El «qué»: lo que la persona está haciendo, no la URL que pidió.
+                "accion": acciones.nombrar(datos["ruta"] or ""),
+            })
 
     # Sin marca de tiempo no hay forma de ordenar: van al final, no se descartan.
     filas.sort(key=lambda f: f["cuando"] or datetime.min.replace(tzinfo=UTC),

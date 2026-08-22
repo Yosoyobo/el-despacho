@@ -1,0 +1,65 @@
+{% comment %}
+La Sede: el Droplet de DigitalOcean que da la cara a internet. Cada 30 s.
+
+Desde la mudanza ya no corre el sistema —sólo termina el TLS y reenvía por el
+tailnet— pero sigue siendo la puerta: si se cae, nadie entra aunque el NUC esté
+perfecto. Por eso se vigila aparte, y lo primero que se muestra son las tres
+puertas sondeadas de verdad, no las especificaciones.
+{% endcomment %}
+<div class="flex h-full flex-col">
+  <div class="shrink-0 border-b border-gray-800 px-4 py-2.5">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-300">La ventana</h2>
+    <p class="text-[10px] text-gray-600">la puerta a internet</p>
+  </div>
+
+  <div class="vigia-scroll min-h-0 flex-1 px-4 py-2.5">
+
+    {# ── Las tres puertas, sondeadas ─────────────────────────────────────── #}
+    <div class="space-y-1.5">
+      {% for p in puertas %}
+      <div class="flex items-baseline justify-between gap-1">
+        <span class="flex items-baseline gap-1.5 truncate">
+          <span class="shrink-0 {% if p.ok %}text-success-400{% else %}text-error-400{% endif %}">●</span>
+          <span class="truncate text-xs text-gray-300">{{ p.nombre }}</span>
+        </span>
+        <span class="shrink-0 font-mono text-[10px] tabular-nums
+                     {% if p.ok %}text-gray-600{% else %}text-error-400{% endif %}">
+          {% if p.codigo %}{{ p.ms }}ms{% else %}caída{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# ── Y lo que es, según DigitalOcean ─────────────────────────────────── #}
+    <div class="mt-3 border-t border-gray-800 pt-2.5">
+      {% if do.disponible %}
+        <p class="truncate text-xs font-medium text-white">{{ do.nombre }}</p>
+        <p class="font-mono text-[10px] text-gray-600">{{ do.ip_publica }}</p>
+        <dl class="mt-2 space-y-1 text-[10px]">
+          <div class="flex justify-between"><dt class="text-gray-600">Región</dt>
+            <dd class="font-mono uppercase text-gray-400">{{ do.region }}</dd></div>
+          <div class="flex justify-between"><dt class="text-gray-600">Plan</dt>
+            <dd class="font-mono text-gray-400">{{ do.tamano }}</dd></div>
+          <div class="flex justify-between"><dt class="text-gray-600">Núcleos</dt>
+            <dd class="font-mono tabular-nums text-gray-400">{{ do.vcpus }}</dd></div>
+          <div class="flex justify-between"><dt class="text-gray-600">RAM</dt>
+            <dd class="font-mono tabular-nums text-gray-400">{{ do.ram_mb }} MB</dd></div>
+          <div class="flex justify-between"><dt class="text-gray-600">Disco</dt>
+            <dd class="font-mono tabular-nums text-gray-400">{{ do.disco_gb }} GB</dd></div>
+        </dl>
+      {% else %}
+        <p class="text-[10px] leading-relaxed text-gray-600">
+          {% if do.motivo == "no_configurada" %}
+            Sin la llave de DigitalOcean en Los Ajustes no se pueden leer sus
+            especificaciones. Las puertas de arriba se sondean igual.
+          {% else %}
+            No se pudo preguntar a DigitalOcean{% if do.motivo %}: {{ do.motivo }}{% endif %}.
+          {% endif %}
+        </p>
+        {% if local.ip_publica_esperada %}
+          <p class="mt-1.5 font-mono text-[10px] text-gray-700">{{ local.ip_publica_esperada }}</p>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>

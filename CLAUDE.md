@@ -5817,6 +5817,198 @@ los últimos 60 renglones por servicio, así que en un pico muy alto puede perde
 algo entre refrescos (para una pared está bien, para auditar no); y el kiosco
 depende de que el NUC tenga sesión de escritorio — si algún día se vuelve headless,
 El Vigía se ve desde otra máquina del tailnet, que ya está permitido.
+**Cuatro defectos que sólo se vieron MIRANDO la pantalla** (capturados de la pared
+ya desplegada; los cuatro pasaban las pruebas de acceso y de parseo, y ninguno se
+veía leyendo el código): la ruta se leía «/sit…» porque su celda llevaba `max-w-0`
+—pide cero ancho, y como las demás columnas son `whitespace-nowrap` y reclaman su
+ancho intrínseco, a la ruta le quedaban las migajas— ⇒ `table-fixed` + `<colgroup>`
+con la ruta como única columna sin ancho · `|slice:":16"|cut:"T"` pegaba la fecha a
+la hora («2026-08-2205:03») **y la dejaba en UTC** mientras el reloj de la cabecera
+va en local (dos relojes en zonas distintas en una pared se leen mal: «corrió a las
+5 de la mañana» cuando fueron las 11 de la noche) ⇒ la conversión se hace en la
+vista, que es donde corresponde — una plantilla no debería hacer aritmética de
+cadenas sobre una fecha · el hash del despliegue salía con sus 64 caracteres.
+**La lección: una pantalla se revisa mirándola**, y la forma de mirarla sin estar
+enfrente es Chrome headless por el tailnet
+(`--headless=new --window-size=1920,1080 --virtual-time-budget=20000 --screenshot`,
+que es lo que espera a que los paneles HTMX carguen).
+
+**Ronda de rediseño de Oscar (mismo día).** Levantó la regla §4 #1 para permitir
+**DaisyUI**, que va vendoreado —se instala por npm y el repo compila Tailwind con el
+binario standalone sin Node, así que se trae `styled.min.css` (139 KB) y NO
+`full.css` (3.1 MB): la diferencia son sus 30 temas, que no se usan porque el tema
+se define con la paleta de El Despacho en **OKLCH** (DaisyUI 4 los aplica como
+`oklch(var(--p))`; un hex ahí no pinta nada). Los anillos, en cambio, terminaron en
+**SVG propio**: el `radial-progress` de DaisyUI salía con el arco desplazado y el
+número caído afuera, porque lo dibuja con `conic-gradient` y máscaras en
+pseudo-elementos; un `<circle>` con `stroke-dasharray` no depende de nada.
+
+Lo entregado: **quién · qué · a dónde** en el flujo (`lib/site/acciones.py` traduce
+la ruta a lo que la persona hace, y el «quién» es el PRIMER salto del
+X-Forwarded-For, que los entrypoints ahora loguean **antes** de los microsegundos
+porque `_RE_MICROS` ancla al final de la línea) · **nombres con sentido**
+(`contenedores.bautizar`: «despacho-postgres» → El Archivero · guarda todo) ·
+**gráficas** (`lib/site/pulso.py`, serie corta en Redis porque con varios workers
+una serie en memoria del proceso salta según quién atienda el refresco; la escribe
+quien la lee, así que si nadie mira no se acumula nada) · **Los Chalanes** con su
+auditoría hash-only y el reparto del gasto · **La ventana** (el droplet, con las
+tres puertas sondeadas primero y las especificaciones de DO después) · el
+**trabajo del despacho** y los **tres respaldos con su ubicación** · y la página
+**responsiva**.
+
+**Y el fierro del NUC, «ahora es cuando»:** El Taller a 8×4 y La Gerencia a 4×4 —
+la cuenta que importa no es la de CPU (cinco personas no saturan 8 núcleos) sino la
+de ESPERAS, porque un PDF que arma Google o una llamada a un Chalán se llevan
+segundos sin usar procesador y ocupan un hilo. Postgres pasa de los 512 MB que dejó
+la mudanza a 2 G de `shared_buffers` y 8 G de `effective_cache_size`, y por fin
+`random_page_cost=1.1` + `effective_io_concurrency=200`: el default asume disco que
+gira y hace que el planeador evite índices que sí conviene usar.
+
+**Seis bugs propios, los seis cazados MIRANDO la pantalla** (ninguno se veía en el
+código, y los seis pasaban las pruebas):
+1. **`g.get("mem")` y `g.get("disk")`** cuando los nombres son `memoria` y `disco`:
+   las dos series se guardaban vacías y las gráficas decían «midiendo la
+   tendencia…» para siempre. **Un `.get()` con la llave equivocada no falla:
+   miente en silencio.** Lo reportó Oscar («no veo que se muevan las tendencias»).
+2. **El disco ocupado no se mueve** (14.5% hoy, 14.5% mañana), así que su
+   tendencia era una raya. Se mide su **lectura y escritura** (`host.disco_io`,
+   `/proc/diskstats`); la primera muestra devuelve `disponible=False` porque son
+   contadores acumulados y una sola lectura no es una tasa. El helper
+   `sumar_sectores` se extrajo para poder probarlo — un test que compare tasas
+   compara relojes. **Y su test cazó un bug futuro real**: en NVMe el disco es
+   `nvme0n1` (acaba en dígito) y la partición `nvme0n1p1`, así que descartar «lo
+   que acaba en dígito» habría tirado el disco entero cuando entre el SSD nuevo.
+3. **Con el eje de 0 a 100, lo que se mueve poco se aplasta**: la memoria
+   oscilando medio punto salía recta. `pulso.trazo(relieve=True)` ajusta el eje a
+   la propia serie. No engaña porque el número absoluto va al lado, y una serie de
+   verdad plana sigue saliendo plana.
+4. **El filtro de ruido corría DESPUÉS de cortar el log a 60 líneas**: la propia
+   pantalla pide su CSS y sus seis paneles cada pocos segundos, así que quedaban
+   cero peticiones de personas y el panel más grande de la pared salía vacío.
+5. **`|default` se aplica a valores falsy, y `0.0` es falsy**: un contenedor en
+   reposo mostraba «—» como si no se pudiera medir. `default_if_none` es el que
+   distingue «cero» de «no se sabe».
+6. **`ultimo_backup_local` buscaba en `/opt/el-despacho/backups`**, la ruta del
+   droplet. Tras la mudanza el panel decía «no existe» sin que nada estuviera roto.
+
+**Dos trampas de CSS que valen para todo el repo:**
+- **`display:none` NO aplica a `<col>`.** La especificación sólo le deja `width`,
+  `visibility`, `background` y `border`. Una columna «escondida» seguía reservando
+  su ancho, la tabla medía más que el teléfono, y ese desborde hacía que el grid
+  de arriba se calculara sobre el ancho desbordado: los cuatro anillos salían
+  apretujados en fila. **Los anchos van en las celdas** (con `table-fixed` el
+  navegador toma los de la primera fila) y una celda escondida no ocupa nada.
+- **El grid del panel manda sobre el del esqueleto.** Cambiar las columnas en
+  `vivo.html` no sirve: HTMX reemplaza ese esqueleto por el partial, y es el
+  partial el que decide.
+
+**Prueba de esfuerzo del NUC (2026-08-22, medida, no estimada).** Corrida DESDE el
+NUC contra `localhost` —contra el tailnet mediría la red— con rutas de sólo lectura
+que ejercitan Postgres, Redis, el disco de El Almacén y El Mostrador. Guiones en
+`estres.py` / `estres_mem.py` del scratchpad de la sesión.
+
+| Concurrencia | pet/s | p50 | p95 | p99 | errores de servidor | carga | RAM |
+|---|---|---|---|---|---|---|---|
+| 10  | 277 | 22 ms | 86 ms | 150 ms | 0 | 10.5 | 4.2 G |
+| 40  | 279 | 91 ms | 551 ms | 910 ms | 0 | 12.9 | 4.3 G |
+| 100 | 261 | 305 ms | 1.0 s | 1.4 s | 0 | 16.0 | 4.3 G |
+| 200 | 291 | 517 ms | 2.0 s | 2.9 s | 0 | 18.6 | 4.3 G |
+
+**El techo es ~275 peticiones/segundo y es de CPU.** Lo que importa de la tabla no
+son los milisegundos sino la forma: el throughput **se mantiene** de 10 a 200
+concurrentes mientras la latencia sube. Eso es un sistema saturado que **encola**,
+no que colapsa — y con cero 5xx en 28,725 peticiones (los «errores» son timeouts
+del cliente). Para cinco usuarios, 275 pet/s son ~16,500 por minuto: sobra por dos
+órdenes de magnitud.
+
+**La RAM no se mueve con carga HTTP, y no es un fallo de la medición** (Oscar lo
+notó): con 8 workers × 4 hilos la memoria ya está toda reservada al arrancar
+—cada worker carga Django entero— así que atender más peticiones **reutiliza** los
+mismos workers. Lo que se consume es CPU. Para moverla hay que estresar la
+memoria: 60 consultas con ordenamientos que no caben en caché la llevaron de
+**4.12 a 6.53 GB** (+2.41 G, 28% → 44%) y la devolvieron al terminar.
+
+**Y ahí salió que el tuning de Postgres NO estaba aplicado**: editar el compose y
+validarlo no recrea el contenedor. Corría con `max_connections=50` /
+`shared_buffers=512MB` / `random_page_cost=4`. El contraste, con la misma prueba:
+
+| | antes (50/512M/4.0) | después (100/2G/1.1) |
+|---|---|---|
+| 60 consultas pesadas | **21 fallos** («too many clients») | **0 fallos** |
+| p99 con 100 concurrentes | 2,994 ms | **1,385 ms** |
+| pet/s | ~275 | ~275 (el cuello es CPU, no la base) |
+
+El throughput no cambió porque el cuello nunca fue Postgres; lo que cambió es que
+**deja de rechazar conexiones** y que la cola larga se parte a la mitad. **Al
+cambiar parámetros de un servicio en el compose, recrear el contenedor y
+COMPROBAR con `SHOW`** — el `docker compose config` sólo dice lo que se pide.
+
+**El NUC, dimensionado para no volver (decisión de Oscar, 2026-08-22).** Su
+petición literal: «future proof el NUC. Recuerda que es un server headless, no
+quiero regresar en unos meses a configurar más RAM porque insististe en que la base
+completa cabe en el RAM». Tenía razón: estaba dimensionando para los 29 MB de HOY,
+que es exactamente lo que obliga a volver. Presupuesto: **4 G de colchón
+intocable**, ~10.8 G para repartir, y los techos puestos para que la base y el
+catálogo crezcan **cien veces** sin tocar una cifra.
+
+| | antes | ahora | qué compra |
+|---|---|---|---|
+| `shared_buffers` | 512 M | **4 G** | techo, no reserva: hoy usa 120 M porque la base son 29 M |
+| `work_mem` | 8 M | **32 M** | los reportes ordenan en memoria en vez de escribir al disco |
+| `maintenance_work_mem` | 128 M | **1 G** | VACUUM y CREATE INDEX cuando las tablas crezcan |
+| `autovacuum_work_mem` | (heredado) | **512 M** | fijado aparte: 4 procesos a 1 G serían 4 G en segundo plano |
+| `max_connections` | 50 | **200** | 96 hilos de las apps + worker + crons |
+| `max_wal_size` | 1 G | **4 G** | menos checkpoints con escritura sostenida |
+| Redis `maxmemory` | 64 M | **3 G** | techo; hoy usa 4.5 M |
+| hilos de gunicorn | 1×4 | **8×8 y 4×8** | el techo REAL: las esperas de IA, no el CPU |
+| `MALLOC_ARENA_MAX` | 2 | **8** | con 8 hilos por worker, 2 arenas son contención |
+
+**Y lo que de verdad evita volver: el sistema avisa solo.**
+`lib/site/host.presion_memoria()` con `COLCHON_GB=4` alimenta dos cosas — el anillo
+de memoria de El Vigía **se pinta por el colchón, no por el porcentaje** (un 70% de
+14.8 G deja 4.4 G y está perfecto; un 70% de 4 G no), y el módulo `memoria` de
+`/salud`, que reporta **degradado** —no falla— cuando el colchón se estrecha: el
+sistema sigue de pie y lo que hace falta es planear, no correr. **Si ese aviso
+aparece, ES la señal de volver. Mientras no aparezca, no hay nada que ajustar.**
+
+**Descartado con razón:** «más caché» no compra nada medible hoy y hay que decirlo
+al medirlo (la base son 29 M, El Almacén 23 M, sus derivados 12 M: todo cabe treinta
+veces en el techo anterior). Y **Ollama queda fuera por decisión de Oscar** («no va
+a funcionar mejor que las API existentes») — el adapter sigue en el repo, sin usar.
+
+**Dos trampas del compose, las dos cazadas midiendo:**
+- **Editar el compose y validarlo con `config` NO aplica nada**: el contenedor sigue
+  con lo viejo. Corría con `max_connections=50` mientras el archivo decía 100.
+  **Comprobar con `SHOW`, no con `config`** — el segundo dice lo que se pide.
+- **Un parámetro repetido en el `command` no falla: el último gana en silencio.**
+  `wal_buffers` quedó dos veces (64 M y 16 M) y Postgres arrancó con el segundo sin
+  una queja. Candado en `tests/site/test_host.py`.
+- Y recrear Postgres deja **conexiones muertas** en los workers de gunicorn:
+  `/salud` reporta «la base de datos no responde» aunque Postgres esté perfecto. Se
+  arregla con un HUP a las apps, que recicla los workers sin corte.
+
+**Y una lección de método:** «no cabe en el teléfono» era **artefacto de la
+herramienta**. Chrome headless tiene un **viewport mínimo de 500px**, así que
+`--window-size=390` renderiza a 500 y recorta la imagen — lo que yo leía como
+desborde era el recorte. Se resolvió inyectando un detector en la página que
+reporta `scrollWidth` y **qué elemento** se sale (cero culpables). **Antes de
+arreglar un desborde, medirlo**: el elemento culpable se nombra, no se adivina.
+Y el candado de Bug C (§14) hay que correrlo **después** de tocar plantillas: en
+este sprint cazó cuatro comentarios multilínea, y uno se colgó a producción por
+correrlo antes del último cambio.
+
+**Un test frágil del buzón, cazado de paso** (no es de este sprint pero salió en su
+CI): `tests/taller/test_buzon.py::test_mios_solo_ve_los_propios` afirmaba
+`assert b"A2" not in resp.content` — **dos caracteres** buscados en 25 KB de HTML
+que incluye el token CSRF, 64 caracteres aleatorios de `[A-Za-z0-9]`. P(el token
+contenga «A2») = **1.63%**, o sea **1 de cada 62 corridas del CI fallaba sin que
+nada estuviera roto**. Arreglado en dos capas: literales con guion (imposibles de
+generar por azar en una cadena alfanumérica) y la aserción de verdad sobre
+`resp.context["mensajes"]`, no sobre el texto renderizado. **Regla que se lleva:
+nunca afirmar `not in resp.content` con un literal corto** — o se afirma sobre los
+datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda uno
+más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
+`tests/test_rearquitectura.py:266`.
 
 ### S-Acerca-OAuth ✅ — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
 
@@ -5912,13 +6104,23 @@ mismo archivo sirve en la ventana y en HAL local sin cambiarle una línea. El
 activa; el `docker-compose.ventana.yml` le pone los upstreams y monta la homepage.
 
 **Tres bugs de producción que salieron al medir (dos siguen abiertos):**
-1. **El worker del Portavoz nunca ha corrido.** `la-gerencia/Dockerfile:68` declara
-   `ENTRYPOINT ["./entrypoint.sh"]` y ese script hace `exec gunicorn` **sin ejecutar
-   `"$@"`**, así que el `command: ["python","-m","lib.portavoz_worker"]` del compose
-   se ignora **en silencio**: ese contenedor es una **segunda copia de La Gerencia**.
-   `portavoz:cola` acumula **5 184 eventos desde el 2026-05-14**. **NO se arregló a
-   propósito:** el worker postea a n8n con HMAC y encenderlo dispararía los 5 184 de
-   golpe. Pide (a) corregir el entrypoint y (b) decidir qué se hace con el rezago.
+1. ~~**El worker del Portavoz nunca ha corrido.**~~ **CERRADO el 2026-08-22.**
+   `la-gerencia/entrypoint.sh` hacía `exec gunicorn` **sin ejecutar `"$@"`**, así que
+   el `command: ["python","-m","lib.portavoz_worker"]` del compose se ignoraba **en
+   silencio** y ese contenedor era una **segunda copia de La Gerencia** desde mayo.
+   Arreglado con un `if [ "$#" -gt 0 ]; then exec "$@"; fi` colocado **antes** de
+   `migrate` a propósito: sólo el servicio sin `command` migra (§14 Bug B), y el
+   worker no necesita migraciones ni seeds ni estáticos, sólo Postgres para leer La
+   Bóveda. El rezago de **5 198 eventos** (14-may a 22-ago) se movió a
+   `portavoz:fallidos` con un `RENAME` atómico —con autorización de Oscar, «n8n está
+   muerto, no llegará a nada»— y quedó respaldado en `backups/portavoz/`.
+   **Ojo con el comportamiento sin n8n:** las credenciales están VACÍAS, y en ese
+   caso el worker re-encola **sin contar intento** y duerme 30 s. O sea que la cola
+   **vuelve a acumular** hasta que n8n regrese y se peguen las credenciales — pero
+   ahora con el worker corriendo y avisando en su bitácora cada 30 s, no en
+   silencio, y con el contador a la vista en El Vigía. (Con credenciales apuntando a
+   un n8n muerto sería lo otro: 10 s de timeout + 10 s de espera × 5 intentos ×
+   5 198 eventos ≈ 6 días de reintentos.)
 2. **`allkeys-lru` con techo de 64 MB podía desalojar la propia cola** (`portavoz:cola`
    no tiene TTL) — o sea perder eventos sin aviso. En el NUC quedó en 512 MB con
    **`volatile-lru`**, que solo desaloja lo que sí caduca.

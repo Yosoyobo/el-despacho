@@ -5,6 +5,55 @@ vivo: el fierro (CPU, memoria, disco, contenedores), las peticiones conforme
 llegan, el consumo por contenedor y el trabajo que el sistema está haciendo por el
 despacho (Los Chalanes, la cola de El Portavoz, el respaldo, El Almacén).
 
+---
+
+## Cómo la veo
+
+### Lo normal: no hay que hacer nada
+
+**Enciende el NUC y espera.** El NUC entra solo a su sesión, abre solo el
+navegador a pantalla completa y espera solo a que la aplicación esté lista antes
+de mostrarla (tras un reinicio, Docker tarda más que el escritorio). No hay
+contraseña que escribir ni ícono que picar.
+
+Si la pantalla del NUC está apagada, enciéndela: ahí está.
+
+### Si quiero verla sin reiniciar
+
+En el NUC, **con teclado y pantalla** (no por SSH), abre una terminal y escribe:
+
+    /mnt/el-despacho/infra/vigia/vigia-kiosco.sh &
+
+### Para salir de la pantalla completa
+
+`Alt+F4` cierra el navegador. Vuelve a abrirse solo a los cinco segundos — eso es
+a propósito, para que la pared aguante sola. Si de verdad quieres que se quede
+cerrada, primero detén el lanzador:
+
+    pkill -f '[v]igia-kiosco'
+
+Y para dejarla como estaba, vuelve a lanzarla con el comando de arriba (o reinicia
+el NUC).
+
+### Si no abrió
+
+Mira la bitácora, que dice exactamente en qué se atoró:
+
+    tail -20 ~/.vigia.log
+
+### Desde otra computadora (para revisar, no para la pared)
+
+Estando en el tailnet, en el navegador:
+
+    http://100.121.244.5:8201/site/vivo/
+
+**Desde internet no se puede, y es a propósito**: por el dominio público la página
+responde 404. Ver "Por qué no se puede abrir desde internet", más abajo.
+
+---
+
+## La dirección
+
     http://localhost:8201/site/vivo/
 
 ## Por qué no se puede abrir desde internet
@@ -40,6 +89,11 @@ Eso deja tres cosas:
 | Ahorro de pantalla y bloqueo apagados | `gsettings` de la sesión | que la pared no se ponga negra a los diez minutos |
 | Inicio de sesión automático | `/etc/gdm3/custom.conf` | que la pantalla **vuelva sola** tras un corte de luz |
 
+En **este** NUC el autologin ya venía activado de fábrica
+(`AutomaticLoginEnable=True`, usuario `linux`), así que `--autologin` no hace falta:
+la pantalla ya vuelve sola. Se comprueba con
+`grep AutomaticLogin /etc/gdm3/custom.conf`.
+
 Sin `--autologin` la pantalla vuelve sólo cuando alguien escribe la contraseña.
 **Es el precio de que vuelva sola:** quien tenga acceso físico al NUC se encuentra
 una sesión abierta. La pantalla en sí no deja hacer nada (es de sólo lectura y el
@@ -66,6 +120,14 @@ Para deshacerlo:
 Prefiere Chrome o Chromium (su `--kiosk` es el más limpio) y cae a **Firefox**, que
 es el que viene instalado en este NUC. Para salir del kiosco: `Alt+F4`, o
 `Ctrl+Alt+F3` para una consola.
+
+Con Firefox usa `--new-instance` y un **perfil propio** (`~/.vigia-firefox`), y eso
+no es cosmético: si ya hay un Firefox abierto en la sesión, un `firefox <url>` a
+secas le pasa la URL a esa instancia y **termina al instante**, con lo que el bucle
+de «reabre si se muere» se vuelve una reapertura cada cinco segundos para siempre.
+Pasó al probarlo. Por eso el bucle además lleva freno: tres arranques de menos de
+diez segundos y el reintento se separa a un minuto, dejando dicho en la bitácora
+qué está pasando. Una pared parpadeando toda la noche es peor que una apagada.
 
 ## Variables
 

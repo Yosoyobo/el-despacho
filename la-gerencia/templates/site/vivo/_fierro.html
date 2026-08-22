@@ -1,78 +1,82 @@
-{% comment %}Cuatro números grandes del fierro. Refresca cada 5 s.{% endcomment %}
-{% with h=infra.host g=infra.gauges cr=infra.containers_resumen %}
-<div class="grid grid-cols-4 gap-3">
+{% comment %}
+Los cuatro números que dicen cómo está la máquina. Refresca cada 5 s.
 
+Los nombres van en llano —"Memoria (RAM)", "Disco (SSD)"— porque quien mira la
+pared no tiene por qué traducir del inglés técnico.
+{% endcomment %}
+{% if error or not infra.host.memoria.disponible %}
   <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">CPU</span>
-      <span class="font-mono text-xs text-gray-500">{{ h.cpu_load.cores }} núcleos</span>
-    </div>
-    {% if h.cpu_load.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if g.cpu.color == 'error' %}text-error-400{% elif g.cpu.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
-        {{ h.cpu_load.load_1 }}
-      </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        5m {{ h.cpu_load.load_5 }} · 15m {{ h.cpu_load.load_15 }} · encendido {{ h.uptime.humano }}
-      </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">sin /proc montado</p>
-    {% endif %}
+    <p class="text-sm text-gray-500">
+      No se pudo leer el fierro de la máquina{% if error %}: {{ error }}{% endif %}.
+      Suele ser que falta montar <code class="text-gray-400">/proc</code> y el socket
+      de Docker (los apila <code class="text-gray-400">docker-compose.site.yml</code>).
+    </p>
   </div>
+{% else %}
+{% with g=infra.gauges h=infra.host cr=infra.containers_resumen %}
+{% comment %}
+El grid va aquí y no sólo en el esqueleto de `vivo.html`: HTMX reemplaza ese
+esqueleto por este panel, así que es ESTE el que decide cuántas columnas hay.
+{% endcomment %}
+<div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
 
-  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">Memoria</span>
-      <span class="font-mono text-xs text-gray-500">{{ h.memoria.total_mb|floatformat:0 }} MB</span>
-    </div>
-    {% if h.memoria.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if g.memoria.color == 'error' %}text-error-400{% elif g.memoria.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
-        {{ h.memoria.pct_usado }}<span class="text-title-sm">%</span>
-      </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        {{ h.memoria.usado_mb|floatformat:0 }} usado · {{ h.memoria.libre_mb|floatformat:0 }} libre
-      </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">sin /proc montado</p>
-    {% endif %}
-  </div>
+  {# ── CPU ──────────────────────────────────────────────────────────────── #}
+  {% include "site/vivo/_anillo.html" with titulo="CPU" pct=g.cpu.pct color=g.cpu.color grande=h.cpu_load.load_1 unidad="de carga" trazo=trazos.cpu a=textos.cpu_a b=textos.cpu_b %}
 
-  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">Disco</span>
-      <span class="font-mono text-xs text-gray-500">{{ h.disco.total_gb }} GB</span>
-    </div>
-    {% if h.disco.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if g.disco.color == 'error' %}text-error-400{% elif g.disco.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
-        {{ h.disco.pct_usado }}<span class="text-title-sm">%</span>
-      </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        {{ h.disco.usado_gb }} GB usado · {{ h.disco.libre_gb }} GB libre
-      </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">no legible</p>
-    {% endif %}
-  </div>
+  {# ── Memoria ──────────────────────────────────────────────────────────── #}
+  {% include "site/vivo/_anillo.html" with titulo="Memoria (RAM)" pct=g.memoria.pct color=g.memoria.color grande=mem_gb.usado unidad=textos.mem_unidad trazo=trazos.mem a=textos.mem_a %}
 
-  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">Contenedores</span>
-      <span class="font-mono text-xs text-gray-500">{{ infra.containers.info.version_servidor }}</span>
+  {# ── Disco ────────────────────────────────────────────────────────────── #}
+  {% comment %}
+  El disco lleva DOS líneas, lectura y escritura, en vez de la tendencia del
+  porcentaje ocupado: ése no se mueve —14.5% hoy, 14.5% mañana— y una raya recta
+  en una pared es espacio tirado. Lo que se mueve es cuánto trabaja.
+  {% endcomment %}
+  {% include "site/vivo/_anillo.html" with titulo="Disco (SSD)" pct=g.disco.pct color=g.disco.color grande=h.disco.usado_gb unidad=textos.disco_unidad trazo=trazos.disco_lee trazo_b=trazos.disco_escribe a=textos.disco_a b=textos.disco_b %}
+
+  {# ── Las piezas trabajando ────────────────────────────────────────────── #}
+  {% comment %}
+  Mismo anillo SVG que las otras tres, para que la fila se lea como una sola
+  cosa. Y aquí el movimiento va en BARRAS, no en área: las peticiones son un
+  conteo discreto que toca el cero seguido, y un área con huecos se ve como
+  trozos sueltos en vez de como un ritmo.
+  {% endcomment %}
+  <div class="flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
+    <div class="relative shrink-0" style="width:104px; height:104px;">
+      <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" class="text-gray-800"/>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                stroke-width="9" stroke-linecap="round"
+                stroke-dasharray="{% widthratio cr.pct_running|default:0 100 264 %} 264"
+                class="{% if cr.running == cr.total %}text-success-400{% else %}text-warning-400{% endif %}"/>
+      </svg>
+      <div class="absolute inset-0 flex items-center justify-center">
+        <span class="font-mono text-xl font-semibold leading-none tabular-nums text-white">{{ cr.running|default:"—" }}<span class="text-sm text-gray-600">/{{ cr.total|default:"—" }}</span></span>
+      </div>
     </div>
-    {% if infra.containers.info.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if cr.stopped %}text-error-400{% else %}text-success-400{% endif %}">
-        {{ cr.running }}<span class="text-title-sm text-gray-500">/{{ cr.total }}</span>
+    <div class="min-w-0 flex-1">
+      <p class="truncate text-xs font-semibold uppercase tracking-wider text-gray-500">Piezas trabajando</p>
+      <p class="mt-1 flex items-baseline gap-1.5">
+        <span class="text-title-md font-semibold leading-none text-white">{% if cr.running == cr.total %}Todas{% else %}{{ cr.stopped }} abajo{% endif %}</span>
       </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        {% if cr.stopped %}{{ cr.stopped }} detenido(s){% else %}todos arriba{% endif %}
-        · {{ infra.containers.info.imagenes }} imágenes
+      {% if barras_peticiones %}
+        <div class="mt-2 flex h-7 items-end gap-px">
+          {% for b in barras_peticiones %}
+            <div class="flex-1 rounded-sm {% if b.pct %}bg-brand-500{% else %}bg-gray-800{% endif %}"
+                 style="height:{% if b.pct %}{{ b.pct }}{% else %}4{% endif %}%"
+                 title="{{ b.n }} peticiones"></div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="mt-2 flex h-7 items-end"><div class="h-px w-full bg-gray-800"></div></div>
+      {% endif %}
+      <p class="mt-1 truncate text-xs text-gray-600">
+        {% if h.uptime.disponible %}encendido {{ h.uptime.humano }}{% endif %}
+        {% if infra.containers.info.images %} · {{ infra.containers.info.images }} imágenes{% endif %}
       </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">sin docker.sock</p>
-    {% endif %}
+    </div>
   </div>
 </div>
 {% endwith %}
+{% endif %}

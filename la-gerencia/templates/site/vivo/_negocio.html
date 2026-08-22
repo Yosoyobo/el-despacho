@@ -1,79 +1,150 @@
-{% comment %}Qué está haciendo el sistema POR EL DESPACHO. Cada 20 s.{% endcomment %}
-<div class="flex h-full flex-col">
-  <div class="shrink-0 border-b border-gray-800 px-5 py-3">
-    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Trabajo del despacho</h2>
-  </div>
-  <div class="vigia-scroll min-h-0 flex-1 space-y-3 px-5 py-3 text-xs">
+{% comment %}
+El despacho: primero el TRABAJO (que es de lo que vive el negocio) y luego las
+copias de seguridad, con su ubicación. Cada 20 s.
 
-    <div class="flex items-baseline justify-between">
-      <span class="text-gray-500">Los Chalanes, hoy</span>
-      {% if ia.disponible %}
-        <span class="font-mono text-gray-200 tabular-nums">
-          {{ ia.llamadas }} llamada{{ ia.llamadas|pluralize }}
-          {% if ia.fallos %}<span class="text-error-400">· {{ ia.fallos }} falló</span>{% endif %}
-          <span class="text-gray-500">· {{ ia.tokens }} tokens · ${{ ia.costo|floatformat:4 }}</span>
-        </span>
-      {% else %}
-        <span class="font-mono text-gray-600">n/d</span>
-      {% endif %}
+Antes este panel sólo mostraba infraestructura —la cola, el almacén, el último
+despliegue— que es información de la máquina. En una pared del taller lo que
+importa primero es cuántos proyectos hay vivos y qué está esperando a alguien.
+
+Las fechas llegan ya en hora local y legibles desde la vista (`_cuando`): antes se
+rebanaban aquí con `slice|cut`, lo que pegaba la fecha a la hora y —peor— dejaba
+la hora en UTC mientras el reloj de la cabecera va en local.
+{% endcomment %}
+<div class="flex h-full flex-col">
+  <div class="shrink-0 border-b border-gray-800 px-4 py-2.5">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-300">El despacho</h2>
+  </div>
+
+  <div class="vigia-scroll min-h-0 flex-1 px-4 py-2.5">
+
+    {# ── El trabajo ────────────────────────────────────────────────────── #}
+    {% if trabajo.proyectos is not None %}
+    <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
+        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums text-white">{{ trabajo.proyectos|default:"0" }}</p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">proyectos vivos</p>
+      </div>
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
+        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.por_cotizar %}text-warning-400{% else %}text-white{% endif %}">{{ trabajo.por_cotizar|default:"0" }}</p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">por cotizar</p>
+      </div>
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
+        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums text-white">{{ trabajo.tareas|default:"0" }}</p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">tareas{% if trabajo.atrasadas %}<span class="text-error-400"> · {{ trabajo.atrasadas }} tarde</span>{% endif %}</p>
+      </div>
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
+        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.facturas %}text-success-300{% else %}text-white{% endif %}">{{ trabajo.facturas|default:"0" }}</p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">por cobrar{% if trabajo.monto_por_cobrar %}<span class="text-gray-600"> · ${{ trabajo.monto_por_cobrar|floatformat:0 }}</span>{% endif %}</p>
+      </div>
+      {% comment %}
+      Los perdidos van del MES, no del total histórico: «183 desde siempre» no dice
+      nada y «6 este mes» sí — es el número que hace preguntar por qué. El total va
+      pegado al número, como en «Piezas», para que la etiqueta quepa en UN renglón:
+      partida en tres líneas descuadraba la fila entera de tarjetas.
+      {% endcomment %}
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
+        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.cancelados_mes %}text-error-400{% else %}text-white{% endif %}">
+          {{ trabajo.cancelados_mes|default:"0" }}{% if trabajo.cancelados %}<span class="text-sm text-gray-600">/{{ trabajo.cancelados }}</span>{% endif %}
+        </p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">perdidos este mes</p>
+      </div>
     </div>
-    {% if ia.ultima %}
-    <p class="font-mono text-[11px] text-gray-600">
-      última: {{ ia.ultima.provider }}/{{ ia.ultima.modelo|default:"—" }}
-      · {{ ia.ultima.estacion }} · {{ ia.ultima.latencia_ms }} ms
-      {% if not ia.ultima.exito %}<span class="text-error-400">· falló</span>{% endif %}
-    </p>
     {% endif %}
 
-    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
-      <span class="text-gray-500">El Almacén (medios en disco)</span>
-      {% if medios.disponible %}
-        <span class="font-mono text-gray-200 tabular-nums">
-          {{ medios.archivos }} archivo{{ medios.archivos|pluralize }} · {{ medios.mb }} MB
-          <span class="text-gray-500">· {{ medios.derivados }} derivados</span>
-        </span>
-      {% else %}
-        <span class="font-mono text-gray-600">no montado aquí</span>
-      {% endif %}
-    </div>
+    {# ── Las copias de seguridad, y dónde están ────────────────────────── #}
+    <p class="mt-3 text-[10px] font-semibold uppercase tracking-wider text-gray-600">Copias de seguridad</p>
+    <div class="mt-1.5 space-y-1.5 text-xs">
 
-    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
-      <span class="text-gray-500">Cola de El Portavoz</span>
-      <span class="font-mono tabular-nums">
-        {% if internos.portavoz_head.disponible %}
-          <span class="{% if internos.portavoz_head.items_pendientes > 200 %}text-warning-400{% else %}text-gray-200{% endif %}">
-            {{ internos.portavoz_head.items_pendientes }} pendiente{{ internos.portavoz_head.items_pendientes|pluralize }}
+      {# En el disco de esta máquina. #}
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="flex min-w-0 items-baseline gap-1.5">
+          <span class="shrink-0 {% if internos.backup_local.disponible %}text-success-400{% else %}text-warning-400{% endif %}">●</span>
+          <span class="truncate text-gray-400">Aquí, en el NUC</span>
+        </span>
+        {% if internos.backup_local.disponible %}
+          <span class="shrink-0 text-right font-mono text-[11px] text-gray-300">
+            {{ internos.backup_local.cuando }}
+            <span class="text-gray-600">· {% if internos.backup_local.peso %}{{ internos.backup_local.peso }} · {% endif %}{{ internos.backup_local.cuantos }} copias</span>
           </span>
         {% else %}
-          <span class="text-success-400">vacía</span>
+          <span class="shrink-0 font-mono text-[11px] text-warning-400">sin copias</span>
         {% endif %}
-        {% if internos.portavoz_dlq %}
-          <span class="text-error-400">· {{ internos.portavoz_dlq }} descartado(s)</span>
+      </div>
+      {% if internos.backup_local.carpeta %}
+        <p class="truncate pl-4 font-mono text-[10px] text-gray-700">{{ internos.backup_local.carpeta }}</p>
+      {% endif %}
+
+      {% comment %}
+      Y fuera de la máquina, que es la copia que salva de un incendio. Van las
+      DOS: la base y las fotos de El Almacén. Son respaldos distintos y los dos
+      hacen falta — la base sin las fotos, o las fotos sin la base, no
+      reconstruyen nada.
+      {% endcomment %}
+      <div class="flex items-baseline justify-between gap-2 pt-0.5">
+        <span class="flex min-w-0 items-baseline gap-1.5">
+          <span class="shrink-0 {% if internos.backup_remoto.estado == 'ok' %}text-success-400{% else %}text-error-400{% endif %}">●</span>
+          <span class="truncate text-gray-400">La base, fuera en HAL</span>
+        </span>
+        {% if internos.backup_remoto.disponible %}
+          <span class="shrink-0 text-right font-mono text-[11px]
+                       {% if internos.backup_remoto.estado == 'ok' %}text-gray-300{% else %}text-error-400{% endif %}">
+            {{ internos.backup_remoto.cuando }}
+            {% if internos.backup_remoto.peso %}<span class="{% if internos.backup_remoto.peso == "vacío" %}text-error-400{% else %}text-gray-600{% endif %}">· {{ internos.backup_remoto.peso }}</span>{% endif %}
+          </span>
+        {% else %}
+          <span class="shrink-0 font-mono text-[11px] text-error-400">sin registro</span>
         {% endif %}
-      </span>
+      </div>
+
+      <div class="flex items-baseline justify-between gap-2 pt-0.5">
+        <span class="flex min-w-0 items-baseline gap-1.5">
+          <span class="shrink-0 {% if internos.backup_medios.estado == 'ok' %}text-success-400{% else %}text-error-400{% endif %}">●</span>
+          <span class="truncate text-gray-400">El Almacén, fuera en HAL</span>
+        </span>
+        {% if internos.backup_medios.disponible %}
+          <span class="shrink-0 text-right font-mono text-[11px]
+                       {% if internos.backup_medios.estado == 'ok' %}text-gray-300{% else %}text-error-400{% endif %}">
+            {{ internos.backup_medios.cuando }}
+            {% if medios.disponible %}<span class="text-gray-600">· {{ medios.archivos }} archivos</span>{% endif %}
+          </span>
+        {% else %}
+          <span class="shrink-0 font-mono text-[11px] text-error-400">sin registro</span>
+        {% endif %}
+      </div>
+      <p class="truncate pl-4 font-mono text-[10px] text-gray-700">
+        {{ internos.backup_remoto.destino|default:"HAL" }}:~/Backups/el-despacho/{% if internos.backup_medios.disponible %} · medios/{% endif %}
+      </p>
     </div>
 
-    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
-      <span class="text-gray-500">Último respaldo a HAL</span>
-      {% if internos.backup_remoto.disponible %}
-        <span class="font-mono {% if internos.backup_remoto.estado == 'ok' %}text-gray-200{% else %}text-error-400{% endif %}">
-          {{ internos.backup_remoto.estado }}
-          <span class="text-gray-500">· {{ internos.backup_remoto.creado_en|slice:":16"|cut:"T" }}</span>
+    {# ── Y el resto de las tuberías ────────────────────────────────────── #}
+    <div class="mt-3 space-y-1.5 border-t border-gray-800 pt-2.5 text-xs">
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="truncate text-gray-500">El Almacén <span class="text-[10px] text-gray-700">en el disco de aquí</span></span>
+        {% if medios.disponible %}
+          <span class="shrink-0 font-mono tabular-nums text-gray-300">{{ medios.archivos }}<span class="text-gray-600"> · {{ medios.mb }} MB · {{ medios.derivados }} derivados</span></span>
+        {% else %}
+          <span class="shrink-0 font-mono text-gray-600">no montado</span>
+        {% endif %}
+      </div>
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="truncate text-gray-500">El Portavoz <span class="text-[10px] text-gray-700">avisos por salir</span></span>
+        <span class="shrink-0 font-mono tabular-nums">
+          {% if internos.portavoz_head.disponible %}
+            <span class="{% if internos.portavoz_head.items_pendientes > 200 %}text-warning-400{% else %}text-gray-300{% endif %}">{{ internos.portavoz_head.items_pendientes }}</span>
+          {% else %}
+            <span class="text-success-400">al día</span>
+          {% endif %}
+          {% if internos.portavoz_dlq %}<span class="text-error-400">· {{ internos.portavoz_dlq }} tirados</span>{% endif %}
         </span>
-      {% else %}
-        <span class="font-mono text-gray-600">sin registros</span>
-      {% endif %}
-    </div>
-
-    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
-      <span class="text-gray-500">Último despliegue</span>
-      {% if internos.deploy.disponible %}
-        <span class="font-mono text-gray-200">{{ internos.deploy.commit|default:"—" }}
-          <span class="text-gray-500">· {{ internos.deploy.creado_en|slice:":16"|cut:"T" }}</span>
-        </span>
-      {% else %}
-        <span class="font-mono text-gray-600">sin registros</span>
-      {% endif %}
+      </div>
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="truncate text-gray-500">La Mudanza <span class="text-[10px] text-gray-700">último despliegue</span></span>
+        {% if internos.deploy.disponible %}
+          <span class="shrink-0 text-right font-mono text-gray-300">{{ internos.deploy.commit_corto|default:"—" }}<span class="text-gray-600"> · {{ internos.deploy.cuando }}</span></span>
+        {% else %}
+          <span class="shrink-0 font-mono text-gray-600">sin registros</span>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>

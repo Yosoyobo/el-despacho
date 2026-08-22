@@ -3,99 +3,210 @@
 El Vigía — pantalla de pared del NUC. NO extiende base.html a propósito: no lleva
 sidebar, ni header, ni footer. Es un muro, no una pantalla de la aplicación.
 
-Tres decisiones que conviene no deshacer:
+Cuatro decisiones que conviene no deshacer:
 
-· `class="dark"` fijo en el <html>. La regla §19 del proyecto es «dark mode propio
-  con toggle y localStorage»; aquí se usa ESE mismo sistema (las utilidades
-  `dark:` del repo) pero clavado, porque una pantalla colgada en la pared no tiene
-  quien le pique un botón y de noche un fondo blanco es una lámpara.
+· `class="dark"` fijo en el <html>. La regla §19 del proyecto es «dark mode
+  propio con toggle y localStorage»; aquí se usa ESE mismo sistema (las
+  utilidades `dark:` del repo) pero clavado, porque una pantalla colgada en la
+  pared no tiene quien le pique un botón y de noche un fondo blanco es una
+  lámpara.
 
-· HTMX se sirve VENDOREADO (`static/vendor/htmx/`). El resto del sistema lo carga
-  de unpkg, que está bien para un navegador con internet; esta pantalla arranca
-  sola cuando el NUC se reinicia, y si en ese momento no hay internet, un HTMX que
-  no baja deja la pared congelada para siempre sin decir por qué.
+· TODO se sirve VENDOREADO: HTMX y DaisyUI. El resto del sistema carga de unpkg,
+  que está bien para un navegador con internet; esta pantalla arranca sola
+  cuando el NUC se reinicia, y si en ese momento no hay red, una librería que no
+  baja deja la pared congelada para siempre sin decir por qué.
+
+· De DaisyUI se trae `styled.min.css` (139 KB), NO `full.css` (3.1 MB): la
+  diferencia son sus 30 temas, que no se usan porque el tema se define abajo con
+  la paleta de El Despacho. Sin ese mapeo, los componentes saldrían con los
+  colores de DaisyUI peleando contra los del repo.
 
 · Cada panel se refresca por su cuenta y a su ritmo. Si el socket de Docker se
-  cae, el panel de contenedores se queda quieto y los demás siguen: no hay un solo
+  cae, el panel de las piezas se queda quieto y los demás siguen: no hay un solo
   sondeo del que dependa todo.
 {% endcomment %}
-<html lang="es-mx" class="dark">
+<html lang="es-mx" class="dark" data-theme="despacho">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>El Vigía · el NUC en vivo</title>
     <link rel="icon" href="{% static 'branding/Icono_LC-32.png' %}" sizes="32x32">
+    <link rel="stylesheet" href="{% static 'vendor/daisyui/styled.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
     <style>
-      /* Una pared no se scrollea ni se selecciona con el dedo. */
-      html, body { height: 100%; overflow: hidden; }
+      /* El tema de DaisyUI, mapeado a la paleta de El Despacho. Los valores van
+         en OKLCH y sin la función porque DaisyUI 4 los aplica como
+         `oklch(var(--p))`; un hex aquí no pintaría nada. */
+      :root, [data-theme="despacho"] {
+        --p:   56.80% 0.2369 270.00;  /* #465fff  brand-500      */
+        --pc:  100.0% 0.0000 89.88;
+        --s:   68.61% 0.1512 238.37;  /* #0ba5ec  blue-light-500 */
+        --sc:  100.0% 0.0000 89.88;
+        --a:   68.89% 0.1995 42.49;   /* #fb6514  orange-500     */
+        --ac:  100.0% 0.0000 89.88;
+        --n:   36.77% 0.0000 89.88;   /* #3f3f3f  gray-700       */
+        --nc:  96.65% 0.0045 258.32;
+        --b1:  20.46% 0.0000 89.88;   /* #171717  tarjeta        */
+        --b2:  17.76% 0.0000 89.88;   /* #111111  página         */
+        --b3:  27.27% 0.0000 89.88;   /* #272727  realce         */
+        --bc:  96.65% 0.0045 258.32;  /* #f2f4f7  texto          */
+        --in:  75.86% 0.1404 232.13;
+        --inc: 27.91% 0.0563 238.35;
+        --su:  77.30% 0.1754 155.50; /* #32d583 */
+        --suc: 28.57% 0.0586 161.78;
+        --wa:  81.09% 0.1634 75.65;  /* #fdb022 */
+        --wac: 30.13% 0.0800 40.87;
+        --er:  70.86% 0.1699 26.47;  /* #f97066 */
+        --erc: 30.46% 0.0952 31.72;
+        --rounded-box: 1rem; --rounded-btn: .5rem; --rounded-badge: 1.9rem;
+        /* Una pared no se pica: las animaciones de interacción sólo gastarían. */
+        --animation-btn: 0s; --animation-input: 0s;
+        --border-btn: 1px; --tab-border: 1px; --tab-radius: .5rem;
+      }
+
+      /* La PARED no se scrollea: es un muro, y una barra de scroll ahí sólo
+         significa que algo no cabe. Pero en un teléfono el contenido no cabe por
+         definición, así que ahí sí tiene que poder deslizarse — si no, la mitad
+         de los paneles quedan inalcanzables. El corte va en `lg`, el mismo que
+         usa el grid para pasar de apilado a tablero. */
       body { -webkit-user-select: none; user-select: none; }
-      /* El flujo de peticiones sí, cuando no cabe. */
+      @media (min-width: 1024px) {
+        html, body { height: 100%; overflow: hidden; }
+      }
+      @media (max-width: 1023px) {
+        html, body { min-height: 100%; }
+        /* En móvil el alto lo pone el contenido, no el viewport. */
+        .vigia-marco { height: auto !important; }
+      }
+
+      /* NADA estira la página a lo ancho, en ningún tamaño. Si algo no cabe,
+         envuelve o se recorta — pero no arrastra al resto. Sin esto, un solo
+         elemento ancho (una ruta larga, la línea del pie) hace que TODO el
+         layout se calcule sobre el ancho desbordado: los cuatro anillos salían
+         apretujados en fila en un teléfono aunque su grid dijera una columna.
+         Un desborde en una esquina descuadra la página completa. */
+      html, body { overflow-x: hidden; max-width: 100%; }
+      /* Y las cadenas sin espacios —rutas, direcciones IP, huellas— sí se
+         parten: son justo las que no envuelven solas. */
+      .vigia-parte { overflow-wrap: anywhere; word-break: break-word; }
+      /* Los paneles con lista sí, cuando no cabe. */
       .vigia-scroll { overflow-y: auto; scrollbar-width: thin; }
       .vigia-scroll::-webkit-scrollbar { width: 6px; }
       .vigia-scroll::-webkit-scrollbar-thumb { background: #3f3f3f; border-radius: 3px; }
+
+      /* El renglón nuevo del flujo entra con un destello: en una pared, el
+         movimiento es lo que hace que se note que está VIVA. */
+      @keyframes vigia-entra {
+        from { background-color: rgba(70,95,255,.20); }
+        to   { background-color: transparent; }
+      }
+      .vigia-nueva { animation: vigia-entra 2.4s ease-out; }
+
+      /* El punto que late en la cabecera: la señal de "esto está corriendo". */
+      @keyframes vigia-late { 0%,100% { opacity:1 } 50% { opacity:.25 } }
+      .vigia-late { animation: vigia-late 2s ease-in-out infinite; }
+
+      /* DaisyUI dibuja el anillo con `--value`; el grosor va aquí para que los
+         cuatro se vean iguales sin repetirlo en cada uno. */
+      .radial-progress { --thickness: 7px; }
     </style>
 </head>
 <body class="h-full bg-gray-950 text-gray-100 font-inter antialiased">
 
-<div class="flex h-full flex-col gap-3 p-4">
+<div class="vigia-marco flex h-full flex-col gap-2.5 p-2 sm:p-3">
 
   {# ── Cabecera ─────────────────────────────────────────────────────────── #}
-  <header class="flex shrink-0 items-baseline justify-between">
-    <h1 class="flex items-baseline gap-3">
+  <header class="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1">
+    <h1 class="flex flex-wrap items-baseline gap-x-3">
       <span class="text-title-sm font-semibold tracking-tight text-white">El Vigía</span>
-      <span class="text-sm text-gray-400">el NUC de Learning Center, en vivo</span>
+      <span class="hidden text-sm text-gray-400 sm:inline">el NUC de Learning Center, en vivo</span>
+      <span class="vigia-late text-success-400" aria-hidden="true">●</span>
     </h1>
-    <div class="flex items-baseline gap-5">
+    <div class="flex items-center gap-5">
       {# Aparece SOLO si el sondeo falla: una pared congelada tiene que verse congelada. #}
       <span id="vigia-caido"
             class="hidden rounded-lg bg-error-500/15 px-3 py-1 text-sm font-medium text-error-400">
         ● sin respuesta del servidor
       </span>
-      <span id="vigia-reloj" class="font-mono text-title-sm tabular-nums text-gray-300">--:--:--</span>
+      <span id="vigia-fecha" class="hidden text-sm text-gray-500 sm:inline"></span>
+      <span id="vigia-reloj" class="font-mono text-lg tabular-nums text-gray-200 sm:text-title-sm">--:--:--</span>
     </div>
   </header>
 
-  {# ── Fierro: cuatro números grandes ───────────────────────────────────── #}
+  {# ── El fierro: cuatro anillos ─────────────────────────────────────────── #}
   <div class="shrink-0" hx-get="{% url 'site-vivo-fierro' %}"
        hx-trigger="load, every 5s" hx-swap="innerHTML">
-    <div class="grid grid-cols-4 gap-3">
+    <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
       {% for _ in "1234" %}
-      <div class="animate-pulse rounded-2xl border border-gray-800 bg-gray-900 p-5">
-        <div class="h-3 w-20 rounded bg-gray-800"></div>
-        <div class="mt-4 h-9 w-28 rounded bg-gray-800"></div>
+      <div class="flex animate-pulse items-center gap-4 rounded-2xl border border-gray-800 bg-gray-900 p-4">
+        <div class="h-24 w-24 rounded-full bg-gray-800"></div>
+        <div class="flex-1 space-y-3">
+          <div class="h-3 w-24 rounded bg-gray-800"></div>
+          <div class="h-2 w-full rounded bg-gray-800"></div>
+        </div>
       </div>
       {% endfor %}
     </div>
   </div>
 
-  {# ── Cuerpo: peticiones a la izquierda, máquina y negocio a la derecha ── #}
-  <div class="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-5">
+  {# ── Cuerpo ────────────────────────────────────────────────────────────── #}
+  {% comment %}
+  El reparto: arriba las dos cosas que se miran de lejos (el flujo y Los
+  Chalanes), abajo tres paneles de igual ancho.
 
-    <section class="flex min-h-0 flex-col rounded-2xl border border-gray-800 bg-gray-900 xl:col-span-3">
+  El flujo NO se lleva todo el alto a propósito, aunque sea el protagonista: de
+  madrugada no hay tráfico, y el panel más grande de la pared no puede ser el que
+  se vacía. Con tres filas arriba y dos abajo, cuando no hay peticiones el hueco
+  es de un panel, no de media pantalla.
+  {% endcomment %}
+  <div class="grid min-h-0 gap-2.5 md:grid-cols-12 lg:flex-1 lg:grid-rows-5">
+
+    <section class="flex min-h-[22rem] flex-col overflow-hidden rounded-2xl
+                    border border-gray-800 bg-gray-900 md:col-span-12
+                    lg:col-span-7 lg:row-span-3 lg:min-h-0">
       <div hx-get="{% url 'site-vivo-peticiones' %}"
            hx-trigger="load, every 2s" hx-swap="innerHTML"
            class="flex min-h-0 flex-1 flex-col">
-        <p class="p-5 text-sm text-gray-500">Leyendo el flujo de peticiones…</p>
+        <p class="p-5 text-sm text-gray-600">Leyendo el flujo de peticiones…</p>
       </div>
     </section>
 
-    <div class="grid min-h-0 grid-rows-2 gap-3 xl:col-span-2">
-      <section class="min-h-0 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
-               hx-get="{% url 'site-vivo-contenedores' %}"
-               hx-trigger="load, every 3s" hx-swap="innerHTML">
-        <p class="p-5 text-sm text-gray-500">Midiendo los contenedores…</p>
-      </section>
-      <section class="min-h-0 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
-               hx-get="{% url 'site-vivo-negocio' %}"
-               hx-trigger="load, every 20s" hx-swap="innerHTML">
-        <p class="p-5 text-sm text-gray-500">Consultando el trabajo del despacho…</p>
-      </section>
-    </div>
+    {# Los Chalanes: la auditoría del gasto de IA. #}
+    <section class="min-h-[22rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-12
+                    lg:col-span-5 lg:row-span-3 lg:min-h-0"
+             hx-get="{% url 'site-vivo-chalanes' %}"
+             hx-trigger="load, every 15s" hx-swap="innerHTML">
+      <p class="p-5 text-sm text-gray-600">Preguntando por Los Chalanes…</p>
+    </section>
+
+    {# Las piezas de la máquina. #}
+    <section class="min-h-[18rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
+             hx-get="{% url 'site-vivo-contenedores' %}"
+             hx-trigger="load, every 3s" hx-swap="innerHTML">
+      <p class="p-5 text-sm text-gray-600">Midiendo las piezas…</p>
+    </section>
+
+    {# El trabajo del despacho. #}
+    <section class="min-h-[18rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
+             hx-get="{% url 'site-vivo-negocio' %}"
+             hx-trigger="load, every 20s" hx-swap="innerHTML">
+      <p class="p-5 text-sm text-gray-600">Consultando el despacho…</p>
+    </section>
+
+    {# La ventana: el droplet que da la cara a internet. #}
+    <section class="min-h-[18rem] overflow-hidden rounded-2xl border
+                    border-gray-800 bg-gray-900 md:col-span-12 lg:col-span-4 lg:row-span-2 lg:min-h-0"
+             hx-get="{% url 'site-vivo-ventana' %}"
+             hx-trigger="load, every 30s" hx-swap="innerHTML">
+      <p class="p-4 text-xs text-gray-600">La ventana…</p>
+    </section>
   </div>
 
-  <footer class="shrink-0 text-center text-xs text-gray-600">
+  <footer class="vigia-parte shrink-0 text-center text-[11px] text-gray-600">
     Sólo se atiende en la máquina que vigila ({{ host_pedido }}) ·
     Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener"
       class="text-gray-500 hover:text-gray-400">NoKo Devs</a> · © 2026 Learning Center
@@ -108,10 +219,15 @@ Tres decisiones que conviene no deshacer:
   // congelado y un tablero congelado se ven igual, y no son lo mismo.
   (function () {
     var reloj = document.getElementById('vigia-reloj');
+    var fecha = document.getElementById('vigia-fecha');
+    var DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                 'agosto','septiembre','octubre','noviembre','diciembre'];
+    function dos(n) { return String(n).padStart(2, '0'); }
     function pintar() {
       var d = new Date();
-      reloj.textContent = [d.getHours(), d.getMinutes(), d.getSeconds()]
-        .map(function (n) { return String(n).padStart(2, '0'); }).join(':');
+      reloj.textContent = dos(d.getHours()) + ':' + dos(d.getMinutes()) + ':' + dos(d.getSeconds());
+      fecha.textContent = DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()];
     }
     pintar();
     setInterval(pintar, 1000);
@@ -122,16 +238,34 @@ Tres decisiones que conviene no deshacer:
   (function () {
     var aviso = document.getElementById('vigia-caido');
     var fallos = 0;
+    function mal() { if (++fallos >= 2) { aviso.classList.remove('hidden'); } }
     document.body.addEventListener('htmx:afterRequest', function (e) {
-      if (e.detail.successful) {
-        fallos = 0;
-        aviso.classList.add('hidden');
-      } else if (++fallos >= 2) {
-        aviso.classList.remove('hidden');
-      }
+      if (e.detail.successful) { fallos = 0; aviso.classList.add('hidden'); } else { mal(); }
     });
-    document.body.addEventListener('htmx:sendError', function () {
-      if (++fallos >= 2) { aviso.classList.remove('hidden'); }
+    document.body.addEventListener('htmx:sendError', mal);
+  })();
+
+  // El destello del renglón nuevo. Se marca por el id de la fila: las que ya
+  // estaban no se vuelven a animar, así que el destello señala novedad de
+  // verdad y no el refresco. Sin esto, con refresco cada 2 s, la lista entera
+  // parpadearía y no se podría leer nada.
+  (function () {
+    var vistas = new Set();
+    var primeraVez = true;
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+      var filas = e.target.querySelectorAll('[data-fila]');
+      filas.forEach(function (f) {
+        var id = f.getAttribute('data-fila');
+        if (!vistas.has(id)) {
+          vistas.add(id);
+          // En el primer pintado no se destella nada: si no, arranca con 28
+          // renglones destellando a la vez.
+          if (!primeraVez) { f.classList.add('vigia-nueva'); }
+        }
+      });
+      if (filas.length) { primeraVez = false; }
+      // El conjunto no crece sin fin: se queda con lo que cabe en pantalla.
+      if (vistas.size > 400) { vistas = new Set(Array.from(vistas).slice(-200)); }
     });
   })();
 </script>

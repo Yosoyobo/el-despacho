@@ -66,17 +66,48 @@ lanzar() {
         fi
     done
     if command -v firefox >/dev/null 2>&1; then
-        _log "navegador: firefox"
-        firefox --kiosk "$URL" >>"$BITACORA" 2>&1
+        # `--new-instance` y un perfil propio son OBLIGATORIOS aquí. Sin ellos,
+        # si ya hay un Firefox abierto en la sesión, este comando le pasa la URL
+        # a esa instancia y **termina al instante** — con lo que el bucle de
+        # "reabre si se muere" se convierte en una reapertura cada 5 segundos
+        # para siempre. Pasó al probarlo en el NUC.
+        perfil="$HOME/.vigia-firefox"
+        mkdir -p "$perfil"
+        _log "navegador: firefox (perfil propio en $perfil)"
+        firefox --new-instance --profile "$perfil" --kiosk "$URL" >>"$BITACORA" 2>&1
         return
     fi
     _log "ERROR: no encontré ningún navegador (chrome, chromium ni firefox)"
     sleep 60
 }
 
-# ── 4) Que aguante solo ──────────────────────────────────────────────────────
+# ── 4) Que aguante solo, sin volverse un parpadeo ────────────────────────────
+# La reapertura tiene freno a propósito. Si el navegador muere al instante
+# (perfil bloqueado, sin sesión gráfica, una instancia previa que se queda con
+# la URL), reabrir cada 5 segundos es PEOR que rendirse: la pared se pasa la
+# noche parpadeando y la bitácora se llena de la misma línea. Así que los
+# arranques que no duran nada se cuentan, y tras unos cuantos el reintento se
+# separa a un minuto — sigue intentando, pero deja de castigar la máquina y la
+# bitácora dice qué está pasando.
+RAPIDOS=0
 while true; do
+    t0=$(date +%s)
     lanzar
-    _log "el navegador terminó; reabro en 5s"
-    sleep 5
+    duro=$(( $(date +%s) - t0 ))
+
+    if [ "$duro" -lt 10 ]; then
+        RAPIDOS=$(( RAPIDOS + 1 ))
+    else
+        RAPIDOS=0
+    fi
+
+    if [ "$RAPIDOS" -ge 3 ]; then
+        _log "AVISO: el navegador lleva $RAPIDOS arranques de <10s (murió en ${duro}s)."
+        _log "       Suele ser otra instancia del navegador que se queda con la URL,"
+        _log "       o que no hay sesión gráfica. Reintento en 60s."
+        sleep 60
+    else
+        _log "el navegador terminó tras ${duro}s; reabro en 5s"
+        sleep 5
+    fi
 done

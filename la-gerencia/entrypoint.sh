@@ -8,6 +8,22 @@ sys.exit(0 if s.connect_ex((os.environ['POSTGRES_HOST'], int(os.environ['POSTGRE
 done
 echo "[la-gerencia] Postgres OK"
 
+# ── ¿Nos pasaron un comando? ─────────────────────────────────────────────────
+# El `portavoz-worker` del compose comparte esta imagen y declara su propio
+# `command`. Este guion NO lo ejecutaba —hacía `exec gunicorn` directo, sin
+# `"$@"`— así que el comando se ignoraba EN SILENCIO y ese contenedor llevaba
+# desde mayo siendo una segunda copia de La Gerencia, con la cola del Portavoz
+# creciendo sin que nadie la vaciara (5,198 eventos para agosto de 2026).
+#
+# Se sale ANTES de migrar a propósito: sólo el servicio sin `command` corre
+# `migrate`. Dos procesos migrando la misma base a la vez se pisan (§14 Bug B),
+# y el worker no necesita ni migraciones ni seeds ni estáticos — sólo Postgres,
+# para leer las credenciales de La Bóveda.
+if [ "$#" -gt 0 ]; then
+    echo "[la-gerencia] comando propio: $*"
+    exec "$@"
+fi
+
 echo "[la-gerencia] Aplicando migraciones..."
 python manage.py migrate --noinput
 
@@ -50,5 +66,5 @@ exec gunicorn la_gerencia.wsgi:application \
     --max-requests 1000 \
     --max-requests-jitter 100 \
     --access-logfile - \
-    --access-logformat '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s' \
+    --access-logformat '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" "%({x-forwarded-for}i)s" %(D)s' \
     --error-logfile -
