@@ -88,14 +88,48 @@ Falló la **aplicación**, no el formato. Tres causas posibles:
 exacto** donde pasó, el archivo, no la captura.
 
 ### Nota 6 · «@ de tareas en cada tarjeta de productos involucrados»
-**¿Qué debe hacer la @?** Tres lecturas y cada una es un trabajo distinto:
-(a) crear una tarea ligada a ese producto, (b) mencionar a una persona,
-(c) ver las tareas que ya existen para ese producto.
+**Pendiente de diseño (decisión de Oscar, 22 de agosto).** No se ejecuta hasta
+definir qué hace la @: crear una tarea ligada al producto, mencionar a una
+persona, o listar las tareas que ya existen. Toca el mismo archivo que el
+Sprint 2, así que irá en un sprint propio y posterior.
 
-### Nota 4 · Proveedor principal no se actualiza
-Va dentro del Sprint 1, pero **necesita reproducción**: ¿al guardar la ficha del
-producto, o en las líneas de proyecto que ya existían? Son arreglos distintos.
-Si no llega la respuesta, el sprint entrega lo demás y deja ésta anotada.
+### Nota 4 · Proveedor principal — ya NO está bloqueada
+Se rastreó en el código y son **dos bugs concretos**, los dos dentro del
+Sprint 1. Guardar el campo funciona bien; lo que falla es que la tarjeta del
+proyecto no pisa el proveedor al cambiar de producto, y que el dropdown de
+«★ Proveedor principal» no se entera de los proveedores que agregas o quitas en
+la misma pantalla. Detalle en el sprint.
+
+Lo único que queda como decisión de producto: **si cambiar el principal en el
+catálogo debe propagarse a los proyectos ya abiertos** (hoy no lo hace, igual que
+un precio negociado). El sprint entrega los dos bugs sin esperar esa respuesta.
+
+---
+
+## Cómo se ejecutan: 3 sesiones, un mensaje cada una
+
+**Una sesión por sprint.** El mensaje es literalmente:
+
+> Lee `docs/SPRINT-Catalogo-Alta.md` y ejecútalo completo.
+
+**Por qué no los tres en una sola sesión:** cada sprint sube `VERSION` y escribe
+su bloque de Novedades. Tres en uno serían un solo despliegue que no se puede
+revertir por partes — justo lo que este reparto quiere evitar. Y una sesión con
+las tres zonas encima acumula contexto de más y empieza a mezclar.
+
+**El orden importa entre 1 y 2:** los dos tocan
+`proyectos/_form_productos_js.html` — el Sprint 1 la llamada del alta rápida, el
+Sprint 2 la tarjeta y el rerender. **Van secuenciales**, nunca en paralelo.
+
+**El Sprint 3 es independiente:** no comparte archivos con los otros dos. Puede
+correr en paralelo en su propio worktree, o dejarse al final. Es el más barato.
+
+```
+Sesión A → Sprint 1 (Catálogo)      ──┐ secuenciales:
+Sesión B → Sprint 2 (Tarjeta)       ──┘ comparten _form_productos_js.html
+
+Sesión C → Sprint 3 (Cotización + Kanban)   independiente, cuando quieras
+```
 
 ---
 

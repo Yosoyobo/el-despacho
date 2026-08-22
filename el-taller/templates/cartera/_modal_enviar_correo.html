@@ -33,6 +33,17 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if remitentes %}
+            <div>
+                <label for="correo-remitente">De</label>
+                <select id="correo-remitente" name="remitente">
+                    <option value="">La dirección que trae la plantilla</option>
+                    {% for r in remitentes %}
+                    <option value="{{ r.email }}">{{ r.nombre|default:r.email }}{% if r.es_personal %} · a tu nombre{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <div>
                 <label for="correo-mensaje">Mensaje <span class="text-gray-400">(opcional)</span></label>
                 <textarea id="correo-mensaje" name="mensaje" rows="4" placeholder="Sólo se usa si la plantilla lo pide con la variable «mensaje»."></textarea>

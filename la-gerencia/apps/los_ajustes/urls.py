@@ -26,6 +26,7 @@ urlpatterns = [
     path("cartero/remitentes/", views.cartero_remitentes, name="ajustes-cartero-remitentes"),
     path("cartero/remitentes/marcar", views.cartero_remitente_marcar, name="ajustes-cartero-remitente-marcar"),
     path("cartero/remitentes/probar", views.cartero_remitente_probar, name="ajustes-cartero-remitente-probar"),
+    path("cartero/remitentes/dueno", views.cartero_remitente_dueno, name="ajustes-cartero-remitente-dueno"),
     path("cartero/reglas/", views.cartero_reglas, name="ajustes-cartero-reglas"),
     path("cartero/reglas/guardar", views.cartero_regla_guardar, name="ajustes-cartero-regla-guardar"),
     path("cartero/reglas/<int:pk>/borrar", views.cartero_regla_borrar, name="ajustes-cartero-regla-borrar"),

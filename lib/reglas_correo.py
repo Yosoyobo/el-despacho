@@ -70,9 +70,14 @@ def _disparar(evento, referencia, cliente, proyecto, extra) -> int:
             cliente=cliente, proyecto=proyecto, extra=extra,
         )
         asunto, html = regla.plantilla.render(contexto)
+        from ajustes.models.alias_remitente import remitente_para
+
         resultado = cartero.enviar(
             destinatario=destinatario, asunto=asunto, html=html,
-            remitente=regla.plantilla.remitente_efectivo(),
+            # Sin usuario detrás: `remitente_para` descarta cualquier alias
+            # personal. Un correo que sale solo no puede ir firmado por alguien
+            # que ni se enteró.
+            remitente=remitente_para(regla.plantilla, None),
         )
         ok = bool(getattr(resultado, "ok", False))
         # Se audita el intento SIEMPRE, ok o no: la fila es el candado, así que

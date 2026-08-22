@@ -506,14 +506,57 @@ def cartero_remitentes(request):
     ya creó el alias en Google y comprobó que llega bien.
     """
     from ajustes.models.alias_remitente import remitentes_en_uso
+    from cuentas.models.usuario import Usuario
     from lib import cartero
 
     filas = remitentes_en_uso()
     return render(request, "ajustes/cartero_remitentes.html", {
         "filas": filas,
         "faltan": [f for f in filas if f["en_uso"] and not f["verificado"]],
+        "personales_sin_dueno": [
+            f for f in filas if f["es_personal"] and f["usuario"] is None
+        ],
+        "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
         "cuenta_envia": cartero._cred("smtp_user") or cartero._cred("smtp_from_email"),
     })
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_remitente_dueno(request):
+    """Liga (o suelta) una dirección a una persona.
+
+    Con dueño, el alias es PERSONAL: sólo esa persona puede mandar desde él.
+    Sin dueño, vuelve a ser del despacho y lo usa cualquiera con permiso.
+    """
+    from ajustes.models import AliasRemitente
+    from cuentas.models.usuario import Usuario
+
+    email = (request.POST.get("email") or "").strip().lower()
+    if not email:
+        messages.error(request, "Falta la dirección.")
+        return redirect("ajustes-cartero-remitentes")
+
+    alias, _ = AliasRemitente.objects.get_or_create(email=email)
+    crudo = (request.POST.get("usuario") or "").strip()
+    if not crudo:
+        alias.usuario = None
+        alias.save(update_fields=["usuario"])
+        messages.success(request, f"{email} queda como dirección del despacho.")
+        return redirect("ajustes-cartero-remitentes")
+
+    try:
+        alias.usuario = Usuario.objects.get(pk=int(crudo))
+    except (ValueError, Usuario.DoesNotExist):
+        messages.error(request, "Esa persona no existe.")
+        return redirect("ajustes-cartero-remitentes")
+    alias.save(update_fields=["usuario"])
+    messages.success(
+        request,
+        f"{email} queda a nombre de {alias.usuario.nombre_completo}. "
+        "Nadie más podrá enviar desde esa dirección.",
+    )
+    return redirect("ajustes-cartero-remitentes")
 
 
 @requiere_permiso("ajustes", "acceder")

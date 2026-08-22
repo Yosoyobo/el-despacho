@@ -231,10 +231,10 @@ def test_una_direccion_en_uso_sin_verificar_sale_como_pendiente(client, usuario_
     client.force_login(u)
     PlantillaCorreo.objects.create(
         slug="cob", nombre="Cobranza", activa=True,
-        remitente_email="cobranza@learningcenter.mx",
+        remitente_email="aviso-nuevo@ejemplo.com",
     )
     resp = client.get("/ajustes/cartero/remitentes/")
-    assert [f["email"] for f in resp.context["faltan"]] == ["cobranza@learningcenter.mx"]
+    assert [f["email"] for f in resp.context["faltan"]] == ["aviso-nuevo@ejemplo.com"]
 
 
 def test_marcar_una_direccion_la_saca_de_pendientes(client, usuario_factory):
@@ -259,14 +259,14 @@ def test_desmarcar_la_devuelve_a_pendientes(client, usuario_factory):
     client.force_login(u)
     PlantillaCorreo.objects.create(
         slug="cob", nombre="Cobranza", activa=True,
-        remitente_email="cobranza@learningcenter.mx",
+        remitente_email="aviso-nuevo@ejemplo.com",
     )
-    alias = AliasRemitente.objects.create(email="cobranza@learningcenter.mx")
+    alias = AliasRemitente.objects.create(email="aviso-nuevo@ejemplo.com")
     alias.marcar_verificado(u)
     client.post("/ajustes/cartero/remitentes/marcar",
-                {"email": "cobranza@learningcenter.mx", "desmarcar": "1"})
+                {"email": "aviso-nuevo@ejemplo.com", "desmarcar": "1"})
     resp = client.get("/ajustes/cartero/remitentes/")
-    assert [f["email"] for f in resp.context["faltan"]] == ["cobranza@learningcenter.mx"]
+    assert [f["email"] for f in resp.context["faltan"]] == ["aviso-nuevo@ejemplo.com"]
 
 
 def test_la_direccion_se_compara_sin_importar_mayusculas(client, usuario_factory):
@@ -308,7 +308,58 @@ def test_la_lista_de_plantillas_avisa_de_lo_que_falta(client, usuario_factory):
     client.force_login(u)
     PlantillaCorreo.objects.create(
         slug="cob", nombre="Cobranza", activa=True,
-        remitente_email="cobranza@learningcenter.mx",
+        remitente_email="aviso-nuevo@ejemplo.com",
     )
     resp = client.get("/ajustes/cartero/plantillas/")
-    assert "cobranza@learningcenter.mx" in resp.context["alias_faltantes"]
+    assert "aviso-nuevo@ejemplo.com" in resp.context["alias_faltantes"]
+
+
+def test_ligar_una_direccion_a_su_dueno(client, usuario_factory):
+    from ajustes.models import AliasRemitente
+
+    admin = usuario_factory(rol="super_admin")
+    jorge = usuario_factory()
+    client.force_login(admin)
+    client.post("/ajustes/cartero/remitentes/dueno", {
+        "email": "jorge@learningcenter.mx", "usuario": jorge.pk,
+    })
+    alias = AliasRemitente.objects.get(email="jorge@learningcenter.mx")
+    assert alias.usuario_id == jorge.pk
+    assert alias.es_personal is True
+
+
+def test_soltar_una_direccion_la_devuelve_al_equipo(client, usuario_factory):
+    from ajustes.models import AliasRemitente
+
+    admin = usuario_factory(rol="super_admin")
+    jorge = usuario_factory()
+    AliasRemitente.objects.filter(email="jorge@learningcenter.mx").update(usuario=jorge)
+    client.force_login(admin)
+    client.post("/ajustes/cartero/remitentes/dueno",
+                {"email": "jorge@learningcenter.mx", "usuario": ""})
+    alias = AliasRemitente.objects.get(email="jorge@learningcenter.mx")
+    assert alias.usuario_id is None
+
+
+def test_una_persona_inventada_no_se_liga(client, usuario_factory):
+    from ajustes.models import AliasRemitente
+
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    client.post("/ajustes/cartero/remitentes/dueno",
+                {"email": "jorge@learningcenter.mx", "usuario": "99999"})
+    assert AliasRemitente.objects.get(email="jorge@learningcenter.mx").usuario_id is None
+
+
+def test_la_pantalla_avisa_de_los_personales_sin_dueno(client, usuario_factory):
+    """Recién sembrados, alex@ y jorge@ no tienen dueño: nadie puede usarlos."""
+    from ajustes.models import AliasRemitente
+
+    admin = usuario_factory(rol="super_admin")
+    jorge = usuario_factory()
+    AliasRemitente.objects.filter(email="jorge@learningcenter.mx").update(usuario=jorge)
+    client.force_login(admin)
+    resp = client.get("/ajustes/cartero/remitentes/")
+    # jorge@ ya tiene dueño, así que no debe aparecer entre los pendientes.
+    pendientes = {f["email"] for f in resp.context["personales_sin_dueno"]}
+    assert "jorge@learningcenter.mx" not in pendientes

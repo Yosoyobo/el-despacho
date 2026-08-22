@@ -21,6 +21,7 @@ def contexto_para(cliente, campana: CampanaCorreo) -> dict:
 def enviar_campana(campana: CampanaCorreo, clientes, actor) -> CampanaCorreo:
     """Manda el lote. Un fallo por destinatario NO aborta el resto. Audita
     cada envío y emite eventos Portavoz."""
+    from ajustes.models.alias_remitente import remitente_para
     from ajustes.models.plantilla_correo import PlantillaCorreo
     from lib import cartero
     from lib.portavoz import emitir
@@ -40,7 +41,8 @@ def enviar_campana(campana: CampanaCorreo, clientes, actor) -> CampanaCorreo:
             continue
         try:
             asunto, html = plantilla.render(contexto_para(cliente, campana))
-            res = cartero.enviar(destinatario=email, asunto=asunto, html=html)
+            res = cartero.enviar(destinatario=email, asunto=asunto, html=html,
+                                 remitente=remitente_para(plantilla, actor))
             ok = bool(getattr(res, "ok", False))
             error = "" if ok else str(getattr(res, "error", "") or "error desconocido")[:300]
         except Exception as exc:  # noqa: BLE001 — un destinatario no aborta el lote

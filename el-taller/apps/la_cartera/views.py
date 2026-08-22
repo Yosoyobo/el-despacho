@@ -527,6 +527,7 @@ def cliente_correo(request, pk: int):
     dirección, así que un dedazo no puede mandarle la cotización a un extraño.
     """
     from ajustes.models import PlantillaCorreo
+    from ajustes.models.alias_remitente import disponibles_para, remitente_para
     from lib import cartero, correo_contexto
     from lib.permisos import puede_enviar_correo
 
@@ -540,6 +541,9 @@ def cliente_correo(request, pk: int):
 
     contexto = {
         "cliente": cliente, "plantillas": plantillas, "destino": destino,
+        # Sólo las direcciones que ESTA persona puede usar: las del despacho y,
+        # si tiene, la suya. El alias personal de alguien más ni se ofrece.
+        "remitentes": disponibles_para(request.user),
         "error": "", "enviado": False,
     }
 
@@ -560,9 +564,14 @@ def cliente_correo(request, pk: int):
             extra={"mensaje": mensaje} if mensaje else None,
         )
         asunto, html = plantilla.render(ctx)
+        # `remitente_para` es la fuente única de la decisión: valida en el
+        # servidor que el alias elegido le toque a quien manda (el `<select>`
+        # se puede manipular) y descarta el personal ajeno cayendo al general.
         res = cartero.enviar(
             destinatario=destino, asunto=asunto, html=html,
-            remitente=plantilla.remitente_efectivo(),
+            remitente=remitente_para(
+                plantilla, request.user, forzado=request.POST.get("remitente", ""),
+            ),
         )
         if not res.ok:
             contexto["error"] = f"No se pudo enviar: {res.error}"

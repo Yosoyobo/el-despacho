@@ -78,21 +78,68 @@ La constante del nombre vive en `calculadora.py::PROVEEDOR_CALCULADORA`. El
 gating es por **nombre de proveedor**, frágil ante renombre; es lo que pidió
 Oscar en su momento, no cambiarlo en este sprint.
 
-### 3 · Proveedor principal (nota 4) — necesita reproducción
+### 3 · Proveedor principal (nota 4) — dos bugs localizados
 
-`ServicioForm` ya tiene el campo (`forms.py:126`) y su queryset son **todos** los
-proveedores activos, no sólo los marcados, así que guardar debería funcionar.
-Dos lecturas posibles del reporte:
+Se rastreó en el código. **Guardar el campo funciona bien** (`ServicioForm` lo
+tiene en `Meta.fields`, el `<select>` está dentro del `<form>` y `obj.save()` lo
+persiste). Lo que falla son otras dos cosas, y las dos son arreglables sin
+esperar reproducción:
 
-- **(a)** No se guarda al editar la ficha → reproducir y arreglar.
-- **(b)** Al cambiarlo en el catálogo no se refleja en las líneas de proyecto que
-  ya existían. **Esto es esperado hoy**: el proveedor se copia a la línea al
-  crearla y no se vuelve a leer (`signals_catalogo.py:43` sólo lo ocupa si está
-  vacío). Si es esto, la decisión es de producto, no un bug: ¿debe propagarse a
-  las líneas abiertas, como hace la calculadora con el costo?
+#### 3a · La tarjeta del proyecto no pisa el proveedor al cambiar de producto
 
-**Si no llega la respuesta antes de empezar:** entregar 1, 2, 4 y 5, y dejar
-ésta anotada. No adivinar.
+En [`_form_productos_js.html:398`](../el-taller/templates/proyectos/_form_productos_js.html):
+
+```js
+if (prov && !prov.value && datos.proveedor_id) prov.value = datos.proveedor_id;
+```
+
+Sólo autocompleta **si el campo está vacío**. Si la línea ya traía un proveedor
+—el viejo, copiado antes de que cambiaras el principal en el catálogo— al elegir
+otro producto **se queda el anterior**. Eso es literalmente «no se está
+actualizando».
+
+**El costo ya se arregló así el 7 de agosto** y el proveedor se quedó con la
+regla vieja: `prellenarServicio` pasó de `if (costo && !costo.value)` a
+`if (costo)` porque «el catálogo pisa». Aplicar lo mismo:
+
+```js
+if (prov && datos.proveedor_id) prov.value = datos.proveedor_id;
+```
+
+Sólo corre en el `change` del selector de producto, así que un proveedor puesto
+a mano sigue respetándose hasta que cambies de producto — misma semántica que el
+costo. **El precio NO se pisa** (se negocia por proyecto): no tocarlo.
+
+#### 3b · El dropdown «★ Proveedor principal» no se entera de los cambios
+
+El JS del picker de proveedores maneja `#prov-picker` y los checkboxes ocultos de
+`#proveedores-lista`, pero **nunca toca el `<select>` de proveedor principal**
+([`catalogo/form.html:372-440`](../el-taller/templates/catalogo/form.html)). Ese
+select se pinta una vez con el queryset del servidor. Consecuencias reales:
+
+- un proveedor **creado inline** con el quick-create no aparece en la lista de
+  principal hasta recargar la página (`provAgregarOpcion` agrega la opción al
+  picker, no al principal);
+- si quitas un proveedor de las pastillas, el principal puede quedar apuntando a
+  alguien que **ya no surte** el producto, sin aviso.
+
+**Arreglo:** que `pintar()` mantenga el select de principal en sincronía con los
+checkboxes marcados, y que `provAgregarOpcion` le agregue también la opción
+nueva. Conservar la selección actual si sigue siendo válida.
+
+#### 3c · Lo único que SÍ necesita decisión de producto
+
+Cambiar el principal en el catálogo **no toca las líneas de proyecto que ya
+existían**: el proveedor se copió al crear la línea y no se vuelve a leer
+(`signals_catalogo.py:43` sólo lo ocupa si está vacío).
+
+Eso es comportamiento actual por diseño, igual que un precio negociado. La
+pregunta abierta es si debe propagarse a los proyectos abiertos, como sí hace la
+calculadora con el costo (`apps/el_catalogo/propagacion.py`, que sólo toca líneas
+sin egreso, sin cotización pagada y cuyo valor coincidía con el del catálogo).
+
+**Este sprint entrega 3a y 3b.** Si Oscar decide que también debe propagarse,
+3c es un añadido chico reusando `propagacion.py`.
 
 ### 4 · Botón de eliminar en la ficha (nota 10)
 
@@ -139,7 +186,11 @@ Archivo nuevo `tests/taller/test_catalogo_alta_proveedor.py`. Mínimo:
 - guardar la ficha sin mandar `proveedores` **no** borra los que ya tenía;
 - con «Simil Cuero Plymouth» ligado, la calculadora se muestra en el alta;
 - la ficha muestra los botones de archivar y eliminar, y eliminar está oculto
-  para quien no tiene `catalogo.eliminar`.
+  para quien no tiene `catalogo.eliminar`;
+- **3a**: el JS de la tarjeta ya no condiciona el proveedor a que el campo esté
+  vacío (buscar que la línea 398 no lleve `!prov.value`) — es el mismo tipo de
+  candado que fija el contrato del costo desde agosto;
+- **3b**: `provAgregarOpcion` agrega la opción también al select de principal.
 
 Regresión obligatoria antes de commitear:
 

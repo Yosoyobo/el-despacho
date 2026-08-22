@@ -103,3 +103,58 @@ def test_si_el_envio_falla_lo_dice_sin_romperse(
     )
     assert resp.status_code == 200
     assert "servidor caído" in resp.content.decode()
+
+
+# ── Elegir de quién sale ─────────────────────────────────────────────────────
+
+
+def test_el_modal_ofrece_solo_lo_que_puedo_usar(
+    client, usuario_factory, cliente_factory, plantilla,
+):
+    from ajustes.models import AliasRemitente
+
+    jorge = usuario_factory(rol="super_admin")
+    alex = usuario_factory(rol="super_admin")
+    AliasRemitente.objects.filter(email="jorge@learningcenter.mx").update(usuario=jorge)
+    AliasRemitente.objects.filter(email="alex@learningcenter.mx").update(usuario=alex)
+
+    client.force_login(jorge)
+    cliente = cliente_factory(email_contacto="c@ejemplo.com")
+    resp = client.get(f"/cartera/{cliente.pk}/correo", HTTP_HX_REQUEST="true")
+    ofrecidos = {a.email for a in resp.context["remitentes"]}
+    assert "jorge@learningcenter.mx" in ofrecidos
+    assert "cobranza@learningcenter.mx" in ofrecidos
+    assert "alex@learningcenter.mx" not in ofrecidos
+
+
+def test_manda_desde_el_alias_elegido(
+    client, usuario_factory, cliente_factory, plantilla, cartero_espia,
+):
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    cliente = cliente_factory(email_contacto="c@ejemplo.com")
+    client.post(f"/cartera/{cliente.pk}/correo", {
+        "plantilla": "aviso", "remitente": "cobranza@learningcenter.mx",
+    }, HTTP_HX_REQUEST="true")
+    assert cartero_espia[0]["remitente"] == (
+        "COBRANZA | LEARNING CENTER <cobranza@learningcenter.mx>"
+    )
+
+
+def test_no_puedo_mandar_desde_el_alias_de_otro_aunque_lo_fuerce(
+    client, usuario_factory, cliente_factory, plantilla, cartero_espia,
+):
+    """El `<select>` se puede manipular desde el navegador: el servidor decide."""
+    from ajustes.models import AliasRemitente
+
+    jorge = usuario_factory(rol="super_admin")
+    alex = usuario_factory(rol="super_admin")
+    AliasRemitente.objects.filter(email="jorge@learningcenter.mx").update(usuario=jorge)
+
+    client.force_login(alex)
+    cliente = cliente_factory(email_contacto="c@ejemplo.com")
+    client.post(f"/cartera/{cliente.pk}/correo", {
+        "plantilla": "aviso", "remitente": "jorge@learningcenter.mx",
+    }, HTTP_HX_REQUEST="true")
+    # Sale del remitente general, NUNCA firmado por Jorge.
+    assert cartero_espia[0]["remitente"] == ""
