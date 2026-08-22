@@ -1,0 +1,21 @@
+# Overlay de LA VENTANA (el droplet La Sede), desde la mudanza del 2026-08-21.
+#
+# La ventana corre UN SOLO contenedor: El Portero (Caddy). Las apps, Postgres y
+# Redis viven en el NUC de Learning Center. Este archivo NO se usa en el NUC ni en
+# HAL local.
+#
+# Las apps NO se aparcan con `profiles` aquí a propósito: El Portero las declara en
+# `depends_on`, y una dependencia deshabilitada por profile hace fallar el `up`. En
+# su lugar, `ops/ventana/aplicar.sh` levanta El Portero con `--no-deps`, que ignora
+# la dependencia de raíz, y quita los contenedores de las apps.
+services:
+  el-portero:
+    environment:
+      # Los upstreams por el tailnet. El Caddyfile los lee con default al nombre
+      # del servicio, así que el mismo archivo sigue sirviendo en HAL local.
+      UPSTREAM_TALLER: "100.121.244.5:8200"
+      UPSTREAM_GERENCIA: "100.121.244.5:8201"
+      # La homepage vive AQUÍ, servida como archivos: si el NUC se cae, sigue en pie.
+      LANDING_ROOT: "/srv/lc-fallback"
+    volumes:
+      - /srv/lc-fallback:/srv/lc-fallback:ro

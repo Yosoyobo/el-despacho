@@ -24,22 +24,31 @@ jobs:
           delete-only-untagged-versions: false
 
   limpiar-disco:
-    name: 🧹 Liberar disco en La Sede
+    name: 🧹 Liberar disco en el NUC de Learning Center
     # Solo manual — el cron semanal sigue podando GHCR, pero el disco se limpia a voluntad.
-    if: github.event_name == 'workflow_dispatch'
+    #
+    # Desde la mudanza del 2026-08-21 el stack vive en el NUC, que solo existe en el
+    # tailnet. El `if` exige el cliente OAuth: sin él, el job se salta.
+    if: github.event_name == 'workflow_dispatch' && secrets.TS_OAUTH_CLIENT_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: 🔌 Entrar al tailnet (el NUC solo existe ahí)
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - name: 🛡️ Pre-flight — verificar que el stack está running
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SEDE_HOST }}
-          username: ${{ secrets.SEDE_USER }}
-          key: ${{ secrets.SEDE_SSH_KEY }}
+          host: ${{ secrets.NUC_HOST }}
+          username: ${{ secrets.NUC_USER }}
+          key: ${{ secrets.NUC_SSH_KEY }}
           command_timeout: 2m
           script: |
             set -euo pipefail
-            cd /opt/el-despacho
+            cd /mnt/el-despacho
             NO_UP=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml ps --format json \
               | jq -r 'select(.State != "running") | .Service' || true)
             if [ -n "$NO_UP" ]; then
@@ -53,9 +62,9 @@ jobs:
       - name: 🧹 Limpiar Docker + logs + apt + tmp + backups
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SEDE_HOST }}
-          username: ${{ secrets.SEDE_USER }}
-          key: ${{ secrets.SEDE_SSH_KEY }}
+          host: ${{ secrets.NUC_HOST }}
+          username: ${{ secrets.NUC_USER }}
+          key: ${{ secrets.NUC_SSH_KEY }}
           command_timeout: 8m
           script: |
             # NO -e: cada paso es tolerante; un fallo aislado no aborta los demás.
@@ -98,12 +107,12 @@ jobs:
             echo ""
 
             echo "=== 6) Rotar backups locales (conservar últimos 5 de cada serie) ==="
-            if [ -d /opt/el-despacho/backups ]; then
-              cd /opt/el-despacho/backups
+            if [ -d /mnt/el-despacho/backups ]; then
+              cd /mnt/el-despacho/backups
               ls -t db-*.sql.gz 2>/dev/null | tail -n +6 | xargs -r rm -v
               ls -t credenciales-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -v
             else
-              echo "Sin directorio /opt/el-despacho/backups todavía."
+              echo "Sin directorio /mnt/el-despacho/backups todavía."
             fi
             echo ""
 
@@ -118,13 +127,13 @@ jobs:
       - name: 🩺 Post-flight — verificar que el stack sigue healthy
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SEDE_HOST }}
-          username: ${{ secrets.SEDE_USER }}
-          key: ${{ secrets.SEDE_SSH_KEY }}
+          host: ${{ secrets.NUC_HOST }}
+          username: ${{ secrets.NUC_USER }}
+          key: ${{ secrets.NUC_SSH_KEY }}
           command_timeout: 2m
           script: |
             set -euo pipefail
-            cd /opt/el-despacho
+            cd /mnt/el-despacho
             docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
             NO_UP=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml ps --format json \
               | jq -r 'select(.State != "running") | .Service' || true)

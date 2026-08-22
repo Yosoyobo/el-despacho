@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sincroniza los cron jobs de La Sede desde infra/cron/el-despacho.cron hacia el
+# Sincroniza los cron jobs desde infra/cron/el-despacho.cron hacia el
 # crontab del usuario que corre este script (en prod: `despacho`).
 #
 # Lo invoca el deploy (el script inline de `.github/workflows/el-mensajero.yml`,
@@ -32,7 +32,11 @@ trap 'rm -f "$CRON_TMP"' EXIT
 { crontab -l 2>/dev/null || true; } \
   | sed "/$MARCA_INI/,/$MARCA_FIN/d" \
   > "$CRON_TMP"
-cat "$CRON_FUENTE" >> "$CRON_TMP"
+# La raiz del repo en ESTA maquina (el guion vive en <raiz>/infra/scripts/).
+# Sustituye @@RAIZ@@ para que los crons no lleven una ruta hardcodeada: en el
+# droplet era /opt/el-despacho, en el NUC es /mnt/el-despacho (mudanza 2026-08-21).
+RAIZ="$(cd "$SCRIPT_DIR/../.." && pwd)"
+sed "s|@@RAIZ@@|$RAIZ|g" "$CRON_FUENTE" >> "$CRON_TMP"
 
 if crontab "$CRON_TMP"; then
   n=$(grep -cvE '^[[:space:]]*(#|$)' "$CRON_FUENTE")

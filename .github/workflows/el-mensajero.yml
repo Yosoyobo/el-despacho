@@ -238,21 +238,34 @@ jobs:
           git push origin HEAD:main
 
   mudanza:
-    name: 🚚 La Mudanza (deploy a La Sede con rollback automático)
+    name: 🚚 La Mudanza (deploy al NUC de Learning Center, con rollback automático)
     needs: [actualizar_digests]
-    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    # Desde la mudanza del 2026-08-21 las apps viven en el NUC, que SOLO existe en
+    # el tailnet: el runner de GitHub no lo alcanza sin entrar primero. La ventana
+    # (La Sede) NO se usa como salto — es solo ventana, y su Caddyfile se despliega
+    # en el job `ventana` de abajo.
+    #
+    # El `if` exige el cliente OAuth de Tailscale a propósito: mientras no exista,
+    # el job se SALTA en vez de fallar en rojo en cada push.
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && secrets.TS_OAUTH_CLIENT_ID != '' }}
     runs-on: ubuntu-latest
     steps:
-      - name: SSH a La Sede y deploy
+      - name: 🔌 Entrar al tailnet (nodo efímero; se va al terminar el job)
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: SSH al NUC y deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SEDE_HOST }}
-          username: ${{ secrets.SEDE_USER }}
-          key: ${{ secrets.SEDE_SSH_KEY }}
+          host: ${{ secrets.NUC_HOST }}
+          username: ${{ secrets.NUC_USER }}
+          key: ${{ secrets.NUC_SSH_KEY }}
           command_timeout: 15m
           script: |
             set -uo pipefail
-            cd /opt/el-despacho
+            cd /mnt/el-despacho
 
             echo "=== Capturando estado previo (rollback) ==="
             cp docker-compose.prod.yml docker-compose.prod.yml.previo
@@ -269,6 +282,13 @@ jobs:
             if [ -f docker-compose.site.yml ]; then
               COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.site.yml"
             fi
+            # El overlay del NUC saca a El Portero del stack (Caddy vive en la
+            # ventana) y publica los puertos 8200/8201 que la ventana consume por
+            # el tailnet. También sube el tuning de Postgres y Redis, que en el
+            # compose base está calibrado para el droplet de 1 GB.
+            if [ -f docker-compose.nuc.yml ]; then
+              COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.nuc.yml"
+            fi
 
             echo "=== docker compose pull ==="
             docker compose $COMPOSE_FILES pull
@@ -276,42 +296,20 @@ jobs:
             echo "=== docker compose up -d ==="
             docker compose $COMPOSE_FILES up -d
 
-            echo "=== Aplicando el Caddyfile (bind-mount de UN archivo) ==="
-            # `up -d` NO recrea el-portero al cambiar el Caddyfile montado, así
-            # que un cambio de hosts/dominios no se aplicaría y Caddy seguiría
-            # sirviendo la config vieja (sin cert para el dominio nuevo).
-            #
-            # OJO (S-Celador-V1): recargar en caliente NO basta. En Linux, un
-            # bind-mount de UN ARCHIVO fija el inode al crear el contenedor, y
-            # `git reset --hard` REEMPLAZA el archivo (rename → inode nuevo). El
-            # contenedor sigue viendo el Caddyfile VIEJO, así que
-            # `caddy reload --config /etc/caddy/Caddyfile` recarga ese y reporta
-            # éxito: el cambio nunca se aplica y nada avisa. Pasó con el `/salud`
-            # de La Recepción.
-            #
-            # Por eso se compara el archivo DE ADENTRO contra el del repo y, si
-            # difieren, se recrea el contenedor (así vuelve a montar el inode
-            # actual). Es auto-curativo: endereza un contenedor que ya quedó con
-            # una config vieja de deploys anteriores, aunque el Caddyfile no
-            # cambie en este commit. Los certs viven en ./data/caddy/data, así
-            # que recrear no vuelve a emitirlos.
-            if docker compose $COMPOSE_FILES exec -T el-portero \
-                 cat /etc/caddy/Caddyfile 2>/dev/null | diff -q - Caddyfile >/dev/null 2>&1; then
-              echo "El Caddyfile del contenedor ya coincide con el del repo — recarga en caliente"
-              docker compose $COMPOSE_FILES exec -T el-portero \
-                  caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
-                || docker compose $COMPOSE_FILES up -d --force-recreate el-portero
-            else
-              echo "El Caddyfile del contenedor NO coincide con el del repo — recreando el-portero"
-              docker compose $COMPOSE_FILES up -d --force-recreate el-portero
-            fi
+            # El Caddyfile YA NO se aplica aquí. Desde la mudanza del 2026-08-21,
+            # Caddy (El Portero) vive en la ventana y no en esta máquina; su
+            # despliegue —con la validación previa y el truco del inode del
+            # bind-mount de UN archivo— está en el job `ventana` de este mismo
+            # workflow. Ver docs/MUDANZA-AL-NUC-LC.md.
 
             echo "=== Esperando 45s para healthchecks ==="
             sleep 45
 
-            # Ventana amplia (~3 min): la PRIMERA emisión de certs Let's Encrypt
-            # de un dominio nuevo (3 hosts vía ACME) no cabe en 75s. Si rolleamos
-            # antes de que Caddy termine, revertimos el Caddyfile y nunca emite.
+            # Ventana amplia (~3 min). El motivo original era la PRIMERA emisión
+            # de certs de Let's Encrypt, que ya no ocurre aquí: los certificados se
+            # emiten en la ventana. Se conserva porque estas sondas atraviesan la
+            # cadena COMPLETA (ventana → tailnet → NUC) y las apps de Django tardan
+            # en arrancar tras migrate + collectstatic.
             echo "=== Validando healthchecks (10 intentos espaciados 15s) ==="
             DEPLOY_OK=1
             for intento in $(seq 1 10); do
@@ -378,3 +376,68 @@ jobs:
                 python manage.py anunciar_novedades >> /var/log/novedades.log 2>&1 ) || true
 
             echo "✅ Deploy verde."
+
+  ventana:
+    name: 🪟 La Ventana (Caddyfile y TLS en La Sede)
+    needs: [actualizar_digests]
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    steps:
+      # La ventana es un droplet con IP pública: el runner la alcanza directo, sin
+      # tailnet. Corre UN contenedor (El Portero) y su única config es el Caddyfile.
+      - name: SSH a La Sede y aplicar la ventana
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SEDE_HOST }}
+          username: ${{ secrets.SEDE_USER }}
+          key: ${{ secrets.SEDE_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /opt/el-despacho
+
+            echo "=== git fetch + reset main ==="
+            git fetch origin main
+            git reset --hard origin/main
+            git rev-parse --short HEAD
+
+            # VALIDAR ANTES DE APLICAR. Un Caddyfile inválido deja la ventana sin
+            # arrancar, y con ella los cinco dominios: es el único punto donde un
+            # error de sintaxis apaga todo. Las variables se pasan con valores de
+            # relleno; solo se está comprobando la sintaxis.
+            echo "=== Validando el Caddyfile ==="
+            docker run --rm -v /opt/el-despacho/Caddyfile:/etc/caddy/Caddyfile:ro \
+              -e UPSTREAM_TALLER=x:1 -e UPSTREAM_GERENCIA=x:1 \
+              -e LANDING_ROOT=/srv/lc-fallback \
+              caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+            # RECREAR, no recargar: en Linux un bind-mount de UN ARCHIVO fija el
+            # inode al crear el contenedor, y `git reset --hard` REEMPLAZA el
+            # Caddyfile (rename → inode nuevo). El contenedor seguiría viendo el
+            # archivo VIEJO y `caddy reload` reportaría éxito sin aplicar nada. Ya
+            # pasó con el /salud de La Recepción.
+            #
+            # `--no-deps` porque El Portero declara depends_on de las apps, que
+            # desde la mudanza ya no viven aquí.
+            #
+            # Los certificados viven en ./data/caddy/data: recrear NO los reemite.
+            echo "=== Recreando El Portero ==="
+            CF="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.ventana.yml"
+            docker compose $CF up -d --no-deps --force-recreate el-portero
+            docker ps --format '{{.Names}}\t{{.Status}}'
+
+      - name: 🚥 Smoke test de la cadena completa (DNS → ventana → tailnet → NUC)
+        run: |
+          set -uo pipefail
+          fallos=""
+          # La homepage se sirve DESDE la ventana: tiene que dar 200 incluso si el
+          # NUC está caído (es el requisito del failover).
+          code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 https://learningcenter.mx/ || echo FAIL)
+          [ "$code" = "200" ] || fallos="$fallos homepage=$code"
+          # Las apps viven en el NUC: estas dos prueban ventana + tailnet + NUC.
+          for h in gerencia taller; do
+            code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 "https://$h.learningcenter.mx/ping" || echo FAIL)
+            [ "$code" = "200" ] || fallos="$fallos $h=$code"
+          done
+          if [ -n "$fallos" ]; then echo "❌ Falla la cadena:$fallos"; exit 1; fi
+          echo "✅ Cadena completa verde: homepage en la ventana, apps en el NUC."

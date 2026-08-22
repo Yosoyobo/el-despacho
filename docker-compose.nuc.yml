@@ -1,0 +1,55 @@
+# Overlay del NUC de Learning Center (2026-08-21).
+#
+# Dos cosas hace este archivo, y nada mas:
+#  1. Saca a El Portero del stack. Caddy se queda en la ventana (La Sede), que es
+#     quien termina TLS y hace reverse_proxy hacia aca por el tailnet.
+#  2. Publica los puertos que la ventana va a consumir.
+#
+# Los puertos se publican en 0.0.0.0 A PROPOSITO: si se bindearan a la IP del
+# tailnet y tailscaled no ha subido cuando Docker arranca, el contenedor NO
+# arranca. Lo que cierra la puerta hacia la LAN es ufw (allow in on tailscale0).
+services:
+  el-portero:
+    # Un profile que nadie activa = servicio que no se levanta, sin borrarlo del
+    # compose base (asi el mismo repo sigue sirviendo en el droplet y en HAL).
+    profiles: ["solo-en-la-ventana"]
+
+  el-taller:
+    ports:
+      - "8200:8000"
+
+  la-gerencia:
+    ports:
+      - "8201:8001"
+
+  # Postgres: el compose base esta tuneado para "droplet de 1 GB / 5 usuarios"
+  # (shared_buffers=64MB). Esta maquina tiene 16 G. Se sube con la mano puesta,
+  # no al maximo: el resto de la pila tambien necesita RAM.
+  postgres:
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=512MB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "effective_cache_size=2GB"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+
+  # Redis: el compose base pone techo de 64 MB con allkeys-lru "para que la cola
+  # del Portavoz no crezca sin control". El efecto real es el contrario y es
+  # peligroso: allkeys-lru puede desalojar la PROPIA cola (portavoz:cola no tiene
+  # TTL), o sea perder eventos en silencio. Aquí: techo holgado y volatile-lru,
+  # que solo desaloja lo que sí caduca (el caché de imágenes y sesiones).
+  redis:
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "yes"
+      - "--maxmemory"
+      - "512mb"
+      - "--maxmemory-policy"
+      - "volatile-lru"
