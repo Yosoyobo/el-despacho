@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}El Análisis — Ajustes{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "El Análisis" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+
+<header class="mb-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Ajustes</p>
+    <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Análisis</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        Con estos números El Chalán decide qué está bien y qué merece que alguien lo mire.
+    </p>
+</header>
+
+<form method="post" class="campo-form max-w-3xl space-y-5">
+    {% csrf_token %}
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Ventas</h2>
+        <div class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+                <label for="dias_silencio_cotizacion">Días sin respuesta para darla por perdida</label>
+                <input type="number" min="0" max="365" name="dias_silencio_cotizacion"
+                       id="dias_silencio_cotizacion" value="{{ cfg.dias_silencio_cotizacion }}">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cero = nunca se enfría sola.</p>
+            </div>
+            <label class="flex items-start gap-2 pt-6">
+                <input type="checkbox" name="marcar_perdidas_solo" {% if cfg.marcar_perdidas_solo %}checked{% endif %}>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Cambiarle el estado sola
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">Apagado: sólo se reporta y tú decides.</span>
+                </span>
+            </label>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Márgenes y cobranza</h2>
+        <div class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div>
+                <label for="margen_sano_pct">Margen sano (%)</label>
+                <input type="number" step="0.01" min="0" max="100" name="margen_sano_pct"
+                       id="margen_sano_pct" value="{{ cfg.margen_sano_pct }}">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Debajo de esto, amarillo.</p>
+            </div>
+            <div>
+                <label for="margen_critico_pct">Margen crítico (%)</label>
+                <input type="number" step="0.01" min="0" max="100" name="margen_critico_pct"
+                       id="margen_critico_pct" value="{{ cfg.margen_critico_pct }}">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Igual o debajo, rojo.</p>
+            </div>
+            <div>
+                <label for="dias_mora_alerta">Días de mora para alertar</label>
+                <input type="number" min="0" max="365" name="dias_mora_alerta"
+                       id="dias_mora_alerta" value="{{ cfg.dias_mora_alerta }}">
+            </div>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Costo del tiempo</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Para saber cuánto costó de verdad un proyecto hay que poder costear las horas.
+            Una persona con varios roles cuesta lo de su rol más caro.
+        </p>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% for fila in roles %}
+            <div>
+                <label for="tarifa_{{ fila.rol.pk }}">{{ fila.rol.nombre }} — $/hora</label>
+                <input type="number" step="0.01" min="0" name="tarifa_{{ fila.rol.pk }}"
+                       id="tarifa_{{ fila.rol.pk }}" value="{{ fila.costo_hora|default_if_none:'' }}"
+                       placeholder="0.00">
+            </div>
+            {% empty %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Todavía no hay roles configurados.</p>
+            {% endfor %}
+        </div>
+        <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div>
+                <label for="tarifa_hora_default">Tarifa general — $/hora</label>
+                <input type="number" step="0.01" min="0" name="tarifa_hora_default"
+                       id="tarifa_hora_default" value="{{ cfg.tarifa_hora_default }}">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Para quien no tenga tarifa por rol.</p>
+            </div>
+            <div>
+                <label for="horas_jornada_tope">Tope de horas por jornada</label>
+                <input type="number" min="1" max="24" name="horas_jornada_tope"
+                       id="horas_jornada_tope" value="{{ cfg.horas_jornada_tope }}">
+            </div>
+            <label class="flex items-start gap-2 pt-6">
+                <input type="checkbox" name="prorratear_jornada" {% if cfg.prorratear_jornada %}checked{% endif %}>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Repartir la jornada
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">Cuando no hay cronómetro, se reparten las horas en partes iguales entre los proyectos que la persona tocó ese día. Sale marcado como estimado.</span>
+                </span>
+            </label>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Qué tanto aprende solo</h2>
+        <div class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <label class="flex items-start gap-2">
+                <input type="checkbox" name="auto_activar_aprendizajes" {% if cfg.auto_activar_aprendizajes %}checked{% endif %}>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Activar solo lo que aprenda
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">Sólo cuando esté muy seguro. Siempre avisa y siempre se puede revertir.</span>
+                </span>
+            </label>
+            <div>
+                <label for="confianza_minima_auto">Qué tan seguro (0 a 1)</label>
+                <input type="number" step="0.05" min="0" max="1" name="confianza_minima_auto"
+                       id="confianza_minima_auto" value="{{ cfg.confianza_minima_auto }}">
+            </div>
+            <div>
+                <label for="dias_ventana_aprendizaje">Días de historial que revisa</label>
+                <input type="number" min="1" max="365" name="dias_ventana_aprendizaje"
+                       id="dias_ventana_aprendizaje" value="{{ cfg.dias_ventana_aprendizaje }}">
+            </div>
+        </div>
+        <label class="mt-4 flex items-start gap-2">
+            <input type="checkbox" name="analisis_diario_activo" {% if cfg.analisis_diario_activo %}checked{% endif %}>
+            <span class="text-sm text-gray-700 dark:text-gray-300">Leer los números cada mañana
+                <span class="block text-xs text-gray-500 dark:text-gray-400">Apagado: la lectura sólo se genera con el botón «Analizar ahora».</span>
+            </span>
+        </label>
+    </section>
+
+    <div class="flex items-center justify-between gap-3">
+        <a href="/ajustes/" class="btn-secundario">Volver</a>
+        <button type="submit" class="btn-primario">Guardar</button>
+    </div>
+</form>
+{% endblock %}

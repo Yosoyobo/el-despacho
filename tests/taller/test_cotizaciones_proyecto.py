@@ -201,8 +201,12 @@ def test_detalle_pinta_recuadro_y_tracker(client, entorno):
     # Pizza-tracker + línea de estatus de la versión activa (D3, LC 2026-07).
     assert "cot-step" in cuerpo
     assert "Estatus (activa):" in cuerpo
-    # El botón Enviar abre el rickroll vía JS (placeholder, decisión Oscar).
-    assert "abrirRickroll" in cuerpo
+    # 2026-08-22: «Enviar» dejó de ser un placeholder que abría un rickroll.
+    # Ahora manda la última versión por correo, y al lado está la constancia
+    # para cuando se manda por fuera (de ahí sale el reloj del silencio).
+    assert "abrirRickroll" not in cuerpo
+    assert "Enviar por correo" in cuerpo
+    assert "Ya la mand" in cuerpo
 
 
 def test_cada_version_tiene_su_desplegable_con_tracker(client, entorno):

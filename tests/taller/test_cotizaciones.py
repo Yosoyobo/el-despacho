@@ -136,14 +136,31 @@ def test_descuento_por_linea(cot_borrador):
 
 # ── Transiciones de estado ──────────────────────────────────────────────
 
-def test_marcar_enviada_solo_desde_borrador(cot_borrador, usuario_factory):
+def test_marcar_enviada_deja_constancia_y_se_puede_repetir(cot_borrador, usuario_factory):
+    """Enviar deja el sello de la fecha, y volver a mandarla es válido.
+
+    Regla nueva (2026-08-22): antes exigía el estado literal 'borrador' y
+    prohibía re-enviar. Learning Center no usa ese estado, así que el botón
+    Enviar era imposible de usar; y volver a mandar una cotización pasa todo el
+    tiempo. Lo que no se permite es "enviar" algo ya ganado o ya perdido.
+    """
     from apps.cotizaciones import services
     actor = usuario_factory(rol="dueno")
     services.marcar_enviada(cot_borrador, actor, email_destino="a@b.com")
     cot_borrador.refresh_from_db()
     assert cot_borrador.estado == "enviada"
-    assert cot_borrador.enviada_en is not None
+    primer_sello = cot_borrador.enviada_en
+    assert primer_sello is not None
     assert cot_borrador.enviada_a_email == "a@b.com"
+
+    # Re-enviar re-sella la fecha en vez de tronar.
+    services.marcar_enviada(cot_borrador, actor)
+    cot_borrador.refresh_from_db()
+    assert cot_borrador.enviada_en >= primer_sello
+
+    # Ya ganada, no tiene sentido "enviarla".
+    services.marcar_aprobada(cot_borrador, actor, nombre="Quien firma")
+    cot_borrador.refresh_from_db()
     with pytest.raises(ValueError):
         services.marcar_enviada(cot_borrador, actor)
 

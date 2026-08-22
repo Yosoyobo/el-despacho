@@ -43,6 +43,10 @@ TODO_FACTURACION = ["ver", "crear", "editar", "emitir", "cobrar", "cancelar"]
 # activo para los 4 roles (preserva el comportamiento previo); el super_admin
 # lo revoca por usuario/rol desde /directorio/<id>/permisos/.
 TODO_CHALAN = ["usar"]
+# El Análisis (S-Chalan-Analisis): la pantalla donde El Chalán observa y opina
+# del negocio. Los TEMAS de adentro ya se gatean uno por uno con su propio
+# permiso (finanzas, cotizaciones, cartera…); esto sólo abre la puerta.
+TODO_ANALISIS = ["ver"]
 # S-Checador: asistencia. `checar` es para todo el staff; las funciones de
 # supervisión (ver equipo, aprobar correcciones, configurar horarios,
 # exportar) son de admin.
@@ -93,6 +97,9 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "cotizaciones": [*TODO_COTIZACIONES, "eliminar"],
         "facturacion": list(TODO_FACTURACION),
         "chalan": list(TODO_CHALAN),
+        # El Análisis: sólo super_admin por default — enseña dinero de todo el
+        # despacho. Se delega por usuario desde El Directorio.
+        "analisis": list(TODO_ANALISIS),
         "checador": list(TODO_CHECADOR),
         "comunicacion": list(TODO_COMUNICACION),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.

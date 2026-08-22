@@ -13,10 +13,10 @@
 </header>
 
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Borradores" valor=kpis.borradores color="gray" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Sin enviar" valor=kpis.sin_enviar color="gray" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Enviadas" valor=kpis.enviadas color="brand" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Aprobadas" valor=kpis.aprobadas color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Vencidas" valor=kpis.vencidas color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke-linecap="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Ganadas" valor=kpis.ganadas color="success" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>' %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Enfriadas" valor=kpis.enfriadas color="warning" icono_svg='<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke-linecap="round"/></svg>' %}
 </div>
 
 {% comment %}LC #160: filtros (estado + cliente) + toggle tarjetas/tabla vía HTMX.

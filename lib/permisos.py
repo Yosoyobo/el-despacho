@@ -279,6 +279,11 @@ def puede_usar_chalan(user) -> bool:
     return puede(user, "chalan", "usar")
 
 
+def puede_ver_analisis(user) -> bool:
+    """Entrar a El Análisis. Los temas de adentro se gatean uno por uno."""
+    return puede(user, "analisis", "ver")
+
+
 def puede_checar(user) -> bool:
     """S-Checador: registrar jornada/visitas/tiempo (todo el staff por default)."""
     return puede(user, "checador", "checar")

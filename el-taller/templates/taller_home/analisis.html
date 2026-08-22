@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}El Análisis — El Taller{% endblock %}
+
+{% block contenido %}
+{% breadcrumb_items "El Análisis" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+
+<header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">El Análisis</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Lo que El Chalán ve en los números del negocio. Las cifras se calculan al momento;
+            la lectura la escribe él{% if ultima_lectura_en %} — la última fue {{ ultima_lectura_en|timesince }} atrás{% endif %}.
+        </p>
+    </div>
+    {% if puede_analizar %}
+    <form method="post" action="{% url 'taller-analizar-ahora' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-primario">🤖 Analizar ahora</button>
+    </form>
+    {% endif %}
+</header>
+
+{% comment %}Lo que cruzó un umbral. No usa IA: es una comparación contra lo
+que está configurado en Gerencia, así que puede correr a diario sin costo.{% endcomment %}
+{% if alertas %}
+<section class="mb-6 space-y-2">
+    {% for a in alertas %}
+    <div class="flex flex-wrap items-start gap-3 rounded-xl border p-3
+                {% if a.nivel == 'rojo' %}border-error-200 bg-error-50 dark:border-error-500/30 dark:bg-error-500/10
+                {% else %}border-warning-200 bg-warning-50 dark:border-warning-500/30 dark:bg-warning-500/10{% endif %}">
+        <span class="text-lg leading-none">{% if a.nivel == 'rojo' %}🔴{% else %}🟡{% endif %}</span>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold {% if a.nivel == 'rojo' %}text-error-700 dark:text-error-300{% else %}text-warning-700 dark:text-warning-300{% endif %}">{{ a.titulo }}</p>
+            {% if a.detalle %}<p class="mt-0.5 text-xs {% if a.nivel == 'rojo' %}text-error-700/80 dark:text-error-300/80{% else %}text-warning-700/80 dark:text-warning-300/80{% endif %}">{{ a.detalle }}</p>{% endif %}
+        </div>
+        {% if a.url %}
+        <a href="{{ a.url }}" class="shrink-0 text-xs font-medium underline decoration-dotted
+            {% if a.nivel == 'rojo' %}text-error-700 dark:text-error-300{% else %}text-warning-700 dark:text-warning-300{% endif %}">Ver →</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+{% if temas %}
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+    {% for t in temas %}
+    <section id="{{ t.clave }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}</h2>
+
+        {% if t.lectura %}
+        <div class="mt-3 rounded-xl border border-brand-200 bg-brand-50 p-3 dark:border-brand-500/30 dark:bg-brand-500/10">
+            <p class="text-xs font-medium uppercase tracking-wider text-brand-600 dark:text-brand-400">Lo que opina El Chalán</p>
+            <p class="mt-1 text-sm text-gray-700 dark:text-gray-200">{{ t.lectura }}</p>
+        </div>
+        {% endif %}
+
+        <ul class="mt-3 space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+            {% for linea in t.lineas %}
+            <li class="flex gap-2">
+                <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full
+                    {% if 'ALERTA' in linea or 'PÉRDIDA' in linea %}bg-error-500
+                    {% elif 'PENDIENTE' in linea %}bg-warning-500
+                    {% else %}bg-gray-300 dark:bg-gray-600{% endif %}"></span>
+                <span {% if 'ALERTA' in linea or 'PÉRDIDA' in linea %}class="text-error-700 dark:text-error-400"{% elif 'PENDIENTE' in linea %}class="text-warning-700 dark:text-warning-400"{% endif %}>{{ linea }}</span>
+            </li>
+            {% empty %}
+            <li class="text-gray-500 dark:text-gray-400">Todavía no hay datos de este tema.</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endfor %}
+</div>
+{% else %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada que analizar todavía" descripcion="En cuanto haya proyectos, cotizaciones o movimientos capturados, aquí aparece la lectura del negocio." icono="sparkles" %}
+{% endif %}
+
+<p class="mt-6 text-xs text-gray-400 dark:text-gray-500">
+    Margen sano configurado: {{ cfg.margen_sano_pct|floatformat:0 }}% ·
+    Silencio del cliente: {{ cfg.dias_silencio_cotizacion }} días ·
+    Mora: {{ cfg.dias_mora_alerta }} días.
+    Se ajustan en La Gerencia → Ajustes → El Análisis.
+</p>
+{% endblock %}

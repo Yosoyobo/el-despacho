@@ -141,3 +141,28 @@ def listar_tareas(
         },
         usuario,
     )
+
+
+def resumen_negocio(tema: str = "") -> dict[str, Any]:
+    """Un tema del negocio (finanzas, cobranza, ventas, rentabilidad, perdidos,
+    clientes, proveedores, equipo, ia). Sin tema, lista los disponibles."""
+    from capacidades.mcp_lecturas import resumen_negocio_impl
+
+    usuario = _usuario_actual()
+    datos = resumen_negocio_impl({"tema": tema}, usuario)
+    if isinstance(datos, dict) and datos.get("error") == "no_visible":
+        raise ErrorAccesoMCP(f"Sin permiso para ver el tema «{tema}».")
+    return datos
+
+
+def rentabilidad_proyectos(
+    incluir_terminados: bool = True, limite: int = 30
+) -> dict[str, Any]:
+    """Rentabilidad real por proyecto: ingreso, costo, utilidad y margen."""
+    from capacidades.mcp_lecturas import rentabilidad_impl
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "tesoreria", "ver")
+    return rentabilidad_impl(
+        {"incluir_terminados": incluir_terminados, "limite": limite}, usuario
+    )

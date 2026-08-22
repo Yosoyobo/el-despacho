@@ -6,10 +6,19 @@ from .cotizacion import (
 )
 from .estado_cotizacion import (
     ESTADOS_COT_SEED,
+    FASE_ARMADA,
+    FASE_ENVIADA,
+    FASE_GANADA,
+    FASE_PERDIDA,
+    FASES_COT,
+    FASES_VIVAS,
     EstadoCotizacion,
     estados_cot_activos,
+    fase_de,
     invalidar_cache_estados_cot,
     mapa_estados_cot,
+    slugs_de_fase,
+    slugs_vivos,
 )
 
 __all__ = [
@@ -22,4 +31,13 @@ __all__ = [
     "estados_cot_activos",
     "mapa_estados_cot",
     "invalidar_cache_estados_cot",
+    "FASES_COT",
+    "FASES_VIVAS",
+    "FASE_ARMADA",
+    "FASE_ENVIADA",
+    "FASE_GANADA",
+    "FASE_PERDIDA",
+    "fase_de",
+    "slugs_de_fase",
+    "slugs_vivos",
 ]

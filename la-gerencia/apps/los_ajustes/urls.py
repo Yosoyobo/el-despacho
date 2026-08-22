@@ -40,4 +40,6 @@ urlpatterns = [
     path("cobranza/", views.cobranza_panel, name="ajustes-cobranza"),
     # Figuras fiscales (régimen + ISR/PTU/IVA).
     path("fiscal/", views.fiscal_panel, name="ajustes-fiscal"),
+    # El Análisis: umbrales del negocio + costo por hora de cada rol.
+    path("analisis/", views.analisis_panel, name="ajustes-analisis"),
 ]

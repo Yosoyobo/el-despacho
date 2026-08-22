@@ -66,6 +66,23 @@ def listar_tareas(
     )
 
 
+@mcp.tool()
+def resumen_negocio(tema: str = "") -> dict[str, Any]:
+    """Lee un tema del negocio: finanzas, cobranza, ventas, rentabilidad,
+    perdidos, clientes, proveedores, equipo o ia. Sin tema, lista los que este
+    usuario puede ver."""
+    return herramientas.resumen_negocio(tema)
+
+
+@mcp.tool()
+def rentabilidad_proyectos(
+    incluir_terminados: bool = True, limite: int = 30
+) -> dict[str, Any]:
+    """Rentabilidad real de cada proyecto: vendido, costo, utilidad y margen,
+    del peor al mejor."""
+    return herramientas.rentabilidad_proyectos(incluir_terminados, limite)
+
+
 def main() -> None:
     """Sirve MCP sólo por stdio; no abre puertos ni omite autenticación HTTP."""
     mcp.run(transport="stdio")

@@ -9,8 +9,10 @@ Recuadro «Cotizaciones» del detalle de proyecto (render Oscar 2026-06-27).
   pasos CONFIGURADOS en Gerencia (EstadoCotizacion): crece/encoge según cuántos
   haya, resalta el actual, los previos van 'done' y los siguientes 'future'.
   Cada paso es clickeable (cambia el estatus) si tienes permiso.
-· "Generar vN" congela los Productos involucrados actuales. "Enviar" es
-  placeholder por ahora → rickroll (decisión Oscar).
+· "Generar vN" congela los Productos involucrados actuales. "Enviar por
+  correo" manda la última versión con su PDF; "Ya la mandé por fuera" deja
+  constancia del envío cuando se manda por WhatsApp o en mano (de ahí sale el
+  reloj que mide el silencio del cliente).
 El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
 {% endcomment %}
 <section id="cotizaciones-panel-{{ proyecto.pk }}"
@@ -87,15 +89,38 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
     {% endif %}
 
     {% if puede_cotizar %}
+    {% comment %}LC 2026-08-22: «Enviar» era un placeholder que abría un rickroll,
+    así que ninguna cotización salía nunca de «Generada» y no había forma de
+    saber desde cuándo el cliente no contesta. Ahora abre el envío real (correo
+    con el PDF) y, al lado, la constancia para cuando se manda por fuera.{% endcomment %}
     <div class="mt-4 grid grid-cols-2 gap-2">
         <button type="button"
                 hx-post="{% url 'proyectos-generar-cotizacion' proyecto.pk %}"
                 hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
                 hx-swap="outerHTML"
                 class="btn-secundario">Generar v{{ cot_next_version }}</button>
-        {# "Enviar" placeholder — abre rickroll en modal con autoplay (decisión Oscar). #}
-        <button type="button" onclick="window.abrirRickroll && window.abrirRickroll()" class="btn-secundario">Enviar</button>
+        {% if cot_latest_pk %}
+        <button type="button"
+                hx-get="{% url 'cotizaciones:enviar' cot_latest_pk %}"
+                hx-target="#modal-slot" hx-swap="innerHTML"
+                title="Manda la última versión por correo con el PDF adjunto"
+                class="btn-secundario">Enviar por correo</button>
+        {% else %}
+        <button type="button" disabled title="Primero genera una versión"
+                class="btn-secundario opacity-50">Enviar por correo</button>
+        {% endif %}
     </div>
+    {% if cot_latest_pk %}
+    <form method="post" action="{% url 'cotizaciones:enviada-manual' cot_latest_pk %}" class="mt-2">
+        {% csrf_token %}
+        <input type="hidden" name="volver" value="{{ request.path }}">
+        <button type="submit"
+                title="Anota que ya salió (WhatsApp, en mano…). Desde aquí se cuenta el tiempo de respuesta del cliente."
+                class="w-full rounded-lg border border-dashed border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.04]">
+            📤 Ya la mandé por fuera
+        </button>
+    </form>
+    {% endif %}
     {% endif %}
 
     {% if sugerir_esperando %}

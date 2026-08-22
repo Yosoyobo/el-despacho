@@ -222,3 +222,45 @@ def listar_tareas_impl(args: dict, usuario) -> dict:
         ],
         "cantidad": len(filas),
     }
+
+
+# ── El Análisis (S-Chalan-Analisis) ──────────────────────────────────────────
+#
+# Los nueve temas del negocio, para un cliente MCP externo. A diferencia del
+# chat, aquí se devuelven también las métricas crudas: quien consume esto puede
+# querer graficarlas o cruzarlas, no sólo leerlas.
+
+
+def resumen_negocio_impl(args: dict, usuario) -> dict[str, Any]:
+    """Un tema del negocio con sus hechos y sus métricas."""
+    from apps.taller_home.negocio import DOMINIOS, dominios_para, hechos_de
+
+    tema = (args.get("tema") or "").strip().lower()
+    permitidos = dominios_para(usuario)
+    if not tema:
+        return {"temas_disponibles": permitidos, "todos_los_temas": list(DOMINIOS)}
+    if tema not in DOMINIOS:
+        return {"error": f"Tema desconocido «{tema}».", "temas_disponibles": permitidos}
+    if tema not in permitidos:
+        return {"error": "no_visible"}
+    hechos = hechos_de(tema, usuario)
+    return {
+        "tema": tema,
+        "titulo": hechos["titulo"],
+        "hechos": hechos["hechos"],
+        "metricas": hechos["metricas"],
+    }
+
+
+def rentabilidad_impl(args: dict, usuario) -> dict[str, Any]:
+    """Rentabilidad real por proyecto, del peor margen al mejor."""
+    from apps.los_proyectos import rentabilidad as rent
+
+    limite = _limite(args.get("limite"))
+    incluir = bool(args.get("incluir_terminados", True))
+    filas = rent.tabla(incluir_terminados=incluir)
+    return {
+        "resumen": rent.resumen(filas),
+        "proyectos": filas[:limite],
+        "cantidad": len(filas),
+    }

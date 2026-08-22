@@ -27,6 +27,9 @@ ESTADOS_FACTURA = (
     ("cancelada", "Cancelada"),
 )
 
+# Estados en los que la factura ya salió al cliente por el flujo formal.
+ESTADOS_FACTURADA = ("emitida", "cobrada_parcial", "cobrada_total")
+
 CERO = Decimal("0.00")
 
 
@@ -253,6 +256,37 @@ class Factura(models.Model):
         return bool(self.pdf_file_id or self.xml_file_id)
 
     @property
+    def facturada_de_verdad(self) -> bool:
+        """¿Este documento ya se le facturó al cliente, de hecho?
+
+        Learning Center sube el CFDI que timbró el contador y deja la factura
+        en borrador — el paso "Emitir" casi no se usa. Para el flujo eso sigue
+        siendo un borrador (no se toca), pero para medir el negocio una factura
+        con su CFDI encima ya está facturada, y así la cuenta El Análisis.
+        """
+        return self.estado in ESTADOS_FACTURADA or (
+            self.estado == "borrador" and self.tiene_cfdi
+        )
+
+    @property
+    def cfdi_sin_emitir(self) -> bool:
+        """Tiene el CFDI subido pero nadie picó Emitir.
+
+        Mientras esté así no genera asiento de cuentas por cobrar ni recibe
+        recordatorios de cobranza. El Chalán lo reporta como pendiente.
+        """
+        return self.estado == "borrador" and self.tiene_cfdi
+
+    @property
+    def vencida_real(self) -> bool:
+        """Vencida contando también las que llevan CFDI sin emitir."""
+        return (
+            self.facturada_de_verdad
+            and self.fecha_vencimiento < date.today()
+            and self.saldo_pendiente > CERO
+        )
+
+    @property
     def es_editable(self) -> bool:
         return self.estado == "borrador"
 
@@ -413,3 +447,15 @@ class FacturaImpuesto(models.Model):
 
     def __str__(self) -> str:
         return f"{self.factura.codigo} · {self.tasa.nombre}"
+
+
+def q_facturadas():
+    """Filtro para las facturas que de verdad salieron al cliente.
+
+    Incluye las que están en borrador pero ya tienen su CFDI almacenado (ver
+    `Factura.facturada_de_verdad`). Excluye canceladas.
+    """
+    from django.db.models import Q
+
+    con_cfdi = Q(estado="borrador") & (~Q(pdf_file_id="") | ~Q(xml_file_id=""))
+    return Q(estado__in=ESTADOS_FACTURADA) | con_cfdi

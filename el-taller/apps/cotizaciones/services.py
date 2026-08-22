@@ -592,10 +592,25 @@ def emitir_actualizada(cot: Cotizacion, actor):
 
 
 def marcar_enviada(cot: Cotizacion, actor, email_destino: str = "") -> Cotizacion:
-    if cot.estado != "borrador":
-        raise ValueError("Solo se puede enviar una cotización en borrador.")
+    """Deja constancia de que la cotización ya se le mandó al cliente.
+
+    Trabaja por FASE, no por el nombre del estado: antes exigía el literal
+    'borrador' y Learning Center no usa ese estado, así que el botón Enviar
+    era imposible de usar y todo se quedaba en "Generada" para siempre.
+
+    Volver a mandarla es válido (se re-sella la fecha); lo que no tiene
+    sentido es "enviar" algo ya ganado o ya perdido.
+    """
+    from apps.cotizaciones.embudo import fase_efectiva, slug_destino
+    from apps.cotizaciones.models import FASE_ENVIADA, FASE_GANADA, FASE_PERDIDA
+
+    fase = fase_efectiva(cot)
+    if fase == FASE_GANADA:
+        raise ValueError("Esta cotización ya está ganada; no hace falta mandarla otra vez.")
+    if fase == FASE_PERDIDA:
+        raise ValueError("Esta cotización ya se dio por perdida.")
     with transaction.atomic():
-        cot.estado = "enviada"
+        cot.estado = slug_destino(FASE_ENVIADA, "enviada")
         cot.enviada_en = timezone.now()
         cot.enviada_a_email = email_destino or cot.enviada_a_email or (
             getattr(cot.cliente, "email_contacto", "") or ""
@@ -607,12 +622,18 @@ def marcar_enviada(cot: Cotizacion, actor, email_destino: str = "") -> Cotizacio
 
 def marcar_aprobada(cot: Cotizacion, actor, nombre: str, email: str = "",
                     referencia: str = "") -> Cotizacion:
-    if cot.estado != "enviada":
-        raise ValueError("Solo se puede aprobar una cotización enviada.")
+    from apps.cotizaciones.embudo import fase_efectiva, slug_destino
+    from apps.cotizaciones.models import FASE_GANADA, FASE_PERDIDA
+
+    fase = fase_efectiva(cot)
+    if fase == FASE_GANADA:
+        raise ValueError("Esta cotización ya estaba ganada.")
+    if fase == FASE_PERDIDA:
+        raise ValueError("Esta cotización ya se dio por perdida.")
     if not nombre.strip():
         raise ValueError("Debe registrarse el nombre de quien aprobó.")
     with transaction.atomic():
-        cot.estado = "aprobada"
+        cot.estado = slug_destino(FASE_GANADA, "aprobada")
         cot.aprobada_en = timezone.now()
         cot.aprobada_por_nombre = nombre.strip()
         cot.aprobada_por_email = email.strip()
@@ -628,13 +649,19 @@ def marcar_aprobada(cot: Cotizacion, actor, nombre: str, email: str = "",
 
 
 def marcar_rechazada(cot: Cotizacion, actor, motivo: str) -> Cotizacion:
-    if cot.estado != "enviada":
-        raise ValueError("Solo se puede rechazar una cotización enviada.")
+    from apps.cotizaciones.embudo import fase_efectiva, slug_destino
+    from apps.cotizaciones.models import FASE_GANADA, FASE_PERDIDA
+
+    fase = fase_efectiva(cot)
+    if fase == FASE_PERDIDA:
+        raise ValueError("Esta cotización ya se dio por perdida.")
+    if fase == FASE_GANADA:
+        raise ValueError("Esta cotización ya está ganada; anúlala si se cayó el trato.")
     motivo = (motivo or "").strip()
     if not motivo:
         raise ValueError("Debe registrarse el motivo de rechazo.")
     with transaction.atomic():
-        cot.estado = "rechazada"
+        cot.estado = slug_destino(FASE_PERDIDA, "rechazada")
         cot.rechazada_en = timezone.now()
         cot.motivo_rechazo = motivo
         cot.save(update_fields=["estado", "rechazada_en", "motivo_rechazo", "actualizado_en"])
@@ -959,21 +986,81 @@ def marcar_estado_proyecto(cot: Cotizacion, estado: str, actor) -> Cotizacion:
 # --- KPIs ----------------------------------------------------------------
 
 def kpis_landing() -> dict:
-    """Conteos para el header de la lista de Cotizaciones."""
-    qs = Cotizacion.objects.exclude(estado="anulada")
+    """Conteos para el header de la lista de Cotizaciones.
+
+    Cuenta DOCUMENTOS (todas las versiones), que es justo lo que la lista de
+    abajo muestra. El embudo del negocio se cuenta por OPORTUNIDAD (la última
+    versión de cada proyecto) y vive en `apps.cotizaciones.embudo` — son dos
+    preguntas distintas y por eso son dos números distintos.
+
+    Clasifica por FASE, no por el nombre del estado: el despacho renombra y
+    apaga estados a su gusto. Antes se buscaban los literales 'borrador' y
+    'enviada'; Learning Center los había apagado y todos los conteos daban
+    cero, así que la conversión salía 100%.
+    """
     from datetime import date
-    aprobadas = qs.filter(estado="aprobada", anticipo_facturado_en__isnull=True)
-    # Aprobadas con anticipo pendiente: hay que iterar porque anticipo_monto
-    # es property derivada. Sobre 5 usuarios el conjunto es pequeño.
-    anticipos_pendientes = sum(1 for c in aprobadas if c.anticipo_monto > 0)
+
+    from apps.cotizaciones.embudo import dias_desde_envio
+    from apps.cotizaciones.models import (
+        FASE_ARMADA,
+        FASE_ENVIADA,
+        FASE_GANADA,
+        FASE_PERDIDA,
+        slugs_de_fase,
+    )
+
+    hoy = date.today()
+    perdidas_slugs = slugs_de_fase(FASE_PERDIDA)
+    qs = Cotizacion.objects.exclude(estado__in=perdidas_slugs) if perdidas_slugs \
+        else Cotizacion.objects.all()
+
+    armadas = slugs_de_fase(FASE_ARMADA)
+    enviadas = slugs_de_fase(FASE_ENVIADA)
+    ganadas = slugs_de_fase(FASE_GANADA)
+
+    try:
+        from ajustes.models import ConfiguracionAnalisis
+        dias_silencio = ConfiguracionAnalisis.obtener().dias_silencio_cotizacion or 0
+    except Exception:  # noqa: BLE001
+        dias_silencio = 45
+
+    # Enviadas que ya pasaron el plazo de silencio configurado en Gerencia
+    # (antes era 'fecha_validez vencida', que casi nadie llena).
+    enfriadas = 0
+    if enviadas and dias_silencio:
+        for cot in qs.filter(estado__in=enviadas).only(
+            "enviada_en", "fecha_emision", "creado_en"
+        ):
+            if dias_desde_envio(cot, hoy) >= dias_silencio:
+                enfriadas += 1
+
+    # Ganadas con anticipo por facturar: se itera porque `anticipo_monto` es
+    # una property derivada. El conjunto es de decenas.
+    anticipos_pendientes = 0
+    if ganadas:
+        anticipos_pendientes = sum(
+            1
+            for c in qs.filter(estado__in=ganadas, anticipo_facturado_en__isnull=True)
+            if c.anticipo_monto > 0
+        )
+
     return {
-        "borradores": qs.filter(estado="borrador").count(),
-        "enviadas": qs.filter(estado="enviada").count(),
-        "aprobadas": qs.filter(estado="aprobada").count(),
-        "vencidas": qs.filter(
-            estado="enviada", fecha_validez__lt=date.today()
-        ).count(),
+        # Claves históricas (las consumen la lista y Sala de Juntas), ya con la
+        # semántica correcta.
+        "borradores": qs.filter(estado__in=armadas).count() if armadas else 0,
+        "enviadas": qs.filter(estado__in=enviadas).count() if enviadas else 0,
+        "aprobadas": qs.filter(estado__in=ganadas).count() if ganadas else 0,
+        "vencidas": enfriadas,
         "anticipos_pendientes": anticipos_pendientes,
+        # Nombres claros para lo nuevo.
+        "sin_enviar": qs.filter(estado__in=armadas).count() if armadas else 0,
+        "ganadas": qs.filter(estado__in=ganadas).count() if ganadas else 0,
+        "enfriadas": enfriadas,
+        "perdidas": (
+            Cotizacion.objects.filter(estado__in=perdidas_slugs).count()
+            if perdidas_slugs else 0
+        ),
+        "dias_silencio": dias_silencio,
     }
 
 

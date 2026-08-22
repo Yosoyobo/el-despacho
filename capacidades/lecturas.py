@@ -240,6 +240,70 @@ def _h_resumen_margenes(args: dict, usuario) -> dict:
     return {"dominio": "margenes", "titulo": h["titulo"], "resumen": h["hechos"] or "Sin datos."}
 
 
+def _resumen_de(dominio: str, usuario=None) -> dict:
+    """Un tema de negocio, listo para leer. Fuente única: `taller_home.negocio`."""
+    from apps.taller_home.negocio import hechos_de
+
+    h = hechos_de(dominio, usuario)
+    return {"dominio": dominio, "titulo": h["titulo"], "resumen": h["hechos"] or "Sin datos."}
+
+
+def _h_resumen_rentabilidad(args: dict, usuario) -> dict:
+    return _resumen_de("rentabilidad", usuario)
+
+
+def _h_resumen_perdidos(args: dict, usuario) -> dict:
+    return _resumen_de("perdidos", usuario)
+
+
+def _h_resumen_clientes(args: dict, usuario) -> dict:
+    return _resumen_de("clientes", usuario)
+
+
+def _h_resumen_proveedores(args: dict, usuario) -> dict:
+    return _resumen_de("proveedores", usuario)
+
+
+def _h_resumen_equipo(args: dict, usuario) -> dict:
+    # `hechos_equipo` recibe al usuario y esconde las horas de quien no le toca ver.
+    return _resumen_de("equipo", usuario)
+
+
+def _h_resumen_ia(args: dict, usuario) -> dict:
+    return _resumen_de("ia", usuario)
+
+
+def _h_rentabilidad_proyecto(args: dict, usuario) -> dict:
+    """Cuánto dejó UN proyecto: ingreso, costos, utilidad y margen."""
+    from apps.los_proyectos import rentabilidad as rent
+    from apps.los_proyectos.mano_obra import horas_por_proyecto
+    from apps.los_proyectos.models import Proyecto
+
+    clave = (args.get("proyecto_slug") or "").strip().lstrip("#")
+    if not clave:
+        return {"error": "Falta el proyecto."}
+    proyecto = (
+        Proyecto.objects.select_related("cliente")
+        .filter(codigo__iexact=clave).first()
+        or Proyecto.objects.select_related("cliente").filter(slug__iexact=clave).first()
+        or Proyecto.objects.select_related("cliente")
+        .filter(nombre__icontains=clave).first()
+    )
+    if not proyecto:
+        return {"error": f"No encontré el proyecto «{clave}»."}
+    from datetime import date, timedelta
+
+    hoy = date.today()
+    horas = horas_por_proyecto(hoy - timedelta(days=365), hoy).get(proyecto.pk)
+    fila = rent.rentabilidad_de(proyecto, horas)
+    if fila.get("horas_estimadas_flag"):
+        fila["aviso"] = (
+            "Las horas son en parte estimadas: se reparte la jornada entre los "
+            "proyectos que la persona tocó ese día."
+        )
+    return fila
+
+
 def _h_estado_servidor(args: dict, usuario) -> dict:
     salida: dict = {}
     try:
@@ -821,6 +885,72 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={"nombre": {"tipo": "str", "requerido": True}},
         gating="catalogo", fn=_h_buscar_proveedor,
+    ),
+    "resumen_rentabilidad": Capacidad(
+        nombre="resumen_rentabilidad",
+        descripcion=(
+            "Cuánto dejó de verdad cada proyecto: vendido, costo real de "
+            "materiales y procesos, utilidad, margen y cuáles están debajo del "
+            "margen sano o en pérdida. Incluye el costo del tiempo del equipo "
+            "cuando hay tarifas capturadas."
+        ),
+        args_schema={},
+        gating="finanzas", fn=_h_resumen_rentabilidad,
+    ),
+    "rentabilidad_proyecto": Capacidad(
+        nombre="rentabilidad_proyecto",
+        descripcion=(
+            "La cuenta de UN proyecto por código, slug o nombre: ingreso, costo, "
+            "utilidad, margen y horas de mano de obra."
+        ),
+        args_schema={"proyecto_slug": {"tipo": "str", "requerido": True}},
+        gating="finanzas", fn=_h_rentabilidad_proyecto,
+    ),
+    "resumen_perdidos": Capacidad(
+        nombre="resumen_perdidos",
+        descripcion=(
+            "Lo que se perdió: cotizaciones caídas y su monto, proyectos "
+            "cancelados con su motivo, propuestas enfriadas por falta de "
+            "respuesta y proyectos que se ganaron pero dejaron pérdida."
+        ),
+        args_schema={},
+        gating="cotizaciones", fn=_h_resumen_perdidos,
+    ),
+    "resumen_clientes": Capacidad(
+        nombre="resumen_clientes",
+        descripcion=(
+            "Quién deja más dinero, quién debe más, quién dejó de comprar y el "
+            "ticket promedio."
+        ),
+        args_schema={},
+        gating="cartera", fn=_h_resumen_clientes,
+    ),
+    "resumen_proveedores": Capacidad(
+        nombre="resumen_proveedores",
+        descripcion=(
+            "A quién se le compra más, cuánto se le debe a cada quien y qué "
+            "egresos quedaron sin proveedor asignado."
+        ),
+        args_schema={},
+        gating="finanzas", fn=_h_resumen_proveedores,
+    ),
+    "resumen_equipo": Capacidad(
+        nombre="resumen_equipo",
+        descripcion=(
+            "Carga y cumplimiento: tareas pendientes y atrasadas por persona, y "
+            "X"
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_resumen_equipo,
+    ),
+    "resumen_ia": Capacidad(
+        nombre="resumen_ia",
+        descripcion=(
+            "Cuánto cuestan Los Chalanes en los últimos 30 días, repartido por "
+            "Chalán, y qué tan seguido fallan las instrucciones dictadas."
+        ),
+        args_schema={},
+        gating="finanzas", fn=_h_resumen_ia,
     ),
     "mi_jornada_hoy": Capacidad(
         nombre="mi_jornada_hoy",

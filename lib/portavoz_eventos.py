@@ -167,6 +167,11 @@ EventoTipo = Literal[
     "cobranza.recordatorio_fallido",
     "ajuste.cobranza_configurada",
     "ajuste.fiscal_configurada",
+    "ajuste.analisis_configurado",
+    # El Análisis (S-Chalan-Analisis)
+    "analisis.lectura_generada",
+    "analisis.alerta",
+    "chalan.aprendizaje_auto_activado",
     "checador.entrada",
     "checador.salida",
     "checador.visita",
