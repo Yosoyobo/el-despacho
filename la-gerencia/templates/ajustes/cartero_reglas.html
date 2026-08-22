@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Reglas de correo — El Cartero{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Reglas" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Correos que salen solos" subtitulo="Ata un momento del día a día con la plantilla que quieres que se mande. Todas nacen apagadas: enciéndelas cuando la plantilla esté lista." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/plantillas/" back_label="Plantillas" %}
+
+<div class="mb-6 rounded-2xl border border-blue-light-200 bg-blue-light-50 p-4 text-xs text-blue-light-800 dark:border-blue-light-800 dark:bg-blue-light-900/20 dark:text-blue-light-200">
+    Estos correos le llegan al <strong>cliente</strong>, siempre al correo de contacto que ya tiene registrado. Un mismo hecho no se avisa dos veces, aunque el proyecto vaya y vuelva de estado.
+</div>
+
+<section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Nueva regla</h2>
+    <form method="post" action="{% url 'ajustes-cartero-regla-guardar' %}" class="campo-form mt-4 grid gap-3 sm:grid-cols-2">
+        {% csrf_token %}
+        <div>
+            <label for="rg-evento">¿Cuándo?</label>
+            <select id="rg-evento" name="evento" data-sin-buscar>
+                {% for ev in eventos %}<option value="{{ ev.valor }}">{{ ev.etiqueta }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="rg-plantilla">¿Qué se manda?</label>
+            <select id="rg-plantilla" name="plantilla" required>
+                {% for pl in plantillas %}<option value="{{ pl.pk }}">{{ pl.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div data-campo-filtro="proyecto_estado" class="hidden">
+            <label for="rg-estado">¿A qué estado tiene que llegar el proyecto?</label>
+            <select id="rg-estado" name="estado_slug">
+                <option value="">— elige un estado —</option>
+                {% for e in estados_proyecto %}<option value="{{ e.slug }}">{{ e.label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div data-campo-filtro="cliente_dormido" class="hidden">
+            <label for="rg-dias">¿Cuántos días de silencio?</label>
+            <input id="rg-dias" name="dias" type="number" min="1" value="90">
+        </div>
+        <div class="sm:col-span-2 flex items-center justify-between gap-4">
+            <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <input type="checkbox" name="activa" class="h-4 w-4 rounded border-gray-300 text-brand-500">
+                Encenderla ya
+            </label>
+            <button type="submit" class="btn-primario">Crear regla</button>
+        </div>
+    </form>
+</section>
+
+{% if reglas %}
+<ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+    {% for r in reglas %}
+    <li class="flex items-center justify-between gap-4 p-5">
+        <div class="min-w-0">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {{ r.descripcion_humana }}
+                {% if r.activa %}<span class="badge badge-sm badge-success">Encendida</span>
+                {% else %}<span class="badge badge-sm badge-gray">Apagada</span>{% endif %}
+                {% if not r.esta_completa %}<span class="badge badge-sm badge-error">Le falta configurar</span>{% endif %}
+            </h3>
+            <p class="truncate text-xs text-gray-500 dark:text-gray-400">Manda «{{ r.plantilla.nombre }}»{% if r.plantilla.remitente_email %} desde {{ r.plantilla.remitente_email }}{% endif %}</p>
+            {% if not r.plantilla.activa %}<p class="text-xs text-error-600">Ojo: esa plantilla está apagada, así que no saldría nada.</p>{% endif %}
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+            <form method="post" action="{% url 'ajustes-cartero-regla-guardar' %}">
+                {% csrf_token %}
+                <input type="hidden" name="pk" value="{{ r.pk }}">
+                <input type="hidden" name="evento" value="{{ r.evento }}">
+                <input type="hidden" name="plantilla" value="{{ r.plantilla_id }}">
+                <input type="hidden" name="estado_slug" value="{{ r.estado_slug }}">
+                <input type="hidden" name="dias" value="{{ r.dias }}">
+                {% if not r.activa %}<input type="hidden" name="activa" value="1">{% endif %}
+                <button type="submit" class="btn-secundario">{% if r.activa %}Apagar{% else %}Encender{% endif %}</button>
+            </form>
+            <form method="post" action="{% url 'ajustes-cartero-regla-borrar' r.pk %}"
+                  onsubmit="return confirm('¿Eliminar esta regla?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-secundario text-error-600" title="Eliminar regla">✕</button>
+            </form>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Todavía no hay correos automáticos" descripcion="Crea una regla arriba para que El Despacho avise al cliente solo cuando pase algo." icono="inbox" %}
+{% endif %}
+
+<script>
+(function () {
+    // Cada evento se configura distinto: el de proyecto pide un estado, el de
+    // cliente dormido pide días, y los otros dos no piden nada. Se muestra sólo
+    // el campo que aplica para no pedir datos que no se van a usar.
+    var select = document.getElementById('rg-evento');
+    if (!select) return;
+    function pintar() {
+        document.querySelectorAll('[data-campo-filtro]').forEach(function (div) {
+            div.classList.toggle('hidden', div.dataset.campoFiltro !== select.value);
+        });
+    }
+    select.addEventListener('change', pintar);
+    pintar();
+})();
+</script>
+{% endblock %}
