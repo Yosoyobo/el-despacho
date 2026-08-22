@@ -42,6 +42,10 @@ from lib.site import (
 from lib.site.gauges import gauge as _gauge  # noqa: E402
 from lib.site.registry import PLATAFORMAS, chequear
 
+# El Vigía comparte el criterio de «esto llegó directo a la máquina» con su
+# propio módulo, para que no existan dos definiciones de lo mismo.
+from .views_vivo import _es_local  # noqa: E402
+
 
 def _barra(pct: float | None, *, umbral_warn: float = 60, umbral_err: float = 80) -> dict:
     if pct is None:
@@ -193,6 +197,10 @@ def tablero(request):
         "global": _ctx_global(infra, integ, intern),
         "chalanes_resumen": chalanes_resumen,
         "chalanes_tarjetas": chalanes_tarjetas,
+        # El enlace a El Vigía sale SÓLO si esta petición llegó directo a la
+        # máquina: por el dominio la ruta da 404, y ofrecer un enlace que no
+        # lleva a ninguna parte es peor que no ofrecerlo.
+        "vigia_alcanzable": _es_local(request),
     }
     return render(request, "site/tablero.html", ctx)
 

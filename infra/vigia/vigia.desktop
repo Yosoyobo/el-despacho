@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=El Vigía (pantalla del NUC)
+Comment=Abre la pantalla de El Vigía a pantalla completa al iniciar la sesión
+Exec=@@RAIZ@@/infra/vigia/vigia-kiosco.sh
+Icon=utilities-system-monitor
+Terminal=false
+X-GNOME-Autostart-enabled=true
+# Un respiro para que el escritorio termine de montar antes de abrir el navegador.
+# La espera de verdad —a que la aplicación conteste— la hace el guion.
+X-GNOME-Autostart-Delay=5

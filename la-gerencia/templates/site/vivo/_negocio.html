@@ -1,0 +1,79 @@
+{% comment %}Qué está haciendo el sistema POR EL DESPACHO. Cada 20 s.{% endcomment %}
+<div class="flex h-full flex-col">
+  <div class="shrink-0 border-b border-gray-800 px-5 py-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Trabajo del despacho</h2>
+  </div>
+  <div class="vigia-scroll min-h-0 flex-1 space-y-3 px-5 py-3 text-xs">
+
+    <div class="flex items-baseline justify-between">
+      <span class="text-gray-500">Los Chalanes, hoy</span>
+      {% if ia.disponible %}
+        <span class="font-mono text-gray-200 tabular-nums">
+          {{ ia.llamadas }} llamada{{ ia.llamadas|pluralize }}
+          {% if ia.fallos %}<span class="text-error-400">· {{ ia.fallos }} falló</span>{% endif %}
+          <span class="text-gray-500">· {{ ia.tokens }} tokens · ${{ ia.costo|floatformat:4 }}</span>
+        </span>
+      {% else %}
+        <span class="font-mono text-gray-600">n/d</span>
+      {% endif %}
+    </div>
+    {% if ia.ultima %}
+    <p class="font-mono text-[11px] text-gray-600">
+      última: {{ ia.ultima.provider }}/{{ ia.ultima.modelo|default:"—" }}
+      · {{ ia.ultima.estacion }} · {{ ia.ultima.latencia_ms }} ms
+      {% if not ia.ultima.exito %}<span class="text-error-400">· falló</span>{% endif %}
+    </p>
+    {% endif %}
+
+    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
+      <span class="text-gray-500">El Almacén (medios en disco)</span>
+      {% if medios.disponible %}
+        <span class="font-mono text-gray-200 tabular-nums">
+          {{ medios.archivos }} archivo{{ medios.archivos|pluralize }} · {{ medios.mb }} MB
+          <span class="text-gray-500">· {{ medios.derivados }} derivados</span>
+        </span>
+      {% else %}
+        <span class="font-mono text-gray-600">no montado aquí</span>
+      {% endif %}
+    </div>
+
+    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
+      <span class="text-gray-500">Cola de El Portavoz</span>
+      <span class="font-mono tabular-nums">
+        {% if internos.portavoz_head.disponible %}
+          <span class="{% if internos.portavoz_head.items_pendientes > 200 %}text-warning-400{% else %}text-gray-200{% endif %}">
+            {{ internos.portavoz_head.items_pendientes }} pendiente{{ internos.portavoz_head.items_pendientes|pluralize }}
+          </span>
+        {% else %}
+          <span class="text-success-400">vacía</span>
+        {% endif %}
+        {% if internos.portavoz_dlq %}
+          <span class="text-error-400">· {{ internos.portavoz_dlq }} descartado(s)</span>
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
+      <span class="text-gray-500">Último respaldo a HAL</span>
+      {% if internos.backup_remoto.disponible %}
+        <span class="font-mono {% if internos.backup_remoto.estado == 'ok' %}text-gray-200{% else %}text-error-400{% endif %}">
+          {{ internos.backup_remoto.estado }}
+          <span class="text-gray-500">· {{ internos.backup_remoto.creado_en|slice:":16"|cut:"T" }}</span>
+        </span>
+      {% else %}
+        <span class="font-mono text-gray-600">sin registros</span>
+      {% endif %}
+    </div>
+
+    <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
+      <span class="text-gray-500">Último despliegue</span>
+      {% if internos.deploy.disponible %}
+        <span class="font-mono text-gray-200">{{ internos.deploy.commit|default:"—" }}
+          <span class="text-gray-500">· {{ internos.deploy.creado_en|slice:":16"|cut:"T" }}</span>
+        </span>
+      {% else %}
+        <span class="font-mono text-gray-600">sin registros</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
