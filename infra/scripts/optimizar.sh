@@ -20,7 +20,7 @@
 #   6. Reporta antes/después al log estructurado.
 #
 # Variables de entorno:
-#   COMPOSE_DIR        → directorio con docker-compose.yml (default /opt/el-despacho)
+#   COMPOSE_DIR        → directorio con docker-compose.yml (default: la raiz del repo)
 #   AOF_THRESHOLD_MB   → umbral para BGREWRITEAOF (default 64)
 #   SKIP_DROP_CACHES   → si "1", no toca /proc (útil en CI o macOS dev)
 #   SKIP_DOCKER_PRUNE  → si "1", no corre docker prune
@@ -30,7 +30,11 @@
 
 set -uo pipefail
 
-COMPOSE_DIR="${COMPOSE_DIR:-/opt/el-despacho}"
+# La raiz del repo en ESTA maquina (el guion vive en <raiz>/infra/scripts/), para
+# no amarrar el proyecto a un servidor: droplet /opt/el-despacho, NUC
+# /mnt/el-despacho (mudanza 2026-08-21). Se puede forzar con COMPOSE_DIR.
+_AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_DIR="${COMPOSE_DIR:-$(cd "$_AQUI/../.." && pwd)}"
 AOF_THRESHOLD_MB="${AOF_THRESHOLD_MB:-64}"
 LOG_TAG="[Optimización]"
 

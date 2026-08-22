@@ -10,7 +10,7 @@
 #
 # Uso (una sola vez, vía SSH a La Sede):
 #   ssh despacho@157.230.48.232
-#   cd /opt/el-despacho
+#   cd <raiz del repo>   # droplet /opt/el-despacho · NUC /mnt/el-despacho
 #   sudo bash infra/scripts/habilitar_swap.sh
 #
 # Reversible:
