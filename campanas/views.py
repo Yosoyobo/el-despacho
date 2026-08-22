@@ -22,7 +22,19 @@ from lib.sanear import sanear_contexto
 from .models import CampanaCorreo
 from .services import contexto_para, enviar_campana
 
-PLANTILLAS_CAMPANA = ("generico", "bienvenida", "cobranza")
+
+def _plantillas_disponibles():
+    """Plantillas que se pueden mandar en una campaña.
+
+    Sale de la base, no de una tupla escrita a mano: una plantilla nueva creada
+    en Gerencia aparece aquí sola. `generico` va siempre al frente porque es la
+    del mensaje libre y es el caso más común.
+    """
+    from ajustes.models.plantilla_correo import PlantillaCorreo
+
+    generico = PlantillaCorreo.obtener("generico")
+    otras = list(PlantillaCorreo.enviables().order_by("-sistema", "nombre"))
+    return [generico, *otras]
 
 
 def _gate(request):
@@ -54,7 +66,9 @@ def nueva(request):
 
     if request.method == "POST":
         plantilla = (request.POST.get("plantilla") or "generico").strip()
-        if plantilla not in PLANTILLAS_CAMPANA:
+        # Se valida contra la base (no contra un set escrito a mano): elegir una
+        # plantilla nueva tiene que funcionar, y una inventada no debe pasar.
+        if plantilla not in {p.slug for p in _plantillas_disponibles()}:
             plantilla = "generico"
         asunto = sanear_contexto((request.POST.get("asunto") or "").strip())[:200]
         mensaje = sanear_contexto((request.POST.get("mensaje") or "").strip())
@@ -94,7 +108,7 @@ def nueva(request):
 
     return render(request, "campanas/nueva.html", {
         "clientes": clientes,
-        "plantillas": PLANTILLAS_CAMPANA,
+        "plantillas": _plantillas_disponibles(),
     })
 
 

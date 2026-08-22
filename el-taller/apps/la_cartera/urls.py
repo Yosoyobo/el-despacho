@@ -11,4 +11,5 @@ urlpatterns = [
     path("<int:pk>/", views.detalle, name="cartera-detalle"),
     path("<int:pk>/editar", views.editar, name="cartera-editar"),
     path("<int:pk>/archivar", views.archivar, name="cartera-archivar"),
+    path("<int:pk>/correo", views.cliente_correo, name="cartera-cliente-correo"),
 ]

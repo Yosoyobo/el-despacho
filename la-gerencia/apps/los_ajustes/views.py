@@ -193,8 +193,9 @@ def cartero_probar(request):
 
 def _slug_libre(base: str) -> str:
     """Slug único a partir del nombre. Desambigua con un sufijo numérico."""
-    from ajustes.models import PlantillaCorreo
     from django.utils.text import slugify
+
+    from ajustes.models import PlantillaCorreo
 
     raiz = (slugify(base) or "plantilla")[:36]
     slug = raiz
@@ -351,13 +352,14 @@ def cartero_plantilla_probar(request, slug: str):
 
 
 def _emitir_plantilla(tipo: str, pl, actor) -> None:
-    try:
+    import contextlib
+    # La auditoría no bloquea la edición: si El Portavoz falla, la plantilla
+    # igual se guardó.
+    with contextlib.suppress(Exception):
         emitir(EventoPortavoz(
             tipo=tipo, actor_id=actor.pk, actor_email=actor.email,
             payload={"slug": pl.slug, "nombre": pl.nombre},
         ))
-    except Exception:  # noqa: BLE001 — la auditoría no bloquea la edición
-        pass
 
 
 # ── Reglas: qué evento dispara qué plantilla ──────────────────────────────
