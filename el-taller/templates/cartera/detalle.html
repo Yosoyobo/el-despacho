@@ -12,6 +12,11 @@
     {% comment %}LC 2026-07-26 (Oscar, ronda 3): la pastilla de color con el slug
     se quitó de aquí — la referencia `$slug` vive en el recuadro «Identificación»
     del costado, que es donde se busca.{% endcomment %}
+    {% if permisos_modulos.comunicacion and cliente.email_contacto %}
+    <button type="button" hx-get="{% url 'cartera-cliente-correo' cliente.pk %}"
+            hx-target="#modal-slot" hx-swap="innerHTML"
+            class="btn-secundario ml-auto">✉️ Enviar correo</button>
+    {% endif %}
 </div>
 
 {# Header cards del cliente. #}

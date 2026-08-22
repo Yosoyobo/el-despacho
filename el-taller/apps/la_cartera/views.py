@@ -25,6 +25,7 @@ from lib.permisos import (
 )
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
+from lib.sanear import sanear_contexto
 
 
 def _gate(request, ver=True):
@@ -512,3 +513,82 @@ def archivar(request, pk):
     if es_htmx:
         return render(request, "cartera/_modal_archivar.html", {"cliente": cliente})
     return redirect("cartera-detalle", pk=pk)
+
+
+# ── Mandarle un correo a este cliente ────────────────────────────────────────
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def cliente_correo(request, pk: int):
+    """Manda una plantilla a este cliente. Modal HTMX (patrón Wave 5).
+
+    Sólo al correo de contacto REGISTRADO: la pantalla no acepta escribir una
+    dirección, así que un dedazo no puede mandarle la cotización a un extraño.
+    """
+    from ajustes.models import PlantillaCorreo
+    from lib import cartero, correo_contexto
+    from lib.permisos import puede_enviar_correo
+
+    cliente = get_object_or_404(Cliente.objects.all(), pk=pk)
+    if not puede_enviar_correo(request.user):
+        return HttpResponseForbidden("Sin permiso para enviar correos.")
+
+    es_htmx = request.headers.get("HX-Request") == "true"
+    destino = (cliente.email_contacto or "").strip()
+    plantillas = list(PlantillaCorreo.enviables().order_by("-sistema", "nombre"))
+
+    contexto = {
+        "cliente": cliente, "plantillas": plantillas, "destino": destino,
+        "error": "", "enviado": False,
+    }
+
+    if request.method == "POST":
+        if not destino:
+            contexto["error"] = "Este cliente no tiene correo de contacto registrado."
+            return render(request, "cartera/_modal_enviar_correo.html", contexto)
+
+        slug = (request.POST.get("plantilla") or "").strip()
+        plantilla = next((p for p in plantillas if p.slug == slug), None)
+        if plantilla is None:
+            contexto["error"] = "Elige una plantilla."
+            return render(request, "cartera/_modal_enviar_correo.html", contexto)
+
+        mensaje = sanear_contexto((request.POST.get("mensaje") or "").strip())
+        ctx = correo_contexto.armar(
+            cliente=cliente, representante=request.user,
+            extra={"mensaje": mensaje} if mensaje else None,
+        )
+        asunto, html = plantilla.render(ctx)
+        res = cartero.enviar(
+            destinatario=destino, asunto=asunto, html=html,
+            remitente=plantilla.remitente_efectivo(),
+        )
+        if not res.ok:
+            contexto["error"] = f"No se pudo enviar: {res.error}"
+            return render(request, "cartera/_modal_enviar_correo.html", contexto)
+
+        _emitir_correo_manual(cliente, plantilla, destino, request.user)
+        messages.success(request, f"Correo «{plantilla.nombre}» enviado a {destino}.")
+        if es_htmx:
+            return HttpResponse(status=204, headers={
+                "HX-Redirect": reverse("cartera-detalle", args=[cliente.pk]),
+            })
+        return redirect("cartera-detalle", pk=cliente.pk)
+
+    return render(request, "cartera/_modal_enviar_correo.html", contexto)
+
+
+def _emitir_correo_manual(cliente, plantilla, destino, actor) -> None:
+    import contextlib
+    with contextlib.suppress(Exception):
+        from lib.portavoz import emitir
+        from lib.portavoz_eventos import EventoPortavoz
+        emitir(EventoPortavoz(
+            tipo="correo.enviado_manual",
+            actor_id=actor.pk, actor_email=actor.email,
+            payload={
+                "cliente_id": cliente.pk, "plantilla": plantilla.slug,
+                "destinatario": destino,
+            },
+        ))

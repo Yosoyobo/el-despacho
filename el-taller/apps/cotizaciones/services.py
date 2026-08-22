@@ -645,6 +645,13 @@ def marcar_aprobada(cot: Cotizacion, actor, nombre: str, email: str = "",
     _emitir("cotizacion.aprobada", cot, actor, {
         "aprobada_por": cot.aprobada_por_nombre,
     })
+    # Acuse al cliente, si hay una regla encendida para esto. Best-effort y
+    # después del commit: aprobar la cotización no puede fallar por el correo.
+    def _avisar():
+        from lib import reglas_correo
+        reglas_correo.cotizacion_aprobada(cot)
+
+    transaction.on_commit(_avisar)
     return cot
 
 

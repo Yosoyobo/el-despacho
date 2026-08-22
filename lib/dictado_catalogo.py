@@ -263,9 +263,18 @@ COMANDOS_DICTADO: list[dict] = [
     },
     {
         "tipo": "enviar_correo",
-        "titulo": "Enviar correo a un cliente (El Cartero)",
+        "titulo": "Enviar un correo (El Cartero)",
         "ejemplo": "Mándale un correo a $karikari avisando que su pedido está listo para recolección.",
-        "payload": "cliente_slug, tipo_plantilla (generico|bienvenida|cobranza), asunto?, mensaje?",
+        "payload": "tipo_plantilla (slug de cualquier plantilla activa; «generico» para texto libre), "
+                   "cliente_slug? o email?, asunto?, mensaje?",
+        "gating": "comunicacion",
+    },
+    {
+        "tipo": "crear_plantilla_correo",
+        "titulo": "Crear una plantilla de correo (nace apagada)",
+        "ejemplo": "Hazme una plantilla de correo para avisar que el pedido está listo, "
+                   "que salga de cobranza@learningcenter.mx.",
+        "payload": "nombre, asunto?, cuerpo_html?, descripcion?, remitente_email?, remitente_nombre?",
         "gating": "comunicacion",
     },
     # ── El Checador (S-Chalan-Equipo-UX): el Chalán opera tu asistencia.
@@ -474,6 +483,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
     {"nombre": "tareas_de_proyecto / mis_tareas / detalle_tarea", "que": "Tareas de un proyecto, tus tareas abiertas, o el detalle de una."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},
+    {"nombre": "listar_plantillas_correo", "que": "Qué plantillas de correo hay listas para mandar y de qué dirección sale cada una. Requiere permiso de Comunicación. Pregunta: «¿qué correos puedo mandar?»."},
     {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},
     {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},

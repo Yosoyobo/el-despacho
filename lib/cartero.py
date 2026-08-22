@@ -57,6 +57,7 @@ class _Mensaje:
     html: str
     texto: str = ""
     adjuntos: list[Adjunto] = field(default_factory=list)
+    remitente: str = ""
 
 
 def _cred(clave: str) -> str:
@@ -83,15 +84,21 @@ def esta_configurado() -> bool:
 
 def enviar(
     *, destinatario: str, asunto: str, html: str, texto: str = "",
-    adjuntos: list[Adjunto] | None = None,
+    adjuntos: list[Adjunto] | None = None, remitente: str = "",
 ) -> ResultadoCorreo:
-    """Envía un correo por el canal activo. Nunca lanza."""
+    """Envía un correo por el canal activo. Nunca lanza.
+
+    `remitente` («Nombre <correo>») pisa el remitente global: es el alias de la
+    plantilla, para que la cobranza salga de cobranza@ y las ventas de ventas@.
+    Vacío = el remitente general de ConfiguracionCorreo.
+    """
     destinatario = (destinatario or "").strip()
     if not destinatario:
         return ResultadoCorreo(ok=False, error="Sin destinatario.")
     msg = _Mensaje(
         destinatario=destinatario, asunto=asunto or "(sin asunto)",
         html=html or "", texto=texto or "", adjuntos=list(adjuntos or []),
+        remitente=(remitente or "").strip(),
     )
     prov = proveedor_activo()
     try:
@@ -102,8 +109,14 @@ def enviar(
         return ResultadoCorreo(ok=False, proveedor=prov, error=f"El Cartero falló: {exc}")
 
 
-def _remitente() -> str:
-    """`Nombre <correo>` para el From, con el nombre de ConfiguracionCorreo."""
+def _remitente(override: str = "") -> str:
+    """`Nombre <correo>` para el From.
+
+    Si `override` trae algo (el alias de una plantilla) manda ése; si no, se
+    arma con el remitente global de ConfiguracionCorreo.
+    """
+    if (override or "").strip():
+        return override.strip()
     correo = _cred("smtp_from_email") or _cred("smtp_user")
     try:
         from ajustes.models import ConfiguracionCorreo
@@ -140,7 +153,7 @@ def _enviar_smtp(msg: _Mensaje) -> ResultadoCorreo:
     )
     correo = EmailMultiAlternatives(
         subject=msg.asunto, body=(msg.texto or _html_a_texto(msg.html)),
-        from_email=_remitente(), to=[msg.destinatario], connection=conexion,
+        from_email=_remitente(msg.remitente), to=[msg.destinatario], connection=conexion,
     )
     correo.attach_alternative(msg.html, "text/html")
     for a in msg.adjuntos:
@@ -175,7 +188,7 @@ def _enviar_n8n(msg: _Mensaje) -> ResultadoCorreo:
             "asunto": msg.asunto,
             "html": msg.html,
             "texto": msg.texto,
-            "remitente": _remitente(),
+            "remitente": _remitente(msg.remitente),
             "adjuntos": adjuntos,
         },
     ))
@@ -191,14 +204,26 @@ def _html_a_texto(html: str) -> str:
     return re.sub(r"\s+", " ", sin_tags).strip()
 
 
-def probar(destinatario: str) -> ResultadoCorreo:
-    """Manda un correo de prueba por el canal activo."""
+def probar(destinatario: str, remitente: str = "") -> ResultadoCorreo:
+    """Manda un correo de prueba por el canal activo.
+
+    Con `remitente` sirve para comprobar un alias: **Gmail no rechaza un alias
+    que no le pertenece, lo REESCRIBE en silencio**, así que la única forma de
+    saber si quedó es mirar el correo recibido. Por eso el cuerpo dice desde
+    qué dirección se intentó mandar.
+    """
+    desde = remitente or "(el remitente general)"
     return enviar(
         destinatario=destinatario,
         asunto="Prueba de El Cartero · El Despacho",
         html="<p>¡Funciona! Este es un correo de prueba enviado por "
-             "<strong>El Cartero</strong> de El Despacho.</p>",
+             "<strong>El Cartero</strong> de El Despacho.</p>"
+             f"<p style='color:#667085;font-size:13px;'>Se intentó mandar desde "
+             f"<strong>{desde}</strong>. Si el remitente que ves arriba no es ése, "
+             "el alias todavía no está dado de alta en «Enviar como» de la cuenta "
+             "de correo y Google lo reemplazó.</p>",
         texto="¡Funciona! Correo de prueba de El Cartero.",
+        remitente=remitente,
     )
 
 

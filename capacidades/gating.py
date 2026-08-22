@@ -24,5 +24,7 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         "contaduria": permisos.puede_ver_contaduria,
         # LC #153: la acción canónica de lectura del catálogo es `ver_nombres`.
         "catalogo": lambda u: permisos.puede(u, "catalogo", "ver_nombres"),
+        # Quien puede escribirle a un cliente puede ver con qué moldes cuenta.
+        "comunicacion": permisos.puede_enviar_correo,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

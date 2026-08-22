@@ -5,16 +5,100 @@
 {% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Plantillas" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Plantillas de correo" subtitulo="El cuerpo y el asunto de cada correo que manda El Cartero. Edítalas gráficamente o pídele a El Chalán que las redacte." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="El Cartero" %}
 
-<ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
-    {% for pl in plantillas %}
-    <li class="flex items-center justify-between gap-4 p-5">
-        <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ pl.nombre }}</h3>
-            <p class="truncate text-xs text-gray-500 dark:text-gray-400">Asunto: {{ pl.asunto|default:"—" }}</p>
-            <code class="text-[11px] text-gray-400">{{ pl.slug }}</code>
+{% if alias_faltantes %}
+<div class="mb-6 rounded-2xl border border-warning-300 bg-warning-50 p-5 dark:border-warning-700 dark:bg-warning-900/20">
+    <h3 class="text-sm font-semibold text-warning-800 dark:text-warning-200">
+        Falta dar de alta {{ alias_faltantes|length }} dirección{{ alias_faltantes|length|pluralize:"es" }} en Google
+    </h3>
+    <p class="mt-1 text-xs text-warning-700 dark:text-warning-300">
+        {{ alias_faltantes|join:", " }} — mientras no estén, esos correos salen desde la dirección de siempre
+        y Google no marca ningún error.
+    </p>
+    <a href="{% url 'ajustes-cartero-remitentes' %}" class="btn-secundario mt-3 inline-block">Ver qué falta →</a>
+</div>
+{% endif %}
+
+{% if borradores %}
+<div class="mb-6 rounded-2xl border border-warning-300 bg-warning-50 p-5 dark:border-warning-700 dark:bg-warning-900/20">
+    <h3 class="text-sm font-semibold text-warning-800 dark:text-warning-200">El Chalán dejó {{ borradores|length }} plantilla{{ borradores|length|pluralize }} para que la revises</h3>
+    <p class="mt-1 text-xs text-warning-700 dark:text-warning-300">Nacen apagadas a propósito: no se pueden enviar hasta que las abras, las revises y las enciendas.</p>
+    <ul class="mt-3 flex flex-wrap gap-2">
+        {% for pl in borradores %}
+        <li><a href="{% url 'ajustes-cartero-plantilla-editar' pl.slug %}" class="badge badge-warning">{{ pl.nombre }} →</a></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Nueva plantilla</h2>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">La creas aquí y luego le das cuerpo en el editor. Podrás mandarla desde la ficha de un cliente, en una campaña, o atarla a un evento para que salga sola.</p>
+    <form method="post" action="{% url 'ajustes-cartero-plantilla-nueva' %}" class="campo-form mt-4 grid gap-3 sm:grid-cols-[1fr_1.5fr_auto]">
+        {% csrf_token %}
+        <div>
+            <label for="pl-nombre">Nombre</label>
+            <input id="pl-nombre" name="nombre" type="text" required maxlength="120" placeholder="Ej. Aviso de entrega">
         </div>
-        <a href="{% url 'ajustes-cartero-plantilla-editar' pl.slug %}" class="btn-secundario shrink-0">Editar →</a>
-    </li>
-    {% endfor %}
-</ul>
+        <div>
+            <label for="pl-desc">¿Para qué sirve? <span class="text-gray-400">(opcional)</span></label>
+            <input id="pl-desc" name="descripcion" type="text" maxlength="200" placeholder="Se ve al elegirla al enviar">
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="btn-primario w-full sm:w-auto">Crear</button>
+        </div>
+    </form>
+</section>
+
+<section class="mb-6">
+    <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Tus plantillas</h2>
+        <a href="{% url 'ajustes-cartero-reglas' %}" class="btn-secundario">Reglas automáticas →</a>
+    </div>
+    {% if propias %}
+    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+        {% for pl in propias %}
+        <li class="flex items-center justify-between gap-4 p-5">
+            <div class="min-w-0">
+                <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {{ pl.nombre }}
+                    {% if not pl.activa %}<span class="badge badge-sm badge-gray">Apagada</span>{% endif %}
+                    {% if pl.origen == "chalan" %}<span class="badge badge-sm badge-warning">De El Chalán</span>{% endif %}
+                </h3>
+                {% if pl.descripcion %}<p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ pl.descripcion }}</p>{% endif %}
+                <p class="truncate text-xs text-gray-500 dark:text-gray-400">Asunto: {{ pl.asunto|default:"—" }}</p>
+                {% if pl.remitente_email %}<p class="text-[11px] text-gray-400">Sale de {{ pl.remitente_email }}</p>{% endif %}
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+                <a href="{% url 'ajustes-cartero-plantilla-editar' pl.slug %}" class="btn-secundario">Editar →</a>
+                <form method="post" action="{% url 'ajustes-cartero-plantilla-borrar' pl.slug %}"
+                      onsubmit="return confirm('¿Borrar la plantilla «{{ pl.nombre|escapejs }}»? No se puede deshacer.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-secundario text-error-600" title="Borrar plantilla">✕</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Todavía no tienes plantillas propias" descripcion="Crea una arriba: sirve para mandar correos sueltos a un cliente, para campañas, o para que salga sola cuando pase algo." icono="inbox" %}
+    {% endif %}
+</section>
+
+<section>
+    <h2 class="mb-1 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Plantillas del sistema</h2>
+    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Éstas las manda El Despacho solo, en momentos que ya están definidos (al enviar una cotización, al emitir una factura…). Se editan pero no se borran.</p>
+    <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+        {% for pl in de_sistema %}
+        <li class="flex items-center justify-between gap-4 p-5">
+            <div class="min-w-0">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ pl.nombre }}</h3>
+                <p class="truncate text-xs text-gray-500 dark:text-gray-400">Asunto: {{ pl.asunto|default:"—" }}</p>
+                <code class="text-[11px] text-gray-400">{{ pl.slug }}</code>
+                {% if pl.remitente_email %}<span class="ml-2 text-[11px] text-gray-400">· sale de {{ pl.remitente_email }}</span>{% endif %}
+            </div>
+            <a href="{% url 'ajustes-cartero-plantilla-editar' pl.slug %}" class="btn-secundario shrink-0">Editar →</a>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
 {% endblock %}

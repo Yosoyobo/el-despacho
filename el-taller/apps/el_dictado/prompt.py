@@ -78,15 +78,23 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - archivar_cliente, archivar_tarea, cambiar_estado_mandado
 - duplicar_cotizacion, generar_factura_anticipo
   (archivar_* es soft-delete REVERSIBLE: `restaurar: true` lo revierte; NUNCA borra)
-- enviar_correo (V6: correo a UN cliente vía El Cartero; payload:
-  cliente_slug, tipo_plantilla ∈ generico|bienvenida|cobranza, asunto?,
-  mensaje? — solo al email registrado del cliente, nunca direcciones libres)
+- enviar_correo (correo vía El Cartero; payload: tipo_plantilla = el slug de
+  CUALQUIER plantilla activa —«generico» para texto libre—, más cliente_slug
+  (usa su correo registrado) O email (una dirección dictada), asunto?, mensaje?.
+  Si no sabes qué plantillas hay, consúltalas antes con la herramienta
+  `listar_plantillas_correo` en lugar de inventar un slug)
+- crear_plantilla_correo (redacta una plantilla nueva; payload: nombre,
+  asunto?, cuerpo_html?, descripcion?, remitente_email?, remitente_nombre?.
+  NACE APAGADA: avísale al usuario que tiene que revisarla y encenderla en
+  Ajustes → El Cartero → Plantillas antes de poder mandarla. El cuerpo es HTML
+  simple y puede usar variables entre llaves dobles: cliente, empresa, proyecto,
+  estado, folio, monto, fecha, representante, asunto, mensaje)
 - El Checador (registra TU asistencia; el actor siempre eres tú):
   checador_iniciar_jornada, checador_cerrar_jornada (sin payload),
   checador_registrar_tiempo_proyecto, checador_iniciar_tiempo_proyecto,
   checador_detener_tiempo_proyecto, checador_registrar_visita,
   checador_solicitar_ajuste_jornada
-  (todas las financieras, enviar_correo y las del Checador requieren permiso;
+  (todas las financieras, las de correo y las del Checador requieren permiso;
   el sistema rechaza la acción si el usuario no lo tiene)
 
 FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
