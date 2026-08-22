@@ -1,18 +1,47 @@
 # El Portero — Caddy 2 con auto-HTTPS Let's Encrypt en producción.
 # En HAL local los puertos están remapeados (18080/18443) en docker-compose.
+#
+# ── MUDANZA AL NUC (2026-08-21) ──────────────────────────────────────────────
+# Desde la mudanza, La Sede es SOLO LA VENTANA: aquí se termina TLS y se hace
+# reverse_proxy por el tailnet al NUC de Learning Center, que es quien corre las
+# apps. Los upstreams se leen de variables de entorno con default al nombre del
+# servicio, para que ESTE MISMO archivo siga sirviendo en HAL local (donde las
+# apps sí viven en la red de Docker) sin cambiarle una línea:
+#   ventana → UPSTREAM_* apunta al NUC   ·   HAL local → sin variables, red Docker
 {
 	email soporte@learningcenter.mx
 }
 
-# Dominio raíz: sitio de marketing de Learning Center (Next.js export +
-# HeroUI, desarrollado por Jorge). Corre en HAL servido por launchd
-# (mx.learningcenter.web, puerto 8088) y se alcanza vía Tailscale.
-# No es una app Django; El Despacho solo hace de reverse proxy.
+# ── Failover honesto (patrón heimlich) ───────────────────────────────────────
+# Contrato: NUNCA enmascarar las rutas de sonda. Si el NUC se cayó, el monitor
+# externo tiene que ver el error de verdad en vez de un 200 tranquilizador.
+(lc_failover) {
+	handle_errors {
+		@sondas path /ping /salud
+		handle @sondas {
+			respond "upstream unavailable" 502
+		}
+		handle {
+			header Content-Type "text/html; charset=utf-8"
+			header Retry-After "120"
+			respond `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Volvemos en unos minutos</title><div style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:4rem 1.5rem;background:#0f172a;color:#e2e8f0;min-height:100vh;box-sizing:border-box"><div style="font-size:3.5rem;line-height:1">🛠️</div><h1 style="font-size:1.5rem;margin:1rem 0 .5rem">Volvemos en unos minutos</h1><p style="color:#94a3b8;max-width:34rem;margin:0 auto;line-height:1.6">Estamos haciendo mantenimiento en el sistema. Tus datos están a salvo; vuelve a intentar en un momento.</p></div>` 503
+		}
+	}
+}
+
+# Dominio raíz: sitio de marketing de Learning Center (Next.js export + HeroUI,
+# desarrollado por Jorge).
+#
+# DESDE LA MUDANZA SE SIRVE DESDE ESTE MISMO DROPLET, no por proxy. Son 52
+# archivos estáticos: no necesitan servidor de aplicación. Decisión de OBO del
+# 2026-08-21: "el homepage debe siempre vivir en el droplet en caso de que el NUC
+# se caiga". Así la homepage no depende del NUC, ni de HAL, ni del tailnet.
+# Se publica con `ops/ventana/publicar-homepage.sh` desde HAL.
 learningcenter.mx {
 	encode gzip
 	respond /ping "ok" 200
-	# Sitio de marketing (Next export) servido desde HAL vía Tailscale.
-	reverse_proxy 100.107.38.26:8088
+	root * {$LANDING_ROOT:/srv/landing}
+	file_server
 }
 
 # www → apex (redirect permanente).
@@ -29,25 +58,28 @@ taller.learningcenter.mx {
 		header Content-Type application/json
 		respond `[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"mx.learningcenter.taller","sha256_cert_fingerprints":["REEMPLAZAR_CON_FINGERPRINT_SHA256"]}}]` 200
 	}
-	reverse_proxy el-taller:8000
+	reverse_proxy {$UPSTREAM_TALLER:el-taller:8000}
+	import lc_failover
 }
 
 gerencia.learningcenter.mx {
 	encode gzip
-	reverse_proxy la-gerencia:8001
+	reverse_proxy {$UPSTREAM_GERENCIA:la-gerencia:8001}
+	import lc_failover
 }
 
 recepcion.learningcenter.mx {
-	# S-RAM-Wave3: La Recepción apagada hasta S5 para ahorrar ~120 MB de
-	# RAM en el droplet. Para reactivar: subir el servicio con
-	# `docker compose --profile s5 up -d la-recepcion` y cambiar este
-	# bloque a `reverse_proxy la-recepcion:8002`.
+	# S-RAM-Wave3: La Recepción apagada hasta S5. OJO: la razón original era
+	# ahorrar ~120 MB de RAM en el droplet de 1.9 G. Tras la mudanza el NUC tiene
+	# 16 G, así que ese motivo ya no aplica: encenderla es decisión de producto,
+	# no de memoria. Para reactivar: subir el servicio con
+	# `docker compose --profile s5 up -d la-recepcion` EN EL NUC y cambiar este
+	# bloque a `reverse_proxy {$UPSTREAM_RECEPCION:la-recepcion:8002}`.
 	encode gzip
 	respond /ping "ok" 200
 	# El monitor del taller pregunta por /salud (docs/MONITOR_SALUD.md). Como el
 	# contenedor está apagado A PROPÓSITO, contesta El Portero: `apagado` con 200,
-	# que el monitor reporta como pendiente y NO como caída. Cuando S5 encienda
-	# la app, el `reverse_proxy` deja que responda su propio /salud (ya montado).
+	# que el monitor reporta como pendiente y NO como caída.
 	header /salud Content-Type application/json
 	header /salud Cache-Control no-store
 	respond /salud `{"estado":"apagado","app":"recepcion","modulos":[{"modulo":"web","estado":"apagado","detalle":"el portal de clientes se enciende en la fase S5"}]}` 200
@@ -58,6 +90,6 @@ recepcion.learningcenter.mx {
 :80 {
 	@taller host localhost 127.0.0.1
 	handle @taller {
-		reverse_proxy el-taller:8000
+		reverse_proxy {$UPSTREAM_TALLER:el-taller:8000}
 	}
 }

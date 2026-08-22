@@ -4,7 +4,9 @@
 # Idempotente: pull + up con digest pinneado en docker-compose.prod.yml.
 set -euo pipefail
 
-cd /opt/el-despacho
+# La raiz sale de donde vive el guion (mudanza al NUC 2026-08-21): en el droplet
+# es /opt/el-despacho, en el NUC /mnt/el-despacho.
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 echo "==> [Mudanza] git pull --ff-only"
 git pull --ff-only origin main
@@ -18,7 +20,7 @@ COMMIT_MSG=$(git log -1 --format="%s" HEAD | head -c 200)
 # NO este archivo (legacy). El sync de crons vive en AMBOS para mantenerlos
 # consistentes si algún día este script vuelve a usarse a mano.
 echo "==> [Mudanza] sincronizando crons (infra/cron/el-despacho.cron)"
-bash /opt/el-despacho/infra/scripts/sync_crons.sh || echo "   (warn) sync de crons falló — revisar manualmente"
+bash infra/scripts/sync_crons.sh || echo "   (warn) sync de crons falló — revisar manualmente"
 
 # S-Aviso-Deploy-V1: marca bandera en Redis ANTES de tocar containers.
 # Tolerante a fallo — el banner es nice-to-have, no debe abortar el deploy.
