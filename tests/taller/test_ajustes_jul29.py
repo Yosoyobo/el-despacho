@@ -21,9 +21,8 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def _drive_falso(monkeypatch):
-    """Drive nunca se toca en tests: el documento se arma con el HTML local."""
-    monkeypatch.setattr("lib.imagen_publica.precalentar", lambda *_a, **_k: False)
-    monkeypatch.setattr("lib.imagen_publica.proporcion", lambda *_a, **_k: 0.0)
+    """Nada de disco ni de Drive: el documento se arma con el HTML local."""
+    monkeypatch.setattr("lib.almacen.proporcion", lambda *_a, **_k: 0.0)
 
 
 def _servicio(nombre="Playera dry fit", **kw):

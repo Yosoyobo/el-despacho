@@ -246,3 +246,22 @@ def fecha_corta(valor) -> str:
         return f"{dia_semana} {valor.day:02d} {_MESES_ABR[valor.month - 1]} {valor.year}"
     except (AttributeError, IndexError, TypeError):
         return str(valor)
+
+
+@register.filter
+def medio_url(clave, variante: str = "w400") -> str:
+    """URL de una imagen de El Almacén (S-Medios-V1).
+
+    Devuelve la ruta que sirve **El Portero directo del disco** (`/medios/…`,
+    cacheable un año e `immutable`) cuando el derivado existe. Si la llave
+    todavía no está en el almacén, cae al proxy autenticado de siempre, que la
+    materializa al paso — así la siguiente vez ya sale por el camino rápido.
+
+    Uso: `{{ servicio.imagen_file_id|medio_url }}` para la miniatura,
+    `|medio_url:"w1000"` para la grande. Ver `lib/almacen.py`.
+    """
+    if not clave:
+        return ""
+    from lib import almacen
+
+    return almacen.url(str(clave), variante or "w400")

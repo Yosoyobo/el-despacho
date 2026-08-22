@@ -303,7 +303,7 @@ def test_foto_apaisada_no_infla_la_estimacion(cotizacion):
 
 def test_proporcion_sin_cache_no_lanza():
     """`proporcion` sólo lee de caché: sin imagen precalentada devuelve 0.0."""
-    from lib.imagen_publica import proporcion
+    from lib.almacen import proporcion
 
     assert proporcion("") == 0.0
     assert proporcion("no-existe-en-cache") == 0.0

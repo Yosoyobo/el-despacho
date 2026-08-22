@@ -1190,6 +1190,7 @@ def servicio_imagen(request, pk: int):
     archivo = request.FILES.get("imagen")
     if not archivo:
         return JsonResponse({"ok": False, "error": "No llegó ninguna imagen."}, status=400)
+    from lib import almacen
     from lib.adjuntos import subir
     res = subir(archivo, subcarpeta="Productos")
     if not res.ok:
@@ -1207,7 +1208,7 @@ def servicio_imagen(request, pk: int):
     return JsonResponse({
         "ok": True,
         "file_id": srv.imagen_file_id,
-        "url": reverse("catalogo-imagen-producto", args=[srv.imagen_file_id]) if srv.imagen_file_id else "",
+        "url": almacen.url(srv.imagen_file_id),
         "destino": "catalogo",
         "mensaje": "✓ Foto guardada en el producto del catálogo.",
     })
@@ -1257,25 +1258,44 @@ def _consultar_si_es_imagen_de_producto(file_id: str) -> bool:
 
 
 def _bytes_de_imagen(file_id: str, mini: bool = False):
-    """`(contenido, mime)` de la imagen, de la caché o de Drive.
+    """`(contenido, mime)` de la imagen, de El Almacén.
 
-    LC 2026-08-12: delega en `lib.imagen_publica.obtener`, que además GUARDA lo
-    que baja. Antes esto leía la caché pero nunca escribía en ella, así que
-    cada visita volvía a pedirle la foto a Drive y la servía sin reducir.
+    S-Medios-V1: lee del disco. Si la llave todavía no está guardada (una foto
+    que subió Drive antes de este sprint y que la importación no ha alcanzado),
+    `almacen.leer` la baja de Drive UNA vez y la deja guardada con sus derivados
+    — de ahí en adelante la sirve El Portero y esta vista no vuelve a entrar.
     """
-    from lib.imagen_publica import obtener
+    from lib import almacen
 
-    return obtener(file_id, mini=mini)
+    ruta = almacen.ruta_variante(file_id, "w400" if mini else "w1000")
+    if ruta is not None and ruta.is_file():
+        return ruta.read_bytes(), ("image/png" if ruta.suffix == ".png" else "image/jpeg")
+    try:
+        contenido, mime, _ = almacen.leer(file_id)
+    except almacen.ArchivoNoDisponible:
+        return None
+    # Recién importada: ya tiene derivados, así que se sirve el que se pidió.
+    ruta = almacen.ruta_variante(file_id, "w400" if mini else "w1000")
+    if ruta is not None and ruta.is_file():
+        return ruta.read_bytes(), ("image/png" if ruta.suffix == ".png" else "image/jpeg")
+    # Sin derivado posible (formato que Pillow no abre): el original tal cual,
+    # que es exactamente lo que hacía el proxy antes de este sprint.
+    return contenido, mime
 
 
 @require_http_methods(["GET"])
 def imagen_producto(request, file_id: str):
-    """Sirve la foto de un producto DENTRO del sistema (miniaturas y previews).
+    """Camino FRÍO de la foto de un producto (miniaturas y previews).
 
-    Autenticado y gateado por `catalogo.ver_nombres`; sólo entrega archivos que
-    sean imagen de un producto, de un uso o de una línea de cotización. A
-    diferencia del enlace firmado (`imagen_producto_publica`, para Google), este
-    no caduca — la miniatura sigue viéndose aunque la pestaña quede abierta.
+    Desde S-Medios-V1 las imágenes las sirve El Portero directo del disco
+    (`/medios/…`, ver `lib/almacen.py`). Esta vista queda para dos casos: una
+    llave que todavía no está en el almacén —la materializa al paso, así que la
+    siguiente vez ya sale por el camino rápido— y una imagen sin derivado
+    posible.
+
+    Sigue autenticada y gateada por `catalogo.ver_nombres`, y sólo entrega
+    archivos que sean imagen de un producto, de un uso o de una línea de
+    cotización.
     """
     if (r := _gate(request, "ver_nombres")) is not None:
         return r
@@ -1285,7 +1305,7 @@ def imagen_producto(request, file_id: str):
     mini = request.GET.get("mini") == "1"
     etiqueta = f'"{file_id}{"-mini" if mini else ""}"'
     # El `file_id` es inmutable: si cambia la foto, cambia el id. Así que si el
-    # navegador ya la tiene, no hace falta ni bajarla.
+    # navegador ya la tiene, no hace falta ni leerla.
     if request.headers.get("If-None-Match") == etiqueta:
         return HttpResponse(status=304)
     datos = _bytes_de_imagen(file_id, mini=mini)
@@ -1293,46 +1313,10 @@ def imagen_producto(request, file_id: str):
         return HttpResponse(status=404)
     resp = HttpResponse(datos[0], content_type=datos[1])
     # LC 2026-08-13 (Oscar): «¿hay manera de guardar las miniaturas en el
-    # dispositivo para que carguen más rápido?». Ya se guardaban un día; ahora
-    # un MES y marcadas `immutable`, así que el navegador ni siquiera pregunta
-    # si cambiaron: las pinta del disco. Es seguro porque el `file_id` es la
-    # identidad del archivo — al cambiar la foto cambia el id, y con él la URL.
+    # dispositivo para que carguen más rápido?». Un MES y `immutable`, así que el
+    # navegador ni siquiera pregunta si cambiaron: las pinta del disco. Es seguro
+    # porque el `file_id` es la identidad del archivo — al cambiar la foto cambia
+    # el id, y con él la URL.
     resp["Cache-Control"] = "private, max-age=2592000, immutable"
     resp["ETag"] = etiqueta
-    return resp
-
-
-@require_http_methods(["GET"])
-def imagen_producto_publica(request, token: str):
-    """Sirve la imagen de un producto por un enlace FIRMADO y TEMPORAL.
-
-    **Deliberadamente sin `login_required`.** Los PDF se generan vía Google
-    Docs y Google baja las imágenes del HTML de forma anónima, sin nuestra
-    sesión (ver `lib.imagen_publica`). Este endpoint es la única puerta sin
-    contraseña, y está cerrada con tres candados:
-
-    1. el token debe venir firmado con `DJANGO_SECRET_KEY` y no haber expirado,
-    2. el `file_id` debe ser la imagen de un producto del catálogo, de un uso en
-       un proyecto o de una línea de cotización — así un token no sirve para
-       leer archivos arbitrarios de Drive, y
-    3. sólo responde si Drive devuelve un `image/*`.
-
-    Cualquier fallo es un 404 seco (no filtra si el archivo existe o no).
-
-    Sirve de la caché cuando la imagen viene precalentada (lo normal al generar
-    un PDF): Google no espera mucho y bajar de Drive en caliente tarda lo
-    suficiente como para que la conversión se rinda y deje el hueco.
-    """
-    from lib.imagen_publica import verificar
-
-    file_id = verificar(token)
-    if not file_id or not _es_imagen_de_producto(file_id):
-        return HttpResponse(status=404)
-    datos = _bytes_de_imagen(file_id)
-    if datos is None:
-        return HttpResponse(status=404)
-    contenido, mime = datos
-    resp = HttpResponse(contenido, content_type=mime)
-    # El enlace ya es efímero por la firma; que nadie lo cachee en el camino.
-    resp["Cache-Control"] = "private, max-age=300"
     return resp

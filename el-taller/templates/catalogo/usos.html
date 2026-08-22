@@ -82,13 +82,13 @@
                          title="Pica aquí y pega la imagen (Ctrl/Cmd+V) · doble clic para subir un archivo · Supr para quitarla"
                          class="mx-auto flex h-14 w-14 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 outline-none transition hover:border-brand-400 focus:border-brand-400 dark:border-gray-600">
                         <img data-img-preview alt="" class="max-h-[52px] max-w-[52px] rounded object-contain{% if not u.imagen_efectiva_file_id %} hidden{% endif %}"
-                             {% if u.imagen_efectiva_file_id %}src="{% url 'catalogo-imagen-producto' u.imagen_efectiva_file_id %}"{% endif %}>
+                             {% if u.imagen_efectiva_file_id %}src="{{ u.imagen_efectiva_file_id|medio_url }}"{% endif %}>
                         <span data-img-hint class="text-[9px] leading-tight text-gray-400 dark:text-gray-500{% if u.imagen_efectiva_file_id %} hidden{% endif %}">pegar</span>
                         <input type="file" accept="image/*" data-img-file class="hidden">
                     </div>
                     <p data-img-estado class="mt-1 text-[10px]"></p>
                     {% elif u.imagen_efectiva_file_id %}
-                    <img src="{% url 'catalogo-imagen-producto' u.imagen_efectiva_file_id %}" alt="" class="mx-auto max-h-[52px] rounded object-contain">
+                    <img src="{{ u.imagen_efectiva_file_id|medio_url }}" alt="" class="mx-auto max-h-[52px] rounded object-contain">
                     {% else %}<span class="text-gray-400 dark:text-gray-500">—</span>{% endif %}
                 </td>
             </tr>

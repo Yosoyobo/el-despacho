@@ -597,33 +597,42 @@ def test_las_fichas_no_hacen_una_consulta_por_producto(client, admin_user, categ
 
 
 @pytest.mark.django_db
-def test_el_proxy_guarda_lo_que_baja_y_no_vuelve_a_pedirselo_a_drive(client, admin_user, producto, monkeypatch):
-    """Antes leía la caché pero nunca escribía: cada visita pegaba a Drive."""
-    from django.core.cache import cache
+def test_el_proxy_materializa_en_el_almacen_y_no_vuelve_a_pedirselo_a_drive(
+        client, admin_user, producto, monkeypatch):
+    """Antes leía la caché pero nunca escribía: cada visita pegaba a Drive.
 
-    import lib.imagen_publica as imgpub
+    S-Medios-V1: el proxy es el camino FRÍO. La primera visita baja la foto de
+    Drive UNA vez y la deja en disco con sus derivados; de ahí en adelante la
+    sirve El Portero y esta vista no vuelve a entrar."""
+    import io
 
-    cache.clear()
+    from PIL import Image
+
+    from lib import almacen
+
     producto.imagen_file_id = "FOTO-1"
     producto.save(update_fields=["imagen_file_id"])
+    buf = io.BytesIO()
+    Image.new("RGB", (700, 500), "olive").save(buf, format="JPEG")
     bajadas = []
 
-    class DriveFalso:
-        def descargar(self, file_id):
-            bajadas.append(file_id)
-            return b"\x89PNG-falso", "image/png", "foto.png"
+    def _descargar(file_id):
+        bajadas.append(file_id)
+        return buf.getvalue(), "image/jpeg", "foto.jpg"
 
-    monkeypatch.setattr(imgpub, "_reducir", lambda c, m, lado=0: (c, m))
-    monkeypatch.setitem(__import__("sys").modules, "lib.google_drive",
-                        type("M", (), {"drive": DriveFalso()}))
+    monkeypatch.setattr("lib.google_drive.drive.descargar", _descargar)
 
     client.force_login(admin_user)
     for _ in range(3):
         r = client.get("/catalogo/imagen/FOTO-1", {"mini": "1"})
         assert r.status_code == 200
     assert len(bajadas) == 1, f"le pegó a Drive {len(bajadas)} veces en vez de una"
-    # LC 2026-08-13: de un día a un mes, y `immutable` (el file_id es la
-    # identidad del archivo, así que la miniatura vive en el disco del aparato).
+    # Y quedó guardada: la siguiente vez que se pinte la página, la URL ya
+    # apunta al disco y el proxy no participa.
+    assert almacen.existe("FOTO-1")
+    assert almacen.url("FOTO-1").startswith("/medios/")
+    # LC 2026-08-13: un mes e `immutable` (el file_id es la identidad del
+    # archivo, así que la miniatura vive en el disco del aparato).
     assert "max-age=2592000" in r["Cache-Control"]
     assert "immutable" in r["Cache-Control"]
     assert r["ETag"]

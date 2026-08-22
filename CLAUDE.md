@@ -63,6 +63,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Reemplazo** | Fallback IA automático (S4) | — |
 | **El Cartero** | Envío de correo con canal intercambiable SMTP/n8n (`lib/cartero.py`) | — |
 | **El Celador** | Extremo `/salud` para el monitor del taller + su credencial (`lib/salud.py`, `lib/celador.py`) | — |
+| **El Almacén** | Medios en disco (fotos, comprobantes, CFDI, adjuntos) con derivados propios; Drive queda de espejo (`lib/almacen.py`) | — |
 
 ### Módulos de negocio
 
@@ -5483,6 +5484,109 @@ desvincular una cuenta de Google (se resuelve por shell); si se vuelve rutina,
 vale un botón en El Directorio. Y si Campañas empieza a topar el límite diario
 de Gmail, el camino es el relay SMTP de Workspace (`smtp-relay.gmail.com`,
 autorizado por IP del Droplet), que no depende de la contraseña de una persona.
+### S-Medios-V1 ✅ — El Almacén: los medios salen de Drive y viven en disco (2026-08-20, VERSION 2026.08.15)
+
+Pedido de Oscar: «que los medios carguen y cacheen rápido y no depender de Drive
+para una operación tan ineficiente que puede bloquear los llamados de API a
+Google». Decisiones por AskUserQuestion: **servido híbrido** (fotos por Caddy,
+documentos por Django) · **Drive de espejo** · **los 5 tipos de medio de una**.
+Plan en `/Users/mediacenter/.claude/plans/wild-dancing-biscuit.md`. Rama
+`worktree-medios-almacen` (otro sprint corría en el árbol principal — regla de
+Ago12-B). 6 fases, un commit por fase.
+
+**El problema.** Drive era la fuente de verdad Y el origen de cada lectura: El
+Despacho sólo guardaba el `file_id`, así que cada foto que alguien miraba eran
+**dos llamadas HTTP a Google** + un redimensionado con Pillow **en el hilo del
+request**, y el resultado se cacheaba en un Redis de **64 MB con `allkeys-lru`**
+compartido con la cola del Portavoz, el rate-limiter y las sesiones. Una ficha de
+catálogo con 30 productos fríos = 30 descargas y 30 resizes en serie sobre 1 vCPU
+con 1 worker. Un PDF con 6 fotos llenaba 2 MB de ese LRU de golpe.
+
+**El hallazgo que lo hizo barato.** Las ~10 subidas pasan por UNA función
+([`lib/adjuntos.subir`](lib/adjuntos.py)) y las ~13 lecturas por OTRA
+(`drive.descargar`), todas con la forma `(contenido, mime, nombre)`. Y las **15
+columnas** que guardan el id (`imagen_file_id`, `drive_file_id`,
+`avatar_drive_id`, `pdf_file_id`, `xml_file_id`; `max_length` 100/128/255) son
+cadenas opacas donde cabe un sha256 de 64 hex ⇒ **cero migraciones**.
+
+- **`lib/almacen.py`** (nuevo, sin ORM, usable desde los 3 projects):
+  `orig/<2>/<2>/<h>/{archivo,meta.json}` + `pub/<2>/<2>/<h>/w400.jpg|w1000.jpg`,
+  con `h = sha256(llave)`. Se hashea **la llave** (no se usa cruda) porque el APFS
+  de HAL no distingue mayúsculas y dos ids de Drive que sólo difirieran en eso
+  colisionarían; además uniforma el reparto y la ruta pública no revela el id de
+  Drive. **Que Caddy sólo alcance `pub/` es la decisión de seguridad central**:
+  nunca sirve un archivo subido por un usuario, sólo derivados JPEG/PNG nuestros
+  — eso cierra el sniffing/XSS de un XML o un SVG en el origen de la app. El
+  nombre que escribió el usuario tampoco toca el disco (el original se llama
+  `archivo`).
+- **La llave** es el sha256 del **contenido** para lo nuevo (la misma foto en
+  cinco productos ocupa un archivo) y el **id de Drive** para lo importado, así la
+  base no cambia. Se escribe por trozos a un temporal y se mueve con `os.replace`:
+  25 MB no se cargan a memoria y nadie lee un archivo a medias.
+- **`leer(clave)` tiene la firma de `drive.descargar`** y, si la llave no está en
+  disco, la baja de Drive y **la deja guardada**. Esa importación perezosa es lo
+  que permitió desplegar antes de terminar el respaldo masivo.
+- **Servido**: El Portero sirve `/medios/*` del disco con `public, max-age=1año,
+  immutable` + `nosniff` + `noindex` (snippet `(medios)` importado en los 3 hosts;
+  `root * /srv` con `./data/media/pub:/srv/medios:ro`). Verificado con **`caddy
+  adapt`**: cabeceras sobre archivo existente, `reverse_proxy` sólo cuando falta,
+  `file_server` al final. La ruta de respaldo (`lib/medios_views.py`, pública a
+  propósito y con regex estricto) **regenera** el derivado desde el original — no
+  necesita la llave, porque la ruta lleva la huella y el sha256 no se invierte;
+  importar de Drive sí la necesita, y ése es el otro camino (el proxy de siempre).
+- **Filtro `|medio_url`** (en `forms_helpers`): devuelve `/medios/…` si hay
+  derivado y, si no, **cae al proxy autenticado**, que la materializa al paso ⇒ se
+  cura solo. `url(absoluta=True)` devuelve vacío sin derivado: el único que pide
+  URL absoluta es Google al convertir el documento, y el proxy exige sesión.
+- **Se retira `lib/imagen_publica.py` completo** — el enlace firmado, su endpoint
+  público `/catalogo/img/<token>`, los tres candados y el precalentado. Existían
+  porque Google baja las imágenes anónimamente; ahora la ruta de El Portero ya es
+  pública y estable. Un endpoint sin sesión que nadie usa es superficie de ataque,
+  no compatibilidad.
+- **Dos bugs latentes cerrados de paso**: `exif_transpose` al ingresar (las fotos
+  de iPhone salían **acostadas**) y `proporcion()` ahora sale del `meta.json` ⇒
+  medir la foto en la hoja es **exacto**; antes, si no estaba en caché, el
+  estimador la suponía cuadrada y el hueco de las notas salía corto. También
+  desaparece el modo de falla «el PDF sale con el hueco»: el derivado ya está en
+  disco, Google no puede cansarse esperándolo.
+- **Cambio de comportamiento a favor**: si Drive falla, **la subida ya no falla**.
+  Antes, sin Drive conectado no se podía adjuntar nada.
+- **Importación y respaldo**: `manage.py medios_importar [--tipo|--limite|--pausa|
+  --dry-run]` recorre 14 pares (modelo, campo) y guarda bajo la misma llave;
+  `medios_derivar` rehace `pub/` desde `orig/`. `archivo.sh` suma un **rsync de
+  `data/media/orig/` a HAL** (árbol, sin `--delete` ni rotación: el almacén nunca
+  muta). `Cotizacion.pdf_file_id` **no** se importa (ese PDF nace en Drive por
+  Google Docs y nadie lo baja: la descarga lo regenera).
+- **El avatar se queda detrás de la sesión** a propósito: la foto de una persona
+  no va por la ruta pública, que es sólo para imágenes de producto.
+- **56 tests nuevos** (`tests/test_almacen.py` 45 incl. la vista de respaldo,
+  `tests/taller/test_medios_importar.py` 11). Actualizados a propósito los que
+  fijaban el mecanismo retirado: se retira `test_imagen_publica.py`; los fixtures
+  `_drive_falso` de jul26_r3/jul28/jul29/ago04 apuntan a `lib.almacen`; el test
+  del enlace firmado de `bonitas` y los del precalentado de jul25_r2 se reescriben
+  sobre El Almacén; el del proxy en ago12 ahora comprueba que materializa en disco.
+
+**Pasos post-deploy (Oscar):**
+1. El Mensajero despliega solo. El Portero se recrea porque el Caddyfile cambió
+   (§14 Bug F, ya automático), y las carpetas `data/media/{orig,pub}` las crea
+   Docker al montar.
+2. `docker compose … exec -T el-taller python manage.py medios_importar --dry-run`
+   para ver cuántos archivos y cuánto pesan.
+3. Importar por lotes: `… medios_importar --tipo imagenes --limite 200`, y luego
+   sin `--tipo` para el resto. **Se puede con el sistema en uso.**
+4. Verificar que el respaldo se los lleva: una corrida de `archivo.sh` debe
+   reportar `rsync medios→HAL OK`.
+
+**Deuda diseñada**: los documentos se sirven cargando los bytes a memoria
+(`HttpResponse`), no en streaming — es lo que ya hacían, y pasar a `FileResponse`
+cambiaría `resp.content` por `streaming_content` en varios tests; el espejo a
+Drive es **síncrono** en la subida (no hay cola de trabajos: el Portavoz es de
+eventos a n8n); **HEIC** sigue aceptándose sin decodificador y produce una imagen
+que el navegador no pinta — `almacen.hay_decodificador_heic()` ya está listo para
+que agregar `pillow-heif` a `requirements.txt` lo encienda sin tocar código
+(**decisión pendiente de Oscar**); WebP/AVIF por negociación de `Accept` sale
+barato ahora que los derivados están en disco; y un CDN queda a un `CNAME` de
+distancia porque las cabeceras ya son `public, immutable`.
 
 ### S-Acerca-OAuth ✅ — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
 
@@ -8414,6 +8518,15 @@ La Mudanza stackea automáticamente este archivo si existe:
 ---
 
 ## §16. Backups remotos a HAL (S2a.2)
+
+> **S-Medios-V1 (2026-08-20):** `archivo.sh` también espeja
+> `data/media/orig/` (los originales de El Almacén) a
+> `~/Backups/el-despacho/media/`. Va como **árbol rsync**, no como tarball:
+> son varios GB que casi no cambian. **Sin `--delete` y sin rotación** — el
+> almacén está direccionado por contenido, así que nada muta y un archivo que
+> desaparezca del droplet sigue siendo válido en HAL. Los **derivados**
+> (`data/media/pub/`) NO se respaldan: se regeneran con
+> `manage.py medios_derivar`. Reusa el mismo sentinel `.target_ok`.
 
 Tras cada corrida de `archivo.sh` (cada 3 días, 03:00 — ver §10) el
 script genera el backup local en el Droplet y luego **reconcilia** con

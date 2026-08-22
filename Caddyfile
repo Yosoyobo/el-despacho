@@ -29,6 +29,50 @@
 	}
 }
 
+# El Almacén (S-Medios-V1, reconectado tras la mudanza): los medios viven en
+# disco y NO pasan por Google Drive. Antes, cada foto que alguien miraba eran dos
+# llamadas a la API de Google más un redimensionado en el hilo del request.
+#
+# La ruta lleva la huella del contenido (`/medios/<2>/<2>/<sha256>/w400.jpg`), así
+# que el archivo de una URL NUNCA cambia: se cachea un año e `immutable` y el
+# navegador ni vuelve a preguntar. Es también lo que permitiría poner un CDN
+# adelante el día que se quiera, sin tocar una línea de código.
+#
+# ── DÓNDE ESTÁ EL DISCO ──────────────────────────────────────────────────────
+# Antes de la mudanza, El Portero y los archivos vivían en la misma máquina y
+# este bloque los servía con `file_server`. Ahora el disco está en el NUC y El
+# Portero en la ventana, así que hacen falta dos comportamientos — y los resuelve
+# ESTE MISMO archivo, sin bifurcarlo:
+#   · ventana  → `/srv/medios` no se monta, así que aquí no existe ningún archivo
+#     y todo se va por `@falta` al NUC: El Mostrador primero y El Taller de
+#     respaldo (`lb_policy first`), para que un contenedor caído no borre las
+#     fotos de la pantalla.
+#   · HAL local → el volumen sí está montado: se sirve del disco, como siempre.
+#
+# `root * /srv` con `pub/` montado en `/srv/medios` es la frontera de seguridad:
+# Caddy sólo alcanza los derivados JPEG/PNG que generamos NOSOTROS. Los originales
+# que sube la gente viven en `orig/`, fuera de su alcance, así que ningún archivo
+# ajeno se puede interpretar en el origen de la aplicación.
+(medios) {
+	handle /medios/* {
+		root * /srv
+		# Si el derivado no está aquí (la ventana, un `pub/` borrado a mano, un
+		# restore que sólo trajo los originales), lo pide al NUC. El respaldo es El
+		# Taller, que lo regenera del original y lo sirve.
+		@falta not file
+		reverse_proxy @falta {$UPSTREAM_MEDIOS:el-taller:8000} {$UPSTREAM_TALLER:el-taller:8000} {
+			lb_policy first
+			lb_try_duration 5s
+			fail_duration 10s
+		}
+		@existe file
+		header @existe Cache-Control "public, max-age=31536000, immutable"
+		header @existe X-Content-Type-Options nosniff
+		header @existe X-Robots-Tag noindex
+		file_server
+	}
+}
+
 # Dominio raíz: sitio de marketing de Learning Center (Next.js export + HeroUI,
 # desarrollado por Jorge).
 #
@@ -51,6 +95,7 @@ www.learningcenter.mx {
 
 taller.learningcenter.mx {
 	encode gzip
+	import medios
 	# El Envoltorio (V6 Bloque 9): Digital Asset Links para la TWA Android.
 	# El fingerprint SHA-256 sale del keystore de firma (ver envoltorio/README.md);
 	# mientras sea el placeholder, la app abre con barra de URL (no rompe nada).
@@ -64,6 +109,7 @@ taller.learningcenter.mx {
 
 gerencia.learningcenter.mx {
 	encode gzip
+	import medios
 	reverse_proxy {$UPSTREAM_GERENCIA:la-gerencia:8001}
 	import lc_failover
 }
@@ -88,6 +134,7 @@ recepcion.learningcenter.mx {
 
 # Acceso por IP / localhost (HAL dev): mismo routing por path-prefix de host header.
 :80 {
+	import medios
 	@taller host localhost 127.0.0.1
 	handle @taller {
 		reverse_proxy {$UPSTREAM_TALLER:el-taller:8000}
