@@ -41,12 +41,28 @@ chmod +x "$RAIZ/infra/vigia/vigia-kiosco.sh"
 echo "   $DESTINO"
 
 echo "== pantalla siempre encendida =="
+# `gsettings` necesita el bus de la sesión. Corriendo por SSH no está en el
+# entorno, así que se apunta al del usuario si existe — y si algo falla NO se
+# aborta la instalación: el lanzador vuelve a intentarlo al arrancar, ya dentro de
+# la sesión de escritorio, que es cuando de verdad importa.
 if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.session idle-delay 0
-    gsettings set org.gnome.desktop.screensaver lock-enabled false
-    gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
-    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
-    echo "   ahorro de pantalla, bloqueo y suspensión: apagados"
+    export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
+    ok=1
+    for par in \
+        "org.gnome.desktop.session idle-delay 0" \
+        "org.gnome.desktop.screensaver lock-enabled false" \
+        "org.gnome.desktop.screensaver idle-activation-enabled false" \
+        "org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing"
+    do
+        # shellcheck disable=SC2086
+        gsettings set $par 2>/dev/null || ok=0
+    done
+    if [ "$ok" = 1 ]; then
+        echo "   ahorro de pantalla, bloqueo y suspensión: apagados"
+    else
+        echo "   (no se pudo escribir la configuración de la sesión — probablemente"
+        echo "    no hay escritorio abierto. El lanzador lo reintenta al arrancar.)"
+    fi
 else
     echo "   (sin gsettings: no parece GNOME; el guion lo intenta con xset al arrancar)"
 fi
