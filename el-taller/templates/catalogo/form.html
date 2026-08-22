@@ -30,6 +30,21 @@
 
 {% comment %}`data-avisar-cambios` (ui.js): si tocas algo y te sales sin guardar,
 el navegador pregunta. Cubre también el borrado diferido de la foto.{% endcomment %}
+{% comment %}LC 2026-08-22 (nota 11): saltar de una categoría a otra sin
+volver a la lista. Cada pastilla lleva a la lista ya filtrada por ella; la del
+producto que estás viendo queda marcada.{% endcomment %}
+{% if categorias_navegacion %}
+<nav aria-label="Categorías" class="mb-5 flex flex-wrap items-center gap-2">
+    <span class="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Categorías</span>
+    {% for c in categorias_navegacion %}
+    <a href="{% url 'catalogo-lista' %}?categoria={{ c.pk }}"
+       class="badge badge-hex {% if form.categoria.value|stringformat:'s' == c.pk|stringformat:'s' %}ring-2 ring-brand-500{% endif %}"
+       style="--ec: {{ c.color|default:'#667085' }}"
+       title="Ver los productos de {{ c.nombre }}">{{ c.nombre }}</a>
+    {% endfor %}
+</nav>
+{% endif %}
+
 <form id="producto-form" method="post" data-avisar-cambios class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
 
@@ -132,12 +147,17 @@ el navegador pregunta. Cubre también el borrado diferido de la foto.{% endcomme
             <div class="mt-4">
                 <label for="{{ form.proveedor_principal.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">★ {{ form.proveedor_principal.label }}</label>
                 {{ form.proveedor_principal }}
+                {% comment %}LC 2026-08-22 (nota 4): la lista del ★ la mantiene el
+                JS en sincronía con las pastillas. Si el principal deja de surtir
+                el producto, se dice aquí — antes se quedaba apuntando a alguien
+                que ya no lo surte, sin que nadie se enterara.{% endcomment %}
+                <p id="prov-principal-aviso" class="mt-1 hidden text-xs font-medium text-warning-700 dark:text-warning-400"></p>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.proveedor_principal.help_text }}</p>
                 {% if form.proveedor_principal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.proveedor_principal.errors|join:" " }}</p>{% endif %}
             </div>
             {% comment %}Los checkboxes reales (lo que se postea) viven ocultos:
             las pastillas y el dropdown solo los prenden/apagan.{% endcomment %}
-            <div id="proveedores-lista" class="hidden">
+            <div id="proveedores-lista" class="hidden"{% if modo == 'nuevo' %} data-prov-autoprincipal="1"{% endif %}>
                 {% for choice in form.proveedores %}{{ choice.tag }}{% endfor %}
             </div>
             {% if form.proveedores.errors %}
@@ -233,55 +253,12 @@ el navegador pregunta. Cubre también el borrado diferido de la foto.{% endcomme
         </template>
     </section>
 
-    {% comment %}Calculadora de costos (2026-07) — solo productos de Simil Cuero
-    Plymouth. El material (fila 1) se suma tal cual; sublimación + mano de obra
-    se multiplican por el factor. El Subtotal (antes de IVA) alimenta el COSTO.{% endcomment %}
-    {% if mostrar_calculadora %}
-    <section data-calc-box data-factor="{{ calc_resultado.factor }}" data-iva="{{ iva_tasa|stringformat:'s' }}"
-             class="rounded-2xl border border-brand-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-brand-500/30 dark:bg-gray-900">
-        <h2 class="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">🧮 Calculadora de costos</h2>
-        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">El material se suma tal cual; la sublimación y la mano de obra se multiplican por {{ calc_resultado.factor }}. El Subtotal (antes de IVA) se copia al <strong>Costo</strong> del producto (el precio de venta lo pones tú).</p>
-
-        <div class="space-y-4">
-            {% comment %}(1) Costos de material — 4 campos, suma sin factor.{% endcomment %}
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costos de material <span class="text-xs font-normal text-gray-400">(se suman, sin multiplicar)</span></label>
-                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {% for v in calc_materiales %}
-                    <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_material_{{ forloop.counter0 }}" value="{{ v }}" data-calc placeholder="0.00"
-                           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                    {% endfor %}
-                </div>
-            </div>
-
-            {% comment %}(2) Material de sublimación — 4 campos, entran al factor.{% endcomment %}
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costo de material de sublimación</label>
-                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {% for v in calc_sublimacion %}
-                    <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_sublimacion_{{ forloop.counter0 }}" value="{{ v }}" data-calc placeholder="0.00"
-                           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                    {% endfor %}
-                </div>
-            </div>
-
-            {% comment %}(3) Mano de obra — campo capturado, entra al factor.{% endcomment %}
-            <div class="sm:max-w-xs">
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costo de mano de obra</label>
-                <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_mano_obra" value="{{ calc_mano_obra }}" data-calc placeholder="0.00"
-                       class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-            </div>
-        </div>
-
-        <div class="mt-5 flex justify-end">
-            <dl class="w-full max-w-xs space-y-1.5 text-sm">
-                <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Subtotal (antes de IVA)</dt><dd class="font-medium text-gray-900 dark:text-gray-100" data-calc-subtotal>{{ calc_resultado.subtotal|dinero }}</dd></div>
-                <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">IVA ({{ iva_tasa|floatformat:"-2" }}%)</dt><dd class="text-gray-600 dark:text-gray-300" data-calc-iva>{{ calc_resultado.iva|dinero }}</dd></div>
-                <div class="flex justify-between border-t border-gray-200 pt-1.5 text-base font-semibold dark:border-gray-800"><dt class="text-gray-900 dark:text-gray-100">Gran total</dt><dd class="text-gray-900 dark:text-gray-100" data-calc-total>{{ calc_resultado.total|dinero }}</dd></div>
-            </dl>
-        </div>
-    </section>
-    {% endif %}
+    {% comment %}LC 2026-08-22 (nota 3): la calculadora vive en un partial que
+    comparten la ficha y el modal de alta. Se pinta escondida cuando el producto
+    todavía no trae el proveedor que la dispara, y el JS la revela al marcarlo —
+    antes sólo existía al editar, así que en el alta no había dónde capturar los
+    insumos.{% endcomment %}
+    {% include "catalogo/_calculadora.html" with clase_extra="xl:col-span-3" %}
 
     {% comment %}Sprint 2 UX (item 7): historial de usos EN el panel — el detalle y
     la edición quedan unificados en una sola pantalla. Solo lectura.{% endcomment %}
@@ -368,6 +345,42 @@ el navegador pregunta. Cubre también el borrado diferido de la foto.{% endcomme
     </div>
 </form>
 
+{% comment %}LC 2026-08-22 (nota 10): archivar y eliminar al pie de la ficha —
+antes había que volver a la lista para cualquiera de las dos. Van FUERA del
+formulario de arriba (un <form> no se anida) y con el mismo candado que en la
+lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
+{% endcomment %}
+{% if modo == 'editar' and servicio %}{% if puede_archivar or puede_eliminar %}
+<section class="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Acciones</h3>
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+        {% if puede_archivar %}
+        <form method="post" action="{% url 'catalogo-archivar' servicio.pk %}" data-sin-avisar-cambios class="inline">{% csrf_token %}
+            <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn-secundario">{% if servicio.activo %}Archivar producto{% else %}Reactivar producto{% endif %}</button>
+        </form>
+        {% endif %}
+        {% if puede_eliminar %}
+        {% comment %}El `volver` del borrado NO puede ser esta página: el producto
+        deja de existir y volver aquí sería un 404. Se usa de dónde venías (la
+        lista con sus filtros, o la ficha del proveedor); sin eso, la vista cae a
+        la lista. Archivar sí se queda aquí — el producto sigue, y así ves que
+        quedó archivado y lo puedes reactivar.{% endcomment %}
+        <button type="button" data-eliminar-producto
+                hx-get="{% url 'catalogo-eliminar' servicio.pk %}{% if back_url_producto %}?volver={{ back_url_producto|urlencode }}{% endif %}"
+                hx-target="#modal-slot" hx-swap="innerHTML"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-error-300 px-4 py-2.5 text-sm font-medium text-error-600 transition hover:bg-error-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10">
+            Eliminar permanentemente
+        </button>
+        {% endif %}
+    </div>
+    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {% if servicio.activo %}Archivar lo saca de las listas y de los selectores, y se puede reactivar.{% else %}Este producto está archivado: no aparece en las listas ni en los selectores.{% endif %}
+        {% if puede_eliminar %} Eliminar es permanente y sólo se puede si el producto no se ha usado en ningún proyecto.{% endif %}
+    </p>
+</section>
+{% endif %}{% endif %}
+
 <script>
 // LC 2026-07-25: proveedores con dropdown-buscador + pastillas. El <select>
 // solo AGREGA; los checkboxes ocultos siguen siendo lo que se postea.
@@ -414,6 +427,70 @@ el navegador pregunta. Cubre también el borrado diferido de la foto.{% endcomme
             o.disabled = !!(c && c.checked);
         });
         picker.selectedIndex = 0;
+        sincronizarPrincipal(marcados);
+        // La calculadora se revela/esconde según si quedó marcado el proveedor
+        // que la dispara (nota 3). Marcar por JS no dispara `change`.
+        if (window.calcGateRefrescar) window.calcGateRefrescar();
+    }
+
+    // LC 2026-08-22 (nota 4, bug 3b): el ★ principal se pintaba UNA sola vez con
+    // el queryset del servidor y no se enteraba de nada. Dos consecuencias
+    // reales: un proveedor creado inline no aparecía en la lista hasta recargar,
+    // y al quitar una pastilla el principal se quedaba apuntando a alguien que
+    // ya no surte el producto. Ahora la lista del select ES la de los marcados.
+    const principal = document.querySelector('[name="proveedor_principal"]');
+    const avisoPrincipal = document.getElementById('prov-principal-aviso');
+    let primeraPintada = true;
+    function avisar(txt) {
+        if (!avisoPrincipal) return;
+        avisoPrincipal.textContent = txt || '';
+        avisoPrincipal.classList.toggle('hidden', !txt);
+    }
+    function sincronizarPrincipal(marcados) {
+        if (!principal) return;
+        const previo = principal.value;
+        const previoTexto = (principal.selectedIndex >= 0
+            ? (principal.options[principal.selectedIndex].textContent || '').trim() : '')
+            .replace(' — ya no surte este producto', '');
+        const validos = marcados.map((c) => String(c.value));
+        principal.innerHTML = '';
+        const vacio = document.createElement('option');
+        vacio.value = ''; vacio.textContent = '— Sin principal —';
+        principal.appendChild(vacio);
+        marcados.forEach(function (c) {
+            const o = document.createElement('option');
+            o.value = String(c.value); o.textContent = nombreDe(c.value);
+            principal.appendChild(o);
+        });
+        if (previo && validos.indexOf(previo) !== -1) {
+            principal.value = previo;                  // sigue surtiendo: se conserva
+            avisar('');
+        } else if (previo && primeraPintada) {
+            // En la CARGA no se toca lo guardado: puede ser un proveedor
+            // archivado que sí surte (el form lo conserva como opción válida a
+            // propósito). Se deja elegido y se avisa; el usuario decide.
+            const o = document.createElement('option');
+            o.value = previo; o.textContent = (previoTexto || '#' + previo) + ' — ya no surte este producto';
+            principal.appendChild(o);
+            principal.value = previo;
+            avisar('★ ' + (previoTexto || 'El principal') + ' no está entre los proveedores marcados. Márcalo o elige otro.');
+        } else if (previo) {
+            // Lo acaba de quitar de las pastillas: se limpia (no se reasigna a
+            // otro por nuestra cuenta) y se dice.
+            principal.value = '';
+            avisar('★ Se quitó el principal: ' + (previoTexto || 'el anterior') + ' ya no surte este producto. Elige otro.');
+        } else if (validos.length && store.hasAttribute('data-prov-autoprincipal')) {
+            // Sólo en el ALTA: el primero marcado, para que lo que se ve sea lo
+            // que se guarda (el servidor hace exactamente lo mismo). En la ficha
+            // NO se inventa un principal: si no hay, «Sin principal» es la
+            // verdad, y elegirlo por su cuenta sería cambiar lo que nadie pidió.
+            principal.value = validos[0];
+            avisar('');
+        } else {
+            principal.value = '';
+            avisar('');
+        }
+        primeraPintada = false;
     }
     picker.addEventListener('change', function () {
         const c = cbDe(picker.value);
@@ -625,39 +702,5 @@ el navegador pregunta. Cubre también el borrado diferido de la foto.{% endcomme
 // La imagen del producto (pegar/subir) la maneja `static/js/imagen_pegar.js`,
 // compartido con las tarjetas del proyecto y el historial de usos.
 
-// Calculadora de costos (Simil Cuero Plymouth): recálculo en vivo.
-// Subtotal = (Σ sublimación + mano de obra) × factor + Σ material.
-(function () {
-    const box = document.querySelector('[data-calc-box]');
-    if (!box) return;
-    const factor = parseFloat(box.getAttribute('data-factor')) || 2.2;
-    const iva = parseFloat(box.getAttribute('data-iva')) || 16;
-    const costoInput = document.querySelector('[name="costo"]');
-    const subEl = box.querySelector('[data-calc-subtotal]');
-    const ivaEl = box.querySelector('[data-calc-iva]');
-    const totEl = box.querySelector('[data-calc-total]');
-    const money = (n) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const val = (el) => parseFloat(el && el.value) || 0;
-    function recalc() {
-        let m1 = 0, m2 = 0;
-        box.querySelectorAll('input[name^="calc_material_"]').forEach((el) => { m1 += val(el); });
-        box.querySelectorAll('input[name^="calc_sublimacion_"]').forEach((el) => { m2 += val(el); });
-        const mo = val(box.querySelector('input[name="calc_mano_obra"]'));
-        const subtotal = (m2 + mo) * factor + m1;
-        const ivaMonto = subtotal * iva / 100;
-        if (subEl) subEl.textContent = money(subtotal);
-        if (ivaEl) ivaEl.textContent = money(ivaMonto);
-        if (totEl) totEl.textContent = money(subtotal + ivaMonto);
-        // El Subtotal (antes de IVA) alimenta el COSTO del producto (el precio lo pone el usuario).
-        if (costoInput && !costoInput.disabled && !costoInput.readOnly) {
-            costoInput.value = subtotal.toFixed(2);
-        }
-    }
-    // Solo al editar un campo (NO al cargar: evita pisar el precio con 0 si aún
-    // no se capturan insumos).
-    box.addEventListener('input', function (e) {
-        if (e.target.matches('[data-calc]')) recalc();
-    });
-})();
 </script>
 {% endblock %}

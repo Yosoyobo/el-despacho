@@ -216,7 +216,7 @@ def _pills_estados() -> list[dict]:
 def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
               tasas_qs=None, tasas_seleccionadas=None):
     # #12: la unidad se consolidó a 'pz' (sin selector por línea).
-    from apps.el_catalogo.models import CategoriaServicio
+    from apps.el_catalogo.models import CategoriaServicio, Proveedor
     categorias = CategoriaServicio.objects.filter(activa=True).order_by("orden", "nombre")
     titulo_pagina = "Nueva cotización" if modo == "nuevo" else f"Editar {cot.codigo if cot else ''}".strip()
     return {
@@ -228,6 +228,10 @@ def _ctx_form(form, formset, *, modo: str, cot: Cotizacion | None = None,
         "tasas": tasas_qs if tasas_qs is not None else TasaImpositiva.objects.filter(activa=True),
         "tasas_seleccionadas": set(tasas_seleccionadas or []),
         "categorias_disponibles": categorias,
+        # LC 2026-08-22 (nota 2): el alta rápida de producto ya pide proveedor.
+        "proveedores_activos": list(
+            Proveedor.objects.filter(activo=True).order_by("razon_social")
+        ),
     }
 
 

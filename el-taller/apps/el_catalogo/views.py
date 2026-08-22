@@ -51,6 +51,72 @@ def _proveedores_activos():
     return list(Proveedor.objects.filter(activo=True).order_by("razon_social"))
 
 
+def _ids_proveedores_del_post(post) -> list[int]:
+    """Ids de proveedor que trae el POST, **en el orden en que llegaron** y
+    filtrados contra los ACTIVOS (LC 2026-08-22, nota 2).
+
+    El orden importa: el primero es el que queda como principal, y
+    `Proveedor.Meta.ordering` es alfabético — «el primero de la M2M» no es «el
+    primero que marcaste». Nunca se confía en los ids del cliente: lo que no
+    exista o esté archivado se descarta en silencio.
+    """
+    pedidos: list[int] = []
+    for crudo in post.getlist("proveedores"):
+        crudo = (crudo or "").strip()
+        if crudo.isdigit() and int(crudo) not in pedidos:
+            pedidos.append(int(crudo))
+    if not pedidos:
+        return []
+    validos = set(
+        Proveedor.objects.filter(activo=True, pk__in=pedidos).values_list("pk", flat=True)
+    )
+    return [pk for pk in pedidos if pk in validos]
+
+
+def _ctx_calculadora(srv=None, post=None) -> dict:
+    """Contexto del recuadro de la calculadora — el MISMO en el alta y en la ficha.
+
+    `mostrar_calculadora` = ya aplica (el producto trae el proveedor, se pinta
+    visible). `calc_disponible` = el recuadro se pinta —escondido si aún no
+    aplica— porque el proveedor que la dispara EXISTE, así que el JS puede
+    revelarlo en cuanto se marque (LC 2026-08-22, nota 3).
+    """
+    from ajustes.models.fiscal import ConfiguracionFiscal
+
+    from .calculadora import (
+        FACTOR_DEFAULT,
+        calcular,
+        parsear_detalles,
+        proveedores_calculadora,
+        servicio_usa_calculadora,
+    )
+    mostrar = servicio_usa_calculadora(srv) if srv is not None and srv.pk else False
+    ids = proveedores_calculadora()
+    # Con `post` (un alta que no pasó validación) se re-pintan los insumos que se
+    # acababan de capturar; sin él, lo guardado.
+    det = parsear_detalles(post) if post is not None else ((srv.detalles_costo or {}) if srv is not None else {})
+
+    def _pad4(lst):
+        return (list(lst or []) + ["", "", "", ""])[:4]
+
+    def _disp(v):
+        return "" if (not v or str(v) in {"0", "0.0", "0.00"}) else str(v)
+
+    iva_tasa = ConfiguracionFiscal.obtener().iva_tasa
+    resultado = calcular(det, iva_tasa) if mostrar else None
+    return {
+        "mostrar_calculadora": mostrar,
+        "calc_disponible": mostrar or bool(ids),
+        "calc_proveedores_json": json.dumps([str(i) for i in ids]),
+        "calc_factor": str((resultado or {}).get("factor") or FACTOR_DEFAULT),
+        "calc_materiales": [_disp(x) for x in _pad4(det.get("materiales"))],
+        "calc_sublimacion": [_disp(x) for x in _pad4(det.get("sublimacion"))],
+        "calc_mano_obra": _disp(det.get("mano_obra")),
+        "calc_resultado": resultado,
+        "iva_tasa": iva_tasa,
+    }
+
+
 def _gate(request, accion: str):
     """Helper: 302 a /sign-in si no auth, 403 si no tiene el permiso, None si OK."""
     if not request.user.is_authenticated:
@@ -315,6 +381,31 @@ def nuevo(request):
             srv.procesos_default = procesos_default.parsear(request.POST)
             srv.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
+            # LC 2026-08-22 (nota 4): el alta deja el producto COMPLETO. Si se
+            # marcaron proveedores y nadie eligió principal, el primero que se
+            # marcó lo es. `proveedor_default` ya caía al primero ACTIVO de la
+            # M2M —que es el primero alfabético—, así que dejarlo explícito es
+            # lo que hace que el ★ coincida con lo que el usuario eligió.
+            if srv.proveedor_principal_id is None:
+                ids_prov = _ids_proveedores_del_post(request.POST)
+                ligados = set(srv.proveedores.values_list("pk", flat=True))
+                primero = next((pk for pk in ids_prov if pk in ligados), None)
+                if primero is not None:
+                    srv.proveedor_principal_id = primero
+                    srv.save(update_fields=["proveedor_principal", "actualizado_en"])
+            # LC 2026-08-22 (nota 3): la calculadora también corre en el ALTA.
+            # Antes sólo se guardaba al editar, así que capturar los insumos en
+            # el alta no servía de nada: el primer guardado los tiraba. Va
+            # DESPUÉS de `save_m2m()` porque el gating depende de la M2M.
+            from apps.el_catalogo.calculadora import (
+                calcular,
+                parsear_detalles,
+                servicio_usa_calculadora,
+            )
+            if servicio_usa_calculadora(srv):
+                srv.detalles_costo = parsear_detalles(request.POST)
+                srv.costo = calcular(srv.detalles_costo)["subtotal"]
+                srv.save(update_fields=["detalles_costo", "costo", "actualizado_en"])
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_creado",
                 actor_id=request.user.pk,
@@ -334,12 +425,19 @@ def nuevo(request):
     ctx = {
         "form": form, "modo": "nuevo",
         "precio_readonly": not puede(request.user, "catalogo", "editar_precios"),
+        "ve_precios": puede(request.user, "catalogo", "ver_precios"),
         # Impresión + procesos adicionales (la página completa los captura; el
         # modal de alta rápida sigue ligero — se capturan al abrir el producto).
         "proveedores_activos": _proveedores_activos(),
         "procesos_default_json": json.dumps(
             procesos_default.parsear(request.POST) if request.method == "POST" else []
         ),
+        # LC 2026-08-22 (nota 3): el recuadro de la calculadora se pinta ESCONDIDO
+        # y el JS lo revela en cuanto se marca el proveedor que la dispara.
+        **_ctx_calculadora(post=request.POST if request.method == "POST" else None),
+        # LC 2026-08-22 (nota 11): saltar de una categoría a otra sin volver a la
+        # lista — las pastillas llevan a la lista ya filtrada.
+        "categorias_navegacion": CategoriaServicio.objects.filter(activa=True),
         **_navegacion_producto(request),
     }
     tmpl = "catalogo/_modal_nuevo_producto.html" if es_htmx else "catalogo/form.html"
@@ -457,37 +555,24 @@ def editar(request, pk: int):
         .prefetch_related("procesos__proveedor")
         .order_by("-creado_en")
     )
-    # Calculadora de costos (Simil Cuero Plymouth): prefill + resultado en vivo.
-    from apps.el_catalogo.calculadora import calcular, servicio_usa_calculadora
-
-    from ajustes.models.fiscal import ConfiguracionFiscal
-    mostrar_calc = servicio_usa_calculadora(srv)
-    iva_tasa = ConfiguracionFiscal.obtener().iva_tasa
-
-    def _pad4(lst):
-        return (list(lst or []) + ["", "", "", ""])[:4]
-
-    def _disp(v):
-        return "" if (not v or str(v) in {"0", "0.0", "0.00"}) else str(v)
-
-    det = srv.detalles_costo or {}
-    calc_mano_obra = _disp(det.get("mano_obra"))
     return render(request, "catalogo/form.html", {
         "form": form, "modo": "editar", "servicio": srv,
         "precio_readonly": not puede_editar_precios,
         "usos": usos,
         "ve_precios": puede(request.user, "catalogo", "ver_precios"),
-        "mostrar_calculadora": mostrar_calc,
-        "calc_materiales": [_disp(x) for x in _pad4(det.get("materiales"))],
-        "calc_sublimacion": [_disp(x) for x in _pad4(det.get("sublimacion"))],
-        "calc_mano_obra": calc_mano_obra,
-        "calc_resultado": calcular(det, iva_tasa) if mostrar_calc else None,
-        "iva_tasa": iva_tasa,
+        # LC 2026-08-22 (nota 10): la ficha ya trae archivar y eliminar al pie —
+        # antes había que volver a la lista para cualquiera de las dos.
+        "puede_archivar": puede(request.user, "catalogo", "archivar"),
+        "puede_eliminar": puede(request.user, "catalogo", "eliminar"),
+        # Calculadora de costos (Simil Cuero Plymouth): prefill + resultado en vivo.
+        **_ctx_calculadora(srv),
         # LC 2026-07-25: impresión + procesos adicionales del producto (plantilla
         # que se copia al proyecto). El JSON alimenta el JS del recuadro.
         "proveedores_activos": _proveedores_activos(),
         "procesos_default_json": json.dumps(procesos_default.normalizados(srv)),
         "procesos_costo_extra": procesos_default.costo_extra(srv),
+        # LC 2026-08-22 (nota 11): navegación entre categorías desde la ficha.
+        "categorias_navegacion": CategoriaServicio.objects.filter(activa=True),
         **_navegacion_producto(request),
     })
 
@@ -595,9 +680,15 @@ def categoria_borrar(request, pk: int):
 def servicio_quick_create(request):
     """POST /catalogo/quick-create/ — crea Servicio inline desde el form de Proyecto.
 
-    Espera POST con: nombre, categoria_id, precio_base, unidad (default 'pieza').
-    Retorna JSON con id + nombre + categoria_nombre + precio para que el JS
-    del form de Proyecto agregue la opción al select y la seleccione.
+    Espera POST con: nombre, categoria_id, precio_base, costo y `proveedores`
+    (0..n ids). Retorna JSON con id + nombre + categoria_nombre + precio +
+    proveedores para que el JS del form de Proyecto agregue la opción al select,
+    la seleccione y pinte la etiqueta del proveedor.
+
+    LC 2026-08-22 (nota 2): antes el atajo sólo aceptaba nombre/categoría/precio/
+    costo, así que el producto nacía **sin proveedor** — y sin proveedor no hay
+    calculadora (`servicio_usa_calculadora` pregunta por la M2M) ni principal.
+    De ahí que «el alta rápida deje el producto a medias».
     """
     if (r := _gate(request, "crear")) is not None:
         return r
@@ -619,28 +710,46 @@ def servicio_quick_create(request):
         categoria = CategoriaServicio.objects.get(pk=categoria_id, activa=True)
     except CategoriaServicio.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Categoría no encontrada."}, status=400)
+    # Proveedores: el PRIMERO que se marcó queda como principal, así el ★ del
+    # catálogo dice la verdad desde el minuto uno y la tarjeta del proyecto
+    # autocompleta al proveedor correcto (nota 4).
+    ids_prov = _ids_proveedores_del_post(request.POST)
     s = Servicio.objects.create(
         nombre=nombre,
         categoria=categoria,
         precio_base=precio,
         costo=costo,
         unidad=unidad,
+        proveedor_principal_id=ids_prov[0] if ids_prov else None,
         creado_por=request.user,
     )
+    if ids_prov:
+        s.proveedores.set(ids_prov)
+    provs = list(Proveedor.objects.filter(pk__in=ids_prov)) if ids_prov else []
+    por_pk = {pv.pk: pv for pv in provs}
+    principal = por_pk.get(ids_prov[0]) if ids_prov else None
     emitir(EventoPortavoz(
         tipo="catalogo.servicio_quick_creado",
         actor_id=request.user.pk, actor_email=request.user.email,
-        payload={"servicio_id": s.pk, "nombre": s.nombre, "categoria": categoria.nombre},
+        payload={"servicio_id": s.pk, "nombre": s.nombre, "categoria": categoria.nombre,
+                 "proveedores": ids_prov},
     ))
     return JsonResponse({
         "ok": True,
         "id": s.pk,
         "nombre": s.nombre,
         "categoria_nombre": categoria.nombre,
+        "categoria_id": str(categoria.pk),
         "precio": str(s.precio_base),
         "costo": str(s.costo),
         "margen": s.margen_porcentaje,
         "label": f"{s.nombre} ({categoria.nombre})",
+        # Para que el JS pinte la etiqueta y la tarjeta del proyecto autocomplete
+        # el proveedor sin recargar (nota 2).
+        "proveedores": [{"id": pk, "razon_social": por_pk[pk].razon_social}
+                        for pk in ids_prov if pk in por_pk],
+        "proveedor_id": str(principal.pk) if principal else "",
+        "proveedor": principal.razon_social if principal else "",
     })
 
 

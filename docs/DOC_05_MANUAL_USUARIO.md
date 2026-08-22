@@ -5,6 +5,64 @@
 
 ---
 
+## Novedades — El alta rápida de producto ya pide proveedor, y la ficha tiene sus botones (23 de agosto de 2026)
+
+**Qué cambió**
+
+Había **dos formas** de dar de alta un producto y no hacían lo mismo. La ventana de
+«Nuevo producto» sí te preguntaba por el proveedor; el atajo **«+ Crear producto
+nuevo en el catálogo»** —el que usas sin salir del proyecto o de la cotización—
+no. Y de ahí se caían tres cosas que parecían distintas:
+
+- el producto nacía **sin proveedor**;
+- **sin proveedor no aparecía la calculadora** de Simil Cuero Plymouth (el sistema
+  decide si la enseña mirando quién surte el producto);
+- y tampoco podía quedar **proveedor principal**.
+
+**El atajo ya pregunta por el proveedor.** En los cuatro lugares donde vive el
+atajo —Nuevo proyecto, la página del proyecto, la ventana de «Agregar producto» y
+el formulario de la cotización— hay un **buscador de proveedor**: escribes el
+nombre, lo eliges y queda como **pastilla con ✕**. Puedes poner uno o varios. El
+**primero que marques queda como ★ principal**, así que la tarjeta del producto en
+el proyecto ya autocompleta al proveedor correcto.
+
+**La calculadora aparece en cuanto marcas al proveedor.** Antes sólo existía al
+*editar* un producto, así que capturar los insumos en el alta no servía de nada: el
+primer guardado los tiraba. Ahora se asoma sola —tanto en la ventana de «Nuevo
+producto» como en la página completa— en el momento en que marcas «Simil Cuero
+Plymouth», y lo que capturas **se guarda desde el alta**. El Subtotal sigue
+alimentando el **Costo** (el precio de venta lo pones tú).
+
+**El ★ Proveedor principal ya se entera de los cambios.** Ese menú se pintaba una
+sola vez y nunca volvía a mirar nada. Dos consecuencias que se sentían como «no se
+está actualizando»:
+
+- Un proveedor **creado ahí mismo** no aparecía en la lista del principal hasta
+  recargar la página. Ya aparece al instante.
+- Si quitabas un proveedor de las pastillas, el principal se quedaba apuntando a
+  alguien que **ya no surte** ese producto, sin avisar. Ahora el menú sólo ofrece a
+  los que están marcados, y si el principal se cae de la lista **te lo dice** en
+  amarillo para que elijas otro.
+
+**Y al cambiar de producto en la tarjeta de un proyecto, el proveedor se
+actualiza.** Antes sólo se rellenaba si el campo estaba vacío, así que si la línea
+ya traía un proveedor —el viejo— al elegir otro producto se quedaba el anterior.
+Ahora manda el catálogo, igual que el costo. Un proveedor que hayas puesto **a
+mano** se respeta hasta que cambies de producto; **el precio nunca se pisa** (ése
+se negocia por proyecto).
+
+**La ficha del producto tiene sus dos botones.** Al pie de la página del producto
+aparece un recuadro **«Acciones»** con **Archivar producto** (o Reactivar) y
+**Eliminar permanentemente**. Antes había que volver a la lista para cualquiera de
+las dos. Eliminar sigue siendo sólo para el super admin y sólo si el producto no se
+ha usado en ningún proyecto.
+
+**Y puedes saltar de una categoría a otra sin volver a la lista.** Arriba de la
+ficha hay una fila de **pastillas de categoría**: la del producto que estás viendo
+va marcada, y picando cualquier otra te lleva a la lista ya filtrada por ella.
+
+---
+
 ## Novedades — El Site ahora se ve como la pantalla de la pared (22 de agosto de 2026)
 
 **Qué cambió**
@@ -4249,6 +4307,13 @@ producto nuevo en el catálogo" arriba de la lista de productos. Captura
 **Categoría + Nombre + Costo + Precio + Cantidad + Merma** —cada recuadro dice qué
 es— y queda registrado en el catálogo y agregado a este proyecto.
 
+Debajo hay un **buscador de Proveedor**: escribe el nombre, elígelo y queda como
+pastilla con ✕; puedes poner **uno o varios**. El **primero que marques queda como
+★ principal** del producto, así que la tarjeta ya se autocompleta con él. Vale la
+pena ponerlo aquí: un producto sin proveedor no puede tener principal y tampoco
+enseña su calculadora de costos. El mismo buscador está en el atajo de la ventana
+"Agregar producto" y en el del formulario de la cotización.
+
 ---
 
 ## Tareas (Pizarrón)
@@ -4400,7 +4465,11 @@ Lo que vendes/produces. Cada producto tiene:
   nombre en los buscadores. Cuando en un proyecto le pones **otro** proveedor a un
   producto, ése **se liga solo** al catálogo como alternativa, pero **no le quita
   el lugar al principal** (si el producto no tenía principal, el primero que se
-  ligue lo ocupa).
+  ligue lo ocupa). El menú del ★ **sólo ofrece a los proveedores que tengas
+  marcados**: si creas uno ahí mismo, aparece al instante, y si quitas de las
+  pastillas al que era principal, el sistema **te avisa en amarillo** para que
+  elijas otro (antes se quedaba apuntando a alguien que ya no surtía el producto,
+  sin decir nada).
 - **Impresión y procesos adicionales** (ver abajo).
 - **Usos:** la columna "Usos" de la lista cuenta las veces que el producto se
   ha usado en proyectos; al abrir el producto ves su **bitácora de Usos** (en
@@ -4424,7 +4493,13 @@ sistema te deja en **su página** para que sigas con la imagen, los proveedores 
 los procesos.
 
 Para sacar un producto de circulación usa **Archivar** (se puede **Reactivar**);
-el borrado permanente sólo lo hace super admin y sólo si no se ha usado.
+el borrado permanente sólo lo hace super admin y sólo si no se ha usado. Los dos
+botones están **al pie de la ficha del producto**, en el recuadro **«Acciones»**, y
+también en cada renglón de la vista de tabla.
+
+Arriba de la ficha hay una fila de **pastillas de categoría**: la del producto que
+estás viendo va marcada, y picando cualquier otra te lleva a la lista ya filtrada
+por ella — para brincar de una familia de productos a otra sin volver atrás.
 
 **Quitar la foto de la ficha del producto** es un cambio **pendiente**: pica el
 recuadro, aprieta **Supr** y la foto se marca para quitarse, pero sólo desaparece
@@ -4455,13 +4530,17 @@ suma de los procesos solo como referencia.
 
 **Con El Chalán:** puede dar de alta y actualizar productos (nombre, precio,
 costo, categoría) — por ejemplo *"crea el producto Playera lisa a 200 con costo
-80 en Producción"*. La **impresión y los procesos adicionales se capturan aquí en
-la ficha**: El Chalán todavía no los edita.
+80 en Producción"*. La **impresión, los procesos adicionales, los proveedores
+aplicables y el ★ principal se capturan aquí en la ficha**: El Chalán todavía no
+los edita.
 
 ### Calculadora de costos (productos de Simil Cuero Plymouth)
 
-Los productos ligados al proveedor **"Simil Cuero Plymouth"** muestran, al
-editarlos, un recuadro **"🧮 Calculadora de costos"** con tres grupos:
+Los productos ligados al proveedor **"Simil Cuero Plymouth"** muestran un recuadro
+**"🧮 Calculadora de costos"** con tres grupos. **Aparece en cuanto marcas a ese
+proveedor** —también cuando estás dando de alta el producto, en la ventana de
+"Nuevo producto" o en la página completa— así que ya puedes capturar los insumos
+desde el primer guardado:
 
 1. **Costos de material** — 4 campos que se **suman** (opcionales). Este total
    **nunca** se multiplica.
@@ -4473,7 +4552,8 @@ El sistema calcula en vivo:
 luego el **IVA** y el **Gran total**. El **Subtotal** se copia al **Costo** del
 producto; el **precio de venta lo pones tú** (la calculadora no lo toca). Para
 que aparezca la calculadora, el producto debe tener marcado a "Simil Cuero
-Plymouth" en sus **Proveedores aplicables**.
+Plymouth" en sus **Proveedores aplicables** — si lo desmarcas, el recuadro se
+esconde otra vez.
 
 **Al guardar, el costo nuevo baja solo a los proyectos abiertos** donde ya está
 capturado ese producto, y te dice a cuántos llegó. **No se toca** lo que ya se

@@ -1,0 +1,124 @@
+{% comment %}Selector mínimo de proveedores para el ALTA RÁPIDA de producto
+(LC 2026-08-22, nota 2). Mismo patrón que la ficha: un dropdown con buscador que
+sólo AGREGA, más pastillas con ✕. El panel del atajo no es un `<form>` —su JS
+manda un `fetch`—, así que lo elegido vive en inputs ocultos y cada panel los
+lee con `window.qcProvIds(prefijo)` para meterlos en el POST.
+
+Sin proveedor el producto nacía a medias: no había calculadora (el gating
+pregunta por la M2M) ni proveedor principal.
+
+Params: `prefijo` (qc · qcp · cot-qc …), `proveedores_activos`, `clase_extra`.
+{% endcomment %}
+<div data-qc-prov-box data-qc-prefijo="{{ prefijo }}" class="{{ clase_extra|default:'' }}">
+    <label for="{{ prefijo }}-prov-picker" class="text-xs font-medium text-gray-600 dark:text-gray-300">Proveedor</label>
+    {% if proveedores_activos %}
+    <select id="{{ prefijo }}-prov-picker" data-qc-prov-picker data-select-buscable
+            aria-label="Buscar y agregar proveedor"
+            class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+        <option value="">Buscar y agregar…</option>
+        {% for prov in proveedores_activos %}<option value="{{ prov.pk }}">{{ prov.razon_social }}</option>{% endfor %}
+    </select>
+    <div data-qc-prov-chips class="mt-2 flex flex-wrap gap-1.5"></div>
+    <div data-qc-prov-store class="hidden"></div>
+    {% else %}
+    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Aún no hay proveedores. Se lo pones después en la ficha.</p>
+    {% endif %}
+</div>
+<script>
+// Alta rápida: proveedores con dropdown-buscador + pastillas (LC 2026-08-22).
+// Se monta escaneando `[data-qc-prov-box]` con un flag (no `currentScript`), así
+// también corre dentro del modal «Agregar producto» que inyecta HTMX.
+(function () {
+    'use strict';
+    function caja(prefijo) {
+        return document.querySelector('[data-qc-prov-box][data-qc-prefijo="' + prefijo + '"]');
+    }
+    function montar(box) {
+        if (box.dataset.qcProvListo === '1') return;
+        var picker = box.querySelector('[data-qc-prov-picker]');
+        var chips = box.querySelector('[data-qc-prov-chips]');
+        var store = box.querySelector('[data-qc-prov-store]');
+        if (!picker || !chips || !store) return;   // sin proveedores no hay nada que montar
+        box.dataset.qcProvListo = '1';
+
+        function ocultos() { return Array.prototype.slice.call(store.querySelectorAll('input')); }
+        function ids() { return ocultos().map(function (i) { return i.value; }); }
+        function nombreDe(v) {
+            var o = Array.prototype.slice.call(picker.options).find(function (x) { return x.value === String(v); });
+            return o ? o.textContent.trim() : ('#' + v);
+        }
+        function pintar() {
+            chips.innerHTML = '';
+            ocultos().forEach(function (inp) {
+                var chip = document.createElement('span');
+                chip.className = 'inline-flex max-w-full items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300';
+                var txt = document.createElement('span');
+                txt.className = 'truncate';
+                txt.textContent = nombreDe(inp.value);
+                var x = document.createElement('button');
+                x.type = 'button';
+                x.className = 'shrink-0 text-brand-500 hover:text-error-600 dark:hover:text-error-400';
+                x.setAttribute('aria-label', 'Quitar proveedor');
+                x.setAttribute('data-qc-prov-quitar', inp.value);
+                x.textContent = '✕';
+                chip.appendChild(txt); chip.appendChild(x);
+                chips.appendChild(chip);
+            });
+            var puestos = ids();
+            Array.prototype.slice.call(picker.options).forEach(function (o) {
+                if (!o.value) return;
+                o.disabled = puestos.indexOf(o.value) !== -1;
+            });
+            picker.selectedIndex = 0;
+        }
+        function agregar(id) {
+            id = String(id);
+            if (!id || ids().indexOf(id) !== -1) return;
+            var inp = document.createElement('input');
+            inp.type = 'hidden'; inp.value = id;
+            store.appendChild(inp);
+            pintar();
+        }
+        function limpiar() { store.innerHTML = ''; pintar(); }
+        function agregarOpcion(id, nombre) {
+            if (!Array.prototype.slice.call(picker.options).some(function (o) { return o.value === String(id); })) {
+                var opt = document.createElement('option');
+                opt.value = String(id); opt.textContent = nombre;
+                picker.appendChild(opt);
+            }
+            agregar(id);
+        }
+        picker.addEventListener('change', function () { agregar(picker.value); });
+        chips.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-qc-prov-quitar]');
+            if (!btn) return;
+            var v = btn.getAttribute('data-qc-prov-quitar');
+            ocultos().forEach(function (i) { if (i.value === v) i.remove(); });
+            pintar();
+        });
+        box.__qcProv = { ids: ids, limpiar: limpiar, agregarOpcion: agregarOpcion };
+        pintar();
+    }
+    function escanear() { document.querySelectorAll('[data-qc-prov-box]').forEach(montar); }
+
+    // API que usan los paneles del atajo para armar su POST.
+    window.qcProvIds = function (prefijo) {
+        var b = caja(prefijo);
+        return (b && b.__qcProv) ? b.__qcProv.ids() : [];
+    };
+    window.qcProvLimpiar = function (prefijo) {
+        var b = caja(prefijo);
+        if (b && b.__qcProv) b.__qcProv.limpiar();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', escanear);
+    } else {
+        escanear();
+    }
+    if (!window.__qcProvEscaneando) {
+        window.__qcProvEscaneando = true;
+        document.addEventListener('htmx:afterSwap', escanear);
+    }
+})();
+</script>

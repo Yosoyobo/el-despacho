@@ -1,0 +1,146 @@
+{% load forms_helpers %}
+{% comment %}Calculadora de costos (2026-07) — sólo productos del proveedor que
+la dispara (hoy «Simil Cuero Plymouth»). El material (fila 1) se suma tal cual;
+sublimación + mano de obra se multiplican por el factor. El Subtotal (antes de
+IVA) alimenta el COSTO, no el precio.
+
+LC 2026-08-22 (nota 3): el recuadro se pinta también en el ALTA —escondido— y el
+JS lo revela en cuanto se marca el proveedor. Antes sólo existía al editar, así
+que el producto recién creado no tenía dónde capturar los insumos.
+
+Params: `calc_disponible`, `mostrar_calculadora`, `calc_proveedores_json`,
+`calc_factor`, `calc_materiales`, `calc_sublimacion`, `calc_mano_obra`,
+`calc_resultado`, `iva_tasa` (los arma `views._ctx_calculadora`).
+`clase_extra` deja acomodarlo en la rejilla de cada pantalla.{% endcomment %}
+{% if calc_disponible %}
+<section data-calc-box data-calc-proveedores="{{ calc_proveedores_json }}"
+         data-factor="{{ calc_factor }}" data-iva="{{ iva_tasa|stringformat:'s' }}"
+         class="rounded-2xl border border-brand-200 bg-white p-6 shadow-theme-sm dark:border-brand-500/30 dark:bg-gray-900 {{ clase_extra|default:'' }}{% if not mostrar_calculadora %} hidden{% endif %}">
+    <h2 class="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">🧮 Calculadora de costos</h2>
+    <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">El material se suma tal cual; la sublimación y la mano de obra se multiplican por {{ calc_factor }}. El Subtotal (antes de IVA) se copia al <strong>Costo</strong> del producto (el precio de venta lo pones tú).</p>
+
+    <div class="space-y-4">
+        {% comment %}(1) Costos de material — 4 campos, suma sin factor.{% endcomment %}
+        <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costos de material <span class="text-xs font-normal text-gray-400">(se suman, sin multiplicar)</span></label>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {% for v in calc_materiales %}
+                <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_material_{{ forloop.counter0 }}" value="{{ v }}" data-calc placeholder="0.00"
+                       class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                {% endfor %}
+            </div>
+        </div>
+
+        {% comment %}(2) Material de sublimación — 4 campos, entran al factor.{% endcomment %}
+        <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costo de material de sublimación</label>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {% for v in calc_sublimacion %}
+                <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_sublimacion_{{ forloop.counter0 }}" value="{{ v }}" data-calc placeholder="0.00"
+                       class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                {% endfor %}
+            </div>
+        </div>
+
+        {% comment %}(3) Mano de obra — campo capturado, entra al factor.{% endcomment %}
+        <div class="sm:max-w-xs">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Costo de mano de obra</label>
+            <input type="number" step="0.01" min="0" inputmode="decimal" name="calc_mano_obra" value="{{ calc_mano_obra }}" data-calc placeholder="0.00"
+                   class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+        </div>
+    </div>
+
+    <div class="mt-5 flex justify-end">
+        <dl class="w-full max-w-xs space-y-1.5 text-sm">
+            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Subtotal (antes de IVA)</dt><dd class="font-medium text-gray-900 dark:text-gray-100" data-calc-subtotal>{{ calc_resultado.subtotal|dinero }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">IVA ({{ iva_tasa|floatformat:"-2" }}%)</dt><dd class="text-gray-600 dark:text-gray-300" data-calc-iva>{{ calc_resultado.iva|dinero }}</dd></div>
+            <div class="flex justify-between border-t border-gray-200 pt-1.5 text-base font-semibold dark:border-gray-800"><dt class="text-gray-900 dark:text-gray-100">Gran total</dt><dd class="text-gray-900 dark:text-gray-100" data-calc-total>{{ calc_resultado.total|dinero }}</dd></div>
+        </dl>
+    </div>
+</section>
+<script>
+// Calculadora de costos: recálculo en vivo + el interruptor por proveedor.
+// Subtotal = (Σ sublimación + mano de obra) × factor + Σ material → alimenta el COSTO.
+//
+// LC 2026-08-22 (nota 3): se monta escaneando `[data-calc-box]` con un flag, no
+// con `document.currentScript` — así también corre cuando el recuadro llega
+// dentro de un modal inyectado por HTMX (ahí `currentScript` es null).
+(function () {
+    'use strict';
+    var money = function (n) { return '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var val = function (el) { return parseFloat(el && el.value) || 0; };
+
+    function montar(box) {
+        if (box.dataset.calcMontado === '1') return;
+        box.dataset.calcMontado = '1';
+        var factor = parseFloat(box.getAttribute('data-factor')) || 2.2;
+        var iva = parseFloat(box.getAttribute('data-iva')) || 16;
+        var raiz = box.closest('form') || document;
+        var costoInput = raiz.querySelector('[name="costo"]');
+        var subEl = box.querySelector('[data-calc-subtotal]');
+        var ivaEl = box.querySelector('[data-calc-iva]');
+        var totEl = box.querySelector('[data-calc-total]');
+
+        function recalc() {
+            var m1 = 0, m2 = 0;
+            box.querySelectorAll('input[name^="calc_material_"]').forEach(function (el) { m1 += val(el); });
+            box.querySelectorAll('input[name^="calc_sublimacion_"]').forEach(function (el) { m2 += val(el); });
+            var mo = val(box.querySelector('input[name="calc_mano_obra"]'));
+            var subtotal = (m2 + mo) * factor + m1;
+            var ivaMonto = subtotal * iva / 100;
+            if (subEl) subEl.textContent = money(subtotal);
+            if (ivaEl) ivaEl.textContent = money(ivaMonto);
+            if (totEl) totEl.textContent = money(subtotal + ivaMonto);
+            // El Subtotal (antes de IVA) alimenta el COSTO (el precio lo pone el usuario).
+            if (costoInput && !costoInput.disabled && !costoInput.readOnly) {
+                costoInput.value = subtotal.toFixed(2);
+            }
+        }
+        // Sólo al editar un campo (NO al cargar: evita pisar el costo con 0 si
+        // aún no se capturan insumos).
+        box.addEventListener('input', function (e) {
+            if (e.target.matches('[data-calc]')) recalc();
+        });
+
+        // ── El interruptor: el recuadro se ve si está marcado el proveedor que
+        // la dispara. En la ficha de un producto que ya lo trae nace visible; en
+        // el alta nace escondido y aparece en cuanto se marca.
+        var ids = [];
+        try { ids = JSON.parse(box.getAttribute('data-calc-proveedores') || '[]') || []; } catch (e) { ids = []; }
+        var store = raiz.querySelector('#proveedores-lista');
+        function marcado() {
+            return ids.some(function (id) {
+                var c = store.querySelector('input[type=checkbox][value="' + id + '"]');
+                return !!(c && c.checked);
+            });
+        }
+        function gate() {
+            if (!store || !ids.length) return;   // sin casillas no hay qué vigilar
+            box.classList.toggle('hidden', !marcado());
+        }
+        box.__calcGate = gate;
+        if (store) store.addEventListener('change', gate);
+        gate();
+    }
+
+    function escanear() { document.querySelectorAll('[data-calc-box]').forEach(montar); }
+    // Las casillas se marcan por JS (alta rápida de proveedor, 🤖 Sugerir, las
+    // pastillas), y asignar `.checked` NO dispara `change`: quien las toque
+    // llama a esto.
+    window.calcGateRefrescar = function () {
+        document.querySelectorAll('[data-calc-box]').forEach(function (b) {
+            if (b.__calcGate) b.__calcGate();
+        });
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', escanear);
+    } else {
+        escanear();
+    }
+    if (!window.__calcBoxEscaneando) {
+        window.__calcBoxEscaneando = true;
+        document.addEventListener('htmx:afterSwap', escanear);
+    }
+})();
+</script>
+{% endif %}
