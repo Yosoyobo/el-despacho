@@ -184,3 +184,35 @@ class TestMezclaOrdenada:
     def test_sin_socket_devuelve_vacio_sin_lanzar(self, monkeypatch):
         monkeypatch.setattr(actividad, "disponible", lambda: False)
         assert actividad.peticiones() == []
+
+
+class TestLosEstaticosQueReferenciaExisten:
+    """Candado: en producción `CompressedManifestStaticFilesStorage` **revienta** al
+    renderizar si un `{% static %}` apunta a un archivo que no está — no avisa al
+    hacer `collectstatic`, avisa con un 500 en la cara del usuario. Y no lo caza ni
+    la suite (en pruebas el storage es el simple) ni el smoke test (que no renderiza
+    la página). Pasó con `branding/favicon-32.png`, que no existe: el archivo se
+    llama `Icono_LC-32.png`.
+    """
+
+    def test_cada_static_de_la_pantalla_esta_en_disco(self):
+        import re
+        from pathlib import Path
+
+        raiz = Path(__file__).resolve().parents[2]
+        plantilla = raiz / "la-gerencia" / "templates" / "site" / "vivo.html"
+        # Lo que NO vive en el repo porque lo genera el build de Docker: el
+        # Dockerfile compila `input.css` con el binario de Tailwind (§6). No es un
+        # hueco, así que se declara aquí en vez de aflojar la comprobación.
+        generados = {"css/tailwind.css"}
+
+        estaticos = re.findall(r"{%\s*static\s+'([^']+)'\s*%}", plantilla.read_text())
+        assert estaticos, "¿la plantilla ya no usa {% static %}?"
+        faltantes = [
+            r for r in estaticos
+            if r not in generados and not (raiz / "la-gerencia" / "static" / r).is_file()
+        ]
+        assert not faltantes, (
+            f"estos {{% static %}} no existen en la-gerencia/static/: {faltantes}. "
+            "En producción, con el storage de manifest, eso es un 500 al renderizar."
+        )
