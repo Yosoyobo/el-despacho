@@ -27,7 +27,16 @@ else
     python manage.py collectstatic --noinput --clear
 fi
 
-echo "[la-gerencia] Arrancando gunicorn (gthread, 1 worker × 4 threads)..."
+# ── Cuánto fierro usa gunicorn ────────────────────────────────────────────────
+# El default (1 worker × 4 hilos) es el de S-RAM-Wave4: calibrado para el droplet
+# de 1 GB, donde la RAM era el recurso escaso. Desde la mudanza al NUC (8 CPU,
+# 16 G) ese techo ya no tiene razón de ser, así que se lee del entorno y el
+# overlay del NUC lo sube. Sin variables, ESTE MISMO archivo se comporta como
+# siempre en HAL y en cualquier máquina apretada.
+WORKERS="${GUNICORN_WORKERS:-1}"
+THREADS="${GUNICORN_THREADS:-4}"
+
+echo "[la-gerencia] Arrancando gunicorn (gthread, $WORKERS worker(s) × $THREADS threads)..."
 # S-RAM-Wave4: cambio UvicornWorker → gthread (sync con thread pool).
 # El código es Django clásico sync (cero `async def` en views/middleware),
 # así que el event loop de uvicorn era overhead puro (~30-60 MB). gthread
@@ -36,8 +45,8 @@ echo "[la-gerencia] Arrancando gunicorn (gthread, 1 worker × 4 threads)..."
 exec gunicorn la_gerencia.wsgi:application \
     -k gthread \
     -b 0.0.0.0:8001 \
-    --workers 1 \
-    --threads 4 \
+    --workers "$WORKERS" \
+    --threads "$THREADS" \
     --max-requests 1000 \
     --max-requests-jitter 100 \
     --access-logfile - \

@@ -84,7 +84,10 @@ jobs:
           CADDY_HTTPS_PORT=8443
           DESPACHO_ENV=development
           EOF
-          mkdir -p data/postgres data/redis data/caddy/data data/caddy/config data/credenciales
+          # `data/media` es El Almacén: el compose lo monta en las apps y su `pub/`
+          # en El Portero, así que el smoke test ejerce la misma forma que producción.
+          mkdir -p data/postgres data/redis data/caddy/data data/caddy/config data/credenciales \
+                   data/media/orig data/media/pub
       - name: Build local (sin push)
         run: docker compose -f docker-compose.yml build la-gerencia el-taller la-recepcion
       - name: Levantar stack

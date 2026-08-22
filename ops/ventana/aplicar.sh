@@ -22,7 +22,8 @@ sudo git fetch origin main -q && sudo git reset --hard origin/main -q && sudo gi
 
 echo '== validando el Caddyfile ANTES de aplicarlo =='
 sudo docker run --rm -v /opt/el-despacho/Caddyfile:/etc/caddy/Caddyfile:ro \
-  -e UPSTREAM_TALLER=x:1 -e UPSTREAM_GERENCIA=x:1 -e LANDING_ROOT=/srv/lc-fallback \
+  -e UPSTREAM_TALLER=x:1 -e UPSTREAM_GERENCIA=x:1 -e UPSTREAM_MEDIOS=x:1 \
+  -e LANDING_ROOT=/srv/lc-fallback \
   caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 echo '== recreando El Portero =='

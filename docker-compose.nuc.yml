@@ -1,11 +1,15 @@
 # Overlay del NUC de Learning Center (2026-08-21).
 #
-# Este archivo NO se usa en la ventana ni en HAL local. Hace cuatro cosas:
+# Este archivo NO se usa en la ventana ni en HAL local. Hace seis cosas:
 #   1. Saca a El Portero del stack (Caddy vive en la ventana).
 #   2. Publica los puertos que la ventana consume por el tailnet.
 #   3. Sube el tuning de Postgres y Redis, que en el compose base está calibrado
 #      para el droplet de 1 GB.
 #   4. Pone `restart: always`, el segundo candado del arranque tras un apagón.
+#   5. Levanta El Mostrador, que entrega los medios de El Almacén desde el disco
+#      de esta máquina (el disco está aquí; El Portero está en la ventana).
+#   6. Le sube el fierro a gunicorn: el default del repo es 1 worker, calibrado
+#      para el droplet de 1 GB. Esta máquina tiene 8 CPU y 16 G.
 services:
   el-portero:
     # Un profile que nadie activa = servicio que no se levanta, sin borrarlo del
@@ -20,11 +24,23 @@ services:
     ports:
       - "8200:8000"
     restart: always
+    environment:
+      # 4 × 4 = 16 peticiones a la vez (antes 1 × 4). Cuestan ~800 MB de los 13 G
+      # libres. No se usa la fórmula 2×CPU+1 (17 workers) a propósito: son 5
+      # usuarios, y lo que ahogaba no era la concurrencia sino que UNA petición
+      # lenta —un PDF que lo arma Google, una llamada a un Chalán— dejaba a los
+      # demás esperando.
+      GUNICORN_WORKERS: "4"
+      GUNICORN_THREADS: "4"
 
   la-gerencia:
     ports:
       - "8201:8001"
     restart: always
+    environment:
+      # La Gerencia es panel de configuración: mucho menos tráfico que El Taller.
+      GUNICORN_WORKERS: "2"
+      GUNICORN_THREADS: "4"
 
   # ── Postgres ────────────────────────────────────────────────────────────────
   # El compose base está tuneado para "droplet de 1 GB / 5 usuarios"
@@ -64,6 +80,33 @@ services:
 
   portavoz-worker:
     restart: always
+
+  # ── El Mostrador ────────────────────────────────────────────────────────────
+  # El Almacén guarda los medios en disco; El Mostrador los entrega. Existe porque
+  # la mudanza separó las dos cosas que el diseño original tenía juntas: el disco
+  # quedó aquí y El Portero en la ventana, así que las fotos necesitaban alguien
+  # que las sirviera DE ESTE LADO. La ventana le hace reverse_proxy por el tailnet
+  # (`UPSTREAM_MEDIOS`) y deja a El Taller como respaldo, de modo que si este
+  # contenedor se cae las fotos siguen saliendo, sólo que por Django.
+  #
+  # Sólo monta `pub/` (los derivados JPEG/PNG que generamos nosotros). `orig/`, que
+  # es lo que sube la gente, NO se monta: ésa es la frontera de seguridad.
+  el-mostrador:
+    image: caddy:2-alpine
+    container_name: despacho-el-mostrador
+    restart: always
+    volumes:
+      - ./infra/mostrador/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/media/pub:/srv/medios:ro
+    environment:
+      UPSTREAM_TALLER: "el-taller:8000"
+    ports:
+      - "8202:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 # ── Por qué `restart: always` y no el `unless-stopped` del compose base ───────
 # TRAMPA PAGADA EL 2026-08-21: `unless-stopped` NO levanta un contenedor que el
