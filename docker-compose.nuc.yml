@@ -1,30 +1,35 @@
 # Overlay del NUC de Learning Center (2026-08-21).
 #
-# Dos cosas hace este archivo, y nada mas:
-#  1. Saca a El Portero del stack. Caddy se queda en la ventana (La Sede), que es
-#     quien termina TLS y hace reverse_proxy hacia aca por el tailnet.
-#  2. Publica los puertos que la ventana va a consumir.
-#
-# Los puertos se publican en 0.0.0.0 A PROPOSITO: si se bindearan a la IP del
-# tailnet y tailscaled no ha subido cuando Docker arranca, el contenedor NO
-# arranca. Lo que cierra la puerta hacia la LAN es ufw (allow in on tailscale0).
+# Este archivo NO se usa en la ventana ni en HAL local. Hace cuatro cosas:
+#   1. Saca a El Portero del stack (Caddy vive en la ventana).
+#   2. Publica los puertos que la ventana consume por el tailnet.
+#   3. Sube el tuning de Postgres y Redis, que en el compose base está calibrado
+#      para el droplet de 1 GB.
+#   4. Pone `restart: always`, el segundo candado del arranque tras un apagón.
 services:
   el-portero:
     # Un profile que nadie activa = servicio que no se levanta, sin borrarlo del
-    # compose base (asi el mismo repo sigue sirviendo en el droplet y en HAL).
+    # compose base (así el mismo repo sigue sirviendo en el droplet y en HAL).
     profiles: ["solo-en-la-ventana"]
 
+  # ── Los puertos que consume la ventana ──────────────────────────────────────
+  # Se publican en 0.0.0.0 A PROPÓSITO: si se bindearan a la IP del tailnet y
+  # tailscaled no ha subido cuando Docker arranca, el contenedor NO arranca. Lo
+  # que cierra la puerta hacia la LAN es ufw (allow in on tailscale0).
   el-taller:
     ports:
       - "8200:8000"
+    restart: always
 
   la-gerencia:
     ports:
       - "8201:8001"
+    restart: always
 
-  # Postgres: el compose base esta tuneado para "droplet de 1 GB / 5 usuarios"
-  # (shared_buffers=64MB). Esta maquina tiene 16 G. Se sube con la mano puesta,
-  # no al maximo: el resto de la pila tambien necesita RAM.
+  # ── Postgres ────────────────────────────────────────────────────────────────
+  # El compose base está tuneado para "droplet de 1 GB / 5 usuarios"
+  # (shared_buffers=64MB). Esta máquina tiene 16 G. Se sube con la mano puesta,
+  # no al máximo: el resto de la pila también necesita RAM.
   postgres:
     command:
       - "postgres"
@@ -38,12 +43,14 @@ services:
       - "max_connections=50"
       - "-c"
       - "maintenance_work_mem=128MB"
+    restart: always
 
-  # Redis: el compose base pone techo de 64 MB con allkeys-lru "para que la cola
-  # del Portavoz no crezca sin control". El efecto real es el contrario y es
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  # El compose base pone techo de 64 MB con allkeys-lru "para que la cola del
+  # Portavoz no crezca sin control". El efecto real es el contrario y es
   # peligroso: allkeys-lru puede desalojar la PROPIA cola (portavoz:cola no tiene
   # TTL), o sea perder eventos en silencio. Aquí: techo holgado y volatile-lru,
-  # que solo desaloja lo que sí caduca (el caché de imágenes y sesiones).
+  # que solo desaloja lo que sí caduca (el caché de imágenes y las sesiones).
   redis:
     command:
       - "redis-server"
@@ -53,3 +60,24 @@ services:
       - "512mb"
       - "--maxmemory-policy"
       - "volatile-lru"
+    restart: always
+
+  portavoz-worker:
+    restart: always
+
+# ── Por qué `restart: always` y no el `unless-stopped` del compose base ───────
+# TRAMPA PAGADA EL 2026-08-21: `unless-stopped` NO levanta un contenedor que el
+# demonio de Docker cree "detenido a mano", y ese marcador se lo cuelga CUALQUIER
+# `docker kill` — incluso uno que solo manda un HUP y no mata nada. `optimizar.sh`
+# hacía `docker compose kill -s HUP` cada 3 días sobre La Gerencia y El Taller: los
+# dos seguían corriendo, pero quedaban marcados, y tras un apagón el demonio
+# restauraba los otros tres y decía "done" sin un solo error en el journal. El
+# sitio quedaba abajo hasta que alguien corriera `up -d` a mano.
+#
+# La causa ya está arreglada en optimizar.sh (el HUP se manda desde dentro del
+# contenedor). Esto es el segundo candado: en ESTA máquina el requisito es que el
+# sitio vuelva solo tras un corte de luz, así que reinicia pase lo que pase.
+#
+# El precio: si paras un servicio a propósito y la máquina reinicia, vuelve. Para
+# apagar algo de verdad se usa su profile (como La Recepción) o
+# `docker update --restart=no <contenedor>`.

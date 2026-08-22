@@ -89,7 +89,19 @@ declare -a _hup_ok=()
 declare -a _hup_falla=()
 for svc in la-gerencia el-taller; do
     if _servicio_up "$svc"; then
-        if docker compose kill -s HUP "$svc" >/dev/null 2>&1; then
+        # NUNCA `docker compose kill -s HUP`. TRAMPA PAGADA EL 2026-08-21:
+        # `docker kill` marca el contenedor como "detenido a mano" en el demonio
+        # AUNQUE el proceso sobreviva a la senal. Gunicorn sobrevive al HUP y el
+        # contenedor sigue corriendo, pero desde ese momento `restart:
+        # unless-stopped` YA NO LO LEVANTA tras un reinicio o un apagon, y nada lo
+        # avisa: el demonio simplemente restaura los otros y dice "done". Asi se
+        # quedaron La Gerencia y El Taller abajo tras un apagon del NUC, y como
+        # archivo.sh dispara este guion cada 3 dias, el sitio vivia a un corte de
+        # luz de no volver solo.
+        #
+        # Mandar la senal DESDE DENTRO (gunicorn es PID 1) hace lo mismo sin que el
+        # demonio se entere: recicla los workers y conserva la politica de reinicio.
+        if docker compose exec -T "$svc" sh -c 'kill -HUP 1' >/dev/null 2>&1; then
             _hup_ok+=("$svc")
         else
             _hup_falla+=("$svc")
