@@ -65,7 +65,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Celador** | Extremo `/salud` para el monitor del taller + su credencial (`lib/salud.py`, `lib/celador.py`) | — |
 | **El Almacén** | Medios en disco (fotos, comprobantes, CFDI, adjuntos) con derivados propios; Drive queda de espejo (`lib/almacen.py`) | — |
 | **El Mostrador** | Entrega los medios de El Almacén desde el disco del NUC, sin pasar por Django ni por Drive (`infra/mostrador/`) | 8202 |
-| **El Vigía** | Pantalla de pared del NUC: fierro, peticiones y trabajo del despacho en vivo, con tema claro/oscuro. Sólo se atiende en la máquina (`/site/vivo/`, `infra/vigia/`). **Portable a otros proyectos: `docs/ADOPTAR-EL-VIGIA.md`** | — |
+| **El Vigía** | El NUC en vivo: fierro, peticiones, contenedores y trabajo del despacho, con tema claro/oscuro. **Dos puertas al mismo dato**: la pared (`/site/vivo/`, sólo en la máquina, sin sesión, `infra/vigia/`) y **El Site** (`/site/`, La Gerencia, con sesión y permiso). Se mantienen A LA PAR — regla §4 #22. **Portable a otros proyectos: `docs/ADOPTAR-EL-VIGIA.md`** | — |
 
 ### Módulos de negocio
 
@@ -164,6 +164,20 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
     algún sprint introduce un layout/base nuevo, hereda esta línea desde el
     inicio. (URL anterior `www.noko.mx` reemplazada por `devs.noko.mx` el
     2026-06-22 en los 7 footers + README + DOC_05 + envoltorio.)
+
+22. **El Vigía y El Site se mantienen A LA PAR (decisión Oscar, 2026-08-22).**
+    Las dos pantallas muestran lo mismo del NUC: la pared (`/site/vivo/`, en la
+    máquina, sin sesión) y El Site (`/site/`, La Gerencia, con sesión y permiso
+    `site.ver`). Oscar eligió dejarlas como páginas separadas **pero exigió que
+    no divergieran**: «se tiene que mantener a la par, debe ser una regla». Todo
+    panel nuevo o arreglo visual se aplica a las DOS. Lo que hace que se cumpla
+    sin depender de la memoria de nadie: **comparten los endpoints**
+    (`site-vivo-*`, con `_puerta()` de doble acceso), **los partials**
+    (`templates/site/vivo/_*.html`) y **la hoja de estilos**
+    (`static/css/vigia-paneles.css`). Lo único distinto es el chrome (la pared
+    no lleva menú) y el ritmo (la pared refresca al instante; El Site va lento y
+    trae botón «Actualizar»). `tests/site/test_vigia.py::TestElVigiaYElSiteVanALaPar`
+    lo exige en cada build.
 
 ---
 
@@ -6009,6 +6023,65 @@ nunca afirmar `not in resp.content` con un literal corto** — o se afirma sobre
 datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda uno
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
+
+### S-Site-Vigia ✅ — El Site adopta la versión de El Vigía (2026-08-22, VERSION 2026.08.21)
+
+Oscar: «en la sección de El Site en La Gerencia, agrega el vigía. Aprobadísimo.
+Refactoriza esa sección a la versión de el vigía». Había **dos pantallas midiendo
+lo mismo con dos diseños**: El Site (gauges estáticos, tabla de integraciones,
+lista de servicios) y El Vigía (anillos con tendencia, flujo de peticiones en
+vivo, contenedores bautizados, respaldos con ubicación). La segunda quedó mejor.
+
+**Decisiones de Oscar (ronda de 4):** `/site/` **se vuelve El Vigía con sesión** ·
+las **integraciones se quedan como bloque aparte**, tal cual · refresco **lento
+fuera de la pared MÁS botón manual** · la **pared se queda como página aparte**
+— «pero se tiene que mantener a la par, debe ser una regla» (→ regla §4 #22).
+
+**Cómo se cumple la regla sin depender de la disciplina** (el corazón del sprint):
+
+- **Los endpoints se comparten.** `views_vivo._puerta()` reemplaza a
+  `_solo_local()` en los seis paneles: desde la máquina pasan sin sesión (es la
+  pared); desde fuera exigen sesión + `site.ver`. **El anónimo desde internet
+  sigue viendo 404**, no 403 — abrir la puerta a La Gerencia no es motivo para
+  contarle al mundo qué hay detrás. La PÁGINA de la pared conserva
+  `_solo_local()`.
+- **La hoja de estilos se comparte.** Los tokens `--vg-*` y las clases `.vg-*`
+  vivían en el `<style>` inline de `vivo.html`; al incluir esos partials en una
+  página que extiende `base.html` **habrían salido sin color**. Se extrajeron a
+  `la-gerencia/static/css/vigia-paneles.css` (CSS plano, sin `@apply`, servido
+  tal cual). En el camino, `:root[data-tema="claro"]` pasó a `[data-tema="claro"]`
+  para que el atributo pueda ir en el `<html>` (pared) o en un contenedor
+  (El Site, donde el `<html>` ya lo manda el tema del sistema, regla §19).
+- **Un test lo exige**: `TestElVigiaYElSiteVanALaPar` compara los endpoints que
+  pide cada página, verifica que ambas carguen la hoja y que El Site vaya más
+  lento y traiga su botón.
+
+**Lo demás:**
+
+- `tablero.html` rehecho: los seis paneles del Vigía a ritmo lento (fierro 15s ·
+  peticiones 10s · contenedores 20s · chalanes y negocio 60s · ventana 120s) +
+  botón **«Actualizar»** que dispara todos de una (`refrescar from:body`) +
+  aviso «sin respuesta del servidor» a los dos fallos seguidos + enlace «Ver como
+  pared» cuando la petición llega local.
+- **Integraciones externas** se quedan como bloque aparte al final, con «Probar
+  todas» y el histograma de 14 días.
+- **Se retiran los duplicados**: `partials/{infra,internos,chalanes_ia}.html` y
+  los endpoints `partial_infra` / `partial_internos` (los cubren mejor
+  `site-vivo-fierro` y `site-vivo-negocio`). `partial_integraciones` se conserva.
+- **`.badge-sm` a los dos `input.css`** (dual-copy §18): la traía DaisyUI, que
+  sólo carga la pared, así que tres pastillas salían más grandes en El Site —
+  justo la clase de divergencia que la regla nueva quiere evitar.
+
+**Tests**: 5 nuevos (`TestElVigiaYElSiteVanALaPar` 4 + el del tema no anclado a
+`:root`). Se actualizaron tres ajenos que fijaban contratos que este sprint
+cambió a propósito: el que leía los tokens desde la plantilla (ahora están en el
+CSS), y los de `partial/infra` y `partial/internos`, que ya no existen.
+
+**Deuda diseñada**: la pared y El Site son dos plantillas de página distintas —
+la regla y el test las mantienen a la par, pero un cambio de LAYOUT (no de panel)
+sigue habiendo que hacerlo dos veces. El histograma de chequeos sigue con
+ApexCharts desde unpkg (el resto de El Vigía está vendoreado). Y la pantalla no
+se pudo revisar mirándola: eso sólo se puede **con el código en La Sede**.
 
 ### S-Chalan-Analisis ✅ — El Análisis: que Los Chalanes vean, aprendan y opinen de TODA la data (2026-08-22, VERSION 2026.08.20)
 

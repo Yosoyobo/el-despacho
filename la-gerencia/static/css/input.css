@@ -80,6 +80,11 @@
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
+  /* La pastilla chica. La traía DaisyUI, que sólo carga la pared del NUC; al
+     adoptar El Site esos mismos paneles (2026-08-22) las tres pastillas que la
+     usan salían más grandes de este lado. Se define aquí para que las dos
+     pantallas se vean iguales — que es la regla. */
+  .badge-sm { @apply px-2 py-0 text-[11px]; }
   .badge-gray    { @apply bg-gray-100   text-gray-700  dark:bg-gray-800     dark:text-gray-300; }
   .badge-brand   { @apply bg-brand-50   text-brand-700 dark:bg-brand-500/15 dark:text-brand-300; }
   .badge-blue    { @apply bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/15 dark:text-blue-light-300; }

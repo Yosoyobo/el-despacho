@@ -5,6 +5,45 @@
 
 ---
 
+## Novedades — El Site ahora se ve como la pantalla de la pared (22 de agosto de 2026)
+
+**Qué cambió**
+
+La sección **El Site** de La Gerencia tenía una pinta y la pantalla que está colgada
+en la pared del taller tenía otra, aunque las dos miden lo mismo. La de la pared
+quedó mejor, así que El Site adoptó esa versión.
+
+Ahora, al entrar a El Site vas a ver:
+
+- **El fierro del NUC** con sus anillos y la tendencia de los últimos minutos.
+- **Lo que está pasando ahora mismo**: quién está usando el sistema, qué está
+  haciendo y cuánto tardó cada cosa.
+- **Las piezas que corren**, cada una con su nombre en español y lo que consume.
+- **El trabajo del despacho** y los tres respaldos, con su antigüedad y dónde están.
+- **Los Chalanes** con su gasto, y **la ventana** (el servidor que da la cara a
+  internet) con sus puertas revisadas.
+
+**Las integraciones se quedan donde estaban**, abajo, con su botón de «Probar» y su
+gráfica de los últimos 14 días. Ésas son para picarlas, no para mirarlas.
+
+**Se actualiza sola, pero más despacio**
+
+En la pared todo se refresca cada dos o tres segundos, porque nadie la va a recargar.
+Desde La Gerencia va más lento a propósito —para no ponerle trabajo de más al
+servidor con cada persona que la tenga abierta— y tiene un botón **«Actualizar»**
+para traer los datos al instante cuando lo necesites. Si el servidor deja de
+contestar, te avisa: una pantalla «en vivo» que se quedó quieta y no lo dice es peor
+que una que no se actualiza.
+
+**Un botón nuevo**: si abres El Site desde la propia máquina, aparece «Ver como
+pared» para pasar a pantalla completa sin menús.
+
+**Las dos pantallas se mantienen iguales de aquí en adelante.** No son una copia de
+la otra: comparten los mismos paneles y los mismos estilos, y hay una prueba
+automática que no deja que se separen.
+
+---
+
 ## Novedades — El Chalán ya ve el negocio completo, y encontró que la conversión estaba mal contada (22 de agosto de 2026)
 
 **Primero, lo que estaba mal y ya se arregló**
