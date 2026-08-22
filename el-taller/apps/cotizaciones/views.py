@@ -543,16 +543,18 @@ def enviar(request, pk):
     cot = get_object_or_404(Cotizacion, pk=pk)
     if not puede_enviar_cotizaciones(request.user):
         return HttpResponseForbidden("Sin permiso para enviar cotizaciones.")
-    if cot.estado != "borrador":
-        messages.error(request, "Solo se puede enviar en estado borrador.")
-        return redirect("cotizaciones:detalle", pk=cot.pk)
 
     es_htmx = _es_htmx(request)
     if request.method == "POST":
         form = EnviarForm(request.POST)
         if form.is_valid():
             email_destino = form.cleaned_data.get("email_destino", "")
-            services.marcar_enviada(cot, request.user, email_destino)
+            try:
+                services.marcar_enviada(cot, request.user, email_destino)
+            except ValueError as e:
+                messages.error(request, str(e))
+                destino = reverse("cotizaciones:detalle", args=[cot.pk])
+                return _hx_redirect(destino) if es_htmx else redirect(destino)
             # El Cartero entrega el correo con el PDF (best-effort — marcar
             # enviada nunca falla por el correo; solo avisamos).
             res = services.enviar_por_correo(cot, request.user, email_destino)
@@ -573,6 +575,35 @@ def enviar(request, pk):
     form = EnviarForm(initial={"email_destino": getattr(cot.cliente, "email_contacto", "")})
     return _modal_response(request, "cotizaciones/_modal_enviar.html",
                            {"cot": cot, "form": form})
+
+
+@login_required
+@require_POST
+def enviada_manual(request, pk):
+    """«Ya la mandé» — deja constancia del envío sin mandar correo.
+
+    Muchas cotizaciones se mandan por WhatsApp o se entregan en mano. Sin esta
+    constancia el sistema no puede saber desde cuándo el cliente no contesta,
+    que es lo que convierte una propuesta en oportunidad perdida.
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    if not puede_enviar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para enviar cotizaciones.")
+    try:
+        services.marcar_enviada(cot, request.user, "")
+        messages.success(
+            request,
+            f"Anotado: {cot.codigo} salió al cliente hoy. A partir de ahora se "
+            "cuenta el tiempo de respuesta.",
+        )
+    except ValueError as e:
+        messages.error(request, str(e))
+    destino = request.POST.get("volver") or reverse("cotizaciones:detalle", args=[cot.pk])
+    if _es_htmx(request):
+        return _hx_redirect(destino)
+    return redirect(destino)
 
 
 @login_required

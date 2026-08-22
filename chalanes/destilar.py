@@ -50,13 +50,18 @@ Eres El Chalán de El Despacho (CRM/ERP de Learning Center, diseño/maquila B2B
 mexicano). Tu trabajo AHORA no es interpretar un dictado nuevo: es APRENDER de
 tu propio historial para interpretar MEJOR la próxima vez.
 
-Te paso ejemplos reales de dictados que ya interpretaste, marcando dónde el
-usuario te CORRIGIÓ (sus clarificaciones) o DESMARCÓ acciones que propusiste
-mal. De ahí destila APRENDIZAJES reutilizables: jerga, abreviaturas o atajos
-del despacho y a qué entidad/acción corresponden de verdad.
+Te paso evidencia real de cuatro fuentes:
+- Dictados donde el usuario te CORRIGIÓ o DESMARCÓ lo que propusiste.
+- Dictados que FALLARON o se aplicaron con errores (ahí no entendiste algo).
+- Conversaciones del chat: cómo te habla el equipo de verdad.
+- El error concreto que devolvió el sistema al intentar aplicar la acción.
+
+De ahí destila APRENDIZAJES reutilizables: jerga, abreviaturas o atajos del
+despacho y a qué entidad/acción corresponden de verdad.
 
 Cada aprendizaje es un objeto:
-  {"frase_o_patron": "...", "interpretacion_correcta": "...", "peso": 1.0, "razon": "..."}
+  {"frase_o_patron": "...", "interpretacion_correcta": "...", "peso": 1.0,
+   "confianza": 0.9, "razon": "..."}
 
 - `frase_o_patron`: la frase/jerga ambigua tal como la dice el equipo, corta
   (≤120 chars). Ej: "la heladería", "lo de siempre de Pérez", "manda al chofer".
@@ -64,6 +69,11 @@ Cada aprendizaje es un objeto:
   o acción concreta y reutilizable. Ej: "$heladeria-michoacana (cliente)",
   "asignar tipo=recoger al runner más cercano".
 - `peso`: 0.5 a 1.5 (1.0 normal; >1 si el patrón es muy claro y se repite).
+- `confianza`: 0 a 1 — qué tan seguro estás de que este patrón es real y
+  reutilizable. Usa 0.9 o más SÓLO cuando la evidencia lo muestre repetido y
+  sin ambigüedad; si es una corazonada de un solo caso, 0.5 o menos. Los de
+  confianza muy alta pueden activarse sin que nadie los revise, así que no
+  infles el número.
 - `razon`: 1 frase de la evidencia que lo respalda.
 
 REGLAS DURAS:
@@ -98,12 +108,20 @@ def recolectar_evidencia(*, dias: int = 30, limite: int = 60) -> list[dict[str, 
         .order_by("-creado_en")
     )
 
+    # Qué cuenta como señal de que el Chalán se equivocó. Las correcciones
+    # explícitas son la mejor evidencia, pero son rarísimas: en tres meses de
+    # uso real hubo 8. Los dictados que reventaron o se aplicaron a medias son
+    # 85, y son exactamente los casos donde no entendió. Ignorarlos era mirar
+    # la señal escasa y desperdiciar la abundante.
+    ESTADOS_FALLIDOS = {"fallo_ia", "aplicado_con_errores", "cancelado"}
+
     con_senal: list[Dictado] = []
     sin_senal: list[Dictado] = []
     for d in qs[: max(limite * 3, 30)]:
         tiene_clarif = bool(d.historial_clarificaciones)
         tiene_desmarque = d.estado == "confirmado_parcial"
-        (con_senal if (tiene_clarif or tiene_desmarque) else sin_senal).append(d)
+        fallo = d.estado in ESTADOS_FALLIDOS
+        (con_senal if (tiene_clarif or tiene_desmarque or fallo) else sin_senal).append(d)
 
     elegidos = (con_senal + sin_senal)[:limite]
     if not elegidos:
@@ -115,6 +133,13 @@ def recolectar_evidencia(*, dias: int = 30, limite: int = 60) -> list[dict[str, 
     for a in DictadoAccion.objects.filter(dictado_id__in=ids, confirmada=False):
         desmarcadas.setdefault(a.dictado_id, []).append(f"{a.tipo}: {a.descripcion}")
 
+    # Por qué falló cada acción, cuando falló.
+    errores: dict[int, list[str]] = {}
+    for a in DictadoAccion.objects.filter(dictado_id__in=ids).exclude(error_al_aplicar=""):
+        errores.setdefault(a.dictado_id, []).append(
+            f"{a.tipo}: {(a.error_al_aplicar or '')[:120]}"
+        )
+
     evidencia: list[dict[str, Any]] = []
     for d in elegidos:
         evidencia.append({
@@ -123,8 +148,50 @@ def recolectar_evidencia(*, dias: int = 30, limite: int = 60) -> list[dict[str, 
             "interpretacion": _resumen_interpretacion(d),
             "clarificaciones": _resumen_clarificaciones(d),
             "desmarcadas": desmarcadas.get(d.pk, []),
+            "estado": d.estado,
+            "errores": errores.get(d.pk, []),
         })
     return evidencia
+
+
+def recolectar_conversaciones(*, dias: int = 30, limite: int = 40) -> list[dict[str, Any]]:
+    """Turnos del chat donde se ve cómo le habla el equipo al Chalán.
+
+    Es la fuente más abundante que hay: los dictados se cuentan por decenas y
+    los mensajes del chat por miles. Se toman los pares «lo que dijo la persona
+    → lo que contestó el Chalán» de las conversaciones recientes.
+    """
+    from chalanes.models import MensajeChat
+
+    desde = timezone.now() - timedelta(days=dias)
+    try:
+        mensajes = list(
+            MensajeChat.objects.filter(creado_en__gte=desde)
+            .exclude(cuerpo="")
+            .order_by("conversacion_id", "orden")[: limite * 6]
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("no se pudieron leer las conversaciones del chat", exc_info=True)
+        return []
+
+    pares: list[dict[str, Any]] = []
+    pendiente: str | None = None
+    conversacion_actual = None
+    for m in mensajes:
+        if m.conversacion_id != conversacion_actual:
+            conversacion_actual, pendiente = m.conversacion_id, None
+        if m.rol == "usuario":
+            pendiente = (m.cuerpo or "").strip()[:400]
+        elif pendiente and m.rol in ("asistente", "bot", "chalan"):
+            pares.append({
+                "id": m.pk,
+                "pregunta": pendiente,
+                "respuesta": (m.cuerpo or "").strip()[:300],
+            })
+            pendiente = None
+        if len(pares) >= limite:
+            break
+    return pares
 
 
 def _resumen_interpretacion(dictado) -> str:
@@ -167,7 +234,11 @@ def _norm(frase: str) -> str:
     return " ".join((frase or "").lower().split())
 
 
-def _construir_prompt(evidencia: list[dict[str, Any]], existentes: set[str]) -> str:
+def _construir_prompt(
+    evidencia: list[dict[str, Any]],
+    existentes: set[str],
+    conversaciones: list[dict[str, Any]] | None = None,
+) -> str:
     from lib.sanear import sanear_contexto
 
     partes = [_SYSTEM, ""]
@@ -187,6 +258,18 @@ def _construir_prompt(evidencia: list[dict[str, Any]], existentes: set[str]) -> 
             partes.append(f"  CORRECCIÓN: {c}")
         for dm in ev["desmarcadas"]:
             partes.append(f"  DESMARCADA (propuesta rechazada por el usuario): {dm}")
+        if ev.get("estado") in ("fallo_ia", "aplicado_con_errores", "cancelado"):
+            partes.append(f"  RESULTADO: {ev['estado']} — aquí algo no se entendió.")
+        for err in ev.get("errores", [])[:3]:
+            partes.append(f"  ERROR AL APLICAR: {err}")
+
+    if conversaciones:
+        partes.append("")
+        partes.append("[CONVERSACIONES — cómo te habla el equipo en el chat]")
+        for i, c in enumerate(conversaciones, 1):
+            partes.append(f"\n·{i} Persona: {c['pregunta']}")
+            if c.get("respuesta"):
+                partes.append(f"   Tú: {c['respuesta']}")
 
     texto = "\n".join(partes)
     return sanear_contexto(texto, max_len=12000)
@@ -257,11 +340,17 @@ def _validar_candidatos(crudos: list, existentes: set[str]) -> list[dict[str, An
         except (TypeError, ValueError):
             peso = 1.0
         peso = max(0.3, min(3.0, peso))
+        try:
+            confianza = float(raw.get("confianza") if raw.get("confianza") is not None else 0.5)
+        except (TypeError, ValueError):
+            confianza = 0.5
+        confianza = max(0.0, min(1.0, confianza))
         vistos.add(clave)
         limpios.append({
             "frase_o_patron": frase,
             "interpretacion_correcta": interp,
             "peso": round(peso, 2),
+            "confianza": round(confianza, 2),
             "razon": (raw.get("razon") or "").strip()[:300],
         })
         if len(limpios) >= MAX_CANDIDATOS:
@@ -272,22 +361,60 @@ def _validar_candidatos(crudos: list, existentes: set[str]) -> list[dict[str, An
 # ── Persistencia ─────────────────────────────────────────────────────
 
 
-def _persistir(candidatos: list[dict[str, Any]], *, creado_por) -> int:
+def _politica_auto() -> tuple[bool, float]:
+    """¿Puede activar solo lo que aprende, y con cuánta seguridad? (Gerencia)."""
+    try:
+        from ajustes.models import ConfiguracionAnalisis
+
+        cfg = ConfiguracionAnalisis.obtener()
+        return bool(cfg.auto_activar_aprendizajes), float(cfg.confianza_minima_auto)
+    except Exception:  # noqa: BLE001
+        return False, 1.0  # ante la duda, que lo revise una persona
+
+
+def _persistir(candidatos: list[dict[str, Any]], *, creado_por) -> tuple[int, int]:
+    """Guarda los aprendizajes. Devuelve (creados, activados solos).
+
+    Los que el Chalán marca con confianza muy alta se activan solos si así se
+    configuró en Gerencia; el resto espera revisión. Sea como sea, quedan a la
+    vista y se apagan con un clic. Y nada de esto ejecuta acciones: sólo
+    cambia cómo INTERPRETA lo que le dicen.
+    """
     from chalanes.models import Aprendizaje
 
-    creados = 0
+    auto, umbral = _politica_auto()
+    creados = activados = 0
     with transaction.atomic():
         for c in candidatos:
+            solo = auto and c.get("confianza", 0) >= umbral
             Aprendizaje.objects.create(
                 frase_o_patron=c["frase_o_patron"],
                 interpretacion_correcta=c["interpretacion_correcta"],
                 peso=c["peso"],
-                activo=False,            # nace inactivo — se revisa en Gerencia
+                activo=solo,
                 origen="chalan_destilado",
                 autor=creado_por,
             )
             creados += 1
-    return creados
+            activados += 1 if solo else 0
+    if activados:
+        _emitir_auto(activados, creado_por)
+    return creados, activados
+
+
+def _emitir_auto(activados: int, creado_por) -> None:
+    try:
+        from lib.portavoz import emitir
+        from lib.portavoz_eventos import EventoPortavoz
+
+        emitir(EventoPortavoz(
+            tipo="chalan.aprendizaje_auto_activado",  # type: ignore[arg-type]
+            actor_id=getattr(creado_por, "pk", None),
+            actor_email=getattr(creado_por, "email", None),
+            payload={"activados": activados},
+        ))
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _emitir(*, creado_por, creados: int, analizados: int, provider: str) -> None:
@@ -319,16 +446,19 @@ def destilar_aprendizajes(
     aunque `dry_run=True` (no se persiste) o `creados=0`.
     """
     base = {"ok": True, "analizados": 0, "candidatos": [], "creados": 0,
+            "activados": 0, "conversaciones": 0,
             "dry_run": dry_run, "provider": "", "motivo": ""}
 
     evidencia = recolectar_evidencia(dias=dias, limite=limite)
+    conversaciones = recolectar_conversaciones(dias=dias)
     base["analizados"] = len(evidencia)
-    if not evidencia:
+    base["conversaciones"] = len(conversaciones)
+    if not evidencia and not conversaciones:
         base["motivo"] = "sin_evidencia"
         return base
 
     existentes = _frases_existentes()
-    prompt = _construir_prompt(evidencia, existentes)
+    prompt = _construir_prompt(evidencia, existentes, conversaciones)
     ia = _llamar_chalan(prompt, creado_por)
     base["provider"] = ia["provider"]
     if not ia["ok"]:
@@ -342,8 +472,9 @@ def destilar_aprendizajes(
         base["motivo"] = "dry_run" if dry_run else ("sin_candidatos" if not candidatos else "")
         return base
 
-    creados = _persistir(candidatos, creado_por=creado_por)
+    creados, activados = _persistir(candidatos, creado_por=creado_por)
     base["creados"] = creados
+    base["activados"] = activados
     _emitir(creado_por=creado_por, creados=creados, analizados=len(evidencia),
             provider=ia["provider"])
     return base

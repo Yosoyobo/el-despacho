@@ -555,24 +555,56 @@ def duplicar(fac: Factura, actor) -> Factura:
 # --- KPIs ----------------------------------------------------------------
 
 def kpis_landing() -> dict:
-    qs = Factura.objects.exclude(estado="cancelada")
+    """Conteos del header de Facturación.
+
+    Cuenta como facturado lo que de verdad salió al cliente: los estados del
+    flujo formal MÁS los borradores que ya tienen su CFDI subido. Learning
+    Center timbra con el contador, sube el CFDI y casi nunca pica "Emitir", así
+    que contando sólo el estado salían 0 emitidas y 0 por cobrar.
+
+    El flujo no se toca: esas facturas siguen siendo borrador para el sistema
+    (y por eso siguen sin asiento de cuentas por cobrar). `cfdi_sin_emitir` es
+    justamente ese pendiente, para que el Chalán lo pueda señalar.
+    """
     from datetime import date as _d
+
+    from apps.facturacion.models import q_facturadas
+
     hoy = _d.today()
     inicio_mes = hoy.replace(day=1)
-    borradores = qs.filter(estado="borrador").count()
-    emitidas = qs.filter(estado__in=["emitida", "cobrada_parcial"]).count()
-    # 'vencidas' lo computamos en Python por simplicidad (saldo > 0 + fecha
-    # vencimiento < hoy). Para listas grandes habría que mover a queryset.
+    qs = Factura.objects.exclude(estado="cancelada")
+
+    facturadas_qs = qs.filter(q_facturadas())
+    # Borradores DE VERDAD: sin ningún archivo del CFDI encima.
+    borradores = qs.filter(estado="borrador", pdf_file_id="", xml_file_id="").count()
+    cfdi_sin_emitir = qs.filter(estado="borrador").exclude(
+        pdf_file_id="", xml_file_id=""
+    ).count()
+
+    # Vencidas y saldo se calculan en Python porque el total depende de las
+    # líneas y los impuestos. Son decenas de documentos.
     vencidas = 0
-    for f in qs.filter(estado__in=["emitida", "cobrada_parcial"], fecha_vencimiento__lt=hoy):
+    por_cobrar = Decimal("0.00")
+    for f in facturadas_qs.filter(fecha_vencimiento__lt=hoy).prefetch_related("items"):
         if f.saldo_pendiente > 0:
             vencidas += 1
+    for f in facturadas_qs.exclude(estado="cobrada_total").prefetch_related("items"):
+        saldo = f.saldo_pendiente
+        if saldo > 0:
+            por_cobrar += saldo
+
     cobradas_mes = qs.filter(
-        estado="cobrada_total", emitida_en__gte=inicio_mes,
+        estado="cobrada_total", emitida_en__date__gte=inicio_mes,
     ).count()
+
     return {
         "borradores": borradores,
-        "emitidas": emitidas,
+        # "Emitidas" en la UI = facturadas y todavía no cobradas del todo.
+        "emitidas": facturadas_qs.exclude(estado="cobrada_total").count(),
         "vencidas": vencidas,
         "cobradas_mes": cobradas_mes,
+        # Nuevas — las consume El Análisis.
+        "facturadas": facturadas_qs.count(),
+        "cfdi_sin_emitir": cfdi_sin_emitir,
+        "monto_por_cobrar": float(por_cobrar),
     }

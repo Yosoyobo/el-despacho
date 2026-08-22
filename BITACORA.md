@@ -10550,3 +10550,101 @@ Caddy del Mostrador, filtro de ruido, orden con y sin marca). 55 verdes en
   permitido.
 - **`VERSION_FECHA` no se movió** a propósito: nada de esto es visible para los
   usuarios, así que no hay bloque de Novedades que escribir.
+
+---
+
+# Sesión — S-Chalan-Analisis · El Análisis (2026-08-22, VERSION 2026.08.20)
+
+Oscar: «ya tienes data real de proyectos, facturas, proyectos perdidos… ahora es
+cuando debemos dejar al centavo que los chalanes observen, aprendan, propongan y
+analicen TODA la data disponible». Pidió una ronda de preguntas; se hicieron tres,
+pero **después de medir el dump de producción**, no antes. Eso cambió el sprint.
+
+## Lo que la medición encontró antes de escribir una línea
+
+Sobre el dump del día (54 proyectos, 47 cotizaciones, 36 facturas, 41 clientes, 58
+proveedores, 172 dictados, 1,448 mensajes de chat), cuatro cosas rotas que nadie
+había reportado:
+
+**1. El análisis semanal decía 100% de conversión.** `kpis_landing` contaba los
+literales `borrador` y `enviada`; Oscar apagó "Enviada" en el catálogo configurable
+hace meses y usa "Generada". Cero coincidencias ⇒ `5/(0+5)` ⇒ 100%. La real ronda
+32%. **La lección: cuando un catálogo se vuelve configurable, todo literal que
+quedó en el código pasa a ser una bomba de tiempo silenciosa** — no truena, miente.
+
+**2. El botón «Enviar» del recuadro del proyecto era un rickroll placeholder**, y
+`marcar_enviada` exigía `estado == "borrador"`, estado que LC no tiene. Las dos
+cosas juntas explican por qué 35 cotizaciones llevan meses en "Generada" y ninguna
+tiene sello de envío.
+
+**3. Las 32 facturas en borrador YA tienen CFDI y PDF subidos.** Se facturaron de
+verdad. Como todo se contaba por estado, salían 0 emitidas, 0 por cobrar, La
+Cobranza nunca les mandaba recordatorio y no hay asiento de CxC. (Hay 10 asientos
+`auto_factura_emitida` históricos: el flujo se usó 10 veces y se abandonó.)
+
+**4. El destilador aprendía de 8 casos e ignoraba 85.** Miraba clarificaciones (4)
+y acciones desmarcadas (4); no los 63 `fallo_ia`, ni los 12 `aplicado_con_errores`,
+ni los 1,448 mensajes de chat.
+
+Y el matiz que deforma cualquier medición de ventas: **47 cotizaciones son 25
+oportunidades** (13 proyectos con 2-4 versiones).
+
+## Lo entregado
+
+- **`EstadoCotizacion.fase`** (armada · enviada · ganada · perdida), editable en
+  Gerencia. La migración reparte fases por slug y, para los estados que el despacho
+  creó a mano, por pistas del nombre; y **reactiva "Enviada"** sólo si no quedó
+  ningún paso activo que signifique eso.
+- **`apps/cotizaciones/embudo.py`**: cuenta por OPORTUNIDAD, clasifica por FASE y
+  separa `conversion_pct` (de lo resuelto) de `cierre_pct` (de todo). `fase_efectiva`
+  hace que el sello de envío mande sobre el estado.
+- **El paso "Enviada" real**: transiciones por fase, re-enviar permitido, «Enviar por
+  correo» de verdad y **«📤 Ya la mandé por fuera»** para lo que sale por WhatsApp.
+- **Facturas**: `facturada_de_verdad` / `cfdi_sin_emitir` / `q_facturadas()`. Cuentan
+  para el análisis **sin tocar el flujo** (decisión de Oscar).
+- **Rentabilidad real** por proyecto en dos columnas + **prorrateo parejo** de la
+  jornada cuando no hay cronómetro, marcado como estimado. Tarifas por rol en el GUI.
+- **9 temas** en `negocio.py` (antes 4), con `dominios_para(usuario)`.
+- **Pantalla `/analisis/`** con permiso propio: alertas deterministas arriba, un
+  recuadro por tema con cifras exactas y la lectura del Chalán (UNA llamada al día
+  para los nueve juntos, más botón «Analizar ahora»).
+- **`ConfiguracionAnalisis` + `TarifaRol`** con su GUI en Gerencia (regla de Oscar:
+  lo configurable vive en un GUI).
+- **Destilador de 4 fuentes** + auto-activación por confianza (reversible, avisada).
+- **MCP en todo lo nuevo**: 7 capacidades + 2 tools del servidor stdio.
+
+## La regla nueva de esta sesión
+
+Oscar, a media sesión y en mayúsculas: **«TODAS LAS NUEVAS HERRAMIENTAS QUE SE HAGAN
+DEBEN IR ACOMPAÑADAS POR SUS MODULOS DE MCP. SIEMPRE»**. Guardada en memoria
+(`regla-mcp-en-toda-herramienta`) y aplicada desde este sprint.
+
+## Gotchas
+
+- La columna del error de una acción es **`error_al_aplicar`**, no `error`. Se cazó
+  verificando contra el dump antes de escribir el shadow model.
+- `_estados_raw` se importa del módulo (`models.estado_cotizacion`), no del paquete.
+- El sidebar compartido obligó a montar `apps.taller_home.urls` en
+  `tests/urls_gerencia.py` (mismo patrón que tesorería/cotizaciones).
+- Agregar `fase` al form de estados rompía un test ajeno hasta darle default en
+  `clean_fase`: un POST viejo no debe tronar por un campo nuevo.
+
+## Tests
+
+34 en `tests/taller/test_el_analisis.py`: los nueve temas sin datos, fases y estados
+desconocidos, tres versiones = una oportunidad, la conversión que ya no da 100%,
+enfriadas y sin-enviar, factura con CFDI, prorrateo parejo, alertas y su gating,
+lectura guardada / IA caída / respuesta ilegible, la pantalla y su permiso, las
+cuatro fuentes de aprendizaje, auto-activación con y sin política, y el registro MCP.
+
+## Deuda diseñada
+
+- Las 32 facturas con CFDI **siguen sin asiento de CxC ni recordatorio de cobranza**
+  (Oscar eligió no tocar el flujo). El Chalán lo reporta como pendiente.
+- El prorrateo depende de que haya actividad registrada ese día; una jornada sin
+  nada que imputar no se reparte a ningún proyecto.
+- `analisis.ver` nace sólo para super_admin; se delega desde El Directorio.
+- La lectura no compara contra el periodo anterior — `LecturaAnalisis` apenas empieza
+  a acumular historia.
+- **`MetaKPI` sigue vacía**: sin metas capturadas el análisis describe, pero no puede
+  decir «vas adelantado» o «vas corto».

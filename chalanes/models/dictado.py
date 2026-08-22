@@ -51,6 +51,10 @@ class DictadoAccion(models.Model):
     tipo = models.CharField(max_length=40)
     descripcion = models.CharField(max_length=300)
     confirmada = models.BooleanField(default=True)
+    aplicada = models.BooleanField(default=False)
+    # Por qué no se pudo aplicar. Es la señal más útil para aprender: dice
+    # exactamente en qué se equivocó el Chalán al interpretar.
+    error_al_aplicar = models.TextField(blank=True, default="")
 
     class Meta:
         app_label = "chalanes"
@@ -59,3 +63,53 @@ class DictadoAccion(models.Model):
 
     def __str__(self) -> str:
         return f"accion#{self.pk} {self.tipo}"
+
+
+class ConversacionChat(models.Model):
+    """Vista de solo-lectura de las conversaciones con El Chalán.
+
+    El destilador aprende también de cómo le habla el equipo en el chat, que es
+    la fuente más abundante que hay (mucho más que los dictados). El esquema lo
+    mantiene `apps.el_dictado`; aquí sólo se leen los campos necesarios.
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        db_column="usuario_id", related_name="+",
+    )
+    titulo = models.CharField(max_length=120, blank=True, default="")
+    archivada = models.BooleanField(default=False)
+    creado_en = models.DateTimeField()
+    actualizado_en = models.DateTimeField()
+
+    class Meta:
+        db_table = "el_dictado_conversacion_chat"
+        managed = False
+        app_label = "chalanes"
+
+    def __str__(self) -> str:
+        return self.titulo or f"Conversación {self.pk}"
+
+
+class MensajeChat(models.Model):
+    """Vista de solo-lectura de un turno del chat con El Chalán."""
+
+    conversacion = models.ForeignKey(
+        ConversacionChat, on_delete=models.CASCADE,
+        db_column="conversacion_id", related_name="mensajes",
+    )
+    orden = models.IntegerField()
+    rol = models.CharField(max_length=10)
+    tipo = models.CharField(max_length=15)
+    cuerpo = models.TextField(blank=True, default="")
+    nombre_herramienta = models.CharField(max_length=40, blank=True, default="")
+    creado_en = models.DateTimeField()
+
+    class Meta:
+        db_table = "el_dictado_mensaje_chat"
+        managed = False
+        app_label = "chalanes"
+        ordering = ["conversacion_id", "orden"]
+
+    def __str__(self) -> str:
+        return f"{self.rol}: {self.cuerpo[:40]}"

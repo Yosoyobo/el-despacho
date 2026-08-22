@@ -5,6 +5,87 @@
 
 ---
 
+## Novedades — El Chalán ya ve el negocio completo, y encontró que la conversión estaba mal contada (22 de agosto de 2026)
+
+**Primero, lo que estaba mal y ya se arregló**
+
+El sistema te venía diciendo que **se cerraba el 100% de las cotizaciones**. No era
+cierto. El conteo buscaba cotizaciones en un paso llamado «Enviada» que tú habías
+apagado hace meses para usar «Generada» en su lugar; como no encontraba ninguna, la
+cuenta salía perfecta. La conversión real, contando bien, ronda **una de cada tres**.
+
+De la misma raíz salieron dos cosas más:
+
+- **El botón «Enviar» del recuadro de Cotizaciones no hacía nada** (era un
+  provisional que abría un video). Por eso ninguna propuesta salía nunca de
+  «Generada», y sin saber cuándo se mandó, no había forma de medir cuánto tarda el
+  cliente en contestar.
+- **Las facturas no se contaban como cobrables.** Tienes 32 con su CFDI subido que
+  siguen marcadas como borrador, así que para el sistema no existían: ni aparecían
+  en «por cobrar», ni recibían recordatorio de pago.
+
+**Ahora cada paso dice qué significa**
+
+En La Gerencia → Catálogos → Estados de cotización, cada paso tiene una columna
+nueva: **qué significa para el negocio** (armada, enviada, ganada o perdida).
+Tú decides cómo se llama cada paso; esa columna le dice al sistema cómo contarlo.
+Ya no importa cómo los nombres cambien: las cuentas siguen bien.
+
+**Enviar una cotización ya deja constancia**
+
+El botón «Enviar por correo» manda la última versión con su PDF. Y si la mandas por
+WhatsApp o la entregas en mano, pica **«Ya la mandé por fuera»**: desde ahí el
+sistema cuenta los días que el cliente lleva sin contestar.
+
+**El Análisis: una pantalla nueva**
+
+En el menú del Taller aparece **El Análisis**. Junta nueve temas del negocio con sus
+cifras exactas y, encima de cada uno, lo que opina El Chalán:
+
+- Cómo va el dinero, la cobranza y las ventas.
+- **Cuánto dejó de verdad cada proyecto** — no el precio de lista, sino lo vendido
+  contra lo que costó de verdad (materiales, impresión, procesos y egresos). Los que
+  están debajo del margen sano salen en amarillo; los que perdieron dinero, en rojo.
+- **Lo que se perdió**: cotizaciones caídas, proyectos cancelados con su motivo,
+  propuestas que se enfriaron y trabajos que se ganaron pero dejaron pérdida.
+- **Clientes** (quién deja más, quién debe, quién dejó de comprar), **proveedores**
+  (a quién le compras y cuánto le debes), **carga del equipo** y **gasto en IA**.
+
+Arriba de todo aparecen las alertas: lo que cruzó un límite y merece que alguien lo
+mire hoy. Los números se calculan al momento; la opinión del Chalán se actualiza
+cada mañana y también con el botón **«Analizar ahora»**.
+
+**Los límites los pones tú**
+
+En La Gerencia → Ajustes → **El Análisis** se configuran: qué margen consideras sano
+(arranca en 50%), a los cuántos días de silencio una cotización se da por perdida
+(45), a partir de cuántos días de mora se levanta la mano (30) y **cuánto cuesta la
+hora de cada rol**, que es lo que permite saber cuánto se llevó el tiempo del equipo
+en cada proyecto.
+
+**Sobre las horas del equipo**: el cronómetro por proyecto casi no se usa, así que
+cuando no hay cronómetro el sistema reparte las horas de la jornada en partes
+iguales entre los proyectos que esa persona tocó ese día. Sale marcado como
+**estimado**, para que nadie lo confunda con una medición.
+
+**El Chalán ahora aprende de todo lo que ve**
+
+Antes sólo aprendía cuando alguien lo corregía explícitamente — ocho casos en tres
+meses. Ahora también aprende de los dictados que le fallaron, del error concreto que
+le devolvió el sistema y de las conversaciones del chat, que son miles. Lo que
+aprende con mucha seguridad lo activa solo y te avisa; lo dudoso espera tu visto
+bueno en La Gerencia → Chalanes → Aprendizajes. **Nada de esto ejecuta acciones
+solo**: sigue siendo lo mismo de siempre, propone y tú confirmas.
+
+**Un pendiente que el Chalán te va a repetir**
+
+Las 32 facturas con CFDI en borrador ahora sí cuentan para los reportes, pero
+**siguen sin generar su cuenta por cobrar en Contaduría y sin recibir recordatorio
+de cobranza**, porque el flujo de emitir no se tocó. El Chalán te lo va a listar
+como pendiente hasta que se resuelva.
+
+---
+
 ## Novedades — Las fotos de producto están de vuelta, y ahora cargan al instante (21 de agosto de 2026)
 
 **Primero: por qué se habían dejado de ver**
@@ -3769,12 +3850,69 @@ Toda la operación del negocio vive en **El Taller**. La Gerencia es para config
 | **Productos** | Catálogo de servicios + su historial de usos + proveedores que los surten |
 | **Notificaciones** | Tus alertas push y preferencias |
 | **Chalanes** | Tus asistentes de IA |
+| **El Análisis** | Los nueve temas del negocio con sus cifras y la lectura del Chalán |
 | **Cotizaciones** | Propuestas comerciales para clientes |
 | **Finanzas** (grupo) | Tesorería · Facturación · Contaduría |
 | **Ajustes** | Atajo a La Gerencia (si tienes permiso) |
 | **Ayuda** | Este manual |
 
 El super admin puede reordenar y ocultar items del menú para todo el equipo desde Gerencia → Ajustes → "Orden del sidebar".
+
+---
+
+## El Análisis
+
+La pantalla donde El Chalán te dice **cómo va el negocio y qué merece tu atención hoy**. Vive en el menú de El Taller y la abre quien tenga el permiso `analisis / ver` (de arranque, sólo el super admin; se delega desde El Directorio, marcando esa casilla).
+
+### Qué vas a ver
+
+Hasta arriba, **las alertas**: lo que cruzó un límite. En rojo lo que urge (proyectos perdiendo dinero, cobranza muy atrasada) y en amarillo lo que conviene revisar (cotizaciones que nunca se mandaron, propuestas enfriadas, cancelaciones sin motivo). Cada alerta trae un enlace para ir directo.
+
+Abajo, un recuadro por tema. En cada uno, primero **lo que opina El Chalán** y luego **las cifras**:
+
+| Tema | Qué contesta |
+|---|---|
+| **Económicos / Finanzas** | Ingresos, egresos, utilidad del mes y saldos |
+| **Cobranza** | Cuánto te deben, desde cuándo y quién |
+| **Ventas y pipeline** | Cuántas oportunidades vivas, cuántas ganadas, la conversión real |
+| **Rentabilidad real por proyecto** | Cuánto dejó de verdad cada trabajo, y cuáles están debajo del margen sano o en pérdida |
+| **Lo que se perdió** | Cotizaciones caídas, proyectos cancelados con su motivo y trabajos que costaron más de lo que dejaron |
+| **Clientes** | Quién deja más dinero, quién debe, quién dejó de comprar |
+| **Proveedores y compras** | A quién le compras más y cuánto le debes |
+| **Carga del equipo** | Quién trae más pendientes y qué se está entregando tarde |
+| **Gasto en IA** | Cuánto cuestan Los Chalanes y qué tan seguido fallan los dictados |
+
+Sólo aparecen los temas que tus permisos alcanzan. En el del equipo, además, sólo ves las horas de la gente que te toca ver (tú, y tus subordinados si eres jefe).
+
+### Los números son exactos; la opinión es del Chalán
+
+Las cifras salen de consultas al sistema y se recalculan cada vez que abres la pantalla: no las escribe la IA. Lo que sí escribe El Chalán es la lectura de cada tema, y eso se actualiza **cada mañana**. Si quieres una lectura fresca en este momento, pica **«🤖 Analizar ahora»**.
+
+### Dos cosas importantes de la rentabilidad
+
+**Cuánto costó de verdad.** El margen sale de lo capturado en el proyecto: el producto con su merma, la impresión, los procesos y los egresos ligados. Es exacto.
+
+**Cuánto costó el tiempo.** Para saberlo hace falta capturar el costo por hora en Gerencia → Ajustes → El Análisis. Como el cronómetro por proyecto casi no se usa, cuando no hay cronómetro el sistema **reparte las horas de la jornada en partes iguales** entre los proyectos que esa persona tocó ese día, y lo marca como **estimado**. Es una aproximación útil, no una medición.
+
+### Lo que se configura (Gerencia → Ajustes → El Análisis)
+
+- **Margen sano** (arranca en 50%) y **margen crítico** (0%): de ahí salen el amarillo y el rojo.
+- **Días de silencio** (45): cuánto puede pasar sin respuesta del cliente antes de dar una cotización por perdida.
+- **Días de mora** (30): a partir de cuándo un pago atrasado levanta la mano.
+- **Costo por hora de cada rol** y una tarifa general de respaldo.
+- **Qué tanto aprende solo** El Chalán y cada cuándo lee los números.
+
+### Cómo se usa con El Chalán
+
+Todo lo de esta pantalla se le puede preguntar en el chat, con tus palabras:
+
+- «¿en qué proyectos estamos perdiendo dinero?» → *resumen_rentabilidad*
+- «¿cuánto dejó el proyecto de las gorras?» → *rentabilidad_proyecto*
+- «¿por qué estamos perdiendo trabajos?» → *resumen_perdidos*
+- «¿cuáles son mis mejores clientes?» → *resumen_clientes*
+- «¿a quién le debemos más?» → *resumen_proveedores*
+- «¿quién está saturado?» → *resumen_equipo*
+- «¿cuánto llevamos gastado en IA?» → *resumen_ia*
 
 ---
 

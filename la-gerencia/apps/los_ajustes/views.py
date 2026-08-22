@@ -678,6 +678,94 @@ def fiscal_panel(request):
     })
 
 
+# ── El Análisis — los umbrales con los que El Chalán juzga ───────────────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET", "POST"])
+def analisis_panel(request):
+    """Umbrales de El Análisis + costo por hora de cada rol.
+
+    Aquí se decide qué considera el sistema un margen sano, cuántos días de
+    silencio dan por perdida una cotización y cuánto cuesta una hora de cada
+    rol. De estos números salen las alertas y la lectura del Chalán.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from ajustes.models import ConfiguracionAnalisis, TarifaRol
+    from cuentas.models.rol import Rol
+
+    cfg = ConfiguracionAnalisis.obtener()
+
+    if request.method == "POST":
+        def _entero(nombre, actual, tope=3650):
+            try:
+                return max(0, min(int(request.POST.get(nombre) or actual), tope))
+            except (TypeError, ValueError):
+                return actual
+
+        def _decimal(nombre, actual, tope=Decimal("1000")):
+            try:
+                valor = Decimal(str(request.POST.get(nombre) or actual))
+            except (InvalidOperation, ValueError, TypeError):
+                return actual
+            return max(Decimal("0"), min(valor, tope))
+
+        cfg.dias_silencio_cotizacion = _entero("dias_silencio_cotizacion",
+                                               cfg.dias_silencio_cotizacion, 365)
+        cfg.marcar_perdidas_solo = bool(request.POST.get("marcar_perdidas_solo"))
+        cfg.margen_sano_pct = _decimal("margen_sano_pct", cfg.margen_sano_pct, Decimal("100"))
+        cfg.margen_critico_pct = _decimal("margen_critico_pct", cfg.margen_critico_pct,
+                                          Decimal("100"))
+        cfg.dias_mora_alerta = _entero("dias_mora_alerta", cfg.dias_mora_alerta, 365)
+        cfg.tarifa_hora_default = _decimal("tarifa_hora_default", cfg.tarifa_hora_default,
+                                           Decimal("100000"))
+        cfg.prorratear_jornada = bool(request.POST.get("prorratear_jornada"))
+        cfg.horas_jornada_tope = _entero("horas_jornada_tope", cfg.horas_jornada_tope, 24)
+        cfg.auto_activar_aprendizajes = bool(request.POST.get("auto_activar_aprendizajes"))
+        cfg.confianza_minima_auto = _decimal("confianza_minima_auto",
+                                             cfg.confianza_minima_auto, Decimal("1"))
+        cfg.dias_ventana_aprendizaje = _entero("dias_ventana_aprendizaje",
+                                               cfg.dias_ventana_aprendizaje, 365)
+        cfg.analisis_diario_activo = bool(request.POST.get("analisis_diario_activo"))
+        cfg.actualizado_por = request.user
+        cfg.save()
+
+        # Tarifas por rol: llegan como tarifa_<rol_id>.
+        for rol in Rol.objects.all():
+            crudo = request.POST.get(f"tarifa_{rol.pk}")
+            if crudo is None:
+                continue
+            try:
+                monto = Decimal(str(crudo or "0"))
+            except (InvalidOperation, ValueError):
+                continue
+            monto = max(Decimal("0"), min(monto, Decimal("100000")))
+            TarifaRol.objects.update_or_create(
+                rol=rol,
+                defaults={"costo_hora": monto, "activo": monto > 0,
+                          "actualizado_por": request.user},
+            )
+
+        emitir(EventoPortavoz(
+            tipo="ajuste.analisis_configurado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={
+                "margen_sano_pct": float(cfg.margen_sano_pct),
+                "dias_silencio": cfg.dias_silencio_cotizacion,
+                "auto_activar_aprendizajes": cfg.auto_activar_aprendizajes,
+            },
+        ))
+        messages.success(request, "Guardado. El Análisis ya usa estos números.")
+        return redirect("ajustes-analisis")
+
+    tarifas = {t.rol_id: t for t in TarifaRol.objects.all()}
+    roles = [
+        {"rol": rol, "costo_hora": (tarifas.get(rol.pk).costo_hora if tarifas.get(rol.pk) else None)}
+        for rol in Rol.objects.all().order_by("nombre")
+    ]
+    return render(request, "ajustes/analisis.html", {"cfg": cfg, "roles": roles})
+
+
 # ── La Cobranza — recordatorios automáticos de pago (S3 resto) ───────────
 
 @requiere_permiso("ajustes", "acceder")

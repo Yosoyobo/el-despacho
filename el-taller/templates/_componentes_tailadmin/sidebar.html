@@ -104,6 +104,13 @@
         </a>
         {% endif %}
 
+        {% if permisos_modulos.analisis and not sidebar_orden.analisis.oculto %}
+        <a href="{% url 'taller-analisis' %}" data-sidebar-grupo="{{ sidebar_orden.analisis.grupo }}" style="order: {{ sidebar_orden.analisis.orden|default:66 }}" class="menu-item {% if '/analisis' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="m7 14 3-4 3 3 5-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="flex-1">El Análisis</span>
+        </a>
+        {% endif %}
+
         {% if permisos_modulos.catalogo and not sidebar_orden.productos.oculto %}
         {# LC 2026-07: Productos NO se ilumina en /catalogo/proveedores (módulos separados). #}
         <a href="/catalogo/" data-sidebar-grupo="{{ sidebar_orden.productos.grupo }}" style="order: {{ sidebar_orden.productos.orden|default:70 }}" class="menu-item {% if '/catalogo' in request.path and '/catalogo/proveedores' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">

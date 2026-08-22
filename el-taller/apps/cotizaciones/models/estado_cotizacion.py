@@ -21,16 +21,43 @@ HEX_COLOR = RegexValidator(
     message="Usa un color hexadecimal de 6 dígitos, ej. #465fff.",
 )
 
-# slug → (label, color, orden, terminal). Sembrado como sistema=True en la
-# migración 0008. Editable desde la UI de Gerencia sin tocar código.
-ESTADOS_COT_SEED = (
-    ("generada", "Generada", "#0ba5ec", 10, False),
-    ("enviada",  "Enviada",  "#465fff", 20, False),
-    ("aprobada", "Aprobada", "#12b76a", 30, False),
-    ("pagada",   "Pagada",   "#7a5af8", 40, True),
+# ── Fase: qué SIGNIFICA cada paso para el negocio ─────────────────────────
+#
+# El nombre de un estado lo pone el despacho y puede ser cualquiera ("Generada",
+# "En revisión del cliente", "Rechazada"…). Para medir conversión y detectar lo
+# que se perdió, el sistema necesita saber qué significa cada paso, y eso NO se
+# puede adivinar del nombre. Por eso cada estado declara su fase, editable en
+# Gerencia junto con el resto.
+#
+# Antes de esto, los conteos buscaban los slugs literales 'borrador'/'enviada'.
+# Learning Center apagó "Enviada" y usa "Generada", así que los conteos daban
+# cero y la conversión salía 100%. La fase arregla eso de raíz y para siempre.
+FASE_ARMADA = "armada"
+FASE_ENVIADA = "enviada"
+FASE_GANADA = "ganada"
+FASE_PERDIDA = "perdida"
+
+FASES_COT = (
+    (FASE_ARMADA, "Armada — todavía no se le manda al cliente"),
+    (FASE_ENVIADA, "Enviada — el cliente la tiene, esperamos respuesta"),
+    (FASE_GANADA, "Ganada — el cliente dijo que sí"),
+    (FASE_PERDIDA, "Perdida — ya no va"),
 )
 
-_CACHE_KEY = "cotizaciones:estados:v1"
+# Fases que cuentan como oportunidad todavía viva.
+FASES_VIVAS = (FASE_ARMADA, FASE_ENVIADA)
+
+# slug → (label, color, orden, terminal, fase). Sembrado como sistema=True en la
+# migración 0008. Editable desde la UI de Gerencia sin tocar código.
+ESTADOS_COT_SEED = (
+    ("generada", "Generada", "#0ba5ec", 10, False, FASE_ARMADA),
+    ("enviada",  "Enviada",  "#465fff", 20, False, FASE_ENVIADA),
+    ("aprobada", "Aprobada", "#12b76a", 30, False, FASE_GANADA),
+    ("pagada",   "Pagada",   "#7a5af8", 40, True,  FASE_GANADA),
+)
+
+# v2: el dict cacheado ahora incluye `fase`.
+_CACHE_KEY = "cotizaciones:estados:v2"
 
 
 class EstadoCotizacion(models.Model):
@@ -49,6 +76,13 @@ class EstadoCotizacion(models.Model):
     orden = models.PositiveSmallIntegerField(default=100)
     terminal = models.BooleanField(
         default=False, help_text="Paso final del flujo (ej. Pagada).",
+    )
+    fase = models.CharField(
+        max_length=12, choices=FASES_COT, default=FASE_ARMADA, db_index=True,
+        help_text=(
+            "Qué significa este paso para el negocio. De aquí salen la "
+            "conversión y el conteo de oportunidades perdidas."
+        ),
     )
     activo = models.BooleanField(default=True)
     sistema = models.BooleanField(
@@ -83,6 +117,7 @@ def _estados_raw() -> list[dict]:
             {
                 "slug": e.slug, "label": e.label, "color": e.color,
                 "orden": e.orden, "terminal": e.terminal, "activo": e.activo,
+                "fase": e.fase,
             }
             for e in EstadoCotizacion.objects.all().order_by("orden", "label")
         ]
@@ -106,3 +141,22 @@ def invalidar_cache_estados_cot() -> None:
     """Llamado desde signals al guardar/borrar EstadoCotizacion."""
     from django.core.cache import cache
     cache.delete(_CACHE_KEY)
+
+
+# ── Fase: helpers de lectura ──────────────────────────────────────────────
+
+def fase_de(slug: str) -> str:
+    """Qué fase es este estado. Un slug desconocido se trata como armada —
+    lo prudente: no lo cuenta como ganado ni como perdido."""
+    return (mapa_estados_cot().get(slug) or {}).get("fase") or FASE_ARMADA
+
+
+def slugs_de_fase(*fases: str) -> list[str]:
+    """Los slugs que caen en estas fases. Para filtrar querysets sin literales."""
+    quiero = set(fases)
+    return [e["slug"] for e in _estados_raw() if (e.get("fase") or FASE_ARMADA) in quiero]
+
+
+def slugs_vivos() -> list[str]:
+    """Cotizaciones que todavía pueden convertirse en venta."""
+    return slugs_de_fase(*FASES_VIVAS)

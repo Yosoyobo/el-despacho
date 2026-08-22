@@ -15,13 +15,30 @@ def _proyecto(cli, autor):
 
 
 def test_lista_pills(client, cliente_factory, usuario_factory):
+    """Las pastillas de filtro salen del catálogo de estados de Gerencia.
+
+    Antes este test buscaba «Aprobadas» en todo el HTML y lo encontraba en una
+    tarjeta de arriba, no en una pastilla. Desde 2026-08-22 esa tarjeta se
+    llama «Ganadas» (cuenta por fase, no por el nombre del estado), así que
+    ahora se comprueba lo que de verdad importa: que el estado configurado
+    aparezca como filtro.
+    """
+    from apps.cotizaciones.models import EstadoCotizacion, invalidar_cache_estados_cot
+
+    # El catálogo ya viene sembrado por la migración; sólo se asegura el estado.
+    EstadoCotizacion.objects.update_or_create(
+        slug="aprobada",
+        defaults={"label": "Aprobada", "fase": "ganada", "orden": 30, "activo": True},
+    )
+    invalidar_cache_estados_cot()
+
     autor = usuario_factory(rol="super_admin")
     client.force_login(autor)
     resp = client.get("/cotizaciones/")
     assert resp.status_code == 200
-    # Pills de estado presentes (sin el buscador de texto viejo).
     assert b"Vigentes" in resp.content
-    assert b"Aprobadas" in resp.content
+    assert b"Aprobada" in resp.content
+    invalidar_cache_estados_cot()
 
 
 def test_lista_muestra_nombre_proyecto_no_codigo(client, cliente_factory, usuario_factory):

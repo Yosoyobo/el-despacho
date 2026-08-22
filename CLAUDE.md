@@ -6010,6 +6010,119 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Chalan-Analisis ✅ — El Análisis: que Los Chalanes vean, aprendan y opinen de TODA la data (2026-08-22, VERSION 2026.08.20)
+
+Pedido de Oscar: «ya tienes data real de proyectos, facturas, proyectos perdidos…
+dejar al centavo que los chalanes observen, aprendan, propongan y analicen TODA la
+data disponible». Se abrió con **tres rondas de preguntas** (AskUserQuestion) hechas
+DESPUÉS de medir el dump de producción, no antes — y ese reconocimiento cambió el
+sprint entero.
+
+**Lo que la medición encontró (dump del 2026-08-22, 03:00):** 54 proyectos · 47
+cotizaciones · 36 facturas · 41 clientes · 58 proveedores · 172 dictados · 1,448
+mensajes de chat. Y cuatro cosas rotas que nadie había reportado:
+
+1. **El análisis semanal reportaba 100% de conversión.** `cotizaciones.kpis_landing`
+   contaba los literales `borrador`/`enviada`; LC apagó "Enviada" en el catálogo
+   configurable y usa "Generada", así que los conteos daban **0** y la cuenta salía
+   `5/(0+5)`. La real ronda 32%.
+2. **El botón «Enviar» del recuadro del proyecto era un rickroll placeholder**, y
+   `services.marcar_enviada` exigía `estado == "borrador"` (estado que LC no usa).
+   Entre las dos cosas, ninguna cotización podía salir de "Generada" — de ahí las 35
+   paradas y los 0 con sello de envío.
+3. **Las 32 facturas en borrador YA tienen su CFDI y su PDF subidos.** Se facturaron
+   de verdad; nadie pica "Emitir". Como `kpis_landing` contaba por estado, salían 0
+   emitidas y 0 por cobrar, La Cobranza nunca les mandaba recordatorio y no tienen
+   asiento de CxC (hay 10 asientos `auto_factura_emitida` históricos: el flujo se usó
+   10 veces y se abandonó).
+4. **El destilador aprendía de 8 casos e ignoraba 85.** Buscaba clarificaciones (4) y
+   acciones desmarcadas (4); no miraba los 63 `fallo_ia` ni los 12
+   `aplicado_con_errores`, ni los 1,448 mensajes de chat.
+
+Y un matiz que deforma todo si se ignora: **47 cotizaciones son 25 oportunidades**
+(13 proyectos tienen 2-4 versiones). Contar documentos no es contar oportunidades.
+
+**Decisiones de Oscar (3 rondas):** «Generada» = sólo armada, enviar es un paso
+aparte · perdido = cancelado + rechazada/anulada + silencio + ganado-con-pérdida ·
+margen real en **dos columnas** (materiales y con mano de obra) · aprende de las **4
+fuentes** · **no tocar el flujo de facturas**, que el análisis las cuente igual ·
+plazo de silencio y tarifas **configurables en el GUI** · tarifa **por puesto/rol** ·
+personas **con nombre**, respetando quién puede ver a quién · **auto-activar** lo que
+el Chalán aprenda con mucha confianza · lectura IA **diaria + botón** · margen sano
+**50%** · horas: **timer real cuando hay, prorrateo PAREJO cuando no** · pantalla +
+avisos · los 4 temas extra (clientes, proveedores, equipo, IA).
+
+**Lo entregado:**
+
+- **Fase de estado (raíz del bug del 100%)**: `EstadoCotizacion.fase` ∈ {armada,
+  enviada, ganada, perdida}, editable en Gerencia (migración `cotizaciones/0019`
+  reparte las fases por slug conocido y, para los custom, por pistas en el nombre; y
+  **reactiva "Enviada"** sólo si no hay ningún paso activo que signifique eso). Los
+  KPIs y el embudo dejan de leer literales. `fase_efectiva()` hace que el **sello de
+  envío mande sobre el estado**, así el conteo no depende de que el catálogo esté
+  perfecto.
+- **`apps/cotizaciones/embudo.py`** — fuente única: cuenta **por oportunidad** (última
+  versión de cada proyecto), clasifica por fase, y separa dos números que se
+  confundían: `conversion_pct` (de lo resuelto, cuánto se ganó) y `cierre_pct` (de
+  todo lo cotizado). Más `sin_enviar` y `enfriadas`.
+- **El paso "Enviada" real**: las transiciones (`marcar_enviada/aprobada/rechazada`)
+  trabajan por fase y con `slug_destino()`; **re-enviar ahora es válido** (re-sella la
+  fecha) y lo prohibido es enviar algo ganado/perdido. El rickroll se reemplazó por
+  «Enviar por correo» (última versión + PDF) y **«📤 Ya la mandé por fuera»**
+  (constancia sin correo — de ahí arranca el reloj del silencio).
+- **Facturas sin tocar el flujo**: `Factura.facturada_de_verdad` / `cfdi_sin_emitir` /
+  `vencida_real` + `q_facturadas()`. El análisis las cuenta; el estado sigue siendo
+  borrador. `cfdi_sin_emitir` es el pendiente que el Chalán reporta.
+- **Rentabilidad real** (`los_proyectos/rentabilidad.py` + `mano_obra.py`): margen por
+  proyecto en dos columnas. Las horas salen del cronómetro cuando existe y, si no, de
+  **repartir la jornada en partes iguales** entre los proyectos que la persona tocó
+  ese día (actividad del proyecto + visitas), marcado como **estimado**. Costo/hora
+  por rol (el rol más caro de la persona) con tarifa general de respaldo.
+- **`negocio.py` pasa de 4 a 9 temas**: finanzas · cobranza · ventas · **rentabilidad**
+  (reemplaza el margen de lista del Catálogo; `margenes` queda de alias) · **perdidos**
+  · **clientes** · **proveedores** · **equipo** (respeta `puede_ver_horas_trabajadas_de`)
+  · **ia**. `dominios_para(usuario)` gatea por permiso.
+- **Pantalla «El Análisis»** (`/analisis/`, permiso nuevo `analisis.ver`, migración
+  `cuentas/0041`): alertas arriba, un recuadro por tema con la lectura del Chalán y
+  las cifras. **Los números son consultas** (exactos, gratis, frescos); **la lectura es
+  UNA sola llamada IA al día** para los nueve temas juntos (`LecturaAnalisis`,
+  migración `taller_home/0004`), más el botón «Analizar ahora». **Las alertas son
+  deterministas** — cruzar un umbral no necesita IA, así que corren diario sin costo.
+- **`ajustes.ConfiguracionAnalisis` + `TarifaRol`** (migración `ajustes/0014`) con GUI
+  en Gerencia → Ajustes → El Análisis: margen sano (50) / crítico (0), días de
+  silencio (45), días de mora (30), tarifas por rol, tope de horas, prorrateo on/off,
+  auto-activación y su umbral de confianza (0.85), lectura diaria on/off.
+- **El destilador aprende de 4 fuentes**: fallos (`fallo_ia`,
+  `aplicado_con_errores`, `cancelado`), el **error concreto** de cada acción
+  (`DictadoAccion.error_al_aplicar` — ojo: la columna NO se llama `error`), las
+  **conversaciones del chat** (shadow models nuevos `ConversacionChat`/`MensajeChat`
+  en `chalanes/models/dictado.py`) y las correcciones de siempre. Cada candidato trae
+  `confianza`; con `>= umbral` y la política prendida **se activa solo** y emite
+  `chalan.aprendizaje_auto_activado`. **Sigue sin ejecutar nada solo**: cambia cómo
+  INTERPRETA, no lo que hace (§20 intacta).
+- **MCP en todo lo nuevo (regla de Oscar de esta sesión)**: 7 capacidades
+  (`resumen_rentabilidad`, `rentabilidad_proyecto`, `resumen_perdidos`,
+  `resumen_clientes`, `resumen_proveedores`, `resumen_equipo`, `resumen_ia`) +
+  2 tools del servidor stdio (`resumen_negocio`, `rentabilidad_proyectos`) +
+  `CONSULTAS_CHAT` documentado.
+- **Cron** `chalan_analisis_diario` (7:05 L-S, `--solo-alertas` / `--dry-run`).
+- **34 tests** en `tests/taller/test_el_analisis.py`.
+
+**Gotchas del sprint**: la columna del error de una acción es `error_al_aplicar`;
+`_estados_raw` se importa del módulo, no del paquete `models`; el sidebar compartido
+obligó a montar `apps.taller_home.urls` en `tests/urls_gerencia.py`; y agregar un
+campo al form de estados de cotización rompía un test ajeno hasta darle default
+(`clean_fase` → armada).
+
+**Deuda diseñada**: las 32 facturas con CFDI **siguen sin asiento de CxC ni
+cobranza** (decisión de Oscar de no tocar el flujo) — el Chalán lo reporta como
+pendiente en vez de arreglarlo. El prorrateo de horas es una estimación y depende de
+que haya actividad registrada ese día; una jornada sin nada que imputar no se
+reparte. `analisis.ver` nace sólo para super_admin (se delega desde El Directorio).
+La lectura del Chalán no compara contra el periodo anterior (no hay serie histórica
+todavía; `LecturaAnalisis` ya la está acumulando). Y `MetaKPI` sigue vacía: sin metas
+capturadas, el análisis describe pero no puede decir «vas adelantado».
+
 ### S-Acerca-OAuth ✅ — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
 
 Google rechazó la verificación del cliente OAuth con **«Your home page does not
