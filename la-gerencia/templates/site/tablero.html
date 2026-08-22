@@ -100,6 +100,12 @@
     <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         🏗️ Infraestructura del NUC
         <span class="text-xs font-normal normal-case text-gray-400 dark:text-gray-500">(auto-refresh 30s)</span>
+        {% if vigia_alcanzable %}
+        <a href="{% url 'site-vivo' %}"
+           class="ml-auto rounded-lg border border-brand-500/40 px-2.5 py-1 text-xs font-normal normal-case text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10">
+            📺 El Vigía · pantalla en vivo
+        </a>
+        {% endif %}
     </h2>
     {% include "site/partials/infra.html" %}
 </section>

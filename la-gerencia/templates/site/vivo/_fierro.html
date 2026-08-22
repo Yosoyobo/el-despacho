@@ -1,0 +1,78 @@
+{% comment %}Cuatro números grandes del fierro. Refresca cada 5 s.{% endcomment %}
+{% with h=infra.host g=infra.gauges cr=infra.containers_resumen %}
+<div class="grid grid-cols-4 gap-3">
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <div class="flex items-baseline justify-between">
+      <span class="text-xs uppercase tracking-wider text-gray-500">CPU</span>
+      <span class="font-mono text-xs text-gray-500">{{ h.cpu_load.cores }} núcleos</span>
+    </div>
+    {% if h.cpu_load.disponible %}
+      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
+                {% if g.cpu.color == 'error' %}text-error-400{% elif g.cpu.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
+        {{ h.cpu_load.load_1 }}
+      </p>
+      <p class="mt-1 font-mono text-xs text-gray-500">
+        5m {{ h.cpu_load.load_5 }} · 15m {{ h.cpu_load.load_15 }} · encendido {{ h.uptime.humano }}
+      </p>
+    {% else %}
+      <p class="mt-2 text-sm text-gray-600">sin /proc montado</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <div class="flex items-baseline justify-between">
+      <span class="text-xs uppercase tracking-wider text-gray-500">Memoria</span>
+      <span class="font-mono text-xs text-gray-500">{{ h.memoria.total_mb|floatformat:0 }} MB</span>
+    </div>
+    {% if h.memoria.disponible %}
+      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
+                {% if g.memoria.color == 'error' %}text-error-400{% elif g.memoria.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
+        {{ h.memoria.pct_usado }}<span class="text-title-sm">%</span>
+      </p>
+      <p class="mt-1 font-mono text-xs text-gray-500">
+        {{ h.memoria.usado_mb|floatformat:0 }} usado · {{ h.memoria.libre_mb|floatformat:0 }} libre
+      </p>
+    {% else %}
+      <p class="mt-2 text-sm text-gray-600">sin /proc montado</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <div class="flex items-baseline justify-between">
+      <span class="text-xs uppercase tracking-wider text-gray-500">Disco</span>
+      <span class="font-mono text-xs text-gray-500">{{ h.disco.total_gb }} GB</span>
+    </div>
+    {% if h.disco.disponible %}
+      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
+                {% if g.disco.color == 'error' %}text-error-400{% elif g.disco.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
+        {{ h.disco.pct_usado }}<span class="text-title-sm">%</span>
+      </p>
+      <p class="mt-1 font-mono text-xs text-gray-500">
+        {{ h.disco.usado_gb }} GB usado · {{ h.disco.libre_gb }} GB libre
+      </p>
+    {% else %}
+      <p class="mt-2 text-sm text-gray-600">no legible</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <div class="flex items-baseline justify-between">
+      <span class="text-xs uppercase tracking-wider text-gray-500">Contenedores</span>
+      <span class="font-mono text-xs text-gray-500">{{ infra.containers.info.version_servidor }}</span>
+    </div>
+    {% if infra.containers.info.disponible %}
+      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
+                {% if cr.stopped %}text-error-400{% else %}text-success-400{% endif %}">
+        {{ cr.running }}<span class="text-title-sm text-gray-500">/{{ cr.total }}</span>
+      </p>
+      <p class="mt-1 font-mono text-xs text-gray-500">
+        {% if cr.stopped %}{{ cr.stopped }} detenido(s){% else %}todos arriba{% endif %}
+        · {{ infra.containers.info.imagenes }} imágenes
+      </p>
+    {% else %}
+      <p class="mt-2 text-sm text-gray-600">sin docker.sock</p>
+    {% endif %}
+  </div>
+</div>
+{% endwith %}

@@ -10456,3 +10456,97 @@ borrado de ahí) · gunicorn arrancó con **4×4** en El Taller y **2×4** en La
 Gerencia · el respaldo corrido desde `$HOME` —donde lo dejaba caer el cron— ya
 produce un dump de **449 KB** (antes, 20 bytes) y llega a HAL con **127 tablas** y
 **87 archivos de medios**, 22 MB.
+
+---
+
+# S-Vigia-NUC — El Vigía: la pantalla de pared del NUC (2026-08-22, VERSION 2026.08.19)
+
+> Oscar, viendo los gauges en «n/d»: «vamos a construir una página fullscreen que
+> corra exclusivamente en el NUC para ver estos datos y los procesos que hace en
+> tiempo real» · «es ubuntu desktop, abro chrome y la pongo en fullscreen» · «debe
+> abrirse en fullscreen en automático después de una reiniciada». Eligió los tres
+> paneles en un tablero.
+
+## La decisión que gobierna todo lo demás
+
+La pantalla **no puede pedir sesión**. En producción `SESSION_COOKIE_SECURE = True`,
+así que la cookie no viaja por `http://localhost:8201` — que es exactamente cómo la
+abre el navegador del propio NUC. Y un kiosco que pidiera login tendría que
+loguearse solo tras cada reinicio, lo cual es peor que no pedirlo.
+
+Así que la protección es **dónde se puede pedir**, con dos candados a la vez
+(`views_vivo._es_local`):
+
+1. El `Host` tiene que ser local: loopback, LAN o tailnet. El dominio público no
+   está en la lista ⇒ **404**, que ni revela que la ruta existe.
+2. La petición **no puede traer `X-Forwarded-For`**, que El Portero siempre pone al
+   proxear. Es el candado que sobrevive a que alguien agregue el dominio a la lista
+   de arriba por error.
+
+Y la página es de **sólo lectura**: no hay un solo POST en el archivo.
+
+## Cuatro paneles, cuatro relojes
+
+Fierro 5 s · peticiones 2 s · contenedores 3 s · negocio 20 s. Cada uno con su
+propio `hx-get`, a propósito: si el socket de Docker se cae, ese panel se queda
+quieto y los demás siguen. No hay un sondeo del que dependa la pantalla completa.
+
+Un reloj local en JS (no pasa por el servidor) y un aviso de «sin respuesta» a los
+**dos** fallos seguidos. **Una pared congelada tiene que verse congelada**: si el
+reloj se detuviera con el tablero, una caída y una pantalla vieja se verían igual.
+
+## Los tres detalles técnicos que costaron trabajo
+
+- **El stream de logs de Docker viene multiplexado.** Tramas de 8 bytes de
+  cabecera —`[tipo, 0,0,0, tamaño BE(4)]`— cuando el contenedor no tiene TTY.
+  Leerlo como texto plano mete basura al inicio de cada renglón.
+- **Cada app escribe con su propio reloj**: gunicorn en hora local con offset,
+  Caddy en UTC. Mezclarlos por su propia marca es pedir un desorden silencioso, así
+  que se piden con `timestamps=1` y **la marca de Docker es el reloj común**.
+- **`docker stats` no se puede consultar en vivo a lo tonto.**
+  `/stats?stream=false` **espera ~1 s por contenedor** porque toma dos muestras para
+  el CPU: con seis son seis segundos. `one-shot=true` responde al instante pero deja
+  `precpu_stats` en cero, así que se guarda la muestra anterior en el proceso y se
+  calcula el delta —lo mismo que hace `docker stats`— y los seis se consultan en
+  paralelo. El primer refresco muestra el CPU en blanco; del segundo, real.
+
+De paso: el log de acceso de gunicorn **no traía la duración**, así que el panel
+podía decir qué se pidió pero no qué tardó. Los entrypoints ahora pasan
+`--access-logformat` con `%(D)s`.
+
+## Dos cosas pensadas para que aguante un reinicio
+
+- **HTMX vendoreado** (`static/vendor/htmx/`, 2.0.3, la misma versión que el resto
+  carga de unpkg). Esta pantalla arranca sola cuando el NUC se reinicia; si en ese
+  momento no hay internet, un HTMX que no baja deja la pared congelada para siempre
+  sin decir por qué.
+- **El lanzador espera a que la app conteste** antes de abrir el navegador. Tras un
+  reinicio el escritorio está listo mucho antes que Docker, y nadie recarga una
+  pared. Aguanta 5 minutos y, si no responde, abre igual — el propio Vigía avisa en
+  pantalla. Además reabre el navegador si se muere y deja bitácora en `~/.vigia.log`.
+
+`infra/vigia/instalar.sh --autologin` deja el autostart, apaga el ahorro de pantalla
+y configura GDM para que la pantalla vuelva sola tras un corte de luz. El precio va
+dicho en el README: quien tenga acceso físico al NUC se encuentra una sesión
+abierta. Prefiere Chrome/Chromium y cae a **Firefox, que es el único navegador
+instalado en este NUC**.
+
+## Tests
+
+31 nuevas (`tests/site/test_vigia.py` 24 + 7 del gauge de contenedores): el candado
+de acceso en sus cuatro variantes, los cuatro paneles degradando sin socket ni
+`/proc`, y el parseo de los logs (demultiplexado, gunicorn con y sin duración,
+Caddy del Mostrador, filtro de ruido, orden con y sin marca). 55 verdes en
+`tests/site`, ruff limpio.
+
+## Deuda diseñada
+
+- El panel de negocio **no muestra los crons corriendo**: no hay registro de sus
+  corridas más allá de sus propios logs.
+- El flujo lee los últimos 60 renglones por servicio, así que en un pico muy alto
+  puede perder algo entre refrescos. Para una pared está bien; para auditar, no.
+- El kiosco depende de que el NUC tenga sesión de escritorio. Si algún día se
+  vuelve headless, El Vigía se ve desde otra máquina del tailnet — que ya está
+  permitido.
+- **`VERSION_FECHA` no se movió** a propósito: nada de esto es visible para los
+  usuarios, así que no hay bloque de Novedades que escribir.

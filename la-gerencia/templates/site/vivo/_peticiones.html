@@ -1,0 +1,54 @@
+{% comment %}El flujo de peticiones, lo más reciente arriba. Refresca cada 2 s.{% endcomment %}
+<div class="flex shrink-0 items-baseline justify-between border-b border-gray-800 px-5 py-3">
+  <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Peticiones en vivo</h2>
+  <div class="flex items-baseline gap-4 font-mono text-xs">
+    {% if resumen.errores %}
+      <span class="text-error-400">{{ resumen.errores }} con error</span>
+    {% endif %}
+    {% if resumen.ms_medio %}
+      <span class="text-gray-500">media {{ resumen.ms_medio }} ms</span>
+      <span class="{% if resumen.ms_max > 1000 %}text-warning-400{% else %}text-gray-500{% endif %}">
+        pico {{ resumen.ms_max }} ms
+      </span>
+    {% endif %}
+    <span class="text-gray-600">últimas {{ resumen.total }}</span>
+  </div>
+</div>
+
+{% if error %}
+  <p class="px-5 py-4 text-sm text-error-400">No se pudo leer el flujo: {{ error }}</p>
+{% elif not filas %}
+  <p class="px-5 py-4 text-sm text-gray-600">
+    Nada todavía. Las sondas y el sondeo de esta pantalla no se listan a propósito.
+  </p>
+{% else %}
+<div class="vigia-scroll min-h-0 flex-1 px-2 py-1">
+  <table class="w-full font-mono text-xs">
+    <tbody>
+      {% for f in filas %}
+      <tr class="border-b border-gray-800/50 last:border-0">
+        <td class="whitespace-nowrap py-1.5 pl-3 pr-2 text-gray-500 tabular-nums">
+          {{ f.cuando|time:"H:i:s"|default:"--:--:--" }}
+        </td>
+        <td class="whitespace-nowrap px-2">
+          <span class="rounded px-1.5 py-0.5 text-[10px] uppercase
+            {% if f.servicio == 'Taller' %}bg-brand-500/15 text-brand-300
+            {% elif f.servicio == 'Gerencia' %}bg-purple-500/15 text-purple-300
+            {% else %}bg-success-500/15 text-success-300{% endif %}">{{ f.servicio }}</span>
+        </td>
+        <td class="whitespace-nowrap px-2 text-gray-400">{{ f.metodo }}</td>
+        <td class="max-w-0 truncate px-2 text-gray-200" title="{{ f.ruta }}">{{ f.ruta }}</td>
+        <td class="whitespace-nowrap px-2 text-right tabular-nums
+          {% if f.codigo >= 500 %}text-error-400{% elif f.codigo >= 400 %}text-warning-400{% else %}text-gray-500{% endif %}">
+          {{ f.codigo }}
+        </td>
+        <td class="whitespace-nowrap py-1.5 pl-2 pr-3 text-right tabular-nums
+          {% if f.ms >= 1000 %}text-warning-400{% else %}text-gray-500{% endif %}">
+          {% if f.ms is not None %}{{ f.ms }} ms{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

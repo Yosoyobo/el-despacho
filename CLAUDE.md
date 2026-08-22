@@ -65,6 +65,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Celador** | Extremo `/salud` para el monitor del taller + su credencial (`lib/salud.py`, `lib/celador.py`) | — |
 | **El Almacén** | Medios en disco (fotos, comprobantes, CFDI, adjuntos) con derivados propios; Drive queda de espejo (`lib/almacen.py`) | — |
 | **El Mostrador** | Entrega los medios de El Almacén desde el disco del NUC, sin pasar por Django ni por Drive (`infra/mostrador/`) | 8202 |
+| **El Vigía** | Pantalla de pared del NUC: fierro, peticiones y trabajo del despacho en vivo. Sólo se atiende en la máquina (`/site/vivo/`, `infra/vigia/`) | — |
 
 ### Módulos de negocio
 
@@ -5731,6 +5732,82 @@ borrado de ahí) · gunicorn arrancó con **4×4** en El Taller y **2×4** en La
 Gerencia · el respaldo corrido desde `$HOME` —donde lo dejaba caer el cron— ya
 produce un dump de **449 KB** (antes, 20 bytes) y llega a HAL con **127 tablas** y
 **87 archivos de medios**, 22 MB.
+
+### S-Vigia-NUC ✅ — El Vigía: la pantalla de pared del NUC, en vivo (2026-08-22, VERSION 2026.08.19)
+
+Oscar, mirando los gauges en «n/d»: «vamos a construir una página fullscreen que
+corra exclusivamente en el NUC para ver estos datos y los procesos que hace en
+tiempo real» · «esta página o app corre en el NUC, es ubuntu desktop, abro chrome y
+la pongo en fullscreen» · «debe abrirse en fullscreen en automático después de una
+reiniciada». Eligió los **tres** paneles (peticiones, recursos por contenedor y
+trabajo del negocio) en un tablero.
+
+- **La página** (`/site/vivo/`, `la-gerencia/apps/el_site/views_vivo.py`): armazón
+  oscuro fijo, sin sidebar ni header, con cuatro paneles que se refrescan **cada
+  uno por su cuenta** (fierro 5 s, peticiones 2 s, contenedores 3 s, negocio 20 s).
+  Si el socket de Docker se cae, ese panel se queda quieto y los demás siguen: no
+  hay un sondeo del que dependa todo. Un reloj local en JS y un aviso de «sin
+  respuesta del servidor» a los dos fallos seguidos — **una pared congelada tiene
+  que verse congelada**, y un reloj que sigue corriendo es lo que delata la caída.
+- **Por qué NO pide sesión, y no es descuido:** en producción
+  `SESSION_COOKIE_SECURE = True`, así que la cookie **no viaja por
+  `http://localhost:8201`**, que es exactamente cómo la abre el navegador del NUC.
+  Y un kiosco que pidiera login tendría que loguearse solo tras cada reinicio. Lo
+  que la protege son **dos candados**: el `Host` tiene que ser local (loopback, LAN
+  o tailnet — el dominio público no está, así que responde **404**, ni revela que
+  la ruta existe) **y** la petición no puede traer `X-Forwarded-For`, que El
+  Portero siempre pone al proxear. El segundo sobrevive a que alguien agregue el
+  dominio a la lista por error. La página es de sólo lectura: ni un POST.
+- **Las peticiones se leen de los logs de Docker**, no de un middleware: un
+  middleware sería una escritura extra en el camino caliente de CADA request, para
+  una pantalla que casi nadie mira. Dos detalles de protocolo en
+  `lib/site/actividad.py`: el endpoint de logs devuelve un stream **multiplexado**
+  (tramas de 8 bytes de cabecera) cuando el contenedor no tiene TTY, y cada app
+  escribe con su propio reloj —gunicorn en hora local con offset, Caddy en UTC—, así
+  que se piden con `timestamps=1` y **la marca de Docker es el reloj común**.
+- **Duración real en el log de gunicorn**: su formato por default no la trae, así
+  que los entrypoints ahora pasan `--access-logformat` con `%(D)s`. Sin eso el
+  panel podía decir qué se pidió pero no qué tardó. Si el formato viejo vuelve, la
+  columna sale vacía en vez de mentir con un cero.
+- **`docker stats` sin esperar**: `/stats?stream=false` **tarda ~1 s por
+  contenedor** porque toma dos muestras para el CPU; con seis son seis segundos y
+  no sirve para una pantalla en vivo. `one-shot=true` responde al instante pero deja
+  `precpu_stats` en cero, así que `contenedores.estadisticas()` **guarda la muestra
+  anterior en el proceso** y calcula el delta — que es lo que hace `docker stats`—,
+  y consulta los seis en paralelo. El primer refresco muestra el CPU en blanco; del
+  segundo en adelante, real. La memoria descuenta `inactive_file`, como `docker
+  stats`, para no reportar como usado el caché que el kernel puede soltar.
+- **HTMX vendoreado** (`la-gerencia/static/vendor/htmx/`, 2.0.3, la misma versión
+  que el resto carga de unpkg): esta pantalla arranca sola cuando el NUC se
+  reinicia, y si en ese momento no hay internet, un HTMX que no baja deja la pared
+  congelada para siempre sin decir por qué.
+- **El kiosco** (`infra/vigia/`): `instalar.sh` deja el autostart del escritorio,
+  apaga el ahorro de pantalla y el bloqueo, y con `--autologin` configura GDM para
+  que la pantalla **vuelva sola tras un corte de luz** (el precio, dicho en el
+  README: quien tenga acceso físico se encuentra una sesión abierta). El lanzador
+  `vigia-kiosco.sh` **espera a que la app conteste** antes de abrir —tras un
+  reinicio el escritorio está listo mucho antes que Docker, y nadie recarga una
+  pared—, reabre el navegador si se muere, y deja bitácora en `~/.vigia.log`.
+  Prefiere Chrome/Chromium y cae a **Firefox, que es el único instalado en este
+  NUC**.
+- **Descubrimiento**: El Site enseña el enlace a El Vigía **sólo cuando la
+  petición es local** (reusa el mismo `_es_local`, no una segunda definición).
+  Ofrecer un enlace que da 404 sería peor que no ofrecerlo.
+- **31 pruebas nuevas** (`tests/site/test_vigia.py`, 24 + las 7 del gauge): el
+  candado de acceso (404 por dominio, 404 proxeada, 200 sin sesión desde la
+  máquina, IP pública fuera), los cuatro paneles degradando sin socket, y el
+  parseo de los logs (demultiplexado, gunicorn con y sin duración, Caddy, ruido,
+  orden).
+- **`VERSION_FECHA` no se movió** a propósito: El Vigía no es visible para los
+  usuarios (sólo abre en la máquina), así que no hay Novedades que escribir y la
+  fecha visible sigue siendo la del último cambio que sí se vio.
+
+**Deuda diseñada**: el panel de negocio no muestra los crons corriendo (no hay
+registro de sus corridas más allá de sus propios logs); el flujo de peticiones lee
+los últimos 60 renglones por servicio, así que en un pico muy alto puede perder
+algo entre refrescos (para una pared está bien, para auditar no); y el kiosco
+depende de que el NUC tenga sesión de escritorio — si algún día se vuelve headless,
+El Vigía se ve desde otra máquina del tailnet, que ya está permitido.
 
 ### S-Acerca-OAuth ✅ — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
 

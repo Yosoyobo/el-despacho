@@ -1,0 +1,32 @@
+{% comment %}CPU y memoria por contenedor, al estilo docker stats. Cada 3 s.{% endcomment %}
+<div class="flex h-full flex-col">
+  <div class="shrink-0 border-b border-gray-800 px-5 py-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Por contenedor</h2>
+  </div>
+  {% if error %}
+    <p class="px-5 py-4 text-sm text-error-400">{{ error }}</p>
+  {% elif not filas %}
+    <p class="px-5 py-4 text-sm text-gray-600">Sin docker.sock montado.</p>
+  {% else %}
+  <div class="vigia-scroll min-h-0 flex-1 px-2 py-1">
+    <table class="w-full font-mono text-xs">
+      <tbody>
+        {% for f in filas %}
+        <tr class="border-b border-gray-800/50 last:border-0">
+          <td class="max-w-0 truncate py-1.5 pl-3 pr-2 text-gray-200" title="{{ f.nombre }}">
+            {{ f.nombre|cut:"despacho-" }}
+          </td>
+          <td class="whitespace-nowrap px-2 text-right tabular-nums
+            {% if f.cpu_pct >= 80 %}text-error-400{% elif f.cpu_pct >= 40 %}text-warning-400{% else %}text-gray-400{% endif %}">
+            {% if f.cpu_pct is not None %}{{ f.cpu_pct }}%{% else %}<span class="text-gray-600">midiendo</span>{% endif %}
+          </td>
+          <td class="whitespace-nowrap py-1.5 pl-2 pr-3 text-right tabular-nums text-gray-400">
+            {% if f.mem_mb is not None %}{{ f.mem_mb|floatformat:0 }} MB{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>

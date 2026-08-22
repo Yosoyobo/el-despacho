@@ -1,0 +1,139 @@
+{% load static %}<!doctype html>
+{% comment %}
+El Vigía — pantalla de pared del NUC. NO extiende base.html a propósito: no lleva
+sidebar, ni header, ni footer. Es un muro, no una pantalla de la aplicación.
+
+Tres decisiones que conviene no deshacer:
+
+· `class="dark"` fijo en el <html>. La regla §19 del proyecto es «dark mode propio
+  con toggle y localStorage»; aquí se usa ESE mismo sistema (las utilidades
+  `dark:` del repo) pero clavado, porque una pantalla colgada en la pared no tiene
+  quien le pique un botón y de noche un fondo blanco es una lámpara.
+
+· HTMX se sirve VENDOREADO (`static/vendor/htmx/`). El resto del sistema lo carga
+  de unpkg, que está bien para un navegador con internet; esta pantalla arranca
+  sola cuando el NUC se reinicia, y si en ese momento no hay internet, un HTMX que
+  no baja deja la pared congelada para siempre sin decir por qué.
+
+· Cada panel se refresca por su cuenta y a su ritmo. Si el socket de Docker se
+  cae, el panel de contenedores se queda quieto y los demás siguen: no hay un solo
+  sondeo del que dependa todo.
+{% endcomment %}
+<html lang="es-mx" class="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>El Vigía · el NUC en vivo</title>
+    <link rel="icon" href="{% static 'branding/favicon-32.png' %}" sizes="32x32">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+    <style>
+      /* Una pared no se scrollea ni se selecciona con el dedo. */
+      html, body { height: 100%; overflow: hidden; }
+      body { -webkit-user-select: none; user-select: none; }
+      /* El flujo de peticiones sí, cuando no cabe. */
+      .vigia-scroll { overflow-y: auto; scrollbar-width: thin; }
+      .vigia-scroll::-webkit-scrollbar { width: 6px; }
+      .vigia-scroll::-webkit-scrollbar-thumb { background: #3f3f3f; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-full bg-gray-950 text-gray-100 font-inter antialiased">
+
+<div class="flex h-full flex-col gap-3 p-4">
+
+  {# ── Cabecera ─────────────────────────────────────────────────────────── #}
+  <header class="flex shrink-0 items-baseline justify-between">
+    <h1 class="flex items-baseline gap-3">
+      <span class="text-title-sm font-semibold tracking-tight text-white">El Vigía</span>
+      <span class="text-sm text-gray-400">el NUC de Learning Center, en vivo</span>
+    </h1>
+    <div class="flex items-baseline gap-5">
+      {# Aparece SOLO si el sondeo falla: una pared congelada tiene que verse congelada. #}
+      <span id="vigia-caido"
+            class="hidden rounded-lg bg-error-500/15 px-3 py-1 text-sm font-medium text-error-400">
+        ● sin respuesta del servidor
+      </span>
+      <span id="vigia-reloj" class="font-mono text-title-sm tabular-nums text-gray-300">--:--:--</span>
+    </div>
+  </header>
+
+  {# ── Fierro: cuatro números grandes ───────────────────────────────────── #}
+  <div class="shrink-0" hx-get="{% url 'site-vivo-fierro' %}"
+       hx-trigger="load, every 5s" hx-swap="innerHTML">
+    <div class="grid grid-cols-4 gap-3">
+      {% for _ in "1234" %}
+      <div class="animate-pulse rounded-2xl border border-gray-800 bg-gray-900 p-5">
+        <div class="h-3 w-20 rounded bg-gray-800"></div>
+        <div class="mt-4 h-9 w-28 rounded bg-gray-800"></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── Cuerpo: peticiones a la izquierda, máquina y negocio a la derecha ── #}
+  <div class="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-5">
+
+    <section class="flex min-h-0 flex-col rounded-2xl border border-gray-800 bg-gray-900 xl:col-span-3">
+      <div hx-get="{% url 'site-vivo-peticiones' %}"
+           hx-trigger="load, every 2s" hx-swap="innerHTML"
+           class="flex min-h-0 flex-1 flex-col">
+        <p class="p-5 text-sm text-gray-500">Leyendo el flujo de peticiones…</p>
+      </div>
+    </section>
+
+    <div class="grid min-h-0 grid-rows-2 gap-3 xl:col-span-2">
+      <section class="min-h-0 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
+               hx-get="{% url 'site-vivo-contenedores' %}"
+               hx-trigger="load, every 3s" hx-swap="innerHTML">
+        <p class="p-5 text-sm text-gray-500">Midiendo los contenedores…</p>
+      </section>
+      <section class="min-h-0 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
+               hx-get="{% url 'site-vivo-negocio' %}"
+               hx-trigger="load, every 20s" hx-swap="innerHTML">
+        <p class="p-5 text-sm text-gray-500">Consultando el trabajo del despacho…</p>
+      </section>
+    </div>
+  </div>
+
+  <footer class="shrink-0 text-center text-xs text-gray-600">
+    Sólo se atiende en la máquina que vigila ({{ host_pedido }}) ·
+    Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener"
+      class="text-gray-500 hover:text-gray-400">NoKo Devs</a> · © 2026 Learning Center
+  </footer>
+</div>
+
+<script>
+  // Reloj local. No pasa por el servidor: si el servidor se cae, el reloj sigue
+  // corriendo y el aviso de "sin respuesta" es lo que delata la caída. Un reloj
+  // congelado y un tablero congelado se ven igual, y no son lo mismo.
+  (function () {
+    var reloj = document.getElementById('vigia-reloj');
+    function pintar() {
+      var d = new Date();
+      reloj.textContent = [d.getHours(), d.getMinutes(), d.getSeconds()]
+        .map(function (n) { return String(n).padStart(2, '0'); }).join(':');
+    }
+    pintar();
+    setInterval(pintar, 1000);
+  })();
+
+  // Salud del sondeo. Dos fallos seguidos encienden el aviso; el primer acierto
+  // lo apaga. Un solo fallo aislado no vale la pena mostrarlo — es ruido.
+  (function () {
+    var aviso = document.getElementById('vigia-caido');
+    var fallos = 0;
+    document.body.addEventListener('htmx:afterRequest', function (e) {
+      if (e.detail.successful) {
+        fallos = 0;
+        aviso.classList.add('hidden');
+      } else if (++fallos >= 2) {
+        aviso.classList.remove('hidden');
+      }
+    });
+    document.body.addEventListener('htmx:sendError', function () {
+      if (++fallos >= 2) { aviso.classList.remove('hidden'); }
+    });
+  })();
+</script>
+</body>
+</html>
