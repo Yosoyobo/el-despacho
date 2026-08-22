@@ -39,12 +39,18 @@ la vista y las plantillas sí.
 | `lib/site/actividad.py` | El flujo de peticiones, leído de los logs de Docker | **los servicios** |
 | `lib/site/acciones.py` | Traduce una ruta a lo que la persona está haciendo | **el mapa entero** |
 | `lib/site/pulso.py` | La serie corta que dibujan las gráficas (en Redis) | tal cual |
+| `lib/site/limpieza.py` | El botón que suelta caché, RAM y disco | **los pasos** |
 | `apps/el_site/views_vivo.py` | Los seis paneles + el candado de acceso | **los paneles de negocio** |
 | `templates/site/vivo.html` + `vivo/*.html` | La cara | los títulos |
 | `infra/vigia/` | Que se abra sola al iniciar sesión | tal cual |
 
-Dependencias: **Redis** (para las series) y el **socket de Docker** montado en
-lectura. Nada más. Si no hay Redis, las gráficas salen vacías y el resto funciona.
+Dependencias: **Redis** (para las series y para recordar la última limpieza) y el
+**socket de Docker**. Nada más. Si no hay Redis, las gráficas salen vacías y el
+resto funciona.
+
+Ojo con el socket: se monta `:ro` por costumbre, pero **eso no impide escribir por
+él** —el botón de La Limpieza lo aprovecha a propósito, ver §4.1— así que montarlo
+es entregar el demonio completo al contenedor.
 
 Los montajes que hacen falta en el contenedor que sirve la página:
 
@@ -114,7 +120,123 @@ del proyecto.
 
 ---
 
-## 4. Las trampas ya pagadas
+## 4. El botón de La Limpieza
+
+La pantalla dice cómo está la máquina; este botón es lo único que la **mueve**.
+Suelta lo que se acumuló —caché, RAM y disco— sin entrar por SSH, que es
+justamente lo que se quiere cuando alguien está mirando los anillos desde una
+pared o desde el celular. Vive en `lib/site/limpieza.py` + el partial
+`templates/site/vivo/_limpieza.html` + la vista `vivo_limpieza`.
+
+**Seis pasos, y cada uno reporta lo suyo:** borrar las llaves del caché de la
+aplicación · compactar el registro de Redis y pedirle que devuelva memoria al
+sistema · `VACUUM (ANALYZE)` · podar lo que Docker dejó tirado · reciclar los
+trabajadores de gunicorn · soltar el caché de páginas del sistema.
+
+### 4.1 Se puede escribir por un socket de Docker montado `:ro`
+
+Y conviene saberlo en las dos direcciones. El `:ro` de
+`- /var/run/docker.sock:/var/run/docker.sock:ro` **no es una barrera**: el flag del
+montaje limita operaciones del sistema de archivos, y conectarse a un socket no lo
+es. Verificado contra un demonio real: crear un exec devolvió 201, arrancarlo 200,
+y el comando corrió dentro del contenedor objetivo.
+
+Eso es lo que hace posible este botón sin instalar nada en el host — y también
+significa que **quien tenga ese socket tiene el demonio completo**. La barrera de
+verdad es que sólo dos funciones escriben por ahí (`podar` y
+`reciclar_trabajadores`) y que la vista que las llama está gateada.
+
+### 4.2 La señal a gunicorn va POR DENTRO, nunca con `docker kill`
+
+Es la trampa más caleja del asunto y ya se pagó una vez (§5). `docker kill` le
+cuelga al contenedor el marcador de «detenido a mano» **aunque el proceso
+sobreviva a la señal**, y desde ese momento `restart: unless-stopped` ya no lo
+levanta tras un apagón, sin un solo error en la bitácora. Lo correcto es un `exec`
+adentro:
+
+```python
+_post(f"/v1.44/containers/{cid}/exec", {"Cmd": ["sh", "-c", "kill -HUP 1"]})
+_post(f"/v1.44/exec/{exec_id}/start", {"Detach": True, "Tty": False})
+```
+
+Gunicorn lee el HUP como «recárgate»: levanta trabajadores nuevos y a los viejos
+les pide que se retiren cuando terminen. No hay corte, y **la petición que disparó
+el botón también termina** — el trabajador de gthread espera a sus peticiones en
+vuelo antes de irse. El contenedor que atiende esa petición se recicla al final.
+
+Y el worker de eventos **no** entra en la lista aunque comparta la imagen: su PID 1
+es Python, y para Python la acción por default de SIGHUP es morir.
+
+### 4.3 Nunca `cache.clear()`, nunca `FLUSHDB`
+
+`RedisCache.clear()` de Django hace `FLUSHDB`. Si el caché comparte base de datos
+con una cola de trabajo que no caduca —aquí, la del Portavoz— un `clear()` se
+lleva los pendientes sin dejar rastro. Se borran sólo las llaves con el prefijo de
+Django, sacando el patrón del propio caché (`cache.make_key("*")` → `:1:*`), así
+que un `KEY_PREFIX` futuro lo sigue solo. Las sesiones también se borran y **nadie
+se sale de su sesión**: `cached_db` lee de la base cuando el caché no la tiene.
+
+### 4.4 El tiempo es parte del diseño
+
+Gunicorn mata al trabajador que no contesta en 30 s (su default), y quedarse sin
+trabajador significa que el usuario ve un error **aunque la limpieza sí haya
+corrido**: el peor de los dos mundos. Así que hay un presupuesto de 24 s, y tres
+detalles que lo hacen funcionar:
+
+- **No se arranca un paso que no cabe.** El presupuesto se mide contra lo que UNA
+  llamada más podría tardar, no contra lo transcurrido; si se midiera así, empezar
+  algo justo antes del límite sumaría un tiempo de espera entero por encima.
+- **Se APARTA un pedazo para el reciclado** (6 s de los 24). Es el último paso y a
+  la vez el único que devuelve RAM: repartir por orden de llegada dejaría que una
+  poda lenta se comiera justo el paso que le da sentido al botón.
+- **El `VACUUM` va con `statement_timeout` de 10 s, y ese tope se devuelve en un
+  `finally` obligatoriamente**: con `CONN_MAX_AGE > 0` la conexión se reusa, y un
+  tope olvidado se le aplicaría durante un minuto a consultas que no tienen nada
+  que ver — el síntoma sería «a veces un reporte truena».
+
+Y una trampa de redacción, no de tiempo: `pg_size_pretty` devuelve **texto**, así
+que comparar «9 MB» con «31 MB» como cadenas dice que la base bajó cuando creció.
+Los bytes son para comparar; el texto, para mostrar.
+
+### 4.5 Lo que NO se puede desde el contenedor
+
+Soltar el caché de páginas del sistema (`/proc/sys/vm/drop_caches`), porque `/proc`
+va montado en sólo-lectura y dejarlo escribible sólo para esto le abriría al
+contenedor todos los parámetros del kernel. El paso se reporta como «no se puede
+desde aquí» en vez de fingir que se hizo; el guion nocturno, que corre en el host
+como root, sí lo suelta. **Reportar un hueco como hueco es la mitad del valor de un
+tablero.**
+
+### 4.6 La puerta, cuando la pantalla no tiene sesión
+
+Una pared sin sesión no puede traer token de CSRF: la cookie es `Secure` y no viaja
+por `http://localhost`. La salida no es apagar la comprobación, es partirla en dos:
+
+- **Desde la máquina** (la pared): se exige la cabecera `HX-Request`. Un formulario
+  de otro sitio SÍ puede apuntar a `http://localhost:PUERTO/…` desde el navegador
+  de esa misma máquina, pero **no puede poner cabeceras propias**, y un `fetch` que
+  sí las pone choca con el permiso previo de CORS que el servidor nunca concede.
+- **Desde la aplicación con sesión**: el token, como en cualquier otro POST. La
+  vista está exenta a nivel de decorador, así que la comprobación se invoca a mano
+  —la **de Django**, no una propia— para no acabar con dos versiones de la regla.
+
+Y la pregunta de confirmación va **sólo fuera de la pared**: `hx-confirm` usa
+`window.confirm`, que **bloquea el JavaScript de la página**. Si alguien la abre en
+el muro y se va, la pantalla se queda congelada —sin refrescar un solo panel y sin
+poder ni avisar de que está congelada— hasta que alguien vuelva. En una pantalla
+que se pica físicamente, un toque ya es deliberado; y lo peor que puede pasar es
+una limpieza de más, que no borra nada.
+
+### 4.7 El resultado se guarda, no se devuelve
+
+El reporte se escribe en Redis y el partial lo LEE en cada pintado. Si viviera sólo
+en la respuesta del POST, el siguiente refresco automático lo borraría de la
+pantalla a los pocos segundos. Como efecto secundario, las dos pantallas cuentan la
+misma historia y cualquiera puede ver qué se hizo y cuándo.
+
+---
+
+## 5. Las trampas ya pagadas
 
 Están aquí para no volver a pagarlas. Todas se descubrieron **mirando la pantalla**,
 no leyendo el código, y todas pasaban las pruebas.
@@ -181,7 +303,7 @@ no leyendo el código, y todas pasaban las pruebas.
 
 ---
 
-## 5. Cómo se adapta a otro proyecto
+## 6. Cómo se adapta a otro proyecto
 
 Cuatro cosas, en este orden.
 
@@ -226,7 +348,7 @@ sumar otros. **El dominio público jamás va ahí.**
 
 ---
 
-## 6. Lo que se lleva incluso sin copiar la pantalla
+## 7. Lo que se lleva incluso sin copiar la pantalla
 
 Tres piezas sirven solas:
 
@@ -250,7 +372,7 @@ Tres piezas sirven solas:
 
 ---
 
-## 7. Lo que le falta
+## 8. Lo que le falta
 
 Dicho para que nadie lo descubra en producción:
 
@@ -263,6 +385,10 @@ Dicho para que nadie lo descubra en producción:
   Arreglarlo pide un campo nuevo en el log de IA.
 - **Depende de que la máquina tenga sesión de escritorio.** Si se vuelve headless,
   la pantalla se ve desde otra máquina de la red interna, que ya está permitido.
+- **El botón de La Limpieza no suelta el caché de páginas del sistema** (`/proc` va
+  en sólo-lectura, ver §4.5), y su antes/después de RAM se mide al terminar, cuando
+  los trabajadores nuevos apenas están tomando el relevo: la memoria baja unos
+  segundos DESPUÉS del número que se ve. El paso lo dice con palabras.
 
 ---
 

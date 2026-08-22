@@ -67,6 +67,49 @@ casillas de **Rutas**.
 
 **Al Chalán también le puedes preguntar**: «¿cómo quedó el reparto de mañana?» o
 «¿cuál es mi ruta?».
+## Novedades — Un botón para dejar el servidor ligero (23 de agosto de 2026)
+
+**Qué es**
+
+En **El Site** (La Gerencia) y en la pantalla que está colgada en la pared del
+taller hay un renglón nuevo, arriba: **🧹 La Limpieza**, con un botón que dice
+**«Limpiar ahora»**.
+
+Antes esto sólo pasaba solo, de madrugada, cada tres días. Ahora se puede pedir en
+el momento — que es cuando sirve: estás viendo los anillos de memoria o de disco,
+los ves cargados, y lo sueltas sin llamarle a nadie.
+
+**Qué hace, en llano**
+
+Suelta lo que el sistema fue acumulando y ya no necesita:
+
+- **El caché**: las cuentas que el sistema guardaba hechas para no repetirlas. Se
+  vuelven a hacer solas la próxima vez que hagan falta.
+- **El disco**: lo que Docker dejó tirado (piezas paradas, imágenes viejas, sobras
+  de las actualizaciones) y el espacio de los renglones borrados de la base.
+- **La memoria**: les pide a los trabajadores del sistema que se releven. Los
+  nuevos entran antes de que los viejos se vayan, así que **nadie se cae ni pierde
+  lo que estaba haciendo**.
+
+**Lo que NO hace**, y conviene tenerlo claro: no borra nada tuyo. Ni proyectos, ni
+fotos, ni respaldos, ni un solo dato del despacho. Tampoco te saca de tu sesión.
+
+**Qué se ve después**
+
+El mismo renglón te cuenta qué pasó: cuánto se liberó, cuánto tardó y qué se hizo
+paso por paso. Si algún paso no se pudo, lo dice con su razón en vez de quedarse
+callado. Y queda anotado quién la pidió y cuándo, así que a la siguiente sabes si
+ya se hizo hace rato.
+
+**Quién puede**
+
+En la pantalla de la pared, cualquiera que esté enfrente de la máquina. Desde El
+Site hace falta el permiso nuevo **El Site → limpiar**, que ya tiene el
+super_admin y se le puede dar a quien haga falta desde *Directorio → permisos*.
+
+También le puedes preguntar a **El Chalán**: «¿cuándo se limpió el servidor?» y te
+dice cuándo fue, quién lo pidió y qué liberó. Correrla sí es cosa del botón — no
+se pide por chat.
 
 ---
 
@@ -5333,6 +5376,40 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
 - **El Celador** (token del monitor externo que vigila que el sistema esté en pie).
+
+### La Limpieza (soltar caché, RAM y disco)
+
+Arriba de **El Site** hay un renglón con el botón **🧹 Limpiar ahora**. El mismo
+botón está en la pantalla colgada en la pared del taller: las dos pantallas son la
+misma cosa y se mantienen iguales a propósito.
+
+Sirve para dejar el servidor ligero sin esperar a que lo haga solo (lo hace cada
+tres días, de madrugada, después del respaldo). Lo que suelta:
+
+| Paso | Qué suelta |
+|---|---|
+| Caché de la aplicación | Las cuentas que el sistema guardaba hechas. Se rehacen solas. |
+| La Libreta (Redis) | Compacta su registro en disco y devuelve memoria al sistema. |
+| El Archivero (Postgres) | El espacio de los renglones borrados, y pone al día sus estadísticas. |
+| Lo que Docker dejó tirado | Piezas paradas, imágenes viejas y sobras de las actualizaciones. |
+| Reciclar los trabajadores | Los trabajadores se relevan y devuelven la memoria que traían apartada. |
+| Caché de disco del sistema | Casi siempre dice «no se puede desde aquí» — eso sólo lo hace el proceso de madrugada, que corre con más permisos. |
+
+**No borra nada tuyo**: ni proyectos, ni fotos, ni respaldos, ni datos del
+despacho. **No corta el servicio**: los trabajadores nuevos entran antes de que los
+viejos se retiren, así que ni te enteras. **No te saca de tu sesión.**
+
+Tarda unos segundos y al terminar te dice, en el mismo renglón, cuánto liberó y qué
+pasó en cada paso. Si algo no se pudo, lo dice con su razón. Queda anotado quién la
+pidió, así que si alguien ya la corrió hace cinco minutos lo vas a ver antes de
+volver a picarle.
+
+Para picarle desde El Site hace falta el permiso **El Site → limpiar** (lo trae el
+super_admin; se delega desde *Directorio → permisos*). En la pantalla de la pared
+no se pide permiso: la puerta ahí es estar enfrente de la máquina.
+
+Y a **El Chalán** le puedes preguntar «¿cuándo se limpió el servidor?»: te contesta
+cuándo fue, quién lo pidió y qué liberó. Correrla no se pide por chat, es el botón.
 
 ### La página «Acerca de»
 

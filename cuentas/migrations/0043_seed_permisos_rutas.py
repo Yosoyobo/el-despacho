@@ -13,10 +13,10 @@ resto del equipo lo recibe desde El Directorio marcando las casillas.
 una base sin usuarios, así que el bucle no itera— pero tumba el arranque en
 producción, donde sí hay super admins. Ya pasó el 2026-08-22.
 
-**Colisión conocida de numeración**: el sprint de La Limpieza (en vuelo, sin
-commitear) también toma un `0042`. Cuando las dos ramas se junten, Django va a
-ver dos hojas y hay que renombrar una o generar la migración de merge — es de un
-solo archivo.
+**Por qué es 0043 y no 0042**: La Limpieza tomó el `0042` mientras este sprint
+corría. Dos migraciones hermanas colgadas del mismo padre son **dos hojas** en el
+grafo, y con eso `migrate` se niega a correr y la app no arranca. Se encadena
+detrás de la suya para que la cadena de `cuentas` sea una sola.
 """
 
 from django.db import migrations
@@ -75,7 +75,7 @@ def quitar(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("cuentas", "0041_seed_permiso_analisis"),
+        ("cuentas", "0042_seed_permiso_site_limpiar"),
     ]
 
     operations = [migrations.RunPython(sembrar, quitar)]

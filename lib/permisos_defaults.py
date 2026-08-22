@@ -78,7 +78,7 @@ TODO_AJUSTES = ["acceder"]
 # `panel`/`ia`/`permisos`/`roles` son el panel avanzado de usuario, solo-super_admin.
 TODO_DIRECTORIO = ["ver", "gestionar", "panel", "ia", "permisos", "roles"]
 TODO_CHALANES = ["ver", "configurar"]
-TODO_SITE = ["ver"]
+TODO_SITE = ["ver", "limpiar"]
 TODO_CATALOGOS = ["estados", "tipos", "centros_costo"]
 TODO_INTERFONO = ["configurar"]
 # MCP local: habilita el acceso al servidor; cada herramienta exige además

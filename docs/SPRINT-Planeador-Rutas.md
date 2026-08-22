@@ -115,11 +115,11 @@ naturaleza distinta a propósito:
 ## 6. Lo que trae de rigor
 
 - **Permisos granulares** (§4 #20): módulo `rutas` × {`ver`, `planear`,
-  `despachar`}. Migración **`cuentas/0042`**, que depende del `0041` — es lo
-  internamente correcto en esta rama. El sprint de La Limpieza (en vuelo, sin
-  commitear) también toma un `0042`: al juntarse, Django verá dos hojas y hay que
-  renombrar una o generar la migración de merge. Dejar un hueco en el `0043` no
-  lo evitaba (serían dos hojas igual) y encima confundía.
+  `despachar`}. Migración **`cuentas/0043`**, encadenada tras el `0042` de La Limpieza — es lo
+  internamente correcto en esta rama. La Limpieza aterrizó a media sesión y se
+  llevó el `0042`, así que ésta pasó a `0043` colgada de la suya: una sola cadena
+  en `cuentas`. Dos hermanas del mismo padre son dos hojas, y con eso `migrate` se
+  niega a correr.
 - **MCP** (regla del repo): capacidad de lectura `ruta_del_dia` en
   `capacidades/lecturas.py` con gating `rutas`. Sin eso no está entregada.
 - **Arrastre**: `data-arr-*` sobre el motor único `arrastrar.js`. No se escribe

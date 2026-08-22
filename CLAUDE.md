@@ -58,7 +58,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Portavoz** | Eventos tipados → n8n vía Tailscale (`lib/portavoz.py`) | — |
 | **El Archivo** | Backup pg_dump + credenciales (`archivo.sh`) | — |
 | **La Limpieza** | Cron semanal de imágenes/contenedores | — |
-| **La Optimización** | Limpieza post-backup (vacuum + redis + HUP gunicorn + prune + drop_caches) | — |
+| **La Optimización** | Limpieza post-backup (vacuum + redis + HUP gunicorn + prune + drop_caches) · el guion nocturno `optimizar.sh` **y** el botón «🧹 Limpiar ahora» de El Vigía / El Site (`lib/site/limpieza.py`) | — |
 | **Los Analistas** | Abstracción IA multi-provider (S4) | — |
 | **El Reemplazo** | Fallback IA automático (S4) | — |
 | **El Cartero** | Envío de correo con canal intercambiable SMTP/n8n (`lib/cartero.py`) | — |
@@ -6086,7 +6086,7 @@ de origen conviven.
   tanto en la pantalla «Mi ruta» como en la capacidad del Chalán: una vez
   despachada, la ruta planeada ES la ruta.
 - **Permisos**: módulo `rutas` × {`ver`, `planear`, `despachar`} (migración
-  `cuentas/0042`; el rol **Runner** recibe sólo `ver` — un runner abre su vuelta,
+  `cuentas/0043`; el rol **Runner** recibe sólo `ver` — un runner abre su vuelta,
   no rearma el reparto ni dispara correos). **Ojo: en `PermisoUsuario` el campo
   es `permiso`, NO `accion`** — escribirlo mal no falla en tests pero tumba el
   arranque en producción.
@@ -6100,9 +6100,10 @@ de origen conviven.
 - **32 tests** (`tests/taller/test_planeador_rutas.py`). Uno destapó un bug que
   iba a la bandeja de cada runner: el asunto decía **«1 paradas»**.
 
-**Colisión de numeración conocida**: el sprint de La Limpieza (en vuelo, sin
-commitear) también toma un `cuentas/0042`. Cuando las ramas se junten, Django
-verá dos hojas: se renombra una o se genera la migración de merge.
+**La colisión de numeración se resolvió encadenando**: la migración de permisos
+se encadenó detrás del `0042` de La Limpieza, que aterrizó mientras este sprint corría — dos hojas colgadas del mismo padre hacen que `migrate` se niegue a correr y la app no arranca. La rama de integración terminó llevando **cuatro**
+sprints: El Cartero, S-KPI-BI, La Limpieza y el planeador — un solo deploy, una
+sola VERSION (`2026.08.24`).
 
 **Deuda diseñada**: distancia en **línea recta** (el orden sale bien; los km y
 los ETA son estimados — un río o un eje sin retorno pueden mentirle al orden; el
@@ -6112,6 +6113,107 @@ la hora es un **ancla, no una ventana** `[desde, hasta]` · el reparto no
 considera capacidad del vehículo ni volumen · la ruta no se recalcula sola si un
 destino cambia después de planear (por diseño: los snapshots) — hay botón de
 replanear · el planeador no se invoca desde El Chalán (lee, no planea).
+### S-Limpieza-Boton ✅ — Un botón en El Vigía y El Site para soltar caché, RAM y disco (2026-08-23, VERSION 2026.08.24)
+
+Pedido de Oscar: «agregar un botón en el site y el monitor para hacer flush de
+caché, RAM y disco, la limpieza. Esto se agrega a la herramienta creada en la
+caja». O sea: lo que ya hacía el guion nocturno `optimizar.sh` cada tres días,
+ahora **a mano** desde las dos pantallas — y documentado en la herramienta
+portable (`docs/ADOPTAR-EL-VIGIA.md`, §4 nueva) para que viaje con ella.
+
+- **`lib/site/limpieza.py`** (nuevo) — seis pasos, cada uno con su estado y su
+  motivo, y **ninguno lanza**: caché de la aplicación · La Libreta (compacta el
+  AOF si pasa de 64 MB + `MEMORY PURGE`) · `VACUUM (ANALYZE)` · poda de Docker ·
+  reciclado de los trabajadores de gunicorn · caché de páginas del sistema. El
+  resultado se guarda en Redis (`despacho:limpieza:ultima`, 30 días) con un
+  candado `NX EX 180` para que dos clics no se pisen. **Cero migraciones de
+  schema** (la única migración es el seed del permiso).
+- **`contenedores.py` gana lo único que ESCRIBE por el socket** (`_post`,
+  `podar`, `reciclar_trabajadores`). **Verificado contra un demonio real: por un
+  socket montado `:ro` SÍ se puede escribir** — exec create 201, exec start 200,
+  y el comando corrió dentro del contenedor objetivo. El `:ro` limita operaciones
+  del sistema de archivos y conectarse a un socket no lo es, así que **quien
+  tenga el socket tiene el demonio completo**; la barrera es que sólo esas dos
+  funciones escriben y que la vista está gateada.
+- **La señal a gunicorn va por un `exec` DENTRO del contenedor**, nunca con
+  `docker kill` (§14 Bug G, con test que lo fija). Y **el Portavoz no entra en la
+  lista de reciclables** aunque comparta la imagen de La Gerencia: su PID 1 es
+  Python, y para Python la acción por default de SIGHUP es MORIR. Reciclar es lo
+  único que devuelve RAM de verdad, y no corta el servicio: los trabajadores
+  nuevos entran antes de que los viejos se retiren, y gthread espera a sus
+  peticiones en vuelo — así que **la petición que disparó el botón también
+  termina**. El contenedor que la atiende se recicla al final.
+- **El caché se borra por LLAVES, nunca con `cache.clear()`**: el `clear()` del
+  backend de Redis de Django hace `FLUSHDB`, y aquí el caché comparte base de
+  datos con `portavoz:cola`, que no caduca — un `clear()` se llevaría los eventos
+  pendientes sin dejar rastro. El patrón sale del propio caché
+  (`cache.make_key("*")` → `:1:*`), así que un `KEY_PREFIX` futuro lo sigue solo,
+  y las sesiones que se borran no sacan a nadie (`cached_db` las relee de la
+  base). El candado del test revisa el **árbol** del módulo y no su texto: el
+  encabezado explica la regla y menciona las palabras prohibidas.
+- **El tiempo es parte del diseño**: gunicorn mata al trabajador que no contesta
+  en 30 s, y entonces el usuario ve un error **aunque la limpieza sí corrió**.
+  Presupuesto de 24 s, y tres detalles: **no se arranca un paso que no cabe** (se
+  mide contra lo que UNA llamada más podría tardar, no contra lo transcurrido);
+  se **aparta** una reserva de 6 s para el reciclado (último paso y único que
+  devuelve RAM — repartir por orden de llegada dejaría que una poda lenta se
+  comiera justo eso); y el `VACUUM` va con `statement_timeout` de 10 s. **Ese
+  tope se devuelve en un `finally` obligatoriamente**: con `CONN_MAX_AGE = 60` la
+  conexión se reusa, y un tope olvidado se le aplicaría durante un minuto a
+  consultas ajenas — el síntoma sería «a veces un reporte truena». Hay test de
+  que se devuelve incluso si el aspirado explota.
+- **La pregunta de confirmación va sólo fuera de la pared**: `hx-confirm` usa
+  `window.confirm`, que **bloquea el JS de la página** — abierta en el muro deja
+  la pantalla congelada, sin refrescar y sin poder avisarlo, hasta que alguien
+  vuelva. Ahí un toque físico ya es deliberado y lo peor que pasa es una limpieza
+  de más.
+- **Dos defectos propios cazados antes del commit**: «hace 0 minutos» justo
+  después de picar el botón (`timesince` para lo recién hecho — se vio MIRANDO la
+  pantalla, con Chrome headless sobre la página renderizada), y `antes > despues`
+  comparando los tamaños de la base como **cadenas** («9 MB» sale mayor que
+  «31 MB»), lo que habría dicho que la base bajó cuando creció.
+- **La puerta, con la pantalla sin sesión.** La pared no puede traer token de
+  CSRF (`CSRF_COOKIE_SECURE = not DEBUG` ⇒ la cookie no viaja por
+  `http://localhost:8201`, el mismo motivo por el que no pide sesión). La vista
+  es `@csrf_exempt` y parte la comprobación en dos: **desde la máquina** se exige
+  la cabecera `HX-Request` (un formulario de otro sitio SÍ puede apuntar a
+  localhost desde el navegador del NUC, pero **no puede poner cabeceras propias**,
+  y un `fetch` que sí las pone choca con el preflight de CORS que nunca se
+  concede); **desde La Gerencia** se invoca la comprobación **de Django** a mano
+  (`CsrfViewMiddleware.process_view`) para no tener dos versiones de la regla.
+- **Permiso granular nuevo `(site, limpiar)`** (§4 #20): `TODO_SITE` pasa a
+  `["ver", "limpiar"]`, helper `puede_limpiar_site`, migración
+  `cuentas/0042_seed_permiso_site_limpiar` (super_admins existentes; el resto se
+  delega desde El Directorio). Ver el tablero no implica poder moverlo. En la
+  pared no se consulta: ahí la puerta es estar en la máquina.
+- **A la par sin disciplina (§4 #22)**: un solo endpoint (`site-vivo-limpieza`,
+  GET pinta el estado / POST corre), un solo partial
+  (`templates/site/vivo/_limpieza.html`) y el aviso de «estoy trabajando» en la
+  hoja compartida (`[data-limpieza].htmx-request`, sin JS). Las dos páginas sólo
+  ponen un placeholder que se auto-rellena; el ritmo lo decide la vista (30 s en
+  la pared, 60 s + «Actualizar» en El Site) para no romper
+  `test_el_site_va_mas_lento_que_la_pared`. El resultado se LEE de Redis en cada
+  pintado: si viviera en la respuesta del POST, el refresco siguiente lo borraría
+  de la pantalla.
+- **Lo que NO se puede desde el contenedor**: soltar `/proc/sys/vm/drop_caches`
+  (`/proc` va `:ro` a propósito — dejarlo escribible sólo para eso abriría todos
+  los parámetros del kernel). El paso lo reporta como «no se puede desde aquí» en
+  vez de fingir; el guion nocturno, que corre como root en el host, sí lo suelta.
+- **MCP (regla del repo)**: capacidad de **lectura** `ultima_limpieza`
+  (`gating="abierto"`, como `estado_servidor`) + su renglón en `CONSULTAS_CHAT`.
+  Correrla **NO** se pide por chat: es back-office de máquina, mismo criterio que
+  los barridos de aprendizajes. Evento nuevo `site.limpieza`.
+- **51 pruebas** en `tests/site/test_limpieza.py`, verificadas contra el código
+  sin arreglar: quitando el gate de permiso, la cabecera de HTMX, la
+  comprobación de CSRF y el `finally` del tope, fallan 5. Suite del radio de
+  impacto: 234 verdes.
+
+**Deuda diseñada**: el antes/después de RAM se mide al terminar, cuando los
+trabajadores nuevos apenas toman el relevo — la memoria baja unos segundos DESPUÉS
+del número que se ve (el paso lo dice con palabras); el caché de páginas del
+sistema sigue siendo cosa del guion nocturno; y **el reciclado sólo se puede
+confirmar con el código en La Sede** (aquí no hay socket de Docker del NUC, y una
+prueba de mutación contra un socket vivo no se hace).
 
 ### S-Alias-Personales ✅ — Los alias de Google, con dueño (2026-08-23, VERSION 2026.08.23)
 

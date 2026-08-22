@@ -22,7 +22,8 @@ Lo que la protege es **dónde se puede pedir**, y son dos candados a la vez:
    desde internet». Es el candado que sobrevive a que alguien, algún día, agregue
    el dominio a la lista de arriba por error.
 
-La página es de sólo lectura: no hay un solo POST en este archivo.
+La PÁGINA es de sólo lectura. El único POST del archivo es el botón de La
+Limpieza (`vivo_limpieza`), que tiene su propia puerta explicada ahí abajo.
 """
 
 from __future__ import annotations
@@ -35,10 +36,11 @@ from datetime import UTC, datetime
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import render
 from django.utils import timezone
-from django.views.decorators.http import require_safe
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods, require_safe
 
 from lib.permisos import puede, tiene_rol
-from lib.site import actividad, contenedores, internos, pulso
+from lib.site import actividad, contenedores, internos, limpieza, pulso
 from lib.site.gauges import snapshot_gauges_minimo
 
 # Hosts desde los que se puede pedir El Vigía. `VIGIA_HOSTS` permite sumar otra
@@ -605,4 +607,159 @@ def _medios() -> dict:
         return {"disponible": False}
 
 
-__all__ = ["vivo", "vivo_fierro", "vivo_peticiones", "vivo_contenedores", "vivo_negocio"]
+# ── La Limpieza ──────────────────────────────────────────────────────────────
+# El botón que suelta caché, RAM y disco. Vive en las DOS pantallas y por eso
+# está aquí y no en `views.py`: comparten endpoint y partial, que es lo que hace
+# que la regla §22 («El Vigía y El Site van a la par») se cumpla sola.
+
+
+def _puede_limpiar(request) -> bool:
+    """¿Quien pide puede correr la limpieza?
+
+    En la pared, sí: la puerta ahí es estar en la máquina. Desde La Gerencia hace
+    falta el permiso granular `site.limpiar` (o ser super_admin, que es failsafe
+    duro en todo el repo).
+    """
+    if _es_local(request):
+        return True
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return False
+    return tiene_rol(user, "super_admin") or puede(user, "site", "limpiar")
+
+
+def _revisar_csrf(request):
+    """Corre la comprobación de CSRF de Django a mano. `None` si pasa.
+
+    La vista está exenta a nivel de decorador, y tiene que estarlo: la pared no
+    puede traer el token porque `CSRF_COOKIE_SECURE = not DEBUG`, o sea que en
+    producción la cookie no viaja por `http://localhost:8201` — el mismo motivo
+    por el que la pantalla no pide sesión. Pero cuando la petición sí viene de La
+    Gerencia, con su cookie y su sesión, el token se exige igual que en cualquier
+    otro POST del sistema. Se invoca la comprobación DE DJANGO en vez de escribir
+    una propia para no acabar con dos versiones de la misma regla.
+    """
+    from django.middleware.csrf import CsrfViewMiddleware
+
+    def _vista_sin_exencion(_peticion):  # a propósito SIN @csrf_exempt
+        return None
+
+    return CsrfViewMiddleware(lambda r: None).process_view(
+        request, _vista_sin_exencion, (), {})
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def vivo_limpieza(request):
+    """Suelta caché, RAM y disco — lo mismo que el guion nocturno, a mano.
+
+    GET pinta el estado (cuándo se limpió la última vez y qué liberó); POST corre
+    la limpieza. Un solo endpoint porque es un solo partial: las dos pantallas
+    piden lo mismo y se ven igual.
+
+    La puerta del POST, por partes:
+
+    · `_puerta` — local, o con sesión y permiso de El Site.
+    · `_puede_limpiar` — en la pared basta con estar en la máquina; desde La
+      Gerencia hace falta `site.limpiar`.
+    · CSRF — el token cuando viene de La Gerencia (ver `_revisar_csrf`). En la
+      pared, donde no puede haber token, se exige a cambio la cabecera de HTMX.
+      Y no es un adorno: un formulario de otro sitio SÍ podría apuntar a
+      `http://localhost:8201/…` desde el navegador del propio NUC, pero no puede
+      poner cabeceras propias, y un `fetch` que sí las pone choca con el permiso
+      previo de CORS que este servidor nunca concede.
+    """
+    if (r := _puerta(request)) is not None:
+        return r
+
+    ctx: dict = {"puede_limpiar": _puede_limpiar(request), "es_pared": _es_local(request)}
+
+    if request.method == "POST":
+        if not ctx["puede_limpiar"]:
+            return HttpResponseForbidden("Sin permiso para correr La Limpieza.")
+        if _es_local(request):
+            if request.headers.get("HX-Request") != "true":
+                return HttpResponseForbidden("La Limpieza se pide desde la pantalla.")
+        elif (r := _revisar_csrf(request)) is not None:
+            return r
+        usuario = getattr(request, "user", None)
+        quien = (getattr(usuario, "email", "") or "") if getattr(
+            usuario, "is_authenticated", False) else ""
+        resultado = limpieza.limpiar(quien=quien)
+        if resultado.get("ocupado"):
+            ctx["ocupado"] = True
+        else:
+            ctx["acabo_de_correr"] = True
+            _avisar_limpieza(request, resultado)
+
+    ctx["limpieza"] = _con_fecha(limpieza.ultima())
+    return render(request, "site/vivo/_limpieza.html", ctx)
+
+
+def _con_fecha(resultado: dict) -> dict:
+    """Deja listo el «hace un rato» de la última corrida.
+
+    El texto se arma AQUÍ y no en la plantilla, y no es sólo por costumbre del
+    repo: `timesince` devuelve «0 minutos» para lo que acaba de pasar, así que
+    justo después de picar el botón la pantalla decía «hace 0 minutos» — se lee
+    como un error, y es el momento en que más gente lo va a leer. Se vio al
+    MIRAR la pantalla, no en el código.
+    """
+    if not resultado:
+        return {}
+    crudo = resultado.get("cuando")
+    if not crudo:
+        return resultado
+    try:
+        cuando = datetime.fromisoformat(str(crudo))
+    except (TypeError, ValueError):
+        return resultado
+    resultado["cuando_dt"] = cuando
+    resultado["hace"] = _hace(cuando)
+    return resultado
+
+
+def _hace(cuando: datetime) -> str:
+    """«hace un momento» / «hace 3 minutos». Nunca lanza."""
+    from django.utils.timesince import timesince
+    try:
+        segundos = (timezone.now() - cuando).total_seconds()
+    except (TypeError, ValueError):
+        return ""
+    # El negativo pasa si los relojes no coinciden; decir «hace -2 minutos» sería
+    # peor que redondear a «un momento».
+    if segundos < 45:
+        return "hace un momento"
+    return f"hace {timesince(cuando)}"
+
+
+def _avisar_limpieza(request, resultado: dict) -> None:
+    """Deja el rastro en El Portavoz. Best-effort: un aviso que falla no puede
+    convertir una limpieza que sí ocurrió en un error en pantalla."""
+    try:
+        from lib.portavoz import emitir
+        from lib.portavoz_eventos import EventoPortavoz
+
+        usuario = getattr(request, "user", None)
+        autenticado = bool(getattr(usuario, "is_authenticated", False))
+        emitir(EventoPortavoz(
+            tipo="site.limpieza",
+            actor_id=usuario.pk if autenticado else None,
+            actor_email=(getattr(usuario, "email", "") if autenticado else "") or "",
+            payload={
+                "origen": "pared" if _es_local(request) else "gerencia",
+                "quien": resultado.get("quien"),
+                "segundos": resultado.get("segundos"),
+                "liberado_mb": resultado.get("liberado_mb"),
+                "problemas": resultado.get("problemas"),
+                "resumen": resultado.get("resumen"),
+                "pasos": {p["clave"]: p["estado"] for p in resultado.get("pasos", [])},
+            },
+        ))
+    except Exception as exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("No se pudo avisar de La Limpieza: %s", exc)
+
+
+__all__ = ["vivo", "vivo_fierro", "vivo_peticiones", "vivo_contenedores", "vivo_negocio",
+           "vivo_limpieza"]
