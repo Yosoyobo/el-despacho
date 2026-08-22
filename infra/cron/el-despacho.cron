@@ -18,8 +18,11 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CRON_TZ=America/Mexico_City
 
-# Backup (El Archivo): cada 3 días a las 03:00. Incluye replicación a HAL + La Optimización.
-0 3 */3 * * @@RAIZ@@/infra/scripts/archivo.sh >> /var/log/archivo.log 2>&1
+# Backup (El Archivo): cada 3 días a las 03:00. Incluye los medios de El Almacén,
+# replicación a HAL y La Optimización.
+# El `cd` NO es adorno: sin él corría desde $HOME y el dump salía vacío (ver el
+# comentario largo en archivo.sh).
+0 3 */3 * * cd @@RAIZ@@ && ./infra/scripts/archivo.sh >> /var/log/archivo.log 2>&1
 
 # Cotizaciones / Facturas vencidas (idempotente por entidad).
 0 6 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_cotizaciones_vencidas >> /var/log/vencidas.log 2>&1
