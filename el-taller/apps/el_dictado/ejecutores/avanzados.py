@@ -547,53 +547,88 @@ def capturar_ajuste(accion, usuario, contexto=None):
 
 @registrar("enviar_correo")
 def enviar_correo(accion, usuario, contexto=None):
-    """Payload: cliente_slug, tipo_plantilla (generico|bienvenida|cobranza),
-    asunto?, mensaje? (requerido si generico).
+    """Payload: tipo_plantilla (slug de CUALQUIER plantilla activa),
+    cliente_slug? / email? (a quién), asunto?, mensaje?.
 
-    Manda SOLO al email de contacto registrado del cliente — el Chalán nunca
-    escribe a direcciones arbitrarias. Preview/confirm humano garantizado por
-    services.aplicar; aquí re-chequeamos permiso + saneamos el texto libre.
+    A quién se le manda, en orden: el `cliente_slug` (usa su correo registrado)
+    o el `email` dictado. Oscar pidió expresamente poder dictar direcciones
+    sueltas, así que se permite — pero la dirección viaja en el preview y nada
+    sale sin que un humano confirme (services.aplicar). Aquí se re-chequea el
+    permiso y se sanea todo el texto libre.
     """
-    _gate(usuario, "puede_enviar_correo", "enviar correos a clientes")
+    _gate(usuario, "puede_enviar_correo", "enviar correos")
     from ajustes.models.plantilla_correo import PlantillaCorreo
-    from lib import cartero
+    from lib import cartero, correo_contexto
     from lib.sanear import sanear_contexto
 
     payload = accion.payload or {}
-    cliente = _resolver_cliente((payload.get("cliente_slug") or "").lower(), contexto)
-    email = (cliente.email_contacto or "").strip()
-    _exigir(bool(email), f"El cliente «{cliente.razon_social}» no tiene email de contacto registrado.")
 
+    # ── ¿A quién? ────────────────────────────────────────────────────────────
+    slug_cliente = (payload.get("cliente_slug") or "").strip().lower()
+    email_dictado = (payload.get("email") or "").strip()
+    cliente = None
+    if slug_cliente:
+        cliente = _resolver_cliente(slug_cliente, contexto)
+        email = (cliente.email_contacto or "").strip()
+        _exigir(
+            bool(email),
+            f"El cliente «{cliente.razon_social}» no tiene email de contacto registrado. "
+            "Regístraselo o dime a qué dirección lo mando.",
+        )
+    else:
+        _exigir(bool(email_dictado),
+                "Dime a quién: un cliente (`cliente_slug`) o una dirección (`email`).")
+        _exigir("@" in email_dictado and "." in email_dictado.split("@")[-1],
+                f"«{email_dictado}» no parece un correo válido.")
+        email = email_dictado
+
+    # ── ¿Qué se manda? ───────────────────────────────────────────────────────
     tipo = (payload.get("tipo_plantilla") or "generico").strip().lower()
-    _exigir(tipo in {"generico", "bienvenida", "cobranza"},
-            "`tipo_plantilla` debe ser generico, bienvenida o cobranza.")
-
-    contexto_correo: dict = {"cliente": cliente.nombre_contacto or cliente.razon_social}
     if tipo == "generico":
-        mensaje = sanear_contexto((payload.get("mensaje") or "").strip())
-        _exigir(bool(mensaje), "`mensaje` requerido para un correo genérico.")
-        contexto_correo["mensaje"] = mensaje
-        contexto_correo["asunto"] = sanear_contexto(
-            (payload.get("asunto") or "").strip()
-        ) or f"Mensaje de Learning Center para {cliente.razon_social}"
-    elif tipo == "bienvenida":
-        from django.utils import timezone
-        contexto_correo["fecha"] = timezone.localdate().strftime("%d/%m/%Y")
-        contexto_correo["representante"] = usuario.get_short_name() or ""
+        plantilla = PlantillaCorreo.obtener("generico")
+    else:
+        plantilla = PlantillaCorreo.objects.filter(slug=tipo, activa=True).first()
+        _exigir(
+            plantilla is not None,
+            f"No hay una plantilla activa llamada «{tipo}». "
+            "Revisa Ajustes → El Cartero → Plantillas.",
+        )
 
-    plantilla = PlantillaCorreo.obtener(tipo)
+    mensaje = sanear_contexto((payload.get("mensaje") or "").strip())
+    asunto_libre = sanear_contexto((payload.get("asunto") or "").strip())
+    if plantilla.slug == "generico":
+        _exigir(bool(mensaje), "`mensaje` requerido para un correo genérico.")
+
+    extra = {
+        "mensaje": mensaje,
+        "asunto": asunto_libre or (
+            f"Mensaje de Learning Center para {cliente.razon_social}" if cliente
+            else "Mensaje de Learning Center"
+        ),
+    }
+    contexto_correo = correo_contexto.armar(
+        cliente=cliente, representante=usuario, extra=extra,
+    )
+
     asunto_r, html = plantilla.render(contexto_correo)
-    resultado = cartero.enviar(destinatario=email, asunto=asunto_r, html=html)
+    resultado = cartero.enviar(
+        destinatario=email, asunto=asunto_r, html=html,
+        remitente=plantilla.remitente_efectivo(),
+    )
     _exigir(bool(getattr(resultado, "ok", False)),
             f"El Cartero no pudo entregar el correo: {getattr(resultado, 'error', 'error desconocido')}")
 
     accion.entidad_tipo = "correo"
-    accion.entidad_id = cliente.pk
+    accion.entidad_id = cliente.pk if cliente else None
     with contextlib.suppress(Exception):
         from lib.portavoz import emitir
         from lib.portavoz_eventos import EventoPortavoz
         emitir(EventoPortavoz(
             tipo="correo.enviado_chalan",
             actor_id=usuario.pk, actor_email=usuario.email,
-            payload={"cliente_id": cliente.pk, "tipo_plantilla": tipo},
+            payload={
+                "cliente_id": cliente.pk if cliente else None,
+                "tipo_plantilla": plantilla.slug,
+                "destinatario": email,
+            },
         ))

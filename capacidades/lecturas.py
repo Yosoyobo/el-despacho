@@ -709,7 +709,44 @@ def _h_buscar_proveedor(args: dict, usuario) -> dict:
 
 # ── Registry ──────────────────────────────────────────────────────────────────
 
+
+def _h_listar_plantillas_correo(args: dict, usuario) -> dict:  # noqa: ARG001
+    """Qué plantillas hay para mandar, con su slug (que es lo que pide el envío).
+
+    Sin esto, El Chalán tendría que adivinar el slug de una plantilla creada
+    ayer y el envío fallaría con un «no existe» que el usuario no puede
+    interpretar.
+    """
+    from ajustes.models import PlantillaCorreo
+
+    filas = [
+        {
+            "slug": p.slug,
+            "nombre": p.nombre,
+            "para_que": p.descripcion or "",
+            "sale_de": p.remitente_email or "(el remitente general)",
+            "del_sistema": p.sistema,
+        }
+        for p in PlantillaCorreo.objects.filter(activa=True).order_by("-sistema", "nombre")
+    ]
+    pendientes = PlantillaCorreo.objects.filter(activa=False, origen="chalan").count()
+    return {
+        "plantillas": filas,
+        "total": len(filas),
+        "borradores_sin_revisar": pendientes,
+    }
+
+
 _LECTURAS: dict[str, Capacidad] = {
+    "listar_plantillas_correo": Capacidad(
+        nombre="listar_plantillas_correo",
+        descripcion=(
+            "Plantillas de correo disponibles para enviar, con su slug. Úsala antes de "
+            "`enviar_correo` si no sabes qué slug pedir, en lugar de inventarlo."
+        ),
+        args_schema={},
+        gating="comunicacion", fn=_h_listar_plantillas_correo,
+    ),
     "listar_kpis": Capacidad(
         nombre="listar_kpis",
         descripcion="Lista los indicadores (KPIs) disponibles para el usuario. Arg opcional: categoria.",
