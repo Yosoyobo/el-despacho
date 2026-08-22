@@ -8,7 +8,10 @@ class LosProyectosConfig(AppConfig):
     verbose_name = "Proyectos"
 
     def ready(self):
-        from apps.los_proyectos import signals_egresos  # noqa: F401
+        from apps.los_proyectos import (
+            signals_correo,  # noqa: F401
+            signals_egresos,  # noqa: F401
+        )
         from apps.los_proyectos.models.estado import EstadoProyecto
         from apps.los_proyectos.templatetags.proyectos_extras import (
             invalidar_mapa_estados,

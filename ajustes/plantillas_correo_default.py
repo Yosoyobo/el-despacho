@@ -16,6 +16,30 @@ _FOOTER = (
     '<span style="font-size:12px;color:#98a2b3;">Diseño · Maquila · Imagen corporativa</span></p>'
 )
 
+# ── Variables comunes ────────────────────────────────────────────────────────
+# Toda plantilla —de sistema o creada por el usuario— recibe este contexto.
+# `lib.correo_contexto.armar()` es quien lo llena; si un dato no aplica llega
+# como cadena vacía, NUNCA falta (una variable ausente renderiza en blanco y
+# deja un hueco raro en el correo).
+VARIABLES_COMUNES = [
+    "cliente",        # nombre del contacto, o la razón social si no hay contacto
+    "empresa",        # razón social del cliente
+    "fecha",          # hoy, dd/mm/aaaa
+    "representante",  # quién manda el correo
+]
+
+# Variables que sólo llegan con dato cuando el envío trae un proyecto detrás.
+VARIABLES_PROYECTO = ["proyecto", "estado", "monto", "folio"]
+
+# Texto libre: lo escribe quien manda (o El Chalán) en el momento del envío.
+VARIABLES_TEXTO_LIBRE = ["asunto", "mensaje"]
+
+# Las que puede usar una plantilla creada por el usuario. Es la unión de todo
+# lo anterior: no sabemos desde dónde se va a mandar, así que se le ofrecen
+# todas y las que no apliquen llegan vacías.
+VARIABLES_LIBRES = VARIABLES_COMUNES + VARIABLES_PROYECTO + VARIABLES_TEXTO_LIBRE
+
+
 PLANTILLAS_DEFAULT: dict[str, dict] = {
     "cotizacion": {
         "nombre": "Cotización",
@@ -113,4 +137,18 @@ SLUGS_PLANTILLA = ["cotizacion", "factura", "cobranza", "pago", "bienvenida", "g
 
 
 def variables_de(slug: str) -> list[str]:
-    return PLANTILLAS_DEFAULT.get(slug, {}).get("variables", [])
+    """Variables que ofrece el editor para `slug`.
+
+    Las plantillas de sistema declaran las suyas (su contexto es fijo y lo arma
+    quien dispara el correo). Una plantilla creada por el usuario no tiene
+    contexto predefinido, así que se le ofrecen TODAS las libres.
+    """
+    plantilla = PLANTILLAS_DEFAULT.get(slug)
+    if plantilla is None:
+        return list(VARIABLES_LIBRES)
+    return plantilla.get("variables", [])
+
+
+def es_de_sistema(slug: str) -> bool:
+    """True si el slug es una de las plantillas que dispara el propio sistema."""
+    return slug in PLANTILLAS_DEFAULT

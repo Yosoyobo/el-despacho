@@ -68,4 +68,9 @@ CRON_TZ=America/Mexico_City
 # después de publicar; este cron garantiza que llegue aunque el hook del deploy
 # falle. Idempotente (NovedadAnunciada) — solo notifica bloques NUEVOS, sin spam.
 */30 7-22 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py anunciar_novedades >> /var/log/novedades.log 2>&1
+# Correo de reenganche a clientes callados. Lo gobierna una regla de correo del
+# evento «cliente dormido» que ARRANCA APAGADA: mientras nadie la encienda en
+# Gerencia → El Cartero → Reglas, este cron no manda nada. Un cliente recibe
+# como mucho un correo al mes por regla (la referencia lleva el mes).
+30 8 * * 2 cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py correos_clientes_dormidos >> /var/log/correos_reglas.log 2>&1
 # <<< El Despacho <<<

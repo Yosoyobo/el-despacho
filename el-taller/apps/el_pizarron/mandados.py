@@ -14,6 +14,22 @@ from django.utils import timezone
 TIPOS_RUNNER = ("entrega", "recoger")
 
 
+def _avisar_entrega_al_cliente(mandado) -> None:
+    """Avisa al cliente que su entrega llegó, si hay una regla encendida.
+
+    Se llama desde los DOS caminos que dejan un mandado en «entregado» (la
+    sincronización con la tarea y el botón manual). No duplica: el candado por
+    referencia de `CorreoEnviadoRegla` reconoce el mandado ya avisado.
+    """
+    from django.db import transaction
+
+    def _disparar():
+        from lib import reglas_correo
+        reglas_correo.mandado_entregado(mandado)
+
+    transaction.on_commit(_disparar)
+
+
 def _tarea_terminal(tarea) -> bool:
     from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
     return tarea.estado in slugs_terminales_tarea()
@@ -57,6 +73,7 @@ def sincronizar_mandado(tarea):
         # avisa a los involucrados (A5+A8). El alta del runner ya notifica aparte.
         if target == "entregado":
             notificar_involucrados(mandado, "entregado", actor=None)
+            _avisar_entrega_al_cliente(mandado)
     return mandado
 
 
@@ -89,6 +106,7 @@ def marcar_entregado(mandado, *, completar_tarea: bool = True):
             tarea.estado = next(iter(terminales), "completada")
             tarea.completada_en = ahora
             tarea.save(update_fields=["estado", "completada_en"])
+    _avisar_entrega_al_cliente(mandado)
     return mandado
 
 
