@@ -719,6 +719,11 @@ def _h_listar_plantillas_correo(args: dict, usuario) -> dict:  # noqa: ARG001
     """
     from ajustes.models import PlantillaCorreo
 
+    # Las PROPIAS van primero, y no es cosmético: el registro poda las listas a
+    # los primeros elementos antes de enseñárselas al LLM. Con las de sistema
+    # al frente, las que el usuario acaba de crear quedaban fuera del corte y
+    # El Chalán no se enteraba de que existen. Se excluye `generico` porque no
+    # se elige por nombre: es el molde del texto libre.
     filas = [
         {
             "slug": p.slug,
@@ -727,7 +732,7 @@ def _h_listar_plantillas_correo(args: dict, usuario) -> dict:  # noqa: ARG001
             "sale_de": p.remitente_email or "(el remitente general)",
             "del_sistema": p.sistema,
         }
-        for p in PlantillaCorreo.objects.filter(activa=True).order_by("-sistema", "nombre")
+        for p in PlantillaCorreo.enviables().order_by("sistema", "nombre")
     ]
     pendientes = PlantillaCorreo.objects.filter(activa=False, origen="chalan").count()
     return {
