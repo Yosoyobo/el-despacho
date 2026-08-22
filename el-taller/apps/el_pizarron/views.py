@@ -704,6 +704,39 @@ def mandados_lista(request):
 
 
 @login_required
+def mi_ruta(request):
+    """La vuelta de hoy: los mandados abiertos del runner, en orden de cercanía.
+
+    El orden se calcula empezando por donde está (su última checada) y saltando
+    cada vez a la parada más próxima. Los botones abren la ruta ya armada en
+    Waze, Google Maps o Apple Maps — sin servicios de paga: son enlaces.
+    """
+    from apps.el_pizarron.ruta import ruta_de
+
+    datos = ruta_de(request.user)
+    return render(request, "mandados/mi_ruta.html", {
+        **datos,
+        "titulo_pagina": "Mi ruta de hoy",
+    })
+
+
+def _coordenadas_del_post(request):
+    """Lee lat/lng del POST si vienen y son números creíbles.
+
+    Mismo criterio que El Checador: la ubicación nunca bloquea la acción. Un
+    valor fuera de rango se descarta en silencio en vez de guardarse mal.
+    """
+    try:
+        lat = float(request.POST.get("lat"))
+        lng = float(request.POST.get("lng"))
+    except (TypeError, ValueError):
+        return None, None
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return None, None
+    return lat, lng
+
+
+@login_required
 def mandado_avanzar(request, pk):
     """POST: avanza el estado de reparto (en_camino | entregado | cancelar)."""
     if request.method != "POST":
@@ -711,16 +744,26 @@ def mandado_avanzar(request, pk):
     from apps.el_pizarron import mandados as svc
     m = _mandado_visible_o_404(request, pk)
     accion = (request.POST.get("accion") or "").strip()
+    # Dónde está el runner al picar el botón. El teléfono la manda si puede; si
+    # no, se avanza igual (2026-08-22 — sirve para medir tiempos y distancia).
+    lat, lng = _coordenadas_del_post(request)
     evento = None
     try:
         if accion == "en_camino":
-            svc.marcar_en_camino(m)
+            svc.marcar_en_camino(m, lat=lat, lng=lng)
             evento = "en_camino"
             messages.success(request, "Mandado marcado en camino.")
         elif accion == "entregado":
-            svc.marcar_entregado(m)
+            svc.marcar_entregado(m, lat=lat, lng=lng)
             evento = "entregado"
-            messages.success(request, "Mandado entregado. ✅")
+            recorrido = m.km_recorridos
+            minutos = m.minutos_en_ruta
+            detalle = ""
+            if minutos is not None:
+                detalle = f" {minutos} min"
+                if recorrido:
+                    detalle += f" · {recorrido} km"
+            messages.success(request, f"Mandado entregado. ✅{detalle}")
         elif accion == "cancelar":
             svc.cancelar(m, motivo=(request.POST.get("motivo") or "").strip())
             evento = "cancelado"

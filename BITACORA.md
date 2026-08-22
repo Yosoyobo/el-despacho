@@ -10888,3 +10888,70 @@ se nota, porque el correo sale igual — sólo que firmado por quien no lo mand�
 Tres tests del sprint anterior se actualizaron porque usaban
 `cobranza@learningcenter.mx` como ejemplo de «dirección pendiente», y ahora esa
 viene sembrada como comprobada.
+# Sesión — S-KPI-BI · El Chalán como analista (2026-08-23, VERSION 2026.08.23)
+
+Oscar: «ahora que analiza mejor el negocio, que cree y proponga KPIs basados en su
+conocimiento… y si hay aún más cosas que hacer para que el chalán se convierta en el
+mejor analista de BI del mercado, hagámoslo». A media sesión sumó cuatro cosas: MCP,
+cubrir TODOS los dominios, cruzar con la actividad de la gente, y los runners con
+reloj, ruta y exportación a mapas.
+
+## Lo que la medición cambió del plan
+
+Antes de diseñar nada, tres datos del dump:
+
+1. **La función de KPIs custom existe desde mayo y hay UNO en la base, archivado.**
+   No faltaba la función; no sirvió.
+2. **El DSL no podía expresar lo interesante**: sin cotización ni factura, y el
+   margen es property de Python. «Créame un KPI de conversión» era imposible.
+3. **105 preferencias guardadas, 72 para APAGAR indicadores**, y los dos usuarios
+   activos coinciden casi exacto: encienden dinero y pendientes accionables, apagan
+   conteos descriptivos.
+
+El tercero es el que dio vuelta al sprint. El problema no era que faltaran KPIs:
+**sobraban**, y la gente los escondía a mano uno por uno. Un analista no entrega
+cincuenta cifras; entrega las cinco de hoy y dice por qué. Oscar eligió «A y B»:
+curar **y** proponer.
+
+## Lo entregado
+
+- **Memoria** (`SnapshotKPI` + `series.py`): foto diaria por indicador y, encima,
+  serie, tendencia, comparación contra el periodo anterior, anomalías y meta
+  sugerida. Las anomalías usan **mediana**: con promedio, un solo día raro deja
+  ciego al detector justo después de la primera rareza.
+- **42 indicadores nuevos** (`kpis_bi.py`) en todos los dominios pedidos, incluida
+  la gente (accesos, horas, retardos, jornadas sin cerrar, % de horas imputables).
+  Se apoyan en los módulos que ya calculan, así que nunca contradicen a El Análisis.
+- **Curaduría** (`curaduria.py`): los ≤5 de hoy **con su razón**, los que llevan
+  días sin moverse, metas propuestas del histórico, y sugerencias sembradas en
+  `SugerenciaKPI` — el mecanismo que ya funcionaba (6 de 10 aceptadas). Todo
+  determinista: comparar números no necesita un modelo.
+- **Runners**: `Mandado` guarda dónde empezó y terminó, y la distancia. «Mi ruta de
+  hoy» ordena por cercanía y exporta a **Waze, Google Maps y Apple Maps** (URLs, no
+  APIs) con sus **íconos oficiales vendoreados**. Y la asignación pasó de «el más
+  cercano» a un puntaje con jornada, carga, distancia, si le queda de paso y choque
+  de agenda — explicable a propósito.
+- **MCP**: 7 capacidades + 2 tools del servidor externo.
+
+## Bug preexistente cazado
+
+`site-integraciones-rojo` consultaba `creado_en` y el campo es `probado_en`: lanzaba
+FieldError **cada vez que se calculaba**. Lo encontró el test que recorre todo el
+catálogo — que es exactamente para lo que sirve tener uno.
+
+## Gotchas
+
+El buzón se importa de `buzon.models` (app raíz), no `apps.buzon`.
+`Tarea.fecha_compromiso` es **DateField** (el de Proyecto es datetime), así que
+`__date` ahí lanza FieldError. El autor de una Tarea es `creado_por`.
+
+## Deuda diseñada
+
+- El **DSL sigue sin cotizaciones ni facturas**: se atacó por el otro lado
+  (catálogo amplio + curaduría), que es lo que Oscar eligió. Si algún día se quiere
+  que el Chalán invente métricas nuevas de verdad, hay que ampliar el schema.
+- **La memoria arranca hoy**: sin backfill, las comparaciones tardan una semana en
+  ser útiles y un mes en dar tendencia.
+- La distancia de los mandados es **en línea recta**; la ruta se ordena por vecino
+  más cercano. Para 5-10 paradas queda muy cerca de lo óptimo, pero no es la ruta
+  perfecta ni considera el tráfico.

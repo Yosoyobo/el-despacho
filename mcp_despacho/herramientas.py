@@ -166,3 +166,22 @@ def rentabilidad_proyectos(
     return rentabilidad_impl(
         {"incluir_terminados": incluir_terminados, "limite": limite}, usuario
     )
+
+
+def indicadores(categoria: str = "", limite: int = 40) -> dict[str, Any]:
+    """Los indicadores del despacho con su valor, tendencia y anomalías."""
+    from capacidades.mcp_lecturas import indicadores_impl
+
+    usuario = _usuario_actual()
+    return indicadores_impl({"categoria": categoria, "limite": limite}, usuario)
+
+
+def serie_indicador(slug: str, dias: int = 90) -> dict[str, Any]:
+    """La historia de un indicador: su serie diaria y cómo viene."""
+    from capacidades.mcp_lecturas import serie_indicador_impl
+
+    usuario = _usuario_actual()
+    datos = serie_indicador_impl({"slug": slug, "dias": dias}, usuario)
+    if isinstance(datos, dict) and datos.get("error") == "no_visible":
+        raise ErrorAccesoMCP(f"No existe el indicador «{slug}».")
+    return datos

@@ -22,6 +22,8 @@ urlpatterns = [
     path("geo/buscar", views.geocoding_buscar, name="geo-buscar"),
     # El Runner — Mandados (entregas/recolecciones como entidad logística).
     path("mandados/", views.mandados_lista, name="mandados-lista"),
+    # La vuelta del día, ordenada por cercanía + exportar a mapas (2026-08-22).
+    path("mandados/mi-ruta/", views.mi_ruta, name="mandados-mi-ruta"),
     path("mandados/geocoding", views.geocoding_buscar, name="mandados-geocoding"),
     path("mandados/<int:pk>/avanzar", views.mandado_avanzar, name="mandado-avanzar"),
     path("mandados/<int:pk>/destino", views.mandado_destino, name="mandado-destino"),

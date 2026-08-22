@@ -304,6 +304,164 @@ def _h_rentabilidad_proyecto(args: dict, usuario) -> dict:
     return fila
 
 
+def _h_serie_kpi(args: dict, usuario) -> dict:
+    """Cómo viene un indicador: su serie, su tendencia y el cambio contra antes."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpi_por_slug
+
+    slug = (args.get("slug") or "").strip()
+    if not slug:
+        return {"error": "Falta el indicador."}
+    kpi = kpi_por_slug(slug)
+    if kpi is None:
+        return {"error": f"No existe el indicador «{slug}». Usa listar_kpis para verlos."}
+    dias = args.get("dias") or 30
+    try:
+        dias = max(7, min(int(dias), 365))
+    except (TypeError, ValueError):
+        dias = 30
+    s = series.serie(slug, dias=dias)
+    if not s:
+        return {"slug": slug, "titulo": kpi.titulo, "hay_historia": False,
+                "aviso": "Todavía no hay historia de este indicador; se guarda una foto al día."}
+    return {
+        "slug": slug, "titulo": kpi.titulo, "hay_historia": True,
+        "dias": dias, "muestras": len(s),
+        "primero": s[0], "ultimo": s[-1],
+        "minimo": min(x["valor"] for x in s), "maximo": max(x["valor"] for x in s),
+        "tendencia": series.tendencia(slug),
+        "comparacion": series.comparar(slug, dias=min(dias, 30)),
+        "serie": s[-30:],
+    }
+
+
+def _h_comparar_kpi(args: dict, usuario) -> dict:
+    """Este periodo contra el anterior del mismo largo."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpi_por_slug
+
+    slug = (args.get("slug") or "").strip()
+    kpi = kpi_por_slug(slug) if slug else None
+    if kpi is None:
+        return {"error": f"No existe el indicador «{slug}»."}
+    dias = args.get("dias") or 30
+    try:
+        dias = max(2, min(int(dias), 180))
+    except (TypeError, ValueError):
+        dias = 30
+    return {"slug": slug, "titulo": kpi.titulo, **series.comparar(slug, dias=dias)}
+
+
+def _h_kpis_a_mirar_hoy(args: dict, usuario) -> dict:
+    """Los pocos indicadores que hoy merecen atención, y por qué cada uno."""
+    from apps.taller_home.curaduria import destacados_de_hoy
+
+    filas = destacados_de_hoy(usuario)
+    if not filas:
+        return {"hay_algo": False,
+                "resumen": "Nada se salió de lo normal ni está en alerta hoy."}
+    return {
+        "hay_algo": True,
+        "destacados": [
+            {"titulo": f["titulo"], "valor": f["valor"], "razon": f["razon"],
+             "tendencia": f["tendencia"], "slug": f["slug"]}
+            for f in filas
+        ],
+    }
+
+
+def _h_anomalias_kpi(args: dict, usuario) -> dict:
+    """Qué indicadores se salieron de su comportamiento normal."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpis_aplicables_a_rol
+
+    raros = []
+    for kpi in kpis_aplicables_a_rol(getattr(usuario, "rol", ""), user=usuario):
+        try:
+            valor = kpi.calcular(usuario).get("valor")
+        except Exception:  # noqa: BLE001
+            continue
+        if isinstance(valor, str):
+            continue
+        r = series.es_raro(kpi.slug, valor)
+        if r.get("raro"):
+            raros.append({
+                "slug": kpi.slug, "titulo": kpi.titulo, "valor": valor,
+                "normal_ronda": r["mediana"], "desviacion_pct": r["desviacion_pct"],
+                "hacia": r["motivo"],
+            })
+    return {"cuantos": len(raros), "anomalias": raros[:10]} if raros else {
+        "cuantos": 0, "resumen": "Todo dentro de lo normal.",
+    }
+
+
+def _h_metas_sugeridas(args: dict, usuario) -> dict:
+    """Metas realistas para los indicadores que aún no tienen una."""
+    from apps.taller_home.curaduria import proponer_metas
+
+    props = proponer_metas()
+    return {"cuantas": len(props), "propuestas": props} if props else {
+        "cuantas": 0,
+        "resumen": "Sin historia suficiente para proponer metas, o ya todas tienen una.",
+    }
+
+
+def _h_ruta_del_dia(args: dict, usuario) -> dict:
+    """La vuelta de hoy de un runner: paradas en orden y kilómetros."""
+    from apps.el_pizarron.ruta import ruta_de
+
+    r = ruta_de(usuario)
+    if not r["paradas"]:
+        return {"hay_ruta": False, "resumen": "No traes mandados abiertos."}
+    return {
+        "hay_ruta": True,
+        "paradas": [
+            {"orden": i + 1, "que": p["titulo"], "cliente": p["cliente"],
+             "lugar": p["lugar"], "ubicado": p["lat"] is not None}
+            for i, p in enumerate(r["paradas"])
+        ],
+        "total_km": r["total_km"],
+        "sin_ubicar": r["sin_ubicar"],
+    }
+
+
+def _h_sugerir_runner(args: dict, usuario) -> dict:
+    """A quién conviene darle una entrega, y por qué.
+
+    Considera si está trabajando, cuántos pendientes trae, qué tan lejos está,
+    si le queda de paso y si tiene un compromiso encima.
+    """
+    from apps.el_pizarron.models import Tarea
+    from apps.el_pizarron.runners import evaluar_runners
+
+    clave = (args.get("tarea") or "").strip()
+    if not clave:
+        return {"error": "Falta la tarea."}
+    tarea = None
+    if clave.isdigit():
+        tarea = Tarea.objects.filter(pk=int(clave)).first()
+    if tarea is None:
+        tarea = Tarea.objects.filter(titulo__icontains=clave, archivada=False).first()
+    if tarea is None:
+        return {"error": f"No encontré la tarea «{clave}»."}
+
+    filas = evaluar_runners(tarea)
+    if not filas:
+        return {"hay_candidatos": False,
+                "resumen": "Nadie tiene el permiso de recibir mandados."}
+    return {
+        "hay_candidatos": True,
+        "tarea": tarea.titulo,
+        "recomendado": filas[0]["runner"].nombre_completo,
+        "por_que": ", ".join(filas[0]["razones"]),
+        "candidatos": [
+            {"quien": f["runner"].nombre_completo, "puntaje": f["puntaje"],
+             "razones": f["razones"]}
+            for f in filas[:5]
+        ],
+    }
+
+
 def _h_estado_servidor(args: dict, usuario) -> dict:
     salida: dict = {}
     try:
@@ -1001,6 +1159,73 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={},
         gating="finanzas", fn=_h_resumen_ia,
+    ),
+    "serie_kpi": Capacidad(
+        nombre="serie_kpi",
+        descripcion=(
+            "Cómo viene un indicador en el tiempo: su serie de los últimos días, "
+            "si va subiendo o bajando, y cuánto cambió contra el periodo anterior. "
+            "Usa listar_kpis para ver los slugs disponibles."
+        ),
+        args_schema={"slug": {"tipo": "str", "requerido": True},
+                     "dias": {"tipo": "int", "requerido": False}},
+        gating="abierto", fn=_h_serie_kpi,
+    ),
+    "comparar_kpi": Capacidad(
+        nombre="comparar_kpi",
+        descripcion="Un indicador en este periodo contra el anterior del mismo largo.",
+        args_schema={"slug": {"tipo": "str", "requerido": True},
+                     "dias": {"tipo": "int", "requerido": False}},
+        gating="abierto", fn=_h_comparar_kpi,
+    ),
+    "kpis_a_mirar_hoy": Capacidad(
+        nombre="kpis_a_mirar_hoy",
+        descripcion=(
+            "Los pocos indicadores que hoy merecen atención —los que están en "
+            "alerta, se salieron de lo normal o cambiaron fuerte— con el porqué "
+            "de cada uno. Úsala cuando te pregunten «¿cómo vamos?» o «¿qué debo "
+            "ver hoy?» en vez de listar todo."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_kpis_a_mirar_hoy,
+    ),
+    "anomalias_kpi": Capacidad(
+        nombre="anomalias_kpi",
+        descripcion=(
+            "Qué indicadores se salieron de su comportamiento normal, comparando "
+            "cada uno contra su propia historia."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_anomalias_kpi,
+    ),
+    "metas_sugeridas": Capacidad(
+        nombre="metas_sugeridas",
+        descripcion=(
+            "Metas realistas para los indicadores que no tienen una, calculadas "
+            "con lo que de verdad se ha hecho los últimos meses."
+        ),
+        args_schema={},
+        gating="finanzas", fn=_h_metas_sugeridas,
+    ),
+    "ruta_del_dia": Capacidad(
+        nombre="ruta_del_dia",
+        descripcion=(
+            "La vuelta de hoy: los mandados abiertos del runner ordenados por "
+            "cercanía, con los kilómetros aproximados."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_ruta_del_dia,
+    ),
+    "sugerir_runner": Capacidad(
+        nombre="sugerir_runner",
+        descripcion=(
+            "A qué repartidor conviene darle una entrega o recolección, y por "
+            "qué: mira quién está en jornada, cuántos pendientes trae, qué tan "
+            "lejos está del destino, si le queda de paso y si tiene un "
+            "compromiso con hora encima. Arg: tarea (id o parte del título)."
+        ),
+        args_schema={"tarea": {"tipo": "str", "requerido": True}},
+        gating="abierto", fn=_h_sugerir_runner,
     ),
     "mi_jornada_hoy": Capacidad(
         nombre="mi_jornada_hoy",

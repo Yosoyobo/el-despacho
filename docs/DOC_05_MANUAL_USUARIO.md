@@ -113,6 +113,67 @@ escribe, pero **nace apagada**: aparece en la lista marcada como pendiente de
 revisar, y no se puede mandar hasta que la abras, la leas y la enciendas. Un
 correo va a la bandeja de un cliente, así que nadie quiere que salga uno sin
 que una persona lo haya visto.
+## Novedades — El Chalán ahora te dice qué mirar, y los runners traen ruta (23 de agosto de 2026)
+
+**El tablero deja de crecer y empieza a elegir**
+
+Había 105 preferencias de indicadores guardadas en el sistema y **72 eran para
+apagarlos**: el tablero traía tantos números que la gente los escondía a mano, uno
+por uno. Un buen analista no te entrega cincuenta cifras; te dice cuáles cinco hay
+que ver hoy.
+
+Ahora, en **El Análisis**, arriba de todo aparece **«Lo que hay que mirar hoy»**: sólo
+los indicadores que están en alerta, se salieron de lo normal o cambiaron fuerte — y
+cada uno dice **por qué** está ahí («se salió de lo normal: 60% arriba de lo
+habitual», «bajó 30% contra el periodo anterior»). Si todo está tranquilo, no
+aparece nada. Eso también es información.
+
+**El sistema por fin tiene memoria**
+
+Cada mañana se guarda cuánto vale cada indicador. Con eso el Chalán ya puede decir
+lo que antes le era imposible: **si subió o bajó**, cuánto contra el mes pasado, y
+si el número de hoy es raro para ese indicador. Empieza a acumular desde hoy: en una
+semana ya compara, en un mes ya tiene tendencia.
+
+**Y te propone metas**
+
+Tu tabla de metas llevaba meses vacía, y sin meta el sistema sólo podía describir.
+Ahora mira lo que de verdad has hecho y te propone una realista: «en los últimos
+meses rondas 180 mil, te propongo 200 mil». Tú la apruebas o la ajustas.
+
+**Indicadores de todo el negocio**
+
+Se agregaron unos cuarenta, en los temas que faltaban: tickets del buzón, márgenes
+reales, productos sin costo, deuda con proveedores, clientes dormidos, dependencia
+de tu mayor cliente, mandados, el servidor (CPU, memoria, disco), lo que cuestan Los
+Chalanes, y **la gente**: entradas al sistema, horas trabajadas, retardos, jornadas
+sin cerrar y qué tanto del trabajo se puede costear.
+
+Que el catálogo sea grande ya no satura el tablero, porque es el Chalán quien elige
+qué mostrar.
+
+**Los runners: reloj, ruta y mapa**
+
+- Al picar **«En camino»** y **«Entregado»**, el teléfono guarda dónde está el
+  repartidor. Con eso el sistema mide **cuánto tardó cada misión y cuántos
+  kilómetros se recorrieron**. Si el GPS falla, el mandado se marca igual — medir es
+  útil, estorbar no.
+- Botón **«Mi ruta de hoy»**: los mandados abiertos **ordenados por cercanía**,
+  empezando por donde está el runner, con los kilómetros aproximados. Y tres botones
+  para abrirla en **Waze, Google Maps o Apple Maps**.
+- **A quién le toca un mandado** ya no se decide sólo por cercanía: ahora pesa si
+  está en su jornada, cuántos pendientes trae, qué tan lejos está, si le queda de
+  paso y si tiene un compromiso con hora encima. Y el Chalán te lo puede explicar:
+  pregúntale «¿a quién le doy esta entrega?».
+
+**Todo esto se le puede preguntar al Chalán**
+
+«¿Qué debo ver hoy?» · «¿cómo va la utilidad contra el mes pasado?» · «¿algo raro
+esta semana?» · «¿qué meta me pongo?» · «¿cuál es mi ruta?» · «¿a quién le doy la
+entrega de las gorras?».
+
+**Un arreglo de paso**: el indicador de integraciones en rojo estaba consultando un
+campo que no existe y tronaba cada vez que se calculaba. Ya quedó.
 
 ---
 

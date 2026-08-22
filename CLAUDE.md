@@ -6140,6 +6140,90 @@ JSON. Hoy los alias se dan de alta a mano en la consola, y **la pantalla
 «Direcciones de envío» dice exactamente cuáles faltan**. El envío desde la ficha
 no adjunta archivos. Las reglas mandan al cliente, no al equipo. Y el cron de
 clientes dormidos usa `Proyecto.creado_en`, no la última actividad.
+### S-KPI-BI ✅ — El Chalán como analista: memoria, curaduría, metas y la ruta del runner (2026-08-23, VERSION 2026.08.23)
+
+Oscar: «ahora que analiza mejor el negocio, que cree y proponga KPIs basados en su
+conocimiento… que el chalán se convierta en el mejor analista de BI del mercado»,
+más cuatro ampliaciones a media sesión: **MCP**, «tickets, financieros, productos,
+proveedores, clientes, hardware del NUC, IA — TODO», «crúzalo con la actividad de
+cada usuario, logins, jornadas, horas», y los **runners con reloj, ruta y
+exportación a mapas**.
+
+**Los tres hallazgos que definieron el sprint** (medidos en el dump antes de
+diseñar):
+
+1. **La maquinaria de KPIs custom existe desde mayo y no se usa**: hay UN
+   `KPICustom` en la base, y está archivado. No faltaba la función.
+2. **El DSL no alcanzaba**: siete entidades, sin cotización ni factura, y el margen
+   es property de Python (no columna), así que «créame un KPI de conversión» era
+   inexpresable. Los KPIs custom sólo podían contar filas.
+3. **105 preferencias guardadas, 72 para APAGAR**, y los dos usuarios activos
+   coinciden casi exacto: encienden dinero y pendientes accionables, apagan conteos
+   descriptivos. **El problema no era que faltaran KPIs: sobraban.** De ahí que
+   Oscar eligiera «A y B» — curar Y proponer.
+
+**Decisiones de Oscar**: curar + proponer · foto diaria de TODOS los KPIs · metas
+propuestas del histórico con aprobación · MCP en las cuatro variantes (leer,
+detectar anomalías, crear con confirmación, y abrirlo al cliente externo).
+
+**Lo entregado**
+
+- **`SnapshotKPI` + `series.py`** — la memoria. Foto diaria por indicador
+  (migración `taller_home/0005`), y encima: serie, tendencia, comparación contra el
+  periodo anterior, **detección de anomalías** y **meta sugerida**. Las anomalías se
+  miden contra la **mediana**, no el promedio: con promedio, un solo día raro deja
+  ciego al detector justo después de la primera rareza. Con menos de 7 muestras no
+  opina (`MINIMO_PARA_JUZGAR`).
+- **`kpis_bi.py` — 42 indicadores nuevos** en todos los dominios que pidió Oscar:
+  tickets del Buzón, ventas (embudo real), rentabilidad, días de caja, productos,
+  proveedores, clientes (incluida la **dependencia del mayor cliente**), mandados
+  con **minutos y kilómetros**, el NUC (CPU/memoria/disco/piezas), Los Chalanes, y
+  **la gente** (accesos, intentos fallidos, cuentas dormidas, horas del equipo,
+  retardos, jornadas sin cerrar, visitas, **% de horas imputables** y actividad).
+  Ninguno recalcula por su cuenta: se apoyan en `negocio.py`, `embudo.py`,
+  `rentabilidad.py`, `stats.py` y `gauges.py`, así que un número aquí y el mismo
+  número en El Análisis siempre coinciden. Seis categorías nuevas.
+- **`curaduria.py`** — el corazón: `destacados_de_hoy` elige los ≤5 que importan
+  hoy **con su razón** (alerta > anomalía > cambio ≥25% > meta en riesgo), `sobran`
+  señala los que llevan días marcando lo mismo, `proponer_metas` sale del histórico
+  y `sembrar_sugerencias` reusa `SugerenciaKPI` — el mecanismo que YA funcionaba
+  (6 de 10 aceptadas) en vez de inventar otro. **Determinista, sin IA**: comparar
+  números no necesita un modelo, y así corre a diario sin costo.
+- **Runners**: `Mandado` gana `inicio_lat/lng`, `fin_lat/lng` y `distancia_m`
+  (migración `pizarron/0014`); el reloj ya existía. Los botones del teléfono mandan
+  la ubicación con un tope de 1.5 s — **si el GPS falla, el mandado se marca igual**.
+  `ruta.py`: orden por **vecino más cercano** desde donde está el runner + enlaces a
+  **Waze, Google Maps y Apple Maps** (son URLs, no APIs: cuestan cero), con sus
+  **íconos oficiales vendoreados** en `static/vendor/mapas/`. Pantalla «Mi ruta de
+  hoy».
+- **A quién le toca**: `evaluar_runners` puntúa por jornada (−1000 si no ha
+  checado), carga (−12 por pendiente), distancia (−1.5/km), **si le queda de paso**
+  (+25) y **choque de agenda** (−60). Explicable a propósito: cuando pregunten «¿por
+  qué le tocó a él?» el sistema contesta con la cuenta, no con una opinión.
+- **MCP (regla de Oscar)**: 7 capacidades nuevas (`serie_kpi`, `comparar_kpi`,
+  `kpis_a_mirar_hoy`, `anomalias_kpi`, `metas_sugeridas`, `ruta_del_dia`,
+  `sugerir_runner`) + 2 tools del servidor stdio (`indicadores`,
+  `serie_indicador`) + `CONSULTAS_CHAT` documentado.
+- **Cron** `kpi_foto_diaria` a las 7:00, antes del análisis.
+- **34 tests** en `tests/taller/test_kpis_bi.py`.
+
+**Bug preexistente cazado**: `site-integraciones-rojo` consultaba `creado_en` y el
+campo de `SiteChequeo` es `probado_en` — lanzaba FieldError **cada vez que se
+calculaba**. Lo encontró el test que recorre todo el catálogo, que es justo para lo
+que sirve tener uno.
+
+**Gotchas**: el buzón se importa de `buzon.models` (app raíz), no `apps.buzon`;
+`Tarea.fecha_compromiso` es **DateField** (el de Proyecto es datetime), así que
+`__date` ahí lanza FieldError; el autor de una Tarea es `creado_por`.
+
+**Deuda diseñada**: el DSL de KPIs custom **sigue sin cotizaciones ni facturas** —
+se atacó el problema por el otro lado (catálogo amplio + curaduría), que es lo que
+Oscar eligió; si algún día se quiere que el Chalán invente métricas nuevas de
+verdad, hay que ampliar `lib/kpi_dsl/schema.py`. La memoria **arranca hoy**: no hay
+backfill, así que las comparaciones tardan una semana en ser útiles y un mes en dar
+tendencia. La distancia de los mandados es en línea recta (medir la ruta real exige
+un servicio de paga). La planeación de ruta ordena por cercanía, que para 5-10
+paradas queda muy cerca de lo óptimo pero no es la ruta perfecta.
 
 ### S-Site-Vigia ✅ — El Site adopta la versión de El Vigía (2026-08-22, VERSION 2026.08.21)
 

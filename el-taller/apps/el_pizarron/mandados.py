@@ -79,25 +79,49 @@ def sincronizar_mandado(tarea):
 
 # ── Transiciones manuales ─────────────────────────────────────────────────────
 
-def marcar_en_camino(mandado):
+def marcar_en_camino(mandado, *, lat=None, lng=None):
+    """El runner sale. Si el teléfono da la ubicación, se guarda el punto de
+    salida: es la mitad de la cuenta para saber cuánto recorrió (2026-08-22).
+
+    La ubicación es opcional a propósito, igual que en El Checador: si el GPS
+    falla o el navegador la niega, el mandado se marca igual. Medir es útil;
+    impedir el trabajo por no poder medir, no.
+    """
     if mandado.estado in ("entregado", "cancelado"):
         raise ValueError("El mandado ya está cerrado.")
+    campos = ["estado", "en_camino_en", "actualizado_en"]
     mandado.estado = "en_camino"
     if not mandado.en_camino_en:
         mandado.en_camino_en = timezone.now()
-    mandado.save(update_fields=["estado", "en_camino_en", "actualizado_en"])
+    if lat is not None and lng is not None:
+        mandado.inicio_lat, mandado.inicio_lng = lat, lng
+        campos += ["inicio_lat", "inicio_lng"]
+    mandado.save(update_fields=campos)
     return mandado
 
 
-def marcar_entregado(mandado, *, completar_tarea: bool = True):
+def marcar_entregado(mandado, *, completar_tarea: bool = True, lat=None, lng=None):
     """Marca el reparto como entregado. Por defecto también completa la Tarea
     (lleva su estado al primer estado terminal) — así Kanban/Mis tareas quedan
-    consistentes y el push de la tarea ya existente aplica."""
+    consistentes y el push de la tarea ya existente aplica.
+
+    Con la ubicación de entrega se cierra la medición: se guarda el punto y se
+    calcula de una vez la distancia contra el de salida, para no rehacer la
+    cuenta cada vez que alguien mire un reporte.
+    """
     ahora = timezone.now()
+    campos = ["estado", "entregado_en", "actualizado_en"]
     mandado.estado = "entregado"
     if not mandado.entregado_en:
         mandado.entregado_en = ahora
-    mandado.save(update_fields=["estado", "entregado_en", "actualizado_en"])
+    if lat is not None and lng is not None:
+        mandado.fin_lat, mandado.fin_lng = lat, lng
+        campos += ["fin_lat", "fin_lng"]
+    distancia = mandado.calcular_distancia()
+    if distancia is not None:
+        mandado.distancia_m = distancia
+        campos.append("distancia_m")
+    mandado.save(update_fields=campos)
     if completar_tarea:
         from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
         terminales = slugs_terminales_tarea()

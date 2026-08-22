@@ -106,9 +106,145 @@ def elegir_mas_cercano(destino):
     return con_distancia[0][3]
 
 
+# ── A quién le toca: carga, jornada, recorrido y agenda ──────────────────
+#
+# Oscar (2026-08-22): «los chalanes asignan las tareas a los runners basado en
+# su carga, agenda, recorrido, jornada, etc.».
+#
+# Se resuelve con un puntaje y no con una llamada a la IA, por tres razones: es
+# instantáneo, no cuesta, y sobre todo es EXPLICABLE — cuando alguien pregunte
+# «¿por qué le tocó a él?», el sistema puede contestar con la cuenta exacta en
+# vez de con una opinión. La IA aporta cuando hay que interpretar lenguaje; aquí
+# lo que hay que hacer es comparar números.
+
+# Cuánto pesa cada cosa. Los números salen de qué tan grave es cada situación:
+# mandar a alguien que ya se fue a su casa es peor que mandarlo cinco kilómetros
+# más lejos, y por eso la jornada pesa mucho más que la distancia.
+PESO_FUERA_DE_JORNADA = -1000.0   # ya salió o no ha llegado: prácticamente lo descarta
+PESO_POR_MANDADO_ABIERTO = -12.0  # cada pendiente que ya trae
+PESO_POR_KM = -1.5                # qué tan lejos está del destino
+PESO_DE_PASO = 25.0               # el destino le queda cerca de algo que ya va a hacer
+PESO_CHOQUE_AGENDA = -60.0        # tiene un compromiso con hora encima
+RADIO_DE_PASO_M = 3000            # "le queda de paso" si está a menos de 3 km de otra parada
+
+
+def _en_jornada(usuario) -> bool:
+    """¿Está trabajando ahora? Jornada de hoy abierta, o sin salida marcada."""
+    from datetime import date
+
+    from apps.checador.models import Jornada
+
+    j = Jornada.objects.filter(usuario=usuario, fecha=date.today()).first()
+    if j is None:
+        return False
+    return bool(j.entrada_en) and not j.salida_en
+
+
+def _compromiso_proximo(usuario) -> bool:
+    """¿Trae algo con hora en las próximas dos horas?
+
+    Cargarle una entrega a alguien que tiene una junta en media hora es
+    ponerlo a elegir cuál incumple.
+    """
+    from datetime import date, datetime, time, timedelta
+
+    from apps.el_pizarron.models import Tarea
+    from django.utils import timezone
+
+    ahora = timezone.localtime()
+    hoy = date.today()
+    pendientes = Tarea.objects.filter(
+        # `fecha_compromiso` de Tarea es DateField (el de Proyecto es datetime):
+        # comparar con `__date` aquí lanza FieldError.
+        asignada_a=usuario, archivada=False, fecha_compromiso=hoy,
+        hora__isnull=False,
+    ).exclude(estado__in=("completada", "cancelada")).values_list("hora", flat=True)
+    for h in pendientes:
+        cuando = timezone.make_aware(datetime.combine(hoy, h or time(0, 0)))
+        if timedelta(0) <= (cuando - ahora) <= timedelta(hours=2):
+            return True
+    return False
+
+
+def _le_queda_de_paso(usuario, destino) -> bool:
+    """¿El destino está cerca de alguna parada que ya trae?"""
+    if not destino:
+        return False
+    from apps.checador.models.sede import distancia_m
+    from apps.el_pizarron.models import Tarea
+
+    otras = Tarea.objects.filter(
+        runner=usuario, archivada=False,
+        destino_lat__isnull=False, destino_lng__isnull=False,
+    ).exclude(estado__in=("completada", "cancelada")).values_list(
+        "destino_lat", "destino_lng",
+    )
+    for lat, lng in otras:
+        d = distancia_m(destino[0], destino[1], lat, lng)
+        if d is not None and d <= RADIO_DE_PASO_M:
+            return True
+    return False
+
+
+def evaluar_runners(tarea) -> list[dict]:
+    """Puntúa a cada runner para esta tarea y explica el porqué.
+
+    Devuelve `[{runner, puntaje, razones}]` de mejor a peor. Lo usan la
+    asignación automática y El Chalán cuando le preguntan a quién conviene
+    dársela.
+    """
+    from apps.checador.models.sede import distancia_m
+
+    from lib.permisos import usuarios_runner
+
+    destino = ubicacion_destino_de_tarea(tarea)
+    filas = []
+    for runner in usuarios_runner():
+        puntaje = 0.0
+        razones: list[str] = []
+
+        trabajando = _en_jornada(runner)
+        if not trabajando:
+            puntaje += PESO_FUERA_DE_JORNADA
+            razones.append("no ha checado entrada hoy")
+        else:
+            razones.append("en jornada")
+
+        carga = pendientes_runner(runner)
+        if carga:
+            puntaje += PESO_POR_MANDADO_ABIERTO * carga
+            razones.append(f"trae {carga} pendiente{'s' if carga != 1 else ''}")
+        else:
+            razones.append("sin pendientes")
+
+        if destino:
+            pos = ubicacion_actual_de(runner)
+            if pos:
+                metros = distancia_m(pos[0], pos[1], destino[0], destino[1])
+                if metros is not None:
+                    km = metros / 1000
+                    puntaje += PESO_POR_KM * km
+                    razones.append(f"a {km:.1f} km del destino")
+            if _le_queda_de_paso(runner, destino):
+                puntaje += PESO_DE_PASO
+                razones.append("le queda de paso")
+
+        if trabajando and _compromiso_proximo(runner):
+            puntaje += PESO_CHOQUE_AGENDA
+            razones.append("tiene un compromiso con hora encima")
+
+        filas.append({"runner": runner, "puntaje": round(puntaje, 1), "razones": razones})
+
+    filas.sort(key=lambda f: -f["puntaje"])
+    return filas
+
+
 def elegir_runner_auto(tarea):
-    """Elige el runner para auto-asignación: por cercanía si hay destino y
-    posiciones conocidas; si no, el menos cargado."""
+    """A quién le toca: el mejor puntaje considerando jornada, carga, distancia,
+    recorrido y agenda. Si nadie califica, cae a los criterios de siempre."""
+    evaluados = evaluar_runners(tarea)
+    if evaluados:
+        return evaluados[0]["runner"]
     destino = ubicacion_destino_de_tarea(tarea)
     return elegir_mas_cercano(destino) or elegir_menos_cargado()
 

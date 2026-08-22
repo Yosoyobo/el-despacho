@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load forms_helpers static %}
+{% block title %}Mi ruta de hoy — El Taller{% endblock %}
+
+{% comment %}
+La vuelta del día del runner (2026-08-22).
+
+Las paradas van en orden de cercanía: se arranca donde está —su última checada—
+y cada vez se salta a la más próxima. No es la ruta matemáticamente perfecta
+(eso necesita un servicio de rutas de paga); para una vuelta de cinco o diez
+paradas queda muy cerca y se calcula al instante.
+
+Los tres botones abren la ruta en la app del teléfono. Son enlaces, no APIs: no
+cuestan nada. Google acepta la ruta completa con paradas intermedias; Waze
+navega a un destino a la vez, así que se le manda la primera.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Tareas" "/tareas/" "Mi ruta" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+
+<header class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mi ruta de hoy</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {% if paradas %}
+                {{ paradas|length }} parada{{ paradas|length|pluralize }}, en orden de cercanía{% if total_km %} · aprox. {{ total_km }} km{% endif %}.
+            {% else %}
+                No traes mandados abiertos.
+            {% endif %}
+        </p>
+    </div>
+    {% if paradas %}
+    {% comment %}
+    Los íconos son los oficiales de cada plataforma, vendoreados en
+    `static/vendor/mapas/` como el resto de lo externo del repo: cargarlos
+    desde el sitio de cada quien haría que el botón dependa de una red ajena y
+    delataría a nuestros usuarios ante ellos en cada visita.
+    {% endcomment %}
+    <div class="flex flex-wrap items-center gap-2">
+        {% if url_waze %}
+        <a href="{{ url_waze }}" target="_blank" rel="noopener"
+           class="btn-secundario inline-flex items-center gap-2" title="Navegar a la primera parada con Waze">
+            <img src="{% static 'vendor/mapas/waze.png' %}" alt="" width="18" height="18" class="h-[18px] w-[18px] rounded-[4px]">
+            Waze
+        </a>
+        {% endif %}
+        {% if url_google %}
+        <a href="{{ url_google }}" target="_blank" rel="noopener"
+           class="btn-primario inline-flex items-center gap-2" title="Abrir la ruta completa en Google Maps">
+            <img src="{% static 'vendor/mapas/google-maps.png' %}" alt="" width="18" height="18" class="h-[18px] w-[18px]">
+            Google Maps
+        </a>
+        {% endif %}
+        {% if url_apple %}
+        <a href="{{ url_apple }}" target="_blank" rel="noopener"
+           class="btn-secundario inline-flex items-center gap-2" title="Abrir en Apple Maps">
+            <img src="{% static 'vendor/mapas/apple-maps.png' %}" alt="" width="18" height="18" class="h-[18px] w-[18px] rounded-[4px]">
+            Apple Maps
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</header>
+
+{% if paradas %}
+<ol class="space-y-2">
+    {% for p in paradas %}
+    <li class="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+            {{ forloop.counter }}
+        </span>
+        <div class="min-w-0 flex-1">
+            <p class="truncate font-medium text-gray-900 dark:text-gray-100">{{ p.titulo }}</p>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                {% if p.cliente %}{{ p.cliente }}{% endif %}
+                {% if p.lugar %}{% if p.cliente %} · {% endif %}{{ p.lugar }}{% endif %}
+                {% if p.lat is None %}<span class="text-warning-600 dark:text-warning-400"> · sin ubicación, no entra en la ruta</span>{% endif %}
+            </p>
+        </div>
+        <span class="badge badge-hex shrink-0" style="--ec: #465fff">{{ p.estado }}</span>
+    </li>
+    {% endfor %}
+</ol>
+
+{% if sin_ubicar %}
+<p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+    {{ sin_ubicar }} parada{{ sin_ubicar|pluralize }} sin ubicación fijada. Ponle el punto en el mapa desde
+    <a href="/mandados/" class="underline">Mandados</a> y entrará en la ruta.
+</p>
+{% endif %}
+
+{% if not origen %}
+<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+    Todavía no sé desde dónde sales, así que el orden arranca por la primera parada.
+    En cuanto cheques entrada o registres una visita, la ruta se calcula desde donde estés.
+</p>
+{% endif %}
+{% else %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin mandados abiertos" descripcion="Cuando te asignen entregas o recolecciones, aquí aparece la vuelta del día ya ordenada." icono="folder" %}
+{% endif %}
+{% endblock %}

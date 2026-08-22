@@ -331,8 +331,13 @@ def _kpi_site_integraciones_rojo(user) -> dict:
     except ImportError:
         return _resultado("—", nota="(SiteChequeo no disponible)")
     # Última fila por plataforma con estado='error'.
+    # El campo de fecha de SiteChequeo es `probado_en`, NO `creado_en`: con el
+    # nombre equivocado este KPI lanzaba FieldError cada vez que se calculaba.
+    # Lo cazó el test que recorre todo el catálogo (2026-08-22).
     desde = _hoy() - timedelta(days=2)
-    qs = SiteChequeo.objects.filter(estado="error", creado_en__date__gte=desde).values("plataforma").distinct()
+    qs = SiteChequeo.objects.filter(
+        estado="error", probado_en__date__gte=desde,
+    ).values("plataforma").distinct()
     n = qs.count()
     return _resultado(n, nota=("alerta" if n > 0 else ""), link="/site/")
 
@@ -686,15 +691,39 @@ KPIS: list[KPI] = [
 ]
 
 
+# Los indicadores del resto del negocio y de la máquina (2026-08-22, Oscar:
+# «tickets, financieros, productos, proveedores, clientes, hardware del NUC, IA
+# — TODO»). Viven en `kpis_bi.py` para no engordar este archivo, y se agregan
+# aquí para que todo el sistema los vea igual que a los demás.
+#
+# Que el catálogo sea grande NO significa un tablero grande: El Chalán elige
+# cada día los pocos que importan (`curaduria.py`). Antes de esto, la gente
+# apagaba a mano los que le sobraban — 72 ocultamientos en la base.
+from .kpis_bi import catalogo_bi  # noqa: E402
+
+KPIS += [
+    KPI(slug, titulo, descripcion, categoria, roles, fn)
+    for slug, titulo, descripcion, categoria, roles, fn in catalogo_bi(
+        ROLES_TODOS, ROLES_ADMIN, ROLES_ADMIN_CONTADOR,
+    )
+]
+
+
 CATEGORIAS = (
     ("operacion", "🏗 Operación"),
     ("tareas", "✅ Tareas"),
-    ("buzon", "📨 Buzón"),
+    ("buzon", "📨 Buzón / Tickets"),
     ("recados", "💬 Recados"),
-    ("cartera", "👥 Cartera"),
+    ("cartera", "👥 Clientes"),
+    ("catalogo", "📦 Productos"),
+    ("proveedores", "🚚 Proveedores"),
+    ("runner", "🛵 Mandados"),
     ("infraestructura", "📡 Infraestructura"),
+    ("maquina", "🖥 El servidor"),
+    ("ia", "🤖 Los Chalanes"),
     ("dinero", "💰 Dinero"),
     ("checador", "🕐 Checador"),
+    ("gente", "🧑‍🔧 La gente"),
 )
 
 
