@@ -64,6 +64,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Cartero** | Envío de correo con canal intercambiable SMTP/n8n (`lib/cartero.py`) | — |
 | **El Celador** | Extremo `/salud` para el monitor del taller + su credencial (`lib/salud.py`, `lib/celador.py`) | — |
 | **El Almacén** | Medios en disco (fotos, comprobantes, CFDI, adjuntos) con derivados propios; Drive queda de espejo (`lib/almacen.py`) | — |
+| **El Mostrador** | Entrega los medios de El Almacén desde el disco del NUC, sin pasar por Django ni por Drive (`infra/mostrador/`) | 8202 |
 
 ### Módulos de negocio
 
@@ -322,6 +323,9 @@ ElDespacho/
 | `CADDY_HTTP_PORT` · `CADDY_HTTPS_PORT` | `18080/18443` en HAL (macOS reserva 80/443) |
 | `DESPACHO_ENV` | `development` | `production` |
 | `CELADOR_TOKEN` | Credencial del monitor del taller (cabecera `x-celador`). Opcional; el camino normal es el slot `celador_token` de Los Ajustes. Vacío en ambos = nadie ve el desglose de `/salud`. |
+| `MEDIOS_DIR` | Carpeta de El Almacén dentro del contenedor (default `/app/medios`, montada desde `./data/media`). Mudar el almacén a otro disco es cambiar el montaje. |
+| `GUNICORN_WORKERS` · `GUNICORN_THREADS` | Fierro de gunicorn. Default `1`/`4` (calibrado para el droplet de 1 GB); el overlay del NUC los sube a 4×4 en El Taller y 2×4 en La Gerencia. |
+| `UPSTREAM_TALLER` · `UPSTREAM_GERENCIA` · `UPSTREAM_MEDIOS` | Sólo en la **ventana**: a dónde manda El Portero por el tailnet. Sin ellas, el Caddyfile cae al nombre del servicio en la red de Docker (HAL local). `UPSTREAM_MEDIOS` es El Mostrador. |
 
 ---
 
@@ -5484,7 +5488,10 @@ desvincular una cuenta de Google (se resuelve por shell); si se vuelve rutina,
 vale un botón en El Directorio. Y si Campañas empieza a topar el límite diario
 de Gmail, el camino es el relay SMTP de Workspace (`smtp-relay.gmail.com`,
 autorizado por IP del Droplet), que no depende de la contraseña de una persona.
-### S-Medios-V1 ✅ — El Almacén: los medios salen de Drive y viven en disco (2026-08-20, VERSION 2026.08.15)
+### S-Medios-V1 ✅ — El Almacén: los medios salen de Drive y viven en disco (escrito 2026-08-20, desplegado 2026-08-21 con VERSION 2026.08.17)
+
+> Se escribió en rama y quedó sin desplegar. Aterrizó al día siguiente de la
+> mudanza, adaptado al NUC — ver **S-Medios-NUC** abajo.
 
 Pedido de Oscar: «que los medios carguen y cacheen rápido y no depender de Drive
 para una operación tan ineficiente que puede bloquear los llamados de API a
@@ -5587,6 +5594,95 @@ que agregar `pillow-heif` a `requirements.txt` lo encienda sin tocar código
 (**decisión pendiente de Oscar**); WebP/AVIF por negociación de `Accept` sale
 barato ahora que los derivados están en disco; y un CDN queda a un `CNAME` de
 distancia porque las cabeceras ya son `public, immutable`.
+
+### S-Medios-NUC ✅ — El Almacén aterriza en el NUC: El Mostrador, y el respaldo que llevaba días mintiendo (2026-08-21, VERSION 2026.08.17)
+
+Oscar, el día siguiente a la mudanza: «las imágenes de los productos no se ven, ya
+tienes mucho almacenamiento para hacerlo en el NUC y poner a Google Drive como
+prioridad 2» · «conecta las tuberías… ya puedes usar recursos locales, RAM,
+procesador, SSD» · «si lo logras, migra todo, si no se resuben después».
+
+**Lo que se rompió NO fue la mudanza.** El log de El Taller decía
+`POST oauth2.googleapis.com/token → 401` en cada foto: el permiso guardado de
+Drive es del **7 de junio** y el cliente OAuth del login se reemplazó el **21 de
+agosto** en la migración al Workspace. Drive no tiene cliente propio, así que usa
+el del login: al cambiarlo, el permiso quedó apuntando a un cliente que ya no
+existe y **cada imagen devolvía 404**. Estaba previsto y anotado en el runbook de
+esa migración (`docs/MIGRACION_WORKSPACE_LEARNINGCENTER.md`) y descrito como el
+Bloque 0 de `docs/REPARTO-Notas-Ago21.md`; lo que faltó fue aislar Drive antes.
+
+**El histórico se rescató del respaldo, sin tocar la consola de Google.** El dump
+del 13 de agosto (anterior a la migración) trae el cliente viejo cifrado con la
+**misma** `BOVEDA_MASTER_KEY`, así que descifra hoy. Se pegó en los campos
+**dedicados** de Drive (`google_drive_oauth_client_*`), que el código ya prefiere
+sobre los del login: el acceso con Google se queda con el cliente nuevo y Drive
+recupera su historia. Verificado bajando una foto real (24 KB) por la API.
+**Aditivo y reversible**: llena dos campos que estaban vacíos.
+
+> **La trampa que se evitó, y que sigue vigente:** «Reconectar» de un clic usa el
+> cliente NUEVO y el permiso de Google alcanza **sólo los archivos que creó esa
+> combinación de cliente + cuenta**. Habría arreglado las subidas de hoy y dejado
+> ciego **todo** el histórico —PDFs, XML, fotos, adjuntos, avatares— y **en
+> silencio**. Nunca reconectar Drive sin antes fijar su cliente dedicado.
+
+**El Almacén se aterrizó, adaptado a la topología nueva.** La rama
+`agent/medios-almacen` (S-Medios-V1, escrita el 2026-08-20, 6 fases, ~56 pruebas)
+nunca se desplegó. Su diseño servía los medios con **El Portero**, porque Caddy y
+los archivos vivían en la misma máquina. La mudanza separó justo esas dos cosas:
+el disco quedó en el NUC y El Portero en la ventana. Piezas:
+
+- **El Mostrador** (`infra/mostrador/Caddyfile` + servicio en el overlay del NUC,
+  puerto 8202): Caddy chico que entrega los medios del disco de ESTA máquina. El
+  Almacén guarda, El Mostrador entrega. Monta **sólo `pub/`** (los derivados
+  JPEG/PNG que generamos nosotros); `orig/`, que es lo que sube la gente, no se
+  monta — ésa es la frontera de seguridad, intacta. Si a un derivado le falta el
+  archivo, lo pide a El Taller, que lo regenera del original.
+- **Un solo Caddyfile para las tres máquinas, sin bifurcarlo.** El snippet
+  `(medios)` se queda con `root * /srv` + `@falta not file`: en la **ventana**
+  `/srv/medios` no se monta, así que no existe ningún archivo y todo se va por
+  `@falta` al NUC; en **HAL local** el volumen sí está y se sirve del disco. El
+  `reverse_proxy` lleva **dos** upstreams con `lb_policy first` —El Mostrador y,
+  de respaldo, `{$UPSTREAM_TALLER}`, que la ventana ya tenía definido— así que un
+  contenedor caído no borra las fotos de la pantalla. Verificado con
+  `caddy adapt`: `['…:8202', '…:8200']`, `policy first`, try 5s, fail 10s.
+- **Gunicorn deja de estar calibrado para 1 GB.** Los entrypoints traían
+  `--workers 1 --threads 4` fijos (S-RAM-Wave4, cuando la RAM era el recurso
+  escaso). Ahora se leen de `GUNICORN_WORKERS`/`GUNICORN_THREADS` **con el mismo
+  default de antes**, y el overlay del NUC los sube: El Taller 4×4 = 16 peticiones
+  a la vez (~800 MB de los 13 G libres), La Gerencia 2×4. No se usó la fórmula
+  `2×CPU+1` (17 workers) a propósito: son 5 usuarios, y lo que ahogaba no era la
+  concurrencia sino que UNA petición lenta —un PDF que arma Google, una llamada a
+  un Chalán— dejaba a las demás esperando.
+
+**Bug de producción encontrado al pasar: el respaldo llevaba días mintiendo, y no
+era el rsync.** La mudanza documentó que el `db-20260819` llegó a HAL con **20
+bytes** y se le achacó a la replicación. La causa real es que la línea de
+`archivo.sh` del crontab es **la única sin `cd @@RAIZ@@ &&`**, así que corre desde
+`$HOME`; y el guion usa rutas relativas (`./backups`, `./data`, `docker compose`
+sin `-f`). Reproducido en el NUC: desde `/home/linux`, `docker compose exec` dice
+**`no configuration file provided`** y el `| gzip >` crea el archivo **igual, con
+el gzip vacío**. Un respaldo vacío es peor que ninguno: parece que hay copia. Se
+arregló en tres frentes — el cron hace `cd`, `archivo.sh` **se ubica solo** (como
+ya hacía `optimizar.sh`), y **se niega a replicar** un dump de menos de 1 KB,
+registrándolo como error en El Site. Urge más que antes: con El Almacén, ese
+rsync es el único lugar donde vive la copia de los originales fuera del NUC.
+
+**Importación del histórico**: `manage.py medios_importar` bajó a disco los medios
+que estaban en Drive (idempotente, reanudable, con el sistema en uso). De aquí en
+adelante **Drive es prioridad 2**: recibe copia al subir y ya no participa en
+ninguna lectura. Si Drive falla, la subida ya no falla — el archivo queda en disco
+y el espejo simplemente no se hace.
+
+**Deuda diseñada**: el cliente OAuth de Drive quedó fijado al **viejo**, así que
+sigue existiendo la dependencia de que ese cliente no se borre de la consola de
+Google (lo correcto a futuro es un cliente propio de Drive con su propio
+consentimiento). Si la pantalla de consentimiento sigue en *Testing*, el permiso
+caduca cada 7 días y esto volvería a fallar. **HEIC** sigue sin decodificador
+(`pillow-heif` en `requirements.txt` lo enciende sin tocar código). El Mostrador
+no aparece en `/salud`: si algún día se quiere, es un módulo nuevo en
+`lib/salud.py`. Y el CI **todavía no despliega al NUC** (faltan los secretos de
+Tailscale, ver la entrada de la mudanza), así que el `pull && up -d` de esta
+entrega se hizo a mano.
 
 ### S-Acerca-OAuth ✅ — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
 
@@ -8091,7 +8187,7 @@ tarjetas de producto — el Kanban sigue con DnD de HTML5 (escritorio).
    ```cron
    # /etc/cron.d/el-despacho — agregadas en S-Deuda-V1 (2026-05-24)
    # archivo.sh: cada 3 días a las 03:00 (cambiado de semanal en S-Backup-3d, 2026-06-07)
-   0 3 */3 * * /opt/el-despacho/infra/scripts/archivo.sh
+   0 3 */3 * * cd /opt/el-despacho && ./infra/scripts/archivo.sh   # el `cd` NO es adorno: sin él el dump sale vacío
    0 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_cotizaciones_vencidas >> /var/log/vencidas.log 2>&1
    5 6 * * *  cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py marcar_facturas_vencidas  >> /var/log/vencidas.log 2>&1
    30 3 * * * cd /opt/el-despacho && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml exec -T la-gerencia python manage.py site_chequeo_diario >> /var/log/site_chequeo.log 2>&1
