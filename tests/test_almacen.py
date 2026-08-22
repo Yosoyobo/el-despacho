@@ -9,6 +9,7 @@ desplegar antes de terminar el respaldo masivo.
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -435,3 +436,38 @@ class TestVistaDeRespaldo:
         r = client.get(f"/medios/ff/ff/{h}/w400.jpg")
 
         assert r.status_code == 404
+
+
+class TestHeicNoSeAceptaSinDecodificador:
+    """Candado: si el HEIC de un iPhone se acepta, tiene que poder pintarse.
+
+    `lib.adjuntos.validar` mira sólo la whitelist de MIME, así que con
+    `image/heic` dentro la foto se acepta, se guarda… y si Pillow no sabe abrirla
+    se queda SIN derivado: el navegador no la pinta y para el usuario parece que
+    la subida falló. Las dos mitades tienen que moverse juntas — o el decodificador
+    está instalado, o el MIME sale de la whitelist.
+    """
+
+    RAIZ = Path(__file__).resolve().parents[1]
+
+    def _mimes_heic(self) -> set[str]:
+        from lib.adjuntos import MIME_PERMITIDOS
+
+        return {m for m in MIME_PERMITIDOS if "hei" in m}
+
+    def test_si_se_acepta_heic_la_dependencia_esta_fijada(self):
+        aceptados = self._mimes_heic()
+        if not aceptados:
+            return  # nadie acepta HEIC: no hay nada que garantizar
+        reqs = (self.RAIZ / "requirements.txt").read_text(encoding="utf-8")
+        assert "pillow-heif==" in reqs, (
+            f"`lib.adjuntos.MIME_PERMITIDOS` acepta {sorted(aceptados)} pero "
+            "`requirements.txt` no fija `pillow-heif`. Sin ese decodificador la "
+            "foto se guarda sin derivado y el navegador no la pinta. Instálalo o "
+            "saca esos MIME de la whitelist."
+        )
+
+    def test_el_registro_del_decodificador_no_lanza(self):
+        """`hay_decodificador_heic()` se llama en cada `derivar()`: pase lo que
+        pase con la dependencia, tiene que devolver un bool y nunca reventar."""
+        assert almacen.hay_decodificador_heic() in (True, False)

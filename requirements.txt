@@ -8,6 +8,12 @@ httpx==0.28.1
 python-dotenv==1.0.1
 whitenoise==6.8.2
 pillow==11.0.0
+# HEIC/HEIF de iPhone. `lib.almacen.hay_decodificador_heic()` lo registra en
+# Pillow de forma suave, así que basta con estar instalado. Sin esto, una foto
+# tomada con un iPhone se acepta (el MIME está en la whitelist), se guarda, y
+# queda SIN derivado: el navegador no la pinta y parece que se subió mal.
+# Trae sus propias ruedas manylinux — no necesita paquetes del sistema.
+pillow-heif==0.21.0
 markdown==3.7
 pywebpush==2.0.0
 # MCP oficial. Se fija a la rama estable v1 antes de la llegada de v2.

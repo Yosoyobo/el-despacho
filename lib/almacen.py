@@ -269,10 +269,14 @@ def _trozos(fileobj, tamano: int = 1024 * 512):
 def hay_decodificador_heic() -> bool:
     """¿Pillow puede abrir HEIC/HEIF? Sólo con `pillow-heif` instalado.
 
-    Importa el registro de forma suave: el día que la dependencia se agregue a
-    `requirements.txt`, el HEIC de un iPhone empieza a funcionar sin tocar código.
-    Mientras no esté, `lib.adjuntos.validar` lo rechaza con un mensaje claro —
-    que es mejor que aceptarlo y dejar una imagen que el navegador no pinta.
+    Importa el registro de forma suave, así que basta con que la dependencia esté
+    instalada (lo está desde 2026-08-21: `pillow-heif` en `requirements.txt`).
+
+    OJO si algún día se quita: `lib.adjuntos.validar` **no** rechaza el HEIC —su
+    MIME está en `MIME_PERMITIDOS`—, así que sin decodificador la foto se acepta,
+    se guarda y se queda SIN derivado; el navegador no la pinta y parece que se
+    subió mal. Si se retira la dependencia, hay que sacar `image/heic`/`image/heif`
+    de la whitelist para que el error sea claro en vez de silencioso.
     """
     try:
         import pillow_heif  # type: ignore[import-not-found]
