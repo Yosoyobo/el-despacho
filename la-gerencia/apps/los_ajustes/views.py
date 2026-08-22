@@ -191,13 +191,95 @@ def cartero_probar(request):
 # ── Plantillas de correo (editor gráfico + IA) ────────────────────────────
 
 
+def _slug_libre(base: str) -> str:
+    """Slug único a partir del nombre. Desambigua con un sufijo numérico."""
+    from django.utils.text import slugify
+
+    from ajustes.models import PlantillaCorreo
+
+    raiz = (slugify(base) or "plantilla")[:36]
+    slug = raiz
+    n = 2
+    while PlantillaCorreo.objects.filter(slug=slug).exists():
+        sufijo = f"-{n}"
+        slug = raiz[: 40 - len(sufijo)] + sufijo
+        n += 1
+    return slug
+
+
 @requiere_permiso("ajustes", "acceder")
 def cartero_plantillas(request):
-    """Lista las plantillas editables de El Cartero."""
+    """Lista las plantillas de El Cartero: las de sistema y las propias."""
     from ajustes.models import PlantillaCorreo
     from ajustes.plantillas_correo_default import SLUGS_PLANTILLA
-    plantillas = [PlantillaCorreo.obtener(slug) for slug in SLUGS_PLANTILLA]
-    return render(request, "ajustes/cartero_plantillas.html", {"plantillas": plantillas})
+
+    # `obtener` siembra la fila de sistema que falte (p.ej. tras agregar una
+    # plantilla nueva al catálogo sin migración dedicada).
+    for slug in SLUGS_PLANTILLA:
+        PlantillaCorreo.obtener(slug)
+
+    from ajustes.models.alias_remitente import faltan_por_dar_de_alta
+
+    todas = list(PlantillaCorreo.objects.all())
+    return render(request, "ajustes/cartero_plantillas.html", {
+        "de_sistema": [p for p in todas if p.sistema],
+        "propias": [p for p in todas if not p.sistema],
+        "borradores": [p for p in todas if p.es_borrador],
+        "alias_faltantes": faltan_por_dar_de_alta(),
+    })
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_plantilla_nueva(request):
+    """Crea una plantilla propia y abre su editor."""
+    from ajustes.models import PlantillaCorreo
+
+    nombre = (request.POST.get("nombre") or "").strip()
+    if not nombre:
+        messages.error(request, "Ponle un nombre a la plantilla.")
+        return redirect("ajustes-cartero-plantillas")
+
+    pl = PlantillaCorreo.objects.create(
+        slug=_slug_libre(nombre), nombre=nombre[:120],
+        descripcion=(request.POST.get("descripcion") or "").strip()[:200],
+        asunto="", cuerpo_html="", activa=True,
+        sistema=False, origen="manual", actualizado_por=request.user,
+    )
+    _emitir_plantilla("plantilla_correo.creada", pl, request.user)
+    messages.success(request, f"Plantilla «{pl.nombre}» creada. Ahora dale cuerpo.")
+    return redirect("ajustes-cartero-plantilla-editar", slug=pl.slug)
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_plantilla_borrar(request, slug: str):
+    """Borra una plantilla propia. Las de sistema no se tocan."""
+    from ajustes.models import PlantillaCorreo
+
+    pl = get_object_or_404(PlantillaCorreo, slug=slug)
+    if pl.sistema:
+        messages.error(
+            request,
+            f"«{pl.nombre}» la manda el propio sistema; no se puede borrar. "
+            "Si no la quieres, apágala.",
+        )
+        return redirect("ajustes-cartero-plantillas")
+    # PROTECT en ReglaCorreo.plantilla: una plantilla con reglas no se va sin
+    # avisar, o el evento se quedaría mudo sin que nadie lo note.
+    if pl.reglas.exists():
+        reglas = ", ".join(r.descripcion_humana() for r in pl.reglas.all()[:3])
+        messages.error(
+            request,
+            f"«{pl.nombre}» la usa una regla automática ({reglas}). "
+            "Quita la regla primero.",
+        )
+        return redirect("ajustes-cartero-plantillas")
+    nombre = pl.nombre
+    _emitir_plantilla("plantilla_correo.borrada", pl, request.user)
+    pl.delete()
+    messages.success(request, f"Plantilla «{nombre}» borrada.")
+    return redirect("ajustes-cartero-plantillas")
 
 
 @requiere_permiso("ajustes", "acceder")
@@ -209,14 +291,190 @@ def cartero_plantilla_editar(request, slug: str):
     if request.method == "POST":
         pl.asunto = (request.POST.get("asunto") or "").strip()
         pl.cuerpo_html = request.POST.get("cuerpo_html") or ""
+        pl.descripcion = (request.POST.get("descripcion") or "").strip()[:200]
+        pl.remitente_email = (request.POST.get("remitente_email") or "").strip()
+        pl.remitente_nombre = (request.POST.get("remitente_nombre") or "").strip()[:120]
+        # Activar un borrador de El Chalán es justamente "ya lo revisé".
+        pl.activa = bool(request.POST.get("activa"))
+        if not pl.sistema and pl.activa and pl.origen == "chalan":
+            pl.origen = "manual"
         pl.actualizado_por = request.user
         pl.save()
+        _emitir_plantilla("plantilla_correo.actualizada", pl, request.user)
         messages.success(request, f"Plantilla «{pl.nombre}» guardada.")
         return redirect("ajustes-cartero-plantillas")
     return render(request, "ajustes/cartero_plantilla_editar.html", {
         "pl": pl,
         "variables": variables_de(slug),
+        "alias_verificado": _alias_verificado(pl.remitente_email),
+        "alias_conocidos": _alias_conocidos(),
     })
+
+
+def _alias_verificado(email: str) -> bool:
+    """¿Esta dirección ya se dio de alta en Google y se comprobó?"""
+    from ajustes.models import AliasRemitente
+
+    email = (email or "").strip().lower()
+    if not email:
+        return True  # sin alias no hay nada que dar de alta
+    return AliasRemitente.objects.filter(email=email, verificado=True).exists()
+
+
+def _alias_conocidos() -> list[str]:
+    """Direcciones ya registradas, para sugerirlas y evitar dedazos."""
+    from ajustes.models import AliasRemitente
+
+    return list(AliasRemitente.objects.values_list("email", flat=True))
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_plantilla_probar(request, slug: str):
+    """Manda esta plantilla de prueba, con SU remitente, a quien se indique.
+
+    Es la única forma de comprobar un alias: Gmail no rechaza un remitente que
+    no le pertenece, lo reescribe en silencio.
+    """
+    from ajustes.models import PlantillaCorreo
+    from lib import cartero, correo_contexto
+
+    pl = get_object_or_404(PlantillaCorreo, slug=slug)
+    destino = (request.POST.get("destino") or request.user.email or "").strip()
+    if not destino:
+        messages.error(request, "Dime a qué correo mando la prueba.")
+        return redirect("ajustes-cartero-plantilla-editar", slug=slug)
+
+    contexto = correo_contexto.armar(
+        representante=request.user,
+        extra={
+            "cliente": "Cliente de prueba", "empresa": "Empresa de prueba",
+            "proyecto": "Proyecto de prueba", "estado": "en proceso",
+            "folio": "LC-0000", "monto": "1,234.00",
+            "asunto": "Prueba", "mensaje": "Este es un mensaje de prueba.",
+        },
+    )
+    asunto, html = pl.render(contexto)
+    remitente = pl.remitente_efectivo()
+    res = cartero.enviar(destinatario=destino, asunto=f"[Prueba] {asunto}",
+                         html=html, remitente=remitente)
+    if res.ok:
+        if remitente:
+            messages.success(
+                request,
+                f"Prueba enviada a {destino}. Revisa de quién llegó: si NO dice "
+                f"«{remitente}», el alias todavía no está dado de alta en «Enviar "
+                "como» de la cuenta de correo y Google lo reemplazó.",
+            )
+        else:
+            messages.success(request, f"Prueba enviada a {destino}.")
+    else:
+        messages.error(request, f"No se pudo enviar: {res.error}")
+    return redirect("ajustes-cartero-plantilla-editar", slug=slug)
+
+
+def _emitir_plantilla(tipo: str, pl, actor) -> None:
+    import contextlib
+    # La auditoría no bloquea la edición: si El Portavoz falla, la plantilla
+    # igual se guardó.
+    with contextlib.suppress(Exception):
+        emitir(EventoPortavoz(
+            tipo=tipo, actor_id=actor.pk, actor_email=actor.email,
+            payload={"slug": pl.slug, "nombre": pl.nombre},
+        ))
+
+
+# ── Reglas: qué evento dispara qué plantilla ──────────────────────────────
+
+
+@requiere_permiso("ajustes", "acceder")
+def cartero_reglas(request):
+    """Lista las reglas evento → plantilla."""
+    from ajustes.models import PlantillaCorreo, ReglaCorreo
+    from ajustes.models.regla_correo import EVENTOS_CORREO, META_EVENTOS
+
+    reglas = list(ReglaCorreo.objects.select_related("plantilla"))
+    return render(request, "ajustes/cartero_reglas.html", {
+        "reglas": reglas,
+        "eventos": [
+            {"valor": v, "etiqueta": e, "meta": META_EVENTOS.get(v, {})}
+            for v, e in EVENTOS_CORREO
+        ],
+        "plantillas": PlantillaCorreo.objects.filter(activa=True),
+        "estados_proyecto": _estados_de_proyecto(),
+    })
+
+
+def _estados_de_proyecto():
+    """Estados configurables, para el selector de la regla de proyecto."""
+    try:
+        from apps.los_proyectos.models.estado import EstadoProyecto
+        return list(EstadoProyecto.objects.filter(activo=True).order_by("orden"))
+    except Exception:  # noqa: BLE001 — Gerencia sin la app cargada
+        return []
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_regla_guardar(request):
+    """Crea o actualiza una regla. `pk` vacío = nueva."""
+    from ajustes.models import PlantillaCorreo, ReglaCorreo
+    from ajustes.models.regla_correo import META_EVENTOS
+
+    pk = (request.POST.get("pk") or "").strip()
+    evento = (request.POST.get("evento") or "").strip()
+    if evento not in META_EVENTOS:
+        messages.error(request, "Ese evento no existe.")
+        return redirect("ajustes-cartero-reglas")
+
+    # pk no numérico → get_object_or_404 lanza ValueError (500), no 404.
+    try:
+        plantilla_pk = int(request.POST.get("plantilla") or 0)
+    except ValueError:
+        plantilla_pk = 0
+    plantilla = get_object_or_404(PlantillaCorreo, pk=plantilla_pk)
+    estado_slug = (request.POST.get("estado_slug") or "").strip()
+    try:
+        dias = max(1, int(request.POST.get("dias") or 90))
+    except ValueError:
+        dias = 90
+
+    datos = {
+        "plantilla": plantilla, "estado_slug": estado_slug, "dias": dias,
+        "activa": bool(request.POST.get("activa")),
+    }
+    if pk:
+        regla = get_object_or_404(ReglaCorreo, pk=pk)
+        for campo, valor in datos.items():
+            setattr(regla, campo, valor)
+        regla.evento = evento
+        regla.save()
+        messages.success(request, "Regla actualizada.")
+    else:
+        # El unique (evento, estado_slug) evita duplicar el mismo aviso.
+        if ReglaCorreo.objects.filter(evento=evento, estado_slug=estado_slug).exists():
+            messages.error(
+                request,
+                "Ya hay una regla para ese evento. Edítala en lugar de crear otra.",
+            )
+            return redirect("ajustes-cartero-reglas")
+        ReglaCorreo.objects.create(evento=evento, creado_por=request.user, **datos)
+        messages.success(
+            request,
+            "Regla creada. Recuerda encenderla cuando la plantilla esté lista.",
+        )
+    return redirect("ajustes-cartero-reglas")
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_regla_borrar(request, pk: int):
+    from ajustes.models import ReglaCorreo
+
+    regla = get_object_or_404(ReglaCorreo, pk=pk)
+    regla.delete()
+    messages.success(request, "Regla eliminada.")
+    return redirect("ajustes-cartero-reglas")
 
 
 @requiere_permiso("ajustes", "acceder")
@@ -235,6 +493,73 @@ def cartero_plantilla_redactar(request, slug: str):
     )
     return JsonResponse(res)
 
+
+# ── Direcciones de envío (qué alias hay que dar de alta en Google) ─────────
+
+
+@requiere_permiso("ajustes", "acceder")
+def cartero_remitentes(request):
+    """Qué direcciones usan las plantillas y cuáles falta dar de alta.
+
+    La lista NO se captura: se deriva de lo que declaran las plantillas. Lo
+    único que se guarda es lo que la app no puede averiguar sola — si alguien
+    ya creó el alias en Google y comprobó que llega bien.
+    """
+    from ajustes.models.alias_remitente import remitentes_en_uso
+    from lib import cartero
+
+    filas = remitentes_en_uso()
+    return render(request, "ajustes/cartero_remitentes.html", {
+        "filas": filas,
+        "faltan": [f for f in filas if f["en_uso"] and not f["verificado"]],
+        "cuenta_envia": cartero._cred("smtp_user") or cartero._cred("smtp_from_email"),
+    })
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_remitente_marcar(request):
+    """Marca (o desmarca) una dirección como ya dada de alta y comprobada."""
+    from ajustes.models import AliasRemitente
+
+    email = (request.POST.get("email") or "").strip().lower()
+    if not email:
+        messages.error(request, "Falta la dirección.")
+        return redirect("ajustes-cartero-remitentes")
+
+    alias, _ = AliasRemitente.objects.get_or_create(email=email)
+    if request.POST.get("desmarcar"):
+        alias.desmarcar()
+        messages.success(request, f"{email} vuelve a la lista de pendientes.")
+    else:
+        alias.marcar_verificado(request.user)
+        messages.success(request, f"{email} queda marcada como lista.")
+    return redirect("ajustes-cartero-remitentes")
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_remitente_probar(request):
+    """Manda una prueba DESDE esa dirección, para ver si Google la respeta."""
+    from lib import cartero
+
+    email = (request.POST.get("email") or "").strip()
+    destino = (request.POST.get("destino") or request.user.email or "").strip()
+    if not email or not destino:
+        messages.error(request, "Falta la dirección o el destinatario.")
+        return redirect("ajustes-cartero-remitentes")
+
+    res = cartero.probar(destino, remitente=email)
+    if res.ok:
+        messages.success(
+            request,
+            f"Prueba enviada a {destino}. Abre ese correo y mira de quién llegó: "
+            f"si dice {email}, el alias ya quedó y puedes marcarlo como listo. "
+            "Si dice otra dirección, Google lo reemplazó y falta darlo de alta.",
+        )
+    else:
+        messages.error(request, f"No se pudo enviar: {res.error}")
+    return redirect("ajustes-cartero-remitentes")
 
 # ── Google Drive — asistente guiado (OAuth sin clave) ─────────────────────────
 

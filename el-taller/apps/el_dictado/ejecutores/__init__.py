@@ -44,6 +44,7 @@ from . import (  # noqa: F401, E402 — registra ejecutores al importar
     checador,
     cui_v1,
     edicion_financiera,
+    plantillas,
 )
 
 __all__ = ["EJECUTORES", "registrar", "_gate"]

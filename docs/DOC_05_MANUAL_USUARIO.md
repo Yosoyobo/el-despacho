@@ -5,6 +5,78 @@
 
 ---
 
+## Novedades — Ya puedes crear tus propios correos (22 de agosto de 2026)
+
+**Qué cambió**
+
+Hasta ahora el sistema tenía seis correos y punto: los de cotización, factura,
+cobranza, pago, bienvenida y el genérico. No había forma de agregar otro. Ahora
+sí: puedes crear los que quieras.
+
+**Cómo se crea uno**
+
+En **La Gerencia → Ajustes → El Cartero → Plantillas** hay un recuadro arriba
+que dice «Nueva plantilla». Le pones nombre, la creas, y se abre el editor para
+darle cuerpo con el mismo editor visual de siempre. También puedes pedirle a El
+Chalán que te la redacte con el botón de la varita.
+
+Tus plantillas aparecen en su propia lista, separadas de las del sistema. Las
+del sistema se siguen pudiendo editar, pero no borrar: si desaparecieran, el
+correo que las usa se quedaría sin texto.
+
+**Cada correo puede tener su propia dirección**
+
+Un correo de cobranza no tiene por qué salir de la misma dirección que una
+cotización. En cada plantilla puedes poner de qué dirección sale: la cobranza
+desde `cobranza@learningcenter.mx`, las ventas desde `ventas@…`.
+
+Un aviso importante: **la dirección tiene que estar dada de alta en Google**
+(en «Enviar como» de la cuenta de correo). Si no lo está, Google no marca
+error — simplemente reemplaza la dirección y el correo sale desde la de
+siempre, sin avisarte.
+
+Para que no tengas que llevar esa cuenta en la cabeza, hay una pantalla nueva:
+**Ajustes → El Cartero → Direcciones de envío**. Ahí ves **todas las
+direcciones que tus plantillas usan, cuáles ya quedaron y cuáles falta dar de
+alta**, con los pasos y un botón que manda una prueba desde esa dirección. Si
+falta alguna, te lo avisa también en la lista de plantillas y en el editor.
+
+**Tres formas de mandar una plantilla**
+
+1. **Desde la ficha de un cliente.** Botón «✉️ Enviar correo» arriba. Eliges la
+   plantilla y se va al correo que el cliente tiene registrado. No hay campo
+   para escribir la dirección a propósito: así un dedazo no le manda la
+   cotización a un desconocido.
+2. **En una campaña.** Las plantillas nuevas aparecen solas en la lista de
+   Campañas.
+3. **Pidiéndoselo a El Chalán.** «Mándale a $karikari el aviso de entrega».
+   También puedes dictarle una dirección suelta si hace falta. Como siempre, te
+   enseña lo que va a hacer y no manda nada hasta que confirmes.
+
+**Correos que salen solos**
+
+Nuevo: **Ajustes → El Cartero → Correos que salen solos**. Ahí atas un momento
+del día a día con la plantilla que quieres que se mande:
+
+- Cuando un proyecto llega al estado que tú elijas (por ejemplo «Entregado»).
+- Cuando el cliente aprueba una cotización.
+- Cuando se marca una entrega como entregada.
+- Cuando un cliente lleva mucho tiempo sin proyectos nuevos.
+
+**Todas nacen apagadas.** Las creas, revisas que la plantilla diga lo que
+quieres, y recién entonces las enciendes. Y un mismo hecho no se avisa dos
+veces, aunque el proyecto vaya y vuelva de estado.
+
+**El Chalán también redacta plantillas**
+
+Puedes pedirle «hazme una plantilla para avisar que el pedido está listo». La
+escribe, pero **nace apagada**: aparece en la lista marcada como pendiente de
+revisar, y no se puede mandar hasta que la abras, la leas y la enciendas. Un
+correo va a la bandeja de un cliente, así que nadie quiere que salga uno sin
+que una persona lo haya visto.
+
+---
+
 ## Novedades — El Site ahora se ve como la pantalla de la pared (22 de agosto de 2026)
 
 **Qué cambió**
@@ -5073,6 +5145,92 @@ correo sigue saliendo por ahí. El botón **Probar** manda un correo de prueba.
 Ojo con el volumen: una cuenta de Workspace tiene tope de envío diario. Alcanza
 de sobra para cotizaciones, facturas y cobranza, pero mandar campañas a todo el
 padrón varias veces al día puede toparlo.
+
+### Las plantillas de correo
+
+Cada correo que manda el sistema sale de una **plantilla**: su asunto y su
+cuerpo. Se editan en *Ajustes → El Cartero → Plantillas*, con un editor visual
+de arrastrar y soltar, y El Chalán puede redactarlas por ti con el botón de la
+varita.
+
+Hay dos familias, y la diferencia importa:
+
+- **Las del sistema** (cotización, factura, cobranza, pago, bienvenida y el
+  genérico) las manda El Despacho solo, en momentos que ya están definidos. Se
+  editan pero **no se borran**: si desaparecieran, ese correo se quedaría sin
+  texto.
+- **Las tuyas**, las que creas desde el recuadro «Nueva plantilla». Éstas no se
+  mandan solas: las eliges tú al enviar, o las atas a un evento (más abajo).
+
+Dentro del texto puedes usar **variables** entre llaves dobles, que el sistema
+reemplaza al enviar: `cliente`, `empresa`, `proyecto`, `estado`, `folio`,
+`monto`, `fecha`, `representante`, `asunto` y `mensaje`. El editor te las
+muestra y las copias con un click. Una variable que no aplique en ese envío
+simplemente sale vacía, no rompe el correo.
+
+**De qué dirección sale cada correo.** Cada plantilla puede tener su propia
+identidad: la cobranza desde `cobranza@learningcenter.mx`, las ventas desde
+`ventas@…`. Si lo dejas vacío, sale del remitente general.
+
+> **Antes de usar un alias, dalo de alta en Google** (en «Enviar como» de la
+> cuenta de correo). Si no está, Google **no marca error**: cambia la dirección
+> en silencio y el correo sale desde la de siempre. Para salir de dudas, cada
+> plantilla trae abajo un botón que te manda una prueba — revisa de quién te
+> llegó.
+
+### Qué direcciones falta dar de alta
+
+No hace falta llevar la cuenta a mano: *Ajustes → El Cartero → **Direcciones de
+envío*** arma la lista sola, con las direcciones que tus plantillas declaran.
+
+De cada una te dice **qué plantillas la usan** y en qué estado está:
+
+- **Falta darla de alta** — una plantilla ya la usa, pero nadie ha comprobado
+  que Google la respete. Esos correos están saliendo desde la dirección de
+  siempre.
+- **Lista** — ya se dio de alta y alguien comprobó que llega bien.
+- **Sin usar** — está registrada pero ninguna plantilla la usa hoy.
+
+Los pasos para darla de alta están en la misma pantalla. Son dos cosas en
+Google y se necesitan las dos: crear el **alias** de la cuenta en el admin, y
+agregarla en **«Enviar como»** dentro del Gmail de esa cuenta, confirmando el
+correo de verificación.
+
+Cuando termines, usa el botón **Probar** de esa fila: te manda un correo desde
+esa dirección. **Abre el correo y mira de quién llegó** — si dice la dirección
+correcta, márcala como «Ya quedó». Es el único modo de saberlo, porque Google
+no avisa cuando la reemplaza.
+
+### Mandar una plantilla
+
+Tres caminos:
+
+- **A un cliente concreto**: en su ficha, botón «✉️ Enviar correo». Sale al
+  correo que el cliente tiene registrado; no hay campo para escribir una
+  dirección a mano, y es a propósito.
+- **A varios**: *Campañas*, donde las plantillas nuevas aparecen solas.
+- **Pidiéndoselo a El Chalán**: «mándale a $cliente el aviso de entrega». A él
+  sí puedes dictarle una dirección suelta si hace falta. Te enseña qué va a
+  hacer y a quién antes de mandarlo, y no sale nada hasta que confirmes.
+
+### Correos que salen solos
+
+En *Ajustes → El Cartero → Correos que salen solos* atas un momento del día a
+día con una plantilla:
+
+| Cuándo | Qué tienes que elegir |
+|---|---|
+| Un proyecto llega a cierto estado | A qué estado (ej. «Entregado») |
+| El cliente aprueba una cotización | — |
+| Se marca una entrega como entregada | — |
+| Un cliente lleva tiempo sin proyectos | Cuántos días de silencio |
+
+Tres cosas que conviene saber:
+
+- **Nacen apagadas.** Crear la regla no manda nada; hay que encenderla.
+- **Van siempre al correo registrado del cliente.**
+- **Un mismo hecho no se avisa dos veces**, aunque el proyecto vaya y vuelva de
+  estado.
 
 ### El Celador (el monitor que vigila de afuera)
 
