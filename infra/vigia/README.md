@@ -40,6 +40,11 @@ Eso deja tres cosas:
 | Ahorro de pantalla y bloqueo apagados | `gsettings` de la sesión | que la pared no se ponga negra a los diez minutos |
 | Inicio de sesión automático | `/etc/gdm3/custom.conf` | que la pantalla **vuelva sola** tras un corte de luz |
 
+En **este** NUC el autologin ya venía activado de fábrica
+(`AutomaticLoginEnable=True`, usuario `linux`), así que `--autologin` no hace falta:
+la pantalla ya vuelve sola. Se comprueba con
+`grep AutomaticLogin /etc/gdm3/custom.conf`.
+
 Sin `--autologin` la pantalla vuelve sólo cuando alguien escribe la contraseña.
 **Es el precio de que vuelva sola:** quien tenga acceso físico al NUC se encuentra
 una sesión abierta. La pantalla en sí no deja hacer nada (es de sólo lectura y el
@@ -66,6 +71,14 @@ Para deshacerlo:
 Prefiere Chrome o Chromium (su `--kiosk` es el más limpio) y cae a **Firefox**, que
 es el que viene instalado en este NUC. Para salir del kiosco: `Alt+F4`, o
 `Ctrl+Alt+F3` para una consola.
+
+Con Firefox usa `--new-instance` y un **perfil propio** (`~/.vigia-firefox`), y eso
+no es cosmético: si ya hay un Firefox abierto en la sesión, un `firefox <url>` a
+secas le pasa la URL a esa instancia y **termina al instante**, con lo que el bucle
+de «reabre si se muere» se vuelve una reapertura cada cinco segundos para siempre.
+Pasó al probarlo. Por eso el bucle además lleva freno: tres arranques de menos de
+diez segundos y el reintento se separa a un minuto, dejando dicho en la bitácora
+qué está pasando. Una pared parpadeando toda la noche es peor que una apagada.
 
 ## Variables
 
