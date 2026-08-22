@@ -5902,6 +5902,47 @@ código, y los seis pasaban las pruebas):
   `vivo.html` no sirve: HTMX reemplaza ese esqueleto por el partial, y es el
   partial el que decide.
 
+**Prueba de esfuerzo del NUC (2026-08-22, medida, no estimada).** Corrida DESDE el
+NUC contra `localhost` —contra el tailnet mediría la red— con rutas de sólo lectura
+que ejercitan Postgres, Redis, el disco de El Almacén y El Mostrador. Guiones en
+`estres.py` / `estres_mem.py` del scratchpad de la sesión.
+
+| Concurrencia | pet/s | p50 | p95 | p99 | errores de servidor | carga | RAM |
+|---|---|---|---|---|---|---|---|
+| 10  | 277 | 22 ms | 86 ms | 150 ms | 0 | 10.5 | 4.2 G |
+| 40  | 279 | 91 ms | 551 ms | 910 ms | 0 | 12.9 | 4.3 G |
+| 100 | 261 | 305 ms | 1.0 s | 1.4 s | 0 | 16.0 | 4.3 G |
+| 200 | 291 | 517 ms | 2.0 s | 2.9 s | 0 | 18.6 | 4.3 G |
+
+**El techo es ~275 peticiones/segundo y es de CPU.** Lo que importa de la tabla no
+son los milisegundos sino la forma: el throughput **se mantiene** de 10 a 200
+concurrentes mientras la latencia sube. Eso es un sistema saturado que **encola**,
+no que colapsa — y con cero 5xx en 28,725 peticiones (los «errores» son timeouts
+del cliente). Para cinco usuarios, 275 pet/s son ~16,500 por minuto: sobra por dos
+órdenes de magnitud.
+
+**La RAM no se mueve con carga HTTP, y no es un fallo de la medición** (Oscar lo
+notó): con 8 workers × 4 hilos la memoria ya está toda reservada al arrancar
+—cada worker carga Django entero— así que atender más peticiones **reutiliza** los
+mismos workers. Lo que se consume es CPU. Para moverla hay que estresar la
+memoria: 60 consultas con ordenamientos que no caben en caché la llevaron de
+**4.12 a 6.53 GB** (+2.41 G, 28% → 44%) y la devolvieron al terminar.
+
+**Y ahí salió que el tuning de Postgres NO estaba aplicado**: editar el compose y
+validarlo no recrea el contenedor. Corría con `max_connections=50` /
+`shared_buffers=512MB` / `random_page_cost=4`. El contraste, con la misma prueba:
+
+| | antes (50/512M/4.0) | después (100/2G/1.1) |
+|---|---|---|
+| 60 consultas pesadas | **21 fallos** («too many clients») | **0 fallos** |
+| p99 con 100 concurrentes | 2,994 ms | **1,385 ms** |
+| pet/s | ~275 | ~275 (el cuello es CPU, no la base) |
+
+El throughput no cambió porque el cuello nunca fue Postgres; lo que cambió es que
+**deja de rechazar conexiones** y que la cola larga se parte a la mitad. **Al
+cambiar parámetros de un servicio en el compose, recrear el contenedor y
+COMPROBAR con `SHOW`** — el `docker compose config` sólo dice lo que se pide.
+
 **Y una lección de método:** «no cabe en el teléfono» era **artefacto de la
 herramienta**. Chrome headless tiene un **viewport mínimo de 500px**, así que
 `--window-size=390` renderiza a 500 y recorta la imagen — lo que yo leía como
