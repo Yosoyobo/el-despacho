@@ -168,6 +168,16 @@ Cuatro decisiones que conviene no deshacer:
     </div>
   </div>
 
+  {# ── La Limpieza ───────────────────────────────────────────────────────── #}
+  {% comment %}
+  Se pide al servidor en vez de incluir el partial: así el estado (cuándo se
+  limpió, qué liberó) y el ritmo de refresco los decide la vista, y esta página no
+  tiene que saber nada. Es el mismo trato que los demás paneles, y es lo que hace
+  que El Site pueda pedir exactamente lo mismo sin copiar una línea.
+  {% endcomment %}
+  <div class="shrink-0" hx-get="{% url 'site-vivo-limpieza' %}"
+       hx-trigger="load" hx-swap="outerHTML"></div>
+
   {# ── Cuerpo ────────────────────────────────────────────────────────────── #}
   {% comment %}
   El reparto: arriba las dos cosas que se miran de lejos (el flujo y Los

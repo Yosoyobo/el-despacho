@@ -192,3 +192,183 @@ def estadisticas(ids: list[str] | None = None, *, timeout: float = 3.0) -> list[
     # Lo que más consume, arriba: es lo que se quiere ver de un vistazo.
     filas.sort(key=lambda f: (f["cpu_pct"] or 0, f["mem_mb"] or 0), reverse=True)
     return filas
+
+
+# ── Escribir por el socket: podar y reciclar ──────────────────────────────────
+# Todo lo de arriba LEE. De aquí para abajo se ESCRIBE, y es lo único del repo
+# que lo hace. Lo usa el botón de La Limpieza (`lib/site/limpieza.py`).
+#
+# Sobre el `:ro` del montaje del socket: NO es una barrera. Un socket montado en
+# sólo-lectura se puede seguir usando para escribir —el flag del montaje limita
+# operaciones del sistema de archivos, y conectarse a un socket no lo es—, así
+# que quien tenga el socket tiene el demonio completo. Verificado el 2026-08-23
+# contra un demonio real: por un socket `:ro`, crear un exec devolvió 201,
+# arrancarlo 200, y el comando corrió DENTRO del contenedor objetivo. La barrera
+# real es que sólo estas dos funciones escriben, y que la vista que las llama
+# está gateada por permiso (o por estar en la propia máquina).
+
+
+def _post(path: str, cuerpo: dict | None = None, *,
+          sock: str | None = None, timeout: float = 10.0) -> Any:
+    conn = _UnixHTTPConnection(sock or DOCKER_SOCK, timeout=timeout)
+    try:
+        datos = json.dumps(cuerpo).encode() if cuerpo is not None else None
+        cabeceras = {"Content-Type": "application/json"} if datos else {}
+        conn.request("POST", path, body=datos, headers=cabeceras)
+        resp = conn.getresponse()
+        body = resp.read()
+        if resp.status >= 400:
+            raise RuntimeError(f"docker API {resp.status}: {body[:200]!r}")
+        return json.loads(body) if body.strip()[:1] in (b"{", b"[") else None
+    finally:
+        conn.close()
+
+
+# Qué se poda, en orden. **NUNCA `/volumes/prune`** (regla §12 del CLAUDE.md):
+# ahí viven los datos. Hoy Postgres y Redis usan bind mounts (`./data/...`) y un
+# prune de volúmenes no los tocaría, pero la regla se queda como está por si
+# algún día se agrega un volumen nombrado — y hay una prueba que lo exige.
+#
+# `/images/prune` SIN filtros borra sólo las imágenes colgantes (sin etiqueta),
+# que es lo que hace `docker system prune`. Con `?filters={"dangling":["false"]}`
+# borraría cualquier imagen sin contenedor, y eso incluye la anterior a este
+# despliegue — la que permite volver atrás si el nuevo sale mal.
+_PODAS: tuple[tuple[str, str], ...] = (
+    ("contenedores parados", "/v1.44/containers/prune"),
+    ("imágenes colgantes", "/v1.44/images/prune"),
+    ("redes huérfanas", "/v1.44/networks/prune"),
+    ("caché de construcción", "/v1.44/build/prune"),
+)
+
+
+def podar(*, timeout: float = 8.0, presupuesto_s: float = 12.0) -> dict[str, Any]:
+    """Lo que `docker system prune -f` haría, por el socket. Nunca lanza.
+
+    `presupuesto_s` corta la poda a medias en vez de arriesgar el tiempo de
+    espera de gunicorn (30 s por default): una poda incompleta no rompe nada y
+    la siguiente termina el trabajo.
+
+    El presupuesto se mide contra lo que UNA poda más podría tardar en el peor
+    caso, no contra lo ya transcurrido. Si se midiera contra lo transcurrido,
+    arrancar una poda justo antes del límite podría sumar un `timeout` entero por
+    encima del presupuesto — y con cuatro podas eso se sale del tiempo de
+    gunicorn. Es el orden lo que hace segura la poda parcial: lo que más espacio
+    libera va primero, y la caché de construcción (que en este servidor está
+    vacía, porque aquí no se compila) va al final.
+    """
+    import time as _t
+    if not disponible():
+        return {"disponible": False, "motivo": "no hay socket de Docker"}
+    arranque = _t.monotonic()
+    liberado = 0
+    detalle: list[str] = []
+    fallos: list[str] = []
+    for etiqueta, ruta in _PODAS:
+        if _t.monotonic() - arranque + timeout > presupuesto_s:
+            fallos.append(f"{etiqueta}: no alcanzó el tiempo")
+            continue
+        try:
+            d = _post(ruta, timeout=timeout) or {}
+        except Exception as exc:  # noqa: BLE001 — una poda que falla no tumba el resto
+            fallos.append(f"{etiqueta}: {str(exc)[:80]}")
+            continue
+        bytes_ = d.get("SpaceReclaimed") or 0
+        liberado += bytes_
+        borrados = (
+            len(d.get("ContainersDeleted") or [])
+            + len(d.get("ImagesDeleted") or [])
+            + len(d.get("NetworksDeleted") or [])
+            + len(d.get("CachesDeleted") or [])
+        )
+        if borrados or bytes_:
+            detalle.append(f"{borrados} {etiqueta}")
+    return {
+        "disponible": True,
+        "liberado_bytes": liberado,
+        "liberado_mb": round(liberado / 1048576, 1),
+        "detalle": detalle,
+        "fallos": fallos,
+    }
+
+
+# Los contenedores a los que vale la pena reciclarles los trabajadores: los que
+# corren gunicorn. El fragmento se busca en el nombre del contenedor.
+#
+# **El Portavoz NO va aquí, y es importante.** Comparte la imagen de La Gerencia,
+# así que se parece, pero su PID 1 no es gunicorn sino `python -m
+# lib.portavoz_worker`: para Python la acción por default de SIGHUP es MORIR. Un
+# HUP ahí no recicla nada, mata el worker (volvería por `restart: always`, pero
+# es un servicio caído sin razón). Ninguno de los fragmentos lo alcanza, y hay
+# una prueba que lo fija.
+_RECICLABLES: tuple[str, ...] = ("el-taller", "gerencia", "recepcion")
+
+
+def reciclar_trabajadores(*, timeout: float = 4.0,
+                          presupuesto_s: float = 6.0) -> dict[str, Any]:
+    """Manda HUP a gunicorn en cada app, DESDE DENTRO. Nunca lanza.
+
+    Gunicorn recibe el HUP como «recárgate»: el maestro levanta trabajadores
+    nuevos y a los viejos les pide que se retiren cuando terminen lo que traen
+    entre manos. Eso libera la memoria fragmentada que se acumula en el montón de
+    cada proceso, y es la única parte de esta limpieza que de verdad devuelve RAM.
+    No hay corte: los viejos siguen atendiendo mientras los nuevos arrancan, y el
+    trabajador de gthread espera a sus peticiones en vuelo antes de irse (hasta
+    `graceful_timeout`), así que la petición que disparó esto también termina.
+
+    **NUNCA `docker kill -s HUP`.** TRAMPA PAGADA EL 2026-08-21: `docker kill`
+    le cuelga al contenedor el marcador de «detenido a mano» AUNQUE el proceso
+    sobreviva a la señal, y desde ese momento `restart: unless-stopped` ya no lo
+    levanta tras un apagón, sin un solo error en la bitácora. Así se quedaron La
+    Gerencia y El Taller abajo tras un corte de luz en el NUC. La señal va por un
+    `exec` dentro del contenedor, que hace lo mismo sin que el demonio se entere.
+    """
+    if not disponible():
+        return {"disponible": False, "motivo": "no hay socket de Docker"}
+    reciclados: list[str] = []
+    fallos: list[str] = []
+    yo = _mi_contenedor()
+    objetivos = [
+        c for c in listar()
+        if c.get("estado") == "running"
+        and any(f in (c.get("nombre") or "").lower() for f in _RECICLABLES)
+        and "portavoz" not in (c.get("nombre") or "").lower()
+    ]
+    # El contenedor que está atendiendo ESTA petición se recicla al final. La
+    # petición sobrevive igual, pero si algo saliera mal es mejor que ya estén
+    # hechos los demás.
+    objetivos.sort(key=lambda c: c["id"] == yo)
+    import time as _t
+    arranque = _t.monotonic()
+    for c in objetivos:
+        nombre = bautizar(c["nombre"])[0]
+        # Mismo criterio que la poda: no se arranca lo que no cabe. Aquí cada
+        # contenedor son dos llamadas, así que se reserva el doble.
+        if _t.monotonic() - arranque + timeout * 2 > presupuesto_s:
+            fallos.append(f"{nombre}: no alcanzó el tiempo")
+            continue
+        try:
+            d = _post(f"/v1.44/containers/{c['id']}/exec",
+                      {"Cmd": ["sh", "-c", "kill -HUP 1"],
+                       "AttachStdout": False, "AttachStderr": False},
+                      timeout=timeout) or {}
+            _post(f"/v1.44/exec/{d['Id']}/start",
+                  {"Detach": True, "Tty": False}, timeout=timeout)
+        except Exception as exc:  # noqa: BLE001
+            fallos.append(f"{nombre}: {str(exc)[:80]}")
+            continue
+        reciclados.append(nombre)
+    return {"disponible": True, "reciclados": reciclados, "fallos": fallos}
+
+
+def _mi_contenedor() -> str:
+    """El id corto del contenedor que corre este proceso, o "".
+
+    Docker le pone al contenedor como nombre de máquina los 12 primeros
+    caracteres de su id, que es justo la forma que devuelve `listar()`. Si
+    alguien fijara `hostname:` en el compose esto devolvería algo que no casa con
+    ningún id — y no pasa nada: sólo se usa para decidir el ORDEN del reciclado.
+    """
+    try:
+        return socket.gethostname().strip().lower()
+    except OSError:
+        return ""

@@ -356,6 +356,42 @@ def _h_specs_servidor(args: dict, usuario) -> dict:
     return salida
 
 
+def _h_ultima_limpieza(args: dict, usuario) -> dict:
+    """Cuándo se soltó por última vez el caché, la RAM y el disco, y qué liberó.
+
+    Es de LECTURA a propósito: correrla es un botón de la pantalla (El Site o la
+    pared del NUC), no algo que El Chalán dispare por su cuenta. Es
+    mantenimiento de la máquina, no una acción del negocio — el mismo criterio
+    que los barridos de aprendizajes, que también son de back-office.
+    """
+    try:
+        from lib.site import limpieza
+        r = limpieza.ultima()
+    except Exception:  # noqa: BLE001 — sin Redis no hay memoria de esto
+        return {"disponible": False}
+    comun = {
+        "corriendo_ahora": limpieza.corriendo(),
+        "como_se_corre": ("con el botón «🧹 Limpiar ahora» de El Site (La Gerencia) "
+                          "o de la pared del NUC; también sola cada tres días, "
+                          "después del respaldo"),
+    }
+    if not r:
+        return {**comun, "disponible": True, "hubo_corrida": False,
+                "nota": "no se ha corrido desde la pantalla"}
+    return {
+        **comun,
+        "disponible": True,
+        "hubo_corrida": True,
+        "cuando": r.get("cuando"),
+        "quien": r.get("quien"),
+        "segundos": r.get("segundos"),
+        "liberado_mb": r.get("liberado_mb"),
+        "resumen": r.get("resumen"),
+        "pasos_con_problemas": r.get("problemas"),
+        "pasos": {p["clave"]: p["estado"] for p in r.get("pasos") or []},
+    }
+
+
 def _h_detalle_ingreso(args: dict, usuario) -> dict:
     from apps.tesoreria.models import Ingreso
     codigo = args["codigo"].strip().upper()
@@ -862,6 +898,14 @@ _LECTURAS: dict[str, Capacidad] = {
         descripcion="Especificaciones del servidor: cores de CPU, RAM total, disco total, uptime.",
         args_schema={},
         gating="abierto", fn=_h_specs_servidor,
+    ),
+    "ultima_limpieza": Capacidad(
+        nombre="ultima_limpieza",
+        descripcion=("Cuándo se corrió La Limpieza del servidor (soltar caché, RAM y "
+                     "disco), quién la pidió y qué liberó. Sólo informa: correrla es "
+                     "un botón de El Site o de la pared del NUC."),
+        args_schema={},
+        gating="abierto", fn=_h_ultima_limpieza,
     ),
     "detalle_ingreso": Capacidad(
         nombre="detalle_ingreso",

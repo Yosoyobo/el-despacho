@@ -502,6 +502,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "resumen_ia", "que": "Cuánto cuestan Los Chalanes en 30 días, repartido por Chalán, y qué tan seguido fallan los dictados (requiere permiso de Finanzas). Pregunta: «¿cuánto llevamos gastado en IA?»."},
     {"nombre": "El Análisis", "que": "La pantalla «El Análisis» del Taller junta los nueve temas con sus cifras exactas y la lectura del Chalán. Se actualiza sola cada mañana y tiene botón «Analizar ahora»."},
     {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},
+    {"nombre": "ultima_limpieza", "que": "Cuándo se soltó por última vez el caché, la RAM y el disco del servidor, quién lo pidió y qué liberó (todos los roles). Pregunta: «¿cuándo se limpió el servidor?». Correrla NO se pide por chat: es el botón «🧹 Limpiar ahora» de El Site o de la pared del NUC."},
     {"nombre": "📎 imagen", "que": "Adjunta una foto (recibo, ticket) y el Chalán la lee — si el Chalán activo tiene visión."},
 ]
 

@@ -1,0 +1,91 @@
+{% comment %}
+La Limpieza — el botón que suelta caché, RAM y disco.
+
+**Este partial es la copia única**: lo piden la pared (`/site/vivo/`) y El Site de
+La Gerencia (`/site/`) al mismo endpoint, que es lo que hace que la regla §22 se
+cumpla sola en vez de depender de que alguien se acuerde de tocar las dos
+pantallas.
+
+Se pinta en un renglón a propósito. El detalle de los seis pasos sale sólo cuando
+acaba de correr o cuando algo falló — o sea, cuando de verdad se quiere leer. El
+resto del tiempo, en una pared, ese detalle sería ruido permanente.
+{% endcomment %}
+<div id="site-limpieza"
+     hx-get="{% url 'site-vivo-limpieza' %}"
+     hx-trigger="{% if es_pared %}every 30s{% else %}every 60s, refrescar from:body{% endif %}"
+     hx-swap="outerHTML"
+     class="shrink-0 rounded-2xl border vg-borde vg-tarjeta px-4 py-2.5">
+
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+    <div class="min-w-0 flex-1">
+      <p class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span class="text-sm font-semibold vg-2">🧹 La Limpieza</span>
+        {% if ocupado %}
+          <span class="text-xs text-warning-400">ya hay una corriendo — espera a que termine</span>
+        {% elif limpieza.hace %}
+          <span class="text-xs vg-4">
+            {{ limpieza.hace }} ·
+            {% if limpieza.quien %}la pidió {{ limpieza.quien }}{% else %}desde la pared{% endif %}
+          </span>
+        {% else %}
+          <span class="text-xs vg-4">suelta caché, RAM y disco · nunca se ha corrido desde aquí</span>
+        {% endif %}
+      </p>
+      {% if limpieza.resumen %}
+        <p class="mt-0.5 truncate text-xs vg-3">
+          {{ limpieza.resumen }}
+          <span class="vg-5">· tardó {{ limpieza.segundos }} s</span>
+        </p>
+      {% endif %}
+    </div>
+
+    {% if puede_limpiar %}
+      <button type="button" data-limpieza
+              hx-post="{% url 'site-vivo-limpieza' %}"
+              hx-target="#site-limpieza" hx-swap="outerHTML"
+              {% if not es_pared %}{% comment %}
+              El token viaja en la cabecera porque esto es un botón y no un
+              formulario. Va SÓLO fuera de la pared: allá la cookie de CSRF es
+              `Secure` y no viaja por http, así que el token no serviría de nada
+              —lo que se exige ahí es la cabecera de HTMX— y además pedirlo haría
+              que cada refresco del renglón cargara un `Set-Cookie` que el
+              navegador va a tirar. Ver `_revisar_csrf`.
+              {% endcomment %}
+              hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+              {% endif %}
+              hx-disabled-elt="this"
+              {% if not es_pared %}{% comment %}
+              La pregunta de confirmación va SÓLO fuera de la pared. `hx-confirm`
+              usa `window.confirm`, que **bloquea el JavaScript de la página**:
+              si alguien la abre en el muro y se va, la pared se queda congelada
+              —sin refrescar un solo panel y sin poder ni avisar de que está
+              congelada— hasta que alguien vuelva a cerrarla. En una pantalla que
+              se pica físicamente, un toque ya es deliberado, y lo peor que puede
+              pasar es una limpieza de más, que no borra nada. Desde La Gerencia,
+              donde se pica de pasada desde un celular, sí se pregunta.
+              {% endcomment %}
+              hx-confirm="Va a soltar el caché, aspirar la base, podar lo que Docker dejó tirado y reciclar los trabajadores. No borra datos ni corta el servicio. ¿Le damos?"
+              {% endif %}
+              title="Lo mismo que hace el guion nocturno, ahora"
+              class="vg-boton shrink-0 rounded-lg border vg-borde vg-realce-suave
+                     px-3 py-1.5 text-sm font-medium disabled:opacity-50">
+        <span class="vg-normal">🧹 Limpiar ahora</span>
+        <span class="vg-mientras">Limpiando…</span>
+      </button>
+    {% endif %}
+  </div>
+
+  {% if acabo_de_correr or limpieza.problemas %}
+    <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t vg-borde pt-2 text-xs">
+      {% for p in limpieza.pasos %}
+        <li class="vigia-parte">
+          <span class="{% if p.estado == 'ok' %}text-success-400{% elif p.estado == 'error' %}text-error-400{% else %}vg-5{% endif %}">
+            {% if p.estado == 'ok' %}✓{% elif p.estado == 'error' %}✕{% elif p.estado == 'nada' %}·{% else %}—{% endif %}
+          </span>
+          <span class="vg-3">{{ p.titulo }}</span>
+          {% if p.detalle %}<span class="vg-5">{{ p.detalle }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

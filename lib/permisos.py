@@ -279,6 +279,17 @@ def puede_usar_chalan(user) -> bool:
     return puede(user, "chalan", "usar")
 
 
+def puede_limpiar_site(user) -> bool:
+    """Correr La Limpieza (soltar caché, RAM y disco) desde El Site.
+
+    Va aparte de `site.ver` porque MUEVE la máquina —recicla los trabajadores de
+    gunicorn, aspira la base, poda lo que Docker dejó tirado— y ver el tablero no
+    tiene por qué implicar poder tocarlo. En la pared del NUC no se consulta: ahí
+    la puerta es estar físicamente en la máquina.
+    """
+    return puede(user, "site", "limpiar")
+
+
 def puede_ver_analisis(user) -> bool:
     """Entrar a El Análisis. Los temas de adentro se gatean uno por uno."""
     return puede(user, "analisis", "ver")

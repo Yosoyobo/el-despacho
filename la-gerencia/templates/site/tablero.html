@@ -69,6 +69,10 @@ al final — decisión de Oscar: son otra cosa, se pican y no se miran.
         <p class="text-sm vg-4">Midiendo el fierro…</p>
     </div>
 
+    {# ── La Limpieza — el mismo botón que la pared ─────────────────────── #}
+    <div hx-get="{% url 'site-vivo-limpieza' %}"
+         hx-trigger="load, refrescar from:body" hx-swap="outerHTML"></div>
+
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {# ── Lo que está pasando ahora mismo ───────────────────────────── #}
         <section class="flex min-h-[20rem] flex-col overflow-hidden rounded-2xl border vg-borde vg-tarjeta xl:col-span-2">
