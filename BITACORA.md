@@ -10888,3 +10888,165 @@ se nota, porque el correo sale igual — sólo que firmado por quien no lo mand�
 Tres tests del sprint anterior se actualizaron porque usaban
 `cobranza@learningcenter.mx` como ejemplo de «dirección pendiente», y ahora esa
 viene sembrada como comprobada.
+
+---
+
+# Sesión — S-Limpieza-Boton · El botón que suelta caché, RAM y disco (2026-08-23, VERSION 2026.08.24)
+
+Oscar: «agregar un botón en el site y el monitor para hacer flush de caché, RAM y
+disco, la limpieza. Esto se agrega a la herramienta creada en la caja». Ya existía
+el guion nocturno (`optimizar.sh`, cada tres días después del respaldo); lo que
+faltaba era pedirlo **en el momento**, que es cuando sirve: alguien está mirando
+los anillos, los ve cargados, y no debería tener que entrar por SSH a una máquina
+sin pantalla. Y quedar dentro de la herramienta portable, así que
+`docs/ADOPTAR-EL-VIGIA.md` gana una sección propia (§4) y viaja con ella.
+
+## El hallazgo que definió el diseño
+
+**Por un socket de Docker montado `:ro` sí se puede escribir.** No era obvio y
+decidía todo: si no se pudiera, este botón necesitaría un agente en el host, un
+cron que vigilara un archivo de solicitud y un paso manual de instalación en el
+NUC. Se verificó antes de diseñar nada, contra un demonio real y desde un
+contenedor con el socket montado igual que en producción: crear un exec devolvió
+201, arrancarlo 200, y el comando **corrió dentro del contenedor objetivo**.
+
+El `:ro` limita operaciones del sistema de archivos, y conectarse a un socket no
+lo es. O sea que también hay que decirlo al revés: **quien tenga ese socket tiene
+el demonio completo**, y el `:ro` no es la barrera que parece. La barrera de verdad
+es que sólo dos funciones escriben por ahí y que la vista que las llama está
+gateada.
+
+(De paso, una nota de método: la prueba de humo corrió una poda real contra el
+Docker de esta Mac — 11 contenedores parados y 5 redes huérfanas, 11 MB. Nada de
+datos, pero no se vuelve a probar una mutación contra un socket vivo.)
+
+## Los seis pasos, y por qué son seis
+
+Caché de la aplicación · La Libreta (compacta el AOF si pasa de 64 MB, y le pide
+que devuelva memoria al sistema) · `VACUUM (ANALYZE)` · poda de Docker · reciclar
+los trabajadores de gunicorn · caché de páginas del sistema.
+
+El último **casi nunca se puede** desde el contenedor: se escribe en
+`/proc/sys/vm/drop_caches` y `/proc` va en sólo-lectura a propósito — dejarlo
+escribible sólo para eso le abriría al contenedor todos los parámetros del kernel.
+Se reporta «no se puede desde aquí» en vez de fingir que se hizo. **Reportar un
+hueco como hueco es la mitad del valor de un tablero**, y ya hay precedente en
+este repo (el respaldo que no se pudo consultar dice «no se pudo determinar», no
+«hace 0 días»).
+
+El que de verdad devuelve RAM es el reciclado, y ahí hay dos cosas que no se
+pueden deshacer:
+
+- **La señal va por un `exec` DENTRO del contenedor, nunca con `docker kill`.** Es
+  la trampa del 2026-08-21: `docker kill` le cuelga al contenedor el marcador de
+  «detenido a mano» aunque el proceso sobreviva a la señal, y desde ahí `restart:
+  unless-stopped` ya no lo levanta tras un apagón, sin un solo error en la
+  bitácora. Hay test que lo fija.
+- **El Portavoz no entra en la lista** aunque comparta la imagen de La Gerencia:
+  su PID 1 es Python, y para Python la acción por default de SIGHUP es morir. Un
+  HUP ahí no recicla nada, mata el worker.
+
+Y no corta el servicio: gunicorn levanta trabajadores nuevos antes de pedirles a
+los viejos que se retiren, y el trabajador de gthread **espera a sus peticiones en
+vuelo** antes de irse — así que la petición que disparó el botón también termina.
+El contenedor que la atiende se recicla al final, por si acaso.
+
+## Lo que se cuidó de no romper
+
+**El caché se borra por llaves, jamás con `cache.clear()`.** El `clear()` del
+backend de Redis de Django hace `FLUSHDB`, y en esta máquina el caché comparte base
+de datos con `portavoz:cola`, que **no caduca**: un `clear()` se llevaría los
+eventos pendientes sin dejar rastro. Ese es exactamente el tipo de daño que no se
+nota hasta que alguien pregunta por un evento que nunca llegó. El patrón sale del
+propio caché (`cache.make_key("*")` → `:1:*`) para que un `KEY_PREFIX` futuro lo
+siga solo, y las sesiones que se borran no sacan a nadie (`cached_db` las relee de
+la base).
+
+El candado de ese punto revisa el **árbol** del módulo, no su texto: el encabezado
+explica la regla y menciona las palabras prohibidas, así que un candado textual
+choca con su propia explicación — ya había pasado dos veces en este repo y esta vez
+falló en el primer intento, con la explicación como culpable.
+
+**El tiempo es parte del diseño.** Gunicorn mata al trabajador que no contesta en
+30 s, y entonces el usuario ve un error **aunque la limpieza sí haya corrido**: el
+peor de los dos mundos. Hay un presupuesto de 24 s con dos reglas que no son
+obvias: **no se arranca un paso que no cabe** (se mide contra lo que una llamada
+más podría tardar, no contra lo transcurrido — si no, empezar algo justo antes del
+límite suma un tiempo de espera entero por encima) y **se aparta una reserva de
+6 s para el reciclado**, que es el último paso y a la vez el único que devuelve
+RAM: repartir por orden de llegada dejaría que una poda lenta se comiera justo el
+paso que le da sentido al botón. Y el `VACUUM` va con `statement_timeout` de 10 s.
+Hoy la base pesa 29 MB y aspirarla toma milésimas, pero sobre varios gigas puede
+tardar minutos. **Y ese tope se devuelve en un `finally` obligatoriamente**: con
+`CONN_MAX_AGE = 60` la conexión se reusa, y un tope olvidado se le aplicaría
+durante un minuto a consultas que no tienen nada que ver — el síntoma sería «a
+veces un reporte truena», que es de los peores de diagnosticar. Hay test de que se
+devuelve incluso si el aspirado explota.
+
+## La puerta, con una pantalla que no puede tener sesión
+
+La pared no puede traer token de CSRF: `CSRF_COOKIE_SECURE = not DEBUG`, así que en
+producción la cookie no viaja por `http://localhost:8201` — el mismo motivo por el
+que la pantalla no pide sesión. Apagar la comprobación era la salida fácil y
+equivocada; se partió en dos:
+
+- **Desde la máquina** se exige la cabecera `HX-Request`. Y no es un adorno: un
+  formulario de otro sitio SÍ puede apuntar a `http://localhost:8201/…` desde el
+  navegador del propio NUC, pero **no puede poner cabeceras propias**, y un `fetch`
+  que sí las pone choca con el permiso previo de CORS que este servidor nunca da.
+- **Desde La Gerencia** se exige el token, invocando la comprobación **de Django**
+  a mano (`CsrfViewMiddleware.process_view`) en vez de escribir una propia, para no
+  acabar con dos versiones de la misma regla.
+
+Más el permiso granular nuevo `(site, limpiar)`: ver el tablero no tiene por qué
+implicar poder moverlo. En la pared no se consulta — ahí la puerta es estar
+enfrente de la máquina.
+
+## A la par sin depender de nadie
+
+La regla §22 se cumple sola porque **no hay dos copias de nada**: un solo endpoint
+(GET pinta el estado, POST corre), un solo partial, y el aviso de «estoy
+trabajando» en la hoja compartida (`[data-limpieza].htmx-request`, sin JS). Las dos
+páginas sólo ponen un placeholder que se auto-rellena, y el ritmo lo decide la
+vista (30 s en la pared, 60 s más «Actualizar» en El Site) para no romper
+`test_el_site_va_mas_lento_que_la_pared`, que lee los intervalos de las páginas.
+
+Y el resultado **se guarda en Redis y se lee en cada pintado**. Si viviera sólo en
+la respuesta del POST, el refresco siguiente lo borraría de la pantalla a los pocos
+segundos. Como efecto secundario, las dos pantallas cuentan la misma historia y
+queda anotado quién la pidió.
+
+## Dos defectos propios, cazados antes del commit
+
+Ninguno se veía leyendo el código y ninguno lo habría cazado un test que no
+existiera:
+
+- **«hace 0 minutos»** justo después de picar el botón. `timesince` devuelve eso
+  para lo que acaba de pasar, y es el momento en que más gente va a leer ese
+  renglón: se lee como un error del programa. Se vio **mirando la pantalla** —
+  Chrome headless sobre la página renderizada, con los estáticos apuntados a
+  disco. El texto se arma ahora en la vista.
+- **`antes > despues` comparando cadenas.** `pg_size_pretty` devuelve texto, así
+  que «9 MB» sale mayor que «31 MB» y el renglón habría dicho «bajó de 9 MB a
+  31 MB». Los bytes son para comparar, el texto para mostrar.
+
+Y uno de redacción que también salió de la captura: «1 paso(s) con problemas». Si
+lo va a leer una persona desde tres metros, se conjuga.
+
+## Tests
+
+51 nuevos, **verificados contra el código sin arreglar**: quitando el gate de
+permiso, la cabecera de HTMX, la comprobación de CSRF y el `finally` del tope,
+fallan 5. Los candados que importan a futuro son los de diseño (que la poda nunca
+toque volúmenes, que las imágenes se poden sólo colgantes, que la señal no vaya con
+`docker kill`, que el Portavoz no entre en los reciclables) porque son los que
+alguien podría deshacer sin darse cuenta. Radio de impacto: 234 verdes.
+
+## Deuda diseñada
+
+El antes/después de RAM se mide al terminar, cuando los trabajadores nuevos apenas
+toman el relevo: la memoria baja unos segundos **después** del número que se ve, y
+el paso lo dice con palabras. El caché de páginas del sistema sigue siendo cosa del
+guion nocturno. Y el reciclado **sólo se puede confirmar con el código en La Sede**:
+aquí no hay socket del NUC (no hay llave de SSH en esta máquina) y una prueba de
+mutación contra un socket vivo no se hace.
