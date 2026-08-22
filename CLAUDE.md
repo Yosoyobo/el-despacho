@@ -5817,6 +5817,34 @@ los últimos 60 renglones por servicio, así que en un pico muy alto puede perde
 algo entre refrescos (para una pared está bien, para auditar no); y el kiosco
 depende de que el NUC tenga sesión de escritorio — si algún día se vuelve headless,
 El Vigía se ve desde otra máquina del tailnet, que ya está permitido.
+**Cuatro defectos que sólo se vieron MIRANDO la pantalla** (capturados de la pared
+ya desplegada; los cuatro pasaban las pruebas de acceso y de parseo, y ninguno se
+veía leyendo el código): la ruta se leía «/sit…» porque su celda llevaba `max-w-0`
+—pide cero ancho, y como las demás columnas son `whitespace-nowrap` y reclaman su
+ancho intrínseco, a la ruta le quedaban las migajas— ⇒ `table-fixed` + `<colgroup>`
+con la ruta como única columna sin ancho · `|slice:":16"|cut:"T"` pegaba la fecha a
+la hora («2026-08-2205:03») **y la dejaba en UTC** mientras el reloj de la cabecera
+va en local (dos relojes en zonas distintas en una pared se leen mal: «corrió a las
+5 de la mañana» cuando fueron las 11 de la noche) ⇒ la conversión se hace en la
+vista, que es donde corresponde — una plantilla no debería hacer aritmética de
+cadenas sobre una fecha · el hash del despliegue salía con sus 64 caracteres.
+**La lección: una pantalla se revisa mirándola**, y la forma de mirarla sin estar
+enfrente es Chrome headless por el tailnet
+(`--headless=new --window-size=1920,1080 --virtual-time-budget=20000 --screenshot`,
+que es lo que espera a que los paneles HTMX carguen).
+
+**Un test frágil del buzón, cazado de paso** (no es de este sprint pero salió en su
+CI): `tests/taller/test_buzon.py::test_mios_solo_ve_los_propios` afirmaba
+`assert b"A2" not in resp.content` — **dos caracteres** buscados en 25 KB de HTML
+que incluye el token CSRF, 64 caracteres aleatorios de `[A-Za-z0-9]`. P(el token
+contenga «A2») = **1.63%**, o sea **1 de cada 62 corridas del CI fallaba sin que
+nada estuviera roto**. Arreglado en dos capas: literales con guion (imposibles de
+generar por azar en una cadena alfanumérica) y la aserción de verdad sobre
+`resp.context["mensajes"]`, no sobre el texto renderizado. **Regla que se lleva:
+nunca afirmar `not in resp.content` con un literal corto** — o se afirma sobre los
+datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda uno
+más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
+`tests/test_rearquitectura.py:266`.
 
 ### S-Acerca-OAuth ✅ — La portada pública que Google exige para verificar el SSO (2026-08-20, VERSION 2026.08.16)
 
