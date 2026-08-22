@@ -58,7 +58,7 @@
       {% if internos.backup_remoto.disponible %}
         <span class="font-mono {% if internos.backup_remoto.estado == 'ok' %}text-gray-200{% else %}text-error-400{% endif %}">
           {{ internos.backup_remoto.estado }}
-          <span class="text-gray-500">· {{ internos.backup_remoto.creado_en|slice:":16"|cut:"T" }}</span>
+          <span class="text-gray-500">· {{ internos.backup_remoto.cuando }}</span>
         </span>
       {% else %}
         <span class="font-mono text-gray-600">sin registros</span>
@@ -68,8 +68,8 @@
     <div class="flex items-baseline justify-between border-t border-gray-800 pt-3">
       <span class="text-gray-500">Último despliegue</span>
       {% if internos.deploy.disponible %}
-        <span class="font-mono text-gray-200">{{ internos.deploy.commit|default:"—" }}
-          <span class="text-gray-500">· {{ internos.deploy.creado_en|slice:":16"|cut:"T" }}</span>
+        <span class="font-mono text-gray-200">{{ internos.deploy.commit_corto|default:"—" }}
+          <span class="text-gray-500">· {{ internos.deploy.cuando }}</span>
         </span>
       {% else %}
         <span class="font-mono text-gray-600">sin registros</span>

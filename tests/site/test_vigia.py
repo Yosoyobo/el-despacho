@@ -216,3 +216,70 @@ class TestLosEstaticosQueReferenciaExisten:
             f"estos {{% static %}} no existen en la-gerencia/static/: {faltantes}. "
             "En producción, con el storage de manifest, eso es un 500 al renderizar."
         )
+
+
+# ── Lo que enseñó la captura de la pantalla real ─────────────────────────────
+
+class TestDefectosQueSoloSeVenEnPantalla:
+    """Cuatro defectos que el código no delataba y la captura sí.
+
+    Van juntos porque comparten la lección: una pantalla se revisa MIRÁNDOLA.
+    Los cuatro pasaban las pruebas de acceso y de parseo sin problema.
+    """
+
+    def test_la_ruta_se_queda_con_el_ancho_sobrante(self):
+        """La celda de la ruta llevaba `max-w-0`: con layout automático, las
+        columnas `whitespace-nowrap` reclaman su ancho intrínseco y a la ruta le
+        quedaban las migajas — se leía «/sit…», o sea el dato más útil del panel
+        ilegible con media pantalla vacía al lado."""
+        from pathlib import Path
+        t = (Path(__file__).resolve().parents[2] / "la-gerencia" / "templates"
+             / "site" / "vivo" / "_peticiones.html").read_text()
+        celda_ruta = next(ln for ln in t.splitlines() if "f.ruta" in ln and "<td" in ln)
+        assert "max-w-0" not in celda_ruta, f"la celda de la ruta sigue sin ancho: {celda_ruta.strip()}"
+        assert "truncate" in celda_ruta, "sin `truncate` una ruta larga desborda la tabla"
+        assert "table-fixed" in t, "sin `table-fixed` los anchos del colgroup no mandan"
+        # Exactamente una columna sin ancho: la ruta, que absorbe el sobrante.
+        assert t.count("<col>") == 1, "la ruta debe ser la única columna sin ancho"
+
+    def test_la_fecha_del_respaldo_va_en_hora_local_y_separada(self):
+        """`|slice:":16"|cut:"T"` pegaba la fecha a la hora («2026-08-2205:03»)
+        y dejaba la hora en **UTC**, mientras el reloj de la cabecera va en
+        local. Dos relojes en zonas distintas en la misma pared se leen mal:
+        «el respaldo corrió a las 5 de la mañana» cuando fueron las 11 de la
+        noche."""
+        from apps.el_site.views_vivo import _cuando
+        from django.utils import timezone
+
+        # Una marca UTC que en México cae el día ANTERIOR: si no se convierte,
+        # la prueba lo caza por el día, no sólo por la hora.
+        salida = _cuando("2026-08-22T05:03:12+00:00")
+        esperado = timezone.localtime(
+            datetime(2026, 8, 22, 5, 3, 12, tzinfo=UTC)
+        ).strftime("%d/%m %H:%M")
+        assert salida == esperado
+        assert "T" not in salida
+        assert salida.count(":") == 1, f"fecha y hora pegadas: {salida!r}"
+
+    def test_una_marca_ilegible_no_tumba_el_panel(self):
+        from apps.el_site.views_vivo import _cuando
+        assert _cuando(None) == ""
+        assert _cuando("") == ""
+        assert _cuando("no-soy-fecha") == "no-soy-fecha"[:16]
+
+    def test_el_hash_del_despliegue_se_acorta(self):
+        """Venía completo (64 caracteres) y se comía el renglón. Siete
+        identifican el commit, que es para lo que se mira en una pared."""
+        from apps.el_site.views_vivo import _fechas_locales
+        largo = "84ec4f5138391202f67ed50645fe50c22555480c"
+        snap = _fechas_locales({
+            "deploy": {"disponible": True, "commit": largo,
+                       "creado_en": "2026-08-21T05:35:00+00:00"},
+        })
+        assert snap["deploy"]["commit_corto"] == largo[:7]
+        assert snap["deploy"]["cuando"]
+
+    def test_un_snapshot_sin_esas_llaves_no_truena(self):
+        from apps.el_site.views_vivo import _fechas_locales
+        assert _fechas_locales({}) == {}
+        assert _fechas_locales({"deploy": {"disponible": False}})["deploy"] == {"disponible": False}

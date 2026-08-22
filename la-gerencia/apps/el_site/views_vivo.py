@@ -29,9 +29,11 @@ from __future__ import annotations
 
 import ipaddress
 import os
+from datetime import datetime
 
 from django.http import Http404
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.http import require_safe
 
 from lib.site import actividad, contenedores, internos
@@ -124,7 +126,7 @@ def vivo_negocio(request):
     _solo_local(request)
     ctx: dict = {}
     try:
-        ctx["internos"] = internos.snapshot()
+        ctx["internos"] = _fechas_locales(internos.snapshot())
     except Exception:  # noqa: BLE001
         ctx["internos"] = {}
     ctx["ia"] = _ia_hoy()
@@ -132,11 +134,48 @@ def vivo_negocio(request):
     return render(request, "site/vivo/_negocio.html", ctx)
 
 
+def _cuando(iso: str | None) -> str:
+    """Una marca ISO en UTC, pasada a hora local y legible.
+
+    `internos.snapshot()` entrega las fechas como `isoformat()` de un datetime
+    aware, o sea en UTC. La plantilla las rebanaba con `slice:":16"|cut:"T"`, lo
+    que producía dos errores a la vez: pegaba la fecha a la hora
+    ("2026-08-2205:03") y, peor, **dejaba la hora en UTC** mientras el reloj de
+    la cabecera va en hora local. Dos relojes en zonas distintas en la misma
+    pared es una trampa: se lee "el respaldo corrió a las 5 de la mañana"
+    cuando en realidad fueron las 11 de la noche.
+    """
+    if not iso:
+        return ""
+    try:
+        cuando = datetime.fromisoformat(iso)
+    except (TypeError, ValueError):
+        return str(iso)[:16]
+    if timezone.is_aware(cuando):
+        cuando = timezone.localtime(cuando)
+    return cuando.strftime("%d/%m %H:%M")
+
+
+def _fechas_locales(snap: dict) -> dict:
+    """Deja las marcas de `internos` listas para pintar, y el hash corto.
+
+    El commit venía completo (64 caracteres) y se comía el renglón; siete
+    bastan para identificarlo, que es para lo que se mira en una pared.
+    """
+    for llave in ("backup_remoto", "backup_local", "deploy", "portavoz_head"):
+        bloque = snap.get(llave)
+        if isinstance(bloque, dict):
+            if bloque.get("creado_en"):
+                bloque["cuando"] = _cuando(bloque["creado_en"])
+            if bloque.get("commit"):
+                bloque["commit_corto"] = str(bloque["commit"])[:7]
+    return snap
+
+
 def _ia_hoy() -> dict:
     """Llamadas a Los Chalanes de hoy, con su costo. Nunca lanza."""
     try:
         from django.db.models import Count, Q, Sum
-        from django.utils import timezone
 
         from ajustes.models.analistas_log import AnalistaLog
 

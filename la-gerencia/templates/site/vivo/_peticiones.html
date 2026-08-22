@@ -23,7 +23,22 @@
   </p>
 {% else %}
 <div class="vigia-scroll min-h-0 flex-1 px-2 py-1">
-  <table class="w-full font-mono text-xs">
+  {% comment %}
+  `table-fixed` + anchos explícitos a propósito. Con el layout automático, las
+  columnas `whitespace-nowrap` reclaman su ancho intrínseco y la ruta —que
+  llevaba `max-w-0`— se quedaba con las migajas: se veía «/sit…» con media
+  pantalla vacía al lado, o sea el dato más útil del panel ilegible. Aquí la
+  ruta es la única columna sin ancho, así que se queda con todo el sobrante.
+  {% endcomment %}
+  <table class="w-full table-fixed font-mono text-xs">
+    <colgroup>
+      <col style="width:76px">   {# hora     #}
+      <col style="width:96px">   {# servicio #}
+      <col style="width:56px">   {# método   #}
+      <col>                      {# ruta: se queda con el resto #}
+      <col style="width:52px">   {# código   #}
+      <col style="width:96px">   {# duración #}
+    </colgroup>
     <tbody>
       {% for f in filas %}
       <tr class="border-b border-gray-800/50 last:border-0">
@@ -37,7 +52,7 @@
             {% else %}bg-success-500/15 text-success-300{% endif %}">{{ f.servicio }}</span>
         </td>
         <td class="whitespace-nowrap px-2 text-gray-400">{{ f.metodo }}</td>
-        <td class="max-w-0 truncate px-2 text-gray-200" title="{{ f.ruta }}">{{ f.ruta }}</td>
+        <td class="truncate px-2 text-gray-200" title="{{ f.ruta }}">{{ f.ruta }}</td>
         <td class="whitespace-nowrap px-2 text-right tabular-nums
           {% if f.codigo >= 500 %}text-error-400{% elif f.codigo >= 400 %}text-warning-400{% else %}text-gray-500{% endif %}">
           {{ f.codigo }}
