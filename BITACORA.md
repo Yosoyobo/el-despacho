@@ -10837,3 +10837,54 @@ Chalán lo advierta antes de mandar.
 El estado se marca a mano **a propósito**: Gmail no deja comprobarlo de otro
 modo, porque no falla — reescribe. El botón manda el correo; la persona mira de
 quién llegó.
+
+---
+
+# Sesión — S-Alias-Personales · Los alias con dueño (2026-08-23, VERSION 2026.08.23)
+
+Oscar mandó la captura de «Enviar como» de Gmail: **12 alias ya dados de alta**,
+diez del despacho y dos personales. Y con ella la regla: los personales «son
+para que los correos salgan a nombre de esa persona DESDE SU PERFIL, NADIE MÁS
+PUEDE».
+
+## Lo que se decidió
+
+- Una plantilla **sí** puede llevar un alias personal, pero **sólo lo usa su
+  dueño**; para cualquier otro sale del remitente general, **sin fallar**. Así
+  una plantilla que Jorge dejó con su alias la sigue mandando cualquiera, sólo
+  que no a nombre de Jorge.
+- **Selector «De:»** al mandar un correo desde la ficha del cliente.
+- Sembrar los 12, ya marcados como comprobados.
+
+## La pieza que lo hace seguro
+
+`remitente_para(plantilla, usuario, forzado)` es la **fuente única** de la
+decisión y la usan los cuatro caminos de envío: ficha del cliente, El Chalán,
+reglas automáticas y campañas. Si la regla viviera en cada uno, bastaría con
+olvidarla en uno para que un correo saliera firmado por otra persona.
+
+Dos detalles que no son adorno:
+
+- **Sin usuario detrás, ningún alias personal aplica.** Las reglas automáticas y
+  el cron pasan `usuario=None`, así que nunca pueden firmar por alguien.
+- **La validación está en el servidor.** El `<select>` del modal se puede
+  manipular desde el navegador; hay un test que manda el alias de otra persona a
+  propósito y comprueba que sale del general.
+
+## Los personales nacen sin dueño
+
+`alex@` y `jorge@` se siembran **sin usuario asignado**, y mientras eso siga así
+**nadie** puede mandar desde ellos. Es el lado seguro: un alias personal suelto
+no debe poder usarlo cualquiera. No se intentó adivinar el dueño por el correo
+—el usuario de Jorge en el sistema es `jorgeberebichez@gmail.com`, no
+`jorge@learningcenter.mx`— así que se asigna a mano en la pantalla.
+
+## Tests
+
+19 nuevos. La regla **verificada contra el código sin arreglar**: quitando el
+check de `puede_usarlo`, caen cuatro. Es la clase de fallo que en producción no
+se nota, porque el correo sale igual — sólo que firmado por quien no lo mandó.
+
+Tres tests del sprint anterior se actualizaron porque usaban
+`cobranza@learningcenter.mx` como ejemplo de «dirección pendiente», y ahora esa
+viene sembrada como comprobada.

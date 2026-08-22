@@ -5,6 +5,45 @@
 
 ---
 
+## Novedades — Cada correo desde la dirección que le toca (23 de agosto de 2026)
+
+**Ya están cargadas todas tus direcciones**
+
+Las doce direcciones que Learning Center tiene dadas de alta en Google
+(`cobranza@`, `ventas@`, `facturas@`, `legal@`, `pagos@`, `runner@`, `soporte@`,
+`admin@`, `chalan@`, `hola@`, más `alex@` y `jorge@`) ya están cargadas y
+marcadas como listas. No hay que darlas de alta otra vez ni comprobarlas: se ven
+en **Ajustes → El Cartero → Direcciones de envío**.
+
+**Las de una persona son de esa persona**
+
+Hay dos clases de dirección, y se comportan distinto:
+
+- **Las del despacho** (`cobranza@`, `ventas@`, `facturas@`…) las puede usar
+  cualquiera del equipo que tenga permiso de mandar correo.
+- **Las de una persona** (`alex@`, `jorge@`) salen a nombre de esa persona, y
+  **sólo esa persona puede mandar desde ellas**. Si alguien más manda una
+  plantilla que las lleva, el correo sale de la dirección general — nunca
+  firmado por quien no lo mandó.
+
+Los correos que salen solos (las reglas automáticas) **nunca** usan una
+dirección personal, por la misma razón: nadie debe aparecer firmando algo de lo
+que no se enteró.
+
+**Falta un paso tuyo**
+
+`alex@` y `jorge@` están cargadas pero **sin dueño asignado**, y mientras no se
+lo asignes **nadie puede usarlas** (es el lado seguro). En la columna «Quién la
+usa» de esa pantalla eliges la persona de cada una, y listo.
+
+**Elegir de quién sale un correo**
+
+Al mandarle un correo a un cliente desde su ficha, ahora hay un campo **«De»**.
+Ahí aparecen las direcciones del despacho y —si tienes una— la tuya. La de otra
+persona ni se muestra.
+
+---
+
 ## Novedades — Ya puedes crear tus propios correos (22 de agosto de 2026)
 
 **Qué cambió**
@@ -5174,6 +5213,19 @@ identidad: la cobranza desde `cobranza@learningcenter.mx`, las ventas desde
 No hace falta llevar la cuenta a mano: *Ajustes → El Cartero → **Direcciones de
 envío*** arma la lista sola, con las direcciones que tus plantillas declaran.
 
+**Hay dos clases de dirección, y no se comportan igual:**
+
+- **Del despacho** (`cobranza@`, `ventas@`, `facturas@`…): la puede usar
+  cualquiera del equipo con permiso de mandar correo.
+- **De una persona** (`alex@`, `jorge@`): sale a nombre de esa persona y **sólo
+  ella puede mandar desde ahí**. Si alguien más usa una plantilla que la lleva,
+  el correo sale de la dirección general — nunca firmado por quien no lo mandó.
+  Y los correos automáticos **nunca** usan una dirección personal, por lo mismo.
+
+Se define en la columna **«Quién la usa»**: «Todo el equipo» o «Sólo <persona>».
+Una dirección personal **sin dueño asignado no la puede usar nadie** — es el
+lado seguro, para que un alias suelto no acabe usándolo cualquiera.
+
 De cada una te dice **qué plantillas la usan** y en qué estado está:
 
 - **Falta darla de alta** — una plantilla ya la usa, pero nadie ha comprobado
@@ -5198,7 +5250,8 @@ Tres caminos:
 
 - **A un cliente concreto**: en su ficha, botón «✉️ Enviar correo». Sale al
   correo que el cliente tiene registrado; no hay campo para escribir una
-  dirección a mano, y es a propósito.
+  dirección a mano, y es a propósito. En el campo **«De»** eliges de qué
+  dirección sale: las del despacho y, si tienes una a tu nombre, la tuya.
 - **A varios**: *Campañas*, donde las plantillas nuevas aparecen solas.
 - **Pidiéndoselo a El Chalán**: «mándale a $cliente el aviso de entrega». A él
   sí puedes dictarle una dirección suelta si hace falta. Te enseña qué va a

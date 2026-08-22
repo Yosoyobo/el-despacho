@@ -6024,6 +6024,45 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Alias-Personales ✅ — Los alias de Google, con dueño (2026-08-23, VERSION 2026.08.23)
+
+Continuación inmediata de S-Plantillas-Correo. Oscar mandó la captura de «Enviar
+como» con los **12 alias ya dados de alta** y fijó la regla: los personales
+(`alex@`, `jorge@`) salen a nombre de esa persona **DESDE SU PERFIL, nadie más
+puede**. Decisiones por AskUserQuestion: la plantilla **sí** puede llevar un
+alias personal pero **sólo lo usa su dueño** (para el resto cae al general, sin
+fallar) · **selector «De:»** al enviar desde la ficha · **sembrar los 12** ya
+marcados como comprobados.
+
+- **`AliasRemitente.usuario`** (FK opcional, migración `ajustes/0017`): con
+  dueño = personal; sin dueño = del despacho. `puede_usarlo(usuario)` es la
+  regla, y **niega el personal cuando no hay usuario detrás** (cron, regla
+  automática): un correo que sale solo no puede ir firmado por alguien que ni se
+  enteró.
+- **`remitente_para(plantilla, usuario, forzado)`** es la **fuente única** de la
+  decisión, usada por los CUATRO caminos de envío (ficha del cliente, El Chalán,
+  reglas, campañas). Orden: elegido a mano → alias de la plantilla → general; y
+  **un personal ajeno se ignora en silencio** en vez de romper el envío.
+- **Selector «De:»** en el modal de la ficha, alimentado por
+  `disponibles_para(usuario)` (departamentales verificados + el suyo). **La
+  validación está en el servidor** — el `<select>` se puede manipular, y hay
+  test que lo fija.
+- **Seed de los 12 alias reales** con su nombre visible tal cual de la captura,
+  `verificado=True` (los dio de alta Oscar; nadie tiene que recomprobarlos). Los
+  dos personales nacen **sin dueño a propósito**: mientras no se asignen, nadie
+  puede usarlos. La pantalla lo avisa y tiene la columna «Quién la usa».
+- **Sólo se ofrecen los verificados**: ofrecer uno que Google va a reescribir
+  sería prometer algo que no se cumple.
+- **19 tests nuevos** (`test_alias_personales` 15 + los de UI), la regla
+  **verificada contra el código sin arreglar**: quitando el check de
+  `puede_usarlo`, caen 4.
+
+**Deuda diseñada**: `alex@` y `jorge@` necesitan que alguien les asigne dueño en
+la pantalla (no se adivina por el correo: el usuario de Jorge en el sistema es
+`jorgeberebichez@gmail.com`, no `jorge@learningcenter.mx`). El Chalán no elige
+alias por su cuenta — usa el de la plantilla o el que se le dicte en el payload.
+Sigue sin poder crear alias en Google (ver el sprint anterior).
+
 ### S-Plantillas-Correo ✅ — Plantillas propias con alias, reglas evento→correo y El Chalán redactor (2026-08-22, VERSION 2026.08.22)
 
 Pedido de Oscar: «necesitamos poder generar más plantillas de correos, no sólo
