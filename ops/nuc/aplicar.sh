@@ -47,12 +47,26 @@ docker compose $CF ps --format '  {{.Service}}\t{{.State}}\t{{.Status}}'
 
 echo
 echo "== sondas por el tailnet =="
-for sonda in "8200 taller" "8201 gerencia"; do
-    set -- $sonda
-    printf '  %-9s /ping → %s\n' "$2" \
-        "$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "http://100.121.244.5:$1/ping" || echo FALLO)"
-done
-printf '  %-9s /ping → %s\n' "mostrador" \
-    "$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "http://100.121.244.5:8202/ping" || echo FALLO)"
+# Las apps tardan ~20 s en levantar (migrate + collectstatic + gunicorn), así que
+# la sonda ESPERA en vez de reportar un falso fallo en el arranque frío.
+sonda() {
+    local puerto="$1" nombre="$2" codigo=""
+    for _ in $(seq 1 12); do
+        codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 \
+                 "http://100.121.244.5:$puerto/ping" 2>/dev/null || true)
+        [ "$codigo" = "200" ] && break
+        sleep 5
+    done
+    printf '  %-10s /ping → %s\n' "$nombre" "${codigo:-sin respuesta}"
+    [ "$codigo" = "200" ]
+}
+fallos=0
+sonda 8200 taller    || fallos=$((fallos + 1))
+sonda 8201 gerencia  || fallos=$((fallos + 1))
+sonda 8202 mostrador || fallos=$((fallos + 1))
+if [ "$fallos" -gt 0 ]; then
+    echo "ALTO: $fallos sonda(s) sin responder 200. Revisa los logs antes de dar el deploy por bueno." >&2
+    exit 1
+fi
 
 echo "LISTO."
