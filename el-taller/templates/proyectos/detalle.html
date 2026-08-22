@@ -183,6 +183,8 @@ se recarga, así que el «¿por qué se canceló?» se pide con `?motivo=1`.{% e
                     <div><input id="qc-merma" type="number" min="0" placeholder="Merma" title="Piezas extra que fabricas" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
                     <div class="col-span-2 flex items-end sm:col-span-1"><button type="button" id="qc-agregar" class="btn-secundario w-full whitespace-nowrap sm:w-auto">Agregar</button></div>
                 </div>
+                {% comment %}LC 2026-08-22 (nota 2): proveedor en el alta rápida.{% endcomment %}
+                {% include "catalogo/_qc_proveedores.html" with prefijo="qc" clase_extra="mt-3 max-w-sm" %}
                 <p id="qc-msg" class="mt-2 text-xs text-error-600 dark:text-error-400 hidden"></p>
             </details>
 

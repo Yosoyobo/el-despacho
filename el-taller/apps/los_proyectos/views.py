@@ -1457,6 +1457,8 @@ def agregar_producto_modal(request, pk):
     return render(request, "proyectos/_modal_agregar_producto.html", {
         "form": form, "proyecto": proyecto,
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
+        # LC 2026-08-22 (nota 2): el alta rápida de producto ya pide proveedor.
+        "proveedores_activos": _proveedores_activos(),
     })
 
 

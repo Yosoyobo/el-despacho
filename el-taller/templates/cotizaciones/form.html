@@ -149,6 +149,8 @@
                     <button type="button" id="cot-qc-agregar" class="btn-primario whitespace-nowrap">Crear y agregar</button>
                 </div>
             </div>
+            {% comment %}LC 2026-08-22 (nota 2): proveedor en el alta rápida.{% endcomment %}
+            {% include "catalogo/_qc_proveedores.html" with prefijo="cot-qc" clase_extra="mt-3 max-w-sm" %}
             <p id="cot-qc-margen" class="mt-2 text-xs font-medium hidden"></p>
             <p id="cot-qc-msg" class="mt-2 text-xs text-error-600 dark:text-error-400 hidden"></p>
         </details>
@@ -402,6 +404,10 @@
         body_fd.append('categoria_id', categoria_id);
         body_fd.append('precio_base', precio);
         body_fd.append('costo', inputs.costo.value || '0');
+        // LC 2026-08-22 (nota 2): proveedores elegidos → POST.
+        (window.qcProvIds ? window.qcProvIds('cot-qc') : []).forEach(function (id) {
+            body_fd.append('proveedores', id);
+        });
         try {
             const r = await fetch('{% url "catalogo-quick-create" %}', {method: 'POST', headers: {'X-CSRFToken': csrf}, body: body_fd});
             const data = await r.json();
@@ -436,6 +442,7 @@
 
             // Reset y feedback.
             inputs.nombre.value = ''; inputs.precio.value = ''; inputs.costo.value = ''; inputs.cantidad.value = '1';
+            if (window.qcProvLimpiar) window.qcProvLimpiar('cot-qc');
             actualizarMargen();
             mostrarMsg('Producto «' + (data.nombre) + '» creado y agregado.', false);
             btn.disabled = false;

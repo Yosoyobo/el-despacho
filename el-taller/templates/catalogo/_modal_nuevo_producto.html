@@ -27,7 +27,12 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
                 {# Datos del producto: sin Unidad (consolidada a pz) ni estado; Categoría en pastillas abajo. #}
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {% for f in form %}
-                        {% if f.name == 'proveedores' or f.name == 'descripcion_default' or f.name == 'categoria' %}
+                        {% comment %}LC 2026-08-22 (nota 4): el ★ principal NO se pinta aquí.
+                        Un select con TODOS los proveedores activos, en la misma
+                        pantalla donde eliges cuáles surten el producto, es el bug
+                        3b otra vez. En el alta el principal es el primero que
+                        marques (lo fija el servidor) y se cambia en la ficha.{% endcomment %}
+                        {% if f.name == 'proveedores' or f.name == 'descripcion_default' or f.name == 'categoria' or f.name == 'proveedor_principal' %}
                         {% elif f.name == 'precio_base' and precio_readonly %}
                         <div class="min-w-0">
                             <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }} <span class="text-xs font-normal text-gray-400">solo lectura</span></label>
@@ -95,6 +100,7 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
                         {% endfor %}
                     </div>
                     {% if form.proveedores.errors %}<p class="mt-2 text-xs text-error-600 dark:text-error-400">{{ form.proveedores.errors|join:" " }}</p>{% endif %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">★ El <strong>principal</strong> será el primero que marques. Lo cambias en la ficha del producto.</p>
 
                     <details class="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
                         <summary class="cursor-pointer text-sm font-medium text-brand-600 dark:text-brand-400">+ Nuevo proveedor</summary>
@@ -122,6 +128,12 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
                         </div>
                     </details>
                 </div>
+
+                {% comment %}LC 2026-08-22 (nota 3): la calculadora también aquí —
+                aparece en cuanto se marca el proveedor que la dispara. Antes sólo
+                existía al editar, así que el alta nunca la enseñaba aunque el modal
+                sí pidiera proveedores.{% endcomment %}
+                {% include "catalogo/_calculadora.html" %}
             </div>
         </form>
     </div>
@@ -137,6 +149,8 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
     function refrescarProv() {
         var l = slot.querySelector('#proveedores-lista');
         if (l && window.multiBuscableRefrescar) window.multiBuscableRefrescar(l);
+        // Marcar por JS no dispara `change`: la calculadora hay que avisarle.
+        if (window.calcGateRefrescar) window.calcGateRefrescar();
     }
 
     var btn = slot.querySelector('#prov-agregar');

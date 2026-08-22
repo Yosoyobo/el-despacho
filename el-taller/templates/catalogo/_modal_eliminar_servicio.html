@@ -25,8 +25,13 @@
         <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
             <button type="button" data-modal-slot-close class="btn-secundario">{% if usos_proyectos %}Entendido{% else %}Cancelar{% endif %}</button>
             {% if not usos_proyectos %}
+            {% comment %}LC 2026-08-22: el `volver` con el que se abrió el modal
+            viaja al POST. Sin esto la vista siempre caía a la lista pelona:
+            borrar desde una lista filtrada perdía los filtros, y desde la ficha
+            no había a dónde volver (esa página deja de existir).{% endcomment %}
             <form hx-post="{% url 'catalogo-eliminar' servicio.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
                 {% csrf_token %}
+                {% if request.GET.volver %}<input type="hidden" name="volver" value="{{ request.GET.volver }}">{% endif %}
                 <button type="submit" class="inline-flex items-center rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-700">Sí, eliminar permanentemente</button>
             </form>
             {% endif %}

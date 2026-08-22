@@ -91,6 +91,9 @@
                     <button type="button" id="qc-agregar" class="btn-primario w-full whitespace-nowrap sm:w-auto">Agregar</button>
                 </div>
             </div>
+            {% comment %}LC 2026-08-22 (nota 2): el atajo dejaba el producto SIN
+            proveedor — y sin proveedor no hay calculadora ni principal.{% endcomment %}
+            {% include "catalogo/_qc_proveedores.html" with prefijo="qc" clase_extra="mt-3 max-w-sm" %}
             <p id="qc-margen" class="mt-2 text-xs font-medium hidden"></p>
             <p id="qc-msg" class="mt-2 text-xs text-error-600 dark:text-error-400 hidden"></p>
         </details>
