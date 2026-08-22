@@ -28,8 +28,11 @@ jobs:
     # Solo manual — el cron semanal sigue podando GHCR, pero el disco se limpia a voluntad.
     #
     # Desde la mudanza del 2026-08-21 el stack vive en el NUC, que solo existe en el
-    # tailnet. El `if` exige el cliente OAuth: sin él, el job se salta.
-    if: github.event_name == 'workflow_dispatch' && secrets.TS_OAUTH_CLIENT_ID != ''
+    # tailnet: sin el cliente OAuth de Tailscale este job no puede llegar. Aquí NO se
+    # comprueba el secreto —el contexto `secrets` no existe en el `if:` de un job y
+    # rechazaría el archivo entero— y tampoco hace falta: este job solo corre a mano,
+    # así que es mejor que falle fuerte y se vea, en vez de saltarse en silencio.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
