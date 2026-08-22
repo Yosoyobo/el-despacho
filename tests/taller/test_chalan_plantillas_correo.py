@@ -250,3 +250,22 @@ def test_las_propias_van_antes_que_las_de_sistema(usuario_factory):
 
     salida = capacidades.ejecutar("listar_plantillas_correo", {}, u)
     assert salida["plantillas"][0]["slug"] == "zzz-mia"
+
+
+def test_una_plantilla_de_sistema_se_puede_mandar_aunque_no_tenga_fila(
+    accion_factory, usuario_factory, cliente_factory, cartero_espia,
+):
+    """Las de sistema siempre tienen que poder mandarse: si nadie ha abierto
+    nunca «bienvenida», la fila puede no existir todavía y aun así hay que
+    poder usarla."""
+    from ajustes.models import PlantillaCorreo
+    from apps.el_dictado.ejecutores import EJECUTORES
+
+    PlantillaCorreo.objects.filter(slug="bienvenida").delete()
+    u = usuario_factory(rol="super_admin")
+    cliente = cliente_factory(email_contacto="c@ejemplo.com")
+    accion = accion_factory("enviar_correo", {
+        "cliente_slug": cliente.slug, "tipo_plantilla": "bienvenida",
+    }, usuario=u)
+    EJECUTORES["enviar_correo"](accion, u)
+    assert cartero_espia[0]["destinatario"] == "c@ejemplo.com"

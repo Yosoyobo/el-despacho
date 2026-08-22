@@ -584,8 +584,13 @@ def enviar_correo(accion, usuario, contexto=None):
 
     # ── ¿Qué se manda? ───────────────────────────────────────────────────────
     tipo = (payload.get("tipo_plantilla") or "generico").strip().lower()
-    if tipo == "generico":
-        plantilla = PlantillaCorreo.obtener("generico")
+    from ajustes.plantillas_correo_default import es_de_sistema
+
+    if es_de_sistema(tipo):
+        # `obtener` siembra la fila si aún no existe: las de sistema siempre
+        # tienen que poder mandarse, aunque nadie las haya abierto nunca.
+        plantilla = PlantillaCorreo.obtener(tipo)
+        _exigir(plantilla.activa, f"La plantilla «{plantilla.nombre}» está apagada.")
     else:
         plantilla = PlantillaCorreo.objects.filter(slug=tipo, activa=True).first()
         _exigir(
