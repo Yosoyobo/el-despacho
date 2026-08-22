@@ -724,12 +724,19 @@ def _h_listar_plantillas_correo(args: dict, usuario) -> dict:  # noqa: ARG001
     # al frente, las que el usuario acaba de crear quedaban fuera del corte y
     # El Chalán no se enteraba de que existen. Se excluye `generico` porque no
     # se elige por nombre: es el molde del texto libre.
+    from ajustes.models.alias_remitente import faltan_por_dar_de_alta
+
+    sin_alta = set(faltan_por_dar_de_alta())
     filas = [
         {
             "slug": p.slug,
             "nombre": p.nombre,
             "para_que": p.descripcion or "",
             "sale_de": p.remitente_email or "(el remitente general)",
+            # Si el alias no está dado de alta en Google, ese correo sale desde
+            # la dirección de siempre y nadie se entera: vale la pena que El
+            # Chalán lo pueda avisar antes de mandarlo.
+            "ojo_alias_sin_dar_de_alta": p.remitente_email.strip().lower() in sin_alta,
             "del_sistema": p.sistema,
         }
         for p in PlantillaCorreo.enviables().order_by("sistema", "nombre")
@@ -739,6 +746,7 @@ def _h_listar_plantillas_correo(args: dict, usuario) -> dict:  # noqa: ARG001
         "plantillas": filas,
         "total": len(filas),
         "borradores_sin_revisar": pendientes,
+        "direcciones_sin_dar_de_alta": sorted(sin_alta),
     }
 
 

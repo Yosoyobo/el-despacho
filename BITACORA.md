@@ -10815,3 +10815,25 @@ producción, porque el correo sale igual.
 - El envío desde la ficha no adjunta archivos.
 - Las reglas escriben al cliente, no al equipo.
 - El cron de clientes dormidos mira `Proyecto.creado_en`, no la última actividad.
+
+## Añadido en la misma sesión — «¿cuáles alias tengo que crear?»
+
+Oscar, al leer que los alias se dan de alta a mano: «en algún lugar debemos
+saber cuáles son los aliases necesarios».
+
+La app ya tenía el dato sin saberlo: cada plantilla declara su
+`remitente_email`. Así que **la lista no se captura, se deriva**
+(`remitentes_en_uso()`), y la tabla nueva (`AliasRemitente`, migr.
+`ajustes/0016`) sólo guarda lo único que no se puede deducir: **si alguien ya lo
+dio de alta en Google y lo comprobó**.
+
+Pantalla *Ajustes → El Cartero → Direcciones de envío*: cada dirección con qué
+plantillas la usan y su estado (falta darla de alta / lista / sin usar), los
+pasos de Google, un botón que manda una prueba **desde ese alias** y otro para
+marcarla. El aviso sale además en la lista de plantillas y en el editor de la
+plantilla afectada, y el MCP devuelve `direcciones_sin_dar_de_alta` para que El
+Chalán lo advierta antes de mandar.
+
+El estado se marca a mano **a propósito**: Gmail no deja comprobarlo de otro
+modo, porque no falla — reescribe. El botón manda el correo; la persona mira de
+quién llegó.

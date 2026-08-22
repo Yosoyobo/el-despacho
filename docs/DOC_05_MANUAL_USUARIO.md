@@ -33,8 +33,13 @@ desde `cobranza@learningcenter.mx`, las ventas desde `ventas@…`.
 Un aviso importante: **la dirección tiene que estar dada de alta en Google**
 (en «Enviar como» de la cuenta de correo). Si no lo está, Google no marca
 error — simplemente reemplaza la dirección y el correo sale desde la de
-siempre, sin avisarte. Por eso cada plantilla tiene abajo un botón para
-mandarte una prueba: revisa de quién te llegó y sales de dudas.
+siempre, sin avisarte.
+
+Para que no tengas que llevar esa cuenta en la cabeza, hay una pantalla nueva:
+**Ajustes → El Cartero → Direcciones de envío**. Ahí ves **todas las
+direcciones que tus plantillas usan, cuáles ya quedaron y cuáles falta dar de
+alta**, con los pasos y un botón que manda una prueba desde esa dirección. Si
+falta alguna, te lo avisa también en la lista de plantillas y en el editor.
 
 **Tres formas de mandar una plantilla**
 
@@ -5163,6 +5168,29 @@ identidad: la cobranza desde `cobranza@learningcenter.mx`, las ventas desde
 > en silencio y el correo sale desde la de siempre. Para salir de dudas, cada
 > plantilla trae abajo un botón que te manda una prueba — revisa de quién te
 > llegó.
+
+### Qué direcciones falta dar de alta
+
+No hace falta llevar la cuenta a mano: *Ajustes → El Cartero → **Direcciones de
+envío*** arma la lista sola, con las direcciones que tus plantillas declaran.
+
+De cada una te dice **qué plantillas la usan** y en qué estado está:
+
+- **Falta darla de alta** — una plantilla ya la usa, pero nadie ha comprobado
+  que Google la respete. Esos correos están saliendo desde la dirección de
+  siempre.
+- **Lista** — ya se dio de alta y alguien comprobó que llega bien.
+- **Sin usar** — está registrada pero ninguna plantilla la usa hoy.
+
+Los pasos para darla de alta están en la misma pantalla. Son dos cosas en
+Google y se necesitan las dos: crear el **alias** de la cuenta en el admin, y
+agregarla en **«Enviar como»** dentro del Gmail de esa cuenta, confirmando el
+correo de verificación.
+
+Cuando termines, usa el botón **Probar** de esa fila: te manda un correo desde
+esa dirección. **Abre el correo y mira de quién llegó** — si dice la dirección
+correcta, márcala como «Ya quedó». Es el único modo de saberlo, porque Google
+no avisa cuando la reemplaza.
 
 ### Mandar una plantilla
 

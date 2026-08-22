@@ -5,6 +5,19 @@
 {% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Plantillas" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Plantillas de correo" subtitulo="El cuerpo y el asunto de cada correo que manda El Cartero. Edítalas gráficamente o pídele a El Chalán que las redacte." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="El Cartero" %}
 
+{% if alias_faltantes %}
+<div class="mb-6 rounded-2xl border border-warning-300 bg-warning-50 p-5 dark:border-warning-700 dark:bg-warning-900/20">
+    <h3 class="text-sm font-semibold text-warning-800 dark:text-warning-200">
+        Falta dar de alta {{ alias_faltantes|length }} dirección{{ alias_faltantes|length|pluralize:"es" }} en Google
+    </h3>
+    <p class="mt-1 text-xs text-warning-700 dark:text-warning-300">
+        {{ alias_faltantes|join:", " }} — mientras no estén, esos correos salen desde la dirección de siempre
+        y Google no marca ningún error.
+    </p>
+    <a href="{% url 'ajustes-cartero-remitentes' %}" class="btn-secundario mt-3 inline-block">Ver qué falta →</a>
+</div>
+{% endif %}
+
 {% if borradores %}
 <div class="mb-6 rounded-2xl border border-warning-300 bg-warning-50 p-5 dark:border-warning-700 dark:bg-warning-900/20">
     <h3 class="text-sm font-semibold text-warning-800 dark:text-warning-200">El Chalán dejó {{ borradores|length }} plantilla{{ borradores|length|pluralize }} para que la revises</h3>

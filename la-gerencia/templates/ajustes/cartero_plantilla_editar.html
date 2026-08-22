@@ -55,16 +55,27 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Correo</label>
-                <input type="email" name="remitente_email" value="{{ pl.remitente_email }}"
+                <input type="email" name="remitente_email" value="{{ pl.remitente_email }}" list="alias-conocidos"
                        class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                        placeholder="cobranza@learningcenter.mx">
+                <datalist id="alias-conocidos">
+                    {% for a in alias_conocidos %}<option value="{{ a }}">{% endfor %}
+                </datalist>
             </div>
         </div>
-        <div class="mt-3 rounded-lg border border-warning-200 bg-warning-50 p-3 text-xs text-warning-800 dark:border-warning-800 dark:bg-warning-900/20 dark:text-warning-200">
-            <strong>Antes de usar un alias:</strong> tiene que estar dado de alta en Google, en «Enviar como» de la cuenta
-            de correo. Si no lo está, Google <em>no falla</em>: reemplaza el remitente en silencio y el correo sale desde la
-            dirección de siempre. Guarda y usa el botón de prueba de abajo para comprobarlo.
+        {% if pl.remitente_email and not alias_verificado %}
+        <div class="mt-3 rounded-lg border border-warning-300 bg-warning-50 p-3 text-xs text-warning-800 dark:border-warning-700 dark:bg-warning-900/20 dark:text-warning-200">
+            <strong>{{ pl.remitente_email }} todavía no está dada de alta.</strong> Mientras no lo esté, Google
+            <em>no falla</em>: reemplaza el remitente en silencio y este correo sale desde la dirección de siempre.
+            Los pasos y el botón para comprobarlo están en
+            <a href="{% url 'ajustes-cartero-remitentes' %}" class="underline">Direcciones de envío</a>.
         </div>
+        {% else %}
+        <div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            Si pones una dirección propia, tiene que estar dada de alta en Google («Enviar como»). Las que ya quedaron
+            se consultan en <a href="{% url 'ajustes-cartero-remitentes' %}" class="underline">Direcciones de envío</a>.
+        </div>
+        {% endif %}
     </div>
 
     {# Variables disponibles — clic para copiar #}

@@ -1,3 +1,4 @@
+from .alias_remitente import AliasRemitente
 from .analisis import ConfiguracionAnalisis, TarifaRol
 from .analistas_log import AnalistaLog
 from .cartero import ConfiguracionCorreo
@@ -12,5 +13,5 @@ __all__ = [
     "Credencial", "SLOTS_CREDENCIAL", "TasaImpositiva", "AnalistaLog",
     "ConfiguracionCorreo", "ConfiguracionCobranza", "ConfiguracionFiscal",
     "PlantillaCorreo", "ConfiguracionAnalisis", "TarifaRol",
-    "ReglaCorreo", "CorreoEnviadoRegla",
+    "ReglaCorreo", "CorreoEnviadoRegla", "AliasRemitente",
 ]

@@ -134,6 +134,28 @@ normal del correo. Detalle completo, incluido el asunto de «Enviar como», en e
 Se configura en Gerencia → Ajustes → **El Cartero**, que además tiene su propio
 botón «Probar» que manda un correo de prueba real.
 
+### Los alias de remitente (cobranza@, ventas@…)
+
+Cada plantilla de correo puede salir de su propia dirección. **Esas direcciones
+hay que darlas de alta a mano en Google** — El Despacho no puede crearlas solo
+(haría falta el Admin SDK del Workspace, que hoy no está conectado; ver la deuda
+del sprint S-Plantillas-Correo en CLAUDE.md §8).
+
+**Qué direcciones hacen falta lo dice la app**, no hay que llevar la cuenta
+aparte: *Gerencia → Ajustes → El Cartero → **Direcciones de envío*** lista las
+que declaran las plantillas, marca cuáles faltan y trae los pasos.
+
+Cada alias son dos cosas en Google, y se necesitan las dos:
+
+1. El **alias de la cuenta** (o un grupo), en admin.google.com.
+2. **«Enviar como»** en el Gmail de la cuenta que envía (Configuración →
+   Cuentas), con su correo de verificación confirmado.
+
+> **La trampa:** si falta el paso 2, Gmail **no marca error** — reescribe el
+> remitente en silencio y el correo sale desde la cuenta de siempre. Por eso la
+> pantalla tiene un botón que manda una prueba y te pide mirar de quién llegó:
+> **es la única forma de comprobarlo.**
+
 ### Los seis Chalanes (IA)
 
 Cada uno es una API key que se saca de la consola del proveedor y se pega en
@@ -231,6 +253,7 @@ Las pruebas de verdad son tres, y están en otro lado:
 | **Google OAuth** | Ajustes → botón «Probar» del slot | Round-trip real contra Google |
 | **Cada Chalán** | Gerencia → Chalanes → «Probar conexión» | Llamada real de 1 token, guarda el resultado |
 | **Correo** | Ajustes → El Cartero → «Probar» | Manda un correo de prueba |
+| **Alias de remitente** | Ajustes → El Cartero → Direcciones de envío | Manda la prueba desde ese alias; hay que **mirar de quién llegó** (Gmail no falla, reescribe) |
 
 Para el resto, la comprobación es usar la función: sube una foto de producto para
 Drive, mira el cuadrante del Droplet en El Site para el token de DigitalOcean,

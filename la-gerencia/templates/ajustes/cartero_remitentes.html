@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Direcciones de envío — El Cartero{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Direcciones de envío" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Direcciones de envío" subtitulo="Las direcciones desde las que salen tus correos, y cuáles falta dar de alta en Google." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="El Cartero" %}
+
+{% if faltan %}
+<div class="mb-6 rounded-2xl border border-warning-300 bg-warning-50 p-5 dark:border-warning-700 dark:bg-warning-900/20">
+    <h3 class="text-sm font-semibold text-warning-800 dark:text-warning-200">
+        Falta dar de alta {{ faltan|length }} dirección{{ faltan|length|pluralize:"es" }} en Google
+    </h3>
+    <p class="mt-1 text-xs text-warning-700 dark:text-warning-300">
+        Tus plantillas ya las usan, pero mientras no estén dadas de alta, Google reemplaza el remitente
+        <strong>sin marcar error</strong> y esos correos salen desde {{ cuenta_envia|default:"la cuenta de siempre" }}.
+    </p>
+    <ul class="mt-3 flex flex-wrap gap-2">
+        {% for f in faltan %}<li><code class="badge badge-warning">{{ f.email }}</code></li>{% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Cómo se da de alta una dirección</h2>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        Se hace una sola vez por dirección, en Google. El Despacho no puede crearlas solo
+        (haría falta un permiso de administrador del Workspace que hoy no tiene).
+    </p>
+    <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-gray-600 dark:text-gray-300">
+        <li>En el <strong>Admin de Google Workspace</strong> (admin.google.com), crea la dirección como
+            <strong>alias</strong> de la cuenta {{ cuenta_envia|default:"que envía" }}, o como grupo.</li>
+        <li>Entra al <strong>Gmail de esa cuenta</strong> → Configuración → «Cuentas» →
+            <strong>«Enviar como»</strong> → «Añadir otra dirección».</li>
+        <li>Escribe la dirección, confirma el correo de verificación que llega, y listo.</li>
+        <li>Vuelve aquí, manda una prueba con el botón de la fila y <strong>mira de quién llegó</strong>.
+            Si llegó de la dirección correcta, márcala como lista.</li>
+    </ol>
+</section>
+
+{% if filas %}
+<div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-[720px] w-full text-sm">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3 text-left">Dirección</th>
+                <th class="px-5 py-3 text-left">La usan</th>
+                <th class="px-5 py-3 text-left">Estado</th>
+                <th class="px-5 py-3 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for f in filas %}
+            <tr>
+                <td class="px-5 py-3">
+                    <code class="text-gray-900 dark:text-gray-100">{{ f.email }}</code>
+                    {% if f.nombre %}<p class="text-xs text-gray-500">{{ f.nombre }}</p>{% endif %}
+                </td>
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
+                    {% if f.plantillas %}{{ f.plantillas|join:", " }}
+                    {% else %}<span class="text-gray-400">Ninguna plantilla la usa hoy</span>{% endif %}
+                </td>
+                <td class="px-5 py-3">
+                    {% if f.verificado %}
+                        <span class="badge badge-success">Lista</span>
+                        {% if f.verificado_en %}<p class="text-[11px] text-gray-400">{{ f.verificado_en|date:"d/m/Y" }}</p>{% endif %}
+                    {% elif f.en_uso %}
+                        <span class="badge badge-warning">Falta darla de alta</span>
+                    {% else %}
+                        <span class="badge badge-gray">Sin usar</span>
+                    {% endif %}
+                </td>
+                <td class="px-5 py-3">
+                    <div class="flex items-center justify-end gap-2">
+                        <form method="post" action="{% url 'ajustes-cartero-remitente-probar' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="email" value="{{ f.email }}">
+                            <button type="submit" class="btn-secundario" title="Manda una prueba desde esta dirección">Probar</button>
+                        </form>
+                        <form method="post" action="{% url 'ajustes-cartero-remitente-marcar' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="email" value="{{ f.email }}">
+                            {% if f.verificado %}<input type="hidden" name="desmarcar" value="1">{% endif %}
+                            <button type="submit" class="btn-secundario">
+                                {% if f.verificado %}Quitar marca{% else %}Ya quedó{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Todos los correos salen de la dirección general" descripcion="Cuando le pongas una dirección propia a alguna plantilla, aparecerá aquí con lo que falta para que funcione." icono="inbox" %}
+{% endif %}
+{% endblock %}

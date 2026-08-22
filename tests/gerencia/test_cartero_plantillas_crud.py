@@ -203,3 +203,112 @@ def test_una_plantilla_malformada_no_tumba_la_pantalla(client, usuario_factory):
         "evento": "cotizacion_aprobada", "plantilla": "no-soy-un-numero",
     })
     assert resp.status_code == 404
+
+
+# ── Direcciones de envío (qué alias hay que dar de alta) ─────────────────────
+
+
+def test_la_lista_de_direcciones_sale_de_las_plantillas(client, usuario_factory):
+    """No se captura: se deriva de lo que las plantillas declaran."""
+    from ajustes.models import PlantillaCorreo
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    PlantillaCorreo.objects.create(
+        slug="cob", nombre="Cobranza", activa=True,
+        remitente_email="cobranza@learningcenter.mx",
+    )
+    resp = client.get("/ajustes/cartero/remitentes/")
+    assert resp.status_code == 200
+    emails = {f["email"] for f in resp.context["filas"]}
+    assert "cobranza@learningcenter.mx" in emails
+
+
+def test_una_direccion_en_uso_sin_verificar_sale_como_pendiente(client, usuario_factory):
+    from ajustes.models import PlantillaCorreo
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    PlantillaCorreo.objects.create(
+        slug="cob", nombre="Cobranza", activa=True,
+        remitente_email="cobranza@learningcenter.mx",
+    )
+    resp = client.get("/ajustes/cartero/remitentes/")
+    assert [f["email"] for f in resp.context["faltan"]] == ["cobranza@learningcenter.mx"]
+
+
+def test_marcar_una_direccion_la_saca_de_pendientes(client, usuario_factory):
+    from ajustes.models import PlantillaCorreo
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    PlantillaCorreo.objects.create(
+        slug="cob", nombre="Cobranza", activa=True,
+        remitente_email="cobranza@learningcenter.mx",
+    )
+    client.post("/ajustes/cartero/remitentes/marcar",
+                {"email": "cobranza@learningcenter.mx"})
+    resp = client.get("/ajustes/cartero/remitentes/")
+    assert resp.context["faltan"] == []
+
+
+def test_desmarcar_la_devuelve_a_pendientes(client, usuario_factory):
+    from ajustes.models import AliasRemitente, PlantillaCorreo
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    PlantillaCorreo.objects.create(
+        slug="cob", nombre="Cobranza", activa=True,
+        remitente_email="cobranza@learningcenter.mx",
+    )
+    alias = AliasRemitente.objects.create(email="cobranza@learningcenter.mx")
+    alias.marcar_verificado(u)
+    client.post("/ajustes/cartero/remitentes/marcar",
+                {"email": "cobranza@learningcenter.mx", "desmarcar": "1"})
+    resp = client.get("/ajustes/cartero/remitentes/")
+    assert [f["email"] for f in resp.context["faltan"]] == ["cobranza@learningcenter.mx"]
+
+
+def test_la_direccion_se_compara_sin_importar_mayusculas(client, usuario_factory):
+    from ajustes.models import PlantillaCorreo
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    PlantillaCorreo.objects.create(
+        slug="cob", nombre="Cobranza", activa=True,
+        remitente_email="Cobranza@LearningCenter.mx",
+    )
+    client.post("/ajustes/cartero/remitentes/marcar",
+                {"email": "cobranza@learningcenter.mx"})
+    resp = client.get("/ajustes/cartero/remitentes/")
+    assert resp.context["faltan"] == []
+
+
+def test_probar_manda_desde_esa_direccion(client, usuario_factory, monkeypatch):
+    capturado = {}
+
+    def _fake(*, destinatario, asunto, html, texto="", adjuntos=None, remitente=""):
+        from lib.cartero import ResultadoCorreo
+        capturado["remitente"] = remitente
+        return ResultadoCorreo(ok=True, proveedor="smtp")
+
+    monkeypatch.setattr("lib.cartero.enviar", _fake)
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    client.post("/ajustes/cartero/remitentes/probar", {
+        "email": "cobranza@learningcenter.mx", "destino": "yo@ejemplo.com",
+    })
+    assert capturado["remitente"] == "cobranza@learningcenter.mx"
+
+
+def test_la_lista_de_plantillas_avisa_de_lo_que_falta(client, usuario_factory):
+    from ajustes.models import PlantillaCorreo
+
+    u = usuario_factory(rol="super_admin")
+    client.force_login(u)
+    PlantillaCorreo.objects.create(
+        slug="cob", nombre="Cobranza", activa=True,
+        remitente_email="cobranza@learningcenter.mx",
+    )
+    resp = client.get("/ajustes/cartero/plantillas/")
+    assert "cobranza@learningcenter.mx" in resp.context["alias_faltantes"]

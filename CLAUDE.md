@@ -6075,10 +6075,20 @@ puede escribir **también a direcciones dictadas** · sus plantillas nacen
   las listas a los primeros elementos antes de enseñárselas al LLM, así que con
   las 6 de sistema al frente **las propias quedaban fuera del corte** y El
   Chalán no sabía que existían → van primero, con test que lo fija.
-- **55 tests nuevos** (`test_plantillas_correo_libres` 20,
-  `test_chalan_plantillas_correo` 14, `test_cartero_plantillas_crud` 15,
-  `test_cliente_enviar_correo` 6), los críticos **verificados contra el código
-  sin arreglar** (quitando el alias y el candado, sus dos tests fallan).
+- **Direcciones de envío** (`AliasRemitente`, migración `ajustes/0016`): la
+  pantalla que contesta «¿qué alias tengo que crear a mano?». **La lista NO se
+  captura, se DERIVA** de lo que declaran las plantillas; la tabla sólo guarda
+  lo que la app no puede deducir (si alguien ya lo dio de alta y lo comprobó).
+  Avisa en tres lugares —su pantalla, la lista de plantillas y el editor— y el
+  MCP expone `direcciones_sin_dar_de_alta` para que El Chalán lo advierta antes
+  de mandar. El botón «Probar» manda desde ese alias y pide **mirar de quién
+  llegó**: es la única comprobación posible.
+- **69 tests nuevos** (`test_plantillas_correo_libres` 20,
+  `test_chalan_plantillas_correo` 15, `test_cartero_plantillas_crud` 23,
+  `test_cliente_enviar_correo` 6, más los de alias), los críticos **verificados
+  contra el código sin arreglar** (quitando el alias y el candado, sus dos tests
+  fallan). Suite completa: **2954 pass**, 10 skipped, y los 3 fallos locales de
+  Redis de siempre (pasan en CI).
 
 **Deuda diseñada**: **El Chalán no puede crear ni borrar los alias en Google** —
 se verificó y **no existe MCP de Google Admin en el proyecto** (el único es
@@ -6087,7 +6097,8 @@ se verificó y **no existe MCP de Google Admin en el proyecto** (el único es
 (`admin.directory.user.alias`) y «Enviar como» necesitaría
 `gmail.settings.sharing`, ambos sensibles y con consentimiento de un admin del
 Workspace — y sin cuenta de servicio, porque la organización bloquea las llaves
-JSON. Hoy los alias se dan de alta a mano en la consola. El envío desde la ficha
+JSON. Hoy los alias se dan de alta a mano en la consola, y **la pantalla
+«Direcciones de envío» dice exactamente cuáles faltan**. El envío desde la ficha
 no adjunta archivos. Las reglas mandan al cliente, no al equipo. Y el cron de
 clientes dormidos usa `Proyecto.creado_en`, no la última actividad.
 

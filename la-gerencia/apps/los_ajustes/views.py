@@ -218,11 +218,14 @@ def cartero_plantillas(request):
     for slug in SLUGS_PLANTILLA:
         PlantillaCorreo.obtener(slug)
 
+    from ajustes.models.alias_remitente import faltan_por_dar_de_alta
+
     todas = list(PlantillaCorreo.objects.all())
     return render(request, "ajustes/cartero_plantillas.html", {
         "de_sistema": [p for p in todas if p.sistema],
         "propias": [p for p in todas if not p.sistema],
         "borradores": [p for p in todas if p.es_borrador],
+        "alias_faltantes": faltan_por_dar_de_alta(),
     })
 
 
@@ -303,7 +306,26 @@ def cartero_plantilla_editar(request, slug: str):
     return render(request, "ajustes/cartero_plantilla_editar.html", {
         "pl": pl,
         "variables": variables_de(slug),
+        "alias_verificado": _alias_verificado(pl.remitente_email),
+        "alias_conocidos": _alias_conocidos(),
     })
+
+
+def _alias_verificado(email: str) -> bool:
+    """¿Esta dirección ya se dio de alta en Google y se comprobó?"""
+    from ajustes.models import AliasRemitente
+
+    email = (email or "").strip().lower()
+    if not email:
+        return True  # sin alias no hay nada que dar de alta
+    return AliasRemitente.objects.filter(email=email, verificado=True).exists()
+
+
+def _alias_conocidos() -> list[str]:
+    """Direcciones ya registradas, para sugerirlas y evitar dedazos."""
+    from ajustes.models import AliasRemitente
+
+    return list(AliasRemitente.objects.values_list("email", flat=True))
 
 
 @requiere_permiso("ajustes", "acceder")
@@ -471,6 +493,73 @@ def cartero_plantilla_redactar(request, slug: str):
     )
     return JsonResponse(res)
 
+
+# ── Direcciones de envío (qué alias hay que dar de alta en Google) ─────────
+
+
+@requiere_permiso("ajustes", "acceder")
+def cartero_remitentes(request):
+    """Qué direcciones usan las plantillas y cuáles falta dar de alta.
+
+    La lista NO se captura: se deriva de lo que declaran las plantillas. Lo
+    único que se guarda es lo que la app no puede averiguar sola — si alguien
+    ya creó el alias en Google y comprobó que llega bien.
+    """
+    from ajustes.models.alias_remitente import remitentes_en_uso
+    from lib import cartero
+
+    filas = remitentes_en_uso()
+    return render(request, "ajustes/cartero_remitentes.html", {
+        "filas": filas,
+        "faltan": [f for f in filas if f["en_uso"] and not f["verificado"]],
+        "cuenta_envia": cartero._cred("smtp_user") or cartero._cred("smtp_from_email"),
+    })
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_remitente_marcar(request):
+    """Marca (o desmarca) una dirección como ya dada de alta y comprobada."""
+    from ajustes.models import AliasRemitente
+
+    email = (request.POST.get("email") or "").strip().lower()
+    if not email:
+        messages.error(request, "Falta la dirección.")
+        return redirect("ajustes-cartero-remitentes")
+
+    alias, _ = AliasRemitente.objects.get_or_create(email=email)
+    if request.POST.get("desmarcar"):
+        alias.desmarcar()
+        messages.success(request, f"{email} vuelve a la lista de pendientes.")
+    else:
+        alias.marcar_verificado(request.user)
+        messages.success(request, f"{email} queda marcada como lista.")
+    return redirect("ajustes-cartero-remitentes")
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def cartero_remitente_probar(request):
+    """Manda una prueba DESDE esa dirección, para ver si Google la respeta."""
+    from lib import cartero
+
+    email = (request.POST.get("email") or "").strip()
+    destino = (request.POST.get("destino") or request.user.email or "").strip()
+    if not email or not destino:
+        messages.error(request, "Falta la dirección o el destinatario.")
+        return redirect("ajustes-cartero-remitentes")
+
+    res = cartero.probar(destino, remitente=email)
+    if res.ok:
+        messages.success(
+            request,
+            f"Prueba enviada a {destino}. Abre ese correo y mira de quién llegó: "
+            f"si dice {email}, el alias ya quedó y puedes marcarlo como listo. "
+            "Si dice otra dirección, Google lo reemplazó y falta darlo de alta.",
+        )
+    else:
+        messages.error(request, f"No se pudo enviar: {res.error}")
+    return redirect("ajustes-cartero-remitentes")
 
 # ── Google Drive — asistente guiado (OAuth sin clave) ─────────────────────────
 
