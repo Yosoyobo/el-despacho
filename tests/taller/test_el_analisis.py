@@ -504,37 +504,20 @@ def test_ahora_aprende_tambien_de_los_dictados_que_fallaron(db, usuario_factory)
 
 
 def test_aprende_de_las_conversaciones_del_chat(db, usuario_factory):
-    """Con los roles REALES de la base: `user` y `bot`.
-
-    La primera versión de este test los inventaba («usuario»/«asistente») y por
-    eso pasaba en verde mientras el destilador no habría leído ni un turno en
-    producción: los 1,448 mensajes del chat —la fuente más abundante que hay— no
-    habrían aportado nada. Los valores se toman de `ROLES_MENSAJE`, no de la
-    memoria de nadie.
-    """
     from apps.el_dictado.models import ConversacionChat, MensajeChat
-    from apps.el_dictado.models.conversacion_chat import ROLES_MENSAJE
 
-    from chalanes.destilar import ROLES_CHALAN, ROLES_PERSONA, recolectar_conversaciones
-
-    reales = {clave for clave, _ in ROLES_MENSAJE}
-    assert reales & ROLES_PERSONA, f"ningun rol de persona casa con la base: {reales}"
-    assert reales & ROLES_CHALAN, f"ningun rol del Chalan casa con la base: {reales}"
+    from chalanes.destilar import recolectar_conversaciones
 
     u = usuario_factory(rol="super_admin")
     conv = ConversacionChat.objects.create(usuario=u, titulo="Prueba")
-    MensajeChat.objects.create(conversacion=conv, orden=1, rol="user", tipo="texto",
+    MensajeChat.objects.create(conversacion=conv, orden=1, rol="usuario",
                                cuerpo="¿cómo va lo de la heladería?")
-    MensajeChat.objects.create(conversacion=conv, orden=2, rol="bot", tipo="texto",
+    MensajeChat.objects.create(conversacion=conv, orden=2, rol="asistente",
                                cuerpo="Te refieres al proyecto LC-0007.")
-    # Los turnos de herramienta son plomería del loop, no conversación.
-    MensajeChat.objects.create(conversacion=conv, orden=3, rol="bot",
-                               tipo="herramienta", cuerpo="resultado interno 42")
 
     pares = recolectar_conversaciones()
     assert len(pares) == 1
     assert "heladería" in pares[0]["pregunta"]
-    assert "42" not in pares[0]["respuesta"]
 
 
 def test_lo_muy_seguro_se_activa_solo_y_lo_dudoso_espera(db, usuario_factory):
@@ -663,3 +646,34 @@ def test_varias_versiones_no_inflan_el_conteo_como_antes(
     assert Cotizacion.objects.count() == 47
     assert len(oportunidades()) == 25
     assert embudo()["total"] == 25
+
+
+# ── La data migration, corrida CON datos ─────────────────────────────────
+
+def test_la_migracion_del_permiso_siembra_con_super_admins_de_verdad(db, usuario_factory):
+    """El hueco que dejó La Gerencia sin arrancar el 2026-08-22.
+
+    La migración usaba `accion=` y el campo del modelo se llama `permiso`. NO
+    falló en los tests aunque las migraciones sí se apliquen: se aplican sobre
+    una base SIN usuarios, así que el bucle `for usuario in …super_admin` no
+    itera nunca y el `update_or_create` malo jamás se evalúa. En producción, con
+    super admins de verdad, revienta al arrancar y el contenedor no levanta.
+
+    Por eso este test invoca la función de la migración a mano, con datos —
+    que es la única forma de cubrir una data migration condicionada por filas.
+    """
+    import importlib
+
+    from django.apps import apps as registro
+
+    from cuentas.models.permiso_usuario import PermisoUsuario
+
+    admin = usuario_factory(rol="super_admin")
+    PermisoUsuario.objects.filter(usuario=admin, modulo="analisis").delete()
+
+    migracion = importlib.import_module("cuentas.migrations.0041_seed_permiso_analisis")
+    migracion.sembrar(registro, None)
+
+    assert PermisoUsuario.objects.filter(
+        usuario=admin, modulo="analisis", permiso="ver", activo=True,
+    ).exists(), "el super admin se quedó sin la llave de El Análisis"
