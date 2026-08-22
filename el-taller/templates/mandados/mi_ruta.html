@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers static %}
+{% load forms_helpers horas static %}
 {% block title %}Mi ruta de hoy — El Taller{% endblock %}
 
 {% comment %}
@@ -24,7 +24,7 @@ navega a un destino a la vez, así que se le manda la primera.
         <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mi ruta de hoy</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {% if paradas %}
-                {{ paradas|length }} parada{{ paradas|length|pluralize }}, en orden de cercanía{% if total_km %} · aprox. {{ total_km }} km{% endif %}.
+                {{ paradas|length }} parada{{ paradas|length|pluralize }}{% if planeada %}, en el orden que se planeó{% else %}, en orden de cercanía{% endif %}{% if total_km %} · aprox. {{ total_km }} km{% endif %}.
             {% else %}
                 No traes mandados abiertos.
             {% endif %}
@@ -77,6 +77,11 @@ navega a un destino a la vez, así que se le manda la primera.
                 {% if p.lugar %}{% if p.cliente %} · {% endif %}{{ p.lugar }}{% endif %}
                 {% if p.lat is None %}<span class="text-warning-600 dark:text-warning-400"> · sin ubicación, no entra en la ruta</span>{% endif %}
             </p>
+            {% if p.cita %}
+            <p class="mt-0.5 text-xs font-medium text-brand-600 dark:text-brand-400">Cita a las {{ p.cita|hfmt }}</p>
+            {% elif p.llegada %}
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Llegada estimada {{ p.llegada|hfmt }}</p>
+            {% endif %}
         </div>
         <span class="badge badge-hex shrink-0" style="--ec: #465fff">{{ p.estado }}</span>
     </li>
@@ -90,7 +95,14 @@ navega a un destino a la vez, así que se le manda la primera.
 </p>
 {% endif %}
 
-{% if not origen %}
+{% if planeada %}
+<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+    Esta ruta te la planearon{% if ruta.origen_etiqueta %}, saliendo de {{ ruta.origen_etiqueta }}{% endif %}.
+    Las horas son estimadas; las que tienen cita son fijas.
+</p>
+{% endif %}
+
+{% if not origen and not planeada %}
 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
     Todavía no sé desde dónde sales, así que el orden arranca por la primera parada.
     En cuanto cheques entrada o registres una visita, la ruta se calcula desde donde estés.

@@ -172,9 +172,8 @@ def test_replanear_no_duplica_las_paradas_ya_ruteadas(proyecto_factory, usuario_
 
 def test_solo_puede_haber_una_ruta_viva_por_runner_y_dia(usuario_factory):
     """El candado vive en la BASE, no en el código que escribe."""
-    from django.db import IntegrityError, transaction
-
     from apps.el_pizarron.models.ruta import Ruta
+    from django.db import IntegrityError, transaction
     a = usuario_factory(rol="disenador", email="candado@lc.mx")
     Ruta.objects.create(fecha=HOY, runner=a, estado="borrador")
     with pytest.raises(IntegrityError), transaction.atomic():
@@ -378,7 +377,9 @@ def test_el_aviso_al_cliente_arranca_apagado(proyecto_factory, usuario_factory,
 
 def test_el_super_admin_trae_las_llaves_del_planeador(usuario_factory):
     from lib.permisos import (
-        puede_despachar_rutas, puede_planear_rutas, puede_ver_rutas,
+        puede_despachar_rutas,
+        puede_planear_rutas,
+        puede_ver_rutas,
     )
     jefe = usuario_factory(rol="super_admin", email="jefe-rutas@lc.mx")
     assert puede_ver_rutas(jefe)
@@ -398,3 +399,115 @@ def test_rutas_aparece_en_el_catalogo_delegable():
     """Si no está en el catálogo, no se puede delegar desde El Directorio."""
     from lib.permisos_defaults import CATALOGO_PERMISOS
     assert set(CATALOGO_PERMISOS["rutas"]) == {"ver", "planear", "despachar"}
+
+
+# ── 8. Las pantallas ──────────────────────────────────────────────────────────
+
+def test_el_panel_abre_para_quien_tiene_permiso(client, usuario_factory):
+    jefe = usuario_factory(rol="super_admin", email="panel@lc.mx")
+    client.force_login(jefe)
+    r = client.get("/rutas/")
+    assert r.status_code == 200
+    assert b"Planeador de rutas" in r.content
+
+
+def test_el_panel_se_niega_sin_permiso(client, usuario_factory):
+    u = usuario_factory(rol="disenador", email="sin-permiso@lc.mx")
+    client.force_login(u)
+    assert client.get("/rutas/").status_code == 403
+
+
+def test_planear_desde_la_pantalla_arma_las_rutas(
+        client, proyecto_factory, usuario_factory):
+    from apps.el_pizarron.models.ruta import Ruta
+
+    jefe = usuario_factory(rol="super_admin", email="planea@lc.mx")
+    a = usuario_factory(rol="disenador", email="rr@lc.mx")
+    _hacer_runner(a)
+    p = proyecto_factory(estado="en_proceso_diseno")
+    _mandado(p, CENTRO)
+
+    client.force_login(jefe)
+    r = client.post("/rutas/planear", {
+        "fecha": HOY.isoformat(), "origen_modo": "runner_abierta",
+    })
+    assert r.status_code == 302
+    assert Ruta.objects.filter(fecha=HOY).exists()
+
+
+def test_el_arrastre_reordena_por_post(client, proyecto_factory, usuario_factory):
+    """El motor de arrastre postea `orden=<pk>` repetido; esto valida el contrato."""
+    from apps.el_pizarron.planeador import planear_dia
+
+    jefe = usuario_factory(rol="super_admin", email="arr@lc.mx")
+    a = usuario_factory(rol="disenador", email="arr-r@lc.mx")
+    _hacer_runner(a)
+    p = proyecto_factory(estado="en_proceso_diseno")
+    _mandado(p, CERCA, titulo="Uno")
+    _mandado(p, LEJOS, titulo="Dos")
+    ruta = planear_dia(HOY, origen_modo="runner_abierta")["rutas"][0]
+    pks = list(ruta.paradas.values_list("pk", flat=True))
+
+    client.force_login(jefe)
+    r = client.post(f"/rutas/{ruta.pk}/reordenar",
+                    {"orden": [str(x) for x in reversed(pks)]})
+    assert r.status_code == 204
+    assert list(ruta.paradas.values_list("pk", flat=True)) == list(reversed(pks))
+
+
+def test_mover_una_parada_por_post(client, proyecto_factory, usuario_factory):
+    from apps.el_pizarron.models.ruta import Ruta
+    from apps.el_pizarron.planeador import planear_dia
+
+    jefe = usuario_factory(rol="super_admin", email="mv@lc.mx")
+    a = usuario_factory(rol="disenador", email="mv-a@lc.mx")
+    b = usuario_factory(rol="disenador", email="mv-b@lc.mx")
+    _hacer_runner(a, b)
+    p = proyecto_factory(estado="en_proceso_diseno")
+    _mandado(p, CENTRO, titulo="Uno")
+    _mandado(p, LEJOS, titulo="Dos")
+    planear_dia(HOY, origen_modo="runner_abierta")
+    ruta_a = Ruta.objects.filter(fecha=HOY, runner=a).first()
+    ruta_b = Ruta.objects.filter(fecha=HOY, runner=b).first()
+    parada = ruta_a.paradas.first()
+
+    client.force_login(jefe)
+    r = client.post(f"/rutas/paradas/{parada.pk}/mover", {"ruta": str(ruta_b.pk)})
+    assert r.status_code == 204
+    parada.refresh_from_db()
+    assert parada.ruta_id == ruta_b.pk
+
+
+def test_mi_ruta_muestra_la_planeada_si_existe(client, proyecto_factory, usuario_factory):
+    """Si alguien ya planeó la vuelta, «Mi ruta» enseña ÉSA, no otra calculada."""
+    from apps.el_pizarron.models.ruta import Ruta
+    from apps.el_pizarron.planeador import planear_dia
+
+    a = usuario_factory(rol="disenador", email="miruta@lc.mx")
+    _hacer_runner(a)
+    p = proyecto_factory(estado="en_proceso_diseno")
+    _mandado(p, CENTRO, titulo="Planeada", fecha=dt.date.today())
+    planear_dia(dt.date.today(), origen_modo="runner_abierta")
+    assert Ruta.objects.filter(runner=a).exists()
+
+    client.force_login(a)
+    r = client.get("/mandados/mi-ruta/")
+    assert r.status_code == 200
+    assert b"Esta ruta te la planearon" in r.content
+
+
+def test_la_capacidad_del_chalan_lee_las_rutas_planeadas(
+        proyecto_factory, usuario_factory):
+    from capacidades import ejecutar
+
+    jefe = usuario_factory(rol="super_admin", email="cap@lc.mx")
+    a = usuario_factory(rol="disenador", email="cap-r@lc.mx")
+    _hacer_runner(a)
+    p = proyecto_factory(estado="en_proceso_diseno")
+    _mandado(p, CENTRO, titulo="Para el Chalán")
+    from apps.el_pizarron.planeador import planear_dia
+    planear_dia(HOY, origen_modo="runner_abierta")
+
+    res = ejecutar("rutas_planeadas", {"fecha": HOY.isoformat()}, jefe)
+    assert res["rutas"], res
+    assert res["rutas"][0]["paradas"]

@@ -460,9 +460,8 @@ def mover_parada(parada, ruta_destino, *, posicion: int | None = None):
     Devuelve `(ruta_origen, ruta_destino)` ya recalculadas. Si la parada ya está
     en esa ruta, sólo reacomoda.
     """
-    from django.db import transaction
-
     from apps.el_pizarron.models.ruta import ParadaRuta
+    from django.db import transaction
     origen = parada.ruta
     if origen.pk == ruta_destino.pk:
         return origen, origen

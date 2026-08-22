@@ -26,5 +26,6 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         "catalogo": lambda u: permisos.puede(u, "catalogo", "ver_nombres"),
         # Quien puede escribirle a un cliente puede ver con qué moldes cuenta.
         "comunicacion": permisos.puede_enviar_correo,
+        "rutas": permisos.puede_ver_rutas,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

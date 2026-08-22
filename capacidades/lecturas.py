@@ -407,8 +407,17 @@ def _h_metas_sugeridas(args: dict, usuario) -> dict:
 
 
 def _h_ruta_del_dia(args: dict, usuario) -> dict:
-    """La vuelta de hoy de un runner: paradas en orden y kilómetros."""
+    """La vuelta de hoy de un runner: paradas en orden y kilómetros.
+
+    Si alguien ya le PLANEÓ la ruta (S-Planeador-Rutas), ésa es la respuesta: es
+    la que trae el orden que decidió una persona y las citas respetadas. Sólo si
+    no hay ruta guardada se calcula al vuelo, que es el comportamiento de antes.
+    """
     from apps.el_pizarron.ruta import ruta_de
+
+    guardada = _ruta_guardada_de(usuario)
+    if guardada is not None:
+        return guardada
 
     r = ruta_de(usuario)
     if not r["paradas"]:
@@ -424,6 +433,106 @@ def _h_ruta_del_dia(args: dict, usuario) -> dict:
         "sin_ubicar": r["sin_ubicar"],
     }
 
+
+def _ruta_guardada_de(usuario, fecha=None) -> dict | None:
+    """La ruta planeada de esa persona para ese día, o None si no hay.
+
+    Devuelve la MISMA forma que `_h_ruta_del_dia` para que el LLM no tenga que
+    distinguir de dónde salió la respuesta.
+    """
+    import datetime as dt
+
+    from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS, Ruta
+
+    ruta = (
+        Ruta.objects.filter(
+            fecha=fecha or dt.date.today(), runner=usuario,
+            estado__in=ESTADOS_RUTA_VIVOS,
+        )
+        .prefetch_related("paradas__mandado__tarea__proyecto__cliente")
+        .first()
+    )
+    if ruta is None:
+        return None
+    paradas = []
+    for parada in ruta.paradas.all():
+        tarea = parada.mandado.tarea
+        proyecto = getattr(tarea, "proyecto", None)
+        cliente = getattr(proyecto, "cliente", None)
+        paradas.append({
+            "orden": parada.orden,
+            "que": tarea.titulo,
+            "cliente": cliente.razon_social if cliente is not None else "",
+            "lugar": parada.etiqueta,
+            "ubicado": parada.lat is not None,
+            "cita": parada.hora_cita.strftime("%H:%M") if parada.hora_cita else "",
+            "llegada_estimada": (
+                parada.llegada_estimada.strftime("%H:%M")
+                if parada.llegada_estimada else ""
+            ),
+            "estado": parada.mandado.estado,
+        })
+    return {
+        "hay_ruta": bool(paradas),
+        "planeada": True,
+        "estado_ruta": ruta.estado,
+        "sale_de": ruta.origen_etiqueta or "",
+        "redonda": ruta.es_redonda,
+        "paradas": paradas,
+        "total_km": ruta.distancia_km,
+        "sin_ubicar": sum(1 for x in paradas if not x["ubicado"]),
+    }
+
+
+def _h_rutas_planeadas(args: dict, usuario) -> dict:
+    """Las rutas planeadas de un día: quién lleva qué y en qué orden.
+
+    Es la vista de quien ORGANIZA el reparto, así que va con permiso. Un runner
+    que sólo tiene `rutas.ver` recibe únicamente la suya: leer la vuelta de un
+    compañero no es asunto suyo.
+    """
+    import datetime as dt
+
+    from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS, Ruta
+
+    from lib.permisos import puede_planear_rutas
+
+    texto = (args.get("fecha") or "").strip()
+    try:
+        fecha = dt.date.fromisoformat(texto) if texto else dt.date.today()
+    except ValueError:
+        return {"error": f"Fecha no válida: {texto!r}. Se espera AAAA-MM-DD."}
+
+    qs = (
+        Ruta.objects.filter(fecha=fecha, estado__in=ESTADOS_RUTA_VIVOS)
+        .select_related("runner")
+        .prefetch_related("paradas__mandado__tarea__proyecto__cliente")
+    )
+    if not puede_planear_rutas(usuario):
+        qs = qs.filter(runner=usuario)
+
+    nombre = (args.get("runner") or "").strip()
+    if nombre:
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(runner__nombre_completo__icontains=nombre)
+            | Q(runner__email__icontains=nombre)
+        )
+
+    rutas = []
+    for ruta in qs:
+        detalle = _ruta_guardada_de(ruta.runner, fecha) or {}
+        rutas.append({
+            "runner": ruta.runner.nombre_completo,
+            "estado": ruta.estado,
+            "km_estimados": ruta.distancia_km,
+            "paradas": detalle.get("paradas", []),
+        })
+    if not rutas:
+        return {"fecha": str(fecha), "rutas": [],
+                "nota": "No hay rutas planeadas para ese día."}
+    return {"fecha": str(fecha), "rutas": rutas,
+            "nota": "Los kilómetros y las horas son estimados (línea recta)."}
 
 def _h_sugerir_runner(args: dict, usuario) -> dict:
     """A quién conviene darle una entrega, y por qué.
@@ -1215,6 +1324,20 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={},
         gating="abierto", fn=_h_ruta_del_dia,
+    ),
+    "rutas_planeadas": Capacidad(
+        nombre="rutas_planeadas",
+        descripcion=(
+            "Las rutas de reparto PLANEADAS de un día: quién lleva qué, en qué "
+            "orden, con la cita y la llegada estimada. Args opcionales: fecha "
+            "(AAAA-MM-DD, por default hoy) y runner (nombre o correo). Para tu "
+            "propia vuelta usa `ruta_del_dia`."
+        ),
+        args_schema={
+            "fecha": {"tipo": "str", "requerido": False},
+            "runner": {"tipo": "str", "requerido": False},
+        },
+        gating="rutas", fn=_h_rutas_planeadas,
     ),
     "sugerir_runner": Capacidad(
         nombre="sugerir_runner",

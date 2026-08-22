@@ -10955,3 +10955,115 @@ El buzón se importa de `buzon.models` (app raíz), no `apps.buzon`.
 - La distancia de los mandados es **en línea recta**; la ruta se ordena por vecino
   más cercano. Para 5-10 paradas queda muy cerca de lo óptimo, pero no es la ruta
   perfecta ni considera el tráfico.
+
+---
+
+# S-Planeador-Rutas — El planeador: el reparto del día guardado, y la ruta por correo (2026-08-23, VERSION 2026.08.24)
+
+Oscar, en tres mensajes: «ya tenemos que lanzar el planeador de rutas» · «hay un
+correo de runner que debe estar super integrado a esto» · «recuerdas que pedí que
+se pudieran exportar a un app, verdad?». Handoff: `docs/SPRINT-Planeador-Rutas.md`.
+
+## El hallazgo que dio vuelta al sprint
+
+El planeador **ya existía a medias y sin commitear** en el sprint que corría en
+paralelo (`agent/kpis-bi`): `el_pizarron/ruta.py` con el orden por vecino más
+cercano, los botones de **Waze / Google Maps / Apple Maps** con sus íconos
+vendoreados, los campos `inicio/fin_lat/lng` del `Mandado`, `evaluar_runners` y
+hasta una capacidad MCP `ruta_del_dia`. Su docstring citaba a Oscar textualmente:
+«esto va a acabar en la planeación de rutas y un botón para exportarla a Waze o
+Google Maps o Apple Maps».
+
+Iba a construir un **segundo planeador en paralelo**, y las dos versiones ya
+peleaban por la MISMA migración (`pizarron/0014`). Se encontró porque Oscar
+preguntó si me acordaba del pedido de exportar y fui a **verificarlo** en la
+memoria en vez de contestar de oído: el único archivo que mencionaba Waze era
+`memory/sprint-kpis-bi.md`. Regla nueva:
+`memory/regla-revisar-worktrees-antes-de-disenar` — el reconocimiento va sobre
+TODOS los worktrees, porque el trabajo sin commitear no sale en `git log`.
+
+## La rama de integración (decisión de Oscar, con el costo dicho)
+
+V2 necesitaba piezas de **dos ramas sin mergear a la vez**: el alias
+`runner@learningcenter.mx` vive en `agent/alias-personales` (El Cartero) y el
+planeador V1 en `agent/kpis-bi`. Ninguna estaba en main, y las dos bases habían
+divergido (11 commits contra 4). Se le presentaron cuatro caminos y eligió armar
+la rama de integración de inmediato. **Costo aceptado y comunicado:** el PR
+arrastra los tres sprints entrelazados y no se puede revertir por separado.
+
+El trabajo sin commitear de kpis-bi se trajo como **parche + copia SIN tocar su
+worktree**, para no estorbarle a esa sesión. Todo el código entró limpio; los
+únicos tres conflictos fueron de documentos (CLAUDE.md, BITACORA, DOC_05) y se
+conservaron **ambas** entradas. `lib/version.py` se resolvió a la fecha mayor.
+
+## Decisiones de Oscar (AskUserQuestion)
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Qué deja guardado? | Ruta **guardada** por runner y día (no una vista que se recalcula) |
+| ¿Reparte o una a la vez? | **Reparte entre los runners disponibles** — eligió la opción más potente, no la que yo recomendaba |
+| ¿Hora o kilometraje? | **La hora es cita fija** |
+| ¿De dónde sale? | **A y B**: los dos modos conviven, elegibles por ruta |
+
+## Lo entregado
+
+- **`Ruta` + `ParadaRuta`** (migración `pizarron/0015`; el `0014` es de kpis-bi —
+  aquél mide el viaje REAL, esto guarda el PLANEADO). «Una sola ruta viva por
+  runner y día» es un **`UniqueConstraint` parcial en la BASE**, no una promesa
+  del código. Snapshots del origen y del destino: sin ellos, reabrir una ruta de
+  la semana pasada la recalcularía con datos de hoy.
+- **`planeador.py`** — `_ordenar_con_citas` deja las citas como anclas en orden
+  de reloj y el **2-opt corre sólo DENTRO de los tramos entre anclas**: por
+  construcción no existe un reordenamiento que mueva una cita. `_repartir` usa
+  inserción más barata con empujón por carga. `estimar_horas` espera si se llega
+  antes de la cita.
+- **El correo que pidió integrar** — `rutas_correo.py`: la ruta le llega al
+  runner **desde `runner@learningcenter.mx`**, con plantilla editable
+  `ruta_runner` que nace con el alias puesto (para eso se extendió
+  `PlantillaCorreo.obtener()` con remitente por default, aditivo). Idempotente y
+  best-effort: una ruta no se deja de despachar por un correo. El aviso al
+  cliente es el evento nuevo `mandado_en_camino`, que pasa por `ReglaCorreo` y
+  **arranca apagado**.
+- **Los enlaces a las apps NO se reescribieron**: `enlaces_de(ruta)` reusa los de
+  `ruta.py` (V1). Y **`ruta_del_dia` ahora prefiere la ruta GUARDADA** si existe,
+  en la pantalla y en la capacidad del Chalán: una vez despachada, la planeada ES
+  la ruta.
+- **Permisos** `rutas` × {ver, planear, despachar} (`cuentas/0042`; el rol Runner
+  recibe sólo `ver`). **En `PermisoUsuario` el campo es `permiso`, no `accion`.**
+- **MCP**: capacidad nueva `rutas_planeadas` (gating `rutas`; un runner sólo ve la
+  suya) + `ruta_del_dia` extendida, ambas en `CONSULTAS_CHAT`.
+- **Pantalla `/rutas/`**: tarjeta por runner, mapa Leaflet con una línea de color
+  por ruta, paradas arrastrables con `data-arr-*` sobre el motor único
+  `arrastrar.js` (cero JS nuevo). Se cuelga de Mandados en vez de tocar el
+  sidebar (habría pedido migración de `SidebarOrden`).
+
+## Pruebas
+
+**32 nuevas** (`tests/taller/test_planeador_rutas.py`) + **256 de regresión
+verdes** en el radio de impacto (pizarrón, mandados, runner, cercanía, KPIs BI,
+chat del Chalán, correos, alias, plantillas, Cartero, permisos, rearquitectura,
+candado de Novedades y candado de comentarios de ambas apps).
+
+Un test destapó un bug que iba a la bandeja de cada runner: el asunto decía
+**«1 paradas»**. Otro fallo fue de mi propio test —cambié el correo en una
+instancia y `ruta.runner` seguía con la vieja—, no del código.
+
+## Colisión de numeración conocida
+
+El sprint de **La Limpieza** (en vuelo, sin commitear en el árbol principal)
+también toma un `cuentas/0042`. Cuando las ramas se junten, Django verá dos hojas:
+se renombra una o se genera la migración de merge. Es de un archivo.
+
+## Deuda diseñada
+
+- **Distancia en línea recta**: el ORDEN sale bien, los km y los ETA son
+  estimados. Un río o un eje sin retorno pueden mentirle al orden. El cambio está
+  encapsulado en una sola función por si algún día se pone un OSRM propio.
+- `VELOCIDAD_KMH` y `MINUTOS_POR_PARADA` son **constantes**: volverlas
+  configurables es una pantalla en La Gerencia, y eso se pregunta antes.
+- La hora es un **ancla, no una ventana** `[desde, hasta]`: una cita «entre 2 y 4»
+  hoy se captura como una hora.
+- El reparto no considera capacidad del vehículo ni volumen de la carga.
+- La ruta no se recalcula sola si un destino cambia después de planear (por
+  diseño: los snapshots). Hay botón de replanear, y replanear no duplica.
+- El planeador **no se invoca desde El Chalán**: lee las rutas, no las planea.

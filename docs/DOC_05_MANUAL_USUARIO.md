@@ -5,6 +5,71 @@
 
 ---
 
+## Novedades — El planeador de rutas: el reparto del día, y a cada quien su vuelta por correo (23 de agosto de 2026)
+
+**Ya se puede planear el día completo, no sólo ver la vuelta de uno**
+
+Hasta ahora cada repartidor abría «Mi ruta de hoy» y el sistema le ordenaba sus
+entregas por cercanía. Eso sigue igual, pero ahora hay un paso antes: en
+**Mandados → 🗺️ Planear rutas** se arma el reparto de TODO el día de una vez.
+
+Aprietas **«Planear el día»** y el sistema toma las entregas y recolecciones que
+tienen fecha para ese día, las **reparte entre los repartidores disponibles** y
+le pone a cada uno sus paradas en orden. Puedes elegir si salen **de la sede y
+regresan a ella**, o **de donde cada quien esté** (con la última ubicación que
+registró al checar).
+
+**Las citas se respetan**
+
+Si una entrega tiene hora, el orden la respeta aunque implique dar más vueltas.
+Las que no tienen hora se acomodan en los huecos, por cercanía. Cada parada
+muestra su hora: **«Cita a las 10:00»** cuando está comprometida, o
+**«≈ 11:20»** cuando es la llegada estimada.
+
+Las horas y los kilómetros son **estimados**: se calculan en línea recta, sin el
+tráfico. Sirven para decidir en qué orden salir, no para prometerle un minuto
+exacto a un cliente.
+
+**Se reacomoda arrastrando**
+
+Cada ruta es una tarjeta con sus paradas. Arrastra una parada por su asa (⠿) para
+cambiarla de lugar, o **muévela a la tarjeta de otro repartidor** para pasarle la
+entrega. Los kilómetros y las horas se recalculan solos. Arriba hay un mapa con
+una línea de color por ruta, para seguir cada vuelta con la vista.
+
+**Cada quien recibe su ruta por correo**
+
+Al apretar **«Despachar»**, la ruta se publica y le llega **por correo** al
+repartidor, con sus paradas en orden, las horas y los botones para abrirla en
+**Waze, Google Maps o Apple Maps**. El correo sale de
+**runner@learningcenter.mx**, así que se reconoce de quién viene. Si el mismo día
+se reacomoda la ruta, se le puede volver a mandar.
+
+Y cuando abre «Mi ruta de hoy», ve **la ruta que le planearon** —con sus citas—
+en lugar de un orden calculado al momento.
+
+**Avisar al cliente que su entrega salió (opcional, apagado)**
+
+Hay un aviso nuevo para el cliente: «tu entrega va en camino», que se manda
+cuando el repartidor marca que salió. **Arranca apagado**, como todos los correos
+que le llegan a un cliente: hay que encenderlo en La Gerencia → Ajustes → El
+Cartero, y se puede editar el texto antes.
+
+**Lo que quedó sin repartir se dice**
+
+Si una entrega no entró a ninguna ruta, aparece abajo en **«Sin repartir»** con el
+motivo — casi siempre es que no se sabe a dónde va. Le pones el destino en el mapa
+del mandado y vuelves a planear.
+
+**Quién puede** Planear y despachar es de quien organiza el reparto. Un repartidor
+ve su propia ruta, no la de sus compañeros. Se reparte desde El Directorio, en las
+casillas de **Rutas**.
+
+**Al Chalán también le puedes preguntar**: «¿cómo quedó el reparto de mañana?» o
+«¿cuál es mi ruta?».
+
+---
+
 ## Novedades — Cada correo desde la dirección que le toca (23 de agosto de 2026)
 
 **Ya están cargadas todas tus direcciones**
@@ -4446,6 +4511,72 @@ Cada tarea pertenece a un proyecto. Tiene título, descripción, estado, priorid
 - Las completas marcando "Completar".
 
 ---
+
+## Rutas de reparto (el planeador)
+
+Las entregas y recolecciones son tareas de tipo **entrega** o **recoger**, y se
+listan en **Mandados**. Cuando hay varias en un día, el **planeador** las reparte
+y las pone en orden.
+
+**Cómo se usa**
+
+1. Entra a **Mandados → 🗺️ Planear rutas** y elige el día.
+2. Escoge de dónde salen: **de la sede y regresan a ella**, o **de donde esté cada
+   repartidor** (usa la última ubicación que registró al checar).
+3. Aprieta **«Planear el día»**. El sistema reparte las entregas entre los
+   repartidores disponibles y le arma a cada uno su vuelta.
+4. Revisa y reacomoda arrastrando. Cuando esté, aprieta **«Despachar»** en cada
+   tarjeta: la ruta se publica y le llega por correo a esa persona.
+
+**Las citas manda**
+
+Una parada con hora es una **cita fija**: el orden la respeta aunque implique más
+kilómetros. Las que no tienen hora se acomodan por cercanía en los huecos. Cada
+parada dice **«Cita a las 10:00»** o, si no tiene, **«≈ 11:20»** de llegada
+estimada.
+
+Las horas y los kilómetros son **estimados**: se calculan en línea recta, sin
+tráfico. Sirven para decidir el orden de la vuelta, no para prometer un minuto
+exacto.
+
+**Reacomodar**
+
+Arrastra una parada por su asa (⠿) para cambiarla de lugar dentro de la ruta, o
+suéltala en la tarjeta de otro repartidor para pasarle la entrega. Los kilómetros
+y las horas se recalculan solos. El mapa de arriba dibuja una línea de color por
+ruta.
+
+**Llevarla al teléfono**
+
+Cada tarjeta tiene botones para abrir la ruta en **Waze**, **Google Maps** o
+**Apple Maps**. Google abre la ruta completa con sus paradas intermedias; Waze
+navega a la siguiente parada. Son enlaces: no cuestan nada y no hacen falta
+cuentas.
+
+**Lo que no entró**
+
+Si una entrega no cupo en ninguna ruta, aparece abajo en **«Sin repartir»**. Casi
+siempre es porque no se sabe a dónde va: ponle el destino en el mapa del mandado
+y vuelve a planear. Una entrega que ya está en una ruta no se vuelve a repartir,
+así que puedes planear otra vez sin miedo a duplicar nada.
+
+**Mi ruta de hoy**
+
+El repartidor entra a **Mandados → 🧭 Mi ruta de hoy**. Si le planearon la vuelta,
+ve **ésa**, con sus citas. Si no, ve sus entregas abiertas ordenadas por cercanía.
+
+**Quién puede qué**
+
+Planear y despachar es de quien organiza el reparto. Un repartidor ve su propia
+ruta, no la de sus compañeros. Se reparte desde **El Directorio**, en las
+casillas de **Rutas**.
+
+**Con El Chalán**
+
+- «¿cuál es mi ruta?» — tu vuelta de hoy.
+- «¿cómo quedó el reparto de mañana?» — las rutas planeadas de un día (necesita
+  permiso de Rutas).
+- «¿a quién le doy la entrega de las gorras?» — a qué repartidor conviene, y por qué.
 
 ## Calendario
 

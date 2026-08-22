@@ -6,7 +6,13 @@
 {% breadcrumb_items "Tareas" "Mandados" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="🛵 Mandados" subtitulo="Entregas y recolecciones — el repartidor más cercano se asigna solo" breadcrumb_items=breadcrumb_items back_url="/tareas/" back_label="Tareas" %}
 {# La vuelta del día ordenada por cercanía, con botón para abrirla en el mapa. #}
-<div class="mb-4"><a href="{% url 'mandados-mi-ruta' %}" class="btn-secundario">🧭 Mi ruta de hoy</a></div>
+<div class="mb-4 flex flex-wrap gap-2">
+    <a href="{% url 'mandados-mi-ruta' %}" class="btn-secundario">🧭 Mi ruta de hoy</a>
+    {% if permisos_modulos.rutas %}
+    <a href="{% url 'rutas-panel' %}" class="btn-secundario"
+       title="Reparte las entregas del día entre los runners y ponlas en orden">🗺️ Planear rutas</a>
+    {% endif %}
+</div>
 
 <div class="mb-5 flex flex-wrap items-center gap-2">
     {% for ch in chips %}

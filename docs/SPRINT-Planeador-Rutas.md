@@ -25,6 +25,26 @@ Por eso `agent/planeador-rutas` sale de **`bfd368b`** (tip de
 `agent/alias-personales`), no de `main`. Consecuencia: este PR se mergea
 **después** del Cartero.
 
+## 1b. Lo que YA existía (y por eso esto es V2, no V1)
+
+El sprint que corría en paralelo (`agent/kpis-bi`) **ya había construido la
+primera mitad**, sin commitear: `el_pizarron/ruta.py` con el orden por vecino más
+cercano, los botones de Waze / Google Maps / Apple Maps con sus íconos
+vendoreados, los campos `inicio/fin_lat/lng` del `Mandado` y una capacidad MCP
+`ruta_del_dia`. Su docstring ya anunciaba esto: «esto va a acabar en la planeación
+de rutas».
+
+Por eso este sprint **no reescribe nada de eso**:
+
+- `enlaces_de(ruta)` llama a `url_google/url_apple/url_waze` de `ruta.py`. Una
+  sola implementación de cada enlace.
+- `ruta_del_dia` (la pantalla «Mi ruta» y la capacidad del Chalán) **prefiere la
+  ruta guardada** si existe, y cae al cálculo al vuelo si no. Una vez despachada,
+  la ruta planeada ES la ruta.
+- `Mandado.distancia_m` (kpis-bi) mide el viaje **real**;
+  `ParadaRuta.distancia_desde_anterior_m` mide el tramo **planeado**. Son cosas
+  distintas y las dos sirven.
+
 ## 2. Cero costo recurrente (regla «gratis o abortamos»)
 
 - **Distancias**: haversine (`checador.models.sede.distancia_m`), en línea recta.
@@ -95,8 +115,11 @@ naturaleza distinta a propósito:
 ## 6. Lo que trae de rigor
 
 - **Permisos granulares** (§4 #20): módulo `rutas` × {`ver`, `planear`,
-  `despachar`}. Migración **`cuentas/0043`** — el 0042 lo tiene tomado el sprint
-  de La Limpieza, que va en vuelo sin commitear.
+  `despachar`}. Migración **`cuentas/0042`**, que depende del `0041` — es lo
+  internamente correcto en esta rama. El sprint de La Limpieza (en vuelo, sin
+  commitear) también toma un `0042`: al juntarse, Django verá dos hojas y hay que
+  renombrar una o generar la migración de merge. Dejar un hueco en el `0043` no
+  lo evitaba (serían dos hojas igual) y encima confundía.
 - **MCP** (regla del repo): capacidad de lectura `ruta_del_dia` en
   `capacidades/lecturas.py` con gating `rutas`. Sin eso no está entregada.
 - **Arrastre**: `data-arr-*` sobre el motor único `arrastrar.js`. No se escribe
