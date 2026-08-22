@@ -83,11 +83,39 @@ if [ "$AUTOLOGIN" = 1 ]; then
         echo "   (no encontré /etc/gdm3/custom.conf; ¿otro gestor de sesión?)" >&2
     fi
 else
-    echo "== inicio de sesión automático: NO tocado =="
-    echo "   Tras un reinicio la pantalla vuelve sólo si alguien inicia sesión."
-    echo "   Para que vuelva sola:  bash instalar.sh --autologin"
+    # Antes de mandar a nadie a correr un `sudo`, comprobar si ya está puesto.
+    # En este NUC venía activado de fábrica, y sugerir `--autologin` cuando ya
+    # está es mandar a pedir una contraseña para nada.
+    if grep -qiE '^AutomaticLoginEnable[[:space:]]*=[[:space:]]*true' \
+            /etc/gdm3/custom.conf 2>/dev/null; then
+        echo "== inicio de sesión automático: YA estaba activado =="
+        echo "   $(grep -iE '^AutomaticLogin' /etc/gdm3/custom.conf | tr '\n' ' ')"
+        echo "   La pantalla vuelve sola tras un reinicio. No hay que hacer nada más."
+    else
+        echo "== inicio de sesión automático: NO tocado =="
+        echo "   Tras un reinicio la pantalla vuelve sólo si alguien inicia sesión."
+        echo "   Para que vuelva sola:  bash instalar.sh --autologin"
+    fi
 fi
 
-echo
-echo "LISTO. Para probarlo sin reiniciar:  $RAIZ/infra/vigia/vigia-kiosco.sh &"
-echo "Para salir del kiosco: Alt+F4 (o Ctrl+Alt+F3 para una consola)."
+cat <<AYUDA
+
+────────────────────────────────────────────────────────────────────────────
+ LISTO. Cómo se ve la pantalla:
+
+   · Lo normal:  enciende el NUC y espera. Abre sola, a pantalla completa.
+                 (Espera a que la aplicación esté lista antes de mostrarla:
+                  tras un reinicio, Docker tarda más que el escritorio.)
+
+   · Sin reiniciar, aquí y ahora, con teclado y pantalla en el NUC:
+                 $RAIZ/infra/vigia/vigia-kiosco.sh &
+
+   · Para salir:  Alt+F4  (vuelve a abrirse a los 5 s, a propósito).
+                  Para que se quede cerrada:  pkill -f '[v]igia-kiosco'
+
+   · Si no abrió:  tail -20 ~/.vigia.log   ← dice en qué se atoró
+
+   · Desde otra máquina del tailnet, sólo para revisar:
+                 http://100.121.244.5:8201/site/vivo/
+────────────────────────────────────────────────────────────────────────────
+AYUDA

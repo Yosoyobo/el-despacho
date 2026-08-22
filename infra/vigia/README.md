@@ -5,6 +5,55 @@ vivo: el fierro (CPU, memoria, disco, contenedores), las peticiones conforme
 llegan, el consumo por contenedor y el trabajo que el sistema está haciendo por el
 despacho (Los Chalanes, la cola de El Portavoz, el respaldo, El Almacén).
 
+---
+
+## Cómo la veo
+
+### Lo normal: no hay que hacer nada
+
+**Enciende el NUC y espera.** El NUC entra solo a su sesión, abre solo el
+navegador a pantalla completa y espera solo a que la aplicación esté lista antes
+de mostrarla (tras un reinicio, Docker tarda más que el escritorio). No hay
+contraseña que escribir ni ícono que picar.
+
+Si la pantalla del NUC está apagada, enciéndela: ahí está.
+
+### Si quiero verla sin reiniciar
+
+En el NUC, **con teclado y pantalla** (no por SSH), abre una terminal y escribe:
+
+    /mnt/el-despacho/infra/vigia/vigia-kiosco.sh &
+
+### Para salir de la pantalla completa
+
+`Alt+F4` cierra el navegador. Vuelve a abrirse solo a los cinco segundos — eso es
+a propósito, para que la pared aguante sola. Si de verdad quieres que se quede
+cerrada, primero detén el lanzador:
+
+    pkill -f '[v]igia-kiosco'
+
+Y para dejarla como estaba, vuelve a lanzarla con el comando de arriba (o reinicia
+el NUC).
+
+### Si no abrió
+
+Mira la bitácora, que dice exactamente en qué se atoró:
+
+    tail -20 ~/.vigia.log
+
+### Desde otra computadora (para revisar, no para la pared)
+
+Estando en el tailnet, en el navegador:
+
+    http://100.121.244.5:8201/site/vivo/
+
+**Desde internet no se puede, y es a propósito**: por el dominio público la página
+responde 404. Ver "Por qué no se puede abrir desde internet", más abajo.
+
+---
+
+## La dirección
+
     http://localhost:8201/site/vivo/
 
 ## Por qué no se puede abrir desde internet
