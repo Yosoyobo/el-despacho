@@ -12,7 +12,11 @@ el despacho.
 from django.db import migrations
 
 MODULO = "analisis"
-ACCION = "ver"
+# El campo del modelo se llama `permiso`, NO `accion`. Escribirlo mal aquí no
+# truena en los tests —las migraciones corren sobre una base sin usuarios, así
+# que el bucle no itera— pero tumba el arranque en producción, donde sí hay
+# super admins. Pasó el 2026-08-22 y dejó La Gerencia sin levantar.
+PERMISO = "ver"
 
 
 def sembrar(apps, schema_editor):
@@ -22,7 +26,7 @@ def sembrar(apps, schema_editor):
 
     for usuario in Usuario.objects.filter(rol="super_admin"):
         Permiso.objects.update_or_create(
-            usuario=usuario, modulo=MODULO, accion=ACCION,
+            usuario=usuario, modulo=MODULO, permiso=PERMISO,
             defaults={"activo": True},
         )
     # También al rol "super_admin", para quien lo tenga como rol extra.
@@ -30,7 +34,7 @@ def sembrar(apps, schema_editor):
     if rol:
         permisos = dict(rol.permisos or {})
         acciones = set(permisos.get(MODULO) or [])
-        acciones.add(ACCION)
+        acciones.add(PERMISO)
         permisos[MODULO] = sorted(acciones)
         rol.permisos = permisos
         rol.save(update_fields=["permisos"])
@@ -38,7 +42,7 @@ def sembrar(apps, schema_editor):
 
 def quitar(apps, schema_editor):
     Permiso = apps.get_model("cuentas", "PermisoUsuario")
-    Permiso.objects.filter(modulo=MODULO, accion=ACCION).delete()
+    Permiso.objects.filter(modulo=MODULO, permiso=PERMISO).delete()
 
 
 class Migration(migrations.Migration):
