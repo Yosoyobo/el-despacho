@@ -19,40 +19,34 @@ la hora en UTC mientras el reloj de la cabecera va en local.
 
     {# ── El trabajo ────────────────────────────────────────────────────── #}
     {% if trabajo.proyectos is not None %}
-    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
-      <div class="rounded-xl bg-gray-800/40 px-2.5 py-2">
+    <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
         <p class="font-mono text-title-sm font-semibold leading-none tabular-nums text-white">{{ trabajo.proyectos|default:"0" }}</p>
-        <p class="mt-1 text-[10px] leading-tight text-gray-500">proyectos vivos</p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">proyectos vivos</p>
       </div>
-      <div class="rounded-xl bg-gray-800/40 px-2.5 py-2">
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
         <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.por_cotizar %}text-warning-400{% else %}text-white{% endif %}">{{ trabajo.por_cotizar|default:"0" }}</p>
-        <p class="mt-1 text-[10px] leading-tight text-gray-500">por cotizar</p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">por cotizar</p>
       </div>
-      <div class="rounded-xl bg-gray-800/40 px-2.5 py-2">
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
         <p class="font-mono text-title-sm font-semibold leading-none tabular-nums text-white">{{ trabajo.tareas|default:"0" }}</p>
-        <p class="mt-1 text-[10px] leading-tight text-gray-500">
-          tareas
-          {% if trabajo.atrasadas %}<span class="text-error-400">· {{ trabajo.atrasadas }} tarde</span>{% endif %}
-        </p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">tareas{% if trabajo.atrasadas %}<span class="text-error-400"> · {{ trabajo.atrasadas }} tarde</span>{% endif %}</p>
       </div>
-      <div class="rounded-xl bg-gray-800/40 px-2.5 py-2">
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
         <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.facturas %}text-success-300{% else %}text-white{% endif %}">{{ trabajo.facturas|default:"0" }}</p>
-        <p class="mt-1 text-[10px] leading-tight text-gray-500">
-          por cobrar
-          {% if trabajo.monto_por_cobrar %}<span class="text-gray-600">· ${{ trabajo.monto_por_cobrar|floatformat:0 }}</span>{% endif %}
-        </p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">por cobrar{% if trabajo.monto_por_cobrar %}<span class="text-gray-600"> · ${{ trabajo.monto_por_cobrar|floatformat:0 }}</span>{% endif %}</p>
       </div>
       {% comment %}
-      Los cancelados van del MES, no del total histórico: «183 desde siempre» no
-      dice nada y «4 este mes» sí — es el número que hace preguntar por qué. El
-      total queda debajo, en chico, para dar la escala.
+      Los perdidos van del MES, no del total histórico: «183 desde siempre» no dice
+      nada y «6 este mes» sí — es el número que hace preguntar por qué. El total va
+      pegado al número, como en «Piezas», para que la etiqueta quepa en UN renglón:
+      partida en tres líneas descuadraba la fila entera de tarjetas.
       {% endcomment %}
-      <div class="rounded-xl bg-gray-800/40 px-2.5 py-2">
-        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.cancelados_mes %}text-error-400{% else %}text-white{% endif %}">{{ trabajo.cancelados_mes|default:"0" }}</p>
-        <p class="mt-1 text-[10px] leading-tight text-gray-500">
-          cancelados/perdidos este mes
-          {% if trabajo.cancelados %}<span class="text-gray-600">· {{ trabajo.cancelados }} en total</span>{% endif %}
+      <div class="min-w-0 rounded-xl bg-gray-800/40 px-2 py-2">
+        <p class="font-mono text-title-sm font-semibold leading-none tabular-nums {% if trabajo.cancelados_mes %}text-error-400{% else %}text-white{% endif %}">
+          {{ trabajo.cancelados_mes|default:"0" }}{% if trabajo.cancelados %}<span class="text-sm text-gray-600">/{{ trabajo.cancelados }}</span>{% endif %}
         </p>
+        <p class="mt-1 truncate text-[10px] leading-tight text-gray-500">perdidos este mes</p>
       </div>
     </div>
     {% endif %}

@@ -6019,13 +6019,23 @@ mismo archivo sirve en la ventana y en HAL local sin cambiarle una línea. El
 activa; el `docker-compose.ventana.yml` le pone los upstreams y monta la homepage.
 
 **Tres bugs de producción que salieron al medir (dos siguen abiertos):**
-1. **El worker del Portavoz nunca ha corrido.** `la-gerencia/Dockerfile:68` declara
-   `ENTRYPOINT ["./entrypoint.sh"]` y ese script hace `exec gunicorn` **sin ejecutar
-   `"$@"`**, así que el `command: ["python","-m","lib.portavoz_worker"]` del compose
-   se ignora **en silencio**: ese contenedor es una **segunda copia de La Gerencia**.
-   `portavoz:cola` acumula **5 184 eventos desde el 2026-05-14**. **NO se arregló a
-   propósito:** el worker postea a n8n con HMAC y encenderlo dispararía los 5 184 de
-   golpe. Pide (a) corregir el entrypoint y (b) decidir qué se hace con el rezago.
+1. ~~**El worker del Portavoz nunca ha corrido.**~~ **CERRADO el 2026-08-22.**
+   `la-gerencia/entrypoint.sh` hacía `exec gunicorn` **sin ejecutar `"$@"`**, así que
+   el `command: ["python","-m","lib.portavoz_worker"]` del compose se ignoraba **en
+   silencio** y ese contenedor era una **segunda copia de La Gerencia** desde mayo.
+   Arreglado con un `if [ "$#" -gt 0 ]; then exec "$@"; fi` colocado **antes** de
+   `migrate` a propósito: sólo el servicio sin `command` migra (§14 Bug B), y el
+   worker no necesita migraciones ni seeds ni estáticos, sólo Postgres para leer La
+   Bóveda. El rezago de **5 198 eventos** (14-may a 22-ago) se movió a
+   `portavoz:fallidos` con un `RENAME` atómico —con autorización de Oscar, «n8n está
+   muerto, no llegará a nada»— y quedó respaldado en `backups/portavoz/`.
+   **Ojo con el comportamiento sin n8n:** las credenciales están VACÍAS, y en ese
+   caso el worker re-encola **sin contar intento** y duerme 30 s. O sea que la cola
+   **vuelve a acumular** hasta que n8n regrese y se peguen las credenciales — pero
+   ahora con el worker corriendo y avisando en su bitácora cada 30 s, no en
+   silencio, y con el contador a la vista en El Vigía. (Con credenciales apuntando a
+   un n8n muerto sería lo otro: 10 s de timeout + 10 s de espera × 5 intentos ×
+   5 198 eventos ≈ 6 días de reintentos.)
 2. **`allkeys-lru` con techo de 64 MB podía desalojar la propia cola** (`portavoz:cola`
    no tiene TTL) — o sea perder eventos sin aviso. En el NUC quedó en 512 MB con
    **`volatile-lru`**, que solo desaloja lo que sí caduca.
