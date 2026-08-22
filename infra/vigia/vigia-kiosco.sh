@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
-# Lanzador de El Vigía en modo kiosco, para la pantalla del NUC.
+# Abre El Vigía en el navegador del NUC al iniciar sesión.
 #
-# Lo arranca el escritorio al iniciar sesión (ver `vigia.desktop`). Hace tres
-# cosas que un simple «abre el navegador» no hace:
+# **Deliberadamente simple, y así se queda.** La primera versión hacía kiosco con
+# perfil propio y vigilaba el navegador para relanzarlo. Eso peleaba con cómo se
+# usa la máquina de verdad:
 #
-# 1. ESPERA a que la aplicación responda. Tras un reinicio, el escritorio está
-#    listo mucho antes que Docker: si el navegador abriera de inmediato, la pared
-#    se quedaría con una página de error hasta que alguien la recargara a mano —
-#    y nadie la recarga, porque para eso es una pared.
-# 2. APAGA el ahorro de pantalla de la sesión. Una pantalla de pared que se pone
-#    negra a los diez minutos no sirve de nada.
-# 3. REABRE el navegador si se cierra o se muere. Un kiosco tiene que aguantar
-#    solo, sin que nadie vaya a levantarlo.
+#   · El fullscreen ya lo pone una extensión de Firefox, instalada a propósito
+#     para poder SALIR del fullscreen con facilidad y operar el NUC cuando hace
+#     falta. Un `--kiosk` encima quita justamente esa salida.
+#   · Un perfil propio abre una segunda instancia de Firefox. En este NUC Firefox
+#     es un snap y no puede escribir fuera de su confinamiento, así que el
+#     `--profile` se ignoraba, chocaba con el Firefox de la sesión y aparecía
+#     «Firefox is running, but is not responding» — un error que no explica nada.
+#   · Y vigilar para relanzar significa que cerrar el navegador a mano no sirve
+#     de nada: vuelve solo a los diez segundos. Justo lo contrario de poder
+#     operar la máquina.
+#
+# Así que esto hace lo mínimo: espera a que la aplicación esté lista y le pasa la
+# URL al navegador. Si ya hay uno abierto, la abre ahí. Nada de instancias
+# paralelas, nada de vigilancia, nada que estorbe.
 set -uo pipefail
 
 URL="${VIGIA_URL:-http://localhost:8201/site/vivo/}"
@@ -36,6 +43,9 @@ if command -v xset >/dev/null 2>&1; then
 fi
 
 # ── 2) Esperar a que la aplicación conteste ──────────────────────────────────
+# Tras un reinicio el escritorio está listo mucho antes que Docker. Si se abriera
+# de inmediato, la pared se quedaría con una página de error hasta que alguien la
+# recargara — y nadie recarga una pared.
 inicio=$(date +%s)
 while true; do
     if curl -sf --max-time 5 -o /dev/null "$URL"; then
@@ -43,71 +53,34 @@ while true; do
         break
     fi
     if [ $(( $(date +%s) - inicio )) -ge "$ESPERA_MAX" ]; then
-        # Se abre igual: más vale ver el error del navegador que una pantalla
-        # negra sin explicación. El propio Vigía avisa cuando no hay respuesta.
+        # Se abre igual: más vale ver el error del navegador que una pantalla en
+        # blanco sin explicación. El propio Vigía avisa cuando no hay respuesta.
         _log "AVISO: la app no respondió en ${ESPERA_MAX}s; abro de todos modos"
         break
     fi
     sleep 3
 done
 
-# ── 3) Elegir navegador ──────────────────────────────────────────────────────
-# Chrome/Chromium primero (su `--kiosk` es el más limpio); si no está, Firefox,
-# que en este NUC es el que viene instalado.
-lanzar() {
-    for cmd in google-chrome google-chrome-stable chromium chromium-browser; do
-        if command -v "$cmd" >/dev/null 2>&1; then
-            _log "navegador: $cmd"
-            "$cmd" --kiosk --app="$URL" \
-                   --noerrdialogs --disable-infobars --disable-session-crashed-bubble \
-                   --disable-features=TranslateUI --no-first-run \
-                   --user-data-dir="$HOME/.vigia-chrome" >>"$BITACORA" 2>&1
-            return
-        fi
-    done
-    if command -v firefox >/dev/null 2>&1; then
-        # `--new-instance` y un perfil propio son OBLIGATORIOS aquí. Sin ellos,
-        # si ya hay un Firefox abierto en la sesión, este comando le pasa la URL
-        # a esa instancia y **termina al instante** — con lo que el bucle de
-        # "reabre si se muere" se convierte en una reapertura cada 5 segundos
-        # para siempre. Pasó al probarlo en el NUC.
-        perfil="$HOME/.vigia-firefox"
-        mkdir -p "$perfil"
-        _log "navegador: firefox (perfil propio en $perfil)"
-        firefox --new-instance --profile "$perfil" --kiosk "$URL" >>"$BITACORA" 2>&1
-        return
-    fi
-    _log "ERROR: no encontré ningún navegador (chrome, chromium ni firefox)"
-    sleep 60
-}
-
-# ── 4) Que aguante solo, sin volverse un parpadeo ────────────────────────────
-# La reapertura tiene freno a propósito. Si el navegador muere al instante
-# (perfil bloqueado, sin sesión gráfica, una instancia previa que se queda con
-# la URL), reabrir cada 5 segundos es PEOR que rendirse: la pared se pasa la
-# noche parpadeando y la bitácora se llena de la misma línea. Así que los
-# arranques que no duran nada se cuentan, y tras unos cuantos el reintento se
-# separa a un minuto — sigue intentando, pero deja de castigar la máquina y la
-# bitácora dice qué está pasando.
-RAPIDOS=0
-while true; do
-    t0=$(date +%s)
-    lanzar
-    duro=$(( $(date +%s) - t0 ))
-
-    if [ "$duro" -lt 10 ]; then
-        RAPIDOS=$(( RAPIDOS + 1 ))
-    else
-        RAPIDOS=0
-    fi
-
-    if [ "$RAPIDOS" -ge 3 ]; then
-        _log "AVISO: el navegador lleva $RAPIDOS arranques de <10s (murió en ${duro}s)."
-        _log "       Suele ser otra instancia del navegador que se queda con la URL,"
-        _log "       o que no hay sesión gráfica. Reintento en 60s."
-        sleep 60
-    else
-        _log "el navegador terminó tras ${duro}s; reabro en 5s"
-        sleep 5
+# ── 3) Y abrirla ─────────────────────────────────────────────────────────────
+# Se llama al navegador POR SU NOMBRE, no con `xdg-open`. La razón es que
+# `xdg-open` obedece al handler de `text/html` del escritorio, y en este NUC eso
+# resolvía a LibreOffice: la pared abría un procesador de texto. Llamar a Firefox
+# directo usa su perfil de siempre, con sus extensiones —incluida la que pone el
+# fullscreen— que es justo lo que se quiere.
+#
+# Sin `--new-instance` ni `--profile` a propósito: si ya hay un Firefox abierto,
+# la URL se abre AHÍ. Es lo que evita la segunda instancia que chocaba.
+for cmd in firefox google-chrome google-chrome-stable chromium chromium-browser; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+        _log "abriendo con $cmd"
+        setsid "$cmd" "$URL" >>"$BITACORA" 2>&1 &
+        exit 0
     fi
 done
+# Último recurso, si no hay ningún navegador conocido.
+if command -v xdg-open >/dev/null 2>&1; then
+    _log "sin navegador conocido; probando xdg-open"
+    xdg-open "$URL" && exit 0
+fi
+_log "ERROR: no encontré cómo abrir un navegador en esta sesión"
+exit 1

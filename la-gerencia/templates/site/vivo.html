@@ -33,6 +33,29 @@ Cuatro decisiones que conviene no deshacer:
     <link rel="icon" href="{% static 'branding/Icono_LC-32.png' %}" sizes="32x32">
     <link rel="stylesheet" href="{% static 'vendor/daisyui/styled.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    {% comment %}
+    Anti-FOUC: el tema se pone en el <html> ANTES de que el navegador pinte algo.
+    Si esto viviera al final del <body>, la pared arrancaría con un destello del
+    tema equivocado en cada refresco — y una pared parpadeando se nota mucho más
+    que una pantalla que alguien abre y cierra.
+    {% endcomment %}
+    <script>
+      (function () {
+        var t = 'oscuro';
+        // `?tema=claro` en la URL manda sobre lo guardado, y se queda guardado.
+        // Sirve para dos cosas: forzar el tema desde un enlace (útil para
+        // revisar la pantalla sin ir a picar el botón en la máquina) y arreglarlo
+        // desde otra computadora del tailnet si quedó en el que no se ve.
+        try {
+          var q = new URLSearchParams(location.search).get('tema');
+          if (q === 'claro' || q === 'oscuro') {
+            localStorage.setItem('vigia-tema', q);
+          }
+        } catch (e) {}
+        try { if (localStorage.getItem('vigia-tema') === 'claro') { t = 'claro'; } } catch (e) {}
+        document.documentElement.setAttribute('data-tema', t);
+      })();
+    </script>
     <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
     <style>
       /* El tema de DaisyUI, mapeado a la paleta de El Despacho. Los valores van
@@ -65,6 +88,79 @@ Cuatro decisiones que conviene no deshacer:
         --border-btn: 1px; --tab-border: 1px; --tab-radius: .5rem;
       }
 
+      /* ── Los niveles de texto y superficie, como tokens ──────────────────
+         Antes había 69 `text-gray-*` clavados por siete plantillas, y eso hacía
+         dos cosas mal: el contraste no se podía ajustar en un solo lugar (con luz
+         de día, un gris 600 sobre negro simplemente no se lee) y no había forma
+         de tener modo claro sin duplicar cada clase.
+
+         Los grises van MÁS CLAROS que la paleta general del repo a propósito:
+         esto es una pared que se mira de lejos y a veces con el sol encima, no
+         una pantalla a medio metro. Lo que en una interfaz normal es «texto tenue
+         elegante», aquí es texto invisible. */
+      :root {
+        --vg-fondo:   #0f0f0f;   /* la página            */
+        --vg-tarjeta: #191919;   /* los paneles          */
+        --vg-realce:  #2f2f2f;   /* barras y pastillas   */
+        --vg-borde:   #383838;
+        --vg-1: #ffffff;         /* el dato protagonista */
+        --vg-2: #eaedf2;         /* datos normales       */
+        --vg-3: #c6ccd8;         /* etiquetas            */
+        --vg-4: #a3abba;         /* contexto             */
+        --vg-5: #838c9c;         /* lo más tenue         */
+        --vg-riel: #333333;      /* el arco de fondo     */
+      }
+      /* El modo claro. Los niveles son los MISMOS, invertidos: así ninguna
+         plantilla necesita saber en qué tema está. */
+      :root[data-tema="claro"] {
+        --vg-fondo:   #e9edf4;
+        --vg-tarjeta: #ffffff;
+        --vg-realce:  #dfe4ee;
+        --vg-borde:   #c7cedb;
+        --vg-1: #0b1220;
+        --vg-2: #232d44;
+        --vg-3: #414c66;
+        --vg-4: #5a6580;
+        --vg-5: #737d94;
+        --vg-riel: #c3cbd9;
+      }
+
+      .vg-fondo   { background-color: var(--vg-fondo); }
+      .vg-tarjeta { background-color: var(--vg-tarjeta); }
+      .vg-borde   { border-color: var(--vg-borde); }
+      .vg-riel-bg { background-color: var(--vg-riel); }
+      /* El riel de los anillos: es el arco de fondo contra el que se lee el
+         relleno de color. Necesita su propio token, no `--vg-realce`, porque en
+         claro un gris de superficie contra blanco no se distingue y el anillo se
+         lee como un aro flotante. */
+      .vg-riel    { color: var(--vg-riel); }
+      /* Con transparencia, para lo que iba en `bg-gray-800/40`. */
+      .vg-realce-suave { background-color: color-mix(in srgb, var(--vg-realce) 60%, transparent); }
+      .vg-1 { color: var(--vg-1); }
+      .vg-2 { color: var(--vg-2); }
+      .vg-3 { color: var(--vg-3); }
+      .vg-4 { color: var(--vg-4); }
+      .vg-5 { color: var(--vg-5); }
+      .vg-boton { color: var(--vg-4); transition: color .15s; }
+      .vg-boton:hover { color: var(--vg-1); }
+
+      /* En claro, los colores de estado tienen que oscurecerse o se pierden sobre
+         blanco: un verde-400 pensado para fondo negro es casi invisible sobre
+         papel. Se ajustan con `color-mix` en vez de duplicar cada clase. */
+      :root[data-tema="claro"] .text-success-400 { color: #067647; }
+      :root[data-tema="claro"] .text-success-300 { color: #05603a; }
+      :root[data-tema="claro"] .text-warning-400 { color: #b54708; }
+      :root[data-tema="claro"] .text-error-400   { color: #b42318; }
+      :root[data-tema="claro"] .text-brand-300,
+      :root[data-tema="claro"] .text-brand-400   { color: #2a31d8; }
+      :root[data-tema="claro"] .text-purple-300  { color: #6927da; }
+      :root[data-tema="claro"] .text-blue-light-400 { color: #026aa2; }
+      /* Y los fondos de pastilla, que en claro necesitan más cuerpo. */
+      :root[data-tema="claro"] .bg-brand-500\/15   { background-color: #dde9ff; }
+      :root[data-tema="claro"] .bg-purple-500\/15  { background-color: #ebe9fe; }
+      :root[data-tema="claro"] .bg-success-500\/15 { background-color: #d1fadf; }
+      :root[data-tema="claro"] .bg-error-500\/15   { background-color: #fee4e2; }
+
       /* La PARED no se scrollea: es un muro, y una barra de scroll ahí sólo
          significa que algo no cabe. Pero en un teléfono el contenido no cabe por
          definición, así que ahí sí tiene que poder deslizarse — si no, la mitad
@@ -93,7 +189,7 @@ Cuatro decisiones que conviene no deshacer:
       /* Los paneles con lista sí, cuando no cabe. */
       .vigia-scroll { overflow-y: auto; scrollbar-width: thin; }
       .vigia-scroll::-webkit-scrollbar { width: 6px; }
-      .vigia-scroll::-webkit-scrollbar-thumb { background: #3f3f3f; border-radius: 3px; }
+      .vigia-scroll::-webkit-scrollbar-thumb { background: var(--vg-realce); border-radius: 3px; }
 
       /* El renglón nuevo del flujo entra con un destello: en una pared, el
          movimiento es lo que hace que se note que está VIVA. */
@@ -112,15 +208,15 @@ Cuatro decisiones que conviene no deshacer:
       .radial-progress { --thickness: 7px; }
     </style>
 </head>
-<body class="h-full bg-gray-950 text-gray-100 font-inter antialiased">
+<body class="h-full vg-fondo vg-2 font-inter antialiased">
 
 <div class="vigia-marco flex h-full flex-col gap-2.5 p-2 sm:p-3">
 
   {# ── Cabecera ─────────────────────────────────────────────────────────── #}
   <header class="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1">
     <h1 class="flex flex-wrap items-baseline gap-x-3">
-      <span class="text-title-sm font-semibold tracking-tight text-white">El Vigía</span>
-      <span class="hidden text-sm text-gray-400 sm:inline">el NUC de Learning Center, en vivo</span>
+      <span class="text-title-sm font-semibold tracking-tight vg-1">El Vigía</span>
+      <span class="hidden text-sm vg-3 sm:inline">el NUC de Learning Center, en vivo</span>
       <span class="vigia-late text-success-400" aria-hidden="true">●</span>
     </h1>
     <div class="flex items-center gap-5">
@@ -129,8 +225,16 @@ Cuatro decisiones que conviene no deshacer:
             class="hidden rounded-lg bg-error-500/15 px-3 py-1 text-sm font-medium text-error-400">
         ● sin respuesta del servidor
       </span>
-      <span id="vigia-fecha" class="hidden text-sm text-gray-500 sm:inline"></span>
-      <span id="vigia-reloj" class="font-mono text-lg tabular-nums text-gray-200 sm:text-title-sm">--:--:--</span>
+      {% comment %}
+      El botón de tema. Se guarda en `localStorage` con su propia llave y NO con la
+      del resto del sistema (`despacho-tema`): esta pantalla es una máquina fija
+      con su propia luz ambiental, y no tiene por qué cambiar porque alguien haya
+      elegido claro en su laptop.
+      {% endcomment %}
+      <button id="vigia-tema" type="button" title="Cambiar entre claro y oscuro"
+              class="vg-boton rounded-lg px-2 py-1 text-lg leading-none">🌗</button>
+      <span id="vigia-fecha" class="hidden text-sm vg-3 sm:inline"></span>
+      <span id="vigia-reloj" class="font-mono text-lg tabular-nums vg-2 sm:text-title-sm">--:--:--</span>
     </div>
   </header>
 
@@ -139,11 +243,11 @@ Cuatro decisiones que conviene no deshacer:
        hx-trigger="load, every 5s" hx-swap="innerHTML">
     <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
       {% for _ in "1234" %}
-      <div class="flex animate-pulse items-center gap-4 rounded-2xl border border-gray-800 bg-gray-900 p-4">
-        <div class="h-24 w-24 rounded-full bg-gray-800"></div>
+      <div class="flex animate-pulse items-center gap-4 rounded-2xl border vg-borde vg-tarjeta p-4">
+        <div class="h-24 w-24 rounded-full vg-riel-bg"></div>
         <div class="flex-1 space-y-3">
-          <div class="h-3 w-24 rounded bg-gray-800"></div>
-          <div class="h-2 w-full rounded bg-gray-800"></div>
+          <div class="h-3 w-24 rounded vg-riel-bg"></div>
+          <div class="h-2 w-full rounded vg-riel-bg"></div>
         </div>
       </div>
       {% endfor %}
@@ -163,57 +267,81 @@ Cuatro decisiones que conviene no deshacer:
   <div class="grid min-h-0 gap-2.5 md:grid-cols-12 lg:flex-1 lg:grid-rows-5">
 
     <section class="flex min-h-[22rem] flex-col overflow-hidden rounded-2xl
-                    border border-gray-800 bg-gray-900 md:col-span-12
+                    border vg-borde vg-tarjeta md:col-span-12
                     lg:col-span-7 lg:row-span-3 lg:min-h-0">
       <div hx-get="{% url 'site-vivo-peticiones' %}"
            hx-trigger="load, every 2s" hx-swap="innerHTML"
            class="flex min-h-0 flex-1 flex-col">
-        <p class="p-5 text-sm text-gray-600">Leyendo el flujo de peticiones…</p>
+        <p class="p-5 text-sm vg-4">Leyendo el flujo de peticiones…</p>
       </div>
     </section>
 
     {# Los Chalanes: la auditoría del gasto de IA. #}
     <section class="min-h-[22rem] overflow-hidden rounded-2xl border
-                    border-gray-800 bg-gray-900 md:col-span-12
+                    vg-borde vg-tarjeta md:col-span-12
                     lg:col-span-5 lg:row-span-3 lg:min-h-0"
              hx-get="{% url 'site-vivo-chalanes' %}"
              hx-trigger="load, every 15s" hx-swap="innerHTML">
-      <p class="p-5 text-sm text-gray-600">Preguntando por Los Chalanes…</p>
+      <p class="p-5 text-sm vg-4">Preguntando por Los Chalanes…</p>
     </section>
 
     {# Las piezas de la máquina. #}
     <section class="min-h-[18rem] overflow-hidden rounded-2xl border
-                    border-gray-800 bg-gray-900 md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
+                    vg-borde vg-tarjeta md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
              hx-get="{% url 'site-vivo-contenedores' %}"
              hx-trigger="load, every 3s" hx-swap="innerHTML">
-      <p class="p-5 text-sm text-gray-600">Midiendo las piezas…</p>
+      <p class="p-5 text-sm vg-4">Midiendo las piezas…</p>
     </section>
 
     {# El trabajo del despacho. #}
     <section class="min-h-[18rem] overflow-hidden rounded-2xl border
-                    border-gray-800 bg-gray-900 md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
+                    vg-borde vg-tarjeta md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
              hx-get="{% url 'site-vivo-negocio' %}"
              hx-trigger="load, every 20s" hx-swap="innerHTML">
-      <p class="p-5 text-sm text-gray-600">Consultando el despacho…</p>
+      <p class="p-5 text-sm vg-4">Consultando el despacho…</p>
     </section>
 
     {# La ventana: el droplet que da la cara a internet. #}
     <section class="min-h-[18rem] overflow-hidden rounded-2xl border
-                    border-gray-800 bg-gray-900 md:col-span-12 lg:col-span-4 lg:row-span-2 lg:min-h-0"
+                    vg-borde vg-tarjeta md:col-span-12 lg:col-span-4 lg:row-span-2 lg:min-h-0"
              hx-get="{% url 'site-vivo-ventana' %}"
              hx-trigger="load, every 30s" hx-swap="innerHTML">
-      <p class="p-4 text-xs text-gray-600">La ventana…</p>
+      <p class="p-4 text-xs vg-4">La ventana…</p>
     </section>
   </div>
 
-  <footer class="vigia-parte shrink-0 text-center text-[11px] text-gray-600">
+  <footer class="vigia-parte shrink-0 text-center text-[11px] vg-4">
     Sólo se atiende en la máquina que vigila ({{ host_pedido }}) ·
     Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener"
-      class="text-gray-500 hover:text-gray-400">NoKo Devs</a> · © 2026 Learning Center
+      class="vg-3 hover:vg-3">NoKo Devs</a> · © 2026 Learning Center
   </footer>
 </div>
 
 <script>
+  // El tema. Se aplica ANTES de que nada se pinte para que no haya un destello
+  // del tema equivocado al cargar — el mismo anti-FOUC que usa el resto del
+  // sistema (regla §19), pero con llave propia: esta pantalla es una máquina
+  // fija y su luz ambiental no tiene nada que ver con la de una laptop.
+  (function () {
+    var LLAVE = 'vigia-tema';
+    function poner(tema) {
+      document.documentElement.setAttribute('data-tema', tema);
+      try { localStorage.setItem(LLAVE, tema); } catch (e) {}
+      var b = document.getElementById('vigia-tema');
+      if (b) { b.textContent = tema === 'claro' ? '☀️' : '🌙'; }
+    }
+    var guardado;
+    try { guardado = localStorage.getItem(LLAVE); } catch (e) {}
+    // Sin nada guardado, oscuro: es una pared que también se mira de noche.
+    poner(guardado === 'claro' ? 'claro' : 'oscuro');
+    document.addEventListener('click', function (e) {
+      if (e.target && e.target.id === 'vigia-tema') {
+        poner(document.documentElement.getAttribute('data-tema') === 'claro'
+              ? 'oscuro' : 'claro');
+      }
+    });
+  })();
+
   // Reloj local. No pasa por el servidor: si el servidor se cae, el reloj sigue
   // corriendo y el aviso de "sin respuesta" es lo que delata la caída. Un reloj
   // congelado y un tablero congelado se ven igual, y no son lo mismo.

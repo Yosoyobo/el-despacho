@@ -16,7 +16,7 @@ Params:
   grande · unidad · trazo (de `pulso.area()`) · a · b
 {% endcomment %}
 {% with c=color|default:"success" %}
-<div class="flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
+<div class="flex items-center gap-4 overflow-hidden rounded-2xl border vg-borde vg-tarjeta p-4">
 
   {# ── El anillo ──────────────────────────────────────────────────────────── #}
   <div class="relative shrink-0" style="width:104px; height:104px;">
@@ -24,7 +24,7 @@ Params:
          aria-hidden="true">
       {# El riel: el círculo completo, tenue. #}
       <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
-              stroke-width="9" class="text-gray-800"/>
+              stroke-width="9" class="vg-riel"/>
       {# Y el relleno. 2·π·42 = 264. `widthratio` da pct/100 × 264. #}
       <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
               stroke-width="9" stroke-linecap="round"
@@ -34,17 +34,17 @@ Params:
     </svg>
     {# El número, centrado de verdad: posicionado sobre el SVG, no dentro. #}
     <div class="absolute inset-0 flex flex-col items-center justify-center">
-      <span class="font-mono text-xl font-semibold leading-none tabular-nums text-white">{{ pct|default:"—" }}</span>
-      <span class="mt-0.5 text-[10px] leading-none text-gray-500">%</span>
+      <span class="font-mono text-xl font-semibold leading-none tabular-nums vg-1">{{ pct|default:"—" }}</span>
+      <span class="mt-0.5 text-[10px] leading-none vg-3">%</span>
     </div>
   </div>
 
   {# ── Y los números ──────────────────────────────────────────────────────── #}
   <div class="min-w-0 flex-1">
-    <p class="truncate text-xs font-semibold uppercase tracking-wider text-gray-500">{{ titulo }}</p>
+    <p class="truncate text-xs font-semibold uppercase tracking-wider vg-3">{{ titulo }}</p>
     <p class="mt-1 flex items-baseline gap-1.5">
-      <span class="font-mono text-title-md font-semibold leading-none tabular-nums text-white">{{ grande|default:"—" }}</span>
-      <span class="text-xs text-gray-500">{{ unidad }}</span>
+      <span class="font-mono text-title-md font-semibold leading-none tabular-nums vg-1">{{ grande|default:"—" }}</span>
+      <span class="text-xs vg-3">{{ unidad }}</span>
     </p>
 
     {% if trazo %}
@@ -77,11 +77,11 @@ Params:
       no brinque cuando aparezcan las líneas.
       {% endcomment %}
       <div class="mt-2 flex h-7 items-end">
-        <div class="h-px w-full bg-gray-800"></div>
+        <div class="h-px w-full vg-riel-bg"></div>
       </div>
     {% endif %}
 
-    <p class="mt-1 truncate text-xs text-gray-600">{{ a }}{% if b %} · {{ b }}{% endif %}</p>
+    <p class="mt-1 truncate text-xs vg-4">{{ a }}{% if b %} · {{ b }}{% endif %}</p>
   </div>
 </div>
 {% endwith %}

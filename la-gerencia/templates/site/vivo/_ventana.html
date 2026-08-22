@@ -7,9 +7,9 @@ perfecto. Por eso se vigila aparte, y lo primero que se muestra son las tres
 puertas sondeadas de verdad, no las especificaciones.
 {% endcomment %}
 <div class="flex h-full flex-col">
-  <div class="shrink-0 border-b border-gray-800 px-4 py-2.5">
-    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-300">La ventana</h2>
-    <p class="text-[10px] text-gray-600">la puerta a internet</p>
+  <div class="shrink-0 border-b vg-borde px-4 py-2.5">
+    <h2 class="text-sm font-semibold uppercase tracking-wider vg-2">La ventana</h2>
+    <p class="text-[10px] vg-4">la puerta a internet</p>
   </div>
 
   <div class="vigia-scroll min-h-0 flex-1 px-4 py-2.5">
@@ -20,10 +20,10 @@ puertas sondeadas de verdad, no las especificaciones.
       <div class="flex items-baseline justify-between gap-1">
         <span class="flex items-baseline gap-1.5 truncate">
           <span class="shrink-0 {% if p.ok %}text-success-400{% else %}text-error-400{% endif %}">●</span>
-          <span class="truncate text-xs text-gray-300">{{ p.nombre }}</span>
+          <span class="truncate text-xs vg-2">{{ p.nombre }}</span>
         </span>
         <span class="shrink-0 font-mono text-[10px] tabular-nums
-                     {% if p.ok %}text-gray-600{% else %}text-error-400{% endif %}">
+                     {% if p.ok %}vg-4{% else %}text-error-400{% endif %}">
           {% if p.codigo %}{{ p.ms }}ms{% else %}caída{% endif %}
         </span>
       </div>
@@ -31,24 +31,24 @@ puertas sondeadas de verdad, no las especificaciones.
     </div>
 
     {# ── Y lo que es, según DigitalOcean ─────────────────────────────────── #}
-    <div class="mt-3 border-t border-gray-800 pt-2.5">
+    <div class="mt-3 border-t vg-borde pt-2.5">
       {% if do.disponible %}
-        <p class="truncate text-xs font-medium text-white">{{ do.nombre }}</p>
-        <p class="font-mono text-[10px] text-gray-600">{{ do.ip_publica }}</p>
+        <p class="truncate text-xs font-medium vg-1">{{ do.nombre }}</p>
+        <p class="font-mono text-[10px] vg-4">{{ do.ip_publica }}</p>
         <dl class="mt-2 space-y-1 text-[10px]">
-          <div class="flex justify-between"><dt class="text-gray-600">Región</dt>
-            <dd class="font-mono uppercase text-gray-400">{{ do.region }}</dd></div>
-          <div class="flex justify-between"><dt class="text-gray-600">Plan</dt>
-            <dd class="font-mono text-gray-400">{{ do.tamano }}</dd></div>
-          <div class="flex justify-between"><dt class="text-gray-600">Núcleos</dt>
-            <dd class="font-mono tabular-nums text-gray-400">{{ do.vcpus }}</dd></div>
-          <div class="flex justify-between"><dt class="text-gray-600">RAM</dt>
-            <dd class="font-mono tabular-nums text-gray-400">{{ do.ram_mb }} MB</dd></div>
-          <div class="flex justify-between"><dt class="text-gray-600">Disco</dt>
-            <dd class="font-mono tabular-nums text-gray-400">{{ do.disco_gb }} GB</dd></div>
+          <div class="flex justify-between"><dt class="vg-4">Región</dt>
+            <dd class="font-mono uppercase vg-3">{{ do.region }}</dd></div>
+          <div class="flex justify-between"><dt class="vg-4">Plan</dt>
+            <dd class="font-mono vg-3">{{ do.tamano }}</dd></div>
+          <div class="flex justify-between"><dt class="vg-4">Núcleos</dt>
+            <dd class="font-mono tabular-nums vg-3">{{ do.vcpus }}</dd></div>
+          <div class="flex justify-between"><dt class="vg-4">RAM</dt>
+            <dd class="font-mono tabular-nums vg-3">{{ do.ram_mb }} MB</dd></div>
+          <div class="flex justify-between"><dt class="vg-4">Disco</dt>
+            <dd class="font-mono tabular-nums vg-3">{{ do.disco_gb }} GB</dd></div>
         </dl>
       {% else %}
-        <p class="text-[10px] leading-relaxed text-gray-600">
+        <p class="text-[10px] leading-relaxed vg-4">
           {% if do.motivo == "no_configurada" %}
             Sin la llave de DigitalOcean en Los Ajustes no se pueden leer sus
             especificaciones. Las puertas de arriba se sondean igual.
@@ -57,7 +57,7 @@ puertas sondeadas de verdad, no las especificaciones.
           {% endif %}
         </p>
         {% if local.ip_publica_esperada %}
-          <p class="mt-1.5 font-mono text-[10px] text-gray-700">{{ local.ip_publica_esperada }}</p>
+          <p class="mt-1.5 font-mono text-[10px] vg-5">{{ local.ip_publica_esperada }}</p>
         {% endif %}
       {% endif %}
     </div>

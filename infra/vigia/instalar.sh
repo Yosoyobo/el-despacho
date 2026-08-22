@@ -110,8 +110,8 @@ cat <<AYUDA
    · Sin reiniciar, aquí y ahora, con teclado y pantalla en el NUC:
                  $RAIZ/infra/vigia/vigia-kiosco.sh &
 
-   · Para salir:  Alt+F4  (vuelve a abrirse a los 5 s, a propósito).
-                  Para que se quede cerrada:  pkill -f '[v]igia-kiosco'
+   · Para salir:  sal del fullscreen y opera la máquina. NADA vuelve a
+                  abrirlo solo: esto abre la página una vez y se sale de en medio.
 
    · Si no abrió:  tail -20 ~/.vigia.log   ← dice en qué se atoró
 

@@ -16,9 +16,9 @@ preguntas, en el orden en que uno las hace:
 columnas `whitespace-nowrap` reclaman su ancho intrínseco y la del texto se queda
 con las migajas: se veía «/sit…» con media pantalla vacía al lado.
 {% endcomment %}
-<div class="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-gray-800 px-4 py-2.5 sm:px-5">
+<div class="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b vg-borde px-4 py-2.5 sm:px-5">
   <h2 class="flex items-baseline gap-2.5">
-    <span class="text-sm font-semibold uppercase tracking-wider text-gray-300">Peticiones en vivo</span>
+    <span class="text-sm font-semibold uppercase tracking-wider vg-2">Peticiones en vivo</span>
     {% if resumen.por_minuto %}
       <span class="badge badge-sm border-0 bg-brand-500/15 font-mono text-brand-300">
         {{ resumen.por_minuto }} en el último minuto
@@ -30,19 +30,19 @@ con las migajas: se veía «/sit…» con media pantalla vacía al lado.
       <span class="text-error-400">{{ resumen.errores }} con error</span>
     {% endif %}
     {% if resumen.ms_medio %}
-      <span class="text-gray-500">media {{ resumen.ms_medio }} ms</span>
-      <span class="{% if resumen.ms_max > 1000 %}text-warning-400{% else %}text-gray-500{% endif %}">
+      <span class="vg-3">media {{ resumen.ms_medio }} ms</span>
+      <span class="{% if resumen.ms_max > 1000 %}text-warning-400{% else %}vg-3{% endif %}">
         pico {{ resumen.ms_max }} ms
       </span>
     {% endif %}
-    <span class="text-gray-600">últimas {{ resumen.total }}</span>
+    <span class="vg-4">últimas {{ resumen.total }}</span>
   </div>
 </div>
 
 {% if error %}
   <p class="px-5 py-4 text-sm text-error-400">No se pudo leer el flujo: {{ error }}</p>
 {% elif not filas %}
-  <p class="px-5 py-4 text-sm text-gray-600">
+  <p class="px-5 py-4 text-sm vg-4">
     Nada todavía. Las sondas y el sondeo de esta pantalla no se listan a propósito.
   </p>
 {% else %}
@@ -71,30 +71,30 @@ con las migajas: se veía «/sit…» con media pantalla vacía al lado.
     <tbody>
       {% for f in filas %}
       <tr data-fila="{{ f.servicio }}-{{ f.cuando|date:'His' }}-{{ f.ruta|slugify|truncatechars:24 }}-{{ forloop.counter0 }}"
-          class="border-b border-gray-800/40 last:border-0 align-middle">
+          class="border-b vg-borde last:border-0 align-middle">
 
         {# ── cuándo ── #}
-        <td class="w-[66px] whitespace-nowrap py-1 pl-3 pr-2 font-mono text-[11px] text-gray-600 tabular-nums">
+        <td class="w-[66px] whitespace-nowrap py-1 pl-3 pr-2 font-mono text-[11px] vg-4 tabular-nums">
           {{ f.cuando|time:"H:i:s"|default:"--:--:--" }}
         </td>
 
         {# ── quién ── #}
         <td class="hidden whitespace-nowrap px-2 xl:table-cell xl:w-[180px]">
           <div class="flex items-baseline gap-2">
-            <span class="font-mono text-xs text-gray-300">{{ f.quien|default:"—" }}</span>
+            <span class="font-mono text-xs vg-2">{{ f.quien|default:"—" }}</span>
             {% if f.aparato %}
-              <span class="text-[10px] text-gray-600">{{ f.aparato }}</span>
+              <span class="text-[10px] vg-4">{{ f.aparato }}</span>
             {% endif %}
           </div>
         </td>
 
         {# ── qué está haciendo, con la ruta cruda debajo ── #}
         <td class="px-2 py-1">
-          <div class="truncate text-sm text-white" title="{{ f.ruta }}">
-            <span class="font-mono text-[10px] text-gray-600">{{ f.metodo }}</span>
+          <div class="truncate text-sm vg-1" title="{{ f.ruta }}">
+            <span class="font-mono text-[10px] vg-4">{{ f.metodo }}</span>
             {{ f.accion }}
           </div>
-          <div class="truncate font-mono text-[10px] text-gray-700">
+          <div class="truncate font-mono text-[10px] vg-5">
             {# En chico, el quién y la pieza bajan aquí: se esconde la columna, no el dato. #}
             <span class="lg:hidden">{{ f.servicio }} · </span><span class="xl:hidden">{{ f.quien }} · </span>{{ f.ruta }}
           </div>
@@ -114,9 +114,9 @@ con las migajas: se veía «/sit…» con media pantalla vacía al lado.
 
         {# ── cómo salió ── #}
         <td class="w-[86px] whitespace-nowrap py-1 pl-1 pr-3 text-right font-mono text-[11px] tabular-nums">
-          <span class="{% if f.codigo >= 500 %}text-error-400{% elif f.codigo >= 400 %}text-warning-400{% else %}text-gray-600{% endif %}">{{ f.codigo }}</span>
+          <span class="{% if f.codigo >= 500 %}text-error-400{% elif f.codigo >= 400 %}text-warning-400{% else %}vg-4{% endif %}">{{ f.codigo }}</span>
           {% if f.ms is not None %}
-            <span class="{% if f.ms >= 1000 %}text-warning-400{% elif f.ms >= 300 %}text-gray-400{% else %}text-gray-600{% endif %}">{{ f.ms }}<span class="text-gray-700">ms</span></span>
+            <span class="{% if f.ms >= 1000 %}text-warning-400{% elif f.ms >= 300 %}vg-3{% else %}vg-4{% endif %}">{{ f.ms }}<span class="vg-5">ms</span></span>
           {% endif %}
         </td>
       </tr>

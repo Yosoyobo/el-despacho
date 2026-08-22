@@ -5,11 +5,11 @@ Los nombres van en llano —"Memoria (RAM)", "Disco (SSD)"— porque quien mira 
 pared no tiene por qué traducir del inglés técnico.
 {% endcomment %}
 {% if error or not infra.host.memoria.disponible %}
-  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <p class="text-sm text-gray-500">
+  <div class="rounded-2xl border vg-borde vg-tarjeta p-5">
+    <p class="text-sm vg-3">
       No se pudo leer el fierro de la máquina{% if error %}: {{ error }}{% endif %}.
-      Suele ser que falta montar <code class="text-gray-400">/proc</code> y el socket
-      de Docker (los apila <code class="text-gray-400">docker-compose.site.yml</code>).
+      Suele ser que falta montar <code class="vg-3">/proc</code> y el socket
+      de Docker (los apila <code class="vg-3">docker-compose.site.yml</code>).
     </p>
   </div>
 {% else %}
@@ -41,37 +41,37 @@ esqueleto por este panel, así que es ESTE el que decide cuántas columnas hay.
   conteo discreto que toca el cero seguido, y un área con huecos se ve como
   trozos sueltos en vez de como un ritmo.
   {% endcomment %}
-  <div class="flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
+  <div class="flex items-center gap-4 overflow-hidden rounded-2xl border vg-borde vg-tarjeta p-4">
     <div class="relative shrink-0" style="width:104px; height:104px;">
       <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90" aria-hidden="true">
         <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
-                stroke-width="9" class="text-gray-800"/>
+                stroke-width="9" class="vg-riel"/>
         <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
                 stroke-width="9" stroke-linecap="round"
                 stroke-dasharray="{% widthratio cr.pct_running|default:0 100 264 %} 264"
                 class="{% if cr.running == cr.total %}text-success-400{% else %}text-warning-400{% endif %}"/>
       </svg>
       <div class="absolute inset-0 flex items-center justify-center">
-        <span class="font-mono text-xl font-semibold leading-none tabular-nums text-white">{{ cr.running|default:"—" }}<span class="text-sm text-gray-600">/{{ cr.total|default:"—" }}</span></span>
+        <span class="font-mono text-xl font-semibold leading-none tabular-nums vg-1">{{ cr.running|default:"—" }}<span class="text-sm vg-4">/{{ cr.total|default:"—" }}</span></span>
       </div>
     </div>
     <div class="min-w-0 flex-1">
-      <p class="truncate text-xs font-semibold uppercase tracking-wider text-gray-500">Piezas trabajando</p>
+      <p class="truncate text-xs font-semibold uppercase tracking-wider vg-3">Piezas trabajando</p>
       <p class="mt-1 flex items-baseline gap-1.5">
-        <span class="text-title-md font-semibold leading-none text-white">{% if cr.running == cr.total %}Todas{% else %}{{ cr.stopped }} abajo{% endif %}</span>
+        <span class="text-title-md font-semibold leading-none vg-1">{% if cr.running == cr.total %}Todas{% else %}{{ cr.stopped }} abajo{% endif %}</span>
       </p>
       {% if barras_peticiones %}
         <div class="mt-2 flex h-7 items-end gap-px">
           {% for b in barras_peticiones %}
-            <div class="flex-1 rounded-sm {% if b.pct %}bg-brand-500{% else %}bg-gray-800{% endif %}"
+            <div class="flex-1 rounded-sm {% if b.pct %}bg-brand-500{% else %}vg-riel-bg{% endif %}"
                  style="height:{% if b.pct %}{{ b.pct }}{% else %}4{% endif %}%"
                  title="{{ b.n }} peticiones"></div>
           {% endfor %}
         </div>
       {% else %}
-        <div class="mt-2 flex h-7 items-end"><div class="h-px w-full bg-gray-800"></div></div>
+        <div class="mt-2 flex h-7 items-end"><div class="h-px w-full vg-riel-bg"></div></div>
       {% endif %}
-      <p class="mt-1 truncate text-xs text-gray-600">
+      <p class="mt-1 truncate text-xs vg-4">
         {% if h.uptime.disponible %}encendido {{ h.uptime.humano }}{% endif %}
         {% if infra.containers.info.images %} · {{ infra.containers.info.images }} imágenes{% endif %}
       </p>

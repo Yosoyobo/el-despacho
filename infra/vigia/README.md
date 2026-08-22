@@ -26,14 +26,17 @@ En el NUC, **con teclado y pantalla** (no por SSH), abre una terminal y escribe:
 
 ### Para salir de la pantalla completa
 
-`Alt+F4` cierra el navegador. Vuelve a abrirse solo a los cinco segundos — eso es
-a propósito, para que la pared aguante sola. Si de verdad quieres que se quede
-cerrada, primero detén el lanzador:
+Sal del fullscreen como en cualquier navegador (la extensión que lo pone se
+desactiva igual) y opera el NUC. **Nada vuelve a abrirlo solo**: el lanzador abre
+la página una vez al iniciar sesión y se sale de en medio.
 
-    pkill -f '[v]igia-kiosco'
-
-Y para dejarla como estaba, vuelve a lanzarla con el comando de arriba (o reinicia
-el NUC).
+Eso es a propósito. La primera versión hacía `--kiosk` con perfil propio y
+vigilaba el navegador para relanzarlo, y eso peleaba con cómo se usa la máquina:
+el `--kiosk` quitaba la salida del fullscreen que la extensión sí da, el perfil
+propio abría una segunda instancia que chocaba con la de la sesión —Firefox aquí
+es un snap y no puede escribir fuera de su confinamiento, así que ignoraba el
+`--profile` y salía «Firefox is running, but is not responding»— y la vigilancia
+hacía que cerrarlo a mano no sirviera de nada.
 
 ### Si no abrió
 

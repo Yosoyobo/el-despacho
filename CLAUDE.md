@@ -65,7 +65,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Celador** | Extremo `/salud` para el monitor del taller + su credencial (`lib/salud.py`, `lib/celador.py`) | — |
 | **El Almacén** | Medios en disco (fotos, comprobantes, CFDI, adjuntos) con derivados propios; Drive queda de espejo (`lib/almacen.py`) | — |
 | **El Mostrador** | Entrega los medios de El Almacén desde el disco del NUC, sin pasar por Django ni por Drive (`infra/mostrador/`) | 8202 |
-| **El Vigía** | Pantalla de pared del NUC: fierro, peticiones y trabajo del despacho en vivo. Sólo se atiende en la máquina (`/site/vivo/`, `infra/vigia/`) | — |
+| **El Vigía** | Pantalla de pared del NUC: fierro, peticiones y trabajo del despacho en vivo, con tema claro/oscuro. Sólo se atiende en la máquina (`/site/vivo/`, `infra/vigia/`). **Portable a otros proyectos: `docs/ADOPTAR-EL-VIGIA.md`** | — |
 
 ### Módulos de negocio
 

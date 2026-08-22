@@ -600,3 +600,141 @@ class TestElPanelDelFierroEnLaPrimeraMuestra:
             "argumento de filtro con llave anidada — un 500 si la llave falta: "
             + ", ".join(sospechosos)
         )
+
+
+class TestElTemaYElContraste:
+    """La pared se mira de lejos y a veces con el sol encima. Los grises de la
+    paleta general del repo —pensados para una pantalla a medio metro— ahí no se
+    leen, y no había forma de tener modo claro sin duplicar cada clase."""
+
+    def _plantillas(self):
+        from pathlib import Path
+        raiz = Path(__file__).resolve().parents[2] / "la-gerencia" / "templates" / "site"
+        return [raiz / "vivo.html"] + sorted((raiz / "vivo").glob("*.html"))
+
+    def test_ninguna_plantilla_clava_un_gris_de_texto(self):
+        """Un `text-gray-*` clavado no puede cambiar con el tema: en claro queda
+        gris claro sobre blanco. Es justo lo que pasó con el riel de los anillos,
+        que se quedó negro y el anillo se leía como un aro negro con un trocito
+        verde."""
+        import re
+        malos = []
+        for f in self._plantillas():
+            for i, linea in enumerate(f.read_text().splitlines(), 1):
+                # Sólo dentro de atributos de clase; los comentarios que explican
+                # la regla mencionan los nombres a propósito.
+                if re.search(r'class="[^"]*\b(text|bg|border|divide)-gray-\d', linea):
+                    malos.append(f"{f.name}:{i}")
+        assert not malos, (
+            "grises clavados: no siguen el tema y en claro no se leen → " + ", ".join(malos)
+        )
+
+    def test_los_dos_temas_definen_los_mismos_niveles(self):
+        """Si un token existe en oscuro y no en claro, ese texto hereda el valor
+        del otro tema y se vuelve ilegible — el modo de falla es exactamente el
+        que se reportó."""
+        import re
+        t = (self._plantillas()[0]).read_text()
+        oscuro = set(re.findall(r"^\s*(--vg-[\w-]+):", t.split(':root[data-tema="claro"]')[0], re.M))
+        claro = set(re.findall(r"^\s*(--vg-[\w-]+):", t.split(':root[data-tema="claro"]')[1], re.M))
+        assert oscuro, "no se encontraron los tokens del tema oscuro"
+        assert oscuro == claro, f"faltan en un tema: {oscuro ^ claro}"
+
+    def test_el_tema_se_aplica_antes_del_primer_pintado(self):
+        """Si el script viviera al final del <body>, la pared arrancaría con un
+        destello del tema equivocado en cada refresco — y una pared parpadeando se
+        nota mucho más que una pantalla que alguien abre y cierra."""
+        t = (self._plantillas()[0]).read_text()
+        cabeza = t[: t.index("</head>")]
+        assert "vigia-tema" in cabeza, "el anti-FOUC del tema debe ir en el <head>"
+
+    @pytest.mark.django_db
+    def test_la_url_puede_forzar_el_tema(self, client, settings):
+        """`?tema=claro` sirve para revisar la pantalla sin ir a picar el botón en
+        la máquina, y para arreglarla desde el tailnet si quedó en el que no se ve."""
+        settings.ROOT_URLCONF = "tests.urls_gerencia"
+        settings.ALLOWED_HOSTS = ["*"]
+        r = client.get("/site/vivo/?tema=claro", HTTP_HOST="localhost")
+        assert r.status_code == 200
+        assert b"'tema'" in r.content or b'"tema"' in r.content
+
+
+class TestElLanzadorNoPeleaConElNavegador:
+    """El fullscreen lo pone una extensión de Firefox, instalada a propósito para
+    poder SALIR de él y operar el NUC. El lanzador tiene que respetar eso."""
+
+    def _guion(self):
+        from pathlib import Path
+        return (Path(__file__).resolve().parents[2] / "infra" / "vigia"
+                / "vigia-kiosco.sh").read_text()
+
+    def test_no_fuerza_kiosco_ni_perfil_propio(self):
+        """`--kiosk` quita la salida del fullscreen que la extensión sí da, y un
+        perfil propio abre una segunda instancia: con Firefox como snap el
+        `--profile` se ignora, choca con la de la sesión y sale «Firefox is
+        running, but is not responding»."""
+        # Se mira sólo lo EJECUTABLE: el encabezado del guion explica por qué no
+        # se usan esas banderas, y un candado que busque en todo el texto choca
+        # con su propia explicación.
+        codigo = "\n".join(
+            ln for ln in self._guion().splitlines()
+            if ln.strip() and not ln.strip().startswith("#")
+        )
+        for prohibido in ("--kiosk", "--new-instance", "--profile", "--user-data-dir"):
+            assert prohibido not in codigo, f"el lanzador no debe usar {prohibido}"
+
+    def test_no_vigila_para_relanzar(self):
+        """Si relanza solo, cerrar el navegador a mano no sirve de nada: vuelve a
+        los diez segundos. Justo lo contrario de poder operar la máquina."""
+        g = self._guion()
+        assert "pkill" not in g, "el lanzador no debe matar navegadores"
+        # Un solo `while` (el de esperar a que la app conteste), no un bucle de
+        # vigilancia.
+        assert g.count("while true") == 1
+
+    def test_espera_a_que_la_app_conteste_antes_de_abrir(self):
+        """Tras un reinicio el escritorio está listo antes que Docker, y nadie
+        recarga una pared."""
+        g = self._guion()
+        assert "curl -sf" in g and "ESPERA_MAX" in g
+
+    def test_llama_al_navegador_por_su_nombre_no_a_xdg_open(self):
+        """`xdg-open` obedece al handler de `text/html` del escritorio, y en este
+        NUC eso resolvía a LibreOffice: la pared abría un procesador de texto."""
+        g = self._guion()
+        i_firefox = g.index("for cmd in firefox")
+        i_xdg = g.index("xdg-open", i_firefox)
+        assert i_firefox < i_xdg, "los navegadores por nombre van ANTES de xdg-open"
+
+
+class TestLasClasesDeColorExistenEnElCss:
+    """Una clase de Tailwind que la plantilla usa y el CSS no generó **no falla**:
+    el elemento sale sin color y parece un problema de diseño. Pasó con las barras
+    de «Las piezas» (`bg-brand-400`), que se veían como un riel gris vacío.
+
+    Y la trampa de la comprobación: `grep -c` cuenta LÍNEAS, y un CSS minificado
+    es una sola línea, así que siempre devuelve 0 o 1 y no dice si la regla existe.
+    Hay que buscar la regla completa `.clase{`.
+    """
+
+    def test_las_clases_de_fondo_de_color_estan_declaradas(self):
+        import re
+        from pathlib import Path
+        raiz = Path(__file__).resolve().parents[2] / "la-gerencia"
+        css = raiz / "static" / "css" / "tailwind.css"
+        if not css.is_file():
+            pytest.skip("el CSS lo compila el build de Docker (§6)")
+        texto = css.read_text()
+        usadas = set()
+        for f in [raiz / "templates" / "site" / "vivo.html"] + sorted(
+                (raiz / "templates" / "site" / "vivo").glob("*.html")):
+            usadas |= set(re.findall(
+                r"\b(bg-(?:brand|success|warning|error|blue-light|purple|orange)-\d{2,3})\b",
+                f.read_text()))
+        assert usadas, "¿las plantillas ya no usan fondos de color?"
+        faltantes = [c for c in sorted(usadas) if f".{c}{{" not in texto]
+        assert not faltantes, (
+            f"usadas en las plantillas y NO generadas en el CSS: {faltantes}. "
+            "Recompilar Tailwind — sin la regla, el elemento sale sin color y "
+            "parece un problema de diseño."
+        )

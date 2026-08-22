@@ -9,27 +9,27 @@ alguien escribió.
 {% endcomment %}
 <div class="flex h-full flex-col">
 
-  <div class="flex shrink-0 items-baseline justify-between border-b border-gray-800 px-5 py-2.5">
+  <div class="flex shrink-0 items-baseline justify-between border-b vg-borde px-5 py-2.5">
     <h2 class="flex items-baseline gap-2.5">
-      <span class="text-sm font-semibold uppercase tracking-wider text-gray-300">Los Chalanes</span>
-      <span class="text-[11px] text-gray-600">lo que se le pide a la IA</span>
+      <span class="text-sm font-semibold uppercase tracking-wider vg-2">Los Chalanes</span>
+      <span class="text-[11px] vg-4">lo que se le pide a la IA</span>
     </h2>
     <div class="flex items-baseline gap-3 font-mono text-xs">
       {% if hoy.disponible %}
-        <span class="text-gray-300">{{ hoy.llamadas }} hoy</span>
+        <span class="vg-2">{{ hoy.llamadas }} hoy</span>
         {% if hoy.fallos %}<span class="text-error-400">{{ hoy.fallos }} falló</span>{% endif %}
         <span class="text-success-300">${{ hoy.costo|floatformat:4 }}</span>
       {% else %}
-        <span class="text-gray-600">n/d</span>
+        <span class="vg-4">n/d</span>
       {% endif %}
     </div>
   </div>
 
   {# ── El reparto del día: una barra por Chalán ─────────────────────────── #}
   {% if por_chalan %}
-  <div class="shrink-0 border-b border-gray-800 px-5 py-2.5">
+  <div class="shrink-0 border-b vg-borde px-5 py-2.5">
     {# Una sola barra apilada dice el reparto de un vistazo, sin leer números. #}
-    <div class="mb-2 flex h-2 overflow-hidden rounded-full bg-gray-800">
+    <div class="mb-2 flex h-2 overflow-hidden rounded-full vg-riel-bg">
       {% for c in por_chalan %}
         <div style="width:{{ c.pct }}%; background:{{ c.color }}" title="{{ c.chalan }}: {{ c.n }}"></div>
       {% endfor %}
@@ -38,10 +38,10 @@ alguien escribió.
       {% for c in por_chalan %}
       <span class="flex items-baseline gap-1.5">
         <span class="inline-block h-2 w-2 rounded-full" style="background:{{ c.color }}"></span>
-        <span class="text-gray-300">{{ c.chalan }}</span>
-        <span class="font-mono text-gray-500 tabular-nums">{{ c.n }}</span>
+        <span class="vg-2">{{ c.chalan }}</span>
+        <span class="font-mono vg-3 tabular-nums">{{ c.n }}</span>
         {% if c.fallos %}<span class="font-mono text-error-400">−{{ c.fallos }}</span>{% endif %}
-        <span class="font-mono text-gray-600 tabular-nums">${{ c.costo|floatformat:4 }}</span>
+        <span class="font-mono vg-4 tabular-nums">${{ c.costo|floatformat:4 }}</span>
       </span>
       {% endfor %}
     </div>
@@ -53,9 +53,9 @@ alguien escribió.
     <p class="px-5 py-4 text-sm text-error-400">No se pudo leer la bitácora: {{ error }}</p>
   {% elif not llamadas %}
     <div class="flex min-h-0 flex-1 items-center justify-center px-5">
-      <p class="text-center text-sm text-gray-600">
+      <p class="text-center text-sm vg-4">
         Nadie le ha pedido nada a la IA todavía.<br>
-        <span class="text-[11px] text-gray-700">Aquí van a aparecer las llamadas, con quién y cuánto costaron.</span>
+        <span class="text-[11px] vg-5">Aquí van a aparecer las llamadas, con quién y cuánto costaron.</span>
       </p>
     </div>
   {% else %}
@@ -64,13 +64,13 @@ alguien escribió.
     <table class="w-full table-fixed">
       <tbody>
         {% for ll in llamadas %}
-        <tr class="border-b border-gray-800/40 last:border-0 align-middle">
-          <td class="w-[58px] whitespace-nowrap py-1 pl-3 pr-2 font-mono text-[11px] text-gray-600 tabular-nums">
+        <tr class="border-b vg-borde last:border-0 align-middle">
+          <td class="w-[58px] whitespace-nowrap py-1 pl-3 pr-2 font-mono text-[11px] vg-4 tabular-nums">
             {{ ll.cuando|time:"H:i" }}
           </td>
-          <td class="hidden truncate px-1 text-xs text-gray-300 sm:table-cell sm:w-[120px]" title="{{ ll.quien }}">{{ ll.quien }}</td>
+          <td class="hidden truncate px-1 text-xs vg-2 sm:table-cell sm:w-[120px]" title="{{ ll.quien }}">{{ ll.quien }}</td>
           <td class="px-2 py-1">
-            <div class="truncate text-sm text-white">
+            <div class="truncate text-sm vg-1">
               {{ ll.estacion }}
               {% if not ll.exito %}
                 <span class="text-error-400" title="{{ ll.error }}">· falló</span>
@@ -79,16 +79,16 @@ alguien escribió.
                 <span class="text-warning-400" title="entró de relevo">· relevo</span>
               {% endif %}
             </div>
-            <div class="truncate font-mono text-[10px] text-gray-700">
+            <div class="truncate font-mono text-[10px] vg-5">
               <span class="sm:hidden">{{ ll.quien }} · </span><span class="lg:hidden">{{ ll.chalan }} · </span>{{ ll.modelo }} · huella {{ ll.huella }}
             </div>
           </td>
           <td class="hidden whitespace-nowrap px-2 lg:table-cell lg:w-[88px]">
-            <span class="badge badge-sm border-0 bg-gray-800 text-[10px] text-gray-300">{{ ll.chalan }}</span>
+            <span class="badge badge-sm border-0 vg-riel-bg text-[10px] vg-2">{{ ll.chalan }}</span>
           </td>
           <td class="w-[104px] whitespace-nowrap py-1 pl-1 pr-3 text-right font-mono text-[11px] tabular-nums">
-            <span class="text-gray-500">{{ ll.tokens }}t</span>
-            <span class="{% if ll.ms >= 4000 %}text-warning-400{% else %}text-gray-600{% endif %}">{{ ll.ms }}<span class="text-gray-700">ms</span></span>
+            <span class="vg-3">{{ ll.tokens }}t</span>
+            <span class="{% if ll.ms >= 4000 %}text-warning-400{% else %}vg-4{% endif %}">{{ ll.ms }}<span class="vg-5">ms</span></span>
             <div class="text-success-300">${{ ll.costo|floatformat:4 }}</div>
           </td>
         </tr>
