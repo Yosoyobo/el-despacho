@@ -30,6 +30,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
+from lib.site import acciones
 from lib.site.contenedores import DOCKER_SOCK, _UnixHTTPConnection, disponible
 
 # Los contenedores que atienden peticiones, con el apodo que se muestra.
@@ -51,6 +52,16 @@ _RE_GUNICORN = re.compile(
     r"(?P<codigo>\d{3})\s+(?P<bytes>\d+|-)"
 )
 _RE_MICROS = re.compile(r'"\s+(?P<micros>\d+)\s*$')
+# Los tres campos entre comillas del final —referer, navegador, X-Forwarded-For—
+# más la duración. El XFF va antes de los microsegundos a propósito: `_RE_MICROS`
+# ancla al final de la línea, así que un campo después lo rompería en silencio.
+_RE_COLA = re.compile(
+    r'"(?P<ref>[^"]*)"\s+"(?P<ua>[^"]*)"\s+"(?P<xff>[^"]*)"\s+(?P<micros>\d+)\s*$'
+)
+# El formato anterior no traía el XFF; se sigue leyendo para no perder las
+# líneas que ya estaban en el buffer cuando se recicló el contenedor.
+_RE_COLA_VIEJA = re.compile(r'"(?P<ref>[^"]*)"\s+"(?P<ua>[^"]*)"\s+(?P<micros>\d+)?\s*$')
+_RE_IP = re.compile(r"^(?P<ip>\S+)\s")
 
 
 def _leer_bytes(path: str, *, timeout: float = 3.0) -> bytes:
@@ -110,12 +121,20 @@ def _parsear_caddy(resto: str) -> dict[str, Any] | None:
     except Exception:  # noqa: BLE001 — línea cortada por el buffer
         return None
     pet = d.get("request") or {}
+    cab = pet.get("headers") or {}
+    def _prim(llave: str) -> str:
+        v = cab.get(llave) or cab.get(llave.title()) or cab.get(llave.lower())
+        if isinstance(v, list):
+            return v[0] if v else ""
+        return v or ""
     return {
         "metodo": pet.get("method") or "?",
         "ruta": pet.get("uri") or "?",
         "codigo": d.get("status"),
         "bytes": d.get("size"),
         "ms": round((d.get("duration") or 0) * 1000, 1),
+        "quien": acciones.quien(_prim("X-Forwarded-For"), pet.get("remote_ip")),
+        "aparato": acciones.aparato(_prim("User-Agent")),
     }
 
 
@@ -123,7 +142,11 @@ def _parsear_gunicorn(resto: str) -> dict[str, Any] | None:
     m = _RE_GUNICORN.search(resto)
     if not m:
         return None
-    micros = _RE_MICROS.search(resto)
+    cola = _RE_COLA.search(resto) or _RE_COLA_VIEJA.search(resto)
+    ua = cola.group("ua") if cola else ""
+    xff = cola.groupdict().get("xff") if cola else ""
+    micros = cola.groupdict().get("micros") if cola else None
+    ip = _RE_IP.match(resto)
     return {
         "metodo": m.group("metodo"),
         "ruta": m.group("ruta"),
@@ -131,7 +154,9 @@ def _parsear_gunicorn(resto: str) -> dict[str, Any] | None:
         "bytes": None if m.group("bytes") == "-" else int(m.group("bytes")),
         # `%(D)s` es microsegundos. Si el entrypoint todavía no lo agrega, queda
         # en None y la columna sale vacía en vez de mentir con un cero.
-        "ms": round(int(micros.group("micros")) / 1000, 1) if micros else None,
+        "ms": round(int(micros) / 1000, 1) if micros else None,
+        "quien": acciones.quien(xff, ip.group("ip") if ip else None),
+        "aparato": acciones.aparato(ua),
     }
 
 
@@ -160,7 +185,13 @@ def peticiones(limite: int = 40, *, por_servicio: int = 60) -> list[dict[str, An
                 continue
             if _RUIDO.match(datos["ruta"] or ""):
                 continue
-            filas.append({**datos, "servicio": apodo, "cuando": cuando})
+            filas.append({
+                **datos,
+                "servicio": apodo,
+                "cuando": cuando,
+                # El «qué»: lo que la persona está haciendo, no la URL que pidió.
+                "accion": acciones.nombrar(datos["ruta"] or ""),
+            })
 
     # Sin marca de tiempo no hay forma de ordenar: van al final, no se descartan.
     filas.sort(key=lambda f: f["cuando"] or datetime.min.replace(tzinfo=UTC),

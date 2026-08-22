@@ -8,8 +8,9 @@
 #   4. Pone `restart: always`, el segundo candado del arranque tras un apagón.
 #   5. Levanta El Mostrador, que entrega los medios de El Almacén desde el disco
 #      de esta máquina (el disco está aquí; El Portero está en la ventana).
-#   6. Le sube el fierro a gunicorn: el default del repo es 1 worker, calibrado
-#      para el droplet de 1 GB. Esta máquina tiene 8 CPU y 16 G.
+#   6. Le sube el fierro a gunicorn y a Postgres para lo que esta máquina da de
+#      verdad: 8 núcleos y 15 G, contra el default del repo, que está calibrado
+#      para el droplet de 1 GB (1 worker, shared_buffers=64MB).
 services:
   el-portero:
     # Un profile que nadie activa = servicio que no se levanta, sin borrarlo del
@@ -25,12 +26,17 @@ services:
       - "8200:8000"
     restart: always
     environment:
-      # 4 × 4 = 16 peticiones a la vez (antes 1 × 4). Cuestan ~800 MB de los 13 G
-      # libres. No se usa la fórmula 2×CPU+1 (17 workers) a propósito: son 5
-      # usuarios, y lo que ahogaba no era la concurrencia sino que UNA petición
-      # lenta —un PDF que lo arma Google, una llamada a un Chalán— dejaba a los
-      # demás esperando.
-      GUNICORN_WORKERS: "4"
+      # 8 × 4 = 32 peticiones a la vez. La cuenta que importa NO es la de CPU
+      # —son 5 usuarios, nunca van a saturar 8 núcleos— sino la de ESPERAS: un
+      # PDF que lo arma Google, una llamada a un Chalán o un OCR se llevan
+      # segundos sin usar procesador, y cada uno ocupa un hilo. Con 32 hilos,
+      # cinco personas pueden tener varias cosas lentas en vuelo y el sistema
+      # sigue contestando al instante.
+      #
+      # Cuesta ~1.8 G de los 11 G libres. El techo real no es la RAM sino las
+      # conexiones a Postgres: 32 (Taller) + 16 (Gerencia) + el worker = 49,
+      # contra `max_connections=100`. Sobra el doble.
+      GUNICORN_WORKERS: "8"
       GUNICORN_THREADS: "4"
 
   la-gerencia:
@@ -38,27 +44,64 @@ services:
       - "8201:8001"
     restart: always
     environment:
-      # La Gerencia es panel de configuración: mucho menos tráfico que El Taller.
-      GUNICORN_WORKERS: "2"
+      # La Gerencia es panel de configuración y mueve menos tráfico que El
+      # Taller, pero es la que corre El Vigía: cinco paneles pidiendo cada 2-30 s,
+      # y algunos hablan con el socket de Docker o con internet. Con 2 workers,
+      # un sondeo lento a DigitalOcean podía dejar la pared esperando.
+      GUNICORN_WORKERS: "4"
       GUNICORN_THREADS: "4"
 
   # ── Postgres ────────────────────────────────────────────────────────────────
-  # El compose base está tuneado para "droplet de 1 GB / 5 usuarios"
-  # (shared_buffers=64MB). Esta máquina tiene 16 G. Se sube con la mano puesta,
-  # no al máximo: el resto de la pila también necesita RAM.
+  # El compose base está tuneado para "droplet de 1 GB" (shared_buffers=64MB).
+  # Esta máquina tiene 15 G y 8 núcleos, y el primer paso de la mudanza lo dejó a
+  # medio camino (512 MB) por prudencia. Aquí ya va dimensionado de verdad:
+  #
+  #   shared_buffers 2G          el 13% de la RAM. La receta común es 25%, pero
+  #                              esta máquina corre TODO (apps, Redis, Docker),
+  #                              no es un servidor de base dedicado.
+  #   effective_cache_size 8G    no reserva nada: le dice al planeador cuánta
+  #                              memoria puede suponer que el sistema tiene en
+  #                              caché. Subirlo hace que prefiera índices sobre
+  #                              recorridos de tabla completos.
+  #   work_mem 16M               por operación de orden/agrupado. Con 100
+  #                              conexiones el peor caso teórico es alto, pero
+  #                              las consultas del repo son chicas y ordenadas.
+  #   random_page_cost 1.1       el default (4.0) asume disco que gira, donde
+  #                              saltar es caro. Esto es SSD: saltar cuesta casi
+  #                              lo mismo que leer seguido, y sin corregirlo el
+  #                              planeador evita índices que sí conviene usar.
+  #   effective_io_concurrency   un SSD atiende muchas lecturas a la vez; el
+  #     200                      default (1) le dice que no puede.
+  #   los max_parallel_*         dejan que UNA consulta grande use varios
+  #                              núcleos. Es lo que aprovecha los 8 de verdad:
+  #                              los reportes de Contaduría y los exports.
   postgres:
     command:
       - "postgres"
       - "-c"
-      - "shared_buffers=512MB"
+      - "shared_buffers=2GB"
       - "-c"
-      - "work_mem=8MB"
+      - "work_mem=16MB"
       - "-c"
-      - "effective_cache_size=2GB"
+      - "effective_cache_size=8GB"
       - "-c"
-      - "max_connections=50"
+      - "maintenance_work_mem=512MB"
       - "-c"
-      - "maintenance_work_mem=128MB"
+      - "max_connections=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "max_worker_processes=8"
+      - "-c"
+      - "max_parallel_workers=8"
+      - "-c"
+      - "max_parallel_workers_per_gather=4"
+      - "-c"
+      - "max_parallel_maintenance_workers=4"
     restart: always
 
   # ── Redis ───────────────────────────────────────────────────────────────────
@@ -73,7 +116,10 @@ services:
       - "--appendonly"
       - "yes"
       - "--maxmemory"
-      - "512mb"
+      # 2 G. El techo importa por El Almacén: cada foto de producto deja su
+      # derivado en caché, y con 512 MB una tanda grande empezaba a desalojar.
+      # Con esto la caché de medios cabe entera y las fotos salen del primer tiro.
+      - "2gb"
       - "--maxmemory-policy"
       - "volatile-lru"
     restart: always

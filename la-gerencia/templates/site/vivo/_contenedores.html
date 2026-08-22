@@ -1,32 +1,52 @@
-{% comment %}CPU y memoria por contenedor, al estilo docker stats. Cada 3 s.{% endcomment %}
+{% comment %}
+Las piezas de la máquina, con lo que consume cada una. Cada 3 s.
+
+Los nombres de contenedor son estériles («despacho-gerencia», «postgres») y no
+dicen nada a quien mira la pared: cada pieza sale con su nombre y su oficio (los
+pone `contenedores.bautizar`). El nombre técnico se queda en el `title`, para
+cuando hace falta.
+
+Las barras son de DaisyUI (`progress`) porque un número gris de 11px no se lee de
+lejos, y una barra sí.
+{% endcomment %}
 <div class="flex h-full flex-col">
-  <div class="shrink-0 border-b border-gray-800 px-5 py-3">
-    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Por contenedor</h2>
+  <div class="shrink-0 border-b border-gray-800 px-4 py-2.5">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-300">Las piezas</h2>
   </div>
+
   {% if error %}
-    <p class="px-5 py-4 text-sm text-error-400">{{ error }}</p>
+    <p class="px-4 py-3 text-xs text-error-400">No se pudo medir: {{ error }}</p>
   {% elif not filas %}
-    <p class="px-5 py-4 text-sm text-gray-600">Sin docker.sock montado.</p>
+    <p class="px-4 py-3 text-xs text-gray-600">
+      Sin socket de Docker. Lo monta <code>docker-compose.site.yml</code>.
+    </p>
   {% else %}
-  <div class="vigia-scroll min-h-0 flex-1 px-2 py-1">
-    <table class="w-full font-mono text-xs">
-      <tbody>
-        {% for f in filas %}
-        <tr class="border-b border-gray-800/50 last:border-0">
-          <td class="max-w-0 truncate py-1.5 pl-3 pr-2 text-gray-200" title="{{ f.nombre }}">
-            {{ f.nombre|cut:"despacho-" }}
-          </td>
-          <td class="whitespace-nowrap px-2 text-right tabular-nums
-            {% if f.cpu_pct >= 80 %}text-error-400{% elif f.cpu_pct >= 40 %}text-warning-400{% else %}text-gray-400{% endif %}">
-            {% if f.cpu_pct is not None %}{{ f.cpu_pct }}%{% else %}<span class="text-gray-600">midiendo</span>{% endif %}
-          </td>
-          <td class="whitespace-nowrap py-1.5 pl-2 pr-3 text-right tabular-nums text-gray-400">
-            {% if f.mem_mb is not None %}{{ f.mem_mb|floatformat:0 }} MB{% else %}—{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="vigia-scroll min-h-0 flex-1 space-y-2 px-4 py-2.5">
+    {% for f in filas %}
+    <div title="{{ f.nombre }}">
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="truncate text-sm font-medium text-white">{{ f.pieza }}</span>
+        <span class="shrink-0 font-mono text-[11px] tabular-nums text-gray-400">
+          {{ f.mem_mb|default:"—" }}<span class="text-gray-700">MB</span>
+        </span>
+      </div>
+      {% if f.oficio %}
+        <p class="truncate text-[10px] text-gray-600">{{ f.oficio }}</p>
+      {% endif %}
+      <div class="mt-1 flex items-center gap-2">
+        {% comment %}
+        La barra mide el CPU, que es lo que se mueve; la memoria va en número
+        porque su techo es el de la máquina entera y una barra ahí diría poco.
+        {% endcomment %}
+        <progress class="progress h-1.5 flex-1
+                    {% if f.cpu_pct >= 60 %}progress-error{% elif f.cpu_pct >= 25 %}progress-warning{% else %}progress-primary{% endif %}"
+                  value="{{ f.cpu_pct|default:0 }}" max="100"></progress>
+        <span class="w-11 shrink-0 text-right font-mono text-[10px] tabular-nums text-gray-500">
+          {{ f.cpu_pct|default:"—" }}%
+        </span>
+      </div>
+    </div>
+    {% endfor %}
   </div>
   {% endif %}
 </div>

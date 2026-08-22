@@ -97,6 +97,31 @@ def snapshot() -> dict[str, Any]:
 # en el proceso y calcular el delta contra ella — que es exactamente lo que hace
 # `docker stats`. El primer refresco tras arrancar muestra CPU en blanco; del
 # segundo en adelante, real.
+# Los nombres de contenedor son estériles («despacho-gerencia», «postgres») y no
+# dicen nada a quien mira la pared. Cada pieza de El Despacho tiene su nombre y
+# su oficio: se muestran ésos, con el técnico disponible por si hace falta.
+_PIEZAS: tuple[tuple[str, str, str], ...] = (
+    # (fragmento del nombre del contenedor, cómo se llama, qué hace)
+    ("el-taller",       "El Taller",     "donde trabaja el equipo"),
+    ("gerencia",        "La Gerencia",   "ajustes y catálogos"),
+    ("recepcion",       "La Recepción",  "portal de clientes"),
+    ("mostrador",       "El Mostrador",  "entrega las fotos"),
+    ("portavoz",        "El Portavoz",   "avisa a los sistemas de fuera"),
+    ("postgres",        "El Archivero",  "guarda todo"),
+    ("redis",           "La Libreta",    "notas rápidas y la cola"),
+    ("portero",         "El Portero",    "recibe de internet"),
+)
+
+
+def bautizar(nombre_contenedor: str) -> tuple[str, str]:
+    """De «despacho-gerencia» a («La Gerencia», «ajustes y catálogos»)."""
+    n = (nombre_contenedor or "").lower()
+    for fragmento, nombre, oficio in _PIEZAS:
+        if fragmento in n:
+            return nombre, oficio
+    return nombre_contenedor, ""
+
+
 _MUESTRA_PREVIA: dict[str, tuple[int, int]] = {}
 
 
@@ -128,8 +153,11 @@ def estadisticas(ids: list[str] | None = None, *, timeout: float = 3.0) -> list[
         return []
 
     def una(c: dict[str, Any]) -> dict[str, Any]:
-        fila = {"id": c["id"], "nombre": c["nombre"], "cpu_pct": None,
-                "mem_mb": None, "mem_pct": None, "mem_limite_mb": None}
+        nombre_bonito, oficio = bautizar(c["nombre"])
+        fila = {"id": c["id"], "nombre": c["nombre"],
+                "pieza": nombre_bonito, "oficio": oficio,
+                "cpu_pct": None, "mem_mb": None, "mem_pct": None,
+                "mem_limite_mb": None}
         try:
             d = _get(f"/v1.44/containers/{c['id']}/stats?stream=false&one-shot=true",
                      timeout=timeout)

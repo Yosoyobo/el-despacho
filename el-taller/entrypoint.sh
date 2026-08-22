@@ -37,5 +37,5 @@ exec gunicorn el_taller.wsgi:application \
     --max-requests 1000 \
     --max-requests-jitter 100 \
     --access-logfile - \
-    --access-logformat '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s' \
+    --access-logformat '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" "%({x-forwarded-for}i)s" %(D)s' \
     --error-logfile -

@@ -1,6 +1,30 @@
-{% comment %}El flujo de peticiones, lo más reciente arriba. Refresca cada 2 s.{% endcomment %}
-<div class="flex shrink-0 items-baseline justify-between border-b border-gray-800 px-5 py-3">
-  <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Peticiones en vivo</h2>
+{% comment %}
+El flujo de peticiones, lo más reciente arriba. Refresca cada 2 s.
+
+Antes se leían rutas —`/proyectos/kanban/`, `/medios/ab/cd/x/w400.png`— que son
+correctas y son ilegibles desde tres metros. Ahora cada renglón responde tres
+preguntas, en el orden en que uno las hace:
+
+  QUIÉN     la dirección del visitante de verdad (el primer salto del
+            X-Forwarded-For; la IP que ve gunicorn es siempre la del proxy) y
+            desde qué aparato.
+  QUÉ       lo que la persona está haciendo, traducido por `lib.site.acciones`.
+  A DÓNDE   a qué pieza del sistema le tocó atenderlo, y la ruta cruda debajo,
+            para cuando hace falta el detalle.
+
+`table-fixed` + anchos explícitos a propósito. Con el layout automático, las
+columnas `whitespace-nowrap` reclaman su ancho intrínseco y la del texto se queda
+con las migajas: se veía «/sit…» con media pantalla vacía al lado.
+{% endcomment %}
+<div class="flex shrink-0 items-baseline justify-between border-b border-gray-800 px-5 py-2.5">
+  <h2 class="flex items-baseline gap-2.5">
+    <span class="text-sm font-semibold uppercase tracking-wider text-gray-300">Peticiones en vivo</span>
+    {% if resumen.por_minuto %}
+      <span class="badge badge-sm border-0 bg-brand-500/15 font-mono text-brand-300">
+        {{ resumen.por_minuto }} en el último minuto
+      </span>
+    {% endif %}
+  </h2>
   <div class="flex items-baseline gap-4 font-mono text-xs">
     {% if resumen.errores %}
       <span class="text-error-400">{{ resumen.errores }} con error</span>
@@ -22,44 +46,62 @@
     Nada todavía. Las sondas y el sondeo de esta pantalla no se listan a propósito.
   </p>
 {% else %}
-<div class="vigia-scroll min-h-0 flex-1 px-2 py-1">
-  {% comment %}
-  `table-fixed` + anchos explícitos a propósito. Con el layout automático, las
-  columnas `whitespace-nowrap` reclaman su ancho intrínseco y la ruta —que
-  llevaba `max-w-0`— se quedaba con las migajas: se veía «/sit…» con media
-  pantalla vacía al lado, o sea el dato más útil del panel ilegible. Aquí la
-  ruta es la única columna sin ancho, así que se queda con todo el sobrante.
-  {% endcomment %}
-  <table class="w-full table-fixed font-mono text-xs">
+<div class="vigia-scroll min-h-0 flex-1">
+  <table class="w-full table-fixed">
     <colgroup>
-      <col style="width:76px">   {# hora     #}
-      <col style="width:96px">   {# servicio #}
-      <col style="width:56px">   {# método   #}
-      <col>                      {# ruta: se queda con el resto #}
-      <col style="width:52px">   {# código   #}
-      <col style="width:96px">   {# duración #}
+      <col style="width:66px">   {# hora           #}
+      <col style="width:180px">  {# quién          #}
+      <col>                      {# qué: el resto  #}
+      <col style="width:104px">  {# a dónde        #}
+      <col style="width:96px">   {# cómo salió     #}
     </colgroup>
     <tbody>
       {% for f in filas %}
-      <tr class="border-b border-gray-800/50 last:border-0">
-        <td class="whitespace-nowrap py-1.5 pl-3 pr-2 text-gray-500 tabular-nums">
+      <tr data-fila="{{ f.servicio }}-{{ f.cuando|date:'His' }}-{{ f.ruta|slugify|truncatechars:24 }}-{{ forloop.counter0 }}"
+          class="border-b border-gray-800/40 last:border-0 align-middle">
+
+        {# ── cuándo ── #}
+        <td class="whitespace-nowrap py-1 pl-4 pr-1 font-mono text-[11px] text-gray-600 tabular-nums">
           {{ f.cuando|time:"H:i:s"|default:"--:--:--" }}
         </td>
+
+        {# ── quién ── #}
+        <td class="whitespace-nowrap px-1">
+          <div class="flex items-baseline gap-2">
+            <span class="font-mono text-xs text-gray-300">{{ f.quien|default:"—" }}</span>
+            {% if f.aparato %}
+              <span class="text-[10px] text-gray-600">{{ f.aparato }}</span>
+            {% endif %}
+          </div>
+        </td>
+
+        {# ── qué está haciendo, con la ruta cruda debajo ── #}
+        <td class="px-2 py-1">
+          <div class="truncate text-sm text-white" title="{{ f.ruta }}">
+            <span class="font-mono text-[10px] text-gray-600">{{ f.metodo }}</span>
+            {{ f.accion }}
+          </div>
+          <div class="truncate font-mono text-[10px] text-gray-700">{{ f.ruta }}</div>
+        </td>
+
+        {# ── a dónde ── #}
         <td class="whitespace-nowrap px-2">
-          <span class="rounded px-1.5 py-0.5 text-[10px] uppercase
+          <span class="badge badge-sm border-0 text-[10px] font-medium
             {% if f.servicio == 'Taller' %}bg-brand-500/15 text-brand-300
             {% elif f.servicio == 'Gerencia' %}bg-purple-500/15 text-purple-300
-            {% else %}bg-success-500/15 text-success-300{% endif %}">{{ f.servicio }}</span>
+            {% else %}bg-success-500/15 text-success-300{% endif %}">
+            {% if f.servicio == 'Taller' %}El Taller
+            {% elif f.servicio == 'Gerencia' %}La Gerencia
+            {% else %}El Mostrador{% endif %}
+          </span>
         </td>
-        <td class="whitespace-nowrap px-2 text-gray-400">{{ f.metodo }}</td>
-        <td class="truncate px-2 text-gray-200" title="{{ f.ruta }}">{{ f.ruta }}</td>
-        <td class="whitespace-nowrap px-2 text-right tabular-nums
-          {% if f.codigo >= 500 %}text-error-400{% elif f.codigo >= 400 %}text-warning-400{% else %}text-gray-500{% endif %}">
-          {{ f.codigo }}
-        </td>
-        <td class="whitespace-nowrap py-1.5 pl-2 pr-3 text-right tabular-nums
-          {% if f.ms >= 1000 %}text-warning-400{% else %}text-gray-500{% endif %}">
-          {% if f.ms is not None %}{{ f.ms }} ms{% else %}—{% endif %}
+
+        {# ── cómo salió ── #}
+        <td class="whitespace-nowrap py-1 pl-1 pr-4 text-right font-mono text-[11px] tabular-nums">
+          <span class="{% if f.codigo >= 500 %}text-error-400{% elif f.codigo >= 400 %}text-warning-400{% else %}text-gray-600{% endif %}">{{ f.codigo }}</span>
+          {% if f.ms is not None %}
+            <span class="{% if f.ms >= 1000 %}text-warning-400{% elif f.ms >= 300 %}text-gray-400{% else %}text-gray-600{% endif %}">{{ f.ms }}<span class="text-gray-700">ms</span></span>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}

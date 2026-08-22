@@ -1,78 +1,65 @@
-{% comment %}Cuatro números grandes del fierro. Refresca cada 5 s.{% endcomment %}
-{% with h=infra.host g=infra.gauges cr=infra.containers_resumen %}
-<div class="grid grid-cols-4 gap-3">
+{% comment %}
+Los cuatro números que dicen cómo está la máquina. Refresca cada 5 s.
 
+Los nombres van en llano —"Memoria (RAM)", "Disco (SSD)"— porque quien mira la
+pared no tiene por qué traducir del inglés técnico.
+{% endcomment %}
+{% if error or not infra.host.memoria.disponible %}
   <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">CPU</span>
-      <span class="font-mono text-xs text-gray-500">{{ h.cpu_load.cores }} núcleos</span>
-    </div>
-    {% if h.cpu_load.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if g.cpu.color == 'error' %}text-error-400{% elif g.cpu.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
-        {{ h.cpu_load.load_1 }}
-      </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        5m {{ h.cpu_load.load_5 }} · 15m {{ h.cpu_load.load_15 }} · encendido {{ h.uptime.humano }}
-      </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">sin /proc montado</p>
-    {% endif %}
+    <p class="text-sm text-gray-500">
+      No se pudo leer el fierro de la máquina{% if error %}: {{ error }}{% endif %}.
+      Suele ser que falta montar <code class="text-gray-400">/proc</code> y el socket
+      de Docker (los apila <code class="text-gray-400">docker-compose.site.yml</code>).
+    </p>
   </div>
+{% else %}
+{% with g=infra.gauges h=infra.host cr=infra.containers_resumen %}
+<div class="grid grid-cols-4 gap-2.5">
 
-  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">Memoria</span>
-      <span class="font-mono text-xs text-gray-500">{{ h.memoria.total_mb|floatformat:0 }} MB</span>
-    </div>
-    {% if h.memoria.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if g.memoria.color == 'error' %}text-error-400{% elif g.memoria.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
-        {{ h.memoria.pct_usado }}<span class="text-title-sm">%</span>
-      </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        {{ h.memoria.usado_mb|floatformat:0 }} usado · {{ h.memoria.libre_mb|floatformat:0 }} libre
-      </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">sin /proc montado</p>
-    {% endif %}
-  </div>
+  {# ── CPU ──────────────────────────────────────────────────────────────── #}
+  {% include "site/vivo/_anillo.html" with titulo="CPU" pct=g.cpu.pct color=g.cpu.color grande=h.cpu_load.load_1 unidad="de carga" trazo=trazos.cpu a=h.cpu_load.cores|stringformat:"s"|add:" núcleos activos" b="5 min: "|add:h.cpu_load.load_5|stringformat:"s" %}
 
-  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">Disco</span>
-      <span class="font-mono text-xs text-gray-500">{{ h.disco.total_gb }} GB</span>
-    </div>
-    {% if h.disco.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if g.disco.color == 'error' %}text-error-400{% elif g.disco.color == 'warning' %}text-warning-400{% else %}text-success-400{% endif %}">
-        {{ h.disco.pct_usado }}<span class="text-title-sm">%</span>
-      </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        {{ h.disco.usado_gb }} GB usado · {{ h.disco.libre_gb }} GB libre
-      </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">no legible</p>
-    {% endif %}
-  </div>
+  {# ── Memoria ──────────────────────────────────────────────────────────── #}
+  {% include "site/vivo/_anillo.html" with titulo="Memoria (RAM)" pct=g.memoria.pct color=g.memoria.color grande=h.memoria.usado_mb unidad="MB usados" trazo=trazos.mem a=h.memoria.libre_mb|stringformat:"s"|add:" MB libres" b="de "|add:h.memoria.total_mb|stringformat:"s" %}
 
-  <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-    <div class="flex items-baseline justify-between">
-      <span class="text-xs uppercase tracking-wider text-gray-500">Contenedores</span>
-      <span class="font-mono text-xs text-gray-500">{{ infra.containers.info.version_servidor }}</span>
+  {# ── Disco ────────────────────────────────────────────────────────────── #}
+  {% include "site/vivo/_anillo.html" with titulo="Disco (SSD)" pct=g.disco.pct color=g.disco.color grande=h.disco.usado_gb unidad="GB usados" trazo=trazos.disco a=h.disco.libre_gb|stringformat:"s"|add:" GB libres" b="de "|add:h.disco.total_gb|stringformat:"s" %}
+
+  {# ── Las piezas trabajando ────────────────────────────────────────────── #}
+  <div class="flex items-center gap-3 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-4">
+    <div class="radial-progress shrink-0
+                {% if cr.running == cr.total %}text-success-400{% else %}text-warning-400{% endif %}"
+         style="--value:{{ cr.pct_running|default:0 }}; --size:5.5rem;" role="progressbar">
+      <span class="font-mono text-lg font-semibold tabular-nums text-white">
+        {{ cr.running|default:"—" }}<span class="text-xs text-gray-500">/{{ cr.total|default:"—" }}</span>
+      </span>
     </div>
-    {% if infra.containers.info.disponible %}
-      <p class="mt-2 font-mono text-title-md font-bold tabular-nums
-                {% if cr.stopped %}text-error-400{% else %}text-success-400{% endif %}">
-        {{ cr.running }}<span class="text-title-sm text-gray-500">/{{ cr.total }}</span>
+    <div class="min-w-0 flex-1">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Piezas trabajando</p>
+      <p class="mt-0.5 text-title-sm font-semibold text-white">
+        {% if cr.running == cr.total %}Todas{% else %}{{ cr.stopped }} abajo{% endif %}
       </p>
-      <p class="mt-1 font-mono text-xs text-gray-500">
-        {% if cr.stopped %}{{ cr.stopped }} detenido(s){% else %}todos arriba{% endif %}
-        · {{ infra.containers.info.imagenes }} imágenes
+      {% if trazos.peticiones %}
+        <svg viewBox="0 0 100 22" preserveAspectRatio="none" class="mt-1.5 h-6 w-full text-brand-400" aria-hidden="true">
+          <defs>
+            <linearGradient id="g-peticiones" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="currentColor" stop-opacity=".4"/>
+              <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <polygon points="{{ trazos.peticiones }}" fill="url(#g-peticiones)"/>
+          <polyline points="{{ trazos.peticiones }}" fill="none" stroke="currentColor"
+                    stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        </svg>
+      {% else %}
+        <div class="mt-1.5 h-6"></div>
+      {% endif %}
+      <p class="truncate text-[11px] text-gray-600">
+        {% if h.uptime.disponible %}encendido {{ h.uptime.humano }}{% endif %}
+        {% if infra.containers.info.images %} · {{ infra.containers.info.images }} imágenes{% endif %}
       </p>
-    {% else %}
-      <p class="mt-2 text-sm text-gray-600">sin docker.sock</p>
-    {% endif %}
+    </div>
   </div>
 </div>
 {% endwith %}
+{% endif %}

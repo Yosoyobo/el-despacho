@@ -235,12 +235,14 @@ class TestDefectosQueSoloSeVenEnPantalla:
         from pathlib import Path
         t = (Path(__file__).resolve().parents[2] / "la-gerencia" / "templates"
              / "site" / "vivo" / "_peticiones.html").read_text()
-        celda_ruta = next(ln for ln in t.splitlines() if "f.ruta" in ln and "<td" in ln)
-        assert "max-w-0" not in celda_ruta, f"la celda de la ruta sigue sin ancho: {celda_ruta.strip()}"
-        assert "truncate" in celda_ruta, "sin `truncate` una ruta larga desborda la tabla"
         assert "table-fixed" in t, "sin `table-fixed` los anchos del colgroup no mandan"
-        # Exactamente una columna sin ancho: la ruta, que absorbe el sobrante.
-        assert t.count("<col>") == 1, "la ruta debe ser la única columna sin ancho"
+        # Exactamente una columna sin ancho: la del texto, que absorbe el sobrante.
+        assert t.count("<col>") == 1, "la columna del texto debe ser la única sin ancho"
+        # Y su contenido trunca, para que una ruta larga no desborde la tabla.
+        assert "truncate" in t, "sin `truncate` un texto largo desborda la tabla"
+        # Ninguna celda pide cero ancho (era la causa del «/sit…»).
+        celdas = [ln for ln in t.splitlines() if "<td" in ln]
+        assert not [c for c in celdas if "max-w-0" in c], "una celda sigue pidiendo cero ancho"
 
     def test_la_fecha_del_respaldo_va_en_hora_local_y_separada(self):
         """`|slice:":16"|cut:"T"` pegaba la fecha a la hora («2026-08-2205:03»)
@@ -283,3 +285,217 @@ class TestDefectosQueSoloSeVenEnPantalla:
         from apps.el_site.views_vivo import _fechas_locales
         assert _fechas_locales({}) == {}
         assert _fechas_locales({"deploy": {"disponible": False}})["deploy"] == {"disponible": False}
+
+
+# ── El rediseño: quién, qué, a dónde ─────────────────────────────────────────
+
+class TestQuienQueYADonde:
+    """El flujo mostraba rutas, que son correctas y son ilegibles desde tres
+    metros. Estas pruebas fijan las tres respuestas que ahora da cada renglón."""
+
+    def test_la_ruta_se_traduce_a_lo_que_la_persona_hace(self):
+        from lib.site import acciones
+        casos = {
+            "/proyectos/kanban/":        "Tablero de proyectos",
+            "/medios/ab/cd/x/w400.png":  "Foto de producto",
+            "/proyectos/44/":            "Ficha de proyecto",
+            "/tesoreria/por-cobrar/":    "Cuentas por cobrar y pagar",
+            "/recados/buzon/":           "Mi buzón",
+            "/checador/api/sync":        "Checadas guardadas sin señal",
+        }
+        for ruta, esperado in casos.items():
+            assert acciones.nombrar(ruta) == esperado, ruta
+
+    def test_lo_especifico_gana_sobre_lo_general(self):
+        """El mapa se recorre en orden. Si `/proyectos/` ganara, el tablero y la
+        ficha se llamarían igual y la pared perdería el detalle."""
+        from lib.site import acciones
+        assert acciones.nombrar("/proyectos/kanban/") != acciones.nombrar("/proyectos/")
+
+    def test_una_ruta_que_nadie_mapeo_sale_tal_cual(self):
+        """Inventarle un nombre a algo que no se reconoce sería peor que la
+        verdad cruda: se leería como si el sistema supiera lo que no sabe."""
+        from lib.site import acciones
+        assert acciones.nombrar("/algo/nuevo/sin/mapear/") == "/algo/nuevo/sin/mapear/"
+        assert acciones.nombrar("") == "?"
+
+    def test_el_quien_es_el_visitante_no_el_proxy(self):
+        """Detrás de El Portero, la IP que ve gunicorn es siempre la del proxy.
+        La del visitante es el PRIMER salto del X-Forwarded-For; los demás son
+        proxies que se fueron agregando."""
+        from lib.site import acciones
+        assert acciones.quien("187.189.28.130, 10.0.0.1", "100.121.244.5") == "187.189.28.130"
+        # Sin XFF (petición directa), la IP del peer es la buena.
+        assert acciones.quien("-", "100.121.244.5") == "100.121.244.5"
+        assert acciones.quien("", "") == ""
+
+    def test_el_aparato_distingue_los_que_se_disfrazan(self):
+        """Edge y Chrome se anuncian los dos como Chrome; iPad se anuncia como
+        Macintosh en modo escritorio. El orden del mapa es lo que los separa."""
+        from lib.site import acciones
+        assert acciones.aparato("Mozilla/5.0 Chrome/120 Safari/537 Edg/120") == "Edge"
+        assert acciones.aparato("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) Safari/604") == "iPhone"
+        assert acciones.aparato("curl/8.4.0") == "Un guion"
+        assert acciones.aparato(None) == ""
+        assert acciones.aparato("-") == ""
+
+    def test_el_log_de_gunicorn_trae_el_visitante(self):
+        """El entrypoint agrega `%({x-forwarded-for}i)s` ANTES de los
+        microsegundos: `_RE_MICROS` ancla al final de la línea, así que un campo
+        después lo rompería en silencio."""
+        linea = ('100.75.35.63 - - [22/Aug/2026:01:34:32 -0600] "GET /catalogo/ HTTP/1.1" '
+                 '200 150233 "-" "Mozilla/5.0 (Macintosh) Safari/605" "187.189.28.130" 48213')
+        d = actividad._parsear_gunicorn(linea)
+        assert d["quien"] == "187.189.28.130"
+        assert d["aparato"] == "Safari"
+        assert d["ms"] == 48.2
+
+    def test_el_formato_viejo_no_se_pierde(self):
+        """Al reciclarse el contenedor quedan líneas del formato anterior en el
+        buffer. Se leen igual, con la IP del peer como «quién»."""
+        linea = ('100.75.35.63 - - [22/Aug/2026:01:34:32 -0600] "GET /catalogo/ HTTP/1.1" '
+                 '200 150233 "-" "curl/8.0" 48213')
+        d = actividad._parsear_gunicorn(linea)
+        assert d is not None
+        assert d["quien"] == "100.75.35.63"
+        assert d["ms"] == 48.2
+
+    def test_el_entrypoint_de_las_dos_apps_loguea_el_visitante(self):
+        """Sin esto el «quién» sale vacío en producción y el panel miente por
+        omisión. Va en las dos apps: son dual-copy (regla §18)."""
+        from pathlib import Path
+        raiz = Path(__file__).resolve().parents[2]
+        for app in ("el-taller", "la-gerencia"):
+            t = (raiz / app / "entrypoint.sh").read_text()
+            assert "x-forwarded-for" in t, f"{app} no loguea el visitante"
+            # Y la duración sigue al final, que es donde la busca el parseador.
+            assert t.index("x-forwarded-for") < t.index("%(D)s")
+
+
+class TestNombresConSentido:
+    """Los nombres de contenedor son estériles y no dicen nada a quien mira la
+    pared. Cada pieza de El Despacho tiene su nombre y su oficio."""
+
+    def test_cada_pieza_tiene_nombre_y_oficio(self):
+        from lib.site.contenedores import bautizar
+        casos = {
+            "despacho-el-taller":       "El Taller",
+            "despacho-gerencia":        "La Gerencia",
+            "despacho-el-mostrador":    "El Mostrador",
+            "despacho-portavoz-worker": "El Portavoz",
+            "despacho-postgres":        "El Archivero",
+            "despacho-redis":           "La Libreta",
+        }
+        for contenedor, nombre in casos.items():
+            bautizado, oficio = bautizar(contenedor)
+            assert bautizado == nombre, contenedor
+            assert oficio, f"{contenedor} sin oficio: el nombre solo no explica nada"
+
+    def test_una_pieza_nueva_sale_con_su_nombre_tecnico(self):
+        """Feo y visible, que es la señal correcta para venir a bautizarla —
+        mejor que un nombre inventado que oculte que falta."""
+        from lib.site.contenedores import bautizar
+        assert bautizar("despacho-algo-nuevo") == ("despacho-algo-nuevo", "")
+
+
+class TestElPulso:
+    """La serie corta que dibujan las gráficas. Vive en Redis porque gunicorn
+    corre con varios workers: en memoria del proceso, la gráfica saltaría según
+    quién atienda el refresco."""
+
+    def test_una_linea_de_un_punto_no_es_una_tendencia(self):
+        from lib.site import pulso
+        assert pulso.trazo([]) == ""
+        assert pulso.trazo([42.0]) == ""
+        assert pulso.trazo([None, None]) == ""
+
+    def test_los_porcentajes_se_dibujan_contra_100(self):
+        """Con el máximo tomado del dato, un 20% plano llenaría la gráfica y se
+        leería como saturación."""
+        from lib.site import pulso
+        bajo = pulso.trazo([20.0, 20.0, 20.0], alto=30, maximo=100)
+        # y = alto - (20/100)*30 = 24 → cerca del piso, que es la verdad.
+        assert all(p.split(",")[1] == "24.0" for p in bajo.split(" "))
+
+    def test_sin_tope_la_serie_usa_su_propio_maximo(self):
+        """Para milisegundos importa el relieve, no el techo absoluto."""
+        from lib.site import pulso
+        t = pulso.trazo([10.0, 20.0], alto=30)
+        assert t.split(" ")[0].split(",")[1] == "15.0"   # 10 de 20 → mitad
+        assert t.split(" ")[1].split(",")[1] == "0.0"    # el máximo, al techo
+
+    def test_un_hueco_no_se_inventa_como_cero(self):
+        """Un cero ahí diría «la memoria bajó a 0». El hueco se salta."""
+        from lib.site import pulso
+        t = pulso.trazo([50.0, None, 50.0], maximo=100)
+        assert len(t.split(" ")) == 2, "el hueco no debe aportar un punto"
+
+    def test_el_area_cierra_contra_el_piso(self):
+        from lib.site import pulso
+        a = pulso.area([10.0, 90.0], ancho=100, alto=30, maximo=100)
+        assert a.startswith("0.0,30")   # arranca en el piso
+        assert a.endswith("100.0,30")   # y cierra en el piso
+
+    def test_sin_redis_no_truena_ni_inventa(self, monkeypatch):
+        """Redis caído es un problema más grande, con su propia alerta. La pared
+        sale sin gráficas y con los números grandes intactos."""
+        from lib.site import pulso
+
+        def explota(*a, **k):
+            raise RuntimeError("sin Redis")
+
+        monkeypatch.setattr(pulso, "_client", explota)
+        pulso.anotar("cpu", 50)                    # no lanza
+        pulso.anotar_varias({"cpu": 50})           # no lanza
+        assert pulso.leer("cpu") == []
+        assert pulso.leer_varias(["cpu"]) == {"cpu": []}
+
+
+class TestPanelesNuevos:
+    """Los Chalanes y La ventana. Los dos deben degradar sin base ni internet."""
+
+    def _get(self, client, settings, ruta):
+        settings.ROOT_URLCONF = "tests.urls_gerencia"
+        settings.ALLOWED_HOSTS = ["*"]
+        return client.get(ruta, HTTP_HOST="localhost")
+
+    @pytest.mark.django_db
+    def test_los_chalanes_abren_vacios_sin_llamadas(self, client, settings):
+        r = self._get(client, settings, "/site/vivo/chalanes")
+        assert r.status_code == 200
+        assert b"Los Chalanes" in r.content
+
+    @pytest.mark.django_db
+    def test_los_chalanes_no_exponen_el_contenido(self, client, settings):
+        """La auditoría es hash-only por decisión del proyecto: `AnalistaLog` no
+        guarda prompt ni respuesta. La plantilla no puede pedir campos que no
+        existen, así que este candado fija la intención."""
+        import re
+        from pathlib import Path
+        t = (Path(__file__).resolve().parents[2] / "la-gerencia" / "templates"
+             / "site" / "vivo" / "_chalanes.html").read_text()
+        # Se mira lo que se RENDERIZA, no el archivo entero: el comentario que
+        # explica la regla menciona las palabras prohibidas, y un candado que
+        # busca en todo el texto choca con su propia explicación.
+        pintado = " ".join(re.findall(r"\{\{(.*?)\}\}", t))
+        for prohibido in ("prompt_texto", "prompt_completo", "respuesta", "contenido"):
+            assert prohibido not in pintado, f"la pared no puede pintar {prohibido}"
+        assert "huella" in pintado, "la huella del prompt es la prueba de la auditoría"
+
+    @pytest.mark.django_db
+    def test_la_ventana_abre_sin_llave_de_digitalocean(self, client, settings, monkeypatch):
+        """Sin la llave no se leen las especificaciones, pero las tres puertas se
+        sondean igual: eso es lo que de verdad importa saber."""
+        monkeypatch.setattr("apps.el_site.views_vivo._sondear_puertas",
+                            lambda: [{"nombre": "El Taller", "codigo": 200, "ms": 12, "ok": True}])
+        r = self._get(client, settings, "/site/vivo/ventana")
+        assert r.status_code == 200
+        assert b"La ventana" in r.content
+
+    @pytest.mark.django_db
+    def test_los_paneles_nuevos_estan_cerrados_por_fuera(self, client, settings):
+        settings.ROOT_URLCONF = "tests.urls_gerencia"
+        settings.ALLOWED_HOSTS = ["*"]
+        for ruta in ("/site/vivo/chalanes", "/site/vivo/ventana"):
+            r = client.get(ruta, HTTP_HOST="gerencia.learningcenter.mx")
+            assert r.status_code == 404, ruta
