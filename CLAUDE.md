@@ -5801,6 +5801,15 @@ trabajo del negocio) en un tablero.
 - **`VERSION_FECHA` no se movió** a propósito: El Vigía no es visible para los
   usuarios (sólo abre en la máquina), así que no hay Novedades que escribir y la
   fecha visible sigue siendo la del último cambio que sí se vio.
+- **Cazado antes de desplegar (vale para cualquier plantilla nueva):** un
+  `{% static %}` que apunte a un archivo inexistente es un **500 en producción** —
+  `CompressedManifestStaticFilesStorage` revienta al RENDERIZAR—, y **no lo caza ni
+  la suite** (en pruebas el storage es el simple) **ni el smoke test** (que no
+  renderiza la página). El favicon de El Vigía decía `branding/favicon-32.png` y el
+  archivo se llama `Icono_LC-32.png`. Queda candado en
+  `tests/site/test_vigia.py::TestLosEstaticosQueReferenciaExisten`, que sabe
+  distinguir lo que falta de lo que **genera el build** (`css/tailwind.css` lo
+  compila el Dockerfile, §6).
 
 **Deuda diseñada**: el panel de negocio no muestra los crons corriendo (no hay
 registro de sus corridas más allá de sus propios logs); el flujo de peticiones lee
