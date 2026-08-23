@@ -78,17 +78,42 @@ Lo que la protege son **dos candados a la vez**, los dos en
 
 La página es de **sólo lectura**: no hay un solo POST.
 
+
+## El autostart es opt-in (2026-08-23)
+
+Oscar: «deshabilita el autostart de Firefox; sólo si lo necesito lo abro».
+
+El motivo se midió en el NUC: un navegador abierto 24/7 en esta página llegó a
+**5.4 GB en un solo proceso** — tres veces lo que consume todo El Despacho junto
+(gunicorn + Postgres suman ~2 GB) — y la máquina se quedaba sin memoria. La página
+ahora se recarga sola cada hora, que acota el crecimiento, pero si nadie está
+mirando la pared el navegador no tiene por qué estar abierto.
+
+Así que `instalar.sh` **ya no instala el autostart por default**. Para abrir la
+pared cuando se quiera:
+
+    bash /mnt/el-despacho/infra/vigia/vigia-kiosco.sh
+
+Y si algún día se quiere permanente otra vez (vuelve sola tras un corte de luz):
+
+    bash /mnt/el-despacho/infra/vigia/instalar.sh --autostart --autologin
+
+En este NUC el que estaba quedó **renombrado**, no borrado:
+`~/.config/autostart/vigia.desktop.deshabilitado`. Revivirlo es quitarle el
+sufijo — no hace falta volver a correr el instalador.
+
+
 ## Instalar el kiosco
 
 En el NUC, **con la sesión de escritorio abierta** (no por SSH a secas):
 
-    bash /mnt/el-despacho/infra/vigia/instalar.sh --autologin
+    bash /mnt/el-despacho/infra/vigia/instalar.sh --autostart --autologin
 
 Eso deja tres cosas:
 
 | Qué | Dónde | Para qué |
 |---|---|---|
-| Autostart del escritorio | `~/.config/autostart/vigia.desktop` | abre el navegador en kiosco al iniciar sesión |
+| Autostart del escritorio | `~/.config/autostart/vigia.desktop` | **opt-in con `--autostart`**: abre la pared al iniciar sesión |
 | Ahorro de pantalla y bloqueo apagados | `gsettings` de la sesión | que la pared no se ponga negra a los diez minutos |
 | Inicio de sesión automático | `/etc/gdm3/custom.conf` | que la pantalla **vuelva sola** tras un corte de luz |
 
