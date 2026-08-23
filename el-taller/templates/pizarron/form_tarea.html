@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ modo|capfirst }} tarea — Tareas{% endblock %}
+{% comment %}El geo-picker del Lugar dibuja mapa: sin Leaflet sólo funcionaría el buscador.{% endcomment %}
+{% block head_extra %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Tareas" "/tareas/" "Tarea" as breadcrumb_items %}
@@ -33,7 +35,14 @@
         {% comment %} "Lugar (destino)" a ancho completo + geo-picker en vivo. {% endcomment %}
         <div class="mt-5">
             {% include "_componentes_tailadmin/_form_campo.html" with campo=form.destino_etiqueta ancho_completo=True %}
-            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto=form.destino_etiqueta.id_for_label con_pois=True acotado=True %}
+            {% comment %}
+            Modo completo, no "texto": el de texto sólo autocompleta la dirección y el
+            PIN se perdía (Oscar, 2026-08-23: «las ubicaciones siguen sin guardarse»).
+            Con lat_id/lng_id, elegir un resultado o picar el mapa llena los campos
+            ocultos del formulario — y con punto ya sirve para rutear.
+            {% endcomment %}
+            {{ form.destino_lat }}{{ form.destino_lng }}
+            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto=form.destino_etiqueta.id_for_label lat_id=form.destino_lat.auto_id lng_id=form.destino_lng.auto_id con_pois=True con_geoloc=True acotado=True %}
         </div>
     </section>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3">

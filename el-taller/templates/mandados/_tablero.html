@@ -12,6 +12,20 @@ los chips las arma la vista, así que cada pantalla filtra sin salirse de sí
 misma — en Tareas el parámetro es `m_estado` para no chocar con el filtro de
 estado de las tareas, que ya usa `estado`.
 {% endcomment %}
+{% comment %}
+Los botones viajan CON el tablero: cuando se mostraba sólo en /mandados/ vivían en
+esa página, y al mudarlo a Tareas se quedaron atrás — «no veo los botones de
+planear ruta ahora» (Oscar, 2026-08-23). Las acciones de un tablero pertenecen al
+tablero.
+{% endcomment %}
+<div class="mb-4 flex flex-wrap gap-2">
+    <a href="{% url 'mandados-mi-ruta' %}" class="btn-secundario">🧭 Mi ruta de hoy</a>
+    {% if permisos_modulos.rutas %}
+    <a href="{% url 'rutas-panel' %}" class="btn-secundario"
+       title="Reparte las entregas del día entre los runners y ponlas en orden">🗺️ Planear rutas</a>
+    {% endif %}
+</div>
+
 <div class="mb-5 flex flex-wrap items-center gap-2">
     {% for ch in chips %}
     <a href="{{ ch.url }}" class="rounded-lg border px-3 py-1.5 text-sm transition {% if ch.activo %}border-transparent text-white{% else %}border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300{% endif %}"

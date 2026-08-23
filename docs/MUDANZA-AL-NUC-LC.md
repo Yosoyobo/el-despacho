@@ -367,3 +367,87 @@ solo desaloja lo que sí caduca (caché de imágenes y sesiones).
 | `infra/scripts/sync_crons.sh` | Sustituye `@@RAIZ@@` por la raíz real, así los crons siguen al proyecto |
 | `.github/workflows/el-mensajero.yml` | `mudanza` despliega al NUC entrando al tailnet; job nuevo `ventana` para el Caddyfile, con validación previa y smoke test de la cadena completa |
 | `.github/workflows/la-limpieza.yml` | Apunta al NUC |
+
+## El deploy al NUC es automático (resuelto 2026-08-23)
+
+**Cada push verde a `main` despliega solo.** No hace falta ninguna credencial
+nueva, y no hay secretos de Tailscale en el repo.
+
+### Cómo llega el CI hasta el NUC
+
+El NUC sólo existe en el tailnet, y el runner de GitHub es una máquina desechable
+en la nube de GitHub que **no** está ahí. En vez de meterlo al tailnet —que pedía
+una credencial nueva— el deploy **salta por La Sede**, que sí está en el tailnet y
+cuyos secretos `SEDE_*` existían y estaban aprobados desde mayo:
+
+```
+GitHub Actions ──SSH (SEDE_*)──▶ La Sede ──SSH por el tailnet──▶ NUC
+```
+
+- La llave del salto vive **sólo en el Droplet**: `~/.ssh/sede-nuc-deploy`.
+- Nunca pasa por el repo ni por un chat.
+- En el NUC está autorizada así:
+
+      restrict,command="/home/linux/bin/deploy-desde-sede.sh",from="100.75.35.63" ssh-ed25519 …
+
+### Por qué esas tres opciones, y no sólo la llave
+
+La Sede está **expuesta a internet**. Sin acotar, esa llave daba **shell como el
+usuario del NUC**, que pertenece al grupo `docker` — o sea **root efectivo**. Es
+decir: comprometer el Droplet habría implicado comprometer el NUC, y el tailnet es
+lo último que uno quiere regalar. Las tres opciones cierran eso:
+
+| | qué hace |
+|---|---|
+| `command="…"` | Pase lo que pase, el NUC corre **su** envoltorio y nada más. Lo que manda el otro lado se ignora — y se **registra** en `~/deploy-desde-sede.log`, así que queda auditoría de quién pidió cada deploy. |
+| `restrict` | Sin pty, sin reenvío de puertos, sin agente, sin X11, sin `user-rc`. |
+| `from="…"` | Sólo desde la IP de La Sede en el tailnet. No es falsificable: dentro del tailnet la IP está atada criptográficamente al nodo. |
+
+**Comprobado, no supuesto** (2026-08-23): mandando `whoami; id; cat /etc/hostname`
+desde La Sede, esos comandos **no se ejecutan** — sólo quedan en la bitácora, y lo
+que corre es el envoltorio. Y `ssh -tt` responde
+`PTY allocation request failed on channel 0`.
+
+**El riesgo que QUEDA:** quien comprometa La Sede puede **disparar un deploy** de
+lo que ya esté en `main`. No puede leer nada, ni ejecutar nada, ni entrar al NUC.
+Si algún día eso también estorba, la vía sin ninguna llave es invertir el sentido:
+que el NUC mire por su cuenta cuándo cambian los digests de `main` y se despliegue
+solo (cron propio, cero credenciales) — el precio es que deja de ser inmediato.
+
+El envoltorio vive **fuera del repo** (`~/bin/deploy-desde-sede.sh`) a propósito: el
+deploy hace `git reset --hard`, y un guion de control que el propio deploy puede
+reescribir no controla nada.
+
+### El script vive en el repo, no en el YAML
+
+La lógica de deploy (pull, up, healthcheck de los 3 hosts, rollback) salió del
+`script:` del YAML a **`infra/scripts/deploy_nuc.sh`**. Así se puede leer, revisar
+con `bash -n` y correr a mano exactamente igual que lo corre el CI. Un script de
+deploy embutido en un YAML no se puede probar.
+
+**Detalle que importa:** el paso remoto trae **sólo el script**
+(`git checkout origin/main -- infra/scripts/deploy_nuc.sh`) y NO mueve `HEAD`. El
+script captura el commit previo para poder revertir; si se actualizara el repo
+antes, ese "previo" sería el commit nuevo y **el rollback no revertiría nada**.
+
+### Antes de esto: un job verde que no desplegaba
+
+La versión anterior entraba al tailnet con una credencial de Tailscale que nunca
+se configuró. Sus pasos quedaban en `skipped` y **el job reportaba `success`**, así
+que durante días pareció que se desplegaba cuando el NUC seguía con la versión
+vieja. Con esta vía, si algo falla el job se pone **rojo**.
+
+De todos modos, para comprobar que de verdad desplegó, lo único que no es
+inferencia es la versión que sirve producción:
+
+```
+curl -s https://taller.learningcenter.mx/acerca/ | grep -oE "v2026\.[0-9]{2}\.[0-9]+"
+```
+
+### Deploy a mano, si hace falta
+
+    cd /mnt/el-despacho && bash infra/scripts/deploy_nuc.sh
+
+**Ojo con el orden:** hay que esperar a que la corrida de `main` termine
+«Build & push» y «Pin digests». Antes de eso el compose todavía apunta a los
+digests anteriores y se desplegarían las imágenes **viejas**.
