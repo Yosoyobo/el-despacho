@@ -6,11 +6,22 @@
 #
 #     bash /mnt/el-despacho/infra/vigia/instalar.sh
 #
-# Deja tres cosas:
-#   · el autostart del escritorio, que abre el navegador en kiosco al iniciar sesión;
+# Deja:
 #   · el ahorro de pantalla y el bloqueo apagados, para que la pared no se apague;
-#   · (opcional, `--autologin`) el inicio de sesión automático, que es lo ÚNICO que
-#     hace que la pantalla vuelva sola tras un corte de luz.
+#   · (opcional, `--autostart`) el autostart del escritorio, que abre la pared al
+#     iniciar sesión;
+#   · (opcional, `--autologin`) el inicio de sesión automático, que junto con el
+#     autostart es lo que hace que la pantalla vuelva sola tras un corte de luz.
+#
+# **El autostart ya NO es el default** (Oscar, 2026-08-23: «deshabilita el
+# autostart de Firefox; sólo si lo necesito lo abro»). El motivo: un navegador
+# abierto 24/7 en esta página llegó a **5.4 GB** en un solo proceso —tres veces lo
+# que consume todo El Despacho junto— y la máquina se quedaba sin memoria. La
+# recarga horaria de la propia página acota eso, pero si nadie está mirando la
+# pared, el navegador simplemente no tiene por qué estar abierto.
+#
+# Si algún día se quiere la pared permanente otra vez:
+#     bash instalar.sh --autostart --autologin
 #
 # Para deshacerlo: `bash instalar.sh --quitar`.
 set -euo pipefail
@@ -18,9 +29,11 @@ set -euo pipefail
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DESTINO="$HOME/.config/autostart/vigia.desktop"
 AUTOLOGIN=0
+AUTOSTART=0
 QUITAR=0
 for arg in "$@"; do
     case "$arg" in
+        --autostart) AUTOSTART=1 ;;
         --autologin) AUTOLOGIN=1 ;;
         --quitar)    QUITAR=1 ;;
         *) echo "argumento desconocido: $arg" >&2; exit 2 ;;
@@ -28,17 +41,34 @@ for arg in "$@"; do
 done
 
 if [ "$QUITAR" = 1 ]; then
-    rm -f "$DESTINO" && echo "== autostart quitado ($DESTINO)"
+    # También el que este script deja renombrado, para que --quitar sea completo.
+    rm -f "$DESTINO" "$DESTINO.deshabilitado" && echo "== autostart quitado ($DESTINO)"
     echo "   El inicio de sesión automático, si lo pusiste, se quita con:"
     echo "   sudo sed -i '/^AutomaticLogin/d' /etc/gdm3/custom.conf"
     exit 0
 fi
 
-echo "== autostart del escritorio =="
-mkdir -p "$(dirname "$DESTINO")"
-sed "s|@@RAIZ@@|$RAIZ|g" "$RAIZ/infra/vigia/vigia.desktop" > "$DESTINO"
 chmod +x "$RAIZ/infra/vigia/vigia-kiosco.sh"
-echo "   $DESTINO"
+
+if [ "$AUTOSTART" = 1 ]; then
+    echo "== autostart del escritorio =="
+    mkdir -p "$(dirname "$DESTINO")"
+    sed "s|@@RAIZ@@|$RAIZ|g" "$RAIZ/infra/vigia/vigia.desktop" > "$DESTINO"
+    # Si quedó uno deshabilitado a mano, se retira para no dejar los dos.
+    rm -f "$DESTINO.deshabilitado"
+    echo "   $DESTINO"
+else
+    echo "== autostart del escritorio: NO se instala =="
+    echo "   La pared se abre a mano cuando se quiera:"
+    echo "   bash $RAIZ/infra/vigia/vigia-kiosco.sh"
+    echo "   Para que arranque sola al iniciar sesión: --autostart"
+    # Si había uno de una instalación anterior, se deja deshabilitado en vez de
+    # borrarlo: revivirlo es un `mv` y no hay que volver a correr el instalador.
+    if [ -f "$DESTINO" ]; then
+        mv "$DESTINO" "$DESTINO.deshabilitado"
+        echo "   (el que había quedó en $DESTINO.deshabilitado)"
+    fi
+fi
 
 echo "== pantalla siempre encendida =="
 # `gsettings` necesita el bus de la sesión. Corriendo por SSH no está en el
@@ -70,7 +100,8 @@ fi
 if [ "$AUTOLOGIN" = 1 ]; then
     echo "== inicio de sesión automático =="
     # Sin esto, tras un corte de luz la máquina se queda en la pantalla de
-    # contraseña y la pared no vuelve sola. El precio: quien tenga acceso FÍSICO
+    # contraseña. Ojo: por sí solo NO devuelve la pared — hace falta también
+    # `--autostart`, que desde 2026-08-23 es opt-in. El precio: quien tenga FÍSICO
     # al NUC se encuentra una sesión abierta. Es un equipo en la oficina y la
     # pantalla es de sólo lectura, pero es una decisión, no un detalle.
     if [ -f /etc/gdm3/custom.conf ]; then

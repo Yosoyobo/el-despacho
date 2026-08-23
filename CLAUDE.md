@@ -5796,7 +5796,7 @@ trabajo del negocio) en un tablero.
   que el resto carga de unpkg): esta pantalla arranca sola cuando el NUC se
   reinicia, y si en ese momento no hay internet, un HTMX que no baja deja la pared
   congelada para siempre sin decir por qué.
-- **El kiosco** (`infra/vigia/`): `instalar.sh` deja el autostart del escritorio,
+- **El kiosco** (`infra/vigia/`): *(2026-08-23: el autostart ya NO es el default — es opt-in con `--autostart`. Un navegador abierto 24/7 en esta página llegó a **5.4 GB en un solo proceso**, tres veces todo El Despacho junto, y dejaba al NUC sin memoria. La página se recarga sola cada hora, pero si nadie mira la pared el navegador no tiene por qué estar abierto. Decisión de Oscar: «sólo si lo necesito lo abro».)* `instalar.sh` deja el autostart del escritorio,
   apaga el ahorro de pantalla y el bloqueo, y con `--autologin` configura GDM para
   que la pantalla **vuelva sola tras un corte de luz** (el precio, dicho en el
   README: quien tenga acceso físico se encuentra una sesión abierta). El lanzador
