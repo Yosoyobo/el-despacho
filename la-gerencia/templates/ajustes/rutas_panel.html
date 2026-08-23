@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load forms_helpers l10n %}
+{% block title %}Rutas — Ajustes{% endblock %}
+
+{% comment %}
+Los cuatro supuestos con los que el planeador estima la vuelta.
+
+Están aquí y no en el código porque de ellos salen las HORAS que ve el runner en
+su ruta: si no se parecen a la realidad, la ruta le promete horas que no cumple y
+deja de creerle. Ajustarlos es de quien conoce la ciudad y el trabajo.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Rutas" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Rutas" subtitulo="Con qué supuestos el planeador estima la vuelta del día" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+<form method="post" class="campo-form max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+            <label for="velocidad_kmh">Velocidad promedio (km/h)</label>
+            <input type="text" inputmode="decimal" id="velocidad_kmh" name="velocidad_kmh"
+                   value="{{ cfg.velocidad_kmh|unlocalize }}">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                25 es un promedio de ciudad con tráfico. Súbela si la mayoría de las
+                entregas son por carretera.
+            </p>
+        </div>
+
+        <div>
+            <label for="minutos_por_parada">Minutos por parada</label>
+            <input type="text" inputmode="numeric" id="minutos_por_parada" name="minutos_por_parada"
+                   value="{{ cfg.minutos_por_parada }}">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Estacionarse, bajar, entregar, recabar firma. Se suma a cada tramo.
+            </p>
+        </div>
+
+        <div>
+            <label for="hora_inicio">Hora de salida</label>
+            <input type="time" id="hora_inicio" name="hora_inicio"
+                   value="{{ cfg.hora_inicio|time:'H:i' }}">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                A qué hora se supone que arranca la vuelta. Una cita más temprana
+                adelanta la salida sola.
+            </p>
+        </div>
+
+        <div>
+            <label for="max_paradas_por_ruta">Tope de paradas por ruta</label>
+            <input type="text" inputmode="numeric" id="max_paradas_por_ruta" name="max_paradas_por_ruta"
+                   value="{{ cfg.max_paradas_por_ruta }}">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Nueve es lo que acepta el enlace de Google Maps con paradas
+                intermedias; más que eso, el botón de «abrir en el mapa» deja fuera
+                las últimas.
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-6 rounded-xl border border-gray-200 bg-gray-50/60 p-4 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
+        Las horas que calcula el planeador son <strong>estimadas</strong>: la distancia
+        se mide en línea recta, sin tráfico ni sentidos de calle. Sirven para decidir
+        en qué orden salir, no para prometerle un minuto exacto a un cliente. Las
+        paradas con cita son fijas y el orden las respeta.
+    </div>
+
+    <div class="mt-6 flex items-center gap-3">
+        <button type="submit" class="btn-primario">Guardar</button>
+        <a href="/ajustes/" class="btn-secundario">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

@@ -11363,3 +11363,76 @@ La Limpieza y el planeador — con un solo deploy y una sola VERSION.
 - La ruta no se recalcula sola si un destino cambia después de planear (por
   diseño: los snapshots). Hay botón de replanear, y replanear no duplica.
 - El planeador **no se invoca desde El Chalán**: lee las rutas, no las planea.
+
+
+---
+
+# S-Ajustes-Ago23 — Ronda de Tareas, direcciones de mandado y el planeador ajustable (2026-08-23, VERSION 2026.08.25)
+
+Cuatro reportes de Oscar durante la sesión del planeador, ya con el sistema en la
+mano. Todos tenían una trampa; los tests fijan la trampa, no sólo el caso feliz.
+
+## 1. El breadcrumb seguía al proyecto, no al recorrido
+
+Las migas del detalle de tarea estaban CLAVADAS al proyecto — uno de los tres
+caminos a una tarea. Ahora las decide `_navegacion_tarea` con el rastro (`?volver=`
+o referer), y se regresa a la URL **exacta** para no perder filtros.
+
+**La trampa**: tras guardar una edición el referer es el propio formulario. Sin
+filtrarlo (`_RE_PAGINA_DE_UNA`) el botón de volver devolvía al form enviado. El
+criterio quedó en UN solo lugar, `_rastro_util`, que también alimenta el hidden
+del form para que el rastro sobreviva al POST.
+
+## 2. El tablero de reparto sacaba de la página
+
+Se extrajo a `mandados/_tablero.html`, que ahora incluyen `/mandados/` y
+`/tareas/?cat=mandados`. El contexto lo arma `_ctx_tablero_mandados(request,
+base=, param=)`, así que los chips filtran sin sacar a nadie de su pantalla; en
+Tareas el parámetro es `m_estado` porque `estado` ya lo usa el filtro de tareas.
+
+**La trampa**: los dos contextos usan la llave `total` (uno cuenta tareas, el otro
+mandados). El `include` la mapea explícito o el contador de arriba miente.
+
+## 3. Las direcciones de los mandados se perdían, en silencio
+
+La vista EXIGÍA coordenadas. Quien escribía la dirección y no picaba un resultado
+ni el mapa perdía todo, **incluida la dirección**. Y el error viajaba en un
+`redirect` que con `hx-swap="none"` no se ve: parecía que había guardado.
+
+`fijar_destino` ahora guarda lo que haya y el modal se reinyecta con el error
+cuando no hay nada. El pin quedó opcional a propósito: una dirección escrita ya
+sirve (el runner la lee); el pin es para ordenar la ruta y medir distancias.
+
+## 4. Los supuestos del planeador, por GUI
+
+`ajustes.ConfiguracionRutas` (migr. `ajustes/0019`, sólo `CreateModel` por §14 Bug
+I — la fila nace al leerla) + pantalla en Gerencia → Ajustes → Rutas: velocidad,
+minutos por parada, hora de salida, tope de paradas.
+
+Salieron del código porque **de ellos salen las horas que ve el runner**. `_cfg()`
+las lee con caché de 60 s y **cae a los respaldos** si la tabla no está migrada o
+la base no contesta; el GUI llama `olvidar_configuracion()` al guardar. La
+velocidad se acota a ≥1 (en cero se dividiría entre cero).
+
+## En el mismo tramo
+
+- **Video en la pantalla de mantenimiento** (`(lc_failover)` del Caddyfile, los dos
+  hosts). Silenciado, porque ningún navegador permite autoplay con sonido. Las
+  sondas `/ping` y `/salud` siguen devolviendo 502 de verdad.
+- **La pared de El Vigía se recarga sola cada hora.** Medido en el NUC: su Firefox
+  llevaba **5.4 GB en un solo proceso**, tres veces todo El Despacho junto. El
+  botón de La Limpieza no lo arregla (suelta caché de disco, no el montón del
+  navegador). Oscar además lo cerró a mano: de 9.6 GB usados a 2.7 GB.
+
+## Pruebas
+
+24 nuevas (12 de la ronda de Tareas, 7 del planeador configurable, 5 de su
+pantalla) + regresión verde. Ruff limpio.
+
+## Deuda diseñada
+
+El rastro se lee del `?volver=` y del referer: sin ninguno de los dos se cae al
+default del proyecto (correcto, pero no adivina). El tablero dentro de Tareas no
+pagina (tope 300, igual que su pantalla). Y la configuración no expone un factor
+«línea recta → calle real»: eso no se arregla con un número, necesita un servicio
+de ruteo.

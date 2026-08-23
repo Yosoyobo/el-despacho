@@ -6025,6 +6025,65 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Ajustes-Ago23 ✅ — Ronda de Tareas, direcciones de mandado y el planeador ajustable (2026-08-23, VERSION 2026.08.25)
+
+Cuatro cosas que Oscar reportó a lo largo de la sesión del planeador, ya con el
+sistema en la mano. Cada una traía una trampa que el test fija.
+
+- **El breadcrumb sigue el recorrido, no el proyecto.** «Si empiezo en tareas,
+  debo regresar a tareas.» Las migas del detalle estaban **clavadas al proyecto**,
+  que es sólo uno de los tres caminos a una tarea (el tablero, la lista y
+  Mandados son los otros). Ahora las decide `_navegacion_tarea` a partir del
+  rastro (`?volver=` o el referer) y se regresa a la **URL exacta**, no al índice,
+  para no perder filtros. **La trampa**: tras guardar la edición el referer es el
+  propio formulario, así que sin filtrarlo el botón devolvía al form enviado —
+  de ahí `_RE_PAGINA_DE_UNA` y el criterio único `_rastro_util`, que también
+  alimenta el hidden del form para que el rastro sobreviva al POST.
+- **El tablero de reparto, dentro de Tareas.** «Saca el tablero de mandados de
+  ahí, que se vea en tareas.» Había un enlace que sacaba de la página. El tablero
+  se extrajo a **`mandados/_tablero.html`** y lo incluyen las DOS pantallas
+  (`/mandados/` y `/tareas/?cat=mandados`), con el contexto armado por
+  `_ctx_tablero_mandados(request, base=, param=)` para que los chips filtren sin
+  sacar a nadie de su página. En Tareas el parámetro es **`m_estado`** porque
+  `estado` ya lo usa el filtro de tareas. **La trampa**: los dos contextos usan la
+  llave `total` —uno cuenta tareas, el otro mandados—, así que el `include` la
+  mapea explícito o el contador de arriba miente.
+- **La dirección de un mandado se guarda sin pin.** «No se están guardando las
+  direcciones o sedes.» La vista **exigía** coordenadas: quien escribía la
+  dirección y no picaba un resultado ni el mapa **perdía todo, incluida la
+  dirección**, y lo perdía **en silencio** porque el error viajaba en un
+  `redirect` que con `hx-swap="none"` no se ve. Ahora `fijar_destino` guarda lo
+  que haya (una dirección escrita ya sirve: el runner la lee; el pin sirve para
+  ordenar la ruta y medir, y es normal no tenerlo aún) y si no hay nada el modal
+  se reinyecta **con el error a la vista**.
+- **Los supuestos del planeador, por GUI** (`ajustes.ConfiguracionRutas`,
+  migración `ajustes/0019`, pantalla en **Gerencia → Ajustes → Rutas**):
+  velocidad, minutos por parada, hora de salida y tope de paradas. Salieron de ser
+  constantes de `planeador.py` porque **de ellas salen las horas que ve el
+  runner**: con números que no se parecen a la realidad, la ruta promete horas que
+  no se cumplen. `_cfg()` las lee con caché de proceso de 60 s y **cae a los
+  respaldos** si la tabla no está migrada o la base no contesta — un planeador que
+  se niega a planear por no poder leer una preferencia no sirve. El GUI llama
+  `olvidar_configuracion()` al guardar para que el cambio se note ya. La velocidad
+  se acota a ≥1: en cero se dividiría entre cero al estimar tiempos. La migración
+  es **sólo `CreateModel`** (la fila nace al leerla) precisamente por §14 Bug I.
+- Además, en el mismo tramo: **video en la pantalla de mantenimiento** (snippet
+  `(lc_failover)` del Caddyfile, que importan El Taller y La Gerencia; arranca
+  silenciado porque ningún navegador permite autoplay con sonido, y las sondas
+  `/ping`/`/salud` siguen devolviendo 502 de verdad) y **la pared de El Vigía se
+  recarga sola cada hora** — medido en el NUC, su Firefox llevaba **5.4 GB en un
+  solo proceso**, tres veces lo que todo El Despacho junto, y el botón de La
+  Limpieza no lo arregla porque suelta caché de disco, no el montón del navegador.
+- **24 pruebas nuevas** (`test_ajustes_tareas_ago23.py` 12, `test_rutas_config.py`
+  7, `test_rutas_config_ui.py` 5) + regresión verde.
+
+**Deuda diseñada**: el rastro de navegación se lee del `?volver=` y del referer —
+un navegador que no manda referer y un enlace sin el parámetro caen al default del
+proyecto (correcto, pero no adivina). El tablero dentro de Tareas no pagina (tope
+de 300, igual que su propia pantalla). Y la configuración de rutas no expone el
+factor de «línea recta a calle real»: la distancia sigue siendo en línea recta y
+eso no se arregla con un número, necesita un servicio de ruteo.
+
 ### S-Planeador-Rutas ✅ — El planeador: el reparto del día guardado, y la ruta por correo (2026-08-23, VERSION 2026.08.24)
 
 Oscar: «ya tenemos que lanzar el planeador de rutas» + «hay un correo de runner
