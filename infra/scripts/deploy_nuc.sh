@@ -15,6 +15,12 @@
 # tailnet, y meterlo pedía una credencial nueva. La Sede sí está en el tailnet y
 # ya tenía sus secretos aprobados. Cero secretos nuevos.
 #
+# La llave de La Sede está acotada en el NUC con
+# `command="/home/linux/bin/deploy-desde-sede.sh"` + `restrict` + `from=`, así que
+# desde allá NO se puede abrir sesión ni correr otra cosa: sólo disparar esto. Sin
+# eso, comprometer el Droplet (que está expuesto a internet) habría dado shell como
+# un usuario con Docker — root efectivo en el NUC.
+#
 # Uso: bash /mnt/el-despacho/infra/scripts/deploy_nuc.sh
 set -uo pipefail
 cd /mnt/el-despacho

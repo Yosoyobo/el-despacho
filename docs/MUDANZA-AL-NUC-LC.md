@@ -385,9 +385,38 @@ GitHub Actions ──SSH (SEDE_*)──▶ La Sede ──SSH por el tailnet─�
 ```
 
 - La llave del salto vive **sólo en el Droplet**: `~/.ssh/sede-nuc-deploy`.
-- En el NUC está autorizada con `from="<IP de La Sede en el tailnet>"`, así que
-  **no sirve desde ningún otro lugar**, ni siquiera con la llave en mano.
 - Nunca pasa por el repo ni por un chat.
+- En el NUC está autorizada así:
+
+      restrict,command="/home/linux/bin/deploy-desde-sede.sh",from="100.75.35.63" ssh-ed25519 …
+
+### Por qué esas tres opciones, y no sólo la llave
+
+La Sede está **expuesta a internet**. Sin acotar, esa llave daba **shell como el
+usuario del NUC**, que pertenece al grupo `docker` — o sea **root efectivo**. Es
+decir: comprometer el Droplet habría implicado comprometer el NUC, y el tailnet es
+lo último que uno quiere regalar. Las tres opciones cierran eso:
+
+| | qué hace |
+|---|---|
+| `command="…"` | Pase lo que pase, el NUC corre **su** envoltorio y nada más. Lo que manda el otro lado se ignora — y se **registra** en `~/deploy-desde-sede.log`, así que queda auditoría de quién pidió cada deploy. |
+| `restrict` | Sin pty, sin reenvío de puertos, sin agente, sin X11, sin `user-rc`. |
+| `from="…"` | Sólo desde la IP de La Sede en el tailnet. No es falsificable: dentro del tailnet la IP está atada criptográficamente al nodo. |
+
+**Comprobado, no supuesto** (2026-08-23): mandando `whoami; id; cat /etc/hostname`
+desde La Sede, esos comandos **no se ejecutan** — sólo quedan en la bitácora, y lo
+que corre es el envoltorio. Y `ssh -tt` responde
+`PTY allocation request failed on channel 0`.
+
+**El riesgo que QUEDA:** quien comprometa La Sede puede **disparar un deploy** de
+lo que ya esté en `main`. No puede leer nada, ni ejecutar nada, ni entrar al NUC.
+Si algún día eso también estorba, la vía sin ninguna llave es invertir el sentido:
+que el NUC mire por su cuenta cuándo cambian los digests de `main` y se despliegue
+solo (cron propio, cero credenciales) — el precio es que deja de ser inmediato.
+
+El envoltorio vive **fuera del repo** (`~/bin/deploy-desde-sede.sh`) a propósito: el
+deploy hace `git reset --hard`, y un guion de control que el propio deploy puede
+reescribir no controla nada.
 
 ### El script vive en el repo, no en el YAML
 

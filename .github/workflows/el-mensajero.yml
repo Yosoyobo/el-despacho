@@ -263,28 +263,30 @@ jobs:
         env:
           NUC_HOST: ${{ secrets.NUC_HOST }}
           NUC_USER: ${{ secrets.NUC_USER }}
+          SHA: ${{ github.sha }}
+          CORRIDA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           host: ${{ secrets.SEDE_HOST }}
           username: ${{ secrets.SEDE_USER }}
           key: ${{ secrets.SEDE_SSH_KEY }}
           command_timeout: 20m
-          envs: NUC_HOST,NUC_USER
+          envs: NUC_HOST,NUC_USER,SHA,CORRIDA
           script: |
             set -uo pipefail
             echo "=== La Sede → NUC ($NUC_HOST) por el tailnet ==="
-            # Se trae SÓLO el script de deploy, sin mover HEAD: el script captura
-            # el commit previo para poder hacer rollback, y si se actualizara el
-            # repo aquí ese "previo" sería el commit NUEVO y el rollback no
-            # revertiría nada. El `git reset` de verdad lo hace él.
+            # La llave está acotada en el NUC con `command=`, así que lo que se
+            # manda aquí NO se ejecuta: el NUC corre siempre su envoltorio
+            # (~/bin/deploy-desde-sede.sh) y nada más. Se manda de todos modos un
+            # texto con el commit y la corrida porque el envoltorio lo REGISTRA:
+            # así la bitácora del NUC dice quién pidió cada deploy.
+            #
+            # Esto es lo que impide que comprometer La Sede —que está expuesta a
+            # internet— sirva para algo más que disparar un deploy de lo que ya
+            # está en main. Sin `command=`, esa llave daba shell como el usuario
+            # del NUC, que tiene Docker: root efectivo.
             ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
                 -o ConnectTimeout=15 -i ~/.ssh/sede-nuc-deploy \
-                "$NUC_USER@$NUC_HOST" "
-                  set -uo pipefail
-                  cd /mnt/el-despacho
-                  git fetch origin main
-                  git checkout origin/main -- infra/scripts/deploy_nuc.sh
-                  bash infra/scripts/deploy_nuc.sh
-                "
+                "$NUC_USER@$NUC_HOST" "deploy main $SHA · $CORRIDA"
 
   ventana:
     name: 🪟 La Ventana (Caddyfile y TLS en La Sede)
