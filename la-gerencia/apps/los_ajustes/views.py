@@ -1046,6 +1046,73 @@ def fiscal_panel(request):
     })
 
 
+
+# ── Rutas — los supuestos con los que el planeador estima la vuelta ───────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET", "POST"])
+def rutas_panel(request):
+    """Velocidad, tiempo por parada, hora de salida y tope de paradas.
+
+    De estos cuatro números salen las **horas estimadas** que ve el runner en su
+    ruta. Si no se parecen a la realidad, la ruta le promete horas que no va a
+    cumplir y deja de creerle — por eso los ajusta quien conoce la ciudad y el
+    trabajo, no quien escribe el código (Oscar, 2026-08-23).
+    """
+    from datetime import time as _time
+    from decimal import Decimal, InvalidOperation
+
+    from ajustes.models import ConfiguracionRutas
+
+    cfg = ConfiguracionRutas.obtener()
+
+    if request.method == "POST":
+        def _entero(nombre, actual, minimo, tope):
+            try:
+                return max(minimo, min(int(request.POST.get(nombre) or actual), tope))
+            except (TypeError, ValueError):
+                return actual
+
+        try:
+            velocidad = Decimal(str(request.POST.get("velocidad_kmh") or cfg.velocidad_kmh))
+        except (InvalidOperation, ValueError, TypeError):
+            velocidad = cfg.velocidad_kmh
+        # Cero dividiría entre cero al estimar tiempos.
+        cfg.velocidad_kmh = max(Decimal("1"), min(velocidad, Decimal("200")))
+        cfg.minutos_por_parada = _entero("minutos_por_parada", cfg.minutos_por_parada, 0, 240)
+        cfg.max_paradas_por_ruta = _entero("max_paradas_por_ruta",
+                                           cfg.max_paradas_por_ruta, 1, 25)
+
+        crudo = (request.POST.get("hora_inicio") or "").strip()
+        if crudo:
+            try:
+                h, m = crudo.split(":")[:2]
+                cfg.hora_inicio = _time(int(h), int(m))
+            except (TypeError, ValueError):
+                pass  # hora ilegible: se queda la de antes
+
+        cfg.save()
+        # Que el cambio se note ya, sin esperar el minuto de caché del planeador.
+        try:
+            from apps.el_pizarron.planeador import olvidar_configuracion
+            olvidar_configuracion()
+        except Exception:  # noqa: BLE001 — Gerencia no depende del Taller para guardar
+            pass
+        emitir(EventoPortavoz(
+            tipo="ajuste.rutas_configurada",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={
+                "velocidad_kmh": str(cfg.velocidad_kmh),
+                "minutos_por_parada": cfg.minutos_por_parada,
+                "hora_inicio": cfg.hora_inicio.strftime("%H:%M"),
+                "max_paradas": cfg.max_paradas_por_ruta,
+            },
+        ))
+        messages.success(request, "Supuestos del planeador de rutas actualizados.")
+        return redirect("ajustes-rutas")
+
+    return render(request, "ajustes/rutas_panel.html", {"cfg": cfg})
+
 # ── El Análisis — los umbrales con los que El Chalán juzga ───────────────
 
 @requiere_permiso("ajustes", "acceder")

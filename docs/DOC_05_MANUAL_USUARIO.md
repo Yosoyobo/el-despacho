@@ -5,6 +5,63 @@
 
 ---
 
+## Novedades — Tareas que te devuelven a donde estabas, direcciones que sí se guardan y el planeador ajustable (23 de agosto de 2026)
+
+**El breadcrumb te regresa a donde empezaste**
+
+Si abrías una tarea desde **Tareas** y luego querías volver, el sistema te
+mandaba al **proyecto** — que casi nunca era de donde venías. Ahora las migas y el
+botón de volver siguen tu recorrido de verdad: si entraste desde Tareas, regresas
+a Tareas, **y con tus filtros puestos**, no al principio de la lista. Si entraste
+desde el proyecto, sigues regresando al proyecto.
+
+Y al guardar una edición ya no te devuelve al formulario que acabas de enviar.
+
+**El tablero de reparto se ve dentro de Tareas**
+
+Cuando filtras por la categoría **🛵 Mandados**, el tablero de reparto (por
+asignar · asignado · en camino · entregado) se muestra **ahí mismo**, abajo de las
+columnas. Antes había un enlace que te sacaba de la página.
+
+**Las direcciones de los mandados ya se guardan**
+
+Éste era un problema de verdad: si escribías la dirección de una entrega y **no**
+picabas un resultado del buscador ni un punto en el mapa, al guardar **se perdía
+todo, incluida la dirección que habías escrito** — y sin decir nada, así que
+parecía que sí había guardado.
+
+Ahora el pin del mapa es **opcional**: una dirección escrita ya sirve, porque el
+repartidor la lee. El pin sigue sirviendo para otra cosa — ordenar la ruta y
+calcular distancias — y es normal no tenerlo todavía. Y si no hay nada que
+guardar, la ventana te lo dice en la cara en lugar de cerrarse en silencio.
+
+**El planeador de rutas ya se ajusta sin programar**
+
+En **La Gerencia → Ajustes → Rutas** puedes cambiar los cuatro supuestos con los
+que el planeador estima la vuelta:
+
+- **Velocidad promedio** (25 km/h por default, un promedio de ciudad con tráfico).
+- **Minutos por parada** (10): estacionarse, bajar, entregar, firmar.
+- **Hora de salida** (9:00), que una cita más temprana adelanta sola.
+- **Tope de paradas por ruta** (9, que es lo que acepta el enlace de Google Maps).
+
+De esos números salen las horas que ve el repartidor en su ruta. Si no se parecen
+a la realidad, la ruta le promete horas que no cumple — y entonces deja de
+creerle. Ahora los ajusta quien conoce la ciudad y el trabajo.
+
+**Mientras el sistema se actualiza, hay algo que ver**
+
+La pantalla de «Volvemos en unos minutos» ahora trae un video reproduciéndose
+(empieza silenciado; súbele si quieres acompañamiento).
+
+**La pared del NUC ya no se come la memoria**
+
+La pantalla de pared de El Vigía se recarga sola una vez por hora. Llevaba horas
+refrescando paneles y el navegador no soltaba la memoria: se estaba comiendo tres
+veces lo que todo el sistema junto.
+
+---
+
 ## Novedades — El planeador de rutas: el reparto del día, y a cada quien su vuelta por correo (23 de agosto de 2026)
 
 **Ya se puede planear el día completo, no sólo ver la vuelta de uno**

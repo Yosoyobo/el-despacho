@@ -37,15 +37,63 @@ from datetime import datetime, time, timedelta
 
 logger = logging.getLogger(__name__)
 
-#: Velocidad de crucero para estimar tiempos, en km/h. Ciudad con tráfico.
+# Los cuatro supuestos con los que se estima la vuelta. Se editan en La Gerencia
+# → Ajustes → Rutas (`ajustes.ConfiguracionRutas`); lo de aquí abajo es el
+# RESPALDO, para que el planeador siga funcionando si la tabla todavía no existe
+# o la base no contesta. Nunca se leen directo: se pide con `_cfg()`.
 VELOCIDAD_KMH = 25.0
-#: Lo que se tarda en cada parada (bajar, entregar, firmar), en minutos.
 MINUTOS_POR_PARADA = 10
-#: Hora a la que se supone que arranca la vuelta si ninguna cita obliga antes.
 HORA_INICIO_DEFAULT = time(9, 0)
-#: Tope de paradas por ruta. Es el mismo de `ruta.MAX_PARADAS`: más de eso no
-#: lo acepta el enlace de Google Maps ni lo hace nadie en una vuelta.
 MAX_PARADAS_POR_RUTA = 9
+
+#: Cuánto se recuerda la configuración antes de volver a preguntarla. Planear un
+#: día son decenas de llamadas a `_cfg()`; sin esto, decenas de consultas.
+_CACHE_SEGUNDOS = 60
+_cache: dict = {"hasta": None, "valor": None}
+
+
+def _cfg():
+    """Los supuestos vigentes, como objeto con los cuatro atributos.
+
+    Defensivo a propósito: si la tabla no está migrada, la base no contesta o el
+    valor viene absurdo, se cae a los respaldos de arriba. Un planeador que se
+    niega a planear porque no pudo leer una preferencia no le sirve a nadie.
+    """
+    import time as _t
+    from types import SimpleNamespace
+
+    ahora = _t.monotonic()
+    if _cache["valor"] is not None and _cache["hasta"] and ahora < _cache["hasta"]:
+        return _cache["valor"]
+
+    valor = SimpleNamespace(
+        velocidad_kmh=VELOCIDAD_KMH,
+        minutos_por_parada=MINUTOS_POR_PARADA,
+        hora_inicio=HORA_INICIO_DEFAULT,
+        max_paradas=MAX_PARADAS_POR_RUTA,
+    )
+    try:
+        from ajustes.models import ConfiguracionRutas
+        cfg = ConfiguracionRutas.obtener()
+        velocidad = float(cfg.velocidad_kmh or 0)
+        valor = SimpleNamespace(
+            # Una velocidad en cero dividiría entre cero al estimar tiempos.
+            velocidad_kmh=velocidad if velocidad > 0 else VELOCIDAD_KMH,
+            minutos_por_parada=int(cfg.minutos_por_parada or 0),
+            hora_inicio=cfg.hora_inicio or HORA_INICIO_DEFAULT,
+            max_paradas=max(1, int(cfg.max_paradas_por_ruta or MAX_PARADAS_POR_RUTA)),
+        )
+    except Exception:  # noqa: BLE001 — sin configuración, se planea con los respaldos
+        logger.debug("no se pudo leer la configuración de rutas", exc_info=True)
+
+    _cache.update(hasta=ahora + _CACHE_SEGUNDOS, valor=valor)
+    return valor
+
+
+def olvidar_configuracion() -> None:
+    """Tira el recuerdo de la configuración. La llama el GUI al guardar, para que
+    el cambio se note sin esperar el minuto de la caché."""
+    _cache.update(hasta=None, valor=None)
 
 
 # ── Candidatos ────────────────────────────────────────────────────────────────
@@ -215,7 +263,7 @@ def _ordenar_con_citas(origen, paradas, *, cerrar: bool):
 # ── Horas estimadas ───────────────────────────────────────────────────────────
 
 def _minutos_de(metros: float) -> int:
-    return int(round((metros / 1000.0) / VELOCIDAD_KMH * 60)) if metros else 0
+    return int(round((metros / 1000.0) / _cfg().velocidad_kmh * 60)) if metros else 0
 
 
 def estimar_horas(origen, secuencia, *, inicio: time | None = None):
@@ -226,7 +274,7 @@ def estimar_horas(origen, secuencia, *, inicio: time | None = None):
     la real — mentir aquí sería peor que llegar tarde.
     """
     anclas = [p["hora"] for p in secuencia if p.get("hora")]
-    arranque = inicio or HORA_INICIO_DEFAULT
+    arranque = inicio or _cfg().hora_inicio
     if anclas:
         # Si la primera cita es temprano, la vuelta empieza antes.
         arranque = min([arranque, *anclas])
@@ -245,7 +293,7 @@ def estimar_horas(origen, secuencia, *, inicio: time | None = None):
             if reloj < hora_cita:
                 reloj = hora_cita  # llegó antes: espera a su cita
         salida.append((parada, reloj.time(), int(metros)))
-        reloj += timedelta(minutes=MINUTOS_POR_PARADA)
+        reloj += timedelta(minutes=_cfg().minutos_por_parada)
         if punto:
             anterior = punto
     return salida
@@ -285,12 +333,13 @@ def _repartir(candidatos, contextos):
     def _peso_cita(p):
         return (0, p["hora"]) if p.get("hora") else (1, time(23, 59))
 
+    tope = _cfg().max_paradas
     pendientes = sorted(candidatos, key=_peso_cita)
     sobrantes = []
     for parada in pendientes:
         mejor, mejor_costo = None, None
         for ctx in contextos.values():
-            if len(ctx["paradas"]) >= MAX_PARADAS_POR_RUTA:
+            if len(ctx["paradas"]) >= tope:
                 continue
             antes = largo_de(ctx["origen"], ctx["paradas"], cerrar=ctx["cerrar"])
             tentativa = _ordenar_con_citas(

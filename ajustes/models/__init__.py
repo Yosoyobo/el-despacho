@@ -7,6 +7,7 @@ from .credencial import SLOTS_CREDENCIAL, Credencial
 from .fiscal import ConfiguracionFiscal
 from .plantilla_correo import PlantillaCorreo
 from .regla_correo import CorreoEnviadoRegla, ReglaCorreo
+from .rutas import ConfiguracionRutas
 from .tasa import TasaImpositiva
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "ConfiguracionCorreo", "ConfiguracionCobranza", "ConfiguracionFiscal",
     "PlantillaCorreo", "ConfiguracionAnalisis", "TarifaRol",
     "ReglaCorreo", "CorreoEnviadoRegla", "AliasRemitente",
+    "ConfiguracionRutas",
 ]

@@ -174,6 +174,7 @@ EventoTipo = Literal[
     "cobranza.recordatorio_fallido",
     "ajuste.cobranza_configurada",
     "ajuste.fiscal_configurada",
+    "ajuste.rutas_configurada",
     "ajuste.analisis_configurado",
     # El Análisis (S-Chalan-Analisis)
     "analisis.lectura_generada",
