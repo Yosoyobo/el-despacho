@@ -11,6 +11,15 @@
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Tareas" subtitulo="Tablero por estado — pica los filtros para combinarlos" breadcrumb_items=breadcrumb_items acciones='<button type="button" hx-get="/tareas/nueva/" hx-target="#modal-slot" hx-swap="innerHTML" class="btn-primario">+ Nueva tarea</button> <a href="/tareas/lista/" class="btn-secundario">Ver lista</a>' %}
 {% endif %}
 
+{% comment %}LC 2026-08-23 (Oscar): en el celular los filtros son varios
+renglones de pastillas antes de ver la primera tarea, así que ahí nacen
+plegados. En escritorio no cambia nada.{% endcomment %}
+<div data-movil-plegable="filtros">
+<header data-movil-asa class="mb-2 flex items-center justify-between gap-2 md:hidden">
+    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Filtros{% if hay_filtros %} · activos{% endif %}</h2>
+    <span data-movil-flecha class="text-sm text-gray-400">&#9656;</span>
+</header>
+<div data-movil-cuerpo>
 {# S-LC-Feedback-V13: filtro de categoría — Mandados se fusionó en Tareas. #}
 <div class="mb-3 flex flex-wrap items-center gap-2">
     {% if not es_runner_only %}
@@ -48,18 +57,23 @@ runners (solo ven sus mandados). {% endcomment %}
 {% else %}
 <div class="mb-5 text-xs text-gray-400 dark:text-gray-500">{{ total }} mandado{{ total|pluralize }}</div>
 {% endif %}
+</div>
+</div>
 
 {% comment %} Fila 1: estados activos. Fila 2: cerrados (terminal).
    Flex adaptativo: N columnas configurables sin clases de grid dinámicas
    (Tailwind JIT no genera clases en runtime). {% endcomment %}
 <div class="flex flex-wrap gap-3">
     {% for col in cols_activas %}
-    <div class="kanban-columna-tarea min-w-[220px] flex-1 rounded-2xl border border-gray-200 bg-gray-50/60 p-2.5 dark:border-gray-800 dark:bg-gray-900/60" data-estado="{{ col.slug }}">
-        <div class="mb-2 flex items-center justify-between px-1">
+    <div class="kanban-columna-tarea min-w-[220px] flex-1 rounded-2xl border border-gray-200 bg-gray-50/60 p-2.5 dark:border-gray-800 dark:bg-gray-900/60" data-estado="{{ col.slug }}" data-movil-plegable="col-{{ col.slug }}">
+        <div data-movil-asa class="mb-2 flex items-center justify-between gap-2 px-1">
             <span class="badge badge-hex text-[10px]" style="--ec: {{ col.color }}">{{ col.label }}</span>
-            <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
+            <span class="flex items-center gap-1.5">
+                <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
+                <span data-movil-flecha class="text-xs text-gray-400 md:hidden">&#9656;</span>
+            </span>
         </div>
-        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2"
+        <div data-movil-cuerpo class="kanban-dropzone-tarea min-h-[60px] space-y-2"
              data-arr-zona data-arr-grupo="tareas"
              data-arr-orden-url="{% url 'pizarron-reordenar-tareas' %}"
              data-arr-mover-url="/tareas/{id}/cambiar-estado"
@@ -74,12 +88,15 @@ runners (solo ven sus mandados). {% endcomment %}
 <h2 class="mb-2 mt-8 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Cerradas</h2>
 <div class="flex flex-wrap gap-3">
     {% for col in cols_cerradas %}
-    <div class="kanban-columna-tarea min-w-[220px] max-w-md flex-1 rounded-2xl border border-gray-200 bg-gray-50/60 p-2.5 opacity-90 dark:border-gray-800 dark:bg-gray-900/60" data-estado="{{ col.slug }}">
-        <div class="mb-2 flex items-center justify-between px-1">
+    <div class="kanban-columna-tarea min-w-[220px] max-w-md flex-1 rounded-2xl border border-gray-200 bg-gray-50/60 p-2.5 opacity-90 dark:border-gray-800 dark:bg-gray-900/60" data-estado="{{ col.slug }}" data-movil-plegable="cerrada-{{ col.slug }}">
+        <div data-movil-asa class="mb-2 flex items-center justify-between gap-2 px-1">
             <span class="badge badge-hex text-[10px]" style="--ec: {{ col.color }}">{{ col.label }}</span>
-            <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
+            <span class="flex items-center gap-1.5">
+                <span class="text-xs tabular-nums text-gray-400 dark:text-gray-500">{{ col.tareas|length }}</span>
+                <span data-movil-flecha class="text-xs text-gray-400 md:hidden">&#9656;</span>
+            </span>
         </div>
-        <div class="kanban-dropzone-tarea min-h-[60px] space-y-2"
+        <div data-movil-cuerpo class="kanban-dropzone-tarea min-h-[60px] space-y-2"
              data-arr-zona data-arr-grupo="tareas"
              data-arr-orden-url="{% url 'pizarron-reordenar-tareas' %}"
              data-arr-mover-url="/tareas/{id}/cambiar-estado"
@@ -102,10 +119,15 @@ El tablero de reparto, aquí mismo. `total` se mapea explícito porque el Kanban
 usa esa variable para contar TAREAS y el partial la usa para contar MANDADOS: sin
 el mapeo, el contador de arriba diría el número equivocado.
 {% endcomment %}
-<section class="mt-8 border-t border-gray-200 pt-6 dark:border-gray-800">
-    <h2 class="mb-1 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Tablero de reparto</h2>
-    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">El estado logístico de cada entrega: por asignar, asignado, en camino, entregado.</p>
+<section class="mt-8 border-t border-gray-200 pt-6 dark:border-gray-800" data-movil-plegable="tablero-reparto">
+    <div data-movil-asa class="mb-1 flex items-center justify-between gap-2">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Tablero de reparto</h2>
+        <span data-movil-flecha class="text-sm text-gray-400 md:hidden">&#9656;</span>
+    </div>
+    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400 max-md:hidden">El estado logístico de cada entrega: por asignar, asignado, en camino, entregado.</p>
+    <div data-movil-cuerpo>
     {% include "mandados/_tablero.html" with mandados=tablero_mandados.mandados chips=tablero_mandados.chips total=tablero_mandados.total puede_admin=tablero_mandados.puede_admin %}
+    </div>
 </section>
 {% endif %}
 {% endblock %}

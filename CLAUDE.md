@@ -6025,6 +6025,100 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Movil-Plegado ✅ — En el celular las tarjetas nacen plegadas + el correo del Chalán sale de chalan@ (2026-08-23, VERSION 2026.08.26)
+
+Dos pedidos de Oscar en la misma sesión. El segundo llegó a media entrega: «El
+Chalán me envió un correo… pero salió de hola@ y no de chalán@. Repara eso» +
+«Recuerda que esas cosas se tienen que configurar vía el GUI».
+
+**El plegado en móvil.** «En el dashboard en la versión móvil y PWA y las tareas y
+mandados, debemos ver esas tarjetas minimizadas siempre por default. Hay mucho
+scroll. RECUERDA QUE ES SOLO PARA MOVIL Y PWA.»
+
+- **El pliegue lo hace el CSS, no el JS**, y es la decisión de diseño central: si
+  lo cerrara el JS después del primer pintado se vería el brinco (la página
+  aparece larga y se encoge). Con una media query nace plegado y **nunca hay
+  salto**. Contrato de tres atributos (`data-movil-plegable` / `-asa` / `-cuerpo`,
+  + `data-movil-abierto` opcional), en las dos copias de `input.css` (§18) antes
+  del marcador «V6 Bloque 8» para no romper su test de sincronía.
+- **El cuerpo tiene que ser HIJO DIRECTO** (`>` en el selector) para que una
+  sección plegable dentro de otra no esconda también el cuerpo de la de afuera.
+  Dos secciones quedaron con el cuerpo como NIETO en el primer intento
+  («sugerencias» y «mis-mandados», donde el cuerpo vive dentro de la tarjeta) — se
+  cazó con un parser de HTML sobre la página renderizada, no leyendo el diff, y de
+  ahí salió el candado permanente del test: **si alguien mueve un cuerpo un nivel
+  más adentro, deja de plegarse EN SILENCIO** (no hay error, simplemente no
+  funciona en el teléfono, que es donde nadie mira el código).
+- **El toggle vive en `ui.js`** (dual-copy) con corte `matchMedia('(max-width:
+  767px)')` — en escritorio no hace nada, así que estas pantallas se ven
+  exactamente igual que antes. Si el asa es un encabezado que CONTIENE un enlace
+  (el de «Tareas pendientes» lleva a Tareas), ese clic **navega en vez de plegar**;
+  sin ese filtro el enlace quedaría inalcanzable en el celular.
+- **La memoria es `sessionStorage`, no `localStorage`**: al entrar fresco todo
+  está plegado —lo que se pidió— pero si abres una sección, picas algo y regresas
+  con Atrás, sigue abierta. Sin ella la app te vuelve a cerrar lo que acabas de
+  abrir en cada navegación, que es el caso más frecuente.
+- **Dashboard: 10 secciones plegables.** Ocho nacen cerradas (acciones rápidas,
+  tareas pendientes, próximos eventos, El Chalán, indicadores, proyectos activos,
+  calendario, tu tablero) y **dos nacen abiertas a propósito** — «Mis mandados» y
+  «El Chalán sugiere» son AVISOS condicionales: sólo aparecen cuando hay algo que
+  atender, así que plegarlos sería esconder el aviso.
+- **Tareas**: los tres renglones de filtros pasan a un solo «Filtros», cada
+  columna del tablero se pliega dejando a la vista su pastilla y su contador
+  («Pendiente 5 · En proceso 3»), y el tablero de reparto también. **`/mandados/`
+  NO se pliega**: ahí entraste justo a verlo, y plegarlo dejaría la página vacía.
+  El partial es el MISMO (`mandados/_tablero.html`) — el plegable vive en el
+  `{% include %}` de Tareas, no dentro del partial.
+- **Encabezados nuevos con `md:hidden`** donde la sección no tenía uno (acciones,
+  indicadores, El Chalán), y en «Proyectos activos» el encabezado de escritorio
+  —que lleva el buscador en la MISMA línea por pedido de Oscar (Ago04)— se
+  conserva intacto con `max-md:hidden` y se le suma uno propio para el teléfono.
+  Cero cambio de layout en escritorio.
+- **18 tests** en `tests/taller/test_plegado_movil.py`, **verificados contra
+  código mutado**: quitar el `>` del selector, quitar el corte de móvil del
+  toggle y mover un cuerpo un nivel adentro hacen fallar exactamente al test que
+  los cubre.
+
+**El correo del Chalán.** El ejecutor YA llamaba `remitente_para`: el hueco era
+que **ninguna plantilla declara alias**, así que caía al remitente general
+(`hola@`). Y `chalan@learningcenter.mx` ya estaba sembrado y verificado desde
+S-Alias-Personales — sólo faltaba que algo lo eligiera.
+
+- **Campo nuevo `ConfiguracionCorreo.remitente_chalan`** con su selector en
+  **Gerencia → Ajustes → El Cartero** (la regla de Oscar: lo configurable vive en
+  un GUI, no escrito en el código). Sólo se ofrecen los **departamentales
+  verificados** (`disponibles_para(None)`): un personal ahí saldría a nombre de
+  quien no mandó el correo, y `puede_usarlo` lo negaría igual. **La validación
+  está en el servidor** — el `<select>` se puede manipular.
+- **`remitente_para` gana un cuarto escalón**, y va TERCERO a propósito: elegido a
+  mano → alias de la plantilla → **remitente del origen** → general. Si ganara al
+  de la plantilla, una cotización empezaría a salir de chalan@ en vez de
+  cotizaciones@ y nadie lo notaría hasta que un cliente contestara al buzón
+  equivocado. `_remitente_de_origen` es defensivo: si la columna no está migrada o
+  la base no contesta, el correo sale con el remitente de siempre en vez de no
+  salir.
+- **Dos migraciones, no una** (§14 Bug I): `ajustes/0020` sólo el `AddField`,
+  `ajustes/0021` sólo el seed de `chalan@` (idempotente, y sólo si ese alias
+  existe en el registro — si alguien lo borró, se queda en el general en vez de
+  apuntar a una dirección que Google reescribiría en silencio).
+- **7 tests** en `tests/taller/test_remitente_chalan.py`; el de «la plantilla
+  gana» **verificado invirtiendo el orden** en el código.
+
+**MCP (regla del repo)**: ninguno de los dos entregables suma capacidad —el
+plegado es UI (CSS + un toggle) y el remitente es configuración que El Chalán usa
+implícitamente al mandar. Se declara aquí explícitamente en vez de dejarlo
+implícito.
+
+**Deuda diseñada**: el plegado se aplicó a Dashboard y Tareas (lo pedido); quedan
+medidas y sin tocar, para que Oscar decida, las otras pantallas con muchas
+secciones apiladas — **detalle de proyecto** (~8 secciones, 486 líneas; ojo: ya
+tiene reorden móvil con `display:contents` desde Jul29, así que el plegable
+tendría que convivir con eso), **ficha de cliente** (~8) y **ficha/form de
+producto** (~8, 706 líneas). En `/mandados/` lo que estorba en el teléfono no es
+el plegado sino que la tabla tiene `min-w-[820px]` y se lee con scroll
+horizontal — eso es un rediseño de la tabla, no un pliegue. Y la memoria del
+pliegue es por pestaña (`sessionStorage`), no por usuario en la base.
+
 ### S-Ajustes-Ago23 ✅ — Ronda de Tareas, direcciones de mandado y el planeador ajustable (2026-08-23, VERSION 2026.08.25)
 
 Cuatro cosas que Oscar reportó a lo largo de la sesión del planeador, ya con el

@@ -1208,3 +1208,91 @@ window.abrirRickroll = function () {
     new MutationObserver(function () { pintar(ultimoFuera); }).observe(slot, { childList: true });
   }
 })();
+
+/* ── LC 2026-08-23 (Oscar): en el celular y en la PWA las tarjetas nacen
+   PLEGADAS ─────────────────────────────────────────────────────────────────
+   «Hay mucho scroll.» El pliegue inicial NO se hace aquí: lo hace input.css con
+   una media query, porque cerrar desde el JS después del primer pintado se ve
+   como un brinco (la página aparece larga y se encoge). Aquí sólo vive el
+   toggle, la flecha y la memoria de la sesión.
+
+   La memoria es `sessionStorage` a propósito: al entrar fresco todo está
+   plegado —que es lo que se pidió— pero si abres una sección, picas algo y
+   regresas con Atrás, sigue abierta. Sin ella la app te vuelve a cerrar lo que
+   acabas de abrir en cada navegación. Al cerrar la app se olvida y vuelve al
+   default plegado.
+
+   En escritorio no hace nada: `esMovil()` corta el toggle y la media query de
+   la hoja no aplica, así que estas pantallas se ven igual que siempre. */
+(function () {
+  var CORTE = '(max-width: 767px)';        // teléfonos; una tablet ya tiene aire
+  var LLAVE = 'despacho-movil-abiertas';
+
+  function esMovil() {
+    try { return window.matchMedia(CORTE).matches; } catch (_) { return false; }
+  }
+  function leerMemoria() {
+    try { return JSON.parse(sessionStorage.getItem(LLAVE) || '{}'); } catch (_) { return {}; }
+  }
+  function guardarMemoria(m) {
+    try { sessionStorage.setItem(LLAVE, JSON.stringify(m)); } catch (_) { /* privado o lleno */ }
+  }
+  /* La ruta va en la llave para que dos pantallas con una sección del mismo
+     nombre no se pisen el estado. */
+  function clave(sec) {
+    return location.pathname + '#' + (sec.getAttribute('data-movil-plegable') || '');
+  }
+  function pintarFlecha(sec) {
+    var f = sec.querySelector('[data-movil-flecha]');
+    if (f) f.textContent = sec.hasAttribute('data-abierto') ? '▾' : '▸';
+  }
+
+  function escanear() {
+    var memoria = leerMemoria();
+    document.querySelectorAll('[data-movil-plegable]').forEach(function (sec) {
+      if (sec.dataset.movilListo !== '1') {
+        sec.dataset.movilListo = '1';
+        /* Los avisos que sólo salen cuando hay algo que atender nacen abiertos:
+           plegarlos sería esconder el aviso. */
+        if (sec.hasAttribute('data-movil-abierto')) sec.setAttribute('data-abierto', '');
+      }
+      var k = clave(sec);
+      if (k in memoria) {
+        if (memoria[k]) sec.setAttribute('data-abierto', '');
+        else sec.removeAttribute('data-abierto');
+      }
+      pintarFlecha(sec);
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!esMovil()) return;
+    var asa = e.target.closest('[data-movil-asa]');
+    if (!asa) return;
+    var sec = asa.closest('[data-movil-plegable]');
+    if (!sec) return;
+    /* Cuando el asa es el encabezado completo y adentro hay un enlace o un
+       botón propio (el título de «Tareas pendientes» lleva a Tareas, el
+       encabezado del calendario a la página del calendario), ese control gana:
+       se navega, no se pliega. */
+    var dentro = e.target.closest('a, button, input, select, label, [data-dropdown-trigger]');
+    if (dentro && dentro !== asa && asa.contains(dentro)) return;
+
+    e.preventDefault();
+    var abrir = !sec.hasAttribute('data-abierto');
+    if (abrir) sec.setAttribute('data-abierto', ''); else sec.removeAttribute('data-abierto');
+    var m = leerMemoria();
+    m[clave(sec)] = abrir;
+    guardarMemoria(m);
+    pintarFlecha(sec);
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', escanear);
+  } else {
+    escanear();
+  }
+  /* Una sección puede llegar por swap (el tablero de resultados del Dashboard,
+     un panel que se repinta): necesita su flecha y su estado. */
+  document.body.addEventListener('htmx:afterSettle', escanear);
+})();

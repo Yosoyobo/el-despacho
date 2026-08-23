@@ -34,7 +34,12 @@
 </script>
 
 {# ── 1) Acciones rápidas: botones pastel en una línea (V6, +cliente en V9). Mayúsculas, fondo suave, borde + texto del mismo color brillante. ── #}
-<section class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+<section class="mb-6" data-movil-plegable="acciones">
+    <header data-movil-asa class="mb-2 flex items-center justify-between gap-2 md:hidden">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Acciones rápidas</h2>
+        <span class="flex items-center gap-1.5"><span data-movil-flecha class="text-sm text-gray-400">&#9656;</span></span>
+    </header>
+    <div data-movil-cuerpo class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
     {# Revisión buzón R2: form-in-modal (render de Oscar) en vez de página full. #}
     <button type="button" hx-get="{% url 'pizarron-nueva-tarea-global' %}" hx-target="#modal-slot" hx-swap="innerHTML" class="flex w-full items-center justify-center gap-2 rounded-xl border border-warning-500 bg-warning-50 px-3 py-3 text-xs font-bold uppercase tracking-wide text-warning-600 transition hover:bg-warning-100 dark:border-warning-500/50 dark:bg-warning-500/10 dark:text-warning-400 dark:hover:bg-warning-500/20">
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
@@ -73,14 +78,18 @@
         Nuevo egreso
     </button>
     {% endif %}
+    </div>
 </section>
 
 {# ── Propuestas de El Chalán (Fase 3): sugerencias proactivas. El Chalán propone, tú confirmas. ── #}
 {% if propuestas_chalan %}
 <section class="mb-6">
-    <div class="ta-card border-brand-200 dark:border-brand-500/30">
-        <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">💡 El Chalán sugiere</h2>
-        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    <div class="ta-card border-brand-200 dark:border-brand-500/30" data-movil-plegable="sugerencias" data-movil-abierto>
+        <h2 data-movil-asa class="mb-3 flex items-center justify-between gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+            <span class="flex items-center gap-2">💡 El Chalán sugiere</span>
+            <span data-movil-flecha class="text-gray-400 md:hidden">&#9662;</span>
+        </h2>
+        <ul data-movil-cuerpo class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for p in propuestas_chalan %}
             <li class="flex items-start justify-between gap-3 py-2.5">
                 <div class="min-w-0">
@@ -104,11 +113,15 @@
 {# Mis Mandados (S-Mandados-V2): solo runner y solo cuando hay pendientes (si no, se oculta). #}
 {% if es_runner and mis_mandados %}
 <section class="mb-6">
-    <div class="ta-card border-brand-200 dark:border-brand-500/30">
-        <div class="mb-3 flex items-center justify-between">
+    <div class="ta-card border-brand-200 dark:border-brand-500/30" data-movil-plegable="mis-mandados" data-movil-abierto>
+        <div data-movil-asa class="mb-3 flex items-center justify-between">
             <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">🛵 Mis mandados</h2>
-            <a href="/mandados/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver todos →</a>
+            <span class="flex items-center gap-2">
+                <a href="/mandados/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver todos →</a>
+                <span data-movil-flecha class="text-gray-400 md:hidden">&#9662;</span>
+            </span>
         </div>
+        <div data-movil-cuerpo>
         {% if mis_mandados %}
         <ul class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for m in mis_mandados %}
@@ -130,6 +143,7 @@
         {% else %}
         <p class="py-4 text-sm text-gray-500 dark:text-gray-400">No tienes mandados pendientes. 🎉</p>
         {% endif %}
+        </div>
     </div>
 </section>
 {% endif %}
@@ -139,14 +153,18 @@
     {% comment %}Tareas pendientes (LC 2026-07-29, Oscar): las de TODO el equipo,
     no sólo las mías, y el recuadro COMPLETO lleva a Tareas — el encabezado es un
     enlace y los renglones siguen yendo a su tarea.{% endcomment %}
-    <div class="ta-card lg:col-span-2">
-        <a href="/tareas/" class="mb-3 flex items-center justify-between gap-2 hover:text-brand-600 dark:hover:text-brand-400">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tareas pendientes</h2>
-            <span class="flex items-center gap-1">
-                <span class="text-sm font-bold tabular-nums text-gray-800 dark:text-gray-100">{{ mis_tareas_total }}</span>
-                <svg class="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </span>
-        </a>
+    <div class="ta-card lg:col-span-2" data-movil-plegable="tareas-pendientes">
+        <div class="mb-3 flex items-center gap-1">
+            <a href="/tareas/" class="flex flex-1 items-center justify-between gap-2 hover:text-brand-600 dark:hover:text-brand-400">
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tareas pendientes</h2>
+                <span class="flex items-center gap-1">
+                    <span class="text-sm font-bold tabular-nums text-gray-800 dark:text-gray-100">{{ mis_tareas_total }}</span>
+                    <svg class="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+            </a>
+            <button type="button" data-movil-asa data-movil-flecha aria-label="Mostrar u ocultar" class="shrink-0 px-1 text-sm text-gray-400 md:hidden">&#9656;</button>
+        </div>
+        <div data-movil-cuerpo>
         <ul class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for t in mis_tareas %}
             <li class="py-2">
@@ -166,16 +184,21 @@
         {% if mis_tareas_mas %}
         <a href="/tareas/" class="mt-2 block text-center text-[11px] font-medium text-gray-400 hover:text-brand-600 dark:text-gray-500">{{ mis_tareas_mas }} más</a>
         {% endif %}
+        </div>
     </div>
 
     {% comment %}Próximos eventos — cada evento enlaza a SU destino (ticket UX 2026-07): entrega de proyecto → el proyecto; tarea/evento → su página.{% endcomment %}
-    <div class="ta-card lg:col-span-2">
-        <div class="mb-3 flex items-center justify-between">
+    <div class="ta-card lg:col-span-2" data-movil-plegable="proximos-eventos">
+        <div data-movil-asa class="mb-3 flex items-center justify-between">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Próximos eventos</h2>
-            <a href="/calendario/" class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver calendario
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
+            <span class="flex items-center gap-2">
+                <a href="/calendario/" class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver calendario
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <span data-movil-flecha class="text-sm text-gray-400 md:hidden">&#9656;</span>
+            </span>
         </div>
+        <div data-movil-cuerpo>
         <ul class="divide-y divide-gray-100 dark:divide-gray-800">
             {% for ev in proximos_eventos %}
             <li>
@@ -197,13 +220,18 @@
         {% if proximos_eventos_mas %}
         <a href="/calendario/" class="mt-2 block text-center text-[11px] font-medium text-gray-400 hover:text-brand-600 dark:text-gray-500">{{ proximos_eventos_mas }} más</a>
         {% endif %}
+        </div>
     </div>
 
     {# Chatbot — El Dictado, mismo ancho que los otros widgets (2/6, V6). Gateado por (chalan, usar). #}
     {% if permisos_modulos.chalan %}
-    <section data-andamiaje="dictado-slot"
+    <section data-andamiaje="dictado-slot" data-movil-plegable="chalan"
              class="flex flex-col rounded-2xl border border-brand-200 bg-brand-25 p-4 lg:col-span-2 dark:border-brand-500/30 dark:bg-brand-500/5">
-        <form method="post" action="{% url 'chalan-nuevo' %}" enctype="multipart/form-data" class="flex flex-1 flex-col">
+        <header data-movil-asa class="mb-1 flex items-center justify-between gap-2 md:hidden">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">🎤 El Chalán</h2>
+            <span data-movil-flecha class="text-sm text-gray-400">&#9656;</span>
+        </header>
+        <form method="post" action="{% url 'chalan-nuevo' %}" enctype="multipart/form-data" data-movil-cuerpo class="flex flex-1 flex-col">
             {% csrf_token %}
             <div class="flex flex-1 items-stretch gap-3">
                 <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 self-start items-center justify-center rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">🎤</span>
@@ -242,21 +270,32 @@
 
 {# ── 3) 5 KPIs grandes (zona hero), 1/5 c/u. ── #}
 {% if hero_kpis %}
-<section class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-    {% for k in hero_kpis %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link valor_alerta=k.alerta %}
-    {% endfor %}
+<section class="mb-8" data-movil-plegable="indicadores">
+    <header data-movil-asa class="mb-2 flex items-center justify-between gap-2 md:hidden">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Indicadores</h2>
+        <span data-movil-flecha class="text-sm text-gray-400">&#9656;</span>
+    </header>
+    <div data-movil-cuerpo class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {% for k in hero_kpis %}
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link valor_alerta=k.alerta %}
+        {% endfor %}
+    </div>
 </section>
 {% endif %}
 
 {# ── 4) Kanban de 4 columnas activas. Reusa el partial canónico + el JS compartido. ── #}
-<section class="mb-8">
+<section class="mb-8" data-movil-plegable="proyectos">
+    <header data-movil-asa class="mb-2 flex items-center justify-between gap-2 md:hidden">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Proyectos activos</h2>
+        <span data-movil-flecha class="text-sm text-gray-400">&#9656;</span>
+    </header>
+    <div data-movil-cuerpo>
     {% comment %}LC 2026-08-04 (Oscar): el buscador va en la MISMA línea que
     «Proyectos activos» y «Ver tablero completo», y más grande/largo — se come
     todo el espacio libre del renglón. En móvil baja a su propio renglón
     (`w-full` + `order-last`) para no apretar el encabezado. Es el mismo buscador
     que la página Kanban: lo activa el JS compartido por su `id`.{% endcomment %}
-    <div class="mb-3 flex flex-wrap items-center gap-3">
+    <div class="mb-3 flex flex-wrap items-center gap-3 max-md:hidden">
         <h2 class="shrink-0 text-sm font-semibold text-gray-800 dark:text-gray-200">Proyectos activos</h2>
         {% comment %}El `hx-get` alcanza lo que el tablero no puede mostrar: sus
         cuatro columnas son las activas, así que un proyecto entregado o cerrado
@@ -275,20 +314,24 @@
     </div>
     <p id="kanban-sin-resultados" class="hidden mt-3 text-sm text-gray-400 dark:text-gray-500">Ninguno del tablero coincide con la búsqueda.</p>
     <div id="kanban-fuera"></div>
+    </div>
 </section>
 {% include "proyectos/_kanban_script.html" %}
 
 {# ── 5) Calendario: mes actual + siguiente lado a lado, idéntico al calendario completo. ── #}
 {% if calendarios.actual %}
-<section class="mb-8">
-    <div class="mb-3 flex items-center justify-between">
+<section class="mb-8" data-movil-plegable="calendario">
+    <div data-movil-asa class="mb-3 flex items-center justify-between">
         <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
             <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">📅</span>
             Calendario
         </h2>
-        <a href="/calendario/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver completo →</a>
+        <span class="flex items-center gap-2">
+            <a href="/calendario/" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver completo →</a>
+            <span data-movil-flecha class="text-sm text-gray-400 md:hidden">&#9656;</span>
+        </span>
     </div>
-    <div class="grid gap-4 md:grid-cols-2">
+    <div data-movil-cuerpo class="grid gap-4 md:grid-cols-2">
         {% with mes_grid=calendarios.actual.grid nombre_mes=calendarios.actual.nombre_mes mes_year=calendarios.actual.year %}
         {% include "calendario/_mes.html" %}
         {% endwith %}
@@ -300,14 +343,16 @@
 {% endif %}
 
 {# ── 6) 8 KPIs compactos. Los 3 financieros con sparkline de 6 meses. Personalizables. ── #}
-<section class="mb-3 flex items-center justify-between">
+<div data-movil-plegable="tu-tablero">
+<section data-movil-asa class="mb-3 flex items-center justify-between">
     <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Tu tablero</h2>
     <div class="flex items-center gap-4 text-xs font-medium">
         <a href="{% url 'kpi-custom-lista' %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">✨ KPIs custom →</a>
         <a href="{% url 'perfil-dashboard' %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Editar tablero →</a>
+        <span data-movil-flecha class="text-sm text-gray-400 md:hidden">&#9656;</span>
     </div>
 </section>
-<section id="kpis-grid" class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4"
+<section data-movil-cuerpo id="kpis-grid" class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4"
          data-arr-zona data-arr-grupo="kpis" data-arr-eje="xy"
          data-arr-orden-url="{% url 'perfil-dashboard-reordenar' %}"
          data-arr-orden-campo="slugs">
@@ -321,6 +366,7 @@
     </div>
     {% endfor %}
 </section>
+</div>
 {% comment %}El orden de las tarjetas lo mueve El Arrastre (static/js/arrastrar.js)
 por los `data-arr-*` de la rejilla; el POST de `slugs` lo hace él solo.{% endcomment %}
 {% endblock %}

@@ -344,6 +344,42 @@
   .escala-tinte { accent-color: var(--ec, #465fff); }
 }
 
+/* ── LC 2026-08-23 (Oscar): en el celular y en la PWA, las tarjetas nacen
+   PLEGADAS. «Hay mucho scroll» — un dashboard que en escritorio se lee de un
+   vistazo, en un teléfono son varias pantallas de deslizar antes de llegar a lo
+   que ibas a hacer.
+
+   El pliegue inicial lo hace ESTA hoja, no el JS, y es a propósito: si lo
+   cerrara el JS después del primer pintado se vería el salto (la página aparece
+   larga y se encoge de golpe). Así nace plegado y nunca hay brinco.
+
+   En escritorio la media query no aplica NUNCA, así que el atributo
+   `data-abierto` sobra ahí y estas pantallas se ven exactamente igual que
+   antes. La flecha y el asa se esconden con `md:hidden` desde la plantilla.
+
+   Contrato (tres atributos):
+     [data-movil-plegable]  el contenedor de la sección
+     [data-movil-asa]       lo que se pica para abrir/cerrar (el encabezado, o
+                            sólo la flecha cuando el encabezado ya es un enlace)
+     [data-movil-cuerpo]    lo que se pliega — HIJO DIRECTO del contenedor, para
+                            que una sección plegable dentro de otra no se
+                            confunda con la de afuera
+   Y opcional en el contenedor:
+     data-movil-abierto     nace abierta (los avisos que sólo salen cuando hay
+                            algo que atender: esconderlos sería esconder el aviso)
+   El toggle y la memoria de la sesión viven en ui.js. */
+@media (max-width: 767px) {
+  [data-movil-plegable]:not([data-abierto]) > [data-movil-cuerpo] { display: none; }
+  [data-movil-plegable] > [data-movil-asa],
+  [data-movil-plegable] [data-movil-asa] {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Plegada, la sección no necesita el aire de abajo: son títulos en fila. */
+  [data-movil-plegable]:not([data-abierto]) { margin-bottom: 0.75rem; }
+}
+
 /* ── V6 Bloque 8: PWA feel nativo (iOS/Android) ──────────────────────────── */
 @layer base {
   /* iOS reescala texto en landscape y descuadra pantallas. */

@@ -33,6 +33,20 @@ class ConfiguracionCorreo(models.Model):
         max_length=120, blank=True, default="Learning Center",
         help_text="Nombre visible del remitente (ej. «Learning Center»).",
     )
+    # LC 2026-08-23 (Oscar): «el correo salió de hola@ y no de chalán@».
+    # Cuando el correo lo dispara El Chalán y la plantilla no declara alias
+    # propio, sale de esta dirección. Va aquí —y no escrito en el código—
+    # porque la regla del proyecto es que lo configurable vive en un GUI de
+    # La Gerencia: Ajustes → El Cartero.
+    #
+    # NO le gana al alias de la plantilla: una cotización sigue saliendo de
+    # cotizaciones@ aunque la mande El Chalán. El Chalán es el medio, no el
+    # remitente; esto sólo cubre el hueco de la plantilla que no dice nada.
+    remitente_chalan = models.EmailField(
+        blank=True, default="",
+        help_text="Dirección desde la que salen los correos que manda El Chalán "
+                  "cuando la plantilla no trae una propia. Vacío = el remitente general.",
+    )
     # V6 Bloque 7A — correos automáticos. ARRANCAN APAGADOS (mismo criterio
     # que La Cobranza) para no sorprender a los clientes.
     auto_bienvenida = models.BooleanField(

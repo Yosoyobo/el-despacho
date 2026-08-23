@@ -623,8 +623,13 @@ def enviar_correo(accion, usuario, contexto=None):
         # El alias personal sale a nombre de su dueño: si El Chalán manda una
         # plantilla con el alias de otra persona, el correo sale del remitente
         # general en lugar de firmarlo por alguien que no lo mandó.
+        #
+        # `origen="chalan"` (LC 2026-08-23): si la plantilla no declara alias,
+        # el correo sale de la dirección configurada en Ajustes → El Cartero
+        # («Cuando escribe El Chalán…») en vez del remitente general.
         remitente=remitente_para(plantilla, usuario,
-                                 forzado=payload.get("remitente", "")),
+                                 forzado=payload.get("remitente", ""),
+                                 origen="chalan"),
     )
     _exigir(bool(getattr(resultado, "ok", False)),
             f"El Cartero no pudo entregar el correo: {getattr(resultado, 'error', 'error desconocido')}")
