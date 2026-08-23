@@ -266,6 +266,28 @@ Cuatro decisiones que conviene no deshacer:
     });
   })();
 
+  // ── La pared se recarga sola una vez por hora ────────────────────────────
+  //
+  // Medido en el NUC el 2026-08-23: el proceso de contenido de Firefox llevaba
+  // **5.4 GB** — más que TODO El Despacho junto (gunicorn + Postgres suman ~2 GB).
+  // Esta página lleva horas cambiando el DOM cada 2-5 segundos y el navegador no
+  // devuelve esa memoria; era lo que hacía "crecer y crecer" la RAM de la máquina.
+  //
+  // Una recarga entera sí la suelta. Se hace desde la página y NO matando el
+  // navegador a propósito: `vigia-kiosco.sh` deliberadamente no vigila ni
+  // relanza (para poder operar el NUC), así que un `pkill` por cron dejaría la
+  // pared apagada hasta que alguien la abriera a mano.
+  //
+  // Sólo aplica a la PARED. El Site (`/site/`) muestra los mismos paneles pero
+  // con una persona enfrente, y a nadie le gusta que la página se le recargue
+  // mientras la lee — por eso vive aquí y no en el partial compartido. La regla
+  // §4 #22 (El Vigía y El Site a la par) habla de los paneles y los datos; el
+  // ritmo de refresco ya era distinto por diseño.
+  (function () {
+    var UNA_HORA = 3600000;
+    setTimeout(function () { location.reload(); }, UNA_HORA);
+  })();
+
   // Reloj local. No pasa por el servidor: si el servidor se cae, el reloj sigue
   // corriendo y el aviso de "sin respuesta" es lo que delata la caída. Un reloj
   // congelado y un tablero congelado se ven igual, y no son lo mismo.
