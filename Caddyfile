@@ -15,6 +15,23 @@
 # ── Failover honesto (patrón heimlich) ───────────────────────────────────────
 # Contrato: NUNCA enmascarar las rutas de sonda. Si el NUC se cayó, el monitor
 # externo tiene que ver el error de verdad en vez de un 200 tranquilizador.
+#
+# El video de la espera es PEDIDO EXPLÍCITO DE OSCAR (2026-08-23): «aquí debería
+# tener un video de Rick Astley reproduciéndose en automático en lo que la página
+# regresa, tanto en el taller como en la gerencia». **No lo quites** — en El
+# Despacho ya se retiraron rickrolls dos veces tratándolos como defectos (el de
+# «Error 153» en cotizaciones y el del botón de enviar), así que sin esta nota el
+# próximo lo borraría creyendo que arregla algo.
+#
+# Ojo con el alcance: la prohibición de rickrolls que fijaron Oscar y Jorge es del
+# **sitio de marketing** (`learningcenter-web`, con guard en su build). Ésta es la
+# pantalla interna de mantenimiento de las apps del equipo, que es otra cosa. Que
+# esto NO se tome como permiso para meter uno en learningcenter.mx.
+#
+# Arranca **silenciado** porque ningún navegador permite autoplay con sonido: con
+# `mute=1` sí reproduce solo, y quien quiera oírlo le quita el silencio con los
+# controles. Se usa `youtube-nocookie.com` para no dejarle cookies a nadie que
+# sólo entró a ver si el sistema ya volvió.
 (lc_failover) {
 	handle_errors {
 		@sondas path /ping /salud
@@ -24,7 +41,7 @@
 		handle {
 			header Content-Type "text/html; charset=utf-8"
 			header Retry-After "120"
-			respond `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Volvemos en unos minutos</title><div style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:4rem 1.5rem;background:#0f172a;color:#e2e8f0;min-height:100vh;box-sizing:border-box"><div style="font-size:3.5rem;line-height:1">🛠️</div><h1 style="font-size:1.5rem;margin:1rem 0 .5rem">Volvemos en unos minutos</h1><p style="color:#94a3b8;max-width:34rem;margin:0 auto;line-height:1.6">Estamos haciendo mantenimiento en el sistema. Tus datos están a salvo; vuelve a intentar en un momento.</p></div>` 503
+			respond `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Volvemos en unos minutos</title><div style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:3rem 1.5rem;background:#0f172a;color:#e2e8f0;min-height:100vh;box-sizing:border-box"><div style="font-size:3.5rem;line-height:1">🛠️</div><h1 style="font-size:1.5rem;margin:1rem 0 .5rem">Volvemos en unos minutos</h1><p style="color:#94a3b8;max-width:34rem;margin:0 auto 1.75rem;line-height:1.6">Estamos haciendo mantenimiento en el sistema. Tus datos están a salvo; vuelve a intentar en un momento.</p><div style="max-width:44rem;margin:0 auto"><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.45)"><iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=dQw4w9WgXcQ&amp;rel=0&amp;modestbranding=1" title="Mientras esperas" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div><p style="color:#64748b;font-size:.8rem;margin:.75rem 0 0">Arranca sin sonido — súbelo si quieres acompañamiento.</p></div></div>` 503
 		}
 	}
 }
