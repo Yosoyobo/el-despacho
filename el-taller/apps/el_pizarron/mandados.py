@@ -154,14 +154,28 @@ def cancelar(mandado, *, motivo: str = ""):
     return mandado
 
 
-def fijar_destino(mandado, *, lat, lng, etiqueta: str = ""):
-    """Fija el pin de destino en la Tarea subyacente (fuente única)."""
+def fijar_destino(mandado, *, lat=None, lng=None, etiqueta: str = ""):
+    """Fija el destino en la Tarea subyacente (fuente única). Guarda lo que haya.
+
+    Las coordenadas son OPCIONALES a propósito (Oscar 2026-08-23: «no se están
+    guardando las direcciones o sedes de los mandados»). Antes se exigían, así
+    que quien escribía la dirección y no picaba un resultado del buscador ni un
+    punto del mapa perdía TODO, incluida la dirección que sí había escrito.
+
+    Una dirección escrita ya sirve: el runner la lee. El pin sirve para otra cosa
+    —ordenar la ruta y medir distancias— y es normal no tenerlo todavía.
+    """
     tarea = mandado.tarea
-    tarea.destino_lat = lat
-    tarea.destino_lng = lng
+    campos = []
+    if lat is not None and lng is not None:
+        tarea.destino_lat = lat
+        tarea.destino_lng = lng
+        campos += ["destino_lat", "destino_lng"]
     if etiqueta:
         tarea.destino_etiqueta = etiqueta[:200]
-    tarea.save(update_fields=["destino_lat", "destino_lng", "destino_etiqueta"])
+        campos.append("destino_etiqueta")
+    if campos:
+        tarea.save(update_fields=campos)
     return mandado
 
 

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
 {% block title %}Tareas — El Taller{% endblock %}
+{% comment %}Leaflet sólo cuando se muestra el tablero de reparto: su modal de destino lo usa.{% endcomment %}
+{% block head_extra %}{% if tablero_mandados %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endif %}{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Tareas" as breadcrumb_items %}
 {% if es_runner_only %}
@@ -16,9 +18,6 @@
     {% for c in cat_pills %}
     <a href="{{ c.url }}" class="rounded-lg border px-3 py-1.5 text-sm transition {% if c.activo %}border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300{% endif %}">{{ c.label }}</a>
     {% endfor %}
-    {% endif %}
-    {% if cat == 'mandados' %}
-    <a href="/mandados/" class="ml-auto text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Tablero de reparto (en camino / entregado) →</a>
     {% endif %}
 </div>
 
@@ -96,4 +95,17 @@ runners (solo ven sus mandados). {% endcomment %}
 <div class="mx-auto mt-6 max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin tareas" descripcion="No hay tareas que coincidan con los filtros." icono="tasks" cta_url="/tareas/nueva/" cta_label="+ Nueva tarea" cta_modal=True %}</div>
 {% endif %}
 
+
+{% if tablero_mandados %}
+{% comment %}
+El tablero de reparto, aquí mismo. `total` se mapea explícito porque el Kanban ya
+usa esa variable para contar TAREAS y el partial la usa para contar MANDADOS: sin
+el mapeo, el contador de arriba diría el número equivocado.
+{% endcomment %}
+<section class="mt-8 border-t border-gray-200 pt-6 dark:border-gray-800">
+    <h2 class="mb-1 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Tablero de reparto</h2>
+    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">El estado logístico de cada entrega: por asignar, asignado, en camino, entregado.</p>
+    {% include "mandados/_tablero.html" with mandados=tablero_mandados.mandados chips=tablero_mandados.chips total=tablero_mandados.total puede_admin=tablero_mandados.puede_admin %}
+</section>
+{% endif %}
 {% endblock %}

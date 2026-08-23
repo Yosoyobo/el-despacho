@@ -1,3 +1,5 @@
+import re
+
 from apps.el_pizarron.forms import ComentarioForm, TareaForm, TareaGlobalForm
 from apps.el_pizarron.models import Tarea
 from apps.los_proyectos.models import Proyecto
@@ -20,6 +22,119 @@ from lib.permisos import (
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 from lib.sanear import sanear_contexto
+
+
+def _origen_de_la_visita(request) -> str:
+    """De dónde viene quien abrió esta página, como ruta interna o "".
+
+    Primero el `?volver=` explícito (lo pegan las listas con `con_volver`) y si no
+    hay, la cabecera `Referer`. El referer es el que hace que funcione cuando
+    alguien llega picando un enlace que no lleva el parámetro; el parámetro es el
+    que hace que siga funcionando cuando el navegador no manda referer.
+
+    Sólo se aceptan rutas internas (`es_ruta_interna`): un `volver` a otro
+    dominio sería un redirect abierto.
+    """
+    from urllib.parse import urlparse
+
+    from lib.navegacion import LLAVES, es_ruta_interna
+
+    for llave in LLAVES:
+        valor = request.GET.get(llave)
+        if es_ruta_interna(valor):
+            return str(valor).strip()
+
+    referer = request.META.get("HTTP_REFERER") or ""
+    if not referer:
+        return ""
+    try:
+        partes = urlparse(referer)
+    except ValueError:
+        return ""
+    # Sólo de nuestro propio host: un referer externo no dice nada del recorrido.
+    if partes.netloc and partes.netloc != request.get_host():
+        return ""
+    ruta = partes.path + (f"?{partes.query}" if partes.query else "")
+    return ruta if es_ruta_interna(ruta) else ""
+
+
+#: De dónde se puede llegar a una tarea, y a dónde hay que devolver a quien vino
+#: de ahí. El orden importa: la primera que casa gana, así que las rutas más
+#: específicas van antes.
+_ORIGENES_TAREA = (
+    ("/mandados/", "Mandados", "mandados-lista"),
+    ("/tareas/", "Tareas", "tareas-kanban"),
+)
+
+#: Las páginas de UNA tarea concreta (`/tareas/12/`, `/tareas/12/editar`) NO son
+#: un origen válido. Sin esto, al guardar una edición el referer sería el propio
+#: formulario y el botón de volver te regresaría a él — un callejón.
+_RE_PAGINA_DE_UNA = re.compile(r"^/(tareas|mandados)/\d+")
+
+
+
+def _rastro_util(request) -> str:
+    """El primer rastro de navegación que sirve para volver, o "".
+
+    Se prueban en orden el campo oculto del form, el `?volver=` y el referer, y se
+    descarta cualquiera que apunte a la pantalla de UNA tarea. Ese descarte es el
+    que importa en un POST: ahí el referer es el propio formulario, así que sin
+    filtrarlo el botón de volver devolvería al form que se acaba de enviar.
+    """
+    from lib.navegacion import es_ruta_interna
+
+    candidatos = [
+        request.POST.get("volver", "") if request.method == "POST" else "",
+        request.GET.get("volver", ""),
+        _origen_de_la_visita(request),
+    ]
+    for c in candidatos:
+        c = (c or "").strip()
+        if es_ruta_interna(c) and not _RE_PAGINA_DE_UNA.match(c):
+            return c
+    return ""
+
+
+def _navegacion_tarea(request, tarea) -> dict:
+    """Migas y botón de regreso de una tarea, según de dónde se llegó.
+
+    Oscar (2026-08-23): «cuando edito una tarea el breadcrumb regresa al
+    proyecto, eso está mal; si empiezo en tareas, debo regresar a tareas».
+
+    Antes las migas estaban CLAVADAS al proyecto, que es sólo uno de los tres
+    caminos a una tarea (el tablero de Tareas, la lista y Mandados son los
+    otros). Ahora la ruta de vuelta la decide el recorrido de verdad; el proyecto
+    queda como el default de siempre para quien llega sin rastro (un enlace
+    pegado, un marcador).
+    """
+    origen = _rastro_util(request)
+    for prefijo, etiqueta, nombre_url in _ORIGENES_TAREA:
+        if origen.startswith(prefijo):
+            return {
+                "breadcrumb_items": [
+                    {"url": reverse(nombre_url), "label": etiqueta},
+                    {"label": tarea.titulo},
+                ],
+                # Se regresa a la URL EXACTA de donde vino, no al índice: así no
+                # se pierden los filtros ni la columna en la que estaba.
+                "back_url": origen,
+                "back_label": etiqueta,
+                "volver_url": origen,
+                "volver_label": etiqueta,
+            }
+
+    proyecto_url = reverse("proyectos-detalle", args=[tarea.proyecto_id])
+    return {
+        "breadcrumb_items": [
+            {"url": reverse("proyectos-kanban"), "label": "Proyectos"},
+            {"url": proyecto_url, "label": tarea.proyecto.codigo},
+            {"label": tarea.titulo},
+        ],
+        "back_url": proyecto_url,
+        "back_label": tarea.proyecto.codigo,
+        "volver_url": proyecto_url,
+        "volver_label": "Proyecto",
+    }
 
 
 def _comentarios_visibles(user, queryset):
@@ -236,7 +351,20 @@ def kanban_tareas(request):
          "url": _qs_filtros(estados_sel, personas_sel, "mandados")},
     ]
 
+    # Oscar (2026-08-23): «cuando seleccionas los mandados, saca el tablero de
+    # mandados de ahí, que se vea en tareas». Antes había un enlace que te sacaba
+    # de la página; ahora el tablero de reparto se pinta aquí mismo. Sus chips
+    # filtran con `m_estado` para no pisar el `estado` de las tareas.
+    tablero_mandados = None
+    if cat == "mandados":
+        tablero_mandados = _ctx_tablero_mandados(
+            request,
+            base=_qs_filtros(estados_sel, personas_sel, "mandados"),
+            param="m_estado",
+        )
+
     return render(request, "pizarron/kanban.html", {
+        "tablero_mandados": tablero_mandados,
         "cols_activas": cols_activas,
         "cols_cerradas": cols_cerradas,
         "chips_estado": chips_estado,
@@ -440,13 +568,7 @@ def detalle_tarea(request, pk):
         "info_clasificacion": info_clasificacion,
         "info_proyecto": info_proyecto,
         "action_bar_meta": action_bar_meta,
-        "breadcrumb_items": [
-            {"url": reverse("proyectos-kanban"), "label": "Proyectos"},
-            {"url": reverse("proyectos-detalle", args=[tarea.proyecto.pk]), "label": tarea.proyecto.codigo},
-            {"label": tarea.titulo},
-        ],
-        "back_url": reverse("proyectos-detalle", args=[tarea.proyecto.pk]),
-        "back_label": tarea.proyecto.codigo,
+        **_navegacion_tarea(request, tarea),
     })
 
 
@@ -543,10 +665,20 @@ def editar_tarea(request, pk):
             from apps.el_pizarron import runners
             runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             messages.success(request, "Tarea actualizada.")
-            return redirect("pizarron-detalle-tarea", pk=tarea.pk)
+            # El rastro sobrevive al guardado: si venías de Tareas, el detalle al
+            # que caes también sabe regresar a Tareas.
+            destino = reverse("pizarron-detalle-tarea", args=[tarea.pk])
+            rastro = _rastro_util(request)
+            if rastro:
+                from urllib.parse import quote
+                destino = f"{destino}?volver={quote(rastro, safe='')}"
+            return redirect(destino)
     else:
         form = TareaForm(instance=tarea)
-    return render(request, "pizarron/form_tarea.html", {"form": form, "tarea": tarea, "proyecto": tarea.proyecto, "modo": "editar"})
+    return render(request, "pizarron/form_tarea.html", {
+        "form": form, "tarea": tarea, "proyecto": tarea.proyecto, "modo": "editar",
+        "volver": _rastro_util(request),
+    })
 
 
 @login_required
@@ -669,38 +801,53 @@ def _mandado_visible_o_404(request, pk):
 
 
 @login_required
-def mandados_lista(request):
-    """Lista propia de El Runner: entregas/recolecciones como entidad logística,
-    filtrables por estado de reparto. Cada fila enlaza a su proyecto y permite
-    avanzar el estado o fijar el destino (pin)."""
+
+def _ctx_tablero_mandados(request, *, base: str, param: str = "estado") -> dict:
+    """Contexto del tablero de reparto, para quien lo quiera mostrar.
+
+    Lo usan DOS pantallas: `/mandados/` y Tareas cuando se filtra por la
+    categoría Mandados. Vive en un solo lugar para que no se separen.
+
+    `base` y `param` son de quien lo muestra: así los chips filtran **sin sacar a
+    nadie de su página**. En Tareas el parámetro es `m_estado`, porque `estado`
+    ya lo usa el filtro de estado de las tareas y se pisarían.
+    """
     from apps.el_pizarron.mandados import mandados_visibles
     from apps.el_pizarron.models.mandado import ESTADOS_MANDADO
 
     qs = mandados_visibles(request.user)
-    estados_validos = {s for s, _, _ in ESTADOS_MANDADO}
-    estado_sel = request.GET.get("estado", "")
-    if estado_sel in estados_validos:
-        qs = qs.filter(estado=estado_sel)
+    validos = {s for s, _, _ in ESTADOS_MANDADO}
+    sel = request.GET.get(param, "")
+    if sel in validos:
+        qs = qs.filter(estado=sel)
 
-    mandados = list(qs.order_by("estado", "tarea__fecha_compromiso", "-creado_en")[:300])
+    mandados = list(
+        qs.order_by("estado", "tarea__fecha_compromiso", "-creado_en")[:300]
+    )
 
-    base = reverse("mandados-lista")
-    chips = [{
-        "slug": "", "label": "Todos",
-        "url": base, "activo": estado_sel == "",
-    }]
+    sep = "&" if "?" in base else "?"
+    chips = [{"slug": "", "label": "Todos", "url": base, "activo": sel == ""}]
     for slug, label, color in ESTADOS_MANDADO:
         chips.append({
             "slug": slug, "label": label, "color": color,
-            "url": f"{base}?estado={slug}", "activo": estado_sel == slug,
+            "url": f"{base}{sep}{param}={slug}", "activo": sel == slug,
         })
 
-    return render(request, "mandados/lista.html", {
+    return {
         "mandados": mandados,
         "chips": chips,
         "total": len(mandados),
         "puede_admin": es_admin(request.user),
-    })
+    }
+
+
+def mandados_lista(request):
+    """Lista propia de El Runner: entregas/recolecciones como entidad logística,
+    filtrables por estado de reparto. Cada fila enlaza a su proyecto y permite
+    avanzar el estado o fijar el destino (pin)."""
+    return render(request, "mandados/lista.html", _ctx_tablero_mandados(
+        request, base=reverse("mandados-lista"),
+    ))
 
 
 @login_required
@@ -839,14 +986,30 @@ def mandado_destino(request, pk):
     m = _mandado_visible_o_404(request, pk)
 
     if request.method == "POST":
+        # El pin es OPCIONAL: una dirección escrita ya sirve, y perder lo que la
+        # persona escribió por no haber picado el mapa era el bug que reportó
+        # Oscar. Si no hay coordenadas, se guarda la dirección igual.
+        lat = lng = None
         try:
             lat = float(request.POST.get("lat"))
             lng = float(request.POST.get("lng"))
         except (TypeError, ValueError):
-            messages.error(request, "Coordenadas inválidas.")
+            lat = lng = None
+        etiqueta = (request.POST.get("etiqueta") or "").strip()
+
+        if lat is None and not etiqueta:
+            # Sin nada que guardar, el fallo tiene que VERSE: con hx-swap="none"
+            # un redirect no se nota y parecía que había guardado.
+            error = "Escribe una dirección o pica un punto en el mapa."
+            if request.headers.get("HX-Request") == "true":
+                return render(request, "mandados/_modal_destino.html",
+                              {"m": m, "error": error})
+            messages.error(request, error)
             return redirect("mandados-lista")
-        svc.fijar_destino(m, lat=lat, lng=lng, etiqueta=(request.POST.get("etiqueta") or "").strip())
-        _emitir_mandado("mandado.destino_fijado", request.user, m, {"lat": lat, "lng": lng})
+
+        svc.fijar_destino(m, lat=lat, lng=lng, etiqueta=etiqueta)
+        _emitir_mandado("mandado.destino_fijado", request.user, m,
+                        {"lat": lat, "lng": lng, "con_pin": lat is not None})
         if request.headers.get("HX-Request") == "true":
             from django.http import HttpResponse
             return HttpResponse(status=204, headers={"HX-Redirect": reverse("mandados-lista")})
