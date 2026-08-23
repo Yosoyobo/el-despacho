@@ -121,10 +121,15 @@ def _estado_smtp():
 def cartero_panel(request):
     """Asistente de El Cartero: elige canal (SMTP/n8n) + configura SMTP."""
     from ajustes.models import ConfiguracionCorreo
+    from ajustes.models.alias_remitente import disponibles_para
     from lib import cartero
     cfg = ConfiguracionCorreo.obtener()
     return render(request, "ajustes/cartero.html", {
         "cfg": cfg,
+        # Sin usuario => sólo los departamentales verificados. Es lo correcto:
+        # un alias personal en este slot saldría a nombre de quien no mandó el
+        # correo, y `puede_usarlo` lo negaría de todos modos.
+        "alias_despacho": disponibles_para(None),
         "smtp_slots": _estado_smtp(),
         "n8n_configurado": bool(Credencial.obtener("n8n_webhook_url")),
         "proveedor_activo": cfg.proveedor,
@@ -144,6 +149,15 @@ def cartero_guardar(request):
     if proveedor in {"smtp", "n8n"}:
         cfg.proveedor = proveedor
     cfg.remitente_nombre = (request.POST.get("remitente_nombre") or "").strip() or "Learning Center"
+    # El `<select>` se puede manipular, así que la dirección se valida aquí:
+    # sólo un alias del despacho ya comprobado entra (vacío = remitente general).
+    escogido = (request.POST.get("remitente_chalan") or "").strip().lower()
+    if escogido:
+        from ajustes.models.alias_remitente import disponibles_para
+        validos = {a.email.strip().lower() for a in disponibles_para(None)}
+        cfg.remitente_chalan = escogido if escogido in validos else ""
+    else:
+        cfg.remitente_chalan = ""
     # V6 Bloque 7A: flags de correos automáticos (checkbox → bool).
     cfg.auto_bienvenida = bool(request.POST.get("auto_bienvenida"))
     cfg.auto_pago = bool(request.POST.get("auto_pago"))

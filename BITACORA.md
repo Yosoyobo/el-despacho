@@ -11436,3 +11436,125 @@ default del proyecto (correcto, pero no adivina). El tablero dentro de Tareas no
 pagina (tope 300, igual que su pantalla). Y la configuración no expone un factor
 «línea recta → calle real»: eso no se arregla con un número, necesita un servicio
 de ruteo.
+
+---
+
+# S-Movil-Plegado — En el celular las tarjetas nacen plegadas + el correo del Chalán (2026-08-23, VERSION 2026.08.26)
+
+## Lo que se pidió
+
+Dos cosas, la segunda a media entrega.
+
+1. «En el dashboard en la versión móvil y PWA y las tareas y mandados, debemos ver
+   esas tarjetas minimizadas siempre por default. Hay mucho scroll. Si hay otras
+   secciones que sufran de eso vamos a repasarlas. **RECUERDA QUE ES SOLO PARA
+   MOVIL Y PWA.**»
+2. «El chalán me envió un correo, todo bien. No me hizo todo el caso, pero logró la
+   tarea. Pero el correo salió de hola@ y no de chalán@. Repara eso.» + «Recuerda
+   que esas cosas se tienen que configurar vía el GUI.»
+
+## El plegado
+
+**La decisión central: el pliegue lo hace el CSS, no el JS.** Si lo cerrara el JS
+después del primer pintado se vería el brinco — la página aparece larga y se
+encoge de golpe. Con una media query nace plegado y nunca hay salto. El JS sólo
+lleva el toggle, la flecha y la memoria.
+
+Contrato de tres atributos, en las dos copias de `input.css` (§18) y antes del
+marcador «V6 Bloque 8» para no romper su test de sincronía:
+
+```
+[data-movil-plegable]   la sección
+[data-movil-asa]        lo que se pica
+[data-movil-cuerpo]     lo que se pliega — HIJO DIRECTO
+data-movil-abierto      (opcional) nace abierta
+```
+
+**El `>` del selector no es cosmético.** Sin él, una sección plegable dentro de
+otra escondería también el cuerpo de la de afuera. Dos secciones quedaron con el
+cuerpo como NIETO en el primer intento —«sugerencias» y «mis-mandados», donde el
+cuerpo vive dentro de la tarjeta— y **no se vio leyendo el diff**: lo cazó un
+parser de HTML sobre la página renderizada. De ahí salió el candado permanente,
+porque el modo de falla es silencioso: no hay error, simplemente no se pliega en
+el teléfono, que es donde nadie mira el código.
+
+**La memoria es `sessionStorage`, no `localStorage`.** Al entrar fresco todo está
+plegado —lo que se pidió— pero si abres una sección, picas algo y regresas con
+Atrás, sigue abierta. Sin eso la app te vuelve a cerrar lo que acabas de abrir en
+cada navegación, que es el caso más frecuente. Al cerrar la app se olvida.
+
+**Dashboard: 10 secciones.** Ocho cerradas (acciones rápidas, tareas pendientes,
+próximos eventos, El Chalán, indicadores, proyectos activos, calendario, tu
+tablero) y **dos abiertas a propósito**: «Mis mandados» y «El Chalán sugiere» son
+avisos condicionales —sólo aparecen cuando hay algo que atender—, así que
+plegarlos sería esconder el aviso.
+
+**Tareas**: los tres renglones de filtros pasan a un solo «Filtros»; cada columna
+del tablero se pliega dejando a la vista su pastilla y su contador («Pendiente 5 ·
+En proceso 3»); el tablero de reparto también. **`/mandados/` no se pliega** — ahí
+entraste justo a verlo, y plegarlo dejaría la página vacía. El partial es el MISMO
+(`mandados/_tablero.html`): el plegable vive en el `{% include %}` de Tareas.
+
+**Escritorio intacto.** Las asas nuevas van `md:hidden`, y en «Proyectos activos»
+el encabezado de escritorio —que lleva el buscador en la misma línea por pedido de
+Oscar (Ago04)— se conserva con `max-md:hidden` y se le suma uno propio para el
+teléfono. Cero cambio de layout.
+
+**Dos detalles del JS que importan**: si el asa es un encabezado que CONTIENE un
+enlace (el de «Tareas pendientes» lleva a Tareas), ese clic navega en vez de
+plegar — sin el filtro el enlace quedaría inalcanzable en el celular; y el toggle
+corta con `matchMedia('(max-width: 767px)')`, así que en escritorio no hace nada.
+
+## El correo del Chalán
+
+El ejecutor **ya** llamaba `remitente_para`. El hueco era que **ninguna plantilla
+declara alias**, así que caía al remitente general (`hola@`). Y
+`chalan@learningcenter.mx` ya estaba sembrado y verificado desde
+S-Alias-Personales: sólo faltaba que algo lo eligiera.
+
+- **`ConfiguracionCorreo.remitente_chalan`** con su selector en Gerencia → Ajustes
+  → El Cartero — la regla de Oscar: lo configurable vive en un GUI, no escrito en
+  el código. Sólo se ofrecen los **departamentales verificados**
+  (`disponibles_para(None)`): un personal ahí saldría a nombre de quien no mandó el
+  correo, y `puede_usarlo` lo negaría igual. **La validación está en el servidor**
+  — el `<select>` se puede manipular.
+- **Va TERCERO en la precedencia**, no primero: elegido a mano → alias de la
+  plantilla → remitente del origen → general. Si le ganara al de la plantilla, una
+  cotización empezaría a salir de chalan@ en vez de cotizaciones@ y nadie lo
+  notaría hasta que un cliente contestara al buzón equivocado.
+- **Dos migraciones, no una** (§14 Bug I): `0020` el `AddField`, `0021` el seed
+  (idempotente, y sólo si el alias existe en el registro — si alguien lo borró se
+  queda en el general en vez de apuntar a una dirección que Google reescribiría en
+  silencio).
+
+## Pruebas
+
+**25 nuevas** — 18 en `tests/taller/test_plegado_movil.py` y 7 en
+`tests/taller/test_remitente_chalan.py`. Verificadas contra código mutado: quitar
+el `>` del selector, quitar el corte de móvil del toggle, mover un cuerpo un nivel
+adentro e invertir la precedencia del remitente hacen fallar exactamente al test
+que los cubre. Radio de impacto: **182 verdes**. Ruff limpio.
+
+## MCP
+
+Ninguno de los dos entregables suma capacidad: el plegado es UI (CSS + un toggle)
+y el remitente es configuración que El Chalán usa implícitamente al mandar. Se
+declara explícitamente en vez de dejarlo implícito.
+
+## Deuda diseñada
+
+El plegado cubre Dashboard y Tareas, que es lo pedido. Quedan **medidas y sin
+tocar, para que Oscar decida**: detalle de proyecto (~8 secciones, 486 líneas —
+ojo, ya tiene reorden móvil con `display:contents` desde Jul29, así que el
+plegable tendría que convivir con eso), ficha de cliente (~8) y ficha/form de
+producto (~8, 706 líneas). En `/mandados/` lo que estorba en el teléfono **no es
+el plegado** sino que la tabla tiene `min-w-[820px]` y se lee con scroll
+horizontal: eso es un rediseño de la tabla, no un pliegue. Y la memoria del
+pliegue es por pestaña, no por usuario en la base.
+
+## Nota de proceso
+
+El PR #78 (deploy automático al NUC + pin del lugar + botones de ruta) se mergeó
+al abrir esta sesión: llevaba el CI verde y es el que hace que el deploy llegue
+solo. El trabajo de hoy salió a rama propia desde `main` ya actualizado, no
+encima de ese PR.

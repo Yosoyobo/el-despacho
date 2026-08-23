@@ -5,6 +5,44 @@
 
 ---
 
+## Novedades — En el celular, las tarjetas nacen cerradas (23 de agosto de 2026)
+
+**Menos deslizar en el teléfono**
+
+En el celular y en la app, el **Dashboard** y **Tareas** tenían mucho scroll: para
+llegar a lo que ibas a hacer había que pasar por el tablero de proyectos, dos
+calendarios completos y todos los indicadores.
+
+Ahora, **en el teléfono**, cada tarjeta arranca **cerrada** y se ve nada más su
+título con su dato: «Tareas pendientes 12», «Pendiente 5 · En proceso 3». Picas el
+título y se abre. Así el tablero completo cabe en una pantalla y abres sólo lo que
+te interesa.
+
+Lo que se cerró: acciones rápidas, próximos eventos, El Chalán, indicadores,
+proyectos activos, el calendario y tu tablero. En **Tareas**, además, los filtros,
+cada columna del tablero y el tablero de reparto.
+
+Dos cosas siguen abiertas a propósito, porque son avisos: **Mis mandados** y las
+**sugerencias del Chalán** — sólo aparecen cuando hay algo que atender, así que
+esconderlas sería esconder el aviso.
+
+Si abres una tarjeta, picas algo y regresas con el botón de atrás, **sigue
+abierta**. Al cerrar la app vuelven a su estado cerrado.
+
+**En la computadora no cambia nada.** Todo se ve igual que siempre.
+
+**El Chalán ya escribe desde su propia dirección**
+
+Cuando El Chalán mandaba un correo, salía de `hola@` en vez de `chalan@`. Ya se
+puede elegir: en **La Gerencia → Ajustes → El Cartero** hay un campo nuevo,
+«Cuando escribe El Chalán, el correo sale de», que arranca en
+`chalan@learningcenter.mx`.
+
+Una plantilla que ya trae su propia dirección **sigue mandando la suya**: una
+cotización sale de la dirección de cotizaciones aunque la mande El Chalán.
+
+---
+
 ## Novedades — Tareas que te devuelven a donde estabas, direcciones que sí se guardan y el planeador ajustable (23 de agosto de 2026)
 
 **El breadcrumb te regresa a donde empezaste**
@@ -311,6 +349,22 @@ falta alguna, te lo avisa también en la lista de plantillas y en el editor.
 3. **Pidiéndoselo a El Chalán.** «Mándale a $karikari el aviso de entrega».
    También puedes dictarle una dirección suelta si hace falta. Como siempre, te
    enseña lo que va a hacer y no manda nada hasta que confirmes.
+
+**De qué dirección sale lo que manda El Chalán**
+
+En **Ajustes → El Cartero** eliges «Cuando escribe El Chalán, el correo sale
+de». Arranca en `chalan@learningcenter.mx`. Sólo se ofrecen las direcciones del
+despacho ya comprobadas — una dirección personal saldría a nombre de alguien que
+no mandó el correo, así que no aparece en la lista.
+
+Ese ajuste **no le gana** a la dirección de la plantilla: una cotización sigue
+saliendo de la dirección de cotizaciones aunque la mande El Chalán. Sólo cubre el
+caso de una plantilla que no trae dirección propia, que antes caía al remitente
+general.
+
+**Con El Chalán:** no hay nada que pedirle — lo usa solo. Si en un envío quieres
+otra dirección, dísela al mandar el correo y él la respeta (siempre que sea una
+que puedas usar).
 
 **Correos que salen solos**
 
@@ -4358,6 +4412,14 @@ Todo lo de esta pantalla se le puede preguntar en el chat, con tus palabras:
 
 ## Dashboard (página de inicio)
 
+**En el celular y en la app, las tarjetas nacen cerradas.** Cada una se ve como
+un renglón con su título y su dato («Tareas pendientes 12»); picas el título y se
+abre. Así el tablero cabe en una pantalla y abres sólo lo que te interesa. Si
+abres una tarjeta, picas algo y regresas con el botón de atrás, sigue abierta; al
+cerrar la app vuelven a cerrarse. **En la computadora se ve todo, como siempre.**
+Las únicas que nacen abiertas en el teléfono son **Mis mandados** y las
+**sugerencias del Chalán**, porque sólo aparecen cuando hay algo que atender.
+
 Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 
 - **Acciones rápidas:** cinco botones grandes (uno por color) para crear lo más común sin perderte navegando — Nuevo proyecto, Nuevo producto, Nuevo proveedor, Nuevo ingreso, Nuevo egreso.
@@ -4656,6 +4718,12 @@ Cada tarea pertenece a un proyecto. Tiene título, descripción, estado, priorid
 
 - El **tablero de Tareas** arranca mostrando **todo el despacho**; filtra a las
   tuyas con el chip de tu nombre cuando quieras.
+- **En el celular, todo nace cerrado.** Los filtros quedan como un renglón
+  («Filtros»), y cada columna del tablero muestra sólo su nombre y su número
+  («Pendiente 5 · En proceso 3»). Picas la que quieras y se abre. El **tablero de
+  reparto** (cuando filtras por 🛵 Mandados) también nace cerrado. En la
+  computadora no cambia nada. En su propia pantalla, `/mandados/`, el tablero
+  **siempre se ve completo**: ahí entraste justo a verlo.
 - **Se arrastran para ordenarlas.** En la lista de Tareas y en el recuadro de
   Tareas del proyecto, cada renglón tiene un asa (⠿) a la izquierda: la jalas y la
   sueltas donde quieras. El orden **se guarda y lo ve todo el equipo**.

@@ -145,11 +145,26 @@ def disponibles_para(usuario) -> list[AliasRemitente]:
     )
 
 
-def remitente_para(plantilla, usuario=None, forzado: str = "") -> str:
+def _alias_por_email(email: str):
+    return (
+        AliasRemitente.objects.filter(email=email).select_related("usuario").first()
+        if email else None
+    )
+
+
+def remitente_para(plantilla, usuario=None, forzado: str = "", origen: str = "") -> str:
     """Con qué remitente sale este correo. Fuente ÚNICA de la decisión.
 
-    Orden: lo que se eligió a mano (si esa persona puede usarlo) → el alias de
-    la plantilla (si puede usarlo) → el remitente general.
+    Orden, de más específico a más general:
+
+    1. lo que se eligió a mano (si esa persona puede usarlo);
+    2. el alias que declara la plantilla (si puede usarlo);
+    3. el remitente configurado para ese ORIGEN — hoy sólo `chalan`, en
+       Ajustes → El Cartero (LC 2026-08-23: «el correo salió de hola@ y no de
+       chalán@»). Va tercero a propósito: una cotización tiene que seguir
+       saliendo de cotizaciones@ aunque la mande El Chalán, porque la plantilla
+       dice más del contenido que quién apretó el botón;
+    4. el remitente general (cadena vacía → El Cartero pone el de siempre).
 
     La regla que hace todo esto seguro: **un alias personal ajeno se ignora en
     silencio y el correo sale del remitente general**, en vez de fallar. Así una
@@ -158,16 +173,43 @@ def remitente_para(plantilla, usuario=None, forzado: str = "") -> str:
     """
     escogido = (forzado or "").strip().lower()
     if escogido:
-        alias = AliasRemitente.objects.filter(email=escogido).select_related("usuario").first()
+        alias = _alias_por_email(escogido)
         if alias and alias.puede_usarlo(usuario):
             return alias.como_remitente()
         # Un alias que no le toca (o que no existe) no se respeta ni a medias.
         return ""
 
     declarado = (getattr(plantilla, "remitente_email", "") or "").strip().lower()
-    if not declarado:
+    if declarado:
+        alias = _alias_por_email(declarado)
+        if alias is not None and not alias.puede_usarlo(usuario):
+            return ""  # personal de otra persona → sale del remitente general
+        return plantilla.remitente_efectivo()
+
+    return _remitente_de_origen(origen, usuario)
+
+
+def _remitente_de_origen(origen: str, usuario) -> str:
+    """El remitente que se configuró para quien dispara el correo.
+
+    Defensivo a propósito: si la columna no está migrada o la base no contesta,
+    el correo sale del remitente general en vez de no salir. Un correo con el
+    remitente de siempre sirve; uno que no se manda, no.
+    """
+    if (origen or "").strip().lower() != "chalan":
         return ""
-    alias = AliasRemitente.objects.filter(email=declarado).select_related("usuario").first()
-    if alias is not None and not alias.puede_usarlo(usuario):
-        return ""  # personal de otra persona → sale del remitente general
-    return plantilla.remitente_efectivo()
+    try:
+        from ajustes.models.cartero import ConfiguracionCorreo
+        email = (ConfiguracionCorreo.obtener().remitente_chalan or "").strip().lower()
+    except Exception:
+        return ""
+    if not email:
+        return ""
+    alias = _alias_por_email(email)
+    if alias is None:
+        # Configurado a mano y sin registrar: se respeta igual (quien lo escribió
+        # sabe lo que hizo), pero sin nombre visible porque no lo tenemos.
+        return email
+    if not alias.puede_usarlo(usuario):
+        return ""
+    return alias.como_remitente()
