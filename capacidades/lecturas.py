@@ -304,6 +304,273 @@ def _h_rentabilidad_proyecto(args: dict, usuario) -> dict:
     return fila
 
 
+def _h_serie_kpi(args: dict, usuario) -> dict:
+    """Cómo viene un indicador: su serie, su tendencia y el cambio contra antes."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpi_por_slug
+
+    slug = (args.get("slug") or "").strip()
+    if not slug:
+        return {"error": "Falta el indicador."}
+    kpi = kpi_por_slug(slug)
+    if kpi is None:
+        return {"error": f"No existe el indicador «{slug}». Usa listar_kpis para verlos."}
+    dias = args.get("dias") or 30
+    try:
+        dias = max(7, min(int(dias), 365))
+    except (TypeError, ValueError):
+        dias = 30
+    s = series.serie(slug, dias=dias)
+    if not s:
+        return {"slug": slug, "titulo": kpi.titulo, "hay_historia": False,
+                "aviso": "Todavía no hay historia de este indicador; se guarda una foto al día."}
+    return {
+        "slug": slug, "titulo": kpi.titulo, "hay_historia": True,
+        "dias": dias, "muestras": len(s),
+        "primero": s[0], "ultimo": s[-1],
+        "minimo": min(x["valor"] for x in s), "maximo": max(x["valor"] for x in s),
+        "tendencia": series.tendencia(slug),
+        "comparacion": series.comparar(slug, dias=min(dias, 30)),
+        "serie": s[-30:],
+    }
+
+
+def _h_comparar_kpi(args: dict, usuario) -> dict:
+    """Este periodo contra el anterior del mismo largo."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpi_por_slug
+
+    slug = (args.get("slug") or "").strip()
+    kpi = kpi_por_slug(slug) if slug else None
+    if kpi is None:
+        return {"error": f"No existe el indicador «{slug}»."}
+    dias = args.get("dias") or 30
+    try:
+        dias = max(2, min(int(dias), 180))
+    except (TypeError, ValueError):
+        dias = 30
+    return {"slug": slug, "titulo": kpi.titulo, **series.comparar(slug, dias=dias)}
+
+
+def _h_kpis_a_mirar_hoy(args: dict, usuario) -> dict:
+    """Los pocos indicadores que hoy merecen atención, y por qué cada uno."""
+    from apps.taller_home.curaduria import destacados_de_hoy
+
+    filas = destacados_de_hoy(usuario)
+    if not filas:
+        return {"hay_algo": False,
+                "resumen": "Nada se salió de lo normal ni está en alerta hoy."}
+    return {
+        "hay_algo": True,
+        "destacados": [
+            {"titulo": f["titulo"], "valor": f["valor"], "razon": f["razon"],
+             "tendencia": f["tendencia"], "slug": f["slug"]}
+            for f in filas
+        ],
+    }
+
+
+def _h_anomalias_kpi(args: dict, usuario) -> dict:
+    """Qué indicadores se salieron de su comportamiento normal."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpis_aplicables_a_rol
+
+    raros = []
+    for kpi in kpis_aplicables_a_rol(getattr(usuario, "rol", ""), user=usuario):
+        try:
+            valor = kpi.calcular(usuario).get("valor")
+        except Exception:  # noqa: BLE001
+            continue
+        if isinstance(valor, str):
+            continue
+        r = series.es_raro(kpi.slug, valor)
+        if r.get("raro"):
+            raros.append({
+                "slug": kpi.slug, "titulo": kpi.titulo, "valor": valor,
+                "normal_ronda": r["mediana"], "desviacion_pct": r["desviacion_pct"],
+                "hacia": r["motivo"],
+            })
+    return {"cuantos": len(raros), "anomalias": raros[:10]} if raros else {
+        "cuantos": 0, "resumen": "Todo dentro de lo normal.",
+    }
+
+
+def _h_metas_sugeridas(args: dict, usuario) -> dict:
+    """Metas realistas para los indicadores que aún no tienen una."""
+    from apps.taller_home.curaduria import proponer_metas
+
+    props = proponer_metas()
+    return {"cuantas": len(props), "propuestas": props} if props else {
+        "cuantas": 0,
+        "resumen": "Sin historia suficiente para proponer metas, o ya todas tienen una.",
+    }
+
+
+def _h_ruta_del_dia(args: dict, usuario) -> dict:
+    """La vuelta de hoy de un runner: paradas en orden y kilómetros.
+
+    Si alguien ya le PLANEÓ la ruta (S-Planeador-Rutas), ésa es la respuesta: es
+    la que trae el orden que decidió una persona y las citas respetadas. Sólo si
+    no hay ruta guardada se calcula al vuelo, que es el comportamiento de antes.
+    """
+    from apps.el_pizarron.ruta import ruta_de
+
+    guardada = _ruta_guardada_de(usuario)
+    if guardada is not None:
+        return guardada
+
+    r = ruta_de(usuario)
+    if not r["paradas"]:
+        return {"hay_ruta": False, "resumen": "No traes mandados abiertos."}
+    return {
+        "hay_ruta": True,
+        "paradas": [
+            {"orden": i + 1, "que": p["titulo"], "cliente": p["cliente"],
+             "lugar": p["lugar"], "ubicado": p["lat"] is not None}
+            for i, p in enumerate(r["paradas"])
+        ],
+        "total_km": r["total_km"],
+        "sin_ubicar": r["sin_ubicar"],
+    }
+
+
+def _ruta_guardada_de(usuario, fecha=None) -> dict | None:
+    """La ruta planeada de esa persona para ese día, o None si no hay.
+
+    Devuelve la MISMA forma que `_h_ruta_del_dia` para que el LLM no tenga que
+    distinguir de dónde salió la respuesta.
+    """
+    import datetime as dt
+
+    from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS, Ruta
+
+    ruta = (
+        Ruta.objects.filter(
+            fecha=fecha or dt.date.today(), runner=usuario,
+            estado__in=ESTADOS_RUTA_VIVOS,
+        )
+        .prefetch_related("paradas__mandado__tarea__proyecto__cliente")
+        .first()
+    )
+    if ruta is None:
+        return None
+    paradas = []
+    for parada in ruta.paradas.all():
+        tarea = parada.mandado.tarea
+        proyecto = getattr(tarea, "proyecto", None)
+        cliente = getattr(proyecto, "cliente", None)
+        paradas.append({
+            "orden": parada.orden,
+            "que": tarea.titulo,
+            "cliente": cliente.razon_social if cliente is not None else "",
+            "lugar": parada.etiqueta,
+            "ubicado": parada.lat is not None,
+            "cita": parada.hora_cita.strftime("%H:%M") if parada.hora_cita else "",
+            "llegada_estimada": (
+                parada.llegada_estimada.strftime("%H:%M")
+                if parada.llegada_estimada else ""
+            ),
+            "estado": parada.mandado.estado,
+        })
+    return {
+        "hay_ruta": bool(paradas),
+        "planeada": True,
+        "estado_ruta": ruta.estado,
+        "sale_de": ruta.origen_etiqueta or "",
+        "redonda": ruta.es_redonda,
+        "paradas": paradas,
+        "total_km": ruta.distancia_km,
+        "sin_ubicar": sum(1 for x in paradas if not x["ubicado"]),
+    }
+
+
+def _h_rutas_planeadas(args: dict, usuario) -> dict:
+    """Las rutas planeadas de un día: quién lleva qué y en qué orden.
+
+    Es la vista de quien ORGANIZA el reparto, así que va con permiso. Un runner
+    que sólo tiene `rutas.ver` recibe únicamente la suya: leer la vuelta de un
+    compañero no es asunto suyo.
+    """
+    import datetime as dt
+
+    from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS, Ruta
+
+    from lib.permisos import puede_planear_rutas
+
+    texto = (args.get("fecha") or "").strip()
+    try:
+        fecha = dt.date.fromisoformat(texto) if texto else dt.date.today()
+    except ValueError:
+        return {"error": f"Fecha no válida: {texto!r}. Se espera AAAA-MM-DD."}
+
+    qs = (
+        Ruta.objects.filter(fecha=fecha, estado__in=ESTADOS_RUTA_VIVOS)
+        .select_related("runner")
+        .prefetch_related("paradas__mandado__tarea__proyecto__cliente")
+    )
+    if not puede_planear_rutas(usuario):
+        qs = qs.filter(runner=usuario)
+
+    nombre = (args.get("runner") or "").strip()
+    if nombre:
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(runner__nombre_completo__icontains=nombre)
+            | Q(runner__email__icontains=nombre)
+        )
+
+    rutas = []
+    for ruta in qs:
+        detalle = _ruta_guardada_de(ruta.runner, fecha) or {}
+        rutas.append({
+            "runner": ruta.runner.nombre_completo,
+            "estado": ruta.estado,
+            "km_estimados": ruta.distancia_km,
+            "paradas": detalle.get("paradas", []),
+        })
+    if not rutas:
+        return {"fecha": str(fecha), "rutas": [],
+                "nota": "No hay rutas planeadas para ese día."}
+    return {"fecha": str(fecha), "rutas": rutas,
+            "nota": "Los kilómetros y las horas son estimados (línea recta)."}
+
+def _h_sugerir_runner(args: dict, usuario) -> dict:
+    """A quién conviene darle una entrega, y por qué.
+
+    Considera si está trabajando, cuántos pendientes trae, qué tan lejos está,
+    si le queda de paso y si tiene un compromiso encima.
+    """
+    from apps.el_pizarron.models import Tarea
+    from apps.el_pizarron.runners import evaluar_runners
+
+    clave = (args.get("tarea") or "").strip()
+    if not clave:
+        return {"error": "Falta la tarea."}
+    tarea = None
+    if clave.isdigit():
+        tarea = Tarea.objects.filter(pk=int(clave)).first()
+    if tarea is None:
+        tarea = Tarea.objects.filter(titulo__icontains=clave, archivada=False).first()
+    if tarea is None:
+        return {"error": f"No encontré la tarea «{clave}»."}
+
+    filas = evaluar_runners(tarea)
+    if not filas:
+        return {"hay_candidatos": False,
+                "resumen": "Nadie tiene el permiso de recibir mandados."}
+    return {
+        "hay_candidatos": True,
+        "tarea": tarea.titulo,
+        "recomendado": filas[0]["runner"].nombre_completo,
+        "por_que": ", ".join(filas[0]["razones"]),
+        "candidatos": [
+            {"quien": f["runner"].nombre_completo, "puntaje": f["puntaje"],
+             "razones": f["razones"]}
+            for f in filas[:5]
+        ],
+    }
+
+
 def _h_estado_servidor(args: dict, usuario) -> dict:
     salida: dict = {}
     try:
@@ -354,6 +621,42 @@ def _h_specs_servidor(args: dict, usuario) -> dict:
     except Exception:  # noqa: BLE001
         pass
     return salida
+
+
+def _h_ultima_limpieza(args: dict, usuario) -> dict:
+    """Cuándo se soltó por última vez el caché, la RAM y el disco, y qué liberó.
+
+    Es de LECTURA a propósito: correrla es un botón de la pantalla (El Site o la
+    pared del NUC), no algo que El Chalán dispare por su cuenta. Es
+    mantenimiento de la máquina, no una acción del negocio — el mismo criterio
+    que los barridos de aprendizajes, que también son de back-office.
+    """
+    try:
+        from lib.site import limpieza
+        r = limpieza.ultima()
+    except Exception:  # noqa: BLE001 — sin Redis no hay memoria de esto
+        return {"disponible": False}
+    comun = {
+        "corriendo_ahora": limpieza.corriendo(),
+        "como_se_corre": ("con el botón «🧹 Limpiar ahora» de El Site (La Gerencia) "
+                          "o de la pared del NUC; también sola cada tres días, "
+                          "después del respaldo"),
+    }
+    if not r:
+        return {**comun, "disponible": True, "hubo_corrida": False,
+                "nota": "no se ha corrido desde la pantalla"}
+    return {
+        **comun,
+        "disponible": True,
+        "hubo_corrida": True,
+        "cuando": r.get("cuando"),
+        "quien": r.get("quien"),
+        "segundos": r.get("segundos"),
+        "liberado_mb": r.get("liberado_mb"),
+        "resumen": r.get("resumen"),
+        "pasos_con_problemas": r.get("problemas"),
+        "pasos": {p["clave"]: p["estado"] for p in r.get("pasos") or []},
+    }
 
 
 def _h_detalle_ingreso(args: dict, usuario) -> dict:
@@ -863,6 +1166,14 @@ _LECTURAS: dict[str, Capacidad] = {
         args_schema={},
         gating="abierto", fn=_h_specs_servidor,
     ),
+    "ultima_limpieza": Capacidad(
+        nombre="ultima_limpieza",
+        descripcion=("Cuándo se corrió La Limpieza del servidor (soltar caché, RAM y "
+                     "disco), quién la pidió y qué liberó. Sólo informa: correrla es "
+                     "un botón de El Site o de la pared del NUC."),
+        args_schema={},
+        gating="abierto", fn=_h_ultima_limpieza,
+    ),
     "detalle_ingreso": Capacidad(
         nombre="detalle_ingreso",
         descripcion="Estatus de un ingreso por código (ING-2026-0001).",
@@ -1001,6 +1312,87 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={},
         gating="finanzas", fn=_h_resumen_ia,
+    ),
+    "serie_kpi": Capacidad(
+        nombre="serie_kpi",
+        descripcion=(
+            "Cómo viene un indicador en el tiempo: su serie de los últimos días, "
+            "si va subiendo o bajando, y cuánto cambió contra el periodo anterior. "
+            "Usa listar_kpis para ver los slugs disponibles."
+        ),
+        args_schema={"slug": {"tipo": "str", "requerido": True},
+                     "dias": {"tipo": "int", "requerido": False}},
+        gating="abierto", fn=_h_serie_kpi,
+    ),
+    "comparar_kpi": Capacidad(
+        nombre="comparar_kpi",
+        descripcion="Un indicador en este periodo contra el anterior del mismo largo.",
+        args_schema={"slug": {"tipo": "str", "requerido": True},
+                     "dias": {"tipo": "int", "requerido": False}},
+        gating="abierto", fn=_h_comparar_kpi,
+    ),
+    "kpis_a_mirar_hoy": Capacidad(
+        nombre="kpis_a_mirar_hoy",
+        descripcion=(
+            "Los pocos indicadores que hoy merecen atención —los que están en "
+            "alerta, se salieron de lo normal o cambiaron fuerte— con el porqué "
+            "de cada uno. Úsala cuando te pregunten «¿cómo vamos?» o «¿qué debo "
+            "ver hoy?» en vez de listar todo."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_kpis_a_mirar_hoy,
+    ),
+    "anomalias_kpi": Capacidad(
+        nombre="anomalias_kpi",
+        descripcion=(
+            "Qué indicadores se salieron de su comportamiento normal, comparando "
+            "cada uno contra su propia historia."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_anomalias_kpi,
+    ),
+    "metas_sugeridas": Capacidad(
+        nombre="metas_sugeridas",
+        descripcion=(
+            "Metas realistas para los indicadores que no tienen una, calculadas "
+            "con lo que de verdad se ha hecho los últimos meses."
+        ),
+        args_schema={},
+        gating="finanzas", fn=_h_metas_sugeridas,
+    ),
+    "ruta_del_dia": Capacidad(
+        nombre="ruta_del_dia",
+        descripcion=(
+            "La vuelta de hoy: los mandados abiertos del runner ordenados por "
+            "cercanía, con los kilómetros aproximados."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_ruta_del_dia,
+    ),
+    "rutas_planeadas": Capacidad(
+        nombre="rutas_planeadas",
+        descripcion=(
+            "Las rutas de reparto PLANEADAS de un día: quién lleva qué, en qué "
+            "orden, con la cita y la llegada estimada. Args opcionales: fecha "
+            "(AAAA-MM-DD, por default hoy) y runner (nombre o correo). Para tu "
+            "propia vuelta usa `ruta_del_dia`."
+        ),
+        args_schema={
+            "fecha": {"tipo": "str", "requerido": False},
+            "runner": {"tipo": "str", "requerido": False},
+        },
+        gating="rutas", fn=_h_rutas_planeadas,
+    ),
+    "sugerir_runner": Capacidad(
+        nombre="sugerir_runner",
+        descripcion=(
+            "A qué repartidor conviene darle una entrega o recolección, y por "
+            "qué: mira quién está en jornada, cuántos pendientes trae, qué tan "
+            "lejos está del destino, si le queda de paso y si tiene un "
+            "compromiso con hora encima. Arg: tarea (id o parte del título)."
+        ),
+        args_schema={"tarea": {"tipo": "str", "requerido": True}},
+        gating="abierto", fn=_h_sugerir_runner,
     ),
     "mi_jornada_hoy": Capacidad(
         nombre="mi_jornada_hoy",

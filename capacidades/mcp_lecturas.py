@@ -264,3 +264,56 @@ def rentabilidad_impl(args: dict, usuario) -> dict[str, Any]:
         "proyectos": filas[:limite],
         "cantidad": len(filas),
     }
+
+
+# ── Indicadores (S-KPI-BI) ───────────────────────────────────────────────────
+
+
+def indicadores_impl(args: dict, usuario) -> dict[str, Any]:
+    """El tablero completo: cada indicador con su valor, tendencia y si es raro."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpis_aplicables_a_rol
+
+    categoria = (args.get("categoria") or "").strip().lower()
+    limite = _limite(args.get("limite"))
+    filas = []
+    for kpi in kpis_aplicables_a_rol(getattr(usuario, "rol", ""), user=usuario):
+        if categoria and kpi.categoria != categoria:
+            continue
+        try:
+            r = kpi.calcular(usuario)
+        except Exception:  # noqa: BLE001
+            continue
+        valor = r.get("valor")
+        filas.append({
+            "slug": kpi.slug, "titulo": kpi.titulo, "categoria": kpi.categoria,
+            "valor": valor, "nota": r.get("nota") or "",
+            "tendencia": series.tendencia(kpi.slug),
+            "anomalia": (
+                series.es_raro(kpi.slug, valor) if not isinstance(valor, str) else None
+            ),
+        })
+        if len(filas) >= limite:
+            break
+    return {"indicadores": filas, "cantidad": len(filas)}
+
+
+def serie_indicador_impl(args: dict, usuario) -> dict[str, Any]:
+    """La historia de un indicador, para graficarla o analizarla fuera."""
+    from apps.taller_home import series
+    from apps.taller_home.kpis import kpi_por_slug
+
+    slug = (args.get("slug") or "").strip()
+    kpi = kpi_por_slug(slug) if slug else None
+    if kpi is None:
+        return {"error": "no_visible"}
+    try:
+        dias = max(7, min(int(args.get("dias") or 90), 365))
+    except (TypeError, ValueError):
+        dias = 90
+    return {
+        "slug": slug, "titulo": kpi.titulo,
+        "tendencia": series.tendencia(slug),
+        "comparacion": series.comparar(slug),
+        "serie": series.serie(slug, dias=dias),
+    }

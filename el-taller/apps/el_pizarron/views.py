@@ -704,6 +704,91 @@ def mandados_lista(request):
 
 
 @login_required
+def mi_ruta(request):
+    """La vuelta de hoy: los mandados abiertos del runner, en orden de cercanía.
+
+    El orden se calcula empezando por donde está (su última checada) y saltando
+    cada vez a la parada más próxima. Los botones abren la ruta ya armada en
+    Waze, Google Maps o Apple Maps — sin servicios de paga: son enlaces.
+    """
+    from apps.el_pizarron.ruta import ruta_de
+
+    # Si alguien ya le planeó la ruta, ÉSA es su ruta: trae el orden que decidió
+    # una persona y las citas respetadas. El cálculo al vuelo queda de respaldo
+    # para el runner que salió sin plan.
+    datos = _mi_ruta_planeada(request.user) or ruta_de(request.user)
+    return render(request, "mandados/mi_ruta.html", {
+        **datos,
+        "titulo_pagina": "Mi ruta de hoy",
+    })
+
+
+def _mi_ruta_planeada(usuario) -> dict | None:
+    """La ruta guardada de hoy, en la MISMA forma que `ruta.ruta_de`.
+
+    Devolver la misma forma es lo que permite que la pantalla no tenga que saber
+    de dónde salió la ruta.
+    """
+    from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS, Ruta
+    from apps.el_pizarron.planeador import enlaces_de
+
+    ruta = (
+        Ruta.objects.filter(
+            fecha=timezone.localdate(), runner=usuario,
+            estado__in=ESTADOS_RUTA_VIVOS,
+        )
+        .prefetch_related("paradas__mandado__tarea__proyecto__cliente")
+        .first()
+    )
+    if ruta is None or not ruta.paradas.exists():
+        return None
+
+    paradas = []
+    for parada in ruta.paradas.all():
+        tarea = parada.mandado.tarea
+        proyecto = getattr(tarea, "proyecto", None)
+        cliente = getattr(proyecto, "cliente", None)
+        paradas.append({
+            "id": parada.mandado_id,
+            "titulo": tarea.titulo,
+            "lugar": parada.etiqueta,
+            "cliente": cliente.razon_social if cliente is not None else "",
+            "lat": parada.lat, "lng": parada.lng,
+            "estado": parada.mandado.estado,
+            "cita": parada.hora_cita,
+            "llegada": parada.llegada_estimada,
+        })
+    enlaces = enlaces_de(ruta)
+    return {
+        "paradas": paradas,
+        "origen": ruta.origen_punto,
+        "total_km": ruta.distancia_km or None,
+        "sin_ubicar": sum(1 for p in paradas if p["lat"] is None),
+        "url_google": enlaces["google"],
+        "url_apple": enlaces["apple"],
+        "url_waze": enlaces["waze"],
+        "planeada": True,
+        "ruta": ruta,
+    }
+
+
+def _coordenadas_del_post(request):
+    """Lee lat/lng del POST si vienen y son números creíbles.
+
+    Mismo criterio que El Checador: la ubicación nunca bloquea la acción. Un
+    valor fuera de rango se descarta en silencio en vez de guardarse mal.
+    """
+    try:
+        lat = float(request.POST.get("lat"))
+        lng = float(request.POST.get("lng"))
+    except (TypeError, ValueError):
+        return None, None
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return None, None
+    return lat, lng
+
+
+@login_required
 def mandado_avanzar(request, pk):
     """POST: avanza el estado de reparto (en_camino | entregado | cancelar)."""
     if request.method != "POST":
@@ -711,16 +796,26 @@ def mandado_avanzar(request, pk):
     from apps.el_pizarron import mandados as svc
     m = _mandado_visible_o_404(request, pk)
     accion = (request.POST.get("accion") or "").strip()
+    # Dónde está el runner al picar el botón. El teléfono la manda si puede; si
+    # no, se avanza igual (2026-08-22 — sirve para medir tiempos y distancia).
+    lat, lng = _coordenadas_del_post(request)
     evento = None
     try:
         if accion == "en_camino":
-            svc.marcar_en_camino(m)
+            svc.marcar_en_camino(m, lat=lat, lng=lng)
             evento = "en_camino"
             messages.success(request, "Mandado marcado en camino.")
         elif accion == "entregado":
-            svc.marcar_entregado(m)
+            svc.marcar_entregado(m, lat=lat, lng=lng)
             evento = "entregado"
-            messages.success(request, "Mandado entregado. ✅")
+            recorrido = m.km_recorridos
+            minutos = m.minutos_en_ruta
+            detalle = ""
+            if minutos is not None:
+                detalle = f" {minutos} min"
+                if recorrido:
+                    detalle += f" · {recorrido} km"
+            messages.success(request, f"Mandado entregado. ✅{detalle}")
         elif accion == "cancelar":
             svc.cancelar(m, motivo=(request.POST.get("motivo") or "").strip())
             evento = "cancelado"
@@ -829,3 +924,254 @@ def _emitir_mandado(tipo, usuario, mandado, extra=None):
             actor_email=getattr(usuario, "email", None),
             payload={"mandado_id": mandado.pk, "tarea_id": mandado.tarea_id, **(extra or {})},
         ))
+
+
+# ── El planeador de rutas (S-Planeador-Rutas) ────────────────────────────────
+
+def _sedes_con_pin():
+    from apps.checador.models.sede import SedeLC
+    return list(SedeLC.objects.filter(activa=True, lat__isnull=False, lng__isnull=False))
+
+
+def _fecha_de(request):
+    """La fecha que se está planeando. Un texto raro cae a hoy, no a un 500."""
+    import datetime as dt
+    texto = (request.GET.get("fecha") or request.POST.get("fecha") or "").strip()
+    try:
+        return dt.date.fromisoformat(texto) if texto else timezone.localdate()
+    except ValueError:
+        return timezone.localdate()
+
+
+def _rutas_del_dia(request, fecha):
+    """Las rutas que este usuario puede ver ese día.
+
+    Quien planea ve todas; un runner ve sólo la suya — la vuelta de un compañero
+    no es asunto suyo.
+    """
+    from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS, Ruta
+
+    from lib.permisos import puede_planear_rutas
+
+    qs = (
+        Ruta.objects.filter(fecha=fecha, estado__in=ESTADOS_RUTA_VIVOS)
+        .select_related("runner", "sede")
+        .prefetch_related(
+            "paradas__mandado__tarea__proyecto__cliente",
+            "paradas__mandado__tarea__runner",
+        )
+    )
+    if not puede_planear_rutas(request.user):
+        qs = qs.filter(runner=request.user)
+    return list(qs)
+
+
+@login_required
+def rutas_panel(request):
+    """El planeador: las rutas del día, el mapa y lo que quedó sin repartir."""
+    from apps.el_pizarron.models.ruta import COLORES_RUTA_MAPA
+    from apps.el_pizarron.planeador import candidatos_del_dia, enlaces_de
+
+    from lib.permisos import (
+        puede_despachar_rutas,
+        puede_planear_rutas,
+        puede_ver_rutas,
+    )
+
+    if not puede_ver_rutas(request.user):
+        return HttpResponseForbidden("Sin permiso para ver las rutas.")
+
+    fecha = _fecha_de(request)
+    rutas = _rutas_del_dia(request, fecha)
+
+    tarjetas = []
+    for i, ruta in enumerate(rutas):
+        tarjetas.append({
+            "ruta": ruta,
+            "color": COLORES_RUTA_MAPA[i % len(COLORES_RUTA_MAPA)],
+            "enlaces": enlaces_de(ruta),
+            "paradas": list(ruta.paradas.all()),
+        })
+
+    # Lo que el reparto no alcanzó a colocar: sin destino conocido, o de más.
+    sueltos = candidatos_del_dia(fecha) if puede_planear_rutas(request.user) else []
+
+    return render(request, "mandados/rutas_panel.html", {
+        "titulo_pagina": "Planeador de rutas",
+        "fecha": fecha,
+        "tarjetas": tarjetas,
+        "sueltos": sueltos,
+        "sedes": _sedes_con_pin(),
+        "puede_planear": puede_planear_rutas(request.user),
+        "puede_despachar": puede_despachar_rutas(request.user),
+        "mapa": _mapa_de(tarjetas),
+    })
+
+
+def _mapa_de(tarjetas) -> dict:
+    """Datos para Leaflet: una línea por ruta, con su color y sus pines."""
+    lineas, puntos = [], []
+    for t in tarjetas:
+        ruta = t["ruta"]
+        coords = []
+        if ruta.tiene_origen:
+            coords.append([ruta.origen_lat, ruta.origen_lng])
+        for parada in t["paradas"]:
+            if parada.lat is None or parada.lng is None:
+                continue
+            coords.append([parada.lat, parada.lng])
+            puntos.append({
+                "lat": parada.lat, "lng": parada.lng, "color": t["color"],
+                "etiqueta": f"{parada.orden}. {parada.etiqueta}",
+            })
+        if ruta.es_redonda and ruta.tiene_origen and len(coords) > 1:
+            coords.append([ruta.origen_lat, ruta.origen_lng])
+        if len(coords) > 1:
+            lineas.append({"color": t["color"], "coords": coords,
+                           "runner": ruta.runner.nombre_completo})
+    return {"lineas": lineas, "puntos": puntos}
+
+
+@login_required
+def rutas_planear(request):
+    """POST: arma (o rearma) el reparto del día."""
+    from apps.el_pizarron.planeador import planear_dia
+
+    from lib.permisos import puede_planear_rutas
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    if not puede_planear_rutas(request.user):
+        return HttpResponseForbidden("Sin permiso para planear rutas.")
+
+    fecha = _fecha_de(request)
+    modo = request.POST.get("origen_modo") or "sede_redonda"
+    if modo not in ("sede_redonda", "runner_abierta"):
+        modo = "sede_redonda"
+
+    sede = None
+    sede_pk = (request.POST.get("sede") or "").strip()
+    if sede_pk.isdigit():
+        from apps.checador.models.sede import SedeLC
+        sede = SedeLC.objects.filter(pk=int(sede_pk), activa=True).first()
+    if modo == "sede_redonda" and sede is None:
+        sedes = _sedes_con_pin()
+        sede = sedes[0] if sedes else None
+
+    res = planear_dia(fecha, origen_modo=modo, sede=sede, actor=request.user)
+
+    if res["sin_runner"]:
+        messages.warning(
+            request,
+            "Nadie tiene el permiso de recibir mandados: asigna el rol «Runner» "
+            "en El Directorio y vuelve a planear.",
+        )
+    else:
+        paradas = sum(r.total_paradas for r in res["rutas"])
+        messages.success(
+            request,
+            f"Listo: {paradas} parada{'s' if paradas != 1 else ''} en "
+            f"{len(res['rutas'])} ruta{'s' if len(res['rutas']) != 1 else ''}.",
+        )
+        if res["sin_ubicar"]:
+            messages.warning(
+                request,
+                f"{len(res['sin_ubicar'])} entrega(s) quedaron fuera porque no se "
+                "sabe a dónde van: fíjale el destino en el mapa del mandado.",
+            )
+        if res["sobrantes"]:
+            messages.warning(
+                request,
+                f"{len(res['sobrantes'])} entrega(s) no cupieron: todas las rutas "
+                "llegaron a su tope de paradas.",
+            )
+    return redirect(f"{reverse('rutas-panel')}?fecha={fecha.isoformat()}")
+
+
+def _ruta_o_403(request, pk, *, para_despachar: bool = False):
+    """La ruta, si esta persona la puede tocar. None si no."""
+    from apps.el_pizarron.models.ruta import Ruta
+
+    from lib.permisos import puede_despachar_rutas, puede_planear_rutas
+
+    ruta = get_object_or_404(Ruta, pk=pk)
+    permitido = (
+        puede_despachar_rutas(request.user) if para_despachar
+        else puede_planear_rutas(request.user)
+    )
+    return ruta if permitido else None
+
+
+@login_required
+def rutas_despachar(request, pk):
+    """POST: publica la ruta — y con eso le llega el correo al runner."""
+    from apps.el_pizarron.planeador import despachar
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    ruta = _ruta_o_403(request, pk, para_despachar=True)
+    if ruta is None:
+        return HttpResponseForbidden("Sin permiso para despachar rutas.")
+    try:
+        despachar(ruta, actor=request.user)
+    except ValueError as e:
+        messages.error(request, str(e))
+    else:
+        messages.success(
+            request,
+            f"Ruta despachada. Se le mandó a {ruta.runner.nombre_completo} "
+            "por correo." if ruta.correo_enviado_en else
+            "Ruta despachada. El correo no salió — revisa El Cartero.",
+        )
+    return redirect(f"{reverse('rutas-panel')}?fecha={ruta.fecha.isoformat()}")
+
+
+@login_required
+def rutas_reordenar(request, pk):
+    """POST del arrastre: el orden que dejó la persona manda."""
+    from apps.el_pizarron.planeador import reordenar
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    ruta = _ruta_o_403(request, pk)
+    if ruta is None:
+        return HttpResponseForbidden("Sin permiso.")
+    pks = [p for p in request.POST.getlist("orden") if str(p).isdigit()]
+    reordenar(ruta, pks)
+    return HttpResponse(status=204)
+
+
+@login_required
+def parada_mover(request, pk):
+    """POST del arrastre entre runners: pasa una parada a otra ruta."""
+    from apps.el_pizarron.models.ruta import ParadaRuta, Ruta
+    from apps.el_pizarron.planeador import mover_parada
+
+    from lib.permisos import puede_planear_rutas
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    if not puede_planear_rutas(request.user):
+        return HttpResponseForbidden("Sin permiso.")
+    parada = get_object_or_404(ParadaRuta, pk=pk)
+    destino_pk = (request.POST.get("ruta") or "").strip()
+    if not destino_pk.isdigit():
+        return HttpResponseForbidden("Falta la ruta de destino.")
+    destino = get_object_or_404(Ruta, pk=int(destino_pk))
+    mover_parada(parada, destino)
+    return HttpResponse(status=204)
+
+
+@login_required
+def rutas_cancelar(request, pk):
+    """POST: cancela la ruta (deja de estorbar para volver a planear el día)."""
+    from apps.el_pizarron.planeador import cancelar
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    ruta = _ruta_o_403(request, pk)
+    if ruta is None:
+        return HttpResponseForbidden("Sin permiso.")
+    cancelar(ruta, motivo=sanear_contexto(request.POST.get("motivo", ""))[:200])
+    messages.success(request, "Ruta cancelada.")
+    return redirect(f"{reverse('rutas-panel')}?fecha={ruta.fecha.isoformat()}")

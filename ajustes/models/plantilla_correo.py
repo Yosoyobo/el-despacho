@@ -97,6 +97,11 @@ class PlantillaCorreo(models.Model):
             "cuerpo_html": defecto.get("cuerpo_html", ""),
             "sistema": slug in PLANTILLAS_DEFAULT,
             "origen": "sistema" if slug in PLANTILLAS_DEFAULT else "manual",
+            # Una plantilla puede nacer con su alias puesto (la ruta del runner
+            # sale de runner@). Quien no lo declara queda en blanco y usa el
+            # remitente general, como siempre. Cambiarlo después es cosa del GUI.
+            "remitente_email": defecto.get("remitente_email", ""),
+            "remitente_nombre": defecto.get("remitente_nombre", ""),
         })
         return obj
 

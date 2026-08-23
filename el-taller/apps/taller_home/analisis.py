@@ -334,9 +334,24 @@ def panorama(usuario) -> dict:
     ultima = max(
         (t["lectura_en"] for t in temas if t["lectura_en"]), default=None,
     )
+
+    # Lo que hay que mirar hoy y las metas que faltan. Van aparte de los temas
+    # porque responden otra pregunta: no «cómo va el negocio» sino «qué hago yo
+    # con esto esta mañana».
+    try:
+        from apps.taller_home.curaduria import destacados_de_hoy, proponer_metas
+
+        destacados = destacados_de_hoy(usuario)
+        metas = proponer_metas()
+    except Exception:  # noqa: BLE001
+        logger.warning("no se pudo armar la curaduría", exc_info=True)
+        destacados, metas = [], []
+
     return {
         "temas": temas,
         "alertas": alertas(usuario),
+        "destacados": destacados,
+        "metas_sugeridas": metas[:5],
         "ultima_lectura_en": ultima,
         "cfg": _cfg(),
     }

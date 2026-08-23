@@ -20,6 +20,18 @@
 </div>
 {% endif %}
 
+{% if personales_sin_dueno %}
+<div class="mb-6 rounded-2xl border border-blue-light-200 bg-blue-light-50 p-5 dark:border-blue-light-800 dark:bg-blue-light-900/20">
+    <h3 class="text-sm font-semibold text-blue-light-900 dark:text-blue-light-100">
+        {{ personales_sin_dueno|length }} dirección{{ personales_sin_dueno|length|pluralize:"es" }} personal{{ personales_sin_dueno|length|pluralize:"es" }} sin dueño
+    </h3>
+    <p class="mt-1 text-xs text-blue-light-800 dark:text-blue-light-200">
+        Son direcciones a nombre de una persona. <strong>Mientras no digas de quién son, nadie puede enviar
+        desde ellas</strong> — y cuando lo hagas, sólo esa persona podrá. Asígnalas en la columna «Quién la usa».
+    </p>
+</div>
+{% endif %}
+
 <section class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <h2 class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Cómo se da de alta una dirección</h2>
     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -39,11 +51,12 @@
 
 {% if filas %}
 <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <table class="min-w-[720px] w-full text-sm">
+    <table class="min-w-[900px] w-full text-sm">
         <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:bg-gray-800 dark:text-gray-400">
             <tr>
                 <th class="px-5 py-3 text-left">Dirección</th>
                 <th class="px-5 py-3 text-left">La usan</th>
+                <th class="px-5 py-3 text-left">Quién la usa</th>
                 <th class="px-5 py-3 text-left">Estado</th>
                 <th class="px-5 py-3 text-right">Acciones</th>
             </tr>
@@ -58,6 +71,21 @@
                 <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
                     {% if f.plantillas %}{{ f.plantillas|join:", " }}
                     {% else %}<span class="text-gray-400">Ninguna plantilla la usa hoy</span>{% endif %}
+                </td>
+                <td class="px-5 py-3">
+                    <form method="post" action="{% url 'ajustes-cartero-remitente-dueno' %}" class="campo-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="email" value="{{ f.email }}">
+                        <select name="usuario" onchange="this.form.submit()" class="text-xs" data-sin-buscar>
+                            <option value="">Todo el equipo</option>
+                            {% for u in usuarios %}
+                            <option value="{{ u.pk }}" {% if f.usuario and f.usuario.pk == u.pk %}selected{% endif %}>Sólo {{ u.nombre_completo }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    {% if f.es_personal and not f.usuario %}
+                    <p class="mt-1 text-[11px] text-warning-600">Personal sin dueño: nadie puede usarla.</p>
+                    {% endif %}
                 </td>
                 <td class="px-5 py-3">
                     {% if f.verificado %}

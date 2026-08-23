@@ -279,6 +279,17 @@ def puede_usar_chalan(user) -> bool:
     return puede(user, "chalan", "usar")
 
 
+def puede_limpiar_site(user) -> bool:
+    """Correr La Limpieza (soltar caché, RAM y disco) desde El Site.
+
+    Va aparte de `site.ver` porque MUEVE la máquina —recicla los trabajadores de
+    gunicorn, aspira la base, poda lo que Docker dejó tirado— y ver el tablero no
+    tiene por qué implicar poder tocarlo. En la pared del NUC no se consulta: ahí
+    la puerta es estar físicamente en la máquina.
+    """
+    return puede(user, "site", "limpiar")
+
+
 def puede_ver_analisis(user) -> bool:
     """Entrar a El Análisis. Los temas de adentro se gatean uno por uno."""
     return puede(user, "analisis", "ver")
@@ -292,6 +303,21 @@ def puede_checar(user) -> bool:
 def puede_ser_runner(user) -> bool:
     """S-LC-Proyecto-V2: elegible para recibir entregas/recolecciones (runner)."""
     return puede(user, "runner", "recibir")
+
+
+def puede_ver_rutas(user) -> bool:
+    """Abrir el planeador y ver las rutas del día."""
+    return puede(user, "rutas", "ver")
+
+
+def puede_planear_rutas(user) -> bool:
+    """Armar o rearmar el reparto del día, y mover paradas entre runners."""
+    return puede(user, "rutas", "planear")
+
+
+def puede_despachar_rutas(user) -> bool:
+    """Publicar una ruta — es lo que le manda el correo al runner."""
+    return puede(user, "rutas", "despachar")
 
 
 def usuarios_runner():

@@ -83,6 +83,21 @@ def rentabilidad_proyectos(
     return herramientas.rentabilidad_proyectos(incluir_terminados, limite)
 
 
+@mcp.tool()
+def indicadores(categoria: str = "", limite: int = 40) -> dict[str, Any]:
+    """Lista los indicadores del despacho con su valor de hoy, su tendencia y si
+    alguno se salió de lo normal. Filtra por categoría: dinero, operacion,
+    cartera, catalogo, proveedores, runner, maquina, ia, gente, buzon."""
+    return herramientas.indicadores(categoria, limite)
+
+
+@mcp.tool()
+def serie_indicador(slug: str, dias: int = 90) -> dict[str, Any]:
+    """La historia diaria de un indicador y su comparación contra el periodo
+    anterior — para graficar o analizar fuera del sistema."""
+    return herramientas.serie_indicador(slug, dias)
+
+
 def main() -> None:
     """Sirve MCP sólo por stdio; no abre puertos ni omite autenticación HTTP."""
     mcp.run(transport="stdio")

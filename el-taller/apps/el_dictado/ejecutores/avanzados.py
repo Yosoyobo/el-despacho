@@ -616,9 +616,15 @@ def enviar_correo(accion, usuario, contexto=None):
     )
 
     asunto_r, html = plantilla.render(contexto_correo)
+    from ajustes.models.alias_remitente import remitente_para
+
     resultado = cartero.enviar(
         destinatario=email, asunto=asunto_r, html=html,
-        remitente=plantilla.remitente_efectivo(),
+        # El alias personal sale a nombre de su dueño: si El Chalán manda una
+        # plantilla con el alias de otra persona, el correo sale del remitente
+        # general en lugar de firmarlo por alguien que no lo mandó.
+        remitente=remitente_para(plantilla, usuario,
+                                 forzado=payload.get("remitente", "")),
     )
     _exigir(bool(getattr(resultado, "ok", False)),
             f"El Cartero no pudo entregar el correo: {getattr(resultado, 'error', 'error desconocido')}")

@@ -118,6 +118,67 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
             "</div>"
         ),
     },
+    # ── El Runner ────────────────────────────────────────────────────────────
+    # Las dos salen de runner@: es el alias departamental que Learning Center ya
+    # tiene dado de alta en Google, así que el equipo y el cliente reconocen de
+    # quién viene sin tener que leer la firma.
+    "ruta_runner": {
+        "nombre": "Ruta del día (al runner)",
+        "asunto": "Tu ruta del {{ fecha }} · {{ total_paradas }} parada{{ total_paradas|pluralize }}",
+        "remitente_email": "runner@learningcenter.mx",
+        "remitente_nombre": "RUNNER | LEARNING CENTER",
+        "variables": ["runner", "fecha", "total_paradas", "total_km", "paradas",
+                      "salida", "enlace_google", "enlace_waze", "enlace_apple",
+                      "empresa"],
+        "cuerpo_html": (
+            '<div style="font-family:Arial,sans-serif;color:#1d2939;font-size:14px;line-height:1.5;">'
+            "<p>Hola {{ runner }}:</p>"
+            "<p>Ésta es tu ruta del <strong>{{ fecha }}</strong>: "
+            "<strong>{{ total_paradas }}</strong> paradas"
+            "{% if total_km %}, unos <strong>{{ total_km }} km</strong>{% endif %}."
+            "{% if salida %} Sales de {{ salida }}.{% endif %}</p>"
+            '<ol style="padding-left:18px;">'
+            "{% for p in paradas %}"
+            '<li style="margin-bottom:8px;">'
+            "<strong>{{ p.lugar }}</strong>"
+            '{% if p.cliente %}<br><span style="color:#475467;">{{ p.cliente }}</span>{% endif %}'
+            "{% if p.cita %}<br>Cita a las <strong>{{ p.cita }}</strong>"
+            "{% elif p.llegada %}<br>Llegada estimada {{ p.llegada }}{% endif %}"
+            '{% if p.titulo %}<br><span style="color:#475467;">{{ p.titulo }}</span>{% endif %}'
+            "</li>"
+            "{% endfor %}"
+            "</ol>"
+            "<p>Ábrela en tu app de mapas:</p>"
+            "<p>"
+            '{% if enlace_google %}<a href="{{ enlace_google }}">Google Maps</a>&nbsp;&nbsp;{% endif %}'
+            '{% if enlace_waze %}<a href="{{ enlace_waze }}">Waze</a>&nbsp;&nbsp;{% endif %}'
+            '{% if enlace_apple %}<a href="{{ enlace_apple }}">Apple Maps</a>{% endif %}'
+            "</p>"
+            '<p style="color:#475467;font-size:12px;">Las horas son estimadas: se '
+            "calculan en línea recta, sin el tráfico. Las que tienen cita son fijas.</p>"
+            f"{_FOOTER}"
+            "</div>"
+        ),
+    },
+    "mandado_en_camino": {
+        "nombre": "Entrega en camino (al cliente)",
+        "asunto": "Tu entrega va en camino · Learning Center",
+        "remitente_email": "runner@learningcenter.mx",
+        "remitente_nombre": "RUNNER | LEARNING CENTER",
+        "variables": ["cliente", "empresa", "proyecto", "mensaje", "fecha",
+                      "runner", "posicion", "llegada"],
+        "cuerpo_html": (
+            '<div style="font-family:Arial,sans-serif;color:#1d2939;font-size:14px;line-height:1.5;">'
+            "<p>Estimado/a {{ cliente }}:</p>"
+            "<p>Tu entrega{% if proyecto %} de <strong>{{ proyecto }}</strong>{% endif %} "
+            "ya salió y va en camino.</p>"
+            "{% if llegada %}<p>Llegada estimada: <strong>{{ llegada }}</strong>.</p>{% endif %}"
+            "{% if mensaje %}<p>{{ mensaje }}</p>{% endif %}"
+            "<p>Cualquier cosa, contéstanos este correo.</p>"
+            f"{_FOOTER}"
+            "</div>"
+        ),
+    },
     "generico": {
         "nombre": "Genérico",
         "asunto": "{{ asunto }}",
@@ -133,7 +194,8 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
 }
 
 # Orden de aparición en la lista del editor.
-SLUGS_PLANTILLA = ["cotizacion", "factura", "cobranza", "pago", "bienvenida", "generico"]
+SLUGS_PLANTILLA = ["cotizacion", "factura", "cobranza", "pago", "bienvenida",
+                   "ruta_runner", "mandado_en_camino", "generico"]
 
 
 def variables_de(slug: str) -> list[str]:

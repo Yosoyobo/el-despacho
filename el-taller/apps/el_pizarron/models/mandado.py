@@ -41,6 +41,28 @@ class Mandado(models.Model):
     en_camino_en = models.DateTimeField(null=True, blank=True)
     entregado_en = models.DateTimeField(null=True, blank=True)
     cancelado_en = models.DateTimeField(null=True, blank=True)
+
+    # ── Dónde empezó y dónde terminó la misión (2026-08-22) ───────────────
+    #
+    # Oscar: «los runners deberán checar el momento en el que empiezan la misión
+    # y la terminan, con esto calculamos tiempos, distancia, etc.». El reloj ya
+    # existía (`en_camino_en` / `entregado_en`); lo que faltaba era el DÓNDE.
+    #
+    # La distancia se guarda calculada al cerrar el mandado, en vez de
+    # recalcularla cada vez que alguien mira un reporte: son datos que ya no
+    # cambian, y así los indicadores no tienen que rehacer la cuenta.
+    #
+    # Es la base del módulo de planeación de ruta que viene después: sin medir
+    # cuánto tarda y cuánto se recorre cada mandado, no hay con qué planear.
+    inicio_lat = models.FloatField(null=True, blank=True)
+    inicio_lng = models.FloatField(null=True, blank=True)
+    fin_lat = models.FloatField(null=True, blank=True)
+    fin_lng = models.FloatField(null=True, blank=True)
+    distancia_m = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Línea recta entre el punto de salida y el de entrega.",
+    )
+
     notas = models.TextField(blank=True, default="")
 
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -54,6 +76,39 @@ class Mandado(models.Model):
 
     def __str__(self) -> str:
         return f"Mandado #{self.pk} · {self.tarea.titulo[:40]}"
+
+    # ── Cuánto tardó y cuánto se recorrió ─────────────────────────────────
+
+    @property
+    def minutos_en_ruta(self) -> int | None:
+        """Del momento en que salió al momento en que entregó."""
+        if not (self.en_camino_en and self.entregado_en):
+            return None
+        return max(0, int((self.entregado_en - self.en_camino_en).total_seconds() // 60))
+
+    @property
+    def minutos_desde_asignado(self) -> int | None:
+        """Desde que se le asignó hasta que entregó — incluye la espera."""
+        if not (self.asignado_en and self.entregado_en):
+            return None
+        return max(0, int((self.entregado_en - self.asignado_en).total_seconds() // 60))
+
+    @property
+    def km_recorridos(self) -> float | None:
+        return round(self.distancia_m / 1000, 2) if self.distancia_m else None
+
+    def calcular_distancia(self) -> int | None:
+        """Línea recta entre salida y entrega, en metros.
+
+        En línea recta y no por calles a propósito: medir la ruta real exigiría
+        un servicio de rutas de paga, y la regla del proyecto es que las cosas
+        salgan gratis o no se hacen. Para comparar mandados entre sí —que es
+        para lo que sirve— la línea recta ordena igual.
+        """
+        from apps.checador.models.sede import distancia_m as _dist
+
+        metros = _dist(self.inicio_lat, self.inicio_lng, self.fin_lat, self.fin_lng)
+        return int(metros) if metros is not None else None
 
     # ── Datos delegados a la Tarea (fuente única de runner/destino) ────────────
     @property

@@ -5,6 +5,152 @@
 
 ---
 
+## Novedades — El planeador de rutas: el reparto del día, y a cada quien su vuelta por correo (23 de agosto de 2026)
+
+**Ya se puede planear el día completo, no sólo ver la vuelta de uno**
+
+Hasta ahora cada repartidor abría «Mi ruta de hoy» y el sistema le ordenaba sus
+entregas por cercanía. Eso sigue igual, pero ahora hay un paso antes: en
+**Mandados → 🗺️ Planear rutas** se arma el reparto de TODO el día de una vez.
+
+Aprietas **«Planear el día»** y el sistema toma las entregas y recolecciones que
+tienen fecha para ese día, las **reparte entre los repartidores disponibles** y
+le pone a cada uno sus paradas en orden. Puedes elegir si salen **de la sede y
+regresan a ella**, o **de donde cada quien esté** (con la última ubicación que
+registró al checar).
+
+**Las citas se respetan**
+
+Si una entrega tiene hora, el orden la respeta aunque implique dar más vueltas.
+Las que no tienen hora se acomodan en los huecos, por cercanía. Cada parada
+muestra su hora: **«Cita a las 10:00»** cuando está comprometida, o
+**«≈ 11:20»** cuando es la llegada estimada.
+
+Las horas y los kilómetros son **estimados**: se calculan en línea recta, sin el
+tráfico. Sirven para decidir en qué orden salir, no para prometerle un minuto
+exacto a un cliente.
+
+**Se reacomoda arrastrando**
+
+Cada ruta es una tarjeta con sus paradas. Arrastra una parada por su asa (⠿) para
+cambiarla de lugar, o **muévela a la tarjeta de otro repartidor** para pasarle la
+entrega. Los kilómetros y las horas se recalculan solos. Arriba hay un mapa con
+una línea de color por ruta, para seguir cada vuelta con la vista.
+
+**Cada quien recibe su ruta por correo**
+
+Al apretar **«Despachar»**, la ruta se publica y le llega **por correo** al
+repartidor, con sus paradas en orden, las horas y los botones para abrirla en
+**Waze, Google Maps o Apple Maps**. El correo sale de
+**runner@learningcenter.mx**, así que se reconoce de quién viene. Si el mismo día
+se reacomoda la ruta, se le puede volver a mandar.
+
+Y cuando abre «Mi ruta de hoy», ve **la ruta que le planearon** —con sus citas—
+en lugar de un orden calculado al momento.
+
+**Avisar al cliente que su entrega salió (opcional, apagado)**
+
+Hay un aviso nuevo para el cliente: «tu entrega va en camino», que se manda
+cuando el repartidor marca que salió. **Arranca apagado**, como todos los correos
+que le llegan a un cliente: hay que encenderlo en La Gerencia → Ajustes → El
+Cartero, y se puede editar el texto antes.
+
+**Lo que quedó sin repartir se dice**
+
+Si una entrega no entró a ninguna ruta, aparece abajo en **«Sin repartir»** con el
+motivo — casi siempre es que no se sabe a dónde va. Le pones el destino en el mapa
+del mandado y vuelves a planear.
+
+**Quién puede** Planear y despachar es de quien organiza el reparto. Un repartidor
+ve su propia ruta, no la de sus compañeros. Se reparte desde El Directorio, en las
+casillas de **Rutas**.
+
+**Al Chalán también le puedes preguntar**: «¿cómo quedó el reparto de mañana?» o
+«¿cuál es mi ruta?».
+## Novedades — Un botón para dejar el servidor ligero (23 de agosto de 2026)
+
+**Qué es**
+
+En **El Site** (La Gerencia) y en la pantalla que está colgada en la pared del
+taller hay un renglón nuevo, arriba: **🧹 La Limpieza**, con un botón que dice
+**«Limpiar ahora»**.
+
+Antes esto sólo pasaba solo, de madrugada, cada tres días. Ahora se puede pedir en
+el momento — que es cuando sirve: estás viendo los anillos de memoria o de disco,
+los ves cargados, y lo sueltas sin llamarle a nadie.
+
+**Qué hace, en llano**
+
+Suelta lo que el sistema fue acumulando y ya no necesita:
+
+- **El caché**: las cuentas que el sistema guardaba hechas para no repetirlas. Se
+  vuelven a hacer solas la próxima vez que hagan falta.
+- **El disco**: lo que Docker dejó tirado (piezas paradas, imágenes viejas, sobras
+  de las actualizaciones) y el espacio de los renglones borrados de la base.
+- **La memoria**: les pide a los trabajadores del sistema que se releven. Los
+  nuevos entran antes de que los viejos se vayan, así que **nadie se cae ni pierde
+  lo que estaba haciendo**.
+
+**Lo que NO hace**, y conviene tenerlo claro: no borra nada tuyo. Ni proyectos, ni
+fotos, ni respaldos, ni un solo dato del despacho. Tampoco te saca de tu sesión.
+
+**Qué se ve después**
+
+El mismo renglón te cuenta qué pasó: cuánto se liberó, cuánto tardó y qué se hizo
+paso por paso. Si algún paso no se pudo, lo dice con su razón en vez de quedarse
+callado. Y queda anotado quién la pidió y cuándo, así que a la siguiente sabes si
+ya se hizo hace rato.
+
+**Quién puede**
+
+En la pantalla de la pared, cualquiera que esté enfrente de la máquina. Desde El
+Site hace falta el permiso nuevo **El Site → limpiar**, que ya tiene el
+super_admin y se le puede dar a quien haga falta desde *Directorio → permisos*.
+
+También le puedes preguntar a **El Chalán**: «¿cuándo se limpió el servidor?» y te
+dice cuándo fue, quién lo pidió y qué liberó. Correrla sí es cosa del botón — no
+se pide por chat.
+
+---
+
+## Novedades — Cada correo desde la dirección que le toca (23 de agosto de 2026)
+
+**Ya están cargadas todas tus direcciones**
+
+Las doce direcciones que Learning Center tiene dadas de alta en Google
+(`cobranza@`, `ventas@`, `facturas@`, `legal@`, `pagos@`, `runner@`, `soporte@`,
+`admin@`, `chalan@`, `hola@`, más `alex@` y `jorge@`) ya están cargadas y
+marcadas como listas. No hay que darlas de alta otra vez ni comprobarlas: se ven
+en **Ajustes → El Cartero → Direcciones de envío**.
+
+**Las de una persona son de esa persona**
+
+Hay dos clases de dirección, y se comportan distinto:
+
+- **Las del despacho** (`cobranza@`, `ventas@`, `facturas@`…) las puede usar
+  cualquiera del equipo que tenga permiso de mandar correo.
+- **Las de una persona** (`alex@`, `jorge@`) salen a nombre de esa persona, y
+  **sólo esa persona puede mandar desde ellas**. Si alguien más manda una
+  plantilla que las lleva, el correo sale de la dirección general — nunca
+  firmado por quien no lo mandó.
+
+Los correos que salen solos (las reglas automáticas) **nunca** usan una
+dirección personal, por la misma razón: nadie debe aparecer firmando algo de lo
+que no se enteró.
+
+**Falta un paso tuyo**
+
+`alex@` y `jorge@` están cargadas pero **sin dueño asignado**, y mientras no se
+lo asignes **nadie puede usarlas** (es el lado seguro). En la columna «Quién la
+usa» de esa pantalla eliges la persona de cada una, y listo.
+
+**Elegir de quién sale un correo**
+
+Al mandarle un correo a un cliente desde su ficha, ahora hay un campo **«De»**.
+Ahí aparecen las direcciones del despacho y —si tienes una— la tuya. La de otra
+persona ni se muestra.
+
+---
 ## Novedades — El alta rápida de producto ya pide proveedor, y la ficha tiene sus botones (23 de agosto de 2026)
 
 **Qué cambió**
@@ -130,6 +276,67 @@ escribe, pero **nace apagada**: aparece en la lista marcada como pendiente de
 revisar, y no se puede mandar hasta que la abras, la leas y la enciendas. Un
 correo va a la bandeja de un cliente, así que nadie quiere que salga uno sin
 que una persona lo haya visto.
+## Novedades — El Chalán ahora te dice qué mirar, y los runners traen ruta (23 de agosto de 2026)
+
+**El tablero deja de crecer y empieza a elegir**
+
+Había 105 preferencias de indicadores guardadas en el sistema y **72 eran para
+apagarlos**: el tablero traía tantos números que la gente los escondía a mano, uno
+por uno. Un buen analista no te entrega cincuenta cifras; te dice cuáles cinco hay
+que ver hoy.
+
+Ahora, en **El Análisis**, arriba de todo aparece **«Lo que hay que mirar hoy»**: sólo
+los indicadores que están en alerta, se salieron de lo normal o cambiaron fuerte — y
+cada uno dice **por qué** está ahí («se salió de lo normal: 60% arriba de lo
+habitual», «bajó 30% contra el periodo anterior»). Si todo está tranquilo, no
+aparece nada. Eso también es información.
+
+**El sistema por fin tiene memoria**
+
+Cada mañana se guarda cuánto vale cada indicador. Con eso el Chalán ya puede decir
+lo que antes le era imposible: **si subió o bajó**, cuánto contra el mes pasado, y
+si el número de hoy es raro para ese indicador. Empieza a acumular desde hoy: en una
+semana ya compara, en un mes ya tiene tendencia.
+
+**Y te propone metas**
+
+Tu tabla de metas llevaba meses vacía, y sin meta el sistema sólo podía describir.
+Ahora mira lo que de verdad has hecho y te propone una realista: «en los últimos
+meses rondas 180 mil, te propongo 200 mil». Tú la apruebas o la ajustas.
+
+**Indicadores de todo el negocio**
+
+Se agregaron unos cuarenta, en los temas que faltaban: tickets del buzón, márgenes
+reales, productos sin costo, deuda con proveedores, clientes dormidos, dependencia
+de tu mayor cliente, mandados, el servidor (CPU, memoria, disco), lo que cuestan Los
+Chalanes, y **la gente**: entradas al sistema, horas trabajadas, retardos, jornadas
+sin cerrar y qué tanto del trabajo se puede costear.
+
+Que el catálogo sea grande ya no satura el tablero, porque es el Chalán quien elige
+qué mostrar.
+
+**Los runners: reloj, ruta y mapa**
+
+- Al picar **«En camino»** y **«Entregado»**, el teléfono guarda dónde está el
+  repartidor. Con eso el sistema mide **cuánto tardó cada misión y cuántos
+  kilómetros se recorrieron**. Si el GPS falla, el mandado se marca igual — medir es
+  útil, estorbar no.
+- Botón **«Mi ruta de hoy»**: los mandados abiertos **ordenados por cercanía**,
+  empezando por donde está el runner, con los kilómetros aproximados. Y tres botones
+  para abrirla en **Waze, Google Maps o Apple Maps**.
+- **A quién le toca un mandado** ya no se decide sólo por cercanía: ahora pesa si
+  está en su jornada, cuántos pendientes trae, qué tan lejos está, si le queda de
+  paso y si tiene un compromiso con hora encima. Y el Chalán te lo puede explicar:
+  pregúntale «¿a quién le doy esta entrega?».
+
+**Todo esto se le puede preguntar al Chalán**
+
+«¿Qué debo ver hoy?» · «¿cómo va la utilidad contra el mes pasado?» · «¿algo raro
+esta semana?» · «¿qué meta me pongo?» · «¿cuál es mi ruta?» · «¿a quién le doy la
+entrega de las gorras?».
+
+**Un arreglo de paso**: el indicador de integraciones en rojo estaba consultando un
+campo que no existe y tronaba cada vez que se calculaba. Ya quedó.
 
 ---
 
@@ -4410,6 +4617,72 @@ Cada tarea pertenece a un proyecto. Tiene título, descripción, estado, priorid
 
 ---
 
+## Rutas de reparto (el planeador)
+
+Las entregas y recolecciones son tareas de tipo **entrega** o **recoger**, y se
+listan en **Mandados**. Cuando hay varias en un día, el **planeador** las reparte
+y las pone en orden.
+
+**Cómo se usa**
+
+1. Entra a **Mandados → 🗺️ Planear rutas** y elige el día.
+2. Escoge de dónde salen: **de la sede y regresan a ella**, o **de donde esté cada
+   repartidor** (usa la última ubicación que registró al checar).
+3. Aprieta **«Planear el día»**. El sistema reparte las entregas entre los
+   repartidores disponibles y le arma a cada uno su vuelta.
+4. Revisa y reacomoda arrastrando. Cuando esté, aprieta **«Despachar»** en cada
+   tarjeta: la ruta se publica y le llega por correo a esa persona.
+
+**Las citas manda**
+
+Una parada con hora es una **cita fija**: el orden la respeta aunque implique más
+kilómetros. Las que no tienen hora se acomodan por cercanía en los huecos. Cada
+parada dice **«Cita a las 10:00»** o, si no tiene, **«≈ 11:20»** de llegada
+estimada.
+
+Las horas y los kilómetros son **estimados**: se calculan en línea recta, sin
+tráfico. Sirven para decidir el orden de la vuelta, no para prometer un minuto
+exacto.
+
+**Reacomodar**
+
+Arrastra una parada por su asa (⠿) para cambiarla de lugar dentro de la ruta, o
+suéltala en la tarjeta de otro repartidor para pasarle la entrega. Los kilómetros
+y las horas se recalculan solos. El mapa de arriba dibuja una línea de color por
+ruta.
+
+**Llevarla al teléfono**
+
+Cada tarjeta tiene botones para abrir la ruta en **Waze**, **Google Maps** o
+**Apple Maps**. Google abre la ruta completa con sus paradas intermedias; Waze
+navega a la siguiente parada. Son enlaces: no cuestan nada y no hacen falta
+cuentas.
+
+**Lo que no entró**
+
+Si una entrega no cupo en ninguna ruta, aparece abajo en **«Sin repartir»**. Casi
+siempre es porque no se sabe a dónde va: ponle el destino en el mapa del mandado
+y vuelve a planear. Una entrega que ya está en una ruta no se vuelve a repartir,
+así que puedes planear otra vez sin miedo a duplicar nada.
+
+**Mi ruta de hoy**
+
+El repartidor entra a **Mandados → 🧭 Mi ruta de hoy**. Si le planearon la vuelta,
+ve **ésa**, con sus citas. Si no, ve sus entregas abiertas ordenadas por cercanía.
+
+**Quién puede qué**
+
+Planear y despachar es de quien organiza el reparto. Un repartidor ve su propia
+ruta, no la de sus compañeros. Se reparte desde **El Directorio**, en las
+casillas de **Rutas**.
+
+**Con El Chalán**
+
+- «¿cuál es mi ruta?» — tu vuelta de hoy.
+- «¿cómo quedó el reparto de mañana?» — las rutas planeadas de un día (necesita
+  permiso de Rutas).
+- «¿a quién le doy la entrega de las gorras?» — a qué repartidor conviene, y por qué.
+
 ## Calendario
 
 Dos meses lado a lado (actual y siguiente). Cada día muestra hasta 3 chips con los eventos:
@@ -5181,6 +5454,40 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **El Site** (monitoreo del servidor, integraciones, backups).
 - **El Celador** (token del monitor externo que vigila que el sistema esté en pie).
 
+### La Limpieza (soltar caché, RAM y disco)
+
+Arriba de **El Site** hay un renglón con el botón **🧹 Limpiar ahora**. El mismo
+botón está en la pantalla colgada en la pared del taller: las dos pantallas son la
+misma cosa y se mantienen iguales a propósito.
+
+Sirve para dejar el servidor ligero sin esperar a que lo haga solo (lo hace cada
+tres días, de madrugada, después del respaldo). Lo que suelta:
+
+| Paso | Qué suelta |
+|---|---|
+| Caché de la aplicación | Las cuentas que el sistema guardaba hechas. Se rehacen solas. |
+| La Libreta (Redis) | Compacta su registro en disco y devuelve memoria al sistema. |
+| El Archivero (Postgres) | El espacio de los renglones borrados, y pone al día sus estadísticas. |
+| Lo que Docker dejó tirado | Piezas paradas, imágenes viejas y sobras de las actualizaciones. |
+| Reciclar los trabajadores | Los trabajadores se relevan y devuelven la memoria que traían apartada. |
+| Caché de disco del sistema | Casi siempre dice «no se puede desde aquí» — eso sólo lo hace el proceso de madrugada, que corre con más permisos. |
+
+**No borra nada tuyo**: ni proyectos, ni fotos, ni respaldos, ni datos del
+despacho. **No corta el servicio**: los trabajadores nuevos entran antes de que los
+viejos se retiren, así que ni te enteras. **No te saca de tu sesión.**
+
+Tarda unos segundos y al terminar te dice, en el mismo renglón, cuánto liberó y qué
+pasó en cada paso. Si algo no se pudo, lo dice con su razón. Queda anotado quién la
+pidió, así que si alguien ya la corrió hace cinco minutos lo vas a ver antes de
+volver a picarle.
+
+Para picarle desde El Site hace falta el permiso **El Site → limpiar** (lo trae el
+super_admin; se delega desde *Directorio → permisos*). En la pantalla de la pared
+no se pide permiso: la puerta ahí es estar enfrente de la máquina.
+
+Y a **El Chalán** le puedes preguntar «¿cuándo se limpió el servidor?»: te contesta
+cuándo fue, quién lo pidió y qué liberó. Correrla no se pide por chat, es el botón.
+
 ### La página «Acerca de»
 
 En `taller.learningcenter.mx/acerca/` hay una página pública —se lee sin iniciar
@@ -5261,6 +5568,19 @@ identidad: la cobranza desde `cobranza@learningcenter.mx`, las ventas desde
 No hace falta llevar la cuenta a mano: *Ajustes → El Cartero → **Direcciones de
 envío*** arma la lista sola, con las direcciones que tus plantillas declaran.
 
+**Hay dos clases de dirección, y no se comportan igual:**
+
+- **Del despacho** (`cobranza@`, `ventas@`, `facturas@`…): la puede usar
+  cualquiera del equipo con permiso de mandar correo.
+- **De una persona** (`alex@`, `jorge@`): sale a nombre de esa persona y **sólo
+  ella puede mandar desde ahí**. Si alguien más usa una plantilla que la lleva,
+  el correo sale de la dirección general — nunca firmado por quien no lo mandó.
+  Y los correos automáticos **nunca** usan una dirección personal, por lo mismo.
+
+Se define en la columna **«Quién la usa»**: «Todo el equipo» o «Sólo <persona>».
+Una dirección personal **sin dueño asignado no la puede usar nadie** — es el
+lado seguro, para que un alias suelto no acabe usándolo cualquiera.
+
 De cada una te dice **qué plantillas la usan** y en qué estado está:
 
 - **Falta darla de alta** — una plantilla ya la usa, pero nadie ha comprobado
@@ -5285,7 +5605,8 @@ Tres caminos:
 
 - **A un cliente concreto**: en su ficha, botón «✉️ Enviar correo». Sale al
   correo que el cliente tiene registrado; no hay campo para escribir una
-  dirección a mano, y es a propósito.
+  dirección a mano, y es a propósito. En el campo **«De»** eliges de qué
+  dirección sale: las del despacho y, si tienes una a tu nombre, la tuya.
 - **A varios**: *Campañas*, donde las plantillas nuevas aparecen solas.
 - **Pidiéndoselo a El Chalán**: «mándale a $cliente el aviso de entrega». A él
   sí puedes dictarle una dirección suelta si hace falta. Te enseña qué va a

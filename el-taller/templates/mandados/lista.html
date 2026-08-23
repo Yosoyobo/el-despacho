@@ -5,6 +5,14 @@
 {% block contenido %}
 {% breadcrumb_items "Tareas" "Mandados" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="🛵 Mandados" subtitulo="Entregas y recolecciones — el repartidor más cercano se asigna solo" breadcrumb_items=breadcrumb_items back_url="/tareas/" back_label="Tareas" %}
+{# La vuelta del día ordenada por cercanía, con botón para abrirla en el mapa. #}
+<div class="mb-4 flex flex-wrap gap-2">
+    <a href="{% url 'mandados-mi-ruta' %}" class="btn-secundario">🧭 Mi ruta de hoy</a>
+    {% if permisos_modulos.rutas %}
+    <a href="{% url 'rutas-panel' %}" class="btn-secundario"
+       title="Reparte las entregas del día entre los runners y ponlas en orden">🗺️ Planear rutas</a>
+    {% endif %}
+</div>
 
 <div class="mb-5 flex flex-wrap items-center gap-2">
     {% for ch in chips %}
@@ -57,9 +65,9 @@
                     <div class="flex flex-wrap items-center justify-end gap-1.5">
                         {% if not m.es_terminal %}
                         {% if m.estado != "en_camino" %}
-                        <form method="post" action="{% url 'mandado-avanzar' m.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="en_camino"><button class="rounded-md border border-brand-200 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/30 dark:text-brand-300 dark:hover:bg-brand-500/10">En camino</button></form>
+                        <form method="post" action="{% url 'mandado-avanzar' m.pk %}" data-geo-mandado>{% csrf_token %}<input type="hidden" name="accion" value="en_camino"><input type="hidden" name="lat"><input type="hidden" name="lng"><button class="rounded-md border border-brand-200 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/30 dark:text-brand-300 dark:hover:bg-brand-500/10">En camino</button></form>
                         {% endif %}
-                        <form method="post" action="{% url 'mandado-avanzar' m.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="entregado"><button class="rounded-md border border-success-200 px-2 py-1 text-xs font-medium text-success-700 hover:bg-success-50 dark:border-success-500/30 dark:text-success-300 dark:hover:bg-success-500/10">Entregado</button></form>
+                        <form method="post" action="{% url 'mandado-avanzar' m.pk %}" data-geo-mandado>{% csrf_token %}<input type="hidden" name="accion" value="entregado"><input type="hidden" name="lat"><input type="hidden" name="lng"><button class="rounded-md border border-success-200 px-2 py-1 text-xs font-medium text-success-700 hover:bg-success-50 dark:border-success-500/30 dark:text-success-300 dark:hover:bg-success-500/10">Entregado</button></form>
                         <form method="post" action="{% url 'mandado-avanzar' m.pk %}" onsubmit="return confirm('¿Cancelar este mandado?');">{% csrf_token %}<input type="hidden" name="accion" value="cancelar"><button class="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">Cancelar</button></form>
                         {% else %}
                         <span class="text-xs text-gray-400 dark:text-gray-500">cerrado</span>
@@ -74,4 +82,46 @@
 {% else %}
 {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin mandados" descripcion="Cuando crees una tarea de entrega o recolección aparecerá aquí con su repartidor." icono="folder" %}
 {% endif %}
+
+{% comment %}
+Al salir y al entregar, el teléfono manda dónde está. Con esos dos puntos y las
+horas que ya se guardaban se sabe cuánto tardó el mandado y cuánto se recorrió
+— y es la base del módulo de planeación de ruta que viene después.
+
+La ubicación NUNCA detiene el envío: se le da un segundo y medio al GPS y, si no
+contesta o el navegador la niega, el formulario se manda igual. Mismo criterio
+que El Checador: medir es útil, impedir el trabajo por no poder medir, no.
+{% endcomment %}
+<script>
+(function () {
+  var ESPERA_MS = 1500;
+  document.addEventListener('submit', function (e) {
+    var form = e.target.closest('[data-geo-mandado]');
+    if (!form || form.dataset.geoListo === '1') { return; }
+    if (!navigator.geolocation) { return; }   // sin GPS, se manda tal cual
+
+    e.preventDefault();
+    var enviado = false;
+    function mandar() {
+      if (enviado) { return; }
+      enviado = true;
+      form.dataset.geoListo = '1';
+      form.submit();
+    }
+    // Si el GPS se tarda, no se deja al runner esperando.
+    setTimeout(mandar, ESPERA_MS);
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        try {
+          form.querySelector('input[name="lat"]').value = pos.coords.latitude;
+          form.querySelector('input[name="lng"]').value = pos.coords.longitude;
+        } catch (err) { /* si no están los campos, se manda sin ellos */ }
+        mandar();
+      },
+      mandar,                                  // permiso negado o error: igual se manda
+      { enableHighAccuracy: true, timeout: ESPERA_MS, maximumAge: 30000 }
+    );
+  }, true);
+})();
+</script>
 {% endblock %}

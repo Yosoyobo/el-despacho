@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% load forms_helpers horas static %}
+{% block title %}Planeador de rutas — El Taller{% endblock %}
+
+{% comment %}
+El planeador de rutas (S-Planeador-Rutas, 2026-08-22).
+
+Una tarjeta por runner con sus paradas en orden. Las paradas se arrastran: dentro
+de la tarjeta cambian de posición, y entre tarjetas cambian de runner. Todo eso
+lo hace el motor único `arrastrar.js` por atributos `data-arr-*` — aquí no se
+escribe JS de arrastre.
+
+La pastilla de color de cada parada NO es decoración: es el color de su ruta en
+el mapa, para poder seguir una vuelta con la vista.
+
+Las horas son estimadas (se calculan en línea recta, sin tráfico). Las que
+tienen cita son fijas: el orden las respeta aunque cueste kilómetros.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Tareas" "/tareas/" "Mandados" "/mandados/" "Rutas" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+
+<header class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h1 class="text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Planeador de rutas</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Reparto del {{ fecha|date:"l j \d\e F" }}.
+            {% if tarjetas %}{{ tarjetas|length }} ruta{{ tarjetas|length|pluralize }} armada{{ tarjetas|length|pluralize }}.{% endif %}
+        </p>
+    </div>
+    <form method="get" action="{% url 'rutas-panel' %}" class="flex items-end gap-2">
+        <div>
+            <label for="fecha" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Día</label>
+            <input type="date" id="fecha" name="fecha" value="{{ fecha|date:'Y-m-d' }}"
+                   class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+        </div>
+        <button type="submit" class="btn-secundario">Ver</button>
+    </form>
+</header>
+
+{% if puede_planear %}
+<form method="post" action="{% url 'rutas-planear' %}"
+      class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    {% csrf_token %}
+    <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+    <div class="flex flex-wrap items-end gap-4">
+        <fieldset>
+            <legend class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">¿De dónde salen?</legend>
+            <div class="flex flex-wrap gap-2">
+                <label class="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/15">
+                    <input type="radio" name="origen_modo" value="sede_redonda" class="sr-only" checked>
+                    De la sede y regresan
+                </label>
+                <label class="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/15">
+                    <input type="radio" name="origen_modo" value="runner_abierta" class="sr-only">
+                    De donde está cada uno
+                </label>
+            </div>
+        </fieldset>
+        {% if sedes %}
+        <div>
+            <label for="sede" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Sede</label>
+            <select id="sede" name="sede" class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                {% for s in sedes %}<option value="{{ s.pk }}">{{ s.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn-primario">Planear el día</button>
+    </div>
+    {% if not sedes %}
+    <p class="mt-2 text-xs text-warning-600 dark:text-warning-400">
+        No hay sedes con ubicación fijada, así que la ruta redonda no sabe de dónde salir.
+        Ponle el pin a una sede en La Gerencia → Catálogos → Sedes, o usa «de donde está cada uno».
+    </p>
+    {% endif %}
+</form>
+{% endif %}
+
+{% if mapa.lineas %}
+{% include "_componentes_tailadmin/_leaflet.html" %}
+<div id="mapa-rutas" class="mb-6 h-80 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"></div>
+{{ mapa|json_script:"datos-mapa" }}
+<script>
+{% comment %}
+Leaflet entra con `defer`, así que puede no estar listo cuando corre esto: se
+espera a `load`. Si no cargó (sin red), el mapa se queda vacío y la lista de
+paradas —que es lo que de verdad se usa en la calle— sigue sirviendo.
+{% endcomment %}
+window.addEventListener('load', function () {
+    if (typeof L === 'undefined') return;
+    var datos = JSON.parse(document.getElementById('datos-mapa').textContent);
+    var mapa = L.map('mapa-rutas');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(mapa);
+    var todos = [];
+    datos.lineas.forEach(function (linea) {
+        L.polyline(linea.coords, { color: linea.color, weight: 4, opacity: 0.8 })
+            .bindTooltip(linea.runner).addTo(mapa);
+        linea.coords.forEach(function (c) { todos.push(c); });
+    });
+    datos.puntos.forEach(function (p) {
+        L.circleMarker([p.lat, p.lng], {
+            radius: 7, color: '#fff', weight: 2, fillColor: p.color, fillOpacity: 1
+        }).bindTooltip(p.etiqueta).addTo(mapa);
+    });
+    if (todos.length) { mapa.fitBounds(todos, { padding: [30, 30] }); }
+    else { mapa.setView([19.4326, -99.1332], 11); }
+});
+</script>
+{% endif %}
+
+{% if tarjetas %}
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+    {% for t in tarjetas %}
+    <section class="flex flex-col rounded-xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900"
+             style="--ec: {{ t.color }}">
+        <header class="flex items-start justify-between gap-2 border-b border-gray-100 p-4 dark:border-gray-800">
+            <div class="min-w-0">
+                <p class="flex items-center gap-2 truncate font-medium text-gray-900 dark:text-gray-100">
+                    <span class="inline-block h-3 w-3 shrink-0 rounded-full" style="background: {{ t.color }}"></span>
+                    {{ t.ruta.runner.nombre_completo }}
+                </p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t.paradas|length }} parada{{ t.paradas|length|pluralize }}
+                    {% if t.ruta.distancia_km %} · aprox. {{ t.ruta.distancia_km }} km{% endif %}
+                    {% if t.ruta.origen_etiqueta %} · sale de {{ t.ruta.origen_etiqueta }}{% endif %}
+                </p>
+            </div>
+            <span class="badge badge-hex shrink-0" style="--ec: {{ t.ruta.color }}">{{ t.ruta.get_estado_display }}</span>
+        </header>
+
+        <ol class="flex-1 space-y-2 p-3"
+            data-arr-zona data-arr-grupo="paradas-ruta" data-arr-eje="y"
+            data-arr-orden-url="{% url 'rutas-reordenar' t.ruta.pk %}"
+            data-arr-orden-campo="orden"
+            data-arr-mover-url="/rutas/paradas/{id}/mover"
+            data-arr-mover-campo="ruta" data-arr-mover-valor="{{ t.ruta.pk }}">
+            {% for p in t.paradas %}
+            <li data-arr-item="{{ p.pk }}"
+                class="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-2 dark:border-gray-800 dark:bg-gray-800/40">
+                <button type="button" data-arr-asa aria-label="Mover parada"
+                        class="mt-0.5 cursor-grab touch-none px-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">⠿</button>
+                <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                      style="background: {{ t.color }}">{{ p.orden }}</span>
+                <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ p.etiqueta|default:p.mandado.tarea.titulo }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ p.mandado.tarea.titulo|truncatechars:40 }}
+                        {% if p.lat is None %}<span class="text-warning-600 dark:text-warning-400"> · sin ubicación</span>{% endif %}
+                    </p>
+                    {% if p.hora_cita %}
+                    <p class="text-xs font-medium text-brand-600 dark:text-brand-400">Cita {{ p.hora_cita|hfmt }}</p>
+                    {% elif p.llegada_estimada %}
+                    <p class="text-xs text-gray-400 dark:text-gray-500">≈ {{ p.llegada_estimada|hfmt }}</p>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+
+        <footer class="flex flex-wrap items-center gap-2 border-t border-gray-100 p-3 dark:border-gray-800">
+            {% if t.enlaces.google %}
+            <a href="{{ t.enlaces.google }}" target="_blank" rel="noopener"
+               class="btn-secundario inline-flex items-center gap-1.5 !px-2 !py-1 text-xs" title="Abrir la ruta completa en Google Maps">
+                <img src="{% static 'vendor/mapas/google-maps.png' %}" alt="" width="14" height="14" class="h-3.5 w-3.5">
+                Maps
+            </a>
+            {% endif %}
+            {% if t.enlaces.waze %}
+            <a href="{{ t.enlaces.waze }}" target="_blank" rel="noopener"
+               class="btn-secundario inline-flex items-center gap-1.5 !px-2 !py-1 text-xs" title="Navegar a la primera parada con Waze">
+                <img src="{% static 'vendor/mapas/waze.png' %}" alt="" width="14" height="14" class="h-3.5 w-3.5 rounded-[3px]">
+                Waze
+            </a>
+            {% endif %}
+            {% if t.enlaces.apple %}
+            <a href="{{ t.enlaces.apple }}" target="_blank" rel="noopener"
+               class="btn-secundario inline-flex items-center gap-1.5 !px-2 !py-1 text-xs" title="Abrir en Apple Maps">
+                <img src="{% static 'vendor/mapas/apple-maps.png' %}" alt="" width="14" height="14" class="h-3.5 w-3.5 rounded-[3px]">
+                Apple
+            </a>
+            {% endif %}
+            <span class="flex-1"></span>
+            {% if puede_despachar and t.ruta.estado == "borrador" %}
+            <form method="post" action="{% url 'rutas-despachar' t.ruta.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primario !px-3 !py-1 text-xs"
+                        title="Publica la ruta y se la manda al runner por correo">Despachar</button>
+            </form>
+            {% elif t.ruta.correo_enviado_en %}
+            <span class="text-xs text-success-600 dark:text-success-400" title="Se le mandó por correo">✓ enviada</span>
+            {% endif %}
+        </footer>
+    </section>
+    {% endfor %}
+</div>
+{% else %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada planeado para este día" descripcion="Aprieta «Planear el día» y el reparto se arma con las entregas que tengan destino." icono="folder" %}
+{% endif %}
+
+{% if sueltos %}
+<section class="mt-6 rounded-xl border border-dashed border-warning-300 bg-warning-25 p-4 dark:border-warning-500/40 dark:bg-warning-500/10">
+    <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        Sin repartir ({{ sueltos|length }})
+    </h2>
+    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+        Estas entregas del día no entraron a ninguna ruta. Casi siempre es porque no
+        se sabe a dónde van: ponle el destino en el mapa del mandado y vuelve a planear.
+    </p>
+    <ul class="mt-3 space-y-1">
+        {% for m in sueltos %}
+        <li class="flex items-center justify-between gap-2 text-sm">
+            <span class="truncate text-gray-700 dark:text-gray-300">{{ m.tarea.titulo }}</span>
+            <a href="/mandados/" class="shrink-0 text-xs text-brand-600 underline dark:text-brand-400">fijar destino</a>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

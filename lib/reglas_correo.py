@@ -70,9 +70,14 @@ def _disparar(evento, referencia, cliente, proyecto, extra) -> int:
             cliente=cliente, proyecto=proyecto, extra=extra,
         )
         asunto, html = regla.plantilla.render(contexto)
+        from ajustes.models.alias_remitente import remitente_para
+
         resultado = cartero.enviar(
             destinatario=destinatario, asunto=asunto, html=html,
-            remitente=regla.plantilla.remitente_efectivo(),
+            # Sin usuario detrás: `remitente_para` descarta cualquier alias
+            # personal. Un correo que sale solo no puede ir firmado por alguien
+            # que ni se enteró.
+            remitente=remitente_para(regla.plantilla, None),
         )
         ok = bool(getattr(resultado, "ok", False))
         # Se audita el intento SIEMPRE, ok o no: la fila es el candado, así que
@@ -163,6 +168,51 @@ def mandado_entregado(mandado) -> int:
         extra={"mensaje": getattr(tarea, "titulo", "")},
     )
 
+
+def mandado_en_camino(mandado) -> int:
+    """El runner salió con la entrega. Avisa al cliente si la regla está activa.
+
+    `posicion` y `llegada` sólo se llenan si la entrega va dentro de una ruta
+    planeada; si el runner salió sin ruta llegan vacías y el correo se lee igual
+    (una variable nunca falta, a lo mucho llega vacía).
+
+    La referencia lleva el sufijo `:en_camino` para no compartir candado con el
+    aviso de entregado: son dos correos distintos del mismo mandado.
+    """
+    tarea = getattr(mandado, "tarea", None)
+    proyecto = getattr(tarea, "proyecto", None)
+    runner = getattr(tarea, "runner", None)
+    posicion, llegada = _lugar_en_la_ruta(mandado)
+    return disparar(
+        "mandado_en_camino",
+        referencia=f"mandado:{mandado.pk}:en_camino",
+        proyecto=proyecto,
+        extra={
+            "mensaje": getattr(tarea, "titulo", "") or "",
+            "runner": getattr(runner, "nombre_completo", "") or "",
+            "posicion": posicion,
+            "llegada": llegada,
+        },
+    )
+
+
+def _lugar_en_la_ruta(mandado):
+    """(«3 de 7», «14:20») si el mandado va en una ruta viva; («», «») si no."""
+    try:
+        from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS, ParadaRuta
+        parada = (
+            ParadaRuta.objects
+            .filter(mandado=mandado, ruta__estado__in=ESTADOS_RUTA_VIVOS)
+            .select_related("ruta").order_by("-ruta__fecha").first()
+        )
+        if parada is None:
+            return "", ""
+        total = parada.ruta.paradas.count()
+        hora = parada.llegada_estimada
+        return (f"{parada.orden} de {total}",
+                hora.strftime("%H:%M") if hora else "")
+    except Exception:  # noqa: BLE001 — sin ruta el correo sale igual
+        return "", ""
 
 def clientes_dormidos(dry_run: bool = False) -> list[dict]:
     """Recorre las reglas de «cliente dormido». Lo llama el cron.

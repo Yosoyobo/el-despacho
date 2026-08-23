@@ -58,7 +58,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **El Portavoz** | Eventos tipados → n8n vía Tailscale (`lib/portavoz.py`) | — |
 | **El Archivo** | Backup pg_dump + credenciales (`archivo.sh`) | — |
 | **La Limpieza** | Cron semanal de imágenes/contenedores | — |
-| **La Optimización** | Limpieza post-backup (vacuum + redis + HUP gunicorn + prune + drop_caches) | — |
+| **La Optimización** | Limpieza post-backup (vacuum + redis + HUP gunicorn + prune + drop_caches) · el guion nocturno `optimizar.sh` **y** el botón «🧹 Limpiar ahora» de El Vigía / El Site (`lib/site/limpieza.py`) | — |
 | **Los Analistas** | Abstracción IA multi-provider (S4) | — |
 | **El Reemplazo** | Fallback IA automático (S4) | — |
 | **El Cartero** | Envío de correo con canal intercambiable SMTP/n8n (`lib/cartero.py`) | — |
@@ -5697,7 +5697,8 @@ caduca cada 7 días y esto volvería a fallar. **HEIC** sigue sin decodificador
 no aparece en `/salud`: si algún día se quiere, es un módulo nuevo en
 `lib/salud.py`. Y el CI **todavía no despliega al NUC** (faltan los secretos de
 Tailscale, ver la entrada de la mudanza), así que el `pull && up -d` de esta
-entrega se hizo a mano.
+entrega se hizo a mano. *(Ya no aplica: al 2026-08-23 los secretos existen y La
+Mudanza despliega sola en cada push verde a `main`.)*
 
 **Lo que salió al verificar el despliegue (mismo día, VERSION 2026.08.18).** Tres
 cosas que sólo se ven con el código corriendo:
@@ -6024,6 +6025,235 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Planeador-Rutas ✅ — El planeador: el reparto del día guardado, y la ruta por correo (2026-08-23, VERSION 2026.08.24)
+
+Oscar: «ya tenemos que lanzar el planeador de rutas» + «hay un correo de runner
+que debe estar super integrado a esto» + «recuerdas que pedí que se pudieran
+exportar a un app, verdad?». Handoff: `docs/SPRINT-Planeador-Rutas.md`.
+
+**El hallazgo que dio vuelta al sprint (y la lección):** el planeador **ya
+existía a medias**, sin commitear, en el sprint que corría en paralelo
+(`agent/kpis-bi`): `el_pizarron/ruta.py` con el orden por vecino más cercano y
+los botones de **Waze / Google Maps / Apple Maps** (los íconos vendoreados en
+`static/vendor/mapas/`), los campos `inicio/fin_lat/lng` del `Mandado`, y una
+capacidad MCP `ruta_del_dia`. Su propio docstring citaba a Oscar: «esto va a
+acabar en la planeación de rutas y un botón para exportarla a Waze o Google Maps
+o Apple Maps». Iba a construir un segundo planeador en paralelo, y las dos
+versiones **ya peleaban por la misma migración** (`pizarron/0014`). Se encontró
+porque Oscar preguntó si me acordaba del pedido de exportar, y fui a
+**verificarlo** en memoria en lugar de contestar de oído. Regla nueva:
+`memory/regla-revisar-worktrees-antes-de-disenar`.
+
+**Rama de integración (decisión de Oscar).** V2 necesita piezas de **dos** ramas
+sin mergear a la vez: el alias `runner@learningcenter.mx` vive en
+`agent/alias-personales` (El Cartero) y el planeador V1 en `agent/kpis-bi`.
+Ninguna estaba en main. Se le presentaron cuatro caminos y eligió armar la rama
+de integración ya. **Costo aceptado y dicho:** el PR arrastra los tres sprints
+entrelazados, así que no se puede revertir por separado. El trabajo sin
+commitear de kpis-bi se trajo como **parche + copia SIN tocar su worktree**, para
+no estorbarle a esa sesión; los tres conflictos fueron sólo de documentos
+(CLAUDE.md, BITACORA, DOC_05) y se conservaron **ambas** entradas.
+
+**Decisiones de Oscar (AskUserQuestion):** ruta **guardada** por runner y día ·
+el planeador **reparte entre los runners disponibles** (eligió la opción más
+potente, no la que yo recomendaba) · la **hora es cita fija** · **los dos** modos
+de origen conviven.
+
+- **Modelos** `Ruta` + `ParadaRuta` (`pizarron_ruta`, `pizarron_ruta_parada`,
+  migración `pizarron/0015` — el `0014` es de kpis-bi; aquél mide el viaje REAL,
+  esto guarda el PLANEADO). «Una sola ruta viva por runner y día» es un
+  **`UniqueConstraint` parcial en la BASE** (excluye canceladas), no una promesa
+  del código. Snapshots del origen y del destino: sin ellos, reabrir una ruta de
+  la semana pasada la recalcularía con los datos de hoy y el historial mentiría.
+- **`planeador.py`**: `_ordenar_con_citas` pone las citas como **anclas en orden
+  de reloj** e inserta las libres donde menos cuesten; el **2-opt corre sólo
+  DENTRO de los tramos entre anclas**, así que por construcción no existe un
+  reordenamiento que mueva una cita. `_repartir` usa inserción más barata con un
+  empujón por carga para que no se apile todo en el runner más cercano.
+  `estimar_horas` espera a la cita si se llega antes. Constantes
+  `VELOCIDAD_KMH=25` y `MINUTOS_POR_PARADA=10`.
+- **El correo (lo que Oscar pidió integrar)**: `rutas_correo.py`. La ruta le
+  llega al runner **desde `runner@learningcenter.mx`** (alias departamental ya
+  verificado), con plantilla editable **`ruta_runner`** que nace con el alias
+  puesto — para eso se extendió `PlantillaCorreo.obtener()` con
+  `remitente_email`/`remitente_nombre` por default (aditivo). Idempotente por
+  `Ruta.correo_enviado_en` y **best-effort**: una ruta no se deja de despachar
+  por un correo. El aviso al cliente («va en camino») es un **evento nuevo
+  `mandado_en_camino`** en `EVENTOS_CORREO` que pasa por `ReglaCorreo` y
+  **arranca apagado**, como todo lo que le llega a un cliente.
+- **Los enlaces a las apps NO se reescribieron**: `enlaces_de(ruta)` reusa
+  `url_google/url_apple/url_waze` de `ruta.py` (V1) — una sola implementación de
+  cada uno. Y **`ruta_del_dia` (V1) ahora prefiere la ruta GUARDADA** si existe,
+  tanto en la pantalla «Mi ruta» como en la capacidad del Chalán: una vez
+  despachada, la ruta planeada ES la ruta.
+- **Permisos**: módulo `rutas` × {`ver`, `planear`, `despachar`} (migración
+  `cuentas/0043`; el rol **Runner** recibe sólo `ver` — un runner abre su vuelta,
+  no rearma el reparto ni dispara correos). **Ojo: en `PermisoUsuario` el campo
+  es `permiso`, NO `accion`** — escribirlo mal no falla en tests pero tumba el
+  arranque en producción.
+- **MCP**: capacidad nueva **`rutas_planeadas`** (gating `rutas`; un runner sólo
+  ve la suya) + `ruta_del_dia` extendida, documentadas en `CONSULTAS_CHAT`.
+- **Pantalla** `/rutas/`: una tarjeta por runner, mapa Leaflet con una línea de
+  color por ruta, y las paradas **arrastrables** con `data-arr-*` sobre el motor
+  único `arrastrar.js` (cero JS de arrastre nuevo): dentro de la tarjeta
+  reordena, entre tarjetas cambia de runner. Se cuelga de **Mandados** en vez de
+  meter un ítem al sidebar (habría pedido migración de `SidebarOrden`).
+- **32 tests** (`tests/taller/test_planeador_rutas.py`). Uno destapó un bug que
+  iba a la bandeja de cada runner: el asunto decía **«1 paradas»**.
+
+**La colisión de numeración se resolvió encadenando**: la migración de permisos
+se encadenó detrás del `0042` de La Limpieza, que aterrizó mientras este sprint corría — dos hojas colgadas del mismo padre hacen que `migrate` se niegue a correr y la app no arranca. La rama de integración terminó llevando **cuatro**
+sprints: El Cartero, S-KPI-BI, La Limpieza y el planeador — un solo deploy, una
+sola VERSION (`2026.08.24`).
+
+**Deuda diseñada**: distancia en **línea recta** (el orden sale bien; los km y
+los ETA son estimados — un río o un eje sin retorno pueden mentirle al orden; el
+cambio está encapsulado en una función) · `VELOCIDAD_KMH`/`MINUTOS_POR_PARADA`
+son **constantes**: volverlas GUI toca La Gerencia y eso se pregunta antes ·
+la hora es un **ancla, no una ventana** `[desde, hasta]` · el reparto no
+considera capacidad del vehículo ni volumen · la ruta no se recalcula sola si un
+destino cambia después de planear (por diseño: los snapshots) — hay botón de
+replanear · el planeador no se invoca desde El Chalán (lee, no planea).
+### S-Limpieza-Boton ✅ — Un botón en El Vigía y El Site para soltar caché, RAM y disco (2026-08-23, VERSION 2026.08.24)
+
+Pedido de Oscar: «agregar un botón en el site y el monitor para hacer flush de
+caché, RAM y disco, la limpieza. Esto se agrega a la herramienta creada en la
+caja». O sea: lo que ya hacía el guion nocturno `optimizar.sh` cada tres días,
+ahora **a mano** desde las dos pantallas — y documentado en la herramienta
+portable (`docs/ADOPTAR-EL-VIGIA.md`, §4 nueva) para que viaje con ella.
+
+- **`lib/site/limpieza.py`** (nuevo) — seis pasos, cada uno con su estado y su
+  motivo, y **ninguno lanza**: caché de la aplicación · La Libreta (compacta el
+  AOF si pasa de 64 MB + `MEMORY PURGE`) · `VACUUM (ANALYZE)` · poda de Docker ·
+  reciclado de los trabajadores de gunicorn · caché de páginas del sistema. El
+  resultado se guarda en Redis (`despacho:limpieza:ultima`, 30 días) con un
+  candado `NX EX 180` para que dos clics no se pisen. **Cero migraciones de
+  schema** (la única migración es el seed del permiso).
+- **`contenedores.py` gana lo único que ESCRIBE por el socket** (`_post`,
+  `podar`, `reciclar_trabajadores`). **Verificado contra un demonio real: por un
+  socket montado `:ro` SÍ se puede escribir** — exec create 201, exec start 200,
+  y el comando corrió dentro del contenedor objetivo. El `:ro` limita operaciones
+  del sistema de archivos y conectarse a un socket no lo es, así que **quien
+  tenga el socket tiene el demonio completo**; la barrera es que sólo esas dos
+  funciones escriben y que la vista está gateada.
+- **La señal a gunicorn va por un `exec` DENTRO del contenedor**, nunca con
+  `docker kill` (§14 Bug G, con test que lo fija). Y **el Portavoz no entra en la
+  lista de reciclables** aunque comparta la imagen de La Gerencia: su PID 1 es
+  Python, y para Python la acción por default de SIGHUP es MORIR. Reciclar es lo
+  único que devuelve RAM de verdad, y no corta el servicio: los trabajadores
+  nuevos entran antes de que los viejos se retiren, y gthread espera a sus
+  peticiones en vuelo — así que **la petición que disparó el botón también
+  termina**. El contenedor que la atiende se recicla al final.
+- **El caché se borra por LLAVES, nunca con `cache.clear()`**: el `clear()` del
+  backend de Redis de Django hace `FLUSHDB`, y aquí el caché comparte base de
+  datos con `portavoz:cola`, que no caduca — un `clear()` se llevaría los eventos
+  pendientes sin dejar rastro. El patrón sale del propio caché
+  (`cache.make_key("*")` → `:1:*`), así que un `KEY_PREFIX` futuro lo sigue solo,
+  y las sesiones que se borran no sacan a nadie (`cached_db` las relee de la
+  base). El candado del test revisa el **árbol** del módulo y no su texto: el
+  encabezado explica la regla y menciona las palabras prohibidas.
+- **El tiempo es parte del diseño**: gunicorn mata al trabajador que no contesta
+  en 30 s, y entonces el usuario ve un error **aunque la limpieza sí corrió**.
+  Presupuesto de 24 s, y tres detalles: **no se arranca un paso que no cabe** (se
+  mide contra lo que UNA llamada más podría tardar, no contra lo transcurrido);
+  se **aparta** una reserva de 6 s para el reciclado (último paso y único que
+  devuelve RAM — repartir por orden de llegada dejaría que una poda lenta se
+  comiera justo eso); y el `VACUUM` va con `statement_timeout` de 10 s. **Ese
+  tope se devuelve en un `finally` obligatoriamente**: con `CONN_MAX_AGE = 60` la
+  conexión se reusa, y un tope olvidado se le aplicaría durante un minuto a
+  consultas ajenas — el síntoma sería «a veces un reporte truena». Hay test de
+  que se devuelve incluso si el aspirado explota.
+- **La pregunta de confirmación va sólo fuera de la pared**: `hx-confirm` usa
+  `window.confirm`, que **bloquea el JS de la página** — abierta en el muro deja
+  la pantalla congelada, sin refrescar y sin poder avisarlo, hasta que alguien
+  vuelva. Ahí un toque físico ya es deliberado y lo peor que pasa es una limpieza
+  de más.
+- **Dos defectos propios cazados antes del commit**: «hace 0 minutos» justo
+  después de picar el botón (`timesince` para lo recién hecho — se vio MIRANDO la
+  pantalla, con Chrome headless sobre la página renderizada), y `antes > despues`
+  comparando los tamaños de la base como **cadenas** («9 MB» sale mayor que
+  «31 MB»), lo que habría dicho que la base bajó cuando creció.
+- **La puerta, con la pantalla sin sesión.** La pared no puede traer token de
+  CSRF (`CSRF_COOKIE_SECURE = not DEBUG` ⇒ la cookie no viaja por
+  `http://localhost:8201`, el mismo motivo por el que no pide sesión). La vista
+  es `@csrf_exempt` y parte la comprobación en dos: **desde la máquina** se exige
+  la cabecera `HX-Request` (un formulario de otro sitio SÍ puede apuntar a
+  localhost desde el navegador del NUC, pero **no puede poner cabeceras propias**,
+  y un `fetch` que sí las pone choca con el preflight de CORS que nunca se
+  concede); **desde La Gerencia** se invoca la comprobación **de Django** a mano
+  (`CsrfViewMiddleware.process_view`) para no tener dos versiones de la regla.
+- **Permiso granular nuevo `(site, limpiar)`** (§4 #20): `TODO_SITE` pasa a
+  `["ver", "limpiar"]`, helper `puede_limpiar_site`, migración
+  `cuentas/0042_seed_permiso_site_limpiar` (super_admins existentes; el resto se
+  delega desde El Directorio). Ver el tablero no implica poder moverlo. En la
+  pared no se consulta: ahí la puerta es estar en la máquina.
+- **A la par sin disciplina (§4 #22)**: un solo endpoint (`site-vivo-limpieza`,
+  GET pinta el estado / POST corre), un solo partial
+  (`templates/site/vivo/_limpieza.html`) y el aviso de «estoy trabajando» en la
+  hoja compartida (`[data-limpieza].htmx-request`, sin JS). Las dos páginas sólo
+  ponen un placeholder que se auto-rellena; el ritmo lo decide la vista (30 s en
+  la pared, 60 s + «Actualizar» en El Site) para no romper
+  `test_el_site_va_mas_lento_que_la_pared`. El resultado se LEE de Redis en cada
+  pintado: si viviera en la respuesta del POST, el refresco siguiente lo borraría
+  de la pantalla.
+- **Lo que NO se puede desde el contenedor**: soltar `/proc/sys/vm/drop_caches`
+  (`/proc` va `:ro` a propósito — dejarlo escribible sólo para eso abriría todos
+  los parámetros del kernel). El paso lo reporta como «no se puede desde aquí» en
+  vez de fingir; el guion nocturno, que corre como root en el host, sí lo suelta.
+- **MCP (regla del repo)**: capacidad de **lectura** `ultima_limpieza`
+  (`gating="abierto"`, como `estado_servidor`) + su renglón en `CONSULTAS_CHAT`.
+  Correrla **NO** se pide por chat: es back-office de máquina, mismo criterio que
+  los barridos de aprendizajes. Evento nuevo `site.limpieza`.
+- **51 pruebas** en `tests/site/test_limpieza.py`, verificadas contra el código
+  sin arreglar: quitando el gate de permiso, la cabecera de HTMX, la
+  comprobación de CSRF y el `finally` del tope, fallan 5. Suite del radio de
+  impacto: 234 verdes.
+
+**Deuda diseñada**: el antes/después de RAM se mide al terminar, cuando los
+trabajadores nuevos apenas toman el relevo — la memoria baja unos segundos DESPUÉS
+del número que se ve (el paso lo dice con palabras); el caché de páginas del
+sistema sigue siendo cosa del guion nocturno; y **el reciclado sólo se puede
+confirmar con el código en La Sede** (aquí no hay socket de Docker del NUC, y una
+prueba de mutación contra un socket vivo no se hace).
+
+### S-Alias-Personales ✅ — Los alias de Google, con dueño (2026-08-23, VERSION 2026.08.23)
+
+Continuación inmediata de S-Plantillas-Correo. Oscar mandó la captura de «Enviar
+como» con los **12 alias ya dados de alta** y fijó la regla: los personales
+(`alex@`, `jorge@`) salen a nombre de esa persona **DESDE SU PERFIL, nadie más
+puede**. Decisiones por AskUserQuestion: la plantilla **sí** puede llevar un
+alias personal pero **sólo lo usa su dueño** (para el resto cae al general, sin
+fallar) · **selector «De:»** al enviar desde la ficha · **sembrar los 12** ya
+marcados como comprobados.
+
+- **`AliasRemitente.usuario`** (FK opcional, migración `ajustes/0017`): con
+  dueño = personal; sin dueño = del despacho. `puede_usarlo(usuario)` es la
+  regla, y **niega el personal cuando no hay usuario detrás** (cron, regla
+  automática): un correo que sale solo no puede ir firmado por alguien que ni se
+  enteró.
+- **`remitente_para(plantilla, usuario, forzado)`** es la **fuente única** de la
+  decisión, usada por los CUATRO caminos de envío (ficha del cliente, El Chalán,
+  reglas, campañas). Orden: elegido a mano → alias de la plantilla → general; y
+  **un personal ajeno se ignora en silencio** en vez de romper el envío.
+- **Selector «De:»** en el modal de la ficha, alimentado por
+  `disponibles_para(usuario)` (departamentales verificados + el suyo). **La
+  validación está en el servidor** — el `<select>` se puede manipular, y hay
+  test que lo fija.
+- **Seed de los 12 alias reales** con su nombre visible tal cual de la captura,
+  `verificado=True` (los dio de alta Oscar; nadie tiene que recomprobarlos). Los
+  dos personales nacen **sin dueño a propósito**: mientras no se asignen, nadie
+  puede usarlos. La pantalla lo avisa y tiene la columna «Quién la usa».
+- **Sólo se ofrecen los verificados**: ofrecer uno que Google va a reescribir
+  sería prometer algo que no se cumple.
+- **19 tests nuevos** (`test_alias_personales` 15 + los de UI), la regla
+  **verificada contra el código sin arreglar**: quitando el check de
+  `puede_usarlo`, caen 4.
+
+**Deuda diseñada**: `alex@` y `jorge@` necesitan que alguien les asigne dueño en
+la pantalla (no se adivina por el correo: el usuario de Jorge en el sistema es
+`jorgeberebichez@gmail.com`, no `jorge@learningcenter.mx`). El Chalán no elige
+alias por su cuenta — usa el de la plantilla o el que se le dicte en el payload.
+Sigue sin poder crear alias en Google (ver el sprint anterior).
 ### S-Catalogo-Alta ✅ — El alta rápida deja el producto completo + la ficha con sus botones (2026-08-23, VERSION 2026.08.23)
 
 Notas 2, 3, 4, 10 y 11 del buzón del 21 de agosto (handoff
@@ -6179,6 +6409,90 @@ JSON. Hoy los alias se dan de alta a mano en la consola, y **la pantalla
 «Direcciones de envío» dice exactamente cuáles faltan**. El envío desde la ficha
 no adjunta archivos. Las reglas mandan al cliente, no al equipo. Y el cron de
 clientes dormidos usa `Proyecto.creado_en`, no la última actividad.
+### S-KPI-BI ✅ — El Chalán como analista: memoria, curaduría, metas y la ruta del runner (2026-08-23, VERSION 2026.08.23)
+
+Oscar: «ahora que analiza mejor el negocio, que cree y proponga KPIs basados en su
+conocimiento… que el chalán se convierta en el mejor analista de BI del mercado»,
+más cuatro ampliaciones a media sesión: **MCP**, «tickets, financieros, productos,
+proveedores, clientes, hardware del NUC, IA — TODO», «crúzalo con la actividad de
+cada usuario, logins, jornadas, horas», y los **runners con reloj, ruta y
+exportación a mapas**.
+
+**Los tres hallazgos que definieron el sprint** (medidos en el dump antes de
+diseñar):
+
+1. **La maquinaria de KPIs custom existe desde mayo y no se usa**: hay UN
+   `KPICustom` en la base, y está archivado. No faltaba la función.
+2. **El DSL no alcanzaba**: siete entidades, sin cotización ni factura, y el margen
+   es property de Python (no columna), así que «créame un KPI de conversión» era
+   inexpresable. Los KPIs custom sólo podían contar filas.
+3. **105 preferencias guardadas, 72 para APAGAR**, y los dos usuarios activos
+   coinciden casi exacto: encienden dinero y pendientes accionables, apagan conteos
+   descriptivos. **El problema no era que faltaran KPIs: sobraban.** De ahí que
+   Oscar eligiera «A y B» — curar Y proponer.
+
+**Decisiones de Oscar**: curar + proponer · foto diaria de TODOS los KPIs · metas
+propuestas del histórico con aprobación · MCP en las cuatro variantes (leer,
+detectar anomalías, crear con confirmación, y abrirlo al cliente externo).
+
+**Lo entregado**
+
+- **`SnapshotKPI` + `series.py`** — la memoria. Foto diaria por indicador
+  (migración `taller_home/0005`), y encima: serie, tendencia, comparación contra el
+  periodo anterior, **detección de anomalías** y **meta sugerida**. Las anomalías se
+  miden contra la **mediana**, no el promedio: con promedio, un solo día raro deja
+  ciego al detector justo después de la primera rareza. Con menos de 7 muestras no
+  opina (`MINIMO_PARA_JUZGAR`).
+- **`kpis_bi.py` — 42 indicadores nuevos** en todos los dominios que pidió Oscar:
+  tickets del Buzón, ventas (embudo real), rentabilidad, días de caja, productos,
+  proveedores, clientes (incluida la **dependencia del mayor cliente**), mandados
+  con **minutos y kilómetros**, el NUC (CPU/memoria/disco/piezas), Los Chalanes, y
+  **la gente** (accesos, intentos fallidos, cuentas dormidas, horas del equipo,
+  retardos, jornadas sin cerrar, visitas, **% de horas imputables** y actividad).
+  Ninguno recalcula por su cuenta: se apoyan en `negocio.py`, `embudo.py`,
+  `rentabilidad.py`, `stats.py` y `gauges.py`, así que un número aquí y el mismo
+  número en El Análisis siempre coinciden. Seis categorías nuevas.
+- **`curaduria.py`** — el corazón: `destacados_de_hoy` elige los ≤5 que importan
+  hoy **con su razón** (alerta > anomalía > cambio ≥25% > meta en riesgo), `sobran`
+  señala los que llevan días marcando lo mismo, `proponer_metas` sale del histórico
+  y `sembrar_sugerencias` reusa `SugerenciaKPI` — el mecanismo que YA funcionaba
+  (6 de 10 aceptadas) en vez de inventar otro. **Determinista, sin IA**: comparar
+  números no necesita un modelo, y así corre a diario sin costo.
+- **Runners**: `Mandado` gana `inicio_lat/lng`, `fin_lat/lng` y `distancia_m`
+  (migración `pizarron/0014`); el reloj ya existía. Los botones del teléfono mandan
+  la ubicación con un tope de 1.5 s — **si el GPS falla, el mandado se marca igual**.
+  `ruta.py`: orden por **vecino más cercano** desde donde está el runner + enlaces a
+  **Waze, Google Maps y Apple Maps** (son URLs, no APIs: cuestan cero), con sus
+  **íconos oficiales vendoreados** en `static/vendor/mapas/`. Pantalla «Mi ruta de
+  hoy».
+- **A quién le toca**: `evaluar_runners` puntúa por jornada (−1000 si no ha
+  checado), carga (−12 por pendiente), distancia (−1.5/km), **si le queda de paso**
+  (+25) y **choque de agenda** (−60). Explicable a propósito: cuando pregunten «¿por
+  qué le tocó a él?» el sistema contesta con la cuenta, no con una opinión.
+- **MCP (regla de Oscar)**: 7 capacidades nuevas (`serie_kpi`, `comparar_kpi`,
+  `kpis_a_mirar_hoy`, `anomalias_kpi`, `metas_sugeridas`, `ruta_del_dia`,
+  `sugerir_runner`) + 2 tools del servidor stdio (`indicadores`,
+  `serie_indicador`) + `CONSULTAS_CHAT` documentado.
+- **Cron** `kpi_foto_diaria` a las 7:00, antes del análisis.
+- **34 tests** en `tests/taller/test_kpis_bi.py`.
+
+**Bug preexistente cazado**: `site-integraciones-rojo` consultaba `creado_en` y el
+campo de `SiteChequeo` es `probado_en` — lanzaba FieldError **cada vez que se
+calculaba**. Lo encontró el test que recorre todo el catálogo, que es justo para lo
+que sirve tener uno.
+
+**Gotchas**: el buzón se importa de `buzon.models` (app raíz), no `apps.buzon`;
+`Tarea.fecha_compromiso` es **DateField** (el de Proyecto es datetime), así que
+`__date` ahí lanza FieldError; el autor de una Tarea es `creado_por`.
+
+**Deuda diseñada**: el DSL de KPIs custom **sigue sin cotizaciones ni facturas** —
+se atacó el problema por el otro lado (catálogo amplio + curaduría), que es lo que
+Oscar eligió; si algún día se quiere que el Chalán invente métricas nuevas de
+verdad, hay que ampliar `lib/kpi_dsl/schema.py`. La memoria **arranca hoy**: no hay
+backfill, así que las comparaciones tardan una semana en ser útiles y un mes en dar
+tendencia. La distancia de los mandados es en línea recta (medir la ruta real exige
+un servicio de paga). La planeación de ruta ordena por cercanía, que para 5-10
+paradas queda muy cerca de lo óptimo pero no es la ruta perfecta.
 
 ### S-Site-Vigia ✅ — El Site adopta la versión de El Vigía (2026-08-22, VERSION 2026.08.21)
 
@@ -6500,6 +6814,8 @@ ver §14 Bug H para el error que costó dos corridas muertas.
 de la llave del nodo** en la consola de Tailscale (expira el **2027-02-18** y ese día
 se cae el sitio; no hay CLI) · el **cable de red** (`eno1` sigue DOWN, trabaja por
 WiFi) y el **BIOS** para que encienda tras un corte.
+
+> **Al 2026-08-23 esto ya NO está pendiente**: los secretos del CI existen y el job **🚚 La Mudanza (deploy al NUC)** corre y pasa en cada push verde a `main` (verificado en la corrida del PR #66). O sea que **mergear a main despliega a producción solo**; el `pull && up -d` a mano ya no hace falta. Lo que SÍ sigue pendiente de OBO: apagar el vencimiento de la llave del nodo en Tailscale (expira el **2027-02-18** y ese día se cae el sitio), el cable de red (`eno1` sigue DOWN, trabaja por WiFi) y el BIOS para que encienda tras un corte.
 
 **Por qué NO se bumpeó `VERSION`:** el deploy automático al NUC está gateado por los
 secretos de Tailscale, así que un bump anunciaría (y pushearía a todo el equipo por

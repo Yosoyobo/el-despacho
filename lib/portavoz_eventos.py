@@ -137,6 +137,8 @@ EventoTipo = Literal[
     "buzon.estado_actualizado",
     "buzon.estado_borrado",
     "site.integracion_fallo",
+    # La Limpieza a mano desde El Vigía o El Site (LC 2026-08-23).
+    "site.limpieza",
     "deploy.iniciado",
     "deploy.exitoso",
     "deploy.rollback",

@@ -39,6 +39,7 @@ ACCION_VISIBLE_POR_MODULO = {
     "interfono": "configurar",
     # S-LC-Proyecto-V2: El Runner — elegibilidad como repartidor.
     "runner": "recibir",
+    "rutas": "ver",
     # los demás usan "ver"
 }
 
@@ -46,6 +47,7 @@ MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
     "facturacion", "chalan", "analisis", "checador", "comunicacion", "runner",
+    "rutas",
     "directorio", "ajustes", "chalanes", "site",
     "catalogos", "interfono",
     "gerencia",

@@ -114,3 +114,16 @@
 /* DaisyUI dibuja el anillo con `--value`; el grosor va aquí para que los
    cuatro se vean iguales sin repetirlo en cada uno. */
 .radial-progress { --thickness: 7px; }
+
+/* ── La Limpieza ─────────────────────────────────────────────────────────
+   El botón que suelta caché, RAM y disco tarda unos segundos, así que tiene
+   que decir que está trabajando. HTMX le pone la clase `htmx-request` al
+   elemento que dispara la petición; el intercambio de textos se hace con
+   eso y sin JavaScript.
+
+   Vive en esta hoja —y no en la plantilla— porque el botón es un partial
+   compartido: si el estilo viviera en una de las dos pantallas, en la otra
+   el botón se quedaría sin su aviso de «estoy trabajando». */
+[data-limpieza] .vg-mientras { display: none; }
+[data-limpieza].htmx-request .vg-mientras { display: inline; }
+[data-limpieza].htmx-request .vg-normal { display: none; }

@@ -500,8 +500,16 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "resumen_proveedores", "que": "A quién se le compra más, cuánto se le debe y qué egresos quedaron sin proveedor (requiere permiso de Finanzas). Pregunta: «¿a quién le debemos más?»."},
     {"nombre": "resumen_equipo", "que": "Carga y cumplimiento: tareas pendientes y atrasadas por persona, y horas de la semana — sólo de la gente que tú puedes ver. Pregunta: «¿quién está saturado?» o «¿qué se está entregando tarde?»."},
     {"nombre": "resumen_ia", "que": "Cuánto cuestan Los Chalanes en 30 días, repartido por Chalán, y qué tan seguido fallan los dictados (requiere permiso de Finanzas). Pregunta: «¿cuánto llevamos gastado en IA?»."},
+    {"nombre": "kpis_a_mirar_hoy", "que": "Los pocos indicadores que HOY merecen atención —los que están en alerta, se salieron de lo normal o cambiaron fuerte— con el porqué de cada uno. Pregunta: «¿qué debo ver hoy?» o «¿cómo vamos?»."},
+    {"nombre": "serie_kpi / comparar_kpi", "que": "Cómo viene un indicador en el tiempo y cuánto cambió contra el periodo anterior. Pregunta: «¿cómo va la utilidad contra el mes pasado?»."},
+    {"nombre": "anomalias_kpi", "que": "Qué indicadores se salieron de su comportamiento normal, comparando cada uno contra su propia historia. Pregunta: «¿algo raro esta semana?»."},
+    {"nombre": "metas_sugeridas", "que": "Metas realistas para los indicadores que no tienen una, calculadas con lo que de verdad se ha hecho (requiere permiso de Finanzas). Pregunta: «¿qué meta me pongo de ingresos?»."},
+    {"nombre": "sugerir_runner", "que": "A qué repartidor conviene darle una entrega y por qué: jornada, pendientes, distancia, si le queda de paso y compromisos con hora. Pregunta: «¿a quién le doy la entrega de las gorras?»."},
+    {"nombre": "ruta_del_dia", "que": "Tu vuelta de hoy. Si alguien ya te planeó la ruta, sale ésa —con las citas y las horas estimadas—; si no, se ordenan al vuelo tus mandados abiertos por cercanía. Pregunta: «¿cuál es mi ruta?»."},
+    {"nombre": "rutas_planeadas", "que": "El reparto planeado de un día: quién lleva qué, en qué orden, con la cita y la llegada estimada. Requiere permiso de rutas; un runner sólo ve la suya. Pregunta: «¿cómo quedó el reparto de mañana?»."},
     {"nombre": "El Análisis", "que": "La pantalla «El Análisis» del Taller junta los nueve temas con sus cifras exactas y la lectura del Chalán. Se actualiza sola cada mañana y tiene botón «Analizar ahora»."},
     {"nombre": "estado_servidor / specs_servidor", "que": "CPU, memoria, disco, containers, specs (todos los roles)."},
+    {"nombre": "ultima_limpieza", "que": "Cuándo se soltó por última vez el caché, la RAM y el disco del servidor, quién lo pidió y qué liberó (todos los roles). Pregunta: «¿cuándo se limpió el servidor?». Correrla NO se pide por chat: es el botón «🧹 Limpiar ahora» de El Site o de la pared del NUC."},
     {"nombre": "📎 imagen", "que": "Adjunta una foto (recibo, ticket) y el Chalán la lee — si el Chalán activo tiene visión."},
 ]
 

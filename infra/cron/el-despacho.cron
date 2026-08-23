@@ -58,6 +58,12 @@ CRON_TZ=America/Mexico_City
 
 # El Chalán APRENDE del negocio — destila observaciones durables (review-first). Lunes 8:00.
 0 8 * * 1 cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py chalan_destilar_negocio >> /var/log/chalan_proactivo.log 2>&1
+# LA MEMORIA DE LOS INDICADORES (S-KPI-BI) — una foto diaria de cada KPI. Es lo
+# que permite decir «subió 20% contra el mes pasado», dibujar tendencias y
+# detectar lo que se salió de lo normal. Corre ANTES del análisis para que la
+# lectura del día ya tenga el dato de hoy. No usa IA: no cuesta.
+0 7 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py kpi_foto_diaria >> /var/log/chalan_proactivo.log 2>&1
+
 # EL ANÁLISIS (S-Chalan-Analisis) — la lectura del día + los avisos de lo que
 # cruzó un umbral. Una sola llamada al Chalán para los nueve temas juntos; los
 # avisos son deterministas y no cuestan IA. Se apaga desde Gerencia → Ajustes →
