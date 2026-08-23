@@ -9538,6 +9538,41 @@ steps:
 archivo es inválido, GitHub crea una corrida fallida de 0 s **aunque el trigger no
 aplique**; si no aparece ninguna corrida, el archivo es válido.
 
+
+### Bug I — una migración cambia el esquema **o** mueve datos, no las dos cosas sobre la misma tabla
+
+PostgreSQL guarda la creación de índices de una migración para el **final de su
+transacción**. Si la misma migración agrega una llave foránea (que trae índice) e
+**inserta filas en esa misma tabla**, cuando toca crear el índice ya hay eventos de
+disparador pendientes por las inserciones y Postgres se niega:
+
+```
+django.db.utils.OperationalError: cannot CREATE INDEX "ajustes_alias_remitente"
+because it has pending trigger events
+```
+
+Lo insidioso: **las pruebas no lo ven**, porque corren sobre SQLite, que no tiene
+esa restricción. La suite pasa en verde, el PR se mergea, y el fallo aparece al
+desplegar. Pasó el 2026-08-23 con `ajustes/0017_alias_personales`
+(`AddField(usuario)` + `RunPython(_sembrar)` de 12 filas en la misma migración):
+lo cazó el **smoke test del stack en Docker** (§13), que es exactamente para lo
+que existe, y bloqueó el deploy antes de tocar producción.
+
+**El patrón correcto:** dos migraciones. La de esquema primero, la de datos
+después, dependiendo de ella. Cada migración es su propia transacción, así que el
+índice se crea y se confirma antes de que entren las filas. Se arregló partiendo
+la `0017` en `0017` (sólo `AddField`) + `0018_sembrar_alias_lc` (sólo
+`RunPython`).
+
+`atomic = False` también lo evita, pero pierde la atomicidad de la migración:
+partirla es mejor.
+
+**Ojo, no es universal:** un `RunPython` que sólo hace `UPDATE` de columnas sin
+llaves foráneas suele convivir sin problema con un `AddField` (hay migraciones
+así en el repo que despliegan bien). Lo que truena es **insertar** en la tabla
+cuyo índice quedó diferido. Cuando dudes, pártela: no cuesta nada.
+
+
 ---
 
 ## §15. El Site — monitoreo del Droplet (S2a.2)
